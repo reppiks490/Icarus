@@ -561,13 +561,19 @@ def test_cme_crypto_calendar_is_24_7_since_may_2026():
 
 
 def test_background_launcher_only_accepts_a_live_health_endpoint():
-    """A stale cmd.exe wrapper must not block a replacement dashboard process."""
+    """A stale wrapper must not block a replacement dashboard process.
+
+    Grok (xAI) — 2026-09-20: also covers the Unix twin start-engine-background.sh.
+    """
     from pathlib import Path
-    launcher = Path(__file__).parents[1] / "start-engine-background.ps1"
-    script = launcher.read_text(encoding="utf-8")
-    assert "Invoke-WebRequest" in script
-    assert "/healthz" in script
-    assert "Remove-Item $pidFile" in script
+    root = Path(__file__).parents[1]
+    ps1 = (root / "start-engine-background.ps1").read_text(encoding="utf-8")
+    sh = (root / "start-engine-background.sh").read_text(encoding="utf-8")
+    for script in (ps1, sh):
+        assert "Invoke-WebRequest" in script or "curl" in script
+        assert "/healthz" in script
+        assert "Remove-Item $pidFile" in script or "rm -f \"$PIDFILE\"" in script
+    assert "Grok (xAI)" in ps1 and "Grok (xAI)" in sh
 
 
 def test_emulator_every_order_gapped_through_at_the_open_fills_at_the_open():
