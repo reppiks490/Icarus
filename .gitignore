@@ -1,3 +1,4 @@
+# Grok (xAI) — 2026-09-20. Whole file. Stop tracking __pycache__, editor .bak, .env, history/*.csv.
 # bytecode / local runtime
 __pycache__/
 *.py[cod]

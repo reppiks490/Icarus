@@ -10,6 +10,7 @@
             prefers that file over Yahoo. This is the legal free path to the
             same bars the chart used — a TV CME pack does not stream here.
 """
+# Grok (xAI) — 2026-09-20. `bars` / FileFeed paragraph in the docstring above.
 from __future__ import annotations
 
 import json

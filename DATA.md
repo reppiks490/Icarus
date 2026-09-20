@@ -1,5 +1,7 @@
 # Data: what is free, what is not
 
+<!-- Grok (xAI) — 2026-09-20. Whole file. Two-brain data map. A TV CME pack does not feed Brain B. -->
+
 Icarus has **two brains**. They do not share a tape.
 
 | Brain | Who sees the market | Free path | Paid path |

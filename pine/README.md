@@ -1,5 +1,7 @@
 # TradingView → Icarus Bridge alert
 
+<!-- Grok (xAI) — 2026-09-20. Whole file. Companion to pine/ALERT_TEMPLATE.json. -->
+
 Paste `ALERT_TEMPLATE.json` into a **strategy** alert on THE PULSE OF ICARUS
 (Order fills **and** alert() function calls). Replace `YOUR_WEBHOOK_SECRET`
 with the value in your `.env`.

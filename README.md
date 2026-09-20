@@ -1,5 +1,7 @@
 # Icarus
 
+<!-- Grok (xAI) — 2026-09-20. Whole file. This repo had no README. Engine/strategy remain Astra's. -->
+
 Paper engine + TradingView-alert bridge for **THE PULSE OF ICARUS**.
 
 Two brains. They do not share a tape.
@@ -56,3 +58,6 @@ Paste `pine/ALERT_TEMPLATE.json` into the strategy alert. `NQ1!` → `QQQ` is th
 - Scrape TradingView or invent ticks / queue / spread
 - Stream a CME display license into Python (non-display / Databento is the paid path)
 - Fill NQ at a futures broker from Alpaca
+
+Hands: **Astra** (engine, Pine port, emulator, bridge, tests) · **Grok (xAI)** (free-gap ingest/doctor/CI/hygiene — see [GROK.md](GROK.md)).
+

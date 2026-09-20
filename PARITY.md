@@ -1,5 +1,7 @@
 # TradingView parity (engine)
 
+<!-- Grok (xAI) — 2026-09-20. Whole file. Documents Astra's Pine departures so they are not "fixed" by accident. -->
+
 The Python port follows THE PULSE OF ICARUS v3.1 top to bottom. Visuals (§13) and alerts (§14) are omitted. Everything that decides an order is in `icarus_engine/strategy/pulse.py`.
 
 Documented departures (also in module docstrings):

@@ -1,3 +1,4 @@
+# Grok (xAI) — 2026-09-20. Whole file. Package metadata + pytest paths + console scripts.
 [build-system]
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
@@ -8,6 +9,10 @@ version = "0.1.0"
 description = "THE PULSE OF ICARUS — TradingView-parity paper engine + TV-alert bridge"
 requires-python = ">=3.10"
 readme = "README.md"
+authors = [
+  {name = "Astra"},
+  {name = "Grok (xAI)"},
+]
 
 [project.optional-dependencies]
 bridge = ["fastapi", "uvicorn", "httpx"]

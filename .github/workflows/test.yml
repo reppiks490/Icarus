@@ -1,3 +1,4 @@
+# Grok (xAI) — 2026-09-20. Whole file. pytest on tests_engine. No paid-feed secrets.
 name: tests
 on:
   push:

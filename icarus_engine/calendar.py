@@ -55,9 +55,9 @@ HOLIDAYS["crypto"] = {}                          # CME crypto futures trade 24/7
 def holiday_coverage(group: str = "equity"):
     """Latest dated entry in ``HOLIDAYS[group]``, or None if the table is empty.
 
-    CME publishes each holiday ~2 weeks ahead. ``icarus-engine doctor`` warns
-    when this date is fewer than 90 days out — verify on cmegroup.com, do not
-    invent dates.
+    Grok (xAI) — 2026-09-20. CME publishes each holiday ~2 weeks ahead.
+    ``icarus-engine doctor`` warns when this date is fewer than 90 days out —
+    verify on cmegroup.com, do not invent dates.
     """
     table = HOLIDAYS.get(group) or {}
     if not table:
