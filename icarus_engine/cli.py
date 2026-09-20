@@ -1,11 +1,13 @@
 """icarus-engine CLI.
 
-  icarus-engine run        --assets NQ,ES,YM,GC,SI,PL,PA,BTCF,BTC [--tf 20] [--preset NQ-20m-ultracoded] [--fill-on real|chart]
-  icarus-engine backtest   --assets NQ [--tf 20] [--preset ...] [--csv out.csv] [--verbose 20]
-  icarus-engine parity     --asset NQ --tv-csv "List of Trades.csv" [--tf 20] [--preset ...] [--fill-on chart]
-  icarus-engine import-tv  <TradingView strategy export .xlsx|.csv> --name NQ-20m-mine     -> presets/<name>.json
-  icarus-engine inputs     [--profile nq|crypto] [--preset NAME]                            -> the effective inputs as JSON
-  icarus-engine assets                                                                      -> the asset registry
+  icarus-engine run          --assets NQ,ES,YM,GC,SI,PL,PA,BTCF,BTC [--tf 20] [--preset NQ-20m-ultracoded] [--fill-on real|chart]
+  icarus-engine backtest     --assets NQ [--tf 20] [--preset ...] [--csv out.csv] [--verbose 20]
+  icarus-engine parity       --asset NQ --tv-csv "List of Trades.csv" [--tf 20] [--preset ...] [--fill-on chart]
+  icarus-engine import-tv    <TradingView strategy export .xlsx|.csv> --name NQ-20m-mine     -> presets/<name>.json
+  icarus-engine ingest-bars  <TradingView chart export .csv> --symbol NQ [--tz America/New_York]
+  icarus-engine doctor       [--json]
+  icarus-engine inputs       [--profile nq|crypto] [--preset NAME]                            -> the effective inputs as JSON
+  icarus-engine assets                                                                        -> the asset registry
 
 Asset tokens: NQ, ES, YM, GC, SI, PL, PA, BTCF (CME bitcoin), MBT, BTC (Coinbase spot), ETH, SOL ...
   NQ@10                    chart timeframe per asset
@@ -179,6 +181,58 @@ def cmd_import_tv(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_ingest_bars(args: argparse.Namespace) -> int:
+    """TradingView Supercharts 'Export chart data' → history/{SYM}_{N}m.csv (no network)."""
+    from .assets import resolve
+    from .feeds.bars import detect_granularity, history_path, parse_ohlcv_csv, write_canonical
+
+    try:
+        from zoneinfo import ZoneInfo
+        tz = ZoneInfo(args.tz)
+    except Exception:
+        raise SystemExit(f"unknown timezone {args.tz!r}")
+    with open(args.file, "r", encoding="utf-8-sig") as fh:
+        bars = parse_ohlcv_csv(fh.read(), tz=tz)
+    if not bars:
+        print("no bars parsed (need open/high/low/close columns)", file=sys.stderr)
+        return 1
+    gsec = detect_granularity(bars)
+    minutes = int(args.minutes) if args.minutes else max(1, gsec // 60)
+    spec = resolve(args.symbol)
+    dest = args.out or history_path(_base_dir(), spec.symbol, minutes)
+    n = write_canonical(dest, bars)
+    t0 = time.strftime("%Y-%m-%d %H:%M", time.gmtime(bars[0].ts))
+    t1 = time.strftime("%Y-%m-%d %H:%M", time.gmtime(bars[-1].ts))
+    print(f"wrote {n} bars  {minutes}m  {spec.symbol} ({spec.tv_symbol or spec.ticker})  {t0}Z → {t1}Z")
+    print(f"  {dest}")
+    if args.minutes and abs(gsec - minutes * 60) > 30:
+        print(f"  note: detected median bar size is {gsec}s, filename uses --minutes {minutes}", file=sys.stderr)
+    print(f"next: icarus-engine backtest --assets {spec.symbol}   # warm-up prefers this file over Yahoo")
+    return 0
+
+
+def cmd_doctor(args: argparse.Namespace) -> int:
+    from .doctor import inspect
+    rep = inspect(_base_dir())
+    if args.json:
+        print(json.dumps(rep, indent=2))
+        return 0 if rep["ok"] else 1
+    print("\nICARUS Engine doctor\n" + "=" * 40)
+    for i in rep["items"]:
+        if i["ok"]:
+            mark = "OK "
+        elif i["level"] == "warn":
+            mark = "!! "
+        else:
+            mark = "XX "
+        print(f"  [{mark}] {i['name']} — {i['detail']}")
+    print()
+    for n in rep["notes"]:
+        print(f"  · {n}")
+    print()
+    return 0 if rep["ok"] else 1
+
+
 def cmd_parity(args: argparse.Namespace) -> int:
     from .parity import compare
     journal = Journal(args.db or ":memory:")
@@ -251,6 +305,18 @@ def main(argv: Optional[list] = None) -> int:
     i.add_argument("file")
     i.add_argument("--name", required=True)
     i.set_defaults(fn=cmd_import_tv)
+
+    g = sub.add_parser("ingest-bars", help="TradingView Supercharts export -> history/{SYM}_{N}m.csv")
+    g.add_argument("file", help="CSV from Supercharts ⋯ → Export chart data")
+    g.add_argument("--symbol", required=True, help="NQ / NQ1! / CME_MINI:NQ1! / ES / BTC ...")
+    g.add_argument("--tz", default="America/New_York", help="timezone for naive timestamps (unix epochs are UTC)")
+    g.add_argument("--minutes", type=int, default=None, help="override detected bar size (1, 20, ...)")
+    g.add_argument("--out", default=None, help="destination path (default history/{SYM}_{N}m.csv)")
+    g.set_defaults(fn=cmd_ingest_bars)
+
+    d = sub.add_parser("doctor", help="offline health checks (no network, no broker)")
+    d.add_argument("--json", action="store_true")
+    d.set_defaults(fn=cmd_doctor)
 
     args = p.parse_args(argv)
     if getattr(args, "preset", None) == "":

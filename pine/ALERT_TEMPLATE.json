@@ -1,0 +1,16 @@
+{
+  "secret": "YOUR_WEBHOOK_SECRET",
+  "event": "order_fill",
+  "ticker": "{{ticker}}",
+  "action": "{{strategy.order.action}}",
+  "contracts": "{{strategy.order.contracts}}",
+  "order_id": "{{strategy.order.id}}",
+  "comment": "{{strategy.order.comment}}",
+  "order_price": "{{strategy.order.price}}",
+  "position_size": "{{strategy.position_size}}",
+  "market_position": "{{strategy.market_position}}",
+  "prev_market_position": "{{strategy.prev_market_position}}",
+  "bar_close": "{{close}}",
+  "time": "{{timenow}}",
+  "meta": "{{strategy.order.alert_message}}"
+}
