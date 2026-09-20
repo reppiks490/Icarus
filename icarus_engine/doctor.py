@@ -1,3 +1,4 @@
+# Grok (xAI) — 2026-09-20. Whole file. Offline doctor. No network, no broker, no paid feed.
 """Offline health checks. No network, no broker, no paid feed."""
 from __future__ import annotations
 

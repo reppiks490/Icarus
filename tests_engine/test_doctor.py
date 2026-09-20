@@ -1,3 +1,4 @@
+# Grok (xAI) — 2026-09-20. Whole file. Offline doctor CLI.
 """Offline doctor — no network."""
 from __future__ import annotations
 

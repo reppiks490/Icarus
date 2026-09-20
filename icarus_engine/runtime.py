@@ -31,7 +31,7 @@ from .calendar import get_calendar
 from .contracts import SPECS as CONTRACT_SPECS, ContractRoll, last_completed_volume
 from .emulator import Emulator, Fill
 from .feeds import Coinbase, Kraken
-from .feeds.bars import detect_granularity, find_history, parse_ohlcv_csv
+from .feeds.bars import detect_granularity, find_history, parse_ohlcv_csv  # Grok (xAI) — 2026-09-20
 from .feeds.yahoo import Yahoo
 from .pine.series import NAN, na
 from .pine.timeframe import Aggregator, Bar, tf_minutes
@@ -447,7 +447,7 @@ class AssetRunner:
                 span = int(span * 7 / 5 * 24 / 23) + 86400
         T_w = self.cal.bucket_start(now - span, 1440)
         self.T_w = T_w
-        hist, minutes = find_history(os.getcwd(), self.symbol, self.chart_minutes)
+        hist, minutes = find_history(os.getcwd(), self.symbol, self.chart_minutes)  # Grok (xAI) — 2026-09-20: prefer history/ over Yahoo
         src = f"history/{os.path.basename(hist)} ({minutes}m)" if hist else self.spec.feed
         self.journal.log("INFO", f"[{self.symbol}] warm-up from {time.strftime('%Y-%m-%d %H:%M', time.gmtime(T_w))}Z ({self.cfg.warmup_bars} x {self.chart_minutes}m bars, {src}) mintick={self.mintick} x{self.spec.multiplier} slip={self.spec.slippage_ticks}t chart={self.spec.chart_type} fills={self.spec.fill_on} session={getattr(self.cal, 'session', '24/7')} security={self.spec.security_source}" + (f" contract={self.live_ticker}" if self.roller else ""))
         if hist:
@@ -538,10 +538,10 @@ class AssetRunner:
     def _warmup_from_csv(self, path: str, now: int, source_minutes: Optional[int] = None) -> None:
         """Warm up from a TradingView Supercharts export (or canonical history/*.csv).
 
-        Prefer a 1-minute dump: HTF/LTF chains then aggregate the same way live
-        1m sub-bars do. A chart-TF export is accepted as a fallback (HTF built
-        from those coarser bars). The live feed, if it answers, fills the tail
-        after the last exported bar. No interpolated ticks.
+        Grok (xAI) — 2026-09-20. Prefer a 1-minute dump: HTF/LTF chains then
+        aggregate the same way live 1m sub-bars do. A chart-TF export is accepted
+        as a fallback (HTF built from those coarser bars). The live feed, if it
+        answers, fills the tail after the last exported bar. No interpolated ticks.
         """
         with open(path, "r", encoding="utf-8-sig") as fh:
             rows = parse_ohlcv_csv(fh.read())

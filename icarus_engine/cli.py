@@ -4,8 +4,8 @@
   icarus-engine backtest     --assets NQ [--tf 20] [--preset ...] [--csv out.csv] [--verbose 20]
   icarus-engine parity       --asset NQ --tv-csv "List of Trades.csv" [--tf 20] [--preset ...] [--fill-on chart]
   icarus-engine import-tv    <TradingView strategy export .xlsx|.csv> --name NQ-20m-mine     -> presets/<name>.json
-  icarus-engine ingest-bars  <TradingView chart export .csv> --symbol NQ [--tz America/New_York]
-  icarus-engine doctor       [--json]
+  icarus-engine ingest-bars  <TradingView chart export .csv> --symbol NQ [--tz America/New_York]   # Grok (xAI) 2026-09-20
+  icarus-engine doctor       [--json]                                                             # Grok (xAI) 2026-09-20
   icarus-engine inputs       [--profile nq|crypto] [--preset NAME]                            -> the effective inputs as JSON
   icarus-engine assets                                                                        -> the asset registry
 
@@ -182,7 +182,10 @@ def cmd_import_tv(args: argparse.Namespace) -> int:
 
 
 def cmd_ingest_bars(args: argparse.Namespace) -> int:
-    """TradingView Supercharts 'Export chart data' → history/{SYM}_{N}m.csv (no network)."""
+    """TradingView Supercharts 'Export chart data' → history/{SYM}_{N}m.csv (no network).
+
+    Grok (xAI) — 2026-09-20. Do not scrape TradingView; this only reads a file the owner exported.
+    """
     from .assets import resolve
     from .feeds.bars import detect_granularity, history_path, parse_ohlcv_csv, write_canonical
 
@@ -212,6 +215,7 @@ def cmd_ingest_bars(args: argparse.Namespace) -> int:
 
 
 def cmd_doctor(args: argparse.Namespace) -> int:
+    # Grok (xAI) — 2026-09-20. Offline health checks.
     from .doctor import inspect
     rep = inspect(_base_dir())
     if args.json:
@@ -306,7 +310,7 @@ def main(argv: Optional[list] = None) -> int:
     i.add_argument("--name", required=True)
     i.set_defaults(fn=cmd_import_tv)
 
-    g = sub.add_parser("ingest-bars", help="TradingView Supercharts export -> history/{SYM}_{N}m.csv")
+    g = sub.add_parser("ingest-bars", help="TradingView Supercharts export -> history/{SYM}_{N}m.csv")  # Grok (xAI) — 2026-09-20
     g.add_argument("file", help="CSV from Supercharts ⋯ → Export chart data")
     g.add_argument("--symbol", required=True, help="NQ / NQ1! / CME_MINI:NQ1! / ES / BTC ...")
     g.add_argument("--tz", default="America/New_York", help="timezone for naive timestamps (unix epochs are UTC)")
@@ -314,7 +318,7 @@ def main(argv: Optional[list] = None) -> int:
     g.add_argument("--out", default=None, help="destination path (default history/{SYM}_{N}m.csv)")
     g.set_defaults(fn=cmd_ingest_bars)
 
-    d = sub.add_parser("doctor", help="offline health checks (no network, no broker)")
+    d = sub.add_parser("doctor", help="offline health checks (no network, no broker)")  # Grok (xAI) — 2026-09-20
     d.add_argument("--json", action="store_true")
     d.set_defaults(fn=cmd_doctor)
 

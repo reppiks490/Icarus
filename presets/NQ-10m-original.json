@@ -6,6 +6,8 @@
     "session": "rth",
     "security_source": "chart",
     "source": "shipped",
+    "author": "Grok (xAI)",
+    "author_note": "2026-09-20. Reconstructed from tests_engine/test_futures.py assertions. Not a TradingView export.",
     "timeframe": "10",
     "script": "THE PULSE OF ICARUS v3.1"
   },

@@ -1,3 +1,5 @@
+# Grok (xAI) — 2026-09-20. Whole file. TV Supercharts ingest / FileFeed.
+# Do not scrape TradingView. Do not invent ticks.
 """Local OHLCV store. No network, no interpolated ticks.
 
 Drop a TradingView Supercharts → Export chart data CSV into ``history/``

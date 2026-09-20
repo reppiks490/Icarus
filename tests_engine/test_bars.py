@@ -1,3 +1,4 @@
+# Grok (xAI) — 2026-09-20. Whole file. Covers ingest-bars / FileFeed / holiday_coverage / CSV warmup.
 """Local OHLCV ingest / FileFeed — no network."""
 from __future__ import annotations
 

@@ -12,5 +12,6 @@
   "prev_market_position": "{{strategy.prev_market_position}}",
   "bar_close": "{{close}}",
   "time": "{{timenow}}",
-  "meta": "{{strategy.order.alert_message}}"
+  "meta": "{{strategy.order.alert_message}}",
+  "_grok": "Grok (xAI) 2026-09-20. Bridge ignores this key. Safe to leave or delete before pasting into TradingView."
 }

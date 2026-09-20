@@ -6,6 +6,8 @@
     "session": "rth",
     "security_source": "chart",
     "source": "shipped",
+    "author": "Grok (xAI)",
+    "author_note": "2026-09-20. CLI default alias of NQ-20m-ultracoded. Reconstructed from tests, not a TradingView export.",
     "timeframe": "20",
     "script": "THE PULSE OF ICARUS v3.1",
     "note": "CLI default alias of NQ-20m-ultracoded (0914 chart)"

@@ -1,3 +1,4 @@
+# Grok (xAI) — 2026-09-20. Whole file.
 # Start the Icarus engine dashboard in the background (Windows).
 # A stale cmd.exe wrapper must not block a replacement: only a live
 # GET /healthz counts as "already running". Otherwise the pid file is dropped.

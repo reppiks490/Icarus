@@ -1,3 +1,4 @@
+# Grok (xAI) — 2026-09-20. Whole file. pine/ALERT_TEMPLATE.json must parse the way the bridge expects.
 """pine/ALERT_TEMPLATE.json must parse the way the bridge expects."""
 from __future__ import annotations
 
