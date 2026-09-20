@@ -24,14 +24,35 @@ import time
 from typing import Optional
 
 from .assets import REGISTRY, parse_spec
+from .feeds.bars import file_feed_mode  # Grok (xAI) — 2026-09-20
 from .runtime import AssetRunner, Journal, Portfolio, resolve_inputs
 
 
 def _base_dir() -> str:
-    return os.getcwd()
+    # Grok (xAI) — 2026-09-20: plant root is $ICARUS_HOME when the supervisor sets it.
+    home = os.environ.get("ICARUS_HOME")
+    return os.path.abspath(home) if home else os.getcwd()
+
+
+def _journal_path(args: argparse.Namespace) -> str:
+    """run writes under the plant root; backtest/parity stay in-memory unless --db is set.
+
+    Grok (xAI) — 2026-09-20. ``Journal(None)`` used to TypeError when ``run`` omitted --db.
+    """
+    if getattr(args, "db", None):
+        return args.db
+    cmd = getattr(args, "cmd", None)
+    if cmd in ("backtest", "parity"):
+        return ":memory:"
+    return os.path.join(_base_dir(), "icarus_engine.db")
 
 
 def _portfolio(args: argparse.Namespace, journal: Journal) -> Portfolio:
+    feed = getattr(args, "feed", None)
+    if feed:
+        os.environ["ICARUS_FEED"] = feed
+    if file_feed_mode() and not getattr(args, "roll", None):
+        args.roll = "none"  # Grok (xAI) — FileFeed volumes are not CME 1!
     port = Portfolio(journal, _base_dir(), poll_sec=getattr(args, "poll", 5.0), profile=args.profile, preset=args.preset,
                      warmup_bars=args.warmup, pts_ref_symbol=args.pts_ref_symbol)
     for tok in [a for a in args.assets.split(",") if a.strip()]:
@@ -90,12 +111,15 @@ def cmd_backtest(args: argparse.Namespace) -> int:
 
 def cmd_run(args: argparse.Namespace) -> int:
     from .server import serve
-    journal = Journal(args.db)
+    journal = Journal(_journal_path(args))
     port = _portfolio(args, journal)
     journal.log("INFO", f"ICARUS Engine starting: {port.order} tf={args.tf}m preset={args.preset} profile={args.profile} fills={args.fill_on or 'preset/real'}")
     port.start()
     print(f"\nICARUS ENGINE  assets={port.order}  tf={args.tf}m  preset={args.preset}")
     print(f"  dashboard : http://127.0.0.1:{args.port}/     admin token: {args.token}")
+    print(f"  data dir  : {_base_dir()}  db={journal.path}")
+    if file_feed_mode():
+        print("  feed      : HistoryHub (ICARUS_FEED=file) — Yahoo is not contacted; live bars arrive via history/drop/")
     print("  warming up each asset from history, then LIVE (futures wait for the CME open); Ctrl+C to stop\n")
     if args.open:
         import webbrowser
@@ -268,6 +292,7 @@ def main(argv: Optional[list] = None) -> int:
         s.add_argument("--session", default=None, choices=["rth", "eth"], help="CME chart session: rth = TradingView 'Regular trading hours' 09:30-16:15 ET (default, your charts), eth = full Globex session")
         s.add_argument("--security-source", default=None, choices=["chart", "standard"], help="what the HTF/LTF request.security chains see on a Heikin Ashi chart: chart = HA bars (TradingView, default), standard = real bars")
         s.add_argument("--roll", default=None, choices=["volume", "none"], help="live-feed contract roll for NQ/ES/YM: volume = TradingView's 1! rule (default), none = Yahoo's =F front month")
+        s.add_argument("--feed", default=None, choices=["yahoo", "file"], help="yahoo (default) or file = HistoryHub over history/*.csv (ICARUS_FEED; plant --offline). Grok (xAI)")
         s.add_argument("--capital", type=float, default=None, help="override initial capital per asset")
         s.add_argument("--warmup", type=int, default=1200, help="chart bars of history to replay before going live")
         s.add_argument("--pts-ref-symbol", default="NQ", help="asset whose price anchors the *_pts inputs (they are NQ points)")

@@ -22,10 +22,26 @@ icarus-engine backtest --assets NQ
 
 That writes `history/NQ_1m.csv` (preferred) or `history/NQ_20m.csv`. Warm-up uses it instead of delayed Yahoo. Details: [DATA.md](DATA.md). Documented Pine departures: [PARITY.md](PARITY.md).
 
+## Plant (local infrastructure)
+
+Grok (xAI) — 2026-09-20. A data directory + process supervisor so Brain B stays up. **Not Docker, not a CME feed.** The engine binds `127.0.0.1` (DNS-rebinding). Health is `GET /healthz` on loopback.
+
+```
+icarus-plant init                         # history/drop, run/, logs/ under $ICARUS_HOME or cwd
+# drop Supercharts CSVs into history/drop/
+icarus-plant start --assets NQ --offline  # FileFeed only; Yahoo is not contacted
+icarus-plant status
+icarus-plant stop
+```
+
+`--offline` sets `ICARUS_FEED=file`: live poll reads `history/{SYM}_*m.csv` (mtime-reload as drop ingest rewrites them). Roll is forced `none` so FileFeed volumes cannot fake a CME 1! roll. 1-minute exports are required for live FileFeed; a 20m dump still warms the strategy but is not split into invented minutes.
+
+Optional systemd unit: [deploy/icarus-plant.service](deploy/icarus-plant.service). Edit paths; do not expose port 8791.
+
 ## Requirements
 
 - Python 3.10+
-- Engine: stdlib only (no API keys)
+- Engine / plant: stdlib only (no API keys)
 - Bridge extras: `pip install -e '.[bridge]'` (fastapi, uvicorn, httpx, plus `alpaca-py` if you talk to Alpaca)
 - Tests: `pip install -e '.[dev]'` then `python -m pytest tests_engine -q`
 
@@ -39,9 +55,10 @@ icarus-engine backtest --assets NQ --tf 20
 icarus-engine parity --asset NQ --tv-csv "List of Trades.csv"
 icarus-engine import-tv strategy-report.xlsx --name NQ-20m-mine
 icarus-engine run --assets NQ --tf 20
+icarus-engine run --assets NQ --feed file   # HistoryHub; same as plant --offline
 ```
 
-Default chart session is **RTH** (09:30–16:15 ET, 20m at `:10/:30/:50`, last bar a 5-minute stub). Yahoo 1-minute history is ~30 days and ~10 minutes delayed. Empty minutes are not invented.
+Default chart session is **RTH** (09:30–16:15 ET, 20m at `:10/:30/:50`, last bar a 5-minute stub). Yahoo 1-minute history is ~30 days and ~10 minutes delayed. Empty minutes are not invented. `$ICARUS_HOME` is the data dir (history, journal, presets) when the plant sets it.
 
 ## Bridge (TV alerts → Alpaca paper)
 
@@ -59,5 +76,4 @@ Paste `pine/ALERT_TEMPLATE.json` into the strategy alert. `NQ1!` → `QQQ` is th
 - Stream a CME display license into Python (non-display / Databento is the paid path)
 - Fill NQ at a futures broker from Alpaca
 
-Hands: **Astra** (engine, Pine port, emulator, bridge, tests) · **Grok (xAI)** (free-gap ingest/doctor/CI/hygiene — see [GROK.md](GROK.md)).
-
+Hands: **Astra** (engine, Pine port, emulator, bridge, tests) · **Grok (xAI)** (free-gap ingest/doctor/CI/hygiene + local plant — see [GROK.md](GROK.md)).

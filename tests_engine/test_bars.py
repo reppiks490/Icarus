@@ -11,7 +11,10 @@ from icarus_engine.calendar import _from_ny, holiday_coverage
 from icarus_engine.cli import main as engine_main
 from icarus_engine.feeds.bars import (
     FileFeed,
+    HistoryHub,
+    _hub_symbol,
     detect_granularity,
+    file_feed_mode,
     find_history,
     parse_ohlcv_csv,
     parse_timestamp,
@@ -152,3 +155,100 @@ def test_ingest_bars_cli(tmp_path, monkeypatch, capsys):
     out = capsys.readouterr().out
     assert "NQ" in out and "2 bars" in out
     assert os.path.samefile(dest, tmp_path / "history" / "NQ_1m.csv")
+
+
+def test_filefeed_reloads_on_mtime(tmp_path):
+    p = tmp_path / "NQ_1m.csv"
+    write_canonical(str(p), [Bar(ET_0930, 1, 2, 0.5, 1.5, 1)])
+    feed = FileFeed.from_csv(str(p))
+    assert feed.ticker("NQ") == 1.5
+    write_canonical(str(p), [
+        Bar(ET_0930, 1, 2, 0.5, 1.5, 1),
+        Bar(ET_0930 + 60, 2, 3, 1.5, 2.5, 1),
+    ])
+    os.utime(str(p), (os.path.getatime(p), os.path.getmtime(p) + 1))
+    assert feed.ticker("NQ") == 2.5
+    assert len(feed.candles("NQ", 60, 0, 2**31 - 1)) == 2
+
+
+def test_filefeed_does_not_invent_1m_from_20m():
+    twenties = [Bar(ET_0930 + 1200 * k, 1, 2, 0.5, 1.5, 1.0 + k) for k in range(4)]
+    feed = FileFeed(twenties, mintick=0.25)
+    assert feed._granularity == 1200
+    assert feed.candles("NQ", 60, 0, 2**31 - 1) == []
+    bars, ft, px = feed.recent_ex("NQ", 60)
+    assert bars == [] and px == 1.5 and ft == twenties[-1].ts + 1200
+
+
+def test_hub_symbol_maps_yahoo_and_cme_tickers():
+    assert _hub_symbol("NQ=F") == "NQ"
+    assert _hub_symbol("NQU26.CME") == "NQ"
+    assert _hub_symbol("CME_MINI:NQ1!") == "NQ"
+    assert _hub_symbol("NQ") == "NQ"
+    assert _hub_symbol("ES=F") == "ES"
+    assert _hub_symbol("BTC-USD") == "BTC"
+
+
+def test_historyhub_reads_nq_equals_f(tmp_path):
+    hist = tmp_path / "history"
+    hist.mkdir()
+    ones = [Bar(ET_0930 + 60 * k, 10 + k, 11 + k, 9 + k, 10.5 + k, 1) for k in range(5)]
+    write_canonical(str(hist / "NQ_1m.csv"), ones)
+    hub = HistoryHub(str(tmp_path))
+    assert hub.ticker("NQ=F") == ones[-1].c
+    assert hub.ticker("NQU26.CME") == ones[-1].c
+    five = hub.candles("NQ=F", 300, ET_0930, ET_0930 + 600)
+    assert len(five) == 1 and five[0].v == 5
+
+
+def test_find_history_falls_back_to_finest_other_tf(tmp_path):
+    hist = tmp_path / "history"
+    hist.mkdir()
+    (hist / "NQ_5m.csv").write_text("ts,open,high,low,close,volume\n1,1,1,1,1,1\n")
+    path, minutes = find_history(str(tmp_path), "NQ", 20)
+    assert minutes == 5 and path.endswith("NQ_5m.csv")
+
+
+def test_warmup_uses_base_dir_not_cwd(tmp_path, monkeypatch):
+    hist = tmp_path / "history"
+    hist.mkdir()
+    rows = ["ts,open,high,low,close,volume"]
+    t0 = _from_ny(2026, 9, 14, 9, 30)
+    for k in range(20):
+        px = 24700.0 + k * 0.25
+        rows.append(f"{t0 + 60 * k},{px},{px + 1},{px - 1},{px + 0.25},10")
+    (hist / "NQ_1m.csv").write_text("\n".join(rows) + "\n")
+    other = tmp_path / "other"
+    other.mkdir()
+    monkeypatch.chdir(other)
+    spec = parse_spec("NQ")
+    spec.roll = "none"
+    r = AssetRunner(
+        RunnerConfig(spec=spec, inputs=Inputs(use_tide=False, use_eod_flat=False), warmup_bars=2, base_dir=str(tmp_path)),
+        Journal(":memory:"),
+        feeds={"yahoo": _Quiet()},
+    )
+    r.warmup(now_ts=_from_ny(2026, 9, 14, 10, 0))
+    assert r.warm and r.bar_index >= 0
+    assert r.bars[0].ts == t0
+
+
+def test_cli_base_dir_and_journal_honor_icarus_home(tmp_path, monkeypatch):
+    from argparse import Namespace
+    from icarus_engine.cli import _base_dir, _journal_path
+    monkeypatch.setenv("ICARUS_HOME", str(tmp_path))
+    assert os.path.samefile(_base_dir(), tmp_path)
+    path = _journal_path(Namespace(db=None, cmd="run"))
+    assert path == os.path.join(str(tmp_path), "icarus_engine.db")
+    assert _journal_path(Namespace(db=None, cmd="backtest")) == ":memory:"
+    assert _journal_path(Namespace(db="/tmp/x.db", cmd="run")) == "/tmp/x.db"
+
+
+def test_file_feed_mode_env(monkeypatch):
+    monkeypatch.delenv("ICARUS_FEED", raising=False)
+    assert file_feed_mode() is False
+    monkeypatch.setenv("ICARUS_FEED", "file")
+    assert file_feed_mode() is True
+    monkeypatch.setenv("ICARUS_FEED", "offline")
+    assert file_feed_mode() is True
+

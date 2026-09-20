@@ -21,9 +21,10 @@ dev = ["pytest"]
 [project.scripts]
 icarus-engine = "icarus_engine.cli:main"
 icarus-bridge = "icarus_bridge.cli:main"
+icarus-plant = "icarus_plant.cli:main"
 
 [tool.setuptools.packages.find]
-include = ["icarus_engine*", "icarus_bridge*"]
+include = ["icarus_engine*", "icarus_bridge*", "icarus_plant*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests_engine"]

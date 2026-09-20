@@ -1,0 +1,4 @@
+# Grok (xAI) — 2026-09-20. Whole file.
+# Drop TradingView Supercharts exports here. `icarus-plant ingest-drop`
+# (or the supervisor loop) writes history/{SYM}_{N}m.csv and moves the
+# original to drop/done/. Do not scrape TradingView.
