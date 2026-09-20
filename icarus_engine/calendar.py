@@ -52,6 +52,20 @@ HOLIDAYS: Dict[str, Dict[str, str]] = {
 HOLIDAYS["crypto"] = {}                          # CME crypto futures trade 24/7 since 2026-05-29 (CMECryptoCalendar); no holiday halts
 
 
+def holiday_coverage(group: str = "equity"):
+    """Latest dated entry in ``HOLIDAYS[group]``, or None if the table is empty.
+
+    CME publishes each holiday ~2 weeks ahead. ``icarus-engine doctor`` warns
+    when this date is fewer than 90 days out — verify on cmegroup.com, do not
+    invent dates.
+    """
+    table = HOLIDAYS.get(group) or {}
+    if not table:
+        return None
+    return max(date.fromisoformat(k) for k in table)
+
+
+
 def _ny(ts: int) -> datetime:
     dt = datetime.fromtimestamp(int(ts), tz=timezone.utc)
     if _NY is not None:

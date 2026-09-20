@@ -31,6 +31,7 @@ from .calendar import get_calendar
 from .contracts import SPECS as CONTRACT_SPECS, ContractRoll, last_completed_volume
 from .emulator import Emulator, Fill
 from .feeds import Coinbase, Kraken
+from .feeds.bars import detect_granularity, find_history, parse_ohlcv_csv
 from .feeds.yahoo import Yahoo
 from .pine.series import NAN, na
 from .pine.timeframe import Aggregator, Bar, tf_minutes
@@ -446,10 +447,11 @@ class AssetRunner:
                 span = int(span * 7 / 5 * 24 / 23) + 86400
         T_w = self.cal.bucket_start(now - span, 1440)
         self.T_w = T_w
-        self.journal.log("INFO", f"[{self.symbol}] warm-up from {time.strftime('%Y-%m-%d %H:%M', time.gmtime(T_w))}Z ({self.cfg.warmup_bars} x {self.chart_minutes}m bars, {self.spec.feed}) mintick={self.mintick} x{self.spec.multiplier} slip={self.spec.slippage_ticks}t chart={self.spec.chart_type} fills={self.spec.fill_on} session={getattr(self.cal, 'session', '24/7')} security={self.spec.security_source}" + (f" contract={self.live_ticker}" if self.roller else ""))
-        hist = os.path.join(os.getcwd(), "history", f"{self.symbol}_{self.chart_minutes}m.csv")
-        if os.path.exists(hist):
-            self._warmup_from_csv(hist, now)                 # TradingView "Export chart data" of THIS chart: exact bars, full history
+        hist, minutes = find_history(os.getcwd(), self.symbol, self.chart_minutes)
+        src = f"history/{os.path.basename(hist)} ({minutes}m)" if hist else self.spec.feed
+        self.journal.log("INFO", f"[{self.symbol}] warm-up from {time.strftime('%Y-%m-%d %H:%M', time.gmtime(T_w))}Z ({self.cfg.warmup_bars} x {self.chart_minutes}m bars, {src}) mintick={self.mintick} x{self.spec.multiplier} slip={self.spec.slippage_ticks}t chart={self.spec.chart_type} fills={self.spec.fill_on} session={getattr(self.cal, 'session', '24/7')} security={self.spec.security_source}" + (f" contract={self.live_ticker}" if self.roller else ""))
+        if hist:
+            self._warmup_from_csv(hist, now, source_minutes=minutes)
         elif self.spec.feed == "yahoo":
             self._warmup_yahoo(T_w, now)
         else:
@@ -533,41 +535,37 @@ class AssetRunner:
                 continue
             self.on_sub_bar(b, 1, live=False)
 
-    def _warmup_from_csv(self, path: str, now: int) -> None:
-        """Warm up from a TradingView chart export (time,open,high,low,close,Volume…) of the chart
-        timeframe itself: the strategy sees TradingView's own bars, HTF chains are built from them,
-        and the live feed takes over after the last exported bar."""
-        import csv as _csv
-        from datetime import datetime, timezone
-        rows: List[Bar] = []
-        with open(path, "r", encoding="utf-8-sig", newline="") as fh:
-            rd = _csv.DictReader(fh)
-            cols = {c.lower(): c for c in rd.fieldnames or []}
-            ct = cols.get("time") or cols.get("date") or list(cols.values())[0]
-            co, ch, cl, cc = cols.get("open"), cols.get("high"), cols.get("low"), cols.get("close")
-            cv = cols.get("volume") or cols.get("vol")
-            for r in rd:
-                t = r[ct].strip()
-                if t.isdigit():
-                    ts = int(t)
-                else:
-                    ts = int(datetime.fromisoformat(t.replace("Z", "+00:00")).astimezone(timezone.utc).timestamp())
-                try:
-                    rows.append(Bar(ts, float(r[co]), float(r[ch]), float(r[cl]), float(r[cc]), float(r[cv] or 0) if cv else 0.0))
-                except (TypeError, ValueError):
-                    continue
-        rows.sort(key=lambda b: b.ts)
-        self.journal.log("INFO", f"[{self.symbol}] history/{os.path.basename(path)}: {len(rows)} chart bars ({time.strftime('%Y-%m-%d', time.gmtime(rows[0].ts)) if rows else '-'} → {time.strftime('%Y-%m-%d', time.gmtime(rows[-1].ts)) if rows else '-'}); chart bars come from TradingView, HTF chains built from them")
+    def _warmup_from_csv(self, path: str, now: int, source_minutes: Optional[int] = None) -> None:
+        """Warm up from a TradingView Supercharts export (or canonical history/*.csv).
+
+        Prefer a 1-minute dump: HTF/LTF chains then aggregate the same way live
+        1m sub-bars do. A chart-TF export is accepted as a fallback (HTF built
+        from those coarser bars). The live feed, if it answers, fills the tail
+        after the last exported bar. No interpolated ticks.
+        """
+        with open(path, "r", encoding="utf-8-sig") as fh:
+            rows = parse_ohlcv_csv(fh.read())
+        if source_minutes is None:
+            source_minutes = max(1, detect_granularity(rows) // 60)
+        source_minutes = int(source_minutes)
+        span = (
+            time.strftime("%Y-%m-%d", time.gmtime(rows[0].ts)) + " → " +
+            time.strftime("%Y-%m-%d", time.gmtime(rows[-1].ts))
+        ) if rows else "-"
+        how = "HTF chains from 1m" if source_minutes == 1 else "chart bars from the export, HTF built from them"
+        self.journal.log("INFO", f"[{self.symbol}] history/{os.path.basename(path)}: {len(rows)} {source_minutes}m bars ({span}); {how}")
         for b in rows:
-            self.on_sub_bar(b, self.chart_minutes, live=False)
+            self.on_sub_bar(b, source_minutes, live=False)
         if rows:
             self.T_w = rows[0].ts
-            tail_from = rows[-1].ts + self.chart_minutes * 60
+            tail_from = rows[-1].ts + source_minutes * 60
             try:
                 ones = self.feed.candles(self.spec.ticker, 60, max(tail_from, now - 29 * 86400), now)
                 if self.spec.feed == "yahoo":
                     ones = self._closed_only(ones, self.spec.ticker)
                 for b in ones:
+                    if b.ts < tail_from:
+                        continue
                     self.on_sub_bar(b, 1, live=False)
             except Exception as ex:
                 self.journal.log("WARN", f"[{self.symbol}] could not fetch the 1-minute tail after the export: {ex}")

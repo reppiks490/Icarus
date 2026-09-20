@@ -1,0 +1,16 @@
+{
+  "_meta": {
+    "chart_type": "heikin_ashi",
+    "fill_on": "real",
+    "slippage_ticks": 2,
+    "session": "rth",
+    "security_source": "chart",
+    "source": "shipped",
+    "timeframe": "10",
+    "script": "THE PULSE OF ICARUS v3.1"
+  },
+  "tpsl_mode": "Structure-Based",
+  "qty_contracts": 8,
+  "sess_window": "0530-1600",
+  "use_trailing_tp2": true
+}

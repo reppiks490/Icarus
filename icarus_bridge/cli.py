@@ -142,6 +142,13 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     check("Alpaca keys present", bool(cfg.alpaca_api_key and cfg.alpaca_secret_key),
           "ALPACA_API_KEY / ALPACA_SECRET_KEY missing in .env", warn=(cfg.execution_mode == "shadow"))
     check("symbol map has NQ1!", "NQ1!" in cfg.symbol_map, str(cfg.symbol_map.get("NQ1!")))
+    proxy = str(cfg.symbol_map.get("NQ1!") or "")
+    etf = proxy in ("QQQ", "TQQQ", "SPY", "DIA", "IWM", "SQQQ")
+    check("NQ1! maps to a CME contract",
+          not etf,
+          f"{proxy} is an equity ETF — percent-mapped paper proxy, not an NQ fill. "
+          "A TradingView CME pack does not change this. Live NQ needs a futures broker.",
+          warn=True)
 
     # broker
     if cfg.execution_mode != "shadow" and cfg.alpaca_api_key:

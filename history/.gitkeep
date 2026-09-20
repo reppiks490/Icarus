@@ -1,0 +1,2 @@
+# Keep this directory. Put TradingView exports here as NQ_1m.csv / NQ_20m.csv
+# (written by: icarus-engine ingest-bars FILE --symbol NQ)

@@ -5,6 +5,10 @@
             same symbol compares like with like. History is paged (300 candles per
             call) so warm-up depth is not limited.
   kraken    fallback for live 1-minute candles / last price.
+  bars      local OHLCV (TradingView Supercharts export / FileFeed). No network.
+            `icarus-engine ingest-bars` writes history/{SYM}_{N}m.csv; warm-up
+            prefers that file over Yahoo. This is the legal free path to the
+            same bars the chart used — a TV CME pack does not stream here.
 """
 from __future__ import annotations
 

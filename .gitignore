@@ -1,0 +1,48 @@
+# bytecode / local runtime
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+# editor / OS
+.DS_Store
+.idea/
+.vscode/
+
+# packaging
+build/
+dist/
+
+# engine / bridge state (never commit live journals)
+*.db
+*.sqlite3
+*.log
+icarus_engine.db
+icarus_bridge.db
+icarus_bridge.log
+
+# local market-data dumps (TradingView exports, Databento pulls)
+history/*.csv
+!history/.gitkeep
+bars/
+# user-generated presets stay local; shipped ones are tracked
+presets/*.json
+!presets/.gitkeep
+!presets/NQ-20m-ultracoded.json
+!presets/NQ-10m-original.json
+!presets/NQ-20m-ultracoded-0914.json
+inputs.json
+inputs.*.json
+adaptation.json
+adaptation.lock.sqlite3
+
+# leftover editor copies
+*.bak
