@@ -38,6 +38,9 @@ Do **not** undo these constraints without the owner asking:
 | `presets/NQ-20m-ultracoded-0914.json` | CLI default alias |
 | `presets/.gitkeep` | |
 | `start-engine-background.ps1` | Windows launcher; only live `/healthz` counts as running |
+| `start-engine-background.sh` | Unix twin of the launcher |
+| `tests_engine/test_bridge.py` | Bridge mapping / planner / alert parser (no Alpaca) |
+| `tests_engine/test_fomc.py` | FOMC 2027 decision days vs Fed press release |
 | `GROK.md` | This map |
 
 ## Blocks Grok added inside Astra files
@@ -48,6 +51,9 @@ Do **not** undo these constraints without the owner asking:
 | `icarus_engine/cli.py` | `ingest-bars`, `doctor` |
 | `icarus_engine/runtime.py` | Warm-up prefers `history/{SYM}_1m.csv` then chart-TF; `_warmup_from_csv` uses `parse_ohlcv_csv` |
 | `icarus_engine/feeds/__init__.py` | `bars` / FileFeed note in the module docstring |
+| `icarus_engine/strategy/inputs.py` | FOMC 2027 (+ first 2028) *decision* days from federalreserve.gov |
+| `icarus_engine/strategy/pine_inputs_meta.json` | matching `fomc_dates` default |
+| `icarus_engine/doctor.py` | `fomc_coverage()` + doctor check |
 | `icarus_bridge/cli.py` | Doctor warning: `NQ1! → QQQ` is not CME |
 
 ## Still unpaid / not Grok's to fake

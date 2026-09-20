@@ -9,6 +9,21 @@ from typing import Any, Dict, List
 from .assets import REGISTRY
 from .calendar import holiday_coverage
 from .feeds.bars import find_history
+from .strategy.inputs import Inputs
+
+
+def fomc_coverage(dates: str | None = None):
+    """Latest FOMC *decision* day in the default (or given) list. Grok (xAI) — 2026-09-20."""
+    raw = dates if dates is not None else Inputs().fomc_dates
+    parsed = []
+    for s in str(raw).replace(" ", "").split(","):
+        if not s:
+            continue
+        try:
+            parsed.append(date.fromisoformat(s))
+        except ValueError:
+            continue
+    return max(parsed) if parsed else None
 
 
 def _check(items: List[Dict[str, Any]], name: str, ok: bool, detail: str, *, level: str = "ok") -> None:
@@ -42,6 +57,20 @@ def inspect(base_dir: str | None = None, *, today: date | None = None) -> Dict[s
     _check(items, "CME metals holiday table",
            holiday_coverage("metals") == cov,
            f"metals coverage {holiday_coverage('metals')}",
+           level="warn")
+
+    fomc = fomc_coverage()
+    fomc_left = (fomc - today).days if fomc else None
+    if fomc is None:
+        fomc_detail = "FOMC decision-day list empty"
+    else:
+        fomc_detail = (
+            f"last dated entry {fomc.isoformat()} ({fomc_left} days ahead) — "
+            "verify on federalreserve.gov; dates are the *decision* (2nd) day of each meeting"
+        )
+    _check(items, "FOMC decision-day list",
+           fomc_left is not None and fomc_left >= 90,
+           fomc_detail,
            level="warn")
 
     found = []
@@ -91,6 +120,8 @@ def inspect(base_dir: str | None = None, *, today: date | None = None) -> Dict[s
         "today": today.isoformat(),
         "holiday_coverage": cov.isoformat() if cov else None,
         "holiday_days_left": days_left,
+        "fomc_coverage": fomc.isoformat() if fomc else None,
+        "fomc_days_left": fomc_left,
         "history_dir": os.path.join(root, "history"),
         "items": items,
         "fails": fails,
