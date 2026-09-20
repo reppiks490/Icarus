@@ -2,6 +2,10 @@
 # Grok (xAI) — 2026-09-20. Whole file.
 # Unix twin of start-engine-background.ps1. Only a live GET /healthz counts as
 # "already running". A stale pid file is dropped (Remove-Item $pidFile).
+# For the full plant (drop inbox, FileFeed-offline, restart-on-crash) use
+#   icarus-plant start --assets NQ --offline
+# instead of this launcher.
+set -euo pipefail
 set -euo pipefail
 
 PORT="${PORT:-8791}"

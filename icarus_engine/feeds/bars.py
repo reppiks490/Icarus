@@ -1,4 +1,4 @@
-# Grok (xAI) — 2026-09-20. Whole file. TV Supercharts ingest / FileFeed.
+# Grok (xAI) — 2026-09-20. Whole file. TV Supercharts ingest / FileFeed / HistoryHub.
 # Do not scrape TradingView. Do not invent ticks.
 """Local OHLCV store. No network, no interpolated ticks.
 
@@ -13,12 +13,15 @@ Accepted on ingest: unix seconds, unix milliseconds, ISO-8601 (with or
 without timezone), or ``YYYY-MM-DD HH:MM``. Naive timestamps are read in
 ``tz`` (default America/New_York — CME RTH charts). Empty / zero-volume
 placeholder rows are kept: they are real minutes, unlike Yahoo's drops.
+
+``ICARUS_FEED=file`` swaps Yahoo for :class:`HistoryHub` (plant offline mode).
 """
 from __future__ import annotations
 
 import csv
 import io
 import os
+import re
 import statistics
 from datetime import datetime, timezone
 from typing import Dict, Iterable, List, Optional, Tuple
@@ -39,6 +42,16 @@ _LOW_KEYS = ("low", "l", "<low>")
 _CLOSE_KEYS = ("close", "c", "<close>")
 _VOL_KEYS = ("volume", "vol", "v", "<vol>")
 _COMMON_TF = (60, 120, 180, 240, 300, 600, 900, 1200, 1800, 3600, 14400, 86400)
+_HIST_NAME = re.compile(r"^(.+)_(\d+)m\.csv$", re.I)
+
+
+def file_feed_mode() -> bool:
+    """True when the engine must not contact Yahoo/Coinbase.
+
+    Grok (xAI) — 2026-09-20. Set by ``icarus-plant start --offline`` or
+    ``ICARUS_FEED=file``.
+    """
+    return os.environ.get("ICARUS_FEED", "").strip().lower() in ("file", "history", "csv", "offline")
 
 
 def _col(cols: Dict[str, str], names: Tuple[str, ...]) -> Optional[str]:
@@ -165,41 +178,83 @@ def history_path(base_dir: str, symbol: str, minutes: int) -> str:
 
 
 def find_history(base_dir: str, symbol: str, chart_minutes: int) -> Tuple[Optional[str], Optional[int]]:
-    """Prefer 1-minute dumps (HTF chains aggregate cleanly); else the chart-TF export."""
+    """Prefer 1-minute dumps (HTF chains aggregate cleanly); else the chart-TF export.
+
+    Grok (xAI) — 2026-09-20: if neither 1m nor chart-TF exists, pick the finest
+    ``history/{SYM}_{N}m.csv`` still on disk. Never invent a finer bar.
+    """
     one = history_path(base_dir, symbol, 1)
     chart = history_path(base_dir, symbol, chart_minutes)
     if os.path.isfile(one):
         return one, 1
     if os.path.isfile(chart):
         return chart, chart_minutes
-    return None, None
+    hist = os.path.join(base_dir, "history")
+    if not os.path.isdir(hist):
+        return None, None
+    want = symbol.upper() + "_"
+    found: List[Tuple[int, str]] = []
+    for name in os.listdir(hist):
+        m = _HIST_NAME.match(name)
+        if not m or m.group(1).upper() != symbol.upper():
+            continue
+        path = os.path.join(hist, name)
+        if os.path.isfile(path):
+            found.append((int(m.group(2)), path))
+    if not found:
+        return None, None
+    found.sort()
+    return found[0][1], found[0][0]
 
 
 class FileFeed:
-    """Yahoo-shaped interface over canonical CSVs. Used for tests and offline replay."""
+    """Yahoo-shaped interface over canonical CSVs. Used for tests and offline replay.
+
+    Grok (xAI) — 2026-09-20: reloads when the on-disk mtime advances (drop ingest).
+    Does not split a coarser bar into minutes (that would invent ticks).
+    """
 
     GRANULARITIES = (60, 120, 300, 900, 1800, 3600, 86400)
 
-    def __init__(self, bars: Optional[List[Bar]] = None, mintick: float = 0.25):
+    def __init__(self, bars: Optional[List[Bar]] = None, mintick: float = 0.25, path: Optional[str] = None):
         self._bars = list(bars or [])
         self._mintick = float(mintick)
+        self._path = path
+        self._mtime = os.path.getmtime(path) if path and os.path.isfile(path) else 0.0
+        self._granularity = detect_granularity(self._bars) if len(self._bars) >= 2 else 60
 
     @classmethod
     def from_csv(cls, path: str, *, tz=None, mintick: float = 0.25) -> "FileFeed":
         with open(path, "r", encoding="utf-8-sig") as fh:
-            return cls(parse_ohlcv_csv(fh.read(), tz=tz), mintick=mintick)
+            feed = cls(parse_ohlcv_csv(fh.read(), tz=tz), mintick=mintick, path=path)
+        return feed
+
+    def _maybe_reload(self) -> None:
+        if not self._path or not os.path.isfile(self._path):
+            return
+        mt = os.path.getmtime(self._path)
+        if mt <= self._mtime:
+            return
+        with open(self._path, "r", encoding="utf-8-sig") as fh:
+            self._bars = parse_ohlcv_csv(fh.read())
+        self._mtime = mt
+        self._granularity = detect_granularity(self._bars) if len(self._bars) >= 2 else 60
 
     def mintick(self, symbol: str) -> float:
         return self._mintick
 
     def ticker(self, symbol: str) -> Optional[float]:
+        self._maybe_reload()
         return self._bars[-1].c if self._bars else None
 
     def candles(self, symbol: str, granularity: int, start_ts: int, end_ts: int) -> List[Bar]:
+        self._maybe_reload()
+        src = int(self._granularity or 60)
         g = int(granularity)
-        if g <= 60:
+        if g < src:
+            return []  # cannot invent a finer bar from a coarser dump
+        if g == src:
             return [b for b in self._bars if start_ts <= b.ts < end_ts]
-        # naive bucket of 1m rows; calendars re-aggregate in the runner
         buckets: Dict[int, Bar] = {}
         span = g
         for b in self._bars:
@@ -215,9 +270,18 @@ class FileFeed:
 
     def recent_ex(self, symbol: str, granularity: int = 60, since_ts: Optional[int] = None):
         bars = self.candles(symbol, granularity, since_ts or 0, 2**31 - 1)
-        ft = (bars[-1].ts + int(granularity)) if bars else 0
-        px = bars[-1].c if bars else None
-        return bars, ft, px
+        if bars:
+            ft = bars[-1].ts + int(granularity)
+            px = bars[-1].c
+            return bars, ft, px
+        # Coarser dump (e.g. 20m only): do not claim 1m bars, but still report a clock + last price
+        # so poll() does not treat an honest gap as a feed failure.
+        self._maybe_reload()
+        if self._bars:
+            g = int(self._granularity or 60)
+            last = self._bars[-1]
+            return [], last.ts + g, last.c
+        return [], 0, None
 
     def recent(self, symbol: str, granularity: int = 60) -> List[Bar]:
         return self.recent_ex(symbol, granularity)[0]
@@ -226,3 +290,71 @@ class FileFeed:
         daily = self.candles(symbol, 86400, 0, 2**31 - 1)
         tail = daily[-max(days, 2):]
         return [(b.ts, b.c, b.v) for b in tail]
+
+
+def _hub_symbol(ticker: str) -> str:
+    """Map a feed ticker (NQ=F, NQU26.CME, CME_MINI:NQ1!) onto a registry symbol."""
+    from ..assets import REGISTRY
+    raw = (ticker or "").upper().split(":")[-1]
+    for spec in REGISTRY.values():
+        if spec.ticker.upper() == raw or spec.symbol == raw:
+            return spec.symbol
+    stem = raw.split(".")[0]
+    if stem.endswith("=F"):
+        stem = stem[:-2]
+    prefixes = sorted((s.symbol for s in REGISTRY.values()), key=len, reverse=True)
+    for sym in prefixes:
+        if stem == sym or stem.startswith(sym):
+            return sym
+    return stem
+
+
+class HistoryHub:
+    """Yahoo-shaped multiplex over ``history/{SYM}_*m.csv``. Grok (xAI) — 2026-09-20.
+
+    Used when ``ICARUS_FEED=file``. Does not call Yahoo. New bars arrive when
+    ``icarus-plant ingest-drop`` (or ``ingest-bars``) rewrites the CSV; FileFeed
+    reloads on mtime.
+    """
+
+    GRANULARITIES = FileFeed.GRANULARITIES
+
+    def __init__(self, base_dir: str):
+        self.base_dir = base_dir
+        self._feeds: Dict[str, FileFeed] = {}
+
+    def _feed(self, ticker: str) -> FileFeed:
+        from ..assets import REGISTRY
+        sym = _hub_symbol(ticker)
+        spec = REGISTRY.get(sym)
+        mintick = spec.mintick if spec else 0.25
+        path, _ = find_history(self.base_dir, sym, 1)
+        if path is None:
+            path, _ = find_history(self.base_dir, sym, 20)
+        prev = self._feeds.get(sym)
+        if path is None:
+            return prev or FileFeed([], mintick=mintick)
+        if prev is None or prev._path != path:
+            prev = FileFeed.from_csv(path, mintick=mintick)
+            self._feeds[sym] = prev
+        else:
+            prev._maybe_reload()
+        return prev
+
+    def mintick(self, ticker: str) -> float:
+        return self._feed(ticker).mintick(ticker)
+
+    def ticker(self, ticker: str) -> Optional[float]:
+        return self._feed(ticker).ticker(ticker)
+
+    def candles(self, ticker: str, granularity: int, start_ts: int, end_ts: int) -> List[Bar]:
+        return self._feed(ticker).candles(ticker, granularity, start_ts, end_ts)
+
+    def recent_ex(self, ticker: str, granularity: int = 60, since_ts: Optional[int] = None):
+        return self._feed(ticker).recent_ex(ticker, granularity, since_ts)
+
+    def recent(self, ticker: str, granularity: int = 60) -> List[Bar]:
+        return self._feed(ticker).recent(ticker, granularity)
+
+    def daily_volume(self, ticker: str, days: int = 5):
+        return self._feed(ticker).daily_volume(ticker, days)

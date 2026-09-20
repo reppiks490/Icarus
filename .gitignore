@@ -1,4 +1,4 @@
-# Grok (xAI) — 2026-09-20. Whole file. Stop tracking __pycache__, editor .bak, .env, history/*.csv.
+# Grok (xAI) — 2026-09-20. Whole file. Stop tracking __pycache__, editor .bak, .env, history/*.csv, plant runtime.
 # bytecode / local runtime
 __pycache__/
 *.py[cod]
@@ -26,13 +26,21 @@ dist/
 *.db
 *.sqlite3
 *.log
+*.pid
 icarus_engine.db
 icarus_bridge.db
 icarus_bridge.log
 
+# plant runtime (icarus-plant: pids, logs, status)
+run/
+logs/
+
 # local market-data dumps (TradingView exports, Databento pulls)
 history/*.csv
+history/**/*.csv
 !history/.gitkeep
+!history/drop/.gitkeep
+!history/drop/done/.gitkeep
 bars/
 # user-generated presets stay local; shipped ones are tracked
 presets/*.json

@@ -1,0 +1,30 @@
+# Grok (xAI) — 2026-09-20. Whole file.
+# Local systemd unit for the paper-trading plant. The engine binds
+# 127.0.0.1 on purpose (DNS-rebinding). This is NOT a cloud deploy and
+# is NOT a CME feed. Copy to /etc/systemd/system/ and edit paths.
+#
+#   sudo systemctl enable --now icarus-plant
+#
+# Offline FileFeed: drop Supercharts CSVs in $ICARUS_HOME/history/drop/
+
+[Unit]
+Description=Icarus local paper-trading plant (Grok/xAI)
+Documentation=https://github.com/reppiks490/Icarus
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/icarus
+Environment=ICARUS_HOME=/var/lib/icarus
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONPATH=/opt/icarus
+ExecStart=/usr/bin/python3 -m icarus_plant.cli start --assets NQ --offline --engine-port 8791
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=20
+
+# Loopback-only: do not expose 8791. The engine rejects non-localhost Host headers.
+
+[Install]
+WantedBy=multi-user.target

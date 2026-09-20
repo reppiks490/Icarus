@@ -81,8 +81,19 @@ def inspect(base_dir: str | None = None, *, today: date | None = None) -> Dict[s
     _check(items, "TradingView chart dumps in history/",
            bool(found),
            (", ".join(found) + " — engine will warm from these instead of delayed Yahoo") if found
-           else "none yet. Supercharts → Export chart data → `icarus-engine ingest-bars FILE --symbol NQ`",
+           else "none yet. Supercharts → Export chart data → `icarus-engine ingest-bars FILE --symbol NQ`  (or drop the CSV in history/drop/ and `icarus-plant ingest-drop`)",
            level="warn")
+
+    drop = os.path.join(root, "history", "drop")
+    _check(items, "plant drop folder", os.path.isdir(drop),
+           drop if os.path.isdir(drop) else "run `icarus-plant init` — Supercharts CSVs dropped here are ingested into history/{SYM}_{N}m.csv",
+           level="warn")
+
+    feed = os.environ.get("ICARUS_FEED", "yahoo").strip() or "yahoo"
+    home = os.environ.get("ICARUS_HOME")
+    _check(items, "ICARUS_FEED / ICARUS_HOME", True,
+           f"ICARUS_FEED={feed}  ICARUS_HOME={home or '(cwd)'} — file = HistoryHub (no Yahoo); yahoo = delayed NQ=F",
+           level="ok")
 
     env_path = os.path.join(root, ".env")
     _check(items, ".env present", os.path.isfile(env_path),
@@ -131,5 +142,6 @@ def inspect(base_dir: str | None = None, *, today: date | None = None) -> Dict[s
             "Yahoo NQ=F is ~10 minutes delayed. A TradingView CME pack does not feed this process.",
             "Export NQ1! 1-minute (or chart-TF) bars from TradingView and ingest them for free parity warm-up.",
             "Live NQ fills require a futures broker; the bridge maps NQ1! → QQQ on Alpaca.",
+            "icarus-plant start --offline supervises the engine on FileFeed; drop Supercharts CSVs in history/drop/.",
         ],
     }

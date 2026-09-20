@@ -31,7 +31,7 @@ from .calendar import get_calendar
 from .contracts import SPECS as CONTRACT_SPECS, ContractRoll, last_completed_volume
 from .emulator import Emulator, Fill
 from .feeds import Coinbase, Kraken
-from .feeds.bars import detect_granularity, find_history, parse_ohlcv_csv  # Grok (xAI) — 2026-09-20
+from .feeds.bars import HistoryHub, detect_granularity, file_feed_mode, find_history, parse_ohlcv_csv  # Grok (xAI) — 2026-09-20
 from .feeds.yahoo import Yahoo
 from .pine.series import NAN, na
 from .pine.timeframe import Aggregator, Bar, tf_minutes
@@ -263,6 +263,7 @@ class RunnerConfig:
     fixed_pts_scale: Optional[float] = None  # cached replay scale; never fetch a current reference
     mintick: Optional[float] = None          # cached replay tick; avoid product metadata network calls
     scale_known_at: Optional[int] = None    # actual receipt/computation time, never inferred from a price's date
+    base_dir: Optional[str] = None          # Grok (xAI) — plant root; warmup looks here, not cwd
 
 
 class AssetRunner:
@@ -447,17 +448,27 @@ class AssetRunner:
                 span = int(span * 7 / 5 * 24 / 23) + 86400
         T_w = self.cal.bucket_start(now - span, 1440)
         self.T_w = T_w
-        hist, minutes = find_history(os.getcwd(), self.symbol, self.chart_minutes)  # Grok (xAI) — 2026-09-20: prefer history/ over Yahoo
-        src = f"history/{os.path.basename(hist)} ({minutes}m)" if hist else self.spec.feed
+        base = self.cfg.base_dir or os.getcwd()
+        hist, minutes = find_history(base, self.symbol, self.chart_minutes)  # Grok (xAI) — 2026-09-20: prefer history/ over Yahoo; plant root over cwd
+        if hist:
+            src = f"history/{os.path.basename(hist)} ({minutes}m)"
+        elif file_feed_mode():
+            src = f"HistoryHub ({base}/history) — no CSV yet, Yahoo is not contacted"
+        else:
+            src = self.spec.feed
         self.journal.log("INFO", f"[{self.symbol}] warm-up from {time.strftime('%Y-%m-%d %H:%M', time.gmtime(T_w))}Z ({self.cfg.warmup_bars} x {self.chart_minutes}m bars, {src}) mintick={self.mintick} x{self.spec.multiplier} slip={self.spec.slippage_ticks}t chart={self.spec.chart_type} fills={self.spec.fill_on} session={getattr(self.cal, 'session', '24/7')} security={self.spec.security_source}" + (f" contract={self.live_ticker}" if self.roller else ""))
         if hist:
             self._warmup_from_csv(hist, now, source_minutes=minutes)
+        elif file_feed_mode():
+            self.journal.log("WARN", f"[{self.symbol}] ICARUS_FEED=file and no history/{self.symbol}_*m.csv — waiting for drop ingest; Yahoo is not contacted")
         elif self.spec.feed == "yahoo":
             self._warmup_yahoo(T_w, now)
         else:
             self._warmup_coinbase(T_w, now)
         self.live_from_ts = now
         self.warm = True
+        if file_feed_mode() and self.last_sub_ts is None:
+            self.last_sub_ts = now  # a later drop must not replay years of history as live fills
         if self.last_price is None:
             self.last_price = self.feed.ticker(self.spec.ticker)
         self.journal.log("INFO", f"[{self.symbol}] warm-up done: {self.bar_index + 1} chart bars, {len(self.em.closed)} historical trades, net {self.em.netprofit:+.2f}; market {self.cal.describe(now)}")
@@ -558,6 +569,8 @@ class AssetRunner:
             self.on_sub_bar(b, source_minutes, live=False)
         if rows:
             self.T_w = rows[0].ts
+            if file_feed_mode():
+                return  # Grok (xAI) — offline plant: the CSV is the whole tape; do not call Yahoo for a tail
             tail_from = rows[-1].ts + source_minutes * 60
             try:
                 ones = self.feed.candles(self.spec.ticker, 60, max(tail_from, now - 29 * 86400), now)
@@ -863,7 +876,16 @@ class Portfolio:
         self.warmup_bars = warmup_bars
         self.pts_ref_symbol = pts_ref_symbol
         self.pts_ref_price = 0.0
-        self.feeds: Dict[str, Any] = {"yahoo": Yahoo(), "coinbase": Coinbase()}
+        # Grok (xAI) — 2026-09-20: ICARUS_FEED=file → HistoryHub on both keys. Same Yahoo-shaped
+        # interface; poll() still uses recent_ex when spec.feed == "yahoo". No Docker, no Databento.
+        if file_feed_mode():
+            hub = HistoryHub(base_dir)
+            self.feeds: Dict[str, Any] = {"yahoo": hub, "coinbase": hub}
+            self.feed_mode = "file"
+            journal.log("INFO", f"ICARUS_FEED=file — HistoryHub at {base_dir}/history; Yahoo/Coinbase are not contacted")
+        else:
+            self.feeds = {"yahoo": Yahoo(), "coinbase": Coinbase()}
+            self.feed_mode = "live"
         self.runners: Dict[str, AssetRunner] = {}
         self.order: List[str] = []
         self.started = time.time()
@@ -896,6 +918,9 @@ class Portfolio:
         return self.pts_ref_price
 
     def make_runner(self, spec: AssetSpec) -> AssetRunner:
+        if self.feed_mode == "file" and spec.roll == "volume":
+            spec.roll = "none"
+            self.journal.log("INFO", f"[{spec.symbol}] roll=none (ICARUS_FEED=file; FileFeed volumes are not CME 1!)")
         inputs, meta, sources = resolve_inputs(spec, self.base_dir, self.profile, self.preset)
         if meta:                                              # Properties carried by the preset unless the spec pins them
             if spec.chart_type == "real" and meta.get("chart_type"):
@@ -914,7 +939,7 @@ class Portfolio:
                 spec.security_source = meta["security_source"]
         scale = self._ref_price() if (spec.symbol != self.pts_ref_symbol) else 0.0
         cfg = RunnerConfig(spec=spec, inputs=inputs, warmup_bars=self.warmup_bars, sources=sources, profile=self.profile,
-                           preset=self.preset or spec.preset, pts_ref_price=scale)
+                           preset=self.preset or spec.preset, pts_ref_price=scale, base_dir=self.base_dir)
         return AssetRunner(cfg, self.journal, self.feeds)
 
     def add_asset(self, spec: AssetSpec, start: bool = True) -> AssetRunner:
