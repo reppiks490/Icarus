@@ -115,6 +115,50 @@ class Journal:
             self.con.execute("INSERT INTO equity VALUES (?,?)", (time.time(), equity))
             self.con.commit()
 
+    def export_trades_csv(self, path: str, *, live_only: bool = False) -> int:
+        """Write the paper book. Not a broker statement. Not CME.
+
+        Grok (xAI) — 2026-09-20. `live=0` is warmup replay; `live=1` is since go-live this run.
+        """
+        from datetime import datetime, timezone
+        try:
+            from zoneinfo import ZoneInfo
+            ny = ZoneInfo("America/New_York")
+        except Exception:
+            ny = timezone.utc
+
+        def iso(ts: int) -> str:
+            if not ts:
+                return ""
+            return datetime.fromtimestamp(int(ts), tz=ny).isoformat()
+
+        q = "SELECT run_id,live,symbol,direction,qty,entry_id,entry_ts,entry_price,exit_ts,exit_price,exit_comment,profit,piece FROM trades"
+        if live_only:
+            q += " WHERE live=1"
+        q += " ORDER BY exit_ts, id"
+        with self._lock:
+            rows = self.con.execute(q).fetchall()
+        os.makedirs(os.path.dirname(os.path.abspath(path)) or ".", exist_ok=True)
+        with open(path, "w", encoding="utf-8", newline="") as fh:
+            w = csv.writer(fh)
+            w.writerow([
+                "run_id", "live", "symbol", "side", "qty", "entry_id",
+                "entry_ts", "entry_time_et", "entry_price",
+                "exit_ts", "exit_time_et", "exit_price", "exit_comment", "profit", "piece",
+                "disclaimer",
+            ])
+            disclaimer = "Icarus paper emulator — not a broker statement, not CME"
+            for r in rows:
+                run_id, live, symbol, direction, qty, entry_id, entry_ts, entry_price, exit_ts, exit_price, exit_comment, profit, piece = r
+                side = "long" if int(direction or 0) > 0 else "short"
+                w.writerow([
+                    run_id, int(live or 0), symbol, side, qty, entry_id,
+                    entry_ts, iso(entry_ts), entry_price,
+                    exit_ts, iso(exit_ts), exit_price, exit_comment, profit, piece,
+                    disclaimer,
+                ])
+        return len(rows)
+
     def equity_series(self, since_sec: float = 86400.0, max_points: int = 600) -> List[Dict[str, float]]:
         with self._lock:
             rows = self.con.execute("SELECT ts, equity FROM equity WHERE ts >= ? ORDER BY ts", (time.time() - since_sec,)).fetchall()

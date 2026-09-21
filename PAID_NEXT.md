@@ -16,6 +16,7 @@ We are **not scalpers**. Session is RTH (09:30–16:15 ET). Sunday Globex is not
 - Plant runs: `py -3 -m icarus_plant start --assets NQ` (Yahoo, **no** `--offline`)
 - Dashboard on the **PC**: `http://127.0.0.1:8791/` token `icarus`
 - Local paper journal: `icarus_engine.db` — Icarus’s book, not a broker statement
+- Export that book: `py -3 -m icarus_engine.cli paper-export` → `paper-trades.csv`
 - CSV export is **Plus**, not Essential (that was wrong earlier)
 
 ---
