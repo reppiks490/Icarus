@@ -31,7 +31,7 @@ from .calendar import get_calendar
 from .contracts import SPECS as CONTRACT_SPECS, ContractRoll, last_completed_volume
 from .emulator import Emulator, Fill
 from .feeds import Coinbase, Kraken
-from .feeds.bars import HistoryHub, detect_granularity, file_feed_mode, find_history, parse_ohlcv_csv  # Grok (xAI) — 2026-09-20
+from .feeds.bars import HistoryHub, detect_granularity, file_feed_mode, find_history, parse_ohlcv_csv, read_text_csv  # Grok (xAI) — 2026-09-20
 from .feeds.yahoo import Yahoo
 from .pine.series import NAN, na
 from .pine.timeframe import Aggregator, Bar, tf_minutes
@@ -554,8 +554,7 @@ class AssetRunner:
         as a fallback (HTF built from those coarser bars). The live feed, if it
         answers, fills the tail after the last exported bar. No interpolated ticks.
         """
-        with open(path, "r", encoding="utf-8-sig") as fh:
-            rows = parse_ohlcv_csv(fh.read())
+        rows = parse_ohlcv_csv(read_text_csv(path))
         if source_minutes is None:
             source_minutes = max(1, detect_granularity(rows) // 60)
         source_minutes = int(source_minutes)

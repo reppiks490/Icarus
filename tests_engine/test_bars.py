@@ -19,6 +19,7 @@ from icarus_engine.feeds.bars import (
     merge_bars,
     parse_ohlcv_csv,
     parse_timestamp,
+    read_text_csv,
     write_canonical,
 )
 from icarus_engine.pine.timeframe import Bar
@@ -287,4 +288,16 @@ def test_ingest_bars_merges_second_dump(tmp_path, monkeypatch, capsys):
     assert bars[1].c == 24701
     out = capsys.readouterr().out
     assert "merged" in out
+
+
+def test_read_text_csv_utf16_and_utf8(tmp_path):
+    p = tmp_path / "nq.csv"
+    text = "time,open,high,low,close,volume\n2026-09-14T13:30:00Z,1,2,0.5,1.5,3\n"
+    p.write_bytes(text.encode("utf-16"))
+    got = read_text_csv(str(p))
+    assert "open" in got and "1.5" in got
+    bars = parse_ohlcv_csv(got)
+    assert len(bars) == 1 and bars[0].c == 1.5
+    p.write_text(text, encoding="utf-8")
+    assert "open" in read_text_csv(str(p))
 

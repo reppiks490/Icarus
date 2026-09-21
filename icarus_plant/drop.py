@@ -12,7 +12,7 @@ import shutil
 from typing import Any, Dict, List, Optional
 
 from icarus_engine.assets import resolve
-from icarus_engine.feeds.bars import detect_granularity, history_path, merge_bars, parse_ohlcv_csv, write_canonical
+from icarus_engine.feeds.bars import detect_granularity, history_path, merge_bars, parse_ohlcv_csv, read_text_csv, write_canonical
 
 from .layout import ensure, plant_root
 
@@ -29,8 +29,7 @@ def infer_symbol(filename: str) -> str:
 def ingest_file(path: str, *, root: Optional[str] = None, symbol: Optional[str] = None, tz=None) -> Dict[str, Any]:
     root = plant_root(root)
     ensure(root)
-    with open(path, "r", encoding="utf-8-sig") as fh:
-        bars = parse_ohlcv_csv(fh.read(), tz=tz)
+    bars = parse_ohlcv_csv(read_text_csv(path), tz=tz)
     if not bars:
         raise ValueError(f"{os.path.basename(path)}: no OHLCV rows")
     sym = symbol or infer_symbol(path)
@@ -38,8 +37,7 @@ def ingest_file(path: str, *, root: Optional[str] = None, symbol: Optional[str] 
     dest = history_path(root, sym, minutes)
     merged_from = 0
     if os.path.isfile(dest):
-        with open(dest, "r", encoding="utf-8-sig") as fh:
-            old = parse_ohlcv_csv(fh.read())
+        old = parse_ohlcv_csv(read_text_csv(dest))
         merged_from = len(old)
         bars = merge_bars(old, bars)
     n = write_canonical(dest, bars)

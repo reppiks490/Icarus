@@ -78,6 +78,7 @@ repo:       {repo_root()}
 
 3. Copy that CSV into this folder (File Explorer / Finder):
    {drop_show}
+   OR leave it in Downloads — the plant pulls NQ/ES/… chart CSVs from there.
 
 4. Start the plant (leave the window open):
    {start_cmd}
