@@ -16,7 +16,7 @@ TradingView Supercharts → ⋯ → Export chart data
 icarus-engine ingest-bars ~/Downloads/NQ1!.csv --symbol NQ --tz America/New_York
 # or drop the CSV in history/drop/ and:
 icarus-plant ingest-drop
-# successive dumps MERGE by timestamp (Essential's 10K-bar window accumulates)
+# successive dumps MERGE by timestamp (Plus's bar window accumulates; Essential cannot export)
 ```
 
 That writes `history/NQ_1m.csv` (or `NQ_20m.csv`). On the next `run` / `backtest` / `parity`, warm-up prefers that file over Yahoo.

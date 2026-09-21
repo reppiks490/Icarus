@@ -184,7 +184,7 @@ def detect_granularity(bars: List[Bar]) -> int:
 def merge_bars(existing: Iterable[Bar], incoming: Iterable[Bar]) -> List[Bar]:
     """Union by bar-open timestamp. Incoming wins on a collision. No invented rows.
 
-    Grok (xAI) — 2026-09-20. Essential's 10K-bar export is a sliding window;
+    Grok (xAI) — 2026-09-20. Plus's chart export is a sliding window;
     merging successive Supercharts dumps accumulates history the owner already paid for.
     """
     by: Dict[int, Bar] = {b.ts: b for b in existing}
