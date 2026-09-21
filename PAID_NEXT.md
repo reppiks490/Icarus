@@ -6,6 +6,8 @@ This is the list you asked to freeze. Call it later. It is **not** a promise tha
 
 Tonight’s plant (`http://127.0.0.1:8791/`) is **Brain B**: Yahoo `NQ=F`, local paper emulator, RTH 20m. Leave that PowerShell open.
 
+Every command in one dummy list: [COMMANDS.md](COMMANDS.md).
+
 We are **not scalpers**. Session is RTH (09:30–16:15 ET). Sunday Globex is not a trade.
 
 ---
