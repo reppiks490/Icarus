@@ -42,11 +42,18 @@ from .strategy.security import TFChain
 
 
 def _clean(x: Any) -> Any:
-    """NaN → None for JSON."""
+    """NaN / Inf → None so json.dumps(..., allow_nan=False) cannot empty-reply."""
+    item = getattr(x, "item", None)
+    if callable(item) and not isinstance(x, (bytes, str, dict, list, tuple, int, float, bool)):
+        try:
+            if getattr(x, "shape", None) == ():
+                return _clean(item())
+        except Exception:
+            return None
     if isinstance(x, float):
         return None if x != x or x in (float("inf"), float("-inf")) else x
     if isinstance(x, dict):
-        return {k: _clean(v) for k, v in x.items()}
+        return {str(k): _clean(v) for k, v in x.items()}
     if isinstance(x, (list, tuple)):
         return [_clean(v) for v in x]
     return x
@@ -119,6 +126,14 @@ class Journal:
         with self._lock:
             return write_paper_csv(self.con, path, live_only=live_only)
 
+    def equity_series(self, since_sec: float = 86400.0, max_points: int = 600) -> List[Dict[str, float]]:
+        with self._lock:
+            rows = self.con.execute("SELECT ts, equity FROM equity WHERE ts >= ? ORDER BY ts", (time.time() - since_sec,)).fetchall()
+        if len(rows) > max_points:
+            step = len(rows) / max_points
+            rows = [rows[int(k * step)] for k in range(max_points)] + [rows[-1]]
+        return [{"ts": r[0], "equity": r[1]} for r in rows]
+
 
 def export_paper_book(db_path: str, out_path: str, *, live_only: bool = False) -> int:
     """Read-only dump of the paper book. Safe while the engine holds the WAL.
@@ -179,14 +194,6 @@ def write_paper_csv(con: sqlite3.Connection, path: str, *, live_only: bool = Fal
                 disclaimer,
             ])
     return len(rows)
-
-    def equity_series(self, since_sec: float = 86400.0, max_points: int = 600) -> List[Dict[str, float]]:
-        with self._lock:
-            rows = self.con.execute("SELECT ts, equity FROM equity WHERE ts >= ? ORDER BY ts", (time.time() - since_sec,)).fetchall()
-        if len(rows) > max_points:
-            step = len(rows) / max_points
-            rows = [rows[int(k * step)] for k in range(max_points)] + [rows[-1]]
-        return [{"ts": r[0], "equity": r[1]} for r in rows]
 
 
 # ──────────────────────────────────────────────────────────────────────
