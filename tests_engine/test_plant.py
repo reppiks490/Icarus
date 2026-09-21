@@ -254,6 +254,9 @@ def test_start_plant_scripts_are_dummy_proof():
     assert "Plus" in setup and "start-plant.bat" in setup
     paid = (root / "PAID_NEXT.md").read_text(encoding="utf-8")
     assert "Alpaca" in paid and "TradersPost" in paid and "PickMyTrade" in paid
+    cmds = (root / "COMMANDS.md").read_text(encoding="utf-8")
+    assert "127.0.0.1:8791" in cmds and "paper-export" in cmds and "start --assets NQ" in cmds
+    assert "--offline" in cmds
     yahoo = (root / "start-yahoo.ps1").read_text(encoding="utf-8")
     assert "icarus_plant start --assets NQ" in yahoo
     assert "start --assets NQ --offline" not in yahoo
