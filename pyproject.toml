@@ -26,6 +26,10 @@ icarus-plant = "icarus_plant.cli:main"
 [tool.setuptools.packages.find]
 include = ["icarus_engine*", "icarus_bridge*", "icarus_plant*"]
 
+[tool.setuptools.package-data]
+icarus_engine = ["*.html", "*.js", "*.css", "strategy/*.json"]
+icarus_bridge = ["*.html"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests_engine"]
 pythonpath = ["."]

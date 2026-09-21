@@ -17,13 +17,25 @@ import json
 import os
 import shutil
 import sys
+import time
 from typing import Optional
 
 from .downloads import ingest_downloads
 from .drop import ingest_drop
 from .guide import open_drop, preflight, steps, write_next_txt
 from .layout import ensure, plant_root, repo_root
-from .supervisor import Plant, Service, default_bridge_service, default_engine_service, wait_health, write_status
+from .supervisor import (
+    Plant,
+    Service,
+    _alive,
+    _kill_pid,
+    _read_pid,
+    default_bridge_service,
+    default_engine_service,
+    health_ok,
+    wait_health,
+    write_status,
+)
 
 
 def cmd_init(args: argparse.Namespace) -> int:
@@ -71,6 +83,14 @@ def cmd_start(args: argparse.Namespace) -> int:
     root = plant_root(args.root)
     ensure(root)
     repo = repo_root()
+    engine_url = f"http://127.0.0.1:{args.engine_port}/healthz"
+    if health_ok(engine_url):
+        print(f"already running: {engine_url.replace('/healthz', '/')}  token={args.token}")
+        return 0
+    plant_pid = _read_pid(os.path.join(root, "run", "plant.pid"))
+    if plant_pid and _alive(plant_pid):
+        print(f"plant already running pid={plant_pid} at {root}")
+        return 0
     recs = ingest_drop(root)
     if not args.no_downloads:
         recs = list(recs) + ingest_downloads(root)
@@ -117,12 +137,24 @@ def cmd_start(args: argparse.Namespace) -> int:
 
 def cmd_stop(args: argparse.Namespace) -> int:
     root = plant_root(args.root)
+    pf = os.path.join(root, "run", "plant.pid")
+    pid = _read_pid(pf)
+    if pid and _alive(pid):
+        _kill_pid(pid)
+        for _ in range(40):
+            if not _alive(pid):
+                break
+            time.sleep(0.25)
+        print(f"stopped plant pid={pid} at {root}")
+        return 0
     plant = Plant(root)
-    for name in ("engine", "bridge", "plant"):
-        pf = os.path.join(root, "run", f"{name}.pid")
-        plant.add(Service(name=name, argv=[], health_url="", cwd=root, pidfile=pf))
+    for name in ("engine", "bridge"):
+        plant.add(Service(
+            name=name, argv=[], health_url="", cwd=root,
+            pidfile=os.path.join(root, "run", f"{name}.pid"),
+        ))
     plant.stop()
-    print(f"stopped plant at {root}")
+    print(f"stopped leftover children at {root}")
     return 0
 
 

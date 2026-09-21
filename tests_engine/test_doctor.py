@@ -32,8 +32,8 @@ def test_doctor_holiday_warning_inside_90_days(tmp_path):
     assert rep["ok"] is True  # warnings are not failures
 
 
-def test_doctor_flags_default_secrets(tmp_path):
-    (tmp_path / ".env").write_text("WEBHOOK_SECRET=change-me\nADMIN_TOKEN=change-me-too\n")
+def test_doctor_flags_replace_me_secrets(tmp_path):
+    (tmp_path / ".env").write_text("WEBHOOK_SECRET=replace-me\nADMIN_TOKEN=replace-me-too\n")
     rep = inspect(str(tmp_path), today=date(2026, 9, 20))
     assert rep["ok"] is False and rep["fails"] >= 2
     names = {i["name"] for i in rep["items"] if not i["ok"] and i["level"] == "fail"}

@@ -195,11 +195,13 @@ def merge_bars(existing: Iterable[Bar], incoming: Iterable[Bar]) -> List[Bar]:
 def write_canonical(path: str, bars: Iterable[Bar]) -> int:
     os.makedirs(os.path.dirname(os.path.abspath(path)) or ".", exist_ok=True)
     rows = list(bars)
-    with open(path, "w", encoding="utf-8", newline="") as fh:
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8", newline="") as fh:
         w = csv.writer(fh)
         w.writerow(["ts", "open", "high", "low", "close", "volume"])
         for b in rows:
             w.writerow([b.ts, b.o, b.h, b.l, b.c, b.v])
+    os.replace(tmp, path)
     return len(rows)
 
 

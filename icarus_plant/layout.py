@@ -10,7 +10,7 @@ from __future__ import annotations
 import os
 from typing import Dict, Optional
 
-DIRS = ("history", "history/drop", "history/drop/done", "presets", "pine", "logs", "run")
+DIRS = ("history", "history/drop", "history/drop/done", "history/drop/bad", "presets", "pine", "logs", "run")
 
 
 def repo_root(start: Optional[str] = None) -> str:

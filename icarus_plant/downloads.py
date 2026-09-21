@@ -10,10 +10,12 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from typing import Any, Dict, List, Optional
 
 from icarus_engine.assets import REGISTRY
 
+from . import drop as drop_mod
 from .drop import infer_symbol, ingest_file
 from .layout import ensure, plant_root
 
@@ -82,22 +84,25 @@ def ingest_downloads(root: Optional[str] = None, *, dirs: Optional[List[str]] = 
             src = os.path.join(folder, name)
             if not os.path.isfile(src):
                 continue
+            try:
+                if time.time() - os.path.getmtime(src) < drop_mod._SETTLE_SEC:
+                    continue
+            except OSError:
+                continue
             key = _key(src)
             if key in seen:
                 continue
             try:
                 sym = infer_symbol(src)
             except ValueError:
-                seen.add(key)
-                continue
+                continue  # not a registry name yet; do not poison the seen-log
             if sym not in REGISTRY:
                 seen.add(key)
                 continue
             try:
                 rec = ingest_file(src, root=root, symbol=sym)
             except (ValueError, OSError):
-                seen.add(key)
-                continue
+                continue  # still being written, or not a chart
             rec["from_downloads"] = src
             seen.add(key)
             out.append(rec)

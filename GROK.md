@@ -24,7 +24,7 @@ Do **not** undo these constraints without the owner asking:
 | `icarus_engine/doctor.py` | Offline engine doctor |
 | `icarus_plant/__init__.py` | Local plant package |
 | `icarus_plant/layout.py` | `ICARUS_HOME` dirs: history/drop, run, logs |
-| `icarus_plant/drop.py` | `history/drop/*.csv` → `history/{SYM}_{N}m.csv` (merge by ts) |
+| `icarus_plant/drop.py` | Supercharts names (`CME_MINI_NQ1!, 1.csv`), per-file quarantine |
 | `icarus_plant/supervisor.py` | stdlib process supervisor; `/healthz` on loopback; Windows process group |
 | `icarus_plant/cli.py` | `icarus-plant init\|start\|stop\|status\|ingest-drop\|doctor` |
 | `icarus_plant/downloads.py` | Pull owner-owned Supercharts CSVs from Downloads/Desktop |

@@ -17,6 +17,8 @@ import urllib.request
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
+from icarus_engine.process_identity import identity
+
 from .downloads import ingest_downloads
 from .drop import ingest_drop
 from .layout import ensure, plant_root, repo_root
@@ -50,6 +52,7 @@ class Service:
     popen: Optional[subprocess.Popen] = None
     restarts: int = 0
     last_exit: Optional[int] = None
+    next_ok: float = 0.0
 
 
 def _write_pid(path: str, pid: int) -> None:
@@ -82,13 +85,8 @@ def _kill_pid(pid: int) -> None:
 
 
 def _alive(pid: int) -> bool:
-    if pid <= 0:
-        return False
-    try:
-        os.kill(pid, 0)
-        return True
-    except OSError:
-        return False
+    """True unless the PID is confirmed dead. Never signals. Windows signal 0 is CTRL_C."""
+    return identity(pid) is not False
 
 
 def _terminate(proc: subprocess.Popen, grace: float = 8.0) -> None:
@@ -155,21 +153,24 @@ class Plant:
     def reap_and_restart(self, now: Optional[float] = None) -> None:
         now = now or time.time()
         for svc in self.services.values():
-            if svc.popen is None:
-                continue
-            code = svc.popen.poll()
-            if code is None:
-                continue
-            svc.last_exit = code
-            svc.popen = None
-            if self._stop:
-                continue
-            svc.restarts += 1
-            delay = min(30.0, 2 ** min(svc.restarts, 5))
-            time.sleep(delay)
-            if self._stop:
-                return
-            self.spawn(svc)
+            if svc.popen is not None:
+                code = svc.popen.poll()
+                if code is None:
+                    continue
+                svc.last_exit = code
+                svc.popen = None
+                if self._stop:
+                    continue
+                svc.restarts += 1
+                svc.next_ok = now + min(30.0, 2 ** min(svc.restarts, 5))
+            if (
+                svc.popen is None
+                and not self._stop
+                and svc.argv
+                and now >= svc.next_ok
+                and svc.last_exit is not None
+            ):
+                self.spawn(svc)
 
     def status(self) -> Dict[str, object]:
         items = []
@@ -188,6 +189,14 @@ class Plant:
 
     def loop(self, *, poll: float = 5.0, drop: bool = True, downloads: bool = True) -> None:
         _write_pid(os.path.join(self.root, "run", "plant.pid"), os.getpid())
+
+        def _term(*_a: object) -> None:
+            self._stop = True
+
+        try:
+            signal.signal(signal.SIGTERM, _term)
+        except (ValueError, OSError, AttributeError):
+            pass
         try:
             while not self._stop:
                 if drop:

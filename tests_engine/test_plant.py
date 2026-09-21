@@ -14,6 +14,9 @@ from icarus_engine.runtime import Journal, Portfolio
 from icarus_plant.cli import main as plant_main
 from icarus_plant.downloads import ingest_downloads
 from icarus_plant.drop import infer_symbol, ingest_drop, ingest_file
+import icarus_plant.drop as drop_mod
+
+drop_mod._SETTLE_SEC = 0.0  # tests write then ingest immediately
 from icarus_plant.layout import ensure, plant_root
 from icarus_plant.supervisor import (
     Plant,
@@ -37,6 +40,14 @@ def test_infer_symbol_strips_tv_prefix_and_tf():
     assert infer_symbol("NQ1!.csv") == "NQ"
     assert infer_symbol("NQ_20m.csv") == "NQ"
     assert infer_symbol("ES_1m.csv") == "ES"
+    # TradingView Supercharts default download names
+    assert infer_symbol("CME_MINI_NQ1!, 1.csv") == "NQ"
+    assert infer_symbol("NQ1!, 1.csv") == "NQ"
+    assert infer_symbol("CBOT_MINI_YM1!, 1.csv") == "YM"
+    assert infer_symbol("COMEX_GC1!, 1.csv") == "GC"
+    assert infer_symbol("CME_MINI_NQ1!, 1 (1).csv") == "NQ"
+    assert infer_symbol("NQ1!, 60.csv") == "NQ"
+    assert infer_symbol("CME_MINI_ES1!, 1D.csv") == "ES"
 
 
 def test_layout_ensure_and_plant_root(tmp_path, monkeypatch):
@@ -103,12 +114,8 @@ def test_supervisor_spawn_and_stop(tmp_path):
     plant.stop()
     time.sleep(0.2)
     assert svc.popen is None
-    try:
-        os.kill(pid, 0)
-        still = True
-    except OSError:
-        still = False
-    assert still is False
+    from icarus_engine.process_identity import identity
+    assert identity(pid) is False
     assert not os.path.isfile(svc.pidfile)
 
 
@@ -177,6 +184,25 @@ def test_portfolio_file_mode_uses_historyhub(tmp_path, monkeypatch):
     assert r.roller is None
 
 
+def test_file_mode_rewarm_when_csv_arrives_after_start(tmp_path, monkeypatch):
+    monkeypatch.setenv("ICARUS_FEED", "file")
+    (tmp_path / "history").mkdir()
+    port = Portfolio(Journal(":memory:"), str(tmp_path), preset=None)
+    r = port.make_runner(parse_spec("NQ"))
+    r.warmup()
+    assert r._file_waiting is True
+    (tmp_path / "history" / "NQ_1m.csv").write_text(
+        "ts,open,high,low,close,volume\n"
+        f"{ET_0930},24700,24701,24699,24700.5,4\n"
+        f"{ET_0930 + 60},24700.5,24702,24700,24701,5\n",
+        encoding="utf-8",
+    )
+    r.poll()
+    assert r._file_waiting is False
+    assert r.last_sub_ts in (ET_0930, ET_0930 + 60)
+    assert len(r.subbars) >= 1
+
+
 def test_ingest_drop_merges_and_unique_done(tmp_path):
     paths = ensure(str(tmp_path))
     src = os.path.join(paths["history/drop"], "NQ.csv")
@@ -220,26 +246,53 @@ def test_start_plant_scripts_are_dummy_proof():
     assert "Grok (xAI)" in ps1 and "Grok (xAI)" in bat and "Grok (xAI)" in sh
     assert "icarus_plant" in ps1 and "--offline" in ps1
     assert "UsePyLauncher" in ps1
+    assert ' -like "py*"' not in ps1 and " -like 'py*'" not in ps1
+    assert '@("py", "py.exe") -contains' in ps1
     assert "python.exe does not" in ps1
+    assert "CME_MINI_NQ1!, 1.csv" in ps1
     assert "start-plant.ps1" in bat
     assert "Essential" in setup and "start-plant.bat" in setup
     assert "Downloads" in setup
+    assert "CME_MINI_NQ1!, 1.csv" in setup
+    bg = (root / "start-engine-background.ps1").read_text(encoding="utf-8")
+    assert '@("py", "py.exe") -contains' in bg
+    src = (root / "icarus_plant" / "supervisor.py").read_text(encoding="utf-8")
+    assert "os.kill(pid, 0)" not in src
+    assert "process_identity" in src
+
+
+def test_ingest_drop_quarantines_bad_and_keeps_going(tmp_path):
+    drop = tmp_path / "history" / "drop"
+    drop.mkdir(parents=True)
+    (drop / "junk.csv").write_text("not,a,chart\n1,2,3\n", encoding="utf-8")
+    (drop / "CME_MINI_NQ1!, 1.csv").write_text(_CSV, encoding="utf-8")
+    recs = ingest_drop(str(tmp_path))
+    goods = [r for r in recs if r.get("symbol") == "NQ"]
+    bads = [r for r in recs if r.get("bad")]
+    assert len(goods) == 1
+    assert (tmp_path / "history" / "NQ_1m.csv").is_file()
+    assert len(bads) == 1
+    assert (tmp_path / "history" / "drop" / "bad" / "junk.csv").is_file()
+
+
+def test_alive_never_calls_os_kill():
+    import inspect
+    from icarus_plant.supervisor import _alive
+    src = inspect.getsource(_alive)
+    assert "os.kill" not in src
+    assert "identity" in src
 
 
 def test_ingest_downloads_only_registry_charts(tmp_path):
-    from pathlib import Path
     plant = tmp_path / "plant"
     inbox = tmp_path / "dl"
     inbox.mkdir()
     plant.mkdir()
-    (inbox / "notes.csv").write_text("a,b\n1,2\n", encoding="utf-8")
-    (inbox / "NQ1!.csv").write_text(_CSV, encoding="utf-8")
+    (inbox / "notes.csv").write_text("a,b\n1,2,n\n", encoding="utf-8")
+    (inbox / "CME_MINI_NQ1!, 1.csv").write_text(_CSV, encoding="utf-8")
     recs = ingest_downloads(str(plant), dirs=[str(inbox)])
     assert len(recs) == 1 and recs[0]["symbol"] == "NQ"
     dest = plant / "history" / "NQ_1m.csv"
     assert dest.is_file()
     again = ingest_downloads(str(plant), dirs=[str(inbox)])
     assert again == []
-    src = Path(__file__).parents[1] / "icarus_plant" / "supervisor.py"
-    text = src.read_text(encoding="utf-8")
-    assert "CREATE_NEW_PROCESS_GROUP" in text and "start_new_session" in text
