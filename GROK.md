@@ -38,7 +38,7 @@ Do **not** undo these constraints without the owner asking:
 | `tests_engine/test_doctor.py` | Doctor CLI |
 | `tests_engine/test_alert_template.py` | `pine/ALERT_TEMPLATE.json` ↔ bridge parser |
 | `tests_engine/test_plant.py` | Drop ingest, supervisor spawn/stop, FileFeed-offline Portfolio |
-| `DATA.md` | Two-brain data: free vs paid |
+| `icarus_engine/runtime.py` `Journal.export_trades_csv` | Local paper-book CSV (not a broker statement) |
 | `PARITY.md` | Pine departures A1–A9 / roll / fills |
 | `README.md` | Repo entry (this repo had none) |
 | `pyproject.toml` | Package + pytest paths + `icarus-engine` / `icarus-bridge` / `icarus-plant` |

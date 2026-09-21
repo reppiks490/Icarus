@@ -6,6 +6,7 @@
   icarus-engine import-tv    <TradingView strategy export .xlsx|.csv> --name NQ-20m-mine     -> presets/<name>.json
   icarus-engine ingest-bars  <TradingView chart export .csv> --symbol NQ [--tz America/New_York]   # Grok (xAI) 2026-09-20
   icarus-engine doctor       [--json]                                                             # Grok (xAI) 2026-09-20
+  icarus-engine paper-export [--out paper-trades.csv] [--live-only]                               # Grok (xAI) 2026-09-20
   icarus-engine inputs       [--profile nq|crypto] [--preset NAME]                            -> the effective inputs as JSON
   icarus-engine assets                                                                        -> the asset registry
 
@@ -267,6 +268,20 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     return 0 if rep["ok"] else 1
 
 
+def cmd_paper_export(args: argparse.Namespace) -> int:
+    """Dump the local paper book. Not a broker statement. Grok (xAI) — 2026-09-20."""
+    db = args.db or os.path.join(_base_dir(), "icarus_engine.db")
+    if not os.path.isfile(db):
+        print(f"no journal at {db}", file=sys.stderr)
+        return 1
+    out = args.out or os.path.join(_base_dir(), "paper-trades.csv")
+    n = Journal(db).export_trades_csv(out, live_only=bool(args.live_only))
+    kind = "live-only" if args.live_only else "warmup+live"
+    print(f"{n} {kind} paper trades -> {out}")
+    print("Icarus emulator book. Not a broker statement. live=0 is warmup replay.")
+    return 0
+
+
 def cmd_parity(args: argparse.Namespace) -> int:
     from .parity import compare
     journal = Journal(args.db or ":memory:")
@@ -353,6 +368,12 @@ def main(argv: Optional[list] = None) -> int:
     d = sub.add_parser("doctor", help="offline health checks (no network, no broker)")  # Grok (xAI) — 2026-09-20
     d.add_argument("--json", action="store_true")
     d.set_defaults(fn=cmd_doctor)
+
+    x = sub.add_parser("paper-export", help="CSV of the local paper book (not a broker statement)")  # Grok (xAI)
+    x.add_argument("--db", default=None, help="journal database (default icarus_engine.db under plant root)")
+    x.add_argument("--out", default=None, help="destination CSV (default paper-trades.csv under plant root)")
+    x.add_argument("--live-only", action="store_true", help="omit warmup-replay rows (live=0)")
+    x.set_defaults(fn=cmd_paper_export)
 
     args = p.parse_args(argv)
     if getattr(args, "preset", None) == "":

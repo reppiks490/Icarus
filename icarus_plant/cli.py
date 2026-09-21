@@ -86,6 +86,7 @@ def cmd_start(args: argparse.Namespace) -> int:
     engine_url = f"http://127.0.0.1:{args.engine_port}/healthz"
     if health_ok(engine_url):
         print(f"already running: {engine_url.replace('/healthz', '/')}  token={args.token}")
+        print("  this does not switch Yahoo vs --offline. To change feed: icarus-plant stop  then start again.")
         return 0
     plant_pid = _read_pid(os.path.join(root, "run", "plant.pid"))
     if plant_pid and _alive(plant_pid):
@@ -110,6 +111,9 @@ def cmd_start(args: argparse.Namespace) -> int:
     os.environ["ICARUS_HOME"] = root
     if args.offline:
         os.environ["ICARUS_FEED"] = "file"
+    os.makedirs(os.path.join(root, "run"), exist_ok=True)
+    with open(os.path.join(root, "run", "feed.txt"), "w", encoding="ascii") as fh:
+        fh.write("file\n" if args.offline else "yahoo\n")
     for svc in plant.services.values():
         plant.spawn(svc)
         print(f"started {svc.name} pid={svc.popen.pid if svc.popen else '?'}  {svc.health_url}")
@@ -173,6 +177,9 @@ def cmd_status(args: argparse.Namespace) -> int:
         print(json.dumps(rep, indent=2))
         return 0 if rep["ok"] else 1
     print(f"plant {rep['root']}")
+    feed_path = os.path.join(root, "run", "feed.txt")
+    if os.path.isfile(feed_path):
+        print(f"  feed {open(feed_path, encoding='ascii').read().strip()}")
     for s in rep["services"]:
         mark = "OK " if s["alive"] and s["health"] else ("?? " if s["alive"] else "xx ")
         print(f"  [{mark}] {s['name']} pid={s['pid']} health={s['health']} {s['health_url']}")
@@ -196,6 +203,20 @@ def cmd_doctor(args: argparse.Namespace) -> int:
         mark = "OK " if i["ok"] else ("!! " if i["level"] == "warn" else "XX ")
         print(f"  [{mark}] {i['name']} — {i['detail']}")
     return 0 if rep["ok"] else 1
+
+
+def cmd_paper_export(args: argparse.Namespace) -> int:
+    from icarus_engine.runtime import Journal
+    root = plant_root(args.root)
+    db = os.path.join(root, "icarus_engine.db")
+    if not os.path.isfile(db):
+        print(f"no journal at {db}", file=sys.stderr)
+        return 1
+    out = args.out or os.path.join(root, "paper-trades.csv")
+    n = Journal(db).export_trades_csv(out, live_only=bool(args.live_only))
+    print(f"{n} paper trades -> {out}")
+    print("Icarus emulator book. Not a broker statement.")
+    return 0
 
 
 def cmd_setup(args: argparse.Namespace) -> int:
@@ -261,6 +282,11 @@ def main(argv: Optional[list] = None) -> int:
     o = sub.add_parser("doctor", help="ingest-drop then icarus-engine doctor against the plant root")
     o.add_argument("--json", action="store_true")
     o.set_defaults(fn=cmd_doctor)
+
+    pe = sub.add_parser("paper-export", help="CSV of the local paper book (not a broker statement)")
+    pe.add_argument("--out", default=None)
+    pe.add_argument("--live-only", action="store_true")
+    pe.set_defaults(fn=cmd_paper_export)
 
     args = p.parse_args(argv)
     return int(args.fn(args) or 0)

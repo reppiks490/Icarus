@@ -521,6 +521,14 @@ def test_journal_keeps_two_identical_same_bar_pieces_and_stamps_run_id(tmp_path)
     j.add_fill("NQ", f1, True); j.add_fill("NQ", f2, True); j.add_fill("NQ", f2, True)
     assert j.con.execute("SELECT COUNT(*) FROM fills").fetchone()[0] == 2
     assert j.con.execute("SELECT COUNT(DISTINCT run_id) FROM trades").fetchone()[0] == 1 and j.run_id > 0
+    out = tmp_path / "paper-trades.csv"
+    n = j.export_trades_csv(str(out))
+    assert n == 2
+    text = out.read_text(encoding="utf-8")
+    assert "not a broker statement" in text and "NQ" in text and "short" in text
+    from icarus_engine.cli import main as engine_main
+    rc = engine_main(["paper-export", "--db", str(tmp_path / "j.db"), "--out", str(tmp_path / "cli.csv")])
+    assert rc == 0 and (tmp_path / "cli.csv").is_file()
 
 
 def test_summary_feed_delay_only_while_open_and_expiry_fallback_flattens(tmp_path, monkeypatch):
