@@ -41,12 +41,12 @@ if (-not $py) {
     exit 1
 }
 
-$proc = Start-Process -FilePath $py.Source -ArgumentList @(
-    "-3", "-m", "icarus_engine.cli", "run",
-    "--assets", $Assets,
-    "--preset", $Preset,
-    "--port", "$Port"
-) -WorkingDirectory $PSScriptRoot -PassThru -WindowStyle Hidden
+$usePyLauncher = @("py", "py.exe") -contains $py.Name
+$argList = @()
+if ($usePyLauncher) { $argList += "-3" }
+$argList += @("-m", "icarus_engine.cli", "run", "--assets", $Assets, "--preset", $Preset, "--port", "$Port")
+
+$proc = Start-Process -FilePath $py.Source -ArgumentList $argList -WorkingDirectory $PSScriptRoot -PassThru -WindowStyle Hidden
 
 $proc.Id | Set-Content -Path $pidFile -Encoding ascii
 

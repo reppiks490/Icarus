@@ -137,8 +137,9 @@ def cmd_doctor(args: argparse.Namespace) -> int:
 
     # config
     check("EXECUTION_MODE", True, cfg.execution_mode)
-    check("WEBHOOK_SECRET set", cfg.webhook_secret not in ("", "change-me"), "default value - change it", warn=True)
-    check("ADMIN_TOKEN set", cfg.admin_token not in ("", "change-me-too"), "default value - change it", warn=True)
+    _DEFAULT = ("", "change-me", "change-me-too", "replace-me", "replace-me-too")
+    check("WEBHOOK_SECRET set", cfg.webhook_secret not in _DEFAULT, "default value - change it", warn=True)
+    check("ADMIN_TOKEN set", cfg.admin_token not in _DEFAULT, "default value - change it", warn=True)
     check("Alpaca keys present", bool(cfg.alpaca_api_key and cfg.alpaca_secret_key),
           "ALPACA_API_KEY / ALPACA_SECRET_KEY missing in .env", warn=(cfg.execution_mode == "shadow"))
     check("symbol map has NQ1!", "NQ1!" in cfg.symbol_map, str(cfg.symbol_map.get("NQ1!")))

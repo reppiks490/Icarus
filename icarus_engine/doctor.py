@@ -107,10 +107,10 @@ def inspect(base_dir: str | None = None, *, today: date | None = None) -> Dict[s
                 if "=" in line and not line.strip().startswith("#"):
                     k, _, v = line.partition("=")
                     secrets[k.strip()] = v.strip().strip('"')
-        _check(items, "WEBHOOK_SECRET", secrets.get("WEBHOOK_SECRET", "change-me") not in ("", "change-me"),
+        _check(items, "WEBHOOK_SECRET", secrets.get("WEBHOOK_SECRET", "change-me") not in ("", "change-me", "replace-me"),
                "still the default — anyone who hits /webhook can place paper orders",
                level="fail")
-        _check(items, "ADMIN_TOKEN", secrets.get("ADMIN_TOKEN", "change-me-too") not in ("", "change-me-too"),
+        _check(items, "ADMIN_TOKEN", secrets.get("ADMIN_TOKEN", "change-me-too") not in ("", "change-me-too", "replace-me-too", "replace-me"),
                "still the default",
                level="fail")
 

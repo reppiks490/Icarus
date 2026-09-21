@@ -19,3 +19,15 @@ jobs:
       - run: python -m icarus_engine.cli doctor --json
         env:
           TZ: UTC
+  engine-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e ".[dev]"
+      - run: python -m pytest tests_engine/test_plant.py tests_engine/test_bars.py tests_engine/test_doctor.py -q
+        env:
+          TZ: UTC
+      - run: python -m icarus_plant setup --root ${{ runner.temp }}/icarus-plant-ci

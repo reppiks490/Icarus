@@ -302,6 +302,7 @@ class AssetRunner:
         self.state: Dict[str, Any] = {}
         self.live_from_ts: Optional[int] = None
         self.last_sub_ts: Optional[int] = None
+        self._file_waiting: bool = False
         self._fills_seen = 0
         self._closed_seen = 0
         self.paused = False
@@ -459,7 +460,9 @@ class AssetRunner:
         self.journal.log("INFO", f"[{self.symbol}] warm-up from {time.strftime('%Y-%m-%d %H:%M', time.gmtime(T_w))}Z ({self.cfg.warmup_bars} x {self.chart_minutes}m bars, {src}) mintick={self.mintick} x{self.spec.multiplier} slip={self.spec.slippage_ticks}t chart={self.spec.chart_type} fills={self.spec.fill_on} session={getattr(self.cal, 'session', '24/7')} security={self.spec.security_source}" + (f" contract={self.live_ticker}" if self.roller else ""))
         if hist:
             self._warmup_from_csv(hist, now, source_minutes=minutes)
+            self._file_waiting = False
         elif file_feed_mode():
+            self._file_waiting = True
             self.journal.log("WARN", f"[{self.symbol}] ICARUS_FEED=file and no history/{self.symbol}_*m.csv — waiting for drop ingest; Yahoo is not contacted")
         elif self.spec.feed == "yahoo":
             self._warmup_yahoo(T_w, now)
@@ -467,7 +470,7 @@ class AssetRunner:
             self._warmup_coinbase(T_w, now)
         self.live_from_ts = now
         self.warm = True
-        if file_feed_mode() and self.last_sub_ts is None:
+        if file_feed_mode() and self.last_sub_ts is None and not self._file_waiting:
             self.last_sub_ts = now  # a later drop must not replay years of history as live fills
         if self.last_price is None:
             self.last_price = self.feed.ticker(self.spec.ticker)
@@ -654,6 +657,15 @@ class AssetRunner:
 
     def poll(self) -> None:
         now = time.time()
+        if file_feed_mode() and self._file_waiting:
+            base = self.cfg.base_dir or os.getcwd()
+            hist, minutes = find_history(base, self.symbol, self.chart_minutes)
+            if hist:
+                self._warmup_from_csv(hist, int(now), source_minutes=minutes)
+                self._file_waiting = False
+                if self.last_price is None:
+                    self.last_price = self.feed.ticker(self.spec.ticker)
+            return
         feed_now = now
         px = None
         try:

@@ -25,7 +25,15 @@ if (-not $pyCmd) {
 }
 
 $script:PyExe = $pyCmd.Source
-$script:UsePyLauncher = ($pyCmd.Name -like "py*")
+# Only the Windows py launcher accepts -3. Never pass -3 to python.exe.
+$script:UsePyLauncher = @("py", "py.exe") -contains $pyCmd.Name
+
+if ($script:PyExe -match "WindowsApps\\python") {
+    Write-Host "This is the Microsoft Store python stub, not a real interpreter."
+    Write-Host "Install from https://www.python.org/downloads/ and check  Add python.exe to PATH"
+    Read-Host "Press Enter to close"
+    exit 1
+}
 
 function Invoke-IcarusPython {
     param([Parameter(ValueFromRemainingArguments = $true)][string[]]$Rest)
@@ -58,6 +66,7 @@ if (-not (Test-Path $hist1)) {
     Write-Host "  Downloads: $downloads  (the plant also pulls chart CSVs from here)"
     Write-Host ""
     Write-Host "TradingView: NQ1!  →  1 minute  →  Download chart data"
+    Write-Host "The file is usually named:  CME_MINI_NQ1!, 1.csv"
     Write-Host "Essential is enough. You do not need Plus/Premium for that button."
     Write-Host ""
     Read-Host "Press Enter AFTER the CSV is downloaded (or in history\drop\) — or Enter to start anyway"
