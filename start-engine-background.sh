@@ -1,18 +1,17 @@
 #!/usr/bin/env bash
 # Grok (xAI) — 2026-09-20. Whole file.
 # Unix twin of start-engine-background.ps1. Only a live GET /healthz counts as
-# "already running". A stale pid file is dropped (Remove-Item $pidFile).
-# For the full plant (drop inbox, FileFeed-offline, restart-on-crash) use
-#   icarus-plant start --assets NQ --offline
-# instead of this launcher.
-set -euo pipefail
+# "already running". Pid under run/. Timeout kills the child (no orphan).
+# For the full plant: icarus-plant start --assets NQ
 set -euo pipefail
 
 PORT="${PORT:-8791}"
 ASSETS="${ASSETS:-NQ}"
 PRESET="${PRESET:-NQ-20m-ultracoded}"
 ROOT="$(cd "$(dirname "$0")" && pwd)"
-PIDFILE="${PIDFILE:-$ROOT/icarus_engine.pid}"
+mkdir -p "$ROOT/run" "$ROOT/logs"
+PIDFILE="${PIDFILE:-$ROOT/run/engine-background.pid}"
+LOG="$ROOT/logs/engine-background.log"
 HEALTH="http://127.0.0.1:${PORT}/healthz"
 
 live() {
@@ -36,16 +35,19 @@ fi
 
 cd "$ROOT"
 nohup "$PY" -m icarus_engine.cli run --assets "$ASSETS" --preset "$PRESET" --port "$PORT" \
-  >/dev/null 2>&1 &
+  >>"$LOG" 2>&1 &
 echo $! > "$PIDFILE"
+child="$(cat "$PIDFILE")"
 
 for _ in $(seq 1 30); do
   if live; then
-    echo "engine live on http://127.0.0.1:${PORT}/  pid=$(cat "$PIDFILE")"
+    echo "engine live on http://127.0.0.1:${PORT}/  pid=$child"
     exit 0
   fi
   sleep 1
 done
 
-echo "started pid $(cat "$PIDFILE") but /healthz did not answer within 30s" >&2
+echo "started pid $child but /healthz did not answer within 30s — killing orphan" >&2
+kill "$child" 2>/dev/null || true
+rm -f "$PIDFILE"
 exit 1

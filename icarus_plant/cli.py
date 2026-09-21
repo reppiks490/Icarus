@@ -9,6 +9,7 @@
   icarus-plant ingest-drop [--root DIR]
   icarus-plant open-drop   [--root DIR]         # Explorer / Finder on history/drop/
   icarus-plant doctor [--root DIR]
+  icarus-plant paper-export [--out FILE] [--live-only]
 """
 from __future__ import annotations
 
@@ -206,14 +207,14 @@ def cmd_doctor(args: argparse.Namespace) -> int:
 
 
 def cmd_paper_export(args: argparse.Namespace) -> int:
-    from icarus_engine.runtime import Journal
+    from icarus_engine.runtime import export_paper_book
     root = plant_root(args.root)
     db = os.path.join(root, "icarus_engine.db")
     if not os.path.isfile(db):
         print(f"no journal at {db}", file=sys.stderr)
         return 1
     out = args.out or os.path.join(root, "paper-trades.csv")
-    n = Journal(db).export_trades_csv(out, live_only=bool(args.live_only))
+    n = export_paper_book(db, out, live_only=bool(args.live_only))
     print(f"{n} paper trades -> {out}")
     print("Icarus emulator book. Not a broker statement.")
     return 0

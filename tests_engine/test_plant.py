@@ -261,6 +261,12 @@ def test_start_plant_scripts_are_dummy_proof():
     assert "CME_MINI_NQ1!, 1.csv" in setup
     bg = (root / "start-engine-background.ps1").read_text(encoding="utf-8")
     assert "py.exe" in bg
+    assert "engine-background.pid" in bg
+    assert "Stop-Process" in bg
+    sh_bg = (root / "start-engine-background.sh").read_text(encoding="utf-8")
+    assert sh_bg.count("set -euo pipefail") == 1
+    assert "killing orphan" in sh_bg
+    assert "run/engine-background.pid" in sh_bg
     src = (root / "icarus_plant" / "supervisor.py").read_text(encoding="utf-8")
     assert "os.kill(pid, 0)" not in src
     assert "process_identity" in src
