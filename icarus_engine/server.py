@@ -27,6 +27,7 @@ import hmac
 import json
 import os
 import re
+import sys
 import threading
 from contextlib import ExitStack
 from dataclasses import replace
@@ -41,7 +42,7 @@ from .parity import compare_lists, engine_trades_from_rows, read_tv_trades_text
 from .golive import report as golive_report
 from .agent import report as agent_report
 from .briefing import report as briefing_report
-from .runtime import Portfolio, _read_json, preset_path
+from .runtime import Portfolio, _clean, _read_json, preset_path
 from .strategy.meta import load_meta
 from .advisory import MAX_BODY_BYTES, strict_json
 from .research_service import ResearchWorkspace
@@ -49,6 +50,27 @@ from .research_service import ResearchWorkspace
 
 def _no_json_constants(name: str):
     raise ValueError(f"{name} is not allowed")
+
+
+def _json_default(obj: Any) -> Any:
+    item = getattr(obj, "item", None)
+    if callable(item):
+        try:
+            obj = item()
+        except Exception:
+            return str(obj)
+    if isinstance(obj, float):
+        return None if obj != obj or obj in (float("inf"), float("-inf")) else obj
+    return str(obj)
+
+
+def dumps_safe(obj: Any) -> bytes:
+    """Never raise. Empty reply is what made the dashboard say ENGINE UNREACHABLE."""
+    try:
+        return json.dumps(_clean(obj), allow_nan=False, default=_json_default).encode("utf-8")
+    except Exception as ex:
+        sys.stderr.write(f"icarus json dump failed: {type(ex).__name__}: {ex}\n")
+        return json.dumps({"ok": False, "detail": f"json: {type(ex).__name__}: {ex}"}).encode("utf-8")
 
 
 def _reason(body: Dict[str, Any], default: str = "manual") -> str:
@@ -101,7 +123,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             self.wfile.write(body)
 
         def _json(self, code: int, obj: Any) -> None:
-            self._send(code, json.dumps(obj, allow_nan=False, default=str).encode("utf-8"))
+            self._send(code, dumps_safe(obj))
 
         def _host_ok(self) -> bool:
             """Loopback only: a DNS-rebinding page carries its own hostname in Host."""
@@ -138,7 +160,11 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             if p.path == "/healthz":
                 return self._json(200, {"ok": True, "assets": list(port.order), "warm": all(r.warm for r in port.runners.values()) if port.runners else False})
             if p.path == "/status/public":
-                return self._json(200, port.status())
+                try:
+                    return self._json(200, port.status())
+                except Exception as ex:
+                    sys.stderr.write(f"status/public failed: {type(ex).__name__}: {ex}\n")
+                    return self._json(500, {"ok": False, "detail": f"{type(ex).__name__}: {ex}", "assets": []})
             if p.path == "/api/golive":
                 return self._json(200, golive_report(port))
             if p.path == "/api/agent":

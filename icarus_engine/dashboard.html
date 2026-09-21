@@ -664,7 +664,21 @@ async function refreshFills() {
     return `<tr class="${nw?'new':''}"><td class="tnum">${dtz(f.ts)}</td><td><b>${f.symbol}</b> <span class="tag ${f.live?'live':''}">${f.live?'LIVE':'hist'}</span></td><td class="side ${f.side}">${f.side}</td><td class="tnum">${f.qty}</td><td class="tnum">${px(f.price)}</td><td>${f.kind}</td><td>${esc(f.comment)}</td><td class="tnum ${f.profit==null?'':f.profit>=0?'pos':'neg'}">${f.profit!=null?sgn$(f.profit):''}</td><td class="tnum">${f.pos>0?'+':''}${f.pos}</td></tr>`; }).join('') || '<tr><td colspan=9 class="empty">no paper fills yet</td></tr>';
   const fs = $('#fillsSub'); if (fs) fs.textContent = all.length ? `${all.length} in the chart windows` : '';
 }
-async function refresh() { try { const r = await fetch('/status/public', {cache:'no-store'}); render(await r.json()); } catch (e) { $('#beat').className = 'dot dead'; $('#armed').textContent = 'ENGINE UNREACHABLE'; $('#armed').className = 'badge paused'; } }
+async function refresh() {
+  try {
+    const r = await fetch('/status/public', {cache:'no-store'});
+    const d = await r.json();
+    if (!d || !Array.isArray(d.assets)) {
+      $('#beat').className = 'dot dead';
+      $('#armed').textContent = (d && d.detail) ? String(d.detail).slice(0, 48) : 'ENGINE UNREACHABLE';
+      $('#armed').className = 'badge paused';
+      return;
+    }
+    render(d);
+  } catch (e) {
+    $('#beat').className = 'dot dead'; $('#armed').textContent = 'ENGINE UNREACHABLE'; $('#armed').className = 'badge paused';
+  }
+}
 async function refreshGolive() {
   try {
     window.ICARUS_GOLIVE = await (await fetch('/api/golive', {cache:'no-store'})).json();

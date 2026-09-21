@@ -178,6 +178,24 @@ def http(portfolio):
     srv.shutdown(); srv.server_close(); thread.join(5)
 
 
+def test_status_public_survives_nan_and_never_empty_replies(http, portfolio):
+    r = portfolio.runners["NQ"]
+    r.state["hurst"] = float("nan")
+    r.last_price = float("inf")
+    status, data = http("GET", "/status/public")
+    assert data, "empty reply is what paints ENGINE UNREACHABLE"
+    assert status == 200
+    assert json.loads(data)["assets"][0]["symbol"] == "NQ"
+
+    def boom():
+        raise RuntimeError("synthetic summary failure")
+    portfolio.runners["NQ"].summary = boom
+    status, data = http("GET", "/status/public")
+    assert data
+    json.loads(data)
+    assert status in (200, 500)
+
+
 def test_http_auth_static_json_validation_and_no_provider_calls(http, monkeypatch):
     import icarus_engine.advisory as advisory
     monkeypatch.setattr(advisory, "_provider_review", lambda *a: pytest.fail("unexpected model call"))
