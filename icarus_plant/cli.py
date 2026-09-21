@@ -1,11 +1,13 @@
 # Grok (xAI) — 2026-09-20. Whole file.
 """icarus-plant — local paper-trading plant.
 
+  icarus-plant setup  [--open] [--root DIR]     # print the dummy checklist, write NEXT.txt
   icarus-plant init   [--root DIR]
   icarus-plant start  [--assets NQ] [--offline] [--bridge] [--root DIR]
   icarus-plant stop   [--root DIR]
   icarus-plant status [--root DIR]
   icarus-plant ingest-drop [--root DIR]
+  icarus-plant open-drop   [--root DIR]         # Explorer / Finder on history/drop/
   icarus-plant doctor [--root DIR]
 """
 from __future__ import annotations
@@ -18,6 +20,7 @@ import sys
 from typing import Optional
 
 from .drop import ingest_drop
+from .guide import open_drop, preflight, steps, write_next_txt
 from .layout import ensure, plant_root, repo_root
 from .supervisor import Plant, Service, default_bridge_service, default_engine_service, write_status
 
@@ -42,7 +45,9 @@ def cmd_init(args: argparse.Namespace) -> int:
         print(f"wrote {env_dst} (fill WEBHOOK_SECRET / Alpaca only if you run the bridge)")
     print(f"plant root {root}")
     print(f"  drop TV exports in {paths['history/drop']}")
-    print("  icarus-plant ingest-drop")
+    nxt = write_next_txt(root)
+    print(f"  wrote {nxt}")
+    print("  icarus-plant setup --open")
     print("  icarus-plant start --assets NQ --offline")
     return 0
 
@@ -53,7 +58,8 @@ def cmd_ingest_drop(args: argparse.Namespace) -> int:
         print("drop/ is empty")
         return 0
     for r in recs:
-        print(f"  {r['symbol']} {r['minutes']}m  {r['bars']} bars -> {r['dest']}")
+        extra = f"  (+{r.get('added', r['bars'])} new, {r['bars']} total)" if r.get("merged_from") else ""
+        print(f"  {r['symbol']} {r['minutes']}m  {r['bars']} bars -> {r['dest']}{extra}")
     return 0
 
 
@@ -63,7 +69,11 @@ def cmd_start(args: argparse.Namespace) -> int:
     repo = repo_root()
     recs = ingest_drop(root)
     for r in recs:
-        print(f"  ingested {r['symbol']} {r['minutes']}m  {r['bars']} bars -> {r['dest']}")
+        extra = f"  (+{r.get('added', r['bars'])} new, {r['bars']} total)" if r.get("merged_from") else ""
+        print(f"  ingested {r['symbol']} {r['minutes']}m  {r['bars']} bars -> {r['dest']}{extra}")
+    for i in preflight(root):
+        if i["level"] != "ok":
+            print(f"  !! {i['name']} — {i['detail']}")
     plant = Plant(root, repo=repo)
     plant.add(default_engine_service(
         root, repo, assets=args.assets, port=args.engine_port,
@@ -139,6 +149,25 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     return 0 if rep["ok"] else 1
 
 
+def cmd_setup(args: argparse.Namespace) -> int:
+    root = plant_root(args.root)
+    ensure(root)
+    write_next_txt(root)
+    print(steps(root))
+    for i in preflight(root):
+        mark = "OK " if i["ok"] and i["level"] == "ok" else "!! "
+        print(f"  [{mark}] {i['name']} — {i['detail']}")
+    if args.open:
+        drop = open_drop(root)
+        print(f"opened {drop}")
+    return 0
+
+
+def cmd_open_drop(args: argparse.Namespace) -> int:
+    print(open_drop(args.root))
+    return 0
+
+
 def main(argv: Optional[list] = None) -> int:
     p = argparse.ArgumentParser(prog="icarus-plant", description="Icarus local paper-trading plant (Grok/xAI)")
     p.add_argument("--root", default=None, help="plant data dir (else $ICARUS_HOME else cwd)")
@@ -146,6 +175,13 @@ def main(argv: Optional[list] = None) -> int:
 
     i = sub.add_parser("init", help="create history/drop, run, logs under the plant root")
     i.set_defaults(fn=cmd_init)
+
+    u = sub.add_parser("setup", help="print numbered next steps (and write NEXT.txt)")
+    u.add_argument("--open", action="store_true", help="open history/drop/ in Explorer / Finder")
+    u.set_defaults(fn=cmd_setup)
+
+    od = sub.add_parser("open-drop", help="open history/drop/ in the OS file manager")
+    od.set_defaults(fn=cmd_open_drop)
 
     d = sub.add_parser("ingest-drop", help="history/drop/*.csv → history/{SYM}_{N}m.csv")
     d.set_defaults(fn=cmd_ingest_drop)

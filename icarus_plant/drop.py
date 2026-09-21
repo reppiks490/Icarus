@@ -12,7 +12,7 @@ import shutil
 from typing import Any, Dict, List, Optional
 
 from icarus_engine.assets import resolve
-from icarus_engine.feeds.bars import detect_granularity, history_path, parse_ohlcv_csv, write_canonical
+from icarus_engine.feeds.bars import detect_granularity, history_path, merge_bars, parse_ohlcv_csv, write_canonical
 
 from .layout import ensure, plant_root
 
@@ -36,8 +36,17 @@ def ingest_file(path: str, *, root: Optional[str] = None, symbol: Optional[str] 
     sym = symbol or infer_symbol(path)
     minutes = max(1, detect_granularity(bars) // 60)
     dest = history_path(root, sym, minutes)
+    merged_from = 0
+    if os.path.isfile(dest):
+        with open(dest, "r", encoding="utf-8-sig") as fh:
+            old = parse_ohlcv_csv(fh.read())
+        merged_from = len(old)
+        bars = merge_bars(old, bars)
     n = write_canonical(dest, bars)
-    return {"symbol": sym, "minutes": minutes, "bars": n, "dest": dest, "src": os.path.abspath(path)}
+    return {
+        "symbol": sym, "minutes": minutes, "bars": n, "merged_from": merged_from,
+        "added": max(0, n - merged_from), "dest": dest, "src": os.path.abspath(path),
+    }
 
 
 def ingest_drop(root: Optional[str] = None) -> List[Dict[str, Any]]:
@@ -53,7 +62,14 @@ def ingest_drop(root: Optional[str] = None) -> List[Dict[str, Any]]:
         if not os.path.isfile(src):
             continue
         rec = ingest_file(src, root=paths["root"])
-        shutil.move(src, os.path.join(done, name))
-        rec["done"] = os.path.join(done, name)
+        dest_done = os.path.join(done, name)
+        if os.path.exists(dest_done):
+            stem, ext = os.path.splitext(name)
+            k = 1
+            while os.path.exists(os.path.join(done, f"{stem}.{k}{ext}")):
+                k += 1
+            dest_done = os.path.join(done, f"{stem}.{k}{ext}")
+        shutil.move(src, dest_done)
+        rec["done"] = dest_done
         out.append(rec)
     return out

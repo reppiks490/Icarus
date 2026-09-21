@@ -211,7 +211,7 @@ def cmd_ingest_bars(args: argparse.Namespace) -> int:
     Grok (xAI) — 2026-09-20. Do not scrape TradingView; this only reads a file the owner exported.
     """
     from .assets import resolve
-    from .feeds.bars import detect_granularity, history_path, parse_ohlcv_csv, write_canonical
+    from .feeds.bars import detect_granularity, history_path, merge_bars, parse_ohlcv_csv, write_canonical
 
     try:
         from zoneinfo import ZoneInfo
@@ -227,10 +227,18 @@ def cmd_ingest_bars(args: argparse.Namespace) -> int:
     minutes = int(args.minutes) if args.minutes else max(1, gsec // 60)
     spec = resolve(args.symbol)
     dest = args.out or history_path(_base_dir(), spec.symbol, minutes)
-    n = write_canonical(dest, bars)
-    t0 = time.strftime("%Y-%m-%d %H:%M", time.gmtime(bars[0].ts))
-    t1 = time.strftime("%Y-%m-%d %H:%M", time.gmtime(bars[-1].ts))
-    print(f"wrote {n} bars  {minutes}m  {spec.symbol} ({spec.tv_symbol or spec.ticker})  {t0}Z → {t1}Z")
+    if os.path.isfile(dest) and not getattr(args, "replace", False):
+        with open(dest, "r", encoding="utf-8-sig") as fh:
+            old = parse_ohlcv_csv(fh.read())
+        before = len(old)
+        bars = merge_bars(old, bars)
+        n = write_canonical(dest, bars)
+        print(f"merged {n - before} new bars into {n} total  {minutes}m  {spec.symbol} ({spec.tv_symbol or spec.ticker})")
+    else:
+        n = write_canonical(dest, bars)
+        t0 = time.strftime("%Y-%m-%d %H:%M", time.gmtime(bars[0].ts))
+        t1 = time.strftime("%Y-%m-%d %H:%M", time.gmtime(bars[-1].ts))
+        print(f"wrote {n} bars  {minutes}m  {spec.symbol} ({spec.tv_symbol or spec.ticker})  {t0}Z → {t1}Z")
     print(f"  {dest}")
     if args.minutes and abs(gsec - minutes * 60) > 30:
         print(f"  note: detected median bar size is {gsec}s, filename uses --minutes {minutes}", file=sys.stderr)
@@ -341,6 +349,7 @@ def main(argv: Optional[list] = None) -> int:
     g.add_argument("--tz", default="America/New_York", help="timezone for naive timestamps (unix epochs are UTC)")
     g.add_argument("--minutes", type=int, default=None, help="override detected bar size (1, 20, ...)")
     g.add_argument("--out", default=None, help="destination path (default history/{SYM}_{N}m.csv)")
+    g.add_argument("--replace", action="store_true", help="overwrite history file instead of merging by timestamp")
     g.set_defaults(fn=cmd_ingest_bars)
 
     d = sub.add_parser("doctor", help="offline health checks (no network, no broker)")  # Grok (xAI) — 2026-09-20

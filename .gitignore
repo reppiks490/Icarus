@@ -52,6 +52,7 @@ inputs.json
 inputs.*.json
 adaptation.json
 adaptation.lock.sqlite3
+NEXT.txt
 
 # leftover editor copies
 *.bak
