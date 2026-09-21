@@ -26,7 +26,7 @@ from typing import Optional
 
 from .assets import REGISTRY, parse_spec
 from .feeds.bars import file_feed_mode  # Grok (xAI) — 2026-09-20
-from .runtime import AssetRunner, Journal, Portfolio, resolve_inputs
+from .runtime import AssetRunner, Journal, Portfolio, export_paper_book, resolve_inputs
 
 
 def _base_dir() -> str:
@@ -275,7 +275,7 @@ def cmd_paper_export(args: argparse.Namespace) -> int:
         print(f"no journal at {db}", file=sys.stderr)
         return 1
     out = args.out or os.path.join(_base_dir(), "paper-trades.csv")
-    n = Journal(db).export_trades_csv(out, live_only=bool(args.live_only))
+    n = export_paper_book(db, out, live_only=bool(args.live_only))
     kind = "live-only" if args.live_only else "warmup+live"
     print(f"{n} {kind} paper trades -> {out}")
     print("Icarus emulator book. Not a broker statement. live=0 is warmup replay.")

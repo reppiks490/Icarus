@@ -81,7 +81,7 @@ def inspect(base_dir: str | None = None, *, today: date | None = None) -> Dict[s
     _check(items, "TradingView chart dumps in history/",
            bool(found),
            (", ".join(found) + " — engine will warm from these instead of delayed Yahoo") if found
-           else "none yet. Supercharts → Export chart data → `icarus-engine ingest-bars FILE --symbol NQ`  (or drop the CSV in history/drop/ and `icarus-plant ingest-drop`)",
+           else "none yet. Supercharts CSV export needs TradingView Plus (not Essential). Yahoo path: `icarus-plant start --assets NQ`. Plus path: drop CSV in history/drop/ then ingest.",
            level="warn")
 
     drop = os.path.join(root, "history", "drop")

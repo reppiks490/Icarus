@@ -529,6 +529,10 @@ def test_journal_keeps_two_identical_same_bar_pieces_and_stamps_run_id(tmp_path)
     from icarus_engine.cli import main as engine_main
     rc = engine_main(["paper-export", "--db", str(tmp_path / "j.db"), "--out", str(tmp_path / "cli.csv")])
     assert rc == 0 and (tmp_path / "cli.csv").is_file()
+    from icarus_engine.runtime import export_paper_book
+    n2 = export_paper_book(str(tmp_path / "j.db"), str(tmp_path / "ro.csv"))
+    assert n2 == 2
+    assert j.con.execute("SELECT COUNT(*) FROM trades").fetchone()[0] == 2
 
 
 def test_summary_feed_delay_only_while_open_and_expiry_fallback_flattens(tmp_path, monkeypatch):
@@ -580,7 +584,7 @@ def test_background_launcher_only_accepts_a_live_health_endpoint():
     for script in (ps1, sh):
         assert "Invoke-WebRequest" in script or "curl" in script
         assert "/healthz" in script
-        assert "Remove-Item $pidFile" in script or "rm -f \"$PIDFILE\"" in script
+        assert "Remove-Item $PidFile" in script or "Remove-Item $pidFile" in script or "rm -f \"$PIDFILE\"" in script
     assert "Grok (xAI)" in ps1 and "Grok (xAI)" in sh
 
 
