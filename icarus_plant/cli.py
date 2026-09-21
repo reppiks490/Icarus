@@ -19,10 +19,11 @@ import shutil
 import sys
 from typing import Optional
 
+from .downloads import ingest_downloads
 from .drop import ingest_drop
 from .guide import open_drop, preflight, steps, write_next_txt
 from .layout import ensure, plant_root, repo_root
-from .supervisor import Plant, Service, default_bridge_service, default_engine_service, write_status
+from .supervisor import Plant, Service, default_bridge_service, default_engine_service, wait_health, write_status
 
 
 def cmd_init(args: argparse.Namespace) -> int:
@@ -54,12 +55,15 @@ def cmd_init(args: argparse.Namespace) -> int:
 
 def cmd_ingest_drop(args: argparse.Namespace) -> int:
     recs = ingest_drop(args.root)
+    if getattr(args, "downloads", False):
+        recs = list(recs) + ingest_downloads(args.root)
     if not recs:
-        print("drop/ is empty")
+        print("drop/ is empty" + (" (Downloads had no new chart CSVs)" if getattr(args, "downloads", False) else ""))
         return 0
     for r in recs:
         extra = f"  (+{r.get('added', r['bars'])} new, {r['bars']} total)" if r.get("merged_from") else ""
-        print(f"  {r['symbol']} {r['minutes']}m  {r['bars']} bars -> {r['dest']}{extra}")
+        src = f"  [{os.path.basename(r['from_downloads'])}]" if r.get("from_downloads") else ""
+        print(f"  {r['symbol']} {r['minutes']}m  {r['bars']} bars -> {r['dest']}{extra}{src}")
     return 0
 
 
@@ -68,6 +72,8 @@ def cmd_start(args: argparse.Namespace) -> int:
     ensure(root)
     repo = repo_root()
     recs = ingest_drop(root)
+    if not args.no_downloads:
+        recs = list(recs) + ingest_downloads(root)
     for r in recs:
         extra = f"  (+{r.get('added', r['bars'])} new, {r['bars']} total)" if r.get("merged_from") else ""
         print(f"  ingested {r['symbol']} {r['minutes']}m  {r['bars']} bars -> {r['dest']}{extra}")
@@ -89,10 +95,21 @@ def cmd_start(args: argparse.Namespace) -> int:
         print(f"started {svc.name} pid={svc.popen.pid if svc.popen else '?'}  {svc.health_url}")
     print(f"plant {root}  Ctrl+C to stop")
     print("  drop Supercharts CSVs in history/drop/ — ingested every few seconds")
+    print("  CSVs already in Downloads/Desktop are pulled automatically (registry symbols only)")
     if args.offline:
         print("  ICARUS_FEED=file — Yahoo is not contacted; live bars only arrive via drop ingest")
+    engine = plant.services.get("engine")
+    if engine and engine.health_url:
+        if wait_health(engine.health_url, timeout=45):
+            dash = engine.health_url.replace("/healthz", "/")
+            print(f"  dashboard live: {dash}  token={args.token}")
+            if not args.no_browser:
+                import webbrowser
+                webbrowser.open(dash)
+        else:
+            print("  engine has not answered /healthz yet — check logs/engine.log")
     try:
-        plant.loop(poll=args.poll)
+        plant.loop(poll=args.poll, downloads=not args.no_downloads)
     finally:
         write_status(root, plant.status())
     return 0
@@ -184,6 +201,7 @@ def main(argv: Optional[list] = None) -> int:
     od.set_defaults(fn=cmd_open_drop)
 
     d = sub.add_parser("ingest-drop", help="history/drop/*.csv → history/{SYM}_{N}m.csv")
+    d.add_argument("--downloads", action="store_true", help="also pull chart CSVs from Downloads/Desktop")
     d.set_defaults(fn=cmd_ingest_drop)
 
     s = sub.add_parser("start", help="supervise engine (+ optional bridge) in the foreground")
@@ -195,6 +213,8 @@ def main(argv: Optional[list] = None) -> int:
     s.add_argument("--bridge-port", type=int, default=8787)
     s.add_argument("--token", default="icarus")
     s.add_argument("--poll", type=float, default=5.0)
+    s.add_argument("--no-browser", action="store_true", help="do not open the dashboard")
+    s.add_argument("--no-downloads", action="store_true", help="do not scan Downloads/Desktop for CSVs")
     s.set_defaults(fn=cmd_start)
 
     t = sub.add_parser("stop", help="SIGTERM engine/bridge pids recorded under run/")

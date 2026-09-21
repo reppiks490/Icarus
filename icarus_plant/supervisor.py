@@ -17,6 +17,7 @@ import urllib.request
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
+from .downloads import ingest_downloads
 from .drop import ingest_drop
 from .layout import ensure, plant_root, repo_root
 
@@ -27,6 +28,15 @@ def health_ok(url: str, timeout: float = 2.0) -> bool:
             return 200 <= r.status < 300
     except (urllib.error.URLError, TimeoutError, OSError, ValueError):
         return False
+
+
+def wait_health(url: str, timeout: float = 45.0) -> bool:
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        if health_ok(url):
+            return True
+        time.sleep(0.4)
+    return False
 
 
 @dataclass
@@ -53,6 +63,22 @@ def _read_pid(path: str) -> Optional[int]:
         return int(open(path, encoding="ascii").read().strip())
     except (OSError, ValueError):
         return None
+
+
+def _kill_pid(pid: int) -> None:
+    if pid <= 0:
+        return
+    try:
+        if os.name == "nt":
+            subprocess.call(
+                ["taskkill", "/PID", str(pid), "/T", "/F"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+        else:
+            os.kill(pid, signal.SIGTERM)
+    except OSError:
+        pass
 
 
 def _alive(pid: int) -> bool:
@@ -92,14 +118,18 @@ class Plant:
         env.update(svc.env)
         env["ICARUS_HOME"] = self.root
         log = open(os.path.join(self.root, "logs", f"{svc.name}.log"), "ab")
-        svc.popen = subprocess.Popen(
-            svc.argv,
+        kw: Dict[str, object] = dict(
             cwd=svc.cwd,
             env=env,
             stdout=log,
             stderr=subprocess.STDOUT,
-            start_new_session=True,
         )
+        # Grok (xAI) — 2026-09-20: start_new_session is POSIX-only; Windows needs a new process group.
+        if os.name == "nt":
+            kw["creationflags"] = int(getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0))
+        else:
+            kw["start_new_session"] = True
+        svc.popen = subprocess.Popen(svc.argv, **kw)  # type: ignore[arg-type]
         if svc.pidfile:
             _write_pid(svc.pidfile, svc.popen.pid)
 
@@ -110,10 +140,7 @@ class Plant:
             svc.popen = None
         pid = _read_pid(svc.pidfile) if svc.pidfile else None
         if pid and _alive(pid):
-            try:
-                os.kill(pid, signal.SIGTERM)
-            except OSError:
-                pass
+            _kill_pid(pid)
         if svc.pidfile and os.path.isfile(svc.pidfile):
             os.remove(svc.pidfile)
 
@@ -159,7 +186,7 @@ class Plant:
             })
         return {"root": self.root, "repo": self.repo, "ok": all(i["alive"] and i["health"] for i in items if i["health_url"]), "services": items}
 
-    def loop(self, *, poll: float = 5.0, drop: bool = True) -> None:
+    def loop(self, *, poll: float = 5.0, drop: bool = True, downloads: bool = True) -> None:
         _write_pid(os.path.join(self.root, "run", "plant.pid"), os.getpid())
         try:
             while not self._stop:
@@ -168,7 +195,16 @@ class Plant:
                         ingest_drop(self.root)
                     except Exception:
                         pass
+                    if downloads:
+                        try:
+                            ingest_downloads(self.root)
+                        except Exception:
+                            pass
                 self.reap_and_restart()
+                try:
+                    write_status(self.root, self.status())
+                except Exception:
+                    pass
                 time.sleep(poll)
         except KeyboardInterrupt:
             pass

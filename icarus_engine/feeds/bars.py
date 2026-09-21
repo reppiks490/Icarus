@@ -42,6 +42,25 @@ _LOW_KEYS = ("low", "l", "<low>")
 _CLOSE_KEYS = ("close", "c", "<close>")
 _VOL_KEYS = ("volume", "vol", "v", "<vol>")
 _COMMON_TF = (60, 120, 180, 240, 300, 600, 900, 1200, 1800, 3600, 14400, 86400)
+
+
+def read_text_csv(path: str) -> str:
+    """Read a chart export. Handles UTF-8, BOM, UTF-16 (Excel), latin-1.
+
+    Grok (xAI) — 2026-09-20. Does not scrape; only reads a file the owner already has.
+    """
+    with open(path, "rb") as fh:
+        raw = fh.read()
+    if raw.startswith(b"\xff\xfe") or raw.startswith(b"\xfe\xff"):
+        return raw.decode("utf-16")
+    if raw.startswith(b"\xef\xbb\xbf"):
+        return raw.decode("utf-8-sig")
+    try:
+        return raw.decode("utf-8")
+    except UnicodeDecodeError:
+        return raw.decode("latin-1")
+
+
 _HIST_NAME = re.compile(r"^(.+)_(\d+)m\.csv$", re.I)
 
 
@@ -236,9 +255,7 @@ class FileFeed:
 
     @classmethod
     def from_csv(cls, path: str, *, tz=None, mintick: float = 0.25) -> "FileFeed":
-        with open(path, "r", encoding="utf-8-sig") as fh:
-            feed = cls(parse_ohlcv_csv(fh.read(), tz=tz), mintick=mintick, path=path)
-        return feed
+        return cls(parse_ohlcv_csv(read_text_csv(path), tz=tz), mintick=mintick, path=path)
 
     def _maybe_reload(self) -> None:
         if not self._path or not os.path.isfile(self._path):
@@ -246,8 +263,7 @@ class FileFeed:
         mt = os.path.getmtime(self._path)
         if mt <= self._mtime:
             return
-        with open(self._path, "r", encoding="utf-8-sig") as fh:
-            self._bars = parse_ohlcv_csv(fh.read())
+        self._bars = parse_ohlcv_csv(read_text_csv(self._path))
         self._mtime = mt
         self._granularity = detect_granularity(self._bars) if len(self._bars) >= 2 else 60
 

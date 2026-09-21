@@ -211,15 +211,14 @@ def cmd_ingest_bars(args: argparse.Namespace) -> int:
     Grok (xAI) — 2026-09-20. Do not scrape TradingView; this only reads a file the owner exported.
     """
     from .assets import resolve
-    from .feeds.bars import detect_granularity, history_path, merge_bars, parse_ohlcv_csv, write_canonical
+    from .feeds.bars import detect_granularity, history_path, merge_bars, parse_ohlcv_csv, read_text_csv, write_canonical
 
     try:
         from zoneinfo import ZoneInfo
         tz = ZoneInfo(args.tz)
     except Exception:
         raise SystemExit(f"unknown timezone {args.tz!r}")
-    with open(args.file, "r", encoding="utf-8-sig") as fh:
-        bars = parse_ohlcv_csv(fh.read(), tz=tz)
+    bars = parse_ohlcv_csv(read_text_csv(args.file), tz=tz)
     if not bars:
         print("no bars parsed (need open/high/low/close columns)", file=sys.stderr)
         return 1
@@ -228,8 +227,7 @@ def cmd_ingest_bars(args: argparse.Namespace) -> int:
     spec = resolve(args.symbol)
     dest = args.out or history_path(_base_dir(), spec.symbol, minutes)
     if os.path.isfile(dest) and not getattr(args, "replace", False):
-        with open(dest, "r", encoding="utf-8-sig") as fh:
-            old = parse_ohlcv_csv(fh.read())
+        old = parse_ohlcv_csv(read_text_csv(dest))
         before = len(old)
         bars = merge_bars(old, bars)
         n = write_canonical(dest, bars)

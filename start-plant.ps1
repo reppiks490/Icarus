@@ -3,8 +3,9 @@
 # Double-click start-plant.bat  OR  in PowerShell:  .\start-plant.ps1
 # Leave this window open. Closing it stops the plant.
 # Not a CME feed. Not TradingView scrape. You drop a Supercharts CSV you already own.
+# CRITICAL: only the `py` launcher accepts -3. python.exe does not.
 
-$ErrorActionPreference = "Stop"
+$ErrorActionPreference = "Continue"
 Set-Location -LiteralPath $PSScriptRoot
 
 Write-Host ""
@@ -23,35 +24,43 @@ if (-not $pyCmd) {
     exit 1
 }
 
-$py = $pyCmd.Source
-Write-Host "Python: $py"
-Write-Host "installing Icarus into this Python (once, then fast)..."
-& $py -3 -m pip install -e . --quiet
-if ($LASTEXITCODE -ne 0) {
-    & $py -m pip install -e .
+$script:PyExe = $pyCmd.Source
+$script:UsePyLauncher = ($pyCmd.Name -like "py*")
+
+function Invoke-IcarusPython {
+    param([Parameter(ValueFromRemainingArguments = $true)][string[]]$Rest)
+    if ($script:UsePyLauncher) {
+        & $script:PyExe -3 @Rest
+    } else {
+        & $script:PyExe @Rest
+    }
+    return $LASTEXITCODE
 }
-if ($LASTEXITCODE -ne 0) {
+
+Write-Host "Python: $($script:PyExe)  (py launcher: $($script:UsePyLauncher))"
+Write-Host "installing Icarus into this Python (once, then fast)..."
+$code = Invoke-IcarusPython -m pip install -e .
+if ($code -ne 0) {
     Write-Host "pip install failed. Copy the error above."
     Read-Host "Press Enter to close"
     exit 1
 }
 
-& $py -3 -m icarus_plant setup --open
-if ($LASTEXITCODE -ne 0) {
-    & $py -m icarus_plant setup --open
-}
+Invoke-IcarusPython -m icarus_plant setup --open | Out-Host
 
 $drop = Join-Path $PSScriptRoot "history\drop"
 $hist1 = Join-Path $PSScriptRoot "history\NQ_1m.csv"
+$downloads = Join-Path $env:USERPROFILE "Downloads"
 if (-not (Test-Path $hist1)) {
     Write-Host ""
-    Write-Host "Waiting for a Supercharts CSV in:"
-    Write-Host "  $drop"
+    Write-Host "Waiting for a Supercharts CSV."
+    Write-Host "  Inbox:     $drop"
+    Write-Host "  Downloads: $downloads  (the plant also pulls chart CSVs from here)"
     Write-Host ""
-    Write-Host "TradingView: NQ1!  →  1 minute  →  Download chart data  →  copy the file here."
+    Write-Host "TradingView: NQ1!  →  1 minute  →  Download chart data"
     Write-Host "Essential is enough. You do not need Plus/Premium for that button."
     Write-Host ""
-    Read-Host "Press Enter AFTER the CSV is in that folder (or Enter now to start anyway)"
+    Read-Host "Press Enter AFTER the CSV is downloaded (or in history\drop\) — or Enter to start anyway"
 }
 
 Write-Host ""
@@ -60,7 +69,5 @@ Write-Host "Dashboard on THIS PC:  http://127.0.0.1:8791/   token: icarus"
 Write-Host "Leave this window open.  Ctrl+C to stop."
 Write-Host ""
 
-& $py -3 -m icarus_plant start --assets NQ --offline
-if ($LASTEXITCODE -ne 0) {
-    & $py -m icarus_plant start --assets NQ --offline
-}
+$code = Invoke-IcarusPython -m icarus_plant start --assets NQ --offline
+exit $code

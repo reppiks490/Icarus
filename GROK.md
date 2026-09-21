@@ -20,14 +20,14 @@ Do **not** undo these constraints without the owner asking:
 
 | File | What |
 |---|---|
-| `icarus_engine/feeds/bars.py` | TV/generic OHLCV parse, `FileFeed` (mtime reload), `HistoryHub`, `merge_bars()`, `file_feed_mode()` |
+| `icarus_engine/feeds/bars.py` | TV/generic OHLCV parse, FileFeed, HistoryHub, merge_bars, read_text_csv (UTF-16) |
 | `icarus_engine/doctor.py` | Offline engine doctor |
 | `icarus_plant/__init__.py` | Local plant package |
 | `icarus_plant/layout.py` | `ICARUS_HOME` dirs: history/drop, run, logs |
 | `icarus_plant/drop.py` | `history/drop/*.csv` → `history/{SYM}_{N}m.csv` (merge by ts) |
-| `icarus_plant/supervisor.py` | stdlib process supervisor; `/healthz` on loopback |
+| `icarus_plant/supervisor.py` | stdlib process supervisor; `/healthz` on loopback; Windows process group |
 | `icarus_plant/cli.py` | `icarus-plant init\|start\|stop\|status\|ingest-drop\|doctor` |
-| `icarus_plant/guide.py` | Dummy checklist, `NEXT.txt`, open-drop, preflight |
+| `icarus_plant/downloads.py` | Pull owner-owned Supercharts CSVs from Downloads/Desktop |
 | `start-plant.ps1` | Windows one-shot: pip, setup --open, start --offline |
 | `start-plant.bat` | Double-click wrapper for the ps1 |
 | `start-plant.sh` | Unix twin |

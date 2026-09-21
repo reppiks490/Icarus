@@ -12,6 +12,7 @@ from icarus_engine.assets import parse_spec
 from icarus_engine.feeds.bars import HistoryHub, parse_ohlcv_csv
 from icarus_engine.runtime import Journal, Portfolio
 from icarus_plant.cli import main as plant_main
+from icarus_plant.downloads import ingest_downloads
 from icarus_plant.drop import infer_symbol, ingest_drop, ingest_file
 from icarus_plant.layout import ensure, plant_root
 from icarus_plant.supervisor import (
@@ -218,5 +219,27 @@ def test_start_plant_scripts_are_dummy_proof():
     setup = (root / "SETUP.md").read_text(encoding="utf-8")
     assert "Grok (xAI)" in ps1 and "Grok (xAI)" in bat and "Grok (xAI)" in sh
     assert "icarus_plant" in ps1 and "--offline" in ps1
+    assert "UsePyLauncher" in ps1
+    assert "python.exe does not" in ps1
     assert "start-plant.ps1" in bat
     assert "Essential" in setup and "start-plant.bat" in setup
+    assert "Downloads" in setup
+
+
+def test_ingest_downloads_only_registry_charts(tmp_path):
+    from pathlib import Path
+    plant = tmp_path / "plant"
+    inbox = tmp_path / "dl"
+    inbox.mkdir()
+    plant.mkdir()
+    (inbox / "notes.csv").write_text("a,b\n1,2\n", encoding="utf-8")
+    (inbox / "NQ1!.csv").write_text(_CSV, encoding="utf-8")
+    recs = ingest_downloads(str(plant), dirs=[str(inbox)])
+    assert len(recs) == 1 and recs[0]["symbol"] == "NQ"
+    dest = plant / "history" / "NQ_1m.csv"
+    assert dest.is_file()
+    again = ingest_downloads(str(plant), dirs=[str(inbox)])
+    assert again == []
+    src = Path(__file__).parents[1] / "icarus_plant" / "supervisor.py"
+    text = src.read_text(encoding="utf-8")
+    assert "CREATE_NEW_PROCESS_GROUP" in text and "start_new_session" in text

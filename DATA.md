@@ -30,6 +30,7 @@ That writes `history/NQ_1m.csv` (or `NQ_20m.csv`). On the next `run` / `backtest
 | `history/NQ_1m.csv` | Best. Engine aggregates 20m / HTF / LTF itself. **Required for live FileFeed poll.** |
 | `history/NQ_20m.csv` | Chart-TF export. HTF chains are built from 20m bars (worse than 1m). Not split into invented 1m bars. |
 | `history/drop/*.csv` | Inbox. Plant ingests → canonical history file, then moves the original to `drop/done/`. |
+| Downloads / Desktop | Plant also pulls registry-symbol chart CSVs the owner already downloaded (not scrape). |
 | Yahoo fallback | Used when neither file exists **and** `ICARUS_FEED` is not `file`. Also fills the 1-minute tail after the last exported bar in hybrid (Yahoo) mode. |
 
 Canonical columns: `ts,open,high,low,close,volume` with `ts` = UTC epoch **open**. `ingest-bars` converts TradingView's formats.

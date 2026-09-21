@@ -29,7 +29,9 @@ Log in as `reppiks490` if GitHub asks (repo is private).
    - Timeframe **1 minute**
    - Scroll **left**
    - Top toolbar dropdown → **Download chart data…**
-   - Copy the CSV into the Explorer window the script opened (`Icarus\history\drop\`)
+   - Leave the file in **Downloads**, or copy it into the Explorer window (`Icarus\history\drop\`)
+
+The plant **also scans Downloads/Desktop** for chart CSVs (NQ, ES, … only). You do not have to copy if the filename looks like an NQ export.
 
 5. Back in the script window: press Enter.
 6. On **that same PC**, browser: `http://127.0.0.1:8791/`  token `icarus`.
