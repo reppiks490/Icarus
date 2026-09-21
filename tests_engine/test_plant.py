@@ -233,7 +233,7 @@ def test_plant_cli_setup_writes_next_txt(tmp_path, capsys):
     text = nxt.read_text(encoding="utf-8")
     assert "Download chart data" in text and "history" in text
     out = capsys.readouterr().out
-    assert "Essential" in out
+    assert "Plus" in out or "plus" in out.lower() or "Yahoo" in out
 
 
 def test_start_plant_scripts_are_dummy_proof():
@@ -251,7 +251,12 @@ def test_start_plant_scripts_are_dummy_proof():
     assert "python.exe" in ps1
     assert "CME_MINI_NQ1!, 1.csv" in ps1
     assert "start-plant.ps1" in bat
-    assert "Essential" in setup and "start-plant.bat" in setup
+    assert "Plus" in setup and "start-plant.bat" in setup
+    paid = (root / "PAID_NEXT.md").read_text(encoding="utf-8")
+    assert "Alpaca" in paid and "TradersPost" in paid and "PickMyTrade" in paid
+    yahoo = (root / "start-yahoo.ps1").read_text(encoding="utf-8")
+    assert "icarus_plant start --assets NQ" in yahoo
+    assert "start --assets NQ --offline" not in yahoo
     assert "Downloads" in setup
     assert "CME_MINI_NQ1!, 1.csv" in setup
     bg = (root / "start-engine-background.ps1").read_text(encoding="utf-8")

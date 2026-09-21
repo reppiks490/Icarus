@@ -31,7 +31,8 @@ Do **not** undo these constraints without the owner asking:
 | `start-plant.ps1` | Windows one-shot: pip, setup --open, start --offline |
 | `start-plant.bat` | Double-click wrapper for the ps1 |
 | `start-plant.sh` | Unix twin |
-| `SETUP.md` | Numbered dummy list (clone → bat → CSV → dashboard) |
+| `PAID_NEXT.md` | Frozen list: Alpaca, TradersPost/PickMyTrade, Plus CSV, ML boundary |
+| `start-yahoo.ps1` / `start-yahoo.bat` | Yahoo NQ=F plant (no --offline) |
 | `deploy/icarus-plant.service` | Optional local systemd unit (loopback only) |
 | `tests_engine/test_bars.py` | Ingest / FileFeed / holiday coverage / CSV warmup / HistoryHub |
 | `tests_engine/test_doctor.py` | Doctor CLI |
