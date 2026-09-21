@@ -11,6 +11,7 @@
   GET  /api/commands              the command list the dashboard palette renders
   GET  /api/export/<SYM>.csv      the asset's trade list as CSV
   GET  /api/golive                paper≠live integrity (Grok). Never arms a broker.
+  GET  /api/agent                 Field Agent recipes + paste-packs (Grok). Never executes. Never arms a broker.
   POST /admin/pause | /admin/resume        {"asset": "NQ"} or all          (Bearer token)
   POST /admin/flatten                      {"confirm": true, "asset"?: "NQ"}
   POST /admin/inputs                       {"asset": "NQ"|"*", "values": {...}, "persist": true}  → re-warm
@@ -38,6 +39,8 @@ from .assets import REGISTRY, parse_spec
 from .backtest import JOBS, start_job
 from .parity import compare_lists, engine_trades_from_rows, read_tv_trades_text
 from .golive import report as golive_report
+from .agent import report as agent_report
+from .briefing import report as briefing_report
 from .runtime import Portfolio, _read_json, preset_path
 from .strategy.meta import load_meta
 from .advisory import MAX_BODY_BYTES, strict_json
@@ -66,6 +69,7 @@ COMMANDS = [
     {"id": "export", "label": "Export trades CSV", "desc": "Download the asset's trade list (TradingView-like columns).", "scope": "asset", "danger": False},
     {"id": "open-tab", "label": "Open in its own tab", "desc": "Full-screen view of one asset in a new browser tab.", "scope": "asset", "danger": False},
     {"id": "golive", "label": "Go-live integrity", "desc": "Paper ≠ live. Tape identity, warmup P&L, RTH, QQQ≠NQ. Never arms a broker.", "scope": "all", "danger": False},
+    {"id": "agent", "label": "Field Agent", "desc": "Copy plant recipes and Claude/ChatGPT paste-packs. Does not execute. Never arms a broker.", "scope": "all", "danger": False},
 ]
 
 
@@ -137,6 +141,10 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._json(200, port.status())
             if p.path == "/api/golive":
                 return self._json(200, golive_report(port))
+            if p.path == "/api/agent":
+                return self._json(200, agent_report())
+            if p.path == "/api/briefing":
+                return self._json(200, briefing_report())
             if p.path == "/api/input-meta":
                 return self._json(200, meta)
             if p.path.startswith("/api/research"):
