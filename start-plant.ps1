@@ -1,82 +1,86 @@
 # Grok (xAI) — 2026-09-20. Whole file.
-# Windows one-shot: install package, init drop inbox, open Explorer, start FileFeed-offline.
-# Double-click start-plant.bat  OR  in PowerShell:  .\start-plant.ps1
+# Windows one-shot. Double-click start-plant.bat  OR  .\start-plant.ps1
 # Leave this window open. Closing it stops the plant.
-# Not a CME feed. Not TradingView scrape. You drop a Supercharts CSV you already own.
-# CRITICAL: only the `py` launcher accepts -3. python.exe does not.
+# Not a CME feed. Not TradingView scrape.
+# Only the py launcher accepts -3. Never pass -3 to python.exe.
+# PowerShell 5.1: keep static strings in single quotes. Never put commas
+# inside parentheses in a double-quoted Write-Host.
 
-$ErrorActionPreference = "Continue"
+$ErrorActionPreference = 'Continue'
 Set-Location -LiteralPath $PSScriptRoot
 
-Write-Host ""
-Write-Host "ICARUS plant  (Grok/xAI)  Brain B — local FileFeed"
-Write-Host "folder: $PSScriptRoot"
-Write-Host ""
+Write-Host ''
+Write-Host 'ICARUS plant  (Grok/xAI)  Brain B - local FileFeed'
+Write-Host ('folder: ' + $PSScriptRoot)
+Write-Host ''
 
 $pyCmd = Get-Command py -ErrorAction SilentlyContinue
 if (-not $pyCmd) { $pyCmd = Get-Command python -ErrorAction SilentlyContinue }
 if (-not $pyCmd) {
-    Write-Host "Python is not installed (or not on PATH)."
-    Write-Host "1. https://www.python.org/downloads/"
-    Write-Host "2. Check  Add python.exe to PATH"
-    Write-Host "3. Close this window, open a NEW PowerShell, run this script again."
-    Read-Host "Press Enter to close"
+    Write-Host 'Python is not installed or not on PATH.'
+    Write-Host '1. https://www.python.org/downloads/'
+    Write-Host '2. Check  Add python.exe to PATH'
+    Write-Host '3. Close this window, open a NEW PowerShell, run this script again.'
+    Read-Host 'Press Enter to close'
     exit 1
 }
 
-$script:PyExe = $pyCmd.Source
-# Only the Windows py launcher accepts -3. Never pass -3 to python.exe.
-$script:UsePyLauncher = @("py", "py.exe") -contains $pyCmd.Name
+$PyExe = $pyCmd.Source
+$UsePyLauncher = $false
+if ($pyCmd.Name -eq 'py.exe' -or $pyCmd.Name -eq 'py') { $UsePyLauncher = $true }
 
-if ($script:PyExe -match "WindowsApps\\python") {
-    Write-Host "This is the Microsoft Store python stub, not a real interpreter."
-    Write-Host "Install from https://www.python.org/downloads/ and check  Add python.exe to PATH"
-    Read-Host "Press Enter to close"
+if ($PyExe -like '*WindowsApps\python*') {
+    Write-Host 'This is the Microsoft Store python stub, not a real interpreter.'
+    Write-Host 'Install from https://www.python.org/downloads/ and check  Add python.exe to PATH'
+    Read-Host 'Press Enter to close'
     exit 1
 }
 
-function Invoke-IcarusPython {
-    param([Parameter(ValueFromRemainingArguments = $true)][string[]]$Rest)
-    if ($script:UsePyLauncher) {
-        & $script:PyExe -3 @Rest
-    } else {
-        & $script:PyExe @Rest
-    }
-    return $LASTEXITCODE
-}
+Write-Host ('Python: ' + $PyExe)
+Write-Host 'Installing Icarus into this Python. First time is slow.'
 
-Write-Host "Python: $($script:PyExe)  (py launcher: $($script:UsePyLauncher))"
-Write-Host "installing Icarus into this Python (once, then fast)..."
-$code = Invoke-IcarusPython -m pip install -e .
-if ($code -ne 0) {
-    Write-Host "pip install failed. Copy the error above."
-    Read-Host "Press Enter to close"
+if ($UsePyLauncher) {
+    & $PyExe -3 -m pip install -e .
+} else {
+    & $PyExe -m pip install -e .
+}
+if ($LASTEXITCODE -ne 0) {
+    Write-Host 'pip install failed. Copy the error above.'
+    Read-Host 'Press Enter to close'
     exit 1
 }
 
-Invoke-IcarusPython -m icarus_plant setup --open | Out-Host
-
-$drop = Join-Path $PSScriptRoot "history\drop"
-$hist1 = Join-Path $PSScriptRoot "history\NQ_1m.csv"
-$downloads = Join-Path $env:USERPROFILE "Downloads"
-if (-not (Test-Path $hist1)) {
-    Write-Host ""
-    Write-Host "Waiting for a Supercharts CSV."
-    Write-Host "  Inbox:     $drop"
-    Write-Host "  Downloads: $downloads  (the plant also pulls chart CSVs from here)"
-    Write-Host ""
-    Write-Host "TradingView: NQ1!  →  1 minute  →  Download chart data"
-    Write-Host "The file is usually named:  CME_MINI_NQ1!, 1.csv"
-    Write-Host "Essential is enough. You do not need Plus/Premium for that button."
-    Write-Host ""
-    Read-Host "Press Enter AFTER the CSV is downloaded (or in history\drop\) — or Enter to start anyway"
+if ($UsePyLauncher) {
+    & $PyExe -3 -m icarus_plant setup --open
+} else {
+    & $PyExe -m icarus_plant setup --open
 }
 
-Write-Host ""
-Write-Host "Starting plant  --assets NQ --offline"
-Write-Host "Dashboard on THIS PC:  http://127.0.0.1:8791/   token: icarus"
-Write-Host "Leave this window open.  Ctrl+C to stop."
-Write-Host ""
+$drop = Join-Path $PSScriptRoot 'history\drop'
+$hist1 = Join-Path $PSScriptRoot 'history\NQ_1m.csv'
+$downloads = Join-Path $env:USERPROFILE 'Downloads'
+if (-not (Test-Path -LiteralPath $hist1)) {
+    Write-Host ''
+    Write-Host 'Waiting for a Supercharts CSV.'
+    Write-Host ('  Inbox:     ' + $drop)
+    Write-Host ('  Downloads: ' + $downloads)
+    Write-Host ''
+    Write-Host 'TradingView: NQ1!  then 1 minute  then Download chart data'
+    Write-Host 'Typical filename: CME_MINI_NQ1!, 1.csv'
+    Write-Host 'Essential is enough. You do not need Plus or Premium.'
+    Write-Host ''
+    Read-Host 'Press Enter AFTER the CSV is downloaded - or Enter to start anyway'
+}
 
-$code = Invoke-IcarusPython -m icarus_plant start --assets NQ --offline
-exit $code
+Write-Host ''
+Write-Host 'Starting plant  --assets NQ --offline'
+Write-Host 'Dashboard on THIS PC:  http://127.0.0.1:8791/   token: icarus'
+Write-Host 'Leave this window open.  Ctrl+C to stop.'
+Write-Host ''
+
+if ($UsePyLauncher) {
+    & $PyExe -3 -m icarus_plant start --assets NQ --offline
+} else {
+    & $PyExe -m icarus_plant start --assets NQ --offline
+}
+exit $LASTEXITCODE

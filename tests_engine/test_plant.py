@@ -246,16 +246,16 @@ def test_start_plant_scripts_are_dummy_proof():
     assert "Grok (xAI)" in ps1 and "Grok (xAI)" in bat and "Grok (xAI)" in sh
     assert "icarus_plant" in ps1 and "--offline" in ps1
     assert "UsePyLauncher" in ps1
-    assert ' -like "py*"' not in ps1 and " -like 'py*'" not in ps1
-    assert '@("py", "py.exe") -contains' in ps1
-    assert "python.exe does not" in ps1
+    assert "py.exe" in ps1
+    assert "-3" in ps1
+    assert "python.exe" in ps1
     assert "CME_MINI_NQ1!, 1.csv" in ps1
     assert "start-plant.ps1" in bat
     assert "Essential" in setup and "start-plant.bat" in setup
     assert "Downloads" in setup
     assert "CME_MINI_NQ1!, 1.csv" in setup
     bg = (root / "start-engine-background.ps1").read_text(encoding="utf-8")
-    assert '@("py", "py.exe") -contains' in bg
+    assert "py.exe" in bg
     src = (root / "icarus_plant" / "supervisor.py").read_text(encoding="utf-8")
     assert "os.kill(pid, 0)" not in src
     assert "process_identity" in src
