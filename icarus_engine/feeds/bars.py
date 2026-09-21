@@ -162,6 +162,17 @@ def detect_granularity(bars: List[Bar]) -> int:
     return min(_COMMON_TF, key=lambda t: abs(t - med))
 
 
+def merge_bars(existing: Iterable[Bar], incoming: Iterable[Bar]) -> List[Bar]:
+    """Union by bar-open timestamp. Incoming wins on a collision. No invented rows.
+
+    Grok (xAI) — 2026-09-20. Essential's 10K-bar export is a sliding window;
+    merging successive Supercharts dumps accumulates history the owner already paid for.
+    """
+    by: Dict[int, Bar] = {b.ts: b for b in existing}
+    by.update({b.ts: b for b in incoming})
+    return [by[k] for k in sorted(by)]
+
+
 def write_canonical(path: str, bars: Iterable[Bar]) -> int:
     os.makedirs(os.path.dirname(os.path.abspath(path)) or ".", exist_ok=True)
     rows = list(bars)

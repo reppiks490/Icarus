@@ -16,6 +16,7 @@ from icarus_engine.feeds.bars import (
     detect_granularity,
     file_feed_mode,
     find_history,
+    merge_bars,
     parse_ohlcv_csv,
     parse_timestamp,
     write_canonical,
@@ -251,4 +252,39 @@ def test_file_feed_mode_env(monkeypatch):
     assert file_feed_mode() is True
     monkeypatch.setenv("ICARUS_FEED", "offline")
     assert file_feed_mode() is True
+
+
+def test_merge_bars_unions_by_ts_incoming_wins():
+    a = [Bar(ET_0930, 1, 2, 0.5, 1.5, 1), Bar(ET_0930 + 60, 2, 3, 1, 2.5, 1)]
+    b = [Bar(ET_0930 + 60, 9, 9, 9, 9, 9), Bar(ET_0930 + 120, 3, 4, 2, 3.5, 1)]
+    m = merge_bars(a, b)
+    assert [x.ts for x in m] == [ET_0930, ET_0930 + 60, ET_0930 + 120]
+    assert m[1].c == 9
+    assert merge_bars([], a) == a
+
+
+def test_ingest_bars_merges_second_dump(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    first = tmp_path / "a.csv"
+    first.write_text(
+        "time,open,high,low,close,Volume\n"
+        "2026-09-14T13:30:00Z,24700,24701,24699,24700.5,4\n",
+        encoding="utf-8",
+    )
+    assert engine_main(["ingest-bars", str(first), "--symbol", "NQ"]) == 0
+    second = tmp_path / "b.csv"
+    second.write_text(
+        "time,open,high,low,close,Volume\n"
+        "2026-09-14T13:30:00Z,1,1,1,1,1\n"
+        "2026-09-14T13:31:00Z,24700.5,24702,24700,24701,5\n",
+        encoding="utf-8",
+    )
+    assert engine_main(["ingest-bars", str(second), "--symbol", "NQ"]) == 0
+    dest = tmp_path / "history" / "NQ_1m.csv"
+    bars = parse_ohlcv_csv(dest.read_text())
+    assert len(bars) == 2
+    assert bars[0].c == 1.0
+    assert bars[1].c == 24701
+    out = capsys.readouterr().out
+    assert "merged" in out
 

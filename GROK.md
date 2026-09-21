@@ -20,14 +20,18 @@ Do **not** undo these constraints without the owner asking:
 
 | File | What |
 |---|---|
-| `icarus_engine/feeds/bars.py` | TV/generic OHLCV parse, `FileFeed` (mtime reload), `HistoryHub`, `file_feed_mode()` |
+| `icarus_engine/feeds/bars.py` | TV/generic OHLCV parse, `FileFeed` (mtime reload), `HistoryHub`, `merge_bars()`, `file_feed_mode()` |
 | `icarus_engine/doctor.py` | Offline engine doctor |
 | `icarus_plant/__init__.py` | Local plant package |
 | `icarus_plant/layout.py` | `ICARUS_HOME` dirs: history/drop, run, logs |
-| `icarus_plant/drop.py` | `history/drop/*.csv` → `history/{SYM}_{N}m.csv` |
+| `icarus_plant/drop.py` | `history/drop/*.csv` → `history/{SYM}_{N}m.csv` (merge by ts) |
 | `icarus_plant/supervisor.py` | stdlib process supervisor; `/healthz` on loopback |
 | `icarus_plant/cli.py` | `icarus-plant init\|start\|stop\|status\|ingest-drop\|doctor` |
-| `icarus_plant/__main__.py` | `python -m icarus_plant` |
+| `icarus_plant/guide.py` | Dummy checklist, `NEXT.txt`, open-drop, preflight |
+| `start-plant.ps1` | Windows one-shot: pip, setup --open, start --offline |
+| `start-plant.bat` | Double-click wrapper for the ps1 |
+| `start-plant.sh` | Unix twin |
+| `SETUP.md` | Numbered dummy list (clone → bat → CSV → dashboard) |
 | `deploy/icarus-plant.service` | Optional local systemd unit (loopback only) |
 | `tests_engine/test_bars.py` | Ingest / FileFeed / holiday coverage / CSV warmup / HistoryHub |
 | `tests_engine/test_doctor.py` | Doctor CLI |
@@ -60,7 +64,7 @@ Do **not** undo these constraints without the owner asking:
 | File | Block |
 |---|---|
 | `icarus_engine/calendar.py` | `holiday_coverage()` |
-| `icarus_engine/cli.py` | `ingest-bars`, `doctor`, `_base_dir`/`_journal_path` honor `ICARUS_HOME`, `--feed file` |
+| `icarus_engine/cli.py` | `ingest-bars` (merge by default, `--replace` wipes), `doctor`, `_base_dir`/`_journal_path` honor `ICARUS_HOME`, `--feed file` |
 | `icarus_engine/runtime.py` | Warm-up prefers `history/{SYM}_1m.csv` then chart-TF under `RunnerConfig.base_dir`; `_warmup_from_csv` uses `parse_ohlcv_csv`; `ICARUS_FEED=file` → `HistoryHub`; `roll=none` in file mode |
 | `icarus_engine/feeds/__init__.py` | `bars` / FileFeed / HistoryHub note in the module docstring |
 | `icarus_engine/strategy/inputs.py` | FOMC 2027 (+ first 2028) *decision* days from federalreserve.gov |

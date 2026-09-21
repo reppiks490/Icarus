@@ -26,9 +26,12 @@ That writes `history/NQ_1m.csv` (preferred) or `history/NQ_20m.csv`. Warm-up use
 
 Grok (xAI) — 2026-09-20. A data directory + process supervisor so Brain B stays up. **Not Docker, not a CME feed.** The engine binds `127.0.0.1` (DNS-rebinding). Health is `GET /healthz` on loopback.
 
+**Windows (do this):** clone the repo, double-click [`start-plant.bat`](start-plant.bat). Full dummy list: [SETUP.md](SETUP.md).
+
 ```
+icarus-plant setup --open                 # numbered steps + open history/drop/
 icarus-plant init                         # history/drop, run/, logs/ under $ICARUS_HOME or cwd
-# drop Supercharts CSVs into history/drop/
+# drop Supercharts CSVs into history/drop/  (each dump MERGES into history/NQ_1m.csv)
 icarus-plant start --assets NQ --offline  # FileFeed only; Yahoo is not contacted
 icarus-plant status
 icarus-plant stop

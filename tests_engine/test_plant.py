@@ -174,3 +174,49 @@ def test_portfolio_file_mode_uses_historyhub(tmp_path, monkeypatch):
     assert r.cfg.base_dir == str(tmp_path)
     assert r.feed is port.feeds["yahoo"]
     assert r.roller is None
+
+
+def test_ingest_drop_merges_and_unique_done(tmp_path):
+    paths = ensure(str(tmp_path))
+    src = os.path.join(paths["history/drop"], "NQ.csv")
+    with open(src, "w", encoding="utf-8") as fh:
+        fh.write(_CSV)
+    ingest_drop(str(tmp_path))
+    dest = os.path.join(tmp_path, "history", "NQ_1m.csv")
+    assert len(parse_ohlcv_csv(open(dest, encoding="utf-8").read())) == 2
+    src2 = os.path.join(paths["history/drop"], "NQ.csv")
+    extra = (
+        "time,open,high,low,close,Volume\n"
+        "2026-09-14T13:32:00Z,24701,24703,24700,24702,6\n"
+    )
+    with open(src2, "w", encoding="utf-8") as fh:
+        fh.write(extra)
+    recs = ingest_drop(str(tmp_path))
+    assert recs[0]["bars"] == 3 and recs[0]["added"] == 1
+    done = paths["history/drop/done"]
+    names = sorted(os.listdir(done))
+    assert "NQ.csv" in names and any(n.startswith("NQ.") for n in names)
+
+
+def test_plant_cli_setup_writes_next_txt(tmp_path, capsys):
+    rc = plant_main(["--root", str(tmp_path), "setup"])
+    assert rc == 0
+    nxt = tmp_path / "NEXT.txt"
+    assert nxt.is_file()
+    text = nxt.read_text(encoding="utf-8")
+    assert "Download chart data" in text and "history" in text
+    out = capsys.readouterr().out
+    assert "Essential" in out
+
+
+def test_start_plant_scripts_are_dummy_proof():
+    from pathlib import Path
+    root = Path(__file__).parents[1]
+    ps1 = (root / "start-plant.ps1").read_text(encoding="utf-8")
+    bat = (root / "start-plant.bat").read_text(encoding="utf-8")
+    sh = (root / "start-plant.sh").read_text(encoding="utf-8")
+    setup = (root / "SETUP.md").read_text(encoding="utf-8")
+    assert "Grok (xAI)" in ps1 and "Grok (xAI)" in bat and "Grok (xAI)" in sh
+    assert "icarus_plant" in ps1 and "--offline" in ps1
+    assert "start-plant.ps1" in bat
+    assert "Essential" in setup and "start-plant.bat" in setup
