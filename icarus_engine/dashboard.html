@@ -270,7 +270,7 @@ function tabsHtml(A) {
   const t = [`<span class="tab ${view==='overview'?'active':''}" data-v="overview">Overview</span>`];
   A.forEach(a => { const pos = a.position||0; t.push(`<span class="tab ${view==='asset:'+a.symbol?'active':''}" data-v="asset:${a.symbol}"><span class="dot ${pos>0?'long':pos<0?'short':(a.market&&a.market.open===false?'closed':'')}"></span><b class="s">${a.symbol}</b> <span class="muted small tnum">${px(a.price)}</span></span>`); });
   t.push(`<span class="tab" data-v="add" title="Add an asset">＋</span>`);
-  t.push(`<span class="tab util ${view==='golive'?'active':''}" data-v="golive">Go-live</span><span class="tab util ${view==='inputs'?'active':''}" data-v="inputs">Inputs</span><span class="tab util ${view==='backtest'?'active':''}" data-v="backtest">Backtest</span>${typeof researchHtml==='function'?`<span class="tab util ${view==='research'?'active':''}" data-v="research">Research</span>`:''}${typeof sourcesHtml==='function'?`<span class="tab util ${view==='sources'?'active':''}" data-v="sources">Financial &amp; data</span>`:''}<span class="tab util ${view==='commands'?'active':''}" data-v="commands">Commands</span><span class="tab util ${view==='log'?'active':''}" data-v="log">Log</span>`);
+  t.push(`<span class="tab util ${view==='golive'?'active':''}" data-v="golive">Go-live</span><span class="tab util ${view==='agent'?'active':''}" data-v="agent">Agent</span><span class="tab util ${view==='inputs'?'active':''}" data-v="inputs">Inputs</span><span class="tab util ${view==='backtest'?'active':''}" data-v="backtest">Backtest</span>${typeof researchHtml==='function'?`<span class="tab util ${view==='research'?'active':''}" data-v="research">Research</span>`:''}${typeof sourcesHtml==='function'?`<span class="tab util ${view==='sources'?'active':''}" data-v="sources">Financial &amp; data</span>`:''}<span class="tab util ${view==='commands'?'active':''}" data-v="commands">Commands</span><span class="tab util ${view==='log'?'active':''}" data-v="log">Log</span>`);
   return t.join('');
 }
 function goliveCard(g) {
@@ -291,6 +291,29 @@ function goliveCard(g) {
     <div style="margin-top:10px">${gates}</div>
     <ul class="small muted" style="margin:10px 0 0 18px">${(g.live_would_mean||[]).map(s=>`<li>${esc(s)}</li>`).join('')}</ul>
     <div class="small muted" style="margin-top:8px">Export paper book: <code>${esc(g.export||'')}</code></div>
+  </section>`;
+}
+function agentCard(a) {
+  if (!a) return `<section class="card c12" id="agentCard"><h2>Field Agent</h2><div class="empty">loading…</div></section>`;
+  const recipes = (a.recipes||[]).map(r => `<button class="sm" type="button" data-agent-recipe="${esc(r.id)}" title="${esc(r.summary||'')}">${esc(r.title)} <span class="muted">${esc(r.risk||'')}</span></button>`).join(' ');
+  return `<section class="card c12" id="agentCard">
+    <h2>Field Agent <span class="sub">Grok · copy only · never arms a broker</span></h2>
+    <div class="hero" style="margin-bottom:8px"><div class="n" style="font-size:22px">PAPER_ONLY</div><div class="pct">${esc(a.note||'')}</div></div>
+    <div class="tiles">
+      <div class="tile"><div class="k">Broker armed</div><div class="v">${a.broker_armed?'YES':'NO'}</div></div>
+      <div class="tile"><div class="k">Executed</div><div class="v">${a.executed?'YES':'NO'}</div></div>
+    </div>
+    <h3 class="small" style="margin:14px 0 8px">Desk recipes <span class="muted">copied, not run</span></h3>
+    <div style="display:flex;flex-wrap:wrap;gap:8px">${recipes}</div>
+    <h3 class="small" style="margin:14px 0 8px">Paste-pack</h3>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+      <select id="agentSeat">${(a.seats||[]).map(s=>`<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('')}</select>
+      <input type="text" id="agentQ" placeholder="Question for Claude / ChatGPT / Grok" style="width:min(420px,100%)">
+      <button class="sm primary" type="button" id="agentPack">Copy pack</button>
+    </div>
+    <h3 class="small" style="margin:14px 0 8px">Desk sidecar</h3>
+    <pre class="small" id="agentSidecar" style="white-space:pre-wrap;background:var(--surface-2);padding:10px;border-radius:8px;max-height:180px;overflow:auto">${esc(a.sidecar||'')}</pre>
+    <button class="sm" type="button" id="agentSidecarCopy">Copy sidecar</button>
   </section>`;
 }
 function overviewHtml(d, A) {
@@ -409,6 +432,24 @@ document.addEventListener('click', async ev => {
   if (b.id === 'inReset') { if (confirm(`Remove all per-asset overrides for ${inState.asset}?`)) { await admin('/admin/inputs/reset', {asset: inState.asset}); setTimeout(()=>loadInputsTab(), 1500); } }
   if (b.id === 'inApplyPreset') { await admin('/admin/preset', {asset: inState.asset, preset: $('#inPreset').value || null}); setTimeout(()=>loadInputsTab(), 1500); }
   if (b.id === 'addBtn') { const s = $('#addSym').value.trim(); if (!s) return; await admin('/admin/assets/add', {symbol: s, tf: $('#addTf').value.trim() || undefined, preset: $('#addPreset').value || undefined}); }
+  if (b.dataset.agentRecipe) {
+    const r = (window.ICARUS_AGENT && window.ICARUS_AGENT.recipes || []).find(x => x.id === b.dataset.agentRecipe);
+    if (r) { navigator.clipboard.writeText((r.lines||[]).join('\n')); toast('copied recipe — not executed'); }
+    return;
+  }
+  if (b.id === 'agentPack') {
+    const seat = $('#agentSeat')?.value || 'grok';
+    const q = ($('#agentQ')?.value || '').trim() || '(no question)';
+    const pre = ((window.ICARUS_AGENT && window.ICARUS_AGENT.prefixes) || {})[seat] || '';
+    navigator.clipboard.writeText(pre + q);
+    toast('paste-pack copied');
+    return;
+  }
+  if (b.id === 'agentSidecarCopy') {
+    navigator.clipboard.writeText((window.ICARUS_AGENT && window.ICARUS_AGENT.sidecar) || '');
+    toast('sidecar copied');
+    return;
+  }
 });
 async function runCommand(id, asset) {
   const A = asset && asset !== '*' ? asset : null;
@@ -426,6 +467,7 @@ async function runCommand(id, asset) {
     case 'open-tab': if (A) window.open(`/?asset=${A}`, '_blank'); return;
     case 'theme': $('#btnTheme').click(); return;
     case 'golive': setView('golive'); return;
+    case 'agent': setView('agent'); return;
   }
 }
 /* palette */
@@ -434,14 +476,14 @@ function palItems(q) {
   const A = (last&&last.assets)||[]; const items = [];
   COMMANDS.forEach(c => { if (c.scope === 'all') items.push({label:c.label, sub:'all assets', id:c.id, a:'*'}); else { if (c.scope.includes('all')) items.push({label:c.label, sub:'all assets', id:c.id, a:'*'}); A.forEach(a => items.push({label:`${c.label} ${a.symbol}`, sub:a.name, id:c.id, a:a.symbol})); } });
   A.forEach(a => items.push({label:`Go to ${a.symbol}`, sub:'asset tab', id:'goto', a:a.symbol}));
-  items.push({label:'Overview', sub:'tab', id:'goto', a:'overview'}, {label:'Inputs tab', sub:'tab', id:'goto', a:'inputs'}, {label:'Commands tab', sub:'tab', id:'goto', a:'commands'}, {label:'Log tab', sub:'tab', id:'goto', a:'log'});
+  items.push({label:'Overview', sub:'tab', id:'goto', a:'overview'}, {label:'Go-live tab', sub:'tab', id:'goto', a:'golive'}, {label:'Agent tab', sub:'tab', id:'goto', a:'agent'}, {label:'Inputs tab', sub:'tab', id:'goto', a:'inputs'}, {label:'Commands tab', sub:'tab', id:'goto', a:'commands'}, {label:'Log tab', sub:'tab', id:'goto', a:'log'});
   const words = q.toLowerCase().split(/\s+/).filter(Boolean);
   return items.filter(it => words.every(w => (it.label+' '+it.sub).toLowerCase().includes(w))).slice(0, 14);
 }
 function renderPal() { const items = palItems($('#palq').value); palSel = Math.min(palSel, Math.max(0, items.length-1)); $('#palList').innerHTML = items.map((it,i)=>`<div class="item ${i===palSel?'sel':''}" data-i="${i}"><b>${esc(it.label)}</b><span class="muted small">${esc(it.sub)}</span><span class="k">${i===palSel?'↵':''}</span></div>`).join('') || '<div class="item muted">no match</div>'; $('#palList')._items = items; }
 function openPal() { $('#pal').classList.add('open'); $('#palq').value=''; palSel=0; renderPal(); setTimeout(()=>$('#palq').focus(), 30); }
 function closePal() { $('#pal').classList.remove('open'); }
-async function palRun(it) { closePal(); if (!it) return; if (it.id === 'goto') { setView(['overview','inputs','commands','log'].includes(it.a) ? it.a : 'asset:'+it.a); return; } await runCommand(it.id, it.a); }
+async function palRun(it) { closePal(); if (!it) return; if (it.id === 'goto') { setView(['overview','inputs','commands','log','golive','agent'].includes(it.a) ? it.a : 'asset:'+it.a); return; } await runCommand(it.id, it.a); }
 $('#btnPal').onclick = openPal; $('#palq').addEventListener('input', () => { palSel=0; renderPal(); });
 $('#palq').addEventListener('keydown', ev => { const items = $('#palList')._items||[]; if (ev.key==='ArrowDown') { palSel=Math.min(items.length-1, palSel+1); renderPal(); ev.preventDefault(); } else if (ev.key==='ArrowUp') { palSel=Math.max(0, palSel-1); renderPal(); ev.preventDefault(); } else if (ev.key==='Enter') { palRun(items[palSel]); } else if (ev.key==='Escape') closePal(); });
 $('#palList').addEventListener('click', ev => { const it = ev.target.closest('.item'); if (it && it.dataset.i!=null) palRun(($('#palList')._items||[])[+it.dataset.i]); });
@@ -609,6 +651,7 @@ function render(d) {
   else if (view === 'research') { if(typeof researchHtml!=='function') $('#view').innerHTML='<section class="card c12">Research requires the updated engine server. The running engine has not been restarted.</section>'; else if (rebuild) { $('#view').innerHTML = researchHtml(A); wireResearch(); } else loadResearch(); }
   else if (view === 'sources') { if(typeof sourcesHtml!=='function') $('#view').innerHTML='<section class="card c12">Financial data requires the updated engine server. The running engine has not been restarted.</section>'; else if (rebuild) { $('#view').innerHTML = sourcesHtml(A); wireSources(); } else loadSources(); }
   else if (view === 'golive') { if (rebuild) $('#view').innerHTML = goliveCard(window.ICARUS_GOLIVE); else { const nu = document.createElement('div'); nu.innerHTML = goliveCard(window.ICARUS_GOLIVE); const cur = $('#goliveCard'); if (nu.firstElementChild && cur) cur.replaceWith(nu.firstElementChild); } }
+  else if (view === 'agent') { if (rebuild) $('#view').innerHTML = agentCard(window.ICARUS_AGENT); }
   else if (view === 'log') { if (rebuild) $('#view').innerHTML = `<section class="card c12"><h2>Engine log</h2><div class="log" id="log2" style="max-height:80vh"></div></section>`; $('#log2').innerHTML = (d.log||[]).slice().reverse().map(l => `<div class="${l.level}">${tms(l.ts)} ${l.level.padEnd(5)} ${esc(l.msg)}</div>`).join(''); }
   lastView = view; first = false;
   window.IcarusExperience?.update(d, view);
@@ -633,10 +676,21 @@ async function refreshGolive() {
     }
   } catch (e) {}
 }
+async function refreshAgent() {
+  try {
+    window.ICARUS_AGENT = await (await fetch('/api/agent', {cache:'no-store'})).json();
+    const cur = $('#agentCard');
+    if (cur && view === 'agent') {
+      const n = document.createElement('div');
+      n.innerHTML = agentCard(window.ICARUS_AGENT);
+      if (n.firstElementChild) cur.replaceWith(n.firstElementChild);
+    }
+  } catch (e) {}
+}
 async function refreshCharts() { if (!last) return; if (view === 'overview') { for (const a of (last.assets||[])) await loadChart(a.symbol, 80, $(`#ch-${a.symbol}`), {height:170}); refreshFills(); } if (view.startsWith('asset:')) await loadChart(view.slice(6), 300, $('#dChart'), {height:360, compact:false}); }
 async function refreshTrades(only) { if (!last) return; for (const a of (last.assets||[])) { if (only && a.symbol !== only) continue; try { const r = await fetch(`/api/trades/${a.symbol}?limit=80`); tradesCache[a.symbol] = await r.json(); } catch(e) {} } }
 (async () => { [PRESETS, COMMANDS, REGISTRY] = await Promise.all([fetch('/api/presets').then(r=>r.json()).catch(()=>[]), fetch('/api/commands').then(r=>r.json()).catch(()=>[]), fetch('/api/assets').then(r=>r.json()).then(j=>j.registry).catch(()=>[])]);
-  await refresh(); await refreshGolive(); await refreshCharts(); await refreshTrades(); if (last) render(last); })();
+  await refresh(); await refreshGolive(); await refreshAgent(); await refreshCharts(); await refreshTrades(); if (last) render(last); })();
 setInterval(refresh, 3000); setInterval(refreshGolive, 8000); setInterval(refreshCharts, 8000); setInterval(()=>refreshTrades(), 20000);
 window.addEventListener('resize', () => { if (last) { lastView = null; render(last); } });
 setInterval(() => { const el = $('#clock'); if (el) el.textContent = `${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'})} ${TZ} · ${etClock()} ET`; }, 1000);
