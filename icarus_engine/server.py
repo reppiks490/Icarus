@@ -40,6 +40,7 @@ from .backtest import JOBS, start_job
 from .parity import compare_lists, engine_trades_from_rows, read_tv_trades_text
 from .golive import report as golive_report
 from .agent import report as agent_report
+from .briefing import report as briefing_report
 from .runtime import Portfolio, _read_json, preset_path
 from .strategy.meta import load_meta
 from .advisory import MAX_BODY_BYTES, strict_json
@@ -142,6 +143,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._json(200, golive_report(port))
             if p.path == "/api/agent":
                 return self._json(200, agent_report())
+            if p.path == "/api/briefing":
+                return self._json(200, briefing_report())
             if p.path == "/api/input-meta":
                 return self._json(200, meta)
             if p.path.startswith("/api/research"):

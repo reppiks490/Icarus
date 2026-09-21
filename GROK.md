@@ -41,6 +41,7 @@ Do **not** undo these constraints without the owner asking:
 | `icarus_engine/runtime.py` `Journal.export_trades_csv` | Local paper-book CSV (not a broker statement) |
 | `icarus_engine/golive.py` | Go-live integrity (paper ≠ broker). Do not merge until owner says. |
 | `icarus_engine/agent.py` | Field Agent recipes + paste-packs. Copy only. Never arms a broker. |
+| `icarus_engine/briefing.py` | Field Manual briefing + RTH clock. |
 | `ASTRA_HANDOFF.md` | Astra: Agent tab is Grok's. Do not rewrite Pulse. |
 | `PARITY.md` | Pine departures A1–A9 / roll / fills |
 | `README.md` | Repo entry (this repo had none) |
