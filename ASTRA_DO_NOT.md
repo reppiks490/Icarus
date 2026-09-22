@@ -1,33 +1,33 @@
 # Astra / Opus — do not — Grok (xAI) 2026-09-22
 
-Read with ASTRA_HANDOFF.md and GROK.md. Owner did not authorize the list under Never.
+First: `ASTRA_ORDER.md` + `MODELS_GROK.md`. Owner did not authorize Never.
 
 ## Never
-- Rewrite `icarus_engine/strategy/pulse.py` or `emulator.py` to hook trainers or candidates.
+- Rewrite `icarus_engine/strategy/pulse.py` or `emulator.py` to hook trainers, XGB, or candidates.
 - Scrape TradingView. Ingest only files the owner exported.
 - Invent ticks, queue, or spread.
 - Treat QQQ as NQ. Treat AAPL/MSFT as NQ fills. Treat Coinbase spot as CME BTCF P&L.
-- Drop `BATS_*`, `LSE_DLY_MAG7`, `BCBA_DLY_TSMC` into `history/drop/` or `ingest-bars` as NQ/ES/YM.
-- Concatenate Renko, range, or tick rows into `history/{SYM}_1m.csv` or into `clock_minutes` training.
+- Drop `BATS_*`, `LSE_DLY_MAG7`, `BCBA_DLY_TSMC` into `history/drop/` as NQ/ES/YM.
+- Concatenate Renko, range, or tick rows into `history/{SYM}_1m.csv` or `clock_minutes` training.
 - Merge `60` with `61`. Treat `1M` as 1-minute. Treat `30S` as tick.
 - Average holdout_acc across families and call it a model.
-- Set `execution_authorized` true. Trainers never arm a broker.
+- Set `execution_authorized` true.
 - Bind 0.0.0.0. Add XAI_API_KEY to the plant. Docker as the primary deploy.
-- **Trade, start, train, or alias `MBT`, `SOL`, or `ETH`/`ETHUSD`.** They do not appear in the engine. See `icarus_engine/ignore_trade.py`.
+- Trade, start, train, or alias `MBT`, `SOL`, or `ETH`/`ETHUSD`.
+- Run Astra candidate **swap** before `run/trainers/{SYM}_{family}_xgb.json` exists.
 - Label SI/PL/PA from GC Pulse. Label stocks from NQ Pulse.
-- Use Tide Long/Short as labels. They are features. Labels are emulator/Pulse on the execution symbol.
-- Use empty MP POC/VAH/VAL as profile charts. Those columns are often NaN.
-- Replace HistoryHub with candidate CSVs. Two brains: execution tape vs sensors.
+- Use Tide as labels. Use empty MP columns as profile charts.
+- Replace HistoryHub with candidate CSVs.
 
 ## May
-- Replace the logit in `icarus_engine/trainers/logit.py`. Keep the family split and next-bar-on-this-index labels.
-- Extend `tests_engine/test_trainers.py`.
-- Wire `icarus-engine train` later. Until then: `python -m icarus_engine.trainers`.
-- Run Opus candidate audit off the six zips in `multi-level-csv` without plant ingest.
-- Export TPO/footprint later as new families. Do not fake them. Do not export MBT/SOL/ETHUSD to "fill a hole."
+- `pip install -e ".[ml]"` and implement XGBoost per `MODELS_GROK.md`.
+- Keep the logit as baseline.
+- Opus may inspect the six zips. That is not a swap.
+- Astra audit with `--require-xgb` after artifacts exist.
+- Export TPO/footprint later. Do not export MBT/SOL/ETHUSD.
 
-## Train command
 ```
-python -m icarus_engine.trainers --path FILE --chart-type minutes|hours|seconds|daily|weekly|renko|range|tick --asset NQ --out run/trainers/NQ_clock.json
+pip install -e ".[ml]"
+python -m icarus_engine.trainers --path FILE --chart-type minutes --asset NQ --out run/trainers/NQ_clock_minutes.json
+python -m icarus_engine.audit --exec history/NQ_1m.csv --cand FILE --future NQ --asset AAPL --require-xgb
 ```
-`execution_authorized` in the JSON is always false.
