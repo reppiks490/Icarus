@@ -1,6 +1,6 @@
-# Grok (xAI) — 2026-09-22. Read-only unless owner sets SCHWAB_ALLOW_ORDERS=1 (default off).
+# Grok (xAI) — 2026-09-22. Schwab Market Data only. Order writes not implemented.
 from __future__ import annotations
-import base64, json, os, time, urllib.parse, urllib.request
+import base64, json, os, time, urllib.error, urllib.parse, urllib.request
 from pathlib import Path
 from icarus_engine.ignore_trade import ignored_symbol
 from icarus_engine.spec import TRADED
@@ -23,7 +23,7 @@ def env(name: str, default: str = "") -> str:
     return (os.environ.get(name) or default).strip()
 
 def orders_unlocked() -> bool:
-    return env("SCHWAB_ALLOW_ORDERS") in {"1", "true", "YES"} and env("ICARUS_EXECUTION_AUTHORIZED") in {"1", "true", "YES"}
+    return False  # data feed only; executing broker is not Schwab
 
 def authorize_url() -> str:
     key = env("SCHWAB_APP_KEY")
@@ -73,13 +73,10 @@ def refresh(root=None) -> dict:
 def request(method: str, url: str, root=None):
     method = method.upper()
     low = url.lower()
-    writing = method != "GET" or any(x in low for x in ORDER_WRITE) and method in {"POST", "PUT", "DELETE", "PATCH"}
-    if method in {"POST", "PUT", "DELETE", "PATCH"} and any(x in low for x in ORDER_WRITE):
-        if not orders_unlocked():
-            raise PermissionError("order writes locked. Need owner SCHWAB_ALLOW_ORDERS=1 and ICARUS_EXECUTION_AUTHORIZED=1")
-        raise PermissionError("order writes not implemented in this plant on purpose")
-    if method != "GET":
-        raise PermissionError(f"Schwab plant GET-only ({method})")
+    if method != "GET" or any(x in low for x in ORDER_WRITE) and method != "GET":
+        raise PermissionError("Schwab plant is Market Data GET only. Not the executing broker.")
+    if method in {"POST", "PUT", "DELETE", "PATCH"}:
+        raise PermissionError("Schwab plant GET-only")
     tok = refresh(root)
     req = urllib.request.Request(url, method="GET")
     req.add_header("Authorization", f"Bearer {tok['access_token']}")
@@ -90,11 +87,21 @@ def default_symbols() -> list:
     raw = env("SCHWAB_SYMBOLS")
     if raw:
         return [s.strip() for s in raw.split(",") if s.strip()]
-    return [f"/{s}" for s in TRADED if s not in ("BTC",)]
+    return [f"/{s}" for s in ("NQ", "ES", "YM", "GC", "SI", "PL", "PA")]
 
 def quotes(symbols=None, root=None) -> dict:
-    syms = [s for s in (symbols or default_symbols()) if not ignored_symbol(s.replace("/", ""))]
-    if not syms:
+    wanted = [s for s in (symbols or default_symbols()) if not ignored_symbol(s.replace("/", ""))]
+    if not wanted:
         raise ValueError("no symbols")
-    q = urllib.parse.urlencode({"symbols": ",".join(syms), "fields": "quote,reference", "indicative": "false"})
-    return request("GET", f"{QUOTES}?{q}", root=root)
+    out = {}
+    errors = {}
+    for s in wanted:
+        q = urllib.parse.urlencode({"symbols": s, "fields": "quote,reference", "indicative": "false"})
+        try:
+            blob = request("GET", f"{QUOTES}?{q}", root=root)
+            if isinstance(blob, dict):
+                out.update(blob)
+        except (urllib.error.HTTPError, urllib.error.URLError, FileNotFoundError, ValueError) as exc:
+            errors[s] = str(exc)
+    out["_errors"] = errors
+    return out
