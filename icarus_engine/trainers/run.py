@@ -2,6 +2,7 @@
 from __future__ import annotations
 import hashlib, json
 from pathlib import Path
+from icarus_engine.ignore_trade import ignored_symbol
 from .dataset import attach_labels, load_ohlc, walk_slices
 from .families import FAMILIES, family_for
 from .logit import accuracy, fit
@@ -14,6 +15,9 @@ def file_hash(path: Path) -> str:
     return h.hexdigest()
 
 def train_file(path, chart_type: str, schema: str = "ohlc", asset: str = ""):
+    if asset and ignored_symbol(asset):
+        return {"status": "ignored", "reason": "MBT/SOL/ETHUSD are not traded",
+                "asset": asset, "execution_authorized": False}
     path = Path(path)
     fam_name = family_for(chart_type, schema)
     fam = FAMILIES[fam_name]
