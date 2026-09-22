@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib, json
 from pathlib import Path
 from icarus_engine.ignore_trade import ignored_symbol
+from icarus_engine.model_log import log_action
 from .dataset import attach_labels, load_ohlc, walk_slices
 from .families import FAMILIES, family_for
 from .logit import accuracy, fit
@@ -40,6 +41,7 @@ def train_file(path, chart_type: str, schema: str = "ohlc", asset: str = ""):
         "valid_acc": accuracy(w, labeled[valid[0]:valid[1]]),
         "holdout_acc": accuracy(w, labeled[hold[0]:hold[1]]),
         "execution_authorized": False, "accuracy_guaranteed": False, "notes": fam.notes,
+        "slot": "logit",
         "limitations": ["Holdout accuracy is descriptive, not a profitability certificate.",
                         "This family must not be concatenated with another family's rows.",
                         "Labels are next-bar on THIS index only."],
@@ -49,4 +51,6 @@ def write_report(report, dest: Path):
     dest = Path(dest)
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(json.dumps(report, indent=2, allow_nan=False))
+    log_action("trainer", f"wrote {dest}", json.dumps({k: report.get(k) for k in
+                ("status", "asset", "family", "holdout_acc", "slot")}, default=str))
     return dest
