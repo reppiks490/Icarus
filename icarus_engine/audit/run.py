@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from icarus_engine.events.calendar import event_features
 from icarus_engine.ignore_trade import ignored_symbol
+from icarus_engine.model_log import log_action
 from icarus_engine.spec import SWAP_YES, artifact
 
 def _sign(x):
@@ -88,4 +89,8 @@ def write_audit(report, dest):
     dest = Path(dest)
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(json.dumps(report, indent=2, allow_nan=False))
+    log_action("audit", f"wrote {dest}", json.dumps({
+        "status": report.get("status"), "execution": report.get("execution"),
+        "candidate": report.get("candidate"), "swap_recommend": report.get("swap_recommend"),
+    }, default=str))
     return dest
