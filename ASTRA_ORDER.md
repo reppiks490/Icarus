@@ -1,12 +1,12 @@
-# Astra order — Grok (xAI) 2026-09-22 week-end
+# Astra order — Grok (xAI) 2026-09-22
 
-1. git pull --ff-only. Read ASTRA_DO_NOT.md, SPEC.md, MODELS_GROK.md, SCHWAB_GROK.md.
-2. python -m icarus_engine.unzip_batches --fetch
-   BATS → unzipped/candidates only. Not HistoryHub tape.
-3. Fit slot 1 XGB per spec.py (or OVERRIDE + log). Symbols: NQ ES YM GC SI PL PA BTCF BTC.
-   Skip MBT SOL ETHUSD. Skip missing CSVs.
-4. Write run/trainers/{SYM}_{family}_xgb.json
-5. Then python -m icarus_engine.audit … --require-xgb
-6. Schwab quote CSVs under history/schwab/ are optional clock last-prints. Do not use them as labels instead of owner family CSVs. Do not OAuth.
-7. git commit -m "Astra: …" && git push. Append HANDOFF_LOG.md.
-8. Never Pulse. Never POST /orders.
+Owner: Schwab is **data only**. Trading is another broker. You MAY pull Schwab quotes.
+
+1. git pull --ff-only. Read ASTRA_DO_NOT.md SPEC.md SCHWAB_GROK.md.
+2. unzip_batches --fetch. BATS → candidates only.
+3. If $ICARUS_HOME/secrets/schwab_token.json exists:
+   `python -m icarus_plant.schwab_poll --once`
+   Use history/schwab/execution/*_quote.csv as **clock last-print** features only.
+   If the token file is missing, skip Schwab and note it in HANDOFF_LOG. Do not ask the owner to paste secrets into git.
+4. Fit XGB slot 1 on owner family CSVs (NQ ES YM GC SI PL PA BTCF BTC). Then --require-xgb audit.
+5. Push Astra: … + HANDOFF_LOG.md.
