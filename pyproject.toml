@@ -1,4 +1,5 @@
 # Grok (xAI) — 2026-09-20. Whole file. Package metadata + pytest paths + console scripts.
+# 2026-09-22: icarus-train — does not replace icarus-engine CLI.
 [build-system]
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
@@ -22,6 +23,7 @@ dev = ["pytest"]
 icarus-engine = "icarus_engine.cli:main"
 icarus-bridge = "icarus_bridge.cli:main"
 icarus-plant = "icarus_plant.cli:main"
+icarus-train = "icarus_engine.trainers.__main__:main"
 
 [tool.setuptools.packages.find]
 include = ["icarus_engine*", "icarus_bridge*", "icarus_plant*", "icarus_agent*"]
