@@ -52,7 +52,18 @@ def _sign(x):
         return 0
     return 1 if x > 0 else -1
 
+_EVENTS = None
+
+def _events():
+    global _EVENTS
+    if _EVENTS is None:
+        from icarus_engine.events.calendar import seed_events
+        _EVENTS = seed_events()
+    return _EVENTS
+
 def attach_labels(bars, family: str):
+    from icarus_engine.events.calendar import event_features
+    evs = _events()
     labeled = []
     for i, b in enumerate(bars[:-1]):
         y = _sign(bars[i + 1]["close"] - b["close"])
@@ -73,13 +84,17 @@ def attach_labels(bars, family: str):
                 run += d
             else:
                 break
+        ev = event_features(b["ts"], evs)
         labeled.append({"ts": b["ts"], "y": y, "family": family, "x": {
             "ret_1": (b["close"] - bars[i - 1]["close"]) if i else 0.0,
             "ret_3": (b["close"] - bars[max(0, i - 3)]["close"]),
             "body": b["close"] - o, "range": rng if rng else 0.0,
             "close_loc": ((b["close"] - lo) / rng) if rng else 0.5,
             "tide": (b.get("tide_long") or 0) - (b.get("tide_short") or 0),
-            "run": float(run)}})
+            "run": float(run),
+            "fomc": float(ev["fomc"]),
+            "any_macro": float(ev["any_macro"]),
+        }})
     return labeled
 
 def walk_slices(n: int, train_frac=0.6, valid_frac=0.2):
