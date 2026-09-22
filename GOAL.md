@@ -1,10 +1,16 @@
 # Icarus goal (durable) — Grok (xAI) 2026-09-22
 
 This file **is** the goal. Delete the live Ultraglobal.
-Start here + `ASTRA_DO_NOT.md` + `EVENTS_GROK.md`.
+Astra first read: **`ASTRA_ORDER.md`** — build ML before any candidate run.
+Also: `ASTRA_DO_NOT.md`, `EVENTS_GROK.md`.
 
 ## One sentence
-Hybrid AI×ML brains swap candidates per asset per timeframe on owner CSV + dated events. Losers go to a separate brain. Execution stays REGISTRY. Candidates never become the tape.
+Hybrid AI×ML brains swap candidates per asset per timeframe on owner CSV + dated events. Losers go to a separate brain. Execution stays REGISTRY (minus MBT/SOL/ETHUSD). Candidates never become the tape.
+
+## Astra sequence
+1. Replace the trainer stub and fit families for NQ ES YM GC SI PL PA BTCF BTC.
+2. Write `run/trainers/{SYM}_{family}.json`.
+3. **Then** candidate audit / swap. Not before.
 
 ## Brains
 
@@ -12,17 +18,11 @@ Hybrid AI×ML brains swap candidates per asset per timeframe on owner CSV + date
 |---|---|
 | A Pulse display | Astra — do not rewrite |
 | B HistoryHub execution | plant |
-| C candidate audit | `python -m icarus_engine.audit --exec history/NQ_1m.csv --cand FILE --future NQ --asset AAPL --out run/audit/AAPL_vs_NQ.json` |
-| D trainers | `icarus-train` + FOMC/any_macro flags |
-| E failure | `icarus_engine.failure.losers_from_journal` |
+| C candidate audit | only after step 1–2 |
+| D trainers | `icarus-train` + FOMC flags — **Astra builds this first** |
+| E failure | after live/paper losers exist |
 | F macro | FOMC seed + `history/events/*.csv` |
-| G flow | socket only — no licensed tape |
-
-## Finished software (do not redo)
-Catalog split, universes, trainer families, BATS quarantine, event socket, candidate `score_pair`, loser dump, FOMC flags on logit, tests.
-
-## Not Grok's to fake
-MBT/SOL/Coinbase ETHUSD/TPO exports, live news wire, bookmap, broker fills. Astra may replace the logit.
+| G flow | socket only |
 
 ## Credit paste
-Follow Icarus/GOAL.md. Obey ASTRA_DO_NOT.md. Do not rebuild Pulse.
+Follow Icarus/GOAL.md and ASTRA_ORDER.md. Obey ASTRA_DO_NOT.md. Do not rebuild Pulse.
