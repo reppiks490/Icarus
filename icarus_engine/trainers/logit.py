@@ -1,7 +1,9 @@
-# Grok (xAI) — 2026-09-22. Whole file.
+# Grok (xAI) — 2026-09-22. Whole file. Slot 0 baseline. Features from spec.FEATURE_KEYS.
 from __future__ import annotations
 import math
-KEYS = ("ret_1", "ret_3", "body", "range", "close_loc", "tide", "run", "fomc", "any_macro")
+from icarus_engine.spec import FEATURE_KEYS
+
+KEYS = FEATURE_KEYS
 
 def _raw(row):
     x = row["x"]
@@ -22,8 +24,7 @@ def _stats(rows):
             d = v[j] - mu[j]
             var[j] += d * d
     sd = [math.sqrt(v / n) if v > 0 else 1.0 for v in var]
-    sd = [s if s > 1e-12 else 1.0 for s in sd]
-    return mu, sd
+    return [s if s > 1e-12 else 1.0 for s in sd], mu
 
 def _vec(row, mu, sd):
     v = _raw(row)
@@ -40,7 +41,7 @@ def _sig(z):
 def fit(rows, steps=120, lr=0.08, l2=0.02):
     if len(rows) < 20:
         raise ValueError("fit needs >=20 labeled rows")
-    mu, sd = _stats(rows)
+    sd, mu = _stats(rows)
     dim = 1 + len(KEYS)
     w = [0.0] * dim
     for _ in range(steps):
@@ -55,7 +56,7 @@ def fit(rows, steps=120, lr=0.08, l2=0.02):
         n = len(rows)
         for j in range(dim):
             w[j] -= lr * (grad[j] / n + l2 * w[j])
-    return {"w": w, "mu": mu, "sd": sd}
+    return {"w": w, "mu": mu, "sd": sd, "features": list(KEYS), "slot": "logit"}
 
 def predict_sign(model, row):
     x = _vec(row, model["mu"], model["sd"])

@@ -2,6 +2,7 @@
 from __future__ import annotations
 import csv, math
 from pathlib import Path
+from icarus_engine.spec import FEATURE_KEYS, WALK
 
 def _num(v):
     if v is None or v == "":
@@ -86,19 +87,26 @@ def attach_labels(bars, family: str):
             else:
                 break
         ev = event_features(b["ts"], evs)
-        labeled.append({"ts": b["ts"], "y": y, "family": family, "x": {
+        feats = {
             "ret_1": (b["close"] - bars[i - 1]["close"]) if i else 0.0,
             "ret_3": (b["close"] - bars[max(0, i - 3)]["close"]),
-            "body": b["close"] - o, "range": rng if rng else 0.0,
+            "body": b["close"] - o,
+            "range": rng if rng else 0.0,
             "close_loc": ((b["close"] - lo) / rng) if rng else 0.5,
             "tide": (b.get("tide_long") or 0) - (b.get("tide_short") or 0),
             "run": float(run),
             "fomc": float(ev["fomc"]),
             "any_macro": float(ev["any_macro"]),
-        }})
+        }
+        labeled.append({"ts": b["ts"], "y": y, "family": family,
+                        "x": {k: feats[k] for k in FEATURE_KEYS}})
     return labeled
 
-def walk_slices(n: int, train_frac=0.6, valid_frac=0.2):
+def walk_slices(n: int, train_frac=None, valid_frac=None):
+    train_frac = WALK["train"] if train_frac is None else train_frac
+    valid_frac = WALK["valid"] if valid_frac is None else valid_frac
+    if WALK["shuffle"]:
+        raise ValueError("spec forbids shuffle")
     if n < 40:
         raise ValueError("not enough labeled rows for a walk-forward")
     a = int(n * train_frac); b = int(n * (train_frac + valid_frac))
