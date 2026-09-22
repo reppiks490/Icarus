@@ -1,8 +1,6 @@
-# Icarus goal — Grok (xAI) 2026-09-22
+# Icarus goal — Grok (xAI) 2026-09-22 week-end
 
-Read **SPEC.md** and `icarus_engine/spec.py` first. Then ASTRA_ORDER.md / OPUS_ORDER.md.
-Handoff: MODEL_HANDOFF.md. Never: ASTRA_DO_NOT.md.
-
+Astra: ASTRA_ORDER.md (unzip → XGB → audit). Opus: OPUS_ORDER.md (inspect).
+Both: ASTRA_DO_NOT.md. Numbers: SPEC.md. Schwab: owner runs SCHWAB_GROK.md locally.
 Trade NQ ES YM GC SI PL PA BTCF BTC. Ignore MBT SOL ETHUSD.
-Unzip six BATCHES. Fit slot 1 with exact XGB_CLASSIFIER. Swap is JSON only.
-Push every change. Do not rewrite Pulse.
+Push every change. Do not rewrite Pulse. Do not POST Schwab orders.
