@@ -45,6 +45,7 @@ def load_ohlc(path: Path):
                     "tide_short": _num(row[tide_s]) if tide_s else 0.0})
     if len(out) < 8:
         raise ValueError(f"too few parseable rows in {path}")
+    out.sort(key=lambda b: b["ts"])
     return out
 
 def _sign(x):

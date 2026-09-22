@@ -29,7 +29,25 @@ CHART_TO_FAMILY = {
 def family_for(chart_type: str, schema: str = "ohlc") -> str:
     if schema == "close_only":
         raise ValueError("close_only has no trainer")
-    name = CHART_TO_FAMILY.get(chart_type)
-    if not name:
-        raise ValueError(f"no family for chart_type={chart_type!r}")
-    return name
+    raw = (chart_type or "").lower().strip()
+    name = CHART_TO_FAMILY.get(raw)
+    if name:
+        return name
+    if "renko" in raw or "brick" in raw:
+        return "renko"
+    if "range" in raw:
+        return "range"
+    if "tick" in raw:
+        return "tick"
+    if raw in ("1d", "d", "day"):
+        return "clock_daily"
+    if raw in ("1w", "w", "week"):
+        return "clock_weekly"
+    if raw.endswith("s") and raw[:-1].isdigit():
+        return "clock_seconds"
+    if raw.endswith("h") and raw[:-1].isdigit():
+        return "clock_hours"
+    if raw.endswith("m") and raw[:-1].isdigit():
+        n = int(raw[:-1])
+        return "clock_hours" if n >= 60 else "clock_minutes"
+    raise ValueError(f"no family for chart_type={chart_type!r}")
