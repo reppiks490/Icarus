@@ -31,15 +31,16 @@ def poll_once(root=None):
     paths = ensure(root)
     out_dir = Path(paths["root"]) / "history" / "schwab" / "execution"
     out_dir.mkdir(parents=True, exist_ok=True)
-    blob = quotes(root=root)
+    blob = quotes(root=root) or {}
+    errors = blob.pop("_errors", {}) if isinstance(blob, dict) else {}
     wrote = []
-    for sym, payload in (blob or {}).items():
-        if not isinstance(payload, dict):
+    for sym, payload in blob.items():
+        if str(sym).startswith("_") or not isinstance(payload, dict):
             continue
         dest = out_dir / f"{sym.replace('/', '')}_quote.csv"
         if _append_quote(dest, sym, payload):
             wrote.append(str(dest))
-    return {"wrote": wrote, "n": len(wrote), "orders": "locked"}
+    return {"wrote": wrote, "n": len(wrote), "errors": errors, "orders": "locked"}
 
 def main(argv=None):
     p = argparse.ArgumentParser(description="Read-only Schwab poller")
