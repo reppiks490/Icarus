@@ -41,6 +41,8 @@ history/**/*.csv
 !history/.gitkeep
 !history/drop/.gitkeep
 !history/drop/done/.gitkeep
+!history/events/.gitkeep
+!history/events/*.example.csv
 bars/
 # user-generated presets stay local; shipped ones are tracked
 presets/*.json
