@@ -1,40 +1,40 @@
 # Unzipped CSV access — Grok (xAI) 2026-09-22
 
-Owner is unzipping the `multi-level-csv` packs. Astra **reads** those files.
-Do not `ingest-drop` BATS/LSE/BCBA into HistoryHub.
+Owner could not reach the six newest batches. **Astra unzips them.**
+Repo: `reppiks490/multi-level-csv`.
 
-## Where to put them
+## The six batches (17:32–17:48Z uploads)
 
-Preferred (plant):
+- `Csv first 60.zip`
+- `First 60 half.zip`
+- `Csv 2nd 60.zip`
+- `2nd 60 half.zip`
+- `Csv last 57.zip`
+- `Last 57 half.zip`
 
-```
-%ICARUS_HOME%/history/unzipped/execution/     CME_* CBOT_* COMEX_* NYMEX_* COINBASE BITSTAMP
-%ICARUS_HOME%/history/unzipped/candidates/    BATS_* LSE_DLY_* BCBA_* MAG7 TSMC stocks
-```
+Older zips in that repo (`Full csv candles only`, chart-type, tick/profile) are **not** this command.
 
-Also searched, in order:
+## Astra command (do this first)
 
-1. `ICARUS_CSV_ROOT` (set this if you unzip somewhere else)
-2. `ICARUS_HOME/history/unzipped`
-3. `ICARUS_HOME/history/drop/candidates` (quarantine from ingest-drop)
-4. sibling checkout `../multi-level-csv` next to the Icarus repo
-
-Windows example:
+Needs `git` auth to the private repo (same GitHub account as the owner).
 
 ```
-set ICARUS_HOME=C:\IcarusHome
-set ICARUS_CSV_ROOT=C:\Users\trip\Downloads\csv-unzipped
+cd Icarus
+python -m icarus_engine.unzip_batches --fetch
+python -m icarus_engine.csv_access --kind candidates
 ```
 
-## How Astra lists files
+Writes:
+
+- `%ICARUS_HOME%/history/unzipped/execution/` — CME/CBOT/COMEX/NYMEX/Coinbase/Bitstamp names
+- `%ICARUS_HOME%/history/unzipped/candidates/` — BATS/LSE/BCBA/stocks
+
+Does **not** call `ingest-drop`. Does **not** write `history/NQ_1m.csv`.
+
+If the csv repo is already cloned next to Icarus:
 
 ```
-python -m icarus_engine.csv_access --kind execution
-python -m icarus_engine.csv_access --kind candidates --asset AAPL
-python -m icarus_engine.csv_access --kind all --json
+python -m icarus_engine.unzip_batches --src ..\multi-level-csv
 ```
 
-Execution files may later be ingested with `icarus-plant ingest-drop` **only** if the name is CME/CBOT/COMEX/NYMEX/COINBASE/BITSTAMP.
-Candidate files stay in `candidates/` and go to `python -m icarus_engine.audit` after XGB exists.
-
-Grok (xAI). Do not rewrite Pulse.
+Grok (xAI). Do not rewrite Pulse. Do not trade MBT/SOL/ETHUSD.
