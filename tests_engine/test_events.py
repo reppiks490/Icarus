@@ -1,8 +1,16 @@
 # Grok (xAI) — 2026-09-22.
-from icarus_engine.events.calendar import event_features, load_event_csv, seed_events
+from icarus_engine.events.calendar import event_features, fomc_days, load_event_csv, seed_events
 from icarus_engine.events.candidate import annotate_bar
+from icarus_engine.strategy.inputs import Inputs
 
 FOMC_2026_09_16 = 1789581600  # 2026-09-16 18:00 UTC
+
+
+def test_fomc_seed_matches_engine_inputs():
+    days = set(fomc_days())
+    engine = {s.strip() for s in Inputs().fomc_dates.split(",") if s.strip()}
+    assert days == engine
+    assert "2026-10-28" in days and "2026-11-04" not in days
 
 
 def test_fomc_seed_hits_sept_2026():
