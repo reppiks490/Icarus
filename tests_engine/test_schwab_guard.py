@@ -1,6 +1,9 @@
 # Grok (xAI) — 2026-09-22.
 import pytest
-from icarus_plant.schwab import request
+from icarus_plant.schwab import orders_unlocked, request
+
+def test_orders_locked_by_default():
+    assert orders_unlocked() is False
 
 def test_orders_post_blocked():
     with pytest.raises(PermissionError):

@@ -1,12 +1,17 @@
-# Grok (xAI) — 2026-09-22. Poll quotes → history/schwab/execution CSVs. No orders.
+# Grok (xAI) — 2026-09-22. Poll quotes to plant logs + CSV. Does not touch HANDOFF_LOG.
 from __future__ import annotations
 import argparse, csv, json, time
 from pathlib import Path
 from icarus_plant.layout import ensure, plant_root
 from icarus_plant.schwab import authorize_url, exchange_code, quotes
-from icarus_engine.model_log import log_action
 
-def _append_quote(dest: Path, sym: str, payload: dict):
+def _log(root, line: str):
+    p = Path(plant_root(root)) / "logs"
+    p.mkdir(parents=True, exist_ok=True)
+    with (p / "schwab.log").open("a", encoding="utf-8") as fh:
+        fh.write(time.strftime("%Y-%m-%dT%H:%M:%SZ ") + line + "\n")
+
+def _append_quote(dest: Path, sym: str, payload: dict) -> bool:
     q = payload.get("quote") or {}
     last = q.get("lastPrice") or q.get("mark") or q.get("askPrice") or q.get("bidPrice")
     if last is None:
@@ -34,13 +39,13 @@ def poll_once(root=None):
         dest = out_dir / f"{sym.replace('/', '')}_quote.csv"
         if _append_quote(dest, sym, payload):
             wrote.append(str(dest))
-    return {"wrote": wrote, "n": len(wrote), "execution_authorized": False}
+    return {"wrote": wrote, "n": len(wrote), "orders": "locked"}
 
 def main(argv=None):
     p = argparse.ArgumentParser(description="Read-only Schwab poller")
     p.add_argument("--root", default="")
     p.add_argument("--auth-url", action="store_true")
-    p.add_argument("--exchange-code", default="", help="code= from the 127.0.0.1 redirect")
+    p.add_argument("--exchange-code", default="")
     p.add_argument("--once", action="store_true")
     p.add_argument("--seconds", type=int, default=15)
     args = p.parse_args(argv)
@@ -49,21 +54,22 @@ def main(argv=None):
         print(authorize_url())
         return 0
     if args.exchange_code:
-        path = exchange_code(args.exchange_code, root)
-        print(f"saved {path}")
+        print(f"saved {exchange_code(args.exchange_code, root)}")
         return 0
     if args.once:
-        print(json.dumps(poll_once(root), indent=2))
+        rec = poll_once(root)
+        print(json.dumps(rec, indent=2))
+        _log(root, json.dumps(rec))
         return 0
-    print(f"Schwab poller GET quotes every {args.seconds}s. Ctrl+C to stop. No orders.")
+    print(f"GET quotes every {args.seconds}s. Orders locked. Ctrl+C stops.")
     while True:
         try:
             rec = poll_once(root)
-            log_action("schwab", f"quotes n={rec['n']}", json.dumps(rec))
             print(rec)
+            _log(root, json.dumps(rec))
         except Exception as exc:
             print(f"poll failed: {exc}")
-            log_action("schwab", f"poll failed: {exc}")
+            _log(root, f"FAIL {exc}")
         time.sleep(max(5, args.seconds))
 
 if __name__ == "__main__":

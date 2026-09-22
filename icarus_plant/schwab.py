@@ -1,8 +1,7 @@
-# Grok (xAI) — 2026-09-22. Read-only Schwab Market Data. Never POST /orders.
+# Grok (xAI) — 2026-09-22. Read-only unless owner sets SCHWAB_ALLOW_ORDERS=1 (default off).
 from __future__ import annotations
-import base64, json, os, time, urllib.error, urllib.parse, urllib.request
+import base64, json, os, time, urllib.parse, urllib.request
 from pathlib import Path
-
 from icarus_engine.ignore_trade import ignored_symbol
 from icarus_engine.spec import TRADED
 from icarus_plant.layout import plant_root
@@ -10,7 +9,7 @@ from icarus_plant.layout import plant_root
 AUTH = "https://api.schwabapi.com/v1/oauth/authorize"
 TOKEN = "https://api.schwabapi.com/v1/oauth/token"
 QUOTES = "https://api.schwabapi.com/marketdata/v1/quotes"
-FORBIDDEN_POST = ("/orders", "/previeworder")
+ORDER_WRITE = ("/orders", "/previeworder")
 
 def secrets_dir(root=None) -> Path:
     p = Path(plant_root(root)) / "secrets"
@@ -23,17 +22,21 @@ def token_path(root=None) -> Path:
 def env(name: str, default: str = "") -> str:
     return (os.environ.get(name) or default).strip()
 
+def orders_unlocked() -> bool:
+    return env("SCHWAB_ALLOW_ORDERS") in {"1", "true", "YES"} and env("ICARUS_EXECUTION_AUTHORIZED") in {"1", "true", "YES"}
+
 def authorize_url() -> str:
     key = env("SCHWAB_APP_KEY")
     redir = env("SCHWAB_REDIRECT", "https://127.0.0.1")
     if not key:
-        raise ValueError("set SCHWAB_APP_KEY")
-    q = urllib.parse.urlencode({"client_id": key, "redirect_uri": redir})
-    return f"{AUTH}?{q}"
+        raise ValueError("set SCHWAB_APP_KEY on the PC, not in a model goal")
+    return f"{AUTH}?{urllib.parse.urlencode({'client_id': key, 'redirect_uri': redir})}"
 
 def _basic() -> str:
-    raw = f"{env('SCHWAB_APP_KEY')}:{env('SCHWAB_APP_SECRET')}".encode()
-    return "Basic " + base64.b64encode(raw).decode()
+    key, secret = env("SCHWAB_APP_KEY"), env("SCHWAB_APP_SECRET")
+    if not key or not secret:
+        raise ValueError("SCHWAB_APP_KEY and SCHWAB_APP_SECRET stay on the PC")
+    return "Basic " + base64.b64encode(f"{key}:{secret}".encode()).decode()
 
 def _post_token(data: dict) -> dict:
     body = urllib.parse.urlencode(data).encode()
@@ -54,7 +57,7 @@ def exchange_code(code: str, root=None) -> Path:
 def load_token(root=None) -> dict:
     path = token_path(root)
     if not path.is_file():
-        raise FileNotFoundError(f"no token at {path} — run exchange first")
+        raise FileNotFoundError(f"no token at {path}")
     return json.loads(path.read_text(encoding="utf-8"))
 
 def refresh(root=None) -> dict:
@@ -67,33 +70,30 @@ def refresh(root=None) -> dict:
     token_path(root).write_text(json.dumps(nxt, indent=2), encoding="utf-8")
     return nxt
 
-def request(method: str, url: str, root=None, data=None) -> dict:
+def request(method: str, url: str, root=None):
     method = method.upper()
     low = url.lower()
+    writing = method != "GET" or any(x in low for x in ORDER_WRITE) and method in {"POST", "PUT", "DELETE", "PATCH"}
+    if method in {"POST", "PUT", "DELETE", "PATCH"} and any(x in low for x in ORDER_WRITE):
+        if not orders_unlocked():
+            raise PermissionError("order writes locked. Need owner SCHWAB_ALLOW_ORDERS=1 and ICARUS_EXECUTION_AUTHORIZED=1")
+        raise PermissionError("order writes not implemented in this plant on purpose")
     if method != "GET":
-        if any(x in low for x in FORBIDDEN_POST):
-            raise PermissionError("Schwab plant forbids order POST/preview. Owner-hard.")
-        raise PermissionError(f"Schwab plant is GET-only ({method} {url})")
-    if "/orders" in low and method != "GET":
-        raise PermissionError("orders writes forbidden")
+        raise PermissionError(f"Schwab plant GET-only ({method})")
     tok = refresh(root)
     req = urllib.request.Request(url, method="GET")
     req.add_header("Authorization", f"Bearer {tok['access_token']}")
     with urllib.request.urlopen(req, timeout=30) as resp:
         return json.loads(resp.read().decode())
 
-def default_symbols() -> list[str]:
+def default_symbols() -> list:
     raw = env("SCHWAB_SYMBOLS")
     if raw:
         return [s.strip() for s in raw.split(",") if s.strip()]
-    return [f"/{s}" for s in TRADED if s not in ("BTC",)]  # owner should replace after Instruments
+    return [f"/{s}" for s in TRADED if s not in ("BTC",)]
 
 def quotes(symbols=None, root=None) -> dict:
-    syms = []
-    for s in (symbols or default_symbols()):
-        if ignored_symbol(s.replace("/", "")):
-            continue
-        syms.append(s)
+    syms = [s for s in (symbols or default_symbols()) if not ignored_symbol(s.replace("/", ""))]
     if not syms:
         raise ValueError("no symbols")
     q = urllib.parse.urlencode({"symbols": ",".join(syms), "fields": "quote,reference", "indicative": "false"})
