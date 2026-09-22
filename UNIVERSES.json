@@ -1,0 +1,15 @@
+{
+  "nq_complex": {"execution": [["NQ", "future_front"]], "sensors": [["NQ", "cash_index"], ["NQ", "cfd"], ["VXN", "index"], ["TNX", "yield"], ["DXY", "index"], ["NVDA", "stock"], ["AAPL", "stock"], ["MSFT", "stock"], ["META", "stock"], ["GOOGL", "stock"]]},
+  "es_complex": {"execution": [["ES", "future_front"]], "sensors": [["ES", "cash_index"], ["ES", "cfd"], ["VIX", "index"], ["TNX", "yield"], ["DXY", "index"], ["YM", "future_front"]]},
+  "ym_complex": {"execution": [["YM", "future_front"]], "sensors": [["YM", "cash_index"], ["ES", "future_front"], ["DXY", "index"], ["CAT", "stock"]]},
+  "gc_complex": {"execution": [["GC", "future_front"]], "sensors": [["SI", "future_front"], ["PL", "future_front"], ["PA", "future_front"], ["DXY", "index"], ["TNX", "yield"]]},
+  "si_complex": {"execution": [["SI", "future_front"]], "sensors": [["GC", "future_front"], ["PL", "future_front"], ["DXY", "index"]]},
+  "pl_complex": {"execution": [["PL", "future_front"]], "sensors": [["GC", "future_front"], ["SI", "future_front"], ["DXY", "index"]]},
+  "pa_complex": {"execution": [["PA", "future_front"]], "sensors": [["GC", "future_front"], ["DXY", "index"]]},
+  "btcf_complex": {"execution": [["BTCF", "future_front"]], "sensors": [["BTC", "spot"], ["ETH", "index"], ["DXY", "index"]]},
+  "btc_complex": {"execution": [["BTC", "spot"]], "sensors": [["BTCF", "future_front"], ["ETH", "index"], ["DXY", "index"]]},
+  "eth_complex": {"execution": [["ETH", "index"]], "sensors": [["BTC", "spot"], ["BTCF", "future_front"], ["DXY", "index"]]},
+  "nq_candidates": {"execution": [["NQ", "future_front"]], "sensors": [["AAPL", "stock"], ["MSFT", "stock"], ["GOOGL", "stock"], ["TSLA", "stock"], ["AMD", "stock"], ["ORCL", "stock"], ["INTC", "stock"], ["MAG7", "basket"], ["TSMC", "adr"]]},
+  "es_candidates": {"execution": [["ES", "future_front"]], "sensors": [["JNJ", "stock"], ["PFE", "stock"], ["BRKB", "stock"], ["XOM", "stock"], ["JPM", "stock"]]},
+  "ym_candidates": {"execution": [["YM", "future_front"]], "sensors": [["CAT", "stock"]]}
+}
