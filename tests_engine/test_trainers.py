@@ -18,6 +18,10 @@ def test_family_map_clock_and_renko():
     assert family_for("renko") == "renko"
     assert family_for("range") == "range"
     assert family_for("tick") == "tick"
+    assert family_for("renko_brick_100") == "renko"
+    assert family_for("15m") == "clock_minutes"
+    assert family_for("60m") == "clock_hours"
+    assert family_for("30s") == "clock_seconds"
 
 
 def test_close_only_has_no_family():
@@ -26,6 +30,24 @@ def test_close_only_has_no_family():
     except ValueError:
         return
     raise AssertionError("close_only must raise")
+
+
+def test_load_ohlc_sorts_unsorted_rows():
+    rows = [
+        "1700000060,2,2,2,2",
+        "1700000000,1,1,1,1",
+        "1700000120,3,3,3,3",
+        "1700000180,4,4,4,4",
+        "1700000240,5,5,5,5",
+        "1700000300,6,6,6,6",
+        "1700000360,7,7,7,7",
+        "1700000420,8,8,8,8",
+        "1700000480,9,9,9,9",
+    ]
+    bars = load_ohlc(_csv(rows))
+    ts = [b["ts"] for b in bars]
+    assert ts == sorted(ts)
+    assert bars[0]["close"] == 1
 
 
 def test_labels_are_next_bar_on_same_index():
@@ -39,6 +61,7 @@ def test_labels_are_next_bar_on_same_index():
     lab = attach_labels(bars, "renko")
     assert lab[0]["ts"] == bars[0]["ts"]
     assert lab[0]["y"] == 1
+    assert "fomc" in lab[0]["x"]
 
 
 def test_train_file_skips_under_min_rows():
