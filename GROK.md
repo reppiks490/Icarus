@@ -5,7 +5,7 @@ For **Claude, Astra, and any later agent**. Grep the tree for `Grok (xAI)`.
 Astra wrote the original engine, Pine port, emulator, bridge, and tests
 (`312ff25`, 2026-09-20). Grok filled the unpaid gaps (PR #1 / `df89e8b`),
 signed every file (PR #2), added FOMC 2027 + bridge tests (PR #3), and
-built the local paper-trading **plant** (this PR).
+built the local paper-trading **plant**.
 
 Do **not** undo these constraints without the owner asking:
 
@@ -19,21 +19,23 @@ Do **not** undo these constraints without the owner asking:
 - Do not concatenate Renko/range/tick rows into the clock trainer.
 - Do not rewrite `strategy/pulse.py` or `emulator.py` to hook trainers.
 
-## Files Grok added 2026-09-22 (CSV / ML boundary)
+## Files Grok added (whole file)
+
+See git history for the plant/feed/doctor list (bars.py, icarus_plant, ASTRA_HANDOFF, PARITY, presets, tests_engine).
+
+## 2026-09-22 CSV / ML boundary (this look)
 
 | File | What |
 |---|---|
-| `CANDIDATE_COG_GROK.md` | Six equity batches = sensors for Opus audit, not HistoryHub |
-| `ENGINE_UNIVERSE_GROK.md` | Every REGISTRY asset: execution / sensors / Opus / Astra |
-| `UNIVERSES.json` | nq/es/ym/gc/si/pl/pa/btcf/btc/eth complexes + candidate packs |
-| `TRAINERS_GROK.md` | Separate trainer families per sampling process |
-| `icarus_engine/trainers/` | `family_for`, `train_file`, logit walk-forward. `execution_authorized` is always false |
+| `CANDIDATE_COG_GROK.md` | Six equity batches = Opus sensors, not HistoryHub |
+| `ENGINE_UNIVERSE_GROK.md` | Every REGISTRY asset sockets |
+| `UNIVERSES.json` | complexes + candidate packs |
+| `TRAINERS_GROK.md` | Family split |
+| `icarus_engine/trainers/` | `train_file` / logit. `execution_authorized` always false |
 
 `python -m icarus_engine.trainers --path FILE --chart-type renko --asset NQ`
 
-No pytest for trainers yet. No `icarus-engine` CLI subcommand yet. Logit is a stub Astra may replace; keep the family split and next-bar-on-this-index labels.
-
-MBT and SOL have no CSV. Do not alias them from BTCF/ETH.
+No pytest for trainers yet. No `icarus-engine train` subcommand yet. Logit is a stub; keep family split and next-bar-on-this-index labels. MBT/SOL have no CSV — do not alias.
 
 ## Still unpaid / not Grok's to fake
 
