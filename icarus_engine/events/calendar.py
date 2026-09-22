@@ -4,10 +4,13 @@ import csv, os
 from datetime import datetime, timezone
 from pathlib import Path
 
-SEED_FOMC = (
+# Fallback only if Inputs cannot import. Prefer Inputs().fomc_dates.
+SEED_FOMC_FALLBACK = (
     "2026-01-28", "2026-03-18", "2026-04-29", "2026-06-17",
-    "2026-07-29", "2026-09-16", "2026-11-04", "2026-12-16",
-    "2027-01-27", "2027-03-17", "2027-05-05", "2027-06-16",
+    "2026-07-29", "2026-09-16", "2026-10-28", "2026-12-09",
+    "2027-01-27", "2027-03-17", "2027-04-28", "2027-06-09",
+    "2027-07-28", "2027-09-15", "2027-10-27", "2027-12-08",
+    "2028-01-26",
 )
 KIND_HOUR_UTC = {
     "fomc": 18, "cpi": 12, "ppi": 12, "nfp": 12, "pce": 12,
@@ -18,10 +21,17 @@ def _epoch(date_s: str, hour: int) -> int:
     y, m, d = (int(p) for p in date_s.split("-"))
     return int(datetime(y, m, d, hour, 0, tzinfo=timezone.utc).timestamp())
 
+def fomc_days():
+    try:
+        from icarus_engine.strategy.inputs import Inputs
+        return [s.strip() for s in Inputs().fomc_dates.replace("\n", ",").split(",") if s.strip()]
+    except Exception:
+        return list(SEED_FOMC_FALLBACK)
+
 def seed_events():
     return [{"ts": _epoch(day, 18), "name": "FOMC decision", "kind": "fomc",
-             "scope": "rates,equity,metals,dollar", "source": "seed", "surprise": None}
-            for day in SEED_FOMC]
+             "scope": "rates,equity,metals,dollar", "source": "inputs", "surprise": None}
+            for day in fomc_days()]
 
 def load_event_csv(path: Path):
     rows = []
