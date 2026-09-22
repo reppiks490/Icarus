@@ -15,67 +15,25 @@ Do **not** undo these constraints without the owner asking:
 - Do not add Databento without keys.
 - Alpaca `NQ1! → QQQ` is a percent-mapped equity proxy, not an NQ fill.
 - Do not Docker the engine as the primary deploy: it binds `127.0.0.1` against DNS rebinding.
+- Do not drop `BATS_*` candidate CSVs into `history/drop/`.
+- Do not concatenate Renko/range/tick rows into the clock trainer.
+- Do not rewrite `strategy/pulse.py` or `emulator.py` to hook trainers.
 
-## Files Grok added (whole file)
+## Files Grok added 2026-09-22 (CSV / ML boundary)
 
 | File | What |
 |---|---|
-| `icarus_engine/feeds/bars.py` | TV/generic OHLCV parse, FileFeed, HistoryHub, merge_bars, read_text_csv (UTF-16) |
-| `icarus_engine/doctor.py` | Offline engine doctor |
-| `icarus_plant/__init__.py` | Local plant package |
-| `icarus_plant/layout.py` | `ICARUS_HOME` dirs: history/drop, run, logs |
-| `icarus_plant/drop.py` | Supercharts names (`CME_MINI_NQ1!, 1.csv`), per-file quarantine |
-| `icarus_plant/supervisor.py` | stdlib process supervisor; `/healthz` on loopback; Windows process group |
-| `icarus_plant/cli.py` | `icarus-plant init\|start\|stop\|status\|ingest-drop\|doctor` |
-| `icarus_plant/downloads.py` | Pull owner-owned Supercharts CSVs from Downloads/Desktop |
-| `start-plant.ps1` | Windows one-shot: pip, setup --open, start --offline |
-| `start-plant.bat` | Double-click wrapper for the ps1 |
-| `start-plant.sh` | Unix twin |
-| `PAID_NEXT.md` | Frozen list: Alpaca, TradersPost/PickMyTrade, Plus CSV, ML boundary |
-| `start-yahoo.ps1` / `start-yahoo.bat` | Yahoo NQ=F plant (no --offline) |
-| `deploy/icarus-plant.service` | Optional local systemd unit (loopback only) |
-| `tests_engine/test_bars.py` | Ingest / FileFeed / holiday coverage / CSV warmup / HistoryHub |
-| `tests_engine/test_doctor.py` | Doctor CLI |
-| `tests_engine/test_alert_template.py` | `pine/ALERT_TEMPLATE.json` ↔ bridge parser |
-| `tests_engine/test_plant.py` | Drop ingest, supervisor spawn/stop, FileFeed-offline Portfolio |
-| `icarus_engine/runtime.py` `Journal.export_trades_csv` | Local paper-book CSV (not a broker statement) |
-| `icarus_engine/golive.py` | Go-live integrity (paper ≠ broker). Do not merge until owner says. |
-| `icarus_engine/agent.py` | Field Agent recipes + paste-packs. Copy only. Never arms a broker. |
-| `icarus_engine/briefing.py` | Field Manual briefing + RTH clock. |
-| `ASTRA_HANDOFF.md` | Astra: Agent tab is Grok's. Do not rewrite Pulse. |
-| `PARITY.md` | Pine departures A1–A9 / roll / fills |
-| `README.md` | Repo entry (this repo had none) |
-| `pyproject.toml` | Package + pytest paths + `icarus-engine` / `icarus-bridge` / `icarus-plant` |
-| `.gitignore` | Stop tracking `__pycache__`, `.bak`, `.env`, `history/*.csv`, `run/`, `logs/` |
-| `.github/workflows/test.yml` | pytest CI |
-| `history/.gitkeep` | Chart-export drop dir |
-| `history/drop/.gitkeep` | Plant inbox |
-| `history/drop/done/.gitkeep` | Ingested originals |
-| `icarus_bridge/.env.example` | Bridge env, QQQ warning |
-| `pine/ALERT_TEMPLATE.json` | TV webhook JSON |
-| `pine/README.md` | How to paste it |
-| `presets/NQ-20m-ultracoded.json` | Reconstructed from tests (not a TV export) |
-| `presets/NQ-10m-original.json` | Same |
-| `presets/NQ-20m-ultracoded-0914.json` | CLI default alias |
-| `presets/.gitkeep` | |
-| `start-engine-background.ps1` | Windows launcher; only live `/healthz` counts as running |
-| `start-engine-background.sh` | Unix twin of the launcher |
-| `tests_engine/test_bridge.py` | Bridge mapping / planner / alert parser (no Alpaca) |
-| `tests_engine/test_fomc.py` | FOMC 2027 decision days vs Fed press release |
-| `GROK.md` | This map |
+| `CANDIDATE_COG_GROK.md` | Six equity batches = sensors for Opus audit, not HistoryHub |
+| `ENGINE_UNIVERSE_GROK.md` | Every REGISTRY asset: execution / sensors / Opus / Astra |
+| `UNIVERSES.json` | nq/es/ym/gc/si/pl/pa/btcf/btc/eth complexes + candidate packs |
+| `TRAINERS_GROK.md` | Separate trainer families per sampling process |
+| `icarus_engine/trainers/` | `family_for`, `train_file`, logit walk-forward. `execution_authorized` is always false |
 
-## Blocks Grok added inside Astra files
+`python -m icarus_engine.trainers --path FILE --chart-type renko --asset NQ`
 
-| File | Block |
-|---|---|
-| `icarus_engine/calendar.py` | `holiday_coverage()` |
-| `icarus_engine/cli.py` | `ingest-bars` (merge by default, `--replace` wipes), `doctor`, `_base_dir`/`_journal_path` honor `ICARUS_HOME`, `--feed file` |
-| `icarus_engine/runtime.py` | Warm-up prefers `history/{SYM}_1m.csv` then chart-TF under `RunnerConfig.base_dir`; `_warmup_from_csv` uses `parse_ohlcv_csv`; `ICARUS_FEED=file` → `HistoryHub`; `roll=none` in file mode |
-| `icarus_engine/feeds/__init__.py` | `bars` / FileFeed / HistoryHub note in the module docstring |
-| `icarus_engine/strategy/inputs.py` | FOMC 2027 (+ first 2028) *decision* days from federalreserve.gov |
-| `icarus_engine/strategy/pine_inputs_meta.json` | matching `fomc_dates` default |
-| `icarus_engine/doctor.py` | `fomc_coverage()` + plant drop / `ICARUS_FEED` checks |
-| `icarus_bridge/cli.py` | Doctor warning: `NQ1! → QQQ` is not CME |
+No pytest for trainers yet. No `icarus-engine` CLI subcommand yet. Logit is a stub Astra may replace; keep the family split and next-bar-on-this-index labels.
+
+MBT and SOL have no CSV. Do not alias them from BTCF/ETH.
 
 ## Still unpaid / not Grok's to fake
 
