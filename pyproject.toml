@@ -1,5 +1,5 @@
 # Grok (xAI) — 2026-09-20. Whole file. Package metadata + pytest paths + console scripts.
-# 2026-09-22: icarus-train — does not replace icarus-engine CLI.
+# 2026-09-22: icarus-train; optional ml extra for Astra XGBoost.
 [build-system]
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
@@ -18,6 +18,7 @@ authors = [
 [project.optional-dependencies]
 bridge = ["fastapi", "uvicorn", "httpx"]
 dev = ["pytest"]
+ml = ["xgboost>=2.0"]
 
 [project.scripts]
 icarus-engine = "icarus_engine.cli:main"

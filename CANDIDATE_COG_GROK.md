@@ -1,26 +1,26 @@
 # Candidate cog — Grok (xAI) — 2026-09-22
 
 Source zips: `reppiks490/multi-level-csv` (six uploads 17:32–17:48Z, 177 CSVs).
-Do **not** drop these in `history/drop/`. FileFeed / HistoryHub stay futures+spot in REGISTRY only.
+Do **not** drop these in `history/drop/`.
+
+Astra candidate **swap** only after `MODELS_GROK.md` XGB files exist (`ASTRA_ORDER.md`).
+Opus may **inspect** CSVs. That is not Astra's candidate pass.
 
 ## Split
 
 | Cluster execution | Candidates | Why |
-|---|---|---|
+|---|---|
 | NQ | AAPL MSFT GOOGL TSLA AMD ORCL INTC MAG7 TSMC | Nasdaq weight / semis |
 | ES | JNJ PFE BRK.B XOM JPM | S&P breadth |
 | YM | CAT | Dow industrials |
 
-## Opus now
+Not candidates, not traded: MBT, SOL, ETHUSD.
 
-Clock-join candidate OHLC onto `history/{NQ|ES|YM}_{tf}.csv`. Score return-sign agreement, Tide vs Pulse side, RS vs cluster. Write `audit/{CAND}__vs__{FUT}_{tf}.json`. Kill series with <200 overlap or null Tide.
+## Opus inspect
+Clock-join onto `history/{NQ|ES|YM}_{tf}.csv`. Write draft JSON. Do not call it a swap.
 
-## Astra after ML exists
-
-Same join. Features on candidates. Labels from Pulse/emulator on the **future**. Per-cluster walk-forward. No CME multiplier on stocks. No Renko mixed into clock join.
-
-## Plant
-
-`ingest-drop` still only `CME_*` `CBOT_*` `COMEX_*` `NYMEX_*` `COINBASE` `BITSTAMP`. `BATS_*` is a candidate cog.
+## Astra after XGB
+`python -m icarus_engine.audit --exec … --cand … --future NQ --asset AAPL --require-xgb`
+Labels from Pulse/emulator on the **future**. No CME multiplier on stocks.
 
 Grok (xAI). Do not rewrite Pulse.

@@ -2,13 +2,16 @@
 from __future__ import annotations
 import json
 from pathlib import Path
-from icarus_engine.events.calendar import event_features, load_events
-from icarus_engine.trainers.dataset import load_ohlc
+from icarus_engine.events.calendar import event_features
+from icarus_engine.ignore_trade import ignored_symbol
 
 def _sign(x):
     if x is None or x == 0:
         return 0
     return 1 if x > 0 else -1
+
+def _sorted(bars):
+    return sorted(bars, key=lambda b: b["ts"])
 
 def _asof(exec_ts, cand):
     lo, hi, hit = 0, len(cand) - 1, None
@@ -20,7 +23,20 @@ def _asof(exec_ts, cand):
             hi = mid - 1
     return hit
 
-def score_pair(exec_bars, cand_bars, events, asset, future):
+def score_pair(exec_bars, cand_bars, events, asset, future, require_xgb=False, xgb_path=None):
+    if ignored_symbol(future):
+        return {"status": "ignored", "reason": "execution symbol is not traded",
+                "execution": future, "candidate": asset, "execution_authorized": False}
+    if ignored_symbol(asset):
+        return {"status": "ignored", "reason": "candidate name is on the do-not-trade list",
+                "execution": future, "candidate": asset, "execution_authorized": False}
+    if require_xgb:
+        p = Path(xgb_path) if xgb_path else Path("run") / "trainers" / f"{future}_clock_minutes_xgb.json"
+        if not p.is_file():
+            return {"status": "blocked", "reason": f"missing XGB {p} — Astra must fit models first",
+                    "execution": future, "candidate": asset, "execution_authorized": False}
+    exec_bars = _sorted(exec_bars)
+    cand_bars = _sorted(cand_bars)
     hits = agree = tide_agree = tide_n = ev_agree = ev_n = 0
     for i, b in enumerate(exec_bars[1:], start=1):
         prev = exec_bars[i - 1]
