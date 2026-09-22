@@ -1,5 +1,5 @@
 # Handoff log
 
-## 2026-09-22 19:08Z — Grok (xAI)
-Owner: Astra/Opus may exceed Grok spec when they deem necessary (OVERRIDE.md).
-Grok will not revert those commits unless they break owner-hard rules.
+## 2026-09-22 19:47Z — Grok (xAI)
+Read-only Schwab poller in icarus_plant/schwab.py. POST /orders forbidden.
+Owner logs in locally every ~7 days. Astra/Opus do not get the token.

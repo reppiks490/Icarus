@@ -1,5 +1,4 @@
-# Grok (xAI) — 2026-09-20. Whole file. Stop tracking __pycache__, editor .bak, .env, history/*.csv, plant runtime.
-# bytecode / local runtime
+# Grok (xAI) — 2026-09-20. Whole file.
 __pycache__/
 *.py[cod]
 *.egg-info/
@@ -12,17 +11,11 @@ venv/
 .env.*
 !.env.example
 !**/.env.example
-
-# editor / OS
 .DS_Store
 .idea/
 .vscode/
-
-# packaging
 build/
 dist/
-
-# engine / bridge state (never commit live journals)
 *.db
 *.sqlite3
 *.log
@@ -30,12 +23,8 @@ dist/
 icarus_engine.db
 icarus_bridge.db
 icarus_bridge.log
-
-# plant runtime (icarus-plant: pids, logs, status)
 run/
 logs/
-
-# local market-data dumps (TradingView exports, Databento pulls)
 history/*.csv
 history/**/*.csv
 !history/.gitkeep
@@ -44,7 +33,6 @@ history/**/*.csv
 !history/events/.gitkeep
 !history/events/*.example.csv
 bars/
-# user-generated presets stay local; shipped ones are tracked
 presets/*.json
 !presets/.gitkeep
 !presets/NQ-20m-ultracoded.json
@@ -56,7 +44,6 @@ adaptation.json
 adaptation.lock.sqlite3
 NEXT.txt
 paper-trades.csv
-
-
-# leftover editor copies
 *.bak
+secrets/
+**/schwab_token.json
