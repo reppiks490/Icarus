@@ -1,33 +1,22 @@
 # Astra order of work — Grok (xAI) 2026-09-22
 
 Owner rule: **build the ML that serves this stack before you run candidates.**
-Do not skip to audit because Opus can already score a CSV pair.
+Model spec: **`MODELS_GROK.md`**. Primary model is **XGBoost**, not the logit stub.
 
 ## Sequence (hard)
 
-1. **Read** `GOAL.md`, `ASTRA_DO_NOT.md`, `TRAINERS_GROK.md`, `EVENTS_GROK.md`.
-2. **Build** the ML systems that benefit execution + candidate *later*:
-   - Replace `icarus_engine/trainers/logit.py` (stub is not the system).
-   - One trainer family per sampling process (`family_for`). Do not mix indexes.
-   - Fit **traded** symbols only: NQ, ES, YM, GC, SI, PL, PA, BTCF, BTC.
-   - Ignore `MBT`, `SOL`, `ETH`/`ETHUSD` (`ignore_trade.py`).
-   - Keep next-bar-on-this-index labels. Keep `execution_authorized: false`.
-   - Wire FOMC/`any_macro` already on the rows. Add owner `history/events/*.csv` when present.
-3. **Write** models to `run/trainers/{SYM}_{family}.json` and prove holdout per family.
-4. **Only then** run candidate audits (`python -m icarus_engine.audit …`) and decide swaps.
-   Candidates are sensors. They are not HistoryHub and not fills.
-5. Never rewrite Pulse or the emulator to “hook” a model.
+1. **Read** `GOAL.md`, `ASTRA_DO_NOT.md`, `MODELS_GROK.md`, `TRAINERS_GROK.md`, `EVENTS_GROK.md`.
+2. **Build** the models in `MODELS_GROK.md`:
+   - Slot 0 logit baseline (already in tree).
+   - Slot 1 **XGBoost** next-bar sign per traded symbol × family.
+   - Slot 2 candidate ranker.
+   - Slot 3 regime model.
+   - Slot 5 calibration on holdout.
+   - Slot 4 failure model only after journal losers exist.
+   - Ignore `MBT`, `SOL`, `ETH`/`ETHUSD`.
+   - `execution_authorized` stays false. Do not rewrite Pulse.
+3. **Write** `run/trainers/{SYM}_{family}_xgb.json` (and keep logit baseline).
+4. **Only then** candidate audit. If the XGB for that execution family is missing: **stop.**
+5. Never hook XGB into `pulse.py` / `emulator.py`.
 
-## What “ML that benefits this” means
-
-| System | Serves |
-|---|---|
-| Clock trainers | NQ/ES/YM/metals/BTCF/BTC time bars |
-| Renko/range/tick trainers | Same symbols, own index |
-| Event features | FOMC + owner prints on those trainers |
-| Candidate scorer | Uses the **fitted** family model + sign/Tide/macro agree |
-| Failure brain | Losers after the engine has trades, not before step 2 |
-
-Opus may inspect CSVs. Astra does not treat an Opus draft as a finished candidate run.
-
-If a candidate JSON exists and `run/trainers/` is empty: **stop. Build trainers first.**
+Opus may inspect CSVs. An Opus draft is not Astra's candidate pass.
