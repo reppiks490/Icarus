@@ -1,0 +1,5 @@
+ts_or_date,name,kind,scope,surprise
+2026-09-16,FOMC decision,fomc,"rates,equity,metals,dollar",
+2026-10-15,CPI,cpi,"equity,rates,dollar",
+2026-10-03,NFP,nfp,equity,
+2026-10-16,AAPL earnings,earnings,AAPL,

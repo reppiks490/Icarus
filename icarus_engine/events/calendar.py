@@ -1,0 +1,83 @@
+# Grok (xAI) — 2026-09-22. Whole file.
+from __future__ import annotations
+import csv, os
+from datetime import datetime, timezone
+from pathlib import Path
+
+SEED_FOMC = (
+    "2026-01-28", "2026-03-18", "2026-04-29", "2026-06-17",
+    "2026-07-29", "2026-09-16", "2026-11-04", "2026-12-16",
+    "2027-01-27", "2027-03-17", "2027-05-05", "2027-06-16",
+)
+KIND_HOUR_UTC = {
+    "fomc": 18, "cpi": 12, "ppi": 12, "nfp": 12, "pce": 12,
+    "gdp": 12, "ism": 14, "earnings": 20, "geopol": 12, "other": 12,
+}
+
+def _epoch(date_s: str, hour: int) -> int:
+    y, m, d = (int(p) for p in date_s.split("-"))
+    return int(datetime(y, m, d, hour, 0, tzinfo=timezone.utc).timestamp())
+
+def seed_events():
+    return [{"ts": _epoch(day, 18), "name": "FOMC decision", "kind": "fomc",
+             "scope": "rates,equity,metals,dollar", "source": "seed", "surprise": None}
+            for day in SEED_FOMC]
+
+def load_event_csv(path: Path):
+    rows = []
+    with Path(path).open("r", encoding="utf-8-sig", newline="") as fh:
+        for raw in csv.DictReader(fh):
+            keys = {k.lower().strip(): k for k in raw}
+            def g(*names):
+                for n in names:
+                    if n in keys:
+                        return (raw[keys[n]] or "").strip()
+                return ""
+            ts_s = g("ts", "time", "timestamp", "date", "ts_or_date")
+            if not ts_s:
+                continue
+            kind = (g("kind", "type") or "other").lower()
+            try:
+                ts = float(ts_s)
+                if ts > 10_000_000_000:
+                    ts /= 1000.0
+                ts = int(ts)
+            except ValueError:
+                ts = _epoch(ts_s[:10], KIND_HOUR_UTC.get(kind, 12))
+            surprise = g("surprise", "actual_minus_consensus")
+            rows.append({"ts": ts, "name": g("name", "event") or kind, "kind": kind,
+                         "scope": g("scope", "assets") or "all",
+                         "source": os.path.basename(path),
+                         "surprise": float(surprise) if surprise else None})
+    return rows
+
+def load_events(root=None):
+    events = seed_events()
+    if root is None:
+        return events
+    folder = Path(root) / "history" / "events"
+    if folder.is_dir():
+        for p in sorted(folder.glob("*.csv")):
+            if p.name.endswith(".example.csv"):
+                continue
+            events.extend(load_event_csv(p))
+    events.sort(key=lambda e: e["ts"])
+    return events
+
+def window_hits(ts, events, pre_sec=6*3600, post_sec=20*3600):
+    return [e for e in events if ts - pre_sec <= e["ts"] <= ts + post_sec]
+
+def event_features(ts, events, asset=""):
+    hits = window_hits(ts, events)
+    kinds = {e["kind"] for e in hits}
+    return {
+        "event_n": len(hits),
+        "fomc": int("fomc" in kinds),
+        "cpi": int("cpi" in kinds),
+        "nfp": int("nfp" in kinds),
+        "pce": int("pce" in kinds),
+        "earnings": int("earnings" in kinds),
+        "geopol": int("geopol" in kinds),
+        "any_macro": int(bool(kinds & {"fomc","cpi","ppi","nfp","pce","gdp","ism"})),
+        "surprise_abs": max((abs(e["surprise"]) for e in hits if e.get("surprise") is not None), default=0.0),
+    }
