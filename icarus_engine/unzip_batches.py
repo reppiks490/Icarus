@@ -1,24 +1,10 @@
 # Grok (xAI) — 2026-09-22. Whole file.
-"""Clone/pull reppiks490/multi-level-csv and unzip the six newest batches.
-Does not ingest into HistoryHub. BATS/LSE/BCBA go to candidates/.
-"""
 from __future__ import annotations
-
-import argparse, os, shutil, subprocess, zipfile
+import argparse, json, os, shutil, subprocess, zipfile
 from pathlib import Path
-
+from icarus_engine.spec import BATCHES, CSV_REPO
 from icarus_plant.drop import is_candidate_export
 from icarus_plant.layout import ensure, plant_root, repo_root
-
-REPO = "https://github.com/reppiks490/multi-level-csv.git"
-BATCHES = (
-    "Csv first 60.zip",
-    "First 60 half.zip",
-    "Csv 2nd 60.zip",
-    "2nd 60 half.zip",
-    "Csv last 57.zip",
-    "Last 57 half.zip",
-)
 
 def _run(cmd, cwd=None):
     return subprocess.run(cmd, cwd=cwd, check=True)
@@ -29,7 +15,7 @@ def fetch_repo(dest: Path):
         _run(["git", "-C", str(dest), "pull", "--ff-only"])
         return dest
     dest.parent.mkdir(parents=True, exist_ok=True)
-    _run(["git", "clone", "--depth", "1", REPO, str(dest)])
+    _run(["git", "clone", "--depth", "1", CSV_REPO, str(dest)])
     return dest
 
 def _classify(name: str) -> str:
@@ -63,27 +49,20 @@ def unzip_batches(src: Path, plant=None):
                     continue
                 dest_dir = cand_dir if _classify(base) == "candidates" else exec_dir
                 target = dest_dir / base
-                if target.exists():
-                    rec["files"] += 1
-                    continue
-                with zf.open(info) as src_f, target.open("wb") as out:
-                    shutil.copyfileobj(src_f, out)
+                if not target.exists():
+                    with zf.open(info) as src_f, target.open("wb") as out:
+                        shutil.copyfileobj(src_f, out)
                 rec["files"] += 1
         rec["ok"] = True
         report.append(rec)
-    return {
-        "source": str(src),
-        "execution": str(exec_dir),
-        "candidates": str(cand_dir),
-        "batches": report,
-        "ingested_to_historyhub": False,
-    }
+    return {"source": str(src), "execution": str(exec_dir), "candidates": str(cand_dir),
+            "batches": report, "ingested_to_historyhub": False}
 
 def main(argv=None):
-    p = argparse.ArgumentParser(description="Unzip six newest candidate batches")
-    p.add_argument("--src", default="", help="existing multi-level-csv checkout")
-    p.add_argument("--plant", default="", help="ICARUS_HOME")
-    p.add_argument("--fetch", action="store_true", help="git clone/pull the csv repo first")
+    p = argparse.ArgumentParser()
+    p.add_argument("--src", default="")
+    p.add_argument("--plant", default="")
+    p.add_argument("--fetch", action="store_true")
     args = p.parse_args(argv)
     plant = args.plant or plant_root()
     if args.src:
@@ -93,7 +72,6 @@ def main(argv=None):
         src = sibling if sibling.is_dir() else Path(plant) / "history" / "unzipped" / "_repo"
     if args.fetch or not src.is_dir():
         src = fetch_repo(src)
-    import json
     print(json.dumps(unzip_batches(src, plant), indent=2))
     return 0
 

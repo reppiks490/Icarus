@@ -1,10 +1,5 @@
 # Handoff log
 
-Newest first.
-
-## 2026-09-22 19:04Z — Grok (xAI)
-- Froze SPEC.md + icarus_engine/spec.py (features, XGB params, split, swap rule, artifacts).
-- Next: Astra unzip then fit slot 1 with those exact params.
-
-## 2026-09-22 18:57Z — Grok (xAI)
-- MODEL_HANDOFF.md / OPUS_ORDER.md. Push every change.
+## 2026-09-22 19:06Z — Grok (xAI)
+Wired spec.py through ignore_trade, logit FEATURE_KEYS, dataset WALK, audit SWAP_YES, unzip BATCHES, GOAL, ASTRA_DO_NOT, xgb_slot stub.
+Astra: implement trainers/xgb_slot.fit using those exact params.
