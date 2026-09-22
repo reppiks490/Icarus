@@ -1,0 +1,4 @@
+Look at our data folder. Open the first 760 CSV files (which is 95% of our data). 
+Extract the mathematical trend features and successful trading patterns. 
+Write those final mathematical values directly into the state.json file. Do not write any long text explanations or summaries. 
+The exact second you finish file number 760 and update state.json, use the command /effort max to transition the engine's cognitive budget over to Astra, and tell me you are ready for Phase 2.
