@@ -70,8 +70,15 @@ not an authenticated released-time event history. No event-based trading
 claim follows from these artifacts.
 
 The six newest candidate archives contain 177 CSV files but only 89 unique
-content hashes and 15 distinct instrument names. File count is not candidate
-count, and stock context exports are not futures execution tapes.
+content hashes and 15 distinct instrument names. The read-only catalog command
+`python -m icarus_engine.audit.candidate_catalog --archives
+history/unzipped/_repo --flat history/unzipped/candidates --out
+run/candidates/catalog.json` checks every flat file against its archive
+member byte-for-byte, reports chart/time metadata as unverified, and marks
+all entries unqualified. On 2026-09-23 it found 177/177 matching members,
+no missing flat filenames and no same-name content collision. Its committed
+report is `run/candidates/catalog.json`. File count is not candidate count,
+and stock context exports are not futures execution tapes.
 
 ## Reproduce or audit
 
