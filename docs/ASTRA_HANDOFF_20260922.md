@@ -102,6 +102,28 @@ not bundled with the model files in this branch.
 
 ## Work still required for the owner goal
 
+- A standalone owner-provided DAEDALUS ZIP was received and tested in an
+  isolated review directory. See `docs/DAEDALUS_PACKAGE_REVIEW_20260923.md`.
+  Its 45 tests and static audit pass, but only a 238-file subset is included,
+  no sample model is promoted, and no complete protected corpus run is present.
+  It has not been integrated into execution or accepted as a qualification
+  oracle.
+- A research-only native replay evaluator now derives operator metrics from
+  completed emulator entry lots rather than accepting only supplied summary
+  dictionaries. It records lot identity, original quantity, bar indices,
+  chart-bar timestamps and clean window boundaries; checks fill arithmetic,
+  source/condition parity and scale receipt time; and still never sets
+  `candidate_qualified` or `execution_authorized`. This is an interim screen,
+  not a protected final holdout or market-tape parity certificate. The numeric
+  gates are pinned; overnight classification uses IANA New York history
+  instead of the operator source's 2024-2026-only DST table. That metric
+  definition change is explicit and must be considered in comparative reports.
+  Calendar-aligned chart timestamps, contiguous recorded bars, and a range
+  derived from the actual scored bars are now required; forged fast bars or
+  a declared range past the last recorded bar fail closed. See
+  `docs/INTELLIGENCE_STACK_INTAKE_20260923.md` for the four newer owner
+  archives and their unverified build queue.
+
 - Review the 44 artifacts independently for causal availability, source
   identity, early stopping, OOF agreement training, calibration isolation,
   robustness and any false performance inference. A separate review agent

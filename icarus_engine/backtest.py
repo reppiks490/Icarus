@@ -198,15 +198,23 @@ def run_backtest(port, symbol: str, *, preset: Optional[str] = None, inputs: Opt
     closed_seen = 0
     realized = 0.0
     replayed = 0
+    boundary_state = None
+    chart_bar_times = []
 
     def included(ts: int) -> bool:
         return (window_start is None or ts >= window_start) and (window_end is None or ts <= window_end)
 
     def hooked(real: Bar, live: bool) -> None:
-        nonlocal closed_seen, realized, replayed
+        nonlocal closed_seen, realized, replayed, boundary_state
         if window_end is not None and r.cal.bucket_end(real.ts, r.chart_minutes) > window_end:
             return
+        if window_start is not None and boundary_state is None and real.ts >= window_start:
+            boundary_state = {"open_lots": len(r.em.open),
+                              "pending_entries": len(r.em._pending_entries),
+                              "pending_closes": len(r.em._pending_closes),
+                              "pending_exits": len(r.em._exits)}
         orig(real, live)
+        chart_bar_times.append([r.bar_index, real.ts])
         for t in r.em.closed[closed_seen:]:
             if included(t.entry_ts):
                 realized += t.profit
@@ -243,7 +251,8 @@ def run_backtest(port, symbol: str, *, preset: Optional[str] = None, inputs: Opt
             continue
         pieces.append(Piece(no=k, direction=t.direction, qty=t.qty, entry_ts=t.entry_ts, entry_px=t.entry_price, exit_ts=t.exit_ts, exit_px=t.exit_price,
                             exit_signal=t.exit_comment, pnl=t.profit, commission=r.em.commission * t.qty * 2.0, runup=t.runup, drawdown=t.drawdown,
-                            bars=t.bars, entry_id=t.entry_id))
+                            bars=t.bars, entry_id=t.entry_id, lot_id=t.lot_id, entry_qty=t.entry_qty,
+                            entry_bar=t.entry_bar, exit_bar=t.exit_bar))
     mark = real_closes[-1] if real_closes else None
     open_pieces: List[Piece] = []
     for k, t in enumerate(r.em.open, len(closed_all) + 1):
@@ -254,7 +263,8 @@ def run_backtest(port, symbol: str, *, preset: Optional[str] = None, inputs: Opt
                                  exit_signal="Open", pnl=upl, commission=r.em.commission * t.qty,
                                  runup=max(0.0, t.direction * (t.best - t.entry_price) * t.qty * r.em.contract_size - r.em.commission * t.qty),
                                  drawdown=min(0.0, t.direction * (t.worst - t.entry_price)) * t.qty * r.em.contract_size - r.em.commission * t.qty,
-                                 bars=(r.bar_index - t.entry_bar), entry_id=t.entry_id))
+                                 bars=(r.bar_index - t.entry_bar), entry_id=t.entry_id, lot_id=t.seq, entry_qty=t.qty_orig,
+                                 entry_bar=t.entry_bar, exit_bar=-1))
     bars_n = len(path)
     bt_start = path[0][0] if path else None
     bt_end = r.cal.bucket_end(int(path[-1][0]), r.chart_minutes) if path else None
@@ -299,6 +309,8 @@ def run_backtest(port, symbol: str, *, preset: Optional[str] = None, inputs: Opt
         "subbars_count": len(subs), "deep_counts": {str(m): len(rows) for m, rows in deep.items()},
         "scale_source": "literal points (no reference scaling)" if literal_scale else "frozen source scale",
         "scale_known_at": scale_known_at,
+        "chart_bar_times": chart_bar_times,
+        "chart_bar_times_sha256": _snapshot_hash(chart_bar_times),
         "historical_scale_asof_valid": historical_scale_asof_valid,
         "scale_caveat": (None if historical_scale_asof_valid else
                          "The frozen source scale was not recorded before the scored window. Collect forward history after scale initialization; reproducibility alone is not historical validity."),
@@ -310,6 +322,8 @@ def run_backtest(port, symbol: str, *, preset: Optional[str] = None, inputs: Opt
             "commission": spec.commission, "capital": spec.capital, "session": getattr(r.cal, "session", "24/7"), "tf": r.chart_minutes,
             "point_value": r.em.contract_size, "overrides": inputs or {}, "sources": sources, "leverage": leverage,
             "window_start": window_start, "window_end": window_end, "pts_scale": r.pts_scale,
+            "window_boundary": boundary_state,
+            "window_boundary_clean": (boundary_state is not None and not any(boundary_state.values())) if window_start is not None else None,
             "historical_scale_asof_valid": historical_scale_asof_valid, "reproducibility": reproducibility,
         },
         "range": {"start": bt_start, "end": bt_end, "first_trade": (pieces[0].entry_ts if pieces else None), "last_trade": (pieces[-1].exit_ts if pieces else None)},
@@ -331,7 +345,7 @@ def _trade_rows(pieces: List[Piece], open_pieces: List[Piece], point_value: floa
     for p in sorted(pieces, key=lambda p: (p.exit_ts, p.no)):
         cum += p.pnl
         notional = p.entry_px * p.qty * point_value
-        out.append({"no": p.no, "type": ("long" if p.direction > 0 else "short"), "entry_ts": p.entry_ts, "entry_px": p.entry_px, "entry_signal": p.entry_id or ("Long" if p.direction > 0 else "Short"),
+        out.append({"no": p.no, "lot_id": p.lot_id, "entry_qty": p.entry_qty, "entry_bar": p.entry_bar, "exit_bar": p.exit_bar, "type": ("long" if p.direction > 0 else "short"), "entry_ts": p.entry_ts, "entry_px": p.entry_px, "entry_signal": p.entry_id or ("Long" if p.direction > 0 else "Short"),
                     "exit_ts": p.exit_ts, "exit_px": p.exit_px, "exit_signal": p.exit_signal, "qty": p.qty, "value": notional, "pnl": p.pnl,
                     "return_pct": (p.pnl / notional * 100.0) if notional else None, "commission": p.commission,
                     "runup": p.runup, "runup_pct": (p.runup / notional * 100.0) if notional and p.runup is not None else None,
@@ -339,7 +353,7 @@ def _trade_rows(pieces: List[Piece], open_pieces: List[Piece], point_value: floa
                     "cum_pnl": cum, "bars": p.bars, "open": False})
     for p in open_pieces:
         notional = p.entry_px * p.qty * point_value
-        out.append({"no": p.no, "type": ("long" if p.direction > 0 else "short"), "entry_ts": p.entry_ts, "entry_px": p.entry_px, "entry_signal": p.entry_id or ("Long" if p.direction > 0 else "Short"),
+        out.append({"no": p.no, "lot_id": p.lot_id, "entry_qty": p.entry_qty, "entry_bar": p.entry_bar, "exit_bar": p.exit_bar, "type": ("long" if p.direction > 0 else "short"), "entry_ts": p.entry_ts, "entry_px": p.entry_px, "entry_signal": p.entry_id or ("Long" if p.direction > 0 else "Short"),
                     "exit_ts": None, "exit_px": None, "exit_signal": "Open", "qty": p.qty, "value": notional, "pnl": p.pnl,
                     "return_pct": (p.pnl / notional * 100.0) if notional else None, "commission": p.commission,
                     "runup": p.runup, "runup_pct": (p.runup / notional * 100.0) if notional and p.runup is not None else None,
