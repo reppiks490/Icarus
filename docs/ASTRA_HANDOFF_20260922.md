@@ -108,6 +108,15 @@ not bundled with the model files in this branch.
   no sample model is promoted, and no complete protected corpus run is present.
   It has not been integrated into execution or accepted as a qualification
   oracle.
+  The later blueprint bundle's 32 Python source files match that archive
+  byte-for-byte. A separate private research repository now tracks release
+  repair: `https://github.com/reppiks490/daedalus-research-os` at `d8fc352`.
+  SQLite handles close explicitly; 49 tests pass with ResourceWarning as
+  error, and the static audit passes. A six-root local catalog records 803
+  physical CSV sources and 542 unique byte hashes. These are source records,
+  not 803 independent predictive signals or proof of protected validation.
+  The 177 equity-candidate exports remain contextual stock data, not futures
+  fill tape. See that repository's `docs/CORPUS_DISCOVERY_20260923.md`.
 - A research-only native replay evaluator now derives operator metrics from
   completed emulator entry lots rather than accepting only supplied summary
   dictionaries. It records lot identity, original quantity, bar indices,
