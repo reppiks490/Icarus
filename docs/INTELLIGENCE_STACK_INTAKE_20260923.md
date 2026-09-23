@@ -40,3 +40,28 @@ freeze selection before protected evaluation; label synthetic stress as
 synthetic; carry source/evidence/plane lineage; default to abstention on stale
 or unsupported inputs. No archive contains proof of a qualified candidate or
 permission to place live orders.
+
+## AION / PARALLAX continuation (CA, 2026-09-23)
+
+The separate Icarus branch `codex/aion-parallax-handoff` at `20c1f15`
+contains a source-only AION ZIP and a PARALLAX proposal. Its ZIP SHA-256 is
+`32ca851227bbce99d58df1e39fb69ac08f9fc2f42ba5a05239018f624dc1ce40`.
+The ZIP did not contain the original Work task's Git history. Its 30 source
+files were imported into the private native sibling repository
+`reppiks490/aion-parallax-research` at `ca9f575`; continuation commit
+`12a7cb8` adds a research-only ZIP/member inventory and hardens evidence
+boundaries. Python 3.11 tests pass 21/21 and its 22-event synthetic demo
+verifies its event chain. The independent code review found material gaps;
+its disposition and remaining gates are in that repo's
+`docs/CA_REVIEW_20260923.md`. This is **not** a live-data or performance
+acceptance.
+
+PARALLAX remains a proposed market-state/analog atlas. Only its provenance
+inventory is implemented. The ten reviewed ZIPs contain 659 physical CSV
+members and 542 byte-distinct contents; the DAEDALUS six-root extracted
+catalog contains 803 physical files with the exact same 542 SHA-256 contents.
+The extra 144 physical copies add no new bytes and were not deleted. Chart
+type, contract, provider, availability and execution safety remain unverified;
+no AION/PARALLAX packet may influence Icarus orders or spend a protected
+DAEDALUS holdout. AION's native repo is the canonical place for its future
+work; do not develop against the archived ZIP.
