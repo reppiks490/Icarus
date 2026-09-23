@@ -15,8 +15,11 @@ _EXEC_HINT = re.compile(
 )
 
 def _roots(explicit=None):
+    if explicit is not None:
+        root = Path(explicit).resolve()
+        return [root] if root.is_dir() else []
     out = []
-    env = explicit or os.environ.get("ICARUS_CSV_ROOT")
+    env = os.environ.get("ICARUS_CSV_ROOT")
     if env:
         out.append(Path(env))
     home = Path(plant_root())

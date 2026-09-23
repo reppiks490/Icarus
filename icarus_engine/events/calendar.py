@@ -1,8 +1,9 @@
 # Grok (xAI) — 2026-09-22. Whole file.
 from __future__ import annotations
-import csv, os
+import csv, os, math
 from datetime import datetime, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 # Fallback only if Inputs cannot import. Prefer Inputs().fomc_dates.
 SEED_FOMC_FALLBACK = (
@@ -29,7 +30,8 @@ def fomc_days():
         return list(SEED_FOMC_FALLBACK)
 
 def seed_events():
-    return [{"ts": _epoch(day, 18), "name": "FOMC decision", "kind": "fomc",
+    # CA: 14:00 New York is 19:00 UTC in winter, not a fixed 18:00 UTC.
+    return [{"ts": int(datetime.fromisoformat(day).replace(hour=14, tzinfo=ZoneInfo("America/New_York")).timestamp()), "name": "FOMC decision", "kind": "fomc",
              "scope": "rates,equity,metals,dollar", "source": "inputs", "surprise": None}
             for day in fomc_days()]
 
@@ -53,8 +55,16 @@ def load_event_csv(path: Path):
                     ts /= 1000.0
                 ts = int(ts)
             except ValueError:
-                ts = _epoch(ts_s[:10], KIND_HOUR_UTC.get(kind, 12))
+                dt = datetime.fromisoformat(ts_s.replace("Z", "+00:00"))
+                if len(ts_s) == 10:
+                    # CA: unknown print time is available only after this NY date.
+                    dt = dt.replace(hour=23, minute=59, second=59, tzinfo=ZoneInfo("America/New_York"))
+                if dt.tzinfo is None:
+                    raise ValueError("event datetime must specify its UTC offset")
+                ts = int(dt.timestamp())
             surprise = g("surprise", "actual_minus_consensus")
+            if surprise and not math.isfinite(float(surprise)):
+                raise ValueError("event surprise must be finite")
             rows.append({"ts": ts, "name": g("name", "event") or kind, "kind": kind,
                          "scope": g("scope", "assets") or "all",
                          "source": os.path.basename(path),
@@ -75,10 +85,21 @@ def load_events(root=None):
     return events
 
 def window_hits(ts, events, pre_sec=6*3600, post_sec=20*3600):
-    return [e for e in events if ts - pre_sec <= e["ts"] <= ts + post_sec]
+    # CA: a future print (especially its surprise) is never a model feature.
+    return [e for e in events if ts - post_sec <= e["ts"] <= ts]
+
+
+def _scope_matches(event, asset):
+    scope = {s.strip().upper() for s in event.get("scope", "all").split(",")}
+    if not asset or "ALL" in scope or asset.upper() in scope:
+        return True
+    group = ("EQUITY" if asset.upper() in {"NQ", "ES", "YM"} else
+             "METALS" if asset.upper() in {"GC", "SI", "PL", "PA"} else
+             "CRYPTO" if asset.upper() in {"BTC", "BTCF"} else "")
+    return group in scope
 
 def event_features(ts, events, asset=""):
-    hits = window_hits(ts, events)
+    hits = [e for e in window_hits(ts, events) if _scope_matches(e, asset)]
     kinds = {e["kind"] for e in hits}
     return {
         "event_n": len(hits),

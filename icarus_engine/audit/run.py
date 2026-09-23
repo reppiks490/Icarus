@@ -1,5 +1,6 @@
 # Grok (xAI) — 2026-09-22. Whole file.
 from __future__ import annotations
+import hashlib
 import json
 from pathlib import Path
 from icarus_engine.events.calendar import event_features
@@ -23,17 +24,62 @@ def _asof(exec_ts, cand):
             hi = mid - 1
     return hit
 
-def score_pair(exec_bars, cand_bars, events, asset, future, require_xgb=False, xgb_path=None):
+def _xgb_evidence(path, execution_source, events, future):
+    """CA: bind the gate to a real fitted tree and this exact execution tape."""
+    from icarus_engine.trainers.run import file_hash, training_signature
+    from icarus_engine.trainers.xgb import validate_artifact
+    from icarus_engine.trainers.families import FAMILIES, family_for
+
+    artifact_path = Path(path)
+    if not artifact_path.is_file():
+        raise ValueError(f"missing XGB artifact: {artifact_path}")
+    if execution_source is None:
+        raise ValueError("execution CSV path required for XGB provenance check")
+    source = Path(execution_source)
+    if not source.is_file():
+        raise ValueError(f"execution CSV unavailable: {source}")
+    artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
+    if not validate_artifact(artifact, asset=future):
+        raise ValueError("XGB artifact failed native reload or symbol validation")
+    provenance = artifact.get("provenance") or {}
+    if (artifact.get("training_signature") != training_signature()
+            or artifact.get("family") not in FAMILIES
+            or family_for(artifact.get("chart_type")) != artifact.get("family")
+            or artifact.get("dataset_sha256") != file_hash(source)
+            or provenance.get("sha256") != artifact.get("dataset_sha256")
+            or provenance.get("asset") != future
+            or provenance.get("family") != artifact.get("family")
+            or provenance.get("chart_type") != artifact.get("chart_type")
+            or provenance.get("interval") is None):
+        raise ValueError("XGB source, interval, code, or execution tape differs")
+    event_hash = hashlib.sha256(json.dumps(events, sort_keys=True).encode()).hexdigest()
+    if artifact.get("event_sha256") != event_hash:
+        raise ValueError("event calendar differs from the fitted XGB artifact")
+    return {
+        "artifact": str(artifact_path.resolve()),
+        "artifact_sha256": file_hash(artifact_path),
+        "source_sha256": artifact["dataset_sha256"],
+        "family": artifact["family"],
+        "interval": provenance["interval"],
+        "holdout_acc": artifact.get("holdout_acc"),
+    }
+
+
+def score_pair(exec_bars, cand_bars, events, asset, future, require_xgb=False,
+               xgb_path=None, execution_source=None):
     if ignored_symbol(future):
         return {"status": "ignored", "reason": "execution symbol is not traded",
                 "execution": future, "candidate": asset, "execution_authorized": False}
     if ignored_symbol(asset):
         return {"status": "ignored", "reason": "candidate name is on the do-not-trade list",
                 "execution": future, "candidate": asset, "execution_authorized": False}
+    evidence = None
     if require_xgb:
         p = Path(xgb_path) if xgb_path else Path("run") / "trainers" / f"{future}_clock_minutes_xgb.json"
-        if not p.is_file():
-            return {"status": "blocked", "reason": f"missing XGB {p} — Astra must fit models first",
+        try:
+            evidence = _xgb_evidence(p, execution_source, events, future)
+        except (OSError, ValueError, TypeError, KeyError) as exc:
+            return {"status": "blocked", "reason": str(exc),
                     "execution": future, "candidate": asset, "execution_authorized": False}
     exec_bars = _sorted(exec_bars)
     cand_bars = _sorted(cand_bars)
@@ -63,18 +109,16 @@ def score_pair(exec_bars, cand_bars, events, asset, future, require_xgb=False, x
             ev_n += 1
             if x == y:
                 ev_agree += 1
-    status, reason = "eligible", ""
-    if hits < 200:
-        status, reason = "reject", f"overlap {hits} < 200"
-        if ev_n and ev_agree / ev_n >= 0.55:
-            status, reason = "eligible_macro_exceeds", "quiet fail, macro window beats 0.55"
     return {
-        "status": status, "reason": reason, "execution": future, "candidate": asset,
+        "status": "diagnostic", "reason": "Same-bar concordance only; no trade-level qualification",
+        "execution": future, "candidate": asset,
         "overlap": hits,
         "sign_agree": (agree / hits) if hits else None,
         "tide_agree": (tide_agree / tide_n) if tide_n else None,
         "tide_n": tide_n, "macro_overlap": ev_n,
         "macro_agree": (ev_agree / ev_n) if ev_n else None,
+        "xgb_evidence": evidence,
+        "candidate_qualified": False,
         "execution_authorized": False,
     }
 

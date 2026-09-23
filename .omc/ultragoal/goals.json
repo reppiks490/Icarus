@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "createdAt": "2026-09-22T18:49:38.915Z",
+  "updatedAt": "2026-09-22T18:49:38.915Z",
+  "briefPath": ".omc/ultragoal/brief.md",
+  "goalsPath": ".omc/ultragoal/goals.json",
+  "ledgerPath": ".omc/ultragoal/ledger.jsonl",
+  "claudeGoalMode": "aggregate",
+  "goals": [
+    {
+      "id": "G001-data",
+      "title": "Data",
+      "objective": "Unzip and verify six batches and inventory owner execution CSVs",
+      "status": "pending",
+      "attempt": 0,
+      "createdAt": "2026-09-22T18:49:38.915Z",
+      "updatedAt": "2026-09-22T18:49:38.915Z"
+    },
+    {
+      "id": "G002-models",
+      "title": "Models",
+      "objective": "Build and fit the specified causal per-symbol family models",
+      "status": "pending",
+      "attempt": 0,
+      "createdAt": "2026-09-22T18:49:38.915Z",
+      "updatedAt": "2026-09-22T18:49:38.915Z"
+    },
+    {
+      "id": "G003-audit",
+      "title": "Audit",
+      "objective": "Require genuine primary XGB artifacts before candidate audit and verify all results",
+      "status": "pending",
+      "attempt": 0,
+      "createdAt": "2026-09-22T18:49:38.915Z",
+      "updatedAt": "2026-09-22T18:49:38.915Z"
+    }
+  ],
+  "claudeObjective": "Complete all ultragoal stories in .omc/ultragoal/goals.json: G001-data Data; G002-models Models; G003-audit Audit"
+}

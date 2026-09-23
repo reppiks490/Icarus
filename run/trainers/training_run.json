@@ -1,0 +1,1145 @@
+{
+  "author": "CA",
+  "manifest_sha256": "ee9ca5ff0b676604d92f3df49266d02ea57316b9ef4dc84272910ca9c870f405",
+  "execution_authorized": false,
+  "cells": [
+    {
+      "asset": "NQ",
+      "family": "clock_minutes",
+      "status": "fitted",
+      "path": "run\\trainers\\NQ_clock_minutes_xgb.json",
+      "artifact_sha256": "98d69208fc9fab6968a56feeddfcc4d3dcb602becc97ee6dc0cb82ef091bcbec",
+      "holdout_acc": 0.5239835541343079,
+      "holdout_logloss": 0.6930345282077947,
+      "auxiliary": {
+        "agree": "fitted",
+        "regime": "fitted",
+        "calibration": "fitted",
+        "failure": "deferred"
+      }
+    },
+    {
+      "asset": "NQ",
+      "family": "clock_hours",
+      "status": "fitted",
+      "path": "run\\trainers\\NQ_clock_hours_xgb.json",
+      "artifact_sha256": "44d5d2dc0d9f507d7c9ff9ba53c5a00d1e35347aa92d98ac9f27dd65a88e42ba",
+      "holdout_acc": 0.5323322838459675,
+      "holdout_logloss": 0.6914702498212127,
+      "auxiliary": {
+        "agree": "fitted",
+        "regime": "fitted",
+        "calibration": "fitted",
+        "failure": "deferred"
+      }
+    },
+    {
+      "asset": "NQ",
+      "family": "clock_seconds",
+      "status": "fitted",
+      "path": "run\\trainers\\NQ_clock_seconds_xgb.json",
+      "artifact_sha256": "f1c1046603cc3816ba13d2b2b4c034c5d899a20f396876f9196c6c30558e5f73",
+      "holdout_acc": 0.5516118162417163,
+      "holdout_logloss": 0.6856057477359305,
+      "auxiliary": {
+        "agree": "fitted",
+        "regime": "fitted",
+        "calibration": "fitted",
+        "failure": "deferred"
+      }
+    },
+    {
+      "asset": "NQ",
+      "family": "clock_daily",
+      "status": "fitted",
+      "path": "run\\trainers\\NQ_clock_daily_xgb.json",
+      "artifact_sha256": "e43714b98fa984d7156a668406a8eb2aae68a5e7f1e70014e4c522e955af22db",
+      "holdout_acc": 0.5166666666666667,
+      "holdout_logloss": 0.7754310521922976,
+      "auxiliary": {
+        "agree": "fitted",
+        "regime": "fitted",
+        "calibration": "fitted",
+        "failure": "deferred"
+      }
+    },
+    {
+      "asset": "NQ",
+      "family": "range",
+      "status": "fitted",
+      "path": "run\\trainers\\NQ_range_xgb.json",
+      "artifact_sha256": "df9aaf10170935846edb6dfe02b3d6bacd62abad330c446860b40bce11b47ae0",
+      "holdout_acc": 0.5181033516421926,
+      "holdout_logloss": 0.7671872626938171,
+      "auxiliary": {
+        "agree": "fitted",
+        "regime": "fitted",
+        "calibration": "fitted",
+        "failure": "deferred"
+      }
+    },
+    {
+      "asset": "NQ",
+      "family": "tick",
+      "status": "fitted",
+      "path": "run\\trainers\\NQ_tick_xgb.json",
+      "artifact_sha256": "c6658a4c45d920a133b691ac9b0c0f1b100d171cbe619afc0a62453833330657",
+      "holdout_acc": 0.47602564102564104,
+      "holdout_logloss": 0.6931691296247692,
+      "auxiliary": {
+        "agree": "fitted",
+        "regime": "fitted",
+        "calibration": "fitted",
+        "failure": "deferred"
+      }
+    },
+    {
+      "asset": "ES",
+      "family": "clock_minutes",
+      "status": "fitted",
+      "path": "run\\trainers\\ES_clock_minutes_xgb.json",
+      "artifact_sha256": "ffefb53f2be81813209621ab28bc3e8c9c170215acc5afbd5545ca50b1ffa0d1",
+      "holdout_acc": 0.5066454013822435,
+      "holdout_logloss": 0.6934017538940637,
+      "auxiliary": {
+        "agree": "fitted",
+        "regime": "fitted",
+        "calibration": "fitted",
+        "failure": "deferred"
+      }
+    },
+    {
+      "asset": "ES",
+      "family": "clock_hours",
+      "status": "fitted",
+      "path": "run\\trainers\\ES_clock_hours_xgb.json",
+      "artifact_sha256": "01b3a89af564d764d86c76b1079972f0e094a41cede95631b574e3466f7bfc6d",
+      "holdout_acc": 0.5280431055596375,
+      "holdout_logloss": 0.6915844527446767,
+      "auxiliary": {
+        "agree": "fitted",
+        "regime": "fitted",
+        "calibration": "fitted",
+        "failure": "deferred"
+      }
+    },
+    {
+      "asset": "ES",
+      "family": "clock_seconds",
+      "status": "fitted",
+      "path": "run\\trainers\\ES_clock_seconds_xgb.json",
+      "artifact_sha256": "3a1024c92e514aeb510b1f839bcaa7ac4cf6847a60b2ddc995af7a0eb453cdfe",
+      "holdout_acc": 0.7214040255277369,
+      "holdout_logloss": 0.5824066769686089,
+      "auxiliary": {
+        "agree": "fitted",
+        "regime": "fitted",
+        "calibration": "fitted",
+        "failure": "deferred"
+      }
+    },
+    {
+      "asset": "ES",
+      "family": "clock_daily",
+      "status": "fitted",
+      "path": "run\\trainers\\ES_clock_daily_xgb.json",
+      "artifact_sha256": "db07cdd5955dff79e07b7b5610e517f8197397e7fef5b2932e7b43dbfbc79352",
+      "holdout_acc": 0.5333333333333333,
+      "holdout_logloss": 0.6924885525738829,
+      "auxiliary": {
+        "agree": "fitted",
+        "regime": "fitted",
+        "calibration": "fitted",
+        "failure": "deferred"
+      }
+    },
+    {
+      "asset": "ES",
+      "family": "range",
+      "status": "fitted",
+      "path": "run\\trainers\\ES_range_xgb.json",
+      "artifact_sha256": "616932e172307e9589a83392d3576e4e4736bc7988238e7f6d24755238447b4a",
+      "holdout_acc": 0.4998091845821142,
+      "holdout_logloss": 0.7833218808069287,
+      "auxiliary": {
+        "agree": "fitted",
+        "regime": "fitted",
+        "calibration": "fitted",
+        "failure": "deferred"
+      }
+    },
+    {
+      "asset": "ES",
+      "family": "tick",
+      "status": "fitted",
+      "path": "run\\trainers\\ES_tick_xgb.json",
+      "artifact_sha256": "44afaa36188fc27b375998b753e148961f41c367bb5469779ca991d40b62be09",
+      "holdout_acc": 0.48492868695780034,
+      "holdout_logloss": 0.6934946395368392,
+      "auxiliary": {
+        "agree": "fitted",
+        "regime": "fitted",
+        "calibration": "fitted",
+        "failure": "deferred"
+      }
+    },
+    {
+      "asset": "YM",
+      "family": "clock_minutes",
+      "status": "fitted",
+      "path": "run\\trainers\\YM_clock_minutes_xgb.json",
+      "artifact_sha256": "1706bb5cad2e345322ffbf1dec99870827890922ee18dd1ca0b43a4e1daa0832",
+      "holdout_acc": 0.5148081380375998,
+      "holdout_logloss": 0.6925408917636539,
+      "auxiliary": {
+        "agree": "fitted",
+        "regime": "fitted",
+        "calibration": "fitted",
+        "failure": "deferred"
+      }
+    },
+    {
+      "asset": "YM",
+      "family": "clock_hours",
+      "status": "fitted",
+      "path": "run\\trainers\\YM_clock_hours_xgb.json",
+      "artifact_sha256": "4ff0fd2f228b92cf6a3e67ececea247cb91cf9ef5c407df70f4656a3e16c0432",
+      "holdout_acc": 0.5163175840233805,
+      "holdout_logloss": 0.6928961238894794,
+      "auxiliary": {
+        "agree": "fitted",
+        "regime": "fitted",
+        "calibration": "fitted",
+        "failure": "deferred"
+      }
+    },
+    {
+      "asset": "YM",
+      "family": "clock_seconds",
+      "status": "fitted",
+      "path": "run\\trainers\\YM_clock_seconds_xgb.json",
+      "artifact_sha256": "70b534f21df12e1f9a0b052cc50ad38f56357e1c57ec0d2e5260250d5fef44c4",
+      "holdout_acc": 0.5398527528809219,
+      "holdout_logloss": 0.6879795553345237,
+      "auxiliary": {
+        "agree": "fitted",
+        "regime": "fitted",
+        "calibration": "fitted",
+        "failure": "deferred"
+      }
+    },
+    {
+      "asset": "YM",
+      "family": "clock_daily",
+      "status": "fitted",
+      "path": "run\\trainers\\YM_clock_daily_xgb.json",
+      "artifact_sha256": "018ab05f1ae67438662b96470eb01e4112adafe79ea841d176aec068f9625f41",
+      "holdout_acc": 0.48333333333333334,
+      "holdout_logloss": 0.6844849852997108,
+      "auxiliary": {
+        "agree": "fitted",
+        "regime": "fitted",
+        "calibration": "fitted",
+        "failure": "deferred"
+      }
+    },
+    {
+      "asset": "YM",
+      "family": "range",
+      "status": "fitted",
+      "path": "run\\trainers\\YM_range_xgb.json",
+      "artifact_sha256": "75e40b90269d42c968206ec156c4f4061554b671f950853417fed3798fd53e52",
+      "holdout_acc": 0.5543672014260249,
+      "holdout_logloss": 0.6850509662598873,
+      "auxiliary": {
+        "agree": "fitted",
+        "regime": "fitted",
+        "calibration": "fitted",
+        "failure": "deferred"
+      }
+    },
+    {
+      "asset": "YM",
+      "family": "tick",
+      "status": "fitted",
+      "path": "run\\trainers\\YM_tick_xgb.json",
+      "artifact_sha256": "ce6eab270d4900751b6661c5e32d391a0ee5f62249d30bdc47fb21489ec67204",
+      "holdout_acc": 0.5173549183701468,
+      "holdout_logloss": 0.6930938313445896,
+      "auxiliary": {
+        "agree": "fitted",
+        "regime": "fitted",
+        "calibration": "fitted",
+        "failure": "deferred"
+      }
+    },
+    {
+      "asset": "GC",
+      "family": "clock_minutes",
+      "status": "fitted",
+      "path": "run\\trainers\\GC_clock_minutes_xgb.json",
+      "artifact_sha256": "2245ef1648679a05fafc90b421d605aeaf6321c18bd7b1c475296455369458c1",
+      "holdout_acc": 0.49700598802395207,
+      "holdout_logloss": 0.6938076901791206,
+      "auxiliary": {
+        "agree": "fitted",
+        "regime": "fitted",
+        "calibration": "fitted",
+        "failure": "deferred"
+      }
+    },
+    {
+      "asset": "GC",
+      "family": "clock_hours",
+      "status": "fitted",
+      "path": "run\\trainers\\GC_clock_hours_xgb.json",
+      "artifact_sha256": "a6bcebb301fb27d0d64a820ac3f9bd31d7f46b245e56d42be6d80283b4789098",
+      "holdout_acc": 0.5059683313032887,
+      "holdout_logloss": 0.6926871651084391,
+      "auxiliary": {
+        "agree": "fitted",
+        "regime": "fitted",
+        "calibration": "fitted",
+        "failure": "deferred"
+      }
+    },
+    {
+      "asset": "GC",
+      "family": "clock_seconds",
+      "status": "fitted",
+      "path": "run\\trainers\\GC_clock_seconds_xgb.json",
+      "artifact_sha256": "c679803a8431256bc1036e4a62673d57ada4b2936df0238bc2474ac7726ce309",
+      "holdout_acc": 0.526904948939513,
+      "holdout_logloss": 0.6915698269491918,
+      "auxiliary": {
+        "agree": "fitted",
+        "regime": "fitted",
+        "calibration": "fitted",
+        "failure": "deferred"
+      }
+    },
+    {
+      "asset": "GC",
+      "family": "range",
+      "status": "fitted",
+      "path": "run\\trainers\\GC_range_xgb.json",
+      "artifact_sha256": "22c5fdeab31d4905f0e987634fd46d5271607c617430e97f0defb7c2df26b8b5",
+      "holdout_acc": 0.571075002690197,
+      "holdout_logloss": 0.6872069942894447,
+      "auxiliary": {
+        "agree": "fitted",
+        "regime": "fitted",
+        "calibration": "fitted",
+        "failure": "deferred"
+      }
+    },
+    {
+      "asset": "GC",
+      "family": "tick",
+      "status": "fitted",
+      "path": "run\\trainers\\GC_tick_xgb.json",
+      "artifact_sha256": "0901a278d8b80c5c3123627e7734774f20cc691058494e6e60080cbc49d6a4fc",
+      "holdout_acc": 0.5159105431309904,
+      "holdout_logloss": 0.6930521800724446,
+      "auxiliary": {
+        "agree": "fitted",
+        "regime": "fitted",
+        "calibration": "fitted",
+        "failure": "deferred"
+      }
+    },
+    {
+      "asset": "SI",
+      "family": "clock_minutes",
+      "status": "fitted",
+      "path": "run\\trainers\\SI_clock_minutes_xgb.json",
+      "artifact_sha256": "7aad840dd4e01433eb0d97bdd179693651777fd0044746602ba6512d51176eb8",
+      "holdout_acc": 0.4942797104833061,
+      "holdout_logloss": 0.6970015913336752,
+      "auxiliary": {
+        "agree": "fitted",
+        "regime": "fitted",
+        "calibration": "fitted",
+        "failure": "deferred"
+      }
+    },
+    {
+      "asset": "SI",
+      "family": "clock_hours",
+      "status": "fitted",
+      "path": "run\\trainers\\SI_clock_hours_xgb.json",
+      "artifact_sha256": "45f647aa2afadc35cc4d3af31326c6399da25a1f951f6871067bc2b00844960a",
+      "holdout_acc": 0.5081562036579338,
+      "holdout_logloss": 0.6920402814387996,
+      "auxiliary": {
+        "agree": "fitted",
+        "regime": "fitted",
+        "calibration": "fitted",
+        "failure": "deferred"
+      }
+    },
+    {
+      "asset": "SI",
+      "family": "clock_seconds",
+      "status": "fitted",
+      "path": "run\\trainers\\SI_clock_seconds_xgb.json",
+      "artifact_sha256": "d08a5fc8f3e6d466be1fb0767d6cdf8013d254311775a715105e958110f2c2b1",
+      "holdout_acc": 0.515736040609137,
+      "holdout_logloss": 0.6932707488094265,
+      "auxiliary": {
+        "agree": "fitted",
+        "regime": "fitted",
+        "calibration": "fitted",
+        "failure": "deferred"
+      }
+    },
+    {
+      "asset": "SI",
+      "family": "range",
+      "status": "fitted",
+      "path": "run\\trainers\\SI_range_xgb.json",
+      "artifact_sha256": "a0666bbeb0cb8e0d39e9af9b283eb7ae67dcae61f39e92dffa661b636a38b45d",
+      "holdout_acc": 0.49448123620309054,
+      "holdout_logloss": 0.6972948288563596,
+      "auxiliary": {
+        "agree": "fitted",
+        "regime": "fitted",
+        "calibration": "fitted",
+        "failure": "deferred"
+      }
+    },
+    {
+      "asset": "SI",
+      "family": "tick",
+      "status": "fitted",
+      "path": "run\\trainers\\SI_tick_xgb.json",
+      "artifact_sha256": "825f4e2a83d37e551449e8112cae82bf126eac95c43224760f2b2f20573a66dc",
+      "holdout_acc": 0.4605678233438486,
+      "holdout_logloss": 0.7132699234463288,
+      "auxiliary": {
+        "agree": "fitted",
+        "regime": "fitted",
+        "calibration": "fitted",
+        "failure": "deferred"
+      }
+    },
+    {
+      "asset": "PL",
+      "family": "clock_minutes",
+      "status": "fitted",
+      "path": "run\\trainers\\PL_clock_minutes_xgb.json",
+      "artifact_sha256": "0812182d835ae90b4929571abf8437c4765a46b2d759915d457d86428c3f5d2a",
+      "holdout_acc": 0.5070088419236576,
+      "holdout_logloss": 0.6930141359896355,
+      "auxiliary": {
+        "agree": "fitted",
+        "regime": "fitted",
+        "calibration": "fitted",
+        "failure": "deferred"
+      }
+    },
+    {
+      "asset": "PL",
+      "family": "clock_hours",
+      "status": "fitted",
+      "path": "run\\trainers\\PL_clock_hours_xgb.json",
+      "artifact_sha256": "e53ad538873664fae050517fb01ee620cff46916189fd60a9020b3e74fb864e1",
+      "holdout_acc": 0.5181574457713868,
+      "holdout_logloss": 0.6930845018014868,
+      "auxiliary": {
+        "agree": "fitted",
+        "regime": "fitted",
+        "calibration": "fitted",
+        "failure": "deferred"
+      }
+    },
+    {
+      "asset": "PL",
+      "family": "clock_seconds",
+      "status": "fitted",
+      "path": "run\\trainers\\PL_clock_seconds_xgb.json",
+      "artifact_sha256": "d3fafc7de986cdbeb1c2f24dc02eb3a240e73f811e119a63d2fc04cee80b5d75",
+      "holdout_acc": 0.5057966213978139,
+      "holdout_logloss": 0.6926132477564864,
+      "auxiliary": {
+        "agree": "fitted",
+        "regime": "fitted",
+        "calibration": "fitted",
+        "failure": "deferred"
+      }
+    },
+    {
+      "asset": "PL",
+      "family": "range",
+      "status": "fitted",
+      "path": "run\\trainers\\PL_range_xgb.json",
+      "artifact_sha256": "e7769ddc2082a7e0da9c078def2638fce9a0d5960cbfd48cde313a3390a27a00",
+      "holdout_acc": 0.6202790935859686,
+      "holdout_logloss": 0.6620384024031732,
+      "auxiliary": {
+        "agree": "fitted",
+        "regime": "fitted",
+        "calibration": "fitted",
+        "failure": "deferred"
+      }
+    },
+    {
+      "asset": "PA",
+      "family": "clock_minutes",
+      "status": "fitted",
+      "path": "run\\trainers\\PA_clock_minutes_xgb.json",
+      "artifact_sha256": "9321f741818fc3c492ec3549cc4ed96ec2791f47545fa4a5b8a0dc7f8ad07785",
+      "holdout_acc": 0.53204971971728,
+      "holdout_logloss": 0.6910361298474212,
+      "auxiliary": {
+        "agree": "fitted",
+        "regime": "fitted",
+        "calibration": "fitted",
+        "failure": "deferred"
+      }
+    },
+    {
+      "asset": "PA",
+      "family": "clock_hours",
+      "status": "fitted",
+      "path": "run\\trainers\\PA_clock_hours_xgb.json",
+      "artifact_sha256": "575d4d243bc0765626870d27241c758714e6228ca5f6fabfa460b455f0d68f87",
+      "holdout_acc": 0.5206341217916457,
+      "holdout_logloss": 0.6920863991071236,
+      "auxiliary": {
+        "agree": "fitted",
+        "regime": "fitted",
+        "calibration": "fitted",
+        "failure": "deferred"
+      }
+    },
+    {
+      "asset": "PA",
+      "family": "clock_seconds",
+      "status": "fitted",
+      "path": "run\\trainers\\PA_clock_seconds_xgb.json",
+      "artifact_sha256": "53f2fab799a6f92adcdf6d005f1d6b56ae4194bc2dd710845321b9519a3137e9",
+      "holdout_acc": 0.5150602409638554,
+      "holdout_logloss": 0.6898485435657742,
+      "auxiliary": {
+        "agree": "fitted",
+        "regime": "fitted",
+        "calibration": "fitted",
+        "failure": "deferred"
+      }
+    },
+    {
+      "asset": "PA",
+      "family": "range",
+      "status": "fitted",
+      "path": "run\\trainers\\PA_range_xgb.json",
+      "artifact_sha256": "c759e9e4b8dc9fb8cfa7089371104bead6043d2087449b7829cde4d76ad0a1ea",
+      "holdout_acc": 0.573508267433501,
+      "holdout_logloss": 0.6739862212690195,
+      "auxiliary": {
+        "agree": "fitted",
+        "regime": "fitted",
+        "calibration": "fitted",
+        "failure": "deferred"
+      }
+    },
+    {
+      "asset": "BTCF",
+      "family": "clock_minutes",
+      "status": "fitted",
+      "path": "run\\trainers\\BTCF_clock_minutes_xgb.json",
+      "artifact_sha256": "a394282fc6ffa31d8a5b0abc562fe15e3142228a333eea9c535102d064a5c6a8",
+      "holdout_acc": 0.4965385533540224,
+      "holdout_logloss": 0.6936635962173495,
+      "auxiliary": {
+        "agree": "fitted",
+        "regime": "fitted",
+        "calibration": "fitted",
+        "failure": "deferred"
+      }
+    },
+    {
+      "asset": "BTCF",
+      "family": "clock_hours",
+      "status": "fitted",
+      "path": "run\\trainers\\BTCF_clock_hours_xgb.json",
+      "artifact_sha256": "aa4b4ddcfe0230762827a00229d021e96a23e78b4544e6e0e9cdeb7ce86adf97",
+      "holdout_acc": 0.5237988826815643,
+      "holdout_logloss": 0.6918897407408854,
+      "auxiliary": {
+        "agree": "fitted",
+        "regime": "fitted",
+        "calibration": "fitted",
+        "failure": "deferred"
+      }
+    },
+    {
+      "asset": "BTCF",
+      "family": "clock_seconds",
+      "status": "fitted",
+      "path": "run\\trainers\\BTCF_clock_seconds_xgb.json",
+      "artifact_sha256": "8ae65d459ad18046a35de0693294d33e26c2adc718e9a4de978685ac459ea481",
+      "holdout_acc": 0.4884129213483146,
+      "holdout_logloss": 0.6930879504255476,
+      "auxiliary": {
+        "agree": "fitted",
+        "regime": "fitted",
+        "calibration": "fitted",
+        "failure": "deferred"
+      }
+    },
+    {
+      "asset": "BTC",
+      "family": "clock_minutes",
+      "status": "fitted",
+      "path": "run\\trainers\\BTC_clock_minutes_xgb.json",
+      "artifact_sha256": "1e30cac12c5c933544ffdd6c033c36f1433567a65c99adbb8c97bc7c59f91f02",
+      "holdout_acc": 0.5239251882438669,
+      "holdout_logloss": 0.6913382879795296,
+      "auxiliary": {
+        "agree": "fitted",
+        "regime": "fitted",
+        "calibration": "fitted",
+        "failure": "deferred"
+      }
+    },
+    {
+      "asset": "BTC",
+      "family": "clock_hours",
+      "status": "fitted",
+      "path": "run\\trainers\\BTC_clock_hours_xgb.json",
+      "artifact_sha256": "07d43374d116d555468c6aff9b77345dab225b46e18c93688404db892815261d",
+      "holdout_acc": 0.5109060402684564,
+      "holdout_logloss": 0.691492255710005,
+      "auxiliary": {
+        "agree": "fitted",
+        "regime": "fitted",
+        "calibration": "fitted",
+        "failure": "deferred"
+      }
+    },
+    {
+      "asset": "BTC",
+      "family": "clock_seconds",
+      "status": "fitted",
+      "path": "run\\trainers\\BTC_clock_seconds_xgb.json",
+      "artifact_sha256": "806582c31b2f20071996558d3c786e99c2228e7b573f6665543a7aafa942bd03",
+      "holdout_acc": 0.6340613382899628,
+      "holdout_logloss": 0.6409061868662091,
+      "auxiliary": {
+        "agree": "fitted",
+        "regime": "fitted",
+        "calibration": "fitted",
+        "failure": "deferred"
+      }
+    },
+    {
+      "asset": "BTC",
+      "family": "clock_daily",
+      "status": "fitted",
+      "path": "run\\trainers\\BTC_clock_daily_xgb.json",
+      "artifact_sha256": "bf26df0b3a65586ad543ff43603d36d413a2c9f0067c0ff7865298603513ca23",
+      "holdout_acc": 0.519742883379247,
+      "holdout_logloss": 0.6925196826929829,
+      "auxiliary": {
+        "agree": "fitted",
+        "regime": "fitted",
+        "calibration": "fitted",
+        "failure": "deferred"
+      }
+    },
+    {
+      "asset": "BTC",
+      "family": "clock_weekly",
+      "status": "fitted",
+      "path": "run\\trainers\\BTC_clock_weekly_xgb.json",
+      "artifact_sha256": "5a81972a3190d707ea289cb18af65bccfbea513a67bc1cd25b171a123fb4fd27",
+      "holdout_acc": 0.5063291139240507,
+      "holdout_logloss": 0.6928710093804464,
+      "auxiliary": {
+        "agree": "fitted",
+        "regime": "fitted",
+        "calibration": "fitted",
+        "failure": "deferred"
+      }
+    }
+  ],
+  "coverage": [
+    {
+      "asset": "NQ",
+      "family": "clock_minutes",
+      "status": "selected",
+      "sha256": "fa68ab3e0285f990e3b06f0852dc42b04913c7f2cf2d023967db245c251aa81c",
+      "alternatives": 8
+    },
+    {
+      "asset": "NQ",
+      "family": "clock_hours",
+      "status": "selected",
+      "sha256": "3ef3f991f71ca456e281091a9024d0e7198dd3c55cfd40e300a16b0bc3c8407c",
+      "alternatives": 2
+    },
+    {
+      "asset": "NQ",
+      "family": "clock_seconds",
+      "status": "selected",
+      "sha256": "e6324fff59bf31916a7620e0de2711da815585d6cfa36e7e176dff8a8e074aca",
+      "alternatives": 7
+    },
+    {
+      "asset": "NQ",
+      "family": "clock_daily",
+      "status": "selected",
+      "sha256": "c5ae6b4d065073ca355b25e0e640e2f206088847d21d93a4673e71fb16614d93",
+      "alternatives": 0
+    },
+    {
+      "asset": "NQ",
+      "family": "clock_weekly",
+      "status": "no_valid_identified_csv",
+      "ambiguous_exports": 22
+    },
+    {
+      "asset": "NQ",
+      "family": "renko",
+      "status": "no_valid_identified_csv",
+      "ambiguous_exports": 22
+    },
+    {
+      "asset": "NQ",
+      "family": "range",
+      "status": "selected",
+      "sha256": "fad8f54170244c07257d2e476070e9e98f7ab6f39f0c9e20b2a797fd560b1bda",
+      "alternatives": 1
+    },
+    {
+      "asset": "NQ",
+      "family": "tick",
+      "status": "selected",
+      "sha256": "ec0cc7561c5d64522927565e631cb84e3b2e1f6aac08e72d619a8c0291597b12",
+      "alternatives": 5
+    },
+    {
+      "asset": "ES",
+      "family": "clock_minutes",
+      "status": "selected",
+      "sha256": "fd73ed1546b74457b1b8c802be9f38dbd2a53d215df805ed69e862f9af417d46",
+      "alternatives": 8
+    },
+    {
+      "asset": "ES",
+      "family": "clock_hours",
+      "status": "selected",
+      "sha256": "9b9e82d715412fe122a5a97860ea7970550be55495e7960d0d0ed8d24278d795",
+      "alternatives": 2
+    },
+    {
+      "asset": "ES",
+      "family": "clock_seconds",
+      "status": "selected",
+      "sha256": "ebb3d3bc652813eb070070c5104bc7ed3aafa24a664e0b65ce75071d0152933f",
+      "alternatives": 5
+    },
+    {
+      "asset": "ES",
+      "family": "clock_daily",
+      "status": "selected",
+      "sha256": "5c3b1a66f5a72386cc5b4c98597e7ac2742e93987204d31850c862f3422b0af9",
+      "alternatives": 0
+    },
+    {
+      "asset": "ES",
+      "family": "clock_weekly",
+      "status": "no_valid_identified_csv",
+      "ambiguous_exports": 17
+    },
+    {
+      "asset": "ES",
+      "family": "renko",
+      "status": "no_valid_identified_csv",
+      "ambiguous_exports": 17
+    },
+    {
+      "asset": "ES",
+      "family": "range",
+      "status": "selected",
+      "sha256": "31678ae96024a351394148e71af2e91887c77530f0b1218d8949a7b7a5aed669",
+      "alternatives": 1
+    },
+    {
+      "asset": "ES",
+      "family": "tick",
+      "status": "selected",
+      "sha256": "7d234b23c34872cacbf5520a3fbe79a01853235a418dd444e06e28554c44cf81",
+      "alternatives": 2
+    },
+    {
+      "asset": "YM",
+      "family": "clock_minutes",
+      "status": "selected",
+      "sha256": "74a7912dae9d13926e77aee6e8f418d30d7b5a1f52a501bcfa1782844008e8a0",
+      "alternatives": 8
+    },
+    {
+      "asset": "YM",
+      "family": "clock_hours",
+      "status": "selected",
+      "sha256": "a8a93e8ff746c7994d7ebdc968920db3395be07a7679a319951dab396bf5ae1c",
+      "alternatives": 2
+    },
+    {
+      "asset": "YM",
+      "family": "clock_seconds",
+      "status": "selected",
+      "sha256": "1b8aacbf882bae7be611f2165bdb0f6d2e8f174f71b666de3f3dff298bb3371e",
+      "alternatives": 5
+    },
+    {
+      "asset": "YM",
+      "family": "clock_daily",
+      "status": "selected",
+      "sha256": "d59fb06612836bc2bc0107f9eb26c3fef79c025552b660ea95d2fa92cda29009",
+      "alternatives": 0
+    },
+    {
+      "asset": "YM",
+      "family": "clock_weekly",
+      "status": "no_valid_identified_csv",
+      "ambiguous_exports": 17
+    },
+    {
+      "asset": "YM",
+      "family": "renko",
+      "status": "no_valid_identified_csv",
+      "ambiguous_exports": 17
+    },
+    {
+      "asset": "YM",
+      "family": "range",
+      "status": "selected",
+      "sha256": "bc7b7b7e2f12941b763998bde230da9a1496f2ae0892136493ceea694d6a74ac",
+      "alternatives": 1
+    },
+    {
+      "asset": "YM",
+      "family": "tick",
+      "status": "selected",
+      "sha256": "7ef4a5fe0192b5d62aec85712c6f6d36e4546645e15b4ad5e0ad6a559cccec7e",
+      "alternatives": 2
+    },
+    {
+      "asset": "GC",
+      "family": "clock_minutes",
+      "status": "selected",
+      "sha256": "b36c8a503da3273e9d2643616b85aead89961fe43bc8223ead8fea4e032df37d",
+      "alternatives": 5
+    },
+    {
+      "asset": "GC",
+      "family": "clock_hours",
+      "status": "selected",
+      "sha256": "152449eb4174fba529ac9bd64c419051706463b1c2cfeb59fa6a92c6dfbf0538",
+      "alternatives": 2
+    },
+    {
+      "asset": "GC",
+      "family": "clock_seconds",
+      "status": "selected",
+      "sha256": "6f5e480dbe151e87ef437a691bebea157ef6206f450cdfdf0eda28d90b03da9d",
+      "alternatives": 5
+    },
+    {
+      "asset": "GC",
+      "family": "clock_daily",
+      "status": "no_valid_identified_csv",
+      "ambiguous_exports": 18
+    },
+    {
+      "asset": "GC",
+      "family": "clock_weekly",
+      "status": "no_valid_identified_csv",
+      "ambiguous_exports": 18
+    },
+    {
+      "asset": "GC",
+      "family": "renko",
+      "status": "no_valid_identified_csv",
+      "ambiguous_exports": 18
+    },
+    {
+      "asset": "GC",
+      "family": "range",
+      "status": "selected",
+      "sha256": "e5c966ecde8e637559efbc8838ae2fd39f22a023484faa480ac9b0ec920a12e8",
+      "alternatives": 2
+    },
+    {
+      "asset": "GC",
+      "family": "tick",
+      "status": "selected",
+      "sha256": "bcbc1debaf7697d6101871dfeef0c72cb4e6237220e7981c6dd838782c09df57",
+      "alternatives": 2
+    },
+    {
+      "asset": "SI",
+      "family": "clock_minutes",
+      "status": "selected",
+      "sha256": "1263b4b2041c5e607b2a3c7185306d83d5a888f9335693642ecbd05ff53e8c3d",
+      "alternatives": 8
+    },
+    {
+      "asset": "SI",
+      "family": "clock_hours",
+      "status": "selected",
+      "sha256": "c74f1d4668022dc48c5d0103fa29a74ccf297756c50969ef992c2dfdead42716",
+      "alternatives": 2
+    },
+    {
+      "asset": "SI",
+      "family": "clock_seconds",
+      "status": "selected",
+      "sha256": "17aca2eb6007cf0f8aaf5d1e08d9d584ada2ee5929e5ec722c8ed50e01ecc70c",
+      "alternatives": 4
+    },
+    {
+      "asset": "SI",
+      "family": "clock_daily",
+      "status": "no_valid_identified_csv",
+      "ambiguous_exports": 17
+    },
+    {
+      "asset": "SI",
+      "family": "clock_weekly",
+      "status": "no_valid_identified_csv",
+      "ambiguous_exports": 17
+    },
+    {
+      "asset": "SI",
+      "family": "renko",
+      "status": "no_valid_identified_csv",
+      "ambiguous_exports": 17
+    },
+    {
+      "asset": "SI",
+      "family": "range",
+      "status": "selected",
+      "sha256": "5a5c75d5137ba5164d610cdeb50ce48db9677344698bde45a59a235c1bdfb102",
+      "alternatives": 0
+    },
+    {
+      "asset": "SI",
+      "family": "tick",
+      "status": "selected",
+      "sha256": "281f6a779450d4d3ff023050b871128f14bfedb75ef4bda6dae7939505300a41",
+      "alternatives": 1
+    },
+    {
+      "asset": "PL",
+      "family": "clock_minutes",
+      "status": "selected",
+      "sha256": "2fc4698eb11fa8d0880129a566e448b33043d97dbfd0f5c109539645334be715",
+      "alternatives": 8
+    },
+    {
+      "asset": "PL",
+      "family": "clock_hours",
+      "status": "selected",
+      "sha256": "16da822c931298c0f7b8f3942180eb1dd03f7c5635645fa0b46e5695a28eb1b8",
+      "alternatives": 2
+    },
+    {
+      "asset": "PL",
+      "family": "clock_seconds",
+      "status": "selected",
+      "sha256": "0fcb890cabbcbad3279e2158b06bb06602a214beb594110077e5dfe332768180",
+      "alternatives": 4
+    },
+    {
+      "asset": "PL",
+      "family": "clock_daily",
+      "status": "no_valid_identified_csv",
+      "ambiguous_exports": 19
+    },
+    {
+      "asset": "PL",
+      "family": "clock_weekly",
+      "status": "no_valid_identified_csv",
+      "ambiguous_exports": 19
+    },
+    {
+      "asset": "PL",
+      "family": "renko",
+      "status": "no_valid_identified_csv",
+      "ambiguous_exports": 19
+    },
+    {
+      "asset": "PL",
+      "family": "range",
+      "status": "selected",
+      "sha256": "f0a65262ecdde6f546a806e4ab4d3b247b483f65006b838311129625af60f7a0",
+      "alternatives": 1
+    },
+    {
+      "asset": "PL",
+      "family": "tick",
+      "status": "no_valid_identified_csv",
+      "ambiguous_exports": 19
+    },
+    {
+      "asset": "PA",
+      "family": "clock_minutes",
+      "status": "selected",
+      "sha256": "3b635892a4c08ce1699f7a638c19774dff69222b4015632f67b733a7db3bcc47",
+      "alternatives": 7
+    },
+    {
+      "asset": "PA",
+      "family": "clock_hours",
+      "status": "selected",
+      "sha256": "0ee76376243c16829ae416ab724db07e41025c46f57be368510cc5b1b30de586",
+      "alternatives": 2
+    },
+    {
+      "asset": "PA",
+      "family": "clock_seconds",
+      "status": "selected",
+      "sha256": "cc105c7e1a2e908922557ba67329923fbf9cc49d64d957e048167f44ea9865cf",
+      "alternatives": 3
+    },
+    {
+      "asset": "PA",
+      "family": "clock_daily",
+      "status": "no_valid_identified_csv",
+      "ambiguous_exports": 18
+    },
+    {
+      "asset": "PA",
+      "family": "clock_weekly",
+      "status": "no_valid_identified_csv",
+      "ambiguous_exports": 18
+    },
+    {
+      "asset": "PA",
+      "family": "renko",
+      "status": "no_valid_identified_csv",
+      "ambiguous_exports": 18
+    },
+    {
+      "asset": "PA",
+      "family": "range",
+      "status": "selected",
+      "sha256": "f454d4c30e6a7df7fa8f3983b0d27a1022796e3253222a4ab45cc3c1e9e9a8ac",
+      "alternatives": 1
+    },
+    {
+      "asset": "PA",
+      "family": "tick",
+      "status": "no_valid_identified_csv",
+      "ambiguous_exports": 18
+    },
+    {
+      "asset": "BTCF",
+      "family": "clock_minutes",
+      "status": "selected",
+      "sha256": "2d68af953cac56905251d6d84abcd8b35fc359322daed2de15decdac25747076",
+      "alternatives": 1
+    },
+    {
+      "asset": "BTCF",
+      "family": "clock_hours",
+      "status": "selected",
+      "sha256": "5bb4e9f3e26bbfd2c8f06a73f582cc48f05cfa4f5cb5d8810fed8d72f30c8ada",
+      "alternatives": 2
+    },
+    {
+      "asset": "BTCF",
+      "family": "clock_seconds",
+      "status": "selected",
+      "sha256": "4c7c9e1c491224c6ee6b14446bb534bec77ce5ea2953ddc553c6abe96e9e25e7",
+      "alternatives": 2
+    },
+    {
+      "asset": "BTCF",
+      "family": "clock_daily",
+      "status": "no_valid_identified_csv",
+      "ambiguous_exports": 8
+    },
+    {
+      "asset": "BTCF",
+      "family": "clock_weekly",
+      "status": "no_valid_identified_csv",
+      "ambiguous_exports": 8
+    },
+    {
+      "asset": "BTCF",
+      "family": "renko",
+      "status": "no_valid_identified_csv",
+      "ambiguous_exports": 8
+    },
+    {
+      "asset": "BTCF",
+      "family": "range",
+      "status": "no_valid_identified_csv",
+      "ambiguous_exports": 8
+    },
+    {
+      "asset": "BTCF",
+      "family": "tick",
+      "status": "no_valid_identified_csv",
+      "ambiguous_exports": 8
+    },
+    {
+      "asset": "BTC",
+      "family": "clock_minutes",
+      "status": "selected",
+      "sha256": "4fc51ff6fab1515265b7ccc77a5f214a5cc54cd4ea808db442c182ae251ef430",
+      "alternatives": 1
+    },
+    {
+      "asset": "BTC",
+      "family": "clock_hours",
+      "status": "selected",
+      "sha256": "1441aeb12af555f38a7edc130d3e1d72b9c0dddca7949bf49e9acde52f3accaa",
+      "alternatives": 2
+    },
+    {
+      "asset": "BTC",
+      "family": "clock_seconds",
+      "status": "selected",
+      "sha256": "6ec1cd3a911bc8e62c3695b1e1ab64388aa286fad33b6fc12d2f13d838cf0a91",
+      "alternatives": 2
+    },
+    {
+      "asset": "BTC",
+      "family": "clock_daily",
+      "status": "selected",
+      "sha256": "3db876cb1ab63d0b2ab7b754c64c9f1adf7b120a836c3ff117465ae702e62c47",
+      "alternatives": 0
+    },
+    {
+      "asset": "BTC",
+      "family": "clock_weekly",
+      "status": "selected",
+      "sha256": "5934b3003588f9883b201e7fc9d720753e78d62616cf948dd5c15bcc43aebae9",
+      "alternatives": 0
+    },
+    {
+      "asset": "BTC",
+      "family": "renko",
+      "status": "no_valid_identified_csv",
+      "ambiguous_exports": 1
+    },
+    {
+      "asset": "BTC",
+      "family": "range",
+      "status": "no_valid_identified_csv",
+      "ambiguous_exports": 1
+    },
+    {
+      "asset": "BTC",
+      "family": "tick",
+      "status": "no_valid_identified_csv",
+      "ambiguous_exports": 1
+    }
+  ]
+}

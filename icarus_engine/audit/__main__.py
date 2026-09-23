@@ -14,13 +14,14 @@ def main(argv=None):
     p.add_argument("--root", default=".")
     p.add_argument("--out", default="")
     p.add_argument("--require-xgb", action="store_true",
-                   help="Astra: block unless run/trainers/{FUTURE}_clock_minutes_xgb.json exists")
+                   help="CA: require a reloadable XGB trained on the exact --exec CSV")
     p.add_argument("--xgb", default="", help="explicit XGB artifact path")
     args = p.parse_args(argv)
     ev = load_events(args.root)
     report = score_pair(
-        load_ohlc(args.exec), load_ohlc(args.cand), ev, args.asset, args.future,
-        require_xgb=args.require_xgb, xgb_path=args.xgb or None,
+        load_ohlc(args.exec, strict=True), load_ohlc(args.cand, strict=True),
+        ev, args.asset, args.future, require_xgb=args.require_xgb,
+        xgb_path=args.xgb or None, execution_source=args.exec,
     )
     if args.out:
         write_audit(report, args.out)
