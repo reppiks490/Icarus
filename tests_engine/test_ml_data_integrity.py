@@ -99,6 +99,9 @@ def test_archive_path_escape_and_differing_existing_files(tmp_path):
 
 def test_xgb_file_fit_retains_baseline_and_reloadable_artifact(tmp_path):
     from icarus_engine.trainers.xgb import validate_artifact
+    from icarus_engine.trainers.run import file_hash
+    from icarus_engine.trainers.verify import verify_cell
+    from icarus_engine.events.calendar import load_events
     p = tmp_path / 'NQ.csv'
     px = 100.0
     lines = ['time,open,high,low,close']
@@ -109,9 +112,19 @@ def test_xgb_file_fit_retains_baseline_and_reloadable_artifact(tmp_path):
     p.write_text('\n'.join(lines))
     report = train_file(p, 'tick', asset='NQ', model='xgb', options={'num_boost_round': 12})
     assert report['baseline']['model']['w']
+    report['provenance'] = {'sha256': file_hash(p), 'interval': '1T'}
     out = tmp_path / 'NQ_tick_xgb.json'
     write_report(report, out)
+    baseline = tmp_path / 'NQ_tick.json'
+    write_report({**report['baseline'], 'asset': 'NQ', 'family': 'tick',
+                  'dataset_sha256': file_hash(p)}, baseline)
     restored = json.loads(out.read_text())
     assert validate_artifact(restored, asset='NQ', family='tick')
+    cell = {'asset': 'NQ', 'family': 'tick', 'chart_type': 'tick',
+            'interval': '1T', 'sha256': file_hash(p), 'path': str(p)}
+    assert verify_cell(cell, out, baseline, load_events(tmp_path))['status'] == 'verified'
+    p.write_text(p.read_text() + '\n1700000501,2,3,1,2')
+    with pytest.raises(ValueError, match='provenance differs'):
+        verify_cell(cell, out, baseline, load_events(tmp_path))
     assert restored['training_signature']
     assert not list(tmp_path.glob('*.tmp'))

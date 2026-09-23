@@ -35,7 +35,11 @@ live trading authorization. Pulse and emulator have no changes in this branch.
 5. Strict source parsing, as-of event/sensor features, purged chronological
    boundaries, model reload, source hashes and atomic writes are covered by
    focused tests. The full `tests_engine` suite passed after correcting two
-   stale environment-dependent tests.
+   stale environment-dependent tests. The independent artifact replay command
+   `python -m icarus_engine.trainers.verify --manifest run/data_inventory.json
+   --models run/trainers --root .` reloaded all 44 native trees, reparsed the
+   exact CSVs and reproduced split boundaries and primary holdout metrics:
+   44 verified, 0 failed. Its report is `run/trainers/verification.json`.
 6. `icarus_engine.audit --require-xgb` now checks a fitted native model,
    current training code signature, event calendar, symbol/family/interval
    provenance and exact execution CSV hash. It reports `diagnostic` with
@@ -65,6 +69,8 @@ Run `python -m pytest tests_engine -q`. Audit one source with
 --cand <candidate.csv> --future NQ --asset AAPL --require-xgb --root .`.
 Use a matching `{SYM}_clock_minutes_xgb.json` or `--xgb` for another family.
 The gate blocks a different execution CSV until that exact source is modeled.
+The verifier needs the raw owner archives to be available locally; they are
+not bundled with the model files in this branch.
 
 ## Work still required for the owner goal
 

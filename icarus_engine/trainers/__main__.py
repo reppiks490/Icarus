@@ -48,8 +48,13 @@ def train_manifest(args):
             report = None
             if dest.is_file():
                 cached = json.loads(dest.read_text(encoding='utf-8'))
+                provenance = cached.get('provenance') or {}
                 if (validate_artifact(cached, asset=asset, family=family)
                         and cached['dataset_sha256'] == cell['sha256']
+                        and cached.get('chart_type') == cell['chart_type']
+                        and all(provenance.get(k) == cell.get(k) for k in
+                                ('asset', 'family', 'interval', 'chart_type',
+                                 'archive', 'member', 'sha256'))
                         and cached.get('training_signature') == training_signature()
                         and cached.get('event_sha256') == event_hash
                         and cached['options']['num_boost_round'] == args.rounds):
