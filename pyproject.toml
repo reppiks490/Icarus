@@ -20,7 +20,7 @@ authors = [
 [project.optional-dependencies]
 bridge = ["fastapi", "uvicorn", "httpx"]
 dev = ["pytest"]
-ml = ["xgboost>=2.0"]
+ml = ["numpy>=1.26", "scipy>=1.11", "xgboost>=2.0"]
 
 [project.scripts]
 icarus-engine = "icarus_engine.cli:main"

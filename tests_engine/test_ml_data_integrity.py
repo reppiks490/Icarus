@@ -122,9 +122,19 @@ def test_xgb_file_fit_retains_baseline_and_reloadable_artifact(tmp_path):
     assert validate_artifact(restored, asset='NQ', family='tick')
     cell = {'asset': 'NQ', 'family': 'tick', 'chart_type': 'tick',
             'interval': '1T', 'sha256': file_hash(p), 'path': str(p)}
-    assert verify_cell(cell, out, baseline, load_events(tmp_path))['status'] == 'verified'
+    checked = verify_cell(cell, out, baseline, load_events(tmp_path))
+    assert checked['status'] == 'verified'
+    assert checked['train_positive_event_rows']['fomc'] == 0
     p.write_text(p.read_text() + '\n1700000501,2,3,1,2')
     with pytest.raises(ValueError, match='provenance differs'):
         verify_cell(cell, out, baseline, load_events(tmp_path))
     assert restored['training_signature']
     assert not list(tmp_path.glob('*.tmp'))
+
+
+def test_unregistered_symbol_is_rejected_before_any_csv_read(tmp_path):
+    missing = tmp_path / 'missing.csv'
+    for asset in ('', 'AAPL', 'MBT', 'SOL', 'ETHUSD'):
+        report = train_file(missing, 'minutes', asset=asset, model='xgb')
+        assert report['status'] == 'ignored'
+        assert report['execution_authorized'] is False

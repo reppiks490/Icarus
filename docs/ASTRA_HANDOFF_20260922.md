@@ -27,8 +27,12 @@ live trading authorization. Pulse and emulator have no changes in this branch.
    Unidentified Renko files, close-only tick files, invalid OHLC and missing
    families were recorded rather than silently relabeled.
 4. Trained 44 genuine, per-cell native XGBoost primary models and scaled L2
-   logistic baselines. Agreement and descriptive regime slots fit where
-   possible; holdout calibration was fit on an earlier holdout slice and
+   logistic baselines. The agreement slot uses causal expanding-window labels.
+   The regime slot predicts whether the next family bar's absolute return
+   exceeds the training median using current-bar features; this replaces an
+   earlier tautological same-bar volatility classifier. RATE/FDI are absent
+   from the current source exports. Holdout calibration was fit on an earlier
+   holdout slice and
    evaluated later. The journal-loss slot is deferred until an actual
    decision-time feature/outcome journal exists. Native JSON and training
    summaries are in `run/trainers/` (explicitly staged for this branch).
@@ -39,7 +43,9 @@ live trading authorization. Pulse and emulator have no changes in this branch.
    `python -m icarus_engine.trainers.verify --manifest run/data_inventory.json
    --models run/trainers --root .` reloaded all 44 native trees, reparsed the
    exact CSVs and reproduced split boundaries and primary holdout metrics:
-   44 verified, 0 failed. Its report is `run/trainers/verification.json`.
+   44 verified, 0 failed after the next-bar-magnitude regime retrain. Its
+   report is `run/trainers/verification.json`. The full `tests_engine` suite
+   passed 540 collected tests on 2026-09-23.
 6. `icarus_engine.audit --require-xgb` now checks a fitted native model,
    current training code signature, event calendar, symbol/family/interval
    provenance and exact execution CSV hash. It reports `diagnostic` with
@@ -47,10 +53,25 @@ live trading authorization. Pulse and emulator have no changes in this branch.
    issue trading or qualification claims. NQ 4-minute source versus AAPL
    produced 743 overlaps, 51.14% same-time sign agreement and 16 macro
    overlaps; none of those figures are an edge certificate.
+7. The operator's pinned `tools/goal.py` and `tools/duration.py` at source
+   commit `6e0da352` are copied into `icarus_engine/qualification/` with
+   only a local import adaptation. `assess_trade_metrics` requires complete
+   tune/hold metrics and a real clock interval. It reports only that supplied
+   metrics meet thresholds; it cannot authenticate the underlying trade tape
+   or qualify a live candidate. Nonclock chart durations remain unresolved.
 
 The 44 raw next-family-bar sign holdout accuracies range 46.06% to 72.14%,
 mean 52.51%. They are **not** strategy win rates. Search over many cells can
 make the maximum look impressive; selection needs a fresh final holdout.
+The verifier now reports positive training examples per event flag. For
+example, NQ clock-minutes has 40 seeded FOMC rows but zero CPI, payroll or
+earnings rows. A zero-example flag has not been learned, and the FOMC seed is
+not an authenticated released-time event history. No event-based trading
+claim follows from these artifacts.
+
+The six newest candidate archives contain 177 CSV files but only 89 unique
+content hashes and 15 distinct instrument names. File count is not candidate
+count, and stock context exports are not futures execution tapes.
 
 ## Reproduce or audit
 
@@ -94,13 +115,20 @@ not bundled with the model files in this branch.
   seeded/date-only event flags; optional sensor support is an API, not an
   automatically loaded market data set. No order-flow, depth or named
   institutional holdings feed has been authenticated or integrated.
-- Add each available micro instrument as its **own** symbol, exchange spec,
+- Exchange product codes and contract sizes are recorded with primary sources
+  in `docs/MICRO_CONTRACTS_20260922.md`. Add each available micro instrument as
+  its **own** symbol, exchange spec,
   feed and trained data with a distinct paper ledger. The owner explicitly
   bans MBT despite the general micro request; do not register/train/trade it.
   Do not transform parent futures fills into micro performance.
 - Independent end-to-end paper replay/parity, fill costs, contract rolls,
   calendar and feed latency validation remain necessary before any execution
   proposal. The dashboard/broker are out of scope for this checkpoint.
+- The owner's separate private manual-action register is
+  `https://github.com/reppiks490/icarus-owner-actions`. It lists the exact
+  TradingView parity exports, exchange-data decisions, broker/prop checks,
+  distinct micro tapes and optional contextual asset universe. Raw licensed
+  CSVs and secrets are excluded from that repository.
 
 ## Signed handoff to Opus
 

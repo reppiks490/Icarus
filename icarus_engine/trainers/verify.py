@@ -57,6 +57,9 @@ def verify_cell(cell, model_path, baseline_path, events):
                 or old["max_label_index"] != max(rows[i]["label_index"] for i in positions)):
             raise ValueError(f"{name} split differs from training")
     hold = [rows[i] for i in split["holdout"]]
+    event_flags = ("fomc", "any_macro", "cpi", "nfp", "earnings")
+    positive_events = {name: sum(bool(rows[i]["x"].get(name)) for i in split["train"])
+                       for name in event_flags}
     probability = predict_proba(artifact["primary"], hold)
     labels = [row["y"] > 0 for row in hold]
     accuracy = sum((p >= 0.5) == y for p, y in zip(probability, labels)) / len(labels)
@@ -69,7 +72,10 @@ def verify_cell(cell, model_path, baseline_path, events):
     return {"asset": asset, "family": family, "status": "verified",
             "source_sha256": source_hash, "artifact_sha256": file_hash(model_path),
             "holdout_rows": len(hold), "holdout_acc": accuracy,
-            "holdout_logloss": logloss, "execution_authorized": False}
+            "holdout_logloss": logloss,
+            "train_positive_event_rows": positive_events,
+            "unlearned_event_flags": [k for k, count in positive_events.items() if count == 0],
+            "execution_authorized": False}
 
 
 def verify_manifest(manifest_path, out_dir, root):

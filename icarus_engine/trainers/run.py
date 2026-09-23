@@ -6,6 +6,7 @@ from icarus_engine.ignore_trade import ignored_symbol
 from .dataset import attach_labels, load_ohlc, walk_slices
 from .families import FAMILIES, family_for
 from .logit import KEYS, accuracy, fit
+from .catalog import TRADED
 
 
 def training_signature():
@@ -25,8 +26,8 @@ def file_hash(path: Path) -> str:
 def train_file(path, chart_type: str, schema: str = "ohlc", asset: str = "", *,
                model="baseline", root=None, sensors=None, journal_rows=None,
                provenance=None, options=None):
-    if asset and ignored_symbol(asset):
-        return {"status": "ignored", "reason": "MBT/SOL/ETHUSD are not traded",
+    if not asset or asset not in TRADED or ignored_symbol(asset):
+        return {"status": "ignored", "reason": "only the nine registered execution symbols may be trained",
                 "asset": asset, "execution_authorized": False}
     path = Path(path)
     fam_name = family_for(chart_type, schema)

@@ -16,6 +16,7 @@ def _rows(n=360, horizon=1):
     return [{"row_index": i, "label_index": i + horizon,
              "ts": 1_700_000_000 + i, "label_ts": 1_700_000_000 + i + horizon,
              "asset": "NQ", "family": "renko", "y": int(labels[i]),
+             "next_abs_return": float(abs(returns[min(i + 1, n - 1)])),
              "x": {"ret_1": float(returns[i]), "ret_3": float(returns[max(0, i - 2):i + 1].sum()),
                    "body": float(returns[i] * 0.8), "fomc": float(i % 10 == 0),
                    "vol_20": float(np.std(returns[max(0, i - 19):i + 1]))}}
@@ -48,7 +49,7 @@ def test_native_models_and_raw_metrics(fitted):
     y = np.array([rows[i]["y"] > 0 for i in parts["holdout"]])
     assert fitted["holdout_acc"] == np.mean((p >= 0.5) == y)
     assert fitted["holdout_logloss"] == pytest.approx(-np.mean(y * np.log(p) + (1 - y) * np.log1p(-p)))
-    assert fitted["regime"]["target"] == "current_high_trailing_volatility_state"
+    assert fitted["regime"]["target"] == "next_family_bar_high_magnitude_state"
     assert fitted["regime"]["rate_fdi_available"] is False
 
 
@@ -130,6 +131,7 @@ def test_future_holdout_does_not_change_learned_models(fitted):
         row["y"] *= -1
         row["x"] = {k: v * -50 for k, v in row["x"].items()}
         row["x"]["cpi"] = 1.0
+        row["next_abs_return"] *= 100.0
     altered = _fit(rows)
     assert altered["features"] == fitted["features"]
     for name in ("primary", "agree", "regime"):

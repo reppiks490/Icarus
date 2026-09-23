@@ -39,15 +39,11 @@ def _index(row):
 
 
 def _check_scope(rows, asset, family):
-    assets = {str(r["asset"]).strip().upper() for r in rows if r.get("asset")}
-    families = {r["family"] for r in rows if r.get("family")}
-    if asset:
-        assets.add(asset.strip().upper())
-    if family:
-        families.add(family)
-    if any(ignored_symbol(a) or a not in TRADED for a in assets):
+    if not asset or ignored_symbol(asset) or asset not in TRADED:
         raise ValueError("only traded execution symbols may be fitted")
-    if len(assets) > 1 or len(families) > 1:
+    if not family:
+        raise ValueError("a known family is required")
+    if any(r.get("asset") != asset or r.get("family") != family for r in rows):
         raise ValueError("rows must belong to one symbol and one family")
 
 
@@ -275,27 +271,31 @@ computed on the full family bar sequence to preserve the original window.
 
 def _regime(rows, parts, options):
     prepared = prepare_regime_rows(rows)
-    names = _feature_names(prepared, parts["train"], ("vol_20", "rate", "fdi", "RATE", "FDI"))
+    names = _feature_names(prepared, parts["train"],
+                           ("vol_20", "ret_1", "ret_3", "body", "range",
+                            "close_loc", "run", "rate", "fdi", "RATE", "FDI"))
     if "vol_20" not in names:
         return _deferred("no causal volatility observations")
     matrix = _matrix(prepared, names)
-    volatility = matrix[:, names.index("vol_20")]
-    train = [i for i in parts["train"] if np.isfinite(volatility[i])]
-    valid = [i for i in parts["valid"] if np.isfinite(volatility[i])]
+    future_magnitude = np.array([float(r.get("next_abs_return", np.nan)) for r in rows])
+    train = [i for i in parts["train"] if np.isfinite(future_magnitude[i])]
+    valid = [i for i in parts["valid"] if np.isfinite(future_magnitude[i])]
     if len(train) < 20 or len(valid) < 5:
-        return _deferred("insufficient observed volatility rows")
-    threshold = float(np.median(volatility[train]))
-    labels = (volatility > threshold).astype(float)
+        return _deferred("insufficient next-bar magnitude labels")
+    if np.any(future_magnitude[train] < 0) or np.any(future_magnitude[valid] < 0):
+        raise ValueError("next-bar magnitude labels must be nonnegative")
+    threshold = float(np.median(future_magnitude[train]))
+    labels = (future_magnitude > threshold).astype(float)
     if len(np.unique(labels[train])) < 2:
-        return _deferred("training volatility has no distinct regimes")
+        return _deferred("training next-bar magnitudes have no distinct regimes")
     booster = _train(matrix, labels, train, valid, names, options)
-    slot = _slot(booster, names, "current_high_trailing_volatility_state")
+    slot = _slot(booster, names, "next_family_bar_high_magnitude_state")
     slot.update({"threshold": threshold, "threshold_fit_partition": "train",
-                 "state_definition": "vol_20 above training median; descriptive, not a return forecast",
+                 "state_definition": "abs(next close - current close) above training median",
                  "volatility_fallback": "trailing std(ret_1) on supplied observations",
-                 "rate_fdi_available": any(k != "vol_20" for k in names)})
+                 "rate_fdi_available": any(k in ("rate", "fdi", "RATE", "FDI") for k in names)})
     for name in ("holdout", "evaluation"):
-        positions = [i for i in parts[name] if np.isfinite(volatility[i])]
+        positions = [i for i in parts[name] if np.isfinite(future_magnitude[i])]
         slot[f"raw_{name}"] = (_metrics(labels[positions], booster.predict(
             _dmatrix(matrix[positions], names))) if positions else None)
     return slot
@@ -425,7 +425,7 @@ Invalid primary input raises ValueError; unavailable auxiliary models defer.
         "limitations": ["Raw holdout is descriptive sign accuracy, not trading edge.",
                         "Only calibrated evaluation is untouched by calibration fitting.",
                         "Agreement is P(primary sign correct), not cross-asset execution equivalence.",
-                        "Regime is a descriptive volatility state, not a return forecast."],
+                        "Regime forecasts next-bar magnitude, not strategy P&L."],
     }
 
 

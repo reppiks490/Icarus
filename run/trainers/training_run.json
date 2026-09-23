@@ -8,7 +8,7 @@
       "family": "clock_minutes",
       "status": "fitted",
       "path": "run\\trainers\\NQ_clock_minutes_xgb.json",
-      "artifact_sha256": "98d69208fc9fab6968a56feeddfcc4d3dcb602becc97ee6dc0cb82ef091bcbec",
+      "artifact_sha256": "e97523f95010c8e1ce9318bb12aa4b8dff35f01fdb7d1aea61d7204496909493",
       "holdout_acc": 0.5239835541343079,
       "holdout_logloss": 0.6930345282077947,
       "auxiliary": {
@@ -23,7 +23,7 @@
       "family": "clock_hours",
       "status": "fitted",
       "path": "run\\trainers\\NQ_clock_hours_xgb.json",
-      "artifact_sha256": "44d5d2dc0d9f507d7c9ff9ba53c5a00d1e35347aa92d98ac9f27dd65a88e42ba",
+      "artifact_sha256": "346382c59a4b82d4d62567438d37337a65e6d4952018a96184371c422fdc1098",
       "holdout_acc": 0.5323322838459675,
       "holdout_logloss": 0.6914702498212127,
       "auxiliary": {
@@ -38,7 +38,7 @@
       "family": "clock_seconds",
       "status": "fitted",
       "path": "run\\trainers\\NQ_clock_seconds_xgb.json",
-      "artifact_sha256": "f1c1046603cc3816ba13d2b2b4c034c5d899a20f396876f9196c6c30558e5f73",
+      "artifact_sha256": "904c3423bf7fd5fd329aeb2fd1ebc14d13df614d2d3e0d41936a8842a460a1c5",
       "holdout_acc": 0.5516118162417163,
       "holdout_logloss": 0.6856057477359305,
       "auxiliary": {
@@ -53,7 +53,7 @@
       "family": "clock_daily",
       "status": "fitted",
       "path": "run\\trainers\\NQ_clock_daily_xgb.json",
-      "artifact_sha256": "e43714b98fa984d7156a668406a8eb2aae68a5e7f1e70014e4c522e955af22db",
+      "artifact_sha256": "b3b4c54bf7eab48f09221ef497b9fdb584f4b2162789cff783fba0f9b8d8c1f7",
       "holdout_acc": 0.5166666666666667,
       "holdout_logloss": 0.7754310521922976,
       "auxiliary": {
@@ -68,7 +68,7 @@
       "family": "range",
       "status": "fitted",
       "path": "run\\trainers\\NQ_range_xgb.json",
-      "artifact_sha256": "df9aaf10170935846edb6dfe02b3d6bacd62abad330c446860b40bce11b47ae0",
+      "artifact_sha256": "2bb50ffd42bc393494e266b6e2a3784d5d010962da8ff5061b314580fee138ef",
       "holdout_acc": 0.5181033516421926,
       "holdout_logloss": 0.7671872626938171,
       "auxiliary": {
@@ -83,7 +83,7 @@
       "family": "tick",
       "status": "fitted",
       "path": "run\\trainers\\NQ_tick_xgb.json",
-      "artifact_sha256": "c6658a4c45d920a133b691ac9b0c0f1b100d171cbe619afc0a62453833330657",
+      "artifact_sha256": "6c3d7bd5388fb341496f17a01320e25fb3e3bdbcfe5b40c0b8c924e1fd17d527",
       "holdout_acc": 0.47602564102564104,
       "holdout_logloss": 0.6931691296247692,
       "auxiliary": {
@@ -98,7 +98,7 @@
       "family": "clock_minutes",
       "status": "fitted",
       "path": "run\\trainers\\ES_clock_minutes_xgb.json",
-      "artifact_sha256": "ffefb53f2be81813209621ab28bc3e8c9c170215acc5afbd5545ca50b1ffa0d1",
+      "artifact_sha256": "ffd6c76ffb6b735fda6fa93b8c89d59f9f785e08bd404addcfdbaa73c84492c0",
       "holdout_acc": 0.5066454013822435,
       "holdout_logloss": 0.6934017538940637,
       "auxiliary": {
@@ -113,7 +113,7 @@
       "family": "clock_hours",
       "status": "fitted",
       "path": "run\\trainers\\ES_clock_hours_xgb.json",
-      "artifact_sha256": "01b3a89af564d764d86c76b1079972f0e094a41cede95631b574e3466f7bfc6d",
+      "artifact_sha256": "8ba52e978d4481ca726b3ec014aecadacdf4c76455f14d089a5cb85d43d8974c",
       "holdout_acc": 0.5280431055596375,
       "holdout_logloss": 0.6915844527446767,
       "auxiliary": {
@@ -128,7 +128,7 @@
       "family": "clock_seconds",
       "status": "fitted",
       "path": "run\\trainers\\ES_clock_seconds_xgb.json",
-      "artifact_sha256": "3a1024c92e514aeb510b1f839bcaa7ac4cf6847a60b2ddc995af7a0eb453cdfe",
+      "artifact_sha256": "78768c1781fee778342c0908d6a381175fa4575b0d65dac5031d264674afe914",
       "holdout_acc": 0.7214040255277369,
       "holdout_logloss": 0.5824066769686089,
       "auxiliary": {
@@ -143,7 +143,7 @@
       "family": "clock_daily",
       "status": "fitted",
       "path": "run\\trainers\\ES_clock_daily_xgb.json",
-      "artifact_sha256": "db07cdd5955dff79e07b7b5610e517f8197397e7fef5b2932e7b43dbfbc79352",
+      "artifact_sha256": "4aa940f20efca8eb0628096410f6a54637847041b3690c5880f68d1a270c8904",
       "holdout_acc": 0.5333333333333333,
       "holdout_logloss": 0.6924885525738829,
       "auxiliary": {
@@ -158,7 +158,7 @@
       "family": "range",
       "status": "fitted",
       "path": "run\\trainers\\ES_range_xgb.json",
-      "artifact_sha256": "616932e172307e9589a83392d3576e4e4736bc7988238e7f6d24755238447b4a",
+      "artifact_sha256": "5fafcc0be7d087e51fd407e02f5401e5efcfe29fdfc3b4868429d258d71a2302",
       "holdout_acc": 0.4998091845821142,
       "holdout_logloss": 0.7833218808069287,
       "auxiliary": {
@@ -173,7 +173,7 @@
       "family": "tick",
       "status": "fitted",
       "path": "run\\trainers\\ES_tick_xgb.json",
-      "artifact_sha256": "44afaa36188fc27b375998b753e148961f41c367bb5469779ca991d40b62be09",
+      "artifact_sha256": "1e551d4584e561f67d723f353184503cc093aa0fd41140d06158183acb604e6d",
       "holdout_acc": 0.48492868695780034,
       "holdout_logloss": 0.6934946395368392,
       "auxiliary": {
@@ -188,7 +188,7 @@
       "family": "clock_minutes",
       "status": "fitted",
       "path": "run\\trainers\\YM_clock_minutes_xgb.json",
-      "artifact_sha256": "1706bb5cad2e345322ffbf1dec99870827890922ee18dd1ca0b43a4e1daa0832",
+      "artifact_sha256": "23c5c6f923aaf28605ea6f6a949122b0d9e072c745fa7f31faa734a19246e593",
       "holdout_acc": 0.5148081380375998,
       "holdout_logloss": 0.6925408917636539,
       "auxiliary": {
@@ -203,7 +203,7 @@
       "family": "clock_hours",
       "status": "fitted",
       "path": "run\\trainers\\YM_clock_hours_xgb.json",
-      "artifact_sha256": "4ff0fd2f228b92cf6a3e67ececea247cb91cf9ef5c407df70f4656a3e16c0432",
+      "artifact_sha256": "11c4a9a3193866b0055b58d1e55eaabc80181cee2a68a8b07a2a5e3f637fcdae",
       "holdout_acc": 0.5163175840233805,
       "holdout_logloss": 0.6928961238894794,
       "auxiliary": {
@@ -218,7 +218,7 @@
       "family": "clock_seconds",
       "status": "fitted",
       "path": "run\\trainers\\YM_clock_seconds_xgb.json",
-      "artifact_sha256": "70b534f21df12e1f9a0b052cc50ad38f56357e1c57ec0d2e5260250d5fef44c4",
+      "artifact_sha256": "fd8ee109416d9ee681924d6c39bd277a3fcd00c079891bf83df15ee44f1af506",
       "holdout_acc": 0.5398527528809219,
       "holdout_logloss": 0.6879795553345237,
       "auxiliary": {
@@ -233,7 +233,7 @@
       "family": "clock_daily",
       "status": "fitted",
       "path": "run\\trainers\\YM_clock_daily_xgb.json",
-      "artifact_sha256": "018ab05f1ae67438662b96470eb01e4112adafe79ea841d176aec068f9625f41",
+      "artifact_sha256": "fcd81c03526806b36599c687f146cad17c9ad7dec729a08bce6ab3ca0dc5b79e",
       "holdout_acc": 0.48333333333333334,
       "holdout_logloss": 0.6844849852997108,
       "auxiliary": {
@@ -248,7 +248,7 @@
       "family": "range",
       "status": "fitted",
       "path": "run\\trainers\\YM_range_xgb.json",
-      "artifact_sha256": "75e40b90269d42c968206ec156c4f4061554b671f950853417fed3798fd53e52",
+      "artifact_sha256": "c2d3a9a5758fcef2e684bca7138da0f5de9f1bd23132ce3b9a6f88dccaf1b5be",
       "holdout_acc": 0.5543672014260249,
       "holdout_logloss": 0.6850509662598873,
       "auxiliary": {
@@ -263,7 +263,7 @@
       "family": "tick",
       "status": "fitted",
       "path": "run\\trainers\\YM_tick_xgb.json",
-      "artifact_sha256": "ce6eab270d4900751b6661c5e32d391a0ee5f62249d30bdc47fb21489ec67204",
+      "artifact_sha256": "b78a93db19834bba868697044e57bf7f14b35f84ab2bc48c900f60302d6e5d4d",
       "holdout_acc": 0.5173549183701468,
       "holdout_logloss": 0.6930938313445896,
       "auxiliary": {
@@ -278,7 +278,7 @@
       "family": "clock_minutes",
       "status": "fitted",
       "path": "run\\trainers\\GC_clock_minutes_xgb.json",
-      "artifact_sha256": "2245ef1648679a05fafc90b421d605aeaf6321c18bd7b1c475296455369458c1",
+      "artifact_sha256": "8f82c3af67e215d6f071cb68557597b1f4194eb4f4d48d587f6ef6a0b46b2651",
       "holdout_acc": 0.49700598802395207,
       "holdout_logloss": 0.6938076901791206,
       "auxiliary": {
@@ -293,7 +293,7 @@
       "family": "clock_hours",
       "status": "fitted",
       "path": "run\\trainers\\GC_clock_hours_xgb.json",
-      "artifact_sha256": "a6bcebb301fb27d0d64a820ac3f9bd31d7f46b245e56d42be6d80283b4789098",
+      "artifact_sha256": "e696551328da4d86f9a6e66e6f4a6b98879e826f1a49f47b7aee4b9b861cd7db",
       "holdout_acc": 0.5059683313032887,
       "holdout_logloss": 0.6926871651084391,
       "auxiliary": {
@@ -308,7 +308,7 @@
       "family": "clock_seconds",
       "status": "fitted",
       "path": "run\\trainers\\GC_clock_seconds_xgb.json",
-      "artifact_sha256": "c679803a8431256bc1036e4a62673d57ada4b2936df0238bc2474ac7726ce309",
+      "artifact_sha256": "0a7adecf6c3564c4bb7a76d082d26f65d01435862a36624fdf9f24f1ab19fefa",
       "holdout_acc": 0.526904948939513,
       "holdout_logloss": 0.6915698269491918,
       "auxiliary": {
@@ -323,7 +323,7 @@
       "family": "range",
       "status": "fitted",
       "path": "run\\trainers\\GC_range_xgb.json",
-      "artifact_sha256": "22c5fdeab31d4905f0e987634fd46d5271607c617430e97f0defb7c2df26b8b5",
+      "artifact_sha256": "5466175e85901da179f639818dad3fbf695767618ee798333363bd14d0c2f9a6",
       "holdout_acc": 0.571075002690197,
       "holdout_logloss": 0.6872069942894447,
       "auxiliary": {
@@ -338,7 +338,7 @@
       "family": "tick",
       "status": "fitted",
       "path": "run\\trainers\\GC_tick_xgb.json",
-      "artifact_sha256": "0901a278d8b80c5c3123627e7734774f20cc691058494e6e60080cbc49d6a4fc",
+      "artifact_sha256": "a4fec35f73c681e913b9f03f7aa36d85de7f9d938209e8f590bf11f891340b45",
       "holdout_acc": 0.5159105431309904,
       "holdout_logloss": 0.6930521800724446,
       "auxiliary": {
@@ -353,7 +353,7 @@
       "family": "clock_minutes",
       "status": "fitted",
       "path": "run\\trainers\\SI_clock_minutes_xgb.json",
-      "artifact_sha256": "7aad840dd4e01433eb0d97bdd179693651777fd0044746602ba6512d51176eb8",
+      "artifact_sha256": "7fd30f8611b0e498d9cb4cb7d722cb08e6131b9ccb235648b2a81289485b010b",
       "holdout_acc": 0.4942797104833061,
       "holdout_logloss": 0.6970015913336752,
       "auxiliary": {
@@ -368,7 +368,7 @@
       "family": "clock_hours",
       "status": "fitted",
       "path": "run\\trainers\\SI_clock_hours_xgb.json",
-      "artifact_sha256": "45f647aa2afadc35cc4d3af31326c6399da25a1f951f6871067bc2b00844960a",
+      "artifact_sha256": "686c8f82a7c4f80f4ece98d3b63153aa6d5e118ce9f391882a33c15dde4a01ba",
       "holdout_acc": 0.5081562036579338,
       "holdout_logloss": 0.6920402814387996,
       "auxiliary": {
@@ -383,7 +383,7 @@
       "family": "clock_seconds",
       "status": "fitted",
       "path": "run\\trainers\\SI_clock_seconds_xgb.json",
-      "artifact_sha256": "d08a5fc8f3e6d466be1fb0767d6cdf8013d254311775a715105e958110f2c2b1",
+      "artifact_sha256": "73f691bb2b2543e983532b44d78a046e7b2485157d8f8251aa1ac7f0392e14cc",
       "holdout_acc": 0.515736040609137,
       "holdout_logloss": 0.6932707488094265,
       "auxiliary": {
@@ -398,7 +398,7 @@
       "family": "range",
       "status": "fitted",
       "path": "run\\trainers\\SI_range_xgb.json",
-      "artifact_sha256": "a0666bbeb0cb8e0d39e9af9b283eb7ae67dcae61f39e92dffa661b636a38b45d",
+      "artifact_sha256": "d2a4715858e3d2b19b1cd23d8ec9a0d9d30d167f2b43732a54462529af021c94",
       "holdout_acc": 0.49448123620309054,
       "holdout_logloss": 0.6972948288563596,
       "auxiliary": {
@@ -413,7 +413,7 @@
       "family": "tick",
       "status": "fitted",
       "path": "run\\trainers\\SI_tick_xgb.json",
-      "artifact_sha256": "825f4e2a83d37e551449e8112cae82bf126eac95c43224760f2b2f20573a66dc",
+      "artifact_sha256": "df33b6cb1b98dcfe48591757e3aea0527e7ca71d04d7d53a2af6cd8afc27a865",
       "holdout_acc": 0.4605678233438486,
       "holdout_logloss": 0.7132699234463288,
       "auxiliary": {
@@ -428,7 +428,7 @@
       "family": "clock_minutes",
       "status": "fitted",
       "path": "run\\trainers\\PL_clock_minutes_xgb.json",
-      "artifact_sha256": "0812182d835ae90b4929571abf8437c4765a46b2d759915d457d86428c3f5d2a",
+      "artifact_sha256": "aab576325f42755bb372c0f6fd29069da3766b858ebbbd51d670b65d2fa08f35",
       "holdout_acc": 0.5070088419236576,
       "holdout_logloss": 0.6930141359896355,
       "auxiliary": {
@@ -443,7 +443,7 @@
       "family": "clock_hours",
       "status": "fitted",
       "path": "run\\trainers\\PL_clock_hours_xgb.json",
-      "artifact_sha256": "e53ad538873664fae050517fb01ee620cff46916189fd60a9020b3e74fb864e1",
+      "artifact_sha256": "fdf1a6aeca8e72969d034fb39e6b3652c80c167f8f6158ce122abf0b02614468",
       "holdout_acc": 0.5181574457713868,
       "holdout_logloss": 0.6930845018014868,
       "auxiliary": {
@@ -458,7 +458,7 @@
       "family": "clock_seconds",
       "status": "fitted",
       "path": "run\\trainers\\PL_clock_seconds_xgb.json",
-      "artifact_sha256": "d3fafc7de986cdbeb1c2f24dc02eb3a240e73f811e119a63d2fc04cee80b5d75",
+      "artifact_sha256": "1389046ae971e077ec8e73118065bffe6804f3b83b53193e9a65f989128ea621",
       "holdout_acc": 0.5057966213978139,
       "holdout_logloss": 0.6926132477564864,
       "auxiliary": {
@@ -473,7 +473,7 @@
       "family": "range",
       "status": "fitted",
       "path": "run\\trainers\\PL_range_xgb.json",
-      "artifact_sha256": "e7769ddc2082a7e0da9c078def2638fce9a0d5960cbfd48cde313a3390a27a00",
+      "artifact_sha256": "d0b383b400c6d3aa7aab0ca13a25565205217f9ec2b0df15003753f1ea7c7bd5",
       "holdout_acc": 0.6202790935859686,
       "holdout_logloss": 0.6620384024031732,
       "auxiliary": {
@@ -488,7 +488,7 @@
       "family": "clock_minutes",
       "status": "fitted",
       "path": "run\\trainers\\PA_clock_minutes_xgb.json",
-      "artifact_sha256": "9321f741818fc3c492ec3549cc4ed96ec2791f47545fa4a5b8a0dc7f8ad07785",
+      "artifact_sha256": "43ec99ed8195fbdb917a1be6672822980cab2484540575beb57bb9c38a1393b8",
       "holdout_acc": 0.53204971971728,
       "holdout_logloss": 0.6910361298474212,
       "auxiliary": {
@@ -503,7 +503,7 @@
       "family": "clock_hours",
       "status": "fitted",
       "path": "run\\trainers\\PA_clock_hours_xgb.json",
-      "artifact_sha256": "575d4d243bc0765626870d27241c758714e6228ca5f6fabfa460b455f0d68f87",
+      "artifact_sha256": "483a416db06211a12e2cf5b0468f12b93afc8d775081f4ae1dda86b1167e680b",
       "holdout_acc": 0.5206341217916457,
       "holdout_logloss": 0.6920863991071236,
       "auxiliary": {
@@ -518,7 +518,7 @@
       "family": "clock_seconds",
       "status": "fitted",
       "path": "run\\trainers\\PA_clock_seconds_xgb.json",
-      "artifact_sha256": "53f2fab799a6f92adcdf6d005f1d6b56ae4194bc2dd710845321b9519a3137e9",
+      "artifact_sha256": "7bf2598eccfa57a45f47c1dcdf5476b3002d49ab8d5559377a3c7fbe02f7a8bc",
       "holdout_acc": 0.5150602409638554,
       "holdout_logloss": 0.6898485435657742,
       "auxiliary": {
@@ -533,7 +533,7 @@
       "family": "range",
       "status": "fitted",
       "path": "run\\trainers\\PA_range_xgb.json",
-      "artifact_sha256": "c759e9e4b8dc9fb8cfa7089371104bead6043d2087449b7829cde4d76ad0a1ea",
+      "artifact_sha256": "16784b6519bc8e28bd25f1707412748c5e8186e52b47b5f4e01417458fd69f77",
       "holdout_acc": 0.573508267433501,
       "holdout_logloss": 0.6739862212690195,
       "auxiliary": {
@@ -548,7 +548,7 @@
       "family": "clock_minutes",
       "status": "fitted",
       "path": "run\\trainers\\BTCF_clock_minutes_xgb.json",
-      "artifact_sha256": "a394282fc6ffa31d8a5b0abc562fe15e3142228a333eea9c535102d064a5c6a8",
+      "artifact_sha256": "cc577bfb2ca0a6a6d655443cc614ba4de3a78684e1f3b062d8ea8dd74bb9ab71",
       "holdout_acc": 0.4965385533540224,
       "holdout_logloss": 0.6936635962173495,
       "auxiliary": {
@@ -563,7 +563,7 @@
       "family": "clock_hours",
       "status": "fitted",
       "path": "run\\trainers\\BTCF_clock_hours_xgb.json",
-      "artifact_sha256": "aa4b4ddcfe0230762827a00229d021e96a23e78b4544e6e0e9cdeb7ce86adf97",
+      "artifact_sha256": "90c0e1af23435ffde755550020a044e22753ce05db884da1e43c3be527c97205",
       "holdout_acc": 0.5237988826815643,
       "holdout_logloss": 0.6918897407408854,
       "auxiliary": {
@@ -578,7 +578,7 @@
       "family": "clock_seconds",
       "status": "fitted",
       "path": "run\\trainers\\BTCF_clock_seconds_xgb.json",
-      "artifact_sha256": "8ae65d459ad18046a35de0693294d33e26c2adc718e9a4de978685ac459ea481",
+      "artifact_sha256": "9614b7ab79f4ec83533f47f07dbd1cf4062f1bf71264e05fc8c4494c6bb54671",
       "holdout_acc": 0.4884129213483146,
       "holdout_logloss": 0.6930879504255476,
       "auxiliary": {
@@ -593,7 +593,7 @@
       "family": "clock_minutes",
       "status": "fitted",
       "path": "run\\trainers\\BTC_clock_minutes_xgb.json",
-      "artifact_sha256": "1e30cac12c5c933544ffdd6c033c36f1433567a65c99adbb8c97bc7c59f91f02",
+      "artifact_sha256": "8fb175a0d9e75bd1db23641553ce2ba164d4fadb42d950688a03fd2ed1a9de8f",
       "holdout_acc": 0.5239251882438669,
       "holdout_logloss": 0.6913382879795296,
       "auxiliary": {
@@ -608,7 +608,7 @@
       "family": "clock_hours",
       "status": "fitted",
       "path": "run\\trainers\\BTC_clock_hours_xgb.json",
-      "artifact_sha256": "07d43374d116d555468c6aff9b77345dab225b46e18c93688404db892815261d",
+      "artifact_sha256": "ea05bad2981664c118773ffddb196b57cd94b4baa792eb94eb10726259cfcc33",
       "holdout_acc": 0.5109060402684564,
       "holdout_logloss": 0.691492255710005,
       "auxiliary": {
@@ -623,7 +623,7 @@
       "family": "clock_seconds",
       "status": "fitted",
       "path": "run\\trainers\\BTC_clock_seconds_xgb.json",
-      "artifact_sha256": "806582c31b2f20071996558d3c786e99c2228e7b573f6665543a7aafa942bd03",
+      "artifact_sha256": "3850a6054bc81f794cbbc1f7f6d52fa7a78cae5658b93ea5fbd977257bd4d9f6",
       "holdout_acc": 0.6340613382899628,
       "holdout_logloss": 0.6409061868662091,
       "auxiliary": {
@@ -638,7 +638,7 @@
       "family": "clock_daily",
       "status": "fitted",
       "path": "run\\trainers\\BTC_clock_daily_xgb.json",
-      "artifact_sha256": "bf26df0b3a65586ad543ff43603d36d413a2c9f0067c0ff7865298603513ca23",
+      "artifact_sha256": "898cc41e3c453dbbac327ecb7c126ec32fdd30dba61cd1bce6b3cd83dfe572d0",
       "holdout_acc": 0.519742883379247,
       "holdout_logloss": 0.6925196826929829,
       "auxiliary": {
@@ -653,7 +653,7 @@
       "family": "clock_weekly",
       "status": "fitted",
       "path": "run\\trainers\\BTC_clock_weekly_xgb.json",
-      "artifact_sha256": "5a81972a3190d707ea289cb18af65bccfbea513a67bc1cd25b171a123fb4fd27",
+      "artifact_sha256": "c00595ef45c2071dfaa8a14b3e22b0770f00e3430e33a9902587c1779eabfcb6",
       "holdout_acc": 0.5063291139240507,
       "holdout_logloss": 0.6928710093804464,
       "auxiliary": {

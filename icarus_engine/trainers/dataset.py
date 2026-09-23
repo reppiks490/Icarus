@@ -145,7 +145,8 @@ def attach_labels(bars, family: str, *, events=None, asset="", sensors=None):
         labeled.append({"ts": b["ts"], "label_ts": bars[i + 1]["ts"],
                         "row_index": b.get("row_index", i),
                         "label_index": bars[i + 1].get("row_index", i + 1),
-                        "y": y, "family": family, "asset": asset, "x": x})
+                        "y": y, "next_abs_return": abs(bars[i + 1]["close"] - b["close"]),
+                        "family": family, "asset": asset, "x": x})
     return labeled
 
 def walk_slices(n: int, train_frac=0.6, valid_frac=0.2):
