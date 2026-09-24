@@ -34,11 +34,11 @@
   "active_build": {
     "codename": "OMNIVISION",
     "objective": "Fuse cross-domain world-state evidence, quantify unseen/latent gaps, generate falsifiable research hypotheses, and emit research-only integration candidates.",
-    "phase": "foundation",
-    "status": "in_progress"
+    "phase": "world_state_kernel",
+    "status": "implemented_unverified_ci"
   },
   "unresolved": [
-    "wire world-state evidence into existing advisory ledger without duplicating immutable provenance",
+    "wire world-state graph to AdvisoryLedger via explicit adapter without weakening source allowlists or immutable provenance",
     "add domain adapters only when a public/licensed/user-authorized source is selected",
     "add walk-forward evaluation hooks before any candidate can be marked integration_ready",
     "run CI and record exact results"
@@ -60,7 +60,19 @@
       "path": "icarus_engine/advisory.py"
     }
   ],
-  "tests": [],
+  "tests": [
+    {
+      "scope": "tests_engine/test_world_state.py",
+      "status": "not_run",
+      "reason": "No GitHub Actions workflow run was associated with commit 1a3f6dad3c42e3c8615f91ce4034bb89d88536d1"
+    }
+  ],
   "benchmarks": [],
-  "checkpoints": []
+  "checkpoints": [
+    {
+      "commit": "1a3f6dad3c42e3c8615f91ce4034bb89d88536d1",
+      "summary": "Added research-only world-state graph with as-of filtering, explicit latent inference, contradiction detection, gap mapping, and unit tests.",
+      "next": "Integrate with advisory evidence schema and add source/domain adapter contracts; run tests in an execution environment."
+    }
+  ]
 }
