@@ -97,3 +97,88 @@ def test_trial_rejects_duplicate_metric_names_and_empty_family_membership():
         trial(metrics=(("x", 1.0), ("x", 2.0)))
     with pytest.raises(ValueError):
         trial(family_memberships=())
+
+
+import sqlite3
+from icarus_engine.omnivision.trials import TrialLedger
+
+
+def test_trial_ledger_preserves_hidden_search_and_all_outcomes(tmp_path):
+    ledger = TrialLedger(tmp_path / "trials.sqlite3")
+    records = (
+        trial(status="passed", feature_config_hash="1" * 64, decision_at=40),
+        trial(status="rejected", rejection_reason="weak", feature_config_hash="2" * 64, decision_at=41),
+        trial(status="rejected", rejection_reason="unstable", feature_config_hash="3" * 64, decision_at=42),
+        trial(status="duplicate", rejection_reason="duplicate", feature_config_hash="1" * 64, decision_at=43),
+        trial(status="failed", rejection_reason="exception", feature_config_hash="4" * 64, decision_at=44),
+    )
+    for record in records:
+        ledger.record(record, recorded_at=record.decision_at)
+
+    summary = ledger.family("b" * 64)
+    assert len(summary) == 5
+    counts = ledger.family_summary("b" * 64)
+    assert counts["attempts_total"] == 5
+    assert counts["passed"] == 1
+    assert counts["rejected"] == 2
+    assert counts["failed"] == 1
+    assert counts["duplicate"] == 1
+    assert counts["deferred"] == 0
+    assert counts["invalidated"] == 0
+    burden = ledger.search_burden("b" * 64)
+    assert burden["correction_required"] is True
+    assert burden["distinct_configs"] == 4
+    assert burden["attempts_total"] == 5
+
+    passed_only = tuple(item for item in ledger.family("b" * 64) if item.status == "passed")
+    assert len(passed_only) == 1
+    assert ledger.family_summary("b" * 64)["attempts_total"] == 5
+
+
+def test_trial_ledger_is_append_only_through_direct_sql(tmp_path):
+    path = tmp_path / "trials.sqlite3"
+    ledger = TrialLedger(path)
+    item = trial()
+    ledger.record(item, recorded_at=40)
+    connection = sqlite3.connect(path)
+    with pytest.raises(sqlite3.DatabaseError):
+        connection.execute("UPDATE omnivision_trials SET status='rejected'")
+    connection.rollback()
+    with pytest.raises(sqlite3.DatabaseError):
+        connection.execute("DELETE FROM omnivision_trials")
+    connection.close()
+
+
+def test_trial_ledger_restart_and_family_order_are_deterministic(tmp_path):
+    path = tmp_path / "trials.sqlite3"
+    first = TrialLedger(path)
+    later = trial(feature_config_hash="2" * 64, decision_at=50)
+    earlier = trial(feature_config_hash="1" * 64, decision_at=40)
+    first.record(later, recorded_at=50)
+    first.record(earlier, recorded_at=40)
+    second = TrialLedger(path)
+    expected = tuple(sorted((earlier, later), key=lambda item: (item.decision_at, item.trial_id)))
+    assert first.family("b" * 64) == expected
+    assert second.family("b" * 64) == expected
+    assert first.family_summary("b" * 64) == second.family_summary("b" * 64)
+
+
+def test_trial_ledger_single_attempt_needs_no_search_correction(tmp_path):
+    ledger = TrialLedger(tmp_path / "trials.sqlite3")
+    item = trial()
+    assert ledger.record(item, recorded_at=40) == item.trial_id
+    assert ledger.record(item, recorded_at=40) == item.trial_id
+    assert ledger.get(item.trial_id) == item
+    assert ledger.search_burden("b" * 64) == {
+        "attempts_total": 1,
+        "distinct_configs": 1,
+        "distinct_datasets": 1,
+        "correction_required": False,
+        "reason": "single_recorded_attempt",
+    }
+
+
+def test_trial_ledger_rejects_backdated_recording(tmp_path):
+    ledger = TrialLedger(tmp_path / "trials.sqlite3")
+    with pytest.raises(ValueError):
+        ledger.record(trial(decision_at=50), recorded_at=49)
