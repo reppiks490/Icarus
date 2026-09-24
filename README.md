@@ -82,3 +82,10 @@ Paste `pine/ALERT_TEMPLATE.json` into the strategy alert. `NQ1!` → `QQQ` is th
 Paid next (Alpaca paper, TradersPost / PickMyTrade futures, Plus CSV, ML boundary): [PAID_NEXT.md](PAID_NEXT.md). Dummy command list: [COMMANDS.md](COMMANDS.md).
 
 Hands: **Astra** (engine, Pine port, emulator, bridge, tests) · **Grok (xAI)** (free-gap ingest/doctor/CI/hygiene + local plant — see [GROK.md](GROK.md)).
+
+
+## ICARUS control / research handoff
+
+The current control-plane architecture, XGB Slot 1 implementation plan, empirical-integrity findings, automation status, and multi-agent onboarding map are collected in [docs/icarus-handoff/README.md](docs/icarus-handoff/README.md).
+
+This handoff is documentation/research state only. It does not authorize trading, deployment, or execution changes.
