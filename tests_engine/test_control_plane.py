@@ -447,3 +447,39 @@ def test_resolved_conflict_requires_explicit_reason(contracts):
     result = validate_receipt(receipt, policy, schema)
     assert result["status"] == "INVALID"
     assert any("resolution_reason" in x for x in result["errors"])
+
+
+def test_repeated_identical_evidence_id_collapses_to_one_origin(contracts):
+    policy, schema = contracts
+    receipts = _chain(policy, schema)
+    receipts["S2"]["evidence_lineage"] = copy.deepcopy(receipts["S1"]["evidence_lineage"])
+    _relink(receipts)
+    result = validate_cycle(receipts, policy, schema)
+    assert result["evidence_lineage_status"] == "VALID"
+    assert result["independent_evidence_origin_count"] == 1
+    assert result["promotion_path_valid"] is True
+
+
+def test_missing_lineage_parent_fails_closed(contracts):
+    policy, schema = contracts
+    receipts = _chain(policy, schema)
+    receipts["S3"]["evidence_lineage"][0]["derived_from"] = ["NO-SUCH-EVIDENCE"]
+    _relink(receipts)
+    result = validate_cycle(receipts, policy, schema)
+    assert result["evidence_lineage_status"] == "INVALID"
+    assert any("missing lineage parent" in x for x in result["evidence_lineage_breaks"])
+    assert result["promotion_path_valid"] is False
+    assert result["status"] == "INVALID"
+
+
+def test_evidence_lineage_cycle_fails_closed(contracts):
+    policy, schema = contracts
+    receipts = _chain(policy, schema)
+    receipts["S1"]["evidence_lineage"][0]["independence"] = "DERIVED"
+    receipts["S1"]["evidence_lineage"][0]["derived_from"] = ["E-S2"]
+    receipts["S2"]["evidence_lineage"][0]["derived_from"] = ["E-S1"]
+    _relink(receipts)
+    result = validate_cycle(receipts, policy, schema)
+    assert result["evidence_lineage_status"] == "INVALID"
+    assert any("cycle" in x for x in result["evidence_lineage_breaks"])
+    assert result["promotion_path_valid"] is False
