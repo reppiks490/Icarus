@@ -29,10 +29,9 @@ Grok (xAI) — 2026-09-20. A data directory + process supervisor so Brain B stay
 **Windows (do this):** clone the repo, double-click [`start-plant.bat`](start-plant.bat). Full dummy list: [SETUP.md](SETUP.md).
 
 ```
-icarus-plant setup --open                 # numbered steps + open history/drop/
-icarus-plant init                         # history/drop, run/, logs/ under $ICARUS_HOME or cwd
-# drop Supercharts CSVs into history/drop/  (each dump MERGES into history/NQ_1m.csv)
-icarus-plant start --assets NQ --offline  # FileFeed only; Yahoo is not contacted
+icarus-plant setup --open
+icarus-plant init
+icarus-plant start --assets NQ --offline
 icarus-plant status
 icarus-plant stop
 ```
@@ -45,7 +44,7 @@ Optional systemd unit: [deploy/icarus-plant.service](deploy/icarus-plant.service
 
 - Python 3.10+
 - Engine / plant: stdlib only (no API keys)
-- Bridge extras: `pip install -e '.[bridge]'` (fastapi, uvicorn, httpx, plus `alpaca-py` if you talk to Alpaca)
+- Bridge extras: `pip install -e '.[bridge]'`
 - Tests: `pip install -e '.[dev]'` then `python -m pytest tests_engine -q`
 
 ## Engine
@@ -58,7 +57,7 @@ icarus-engine backtest --assets NQ --tf 20
 icarus-engine parity --asset NQ --tv-csv "List of Trades.csv"
 icarus-engine import-tv strategy-report.xlsx --name NQ-20m-mine
 icarus-engine run --assets NQ --tf 20
-icarus-engine run --assets NQ --feed file   # HistoryHub; same as plant --offline
+icarus-engine run --assets NQ --feed file
 ```
 
 Default chart session is **RTH** (09:30–16:15 ET, 20m at `:10/:30/:50`, last bar a 5-minute stub). Yahoo 1-minute history is ~30 days and ~10 minutes delayed. Empty minutes are not invented. `$ICARUS_HOME` is the data dir (history, journal, presets) when the plant sets it.
@@ -66,7 +65,7 @@ Default chart session is **RTH** (09:30–16:15 ET, 20m at `:10/:30/:50`, last b
 ## Bridge (TV alerts → Alpaca paper)
 
 ```
-cp icarus_bridge/.env.example .env   # set WEBHOOK_SECRET, ADMIN_TOKEN, Alpaca paper keys
+cp icarus_bridge/.env.example .env
 icarus-bridge doctor
 icarus-bridge serve --tunnel ngrok
 ```
@@ -76,9 +75,26 @@ Paste `pine/ALERT_TEMPLATE.json` into the strategy alert. `NQ1!` → `QQQ` is th
 ## What this repo will not do for free
 
 - Scrape TradingView or invent ticks / queue / spread
-- Stream a CME display license into Python (non-display / Databento is the paid path)
+- Stream a CME display license into Python
 - Fill NQ at a futures broker from Alpaca
 
-Paid next (Alpaca paper, TradersPost / PickMyTrade futures, Plus CSV, ML boundary): [PAID_NEXT.md](PAID_NEXT.md). Dummy command list: [COMMANDS.md](COMMANDS.md).
+Paid next: [PAID_NEXT.md](PAID_NEXT.md). Dummy command list: [COMMANDS.md](COMMANDS.md).
 
 Hands: **Astra** (engine, Pine port, emulator, bridge, tests) · **Grok (xAI)** (free-gap ingest/doctor/CI/hygiene + local plant — see [GROK.md](GROK.md)).
+
+## ICARUS research-loop integration
+
+The large empirical/architecture loop corpus is staged through
+[ICARUS_LOOP_INDEX.md](ICARUS_LOOP_INDEX.md).
+
+That index is the canonical entry point for:
+- the progressive S3 edge registry and attempt ledger;
+- direct repository audits and verified defects;
+- provider capability/entitlement records;
+- S4 architecture specifications and implementation plans;
+- current loop handoff state;
+- the inbox protocol for additional loops.
+
+The loop corpus is research/design evidence only unless a later stage explicitly proves
+and authorizes runtime integration. Current handoff state preserves
+`execution_authorized=false`.
