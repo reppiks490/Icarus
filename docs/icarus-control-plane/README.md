@@ -111,7 +111,7 @@ icarus-control validate-receipt FILE
 icarus-control validate-cycle DIRECTORY
 ```
 
-This verifier is intentionally narrower than the scheduler. It validates deterministic receipt canonicalization, SHA-256 receipt links, exact policy/schema identity, same-cycle policy epoch, pinned repository snapshots, stage order, maturity ceilings, evidence-lineage structure, S4 oracle provenance fields, and the invariant `execution_authorized=false`.
+This verifier is intentionally narrower than the scheduler. It validates deterministic receipt canonicalization, SHA-256 receipt links, exact policy/schema identity, same-cycle policy epoch, pinned repository snapshots, stage order, maturity ceilings, claim dependency closure, material conflict state, evidence-lineage DAG structure, S4 oracle provenance fields, and the invariant `execution_authorized=false`.
 
 A successful validator result is only structural evidence. It does not prove a trading/model claim and does not authorize merge, deployment, publication, or trading.
 
