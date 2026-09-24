@@ -98,3 +98,40 @@ Before implementing any finding:
 8. update this handoff with the new evidence revision and test output.
 
 Do not weaken a safety/provenance/holdout gate just to make a test or candidate pass.
+
+
+## Repo-native receipt verifier
+
+The runtime branch adds a dependency-free verifier package, `icarus_control`, with the console command:
+
+```text
+icarus-control digest FILE
+icarus-control validate-receipt FILE
+icarus-control validate-cycle DIRECTORY
+```
+
+This verifier is intentionally narrower than the scheduler. It validates deterministic receipt canonicalization, SHA-256 receipt links, exact policy/schema identity, same-cycle policy epoch, pinned repository snapshots, stage order, maturity ceilings, evidence-lineage structure, S4 oracle provenance fields, and the invariant `execution_authorized=false`.
+
+A successful validator result is only structural evidence. It does not prove a trading/model claim and does not authorize merge, deployment, publication, or trading.
+
+### Evidence storage rule
+
+Do not commit S1-S5 receipts onto the code branch whose revision they attest.
+
+Recommended layout:
+
+```text
+code subject: main (or another pinned immutable commit)
+evidence branch: control-evidence
+control/receipts/<CYCLE_ID>/S1.json
+control/receipts/<CYCLE_ID>/S2.json
+control/receipts/<CYCLE_ID>/S3.json
+control/receipts/<CYCLE_ID>/S4.json
+control/receipts/<CYCLE_ID>/S5.json
+```
+
+This prevents the act of recording evidence from moving the code revision under verification.
+
+The versioned contracts are:
+- `contracts/icarus-control-v1.json`
+- `contracts/icarus-pipeline-v1.json`
