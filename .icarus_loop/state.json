@@ -34,8 +34,8 @@
   "active_build": {
     "codename": "OMNIVISION",
     "objective": "Fuse cross-domain world-state evidence, quantify unseen/latent gaps, generate falsifiable research hypotheses, and emit research-only integration candidates.",
-    "phase": "world_state_kernel",
-    "status": "implemented_unverified_ci"
+    "phase": "design_spec_review_gate",
+    "status": "waiting_user_review"
   },
   "unresolved": [
     "wire world-state graph to AdvisoryLedger via explicit adapter without weakening source allowlists or immutable provenance",
@@ -73,6 +73,38 @@
       "commit": "1a3f6dad3c42e3c8615f91ce4034bb89d88536d1",
       "summary": "Added research-only world-state graph with as-of filtering, explicit latent inference, contradiction detection, gap mapping, and unit tests.",
       "next": "Integrate with advisory evidence schema and add source/domain adapter contracts; run tests in an execution environment."
+    },
+    {
+      "commit": "82e327582b44660049de527c220cf6f871840365",
+      "summary": "Committed user-approved OMNIVISION Federated Research Mesh written design spec and passed self-review for placeholders, required boundaries, and core sections.",
+      "plugins": [
+        {
+          "name": "superpowers/using-superpowers",
+          "contribution": "enforced skill-first process"
+        },
+        {
+          "name": "superpowers/brainstorming",
+          "contribution": "architectural design and approval gates"
+        },
+        {
+          "name": "astral-orchestrator",
+          "contribution": "kept primary ownership/routing discipline; no child launch needed at spec stage"
+        },
+        {
+          "name": "akinator/everything",
+          "contribution": "persisted architecture and knowledge delta in repository"
+        },
+        {
+          "name": "baton-pass",
+          "contribution": "maintained delta-first resumable state"
+        }
+      ],
+      "verification": {
+        "spec_self_review": "passed",
+        "placeholders": 0,
+        "ci": "not_applicable_to_document_only_cycle"
+      },
+      "next": "Await user review of written spec; after approval invoke Superpowers writing-plans before implementation."
     }
   ],
   "loop_policy": {
