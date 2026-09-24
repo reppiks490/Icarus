@@ -461,8 +461,8 @@ git commit -m "Codex: add bounded OMNIVISION novelty screening"
   - outcome rows `(observed_at: int, available_at: int, value: float)`
 - Produces:
   - `aligned_pairs(feature_rows, outcome_rows, *, decision_cutoff: int, lag_seconds: int) -> list[tuple[float, float]]`
-  - `placebo_shift_test(..., placebo_shift_seconds: int, min_pairs: int = 20) -> dict`
-  - `walk_forward_correlation(..., cutoffs: Sequence[int], lag_seconds: int, min_pairs: int = 20) -> dict`
+  - `placebo_shift_test(feature_rows: Sequence[tuple[int, int, float]], outcome_rows: Sequence[tuple[int, int, float]], *, decision_cutoff: int, lag_seconds: int, placebo_shift_seconds: int, min_pairs: int = 20) -> dict`
+  - `walk_forward_correlation(feature_rows: Sequence[tuple[int, int, float]], outcome_rows: Sequence[tuple[int, int, float]], *, cutoffs: Sequence[int], lag_seconds: int, min_pairs: int = 20) -> dict`
 
 - [ ] **Step 1: Write failing leakage tests**
 
@@ -509,11 +509,11 @@ Return:
 
 ```python
 {
-    "status": "complete" | "insufficient_data",
-    "real_abs_correlation": ...,
-    "placebo_abs_correlation": ...,
-    "pairs": ...,
-    "passed": bool,
+    "status": "complete",
+    "real_abs_correlation": 0.42,
+    "placebo_abs_correlation": 0.11,
+    "pairs": 48,
+    "passed": True,
 }
 ```
 
@@ -563,25 +563,25 @@ git commit -m "Codex: add point-in-time OMNIVISION falsification"
   - evidence IDs
   - dataset hash
 - Produces:
-  - `build_candidate(...) -> dict`
+  - `build_candidate(*, hypothesis: Hypothesis, novelty: Mapping, placebo: Mapping, walk_forward: Mapping, dataset_hash: str, known_failure_modes: Sequence[str], rollback_conditions: Sequence[str]) -> dict`
 
 Required artifact fields:
 ```python
 {
     "schema_version": 1,
     "artifact_type": "omnivision_research_candidate",
-    "candidate_hash": "...",
-    "hypothesis": {...},
-    "evidence_ids": [...],
-    "dataset_hash": "...",
+    "candidate_hash": "b" * 64,
+    "hypothesis": {"hypothesis_id": "c" * 64, "asset": "NQ", "kind": "latent_gap"},
+    "evidence_ids": ["d" * 64],
+    "dataset_hash": "a" * 64,
     "validation": {
-        "novelty": {...},
-        "placebo": {...},
-        "walk_forward": {...},
+        "novelty": {"status": "novel"},
+        "placebo": {"status": "complete", "passed": True},
+        "walk_forward": {"passed": True},
     },
-    "known_failure_modes": [...],
-    "rollback_conditions": [...],
-    "integration_ready": bool,
+    "known_failure_modes": ["source_revision"],
+    "rollback_conditions": ["walk_forward_sign_breaks"],
+    "integration_ready": True,
     "execution_authorized": False,
 }
 ```
@@ -676,14 +676,21 @@ Use two allowlisted synthetic HTTPS sources and deterministic synthetic time ser
 Test flow:
 
 ```python
-ledger.ingest_event(WorldEvent(...).to_advisory_event(), now=NOW)
+ledger.ingest_event(WorldEvent(
+    source="source_a", source_event_id="event-1", revision_id="v1",
+    source_url="https://source-a.example/event-1",
+    domain="logistics", entity="PORT_X", asset_ids=("NQ",),
+    observed_at=iso(NOW - 20), published_at=iso(NOW - 10),
+    values={"shipping_stress": 2.0}, units={"shipping_stress": "zscore"},
+    confidence=0.9, timing_basis="published",
+).to_advisory_event(), now=NOW)
 observations = ledger_observations(ledger, "NQ", iso(NOW))
 graph = WorldStateGraph(observations, transmissions)
 gap = graph.gap_map(["inflation_pressure"], NOW_INT)
 hypothesis = forge_hypotheses(gap, asset="NQ", decision_at=NOW_INT)[0]
 novelty = screen_novelty(candidate_series, existing_features)
-placebo = placebo_shift_test(feature_rows, outcome_rows, ...)
-walk = walk_forward_correlation(feature_rows, outcome_rows, ...)
+placebo = placebo_shift_test(feature_rows, outcome_rows, decision_cutoff=NOW_INT, lag_seconds=1, placebo_shift_seconds=10, min_pairs=20)
+walk = walk_forward_correlation(feature_rows, outcome_rows, cutoffs=(40, 60, 80), lag_seconds=1, min_pairs=20)
 artifact = build_candidate(
     hypothesis=hypothesis,
     novelty=novelty,
@@ -759,10 +766,10 @@ For every cycle checkpoint append:
 ```json
 {
   "plugins": [
-    {"name": "superpowers/...", "contribution": "..."},
-    {"name": "astral-orchestrator", "contribution": "..."},
-    {"name": "akinator/everything", "contribution": "..."},
-    {"name": "baton-pass", "contribution": "..."}
+    {"name": "superpowers/test-driven-development", "contribution": "enforced red-green implementation order"},
+    {"name": "astral-orchestrator", "contribution": "routed bounded implementation/review work"},
+    {"name": "akinator/everything", "contribution": "kept repository knowledge and implementation evidence synchronized"},
+    {"name": "baton-pass", "contribution": "maintained delta-only resumable checkpoint state"}
   ]
 }
 ```
