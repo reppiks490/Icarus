@@ -59,7 +59,20 @@
       "DAEDALUS",
       "ORACLE"
     ],
-    "external_scheduler_is_repo_native": false
+    "external_scheduler_is_repo_native": false,
+    "repo_native_verifier": {
+      "branch": "chatgpt/icarus-control-plane-runtime-20260924",
+      "package": "icarus_control",
+      "cli": "icarus-control",
+      "status": "IMPLEMENTED_PENDING_FRESH_CI",
+      "scheduler_scope": "EXTERNAL_ONLY",
+      "recommended_evidence_branch": "control-evidence",
+      "receipt_path_template": "control/receipts/<CYCLE_ID>/S<1-5>.json"
+    },
+    "receipt_contracts": [
+      "docs/icarus-control-plane/contracts/icarus-control-v1.json",
+      "docs/icarus-control-plane/contracts/icarus-pipeline-v1.json"
+    ]
   },
   "constraints": [
     "execution_authorized=false",
