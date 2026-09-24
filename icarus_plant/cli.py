@@ -239,7 +239,21 @@ def cmd_open_drop(args: argparse.Namespace) -> int:
     return 0
 
 
+def _configure_console_encoding() -> None:
+    """Use UTF-8 for ICARUS CLI text on Windows consoles and CI pipes."""
+    if not sys.platform.startswith("win"):
+        return
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if callable(reconfigure):
+            try:
+                reconfigure(encoding="utf-8", errors="replace")
+            except (AttributeError, OSError, ValueError):
+                pass
+
+
 def main(argv: Optional[list] = None) -> int:
+    _configure_console_encoding()
     p = argparse.ArgumentParser(prog="icarus-plant", description="Icarus local paper-trading plant (Grok/xAI)")
     p.add_argument("--root", default=None, help="plant data dir (else $ICARUS_HOME else cwd)")
     sub = p.add_subparsers(dest="cmd", required=True)
