@@ -148,3 +148,128 @@ class TrialRecord:
             raise ValueError("trial_id is computed by TrialRecord.build")
         values.setdefault("execution_authorized", False)
         return cls(trial_id=_digest(values), **values)
+
+
+from pathlib import Path
+import sqlite3
+
+
+def _trial_from_json(payload_json: str) -> TrialRecord:
+    values = json.loads(payload_json)
+    for name in ("parent_trial_ids", "dataset_snapshot_hashes", "family_memberships"):
+        values[name] = tuple(values[name])
+    for name in ("metrics", "cost_assumptions"):
+        values[name] = tuple(tuple(item) for item in values[name])
+    return TrialRecord(**values)
+
+
+class TrialLedger:
+    """Append-only record of every meaningful OMNIVISION research attempt."""
+
+    def __init__(self, path: str | Path):
+        self.path = str(path)
+        with sqlite3.connect(self.path) as connection:
+            connection.executescript("""
+                CREATE TABLE IF NOT EXISTS omnivision_trials (
+                    trial_id TEXT PRIMARY KEY,
+                    hypothesis_id TEXT NOT NULL,
+                    hypothesis_family_id TEXT NOT NULL,
+                    decision_at INTEGER NOT NULL,
+                    status TEXT NOT NULL,
+                    payload_json TEXT NOT NULL,
+                    recorded_at INTEGER NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_omnivision_trial_family
+                ON omnivision_trials(hypothesis_family_id, decision_at, trial_id);
+                CREATE TRIGGER IF NOT EXISTS omnivision_trials_no_update
+                BEFORE UPDATE ON omnivision_trials
+                BEGIN
+                    SELECT RAISE(ABORT, 'omnivision_trials is append-only');
+                END;
+                CREATE TRIGGER IF NOT EXISTS omnivision_trials_no_delete
+                BEFORE DELETE ON omnivision_trials
+                BEGIN
+                    SELECT RAISE(ABORT, 'omnivision_trials is append-only');
+                END;
+            """)
+
+    def record(self, trial: TrialRecord, *, recorded_at: int) -> str:
+        if not isinstance(trial, TrialRecord):
+            raise TypeError("trial must be TrialRecord")
+        _time(recorded_at, "recorded_at")
+        if recorded_at < trial.decision_at:
+            raise ValueError("recorded_at cannot precede decision_at")
+        payload = _canon(asdict(trial))
+        with sqlite3.connect(self.path) as connection:
+            existing = connection.execute(
+                "SELECT payload_json FROM omnivision_trials WHERE trial_id=?",
+                (trial.trial_id,),
+            ).fetchone()
+            if existing is not None:
+                if existing[0] == payload:
+                    return trial.trial_id
+                raise ValueError("trial_id already exists with different payload")
+            connection.execute(
+                "INSERT INTO omnivision_trials "
+                "(trial_id, hypothesis_id, hypothesis_family_id, decision_at, status, payload_json, recorded_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (
+                    trial.trial_id, trial.hypothesis_id, trial.hypothesis_family_id,
+                    trial.decision_at, trial.status, payload, recorded_at,
+                ),
+            )
+        return trial.trial_id
+
+    def get(self, trial_id: str) -> TrialRecord | None:
+        _hash(trial_id, "trial_id")
+        with sqlite3.connect(self.path) as connection:
+            row = connection.execute(
+                "SELECT payload_json FROM omnivision_trials WHERE trial_id=?", (trial_id,)
+            ).fetchone()
+        return None if row is None else _trial_from_json(row[0])
+
+    def family(self, hypothesis_family_id: str) -> tuple[TrialRecord, ...]:
+        _hash(hypothesis_family_id, "hypothesis_family_id")
+        with sqlite3.connect(self.path) as connection:
+            rows = connection.execute(
+                "SELECT payload_json FROM omnivision_trials WHERE hypothesis_family_id=? "
+                "ORDER BY decision_at ASC, trial_id ASC",
+                (hypothesis_family_id,),
+            ).fetchall()
+        return tuple(_trial_from_json(row[0]) for row in rows)
+
+    def family_summary(self, hypothesis_family_id: str) -> dict:
+        items = self.family(hypothesis_family_id)
+        statuses = {name: 0 for name in ("passed", "rejected", "failed", "duplicate", "deferred", "invalidated")}
+        for item in items:
+            if item.status in statuses:
+                statuses[item.status] += 1
+        return {
+            "hypothesis_family_id": hypothesis_family_id,
+            "attempts_total": len(items),
+            **statuses,
+            "generation_methods": tuple(sorted({item.generation_method for item in items})),
+            "dataset_snapshot_hashes": tuple(sorted({h for item in items for h in item.dataset_snapshot_hashes})),
+        }
+
+    def search_burden(self, hypothesis_family_id: str) -> dict:
+        items = self.family(hypothesis_family_id)
+        configs = {(item.feature_config_hash, item.config_hash) for item in items}
+        datasets = {item.dataset_snapshot_hashes for item in items}
+        evaluated = [item for item in items if item.status in {"passed", "rejected", "failed", "invalidated"}]
+        correction_required = len(configs) > 1 or len(evaluated) > 1
+        if not items:
+            reason = "no_recorded_attempts"
+        elif len(items) == 1:
+            reason = "single_recorded_attempt"
+        elif correction_required:
+            reason = "multiple_search_paths"
+        else:
+            reason = "single_effective_evaluation"
+        return {
+            "attempts_total": len(items),
+            "distinct_configs": len(configs),
+            "distinct_datasets": len(datasets),
+            "correction_required": correction_required,
+            "reason": reason,
+        }
