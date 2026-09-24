@@ -182,6 +182,13 @@ def validate_receipt(
                 errors.append(f"duplicate repo_snapshot_set repo: {repo}")
             else:
                 seen_repos.add(repo)
+        ordered_repos = [
+            snapshot.get("repo")
+            for snapshot in snapshots
+            if isinstance(snapshot, Mapping) and _is_nonempty_string(snapshot.get("repo"))
+        ]
+        if ordered_repos != sorted(ordered_repos):
+            errors.append("repo_snapshot_set must be sorted lexicographically by repo")
 
     prior = receipt.get("prior_stage_digest")
     if stage == "S1":
@@ -444,7 +451,7 @@ def validate_cycle(
         and snapshot_chain_status == "CONSISTENT"
         and handoff_chain_status == "CONSISTENT"
         and not authority_violations
-        and lineage_status not in {"DUPLICATE_INFLATED", "INVALID"}
+        and lineage_status == "VALID"
         and s4_oracle == "INDEPENDENT"
         and s5_oracle == "INDEPENDENT"
     )
