@@ -361,3 +361,74 @@ def test_cli_explicit_review_pipeline(tmp_path, capsys, monkeypatch, transport):
         assert json.loads(capsys.readouterr().out)["state"] == state
     assert main(args + ["export", pid, "--baseline-hash", "a" * 64, "--dataset-hash", "b" * 64]) == 0
     assert json.loads(capsys.readouterr().out)["execution_authorized"] is False
+
+def world_state_event(**changes):
+    value = event()
+    value.pop("report_family", None)
+    value.update({
+        "event_type": "world_state",
+        "instrument_id": "US_MIDWEST",
+        "domain": "weather",
+        "entity": "US_MIDWEST",
+        "confidence": 0.8,
+        "values": {"heat_z": 1.5},
+        "units": {"heat_z": "zscore"},
+    })
+    value.update(changes)
+    return value
+
+
+def test_world_state_event_keeps_existing_allowlist_and_time_guards(ledger):
+    saved = ledger.ingest_event(world_state_event(), now=NOW)
+    assert saved["domain"] == "weather"
+    assert saved["entity"] == "US_MIDWEST"
+    assert saved["confidence"] == 0.8
+
+    with pytest.raises(AdvisoryError, match="allowlisted HTTPS"):
+        ledger.ingest_event(world_state_event(
+            source_event_id="world-bad-url",
+            source_url="https://evil.invalid/report",
+        ), now=NOW)
+
+    with pytest.raises(AdvisoryError, match="future, out of order or too old"):
+        ledger.ingest_event(world_state_event(
+            source_event_id="world-future",
+            published_at=iso(NOW + 1),
+        ), now=NOW)
+
+
+@pytest.mark.parametrize("changes", [
+    {"domain": ""},
+    {"entity": ""},
+    {"confidence": True},
+    {"confidence": -0.1},
+    {"confidence": 1.1},
+])
+def test_world_state_requires_strict_domain_entity_confidence(ledger, changes):
+    with pytest.raises(AdvisoryError):
+        ledger.ingest_event(world_state_event(**changes), now=NOW)
+
+
+def test_legacy_events_reject_world_state_metadata(ledger):
+    for event_type in ("macro", "company", "correlation"):
+        payload = event(event_type=event_type, domain="weather", entity="US_MIDWEST", confidence=0.8)
+        payload.pop("report_family", None)
+        if event_type == "correlation":
+            payload["values"] = {"corr": 0.5}
+            payload["units"] = {"corr": "coefficient"}
+        with pytest.raises(AdvisoryError, match="unexpected or missing fields"):
+            ledger.ingest_event(payload, now=NOW)
+
+
+def test_world_state_first_observed_uses_receipt_without_inventing_publication(ledger):
+    saved = ledger.ingest_event(world_state_event(
+        source_event_id="world-first-observed",
+        timing_basis="first_observed",
+        published_at=None,
+        quality_flags=[],
+    ), now=NOW)
+    assert saved["published_at"] is None
+    assert "publication_time_unknown" in saved["quality_flags"]
+    assert ledger.events_as_of("NQ", iso(NOW - 1)) == []
+    assert ledger.events_as_of("NQ", iso(NOW))[0]["event_id"] == saved["event_id"]
+
