@@ -107,6 +107,14 @@ def _redigest(receipt):
     receipt["receipt_digest"] = receipt_digest(receipt)
 
 
+def _relink(receipts):
+    prior = None
+    for stage in ("S1", "S2", "S3", "S4", "S5"):
+        receipts[stage]["prior_stage_digest"] = prior
+        _redigest(receipts[stage])
+        prior = receipts[stage]["receipt_digest"]
+
+
 def test_canonical_json_is_deterministic_and_preserves_array_order():
     left = {"b": 2, "a": {"z": 3, "y": [2, 1]}}
     right = {"a": {"y": [2, 1], "z": 3}, "b": 2}
@@ -273,6 +281,7 @@ def test_stage_cannot_claim_maturity_above_its_ceiling(contracts):
         {
             "claim_id": "C-1",
             "maturity": "VERIFIED_FOR_INTEGRATION",
+            "status": "SUPPORTED",
             "dependencies": [],
             "evidence_ids": ["E-S1"],
         }
@@ -333,3 +342,108 @@ def test_empty_evidence_lineage_cannot_be_promotion_eligible(contracts):
     result = validate_cycle(receipts, policy, schema)
     assert result["evidence_lineage_status"] == "UNKNOWN"
     assert result["promotion_path_valid"] is False
+
+
+def test_dependency_cycle_blocks_promotion(contracts):
+    policy, schema = contracts
+    receipts = _chain(policy, schema)
+    receipts["S1"]["claims"] = [
+        {
+            "claim_id": "A",
+            "maturity": "OBSERVED",
+            "status": "SUPPORTED",
+            "dependencies": ["B"],
+            "evidence_ids": ["E-S1"],
+        }
+    ]
+    receipts["S2"]["claims"] = [
+        {
+            "claim_id": "B",
+            "maturity": "SPECIFIED",
+            "status": "SUPPORTED",
+            "dependencies": ["A"],
+            "evidence_ids": ["E-S2"],
+        }
+    ]
+    _relink(receipts)
+    result = validate_cycle(receipts, policy, schema)
+    assert result["dependency_closure_status"] == "CYCLE"
+    assert result["promotion_path_valid"] is False
+    assert result["status"] == "INVALID"
+    assert result["authority_violations"]
+
+
+def test_missing_prerequisite_blocks_promotion(contracts):
+    policy, schema = contracts
+    receipts = _chain(policy, schema)
+    receipts["S2"]["claims"] = [
+        {
+            "claim_id": "B",
+            "maturity": "SPECIFIED",
+            "status": "SUPPORTED",
+            "dependencies": ["MISSING"],
+            "evidence_ids": ["E-S2"],
+        }
+    ]
+    _relink(receipts)
+    result = validate_cycle(receipts, policy, schema)
+    assert result["dependency_closure_status"] == "BROKEN"
+    assert any("missing prerequisite" in x for x in result["dependency_closure_breaks"])
+    assert result["promotion_path_valid"] is False
+
+
+def test_material_open_conflict_blocks_promotion(contracts):
+    policy, schema = contracts
+    receipts = _chain(policy, schema)
+    receipts["S3"]["conflicts"] = [
+        {
+            "conflict_id": "X",
+            "status": "OPEN",
+            "claim_ids": [],
+            "material": True,
+            "scope": "same revision / same contract",
+        }
+    ]
+    _relink(receipts)
+    result = validate_cycle(receipts, policy, schema)
+    assert result["conflict_status"] == "OPEN"
+    assert result["promotion_path_valid"] is False
+    assert result["status"] == "INVALID"
+
+
+def test_resolved_conflict_with_reason_does_not_block_structural_path(contracts):
+    policy, schema = contracts
+    receipts = _chain(policy, schema)
+    receipts["S4"]["conflicts"] = [
+        {
+            "conflict_id": "X",
+            "status": "RESOLVED",
+            "claim_ids": [],
+            "material": True,
+            "scope": "same revision / same contract",
+            "resolution_reason": "independent invariant selected the canonical interpretation",
+        }
+    ]
+    _relink(receipts)
+    result = validate_cycle(receipts, policy, schema)
+    assert result["conflict_status"] == "CLEAR"
+    assert result["promotion_path_valid"] is True
+    assert result["status"] == "VALID"
+
+
+def test_resolved_conflict_requires_explicit_reason(contracts):
+    policy, schema = contracts
+    receipt = _receipt("S2", policy, schema, prior="sha256:" + "1" * 64)
+    receipt["conflicts"] = [
+        {
+            "conflict_id": "X",
+            "status": "RESOLVED",
+            "claim_ids": [],
+            "material": True,
+            "scope": "same revision / same contract",
+        }
+    ]
+    _redigest(receipt)
+    result = validate_receipt(receipt, policy, schema)
+    assert result["status"] == "INVALID"
+    assert any("resolution_reason" in x for x in result["errors"])
