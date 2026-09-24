@@ -1,0 +1,102 @@
+{
+  "manifest_version": "icarus-handoff-v1",
+  "created_date": "2026-09-24",
+  "repository": "reppiks490/Icarus",
+  "baseline_revision": "007e70189945b8e112904cf92b2b1a12e43792d6",
+  "branch": "icarus-handoff-2026-09-24",
+  "invariants": {
+    "execution_authorized": false,
+    "pulse_rewrite": false,
+    "synthetic_bars_as_empirical_evidence": false,
+    "invented_trainer_slots_or_features": false,
+    "fail_closed": true
+  },
+  "artifacts": [
+    {
+      "path": "README.md",
+      "purpose": "handoff index",
+      "status": "CREATED"
+    },
+    {
+      "path": "ARCHITECTURE.md",
+      "purpose": "architecture and invariants",
+      "status": "CREATED"
+    },
+    {
+      "path": "CONTROL_PLANE.md",
+      "purpose": "unified cycle and safeguards",
+      "status": "CREATED"
+    },
+    {
+      "path": "XGB_SLOT1_IMPLEMENTATION.md",
+      "purpose": "implementation-ready XGB lane",
+      "status": "CREATED"
+    },
+    {
+      "path": "FINDINGS_AND_DEFECTS.md",
+      "purpose": "repo defects and provider capability facts",
+      "status": "CREATED"
+    },
+    {
+      "path": "ONBOARDING.md",
+      "purpose": "multi-agent connection map",
+      "status": "CREATED"
+    },
+    {
+      "path": "AUTOMATION_STATUS.json",
+      "purpose": "active/disabled automation state",
+      "status": "CREATED"
+    }
+  ],
+  "priorities": [
+    {
+      "id": "P0-CAUSAL-EVENTS",
+      "owner": "engineering",
+      "status": "IMPLEMENTATION_READY",
+      "action": "Add trainer-only causal/as-of event feature path and tests.",
+      "blocker": "repository code not yet modified"
+    },
+    {
+      "id": "P0-EXECUTION-LOCK",
+      "owner": "engineering",
+      "status": "IMPLEMENTATION_READY",
+      "action": "Make execution_authorized=false explicit on all trainer exits.",
+      "blocker": "repository code not yet modified"
+    },
+    {
+      "id": "P1-XGB-SLOT1",
+      "owner": "engineering",
+      "status": "IMPLEMENTATION_READY",
+      "action": "Implement XGB Slot 1 under frozen temporal contract after leakage repair.",
+      "blocker": "xgb_slot.py remains NotImplemented"
+    },
+    {
+      "id": "P1-HOLDOUT-LEDGER",
+      "owner": "engineering",
+      "status": "SPECIFIED",
+      "action": "Persist terminal holdout/study consumption and block changed-study reuse.",
+      "blocker": "not implemented"
+    },
+    {
+      "id": "P1-ARTIFACT-VALIDATOR",
+      "owner": "engineering+verification",
+      "status": "SPECIFIED",
+      "action": "Replace file-existence trust with provenance/schema/identity qualification.",
+      "blocker": "not implemented"
+    },
+    {
+      "id": "P1-BASELINE-PROMOTION",
+      "owner": "empirical+verification",
+      "status": "SPECIFIED",
+      "action": "Require raw untouched-OOS incremental value over Slot 0.",
+      "blocker": "XGB not yet implemented"
+    }
+  ],
+  "next_connection_order": [
+    "engineering",
+    "verification",
+    "empirical-research",
+    "observability"
+  ],
+  "warning": "Repository evidence overrides this handoff. No artifact here authorizes trading, merge, deploy, or publication."
+}
