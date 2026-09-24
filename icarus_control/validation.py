@@ -65,7 +65,11 @@ def _contract_view(policy: Mapping[str, Any], schema: Mapping[str, Any]) -> dict
         "snapshot_fields": list(schema.get("snapshot_required_fields") or ["repo", "revision"]),
         "claim_fields": list(
             schema.get("claim_required_fields")
-            or ["claim_id", "maturity", "dependencies", "evidence_ids"]
+            or ["claim_id", "maturity", "status", "dependencies", "evidence_ids"]
+        ),
+        "claim_status_values": set(
+            schema.get("claim_status_values")
+            or {"SUPPORTED", "PARTIALLY_VERIFIED", "REJECTED", "CONTRADICTED", "BROKEN", "UNKNOWN"}
         ),
         "evidence_fields": list(
             schema.get("evidence_required_fields")
@@ -73,6 +77,13 @@ def _contract_view(policy: Mapping[str, Any], schema: Mapping[str, Any]) -> dict
         ),
         "evidence_values": set(
             schema.get("evidence_independence_values") or DEFAULT_EVIDENCE_INDEPENDENCE
+        ),
+        "conflict_fields": list(
+            schema.get("conflict_required_fields")
+            or ["conflict_id", "status", "claim_ids", "material", "scope"]
+        ),
+        "conflict_values": set(
+            schema.get("conflict_status_values") or {"OPEN", "RESOLVED", "SUPERSEDED"}
         ),
         "s4_fields": list(schema.get("s4_stage_payload_required_fields") or []),
         "oracle_values": set(schema.get("oracle_independence_values") or DEFAULT_ORACLE_STATUSES),
@@ -230,16 +241,57 @@ def validate_receipt(
                 errors.append(f"duplicate claim_id in receipt: {claim_id}")
             else:
                 seen_claims.add(claim_id)
+            status = claim.get("status")
+            if status not in cv["claim_status_values"]:
+                errors.append(f"claims[{i}].status is unknown: {status!r}")
             if maturity not in maturity_rank:
                 errors.append(f"claims[{i}].maturity is unknown: {maturity!r}")
             elif ceiling_rank is not None and maturity_rank[maturity] > ceiling_rank:
                 msg = f"{stage} claim {claim_id!r} exceeds maturity ceiling {ceiling}"
                 authority_violations.append(msg)
                 errors.append(msg)
+            if maturity == "VERIFIED_FOR_INTEGRATION" and status != "SUPPORTED":
+                msg = (
+                    f"{stage} claim {claim_id!r} cannot be VERIFIED_FOR_INTEGRATION "
+                    f"with status {status!r}"
+                )
+                authority_violations.append(msg)
+                errors.append(msg)
             if not isinstance(claim.get("dependencies"), list):
                 errors.append(f"claims[{i}].dependencies must be an array")
             if not isinstance(claim.get("evidence_ids"), list):
                 errors.append(f"claims[{i}].evidence_ids must be an array")
+
+    conflicts = receipt.get("conflicts")
+    if isinstance(conflicts, list):
+        seen_conflicts: set[str] = set()
+        for i, item in enumerate(conflicts):
+            if not isinstance(item, Mapping):
+                errors.append(f"conflicts[{i}] must be an object")
+                continue
+            _append_missing(errors, item, cv["conflict_fields"], f"conflicts[{i}].")
+            conflict_id = item.get("conflict_id")
+            if not _is_nonempty_string(conflict_id):
+                errors.append(f"conflicts[{i}].conflict_id must be a non-empty string")
+            elif conflict_id in seen_conflicts:
+                errors.append(f"duplicate conflict_id in receipt: {conflict_id}")
+            else:
+                seen_conflicts.add(conflict_id)
+            status = item.get("status")
+            if status not in cv["conflict_values"]:
+                errors.append(f"conflicts[{i}].status is unknown: {status!r}")
+            if not isinstance(item.get("claim_ids"), list):
+                errors.append(f"conflicts[{i}].claim_ids must be an array")
+            if not isinstance(item.get("material"), bool):
+                errors.append(f"conflicts[{i}].material must be boolean")
+            if not _is_nonempty_string(item.get("scope")):
+                errors.append(f"conflicts[{i}].scope must be a non-empty string")
+            if status in {"RESOLVED", "SUPERSEDED"} and not _is_nonempty_string(
+                item.get("resolution_reason")
+            ):
+                errors.append(
+                    f"conflicts[{i}].resolution_reason is required for {status}"
+                )
 
     evidence = receipt.get("evidence_lineage")
     if isinstance(evidence, list):
@@ -359,6 +411,102 @@ def _lineage_summary(receipts: Mapping[str, Mapping[str, Any]]) -> tuple[str, in
     return "UNKNOWN", 0, breaks
 
 
+def _dependency_summary(
+    receipts: Mapping[str, Mapping[str, Any]]
+) -> tuple[str, list[str]]:
+    """Resolve latest claim states and detect broken or cyclic prerequisites."""
+    latest: dict[str, Mapping[str, Any]] = {}
+    for stage in STAGES:
+        receipt = receipts.get(stage)
+        if not isinstance(receipt, Mapping):
+            continue
+        for claim in receipt.get("claims") or []:
+            if isinstance(claim, Mapping) and _is_nonempty_string(claim.get("claim_id")):
+                latest[str(claim["claim_id"])] = claim
+
+    if not latest:
+        return "VALID", []
+
+    graph: dict[str, list[str]] = {}
+    breaks: list[str] = []
+    partial = False
+    bad_states = {"REJECTED", "CONTRADICTED", "BROKEN"}
+    partial_states = {"PARTIALLY_VERIFIED", "UNKNOWN"}
+
+    for claim_id, claim in latest.items():
+        deps = claim.get("dependencies") if isinstance(claim.get("dependencies"), list) else []
+        graph[claim_id] = []
+        for dep in deps:
+            if not _is_nonempty_string(dep):
+                breaks.append(f"{claim_id}: dependency id must be a non-empty string")
+                continue
+            dep_id = str(dep)
+            graph[claim_id].append(dep_id)
+            target = latest.get(dep_id)
+            if target is None:
+                breaks.append(f"{claim_id}: missing prerequisite {dep_id}")
+                continue
+            state = target.get("status")
+            if state in bad_states:
+                breaks.append(f"{claim_id}: prerequisite {dep_id} is {state}")
+            elif state in partial_states:
+                partial = True
+
+    visiting: set[str] = set()
+    visited: set[str] = set()
+    cycle_path: list[str] = []
+
+    def visit(node: str, trail: list[str]) -> bool:
+        if node in visiting:
+            start = trail.index(node) if node in trail else 0
+            cycle_path.extend(trail[start:] + [node])
+            return True
+        if node in visited:
+            return False
+        visiting.add(node)
+        for dep in graph.get(node, []):
+            if dep in graph and visit(dep, trail + [dep]):
+                return True
+        visiting.remove(node)
+        visited.add(node)
+        return False
+
+    for node in graph:
+        if visit(node, [node]):
+            breaks.append("dependency cycle: " + " -> ".join(cycle_path))
+            return "CYCLE", breaks
+
+    if breaks:
+        return "BROKEN", breaks
+    if partial:
+        return "PARTIALLY_VERIFIED", []
+    return "VALID", []
+
+
+def _conflict_summary(
+    receipts: Mapping[str, Mapping[str, Any]]
+) -> tuple[str, list[str]]:
+    """Use latest conflict state and surface material OPEN conflicts."""
+    latest: dict[str, Mapping[str, Any]] = {}
+    for stage in STAGES:
+        receipt = receipts.get(stage)
+        if not isinstance(receipt, Mapping):
+            continue
+        for conflict in receipt.get("conflicts") or []:
+            if isinstance(conflict, Mapping) and _is_nonempty_string(conflict.get("conflict_id")):
+                latest[str(conflict["conflict_id"])] = conflict
+    if not latest:
+        return "NONE", []
+    open_material = [
+        conflict_id
+        for conflict_id, conflict in latest.items()
+        if conflict.get("status") == "OPEN" and conflict.get("material") is True
+    ]
+    if open_material:
+        return "OPEN", [f"material conflict remains OPEN: {x}" for x in sorted(open_material)]
+    return "CLEAR", []
+
+
 def validate_cycle(
     receipts: Mapping[str, Mapping[str, Any]],
     policy: Mapping[str, Any],
@@ -451,6 +599,8 @@ def validate_cycle(
         )
 
     lineage_status, independent_origins, lineage_breaks = _lineage_summary(receipts)
+    dependency_status, dependency_breaks = _dependency_summary(receipts)
+    conflict_status, conflict_breaks = _conflict_summary(receipts)
 
     s4_payload = receipts.get("S4", {}).get("stage_payload", {}) if "S4" in receipts else {}
     s5_payload = receipts.get("S5", {}).get("stage_payload", {}) if "S5" in receipts else {}
@@ -465,6 +615,8 @@ def validate_cycle(
         and handoff_chain_status == "CONSISTENT"
         and not authority_violations
         and lineage_status == "VALID"
+        and dependency_status == "VALID"
+        and conflict_status != "OPEN"
         and s4_oracle == "INDEPENDENT"
         and s5_oracle == "INDEPENDENT"
     )
@@ -512,6 +664,10 @@ def validate_cycle(
         "evidence_lineage_status": lineage_status,
         "evidence_lineage_breaks": lineage_breaks,
         "independent_evidence_origin_count": independent_origins,
+        "dependency_closure_status": dependency_status,
+        "dependency_closure_breaks": dependency_breaks,
+        "conflict_status": conflict_status,
+        "conflict_breaks": conflict_breaks,
         "verification_oracle_status": s5_oracle or "UNVERIFIED",
         "s4_oracle_independence_status": s4_oracle or "UNVERIFIED",
         "structural_promotion_prerequisites_met": structural_prerequisites_met,
