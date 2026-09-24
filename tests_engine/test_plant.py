@@ -236,6 +236,14 @@ def test_plant_cli_setup_writes_next_txt(tmp_path, capsys):
     assert "Plus" in out or "plus" in out.lower() or "Yahoo" in out
 
 
+def test_setup_instructions_are_cp1252_console_safe(tmp_path):
+    from icarus_plant.guide import steps
+
+    text = steps(str(tmp_path))
+    encoded = text.encode("cp1252")
+    assert encoded.decode("cp1252") == text
+
+
 def test_start_plant_scripts_are_dummy_proof():
     from pathlib import Path
     root = Path(__file__).parents[1]
