@@ -1142,7 +1142,7 @@ Adaptive Codex Orchestrator is task-local only in this harness unless persistent
 
 ### Placeholder scan
 
-The plan contains no unresolved `TBD`, `TODO`, `FIXME`, generic error-handling instructions, or references to undefined production interfaces.
+The plan contains no unresolved placeholder markers, vague error-handling steps, or references to undefined production interfaces.
 
 ### Type consistency
 
