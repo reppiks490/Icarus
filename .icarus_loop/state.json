@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "branch": "codex/exotic-research-loop",
+  "source_of_truth": "github",
+  "last_processed_commit": "007e70189945b8e112904cf92b2b1a12e43792d6",
+  "retrieval_policy": {
+    "mode": "delta_first",
+    "reread_unchanged": false,
+    "priority": [
+      "changed_files",
+      "failing_tests",
+      "unresolved_findings",
+      "affected_dependencies",
+      "validation_evidence"
+    ]
+  },
+  "boundaries": {
+    "execution_authorized": false,
+    "allowed_access": [
+      "public",
+      "licensed",
+      "user_authorized",
+      "connected"
+    ],
+    "forbidden": [
+      "sandbox_escape",
+      "credential_discovery",
+      "access_control_bypass",
+      "stealth_persistence",
+      "unauthorized_access",
+      "fabricated_observations"
+    ]
+  },
+  "active_build": {
+    "codename": "OMNIVISION",
+    "objective": "Fuse cross-domain world-state evidence, quantify unseen/latent gaps, generate falsifiable research hypotheses, and emit research-only integration candidates.",
+    "phase": "foundation",
+    "status": "in_progress"
+  },
+  "unresolved": [
+    "wire world-state evidence into existing advisory ledger without duplicating immutable provenance",
+    "add domain adapters only when a public/licensed/user-authorized source is selected",
+    "add walk-forward evaluation hooks before any candidate can be marked integration_ready",
+    "run CI and record exact results"
+  ],
+  "evidence": [
+    {
+      "kind": "repo",
+      "fact": "Icarus-engine is a stub; implementation lives in reppiks490/Icarus",
+      "commit": "f9e71c5dc1ca7035745ed6d4fb5e0d001248f8ad"
+    },
+    {
+      "kind": "constraint",
+      "fact": "Existing owner-hard policy keeps execution_authorized false and forbids Pulse rewrite",
+      "path": "ASTRA_DO_NOT.md"
+    },
+    {
+      "kind": "capability",
+      "fact": "Existing advisory ledger already enforces source allowlists, timing, provenance, and immutable evidence",
+      "path": "icarus_engine/advisory.py"
+    }
+  ],
+  "tests": [],
+  "benchmarks": [],
+  "checkpoints": []
+}
