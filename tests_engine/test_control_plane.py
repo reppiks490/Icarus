@@ -69,8 +69,8 @@ def _receipt(
         "producer": {"id": f"test-{stage}", "kind": "pytest"},
         "repo_baseline_revision": baseline,
         "repo_snapshot_set": [
-            {"repo": "reppiks490/Icarus", "revision": baseline},
             {"repo": "example/evidence", "revision": "feedface"},
+            {"repo": "reppiks490/Icarus", "revision": baseline},
         ],
         "policy_contract_digest": sha256_digest(policy),
         "handoff_schema_digest": sha256_digest(schema),
@@ -281,3 +281,28 @@ def test_unknown_oracle_enum_fails_closed(contracts):
     result = validate_receipt(receipt, policy, schema)
     assert result["status"] == "INVALID"
     assert any("unknown S4 oracle" in error for error in result["errors"])
+
+
+def test_snapshot_set_requires_deterministic_repo_order(contracts):
+    policy, schema = contracts
+    receipt = _receipt("S1", policy, schema)
+    receipt["repo_snapshot_set"] = list(reversed(receipt["repo_snapshot_set"]))
+    _redigest(receipt)
+    result = validate_receipt(receipt, policy, schema)
+    assert result["status"] == "INVALID"
+    assert any("sorted lexicographically" in error for error in result["errors"])
+
+
+def test_empty_evidence_lineage_cannot_be_promotion_eligible(contracts):
+    policy, schema = contracts
+    receipts = _chain(policy, schema)
+    for stage in ("S1", "S2", "S3", "S4", "S5"):
+        receipts[stage]["evidence_lineage"] = []
+        _redigest(receipts[stage])
+        if stage != "S1":
+            prev = ("S1", "S2", "S3", "S4", "S5")[("S1", "S2", "S3", "S4", "S5").index(stage) - 1]
+            receipts[stage]["prior_stage_digest"] = receipts[prev]["receipt_digest"]
+            _redigest(receipts[stage])
+    result = validate_cycle(receipts, policy, schema)
+    assert result["evidence_lineage_status"] == "UNKNOWN"
+    assert result["promotion_path_valid"] is False
