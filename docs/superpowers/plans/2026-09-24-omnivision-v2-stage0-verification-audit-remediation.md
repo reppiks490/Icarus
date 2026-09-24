@@ -935,22 +935,24 @@ Otherwise verdict is `NO_GO`.
 
 The audit report ends with:
 
+The committed report must contain these fields with observed values copied from the immediately preceding commands:
+
 ```markdown
 ## Stage 0 Final Verdict
 
-Verdict: GO | NO_GO
-Final commit: <sha>
-Python: <version>
-Compile: <command> — exit <code>
-Full tests: <command> — exit <code> — <count summary>
-Review: <verdict>
-Blocking findings: <none or exact IDs>
-Residual Stage 1 requirements: <exact list>
+Verdict: GO or NO_GO
+Final commit: record the exact output of `git rev-parse HEAD`
+Python: record the exact output of `python --version`
+Compile: record `python -m compileall -q icarus_engine tests_engine`, its observed exit code, and whether stdout/stderr was empty
+Full tests: record `python -m pytest tests_engine -q`, its observed exit code, and pytest's exact count summary
+Review: record exactly `SHIP_STAGE0_GO`, `FIX_FIRST`, or `RETHINK`
+Blocking findings: write `none` or list the exact stable finding IDs
+Residual Stage 1 requirements: list every unresolved Stage 1-only requirement by name
 Execution authorized: false
-Next permitted action: <Stage 1 plan | continue remediation>
+Next permitted action: write `write Stage 1 plan` for GO or `continue Stage 0 remediation` for NO_GO
 ```
 
-No placeholder may remain in the committed report; substitute observed values.
+Every field must be replaced by observed evidence before the audit report is committed.
 
 - [ ] **Step 3: Update loop state**
 
@@ -1050,9 +1052,7 @@ The Source Capability Registry, Provenance DAG, Trial Ledger, calibration, abste
 
 ### Placeholder scan
 
-No `TBD`, `TODO`, `FIXME`, `implement later`, generic “add error handling,” or “similar to Task” placeholders are permitted.
-
-Angle-bracket tokens in the Task 8 report template are instructions to the executing worker and must be replaced with observed values before the audit report is committed. They are not allowed to survive execution.
+The plan contains no unresolved placeholder markers or vague implementation instructions. Task 8 uses explicit command-to-field recording instructions rather than symbolic placeholders.
 
 ### Type consistency
 
