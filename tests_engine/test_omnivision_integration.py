@@ -130,10 +130,28 @@ def test_cross_source_disagreement_survives_into_graph(tmp_path):
         event(source="source_b", source_event_id="b-1", value=-1.0).to_advisory_event(),
         now=NOW,
     )
-    graph = WorldStateGraph(ledger_observations(ledger, "NQ", iso(NOW)))
+    transmission = Transmission(
+        "shipping_stress",
+        "inflation_pressure",
+        0,
+        1,
+        1.0,
+        1.0,
+        "freight-to-goods",
+    )
+    graph = WorldStateGraph(
+        ledger_observations(ledger, "NQ", iso(NOW)),
+        (transmission,),
+    )
     contradictions = graph.contradictions(NOW)
     assert len(contradictions) == 1
     assert {contradictions[0]["left_id"], contradictions[0]["right_id"]} == {
         left["event_id"],
         right["event_id"],
     }
+
+    inferred = graph.infer("inflation_pressure", NOW)
+    assert inferred["status"] == "latent_estimate"
+    assert set(inferred["evidence_ids"]) == {left["event_id"], right["event_id"]}
+    assert inferred["estimate"] == 0.0
+    assert inferred["confidence"] < 0.9
