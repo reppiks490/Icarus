@@ -274,6 +274,16 @@ def validate_receipt(
         oracle_status = payload.get("oracle_independence_status")
         if oracle_status not in cv["oracle_values"]:
             errors.append(f"unknown S4 oracle_independence_status: {oracle_status!r}")
+        origin = payload.get("test_oracle_origin")
+        if not (_is_nonempty_string(origin) or isinstance(origin, Mapping)):
+            errors.append("stage_payload.test_oracle_origin must identify an oracle source")
+        for field in (
+            "test_oracle_derived_from",
+            "negative_controls",
+            "mutation_or_fault_injection_plan",
+        ):
+            if field in payload and not isinstance(payload.get(field), list):
+                errors.append(f"stage_payload.{field} must be an array")
     if stage == "S5":
         _append_missing(errors, payload, cv["s5_fields"], "stage_payload.")
         verification_status = payload.get("verification_oracle_status")
@@ -283,6 +293,9 @@ def validate_receipt(
             payload.get("promotion_path_valid"), bool
         ):
             errors.append("stage_payload.promotion_path_valid must be boolean")
+        for field in ("release_status", "cycle_outcome"):
+            if field in payload and not _is_nonempty_string(payload.get(field)):
+                errors.append(f"stage_payload.{field} must be a non-empty string")
 
     computed_digest = None
     try:
@@ -444,7 +457,7 @@ def validate_cycle(
     s4_oracle = s4_payload.get("oracle_independence_status")
     s5_oracle = s5_payload.get("verification_oracle_status")
 
-    structurally_eligible = (
+    structural_prerequisites_met = (
         not contract_errors
         and not missing
         and policy_chain_status == "CONSISTENT"
@@ -457,15 +470,25 @@ def validate_cycle(
     )
 
     reported_promotion = s5_payload.get("promotion_path_valid")
-    if reported_promotion is True and not structurally_eligible:
+    promotion_path_valid = structural_prerequisites_met and reported_promotion is True
+    if reported_promotion is True and not structural_prerequisites_met:
         authority_violations.append(
             "S5 reports promotion_path_valid=true while structural prerequisites are not met"
         )
-        structurally_eligible = False
+
+    release_status = s5_payload.get("release_status")
+    cycle_outcome = s5_payload.get("cycle_outcome")
+    if (
+        release_status == "VERIFIED_FOR_INTEGRATION"
+        or cycle_outcome == "ADVANCED"
+    ) and not promotion_path_valid:
+        authority_violations.append(
+            "S5 reports an integration/advanced outcome without a valid promotion path"
+        )
 
     if contract_errors or any(
         result["status"] == "INVALID" for result in per_stage.values()
-    ) or handoff_chain_status == "INVALID":
+    ) or handoff_chain_status == "INVALID" or authority_violations:
         status = "INVALID"
     elif policy_chain_status == "MIXED_POLICY":
         status = "MIXED_POLICY"
@@ -491,7 +514,8 @@ def validate_cycle(
         "independent_evidence_origin_count": independent_origins,
         "verification_oracle_status": s5_oracle or "UNVERIFIED",
         "s4_oracle_independence_status": s4_oracle or "UNVERIFIED",
-        "promotion_path_valid": structurally_eligible,
+        "structural_promotion_prerequisites_met": structural_prerequisites_met,
+        "promotion_path_valid": promotion_path_valid,
         "authority_violations": authority_violations,
         "missing_stages": missing,
         "contract_errors": contract_errors,
