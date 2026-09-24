@@ -1,1 +1,165 @@
-"""Canonical cross-domain evidence contracts for OMNIVISION."""\nfrom __future__ import annotations\n\nfrom dataclasses import dataclass\nfrom datetime import datetime\nimport math\nimport re\nfrom typing import Mapping\nfrom urllib.parse import urlsplit\n\nfrom icarus_engine.world_state import Observation\n\n_ID = re.compile(r"^[A-Za-z0-9_.:-]{1,160}$")\n\ndef _identity(value: str, name: str) -> str:\n    if type(value) is not str or not _ID.fullmatch(value):\n        raise ValueError(f"invalid {name}")\n    return value\n\ndef _finite(value, name: str) -> float:\n    if isinstance(value, bool) or type(value) not in (int, float) or not math.isfinite(value):\n        raise ValueError(f"{name} must be a finite number")\n    return float(value)\n\ndef _timestamp(value: str, name: str) -> float:\n    if type(value) is not str:\n        raise ValueError(f"{name} must be timezone-aware ISO 8601")\n    try:\n        stamp = datetime.fromisoformat(value.replace("Z", "+00:00"))\n    except ValueError:\n        raise ValueError(f"{name} must be timezone-aware ISO 8601") from None\n    if stamp.tzinfo is None or stamp.utcoffset() is None:\n        raise ValueError(f"{name} must be timezone-aware ISO 8601")\n    return stamp.timestamp()\n\ndef _url(value: str) -> str:\n    if type(value) is not str or len(value) > 2048:\n        raise ValueError("source_url must be an HTTPS URL")\n    try:\n        parsed = urlsplit(value)\n    except ValueError:\n        raise ValueError("source_url must be an HTTPS URL") from None\n    if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password or parsed.fragment:\n        raise ValueError("source_url must be an HTTPS URL")\n    return value\n\n@dataclass(frozen=True)\nclass WorldEvent:\n    source: str\n    source_event_id: str\n    revision_id: str\n    source_url: str\n    domain: str\n    entity: str\n    asset_ids: tuple[str, ...]\n    observed_at: str\n    published_at: str | None\n    values: Mapping[str, float]\n    units: Mapping[str, str]\n    confidence: float\n    timing_basis: str\n    quality_flags: tuple[str, ...] = ()\n\n    def __post_init__(self):\n        for name in ("source", "source_event_id", "revision_id", "domain", "entity"):\n            _identity(getattr(self, name), name)\n        _url(self.source_url)\n        if type(self.asset_ids) is not tuple or not self.asset_ids or len(self.asset_ids) > 32:\n            raise ValueError("asset_ids must be a non-empty tuple")\n        for asset in self.asset_ids:\n            _identity(asset, "asset")\n        if len(set(self.asset_ids)) != len(self.asset_ids):\n            raise ValueError("asset_ids must be unique")\n        observed = _timestamp(self.observed_at, "observed_at")\n        if self.timing_basis not in ("published", "first_observed"):\n            raise ValueError("unsupported timing_basis")\n        if self.timing_basis == "published":\n            if self.published_at is None:\n                raise ValueError("published timing requires published_at")\n            published = _timestamp(self.published_at, "published_at")\n            if published < observed:\n                raise ValueError("published_at cannot precede observed_at")\n        elif self.published_at is not None:\n            raise ValueError("first_observed timing must not invent published_at")\n        if not isinstance(self.values, Mapping) or not isinstance(self.units, Mapping):\n            raise ValueError("values and units must be mappings")\n        if not self.values or set(self.values) != set(self.units) or len(self.values) > 128:\n            raise ValueError("values and units must have matching non-empty keys")\n        for name, value in self.values.items():\n            _identity(name, "value name")\n            _finite(value, name)\n            unit = self.units[name]\n            if type(unit) is not str or not unit.strip() or len(unit) > 80:\n                raise ValueError("invalid unit")\n        confidence = _finite(self.confidence, "confidence")\n        if not 0.0 <= confidence <= 1.0:\n            raise ValueError("confidence must be in [0,1]")\n        if type(self.quality_flags) is not tuple or len(self.quality_flags) > 32:\n            raise ValueError("quality_flags must be a bounded tuple")\n        for flag in self.quality_flags:\n            _identity(flag, "quality flag")\n        if self.timing_basis == "first_observed" and "publication_time_unknown" not in self.quality_flags:\n            raise ValueError("first_observed evidence must declare publication_time_unknown")\n\n    def to_advisory_event(self, schema_version: int = 1) -> dict:\n        if type(schema_version) is not int or schema_version != 1:\n            raise ValueError("unsupported schema_version")\n        return {\n            "schema_version": schema_version,\n            "source": self.source,\n            "source_event_id": self.source_event_id,\n            "revision_id": self.revision_id,\n            "source_url": self.source_url,\n            "event_type": "world_state",\n            "asset_ids": list(self.asset_ids),\n            "instrument_id": self.entity,\n            "observed_at": self.observed_at,\n            "published_at": self.published_at,\n            "values": dict(self.values),\n            "units": dict(self.units),\n            "timing_basis": self.timing_basis,\n            "quality_flags": list(self.quality_flags),\n            "domain": self.domain,\n            "entity": self.entity,\n            "confidence": float(self.confidence),\n        }\n\ndef observation_from_event(event: Mapping, variable: str) -> Observation:\n    if not isinstance(event, Mapping) or event.get("event_type") != "world_state":\n        raise ValueError("world_state event required")\n    if variable not in event.get("values", {}):\n        raise ValueError("variable is not present in event")\n    domain = _identity(event.get("domain"), "domain")\n    entity = _identity(event.get("entity"), "entity")\n    source = _identity(event.get("source"), "source")\n    observed = _timestamp(event.get("observed_at"), "observed_at")\n    published = event.get("published_at")\n    received = event.get("received_at")\n    if published is not None:\n        available = _timestamp(published, "published_at")\n    elif received is not None:\n        available = _timestamp(received, "received_at")\n    else:\n        raise ValueError("event availability is unknown")\n    confidence = _finite(event.get("confidence"), "confidence")\n    if not 0.0 <= confidence <= 1.0:\n        raise ValueError("confidence must be in [0,1]")\n    return Observation(\n        source=source, domain=domain, entity=entity, variable=_identity(variable, "variable"),\n        value=_finite(event["values"][variable], variable),\n        observed_at=int(observed), available_at=int(available), confidence=confidence,\n        provenance=_url(event.get("source_url")),\n    )\n
+"""Canonical cross-domain evidence contracts for OMNIVISION."""
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import datetime
+import math
+import re
+from typing import Mapping
+from urllib.parse import urlsplit
+
+from icarus_engine.world_state import Observation
+
+_ID = re.compile(r"^[A-Za-z0-9_.:-]{1,160}$")
+
+
+def _identity(value: str, name: str) -> str:
+    if type(value) is not str or not _ID.fullmatch(value):
+        raise ValueError(f"invalid {name}")
+    return value
+
+
+def _finite(value, name: str) -> float:
+    if isinstance(value, bool) or type(value) not in (int, float) or not math.isfinite(value):
+        raise ValueError(f"{name} must be a finite number")
+    return float(value)
+
+
+def _timestamp(value: str, name: str) -> float:
+    if type(value) is not str:
+        raise ValueError(f"{name} must be timezone-aware ISO 8601")
+    try:
+        stamp = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        raise ValueError(f"{name} must be timezone-aware ISO 8601") from None
+    if stamp.tzinfo is None or stamp.utcoffset() is None:
+        raise ValueError(f"{name} must be timezone-aware ISO 8601")
+    return stamp.timestamp()
+
+
+def _url(value: str) -> str:
+    if type(value) is not str or len(value) > 2048:
+        raise ValueError("source_url must be an HTTPS URL")
+    try:
+        parsed = urlsplit(value)
+    except ValueError:
+        raise ValueError("source_url must be an HTTPS URL") from None
+    if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password or parsed.fragment:
+        raise ValueError("source_url must be an HTTPS URL")
+    return value
+
+
+@dataclass(frozen=True)
+class WorldEvent:
+    source: str
+    source_event_id: str
+    revision_id: str
+    source_url: str
+    domain: str
+    entity: str
+    asset_ids: tuple[str, ...]
+    observed_at: str
+    published_at: str | None
+    values: Mapping[str, float]
+    units: Mapping[str, str]
+    confidence: float
+    timing_basis: str
+    quality_flags: tuple[str, ...] = ()
+
+    def __post_init__(self):
+        for name in ("source", "source_event_id", "revision_id", "domain", "entity"):
+            _identity(getattr(self, name), name)
+        _url(self.source_url)
+        if type(self.asset_ids) is not tuple or not self.asset_ids or len(self.asset_ids) > 32:
+            raise ValueError("asset_ids must be a non-empty tuple")
+        for asset in self.asset_ids:
+            _identity(asset, "asset")
+        if len(set(self.asset_ids)) != len(self.asset_ids):
+            raise ValueError("asset_ids must be unique")
+        observed = _timestamp(self.observed_at, "observed_at")
+        if self.timing_basis not in ("published", "first_observed"):
+            raise ValueError("unsupported timing_basis")
+        if self.timing_basis == "published":
+            if self.published_at is None:
+                raise ValueError("published timing requires published_at")
+            published = _timestamp(self.published_at, "published_at")
+            if published < observed:
+                raise ValueError("published_at cannot precede observed_at")
+        elif self.published_at is not None:
+            raise ValueError("first_observed timing must not invent published_at")
+        if not isinstance(self.values, Mapping) or not isinstance(self.units, Mapping):
+            raise ValueError("values and units must be mappings")
+        if not self.values or set(self.values) != set(self.units) or len(self.values) > 128:
+            raise ValueError("values and units must have matching non-empty keys")
+        for name, value in self.values.items():
+            _identity(name, "value name")
+            _finite(value, name)
+            unit = self.units[name]
+            if type(unit) is not str or not unit.strip() or len(unit) > 80:
+                raise ValueError("invalid unit")
+        confidence = _finite(self.confidence, "confidence")
+        if not 0.0 <= confidence <= 1.0:
+            raise ValueError("confidence must be in [0,1]")
+        if type(self.quality_flags) is not tuple or len(self.quality_flags) > 32:
+            raise ValueError("quality_flags must be a bounded tuple")
+        for flag in self.quality_flags:
+            _identity(flag, "quality flag")
+        if self.timing_basis == "first_observed" and "publication_time_unknown" not in self.quality_flags:
+            raise ValueError("first_observed evidence must declare publication_time_unknown")
+
+    def to_advisory_event(self, schema_version: int = 1) -> dict:
+        if type(schema_version) is not int or schema_version != 1:
+            raise ValueError("unsupported schema_version")
+        return {
+            "schema_version": schema_version,
+            "source": self.source,
+            "source_event_id": self.source_event_id,
+            "revision_id": self.revision_id,
+            "source_url": self.source_url,
+            "event_type": "world_state",
+            "asset_ids": list(self.asset_ids),
+            "instrument_id": self.entity,
+            "observed_at": self.observed_at,
+            "published_at": self.published_at,
+            "values": dict(self.values),
+            "units": dict(self.units),
+            "timing_basis": self.timing_basis,
+            "quality_flags": list(self.quality_flags),
+            "domain": self.domain,
+            "entity": self.entity,
+            "confidence": float(self.confidence),
+        }
+
+
+def observation_from_event(event: Mapping, variable: str) -> Observation:
+    if not isinstance(event, Mapping) or event.get("event_type") != "world_state":
+        raise ValueError("world_state event required")
+    if variable not in event.get("values", {}):
+        raise ValueError("variable is not present in event")
+    domain = _identity(event.get("domain"), "domain")
+    entity = _identity(event.get("entity"), "entity")
+    source = _identity(event.get("source"), "source")
+    observed = _timestamp(event.get("observed_at"), "observed_at")
+    published = event.get("published_at")
+    received = event.get("received_at")
+    if published is not None:
+        available = _timestamp(published, "published_at")
+    elif received is not None:
+        available = _timestamp(received, "received_at")
+    else:
+        raise ValueError("event availability is unknown")
+    confidence = _finite(event.get("confidence"), "confidence")
+    if not 0.0 <= confidence <= 1.0:
+        raise ValueError("confidence must be in [0,1]")
+    return Observation(
+        source=source,
+        domain=domain,
+        entity=entity,
+        variable=_identity(variable, "variable"),
+        value=_finite(event["values"][variable], variable),
+        observed_at=int(observed),
+        available_at=int(available),
+        confidence=confidence,
+        provenance=_url(event.get("source_url")),
+        evidence_id=event.get("event_id"),
+    )
