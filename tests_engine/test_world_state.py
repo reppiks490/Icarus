@@ -1,8 +1,8 @@
 from icarus_engine.world_state import Observation, Transmission, WorldStateGraph
 
 
-def obs(source, variable, value, available=100, confidence=1.0):
-    return Observation(source, "macro", "GLOBAL", variable, value, 90, available, confidence, f"https://{source}.example/e")
+def obs(source, variable, value, available=100, confidence=1.0, evidence_id=None):
+    return Observation(source, "macro", "GLOBAL", variable, value, 90, available, confidence, f"https://{source}.example/e", evidence_id)
 
 
 def test_asof_prevents_future_knowledge():
@@ -44,10 +44,8 @@ def test_bad_time_and_confidence_rejected():
         Observation("a", "d", "e", "v", 1, 100, 100, 1.1, "p")
 
 def test_latent_inference_preserves_multiple_sources_for_same_variable():
-    left = obs("a", "shipping_stress", 2.0, confidence=0.9)
-    right = obs("b", "shipping_stress", -1.0, confidence=0.9)
-    object.__setattr__(left, "evidence_id", "a" * 64)
-    object.__setattr__(right, "evidence_id", "b" * 64)
+    left = obs("a", "shipping_stress", 2.0, confidence=0.9, evidence_id="a" * 64)
+    right = obs("b", "shipping_stress", -1.0, confidence=0.9, evidence_id="b" * 64)
     g = WorldStateGraph(
         [left, right],
         [Transmission("shipping_stress", "inflation_pressure", 0, 1, 1.0, 1.0, "freight-to-goods")],
