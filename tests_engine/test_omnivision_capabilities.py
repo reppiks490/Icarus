@@ -123,3 +123,86 @@ def test_negative_control_must_forbid_research_evidence_use():
         forbidden_uses=("live_execution", "research_evidence"),
     )
     assert item.epistemic_role == "negative_control"
+
+
+import sqlite3
+from icarus_engine.omnivision.capabilities import SourceCapabilityRegistry
+
+
+def test_registry_replays_capability_as_of_decision_time(tmp_path):
+    registry = SourceCapabilityRegistry(tmp_path / "capabilities.sqlite3")
+    v1 = capability(version=1, valid_from=100, health_state="healthy")
+    v2 = capability(version=2, valid_from=200, health_state="rate_limited")
+    registry.register(v1, recorded_at=100)
+    registry.register(v2, recorded_at=200)
+    assert registry.as_of(v1.source_id, 99) is None
+    assert registry.as_of(v1.source_id, 150) == v1
+    assert registry.as_of(v1.source_id, 200) == v2
+    assert registry.as_of(v1.source_id, 250) == v2
+
+
+def test_registry_never_leaks_future_version_and_honors_expiry(tmp_path):
+    registry = SourceCapabilityRegistry(tmp_path / "capabilities.sqlite3")
+    expiring = capability(valid_from=100, valid_until=180)
+    future = capability(version=2, valid_from=200, health_state="degraded")
+    registry.register(expiring, recorded_at=100)
+    registry.register(future, recorded_at=200)
+    assert registry.as_of(expiring.source_id, 179) == expiring
+    assert registry.as_of(expiring.source_id, 180) is None
+    assert registry.as_of(expiring.source_id, 199) is None
+    assert registry.as_of(expiring.source_id, 200) == future
+
+
+def test_registry_preserves_review_after_without_auto_disabling(tmp_path):
+    registry = SourceCapabilityRegistry(tmp_path / "capabilities.sqlite3")
+    item = capability(review_after=120)
+    registry.register(item, recorded_at=100)
+    replay = registry.as_of(item.source_id, 500)
+    assert replay == item
+    assert replay.review_after == 120
+
+
+def test_registry_duplicate_is_idempotent_but_version_collision_rejects(tmp_path):
+    registry = SourceCapabilityRegistry(tmp_path / "capabilities.sqlite3")
+    item = capability()
+    assert registry.register(item, recorded_at=100) == item.capability_id
+    assert registry.register(item, recorded_at=100) == item.capability_id
+    with pytest.raises(ValueError):
+        registry.register(capability(health_state="degraded"), recorded_at=100)
+
+
+def test_registry_is_append_only_even_through_direct_sql(tmp_path):
+    path = tmp_path / "capabilities.sqlite3"
+    registry = SourceCapabilityRegistry(path)
+    registry.register(capability(), recorded_at=100)
+    connection = sqlite3.connect(path)
+    with pytest.raises(sqlite3.DatabaseError):
+        connection.execute("UPDATE source_capabilities SET recorded_at=999")
+    connection.rollback()
+    with pytest.raises(sqlite3.DatabaseError):
+        connection.execute("DELETE FROM source_capabilities")
+    connection.close()
+
+
+def test_registry_restart_replays_identical_history(tmp_path):
+    path = tmp_path / "capabilities.sqlite3"
+    first = SourceCapabilityRegistry(path)
+    v1 = capability(version=1, valid_from=100)
+    v2 = capability(version=2, valid_from=200, health_state="degraded")
+    first.register(v1, recorded_at=100)
+    first.register(v2, recorded_at=200)
+    second = SourceCapabilityRegistry(path)
+    assert first.history(v1.source_id) == (v1, v2)
+    assert second.history(v1.source_id) == (v1, v2)
+
+
+def test_registry_rejects_backdated_registration_and_filters_eligible(tmp_path):
+    registry = SourceCapabilityRegistry(tmp_path / "capabilities.sqlite3")
+    with pytest.raises(ValueError):
+        registry.register(capability(valid_from=100), recorded_at=99)
+    macro = capability(source_id="macro", domain_classes=("macro",), valid_from=100)
+    crypto = capability(source_id="crypto", domain_classes=("crypto",), valid_from=100)
+    registry.register(macro, recorded_at=100)
+    registry.register(crypto, recorded_at=100)
+    assert registry.eligible(decision_at=150, domain="macro") == (macro,)
+    assert registry.eligible(decision_at=150) == (crypto, macro)
