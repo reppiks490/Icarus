@@ -37,6 +37,7 @@ class Observation:
     available_at: int
     confidence: float
     provenance: str
+    evidence_id: str | None = None
 
     def __post_init__(self):
         for name in ("source", "domain", "entity", "variable", "provenance"):
@@ -51,6 +52,10 @@ class Observation:
         c = _finite(self.confidence, "confidence")
         if not 0.0 <= c <= 1.0:
             raise ValueError("confidence must be in [0,1]")
+        if self.evidence_id is not None:
+            if (type(self.evidence_id) is not str or len(self.evidence_id) != 64
+                    or any(ch not in "0123456789abcdef" for ch in self.evidence_id)):
+                raise ValueError("evidence_id must be lowercase SHA-256")
 
     @property
     def id(self) -> str:
@@ -130,7 +135,8 @@ class WorldStateGraph:
                     if delta > tolerance and left.value * right.value < 0:
                         out.append({
                             "entity": key[0], "variable": key[1],
-                            "left_id": left.id, "right_id": right.id,
+                            "left_id": left.evidence_id or left.id,
+                            "right_id": right.evidence_id or right.id,
                             "delta": delta,
                             "confidence_floor": min(left.confidence, right.confidence),
                         })
@@ -152,7 +158,12 @@ class WorldStateGraph:
             ]
             for obs in candidates:
                 weight = edge.strength * edge.confidence * obs.confidence
-                contributions.append((obs.value * edge.direction, weight, obs.id, edge.mechanism))
+                contributions.append((
+                    obs.value * edge.direction,
+                    weight,
+                    obs.evidence_id or obs.id,
+                    edge.mechanism,
+                ))
         denom = sum(weight for _, weight, _, _ in contributions)
         if denom <= 0:
             return {
