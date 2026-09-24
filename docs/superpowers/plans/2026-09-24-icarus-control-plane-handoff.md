@@ -239,4 +239,4 @@ Implemented on `chatgpt/icarus-control-plane-runtime-20260924`:
 - adversarial regression tests,
 - separate evidence-branch storage rule.
 
-Fresh CI is the remaining completion gate. Do not mark Task 8 verified until the new branch test workflow is green.
+Fresh CI run `36064742770` passed on Linux and Windows, including the full Linux engine suite, new control tests, CLI smoke, plant setup and doctor, plus Windows focused tests and setup. A later documentation/matrix commit requires one final-head CI check before Task 8 technical acceptance.
