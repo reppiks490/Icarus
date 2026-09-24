@@ -42,3 +42,18 @@ def test_bad_time_and_confidence_rejected():
         Observation("a", "d", "e", "v", 1, 100, 99, 1, "p")
     with pytest.raises(ValueError):
         Observation("a", "d", "e", "v", 1, 100, 100, 1.1, "p")
+
+def test_latent_inference_preserves_multiple_sources_for_same_variable():
+    left = obs("a", "shipping_stress", 2.0, confidence=0.9)
+    right = obs("b", "shipping_stress", -1.0, confidence=0.9)
+    object.__setattr__(left, "evidence_id", "a" * 64)
+    object.__setattr__(right, "evidence_id", "b" * 64)
+    g = WorldStateGraph(
+        [left, right],
+        [Transmission("shipping_stress", "inflation_pressure", 0, 1, 1.0, 1.0, "freight-to-goods")],
+    )
+    result = g.infer("inflation_pressure", 100)
+    assert result["evidence_ids"] == ["a" * 64, "b" * 64]
+    assert result["estimate"] == 0.5
+    assert 0 < result["confidence"] < 0.9
+
