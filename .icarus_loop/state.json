@@ -2,7 +2,7 @@
   "schema_version": 1,
   "branch": "codex/exotic-research-loop",
   "source_of_truth": "github",
-  "last_processed_commit": "d863e277a1010821de30934d7eb4e950a6050b41",
+  "last_processed_commit": "8d0df07c92f6dc77af91fada5e712827ad42de55",
   "retrieval_policy": {
     "mode": "delta_first",
     "reread_unchanged": false,
@@ -33,16 +33,19 @@
   },
   "active_build": {
     "codename": "OMNIVISION",
-    "objective": "Evolve the verified research mesh into an epistemic control plane that governs provenance, search multiplicity, uncertainty, abstention, regime validity, causal claims, negative knowledge, and proof-carrying integration candidates.",
-    "phase": "v2_written_spec_review_gate",
-    "status": "awaiting_user_review",
-    "spec": "docs/superpowers/specs/2026-09-24-omnivision-epistemic-control-plane-v2-design.md"
+    "objective": "Verify and remediate the existing OMNIVISION foundation before any Epistemic Control Plane v2 feature code lands.",
+    "phase": "v2_stage0_plan_review_gate",
+    "status": "awaiting_user_plan_review",
+    "spec": "docs/superpowers/specs/2026-09-24-omnivision-epistemic-control-plane-v2-design.md",
+    "plan": "docs/superpowers/plans/2026-09-24-omnivision-v2-stage0-verification-audit-remediation.md"
   },
   "unresolved": [
-    "user review/approval of the written Epistemic Control Plane v2 spec is required before writing its implementation plan",
-    "run scoped OMNIVISION tests and full tests_engine suite in an execution-capable environment before any v2 product code lands",
-    "run the extreme foundation audit/remediation gate before expanding source adapters",
-    "only after foundation verification: plan Stage 1 capability registry, provenance DAG, and search-aware trial ledger"
+    "user review/approval of the Stage 0 implementation plan is required before execution",
+    "execute existing OMNIVISION scoped tests and full tests_engine suite",
+    "test the publication-vs-receipt availability audit hypothesis before changing contracts.py",
+    "test the cumulative walk-forward fold-reuse audit hypothesis before changing falsification.py",
+    "complete the 16-lane extreme audit and independent whole-branch review",
+    "emit GO/NO_GO; only GO permits a Stage 1 plan"
   ],
   "evidence": [
     {
@@ -356,6 +359,58 @@
         "runtime_tests": "not applicable to document-only cycle; existing foundation runtime verification remains an open hard gate"
       },
       "next": "User reviews the written v2 spec. After explicit approval, invoke Superpowers writing-plans. The implementation plan must begin with Stage 0 runtime verification/audit/remediation before any v2 feature code."
+    },
+    {
+      "commit": "8d0df07c92f6dc77af91fada5e712827ad42de55",
+      "summary": "Written v2 spec approved via user 'continue'. Created and self-reviewed the OMNIVISION v2 Stage 0 verification/audit/remediation plan. The plan deliberately blocks all Stage 1 feature work until runtime tests, temporal/provenance/statistical audits, execution-separation checks, the 16-lane audit matrix, and an independent whole-branch review produce a GO verdict.",
+      "plan": "docs/superpowers/plans/2026-09-24-omnivision-v2-stage0-verification-audit-remediation.md",
+      "audit_hypotheses": [
+        {
+          "id": "S0-TIME-001",
+          "status": "unverified_until_tested",
+          "hypothesis": "published evidence projected after ledger receipt may currently carry published_at rather than receipt-aware availability"
+        },
+        {
+          "id": "S0-STAT-001",
+          "status": "unverified_until_tested",
+          "hypothesis": "current walk_forward_correlation appears to use cumulative as-of folds rather than non-overlapping forward evaluation intervals"
+        }
+      ],
+      "plugins": [
+        {
+          "name": "superpowers/using-superpowers",
+          "contribution": "enforced skill-first plan-stage process"
+        },
+        {
+          "name": "superpowers/writing-plans",
+          "contribution": "decomposed the approved v2 architecture into an executable Stage 0-only TDD/audit plan"
+        },
+        {
+          "name": "astral-orchestrator",
+          "contribution": "preserved Orbit ownership/review discipline for later execution; no child launch claimed during planning"
+        },
+        {
+          "name": "akinator/everything",
+          "contribution": "added claim-vs-code audit framing, blast radius, assumptions, and knowledge delta by path"
+        },
+        {
+          "name": "baton-pass",
+          "contribution": "kept the plan/checkpoint delta-first and resumable from GitHub"
+        }
+      ],
+      "verification": {
+        "plan_self_review": "passed",
+        "task_count": 8,
+        "placeholder_scan": "passed",
+        "spec_coverage": "passed for Stage 0 scope",
+        "type_consistency": "passed",
+        "runtime_tests": "not run — planning cycle only"
+      },
+      "execution_method": {
+        "preserved_user_choice": "subagent-driven / highest-scrutiny when supported",
+        "fallback": "most rigorous native execution if independent workers are unavailable; capability limitation must be recorded"
+      },
+      "next": "User reviews the Stage 0 plan. After approval, begin a new cycle with Superpowers subagent-driven-development, TDD, systematic-debugging as needed, code review, and verification-before-completion. Do not implement Stage 1."
     }
   ],
   "loop_policy": {
