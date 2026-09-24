@@ -97,10 +97,10 @@ class WorldStateGraph:
             raise ValueError("ts must be an integer epoch second")
         return tuple(o for o in self.observations if o.available_at <= ts)
 
-    def latest(self, ts: int) -> dict[tuple[str, str], Observation]:
-        out: dict[tuple[str, str], Observation] = {}
+    def latest(self, ts: int) -> dict[tuple[str, str, str], Observation]:
+        out: dict[tuple[str, str, str], Observation] = {}
         for obs in self.as_of(ts):
-            key = (obs.entity, obs.variable)
+            key = (obs.source, obs.entity, obs.variable)
             prior = out.get(key)
             if prior is None or (obs.available_at, obs.id) > (prior.available_at, prior.id):
                 out[key] = obs
@@ -153,8 +153,8 @@ class WorldStateGraph:
             if edge.effect_variable != target_variable:
                 continue
             candidates = [
-                obs for (_, variable), obs in latest.items()
-                if variable == edge.cause_variable and obs.available_at + edge.lag_seconds <= ts
+                obs for obs in latest.values()
+                if obs.variable == edge.cause_variable and obs.available_at + edge.lag_seconds <= ts
             ]
             for obs in candidates:
                 weight = edge.strength * edge.confidence * obs.confidence
