@@ -44,6 +44,7 @@ def test_world_event_preserves_domain_entity_and_availability():
     assert observation.observed_at == 1790164800
     assert observation.available_at == 1790165100
     assert observation.provenance == "https://www.noaa.gov/example"
+    assert observation.evidence_id == "a" * 64
 
 
 def test_first_observed_does_not_invent_publication_time():
