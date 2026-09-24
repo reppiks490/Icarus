@@ -376,11 +376,10 @@ def _origin_key(origin: Any) -> str:
 
 
 def _lineage_summary(receipts: Mapping[str, Mapping[str, Any]]) -> tuple[str, int, list[str]]:
-    origins: list[str] = []
-    independent_origins: set[str] = set()
-    unknown = False
-    claimed_independent_by_origin: Counter[str] = Counter()
+    """Collapse identical evidence IDs, validate lineage DAG, and count real origins."""
+    by_id: dict[str, Mapping[str, Any]] = {}
     breaks: list[str] = []
+    unknown = False
 
     for stage in STAGES:
         receipt = receipts.get(stage)
@@ -389,27 +388,87 @@ def _lineage_summary(receipts: Mapping[str, Mapping[str, Any]]) -> tuple[str, in
         for item in receipt.get("evidence_lineage") or []:
             if not isinstance(item, Mapping):
                 continue
+            evidence_id = item.get("evidence_id")
+            if not _is_nonempty_string(evidence_id):
+                continue
+            evidence_id = str(evidence_id)
+            previous = by_id.get(evidence_id)
+            if previous is None:
+                by_id[evidence_id] = item
+            else:
+                try:
+                    same = canonical_json(previous) == canonical_json(item)
+                except Exception:
+                    same = False
+                if not same:
+                    breaks.append(
+                        f"evidence_id {evidence_id} is reused with different content"
+                    )
+
+    if breaks:
+        return "INVALID", 0, breaks
+    if not by_id:
+        return "UNKNOWN", 0, []
+
+    graph: dict[str, list[str]] = {}
+    for evidence_id, item in by_id.items():
+        independence = item.get("independence")
+        parents = item.get("derived_from") if isinstance(item.get("derived_from"), list) else []
+        normalized: list[str] = []
+        for parent in parents:
+            if not _is_nonempty_string(parent):
+                breaks.append(f"{evidence_id}: derived_from contains an invalid id")
+                continue
+            parent_id = str(parent)
+            normalized.append(parent_id)
+            if parent_id not in by_id:
+                breaks.append(f"{evidence_id}: missing lineage parent {parent_id}")
+        graph[evidence_id] = normalized
+        if independence in {"DERIVED", "DUPLICATE"} and not normalized:
+            breaks.append(f"{evidence_id}: {independence} evidence requires lineage parents")
+        if independence == "UNKNOWN":
+            unknown = True
+
+    visiting: set[str] = set()
+    visited: set[str] = set()
+
+    def visit(node: str) -> bool:
+        if node in visiting:
+            return True
+        if node in visited:
+            return False
+        visiting.add(node)
+        for parent in graph.get(node, []):
+            if parent in graph and visit(parent):
+                return True
+        visiting.remove(node)
+        visited.add(node)
+        return False
+
+    if any(visit(node) for node in graph):
+        breaks.append("evidence lineage contains a cycle")
+
+    if breaks:
+        return "INVALID", 0, breaks
+
+    independent_by_origin: Counter[str] = Counter()
+    independent_origins: set[str] = set()
+    for item in by_id.values():
+        if item.get("independence") in {"PRIMARY", "INDEPENDENT_REPLICATION"}:
             origin = _origin_key(item.get("origin"))
-            origins.append(origin)
-            independence = item.get("independence")
-            if independence in {"PRIMARY", "INDEPENDENT_REPLICATION"}:
-                independent_origins.add(origin)
-                claimed_independent_by_origin[origin] += 1
-            elif independence == "UNKNOWN":
-                unknown = True
+            independent_origins.add(origin)
+            independent_by_origin[origin] += 1
 
-    inflated = [origin for origin, count in claimed_independent_by_origin.items() if count > 1]
+    inflated = [origin for origin, count in independent_by_origin.items() if count > 1]
     if inflated:
-        breaks.append(
-            "multiple evidence entries claim independent authority from the same origin"
+        return (
+            "DUPLICATE_INFLATED",
+            len(independent_origins),
+            ["multiple distinct evidence IDs claim independent authority from the same origin"],
         )
-        return "DUPLICATE_INFLATED", len(independent_origins), breaks
     if unknown:
-        return "PARTIALLY_VERIFIED", len(independent_origins), breaks
-    if origins:
-        return "VALID", len(independent_origins), breaks
-    return "UNKNOWN", 0, breaks
-
+        return "PARTIALLY_VERIFIED", len(independent_origins), []
+    return "VALID", len(independent_origins), []
 
 def _dependency_summary(
     receipts: Mapping[str, Mapping[str, Any]]
