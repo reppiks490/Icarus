@@ -142,10 +142,14 @@ def observation_from_event(event: Mapping, variable: str) -> Observation:
     observed = _timestamp(event.get("observed_at"), "observed_at")
     published = event.get("published_at")
     received = event.get("received_at")
+    received_ts = _timestamp(received, "received_at") if received is not None else None
     if published is not None:
-        available = _timestamp(published, "published_at")
-    elif received is not None:
-        available = _timestamp(received, "received_at")
+        published_ts = _timestamp(published, "published_at")
+        if received_ts is None:
+            raise ValueError("received_at is required for ledger-backed evidence")
+        available = max(published_ts, received_ts)
+    elif received_ts is not None:
+        available = received_ts
     else:
         raise ValueError("event availability is unknown")
     confidence = _finite(event.get("confidence"), "confidence")
