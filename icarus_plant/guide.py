@@ -71,10 +71,10 @@ repo:       {repo_root()}
 1. You are already in the Icarus folder. Python is {py}
 
 2. TradingView CSV export needs Plus (Essential cannot download Supercharts)
-   a. Supercharts → symbol CME_MINI:NQ1!
+   a. Supercharts -> symbol CME_MINI:NQ1!
    b. Timeframe: 1 minute
    c. Scroll the chart LEFT so more history loads
-   d. Top toolbar dropdown → Download chart data… → Download
+   d. Top toolbar dropdown -> Download chart data… -> Download
    No Plus: skip this. Yahoo path: start-yahoo.bat  (or: icarus-plant start --assets NQ)
 
 3. Copy that CSV into this folder (File Explorer / Finder):
