@@ -74,5 +74,35 @@
       "summary": "Added research-only world-state graph with as-of filtering, explicit latent inference, contradiction detection, gap mapping, and unit tests.",
       "next": "Integrate with advisory evidence schema and add source/domain adapter contracts; run tests in an execution environment."
     }
-  ]
+  ],
+  "loop_policy": {
+    "plugin_activation": {
+      "required_each_cycle": true,
+      "minimum_stack": [
+        "superpowers/using-superpowers",
+        "superpowers/brainstorming_when_creative_or_architectural",
+        "astral-orchestrator",
+        "akinator/everything",
+        "baton-pass"
+      ],
+      "optional_when_useful": [
+        "superpowers/systematic-debugging",
+        "superpowers/test-driven-development",
+        "superpowers/requesting-code-review",
+        "superpowers/verification-before-completion",
+        "superpowers/dispatching-parallel-agents",
+        "orchestrator-lite-cloud",
+        "infra-orchestrator"
+      ],
+      "cycle_start_order": [
+        "activate_process_plugins",
+        "load_minimum_github_delta",
+        "select_current_unresolved_goal",
+        "execute_bounded_cycle",
+        "verify",
+        "checkpoint_to_github"
+      ],
+      "evidence_requirement": "record active plugin names and concrete contribution in each cycle checkpoint"
+    }
+  }
 }
