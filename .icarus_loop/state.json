@@ -2,7 +2,7 @@
   "schema_version": 1,
   "branch": "codex/exotic-research-loop",
   "source_of_truth": "github",
-  "last_processed_commit": "007e70189945b8e112904cf92b2b1a12e43792d6",
+  "last_processed_commit": "f8d8ce641b71e5f564b53c91e02ed50ca2a58b4e",
   "retrieval_policy": {
     "mode": "delta_first",
     "reread_unchanged": false,
@@ -34,14 +34,14 @@
   "active_build": {
     "codename": "OMNIVISION",
     "objective": "Fuse cross-domain world-state evidence, quantify unseen/latent gaps, generate falsifiable research hypotheses, and emit research-only integration candidates.",
-    "phase": "implementation_plan_review_gate",
-    "status": "waiting_execution_method"
+    "phase": "foundation_implemented_runtime_unverified",
+    "status": "implemented_unverified"
   },
   "unresolved": [
-    "wire world-state graph to AdvisoryLedger via explicit adapter without weakening source allowlists or immutable provenance",
-    "add domain adapters only when a public/licensed/user-authorized source is selected",
-    "add walk-forward evaluation hooks before any candidate can be marked integration_ready",
-    "run CI and record exact results"
+    "run scoped OMNIVISION tests and full tests_engine suite in an execution environment; no GitHub Actions workflow run is associated with the latest implementation commit",
+    "add real authorized domain adapters only after selecting concrete public/licensed/user-authorized sources",
+    "expand novelty beyond Pearson correlation only after the foundation path is runtime-verified",
+    "add regime-specific validation and research-budget allocation in a later plan"
   ],
   "evidence": [
     {
@@ -62,9 +62,9 @@
   ],
   "tests": [
     {
-      "scope": "tests_engine/test_world_state.py",
-      "status": "not_run",
-      "reason": "No GitHub Actions workflow run was associated with commit 1a3f6dad3c42e3c8615f91ce4034bb89d88536d1"
+      "scope": "OMNIVISION scoped + advisory/research regression + full tests_engine",
+      "status": "not run — no execution surface or associated GitHub Actions workflow was available in this chat harness",
+      "latest_implementation_commit": "f8d8ce641b71e5f564b53c91e02ed50ca2a58b4e"
     }
   ],
   "benchmarks": [],
@@ -165,6 +165,65 @@
         }
       ],
       "next": "Execute the OMNIVISION foundation plan using subagent-driven development when the next implementation cycle starts."
+    },
+    {
+      "commit": "f8d8ce641b71e5f564b53c91e02ed50ca2a58b4e",
+      "summary": "Implemented OMNIVISION foundation: strict world-event contract, immutable AdvisoryLedger world_state support, ledger bridge, evidence-native world-state inference, falsifiable hypotheses, novelty screen, timestamp-safe placebo/walk-forward falsification, research-only candidate builder, and end-to-end integration tests.",
+      "review_findings_fixed": [
+        "contracts.py initially stored literal backslash-n escapes; rewritten as valid multiline Python",
+        "projected observations initially lost immutable AdvisoryLedger event_id; added evidence_id propagation",
+        "world-state latest selection initially collapsed multiple sources for the same entity/variable; changed to per-source state so disagreement remains inside latent inference"
+      ],
+      "verification": {
+        "branch_compare": "ahead of main by 30 commits, behind by 0 at review time",
+        "forbidden_execution_paths_changed": false,
+        "omnivision_execution_authorized_true_scan": false,
+        "omnivision_network_client_scan": false,
+        "omnivision_process_shell_scan": false,
+        "placeholder_scan": false,
+        "runtime_tests": "not run — no execution surface or associated GitHub Actions workflow",
+        "github_actions_runs_for_latest_commit": 0
+      },
+      "plugins": [
+        {
+          "name": "superpowers/using-superpowers",
+          "contribution": "re-activated skill-first discipline for the implementation cycle"
+        },
+        {
+          "name": "superpowers/subagent-driven-development",
+          "contribution": "set the required implement-review structure; harness lacked dispatch so the documented rigorous fallback was used"
+        },
+        {
+          "name": "superpowers/test-driven-development",
+          "contribution": "kept tests before implementation for each new foundation module"
+        },
+        {
+          "name": "superpowers/requesting-code-review",
+          "contribution": "drove task and whole-branch review checks"
+        },
+        {
+          "name": "superpowers/verification-before-completion",
+          "contribution": "prevented unexecuted tests from being reported as passed"
+        },
+        {
+          "name": "astral-orchestrator",
+          "contribution": "maintained Orbit-style bounded task routing discipline without falsely claiming unavailable workers"
+        },
+        {
+          "name": "akinator/everything",
+          "contribution": "persisted architecture, rulings, defects, fixes, and verification truth in GitHub"
+        },
+        {
+          "name": "baton-pass",
+          "contribution": "kept delta-only resumable state for the next cycle"
+        }
+      ],
+      "rulings": [
+        "Hypothesis lag/horizon remain 0 in the foundation schema when causal timing is not established; 0 means unspecified, not zero-delay evidence.",
+        "Ledger event IDs, not projected observation hashes, are the canonical evidence IDs carried into hypotheses and candidates.",
+        "Cross-source observations remain separate in latent inference; no source is silently selected as truth."
+      ],
+      "next": "Run runtime verification in an execution-capable surface. If green, begin the next architectural plan for authorized domain adapters, regime intelligence, and adaptive research-budget allocation."
     }
   ],
   "loop_policy": {
@@ -201,6 +260,22 @@
       "user_preference": "always choose the higher-compute, higher-scrutiny path when multiple valid execution routes exist",
       "review_policy": "fresh implementer/reviewer contexts per task when supported, plus whole-branch review before completion",
       "fallback": "use the most rigorous available native path only when subagent-driven execution is unavailable"
+    }
+  },
+  "execution": {
+    "method_requested": "subagent-driven",
+    "method_used": "most-rigorous-native-fallback",
+    "reason": "this chat harness exposes no subagent/worker dispatch tool; no child-agent execution was claimed",
+    "plan": "docs/superpowers/plans/2026-09-23-omnivision-foundation-implementation.md",
+    "tasks": {
+      "1_contracts": "implemented_unverified",
+      "2_ledger_bridge": "implemented_unverified",
+      "3_hypotheses": "implemented_unverified",
+      "4_novelty": "implemented_unverified",
+      "5_falsification": "implemented_unverified",
+      "6_candidates": "implemented_unverified",
+      "7_integration_proof": "implemented_unverified",
+      "8_checkpoint": "complete"
     }
   }
 }
