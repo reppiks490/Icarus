@@ -7,7 +7,7 @@ This directory is the durable repository index for the ICARUS/AEGIS work consoli
 1. [AEGIS Assurance Baseline v1](AEGIS_ASSURANCE_BASELINE_V1.md) — frozen Findings 001–030 and the transition from discovery to implementation assurance.
 2. [Control-Plane Implementation Map](CONTROL_PLANE_IMPLEMENTATION_MAP.md) — highest-priority executable architecture for durable S1–S5 policy/snapshot/handoff/evidence/oracle receipts.
 3. [Related Build Registry](RELATED_BUILD_REGISTRY.md) — pinned repository/branch identities observed during consolidation.
-4. [Transfer Change Record](CHANGE_RECORD_2026-09-24.md) — provenance and evidentiary boundary for this archive.
+4. [Transfer Change Record](CHANGE_RECORD_2026-09-24.md) — provenance and evidentiary boundary for this archive.\n5. [Source Manifest](SOURCE_MANIFEST.md) — source file identities, transfer modes, and binary/text limitations.
 
 ## Preserved source artifacts
 
