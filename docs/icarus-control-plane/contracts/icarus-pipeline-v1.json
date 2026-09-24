@@ -32,6 +32,7 @@
   "claim_required_fields": [
     "claim_id",
     "maturity",
+    "status",
     "dependencies",
     "evidence_ids"
   ],
@@ -75,5 +76,25 @@
     "TAUTOLOGICAL",
     "UNVERIFIED",
     "INVALID"
+  ],
+  "claim_status_values": [
+    "SUPPORTED",
+    "PARTIALLY_VERIFIED",
+    "REJECTED",
+    "CONTRADICTED",
+    "BROKEN",
+    "UNKNOWN"
+  ],
+  "conflict_required_fields": [
+    "conflict_id",
+    "status",
+    "claim_ids",
+    "material",
+    "scope"
+  ],
+  "conflict_status_values": [
+    "OPEN",
+    "RESOLVED",
+    "SUPERSEDED"
   ]
 }
