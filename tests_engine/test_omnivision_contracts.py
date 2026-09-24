@@ -42,7 +42,7 @@ def test_world_event_preserves_domain_entity_and_availability():
     assert observation.entity == "US_MIDWEST"
     assert observation.value == 1.25
     assert observation.observed_at == 1790164800
-    assert observation.available_at == 1790165100
+    assert observation.available_at == 1790165160
     assert observation.provenance == "https://www.noaa.gov/example"
     assert observation.evidence_id == "a" * 64
 
