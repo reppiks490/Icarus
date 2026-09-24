@@ -46,6 +46,16 @@
       "path": "AUTOMATION_STATUS.json",
       "purpose": "active/disabled automation state",
       "status": "CREATED"
+    },
+    {
+      "path": "RESEARCH_REFERENCES.md",
+      "purpose": "methodology source ledger",
+      "status": "CREATED"
+    },
+    {
+      "path": "UNIFIED_CONTROL_CYCLE_PROMPT.txt",
+      "purpose": "repository snapshot of active unified control contract",
+      "status": "CREATED"
     }
   ],
   "priorities": [
@@ -98,5 +108,7 @@
     "empirical-research",
     "observability"
   ],
-  "warning": "Repository evidence overrides this handoff. No artifact here authorizes trading, merge, deploy, or publication."
+  "warning": "Repository evidence overrides this handoff. No artifact here authorizes trading, merge, deploy, or publication.",
+  "root_readme_link": true,
+  "last_updated": "2026-09-24T18:33:00-05:00"
 }
