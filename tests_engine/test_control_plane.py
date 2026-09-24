@@ -235,8 +235,35 @@ def test_partially_independent_oracle_blocks_full_structural_promotion(contracts
     receipts["S5"]["prior_stage_digest"] = receipts["S4"]["receipt_digest"]
     _redigest(receipts["S5"])
     result = validate_cycle(receipts, policy, schema)
-    assert result["status"] == "VALID"
+    assert result["status"] == "INVALID"
     assert result["promotion_path_valid"] is False
+    assert result["authority_violations"]
+
+
+def test_s5_semantic_blocker_is_never_overridden_by_structural_cleanliness(contracts):
+    policy, schema = contracts
+    receipts = _chain(policy, schema)
+    receipts["S5"]["stage_payload"]["promotion_path_valid"] = False
+    receipts["S5"]["stage_payload"]["release_status"] = "NOT_QUALIFIED"
+    receipts["S5"]["stage_payload"]["cycle_outcome"] = "INCOMPLETE_PIPELINE"
+    _redigest(receipts["S5"])
+    result = validate_cycle(receipts, policy, schema)
+    assert result["status"] == "VALID"
+    assert result["structural_promotion_prerequisites_met"] is True
+    assert result["promotion_path_valid"] is False
+    assert result["authority_violations"] == []
+
+
+def test_s5_cannot_report_advanced_without_valid_promotion_path(contracts):
+    policy, schema = contracts
+    receipts = _chain(policy, schema)
+    receipts["S5"]["stage_payload"]["promotion_path_valid"] = False
+    receipts["S5"]["stage_payload"]["cycle_outcome"] = "ADVANCED"
+    _redigest(receipts["S5"])
+    result = validate_cycle(receipts, policy, schema)
+    assert result["status"] == "INVALID"
+    assert result["promotion_path_valid"] is False
+    assert result["authority_violations"]
 
 
 def test_stage_cannot_claim_maturity_above_its_ceiling(contracts):
