@@ -25,9 +25,10 @@ icarus-engine = "icarus_engine.cli:main"
 icarus-bridge = "icarus_bridge.cli:main"
 icarus-plant = "icarus_plant.cli:main"
 icarus-train = "icarus_engine.trainers.__main__:main"
+icarus-control = "icarus_control.cli:main"
 
 [tool.setuptools.packages.find]
-include = ["icarus_engine*", "icarus_bridge*", "icarus_plant*", "icarus_agent*"]
+include = ["icarus_engine*", "icarus_bridge*", "icarus_plant*", "icarus_agent*", "icarus_control*"]
 
 [tool.setuptools.package-data]
 icarus_engine = ["*.html", "*.js", "*.css", "strategy/*.json"]
