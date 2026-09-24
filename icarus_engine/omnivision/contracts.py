@@ -162,7 +162,7 @@ def observation_from_event(event: Mapping, variable: str) -> Observation:
         variable=_identity(variable, "variable"),
         value=_finite(event["values"][variable], variable),
         observed_at=int(observed),
-        available_at=int(available),
+        available_at=math.ceil(available),
         confidence=confidence,
         provenance=_url(event.get("source_url")),
         evidence_id=event.get("event_id"),
