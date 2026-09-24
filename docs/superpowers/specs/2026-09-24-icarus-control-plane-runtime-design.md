@@ -114,9 +114,13 @@ All stages:
 - exact same `pipeline_policy_epoch`,
 - exact policy/schema versions and contract digests,
 - exact same `repo_baseline_revision`,
-- canonically equivalent `repo_snapshot_set`,
+- canonically equivalent, deterministically ordered `repo_snapshot_set`,
 - `execution_authorized == false`,
-- stage order exactly S1,S2,S3,S4,S5.
+- stage order exactly S1,S2,S3,S4,S5,
+- claim maturity cannot exceed the stage ceiling,
+- latest claim dependencies must exist, remain sufficiently supported, and form an acyclic graph,
+- material conflicts with latest state `OPEN` block promotion,
+- evidence lineage must resolve to a valid DAG; identical repeated evidence IDs collapse, conflicting reuse fails, and multiple independent claims from the same decisive origin are dependency-inflated.
 
 Unknown stages, future enum values, absent mandatory fields, non-finite numbers, digest mismatch, or semantic ambiguity fail closed.
 
