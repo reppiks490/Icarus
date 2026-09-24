@@ -64,10 +64,16 @@
       "branch": "chatgpt/icarus-control-plane-runtime-20260924",
       "package": "icarus_control",
       "cli": "icarus-control",
-      "status": "IMPLEMENTED_PENDING_FRESH_CI",
+      "status": "IMPLEMENTED_CI_GREEN_AWAITING_FINAL_HEAD_CHECK",
       "scheduler_scope": "EXTERNAL_ONLY",
       "recommended_evidence_branch": "control-evidence",
-      "receipt_path_template": "control/receipts/<CYCLE_ID>/S<1-5>.json"
+      "receipt_path_template": "control/receipts/<CYCLE_ID>/S<1-5>.json",
+      "verification": {
+        "workflow_run_id": 36064742770,
+        "linux": "PASS_FULL_ENGINE_SUITE_CONTROL_CLI_PLANT_DOCTOR",
+        "windows": "PASS_FOCUSED_ENGINE_AND_PLANT_SETUP",
+        "note": "A later documentation/matrix commit requires a final-head CI check before acceptance."
+      }
     },
     "receipt_contracts": [
       "docs/icarus-control-plane/contracts/icarus-control-v1.json",
@@ -86,6 +92,7 @@
     "uncertainty cannot increase authority"
   ],
   "next_proof_obligations": [
+    "final-head CI for repo-native control verifier branch",
     "AION gap-history tamper detection",
     "DAEDALUS descendant-snapshot protected-evidence lineage",
     "recover current ARGUS implementation",
