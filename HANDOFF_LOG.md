@@ -26,3 +26,12 @@ Implemented on `chatgpt/icarus-control-plane-runtime-20260924`:
 - CI command repair for global `icarus-plant --root` option ordering
 
 Verification status at this log entry: implementation committed, fresh branch CI still required. No strategy/Pulse/broker/trainer logic changed. `execution_authorized=false`.
+
+
+### Fresh verification evidence
+
+GitHub Actions run `36064742770` on PR #18 completed green on Linux and Windows after the Windows UTF-8 console repair:
+- Linux: full `tests_engine`, `icarus-control --help`, plant setup, engine doctor
+- Windows: focused plant/bars/doctor tests and plant setup
+
+A later AEGIS matrix/documentation commit means final technical acceptance still requires CI on the final branch head. No merge/deploy/trade authority is implied.
