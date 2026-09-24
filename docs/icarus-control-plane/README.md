@@ -69,9 +69,10 @@ NEXUS / ORACLE:
 ## Read next
 
 1. [SUBSYSTEM_ROTATION_FINDINGS.md](SUBSYSTEM_ROTATION_FINDINGS.md) — evidence and artifacts for each subsystem.
-2. [UNIFIED_CYCLE_RUNBOOK.md](UNIFIED_CYCLE_RUNBOOK.md) — repaired S1->S5 scheduler/control-plane design.
-3. [HANDOFF_STATE.json](HANDOFF_STATE.json) — machine-readable continuation state.
-4. [../superpowers/plans/2026-09-24-icarus-control-plane-handoff.md](../superpowers/plans/2026-09-24-icarus-control-plane-handoff.md) — implementation plan for turning the findings into repository changes safely.
+2. [AEGIS_IMPLEMENTATION_MATRIX.md](AEGIS_IMPLEMENTATION_MATRIX.md) — Findings 019–030 mapped to exact current controls and next regressions.
+3. [UNIFIED_CYCLE_RUNBOOK.md](UNIFIED_CYCLE_RUNBOOK.md) — repaired S1->S5 scheduler/control-plane design.
+4. [HANDOFF_STATE.json](HANDOFF_STATE.json) — machine-readable continuation state.
+5. [../superpowers/plans/2026-09-24-icarus-control-plane-handoff.md](../superpowers/plans/2026-09-24-icarus-control-plane-handoff.md) — implementation plan for turning the findings into repository changes safely.
 
 ## What was intentionally NOT done
 
