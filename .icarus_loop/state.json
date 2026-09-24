@@ -143,6 +143,28 @@
         "ci": "not_applicable_to_document_only_cycle"
       },
       "next": "User reviews plan and selects Subagent-driven or Native execution. Then activate plugins for the next cycle and implement task-by-task."
+    },
+    {
+      "summary": "User selected the higher-cost/higher-scrutiny execution path as the standing default.",
+      "plugins": [
+        {
+          "name": "superpowers/using-superpowers",
+          "contribution": "enforced skill-first execution policy"
+        },
+        {
+          "name": "astral-orchestrator",
+          "contribution": "preserved higher-scrutiny orchestration preference"
+        },
+        {
+          "name": "akinator/everything",
+          "contribution": "persisted execution-method decision in repository state"
+        },
+        {
+          "name": "baton-pass",
+          "contribution": "made the preference resumable across sessions"
+        }
+      ],
+      "next": "Execute the OMNIVISION foundation plan using subagent-driven development when the next implementation cycle starts."
     }
   ],
   "loop_policy": {
@@ -173,6 +195,12 @@
         "checkpoint_to_github"
       ],
       "evidence_requirement": "record active plugin names and concrete contribution in each cycle checkpoint"
+    },
+    "execution_method": {
+      "default": "subagent-driven",
+      "user_preference": "always choose the higher-compute, higher-scrutiny path when multiple valid execution routes exist",
+      "review_policy": "fresh implementer/reviewer contexts per task when supported, plus whole-branch review before completion",
+      "fallback": "use the most rigorous available native path only when subagent-driven execution is unavailable"
     }
   }
 }
