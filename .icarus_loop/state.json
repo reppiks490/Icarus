@@ -2,7 +2,7 @@
   "schema_version": 1,
   "branch": "codex/exotic-research-loop",
   "source_of_truth": "github",
-  "last_processed_commit": "f8d8ce641b71e5f564b53c91e02ed50ca2a58b4e",
+  "last_processed_commit": "d863e277a1010821de30934d7eb4e950a6050b41",
   "retrieval_policy": {
     "mode": "delta_first",
     "reread_unchanged": false,
@@ -33,15 +33,16 @@
   },
   "active_build": {
     "codename": "OMNIVISION",
-    "objective": "Fuse cross-domain world-state evidence, quantify unseen/latent gaps, generate falsifiable research hypotheses, and emit research-only integration candidates.",
-    "phase": "foundation_implemented_runtime_unverified",
-    "status": "implemented_unverified"
+    "objective": "Evolve the verified research mesh into an epistemic control plane that governs provenance, search multiplicity, uncertainty, abstention, regime validity, causal claims, negative knowledge, and proof-carrying integration candidates.",
+    "phase": "v2_written_spec_review_gate",
+    "status": "awaiting_user_review",
+    "spec": "docs/superpowers/specs/2026-09-24-omnivision-epistemic-control-plane-v2-design.md"
   },
   "unresolved": [
-    "run scoped OMNIVISION tests and full tests_engine suite in an execution environment; no GitHub Actions workflow run is associated with the latest implementation commit",
-    "add real authorized domain adapters only after selecting concrete public/licensed/user-authorized sources",
-    "expand novelty beyond Pearson correlation only after the foundation path is runtime-verified",
-    "add regime-specific validation and research-budget allocation in a later plan"
+    "user review/approval of the written Epistemic Control Plane v2 spec is required before writing its implementation plan",
+    "run scoped OMNIVISION tests and full tests_engine suite in an execution-capable environment before any v2 product code lands",
+    "run the extreme foundation audit/remediation gate before expanding source adapters",
+    "only after foundation verification: plan Stage 1 capability registry, provenance DAG, and search-aware trial ledger"
   ],
   "evidence": [
     {
@@ -58,6 +59,21 @@
       "kind": "capability",
       "fact": "Existing advisory ledger already enforces source allowlists, timing, provenance, and immutable evidence",
       "path": "icarus_engine/advisory.py"
+    },
+    {
+      "kind": "research_method",
+      "fact": "Deflated Sharpe Ratio explicitly addresses selection bias, backtest overfitting, and non-normality; v2 trial accounting must preserve the search process.",
+      "doi": "10.3905/jpm.2014.40.5.094"
+    },
+    {
+      "kind": "research_method",
+      "fact": "Adaptive conformal inference provides a principled basis for recalibrating uncertainty under distribution shift; v2 treats this as a design principle, not a mandatory implementation.",
+      "doi": "10.48550/arXiv.2106.00170"
+    },
+    {
+      "kind": "lineage_standard",
+      "fact": "OpenLineage v1.53.0 models Run, Job, Dataset identities and explicit/extensible lineage facets; v2 adopts compatible lineage concepts without requiring the dependency.",
+      "source": "OpenLineage official documentation"
     }
   ],
   "tests": [
@@ -224,6 +240,122 @@
         "Cross-source observations remain separate in latent inference; no source is silently selected as truth."
       ],
       "next": "Run runtime verification in an execution-capable surface. If green, begin the next architectural plan for authorized domain adapters, regime intelligence, and adaptive research-budget allocation."
+    },
+    {
+      "commit": "d863e277a1010821de30934d7eb4e950a6050b41",
+      "summary": "Wrote and self-reviewed the OMNIVISION Epistemic Control Plane v2 design after a multi-source capability and methodology evidence sweep. The design adds source-capability state, semantic relevance firewall, provenance DAG, search-aware trial ledger, confidence decomposition, abstention, staleness, negative knowledge, causal discipline, expected-information-gain budgeting, proof-carrying candidates, and recursive invalidation.",
+      "spec": "docs/superpowers/specs/2026-09-24-omnivision-epistemic-control-plane-v2-design.md",
+      "design_decisions": [
+        "No v2 product code may land before runtime verification and remediation of the existing foundation.",
+        "External source availability is versioned capability state, not a permanent assumption.",
+        "Search history and rejected trials are part of evidentiary burden.",
+        "Reachable but semantically irrelevant sources are rejected before normalization.",
+        "Vendor duplication does not count as independent evidence when providers relay the same upstream source.",
+        "Confidence is decomposed and abstention is first-class.",
+        "Invalidated evidence must propagate to downstream candidates via provenance lineage."
+      ],
+      "plugins": [
+        {
+          "name": "agent-reach",
+          "contribution": "used native web/search route for current public standards and research evidence"
+        },
+        {
+          "name": "enterprise-infra-orchestrator",
+          "contribution": "applied evidence-state, source-boundary, LLD and conflict/unknown discipline"
+        },
+        {
+          "name": "astral-orchestrator",
+          "contribution": "Orbit primary ownership/routing discipline; no child launch claimed"
+        },
+        {
+          "name": "akinator/everything",
+          "contribution": "claim-vs-code audit framing and durable knowledge delta/checkpoint"
+        },
+        {
+          "name": "superpowers/brainstorming",
+          "contribution": "architectural gate and written-spec stage"
+        },
+        {
+          "name": "orchestrator-lite-cloud",
+          "contribution": "bounded evidence brief, source scope and stopping boundary executed in Main because Work handoff was declined"
+        },
+        {
+          "name": "U.S. Gold Bureau Metal Spots",
+          "contribution": "provider-policy failure exposed need for explicit blocked-source health state"
+        },
+        {
+          "name": "StackerScan",
+          "contribution": "working metals feed validated a healthy read-only source profile"
+        },
+        {
+          "name": "The Fly Market Intelligence",
+          "contribution": "rate-limit then successful market brief informed retry/rate-limit capability states"
+        },
+        {
+          "name": "Marketing Swarm causal-attribution",
+          "contribution": "causal estimand/confounder/identification hierarchy incorporated into causal-claim gate"
+        },
+        {
+          "name": "Marketing Swarm decision-quality-gate",
+          "contribution": "evidence/causal/risk/reversibility gate concepts applied to promotion design"
+        },
+        {
+          "name": "Scite",
+          "contribution": "verified DSR and adaptive conformal research; later account quota exhaustion itself became source-health evidence"
+        },
+        {
+          "name": "Bybit",
+          "contribution": "public crypto source capability and venue/market-type metadata evidence"
+        },
+        {
+          "name": "FMP",
+          "contribution": "macro/rates point-in-time source capability evidence"
+        },
+        {
+          "name": "Cheat Database",
+          "contribution": "deliberate semantically irrelevant negative control for relevance firewall"
+        },
+        {
+          "name": "Massive",
+          "contribution": "futures reference/bars/quotes/trades endpoint separation informed adapter typing"
+        },
+        {
+          "name": "treg",
+          "contribution": "cost/reliability/input-compatibility source selection discipline"
+        },
+        {
+          "name": "Bigdata.com",
+          "contribution": "aggregated timestamped cross-asset product informed aggregator-vs-primary epistemic roles"
+        },
+        {
+          "name": "Twelve Data",
+          "contribution": "authenticated venue/session-aware quote capability evidence"
+        },
+        {
+          "name": "Zacks Financial Data",
+          "contribution": "attention/rank fields informed opinion/attention-vs-observation separation"
+        },
+        {
+          "name": "Blockscout Blockchain Data",
+          "contribution": "session/version/auth-change behavior informed capability expiry and review-after metadata"
+        },
+        {
+          "name": "DataBlue",
+          "contribution": "stable news API schema informed query provenance and news-adapter contract"
+        },
+        {
+          "name": "Stock Market Summary",
+          "contribution": "reinforced current/delayed/session/source-priority labeling"
+        }
+      ],
+      "verification": {
+        "spec_self_review": "passed",
+        "placeholder_scan": "passed",
+        "required_section_scan": "passed",
+        "forbidden_execution_state": "invariant remains false; the only literal execution_authorized=true appears in a negative invariant test requirement",
+        "runtime_tests": "not applicable to document-only cycle; existing foundation runtime verification remains an open hard gate"
+      },
+      "next": "User reviews the written v2 spec. After explicit approval, invoke Superpowers writing-plans. The implementation plan must begin with Stage 0 runtime verification/audit/remediation before any v2 feature code."
     }
   ],
   "loop_policy": {
@@ -277,5 +409,86 @@
       "7_integration_proof": "implemented_unverified",
       "8_checkpoint": "complete"
     }
+  },
+  "source_capability_evidence": {
+    "observed_date": "2026-09-24",
+    "purpose": "design evidence only; not trading signals",
+    "sources": [
+      {
+        "source": "StackerScan",
+        "state": "healthy",
+        "evidence": "timestamped XAU/XAG USD spot response returned"
+      },
+      {
+        "source": "U.S. Gold Bureau",
+        "state": "blocked_by_source_policy",
+        "evidence": "health and gold spot calls rejected by provider IP allowlist"
+      },
+      {
+        "source": "Bybit",
+        "state": "healthy",
+        "evidence": "public BTCUSDT spot response returned"
+      },
+      {
+        "source": "Twelve Data",
+        "state": "healthy_authenticated",
+        "evidence": "authentication confirmed and QQQ quote returned venue/session/timestamp metadata"
+      },
+      {
+        "source": "FMP",
+        "state": "healthy",
+        "evidence": "dated U.S. Treasury yield-curve observations returned"
+      },
+      {
+        "source": "Massive",
+        "state": "healthy_catalog",
+        "evidence": "futures contracts, OHLC, quotes, trades and snapshot endpoints discovered"
+      },
+      {
+        "source": "Bigdata.com",
+        "state": "healthy",
+        "evidence": "timestamped cross-asset market tearsheet returned with source attribution"
+      },
+      {
+        "source": "The Fly",
+        "state": "rate_limit_recovered",
+        "evidence": "first market brief call was rate-limited; later call succeeded"
+      },
+      {
+        "source": "Zacks",
+        "state": "healthy",
+        "evidence": "trending-attention and Zacks rank fields returned; classified as attention/opinion metadata rather than direct world-state observation"
+      },
+      {
+        "source": "DataBlue",
+        "state": "healthy_catalog",
+        "evidence": "stable Google News API schema returned"
+      },
+      {
+        "source": "Blockscout",
+        "state": "healthy_session_gated",
+        "evidence": "session unlock succeeded and Ethereum chain registry resolved; provider announced future PRO-key requirement"
+      },
+      {
+        "source": "Scite",
+        "state": "quota_exhausted_after_evidence",
+        "evidence": "method literature retrieved; subsequent search hit monthly MCP limit"
+      },
+      {
+        "source": "Cheat Database",
+        "state": "negative_control",
+        "evidence": "reachable unrelated dataset used to define semantic relevance rejection"
+      },
+      {
+        "source": "treg",
+        "state": "instruction_surface_only",
+        "evidence": "skill supplied cost/reliability/input-compatibility routing rules; no direct treg callable surfaced in this chat"
+      },
+      {
+        "source": "Stock Market Summary",
+        "state": "instruction_surface",
+        "evidence": "skill reinforced current-vs-delayed/session/source-priority controls"
+      }
+    ]
   }
 }
