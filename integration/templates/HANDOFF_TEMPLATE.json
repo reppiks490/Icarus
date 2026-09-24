@@ -1,0 +1,21 @@
+{
+  "schema_version": "1.0.0",
+  "handoff_id": "replace-with-unique-id",
+  "producer": "agent-or-service-name",
+  "producer_repository": "owner/repository",
+  "producer_revision": "full-commit-sha",
+  "target_repository": "reppiks490/Icarus",
+  "target_revision": null,
+  "created_at": null,
+  "expires_at": null,
+  "artifacts": [],
+  "evidence_ids": [],
+  "claims": [],
+  "assumptions": [],
+  "tests": [],
+  "authority_requested": "OBSERVE",
+  "authority_granted": "NONE",
+  "limitations": [
+    "State all known limitations here."
+  ]
+}
