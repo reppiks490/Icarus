@@ -40,15 +40,20 @@ def _correlation(pairs):
 
 def aligned_pairs(feature_rows: Sequence[tuple[int, int, float]],
                   outcome_rows: Sequence[tuple[int, int, float]],
-                  *, decision_cutoff: int, lag_seconds: int) -> list[tuple[float, float]]:
+                  *, decision_cutoff: int, lag_seconds: int,
+                  observed_after: int | None = None) -> list[tuple[float, float]]:
     if type(decision_cutoff) is not int or decision_cutoff < 0:
         raise ValueError("decision_cutoff must be a non-negative integer")
     if type(lag_seconds) is not int or lag_seconds < 0:
         raise ValueError("lag_seconds must be a non-negative integer")
+    if observed_after is not None and (type(observed_after) is not int or observed_after < 0):
+        raise ValueError("observed_after must be a non-negative integer or None")
     features = _rows(feature_rows, "feature")
     outcomes = _rows(outcome_rows, "outcome")
     pairs = []
     for observed in sorted(features):
+        if observed_after is not None and observed <= observed_after:
+            continue
         feature_available, feature_value = features[observed]
         target = observed + lag_seconds
         outcome = outcomes.get(target)
@@ -108,8 +113,10 @@ def walk_forward_correlation(feature_rows: Sequence[tuple[int, int, float]],
                              min_pairs: int = 20) -> dict:
     if not isinstance(cutoffs, (tuple, list)) or not cutoffs:
         raise ValueError("cutoffs must be a non-empty sequence")
-    if len(set(cutoffs)) != len(cutoffs) or any(type(c) is not int or c < 0 for c in cutoffs):
-        raise ValueError("cutoffs must be unique non-negative integers")
+    if any(type(c) is not int or c < 0 for c in cutoffs):
+        raise ValueError("cutoffs must be non-negative integers")
+    if any(left >= right for left, right in zip(cutoffs, cutoffs[1:])):
+        raise ValueError("cutoffs must be strictly increasing")
     if type(min_pairs) is not int or min_pairs < 2:
         raise ValueError("min_pairs must be an integer >= 2")
     if type(lag_seconds) is not int or lag_seconds < 0:
@@ -117,14 +124,17 @@ def walk_forward_correlation(feature_rows: Sequence[tuple[int, int, float]],
 
     folds = []
     qualified = []
+    previous_cutoff = None
     for cutoff in cutoffs:
         pairs = aligned_pairs(
             feature_rows, outcome_rows,
             decision_cutoff=cutoff, lag_seconds=lag_seconds,
+            observed_after=previous_cutoff,
         )
         corr = _correlation(pairs)
         status = "complete" if len(pairs) >= min_pairs and corr is not None else "insufficient_data"
         fold = {
+            "observed_after": previous_cutoff,
             "cutoff": cutoff,
             "pairs": len(pairs),
             "correlation": corr,
@@ -133,6 +143,7 @@ def walk_forward_correlation(feature_rows: Sequence[tuple[int, int, float]],
         folds.append(fold)
         if status == "complete":
             qualified.append(corr)
+        previous_cutoff = cutoff
 
     signs = {1 if value > 0 else -1 if value < 0 else 0 for value in qualified}
     stable_sign = len(qualified) >= 1 and 0 not in signs and len(signs) == 1
