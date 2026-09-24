@@ -220,3 +220,23 @@ Completion requires each implemented task to have:
 - no new execution authority.
 
 NEXUS/ARGUS/ATHENA/ORACLE remain blocked until their current canonical implementations are recovered.
+
+
+## Task 8 implementation status — 2026-09-24
+
+Decision: scheduler remains external; receipt verification becomes repo-native.
+
+Implemented on `chatgpt/icarus-control-plane-runtime-20260924`:
+- versioned policy/schema contract documents,
+- deterministic strict JSON canonicalization,
+- receipt SHA-256 verification,
+- S1->S5 predecessor digest validation,
+- policy epoch and pinned-snapshot consistency checks,
+- stage maturity ceilings,
+- S4 oracle provenance requirements,
+- evidence-lineage duplicate-origin checks,
+- read-only `icarus-control` CLI,
+- adversarial regression tests,
+- separate evidence-branch storage rule.
+
+Fresh CI is the remaining completion gate. Do not mark Task 8 verified until the new branch test workflow is green.
