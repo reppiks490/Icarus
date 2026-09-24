@@ -106,7 +106,32 @@ def test_walk_forward_future_receipt_cannot_enter_earlier_fold():
         lag_seconds=1,
         min_pairs=20,
     )
-    assert out["folds"][1]["pairs"] == 69
+    assert out["folds"][1]["pairs"] == 29
+
+
+def test_walk_forward_folds_do_not_reuse_prior_fold_observations():
+    features = [(i, i, float(i)) for i in range(1, 101)]
+    outcomes = [(i + 1, i + 1, float(i)) for i in range(1, 101)]
+    out = walk_forward_correlation(
+        features,
+        outcomes,
+        cutoffs=(40, 70, 100),
+        lag_seconds=1,
+        min_pairs=20,
+    )
+    assert [fold["pairs"] for fold in out["folds"]] == [39, 29, 29]
+    assert [fold["observed_after"] for fold in out["folds"]] == [None, 40, 70]
+
+
+def test_walk_forward_rejects_non_increasing_cutoffs():
+    with pytest.raises(ValueError, match="strictly increasing"):
+        walk_forward_correlation(
+            [(i, i, float(i)) for i in range(1, 50)],
+            [(i + 1, i + 1, float(i)) for i in range(1, 50)],
+            cutoffs=(40, 30),
+            lag_seconds=1,
+            min_pairs=10,
+        )
 
 
 @pytest.mark.parametrize("lag", [-1, True])
