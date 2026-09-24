@@ -59,6 +59,7 @@ icarus-engine parity --asset NQ --tv-csv "List of Trades.csv"
 icarus-engine import-tv strategy-report.xlsx --name NQ-20m-mine
 icarus-engine run --assets NQ --tf 20
 icarus-engine run --assets NQ --feed file   # HistoryHub; same as plant --offline
+icarus-control validate-cycle control/receipts/20260924-16  # handoff structure only
 ```
 
 Default chart session is **RTH** (09:30–16:15 ET, 20m at `:10/:30/:50`, last bar a 5-minute stub). Yahoo 1-minute history is ~30 days and ~10 minutes delayed. Empty minutes are not invented. `$ICARUS_HOME` is the data dir (history, journal, presets) when the plant sets it.
@@ -82,3 +83,10 @@ Paste `pine/ALERT_TEMPLATE.json` into the strategy alert. `NQ1!` → `QQQ` is th
 Paid next (Alpaca paper, TradersPost / PickMyTrade futures, Plus CSV, ML boundary): [PAID_NEXT.md](PAID_NEXT.md). Dummy command list: [COMMANDS.md](COMMANDS.md).
 
 Hands: **Astra** (engine, Pine port, emulator, bridge, tests) · **Grok (xAI)** (free-gap ingest/doctor/CI/hygiene + local plant — see [GROK.md](GROK.md)).
+
+
+## Control-plane assurance
+
+`icarus-control` is a read-only verifier for ICARUS S1->S5 evidence receipts. It validates the versioned control policy, handoff schema, pinned repository subject, digest links, evidence-lineage structure, and oracle metadata.
+
+It does **not** run the scheduler, change strategy state, authorize execution, or prove a trading claim. See `docs/icarus-control-plane/README.md`.
