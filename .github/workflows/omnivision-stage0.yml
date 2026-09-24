@@ -55,9 +55,15 @@ jobs:
           tests_engine/test_omnivision_falsification.py
           tests_engine/test_omnivision_candidates.py
           tests_engine/test_omnivision_integration.py
+          tests_engine/test_omnivision_stage0_temporal.py
+          tests_engine/test_omnivision_stage0_boundaries.py
           tests_engine/test_advisory.py
           tests_engine/test_research.py
           -q
 
       - name: Run full engine suite
         run: python -m pytest tests_engine -q
+
+      - name: Record slowest tests
+        if: matrix.python-version == '3.11'
+        run: python -m pytest tests_engine -q --durations=20
