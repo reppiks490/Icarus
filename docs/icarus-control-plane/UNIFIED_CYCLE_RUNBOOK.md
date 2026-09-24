@@ -242,11 +242,44 @@ Stop rather than manufacture downstream authority.
 
 If a subsystem is blocked, record the blocker and let the next hourly cycle rotate onward.
 
+## Durable handoff transport and repo-native validation
+
+The scheduler remains external. The repository now defines a separate, read-only verification tool for durable stage receipts.
+
+```text
+icarus-control validate-receipt S1.json
+icarus-control validate-cycle control/receipts/<CYCLE_ID>/
+```
+
+Receipt contracts:
+- `docs/icarus-control-plane/contracts/icarus-control-v1.json`
+- `docs/icarus-control-plane/contracts/icarus-pipeline-v1.json`
+
+The receipt chain is:
+
+```text
+S1 receipt_digest
+   ↓ prior_stage_digest
+S2 receipt_digest
+   ↓
+S3 receipt_digest
+   ↓
+S4 receipt_digest
+   ↓
+S5 receipt_digest
+```
+
+Every stage binds the same policy epoch, policy digest, schema digest, code baseline and snapshot set. S4 additionally carries oracle origin/derivation, oracle independence, golden-vector provenance, negative controls, and mutation/fault plan.
+
+Receipts must live separately from the code subject they verify. Recommended storage is an append-only `control-evidence` branch under `control/receipts/<CYCLE_ID>/`. Never move the pinned code baseline merely to record a handoff.
+
+The verifier is fail-closed and cannot schedule stages, invoke models, modify strategy state, arm a broker, or promote a scientific claim by itself.
+
 ## External automation note
 
-The unified hourly task is a ChatGPT automation, not code inside this repository.
+The unified hourly stage runner remains external to this repository. The repo-native `icarus-control` tool verifies its durable receipts; it is not the scheduler.
 
-The repository is the durable specification/evidence source. If external scheduler state is lost, reconstruct the task from this runbook rather than restoring the old five disconnected automations.
+If external scheduler state is lost, reconstruct the stage runner from this runbook and use the same versioned receipt contracts rather than restoring the old five disconnected automations.
 
 ## Recommended continuation
 
