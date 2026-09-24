@@ -1,4 +1,4 @@
-name: OMNIVISION Stage 0
+name: OMNIVISION Trust Substrate
 
 on:
   push:
@@ -57,6 +57,11 @@ jobs:
           tests_engine/test_omnivision_integration.py
           tests_engine/test_omnivision_stage0_temporal.py
           tests_engine/test_omnivision_stage0_boundaries.py
+          tests_engine/test_omnivision_capabilities.py
+          tests_engine/test_omnivision_admissibility.py
+          tests_engine/test_omnivision_provenance.py
+          tests_engine/test_omnivision_trials.py
+          tests_engine/test_omnivision_stage1_integration.py
           tests_engine/test_advisory.py
           tests_engine/test_research.py
           -q
