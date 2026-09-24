@@ -35,3 +35,17 @@ GitHub Actions run `36064742770` on PR #18 completed green on Linux and Windows 
 - Windows: focused plant/bars/doctor tests and plant setup
 
 A later AEGIS matrix/documentation commit means final technical acceptance still requires CI on the final branch head. No merge/deploy/trade authority is implied.
+
+
+### Authority-graph hardening after first green CI
+
+Before final acceptance, the verifier was extended so:
+- claim states are explicit and stage maturity ceilings remain enforced,
+- missing/broken/rejected prerequisites and dependency cycles block promotion,
+- material OPEN conflicts block promotion,
+- RESOLVED/SUPERSEDED conflicts require an explicit reason,
+- evidence IDs are collapsed across stages only when content-identical,
+- missing lineage parents, lineage cycles, and duplicate-inflated independent origins fail closed,
+- structural prerequisites cannot override an S5-reported semantic blocker.
+
+Fresh CI is required again on this expanded head.
