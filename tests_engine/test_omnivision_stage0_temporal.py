@@ -44,6 +44,22 @@ def test_published_event_is_not_available_before_receipt():
     assert len(graph.as_of(120)) == 1
 
 
+def test_subsecond_receipt_never_rounds_availability_backward():
+    payload = world_event(published_at=105).to_advisory_event()
+    stored = {
+        **payload,
+        "received_at": datetime.fromtimestamp(120.5, timezone.utc).isoformat(),
+        "event_id": "f" * 64,
+    }
+
+    observation = observation_from_event(stored, "x")
+    graph = WorldStateGraph([observation])
+
+    assert observation.available_at == 121
+    assert graph.as_of(120) == ()
+    assert len(graph.as_of(121)) == 1
+
+
 def test_revision_replay_respects_publication_and_receipt(tmp_path):
     ledger = AdvisoryLedger(
         tmp_path / "research.sqlite3",
