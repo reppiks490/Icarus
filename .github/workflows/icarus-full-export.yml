@@ -1,0 +1,143 @@
+name: ICARUS Full Work Export
+
+on:
+  push:
+    branches:
+      - chatgpt/icarus-control-plane-handoff-20260924
+    paths:
+      - .github/workflows/icarus-full-export.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout handoff branch with history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch work branches
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin \
+            +refs/heads/main:refs/remotes/origin/main \
+            +refs/heads/chatgpt/icarus-control-plane-runtime-20260924:refs/remotes/origin/chatgpt/icarus-control-plane-runtime-20260924 \
+            +refs/heads/chatgpt/icarus-data-vintage-20260924:refs/remotes/origin/chatgpt/icarus-data-vintage-20260924 \
+            +refs/heads/codex/exotic-research-loop:refs/remotes/origin/codex/exotic-research-loop
+
+      - name: Build reconstructable work archive
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          ROOT="$PWD/ICARUS_EVERYTHING_2026-09-24"
+          mkdir -p "$ROOT"/{handoff,workstreams,ci,metadata}
+
+          cp -a docs/icarus-control-plane "$ROOT/handoff/"
+          if [ -f MODEL_HANDOFF.md ]; then cp MODEL_HANDOFF.md "$ROOT/handoff/"; fi
+          if [ -f HANDOFF_LOG.md ]; then cp HANDOFF_LOG.md "$ROOT/handoff/"; fi
+          if [ -f ASTRA_HANDOFF.md ]; then cp ASTRA_HANDOFF.md "$ROOT/handoff/"; fi
+          if [ -f ASTRA_DO_NOT.md ]; then cp ASTRA_DO_NOT.md "$ROOT/handoff/"; fi
+          if [ -f OVERRIDE.md ]; then cp OVERRIDE.md "$ROOT/handoff/"; fi
+
+          export_workstream() {
+            local name="$1"
+            local base="$2"
+            local head="$3"
+            local out="$ROOT/workstreams/$name"
+            mkdir -p "$out/files"
+
+            git rev-parse "$base" > "$out/BASE_SHA.txt"
+            git rev-parse "$head" > "$out/HEAD_SHA.txt"
+            git log --reverse --date=iso-strict --format='%H%x09%ad%x09%s' "$base..$head" > "$out/COMMITS.tsv" || true
+            git diff --name-status "$base...$head" > "$out/CHANGED_FILES.tsv" || true
+            git diff --binary --full-index "$base...$head" > "$out/FULL.patch" || true
+
+            while IFS= read -r -d '' file; do
+              if git cat-file -e "$head:$file" 2>/dev/null; then
+                mkdir -p "$out/files/$(dirname "$file")"
+                git show "$head:$file" > "$out/files/$file"
+              fi
+            done < <(git diff --name-only -z "$base...$head")
+          }
+
+          export_workstream             "01_PR17_HANDOFF"             "007e70189945b8e112904cf92b2b1a12e43792d6"             "${GITHUB_SHA}"
+
+          export_workstream             "02_PR18_CONTROL_RUNTIME"             "c1c331a7a743bcad3dc1e7128eb5cb6f61ac8225"             "76569e1962e721b0f4dc973df21358f40c31ce81"
+
+          export_workstream             "03_PR19_DATA_VINTAGE"             "76569e1962e721b0f4dc973df21358f40c31ce81"             "e05c122f7a8e5501d98251c7449cbe7ce3ec6dda"
+
+          OMNI_HEAD="$(git rev-parse refs/remotes/origin/codex/exotic-research-loop)"
+          export_workstream             "04_OMNIVISION_EXOTIC_RESEARCH"             "007e70189945b8e112904cf92b2b1a12e43792d6"             "$OMNI_HEAD"
+
+          {
+            echo "generated_at_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "repository=${GITHUB_REPOSITORY}"
+            echo "handoff_head=${GITHUB_SHA}"
+            echo "main_baseline=007e70189945b8e112904cf92b2b1a12e43792d6"
+            echo "control_runtime=76569e1962e721b0f4dc973df21358f40c31ce81"
+            echo "data_vintage=e05c122f7a8e5501d98251c7449cbe7ce3ec6dda"
+            echo "omnivision_head=$OMNI_HEAD"
+            echo "aion_pinned=12a7cb8ef99e84ce50b766db0aea1592b3906f80"
+            echo "daedalus_pinned=74ad94149b02ddd3f69d535ee5fdc00c1fdbe096"
+            echo "live_trading_execution_authorized=false"
+          } > "$ROOT/metadata/REVISIONS.env"
+
+          git branch -a --contains "${GITHUB_SHA}" > "$ROOT/metadata/HANDOFF_BRANCH_CONTAINS.txt" || true
+          git status --porcelain=v1 > "$ROOT/metadata/WORKTREE_STATUS.txt"
+          git log --all --date=iso-strict --format='%H%x09%ad%x09%d%x09%s' -n 250 > "$ROOT/metadata/RECENT_REPOSITORY_COMMITS.tsv"
+
+          for run in 36065421222 36065964176 36065966446 36071102061 36071102460 36073557409 36074387631 36074387523; do
+            gh run view "$run" --repo "${GITHUB_REPOSITORY}" --json databaseId,name,status,conclusion,headSha,headBranch,event,createdAt,updatedAt,url > "$ROOT/ci/run_${run}.json" 2>&1 || true
+            gh run view "$run" --repo "${GITHUB_REPOSITORY}" --log > "$ROOT/ci/run_${run}.log" 2>&1 || true
+          done
+
+          cat > "$ROOT/README_FIRST.txt" <<'EOF'
+ICARUS EVERYTHING EXPORT — 2026-09-24
+
+This archive contains the recoverable repository work, code snapshots, cumulative
+patches, plans/specifications, evidence/findings, and CI logs for the ICARUS work
+streams consolidated by ChatGPT.
+
+Read in this order:
+1. handoff/icarus-control-plane/MASTER_INTEGRATION_INDEX.md
+2. handoff/icarus-control-plane/INTEGRATION_MANIFEST.json
+3. handoff/icarus-control-plane/EVIDENCE_FINDINGS_LEDGER.md
+4. handoff/icarus-control-plane/CONNECTION_CONTRACTS.md
+5. handoff/icarus-control-plane/NEXT_CONNECTION_SEQUENCE.md
+6. each workstreams/*/COMMITS.tsv and FULL.patch
+7. CI run JSON/log files
+
+Each workstream contains:
+- BASE_SHA.txt
+- HEAD_SHA.txt
+- COMMITS.tsv
+- CHANGED_FILES.tsv
+- FULL.patch
+- files/ — final snapshot of every changed file that exists at the workstream head
+
+Important:
+- repository/code evidence is separated from conversation-reported findings.
+- missing canonical code is not fabricated.
+- live trading execution_authorized=false remains invariant.
+- a green CI workaround is not automatically classified as a repaired public contract.
+EOF
+
+          find "$ROOT" -type f -print0 | sort -z | xargs -0 sha256sum > "$ROOT/SHA256SUMS.txt"
+          tar -czf ICARUS_EVERYTHING_2026-09-24.tar.gz "$ROOT"
+
+      - name: Upload complete ICARUS work archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: ICARUS_EVERYTHING_2026-09-24
+          path: ICARUS_EVERYTHING_2026-09-24.tar.gz
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
