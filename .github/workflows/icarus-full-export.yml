@@ -50,20 +50,20 @@ jobs:
           OMNI_HEAD="$(git rev-parse refs/remotes/origin/codex/exotic-research-loop)"
           export_workstream "04_OMNIVISION_EXOTIC_RESEARCH" "007e70189945b8e112904cf92b2b1a12e43792d6" "$OMNI_HEAD"
 
-          cat > "$ROOT/README_FIRST.txt" <<'EOF'
-ICARUS EVERYTHING EXPORT — 2026-09-24
-
-Contains recoverable code snapshots, cumulative patches, commit histories,
-control-plane handoffs, plans/specifications, findings, provider-capability
-state, and exact pinned revisions for the ICARUS work consolidated in this chat.
-
-Each workstream contains BASE_SHA, HEAD_SHA, COMMITS.tsv, CHANGED_FILES.tsv,
-FULL.patch, and final snapshots of every changed file still present at HEAD.
-
-Repository-verified artifacts and conversation-reported findings are kept
-separate. Missing canonical code is not fabricated.
-live trading execution_authorized=false.
-EOF
+          printf '%s\n' \
+            'ICARUS EVERYTHING EXPORT — 2026-09-24' \
+            '' \
+            'Contains recoverable code snapshots, cumulative patches, commit histories,' \
+            'control-plane handoffs, plans/specifications, findings, provider-capability' \
+            'state, and exact pinned revisions for the ICARUS work consolidated in this chat.' \
+            '' \
+            'Each workstream contains BASE_SHA, HEAD_SHA, COMMITS.tsv, CHANGED_FILES.tsv,' \
+            'FULL.patch, and final snapshots of every changed file still present at HEAD.' \
+            '' \
+            'Repository-verified artifacts and conversation-reported findings are kept separate.' \
+            'Missing canonical code is not fabricated.' \
+            'live trading execution_authorized=false.' \
+            > "$ROOT/README_FIRST.txt"
           {
             echo "generated_at_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
             echo "handoff_head=$GITHUB_SHA"
