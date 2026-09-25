@@ -1,8 +1,5 @@
 name: ICARUS Full Work Export
 on:
-  push:
-    branches:
-      - chatgpt/icarus-control-plane-handoff-20260924
   workflow_dispatch: {}
 jobs:
   export:
