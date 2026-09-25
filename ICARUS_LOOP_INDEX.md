@@ -17,12 +17,19 @@ This is the canonical entry point for research/architecture handoffs produced by
 6. [Architectural rulings](docs/icarus/decisions/ARCHITECTURAL_RULINGS_2026-09-24.md)
 7. [Current loop handoff](docs/icarus/handoffs/CURRENT_LOOP_HANDOFF_2026-09-24.md)
 8. [Future loop intake protocol](docs/icarus/handoffs/INBOX_PROTOCOL.md)
+9. [Inbox landing guide](docs/icarus/handoffs/inbox/README.md)
+10. [Cross-loop convergence template](docs/icarus/handoffs/convergence/CONVERGENCE_TEMPLATE.md)
 
 ## Integration rule for the other loops
 Each loop should add a dated handoff under `docs/icarus/handoffs/inbox/` and update
 `docs/icarus/handoffs/INBOX_PROTOCOL.md` only if the intake contract itself changes.
 Do not overwrite another loop's evidence. Conflicts are recorded explicitly and resolved
 into canonical documents only after provenance/revision compatibility is checked.
+
+## Convergence rule
+After all intended loop handoffs arrive, copy the convergence template to a dated record,
+reconcile claim lineage/revisions/configurations, append all newly discovered attempts,
+then freeze the combined S3 registry before resuming new Architecture Extraction Forge work.
 
 ## Authority hierarchy
 1. Pinned repository code and tests.
