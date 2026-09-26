@@ -225,11 +225,12 @@ def test_ingest_drop_merges_and_unique_done(tmp_path):
     assert "NQ.csv" in names and any(n.startswith("NQ.") for n in names)
 
 
-def test_plant_cli_setup_accepts_documented_subcommand_root(tmp_path, capsys):
+def test_plant_cli_setup_accepts_root_after_subcommand(tmp_path, capsys):
     rc = plant_main(["setup", "--root", str(tmp_path)])
     assert rc == 0
     assert (tmp_path / "NEXT.txt").is_file()
-    capsys.readouterr()
+    out = capsys.readouterr().out
+    assert str(tmp_path) in out or "Download chart data" in out
 
 
 def test_plant_cli_setup_writes_next_txt(tmp_path, capsys):
