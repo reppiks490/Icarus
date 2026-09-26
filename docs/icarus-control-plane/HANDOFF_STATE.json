@@ -1,13 +1,38 @@
 {
   "handoff_schema_version": "icarus-pipeline-v1",
+  "integration_manifest_version": "icarus-integration-manifest-v1",
   "pipeline_policy_version": "icarus-control-v1",
-  "prepared_at_ct": "2026-09-24",
+  "prepared_at_ct": "2026-09-24T18:30:00-05:00",
   "prepared_by": "GPT-5.6 Sol",
+  "repository_write_authorized": true,
   "execution_authorized": false,
   "repo": {
     "canonical": "reppiks490/Icarus",
     "baseline_revision": "007e70189945b8e112904cf92b2b1a12e43792d6",
-    "handoff_branch": "chatgpt/icarus-control-plane-handoff-20260924"
+    "handoff_branch": "chatgpt/icarus-control-plane-handoff-20260924",
+    "handoff_parent_revision": "c1c331a7a743bcad3dc1e7128eb5cb6f61ac8225"
+  },
+  "verified_stacks": {
+    "control_runtime": {
+      "revision": "76569e1962e721b0f4dc973df21358f40c31ce81",
+      "pr": 18,
+      "state": "IMPLEMENTED_STACKED_CI_WORKAROUND_PUBLIC_CLI_CONTRACT_OPEN"
+    },
+    "data_vintage": {
+      "revision": "e05c122f7a8e5501d98251c7449cbe7ce3ec6dda",
+      "pr": 19,
+      "state": "IMPLEMENTED_VERIFIED_STACKED",
+      "verified_run": 36065964176
+    },
+    "omnivision": {
+      "current_revision": "9f3c792d44fd9142e0b98676224dfe50d740db3b",
+      "stage0_verified_revision": "511814e1d4f4a2527abaa3b6e3472a66df666281",
+      "state": "STAGE0_VERIFIED_STAGE1_PLANNED",
+      "verified_runs": [
+        36071102061,
+        36071102460
+      ]
+    }
   },
   "sibling_evidence": {
     "AION": {
@@ -16,35 +41,31 @@
       "state": "VERIFIED_BOUNDARY_OPEN_DEFECT",
       "artifact": "AION-GAP-INTEGRITY-v1"
     },
-    "ARGUS": {
-      "repo": null,
-      "revision": null,
-      "state": "PARTIAL_LIVE_IMPLEMENTATION_UNAVAILABLE",
-      "artifact": "ARGUS-PROVENANCE-ADMISSION-v1"
-    },
-    "ATHENA": {
-      "repo": null,
-      "revision": null,
-      "state": "PARTIAL_LIVE_IMPLEMENTATION_UNAVAILABLE",
-      "artifact": "ATHENA-UNCERTAINTY-LINEAGE-v1"
-    },
     "DAEDALUS": {
       "repo": "reppiks490/daedalus-research-os",
       "revision": "74ad94149b02ddd3f69d535ee5fdc00c1fdbe096",
       "state": "VERIFIED_BOUNDARY_OPEN_DEFECT",
       "artifact": "DAEDALUS-PROTECTED-LINEAGE-v4"
     },
+    "ARGUS": {
+      "repo": null,
+      "revision": null,
+      "state": "CANONICAL_REPO_NOT_FOUND_FAIL_CLOSED"
+    },
+    "ATHENA": {
+      "repo": null,
+      "revision": null,
+      "state": "CANONICAL_REPO_NOT_FOUND_FAIL_CLOSED"
+    },
     "NEXUS": {
       "repo": null,
       "revision": null,
-      "state": "UNVERIFIED",
-      "artifact": "NEXUS-CANONICAL-ADMISSION"
+      "state": "CANONICAL_REPO_NOT_FOUND_FAIL_CLOSED"
     },
     "ORACLE": {
       "repo": null,
       "revision": null,
-      "state": "UNVERIFIED",
-      "artifact": "ORACLE-CANONICAL-ADMISSION-v1"
+      "state": "CANONICAL_REPO_NOT_FOUND_FAIL_CLOSED"
     }
   },
   "control_plane": {
@@ -81,13 +102,13 @@
     ]
   },
   "constraints": [
-    "execution_authorized=false",
+    "live trading execution_authorized=false",
     "no synthetic bars as empirical evidence",
     "no invented trainer slots/features",
     "no Pulse rewrite",
     "fail-closed qualification",
     "strict temporal integrity",
-    "deterministic canonical serialization/replay",
+    "deterministic canonical serialization/replay where applicable",
     "tamper-evident provenance",
     "uncertainty cannot increase authority"
   ],

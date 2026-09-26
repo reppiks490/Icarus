@@ -1,0 +1,98 @@
+{
+  "schema_version": "icarus-integration-manifest-v1",
+  "prepared_at_ct": "2026-09-24T18:30:00-05:00",
+  "prepared_by": "GPT-5.6 Sol",
+  "repository_write_authorized": true,
+  "live_trading_execution_authorized": false,
+  "canonical_repo": {
+    "repo": "reppiks490/Icarus",
+    "branch": "main",
+    "revision": "007e70189945b8e112904cf92b2b1a12e43792d6"
+  },
+  "integration_handoff": {
+    "branch": "chatgpt/icarus-control-plane-handoff-20260924",
+    "parent_revision": "c1c331a7a743bcad3dc1e7128eb5cb6f61ac8225",
+    "pr": 17
+  },
+  "branches": {
+    "control_runtime": {
+      "branch": "chatgpt/icarus-control-plane-runtime-20260924",
+      "revision": "76569e1962e721b0f4dc973df21358f40c31ce81",
+      "pr": 18,
+      "status": "IMPLEMENTED_STACKED",
+      "claim_correction": "CI_GLOBAL_ROOT_WORKAROUND_VERIFIED_PUBLIC_SUBCOMMAND_ROOT_CONTRACT_OPEN"
+    },
+    "data_vintage": {
+      "branch": "chatgpt/icarus-data-vintage-20260924",
+      "revision": "e05c122f7a8e5501d98251c7449cbe7ce3ec6dda",
+      "pr": 19,
+      "status": "IMPLEMENTED_VERIFIED_STACKED",
+      "verified_runs": [
+        36065964176
+      ],
+      "residual": [
+        "CRYPTOGRAPHIC_CHAIN_NOT_YET_IMPLEMENTED",
+        "FULL_AS_OF_RECONSTRUCTION_NOT_YET_VERIFIED"
+      ]
+    },
+    "omnivision": {
+      "branch": "codex/exotic-research-loop",
+      "revision": "9f3c792d44fd9142e0b98676224dfe50d740db3b",
+      "status": "STAGE0_VERIFIED_STAGE1_PLANNED",
+      "stage0_verified_runs": [
+        36071102061,
+        36071102460
+      ],
+      "stage0_verified_revision": "511814e1d4f4a2527abaa3b6e3472a66df666281",
+      "stage1_plan": "docs/superpowers/plans/2026-09-24-omnivision-v2-stage1-control-plane.md"
+    }
+  },
+  "sibling_repos": {
+    "AION": {
+      "repo": "reppiks490/aion-parallax-research",
+      "revision": "12a7cb8ef99e84ce50b766db0aea1592b3906f80",
+      "status": "VERIFIED_BOUNDARY_OPEN_DEFECT"
+    },
+    "DAEDALUS": {
+      "repo": "reppiks490/daedalus-research-os",
+      "revision": "74ad94149b02ddd3f69d535ee5fdc00c1fdbe096",
+      "status": "VERIFIED_BOUNDARY_OPEN_DEFECT"
+    },
+    "ARGUS": {
+      "repo": null,
+      "revision": null,
+      "status": "CANONICAL_REPO_NOT_FOUND_FAIL_CLOSED"
+    },
+    "ATHENA": {
+      "repo": null,
+      "revision": null,
+      "status": "CANONICAL_REPO_NOT_FOUND_FAIL_CLOSED"
+    },
+    "NEXUS": {
+      "repo": null,
+      "revision": null,
+      "status": "CANONICAL_REPO_NOT_FOUND_FAIL_CLOSED"
+    },
+    "ORACLE": {
+      "repo": null,
+      "revision": null,
+      "status": "CANONICAL_REPO_NOT_FOUND_FAIL_CLOSED"
+    }
+  },
+  "open_defects": [
+    "CLI_PUBLIC_SUBCOMMAND_ROOT_CONTRACT",
+    "AION_GAP_HISTORY_INTEGRITY_CHAIN",
+    "DAEDALUS_STABLE_SOURCE_LINEAGE_FOR_PROTECTED_EXPOSURE",
+    "VINTAGE_LEDGER_TAMPER_EVIDENCE_AND_AS_OF_RECONSTRUCTION"
+  ],
+  "next_major_layer": "OMNIVISION_STAGE1_EPISTEMIC_CONTROL_PLANE",
+  "prohibited_duplication": [
+    "parallel provider registry",
+    "duplicate provenance architecture",
+    "alternate plant CLI workaround",
+    "duplicate CI workflow for the same defect",
+    "inferred missing subsystem implementation",
+    "synthetic bars as empirical evidence",
+    "Pulse rewrite"
+  ]
+}

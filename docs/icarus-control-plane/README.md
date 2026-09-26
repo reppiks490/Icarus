@@ -1,53 +1,46 @@
 # ICARUS Control-Plane Handoff — 2026-09-24
 
-> Prepared by GPT-5.6 Sol from the read-only subsystem-rotation/control-plane work completed on 2026-09-23/24.
->
-> This package records evidence and continuation instructions. It does **not** authorize live trading, repository-wide rewrites, model promotion, or execution.
+> Durable GitHub handoff for ICARUS engineering/research-control work. Repository evidence outranks chat summaries.
 
-## Purpose
+## Start here
 
-This directory externalizes the durable state from the ChatGPT ICARUS subsystem-rotation work so the next implementation/research agent does not need the original conversation.
+1. [MASTER_INTEGRATION_INDEX.md](MASTER_INTEGRATION_INDEX.md) — current canonical map of what is built, verified, planned, blocked, and where it lives.
+2. [INTEGRATION_MANIFEST.json](INTEGRATION_MANIFEST.json) — machine-readable pinned revisions, verified runs, open defects and connection state.
+3. [CONNECTION_CONTRACTS.md](CONNECTION_CONTRACTS.md) — minimum subsystem/provider handshake.
+4. [EVIDENCE_FINDINGS_LEDGER.md](EVIDENCE_FINDINGS_LEDGER.md) — verified findings vs reported/unreconciled work.
+5. [PROVIDER_CAPABILITY_SNAPSHOT.json](PROVIDER_CAPABILITY_SNAPSHOT.json) — current provider admission/health observations.
+6. [NEXT_CONNECTION_SEQUENCE.md](NEXT_CONNECTION_SEQUENCE.md) — exact recommended order for connecting the remaining system.
+7. [HANDOFF_STATE.json](HANDOFF_STATE.json) — compact continuation state.
+8. [SUBSYSTEM_ROTATION_FINDINGS.md](SUBSYSTEM_ROTATION_FINDINGS.md) — NEXUS/AION/ARGUS/ATHENA/DAEDALUS/ORACLE boundary evidence.
+9. [UNIFIED_CYCLE_RUNBOOK.md](UNIFIED_CYCLE_RUNBOOK.md) — repaired S1->S5 orchestration model.
 
-The work covered:
+## Governing principle
 
-- round-robin subsystem review: `NEXUS -> AION -> ARGUS -> ATHENA -> DAEDALUS -> ORACLE`
-- evidence-backed ownership/interface reconciliation
-- fail-closed subsystem admission rules when canonical evidence is missing
-- AION replay/provenance defects
-- ARGUS ingress provenance requirements
-- ATHENA uncertainty-lineage requirements
-- DAEDALUS protected-evidence lineage risk
-- ORACLE canonical-identity blocker
-- diagnosis of the failed multi-automation control-plane handoff
-- replacement design: one unified hourly S1->S5 control cycle with an in-run shared policy epoch and pinned snapshot
+GitHub is the persistent source of truth, engineering memory, validation layer, provenance layer, research checkpoint registry and multi-agent coordination fabric.
 
-## Non-negotiable constraints
+Do not optimize for the appearance of complexity. Complexity must reduce failure, compute, tokens, manual work, recovery time, research error or agent confusion—or measurably improve correctness, observability, reproducibility, research quality, reuse or extensibility.
 
-These constraints were preserved throughout the work and must remain preserved:
+## Authority boundary
 
-- `execution_authorized=false`
-- no synthetic bars represented as empirical market evidence
-- no invented trainer slots/features
-- no Pulse rewrite
-- fail-closed qualification
-- deterministic canonical serialization/replay where applicable
-- strict event/availability-time integrity
-- immutable/tamper-evident provenance/audit where required
-- uncertainty may never increase authority
-- repository evidence outranks summaries/handoffs
-- do not infer subsystem responsibility from its name
+Repository writes are authorized for this handoff update.
 
-## Current canonical repo snapshot used for ICARUS
+Live trading/order authority remains **false**.
 
-At the final control-plane diagnosis, the visible `reppiks490/Icarus` default branch head was:
+No documentation, test, PR, checkpoint or research maturity state may silently grant broker/order execution.
 
-```
-007e70189945b8e112904cf92b2b1a12e43792d6
-```
+## Current high-level state
 
-This handoff branch was created from that commit. Do not silently treat later code as equivalent evidence; revalidate affected findings if `main` has advanced.
+- PR #17: durable handoff package
+- PR #18: repo-verifiable control receipt chain; CI global-root workaround verified; documented subcommand-root contract still open
+- PR #19: point-in-time market-data vintage layer implemented and green; stronger cryptographic verification still pending
+- OMNIVISION Stage 0: verified GO on temporal/boundary scope
+- OMNIVISION Stage 1: planned, not implemented
+- AION: canonical repo pinned; gap-history integrity defect open
+- DAEDALUS: canonical repo pinned; protected-evidence source-lineage defect open
+- ARGUS/ATHENA/NEXUS/ORACLE: canonical repositories not established in latest discovery; fail closed
+- provider capability architecture: specified from live admission evidence; adapter breadth deferred until Stage 1 governance exists
 
-## External sibling evidence used
+## Continuation discipline
 
 AION:
 - repo: `reppiks490/aion-parallax-research`
@@ -94,9 +87,15 @@ Before implementing any finding:
 3. reproduce the defect/invariant on that compatible revision,
 4. write the independent failing regression test first,
 5. implement the smallest fix only after the behavior is proven,
+Before changing a component:
+1. pin current revision,
+2. check ownership,
+3. reproduce the defect/invariant,
+4. write the independent failing test first for behavior changes,
+5. implement the smallest fix,
 6. run focused + full applicable verification,
-7. preserve `execution_authorized=false`,
-8. update this handoff with the new evidence revision and test output.
+7. update compact state/evidence,
+8. preserve trading execution authority as false.
 
 Do not weaken a safety/provenance/holdout gate just to make a test or candidate pass.
 
@@ -136,3 +135,4 @@ This prevents the act of recording evidence from moving the code revision under 
 The versioned contracts are:
 - `contracts/icarus-control-v1.json`
 - `contracts/icarus-pipeline-v1.json`
+Do not weaken provenance, causality, holdout, uncertainty or execution-separation gates merely to obtain green.
