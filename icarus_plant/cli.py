@@ -258,21 +258,33 @@ def main(argv: Optional[list] = None) -> int:
     p.add_argument("--root", default=None, help="plant data dir (else $ICARUS_HOME else cwd)")
     sub = p.add_subparsers(dest="cmd", required=True)
 
+    def add_root_option(parser: argparse.ArgumentParser) -> None:
+        parser.add_argument(
+            "--root",
+            default=argparse.SUPPRESS,
+            help="plant data dir (else $ICARUS_HOME else cwd)",
+        )
+
     i = sub.add_parser("init", help="create history/drop, run, logs under the plant root")
+    add_root_option(i)
     i.set_defaults(fn=cmd_init)
 
     u = sub.add_parser("setup", help="print numbered next steps (and write NEXT.txt)")
+    add_root_option(u)
     u.add_argument("--open", action="store_true", help="open history/drop/ in Explorer / Finder")
     u.set_defaults(fn=cmd_setup)
 
     od = sub.add_parser("open-drop", help="open history/drop/ in the OS file manager")
+    add_root_option(od)
     od.set_defaults(fn=cmd_open_drop)
 
     d = sub.add_parser("ingest-drop", help="history/drop/*.csv → history/{SYM}_{N}m.csv")
+    add_root_option(d)
     d.add_argument("--downloads", action="store_true", help="also pull chart CSVs from Downloads/Desktop")
     d.set_defaults(fn=cmd_ingest_drop)
 
     s = sub.add_parser("start", help="supervise engine (+ optional bridge) in the foreground")
+    add_root_option(s)
     s.add_argument("--assets", default="NQ")
     s.add_argument("--preset", default="NQ-20m-ultracoded")
     s.add_argument("--offline", action="store_true", help="FileFeed only — no Yahoo. Live bars come from drop ingest.")
@@ -286,19 +298,23 @@ def main(argv: Optional[list] = None) -> int:
     s.set_defaults(fn=cmd_start)
 
     t = sub.add_parser("stop", help="SIGTERM engine/bridge pids recorded under run/")
+    add_root_option(t)
     t.set_defaults(fn=cmd_stop)
 
     u = sub.add_parser("status", help="pid files + /healthz")
+    add_root_option(u)
     u.add_argument("--engine-port", type=int, default=8791)
     u.add_argument("--bridge-port", type=int, default=8787)
     u.add_argument("--json", action="store_true")
     u.set_defaults(fn=cmd_status)
 
     o = sub.add_parser("doctor", help="ingest-drop then icarus-engine doctor against the plant root")
+    add_root_option(o)
     o.add_argument("--json", action="store_true")
     o.set_defaults(fn=cmd_doctor)
 
     pe = sub.add_parser("paper-export", help="CSV of the local paper book (not a broker statement)")
+    add_root_option(pe)
     pe.add_argument("--out", default=None)
     pe.add_argument("--live-only", action="store_true")
     pe.set_defaults(fn=cmd_paper_export)
