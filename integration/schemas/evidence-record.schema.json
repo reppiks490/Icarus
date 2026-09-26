@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://icarus.local/schemas/evidence-record.schema.json",
+  "title": "ICARUS Evidence Record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "evidence_id",
+    "source_id",
+    "source_revision",
+    "observed_at",
+    "available_at",
+    "raw_artifact_hash",
+    "payload"
+  ],
+  "properties": {
+    "schema_version": {"type": "string"},
+    "evidence_id": {"type": "string", "minLength": 1},
+    "source_id": {"type": "string", "minLength": 1},
+    "source_revision": {"type": "string", "minLength": 1},
+    "instrument_id": {"type": ["string", "null"]},
+    "contract_id": {"type": ["string", "null"]},
+    "session_id": {"type": ["string", "null"]},
+    "timezone": {"type": ["string", "null"]},
+    "observed_at": {"type": "string", "format": "date-time"},
+    "available_at": {"type": "string", "format": "date-time"},
+    "decision_context_at": {"type": ["string", "null"], "format": "date-time"},
+    "raw_artifact_hash": {"type": "string", "minLength": 1},
+    "transform_id": {"type": ["string", "null"]},
+    "transform_revision": {"type": ["string", "null"]},
+    "quality": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "stale": {"type": "boolean"},
+        "conflicted": {"type": "boolean"},
+        "missing_fields": {"type": "array", "items": {"type": "string"}},
+        "confidence": {"type": ["number", "null"], "minimum": 0, "maximum": 1}
+      }
+    },
+    "payload": {}
+  }
+}
