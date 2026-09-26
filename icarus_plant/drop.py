@@ -17,6 +17,7 @@ from typing import Any, Dict, List, Optional
 
 from icarus_engine.assets import resolve
 from icarus_engine.feeds.bars import detect_granularity, history_path, merge_bars, parse_ohlcv_csv, read_text_csv, write_canonical
+from icarus_engine.feeds.vintage import MarketDataVintageLedger
 
 from .layout import ensure, plant_root
 
@@ -54,7 +55,14 @@ def infer_symbol(filename: str) -> str:
     return resolve(stem).symbol
 
 
-def ingest_file(path: str, *, root: Optional[str] = None, symbol: Optional[str] = None, tz=None) -> Dict[str, Any]:
+def ingest_file(
+    path: str,
+    *,
+    root: Optional[str] = None,
+    symbol: Optional[str] = None,
+    tz=None,
+    source_kind: str = "OWNER_CSV",
+) -> Dict[str, Any]:
     root = plant_root(root)
     ensure(root)
     if symbol is None and is_candidate_export(path):
@@ -65,6 +73,17 @@ def ingest_file(path: str, *, root: Optional[str] = None, symbol: Optional[str] 
     sym = symbol or infer_symbol(path)
     minutes = max(1, detect_granularity(bars) // 60)
     dest = history_path(root, sym, minutes)
+
+    # Provenance is recorded before the latest-view CSV can be rewritten. If the
+    # append-only ledger cannot be committed, ingestion fails closed.
+    vintage = MarketDataVintageLedger(root).record_source(
+        path,
+        symbol=sym,
+        minutes=minutes,
+        bars=bars,
+        source_kind=source_kind,
+    )
+
     merged_from = 0
     if os.path.isfile(dest):
         old = parse_ohlcv_csv(read_text_csv(dest))
@@ -74,6 +93,10 @@ def ingest_file(path: str, *, root: Optional[str] = None, symbol: Optional[str] 
     return {
         "symbol": sym, "minutes": minutes, "bars": n, "merged_from": merged_from,
         "added": max(0, n - merged_from), "dest": dest, "src": os.path.abspath(path),
+        "vintage_batch_id": vintage["batch_id"],
+        "source_sha256": vintage["source_sha256"],
+        "observations_recorded": vintage["observations_inserted"],
+        "duplicate_source_batch": vintage["duplicate_batch"],
     }
 
 

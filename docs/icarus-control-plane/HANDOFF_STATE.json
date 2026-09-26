@@ -68,18 +68,39 @@
       "state": "CANONICAL_REPO_NOT_FOUND_FAIL_CLOSED"
     }
   },
-  "next_proof_obligations": [
-    "repair public plant subcommand-local --root contract",
-    "execute OMNIVISION Stage 1 control plane",
-    "add cryptographic verification/as-of reconstruction to data vintage layer",
-    "AION gap-history tamper detection",
-    "DAEDALUS descendant-snapshot protected-evidence lineage",
-    "recover current ARGUS implementation",
-    "recover current ATHENA implementation",
-    "establish canonical NEXUS implementation/ownership",
-    "establish canonical ORACLE implementation/ownership",
-    "rebuild clean empirical calibration/evaluation qualification"
-  ],
+  "control_plane": {
+    "old_independent_stage_automations": "DISABLED",
+    "replacement": "single unified hourly S1->S5 cycle",
+    "rotation_epoch_ct": "2026-09-24T07:00:00-05:00",
+    "rotation": [
+      "NEXUS",
+      "AION",
+      "ARGUS",
+      "ATHENA",
+      "DAEDALUS",
+      "ORACLE"
+    ],
+    "external_scheduler_is_repo_native": false,
+    "repo_native_verifier": {
+      "branch": "chatgpt/icarus-control-plane-runtime-20260924",
+      "package": "icarus_control",
+      "cli": "icarus-control",
+      "status": "IMPLEMENTED_CI_GREEN_AWAITING_FINAL_HEAD_CHECK",
+      "scheduler_scope": "EXTERNAL_ONLY",
+      "recommended_evidence_branch": "control-evidence",
+      "receipt_path_template": "control/receipts/<CYCLE_ID>/S<1-5>.json",
+      "verification": {
+        "workflow_run_id": 36064742770,
+        "linux": "PASS_FULL_ENGINE_SUITE_CONTROL_CLI_PLANT_DOCTOR",
+        "windows": "PASS_FOCUSED_ENGINE_AND_PLANT_SETUP",
+        "note": "A later documentation/matrix commit requires a final-head CI check before acceptance."
+      }
+    },
+    "receipt_contracts": [
+      "docs/icarus-control-plane/contracts/icarus-control-v1.json",
+      "docs/icarus-control-plane/contracts/icarus-pipeline-v1.json"
+    ]
+  },
   "constraints": [
     "live trading execution_authorized=false",
     "no synthetic bars as empirical evidence",
@@ -89,7 +110,15 @@
     "strict temporal integrity",
     "deterministic canonical serialization/replay where applicable",
     "tamper-evident provenance",
-    "uncertainty cannot increase authority",
-    "repository evidence outranks handoff prose"
+    "uncertainty cannot increase authority"
+  ],
+  "next_proof_obligations": [
+    "final-head CI for repo-native control verifier branch",
+    "AION gap-history tamper detection",
+    "DAEDALUS descendant-snapshot protected-evidence lineage",
+    "recover current ARGUS implementation",
+    "recover current ATHENA implementation",
+    "establish canonical NEXUS implementation/ownership",
+    "establish canonical ORACLE implementation/ownership"
   ]
 }
