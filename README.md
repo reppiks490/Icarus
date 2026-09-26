@@ -83,6 +83,19 @@ Paid next (Alpaca paper, TradersPost / PickMyTrade futures, Plus CSV, ML boundar
 
 Hands: **Astra** (engine, Pine port, emulator, bridge, tests) · **Grok (xAI)** (free-gap ingest/doctor/CI/hygiene + local plant — see [GROK.md](GROK.md)).
 
+## ICARUS research-loop integration
+
+The empirical/architecture loop corpus is staged through
+[ICARUS_LOOP_INDEX.md](ICARUS_LOOP_INDEX.md).
+
+That index is the canonical entry point for the progressive S3 edge registry and
+attempt ledger, direct repository audits, provider capability state, S4 architecture
+specifications and plans, the current loop handoff, and the inbox protocol for the
+remaining loops.
+
+These artifacts are research/design evidence only unless a later stage explicitly
+proves and authorizes runtime integration. Current handoff state preserves
+`execution_authorized=false`.
 
 ## Assurance archive
 
