@@ -96,3 +96,9 @@ remaining loops.
 These artifacts are research/design evidence only unless a later stage explicitly
 proves and authorizes runtime integration. Current handoff state preserves
 `execution_authorized=false`.
+
+## Assurance archive
+
+Prior ICARUS/AEGIS research, red-team findings, handoffs, Stage-5 verification material, related-build registry, and the implementation-assurance control-plane map are consolidated at [ASSURANCE_INDEX.md](ASSURANCE_INDEX.md).
+
+The archive is evidence/context, not execution authorization or proof of implementation. `execution_authorized=false` remains unchanged.
