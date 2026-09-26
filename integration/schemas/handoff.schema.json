@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://icarus.local/schemas/handoff.schema.json",
+  "title": "ICARUS Agent Handoff",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "handoff_id",
+    "producer",
+    "producer_repository",
+    "producer_revision",
+    "target_repository",
+    "artifacts",
+    "claims",
+    "authority_requested",
+    "limitations"
+  ],
+  "properties": {
+    "schema_version": {"type": "string"},
+    "handoff_id": {"type": "string", "minLength": 1},
+    "producer": {"type": "string", "minLength": 1},
+    "producer_repository": {"type": "string", "minLength": 1},
+    "producer_revision": {"type": "string", "minLength": 1},
+    "target_repository": {"type": "string", "minLength": 1},
+    "target_revision": {"type": ["string", "null"]},
+    "created_at": {"type": ["string", "null"], "format": "date-time"},
+    "expires_at": {"type": ["string", "null"], "format": "date-time"},
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "hash"],
+        "properties": {
+          "path": {"type": "string"},
+          "hash": {"type": "string"},
+          "media_type": {"type": ["string", "null"]}
+        }
+      }
+    },
+    "evidence_ids": {"type": "array", "items": {"type": "string"}},
+    "claims": {"type": "array", "items": {"type": "string"}},
+    "assumptions": {"type": "array", "items": {"type": "string"}},
+    "tests": {"type": "array", "items": {"type": "string"}},
+    "authority_requested": {
+      "enum": ["OBSERVE", "RESEARCH", "PROPOSE", "IMPLEMENT", "ASSURE", "RELEASE"]
+    },
+    "authority_granted": {
+      "enum": ["NONE", "OBSERVE", "RESEARCH", "PROPOSE", "IMPLEMENT", "ASSURE", "RELEASE"]
+    },
+    "limitations": {"type": "array", "items": {"type": "string"}}
+  }
+}

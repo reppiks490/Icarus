@@ -59,6 +59,7 @@ icarus-engine parity --asset NQ --tv-csv "List of Trades.csv"
 icarus-engine import-tv strategy-report.xlsx --name NQ-20m-mine
 icarus-engine run --assets NQ --tf 20
 icarus-engine run --assets NQ --feed file   # HistoryHub; same as plant --offline
+icarus-control validate-cycle control/receipts/20260924-16  # handoff structure only
 ```
 
 Default chart session is **RTH** (09:30–16:15 ET, 20m at `:10/:30/:50`, last bar a 5-minute stub). Yahoo 1-minute history is ~30 days and ~10 minutes delayed. Empty minutes are not invented. `$ICARUS_HOME` is the data dir (history, journal, presets) when the plant sets it.
@@ -82,3 +83,29 @@ Paste `pine/ALERT_TEMPLATE.json` into the strategy alert. `NQ1!` → `QQQ` is th
 Paid next (Alpaca paper, TradersPost / PickMyTrade futures, Plus CSV, ML boundary): [PAID_NEXT.md](PAID_NEXT.md). Dummy command list: [COMMANDS.md](COMMANDS.md).
 
 Hands: **Astra** (engine, Pine port, emulator, bridge, tests) · **Grok (xAI)** (free-gap ingest/doctor/CI/hygiene + local plant — see [GROK.md](GROK.md)).
+
+
+## Control-plane assurance
+
+`icarus-control` is a read-only verifier for ICARUS S1->S5 evidence receipts. It validates the versioned control policy, handoff schema, pinned repository subject, digest links, evidence-lineage structure, and oracle metadata.
+
+It does **not** run the scheduler, change strategy state, authorize execution, or prove a trading claim. See `docs/icarus-control-plane/README.md`.
+## ICARUS research-loop integration
+
+The empirical/architecture loop corpus is staged through
+[ICARUS_LOOP_INDEX.md](ICARUS_LOOP_INDEX.md).
+
+That index is the canonical entry point for the progressive S3 edge registry and
+attempt ledger, direct repository audits, provider capability state, S4 architecture
+specifications and plans, the current loop handoff, and the inbox protocol for the
+remaining loops.
+
+These artifacts are research/design evidence only unless a later stage explicitly
+proves and authorizes runtime integration. Current handoff state preserves
+`execution_authorized=false`.
+
+## Assurance archive
+
+Prior ICARUS/AEGIS research, red-team findings, handoffs, Stage-5 verification material, related-build registry, and the implementation-assurance control-plane map are consolidated at [ASSURANCE_INDEX.md](ASSURANCE_INDEX.md).
+
+The archive is evidence/context, not execution authorization or proof of implementation. `execution_authorized=false` remains unchanged.

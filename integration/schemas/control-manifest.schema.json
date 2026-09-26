@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://icarus.local/schemas/control-manifest.schema.json",
+  "title": "ICARUS Control Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "control_revision",
+    "code_revision",
+    "data_snapshot_id",
+    "stage",
+    "status",
+    "digest"
+  ],
+  "properties": {
+    "schema_version": {"type": "string"},
+    "control_revision": {"type": "string", "minLength": 1},
+    "code_revision": {"type": "string", "minLength": 1},
+    "data_snapshot_id": {"type": "string", "minLength": 1},
+    "stage": {"enum": ["S1", "S2", "S3", "S4", "S5"]},
+    "status": {"enum": ["PENDING", "VALID", "INVALID", "BLOCKED"]},
+    "parent_digest": {"type": ["string", "null"]},
+    "digest": {"type": "string", "minLength": 1},
+    "evidence_ids": {"type": "array", "items": {"type": "string"}},
+    "claim_ids": {"type": "array", "items": {"type": "string"}},
+    "handoff_ids": {"type": "array", "items": {"type": "string"}},
+    "authority_ceiling": {
+      "enum": ["OBSERVE", "RESEARCH", "PROPOSE", "IMPLEMENT", "ASSURE", "RELEASE"]
+    },
+    "created_at": {"type": ["string", "null"], "format": "date-time"}
+  }
+}

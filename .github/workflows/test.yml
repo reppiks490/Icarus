@@ -16,6 +16,8 @@ jobs:
         env:
           TZ: UTC
       - run: python -m icarus_plant --root /tmp/icarus-plant-ci setup
+      - run: icarus-control --help
+      - run: python -m icarus_plant setup --root /tmp/icarus-plant-ci
       - run: python -m icarus_engine.cli doctor --json
         env:
           TZ: UTC

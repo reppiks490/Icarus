@@ -1,0 +1,111 @@
+{
+  "schema_version": "icarus-provider-capability-snapshot-v1",
+  "observed_at_ct": "2026-09-24T18:30:00-05:00",
+  "purpose": "research architecture evidence only; not trading signal state",
+  "providers": {
+    "StackerScan": {
+      "state": "AVAILABLE",
+      "role": "primary_or_reference_market_observation",
+      "notes": "precious-metals spot/reference observations responded"
+    },
+    "Bybit": {
+      "state": "AVAILABLE",
+      "role": "venue_specific_crypto_market_state",
+      "notes": "BTC perpetual price/funding/orderbook calls responded; venue-specific, not generic BTC truth"
+    },
+    "TwelveData": {
+      "state": "AVAILABLE_AUTHENTICATED",
+      "role": "market_data_provider",
+      "notes": "authenticated connection observed"
+    },
+    "Bigdata": {
+      "state": "AVAILABLE",
+      "role": "aggregated_market_macro_context",
+      "notes": "market tearsheet/economic context responded; aggregator role must not be treated as primary source automatically"
+    },
+    "Zacks": {
+      "state": "AVAILABLE",
+      "role": "equity_research_context",
+      "notes": "research/attention context only unless a specific hypothesis justifies use"
+    },
+    "Massive": {
+      "state": "PARTIAL_ENTITLEMENT",
+      "role": "market_data_catalog",
+      "notes": "endpoint discovery available; some requested live GC/MGC/BTC data calls were plan blocked"
+    },
+    "FMP": {
+      "state": "PARTIAL_ENTITLEMENT",
+      "role": "market_macro_reference",
+      "notes": "some quotes/economics responded while other commodity/COT surfaces were subscription constrained"
+    },
+    "USGoldBureau": {
+      "state": "ACCESS_BLOCKED",
+      "role": "precious_metals_reference",
+      "notes": "IP/source access policy blocked current runtime"
+    },
+    "Scite": {
+      "state": "QUOTA_BLOCKED",
+      "role": "scientific_literature_validation",
+      "notes": "monthly MCP quota exhausted during current pass; no unavailable citation may be fabricated"
+    },
+    "DataBlue": {
+      "state": "QUALITY_OR_CONNECTIVITY_REJECTED",
+      "role": "web_retrieval_candidate",
+      "notes": "current CFTC/search attempt was unusable/connection-failed; not promoted"
+    },
+    "Blockscout": {
+      "state": "AVAILABLE",
+      "role": "EVM_onchain_evidence",
+      "notes": "EVM chain context only; not Bitcoin L1"
+    },
+    "Figma": {
+      "state": "AVAILABLE",
+      "role": "design_workspace",
+      "notes": "do not spend/write merely for decoration; architecture truth first"
+    },
+    "Runway": {
+      "state": "CONNECTED_LIMITED",
+      "role": "media_generation",
+      "notes": "connected workspace observed with no useful paid video capacity in current pass"
+    },
+    "CheatDatabase": {
+      "state": "OUT_OF_SCOPE",
+      "role": "negative_control",
+      "notes": "functional but irrelevant to ICARUS market/research evidence without a legitimate explicit hypothesis"
+    },
+    "MarketingSwarm": {
+      "state": "OUT_OF_SCOPE",
+      "role": "none_for_current_quant_control_plane",
+      "notes": "not admitted merely because connected"
+    },
+    "OrchestratorLiteCloud": {
+      "state": "NOT_ACTIVATED",
+      "role": "cloud_work_only",
+      "notes": "current work was not Cloud Work"
+    },
+    "treg": {
+      "state": "CAPABILITY_NOT_EXPOSED_IN_CURRENT_CHAT",
+      "role": "potential_routing_cost_reliability",
+      "notes": "skill visible but direct callable capability not established"
+    },
+    "Trendata": {
+      "state": "NOT_EVALUATED",
+      "role": "unknown",
+      "notes": "named by user but not promoted without direct evidence"
+    },
+    "StockMarketSummary": {
+      "state": "AVAILABLE_SKILL_CONTEXT",
+      "role": "current_market_summary",
+      "notes": "current-market use must preserve real-time/delayed/session semantics"
+    }
+  },
+  "rules": [
+    "installed != reachable",
+    "reachable != entitled",
+    "entitled != relevant",
+    "relevant != independent",
+    "independent != authoritative",
+    "current outage does not rewrite historical capability state",
+    "provider health state is versioned evidence"
+  ]
+}
