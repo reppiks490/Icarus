@@ -84,8 +84,8 @@ Paid next (Alpaca paper, TradersPost / PickMyTrade futures, Plus CSV, ML boundar
 Hands: **Astra** (engine, Pine port, emulator, bridge, tests) · **Grok (xAI)** (free-gap ingest/doctor/CI/hygiene + local plant — see [GROK.md](GROK.md)).
 
 
-## ICARUS control / research handoff
+## Assurance archive
 
-The current control-plane architecture, XGB Slot 1 implementation plan, empirical-integrity findings, automation status, and multi-agent onboarding map are collected in [docs/icarus-handoff/README.md](docs/icarus-handoff/README.md).
+Prior ICARUS/AEGIS research, red-team findings, handoffs, Stage-5 verification material, related-build registry, and the implementation-assurance control-plane map are consolidated at [ASSURANCE_INDEX.md](ASSURANCE_INDEX.md).
 
-This handoff is documentation/research state only. It does not authorize trading, deployment, or execution changes.
+The archive is evidence/context, not execution authorization or proof of implementation. `execution_authorized=false` remains unchanged.
