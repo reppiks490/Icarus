@@ -1,0 +1,90 @@
+{
+  "schema_version": "icarus-connection-manifest-v1",
+  "generated_cycle_id": "20260924-18",
+  "execution_authorized": false,
+  "host": {
+    "repo": "reppiks490/Icarus",
+    "baseline_commit": "007e70189945b8e112904cf92b2b1a12e43792d6",
+    "baseline_tree": "43c5be83943d50515525c57d5f20271032a2ff78"
+  },
+  "admission_defaults": {
+    "fail_closed": true,
+    "require_immutable_source_identity": true,
+    "require_temporal_semantics": true,
+    "require_provenance": true,
+    "require_uncertainty_contract": true,
+    "require_failure_contract": true,
+    "execution_authority_default": false
+  },
+  "subsystems": [
+    {
+      "id": "ICARUS",
+      "source": "reppiks490/Icarus",
+      "ref": "007e70189945b8e112904cf92b2b1a12e43792d6",
+      "status": "CANONICAL_HOST",
+      "role": "execution bridge, paper/shadow telemetry, audit/trainer framework",
+      "blockers": [
+        "ICARUS-RISK-001"
+      ]
+    },
+    {
+      "id": "AION",
+      "source": "reppiks490/aion-parallax-research",
+      "ref": "12a7cb8ef99e84ce50b766db0aea1592b3906f80",
+      "status": "CONTRACT_EVIDENCED",
+      "role": "time/identity/as-of/replay evidence substrate",
+      "blockers": [
+        "AION-INTEGRITY-001"
+      ]
+    },
+    {
+      "id": "DAEDALUS",
+      "source": "reppiks490/daedalus-research-os",
+      "ref": "74ad94149b02ddd3f69d535ee5fdc00c1fdbe096",
+      "status": "CONTRACT_EVIDENCED",
+      "role": "protected research evidence and promotion workflow",
+      "blockers": []
+    },
+    {
+      "id": "ATHENA",
+      "source": "cross-repo integration docs",
+      "ref": "see PROVENANCE_LEDGER.json",
+      "status": "CONTRACT_EVIDENCED_SOURCE_ADMISSION_REQUIRED",
+      "role": "advisory/supervisory state and risk routing",
+      "blockers": [
+        "canonical implementation/source admission"
+      ]
+    },
+    {
+      "id": "ARGUS",
+      "source": "cross-repo integration docs",
+      "ref": "see PROVENANCE_LEDGER.json",
+      "status": "CONTRACT_EVIDENCED_SOURCE_ADMISSION_REQUIRED",
+      "role": "validated microstructure semantics",
+      "blockers": [
+        "canonical implementation/source admission"
+      ]
+    },
+    {
+      "id": "NEXUS",
+      "source": "reppiks490/icarus-csv-evidence-lab",
+      "ref": "d6a5868e3f3202ef82579aca40b83cb3f8a4b491",
+      "status": "EVIDENCE_ONLY_SOURCE_REQUIRED",
+      "role": "corpus catalog, representation, replay and sibling-routing fabric",
+      "blockers": [
+        "NEXUS-RELEASE-001",
+        "canonical NEXUS source identity"
+      ]
+    },
+    {
+      "id": "ORACLE",
+      "source": null,
+      "ref": null,
+      "status": "BLOCKED_CANONICAL_ROLE_UNKNOWN",
+      "role": null,
+      "blockers": [
+        "canonical repository/package responsibility and interface evidence"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,76 @@
+# TDD Test Plan
+
+## Timestamp / chart identity
+- test_epoch_seconds_normalize
+- test_epoch_milliseconds_normalize_to_same_second
+- test_epoch_microseconds_normalize_to_same_second
+- test_epoch_nanoseconds_normalize_to_same_second
+- test_out_of_range_numeric_timestamp_rejected
+- test_iso_timestamp_normalizes_same_in_feed_and_trainer
+- test_naive_timestamp_records_timezone_basis
+- test_lowercase_1m_is_one_minute
+- test_uppercase_1M_is_not_one_minute
+- test_unsupported_monthly_chart_fails_closed
+- test_60m_identity_is_3600
+- test_61m_identity_is_3660
+- test_61m_not_snapped_to_60m_for_experiment_identity
+
+## Row integrity
+- test_identical_duplicate_counted_and_collapsed
+- test_conflicting_duplicate_rejects
+- test_duplicate_equivalence_includes_all_frozen_features
+- test_source_order_inversion_recorded_before_sort
+- test_final_rows_strictly_increasing
+- test_invalid_ohlc_geometry_rejected
+
+## Provider/schema
+- test_quote_snapshot_cannot_enter_ohlc_trainer
+- test_received_time_is_not_source_event_time
+- test_unknown_source_time_explicit
+- test_available_time_not_before_received_time
+- test_last_preserves_last_semantics
+- test_mark_bid_ask_fallbacks_preserve_kind
+- test_total_volume_not_bar_volume
+- test_cumulative_volume_reset_not_negative_bar_volume
+- test_auth_failed_differs_from_no_observation
+- test_entitlement_blocked_differs_from_network_failure
+- test_provider_failure_cannot_increase_authority
+
+## Events/time
+- test_completed_bar_not_available_at_bar_open
+- test_future_event_rejected
+- test_scheduled_event_requires_known_at
+- test_realized_event_requires_result_available_at
+- test_label_available_time_next_bar_close
+- test_train_label_crossing_validation_start_purged
+- test_validation_label_crossing_holdout_start_purged
+- test_irregular_bar_without_completion_time_unresolved
+
+## Candidate
+- test_same_interval_agreement_not_predictive
+- test_candidate_closed_before_decision_can_lead
+- test_candidate_closing_after_decision_rejected
+- test_candidate_selection_frozen_before_validation
+- test_holdout_not_used_for_candidate_reselection
+
+## Baseline/XGB
+- test_null_baseline_uses_train_only_class_rate
+- test_logistic_reproducible
+- test_preprocessor_train_only
+- test_holdout_never_in_early_stopping
+- test_holdout_never_in_calibrator_fit
+- test_raw_and_calibrated_predictions_retained
+- test_xgb_artifact_records_exact_dependency_version
+- test_model_reload_predictions_equivalent
+- test_wrong_dataset_hash_rejects_artifact
+- test_wrong_timeframe_rejects_artifact
+- test_failed_status_rejects_artifact
+- test_empty_or_malformed_artifact_rejected
+
+## Economics/robustness
+- test_capacity_unknown_without_depth
+- test_intrabar_path_sensitivity_reported
+- test_uncertainty_cannot_increase_authority
+- test_staleness_cannot_increase_authority
+- test_corruption_monotonicity
+- test_failed_experiment_remains_in_trial_ledger

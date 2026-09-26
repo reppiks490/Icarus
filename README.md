@@ -90,3 +90,22 @@ Hands: **Astra** (engine, Pine port, emulator, bridge, tests) · **Grok (xAI)** 
 `icarus-control` is a read-only verifier for ICARUS S1->S5 evidence receipts. It validates the versioned control policy, handoff schema, pinned repository subject, digest links, evidence-lineage structure, and oracle metadata.
 
 It does **not** run the scheduler, change strategy state, authorize execution, or prove a trading claim. See `docs/icarus-control-plane/README.md`.
+## ICARUS research-loop integration
+
+The empirical/architecture loop corpus is staged through
+[ICARUS_LOOP_INDEX.md](ICARUS_LOOP_INDEX.md).
+
+That index is the canonical entry point for the progressive S3 edge registry and
+attempt ledger, direct repository audits, provider capability state, S4 architecture
+specifications and plans, the current loop handoff, and the inbox protocol for the
+remaining loops.
+
+These artifacts are research/design evidence only unless a later stage explicitly
+proves and authorizes runtime integration. Current handoff state preserves
+`execution_authorized=false`.
+
+## Assurance archive
+
+Prior ICARUS/AEGIS research, red-team findings, handoffs, Stage-5 verification material, related-build registry, and the implementation-assurance control-plane map are consolidated at [ASSURANCE_INDEX.md](ASSURANCE_INDEX.md).
+
+The archive is evidence/context, not execution authorization or proof of implementation. `execution_authorized=false` remains unchanged.
