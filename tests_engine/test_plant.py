@@ -318,3 +318,22 @@ def test_ingest_downloads_only_registry_charts(tmp_path):
     assert dest.is_file()
     again = ingest_downloads(str(plant), dirs=[str(inbox)])
     assert again == []
+
+
+def test_plant_cli_setup_survives_cp1252_stdout(tmp_path):
+    """CLI setup must not crash when the inherited stdout encoding is cp1252."""
+    import subprocess
+    from pathlib import Path
+
+    env = os.environ.copy()
+    env["PYTHONIOENCODING"] = "cp1252"
+    proc = subprocess.run(
+        [sys.executable, "-m", "icarus_plant", "--root", str(tmp_path), "setup"],
+        cwd=str(Path(__file__).parents[1]),
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    stderr = proc.stderr.decode("utf-8", errors="replace")
+    assert proc.returncode == 0, stderr

@@ -15,6 +15,7 @@ jobs:
       - run: python -m pytest tests_engine -q
         env:
           TZ: UTC
+      - run: python -m icarus_plant --root /tmp/icarus-plant-ci setup
       - run: icarus-control --help
       - run: python -m icarus_plant setup --root /tmp/icarus-plant-ci
       - run: python -m icarus_engine.cli doctor --json
@@ -31,4 +32,4 @@ jobs:
       - run: python -m pytest tests_engine/test_plant.py tests_engine/test_bars.py tests_engine/test_doctor.py -q
         env:
           TZ: UTC
-      - run: python -m icarus_plant setup --root ${{ runner.temp }}/icarus-plant-ci
+      - run: python -m icarus_plant --root ${{ runner.temp }}/icarus-plant-ci setup
