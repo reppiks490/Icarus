@@ -76,3 +76,19 @@ Tests: `tests_engine` 531 passed, 2 deselected. The deselected `test_bars.py` in
 on main and write into the real checkout's `history/NQ_1m.csv` (the CLI ignores the test's chdir).
 Before Slot 2: `audit/run.py::score_pair` `macro_agree` still uses the 20h-ahead window.
 `execution_authorized=false`.
+
+## 2026-09-27 — Opus: XGB Slot 1 (frozen spec), holdout ledger, fail-closed qualification
+Branch `opus/xgb-slot1` (on top of `opus/causal-event-asof`).
+
+- `trainers/xgb_slot.py`: spec params 1:1, validation-only early stopping, booster sliced to best+1,
+  terminal holdout scored once raw vs Slot 0 logit and a null base rate on the same rows
+  (`incremental_value_status` PASS only if both are beaten). Isotonic (PAVA, `trainers/calibrate.py`)
+  fitted afterwards on the holdout, stored `PENDING_FORWARD`, no holdout metric claimed for it.
+- `trainers/ledger.py`: SQLite holdout ledger (`run/trainers/holdout_ledger.sqlite3`). Claim before
+  scoring; a different study on an overlapping interval is blocked before training; unreadable = fail closed.
+- `trainers/qualify.py`: `VALID_RAW_CHALLENGER` only if the execution rows replay the artifact (reloaded
+  booster, re-scored holdout, recomputed baselines, ledger-confirmed claim). The audit's `swap_recommend`
+  no longer trusts a file that merely exists.
+- CLI: `python -m icarus_engine.trainers --slot xgb`, `python -m icarus_engine.audit --family`.
+- No real data was trained: running it consumes that file's holdout in the ledger by design.
+`execution_authorized=false`.
