@@ -129,7 +129,7 @@ def test_fitted_artifact_binds_identity_and_stays_locked(tmp_path):
     assert json.loads(out.read_text()) == r
     assert r["status"] == "fitted" and r["slot"] == "xgb" and r["symbol"] == "NQ"
     assert r["family"] == "clock_minutes"
-    assert (r["n_train"], r["n_valid"], r["n_hold"]) == (540, 180, 180)
+    assert (r["n_train"], r["n_valid"], r["n_hold"]) == (539, 179, 180)   # one-row embargo at each edge
     assert r["features"] == list(FEATURE_KEYS) and r["params"] == XGB_CLASSIFIER
     assert r["execution_authorized"] is False and r["accuracy_guaranteed"] is False
     assert r["holdout_touched_before_final"] is False and r["serialization_replay"] is True
@@ -152,7 +152,7 @@ def test_booster_never_sees_the_terminal_holdout(tmp_path):
 def test_early_stopping_is_scored_on_the_validation_slice(tmp_path):
     rows = _rows()
     r, out = _train(tmp_path, rows)
-    valid = rows[540:720]
+    valid = rows[540:719]
     ps = _raw_predict(r, out, valid)
     assert r["best_score"] == pytest.approx(_logloss(ps, [v["y"] for v in valid]), abs=1e-4)
 

@@ -98,9 +98,12 @@ def attach_labels(bars, family: str, events=None):
             "fomc": float(ev["fomc"]),
             "any_macro": float(ev["any_macro"]),
         }
-        labeled.append({"ts": b["ts"], "y": y, "family": family,
+        # label_ts: the bar whose close the label reads (Claude (Opus 5.5) 2026-09-27).
+        labeled.append({"ts": b["ts"], "y": y, "family": family, "label_ts": bars[i + 1]["ts"],
                         "x": {k: feats[k] for k in FEATURE_KEYS}})
     return labeled
+
+EMBARGO = 1   # rows dropped at the end of train and valid: their labels read the next slice's first close
 
 def walk_slices(n: int, train_frac=None, valid_frac=None):
     train_frac = WALK["train"] if train_frac is None else train_frac
@@ -110,6 +113,6 @@ def walk_slices(n: int, train_frac=None, valid_frac=None):
     if n < 40:
         raise ValueError("not enough labeled rows for a walk-forward")
     a = int(n * train_frac); b = int(n * (train_frac + valid_frac))
-    if a < 20 or b - a < 10 or n - b < 10:
+    if a - EMBARGO < 20 or b - a - EMBARGO < 10 or n - b < 10:
         raise ValueError("walk-forward slices too small")
-    return (0, a), (a, b), (b, n)
+    return (0, a - EMBARGO), (a, b - EMBARGO), (b, n)
