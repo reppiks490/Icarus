@@ -25,12 +25,13 @@ def train_file(path, chart_type: str, schema: str = "ohlc", asset: str = ""):
     bars = load_ohlc(path)
     if len(bars) < fam.min_rows:
         return {"status": "skipped", "reason": f"{len(bars)} rows < min_rows {fam.min_rows}",
-                "family": fam_name, "asset": asset, "path": str(path)}
+                "family": fam_name, "asset": asset, "path": str(path), "execution_authorized": False}
     labeled = attach_labels(bars, fam_name)
     try:
         train, valid, hold = walk_slices(len(labeled))
     except ValueError as exc:
-        return {"status": "skipped", "reason": str(exc), "family": fam_name, "asset": asset}
+        return {"status": "skipped", "reason": str(exc), "family": fam_name, "asset": asset,
+                "execution_authorized": False}
     w = fit(labeled[train[0]:train[1]])
     return {
         "status": "fitted", "family": fam_name, "index": fam.index, "label": fam.label,

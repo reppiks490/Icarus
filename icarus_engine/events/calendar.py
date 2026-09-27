@@ -77,8 +77,18 @@ def load_events(root=None):
 def window_hits(ts, events, pre_sec=6*3600, post_sec=20*3600):
     return [e for e in events if ts - pre_sec <= e["ts"] <= ts + post_sec]
 
+def asof_hits(ts, events, pre_sec=6*3600):
+    # SPEC.md: ts_event <= ts_bar only. Same look-back as window_hits, nothing after the bar.
+    return [e for e in events if ts - pre_sec <= e["ts"] <= ts]
+
 def event_features(ts, events, asset=""):
-    hits = window_hits(ts, events)
+    # Post-hoc only (candidate audit, loser notes): the window reaches 20h past ts. Trainers use event_features_asof.
+    return _features(window_hits(ts, events))
+
+def event_features_asof(ts, events, asset=""):
+    return _features(asof_hits(ts, events))
+
+def _features(hits):
     kinds = {e["kind"] for e in hits}
     return {
         "event_n": len(hits),

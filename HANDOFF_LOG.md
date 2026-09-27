@@ -62,3 +62,17 @@ architectural rulings, and the inbox protocol for the remaining loops.
 
 No strategy/runtime code was changed by this handoff.
 `execution_authorized=false`.
+
+## 2026-09-27 — Opus: trainer event features as-of the bar (P0 causal repair)
+Branch `opus/causal-event-asof`, based on main `f71acde`.
+
+`attach_labels` built `fomc`/`any_macro` from `event_features`, whose window reaches 20h past the
+bar, so training rows saw FOMC prints before they happened (SPEC.md: `ts_event <= ts_bar` only).
+Trainer rows now use `event_features_asof` (`ts - 6h <= e.ts <= ts`); `attach_labels` takes an
+injectable `events=` list. The broad window stays for post-hoc audit/candidate/loser notes only.
+`train_file` skip exits now carry `execution_authorized: False`.
+
+Tests: `tests_engine` 531 passed, 2 deselected. The deselected `test_bars.py` ingest tests fail
+on main and write into the real checkout's `history/NQ_1m.csv` (the CLI ignores the test's chdir).
+Before Slot 2: `audit/run.py::score_pair` `macro_agree` still uses the 20h-ahead window.
+`execution_authorized=false`.
