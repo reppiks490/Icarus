@@ -2,48 +2,15 @@
 from __future__ import annotations
 import json
 from pathlib import Path
-from icarus_engine.events.calendar import event_features_asof
+from icarus_engine.audit.lead import completed_before, pairs  # noqa: F401  (completed_before re-exported)
 from icarus_engine.ignore_trade import ignored_symbol
 from icarus_engine.model_log import log_action
 from icarus_engine.spec import SWAP_YES, artifact
 from icarus_engine.trainers.dataset import attach_labels
 from icarus_engine.trainers.qualify import VALID, qualify_xgb
 
-def _sign(x):
-    if x is None or x == 0:
-        return 0
-    return 1 if x > 0 else -1
-
 def _sorted(bars):
     return sorted(bars, key=lambda b: b["ts"])
-
-_CONTIGUOUS = ("renko", "range", "tick")   # a bar closes exactly when the next one opens
-
-def completed_before(cand, decision_ts):
-    """Index of the last candidate bar that had closed by decision_ts, or None. A bar is known to be closed once
-    the next bar has opened; the final bar has no visible close and is never used."""
-    lo, hi, hit = 0, len(cand) - 2, None
-    while lo <= hi:
-        mid = (lo + hi) // 2
-        if cand[mid + 1]["ts"] <= decision_ts:
-            hit = mid; lo = mid + 1
-        else:
-            hi = mid - 1
-    return hit
-
-def _decision_times(exec_bars, family):
-    """dec[i]: when the call on execution move i (bar i-1 close -> bar i close) is made, i.e. bar i-1's close.
-    Contiguous bars close when the next opens. After a session gap the true close is not in the data, so only
-    bar i-1's open is certain."""
-    dec = [None] + [b["ts"] for b in exec_bars[1:]]
-    if family in _CONTIGUOUS or len(exec_bars) < 3:
-        return dec
-    diffs = sorted(exec_bars[i]["ts"] - exec_bars[i - 1]["ts"] for i in range(1, len(exec_bars)))
-    step = diffs[len(diffs) // 2]
-    for i in range(1, len(exec_bars)):
-        if exec_bars[i]["ts"] - exec_bars[i - 1]["ts"] > step:
-            dec[i] = exec_bars[i - 1]["ts"]
-    return dec
 
 def score_pair(exec_bars, cand_bars, events, asset, future, require_xgb=False, xgb_path=None, family="clock_minutes",
                exec_sha256=None):
@@ -64,33 +31,13 @@ def score_pair(exec_bars, cand_bars, events, asset, future, require_xgb=False, x
                 "execution": future, "candidate": asset, "swap_recommend": False, "execution_authorized": False}
     # Strict lead: each candidate move is scored once, against the first execution move decided after the
     # candidate bar closed. Same-interval agreement is correlation, not prediction (EMPIRICAL CAN-01).
-    hits = agree = tide_agree = tide_n = ev_agree = ev_n = 0
-    dec = _decision_times(exec_bars, family)
-    used = None
-    for i, b in enumerate(exec_bars[1:], start=1):
-        prev = exec_bars[i - 1]
-        k = completed_before(cand_bars, dec[i])
-        if k is None or k == 0 or k == used:
-            continue
-        used = k
-        c, cp = cand_bars[k], cand_bars[k - 1]
-        y = _sign(b["close"] - prev["close"])
-        x = _sign(c["close"] - cp["close"])
-        if y == 0 or x == 0:
-            continue
-        hits += 1
-        if x == y:
-            agree += 1
-        tide = (c.get("tide_long") or 0) - (c.get("tide_short") or 0)
-        if tide:
-            tide_n += 1
-            if _sign(tide) == y:
-                tide_agree += 1
-        ev = event_features_asof(dec[i], events, future)     # only events released by the decision
-        if ev["any_macro"] or ev["earnings"]:
-            ev_n += 1
-            if x == y:
-                ev_agree += 1
+    scored = pairs(exec_bars, cand_bars, events, future, family)
+    hits = len(scored)
+    agree = sum(1 for q in scored if q["x"] == q["y"])
+    tide_n = sum(1 for q in scored if q["tide"])
+    tide_agree = sum(1 for q in scored if q["tide"] and q["tide"] == q["y"])
+    ev_n = sum(1 for q in scored if q["macro"])
+    ev_agree = sum(1 for q in scored if q["macro"] and q["x"] == q["y"])
     sign_agree = (agree / hits) if hits else None
     macro_agree = (ev_agree / ev_n) if ev_n else None
     status, reason = "eligible", ""

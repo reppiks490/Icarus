@@ -71,6 +71,30 @@ def train_xgb_file(path, chart_type: str, schema: str = "ohlc", asset: str = "",
         extra={"path": str(path), "index": fam.index, "label": fam.label, "n_bars": len(bars)},
     )
 
+def train_rank_file(path, chart_type: str, schema: str = "ohlc", asset: str = "", candidates=None, out=None,
+                    ledger=None, root="."):
+    from icarus_engine.events.calendar import load_events
+    from . import rank_slot
+    if not asset:
+        return {"status": "blocked", "reason": "Slot 2 needs --asset", "execution_authorized": False}
+    if ignored_symbol(asset):
+        return {"status": "ignored", "reason": "MBT/SOL/ETHUSD are not traded",
+                "asset": asset, "execution_authorized": False}
+    kept = {n: pth for n, pth in (candidates or {}).items() if not ignored_symbol(n)}
+    if not kept:
+        return {"status": "skipped", "reason": "no candidate series", "asset": asset, "execution_authorized": False}
+    path = Path(path)
+    fam_name = family_for(chart_type, schema)
+    rows = rank_slot.rank_rows(load_ohlc(path), {n: load_ohlc(pth) for n, pth in kept.items()},
+                               load_events(root), fam_name, future=asset)
+    return rank_slot.train(
+        rows, asset, fam_name,
+        out_path=Path(out) if out else Path(artifact(asset, fam_name, "rank")),
+        ledger_path=Path(ledger) if ledger else Path(holdout_ledger.LEDGER),
+        extra={"path": str(path), "dataset_sha256": file_hash(path),
+               "candidate_sha256": {n: file_hash(pth) for n, pth in sorted(kept.items())}},
+    )
+
 def write_report(report, dest: Path):
     dest = Path(dest)
     dest.parent.mkdir(parents=True, exist_ok=True)

@@ -79,7 +79,7 @@ def evaluate(labeled, raw_hold):
     xgb_ll = logloss(raw_hold, ys)
     base_rate = sum(1 for r in train_rows if r["y"] > 0) / len(train_rows)
     null_ll = logloss([base_rate] * len(hold), ys)
-    lm = logit.fit(train_rows)
+    lm = logit.fit_newton(train_rows)      # converged baseline: a weak one would flatter XGB
     logit_ll = logloss([logit.predict_sign(lm, r)[1] for r in hold], ys)
     return {"holdout_acc": sign_accuracy(raw_hold, ys), "holdout_logloss": xgb_ll,
             "baseline": {"null_p": base_rate, "null_logloss": null_ll, "logit_logloss": logit_ll,
@@ -149,7 +149,7 @@ def train(labeled, symbol, family, out_path, ledger_path=ledger.LEDGER, dataset_
     # Content-addressed model file, then the artifact replaced last: a crash leaves the previous pair intact.
     out_path = Path(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    tmp_model = out_path.with_name(out_path.stem + ".model.tmp.json")
+    tmp_model = out_path.with_name(f"{out_path.stem}.model.{os.getpid()}.tmp.json")
     frozen.save_model(str(tmp_model))
     model_sha = _sha(tmp_model.read_bytes())
     model_path = _replace(tmp_model, out_path.with_name(f"{out_path.stem}.{model_sha[:16]}.model.json"))
@@ -177,7 +177,7 @@ def train(labeled, symbol, family, out_path, ledger_path=ledger.LEDGER, dataset_
         "xgboost_version": xgb.__version__, "numpy_version": np.__version__,
         "python_version": platform.python_version(),
     })
-    tmp_out = out_path.with_name(out_path.name + ".tmp")
+    tmp_out = out_path.with_name(f"{out_path.name}.{os.getpid()}.tmp")
     tmp_out.write_text(json.dumps(report, indent=2, allow_nan=False))
     _replace(tmp_out, out_path)
     return report
