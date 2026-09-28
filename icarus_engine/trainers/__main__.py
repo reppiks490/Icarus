@@ -1,21 +1,35 @@
-# Grok (xAI) — 2026-09-22.
+# Grok (xAI) — 2026-09-22. Slots 1-4 CLI: Claude (Opus 5.5) 2026-09-27.
 from __future__ import annotations
 import argparse, json
-from .run import train_file, train_xgb_file, write_report
+from .run import train_file, train_rank_file, train_xgb_file, write_report
 
 def main(argv=None):
-    p = argparse.ArgumentParser(description="Fit one Icarus trainer family on one CSV")
-    p.add_argument("--path", required=True)
-    p.add_argument("--chart-type", required=True)
+    p = argparse.ArgumentParser(description="Fit one Icarus trainer slot on one CSV")
+    p.add_argument("--path", required=True, help="execution OHLC csv (slot fail: the paper-trade journal)")
+    p.add_argument("--chart-type", default="", help="required for logit, xgb and rank")
     p.add_argument("--schema", default="ohlc")
     p.add_argument("--asset", default="")
     p.add_argument("--out", default="")
-    p.add_argument("--slot", choices=("logit", "xgb"), default="logit")
-    p.add_argument("--ledger", default="", help="xgb: holdout ledger (default run/trainers/holdout_ledger.sqlite3)")
+    p.add_argument("--slot", choices=("logit", "xgb", "rank", "regime", "fail"), default="logit")
+    p.add_argument("--ledger", default="", help="holdout ledger (default run/trainers/holdout_ledger.sqlite3)")
+    p.add_argument("--cand", action="append", default=[], metavar="NAME=CSV", help="rank: a candidate series")
+    p.add_argument("--root", default=".", help="rank: plant root for history/events")
     args = p.parse_args(argv)
+    if args.slot in ("logit", "xgb", "rank") and not args.chart_type:
+        p.error(f"--chart-type is required for --slot {args.slot}")
     if args.slot == "xgb":
         report = train_xgb_file(args.path, args.chart_type, args.schema, args.asset,
                                 out=args.out or None, ledger=args.ledger or None)
+    elif args.slot == "rank":
+        cands = dict(c.split("=", 1) for c in args.cand if "=" in c)
+        report = train_rank_file(args.path, args.chart_type, args.schema, args.asset, cands,
+                                 out=args.out or None, ledger=args.ledger or None, root=args.root)
+    elif args.slot == "regime":
+        from .regime_slot import train as regime
+        report = regime(args.path, args.asset)
+    elif args.slot == "fail":
+        from .fail_slot import train as fail
+        report = fail(args.path, args.asset)
     else:
         report = train_file(args.path, args.chart_type, args.schema, args.asset)
         if args.out:

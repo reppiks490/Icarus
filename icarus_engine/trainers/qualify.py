@@ -119,6 +119,9 @@ def qualify_xgb(path, symbol, family, dataset_sha256=None, labeled=None):
         import xgboost as xgb
     except ImportError:
         return "UNKNOWN", "xgboost not installed; the model cannot be replayed"
+    if d.get("xgboost_version") != xgb.__version__:
+        return "UNKNOWN", (f"trained with xgboost {d.get('xgboost_version')}, validating with {xgb.__version__}: "
+                           "exact replay is not possible")
     try:
         booster = xgb.Booster()
         booster.load_model(str(model))

@@ -116,3 +116,16 @@ def walk_slices(n: int, train_frac=None, valid_frac=None):
     if a - EMBARGO < 20 or b - a - EMBARGO < 10 or n - b < 10:
         raise ValueError("walk-forward slices too small")
     return (0, a - EMBARGO), (a, b - EMBARGO), (b, n)
+
+def purged_slices(rows):
+    """walk_slices for rows that may share timestamps (pooled candidates). A row stays in train or valid only if
+    both its decision and the bar its label reads come before the next slice's first decision."""
+    (a0, a1), (b0, b1), (c0, c1) = walk_slices(len(rows))
+    hold = rows[c0:c1]
+    valid = [r for r in rows[b0:b1] if r["ts"] < hold[0]["ts"] and r["label_ts"] < hold[0]["ts"]]
+    if not valid:
+        raise ValueError("validation slice empty after purging")
+    train = [r for r in rows[a0:a1] if r["ts"] < valid[0]["ts"] and r["label_ts"] < valid[0]["ts"]]
+    if len(train) < 20 or len(valid) < 10:
+        raise ValueError("walk-forward slices too small after purging")
+    return train, valid, hold

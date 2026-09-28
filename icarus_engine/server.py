@@ -258,6 +258,17 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                                         "overrides": {k: v for k, v in over.items() if not k.startswith("_")}, "preset": r.cfg.preset, "pts_scale": r.pts_scale})
             self._json(404, {"error": "not found"})
 
+        def _drain_body(self) -> None:
+            # Claude (Opus 5.5) 2026-09-27. Answering before the body is read and then closing makes the OS reset
+            # the connection, and the client can lose the answer (WinError 10053, 3 in 500 requests). Read a body
+            # this endpoint would accept anyway; never more than MAX_BODY_BYTES, and the handler timeout bounds it.
+            try:
+                n = int(self.headers.get("Content-Length", "0") or 0)
+            except ValueError:
+                return
+            if 0 < n <= MAX_BODY_BYTES and not self.headers.get("Transfer-Encoding"):
+                self.rfile.read(n)
+
         def do_POST(self) -> None:  # noqa: N802
             if not self._host_ok():
                 return self._json(403, {"detail": "bad host"})
@@ -265,8 +276,10 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             if p.path == "/research/events":
                 secret = os.environ.get("ICARUS_INGEST_SECRET", "")
                 if not secret:
+                    self._drain_body()
                     return self._json(503, {"detail": "event receiver is not configured"})
                 if not self.headers.get("X-Icarus-Signature") or not self.headers.get("X-Icarus-Timestamp"):
+                    self._drain_body()
                     return self._json(401, {"detail": "signed event required"})
                 try:
                     n = int(self.headers.get("Content-Length", "0"))

@@ -342,6 +342,17 @@ def test_qualify_rejects_identity_mismatches(trained, tmp_path):
     assert _state(deeper, trained) == "BLOCKED_IDENTITY_MISMATCH"
 
 
+@pytest.mark.parametrize("edge", [("train_end_ts", "valid_start_ts"), ("valid_end_ts", "hold_start_ts")])
+def test_qualify_rejects_slices_that_share_a_timestamp(trained, tmp_path, edge):
+    p = _copy(trained["out"], tmp_path, edit=lambda d: d["split"].update({edge[0]: d["split"][edge[1]]}))
+    assert _state(p, trained) == "BLOCKED_TEMPORAL_INTEGRITY"
+
+
+def test_qualify_will_not_judge_a_model_from_another_xgboost_version(trained, tmp_path):
+    p = _copy(trained["out"], tmp_path, edit=lambda d: d.update(xgboost_version="0.0.0"))
+    assert _state(p, trained) == "UNKNOWN"
+
+
 def test_qualify_rejects_a_touched_holdout(trained, tmp_path):
     p = _copy(trained["out"], tmp_path, edit=lambda d: d.update(holdout_touched_before_final=True))
     assert _state(p, trained) == "BLOCKED_TEMPORAL_INTEGRITY"
