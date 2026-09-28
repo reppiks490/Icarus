@@ -1,7 +1,7 @@
 # AEGIS Challenger Forge — State Capsule
 
 - workstream: AEGIS Challenger Forge
-- last_productive_run_id: AEGIS_CF_20260928_SESSION_RANGEVOL_02
+- last_productive_run_id: AEGIS_CF_20260928_GC_MGC_FIFO_ICEBERG_03
 - updated_date: 2026-09-28
 - mode: COLLECTION_ONLY
 - execution_authorized: false
@@ -9,7 +9,7 @@
 - repository: reppiks490/Icarus
 - branch: main
 - owned_path: docs/icarus/research/aegis_challenger_forge/
-- last_run_manifest: runs/AEGIS_CF_20260928_SESSION_RANGEVOL_02.md
+- last_run_manifest: runs/AEGIS_CF_20260928_GC_MGC_FIFO_ICEBERG_03.md
 - admitted_ids:
   - AEGIS-CF-ICEBERG-CME-ARXIV-1909.09495-v1
   - AEGIS-CF-ROUGHMULTI-SPXVIX-2112.14310-v2
@@ -53,16 +53,24 @@
   - AEGIS-CF-BTC-BINANCE-KLINE-DAYBOUNDARY-DOCSNAP-20260928
   - AEGIS-CF-CME-NQ-SESSION-DOCSNAP-20260928
   - AEGIS-CF-CME-GC-SESSION-DOCSNAP-20260928
+  - AEGIS-CF-CME-GC-MGC-MATCHALG-GCC-20260922
+  - AEGIS-CF-CME-MGC-SESSION-DOCSNAP-20260928
+  - AEGIS-CF-ICEBERG-GH-TAYOR-v0.1.0-3651fdd044ed
 - quarantined_ids: []
 - resolved_quarantine:
   - AEGIS-CF-OFLOW-ROUGH-IMPACT-2601.23172-CANDIDATE -> AEGIS-CF-OFLOW-ROUGH-IMPACT-ARXIV-2601.23172-v2
+- resolved_gaps:
+  - standard GC outright MatchAlgorithm = F/FIFO from CME GCC workbook dated 2026-09-22
+  - standard MGC outright MatchAlgorithm = F/FIFO from CME GCC workbook dated 2026-09-22
+  - GC-GC and MGC-MGC calendar-spread rows = F/FIFO in same workbook
+  - MGC-specific session/trading-hours metadata independently pinned from current CME specs
 - persistent_quality_gates:
   - collection only; never score/rank/promote/backtest/code from this workstream
   - observed facts remain separate from author/unverified claims
   - preprints must remain explicitly labeled and must not be promoted to peer-reviewed evidence
   - mutable documentation sources require retrieval snapshot identity
-  - historical/standing product documentation does not equal a live-current Security Definition snapshot
-  - product-specific matching rules must not be generalized from TAS, TMAC, options, enhanced-delivery or unrelated contracts
+  - live workbook/reference data should preserve both retrieval date and embedded source date when available
+  - product-specific matching rules must not be generalized across strategy types; TAS/TAM/options remain separate from standard outright GC/MGC
   - benchmark methodology must be version-pinned separately from underlying data access/license
   - future-effective exchange metadata must not be applied before its effective date
   - implementation identities must be version/tag/commit pinned when possible
@@ -72,15 +80,13 @@
   - sibling and parallel AEGIS checkpoints must be reconciled, never overwritten
   - overlapping Pine subfunctions must be deduplicated at method-family level, not only script level
 - next_targets:
-  - parse/pin current CME GCC/MDP/FPRF MatchAlgorithm rows for GC/MGC; NQ/MNQ FIFO baseline already admitted
-  - pin MGC session metadata independently from GC
   - obtain current CME Options Analytics product list proving NQ/GC identifiers
-  - licensed CME MBO/trade-summary corpora for NQ/MNQ and GC/MGC
-  - GC/MGC-specific display/priority/iceberg evidence
+  - licensed CME MBO/trade-summary corpora for NQ/MNQ/GC/MGC
+  - GC/MGC-specific display/priority/iceberg empirical evidence under current FIFO rules
+  - independent validation/paper lineage for commit-pinned hidden-liquidity implementations
   - Bitcoin Volatility Futures historical field/retention/licensing semantics
   - primary research on venue-native vs common-clock cross-market volatility aggregation
   - normalize article/preprint licenses for Software Impacts 100613 and Preprints 202602.0560
   - Deribit/OKX options historical retention and timestamp semantics interoperable with BVX/BVXS
-  - commit-pinned hidden-liquidity inference implementations
   - novel Pine DSP families beyond existing DominantCycle and overlapping FiltersToolkit functions
 - quality_rule: no corpus identity implies production admission or trading edge.
