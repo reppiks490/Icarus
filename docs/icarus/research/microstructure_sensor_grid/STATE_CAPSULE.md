@@ -1,84 +1,74 @@
 # Microstructure Sensor Grid — State Capsule
 
-Last productive run: ICARUS-MICRO-20260928T1642Z
-Run manifest: runs/MICROSTRUCTURE_20260928T1642Z.md
+Last productive run: ICARUS-MICRO-20260928T1653Z
+Run manifest: runs/MICROSTRUCTURE_20260928T1653Z.md
 
-## Latest observed crypto venue state
+## Latest crypto state
 
-- Bybit BTCUSDT linear book: 2026-09-28T16:36:45.002Z; BBO 83935.40 / 83935.50.
-- Bybit BTCUSDT spot book: 2026-09-28T16:36:45.553Z; BBO 83972.1 / 83972.2.
-- Bybit ETHUSDT linear/spot: 2691.92/2691.93 vs 2692.85/2692.86.
-- Bybit SOLUSDT linear/spot: 119.720/119.730 vs 119.76/119.77.
-- BTC/ETH/SOL linear funding at this snapshot: +0.0001 (+0.0100%) each; next connector timestamp 2026-09-29T00:00:00Z.
-- TickerLayer composite references: BTCUSD 83955.15/83955.16; ETHUSD 2692.12/2692.13; SOLUSD 119.74/119.75.
+- BTCUSDT linear book: 2026-09-28T16:53:19.603Z; BBO 83613.20 / 83613.30.
+- ETHUSDT linear book: 2026-09-28T16:53:22.237Z; BBO 2683.47 / 2683.48.
+- SOLUSDT linear book: 2026-09-28T16:53:24.804Z; BBO 119.090 / 119.100.
+- Funding: BTC +0.00006537; ETH +0.0001; SOL +0.0001.
+- Next funding timestamp: 2026-09-29T00:00:00Z.
 
-## Reference-market state
+## Latest 1-minute crypto coverage
 
-- Twelve Data authenticated.
-- Quote anchor last_quote_at: 2026-09-28T16:42:00Z.
-- QQQ 737.65; SPY 767.095; DIA 515.09; IWM 280.155 (reference ETFs only, not futures).
-- QQQ and SPY 30-bar one-minute windows continuous.
-- DIA returned sparse minute observations with 12:12→12:16 and 12:37→12:40 clock gaps.
-- IWM one-minute retrieval blocked by per-minute provider credit cap.
+All returned series: 60 bars, 2026-09-28T15:54:00Z–16:53:00Z, no timestamp gaps.
+- BTC range 83200.3–84174.3; returned volume sum 5547.314 BTC; RV60m 0.543051%.
+- ETH range 2669.58–2698.28; returned volume sum 76513.68 ETH; RV60m 0.625360%.
+- SOL range 118.22–120.34; returned volume sum 466894.4 SOL; RV60m 0.880130%.
+RV formula: sqrt(sum(log(close_t/close_t-1)^2)), non-annualized.
 
-## CME / CFTC state
+## ETF/reference state
 
-- U.S. equity-index customary September 2026 roll date: 2026-09-14; September expiration 2026-09-18.
-- December 2026 customary roll: 2026-12-14; expiration 2026-12-18.
-- CME Daily VOI is preliminary; Daily Bulletin provides subsequent official/final updates.
-- Latest collected CFTC observation date remains 2026-09-22.
-- New combined futures+options corpora collected for BTC/Micro BTC, ES/MES, NQ/MNQ, RTY/M2K, GC/MGC.
-- Never sum or silently merge combined COT with futures-only COT.
+- QQQ/SPY/IWM: 20 returned 1-minute bars with continuous timestamps over their 12:33–12:52 provider display windows.
+- DIA: 20 observations spanning 12:29–12:52 with preserved gaps at 12:37→12:40, 12:48→12:50 and 12:50→12:52.
+- IWM minute coverage is now available; prior credit-cap gap closed.
+- ETF proxies remain distinct from NQ/ES/YM/RTY futures.
 
-## Known corpus / artifact IDs added this run
+## Access-state changes
 
-- MICRO-BYBIT-BTCUSDT-LIN-L2-20260928T163645002Z
-- MICRO-BYBIT-BTCUSDT-SPOT-L2-20260928T163645553Z
-- MICRO-BYBIT-ETHUSDT-LIN-L2-20260928T163646837Z
-- MICRO-BYBIT-ETHUSDT-SPOT-L2-20260928T163647358Z
-- MICRO-BYBIT-SOLUSDT-LIN-L2-20260928T163648404Z
-- MICRO-BYBIT-SOLUSDT-SPOT-L2-20260928T163649083Z
-- MICRO-TL-BTCUSD-BBO-20260928T163651048Z
-- MICRO-TL-ETHUSD-BBO-20260928T163652145Z
-- MICRO-TL-SOLUSD-BBO-20260928T163652768Z
-- ETF-REFERENCE-1M-QQQ-SPY-DIA-20260928T1642Z
-- CFTC-COT-CME-COMBINED-2026-09-22
-- CFTC-COT-COMEX-COMBINED-2026-09-22
+- TickerLayer US100/US500/US30 and XAUUSD quote calls: 403 plan restriction.
+- TickerLayer Russell index symbol discovery: no match.
+- Bybit and Twelve Data selected endpoints: usable.
+- GitHub: usable.
+
+## Persistent CME/CFTC state
+
+- Equity-index customary September 2026 roll: 2026-09-14; expiry 2026-09-18.
+- December customary roll: 2026-12-14; expiry 2026-12-18.
+- CME Daily VOI preliminary versus subsequent Daily Bulletin official/final distinction remains active.
+- Latest collected CFTC observation: 2026-09-22, futures-only and futures+options combined kept separate.
+
+## New artifact IDs
+
+- MICRO-BYBIT-BTCUSDT-LIN-L2-20260928T165319603Z
+- MICRO-BYBIT-ETHUSDT-LIN-L2-20260928T165322237Z
+- MICRO-BYBIT-SOLUSDT-LIN-L2-20260928T165324804Z
+- CRYPTO-LINEAR-1M-BTCETHSOL-20260928T1554Z-1653Z
+- ETF-REFERENCE-1M-QQQ-SPY-DIA-IWM-20260928T1653Z
 
 ## Persistent quality gates
 
-- Keep source event, provider update, retrieval and release times separate.
-- Do not merge BTCUSD with BTCUSDT spot/perpetual without explicit mapping.
-- Do not infer queue/sweeps/icebergs from static price-level snapshots.
-- Require exact CME contract month/SecurityID for live joins.
-- Preserve preliminary vs final CME VOI revisions.
-- Preserve CFTC futures-only vs combined population differences.
-- Preserve sparse ETF bars without interpolation.
-- Treat ETF proxies as related reference markets, not futures replacements.
-- Preserve access/tier/credit failures as provenance.
+- Keep source event/update/retrieval/release times separate.
+- Never infer MBO queue behavior from static price-level depth.
+- Never interpolate missing bars silently.
+- Mark newest incomplete bars provisional.
+- Keep ETF references separate from futures.
+- Require exact CME contract/security identifiers.
+- Preserve preliminary/final VOI revisions.
+- Keep CFTC futures-only and combined populations separate.
+- Preserve provider-plan failures and symbol mapping gaps.
 
-## Access state
+## Persisted snapshots
 
-Usable:
-- Bybit, TickerLayer, Twelve Data core quote/time-series endpoints, official CME/CFTC web, GitHub.
-
-Blocked / partial:
-- U.S. Gold Bureau current request: allowed-IP authorization failure.
-- Twelve Data exchange_schedule: Ultra/Enterprise required.
-- Twelve Data IWM one-minute history: per-minute API-credit cap reached.
-- FactorWeave desired futures/VX endpoints: previously tier-gated.
-- FMP paid COT: unnecessary while official CFTC source is available.
-- CME live MDP/MBO, full options analytics, and cross-venue OI/liquidation feeds: not exposed.
-
-## Persisted snapshot files
-
-- snapshots/CRYPTO_BOOKS_FUNDING_20260928T163645Z.json
-- snapshots/ETF_REFERENCE_1M_20260928T1642Z.csv
+- snapshots/CRYPTO_LINEAR_DEPTH_1M_20260928T1653Z.json
+- snapshots/ETF_REFERENCE_1M_20260928T1653Z.csv
 
 ## Next collection targets
 
-1. Exact CME active-contract December 2026 NQ/MNQ, ES/MES, YM/MYM, RTY/M2K plus active GC/MGC VOI/settlement.
-2. Licensed CME MDP 3.0 MBO/MBP/trade-summary packets with sequence and SecurityID.
-3. Second crypto derivatives venue with synchronized depth/funding/OI/liquidations/trade tape.
-4. CME/Cboe options chains with bid/ask, IV, Greeks, volume and OI.
-5. Raw-byte/provider checksum archival where licensing allows.
+1. Exact-contract CME December 2026 equity-index VOI/settlement and active GC/MGC records.
+2. Licensed CME MDP 3.0 MBO/MBP + trade summary.
+3. Second crypto derivatives venue with depth/funding/OI/liquidations/trade tape.
+4. CME/Cboe options chain data.
+5. Raw payload/checksum preservation where permitted.
