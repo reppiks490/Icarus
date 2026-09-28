@@ -1,91 +1,81 @@
 # Microstructure Sensor Grid — State Capsule
 
-Last productive run: ICARUS-MICRO-20260928T1730Z
-Run manifest: runs/MICROSTRUCTURE_20260928T1730Z.md
+Last productive run: ICARUS-MICRO-20260928T1740Z
+Run manifest: runs/MICROSTRUCTURE_20260928T1740Z.md
 
-## Independent crypto derivatives state
+## Binance raw trade-tape state
 
-Binance USDⓈ-M remains the independent second venue.
-New persisted coverage:
-- 12 x 5-minute OI history observations for BTCUSDT, ETHUSDT, SOLUSDT.
-- latest 10 funding settlements for each.
-- aggregate-trade endpoint returned 100 records per symbol; durable repository snapshot retains metadata and transient full-result handles, not the full 100-record arrays.
-- liquidation-history REST probe /fapi/v1/allForceOrders returned 404.
+Durable repository raw payloads now exist for the previously transient aggregate-trade captures:
+- BTCUSDT: 100 records, IDs 3468308318–3468308417, 7.411-second event-time span.
+- ETHUSDT: 100 records, IDs 3102913945–3102914044, 6.928-second span.
+- SOLUSDT: 100 records, IDs 1101446810–1101446909, 24.565-second span.
 
-Latest OI history observation @ 1790616300000:
-- BTCUSDT 93403.383 BTC.
-- ETHUSDT 2279698.247 ETH.
-- SOLUSDT 8127736.29 SOL.
+Raw payload Git blobs:
+- BTCUSDT fdb540cbda8b86b805f53acce27bfae35dc95341
+- ETHUSDT 6332ad88005b35f9f265f66e71cf1ba01472dceb
+- SOLUSDT b26652d2e3eede38cd3b5adf8f9bd62d107014ff
 
-## CME state
+The raw DataBlue payloads are persisted exactly as decoded from the attached full-result files. The prior transient-handle-only gap is closed.
 
-Exact prior-session settlement corpus now complete for session_end_date 2026-09-25:
-- NQZ6/MNQZ6 settlement 30889.25.
-- ESZ6/MESZ6 settlement 7803.75.
-- YMZ6/MYMZ6 settlement 52163.
-- RTYZ6/M2KZ6 settlement 2859.3.
-- GCZ6/MGCZ6 settlement 4321.2.
+## Latest tape summaries
 
-Current-session/in-progress close must never be substituted for settlement.
-Contract OI remains missing from accessible Massive aggregate endpoints.
-Massive real-time futures snapshot remains NOT_ENTITLED.
+BTCUSDT:
+- price 83956.5–83964.4; total quantity 8.4 BTC.
+- m=true 3.085; m=false 5.315.
+- largest aggregate 1.693 BTC.
 
-## Cboe options state
+ETHUSDT:
+- price 2703.88–2704.30; total 180.063 ETH.
+- m=true 100.431; m=false 79.632.
+- largest aggregate 40.733 ETH.
 
-- Official delayed QQQ/SPY/IWM chains remain reachable.
-- Persisted bounded same-day records include IV, OI, volume and Greeks.
-- Attempts to obtain nearest later expiration via bounded query returned same-day rows due source truncation limits.
-- Full skew and term structure remain incomplete.
-- Massive option-chain snapshot remains NOT_ENTITLED.
+SOLUSDT:
+- price 119.69–119.77; total 4879.01 SOL.
+- m=true 3732.48; m=false 1146.53.
+- largest aggregate 751.92 SOL.
 
-## Superpowers status
+No directional conclusion is attached to m=true/m=false totals.
 
-User selected @Superpowers, but runtime inventory exposes no callable Superpowers tool/connector in this chat. Do not claim it was invoked.
+## Persistent prior state
 
-## New artifacts
+- Binance second-venue depth, funding, mark/index, current OI, 5-minute OI history and funding history remain available from 1730Z.
+- exact 2026-09-25 CME settlements complete for NQ/MNQ, ES/MES, YM/MYM, RTY/M2K, GC/MGC.
+- bounded delayed Cboe same-day option IV/OI/Greeks remain available.
+- liquidation REST history remains unavailable.
+- full Cboe term structure remains incomplete.
+- exact CME contract OI and licensed MDP 3.0 remain gaps.
 
-- snapshots/BINANCE_OI_FUNDING_TAPE_20260928T1730Z.json
-- snapshots/CME_SETTLEMENT_20260925.csv
-- snapshots/CBOE_OPTIONS_SAMEDAY_20260928T1730Z.json
+## Quality gates
 
-## Persistent quality gates
-
-- Keep venue/product/timestamp identities separate.
-- Preserve Binance update IDs and event times when available.
-- Do not infer liquidation history from absent REST endpoints.
-- Never replace settlement with close.
-- Never infer contract OI from volume.
-- Treat Cboe bounded extraction as partial delayed data.
-- Never infer full-chain absence from extractor omission.
-- Do not infer MBO/queue behavior from price-level depth.
-- Preserve entitlement/tooling failures.
+- Preserve raw aggregate IDs, component first/last trade IDs, timestamps, prices, quantities and m flags.
+- Aggregate trades are not MBO/order-message data.
+- Do not infer queue state, hidden liquidity or liquidation events from aggregate trades.
+- Do not assign a trading conclusion to m=true/m=false totals.
+- Preserve short-window coverage limits.
 
 ## Access state
 
 Usable:
-- Bybit spot/linear/inverse.
+- Bybit public selected endpoints.
 - Binance public USDⓈ-M REST.
+- DataBlue public scraping plus conversation full-result attachments.
 - Massive historical futures aggregates.
-- Cboe official delayed options JSON through bounded Firecrawl query.
-- Twelve Data selected reference endpoints.
-- official CME/CFTC web.
+- Cboe delayed option JSON bounded extraction.
+- Twelve Data selected endpoints.
 - GitHub.
 
 Blocked / partial:
-- Binance historical liquidation REST path: 404.
-- Massive real-time futures snapshot: NOT_ENTITLED.
-- Massive option-chain snapshot: NOT_ENTITLED.
-- TickerLayer perpetual live data: 403.
-- DataBlue LLM extraction: no LLM API key.
-- U.S. Gold Bureau: prior IP restriction.
-- CME MDP 3.0: not exposed.
-- Superpowers: no callable runtime surface exposed.
+- liquidation history REST path 404.
+- Massive real-time futures and option snapshots NOT_ENTITLED.
+- TickerLayer perpetual data 403.
+- CME MDP 3.0 not exposed.
+- Superpowers no callable runtime surface.
 
 ## Next targets
 
-1. Durable Binance trade-tape raw capture and lawful liquidation event stream.
-2. Exact-contract CME open interest.
-3. CME MDP 3.0.
-4. Reliable next-expiry Cboe chain slices.
-5. CME options-on-futures IV/Greeks.
-6. Raw payload/checksum archival.
+1. Longer durable aggregate-trade windows synchronized to book events.
+2. Lawful liquidation event stream.
+3. Exact CME contract OI.
+4. Reliable next-expiry Cboe skew/term data.
+5. CME futures-option Greeks.
+6. Licensed CME MDP 3.0.
