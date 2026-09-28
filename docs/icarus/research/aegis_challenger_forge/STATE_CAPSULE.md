@@ -1,15 +1,15 @@
 # AEGIS Challenger Forge — State Capsule
 
 - workstream: AEGIS Challenger Forge
-- last_productive_run_id: AEGIS_CF_20260928T1710Z
-- updated_utc: 2026-09-28T17:10:00Z
+- last_productive_run_id: AEGIS_CF_20260928T1725Z
+- updated_utc: 2026-09-28T17:25:00Z
 - mode: COLLECTION_ONLY
 - execution_authorized: false
 - downstream_mutation: false
 - repository: reppiks490/Icarus
 - branch: main
 - owned_path: docs/icarus/research/aegis_challenger_forge/
-- last_run_manifest: runs/AEGIS_CF_20260928T1710Z.md
+- last_run_manifest: runs/AEGIS_CF_20260928T1725Z.md
 - admitted_ids:
   - AEGIS-CF-ICEBERG-CME-ARXIV-1909.09495-v1
   - AEGIS-CF-ROUGHMULTI-SPXVIX-2112.14310-v2
@@ -34,6 +34,9 @@
   - AEGIS-CF-TMX-ICEBERG-GUIDE-v1.77-20260914
   - AEGIS-CF-PINE-GYTS-FILTERS-TV-Mm789eKn-v2-20250305
   - AEGIS-CF-PINE-GYTS-VOLTOOL-TV-Th3bPWea-SNAPSHOT-20260928
+  - AEGIS-CF-CME-NQ-MNQ-FIFO-FAQ-20190311
+  - AEGIS-CF-CME-OPTA-REST-DOC-v20251030
+  - AEGIS-CF-HFTBACKTEST-GH-5f3ec40b2afb
 - quarantined_ids: []
 - resolved_quarantine:
   - AEGIS-CF-OFLOW-ROUGH-IMPACT-2601.23172-CANDIDATE -> AEGIS-CF-OFLOW-ROUGH-IMPACT-ARXIV-2601.23172-v2
@@ -41,17 +44,19 @@
   - collection only; never score/rank/promote/backtest/code from this workstream
   - observed facts remain separate from author/unverified claims
   - mutable documentation sources require retrieval snapshot identity
-  - product-specific matching rules must not be generalized from TAS, TMAC, options or unrelated contracts
+  - historical/standing product documentation does not equal a live-current Security Definition snapshot
+  - product-specific matching rules must not be generalized from TAS, TMAC, options, enhanced-delivery or unrelated contracts
   - market-data documentation does not imply entitlement to underlying data
   - source version/date and access constraints must be preserved
   - sibling and parallel AEGIS checkpoints must be reconciled, never overwritten
   - overlapping Pine subfunctions must be deduplicated at method-family level, not only script level
 - next_targets:
-  - parse/pin current CME GCC MatchAlgorithm rows for NQ/MNQ/GC/MGC
+  - parse/pin current CME GCC/MDP/FPRF MatchAlgorithm rows for NQ/MNQ/GC/MGC
+  - obtain current CME Options Analytics product list proving NQ/GC identifiers
   - licensed CME MBO/trade-summary corpora for NQ/MNQ and GC/MGC
-  - current CME options-analytics product list for NQ/GC
-  - ASX/TMX iceberg citation lineage for queue/cancellation/adverse-selection research
+  - GC/MGC-specific display/priority/iceberg evidence
   - commit-pinned hidden-liquidity inference implementations
+  - inspect queue-model implementation lineage without executing backtests
   - synchronized Binance/Bybit/OKX/Deribit BTC OI/funding/liquidation/book/options corpus
   - original-method provenance for Parkinson/Garman-Klass/Rogers-Satchell/Yang-Zhang
   - novel Pine DSP families beyond existing DominantCycle and overlapping FiltersToolkit functions
