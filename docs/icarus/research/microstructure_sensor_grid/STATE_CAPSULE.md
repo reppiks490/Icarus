@@ -1,84 +1,91 @@
 # Microstructure Sensor Grid — State Capsule
 
-Last productive run: ICARUS-MICRO-20260928T1721Z
-Run manifest: runs/MICROSTRUCTURE_20260928T1721Z.md
+Last productive run: ICARUS-MICRO-20260928T1730Z
+Run manifest: runs/MICROSTRUCTURE_20260928T1730Z.md
 
-## Independent crypto derivatives venue state
+## Independent crypto derivatives state
 
-Binance USDⓈ-M public REST is now a usable second venue for collection:
-- BTCUSDT @ ~17:07:14Z BBO 83600.00/83600.10; funding +0.00006884; OI 93910.062 BTC.
-- ETHUSDT @ ~17:07:26Z BBO 2684.00/2684.01; funding +0.00007693; OI 2274323.759 ETH.
-- SOLUSDT @ ~17:07:36Z BBO 118.6900/118.7000; funding +0.00007131; OI 8169730.88 SOL.
-- Binance order-book update IDs and event/transaction timestamps are persisted.
-- No public REST liquidation history was captured.
+Binance USDⓈ-M remains the independent second venue.
+New persisted coverage:
+- 12 x 5-minute OI history observations for BTCUSDT, ETHUSDT, SOLUSDT.
+- latest 10 funding settlements for each.
+- aggregate-trade endpoint returned 100 records per symbol; durable repository snapshot retains metadata and transient full-result handles, not the full 100-record arrays.
+- liquidation-history REST probe /fapi/v1/allForceOrders returned 404.
 
-## Bybit persistent state
+Latest OI history observation @ 1790616300000:
+- BTCUSDT 93403.383 BTC.
+- ETHUSDT 2279698.247 ETH.
+- SOLUSDT 8127736.29 SOL.
 
-Prior 17:08Z spot / USDT-linear / USD-inverse product plane remains valid as the latest persisted Bybit cross-product checkpoint.
-Inverse contract-count unit gate remains active.
+## CME state
 
-## CME exact-contract state
+Exact prior-session settlement corpus now complete for session_end_date 2026-09-25:
+- NQZ6/MNQZ6 settlement 30889.25.
+- ESZ6/MESZ6 settlement 7803.75.
+- YMZ6/MYMZ6 settlement 52163.
+- RTYZ6/M2KZ6 settlement 2859.3.
+- GCZ6/MGCZ6 settlement 4321.2.
 
-Massive session aggregates now cover all ten December 2026 targets for session_end_date 2026-09-28:
-NQZ6, MNQZ6, ESZ6, MESZ6, YMZ6, MYMZ6, RTYZ6, M2KZ6, GCZ6, MGCZ6.
+Current-session/in-progress close must never be substituted for settlement.
+Contract OI remains missing from accessible Massive aggregate endpoints.
+Massive real-time futures snapshot remains NOT_ENTITLED.
 
-The session was in progress. Returned aggregate fields did not include populated official settlement or contract OI. Do not treat close as settlement.
-Massive real-time snapshot is NOT_ENTITLED.
+## Cboe options state
 
-## Cboe option state
+- Official delayed QQQ/SPY/IWM chains remain reachable.
+- Persisted bounded same-day records include IV, OI, volume and Greeks.
+- Attempts to obtain nearest later expiration via bounded query returned same-day rows due source truncation limits.
+- Full skew and term structure remain incomplete.
+- Massive option-chain snapshot remains NOT_ENTITLED.
 
-Official delayed Cboe JSON is reachable for QQQ, SPY and IWM.
-Bounded same-day option records with bid/ask, IV, OI, volume and delta/gamma/theta/vega/rho are persisted.
-- QQQ bounded strikes: 735-738 for 2026-09-28.
-- SPY bounded strikes: 766-767 for 2026-09-28.
-- IWM bounded strike: 279 for 2026-09-28.
-- QQQ next expiration observed in a bounded query: 2026-09-29.
-Full skew/term structure remains incomplete because multi-megabyte chains exceeded full-query processing.
+## Superpowers status
+
+User selected @Superpowers, but runtime inventory exposes no callable Superpowers tool/connector in this chat. Do not claim it was invoked.
 
 ## New artifacts
 
-- snapshots/BINANCE_USDM_DEPTH_FUNDING_OI_20260928T1707Z.json
-- snapshots/CME_TARGET_SESSION_20260928.csv
-- snapshots/CBOE_OPTIONS_ATM_20260928T1721Z.json
+- snapshots/BINANCE_OI_FUNDING_TAPE_20260928T1730Z.json
+- snapshots/CME_SETTLEMENT_20260925.csv
+- snapshots/CBOE_OPTIONS_SAMEDAY_20260928T1730Z.json
 
 ## Persistent quality gates
 
-- Preserve exact venue/product/source timestamps.
-- Do not infer MBO from MBP depth.
-- Do not infer cross-venue lead-lag from unsynchronized snapshots.
-- Do not promote in-progress CME close to settlement.
-- Do not infer contract OI where absent.
-- Treat Cboe bounded option extraction as partial, delayed data.
-- Keep full-chain absence distinct from bounded-query absence.
-- Preserve entitlement/rate-limit/tooling failures.
-- Never silently merge contradictory sources or product classes.
+- Keep venue/product/timestamp identities separate.
+- Preserve Binance update IDs and event times when available.
+- Do not infer liquidation history from absent REST endpoints.
+- Never replace settlement with close.
+- Never infer contract OI from volume.
+- Treat Cboe bounded extraction as partial delayed data.
+- Never infer full-chain absence from extractor omission.
+- Do not infer MBO/queue behavior from price-level depth.
+- Preserve entitlement/tooling failures.
 
 ## Access state
 
 Usable:
-- Bybit public spot/linear/inverse.
-- Binance public USDⓈ-M via authorized public scraping.
+- Bybit spot/linear/inverse.
+- Binance public USDⓈ-M REST.
+- Massive historical futures aggregates.
+- Cboe official delayed options JSON through bounded Firecrawl query.
 - Twelve Data selected reference endpoints.
-- Massive Futures session aggregates.
-- Cboe official delayed options JSON.
-- Firecrawl bounded query.
 - official CME/CFTC web.
 - GitHub.
 
 Blocked / partial:
+- Binance historical liquidation REST path: 404.
 - Massive real-time futures snapshot: NOT_ENTITLED.
 - Massive option-chain snapshot: NOT_ENTITLED.
 - TickerLayer perpetual live data: 403.
-- TickerLayer direct indices/XAUUSD: plan restricted.
-- U.S. Gold Bureau: prior IP restriction.
 - DataBlue LLM extraction: no LLM API key.
-- licensed CME MDP 3.0: not exposed.
+- U.S. Gold Bureau: prior IP restriction.
+- CME MDP 3.0: not exposed.
+- Superpowers: no callable runtime surface exposed.
 
 ## Next targets
 
-1. Public/licensed liquidation event history.
-2. Official previous-day CME settlement + contract OI for ten exact target contracts.
-3. CME MDP 3.0 MBO/MBP/trade summaries.
-4. Cboe next-expiry option slices for term structure.
-5. CME futures options IV/Greeks where licensed.
-6. Raw upstream payload/checksum preservation.
+1. Durable Binance trade-tape raw capture and lawful liquidation event stream.
+2. Exact-contract CME open interest.
+3. CME MDP 3.0.
+4. Reliable next-expiry Cboe chain slices.
+5. CME options-on-futures IV/Greeks.
+6. Raw payload/checksum archival.
