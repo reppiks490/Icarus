@@ -2,7 +2,7 @@
 from __future__ import annotations
 import json
 from pathlib import Path
-from icarus_engine.events.calendar import event_features
+from icarus_engine.events.calendar import event_features_asof
 from icarus_engine.ignore_trade import ignored_symbol
 from icarus_engine.model_log import log_action
 from icarus_engine.spec import SWAP_YES, artifact
@@ -17,15 +17,33 @@ def _sign(x):
 def _sorted(bars):
     return sorted(bars, key=lambda b: b["ts"])
 
-def _asof(exec_ts, cand):
-    lo, hi, hit = 0, len(cand) - 1, None
+_CONTIGUOUS = ("renko", "range", "tick")   # a bar closes exactly when the next one opens
+
+def completed_before(cand, decision_ts):
+    """Index of the last candidate bar that had closed by decision_ts, or None. A bar is known to be closed once
+    the next bar has opened; the final bar has no visible close and is never used."""
+    lo, hi, hit = 0, len(cand) - 2, None
     while lo <= hi:
         mid = (lo + hi) // 2
-        if cand[mid]["ts"] <= exec_ts:
-            hit = cand[mid]; lo = mid + 1
+        if cand[mid + 1]["ts"] <= decision_ts:
+            hit = mid; lo = mid + 1
         else:
             hi = mid - 1
     return hit
+
+def _decision_times(exec_bars, family):
+    """dec[i]: when the call on execution move i (bar i-1 close -> bar i close) is made, i.e. bar i-1's close.
+    Contiguous bars close when the next opens. After a session gap the true close is not in the data, so only
+    bar i-1's open is certain."""
+    dec = [None] + [b["ts"] for b in exec_bars[1:]]
+    if family in _CONTIGUOUS or len(exec_bars) < 3:
+        return dec
+    diffs = sorted(exec_bars[i]["ts"] - exec_bars[i - 1]["ts"] for i in range(1, len(exec_bars)))
+    step = diffs[len(diffs) // 2]
+    for i in range(1, len(exec_bars)):
+        if exec_bars[i]["ts"] - exec_bars[i - 1]["ts"] > step:
+            dec[i] = exec_bars[i - 1]["ts"]
+    return dec
 
 def score_pair(exec_bars, cand_bars, events, asset, future, require_xgb=False, xgb_path=None, family="clock_minutes",
                exec_sha256=None):
@@ -44,15 +62,18 @@ def score_pair(exec_bars, cand_bars, events, asset, future, require_xgb=False, x
     if require_xgb and xgb_state != VALID:
         return {"status": "blocked", "reason": f"XGB {xgb} {xgb_state}: {xgb_reason}", "xgb_state": xgb_state,
                 "execution": future, "candidate": asset, "swap_recommend": False, "execution_authorized": False}
+    # Strict lead: each candidate move is scored once, against the first execution move decided after the
+    # candidate bar closed. Same-interval agreement is correlation, not prediction (EMPIRICAL CAN-01).
     hits = agree = tide_agree = tide_n = ev_agree = ev_n = 0
+    dec = _decision_times(exec_bars, family)
+    used = None
     for i, b in enumerate(exec_bars[1:], start=1):
         prev = exec_bars[i - 1]
-        c = _asof(b["ts"], cand_bars)
-        if c is None:
+        k = completed_before(cand_bars, dec[i])
+        if k is None or k == 0 or k == used:
             continue
-        cp = _asof(prev["ts"], cand_bars)
-        if cp is None or c["ts"] == cp["ts"]:
-            continue
+        used = k
+        c, cp = cand_bars[k], cand_bars[k - 1]
         y = _sign(b["close"] - prev["close"])
         x = _sign(c["close"] - cp["close"])
         if y == 0 or x == 0:
@@ -65,7 +86,7 @@ def score_pair(exec_bars, cand_bars, events, asset, future, require_xgb=False, x
             tide_n += 1
             if _sign(tide) == y:
                 tide_agree += 1
-        ev = event_features(b["ts"], events, future)
+        ev = event_features_asof(dec[i], events, future)     # only events released by the decision
         if ev["any_macro"] or ev["earnings"]:
             ev_n += 1
             if x == y:
@@ -85,7 +106,7 @@ def score_pair(exec_bars, cand_bars, events, asset, future, require_xgb=False, x
     )
     return {
         "status": status, "reason": reason, "execution": future, "candidate": asset,
-        "family": family, "overlap": hits, "sign_agree": sign_agree,
+        "family": family, "lead": "strict", "overlap": hits, "sign_agree": sign_agree,
         "tide_agree": (tide_agree / tide_n) if tide_n else None,
         "tide_n": tide_n, "macro_overlap": ev_n, "macro_agree": macro_agree,
         "xgb_artifact": str(xgb), "xgb_state": xgb_state, "xgb_reason": xgb_reason,
