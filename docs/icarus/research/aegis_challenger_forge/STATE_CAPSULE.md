@@ -1,15 +1,15 @@
 # AEGIS Challenger Forge — State Capsule
 
 - workstream: AEGIS Challenger Forge
-- last_productive_run_id: AEGIS_CF_20260928T1740Z
-- updated_utc: 2026-09-28T17:40:00Z
+- last_productive_run_id: AEGIS_CF_20260928_RANGEVOL_BVIFUTS_01
+- updated_date: 2026-09-28
 - mode: COLLECTION_ONLY
 - execution_authorized: false
 - downstream_mutation: false
 - repository: reppiks490/Icarus
 - branch: main
 - owned_path: docs/icarus/research/aegis_challenger_forge/
-- last_run_manifest: runs/AEGIS_CF_20260928T1740Z.md
+- last_run_manifest: runs/AEGIS_CF_20260928_RANGEVOL_BVIFUTS_01.md
 - admitted_ids:
   - AEGIS-CF-ICEBERG-CME-ARXIV-1909.09495-v1
   - AEGIS-CF-ROUGHMULTI-SPXVIX-2112.14310-v2
@@ -39,6 +39,13 @@
   - AEGIS-CF-HFTBACKTEST-GH-5f3ec40b2afb
   - AEGIS-CF-BTC-BVX-CFB-v1.7-20260529
   - AEGIS-CF-BTC-BVXS-CFB-v1.6-20260420
+  - AEGIS-CF-RANGE-PARKINSON-DOI-10.1086-296071
+  - AEGIS-CF-RANGE-GK-DOI-10.1086-296072
+  - AEGIS-CF-RANGE-RS-DOI-10.1214-aoap-1177005835
+  - AEGIS-CF-RANGE-YZ-DOI-10.1086-209650
+  - AEGIS-CF-RANGE-TTR-GH-d152a3f6ddc7
+  - AEGIS-CF-CME-BVIFUT-SPECS-DOCSNAP-20260928
+  - AEGIS-CF-CME-BVIFUT-CODECHANGE-SER9819-20260909
 - quarantined_ids: []
 - resolved_quarantine:
   - AEGIS-CF-OFLOW-ROUGH-IMPACT-2601.23172-CANDIDATE -> AEGIS-CF-OFLOW-ROUGH-IMPACT-ARXIV-2601.23172-v2
@@ -49,6 +56,8 @@
   - historical/standing product documentation does not equal a live-current Security Definition snapshot
   - product-specific matching rules must not be generalized from TAS, TMAC, options, enhanced-delivery or unrelated contracts
   - benchmark methodology must be version-pinned separately from underlying data access/license
+  - future-effective exchange metadata must not be applied before its effective date
+  - implementation identities must be version/tag/commit pinned when possible
   - market-data documentation does not imply entitlement to underlying data
   - source version/date and access constraints must be preserved
   - sibling and parallel AEGIS checkpoints must be reconciled, never overwritten
@@ -58,10 +67,10 @@
   - obtain current CME Options Analytics product list proving NQ/GC identifiers
   - licensed CME MBO/trade-summary corpora for NQ/MNQ and GC/MGC
   - GC/MGC-specific display/priority/iceberg evidence
-  - CME Bitcoin volatility-futures contract/reference-data semantics
+  - Bitcoin Volatility Futures historical field/retention/licensing semantics
+  - exchange-session/calendar normalization for range estimators across BTC/NQ/Gold
+  - Alizadeh-Brandt-Diebold and other non-duplicate range/stochastic-volatility provenance
   - Deribit/OKX options historical retention and timestamp semantics interoperable with BVX/BVXS
   - commit-pinned hidden-liquidity inference implementations
-  - inspect queue-model implementation lineage without executing backtests
-  - original-method provenance for Parkinson/Garman-Klass/Rogers-Satchell/Yang-Zhang
   - novel Pine DSP families beyond existing DominantCycle and overlapping FiltersToolkit functions
 - quality_rule: no corpus identity implies production admission or trading edge.
