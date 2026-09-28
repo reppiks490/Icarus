@@ -1,74 +1,74 @@
 # Microstructure Sensor Grid — State Capsule
 
-Last productive run: ICARUS-MICRO-20260928T1653Z
-Run manifest: runs/MICROSTRUCTURE_20260928T1653Z.md
+Last productive run: ICARUS-MICRO-20260928T1700Z
+Run manifest: runs/MICROSTRUCTURE_20260928T1700Z.md
 
-## Latest crypto state
+## Latest cross-product crypto state
 
-- BTCUSDT linear book: 2026-09-28T16:53:19.603Z; BBO 83613.20 / 83613.30.
-- ETHUSDT linear book: 2026-09-28T16:53:22.237Z; BBO 2683.47 / 2683.48.
-- SOLUSDT linear book: 2026-09-28T16:53:24.804Z; BBO 119.090 / 119.100.
-- Funding: BTC +0.00006537; ETH +0.0001; SOL +0.0001.
-- Next funding timestamp: 2026-09-29T00:00:00Z.
+Bybit near-synchronous product plane:
+- BTC spot BTCUSDT 83656.6/83656.7; linear BTCUSDT 83614.90/83615.00; inverse BTCUSD 83586.80/83586.90.
+- ETH spot ETHUSDT 2685.11/2685.12; linear ETHUSDT 2683.76/2683.77; inverse ETHUSD 2682.27/2682.28.
+- SOL spot SOLUSDT 119.04/119.05; linear SOLUSDT 118.970/118.980; inverse SOLUSD 118.86/118.96.
 
-## Latest 1-minute crypto coverage
+Linear funding:
+- BTC +0.00006796.
+- ETH +0.0001.
+- SOL +0.0001.
+- next timestamp 2026-09-29T00:00:00Z.
 
-All returned series: 60 bars, 2026-09-28T15:54:00Z–16:53:00Z, no timestamp gaps.
-- BTC range 83200.3–84174.3; returned volume sum 5547.314 BTC; RV60m 0.543051%.
-- ETH range 2669.58–2698.28; returned volume sum 76513.68 ETH; RV60m 0.625360%.
-- SOL range 118.22–120.34; returned volume sum 466894.4 SOL; RV60m 0.880130%.
-RV formula: sqrt(sum(log(close_t/close_t-1)^2)), non-annualized.
+## Inverse contract metadata
 
-## ETF/reference state
+- BTCUSD inverse: tick 0.10, qty step 1 contract, min 1, max leverage 100.
+- ETHUSD inverse: tick 0.01, qty step 1 contract, min 1, max leverage 100.
+- SOLUSD inverse: tick 0.01, qty step 1 contract, min 1, max leverage 50.
+- Inverse book sizes are contract counts; do not merge with base-asset spot/linear quantities without explicit contract-value normalization.
 
-- QQQ/SPY/IWM: 20 returned 1-minute bars with continuous timestamps over their 12:33–12:52 provider display windows.
-- DIA: 20 observations spanning 12:29–12:52 with preserved gaps at 12:37→12:40, 12:48→12:50 and 12:50→12:52.
-- IWM minute coverage is now available; prior credit-cap gap closed.
-- ETF proxies remain distinct from NQ/ES/YM/RTY futures.
+## Second-venue status
 
-## Access-state changes
+TickerLayer discovers BTCUSDT/ETHUSDT/SOLUSDT perpetual symbols (source_count 6 each), but perpetual snapshot/quote/trade calls return 403: perpetuals access not enabled. TickerLayer is not a usable second live derivative feed.
 
-- TickerLayer US100/US500/US30 and XAUUSD quote calls: 403 plan restriction.
-- TickerLayer Russell index symbol discovery: no match.
-- Bybit and Twelve Data selected endpoints: usable.
-- GitHub: usable.
+## Persistent prior coverage
 
-## Persistent CME/CFTC state
+- BTC/ETH/SOL 60-bar one-minute linear series through 16:53Z with no gaps.
+- QQQ/SPY/IWM minute ETF references continuous in last collected window; DIA sparse.
+- CME roll/VOI revision metadata and CFTC futures-only + combined populations preserved.
 
-- Equity-index customary September 2026 roll: 2026-09-14; expiry 2026-09-18.
-- December customary roll: 2026-12-14; expiry 2026-12-18.
-- CME Daily VOI preliminary versus subsequent Daily Bulletin official/final distinction remains active.
-- Latest collected CFTC observation: 2026-09-22, futures-only and futures+options combined kept separate.
+## Quality gates
+
+- Do not merge inverse contract counts with base-asset quantities.
+- Do not interpret same-venue product basis as cross-venue lead-lag.
+- Keep source timestamps separate and flag non-atomic comparisons.
+- Never infer MBO queue/sweeps/icebergs from static books.
+- Keep ETF references separate from futures.
+- Require exact CME contract identifiers.
+- Preserve provider-plan failures and missing raw hashes.
 
 ## New artifact IDs
 
-- MICRO-BYBIT-BTCUSDT-LIN-L2-20260928T165319603Z
-- MICRO-BYBIT-ETHUSDT-LIN-L2-20260928T165322237Z
-- MICRO-BYBIT-SOLUSDT-LIN-L2-20260928T165324804Z
-- CRYPTO-LINEAR-1M-BTCETHSOL-20260928T1554Z-1653Z
-- ETF-REFERENCE-1M-QQQ-SPY-DIA-IWM-20260928T1653Z
+- CRYPTO-SPOT-LINEAR-INVERSE-BTCETHSOL-20260928T1700Z
+- TICKERLAYER-PERPETUAL-ACCESS-STATE-20260928
 
-## Persistent quality gates
+## Persisted snapshot
 
-- Keep source event/update/retrieval/release times separate.
-- Never infer MBO queue behavior from static price-level depth.
-- Never interpolate missing bars silently.
-- Mark newest incomplete bars provisional.
-- Keep ETF references separate from futures.
-- Require exact CME contract/security identifiers.
-- Preserve preliminary/final VOI revisions.
-- Keep CFTC futures-only and combined populations separate.
-- Preserve provider-plan failures and symbol mapping gaps.
+- snapshots/CRYPTO_SPOT_LINEAR_INVERSE_20260928T1700Z.json
 
-## Persisted snapshots
+## Access state
 
-- snapshots/CRYPTO_LINEAR_DEPTH_1M_20260928T1653Z.json
-- snapshots/ETF_REFERENCE_1M_20260928T1653Z.csv
+Usable:
+- Bybit spot/linear/inverse selected public endpoints.
+- Twelve Data selected reference endpoints.
+- GitHub.
 
-## Next collection targets
+Blocked:
+- TickerLayer perpetual live data: 403.
+- TickerLayer direct indices/XAUUSD: plan restricted.
+- U.S. Gold Bureau current request: prior IP restriction.
+- direct CME live MDP/MBO, options analytics, cross-venue OI/liquidations: not exposed.
 
-1. Exact-contract CME December 2026 equity-index VOI/settlement and active GC/MGC records.
-2. Licensed CME MDP 3.0 MBO/MBP + trade summary.
-3. Second crypto derivatives venue with depth/funding/OI/liquidations/trade tape.
-4. CME/Cboe options chain data.
-5. Raw payload/checksum preservation where permitted.
+## Next targets
+
+1. Independent second crypto derivatives venue with depth/funding/OI/liquidations/trade tape.
+2. Exact CME active-contract VOI/settlement.
+3. Licensed CME MDP 3.0.
+4. CME/Cboe options chains.
+5. Raw payload/checksum archival where permitted.

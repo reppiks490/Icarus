@@ -1,0 +1,212 @@
+{
+  "run_id": "ICARUS-MICRO-20260928T1700Z",
+  "data_class": "normalized_connector_observations",
+  "source": "Bybit public connector",
+  "notes": [
+    "Spot and USDT-linear quantities are returned in base-asset units; inverse-book quantities are contract counts and are not directly comparable.",
+    "50 depth levels were requested; connector returned 10 levels per side.",
+    "No upstream raw payload bytes or provider checksum were exposed."
+  ],
+  "assets": {
+    "BTC": {
+      "spot": {
+        "symbol": "BTCUSDT",
+        "ts": 1790614849753,
+        "bestBid": {
+          "price": "83656.6",
+          "qty": "0.278956"
+        },
+        "bestAsk": {
+          "price": "83656.7",
+          "qty": "0.444197"
+        },
+        "spread": "0.1"
+      },
+      "linear": {
+        "symbol": "BTCUSDT",
+        "ts": 1790614849802,
+        "bestBid": {
+          "price": "83614.90",
+          "qty": "4.299"
+        },
+        "bestAsk": {
+          "price": "83615.00",
+          "qty": "6.015"
+        },
+        "spread": "0.1",
+        "fundingRate": "0.00006796",
+        "nextFundingTime": "1790640000000"
+      },
+      "inverse": {
+        "symbol": "BTCUSD",
+        "ts": 1790614850005,
+        "bestBid": {
+          "price": "83586.80",
+          "qty_contracts": "50413"
+        },
+        "bestAsk": {
+          "price": "83586.90",
+          "qty_contracts": "1800"
+        },
+        "spread": "0.1",
+        "last": "83579.50",
+        "change24h": "-0.009311",
+        "volume_field": "262251873.0000",
+        "specs": {
+          "tickSize": "0.10",
+          "qtyStep": "1",
+          "minOrderQty": "1",
+          "maxLeverage": "100.00"
+        }
+      },
+      "derived": {
+        "spot_mid": 83656.65,
+        "linear_mid": 83614.95,
+        "inverse_mid": 83586.85,
+        "linear_minus_spot_bps": -4.984,
+        "inverse_minus_spot_bps": -8.3436,
+        "inverse_minus_linear_bps": -3.3607,
+        "spot_linear_offset_ms": 49,
+        "spot_inverse_offset_ms": 252
+      }
+    },
+    "ETH": {
+      "spot": {
+        "symbol": "ETHUSDT",
+        "ts": 1790614850358,
+        "bestBid": {
+          "price": "2685.11",
+          "qty": "10.9118"
+        },
+        "bestAsk": {
+          "price": "2685.12",
+          "qty": "2.906"
+        },
+        "spread": "0.01"
+      },
+      "linear": {
+        "symbol": "ETHUSDT",
+        "ts": 1790614850637,
+        "bestBid": {
+          "price": "2683.76",
+          "qty": "73.75"
+        },
+        "bestAsk": {
+          "price": "2683.77",
+          "qty": "34.18"
+        },
+        "spread": "0.01",
+        "fundingRate": "0.0001",
+        "nextFundingTime": "1790640000000"
+      },
+      "inverse": {
+        "symbol": "ETHUSD",
+        "ts": 1790614850866,
+        "bestBid": {
+          "price": "2682.27",
+          "qty_contracts": "542"
+        },
+        "bestAsk": {
+          "price": "2682.28",
+          "qty_contracts": "351"
+        },
+        "spread": "0.01",
+        "last": "2681.50",
+        "change24h": "-0.000912",
+        "volume_field": "46397096.0000",
+        "specs": {
+          "tickSize": "0.01",
+          "qtyStep": "1",
+          "minOrderQty": "1",
+          "maxLeverage": "100.00"
+        }
+      },
+      "derived": {
+        "spot_mid": 2685.115,
+        "linear_mid": 2683.765,
+        "inverse_mid": 2682.275,
+        "linear_minus_spot_bps": -5.0277,
+        "inverse_minus_spot_bps": -10.577,
+        "inverse_minus_linear_bps": -5.5518,
+        "spot_linear_offset_ms": 279,
+        "spot_inverse_offset_ms": 508
+      }
+    },
+    "SOL": {
+      "spot": {
+        "symbol": "SOLUSDT",
+        "ts": 1790614851280,
+        "bestBid": {
+          "price": "119.04",
+          "qty": "45.481"
+        },
+        "bestAsk": {
+          "price": "119.05",
+          "qty": "50.63"
+        },
+        "spread": "0.01"
+      },
+      "linear": {
+        "symbol": "SOLUSDT",
+        "ts": 1790614852604,
+        "bestBid": {
+          "price": "118.970",
+          "qty": "344.3"
+        },
+        "bestAsk": {
+          "price": "118.980",
+          "qty": "691.1"
+        },
+        "spread": "0.01",
+        "fundingRate": "0.0001",
+        "nextFundingTime": "1790640000000"
+      },
+      "inverse": {
+        "symbol": "SOLUSD",
+        "ts": 1790614851750,
+        "bestBid": {
+          "price": "118.86",
+          "qty_contracts": "1549"
+        },
+        "bestAsk": {
+          "price": "118.96",
+          "qty_contracts": "2250"
+        },
+        "spread": "0.1",
+        "last": "119.12",
+        "change24h": "-0.020716",
+        "volume_field": "8179802.0000",
+        "specs": {
+          "tickSize": "0.01",
+          "qtyStep": "1",
+          "minOrderQty": "1",
+          "maxLeverage": "50.00"
+        }
+      },
+      "derived": {
+        "spot_mid": 119.045,
+        "linear_mid": 118.975,
+        "inverse_mid": 118.91,
+        "linear_minus_spot_bps": -5.8793,
+        "inverse_minus_spot_bps": -11.3402,
+        "inverse_minus_linear_bps": -5.4633,
+        "spot_linear_offset_ms": 1324,
+        "spot_inverse_offset_ms": 470
+      }
+    }
+  },
+  "access_state": {
+    "tickerlayer_perpetual_symbol_discovery": {
+      "BTCUSDT": {
+        "source_count": 6
+      },
+      "ETHUSDT": {
+        "source_count": 6
+      },
+      "SOLUSDT": {
+        "source_count": 6
+      }
+    },
+    "tickerlayer_perpetual_quotes": "blocked_403_perpetuals_access_not_enabled"
+  }
+}
