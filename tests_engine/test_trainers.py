@@ -86,3 +86,12 @@ def test_train_file_fits_synthetic_walkforward():
     assert r["execution_authorized"] is False
     assert r["accuracy_guaranteed"] is False
     assert r["holdout_rows"] >= 10
+
+
+def test_every_skip_exit_carries_an_explicit_execution_lock():
+    short = train_file(_csv([f"{1_700_000_000+i},1,1,1,1" for i in range(12)]), "renko", "ohlc", "NQ")
+    flat = train_file(_csv([f"{1_700_000_000+i},1,1,1,1" for i in range(310)]), "renko", "ohlc", "NQ")
+    assert short["status"] == "skipped" and "min_rows" in short["reason"]
+    assert flat["status"] == "skipped" and "labeled rows" in flat["reason"]
+    assert short["execution_authorized"] is False
+    assert flat["execution_authorized"] is False

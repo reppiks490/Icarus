@@ -63,9 +63,9 @@ def _events():
         _EVENTS = seed_events()
     return _EVENTS
 
-def attach_labels(bars, family: str):
-    from icarus_engine.events.calendar import event_features
-    evs = _events()
+def attach_labels(bars, family: str, events=None):
+    from icarus_engine.events.calendar import event_features_asof
+    evs = _events() if events is None else events
     labeled = []
     for i, b in enumerate(bars[:-1]):
         y = _sign(bars[i + 1]["close"] - b["close"])
@@ -86,7 +86,7 @@ def attach_labels(bars, family: str):
                 run += d
             else:
                 break
-        ev = event_features(b["ts"], evs)
+        ev = event_features_asof(b["ts"], evs)
         feats = {
             "ret_1": (b["close"] - bars[i - 1]["close"]) if i else 0.0,
             "ret_3": (b["close"] - bars[max(0, i - 3)]["close"]),
