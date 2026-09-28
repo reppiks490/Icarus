@@ -1,15 +1,15 @@
 # AEGIS Challenger Forge — State Capsule
 
 - workstream: AEGIS Challenger Forge
-- last_productive_run_id: AEGIS_CF_20260928T1705Z
-- updated_utc: 2026-09-28T17:05:00Z
+- last_productive_run_id: AEGIS_CF_20260928T1710Z
+- updated_utc: 2026-09-28T17:10:00Z
 - mode: COLLECTION_ONLY
 - execution_authorized: false
 - downstream_mutation: false
 - repository: reppiks490/Icarus
 - branch: main
 - owned_path: docs/icarus/research/aegis_challenger_forge/
-- last_run_manifest: runs/AEGIS_CF_20260928T1705Z.md
+- last_run_manifest: runs/AEGIS_CF_20260928T1710Z.md
 - admitted_ids:
   - AEGIS-CF-ICEBERG-CME-ARXIV-1909.09495-v1
   - AEGIS-CF-ROUGHMULTI-SPXVIX-2112.14310-v2
@@ -30,6 +30,10 @@
   - AEGIS-CF-CME-OPTVOL-GREEKS-DOCSNAP-20260928T1705Z
   - AEGIS-CF-BTC-OKX-DERIV-DOCSNAP-20260928T1705Z
   - AEGIS-CF-BTC-DERIBIT-DERIV-DOCSNAP-20260928T1705Z
+  - AEGIS-CF-ICEBERG-ASX-JFR-10.1111-JFIR.12414
+  - AEGIS-CF-TMX-ICEBERG-GUIDE-v1.77-20260914
+  - AEGIS-CF-PINE-GYTS-FILTERS-TV-Mm789eKn-v2-20250305
+  - AEGIS-CF-PINE-GYTS-VOLTOOL-TV-Th3bPWea-SNAPSHOT-20260928
 - quarantined_ids: []
 - resolved_quarantine:
   - AEGIS-CF-OFLOW-ROUGH-IMPACT-2601.23172-CANDIDATE -> AEGIS-CF-OFLOW-ROUGH-IMPACT-ARXIV-2601.23172-v2
@@ -41,15 +45,14 @@
   - market-data documentation does not imply entitlement to underlying data
   - source version/date and access constraints must be preserved
   - sibling and parallel AEGIS checkpoints must be reconciled, never overwritten
+  - overlapping Pine subfunctions must be deduplicated at method-family level, not only script level
 - next_targets:
-  - pin current CME MatchAlgorithm values for NQ/MNQ/GC/MGC
-  - pin current CME options-analytics product list for NQ/GC
+  - parse/pin current CME GCC MatchAlgorithm rows for NQ/MNQ/GC/MGC
   - licensed CME MBO/trade-summary corpora for NQ/MNQ and GC/MGC
-  - empirical pro-rata-vs-FIFO futures execution literature
-  - queue-reactive cancellation-size/display-refresh/hidden-liquidity extensions
+  - current CME options-analytics product list for NQ/GC
+  - ASX/TMX iceberg citation lineage for queue/cancellation/adverse-selection research
+  - commit-pinned hidden-liquidity inference implementations
   - synchronized Binance/Bybit/OKX/Deribit BTC OI/funding/liquidation/book/options corpus
-  - OKX liquidation-history/event semantics
-  - direct Deribit option-Greeks history/retention semantics
-  - futures/crypto-specific HHT/wavelet/multifractal validation
-  - novel licensed Pine multiscale/DSP families beyond existing DominantCycle
+  - original-method provenance for Parkinson/Garman-Klass/Rogers-Satchell/Yang-Zhang
+  - novel Pine DSP families beyond existing DominantCycle and overlapping FiltersToolkit functions
 - quality_rule: no corpus identity implies production admission or trading edge.
