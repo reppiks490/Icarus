@@ -59,3 +59,23 @@ Log loss on the terminal holdout (lower is better). d = mean per-row log loss, X
   candle exports the engine actually trades, scrolled back as far as the plan allows.
 
 `execution_authorized=false`.
+
+## Post-review notes (added after the run; not part of the pre-registered verdict)
+The final code review of the PR stack raised three points about this run. None changes the verdict. Two sharpen it.
+
+1. **Neighbouring rows are not independent.** The pre-registered paired test assumed independent rows, and
+   neighbouring rows share features. [posthoc_newey_west.py](posthoc_newey_west.py) replays the 23 saved models on
+   the exact rows the run scored (all 23 replays match the run's mean differences to 1e-12) and repeats the test
+   with Newey-West errors ([posthoc_newey_west.json](posthoc_newey_west.json)). The same two studies survive
+   Benjamini-Hochberg against the logistic: GC 1h (p 0.006) and YM 4h (p 0.006). **Against the constant null,
+   neither is significant: GC 1h p 0.089, YM 4h p 0.48.** No study in this run beats predicting the base rate with
+   significance.
+2. **The last row of every export may have been a bar still forming.** For example, the daily files end on the
+   2026-09-20 session with volume 55,866 against about 1.3 million on a full day. That bar fed the label of each
+   study's final holdout row, one of 60 to 414 rows. The DATA gate now drops every export's last row. These
+   holdouts are spent and are not re-scored.
+3. **At the time of the run, `VALID_RAW_CHALLENGER` meant "beats both baselines on the point estimate".** Eight
+   of the 23 artifacts read VALID that way. The validator now also requires one-sided significance at 0.05 against
+   both baselines (Newey-West), and it trusts only the canonical ledger. None of these 23 artifacts would qualify.
+   Their claims were copied into the canonical ledger (`~/.icarus/holdout_ledger.sqlite3`), so a later study on
+   these intervals is blocked from any working directory.
