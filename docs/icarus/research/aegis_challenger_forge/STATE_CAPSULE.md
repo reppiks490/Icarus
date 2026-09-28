@@ -1,15 +1,15 @@
 # AEGIS Challenger Forge — State Capsule
 
 - workstream: AEGIS Challenger Forge
-- last_productive_run_id: AEGIS_CF_20260928T1637Z
-- updated_utc: 2026-09-28T16:37:00Z
+- last_productive_run_id: AEGIS_CF_20260928T1655Z
+- updated_utc: 2026-09-28T16:55:00Z
 - mode: COLLECTION_ONLY
 - execution_authorized: false
 - downstream_mutation: false
 - repository: reppiks490/Icarus
 - branch: main
 - owned_path: docs/icarus/research/aegis_challenger_forge/
-- last_run_manifest: runs/AEGIS_CF_20260928T1637Z.md
+- last_run_manifest: runs/AEGIS_CF_20260928T1655Z.md
 - admitted_ids:
   - AEGIS-CF-ICEBERG-CME-ARXIV-1909.09495-v1
   - AEGIS-CF-ROUGHMULTI-SPXVIX-2112.14310-v2
@@ -21,6 +21,8 @@
   - AEGIS-CF-QRLOB-GH-SaadSouilmi-3080096cc0c7
   - AEGIS-CF-BTC-BYBIT-V5-DERIV-DOCSNAP-20260928T1637Z
   - AEGIS-CF-BTC-BINANCE-COINM-DOCSNAP-20260928T1637Z
+  - AEGIS-CF-PRO-RATA-ARXIV-1205.3051
+  - AEGIS-CF-QR-SIM-ARXIV-2603.24137-v1
 - quarantined_ids:
   - AEGIS-CF-OFLOW-ROUGH-IMPACT-2601.23172-CANDIDATE
 - persistent_quality_gates:
@@ -33,6 +35,8 @@
 - next_targets:
   - pin current CME MatchAlgorithm values for NQ/MNQ/GC/MGC
   - licensed CME MBO/trade-summary corpora for NQ/MNQ and GC/MGC
+  - empirical pro-rata-vs-FIFO execution literature with product-specific futures data
+  - queue-reactive cancellation-size/display-refresh/hidden-liquidity extensions
   - point-in-time NQ/NDX and Gold option surfaces
   - synchronized multi-venue BTC OI/funding/liquidation/basis corpus
   - academic DSP/wavelet/Hilbert-Huang validation
