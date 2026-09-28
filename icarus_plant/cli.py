@@ -21,6 +21,7 @@ import sys
 import time
 from typing import Optional
 
+from icarus_engine import brand
 from .downloads import ingest_downloads
 from .drop import ingest_drop
 from .guide import open_drop, preflight, steps, write_next_txt
@@ -254,7 +255,7 @@ def _configure_console_encoding() -> None:
 
 def main(argv: Optional[list] = None) -> int:
     _configure_console_encoding()
-    p = argparse.ArgumentParser(prog="icarus-plant", description="Icarus local paper-trading plant (Grok/xAI)")
+    p = argparse.ArgumentParser(prog="icarus-plant", description=f"{brand.NAME} - local paper-trading plant")
     p.add_argument("--root", default=None, help="plant data dir (else $ICARUS_HOME else cwd)")
     sub = p.add_subparsers(dest="cmd", required=True)
 

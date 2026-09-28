@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "icarus"
 version = "0.1.0"
-description = "THE PULSE OF ICARUS — TradingView-parity paper engine + TV-alert bridge"
+description = "DIVINE PROVIDENCE: THE HEART OF ICARUS — paper engine for THE PULSE OF ICARUS + TV-alert bridge"
 requires-python = ">=3.10"
 readme = "README.md"
 authors = [

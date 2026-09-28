@@ -36,6 +36,7 @@ from pathlib import Path
 from typing import Any, Dict
 from urllib.parse import parse_qs, urlparse
 
+from . import brand
 from .assets import REGISTRY, parse_spec
 from .backtest import JOBS, start_job
 from .parity import compare_lists, engine_trades_from_rows, read_tv_trades_text
@@ -149,7 +150,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             p = urlparse(self.path)
             q = parse_qs(p.query)
             if p.path == "/":
-                return self._send(200, html_path.read_bytes(), "text/html")
+                return self._send(200, brand.render(html_path.read_bytes()), "text/html")
             if p.path == "/research-ui.js":
                 return self._send(200, (html_path.parent / "research-ui.js").read_bytes(), "text/javascript")
             if p.path == "/sources-ui.js":

@@ -24,6 +24,7 @@ import sys
 import time
 from typing import Optional
 
+from . import brand
 from .assets import REGISTRY, parse_spec
 from .feeds.bars import file_feed_mode  # Grok (xAI) — 2026-09-20
 from .runtime import AssetRunner, Journal, Portfolio, export_paper_book, resolve_inputs
@@ -298,7 +299,7 @@ def cmd_parity(args: argparse.Namespace) -> int:
 
 
 def main(argv: Optional[list] = None) -> int:
-    p = argparse.ArgumentParser(prog="icarus-engine", description="THE PULSE OF ICARUS - self-contained paper-trading engine")
+    p = argparse.ArgumentParser(prog="icarus-engine", description=f"{brand.NAME} - paper-trading engine for {brand.STRATEGY}")
     sub = p.add_subparsers(dest="cmd", required=True)
 
     def common(s: argparse.ArgumentParser, multi: bool = True) -> None:

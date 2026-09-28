@@ -1,4 +1,4 @@
-# Icarus
+# DIVINE PROVIDENCE: THE HEART OF ICARUS
 
 <!-- Grok (xAI) — 2026-09-20. Whole file. This repo had no README. Engine/strategy remain Astra's. -->
 

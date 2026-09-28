@@ -30,6 +30,7 @@ from typing import Any, Dict, Optional
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
+from icarus_engine import brand
 from .config import Settings
 from .executor import ExecutionEngine
 from .journal import Journal
@@ -214,7 +215,7 @@ def create_app(cfg: Optional[Settings] = None, broker=None, journal: Optional[Jo
     # ── dashboard ──
     @app.get("/", response_class=HTMLResponse)
     def dashboard():
-        return (Path(__file__).parent / "dashboard.html").read_text(encoding="utf-8")
+        return brand.render((Path(__file__).parent / "dashboard.html").read_bytes()).decode("utf-8")
 
     return app
 
