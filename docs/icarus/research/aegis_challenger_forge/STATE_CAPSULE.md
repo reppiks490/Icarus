@@ -1,15 +1,15 @@
 # AEGIS Challenger Forge — State Capsule
 
 - workstream: AEGIS Challenger Forge
-- last_productive_run_id: AEGIS_CF_20260928T1725Z
-- updated_utc: 2026-09-28T17:25:00Z
+- last_productive_run_id: AEGIS_CF_20260928T1740Z
+- updated_utc: 2026-09-28T17:40:00Z
 - mode: COLLECTION_ONLY
 - execution_authorized: false
 - downstream_mutation: false
 - repository: reppiks490/Icarus
 - branch: main
 - owned_path: docs/icarus/research/aegis_challenger_forge/
-- last_run_manifest: runs/AEGIS_CF_20260928T1725Z.md
+- last_run_manifest: runs/AEGIS_CF_20260928T1740Z.md
 - admitted_ids:
   - AEGIS-CF-ICEBERG-CME-ARXIV-1909.09495-v1
   - AEGIS-CF-ROUGHMULTI-SPXVIX-2112.14310-v2
@@ -37,6 +37,8 @@
   - AEGIS-CF-CME-NQ-MNQ-FIFO-FAQ-20190311
   - AEGIS-CF-CME-OPTA-REST-DOC-v20251030
   - AEGIS-CF-HFTBACKTEST-GH-5f3ec40b2afb
+  - AEGIS-CF-BTC-BVX-CFB-v1.7-20260529
+  - AEGIS-CF-BTC-BVXS-CFB-v1.6-20260420
 - quarantined_ids: []
 - resolved_quarantine:
   - AEGIS-CF-OFLOW-ROUGH-IMPACT-2601.23172-CANDIDATE -> AEGIS-CF-OFLOW-ROUGH-IMPACT-ARXIV-2601.23172-v2
@@ -46,18 +48,20 @@
   - mutable documentation sources require retrieval snapshot identity
   - historical/standing product documentation does not equal a live-current Security Definition snapshot
   - product-specific matching rules must not be generalized from TAS, TMAC, options, enhanced-delivery or unrelated contracts
+  - benchmark methodology must be version-pinned separately from underlying data access/license
   - market-data documentation does not imply entitlement to underlying data
   - source version/date and access constraints must be preserved
   - sibling and parallel AEGIS checkpoints must be reconciled, never overwritten
   - overlapping Pine subfunctions must be deduplicated at method-family level, not only script level
 - next_targets:
-  - parse/pin current CME GCC/MDP/FPRF MatchAlgorithm rows for NQ/MNQ/GC/MGC
+  - parse/pin current CME GCC/MDP/FPRF MatchAlgorithm rows for GC/MGC; NQ/MNQ FIFO baseline already admitted
   - obtain current CME Options Analytics product list proving NQ/GC identifiers
   - licensed CME MBO/trade-summary corpora for NQ/MNQ and GC/MGC
   - GC/MGC-specific display/priority/iceberg evidence
+  - CME Bitcoin volatility-futures contract/reference-data semantics
+  - Deribit/OKX options historical retention and timestamp semantics interoperable with BVX/BVXS
   - commit-pinned hidden-liquidity inference implementations
   - inspect queue-model implementation lineage without executing backtests
-  - synchronized Binance/Bybit/OKX/Deribit BTC OI/funding/liquidation/book/options corpus
   - original-method provenance for Parkinson/Garman-Klass/Rogers-Satchell/Yang-Zhang
   - novel Pine DSP families beyond existing DominantCycle and overlapping FiltersToolkit functions
 - quality_rule: no corpus identity implies production admission or trading edge.
