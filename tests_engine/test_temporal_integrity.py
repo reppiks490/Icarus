@@ -62,7 +62,7 @@ def test_features_never_read_a_later_bar():
 # ---- candidate audit -------------------------------------------------------------------------------
 
 def test_completed_before_uses_only_closed_candidate_bars():
-    from icarus_engine.audit.run import completed_before
+    from icarus_engine.audit.lead import completed_before
     cand = [{"ts": 0}, {"ts": 3600}, {"ts": 7200}]
     assert completed_before(cand, 3599) is None       # bar 0 closes when bar 1 opens
     assert completed_before(cand, 3600) == 0
@@ -73,7 +73,7 @@ def test_completed_before_uses_only_closed_candidate_bars():
 
 def test_same_interval_agreement_is_not_predictive():
     ex = _bars([100.0 + (i % 2) for i in range(300)])     # up, down, up, down
-    r = score_pair(ex, ex, seed_events(), "AAPL", "NQ")
+    r = score_pair(ex, ex, seed_events(), "AAPL", "NQ", cand_floored=False)     # declared 1m candles
     assert r["lead"] == "strict" and r["overlap"] >= 200
     assert r["sign_agree"] == 0.0                          # the same series never predicts its own reversal
 
@@ -85,7 +85,7 @@ def test_a_candidate_that_moved_first_can_lead():
     for m in moves[1:]:
         cand.append(cand[-1] + m)      # candidate bar k moves by m
         ex.append(ex[-1] + m)          # execution bar k+1 moves by the same m, one bar later
-    r = score_pair(_bars(ex), _bars(cand), seed_events(), "AAPL", "NQ")
+    r = score_pair(_bars(ex), _bars(cand), seed_events(), "AAPL", "NQ", cand_floored=False)   # declared 1m candles
     assert r["overlap"] >= 200 and r["sign_agree"] == 1.0
 
 

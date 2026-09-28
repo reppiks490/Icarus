@@ -38,17 +38,16 @@ def _sig(z):
     if z <= -20: return 0.0
     return 1.0 / (1.0 + math.exp(-z))
 
-def fit(rows, steps=120, lr=0.08, l2=0.02, keys=KEYS):
-    # keys: Claude (Opus 5.5) 2026-09-27 — the Slot 2 ranker reuses this fit on its own inputs.
+def fit(rows, steps=120, lr=0.08, l2=0.02):
     if len(rows) < 20:
         raise ValueError("fit needs >=20 labeled rows")
-    sd, mu = _stats(rows, keys)
-    dim = 1 + len(keys)
+    sd, mu = _stats(rows)
+    dim = 1 + len(KEYS)
     w = [0.0] * dim
     for _ in range(steps):
         grad = [0.0] * dim
         for row in rows:
-            x = _vec(row, mu, sd, keys)
+            x = _vec(row, mu, sd)
             y = 1.0 if row["y"] > 0 else 0.0
             p = _sig(_dot(w, x))
             err = p - y
@@ -57,7 +56,7 @@ def fit(rows, steps=120, lr=0.08, l2=0.02, keys=KEYS):
         n = len(rows)
         for j in range(dim):
             w[j] -= lr * (grad[j] / n + l2 * w[j])
-    return {"w": w, "mu": mu, "sd": sd, "features": list(keys), "slot": "logit"}
+    return {"w": w, "mu": mu, "sd": sd, "features": list(KEYS), "slot": "logit"}
 
 def predict_sign(model, row):
     x = _vec(row, model["mu"], model["sd"], model.get("features", KEYS))

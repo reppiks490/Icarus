@@ -11,19 +11,33 @@ def main(argv=None):
     p.add_argument("--asset", default="")
     p.add_argument("--out", default="")
     p.add_argument("--slot", choices=("logit", "xgb", "rank", "regime", "fail"), default="logit")
-    p.add_argument("--ledger", default="", help="holdout ledger (default run/trainers/holdout_ledger.sqlite3)")
+    p.add_argument("--ledger", default="", help="holdout ledger (default $ICARUS_LEDGER, else ~/.icarus/holdout_ledger.sqlite3)")
     p.add_argument("--cand", action="append", default=[], metavar="NAME=CSV", help="rank: a candidate series")
+    p.add_argument("--cand-chart", default="", help="rank: the candidates' chart type; only a clock chart "
+                                                   "(1m, 60m, 1D) gets exact timing, anything else is minute-floored")
     p.add_argument("--root", default=".", help="rank: plant root for history/events")
     args = p.parse_args(argv)
     if args.slot in ("logit", "xgb", "rank") and not args.chart_type:
         p.error(f"--chart-type is required for --slot {args.slot}")
+    bad = [c for c in args.cand if "=" not in c or not c.split("=", 1)[0] or not c.split("=", 1)[1]]
+    if bad:
+        p.error(f"--cand must be NAME=CSV, got {bad}")
+    try:
+        report = _run(args)
+    except (ValueError, OSError) as exc:          # an unknown chart type, an unreadable file: report, never trace
+        report = {"status": "blocked", "reason": str(exc), "slot": args.slot, "execution_authorized": False}
+    print(json.dumps(report, indent=2))
+    return 0 if report.get("status") in ("fitted", "skipped") else 1
+
+def _run(args):
     if args.slot == "xgb":
         report = train_xgb_file(args.path, args.chart_type, args.schema, args.asset,
                                 out=args.out or None, ledger=args.ledger or None)
     elif args.slot == "rank":
-        cands = dict(c.split("=", 1) for c in args.cand if "=" in c)
+        cands = dict(c.split("=", 1) for c in args.cand)
         report = train_rank_file(args.path, args.chart_type, args.schema, args.asset, cands,
-                                 out=args.out or None, ledger=args.ledger or None, root=args.root)
+                                 out=args.out or None, ledger=args.ledger or None, root=args.root,
+                                 cand_chart=args.cand_chart or None)
     elif args.slot == "regime":
         from .regime_slot import train as regime
         report = regime(args.path, args.asset)
@@ -34,8 +48,7 @@ def main(argv=None):
         report = train_file(args.path, args.chart_type, args.schema, args.asset)
         if args.out:
             write_report(report, args.out)
-    print(json.dumps(report, indent=2))
-    return 0 if report.get("status") in ("fitted", "skipped") else 1
+    return report
 
 if __name__ == "__main__":
     raise SystemExit(main())

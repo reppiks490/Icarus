@@ -1,22 +1,12 @@
 # Grok (xAI) — 2026-09-22. Whole file.
 from __future__ import annotations
-import csv, math
 from pathlib import Path
 from icarus_engine.spec import FEATURE_KEYS, WALK
-
-def _num(v):
-    if v is None or v == "":
-        return None
-    try:
-        x = float(v)
-    except (TypeError, ValueError):
-        return None
-    return x if math.isfinite(x) else None
+from .integrity import inspect_ohlc
 
 def load_ohlc(path: Path):
     # Claude (Opus 5.5) 2026-09-27: parsing lives in integrity.inspect_ohlc (offset-aware timestamps, duplicate
     # and OHLC checks, a manifest). A file with conflicting duplicates or impossible OHLC is refused.
-    from .integrity import inspect_ohlc
     out, manifest = inspect_ohlc(path)
     if manifest["status"] == "blocked":
         raise ValueError(f"{path}: {manifest['reason']}")

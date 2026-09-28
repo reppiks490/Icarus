@@ -126,7 +126,7 @@ def run():
     rejected = bh([studies[i]["paired"]["p_one_sided"] for i in fitted]) if fitted else []
     for i, rej in zip(fitted, rejected):
         studies[i]["bh_significant_q10"] = rej
-    out = {"study": "2026-09-27-slot01", "repo_revision": xgb_slot._revision(), "q": Q,
+    out = {"study": "2026-09-27-slot01", "repo_revision": xgb_slot.revision(), "q": Q,
            "n_selected": len(chosen), "n_fitted": len(fitted), "excluded": excluded, "studies": studies,
            "execution_authorized": False}
     results_path.write_text(json.dumps(out, indent=2, allow_nan=False))

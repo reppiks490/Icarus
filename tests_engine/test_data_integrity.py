@@ -26,13 +26,13 @@ def _rows(n=20, t0=T0, step=60):
 def test_iso_timestamps_with_an_offset_are_read_not_dropped(tmp_path):
     lines = [f"2023-11-14T{22 + i // 60:02d}:{i % 60:02d}:20Z,100,101,99,100.5" for i in range(20)]
     bars = load_ohlc(_csv(tmp_path, lines))
-    assert len(bars) == 20 and bars[0]["ts"] == 1699999220
+    assert len(bars) == 19 and bars[0]["ts"] == 1699999220          # the last row may still be forming
 
 
 def test_a_naive_timestamp_is_not_guessed(tmp_path):
     from icarus_engine.trainers.integrity import inspect_ohlc
     bars, m = inspect_ohlc(_csv(tmp_path, _rows() + ["2023-11-14 22:13:20,100,101,99,100.5"]))
-    assert m["unparseable_time"] == 1 and m["rows_used"] == 20 and m["status"] == "issues"
+    assert m["unparseable_time"] == 1 and m["rows_used"] == 19 and m["status"] == "issues"
 
 
 # ---- duplicates and OHLC -------------------------------------------------------------------------------
@@ -41,7 +41,7 @@ def test_exact_duplicates_are_collapsed(tmp_path):
     from icarus_engine.trainers.integrity import inspect_ohlc
     lines = _rows()
     bars, m = inspect_ohlc(_csv(tmp_path, lines + [lines[5]]))
-    assert len(bars) == 20 and m["duplicate_exact"] == 1 and m["status"] == "issues"
+    assert len(bars) == 19 and m["duplicate_exact"] == 1 and m["status"] == "issues"
     assert len({b["ts"] for b in bars}) == len(bars)
 
 
@@ -75,7 +75,7 @@ def test_manifest_identifies_the_file_and_its_rows(tmp_path):
     assert ma["canonical_rows_sha256"] == mb["canonical_rows_sha256"]
     assert ma["status"] == "clean" and mb["out_of_order"] == 19 and ma["out_of_order"] == 0
     assert (ma["rows_total"], ma["rows_used"], ma["first_ts"], ma["last_ts"], ma["median_step"]) == \
-        (20, 20, T0, T0 + 19 * 60, 60)
+        (20, 19, T0, T0 + 18 * 60, 60)
 
 
 def test_trainers_report_a_blocked_file_instead_of_crashing(tmp_path):
@@ -98,7 +98,7 @@ def test_fitted_artifacts_carry_the_dataset_manifest(tmp_path):
     r = train_xgb_file(p, "minutes", "ohlc", "NQ", out=tmp_path / "x.json", ledger=tmp_path / "l.sqlite3")
     assert r["status"] == "fitted" and r["dataset_manifest"]["raw_sha256"] == file_hash(p)
     assert r["dataset_manifest"]["status"] == "clean"
-    assert train_file(p, "minutes", "ohlc", "NQ")["dataset_manifest"]["rows_used"] == 700
+    assert train_file(p, "minutes", "ohlc", "NQ")["dataset_manifest"]["rows_used"] == 699
 
 
 # ---- timeframe identity -------------------------------------------------------------------------------

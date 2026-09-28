@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse, json
 from icarus_engine.events.calendar import load_events
 from icarus_engine.trainers.dataset import load_ohlc
+from icarus_engine.trainers.families import family_for
 from icarus_engine.trainers.run import file_hash
 from .run import score_pair, write_audit
 
@@ -12,6 +13,9 @@ def main(argv=None):
     p.add_argument("--cand", required=True, help="candidate OHLCV csv")
     p.add_argument("--future", default="NQ")
     p.add_argument("--family", default="clock_minutes", help="trainer family of the XGB artifact")
+    p.add_argument("--cand-chart", default="", help="the candidate's chart type; only a clock chart (1m, 60m, 1D) "
+                                                   "gets exact timing, anything else is minute-floored")
+    p.add_argument("--ledger", default="", help="holdout ledger (default $ICARUS_LEDGER, else ~/.icarus/...)")
     p.add_argument("--asset", default="")
     p.add_argument("--root", default=".")
     p.add_argument("--out", default="")
@@ -22,7 +26,8 @@ def main(argv=None):
     ev = load_events(args.root)
     try:
         exec_bars, cand_bars = load_ohlc(args.exec), load_ohlc(args.cand)
-    except ValueError as exc:            # the DATA gate refused a file: say so, never audit it
+        cand_floored = not (args.cand_chart and family_for(args.cand_chart).startswith("clock_"))
+    except (ValueError, OSError) as exc:  # the DATA gate refused a file, or it cannot be read: never audit it
         print(json.dumps({"status": "blocked", "reason": str(exc), "execution": args.future,
                           "candidate": args.asset, "swap_recommend": False, "execution_authorized": False},
                          indent=2))
@@ -30,7 +35,8 @@ def main(argv=None):
     report = score_pair(
         exec_bars, cand_bars, ev, args.asset, args.future,
         require_xgb=args.require_xgb, xgb_path=args.xgb or None, family=args.family,
-        exec_sha256=file_hash(args.exec),
+        exec_sha256=file_hash(args.exec), ledger_path=args.ledger or None,
+        cand_floored=cand_floored,
     )
     if args.out:
         write_audit(report, args.out)

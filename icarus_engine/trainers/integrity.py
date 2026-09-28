@@ -35,6 +35,7 @@ def canonical_ts(raw):
         return n if n < 4_102_444_800 else None          # before 2100
     if not _OFFSET.search(s):
         return None
+    s = re.sub(r"([+-]\d{2})(\d{2})$", r"\1:\2", s)     # Python 3.10's fromisoformat needs +HH:MM
     try:
         dt = datetime.fromisoformat(s.replace("Z", "+00:00").replace(" ", "T", 1))
     except ValueError:
@@ -104,13 +105,17 @@ def inspect_ohlc(path):
             counts["duplicate_conflict"] += 1
 
     bars = [{k: v for k, v in by_ts[t].items() if k != "_conflict"} for t in sorted(by_ts)]
+    # An export's last bar may still have been forming when it was saved; nothing in the file says which.
+    counts["trailing_dropped"] = 1 if bars else 0
+    bars = bars[:-1]
     steps = [b["ts"] - a["ts"] for a, b in zip(bars, bars[1:])]
     blocked = []
     if counts["duplicate_conflict"]:
         blocked.append(f"{counts['duplicate_conflict']} timestamps carry conflicting rows")
     if counts["invalid_ohlc"]:
         blocked.append(f"{counts['invalid_ohlc']} rows have impossible OHLC (high/low do not bound the bar)")
-    dropped = counts["unparseable_time"] + counts["missing_close"] + counts["missing_ohlc"] + counts["duplicate_exact"]
+    # missing_ohlc rows are kept (their open/high/low read as the close downstream) but still flag the file
+    flagged = counts["unparseable_time"] + counts["missing_close"] + counts["missing_ohlc"] + counts["duplicate_exact"]
     manifest = {
         "parser": PARSER, "path": str(path), "raw_sha256": hashlib.sha256(raw).hexdigest(),
         "rows_total": len(rows), "rows_used": len(bars), **counts,
@@ -119,7 +124,7 @@ def inspect_ohlc(path):
         "canonical_rows_sha256": hashlib.sha256(json.dumps(
             [[b["ts"], b["open"], b["high"], b["low"], b["close"], b["volume"], b["tide_long"], b["tide_short"]]
              for b in bars], separators=(",", ":"), allow_nan=False).encode()).hexdigest(),
-        "status": "blocked" if blocked else ("issues" if dropped else "clean"),
+        "status": "blocked" if blocked else ("issues" if flagged else "clean"),
         "reason": "; ".join(blocked),
     }
     return bars, manifest

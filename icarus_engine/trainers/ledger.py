@@ -1,11 +1,9 @@
 # Claude (Opus 5.5) — 2026-09-27. Holdout-consumption ledger. A terminal interval one study has scored cannot
 # be presented as untouched evidence for a different study. Any doubt fails closed.
 from __future__ import annotations
-import sqlite3
+import os, sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
-
-LEDGER = "run/trainers/holdout_ledger.sqlite3"
 NEW, REPLAY, OVERLAP = "NEW", "REPLAY", "OVERLAP_SAME_STUDY"
 REUSE, UNAVAILABLE = "BLOCKED_HOLDOUT_REUSE", "LEDGER_UNAVAILABLE"
 SCORED = (NEW, REPLAY, OVERLAP)      # the holdout may be scored; only NEW and REPLAY can qualify
@@ -16,6 +14,15 @@ _SCHEMA = """CREATE TABLE IF NOT EXISTS holdout (
     hold_end REAL NOT NULL, rows_sha256 TEXT NOT NULL, study_sha256 TEXT NOT NULL, n_hold INTEGER NOT NULL,
     first_seen_utc TEXT NOT NULL,
     PRIMARY KEY (slot, symbol, family, hold_start, hold_end, rows_sha256, study_sha256))"""
+
+def canonical() -> Path:
+    """The one ledger every trainer claims in and every validator trusts: $ICARUS_LEDGER, else
+    ~/.icarus/holdout_ledger.sqlite3. A path relative to the working directory let a run from another folder or
+    worktree start a fresh ledger and call a spent holdout NEW."""
+    env = os.environ.get("ICARUS_LEDGER", "").strip()
+    if env and not Path(env).is_absolute():
+        raise ValueError(f"ICARUS_LEDGER must be an absolute path, got {env!r}")
+    return (Path(env) if env else Path.home() / ".icarus" / "holdout_ledger.sqlite3").resolve()
 
 def claim_holdout(path, symbol, family, start, end, rows_sha256, study_sha256, n_hold, slot="xgb"):
     """Record the claim before the holdout is scored. Returns NEW, REPLAY, OVERLAP_SAME_STUDY,
@@ -53,18 +60,19 @@ def claim_holdout(path, symbol, family, start, end, rows_sha256, study_sha256, n
 
 def holdout_recorded(path, symbol, family, start, end, rows_sha256, study_sha256, slot="xgb"):
     """True if exactly this claim is in the ledger, False if not, None if the ledger cannot be read."""
-    path = Path(path)
-    if not path.is_file():
-        return None
     try:
-        db = sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True)
+        path = Path(path)
+        if not path.is_file():
+            return None
+        db = sqlite3.connect(str(path))      # a file: URI breaks on UNC shares; query_only keeps it read-only
         try:
+            db.execute("PRAGMA query_only = ON")
             row = db.execute(
                 "SELECT 1 FROM holdout WHERE slot = ? AND symbol = ? AND family = ? AND hold_start = ? "
                 "AND hold_end = ? AND rows_sha256 = ? AND study_sha256 = ?",
                 (slot, symbol, family, float(start), float(end), rows_sha256, study_sha256)).fetchone()
         finally:
             db.close()
-    except (sqlite3.Error, OSError, ValueError):
+    except (sqlite3.Error, OSError, ValueError, TypeError):
         return None
     return row is not None

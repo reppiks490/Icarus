@@ -260,8 +260,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
 
         def _drain_body(self) -> None:
             # Claude (Opus 5.5) 2026-09-27. Answering before the body is read and then closing makes the OS reset
-            # the connection, and the client can lose the answer (WinError 10053, 3 in 500 requests). Read a body
-            # this endpoint would accept anyway; never more than MAX_BODY_BYTES, and the handler timeout bounds it.
+            # the connection, and the client can lose the answer (WinError 10053, 3 in 500 requests). Every early
+            # POST rejection discards the body unparsed; never more than MAX_BODY_BYTES, bounded by the timeout.
             try:
                 n = int(self.headers.get("Content-Length", "0") or 0)
             except ValueError:
@@ -271,6 +271,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
 
         def do_POST(self) -> None:  # noqa: N802
             if not self._host_ok():
+                self._drain_body()
                 return self._json(403, {"detail": "bad host"})
             p = urlparse(self.path)
             if p.path == "/research/events":
@@ -291,8 +292,10 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 except (ValueError, TypeError) as ex:
                     return self._json(400, {"detail": str(ex)})
             if not p.path.startswith("/admin/"):
+                self._drain_body()
                 return self._json(404, {"error": "not found"})
-            if not self._auth():                                  # authenticate BEFORE reading any body
+            if not self._auth():                                  # authenticate BEFORE parsing any body
+                self._drain_body()                                # discard it unread, or the 401 can be lost
                 return self._json(401, {"detail": "bad admin token"})
             try:
                 n = int(self.headers.get("Content-Length", "0") or 0)
