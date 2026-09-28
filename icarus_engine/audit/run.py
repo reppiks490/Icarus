@@ -2,7 +2,7 @@
 from __future__ import annotations
 import json
 from pathlib import Path
-from icarus_engine.audit.lead import completed_before, pairs  # noqa: F401  (completed_before re-exported)
+from icarus_engine.audit.lead import pairs
 from icarus_engine.ignore_trade import ignored_symbol
 from icarus_engine.model_log import log_action
 from icarus_engine.spec import SWAP_YES, artifact
@@ -13,7 +13,7 @@ def _sorted(bars):
     return sorted(bars, key=lambda b: b["ts"])
 
 def score_pair(exec_bars, cand_bars, events, asset, future, require_xgb=False, xgb_path=None, family="clock_minutes",
-               exec_sha256=None):
+               exec_sha256=None, cand_floored=None, ledger_path=None):
     if ignored_symbol(future):
         return {"status": "ignored", "reason": "execution symbol is not traded",
                 "execution": future, "candidate": asset, "swap_recommend": False, "execution_authorized": False}
@@ -25,13 +25,14 @@ def score_pair(exec_bars, cand_bars, events, asset, future, require_xgb=False, x
     xgb = Path(xgb_path) if xgb_path else Path(artifact(future, family, "xgb"))
     # The execution bars vouch for the artifact: the validator replays its holdout from these rows.
     labeled = attach_labels(exec_bars, family) if xgb.is_file() else None
-    xgb_state, xgb_reason = qualify_xgb(xgb, future, family, dataset_sha256=exec_sha256, labeled=labeled)
+    xgb_state, xgb_reason = qualify_xgb(xgb, future, family, dataset_sha256=exec_sha256, labeled=labeled,
+                                        ledger_path=ledger_path)
     if require_xgb and xgb_state != VALID:
         return {"status": "blocked", "reason": f"XGB {xgb} {xgb_state}: {xgb_reason}", "xgb_state": xgb_state,
                 "execution": future, "candidate": asset, "swap_recommend": False, "execution_authorized": False}
     # Strict lead: each candidate move is scored once, against the first execution move decided after the
     # candidate bar closed. Same-interval agreement is correlation, not prediction (EMPIRICAL CAN-01).
-    scored = pairs(exec_bars, cand_bars, events, future, family)
+    scored = pairs(exec_bars, cand_bars, events, future, family, floored=cand_floored)
     hits = len(scored)
     agree = sum(1 for q in scored if q["x"] == q["y"])
     tide_n = sum(1 for q in scored if q["tide"])

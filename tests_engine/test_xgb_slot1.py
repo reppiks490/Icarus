@@ -233,7 +233,7 @@ def test_train_xgb_file_binds_the_csv_and_the_cli_writes_it(tmp_path, capsys):
     from icarus_engine.audit.__main__ import main as audit_main
     capsys.readouterr()
     audit_main(["--exec", str(csv), "--cand", str(csv), "--future", "NQ", "--asset", "AAPL",
-                "--family", "renko", "--xgb", str(out)])
+                "--family", "renko", "--xgb", str(out), "--ledger", str(tmp_path / "l.sqlite3")])
     audited = json.loads(capsys.readouterr().out)
     assert audited["family"] == "renko" and audited["xgb_state"] == "VALID_RAW_CHALLENGER"
     assert audited["swap_recommend"] is True and audited["execution_authorized"] is False
@@ -261,7 +261,7 @@ def _fit_csv(tmp, seed=None):
     r = train_xgb_file(csv, "minutes", "ohlc", "NQ", out=out, ledger=tmp / "ledger.sqlite3")
     bars = load_ohlc(csv)
     return {"report": r, "out": out, "bars": bars, "labeled": attach_labels(bars, "clock_minutes"),
-            "sha": file_hash(csv)}
+            "sha": file_hash(csv), "ledger": tmp / "ledger.sqlite3"}
 
 
 @pytest.fixture(scope="module")
@@ -289,7 +289,7 @@ _DEFAULT = object()
 def _state(path, t, sym="NQ", fam="clock_minutes", dataset=_DEFAULT, labeled=_DEFAULT):
     from icarus_engine.trainers.qualify import qualify_xgb
     return qualify_xgb(path, sym, fam, dataset_sha256=t["sha"] if dataset is _DEFAULT else dataset,
-                       labeled=t["labeled"] if labeled is _DEFAULT else labeled)[0]
+                       labeled=t["labeled"] if labeled is _DEFAULT else labeled, ledger_path=t["ledger"])[0]
 
 
 def test_incremental_value_needs_both_baselines_beaten():
@@ -425,12 +425,13 @@ def test_audit_does_not_trust_an_artifact_that_merely_exists(tmp_path):
 
 def test_audit_swaps_only_with_an_artifact_the_execution_bars_vouch_for(trained):
     bars, out = trained["bars"], trained["out"]
-    r = score_pair(bars, bars, seed_events(), "AAPL", "NQ", xgb_path=out)
+    led = trained["ledger"]
+    r = score_pair(bars, bars, seed_events(), "AAPL", "NQ", xgb_path=out, ledger_path=led)
     assert r["swap_recommend"] is True and r["xgb_state"] == "VALID_RAW_CHALLENGER"
     assert r["execution_authorized"] is False
-    hashed = score_pair(bars, bars, seed_events(), "AAPL", "NQ", xgb_path=out, exec_sha256="e" * 64)
+    hashed = score_pair(bars, bars, seed_events(), "AAPL", "NQ", xgb_path=out, exec_sha256="e" * 64, ledger_path=led)
     assert hashed["swap_recommend"] is False and hashed["xgb_state"] == "BLOCKED_IDENTITY_MISMATCH"
-    foreign = score_pair(_audit_bars(), _audit_bars(), seed_events(), "AAPL", "NQ", xgb_path=out)
+    foreign = score_pair(_audit_bars(), _audit_bars(), seed_events(), "AAPL", "NQ", xgb_path=out, ledger_path=led)
     assert foreign["swap_recommend"] is False and foreign["xgb_state"] == "BLOCKED_IDENTITY_MISMATCH"
 
 

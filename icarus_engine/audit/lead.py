@@ -10,13 +10,20 @@ def _sign(x):
         return 0
     return 1 if x > 0 else -1
 
-def completed_before(cand, decision_ts):
+def floored_stamps(cand):
+    """True when stamps look like TradingView's range/renko/tick exports: the minute floor plus a millisecond
+    counter (fractional seconds, or two bars sharing a stamp). Such a stamp says only which minute a bar opened in."""
+    return any(b["ts"] % 1 for b in cand) or any(b["ts"] == a["ts"] for a, b in zip(cand, cand[1:]))
+
+def completed_before(cand, decision_ts, floored=False):
     """Index of the last candidate bar that had closed by decision_ts, or None. A bar is known to be closed once
-    the next bar has opened; the final bar has no visible close and is never used."""
+    the next bar has opened; the final bar has no visible close and is never used. With floored stamps the next
+    bar may have opened as late as the end of its stamped minute, so that minute has to be over."""
     lo, hi, hit = 0, len(cand) - 2, None
     while lo <= hi:
         mid = (lo + hi) // 2
-        if cand[mid + 1]["ts"] <= decision_ts:
+        nxt = cand[mid + 1]["ts"]
+        if ((nxt // 60) * 60 + 60 if floored else nxt) <= decision_ts:
             hit = mid; lo = mid + 1
         else:
             hi = mid - 1
@@ -36,14 +43,16 @@ def decision_times(exec_bars, family):
             dec[i] = exec_bars[i - 1]["ts"]
     return dec
 
-def pairs(exec_bars, cand_bars, events, future="", family="clock_minutes"):
+def pairs(exec_bars, cand_bars, events, future="", family="clock_minutes", floored=None):
     """Time-sorted bars in. One dict per scored pair: decision ts, label_ts (the execution bar whose close the
     outcome reads), candidate sign x, execution sign y, candidate tide sign, macro flag (events released by the
-    decision). Pairs with a flat move are consumed but not returned."""
+    decision). Pairs with a flat move are consumed but not returned. floored: whether the candidate's stamps are
+    minute floors (None infers it from the stamps; declare True for range/renko/tick candidates)."""
     out, used = [], None
     dec = decision_times(exec_bars, family)
+    floored = floored_stamps(cand_bars) if floored is None else floored
     for i in range(1, len(exec_bars)):
-        k = completed_before(cand_bars, dec[i])
+        k = completed_before(cand_bars, dec[i], floored)
         if k is None or k == 0 or k == used:
             continue
         used = k

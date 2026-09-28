@@ -8,7 +8,7 @@ from .dataset import attach_labels, walk_slices
 from .families import FAMILIES, family_for
 from .integrity import inspect_ohlc
 from .logit import accuracy, fit
-from . import ledger as holdout_ledger, xgb_slot
+from . import xgb_slot
 from icarus_engine.spec import artifact
 
 def file_hash(path: Path) -> str:
@@ -19,17 +19,35 @@ def file_hash(path: Path) -> str:
     return h.hexdigest()
 
 def _load(path, **ids):
-    """(bars, manifest, refusal). Claude (Opus 5.5) 2026-09-27: a file the DATA gate blocks is reported with
-    its manifest, never trained."""
+    """(bars, manifest, refusal). Claude (Opus 5.5) 2026-09-27: a file the DATA gate blocks, or one that leaves no
+    usable row, is reported with its manifest, never trained."""
+    def refuse(reason, manifest=None):
+        extra = {"dataset_manifest": manifest} if manifest is not None else {}
+        return {**ids, "status": "blocked", "reason": reason, "path": str(path), **extra,
+                "execution_authorized": False}
     try:
         bars, manifest = inspect_ohlc(path)
-    except ValueError as exc:
-        return None, None, {**ids, "status": "blocked", "reason": str(exc), "path": str(path),
-                            "execution_authorized": False}
+    except (ValueError, OSError) as exc:
+        return None, None, refuse(str(exc))
     if manifest["status"] == "blocked":
-        return None, manifest, {**ids, "status": "blocked", "reason": manifest["reason"], "path": str(path),
-                                "dataset_manifest": manifest, "execution_authorized": False}
+        return None, manifest, refuse(manifest["reason"], manifest)
+    if not bars:
+        return None, manifest, refuse("no usable rows: every timestamp was unparseable or every close missing", manifest)
     return bars, manifest, None
+
+def _preflight(asset, slot):
+    if not asset:
+        return {"status": "blocked", "reason": f"Slot {slot} needs --asset", "execution_authorized": False}
+    if ignored_symbol(asset):
+        return {"status": "ignored", "reason": "MBT/SOL/ETHUSD are not traded", "asset": asset,
+                "execution_authorized": False}
+    return None
+
+def _too_short(bars, fam, fam_name, asset, path, manifest):
+    if len(bars) >= fam.min_rows:
+        return None
+    return {"status": "skipped", "reason": f"{len(bars)} rows < min_rows {fam.min_rows}", "family": fam_name,
+            "asset": asset, "path": str(path), "execution_authorized": False, "dataset_manifest": manifest}
 
 def train_file(path, chart_type: str, schema: str = "ohlc", asset: str = ""):
     if asset and ignored_symbol(asset):
@@ -41,10 +59,9 @@ def train_file(path, chart_type: str, schema: str = "ohlc", asset: str = ""):
     bars, manifest, refusal = _load(path, family=fam_name, asset=asset, slot="logit")
     if refusal:
         return refusal
-    if len(bars) < fam.min_rows:
-        return {"status": "skipped", "reason": f"{len(bars)} rows < min_rows {fam.min_rows}",
-                "family": fam_name, "asset": asset, "path": str(path), "execution_authorized": False,
-                "dataset_manifest": manifest}
+    short = _too_short(bars, fam, fam_name, asset, path, manifest)
+    if short:
+        return short
     labeled = attach_labels(bars, fam_name)
     try:
         train, valid, hold = walk_slices(len(labeled))
@@ -54,7 +71,7 @@ def train_file(path, chart_type: str, schema: str = "ohlc", asset: str = ""):
     w = fit(labeled[train[0]:train[1]])
     return {
         "status": "fitted", "family": fam_name, "index": fam.index, "label": fam.label,
-        "asset": asset, "path": str(path), "dataset_sha256": file_hash(path), "dataset_manifest": manifest,
+        "asset": asset, "path": str(path), "dataset_sha256": manifest["raw_sha256"], "dataset_manifest": manifest,
         "n_bars": len(bars), "n_labeled": len(labeled),
         "train_rows": train[1]-train[0], "valid_rows": valid[1]-valid[0], "holdout_rows": hold[1]-hold[0],
         "train_acc": accuracy(w, labeled[train[0]:train[1]]),
@@ -68,26 +85,22 @@ def train_file(path, chart_type: str, schema: str = "ohlc", asset: str = ""):
     }
 
 def train_xgb_file(path, chart_type: str, schema: str = "ohlc", asset: str = "", out=None, ledger=None):
-    if not asset:
-        return {"status": "blocked", "reason": "Slot 1 needs --asset", "execution_authorized": False}
-    if ignored_symbol(asset):
-        return {"status": "ignored", "reason": "MBT/SOL/ETHUSD are not traded",
-                "asset": asset, "execution_authorized": False}
+    refusal = _preflight(asset, 1)
+    if refusal:
+        return refusal
     path = Path(path)
     fam_name = family_for(chart_type, schema)
     fam = FAMILIES[fam_name]
     bars, manifest, refusal = _load(path, family=fam_name, asset=asset, slot="xgb")
     if refusal:
         return refusal
-    if len(bars) < fam.min_rows:
-        return {"status": "skipped", "reason": f"{len(bars)} rows < min_rows {fam.min_rows}",
-                "family": fam_name, "asset": asset, "path": str(path), "execution_authorized": False,
-                "dataset_manifest": manifest}
+    short = _too_short(bars, fam, fam_name, asset, path, manifest)
+    if short:
+        return short
     return xgb_slot.train(
         attach_labels(bars, fam_name), asset, fam_name,
         out_path=Path(out) if out else Path(artifact(asset, fam_name, "xgb")),
-        ledger_path=Path(ledger) if ledger else Path(holdout_ledger.LEDGER),
-        dataset_sha256=file_hash(path),
+        ledger_path=ledger, dataset_sha256=manifest["raw_sha256"],
         extra={"path": str(path), "index": fam.index, "label": fam.label, "n_bars": len(bars),
                "dataset_manifest": manifest},
     )
@@ -96,14 +109,12 @@ def train_rank_file(path, chart_type: str, schema: str = "ohlc", asset: str = ""
                     ledger=None, root="."):
     from icarus_engine.events.calendar import load_events
     from . import rank_slot
-    if not asset:
-        return {"status": "blocked", "reason": "Slot 2 needs --asset", "execution_authorized": False}
-    if ignored_symbol(asset):
-        return {"status": "ignored", "reason": "MBT/SOL/ETHUSD are not traded",
-                "asset": asset, "execution_authorized": False}
+    refusal = _preflight(asset, 2)
+    if refusal:
+        return refusal
     kept = {n: pth for n, pth in (candidates or {}).items() if not ignored_symbol(n)}
     if not kept:
-        return {"status": "skipped", "reason": "no candidate series", "asset": asset, "execution_authorized": False}
+        return {"status": "blocked", "reason": "no candidate series", "asset": asset, "execution_authorized": False}
     path = Path(path)
     fam_name = family_for(chart_type, schema)
     bars, manifest, refusal = _load(path, family=fam_name, asset=asset, slot="rank")
@@ -117,14 +128,14 @@ def train_rank_file(path, chart_type: str, schema: str = "ohlc", asset: str = ""
         else:
             series[n], cand_manifests[n] = cb, cm
     if not series:
-        return {"status": "skipped", "reason": "every candidate file was refused", "refused_candidates": refused,
+        return {"status": "blocked", "reason": "every candidate file was refused", "refused_candidates": refused,
                 "asset": asset, "execution_authorized": False, "dataset_manifest": manifest}
     rows = rank_slot.rank_rows(bars, series, load_events(root), fam_name, future=asset)
     return rank_slot.train(
         rows, asset, fam_name,
         out_path=Path(out) if out else Path(artifact(asset, fam_name, "rank")),
-        ledger_path=Path(ledger) if ledger else Path(holdout_ledger.LEDGER),
-        extra={"path": str(path), "dataset_sha256": file_hash(path), "dataset_manifest": manifest,
+        ledger_path=ledger,
+        extra={"path": str(path), "dataset_sha256": manifest["raw_sha256"], "dataset_manifest": manifest,
                "candidate_sha256": {n: cand_manifests[n]["raw_sha256"] for n in series},
                "candidate_manifests": cand_manifests, "refused_candidates": refused},
     )

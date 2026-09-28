@@ -92,3 +92,16 @@ Branch `opus/xgb-slot1` (on top of `opus/causal-event-asof`).
 - CLI: `python -m icarus_engine.trainers --slot xgb`, `python -m icarus_engine.audit --family`.
 - No real data was trained: running it consumes that file's holdout in the ledger by design.
 `execution_authorized=false`.
+
+## 2026-09-27 — Opus: fixes from the final review of PRs #30-#36
+Branch `opus/review-fixes`. Blockers: (1) TradingView range/renko/tick exports stamp bars at the minute floor
+plus a millisecond counter; the strict-lead audit read such a bar as closed when its successor's stamp passed,
+which let a bar still forming inside the predicted execution minute count as a lead (NQ range vs NQ 1m: 0.627
+spurious agreement). Floored stamps are now inferred (or declared: audit `--cand-family range`) and a bar counts
+as closed only after its successor's whole stamped minute. (2) Validators trusted whichever ledger an artifact
+named and the default ledger was cwd-relative; the canonical ledger is now `$ICARUS_LEDGER`, else
+`~/.icarus/holdout_ledger.sqlite3`, and validators trust only it (the study's 23 claims were copied there).
+Also: the DATA gate drops every export's last row (may still be forming); VALID states need one-sided
+significance at 0.05 against both baselines (Newey-West); empty/refused inputs block with a nonzero exit; every
+early POST rejection drains the body; +HHMM offsets parse on Python 3.10; shared artifact/metrics modules.
+`execution_authorized=false`.

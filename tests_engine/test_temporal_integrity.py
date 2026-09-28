@@ -62,7 +62,7 @@ def test_features_never_read_a_later_bar():
 # ---- candidate audit -------------------------------------------------------------------------------
 
 def test_completed_before_uses_only_closed_candidate_bars():
-    from icarus_engine.audit.run import completed_before
+    from icarus_engine.audit.lead import completed_before
     cand = [{"ts": 0}, {"ts": 3600}, {"ts": 7200}]
     assert completed_before(cand, 3599) is None       # bar 0 closes when bar 1 opens
     assert completed_before(cand, 3600) == 0
