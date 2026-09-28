@@ -1,7 +1,7 @@
 # AEGIS Challenger Forge — State Capsule
 
 - workstream: AEGIS Challenger Forge
-- last_productive_run_id: AEGIS_CF_20260928_RANGEVOL_BVIFUTS_01
+- last_productive_run_id: AEGIS_CF_20260928_SESSION_RANGEVOL_02
 - updated_date: 2026-09-28
 - mode: COLLECTION_ONLY
 - execution_authorized: false
@@ -9,7 +9,7 @@
 - repository: reppiks490/Icarus
 - branch: main
 - owned_path: docs/icarus/research/aegis_challenger_forge/
-- last_run_manifest: runs/AEGIS_CF_20260928_RANGEVOL_BVIFUTS_01.md
+- last_run_manifest: runs/AEGIS_CF_20260928_SESSION_RANGEVOL_02.md
 - admitted_ids:
   - AEGIS-CF-ICEBERG-CME-ARXIV-1909.09495-v1
   - AEGIS-CF-ROUGHMULTI-SPXVIX-2112.14310-v2
@@ -46,30 +46,40 @@
   - AEGIS-CF-RANGE-TTR-GH-d152a3f6ddc7
   - AEGIS-CF-CME-BVIFUT-SPECS-DOCSNAP-20260928
   - AEGIS-CF-CME-BVIFUT-CODECHANGE-SER9819-20260909
+  - AEGIS-CF-RANGE-ABD-DOI-10.1111-1540-6261.00454
+  - AEGIS-CF-BTC-YZ-PREPRINT-10.20944-PREPRINTS202602.0560.v1
+  - AEGIS-CF-YZ-SWIMPACTS-DOI-10.1016-J.SIMPA.2024.100613
+  - AEGIS-CF-YZ-GH-HUGOGOBATO-deaa987542ce
+  - AEGIS-CF-BTC-BINANCE-KLINE-DAYBOUNDARY-DOCSNAP-20260928
+  - AEGIS-CF-CME-NQ-SESSION-DOCSNAP-20260928
+  - AEGIS-CF-CME-GC-SESSION-DOCSNAP-20260928
 - quarantined_ids: []
 - resolved_quarantine:
   - AEGIS-CF-OFLOW-ROUGH-IMPACT-2601.23172-CANDIDATE -> AEGIS-CF-OFLOW-ROUGH-IMPACT-ARXIV-2601.23172-v2
 - persistent_quality_gates:
   - collection only; never score/rank/promote/backtest/code from this workstream
   - observed facts remain separate from author/unverified claims
+  - preprints must remain explicitly labeled and must not be promoted to peer-reviewed evidence
   - mutable documentation sources require retrieval snapshot identity
   - historical/standing product documentation does not equal a live-current Security Definition snapshot
   - product-specific matching rules must not be generalized from TAS, TMAC, options, enhanced-delivery or unrelated contracts
   - benchmark methodology must be version-pinned separately from underlying data access/license
   - future-effective exchange metadata must not be applied before its effective date
   - implementation identities must be version/tag/commit pinned when possible
+  - OHLC day/session boundary must be preserved as provenance; 24/7 UTC day and CME venue session are not interchangeable
   - market-data documentation does not imply entitlement to underlying data
   - source version/date and access constraints must be preserved
   - sibling and parallel AEGIS checkpoints must be reconciled, never overwritten
   - overlapping Pine subfunctions must be deduplicated at method-family level, not only script level
 - next_targets:
   - parse/pin current CME GCC/MDP/FPRF MatchAlgorithm rows for GC/MGC; NQ/MNQ FIFO baseline already admitted
+  - pin MGC session metadata independently from GC
   - obtain current CME Options Analytics product list proving NQ/GC identifiers
   - licensed CME MBO/trade-summary corpora for NQ/MNQ and GC/MGC
   - GC/MGC-specific display/priority/iceberg evidence
   - Bitcoin Volatility Futures historical field/retention/licensing semantics
-  - exchange-session/calendar normalization for range estimators across BTC/NQ/Gold
-  - Alizadeh-Brandt-Diebold and other non-duplicate range/stochastic-volatility provenance
+  - primary research on venue-native vs common-clock cross-market volatility aggregation
+  - normalize article/preprint licenses for Software Impacts 100613 and Preprints 202602.0560
   - Deribit/OKX options historical retention and timestamp semantics interoperable with BVX/BVXS
   - commit-pinned hidden-liquidity inference implementations
   - novel Pine DSP families beyond existing DominantCycle and overlapping FiltersToolkit functions
