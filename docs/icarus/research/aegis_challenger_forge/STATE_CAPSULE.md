@@ -1,0 +1,26 @@
+# AEGIS Challenger Forge — State Capsule
+
+- workstream: AEGIS Challenger Forge
+- last_productive_run_id: AEGIS_CF_20260928T0641Z
+- updated_utc: 2026-09-28T06:41:00Z
+- mode: COLLECTION_ONLY
+- execution_authorized: false
+- downstream_mutation: false
+- repository: reppiks490/Icarus
+- branch: main
+- owned_path: docs/icarus/research/aegis_challenger_forge/
+- last_run_manifest: runs/AEGIS_CF_20260928T0641Z.md
+- admitted_ids:
+  - AEGIS-CF-ICEBERG-CME-ARXIV-1909.09495-v1
+  - AEGIS-CF-ROUGHMULTI-SPXVIX-2112.14310-v2
+  - AEGIS-CF-ROUGH-FALSIFICATION-2401.03345-v2
+  - AEGIS-CF-BTC-OFLOW-IMAGE-2304.02472-v2
+- quarantined_ids:
+  - AEGIS-CF-OFLOW-ROUGH-IMPACT-2601.23172-CANDIDATE
+- next_targets:
+  - pin arXiv:2601.23172 revision
+  - NQ/MNQ and GC/MGC iceberg evidence
+  - implied/pro-rata/queue-reset priority research
+  - point-in-time SPX/VIX/NDX surface corpora
+  - commit-pinned licensed implementations
+- quality_rule: observed facts remain separate from author claims; no corpus identity implies promotion.
