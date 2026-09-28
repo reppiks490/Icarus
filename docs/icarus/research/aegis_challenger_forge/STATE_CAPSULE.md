@@ -1,26 +1,40 @@
 # AEGIS Challenger Forge — State Capsule
 
 - workstream: AEGIS Challenger Forge
-- last_productive_run_id: AEGIS_CF_20260928T0641Z
-- updated_utc: 2026-09-28T06:41:00Z
+- last_productive_run_id: AEGIS_CF_20260928T1637Z
+- updated_utc: 2026-09-28T16:37:00Z
 - mode: COLLECTION_ONLY
 - execution_authorized: false
 - downstream_mutation: false
 - repository: reppiks490/Icarus
 - branch: main
 - owned_path: docs/icarus/research/aegis_challenger_forge/
-- last_run_manifest: runs/AEGIS_CF_20260928T0641Z.md
+- last_run_manifest: runs/AEGIS_CF_20260928T1637Z.md
 - admitted_ids:
   - AEGIS-CF-ICEBERG-CME-ARXIV-1909.09495-v1
   - AEGIS-CF-ROUGHMULTI-SPXVIX-2112.14310-v2
   - AEGIS-CF-ROUGH-FALSIFICATION-2401.03345-v2
   - AEGIS-CF-BTC-OFLOW-IMAGE-2304.02472-v2
+  - AEGIS-CF-CME-MATCHALG-DOCSNAP-20260928T1637Z
+  - AEGIS-CF-PINE-DOMCYCLE-TV-cY7DdxyZ-20220416
+  - AEGIS-CF-GOLD-CVOL-CME-v1.7.1-20260318
+  - AEGIS-CF-QRLOB-GH-SaadSouilmi-3080096cc0c7
+  - AEGIS-CF-BTC-BYBIT-V5-DERIV-DOCSNAP-20260928T1637Z
+  - AEGIS-CF-BTC-BINANCE-COINM-DOCSNAP-20260928T1637Z
 - quarantined_ids:
   - AEGIS-CF-OFLOW-ROUGH-IMPACT-2601.23172-CANDIDATE
+- persistent_quality_gates:
+  - collection only; never score/rank/promote/backtest/code from this workstream
+  - observed facts remain separate from author/unverified claims
+  - mutable documentation sources require retrieval snapshot identity
+  - product-specific matching rules must not be generalized from unrelated contracts
+  - market-data documentation does not imply entitlement to underlying data
+  - sibling workstreams remain isolated
 - next_targets:
+  - pin current CME MatchAlgorithm values for NQ/MNQ/GC/MGC
+  - licensed CME MBO/trade-summary corpora for NQ/MNQ and GC/MGC
+  - point-in-time NQ/NDX and Gold option surfaces
+  - synchronized multi-venue BTC OI/funding/liquidation/basis corpus
+  - academic DSP/wavelet/Hilbert-Huang validation
   - pin arXiv:2601.23172 revision
-  - NQ/MNQ and GC/MGC iceberg evidence
-  - implied/pro-rata/queue-reset priority research
-  - point-in-time SPX/VIX/NDX surface corpora
-  - commit-pinned licensed implementations
-- quality_rule: observed facts remain separate from author claims; no corpus identity implies promotion.
+- quality_rule: no corpus identity implies production admission or trading edge.
