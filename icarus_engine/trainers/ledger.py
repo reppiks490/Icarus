@@ -20,6 +20,8 @@ def canonical() -> Path:
     ~/.icarus/holdout_ledger.sqlite3. A path relative to the working directory let a run from another folder or
     worktree start a fresh ledger and call a spent holdout NEW."""
     env = os.environ.get("ICARUS_LEDGER", "").strip()
+    if env and not Path(env).is_absolute():
+        raise ValueError(f"ICARUS_LEDGER must be an absolute path, got {env!r}")
     return (Path(env) if env else Path.home() / ".icarus" / "holdout_ledger.sqlite3").resolve()
 
 def claim_holdout(path, symbol, family, start, end, rows_sha256, study_sha256, n_hold, slot="xgb"):

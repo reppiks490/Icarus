@@ -13,7 +13,7 @@ def _sorted(bars):
     return sorted(bars, key=lambda b: b["ts"])
 
 def score_pair(exec_bars, cand_bars, events, asset, future, require_xgb=False, xgb_path=None, family="clock_minutes",
-               exec_sha256=None, cand_floored=None, ledger_path=None):
+               exec_sha256=None, cand_floored=True, ledger_path=None):
     if ignored_symbol(future):
         return {"status": "ignored", "reason": "execution symbol is not traded",
                 "execution": future, "candidate": asset, "swap_recommend": False, "execution_authorized": False}

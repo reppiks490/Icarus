@@ -44,7 +44,10 @@ def _load(path, schema, slot):
 def _claim_state(d, slot, ledger_path, start, end):
     """None when the canonical ledger confirms exactly this claim; otherwise (state, reason)."""
     claim = d["holdout_claim"]
-    expected = Path(ledger_path).resolve() if ledger_path else ledger.canonical()
+    try:
+        expected = Path(ledger_path).resolve() if ledger_path else ledger.canonical()
+    except ValueError as exc:
+        return "UNKNOWN", str(exc)
     if claim.get("status") not in QUALIFYING_CLAIMS:
         return "BLOCKED_HOLDOUT_REUSE", f"holdout claim {claim.get('status')!r}"
     if Path(claim["ledger"]).resolve() != expected:

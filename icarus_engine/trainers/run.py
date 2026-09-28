@@ -106,7 +106,9 @@ def train_xgb_file(path, chart_type: str, schema: str = "ohlc", asset: str = "",
     )
 
 def train_rank_file(path, chart_type: str, schema: str = "ohlc", asset: str = "", candidates=None, out=None,
-                    ledger=None, root="."):
+                    ledger=None, root=".", cand_chart=None):
+    """cand_chart: the candidates' chart type. Only a clock chart (e.g. 1m, 60m, 1D) gets exact bar timing; any
+    other value, or none, treats candidate stamps as minute floors (fail closed)."""
     from icarus_engine.events.calendar import load_events
     from . import rank_slot
     refusal = _preflight(asset, 2)
@@ -130,14 +132,16 @@ def train_rank_file(path, chart_type: str, schema: str = "ohlc", asset: str = ""
     if not series:
         return {"status": "blocked", "reason": "every candidate file was refused", "refused_candidates": refused,
                 "asset": asset, "execution_authorized": False, "dataset_manifest": manifest}
-    rows = rank_slot.rank_rows(bars, series, load_events(root), fam_name, future=asset)
+    exact = bool(cand_chart) and family_for(cand_chart).startswith("clock_")
+    rows = rank_slot.rank_rows(bars, series, load_events(root), fam_name, future=asset, floored=not exact)
     return rank_slot.train(
         rows, asset, fam_name,
         out_path=Path(out) if out else Path(artifact(asset, fam_name, "rank")),
         ledger_path=ledger,
         extra={"path": str(path), "dataset_sha256": manifest["raw_sha256"], "dataset_manifest": manifest,
                "candidate_sha256": {n: cand_manifests[n]["raw_sha256"] for n in series},
-               "candidate_manifests": cand_manifests, "refused_candidates": refused},
+               "candidate_manifests": cand_manifests, "refused_candidates": refused,
+               "candidate_timing": "exact clock stamps" if exact else "minute-floored stamps"},
     )
 
 def write_report(report, dest: Path):

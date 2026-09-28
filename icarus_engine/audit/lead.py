@@ -43,14 +43,16 @@ def decision_times(exec_bars, family):
             dec[i] = exec_bars[i - 1]["ts"]
     return dec
 
-def pairs(exec_bars, cand_bars, events, future="", family="clock_minutes", floored=None):
+def pairs(exec_bars, cand_bars, events, future="", family="clock_minutes", floored=True):
     """Time-sorted bars in. One dict per scored pair: decision ts, label_ts (the execution bar whose close the
     outcome reads), candidate sign x, execution sign y, candidate tide sign, macro flag (events released by the
-    decision). Pairs with a flat move are consumed but not returned. floored: whether the candidate's stamps are
-    minute floors (None infers it from the stamps; declare True for range/renko/tick candidates)."""
+    decision). Pairs with a flat move are consumed but not returned.
+    floored: a candidate's stamps are treated as minute floors unless the caller declares a clock series
+    (floored=False). Stamps cannot prove a series is a clock series: one range bar per minute looks exactly like a
+    1-minute candle. Stamps that do look floored override a clock declaration."""
     out, used = [], None
     dec = decision_times(exec_bars, family)
-    floored = floored_stamps(cand_bars) if floored is None else floored
+    floored = floored or floored_stamps(cand_bars)
     for i in range(1, len(exec_bars)):
         k = completed_before(cand_bars, dec[i], floored)
         if k is None or k == 0 or k == used:

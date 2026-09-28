@@ -13,6 +13,8 @@ def main(argv=None):
     p.add_argument("--slot", choices=("logit", "xgb", "rank", "regime", "fail"), default="logit")
     p.add_argument("--ledger", default="", help="holdout ledger (default $ICARUS_LEDGER, else ~/.icarus/holdout_ledger.sqlite3)")
     p.add_argument("--cand", action="append", default=[], metavar="NAME=CSV", help="rank: a candidate series")
+    p.add_argument("--cand-chart", default="", help="rank: the candidates' chart type; only a clock chart "
+                                                   "(1m, 60m, 1D) gets exact timing, anything else is minute-floored")
     p.add_argument("--root", default=".", help="rank: plant root for history/events")
     args = p.parse_args(argv)
     if args.slot in ("logit", "xgb", "rank") and not args.chart_type:
@@ -34,7 +36,8 @@ def _run(args):
     elif args.slot == "rank":
         cands = dict(c.split("=", 1) for c in args.cand)
         report = train_rank_file(args.path, args.chart_type, args.schema, args.asset, cands,
-                                 out=args.out or None, ledger=args.ledger or None, root=args.root)
+                                 out=args.out or None, ledger=args.ledger or None, root=args.root,
+                                 cand_chart=args.cand_chart or None)
     elif args.slot == "regime":
         from .regime_slot import train as regime
         report = regime(args.path, args.asset)

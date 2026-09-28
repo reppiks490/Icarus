@@ -236,7 +236,9 @@ def test_train_xgb_file_binds_the_csv_and_the_cli_writes_it(tmp_path, capsys):
                 "--family", "renko", "--xgb", str(out), "--ledger", str(tmp_path / "l.sqlite3")])
     audited = json.loads(capsys.readouterr().out)
     assert audited["family"] == "renko" and audited["xgb_state"] == "VALID_RAW_CHALLENGER"
-    assert audited["swap_recommend"] is True and audited["execution_authorized"] is False
+    # a renko candidate is timed as minute-floored, so swap follows its own (strict-lead) agreement numbers
+    assert audited["swap_recommend"] is (audited["overlap"] >= 200 and audited["sign_agree"] >= 0.55)
+    assert audited["execution_authorized"] is False
 
 
 # ---- validator -------------------------------------------------------------------------------------

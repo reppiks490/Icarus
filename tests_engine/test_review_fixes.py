@@ -62,7 +62,8 @@ def test_exact_clock_candidates_keep_their_one_bar_lead():
     for mv in moves[1:]:
         cand.append(cand[-1] + mv)
         ex.append(ex[-1] + mv)
-    assert score_pair(_bars(ex), _bars(cand), seed_events(), "AAPL", "NQ")["sign_agree"] == 1.0
+    r = score_pair(_bars(ex), _bars(cand), seed_events(), "AAPL", "NQ", cand_floored=False)   # declared 1m candles
+    assert r["sign_agree"] == 1.0
 
 
 # ---- B2: the ledger comes from configuration, not from the artifact ----------------------------------------
@@ -211,3 +212,64 @@ def test_every_early_post_rejection_keeps_its_answer(tmp_path):
         assert [post("/nowhere") for _ in range(400)] == [404] * 400
     finally:
         srv.shutdown(); srv.server_close(); t.join(5); journal.con.close()
+
+
+# ---- verification of #37: fail closed by default -----------------------------------------------------------
+
+def _one_bar_per_minute_market(n=400, seed=9):
+    """A range series in a quiet market: one bar per minute, stamped at the minute floor with no millisecond
+    counter, so its stamps look exactly like 1-minute candles. Bar i opened somewhere in minute i and kept forming
+    until bar i+1 opened, so its move overlaps execution minute i+1."""
+    rng = random.Random(seed)
+    m = [rng.choice((1.0, -1.0)) for _ in range(n + 2)]
+    ex = [100.0]
+    for i in range(1, n):
+        ex.append(ex[-1] + m[i])
+    cand = [100.0]
+    for i in range(1, n):
+        cand.append(cand[-1] + m[i + 1])
+    return _bars(ex), _bars(cand)
+
+
+def test_an_undeclared_candidate_is_treated_as_floored():
+    ex, cand = _one_bar_per_minute_market()
+    from icarus_engine.audit.lead import floored_stamps
+    assert floored_stamps(cand) is False                        # nothing in the stamps gives it away
+    r = score_pair(ex, cand, seed_events(), "AAPL", "NQ")
+    assert r["overlap"] > 200 and 0.35 < r["sign_agree"] < 0.65
+
+
+def test_the_ranker_is_fail_closed_by_default_too():
+    from icarus_engine.trainers.rank_slot import rank_rows
+    ex, cand = _one_bar_per_minute_market()
+    rows = rank_rows(ex, {"R": cand}, [])
+    assert 0.35 < sum(r["y"] > 0 for r in rows) / len(rows) < 0.65
+
+
+def test_a_clock_declaration_is_overridden_by_floored_stamps():
+    ex, cand = _floored_market()
+    r = score_pair(ex, cand, seed_events(), "AAPL", "NQ", cand_floored=False)
+    assert 0.35 < r["sign_agree"] < 0.65
+
+
+def test_train_rank_file_takes_the_candidates_chart(tmp_path):
+    from icarus_engine.trainers.run import train_rank_file
+    ex, cand = _one_bar_per_minute_market(700)
+    def write(name, bars):
+        p = tmp_path / f"{name}.csv"
+        p.write_text("time,open,high,low,close\n" + "\n".join(
+            f"{b['ts']},{b['open']},{b['high']},{b['low']},{b['close']}" for b in bars) + "\n")
+        return p
+    r = train_rank_file(write("NQ", ex), "minutes", "ohlc", "NQ", {"R": write("R", cand)}, cand_chart="range",
+                        out=tmp_path / "r.json", ledger=tmp_path / "l.sqlite3")
+    assert r["candidate_timing"] == "minute-floored stamps"
+    r = train_rank_file(write("NQ", ex), "minutes", "ohlc", "NQ", {"R": write("R", cand)}, cand_chart="1m",
+                        out=tmp_path / "r2.json", ledger=tmp_path / "l2.sqlite3")
+    assert r["candidate_timing"] == "exact clock stamps"
+
+
+def test_a_relative_ledger_setting_is_refused(tmp_path, monkeypatch):
+    from icarus_engine.trainers import ledger
+    monkeypatch.setenv("ICARUS_LEDGER", "relative/ledger.sqlite3")
+    with pytest.raises(ValueError, match="absolute"):
+        ledger.canonical()

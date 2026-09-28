@@ -21,9 +21,9 @@ CODE_FILES = ("audit/lead.py", "events/calendar.py", "trainers/dataset.py", "tra
 def _rate(hits, n):
     return (hits + 1) / (n + 2)   # Laplace: no history reads as a coin flip, not as certainty
 
-def rank_rows(exec_bars, candidates, events, family="clock_minutes", future="", window=WINDOW, floored=None):
+def rank_rows(exec_bars, candidates, events, family="clock_minutes", future="", window=WINDOW, floored=True):
     """One row per scored strict-lead pair, all candidates pooled in time order. y = +1 when the execution move
-    agreed with the candidate's move. floored: see audit.lead.pairs (None infers it per candidate)."""
+    agreed with the candidate's move. floored: see audit.lead.pairs (False only for declared clock candidates)."""
     exec_bars = sorted(exec_bars, key=lambda b: b["ts"])
     rows = []
     for name in sorted(candidates):
