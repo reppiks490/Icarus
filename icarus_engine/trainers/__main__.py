@@ -1,10 +1,11 @@
 # Grok (xAI) — 2026-09-22. Slots 1-4 CLI: Claude (Opus 5.5) 2026-09-27.
 from __future__ import annotations
 import argparse, json
+from icarus_engine import brand
 from .run import train_file, train_rank_file, train_xgb_file, write_report
 
 def main(argv=None):
-    p = argparse.ArgumentParser(description="Fit one Icarus trainer slot on one CSV")
+    p = argparse.ArgumentParser(description=f"{brand.NAME} - fit one trainer slot on one CSV")
     p.add_argument("--path", required=True, help="execution OHLC csv (slot fail: the paper-trade journal)")
     p.add_argument("--chart-type", default="", help="required for logit, xgb and rank")
     p.add_argument("--schema", default="ohlc")

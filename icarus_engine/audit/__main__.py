@@ -1,6 +1,7 @@
 # Grok (xAI) — 2026-09-22.
 from __future__ import annotations
 import argparse, json
+from icarus_engine import brand
 from icarus_engine.events.calendar import load_events
 from icarus_engine.trainers.dataset import load_ohlc
 from icarus_engine.trainers.families import family_for
@@ -8,7 +9,7 @@ from icarus_engine.trainers.run import file_hash
 from .run import score_pair, write_audit
 
 def main(argv=None):
-    p = argparse.ArgumentParser(description="Candidate vs execution audit")
+    p = argparse.ArgumentParser(description=f"{brand.NAME} - candidate vs execution audit")
     p.add_argument("--exec", required=True, help="execution OHLCV csv")
     p.add_argument("--cand", required=True, help="candidate OHLCV csv")
     p.add_argument("--future", default="NQ")
