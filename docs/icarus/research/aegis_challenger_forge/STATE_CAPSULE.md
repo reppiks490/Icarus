@@ -1,7 +1,7 @@
 # AEGIS Challenger Forge — State Capsule
 
 - workstream: AEGIS Challenger Forge
-- last_productive_run_id: AEGIS_CF_20260928_GC_MGC_FIFO_ICEBERG_03
+- last_productive_run_id: AEGIS_CF_20260928_OPTA_COVERAGE_04
 - updated_date: 2026-09-28
 - mode: COLLECTION_ONLY
 - execution_authorized: false
@@ -9,7 +9,7 @@
 - repository: reppiks490/Icarus
 - branch: main
 - owned_path: docs/icarus/research/aegis_challenger_forge/
-- last_run_manifest: runs/AEGIS_CF_20260928_GC_MGC_FIFO_ICEBERG_03.md
+- last_run_manifest: runs/AEGIS_CF_20260928_OPTA_COVERAGE_04.md
 - admitted_ids:
   - AEGIS-CF-ICEBERG-CME-ARXIV-1909.09495-v1
   - AEGIS-CF-ROUGHMULTI-SPXVIX-2112.14310-v2
@@ -56,6 +56,8 @@
   - AEGIS-CF-CME-GC-MGC-MATCHALG-GCC-20260922
   - AEGIS-CF-CME-MGC-SESSION-DOCSNAP-20260928
   - AEGIS-CF-ICEBERG-GH-TAYOR-v0.1.0-3651fdd044ed
+  - AEGIS-CF-CME-OPTA-PRODUCTLIST-20250801
+  - AEGIS-CF-CME-OPTA-FAQ-20250911
 - quarantined_ids: []
 - resolved_quarantine:
   - AEGIS-CF-OFLOW-ROUGH-IMPACT-2601.23172-CANDIDATE -> AEGIS-CF-OFLOW-ROUGH-IMPACT-ARXIV-2601.23172-v2
@@ -64,6 +66,8 @@
   - standard MGC outright MatchAlgorithm = F/FIFO from CME GCC workbook dated 2026-09-22
   - GC-GC and MGC-MGC calendar-spread rows = F/FIFO in same workbook
   - MGC-specific session/trading-hours metadata independently pinned from current CME specs
+  - CME Options Analytics static product list explicitly supports NQ, MNQ and GC
+  - Options Analytics REST retention=current Sunday-Friday window; DataMine historical availability back to 2020
 - persistent_quality_gates:
   - collection only; never score/rank/promote/backtest/code from this workstream
   - observed facts remain separate from author/unverified claims
@@ -80,7 +84,7 @@
   - sibling and parallel AEGIS checkpoints must be reconciled, never overwritten
   - overlapping Pine subfunctions must be deduplicated at method-family level, not only script level
 - next_targets:
-  - obtain current CME Options Analytics product list proving NQ/GC identifiers
+  - pin exact CME DataMine Options Analytics dataset identity, field schema and filenames
   - licensed CME MBO/trade-summary corpora for NQ/MNQ/GC/MGC
   - GC/MGC-specific display/priority/iceberg empirical evidence under current FIFO rules
   - independent validation/paper lineage for commit-pinned hidden-liquidity implementations
