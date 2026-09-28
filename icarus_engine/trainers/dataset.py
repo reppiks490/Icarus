@@ -14,39 +14,14 @@ def _num(v):
     return x if math.isfinite(x) else None
 
 def load_ohlc(path: Path):
-    with Path(path).open("r", encoding="utf-8-sig", newline="") as fh:
-        rows = list(csv.DictReader(fh))
-    if not rows:
-        raise ValueError(f"empty csv {path}")
-    keys = {k.strip(): k for k in rows[0]}
-    def col(*names):
-        for n in names:
-            if n in keys:
-                return keys[n]
-            for k in keys:
-                if k.lower() == n.lower():
-                    return keys[k]
-        return None
-    t_k, o_k, h_k, l_k, c_k = col("time", "ts"), col("open"), col("high"), col("low"), col("close")
-    v_k = col("volume", "Volume")
-    tide_l, tide_s = col("TIDE Long"), col("TIDE Short")
-    if not t_k or not c_k:
-        raise ValueError(f"need time+close in {path}")
-    out = []
-    for row in rows:
-        t = _num(row[t_k]); c = _num(row[c_k])
-        if t is None or c is None:
-            continue
-        if t > 10_000_000_000:
-            t /= 1000.0
-        out.append({"ts": t, "open": _num(row[o_k]) if o_k else c, "high": _num(row[h_k]) if h_k else c,
-                    "low": _num(row[l_k]) if l_k else c, "close": c,
-                    "volume": _num(row[v_k]) if v_k else None,
-                    "tide_long": _num(row[tide_l]) if tide_l else 0.0,
-                    "tide_short": _num(row[tide_s]) if tide_s else 0.0})
+    # Claude (Opus 5.5) 2026-09-27: parsing lives in integrity.inspect_ohlc (offset-aware timestamps, duplicate
+    # and OHLC checks, a manifest). A file with conflicting duplicates or impossible OHLC is refused.
+    from .integrity import inspect_ohlc
+    out, manifest = inspect_ohlc(path)
+    if manifest["status"] == "blocked":
+        raise ValueError(f"{path}: {manifest['reason']}")
     if len(out) < 8:
         raise ValueError(f"too few parseable rows in {path}")
-    out.sort(key=lambda b: b["ts"])
     return out
 
 def _sign(x):

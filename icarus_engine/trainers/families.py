@@ -29,7 +29,11 @@ CHART_TO_FAMILY = {
 def family_for(chart_type: str, schema: str = "ohlc") -> str:
     if schema == "close_only":
         raise ValueError("close_only has no trainer")
-    raw = (chart_type or "").lower().strip()
+    exact = (chart_type or "").strip()
+    if exact.rstrip("M").isdigit() and exact.endswith("M") or exact == "M":
+        # TradingView writes months as "M" and minutes as "m": lowercasing turned 1M (monthly) into 1m.
+        raise ValueError(f"monthly charts have no trainer family (chart_type={chart_type!r})")
+    raw = exact.lower()
     name = CHART_TO_FAMILY.get(raw)
     if name:
         return name
