@@ -1,81 +1,75 @@
 # Microstructure Sensor Grid — State Capsule
 
-Last productive run: ICARUS-MICRO-20260928T1740Z
-Run manifest: runs/MICROSTRUCTURE_20260928T1740Z.md
+Last productive run: ICARUS-MICRO-20260928T1820Z
+Run manifest: runs/MICROSTRUCTURE_20260928T1820Z.md
 
-## Binance raw trade-tape state
-
-Durable repository raw payloads now exist for the previously transient aggregate-trade captures:
-- BTCUSDT: 100 records, IDs 3468308318–3468308417, 7.411-second event-time span.
-- ETHUSDT: 100 records, IDs 3102913945–3102914044, 6.928-second span.
-- SOLUSDT: 100 records, IDs 1101446810–1101446909, 24.565-second span.
-
-Raw payload Git blobs:
-- BTCUSDT fdb540cbda8b86b805f53acce27bfae35dc95341
-- ETHUSDT 6332ad88005b35f9f265f66e71cf1ba01472dceb
-- SOLUSDT b26652d2e3eede38cd3b5adf8f9bd62d107014ff
-
-The raw DataBlue payloads are persisted exactly as decoded from the attached full-result files. The prior transient-handle-only gap is closed.
-
-## Latest tape summaries
+## Binance tape state
 
 BTCUSDT:
-- price 83956.5–83964.4; total quantity 8.4 BTC.
-- m=true 3.085; m=false 5.315.
-- largest aggregate 1.693 BTC.
+- 1,000 consecutive aggregate IDs 3468349446–3468350445.
+- zero ID gaps.
+- 87.877-second event window.
+- price range 83862.0–83938.1.
+- total quantity 70.719 BTC.
+- largest aggregate 10.721 BTC.
 
 ETHUSDT:
-- price 2703.88–2704.30; total 180.063 ETH.
-- m=true 100.431; m=false 79.632.
-- largest aggregate 40.733 ETH.
+- 1,000 consecutive aggregate IDs 3102957908–3102958907.
+- zero ID gaps.
+- 93.849-second event window.
+- price range 2694.08–2698.10.
+- total quantity 1141.027 ETH.
+- largest aggregate 90.685 ETH.
 
 SOLUSDT:
-- price 119.69–119.77; total 4879.01 SOL.
-- m=true 3732.48; m=false 1146.53.
-- largest aggregate 751.92 SOL.
+- 1,000-record paging attempted; ten jobs cancelled/deleted upstream.
+- previous durable 100-record raw tape remains latest.
 
-No directional conclusion is attached to m=true/m=false totals.
+The 1,000-record BTC/ETH continuity summaries are persisted. Do not claim a combined raw 1,000-record repo blob yet.
 
-## Persistent prior state
+## CME prior-day OI state
 
-- Binance second-venue depth, funding, mark/index, current OI, 5-minute OI history and funding history remain available from 1730Z.
-- exact 2026-09-25 CME settlements complete for NQ/MNQ, ES/MES, YM/MYM, RTY/M2K, GC/MGC.
-- bounded delayed Cboe same-day option IV/OI/Greeks remain available.
-- liquidation REST history remains unavailable.
-- full Cboe term structure remains incomplete.
-- exact CME contract OI and licensed MDP 3.0 remain gaps.
+Official CME 2026-09-25 DEC 26 prior-day OI:
+- NQZ6 271967
+- MNQZ6 131840
+- ESZ6 1898072
+- MESZ6 125245
+- YMZ6 86106
+- MYMZ6 19036
+- RTYZ6 417419
+- M2KZ6 33179
+- GCZ6 317452
+- MGCZ6 unavailable from official settlement/overview pages.
 
-## Quality gates
+CME settlement-page volume is explicitly estimated volume and differs from previously persisted Massive session volume for several contracts. Preserve both.
 
-- Preserve raw aggregate IDs, component first/last trade IDs, timestamps, prices, quantities and m flags.
-- Aggregate trades are not MBO/order-message data.
-- Do not infer queue state, hidden liquidity or liquidation events from aggregate trades.
-- Do not assign a trading conclusion to m=true/m=false totals.
-- Preserve short-window coverage limits.
+## Options state
 
-## Access state
+- bounded same-day Cboe Greeks/IV/OI remain persisted.
+- Massive next-expiry individual snapshots remain NOT_ENTITLED.
+- Cboe CDN access showed network/circuit-breaker drift this run.
+- full term/skew remains incomplete.
 
-Usable:
-- Bybit public selected endpoints.
-- Binance public USDⓈ-M REST.
-- DataBlue public scraping plus conversation full-result attachments.
-- Massive historical futures aggregates.
-- Cboe delayed option JSON bounded extraction.
-- Twelve Data selected endpoints.
-- GitHub.
+## Persistent quality gates
 
-Blocked / partial:
-- liquidation history REST path 404.
-- Massive real-time futures and option snapshots NOT_ENTITLED.
-- TickerLayer perpetual data 403.
-- CME MDP 3.0 not exposed.
-- Superpowers no callable runtime surface.
+- Aggregate-trade IDs must be continuity checked.
+- Aggregate trades are not MBO.
+- Do not infer SOL data from failed pages.
+- Do not infer MGC OI.
+- Keep CME estimated volume separate from Massive session volume.
+- Preserve source/update/retrieval and entitlement failures.
+- Never infer full options term structure from bounded same-day slices.
+
+## New artifacts
+
+- snapshots/BINANCE_AGGTRADES_1000_SUMMARY_20260928T1820Z.json
+- snapshots/CME_PRIOR_DAY_OI_20260925.csv
 
 ## Next targets
 
-1. Longer durable aggregate-trade windows synchronized to book events.
-2. Lawful liquidation event stream.
-3. Exact CME contract OI.
-4. Reliable next-expiry Cboe skew/term data.
-5. CME futures-option Greeks.
-6. Licensed CME MDP 3.0.
+1. Lossless combined raw BTC/ETH 1,000-trade repository corpora.
+2. SOL 1,000-trade paging retry.
+3. MGC exact OI.
+4. full next-expiry options term/skew.
+5. liquidation event data.
+6. CME MDP 3.0.
