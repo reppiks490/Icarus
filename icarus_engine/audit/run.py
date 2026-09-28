@@ -6,6 +6,8 @@ from icarus_engine.events.calendar import event_features
 from icarus_engine.ignore_trade import ignored_symbol
 from icarus_engine.model_log import log_action
 from icarus_engine.spec import SWAP_YES, artifact
+from icarus_engine.trainers.dataset import attach_labels
+from icarus_engine.trainers.qualify import VALID, qualify_xgb
 
 def _sign(x):
     if x is None or x == 0:
@@ -25,19 +27,23 @@ def _asof(exec_ts, cand):
             hi = mid - 1
     return hit
 
-def score_pair(exec_bars, cand_bars, events, asset, future, require_xgb=False, xgb_path=None, family="clock_minutes"):
+def score_pair(exec_bars, cand_bars, events, asset, future, require_xgb=False, xgb_path=None, family="clock_minutes",
+               exec_sha256=None):
     if ignored_symbol(future):
         return {"status": "ignored", "reason": "execution symbol is not traded",
                 "execution": future, "candidate": asset, "swap_recommend": False, "execution_authorized": False}
     if ignored_symbol(asset):
         return {"status": "ignored", "reason": "candidate name is on the do-not-trade list",
                 "execution": future, "candidate": asset, "swap_recommend": False, "execution_authorized": False}
-    xgb = Path(xgb_path) if xgb_path else Path(artifact(future, family, "xgb"))
-    if require_xgb and not xgb.is_file():
-        return {"status": "blocked", "reason": f"missing XGB {xgb}",
-                "execution": future, "candidate": asset, "swap_recommend": False, "execution_authorized": False}
     exec_bars = _sorted(exec_bars)
     cand_bars = _sorted(cand_bars)
+    xgb = Path(xgb_path) if xgb_path else Path(artifact(future, family, "xgb"))
+    # The execution bars vouch for the artifact: the validator replays its holdout from these rows.
+    labeled = attach_labels(exec_bars, family) if xgb.is_file() else None
+    xgb_state, xgb_reason = qualify_xgb(xgb, future, family, dataset_sha256=exec_sha256, labeled=labeled)
+    if require_xgb and xgb_state != VALID:
+        return {"status": "blocked", "reason": f"XGB {xgb} {xgb_state}: {xgb_reason}", "xgb_state": xgb_state,
+                "execution": future, "candidate": asset, "swap_recommend": False, "execution_authorized": False}
     hits = agree = tide_agree = tide_n = ev_agree = ev_n = 0
     for i, b in enumerate(exec_bars[1:], start=1):
         prev = exec_bars[i - 1]
@@ -75,14 +81,15 @@ def score_pair(exec_bars, cand_bars, events, asset, future, require_xgb=False, x
         status in ("eligible", "eligible_macro_exceeds")
         and hits >= SWAP_YES["min_overlap"]
         and sign_agree is not None and sign_agree >= SWAP_YES["min_sign_agree"]
-        and xgb.is_file()
+        and xgb_state == VALID
     )
     return {
         "status": status, "reason": reason, "execution": future, "candidate": asset,
         "family": family, "overlap": hits, "sign_agree": sign_agree,
         "tide_agree": (tide_agree / tide_n) if tide_n else None,
         "tide_n": tide_n, "macro_overlap": ev_n, "macro_agree": macro_agree,
-        "xgb_artifact": str(xgb), "swap_recommend": swap, "execution_authorized": False,
+        "xgb_artifact": str(xgb), "xgb_state": xgb_state, "xgb_reason": xgb_reason,
+        "swap_recommend": swap, "execution_authorized": False,
     }
 
 def write_audit(report, dest):

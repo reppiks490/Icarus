@@ -7,6 +7,8 @@ from icarus_engine.model_log import log_action
 from .dataset import attach_labels, load_ohlc, walk_slices
 from .families import FAMILIES, family_for
 from .logit import accuracy, fit
+from . import ledger as holdout_ledger, xgb_slot
+from icarus_engine.spec import artifact
 
 def file_hash(path: Path) -> str:
     h = hashlib.sha256()
@@ -47,6 +49,27 @@ def train_file(path, chart_type: str, schema: str = "ohlc", asset: str = ""):
                         "This family must not be concatenated with another family's rows.",
                         "Labels are next-bar on THIS index only."],
     }
+
+def train_xgb_file(path, chart_type: str, schema: str = "ohlc", asset: str = "", out=None, ledger=None):
+    if not asset:
+        return {"status": "blocked", "reason": "Slot 1 needs --asset", "execution_authorized": False}
+    if ignored_symbol(asset):
+        return {"status": "ignored", "reason": "MBT/SOL/ETHUSD are not traded",
+                "asset": asset, "execution_authorized": False}
+    path = Path(path)
+    fam_name = family_for(chart_type, schema)
+    fam = FAMILIES[fam_name]
+    bars = load_ohlc(path)
+    if len(bars) < fam.min_rows:
+        return {"status": "skipped", "reason": f"{len(bars)} rows < min_rows {fam.min_rows}",
+                "family": fam_name, "asset": asset, "path": str(path), "execution_authorized": False}
+    return xgb_slot.train(
+        attach_labels(bars, fam_name), asset, fam_name,
+        out_path=Path(out) if out else Path(artifact(asset, fam_name, "xgb")),
+        ledger_path=Path(ledger) if ledger else Path(holdout_ledger.LEDGER),
+        dataset_sha256=file_hash(path),
+        extra={"path": str(path), "index": fam.index, "label": fam.label, "n_bars": len(bars)},
+    )
 
 def write_report(report, dest: Path):
     dest = Path(dest)
