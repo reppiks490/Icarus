@@ -1,15 +1,15 @@
 # AEGIS Challenger Forge — State Capsule
 
 - workstream: AEGIS Challenger Forge
-- last_productive_run_id: AEGIS_CF_20260928T1655Z
-- updated_utc: 2026-09-28T16:55:00Z
+- last_productive_run_id: AEGIS_CF_20260928T1705Z
+- updated_utc: 2026-09-28T17:05:00Z
 - mode: COLLECTION_ONLY
 - execution_authorized: false
 - downstream_mutation: false
 - repository: reppiks490/Icarus
 - branch: main
 - owned_path: docs/icarus/research/aegis_challenger_forge/
-- last_run_manifest: runs/AEGIS_CF_20260928T1655Z.md
+- last_run_manifest: runs/AEGIS_CF_20260928T1705Z.md
 - admitted_ids:
   - AEGIS-CF-ICEBERG-CME-ARXIV-1909.09495-v1
   - AEGIS-CF-ROUGHMULTI-SPXVIX-2112.14310-v2
@@ -23,22 +23,33 @@
   - AEGIS-CF-BTC-BINANCE-COINM-DOCSNAP-20260928T1637Z
   - AEGIS-CF-PRO-RATA-ARXIV-1205.3051
   - AEGIS-CF-QR-SIM-ARXIV-2603.24137-v1
-- quarantined_ids:
-  - AEGIS-CF-OFLOW-ROUGH-IMPACT-2601.23172-CANDIDATE
+  - AEGIS-CF-OFLOW-ROUGH-IMPACT-ARXIV-2601.23172-v2
+  - AEGIS-CF-BTC-SUNSHINE-HYPERLIQ-ARXIV-2606.15715-v1
+  - AEGIS-CF-HHT-CEEMD-FEATURES-ARXIV-2105.10871-v1
+  - AEGIS-CF-WAVELET-MFA-GH-neurospin-ad254f31500a
+  - AEGIS-CF-CME-OPTVOL-GREEKS-DOCSNAP-20260928T1705Z
+  - AEGIS-CF-BTC-OKX-DERIV-DOCSNAP-20260928T1705Z
+  - AEGIS-CF-BTC-DERIBIT-DERIV-DOCSNAP-20260928T1705Z
+- quarantined_ids: []
+- resolved_quarantine:
+  - AEGIS-CF-OFLOW-ROUGH-IMPACT-2601.23172-CANDIDATE -> AEGIS-CF-OFLOW-ROUGH-IMPACT-ARXIV-2601.23172-v2
 - persistent_quality_gates:
   - collection only; never score/rank/promote/backtest/code from this workstream
   - observed facts remain separate from author/unverified claims
   - mutable documentation sources require retrieval snapshot identity
-  - product-specific matching rules must not be generalized from unrelated contracts
+  - product-specific matching rules must not be generalized from TAS, TMAC, options or unrelated contracts
   - market-data documentation does not imply entitlement to underlying data
-  - sibling workstreams remain isolated
+  - source version/date and access constraints must be preserved
+  - sibling and parallel AEGIS checkpoints must be reconciled, never overwritten
 - next_targets:
   - pin current CME MatchAlgorithm values for NQ/MNQ/GC/MGC
+  - pin current CME options-analytics product list for NQ/GC
   - licensed CME MBO/trade-summary corpora for NQ/MNQ and GC/MGC
-  - empirical pro-rata-vs-FIFO execution literature with product-specific futures data
+  - empirical pro-rata-vs-FIFO futures execution literature
   - queue-reactive cancellation-size/display-refresh/hidden-liquidity extensions
-  - point-in-time NQ/NDX and Gold option surfaces
-  - synchronized multi-venue BTC OI/funding/liquidation/basis corpus
-  - academic DSP/wavelet/Hilbert-Huang validation
-  - pin arXiv:2601.23172 revision
+  - synchronized Binance/Bybit/OKX/Deribit BTC OI/funding/liquidation/book/options corpus
+  - OKX liquidation-history/event semantics
+  - direct Deribit option-Greeks history/retention semantics
+  - futures/crypto-specific HHT/wavelet/multifractal validation
+  - novel licensed Pine multiscale/DSP families beyond existing DominantCycle
 - quality_rule: no corpus identity implies production admission or trading edge.
