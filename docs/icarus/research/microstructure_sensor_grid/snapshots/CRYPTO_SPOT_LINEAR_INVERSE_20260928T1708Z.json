@@ -1,0 +1,1145 @@
+{
+  "run_id": "ICARUS-MICRO-20260928T1700Z",
+  "provider": "Bybit",
+  "observations": {
+    "BTC": {
+      "spot": {
+        "quantity_unit": "BTC",
+        "book": {
+          "symbol": "BTCUSDT",
+          "bestBid": {
+            "price": "83589.3",
+            "qty": "0.002409"
+          },
+          "bestAsk": {
+            "price": "83589.4",
+            "qty": "1.221057"
+          },
+          "spread": "0.1",
+          "bids": [
+            {
+              "price": "83589.3",
+              "qty": "0.002409"
+            },
+            {
+              "price": "83588.7",
+              "qty": "0.022037"
+            },
+            {
+              "price": "83588.6",
+              "qty": "0.061511"
+            },
+            {
+              "price": "83588.5",
+              "qty": "0.001"
+            },
+            {
+              "price": "83587.9",
+              "qty": "0.001582"
+            },
+            {
+              "price": "83587.3",
+              "qty": "0.011953"
+            },
+            {
+              "price": "83587.1",
+              "qty": "0.001"
+            },
+            {
+              "price": "83586.5",
+              "qty": "0.022515"
+            },
+            {
+              "price": "83585.8",
+              "qty": "0.002657"
+            },
+            {
+              "price": "83585.1",
+              "qty": "0.002798"
+            }
+          ],
+          "asks": [
+            {
+              "price": "83589.4",
+              "qty": "1.221057"
+            },
+            {
+              "price": "83589.5",
+              "qty": "0.023029"
+            },
+            {
+              "price": "83590.5",
+              "qty": "0.233592"
+            },
+            {
+              "price": "83590.6",
+              "qty": "0.11765"
+            },
+            {
+              "price": "83590.7",
+              "qty": "0.03"
+            },
+            {
+              "price": "83592.1",
+              "qty": "0.086"
+            },
+            {
+              "price": "83592.2",
+              "qty": "0.051642"
+            },
+            {
+              "price": "83593.4",
+              "qty": "0.002392"
+            },
+            {
+              "price": "83594.1",
+              "qty": "0.009925"
+            },
+            {
+              "price": "83594.3",
+              "qty": "0.031002"
+            }
+          ],
+          "ts": 1790615327953,
+          "disclaimer": "General publicly available information only, provided solely in response to user-initiated queries via this plugin. This does not constitute investment advice, an offer, or a solicitation to engage in any transaction. Information may be inaccurate, incomplete, or delayed. Bybit makes no representations or warranties regarding accuracy or timeliness. This plugin does not access user accounts and does not support trading or transactions."
+        }
+      },
+      "linear": {
+        "quantity_unit": "BTC",
+        "book": {
+          "symbol": "BTCUSDT",
+          "bestBid": {
+            "price": "83542.80",
+            "qty": "3.769"
+          },
+          "bestAsk": {
+            "price": "83542.90",
+            "qty": "5.029"
+          },
+          "spread": "0.1",
+          "bids": [
+            {
+              "price": "83542.80",
+              "qty": "3.769"
+            },
+            {
+              "price": "83542.70",
+              "qty": "0.002"
+            },
+            {
+              "price": "83542.30",
+              "qty": "0.007"
+            },
+            {
+              "price": "83541.80",
+              "qty": "0.001"
+            },
+            {
+              "price": "83541.60",
+              "qty": "0.012"
+            },
+            {
+              "price": "83541.50",
+              "qty": "0.002"
+            },
+            {
+              "price": "83541.30",
+              "qty": "0.001"
+            },
+            {
+              "price": "83541.00",
+              "qty": "0.003"
+            },
+            {
+              "price": "83540.90",
+              "qty": "0.002"
+            },
+            {
+              "price": "83540.80",
+              "qty": "0.002"
+            }
+          ],
+          "asks": [
+            {
+              "price": "83542.90",
+              "qty": "5.029"
+            },
+            {
+              "price": "83543.00",
+              "qty": "0.002"
+            },
+            {
+              "price": "83543.10",
+              "qty": "0.001"
+            },
+            {
+              "price": "83544.30",
+              "qty": "0.142"
+            },
+            {
+              "price": "83544.40",
+              "qty": "0.770"
+            },
+            {
+              "price": "83544.90",
+              "qty": "0.612"
+            },
+            {
+              "price": "83545.00",
+              "qty": "0.001"
+            },
+            {
+              "price": "83545.10",
+              "qty": "0.612"
+            },
+            {
+              "price": "83545.20",
+              "qty": "0.688"
+            },
+            {
+              "price": "83546.00",
+              "qty": "0.002"
+            }
+          ],
+          "ts": 1790615328402,
+          "disclaimer": "General publicly available information only, provided solely in response to user-initiated queries via this plugin. This does not constitute investment advice, an offer, or a solicitation to engage in any transaction. Information may be inaccurate, incomplete, or delayed. Bybit makes no representations or warranties regarding accuracy or timeliness. This plugin does not access user accounts and does not support trading or transactions."
+        },
+        "funding": {
+          "symbol": "BTCUSDT",
+          "fundingRate": "0.00006467",
+          "fundingRateHuman": "+0.0065%",
+          "nextFundingTime": "1790640000000",
+          "sentiment": "neutral",
+          "disclaimer": "General publicly available information only, provided solely in response to user-initiated queries via this plugin. This does not constitute investment advice, an offer, or a solicitation to engage in any transaction. Information may be inaccurate, incomplete, or delayed. Bybit makes no representations or warranties regarding accuracy or timeliness. This plugin does not access user accounts and does not support trading or transactions."
+        },
+        "spec": {
+          "symbol": "BTCUSDT",
+          "status": "Trading",
+          "baseCoin": "BTC",
+          "quoteCoin": "USDT",
+          "lotSizeFilter": {
+            "minOrderQty": "0.001",
+            "maxOrderQty": "1500.000",
+            "qtyStep": "0.001"
+          },
+          "priceFilter": {
+            "minPrice": "0.10",
+            "maxPrice": "1999999.80",
+            "tickSize": "0.10"
+          },
+          "leverageFilter": {
+            "minLeverage": "1",
+            "maxLeverage": "150.00",
+            "leverageStep": "0.01"
+          },
+          "disclaimer": "General publicly available information only, provided solely in response to user-initiated queries via this plugin. This does not constitute investment advice, an offer, or a solicitation to engage in any transaction. Information may be inaccurate, incomplete, or delayed. Bybit makes no representations or warranties regarding accuracy or timeliness. This plugin does not access user accounts and does not support trading or transactions."
+        }
+      },
+      "inverse": {
+        "quantity_unit": "USD_contracts",
+        "book": {
+          "symbol": "BTCUSD",
+          "bestBid": {
+            "price": "83521.00",
+            "qty": "500"
+          },
+          "bestAsk": {
+            "price": "83521.10",
+            "qty": "18203"
+          },
+          "spread": "0.1",
+          "bids": [
+            {
+              "price": "83521.00",
+              "qty": "500"
+            },
+            {
+              "price": "83519.00",
+              "qty": "159"
+            },
+            {
+              "price": "83518.00",
+              "qty": "27"
+            },
+            {
+              "price": "83517.80",
+              "qty": "5"
+            },
+            {
+              "price": "83517.10",
+              "qty": "1000"
+            },
+            {
+              "price": "83514.50",
+              "qty": "8"
+            },
+            {
+              "price": "83514.40",
+              "qty": "5"
+            },
+            {
+              "price": "83511.10",
+              "qty": "7"
+            },
+            {
+              "price": "83511.00",
+              "qty": "5"
+            },
+            {
+              "price": "83507.60",
+              "qty": "5"
+            }
+          ],
+          "asks": [
+            {
+              "price": "83521.10",
+              "qty": "18203"
+            },
+            {
+              "price": "83521.30",
+              "qty": "1174"
+            },
+            {
+              "price": "83521.40",
+              "qty": "2400"
+            },
+            {
+              "price": "83521.50",
+              "qty": "214"
+            },
+            {
+              "price": "83522.70",
+              "qty": "1320"
+            },
+            {
+              "price": "83528.00",
+              "qty": "5"
+            },
+            {
+              "price": "83529.80",
+              "qty": "1621"
+            },
+            {
+              "price": "83531.10",
+              "qty": "5818"
+            },
+            {
+              "price": "83531.30",
+              "qty": "13667"
+            },
+            {
+              "price": "83531.40",
+              "qty": "5239"
+            }
+          ],
+          "ts": 1790615328005,
+          "disclaimer": "General publicly available information only, provided solely in response to user-initiated queries via this plugin. This does not constitute investment advice, an offer, or a solicitation to engage in any transaction. Information may be inaccurate, incomplete, or delayed. Bybit makes no representations or warranties regarding accuracy or timeliness. This plugin does not access user accounts and does not support trading or transactions."
+        },
+        "spec": {
+          "symbol": "BTCUSD",
+          "status": "Trading",
+          "baseCoin": "BTC",
+          "quoteCoin": "USD",
+          "lotSizeFilter": {
+            "minOrderQty": "1",
+            "maxOrderQty": "25000000",
+            "qtyStep": "1"
+          },
+          "priceFilter": {
+            "minPrice": "0.10",
+            "maxPrice": "1999999.80",
+            "tickSize": "0.10"
+          },
+          "leverageFilter": {
+            "minLeverage": "1",
+            "maxLeverage": "100.00",
+            "leverageStep": "0.01"
+          },
+          "disclaimer": "General publicly available information only, provided solely in response to user-initiated queries via this plugin. This does not constitute investment advice, an offer, or a solicitation to engage in any transaction. Information may be inaccurate, incomplete, or delayed. Bybit makes no representations or warranties regarding accuracy or timeliness. This plugin does not access user accounts and does not support trading or transactions."
+        }
+      },
+      "derived": {
+        "source_time_spread_ms": 449,
+        "mids": {
+          "spot": 83589.35,
+          "linear": 83542.85,
+          "inverse": 83521.05
+        },
+        "linear_minus_spot": {
+          "price": -46.5,
+          "bps": -5.56290962903767
+        },
+        "inverse_minus_spot": {
+          "price": -68.30000000000291,
+          "bps": -8.17089736910299
+        },
+        "inverse_minus_linear": {
+          "price": -21.80000000000291,
+          "bps": -2.6094393475926316
+        }
+      }
+    },
+    "ETH": {
+      "spot": {
+        "quantity_unit": "ETH",
+        "book": {
+          "symbol": "ETHUSDT",
+          "bestBid": {
+            "price": "2682.66",
+            "qty": "5.54754"
+          },
+          "bestAsk": {
+            "price": "2682.67",
+            "qty": "6.22951"
+          },
+          "spread": "0.01",
+          "bids": [
+            {
+              "price": "2682.66",
+              "qty": "5.54754"
+            },
+            {
+              "price": "2682.42",
+              "qty": "0.74582"
+            },
+            {
+              "price": "2682.38",
+              "qty": "0.0498"
+            },
+            {
+              "price": "2682.37",
+              "qty": "0.00403"
+            },
+            {
+              "price": "2682.31",
+              "qty": "0.09775"
+            },
+            {
+              "price": "2682.29",
+              "qty": "0.02234"
+            },
+            {
+              "price": "2682.27",
+              "qty": "0.0028"
+            },
+            {
+              "price": "2682.25",
+              "qty": "0.4638"
+            },
+            {
+              "price": "2682.24",
+              "qty": "0.74587"
+            },
+            {
+              "price": "2682.2",
+              "qty": "0.06201"
+            }
+          ],
+          "asks": [
+            {
+              "price": "2682.67",
+              "qty": "6.22951"
+            },
+            {
+              "price": "2682.69",
+              "qty": "1.00171"
+            },
+            {
+              "price": "2682.7",
+              "qty": "0.74574"
+            },
+            {
+              "price": "2682.71",
+              "qty": "0.3729"
+            },
+            {
+              "price": "2682.72",
+              "qty": "0.74574"
+            },
+            {
+              "price": "2682.77",
+              "qty": "0.74572"
+            },
+            {
+              "price": "2682.8",
+              "qty": "0.74572"
+            },
+            {
+              "price": "2682.97",
+              "qty": "0.28211"
+            },
+            {
+              "price": "2682.99",
+              "qty": "0.2"
+            },
+            {
+              "price": "2683.08",
+              "qty": "0.0028"
+            }
+          ],
+          "ts": 1790615329358,
+          "disclaimer": "General publicly available information only, provided solely in response to user-initiated queries via this plugin. This does not constitute investment advice, an offer, or a solicitation to engage in any transaction. Information may be inaccurate, incomplete, or delayed. Bybit makes no representations or warranties regarding accuracy or timeliness. This plugin does not access user accounts and does not support trading or transactions."
+        }
+      },
+      "linear": {
+        "quantity_unit": "ETH",
+        "book": {
+          "symbol": "ETHUSDT",
+          "bestBid": {
+            "price": "2681.61",
+            "qty": "1.08"
+          },
+          "bestAsk": {
+            "price": "2681.62",
+            "qty": "95.11"
+          },
+          "spread": "0.01",
+          "bids": [
+            {
+              "price": "2681.61",
+              "qty": "1.08"
+            },
+            {
+              "price": "2681.60",
+              "qty": "0.03"
+            },
+            {
+              "price": "2681.58",
+              "qty": "0.02"
+            },
+            {
+              "price": "2681.57",
+              "qty": "0.02"
+            },
+            {
+              "price": "2681.50",
+              "qty": "0.01"
+            },
+            {
+              "price": "2681.46",
+              "qty": "0.02"
+            },
+            {
+              "price": "2681.44",
+              "qty": "0.08"
+            },
+            {
+              "price": "2681.42",
+              "qty": "0.02"
+            },
+            {
+              "price": "2681.41",
+              "qty": "0.01"
+            },
+            {
+              "price": "2681.40",
+              "qty": "0.04"
+            }
+          ],
+          "asks": [
+            {
+              "price": "2681.62",
+              "qty": "95.11"
+            },
+            {
+              "price": "2681.63",
+              "qty": "0.37"
+            },
+            {
+              "price": "2681.64",
+              "qty": "6.75"
+            },
+            {
+              "price": "2681.65",
+              "qty": "0.01"
+            },
+            {
+              "price": "2681.66",
+              "qty": "14.83"
+            },
+            {
+              "price": "2681.67",
+              "qty": "17.75"
+            },
+            {
+              "price": "2681.68",
+              "qty": "10.15"
+            },
+            {
+              "price": "2681.69",
+              "qty": "6.75"
+            },
+            {
+              "price": "2681.70",
+              "qty": "6.56"
+            },
+            {
+              "price": "2681.71",
+              "qty": "0.02"
+            }
+          ],
+          "ts": 1790615329237,
+          "disclaimer": "General publicly available information only, provided solely in response to user-initiated queries via this plugin. This does not constitute investment advice, an offer, or a solicitation to engage in any transaction. Information may be inaccurate, incomplete, or delayed. Bybit makes no representations or warranties regarding accuracy or timeliness. This plugin does not access user accounts and does not support trading or transactions."
+        },
+        "funding": {
+          "symbol": "ETHUSDT",
+          "fundingRate": "0.0001",
+          "fundingRateHuman": "+0.0100%",
+          "nextFundingTime": "1790640000000",
+          "sentiment": "neutral",
+          "disclaimer": "General publicly available information only, provided solely in response to user-initiated queries via this plugin. This does not constitute investment advice, an offer, or a solicitation to engage in any transaction. Information may be inaccurate, incomplete, or delayed. Bybit makes no representations or warranties regarding accuracy or timeliness. This plugin does not access user accounts and does not support trading or transactions."
+        },
+        "spec": {
+          "symbol": "ETHUSDT",
+          "status": "Trading",
+          "baseCoin": "ETH",
+          "quoteCoin": "USDT",
+          "lotSizeFilter": {
+            "minOrderQty": "0.01",
+            "maxOrderQty": "10000.00",
+            "qtyStep": "0.01"
+          },
+          "priceFilter": {
+            "minPrice": "0.01",
+            "maxPrice": "199999.98",
+            "tickSize": "0.01"
+          },
+          "leverageFilter": {
+            "minLeverage": "1",
+            "maxLeverage": "150.00",
+            "leverageStep": "0.01"
+          },
+          "disclaimer": "General publicly available information only, provided solely in response to user-initiated queries via this plugin. This does not constitute investment advice, an offer, or a solicitation to engage in any transaction. Information may be inaccurate, incomplete, or delayed. Bybit makes no representations or warranties regarding accuracy or timeliness. This plugin does not access user accounts and does not support trading or transactions."
+        }
+      },
+      "inverse": {
+        "quantity_unit": "USD_contracts",
+        "book": {
+          "symbol": "ETHUSD",
+          "bestBid": {
+            "price": "2679.78",
+            "qty": "3098"
+          },
+          "bestAsk": {
+            "price": "2679.79",
+            "qty": "542"
+          },
+          "spread": "0.01",
+          "bids": [
+            {
+              "price": "2679.78",
+              "qty": "3098"
+            },
+            {
+              "price": "2679.52",
+              "qty": "5"
+            },
+            {
+              "price": "2679.50",
+              "qty": "1324"
+            },
+            {
+              "price": "2679.49",
+              "qty": "4434"
+            },
+            {
+              "price": "2679.40",
+              "qty": "8"
+            },
+            {
+              "price": "2679.38",
+              "qty": "5"
+            },
+            {
+              "price": "2679.35",
+              "qty": "7015"
+            },
+            {
+              "price": "2679.31",
+              "qty": "23500"
+            },
+            {
+              "price": "2679.23",
+              "qty": "5"
+            },
+            {
+              "price": "2679.17",
+              "qty": "499"
+            }
+          ],
+          "asks": [
+            {
+              "price": "2679.79",
+              "qty": "542"
+            },
+            {
+              "price": "2680.09",
+              "qty": "5"
+            },
+            {
+              "price": "2680.10",
+              "qty": "49"
+            },
+            {
+              "price": "2680.13",
+              "qty": "1390"
+            },
+            {
+              "price": "2680.14",
+              "qty": "4656"
+            },
+            {
+              "price": "2680.41",
+              "qty": "8"
+            },
+            {
+              "price": "2680.46",
+              "qty": "1000"
+            },
+            {
+              "price": "2680.52",
+              "qty": "1999"
+            },
+            {
+              "price": "2680.53",
+              "qty": "4738"
+            },
+            {
+              "price": "2680.54",
+              "qty": "15855"
+            }
+          ],
+          "ts": 1790615329466,
+          "disclaimer": "General publicly available information only, provided solely in response to user-initiated queries via this plugin. This does not constitute investment advice, an offer, or a solicitation to engage in any transaction. Information may be inaccurate, incomplete, or delayed. Bybit makes no representations or warranties regarding accuracy or timeliness. This plugin does not access user accounts and does not support trading or transactions."
+        },
+        "spec": {
+          "symbol": "ETHUSD",
+          "status": "Trading",
+          "baseCoin": "ETH",
+          "quoteCoin": "USD",
+          "lotSizeFilter": {
+            "minOrderQty": "1",
+            "maxOrderQty": "10000000",
+            "qtyStep": "1"
+          },
+          "priceFilter": {
+            "minPrice": "0.01",
+            "maxPrice": "199999.98",
+            "tickSize": "0.01"
+          },
+          "leverageFilter": {
+            "minLeverage": "1",
+            "maxLeverage": "100.00",
+            "leverageStep": "0.01"
+          },
+          "disclaimer": "General publicly available information only, provided solely in response to user-initiated queries via this plugin. This does not constitute investment advice, an offer, or a solicitation to engage in any transaction. Information may be inaccurate, incomplete, or delayed. Bybit makes no representations or warranties regarding accuracy or timeliness. This plugin does not access user accounts and does not support trading or transactions."
+        }
+      },
+      "derived": {
+        "source_time_spread_ms": 229,
+        "mids": {
+          "spot": 2682.665,
+          "linear": 2681.615,
+          "inverse": 2679.785
+        },
+        "linear_minus_spot": {
+          "price": -1.050000000000182,
+          "bps": -3.914018336244674
+        },
+        "inverse_minus_spot": {
+          "price": -2.880000000000109,
+          "bps": -10.735593150841083
+        },
+        "inverse_minus_linear": {
+          "price": -1.8299999999999272,
+          "bps": -6.824245836930087
+        }
+      }
+    },
+    "SOL": {
+      "spot": {
+        "quantity_unit": "SOL",
+        "book": {
+          "symbol": "SOLUSDT",
+          "bestBid": {
+            "price": "118.61",
+            "qty": "52.8919"
+          },
+          "bestAsk": {
+            "price": "118.62",
+            "qty": "82.2937"
+          },
+          "spread": "0.01",
+          "bids": [
+            {
+              "price": "118.61",
+              "qty": "52.8919"
+            },
+            {
+              "price": "118.6",
+              "qty": "7.0536"
+            },
+            {
+              "price": "118.59",
+              "qty": "4.6219"
+            },
+            {
+              "price": "118.58",
+              "qty": "49.2022"
+            },
+            {
+              "price": "118.57",
+              "qty": "34.0288"
+            },
+            {
+              "price": "118.56",
+              "qty": "61.7535"
+            },
+            {
+              "price": "118.55",
+              "qty": "76.0345"
+            },
+            {
+              "price": "118.54",
+              "qty": "104.5842"
+            },
+            {
+              "price": "118.53",
+              "qty": "10.8701"
+            },
+            {
+              "price": "118.52",
+              "qty": "28.2709"
+            }
+          ],
+          "asks": [
+            {
+              "price": "118.62",
+              "qty": "82.2937"
+            },
+            {
+              "price": "118.63",
+              "qty": "60.5191"
+            },
+            {
+              "price": "118.64",
+              "qty": "82.4888"
+            },
+            {
+              "price": "118.65",
+              "qty": "86.3409"
+            },
+            {
+              "price": "118.66",
+              "qty": "27.5072"
+            },
+            {
+              "price": "118.67",
+              "qty": "99.5789"
+            },
+            {
+              "price": "118.68",
+              "qty": "122.9915"
+            },
+            {
+              "price": "118.69",
+              "qty": "210.9907"
+            },
+            {
+              "price": "118.7",
+              "qty": "101.7175"
+            },
+            {
+              "price": "118.71",
+              "qty": "22.462"
+            }
+          ],
+          "ts": 1790615330480,
+          "disclaimer": "General publicly available information only, provided solely in response to user-initiated queries via this plugin. This does not constitute investment advice, an offer, or a solicitation to engage in any transaction. Information may be inaccurate, incomplete, or delayed. Bybit makes no representations or warranties regarding accuracy or timeliness. This plugin does not access user accounts and does not support trading or transactions."
+        }
+      },
+      "linear": {
+        "quantity_unit": "SOL",
+        "book": {
+          "symbol": "SOLUSDT",
+          "bestBid": {
+            "price": "118.550",
+            "qty": "4.2"
+          },
+          "bestAsk": {
+            "price": "118.560",
+            "qty": "781.6"
+          },
+          "spread": "0.01",
+          "bids": [
+            {
+              "price": "118.550",
+              "qty": "4.2"
+            },
+            {
+              "price": "118.540",
+              "qty": "190.1"
+            },
+            {
+              "price": "118.530",
+              "qty": "579.8"
+            },
+            {
+              "price": "118.520",
+              "qty": "449.4"
+            },
+            {
+              "price": "118.510",
+              "qty": "596.9"
+            },
+            {
+              "price": "118.500",
+              "qty": "1079.7"
+            },
+            {
+              "price": "118.490",
+              "qty": "2705.6"
+            },
+            {
+              "price": "118.480",
+              "qty": "3495.7"
+            },
+            {
+              "price": "118.470",
+              "qty": "2325.6"
+            },
+            {
+              "price": "118.460",
+              "qty": "2161.6"
+            }
+          ],
+          "asks": [
+            {
+              "price": "118.560",
+              "qty": "781.6"
+            },
+            {
+              "price": "118.570",
+              "qty": "1158.2"
+            },
+            {
+              "price": "118.580",
+              "qty": "1898.3"
+            },
+            {
+              "price": "118.590",
+              "qty": "1760.4"
+            },
+            {
+              "price": "118.600",
+              "qty": "1084.6"
+            },
+            {
+              "price": "118.610",
+              "qty": "1076.9"
+            },
+            {
+              "price": "118.620",
+              "qty": "606.1"
+            },
+            {
+              "price": "118.630",
+              "qty": "831.5"
+            },
+            {
+              "price": "118.640",
+              "qty": "2494.8"
+            },
+            {
+              "price": "118.650",
+              "qty": "3924.0"
+            }
+          ],
+          "ts": 1790615330404,
+          "disclaimer": "General publicly available information only, provided solely in response to user-initiated queries via this plugin. This does not constitute investment advice, an offer, or a solicitation to engage in any transaction. Information may be inaccurate, incomplete, or delayed. Bybit makes no representations or warranties regarding accuracy or timeliness. This plugin does not access user accounts and does not support trading or transactions."
+        },
+        "funding": {
+          "symbol": "SOLUSDT",
+          "fundingRate": "0.0001",
+          "fundingRateHuman": "+0.0100%",
+          "nextFundingTime": "1790640000000",
+          "sentiment": "neutral",
+          "disclaimer": "General publicly available information only, provided solely in response to user-initiated queries via this plugin. This does not constitute investment advice, an offer, or a solicitation to engage in any transaction. Information may be inaccurate, incomplete, or delayed. Bybit makes no representations or warranties regarding accuracy or timeliness. This plugin does not access user accounts and does not support trading or transactions."
+        },
+        "spec": {
+          "symbol": "SOLUSDT",
+          "status": "Trading",
+          "baseCoin": "SOL",
+          "quoteCoin": "USDT",
+          "lotSizeFilter": {
+            "minOrderQty": "0.1",
+            "maxOrderQty": "96000.0",
+            "qtyStep": "0.1"
+          },
+          "priceFilter": {
+            "minPrice": "0.010",
+            "maxPrice": "199999.980",
+            "tickSize": "0.010"
+          },
+          "leverageFilter": {
+            "minLeverage": "1",
+            "maxLeverage": "100.00",
+            "leverageStep": "0.01"
+          },
+          "disclaimer": "General publicly available information only, provided solely in response to user-initiated queries via this plugin. This does not constitute investment advice, an offer, or a solicitation to engage in any transaction. Information may be inaccurate, incomplete, or delayed. Bybit makes no representations or warranties regarding accuracy or timeliness. This plugin does not access user accounts and does not support trading or transactions."
+        }
+      },
+      "inverse": {
+        "quantity_unit": "USD_contracts",
+        "book": {
+          "symbol": "SOLUSD",
+          "bestBid": {
+            "price": "118.45",
+            "qty": "1"
+          },
+          "bestAsk": {
+            "price": "118.52",
+            "qty": "49"
+          },
+          "spread": "0.07",
+          "bids": [
+            {
+              "price": "118.45",
+              "qty": "1"
+            },
+            {
+              "price": "118.43",
+              "qty": "1"
+            },
+            {
+              "price": "118.42",
+              "qty": "1161"
+            },
+            {
+              "price": "118.41",
+              "qty": "43759"
+            },
+            {
+              "price": "118.39",
+              "qty": "1654"
+            },
+            {
+              "price": "118.38",
+              "qty": "42783"
+            },
+            {
+              "price": "118.37",
+              "qty": "1"
+            },
+            {
+              "price": "118.36",
+              "qty": "10706"
+            },
+            {
+              "price": "118.35",
+              "qty": "401"
+            },
+            {
+              "price": "118.34",
+              "qty": "252"
+            }
+          ],
+          "asks": [
+            {
+              "price": "118.52",
+              "qty": "49"
+            },
+            {
+              "price": "118.53",
+              "qty": "42856"
+            },
+            {
+              "price": "118.54",
+              "qty": "5292"
+            },
+            {
+              "price": "118.56",
+              "qty": "43099"
+            },
+            {
+              "price": "118.59",
+              "qty": "49443"
+            },
+            {
+              "price": "118.60",
+              "qty": "501"
+            },
+            {
+              "price": "118.62",
+              "qty": "42856"
+            },
+            {
+              "price": "118.64",
+              "qty": "1146"
+            },
+            {
+              "price": "118.65",
+              "qty": "42856"
+            },
+            {
+              "price": "118.68",
+              "qty": "42856"
+            }
+          ],
+          "ts": 1790615330551,
+          "disclaimer": "General publicly available information only, provided solely in response to user-initiated queries via this plugin. This does not constitute investment advice, an offer, or a solicitation to engage in any transaction. Information may be inaccurate, incomplete, or delayed. Bybit makes no representations or warranties regarding accuracy or timeliness. This plugin does not access user accounts and does not support trading or transactions."
+        },
+        "spec": {
+          "symbol": "SOLUSD",
+          "status": "Trading",
+          "baseCoin": "SOL",
+          "quoteCoin": "USD",
+          "lotSizeFilter": {
+            "minOrderQty": "1",
+            "maxOrderQty": "1000000",
+            "qtyStep": "1"
+          },
+          "priceFilter": {
+            "minPrice": "0.01",
+            "maxPrice": "199999.98",
+            "tickSize": "0.01"
+          },
+          "leverageFilter": {
+            "minLeverage": "1",
+            "maxLeverage": "50.00",
+            "leverageStep": "0.01"
+          },
+          "disclaimer": "General publicly available information only, provided solely in response to user-initiated queries via this plugin. This does not constitute investment advice, an offer, or a solicitation to engage in any transaction. Information may be inaccurate, incomplete, or delayed. Bybit makes no representations or warranties regarding accuracy or timeliness. This plugin does not access user accounts and does not support trading or transactions."
+        }
+      },
+      "derived": {
+        "source_time_spread_ms": 147,
+        "mids": {
+          "spot": 118.61500000000001,
+          "linear": 118.555,
+          "inverse": 118.485
+        },
+        "linear_minus_spot": {
+          "price": -0.060000000000002274,
+          "bps": -5.058382160772438
+        },
+        "inverse_minus_spot": {
+          "price": -0.13000000000000966,
+          "bps": -10.959828015007348
+        },
+        "inverse_minus_linear": {
+          "price": -0.07000000000000739,
+          "bps": -5.904432541858832
+        }
+      }
+    }
+  },
+  "semantics": {
+    "inverse_docs": [
+      "https://www.bybit.com/en/help-center/article/Introduction-to-Inverse-Contract",
+      "https://www.bybit.com/en/help-center/article/Order-Cost-USDT-Contract",
+      "https://www.bybit.com/en/help-center/article/Profit-Loss-calculations-Inverse-Contracts"
+    ],
+    "note": "Inverse order quantity is USD contract quantity (1 contract = 1 USD per Bybit help center); position value = quantity / price and P&L settles in underlying coin. USDT linear contracts use underlying-token quantity and settle P&L in USDT."
+  }
+}

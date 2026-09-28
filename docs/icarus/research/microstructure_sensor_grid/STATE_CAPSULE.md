@@ -1,74 +1,92 @@
 # Microstructure Sensor Grid — State Capsule
 
-Last productive run: ICARUS-MICRO-20260928T1700Z
-Run manifest: runs/MICROSTRUCTURE_20260928T1700Z.md
+Last productive run: ICARUS-MICRO-20260928T1708Z
+Run manifest: runs/MICROSTRUCTURE_20260928T1708Z.md
 
 ## Latest cross-product crypto state
 
-Bybit near-synchronous product plane:
-- BTC spot BTCUSDT 83656.6/83656.7; linear BTCUSDT 83614.90/83615.00; inverse BTCUSD 83586.80/83586.90.
-- ETH spot ETHUSDT 2685.11/2685.12; linear ETHUSDT 2683.76/2683.77; inverse ETHUSD 2682.27/2682.28.
-- SOL spot SOLUSDT 119.04/119.05; linear SOLUSDT 118.970/118.980; inverse SOLUSD 118.86/118.96.
+Near-synchronous Bybit spot / USDT-linear / USD-inverse observations:
 
-Linear funding:
-- BTC +0.00006796.
-- ETH +0.0001.
-- SOL +0.0001.
-- next timestamp 2026-09-29T00:00:00Z.
+BTC:
+- spot BTCUSDT 83589.3 / 83589.4 @ 17:08:47.953Z
+- linear BTCUSDT 83542.8 / 83542.9 @ 17:08:48.402Z
+- inverse BTCUSD 83521.0 / 83521.1 @ 17:08:48.005Z
+- linear funding +0.00006467
 
-## Inverse contract metadata
+ETH:
+- spot ETHUSDT 2682.66 / 2682.67 @ 17:08:49.358Z
+- linear ETHUSDT 2681.61 / 2681.62 @ 17:08:49.237Z
+- inverse ETHUSD 2679.78 / 2679.79 @ 17:08:49.466Z
+- linear funding +0.0001
 
-- BTCUSD inverse: tick 0.10, qty step 1 contract, min 1, max leverage 100.
-- ETHUSD inverse: tick 0.01, qty step 1 contract, min 1, max leverage 100.
-- SOLUSD inverse: tick 0.01, qty step 1 contract, min 1, max leverage 50.
-- Inverse book sizes are contract counts; do not merge with base-asset spot/linear quantities without explicit contract-value normalization.
+SOL:
+- spot SOLUSDT 118.61 / 118.62 @ 17:08:50.480Z
+- linear SOLUSDT 118.55 / 118.56 @ 17:08:50.404Z
+- inverse SOLUSD 118.45 / 118.52 @ 17:08:50.551Z
+- linear funding +0.0001
 
-## Second-venue status
+## Contract-unit gate
 
-TickerLayer discovers BTCUSDT/ETHUSDT/SOLUSDT perpetual symbols (source_count 6 each), but perpetual snapshot/quote/trade calls return 403: perpetuals access not enabled. TickerLayer is not a usable second live derivative feed.
+- Spot quantities: underlying token units.
+- USDT-linear quantities: underlying token units.
+- USD-inverse quantities: USD contract quantities.
+- Official Bybit documentation says inverse quantity is denominated in USD contracts (1 contract = 1 USD), with position value = quantity / price and P&L settled in underlying coin.
+- Never sum inverse depth quantity with spot/linear depth quantity without explicit conversion.
 
-## Persistent prior coverage
+## Instrument-spec state
 
-- BTC/ETH/SOL 60-bar one-minute linear series through 16:53Z with no gaps.
-- QQQ/SPY/IWM minute ETF references continuous in last collected window; DIA sparse.
-- CME roll/VOI revision metadata and CFTC futures-only + combined populations preserved.
+- BTCUSDT linear: tick 0.10, qty step 0.001 BTC, max leverage 150x.
+- BTCUSD inverse: tick 0.10, qty step 1 USD contract, max leverage 100x.
+- ETHUSDT linear: tick 0.01, qty step 0.01 ETH, max leverage 150x.
+- ETHUSD inverse: tick 0.01, qty step 1 USD contract, max leverage 100x.
+- SOLUSDT linear: tick 0.01, qty step 0.1 SOL, max leverage 100x.
+- SOLUSD inverse: tick 0.01, qty step 1 USD contract, max leverage 50x.
 
-## Quality gates
+## Access-state changes
 
-- Do not merge inverse contract counts with base-asset quantities.
-- Do not interpret same-venue product basis as cross-venue lead-lag.
-- Keep source timestamps separate and flag non-atomic comparisons.
-- Never infer MBO queue/sweeps/icebergs from static books.
-- Keep ETF references separate from futures.
-- Require exact CME contract identifiers.
-- Preserve provider-plan failures and missing raw hashes.
+- TickerLayer perpetual symbol discovery works for BTCUSDT/ETHUSDT/SOLUSDT and reports source_count 6 for each.
+- TickerLayer perpetual snapshot/quote/last-trade calls are blocked: perpetuals access not enabled for this account.
+- Second independent live derivatives feed remains unavailable.
+- Bybit spot/linear/inverse and instrument-spec endpoints remain usable.
+- GitHub remains usable.
+
+## Persistent prior state
+
+- 60 one-minute Bybit linear bars for BTC/ETH/SOL collected through 16:53Z with no timestamp gaps.
+- ETF one-minute reference plane covers QQQ/SPY/DIA/IWM; DIA sparse gaps preserved.
+- CME roll/VOI preliminary-vs-final gates remain active.
+- Latest CFTC observation date collected: 2026-09-22, futures-only and combined populations kept separate.
 
 ## New artifact IDs
 
-- CRYPTO-SPOT-LINEAR-INVERSE-BTCETHSOL-20260928T1700Z
-- TICKERLAYER-PERPETUAL-ACCESS-STATE-20260928
+- CRYPTO-SPOT-LINEAR-INVERSE-BTCETHSOL-20260928T1708Z
+- MICRO-BYBIT-BTCUSD-INVERSE-L2-20260928T170848005Z
+- MICRO-BYBIT-ETHUSD-INVERSE-L2-20260928T170849466Z
+- MICRO-BYBIT-SOLUSD-INVERSE-L2-20260928T170850551Z
 
-## Persisted snapshot
+## Persistent quality gates
 
-- snapshots/CRYPTO_SPOT_LINEAR_INVERSE_20260928T1700Z.json
+- Preserve source timestamps and product identity.
+- Never conflate quantity units across spot/linear/inverse.
+- Never infer MBO queue behavior from price-level books.
+- Never interpolate missing observations silently.
+- Keep ETF references distinct from futures.
+- Require exact CME contract/security identifiers.
+- Keep CFTC futures-only and combined data separate.
+- Preserve provider entitlement failures.
+- Mark same-venue cross-product comparisons as non-independent observations.
 
-## Access state
+## Persisted snapshots
 
-Usable:
-- Bybit spot/linear/inverse selected public endpoints.
-- Twelve Data selected reference endpoints.
-- GitHub.
+- snapshots/CRYPTO_SPOT_LINEAR_INVERSE_20260928T1708Z.json
+- snapshots/CRYPTO_LINEAR_DEPTH_1M_20260928T1653Z.json
+- snapshots/ETF_REFERENCE_1M_20260928T1653Z.csv
 
-Blocked:
-- TickerLayer perpetual live data: 403.
-- TickerLayer direct indices/XAUUSD: plan restricted.
-- U.S. Gold Bureau current request: prior IP restriction.
-- direct CME live MDP/MBO, options analytics, cross-venue OI/liquidations: not exposed.
+## Next collection targets
 
-## Next targets
-
-1. Independent second crypto derivatives venue with depth/funding/OI/liquidations/trade tape.
-2. Exact CME active-contract VOI/settlement.
-3. Licensed CME MDP 3.0.
-4. CME/Cboe options chains.
-5. Raw payload/checksum archival where permitted.
+1. Independent second crypto derivatives venue with live depth/funding/OI/liquidations/trade tape.
+2. Exact-contract CME active-month VOI/settlement.
+3. Licensed CME MDP 3.0 MBO/MBP/trade-summary.
+4. CME/Cboe options chain.
+5. Authorized inverse-funding history endpoint.
+6. Raw payload/checksum preservation where permitted.
