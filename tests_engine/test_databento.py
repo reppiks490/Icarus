@@ -92,8 +92,9 @@ class Error:
 
 
 class SystemMsg:
-    def __init__(self, msg="heartbeat"):
+    def __init__(self, msg="heartbeat", code=0):
         self.msg = msg
+        self.code = int(code)
 
 
 class FakeStore(list):
@@ -345,6 +346,61 @@ def test_mbo_snapshot_filters_system_and_realtime_records():
     assert rows[0]["snapshot"] is True
 
 
+def test_slow_reader_gap_forces_bounded_replay_recovery(monkeypatch):
+    monkeypatch.setattr("icarus_engine.feeds.databento.time.time", lambda: 20_100)
+    live1 = FakeLive({
+        "ohlcv-1s": [Ohlcv(20_000, 100, 101, 99, 100.5)],
+        "trades": [Error("records skipped", code=7)],
+    })
+    live2 = FakeLive({
+        "ohlcv-1s": [Ohlcv(20_000, 200, 201, 199, 200.5)],
+        "trades": [Trade(20_000, 200.5, sequence=2, instrument_id=202)],
+    })
+    feed = make_feed(lives=[live1, live2])
+    feed.start_live("NQ=F")
+    assert "NQ=F" in feed._recovery_required
+    assert "records skipped" in feed.meta("NQ=F")["live_error"]
+
+    feed.start_live("NQ=F")
+    assert live1.stopped is True and live2.started is True
+    assert "NQ=F" not in feed._recovery_required
+    meta = feed.meta("NQ=F")
+    assert meta["recovery_count"] == 1
+    assert "records skipped" in meta["last_recovery_reason"]
+    assert [b.c for b in feed._second_bars["NQ=F"]] == [200.5]
+
+
+def test_gateway_fatal_error_stays_visible_after_later_market_record():
+    feed = make_feed()
+    feed._live_callback("NQ=F", Error("invalid subscription", code=5))
+    feed._live_callback("NQ=F", Trade(7_100, 100.75, 1))
+    with pytest.raises(RuntimeError, match="invalid subscription"):
+        feed._raise_live_error("NQ=F")
+    assert "invalid subscription" in feed.meta("NQ=F")["live_error"]
+
+
+def test_symbol_resolution_error_clears_when_mapping_later_resolves():
+    feed = make_feed()
+    feed._live_callback("NQ=F", Error("not listed yet", code=4))
+    with pytest.raises(RuntimeError, match="not listed yet"):
+        feed._raise_live_error("NQ=F")
+    feed._live_callback("NQ=F", Mapping(777, "NQ.v.0", "NQZ6"))
+    feed._raise_live_error("NQ=F")
+    assert "live_error" not in feed.meta("NQ=F")
+
+
+def test_system_slow_reader_and_replay_status_are_persistent_metadata(monkeypatch):
+    monkeypatch.setattr("icarus_engine.feeds.databento.time.time", lambda: 30_000)
+    feed = make_feed()
+    feed._live_callback("NQ=F", SystemMsg("falling behind", code=2))
+    assert feed.meta("NQ=F")["slow_reader_warning"] == "falling behind"
+    assert feed.meta("NQ=F")["slow_reader_warning_ts"] == 30_000
+    feed._live_callback("NQ=F", SystemMsg("replay caught up", code=3))
+    meta = feed.meta("NQ=F")
+    assert meta["last_replay_completed_ts"] == 30_000
+    assert "slow_reader_warning" not in meta
+
+
 def test_async_live_exception_is_surfaced_to_engine():
     live = FakeLive({"ohlcv-1s": [Ohlcv(7_000, 100, 101, 99, 100.5)]})
     feed = make_feed(lives=[live])
@@ -352,8 +408,9 @@ def test_async_live_exception_is_surfaced_to_engine():
     assert callable(live.exception_callback)
     live.exception_callback(RuntimeError("socket reader failed"))
     # A subsequent valid market event must not erase an adapter callback failure
-    # before the synchronous poll path observes it.
+    # before the synchronous poll path observes it, including feed metadata.
     feed._live_callback("NQ=F", Trade(7_001, 100.75, 1))
+    assert "socket reader failed" in feed.meta("NQ=F")["live_error"]
     with pytest.raises(RuntimeError, match="socket reader failed"):
         feed.trades("NQ=F")
 
