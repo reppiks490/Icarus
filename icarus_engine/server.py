@@ -14,7 +14,7 @@
   GET  /api/agent                 Field Agent recipes + paste-packs (Grok). Never executes. Never arms a broker.
   POST /admin/pause | /admin/resume        {"asset": "NQ"} or all          (Bearer token)
   POST /admin/flatten                      {"confirm": true, "asset"?: "NQ"}
-  POST /admin/inputs                       {"asset": "NQ"|"*", "values": {...}, "persist": true}  → re-warm
+  POST /admin/inputs                       {"asset": "NQ"|"*", "values": {...}, "chart": {...}, "persist": true}  → re-warm
   POST /admin/inputs/reset                 {"asset": "NQ"}  (deletes inputs.<SYM>.json, re-warm)
   POST /admin/preset                       {"asset": "NQ", "preset": "NQ-10m-original"|null}
   POST /admin/assets/add                   {"symbol": "GC", "tf": "20", "preset"?: ...}
@@ -37,13 +37,13 @@ from typing import Any, Dict
 from urllib.parse import parse_qs, urlparse
 
 from . import brand
-from .assets import REGISTRY, parse_spec
+from .assets import REGISTRY, apply_chart_config, chart_capabilities, parse_spec, validate_chart_config
 from .backtest import JOBS, start_job
 from .parity import compare_lists, engine_trades_from_rows, read_tv_trades_text
 from .golive import report as golive_report
 from .agent import report as agent_report
 from .briefing import report as briefing_report
-from .runtime import Portfolio, _clean, _read_json, preset_path
+from .runtime import Portfolio, _clean, _read_json, apply_spec_meta, preset_path
 from .strategy.meta import load_meta
 from .advisory import MAX_BODY_BYTES, strict_json
 from .research_service import ResearchWorkspace
@@ -216,7 +216,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._json(200, out)
             if p.path == "/api/assets":
                 return self._json(200, {"registry": [{"symbol": s.symbol, "name": s.name, "feed": s.feed, "calendar": s.calendar, "mintick": s.mintick, "multiplier": s.multiplier, "kind": s.kind} for s in REGISTRY.values()],
-                                        "running": list(port.order)})
+                                        "running": list(port.order), "chart_capabilities": chart_capabilities()})
             if p.path == "/api/commands":
                 return self._json(200, COMMANDS)
             if p.path.startswith("/api/export/"):
@@ -256,7 +256,10 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     return self._json(404, {"error": "unknown asset"})
                 over = _read_json(os.path.join(port.base_dir, f"inputs.{r.symbol}.json"))
                 return self._json(200, {"asset": r.symbol, "effective": r.inputs.to_dict(), "base": r.inputs_base.to_dict(), "sources": r.cfg.sources,
-                                        "overrides": {k: v for k, v in over.items() if not k.startswith("_")}, "preset": r.cfg.preset, "pts_scale": r.pts_scale})
+                                        "overrides": {k: v for k, v in over.items() if not k.startswith("_")}, "preset": r.cfg.preset, "pts_scale": r.pts_scale,
+                                        "chart": {"timeframe": r.spec.chart_tf, "chart_type": r.spec.chart_type,
+                                                  "fill_on": r.spec.fill_on, "security_source": r.spec.security_source},
+                                        "chart_capabilities": chart_capabilities()})
             self._json(404, {"error": "not found"})
 
         def _drain_body(self) -> None:
@@ -369,6 +372,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     vals = body.get("values", {}) if p.path == "/admin/inputs" else None
                     if vals is not None and not isinstance(vals, dict):
                         raise ValueError("values must be an object")
+                    chart = validate_chart_config(body.get("chart")) if p.path == "/admin/inputs" else {}
                     kwargs = {}
                     if p.path == "/admin/preset":
                         name = body.get("preset") or None
@@ -382,25 +386,31 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                         for r in sorted(targets, key=lambda r: r.symbol):
                             locks.enter_context(r.lock)
                             r.ensure_configurable()
+                        # Preflight the entire batch before the first asset is persisted/replayed.
                         for r in targets:
                             sp = replace(r.spec)
                             name = port.preset_for(r)
                             if "preset" in kwargs:
                                 sp.preset = kwargs["preset"]
                                 name = kwargs["preset"] or port.preset
-                            inp, _, _ = _resolve(sp, port.base_dir, port.profile, name, vals,
-                                                 skip_asset_overrides=reset)
+                            inp, meta, _ = _resolve(sp, port.base_dir, port.profile, name, vals,
+                                                   skip_asset_overrides=reset)
+                            sp = apply_spec_meta(sp, meta)
+                            sp = apply_chart_config(sp, chart)
                             r.ensure_cached_timeframes(inp)
+                            r.ensure_cached_chart_timeframe(sp.chart_tf)
                         for r in targets:
                             port.rewarm_asset(r.symbol, vals, bool(body.get("persist", True)) if vals is not None else False,
-                                              reset=reset, **kwargs)
+                                              reset=reset, chart=chart, **kwargs)
                     done = [r.symbol for r in targets]
-                    return self._json(200, {"ok": True, "note": f"configuration applied and re-warmed {done}", "assets": done})
+                    return self._json(200, {"ok": True, "note": f"configuration applied and re-warmed {done}", "assets": done,
+                                            "chart": chart or None})
                 if p.path == "/admin/assets/add":
                     tok = str(body.get("symbol", "")).strip()
                     if not tok:
                         return self._json(400, {"detail": "symbol required"})
                     spec = parse_spec(tok, str(body.get("tf") or port.runner_list()[0].spec.chart_tf if port.runner_list() else "20"))
+                    spec = apply_chart_config(spec, {k: body[k] for k in ("chart_type", "fill_on", "security_source") if body.get(k) not in (None, "")})
                     if body.get("preset"):
                         spec.preset = body["preset"]
                     r = port.add_asset(spec)
@@ -415,8 +425,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                         return self._json(404, {"detail": f"unknown asset {asset}"})
                     if not r.warm:
                         return self._json(409, {"detail": f"{r.symbol} is still warming up"})
-                    fields = ("preset", "fill_on", "chart_type", "session", "slippage_ticks", "commission", "capital",
-                              "leverage", "window_start", "window_end", "inputs")
+                    fields = ("preset", "fill_on", "chart_type", "timeframe", "security_source", "session",
+                              "slippage_ticks", "commission", "capital", "leverage", "window_start", "window_end", "inputs")
                     params = validate_backtest_params({k: body[k] for k in fields if k in body})
                     params["asset"] = r.symbol
                     if "preset" in params and not os.path.exists(preset_path(port.base_dir, params["preset"])):
