@@ -17,6 +17,8 @@ from icarus_engine.strategy.inputs import Inputs
 INVALID = [
     {"fill_on": "standard"}, {"fill_on": []},
     {"chart_type": "ha"}, {"chart_type": True},
+    {"security_source": "synthetic"}, {"security_source": True},
+    {"timeframe": "30S"}, {"timeframe": "100tick"}, {"timeframe": 0}, {"timeframe": "0"},
     {"session": "24/7"}, {"session": {}},
     {"preset": True}, {"preset": []},
     {"slippage_ticks": -1}, {"slippage_ticks": 1.5}, {"slippage_ticks": "1.5"},
@@ -159,3 +161,20 @@ def test_direct_optional_defaults_and_zero_length_window_remain_valid(port):
     assert default == optional
     zero = backtest.run_backtest(port, "TEST", slippage_ticks=0, commission=0, window_start=0, window_end=0)
     assert zero["bars"] == 0 and zero["config"]["window_end"] == 0
+
+
+def test_backtest_rebuilds_cached_one_minute_tape_at_requested_timeframe(port):
+    result = backtest.run_backtest(port, "TEST", timeframe="2", chart_type="heikin_ashi",
+                                   security_source="chart", fill_on="real")
+    assert result["config"]["tf"] == 2
+    assert result["config"]["chart_type"] == "heikin_ashi"
+    assert result["config"]["fill_on"] == "real"
+    assert result["config"]["reproducibility"]["effective_config"]["spec"]["chart_tf"] == "2"
+    assert result["bars"] == 5
+
+
+def test_backtest_rejects_finer_timeframe_than_cached_tape(port):
+    r = port.runners["TEST"]
+    r.subbars = [(Bar(k * 300, 100, 101, 99, 100, 1), 5) for k in range(6)]
+    with pytest.raises(ValueError, match="cannot be losslessly rebuilt"):
+        backtest.run_backtest(port, "TEST", timeframe="2")
