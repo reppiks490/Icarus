@@ -49,3 +49,13 @@ def test_doctor_cli_json(tmp_path, monkeypatch, capsys):
     out = capsys.readouterr().out
     assert '"ok": true' in out or '"ok":true' in out
     assert "Yahoo" in out
+
+
+def test_doctor_databento_mode_fails_fast_without_api_key(tmp_path, monkeypatch):
+    monkeypatch.setenv("ICARUS_FEED", "databento")
+    monkeypatch.delenv("DATABENTO_API_KEY", raising=False)
+    rep = inspect(str(tmp_path), today=date(2026, 9, 20))
+    by_name = {i["name"]: i for i in rep["items"]}
+    assert by_name["DATABENTO_API_KEY"]["ok"] is False
+    assert by_name["DATABENTO_API_KEY"]["level"] == "fail"
+    assert rep["ok"] is False
