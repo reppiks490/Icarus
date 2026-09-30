@@ -59,13 +59,13 @@ class Level:
 
 
 class Depth:
-    def __init__(self, ts, price=100.0, *, flags=0, order_id=7, levels=None):
+    def __init__(self, ts, price=100.0, *, flags=0, order_id=7, levels=None, action="A"):
         self.ts_event = int(ts * NS)
         self.price = int(price * NS)
         self.pretty_price = float(price)
         self.size = 1
         self.side = "B"
-        self.action = "A"
+        self.action = action
         self.sequence = 3
         self.flags = int(flags)
         self.order_id = int(order_id)
@@ -105,6 +105,7 @@ class FakeLive:
         self.records_by_schema = records_by_schema or {}
         self.subscriptions = []
         self.callback = None
+        self.exception_callback = None
         self.reconnect_callback = None
         self.started = False
         self.stopped = False
@@ -115,8 +116,9 @@ class FakeLive:
         if self.started:
             self._emit(kwargs["schema"])
 
-    def add_callback(self, callback):
+    def add_callback(self, callback, exception_callback=None):
         self.callback = callback
+        self.exception_callback = exception_callback
 
     def _emit(self, schema):
         # Subscription upgrades after start should deliver only that new schema once.
@@ -141,7 +143,7 @@ class FakeLive:
 class FakeSDK:
     Historical = object
     Live = object
-    RecordFlags = SimpleNamespace(F_LAST=1)
+    RecordFlags = SimpleNamespace(F_LAST=128, F_SNAPSHOT=32)
 
 
 def make_feed(*, historical=None, lives=None):
@@ -231,7 +233,7 @@ def test_live_second_bars_trades_and_depth_can_share_one_session():
     second_rows = [Ohlcv(1_000 + i, 100 + i / 10, 101 + i / 10, 99 + i / 10, 100.5 + i / 10, 1) for i in range(60)]
     trade = Trade(1_059, 106.5, 3)
     depth = Depth(1_060, 106.25, levels=[Level(106.0, 106.25)])
-    mbo = Depth(1_061, 106.25, order_id=99)
+    mbo = Depth(1_061, 106.25, order_id=99, action="T")
     live = FakeLive({"ohlcv-1s": second_rows, "trades": [trade], "mbp-10": [depth], "mbo": [mbo]})
     feed = make_feed(lives=[live])
 
@@ -256,10 +258,13 @@ def test_live_second_bars_trades_and_depth_can_share_one_session():
     assert mbo_rows[-1]["schema"] == "mbo"
     assert all(row["schema"] == "mbo" for row in mbo_rows)
     assert all(row["schema"] == "mbp-10" for row in depth_rows)
+    # MBO action=T describes the same economic trade but must not duplicate the
+    # dedicated Databento trades-schema tick stream.
+    assert len(feed.trades("NQ=F")) == 1
 
 
 def test_mbo_snapshot_requests_continuous_snapshot_and_stops():
-    snapshot = Depth(2_000, 200.25, flags=1)
+    snapshot = Depth(2_000, 200.25, flags=160)
     live = FakeLive({"mbo": [snapshot]})
     feed = make_feed(lives=[live])
     rows = feed.mbo_snapshot("ES=F", timeout=0.2)
@@ -270,6 +275,94 @@ def test_mbo_snapshot_requests_continuous_snapshot_and_stops():
     assert sub["symbols"] == "ES.v.0"
     assert sub["stype_in"] == "continuous"
     assert live.stopped is True
+
+
+
+def test_depth_schema_queues_do_not_evict_each_other():
+    mbp = Depth(5_000, 100.0, levels=[Level(99.75, 100.0)])
+    mbo_flood = [Depth(5_001 + i, 100.0, order_id=10_000 + i) for i in range(1001)]
+    live = FakeLive({"mbp-10": [mbp], "mbo": mbo_flood})
+    feed = make_feed(lives=[live])
+
+    mbp_rows = feed.depth_events("NQ=F", schema="mbp-10")
+    assert len(mbp_rows) == 1
+    feed.depth_events("NQ=F", schema="mbo")
+    # A busy MBO stream cannot consume the independent MBP-10 retention budget.
+    still_mbp = feed.depth_events("NQ=F", schema="mbp-10")
+    assert len(still_mbp) == 1 and still_mbp[0]["schema"] == "mbp-10"
+
+
+def test_mbo_snapshot_filters_system_and_realtime_records():
+    live = FakeLive({"mbo": [
+        SystemMsg("symbol mapping / heartbeat"),
+        Depth(6_000, 100.0, flags=0, order_id=8),
+        Depth(6_001, 100.25, flags=160, order_id=9),
+    ]})
+    feed = make_feed(lives=[live])
+    rows = feed.mbo_snapshot("NQ=F", timeout=0.2)
+    assert [row["order_id"] for row in rows] == [9]
+    assert rows[0]["schema"] == "mbo"
+    assert rows[0]["snapshot"] is True
+
+
+def test_async_live_exception_is_surfaced_to_engine():
+    live = FakeLive({"ohlcv-1s": [Ohlcv(7_000, 100, 101, 99, 100.5)]})
+    feed = make_feed(lives=[live])
+    feed.recent_ex("NQ=F", 1)
+    assert callable(live.exception_callback)
+    live.exception_callback(RuntimeError("socket reader failed"))
+    with pytest.raises(RuntimeError, match="socket reader failed"):
+        feed.trades("NQ=F")
+
+
+def test_failed_live_start_cleans_subscription_state():
+    class BrokenLive(FakeLive):
+        def start(self):
+            self.started = True
+            raise RuntimeError("cannot start")
+
+    live = BrokenLive()
+    feed = make_feed(lives=[live])
+    with pytest.raises(RuntimeError, match="cannot start"):
+        feed.start_live("NQ=F")
+    assert live.stopped is True
+    assert "NQ=F" not in feed._subscriptions
+    assert "NQ=F" not in feed._live_started
+
+
+def test_recent_ex_uses_historical_seed_when_new_live_session_is_idle(monkeypatch):
+    monkeypatch.setattr("icarus_engine.feeds.databento.time.time", lambda: 10_020)
+    hist = FakeHistorical({"ohlcv-1m": [Ohlcv(9_960, 100, 101, 99, 100.5, 5)]})
+    feed = make_feed(historical=hist, lives=[FakeLive()])
+    # Avoid spending the normal live-ready timeout in this deterministic idle test.
+    feed._ready["NQ=F"].set()
+    bars, ft, px = feed.recent_ex("NQ=F", 60, since_ts=9_900)
+    assert len(bars) == 1 and bars[0].ts == 9_960
+    assert ft == 10_020 and px == 100.5
+    assert hist.calls[-1]["schema"] == "ohlcv-1m"
+    assert feed.meta("NQ=F")["historical_seed"] is True
+
+    # Once the historical seed establishes the feed clock, another idle poll does
+    # not hit the paid Historical API again.
+    calls = len(hist.calls)
+    feed.recent_ex("NQ=F", 60, since_ts=9_960)
+    assert len(hist.calls) == calls
+
+
+def test_mbo_snapshot_requires_last_flag_contract():
+    class SDK(FakeSDK):
+        RecordFlags = SimpleNamespace(F_SNAPSHOT=32)
+
+    live = FakeLive({"mbo": [Depth(8_000, flags=32)]})
+    feed = Databento(
+        api_key="db-test",
+        sdk=SDK,
+        historical=FakeHistorical({}),
+        live_factory=lambda: live,
+    )
+    with pytest.raises(RuntimeError, match="F_LAST"):
+        feed.mbo_snapshot("NQ=F", timeout=0.1)
+    assert live.started is False
 
 
 def test_portfolio_databento_mode_routes_futures_transport(monkeypatch, tmp_path):
@@ -393,7 +486,7 @@ def test_engine_http_exposes_databento_capabilities_ticks_depth_and_mbo(tmp_path
         "trades": [Trade(4_000, 100.5, 2)],
         "mbp-10": [Depth(4_001, 100.5, levels=[Level(100.25, 100.5)])],
     })
-    snapshot_live = FakeLive({"mbo": [Depth(4_002, 100.5, flags=1)]})
+    snapshot_live = FakeLive({"mbo": [Depth(4_002, 100.5, flags=160)]})
     feed = make_feed(lives=[live, snapshot_live])
 
     journal = Journal(":memory:")
