@@ -27,13 +27,15 @@ from dataclasses import dataclass, replace
 from datetime import datetime
 from typing import Any, Deque, Dict, List, Optional, Tuple
 
-from .assets import AssetSpec, apply_chart_config, chart_capabilities, normalize_chart_timeframe, resolve, validate_chart_config
+from .assets import AssetSpec, apply_chart_config, chart_capabilities, chart_timeframe_parts, normalize_chart_timeframe, resolve, validate_chart_config
 from .calendar import get_calendar
 from .emulator import Emulator, Fill
 from .feeds import Coinbase, Kraken
+from .feeds.events import event_bar_to_bar, make_event_feed
 from .feeds.bars import HistoryHub, detect_granularity, file_feed_mode, find_history, parse_ohlcv_csv, read_text_csv  # Grok (xAI) — 2026-09-20
 from .feeds.yahoo import Yahoo
 from .pine.series import NAN, na
+from .microstructure import TickAggregator, TradeAggregator, TradeEvent
 from .pine.timeframe import Aggregator, Bar, tf_minutes
 from .strategy.inputs import Inputs, crypto_profile
 from .strategy.meta import load_meta
