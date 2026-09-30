@@ -64,6 +64,49 @@ def chart_capabilities() -> Dict[str, object]:
     }
 
 
+def validate_chart_config(values: Optional[Dict[str, object]]) -> Dict[str, object]:
+    """Validate user-facing chart/execution settings and return canonical values."""
+    if values is None:
+        return {}
+    if not isinstance(values, dict):
+        raise ValueError("chart configuration must be an object")
+    allowed = {"timeframe", "chart_type", "fill_on", "security_source"}
+    bad = set(values) - allowed
+    if bad:
+        raise ValueError(f"unknown chart configuration fields {sorted(bad)}")
+    out: Dict[str, object] = {}
+    if values.get("timeframe") not in (None, ""):
+        out["timeframe"] = normalize_chart_timeframe(values["timeframe"])
+    if values.get("chart_type") not in (None, ""):
+        v = str(values["chart_type"])
+        if v not in CHART_TYPES:
+            raise ValueError(f"chart_type must be one of {CHART_TYPES}")
+        out["chart_type"] = v
+    if values.get("fill_on") not in (None, ""):
+        v = str(values["fill_on"])
+        if v not in FILL_MODES:
+            raise ValueError(f"fill_on must be one of {FILL_MODES}")
+        out["fill_on"] = v
+    if values.get("security_source") not in (None, ""):
+        v = str(values["security_source"])
+        if v not in SECURITY_SOURCES:
+            raise ValueError(f"security_source must be one of {SECURITY_SOURCES}")
+        out["security_source"] = v
+    return out
+
+
+def apply_chart_config(spec: "AssetSpec", values: Optional[Dict[str, object]]) -> "AssetSpec":
+    """Return a copy of *spec* with validated chart settings applied."""
+    out = replace(spec)
+    cfg = validate_chart_config(values)
+    if "timeframe" in cfg:
+        out.chart_tf = str(cfg["timeframe"])
+    for key in ("chart_type", "fill_on", "security_source"):
+        if key in cfg:
+            setattr(out, key, str(cfg[key]))
+    return out
+
+
 @dataclass
 class AssetSpec:
     symbol: str                      # short name used everywhere (NQ, ES, BTC ...)
