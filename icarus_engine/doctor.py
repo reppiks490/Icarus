@@ -134,11 +134,13 @@ def inspect(base_dir: str | None = None, *, today: date | None = None) -> Dict[s
     if feed == "databento":
         sdk_ok = importlib.util.find_spec("databento") is not None
         key = (os.environ.get("DATABENTO_API_KEY") or secrets.get("DATABENTO_API_KEY") or "").strip()
-        ok = sdk_ok and bool(key)
+        rule = (os.environ.get("DATABENTO_ROLL_RULE") or secrets.get("DATABENTO_ROLL_RULE") or "v").strip().lower()
+        ok = sdk_ok and bool(key) and rule in ("v", "n", "c")
+        rule_name = {"v": "volume", "n": "open-interest", "c": "calendar"}.get(rule, "invalid")
         detail = (
             f"SDK={'installed' if sdk_ok else 'missing'}  "
             f"DATABENTO_API_KEY={'set' if key else 'missing'}  "
-            "dataset=GLBX.MDP3  continuous=volume-front .v.0 — no network request made"
+            f"dataset=GLBX.MDP3  continuous={rule_name} .{rule}.0 — no network request made"
         )
         _check(items, "Databento adapter prerequisites", ok, detail, level="fail")
 
