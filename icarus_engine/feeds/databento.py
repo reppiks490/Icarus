@@ -54,7 +54,7 @@ class TradeTick:
 class Databento:
     """Continuous CME feed backed by Databento Historical + Live APIs."""
 
-    GRANULARITIES = (1, 60, 300, 900, 1800, 3600, 86400)
+    GRANULARITIES = (1, 2, 5, 10, 15, 20, 30, 60, 120, 180, 240, 300, 600, 900, 1200, 1800, 3600, 14400, 86400)
     DATASET = _DATASET
 
     def __init__(
@@ -110,16 +110,17 @@ class Databento:
 
     @staticmethod
     def root(symbol: str) -> str:
-        s = str(symbol).strip().upper()
-        if ":" in s:
-            s = s.split(":")[-1]
-        for suffix in ("=F", "1!", "1"):
-            if s.endswith(suffix):
-                s = s[: -len(suffix)]
-                break
-        if not s or not all(ch.isalnum() for ch in s):
-            raise ValueError(f"unsupported Databento futures symbol {symbol!r}")
-        return s
+        # Route through the ICARUS registry so aliases such as BTCF, M2K1!,
+        # CME_MINI:NQ1!, and provider =F symbols all resolve to the same
+        # continuous futures root. Unknown/spot symbols fail closed.
+        from ..assets import resolve
+        spec = resolve(str(symbol))
+        if spec.kind != "futures":
+            raise ValueError(f"Databento GLBX adapter only accepts registered futures, got {symbol!r}")
+        ticker = str(spec.ticker).upper()
+        if not ticker.endswith("=F"):
+            raise ValueError(f"{spec.symbol}: Databento futures identity must use a continuous provider ticker")
+        return ticker[:-2]
 
     @classmethod
     def continuous_symbol(cls, symbol: str) -> str:
