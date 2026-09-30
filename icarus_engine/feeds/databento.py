@@ -463,6 +463,8 @@ class Databento:
                 continue
             try:
                 client.stop()
+                if hasattr(client, "block_for_close"):
+                    client.block_for_close(timeout=5.0)
             finally:
                 with self._lock:
                     self._live.pop(key, None)
@@ -554,6 +556,8 @@ class Databento:
             done.wait(max(0.1, float(timeout)))
         finally:
             client.stop()
+            if hasattr(client, "block_for_close"):
+                client.block_for_close(timeout=5.0)
         if error:
             raise RuntimeError(error[0])
         if last_flag and not done.is_set():
