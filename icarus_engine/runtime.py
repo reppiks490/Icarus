@@ -999,6 +999,7 @@ class AssetRunner:
                 "chart_type": self.spec.chart_type, "fill_on": self.spec.fill_on,
                 "security_source": self.spec.security_source, "session": _session_mode(self.cal),
             },
+            "chart_capabilities": self.chart_capability_view(),
             "preset": self.cfg.preset or self.spec.preset, "inputs_sources": self.cfg.sources or [], "pts_scale": self.pts_scale,
             "price": mark, "price_age": (time.time() - self.last_price_ts) if self.last_price_ts else None,
             "feed_delay": self._feed_delay_at(int(time.time())),

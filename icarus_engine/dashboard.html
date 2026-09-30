@@ -526,11 +526,21 @@ function backtestHtml(A) {
   const presets = PRESETS.map(p => `<option value="${esc(p.name)}" ${(BT.preset||last?.preset)===p.name?'selected':''}>${esc(p.name)}</option>`).join('');
   const active = A.find(a => a.symbol === (BT.asset || A[0]?.symbol)) || A[0] || {};
   const tfs = ['1','2','5','10','20','30','3','15','45','60','120','180','240','D','W'];
-  return `<section class="card c12"><h2>Strategy Tester <span class="sub">runs on the engine's cached bars (no network) · times in ${TZ}</span></h2>
+  const caps = active.chart_capabilities || {};
+  const available = new Set(caps.available_from_cache || []);
+  const hasDynamicCaps = Array.isArray(caps.available_from_cache);
+  const tfOptions = tfs.map(t => {
+    const ok = !hasDynamicCaps || available.has(t);
+    return `<option value="${t}" ${ok?'':'disabled'}>${t}${ok?'':' · cache unavailable'}</option>`;
+  }).join('');
+  const cacheNote = Array.isArray(caps.cached_source_resolutions_minutes)
+    ? ` · cache source ${caps.cached_source_resolutions_minutes.length ? caps.cached_source_resolutions_minutes.join('m, ')+'m' : 'none'}`
+    : '';
+  return `<section class="card c12"><h2>Strategy Tester <span class="sub">runs on the engine's cached bars (no network) · times in ${TZ}${cacheNote}</span></h2>
     <div class="row">
       <label>Asset <select id="btAsset">${assets}</select></label>
       <label>Preset <select id="btPreset"><option value="">(engine default)</option>${presets}</select></label>
-      <label>Timeframe <select id="btTf"><option value="">engine (${active.tf||'?'}m)</option>${tfs.map(t=>`<option value="${t}">${t}</option>`).join('')}</select></label>
+      <label>Timeframe <select id="btTf"><option value="">engine (${active.tf||'?'}m)</option>${tfOptions}</select></label>
       <label>Chart <select id="btChart"><option value="">engine / preset</option><option value="heikin_ashi">Heikin Ashi</option><option value="real">Standard OHLC</option></select></label>
       <label>Fills <select id="btFill"><option value="">engine / preset</option><option value="real">real prices</option><option value="chart">Heikin Ashi/chart bars (TradingView mode)</option></select></label>
       <label>HTF/LTF source <select id="btSecurity"><option value="">engine / preset</option><option value="chart">selected chart</option><option value="standard">standard OHLC</option></select></label>
@@ -681,7 +691,18 @@ function render(d) {
     $('#dFills tbody').innerHTML = fl.map(f => `<tr><td class="tnum">${dtz(f.ts)}</td><td class="side ${f.side}">${f.side}</td><td class="tnum">${f.qty}</td><td class="tnum">${px(f.price)}</td><td>${esc(f.comment)} <span class="tag ${f.live?'live':''}">${f.live?'LIVE':'hist'}</span></td><td class="tnum ${f.profit==null?'':f.profit>=0?'pos':'neg'}">${f.profit!=null?sgn$(f.profit):''}</td></tr>`).join('') || '<tr><td colspan=6 class="empty">no fills in the chart window</td></tr>';
   } else if (view === 'inputs') { if (rebuild) { $('#view').innerHTML = inputsHtml(A); loadInputsTab(); } }
   else if (view === 'commands') { if (rebuild) $('#view').innerHTML = commandsHtml(A); }
-  else if (view === 'backtest') { if (rebuild) { $('#view').innerHTML = backtestHtml(A); $('#btRun').addEventListener('click', runBacktest); if (BT.res) renderBacktest(); } }
+  else if (view === 'backtest') { if (rebuild) {
+    $('#view').innerHTML = backtestHtml(A);
+    $('#btRun').addEventListener('click', runBacktest);
+    $('#btAsset').addEventListener('change', e => {
+      BT.asset = e.target.value;
+      BT.job = null; BT.res = null; BT.compare = null;
+      clearInterval(BT.poll); BT.poll = null;
+      lastView = null;
+      render(last);
+    });
+    if (BT.res) renderBacktest();
+  } }
   else if (view === 'research') { if(typeof researchHtml!=='function') $('#view').innerHTML='<section class="card c12">Research requires the updated engine server. The running engine has not been restarted.</section>'; else if (rebuild) { $('#view').innerHTML = researchHtml(A); wireResearch(); } else loadResearch(); }
   else if (view === 'sources') { if(typeof sourcesHtml!=='function') $('#view').innerHTML='<section class="card c12">Financial data requires the updated engine server. The running engine has not been restarted.</section>'; else if (rebuild) { $('#view').innerHTML = sourcesHtml(A); wireSources(); } else loadSources(); }
   else if (view === 'golive') { if (rebuild) $('#view').innerHTML = goliveCard(window.ICARUS_GOLIVE); else { const nu = document.createElement('div'); nu.innerHTML = goliveCard(window.ICARUS_GOLIVE); const cur = $('#goliveCard'); if (nu.firstElementChild && cur) cur.replaceWith(nu.firstElementChild); } }
