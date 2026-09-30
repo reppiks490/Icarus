@@ -16,7 +16,7 @@ authors = [
 dependencies = ["tzdata"]
 
 [project.optional-dependencies]
-bridge = ["fastapi", "uvicorn", "httpx", "mcp>=2,<3"]
+bridge = ["fastapi", "uvicorn", "httpx", "mcp>=2,<3", "python-dotenv>=1,<2"]
 dev = ["pytest"]
 ml = ["xgboost>=2.0"]
 
