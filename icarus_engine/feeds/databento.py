@@ -43,7 +43,8 @@ _PRICE_SCALE = 1_000_000_000.0
 
 @dataclass(frozen=True)
 class TradeTick:
-    ts_event: int
+    ts_event: int                  # whole seconds for coarse filtering/UI compatibility
+    ts_event_ns: int               # original Databento nanosecond event timestamp
     price: float
     size: int
     side: str = ""
@@ -205,8 +206,10 @@ class Databento:
 
     @classmethod
     def _trade_record(cls, record: Any) -> TradeTick:
+        ts_ns = int(getattr(record, "ts_event"))
         return TradeTick(
-            ts_event=cls._ts_sec(record),
+            ts_event=ts_ns // 1_000_000_000,
+            ts_event_ns=ts_ns,
             price=cls._price(record, "price"),
             size=int(getattr(record, "size", 0) or 0),
             side=str(getattr(record, "side", "") or ""),
@@ -216,8 +219,13 @@ class Databento:
 
     @classmethod
     def _event_record(cls, record: Any) -> Dict[str, Any]:
+        ts_ns = int(getattr(record, "ts_event")) if hasattr(record, "ts_event") else None
+        levels = getattr(record, "levels", None)
+        schema = "mbp-10" if levels is not None else ("mbo" if hasattr(record, "order_id") else "unknown")
         out: Dict[str, Any] = {
-            "ts_event": cls._ts_sec(record) if hasattr(record, "ts_event") else None,
+            "ts_event": (ts_ns // 1_000_000_000) if ts_ns is not None else None,
+            "ts_event_ns": ts_ns,
+            "schema": schema,
             "type": type(record).__name__,
         }
         for key in ("action", "side", "size", "depth", "order_id", "sequence", "flags", "instrument_id"):
@@ -235,7 +243,6 @@ class Databento:
                 pass
         # MBP-10 records expose levels; preserve a JSON-friendly view without taking
         # a hard dependency on one databento-dbn concrete level class.
-        levels = getattr(record, "levels", None)
         if levels is not None:
             clean = []
             for lvl in levels:
@@ -511,7 +518,7 @@ class Databento:
         self.start_live(symbol, include_depth=schema)
         self._raise_live_error(symbol)
         with self._lock:
-            rows = list(self._depth[str(symbol)])
+            rows = [row for row in self._depth[str(symbol)] if row.get("schema") == schema]
         return rows[-max(0, int(limit)):]
 
     def mbo_snapshot(self, symbol: str, timeout: float = 5.0) -> List[Dict[str, Any]]:
