@@ -142,7 +142,7 @@ def inspect(base_dir: str | None = None, *, today: date | None = None) -> Dict[s
             f"SDK={'installed' if sdk_ok else 'missing'}  "
             f"DATABENTO_API_KEY={'set' if key else 'missing'}  "
             f"dataset={dataset or '(blank)'}  roll_rule={rule or '(blank)'}  "
-            f"continuous={rule_name} .{rule}.0 — no network request made"
+            f"continuous={rule_name} .{rule}.0  live_roll=daily symbology.resolve + session rotation — no network request made"
         )
         _check(items, "Databento adapter prerequisites", ok, detail, level="fail")
 
