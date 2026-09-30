@@ -157,6 +157,10 @@ def cmd_stop(args: argparse.Namespace) -> int:
             if not _alive(pid):
                 break
             time.sleep(0.25)
+        if _alive(pid):
+            print(f"stop requested but plant pid={pid} is still alive at {root}", file=sys.stderr)
+            print("  refusing to claim success or blindly force-kill a PID that could have been reused.", file=sys.stderr)
+            return 1
         print(f"stopped plant pid={pid} at {root}")
         return 0
     plant = Plant(root)
