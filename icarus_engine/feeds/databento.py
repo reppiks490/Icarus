@@ -569,9 +569,19 @@ class Databento:
                                 self._instrument_windows.pop(old_iid, None)
                                 self._instrument_to_symbol.pop(old_iid, None)
                     self._instrument_to_symbol[iid] = key
-                    self._instrument_windows[iid] = (key, start_ns, end_ns)
-                    meta = dict(self._meta.get(key, {}))
                     current_mapping = start_ns is None and end_ns is None
+                    existing_window = self._instrument_windows.get(iid)
+                    existing_current = (
+                        existing_window is not None
+                        and existing_window[1] is None
+                        and existing_window[2] is None
+                    )
+                    # Callback order can place a finite replay mapping after the
+                    # unbounded/current mapping for the same instrument. Never let
+                    # that replay message narrow the live route.
+                    if current_mapping or not existing_current:
+                        self._instrument_windows[iid] = (key, start_ns, end_ns)
+                    meta = dict(self._meta.get(key, {}))
                     previous_start = meta.get("mapping_start_ns")
                     previous_current = bool(meta.get("mapping_current"))
                     # Current/unbounded mappings always win the status view. Finite
