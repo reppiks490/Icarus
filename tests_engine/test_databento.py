@@ -294,6 +294,58 @@ def test_fatal_depth_session_error_marks_every_active_depth_symbol_failed_closed
     assert feed.meta("ES=F")["depth_session_ok"] is False
 
 
+def test_symbol_resolution_failure_rearms_only_failed_core_symbol():
+    live = FakeLive()
+    feed = make_feed(lives=[live])
+    feed.prepare_live(["NQ=F", "ES=F"])
+    before = list(live.subscriptions)
+
+    feed._dispatch_shared_live(Error("NQ.v.0 failed to resolve", code=4))
+    assert feed._subscriptions["NQ=F"] == set()
+    assert feed._subscriptions["ES=F"] == {"ohlcv-1s", "trades"}
+
+    feed.start_live("NQ=F")
+    added = live.subscriptions[len(before):]
+    assert {row["schema"] for row in added} == {"ohlcv-1s", "trades"}
+    assert all(row["symbols"] == "NQ.v.0" for row in added)
+    assert not live.stopped
+
+
+def test_recoverable_core_fatal_error_rebuilds_shared_session_with_replay():
+    first = FakeLive()
+    second = FakeLive()
+    feed = make_feed(lives=[first, second])
+    feed.prepare_live(["NQ=F", "ES=F"])
+    feed._dispatch_shared_live(Error("internal gateway failure", code=6))
+    assert feed._core_broken is True
+    assert feed._core_error_code == 6
+
+    client = feed.start_live("NQ=F")
+    assert client is second
+    assert first.stopped is True
+    assert second.started is True
+    assert feed._core_broken is False
+    assert feed._core_error_code is None
+    assert {row["symbols"] for row in second.subscriptions} == {"NQ.v.0", "ES.v.0"}
+    assert all("start" in row for row in second.subscriptions)
+
+
+def test_nonrecoverable_core_fatal_error_stays_latched_without_reconnect_churn():
+    first = FakeLive()
+    unused = FakeLive()
+    feed = make_feed(lives=[first, unused])
+    feed.prepare_live(["NQ=F", "ES=F"])
+    feed._dispatch_shared_live(Error("invalid subscription", code=5))
+
+    client = feed.start_live("NQ=F")
+    assert client is first
+    assert first.stopped is False
+    assert unused.started is False
+    assert feed._core_error_code == 5
+    with pytest.raises(RuntimeError, match="code=5"):
+        feed._raise_live_error("ES=F")
+
+
 def test_undefined_databento_price_is_never_promoted_to_a_fake_market_price():
     undef = (1 << 63) - 1
     row = Depth(1_500, 100.0, order_id=11)
