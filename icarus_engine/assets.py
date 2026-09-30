@@ -174,9 +174,19 @@ for _spec in REGISTRY.values():
     if _spec.kind == "futures":
         _spec.roll = "continuous"
 
-ALIASES = {"NQ1!": "NQ", "MNQ": "NQ", "ES1!": "ES", "YM1!": "YM", "GC1!": "GC", "GOLD": "GC", "SI1!": "SI", "SILVER": "SI",
-           "PL1!": "PL", "PLATINUM": "PL", "PA1!": "PA", "PALLADIUM": "PA", "BTC=F": "BTCF", "BTC1!": "BTCF", "BTCUSD": "BTC", "BTC-USD": "BTC",
-           "NASDAQ": "NQ", "SP500": "ES", "DOW": "YM"}
+ALIASES = {
+    "NQ1!": "NQ", "NQ=F": "NQ", "MNQ": "NQ",
+    "ES1!": "ES", "ES=F": "ES",
+    "YM1!": "YM", "YM=F": "YM",
+    "GC1!": "GC", "GC=F": "GC", "GOLD": "GC",
+    "SI1!": "SI", "SI=F": "SI", "SILVER": "SI",
+    "PL1!": "PL", "PL=F": "PL", "PLATINUM": "PL",
+    "PA1!": "PA", "PA=F": "PA", "PALLADIUM": "PA",
+    "BTC=F": "BTCF", "BTC1!": "BTCF",
+    "MBT=F": "MBT", "MBT1!": "MBT",
+    "BTCUSD": "BTC", "BTC-USD": "BTC",
+    "NASDAQ": "NQ", "SP500": "ES", "DOW": "YM",
+}
 
 
 _SYMBOL_RE = re.compile(r"[A-Z0-9][A-Z0-9=!.\-]{0,15}")
