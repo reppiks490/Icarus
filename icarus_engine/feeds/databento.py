@@ -288,7 +288,7 @@ class Databento:
             rows = rows[-q.maxlen:]
         q.clear()
         q.extend(rows)
-        return True
+        return bool(rows and rows[0].ts <= bar.ts <= rows[-1].ts and any(x.ts == bar.ts for x in rows))
 
     @staticmethod
     def _depth_key(row: Dict[str, Any]) -> Tuple[Any, ...]:
