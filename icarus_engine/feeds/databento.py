@@ -38,7 +38,8 @@ _NATIVE_SCHEMAS = {
     3600: "ohlcv-1h",
     86400: "ohlcv-1d",
 }
-_PRICE_SCALE = 1_000_000_000.0\n_UNDEF_PRICE = (1 << 63) - 1
+_PRICE_SCALE = 1_000_000_000.0
+_UNDEF_PRICE = (1 << 63) - 1
 
 
 @dataclass(frozen=True)
