@@ -181,6 +181,8 @@ def run_backtest(port, symbol: str, *, preset: Optional[str] = None, inputs: Opt
         spec.chart_tf = normalize_chart_timeframe(meta["timeframe"])
     if meta.get("security_source") in ("chart", "standard"):
         spec.security_source = meta["security_source"]
+    if meta.get("fill_on") in ("real", "chart"):
+        spec.fill_on = meta["fill_on"]
     if meta.get("slippage_ticks") is not None:
         spec.slippage_ticks = int(meta["slippage_ticks"])
     if meta.get("commission") is not None:
