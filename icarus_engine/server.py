@@ -28,7 +28,6 @@ import json
 import os
 import re
 import sys
-import time
 import threading
 from contextlib import ExitStack
 from dataclasses import replace
@@ -440,11 +439,6 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                                     f"rollback incomplete: {'; '.join(rollback_errors)}"
                                 ) from apply_ex
                             raise
-                        # Treat a successful multi-asset request as one calculation/live-paper regime.
-                        cutover = time.time()
-                        for r in targets:
-                            r.live_from_ts = int(cutover)
-                        port.equity_epoch = cutover
                     done = [r.symbol for r in targets]
                     return self._json(200, {"ok": True, "note": f"configuration applied and re-warmed {done}", "assets": done,
                                             "chart": chart or None})
