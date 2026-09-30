@@ -302,38 +302,71 @@ class Databento:
             row.get("price"),
         )
 
+    @staticmethod
+    def _depth_order_key(row: Dict[str, Any]) -> Tuple[int, int, int]:
+        return (
+            int(row.get("ts_recv_ns") or row.get("ts_event_ns") or 0),
+            int(row.get("ts_event_ns") or 0),
+            int(row.get("sequence") or 0),
+        )
+
     def _append_depth_locked(self, symbol: str, row: Dict[str, Any]) -> bool:
         key = self._depth_key(row)
         seen = self._depth_seen[symbol]
         if key in seen:
             return False
         q = self._depth[symbol]
-        if q.maxlen is not None and len(q) >= q.maxlen and q:
-            seen.discard(self._depth_key(q[0]))
-        q.append(row)
-        seen.add(key)
-        return True
+        order = self._depth_order_key(row)
+        if not q or order >= self._depth_order_key(q[-1]):
+            q.append(row)
+            seen.add(key)
+            if q.maxlen is not None and len(seen) > len(q):
+                # deque maxlen may have evicted the oldest row.
+                self._depth_seen[symbol] = {self._depth_key(x) for x in q}
+            return True
+        rows = list(q)
+        orders = [self._depth_order_key(x) for x in rows]
+        pos = bisect.bisect_right(orders, order)
+        rows.insert(pos, row)
+        if q.maxlen is not None and len(rows) > q.maxlen:
+            rows = rows[-q.maxlen:]
+        q.clear()
+        q.extend(rows)
+        self._depth_seen[symbol] = {self._depth_key(x) for x in rows}
+        return key in self._depth_seen[symbol]
 
     @staticmethod
     def _trade_key(tick: TradeTick) -> Tuple[int, float, int, str, int]:
         return (tick.ts_event_ns, tick.price, tick.size, tick.side, tick.sequence)
 
-    def _append_trade_locked(self, symbol: str, tick: TradeTick) -> bool:
-        """Append one exchange trade once even when several live schemas report it.
+    @staticmethod
+    def _trade_order_key(tick: TradeTick) -> Tuple[int, int, int]:
+        return (tick.ts_recv_ns, tick.ts_event_ns, tick.sequence)
 
-        Caller must hold self._lock. The dedupe set is kept in exact lockstep
-        with the bounded deque so it cannot grow without bound.
-        """
+    def _append_trade_locked(self, symbol: str, tick: TradeTick) -> bool:
+        """Insert one exchange trade once, ordered by Databento receive time."""
         key = self._trade_key(tick)
         seen = self._trade_seen[symbol]
         if key in seen:
             return False
         q = self._trades[symbol]
-        if q.maxlen is not None and len(q) >= q.maxlen and q:
-            seen.discard(self._trade_key(q[0]))
-        q.append(tick)
-        seen.add(key)
-        return True
+        order = self._trade_order_key(tick)
+        if not q or order >= self._trade_order_key(q[-1]):
+            q.append(tick)
+            seen.add(key)
+            if q.maxlen is not None and len(seen) > len(q):
+                self._trade_seen[symbol] = {self._trade_key(x) for x in q}
+            return True
+        rows = list(q)
+        orders = [self._trade_order_key(x) for x in rows]
+        pos = bisect.bisect_right(orders, order)
+        rows.insert(pos, tick)
+        if q.maxlen is not None and len(rows) > q.maxlen:
+            rows = rows[-q.maxlen:]
+        q.clear()
+        q.extend(rows)
+        self._trade_seen[symbol] = {self._trade_key(x) for x in rows}
+        return key in self._trade_seen[symbol]
 
     @classmethod
     def _event_record(cls, record: Any) -> Dict[str, Any]:
