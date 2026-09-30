@@ -37,7 +37,7 @@ class Ohlcv:
 
 
 class Trade:
-    def __init__(self, ts, price, size=1, side="B", sequence=1):
+    def __init__(self, ts, price, size=1, side="B", sequence=1, instrument_id=0):
         self.ts_event = int(ts * NS)
         self.price = int(price * NS)
         self.pretty_price = float(price)
@@ -45,6 +45,7 @@ class Trade:
         self.side = side
         self.action = "T"
         self.sequence = int(sequence)
+        self.instrument_id = int(instrument_id)
 
 
 class Level:
@@ -299,6 +300,22 @@ def test_mbo_snapshot_requests_continuous_snapshot_and_stops():
 
 
 
+def test_replay_overlap_deduplicates_second_bars_and_trades():
+    feed = make_feed()
+    bar = Ohlcv(4_500, 100, 101, 99, 100.5, 7)
+    trade = Trade(4_500, 100.5, 2, sequence=17, instrument_id=4242)
+    feed._live_callback("NQ=F", bar)
+    feed._live_callback("NQ=F", bar)
+    feed._live_callback("NQ=F", trade)
+    feed._live_callback("NQ=F", trade)
+    assert len(feed._second_bars["NQ=F"]) == 1
+    assert feed._second_bars["NQ=F"][0].v == 7
+    ticks = feed.trades("NQ=F")
+    assert len(ticks) == 1
+    assert ticks[0].instrument_id == 4242
+    assert ticks[0].ts_event_ns == 4_500 * NS
+
+
 def test_depth_schema_queues_do_not_evict_each_other():
     mbp = Depth(5_000, 100.0, levels=[Level(99.75, 100.0)])
     mbo_flood = [Depth(5_001 + i, 100.0, order_id=10_000 + i) for i in range(1001)]
@@ -516,6 +533,13 @@ def test_live_session_rotates_when_daily_continuous_mapping_changes():
     feed.start_live("NQ=F")
     assert live1.stopped is True
     assert live2.started is True
+    # Controlled-roll replay overlaps only stateless bars/trades. If depth had
+    # been active it would restart live-now and be rebuilt/snapshotted separately.
+    for sub in live2.subscriptions:
+        if sub["schema"] in ("ohlcv-1s", "trades"):
+            assert "start" in sub
+        else:
+            assert "start" not in sub
     assert feed._resolved_instrument["NQ=F"] == 202
     meta = feed.meta("NQ=F")
     assert meta["roll_count"] == 1
