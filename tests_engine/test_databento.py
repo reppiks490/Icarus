@@ -411,6 +411,17 @@ def test_system_message_before_first_market_event_does_not_crash_or_fake_readine
     assert feed._ready["NQ=F"].is_set() is False
 
 
+def test_live_record_conversion_error_is_contained_as_feed_health():
+    feed = make_feed()
+    bad = Ohlcv(3_000, 100, 101, 99, 100.5, 1)
+    bad.close = (1 << 63) - 1
+    bad.pretty_close = float("nan")
+    feed._dispatch_live("NQ=F", bad)
+    with pytest.raises(RuntimeError, match="Databento record error.*undefined/invalid"):
+        feed._raise_live_error("NQ=F")
+    assert "live_error" in feed.meta("NQ=F")
+
+
 def test_valid_market_event_clears_transient_live_error():
     feed = make_feed()
     feed._live_callback("NQ=F", Error("temporarily unresolved", code=4))
