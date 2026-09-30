@@ -683,5 +683,5 @@ def test_assets_cli_leads_with_continuous_identity(capsys):
     out = capsys.readouterr().out
     assert "CME_MINI:NQ1!" in out and "provider=NQ=F" in out
     assert "CME_MINI:MNQ1!" in out and "provider=MNQ=F" in out
-    assert "COMEX:MGC1!" in out and "provider=MGC=F" in out
+    assert "COMEX_MINI:MGC1!" in out and "provider=MGC=F" in out
     assert "continuous-only" in out
