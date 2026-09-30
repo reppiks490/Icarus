@@ -95,9 +95,10 @@ class Databento:
         ))
         self._lock = threading.RLock()
         self._session_lock = threading.RLock()
-        # One Live client/session per Databento dataset. Databento explicitly supports
-        # many symbols/schemas on one session; this avoids exhausting team session limits
-        # when ICARUS runs its full registered futures universe.
+        self._depth_session_lock = threading.RLock()
+        # Core OHLCV/trades share one Live session per Databento dataset. Optional
+        # MBP-10/MBO use a second isolated shared session so a fatal depth-subscription
+        # error cannot terminate the primary price/tape transport.
         self._shared_live: Any = None
         self._shared_started = False
         self._live: Dict[str, Any] = {}  # compatibility/status view: active symbol -> shared client
@@ -108,6 +109,16 @@ class Databento:
         self._subscriptions: Dict[str, set[str]] = collections.defaultdict(set)
         self._continuous_to_symbol: Dict[str, str] = {}
         self._instrument_to_symbol: Dict[int, str] = {}
+        self._depth_live: Any = None
+        self._depth_started = False
+        self._depth_live_symbols: set[str] = set()
+        self._depth_wanted: Dict[str, set[str]] = collections.defaultdict(set)
+        self._depth_subscriptions: Dict[str, set[str]] = collections.defaultdict(set)
+        self._depth_continuous_to_symbol: Dict[str, str] = {}
+        self._depth_instrument_to_symbol: Dict[int, str] = {}
+        self._depth_errors: Dict[str, str] = {}
+        self._depth_ready: Dict[str, threading.Event] = collections.defaultdict(threading.Event)
+        self._depth_broken = False
         self._ready: Dict[str, threading.Event] = collections.defaultdict(threading.Event)
         self._second_bars: Dict[str, Deque[Bar]] = collections.defaultdict(
             lambda: collections.deque(maxlen=max(60, int(max_live_seconds)))
@@ -176,8 +187,9 @@ class Databento:
             "continuous_futures": True,
             "continuous_rule": rule_name,
             "continuous_rule_code": self.roll_rule,
-            "live_session_model": "shared_per_dataset",
+            "live_session_model": "shared_core_plus_isolated_depth_per_dataset",
             "live_symbol_routing": "SymbolMappingMsg/instrument_id",
+            "depth_failure_isolation": True,
             "continuous_live_refresh": "automatic_utc_day",
             "ohlcv_seconds": True,
             "minimum_ohlcv_resolution_seconds": 1,
@@ -570,11 +582,9 @@ class Databento:
         replay runs. Additional symbols may be attached after start, but Databento's
         replay start parameter is intentionally omitted for those subscriptions.
         """
-        desired = {str(s) for s in schemas}
-        if include_depth:
-            if include_depth not in ("mbp-10", "mbo"):
-                raise ValueError("include_depth must be 'mbp-10' or 'mbo'")
-            desired.add(include_depth)
+        desired = {str(s) for s in schemas if str(s) not in ("mbp-10", "mbo")}
+        if include_depth and include_depth not in ("mbp-10", "mbo"):
+            raise ValueError("include_depth must be 'mbp-10' or 'mbo'")
         keys = [(str(symbol), self.continuous_symbol(symbol, self.roll_rule)) for symbol in symbols]
         with self._lock:
             for key, _ in keys:
@@ -643,9 +653,12 @@ class Databento:
         include_depth: Optional[str] = None,
     ) -> Any:
         with self._session_lock:
-            return self._prepare_live_unlocked(
-                symbols, schemas=schemas, start_ts=start_ts, include_depth=include_depth
+            client = self._prepare_live_unlocked(
+                symbols, schemas=schemas, start_ts=start_ts, include_depth=None
             )
+        if include_depth:
+            self._prepare_depth_live(symbols, include_depth, start_ts=start_ts)
+        return client
 
     def refresh_live(self, symbols: Sequence[str], *, start_ts: Optional[int] = None) -> Any:
         """Atomically re-resolve continuous symbols on a fresh shared Live session.
