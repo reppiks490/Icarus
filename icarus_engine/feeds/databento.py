@@ -94,6 +94,7 @@ def _aggregate(bars: Iterable[Bar], seconds: int) -> List[Bar]:
 class Databento:
     """Historical + live Databento feed compatible with the ICARUS feed interface."""
 
+    name = "databento"
     GRANULARITIES = tuple(sorted(_NATIVE_SCHEMAS))
     DATASET = DATASET
 
