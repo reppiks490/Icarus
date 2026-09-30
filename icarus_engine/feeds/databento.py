@@ -124,6 +124,8 @@ class Databento:
         # Parser/callback exceptions indicate an adapter correctness failure, not a
         # transient gateway message. Keep them sticky until the session is stopped.
         self._callback_errors: Dict[str, str] = {}
+        self._recovery_required: Dict[str, str] = {}
+        self._recovery_count: Dict[str, int] = collections.defaultdict(int)
         self._reconnect_gaps: Dict[str, Deque[Dict[str, str]]] = collections.defaultdict(
             lambda: collections.deque(maxlen=100)
         )
@@ -406,8 +408,8 @@ class Databento:
         except (KeyError, TypeError, ValueError) as ex:
             raise RuntimeError(f"Databento returned an invalid instrument mapping for {continuous} on {day}") from ex
 
-    def _purge_roll_overlap(self, symbol: str, replay_from: int) -> None:
-        """Remove possibly stale old-contract events that the replacement session will replay."""
+    def _purge_replay_overlap(self, symbol: str, replay_from: int) -> None:
+        """Remove events in a window that a replacement session will replay."""
         key = str(symbol)
         with self._lock:
             bars = self._second_bars[key]
@@ -437,6 +439,30 @@ class Databento:
             self._depth[(key, "mbo")].clear()
             self._feed_time[key] = 0
             self._last_price.pop(key, None)
+
+    def _recover_data_gap(self, symbol: str) -> Tuple[set[str], Optional[int]]:
+        """Restart/replay after Databento reports skipped records from slow reading."""
+        key = str(symbol)
+        with self._lock:
+            reason = self._recovery_required.pop(key, None)
+            if not reason or key not in self._live_started:
+                return set(), None
+            schemas = set(self._subscriptions.get(key, set()))
+            feed_time = int(self._feed_time.get(key, 0))
+        now = int(time.time())
+        replay_from = max(now - 23 * 3600, feed_time - 120) if feed_time else max(0, now - 120)
+        self._purge_replay_overlap(key, replay_from)
+        self.stop_live(key)
+        with self._lock:
+            self._recovery_count[key] += 1
+            meta = dict(self._meta.get(key, {}))
+            meta.update({
+                "recovery_count": self._recovery_count[key],
+                "last_recovery_ts": now,
+                "last_recovery_reason": reason,
+            })
+            self._meta[key] = meta
+        return schemas, replay_from
 
     def _refresh_continuous_mapping(self, symbol: str) -> Tuple[set[str], Optional[int]]:
         """Rotate a live session when Databento's daily smart-symbol mapping changes.
@@ -477,7 +503,7 @@ class Databento:
         # normal poll/reconnect latency while keeping recovery small.
         now = int(time.time())
         replay_from = max(now - 23 * 3600, feed_time - 120) if feed_time else max(0, now - 120)
-        self._purge_roll_overlap(key, replay_from)
+        self._purge_replay_overlap(key, replay_from)
         self.stop_live(key)
         with self._lock:
             self._roll_count[key] += 1
@@ -501,7 +527,17 @@ class Databento:
             if hasattr(record, "err"):
                 code = int(getattr(record, "code", 0) or 0)
                 err = str(getattr(record, "err", "") or "Databento live error")
-                self._errors[symbol] = f"Databento live error code={code}: {err}"
+                msg = f"Databento live error code={code}: {err}"
+                self._errors[symbol] = msg
+                # Error code 7 means the gateway skipped records to recover from a
+                # slow reader. It is non-fatal, but continuing would leave a silent
+                # hole in bars/ticks. Force a bounded replay on the next API poll.
+                if code == 7:
+                    self._recovery_required[symbol] = msg
+                elif code != 4:
+                    # SymbolResolutionFailed (4) may resolve later; all other
+                    # gateway errors are sticky until the session is replaced.
+                    self._callback_errors[symbol] = msg
                 self._ready[symbol].set()
                 meta = dict(self._meta.get(symbol, {}))
                 meta.update({
@@ -509,8 +545,22 @@ class Databento:
                     "provider": "databento",
                     "dataset": self.dataset,
                     "continuous_symbol": self.continuous_symbol(symbol, self.roll_rule),
-                    "live_error": self._errors[symbol],
+                    "live_error": msg,
                 })
+                self._meta[symbol] = meta
+                return
+            # SystemMsg is informational but slow-reader warnings and replay
+            # completion are useful operational evidence.
+            if hasattr(record, "msg") and hasattr(record, "code"):
+                code = int(getattr(record, "code", 0) or 0)
+                meta = dict(self._meta.get(symbol, {}))
+                if code == 2:
+                    meta["slow_reader_warning"] = str(getattr(record, "msg", "") or "slow reader")
+                    meta["slow_reader_warning_ts"] = int(time.time())
+                elif code == 3:
+                    meta["last_replay_completed_ts"] = int(time.time())
+                    meta.pop("slow_reader_warning", None)
+                    meta.pop("slow_reader_warning_ts", None)
                 self._meta[symbol] = meta
                 return
             # SymbolMappingMsg is the live proof of which physical contract the
@@ -526,6 +576,9 @@ class Databento:
                     "mapping_start_ts": int(getattr(record, "start_ts", 0) or 0),
                     "mapping_end_ts": int(getattr(record, "end_ts", 0) or 0),
                 })
+                if symbol in self._errors and symbol not in self._callback_errors:
+                    self._errors.pop(symbol, None)
+                    meta.pop("live_error", None)
                 self._meta[symbol] = meta
                 return
             market_event = False
@@ -625,6 +678,10 @@ class Databento:
         desired = {str(s) for s in schemas}
         if include_depth and include_depth not in ("mbp-10", "mbo"):
             raise ValueError("include_depth must be 'mbp-10' or 'mbo'")
+        recovery_schemas, recovery_start = self._recover_data_gap(symbol)
+        desired.update(recovery_schemas)
+        if recovery_start is not None:
+            start_ts = recovery_start if start_ts is None else min(int(start_ts), int(recovery_start))
         rollover_schemas, rollover_start = self._refresh_continuous_mapping(symbol)
         desired.update(rollover_schemas)
         if rollover_start is not None:
@@ -709,6 +766,7 @@ class Databento:
                     self._ready.pop(key, None)
                     self._errors.pop(key, None)
                     self._callback_errors.pop(key, None)
+                    self._recovery_required.pop(key, None)
 
     def recent_ex(
         self,
