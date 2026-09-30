@@ -683,7 +683,7 @@ class AssetRunner:
                 self.journal.log("WARN", f"[{self.symbol}] could not fetch the 1-minute tail after the export: {ex}")
 
     # ── re-warm with new inputs (no network) ──
-    def rewarm(self, inputs: Inputs, sources: Optional[List[str]] = None) -> None:
+    def rewarm(self, inputs: Inputs, sources: Optional[List[str]] = None, *, reset_live_boundary: bool = False) -> None:
         with self.lock:
             self.ensure_configurable()
             self.ensure_cached_timeframes(inputs)
@@ -705,6 +705,8 @@ class AssetRunner:
                             self._push_deep(ch, b, sub)
                 for b, sub in list(self.subbars):
                     self.on_sub_bar(b, sub, live=False, record=False)
+                if reset_live_boundary:
+                    self.live_from_ts = int(time.time())
                 self.journal.log("INFO", f"[{self.symbol}] re-warmed with new inputs: {self.bar_index + 1} chart bars, {len(self.em.closed)} historical trades, net {self.em.netprofit:+.2f}")
                 self.runtime_error = ""
                 self.last_error = self.feed_error
@@ -1144,6 +1146,7 @@ class Portfolio:
             old_inputs = r.inputs_base
             old_sources = list(r.cfg.sources or [])
             old_preset = r.cfg.preset
+            old_live_from_ts = r.live_from_ts
             tmp = path + ".tmp"
             try:
                 for field in ("chart_tf", "chart_type", "fill_on", "security_source", "slippage_ticks",
@@ -1151,7 +1154,7 @@ class Portfolio:
                     setattr(r.spec, field, getattr(spec, field))
                 if preset is not _UNCHANGED:
                     r.cfg.preset = spec.preset
-                r.rewarm(inputs, sources)
+                r.rewarm(inputs, sources, reset_live_boundary=True)
 
                 # Commit persistence after the successful replay. A failed replay therefore
                 # cannot leave the next process start on a configuration the live engine rejected.
@@ -1174,7 +1177,8 @@ class Portfolio:
                 r.chart_minutes = old_chart_minutes
                 r.cfg.preset = old_preset
                 try:
-                    r.rewarm(old_inputs, old_sources)
+                    r.rewarm(old_inputs, old_sources, reset_live_boundary=False)
+                    r.live_from_ts = old_live_from_ts
                 except Exception as rollback_ex:
                     r.runtime_error = f"configuration rollback failed: {rollback_ex}"
                 raise
