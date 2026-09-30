@@ -566,6 +566,12 @@ def test_engine_http_api_resolves_common_asset_aliases(tmp_path):
         with urllib.request.urlopen(f"http://127.0.0.1:{srv.server_port}/api/inputs/NQ1!", timeout=5) as reply:
             body = json.load(reply)
             assert reply.status == 200 and body["asset"] == "NQ"
+        assert body["instrument"] == {
+            "kind": "futures",
+            "continuous_symbol": "CME_MINI:NQ1!",
+            "provider_symbol": "NQ=F",
+            "contract_policy": "continuous_only",
+        }
 
         req = urllib.request.Request(
             f"http://127.0.0.1:{srv.server_port}/admin/pause",
