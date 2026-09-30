@@ -610,6 +610,26 @@ def test_current_symbol_mapping_retires_stale_contract_id_and_updates_metadata()
     assert feed.meta("NQ=F")["mapping_active"] is False
 
 
+def test_finite_replay_mapping_cannot_narrow_same_current_instrument():
+    live = FakeLive()
+    feed = make_feed(lives=[live])
+    feed.start_live("NQ=F")
+
+    feed._dispatch_shared_live(Mapping("NQ.v.0", 303, raw_symbol="NQZ6"))
+    feed._dispatch_shared_live(Mapping("NQ.v.0", 303, raw_symbol="NQZ6",
+                                      start_ts=5_000 * NS, end_ts=5_005 * NS))
+
+    row = Ohlcv(5_100, 200, 201, 199, 200.5, 1)
+    row.instrument_id = 303
+    feed._dispatch_shared_live(row)
+
+    assert feed._instrument_windows[303] == ("NQ=F", None, None)
+    assert feed._second_bars["NQ=F"][-1].ts == 5_100
+    meta = feed.meta("NQ=F")
+    assert meta["resolved_instrument_id"] == 303
+    assert meta["mapping_current"] is True
+
+
 def test_finite_replay_mapping_windows_route_only_valid_contract_records():
     live = FakeLive()
     feed = make_feed(lives=[live])
