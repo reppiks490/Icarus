@@ -94,6 +94,7 @@ class Databento:
         ))
         self._lock = threading.RLock()
         self._session_lock = threading.RLock()
+        self._snapshot_lock = threading.Lock()
         # One Live client/session per Databento dataset. Databento explicitly supports
         # many symbols/schemas on one session; this avoids exhausting team session limits
         # when ICARUS runs its full registered futures universe.
@@ -177,6 +178,7 @@ class Databento:
             "live_session_model": "shared_per_dataset",
             "live_symbol_routing": "SymbolMappingMsg/instrument_id",
             "continuous_live_refresh": "automatic_utc_day",
+            "mbo_snapshot_sessions": "serialized",
             "ohlcv_seconds": True,
             "minimum_ohlcv_resolution_seconds": 1,
             "trades": True,
@@ -809,7 +811,7 @@ class Databento:
             rows = [row for row in self._depth[str(symbol)] if row.get("schema") == schema]
         return rows[-max(0, int(limit)):]
 
-    def mbo_snapshot(self, symbol: str, timeout: float = 5.0) -> List[Dict[str, Any]]:
+    def _mbo_snapshot_unlocked(self, symbol: str, timeout: float = 5.0) -> List[Dict[str, Any]]:
         """Return a live MBO snapshot. Databento marks the final snapshot record F_LAST."""
         client = self._live_factory()
         done = threading.Event()
@@ -864,3 +866,10 @@ class Databento:
         if last_flag and not done.is_set():
             raise TimeoutError(f"Databento MBO snapshot timed out for {symbol}")
         return rows
+
+    def mbo_snapshot(self, symbol: str, timeout: float = 5.0) -> List[Dict[str, Any]]:
+        # Snapshots require a separate Live session because snapshot=True cannot be
+        # combined with replay. Serialize them so an API burst cannot consume the
+        # provider's per-dataset connection allowance.
+        with self._snapshot_lock:
+            return self._mbo_snapshot_unlocked(symbol, timeout)
