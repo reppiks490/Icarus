@@ -87,7 +87,13 @@ def cmd_start(args: argparse.Namespace) -> int:
     repo = repo_root()
     engine_url = f"http://127.0.0.1:{args.engine_port}/healthz"
     bridge_url = f"http://127.0.0.1:{args.bridge_port}/healthz"
+    plant_pid = _read_pid(os.path.join(root, "run", "plant.pid"))
+    plant_alive = bool(plant_pid and _alive(plant_pid))
     if health_ok(engine_url):
+        if not plant_alive:
+            print(f"engine is healthy at {engine_url.replace('/healthz', '/')} but no live plant supervisor owns it.")
+            print("  refusing to claim the plant is started; stop the leftover engine, then start the plant again.")
+            return 1
         if args.bridge and not health_ok(bridge_url):
             print(f"engine already running: {engine_url.replace('/healthz', '/')}")
             print("  --bridge was requested but the bridge is not running.")
@@ -96,8 +102,7 @@ def cmd_start(args: argparse.Namespace) -> int:
         print(f"already running: {engine_url.replace('/healthz', '/')}  token={args.token}")
         print("  this does not change feed/assets/preset/token. Stop the plant, then start again to change launch configuration.")
         return 0
-    plant_pid = _read_pid(os.path.join(root, "run", "plant.pid"))
-    if plant_pid and _alive(plant_pid):
+    if plant_alive:
         print(f"plant already running pid={plant_pid} at {root}")
         return 0
     recs = ingest_drop(root)
