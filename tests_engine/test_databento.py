@@ -174,6 +174,7 @@ def test_continuous_volume_front_symbology_and_capabilities(monkeypatch):
     assert caps["continuous_rule_code"] == "v"
     assert caps["live_session_model"] == "shared_per_dataset"
     assert caps["live_symbol_routing"] == "SymbolMappingMsg/instrument_id"
+    assert caps["continuous_live_refresh"] == "automatic_utc_day"
     assert caps["minimum_ohlcv_resolution_seconds"] == 1
     assert caps["ticks"] is True
     assert caps["mbp_10"] is True and caps["mbo"] is True and caps["mbo_snapshot"] is True
