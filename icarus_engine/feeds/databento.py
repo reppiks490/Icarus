@@ -406,6 +406,38 @@ class Databento:
         except (KeyError, TypeError, ValueError) as ex:
             raise RuntimeError(f"Databento returned an invalid instrument mapping for {continuous} on {day}") from ex
 
+    def _purge_roll_overlap(self, symbol: str, replay_from: int) -> None:
+        """Remove possibly stale old-contract events that the replacement session will replay."""
+        key = str(symbol)
+        with self._lock:
+            bars = self._second_bars[key]
+            kept_bars = [b for b in bars if b.ts < int(replay_from)]
+            bars.clear()
+            bars.extend(kept_bars)
+            self._bar_seen[key] = {b.ts for b in bars}
+
+            trades = self._trades[key]
+            kept_trades = [t for t in trades if t.ts_event < int(replay_from)]
+            trades.clear()
+            trades.extend(kept_trades)
+            order = self._trade_seen_order[key]
+            order.clear()
+            seen: set[Tuple[int, int, int]] = set()
+            for tick in trades:
+                k = (tick.instrument_id, tick.ts_event_ns, tick.sequence)
+                if k not in seen:
+                    order.append(k)
+                    seen.add(k)
+            self._trade_seen[key] = seen
+
+            # Depth events are contract-specific and are not replayed by the
+            # controlled-roll session. Clear them so callers cannot mistake an
+            # old-contract book for the newly mapped contract.
+            self._depth[(key, "mbp-10")].clear()
+            self._depth[(key, "mbo")].clear()
+            self._feed_time[key] = 0
+            self._last_price.pop(key, None)
+
     def _refresh_continuous_mapping(self, symbol: str) -> Tuple[set[str], Optional[int]]:
         """Rotate a live session when Databento's daily smart-symbol mapping changes.
 
@@ -439,12 +471,13 @@ class Databento:
                 self._meta[key] = meta
             return set(), None
 
-        # Preserve only a short replay overlap. Databento recommends replay +
-        # deduplication after reconnect; ICARUS's chart engine already ignores
-        # sub-bars at/before its committed timestamp, while raw ticks retain their
-        # nanosecond sequence for callers that need exact dedupe.
+        # Replace a bounded overlap so any old physical-contract events received
+        # after the mapping date changed cannot survive timestamp dedupe. The live
+        # API supports up to 24 hours of replay; two minutes is enough to cover
+        # normal poll/reconnect latency while keeping recovery small.
         now = int(time.time())
-        replay_from = max(now - 23 * 3600, feed_time - 2) if feed_time else None
+        replay_from = max(now - 23 * 3600, feed_time - 120) if feed_time else max(0, now - 120)
+        self._purge_roll_overlap(key, replay_from)
         self.stop_live(key)
         with self._lock:
             self._roll_count[key] += 1
