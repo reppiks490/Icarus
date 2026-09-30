@@ -11,8 +11,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from icarus_engine.assets import REGISTRY, resolve
+from icarus_engine.assets import CHART_TIMEFRAME_OPTIONS, REGISTRY, resolve
 from icarus_engine.feeds.databento import Databento
+from icarus_engine.pine.timeframe import tf_minutes
 from icarus_engine.runtime import AssetRunner, Journal, Portfolio, RunnerConfig
 from icarus_engine.server import serve
 from icarus_engine.strategy.inputs import Inputs
@@ -265,6 +266,14 @@ def test_historical_one_second_and_lossless_resampling_use_continuous_stype():
     assert call["schema"] == "ohlcv-1s"
     assert call["symbols"] == "NQ.v.0"
     assert call["stype_in"] == "continuous"
+
+
+def test_every_advertised_chart_timeframe_has_a_lossless_databento_base_schema():
+    for tf in CHART_TIMEFRAME_OPTIONS:
+        seconds = tf_minutes(tf) * 60
+        base_seconds, schema = Databento._schema_for(seconds)
+        assert seconds % base_seconds == 0
+        assert schema in {"ohlcv-1m", "ohlcv-1h", "ohlcv-1d"}
 
 
 @pytest.mark.parametrize("minutes", [1, 2, 5, 10, 20, 30])
