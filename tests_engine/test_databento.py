@@ -11,7 +11,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from icarus_engine.assets import resolve
+from icarus_engine.assets import REGISTRY, resolve
 from icarus_engine.feeds.databento import Databento
 from icarus_engine.runtime import AssetRunner, Journal, Portfolio, RunnerConfig
 from icarus_engine.server import serve
@@ -169,6 +169,18 @@ def test_continuous_volume_front_symbology_and_capabilities(monkeypatch):
     assert caps["minimum_ohlcv_resolution_seconds"] == 1
     assert caps["ticks"] is True
     assert caps["mbp_10"] is True and caps["mbo"] is True and caps["mbo_snapshot"] is True
+
+
+def test_every_registered_future_maps_to_databento_continuous_front():
+    futures = [spec for spec in REGISTRY.values() if spec.kind == "futures"]
+    assert futures
+    for spec in futures:
+        root = spec.ticker[:-2]
+        assert spec.ticker == f"{root}=F"
+        assert spec.tv_symbol.endswith("1!")
+        assert Databento.continuous_symbol(spec.symbol, "v") == f"{root}.v.0"
+        assert Databento.continuous_symbol(spec.ticker, "n") == f"{root}.n.0"
+        assert Databento.continuous_symbol(spec.tv_symbol, "c") == f"{root}.c.0"
 
 
 def test_roll_rule_is_real_configuration_not_a_dead_setting(monkeypatch):
