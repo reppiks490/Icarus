@@ -407,8 +407,13 @@ class Databento:
         raise ValueError(f"tick size for {symbol} unknown - add it to assets.REGISTRY")
 
     def meta(self, symbol: str) -> Dict[str, Any]:
+        key = str(symbol)
         with self._lock:
-            return dict(self._meta.get(symbol, {}))
+            out = dict(self._meta.get(key, {}))
+            if key in self._depth_errors:
+                out["depth_error"] = self._depth_errors[key]
+            out["depth_session_ok"] = not self._depth_broken
+            return out
 
     def _live_callback(self, symbol: str, record: Any) -> None:
         now_sec = self._ts_sec(record) if hasattr(record, "ts_event") else int(time.time())
@@ -632,6 +637,12 @@ class Databento:
             return self._depth_live
 
         with self._depth_session_lock:
+            with self._lock:
+                broken = self._depth_broken
+            if broken:
+                # Optional depth failures must not require an engine restart. Retry only
+                # the isolated book session when depth is explicitly requested again.
+                self._refresh_depth_live(start_ts=max(0, int(time.time()) - 300))
             with self._lock:
                 if self._depth_broken:
                     detail = next((self._depth_errors.get(key) for key, _ in keys if self._depth_errors.get(key)), None)
@@ -952,7 +963,12 @@ class Databento:
 
     def refresh_live(self, symbols: Sequence[str], *, start_ts: Optional[int] = None) -> Any:
         core = self._refresh_core_live(symbols, start_ts=start_ts)
-        self._refresh_depth_live(start_ts=start_ts)
+        try:
+            self._refresh_depth_live(start_ts=start_ts)
+        except Exception:
+            # Depth is an optional, separately reported fault domain. Do not make a
+            # failed book refresh cause the healthy core continuous session to churn.
+            pass
         return core
 
     def start_live(
