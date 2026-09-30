@@ -29,7 +29,6 @@ from typing import Any, Deque, Dict, List, Optional, Tuple
 
 from .assets import AssetSpec, apply_chart_config, chart_capabilities, normalize_chart_timeframe, validate_chart_config
 from .calendar import get_calendar
-from .contracts import SPECS as CONTRACT_SPECS, ContractRoll, last_completed_volume
 from .emulator import Emulator, Fill
 from .feeds import Coinbase, Kraken
 from .feeds.bars import HistoryHub, detect_granularity, file_feed_mode, find_history, parse_ohlcv_csv, read_text_csv  # Grok (xAI) — 2026-09-20
@@ -382,14 +381,12 @@ class AssetRunner:
         self.cal = get_calendar(self.spec.calendar, self.spec.anchor_et, session=self.spec.session, group=self.spec.group)
         self.chart_minutes = tf_minutes(self.spec.chart_tf)
         self.mintick = cfg.mintick if cfg.mintick is not None else (self.spec.mintick if self.spec.feed == "yahoo" else self.feed.mintick(self.spec.ticker))
-        self.live_ticker = self.spec.ticker                 # contract-specific once the roll rule is active
-        self.roller: Optional[ContractRoll] = None
-        if self.spec.feed == "yahoo" and self.spec.roll == "volume" and self.symbol in CONTRACT_SPECS:
-            self.roller = ContractRoll(self.symbol, self.cal.trade_date(int(time.time())))
-            self.live_ticker = self.roller.ticker
+        # Active futures never resolve to expiring month-coded contracts. The provider-native
+        # continuous ticker is the live/data ticker; tv_symbol carries the TradingView 1! identity.
+        self.live_ticker = self.spec.ticker
+        self.roller = None
         self.feed_time: float = 0.0                         # the feed's own clock (Yahoo: regularMarketTime)
         self.feed_delay: float = 0.0
-        self._roll_session: Optional[str] = None
         self.inputs_base: Inputs = cfg.inputs
         self.inputs: Inputs = cfg.inputs
         self.pts_scale = cfg.fixed_pts_scale if cfg.fixed_pts_scale is not None else 1.0
@@ -563,7 +560,7 @@ class AssetRunner:
             src = f"HistoryHub ({base}/history) — no CSV yet, Yahoo is not contacted"
         else:
             src = self.spec.feed
-        self.journal.log("INFO", f"[{self.symbol}] warm-up from {time.strftime('%Y-%m-%d %H:%M', time.gmtime(T_w))}Z ({self.cfg.warmup_bars} x {self.chart_minutes}m bars, {src}) mintick={self.mintick} x{self.spec.multiplier} slip={self.spec.slippage_ticks}t chart={self.spec.chart_type} fills={self.spec.fill_on} session={getattr(self.cal, 'session', '24/7')} security={self.spec.security_source}" + (f" contract={self.live_ticker}" if self.roller else ""))
+        self.journal.log("INFO", f"[{self.symbol}] warm-up from {time.strftime('%Y-%m-%d %H:%M', time.gmtime(T_w))}Z ({self.cfg.warmup_bars} x {self.chart_minutes}m bars, {src}) mintick={self.mintick} x{self.spec.multiplier} slip={self.spec.slippage_ticks}t chart={self.spec.chart_type} fills={self.spec.fill_on} session={_session_mode(self.cal)} security={self.spec.security_source}" + (f" continuous={self.spec.tv_symbol or self.spec.ticker}" if self.spec.kind == "futures" else ""))
         if hist:
             self._warmup_from_csv(hist, now, source_minutes=minutes)
             self._file_waiting = False
@@ -629,9 +626,8 @@ class AssetRunner:
 
     def _warmup_yahoo(self, T_w: int, now: int) -> None:
         y: Yahoo = self.feed
-        tk = self.spec.ticker                                 # continuous symbol (NQ=F): years of daily bars
-        tki = self.live_ticker                                # the contract itself for intraday history: Yahoo's =F splices the next
-        #                                                       contract in UNADJUSTED on its own roll day (a +290-pt bar on 2026-09-14)
+        tk = self.spec.ticker                                 # provider-native continuous symbol (e.g. NQ=F)
+        tki = self.spec.ticker                                # intraday also stays continuous; no month-coded expiry contract
         daily = y.candles(tk, 86400, T_w - 900 * 86400, T_w)
         daily = [Bar(self.cal.bucket_start(b.ts, 1440), b.o, b.h, b.l, b.c, b.v) for b in daily]   # stamp at the session open
         self._feed_deep([m for m in self.chains if m >= 1440], daily, 1440)
@@ -794,34 +790,6 @@ class AssetRunner:
             return 0.0
         return self.feed_delay
 
-    def _check_roll(self, now: int, today=None) -> None:
-        """Once per session: TradingView's volume rule on the last completed session (see contracts.py)."""
-        if self.roller is None:
-            return
-        sid = self.cal.trade_date(now).isoformat()            # a new check per Globex session (18:00 ET), like TradingView's roll
-        if sid == self._roll_session:
-            return
-        today = today or self.cal.trade_date(now)
-        try:
-            if today > self.roller.expiry():                  # expiry passed without a volume roll (feed gap): move on, flat
-                prev = self.roller.ticker
-                self.roller.advance(today)
-                n = self.flatten("expiry")
-                self.live_ticker = self.roller.ticker
-                self.journal.log("WARN", f"[{self.symbol}] EXPIRY {prev} -> {self.live_ticker}; {n} position(s) flattened")
-            so = self.cal.bucket_start(now, 1440)
-            cur = last_completed_volume(self.feed.daily_volume(self.roller.ticker), so)
-            nxt = last_completed_volume(self.feed.daily_volume(self.roller.next_ticker), so)
-            self._roll_session = sid                          # only once both volumes were fetched; a failed check is retried next poll
-            self.journal.log("INFO", f"[{self.symbol}] contract check {self.roller.ticker} vol {cur} vs {self.roller.next_ticker} vol {nxt}")
-            if self.roller.decide(cur, nxt):
-                prev = self.roller.roll()
-                n = self.flatten("roll")
-                self.live_ticker = self.roller.ticker
-                self.journal.log("WARN", f"[{self.symbol}] ROLL {prev} -> {self.live_ticker} (next contract's volume {nxt} > {cur}); {n} position(s) flattened; prices continue on the new contract like TradingView's 1!")
-        except Exception as ex:
-            self.journal.log("WARN", f"[{self.symbol}] contract roll check failed: {ex}")
-
     def _feed_failed(self, message):
         with self.lock:
             self.errors += 1
@@ -843,9 +811,7 @@ class AssetRunner:
         px = None
         try:
             if self.spec.feed == "yahoo":
-                if self.cal.is_open(int(now)):
-                    self._check_roll(int(now))
-                bars, ft, px = self.feed.recent_ex(self.live_ticker, 60, since_ts=self.last_sub_ts)
+                bars, ft, px = self.feed.recent_ex(self.spec.ticker, 60, since_ts=self.last_sub_ts)
                 if not ft:                                          # no feed clock in the response: the last aligned minute is the only safe clock
                     ft = (bars[-1].ts + 60) if bars else int(self.feed_time or 0)
                 if not ft:
@@ -1022,8 +988,9 @@ class AssetRunner:
         wins = sum(1 for t in self.em.closed if t.profit > 0)
         forming = self.chart_agg.forming_bar()
         return _clean({
-            "symbol": self.symbol, "name": self.spec.name, "product": self.spec.ticker, "feed": self.spec.feed, "kind": self.spec.kind,
-            "contract": self.live_ticker if self.roller else None, "next_contract": self.roller.next_ticker if self.roller else None,
+            "symbol": self.symbol, "name": self.spec.name, "product": self.spec.tv_symbol or self.spec.ticker, "feed": self.spec.feed, "kind": self.spec.kind,
+            "continuous_contract": bool(self.spec.kind == "futures"), "continuous_symbol": self.spec.tv_symbol or self.spec.ticker,
+            "provider_symbol": self.spec.ticker, "contract": None, "next_contract": None,
             "session_mode": _session_mode(self.cal), "security_source": self.spec.security_source,
             "tf": self.chart_minutes, "mintick": self.mintick, "contract_size": self.em.contract_size, "multiplier": self.spec.multiplier,
             "chart_type": self.spec.chart_type, "fill_on": self.spec.fill_on, "slippage_ticks": self.spec.slippage_ticks,
@@ -1149,9 +1116,8 @@ class Portfolio:
         return self.pts_ref_price
 
     def make_runner(self, spec: AssetSpec) -> AssetRunner:
-        if self.feed_mode == "file" and spec.roll == "volume":
-            spec.roll = "none"
-            self.journal.log("INFO", f"[{spec.symbol}] roll=none (ICARUS_FEED=file; FileFeed volumes are not CME 1!)")
+        if self.feed_mode == "file" and spec.kind == "futures":
+            self.journal.log("INFO", f"[{spec.symbol}] continuous futures identity preserved in file mode ({spec.tv_symbol or spec.ticker}); no expiry-contract roller")
         base_spec = replace(spec)
         inputs, meta, sources = resolve_inputs(spec, self.base_dir, self.profile, self.preset)
         if meta:
