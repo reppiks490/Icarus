@@ -82,6 +82,8 @@ class Databento:
         self._lock = threading.RLock()
         self._live: Dict[str, Any] = {}
         self._live_started: set[str] = set()
+        self._subscriptions: Dict[str, set[str]] = collections.defaultdict(set)
+        self._ready: Dict[str, threading.Event] = collections.defaultdict(threading.Event)
         self._second_bars: Dict[str, Deque[Bar]] = collections.defaultdict(
             lambda: collections.deque(maxlen=max(60, int(max_live_seconds)))
         )
@@ -321,14 +323,15 @@ class Databento:
                 b = self._ohlcv_record(record)
                 self._second_bars[symbol].append(b)
                 self._last_price[symbol] = b.c
-            # Trade record
-            elif hasattr(record, "price") and hasattr(record, "size") and str(getattr(record, "action", "T") or "T") == "T":
-                tick = self._trade_record(record)
-                self._trades[symbol].append(tick)
-                self._last_price[symbol] = tick.price
-            # Depth / MBO
-            elif hasattr(record, "levels") or hasattr(record, "order_id"):
-                self._depth[symbol].append(self._event_record(record))
+            else:
+                # MBO trade records are both trades and order-book events; keep both views.
+                if hasattr(record, "price") and hasattr(record, "size") and str(getattr(record, "action", "T") or "T") == "T":
+                    tick = self._trade_record(record)
+                    self._trades[symbol].append(tick)
+                    self._last_price[symbol] = tick.price
+                if hasattr(record, "levels") or hasattr(record, "order_id"):
+                    self._depth[symbol].append(self._event_record(record))
+            self._ready[symbol].set()
             self._meta[symbol] = {
                 "regularMarketTime": self._feed_time[symbol],
                 "provider": "databento",
@@ -345,9 +348,26 @@ class Databento:
         include_depth: Optional[str] = None,
     ) -> Any:
         key = str(symbol)
+        desired = {str(s) for s in schemas}
+        if include_depth:
+            if include_depth not in ("mbp-10", "mbo"):
+                raise ValueError("include_depth must be 'mbp-10' or 'mbo'")
+            desired.add(include_depth)
         with self._lock:
             if key in self._live_started:
-                return self._live[key]
+                client = self._live[key]
+                missing = desired - self._subscriptions[key]
+                # Databento allows additional live subscriptions after start as long as
+                # they don't request historical replay. Add only genuinely missing schemas.
+                for schema in sorted(missing):
+                    client.subscribe(
+                        dataset=self.dataset,
+                        schema=schema,
+                        symbols=self.continuous_symbol(symbol),
+                        stype_in="continuous",
+                    )
+                    self._subscriptions[key].add(schema)
+                return client
             client = self._live_factory()
             kwargs: Dict[str, Any] = {
                 "dataset": self.dataset,
@@ -357,12 +377,9 @@ class Databento:
             if start_ts is not None:
                 # Live replay is limited by Databento to the recent intraday window.
                 kwargs["start"] = self._iso(start_ts)
-            for schema in schemas:
+            for schema in sorted(desired):
                 client.subscribe(schema=schema, **kwargs)
-            if include_depth:
-                if include_depth not in ("mbp-10", "mbo"):
-                    raise ValueError("include_depth must be 'mbp-10' or 'mbo'")
-                client.subscribe(schema=include_depth, **kwargs)
+                self._subscriptions[key].add(schema)
             client.add_callback(lambda rec, s=key: self._live_callback(s, rec))
             client.start()
             self._live[key] = client
@@ -382,6 +399,8 @@ class Databento:
                 with self._lock:
                     self._live.pop(key, None)
                     self._live_started.discard(key)
+                    self._subscriptions.pop(key, None)
+                    self._ready.pop(key, None)
 
     def recent_ex(
         self,
@@ -394,6 +413,7 @@ class Databento:
         now = int(time.time())
         start = max(now - 23 * 3600, int(since_ts or (now - 900)) - 120)
         self.start_live(symbol, start_ts=start)
+        self._ready[str(symbol)].wait(timeout=2.0)
         with self._lock:
             rows = list(self._second_bars[str(symbol)])
             ft = int(self._feed_time.get(str(symbol), 0))
