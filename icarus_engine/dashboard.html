@@ -366,6 +366,7 @@ function inputsHtml(A) {
       <label>Preset <select id="inPreset"><option value="">(none)</option>${PRESETS.map(p=>`<option value="${esc(p.name)}">${esc(p.name)} — ${p.count} inputs${p.meta&&p.meta.timeframe?' · '+p.meta.timeframe:''}${p.meta&&p.meta.chart_type==='heikin_ashi'?' · HA':''}</option>`).join('')}</select></label><button class="sm" id="inApplyPreset">Apply preset</button>
       <input id="inSearch" type="text" placeholder="filter inputs…" style="width:200px"><span class="small muted" id="inSources"></span>
       <span style="margin-left:auto;display:flex;gap:6px"><button class="sm" id="inRevert">Discard edits</button><button class="sm danger" id="inReset">Remove asset overrides</button><button class="primary" id="inApply">Apply &amp; re-warm</button></span></div>
+    <div id="inChartConfig" class="row" style="margin:10px 0 12px"></div>
     <div id="inGroups"><div class="empty">loading…</div></div></section>`;
 }
 function commandsHtml(A) {
@@ -387,15 +388,35 @@ py -3 -m icarus_engine.cli assets</pre>
 }
 
 /* ── inputs editor ── */
-let inState = {asset:null, effective:{}, base:{}, overrides:{}, edits:{}, sources:[]};
+let inState = {asset:null, effective:{}, base:{}, overrides:{}, edits:{}, chart:{}, chartEdits:{}, capabilities:{}, sources:[]};
 async function loadInputsTab(sym) {
   if (!META) META = await fetch('/api/input-meta').then(r=>r.json());
   const sel = $('#inAsset'); if (!sel || !last) return; if (sym) sel.value = sym; const a = sel.value === '*' ? (last.assets[0]||{}).symbol : sel.value; if (!a) return;
   const d = await fetch(`/api/inputs/${a}`).then(r=>r.json());
-  inState = {asset: sel.value, effective: d.effective, base: d.base, overrides: d.overrides||{}, edits: {}, sources: d.sources||[], preset: d.preset};
+  inState = {asset: sel.value, effective: d.effective, base: d.base, overrides: d.overrides||{}, edits: {},
+             chart: d.chart||{}, chartEdits: {}, capabilities: d.chart_capabilities||{}, sources: d.sources||[], preset: d.preset};
   $('#inSources').textContent = (sel.value==='*'?'editing ALL assets · showing '+a+' · ':'') + 'sources: ' + inState.sources.join(' → ') + (d.pts_scale && Math.abs(d.pts_scale-1)>1e-6 ? ` · *_pts scaled ×${d.pts_scale.toFixed(3)} at runtime` : '');
   if ($('#inPreset')) $('#inPreset').value = d.preset || '';
+  renderChartConfig();
   renderInputs();
+}
+function renderChartConfig() {
+  const el = $('#inChartConfig'); if (!el) return;
+  const cap = inState.capabilities || {};
+  const cur = k => (k in inState.chartEdits) ? inState.chartEdits[k] : inState.chart[k];
+  const baseTfs = cap.timeframes || ['1','2','3','5','10','15','20','30','45','60','120','180','240','D','W'];
+  const primary = new Set(cap.primary_intraday_timeframes || ['1','2','5','10','20','30']);
+  const tf = String(cur('timeframe') || '20');
+  const tfs = baseTfs.includes(tf) ? baseTfs : [tf, ...baseTfs];
+  const tfOpts = tfs.map(v => `<option value="${esc(v)}" ${String(v)===tf?'selected':''}>${esc(v)}${primary.has(String(v))?'m':''}</option>`).join('');
+  el.innerHTML = `<label><b>Chart timeframe</b> <select data-chart="timeframe">${tfOpts}</select></label>
+    <label><b>Strategy chart</b> <select data-chart="chart_type"><option value="heikin_ashi" ${cur('chart_type')==='heikin_ashi'?'selected':''}>Heikin Ashi (primary)</option><option value="real" ${cur('chart_type')==='real'?'selected':''}>Standard OHLC</option></select></label>
+    <label><b>Fill prices</b> <select data-chart="fill_on"><option value="real" ${cur('fill_on')==='real'?'selected':''}>Real OHLC (recommended)</option><option value="chart" ${cur('fill_on')==='chart'?'selected':''}>Chart/HA synthetic</option></select></label>
+    <label><b>HTF/LTF source</b> <select data-chart="security_source"><option value="chart" ${cur('security_source')==='chart'?'selected':''}>Selected chart</option><option value="standard" ${cur('security_source')==='standard'?'selected':''}>Standard OHLC</option></select></label>
+    <span class="small muted">1m · 2m · 5m · 10m · 20m · 30m enabled. Seconds: ${cap.seconds?'enabled':'not available'} · ticks: ${cap.ticks?'enabled':'not available'} — ${esc(cap.note||'sub-minute modes require a genuine feed')}</span>`;
+  el.querySelectorAll('[data-chart]').forEach(x => x.addEventListener('change', () => {
+    inState.chartEdits[x.dataset.chart] = x.value;
+  }));
 }
 function ctrl(e, val) {
   const name = e.name;
@@ -427,8 +448,8 @@ document.addEventListener('click', async ev => {
   if (b.classList.contains('asset')) { setView('asset:' + b.dataset.sym); return; }
   if (b.dataset.cmd) { await runCommand(b.dataset.cmd, b.dataset.a); return; }
   if (b.dataset.run) { const sel = document.querySelector(`select[data-scope="${b.dataset.run}"]`); await runCommand(b.dataset.run, sel ? sel.value : '*'); return; }
-  if (b.id === 'inApply') { const vals = inState.edits; if (!Object.keys(vals).length) return toast('nothing edited'); const r = await admin('/admin/inputs', {asset: inState.asset, values: vals, persist: true}); if (r) { inState.edits = {}; setTimeout(()=>loadInputsTab(), 1500); } }
-  if (b.id === 'inRevert') { inState.edits = {}; renderInputs(); }
+  if (b.id === 'inApply') { const vals = inState.edits, chart = inState.chartEdits; if (!Object.keys(vals).length && !Object.keys(chart).length) return toast('nothing edited'); const r = await admin('/admin/inputs', {asset: inState.asset, values: vals, chart, persist: true}); if (r) { inState.edits = {}; inState.chartEdits = {}; setTimeout(()=>loadInputsTab(), 1500); } }
+  if (b.id === 'inRevert') { inState.edits = {}; inState.chartEdits = {}; renderChartConfig(); renderInputs(); }
   if (b.id === 'inReset') { if (confirm(`Remove all per-asset overrides for ${inState.asset}?`)) { await admin('/admin/inputs/reset', {asset: inState.asset}); setTimeout(()=>loadInputsTab(), 1500); } }
   if (b.id === 'inApplyPreset') { await admin('/admin/preset', {asset: inState.asset, preset: $('#inPreset').value || null}); setTimeout(()=>loadInputsTab(), 1500); }
   if (b.id === 'addBtn') { const s = $('#addSym').value.trim(); if (!s) return; await admin('/admin/assets/add', {symbol: s, tf: $('#addTf').value.trim() || undefined, preset: $('#addPreset').value || undefined}); }
@@ -498,11 +519,16 @@ const BT = {job: null, res: null, sub: 'overview', poll: null, compare: null};
 function backtestHtml(A) {
   const assets = A.map(a => `<option value="${a.symbol}" ${BT.asset===a.symbol?'selected':''}>${a.symbol}</option>`).join('');
   const presets = PRESETS.map(p => `<option value="${esc(p.name)}" ${(BT.preset||last?.preset)===p.name?'selected':''}>${esc(p.name)}</option>`).join('');
+  const active = A.find(a => a.symbol === (BT.asset || A[0]?.symbol)) || A[0] || {};
+  const tfs = ['1','2','5','10','20','30','3','15','45','60','120','180','240','D','W'];
   return `<section class="card c12"><h2>Strategy Tester <span class="sub">runs on the engine's cached bars (no network) · times in ${TZ}</span></h2>
     <div class="row">
       <label>Asset <select id="btAsset">${assets}</select></label>
       <label>Preset <select id="btPreset"><option value="">(engine default)</option>${presets}</select></label>
+      <label>Timeframe <select id="btTf"><option value="">engine (${active.tf||'?'}m)</option>${tfs.map(t=>`<option value="${t}">${t}</option>`).join('')}</select></label>
+      <label>Chart <select id="btChart"><option value="">engine / preset</option><option value="heikin_ashi">Heikin Ashi</option><option value="real">Standard OHLC</option></select></label>
       <label>Fills <select id="btFill"><option value="real">real prices (default)</option><option value="chart">Heikin Ashi bars (TradingView mode)</option></select></label>
+      <label>HTF/LTF source <select id="btSecurity"><option value="">engine / preset</option><option value="chart">selected chart</option><option value="standard">standard OHLC</option></select></label>
       <label>Session <select id="btSession"><option value="">preset / engine</option><option value="rth">RTH 09:30–16:15 ET</option><option value="eth">full Globex</option></select></label>
       <label>Slippage <input id="btSlip" type="number" min="0" step="1" placeholder="ticks" style="width:80px"></label>
       <label>Commission <input id="btComm" type="number" min="0" step="0.5" placeholder="$/contract" style="width:90px"></label>
@@ -515,7 +541,10 @@ function backtestHtml(A) {
   <div id="btOut" class="c12" style="grid-column:span 12"></div>`;
 }
 async function runBacktest() {
-  const body = {asset: $('#btAsset').value, preset: $('#btPreset').value || null, fill_on: $('#btFill').value, session: $('#btSession').value || null};
+  const body = {asset: $('#btAsset').value, preset: $('#btPreset').value || null,
+                timeframe: $('#btTf').value || null, chart_type: $('#btChart').value || null,
+                fill_on: $('#btFill').value, security_source: $('#btSecurity').value || null,
+                session: $('#btSession').value || null};
   const num = (id, cast) => { const v = $(id).value; return v === '' ? null : cast(v); };
   body.slippage_ticks = num('#btSlip', parseInt); body.commission = num('#btComm', parseFloat); body.capital = num('#btCap', parseFloat);
   if ($('#btFrom').value) body.window_start = Math.floor(new Date($('#btFrom').value + 'T00:00:00').getTime()/1000);

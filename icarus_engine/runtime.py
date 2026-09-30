@@ -26,7 +26,7 @@ from dataclasses import dataclass, replace
 from datetime import datetime
 from typing import Any, Deque, Dict, List, Optional, Tuple
 
-from .assets import AssetSpec
+from .assets import AssetSpec, apply_chart_config, chart_capabilities, normalize_chart_timeframe, validate_chart_config
 from .calendar import get_calendar
 from .contracts import SPECS as CONTRACT_SPECS, ContractRoll, last_completed_volume
 from .emulator import Emulator, Fill
@@ -298,6 +298,25 @@ def resolve_inputs(spec: AssetSpec, base_dir: str, profile: str = "nq", preset: 
     return Inputs(**base), meta, sources
 
 
+def apply_spec_meta(spec: AssetSpec, meta: Optional[Dict[str, Any]]) -> AssetSpec:
+    """Apply persisted/preset Properties metadata to a copy of an AssetSpec."""
+    out = replace(spec)
+    meta = meta or {}
+    chart = {k: meta[k] for k in ("chart_type", "fill_on", "security_source") if meta.get(k) not in (None, "")}
+    if meta.get("timeframe") not in (None, ""):
+        chart["timeframe"] = meta["timeframe"]
+    out = apply_chart_config(out, chart)
+    if meta.get("slippage_ticks") is not None:
+        out.slippage_ticks = int(meta["slippage_ticks"])
+    if meta.get("commission") is not None:
+        out.commission = float(meta["commission"])
+    if meta.get("capital") is not None:
+        out.capital = float(meta["capital"])
+    if meta.get("session") in ("rth", "eth") and out.calendar == "cme":
+        out.session = str(meta["session"])
+    return out
+
+
 class HeikinAshi:
     """TradingView Heikin Ashi transform, computed on the chart timeframe. TradingView quantises the HA
     series to the symbol's tick (every HA open/close in the owner's export is a tick multiple; the audit's
@@ -393,6 +412,7 @@ class AssetRunner:
     # ── engine construction (also used by re-warm) ──
     def _build_engine(self) -> None:
         sp = self.spec
+        self.chart_minutes = tf_minutes(sp.chart_tf)
         self.cal = get_calendar(sp.calendar, sp.anchor_et, session=sp.session, group=sp.group)   # a preset may switch the chart session
         self.em = Emulator(sp.capital, sp.commission, self.mintick, sp.multiplier, pyramiding=2, slippage_ticks=sp.slippage_ticks)
         self.strat: Optional[PulseStrategy] = None
@@ -834,6 +854,23 @@ class AssetRunner:
         if missing:
             raise ValueError(f"{self.symbol}: cached history unavailable for requested HTF minutes {sorted(missing)}; fetch compatible history first")
 
+
+    def ensure_cached_chart_timeframe(self, timeframe: object) -> str:
+        """Prove the cached tape can construct the requested chart without inventing finer bars."""
+        tf = normalize_chart_timeframe(timeframe)
+        minutes = tf_minutes(tf)
+        if minutes == self.chart_minutes:
+            return tf
+        if not self.subbars:
+            raise ValueError(f"{self.symbol}: no cached sub-bars are available to rebuild a {tf} chart")
+        incompatible = sorted({int(sub) for _, sub in self.subbars if int(sub) > minutes or minutes % int(sub) != 0})
+        if incompatible:
+            raise ValueError(
+                f"{self.symbol}: cached source bars {incompatible}m cannot be losslessly rebuilt as {tf}; "
+                "load 1-minute history first"
+            )
+        return tf
+
     def flatten(self, reason: str = "manual") -> int:
         with self.lock:
             cancelled = self._cancel_pending_entries()
@@ -1005,21 +1042,8 @@ class Portfolio:
             spec.roll = "none"
             self.journal.log("INFO", f"[{spec.symbol}] roll=none (ICARUS_FEED=file; FileFeed volumes are not CME 1!)")
         inputs, meta, sources = resolve_inputs(spec, self.base_dir, self.profile, self.preset)
-        if meta:                                              # Properties carried by the preset unless the spec pins them
-            if spec.chart_type == "real" and meta.get("chart_type"):
-                spec.chart_type = meta["chart_type"]
-            if spec.slippage_ticks == 0 and meta.get("slippage_ticks"):
-                spec.slippage_ticks = int(meta["slippage_ticks"])
-            if meta.get("commission") is not None:
-                spec.commission = float(meta["commission"])
-            if meta.get("capital") is not None:
-                spec.capital = float(meta["capital"])
-            if meta.get("fill_on") and spec.fill_on == "real":
-                spec.fill_on = meta["fill_on"]
-            if meta.get("session") in ("rth", "eth") and spec.calendar == "cme":
-                spec.session = meta["session"]
-            if meta.get("security_source") in ("chart", "standard"):
-                spec.security_source = meta["security_source"]
+        if meta:
+            spec = apply_spec_meta(spec, meta)
         scale = self._ref_price() if (spec.symbol != self.pts_ref_symbol) else 0.0
         cfg = RunnerConfig(spec=spec, inputs=inputs, warmup_bars=self.warmup_bars, sources=sources, profile=self.profile,
                            preset=self.preset or spec.preset, pts_ref_price=scale, base_dir=self.base_dir)
@@ -1055,49 +1079,70 @@ class Portfolio:
         return r.cfg.preset or r.spec.preset or self.preset
 
     def rewarm_asset(self, symbol: str, overrides: Optional[Dict[str, Any]] = None, persist: bool = False,
-                     *, preset: Any = _UNCHANGED, reset: bool = False) -> AssetRunner:
+                     *, preset: Any = _UNCHANGED, reset: bool = False,
+                     chart: Optional[Dict[str, Any]] = None) -> AssetRunner:
+        """Atomically apply strategy inputs plus chart/execution configuration and replay cached bars."""
         r = self.runners[symbol.upper()]
-        with r.lock:                                          # one writer per asset; atomic replace so a crash never leaves a torn file
+        with r.lock:
             r.ensure_configurable()
+            requested_chart = validate_chart_config(chart)
             spec = replace(r.spec)
             if preset is not _UNCHANGED:
                 spec.preset = preset
             name = self.preset_for(r) if preset is _UNCHANGED else preset or self.preset
             inputs, meta, sources = resolve_inputs(spec, self.base_dir, self.profile, name, overrides,
                                                   skip_asset_overrides=reset)
+            spec = apply_spec_meta(spec, meta)
+            spec = apply_chart_config(spec, requested_chart)
             r.ensure_cached_timeframes(inputs)
-            if persist and overrides is not None:
-                path = os.path.join(self.base_dir, f"inputs.{r.symbol}.json")
+            spec.chart_tf = r.ensure_cached_chart_timeframe(spec.chart_tf)
+
+            path = os.path.join(self.base_dir, f"inputs.{r.symbol}.json")
+            if persist and (overrides is not None or requested_chart):
                 cur = _read_json(path)
-                cur.update(overrides)
-                resolve_inputs(spec, self.base_dir, self.profile, name, cur)           # validate the merged file before writing it
+                if overrides:
+                    cur.update(overrides)
+                if requested_chart:
+                    m = cur.get("_meta")
+                    m = dict(m) if isinstance(m, dict) else {}
+                    m.update(requested_chart)
+                    cur["_meta"] = m
+                # Validate both strategy values and persisted chart metadata before touching disk.
+                resolve_inputs(spec, self.base_dir, self.profile, name, cur)
+                validate_chart_config({k: cur.get("_meta", {}).get(k) for k in ("timeframe", "chart_type", "fill_on", "security_source")
+                                       if isinstance(cur.get("_meta"), dict) and cur["_meta"].get(k) not in (None, "")})
                 tmp = path + ".tmp"
                 with open(tmp, "w", encoding="utf-8") as fh:
                     json.dump(cur, fh, indent=1, ensure_ascii=False)
                 os.replace(tmp, path)
                 inputs, meta, sources = resolve_inputs(spec, self.base_dir, self.profile, name)
+                spec = apply_spec_meta(spec, meta)
             if reset:
-                path = os.path.join(self.base_dir, f"inputs.{r.symbol}.json")
                 if os.path.exists(path):
                     os.remove(path)
-            if preset is not _UNCHANGED:
-                r.spec.preset = preset
-                r.cfg.preset = preset
-            if meta.get("chart_type") in ("real", "heikin_ashi"):            # a preset carries its Properties tab
-                r.spec.chart_type = meta["chart_type"]
-            if meta.get("slippage_ticks") is not None:
-                r.spec.slippage_ticks = int(meta["slippage_ticks"])
-            if meta.get("commission") is not None:
-                r.spec.commission = float(meta["commission"])
-            if meta.get("session") in ("rth", "eth") and r.spec.calendar == "cme":
-                r.spec.session = meta["session"]
-            if meta.get("capital") is not None:
-                r.spec.capital = float(meta["capital"])
-            if meta.get("fill_on") in ("real", "chart"):
-                r.spec.fill_on = meta["fill_on"]
-            if meta.get("security_source") in ("chart", "standard"):
-                r.spec.security_source = meta["security_source"]
-            r.rewarm(inputs, sources)
+
+            old = replace(r.spec)
+            old_chart_minutes = r.chart_minutes
+            old_inputs = r.inputs_base
+            old_sources = list(r.cfg.sources or [])
+            old_preset = r.cfg.preset
+            try:
+                for field in ("chart_tf", "chart_type", "fill_on", "security_source", "slippage_ticks",
+                              "commission", "capital", "session", "preset"):
+                    setattr(r.spec, field, getattr(spec, field))
+                r.cfg.preset = spec.preset if preset is not _UNCHANGED else r.cfg.preset
+                r.rewarm(inputs, sources)
+            except Exception:
+                for field in ("chart_tf", "chart_type", "fill_on", "security_source", "slippage_ticks",
+                              "commission", "capital", "session", "preset"):
+                    setattr(r.spec, field, getattr(old, field))
+                r.chart_minutes = old_chart_minutes
+                r.cfg.preset = old_preset
+                try:
+                    r.rewarm(old_inputs, old_sources)
+                except Exception as rollback_ex:
+                    r.runtime_error = f"configuration rollback failed: {rollback_ex}"
+                raise
         return r
 
     # ── threads ──

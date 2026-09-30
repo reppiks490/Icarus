@@ -11,6 +11,102 @@ from dataclasses import dataclass, field, replace
 from typing import Dict, Optional
 
 
+# The live adapters currently provide minute OHLC bars. These are the chart choices
+# exposed by the UI/MCP; arbitrary positive minute values remain accepted by the
+# parser for backward compatibility with existing presets.
+PRIMARY_INTRADAY_TIMEFRAMES = ("1", "2", "5", "10", "20", "30")
+CHART_TIMEFRAME_OPTIONS = ("1", "2", "3", "5", "10", "15", "20", "30", "45", "60", "120", "180", "240", "D", "W")
+CHART_TYPES = ("heikin_ashi", "real")
+FILL_MODES = ("real", "chart")
+SECURITY_SOURCES = ("chart", "standard")
+
+
+def normalize_chart_timeframe(value: object) -> str:
+    """Canonicalize a chart timeframe without pretending sub-minute/tick data exists."""
+    t = str(value).strip().upper()
+    if not t:
+        raise ValueError("chart timeframe is required")
+    if "TICK" in t or t.endswith("T"):
+        raise ValueError("tick charts require a true tick-data adapter; the current ICARUS feeds do not provide one")
+    if t.endswith("S"):
+        raise ValueError("second charts require a sub-minute data adapter; the current ICARUS feeds are 1-minute minimum")
+    if t in ("D", "1D"):
+        return "D"
+    if t in ("W", "1W"):
+        return "W"
+    if t.endswith("H") and t[:-1].isdigit():
+        n = int(t[:-1]) * 60
+        return str(n) if n > 0 else _bad_timeframe(value)
+    if t.endswith("M") and t[:-1].isdigit():
+        t = t[:-1]
+    if not t.isdigit() or int(t) <= 0:
+        return _bad_timeframe(value)
+    if int(t) > 10080:
+        raise ValueError("chart timeframe must be at most one week (10080 minutes)")
+    return str(int(t))
+
+
+def _bad_timeframe(value: object) -> str:
+    raise ValueError(f"unsupported chart timeframe {value!r}; use positive minutes, D, or W")
+
+
+def chart_capabilities() -> Dict[str, object]:
+    return {
+        "timeframes": list(CHART_TIMEFRAME_OPTIONS),
+        "primary_intraday_timeframes": list(PRIMARY_INTRADAY_TIMEFRAMES),
+        "chart_types": list(CHART_TYPES),
+        "fill_modes": list(FILL_MODES),
+        "security_sources": list(SECURITY_SOURCES),
+        "seconds": False,
+        "ticks": False,
+        "minimum_live_resolution": "1m",
+        "note": "Seconds/ticks are capability-gated until a genuine sub-minute/tick feed is installed; ICARUS never fabricates ticks.",
+    }
+
+
+def validate_chart_config(values: Optional[Dict[str, object]]) -> Dict[str, object]:
+    """Validate user-facing chart/execution settings and return canonical values."""
+    if values is None:
+        return {}
+    if not isinstance(values, dict):
+        raise ValueError("chart configuration must be an object")
+    allowed = {"timeframe", "chart_type", "fill_on", "security_source"}
+    bad = set(values) - allowed
+    if bad:
+        raise ValueError(f"unknown chart configuration fields {sorted(bad)}")
+    out: Dict[str, object] = {}
+    if values.get("timeframe") not in (None, ""):
+        out["timeframe"] = normalize_chart_timeframe(values["timeframe"])
+    if values.get("chart_type") not in (None, ""):
+        v = str(values["chart_type"])
+        if v not in CHART_TYPES:
+            raise ValueError(f"chart_type must be one of {CHART_TYPES}")
+        out["chart_type"] = v
+    if values.get("fill_on") not in (None, ""):
+        v = str(values["fill_on"])
+        if v not in FILL_MODES:
+            raise ValueError(f"fill_on must be one of {FILL_MODES}")
+        out["fill_on"] = v
+    if values.get("security_source") not in (None, ""):
+        v = str(values["security_source"])
+        if v not in SECURITY_SOURCES:
+            raise ValueError(f"security_source must be one of {SECURITY_SOURCES}")
+        out["security_source"] = v
+    return out
+
+
+def apply_chart_config(spec: "AssetSpec", values: Optional[Dict[str, object]]) -> "AssetSpec":
+    """Return a copy of *spec* with validated chart settings applied."""
+    out = replace(spec)
+    cfg = validate_chart_config(values)
+    if "timeframe" in cfg:
+        out.chart_tf = str(cfg["timeframe"])
+    for key in ("chart_type", "fill_on", "security_source"):
+        if key in cfg:
+            setattr(out, key, str(cfg[key]))
+    return out
+
+
 @dataclass
 class AssetSpec:
     symbol: str                      # short name used everywhere (NQ, ES, BTC ...)
@@ -50,6 +146,13 @@ REGISTRY: Dict[str, AssetSpec] = {
     "ETH": AssetSpec("ETH", "Ether spot (Coinbase)", "coinbase", "ETH-USD", "crypto", 0.01, 1.0, kind="crypto", tv_symbol="COINBASE:ETHUSD"),
     "SOL": AssetSpec("SOL", "Solana spot (Coinbase)", "coinbase", "SOL-USD", "crypto", 0.01, 1.0, kind="crypto", tv_symbol="COINBASE:SOLUSD"),
 }
+
+# First-party trading assets use Heikin Ashi as the primary analytical chart.
+# Fills remain on real OHLC by default, so synthetic HA prices never become
+# executable prices unless the user explicitly selects fill_on="chart".
+for _spec in REGISTRY.values():
+    _spec.chart_type = "heikin_ashi"
+
 ALIASES = {"NQ1!": "NQ", "MNQ": "NQ", "ES1!": "ES", "YM1!": "YM", "GC1!": "GC", "GOLD": "GC", "SI1!": "SI", "SILVER": "SI",
            "PL1!": "PL", "PLATINUM": "PL", "PA1!": "PA", "PALLADIUM": "PA", "BTC=F": "BTCF", "BTC1!": "BTCF", "BTCUSD": "BTC", "BTC-USD": "BTC",
            "NASDAQ": "NQ", "SP500": "ES", "DOW": "YM"}
@@ -69,7 +172,7 @@ def resolve(symbol: str) -> AssetSpec:
     base = s.replace("-USD", "").replace("USD", "")
     if not re.fullmatch(r"[A-Z0-9]{1,12}", base):
         raise ValueError(f"bad symbol {symbol!r}")
-    return AssetSpec(base, f"{base} spot (Coinbase)", "coinbase", f"{base}-USD", "crypto", 0.01, 1.0, kind="crypto", tv_symbol=f"COINBASE:{base}USD")
+    return AssetSpec(base, f"{base} spot (Coinbase)", "coinbase", f"{base}-USD", "crypto", 0.01, 1.0, kind="crypto", tv_symbol=f"COINBASE:{base}USD", chart_type="heikin_ashi")
 
 
 def parse_spec(token: str, default_tf: str = "20") -> AssetSpec:
@@ -81,6 +184,6 @@ def parse_spec(token: str, default_tf: str = "20") -> AssetSpec:
     if "@" in sym:
         sym, tf = sym.split("@", 1)
     spec = resolve(sym)
-    spec.chart_tf = tf
+    spec.chart_tf = normalize_chart_timeframe(tf)
     spec.preset = preset
     return spec

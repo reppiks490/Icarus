@@ -4,6 +4,9 @@ from __future__ import annotations
 import math
 import random
 
+import pytest
+
+from icarus_engine.assets import chart_capabilities, normalize_chart_timeframe, resolve
 from icarus_engine.emulator import Emulator
 from icarus_engine.pine import ta
 from icarus_engine.pine.series import NAN, Series, na, pmax
@@ -15,6 +18,20 @@ from icarus_engine.strategy.security import TFChain
 
 def B(ts, o, h, l, c, v=100.0):
     return Bar(ts, o, h, l, c, v)
+
+
+def test_chart_capabilities_and_primary_heikin_ashi_defaults():
+    caps = chart_capabilities()
+    assert all(tf in caps["timeframes"] for tf in ("1", "2", "5", "10", "20", "30"))
+    assert caps["seconds"] is False and caps["ticks"] is False
+    assert resolve("NQ").chart_type == "heikin_ashi"
+    assert resolve("NQ").fill_on == "real"
+    assert normalize_chart_timeframe("2m") == "2"
+    assert normalize_chart_timeframe("4H") == "240"
+    with pytest.raises(ValueError, match="sub-minute"):
+        normalize_chart_timeframe("30S")
+    with pytest.raises(ValueError, match="tick"):
+        normalize_chart_timeframe("100tick")
 
 
 # ── Pine primitives ──
