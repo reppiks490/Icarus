@@ -77,3 +77,33 @@ def test_parse_alert_short_signs_position_and_checks_secret():
     assert a.position_size == -5 and a.is_entry
     with pytest.raises(AlertParseError, match="secret"):
         parse_alert(body, expected_secret="wrong")
+
+
+def test_settings_load_uses_plant_env_across_restart(tmp_path, monkeypatch):
+    plant = tmp_path / "plant"
+    repo = tmp_path / "repo"
+    plant.mkdir()
+    repo.mkdir()
+    (plant / ".env").write_text(
+        "PORT=9191\nADMIN_TOKEN=plant-admin\nWEBHOOK_SECRET=plant-webhook\nEXECUTION_MODE=shadow\n",
+        encoding="utf-8",
+    )
+    (repo / ".env").write_text(
+        "PORT=9292\nADMIN_TOKEN=repo-admin\nWEBHOOK_SECRET=repo-webhook\nEXECUTION_MODE=mirror\n",
+        encoding="utf-8",
+    )
+
+    for key in ("PORT", "ADMIN_TOKEN", "WEBHOOK_SECRET", "EXECUTION_MODE"):
+        monkeypatch.delenv(key, raising=False)
+    monkeypatch.setenv("ICARUS_HOME", str(plant))
+    monkeypatch.chdir(repo)
+
+    cfg = Settings.load()
+    assert cfg.port == 9191
+    assert cfg.admin_token == "plant-admin"
+    assert cfg.webhook_secret == "plant-webhook"
+    assert cfg.execution_mode == "shadow"
+
+    # Explicit environment remains the highest-priority operational override.
+    monkeypatch.setenv("ADMIN_TOKEN", "process-admin")
+    assert Settings.load().admin_token == "process-admin"
