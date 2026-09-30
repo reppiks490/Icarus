@@ -29,8 +29,7 @@ Current global blockers:
 5. Correlation tooling correctly labels itself association-only, but must not be
    promoted into causal/directional authority.
 6. Event/calendar research has temporal and redundancy defects documented in the audit.
-7. Futures runtime policy is continuous-only across registered futures assets; month-coded expiry/roll logic is not part of the active engine
-   unsuitable for true term-structure research through continuous/front symbols alone.
+7. Futures runtime policy is continuous-only across registered futures assets; month-coded expiry/roll logic is not part of the active engine. Continuous/front symbols remain unsuitable by themselves for true term-structure research, which requires explicit maturity data in the research layer.
 
 ## Current S4 work
 A research-only point-in-time `CurveSnapshot` architecture has been specified for
