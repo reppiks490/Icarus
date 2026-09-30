@@ -745,6 +745,10 @@ class Databento:
                 for key in targets:
                     self._depth_errors[(key, schema)] = message
                     self._depth_ready[(key, schema)].set()
+                    if code == 4:
+                        # Symbol resolution is non-fatal and scoped. Re-arm only this
+                        # schema/symbol so a later explicit request can resubscribe it.
+                        self._depth_subscriptions[schema].discard(key)
                 if fatal:
                     self._depth_broken.add(schema)
             return
@@ -836,6 +840,7 @@ class Databento:
                             self._depth_live_symbols[schema].add(key)
                             continue
                         self._depth_ready[(key, schema)].clear()
+                        self._depth_errors.pop((key, schema), None)
                         kwargs: Dict[str, Any] = {
                             "dataset": self.dataset,
                             "schema": schema,
@@ -887,6 +892,9 @@ class Databento:
             for key in symbols:
                 self._depth_ready.pop((key, schema), None)
                 self._depth_errors.pop((key, schema), None)
+                self._depth_wanted[key].discard(schema)
+                if not self._depth_wanted[key]:
+                    self._depth_wanted.pop(key, None)
 
         if client is not None:
             try:
@@ -914,8 +922,11 @@ class Databento:
                 symbols.discard(key)
                 self._depth_ready.pop((key, schema), None)
                 self._depth_errors.pop((key, schema), None)
+                self._depth_wanted[key].discard(schema)
                 if not symbols and schema in self._depth_live:
                     schemas_to_stop.append(schema)
+            if not self._depth_wanted.get(key):
+                self._depth_wanted.pop(key, None)
         for schema in schemas_to_stop:
             self._stop_depth_schema_unlocked(schema)
 
