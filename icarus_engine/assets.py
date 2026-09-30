@@ -168,7 +168,7 @@ REGISTRY: Dict[str, AssetSpec] = {
     "SI": AssetSpec("SI", "Silver", "yahoo", "SI=F", "cme", 0.005, 5000.0, tv_symbol="COMEX:SI1!", group="metals"),
     "SIL": AssetSpec("SIL", "Micro Silver", "yahoo", "SIL=F", "cme", 0.005, 1000.0, tv_symbol="COMEX_MINI:SIL1!", group="metals"),
     "PL": AssetSpec("PL", "Platinum", "yahoo", "PL=F", "cme", 0.10, 50.0, tv_symbol="NYMEX:PL1!", group="metals"),
-    "PA": AssetSpec("PA", "Palladium", "yahoo", "PA=F", "cme", 0.10, 100.0, tv_symbol="NYMEX:PA1!", group="metals"),
+    "PA": AssetSpec("PA", "Palladium", "yahoo", "PA=F", "cme", 0.50, 100.0, tv_symbol="NYMEX:PA1!", group="metals"),
     "BTCF": AssetSpec("BTCF", "Bitcoin futures (CME)", "yahoo", "BTC=F", "cme_crypto", 5.0, 5.0, tv_symbol="CME:BTC1!", group="crypto", session="eth"),
     "MBT": AssetSpec("MBT", "Micro Bitcoin futures (CME)", "yahoo", "MBT=F", "cme_crypto", 5.0, 0.1, tv_symbol="CME:MBT1!", group="crypto", session="eth"),
     "BTC": AssetSpec("BTC", "Bitcoin spot (Coinbase)", "coinbase", "BTC-USD", "crypto", 0.01, 1.0, kind="crypto", tv_symbol="COINBASE:BTCUSD"),
