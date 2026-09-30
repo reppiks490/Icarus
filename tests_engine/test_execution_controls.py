@@ -537,3 +537,18 @@ def test_paper_rewarm_uses_genuine_one_minute_tail_from_mixed_cache(configured):
     assert r.chart_minutes == 1
     assert r.spec.chart_tf == "1"
     assert len(r.bars) == len(one_minute_tail)
+
+
+def test_warmup_replay_trades_stay_non_live_until_live_boundary_exists():
+    r = make_runner("WARM")
+    r.live_from_ts = None
+    r.live_closed_start = 0
+    r.em.process_bar(Bar(0, 100, 100, 100, 100, 1), 0)
+    r.em.entry("Hist", 1, 1)
+    r.em.process_bar(Bar(60, 100, 100, 100, 100, 1), 1)
+    r.em.close("Hist", "hist close")
+    r.em.process_bar(Bar(120, 101, 101, 101, 101, 1), 2)
+    assert r.em.closed
+    assert r.summary()["live_trades"] == 0
+    assert r.summary()["live_profit"] == 0
+    assert r.trades()[-1]["live"] is False
