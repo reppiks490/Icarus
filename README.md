@@ -37,7 +37,7 @@ icarus-plant status
 icarus-plant stop
 ```
 
-`--offline` sets `ICARUS_FEED=file`: live poll reads `history/{SYM}_*m.csv` (mtime-reload as drop ingest rewrites them). Roll is forced `none` so FileFeed volumes cannot fake a CME 1! roll. 1-minute exports are required for live FileFeed; a 20m dump still warms the strategy but is not split into invented minutes.
+`--offline` sets `ICARUS_FEED=file`: live poll reads `history/{SYM}_*m.csv` (mtime-reload as drop ingest rewrites them). Futures remain continuous-only; ICARUS never selects or asks you to maintain a month-coded expiry contract. 1-minute exports are required for live FileFeed; a 20m dump still warms the strategy but is not split into invented minutes.
 
 Optional systemd unit: [deploy/icarus-plant.service](deploy/icarus-plant.service). Edit paths; do not expose port 8791.
 
