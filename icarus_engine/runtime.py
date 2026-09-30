@@ -998,6 +998,7 @@ class AssetRunner:
         live_trades = self.em.closed[self.live_closed_start:] if self.live_from_ts is not None else []
         wins = sum(1 for t in self.em.closed if t.profit > 0)
         forming = self.chart_agg.forming_bar()
+        feed_meta = self.feed.meta(self.spec.ticker) if hasattr(self.feed, "meta") else {}
         return _clean({
             "symbol": self.symbol, "name": self.spec.name, "product": self.spec.ticker, "feed": self.spec.feed, "kind": self.spec.kind,
             "continuous_contract": bool(self.spec.kind == "futures"), "contract_policy": "continuous_only" if self.spec.kind == "futures" else "not_applicable",
@@ -1005,6 +1006,10 @@ class AssetRunner:
             "provider_symbol": self.spec.ticker,
             "feed_provider": ("databento" if type(self.feed).__name__ == "Databento" else self.spec.feed),
             "feed_capabilities": (self.feed.capabilities() if hasattr(self.feed, "capabilities") else {}),
+            "feed_meta": feed_meta,
+            "active_contract": feed_meta.get("active_contract"),
+            "active_instrument_id": feed_meta.get("active_instrument_id") or feed_meta.get("resolved_instrument_id"),
+            "continuous_roll_count": feed_meta.get("roll_count", 0),
             "session_mode": _session_mode(self.cal), "security_source": self.spec.security_source,
             "tf": self.chart_minutes, "mintick": self.mintick, "contract_size": self.em.contract_size, "multiplier": self.spec.multiplier,
             "chart_type": self.spec.chart_type, "fill_on": self.spec.fill_on, "slippage_ticks": self.spec.slippage_ticks,
