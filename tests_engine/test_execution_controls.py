@@ -4,6 +4,7 @@ import threading
 import urllib.error
 import urllib.request
 from dataclasses import asdict, replace
+from datetime import datetime, timezone
 
 import pytest
 
@@ -36,6 +37,33 @@ def pending(r, direction=1, limit=None):
 
 
 @pytest.mark.parametrize("limit", [None, 99])
+def test_closed_futures_session_with_no_feed_clock_is_not_a_transport_failure(monkeypatch):
+    from icarus_engine.assets import resolve
+    import icarus_engine.runtime as runtime
+
+    class EmptyFeed:
+        def recent_ex(self, *args, **kwargs):
+            return [], 0, None
+
+    spec = resolve("NQ")
+    feed = EmptyFeed()
+    r = AssetRunner(
+        RunnerConfig(spec, Inputs(use_tide=False, use_eod_flat=False)),
+        Journal(":memory:"),
+        {"yahoo": feed},
+    )
+    # Saturday: the CME futures calendar is closed.
+    closed_ts = datetime(2026, 9, 26, 12, 0, tzinfo=timezone.utc).timestamp()
+    monkeypatch.setattr(runtime.time, "time", lambda: closed_ts)
+    r.feed_error = "stale prior warning"
+    r.last_error = r.feed_error
+    r.poll()
+    assert r.errors == 0
+    assert r.feed_error == ""
+    assert r.last_error == ""
+    assert r.last_poll_ok == closed_ts
+
+
 def test_pause_cancels_market_and_limit_before_next_fill(limit):
     r = make_runner()
     r.strat.w_slot_queue = [0]
