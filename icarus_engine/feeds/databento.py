@@ -532,21 +532,28 @@ class Databento:
             meta["reconnect_count"] = len(self._reconnect_gaps[str(symbol)])
             self._meta[str(symbol)] = meta
 
-    def start_live(
+    def prepare_live(
         self,
-        symbol: str,
+        symbols: Sequence[str],
         *,
         schemas: Sequence[str] = ("ohlcv-1s", "trades"),
         start_ts: Optional[int] = None,
         include_depth: Optional[str] = None,
     ) -> Any:
-        key = str(symbol)
+        """Subscribe many futures on one dataset session, then start it once.
+
+        ICARUS calls this before historical warm-up so live buffers accumulate while
+        replay runs. Additional symbols may be attached after start, but Databento's
+        replay start parameter is intentionally omitted for those subscriptions.
+        """
         desired = {str(s) for s in schemas}
         if include_depth:
             if include_depth not in ("mbp-10", "mbo"):
                 raise ValueError("include_depth must be 'mbp-10' or 'mbo'")
             desired.add(include_depth)
-        continuous = self.continuous_symbol(symbol, self.roll_rule)
+        keys = [(str(symbol), self.continuous_symbol(symbol, self.roll_rule)) for symbol in symbols]
+        if not keys:
+            return self._shared_live
 
         with self._lock:
             client = self._shared_live
@@ -557,29 +564,39 @@ class Databento:
                     client.add_reconnect_callback(self._record_reconnect_all)
                 self._shared_live = client
 
-            self._continuous_to_symbol[continuous] = key
-            missing = desired - self._subscriptions[key]
-            for schema in sorted(missing):
-                kwargs: Dict[str, Any] = {
-                    "dataset": self.dataset,
-                    "schema": schema,
-                    "symbols": continuous,
-                    "stype_in": "continuous",
-                }
-                # Historical replay can only be attached while the shared session is
-                # being constructed. Later symbols join the already-live stream; their
-                # startup gap is covered by ICARUS historical warm-up.
-                if start_ts is not None and not self._shared_started:
-                    kwargs["start"] = self._iso(start_ts)
-                client.subscribe(**kwargs)
-                self._subscriptions[key].add(schema)
+            for key, continuous in keys:
+                self._continuous_to_symbol[continuous] = key
+                missing = desired - self._subscriptions[key]
+                for schema in sorted(missing):
+                    kwargs: Dict[str, Any] = {
+                        "dataset": self.dataset,
+                        "schema": schema,
+                        "symbols": continuous,
+                        "stype_in": "continuous",
+                    }
+                    if start_ts is not None and not self._shared_started:
+                        kwargs["start"] = self._iso(start_ts)
+                    client.subscribe(**kwargs)
+                    self._subscriptions[key].add(schema)
+                self._live[key] = client
+                self._live_started.add(key)
 
-            self._live[key] = client
-            self._live_started.add(key)
             if not self._shared_started:
                 client.start()
                 self._shared_started = True
             return client
+
+    def start_live(
+        self,
+        symbol: str,
+        *,
+        schemas: Sequence[str] = ("ohlcv-1s", "trades"),
+        start_ts: Optional[int] = None,
+        include_depth: Optional[str] = None,
+    ) -> Any:
+        return self.prepare_live(
+            [symbol], schemas=schemas, start_ts=start_ts, include_depth=include_depth
+        )
 
     def stop_live(self, symbol: Optional[str] = None) -> None:
         client = None
