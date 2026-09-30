@@ -117,16 +117,18 @@ def cmd_start(args: argparse.Namespace) -> int:
     plant = Plant(root, repo=repo)
     plant.add(default_engine_service(
         root, repo, assets=args.assets, port=args.engine_port,
-        token=args.token, offline=args.offline, preset=args.preset,
+        token=args.token, offline=args.offline, databento=args.databento, preset=args.preset,
     ))
     if args.bridge:
         plant.add(default_bridge_service(root, repo, port=args.bridge_port))
     os.environ["ICARUS_HOME"] = root
     if args.offline:
         os.environ["ICARUS_FEED"] = "file"
+    elif args.databento:
+        os.environ["ICARUS_FEED"] = "databento"
     os.makedirs(os.path.join(root, "run"), exist_ok=True)
     with open(os.path.join(root, "run", "feed.txt"), "w", encoding="ascii") as fh:
-        fh.write("file\n" if args.offline else "yahoo\n")
+        fh.write("file\n" if args.offline else "databento\n" if args.databento else "yahoo\n")
     for svc in plant.services.values():
         plant.spawn(svc)
         print(f"started {svc.name} pid={svc.popen.pid if svc.popen else '?'}  {svc.health_url}")
@@ -135,6 +137,8 @@ def cmd_start(args: argparse.Namespace) -> int:
     print("  CSVs already in Downloads/Desktop are pulled automatically (registry symbols only)")
     if args.offline:
         print("  ICARUS_FEED=file — Yahoo is not contacted; live bars only arrive via drop ingest")
+    elif args.databento:
+        print("  ICARUS_FEED=databento — CME futures use Databento GLBX.MDP3 volume-continuous data")
     engine = plant.services.get("engine")
     if engine and engine.health_url:
         if wait_health(engine.health_url, timeout=45):
@@ -311,7 +315,9 @@ def main(argv: Optional[list] = None) -> int:
     add_root_option(s)
     s.add_argument("--assets", default="NQ")
     s.add_argument("--preset", default="NQ-20m-ultracoded")
-    s.add_argument("--offline", action="store_true", help="FileFeed only — no Yahoo. Live bars come from drop ingest.")
+    feed_group = s.add_mutually_exclusive_group()
+    feed_group.add_argument("--offline", action="store_true", help="FileFeed only — no network market data. Live bars come from drop ingest.")
+    feed_group.add_argument("--databento", action="store_true", help="use Databento GLBX.MDP3 for CME futures (requires DATABENTO_API_KEY and .[marketdata])")
     s.add_argument("--bridge", action="store_true", help="also supervise icarus-bridge (needs fastapi)")
     s.add_argument("--engine-port", type=int, default=8791)
     s.add_argument("--bridge-port", type=int, default=8787)
