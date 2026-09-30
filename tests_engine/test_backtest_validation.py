@@ -46,8 +46,8 @@ INVALID = [
 @pytest.fixture
 def port(tmp_path):
     p = Portfolio(Journal(":memory:"), str(tmp_path))
-    spec = AssetSpec("TEST", "Test", "yahoo", "TEST", "crypto", .25, 1,
-                     chart_tf="1", capital=100000, commission=1, roll="none")
+    spec = AssetSpec("TEST", "Test", "yahoo", "TEST=F", "crypto", .25, 1,
+                     chart_tf="1", capital=100000, commission=1, tv_symbol="TEST1!", kind="futures")
     r = AssetRunner(RunnerConfig(spec, Inputs(use_tide=False, use_eod_flat=False)), p.journal)
     r.subbars = [(Bar(k * 60, 100 + k, 101 + k, 99 + k, 100 + k, 1), 1) for k in range(10)]
     r.warm = True
