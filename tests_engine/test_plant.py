@@ -406,3 +406,24 @@ def test_supervisor_spawn_closes_parent_log_handle(tmp_path, monkeypatch):
     plant.spawn(svc)
     assert captured["stdout"].closed is True
     assert os.path.isfile(svc.pidfile)
+
+
+def test_write_status_is_atomic_and_valid_json(tmp_path, monkeypatch):
+    import icarus_plant.supervisor as supervisor
+
+    ensure(str(tmp_path))
+    calls = []
+    real_replace = supervisor.os.replace
+
+    def tracked_replace(src, dst):
+        calls.append((src, dst))
+        return real_replace(src, dst)
+
+    monkeypatch.setattr(supervisor.os, "replace", tracked_replace)
+    payload = {"ok": True, "services": [{"name": "engine", "alive": True}]}
+    supervisor.write_status(str(tmp_path), payload)
+
+    path = tmp_path / "run" / "status.json"
+    assert json.loads(path.read_text(encoding="utf-8")) == payload
+    assert calls and calls[-1][1] == str(path)
+    assert not (tmp_path / "run" / "status.json.tmp").exists()
