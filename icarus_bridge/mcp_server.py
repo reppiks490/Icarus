@@ -13,14 +13,14 @@ import os
 from typing import Any, Dict, Optional
 
 import httpx
-from mcp.server.fastmcp import FastMCP
+from mcp.server import MCPServer
 
 BASE = os.environ.get("ICARUS_BRIDGE_URL", "http://127.0.0.1:8787").rstrip("/")
 TOKEN = os.environ.get("ICARUS_ADMIN_TOKEN", "")
 ENGINE_BASE = os.environ.get("ICARUS_ENGINE_URL", "http://127.0.0.1:8791").rstrip("/")
 ENGINE_TOKEN = os.environ.get("ICARUS_ENGINE_TOKEN", TOKEN)
 
-mcp = FastMCP(
+mcp = MCPServer(
     "icarus-bridge",
     instructions=(
         "Control surface for the ICARUS Bridge: a local daemon that receives TradingView strategy "
