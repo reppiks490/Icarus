@@ -528,7 +528,7 @@ function backtestHtml(A) {
       <label>Preset <select id="btPreset"><option value="">(engine default)</option>${presets}</select></label>
       <label>Timeframe <select id="btTf"><option value="">engine (${active.tf||'?'}m)</option>${tfs.map(t=>`<option value="${t}">${t}</option>`).join('')}</select></label>
       <label>Chart <select id="btChart"><option value="">engine / preset</option><option value="heikin_ashi">Heikin Ashi</option><option value="real">Standard OHLC</option></select></label>
-      <label>Fills <select id="btFill"><option value="real">real prices (default)</option><option value="chart">Heikin Ashi bars (TradingView mode)</option></select></label>
+      <label>Fills <select id="btFill"><option value="">engine / preset</option><option value="real">real prices</option><option value="chart">Heikin Ashi/chart bars (TradingView mode)</option></select></label>
       <label>HTF/LTF source <select id="btSecurity"><option value="">engine / preset</option><option value="chart">selected chart</option><option value="standard">standard OHLC</option></select></label>
       <label>Session <select id="btSession"><option value="">preset / engine</option><option value="rth">RTH 09:30–16:15 ET</option><option value="eth">full Globex</option></select></label>
       <label>Slippage <input id="btSlip" type="number" min="0" step="1" placeholder="ticks" style="width:80px"></label>
@@ -544,7 +544,7 @@ function backtestHtml(A) {
 async function runBacktest() {
   const body = {asset: $('#btAsset').value, preset: $('#btPreset').value || null,
                 timeframe: $('#btTf').value || null, chart_type: $('#btChart').value || null,
-                fill_on: $('#btFill').value, security_source: $('#btSecurity').value || null,
+                fill_on: $('#btFill').value || null, security_source: $('#btSecurity').value || null,
                 session: $('#btSession').value || null};
   const num = (id, cast) => { const v = $(id).value; return v === '' ? null : cast(v); };
   body.slippage_ticks = num('#btSlip', parseInt); body.commission = num('#btComm', parseFloat); body.capital = num('#btCap', parseFloat);
