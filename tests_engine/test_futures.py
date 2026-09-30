@@ -168,6 +168,10 @@ def test_all_registered_futures_are_continuous_and_never_month_coded():
 def test_assets_registry_and_spec_tokens():
     nq = resolve("NQ1!")
     assert nq.symbol == "NQ" and nq.multiplier == 20.0 and nq.mintick == 0.25 and nq.calendar == "cme" and nq.session == "rth" and nq.roll == "continuous"
+    assert resolve("NQ=F").symbol == "NQ"
+    assert resolve("ES1!").symbol == resolve("ES=F").symbol == "ES"
+    assert resolve("SI1!").symbol == resolve("SI=F").symbol == "SI"
+    assert resolve("MBT1!").symbol == resolve("MBT=F").symbol == "MBT"
     gc = parse_spec("GC@10:NQ-10m-original", "20")
     assert gc.symbol == "GC" and gc.chart_tf == "10" and gc.preset == "NQ-10m-original" and gc.group == "metals" and gc.roll == "continuous"
     btc = parse_spec("BTCUSD")
