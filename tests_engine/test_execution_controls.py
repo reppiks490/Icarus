@@ -594,3 +594,21 @@ def test_engine_http_api_resolves_common_asset_aliases(tmp_path):
         srv.server_close()
         thread.join(5)
         port.journal.con.close()
+
+
+def test_portfolio_mutations_accept_continuous_aliases(tmp_path):
+    from icarus_engine.assets import resolve
+    port = Portfolio(Journal(":memory:"), str(tmp_path))
+    spec = resolve("NQ")
+    spec.chart_tf = "1"
+    spec.commission = 0
+    r = AssetRunner(RunnerConfig(spec, Inputs(use_tide=False, use_eod_flat=False)), port.journal)
+    r.subbars = [(Bar(k * 60, 100 + k, 101 + k, 99 + k, 100 + k, 1), 1) for k in range(8)]
+    r.warm = True
+    port.runners["NQ"] = r
+    port.order = ["NQ"]
+
+    out = port.rewarm_asset("NQ1!", {"tp1_pts": 80})
+    assert out is r and r.inputs_base.tp1_pts == 80
+    assert port.remove_asset("NQ1!") is True
+    assert "NQ" not in port.runners and "NQ" not in port.order
