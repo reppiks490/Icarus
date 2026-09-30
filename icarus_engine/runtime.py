@@ -32,6 +32,7 @@ from .calendar import get_calendar
 from .emulator import Emulator, Fill
 from .feeds import Coinbase, Kraken
 from .feeds.bars import HistoryHub, detect_granularity, file_feed_mode, find_history, parse_ohlcv_csv, read_text_csv  # Grok (xAI) — 2026-09-20
+from .feeds.databento import Databento, databento_feed_mode
 from .feeds.yahoo import Yahoo
 from .pine.series import NAN, na
 from .pine.timeframe import Aggregator, Bar, tf_minutes
@@ -377,6 +378,7 @@ class AssetRunner:
         self.journal = journal
         feeds = feeds or {}
         self.feed = feeds.get(self.spec.feed) or (Yahoo() if self.spec.feed == "yahoo" else Coinbase())
+        self.feed_name = getattr(self.feed, "name", self.spec.feed)
         self.kraken = Kraken()
         self.cal = get_calendar(self.spec.calendar, self.spec.anchor_et, session=self.spec.session, group=self.spec.group)
         self.chart_minutes = tf_minutes(self.spec.chart_tf)
@@ -987,7 +989,7 @@ class AssetRunner:
         wins = sum(1 for t in self.em.closed if t.profit > 0)
         forming = self.chart_agg.forming_bar()
         return _clean({
-            "symbol": self.symbol, "name": self.spec.name, "product": self.spec.ticker, "feed": self.spec.feed, "kind": self.spec.kind,
+            "symbol": self.symbol, "name": self.spec.name, "product": self.spec.ticker, "feed": self.feed_name, "kind": self.spec.kind,
             "continuous_contract": bool(self.spec.kind == "futures"), "contract_policy": "continuous_only" if self.spec.kind == "futures" else "not_applicable",
             "continuous_symbol": self.spec.tv_symbol or self.spec.ticker,
             "provider_symbol": self.spec.ticker,
@@ -1000,6 +1002,7 @@ class AssetRunner:
                 "security_source": self.spec.security_source, "session": _session_mode(self.cal),
             },
             "chart_capabilities": self.chart_capability_view(),
+            "feed_capabilities": getattr(self.feed, "capabilities", {}),
             "preset": self.cfg.preset or self.spec.preset, "inputs_sources": self.cfg.sources or [], "pts_scale": self.pts_scale,
             "price": mark, "price_age": (time.time() - self.last_price_ts) if self.last_price_ts else None,
             "feed_delay": self._feed_delay_at(int(time.time())),
@@ -1074,13 +1077,18 @@ class Portfolio:
         self.warmup_bars = warmup_bars
         self.pts_ref_symbol = pts_ref_symbol
         self.pts_ref_price = 0.0
-        # Grok (xAI) — 2026-09-20: ICARUS_FEED=file → HistoryHub on both keys. Same Yahoo-shaped
-        # interface; poll() still uses recent_ex when spec.feed == "yahoo". No Docker, no Databento.
+        # Feed mode is a runtime transport choice; asset identity remains continuous
+        # and stable regardless of whether Yahoo, Databento, or local history supplies bars.
         if file_feed_mode():
             hub = HistoryHub(base_dir)
             self.feeds: Dict[str, Any] = {"yahoo": hub, "coinbase": hub}
             self.feed_mode = "file"
             journal.log("INFO", f"ICARUS_FEED=file — HistoryHub at {base_dir}/history; Yahoo/Coinbase are not contacted")
+        elif databento_feed_mode():
+            dbfeed = Databento()
+            self.feeds = {"yahoo": dbfeed, "coinbase": Coinbase()}
+            self.feed_mode = "databento"
+            journal.log("INFO", "ICARUS_FEED=databento — CME futures use Databento GLBX.MDP3 volume-continuous contracts")
         else:
             self.feeds = {"yahoo": Yahoo(), "coinbase": Coinbase()}
             self.feed_mode = "live"
@@ -1283,6 +1291,17 @@ class Portfolio:
 
     def stop(self) -> None:
         self._stop.set()
+        seen = set()
+        for feed in self.feeds.values():
+            if id(feed) in seen:
+                continue
+            seen.add(id(feed))
+            close = getattr(feed, "close", None)
+            if callable(close):
+                try:
+                    close()
+                except Exception:
+                    pass
 
     # ── views ──
     def equity(self) -> float:
