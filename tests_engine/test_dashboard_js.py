@@ -26,7 +26,7 @@ NODE = shutil.which("node")
 def test_dashboard_javascript_parses(rel, tmp_path):
     src = (REPO / rel).read_text(encoding="utf-8")
     if rel.endswith(".html"):
-        blocks = re.findall(r"<script\\b[^>]*>([\\s\\S]*?)</script>", src, flags=re.IGNORECASE)
+        blocks = re.findall(r"<script\b[^>]*>([\s\S]*?)</script>", src, flags=re.IGNORECASE)
         assert blocks, f"{rel} has no inline JavaScript to validate"
         src = "\n".join(blocks)
     out = tmp_path / (Path(rel).name.replace(".html", "") + ".js")
