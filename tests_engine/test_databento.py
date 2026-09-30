@@ -475,6 +475,45 @@ def test_recent_ex_uses_historical_seed_when_new_live_session_is_idle(monkeypatc
     assert len(hist.calls) == calls
 
 
+def test_empty_idle_historical_seed_is_throttled(monkeypatch):
+    monkeypatch.setattr("icarus_engine.feeds.databento.time.time", lambda: 10_020)
+    hist = FakeHistorical({})
+    feed = make_feed(historical=hist, lives=[FakeLive()])
+    feed._ready["NQ=F"].set()
+
+    assert feed.recent_ex("NQ=F", 60, since_ts=9_900) == ([], 0, None)
+    assert feed.recent_ex("NQ=F", 60, since_ts=9_900) == ([], 0, None)
+    assert len(hist.calls) == 1
+    meta = feed.meta("NQ=F")
+    assert meta["historical_seed_empty"] is True
+    assert meta["historical_seed_attempt_ts"] == 10_020
+
+
+def test_closed_futures_session_with_no_feed_clock_is_healthy_idle(monkeypatch):
+    import icarus_engine.runtime as runtime
+
+    class EmptyFeed:
+        def recent_ex(self, *args, **kwargs):
+            return [], 0, None
+
+    spec = resolve("NQ")
+    r = AssetRunner(
+        RunnerConfig(spec, Inputs(use_tide=False, use_eod_flat=False)),
+        Journal(":memory:"),
+        {"yahoo": EmptyFeed()},
+    )
+    # 2026-09-26 12:00 UTC is Saturday; the CME calendar is closed.
+    closed_ts = 1_790_424_000.0
+    monkeypatch.setattr(runtime.time, "time", lambda: closed_ts)
+    r.feed_error = "stale prior warning"
+    r.last_error = r.feed_error
+    r.poll()
+    assert r.errors == 0
+    assert r.feed_error == ""
+    assert r.last_error == ""
+    assert r.last_poll_ok == closed_ts
+
+
 def test_historical_seed_failure_surfaces_root_cause(monkeypatch):
     class FailingHistorical(FakeHistorical):
         def get_range(self, **kwargs):
@@ -482,10 +521,14 @@ def test_historical_seed_failure_surfaces_root_cause(monkeypatch):
             raise PermissionError("historical entitlement denied")
 
     monkeypatch.setattr("icarus_engine.feeds.databento.time.time", lambda: 10_020)
-    feed = make_feed(historical=FailingHistorical({}), lives=[FakeLive()])
+    hist = FailingHistorical({})
+    feed = make_feed(historical=hist, lives=[FakeLive()])
     feed._ready["NQ=F"].set()
     with pytest.raises(RuntimeError, match="historical seed failed.*entitlement denied"):
         feed.recent_ex("NQ=F", 60, since_ts=9_900)
+    with pytest.raises(RuntimeError, match="historical seed failed.*entitlement denied"):
+        feed.recent_ex("NQ=F", 60, since_ts=9_900)
+    assert len(hist.calls) == 1
 
 
 def test_mbo_snapshot_requires_last_flag_contract():
