@@ -104,6 +104,7 @@ class Databento:
         self._shared_live: Any = None
         self._shared_started = False
         self._core_broken = False
+        self._core_error_code: Optional[int] = None
         self._live: Dict[str, Any] = {}  # compatibility/status view: active symbol -> shared client
         self._live_started: set[str] = set()
         # Desired schemas survive socket replacement; _subscriptions describes only
@@ -499,6 +500,8 @@ class Databento:
             if key in self._depth_errors:
                 out["depth_error"] = self._depth_errors[key]
             out["core_session_ok"] = not self._core_broken
+            if self._core_error_code is not None:
+                out["core_error_code"] = self._core_error_code
             out["depth_session_ok"] = not self._depth_broken
             return out
 
@@ -517,6 +520,7 @@ class Databento:
                 # though Databento may keep the connection open.
                 if code in (1, 2, 3, 5, 6, 7, 8):
                     self._core_broken = True
+                    self._core_error_code = code
                 self._ready[symbol].set()
                 self._meta[symbol] = {
                     "regularMarketTime": self._feed_time.get(symbol, 0),
@@ -627,6 +631,12 @@ class Databento:
                                if key in active and cont and cont in err]
                     if not targets:
                         targets = list(active)
+                    if code == 4:
+                        # A symbol-resolution failure rejects that subscription but
+                        # leaves the shared session alive. Re-arm the desired core
+                        # schemas so the next poll retries only the affected symbol.
+                        for key in targets:
+                            self._subscriptions[key].clear()
             for key in targets:
                 self._dispatch_live(key, record)
             return
@@ -649,6 +659,7 @@ class Databento:
             # prior error visible until a valid market event arrives, but allow that
             # event to clear the broken-state latch.
             self._core_broken = False
+            self._core_error_code = None
             symbols = list(self._live_started)
         for symbol in symbols:
             self._record_reconnect(symbol, previous, resumed)
@@ -997,6 +1008,16 @@ class Databento:
         include_depth: Optional[str] = None,
     ) -> Any:
         with self._session_lock:
+            with self._lock:
+                broken = self._core_broken
+                code = self._core_error_code
+                active = list(self._live_started)
+            if broken and code in (3, 6, 7, 8):
+                retry_symbols = list(dict.fromkeys(active + [str(x) for x in symbols]))
+                self._refresh_core_live(
+                    retry_symbols,
+                    start_ts=max(0, int(time.time()) - 300),
+                )
             client = self._prepare_live_unlocked(
                 symbols, schemas=schemas, start_ts=start_ts, include_depth=None
             )
@@ -1027,6 +1048,7 @@ class Databento:
             with self._lock:
                 self._shared_live = client
                 self._core_broken = False
+                self._core_error_code = None
             try:
                 with self._lock:
                     for key, desired in wanted.items():
@@ -1059,6 +1081,7 @@ class Databento:
                     self._shared_live = None
                     self._shared_started = False
                     self._core_broken = True
+                    self._core_error_code = 6
                     self._live.clear()
                     self._live_started.clear()
                     self._subscriptions.clear()
@@ -1110,6 +1133,7 @@ class Databento:
             self._shared_live = None
             self._shared_started = False
             self._core_broken = False
+            self._core_error_code = None
             self._live.clear()
             self._live_started.clear()
             self._subscriptions.clear()
