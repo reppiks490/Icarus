@@ -419,3 +419,34 @@ def test_heikin_ashi_signals_can_fill_on_real_market_open():
     assert real_px == 120
     assert chart_px != real_px
     assert real_fill.bars[-1].o != second.o  # strategy bar is synthetic HA while execution used the real open
+
+
+def test_successful_rewarm_starts_new_paper_equity_epoch(configured):
+    port, r, _ = configured
+    before = port.equity_epoch
+    port.rewarm_asset("TEST", {"tp1_pts": 80})
+    assert port.equity_epoch >= before
+    status = port.status()
+    assert status["equity_epoch"] == port.equity_epoch
+
+
+def test_failed_all_assets_update_restores_equity_epoch(admin, monkeypatch):
+    port, first, _, post = admin
+    other = make_runner("OTHER")
+    port.runners["OTHER"] = other
+    port.order.append("OTHER")
+    epoch_before = port.equity_epoch
+    original = other.rewarm
+    calls = 0
+
+    def fail_once(inputs, sources=None):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise RuntimeError("synthetic epoch rollback failure")
+        return original(inputs, sources)
+
+    monkeypatch.setattr(other, "rewarm", fail_once)
+    status, _ = post("/admin/inputs", {"asset": "*", "values": {"tp1_pts": 81}, "persist": True})
+    assert status == 500
+    assert port.equity_epoch == epoch_before
