@@ -555,8 +555,15 @@ def test_warmup_replay_trades_stay_non_live_until_live_boundary_exists():
 
 
 def test_engine_http_api_resolves_common_asset_aliases(tmp_path):
+    from icarus_engine.assets import resolve
     port = Portfolio(Journal(":memory:"), str(tmp_path))
-    r = make_runner("NQ")
+    spec = resolve("NQ")
+    spec.chart_tf = "1"
+    spec.commission = 0
+    r = AssetRunner(RunnerConfig(spec, Inputs(use_tide=False, use_eod_flat=False)), Journal(":memory:"))
+    r._init_strategy(100)
+    r.last_price = 100
+    r.warm = True
     port.runners["NQ"] = r
     port.order = ["NQ"]
     srv = serve(port, 0, token="test-token", start=False)
