@@ -11,9 +11,8 @@ from datetime import date, timedelta
 
 import pytest
 
-from icarus_engine.assets import parse_spec, resolve
+from icarus_engine.assets import REGISTRY, parse_spec, resolve
 from icarus_engine.calendar import CMECalendar, CryptoCalendar, _from_ny, _ny
-from icarus_engine.contracts import ContractRoll, contract_months, last_completed_volume, third_friday, ticker_for
 from icarus_engine.emulator import Emulator
 from icarus_engine.feeds.yahoo import Yahoo
 from icarus_engine.pine.series import na
@@ -155,27 +154,22 @@ def test_yahoo_parser_drops_nulls_quote_rows_and_placeholders():
     assert len(daily) == 1                                             # daily rows are never alignment-filtered
 
 
-def test_contract_roll_rule():
-    assert third_friday(2026, 9) == date(2026, 9, 18)
-    assert contract_months("HMUZ", date(2026, 9, 14), 2) == [(2026, 9), (2026, 12)]
-    assert contract_months("HMUZ", date(2026, 9, 19), 1) == [(2026, 12)]              # the day after expiry
-    assert ticker_for("NQ", 2026, 12) == "NQZ26.CME" and ticker_for("YM", 2027, 3) == "YMH27.CBT"
-    r = ContractRoll("NQ", date(2026, 9, 14))
-    assert r.ticker == "NQU26.CME" and r.next_ticker == "NQZ26.CME"
-    assert not r.decide(568263, 21238) and r.decide(51768, 60000) and not r.decide(None, 5)
-    prev = r.roll()
-    assert prev == "NQU26.CME" and r.ticker == "NQZ26.CME" and r.next_ticker == "NQH27.CME"
-    so = et(2026, 9, 13, 18, 0)                                                        # Monday's session opened Sunday 18:00
-    rows = [(et(2026, 9, 10, 0, 0), 1, 500.0), (et(2026, 9, 11, 0, 0), 1, 600.0), (et(2026, 9, 14, 0, 0), 1, 50.0)]
-    assert last_completed_volume(rows, so) == 600.0                                    # Friday's, not the running session's row
+def test_all_registered_futures_are_continuous_and_never_month_coded():
+    futures = [s for s in REGISTRY.values() if s.kind == "futures"]
+    assert futures
+    for spec in futures:
+        assert spec.roll == "continuous"
+        assert spec.ticker.endswith("=F")
+        assert spec.tv_symbol.endswith("1!")
+        assert not any(ch in spec.ticker for ch in (".CME", ".CBT", ".NYMEX", ".COMEX"))
 
 
 # ── assets / inputs ──
 def test_assets_registry_and_spec_tokens():
     nq = resolve("NQ1!")
-    assert nq.symbol == "NQ" and nq.multiplier == 20.0 and nq.mintick == 0.25 and nq.calendar == "cme" and nq.session == "rth" and nq.roll == "volume"
+    assert nq.symbol == "NQ" and nq.multiplier == 20.0 and nq.mintick == 0.25 and nq.calendar == "cme" and nq.session == "rth" and nq.roll == "continuous"
     gc = parse_spec("GC@10:NQ-10m-original", "20")
-    assert gc.symbol == "GC" and gc.chart_tf == "10" and gc.preset == "NQ-10m-original" and gc.group == "metals" and gc.roll == "none"
+    assert gc.symbol == "GC" and gc.chart_tf == "10" and gc.preset == "NQ-10m-original" and gc.group == "metals" and gc.roll == "continuous"
     btc = parse_spec("BTCUSD")
     assert btc.feed == "coinbase" and btc.calendar == "crypto"
     assert tf_minutes("1W") == 10080 and tf_minutes("4H") == 240
@@ -481,20 +475,23 @@ class _FakeYahoo:
         return 0.25
 
 
-def test_warmup_uses_the_contract_ticker_for_intraday_history(tmp_path):
-    """Yahoo's NQ=F splices the next contract in unadjusted on its roll day; intraday warm-up must come from the contract."""
+def test_warmup_uses_only_provider_continuous_ticker(tmp_path):
+    """All NQ history stays on the provider-native continuous symbol; no month-coded contract is selected."""
     from icarus_engine.runtime import AssetRunner, Journal, RunnerConfig
     from icarus_engine.strategy.inputs import Inputs
     (tmp_path / "presets").mkdir()
     fy = _FakeYahoo()
     r = AssetRunner(RunnerConfig(spec=parse_spec("NQ"), inputs=Inputs(), warmup_bars=100, sources=[], profile="nq", preset=None, pts_ref_price=0.0),
                     Journal(":memory:"), {"yahoo": fy})
-    assert r.live_ticker.startswith("NQ") and r.live_ticker.endswith(".CME")
+    assert r.live_ticker == "NQ=F"
     r._warmup_yahoo(et(2026, 9, 1, 18, 0), et(2026, 9, 14, 16, 0))
-    intraday = {sym for sym, g in fy.calls if g in (60, 300, 900)}
-    daily = {sym for sym, g in fy.calls if g == 86400}
-    assert intraday == {r.live_ticker}, intraday                      # never NQ=F for 1m/5m/15m
-    assert daily == {"NQ=F"}                                          # years of daily history stay on the continuous symbol
+    used = {sym for sym, g in fy.calls if g in (60, 300, 900, 3600, 86400)}
+    assert used == {"NQ=F"}
+    summary = r.summary()
+    assert summary["continuous_contract"] is True
+    assert summary["continuous_symbol"] == "CME_MINI:NQ1!"
+    assert summary["provider_symbol"] == "NQ=F"
+    assert summary["contract"] is None and summary["next_contract"] is None
 
 
 def test_point_scaling_reference_is_the_last_completed_daily_close(tmp_path):
@@ -535,27 +532,25 @@ def test_journal_keeps_two_identical_same_bar_pieces_and_stamps_run_id(tmp_path)
     assert j.con.execute("SELECT COUNT(*) FROM trades").fetchone()[0] == 2
 
 
-def test_summary_feed_delay_only_while_open_and_expiry_fallback_flattens(tmp_path, monkeypatch):
+def test_continuous_future_never_flattens_or_switches_for_expiry(tmp_path, monkeypatch):
     from icarus_engine.runtime import AssetRunner, Journal, RunnerConfig
     from icarus_engine.strategy.inputs import Inputs
-    from datetime import date as _date
-    # Construct the runner before the tested expiry; wall-clock date must not
-    # silently initialize it on a later contract when this regression runs.
     monkeypatch.setattr("icarus_engine.runtime.time.time", lambda: et(2026, 9, 14, 10, 0))
     (tmp_path / "presets").mkdir()
     fy = _FakeYahoo()
     r = AssetRunner(RunnerConfig(spec=parse_spec("NQ"), inputs=Inputs(), warmup_bars=100, sources=[], profile="nq", preset=None, pts_ref_price=0.0),
                     Journal(":memory:"), {"yahoo": fy})
     r.feed_delay = 1726.0
-    closed_ts = et(2026, 9, 14, 17, 30)                                           # Globex break: no feed clock to report
+    closed_ts = et(2026, 9, 14, 17, 30)
     assert r._feed_delay_at(closed_ts) == 0.0 and r._feed_delay_at(et(2026, 9, 14, 12, 0)) == 1726.0
-    # expiry passed without a volume roll: move to the next contract AND flatten
     r.em.process_bar(B(et(2026, 9, 18, 9, 30), 29000, 29010, 28990, 29000), 0)
-    r.em.entry("Long", 1, 2); r.em.process_bar(B(et(2026, 9, 18, 9, 50), 29000, 29010, 28990, 29000), 1)
+    r.em.entry("Long", 1, 2)
+    r.em.process_bar(B(et(2026, 9, 18, 9, 50), 29000, 29010, 28990, 29000), 1)
     r.last_price = 29000.0
     assert r.em.position_size == 2
-    r._check_roll(et(2026, 9, 21, 10, 0), today=_date(2026, 9, 21))
-    assert r.live_ticker == "NQZ26.CME" and r.em.position_size == 0
+    assert r.live_ticker == "NQ=F"
+    assert not hasattr(r, "_check_roll")
+    assert r.em.position_size == 2
 
 
 def test_cme_crypto_calendar_is_24_7_since_may_2026():
@@ -569,7 +564,7 @@ def test_cme_crypto_calendar_is_24_7_since_may_2026():
     assert c.session_id(et(2026, 9, 14, 18, 5)) == "2026-09-15" and c.bucket_start(et(2026, 9, 14, 3, 0), 240) == et(2026, 9, 14, 2, 0)
     assert c.intraday_open(et(2026, 9, 13, 12, 0)) and c.describe(et(2026, 9, 13, 12, 0)).startswith("open")
     spec = parse_spec("BTCF")
-    assert spec.calendar == "cme_crypto" and spec.session == "eth" and spec.roll == "none"
+    assert spec.calendar == "cme_crypto" and spec.session == "eth" and spec.roll == "continuous"
 
 
 def test_background_launcher_only_accepts_a_live_health_endpoint():
