@@ -179,6 +179,9 @@ def test_assets_registry_and_spec_tokens():
     assert resolve("MYM1!").multiplier == 0.5
     assert resolve("RTY1!").symbol == resolve("RTY=F").symbol == "RTY"
     assert resolve("RTY1!").multiplier == 50.0 and resolve("RTY1!").mintick == 0.10
+    m2k = resolve("M2K1!")
+    assert m2k.symbol == resolve("M2K=F").symbol == "M2K"
+    assert (m2k.tv_symbol, m2k.multiplier, m2k.mintick) == ("CME_MINI:M2K1!", 5.0, 0.10)
     assert resolve("MGC1!").symbol == resolve("MGC=F").symbol == "MGC"
     assert (resolve("MGC1!").tv_symbol, resolve("MGC1!").multiplier, resolve("MGC1!").mintick) == ("COMEX_MINI:MGC1!", 10.0, 0.10)
     assert resolve("SI1!").symbol == resolve("SI=F").symbol == "SI"
