@@ -101,6 +101,9 @@ def test_default_engine_service_offline_argv(tmp_path):
     assert svc.health_url == "http://127.0.0.1:8791/healthz"
     live = default_engine_service(str(tmp_path), "/repo", offline=False)
     assert "--roll" not in live.argv  # continuous futures require no expiry/roll CLI override
+    db = default_engine_service(str(tmp_path), "/repo", databento=True)
+    assert db.env["ICARUS_FEED"] == "databento"
+    assert "--feed" not in db.argv
 
 
 def test_supervisor_spawn_and_stop(tmp_path):
