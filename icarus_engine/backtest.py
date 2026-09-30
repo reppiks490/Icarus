@@ -212,11 +212,12 @@ def run_backtest(port, symbol: str, *, preset: Optional[str] = None, inputs: Opt
     if requested_chart_minutes != source_chart_minutes:
         if not src.subbars:
             raise ValueError(f"{src.spec.symbol}: no cached sub-bars are available to rebuild a {spec.chart_tf} chart")
-        incompatible = sorted({int(sub) for _, sub in src.subbars
-                               if int(sub) > requested_chart_minutes or requested_chart_minutes % int(sub) != 0})
-        if incompatible:
+        compatible = [(b, int(sub)) for b, sub in src.subbars
+                      if int(sub) <= requested_chart_minutes and requested_chart_minutes % int(sub) == 0]
+        if not compatible:
+            have = sorted({int(sub) for _, sub in src.subbars})
             raise ValueError(
-                f"{src.spec.symbol}: cached source bars {incompatible}m cannot be losslessly rebuilt as "
+                f"{src.spec.symbol}: cached source bars {have}m cannot be losslessly rebuilt as "
                 f"{spec.chart_tf}; load 1-minute history first"
             )
 
