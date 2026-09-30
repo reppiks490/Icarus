@@ -127,7 +127,10 @@ def cmd_run(args: argparse.Namespace) -> int:
     if file_feed_mode():
         print("  feed      : HistoryHub (ICARUS_FEED=file) — Yahoo is not contacted; live bars arrive via history/drop/")
     elif os.environ.get("ICARUS_FEED", "").strip().lower() == "databento":
-        print("  feed      : Databento GLBX.MDP3 — volume-front continuous futures; live 1s/trades available")
+        db_feed = port.feeds.get("yahoo")
+        caps = db_feed.capabilities() if hasattr(db_feed, "capabilities") else {}
+        rule = str(caps.get("continuous_rule", "continuous")).replace("_", "-")
+        print(f"  feed      : Databento GLBX.MDP3 — {rule} continuous futures; live 1s/trades/depth; verified live roll refresh")
     print("  warming up each asset from history, then LIVE (futures wait for the CME open); Ctrl+C to stop\n")
     if args.open:
         import webbrowser
