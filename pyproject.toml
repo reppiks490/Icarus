@@ -19,7 +19,7 @@ dependencies = ["tzdata"]
 bridge = ["fastapi", "uvicorn", "httpx", "mcp>=2,<3", "python-dotenv>=1,<2"]
 dev = ["pytest"]
 ml = ["xgboost>=2.0"]
-marketdata = ["databento>=0.87,<1"]
+marketdata = ["databento>=0.87,<1", "python-dotenv>=1,<2"]
 
 [project.scripts]
 icarus-engine = "icarus_engine.cli:main"
