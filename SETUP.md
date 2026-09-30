@@ -71,10 +71,12 @@ Databento is optional and is the ICARUS path for genuine real-time CME data, 1-s
 ```powershell
 py -3 -m pip install -e ".[databento]"
 $env:DATABENTO_API_KEY="db-your-key-here"
+# Optional: v=volume front (default/closest to TradingView 1!), n=open-interest, c=calendar
+$env:DATABENTO_ROLL_RULE="v"
 icarus-plant start --assets NQ,MNQ,ES --feed databento
 ```
 
-The key stays in your local environment; do not commit it. Run `icarus-engine doctor --json` with `ICARUS_FEED=databento` to verify the SDK/key prerequisites without making a market-data request.
+The key stays in your local environment; do not commit it. All three roll rules remain automatic continuous contracts—no dated-contract maintenance. Run `icarus-engine doctor --json` with `ICARUS_FEED=databento` to verify the SDK/key prerequisites without making a market-data request.
 
 ## Not this
 
