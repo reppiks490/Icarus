@@ -3,12 +3,18 @@ from __future__ import annotations
 
 import importlib.util
 import inspect
+import json
+import threading
+import urllib.request
 from types import SimpleNamespace
 
 import pytest
 
+from icarus_engine.assets import resolve
 from icarus_engine.feeds.databento import Databento
-from icarus_engine.runtime import Journal, Portfolio
+from icarus_engine.runtime import AssetRunner, Journal, Portfolio, RunnerConfig
+from icarus_engine.server import serve
+from icarus_engine.strategy.inputs import Inputs
 from icarus_plant.supervisor import default_engine_service
 
 
@@ -369,3 +375,64 @@ def test_doctor_roll_rule_contract_matches_adapter(monkeypatch, tmp_path):
     item = {i["name"]: i for i in rep["items"]}["Databento adapter prerequisites"]
     assert item["ok"] is True
     assert "continuous=open-interest .n.0" in item["detail"]
+
+
+def test_engine_http_exposes_databento_capabilities_ticks_depth_and_mbo(tmp_path):
+    live = FakeLive({
+        "ohlcv-1s": [Ohlcv(4_000, 100, 101, 99, 100.5, 1)],
+        "trades": [Trade(4_000, 100.5, 2)],
+        "mbp-10": [Depth(4_001, 100.5, levels=[Level(100.25, 100.5)])],
+    })
+    snapshot_live = FakeLive({"mbo": [Depth(4_002, 100.5, flags=1)]})
+    feed = make_feed(lives=[live, snapshot_live])
+
+    journal = Journal(":memory:")
+    port = Portfolio(journal, str(tmp_path))
+    spec = resolve("NQ")
+    spec.chart_tf = "1"
+    runner = AssetRunner(
+        RunnerConfig(spec, Inputs(use_tide=False, use_eod_flat=False), base_dir=str(tmp_path)),
+        journal,
+        {"yahoo": feed},
+    )
+    runner.warm = True
+    port.runners["NQ"] = runner
+    port.order = ["NQ"]
+
+    srv = serve(port, 0, token="test-token", start=False)
+    thread = threading.Thread(target=srv.serve_forever, daemon=True)
+    thread.start()
+    base = f"http://127.0.0.1:{srv.server_port}"
+    try:
+        with urllib.request.urlopen(base + "/api/market-data/NQ1!/capabilities", timeout=5) as reply:
+            body = json.load(reply)
+            assert reply.status == 200
+            assert body["provider"] == "databento"
+            assert body["capabilities"]["ticks"] is True
+            assert body["capabilities"]["mbp_10"] is True
+
+        with urllib.request.urlopen(base + "/api/market-data/NQ1!/ticks?limit=10", timeout=5) as reply:
+            body = json.load(reply)
+            assert body["ticks"][-1]["price"] == 100.5
+            assert body["ticks"][-1]["size"] == 2
+
+        with urllib.request.urlopen(base + "/api/market-data/NQ1!/depth?schema=mbp-10&limit=10", timeout=5) as reply:
+            body = json.load(reply)
+            assert body["schema"] == "mbp-10"
+            assert body["events"][-1]["levels"][0]["bid_px"] == 100.25
+
+        req = urllib.request.Request(
+            base + "/admin/market-data/mbo-snapshot",
+            data=json.dumps({"asset": "NQ1!", "timeout": 0.2}).encode(),
+            headers={"Authorization": "Bearer test-token", "Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(req, timeout=5) as reply:
+            body = json.load(reply)
+            assert reply.status == 200
+            assert body["schema"] == "mbo"
+            assert body["snapshot"][-1]["order_id"] == 7
+    finally:
+        srv.shutdown()
+        srv.server_close()
+        thread.join(5)
+        journal.con.close()
