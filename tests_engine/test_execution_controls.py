@@ -353,6 +353,8 @@ def test_chart_configuration_refuses_to_invent_finer_bars(configured):
     port, r, path = configured
     before = path.read_bytes()
     r.subbars = [(Bar(k * 300, 100, 101, 99, 100, 1), 5) for k in range(6)]
+    caps = r.chart_capability_view()
+    assert "2" not in caps["available_from_cache"]
     with pytest.raises(ValueError, match="cannot be losslessly rebuilt"):
         port.rewarm_asset("TEST", {}, True, chart={"timeframe": "2"})
     assert path.read_bytes() == before
@@ -506,6 +508,9 @@ def test_paper_rewarm_uses_genuine_one_minute_tail_from_mixed_cache(configured):
     tail_start = 900
     one_minute_tail = [(Bar(tail_start + k * 60, 110 + k, 111 + k, 109 + k, 110 + k, 1), 1) for k in range(8)]
     r.subbars = five_minute_old + one_minute_tail
+    caps = r.chart_capability_view()
+    assert "1" in caps["available_from_cache"] and "2" in caps["available_from_cache"]
+    assert caps["cached_source_resolutions_minutes"] == [1, 5]
 
     port.rewarm_asset("TEST", {}, False, chart={"timeframe": "1"})
     assert r.chart_minutes == 1
