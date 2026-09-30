@@ -180,10 +180,10 @@ def test_assets_registry_and_spec_tokens():
     assert resolve("RTY1!").symbol == resolve("RTY=F").symbol == "RTY"
     assert resolve("RTY1!").multiplier == 50.0 and resolve("RTY1!").mintick == 0.10
     assert resolve("MGC1!").symbol == resolve("MGC=F").symbol == "MGC"
-    assert resolve("MGC1!").multiplier == 10.0
+    assert (resolve("MGC1!").tv_symbol, resolve("MGC1!").multiplier, resolve("MGC1!").mintick) == ("COMEX_MINI:MGC1!", 10.0, 0.10)
     assert resolve("SI1!").symbol == resolve("SI=F").symbol == "SI"
     assert resolve("SIL1!").symbol == resolve("SIL=F").symbol == "SIL"
-    assert resolve("SIL1!").multiplier == 1000.0
+    assert (resolve("SIL1!").tv_symbol, resolve("SIL1!").multiplier, resolve("SIL1!").mintick) == ("COMEX_MINI:SIL1!", 1000.0, 0.005)
     assert resolve("MBT1!").symbol == resolve("MBT=F").symbol == "MBT"
     gc = parse_spec("GC@10:NQ-10m-original", "20")
     assert gc.symbol == "GC" and gc.chart_tf == "10" and gc.preset == "NQ-10m-original" and gc.group == "metals" and gc.roll == "continuous"
