@@ -998,7 +998,7 @@ class AssetRunner:
         for k, t in enumerate(self.em.closed, 1):
             cum += t.profit
             side = "long" if t.direction > 0 else "short"
-            live = int((k - 1) >= self.live_closed_start)
+            live = int(self.live_from_ts is not None and (k - 1) >= self.live_closed_start)
             w.writerow([k, f"Entry {side}", time.strftime("%Y-%m-%d %H:%M", time.gmtime(t.entry_ts)), t.entry_comment or t.entry_id, f"{t.entry_price:.10g}", t.qty, "", "", live])
             w.writerow([k, f"Exit {side}", time.strftime("%Y-%m-%d %H:%M", time.gmtime(t.exit_ts)), t.exit_comment, f"{t.exit_price:.10g}", t.qty, f"{t.profit:.2f}", f"{cum:.2f}", live])
         return buf.getvalue()
@@ -1018,7 +1018,7 @@ class AssetRunner:
         mark = self.last_price or (self.bars[-1].c if self.bars else None)
         open_trades = [{"id": t.entry_id, "dir": t.direction, "qty": t.qty, "qty_orig": t.qty_orig, "entry": t.entry_price, "entry_ts": t.entry_ts,
                         "upl": (t.direction * (mark - t.entry_price) * t.qty * self.em.contract_size) if mark else None} for t in self.em.open]
-        live_trades = self.em.closed[self.live_closed_start:]
+        live_trades = self.em.closed[self.live_closed_start:] if self.live_from_ts is not None else []
         wins = sum(1 for t in self.em.closed if t.profit > 0)
         forming = self.chart_agg.forming_bar()
         return _clean({
@@ -1088,7 +1088,7 @@ class AssetRunner:
         for idx, t in enumerate(self.em.closed[start:], start=start):
             out.append({"id": t.entry_id, "dir": t.direction, "qty": t.qty, "entry": t.entry_price, "entry_ts": t.entry_ts, "exit": t.exit_price,
                         "exit_ts": t.exit_ts, "comment": t.exit_comment, "profit": t.profit, "kind": t.exit_kind,
-                        "live": idx >= self.live_closed_start})
+                        "live": self.live_from_ts is not None and idx >= self.live_closed_start})
         return out
 
 
