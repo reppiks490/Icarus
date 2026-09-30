@@ -29,7 +29,7 @@ Current global blockers:
 5. Correlation tooling correctly labels itself association-only, but must not be
    promoted into causal/directional authority.
 6. Event/calendar research has temporal and redundancy defects documented in the audit.
-7. Existing explicit contract-roll logic is NQ/ES/YM-oriented; GC/SI/PL/PA remain
+7. Futures runtime policy is continuous-only across registered futures assets; month-coded expiry/roll logic is not part of the active engine
    unsuitable for true term-structure research through continuous/front symbols alone.
 
 ## Current S4 work
