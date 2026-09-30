@@ -181,6 +181,13 @@ REGISTRY: Dict[str, AssetSpec] = {
 # executable prices unless the user explicitly selects fill_on="chart".
 for _spec in REGISTRY.values():
     _spec.chart_type = "heikin_ashi"
+    if _spec.kind == "futures":
+        if not _spec.ticker.endswith("=F"):
+            raise RuntimeError(f"{_spec.symbol}: futures provider symbol must be continuous (=F), got {_spec.ticker!r}")
+        if not _spec.tv_symbol.endswith("1!"):
+            raise RuntimeError(f"{_spec.symbol}: TradingView futures identity must be continuous (1!), got {_spec.tv_symbol!r}")
+        if _spec.roll != "continuous":
+            raise RuntimeError(f"{_spec.symbol}: futures contract policy must be continuous_only")
 
 ALIASES = {
     "NQ1!": "NQ", "NQ1": "NQ", "NQ=F": "NQ",
