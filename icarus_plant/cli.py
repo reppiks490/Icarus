@@ -114,27 +114,31 @@ def cmd_start(args: argparse.Namespace) -> int:
     for i in preflight(root):
         if i["level"] != "ok":
             print(f"  !! {i['name']} — {i['detail']}")
+    selected_feed = "file" if args.offline else args.feed
+    if args.offline and args.feed not in ("yahoo", "file"):
+        raise SystemExit("--offline cannot be combined with --feed databento")
     plant = Plant(root, repo=repo)
     plant.add(default_engine_service(
         root, repo, assets=args.assets, port=args.engine_port,
-        token=args.token, offline=args.offline, preset=args.preset,
+        token=args.token, offline=args.offline, preset=args.preset, feed=selected_feed,
     ))
     if args.bridge:
         plant.add(default_bridge_service(root, repo, port=args.bridge_port))
     os.environ["ICARUS_HOME"] = root
-    if args.offline:
-        os.environ["ICARUS_FEED"] = "file"
+    os.environ["ICARUS_FEED"] = selected_feed
     os.makedirs(os.path.join(root, "run"), exist_ok=True)
     with open(os.path.join(root, "run", "feed.txt"), "w", encoding="ascii") as fh:
-        fh.write("file\n" if args.offline else "yahoo\n")
+        fh.write(selected_feed + "\n")
     for svc in plant.services.values():
         plant.spawn(svc)
         print(f"started {svc.name} pid={svc.popen.pid if svc.popen else '?'}  {svc.health_url}")
     print(f"plant {root}  Ctrl+C to stop")
     print("  drop Supercharts CSVs in history/drop/ — ingested every few seconds")
     print("  CSVs already in Downloads/Desktop are pulled automatically (registry symbols only)")
-    if args.offline:
+    if selected_feed == "file":
         print("  ICARUS_FEED=file — Yahoo is not contacted; live bars only arrive via drop ingest")
+    elif selected_feed == "databento":
+        print("  ICARUS_FEED=databento — CME futures use Databento GLBX.MDP3 continuous live data")
     engine = plant.services.get("engine")
     if engine and engine.health_url:
         if wait_health(engine.health_url, timeout=45):
@@ -311,7 +315,8 @@ def main(argv: Optional[list] = None) -> int:
     add_root_option(s)
     s.add_argument("--assets", default="NQ")
     s.add_argument("--preset", default="NQ-20m-ultracoded")
-    s.add_argument("--offline", action="store_true", help="FileFeed only — no Yahoo. Live bars come from drop ingest.")
+    s.add_argument("--offline", action="store_true", help="FileFeed only — no network market feed. Alias for --feed file.")
+    s.add_argument("--feed", default="yahoo", choices=["yahoo", "file", "databento"], help="market-data feed for the engine; databento requires DATABENTO_API_KEY")
     s.add_argument("--bridge", action="store_true", help="also supervise icarus-bridge (needs fastapi)")
     s.add_argument("--engine-port", type=int, default=8791)
     s.add_argument("--bridge-port", type=int, default=8787)
