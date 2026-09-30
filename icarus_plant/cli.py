@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import os
 import shutil
@@ -117,6 +118,11 @@ def cmd_start(args: argparse.Namespace) -> int:
     selected_feed = "file" if args.offline else args.feed
     if args.offline and args.feed not in ("yahoo", "file"):
         raise SystemExit("--offline cannot be combined with --feed databento")
+    if selected_feed == "databento":
+        if importlib.util.find_spec("databento") is None:
+            raise SystemExit("Databento SDK is not installed. Run: py -3 -m pip install -e \".[databento]\"")
+        if not os.environ.get("DATABENTO_API_KEY"):
+            raise SystemExit("DATABENTO_API_KEY is required for --feed databento")
     plant = Plant(root, repo=repo)
     plant.add(default_engine_service(
         root, repo, assets=args.assets, port=args.engine_port,
