@@ -108,6 +108,7 @@ class FakeLive:
         self.callback = None
         self.exception_callback = None
         self.reconnect_callback = None
+        self.reconnect_exception_callback = None
         self.started = False
         self.stopped = False
         self._emitted = set()
@@ -129,8 +130,9 @@ class FakeLive:
         for rec in self.records_by_schema.get(schema, []):
             self.callback(rec)
 
-    def add_reconnect_callback(self, callback):
+    def add_reconnect_callback(self, callback, exception_callback=None):
         self.reconnect_callback = callback
+        self.reconnect_exception_callback = exception_callback
 
     def start(self):
         self.started = True
@@ -321,6 +323,9 @@ def test_async_live_exception_is_surfaced_to_engine():
     feed.recent_ex("NQ=F", 1)
     assert callable(live.exception_callback)
     live.exception_callback(RuntimeError("socket reader failed"))
+    # A subsequent valid market event must not erase an adapter callback failure
+    # before the synchronous poll path observes it.
+    feed._live_callback("NQ=F", Trade(7_001, 100.75, 1))
     with pytest.raises(RuntimeError, match="socket reader failed"):
         feed.trades("NQ=F")
 
@@ -357,6 +362,19 @@ def test_recent_ex_uses_historical_seed_when_new_live_session_is_idle(monkeypatc
     calls = len(hist.calls)
     feed.recent_ex("NQ=F", 60, since_ts=9_960)
     assert len(hist.calls) == calls
+
+
+def test_historical_seed_failure_surfaces_root_cause(monkeypatch):
+    class FailingHistorical(FakeHistorical):
+        def get_range(self, **kwargs):
+            self.calls.append(dict(kwargs))
+            raise PermissionError("historical entitlement denied")
+
+    monkeypatch.setattr("icarus_engine.feeds.databento.time.time", lambda: 10_020)
+    feed = make_feed(historical=FailingHistorical({}), lives=[FakeLive()])
+    feed._ready["NQ=F"].set()
+    with pytest.raises(RuntimeError, match="historical seed failed.*entitlement denied"):
+        feed.recent_ex("NQ=F", 60, since_ts=9_900)
 
 
 def test_mbo_snapshot_requires_last_flag_contract():
@@ -436,6 +454,7 @@ def test_reconnect_gap_is_published_in_feed_metadata():
     feed = make_feed(lives=[live])
     feed.recent_ex("NQ=F", 1)
     assert callable(live.reconnect_callback)
+    assert callable(live.reconnect_exception_callback)
     live.reconnect_callback("2026-09-30T10:00:00Z", "2026-09-30T10:00:02Z")
     meta = feed.meta("NQ=F")
     assert meta["reconnect_count"] == 1
