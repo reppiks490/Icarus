@@ -20,6 +20,7 @@ DATABENTO_API_KEY. Tests inject a fake SDK and never require credentials/network
 """
 from __future__ import annotations
 
+import bisect
 import collections
 import math
 import os
@@ -135,6 +136,7 @@ class Databento:
         self._depth: Dict[str, Deque[Dict[str, Any]]] = collections.defaultdict(
             lambda: collections.deque(maxlen=max(1000, int(max_depth)))
         )
+        self._depth_seen: Dict[str, set[Tuple[Any, ...]]] = collections.defaultdict(set)
         self._last_price: Dict[str, float] = {}
         self._last_price_order_ns: Dict[str, int] = {}
         self._feed_time: Dict[str, int] = {}
@@ -266,6 +268,52 @@ class Databento:
             ts_recv_ns=ts_recv_ns,
         )
 
+    def _upsert_second_bar_locked(self, symbol: str, bar: Bar) -> bool:
+        """Insert/replace one second bar in timestamp order, including replay backfill."""
+        q = self._second_bars[symbol]
+        if not q or bar.ts > q[-1].ts:
+            q.append(bar)
+            return True
+        if bar.ts == q[-1].ts:
+            q[-1] = bar
+            return True
+        rows = list(q)
+        stamps = [row.ts for row in rows]
+        pos = bisect.bisect_left(stamps, bar.ts)
+        if pos < len(rows) and rows[pos].ts == bar.ts:
+            rows[pos] = bar
+        else:
+            rows.insert(pos, bar)
+        if q.maxlen is not None and len(rows) > q.maxlen:
+            rows = rows[-q.maxlen:]
+        q.clear()
+        q.extend(rows)
+        return True
+
+    @staticmethod
+    def _depth_key(row: Dict[str, Any]) -> Tuple[Any, ...]:
+        return (
+            row.get("schema"),
+            row.get("ts_recv_ns"),
+            row.get("ts_event_ns"),
+            row.get("sequence"),
+            row.get("action"),
+            row.get("order_id"),
+            row.get("price"),
+        )
+
+    def _append_depth_locked(self, symbol: str, row: Dict[str, Any]) -> bool:
+        key = self._depth_key(row)
+        seen = self._depth_seen[symbol]
+        if key in seen:
+            return False
+        q = self._depth[symbol]
+        if q.maxlen is not None and len(q) >= q.maxlen and q:
+            seen.discard(self._depth_key(q[0]))
+        q.append(row)
+        seen.add(key)
+        return True
+
     @staticmethod
     def _trade_key(tick: TradeTick) -> Tuple[int, float, int, str, int]:
         return (tick.ts_event_ns, tick.price, tick.size, tick.side, tick.sequence)
@@ -290,11 +338,14 @@ class Databento:
     @classmethod
     def _event_record(cls, record: Any) -> Dict[str, Any]:
         ts_ns = int(getattr(record, "ts_event")) if hasattr(record, "ts_event") else None
+        ts_recv_raw = getattr(record, "ts_recv", None)
+        ts_recv_ns = int(ts_recv_raw) if ts_recv_raw is not None else ts_ns
         levels = getattr(record, "levels", None)
         schema = "mbp-10" if levels is not None else ("mbo" if hasattr(record, "order_id") else "unknown")
         out: Dict[str, Any] = {
             "ts_event": (ts_ns // 1_000_000_000) if ts_ns is not None else None,
             "ts_event_ns": ts_ns,
+            "ts_recv_ns": ts_recv_ns,
             "schema": schema,
             "type": type(record).__name__,
         }
@@ -446,17 +497,7 @@ class Databento:
             # OHLCV record
             if all(hasattr(record, key) for key in ("open", "high", "low", "close", "volume")):
                 b = self._ohlcv_record(record)
-                q = self._second_bars[symbol]
-                accepted = False
-                if not q or b.ts > q[-1].ts:
-                    q.append(b)
-                    accepted = True
-                elif b.ts == q[-1].ts:
-                    q[-1] = b
-                    accepted = True
-                # Older replay rows are already buffered; ignore them rather than
-                # duplicating one-second volume or rewinding the live mark.
-                if accepted:
+                if self._upsert_second_bar_locked(symbol, b):
                     bar_order_ns = (int(b.ts) + 1) * 1_000_000_000 - 1
                     if bar_order_ns >= self._last_price_order_ns.get(symbol, 0):
                         self._last_price[symbol] = b.c
@@ -472,8 +513,8 @@ class Databento:
                             self._last_price_order_ns[symbol] = tick.ts_recv_ns
                         market_event = True
                 if hasattr(record, "levels") or hasattr(record, "order_id"):
-                    self._depth[symbol].append(self._event_record(record))
-                    market_event = True
+                    if self._append_depth_locked(symbol, self._event_record(record)):
+                        market_event = True
             if market_event:
                 self._feed_time[symbol] = max(now_sec, self._feed_time.get(symbol, 0))
                 self._ready[symbol].set()
@@ -625,7 +666,7 @@ class Databento:
             if hasattr(record, "levels") or hasattr(record, "order_id"):
                 row = self._event_record(record)
                 with self._lock:
-                    self._depth[key].append(row)
+                    self._append_depth_locked(key, row)
                     if not self._depth_broken:
                         self._depth_errors.pop(key, None)
                     self._depth_ready[(key, str(row.get("schema") or ""))].set()
@@ -1102,6 +1143,7 @@ class Databento:
             rows = list(self._trades[str(symbol)])
         if since_ts is not None:
             rows = [x for x in rows if x.ts_event >= int(since_ts)]
+        rows.sort(key=lambda x: (x.ts_recv_ns, x.ts_event_ns, x.sequence))
         return rows[-max(0, int(limit)):]
 
     def depth_events(self, symbol: str, *, schema: str = "mbp-10", limit: int = 2000) -> List[Dict[str, Any]]:
@@ -1117,6 +1159,11 @@ class Databento:
         self._raise_depth_error(key)
         with self._lock:
             rows = [row for row in self._depth[key] if row.get("schema") == schema]
+        rows.sort(key=lambda row: (
+            int(row.get("ts_recv_ns") or row.get("ts_event_ns") or 0),
+            int(row.get("ts_event_ns") or 0),
+            int(row.get("sequence") or 0),
+        ))
         return rows[-max(0, int(limit)):]
 
     def mbo_snapshot(self, symbol: str, timeout: float = 5.0) -> List[Dict[str, Any]]:
