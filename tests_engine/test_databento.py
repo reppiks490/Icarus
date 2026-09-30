@@ -5,6 +5,7 @@ import importlib.util
 import inspect
 import json
 import threading
+import urllib.error
 import urllib.request
 from types import SimpleNamespace
 
@@ -242,6 +243,20 @@ def test_historical_one_second_and_lossless_resampling_use_continuous_stype():
     assert call["schema"] == "ohlcv-1s"
     assert call["symbols"] == "NQ.v.0"
     assert call["stype_in"] == "continuous"
+
+
+@pytest.mark.parametrize("minutes", [1, 2, 5, 10, 20, 30])
+def test_requested_primary_minute_timeframes_are_losslessly_resampled(minutes):
+    rows = [Ohlcv(3_600 + 60 * k, 100 + k, 101 + k, 99 + k, 100.5 + k, 1) for k in range(60)]
+    hist = FakeHistorical({"ohlcv-1m": rows})
+    feed = make_feed(historical=hist)
+    granularity = minutes * 60
+    bars = feed.candles("NQ=F", granularity, 3_600, 7_200)
+    assert len(bars) == 60 // minutes
+    assert all(b.ts % granularity == 0 for b in bars)
+    assert sum(b.v for b in bars) == 60
+    assert hist.calls[-1]["schema"] == "ohlcv-1m"
+    assert hist.calls[-1]["symbols"] == "NQ.v.0"
 
 
 def test_historical_minute_request_uses_native_ohlcv_1m():
@@ -497,6 +512,11 @@ def test_engine_http_exposes_databento_capabilities_ticks_depth_and_mbo(tmp_path
             body = json.load(reply)
             assert body["schema"] == "mbp-10"
             assert body["events"][-1]["levels"][0]["bid_px"] == 100.25
+
+        with pytest.raises(urllib.error.HTTPError) as bad_schema:
+            urllib.request.urlopen(base + "/api/market-data/NQ1!/depth?schema=garbage", timeout=5)
+        assert bad_schema.value.code == 400
+        assert "schema must be mbp-10 or mbo" in bad_schema.value.read().decode()
 
         req = urllib.request.Request(
             base + "/admin/market-data/mbo-snapshot",
