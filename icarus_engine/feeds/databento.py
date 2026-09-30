@@ -121,7 +121,15 @@ class Databento:
         self._reconnect_gaps: Dict[str, Deque[Dict[str, str]]] = collections.defaultdict(
             lambda: collections.deque(maxlen=100)
         )
+        # Databento documents that an already-running continuous subscription is
+        # not automatically remapped when the smart symbol rolls. Cache the
+        # no-cost daily symbology resolution and rotate only when its instrument
+        # ID changes.
+        self._resolution_day: Dict[str, str] = {}
+        self._resolved_instrument: Dict[str, int] = {}
+        self._roll_count: Dict[str, int] = collections.defaultdict(int)
         self.requests = 0
+        self.resolution_requests = 0
 
     @staticmethod
     def _load_sdk():
@@ -350,6 +358,98 @@ class Databento:
         with self._lock:
             return dict(self._meta.get(symbol, {}))
 
+    @staticmethod
+    def _utc_day() -> str:
+        return datetime.now(timezone.utc).date().isoformat()
+
+    def _resolve_continuous_instrument(self, symbol: str, day: str) -> Optional[int]:
+        """Resolve today's smart symbol to its actual instrument ID.
+
+        Historical.symbology.resolve is free and is the authoritative way to
+        detect a Databento continuous-contract roll. Test doubles without the
+        symbology service return None and retain the legacy mocked behavior.
+        """
+        symbology = getattr(self._historical, "symbology", None)
+        resolver = getattr(symbology, "resolve", None)
+        if not callable(resolver):
+            return None
+        continuous = self.continuous_symbol(symbol, self.roll_rule)
+        self.resolution_requests += 1
+        try:
+            result = resolver(
+                dataset=self.dataset,
+                symbols=continuous,
+                stype_in="continuous",
+                stype_out="instrument_id",
+                start_date=day,
+            )
+        except Exception as ex:
+            raise RuntimeError(
+                f"Databento continuous symbology resolution failed for {continuous} on {day}: "
+                f"{type(ex).__name__}: {ex}"
+            ) from ex
+        rows = (result.get("result", {}) or {}).get(continuous, []) if isinstance(result, dict) else []
+        if not rows:
+            message = result.get("message", "no mapping") if isinstance(result, dict) else "invalid response"
+            raise RuntimeError(f"Databento continuous symbology did not resolve {continuous} on {day}: {message}")
+        try:
+            return int(rows[-1]["s"])
+        except (KeyError, TypeError, ValueError) as ex:
+            raise RuntimeError(f"Databento returned an invalid instrument mapping for {continuous} on {day}") from ex
+
+    def _refresh_continuous_mapping(self, symbol: str) -> Tuple[set[str], Optional[int]]:
+        """Rotate a live session when Databento's daily smart-symbol mapping changes.
+
+        Returns the schemas/start timestamp that a replacement session should
+        replay. Databento has no unsubscribe operation, so a clean reconnect is
+        required to drop the old physical contract.
+        """
+        key = str(symbol)
+        day = self._utc_day()
+        with self._lock:
+            if self._resolution_day.get(key) == day:
+                return set(), None
+        current = self._resolve_continuous_instrument(symbol, day)
+        if current is None:
+            return set(), None
+        with self._lock:
+            # Another caller may have completed the same daily check while the
+            # resolver request was in flight.
+            if self._resolution_day.get(key) == day:
+                return set(), None
+            previous = self._resolved_instrument.get(key)
+            self._resolution_day[key] = day
+            self._resolved_instrument[key] = current
+            live = key in self._live_started
+            schemas = set(self._subscriptions.get(key, set()))
+            feed_time = int(self._feed_time.get(key, 0))
+        if not live or previous is None or previous == current:
+            with self._lock:
+                meta = dict(self._meta.get(key, {}))
+                meta.update({"resolution_date": day, "resolved_instrument_id": current})
+                self._meta[key] = meta
+            return set(), None
+
+        # Preserve only a short replay overlap. Databento recommends replay +
+        # deduplication after reconnect; ICARUS's chart engine already ignores
+        # sub-bars at/before its committed timestamp, while raw ticks retain their
+        # nanosecond sequence for callers that need exact dedupe.
+        now = int(time.time())
+        replay_from = max(now - 23 * 3600, feed_time - 2) if feed_time else None
+        self.stop_live(key)
+        with self._lock:
+            self._roll_count[key] += 1
+            meta = dict(self._meta.get(key, {}))
+            meta.update({
+                "resolution_date": day,
+                "resolved_instrument_id": current,
+                "previous_instrument_id": previous,
+                "roll_count": self._roll_count[key],
+                "last_roll_ts": now,
+            })
+            self._meta[key] = meta
+        return schemas, replay_from
+
     def _live_callback(self, symbol: str, record: Any) -> None:
         now_sec = self._ts_sec(record) if hasattr(record, "ts_event") else int(time.time())
         with self._lock:
@@ -361,13 +461,30 @@ class Databento:
                 err = str(getattr(record, "err", "") or "Databento live error")
                 self._errors[symbol] = f"Databento live error code={code}: {err}"
                 self._ready[symbol].set()
-                self._meta[symbol] = {
+                meta = dict(self._meta.get(symbol, {}))
+                meta.update({
                     "regularMarketTime": self._feed_time.get(symbol, 0),
                     "provider": "databento",
                     "dataset": self.dataset,
                     "continuous_symbol": self.continuous_symbol(symbol, self.roll_rule),
                     "live_error": self._errors[symbol],
-                }
+                })
+                self._meta[symbol] = meta
+                return
+            # SymbolMappingMsg is the live proof of which physical contract the
+            # smart symbol resolved to. It is metadata, not market readiness.
+            if all(hasattr(record, key) for key in ("stype_in_symbol", "stype_out_symbol", "instrument_id")):
+                meta = dict(self._meta.get(symbol, {}))
+                meta.update({
+                    "provider": "databento",
+                    "dataset": self.dataset,
+                    "continuous_symbol": str(getattr(record, "stype_in_symbol")),
+                    "active_contract": str(getattr(record, "stype_out_symbol")),
+                    "active_instrument_id": int(getattr(record, "instrument_id")),
+                    "mapping_start_ts": int(getattr(record, "start_ts", 0) or 0),
+                    "mapping_end_ts": int(getattr(record, "end_ts", 0) or 0),
+                })
+                self._meta[symbol] = meta
                 return
             market_event = False
             # OHLCV record
@@ -399,14 +516,18 @@ class Databento:
                 self._feed_time[symbol] = max(now_sec, self._feed_time.get(symbol, 0))
                 self._ready[symbol].set()
                 self._errors.pop(symbol, None)
-            self._meta[symbol] = {
+            meta = dict(self._meta.get(symbol, {}))
+            meta.update({
                 "regularMarketTime": self._feed_time.get(symbol, 0),
                 "provider": "databento",
                 "dataset": self.dataset,
                 "continuous_symbol": self.continuous_symbol(symbol, self.roll_rule),
-            }
+            })
             if symbol in self._errors:
-                self._meta[symbol]["live_error"] = self._errors[symbol]
+                meta["live_error"] = self._errors[symbol]
+            else:
+                meta.pop("live_error", None)
+            self._meta[symbol] = meta
 
     def _record_live_exception(self, symbol: str, ex: BaseException) -> None:
         """Publish asynchronous SDK failures to the synchronous engine poll path."""
@@ -446,6 +567,10 @@ class Databento:
     ) -> Any:
         key = str(symbol)
         desired = {str(s) for s in schemas}
+        rollover_schemas, rollover_start = self._refresh_continuous_mapping(symbol)
+        desired.update(rollover_schemas)
+        if rollover_start is not None:
+            start_ts = rollover_start if start_ts is None else min(int(start_ts), int(rollover_start))
         if include_depth:
             if include_depth not in ("mbp-10", "mbo"):
                 raise ValueError("include_depth must be 'mbp-10' or 'mbo'")
