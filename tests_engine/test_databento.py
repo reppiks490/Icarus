@@ -94,6 +94,7 @@ class FakeLive:
         self.records_by_schema = records_by_schema or {}
         self.subscriptions = []
         self.callback = None
+        self.reconnect_callback = None
         self.started = False
         self.stopped = False
         self._emitted = set()
@@ -113,6 +114,9 @@ class FakeLive:
         self._emitted.add(schema)
         for rec in self.records_by_schema.get(schema, []):
             self.callback(rec)
+
+    def add_reconnect_callback(self, callback):
+        self.reconnect_callback = callback
 
     def start(self):
         self.started = True
@@ -278,3 +282,46 @@ def test_real_databento_sdk_is_installed_when_extra_is_present():
     params = inspect.signature(db.Live.subscribe).parameters
     for name in ("dataset", "schema", "symbols", "stype_in", "start", "snapshot"):
         assert name in params
+
+
+def test_real_live_factory_requests_heartbeats_reconnect_and_no_skip():
+    captured = {}
+
+    class SDK(FakeSDK):
+        @staticmethod
+        def Live(**kwargs):
+            captured.update(kwargs)
+            return FakeLive({"ohlcv-1s": [Ohlcv(1000, 100, 101, 99, 100.5)]})
+
+    feed = Databento(api_key="db-test", sdk=SDK, historical=FakeHistorical({}))
+    feed.recent_ex("NQ=F", 1)
+    assert captured["heartbeat_interval_s"] == 10
+    assert captured["reconnect_policy"] == "reconnect"
+    assert captured["slow_reader_behavior"] == "warn"
+
+
+def test_reconnect_gap_is_published_in_feed_metadata():
+    live = FakeLive({"ohlcv-1s": [Ohlcv(1000, 100, 101, 99, 100.5)]})
+    feed = make_feed(lives=[live])
+    feed.recent_ex("NQ=F", 1)
+    assert callable(live.reconnect_callback)
+    live.reconnect_callback("2026-09-30T10:00:00Z", "2026-09-30T10:00:02Z")
+    meta = feed.meta("NQ=F")
+    assert meta["reconnect_count"] == 1
+    assert meta["last_reconnect_gap"]["previous"].endswith("10:00:00Z")
+    assert meta["last_reconnect_gap"]["resumed"].endswith("10:00:02Z")
+
+
+def test_portfolio_stop_closes_databento_live_sessions(monkeypatch, tmp_path):
+    class Feed:
+        def __init__(self):
+            self.stops = 0
+        def stop_live(self):
+            self.stops += 1
+
+    feed = Feed()
+    monkeypatch.setenv("ICARUS_FEED", "databento")
+    monkeypatch.setattr("icarus_engine.runtime.Databento", lambda: feed)
+    port = Portfolio(Journal(":memory:"), str(tmp_path))
+    port.stop()
+    assert feed.stops == 1
