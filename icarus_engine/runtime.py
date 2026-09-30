@@ -1292,6 +1292,20 @@ class Portfolio:
 
     def stop(self) -> None:
         self._stop.set()
+        # Paid/live adapters own background network sessions. Close each distinct
+        # feed once so supervised restarts do not leak Databento connections.
+        seen = set()
+        for feed in self.feeds.values():
+            if id(feed) in seen:
+                continue
+            seen.add(id(feed))
+            try:
+                if hasattr(feed, "stop_live"):
+                    feed.stop_live()
+                elif hasattr(feed, "close"):
+                    feed.close()
+            except Exception as ex:
+                self.journal.log("WARN", f"feed shutdown: {type(ex).__name__}: {ex}")
 
     # ── views ──
     def equity(self) -> float:
