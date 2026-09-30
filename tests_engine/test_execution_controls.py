@@ -318,3 +318,39 @@ def test_chart_configuration_refuses_to_invent_finer_bars(configured):
         port.rewarm_asset("TEST", {}, True, chart={"timeframe": "2"})
     assert path.read_bytes() == before
     assert r.chart_minutes == 1
+
+
+def test_failed_configuration_replay_never_persists_candidate(configured, monkeypatch):
+    port, r, path = configured
+    r.subbars = [(Bar(k * 60, 100 + k, 101 + k, 99 + k, 100.5 + k, 1), 1) for k in range(12)]
+    before_file = path.read_bytes()
+    before_spec = asdict(r.spec)
+    original = r.rewarm
+    calls = 0
+
+    def fail_once(inputs, sources=None):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise RuntimeError("synthetic replay failure")
+        return original(inputs, sources)
+
+    monkeypatch.setattr(r, "rewarm", fail_once)
+    with pytest.raises(RuntimeError, match="synthetic replay failure"):
+        port.rewarm_asset("TEST", {"tp1_pts": 80}, True, chart={"timeframe": "2", "chart_type": "heikin_ashi"})
+    assert path.read_bytes() == before_file
+    assert asdict(r.spec) == before_spec
+    assert r.chart_minutes == 1
+
+
+def test_reset_removes_persisted_chart_meta_and_restores_baseline(configured):
+    port, r, path = configured
+    r.subbars = [(Bar(k * 60, 100 + k, 101 + k, 99 + k, 100.5 + k, 1), 1) for k in range(12)]
+    port.rewarm_asset("TEST", {}, True, chart={"timeframe": "2", "chart_type": "heikin_ashi"})
+    assert r.chart_minutes == 2 and r.spec.chart_type == "heikin_ashi"
+    assert json.loads(path.read_text())["_meta"]["timeframe"] == "2"
+
+    port.rewarm_asset("TEST", reset=True)
+    assert not path.exists()
+    assert r.chart_minutes == 1
+    assert r.spec.chart_tf == "1" and r.spec.chart_type == "real"
