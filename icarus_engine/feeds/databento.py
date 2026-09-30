@@ -102,7 +102,10 @@ class Databento:
         self._trades: Dict[str, Deque[TradeTick]] = collections.defaultdict(
             lambda: collections.deque(maxlen=max(1000, int(max_trades)))
         )
-        self._depth: Dict[str, Deque[Dict[str, Any]]] = collections.defaultdict(
+        # Keep each market-depth schema in its own bounded queue. Filtering one
+        # shared queue on read is not sufficient because a busy MBO stream could
+        # evict MBP-10 rows (or vice versa) before the caller ever sees them.
+        self._depth: Dict[Tuple[str, str], Deque[Dict[str, Any]]] = collections.defaultdict(
             lambda: collections.deque(maxlen=max(1000, int(max_depth)))
         )
         self._last_price: Dict[str, float] = {}
@@ -368,14 +371,23 @@ class Databento:
                 self._last_price[symbol] = b.c
                 market_event = True
             else:
-                # MBO trade records are both trades and order-book events; keep both views.
-                if hasattr(record, "price") and hasattr(record, "size") and str(getattr(record, "action", "T") or "T") == "T":
+                # The trades, MBP-10 and MBO schemas can describe the same economic
+                # trade. Keep the public raw-tick stream sourced only from the
+                # Databento trades schema; otherwise subscribing to depth would
+                # double-count MBO/MBP trade actions.
+                depth_schema: Optional[str] = None
+                if hasattr(record, "levels"):
+                    depth_schema = "mbp-10"
+                elif hasattr(record, "order_id"):
+                    depth_schema = "mbo"
+                if depth_schema is not None:
+                    event = self._event_record(record)
+                    self._depth[(symbol, depth_schema)].append(event)
+                    market_event = True
+                elif hasattr(record, "price") and hasattr(record, "size") and str(getattr(record, "action", "T") or "T") == "T":
                     tick = self._trade_record(record)
                     self._trades[symbol].append(tick)
                     self._last_price[symbol] = tick.price
-                    market_event = True
-                if hasattr(record, "levels") or hasattr(record, "order_id"):
-                    self._depth[symbol].append(self._event_record(record))
                     market_event = True
             if market_event:
                 self._feed_time[symbol] = max(now_sec, self._feed_time.get(symbol, 0))
@@ -389,6 +401,16 @@ class Databento:
             }
             if symbol in self._errors:
                 self._meta[symbol]["live_error"] = self._errors[symbol]
+
+    def _record_live_exception(self, symbol: str, ex: BaseException) -> None:
+        """Publish asynchronous SDK failures to the synchronous engine poll path."""
+        key = str(symbol)
+        with self._lock:
+            self._errors[key] = f"Databento live exception: {type(ex).__name__}: {ex}"
+            self._ready[key].set()
+            meta = dict(self._meta.get(key, {}))
+            meta["live_error"] = self._errors[key]
+            self._meta[key] = meta
 
     def _raise_live_error(self, symbol: str) -> None:
         with self._lock:
@@ -443,13 +465,29 @@ class Databento:
             if start_ts is not None:
                 # Live replay is limited by Databento to the recent intraday window.
                 kwargs["start"] = self._iso(start_ts)
-            for schema in sorted(desired):
-                client.subscribe(schema=schema, **kwargs)
-                self._subscriptions[key].add(schema)
-            client.add_callback(lambda rec, s=key: self._live_callback(s, rec))
-            if hasattr(client, "add_reconnect_callback"):
-                client.add_reconnect_callback(lambda previous, resumed, s=key: self._record_reconnect(s, previous, resumed))
-            client.start()
+            try:
+                for schema in sorted(desired):
+                    client.subscribe(schema=schema, **kwargs)
+                    self._subscriptions[key].add(schema)
+                record_cb = lambda rec, s=key: self._live_callback(s, rec)
+                error_cb = lambda ex, s=key: self._record_live_exception(s, ex)
+                try:
+                    client.add_callback(record_cb, exception_callback=error_cb)
+                except TypeError:
+                    # Some older SDK shims/fakes accept the exception callback only
+                    # positionally. Support both without weakening real SDK behavior.
+                    client.add_callback(record_cb, error_cb)
+                if hasattr(client, "add_reconnect_callback"):
+                    client.add_reconnect_callback(lambda previous, resumed, s=key: self._record_reconnect(s, previous, resumed))
+                client.start()
+            except Exception:
+                try:
+                    client.stop()
+                except Exception:
+                    pass
+                self._subscriptions.pop(key, None)
+                self._ready.pop(key, None)
+                raise
             self._live[key] = client
             self._live_started.add(key)
             return client
@@ -486,13 +524,43 @@ class Databento:
         self.start_live(symbol, start_ts=start)
         self._ready[str(symbol)].wait(timeout=2.0)
         self._raise_live_error(symbol)
+        key = str(symbol)
         with self._lock:
-            rows = list(self._second_bars[str(symbol)])
-            ft = int(self._feed_time.get(str(symbol), 0))
-            px = self._last_price.get(str(symbol))
+            rows = list(self._second_bars[key])
+            ft = int(self._feed_time.get(key, 0))
+            px = self._last_price.get(key)
         if since_ts is not None:
             rows = [b for b in rows if b.ts >= int(since_ts) - max(2, int(granularity))]
         bars = rows if int(granularity) == 1 else self._aggregate(rows, int(granularity))
+        if bars or ft:
+            return bars, ft, px
+
+        # A fresh live session can legitimately be silent at a CME close, during
+        # maintenance, or while reconnecting. Seed the feed clock/mark once from
+        # Historical instead of reporting a false "no clock and no bars" failure
+        # on every poll. _feed_time prevents repeated historical requests.
+        g = int(granularity)
+        hist_start = int(since_ts or (now - max(900, g * 10)))
+        try:
+            bars = self.candles(symbol, g, max(0, hist_start - 2 * g), now)
+        except Exception:
+            bars = []
+        if bars:
+            px = bars[-1].c
+            ft = bars[-1].ts + g
+            with self._lock:
+                self._last_price[key] = px
+                self._feed_time[key] = max(self._feed_time.get(key, 0), ft)
+                meta = dict(self._meta.get(key, {}))
+                meta.update({
+                    "regularMarketTime": self._feed_time[key],
+                    "provider": "databento",
+                    "dataset": self.dataset,
+                    "continuous_symbol": self.continuous_symbol(symbol, self.roll_rule),
+                    "historical_seed": True,
+                })
+                self._meta[key] = meta
+                ft = self._feed_time[key]
         return bars, ft, px
 
     def recent(self, symbol: str, granularity: int = 60) -> List[Bar]:
@@ -520,7 +588,7 @@ class Databento:
         self.start_live(symbol, include_depth=schema)
         self._raise_live_error(symbol)
         with self._lock:
-            rows = [row for row in self._depth[str(symbol)] if row.get("schema") == schema]
+            rows = list(self._depth[(str(symbol), schema)])
         return rows[-max(0, int(limit)):]
 
     def mbo_snapshot(self, symbol: str, timeout: float = 5.0) -> List[Dict[str, Any]]:
@@ -529,7 +597,11 @@ class Databento:
         done = threading.Event()
         rows: List[Dict[str, Any]] = []
         error: List[str] = []
-        last_flag = int(getattr(getattr(self._sdk, "RecordFlags", object), "F_LAST", 0) or 0)
+        flags_enum = getattr(self._sdk, "RecordFlags", None)
+        last_flag = int(getattr(flags_enum, "F_LAST", 0) or 0)
+        snapshot_flag = int(getattr(flags_enum, "F_SNAPSHOT", 0) or 0)
+        if not last_flag:
+            raise RuntimeError("Databento SDK does not expose RecordFlags.F_LAST; refusing an unbounded MBO snapshot")
 
         def callback(record: Any) -> None:
             if hasattr(record, "err"):
@@ -538,9 +610,18 @@ class Databento:
                 error.append(f"Databento MBO snapshot error code={code}: {err}")
                 done.set()
                 return
-            rows.append(self._event_record(record))
+            # Snapshot subscriptions also emit symbol/system messages and can
+            # immediately continue with realtime records. Return only MBO order
+            # records that belong to the snapshot itself.
+            if not hasattr(record, "order_id"):
+                return
             flags = int(getattr(record, "flags", 0) or 0)
-            if last_flag and flags & last_flag:
+            if snapshot_flag and not (flags & snapshot_flag):
+                return
+            row = self._event_record(record)
+            row["snapshot"] = True
+            rows.append(row)
+            if flags & last_flag:
                 done.set()
 
         client.subscribe(
@@ -550,16 +631,22 @@ class Databento:
             stype_in="continuous",
             snapshot=True,
         )
-        client.add_callback(callback)
-        client.start()
+        snapshot_error = lambda ex: (error.append(f"Databento MBO snapshot exception: {type(ex).__name__}: {ex}"), done.set())
         try:
+            client.add_callback(callback, exception_callback=snapshot_error)
+        except TypeError:
+            client.add_callback(callback, snapshot_error)
+        try:
+            client.start()
             done.wait(max(0.1, float(timeout)))
         finally:
-            client.stop()
-            if hasattr(client, "block_for_close"):
-                client.block_for_close(timeout=5.0)
+            try:
+                client.stop()
+            finally:
+                if hasattr(client, "block_for_close"):
+                    client.block_for_close(timeout=5.0)
         if error:
             raise RuntimeError(error[0])
-        if last_flag and not done.is_set():
+        if not done.is_set():
             raise TimeoutError(f"Databento MBO snapshot timed out for {symbol}")
         return rows
