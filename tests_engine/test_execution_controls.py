@@ -563,12 +563,9 @@ def test_engine_http_api_resolves_common_asset_aliases(tmp_path):
     thread = threading.Thread(target=srv.serve_forever, daemon=True)
     thread.start()
     try:
-        conn = HTTPConnection("127.0.0.1", srv.server_port, timeout=5)
-        conn.request("GET", "/api/inputs/NQ1!", headers={"Host": "127.0.0.1"})
-        reply = conn.getresponse()
-        body = json.loads(reply.read())
-        conn.close()
-        assert reply.status == 200 and body["asset"] == "NQ"
+        with urllib.request.urlopen(f"http://127.0.0.1:{srv.server_port}/api/inputs/NQ1!", timeout=5) as reply:
+            body = json.load(reply)
+            assert reply.status == 200 and body["asset"] == "NQ"
 
         req = urllib.request.Request(
             f"http://127.0.0.1:{srv.server_port}/admin/pause",
