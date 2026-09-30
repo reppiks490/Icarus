@@ -96,6 +96,7 @@ class Databento:
         self._lock = threading.RLock()
         self._session_lock = threading.RLock()
         self._depth_session_lock = threading.RLock()
+        self._snapshot_lock = threading.Lock()
         # Core OHLCV/trades share one Live session per Databento dataset. Optional
         # MBP-10/MBO use a second isolated shared session so a fatal depth-subscription
         # error cannot terminate the primary price/tape transport.
@@ -1120,6 +1121,12 @@ class Databento:
 
     def mbo_snapshot(self, symbol: str, timeout: float = 5.0) -> List[Dict[str, Any]]:
         """Return a live MBO snapshot. Databento marks the final snapshot record F_LAST."""
+        with self._snapshot_lock:
+            return self._mbo_snapshot_locked(symbol, timeout)
+
+    def _mbo_snapshot_locked(self, symbol: str, timeout: float) -> List[Dict[str, Any]]:
+        # Snapshot requests use a temporary third session. Serialize them so concurrent
+        # HTTP/MCP callers cannot multiply sessions or race close/timeout handling.
         client = self._live_factory()
         done = threading.Event()
         rows: List[Dict[str, Any]] = []
