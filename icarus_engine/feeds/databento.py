@@ -318,21 +318,26 @@ class Databento:
     def _live_callback(self, symbol: str, record: Any) -> None:
         now_sec = self._ts_sec(record) if hasattr(record, "ts_event") else int(time.time())
         with self._lock:
-            self._feed_time[symbol] = max(now_sec, self._feed_time.get(symbol, 0))
+            market_event = False
             # OHLCV record
             if all(hasattr(record, key) for key in ("open", "high", "low", "close", "volume")):
                 b = self._ohlcv_record(record)
                 self._second_bars[symbol].append(b)
                 self._last_price[symbol] = b.c
+                market_event = True
             else:
                 # MBO trade records are both trades and order-book events; keep both views.
                 if hasattr(record, "price") and hasattr(record, "size") and str(getattr(record, "action", "T") or "T") == "T":
                     tick = self._trade_record(record)
                     self._trades[symbol].append(tick)
                     self._last_price[symbol] = tick.price
+                    market_event = True
                 if hasattr(record, "levels") or hasattr(record, "order_id"):
                     self._depth[symbol].append(self._event_record(record))
-            self._ready[symbol].set()
+                    market_event = True
+            if market_event:
+                self._feed_time[symbol] = max(now_sec, self._feed_time.get(symbol, 0))
+                self._ready[symbol].set()
             self._meta[symbol] = {
                 "regularMarketTime": self._feed_time[symbol],
                 "provider": "databento",
