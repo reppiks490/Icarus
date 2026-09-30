@@ -115,6 +115,9 @@ class Databento:
         self._feed_time: Dict[str, int] = {}
         self._meta: Dict[str, Dict[str, Any]] = {}
         self._errors: Dict[str, str] = {}
+        # Parser/callback exceptions indicate an adapter correctness failure, not a
+        # transient gateway message. Keep them sticky until the session is stopped.
+        self._callback_errors: Dict[str, str] = {}
         self._reconnect_gaps: Dict[str, Deque[Dict[str, str]]] = collections.defaultdict(
             lambda: collections.deque(maxlen=100)
         )
@@ -409,15 +412,18 @@ class Databento:
         """Publish asynchronous SDK failures to the synchronous engine poll path."""
         key = str(symbol)
         with self._lock:
-            self._errors[key] = f"Databento live exception: {type(ex).__name__}: {ex}"
+            msg = f"Databento callback exception: {type(ex).__name__}: {ex}"
+            self._callback_errors[key] = msg
+            self._errors[key] = msg
             self._ready[key].set()
             meta = dict(self._meta.get(key, {}))
-            meta["live_error"] = self._errors[key]
+            meta["live_error"] = msg
             self._meta[key] = meta
 
     def _raise_live_error(self, symbol: str) -> None:
         with self._lock:
-            err = self._errors.get(str(symbol))
+            key = str(symbol)
+            err = self._callback_errors.get(key) or self._errors.get(key)
         if err:
             raise RuntimeError(err)
 
@@ -481,7 +487,11 @@ class Databento:
                     # positionally. Support both without weakening real SDK behavior.
                     client.add_callback(record_cb, error_cb)
                 if hasattr(client, "add_reconnect_callback"):
-                    client.add_reconnect_callback(lambda previous, resumed, s=key: self._record_reconnect(s, previous, resumed))
+                    reconnect_cb = lambda previous, resumed, s=key: self._record_reconnect(s, previous, resumed)
+                    try:
+                        client.add_reconnect_callback(reconnect_cb, exception_callback=error_cb)
+                    except TypeError:
+                        client.add_reconnect_callback(reconnect_cb)
                 client.start()
             except Exception:
                 try:
@@ -513,6 +523,7 @@ class Databento:
                     self._subscriptions.pop(key, None)
                     self._ready.pop(key, None)
                     self._errors.pop(key, None)
+                    self._callback_errors.pop(key, None)
 
     def recent_ex(
         self,
@@ -546,8 +557,8 @@ class Databento:
         hist_start = int(since_ts or (now - max(900, g * 10)))
         try:
             bars = self.candles(symbol, g, max(0, hist_start - 2 * g), now)
-        except Exception:
-            bars = []
+        except Exception as ex:
+            raise RuntimeError(f"Databento historical seed failed for {symbol}: {type(ex).__name__}: {ex}") from ex
         if bars:
             px = bars[-1].c
             ft = bars[-1].ts + g
@@ -634,7 +645,10 @@ class Databento:
             stype_in="continuous",
             snapshot=True,
         )
-        snapshot_error = lambda ex: (error.append(f"Databento MBO snapshot exception: {type(ex).__name__}: {ex}"), done.set())
+        def snapshot_error(ex: BaseException) -> None:
+            error.append(f"Databento MBO snapshot exception: {type(ex).__name__}: {ex}")
+            done.set()
+
         try:
             client.add_callback(callback, exception_callback=snapshot_error)
         except TypeError:
