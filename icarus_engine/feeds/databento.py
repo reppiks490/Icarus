@@ -101,6 +101,9 @@ class Databento:
         self._shared_started = False
         self._live: Dict[str, Any] = {}  # compatibility/status view: active symbol -> shared client
         self._live_started: set[str] = set()
+        # Desired schemas survive socket replacement; _subscriptions describes only
+        # what is attached to the current shared client.
+        self._wanted_subscriptions: Dict[str, set[str]] = collections.defaultdict(set)
         self._subscriptions: Dict[str, set[str]] = collections.defaultdict(set)
         self._continuous_to_symbol: Dict[str, str] = {}
         self._instrument_to_symbol: Dict[int, str] = {}
@@ -566,6 +569,9 @@ class Databento:
                 raise ValueError("include_depth must be 'mbp-10' or 'mbo'")
             desired.add(include_depth)
         keys = [(str(symbol), self.continuous_symbol(symbol, self.roll_rule)) for symbol in symbols]
+        with self._lock:
+            for key, _ in keys:
+                self._wanted_subscriptions[key].update(desired)
         if not keys:
             return self._shared_live
 
@@ -581,7 +587,8 @@ class Databento:
             try:
                 for key, continuous in keys:
                     self._continuous_to_symbol[continuous] = key
-                    missing = desired - self._subscriptions[key]
+                    wanted = set(self._wanted_subscriptions[key])
+                    missing = wanted - self._subscriptions[key]
                     for schema in sorted(missing):
                         kwargs: Dict[str, Any] = {
                             "dataset": self.dataset,
@@ -643,7 +650,7 @@ class Databento:
         with self._session_lock:
             with self._lock:
                 wanted = {
-                    str(symbol): set(self._subscriptions.get(str(symbol), {"ohlcv-1s", "trades"}))
+                    str(symbol): set(self._wanted_subscriptions.get(str(symbol), {"ohlcv-1s", "trades"}))
                     for symbol in symbols
                 }
             self._stop_live_unlocked()
@@ -661,6 +668,7 @@ class Databento:
                     for key, desired in wanted.items():
                         continuous = self.continuous_symbol(key, self.roll_rule)
                         self._continuous_to_symbol[continuous] = key
+                        self._wanted_subscriptions[key].update(desired)
                         for schema in sorted(desired):
                             kwargs: Dict[str, Any] = {
                                 "dataset": self.dataset,
