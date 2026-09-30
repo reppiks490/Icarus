@@ -299,19 +299,20 @@ def test_historical_minute_request_uses_native_ohlcv_1m():
     assert hist.calls[-1]["symbols"] == "ES.v.0"
 
 
-def test_live_second_bars_trades_and_depth_can_share_one_session():
+def test_live_second_bars_trades_and_depth_use_core_plus_isolated_depth_sessions():
     second_rows = [Ohlcv(1_000 + i, 100 + i / 10, 101 + i / 10, 99 + i / 10, 100.5 + i / 10, 1) for i in range(60)]
     trade = Trade(1_059, 106.5, 3)
     depth = Depth(1_060, 106.25, levels=[Level(106.0, 106.25)])
     mbo = Depth(1_061, 106.25, order_id=99)
-    live = FakeLive({"ohlcv-1s": second_rows, "trades": [trade], "mbp-10": [depth], "mbo": [mbo]})
-    feed = make_feed(lives=[live])
+    core = FakeLive({"ohlcv-1s": second_rows, "trades": [trade]})
+    book = FakeLive({"mbp-10": [depth], "mbo": [mbo]})
+    feed = make_feed(lives=[core, book])
 
     bars, ft, px = feed.recent_ex("NQ=F", 60)
     assert len(bars) == 2  # 1000-1019 partial UTC minute + 1020-1059 full minute
     assert ft == 1_059 and px == 106.5
-    assert [s["schema"] for s in live.subscriptions][:2] == ["ohlcv-1s", "trades"]
-    assert all(s["symbols"] == "NQ.v.0" and s["stype_in"] == "continuous" for s in live.subscriptions)
+    assert [s["schema"] for s in core.subscriptions] == ["ohlcv-1s", "trades"]
+    assert all(s["symbols"] == "NQ.v.0" and s["stype_in"] == "continuous" for s in core.subscriptions)
 
     ticks = feed.trades("NQ=F")
     assert ticks and ticks[-1].price == 106.5 and ticks[-1].size == 3
@@ -321,33 +322,36 @@ def test_live_second_bars_trades_and_depth_can_share_one_session():
     assert depth_rows and depth_rows[-1]["levels"][0]["bid_px"] == 106.0
     assert depth_rows[-1]["schema"] == "mbp-10"
     assert depth_rows[-1]["ts_event_ns"] == 1_060 * NS
-    assert any(s["schema"] == "mbp-10" for s in live.subscriptions)
+    assert [s["schema"] for s in book.subscriptions] == ["mbp-10"]
 
     mbo_rows = feed.depth_events("NQ=F", schema="mbo")
     assert mbo_rows and mbo_rows[-1]["order_id"] == 99
     assert mbo_rows[-1]["schema"] == "mbo"
+    assert [s["schema"] for s in book.subscriptions] == ["mbp-10", "mbo"]
     assert all(row["schema"] == "mbo" for row in mbo_rows)
     assert all(row["schema"] == "mbp-10" for row in depth_rows)
 
 
-def test_trade_tape_deduplicates_same_event_seen_in_trades_and_mbo():
+def test_depth_mbo_trade_cannot_duplicate_core_tape_or_move_core_mark():
     trade = Trade(1_059, 106.5, 3, side="B", sequence=1)
-    mbo_trade = Depth(1_059, 106.5, order_id=99)
+    mbo_trade = Depth(1_060, 999.0, order_id=99)
     mbo_trade.action = "T"
     mbo_trade.side = "B"
     mbo_trade.size = 3
-    mbo_trade.sequence = 1
-    live = FakeLive({"ohlcv-1s": [Ohlcv(1_059, 106, 107, 105, 106.5, 1)],
-                     "trades": [trade], "mbo": [mbo_trade]})
-    feed = make_feed(lives=[live])
+    mbo_trade.sequence = 2
+    core = FakeLive({"ohlcv-1s": [Ohlcv(1_059, 106, 107, 105, 106.5, 1)], "trades": [trade]})
+    book = FakeLive({"mbo": [mbo_trade]})
+    feed = make_feed(lives=[core, book])
 
     feed.recent_ex("NQ=F", 1)
     assert len(feed.trades("NQ=F")) == 1
+    core_mark = feed._last_price["NQ=F"]
     feed.depth_events("NQ=F", schema="mbo")
     ticks = feed.trades("NQ=F")
     assert len(ticks) == 1
-    assert ticks[0].ts_event_ns == 1_059 * NS
-    assert ticks[0].price == 106.5 and ticks[0].size == 3
+    assert ticks[0].price == 106.5
+    assert feed._last_price["NQ=F"] == core_mark
+    assert feed.depth_events("NQ=F", schema="mbo")[-1]["price"] == 999.0
 
 
 def test_mbo_snapshot_omits_non_mbo_stream_records():
