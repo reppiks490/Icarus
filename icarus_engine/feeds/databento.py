@@ -84,7 +84,12 @@ class Databento:
                 "Install the SDK with: pip install -e '.[databento]'"
             )
         self._historical = historical if historical is not None else self._sdk.Historical(self.api_key)
-        self._live_factory = live_factory or (lambda: self._sdk.Live(key=self.api_key, slow_reader_behavior="warn"))
+        self._live_factory = live_factory or (lambda: self._sdk.Live(
+            key=self.api_key,
+            heartbeat_interval_s=10,
+            reconnect_policy="reconnect",
+            slow_reader_behavior="warn",
+        ))
         self._lock = threading.RLock()
         self._live: Dict[str, Any] = {}
         self._live_started: set[str] = set()
@@ -103,6 +108,9 @@ class Databento:
         self._feed_time: Dict[str, int] = {}
         self._meta: Dict[str, Dict[str, Any]] = {}
         self._errors: Dict[str, str] = {}
+        self._reconnect_gaps: Dict[str, Deque[Dict[str, str]]] = collections.defaultdict(
+            lambda: collections.deque(maxlen=100)
+        )
         self.requests = 0
 
     @staticmethod
@@ -378,6 +386,15 @@ class Databento:
         if err:
             raise RuntimeError(err)
 
+    def _record_reconnect(self, symbol: str, previous: Any, resumed: Any) -> None:
+        row = {"previous": str(previous), "resumed": str(resumed)}
+        with self._lock:
+            self._reconnect_gaps[str(symbol)].append(row)
+            meta = dict(self._meta.get(str(symbol), {}))
+            meta["last_reconnect_gap"] = row
+            meta["reconnect_count"] = len(self._reconnect_gaps[str(symbol)])
+            self._meta[str(symbol)] = meta
+
     def start_live(
         self,
         symbol: str,
@@ -420,6 +437,8 @@ class Databento:
                 client.subscribe(schema=schema, **kwargs)
                 self._subscriptions[key].add(schema)
             client.add_callback(lambda rec, s=key: self._live_callback(s, rec))
+            if hasattr(client, "add_reconnect_callback"):
+                client.add_reconnect_callback(lambda previous, resumed, s=key: self._record_reconnect(s, previous, resumed))
             client.start()
             self._live[key] = client
             self._live_started.add(key)
@@ -440,6 +459,7 @@ class Databento:
                     self._live_started.discard(key)
                     self._subscriptions.pop(key, None)
                     self._ready.pop(key, None)
+                    self._errors.pop(key, None)
 
     def recent_ex(
         self,
