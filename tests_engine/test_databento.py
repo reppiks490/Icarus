@@ -74,6 +74,15 @@ class Depth:
             self.levels = levels
 
 
+class Mapping:
+    def __init__(self, instrument_id, input_symbol="NQ.v.0", raw_symbol="NQZ6"):
+        self.instrument_id = int(instrument_id)
+        self.stype_in_symbol = input_symbol
+        self.stype_out_symbol = raw_symbol
+        self.start_ts = 0
+        self.end_ts = 0
+
+
 class Error:
     def __init__(self, err="symbol failed", code=4):
         self.err = err
@@ -460,6 +469,71 @@ def test_reconnect_gap_is_published_in_feed_metadata():
     assert meta["reconnect_count"] == 1
     assert meta["last_reconnect_gap"]["previous"].endswith("10:00:00Z")
     assert meta["last_reconnect_gap"]["resumed"].endswith("10:00:02Z")
+    # Later market data must not erase reconnect diagnostics.
+    feed._live_callback("NQ=F", Trade(1_001, 100.75, 1))
+    meta = feed.meta("NQ=F")
+    assert meta["reconnect_count"] == 1
+    assert meta["last_reconnect_gap"]["previous"].endswith("10:00:00Z")
+
+
+def test_live_continuous_mapping_is_recorded_without_faking_market_readiness():
+    feed = make_feed()
+    feed._live_callback("NQ=F", Mapping(4242, "NQ.v.0", "NQZ6"))
+    meta = feed.meta("NQ=F")
+    assert meta["continuous_symbol"] == "NQ.v.0"
+    assert meta["active_contract"] == "NQZ6"
+    assert meta["active_instrument_id"] == 4242
+    assert feed._ready["NQ=F"].is_set() is False
+
+
+def test_live_session_rotates_when_daily_continuous_mapping_changes():
+    class Resolver:
+        def __init__(self):
+            self.instrument = 101
+            self.calls = []
+
+        def resolve(self, **kwargs):
+            self.calls.append(dict(kwargs))
+            sym = kwargs["symbols"]
+            return {"status": 0, "message": "OK", "result": {sym: [{"d0": kwargs["start_date"], "d1": "2099-01-01", "s": str(self.instrument)}]}}
+
+    resolver = Resolver()
+    hist = FakeHistorical({})
+    hist.symbology = resolver
+    live1 = FakeLive({"ohlcv-1s": [Mapping(101), Ohlcv(10_000, 100, 101, 99, 100.5)]})
+    live2 = FakeLive({"ohlcv-1s": [Mapping(202, raw_symbol="NQH7"), Ohlcv(10_001, 100.5, 101.5, 100, 101)]})
+    feed = make_feed(historical=hist, lives=[live1, live2])
+
+    feed.start_live("NQ=F")
+    assert live1.started is True
+    assert feed._resolved_instrument["NQ=F"] == 101
+    assert resolver.calls[-1]["stype_in"] == "continuous"
+    assert resolver.calls[-1]["stype_out"] == "instrument_id"
+
+    # Simulate the next UTC mapping day and a changed .v.0 instrument.
+    resolver.instrument = 202
+    feed._resolution_day["NQ=F"] = "1900-01-01"
+    feed.start_live("NQ=F")
+    assert live1.stopped is True
+    assert live2.started is True
+    assert feed._resolved_instrument["NQ=F"] == 202
+    meta = feed.meta("NQ=F")
+    assert meta["roll_count"] == 1
+    assert meta["previous_instrument_id"] == 101
+    assert meta["resolved_instrument_id"] == 202
+    assert meta["active_contract"] == "NQH7"
+
+
+def test_continuous_resolution_failure_is_fail_closed():
+    class Resolver:
+        def resolve(self, **kwargs):
+            return {"status": 2, "message": "Not found", "result": {}}
+
+    hist = FakeHistorical({})
+    hist.symbology = Resolver()
+    feed = make_feed(historical=hist, lives=[FakeLive()])
+    with pytest.raises(RuntimeError, match="did not resolve"):
+        feed.start_live("NQ=F")
 
 
 def test_portfolio_stop_closes_databento_live_sessions(monkeypatch, tmp_path):
