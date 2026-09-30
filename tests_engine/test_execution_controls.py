@@ -335,6 +335,7 @@ def test_chart_configuration_rebuilds_paper_engine_and_persists_meta(configured)
     assert r.spec.chart_tf == "2" and r.spec.chart_type == "heikin_ashi"
     assert r.spec.fill_on == "real" and r.spec.security_source == "chart"
     assert r.live_from_ts > 1
+    assert r.live_closed_start == len(r.em.closed)
     summary = r.summary()
     assert summary["calculation_basis"] == {
         "timeframe": "2", "timeframe_minutes": 2, "chart_type": "heikin_ashi",
@@ -454,3 +455,30 @@ def test_failed_all_assets_update_restores_equity_epoch(admin, monkeypatch):
     status, _ = post("/admin/inputs", {"asset": "*", "values": {"tp1_pts": 81}, "persist": True})
     assert status == 500
     assert port.equity_epoch == epoch_before
+
+
+def test_live_trade_classification_uses_execution_boundary_not_bar_start_time():
+    r = make_runner("BOUNDARY")
+
+    # Historical closed trade.
+    r.em.process_bar(Bar(0, 100, 100, 100, 100, 1), 0)
+    r.em.entry("Hist", 1, 1)
+    r.em.process_bar(Bar(60, 100, 100, 100, 100, 1), 1)
+    r.em.close("Hist", "hist close")
+    r.em.process_bar(Bar(120, 101, 101, 101, 101, 1), 2)
+    r.live_closed_start = len(r.em.closed)
+
+    # Wall-clock cutover is far newer than these chart-bucket timestamps.
+    r.live_from_ts = 10_000
+    r.em.entry("Live", 1, 1)
+    r.em.process_bar(Bar(180, 102, 102, 102, 102, 1), 3)
+    r.em.close("Live", "live close")
+    r.em.process_bar(Bar(240, 103, 103, 103, 103, 1), 4)
+
+    summary = r.summary()
+    trades = r.trades()
+    assert summary["live_trades"] == 1
+    assert summary["live_profit"] == r.em.closed[-1].profit
+    assert trades[-2]["live"] is False
+    assert trades[-1]["live"] is True
+    assert r.em.closed[-1].exit_ts < r.live_from_ts
