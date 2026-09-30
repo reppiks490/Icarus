@@ -221,14 +221,20 @@ _FUTURES_ROOTS = tuple(sorted({
 _EXPIRING_FUTURE_RE = re.compile(
     rf"^(?:{'|'.join(_FUTURES_ROOTS)})[FGHJKMNQUVXZ]\d{{1,4}}(?:\.(?:CME|CBT|CMX|NYM|NYMEX|COMEX))?$"
 )
+# Fail closed for any conventional futures month-code symbol, even when the root is
+# not in REGISTRY. Otherwise e.g. CLZ26 could fall through as a fake Coinbase asset.
+_ANY_DATED_FUTURE_RE = re.compile(
+    r"^[A-Z]{1,6}[FGHJKMNQUVXZ]\d{1,4}(?:\.(?:CME|CBT|CMX|NYM|NYMEX|COMEX))?$"
+)
 
 
 def resolve(symbol: str) -> AssetSpec:
     s = symbol.strip().upper().split(":")[-1]
-    if _EXPIRING_FUTURE_RE.fullmatch(s):
-        root = next((r for r in sorted(_FUTURES_ROOTS, key=len, reverse=True) if s.startswith(r)), "future")
+    if _EXPIRING_FUTURE_RE.fullmatch(s) or _ANY_DATED_FUTURE_RE.fullmatch(s):
+        root = next((r for r in _FUTURES_ROOTS if s.startswith(r)), re.sub(r"[FGHJKMNQUVXZ]\d{1,4}.*$", "", s) or "future")
         raise ValueError(
-            f"expiring futures symbol {symbol!r} is forbidden; ICARUS is continuous-only — use {root}1! or {root}=F"
+            f"expiring futures symbol {symbol!r} is forbidden; ICARUS is continuous-only — use a continuous 1!/=F identity"
+            + (f" for {root}" if root != "future" else "")
         )
     s = ALIASES.get(s, s)
     if s in REGISTRY:
