@@ -988,7 +988,8 @@ class AssetRunner:
         forming = self.chart_agg.forming_bar()
         return _clean({
             "symbol": self.symbol, "name": self.spec.name, "product": self.spec.ticker, "feed": self.spec.feed, "kind": self.spec.kind,
-            "continuous_contract": bool(self.spec.kind == "futures"), "continuous_symbol": self.spec.tv_symbol or self.spec.ticker,
+            "continuous_contract": bool(self.spec.kind == "futures"), "contract_policy": "continuous_only" if self.spec.kind == "futures" else "not_applicable",
+            "continuous_symbol": self.spec.tv_symbol or self.spec.ticker,
             "provider_symbol": self.spec.ticker, "contract": None, "next_contract": None,
             "session_mode": _session_mode(self.cal), "security_source": self.spec.security_source,
             "tf": self.chart_minutes, "mintick": self.mintick, "contract_size": self.em.contract_size, "multiplier": self.spec.multiplier,
