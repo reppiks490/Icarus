@@ -177,6 +177,10 @@ def run_backtest(port, symbol: str, *, preset: Optional[str] = None, inputs: Opt
         raise ValueError(f"{src.spec.symbol}: cached history unavailable for requested HTF minutes {sorted(missing)}; fetch compatible history first")
     if meta.get("chart_type") in ("real", "heikin_ashi"):
         spec.chart_type = meta["chart_type"]
+    if meta.get("timeframe") not in (None, ""):
+        spec.chart_tf = normalize_chart_timeframe(meta["timeframe"])
+    if meta.get("security_source") in ("chart", "standard"):
+        spec.security_source = meta["security_source"]
     if meta.get("slippage_ticks") is not None:
         spec.slippage_ticks = int(meta["slippage_ticks"])
     if meta.get("commission") is not None:
