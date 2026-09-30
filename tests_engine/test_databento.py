@@ -452,78 +452,92 @@ def test_shared_live_stop_falls_back_to_terminate():
     assert not feed._live_started
 
 
-def test_all_registered_futures_share_one_live_session():
-    live = FakeLive()
-    feed = make_feed(lives=[live])
+def test_all_registered_futures_share_one_core_live_session_and_depth_is_separate():
+    core = FakeLive()
+    book = FakeLive()
+    feed = make_feed(lives=[core, book])
     futures = [spec for spec in REGISTRY.values() if spec.kind == "futures"]
     assert len(futures) > 10  # guards the Databento Standard 10-session failure mode
     client = feed.prepare_live([spec.ticker for spec in futures], start_ts=1_000)
-    assert client is live
-    assert live.started is True
-    assert len(live.subscriptions) == len(futures) * 2
-    assert {sub["symbols"] for sub in live.subscriptions} == {f"{spec.ticker[:-2]}.v.0" for spec in futures}
-    # Batch preparation attaches replay before the one shared session starts.
-    assert all("start" in sub for sub in live.subscriptions)
+    assert client is core
+    assert core.started is True
+    assert len(core.subscriptions) == len(futures) * 2
+    assert {sub["symbols"] for sub in core.subscriptions} == {f"{spec.ticker[:-2]}.v.0" for spec in futures}
+    assert all("start" in sub for sub in core.subscriptions)
 
-    before = len(live.subscriptions)
+    before = len(core.subscriptions)
     feed.start_live(futures[0].ticker, include_depth="mbp-10", start_ts=2_000)
-    assert len(live.subscriptions) == before + 1
-    assert live.subscriptions[-1]["schema"] == "mbp-10"
-    assert "start" not in live.subscriptions[-1]
+    assert len(core.subscriptions) == before
+    assert book.started is True
+    assert [sub["schema"] for sub in book.subscriptions] == ["mbp-10"]
 
     feed.stop_live(futures[0].ticker)
-    assert live.stopped is False
+    assert core.stopped is False
+    assert book.stopped is True  # it was the only active depth symbol
     feed.stop_live()
-    assert live.stopped is True
+    assert core.stopped is True
 
 
-def test_daily_refresh_preserves_exact_per_symbol_schema_sets():
-    first = FakeLive()
-    second = FakeLive()
-    feed = make_feed(lives=[first, second])
+def test_daily_refresh_preserves_exact_core_and_depth_schema_sets():
+    first_core = FakeLive()
+    first_book = FakeLive()
+    second_core = FakeLive()
+    second_book = FakeLive()
+    feed = make_feed(lives=[first_core, first_book, second_core, second_book])
     feed.prepare_live(["NQ=F", "ES=F"])
     feed.depth_events("NQ=F", schema="mbo")
-    assert any(sub["schema"] == "mbo" and sub["symbols"] == "NQ.v.0" for sub in first.subscriptions)
-    assert not any(sub["schema"] == "mbo" and sub["symbols"] == "ES.v.0" for sub in first.subscriptions)
+
+    assert {sub["schema"] for sub in first_core.subscriptions} == {"ohlcv-1s", "trades"}
+    assert [sub["schema"] for sub in first_book.subscriptions] == ["mbo"]
 
     feed.refresh_live(["NQ=F", "ES=F"], start_ts=5_000)
-    assert first.stopped is True
-    assert second.started is True
-    nq_schemas = {sub["schema"] for sub in second.subscriptions if sub["symbols"] == "NQ.v.0"}
-    es_schemas = {sub["schema"] for sub in second.subscriptions if sub["symbols"] == "ES.v.0"}
-    assert nq_schemas == {"ohlcv-1s", "trades", "mbo"}
-    assert es_schemas == {"ohlcv-1s", "trades"}
-    assert all("start" in sub for sub in second.subscriptions)
+    assert first_core.stopped is True
+    assert first_book.stopped is True
+    assert second_core.started is True
+    assert second_book.started is True
+    nq_core = {sub["schema"] for sub in second_core.subscriptions if sub["symbols"] == "NQ.v.0"}
+    es_core = {sub["schema"] for sub in second_core.subscriptions if sub["symbols"] == "ES.v.0"}
+    assert nq_core == {"ohlcv-1s", "trades"}
+    assert es_core == {"ohlcv-1s", "trades"}
+    assert {sub["schema"] for sub in second_book.subscriptions if sub["symbols"] == "NQ.v.0"} == {"mbo"}
+    assert not [sub for sub in second_book.subscriptions if sub["symbols"] == "ES.v.0"]
+    assert all("start" in sub for sub in second_core.subscriptions + second_book.subscriptions)
 
 
-def test_failed_daily_refresh_keeps_desired_depth_for_retry():
+def test_failed_depth_refresh_keeps_core_live_and_preserves_depth_for_retry():
     class FailStart(FakeLive):
         def __init__(self):
             super().__init__()
             self.terminated = False
 
         def start(self):
-            raise RuntimeError("refresh failed")
+            raise RuntimeError("depth refresh failed")
 
         def terminate(self):
             self.terminated = True
 
-    first = FakeLive()
-    bad = FailStart()
-    good = FakeLive()
-    feed = make_feed(lives=[first, bad, good])
+    first_core = FakeLive()
+    first_book = FakeLive()
+    refreshed_core = FakeLive()
+    bad_book = FailStart()
+    retry_core = FakeLive()
+    good_book = FakeLive()
+    feed = make_feed(lives=[first_core, first_book, refreshed_core, bad_book, retry_core, good_book])
     feed.prepare_live(["NQ=F", "ES=F"])
     feed.depth_events("NQ=F", schema="mbp-10")
 
-    with pytest.raises(RuntimeError, match="refresh failed"):
+    with pytest.raises(RuntimeError, match="depth refresh failed"):
         feed.refresh_live(["NQ=F", "ES=F"], start_ts=5_000)
-    assert bad.terminated is True
+    assert bad_book.terminated is True
+    assert refreshed_core.started is True
+    assert refreshed_core.stopped is False
 
     feed.refresh_live(["NQ=F", "ES=F"], start_ts=5_100)
-    nq_schemas = {sub["schema"] for sub in good.subscriptions if sub["symbols"] == "NQ.v.0"}
-    es_schemas = {sub["schema"] for sub in good.subscriptions if sub["symbols"] == "ES.v.0"}
-    assert nq_schemas == {"ohlcv-1s", "trades", "mbp-10"}
-    assert es_schemas == {"ohlcv-1s", "trades"}
+    nq_core = {sub["schema"] for sub in retry_core.subscriptions if sub["symbols"] == "NQ.v.0"}
+    es_core = {sub["schema"] for sub in retry_core.subscriptions if sub["symbols"] == "ES.v.0"}
+    assert nq_core == {"ohlcv-1s", "trades"}
+    assert es_core == {"ohlcv-1s", "trades"}
+    assert {sub["schema"] for sub in good_book.subscriptions if sub["symbols"] == "NQ.v.0"} == {"mbp-10"}
 
 
 def test_shared_session_detach_readd_does_not_duplicate_or_misroute():
