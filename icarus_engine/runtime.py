@@ -1105,7 +1105,8 @@ class Portfolio:
             db_feed = Databento()
             self.feeds = {"yahoo": db_feed, "coinbase": Coinbase()}
             self.feed_mode = "databento"
-            journal.log("INFO", "ICARUS_FEED=databento — CME futures use Databento GLBX.MDP3 volume-front continuous contracts")
+            roll_name = str(db_feed.capabilities().get("continuous_rule", db_feed.roll_rule)).replace("_", "-")
+            journal.log("INFO", f"ICARUS_FEED=databento — CME futures use Databento GLBX.MDP3 {roll_name} continuous contracts with verified live remapping")
         else:
             self.feeds = {"yahoo": Yahoo(), "coinbase": Coinbase()}
             self.feed_mode = "live"
