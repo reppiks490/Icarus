@@ -170,8 +170,8 @@ class Databento:
             schema=schema,
             stype_in="continuous",
             symbols=[continuous_symbol(product)],
-            start=int(start_ts),
-            end=int(end_ts),
+            start=int(start_ts) * 1_000_000_000,
+            end=int(end_ts) * 1_000_000_000,
         )
 
     def candles(self, product: str, granularity: int, start_ts: int, end_ts: int) -> List[Bar]:
