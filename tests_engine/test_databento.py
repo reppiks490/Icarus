@@ -354,15 +354,19 @@ def test_all_registered_futures_share_one_live_session():
     feed = make_feed(lives=[live])
     futures = [spec for spec in REGISTRY.values() if spec.kind == "futures"]
     assert len(futures) > 10  # guards the Databento Standard 10-session failure mode
-    for idx, spec in enumerate(futures):
-        client = feed.start_live(spec.ticker, start_ts=1_000 + idx)
-        assert client is live
+    client = feed.prepare_live([spec.ticker for spec in futures], start_ts=1_000)
+    assert client is live
     assert live.started is True
     assert len(live.subscriptions) == len(futures) * 2
     assert {sub["symbols"] for sub in live.subscriptions} == {f"{spec.ticker[:-2]}.v.0" for spec in futures}
-    # Only subscriptions attached before the shared session starts may request replay.
-    assert all("start" in sub for sub in live.subscriptions[:2])
-    assert all("start" not in sub for sub in live.subscriptions[2:])
+    # Batch preparation attaches replay before the one shared session starts.
+    assert all("start" in sub for sub in live.subscriptions)
+
+    before = len(live.subscriptions)
+    feed.start_live(futures[0].ticker, include_depth="mbp-10", start_ts=2_000)
+    assert len(live.subscriptions) == before + 1
+    assert live.subscriptions[-1]["schema"] == "mbp-10"
+    assert "start" not in live.subscriptions[-1]
 
     feed.stop_live(futures[0].ticker)
     assert live.stopped is False
