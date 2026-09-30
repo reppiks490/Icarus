@@ -117,7 +117,7 @@ class Databento:
         self._depth_continuous_to_symbol: Dict[str, str] = {}
         self._depth_instrument_to_symbol: Dict[int, str] = {}
         self._depth_errors: Dict[str, str] = {}
-        self._depth_ready: Dict[str, threading.Event] = collections.defaultdict(threading.Event)
+        self._depth_ready: Dict[Tuple[str, str], threading.Event] = collections.defaultdict(threading.Event)
         self._depth_broken = False
         self._ready: Dict[str, threading.Event] = collections.defaultdict(threading.Event)
         self._second_bars: Dict[str, Deque[Bar]] = collections.defaultdict(
@@ -577,7 +577,8 @@ class Databento:
                 message = f"Databento depth error code={code}: {err}"
                 for key in targets:
                     self._depth_errors[key] = message
-                    self._depth_ready[key].set()
+                    for schema in self._depth_wanted.get(key, {"mbp-10", "mbo"}):
+                        self._depth_ready[(key, schema)].set()
                 if fatal:
                     self._depth_broken = True
             return
@@ -598,11 +599,12 @@ class Databento:
                     self._depth[key].append(row)
                     if not self._depth_broken:
                         self._depth_errors.pop(key, None)
-                    self._depth_ready[key].set()
+                    self._depth_ready[(key, str(row.get("schema") or ""))].set()
         except Exception as ex:
             with self._lock:
                 self._depth_errors[key] = f"Databento depth record error: {type(ex).__name__}: {ex}"
-                self._depth_ready[key].set()
+                for schema in self._depth_wanted.get(key, {"mbp-10", "mbo"}):
+                    self._depth_ready[(key, schema)].set()
 
     def _raise_depth_error(self, symbol: str) -> None:
         with self._lock:
@@ -649,6 +651,7 @@ class Databento:
                         self._depth_continuous_to_symbol[continuous] = key
                         missing = self._depth_wanted[key] - self._depth_subscriptions[key]
                         for wanted_schema in sorted(missing):
+                            self._depth_ready[(key, wanted_schema)].clear()
                             kwargs: Dict[str, Any] = {
                                 "dataset": self.dataset,
                                 "schema": wanted_schema,
@@ -669,7 +672,8 @@ class Databento:
                 with self._lock:
                     for key, _ in keys:
                         self._depth_errors[key] = f"Databento depth session error: {type(ex).__name__}: {ex}"
-                        self._depth_ready[key].set()
+                        for wanted_schema in self._depth_wanted.get(key, {schema}):
+                            self._depth_ready[(key, wanted_schema)].set()
                     started = self._depth_started
                     if not started:
                         self._depth_live = None
@@ -691,7 +695,8 @@ class Databento:
             if symbol is not None:
                 key = str(symbol)
                 self._depth_live_symbols.discard(key)
-                self._depth_ready.pop(key, None)
+                for ready_key in [rk for rk in self._depth_ready if rk[0] == key]:
+                    self._depth_ready.pop(ready_key, None)
                 self._depth_errors.pop(key, None)
                 if self._depth_live_symbols:
                     return
@@ -770,9 +775,10 @@ class Databento:
                     self._depth_continuous_to_symbol.clear()
                     self._depth_instrument_to_symbol.clear()
                     message = f"Databento depth refresh error: {type(ex).__name__}: {ex}"
-                    for key in wanted:
+                    for key, schemas in wanted.items():
                         self._depth_errors[key] = message
-                        self._depth_ready[key].set()
+                        for schema in schemas:
+                            self._depth_ready[(key, schema)].set()
                 raise
 
     def _raise_live_error(self, symbol: str) -> None:
@@ -885,9 +891,8 @@ class Databento:
     def _refresh_core_live(self, symbols: Sequence[str], *, start_ts: Optional[int] = None) -> Any:
         """Atomically re-resolve continuous symbols on a fresh shared Live session.
 
-        Each active symbol keeps its exact schema set. This is important for depth:
-        an NQ MBO request must not silently disappear at the daily continuous refresh,
-        and it must not accidentally broaden MBO to every futures symbol.
+        Each active symbol keeps its exact core OHLCV/trades schema set. Optional
+        depth schemas are refreshed independently on their isolated session.
         """
         with self._session_lock:
             with self._lock:
@@ -1054,7 +1059,11 @@ class Databento:
             raise ValueError("schema must be 'mbp-10' or 'mbo'")
         key = str(symbol)
         self._prepare_depth_live([key], schema)
-        self._depth_ready[key].wait(timeout=2.0)
+        with self._lock:
+            have = any(row.get("schema") == schema for row in self._depth[key])
+            ready = self._depth_ready[(key, schema)]
+        if not have:
+            ready.wait(timeout=2.0)
         self._raise_depth_error(key)
         with self._lock:
             rows = [row for row in self._depth[key] if row.get("schema") == schema]
