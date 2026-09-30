@@ -62,6 +62,17 @@ If you use the bridge or MCP control server on this machine, install its declare
 py -3 -m pip install -e ".[bridge]"
 ```
 
+For real CME Globex market data through Databento, install the market-data extra, put
+`DATABENTO_API_KEY=db-...` in `$ICARUS_HOME/.env`, then start the plant with `--databento`:
+
+```powershell
+py -3 -m pip install -e ".[marketdata]"
+icarus-plant start --assets NQ,MNQ,ES --databento
+```
+
+Databento mode uses `GLBX.MDP3` continuous volume-front symbols such as `NQ.v.0`.
+The adapter consumes genuine `ohlcv-1s` live data and never invents sub-minute bars.
+
 CSV/offline later (Plus): `icarus-plant start --assets NQ --offline` after a 1m dump is in `history/`.
 
 ## Not this
