@@ -304,6 +304,13 @@ def test_chart_configuration_rebuilds_paper_engine_and_persists_meta(configured)
     assert r.chart_minutes == 2
     assert r.spec.chart_tf == "2" and r.spec.chart_type == "heikin_ashi"
     assert r.spec.fill_on == "real" and r.spec.security_source == "chart"
+    summary = r.summary()
+    assert summary["calculation_basis"] == {
+        "timeframe": "2", "timeframe_minutes": 2, "chart_type": "heikin_ashi",
+        "fill_on": "real", "security_source": "chart", "session": "24/7",
+    }
+    chart = r.chart()
+    assert chart["fill_on"] == "real" and chart["security_source"] == "chart"
     persisted = json.loads(path.read_text())
     assert persisted["_meta"]["timeframe"] == "2"
     assert persisted["_meta"]["chart_type"] == "heikin_ashi"
