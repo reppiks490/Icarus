@@ -175,6 +175,7 @@ def test_continuous_volume_front_symbology_and_capabilities(monkeypatch):
     assert caps["live_session_model"] == "shared_per_dataset"
     assert caps["live_symbol_routing"] == "SymbolMappingMsg/instrument_id"
     assert caps["continuous_live_refresh"] == "automatic_utc_day"
+    assert caps["mbo_snapshot_sessions"] == "serialized"
     assert caps["minimum_ohlcv_resolution_seconds"] == 1
     assert caps["ticks"] is True
     assert caps["mbp_10"] is True and caps["mbo"] is True and caps["mbo_snapshot"] is True
@@ -545,6 +546,50 @@ def test_shared_live_session_routes_records_by_symbol_mapping():
     assert es_rows[-1].c == 200.5 and es_px == 200.5
     assert all(row.c != 200.5 for row in nq_rows)
     assert all(row.c != 100.5 for row in es_rows)
+
+
+def test_concurrent_mbo_snapshots_are_serialized_to_one_transient_session():
+    release = threading.Event()
+    first_started = threading.Event()
+    started = []
+    results = []
+    errors = []
+
+    class DelayedSnapshotLive(FakeLive):
+        def start(self):
+            self.started = True
+            started.append(self)
+            first_started.set()
+
+            def emit():
+                release.wait(2.0)
+                for sub in self.subscriptions:
+                    self._emit(sub["schema"])
+
+            threading.Thread(target=emit, daemon=True).start()
+
+    live1 = DelayedSnapshotLive({"mbo": [Depth(2_000, 200.25, flags=1)]})
+    live2 = DelayedSnapshotLive({"mbo": [Depth(2_001, 200.50, flags=1)]})
+    feed = make_feed(lives=[live1, live2])
+
+    def snap():
+        try:
+            results.append(feed.mbo_snapshot("ES=F", timeout=1.0))
+        except Exception as ex:
+            errors.append(ex)
+
+    a = threading.Thread(target=snap)
+    b = threading.Thread(target=snap)
+    a.start()
+    assert first_started.wait(1.0)
+    b.start()
+    assert len(started) == 1
+    release.set()
+    a.join(3.0)
+    b.join(3.0)
+    assert not errors
+    assert len(started) == 2
+    assert len(results) == 2
 
 
 def test_mbo_snapshot_requests_continuous_snapshot_and_stops():
