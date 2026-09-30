@@ -326,6 +326,7 @@ def test_admin_pause_flatten_and_config_success_are_completed_on_return(admin):
 
 def test_chart_configuration_rebuilds_paper_engine_and_persists_meta(configured):
     port, r, path = configured
+    r.live_from_ts = 1
     r.subbars = [(Bar(k * 60, 100 + k, 101 + k, 99 + k, 100.5 + k, 1), 1) for k in range(12)]
     port.rewarm_asset("TEST", {}, True, chart={
         "timeframe": "2m", "chart_type": "heikin_ashi", "fill_on": "real", "security_source": "chart"
@@ -333,6 +334,7 @@ def test_chart_configuration_rebuilds_paper_engine_and_persists_meta(configured)
     assert r.chart_minutes == 2
     assert r.spec.chart_tf == "2" and r.spec.chart_type == "heikin_ashi"
     assert r.spec.fill_on == "real" and r.spec.security_source == "chart"
+    assert r.live_from_ts > 1
     summary = r.summary()
     assert summary["calculation_basis"] == {
         "timeframe": "2", "timeframe_minutes": 2, "chart_type": "heikin_ashi",
@@ -361,6 +363,7 @@ def test_failed_configuration_replay_never_persists_candidate(configured, monkey
     r.subbars = [(Bar(k * 60, 100 + k, 101 + k, 99 + k, 100.5 + k, 1), 1) for k in range(12)]
     before_file = path.read_bytes()
     before_spec = asdict(r.spec)
+    r.live_from_ts = 123
     original = r.rewarm
     calls = 0
 
@@ -377,6 +380,7 @@ def test_failed_configuration_replay_never_persists_candidate(configured, monkey
     assert path.read_bytes() == before_file
     assert asdict(r.spec) == before_spec
     assert r.chart_minutes == 1
+    assert r.live_from_ts == 123
 
 
 def test_reset_removes_persisted_chart_meta_and_restores_baseline(configured):
