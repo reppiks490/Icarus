@@ -641,3 +641,13 @@ def test_heikin_ashi_values_are_tick_rounded_like_tradingview():
     assert b1.c == 101.5                                                    # (100 + 110.25 + 90 + 105.25) / 4 = 101.375 -> 101.5
     b2 = ha.transform(B(60, 105.25, 112.00, 104.00, 111.00))
     assert b2.o == round((b1.o + b1.c) / 2 / 0.25) * 0.25 and b2.o % 0.25 == 0
+
+
+def test_cli_exposes_no_manual_rollover_switch(capsys):
+    from icarus_engine.cli import main as engine_main
+    with pytest.raises(SystemExit) as done:
+        engine_main(["run", "--help"])
+    assert done.value.code == 0
+    help_text = capsys.readouterr().out
+    assert "--roll" not in help_text
+    assert "volume = TradingView" not in help_text
