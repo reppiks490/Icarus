@@ -444,6 +444,7 @@ def test_start_does_not_silently_ignore_requested_bridge(tmp_path, capsys):
             return
 
     ensure(str(tmp_path))
+    (tmp_path / "run" / "plant.pid").write_text(str(os.getpid()), encoding="ascii")
     httpd = HTTPServer(("127.0.0.1", 0), H)
     thread = threading.Thread(target=httpd.serve_forever, daemon=True)
     thread.start()
@@ -477,3 +478,35 @@ def test_stop_returns_failure_when_supervisor_remains_alive(tmp_path, monkeypatc
     err = capsys.readouterr().err.lower()
     assert "still alive" in err
     assert "refusing to claim success" in err
+
+
+def test_start_rejects_healthy_engine_without_live_supervisor(tmp_path, capsys):
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+    import threading
+
+    class H(BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(200 if self.path == "/healthz" else 404)
+            self.end_headers()
+            self.wfile.write(b"ok")
+
+        def log_message(self, *args):
+            return
+
+    ensure(str(tmp_path))
+    httpd = HTTPServer(("127.0.0.1", 0), H)
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    try:
+        rc = plant_main([
+            "--root", str(tmp_path), "start",
+            "--engine-port", str(httpd.server_port), "--no-browser",
+        ])
+        assert rc == 1
+        out = capsys.readouterr().out.lower()
+        assert "no live plant supervisor owns it" in out
+        assert "refusing to claim the plant is started" in out
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+        thread.join(5)
