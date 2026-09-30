@@ -285,7 +285,14 @@ def test_admin_all_assets_rolls_back_prior_success_on_late_replay_failure(admin,
     first_before_file = first_path.read_bytes()
     first_before_inputs = first.inputs_base.to_dict()
     first_before_spec = asdict(first.spec)
+    first_before_em = first.em
+    first_before_strat = first.strat
+    first_before_closed = list(first.em.closed)
+    first_before_fills = list(first.em.fills)
+    first_before_bars = list(first.bars)
     other_before_inputs = other.inputs_base.to_dict()
+    other_before_em = other.em
+    other_before_strat = other.strat
     original = other.rewarm
     calls = 0
 
@@ -302,7 +309,11 @@ def test_admin_all_assets_rolls_back_prior_success_on_late_replay_failure(admin,
     assert first_path.read_bytes() == first_before_file
     assert first.inputs_base.to_dict() == first_before_inputs
     assert asdict(first.spec) == first_before_spec
+    assert first.em is first_before_em and first.strat is first_before_strat
+    assert first.em.closed == first_before_closed and first.em.fills == first_before_fills
+    assert list(first.bars) == first_before_bars
     assert other.inputs_base.to_dict() == other_before_inputs
+    assert other.em is other_before_em and other.strat is other_before_strat
     assert not (first_path.parent / "inputs.OTHER.json").exists()
 
 
@@ -368,6 +379,11 @@ def test_failed_configuration_replay_never_persists_candidate(configured, monkey
     r.subbars = [(Bar(k * 60, 100 + k, 101 + k, 99 + k, 100.5 + k, 1), 1) for k in range(12)]
     before_file = path.read_bytes()
     before_spec = asdict(r.spec)
+    before_em = r.em
+    before_strat = r.strat
+    before_closed = list(r.em.closed)
+    before_fills = list(r.em.fills)
+    before_bars = list(r.bars)
     r.live_from_ts = 123
     original = r.rewarm
     calls = 0
@@ -386,6 +402,9 @@ def test_failed_configuration_replay_never_persists_candidate(configured, monkey
     assert asdict(r.spec) == before_spec
     assert r.chart_minutes == 1
     assert r.live_from_ts == 123
+    assert r.em is before_em and r.strat is before_strat
+    assert r.em.closed == before_closed and r.em.fills == before_fills
+    assert list(r.bars) == before_bars
 
 
 def test_reset_removes_persisted_chart_meta_and_restores_baseline(configured):
