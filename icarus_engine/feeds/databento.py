@@ -101,6 +101,7 @@ class Databento:
         # error cannot terminate the primary price/tape transport.
         self._shared_live: Any = None
         self._shared_started = False
+        self._core_broken = False
         self._live: Dict[str, Any] = {}  # compatibility/status view: active symbol -> shared client
         self._live_started: set[str] = set()
         # Desired schemas survive socket replacement; _subscriptions describes only
@@ -412,6 +413,7 @@ class Databento:
             out = dict(self._meta.get(key, {}))
             if key in self._depth_errors:
                 out["depth_error"] = self._depth_errors[key]
+            out["core_session_ok"] = not self._core_broken
             out["depth_session_ok"] = not self._depth_broken
             return out
 
@@ -425,6 +427,11 @@ class Databento:
                 code = int(getattr(record, "code", 0) or 0)
                 err = str(getattr(record, "err", "") or "Databento live error")
                 self._errors[symbol] = f"Databento live error code={code}: {err}"
+                # Codes 1/2/3/5/6/8 are fatal at the gateway. Code 7 means records
+                # were skipped, which is also an integrity failure for ICARUS even
+                # though Databento may keep the connection open.
+                if code in (1, 2, 3, 5, 6, 7, 8):
+                    self._core_broken = True
                 self._ready[symbol].set()
                 self._meta[symbol] = {
                     "regularMarketTime": self._feed_time.get(symbol, 0),
@@ -469,7 +476,8 @@ class Databento:
             if market_event:
                 self._feed_time[symbol] = max(now_sec, self._feed_time.get(symbol, 0))
                 self._ready[symbol].set()
-                self._errors.pop(symbol, None)
+                if not self._core_broken:
+                    self._errors.pop(symbol, None)
             self._meta[symbol] = {
                 "regularMarketTime": self._feed_time.get(symbol, 0),
                 "provider": "databento",
@@ -554,6 +562,10 @@ class Databento:
 
     def _record_reconnect_all(self, previous: Any, resumed: Any) -> None:
         with self._lock:
+            # A real transport reconnect creates a new integrity boundary. Keep the
+            # prior error visible until a valid market event arrives, but allow that
+            # event to clear the broken-state latch.
+            self._core_broken = False
             symbols = list(self._live_started)
         for symbol in symbols:
             self._record_reconnect(symbol, previous, resumed)
@@ -619,6 +631,7 @@ class Databento:
 
     def _record_depth_reconnect_all(self, previous: Any, resumed: Any) -> None:
         with self._lock:
+            self._depth_broken = False
             symbols = list(self._depth_live_symbols)
         for symbol in symbols:
             self._record_reconnect(symbol, previous, resumed)
@@ -921,6 +934,7 @@ class Databento:
                 client.add_reconnect_callback(self._record_reconnect_all)
             with self._lock:
                 self._shared_live = client
+                self._core_broken = False
             try:
                 with self._lock:
                     for key, desired in wanted.items():
@@ -952,6 +966,7 @@ class Databento:
                 with self._lock:
                     self._shared_live = None
                     self._shared_started = False
+                    self._core_broken = True
                     self._live.clear()
                     self._live_started.clear()
                     self._subscriptions.clear()
@@ -1002,6 +1017,7 @@ class Databento:
             client = self._shared_live
             self._shared_live = None
             self._shared_started = False
+            self._core_broken = False
             self._live.clear()
             self._live_started.clear()
             self._subscriptions.clear()
