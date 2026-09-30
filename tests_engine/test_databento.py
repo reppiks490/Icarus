@@ -174,8 +174,9 @@ def test_continuous_volume_front_symbology_and_capabilities(monkeypatch):
     assert caps["continuous_futures"] is True
     assert caps["continuous_rule"] == "volume_front"
     assert caps["continuous_rule_code"] == "v"
-    assert caps["live_session_model"] == "shared_per_dataset"
+    assert caps["live_session_model"] == "shared_core_plus_isolated_depth_per_dataset"
     assert caps["live_symbol_routing"] == "SymbolMappingMsg/instrument_id"
+    assert caps["depth_failure_isolation"] is True
     assert caps["continuous_live_refresh"] == "automatic_utc_day"
     assert caps["minimum_ohlcv_resolution_seconds"] == 1
     assert caps["ticks"] is True
@@ -352,6 +353,32 @@ def test_depth_mbo_trade_cannot_duplicate_core_tape_or_move_core_mark():
     assert ticks[0].price == 106.5
     assert feed._last_price["NQ=F"] == core_mark
     assert feed.depth_events("NQ=F", schema="mbo")[-1]["price"] == 999.0
+
+
+def test_fatal_depth_subscription_error_does_not_poison_core_session():
+    core = FakeLive({
+        "ohlcv-1s": [Ohlcv(1_000, 100, 101, 99, 100.5, 1)],
+        "trades": [Trade(1_000, 100.5, 2)],
+    })
+    book = FakeLive({"mbp-10": [Error("depth subscription rejected", code=5)]})
+    feed = make_feed(lives=[core, book])
+
+    bars, _, px = feed.recent_ex("NQ=F", 1)
+    assert bars and px == 100.5
+    with pytest.raises(RuntimeError, match="depth error code=5.*rejected"):
+        feed.depth_events("NQ=F", schema="mbp-10")
+
+    assert feed._shared_live is core
+    assert feed._shared_started is True
+    assert core.stopped is False
+    assert "NQ=F" not in feed._errors
+    feed._raise_live_error("NQ=F")
+
+    # Core data remains usable even though the optional depth session is fatal.
+    core.callback(Trade(1_001, 101.0, 1, sequence=2))
+    ticks = feed.trades("NQ=F")
+    assert ticks[-1].price == 101.0
+    assert feed._last_price["NQ=F"] == 101.0
 
 
 def test_mbo_snapshot_omits_non_mbo_stream_records():
@@ -802,13 +829,15 @@ def test_doctor_roll_rule_contract_matches_adapter(monkeypatch, tmp_path):
 
 
 def test_engine_http_exposes_databento_capabilities_ticks_depth_and_mbo(tmp_path):
-    live = FakeLive({
+    core_live = FakeLive({
         "ohlcv-1s": [Ohlcv(4_000, 100, 101, 99, 100.5, 1)],
         "trades": [Trade(4_000, 100.5, 2)],
+    })
+    depth_live = FakeLive({
         "mbp-10": [Depth(4_001, 100.5, levels=[Level(100.25, 100.5)])],
     })
     snapshot_live = FakeLive({"mbo": [Depth(4_002, 100.5, flags=1)]})
-    feed = make_feed(lives=[live, snapshot_live])
+    feed = make_feed(lives=[core_live, depth_live, snapshot_live])
 
     journal = Journal(":memory:")
     port = Portfolio(journal, str(tmp_path))
