@@ -73,6 +73,23 @@ def inspect(base_dir: str | None = None, *, today: date | None = None) -> Dict[s
            fomc_detail,
            level="warn")
 
+    futures = [spec for spec in REGISTRY.values() if spec.kind == "futures"]
+    invalid_futures = [
+        spec.symbol for spec in futures
+        if spec.roll != "continuous" or not spec.ticker.endswith("=F") or not spec.tv_symbol.endswith("1!")
+    ]
+    _check(
+        items,
+        "continuous-only futures registry",
+        bool(futures) and not invalid_futures,
+        (
+            f"{len(futures)} futures use provider-native =F data + TradingView 1! identities; "
+            "no expiry/month-contract routing is active"
+        ) if not invalid_futures else
+        "invalid futures: " + ", ".join(invalid_futures) + " — expiring/month-coded contracts are forbidden",
+        level="fail",
+    )
+
     found = []
     for spec in REGISTRY.values():
         path, minutes = find_history(root, spec.symbol, 20)
@@ -139,8 +156,8 @@ def inspect(base_dir: str | None = None, *, today: date | None = None) -> Dict[s
         "warns": warns,
         "ok": fails == 0,
         "notes": [
-            "Yahoo NQ=F is ~10 minutes delayed. A TradingView CME pack does not feed this process.",
-            "Export NQ1! 1-minute (or chart-TF) bars from TradingView and ingest them for free parity warm-up.",
+            "Yahoo continuous futures (=F) are delayed. A TradingView CME pack does not feed this process.",
+            "Export the matching TradingView 1! chart (for example NQ1!, MNQ1!, GC1!) and ingest it for parity warm-up.",
             "Live NQ fills require a futures broker; the bridge maps NQ1! → QQQ on Alpaca.",
             "icarus-plant start --offline supervises the engine on FileFeed; drop Supercharts CSVs in history/drop/.",
         ],
