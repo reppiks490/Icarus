@@ -559,7 +559,8 @@ class AssetRunner:
         elif file_feed_mode():
             src = f"HistoryHub ({base}/history) — no CSV yet, Yahoo is not contacted"
         else:
-            src = self.spec.feed
+            caps = self.feed.capabilities() if hasattr(self.feed, "capabilities") else {}
+            src = str(caps.get("provider") or self.spec.feed)
         self.journal.log("INFO", f"[{self.symbol}] warm-up from {time.strftime('%Y-%m-%d %H:%M', time.gmtime(T_w))}Z ({self.cfg.warmup_bars} x {self.chart_minutes}m bars, {src}) mintick={self.mintick} x{self.spec.multiplier} slip={self.spec.slippage_ticks}t chart={self.spec.chart_type} fills={self.spec.fill_on} session={_session_mode(self.cal)} security={self.spec.security_source}" + (f" continuous={self.spec.tv_symbol or self.spec.ticker}" if self.spec.kind == "futures" else ""))
         if hist:
             self._warmup_from_csv(hist, now, source_minutes=minutes)
@@ -817,7 +818,7 @@ class AssetRunner:
                 if not ft:
                     self._feed_failed("feed returned no clock and no bars"); return
                 self.feed_time = ft
-                feed_now = ft                                       # Yahoo is ~10 min behind: close bars on ITS clock, never the wall clock
+                feed_now = ft                                       # close provider bars on ITS clock, never the wall clock
                 self.feed_delay = now - ft
             else:
                 bars = self.feed.recent(self.spec.ticker, 60)
