@@ -277,6 +277,35 @@ def test_admin_all_assets_preflight_prevents_partial_writes(admin):
     assert path.read_bytes() == before and r.inputs_base.tp1_pts != 80
 
 
+def test_admin_all_assets_rolls_back_prior_success_on_late_replay_failure(admin, monkeypatch):
+    port, first, first_path, post = admin
+    other = make_runner("OTHER")
+    port.runners["OTHER"] = other
+    port.order.append("OTHER")
+    first_before_file = first_path.read_bytes()
+    first_before_inputs = first.inputs_base.to_dict()
+    first_before_spec = asdict(first.spec)
+    other_before_inputs = other.inputs_base.to_dict()
+    original = other.rewarm
+    calls = 0
+
+    def fail_once(inputs, sources=None):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise RuntimeError("synthetic second replay failure")
+        return original(inputs, sources)
+
+    monkeypatch.setattr(other, "rewarm", fail_once)
+    status, body = post("/admin/inputs", {"asset": "*", "values": {"tp1_pts": 80}, "persist": True})
+    assert status == 500 and "synthetic second replay failure" in body["detail"]
+    assert first_path.read_bytes() == first_before_file
+    assert first.inputs_base.to_dict() == first_before_inputs
+    assert asdict(first.spec) == first_before_spec
+    assert other.inputs_base.to_dict() == other_before_inputs
+    assert not (first_path.parent / "inputs.OTHER.json").exists()
+
+
 def test_admin_pause_flatten_and_config_success_are_completed_on_return(admin):
     _, r, path, post = admin
     pending(r, limit=99)
