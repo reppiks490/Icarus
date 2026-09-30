@@ -346,6 +346,8 @@ def test_chart_configuration_rebuilds_paper_engine_and_persists_meta(configured)
     persisted = json.loads(path.read_text())
     assert persisted["_meta"]["timeframe"] == "2"
     assert persisted["_meta"]["chart_type"] == "heikin_ashi"
+    assert any(src.startswith("inputs.TEST.json") for src in r.cfg.sources)
+    assert "override" not in r.cfg.sources
     assert len(r.bars) == 6
 
 
