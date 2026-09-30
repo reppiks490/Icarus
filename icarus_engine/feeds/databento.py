@@ -488,18 +488,23 @@ class Databento:
         if hasattr(record, "err"):
             err = str(getattr(record, "err", "") or "")
             with self._lock:
-                targets = [key for cont, key in self._continuous_to_symbol.items() if cont and cont in err]
+                active = set(self._live_started)
+                targets = [key for cont, key in self._continuous_to_symbol.items()
+                           if key in active and cont and cont in err]
                 if not targets:
-                    targets = list(self._live_started)
+                    targets = list(active)
             for key in targets:
                 self._dispatch_live(key, record)
             return
 
         with self._lock:
             key = self._instrument_to_symbol.get(iid) if iid is not None else None
-            if key is None and len(self._live_started) == 1:
-                # Defensive compatibility for SDK/test records that omit mapping
-                # metadata when exactly one symbol is subscribed.
+            if key is not None and key not in self._live_started:
+                key = None
+            if key is None and iid is None and len(self._live_started) == 1:
+                # Defensive compatibility only for records that carry no instrument ID.
+                # Never guess when Databento supplied an unknown ID: that could route a
+                # detached/foreign contract into the wrong remaining asset.
                 key = next(iter(self._live_started))
         if key is not None:
             self._dispatch_live(key, record)
@@ -581,17 +586,13 @@ class Databento:
                 key = str(symbol)
                 self._live.pop(key, None)
                 self._live_started.discard(key)
-                self._subscriptions.pop(key, None)
                 self._ready.pop(key, None)
                 self._errors.pop(key, None)
-                continuous = self.continuous_symbol(key, self.roll_rule)
-                self._continuous_to_symbol.pop(continuous, None)
-                for iid, mapped in list(self._instrument_to_symbol.items()):
-                    if mapped == key:
-                        self._instrument_to_symbol.pop(iid, None)
                 # Databento has no per-subscription unsubscribe on a running session.
-                # Keep the shared socket alive for remaining assets and ignore detached
-                # symbol records locally until the portfolio shuts down.
+                # Keep gateway subscriptions + instrument mappings so remove/re-add does
+                # not create duplicate subscriptions (which would double-count OHLCV).
+                # _dispatch_shared_live gates delivery on _live_started, so detached
+                # assets are ignored locally while their gateway subscription persists.
                 if self._live_started:
                     return
             client = self._shared_live
