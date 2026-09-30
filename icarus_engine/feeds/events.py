@@ -146,8 +146,11 @@ class CoinbaseTradeEvents:
 
     def history(self, start_ns: int, end_ns: int, *, max_events: int = 100000) -> List[TradeEvent]:
         # REST pagination is event-count bounded. Filter exact event timestamps after retrieval.
-        events = self._fetch(max_events, None)
-        return [e for e in events if int(start_ns) <= e.event_ns < int(end_ns)]
+        events = [e for e in self._fetch(max_events, None) if int(start_ns) <= e.event_ns < int(end_ns)]
+        if events:
+            self._last_id = events[-1].sequence
+            self._last_event_ns = events[-1].event_ns
+        return events
 
     def drain(self, *, max_events: int = 50000) -> List[TradeEvent]:
         try:
@@ -283,7 +286,12 @@ class DatabentoContinuousEvents:
             if event is not None:
                 out.append(event)
         data.replay(callback=collect)
-        return list(out)
+        events = list(out)
+        if events:
+            last = events[-1]
+            self._last_event_ns = last.event_ns
+            self._last_key = (last.sequence, last.event_ns, last.price_ticks, last.quantity)
+        return events
 
     def _run(self) -> None:
         db = self._db()
