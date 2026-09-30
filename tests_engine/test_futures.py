@@ -661,3 +661,13 @@ def test_cli_exposes_no_manual_rollover_switch(capsys):
     help_text = capsys.readouterr().out
     assert "--roll" not in help_text
     assert "volume = TradingView" not in help_text
+
+
+def test_legacy_roll_value_cannot_resurrect_expiring_contract_mode():
+    from icarus_engine.assets import AssetSpec
+    spec = AssetSpec("LEG", "Legacy future", "yahoo", "LEG=F", "cme", 0.25, 10.0,
+                     kind="futures", tv_symbol="CME:LEG1!", roll="volume")
+    assert spec.roll == "continuous"
+    spot = AssetSpec("SPOT", "Spot", "coinbase", "SPOT-USD", "crypto", 0.01, 1.0,
+                     kind="crypto", roll="volume")
+    assert spot.roll == "none"
