@@ -590,7 +590,7 @@ class Databento:
                             "mapping_start_ns": start_ns,
                             "mapping_end_ns": end_ns,
                             "mapping_current": current_mapping,
-                            "mapping_active": True,
+                            "mapping_active": key in self._live_started,
                             "regularMarketTime": self._feed_time.get(key, 0),
                         })
                         self._meta[key] = meta
@@ -704,6 +704,11 @@ class Databento:
                         self._subscriptions[key].add(schema)
                     self._live[key] = client
                     self._live_started.add(key)
+                    if key in self._meta:
+                        meta = dict(self._meta[key])
+                        if meta.get("resolved_instrument_id") is not None:
+                            meta["mapping_active"] = True
+                            self._meta[key] = meta
 
                 if not self._shared_started:
                     client.start()
@@ -829,6 +834,11 @@ class Databento:
                 self._wanted_subscriptions.pop(key, None)
                 self._ready.pop(key, None)
                 self._errors.pop(key, None)
+                if key in self._meta:
+                    meta = dict(self._meta[key])
+                    if meta.get("provider") == "databento":
+                        meta["mapping_active"] = False
+                        self._meta[key] = meta
                 # Databento has no per-subscription unsubscribe on a running session.
                 # Keep gateway subscriptions + instrument mappings so remove/re-add does
                 # not create duplicate subscriptions (which would double-count OHLCV).
