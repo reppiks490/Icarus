@@ -62,8 +62,9 @@ class Level:
 
 
 class Depth:
-    def __init__(self, ts, price=100.0, *, flags=0, order_id=7, levels=None):
+    def __init__(self, ts, price=100.0, *, flags=0, order_id=7, levels=None, ts_recv=None):
         self.ts_event = int(ts * NS)
+        self.ts_recv = int((ts if ts_recv is None else ts_recv) * NS)
         self.price = int(price * NS)
         self.pretty_price = float(price)
         self.size = 1
@@ -505,6 +506,80 @@ def test_replay_rows_cannot_rewind_live_price_and_ts_event_is_not_used_as_orderi
     assert len(ticks) == 3
     assert ticks[-1].price == 50.0
     assert feed._last_price["NQ=F"] == 202.0
+
+
+def test_roll_refresh_backfills_missing_second_bar_without_duplicates():
+    feed = make_feed()
+    for ts in (1_000, 1_002):
+        feed._live_callback("NQ=F", Ohlcv(ts, 100, 101, 99, 100.5, 1))
+    assert [b.ts for b in feed._second_bars["NQ=F"]] == [1_000, 1_002]
+
+    feed._live_callback("NQ=F", Ohlcv(1_001, 100.25, 101, 100, 100.75, 2))
+    feed._live_callback("NQ=F", Ohlcv(1_002, 100, 101, 99, 100.5, 1))
+    assert [b.ts for b in feed._second_bars["NQ=F"]] == [1_000, 1_001, 1_002]
+    assert [b.v for b in feed._second_bars["NQ=F"]] == [1, 2, 1]
+
+
+def test_replay_backfill_keeps_trade_and_depth_buffers_receive_time_ordered_and_unique():
+    feed = make_feed()
+    feed._live_callback("NQ=F", Trade(2_000, 200.0, sequence=20, ts_recv=2_000.20))
+    feed._live_callback("NQ=F", Trade(1_999, 199.0, sequence=19, ts_recv=1_999.90))
+    feed._live_callback("NQ=F", Trade(1_999, 199.0, sequence=19, ts_recv=1_999.90))
+    ticks = feed.trades("NQ=F")
+    assert [x.sequence for x in ticks] == [19, 20]
+
+    newer = Databento._event_record(Depth(2_000, 200.0, order_id=20, ts_recv=2_000.20))
+    older = Databento._event_record(Depth(1_999, 199.0, order_id=19, ts_recv=1_999.90))
+    with feed._lock:
+        assert feed._append_depth_locked("NQ=F", newer) is True
+        assert feed._append_depth_locked("NQ=F", older) is True
+        assert feed._append_depth_locked("NQ=F", older) is False
+        rows = list(feed._depth["NQ=F"])
+    assert [row["order_id"] for row in rows] == [19, 20]
+
+
+def test_mbo_snapshots_are_serialized_to_one_temporary_session_at_a_time():
+    active = 0
+    peak = 0
+    gate = threading.Event()
+    entered = threading.Event()
+    lock = threading.Lock()
+
+    class BlockingSnapshot(FakeLive):
+        def start(self):
+            nonlocal active, peak
+            with lock:
+                active += 1
+                peak = max(peak, active)
+                entered.set()
+            gate.wait(2)
+            super().start()
+
+        def stop(self):
+            nonlocal active
+            super().stop()
+            with lock:
+                active -= 1
+
+    clients = [
+        BlockingSnapshot({"mbo": [Depth(3_000, 100.0, flags=1)]}),
+        BlockingSnapshot({"mbo": [Depth(3_001, 101.0, flags=1)]}),
+    ]
+    feed = make_feed(lives=clients)
+    results = []
+
+    one = threading.Thread(target=lambda: results.append(feed.mbo_snapshot("NQ=F", timeout=1)))
+    two = threading.Thread(target=lambda: results.append(feed.mbo_snapshot("ES=F", timeout=1)))
+    one.start()
+    assert entered.wait(1)
+    two.start()
+    assert peak == 1
+    gate.set()
+    one.join(3)
+    two.join(3)
+    assert not one.is_alive() and not two.is_alive()
+    assert peak == 1
+    assert len(results) == 2
 
 
 def test_shared_live_start_failure_resets_client_for_clean_retry():
