@@ -539,17 +539,29 @@ class Databento:
                     self._instrument_to_symbol[iid] = key
                     self._instrument_windows[iid] = (key, start_ns, end_ns)
                     meta = dict(self._meta.get(key, {}))
-                    meta.update({
-                        "provider": "databento",
-                        "dataset": self.dataset,
-                        "continuous_symbol": mapping,
-                        "resolved_instrument_id": iid,
-                        "resolved_raw_symbol": raw_symbol or None,
-                        "mapping_start_ns": start_ns,
-                        "mapping_end_ns": end_ns,
-                        "regularMarketTime": self._feed_time.get(key, 0),
-                    })
-                    self._meta[key] = meta
+                    current_mapping = start_ns is None and end_ns is None
+                    previous_start = meta.get("mapping_start_ns")
+                    previous_current = bool(meta.get("mapping_current"))
+                    # Current/unbounded mappings always win the status view. Finite
+                    # replay mappings can initialize it only until a current mapping
+                    # arrives; among replay mappings prefer the newest start boundary.
+                    publish = current_mapping or not previous_current
+                    if publish and not current_mapping and previous_start is not None and start_ns is not None:
+                        publish = int(start_ns) >= int(previous_start)
+                    if publish:
+                        meta.update({
+                            "provider": "databento",
+                            "dataset": self.dataset,
+                            "continuous_symbol": mapping,
+                            "resolved_instrument_id": iid,
+                            "resolved_raw_symbol": raw_symbol or None,
+                            "mapping_start_ns": start_ns,
+                            "mapping_end_ns": end_ns,
+                            "mapping_current": current_mapping,
+                            "mapping_active": True,
+                            "regularMarketTime": self._feed_time.get(key, 0),
+                        })
+                        self._meta[key] = meta
             return
 
         # ErrorMsg has no guaranteed instrument mapping. Route symbol-specific errors
@@ -802,6 +814,11 @@ class Databento:
             self._instrument_windows.clear()
             self._ready.clear()
             self._errors.clear()
+            for key, meta0 in list(self._meta.items()):
+                meta = dict(meta0)
+                if meta.get("provider") == "databento":
+                    meta["mapping_active"] = False
+                    self._meta[key] = meta
 
         if client is not None:
             try:
