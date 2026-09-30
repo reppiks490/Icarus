@@ -90,10 +90,10 @@ def test_default_engine_service_offline_argv(tmp_path):
     assert svc.env["ICARUS_FEED"] == "file"
     assert svc.env["ICARUS_HOME"] == os.path.abspath(str(tmp_path))
     assert "--feed" in svc.argv and "file" in svc.argv
-    assert "--roll" in svc.argv and "none" in svc.argv
+    assert "--roll" not in svc.argv
     assert svc.health_url == "http://127.0.0.1:8791/healthz"
     live = default_engine_service(str(tmp_path), "/repo", offline=False)
-    assert "--roll" not in live.argv  # do not override GC's registry roll=none
+    assert "--roll" not in live.argv  # continuous futures require no expiry/roll CLI override
 
 
 def test_supervisor_spawn_and_stop(tmp_path):
@@ -176,12 +176,13 @@ def test_portfolio_file_mode_uses_historyhub(tmp_path, monkeypatch):
     assert port.feed_mode == "file"
     assert isinstance(port.feeds["yahoo"], HistoryHub)
     spec = parse_spec("NQ")
-    assert spec.roll == "volume"
+    assert spec.roll == "continuous"
     r = port.make_runner(spec)
-    assert spec.roll == "none"
+    assert spec.roll == "continuous"
+    assert r.live_ticker == "NQ=F"
     assert r.cfg.base_dir == str(tmp_path)
     assert r.feed is port.feeds["yahoo"]
-    assert r.roller is None
+    assert not hasattr(r, "roller")
 
 
 def test_file_mode_rewarm_when_csv_arrives_after_start(tmp_path, monkeypatch):
