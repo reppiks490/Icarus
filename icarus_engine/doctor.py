@@ -167,7 +167,7 @@ def inspect(base_dir: str | None = None, *, today: date | None = None) -> Dict[s
         "warns": warns,
         "ok": fails == 0,
         "notes": [
-            "Yahoo continuous futures (=F) are delayed. A TradingView CME pack does not feed this process.",
+            "Yahoo continuous futures (=F) are delayed. Set ICARUS_FEED=databento with DATABENTO_API_KEY for real-time GLBX.MDP3 continuous futures.",
             "Export the matching TradingView 1! chart (for example NQ1!, MNQ1!, GC1!) and ingest it for parity warm-up.",
             "Live NQ fills require a futures broker; the bridge maps NQ1! → QQQ on Alpaca.",
             "icarus-plant start --offline supervises the engine on FileFeed; drop Supercharts CSVs in history/drop/.",
