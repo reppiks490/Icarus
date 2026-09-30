@@ -258,6 +258,36 @@ def test_live_second_bars_trades_and_depth_can_share_one_session():
     assert all(row["schema"] == "mbp-10" for row in depth_rows)
 
 
+def test_trade_tape_deduplicates_same_event_seen_in_trades_and_mbo():
+    trade = Trade(1_059, 106.5, 3, side="B", sequence=1)
+    mbo_trade = Depth(1_059, 106.5, order_id=99)
+    mbo_trade.action = "T"
+    mbo_trade.side = "B"
+    mbo_trade.size = 3
+    mbo_trade.sequence = 1
+    live = FakeLive({"ohlcv-1s": [Ohlcv(1_059, 106, 107, 105, 106.5, 1)],
+                     "trades": [trade], "mbo": [mbo_trade]})
+    feed = make_feed(lives=[live])
+
+    feed.recent_ex("NQ=F", 1)
+    assert len(feed.trades("NQ=F")) == 1
+    feed.depth_events("NQ=F", schema="mbo")
+    ticks = feed.trades("NQ=F")
+    assert len(ticks) == 1
+    assert ticks[0].ts_event_ns == 1_059 * NS
+    assert ticks[0].price == 106.5 and ticks[0].size == 3
+
+
+def test_mbo_snapshot_omits_non_mbo_stream_records():
+    snapshot = Depth(2_000, 200.25, flags=1)
+    live = FakeLive({"mbo": [SystemMsg("subscription ack"), SimpleNamespace(stype_in_symbol="ES.v.0", instrument_id=7), snapshot]})
+    feed = make_feed(lives=[live])
+    rows = feed.mbo_snapshot("ES=F", timeout=0.2)
+    assert len(rows) == 1
+    assert rows[0]["schema"] == "mbo"
+    assert rows[0]["order_id"] == 7
+
+
 def test_mbo_snapshot_requests_continuous_snapshot_and_stops():
     snapshot = Depth(2_000, 200.25, flags=1)
     live = FakeLive({"mbo": [snapshot]})
