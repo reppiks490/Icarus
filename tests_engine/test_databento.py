@@ -355,6 +355,20 @@ def test_depth_mbo_trade_cannot_duplicate_core_tape_or_move_core_mark():
     assert feed.depth_events("NQ=F", schema="mbo")[-1]["price"] == 999.0
 
 
+def test_depth_readiness_is_independent_per_symbol_and_schema():
+    core = FakeLive()
+    book = FakeLive({"mbp-10": [Depth(1_000, 100.5, levels=[Level(100.25, 100.5)])]})
+    feed = make_feed(lives=[core, book])
+    feed.start_live("NQ=F")
+    assert feed.depth_events("NQ=F", schema="mbp-10")
+    assert feed._depth_ready[("NQ=F", "mbp-10")].is_set() is True
+
+    # Adding MBO after MBP-10 must create a fresh, unsatisfied readiness gate.
+    feed._prepare_depth_live(["NQ=F"], "mbo")
+    assert feed._depth_ready[("NQ=F", "mbo")].is_set() is False
+    assert feed._depth_ready[("NQ=F", "mbp-10")].is_set() is True
+
+
 def test_fatal_depth_subscription_error_does_not_poison_core_session():
     core = FakeLive({
         "ohlcv-1s": [Ohlcv(1_000, 100, 101, 99, 100.5, 1)],
