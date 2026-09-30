@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field, replace
-from typing import Dict, Optional, Tuple
+from typing import Dict, List, Optional
 
 
 # The live adapters currently provide minute OHLC bars. These are the chart choices
@@ -110,7 +110,7 @@ def validate_chart_config(values: Optional[Dict[str, object]]) -> Dict[str, obje
 
 def pin_config(spec: "AssetSpec", *keys: str) -> "AssetSpec":
     """Mark explicit startup/API configuration so preset metadata cannot silently overwrite it."""
-    return replace(spec, config_pins=tuple(sorted(set(spec.config_pins) | {str(k) for k in keys})))
+    return replace(spec, config_pins=sorted(set(spec.config_pins) | {str(k) for k in keys}))
 
 
 def apply_chart_config(spec: "AssetSpec", values: Optional[Dict[str, object]], *, pin: bool = False) -> "AssetSpec":
@@ -148,7 +148,7 @@ class AssetSpec:
     group: str = "equity"            # holiday schedule: equity | metals | crypto (CME Bitcoin futures follow equity)
     security_source: str = "chart"   # chart | standard - what request.security() sees on a Heikin Ashi chart (chart = HA, TradingView)
     roll: str = "volume"             # volume | none - continuous-contract roll rule for the live feed (TradingView 1! = volume)
-    config_pins: Tuple[str, ...] = field(default_factory=tuple, repr=False, compare=False)  # explicit startup/API values that beat preset metadata
+    config_pins: List[str] = field(default_factory=list, repr=False, compare=False)  # explicit startup/API values that beat preset metadata
 
 
 REGISTRY: Dict[str, AssetSpec] = {
