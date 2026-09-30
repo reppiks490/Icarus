@@ -281,10 +281,15 @@ class Databento:
 
     @staticmethod
     def _depth_key(row: Dict[str, Any]) -> Tuple[Any, ...]:
+        levels = tuple(
+            tuple(sorted((str(k), v) for k, v in level.items()))
+            for level in (row.get("levels") or [])
+        )
         return (
             row.get("schema"), row.get("ts_event_ns"), row.get("instrument_id"),
             row.get("order_id"), row.get("sequence"), row.get("action"),
-            row.get("side"), row.get("depth"), row.get("price"),
+            row.get("side"), row.get("depth"), row.get("price"), row.get("size"),
+            row.get("flags"), levels,
         )
 
     def _append_depth_locked(self, symbol: str, row: Dict[str, Any]) -> bool:
