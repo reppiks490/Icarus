@@ -7,7 +7,7 @@ from dataclasses import asdict, replace
 
 import pytest
 
-from icarus_engine.assets import AssetSpec
+from icarus_engine.assets import AssetSpec, PRIMARY_INTRADAY_TIMEFRAMES
 from icarus_engine.pine.timeframe import Bar
 from icarus_engine.runtime import AssetRunner, Journal, Portfolio, RunnerConfig
 from icarus_engine.server import serve
@@ -519,6 +519,24 @@ def test_paper_equity_series_excludes_preconfiguration_samples(configured):
         port.journal.con.commit()
     series = port.status()["equity_series"]
     assert [p["equity"] for p in series] == [222.0, 333.0]
+
+
+def test_all_primary_intraday_timeframes_rewarm_from_genuine_one_minute_cache(configured):
+    port, r, _ = configured
+    r.spec.chart_tf = "20"
+    r.chart_minutes = 20
+    r.subbars = [
+        (Bar(k * 60, 100 + k / 100, 101 + k / 100, 99 + k / 100, 100.5 + k / 100, 1), 1)
+        for k in range(180)
+    ]
+    caps = r.chart_capability_view()
+    assert tuple(PRIMARY_INTRADAY_TIMEFRAMES) == ("1", "2", "5", "10", "20", "30")
+    assert set(PRIMARY_INTRADAY_TIMEFRAMES).issubset(set(caps["available_from_cache"]))
+    for tf in PRIMARY_INTRADAY_TIMEFRAMES:
+        port.rewarm_asset("TEST", {}, False, chart={"timeframe": tf})
+        assert r.spec.chart_tf == tf
+        assert r.chart_minutes == int(tf)
+        assert r.bars
 
 
 def test_paper_rewarm_uses_genuine_one_minute_tail_from_mixed_cache(configured):
