@@ -248,6 +248,51 @@ def test_fatal_core_error_cannot_be_cleared_by_buffered_market_data_before_recon
     assert "live_error" not in meta
 
 
+def test_fatal_core_session_error_marks_every_active_symbol_failed_closed():
+    feed = make_feed()
+    feed._live_started.update({"NQ=F", "ES=F"})
+    feed._continuous_to_symbol.update({"NQ.v.0": "NQ=F", "ES.v.0": "ES=F"})
+
+    feed._dispatch_shared_live(Error("NQ.v.0 invalid subscription", code=5))
+
+    with pytest.raises(RuntimeError, match="code=5"):
+        feed._raise_live_error("NQ=F")
+    with pytest.raises(RuntimeError, match="code=5"):
+        feed._raise_live_error("ES=F")
+    assert feed.meta("NQ=F")["core_session_ok"] is False
+    assert feed.meta("ES=F")["core_session_ok"] is False
+
+
+def test_symbol_resolution_error_remains_scoped_on_shared_core_session():
+    feed = make_feed()
+    feed._live_started.update({"NQ=F", "ES=F"})
+    feed._continuous_to_symbol.update({"NQ.v.0": "NQ=F", "ES.v.0": "ES=F"})
+
+    feed._dispatch_shared_live(Error("NQ.v.0 failed to resolve", code=4))
+
+    with pytest.raises(RuntimeError, match="code=4"):
+        feed._raise_live_error("NQ=F")
+    feed._raise_live_error("ES=F")
+    assert feed.meta("ES=F")["core_session_ok"] is True
+
+
+def test_fatal_depth_session_error_marks_every_active_depth_symbol_failed_closed():
+    feed = make_feed()
+    feed._depth_live_symbols.update({"NQ=F", "ES=F"})
+    feed._depth_continuous_to_symbol.update({"NQ.v.0": "NQ=F", "ES.v.0": "ES=F"})
+    feed._depth_wanted["NQ=F"].add("mbp-10")
+    feed._depth_wanted["ES=F"].add("mbp-10")
+
+    feed._dispatch_depth_live(Error("NQ.v.0 invalid depth subscription", code=5))
+
+    with pytest.raises(RuntimeError, match="code=5"):
+        feed._raise_depth_error("NQ=F")
+    with pytest.raises(RuntimeError, match="code=5"):
+        feed._raise_depth_error("ES=F")
+    assert feed.meta("NQ=F")["depth_session_ok"] is False
+    assert feed.meta("ES=F")["depth_session_ok"] is False
+
+
 def test_undefined_databento_price_is_never_promoted_to_a_fake_market_price():
     undef = (1 << 63) - 1
     row = Depth(1_500, 100.0, order_id=11)
