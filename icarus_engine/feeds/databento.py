@@ -102,6 +102,10 @@ class Databento:
         self._trades: Dict[str, Deque[TradeTick]] = collections.defaultdict(
             lambda: collections.deque(maxlen=max(1000, int(max_trades)))
         )
+        # Multiple Databento schemas can report the same trade event (for example
+        # trades + MBO/MBP-10). Keep the public tick tape event-unique instead of
+        # double-counting one exchange trade when depth is enabled.
+        self._trade_seen: Dict[str, set[Tuple[int, float, int, str, int]]] = collections.defaultdict(set)
         self._depth: Dict[str, Deque[Dict[str, Any]]] = collections.defaultdict(
             lambda: collections.deque(maxlen=max(1000, int(max_depth)))
         )
@@ -216,6 +220,27 @@ class Databento:
             action=str(getattr(record, "action", "T") or "T"),
             sequence=int(getattr(record, "sequence", 0) or 0),
         )
+
+    @staticmethod
+    def _trade_key(tick: TradeTick) -> Tuple[int, float, int, str, int]:
+        return (tick.ts_event_ns, tick.price, tick.size, tick.side, tick.sequence)
+
+    def _append_trade_locked(self, symbol: str, tick: TradeTick) -> bool:
+        """Append one exchange trade once even when several live schemas report it.
+
+        Caller must hold self._lock. The dedupe set is kept in exact lockstep
+        with the bounded deque so it cannot grow without bound.
+        """
+        key = self._trade_key(tick)
+        seen = self._trade_seen[symbol]
+        if key in seen:
+            return False
+        q = self._trades[symbol]
+        if q.maxlen is not None and len(q) >= q.maxlen and q:
+            seen.discard(self._trade_key(q[0]))
+        q.append(tick)
+        seen.add(key)
+        return True
 
     @classmethod
     def _event_record(cls, record: Any) -> Dict[str, Any]:
@@ -371,7 +396,7 @@ class Databento:
                 # MBO trade records are both trades and order-book events; keep both views.
                 if hasattr(record, "price") and hasattr(record, "size") and str(getattr(record, "action", "T") or "T") == "T":
                     tick = self._trade_record(record)
-                    self._trades[symbol].append(tick)
+                    self._append_trade_locked(symbol, tick)
                     self._last_price[symbol] = tick.price
                     market_event = True
                 if hasattr(record, "levels") or hasattr(record, "order_id"):
@@ -538,7 +563,14 @@ class Databento:
                 error.append(f"Databento MBO snapshot error code={code}: {err}")
                 done.set()
                 return
-            rows.append(self._event_record(record))
+            # Snapshot streams also contain SymbolMappingMsg/SystemMsg records.
+            # Only MBO records are part of the order-book snapshot returned to callers.
+            if not hasattr(record, "order_id"):
+                return
+            row = self._event_record(record)
+            if row.get("schema") != "mbo":
+                return
+            rows.append(row)
             flags = int(getattr(record, "flags", 0) or 0)
             if last_flag and flags & last_flag:
                 done.set()
