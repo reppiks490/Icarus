@@ -67,6 +67,13 @@ class Depth:
             self.levels = levels
 
 
+class Error:
+    def __init__(self, err="symbol failed", code=4):
+        self.err = err
+        self.code = code
+        self.is_last = True
+
+
 class FakeStore(list):
     pass
 
@@ -132,16 +139,47 @@ def make_feed(*, historical=None, lives=None):
     )
 
 
-def test_continuous_volume_front_symbology_and_capabilities():
+def test_continuous_volume_front_symbology_and_capabilities(monkeypatch):
+    monkeypatch.delenv("DATABENTO_ROLL_RULE", raising=False)
     assert Databento.continuous_symbol("NQ=F") == "NQ.v.0"
     assert Databento.continuous_symbol("CME_MINI:MNQ1!") == "MNQ.v.0"
+    assert Databento.continuous_symbol("BTCF") == "BTC.v.0"
     assert Databento.parent_symbol("ES=F") == "ES.FUT"
-    caps = Databento.capabilities()
+    feed = make_feed()
+    caps = feed.capabilities()
     assert caps["continuous_futures"] is True
     assert caps["continuous_rule"] == "volume_front"
+    assert caps["continuous_rule_code"] == "v"
     assert caps["minimum_ohlcv_resolution_seconds"] == 1
     assert caps["ticks"] is True
     assert caps["mbp_10"] is True and caps["mbo"] is True and caps["mbo_snapshot"] is True
+
+
+def test_roll_rule_is_real_configuration_not_a_dead_setting(monkeypatch):
+    monkeypatch.setenv("DATABENTO_ROLL_RULE", "n")
+    feed = make_feed()
+    assert feed.roll_rule == "n"
+    assert feed.continuous_symbol("NQ=F", feed.roll_rule) == "NQ.n.0"
+    assert feed.capabilities()["continuous_rule"] == "open_interest_front"
+    with pytest.raises(ValueError, match="roll rule"):
+        Databento(api_key="db-test", sdk=FakeSDK, historical=FakeHistorical({}), live_factory=lambda: FakeLive(), roll_rule="bad")
+
+
+def test_databento_rejects_spot_and_unknown_symbols():
+    feed = make_feed()
+    with pytest.raises(ValueError, match="registered futures"):
+        feed.continuous_symbol("BTCUSD", feed.roll_rule)
+    with pytest.raises(ValueError):
+        feed.continuous_symbol("../NQ", feed.roll_rule)
+
+
+def test_live_error_message_fails_closed_instead_of_silently_waiting():
+    live = FakeLive({"ohlcv-1s": [Error("NQ.v.0 failed to resolve", code=4)]})
+    feed = make_feed(lives=[live])
+    with pytest.raises(RuntimeError, match="code=4"):
+        feed.recent_ex("NQ=F", 60)
+    meta = feed.meta("NQ=F")
+    assert "failed to resolve" in meta["live_error"]
 
 
 def test_historical_one_second_and_lossless_resampling_use_continuous_stype():
