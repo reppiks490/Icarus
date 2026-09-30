@@ -180,3 +180,18 @@ def test_backtest_rejects_finer_timeframe_than_cached_tape(port):
     r.subbars = [(Bar(k * 300, 100, 101, 99, 100, 1), 5) for k in range(6)]
     with pytest.raises(ValueError, match="cannot be losslessly rebuilt"):
         backtest.run_backtest(port, "TEST", timeframe="2")
+
+
+def test_backtest_inherits_active_paper_fill_mode_when_not_overridden(port):
+    r = port.runners["TEST"]
+    r.spec.fill_on = "chart"
+    result = backtest.run_backtest(port, "TEST")
+    assert result["config"]["fill_on"] == "chart"
+
+
+def test_backtest_honors_preset_fill_mode_metadata(port, tmp_path):
+    preset_dir = tmp_path / "presets"
+    preset_dir.mkdir(exist_ok=True)
+    (preset_dir / "chart-fills.json").write_text(json.dumps({"_meta": {"fill_on": "chart"}}), encoding="utf-8")
+    result = backtest.run_backtest(port, "TEST", preset="chart-fills")
+    assert result["config"]["fill_on"] == "chart"
