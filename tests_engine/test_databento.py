@@ -360,13 +360,17 @@ def test_fatal_depth_subscription_error_does_not_poison_core_session():
         "ohlcv-1s": [Ohlcv(1_000, 100, 101, 99, 100.5, 1)],
         "trades": [Trade(1_000, 100.5, 2)],
     })
-    book = FakeLive({"mbp-10": [Error("depth subscription rejected", code=5)]})
+    book = FakeLive({"mbp-10": [
+        Error("depth subscription rejected", code=5),
+        Depth(1_001, 100.5, levels=[Level(100.25, 100.5)]),  # buffered after fatal error
+    ]})
     feed = make_feed(lives=[core, book])
 
     bars, _, px = feed.recent_ex("NQ=F", 1)
     assert bars and px == 100.5
     with pytest.raises(RuntimeError, match="depth error code=5.*rejected"):
         feed.depth_events("NQ=F", schema="mbp-10")
+    assert feed._depth["NQ=F"]  # later buffered data cannot clear the fatal state
 
     assert feed._shared_live is core
     assert feed._shared_started is True
