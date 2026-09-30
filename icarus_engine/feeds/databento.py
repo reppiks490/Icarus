@@ -181,6 +181,8 @@ class Databento:
             "continuous_futures": True,
             "continuous_rule": rule_name,
             "continuous_rule_code": self.roll_rule,
+            "live_roll_verified": True,
+            "live_roll_verification": "daily_symbology_resolution_and_session_rotation",
             "ohlcv_seconds": True,
             "minimum_ohlcv_resolution_seconds": 1,
             "trades": True,
