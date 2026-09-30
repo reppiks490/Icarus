@@ -127,6 +127,7 @@ class Databento:
         self._depth: Dict[str, Deque[Dict[str, Any]]] = collections.defaultdict(
             lambda: collections.deque(maxlen=max(1000, int(max_depth)))
         )
+        self._depth_seen: Dict[str, set[Tuple[Any, ...]]] = collections.defaultdict(set)
         self._last_price: Dict[str, float] = {}
         self._feed_time: Dict[str, int] = {}
         self._meta: Dict[str, Dict[str, Any]] = {}
@@ -275,6 +276,32 @@ class Databento:
         if q.maxlen is not None and len(q) >= q.maxlen and q:
             seen.discard(self._trade_key(q[0]))
         q.append(tick)
+        seen.add(key)
+        return True
+
+    @staticmethod
+    def _depth_key(row: Dict[str, Any]) -> Tuple[Any, ...]:
+        return (
+            row.get("schema"), row.get("ts_event_ns"), row.get("instrument_id"),
+            row.get("order_id"), row.get("sequence"), row.get("action"),
+            row.get("side"), row.get("depth"), row.get("price"),
+        )
+
+    def _append_depth_locked(self, symbol: str, row: Dict[str, Any]) -> bool:
+        """Append one depth event once and keep the bounded dedupe set in lockstep."""
+        key = self._depth_key(row)
+        seen = self._depth_seen[symbol]
+        if key in seen:
+            return False
+        q = self._depth[symbol]
+        ts_ns = row.get("ts_event_ns")
+        if q and ts_ns is not None:
+            last_ns = q[-1].get("ts_event_ns")
+            if last_ns is not None and int(ts_ns) < int(last_ns):
+                return False
+        if q.maxlen is not None and len(q) >= q.maxlen and q:
+            seen.discard(self._depth_key(q[0]))
+        q.append(row)
         seen.add(key)
         return True
 
@@ -449,8 +476,8 @@ class Databento:
                         self._last_price[symbol] = tick.price
                         market_event = True
                 if hasattr(record, "levels") or hasattr(record, "order_id"):
-                    self._depth[symbol].append(self._event_record(record))
-                    market_event = True
+                    if self._append_depth_locked(symbol, self._event_record(record)):
+                        market_event = True
             if market_event:
                 self._feed_time[symbol] = max(now_sec, self._feed_time.get(symbol, 0))
                 self._ready[symbol].set()
@@ -794,6 +821,7 @@ class Databento:
                 key = str(symbol)
                 self._live.pop(key, None)
                 self._live_started.discard(key)
+                self._wanted_subscriptions.pop(key, None)
                 self._ready.pop(key, None)
                 self._errors.pop(key, None)
                 # Databento has no per-subscription unsubscribe on a running session.
