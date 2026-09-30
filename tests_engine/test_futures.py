@@ -197,7 +197,7 @@ def test_assets_registry_and_spec_tokens():
     for bad in ('a">x', "..\\..\\evil", "NQ/../x"):
         with pytest.raises(ValueError):
             resolve(bad)
-    for dated in ("NQZ26", "CME_MINI:NQZ2026", "MNQH27", "ESZ26", "GCZ26", "SIZ26", "BTCZ26", "MBTZ26"):
+    for dated in ("NQZ26", "CME_MINI:NQZ2026", "MNQH27", "ESZ26", "GCZ26", "SIZ26", "BTCZ26", "MBTZ26", "CLZ26", "ZNZ26"):
         with pytest.raises(ValueError, match="continuous-only"):
             resolve(dated)
 
