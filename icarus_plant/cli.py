@@ -86,9 +86,15 @@ def cmd_start(args: argparse.Namespace) -> int:
     ensure(root)
     repo = repo_root()
     engine_url = f"http://127.0.0.1:{args.engine_port}/healthz"
+    bridge_url = f"http://127.0.0.1:{args.bridge_port}/healthz"
     if health_ok(engine_url):
+        if args.bridge and not health_ok(bridge_url):
+            print(f"engine already running: {engine_url.replace('/healthz', '/')}")
+            print("  --bridge was requested but the bridge is not running.")
+            print("  stop the plant, then start again with --bridge so one supervisor owns both services.")
+            return 1
         print(f"already running: {engine_url.replace('/healthz', '/')}  token={args.token}")
-        print("  this does not switch Yahoo vs --offline. To change feed: icarus-plant stop  then start again.")
+        print("  this does not change feed/assets/preset/token. Stop the plant, then start again to change launch configuration.")
         return 0
     plant_pid = _read_pid(os.path.join(root, "run", "plant.pid"))
     if plant_pid and _alive(plant_pid):
