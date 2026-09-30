@@ -76,7 +76,7 @@ $env:DATABENTO_ROLL_RULE="v"
 icarus-plant start --assets NQ,MNQ,ES --feed databento
 ```
 
-The key stays in your local environment; do not commit it. All three roll rules remain automatic continuous contracts—no dated-contract maintenance. Run `icarus-engine doctor --json` with `ICARUS_FEED=databento` to verify the SDK/key prerequisites without making a market-data request.
+The key stays local; do not commit it. You may either export the variables in your shell or put `DATABENTO_API_KEY`, `DATABENTO_DATASET=GLBX.MDP3`, and `DATABENTO_ROLL_RULE=v` in the plant root `.env`; `icarus-plant start` loads that file without overriding variables already exported by the process. All three roll rules remain automatic continuous contracts—no dated-contract maintenance. Run `ICARUS_FEED=databento icarus-engine doctor --json` (or the PowerShell equivalent) to verify the SDK/key/dataset/roll prerequisites without making a market-data request.
 
 ## Not this
 
