@@ -344,3 +344,37 @@ def test_plant_cli_setup_survives_cp1252_stdout(tmp_path):
     )
     stderr = proc.stderr.decode("utf-8", errors="replace")
     assert proc.returncode == 0, stderr
+
+
+def test_plant_status_is_healthy_without_optional_bridge(tmp_path, capsys):
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+    import threading
+
+    class H(BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(200 if self.path == "/healthz" else 404)
+            self.end_headers()
+            self.wfile.write(b"ok")
+
+        def log_message(self, *args):
+            return
+
+    paths = ensure(str(tmp_path))
+    (tmp_path / "run" / "engine.pid").write_text(str(os.getpid()), encoding="ascii")
+    httpd = HTTPServer(("127.0.0.1", 0), H)
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    try:
+        rc = plant_main([
+            "--root", str(tmp_path), "status",
+            "--engine-port", str(httpd.server_port), "--json",
+        ])
+        assert rc == 0
+        payload = capsys.readouterr().out
+        assert '"ok": true' in payload.lower()
+        assert '"name": "engine"' in payload
+        assert '"name": "bridge"' not in payload
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+        thread.join(5)
