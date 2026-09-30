@@ -373,12 +373,15 @@ class Databento:
             if market_event:
                 self._feed_time[symbol] = max(now_sec, self._feed_time.get(symbol, 0))
                 self._ready[symbol].set()
+                self._errors.pop(symbol, None)
             self._meta[symbol] = {
-                "regularMarketTime": self._feed_time[symbol],
+                "regularMarketTime": self._feed_time.get(symbol, 0),
                 "provider": "databento",
                 "dataset": self.dataset,
                 "continuous_symbol": self.continuous_symbol(symbol, self.roll_rule),
             }
+            if symbol in self._errors:
+                self._meta[symbol]["live_error"] = self._errors[symbol]
 
     def _raise_live_error(self, symbol: str) -> None:
         with self._lock:
@@ -516,9 +519,16 @@ class Databento:
         client = self._live_factory()
         done = threading.Event()
         rows: List[Dict[str, Any]] = []
+        error: List[str] = []
         last_flag = int(getattr(getattr(self._sdk, "RecordFlags", object), "F_LAST", 0) or 0)
 
         def callback(record: Any) -> None:
+            if hasattr(record, "err"):
+                code = int(getattr(record, "code", 0) or 0)
+                err = str(getattr(record, "err", "") or "Databento MBO snapshot error")
+                error.append(f"Databento MBO snapshot error code={code}: {err}")
+                done.set()
+                return
             rows.append(self._event_record(record))
             flags = int(getattr(record, "flags", 0) or 0)
             if last_flag and flags & last_flag:
@@ -537,6 +547,8 @@ class Databento:
             done.wait(max(0.1, float(timeout)))
         finally:
             client.stop()
+        if error:
+            raise RuntimeError(error[0])
         if last_flag and not done.is_set():
             raise TimeoutError(f"Databento MBO snapshot timed out for {symbol}")
         return rows
