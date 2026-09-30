@@ -1255,7 +1255,7 @@ class Databento:
             ready = self._depth_ready[(key, schema)]
         if not have:
             ready.wait(timeout=2.0)
-        self._raise_depth_error(key)
+        self._raise_depth_error(key, schema)
         with self._lock:
             rows = [row for row in self._depth[key] if row.get("schema") == schema]
         rows.sort(key=lambda row: (
