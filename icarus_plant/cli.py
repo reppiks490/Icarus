@@ -169,11 +169,19 @@ def cmd_status(args: argparse.Namespace) -> int:
     plant = Plant(root)
     engine_port = args.engine_port
     bridge_port = args.bridge_port
-    for name, url, pf in (
-        ("engine", f"http://127.0.0.1:{engine_port}/healthz", os.path.join(root, "run", "engine.pid")),
-        ("bridge", f"http://127.0.0.1:{bridge_port}/healthz", os.path.join(root, "run", "bridge.pid")),
-    ):
-        plant.add(Service(name=name, argv=[], health_url=url, cwd=root, pidfile=pf))
+    engine_pf = os.path.join(root, "run", "engine.pid")
+    bridge_pf = os.path.join(root, "run", "bridge.pid")
+    plant.add(Service(
+        name="engine", argv=[], health_url=f"http://127.0.0.1:{engine_port}/healthz",
+        cwd=root, pidfile=engine_pf,
+    ))
+    # The bridge is opt-in. Do not mark a healthy engine-only plant as failed
+    # just because no bridge service was ever launched.
+    if os.path.isfile(bridge_pf):
+        plant.add(Service(
+            name="bridge", argv=[], health_url=f"http://127.0.0.1:{bridge_port}/healthz",
+            cwd=root, pidfile=bridge_pf,
+        ))
     rep = plant.status()
     if args.json:
         print(json.dumps(rep, indent=2))
