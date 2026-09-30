@@ -2,6 +2,7 @@
 """Offline health checks. No network, no broker, no paid feed."""
 from __future__ import annotations
 
+import importlib.util
 import os
 from datetime import date
 from typing import Any, Dict, List
@@ -109,12 +110,12 @@ def inspect(base_dir: str | None = None, *, today: date | None = None) -> Dict[s
     feed = os.environ.get("ICARUS_FEED", "yahoo").strip() or "yahoo"
     home = os.environ.get("ICARUS_HOME")
     _check(items, "ICARUS_FEED / ICARUS_HOME", True,
-           f"ICARUS_FEED={feed}  ICARUS_HOME={home or '(cwd)'} — file = HistoryHub (no Yahoo); yahoo = delayed NQ=F",
+           f"ICARUS_FEED={feed}  ICARUS_HOME={home or '(cwd)'} — file = HistoryHub; yahoo = delayed; databento = GLBX.MDP3 live/historical",
            level="ok")
 
     env_path = os.path.join(root, ".env")
     _check(items, ".env present", os.path.isfile(env_path),
-           env_path if os.path.isfile(env_path) else "copy icarus_bridge/.env.example — required only for the Alpaca bridge",
+           env_path if os.path.isfile(env_path) else "copy icarus_bridge/.env.example — used by the bridge and Databento plant mode",
            level="warn")
 
     secrets: Dict[str, str] = {}
@@ -129,6 +130,16 @@ def inspect(base_dir: str | None = None, *, today: date | None = None) -> Dict[s
                level="fail")
         _check(items, "ADMIN_TOKEN", secrets.get("ADMIN_TOKEN", "change-me-too") not in ("", "change-me-too", "replace-me-too", "replace-me"),
                "still the default",
+               level="fail")
+
+    if feed.lower() in ("databento", "db"):
+        sdk_ok = importlib.util.find_spec("databento") is not None
+        _check(items, "Databento SDK", sdk_ok,
+               "installed" if sdk_ok else "install the ICARUS market-data extra: pip install -e '.[marketdata]'",
+               level="fail")
+        db_key = os.environ.get("DATABENTO_API_KEY") or secrets.get("DATABENTO_API_KEY", "")
+        _check(items, "DATABENTO_API_KEY", bool(db_key),
+               "configured" if db_key else "missing from process environment and $ICARUS_HOME/.env",
                level="fail")
 
     bak = [n for n in ("icarus_engine/runtime_v1.py.bak", "icarus_engine/cli_v1.py.bak") if os.path.isfile(os.path.join(root, n))]
