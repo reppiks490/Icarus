@@ -1012,7 +1012,7 @@ class Databento:
                 broken = self._core_broken
                 code = self._core_error_code
                 active = list(self._live_started)
-            if broken and code in (3, 6, 7, 8):
+            if broken and code in (6, 7, 8):
                 retry_symbols = list(dict.fromkeys(active + [str(x) for x in symbols]))
                 self._refresh_core_live(
                     retry_symbols,
