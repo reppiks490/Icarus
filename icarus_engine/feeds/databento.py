@@ -51,6 +51,7 @@ class TradeTick:
     side: str = ""
     action: str = "T"
     sequence: int = 0
+    ts_recv_ns: int = 0             # Databento receive time; monotonic per symbol and safe for replay ordering
 
 
 class Databento:
@@ -122,6 +123,7 @@ class Databento:
             lambda: collections.deque(maxlen=max(1000, int(max_depth)))
         )
         self._last_price: Dict[str, float] = {}
+        self._last_price_order_ns: Dict[str, int] = {}
         self._feed_time: Dict[str, int] = {}
         self._meta: Dict[str, Dict[str, Any]] = {}
         self._errors: Dict[str, str] = {}
@@ -238,6 +240,7 @@ class Databento:
     @classmethod
     def _trade_record(cls, record: Any) -> TradeTick:
         ts_ns = int(getattr(record, "ts_event"))
+        ts_recv_ns = int(getattr(record, "ts_recv", ts_ns) or ts_ns)
         return TradeTick(
             ts_event=ts_ns // 1_000_000_000,
             ts_event_ns=ts_ns,
@@ -246,6 +249,7 @@ class Databento:
             side=str(getattr(record, "side", "") or ""),
             action=str(getattr(record, "action", "T") or "T"),
             sequence=int(getattr(record, "sequence", 0) or 0),
+            ts_recv_ns=ts_recv_ns,
         )
 
     @staticmethod
@@ -263,8 +267,6 @@ class Databento:
         if key in seen:
             return False
         q = self._trades[symbol]
-        if q and tick.ts_event_ns < q[-1].ts_event_ns:
-            return False
         if q.maxlen is not None and len(q) >= q.maxlen and q:
             seen.discard(self._trade_key(q[0]))
         q.append(tick)
@@ -430,14 +432,19 @@ class Databento:
                 # Older replay rows are already buffered; ignore them rather than
                 # duplicating one-second volume or rewinding the live mark.
                 if accepted:
-                    self._last_price[symbol] = b.c
+                    bar_order_ns = (int(b.ts) + 1) * 1_000_000_000 - 1
+                    if bar_order_ns >= self._last_price_order_ns.get(symbol, 0):
+                        self._last_price[symbol] = b.c
+                        self._last_price_order_ns[symbol] = bar_order_ns
                     market_event = True
             else:
                 # MBO trade records are both trades and order-book events; keep both views.
                 if hasattr(record, "price") and hasattr(record, "size") and str(getattr(record, "action", "T") or "T") == "T":
                     tick = self._trade_record(record)
                     if self._append_trade_locked(symbol, tick):
-                        self._last_price[symbol] = tick.price
+                        if tick.ts_recv_ns >= self._last_price_order_ns.get(symbol, 0):
+                            self._last_price[symbol] = tick.price
+                            self._last_price_order_ns[symbol] = tick.ts_recv_ns
                         market_event = True
                 if hasattr(record, "levels") or hasattr(record, "order_id"):
                     self._depth[symbol].append(self._event_record(record))
