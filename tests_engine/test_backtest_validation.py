@@ -171,6 +171,9 @@ def test_backtest_rebuilds_cached_one_minute_tape_at_requested_timeframe(port):
     assert result["config"]["chart_type"] == "heikin_ashi"
     assert result["config"]["fill_on"] == "real"
     assert result["config"]["security_source"] == "chart"
+    assert result["config"]["contract_policy"] == "continuous_only"
+    assert result["config"]["provider_symbol"] == "TEST=F"
+    assert result["config"]["continuous_symbol"] == "TEST1!"
     assert result["config"]["reproducibility"]["effective_config"]["spec"]["chart_tf"] == "2"
     assert result["bars"] == 5
 
