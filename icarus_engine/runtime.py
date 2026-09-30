@@ -889,6 +889,20 @@ class AssetRunner:
             )
         return tf
 
+    def chart_capability_view(self) -> Dict[str, Any]:
+        """Static engine support plus what the current cached tape can rebuild now."""
+        caps = dict(chart_capabilities())
+        have = sorted({int(sub) for _, sub in self.subbars})
+        available: List[str] = []
+        for tf in caps["timeframes"]:
+            minutes = tf_minutes(tf)
+            if minutes == self.chart_minutes or any(sub <= minutes and minutes % sub == 0 for sub in have):
+                available.append(tf)
+        caps["available_from_cache"] = available
+        caps["cached_source_resolutions_minutes"] = have
+        caps["current_timeframe"] = self.spec.chart_tf
+        return caps
+
     def flatten(self, reason: str = "manual") -> int:
         with self.lock:
             cancelled = self._cancel_pending_entries()
