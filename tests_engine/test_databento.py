@@ -180,3 +180,13 @@ def test_native_trade_and_book_access_keeps_databento_records():
     calls = hist.timeseries.calls
     assert calls[-2]["schema"] == "trades" and calls[-2]["symbols"] == ["NQ.v.0"]
     assert calls[-1]["schema"] == "mbp-10" and calls[-1]["stype_in"] == "continuous"
+
+
+def test_databento_key_loads_from_plant_owned_env(tmp_path, monkeypatch):
+    plant = tmp_path / "plant"
+    plant.mkdir()
+    (plant / ".env").write_text("DATABENTO_API_KEY=db-from-plant\n", encoding="utf-8")
+    monkeypatch.delenv("DATABENTO_API_KEY", raising=False)
+    monkeypatch.setenv("ICARUS_HOME", str(plant))
+    feed = Databento(historical_client=FakeHistorical({}), live=False)
+    assert feed.api_key == "db-from-plant"
