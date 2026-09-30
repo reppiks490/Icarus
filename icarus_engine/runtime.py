@@ -1106,6 +1106,7 @@ class Portfolio:
         self.order: List[str] = []
         self.started = time.time()
         self.equity_epoch = self.started                 # paper equity chart covers only the active engine epoch
+        self._continuous_refresh_day = int(self.started // 86400)
         self.paused = False
         self._threads: Dict[str, threading.Thread] = {}
         self._stop = threading.Event()
@@ -1324,13 +1325,46 @@ class Portfolio:
                 self.journal.log("ERROR", f"[{r.symbol}] poll: {r.last_error}")
             self._stop.wait(interval)
 
+    def _refresh_continuous_feeds(self, now: Optional[float] = None) -> bool:
+        """Re-resolve provider continuous symbols once per UTC date.
+
+        Databento volume/open-interest ranks are based on the prior day and existing
+        Live continuous subscriptions do not remap themselves. Reopening the one
+        shared dataset session with the same smart symbols keeps ICARUS continuous-
+        only without any dated-contract rollover configuration.
+        """
+        wall = float(now if now is not None else time.time())
+        day = int(wall // 86400)
+        if day == self._continuous_refresh_day:
+            return False
+
+        groups: Dict[int, Tuple[Any, List[str]]] = {}
+        for r in self.runner_list():
+            refresh = getattr(r.feed, "refresh_live", None)
+            if r.spec.kind == "futures" and callable(refresh):
+                group = groups.setdefault(id(r.feed), (r.feed, []))
+                group[1].append(r.spec.ticker)
+
+        replay_from = max(0, int(wall) - 300)
+        for feed, tickers in groups.values():
+            feed.refresh_live(tickers, start_ts=replay_from)
+        self._continuous_refresh_day = day
+        if groups:
+            self.journal.log(
+                "INFO",
+                f"continuous futures live mappings refreshed for UTC day {day}; "
+                f"replay from {time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(replay_from))}Z",
+            )
+        return bool(groups)
+
     def _sampler(self) -> None:
         while not self._stop.is_set():
             try:
+                self._refresh_continuous_feeds()
                 if self.runners and all(r.warm for r in self.runners.values()):
                     self.journal.add_equity(self.equity())
-            except Exception:
-                pass
+            except Exception as ex:
+                self.journal.log("WARN", f"portfolio sampler: {type(ex).__name__}: {ex}")
             self._stop.wait(20)
 
     def stop(self) -> None:
