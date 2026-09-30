@@ -220,7 +220,13 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                             out.append({"name": f[:-5], "meta": d.get("_meta", {}), "count": len([k for k in d if not k.startswith("_")])})
                 return self._json(200, out)
             if p.path == "/api/assets":
-                return self._json(200, {"registry": [{"symbol": s.symbol, "name": s.name, "feed": s.feed, "calendar": s.calendar, "mintick": s.mintick, "multiplier": s.multiplier, "kind": s.kind} for s in REGISTRY.values()],
+                return self._json(200, {"registry": [{
+                                            "symbol": s.symbol, "name": s.name, "feed": s.feed, "calendar": s.calendar,
+                                            "mintick": s.mintick, "multiplier": s.multiplier, "kind": s.kind,
+                                            "continuous_symbol": s.tv_symbol if s.kind == "futures" else None,
+                                            "provider_symbol": s.ticker,
+                                            "contract_policy": "continuous_only" if s.kind == "futures" else "not_applicable",
+                                        } for s in REGISTRY.values()],
                                         "running": list(port.order), "chart_capabilities": chart_capabilities()})
             if p.path == "/api/commands":
                 return self._json(200, COMMANDS)
@@ -262,6 +268,12 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 over = _read_json(os.path.join(port.base_dir, f"inputs.{r.symbol}.json"))
                 return self._json(200, {"asset": r.symbol, "effective": r.inputs.to_dict(), "base": r.inputs_base.to_dict(), "sources": r.cfg.sources,
                                         "overrides": {k: v for k, v in over.items() if not k.startswith("_")}, "preset": r.cfg.preset, "pts_scale": r.pts_scale,
+                                        "instrument": {
+                                            "kind": r.spec.kind,
+                                            "continuous_symbol": r.spec.tv_symbol if r.spec.kind == "futures" else None,
+                                            "provider_symbol": r.spec.ticker,
+                                            "contract_policy": "continuous_only" if r.spec.kind == "futures" else "not_applicable",
+                                        },
                                         "chart": {"timeframe": r.spec.chart_tf, "chart_type": r.spec.chart_type,
                                                   "fill_on": r.spec.fill_on, "security_source": r.spec.security_source},
                                         "chart_capabilities": r.chart_capability_view()})
