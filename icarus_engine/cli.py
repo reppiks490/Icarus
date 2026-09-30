@@ -53,8 +53,6 @@ def _portfolio(args: argparse.Namespace, journal: Journal) -> Portfolio:
     feed = getattr(args, "feed", None)
     if feed:
         os.environ["ICARUS_FEED"] = feed
-    if file_feed_mode() and not getattr(args, "roll", None):
-        args.roll = "none"  # Grok (xAI) — FileFeed volumes are not CME 1!
     port = Portfolio(journal, _base_dir(), poll_sec=getattr(args, "poll", 5.0), profile=args.profile, preset=args.preset,
                      warmup_bars=args.warmup, pts_ref_symbol=args.pts_ref_symbol)
     for tok in [a for a in args.assets.split(",") if a.strip()]:
@@ -79,8 +77,6 @@ def _portfolio(args: argparse.Namespace, journal: Journal) -> Portfolio:
         if getattr(args, "security_source", None):
             spec.security_source = args.security_source
             spec = pin_config(spec, "security_source")
-        if getattr(args, "roll", None):
-            spec.roll = args.roll
         port.add_asset(spec, start=False)
     return port
 
@@ -321,7 +317,6 @@ def main(argv: Optional[list] = None) -> int:
         s.add_argument("--slippage", type=int, default=None, help="override the preset's slippage (ticks)")
         s.add_argument("--session", default=None, choices=["rth", "eth"], help="CME chart session: rth = TradingView 'Regular trading hours' 09:30-16:15 ET (default, your charts), eth = full Globex session")
         s.add_argument("--security-source", default=None, choices=["chart", "standard"], help="what the HTF/LTF request.security chains see on a Heikin Ashi chart: chart = HA bars (TradingView, default), standard = real bars")
-        s.add_argument("--roll", default=None, choices=["volume", "none"], help="live-feed contract roll for NQ/ES/YM: volume = TradingView's 1! rule (default), none = Yahoo's =F front month")
         s.add_argument("--feed", default=None, choices=["yahoo", "file"], help="yahoo (default) or file = HistoryHub over history/*.csv (ICARUS_FEED; plant --offline). Grok (xAI)")
         s.add_argument("--capital", type=float, default=None, help="override initial capital per asset")
         s.add_argument("--warmup", type=int, default=1200, help="chart bars of history to replay before going live")
