@@ -532,6 +532,9 @@ def test_paper_rewarm_uses_genuine_one_minute_tail_from_mixed_cache(configured):
     caps = r.chart_capability_view()
     assert "1" in caps["available_from_cache"] and "2" in caps["available_from_cache"]
     assert caps["cached_source_resolutions_minutes"] == [1, 5]
+    status_caps = r.summary()["chart_capabilities"]
+    assert status_caps["available_from_cache"] == caps["available_from_cache"]
+    assert status_caps["cached_source_resolutions_minutes"] == [1, 5]
 
     port.rewarm_asset("TEST", {}, False, chart={"timeframe": "1"})
     assert r.chart_minutes == 1
