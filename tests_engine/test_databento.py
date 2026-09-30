@@ -10,7 +10,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from icarus_engine.assets import resolve
+from icarus_engine.assets import CHART_TIMEFRAME_OPTIONS, resolve
+from icarus_engine.pine.timeframe import tf_minutes
 from icarus_engine.feeds.databento import Databento
 from icarus_engine.runtime import AssetRunner, Journal, Portfolio, RunnerConfig
 from icarus_engine.server import serve
@@ -220,6 +221,15 @@ def test_historical_one_second_and_lossless_resampling_use_continuous_stype():
     assert call["stype_in"] == "continuous"
 
 
+def test_every_exposed_intraday_chart_interval_is_losslessly_supported():
+    intraday_seconds = [tf_minutes(tf) * 60 for tf in CHART_TIMEFRAME_OPTIONS if tf not in ("D", "W")]
+    for seconds in intraday_seconds:
+        base, schema = Databento._schema_for(seconds)
+        assert seconds % base == 0
+        assert schema in ("ohlcv-1s", "ohlcv-1m", "ohlcv-1h")
+        assert seconds in Databento.GRANULARITIES
+
+
 def test_historical_minute_request_uses_native_ohlcv_1m():
     hist = FakeHistorical({"ohlcv-1m": [Ohlcv(120, 20, 21, 19, 20.5, 10)]})
     feed = make_feed(historical=hist)
@@ -388,14 +398,21 @@ def test_real_databento_sdk_is_installed_when_extra_is_present():
     import databento as db
     assert hasattr(db, "Historical")
     assert hasattr(db, "Live")
-    assert hasattr(db, "RecordFlags") and hasattr(db.RecordFlags, "F_LAST")
+    assert hasattr(db, "RecordFlags") and hasattr(db.RecordFlags, "F_LAST") and hasattr(db.RecordFlags, "F_SNAPSHOT")
+    assert int(db.RecordFlags.F_LAST) == 128
+    assert int(db.RecordFlags.F_SNAPSHOT) == 32
     assert callable(getattr(db.Live, "subscribe", None))
     assert callable(getattr(db.Live, "add_callback", None))
+    assert callable(getattr(db.Live, "add_reconnect_callback", None))
     assert callable(getattr(db.Live, "start", None))
     assert callable(getattr(db.Live, "stop", None))
     params = inspect.signature(db.Live.subscribe).parameters
     for name in ("dataset", "schema", "symbols", "stype_in", "start", "snapshot"):
         assert name in params
+    cb_params = inspect.signature(db.Live.add_callback).parameters
+    assert "record_callback" in cb_params and "exception_callback" in cb_params
+    reconnect_params = inspect.signature(db.Live.add_reconnect_callback).parameters
+    assert "reconnect_callback" in reconnect_params and "exception_callback" in reconnect_params
 
 
 def test_real_live_factory_requests_heartbeats_reconnect_and_no_skip():
