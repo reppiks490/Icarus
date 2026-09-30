@@ -582,7 +582,7 @@ def test_engine_http_api_resolves_common_asset_aliases(tmp_path):
 
         req = urllib.request.Request(
             f"http://127.0.0.1:{srv.server_port}/admin/pause",
-            data=json.dumps({"asset": "MNQ"}).encode(),
+            data=json.dumps({"asset": "NQ1!"}).encode(),
             headers={"Authorization": "Bearer test-token", "Content-Type": "application/json"},
         )
         with urllib.request.urlopen(req, timeout=5) as reply:
