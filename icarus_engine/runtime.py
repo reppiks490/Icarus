@@ -397,6 +397,7 @@ class AssetRunner:
         self.overlays: Deque[Dict[str, Any]] = collections.deque(maxlen=900)
         self.state: Dict[str, Any] = {}
         self.live_from_ts: Optional[int] = None
+        self.live_closed_start: int = 0               # exact closed-trade boundary; avoids bar-start timestamp misclassification
         self.last_sub_ts: Optional[int] = None
         self._file_waiting: bool = False
         self._fills_seen = 0
@@ -566,6 +567,7 @@ class AssetRunner:
         else:
             self._warmup_coinbase(T_w, now)
         self.live_from_ts = now
+        self.live_closed_start = len(self.em.closed)
         self.warm = True
         if file_feed_mode() and self.last_sub_ts is None and not self._file_waiting:
             self.last_sub_ts = now  # a later drop must not replay years of history as live fills
@@ -707,6 +709,7 @@ class AssetRunner:
                     self.on_sub_bar(b, sub, live=False, record=False)
                 if reset_live_boundary:
                     self.live_from_ts = int(time.time())
+                    self.live_closed_start = len(self.em.closed)
                 self.journal.log("INFO", f"[{self.symbol}] re-warmed with new inputs: {self.bar_index + 1} chart bars, {len(self.em.closed)} historical trades, net {self.em.netprofit:+.2f}")
                 self.runtime_error = ""
                 self.last_error = self.feed_error
@@ -903,7 +906,7 @@ class AssetRunner:
         for k, t in enumerate(self.em.closed, 1):
             cum += t.profit
             side = "long" if t.direction > 0 else "short"
-            live = int(bool(self.live_from_ts and t.exit_ts >= self.live_from_ts))
+            live = int((k - 1) >= self.live_closed_start)
             w.writerow([k, f"Entry {side}", time.strftime("%Y-%m-%d %H:%M", time.gmtime(t.entry_ts)), t.entry_comment or t.entry_id, f"{t.entry_price:.10g}", t.qty, "", "", live])
             w.writerow([k, f"Exit {side}", time.strftime("%Y-%m-%d %H:%M", time.gmtime(t.exit_ts)), t.exit_comment, f"{t.exit_price:.10g}", t.qty, f"{t.profit:.2f}", f"{cum:.2f}", live])
         return buf.getvalue()
@@ -923,7 +926,7 @@ class AssetRunner:
         mark = self.last_price or (self.bars[-1].c if self.bars else None)
         open_trades = [{"id": t.entry_id, "dir": t.direction, "qty": t.qty, "qty_orig": t.qty_orig, "entry": t.entry_price, "entry_ts": t.entry_ts,
                         "upl": (t.direction * (mark - t.entry_price) * t.qty * self.em.contract_size) if mark else None} for t in self.em.open]
-        live_trades = [t for t in self.em.closed if self.live_from_ts and t.exit_ts >= self.live_from_ts]
+        live_trades = self.em.closed[self.live_closed_start:]
         wins = sum(1 for t in self.em.closed if t.profit > 0)
         forming = self.chart_agg.forming_bar()
         return _clean({
@@ -989,10 +992,11 @@ class AssetRunner:
 
     def trades(self, limit: int = 100) -> List[Dict[str, Any]]:
         out = []
-        for t in self.em.closed[-limit:]:
+        start = max(0, len(self.em.closed) - limit)
+        for idx, t in enumerate(self.em.closed[start:], start=start):
             out.append({"id": t.entry_id, "dir": t.direction, "qty": t.qty, "entry": t.entry_price, "entry_ts": t.entry_ts, "exit": t.exit_price,
                         "exit_ts": t.exit_ts, "comment": t.exit_comment, "profit": t.profit, "kind": t.exit_kind,
-                        "live": bool(self.live_from_ts and t.exit_ts >= self.live_from_ts)})
+                        "live": idx >= self.live_closed_start})
         return out
 
 
@@ -1147,6 +1151,7 @@ class Portfolio:
             old_sources = list(r.cfg.sources or [])
             old_preset = r.cfg.preset
             old_live_from_ts = r.live_from_ts
+            old_live_closed_start = r.live_closed_start
             tmp = path + ".tmp"
             try:
                 for field in ("chart_tf", "chart_type", "fill_on", "security_source", "slippage_ticks",
@@ -1179,6 +1184,7 @@ class Portfolio:
                 try:
                     r.rewarm(old_inputs, old_sources, reset_live_boundary=False)
                     r.live_from_ts = old_live_from_ts
+                    r.live_closed_start = old_live_closed_start
                 except Exception as rollback_ex:
                     r.runtime_error = f"configuration rollback failed: {rollback_ex}"
                 raise
