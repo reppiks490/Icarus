@@ -299,6 +299,23 @@ def test_fatal_depth_session_error_marks_every_symbol_on_that_schema_failed_clos
     assert feed.meta("NQ=F")["depth_schema_health"]["mbo"] is True
 
 
+def test_depth_symbol_resolution_failure_rearms_only_failed_schema_symbol():
+    mbp = FakeLive()
+    mbo = FakeLive()
+    feed = make_feed(lives=[mbp, mbo])
+    feed._prepare_depth_live(["NQ=F", "ES=F"], "mbp-10")
+    feed._prepare_depth_live(["NQ=F"], "mbo")
+
+    feed._dispatch_depth_live("mbp-10", Error("NQ.v.0 failed to resolve", code=4))
+
+    assert "NQ=F" not in feed._depth_subscriptions["mbp-10"]
+    assert "ES=F" in feed._depth_subscriptions["mbp-10"]
+    assert "NQ=F" in feed._depth_subscriptions["mbo"]
+    feed._prepare_depth_live(["NQ=F"], "mbp-10")
+    assert "NQ=F" in feed._depth_subscriptions["mbp-10"]
+    assert [row["symbols"] for row in mbp.subscriptions].count("NQ.v.0") == 2
+
+
 def test_symbol_resolution_failure_rearms_only_failed_core_symbol():
     live = FakeLive()
     feed = make_feed(lives=[live])
@@ -924,6 +941,26 @@ def test_mbo_snapshot_requests_continuous_snapshot_and_stops():
     assert sub["symbols"] == "ES.v.0"
     assert sub["stype_in"] == "continuous"
     assert live.stopped is True
+
+
+def test_runner_summary_reflects_databento_transport_health():
+    feed = make_feed()
+    feed._live_callback("NQ=F", Error("invalid core subscription", code=5))
+    journal = Journal(":memory:")
+    runner = AssetRunner(
+        RunnerConfig(resolve("NQ"), Inputs(use_tide=False, use_eod_flat=False)),
+        journal,
+        {"yahoo": feed},
+    )
+    try:
+        summary = runner.summary()
+        assert summary["feed_provider"] == "databento"
+        assert summary["feed_health"]["core_session_ok"] is False
+        assert summary["feed_health"]["core_error_code"] == 5
+        assert "invalid core subscription" in summary["feed_health"]["live_error"]
+        assert summary["feed_capabilities"]["depth_schema_isolation"] is True
+    finally:
+        journal.con.close()
 
 
 def test_portfolio_prepares_shared_live_feed_before_spawning_futures(monkeypatch, tmp_path):
