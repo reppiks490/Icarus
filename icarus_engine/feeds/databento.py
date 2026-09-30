@@ -50,6 +50,7 @@ class TradeTick:
     side: str = ""
     action: str = "T"
     sequence: int = 0
+    instrument_id: int = 0
 
 
 class Databento:
@@ -102,7 +103,12 @@ class Databento:
         self._second_bars: Dict[str, Deque[Bar]] = collections.defaultdict(
             lambda: collections.deque(maxlen=max(60, int(max_live_seconds)))
         )
+        self._bar_seen: Dict[str, set[int]] = collections.defaultdict(set)
         self._trades: Dict[str, Deque[TradeTick]] = collections.defaultdict(
+            lambda: collections.deque(maxlen=max(1000, int(max_trades)))
+        )
+        self._trade_seen: Dict[str, set[Tuple[int, int, int]]] = collections.defaultdict(set)
+        self._trade_seen_order: Dict[str, Deque[Tuple[int, int, int]]] = collections.defaultdict(
             lambda: collections.deque(maxlen=max(1000, int(max_trades)))
         )
         # Keep each market-depth schema in its own bounded queue. Filtering one
@@ -232,6 +238,7 @@ class Databento:
             side=str(getattr(record, "side", "") or ""),
             action=str(getattr(record, "action", "T") or "T"),
             sequence=int(getattr(record, "sequence", 0) or 0),
+            instrument_id=int(getattr(record, "instrument_id", 0) or 0),
         )
 
     @classmethod
@@ -490,7 +497,13 @@ class Databento:
             # OHLCV record
             if all(hasattr(record, key) for key in ("open", "high", "low", "close", "volume")):
                 b = self._ohlcv_record(record)
-                self._second_bars[symbol].append(b)
+                rows = self._second_bars[symbol]
+                seen = self._bar_seen[symbol]
+                if b.ts not in seen:
+                    if rows.maxlen is not None and len(rows) >= rows.maxlen and rows:
+                        seen.discard(rows[0].ts)
+                    rows.append(b)
+                    seen.add(b.ts)
                 self._last_price[symbol] = b.c
                 market_event = True
             else:
@@ -509,7 +522,15 @@ class Databento:
                     market_event = True
                 elif hasattr(record, "price") and hasattr(record, "size") and str(getattr(record, "action", "T") or "T") == "T":
                     tick = self._trade_record(record)
-                    self._trades[symbol].append(tick)
+                    key = (tick.instrument_id, tick.ts_event_ns, tick.sequence)
+                    seen = self._trade_seen[symbol]
+                    order = self._trade_seen_order[symbol]
+                    if key not in seen:
+                        if order.maxlen is not None and len(order) >= order.maxlen and order:
+                            seen.discard(order[0])
+                        self._trades[symbol].append(tick)
+                        order.append(key)
+                        seen.add(key)
                     self._last_price[symbol] = tick.price
                     market_event = True
             if market_event:
@@ -596,12 +617,16 @@ class Databento:
                 "symbols": self.continuous_symbol(symbol, self.roll_rule),
                 "stype_in": "continuous",
             }
-            if start_ts is not None:
-                # Live replay is limited by Databento to the recent intraday window.
-                kwargs["start"] = self._iso(start_ts)
             try:
                 for schema in sorted(desired):
-                    client.subscribe(schema=schema, **kwargs)
+                    sub_kwargs = dict(kwargs)
+                    if start_ts is not None and schema in ("ohlcv-1s", "trades"):
+                        # Reconnect replay is useful for stateless tape/bar schemas.
+                        # Depth is deliberately restarted at live-now; MBO state is
+                        # available through mbo_snapshot(), and replaying L2/L3 here
+                        # would duplicate event history after a controlled roll.
+                        sub_kwargs["start"] = self._iso(start_ts)
+                    client.subscribe(schema=schema, **sub_kwargs)
                     self._subscriptions[key].add(schema)
                 record_cb = lambda rec, s=key: self._live_callback(s, rec)
                 error_cb = lambda ex, s=key: self._record_live_exception(s, ex)
