@@ -496,3 +496,18 @@ def test_paper_equity_series_excludes_preconfiguration_samples(configured):
         port.journal.con.commit()
     series = port.status()["equity_series"]
     assert [p["equity"] for p in series] == [222.0, 333.0]
+
+
+def test_paper_rewarm_uses_genuine_one_minute_tail_from_mixed_cache(configured):
+    port, r, _ = configured
+    r.spec.chart_tf = "20"
+    r.chart_minutes = 20
+    five_minute_old = [(Bar(k * 300, 100, 101, 99, 100, 1), 5) for k in range(3)]
+    tail_start = 900
+    one_minute_tail = [(Bar(tail_start + k * 60, 110 + k, 111 + k, 109 + k, 110 + k, 1), 1) for k in range(8)]
+    r.subbars = five_minute_old + one_minute_tail
+
+    port.rewarm_asset("TEST", {}, False, chart={"timeframe": "1"})
+    assert r.chart_minutes == 1
+    assert r.spec.chart_tf == "1"
+    assert len(r.bars) == len(one_minute_tail)
