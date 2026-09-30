@@ -195,3 +195,15 @@ def test_backtest_honors_preset_fill_mode_metadata(port, tmp_path):
     (preset_dir / "chart-fills.json").write_text(json.dumps({"_meta": {"fill_on": "chart"}}), encoding="utf-8")
     result = backtest.run_backtest(port, "TEST", preset="chart-fills")
     assert result["config"]["fill_on"] == "chart"
+
+
+def test_backtest_uses_genuine_one_minute_tail_from_mixed_cache(port):
+    r = port.runners["TEST"]
+    five_minute_old = [(Bar(k * 300, 100, 101, 99, 100, 1), 5) for k in range(3)]
+    tail_start = 900
+    one_minute_tail = [(Bar(tail_start + k * 60, 110 + k, 111 + k, 109 + k, 110 + k, 1), 1) for k in range(8)]
+    r.subbars = five_minute_old + one_minute_tail
+    result = backtest.run_backtest(port, "TEST", timeframe="2")
+    assert result["config"]["tf"] == 2
+    assert result["bars"] > 0
+    assert result["config"]["reproducibility"]["subbars_count"] == len(r.subbars)
