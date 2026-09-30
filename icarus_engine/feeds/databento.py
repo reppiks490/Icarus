@@ -429,6 +429,24 @@ class Databento:
             if symbol in self._errors:
                 self._meta[symbol]["live_error"] = self._errors[symbol]
 
+    def _dispatch_live(self, symbol: str, record: Any) -> None:
+        """Contain record-conversion failures inside feed health instead of killing the reader."""
+        try:
+            self._live_callback(symbol, record)
+        except Exception as ex:
+            with self._lock:
+                self._errors[str(symbol)] = f"Databento record error: {type(ex).__name__}: {ex}"
+                self._ready[str(symbol)].set()
+                meta = dict(self._meta.get(str(symbol), {}))
+                meta.update({
+                    "regularMarketTime": self._feed_time.get(str(symbol), 0),
+                    "provider": "databento",
+                    "dataset": self.dataset,
+                    "continuous_symbol": self.continuous_symbol(symbol, self.roll_rule),
+                    "live_error": self._errors[str(symbol)],
+                })
+                self._meta[str(symbol)] = meta
+
     def _raise_live_error(self, symbol: str) -> None:
         with self._lock:
             err = self._errors.get(str(symbol))
@@ -485,7 +503,7 @@ class Databento:
             for schema in sorted(desired):
                 client.subscribe(schema=schema, **kwargs)
                 self._subscriptions[key].add(schema)
-            client.add_callback(lambda rec, s=key: self._live_callback(s, rec))
+            client.add_callback(lambda rec, s=key: self._dispatch_live(s, rec))
             if hasattr(client, "add_reconnect_callback"):
                 client.add_reconnect_callback(lambda previous, resumed, s=key: self._record_reconnect(s, previous, resumed))
             client.start()
