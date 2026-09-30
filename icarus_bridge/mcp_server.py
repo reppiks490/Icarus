@@ -182,7 +182,7 @@ def set_engine_chart_config(asset: str = "NQ", timeframe: Optional[str] = None,
 
     Supported chart modes are standard OHLC (real) and Heikin Ashi (heikin_ashi).
     Real fills remain recommended even when the strategy calculates on Heikin Ashi.
-    Seconds/ticks are rejected unless the engine later gains a genuine sub-minute/tick adapter.
+    Databento now supplies genuine 1-second/tick/depth data, but chart-timeframe execution remains minute-based until the chart aggregator is upgraded for sub-minute/tick bars.
     """
     chart = {k: v for k, v in {
         "timeframe": timeframe, "chart_type": chart_type, "fill_on": fill_on,
