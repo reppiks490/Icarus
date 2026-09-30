@@ -42,6 +42,11 @@ from .strategy.pulse import PulseStrategy
 from .strategy.security import TFChain
 
 
+def _session_mode(cal) -> str:
+    """Human/reporting session mode; 24/7 calendars must never masquerade as ETH."""
+    return "24/7" if getattr(cal, "open_24_7", False) else str(getattr(cal, "session", "eth"))
+
+
 def _clean(x: Any) -> Any:
     """NaN / Inf → None so json.dumps(..., allow_nan=False) cannot empty-reply."""
     item = getattr(x, "item", None)
