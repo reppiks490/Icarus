@@ -23,7 +23,6 @@
 """
 from __future__ import annotations
 
-import copy
 import hmac
 import json
 import os
