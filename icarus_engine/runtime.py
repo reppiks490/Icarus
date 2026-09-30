@@ -12,6 +12,7 @@ seconds without touching the network.
 from __future__ import annotations
 
 import collections
+import copy
 import csv
 import dataclasses
 import io
@@ -686,6 +687,69 @@ class AssetRunner:
             except Exception as ex:
                 self.journal.log("WARN", f"[{self.symbol}] could not fetch the 1-minute tail after the export: {ex}")
 
+    def configuration_snapshot(self) -> Dict[str, Any]:
+        """Exact in-memory state needed to make a failed configuration change a no-op."""
+        return {
+            "spec": copy.deepcopy(self.spec),
+            "cfg_inputs": self.cfg.inputs,
+            "cfg_sources": list(self.cfg.sources or []),
+            "cfg_fixed_pts_scale": self.cfg.fixed_pts_scale,
+            "cfg_scale_known_at": self.cfg.scale_known_at,
+            "cfg_preset": self.cfg.preset,
+            "inputs_base": self.inputs_base,
+            "inputs": self.inputs,
+            "pts_scale": self.pts_scale,
+            "cal": self.cal,
+            "chart_minutes": self.chart_minutes,
+            "em": self.em,
+            "strat": self.strat,
+            "htf_tfs": list(self.htf_tfs),
+            "chains": self.chains,
+            "chart_agg": self.chart_agg,
+            "ha": self.ha,
+            "_real_ohlc_warned": self._real_ohlc_warned,
+            "bar_index": self.bar_index,
+            "bars": collections.deque(self.bars, maxlen=self.bars.maxlen),
+            "overlays": collections.deque(self.overlays, maxlen=self.overlays.maxlen),
+            "state": self.state,
+            "live_from_ts": self.live_from_ts,
+            "live_closed_start": self.live_closed_start,
+            "last_sub_ts": self.last_sub_ts,
+            "last_price": self.last_price,
+            "last_price_ts": self.last_price_ts,
+            "last_bar_wall": self.last_bar_wall,
+            "_fills_seen": self._fills_seen,
+            "_closed_seen": self._closed_seen,
+            "recent_fills": collections.deque(self.recent_fills, maxlen=self.recent_fills.maxlen),
+            "recent_events": collections.deque(self.recent_events, maxlen=self.recent_events.maxlen),
+            "runtime_error": self.runtime_error,
+            "last_error": self.last_error,
+        }
+
+    def restore_configuration_snapshot(self, snap: Dict[str, Any]) -> None:
+        """Restore a snapshot without replaying, preserving exact paper accounting."""
+        self.spec.__dict__.clear()
+        self.spec.__dict__.update(copy.deepcopy(snap["spec"].__dict__))
+        self.cfg.spec = self.spec
+        self.cfg.inputs = snap["cfg_inputs"]
+        self.cfg.sources = list(snap["cfg_sources"])
+        self.cfg.fixed_pts_scale = snap["cfg_fixed_pts_scale"]
+        self.cfg.scale_known_at = snap["cfg_scale_known_at"]
+        self.cfg.preset = snap["cfg_preset"]
+        self.inputs_base = snap["inputs_base"]
+        self.inputs = snap["inputs"]
+        self.pts_scale = snap["pts_scale"]
+        for name in ("cal", "chart_minutes", "em", "strat", "chains", "chart_agg", "ha", "_real_ohlc_warned",
+                     "bar_index", "state", "live_from_ts", "live_closed_start", "last_sub_ts", "last_price",
+                     "last_price_ts", "last_bar_wall", "_fills_seen", "_closed_seen", "runtime_error", "last_error"):
+            setattr(self, name, snap[name])
+        self.htf_tfs = list(snap["htf_tfs"])
+        self.bars = collections.deque(snap["bars"], maxlen=snap["bars"].maxlen)
+        self.overlays = collections.deque(snap["overlays"], maxlen=snap["overlays"].maxlen)
+        self.recent_fills = collections.deque(snap["recent_fills"], maxlen=snap["recent_fills"].maxlen)
+        self.recent_events = collections.deque(snap["recent_events"], maxlen=snap["recent_events"].maxlen)
+        self.rewarming = False
+
     # ── re-warm with new inputs (no network) ──
     def rewarm(self, inputs: Inputs, sources: Optional[List[str]] = None, *, reset_live_boundary: bool = False) -> None:
         with self.lock:
@@ -1170,13 +1234,7 @@ class Portfolio:
             r.ensure_cached_timeframes(inputs)
             spec.chart_tf = r.ensure_cached_chart_timeframe(spec.chart_tf)
 
-            old = replace(r.spec)
-            old_chart_minutes = r.chart_minutes
-            old_inputs = r.inputs_base
-            old_sources = list(r.cfg.sources or [])
-            old_preset = r.cfg.preset
-            old_live_from_ts = r.live_from_ts
-            old_live_closed_start = r.live_closed_start
+            runtime_before = r.configuration_snapshot()
             tmp = path + ".tmp"
             try:
                 for field in ("chart_tf", "chart_type", "fill_on", "security_source", "slippage_ticks",
@@ -1201,17 +1259,7 @@ class Portfolio:
                         os.remove(tmp)
                 except OSError:
                     pass
-                for field in ("chart_tf", "chart_type", "fill_on", "security_source", "slippage_ticks",
-                              "commission", "capital", "session", "preset", "config_pins"):
-                    setattr(r.spec, field, getattr(old, field))
-                r.chart_minutes = old_chart_minutes
-                r.cfg.preset = old_preset
-                try:
-                    r.rewarm(old_inputs, old_sources, reset_live_boundary=False)
-                    r.live_from_ts = old_live_from_ts
-                    r.live_closed_start = old_live_closed_start
-                except Exception as rollback_ex:
-                    r.runtime_error = f"configuration rollback failed: {rollback_ex}"
+                r.restore_configuration_snapshot(runtime_before)
                 raise
         return r
 
