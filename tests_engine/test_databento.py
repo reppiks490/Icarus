@@ -549,7 +549,7 @@ def test_daily_refresh_preserves_exact_core_and_depth_schema_sets():
     assert all("start" in sub for sub in second_core.subscriptions + second_book.subscriptions)
 
 
-def test_failed_depth_refresh_keeps_core_live_and_preserves_depth_for_retry():
+def test_failed_depth_refresh_does_not_churn_core_and_retries_on_next_depth_request():
     class FailStart(FakeLive):
         def __init__(self):
             super().__init__()
@@ -562,27 +562,31 @@ def test_failed_depth_refresh_keeps_core_live_and_preserves_depth_for_retry():
             self.terminated = True
 
     first_core = FakeLive()
-    first_book = FakeLive()
+    first_book = FakeLive({"mbp-10": [Depth(4_900, 100.0, levels=[Level(99.75, 100.0)])]})
     refreshed_core = FakeLive()
     bad_book = FailStart()
-    retry_core = FakeLive()
-    good_book = FakeLive()
-    feed = make_feed(lives=[first_core, first_book, refreshed_core, bad_book, retry_core, good_book])
+    good_book = FakeLive({"mbp-10": [Depth(5_101, 101.0, levels=[Level(100.75, 101.0)])]})
+    feed = make_feed(lives=[first_core, first_book, refreshed_core, bad_book, good_book])
     feed.prepare_live(["NQ=F", "ES=F"])
-    feed.depth_events("NQ=F", schema="mbp-10")
+    assert feed.depth_events("NQ=F", schema="mbp-10")
 
-    with pytest.raises(RuntimeError, match="depth refresh failed"):
-        feed.refresh_live(["NQ=F", "ES=F"], start_ts=5_000)
+    # Optional depth failure is recorded but does not fail/churn the refreshed core.
+    feed.refresh_live(["NQ=F", "ES=F"], start_ts=5_000)
     assert bad_book.terminated is True
     assert refreshed_core.started is True
     assert refreshed_core.stopped is False
+    meta = feed.meta("NQ=F")
+    assert meta["depth_session_ok"] is False
+    assert "depth refresh failed" in meta["depth_error"]
 
-    feed.refresh_live(["NQ=F", "ES=F"], start_ts=5_100)
-    nq_core = {sub["schema"] for sub in retry_core.subscriptions if sub["symbols"] == "NQ.v.0"}
-    es_core = {sub["schema"] for sub in retry_core.subscriptions if sub["symbols"] == "ES.v.0"}
-    assert nq_core == {"ohlcv-1s", "trades"}
-    assert es_core == {"ohlcv-1s", "trades"}
-    assert {sub["schema"] for sub in good_book.subscriptions if sub["symbols"] == "NQ.v.0"} == {"mbp-10"}
+    # The next explicit book request retries only the isolated depth socket.
+    rows = feed.depth_events("NQ=F", schema="mbp-10")
+    assert good_book.started is True
+    assert refreshed_core.stopped is False
+    assert rows[-1]["price"] == 101.0
+    meta = feed.meta("NQ=F")
+    assert meta["depth_session_ok"] is True
+    assert "depth_error" not in meta
 
 
 def test_shared_session_detach_readd_does_not_duplicate_or_misroute():
