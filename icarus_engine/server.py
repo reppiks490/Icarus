@@ -29,6 +29,7 @@ import json
 import os
 import re
 import sys
+import time
 import threading
 from contextlib import ExitStack
 from dataclasses import replace
@@ -401,6 +402,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                             sp = apply_chart_config(sp, chart)
                             r.ensure_cached_timeframes(inp)
                             r.ensure_cached_chart_timeframe(sp.chart_tf)
+                        equity_epoch_before = port.equity_epoch
                         snapshots = {}
                         for r in targets:
                             override_path = os.path.join(port.base_dir, f"inputs.{r.symbol}.json")
@@ -419,6 +421,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                                                   reset=reset, chart=chart, **kwargs)
                                 applied.append(r)
                         except Exception as apply_ex:
+                            port.equity_epoch = equity_epoch_before
                             rollback_errors = []
                             for r in reversed(applied):
                                 snap = snapshots[r.symbol]
@@ -445,6 +448,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                                     f"rollback incomplete: {'; '.join(rollback_errors)}"
                                 ) from apply_ex
                             raise
+                        # Treat a successful multi-asset request as one calculation regime.
+                        port.equity_epoch = time.time()
                     done = [r.symbol for r in targets]
                     return self._json(200, {"ok": True, "note": f"configuration applied and re-warmed {done}", "assets": done,
                                             "chart": chart or None})
