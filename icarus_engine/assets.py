@@ -147,7 +147,7 @@ class AssetSpec:
     session: str = "rth"             # rth | eth  - TradingView chart session for CME futures (see calendar.CMECalendar)
     group: str = "equity"            # holiday schedule: equity | metals | crypto (CME Bitcoin futures follow equity)
     security_source: str = "chart"   # chart | standard - what request.security() sees on a Heikin Ashi chart (chart = HA, TradingView)
-    roll: str = "continuous"         # continuous | none - provider-native continuous futures only; never month-coded expiry contracts
+    roll: str = "none"               # continuous | none - futures are normalized to provider-native continuous mode below
     config_pins: List[str] = field(default_factory=list, repr=False, compare=False)  # explicit startup/API values that beat preset metadata
 
 
@@ -171,6 +171,8 @@ REGISTRY: Dict[str, AssetSpec] = {
 # executable prices unless the user explicitly selects fill_on="chart".
 for _spec in REGISTRY.values():
     _spec.chart_type = "heikin_ashi"
+    if _spec.kind == "futures":
+        _spec.roll = "continuous"
 
 ALIASES = {"NQ1!": "NQ", "MNQ": "NQ", "ES1!": "ES", "YM1!": "YM", "GC1!": "GC", "GOLD": "GC", "SI1!": "SI", "SILVER": "SI",
            "PL1!": "PL", "PLATINUM": "PL", "PA1!": "PA", "PALLADIUM": "PA", "BTC=F": "BTCF", "BTC1!": "BTCF", "BTCUSD": "BTC", "BTC-USD": "BTC",
