@@ -260,6 +260,8 @@ class Databento:
         if key in seen:
             return False
         q = self._trades[symbol]
+        if q and tick.ts_event_ns < q[-1].ts_event_ns:
+            return False
         if q.maxlen is not None and len(q) >= q.maxlen and q:
             seen.discard(self._trade_key(q[0]))
         q.append(tick)
@@ -632,10 +634,66 @@ class Databento:
             )
 
     def refresh_live(self, symbols: Sequence[str], *, start_ts: Optional[int] = None) -> Any:
-        """Atomically re-resolve all continuous symbols on a fresh Live session."""
+        """Atomically re-resolve continuous symbols on a fresh shared Live session.
+
+        Each active symbol keeps its exact schema set. This is important for depth:
+        an NQ MBO request must not silently disappear at the daily continuous refresh,
+        and it must not accidentally broaden MBO to every futures symbol.
+        """
         with self._session_lock:
+            with self._lock:
+                wanted = {
+                    str(symbol): set(self._subscriptions.get(str(symbol), {"ohlcv-1s", "trades"}))
+                    for symbol in symbols
+                }
             self._stop_live_unlocked()
-            return self._prepare_live_unlocked(symbols, start_ts=start_ts)
+            if not wanted:
+                return None
+
+            client = self._live_factory()
+            client.add_callback(self._dispatch_shared_live)
+            if hasattr(client, "add_reconnect_callback"):
+                client.add_reconnect_callback(self._record_reconnect_all)
+            with self._lock:
+                self._shared_live = client
+            try:
+                with self._lock:
+                    for key, desired in wanted.items():
+                        continuous = self.continuous_symbol(key, self.roll_rule)
+                        self._continuous_to_symbol[continuous] = key
+                        for schema in sorted(desired):
+                            kwargs: Dict[str, Any] = {
+                                "dataset": self.dataset,
+                                "schema": schema,
+                                "symbols": continuous,
+                                "stype_in": "continuous",
+                            }
+                            if start_ts is not None:
+                                kwargs["start"] = self._iso(start_ts)
+                            client.subscribe(**kwargs)
+                            self._subscriptions[key].add(schema)
+                        self._live[key] = client
+                        self._live_started.add(key)
+                    client.start()
+                    self._shared_started = True
+                return client
+            except Exception:
+                try:
+                    if hasattr(client, "terminate"):
+                        client.terminate()
+                except Exception:
+                    pass
+                with self._lock:
+                    self._shared_live = None
+                    self._shared_started = False
+                    self._live.clear()
+                    self._live_started.clear()
+                    self._subscriptions.clear()
+                    self._continuous_to_symbol.clear()
+                    self._instrument_to_symbol.clear()
+                    self._ready.clear()
+                    self._errors.clear()
+                raise
 
     def start_live(
         self,
