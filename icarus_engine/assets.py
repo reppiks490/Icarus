@@ -213,9 +213,13 @@ ALIASES = {
 
 
 _SYMBOL_RE = re.compile(r"[A-Z0-9][A-Z0-9=!.\-]{0,15}")
-_FUTURES_ROOTS = tuple(s.symbol for s in REGISTRY.values() if s.kind == "futures")
+_FUTURES_ROOTS = tuple(sorted({
+    root
+    for spec in REGISTRY.values() if spec.kind == "futures"
+    for root in (spec.symbol, spec.ticker[:-2] if spec.ticker.endswith("=F") else spec.ticker)
+}, key=len, reverse=True))
 _EXPIRING_FUTURE_RE = re.compile(
-    rf"^(?:{'|'.join(sorted(_FUTURES_ROOTS, key=len, reverse=True))})[FGHJKMNQUVXZ]\d{{1,4}}(?:\.(?:CME|CBT|CMX|NYM|NYMEX|COMEX))?$"
+    rf"^(?:{'|'.join(_FUTURES_ROOTS)})[FGHJKMNQUVXZ]\d{{1,4}}(?:\.(?:CME|CBT|CMX|NYM|NYMEX|COMEX))?$"
 )
 
 
