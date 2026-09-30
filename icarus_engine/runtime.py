@@ -1003,6 +1003,7 @@ class AssetRunner:
             "provider_symbol": self.spec.ticker,
             "feed_provider": ("databento" if type(self.feed).__name__ == "Databento" else self.spec.feed),
             "feed_capabilities": (self.feed.capabilities() if hasattr(self.feed, "capabilities") else {}),
+            "feed_metadata": (self.feed.meta(self.spec.ticker) if hasattr(self.feed, "meta") else {}),
             "session_mode": _session_mode(self.cal), "security_source": self.spec.security_source,
             "tf": self.chart_minutes, "mintick": self.mintick, "contract_size": self.em.contract_size, "multiplier": self.spec.multiplier,
             "chart_type": self.spec.chart_type, "fill_on": self.spec.fill_on, "slippage_ticks": self.spec.slippage_ticks,
