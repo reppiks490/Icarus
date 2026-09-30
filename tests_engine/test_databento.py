@@ -535,6 +535,11 @@ def test_engine_http_exposes_databento_capabilities_ticks_depth_and_mbo(tmp_path
         {"yahoo": feed},
     )
     runner.warm = True
+    chart_caps = runner.chart_capability_view()
+    assert chart_caps["seconds"] is False and chart_caps["ticks"] is False
+    assert chart_caps["raw_feed_provider"] == "databento"
+    assert chart_caps["raw_seconds"] is True and chart_caps["raw_ticks"] is True and chart_caps["raw_depth"] is True
+    assert chart_caps["raw_minimum_resolution_seconds"] == 1
     port.runners["NQ"] = runner
     port.order = ["NQ"]
 
