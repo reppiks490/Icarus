@@ -185,6 +185,7 @@ def test_assets_registry_and_spec_tokens():
     assert resolve("SIL1!").symbol == resolve("SIL=F").symbol == "SIL"
     assert (resolve("SIL1!").tv_symbol, resolve("SIL1!").multiplier, resolve("SIL1!").mintick) == ("COMEX_MINI:SIL1!", 1000.0, 0.005)
     assert resolve("MBT1!").symbol == resolve("MBT=F").symbol == "MBT"
+    assert (resolve("PA1!").ticker, resolve("PA1!").mintick, resolve("PA1!").multiplier) == ("PA=F", 0.50, 100.0)
     gc = parse_spec("GC@10:NQ-10m-original", "20")
     assert gc.symbol == "GC" and gc.chart_tf == "10" and gc.preset == "NQ-10m-original" and gc.group == "metals" and gc.roll == "continuous"
     btc = parse_spec("BTCUSD")
