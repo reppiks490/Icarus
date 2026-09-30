@@ -29,7 +29,7 @@ from zoneinfo import ZoneInfo
 from .assets import normalize_chart_timeframe
 from .metrics import PERFORMANCE_ROWS, RISK_ROWS, TRADES_ROWS, Piece, tv_summary
 from .pine.timeframe import Bar, tf_minutes
-from .runtime import AssetRunner, Journal, RunnerConfig, resolve_inputs, validate_values
+from .runtime import AssetRunner, Journal, RunnerConfig, _session_mode, resolve_inputs, validate_values
 from .strategy.inputs import Inputs
 
 JOBS: Dict[str, Dict[str, Any]] = {}
