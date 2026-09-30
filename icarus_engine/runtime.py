@@ -930,6 +930,11 @@ class AssetRunner:
             "session_mode": getattr(self.cal, "session", "24/7"), "security_source": self.spec.security_source,
             "tf": self.chart_minutes, "mintick": self.mintick, "contract_size": self.em.contract_size, "multiplier": self.spec.multiplier,
             "chart_type": self.spec.chart_type, "fill_on": self.spec.fill_on, "slippage_ticks": self.spec.slippage_ticks,
+            "calculation_basis": {
+                "timeframe": self.spec.chart_tf, "timeframe_minutes": self.chart_minutes,
+                "chart_type": self.spec.chart_type, "fill_on": self.spec.fill_on,
+                "security_source": self.spec.security_source, "session": getattr(self.cal, "session", "24/7"),
+            },
             "preset": self.cfg.preset or self.spec.preset, "inputs_sources": self.cfg.sources or [], "pts_scale": self.pts_scale,
             "price": mark, "price_age": (time.time() - self.last_price_ts) if self.last_price_ts else None,
             "feed_delay": self._feed_delay_at(int(time.time())),
@@ -974,7 +979,9 @@ class AssetRunner:
             nb = self.cal.bucket_start(int(self.last_price_ts), self.chart_minutes)
             if nb > bars[-1].ts:
                 f_row = [nb, self.last_price, self.last_price, self.last_price, self.last_price, 0.0]
-        return _clean({"symbol": self.symbol, "tf": self.chart_minutes, "mintick": self.mintick, "chart_type": self.spec.chart_type,
+        return _clean({"symbol": self.symbol, "tf": self.chart_minutes, "mintick": self.mintick,
+                       "chart_type": self.spec.chart_type, "fill_on": self.spec.fill_on,
+                       "security_source": self.spec.security_source, "session": getattr(self.cal, "session", "24/7"),
                        "bars": [[b.ts, b.o, b.h, b.l, b.c, b.v] for b in bars], "forming": f_row,
                        "overlays": ov, "fills": fills, "live_from": self.live_from_ts})
 
