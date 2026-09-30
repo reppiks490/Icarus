@@ -190,3 +190,12 @@ def test_databento_key_loads_from_plant_owned_env(tmp_path, monkeypatch):
     monkeypatch.setenv("ICARUS_HOME", str(plant))
     feed = Databento(historical_client=FakeHistorical({}), live=False)
     assert feed.api_key == "db-from-plant"
+
+
+def test_installed_databento_sdk_exposes_required_live_and_historical_surface():
+    import databento as db
+
+    assert callable(db.Historical)
+    assert callable(db.Live)
+    for name in ("subscribe", "add_callback", "start", "stop"):
+        assert hasattr(db.Live, name)
