@@ -11,9 +11,9 @@ from dataclasses import dataclass, field, replace
 from typing import Dict, List, Optional
 
 
-# The live adapters currently provide minute OHLC bars. These are the chart choices
-# exposed by the UI/MCP; arbitrary positive minute values remain accepted by the
-# parser for backward compatibility with existing presets.
+# Strategy-chart execution is currently minute-based. Databento separately exposes
+# genuine raw 1-second OHLCV, trades, and depth; those raw capabilities must not be
+# confused with strategy chart bars until the chart aggregator is upgraded.
 PRIMARY_INTRADAY_TIMEFRAMES = ("1", "2", "5", "10", "20", "30")
 CHART_TIMEFRAME_OPTIONS = ("1", "2", "3", "5", "10", "15", "20", "30", "45", "60", "120", "180", "240", "D", "W")
 CHART_TYPES = ("heikin_ashi", "real")
@@ -31,9 +31,9 @@ def normalize_chart_timeframe(value: object) -> str:
     if not t:
         raise ValueError("chart timeframe is required")
     if re.fullmatch(r"\d+\s*(?:T|TICK|TICKS)", t):
-        raise ValueError("tick charts require a true tick-data adapter; the current ICARUS feeds do not provide one")
+        raise ValueError("tick strategy charts are not enabled; Databento raw ticks are available through the market-data API/MCP but ICARUS never fabricates tick bars")
     if re.fullmatch(r"\d+\s*(?:S|SEC|SECS|SECOND|SECONDS)", t):
-        raise ValueError("second charts require a sub-minute data adapter; the current ICARUS feeds are 1-minute minimum")
+        raise ValueError("second strategy charts are not enabled; Databento raw 1-second OHLCV is available through the market-data API/MCP while strategy-chart execution remains 1-minute minimum")
     words = re.fullmatch(r"(\d+)\s*(MIN|MINS|MINUTE|MINUTES|HOUR|HOURS|DAY|DAYS|WEEK|WEEKS)", t)
     if words:
         n = int(words.group(1))
@@ -73,7 +73,8 @@ def chart_capabilities() -> Dict[str, object]:
         "seconds": False,
         "ticks": False,
         "minimum_live_resolution": "1m",
-        "note": "Seconds/ticks are capability-gated until a genuine sub-minute/tick feed is installed; ICARUS never fabricates ticks.",
+        "scope": "strategy_chart_execution",
+        "note": "Strategy charts are minute-based. Databento can provide genuine raw 1-second OHLCV/ticks/depth separately; ICARUS never fabricates tick bars.",
     }
 
 
