@@ -349,6 +349,67 @@ def test_mbo_snapshot_omits_non_mbo_stream_records():
     assert rows[0]["order_id"] == 7
 
 
+def test_shared_live_start_failure_resets_client_for_clean_retry():
+    class FailStart(FakeLive):
+        def __init__(self):
+            super().__init__()
+            self.terminated = False
+
+        def start(self):
+            raise RuntimeError("shared start failed")
+
+        def terminate(self):
+            self.terminated = True
+
+    bad = FailStart()
+    good = FakeLive()
+    feed = make_feed(lives=[bad, good])
+
+    with pytest.raises(RuntimeError, match="shared start failed"):
+        feed.prepare_live(["NQ=F", "ES=F"])
+
+    assert bad.terminated is True
+    assert feed._shared_live is None
+    assert feed._shared_started is False
+    assert not feed._live
+    assert not feed._live_started
+    assert not feed._subscriptions
+    assert not feed._continuous_to_symbol
+    assert not feed._instrument_to_symbol
+
+    assert feed.prepare_live(["NQ=F"]) is good
+    assert good.started is True
+    assert feed._shared_started is True
+
+
+def test_shared_live_stop_falls_back_to_terminate():
+    class StopFails(FakeLive):
+        def __init__(self):
+            super().__init__()
+            self.terminated = False
+            self.blocked = 0
+
+        def stop(self):
+            raise RuntimeError("graceful stop failed")
+
+        def terminate(self):
+            self.terminated = True
+
+        def block_for_close(self, timeout=None):
+            self.blocked += 1
+
+    live = StopFails()
+    feed = make_feed(lives=[live])
+    feed.start_live("NQ=F")
+    feed.stop_live()
+
+    assert live.terminated is True
+    assert live.blocked == 1
+    assert feed._shared_live is None
+    assert feed._shared_started is False
+    assert not feed._live_started
+
+
 def test_all_registered_futures_share_one_live_session():
     live = FakeLive()
     feed = make_feed(lives=[live])
