@@ -151,3 +151,32 @@ def test_runtime_selects_databento_for_futures_when_requested(tmp_path, monkeypa
     assert port.feeds["yahoo"].capabilities["native_seconds"] is True
     port.stop()
     assert port.feeds["yahoo"].closed is True
+
+
+class TradeRec:
+    def __init__(self, ts_ns, price, size, side="B", instrument_id=7):
+        self.ts_event = ts_ns
+        self.pretty_price = price
+        self.size = size
+        self.side = side
+        self.instrument_id = instrument_id
+
+
+def test_native_trade_and_book_access_keeps_databento_records():
+    trade = TradeRec(123456789000, 25000.25, 3, "A", 42)
+    book = object()
+    hist = FakeHistorical({"trades": [trade], "mbp-10": [book]})
+    feed = Databento(historical_client=hist, live=False)
+
+    prints = feed.trades("NQ=F", 100, 200)
+    assert prints == [{
+        "ts_event_ns": 123456789000,
+        "price": 25000.25,
+        "size": 3,
+        "side": "A",
+        "instrument_id": 42,
+    }]
+    assert feed.records("NQ=F", "mbp-10", 100, 200) == [book]
+    calls = hist.timeseries.calls
+    assert calls[-2]["schema"] == "trades" and calls[-2]["symbols"] == ["NQ.v.0"]
+    assert calls[-1]["schema"] == "mbp-10" and calls[-1]["stype_in"] == "continuous"
