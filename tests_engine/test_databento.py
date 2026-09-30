@@ -325,6 +325,22 @@ def test_live_second_bars_trades_and_depth_can_share_one_session():
     assert all(row["schema"] == "mbp-10" for row in depth_rows)
 
 
+def test_depth_replay_duplicates_and_older_events_are_ignored():
+    feed = make_feed()
+    depth = Depth(1_060, 106.25, levels=[Level(106.0, 106.25)])
+    feed._live_callback("NQ=F", depth)
+    feed._live_callback("NQ=F", depth)
+
+    older = Depth(1_059, 105.75, levels=[Level(105.5, 105.75)])
+    older.sequence = 2
+    feed._live_callback("NQ=F", older)
+
+    rows = list(feed._depth["NQ=F"])
+    assert len(rows) == 1
+    assert rows[0]["ts_event_ns"] == 1_060 * NS
+    assert rows[0]["levels"][0]["bid_px"] == 106.0
+
+
 def test_trade_tape_deduplicates_same_event_seen_in_trades_and_mbo():
     trade = Trade(1_059, 106.5, 3, side="B", sequence=1)
     mbo_trade = Depth(1_059, 106.5, order_id=99)
@@ -503,6 +519,27 @@ def test_failed_daily_refresh_keeps_desired_depth_for_retry():
     nq_schemas = {sub["schema"] for sub in good.subscriptions if sub["symbols"] == "NQ.v.0"}
     es_schemas = {sub["schema"] for sub in good.subscriptions if sub["symbols"] == "ES.v.0"}
     assert nq_schemas == {"ohlcv-1s", "trades", "mbp-10"}
+    assert es_schemas == {"ohlcv-1s", "trades"}
+
+
+def test_detached_asset_drops_depth_intent_on_next_shared_refresh():
+    first = FakeLive()
+    second = FakeLive()
+    feed = make_feed(lives=[first, second])
+    feed.prepare_live(["NQ=F", "ES=F"])
+    feed.depth_events("NQ=F", schema="mbp-10")
+    assert "mbp-10" in feed._wanted_subscriptions["NQ=F"]
+
+    feed.stop_live("NQ=F")
+    assert "NQ=F" not in feed._wanted_subscriptions
+
+    feed.start_live("NQ=F")
+    assert feed._wanted_subscriptions["NQ=F"] == {"ohlcv-1s", "trades"}
+    feed.refresh_live(["NQ=F", "ES=F"], start_ts=7_000)
+
+    nq_schemas = {sub["schema"] for sub in second.subscriptions if sub["symbols"] == "NQ.v.0"}
+    es_schemas = {sub["schema"] for sub in second.subscriptions if sub["symbols"] == "ES.v.0"}
+    assert nq_schemas == {"ohlcv-1s", "trades"}
     assert es_schemas == {"ohlcv-1s", "trades"}
 
 
