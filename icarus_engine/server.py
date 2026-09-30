@@ -37,7 +37,7 @@ from typing import Any, Dict
 from urllib.parse import parse_qs, urlparse
 
 from . import brand
-from .assets import REGISTRY, apply_chart_config, chart_capabilities, parse_spec, validate_chart_config
+from .assets import REGISTRY, apply_chart_config, chart_capabilities, parse_spec, pin_config, validate_chart_config
 from .backtest import JOBS, start_job
 from .parity import compare_lists, engine_trades_from_rows, read_tv_trades_text
 from .golive import report as golive_report
@@ -410,7 +410,9 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     if not tok:
                         return self._json(400, {"detail": "symbol required"})
                     spec = parse_spec(tok, str(body.get("tf") or port.runner_list()[0].spec.chart_tf if port.runner_list() else "20"))
-                    spec = apply_chart_config(spec, {k: body[k] for k in ("chart_type", "fill_on", "security_source") if body.get(k) not in (None, "")})
+                    if body.get("tf") not in (None, "") and "@" not in tok:
+                        spec = pin_config(spec, "timeframe")
+                    spec = apply_chart_config(spec, {k: body[k] for k in ("chart_type", "fill_on", "security_source") if body.get(k) not in (None, "")}, pin=True)
                     if body.get("preset"):
                         spec.preset = body["preset"]
                     r = port.add_asset(spec)
