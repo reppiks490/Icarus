@@ -169,6 +169,9 @@ def test_assets_registry_and_spec_tokens():
     nq = resolve("NQ1!")
     assert nq.symbol == "NQ" and nq.multiplier == 20.0 and nq.mintick == 0.25 and nq.calendar == "cme" and nq.session == "rth" and nq.roll == "continuous"
     assert resolve("NQ=F").symbol == "NQ"
+    mnq = resolve("MNQ1!")
+    assert mnq.symbol == resolve("MNQ=F").symbol == "MNQ"
+    assert mnq.multiplier == 2.0 and mnq.mintick == 0.25 and mnq.roll == "continuous"
     assert resolve("ES1!").symbol == resolve("ES=F").symbol == "ES"
     assert resolve("SI1!").symbol == resolve("SI=F").symbol == "SI"
     assert resolve("MBT1!").symbol == resolve("MBT=F").symbol == "MBT"
