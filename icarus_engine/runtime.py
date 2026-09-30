@@ -27,7 +27,7 @@ from dataclasses import dataclass, replace
 from datetime import datetime
 from typing import Any, Deque, Dict, List, Optional, Tuple
 
-from .assets import AssetSpec, apply_chart_config, chart_capabilities, normalize_chart_timeframe, validate_chart_config
+from .assets import AssetSpec, apply_chart_config, chart_capabilities, normalize_chart_timeframe, resolve, validate_chart_config
 from .calendar import get_calendar
 from .emulator import Emulator, Fill
 from .feeds import Coinbase, Kraken
@@ -1143,14 +1143,15 @@ class Portfolio:
             return r
 
     def remove_asset(self, symbol: str) -> bool:
+        key = resolve(symbol).symbol
         with self._lock:
-            r = self.runners.pop(symbol.upper(), None)
+            r = self.runners.pop(key, None)
             if not r:
                 return False
-            self.order = [s for s in self.order if s != symbol.upper()]
+            self.order = [s for s in self.order if s != key]
             r.paused = True
             r._removed = True
-            self.journal.log("WARN", f"[{symbol.upper()}] removed from the engine")
+            self.journal.log("WARN", f"[{key}] removed from the engine")
             return True
 
     def preset_for(self, r: AssetRunner) -> Optional[str]:
@@ -1161,7 +1162,8 @@ class Portfolio:
                      *, preset: Any = _UNCHANGED, reset: bool = False,
                      chart: Optional[Dict[str, Any]] = None) -> AssetRunner:
         """Atomically apply strategy/chart configuration, then persist only after replay succeeds."""
-        r = self.runners[symbol.upper()]
+        key = resolve(symbol).symbol
+        r = self.runners[key]
         with r.lock:
             r.ensure_configurable()
             requested_chart = validate_chart_config(chart)
