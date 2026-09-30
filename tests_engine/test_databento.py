@@ -37,8 +37,9 @@ class Ohlcv:
 
 
 class Trade:
-    def __init__(self, ts, price, size=1, side="B", sequence=1):
+    def __init__(self, ts, price, size=1, side="B", sequence=1, ts_recv=None):
         self.ts_event = int(ts * NS)
+        self.ts_recv = int((ts if ts_recv is None else ts_recv) * NS)
         self.price = int(price * NS)
         self.pretty_price = float(price)
         self.size = int(size)
@@ -350,7 +351,7 @@ def test_mbo_snapshot_omits_non_mbo_stream_records():
     assert rows[0]["order_id"] == 7
 
 
-def test_replay_rows_cannot_rewind_live_price_or_trade_tape():
+def test_replay_rows_cannot_rewind_live_price_and_ts_event_is_not_used_as_ordering():
     feed = make_feed()
     feed._live_callback("NQ=F", Ohlcv(2_000, 200, 201, 199, 200.5, 1))
     feed._live_callback("NQ=F", Ohlcv(1_999, 100, 101, 99, 100.5, 9))
@@ -358,12 +359,23 @@ def test_replay_rows_cannot_rewind_live_price_or_trade_tape():
     assert feed._second_bars["NQ=F"][-1].ts == 2_000
     assert feed._last_price["NQ=F"] == 200.5
 
-    feed._live_callback("NQ=F", Trade(2_001, 201.0, 1, sequence=10))
-    feed._live_callback("NQ=F", Trade(2_000, 99.0, 1, sequence=9))
+    # Databento guarantees monotonic ts_recv per symbol, not ts_event. A later-
+    # received legitimate trade may therefore have an older exchange event time.
+    feed._live_callback("NQ=F", Trade(2_001, 201.0, 1, sequence=10, ts_recv=2_001.10))
+    feed._live_callback("NQ=F", Trade(2_000, 202.0, 1, sequence=11, ts_recv=2_001.20))
     ticks = list(feed._trades["NQ=F"])
-    assert len(ticks) == 1
-    assert ticks[-1].price == 201.0
-    assert feed._last_price["NQ=F"] == 201.0
+    assert len(ticks) == 2
+    assert ticks[-1].ts_event_ns < ticks[-2].ts_event_ns
+    assert ticks[-1].ts_recv_ns > ticks[-2].ts_recv_ns
+    assert feed._last_price["NQ=F"] == 202.0
+
+    # A replayed record with an older receive timestamp may be retained in the
+    # time-and-sales tape if it was previously missing, but it cannot rewind mark.
+    feed._live_callback("NQ=F", Trade(1_998, 50.0, 1, sequence=8, ts_recv=1_998.50))
+    ticks = list(feed._trades["NQ=F"])
+    assert len(ticks) == 3
+    assert ticks[-1].price == 50.0
+    assert feed._last_price["NQ=F"] == 202.0
 
 
 def test_shared_live_start_failure_resets_client_for_clean_retry():
