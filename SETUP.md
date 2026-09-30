@@ -76,7 +76,7 @@ $env:DATABENTO_ROLL_RULE="v"
 icarus-plant start --assets NQ,MNQ,ES --feed databento
 ```
 
-The key stays in your local environment; do not commit it. All three roll rules remain automatic continuous contracts—no dated-contract maintenance. Run `icarus-engine doctor --json` with `ICARUS_FEED=databento` to verify the SDK/key prerequisites without making a market-data request.
+The key stays in your local environment; do not commit it. All three roll rules remain automatic continuous contracts—no dated-contract maintenance. ICARUS multiplexes configured CME futures onto one `GLBX.MDP3` Live session and automatically rebuilds that session on each new UTC date so Databento's continuous `.v.0/.n.0/.c.0` mappings are re-resolved without you ever selecting a month-coded contract. The refresh replays the last five minutes and deduplicates overlapping one-second bars/trades. Run `icarus-engine doctor --json` with `ICARUS_FEED=databento` to verify the SDK/key prerequisites without making a market-data request.
 
 ## Not this
 
