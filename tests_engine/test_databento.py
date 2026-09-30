@@ -505,7 +505,7 @@ def test_live_continuous_mapping_is_recorded_without_faking_market_readiness():
     assert feed._ready["NQ=F"].is_set() is False
 
 
-def test_live_session_rotates_when_daily_continuous_mapping_changes():
+def test_live_session_rotates_when_daily_continuous_mapping_changes(monkeypatch):
     class Resolver:
         def __init__(self):
             self.instrument = 101
@@ -519,8 +519,18 @@ def test_live_session_rotates_when_daily_continuous_mapping_changes():
     resolver = Resolver()
     hist = FakeHistorical({})
     hist.symbology = resolver
-    live1 = FakeLive({"ohlcv-1s": [Mapping(101), Ohlcv(10_000, 100, 101, 99, 100.5)]})
-    live2 = FakeLive({"ohlcv-1s": [Mapping(202, raw_symbol="NQH7"), Ohlcv(10_001, 100.5, 101.5, 100, 101)]})
+    monkeypatch.setattr("icarus_engine.feeds.databento.time.time", lambda: 10_100)
+    # The stale session has already emitted ts=10000 from physical instrument 101.
+    # The replacement session replays that same timestamp from instrument 202;
+    # the old row/tick must be removed, not kept by timestamp dedupe.
+    live1 = FakeLive({
+        "ohlcv-1s": [Mapping(101), Ohlcv(10_000, 100, 101, 99, 100.5)],
+        "trades": [Trade(10_000, 100.5, sequence=1, instrument_id=101)],
+    })
+    live2 = FakeLive({
+        "ohlcv-1s": [Mapping(202, raw_symbol="NQH7"), Ohlcv(10_000, 200, 201, 199, 200.5)],
+        "trades": [Trade(10_000, 200.5, sequence=1, instrument_id=202)],
+    })
     feed = make_feed(historical=hist, lives=[live1, live2])
 
     feed.start_live("NQ=F")
@@ -548,6 +558,10 @@ def test_live_session_rotates_when_daily_continuous_mapping_changes():
     assert meta["previous_instrument_id"] == 101
     assert meta["resolved_instrument_id"] == 202
     assert meta["active_contract"] == "NQH7"
+    assert [b.c for b in feed._second_bars["NQ=F"]] == [200.5]
+    ticks = feed.trades("NQ=F")
+    assert len(ticks) == 1 and ticks[0].instrument_id == 202 and ticks[0].price == 200.5
+    assert not feed.depth_events("NQ=F", schema="mbo", limit=1)
 
 
 def test_continuous_resolution_failure_is_fail_closed():
