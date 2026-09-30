@@ -41,6 +41,27 @@ from .supervisor import (
 )
 
 
+
+def _load_root_env(root: str) -> None:
+    """Load simple KEY=VALUE entries from the plant-owned .env without overwriting process env."""
+    path = os.path.join(root, ".env")
+    if not os.path.isfile(path):
+        return
+    try:
+        with open(path, encoding="utf-8") as fh:
+            for raw in fh:
+                line = raw.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, value = line.split("=", 1)
+                key = key.strip()
+                value = value.strip().strip('"').strip("'")
+                if key:
+                    os.environ.setdefault(key, value)
+    except OSError:
+        return
+
+
 def cmd_init(args: argparse.Namespace) -> int:
     root = plant_root(args.root)
     paths = ensure(root)
@@ -85,6 +106,7 @@ def cmd_ingest_drop(args: argparse.Namespace) -> int:
 def cmd_start(args: argparse.Namespace) -> int:
     root = plant_root(args.root)
     ensure(root)
+    _load_root_env(root)
     repo = repo_root()
     engine_url = f"http://127.0.0.1:{args.engine_port}/healthz"
     bridge_url = f"http://127.0.0.1:{args.bridge_port}/healthz"
