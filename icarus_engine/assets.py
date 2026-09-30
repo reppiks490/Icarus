@@ -213,10 +213,19 @@ ALIASES = {
 
 
 _SYMBOL_RE = re.compile(r"[A-Z0-9][A-Z0-9=!.\-]{0,15}")
+_FUTURES_ROOTS = tuple(s.symbol for s in REGISTRY.values() if s.kind == "futures")
+_EXPIRING_FUTURE_RE = re.compile(
+    rf"^(?:{'|'.join(sorted(_FUTURES_ROOTS, key=len, reverse=True))})[FGHJKMNQUVXZ]\d{{1,4}}(?:\.(?:CME|CBT|CMX|NYM|NYMEX|COMEX))?$"
+)
 
 
 def resolve(symbol: str) -> AssetSpec:
     s = symbol.strip().upper().split(":")[-1]
+    if _EXPIRING_FUTURE_RE.fullmatch(s):
+        root = next((r for r in sorted(_FUTURES_ROOTS, key=len, reverse=True) if s.startswith(r)), "future")
+        raise ValueError(
+            f"expiring futures symbol {symbol!r} is forbidden; ICARUS is continuous-only — use {root}1! or {root}=F"
+        )
     s = ALIASES.get(s, s)
     if s in REGISTRY:
         return replace(REGISTRY[s])
