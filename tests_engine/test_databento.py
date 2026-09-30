@@ -231,7 +231,8 @@ def test_live_second_bars_trades_and_depth_can_share_one_session():
     second_rows = [Ohlcv(1_000 + i, 100 + i / 10, 101 + i / 10, 99 + i / 10, 100.5 + i / 10, 1) for i in range(60)]
     trade = Trade(1_059, 106.5, 3)
     depth = Depth(1_060, 106.25, levels=[Level(106.0, 106.25)])
-    live = FakeLive({"ohlcv-1s": second_rows, "trades": [trade], "mbp-10": [depth]})
+    mbo = Depth(1_061, 106.25, order_id=99)
+    live = FakeLive({"ohlcv-1s": second_rows, "trades": [trade], "mbp-10": [depth], "mbo": [mbo]})
     feed = make_feed(lives=[live])
 
     bars, ft, px = feed.recent_ex("NQ=F", 60)
@@ -242,10 +243,19 @@ def test_live_second_bars_trades_and_depth_can_share_one_session():
 
     ticks = feed.trades("NQ=F")
     assert ticks and ticks[-1].price == 106.5 and ticks[-1].size == 3
+    assert ticks[-1].ts_event == 1_059 and ticks[-1].ts_event_ns == 1_059 * NS
 
     depth_rows = feed.depth_events("NQ=F", schema="mbp-10")
     assert depth_rows and depth_rows[-1]["levels"][0]["bid_px"] == 106.0
+    assert depth_rows[-1]["schema"] == "mbp-10"
+    assert depth_rows[-1]["ts_event_ns"] == 1_060 * NS
     assert any(s["schema"] == "mbp-10" for s in live.subscriptions)
+
+    mbo_rows = feed.depth_events("NQ=F", schema="mbo")
+    assert mbo_rows and mbo_rows[-1]["order_id"] == 99
+    assert mbo_rows[-1]["schema"] == "mbo"
+    assert all(row["schema"] == "mbo" for row in mbo_rows)
+    assert all(row["schema"] == "mbp-10" for row in depth_rows)
 
 
 def test_mbo_snapshot_requests_continuous_snapshot_and_stops():
