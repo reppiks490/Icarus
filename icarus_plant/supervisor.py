@@ -226,11 +226,12 @@ class Plant:
 
 
 def default_engine_service(root: str, repo: str, *, assets: str = "NQ", port: int = 8791,
-                           token: str = "icarus", offline: bool = False, preset: str = "NQ-20m-ultracoded") -> Service:
+                           token: str = "icarus", offline: bool = False, databento: bool = False,
+                           preset: str = "NQ-20m-ultracoded") -> Service:
     ensure(root)
     env = {
         "ICARUS_HOME": root,
-        "ICARUS_FEED": "file" if offline else os.environ.get("ICARUS_FEED", "yahoo"),
+        "ICARUS_FEED": "file" if offline else "databento" if databento else os.environ.get("ICARUS_FEED", "yahoo"),
         "PYTHONPATH": repo + os.pathsep + os.environ.get("PYTHONPATH", ""),
     }
     db = os.path.join(root, "icarus_engine.db")
