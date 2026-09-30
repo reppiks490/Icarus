@@ -330,6 +330,22 @@ def test_recoverable_core_fatal_error_rebuilds_shared_session_with_replay():
     assert all("start" in row for row in second.subscriptions)
 
 
+def test_connection_limit_error_never_auto_reopens_a_new_session():
+    first = FakeLive()
+    unused = FakeLive()
+    feed = make_feed(lives=[first, unused])
+    feed.prepare_live(["NQ=F", "ES=F"])
+    feed._dispatch_shared_live(Error("connection limit exceeded", code=3))
+
+    client = feed.start_live("NQ=F")
+    assert client is first
+    assert first.stopped is False
+    assert unused.started is False
+    assert feed._core_error_code == 3
+    with pytest.raises(RuntimeError, match="code=3"):
+        feed._raise_live_error("ES=F")
+
+
 def test_nonrecoverable_core_fatal_error_stays_latched_without_reconnect_churn():
     first = FakeLive()
     unused = FakeLive()
