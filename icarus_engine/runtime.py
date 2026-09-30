@@ -999,7 +999,9 @@ class AssetRunner:
         live_trades = self.em.closed[self.live_closed_start:] if self.live_from_ts is not None else []
         wins = sum(1 for t in self.em.closed if t.profit > 0)
         forming = self.chart_agg.forming_bar()
-        feed_meta = self.feed.meta(self.spec.ticker) if hasattr(self.feed, "meta") else {}
+        # Public status must be local/non-blocking. Yahoo.meta() may fetch the
+        # network on a cold cache, whereas Databento.meta() is an in-memory view.
+        feed_meta = self.feed.meta(self.spec.ticker) if isinstance(self.feed, Databento) else {}
         return _clean({
             "symbol": self.symbol, "name": self.spec.name, "product": self.spec.ticker, "feed": self.spec.feed, "kind": self.spec.kind,
             "continuous_contract": bool(self.spec.kind == "futures"), "contract_policy": "continuous_only" if self.spec.kind == "futures" else "not_applicable",
@@ -1106,7 +1108,10 @@ class Portfolio:
             db_feed = Databento()
             self.feeds = {"yahoo": db_feed, "coinbase": Coinbase()}
             self.feed_mode = "databento"
-            roll_name = str(db_feed.capabilities().get("continuous_rule", db_feed.roll_rule)).replace("_", "-")
+            caps_fn = getattr(db_feed, "capabilities", None)
+            caps = caps_fn() if callable(caps_fn) else {}
+            fallback_rule = getattr(db_feed, "roll_rule", "continuous")
+            roll_name = str(caps.get("continuous_rule", fallback_rule) if isinstance(caps, dict) else fallback_rule).replace("_", "-")
             journal.log("INFO", f"ICARUS_FEED=databento — CME futures use Databento GLBX.MDP3 {roll_name} continuous contracts with verified live remapping")
         else:
             self.feeds = {"yahoo": Yahoo(), "coinbase": Coinbase()}
