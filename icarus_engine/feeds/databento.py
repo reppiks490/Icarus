@@ -55,7 +55,10 @@ class TradeTick:
 class Databento:
     """Continuous CME feed backed by Databento Historical + Live APIs."""
 
-    GRANULARITIES = (1, 2, 5, 10, 15, 20, 30, 60, 120, 180, 240, 300, 600, 900, 1200, 1800, 3600, 14400, 86400)
+    # Source/transport granularities in seconds. This includes every minute/hour
+    # chart interval exposed by ICARUS (1/2/3/5/10/15/20/30/45/60/120/180/240m)
+    # plus native 1-second data. D/W chart alignment remains owned by the engine calendar.
+    GRANULARITIES = (1, 2, 5, 10, 15, 20, 30, 60, 120, 180, 240, 300, 600, 900, 1200, 1800, 2700, 3600, 7200, 10800, 14400, 86400)
     DATASET = _DATASET
 
     def __init__(
