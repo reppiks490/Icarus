@@ -33,7 +33,7 @@ def normalize_chart_timeframe(value: object) -> str:
     if re.fullmatch(r"\d+\s*(?:T|TICK|TICKS)", t):
         raise ValueError("tick strategy charts are not enabled; Databento raw ticks are available through the market-data API/MCP but ICARUS never fabricates tick bars")
     if re.fullmatch(r"\d+\s*(?:S|SEC|SECS|SECOND|SECONDS)", t):
-        raise ValueError("second strategy charts are not enabled; Databento raw 1-second OHLCV is available through the market-data API/MCP while strategy-chart execution remains 1-minute minimum")
+        raise ValueError("sub-minute/second strategy charts are not enabled; Databento raw 1-second OHLCV is available through the market-data API/MCP while strategy-chart execution remains 1-minute minimum")
     words = re.fullmatch(r"(\d+)\s*(MIN|MINS|MINUTE|MINUTES|HOUR|HOURS|DAY|DAYS|WEEK|WEEKS)", t)
     if words:
         n = int(words.group(1))
