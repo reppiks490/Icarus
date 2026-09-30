@@ -87,9 +87,13 @@ class SystemMsg:
 
 
 class Mapping:
-    def __init__(self, symbol, instrument_id):
+    def __init__(self, symbol, instrument_id, raw_symbol="", start_ts=None, end_ts=None):
         self.stype_in_symbol = symbol
+        self.stype_out_symbol = raw_symbol
         self.instrument_id = int(instrument_id)
+        undef = (1 << 64) - 1
+        self.start_ts = undef if start_ts is None else int(start_ts)
+        self.end_ts = undef if end_ts is None else int(end_ts)
 
 
 class FakeStore(list):
@@ -525,6 +529,71 @@ def test_shared_session_detach_readd_does_not_duplicate_or_misroute():
     assert not feed._second_bars["ES=F"]
 
 
+def test_current_symbol_mapping_retires_stale_contract_id_and_updates_metadata():
+    live = FakeLive()
+    feed = make_feed(lives=[live])
+    feed.start_live("NQ=F")
+
+    live.callback(Mapping("NQ.v.0", 101, raw_symbol="NQU6"))
+    first = Ohlcv(5_000, 100, 101, 99, 100.5, 1)
+    first.instrument_id = 101
+    live.callback(first)
+
+    live.callback(Mapping("NQ.v.0", 303, raw_symbol="NQZ6"))
+    stale = Ohlcv(5_001, 150, 151, 149, 150.5, 9)
+    stale.instrument_id = 101
+    live.callback(stale)
+    current = Ohlcv(5_002, 200, 201, 199, 200.5, 2)
+    current.instrument_id = 303
+    live.callback(current)
+
+    assert 101 not in feed._instrument_to_symbol
+    assert feed._instrument_to_symbol[303] == "NQ=F"
+    rows = list(feed._second_bars["NQ=F"])
+    assert [row.ts for row in rows] == [5_000, 5_002]
+    assert rows[-1].c == 200.5
+
+    meta = feed.meta("NQ=F")
+    assert meta["resolved_instrument_id"] == 303
+    assert meta["resolved_raw_symbol"] == "NQZ6"
+    assert meta["continuous_symbol"] == "NQ.v.0"
+    assert meta["mapping_current"] is True
+    assert meta["mapping_active"] is True
+
+    feed.stop_live()
+    assert feed.meta("NQ=F")["mapping_active"] is False
+
+
+def test_finite_replay_mapping_windows_route_only_valid_contract_records():
+    live = FakeLive()
+    feed = make_feed(lives=[live])
+    feed.start_live("NQ=F")
+    feed._second_bars["NQ=F"].clear()
+
+    feed._dispatch_shared_live(Mapping("NQ.v.0", 101, raw_symbol="NQU6",
+                                      start_ts=5_000 * NS, end_ts=5_002 * NS))
+    feed._dispatch_shared_live(Mapping("NQ.v.0", 303, raw_symbol="NQZ6",
+                                      start_ts=5_002 * NS, end_ts=5_005 * NS))
+
+    old_valid = Ohlcv(5_001, 100, 101, 99, 100.5, 1)
+    old_valid.instrument_id = 101
+    old_invalid = Ohlcv(5_003, 150, 151, 149, 150.5, 9)
+    old_invalid.instrument_id = 101
+    new_valid = Ohlcv(5_003, 200, 201, 199, 200.5, 2)
+    new_valid.instrument_id = 303
+    feed._dispatch_shared_live(old_valid)
+    feed._dispatch_shared_live(old_invalid)
+    feed._dispatch_shared_live(new_valid)
+
+    rows = list(feed._second_bars["NQ=F"])
+    assert [row.ts for row in rows] == [5_001, 5_003]
+    assert rows[-1].c == 200.5
+    meta = feed.meta("NQ=F")
+    assert meta["resolved_instrument_id"] == 303
+    assert meta["resolved_raw_symbol"] == "NQZ6"
+    assert meta["mapping_current"] is False
+
+
 def test_shared_live_session_routes_records_by_symbol_mapping():
     live = FakeLive()
     feed = make_feed(lives=[live])
@@ -815,6 +884,8 @@ def test_engine_http_exposes_databento_capabilities_ticks_depth_and_mbo(tmp_path
     })
     snapshot_live = FakeLive({"mbo": [Depth(4_002, 100.5, flags=1)]})
     feed = make_feed(lives=[live, snapshot_live])
+    feed.start_live("NQ=F")
+    live.callback(Mapping("NQ.v.0", 42, raw_symbol="NQZ6"))
 
     journal = Journal(":memory:")
     port = Portfolio(journal, str(tmp_path))
@@ -840,6 +911,10 @@ def test_engine_http_exposes_databento_capabilities_ticks_depth_and_mbo(tmp_path
             assert body["provider"] == "databento"
             assert body["capabilities"]["ticks"] is True
             assert body["capabilities"]["mbp_10"] is True
+            assert body["metadata"]["resolved_instrument_id"] == 42
+            assert body["metadata"]["resolved_raw_symbol"] == "NQZ6"
+            assert body["metadata"]["mapping_current"] is True
+            assert runner.summary()["feed_metadata"]["resolved_raw_symbol"] == "NQZ6"
 
         with urllib.request.urlopen(base + "/api/market-data/NQ1!/ticks?limit=10", timeout=5) as reply:
             body = json.load(reply)
