@@ -23,6 +23,7 @@
 """
 from __future__ import annotations
 
+import copy
 import hmac
 import json
 import os
@@ -400,9 +401,50 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                             sp = apply_chart_config(sp, chart)
                             r.ensure_cached_timeframes(inp)
                             r.ensure_cached_chart_timeframe(sp.chart_tf)
+                        snapshots = {}
                         for r in targets:
-                            port.rewarm_asset(r.symbol, vals, bool(body.get("persist", True)) if vals is not None else False,
-                                              reset=reset, chart=chart, **kwargs)
+                            override_path = os.path.join(port.base_dir, f"inputs.{r.symbol}.json")
+                            snapshots[r.symbol] = {
+                                "spec": copy.deepcopy(r.spec),
+                                "inputs": copy.deepcopy(r.inputs_base),
+                                "sources": list(r.cfg.sources or []),
+                                "preset": r.cfg.preset,
+                                "override_path": override_path,
+                                "override_bytes": (Path(override_path).read_bytes() if os.path.exists(override_path) else None),
+                            }
+                        applied = []
+                        try:
+                            for r in targets:
+                                port.rewarm_asset(r.symbol, vals, bool(body.get("persist", True)) if vals is not None else False,
+                                                  reset=reset, chart=chart, **kwargs)
+                                applied.append(r)
+                        except Exception as apply_ex:
+                            rollback_errors = []
+                            for r in reversed(applied):
+                                snap = snapshots[r.symbol]
+                                try:
+                                    pth = snap["override_path"]
+                                    raw_before = snap["override_bytes"]
+                                    if raw_before is None:
+                                        if os.path.exists(pth):
+                                            os.remove(pth)
+                                    else:
+                                        tmp = pth + ".batch-rollback.tmp"
+                                        Path(tmp).write_bytes(raw_before)
+                                        os.replace(tmp, pth)
+                                    # Preserve the AssetSpec object identity shared with RunnerConfig.
+                                    r.spec.__dict__.clear()
+                                    r.spec.__dict__.update(copy.deepcopy(snap["spec"].__dict__))
+                                    r.cfg.preset = snap["preset"]
+                                    r.rewarm(copy.deepcopy(snap["inputs"]), list(snap["sources"]))
+                                except Exception as rollback_ex:
+                                    rollback_errors.append(f"{r.symbol}: {type(rollback_ex).__name__}: {rollback_ex}")
+                            if rollback_errors:
+                                raise RuntimeError(
+                                    f"batch configuration failed ({type(apply_ex).__name__}: {apply_ex}); "
+                                    f"rollback incomplete: {'; '.join(rollback_errors)}"
+                                ) from apply_ex
+                            raise
                     done = [r.symbol for r in targets]
                     return self._json(200, {"ok": True, "note": f"configuration applied and re-warmed {done}", "assets": done,
                                             "chart": chart or None})
