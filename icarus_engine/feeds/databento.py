@@ -537,13 +537,21 @@ class Databento:
         # by their continuous symbol when possible; otherwise fail closed for all
         # active subscriptions because the shared session's integrity is uncertain.
         if hasattr(record, "err"):
+            code = int(getattr(record, "code", 0) or 0)
             err = str(getattr(record, "err", "") or "")
+            session_broken = code in (1, 2, 3, 5, 6, 7, 8)
             with self._lock:
                 active = set(self._live_started)
-                targets = [key for cont, key in self._continuous_to_symbol.items()
-                           if key in active and cont and cont in err]
-                if not targets:
+                if session_broken:
+                    # These errors are fatal at the gateway, or (code 7) imply an
+                    # irreversible data-integrity gap. Every symbol on the shared
+                    # session must fail closed even if the message names only one.
                     targets = list(active)
+                else:
+                    targets = [key for cont, key in self._continuous_to_symbol.items()
+                               if key in active and cont and cont in err]
+                    if not targets:
+                        targets = list(active)
             for key in targets:
                 self._dispatch_live(key, record)
             return
@@ -584,13 +592,16 @@ class Databento:
         if hasattr(record, "err"):
             code = int(getattr(record, "code", 0) or 0)
             err = str(getattr(record, "err", "") or "Databento depth error")
-            fatal = code in (1, 2, 3, 5, 6, 8)
+            fatal = code in (1, 2, 3, 5, 6, 7, 8)
             with self._lock:
                 active = set(self._depth_live_symbols)
-                targets = [key for cont, key in self._depth_continuous_to_symbol.items()
-                           if key in active and cont and cont in err]
-                if not targets:
+                if fatal:
                     targets = list(active)
+                else:
+                    targets = [key for cont, key in self._depth_continuous_to_symbol.items()
+                               if key in active and cont and cont in err]
+                    if not targets:
+                        targets = list(active)
                 message = f"Databento depth error code={code}: {err}"
                 for key in targets:
                     self._depth_errors[key] = message
@@ -626,8 +637,11 @@ class Databento:
     def _raise_depth_error(self, symbol: str) -> None:
         with self._lock:
             err = self._depth_errors.get(str(symbol))
+            broken = self._depth_broken
         if err:
             raise RuntimeError(err)
+        if broken:
+            raise RuntimeError("Databento depth live session is in a fatal/integrity error state")
 
     def _record_depth_reconnect_all(self, previous: Any, resumed: Any) -> None:
         with self._lock:
@@ -808,8 +822,11 @@ class Databento:
     def _raise_live_error(self, symbol: str) -> None:
         with self._lock:
             err = self._errors.get(str(symbol))
+            broken = self._core_broken
         if err:
             raise RuntimeError(err)
+        if broken:
+            raise RuntimeError("Databento core live session is in a fatal/integrity error state")
 
     def _record_reconnect(self, symbol: str, previous: Any, resumed: Any) -> None:
         row = {"previous": str(previous), "resumed": str(resumed)}
