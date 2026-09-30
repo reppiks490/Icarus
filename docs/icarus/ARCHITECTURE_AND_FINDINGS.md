@@ -18,7 +18,7 @@ Every datum capable of affecting research or decisions should carry, where appli
 
 - source identity
 - symbol/instrument identity
-- contract and roll identity
+- continuous instrument identity and provider mapping
 - timezone
 - session/calendar identity
 - observed timestamp
@@ -140,7 +140,7 @@ Provider output is evidence, not authority.
 ## 5. Failure modes to attack deliberately
 
 - lookahead through publication latency
-- contract-roll ambiguity
+- continuous-provider roll-timing divergence across data/chart vendors
 - session-boundary drift
 - synthetic-minute invention
 - hidden normalization using future windows
