@@ -152,7 +152,12 @@ def cmd_inputs(args: argparse.Namespace) -> int:
 
 def cmd_assets(args: argparse.Namespace) -> int:
     for s in REGISTRY.values():
-        print(f"  {s.symbol:<5} {s.name:<30} feed={s.feed:<8} calendar={s.calendar:<6} tick={s.mintick:<6} $/pt={s.multiplier:<7} tv={s.tv_symbol}")
+        ident = s.tv_symbol if s.kind == "futures" else s.symbol
+        policy = "continuous-only" if s.kind == "futures" else s.kind
+        print(
+            f"  {ident:<20} key={s.symbol:<5} {s.name:<30} feed={s.feed:<8} provider={s.ticker:<10} "
+            f"calendar={s.calendar:<10} tick={s.mintick:<6} $/pt={s.multiplier:<7} {policy}"
+        )
     return 0
 
 
