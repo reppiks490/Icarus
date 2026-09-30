@@ -434,6 +434,43 @@ def test_mbo_snapshot_requests_continuous_snapshot_and_stops():
     assert live.stopped is True
 
 
+def test_portfolio_prepares_shared_live_feed_before_spawning_futures(monkeypatch, tmp_path):
+    events = []
+
+    class Feed:
+        def prepare_live(self, symbols):
+            events.append(("prepare", tuple(symbols)))
+
+    feed = Feed()
+    journal = Journal(":memory:")
+    port = Portfolio(journal, str(tmp_path))
+    nq = AssetRunner(RunnerConfig(resolve("NQ"), Inputs(use_tide=False, use_eod_flat=False)), journal, {"yahoo": feed})
+    es = AssetRunner(RunnerConfig(resolve("ES"), Inputs(use_tide=False, use_eod_flat=False)), journal, {"yahoo": feed})
+    port.runners = {"NQ": nq, "ES": es}
+    port.order = ["NQ", "ES"]
+    monkeypatch.setattr(port, "_spawn", lambda runner: events.append(("spawn", runner.symbol)))
+    port._stop.set()  # make the daemon sampler return immediately
+    port.start()
+    assert events[0] == ("prepare", ("NQ=F", "ES=F"))
+    assert events[1:] == [("spawn", "NQ"), ("spawn", "ES")]
+
+
+def test_dynamic_future_add_prepares_live_before_spawn(monkeypatch, tmp_path):
+    events = []
+
+    class Feed:
+        def prepare_live(self, symbols):
+            events.append(("prepare", tuple(symbols)))
+
+    feed = Feed()
+    port = Portfolio(Journal(":memory:"), str(tmp_path))
+    port.feeds["yahoo"] = feed
+    monkeypatch.setattr(port, "_spawn", lambda runner: events.append(("spawn", runner.symbol)))
+    runner = port.add_asset(resolve("NQ"), start=True)
+    assert runner.symbol == "NQ"
+    assert events == [("prepare", ("NQ=F",)), ("spawn", "NQ")]
+
+
 def test_portfolio_databento_mode_routes_futures_transport(monkeypatch, tmp_path):
     sentinel = object()
     monkeypatch.setenv("ICARUS_FEED", "databento")
