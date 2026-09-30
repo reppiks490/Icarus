@@ -411,6 +411,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                                 "inputs": copy.deepcopy(r.inputs_base),
                                 "sources": list(r.cfg.sources or []),
                                 "preset": r.cfg.preset,
+                                "live_from_ts": r.live_from_ts,
                                 "override_path": override_path,
                                 "override_bytes": (Path(override_path).read_bytes() if os.path.exists(override_path) else None),
                             }
@@ -439,7 +440,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                                     r.spec.__dict__.clear()
                                     r.spec.__dict__.update(copy.deepcopy(snap["spec"].__dict__))
                                     r.cfg.preset = snap["preset"]
-                                    r.rewarm(copy.deepcopy(snap["inputs"]), list(snap["sources"]))
+                                    r.rewarm(copy.deepcopy(snap["inputs"]), list(snap["sources"]), reset_live_boundary=False)
+                                    r.live_from_ts = snap["live_from_ts"]
                                 except Exception as rollback_ex:
                                     rollback_errors.append(f"{r.symbol}: {type(rollback_ex).__name__}: {rollback_ex}")
                             if rollback_errors:
@@ -448,8 +450,11 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                                     f"rollback incomplete: {'; '.join(rollback_errors)}"
                                 ) from apply_ex
                             raise
-                        # Treat a successful multi-asset request as one calculation regime.
-                        port.equity_epoch = time.time()
+                        # Treat a successful multi-asset request as one calculation/live-paper regime.
+                        cutover = int(time.time())
+                        for r in targets:
+                            r.live_from_ts = cutover
+                        port.equity_epoch = float(cutover)
                     done = [r.symbol for r in targets]
                     return self._json(200, {"ok": True, "note": f"configuration applied and re-warmed {done}", "assets": done,
                                             "chart": chart or None})
