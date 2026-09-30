@@ -390,3 +390,32 @@ def test_reset_removes_persisted_chart_meta_and_restores_baseline(configured):
     assert not path.exists()
     assert r.chart_minutes == 1
     assert r.spec.chart_tf == "1" and r.spec.chart_type == "real"
+
+
+def test_heikin_ashi_signals_can_fill_on_real_market_open():
+    def runner(fill_on):
+        spec = AssetSpec("HA", "HA", "yahoo", "HA", "crypto", 0.25, 1,
+                         chart_tf="1", chart_type="heikin_ashi", fill_on=fill_on,
+                         commission=0, roll="none")
+        r = AssetRunner(RunnerConfig(spec, Inputs(use_tide=False, use_eod_flat=False)), Journal(":memory:"))
+        r.warm = True
+        return r
+
+    first = Bar(0, 100, 110, 90, 105, 1)
+    second = Bar(60, 120, 125, 115, 122, 1)
+
+    real_fill = runner("real")
+    real_fill._on_chart_bar(first, live=False)
+    real_fill.em.entry("Manual", 1, 1)
+    real_fill._on_chart_bar(second, live=False)
+    real_px = next(f.price for f in real_fill.em.fills if f.entry_id == "Manual" and f.kind == "entry")
+
+    chart_fill = runner("chart")
+    chart_fill._on_chart_bar(first, live=False)
+    chart_fill.em.entry("Manual", 1, 1)
+    chart_fill._on_chart_bar(second, live=False)
+    chart_px = next(f.price for f in chart_fill.em.fills if f.entry_id == "Manual" and f.kind == "entry")
+
+    assert real_px == 120
+    assert chart_px != real_px
+    assert real_fill.bars[-1].o != second.o  # strategy bar is synthetic HA while execution used the real open
