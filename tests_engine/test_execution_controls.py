@@ -36,7 +36,6 @@ def pending(r, direction=1, limit=None):
         r.strat.rate_pend_bar = 0
 
 
-@pytest.mark.parametrize("limit", [None, 99])
 def test_closed_futures_session_with_no_feed_clock_is_not_a_transport_failure(monkeypatch):
     from icarus_engine.assets import resolve
     import icarus_engine.runtime as runtime
@@ -64,6 +63,7 @@ def test_closed_futures_session_with_no_feed_clock_is_not_a_transport_failure(mo
     assert r.last_poll_ok == closed_ts
 
 
+@pytest.mark.parametrize("limit", [None, 99])
 def test_pause_cancels_market_and_limit_before_next_fill(limit):
     r = make_runner()
     r.strat.w_slot_queue = [0]
