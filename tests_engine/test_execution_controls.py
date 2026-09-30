@@ -552,3 +552,35 @@ def test_warmup_replay_trades_stay_non_live_until_live_boundary_exists():
     assert r.summary()["live_trades"] == 0
     assert r.summary()["live_profit"] == 0
     assert r.trades()[-1]["live"] is False
+
+
+def test_engine_http_api_resolves_common_asset_aliases(tmp_path):
+    port = Portfolio(Journal(":memory:"), str(tmp_path))
+    r = make_runner("NQ")
+    port.runners["NQ"] = r
+    port.order = ["NQ"]
+    srv = serve(port, 0, token="test-token", start=False)
+    thread = threading.Thread(target=srv.serve_forever, daemon=True)
+    thread.start()
+    try:
+        conn = HTTPConnection("127.0.0.1", srv.server_port, timeout=5)
+        conn.request("GET", "/api/inputs/NQ1!", headers={"Host": "127.0.0.1"})
+        reply = conn.getresponse()
+        body = json.loads(reply.read())
+        conn.close()
+        assert reply.status == 200 and body["asset"] == "NQ"
+
+        req = urllib.request.Request(
+            f"http://127.0.0.1:{srv.server_port}/admin/pause",
+            data=json.dumps({"asset": "MNQ"}).encode(),
+            headers={"Authorization": "Bearer test-token", "Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(req, timeout=5) as reply:
+            body = json.load(reply)
+            assert reply.status == 200 and body["ok"] is True
+        assert r.paused is True
+    finally:
+        srv.shutdown()
+        srv.server_close()
+        thread.join(5)
+        port.journal.con.close()
