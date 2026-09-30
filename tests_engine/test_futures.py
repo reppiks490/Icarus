@@ -574,6 +574,11 @@ def test_continuous_future_never_flattens_or_switches_for_expiry(tmp_path, monke
     assert r.em.position_size == 2
     assert r.live_ticker == "NQ=F"
     assert not hasattr(r, "_check_roll")
+    status = r.summary()
+    assert status["continuous_symbol"] == "CME_MINI:NQ1!"
+    assert status["provider_symbol"] == "NQ=F"
+    assert status["contract_policy"] == "continuous_only"
+    assert "contract" not in status and "next_contract" not in status
     assert r.em.position_size == 2
 
 
