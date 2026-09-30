@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field, replace
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 
 # The live adapters currently provide minute OHLC bars. These are the chart choices
@@ -22,21 +22,34 @@ SECURITY_SOURCES = ("chart", "standard")
 
 
 def normalize_chart_timeframe(value: object) -> str:
-    """Canonicalize a chart timeframe without pretending sub-minute/tick data exists."""
-    t = str(value).strip().upper()
+    """Canonicalize chart timeframes while refusing synthetic sub-minute/tick precision.
+
+    Accepts Pine-style values ("20", "4H", "D", "W") and the human-readable
+    strings TradingView exports ("20 minutes", "1 hour", "1 day", "1 week").
+    """
+    t = re.sub(r"\s+", " ", str(value).strip().upper())
     if not t:
         raise ValueError("chart timeframe is required")
-    if "TICK" in t or t.endswith("T"):
+    if re.fullmatch(r"\d+\s*(?:T|TICK|TICKS)", t):
         raise ValueError("tick charts require a true tick-data adapter; the current ICARUS feeds do not provide one")
-    if t.endswith("S"):
+    if re.fullmatch(r"\d+\s*(?:S|SEC|SECS|SECOND|SECONDS)", t):
         raise ValueError("second charts require a sub-minute data adapter; the current ICARUS feeds are 1-minute minimum")
+    words = re.fullmatch(r"(\d+)\s*(MIN|MINS|MINUTE|MINUTES|HOUR|HOURS|DAY|DAYS|WEEK|WEEKS)", t)
+    if words:
+        n = int(words.group(1))
+        unit = words.group(2)
+        mult = 1 if unit.startswith("MIN") else 60 if unit.startswith("HOUR") else 1440 if unit.startswith("DAY") else 10080
+        mins = n * mult
+        if mins <= 0 or mins > 10080:
+            raise ValueError("chart timeframe must be between 1 minute and one week")
+        return "D" if mins == 1440 else "W" if mins == 10080 else str(mins)
     if t in ("D", "1D"):
         return "D"
     if t in ("W", "1W"):
         return "W"
     if t.endswith("H") and t[:-1].isdigit():
         n = int(t[:-1]) * 60
-        return str(n) if n > 0 else _bad_timeframe(value)
+        return str(n) if 0 < n <= 10080 else _bad_timeframe(value)
     if t.endswith("M") and t[:-1].isdigit():
         t = t[:-1]
     if not t.isdigit() or int(t) <= 0:
@@ -95,7 +108,12 @@ def validate_chart_config(values: Optional[Dict[str, object]]) -> Dict[str, obje
     return out
 
 
-def apply_chart_config(spec: "AssetSpec", values: Optional[Dict[str, object]]) -> "AssetSpec":
+def pin_config(spec: "AssetSpec", *keys: str) -> "AssetSpec":
+    """Mark explicit startup/API configuration so preset metadata cannot silently overwrite it."""
+    return replace(spec, config_pins=sorted(set(spec.config_pins) | {str(k) for k in keys}))
+
+
+def apply_chart_config(spec: "AssetSpec", values: Optional[Dict[str, object]], *, pin: bool = False) -> "AssetSpec":
     """Return a copy of *spec* with validated chart settings applied."""
     out = replace(spec)
     cfg = validate_chart_config(values)
@@ -104,7 +122,7 @@ def apply_chart_config(spec: "AssetSpec", values: Optional[Dict[str, object]]) -
     for key in ("chart_type", "fill_on", "security_source"):
         if key in cfg:
             setattr(out, key, str(cfg[key]))
-    return out
+    return pin_config(out, *cfg.keys()) if pin and cfg else out
 
 
 @dataclass
@@ -130,6 +148,7 @@ class AssetSpec:
     group: str = "equity"            # holiday schedule: equity | metals | crypto (CME Bitcoin futures follow equity)
     security_source: str = "chart"   # chart | standard - what request.security() sees on a Heikin Ashi chart (chart = HA, TradingView)
     roll: str = "volume"             # volume | none - continuous-contract roll rule for the live feed (TradingView 1! = volume)
+    config_pins: List[str] = field(default_factory=list, repr=False, compare=False)  # explicit startup/API values that beat preset metadata
 
 
 REGISTRY: Dict[str, AssetSpec] = {
@@ -181,9 +200,10 @@ def parse_spec(token: str, default_tf: str = "20") -> AssetSpec:
     sym = token.strip()
     if ":" in sym and not sym.upper().startswith(("CME", "COMEX", "NYMEX", "COINBASE", "CBOT")):
         sym, preset = sym.split(":", 1)
-    if "@" in sym:
+    explicit_tf = "@" in sym
+    if explicit_tf:
         sym, tf = sym.split("@", 1)
     spec = resolve(sym)
     spec.chart_tf = normalize_chart_timeframe(tf)
     spec.preset = preset
-    return spec
+    return pin_config(spec, "timeframe") if explicit_tf else spec
