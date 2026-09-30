@@ -624,7 +624,8 @@ class Databento:
             if market_event:
                 self._feed_time[symbol] = max(now_sec, self._feed_time.get(symbol, 0))
                 self._ready[symbol].set()
-                self._errors.pop(symbol, None)
+                if symbol not in self._callback_errors and symbol not in self._recovery_required:
+                    self._errors.pop(symbol, None)
             meta = dict(self._meta.get(symbol, {}))
             meta.update({
                 "regularMarketTime": self._feed_time.get(symbol, 0),
@@ -632,8 +633,13 @@ class Databento:
                 "dataset": self.dataset,
                 "continuous_symbol": self.continuous_symbol(symbol, self.roll_rule),
             })
-            if symbol in self._errors:
-                meta["live_error"] = self._errors[symbol]
+            live_error = (
+                self._callback_errors.get(symbol)
+                or self._recovery_required.get(symbol)
+                or self._errors.get(symbol)
+            )
+            if live_error:
+                meta["live_error"] = live_error
             else:
                 meta.pop("live_error", None)
             self._meta[symbol] = meta
