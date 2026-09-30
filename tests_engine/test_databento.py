@@ -180,6 +180,8 @@ def test_continuous_volume_front_symbology_and_capabilities(monkeypatch):
     assert caps["continuous_futures"] is True
     assert caps["continuous_rule"] == "volume_front"
     assert caps["continuous_rule_code"] == "v"
+    assert caps["live_roll_verified"] is True
+    assert caps["live_roll_verification"] == "daily_symbology_resolution_and_session_rotation"
     assert caps["minimum_ohlcv_resolution_seconds"] == 1
     assert caps["ticks"] is True
     assert caps["mbp_10"] is True and caps["mbo"] is True and caps["mbo_snapshot"] is True
@@ -633,6 +635,11 @@ def test_engine_http_exposes_databento_capabilities_ticks_depth_and_mbo(tmp_path
         {"yahoo": feed},
     )
     runner.warm = True
+    feed._live_callback("NQ=F", Mapping(4242, "NQ.v.0", "NQZ6"))
+    summary = runner.summary()
+    assert summary["active_contract"] == "NQZ6"
+    assert summary["active_instrument_id"] == 4242
+    assert summary["feed_meta"]["continuous_symbol"] == "NQ.v.0"
     chart_caps = runner.chart_capability_view()
     assert chart_caps["seconds"] is False and chart_caps["ticks"] is False
     assert chart_caps["raw_feed_provider"] == "databento"
