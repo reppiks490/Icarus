@@ -64,6 +64,8 @@ def test_doctor_databento_requires_key_without_network(tmp_path, monkeypatch):
 def test_doctor_databento_accepts_key_from_plant_env_file(tmp_path, monkeypatch):
     monkeypatch.setenv("ICARUS_FEED", "databento")
     monkeypatch.delenv("DATABENTO_API_KEY", raising=False)
+    monkeypatch.delenv("DATABENTO_DATASET", raising=False)
+    monkeypatch.delenv("DATABENTO_ROLL_RULE", raising=False)
     monkeypatch.setattr("icarus_engine.doctor.importlib.util.find_spec", lambda name: object() if name == "databento" else None)
     (tmp_path / ".env").write_text(
         "WEBHOOK_SECRET=local-secret\n"
@@ -82,6 +84,9 @@ def test_doctor_databento_accepts_key_from_plant_env_file(tmp_path, monkeypatch)
 
 def test_doctor_databento_rejects_bad_dataset_or_roll_rule(tmp_path, monkeypatch):
     monkeypatch.setenv("ICARUS_FEED", "databento")
+    monkeypatch.delenv("DATABENTO_API_KEY", raising=False)
+    monkeypatch.delenv("DATABENTO_DATASET", raising=False)
+    monkeypatch.delenv("DATABENTO_ROLL_RULE", raising=False)
     monkeypatch.setattr("icarus_engine.doctor.importlib.util.find_spec", lambda name: object() if name == "databento" else None)
     (tmp_path / ".env").write_text(
         "WEBHOOK_SECRET=local-secret\n"
