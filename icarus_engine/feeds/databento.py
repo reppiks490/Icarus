@@ -38,7 +38,7 @@ _NATIVE_SCHEMAS = {
     3600: "ohlcv-1h",
     86400: "ohlcv-1d",
 }
-_PRICE_SCALE = 1_000_000_000.0
+_PRICE_SCALE = 1_000_000_000.0\n_UNDEF_PRICE = (1 << 63) - 1
 
 
 @dataclass(frozen=True)
@@ -200,7 +200,8 @@ class Databento:
         return datetime.fromtimestamp(float(ts), timezone.utc).isoformat().replace("+00:00", "Z")
 
     @staticmethod
-    def _price(record: Any, field: str) -> float:
+    def _optional_price(record: Any, field: str) -> Optional[float]:
+        """Return a real Databento price, or None for DBN's undefined-price sentinel."""
         pretty = getattr(record, f"pretty_{field}", None)
         if pretty is not None:
             try:
@@ -210,9 +211,20 @@ class Databento:
             except (TypeError, ValueError):
                 pass
         raw = getattr(record, field)
-        x = float(raw) / _PRICE_SCALE
-        if not math.isfinite(x):
-            raise ValueError(f"invalid Databento {field}={raw!r}")
+        try:
+            raw_i = int(raw)
+        except (TypeError, ValueError, OverflowError):
+            return None
+        if raw_i == _UNDEF_PRICE:
+            return None
+        x = float(raw_i) / _PRICE_SCALE
+        return x if math.isfinite(x) else None
+
+    @classmethod
+    def _price(cls, record: Any, field: str) -> float:
+        x = cls._optional_price(record, field)
+        if x is None:
+            raise ValueError(f"undefined/invalid Databento {field}={getattr(record, field, None)!r}")
         return x
 
     @staticmethod
@@ -265,10 +277,7 @@ class Databento:
                     v = str(v)
                 out[key] = v
         if hasattr(record, "price"):
-            try:
-                out["price"] = cls._price(record, "price")
-            except Exception:
-                pass
+            out["price"] = cls._optional_price(record, "price")
         # MBP-10 records expose levels; preserve a JSON-friendly view without taking
         # a hard dependency on one databento-dbn concrete level class.
         if levels is not None:
@@ -281,9 +290,13 @@ class Databento:
                         if key.endswith("_px"):
                             try:
                                 pretty = getattr(lvl, f"pretty_{key}", None)
-                                value = float(pretty) if pretty is not None else float(value) / _PRICE_SCALE
-                            except Exception:
-                                continue
+                                if pretty is not None and math.isfinite(float(pretty)):
+                                    value = float(pretty)
+                                else:
+                                    raw_i = int(value)
+                                    value = None if raw_i == _UNDEF_PRICE else float(raw_i) / _PRICE_SCALE
+                            except (TypeError, ValueError, OverflowError):
+                                value = None
                         else:
                             try:
                                 value = int(value)
@@ -555,6 +568,12 @@ class Databento:
             if hasattr(record, "msg") and hasattr(record, "code"):
                 code = int(getattr(record, "code", 0) or 0)
                 meta = dict(self._meta.get(symbol, {}))
+                meta.update({
+                    "regularMarketTime": self._feed_time.get(symbol, 0),
+                    "provider": "databento",
+                    "dataset": self.dataset,
+                    "continuous_symbol": self.continuous_symbol(symbol, self.roll_rule),
+                })
                 if code == 2:
                     meta["slow_reader_warning"] = str(getattr(record, "msg", "") or "slow reader")
                     meta["slow_reader_warning_ts"] = int(time.time())
