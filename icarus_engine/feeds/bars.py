@@ -325,7 +325,7 @@ class FileFeed:
 
 
 def _hub_symbol(ticker: str) -> str:
-    """Map a feed ticker (NQ=F, NQU26.CME, CME_MINI:NQ1!) onto a registry symbol."""
+    """Map a continuous provider/chart ticker (NQ=F, CME_MINI:NQ1!, MNQ=F, etc.) onto a registry symbol."""
     from ..assets import REGISTRY
     raw = (ticker or "").upper().split(":")[-1]
     for spec in REGISTRY.values():
