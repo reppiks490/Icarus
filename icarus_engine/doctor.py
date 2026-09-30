@@ -2,6 +2,7 @@
 """Offline health checks. No network, no broker, no paid feed."""
 from __future__ import annotations
 
+import importlib.util
 import os
 from datetime import date
 from typing import Any, Dict, List
@@ -109,8 +110,18 @@ def inspect(base_dir: str | None = None, *, today: date | None = None) -> Dict[s
     feed = os.environ.get("ICARUS_FEED", "yahoo").strip() or "yahoo"
     home = os.environ.get("ICARUS_HOME")
     _check(items, "ICARUS_FEED / ICARUS_HOME", True,
-           f"ICARUS_FEED={feed}  ICARUS_HOME={home or '(cwd)'} — file = HistoryHub (no Yahoo); yahoo = delayed NQ=F",
+           f"ICARUS_FEED={feed}  ICARUS_HOME={home or '(cwd)'} — file = HistoryHub; yahoo = delayed continuous; databento = live GLBX.MDP3",
            level="ok")
+    if feed == "databento":
+        sdk_ok = importlib.util.find_spec("databento") is not None
+        key_ok = bool(os.environ.get("DATABENTO_API_KEY"))
+        _check(
+            items,
+            "Databento adapter prerequisites",
+            sdk_ok and key_ok,
+            f"SDK={'installed' if sdk_ok else 'missing'}  DATABENTO_API_KEY={'set' if key_ok else 'missing'} — no network request made",
+            level="fail",
+        )
 
     env_path = os.path.join(root, ".env")
     _check(items, ".env present", os.path.isfile(env_path),
