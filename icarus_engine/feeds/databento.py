@@ -39,6 +39,7 @@ _NATIVE_SCHEMAS = {
     86400: "ohlcv-1d",
 }
 _PRICE_SCALE = 1_000_000_000.0
+_UNDEF_PRICE = (1 << 63) - 1
 
 
 @dataclass(frozen=True)
@@ -92,9 +93,20 @@ class Databento:
             slow_reader_behavior="warn",
         ))
         self._lock = threading.RLock()
-        self._live: Dict[str, Any] = {}
+        self._session_lock = threading.RLock()
+        # One Live client/session per Databento dataset. Databento explicitly supports
+        # many symbols/schemas on one session; this avoids exhausting team session limits
+        # when ICARUS runs its full registered futures universe.
+        self._shared_live: Any = None
+        self._shared_started = False
+        self._live: Dict[str, Any] = {}  # compatibility/status view: active symbol -> shared client
         self._live_started: set[str] = set()
+        # Desired schemas survive socket replacement; _subscriptions describes only
+        # what is attached to the current shared client.
+        self._wanted_subscriptions: Dict[str, set[str]] = collections.defaultdict(set)
         self._subscriptions: Dict[str, set[str]] = collections.defaultdict(set)
+        self._continuous_to_symbol: Dict[str, str] = {}
+        self._instrument_to_symbol: Dict[int, str] = {}
         self._ready: Dict[str, threading.Event] = collections.defaultdict(threading.Event)
         self._second_bars: Dict[str, Deque[Bar]] = collections.defaultdict(
             lambda: collections.deque(maxlen=max(60, int(max_live_seconds)))
@@ -102,6 +114,10 @@ class Databento:
         self._trades: Dict[str, Deque[TradeTick]] = collections.defaultdict(
             lambda: collections.deque(maxlen=max(1000, int(max_trades)))
         )
+        # Multiple Databento schemas can report the same trade event (for example
+        # trades + MBO/MBP-10). Keep the public tick tape event-unique instead of
+        # double-counting one exchange trade when depth is enabled.
+        self._trade_seen: Dict[str, set[Tuple[int, float, int, str, int]]] = collections.defaultdict(set)
         self._depth: Dict[str, Deque[Dict[str, Any]]] = collections.defaultdict(
             lambda: collections.deque(maxlen=max(1000, int(max_depth)))
         )
@@ -158,6 +174,9 @@ class Databento:
             "continuous_futures": True,
             "continuous_rule": rule_name,
             "continuous_rule_code": self.roll_rule,
+            "live_session_model": "shared_per_dataset",
+            "live_symbol_routing": "SymbolMappingMsg/instrument_id",
+            "continuous_live_refresh": "automatic_utc_day",
             "ohlcv_seconds": True,
             "minimum_ohlcv_resolution_seconds": 1,
             "trades": True,
@@ -173,7 +192,8 @@ class Databento:
         return datetime.fromtimestamp(float(ts), timezone.utc).isoformat().replace("+00:00", "Z")
 
     @staticmethod
-    def _price(record: Any, field: str) -> float:
+    def _optional_price(record: Any, field: str) -> Optional[float]:
+        """Return a real Databento price, or None for the DBN undefined-price sentinel."""
         pretty = getattr(record, f"pretty_{field}", None)
         if pretty is not None:
             try:
@@ -183,9 +203,20 @@ class Databento:
             except (TypeError, ValueError):
                 pass
         raw = getattr(record, field)
-        x = float(raw) / _PRICE_SCALE
-        if not math.isfinite(x):
-            raise ValueError(f"invalid Databento {field}={raw!r}")
+        try:
+            raw_i = int(raw)
+        except (TypeError, ValueError, OverflowError):
+            return None
+        if raw_i == _UNDEF_PRICE:
+            return None
+        x = float(raw_i) / _PRICE_SCALE
+        return x if math.isfinite(x) else None
+
+    @classmethod
+    def _price(cls, record: Any, field: str) -> float:
+        x = cls._optional_price(record, field)
+        if x is None:
+            raise ValueError(f"undefined/invalid Databento {field}={getattr(record, field, None)!r}")
         return x
 
     @staticmethod
@@ -217,6 +248,29 @@ class Databento:
             sequence=int(getattr(record, "sequence", 0) or 0),
         )
 
+    @staticmethod
+    def _trade_key(tick: TradeTick) -> Tuple[int, float, int, str, int]:
+        return (tick.ts_event_ns, tick.price, tick.size, tick.side, tick.sequence)
+
+    def _append_trade_locked(self, symbol: str, tick: TradeTick) -> bool:
+        """Append one exchange trade once even when several live schemas report it.
+
+        Caller must hold self._lock. The dedupe set is kept in exact lockstep
+        with the bounded deque so it cannot grow without bound.
+        """
+        key = self._trade_key(tick)
+        seen = self._trade_seen[symbol]
+        if key in seen:
+            return False
+        q = self._trades[symbol]
+        if q and tick.ts_event_ns < q[-1].ts_event_ns:
+            return False
+        if q.maxlen is not None and len(q) >= q.maxlen and q:
+            seen.discard(self._trade_key(q[0]))
+        q.append(tick)
+        seen.add(key)
+        return True
+
     @classmethod
     def _event_record(cls, record: Any) -> Dict[str, Any]:
         ts_ns = int(getattr(record, "ts_event")) if hasattr(record, "ts_event") else None
@@ -237,10 +291,7 @@ class Databento:
                     v = str(v)
                 out[key] = v
         if hasattr(record, "price"):
-            try:
-                out["price"] = cls._price(record, "price")
-            except Exception:
-                pass
+            out["price"] = cls._optional_price(record, "price")
         # MBP-10 records expose levels; preserve a JSON-friendly view without taking
         # a hard dependency on one databento-dbn concrete level class.
         if levels is not None:
@@ -253,9 +304,13 @@ class Databento:
                         if key.endswith("_px"):
                             try:
                                 pretty = getattr(lvl, f"pretty_{key}", None)
-                                value = float(pretty) if pretty is not None else float(value) / _PRICE_SCALE
-                            except Exception:
-                                continue
+                                if pretty is not None and math.isfinite(float(pretty)):
+                                    value = float(pretty)
+                                else:
+                                    raw_i = int(value)
+                                    value = None if raw_i == _UNDEF_PRICE else float(raw_i) / _PRICE_SCALE
+                            except (TypeError, ValueError, OverflowError):
+                                value = None
                         else:
                             try:
                                 value = int(value)
@@ -364,16 +419,26 @@ class Databento:
             # OHLCV record
             if all(hasattr(record, key) for key in ("open", "high", "low", "close", "volume")):
                 b = self._ohlcv_record(record)
-                self._second_bars[symbol].append(b)
-                self._last_price[symbol] = b.c
-                market_event = True
+                q = self._second_bars[symbol]
+                accepted = False
+                if not q or b.ts > q[-1].ts:
+                    q.append(b)
+                    accepted = True
+                elif b.ts == q[-1].ts:
+                    q[-1] = b
+                    accepted = True
+                # Older replay rows are already buffered; ignore them rather than
+                # duplicating one-second volume or rewinding the live mark.
+                if accepted:
+                    self._last_price[symbol] = b.c
+                    market_event = True
             else:
                 # MBO trade records are both trades and order-book events; keep both views.
                 if hasattr(record, "price") and hasattr(record, "size") and str(getattr(record, "action", "T") or "T") == "T":
                     tick = self._trade_record(record)
-                    self._trades[symbol].append(tick)
-                    self._last_price[symbol] = tick.price
-                    market_event = True
+                    if self._append_trade_locked(symbol, tick):
+                        self._last_price[symbol] = tick.price
+                        market_event = True
                 if hasattr(record, "levels") or hasattr(record, "order_id"):
                     self._depth[symbol].append(self._event_record(record))
                     market_event = True
@@ -390,6 +455,85 @@ class Databento:
             if symbol in self._errors:
                 self._meta[symbol]["live_error"] = self._errors[symbol]
 
+    def _dispatch_live(self, symbol: str, record: Any) -> None:
+        """Contain record-conversion failures inside feed health instead of killing the reader."""
+        try:
+            self._live_callback(symbol, record)
+        except Exception as ex:
+            with self._lock:
+                self._errors[str(symbol)] = f"Databento record error: {type(ex).__name__}: {ex}"
+                self._ready[str(symbol)].set()
+                meta = dict(self._meta.get(str(symbol), {}))
+                meta.update({
+                    "regularMarketTime": self._feed_time.get(str(symbol), 0),
+                    "provider": "databento",
+                    "dataset": self.dataset,
+                    "continuous_symbol": self.continuous_symbol(symbol, self.roll_rule),
+                    "live_error": self._errors[str(symbol)],
+                })
+                self._meta[str(symbol)] = meta
+
+    @staticmethod
+    def _instrument_id(record: Any) -> Optional[int]:
+        value = getattr(record, "instrument_id", None)
+        if value is None:
+            value = getattr(getattr(record, "hd", None), "instrument_id", None)
+        try:
+            return int(value) if value is not None else None
+        except (TypeError, ValueError, OverflowError):
+            return None
+
+    @staticmethod
+    def _mapping_symbol(record: Any) -> str:
+        value = getattr(record, "stype_in_symbol", "")
+        if isinstance(value, bytes):
+            value = value.split(b"\0", 1)[0].decode("utf-8", "replace")
+        return str(value or "").split("\0", 1)[0].strip()
+
+    def _dispatch_shared_live(self, record: Any) -> None:
+        """Route one record from the shared GLBX.MDP3 session to its ICARUS symbol."""
+        mapping = self._mapping_symbol(record)
+        iid = self._instrument_id(record)
+        if mapping:
+            with self._lock:
+                key = self._continuous_to_symbol.get(mapping)
+                if key is not None and iid is not None:
+                    self._instrument_to_symbol[iid] = key
+            return
+
+        # ErrorMsg has no guaranteed instrument mapping. Route symbol-specific errors
+        # by their continuous symbol when possible; otherwise fail closed for all
+        # active subscriptions because the shared session's integrity is uncertain.
+        if hasattr(record, "err"):
+            err = str(getattr(record, "err", "") or "")
+            with self._lock:
+                active = set(self._live_started)
+                targets = [key for cont, key in self._continuous_to_symbol.items()
+                           if key in active and cont and cont in err]
+                if not targets:
+                    targets = list(active)
+            for key in targets:
+                self._dispatch_live(key, record)
+            return
+
+        with self._lock:
+            key = self._instrument_to_symbol.get(iid) if iid is not None else None
+            if key is not None and key not in self._live_started:
+                key = None
+            if key is None and iid is None and len(self._live_started) == 1:
+                # Defensive compatibility only for records that carry no instrument ID.
+                # Never guess when Databento supplied an unknown ID: that could route a
+                # detached/foreign contract into the wrong remaining asset.
+                key = next(iter(self._live_started))
+        if key is not None:
+            self._dispatch_live(key, record)
+
+    def _record_reconnect_all(self, previous: Any, resumed: Any) -> None:
+        with self._lock:
+            symbols = list(self._live_started)
+        for symbol in symbols:
+            self._record_reconnect(symbol, previous, resumed)
+
     def _raise_live_error(self, symbol: str) -> None:
         with self._lock:
             err = self._errors.get(str(symbol))
@@ -405,6 +549,160 @@ class Databento:
             meta["reconnect_count"] = len(self._reconnect_gaps[str(symbol)])
             self._meta[str(symbol)] = meta
 
+    def _prepare_live_unlocked(
+        self,
+        symbols: Sequence[str],
+        *,
+        schemas: Sequence[str] = ("ohlcv-1s", "trades"),
+        start_ts: Optional[int] = None,
+        include_depth: Optional[str] = None,
+    ) -> Any:
+        """Subscribe many futures on one dataset session, then start it once.
+
+        ICARUS calls this before historical warm-up so live buffers accumulate while
+        replay runs. Additional symbols may be attached after start, but Databento's
+        replay start parameter is intentionally omitted for those subscriptions.
+        """
+        desired = {str(s) for s in schemas}
+        if include_depth:
+            if include_depth not in ("mbp-10", "mbo"):
+                raise ValueError("include_depth must be 'mbp-10' or 'mbo'")
+            desired.add(include_depth)
+        keys = [(str(symbol), self.continuous_symbol(symbol, self.roll_rule)) for symbol in symbols]
+        with self._lock:
+            for key, _ in keys:
+                self._wanted_subscriptions[key].update(desired)
+        if not keys:
+            return self._shared_live
+
+        with self._lock:
+            client = self._shared_live
+            if client is None:
+                client = self._live_factory()
+                client.add_callback(self._dispatch_shared_live)
+                if hasattr(client, "add_reconnect_callback"):
+                    client.add_reconnect_callback(self._record_reconnect_all)
+                self._shared_live = client
+
+            try:
+                for key, continuous in keys:
+                    self._continuous_to_symbol[continuous] = key
+                    wanted = set(self._wanted_subscriptions[key])
+                    missing = wanted - self._subscriptions[key]
+                    for schema in sorted(missing):
+                        kwargs: Dict[str, Any] = {
+                            "dataset": self.dataset,
+                            "schema": schema,
+                            "symbols": continuous,
+                            "stype_in": "continuous",
+                        }
+                        if start_ts is not None and not self._shared_started:
+                            kwargs["start"] = self._iso(start_ts)
+                        client.subscribe(**kwargs)
+                        self._subscriptions[key].add(schema)
+                    self._live[key] = client
+                    self._live_started.add(key)
+
+                if not self._shared_started:
+                    client.start()
+                    self._shared_started = True
+                return client
+            except Exception:
+                # Before a session has started, any subscribe/start failure leaves the
+                # client construction ambiguous. Discard it atomically so the next
+                # attempt begins from a fresh Live client instead of reusing poison state.
+                if not self._shared_started:
+                    try:
+                        if hasattr(client, "terminate"):
+                            client.terminate()
+                    except Exception:
+                        pass
+                    self._shared_live = None
+                    self._live.clear()
+                    self._live_started.clear()
+                    self._subscriptions.clear()
+                    self._continuous_to_symbol.clear()
+                    self._instrument_to_symbol.clear()
+                    self._ready.clear()
+                    self._errors.clear()
+                raise
+
+    def prepare_live(
+        self,
+        symbols: Sequence[str],
+        *,
+        schemas: Sequence[str] = ("ohlcv-1s", "trades"),
+        start_ts: Optional[int] = None,
+        include_depth: Optional[str] = None,
+    ) -> Any:
+        with self._session_lock:
+            return self._prepare_live_unlocked(
+                symbols, schemas=schemas, start_ts=start_ts, include_depth=include_depth
+            )
+
+    def refresh_live(self, symbols: Sequence[str], *, start_ts: Optional[int] = None) -> Any:
+        """Atomically re-resolve continuous symbols on a fresh shared Live session.
+
+        Each active symbol keeps its exact schema set. This is important for depth:
+        an NQ MBO request must not silently disappear at the daily continuous refresh,
+        and it must not accidentally broaden MBO to every futures symbol.
+        """
+        with self._session_lock:
+            with self._lock:
+                wanted = {
+                    str(symbol): set(self._wanted_subscriptions.get(str(symbol), {"ohlcv-1s", "trades"}))
+                    for symbol in symbols
+                }
+            self._stop_live_unlocked()
+            if not wanted:
+                return None
+
+            client = self._live_factory()
+            client.add_callback(self._dispatch_shared_live)
+            if hasattr(client, "add_reconnect_callback"):
+                client.add_reconnect_callback(self._record_reconnect_all)
+            with self._lock:
+                self._shared_live = client
+            try:
+                with self._lock:
+                    for key, desired in wanted.items():
+                        continuous = self.continuous_symbol(key, self.roll_rule)
+                        self._continuous_to_symbol[continuous] = key
+                        self._wanted_subscriptions[key].update(desired)
+                        for schema in sorted(desired):
+                            kwargs: Dict[str, Any] = {
+                                "dataset": self.dataset,
+                                "schema": schema,
+                                "symbols": continuous,
+                                "stype_in": "continuous",
+                            }
+                            if start_ts is not None:
+                                kwargs["start"] = self._iso(start_ts)
+                            client.subscribe(**kwargs)
+                            self._subscriptions[key].add(schema)
+                        self._live[key] = client
+                        self._live_started.add(key)
+                    client.start()
+                    self._shared_started = True
+                return client
+            except Exception:
+                try:
+                    if hasattr(client, "terminate"):
+                        client.terminate()
+                except Exception:
+                    pass
+                with self._lock:
+                    self._shared_live = None
+                    self._shared_started = False
+                    self._live.clear()
+                    self._live_started.clear()
+                    self._subscriptions.clear()
+                    self._continuous_to_symbol.clear()
+                    self._instrument_to_symbol.clear()
+                    self._ready.clear()
+                    self._errors.clear()
+                raise
+
     def start_live(
         self,
         symbol: str,
@@ -413,65 +711,53 @@ class Databento:
         start_ts: Optional[int] = None,
         include_depth: Optional[str] = None,
     ) -> Any:
-        key = str(symbol)
-        desired = {str(s) for s in schemas}
-        if include_depth:
-            if include_depth not in ("mbp-10", "mbo"):
-                raise ValueError("include_depth must be 'mbp-10' or 'mbo'")
-            desired.add(include_depth)
-        with self._lock:
-            if key in self._live_started:
-                client = self._live[key]
-                missing = desired - self._subscriptions[key]
-                # Databento allows additional live subscriptions after start as long as
-                # they don't request historical replay. Add only genuinely missing schemas.
-                for schema in sorted(missing):
-                    client.subscribe(
-                        dataset=self.dataset,
-                        schema=schema,
-                        symbols=self.continuous_symbol(symbol, self.roll_rule),
-                        stype_in="continuous",
-                    )
-                    self._subscriptions[key].add(schema)
-                return client
-            client = self._live_factory()
-            kwargs: Dict[str, Any] = {
-                "dataset": self.dataset,
-                "symbols": self.continuous_symbol(symbol, self.roll_rule),
-                "stype_in": "continuous",
-            }
-            if start_ts is not None:
-                # Live replay is limited by Databento to the recent intraday window.
-                kwargs["start"] = self._iso(start_ts)
-            for schema in sorted(desired):
-                client.subscribe(schema=schema, **kwargs)
-                self._subscriptions[key].add(schema)
-            client.add_callback(lambda rec, s=key: self._live_callback(s, rec))
-            if hasattr(client, "add_reconnect_callback"):
-                client.add_reconnect_callback(lambda previous, resumed, s=key: self._record_reconnect(s, previous, resumed))
-            client.start()
-            self._live[key] = client
-            self._live_started.add(key)
-            return client
+        return self.prepare_live(
+            [symbol], schemas=schemas, start_ts=start_ts, include_depth=include_depth
+        )
 
-    def stop_live(self, symbol: Optional[str] = None) -> None:
+    def _stop_live_unlocked(self, symbol: Optional[str] = None) -> None:
+        client = None
         with self._lock:
-            keys = [symbol] if symbol is not None else list(self._live)
-            clients = [(k, self._live.get(k)) for k in keys]
-        for key, client in clients:
-            if client is None:
-                continue
+            if symbol is not None:
+                key = str(symbol)
+                self._live.pop(key, None)
+                self._live_started.discard(key)
+                self._ready.pop(key, None)
+                self._errors.pop(key, None)
+                # Databento has no per-subscription unsubscribe on a running session.
+                # Keep gateway subscriptions + instrument mappings so remove/re-add does
+                # not create duplicate subscriptions (which would double-count OHLCV).
+                # _dispatch_shared_live gates delivery on _live_started, so detached
+                # assets are ignored locally while their gateway subscription persists.
+                if self._live_started:
+                    return
+            client = self._shared_live
+            self._shared_live = None
+            self._shared_started = False
+            self._live.clear()
+            self._live_started.clear()
+            self._subscriptions.clear()
+            self._continuous_to_symbol.clear()
+            self._instrument_to_symbol.clear()
+            self._ready.clear()
+            self._errors.clear()
+
+        if client is not None:
             try:
                 client.stop()
                 if hasattr(client, "block_for_close"):
                     client.block_for_close(timeout=5.0)
-            finally:
-                with self._lock:
-                    self._live.pop(key, None)
-                    self._live_started.discard(key)
-                    self._subscriptions.pop(key, None)
-                    self._ready.pop(key, None)
-                    self._errors.pop(key, None)
+            except Exception as stop_ex:
+                try:
+                    client.terminate()
+                    if hasattr(client, "block_for_close"):
+                        client.block_for_close(timeout=5.0)
+                except Exception:
+                    raise stop_ex
+
+    def stop_live(self, symbol: Optional[str] = None) -> None:
+        with self._session_lock:
+            self._stop_live_unlocked(symbol)
 
     def recent_ex(
         self,
@@ -538,7 +824,14 @@ class Databento:
                 error.append(f"Databento MBO snapshot error code={code}: {err}")
                 done.set()
                 return
-            rows.append(self._event_record(record))
+            # Snapshot streams also contain SymbolMappingMsg/SystemMsg records.
+            # Only MBO records are part of the order-book snapshot returned to callers.
+            if not hasattr(record, "order_id"):
+                return
+            row = self._event_record(record)
+            if row.get("schema") != "mbo":
+                return
+            rows.append(row)
             flags = int(getattr(record, "flags", 0) or 0)
             if last_flag and flags & last_flag:
                 done.set()
@@ -555,9 +848,17 @@ class Databento:
         try:
             done.wait(max(0.1, float(timeout)))
         finally:
-            client.stop()
-            if hasattr(client, "block_for_close"):
-                client.block_for_close(timeout=5.0)
+            try:
+                client.stop()
+                if hasattr(client, "block_for_close"):
+                    client.block_for_close(timeout=5.0)
+            except Exception as stop_ex:
+                try:
+                    client.terminate()
+                    if hasattr(client, "block_for_close"):
+                        client.block_for_close(timeout=5.0)
+                except Exception:
+                    raise stop_ex
         if error:
             raise RuntimeError(error[0])
         if last_flag and not done.is_set():

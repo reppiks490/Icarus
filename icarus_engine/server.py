@@ -263,15 +263,29 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                         return self._json(409, {"error": f"{type(feed).__name__} does not expose trade ticks"})
                     limit = self._int(q, "limit", 1000, 1, 10000)
                     since = self._int(q, "since_ts", 0, 0, 4_294_967_295)
-                    rows = feed.trades(r.spec.ticker, since_ts=(since or None), limit=limit)
+                    try:
+                        rows = feed.trades(r.spec.ticker, since_ts=(since or None), limit=limit)
+                    except ValueError as ex:
+                        return self._json(400, {"error": str(ex)})
+                    except Exception as ex:
+                        port.journal.log("WARN", f"market-data ticks {r.symbol}: {type(ex).__name__}: {ex}")
+                        return self._json(502, {"error": f"{type(ex).__name__}: {ex}"})
                     return self._json(200, {"asset": r.symbol, "provider": type(feed).__name__.lower(),
                                             "ticks": [vars(x) if hasattr(x, "__dict__") else x for x in rows]})
                 if kind == "depth":
                     if not hasattr(feed, "depth_events"):
                         return self._json(409, {"error": f"{type(feed).__name__} does not expose order-book depth"})
-                    schema = str(q.get("schema", ["mbp-10"])[0])
+                    schema = str(q.get("schema", ["mbp-10"])[0]).strip().lower()
+                    if schema not in ("mbp-10", "mbo"):
+                        return self._json(400, {"error": "schema must be mbp-10 or mbo"})
                     limit = self._int(q, "limit", 1000, 1, 10000)
-                    rows = feed.depth_events(r.spec.ticker, schema=schema, limit=limit)
+                    try:
+                        rows = feed.depth_events(r.spec.ticker, schema=schema, limit=limit)
+                    except ValueError as ex:
+                        return self._json(400, {"error": str(ex)})
+                    except Exception as ex:
+                        port.journal.log("WARN", f"market-data depth {r.symbol}: {type(ex).__name__}: {ex}")
+                        return self._json(502, {"error": f"{type(ex).__name__}: {ex}"})
                     return self._json(200, {"asset": r.symbol, "provider": type(feed).__name__.lower(),
                                             "schema": schema, "events": rows})
                 return self._json(404, {"error": "unknown market-data resource"})

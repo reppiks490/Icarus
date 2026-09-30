@@ -815,6 +815,15 @@ class AssetRunner:
                 if not ft:                                          # no feed clock in the response: the last aligned minute is the only safe clock
                     ft = (bars[-1].ts + 60) if bars else int(self.feed_time or 0)
                 if not ft:
+                    # A stopped feed clock is normal outside the configured CME session.
+                    # Do not turn weekends/closures into false transport failures.
+                    if not self.cal.is_open(int(now)):
+                        self.last_poll_ok = now
+                        with self.lock:
+                            if self.feed_error and self.last_error == self.feed_error:
+                                self.last_error = self.runtime_error
+                            self.feed_error = ""
+                        return
                     self._feed_failed("feed returned no clock and no bars"); return
                 self.feed_time = ft
                 feed_now = ft                                       # Yahoo is ~10 min behind: close bars on ITS clock, never the wall clock
@@ -1097,6 +1106,7 @@ class Portfolio:
         self.order: List[str] = []
         self.started = time.time()
         self.equity_epoch = self.started                 # paper equity chart covers only the active engine epoch
+        self._continuous_refresh_day = int(self.started // 86400)
         self.paused = False
         self._threads: Dict[str, threading.Thread] = {}
         self._stop = threading.Event()
@@ -1148,9 +1158,24 @@ class Portfolio:
                 raise ValueError(f"{spec.symbol} already running")
             self.runners[spec.symbol] = r
             self.order.append(spec.symbol)
+        try:
             if start:
+                prepare = getattr(r.feed, "prepare_live", None)
+                if r.spec.kind == "futures" and callable(prepare):
+                    prepare([r.spec.ticker])
                 self._spawn(r)
             return r
+        except Exception:
+            with self._lock:
+                self.runners.pop(spec.symbol, None)
+                self.order = [s for s in self.order if s != spec.symbol]
+            detach = getattr(r.feed, "stop_live", None)
+            if callable(detach):
+                try:
+                    detach(r.spec.ticker)
+                except Exception:
+                    pass
+            raise
 
     def remove_asset(self, symbol: str) -> bool:
         key = resolve(symbol).symbol
@@ -1161,8 +1186,16 @@ class Portfolio:
             self.order = [s for s in self.order if s != key]
             r.paused = True
             r._removed = True
-            self.journal.log("WARN", f"[{key}] removed from the engine")
-            return True
+        # Shared live feeds cannot unsubscribe at the gateway, but they can detach
+        # this asset's local routing immediately without disrupting sibling assets.
+        detach = getattr(r.feed, "stop_live", None)
+        if callable(detach):
+            try:
+                detach(r.spec.ticker)
+            except Exception as ex:
+                self.journal.log("WARN", f"[{key}] feed detach: {type(ex).__name__}: {ex}")
+        self.journal.log("WARN", f"[{key}] removed from the engine")
+        return True
 
     def preset_for(self, r: AssetRunner) -> Optional[str]:
         """The asset's current preset: set per asset (dashboard 'Apply preset', GC:NAME token) else the portfolio's."""
@@ -1253,6 +1286,17 @@ class Portfolio:
         self._threads[r.symbol] = t
 
     def start(self) -> None:
+        # Start shared live transports before historical warm-up. Databento buffers
+        # real-time seconds/trades while each runner replays history, eliminating the
+        # history-to-live seam without opening one session per futures symbol.
+        groups: Dict[int, Tuple[Any, List[str]]] = {}
+        for r in self.runner_list():
+            prepare = getattr(r.feed, "prepare_live", None)
+            if r.spec.kind == "futures" and callable(prepare):
+                group = groups.setdefault(id(r.feed), (r.feed, []))
+                group[1].append(r.spec.ticker)
+        for feed, tickers in groups.values():
+            feed.prepare_live(tickers)
         for s in list(self.order):
             self._spawn(self.runners[s])
         threading.Thread(target=self._sampler, daemon=True, name="equity-sampler").start()
@@ -1281,13 +1325,46 @@ class Portfolio:
                 self.journal.log("ERROR", f"[{r.symbol}] poll: {r.last_error}")
             self._stop.wait(interval)
 
+    def _refresh_continuous_feeds(self, now: Optional[float] = None) -> bool:
+        """Re-resolve provider continuous symbols once per UTC date.
+
+        Databento volume/open-interest ranks are based on the prior day and existing
+        Live continuous subscriptions do not remap themselves. Reopening the one
+        shared dataset session with the same smart symbols keeps ICARUS continuous-
+        only without any dated-contract rollover configuration.
+        """
+        wall = float(now if now is not None else time.time())
+        day = int(wall // 86400)
+        if day == self._continuous_refresh_day:
+            return False
+
+        groups: Dict[int, Tuple[Any, List[str]]] = {}
+        for r in self.runner_list():
+            refresh = getattr(r.feed, "refresh_live", None)
+            if r.spec.kind == "futures" and callable(refresh):
+                group = groups.setdefault(id(r.feed), (r.feed, []))
+                group[1].append(r.spec.ticker)
+
+        replay_from = max(0, int(wall) - 300)
+        for feed, tickers in groups.values():
+            feed.refresh_live(tickers, start_ts=replay_from)
+        self._continuous_refresh_day = day
+        if groups:
+            self.journal.log(
+                "INFO",
+                f"continuous futures live mappings refreshed for UTC day {day}; "
+                f"replay from {time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(replay_from))}Z",
+            )
+        return bool(groups)
+
     def _sampler(self) -> None:
         while not self._stop.is_set():
             try:
+                self._refresh_continuous_feeds()
                 if self.runners and all(r.warm for r in self.runners.values()):
                     self.journal.add_equity(self.equity())
-            except Exception:
-                pass
+            except Exception as ex:
+                self.journal.log("WARN", f"portfolio sampler: {type(ex).__name__}: {ex}")
             self._stop.wait(20)
 
     def stop(self) -> None:
