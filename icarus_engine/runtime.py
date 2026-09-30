@@ -937,6 +937,17 @@ class AssetRunner:
         caps["available_from_cache"] = available
         caps["cached_source_resolutions_minutes"] = have
         caps["current_timeframe"] = self.spec.chart_tf
+        raw = self.feed.capabilities() if hasattr(self.feed, "capabilities") else {}
+        caps["raw_feed_provider"] = raw.get("provider") if isinstance(raw, dict) else None
+        caps["raw_seconds"] = bool(raw.get("ohlcv_seconds")) if isinstance(raw, dict) else False
+        caps["raw_ticks"] = bool(raw.get("ticks")) if isinstance(raw, dict) else False
+        caps["raw_depth"] = bool(raw.get("mbp_10") or raw.get("mbo")) if isinstance(raw, dict) else False
+        caps["raw_minimum_resolution_seconds"] = raw.get("minimum_ohlcv_resolution_seconds") if isinstance(raw, dict) else None
+        if caps["raw_seconds"] or caps["raw_ticks"]:
+            caps["note"] = (
+                "Strategy charts remain minute-based; the active Databento feed exposes genuine raw "
+                "1-second OHLCV/ticks/depth through the market-data API/MCP without synthesizing tick bars."
+            )
         return caps
 
     def flatten(self, reason: str = "manual") -> int:
