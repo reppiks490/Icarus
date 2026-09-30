@@ -299,20 +299,22 @@ def resolve_inputs(spec: AssetSpec, base_dir: str, profile: str = "nq", preset: 
 
 
 def apply_spec_meta(spec: AssetSpec, meta: Optional[Dict[str, Any]]) -> AssetSpec:
-    """Apply persisted/preset Properties metadata to a copy of an AssetSpec."""
+    """Apply Properties metadata without overriding explicit startup/API pins."""
     out = replace(spec)
     meta = meta or {}
-    chart = {k: meta[k] for k in ("chart_type", "fill_on", "security_source") if meta.get(k) not in (None, "")}
-    if meta.get("timeframe") not in (None, ""):
+    pins = set(getattr(out, "config_pins", ()) or ())
+    chart = {k: meta[k] for k in ("chart_type", "fill_on", "security_source")
+             if k not in pins and meta.get(k) not in (None, "")}
+    if "timeframe" not in pins and meta.get("timeframe") not in (None, ""):
         chart["timeframe"] = meta["timeframe"]
     out = apply_chart_config(out, chart)
-    if meta.get("slippage_ticks") is not None:
+    if "slippage_ticks" not in pins and meta.get("slippage_ticks") is not None:
         out.slippage_ticks = int(meta["slippage_ticks"])
-    if meta.get("commission") is not None:
+    if "commission" not in pins and meta.get("commission") is not None:
         out.commission = float(meta["commission"])
-    if meta.get("capital") is not None:
+    if "capital" not in pins and meta.get("capital") is not None:
         out.capital = float(meta["capital"])
-    if meta.get("session") in ("rth", "eth") and out.calendar == "cme":
+    if "session" not in pins and meta.get("session") in ("rth", "eth") and out.calendar == "cme":
         out.session = str(meta["session"])
     return out
 
@@ -355,12 +357,15 @@ class RunnerConfig:
     mintick: Optional[float] = None          # cached replay tick; avoid product metadata network calls
     scale_known_at: Optional[int] = None    # actual receipt/computation time, never inferred from a price's date
     base_dir: Optional[str] = None          # Grok (xAI) — plant root; warmup looks here, not cwd
+    base_spec: Optional[AssetSpec] = None    # startup/API-pinned baseline before preset/global/asset metadata
 
 
 class AssetRunner:
     def __init__(self, cfg: RunnerConfig, journal: Journal, feeds: Optional[Dict[str, Any]] = None):
         self.cfg = cfg
         self.spec = cfg.spec
+        if self.cfg.base_spec is None:
+            self.cfg.base_spec = replace(cfg.spec)
         self.symbol = self.spec.symbol
         self.journal = journal
         feeds = feeds or {}
@@ -1041,12 +1046,14 @@ class Portfolio:
         if self.feed_mode == "file" and spec.roll == "volume":
             spec.roll = "none"
             self.journal.log("INFO", f"[{spec.symbol}] roll=none (ICARUS_FEED=file; FileFeed volumes are not CME 1!)")
+        base_spec = replace(spec)
         inputs, meta, sources = resolve_inputs(spec, self.base_dir, self.profile, self.preset)
         if meta:
             spec = apply_spec_meta(spec, meta)
         scale = self._ref_price() if (spec.symbol != self.pts_ref_symbol) else 0.0
         cfg = RunnerConfig(spec=spec, inputs=inputs, warmup_bars=self.warmup_bars, sources=sources, profile=self.profile,
-                           preset=self.preset or spec.preset, pts_ref_price=scale, base_dir=self.base_dir)
+                           preset=self.preset or spec.preset, pts_ref_price=scale, base_dir=self.base_dir,
+                           base_spec=base_spec)
         return AssetRunner(cfg, self.journal, self.feeds)
 
     def add_asset(self, spec: AssetSpec, start: bool = True) -> AssetRunner:
@@ -1081,60 +1088,79 @@ class Portfolio:
     def rewarm_asset(self, symbol: str, overrides: Optional[Dict[str, Any]] = None, persist: bool = False,
                      *, preset: Any = _UNCHANGED, reset: bool = False,
                      chart: Optional[Dict[str, Any]] = None) -> AssetRunner:
-        """Atomically apply strategy inputs plus chart/execution configuration and replay cached bars."""
+        """Atomically apply strategy/chart configuration, then persist only after replay succeeds."""
         r = self.runners[symbol.upper()]
         with r.lock:
             r.ensure_configurable()
             requested_chart = validate_chart_config(chart)
-            spec = replace(r.spec)
+
+            # Rebuild from the startup baseline every time. This makes reset deterministic:
+            # preset/global/asset metadata are reapplied in order instead of leaking stale
+            # chart/session/cost values from the previous runtime object.
+            spec = replace(r.cfg.base_spec or r.spec)
+            spec.preset = r.spec.preset
             if preset is not _UNCHANGED:
                 spec.preset = preset
             name = self.preset_for(r) if preset is _UNCHANGED else preset or self.preset
+
             inputs, meta, sources = resolve_inputs(spec, self.base_dir, self.profile, name, overrides,
                                                   skip_asset_overrides=reset)
             spec = apply_spec_meta(spec, meta)
             spec = apply_chart_config(spec, requested_chart)
-            r.ensure_cached_timeframes(inputs)
-            spec.chart_tf = r.ensure_cached_chart_timeframe(spec.chart_tf)
 
             path = os.path.join(self.base_dir, f"inputs.{r.symbol}.json")
+            pending_file: Optional[Dict[str, Any]] = None
+            delete_file = bool(reset and os.path.exists(path))
+
             if persist and (overrides is not None or requested_chart):
-                cur = _read_json(path)
+                # Build the exact next file in memory and resolve against that candidate.
+                # Nothing reaches disk until the paper-engine replay has completed.
+                pending_file = _read_json(path)
                 if overrides:
-                    cur.update(overrides)
+                    pending_file.update(overrides)
                 if requested_chart:
-                    m = cur.get("_meta")
+                    m = pending_file.get("_meta")
                     m = dict(m) if isinstance(m, dict) else {}
                     m.update(requested_chart)
-                    cur["_meta"] = m
-                # Validate both strategy values and persisted chart metadata before touching disk.
-                resolve_inputs(spec, self.base_dir, self.profile, name, cur)
-                validate_chart_config({k: cur.get("_meta", {}).get(k) for k in ("timeframe", "chart_type", "fill_on", "security_source")
-                                       if isinstance(cur.get("_meta"), dict) and cur["_meta"].get(k) not in (None, "")})
-                tmp = path + ".tmp"
-                with open(tmp, "w", encoding="utf-8") as fh:
-                    json.dump(cur, fh, indent=1, ensure_ascii=False)
-                os.replace(tmp, path)
-                inputs, meta, sources = resolve_inputs(spec, self.base_dir, self.profile, name)
+                    pending_file["_meta"] = m
+                inputs, meta, sources = resolve_inputs(spec, self.base_dir, self.profile, name, pending_file,
+                                                      skip_asset_overrides=True)
                 spec = apply_spec_meta(spec, meta)
-            if reset:
-                if os.path.exists(path):
-                    os.remove(path)
+                spec = apply_chart_config(spec, requested_chart)
+
+            r.ensure_cached_timeframes(inputs)
+            spec.chart_tf = r.ensure_cached_chart_timeframe(spec.chart_tf)
 
             old = replace(r.spec)
             old_chart_minutes = r.chart_minutes
             old_inputs = r.inputs_base
             old_sources = list(r.cfg.sources or [])
             old_preset = r.cfg.preset
+            tmp = path + ".tmp"
             try:
                 for field in ("chart_tf", "chart_type", "fill_on", "security_source", "slippage_ticks",
-                              "commission", "capital", "session", "preset"):
+                              "commission", "capital", "session", "preset", "config_pins"):
                     setattr(r.spec, field, getattr(spec, field))
-                r.cfg.preset = spec.preset if preset is not _UNCHANGED else r.cfg.preset
+                if preset is not _UNCHANGED:
+                    r.cfg.preset = spec.preset
                 r.rewarm(inputs, sources)
+
+                # Commit persistence after the successful replay. A failed replay therefore
+                # cannot leave the next process start on a configuration the live engine rejected.
+                if pending_file is not None:
+                    with open(tmp, "w", encoding="utf-8") as fh:
+                        json.dump(pending_file, fh, indent=1, ensure_ascii=False)
+                    os.replace(tmp, path)
+                elif delete_file:
+                    os.remove(path)
             except Exception:
+                try:
+                    if os.path.exists(tmp):
+                        os.remove(tmp)
+                except OSError:
+                    pass
                 for field in ("chart_tf", "chart_type", "fill_on", "security_source", "slippage_ticks",
-                              "commission", "capital", "session", "preset"):
+                              "commission", "capital", "session", "preset", "config_pins"):
                     setattr(r.spec, field, getattr(old, field))
                 r.chart_minutes = old_chart_minutes
                 r.cfg.preset = old_preset
