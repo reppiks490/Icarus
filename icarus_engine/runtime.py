@@ -815,6 +815,15 @@ class AssetRunner:
                 if not ft:                                          # no feed clock in the response: the last aligned minute is the only safe clock
                     ft = (bars[-1].ts + 60) if bars else int(self.feed_time or 0)
                 if not ft:
+                    # A stopped feed clock is normal outside the configured CME session.
+                    # Do not turn weekends/closures into false transport failures.
+                    if not self.cal.is_open(int(now)):
+                        self.last_poll_ok = now
+                        with self.lock:
+                            if self.feed_error and self.last_error == self.feed_error:
+                                self.last_error = self.runtime_error
+                            self.feed_error = ""
+                        return
                     self._feed_failed("feed returned no clock and no bars"); return
                 self.feed_time = ft
                 feed_now = ft                                       # Yahoo is ~10 min behind: close bars on ITS clock, never the wall clock
