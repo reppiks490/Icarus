@@ -86,6 +86,12 @@ class SystemMsg:
         self.msg = msg
 
 
+class Mapping:
+    def __init__(self, symbol, instrument_id):
+        self.stype_in_symbol = symbol
+        self.instrument_id = int(instrument_id)
+
+
 class FakeStore(list):
     pass
 
@@ -339,6 +345,50 @@ def test_mbo_snapshot_omits_non_mbo_stream_records():
     assert len(rows) == 1
     assert rows[0]["schema"] == "mbo"
     assert rows[0]["order_id"] == 7
+
+
+def test_all_registered_futures_share_one_live_session():
+    live = FakeLive()
+    feed = make_feed(lives=[live])
+    futures = [spec for spec in REGISTRY.values() if spec.kind == "futures"]
+    assert len(futures) > 10  # guards the Databento Standard 10-session failure mode
+    for idx, spec in enumerate(futures):
+        client = feed.start_live(spec.ticker, start_ts=1_000 + idx)
+        assert client is live
+    assert live.started is True
+    assert len(live.subscriptions) == len(futures) * 2
+    assert {sub["symbols"] for sub in live.subscriptions} == {f"{spec.ticker[:-2]}.v.0" for spec in futures}
+    # Only subscriptions attached before the shared session starts may request replay.
+    assert all("start" in sub for sub in live.subscriptions[:2])
+    assert all("start" not in sub for sub in live.subscriptions[2:])
+
+    feed.stop_live(futures[0].ticker)
+    assert live.stopped is False
+    feed.stop_live()
+    assert live.stopped is True
+
+
+def test_shared_live_session_routes_records_by_symbol_mapping():
+    live = FakeLive()
+    feed = make_feed(lives=[live])
+    feed.start_live("NQ=F")
+    feed.start_live("ES=F")
+
+    live.callback(Mapping("NQ.v.0", 101))
+    live.callback(Mapping(b"ES.v.0\0ignored", 202))
+    nq = Ohlcv(5_000, 100, 101, 99, 100.5, 1)
+    es = Ohlcv(5_001, 200, 201, 199, 200.5, 2)
+    nq.instrument_id = 101
+    es.instrument_id = 202
+    live.callback(nq)
+    live.callback(es)
+
+    nq_rows, _, nq_px = feed.recent_ex("NQ=F", 1)
+    es_rows, _, es_px = feed.recent_ex("ES=F", 1)
+    assert nq_rows[-1].c == 100.5 and nq_px == 100.5
+    assert es_rows[-1].c == 200.5 and es_px == 200.5
+    assert all(row.c != 200.5 for row in nq_rows)
+    assert all(row.c != 100.5 for row in es_rows)
 
 
 def test_mbo_snapshot_requests_continuous_snapshot_and_stops():
