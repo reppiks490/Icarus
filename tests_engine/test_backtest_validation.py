@@ -109,12 +109,13 @@ def test_http_invalid_requests_never_reach_job_scheduler(endpoint):
 
 def test_http_keeps_valid_costs_modes_windows_and_input_types(endpoint):
     post, scheduled = endpoint
-    params = {"fill_on": "chart", "chart_type": "heikin_ashi", "session": "eth", "slippage_ticks": "2",
+    params = {"fill_on": "chart", "chart_type": "heikin_ashi", "timeframe": "2m", "security_source": "chart",
+              "session": "eth", "slippage_ticks": "2",
               "commission": "0", "capital": "100000.5", "leverage": 1, "window_start": 0, "window_end": "300",
               "inputs": {"qty_contracts": 2.0, "use_tide": False, "tp1_pts": 80}}
     status, response = post(params)
     assert status == 200 and response["job"] == "validated-job"
-    assert scheduled == [{"asset": "TEST", **params, "slippage_ticks": 2, "commission": 0.0, "capital": 100000.5,
+    assert scheduled == [{"asset": "TEST", **params, "timeframe": "2", "slippage_ticks": 2, "commission": 0.0, "capital": 100000.5,
                            "leverage": 1.0, "window_end": 300,
                            "inputs": {"qty_contracts": 2, "use_tide": False, "tp1_pts": 80}}]
     assert type(scheduled[0]["inputs"]["qty_contracts"]) is int
