@@ -415,21 +415,25 @@ class Databento:
             if all(hasattr(record, key) for key in ("open", "high", "low", "close", "volume")):
                 b = self._ohlcv_record(record)
                 q = self._second_bars[symbol]
+                accepted = False
                 if not q or b.ts > q[-1].ts:
                     q.append(b)
+                    accepted = True
                 elif b.ts == q[-1].ts:
                     q[-1] = b
+                    accepted = True
                 # Older replay rows are already buffered; ignore them rather than
-                # duplicating one-second volume across a daily session refresh.
-                self._last_price[symbol] = b.c
-                market_event = True
+                # duplicating one-second volume or rewinding the live mark.
+                if accepted:
+                    self._last_price[symbol] = b.c
+                    market_event = True
             else:
                 # MBO trade records are both trades and order-book events; keep both views.
                 if hasattr(record, "price") and hasattr(record, "size") and str(getattr(record, "action", "T") or "T") == "T":
                     tick = self._trade_record(record)
-                    self._append_trade_locked(symbol, tick)
-                    self._last_price[symbol] = tick.price
-                    market_event = True
+                    if self._append_trade_locked(symbol, tick):
+                        self._last_price[symbol] = tick.price
+                        market_event = True
                 if hasattr(record, "levels") or hasattr(record, "order_id"):
                     self._depth[symbol].append(self._event_record(record))
                     market_event = True
