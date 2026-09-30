@@ -74,6 +74,11 @@ class Error:
         self.is_last = True
 
 
+class SystemMsg:
+    def __init__(self, msg="heartbeat"):
+        self.msg = msg
+
+
 class FakeStore(list):
     pass
 
@@ -165,7 +170,7 @@ def test_roll_rule_is_real_configuration_not_a_dead_setting(monkeypatch):
     assert feed.roll_rule == "n"
     assert feed.continuous_symbol("NQ=F", feed.roll_rule) == "NQ.n.0"
     assert feed.capabilities()["continuous_rule"] == "open_interest_front"
-    with pytest.raises(ValueError, match="roll rule"):
+    with pytest.raises(ValueError, match="ROLL_RULE|roll rule"):
         Databento(api_key="db-test", sdk=FakeSDK, historical=FakeHistorical({}), live_factory=lambda: FakeLive(), roll_rule="bad")
 
 
@@ -325,3 +330,42 @@ def test_portfolio_stop_closes_databento_live_sessions(monkeypatch, tmp_path):
     port = Portfolio(Journal(":memory:"), str(tmp_path))
     port.stop()
     assert feed.stops == 1
+
+
+def test_system_message_before_first_market_event_does_not_crash_or_fake_readiness():
+    feed = make_feed()
+    feed._live_callback("NQ=F", SystemMsg())
+    assert feed.meta("NQ=F")["regularMarketTime"] == 0
+    assert feed._ready["NQ=F"].is_set() is False
+
+
+def test_valid_market_event_clears_transient_live_error():
+    feed = make_feed()
+    feed._live_callback("NQ=F", Error("temporarily unresolved", code=4))
+    with pytest.raises(RuntimeError, match="temporarily unresolved"):
+        feed._raise_live_error("NQ=F")
+    feed._live_callback("NQ=F", Trade(3_000, 123.25, 2))
+    feed._raise_live_error("NQ=F")
+    meta = feed.meta("NQ=F")
+    assert "live_error" not in meta
+    assert meta["regularMarketTime"] == 3_000
+
+
+def test_mbo_snapshot_surfaces_live_error_instead_of_timing_out():
+    live = FakeLive({"mbo": [Error("snapshot permission denied", code=7)]})
+    feed = make_feed(lives=[live])
+    with pytest.raises(RuntimeError, match="code=7.*snapshot permission denied"):
+        feed.mbo_snapshot("NQ=F", timeout=0.2)
+    assert live.stopped is True
+
+
+def test_doctor_roll_rule_contract_matches_adapter(monkeypatch, tmp_path):
+    from datetime import date
+    from icarus_engine.doctor import inspect
+    monkeypatch.setenv("ICARUS_FEED", "databento")
+    monkeypatch.setenv("DATABENTO_API_KEY", "db-test")
+    monkeypatch.setenv("DATABENTO_ROLL_RULE", "n")
+    rep = inspect(str(tmp_path), today=date(2026, 9, 20))
+    item = {i["name"]: i for i in rep["items"]}["Databento adapter prerequisites"]
+    assert item["ok"] is True
+    assert "continuous=open-interest .n.0" in item["detail"]
