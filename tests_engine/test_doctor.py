@@ -22,6 +22,8 @@ def test_doctor_warns_without_history_and_does_not_fail(tmp_path):
     assert by_name["CME equity holiday table"]["ok"] is True
     assert by_name["CME equity holiday table"]["level"] == "ok"
     assert by_name["TradingView alert template"]["ok"] is True
+    assert by_name["continuous-only futures registry"]["ok"] is True
+    assert by_name["continuous-only futures registry"]["level"] == "ok"
 
 
 def test_doctor_holiday_warning_inside_90_days(tmp_path):
