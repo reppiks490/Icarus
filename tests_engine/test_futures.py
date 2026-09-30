@@ -675,3 +675,13 @@ def test_legacy_roll_value_cannot_resurrect_expiring_contract_mode():
     spot = AssetSpec("SPOT", "Spot", "coinbase", "SPOT-USD", "crypto", 0.01, 1.0,
                      kind="crypto", roll="volume")
     assert spot.roll == "none"
+
+
+def test_assets_cli_leads_with_continuous_identity(capsys):
+    from icarus_engine.cli import main as engine_main
+    assert engine_main(["assets"]) == 0
+    out = capsys.readouterr().out
+    assert "CME_MINI:NQ1!" in out and "provider=NQ=F" in out
+    assert "CME_MINI:MNQ1!" in out and "provider=MNQ=F" in out
+    assert "COMEX:MGC1!" in out and "provider=MGC=F" in out
+    assert "continuous-only" in out
