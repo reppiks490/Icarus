@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import importlib.util
+import inspect
 from types import SimpleNamespace
 
 import pytest
@@ -231,3 +232,11 @@ def test_real_databento_sdk_is_installed_when_extra_is_present():
     import databento as db
     assert hasattr(db, "Historical")
     assert hasattr(db, "Live")
+    assert hasattr(db, "RecordFlags") and hasattr(db.RecordFlags, "F_LAST")
+    assert callable(getattr(db.Live, "subscribe", None))
+    assert callable(getattr(db.Live, "add_callback", None))
+    assert callable(getattr(db.Live, "start", None))
+    assert callable(getattr(db.Live, "stop", None))
+    params = inspect.signature(db.Live.subscribe).parameters
+    for name in ("dataset", "schema", "symbols", "stype_in", "start", "snapshot"):
+        assert name in params
