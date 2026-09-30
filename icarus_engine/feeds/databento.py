@@ -126,6 +126,8 @@ class Databento:
         self._callback_errors: Dict[str, str] = {}
         self._recovery_required: Dict[str, str] = {}
         self._recovery_count: Dict[str, int] = collections.defaultdict(int)
+        self._historical_seed_attempt: Dict[str, int] = {}
+        self._historical_seed_error: Dict[str, str] = {}
         self._reconnect_gaps: Dict[str, Deque[Dict[str, str]]] = collections.defaultdict(
             lambda: collections.deque(maxlen=100)
         )
@@ -828,19 +830,40 @@ class Databento:
             return bars, ft, px
 
         # A fresh live session can legitimately be silent at a CME close, during
-        # maintenance, or while reconnecting. Seed the feed clock/mark once from
-        # Historical instead of reporting a false "no clock and no bars" failure
-        # on every poll. _feed_time prevents repeated historical requests.
+        # maintenance, or while reconnecting. Seed the feed clock/mark from
+        # Historical, but throttle empty/error seeds so a weekend cannot become a
+        # paid historical request every engine poll.
+        with self._lock:
+            last_seed = int(self._historical_seed_attempt.get(key, 0))
+            cached_seed_error = self._historical_seed_error.get(key)
+        if last_seed and now - last_seed < 300:
+            if cached_seed_error:
+                raise RuntimeError(cached_seed_error)
+            return bars, ft, px
+
         g = int(granularity)
         hist_start = int(since_ts or (now - max(900, g * 10)))
+        with self._lock:
+            self._historical_seed_attempt[key] = now
+            self._historical_seed_error.pop(key, None)
         try:
             bars = self.candles(symbol, g, max(0, hist_start - 2 * g), now)
         except Exception as ex:
-            raise RuntimeError(f"Databento historical seed failed for {symbol}: {type(ex).__name__}: {ex}") from ex
+            msg = f"Databento historical seed failed for {symbol}: {type(ex).__name__}: {ex}"
+            with self._lock:
+                self._historical_seed_error[key] = msg
+                meta = dict(self._meta.get(key, {}))
+                meta.update({
+                    "historical_seed_attempt_ts": now,
+                    "historical_seed_error": msg,
+                })
+                self._meta[key] = meta
+            raise RuntimeError(msg) from ex
         if bars:
             px = bars[-1].c
             ft = bars[-1].ts + g
             with self._lock:
+                self._historical_seed_error.pop(key, None)
                 self._last_price[key] = px
                 self._feed_time[key] = max(self._feed_time.get(key, 0), ft)
                 meta = dict(self._meta.get(key, {}))
@@ -850,9 +873,24 @@ class Databento:
                     "dataset": self.dataset,
                     "continuous_symbol": self.continuous_symbol(symbol, self.roll_rule),
                     "historical_seed": True,
+                    "historical_seed_attempt_ts": now,
+                    "historical_seed_empty": False,
                 })
+                meta.pop("historical_seed_error", None)
                 self._meta[key] = meta
                 ft = self._feed_time[key]
+        else:
+            with self._lock:
+                meta = dict(self._meta.get(key, {}))
+                meta.update({
+                    "provider": "databento",
+                    "dataset": self.dataset,
+                    "continuous_symbol": self.continuous_symbol(symbol, self.roll_rule),
+                    "historical_seed_attempt_ts": now,
+                    "historical_seed_empty": True,
+                })
+                meta.pop("historical_seed_error", None)
+                self._meta[key] = meta
         return bars, ft, px
 
     def recent(self, symbol: str, granularity: int = 60) -> List[Bar]:
