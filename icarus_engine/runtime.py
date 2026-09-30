@@ -1157,9 +1157,24 @@ class Portfolio:
                 raise ValueError(f"{spec.symbol} already running")
             self.runners[spec.symbol] = r
             self.order.append(spec.symbol)
+        try:
             if start:
+                prepare = getattr(r.feed, "prepare_live", None)
+                if r.spec.kind == "futures" and callable(prepare):
+                    prepare([r.spec.ticker])
                 self._spawn(r)
             return r
+        except Exception:
+            with self._lock:
+                self.runners.pop(spec.symbol, None)
+                self.order = [s for s in self.order if s != spec.symbol]
+            detach = getattr(r.feed, "stop_live", None)
+            if callable(detach):
+                try:
+                    detach(r.spec.ticker)
+                except Exception:
+                    pass
+            raise
 
     def remove_asset(self, symbol: str) -> bool:
         key = resolve(symbol).symbol
@@ -1270,6 +1285,17 @@ class Portfolio:
         self._threads[r.symbol] = t
 
     def start(self) -> None:
+        # Start shared live transports before historical warm-up. Databento buffers
+        # real-time seconds/trades while each runner replays history, eliminating the
+        # history-to-live seam without opening one session per futures symbol.
+        groups: Dict[int, Tuple[Any, List[str]]] = {}
+        for r in self.runner_list():
+            prepare = getattr(r.feed, "prepare_live", None)
+            if r.spec.kind == "futures" and callable(prepare):
+                group = groups.setdefault(id(r.feed), (r.feed, []))
+                group[1].append(r.spec.ticker)
+        for feed, tickers in groups.values():
+            feed.prepare_live(tickers)
         for s in list(self.order):
             self._spawn(self.runners[s])
         threading.Thread(target=self._sampler, daemon=True, name="equity-sampler").start()
