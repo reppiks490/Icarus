@@ -200,6 +200,9 @@ def test_assets_registry_and_spec_tokens():
     for dated in ("NQZ26", "CME_MINI:NQZ2026", "MNQH27", "ESZ26", "GCZ26", "SIZ26", "BTCZ26", "MBTZ26", "CLZ26", "ZNZ26"):
         with pytest.raises(ValueError, match="continuous-only"):
             resolve(dated)
+    for unsupported in ("CL1!", "NYMEX:CL1!", "CL=F", "ZN1!", "ZN=F"):
+        with pytest.raises(ValueError, match="unsupported continuous futures"):
+            resolve(unsupported)
 
 
 def test_input_value_validation_and_preset_confinement(tmp_path):
