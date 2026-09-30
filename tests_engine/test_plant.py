@@ -427,3 +427,36 @@ def test_write_status_is_atomic_and_valid_json(tmp_path, monkeypatch):
     assert json.loads(path.read_text(encoding="utf-8")) == payload
     assert calls and calls[-1][1] == str(path)
     assert not (tmp_path / "run" / "status.json.tmp").exists()
+
+
+def test_start_does_not_silently_ignore_requested_bridge(tmp_path, capsys):
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+    import threading
+
+    class H(BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(200 if self.path == "/healthz" else 404)
+            self.end_headers()
+            self.wfile.write(b"ok")
+
+        def log_message(self, *args):
+            return
+
+    ensure(str(tmp_path))
+    httpd = HTTPServer(("127.0.0.1", 0), H)
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    try:
+        rc = plant_main([
+            "--root", str(tmp_path), "start", "--bridge",
+            "--engine-port", str(httpd.server_port), "--bridge-port", "1",
+            "--no-browser",
+        ])
+        assert rc == 1
+        out = capsys.readouterr().out.lower()
+        assert "--bridge was requested" in out
+        assert "stop the plant" in out
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+        thread.join(5)
