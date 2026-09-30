@@ -38,7 +38,7 @@ from typing import Any, Dict
 from urllib.parse import parse_qs, urlparse
 
 from . import brand
-from .assets import REGISTRY, apply_chart_config, chart_capabilities, parse_spec, pin_config, validate_chart_config
+from .assets import REGISTRY, apply_chart_config, chart_capabilities, parse_spec, pin_config, resolve, validate_chart_config
 from .backtest import JOBS, start_job
 from .parity import compare_lists, engine_trades_from_rows, read_tv_trades_text
 from .golive import report as golive_report
@@ -143,7 +143,11 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return default
 
         def _runner(self, sym: str):
-            return port.runners.get((sym or "").upper())
+            try:
+                key = resolve(sym or "").symbol
+            except ValueError:
+                return None
+            return port.runners.get(key)
 
         def do_GET(self) -> None:  # noqa: N802
             if not self._host_ok():
