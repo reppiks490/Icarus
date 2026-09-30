@@ -266,7 +266,8 @@ def validate_values(vals: Dict[str, Any]) -> None:
 
 
 def resolve_inputs(spec: AssetSpec, base_dir: str, profile: str = "nq", preset: Optional[str] = None,
-                   extra: Optional[Dict[str, Any]] = None, *, skip_asset_overrides: bool = False) -> Tuple[Inputs, Dict[str, Any], List[str]]:
+                   extra: Optional[Dict[str, Any]] = None, *, skip_asset_overrides: bool = False,
+                   extra_label: str = "override") -> Tuple[Inputs, Dict[str, Any], List[str]]:
     """Returns (inputs, preset_meta, sources). Values later in the chain override earlier ones."""
     base = (crypto_profile(0.0, spec.mintick) if profile == "crypto" else Inputs()).to_dict()
     known = set(base)
@@ -295,7 +296,7 @@ def resolve_inputs(spec: AssetSpec, base_dir: str, profile: str = "nq", preset: 
     if not skip_asset_overrides:
         apply(_read_json(os.path.join(base_dir, f"inputs.{spec.symbol}.json")), f"inputs.{spec.symbol}.json")
     if extra:
-        apply(dict(extra), "override")
+        apply(dict(extra), extra_label)
     return Inputs(**base), meta, sources
 
 
@@ -1159,8 +1160,10 @@ class Portfolio:
                     m = dict(m) if isinstance(m, dict) else {}
                     m.update(requested_chart)
                     pending_file["_meta"] = m
-                inputs, meta, sources = resolve_inputs(spec, self.base_dir, self.profile, name, pending_file,
-                                                      skip_asset_overrides=True)
+                inputs, meta, sources = resolve_inputs(
+                    spec, self.base_dir, self.profile, name, pending_file,
+                    skip_asset_overrides=True, extra_label=f"inputs.{r.symbol}.json"
+                )
                 spec = apply_spec_meta(spec, meta)
                 spec = apply_chart_config(spec, requested_chart)
 
