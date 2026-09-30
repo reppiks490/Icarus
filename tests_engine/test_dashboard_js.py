@@ -40,3 +40,12 @@ def test_engine_dashboard_has_no_expiry_contract_ui():
     assert "a.next_contract" not in src
     assert "a.contract?" not in src
     assert "continuous_symbol || a.provider_symbol || a.symbol" in src
+
+
+def test_strategy_tester_timeframes_are_cache_aware():
+    src = (REPO / "icarus_engine/dashboard.html").read_text(encoding="utf-8")
+    assert "available_from_cache" in src
+    assert "cache unavailable" in src
+    assert "cached_source_resolutions_minutes" in src
+    assert "$('#btAsset').addEventListener('change'" in src
+    assert "BT.res = null; BT.compare = null" in src
