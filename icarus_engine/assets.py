@@ -153,6 +153,7 @@ class AssetSpec:
 
 REGISTRY: Dict[str, AssetSpec] = {
     "NQ": AssetSpec("NQ", "Nasdaq 100 E-mini", "yahoo", "NQ=F", "cme", 0.25, 20.0, tv_symbol="CME_MINI:NQ1!"),
+    "MNQ": AssetSpec("MNQ", "Nasdaq 100 Micro E-mini", "yahoo", "MNQ=F", "cme", 0.25, 2.0, tv_symbol="CME_MINI:MNQ1!"),
     "ES": AssetSpec("ES", "S&P 500 E-mini", "yahoo", "ES=F", "cme", 0.25, 50.0, tv_symbol="CME_MINI:ES1!"),
     "YM": AssetSpec("YM", "Dow E-mini", "yahoo", "YM=F", "cme", 1.0, 5.0, tv_symbol="CBOT_MINI:YM1!"),
     "GC": AssetSpec("GC", "Gold", "yahoo", "GC=F", "cme", 0.10, 100.0, tv_symbol="COMEX:GC1!", group="metals"),
@@ -175,7 +176,8 @@ for _spec in REGISTRY.values():
         _spec.roll = "continuous"
 
 ALIASES = {
-    "NQ1!": "NQ", "NQ=F": "NQ", "MNQ": "NQ",
+    "NQ1!": "NQ", "NQ=F": "NQ",
+    "MNQ1!": "MNQ", "MNQ=F": "MNQ",
     "ES1!": "ES", "ES=F": "ES",
     "YM1!": "YM", "YM=F": "YM",
     "GC1!": "GC", "GC=F": "GC", "GOLD": "GC",
