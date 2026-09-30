@@ -173,7 +173,17 @@ def test_assets_registry_and_spec_tokens():
     assert mnq.symbol == resolve("MNQ=F").symbol == "MNQ"
     assert mnq.multiplier == 2.0 and mnq.mintick == 0.25 and mnq.roll == "continuous"
     assert resolve("ES1!").symbol == resolve("ES=F").symbol == "ES"
+    assert resolve("MES1!").symbol == resolve("MES=F").symbol == "MES"
+    assert resolve("MES1!").multiplier == 5.0
+    assert resolve("MYM1!").symbol == resolve("MYM=F").symbol == "MYM"
+    assert resolve("MYM1!").multiplier == 0.5
+    assert resolve("RTY1!").symbol == resolve("RTY=F").symbol == "RTY"
+    assert resolve("RTY1!").multiplier == 50.0 and resolve("RTY1!").mintick == 0.10
+    assert resolve("MGC1!").symbol == resolve("MGC=F").symbol == "MGC"
+    assert resolve("MGC1!").multiplier == 10.0
     assert resolve("SI1!").symbol == resolve("SI=F").symbol == "SI"
+    assert resolve("SIL1!").symbol == resolve("SIL=F").symbol == "SIL"
+    assert resolve("SIL1!").multiplier == 1000.0
     assert resolve("MBT1!").symbol == resolve("MBT=F").symbol == "MBT"
     gc = parse_spec("GC@10:NQ-10m-original", "20")
     assert gc.symbol == "GC" and gc.chart_tf == "10" and gc.preset == "NQ-10m-original" and gc.group == "metals" and gc.roll == "continuous"
