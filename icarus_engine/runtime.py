@@ -1021,6 +1021,7 @@ class Portfolio:
         self.runners: Dict[str, AssetRunner] = {}
         self.order: List[str] = []
         self.started = time.time()
+        self.equity_epoch = self.started                 # paper equity chart covers only the active configuration regime
         self.paused = False
         self._threads: Dict[str, threading.Thread] = {}
         self._stop = threading.Event()
@@ -1160,6 +1161,7 @@ class Portfolio:
                     os.replace(tmp, path)
                 elif delete_file:
                     os.remove(path)
+                self.equity_epoch = time.time()
             except Exception:
                 try:
                     if os.path.exists(tmp):
@@ -1242,7 +1244,8 @@ class Portfolio:
             "equity": eq, "capital": cap, "net": eq - cap, "live_profit": live_profit,
             "open_profit": sum(x["open_profit"] or 0.0 for x in rs), "positions": sum(1 for x in rs if x["position"]),
             "assets": rs, "log": list(self.journal.log_tail)[-80:],
-            "equity_series": self.journal.equity_series(min(86400.0, time.time() - self.started + 1.0)),
+            "equity_epoch": self.equity_epoch,
+            "equity_series": self.journal.equity_series(min(86400.0, max(0.0, time.time() - self.equity_epoch + 1.0))),
             "all_warm": all(r.warm for r in self.runners.values()) if self.runners else False,
             "preset": self.preset, "profile": self.profile, "pts_ref": {"symbol": self.pts_ref_symbol, "price": self.pts_ref_price},
         })
