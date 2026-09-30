@@ -1178,7 +1178,15 @@ class Portfolio:
             r.paused = True
             r._removed = True
             self.journal.log("WARN", f"[{key}] removed from the engine")
-            return True
+        # AssetRunner shares the Databento adapter with the portfolio, but each
+        # active futures symbol owns a live session today. Release that session
+        # immediately on dynamic removal instead of leaking it until plant stop.
+        if hasattr(r.feed, "stop_live"):
+            try:
+                r.feed.stop_live(r.spec.ticker)
+            except Exception as ex:
+                self.journal.log("WARN", f"[{key}] market-feed teardown failed: {type(ex).__name__}: {ex}")
+        return True
 
     def preset_for(self, r: AssetRunner) -> Optional[str]:
         """The asset's current preset: set per asset (dashboard 'Apply preset', GC:NAME token) else the portfolio's."""
