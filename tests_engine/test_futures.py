@@ -515,7 +515,7 @@ def test_warmup_uses_only_provider_continuous_ticker(tmp_path):
     assert summary["continuous_contract"] is True
     assert summary["continuous_symbol"] == "CME_MINI:NQ1!"
     assert summary["provider_symbol"] == "NQ=F"
-    assert summary["contract"] is None and summary["next_contract"] is None
+    assert "contract" not in summary and "next_contract" not in summary
 
 
 def test_point_scaling_reference_is_the_last_completed_daily_close(tmp_path):
@@ -574,6 +574,11 @@ def test_continuous_future_never_flattens_or_switches_for_expiry(tmp_path, monke
     assert r.em.position_size == 2
     assert r.live_ticker == "NQ=F"
     assert not hasattr(r, "_check_roll")
+    status = r.summary()
+    assert status["continuous_symbol"] == "CME_MINI:NQ1!"
+    assert status["provider_symbol"] == "NQ=F"
+    assert status["contract_policy"] == "continuous_only"
+    assert "contract" not in status and "next_contract" not in status
     assert r.em.position_size == 2
 
 
