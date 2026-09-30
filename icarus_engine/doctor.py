@@ -114,7 +114,7 @@ def inspect(base_dir: str | None = None, *, today: date | None = None) -> Dict[s
            level="ok")
     env_path = os.path.join(root, ".env")
     _check(items, ".env present", os.path.isfile(env_path),
-           env_path if os.path.isfile(env_path) else "copy icarus_bridge/.env.example — required only for the Alpaca bridge",
+           env_path if os.path.isfile(env_path) else "copy icarus_bridge/.env.example — used for bridge secrets and optional DATABENTO_API_KEY",
            level="warn")
 
     secrets: Dict[str, str] = {}
@@ -134,13 +134,11 @@ def inspect(base_dir: str | None = None, *, today: date | None = None) -> Dict[s
     if feed == "databento":
         sdk_ok = importlib.util.find_spec("databento") is not None
         key = (os.environ.get("DATABENTO_API_KEY") or secrets.get("DATABENTO_API_KEY") or "").strip()
-        dataset = (os.environ.get("DATABENTO_DATASET") or secrets.get("DATABENTO_DATASET") or "GLBX.MDP3").strip()
-        rule = (os.environ.get("DATABENTO_ROLL_RULE") or secrets.get("DATABENTO_ROLL_RULE") or "v").strip().lower()
-        ok = sdk_ok and bool(key) and dataset == "GLBX.MDP3" and rule in ("v", "n", "c")
+        ok = sdk_ok and bool(key)
         detail = (
             f"SDK={'installed' if sdk_ok else 'missing'}  "
-            f"DATABENTO_API_KEY={'set' if key else 'missing'}  dataset={dataset or '(blank)'}  roll_rule={rule or '(blank)'} "
-            "— no network request made"
+            f"DATABENTO_API_KEY={'set' if key else 'missing'}  "
+            "dataset=GLBX.MDP3  continuous=volume-front .v.0 — no network request made"
         )
         _check(items, "Databento adapter prerequisites", ok, detail, level="fail")
 
