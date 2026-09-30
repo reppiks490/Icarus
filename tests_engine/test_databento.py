@@ -7,6 +7,7 @@ import json
 import threading
 import urllib.error
 import urllib.request
+from datetime import datetime, timezone
 from types import SimpleNamespace
 
 import pytest
@@ -393,19 +394,20 @@ def test_undefined_mbp_level_prices_are_serialized_as_null_not_billions():
 
 
 def test_historical_one_second_and_lossless_resampling_use_continuous_stype():
+    base = 1_700_000_000
     hist = FakeHistorical({
         "ohlcv-1s": [
-            Ohlcv(100, 10, 11, 9, 10.5, 1),
-            Ohlcv(101, 10.5, 12, 10, 11, 2),
-            Ohlcv(104, 11, 13, 10.5, 12, 3),
-            Ohlcv(105, 12, 12.5, 11.5, 12.25, 4),
+            Ohlcv(base, 10, 11, 9, 10.5, 1),
+            Ohlcv(base + 1, 10.5, 12, 10, 11, 2),
+            Ohlcv(base + 4, 11, 13, 10.5, 12, 3),
+            Ohlcv(base + 5, 12, 12.5, 11.5, 12.25, 4),
         ]
     })
     feed = make_feed(historical=hist)
-    bars = feed.candles("NQ=F", 5, 100, 110)
+    bars = feed.candles("NQ=F", 5, base, base + 10)
     assert len(bars) == 2
-    assert (bars[0].ts, bars[0].o, bars[0].h, bars[0].l, bars[0].c, bars[0].v) == (100, 10, 13, 9, 12, 6)
-    assert (bars[1].ts, bars[1].o, bars[1].c, bars[1].v) == (105, 12, 12.25, 4)
+    assert (bars[0].ts, bars[0].o, bars[0].h, bars[0].l, bars[0].c, bars[0].v) == (base, 10, 13, 9, 12, 6)
+    assert (bars[1].ts, bars[1].o, bars[1].c, bars[1].v) == (base + 5, 12, 12.25, 4)
     call = hist.calls[-1]
     assert call["dataset"] == "GLBX.MDP3"
     assert call["schema"] == "ohlcv-1s"
@@ -413,21 +415,26 @@ def test_historical_one_second_and_lossless_resampling_use_continuous_stype():
     assert call["stype_in"] == "continuous"
 
 
-def test_every_advertised_chart_timeframe_has_a_lossless_databento_base_schema():
+def test_every_advertised_chart_timeframe_has_a_lossless_databento_source_path():
     for tf in CHART_TIMEFRAME_OPTIONS:
         seconds = tf_minutes(tf) * 60
-        base_seconds, schema = Databento._schema_for(seconds)
-        assert seconds % base_seconds == 0
-        assert schema in {"ohlcv-1m", "ohlcv-1h", "ohlcv-1d"}
+        if seconds in (86400, 7 * 86400):
+            assert Databento(api_key="db-test", sdk=FakeSDK, historical=FakeHistorical({}),
+                             live_factory=lambda: FakeLive()).capabilities()["cme_session_daily_weekly"] is True
+        else:
+            base_seconds, schema = Databento._schema_for(seconds)
+            assert seconds % base_seconds == 0
+            assert schema in {"ohlcv-1m", "ohlcv-1h"}
 
 
 @pytest.mark.parametrize("minutes", [1, 2, 5, 10, 20, 30])
 def test_requested_primary_minute_timeframes_are_losslessly_resampled(minutes):
-    rows = [Ohlcv(3_600 + 60 * k, 100 + k, 101 + k, 99 + k, 100.5 + k, 1) for k in range(60)]
+    base = 1_700_000_000 - (1_700_000_000 % 3_600)
+    rows = [Ohlcv(base + 60 * k, 100 + k, 101 + k, 99 + k, 100.5 + k, 1) for k in range(60)]
     hist = FakeHistorical({"ohlcv-1m": rows})
     feed = make_feed(historical=hist)
     granularity = minutes * 60
-    bars = feed.candles("NQ=F", granularity, 3_600, 7_200)
+    bars = feed.candles("NQ=F", granularity, base, base + 3_600)
     assert len(bars) == 60 // minutes
     assert all(b.ts % granularity == 0 for b in bars)
     assert sum(b.v for b in bars) == 60
@@ -435,10 +442,41 @@ def test_requested_primary_minute_timeframes_are_losslessly_resampled(minutes):
     assert hist.calls[-1]["symbols"] == "NQ.v.0"
 
 
-def test_historical_minute_request_uses_native_ohlcv_1m():
-    hist = FakeHistorical({"ohlcv-1m": [Ohlcv(120, 20, 21, 19, 20.5, 10)]})
+def test_databento_daily_candles_follow_cme_session_not_utc_date():
+    def ts(value):
+        return int(datetime.fromisoformat(value).replace(tzinfo=timezone.utc).timestamp())
+
+    # September 2026 is EDT: the CME session starts 18:00 ET = 22:00 UTC.
+    first_open = ts("2026-09-29T22:00:00")
+    next_open = ts("2026-09-30T22:00:00")
+    hist = FakeHistorical({"ohlcv-1h": [
+        Ohlcv(first_open, 100, 101, 99, 100.5, 1),
+        Ohlcv(ts("2026-09-30T00:00:00"), 100.5, 102, 100, 101.5, 2),
+        Ohlcv(ts("2026-09-30T20:00:00"), 101.5, 103, 101, 102.5, 3),
+        Ohlcv(next_open, 110, 111, 109, 110.5, 4),
+    ]})
     feed = make_feed(historical=hist)
-    bars = feed.candles("ES=F", 60, 120, 180)
+
+    bars = feed.candles("NQ=F", 86400, first_open, next_open + 3600)
+    assert len(bars) == 2
+    assert bars[0].ts == first_open
+    assert (bars[0].o, bars[0].h, bars[0].l, bars[0].c, bars[0].v) == (100, 103, 99, 102.5, 6)
+    assert bars[1].ts == next_open and bars[1].o == 110 and bars[1].v == 4
+    assert hist.calls[-1]["schema"] == "ohlcv-1h"
+
+
+def test_databento_historical_requests_clamp_to_glbx_coverage_start():
+    hist = FakeHistorical({"ohlcv-1m": []})
+    feed = make_feed(historical=hist)
+    feed.candles("NQ=F", 60, 0, Databento.HISTORICAL_START_TS + 60)
+    assert hist.calls[-1]["start"].startswith("2010-06-06T00:00:00")
+
+
+def test_historical_minute_request_uses_native_ohlcv_1m():
+    base = 1_700_000_040
+    hist = FakeHistorical({"ohlcv-1m": [Ohlcv(base, 20, 21, 19, 20.5, 10)]})
+    feed = make_feed(historical=hist)
+    bars = feed.candles("ES=F", 60, base, base + 60)
     assert len(bars) == 1 and bars[0].c == 20.5
     assert hist.calls[-1]["schema"] == "ohlcv-1m"
     assert hist.calls[-1]["symbols"] == "ES.v.0"
