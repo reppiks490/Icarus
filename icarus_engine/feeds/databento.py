@@ -428,6 +428,7 @@ class Databento:
 
     def ticker(self, symbol: str) -> Optional[float]:
         self.start_live(symbol)
+        self._ready[str(symbol)].wait(timeout=2.0)
         with self._lock:
             return self._last_price.get(str(symbol))
 
