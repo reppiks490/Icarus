@@ -245,6 +245,36 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 if not r:
                     return self._json(404, {"error": "unknown asset"})
                 return self._json(200, r.trades(self._int(q, "limit", 100, 1, 2000)))
+            if p.path.startswith("/api/market-data/"):
+                rest = p.path[len("/api/market-data/"):]
+                parts = [x for x in rest.split("/") if x]
+                if len(parts) != 2:
+                    return self._json(404, {"error": "market-data route is /api/market-data/<asset>/<capabilities|ticks|depth>"})
+                r = self._runner(parts[0])
+                if not r:
+                    return self._json(404, {"error": "unknown asset"})
+                kind = parts[1]
+                feed = r.feed
+                if kind == "capabilities":
+                    caps = feed.capabilities() if hasattr(feed, "capabilities") else {}
+                    return self._json(200, {"asset": r.symbol, "provider": type(feed).__name__.lower(), "capabilities": caps})
+                if kind == "ticks":
+                    if not hasattr(feed, "trades"):
+                        return self._json(409, {"error": f"{type(feed).__name__} does not expose trade ticks"})
+                    limit = self._int(q, "limit", 1000, 1, 10000)
+                    since = self._int(q, "since_ts", 0, 0, 4_294_967_295)
+                    rows = feed.trades(r.spec.ticker, since_ts=(since or None), limit=limit)
+                    return self._json(200, {"asset": r.symbol, "provider": type(feed).__name__.lower(),
+                                            "ticks": [vars(x) if hasattr(x, "__dict__") else x for x in rows]})
+                if kind == "depth":
+                    if not hasattr(feed, "depth_events"):
+                        return self._json(409, {"error": f"{type(feed).__name__} does not expose order-book depth"})
+                    schema = str(q.get("schema", ["mbp-10"])[0])
+                    limit = self._int(q, "limit", 1000, 1, 10000)
+                    rows = feed.depth_events(r.spec.ticker, schema=schema, limit=limit)
+                    return self._json(200, {"asset": r.symbol, "provider": type(feed).__name__.lower(),
+                                            "schema": schema, "events": rows})
+                return self._json(404, {"error": "unknown market-data resource"})
             if p.path.startswith("/api/backtest/"):
                 rest = p.path[len("/api/backtest/"):]
                 job_id, _, tail = rest.partition("/")
@@ -384,6 +414,16 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                         return self._json(400, {"detail": "pass {\"confirm\": true}"})
                     closed = {r.symbol: r.flatten(_reason(body, "dashboard")) for r in targets}
                     return self._json(200, {"ok": True, "closed": closed, "note": f"flattened {sum(closed.values())} position(s)"})
+                if p.path == "/admin/market-data/mbo-snapshot":
+                    if len(targets) != 1 or targets[0] is None:
+                        raise ValueError("MBO snapshot requires exactly one running asset")
+                    r = targets[0]
+                    if not hasattr(r.feed, "mbo_snapshot"):
+                        return self._json(409, {"error": f"{type(r.feed).__name__} does not expose MBO snapshots"})
+                    timeout = max(0.1, min(30.0, float(body.get("timeout", 5.0))))
+                    rows = r.feed.mbo_snapshot(r.spec.ticker, timeout=timeout)
+                    return self._json(200, {"asset": r.symbol, "provider": type(r.feed).__name__.lower(),
+                                            "schema": "mbo", "snapshot": rows})
                 if p.path in ("/admin/inputs", "/admin/inputs/reset", "/admin/preset", "/admin/rewarm"):
                     from .runtime import resolve_inputs as _resolve
                     vals = body.get("values", {}) if p.path == "/admin/inputs" else None
