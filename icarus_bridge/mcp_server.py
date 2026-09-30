@@ -15,10 +15,21 @@ from typing import Any, Dict, Optional
 import httpx
 from mcp.server.mcpserver import MCPServer
 
-BASE = os.environ.get("ICARUS_BRIDGE_URL", "http://127.0.0.1:8787").rstrip("/")
-TOKEN = os.environ.get("ICARUS_ADMIN_TOKEN", "")
-ENGINE_BASE = os.environ.get("ICARUS_ENGINE_URL", "http://127.0.0.1:8791").rstrip("/")
-ENGINE_TOKEN = os.environ.get("ICARUS_ENGINE_TOKEN", TOKEN)
+from .config import _load_dotenv
+
+
+def _endpoint_settings():
+    """Load MCP endpoints/tokens from explicit env or the same persisted .env as the bridge."""
+    _load_dotenv()
+    e = os.environ.get
+    bridge_url = (e("ICARUS_BRIDGE_URL") or "http://127.0.0.1:8787").rstrip("/")
+    bridge_token = e("ICARUS_ADMIN_TOKEN") or e("ADMIN_TOKEN") or ""
+    engine_url = (e("ICARUS_ENGINE_URL") or "http://127.0.0.1:8791").rstrip("/")
+    engine_token = e("ICARUS_ENGINE_TOKEN") or bridge_token
+    return bridge_url, bridge_token, engine_url, engine_token
+
+
+BASE, TOKEN, ENGINE_BASE, ENGINE_TOKEN = _endpoint_settings()
 
 mcp = MCPServer(
     "icarus-bridge",
