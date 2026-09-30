@@ -381,8 +381,17 @@ class AssetRunner:
         self.feed = feeds.get(self.spec.feed) or (Yahoo() if self.spec.feed == "yahoo" else Coinbase())
         self.kraken = Kraken()
         self.cal = get_calendar(self.spec.calendar, self.spec.anchor_et, session=self.spec.session, group=self.spec.group)
-        self.chart_minutes = tf_minutes(self.spec.chart_tf)
+        self.chart_mode, self.chart_value = chart_timeframe_parts(self.spec.chart_tf)
+        self.chart_minutes = self.chart_value if self.chart_mode == "minutes" else 0
+        self.chart_seconds = self.chart_value * 60 if self.chart_mode == "minutes" else (self.chart_value if self.chart_mode == "seconds" else None)
         self.mintick = cfg.mintick if cfg.mintick is not None else (self.spec.mintick if self.spec.feed == "yahoo" else self.feed.mintick(self.spec.ticker))
+        self.trade_events: List[TradeEvent] = []
+        self.event_feed = feeds.get("events")
+        if self.chart_mode != "minutes" and self.event_feed is None:
+            self.event_feed = make_event_feed(self.spec, self.mintick)
+        self.event_chart_agg = None
+        self.event_minute_agg = None
+        self._event_chart_session: Optional[str] = None
         # Active futures never resolve to expiring month-coded contracts. The provider-native
         # continuous ticker is the live/data ticker; tv_symbol carries the TradingView 1! identity.
         self.live_ticker = self.spec.ticker                 # compatibility alias: always provider-native continuous for futures
@@ -424,7 +433,9 @@ class AssetRunner:
     # ── engine construction (also used by re-warm) ──
     def _build_engine(self) -> None:
         sp = self.spec
-        self.chart_minutes = tf_minutes(sp.chart_tf)
+        self.chart_mode, self.chart_value = chart_timeframe_parts(sp.chart_tf)
+        self.chart_minutes = self.chart_value if self.chart_mode == "minutes" else 0
+        self.chart_seconds = self.chart_value * 60 if self.chart_mode == "minutes" else (self.chart_value if self.chart_mode == "seconds" else None)
         self.cal = get_calendar(sp.calendar, sp.anchor_et, session=sp.session, group=sp.group)   # a preset may switch the chart session
         self.em = Emulator(sp.capital, sp.commission, self.mintick, sp.multiplier, pyramiding=2, slippage_ticks=sp.slippage_ticks)
         self.strat: Optional[PulseStrategy] = None
@@ -433,7 +444,10 @@ class AssetRunner:
         ha_chains = sp.chart_type == "heikin_ashi" and sp.security_source == "chart"      # TradingView: request.security on an HA chart returns HA data
         self.chains: Dict[int, TFChain] = {m: TFChain(m, self.cal.bucket_start, self.cal.bucket_end, ha=ha_chains, ltf_intrabar=ib.ltf_intrabar, mintick=self.mintick)
                                            for m in sorted(set(self.htf_tfs + [2, 5]))}
-        self.chart_agg = Aggregator(self.chart_minutes, self.cal.bucket_start, self.cal.bucket_end)
+        self.chart_agg = Aggregator(self.chart_minutes, self.cal.bucket_start, self.cal.bucket_end) if self.chart_mode == "minutes" else None
+        self.event_chart_agg = None
+        self.event_minute_agg = None
+        self._event_chart_session = None
         self.ha = HeikinAshi(mintick=self.mintick) if sp.chart_type == "heikin_ashi" else None
         self._real_ohlc_warned = False
 
@@ -468,7 +482,7 @@ class AssetRunner:
         if abs(inp.point_value - self.spec.multiplier) > 1e-9 and inp.point_value == Inputs().point_value:
             inp = replace(inp, point_value=self.spec.multiplier)          # the Pine's 20 = NQ; Risk-$ sizing needs this asset's $/point
         self.inputs = inp
-        self.strat = PulseStrategy(inp, self.em, mintick=self.mintick, tf_minutes=self.chart_minutes, session_key=self.cal.session_id)
+        self.strat = PulseStrategy(inp, self.em, mintick=self.mintick, tf_minutes=max(1, self.chart_minutes), session_key=self.cal.session_id)
 
     # ── core bar path ──
     def _on_chart_bar(self, real: Bar, live: bool) -> None:
