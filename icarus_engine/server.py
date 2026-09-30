@@ -388,7 +388,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                             r.ensure_configurable()
                         # Preflight the entire batch before the first asset is persisted/replayed.
                         for r in targets:
-                            sp = replace(r.spec)
+                            sp = replace(r.cfg.base_spec or r.spec)
+                            sp.preset = r.spec.preset
                             name = port.preset_for(r)
                             if "preset" in kwargs:
                                 sp.preset = kwargs["preset"]
