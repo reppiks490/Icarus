@@ -564,27 +564,47 @@ class Databento:
                     client.add_reconnect_callback(self._record_reconnect_all)
                 self._shared_live = client
 
-            for key, continuous in keys:
-                self._continuous_to_symbol[continuous] = key
-                missing = desired - self._subscriptions[key]
-                for schema in sorted(missing):
-                    kwargs: Dict[str, Any] = {
-                        "dataset": self.dataset,
-                        "schema": schema,
-                        "symbols": continuous,
-                        "stype_in": "continuous",
-                    }
-                    if start_ts is not None and not self._shared_started:
-                        kwargs["start"] = self._iso(start_ts)
-                    client.subscribe(**kwargs)
-                    self._subscriptions[key].add(schema)
-                self._live[key] = client
-                self._live_started.add(key)
+            try:
+                for key, continuous in keys:
+                    self._continuous_to_symbol[continuous] = key
+                    missing = desired - self._subscriptions[key]
+                    for schema in sorted(missing):
+                        kwargs: Dict[str, Any] = {
+                            "dataset": self.dataset,
+                            "schema": schema,
+                            "symbols": continuous,
+                            "stype_in": "continuous",
+                        }
+                        if start_ts is not None and not self._shared_started:
+                            kwargs["start"] = self._iso(start_ts)
+                        client.subscribe(**kwargs)
+                        self._subscriptions[key].add(schema)
+                    self._live[key] = client
+                    self._live_started.add(key)
 
-            if not self._shared_started:
-                client.start()
-                self._shared_started = True
-            return client
+                if not self._shared_started:
+                    client.start()
+                    self._shared_started = True
+                return client
+            except Exception:
+                # Before a session has started, any subscribe/start failure leaves the
+                # client construction ambiguous. Discard it atomically so the next
+                # attempt begins from a fresh Live client instead of reusing poison state.
+                if not self._shared_started:
+                    try:
+                        if hasattr(client, "terminate"):
+                            client.terminate()
+                    except Exception:
+                        pass
+                    self._shared_live = None
+                    self._live.clear()
+                    self._live_started.clear()
+                    self._subscriptions.clear()
+                    self._continuous_to_symbol.clear()
+                    self._instrument_to_symbol.clear()
+                    self._ready.clear()
+                    self._errors.clear()
+                raise
 
     def start_live(
         self,
@@ -626,9 +646,17 @@ class Databento:
             self._errors.clear()
 
         if client is not None:
-            client.stop()
-            if hasattr(client, "block_for_close"):
-                client.block_for_close(timeout=5.0)
+            try:
+                client.stop()
+                if hasattr(client, "block_for_close"):
+                    client.block_for_close(timeout=5.0)
+            except Exception as stop_ex:
+                try:
+                    client.terminate()
+                    if hasattr(client, "block_for_close"):
+                        client.block_for_close(timeout=5.0)
+                except Exception:
+                    raise stop_ex
 
     def recent_ex(
         self,
@@ -719,9 +747,17 @@ class Databento:
         try:
             done.wait(max(0.1, float(timeout)))
         finally:
-            client.stop()
-            if hasattr(client, "block_for_close"):
-                client.block_for_close(timeout=5.0)
+            try:
+                client.stop()
+                if hasattr(client, "block_for_close"):
+                    client.block_for_close(timeout=5.0)
+            except Exception as stop_ex:
+                try:
+                    client.terminate()
+                    if hasattr(client, "block_for_close"):
+                        client.block_for_close(timeout=5.0)
+                except Exception:
+                    raise stop_ex
         if error:
             raise RuntimeError(error[0])
         if last_flag and not done.is_set():
