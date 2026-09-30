@@ -1170,8 +1170,16 @@ class Portfolio:
             self.order = [s for s in self.order if s != key]
             r.paused = True
             r._removed = True
-            self.journal.log("WARN", f"[{key}] removed from the engine")
-            return True
+        # Shared live feeds cannot unsubscribe at the gateway, but they can detach
+        # this asset's local routing immediately without disrupting sibling assets.
+        detach = getattr(r.feed, "stop_live", None)
+        if callable(detach):
+            try:
+                detach(r.spec.ticker)
+            except Exception as ex:
+                self.journal.log("WARN", f"[{key}] feed detach: {type(ex).__name__}: {ex}")
+        self.journal.log("WARN", f"[{key}] removed from the engine")
+        return True
 
     def preset_for(self, r: AssetRunner) -> Optional[str]:
         """The asset's current preset: set per asset (dashboard 'Apply preset', GC:NAME token) else the portfolio's."""
