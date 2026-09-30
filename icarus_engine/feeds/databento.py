@@ -93,9 +93,16 @@ class Databento:
             slow_reader_behavior="warn",
         ))
         self._lock = threading.RLock()
-        self._live: Dict[str, Any] = {}
+        # One Live client/session per Databento dataset. Databento explicitly supports
+        # many symbols/schemas on one session; this avoids exhausting team session limits
+        # when ICARUS runs its full registered futures universe.
+        self._shared_live: Any = None
+        self._shared_started = False
+        self._live: Dict[str, Any] = {}  # compatibility/status view: active symbol -> shared client
         self._live_started: set[str] = set()
         self._subscriptions: Dict[str, set[str]] = collections.defaultdict(set)
+        self._continuous_to_symbol: Dict[str, str] = {}
+        self._instrument_to_symbol: Dict[int, str] = {}
         self._ready: Dict[str, threading.Event] = collections.defaultdict(threading.Event)
         self._second_bars: Dict[str, Deque[Bar]] = collections.defaultdict(
             lambda: collections.deque(maxlen=max(60, int(max_live_seconds)))
@@ -447,6 +454,62 @@ class Databento:
                 })
                 self._meta[str(symbol)] = meta
 
+    @staticmethod
+    def _instrument_id(record: Any) -> Optional[int]:
+        value = getattr(record, "instrument_id", None)
+        if value is None:
+            value = getattr(getattr(record, "hd", None), "instrument_id", None)
+        try:
+            return int(value) if value is not None else None
+        except (TypeError, ValueError, OverflowError):
+            return None
+
+    @staticmethod
+    def _mapping_symbol(record: Any) -> str:
+        value = getattr(record, "stype_in_symbol", "")
+        if isinstance(value, bytes):
+            value = value.split(b"\0", 1)[0].decode("utf-8", "replace")
+        return str(value or "").split("\0", 1)[0].strip()
+
+    def _dispatch_shared_live(self, record: Any) -> None:
+        """Route one record from the shared GLBX.MDP3 session to its ICARUS symbol."""
+        mapping = self._mapping_symbol(record)
+        iid = self._instrument_id(record)
+        if mapping:
+            with self._lock:
+                key = self._continuous_to_symbol.get(mapping)
+                if key is not None and iid is not None:
+                    self._instrument_to_symbol[iid] = key
+            return
+
+        # ErrorMsg has no guaranteed instrument mapping. Route symbol-specific errors
+        # by their continuous symbol when possible; otherwise fail closed for all
+        # active subscriptions because the shared session's integrity is uncertain.
+        if hasattr(record, "err"):
+            err = str(getattr(record, "err", "") or "")
+            with self._lock:
+                targets = [key for cont, key in self._continuous_to_symbol.items() if cont and cont in err]
+                if not targets:
+                    targets = list(self._live_started)
+            for key in targets:
+                self._dispatch_live(key, record)
+            return
+
+        with self._lock:
+            key = self._instrument_to_symbol.get(iid) if iid is not None else None
+            if key is None and len(self._live_started) == 1:
+                # Defensive compatibility for SDK/test records that omit mapping
+                # metadata when exactly one symbol is subscribed.
+                key = next(iter(self._live_started))
+        if key is not None:
+            self._dispatch_live(key, record)
+
+    def _record_reconnect_all(self, previous: Any, resumed: Any) -> None:
+        with self._lock:
+            symbols = list(self._live_started)
+        for symbol in symbols:
+            self._record_reconnect(symbol, previous, resumed)
+
     def _raise_live_error(self, symbol: str) -> None:
         with self._lock:
             err = self._errors.get(str(symbol))
@@ -476,59 +539,76 @@ class Databento:
             if include_depth not in ("mbp-10", "mbo"):
                 raise ValueError("include_depth must be 'mbp-10' or 'mbo'")
             desired.add(include_depth)
+        continuous = self.continuous_symbol(symbol, self.roll_rule)
+
         with self._lock:
-            if key in self._live_started:
-                client = self._live[key]
-                missing = desired - self._subscriptions[key]
-                # Databento allows additional live subscriptions after start as long as
-                # they don't request historical replay. Add only genuinely missing schemas.
-                for schema in sorted(missing):
-                    client.subscribe(
-                        dataset=self.dataset,
-                        schema=schema,
-                        symbols=self.continuous_symbol(symbol, self.roll_rule),
-                        stype_in="continuous",
-                    )
-                    self._subscriptions[key].add(schema)
-                return client
-            client = self._live_factory()
-            kwargs: Dict[str, Any] = {
-                "dataset": self.dataset,
-                "symbols": self.continuous_symbol(symbol, self.roll_rule),
-                "stype_in": "continuous",
-            }
-            if start_ts is not None:
-                # Live replay is limited by Databento to the recent intraday window.
-                kwargs["start"] = self._iso(start_ts)
-            for schema in sorted(desired):
-                client.subscribe(schema=schema, **kwargs)
+            client = self._shared_live
+            if client is None:
+                client = self._live_factory()
+                client.add_callback(self._dispatch_shared_live)
+                if hasattr(client, "add_reconnect_callback"):
+                    client.add_reconnect_callback(self._record_reconnect_all)
+                self._shared_live = client
+
+            self._continuous_to_symbol[continuous] = key
+            missing = desired - self._subscriptions[key]
+            for schema in sorted(missing):
+                kwargs: Dict[str, Any] = {
+                    "dataset": self.dataset,
+                    "schema": schema,
+                    "symbols": continuous,
+                    "stype_in": "continuous",
+                }
+                # Historical replay can only be attached while the shared session is
+                # being constructed. Later symbols join the already-live stream; their
+                # startup gap is covered by ICARUS historical warm-up.
+                if start_ts is not None and not self._shared_started:
+                    kwargs["start"] = self._iso(start_ts)
+                client.subscribe(**kwargs)
                 self._subscriptions[key].add(schema)
-            client.add_callback(lambda rec, s=key: self._dispatch_live(s, rec))
-            if hasattr(client, "add_reconnect_callback"):
-                client.add_reconnect_callback(lambda previous, resumed, s=key: self._record_reconnect(s, previous, resumed))
-            client.start()
+
             self._live[key] = client
             self._live_started.add(key)
+            if not self._shared_started:
+                client.start()
+                self._shared_started = True
             return client
 
     def stop_live(self, symbol: Optional[str] = None) -> None:
+        client = None
         with self._lock:
-            keys = [symbol] if symbol is not None else list(self._live)
-            clients = [(k, self._live.get(k)) for k in keys]
-        for key, client in clients:
-            if client is None:
-                continue
-            try:
-                client.stop()
-                if hasattr(client, "block_for_close"):
-                    client.block_for_close(timeout=5.0)
-            finally:
-                with self._lock:
-                    self._live.pop(key, None)
-                    self._live_started.discard(key)
-                    self._subscriptions.pop(key, None)
-                    self._ready.pop(key, None)
-                    self._errors.pop(key, None)
+            if symbol is not None:
+                key = str(symbol)
+                self._live.pop(key, None)
+                self._live_started.discard(key)
+                self._subscriptions.pop(key, None)
+                self._ready.pop(key, None)
+                self._errors.pop(key, None)
+                continuous = self.continuous_symbol(key, self.roll_rule)
+                self._continuous_to_symbol.pop(continuous, None)
+                for iid, mapped in list(self._instrument_to_symbol.items()):
+                    if mapped == key:
+                        self._instrument_to_symbol.pop(iid, None)
+                # Databento has no per-subscription unsubscribe on a running session.
+                # Keep the shared socket alive for remaining assets and ignore detached
+                # symbol records locally until the portfolio shuts down.
+                if self._live_started:
+                    return
+            client = self._shared_live
+            self._shared_live = None
+            self._shared_started = False
+            self._live.clear()
+            self._live_started.clear()
+            self._subscriptions.clear()
+            self._continuous_to_symbol.clear()
+            self._instrument_to_symbol.clear()
+            self._ready.clear()
+            self._errors.clear()
+
+        if client is not None:
+            client.stop()
+            if hasattr(client, "block_for_close"):
+                client.block_for_close(timeout=5.0)
 
     def recent_ex(
         self,
