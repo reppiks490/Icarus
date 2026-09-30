@@ -512,8 +512,10 @@ class Databento:
         g = int(granularity)
         # Databento's native ohlcv-1d is UTC-date based. ICARUS futures charts use
         # CME session days/weeks, so aggregate those timeframes from hourly records.
-        if g >= 86400 and g % 86400 == 0:
+        if g in (86400, 7 * 86400):
             return self._session_bars(symbol, g // 60, int(start_ts), int(end_ts))
+        if g > 86400:
+            raise ValueError(f"Databento session-aligned higher timeframe {g}s is unsupported; use 1D or 1W")
         start = max(int(start_ts), self.HISTORICAL_START_TS)
         end = int(end_ts)
         if end <= start:
