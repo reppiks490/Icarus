@@ -482,3 +482,17 @@ def test_live_trade_classification_uses_execution_boundary_not_bar_start_time():
     assert trades[-2]["live"] is False
     assert trades[-1]["live"] is True
     assert r.em.closed[-1].exit_ts < r.live_from_ts
+
+
+def test_paper_equity_series_excludes_preconfiguration_samples(configured):
+    port, _, _ = configured
+    epoch = 10_000.5
+    port.started = 9_000.0
+    port.equity_epoch = epoch
+    with port.journal._lock:
+        port.journal.con.execute("INSERT INTO equity VALUES (?,?)", (10_000.49, 111.0))
+        port.journal.con.execute("INSERT INTO equity VALUES (?,?)", (10_000.50, 222.0))
+        port.journal.con.execute("INSERT INTO equity VALUES (?,?)", (10_000.51, 333.0))
+        port.journal.con.commit()
+    series = port.status()["equity_series"]
+    assert [p["equity"] for p in series] == [222.0, 333.0]
