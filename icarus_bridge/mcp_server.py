@@ -222,6 +222,42 @@ def engine_backtest_status(job_id: str) -> dict:
     return _safe_engine(lambda: _engine_get(f"/api/backtest/{job_id.strip()}"))
 
 
+@mcp.tool()
+def engine_market_data_capabilities(asset: str = "NQ") -> dict:
+    """Active raw-feed capabilities. Databento exposes 1s OHLCV, ticks, MBP-10, and MBO."""
+    asset = asset.strip().upper()
+    return _safe_engine(lambda: _engine_get(f"/api/market-data/{asset}/capabilities"))
+
+
+@mcp.tool()
+def engine_recent_ticks(asset: str = "NQ", limit: int = 1000, since_ts: int = 0) -> dict:
+    """Recent raw trade ticks from the active engine feed."""
+    asset = asset.strip().upper()
+    qs = f"?limit={max(1, min(10000, int(limit)))}"
+    if int(since_ts) > 0:
+        qs += f"&since_ts={int(since_ts)}"
+    return _safe_engine(lambda: _engine_get(f"/api/market-data/{asset}/ticks{qs}"))
+
+
+@mcp.tool()
+def engine_order_book_events(asset: str = "NQ", schema: str = "mbp-10", limit: int = 1000) -> dict:
+    """Recent Databento L2/L3 events. schema must be mbp-10 or mbo."""
+    schema = schema.strip().lower()
+    if schema not in ("mbp-10", "mbo"):
+        return {"error": "schema must be mbp-10 or mbo"}
+    asset = asset.strip().upper()
+    return _safe_engine(lambda: _engine_get(
+        f"/api/market-data/{asset}/depth?schema={schema}&limit={max(1, min(10000, int(limit)))}"
+    ))
+
+
+@mcp.tool()
+def engine_mbo_snapshot(asset: str = "NQ", timeout: float = 5.0) -> dict:
+    """Request a live Databento MBO snapshot for the continuous front contract."""
+    body = {"asset": asset.strip().upper(), "timeout": max(0.1, min(30.0, float(timeout)))}
+    return _safe_engine(lambda: _engine_post("/admin/market-data/mbo-snapshot", body))
+
+
 # ── control tools (state-changing) ──
 @mcp.tool()
 def pause_trading(reason: str = "paused via MCP") -> dict:
