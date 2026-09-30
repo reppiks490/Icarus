@@ -271,6 +271,12 @@ def default_bridge_service(root: str, repo: str, *, port: int = 8787) -> Service
 
 
 def write_status(root: str, payload: Dict[str, object]) -> None:
+    """Publish supervisor status atomically so readers never observe truncated JSON."""
     path = os.path.join(root, "run", "status.json")
-    with open(path, "w", encoding="utf-8") as fh:
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as fh:
         json.dump(payload, fh, indent=2)
+        fh.flush()
+        os.fsync(fh.fileno())
+    os.replace(tmp, path)
