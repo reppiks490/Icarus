@@ -126,9 +126,10 @@ class Journal:
         with self._lock:
             return write_paper_csv(self.con, path, live_only=live_only)
 
-    def equity_series(self, since_sec: float = 86400.0, max_points: int = 600) -> List[Dict[str, float]]:
+    def equity_series(self, since_sec: float = 86400.0, max_points: int = 600, *, since_ts: Optional[float] = None) -> List[Dict[str, float]]:
+        cutoff = float(since_ts) if since_ts is not None else (time.time() - since_sec)
         with self._lock:
-            rows = self.con.execute("SELECT ts, equity FROM equity WHERE ts >= ? ORDER BY ts", (time.time() - since_sec,)).fetchall()
+            rows = self.con.execute("SELECT ts, equity FROM equity WHERE ts >= ? ORDER BY ts", (cutoff,)).fetchall()
         if len(rows) > max_points:
             step = len(rows) / max_points
             rows = [rows[int(k * step)] for k in range(max_points)] + [rows[-1]]
@@ -1255,7 +1256,7 @@ class Portfolio:
             "open_profit": sum(x["open_profit"] or 0.0 for x in rs), "positions": sum(1 for x in rs if x["position"]),
             "assets": rs, "log": list(self.journal.log_tail)[-80:],
             "equity_epoch": self.equity_epoch,
-            "equity_series": self.journal.equity_series(min(86400.0, max(0.0, time.time() - self.equity_epoch + 1.0))),
+            "equity_series": self.journal.equity_series(max_points=600, since_ts=max(self.started, self.equity_epoch)),
             "all_warm": all(r.warm for r in self.runners.values()) if self.runners else False,
             "preset": self.preset, "profile": self.profile, "pts_ref": {"symbol": self.pts_ref_symbol, "price": self.pts_ref_price},
         })
