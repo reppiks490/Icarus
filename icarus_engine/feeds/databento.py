@@ -623,13 +623,13 @@ class Databento:
     ) -> Any:
         key = str(symbol)
         desired = {str(s) for s in schemas}
+        if include_depth and include_depth not in ("mbp-10", "mbo"):
+            raise ValueError("include_depth must be 'mbp-10' or 'mbo'")
         rollover_schemas, rollover_start = self._refresh_continuous_mapping(symbol)
         desired.update(rollover_schemas)
         if rollover_start is not None:
             start_ts = rollover_start if start_ts is None else min(int(start_ts), int(rollover_start))
         if include_depth:
-            if include_depth not in ("mbp-10", "mbo"):
-                raise ValueError("include_depth must be 'mbp-10' or 'mbo'")
             desired.add(include_depth)
         with self._lock:
             if key in self._live_started:
