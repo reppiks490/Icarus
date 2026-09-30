@@ -816,6 +816,16 @@ class AssetRunner:
                 if not ft:                                          # no feed clock in the response: the last aligned minute is the only safe clock
                     ft = (bars[-1].ts + 60) if bars else int(self.feed_time or 0)
                 if not ft:
+                    # A stopped provider clock is normal outside the configured
+                    # futures session (weekends/maintenance/RTH closures). Do not
+                    # turn a healthy idle market into a transport failure.
+                    if not self.cal.is_open(int(now)):
+                        self.last_poll_ok = now
+                        with self.lock:
+                            if self.feed_error and self.last_error == self.feed_error:
+                                self.last_error = self.runtime_error
+                            self.feed_error = ""
+                        return
                     self._feed_failed("feed returned no clock and no bars"); return
                 self.feed_time = ft
                 feed_now = ft                                       # close provider bars on ITS clock, never the wall clock
