@@ -115,19 +115,23 @@ class Plant:
         env = os.environ.copy()
         env.update(svc.env)
         env["ICARUS_HOME"] = self.root
-        log = open(os.path.join(self.root, "logs", f"{svc.name}.log"), "ab")
-        kw: Dict[str, object] = dict(
-            cwd=svc.cwd,
-            env=env,
-            stdout=log,
-            stderr=subprocess.STDOUT,
-        )
-        # Grok (xAI) — 2026-09-20: start_new_session is POSIX-only; Windows needs a new process group.
-        if os.name == "nt":
-            kw["creationflags"] = int(getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0))
-        else:
-            kw["start_new_session"] = True
-        svc.popen = subprocess.Popen(svc.argv, **kw)  # type: ignore[arg-type]
+        log_path = os.path.join(self.root, "logs", f"{svc.name}.log")
+        # Popen duplicates/inherits the output handle it needs. Close the parent's
+        # file object immediately after spawn so repeated crash/restart cycles do
+        # not leak one descriptor/handle per restart.
+        with open(log_path, "ab") as log:
+            kw: Dict[str, object] = dict(
+                cwd=svc.cwd,
+                env=env,
+                stdout=log,
+                stderr=subprocess.STDOUT,
+            )
+            # Grok (xAI) — 2026-09-20: start_new_session is POSIX-only; Windows needs a new process group.
+            if os.name == "nt":
+                kw["creationflags"] = int(getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0))
+            else:
+                kw["start_new_session"] = True
+            svc.popen = subprocess.Popen(svc.argv, **kw)  # type: ignore[arg-type]
         if svc.pidfile:
             _write_pid(svc.pidfile, svc.popen.pid)
 
