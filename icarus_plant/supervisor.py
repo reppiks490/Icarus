@@ -236,7 +236,7 @@ def default_engine_service(root: str, repo: str, *, assets: str = "NQ", port: in
         "--preset", preset, "--db", db,
     ]
     if offline:
-        argv += ["--feed", "file", "--roll", "none"]
+        argv += ["--feed", "file"]
     return Service(
         name="engine",
         argv=argv,
