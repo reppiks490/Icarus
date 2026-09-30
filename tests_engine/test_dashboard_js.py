@@ -33,3 +33,10 @@ def test_dashboard_javascript_parses(rel, tmp_path):
     out.write_text(src, encoding="utf-8")
     result = subprocess.run([NODE, "--check", str(out)], text=True, capture_output=True)
     assert result.returncode == 0, result.stderr
+
+
+def test_engine_dashboard_has_no_expiry_contract_ui():
+    src = (REPO / "icarus_engine/dashboard.html").read_text(encoding="utf-8")
+    assert "a.next_contract" not in src
+    assert "a.contract?" not in src
+    assert "continuous_symbol || a.provider_symbol || a.symbol" in src
