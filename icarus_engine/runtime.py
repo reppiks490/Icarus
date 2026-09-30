@@ -383,8 +383,7 @@ class AssetRunner:
         self.mintick = cfg.mintick if cfg.mintick is not None else (self.spec.mintick if self.spec.feed == "yahoo" else self.feed.mintick(self.spec.ticker))
         # Active futures never resolve to expiring month-coded contracts. The provider-native
         # continuous ticker is the live/data ticker; tv_symbol carries the TradingView 1! identity.
-        self.live_ticker = self.spec.ticker
-        self.roller = None
+        self.live_ticker = self.spec.ticker                 # compatibility alias: always provider-native continuous for futures
         self.feed_time: float = 0.0                         # the feed's own clock (Yahoo: regularMarketTime)
         self.feed_delay: float = 0.0
         self.inputs_base: Inputs = cfg.inputs
