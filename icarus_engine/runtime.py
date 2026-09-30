@@ -32,6 +32,7 @@ from .calendar import get_calendar
 from .emulator import Emulator, Fill
 from .feeds import Coinbase, Kraken
 from .feeds.bars import HistoryHub, detect_granularity, file_feed_mode, find_history, parse_ohlcv_csv, read_text_csv  # Grok (xAI) — 2026-09-20
+from .feeds.databento import Databento
 from .feeds.yahoo import Yahoo
 from .pine.series import NAN, na
 from .pine.timeframe import Aggregator, Bar, tf_minutes
@@ -567,7 +568,7 @@ class AssetRunner:
             self._file_waiting = True
             self.journal.log("WARN", f"[{self.symbol}] ICARUS_FEED=file and no history/{self.symbol}_*m.csv — waiting for drop ingest; Yahoo is not contacted")
         elif self.spec.feed == "yahoo":
-            self._warmup_yahoo(T_w, now)
+            self._warmup_yahoo(T_w, now)  # same interface for Yahoo or Databento continuous futures
         else:
             self._warmup_coinbase(T_w, now)
         self.live_from_ts = now
@@ -991,6 +992,8 @@ class AssetRunner:
             "continuous_contract": bool(self.spec.kind == "futures"), "contract_policy": "continuous_only" if self.spec.kind == "futures" else "not_applicable",
             "continuous_symbol": self.spec.tv_symbol or self.spec.ticker,
             "provider_symbol": self.spec.ticker,
+            "feed_provider": ("databento" if type(self.feed).__name__ == "Databento" else self.spec.feed),
+            "feed_capabilities": (self.feed.capabilities() if hasattr(self.feed, "capabilities") else {}),
             "session_mode": _session_mode(self.cal), "security_source": self.spec.security_source,
             "tf": self.chart_minutes, "mintick": self.mintick, "contract_size": self.em.contract_size, "multiplier": self.spec.multiplier,
             "chart_type": self.spec.chart_type, "fill_on": self.spec.fill_on, "slippage_ticks": self.spec.slippage_ticks,
@@ -1074,13 +1077,19 @@ class Portfolio:
         self.warmup_bars = warmup_bars
         self.pts_ref_symbol = pts_ref_symbol
         self.pts_ref_price = 0.0
-        # Grok (xAI) — 2026-09-20: ICARUS_FEED=file → HistoryHub on both keys. Same Yahoo-shaped
-        # interface; poll() still uses recent_ex when spec.feed == "yahoo". No Docker, no Databento.
+        # ICARUS_FEED selects the market-data transport without changing stable AssetSpec
+        # identities. Futures remain continuous-only regardless of provider.
+        requested_feed = os.environ.get("ICARUS_FEED", "").strip().lower()
         if file_feed_mode():
             hub = HistoryHub(base_dir)
             self.feeds: Dict[str, Any] = {"yahoo": hub, "coinbase": hub}
             self.feed_mode = "file"
             journal.log("INFO", f"ICARUS_FEED=file — HistoryHub at {base_dir}/history; Yahoo/Coinbase are not contacted")
+        elif requested_feed == "databento":
+            db_feed = Databento()
+            self.feeds = {"yahoo": db_feed, "coinbase": Coinbase()}
+            self.feed_mode = "databento"
+            journal.log("INFO", "ICARUS_FEED=databento — CME futures use Databento GLBX.MDP3 volume-front continuous contracts")
         else:
             self.feeds = {"yahoo": Yahoo(), "coinbase": Coinbase()}
             self.feed_mode = "live"
