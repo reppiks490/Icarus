@@ -170,6 +170,8 @@ class Databento:
             "continuous_futures": True,
             "continuous_rule": rule_name,
             "continuous_rule_code": self.roll_rule,
+            "live_session_model": "shared_per_dataset",
+            "live_symbol_routing": "SymbolMappingMsg/instrument_id",
             "ohlcv_seconds": True,
             "minimum_ohlcv_resolution_seconds": 1,
             "trades": True,
