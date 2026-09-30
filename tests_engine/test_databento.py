@@ -197,6 +197,32 @@ def test_live_error_message_fails_closed_instead_of_silently_waiting():
     assert "failed to resolve" in meta["live_error"]
 
 
+def test_undefined_databento_price_is_never_promoted_to_a_fake_market_price():
+    undef = (1 << 63) - 1
+    row = Depth(1_500, 100.0, order_id=11)
+    row.price = undef
+    row.pretty_price = float("nan")
+    event = Databento._event_record(row)
+    assert event["price"] is None
+
+    bad_trade = Trade(1_500, 100.0, 1)
+    bad_trade.price = undef
+    bad_trade.pretty_price = float("nan")
+    with pytest.raises(ValueError, match="undefined/invalid"):
+        Databento._trade_record(bad_trade)
+
+
+def test_undefined_mbp_level_prices_are_serialized_as_null_not_billions():
+    undef = (1 << 63) - 1
+    lvl = Level(100.0, 100.25)
+    lvl.bid_px = undef
+    lvl.pretty_bid_px = float("nan")
+    depth = Depth(1_501, 100.25, levels=[lvl])
+    event = Databento._event_record(depth)
+    assert event["levels"][0]["bid_px"] is None
+    assert event["levels"][0]["ask_px"] == 100.25
+
+
 def test_historical_one_second_and_lossless_resampling_use_continuous_stype():
     hist = FakeHistorical({
         "ohlcv-1s": [
