@@ -460,3 +460,19 @@ def test_start_does_not_silently_ignore_requested_bridge(tmp_path, capsys):
         httpd.shutdown()
         httpd.server_close()
         thread.join(5)
+
+
+def test_stop_returns_failure_when_supervisor_remains_alive(tmp_path, monkeypatch, capsys):
+    import icarus_plant.cli as plant_cli
+
+    ensure(str(tmp_path))
+    (tmp_path / "run" / "plant.pid").write_text("424242", encoding="ascii")
+    monkeypatch.setattr(plant_cli, "_alive", lambda pid: True)
+    monkeypatch.setattr(plant_cli, "_kill_pid", lambda pid: None)
+    monkeypatch.setattr(plant_cli.time, "sleep", lambda seconds: None)
+
+    rc = plant_main(["--root", str(tmp_path), "stop"])
+    assert rc == 1
+    err = capsys.readouterr().err.lower()
+    assert "still alive" in err
+    assert "refusing to claim success" in err
