@@ -460,6 +460,7 @@ class Databento:
                 "recovery_count": self._recovery_count[key],
                 "last_recovery_ts": now,
                 "last_recovery_reason": reason,
+                "recovery_pending": False,
             })
             self._meta[key] = meta
         return schemas, replay_from
@@ -664,13 +665,22 @@ class Databento:
             raise RuntimeError(err)
 
     def _record_reconnect(self, symbol: str, previous: Any, resumed: Any) -> None:
+        # Keep this callback non-blocking. Databento exposes the last timestamp from
+        # the old session and the first timestamp of the resumed session specifically
+        # so clients can detect/recover gaps. Mark recovery here; the next normal
+        # engine/API poll performs the bounded stop/replay/dedup cycle.
+        key = str(symbol)
         row = {"previous": str(previous), "resumed": str(resumed)}
+        reason = f"Databento reconnect gap previous={row['previous']} resumed={row['resumed']}"
         with self._lock:
-            self._reconnect_gaps[str(symbol)].append(row)
-            meta = dict(self._meta.get(str(symbol), {}))
+            self._reconnect_gaps[key].append(row)
+            self._recovery_required[key] = reason
+            meta = dict(self._meta.get(key, {}))
             meta["last_reconnect_gap"] = row
-            meta["reconnect_count"] = len(self._reconnect_gaps[str(symbol)])
-            self._meta[str(symbol)] = meta
+            meta["reconnect_count"] = len(self._reconnect_gaps[key])
+            meta["recovery_pending"] = True
+            meta["live_error"] = reason
+            self._meta[key] = meta
 
     def start_live(
         self,
