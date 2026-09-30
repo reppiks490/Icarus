@@ -29,7 +29,7 @@ from zoneinfo import ZoneInfo
 from .assets import normalize_chart_timeframe
 from .metrics import PERFORMANCE_ROWS, RISK_ROWS, TRADES_ROWS, Piece, tv_summary
 from .pine.timeframe import Bar, tf_minutes
-from .runtime import AssetRunner, Journal, RunnerConfig, resolve_inputs, validate_values
+from .runtime import AssetRunner, Journal, RunnerConfig, _session_mode, resolve_inputs, validate_values
 from .strategy.inputs import Inputs
 
 JOBS: Dict[str, Dict[str, Any]] = {}
@@ -181,6 +181,8 @@ def run_backtest(port, symbol: str, *, preset: Optional[str] = None, inputs: Opt
         spec.chart_tf = normalize_chart_timeframe(meta["timeframe"])
     if meta.get("security_source") in ("chart", "standard"):
         spec.security_source = meta["security_source"]
+    if meta.get("fill_on") in ("real", "chart"):
+        spec.fill_on = meta["fill_on"]
     if meta.get("slippage_ticks") is not None:
         spec.slippage_ticks = int(meta["slippage_ticks"])
     if meta.get("commission") is not None:
@@ -210,11 +212,12 @@ def run_backtest(port, symbol: str, *, preset: Optional[str] = None, inputs: Opt
     if requested_chart_minutes != source_chart_minutes:
         if not src.subbars:
             raise ValueError(f"{src.spec.symbol}: no cached sub-bars are available to rebuild a {spec.chart_tf} chart")
-        incompatible = sorted({int(sub) for _, sub in src.subbars
-                               if int(sub) > requested_chart_minutes or requested_chart_minutes % int(sub) != 0})
-        if incompatible:
+        compatible = [(b, int(sub)) for b, sub in src.subbars
+                      if int(sub) <= requested_chart_minutes and requested_chart_minutes % int(sub) == 0]
+        if not compatible:
+            have = sorted({int(sub) for _, sub in src.subbars})
             raise ValueError(
-                f"{src.spec.symbol}: cached source bars {incompatible}m cannot be losslessly rebuilt as "
+                f"{src.spec.symbol}: cached source bars {have}m cannot be losslessly rebuilt as "
                 f"{spec.chart_tf}; load 1-minute history first"
             )
 
@@ -336,9 +339,14 @@ def run_backtest(port, symbol: str, *, preset: Optional[str] = None, inputs: Opt
     r.journal.con.close()
     return {
         "asset": r.symbol, "bars": bars_n, "config": {
-            "preset": preset_name, "fill_on": spec.fill_on, "chart_type": spec.chart_type, "slippage_ticks": spec.slippage_ticks,
-            "commission": spec.commission, "capital": spec.capital, "session": getattr(r.cal, "session", "24/7"), "tf": r.chart_minutes,
-            "point_value": r.em.contract_size, "overrides": inputs or {}, "sources": sources, "leverage": leverage,
+            "preset": preset_name, "fill_on": spec.fill_on, "chart_type": spec.chart_type,
+            "security_source": spec.security_source, "slippage_ticks": spec.slippage_ticks,
+            "commission": spec.commission, "capital": spec.capital, "session": _session_mode(r.cal), "tf": r.chart_minutes,
+            "point_value": r.em.contract_size,
+            "continuous_symbol": spec.tv_symbol if spec.kind == "futures" else None,
+            "provider_symbol": spec.ticker,
+            "contract_policy": "continuous_only" if spec.kind == "futures" else "not_applicable",
+            "overrides": inputs or {}, "sources": sources, "leverage": leverage,
             "window_start": window_start, "window_end": window_end, "pts_scale": r.pts_scale,
             "historical_scale_asof_valid": historical_scale_asof_valid, "reproducibility": reproducibility,
         },

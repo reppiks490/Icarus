@@ -13,14 +13,14 @@ import os
 from typing import Any, Dict, Optional
 
 import httpx
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
 BASE = os.environ.get("ICARUS_BRIDGE_URL", "http://127.0.0.1:8787").rstrip("/")
 TOKEN = os.environ.get("ICARUS_ADMIN_TOKEN", "")
 ENGINE_BASE = os.environ.get("ICARUS_ENGINE_URL", "http://127.0.0.1:8791").rstrip("/")
 ENGINE_TOKEN = os.environ.get("ICARUS_ENGINE_TOKEN", TOKEN)
 
-mcp = FastMCP(
+mcp = MCPServer(
     "icarus-bridge",
     instructions=(
         "Control surface for the ICARUS Bridge: a local daemon that receives TradingView strategy "
@@ -185,13 +185,13 @@ def set_engine_chart_config(asset: str = "NQ", timeframe: Optional[str] = None,
 
 @mcp.tool()
 def start_engine_backtest(asset: str = "NQ", timeframe: Optional[str] = None,
-                          chart_type: Optional[str] = None, fill_on: str = "real",
+                          chart_type: Optional[str] = None, fill_on: Optional[str] = None,
                           security_source: Optional[str] = None, preset: Optional[str] = None,
                           inputs_json: str = "") -> dict:
     """Start a cached ICARUS Strategy Tester replay using the requested timeframe/chart settings."""
-    body: Dict[str, Any] = {"asset": asset.strip().upper(), "fill_on": fill_on}
-    for k, v in {"timeframe": timeframe, "chart_type": chart_type, "security_source": security_source,
-                 "preset": preset}.items():
+    body: Dict[str, Any] = {"asset": asset.strip().upper()}
+    for k, v in {"timeframe": timeframe, "chart_type": chart_type, "fill_on": fill_on,
+                 "security_source": security_source, "preset": preset}.items():
         if v not in (None, ""):
             body[k] = v
     if inputs_json.strip():

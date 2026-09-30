@@ -28,6 +28,7 @@ import json
 import os
 import re
 import sys
+import time
 import threading
 from contextlib import ExitStack
 from dataclasses import replace
@@ -37,7 +38,7 @@ from typing import Any, Dict
 from urllib.parse import parse_qs, urlparse
 
 from . import brand
-from .assets import REGISTRY, apply_chart_config, chart_capabilities, parse_spec, pin_config, validate_chart_config
+from .assets import REGISTRY, apply_chart_config, chart_capabilities, parse_spec, pin_config, resolve, validate_chart_config
 from .backtest import JOBS, start_job
 from .parity import compare_lists, engine_trades_from_rows, read_tv_trades_text
 from .golive import report as golive_report
@@ -142,7 +143,11 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return default
 
         def _runner(self, sym: str):
-            return port.runners.get((sym or "").upper())
+            try:
+                key = resolve(sym or "").symbol
+            except ValueError:
+                return None
+            return port.runners.get(key)
 
         def do_GET(self) -> None:  # noqa: N802
             if not self._host_ok():
@@ -215,7 +220,13 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                             out.append({"name": f[:-5], "meta": d.get("_meta", {}), "count": len([k for k in d if not k.startswith("_")])})
                 return self._json(200, out)
             if p.path == "/api/assets":
-                return self._json(200, {"registry": [{"symbol": s.symbol, "name": s.name, "feed": s.feed, "calendar": s.calendar, "mintick": s.mintick, "multiplier": s.multiplier, "kind": s.kind} for s in REGISTRY.values()],
+                return self._json(200, {"registry": [{
+                                            "symbol": s.symbol, "name": s.name, "feed": s.feed, "calendar": s.calendar,
+                                            "mintick": s.mintick, "multiplier": s.multiplier, "kind": s.kind,
+                                            "continuous_symbol": s.tv_symbol if s.kind == "futures" else None,
+                                            "provider_symbol": s.ticker,
+                                            "contract_policy": "continuous_only" if s.kind == "futures" else "not_applicable",
+                                        } for s in REGISTRY.values()],
                                         "running": list(port.order), "chart_capabilities": chart_capabilities()})
             if p.path == "/api/commands":
                 return self._json(200, COMMANDS)
@@ -257,9 +268,15 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 over = _read_json(os.path.join(port.base_dir, f"inputs.{r.symbol}.json"))
                 return self._json(200, {"asset": r.symbol, "effective": r.inputs.to_dict(), "base": r.inputs_base.to_dict(), "sources": r.cfg.sources,
                                         "overrides": {k: v for k, v in over.items() if not k.startswith("_")}, "preset": r.cfg.preset, "pts_scale": r.pts_scale,
+                                        "instrument": {
+                                            "kind": r.spec.kind,
+                                            "continuous_symbol": r.spec.tv_symbol if r.spec.kind == "futures" else None,
+                                            "provider_symbol": r.spec.ticker,
+                                            "contract_policy": "continuous_only" if r.spec.kind == "futures" else "not_applicable",
+                                        },
                                         "chart": {"timeframe": r.spec.chart_tf, "chart_type": r.spec.chart_type,
                                                   "fill_on": r.spec.fill_on, "security_source": r.spec.security_source},
-                                        "chart_capabilities": chart_capabilities()})
+                                        "chart_capabilities": r.chart_capability_view()})
             self._json(404, {"error": "not found"})
 
         def _drain_body(self) -> None:
@@ -400,9 +417,51 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                             sp = apply_chart_config(sp, chart)
                             r.ensure_cached_timeframes(inp)
                             r.ensure_cached_chart_timeframe(sp.chart_tf)
+                        equity_epoch_before = port.equity_epoch
+                        snapshots = {}
                         for r in targets:
-                            port.rewarm_asset(r.symbol, vals, bool(body.get("persist", True)) if vals is not None else False,
-                                              reset=reset, chart=chart, **kwargs)
+                            override_path = os.path.join(port.base_dir, f"inputs.{r.symbol}.json")
+                            snapshots[r.symbol] = {
+                                "runtime": r.configuration_snapshot(),
+                                "override_path": override_path,
+                                "override_bytes": (Path(override_path).read_bytes() if os.path.exists(override_path) else None),
+                            }
+                        applied = []
+                        try:
+                            for r in targets:
+                                port.rewarm_asset(r.symbol, vals, bool(body.get("persist", True)) if vals is not None else False,
+                                                  reset=reset, chart=chart, **kwargs)
+                                applied.append(r)
+                        except Exception as apply_ex:
+                            port.equity_epoch = equity_epoch_before
+                            rollback_errors = []
+                            for r in reversed(applied):
+                                snap = snapshots[r.symbol]
+                                try:
+                                    pth = snap["override_path"]
+                                    raw_before = snap["override_bytes"]
+                                    if raw_before is None:
+                                        if os.path.exists(pth):
+                                            os.remove(pth)
+                                    else:
+                                        tmp = pth + ".batch-rollback.tmp"
+                                        Path(tmp).write_bytes(raw_before)
+                                        os.replace(tmp, pth)
+                                    r.restore_configuration_snapshot(snap["runtime"])
+                                except Exception as rollback_ex:
+                                    rollback_errors.append(f"{r.symbol}: {type(rollback_ex).__name__}: {rollback_ex}")
+                            if rollback_errors:
+                                raise RuntimeError(
+                                    f"batch configuration failed ({type(apply_ex).__name__}: {apply_ex}); "
+                                    f"rollback incomplete: {'; '.join(rollback_errors)}"
+                                ) from apply_ex
+                            raise
+                        # One successful batch = one paper-engine epoch. All runners were rebuilt.
+                        cutover = time.time()
+                        for r in targets:
+                            r.live_from_ts = int(cutover)
+                            r.live_closed_start = len(r.em.closed)
+                        port.equity_epoch = cutover
                     done = [r.symbol for r in targets]
                     return self._json(200, {"ok": True, "note": f"configuration applied and re-warmed {done}", "assets": done,
                                             "chart": chart or None})

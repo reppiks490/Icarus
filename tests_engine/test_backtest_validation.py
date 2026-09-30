@@ -46,8 +46,8 @@ INVALID = [
 @pytest.fixture
 def port(tmp_path):
     p = Portfolio(Journal(":memory:"), str(tmp_path))
-    spec = AssetSpec("TEST", "Test", "yahoo", "TEST", "crypto", .25, 1,
-                     chart_tf="1", capital=100000, commission=1, roll="none")
+    spec = AssetSpec("TEST", "Test", "yahoo", "TEST=F", "crypto", .25, 1,
+                     chart_tf="1", capital=100000, commission=1, tv_symbol="TEST1!", kind="futures")
     r = AssetRunner(RunnerConfig(spec, Inputs(use_tide=False, use_eod_flat=False)), p.journal)
     r.subbars = [(Bar(k * 60, 100 + k, 101 + k, 99 + k, 100 + k, 1), 1) for k in range(10)]
     r.warm = True
@@ -170,6 +170,10 @@ def test_backtest_rebuilds_cached_one_minute_tape_at_requested_timeframe(port):
     assert result["config"]["tf"] == 2
     assert result["config"]["chart_type"] == "heikin_ashi"
     assert result["config"]["fill_on"] == "real"
+    assert result["config"]["security_source"] == "chart"
+    assert result["config"]["contract_policy"] == "continuous_only"
+    assert result["config"]["provider_symbol"] == "TEST=F"
+    assert result["config"]["continuous_symbol"] == "TEST1!"
     assert result["config"]["reproducibility"]["effective_config"]["spec"]["chart_tf"] == "2"
     assert result["bars"] == 5
 
@@ -179,3 +183,30 @@ def test_backtest_rejects_finer_timeframe_than_cached_tape(port):
     r.subbars = [(Bar(k * 300, 100, 101, 99, 100, 1), 5) for k in range(6)]
     with pytest.raises(ValueError, match="cannot be losslessly rebuilt"):
         backtest.run_backtest(port, "TEST", timeframe="2")
+
+
+def test_backtest_inherits_active_paper_fill_mode_when_not_overridden(port):
+    r = port.runners["TEST"]
+    r.spec.fill_on = "chart"
+    result = backtest.run_backtest(port, "TEST")
+    assert result["config"]["fill_on"] == "chart"
+
+
+def test_backtest_honors_preset_fill_mode_metadata(port, tmp_path):
+    preset_dir = tmp_path / "presets"
+    preset_dir.mkdir(exist_ok=True)
+    (preset_dir / "chart-fills.json").write_text(json.dumps({"_meta": {"fill_on": "chart"}}), encoding="utf-8")
+    result = backtest.run_backtest(port, "TEST", preset="chart-fills")
+    assert result["config"]["fill_on"] == "chart"
+
+
+def test_backtest_uses_genuine_one_minute_tail_from_mixed_cache(port):
+    r = port.runners["TEST"]
+    five_minute_old = [(Bar(k * 300, 100, 101, 99, 100, 1), 5) for k in range(3)]
+    tail_start = 900
+    one_minute_tail = [(Bar(tail_start + k * 60, 110 + k, 111 + k, 109 + k, 110 + k, 1), 1) for k in range(8)]
+    r.subbars = five_minute_old + one_minute_tail
+    result = backtest.run_backtest(port, "TEST", timeframe="2")
+    assert result["config"]["tf"] == 2
+    assert result["bars"] > 0
+    assert result["config"]["reproducibility"]["subbars_count"] == len(r.subbars)

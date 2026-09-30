@@ -56,6 +56,12 @@ py -3 -m pip install -e .
 icarus-plant start --assets NQ
 ```
 
+If you use the bridge or MCP control server on this machine, install its declared extra too:
+
+```powershell
+py -3 -m pip install -e ".[bridge]"
+```
+
 CSV/offline later (Plus): `icarus-plant start --assets NQ --offline` after a 1m dump is in `history/`.
 
 ## Not this

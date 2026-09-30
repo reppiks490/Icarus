@@ -12,6 +12,7 @@ seconds without touching the network.
 from __future__ import annotations
 
 import collections
+import copy
 import csv
 import dataclasses
 import io
@@ -26,9 +27,8 @@ from dataclasses import dataclass, replace
 from datetime import datetime
 from typing import Any, Deque, Dict, List, Optional, Tuple
 
-from .assets import AssetSpec, apply_chart_config, chart_capabilities, normalize_chart_timeframe, validate_chart_config
+from .assets import AssetSpec, apply_chart_config, chart_capabilities, normalize_chart_timeframe, resolve, validate_chart_config
 from .calendar import get_calendar
-from .contracts import SPECS as CONTRACT_SPECS, ContractRoll, last_completed_volume
 from .emulator import Emulator, Fill
 from .feeds import Coinbase, Kraken
 from .feeds.bars import HistoryHub, detect_granularity, file_feed_mode, find_history, parse_ohlcv_csv, read_text_csv  # Grok (xAI) — 2026-09-20
@@ -39,6 +39,11 @@ from .strategy.inputs import Inputs, crypto_profile
 from .strategy.meta import load_meta
 from .strategy.pulse import PulseStrategy
 from .strategy.security import TFChain
+
+
+def _session_mode(cal) -> str:
+    """Human/reporting session mode; 24/7 calendars must never masquerade as ETH."""
+    return "24/7" if getattr(cal, "open_24_7", False) else str(getattr(cal, "session", "eth"))
 
 
 def _clean(x: Any) -> Any:
@@ -126,9 +131,10 @@ class Journal:
         with self._lock:
             return write_paper_csv(self.con, path, live_only=live_only)
 
-    def equity_series(self, since_sec: float = 86400.0, max_points: int = 600) -> List[Dict[str, float]]:
+    def equity_series(self, since_sec: float = 86400.0, max_points: int = 600, *, since_ts: Optional[float] = None) -> List[Dict[str, float]]:
+        cutoff = float(since_ts) if since_ts is not None else (time.time() - since_sec)
         with self._lock:
-            rows = self.con.execute("SELECT ts, equity FROM equity WHERE ts >= ? ORDER BY ts", (time.time() - since_sec,)).fetchall()
+            rows = self.con.execute("SELECT ts, equity FROM equity WHERE ts >= ? ORDER BY ts", (cutoff,)).fetchall()
         if len(rows) > max_points:
             step = len(rows) / max_points
             rows = [rows[int(k * step)] for k in range(max_points)] + [rows[-1]]
@@ -153,7 +159,7 @@ def export_paper_book(db_path: str, out_path: str, *, live_only: bool = False) -
 def write_paper_csv(con: sqlite3.Connection, path: str, *, live_only: bool = False) -> int:
     """Write the paper book. Not a broker statement. Not CME.
 
-    Grok (xAI) — 2026-09-20. ``live=0`` is warmup replay; ``live=1`` is since go-live.
+    Grok (xAI) — 2026-09-20. Journal ``live=0`` is replay; ``live=1`` records fills processed live. In-memory epoch metrics reset on successful warm/re-warm.
     """
     from datetime import datetime, timezone
     try:
@@ -265,7 +271,8 @@ def validate_values(vals: Dict[str, Any]) -> None:
 
 
 def resolve_inputs(spec: AssetSpec, base_dir: str, profile: str = "nq", preset: Optional[str] = None,
-                   extra: Optional[Dict[str, Any]] = None, *, skip_asset_overrides: bool = False) -> Tuple[Inputs, Dict[str, Any], List[str]]:
+                   extra: Optional[Dict[str, Any]] = None, *, skip_asset_overrides: bool = False,
+                   extra_label: str = "override") -> Tuple[Inputs, Dict[str, Any], List[str]]:
     """Returns (inputs, preset_meta, sources). Values later in the chain override earlier ones."""
     base = (crypto_profile(0.0, spec.mintick) if profile == "crypto" else Inputs()).to_dict()
     known = set(base)
@@ -294,7 +301,7 @@ def resolve_inputs(spec: AssetSpec, base_dir: str, profile: str = "nq", preset: 
     if not skip_asset_overrides:
         apply(_read_json(os.path.join(base_dir, f"inputs.{spec.symbol}.json")), f"inputs.{spec.symbol}.json")
     if extra:
-        apply(dict(extra), "override")
+        apply(dict(extra), extra_label)
     return Inputs(**base), meta, sources
 
 
@@ -374,14 +381,11 @@ class AssetRunner:
         self.cal = get_calendar(self.spec.calendar, self.spec.anchor_et, session=self.spec.session, group=self.spec.group)
         self.chart_minutes = tf_minutes(self.spec.chart_tf)
         self.mintick = cfg.mintick if cfg.mintick is not None else (self.spec.mintick if self.spec.feed == "yahoo" else self.feed.mintick(self.spec.ticker))
-        self.live_ticker = self.spec.ticker                 # contract-specific once the roll rule is active
-        self.roller: Optional[ContractRoll] = None
-        if self.spec.feed == "yahoo" and self.spec.roll == "volume" and self.symbol in CONTRACT_SPECS:
-            self.roller = ContractRoll(self.symbol, self.cal.trade_date(int(time.time())))
-            self.live_ticker = self.roller.ticker
+        # Active futures never resolve to expiring month-coded contracts. The provider-native
+        # continuous ticker is the live/data ticker; tv_symbol carries the TradingView 1! identity.
+        self.live_ticker = self.spec.ticker                 # compatibility alias: always provider-native continuous for futures
         self.feed_time: float = 0.0                         # the feed's own clock (Yahoo: regularMarketTime)
         self.feed_delay: float = 0.0
-        self._roll_session: Optional[str] = None
         self.inputs_base: Inputs = cfg.inputs
         self.inputs: Inputs = cfg.inputs
         self.pts_scale = cfg.fixed_pts_scale if cfg.fixed_pts_scale is not None else 1.0
@@ -397,6 +401,7 @@ class AssetRunner:
         self.overlays: Deque[Dict[str, Any]] = collections.deque(maxlen=900)
         self.state: Dict[str, Any] = {}
         self.live_from_ts: Optional[int] = None
+        self.live_closed_start: int = 0               # exact closed-trade boundary; avoids bar-start timestamp misclassification
         self.last_sub_ts: Optional[int] = None
         self._file_waiting: bool = False
         self._fills_seen = 0
@@ -554,7 +559,7 @@ class AssetRunner:
             src = f"HistoryHub ({base}/history) — no CSV yet, Yahoo is not contacted"
         else:
             src = self.spec.feed
-        self.journal.log("INFO", f"[{self.symbol}] warm-up from {time.strftime('%Y-%m-%d %H:%M', time.gmtime(T_w))}Z ({self.cfg.warmup_bars} x {self.chart_minutes}m bars, {src}) mintick={self.mintick} x{self.spec.multiplier} slip={self.spec.slippage_ticks}t chart={self.spec.chart_type} fills={self.spec.fill_on} session={getattr(self.cal, 'session', '24/7')} security={self.spec.security_source}" + (f" contract={self.live_ticker}" if self.roller else ""))
+        self.journal.log("INFO", f"[{self.symbol}] warm-up from {time.strftime('%Y-%m-%d %H:%M', time.gmtime(T_w))}Z ({self.cfg.warmup_bars} x {self.chart_minutes}m bars, {src}) mintick={self.mintick} x{self.spec.multiplier} slip={self.spec.slippage_ticks}t chart={self.spec.chart_type} fills={self.spec.fill_on} session={_session_mode(self.cal)} security={self.spec.security_source}" + (f" continuous={self.spec.tv_symbol or self.spec.ticker}" if self.spec.kind == "futures" else ""))
         if hist:
             self._warmup_from_csv(hist, now, source_minutes=minutes)
             self._file_waiting = False
@@ -566,6 +571,7 @@ class AssetRunner:
         else:
             self._warmup_coinbase(T_w, now)
         self.live_from_ts = now
+        self.live_closed_start = len(self.em.closed)
         self.warm = True
         if file_feed_mode() and self.last_sub_ts is None and not self._file_waiting:
             self.last_sub_ts = now  # a later drop must not replay years of history as live fills
@@ -619,9 +625,8 @@ class AssetRunner:
 
     def _warmup_yahoo(self, T_w: int, now: int) -> None:
         y: Yahoo = self.feed
-        tk = self.spec.ticker                                 # continuous symbol (NQ=F): years of daily bars
-        tki = self.live_ticker                                # the contract itself for intraday history: Yahoo's =F splices the next
-        #                                                       contract in UNADJUSTED on its own roll day (a +290-pt bar on 2026-09-14)
+        tk = self.spec.ticker                                 # provider-native continuous symbol (e.g. NQ=F)
+        tki = self.spec.ticker                                # intraday also stays continuous; no month-coded expiry contract
         daily = y.candles(tk, 86400, T_w - 900 * 86400, T_w)
         daily = [Bar(self.cal.bucket_start(b.ts, 1440), b.o, b.h, b.l, b.c, b.v) for b in daily]   # stamp at the session open
         self._feed_deep([m for m in self.chains if m >= 1440], daily, 1440)
@@ -682,8 +687,71 @@ class AssetRunner:
             except Exception as ex:
                 self.journal.log("WARN", f"[{self.symbol}] could not fetch the 1-minute tail after the export: {ex}")
 
+    def configuration_snapshot(self) -> Dict[str, Any]:
+        """Exact in-memory state needed to make a failed configuration change a no-op."""
+        return {
+            "spec": copy.deepcopy(self.spec),
+            "cfg_inputs": self.cfg.inputs,
+            "cfg_sources": list(self.cfg.sources or []),
+            "cfg_fixed_pts_scale": self.cfg.fixed_pts_scale,
+            "cfg_scale_known_at": self.cfg.scale_known_at,
+            "cfg_preset": self.cfg.preset,
+            "inputs_base": self.inputs_base,
+            "inputs": self.inputs,
+            "pts_scale": self.pts_scale,
+            "cal": self.cal,
+            "chart_minutes": self.chart_minutes,
+            "em": self.em,
+            "strat": self.strat,
+            "htf_tfs": list(self.htf_tfs),
+            "chains": self.chains,
+            "chart_agg": self.chart_agg,
+            "ha": self.ha,
+            "_real_ohlc_warned": self._real_ohlc_warned,
+            "bar_index": self.bar_index,
+            "bars": collections.deque(self.bars, maxlen=self.bars.maxlen),
+            "overlays": collections.deque(self.overlays, maxlen=self.overlays.maxlen),
+            "state": self.state,
+            "live_from_ts": self.live_from_ts,
+            "live_closed_start": self.live_closed_start,
+            "last_sub_ts": self.last_sub_ts,
+            "last_price": self.last_price,
+            "last_price_ts": self.last_price_ts,
+            "last_bar_wall": self.last_bar_wall,
+            "_fills_seen": self._fills_seen,
+            "_closed_seen": self._closed_seen,
+            "recent_fills": collections.deque(self.recent_fills, maxlen=self.recent_fills.maxlen),
+            "recent_events": collections.deque(self.recent_events, maxlen=self.recent_events.maxlen),
+            "runtime_error": self.runtime_error,
+            "last_error": self.last_error,
+        }
+
+    def restore_configuration_snapshot(self, snap: Dict[str, Any]) -> None:
+        """Restore a snapshot without replaying, preserving exact paper accounting."""
+        self.spec.__dict__.clear()
+        self.spec.__dict__.update(copy.deepcopy(snap["spec"].__dict__))
+        self.cfg.spec = self.spec
+        self.cfg.inputs = snap["cfg_inputs"]
+        self.cfg.sources = list(snap["cfg_sources"])
+        self.cfg.fixed_pts_scale = snap["cfg_fixed_pts_scale"]
+        self.cfg.scale_known_at = snap["cfg_scale_known_at"]
+        self.cfg.preset = snap["cfg_preset"]
+        self.inputs_base = snap["inputs_base"]
+        self.inputs = snap["inputs"]
+        self.pts_scale = snap["pts_scale"]
+        for name in ("cal", "chart_minutes", "em", "strat", "chains", "chart_agg", "ha", "_real_ohlc_warned",
+                     "bar_index", "state", "live_from_ts", "live_closed_start", "last_sub_ts", "last_price",
+                     "last_price_ts", "last_bar_wall", "_fills_seen", "_closed_seen", "runtime_error", "last_error"):
+            setattr(self, name, snap[name])
+        self.htf_tfs = list(snap["htf_tfs"])
+        self.bars = collections.deque(snap["bars"], maxlen=snap["bars"].maxlen)
+        self.overlays = collections.deque(snap["overlays"], maxlen=snap["overlays"].maxlen)
+        self.recent_fills = collections.deque(snap["recent_fills"], maxlen=snap["recent_fills"].maxlen)
+        self.recent_events = collections.deque(snap["recent_events"], maxlen=snap["recent_events"].maxlen)
+        self.rewarming = False
+
     # ── re-warm with new inputs (no network) ──
-    def rewarm(self, inputs: Inputs, sources: Optional[List[str]] = None) -> None:
+    def rewarm(self, inputs: Inputs, sources: Optional[List[str]] = None, *, reset_live_boundary: bool = False) -> None:
         with self.lock:
             self.ensure_configurable()
             self.ensure_cached_timeframes(inputs)
@@ -705,6 +773,9 @@ class AssetRunner:
                             self._push_deep(ch, b, sub)
                 for b, sub in list(self.subbars):
                     self.on_sub_bar(b, sub, live=False, record=False)
+                if reset_live_boundary:
+                    self.live_from_ts = int(time.time())
+                    self.live_closed_start = len(self.em.closed)
                 self.journal.log("INFO", f"[{self.symbol}] re-warmed with new inputs: {self.bar_index + 1} chart bars, {len(self.em.closed)} historical trades, net {self.em.netprofit:+.2f}")
                 self.runtime_error = ""
                 self.last_error = self.feed_error
@@ -717,34 +788,6 @@ class AssetRunner:
         if self.spec.feed != "yahoo" or not self.cal.is_open(now):
             return 0.0
         return self.feed_delay
-
-    def _check_roll(self, now: int, today=None) -> None:
-        """Once per session: TradingView's volume rule on the last completed session (see contracts.py)."""
-        if self.roller is None:
-            return
-        sid = self.cal.trade_date(now).isoformat()            # a new check per Globex session (18:00 ET), like TradingView's roll
-        if sid == self._roll_session:
-            return
-        today = today or self.cal.trade_date(now)
-        try:
-            if today > self.roller.expiry():                  # expiry passed without a volume roll (feed gap): move on, flat
-                prev = self.roller.ticker
-                self.roller.advance(today)
-                n = self.flatten("expiry")
-                self.live_ticker = self.roller.ticker
-                self.journal.log("WARN", f"[{self.symbol}] EXPIRY {prev} -> {self.live_ticker}; {n} position(s) flattened")
-            so = self.cal.bucket_start(now, 1440)
-            cur = last_completed_volume(self.feed.daily_volume(self.roller.ticker), so)
-            nxt = last_completed_volume(self.feed.daily_volume(self.roller.next_ticker), so)
-            self._roll_session = sid                          # only once both volumes were fetched; a failed check is retried next poll
-            self.journal.log("INFO", f"[{self.symbol}] contract check {self.roller.ticker} vol {cur} vs {self.roller.next_ticker} vol {nxt}")
-            if self.roller.decide(cur, nxt):
-                prev = self.roller.roll()
-                n = self.flatten("roll")
-                self.live_ticker = self.roller.ticker
-                self.journal.log("WARN", f"[{self.symbol}] ROLL {prev} -> {self.live_ticker} (next contract's volume {nxt} > {cur}); {n} position(s) flattened; prices continue on the new contract like TradingView's 1!")
-        except Exception as ex:
-            self.journal.log("WARN", f"[{self.symbol}] contract roll check failed: {ex}")
 
     def _feed_failed(self, message):
         with self.lock:
@@ -767,9 +810,7 @@ class AssetRunner:
         px = None
         try:
             if self.spec.feed == "yahoo":
-                if self.cal.is_open(int(now)):
-                    self._check_roll(int(now))
-                bars, ft, px = self.feed.recent_ex(self.live_ticker, 60, since_ts=self.last_sub_ts)
+                bars, ft, px = self.feed.recent_ex(self.spec.ticker, 60, since_ts=self.last_sub_ts)
                 if not ft:                                          # no feed clock in the response: the last aligned minute is the only safe clock
                     ft = (bars[-1].ts + 60) if bars else int(self.feed_time or 0)
                 if not ft:
@@ -861,20 +902,41 @@ class AssetRunner:
 
 
     def ensure_cached_chart_timeframe(self, timeframe: object) -> str:
-        """Prove the cached tape can construct the requested chart without inventing finer bars."""
+        """Prove the cache contains genuine bars fine enough for the requested chart.
+
+        Mixed caches are valid: e.g. Yahoo may retain older 5m bars for HTF state
+        plus a recent 1m tail. For a 1m/2m chart the 5m rows still feed compatible
+        HTF chains, while the chart aggregator naturally ignores them. No finer
+        chart bars are synthesized from coarser data.
+        """
         tf = normalize_chart_timeframe(timeframe)
         minutes = tf_minutes(tf)
         if minutes == self.chart_minutes:
             return tf
         if not self.subbars:
             raise ValueError(f"{self.symbol}: no cached sub-bars are available to rebuild a {tf} chart")
-        incompatible = sorted({int(sub) for _, sub in self.subbars if int(sub) > minutes or minutes % int(sub) != 0})
-        if incompatible:
+        compatible = [(b, int(sub)) for b, sub in self.subbars if int(sub) <= minutes and minutes % int(sub) == 0]
+        if not compatible:
+            have = sorted({int(sub) for _, sub in self.subbars})
             raise ValueError(
-                f"{self.symbol}: cached source bars {incompatible}m cannot be losslessly rebuilt as {tf}; "
+                f"{self.symbol}: cached source bars {have}m cannot be losslessly rebuilt as {tf}; "
                 "load 1-minute history first"
             )
         return tf
+
+    def chart_capability_view(self) -> Dict[str, Any]:
+        """Static engine support plus what the current cached tape can rebuild now."""
+        caps = dict(chart_capabilities())
+        have = sorted({int(sub) for _, sub in self.subbars})
+        available: List[str] = []
+        for tf in caps["timeframes"]:
+            minutes = tf_minutes(tf)
+            if minutes == self.chart_minutes or any(sub <= minutes and minutes % sub == 0 for sub in have):
+                available.append(tf)
+        caps["available_from_cache"] = available
+        caps["cached_source_resolutions_minutes"] = have
+        caps["current_timeframe"] = self.spec.chart_tf
+        return caps
 
     def flatten(self, reason: str = "manual") -> int:
         with self.lock:
@@ -901,7 +963,7 @@ class AssetRunner:
         for k, t in enumerate(self.em.closed, 1):
             cum += t.profit
             side = "long" if t.direction > 0 else "short"
-            live = int(bool(self.live_from_ts and t.exit_ts >= self.live_from_ts))
+            live = int(self.live_from_ts is not None and (k - 1) >= self.live_closed_start)
             w.writerow([k, f"Entry {side}", time.strftime("%Y-%m-%d %H:%M", time.gmtime(t.entry_ts)), t.entry_comment or t.entry_id, f"{t.entry_price:.10g}", t.qty, "", "", live])
             w.writerow([k, f"Exit {side}", time.strftime("%Y-%m-%d %H:%M", time.gmtime(t.exit_ts)), t.exit_comment, f"{t.exit_price:.10g}", t.qty, f"{t.profit:.2f}", f"{cum:.2f}", live])
         return buf.getvalue()
@@ -921,15 +983,22 @@ class AssetRunner:
         mark = self.last_price or (self.bars[-1].c if self.bars else None)
         open_trades = [{"id": t.entry_id, "dir": t.direction, "qty": t.qty, "qty_orig": t.qty_orig, "entry": t.entry_price, "entry_ts": t.entry_ts,
                         "upl": (t.direction * (mark - t.entry_price) * t.qty * self.em.contract_size) if mark else None} for t in self.em.open]
-        live_trades = [t for t in self.em.closed if self.live_from_ts and t.exit_ts >= self.live_from_ts]
+        live_trades = self.em.closed[self.live_closed_start:] if self.live_from_ts is not None else []
         wins = sum(1 for t in self.em.closed if t.profit > 0)
         forming = self.chart_agg.forming_bar()
         return _clean({
             "symbol": self.symbol, "name": self.spec.name, "product": self.spec.ticker, "feed": self.spec.feed, "kind": self.spec.kind,
-            "contract": self.live_ticker if self.roller else None, "next_contract": self.roller.next_ticker if self.roller else None,
-            "session_mode": getattr(self.cal, "session", "24/7"), "security_source": self.spec.security_source,
+            "continuous_contract": bool(self.spec.kind == "futures"), "contract_policy": "continuous_only" if self.spec.kind == "futures" else "not_applicable",
+            "continuous_symbol": self.spec.tv_symbol or self.spec.ticker,
+            "provider_symbol": self.spec.ticker, "contract": None, "next_contract": None,
+            "session_mode": _session_mode(self.cal), "security_source": self.spec.security_source,
             "tf": self.chart_minutes, "mintick": self.mintick, "contract_size": self.em.contract_size, "multiplier": self.spec.multiplier,
             "chart_type": self.spec.chart_type, "fill_on": self.spec.fill_on, "slippage_ticks": self.spec.slippage_ticks,
+            "calculation_basis": {
+                "timeframe": self.spec.chart_tf, "timeframe_minutes": self.chart_minutes,
+                "chart_type": self.spec.chart_type, "fill_on": self.spec.fill_on,
+                "security_source": self.spec.security_source, "session": _session_mode(self.cal),
+            },
             "preset": self.cfg.preset or self.spec.preset, "inputs_sources": self.cfg.sources or [], "pts_scale": self.pts_scale,
             "price": mark, "price_age": (time.time() - self.last_price_ts) if self.last_price_ts else None,
             "feed_delay": self._feed_delay_at(int(time.time())),
@@ -974,16 +1043,19 @@ class AssetRunner:
             nb = self.cal.bucket_start(int(self.last_price_ts), self.chart_minutes)
             if nb > bars[-1].ts:
                 f_row = [nb, self.last_price, self.last_price, self.last_price, self.last_price, 0.0]
-        return _clean({"symbol": self.symbol, "tf": self.chart_minutes, "mintick": self.mintick, "chart_type": self.spec.chart_type,
+        return _clean({"symbol": self.symbol, "tf": self.chart_minutes, "mintick": self.mintick,
+                       "chart_type": self.spec.chart_type, "fill_on": self.spec.fill_on,
+                       "security_source": self.spec.security_source, "session": _session_mode(self.cal),
                        "bars": [[b.ts, b.o, b.h, b.l, b.c, b.v] for b in bars], "forming": f_row,
                        "overlays": ov, "fills": fills, "live_from": self.live_from_ts})
 
     def trades(self, limit: int = 100) -> List[Dict[str, Any]]:
         out = []
-        for t in self.em.closed[-limit:]:
+        start = max(0, len(self.em.closed) - limit)
+        for idx, t in enumerate(self.em.closed[start:], start=start):
             out.append({"id": t.entry_id, "dir": t.direction, "qty": t.qty, "entry": t.entry_price, "entry_ts": t.entry_ts, "exit": t.exit_price,
                         "exit_ts": t.exit_ts, "comment": t.exit_comment, "profit": t.profit, "kind": t.exit_kind,
-                        "live": bool(self.live_from_ts and t.exit_ts >= self.live_from_ts)})
+                        "live": self.live_from_ts is not None and idx >= self.live_closed_start})
         return out
 
 
@@ -1014,6 +1086,7 @@ class Portfolio:
         self.runners: Dict[str, AssetRunner] = {}
         self.order: List[str] = []
         self.started = time.time()
+        self.equity_epoch = self.started                 # paper equity chart covers only the active engine epoch
         self.paused = False
         self._threads: Dict[str, threading.Thread] = {}
         self._stop = threading.Event()
@@ -1043,9 +1116,8 @@ class Portfolio:
         return self.pts_ref_price
 
     def make_runner(self, spec: AssetSpec) -> AssetRunner:
-        if self.feed_mode == "file" and spec.roll == "volume":
-            spec.roll = "none"
-            self.journal.log("INFO", f"[{spec.symbol}] roll=none (ICARUS_FEED=file; FileFeed volumes are not CME 1!)")
+        if self.feed_mode == "file" and spec.kind == "futures":
+            self.journal.log("INFO", f"[{spec.symbol}] continuous futures identity preserved in file mode ({spec.tv_symbol or spec.ticker}); no expiry-contract roller")
         base_spec = replace(spec)
         inputs, meta, sources = resolve_inputs(spec, self.base_dir, self.profile, self.preset)
         if meta:
@@ -1071,14 +1143,15 @@ class Portfolio:
             return r
 
     def remove_asset(self, symbol: str) -> bool:
+        key = resolve(symbol).symbol
         with self._lock:
-            r = self.runners.pop(symbol.upper(), None)
+            r = self.runners.pop(key, None)
             if not r:
                 return False
-            self.order = [s for s in self.order if s != symbol.upper()]
+            self.order = [s for s in self.order if s != key]
             r.paused = True
             r._removed = True
-            self.journal.log("WARN", f"[{symbol.upper()}] removed from the engine")
+            self.journal.log("WARN", f"[{key}] removed from the engine")
             return True
 
     def preset_for(self, r: AssetRunner) -> Optional[str]:
@@ -1089,7 +1162,8 @@ class Portfolio:
                      *, preset: Any = _UNCHANGED, reset: bool = False,
                      chart: Optional[Dict[str, Any]] = None) -> AssetRunner:
         """Atomically apply strategy/chart configuration, then persist only after replay succeeds."""
-        r = self.runners[symbol.upper()]
+        key = resolve(symbol).symbol
+        r = self.runners[key]
         with r.lock:
             r.ensure_configurable()
             requested_chart = validate_chart_config(chart)
@@ -1123,19 +1197,17 @@ class Portfolio:
                     m = dict(m) if isinstance(m, dict) else {}
                     m.update(requested_chart)
                     pending_file["_meta"] = m
-                inputs, meta, sources = resolve_inputs(spec, self.base_dir, self.profile, name, pending_file,
-                                                      skip_asset_overrides=True)
+                inputs, meta, sources = resolve_inputs(
+                    spec, self.base_dir, self.profile, name, pending_file,
+                    skip_asset_overrides=True, extra_label=f"inputs.{r.symbol}.json"
+                )
                 spec = apply_spec_meta(spec, meta)
                 spec = apply_chart_config(spec, requested_chart)
 
             r.ensure_cached_timeframes(inputs)
             spec.chart_tf = r.ensure_cached_chart_timeframe(spec.chart_tf)
 
-            old = replace(r.spec)
-            old_chart_minutes = r.chart_minutes
-            old_inputs = r.inputs_base
-            old_sources = list(r.cfg.sources or [])
-            old_preset = r.cfg.preset
+            runtime_before = r.configuration_snapshot()
             tmp = path + ".tmp"
             try:
                 for field in ("chart_tf", "chart_type", "fill_on", "security_source", "slippage_ticks",
@@ -1143,7 +1215,7 @@ class Portfolio:
                     setattr(r.spec, field, getattr(spec, field))
                 if preset is not _UNCHANGED:
                     r.cfg.preset = spec.preset
-                r.rewarm(inputs, sources)
+                r.rewarm(inputs, sources, reset_live_boundary=True)
 
                 # Commit persistence after the successful replay. A failed replay therefore
                 # cannot leave the next process start on a configuration the live engine rejected.
@@ -1153,21 +1225,14 @@ class Portfolio:
                     os.replace(tmp, path)
                 elif delete_file:
                     os.remove(path)
+                self.equity_epoch = time.time()
             except Exception:
                 try:
                     if os.path.exists(tmp):
                         os.remove(tmp)
                 except OSError:
                     pass
-                for field in ("chart_tf", "chart_type", "fill_on", "security_source", "slippage_ticks",
-                              "commission", "capital", "session", "preset", "config_pins"):
-                    setattr(r.spec, field, getattr(old, field))
-                r.chart_minutes = old_chart_minutes
-                r.cfg.preset = old_preset
-                try:
-                    r.rewarm(old_inputs, old_sources)
-                except Exception as rollback_ex:
-                    r.runtime_error = f"configuration rollback failed: {rollback_ex}"
+                r.restore_configuration_snapshot(runtime_before)
                 raise
         return r
 
@@ -1235,7 +1300,8 @@ class Portfolio:
             "equity": eq, "capital": cap, "net": eq - cap, "live_profit": live_profit,
             "open_profit": sum(x["open_profit"] or 0.0 for x in rs), "positions": sum(1 for x in rs if x["position"]),
             "assets": rs, "log": list(self.journal.log_tail)[-80:],
-            "equity_series": self.journal.equity_series(min(86400.0, time.time() - self.started + 1.0)),
+            "equity_epoch": self.equity_epoch,
+            "equity_series": self.journal.equity_series(max_points=600, since_ts=max(self.started, self.equity_epoch)),
             "all_warm": all(r.warm for r in self.runners.values()) if self.runners else False,
             "preset": self.preset, "profile": self.profile, "pts_ref": {"symbol": self.pts_ref_symbol, "price": self.pts_ref_price},
         })
