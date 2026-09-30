@@ -59,3 +59,31 @@ def test_mcp_backtest_omits_unspecified_fill_mode_so_engine_can_inherit(monkeypa
     assert result["job"] == "j1"
     assert seen["path"] == "/admin/backtest"
     assert seen["body"] == {"asset": "NQ", "timeframe": "5"}
+
+
+def test_mcp_endpoint_settings_load_plant_env_and_blank_token_fallbacks(tmp_path, monkeypatch):
+    plant = tmp_path / "plant"
+    plant.mkdir()
+    (plant / ".env").write_text(
+        "ADMIN_TOKEN=bridge-admin\n"
+        "ICARUS_ADMIN_TOKEN=\n"
+        "ICARUS_BRIDGE_URL=http://127.0.0.1:9876\n"
+        "ICARUS_ENGINE_URL=http://127.0.0.1:9877\n"
+        "ICARUS_ENGINE_TOKEN=\n",
+        encoding="utf-8",
+    )
+    for key in (
+        "ADMIN_TOKEN", "ICARUS_ADMIN_TOKEN", "ICARUS_BRIDGE_URL",
+        "ICARUS_ENGINE_URL", "ICARUS_ENGINE_TOKEN",
+    ):
+        monkeypatch.delenv(key, raising=False)
+    monkeypatch.setenv("ICARUS_HOME", str(plant))
+
+    bridge_url, bridge_token, engine_url, engine_token = mcp_server._endpoint_settings()
+    assert bridge_url == "http://127.0.0.1:9876"
+    assert bridge_token == "bridge-admin"
+    assert engine_url == "http://127.0.0.1:9877"
+    assert engine_token == "bridge-admin"
+
+    monkeypatch.setenv("ICARUS_ENGINE_TOKEN", "engine-explicit")
+    assert mcp_server._endpoint_settings()[3] == "engine-explicit"

@@ -86,12 +86,23 @@ def cmd_start(args: argparse.Namespace) -> int:
     ensure(root)
     repo = repo_root()
     engine_url = f"http://127.0.0.1:{args.engine_port}/healthz"
-    if health_ok(engine_url):
-        print(f"already running: {engine_url.replace('/healthz', '/')}  token={args.token}")
-        print("  this does not switch Yahoo vs --offline. To change feed: icarus-plant stop  then start again.")
-        return 0
+    bridge_url = f"http://127.0.0.1:{args.bridge_port}/healthz"
     plant_pid = _read_pid(os.path.join(root, "run", "plant.pid"))
-    if plant_pid and _alive(plant_pid):
+    plant_alive = bool(plant_pid and _alive(plant_pid))
+    if health_ok(engine_url):
+        if not plant_alive:
+            print(f"engine is healthy at {engine_url.replace('/healthz', '/')} but no live plant supervisor owns it.")
+            print("  refusing to claim the plant is started; stop the leftover engine, then start the plant again.")
+            return 1
+        if args.bridge and not health_ok(bridge_url):
+            print(f"engine already running: {engine_url.replace('/healthz', '/')}")
+            print("  --bridge was requested but the bridge is not running.")
+            print("  stop the plant, then start again with --bridge so one supervisor owns both services.")
+            return 1
+        print(f"already running: {engine_url.replace('/healthz', '/')}  token={args.token}")
+        print("  this does not change feed/assets/preset/token. Stop the plant, then start again to change launch configuration.")
+        return 0
+    if plant_alive:
         print(f"plant already running pid={plant_pid} at {root}")
         return 0
     recs = ingest_drop(root)
@@ -151,6 +162,10 @@ def cmd_stop(args: argparse.Namespace) -> int:
             if not _alive(pid):
                 break
             time.sleep(0.25)
+        if _alive(pid):
+            print(f"stop requested but plant pid={pid} is still alive at {root}", file=sys.stderr)
+            print("  refusing to claim success or blindly force-kill a PID that could have been reused.", file=sys.stderr)
+            return 1
         print(f"stopped plant pid={pid} at {root}")
         return 0
     plant = Plant(root)
@@ -169,11 +184,19 @@ def cmd_status(args: argparse.Namespace) -> int:
     plant = Plant(root)
     engine_port = args.engine_port
     bridge_port = args.bridge_port
-    for name, url, pf in (
-        ("engine", f"http://127.0.0.1:{engine_port}/healthz", os.path.join(root, "run", "engine.pid")),
-        ("bridge", f"http://127.0.0.1:{bridge_port}/healthz", os.path.join(root, "run", "bridge.pid")),
-    ):
-        plant.add(Service(name=name, argv=[], health_url=url, cwd=root, pidfile=pf))
+    engine_pf = os.path.join(root, "run", "engine.pid")
+    bridge_pf = os.path.join(root, "run", "bridge.pid")
+    plant.add(Service(
+        name="engine", argv=[], health_url=f"http://127.0.0.1:{engine_port}/healthz",
+        cwd=root, pidfile=engine_pf,
+    ))
+    # The bridge is opt-in. Do not mark a healthy engine-only plant as failed
+    # just because no bridge service was ever launched.
+    if os.path.isfile(bridge_pf):
+        plant.add(Service(
+            name="bridge", argv=[], health_url=f"http://127.0.0.1:{bridge_port}/healthz",
+            cwd=root, pidfile=bridge_pf,
+        ))
     rep = plant.status()
     if args.json:
         print(json.dumps(rep, indent=2))
