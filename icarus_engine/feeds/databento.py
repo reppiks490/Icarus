@@ -15,6 +15,7 @@ import collections
 import os
 import threading
 import time
+from pathlib import Path
 from typing import Any, Deque, Dict, Iterable, List, Optional, Tuple
 
 from ..pine.timeframe import Bar
@@ -26,6 +27,22 @@ _NATIVE_SCHEMAS = {1: "ohlcv-1s", 60: "ohlcv-1m", 3600: "ohlcv-1h", 86400: "ohlc
 
 def databento_feed_mode() -> bool:
     return os.environ.get("ICARUS_FEED", "").strip().lower() in ("databento", "db")
+
+
+def _load_api_key() -> Optional[str]:
+    key = os.environ.get("DATABENTO_API_KEY")
+    if key:
+        return key
+    home = os.environ.get("ICARUS_HOME")
+    if home:
+        try:
+            from dotenv import load_dotenv  # type: ignore
+            p = Path(home).expanduser() / ".env"
+            if p.exists():
+                load_dotenv(p, override=False)
+        except Exception:
+            pass
+    return os.environ.get("DATABENTO_API_KEY") or None
 
 
 def continuous_symbol(product: str) -> str:
@@ -109,7 +126,7 @@ class Databento:
         live_factory: Any = None,
         live_buffer_seconds: int = 7200,
     ):
-        self.api_key = api_key or os.environ.get("DATABENTO_API_KEY") or None
+        self.api_key = api_key or _load_api_key()
         self.dataset = dataset
         self.live_enabled = bool(live)
         self._db = db_module
