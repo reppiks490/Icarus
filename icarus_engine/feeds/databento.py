@@ -40,6 +40,7 @@ _NATIVE_SCHEMAS = {
 }
 _PRICE_SCALE = 1_000_000_000.0
 _UNDEF_PRICE = (1 << 63) - 1
+_UNDEF_TS = (1 << 64) - 1
 
 
 @dataclass(frozen=True)
@@ -108,6 +109,10 @@ class Databento:
         self._subscriptions: Dict[str, set[str]] = collections.defaultdict(set)
         self._continuous_to_symbol: Dict[str, str] = {}
         self._instrument_to_symbol: Dict[int, str] = {}
+        # Historical replay can straddle a continuous roll. Preserve finite mapping
+        # windows for replay records while keeping exactly one unbounded/current
+        # instrument ID per logical continuous symbol.
+        self._instrument_windows: Dict[int, Tuple[str, Optional[int], Optional[int]]] = {}
         self._ready: Dict[str, threading.Event] = collections.defaultdict(threading.Event)
         self._second_bars: Dict[str, Deque[Bar]] = collections.defaultdict(
             lambda: collections.deque(maxlen=max(60, int(max_live_seconds)))
@@ -409,13 +414,15 @@ class Databento:
                 err = str(getattr(record, "err", "") or "Databento live error")
                 self._errors[symbol] = f"Databento live error code={code}: {err}"
                 self._ready[symbol].set()
-                self._meta[symbol] = {
+                meta = dict(self._meta.get(symbol, {}))
+                meta.update({
                     "regularMarketTime": self._feed_time.get(symbol, 0),
                     "provider": "databento",
                     "dataset": self.dataset,
                     "continuous_symbol": self.continuous_symbol(symbol, self.roll_rule),
                     "live_error": self._errors[symbol],
-                }
+                })
+                self._meta[symbol] = meta
                 return
             market_event = False
             # OHLCV record
@@ -448,14 +455,18 @@ class Databento:
                 self._feed_time[symbol] = max(now_sec, self._feed_time.get(symbol, 0))
                 self._ready[symbol].set()
                 self._errors.pop(symbol, None)
-            self._meta[symbol] = {
+            meta = dict(self._meta.get(symbol, {}))
+            meta.update({
                 "regularMarketTime": self._feed_time.get(symbol, 0),
                 "provider": "databento",
                 "dataset": self.dataset,
                 "continuous_symbol": self.continuous_symbol(symbol, self.roll_rule),
-            }
+            })
             if symbol in self._errors:
-                self._meta[symbol]["live_error"] = self._errors[symbol]
+                meta["live_error"] = self._errors[symbol]
+            else:
+                meta.pop("live_error", None)
+            self._meta[symbol] = meta
 
     def _dispatch_live(self, symbol: str, record: Any) -> None:
         """Contain record-conversion failures inside feed health instead of killing the reader."""
@@ -486,21 +497,59 @@ class Databento:
             return None
 
     @staticmethod
-    def _mapping_symbol(record: Any) -> str:
-        value = getattr(record, "stype_in_symbol", "")
+    def _mapping_text(record: Any, field: str) -> str:
+        value = getattr(record, field, "")
         if isinstance(value, bytes):
             value = value.split(b"\0", 1)[0].decode("utf-8", "replace")
         return str(value or "").split("\0", 1)[0].strip()
+
+    @classmethod
+    def _mapping_symbol(cls, record: Any) -> str:
+        return cls._mapping_text(record, "stype_in_symbol")
+
+    @staticmethod
+    def _mapping_bound(record: Any, field: str) -> Optional[int]:
+        try:
+            value = int(getattr(record, field, _UNDEF_TS))
+        except (TypeError, ValueError, OverflowError):
+            return None
+        return None if value in (0, _UNDEF_TS) else value
 
     def _dispatch_shared_live(self, record: Any) -> None:
         """Route one record from the shared GLBX.MDP3 session to its ICARUS symbol."""
         mapping = self._mapping_symbol(record)
         iid = self._instrument_id(record)
         if mapping:
+            raw_symbol = self._mapping_text(record, "stype_out_symbol")
+            start_ns = self._mapping_bound(record, "start_ts")
+            end_ns = self._mapping_bound(record, "end_ts")
             with self._lock:
                 key = self._continuous_to_symbol.get(mapping)
                 if key is not None and iid is not None:
+                    # An unbounded mapping is Databento's current live resolution.
+                    # Retire any previous unbounded/current ID for this logical
+                    # continuous symbol, but preserve finite replay windows so a
+                    # five-minute refresh spanning a roll still routes correctly.
+                    if start_ns is None and end_ns is None:
+                        for old_iid, window in list(self._instrument_windows.items()):
+                            old_key, old_start, old_end = window
+                            if old_key == key and old_iid != iid and old_start is None and old_end is None:
+                                self._instrument_windows.pop(old_iid, None)
+                                self._instrument_to_symbol.pop(old_iid, None)
                     self._instrument_to_symbol[iid] = key
+                    self._instrument_windows[iid] = (key, start_ns, end_ns)
+                    meta = dict(self._meta.get(key, {}))
+                    meta.update({
+                        "provider": "databento",
+                        "dataset": self.dataset,
+                        "continuous_symbol": mapping,
+                        "resolved_instrument_id": iid,
+                        "resolved_raw_symbol": raw_symbol or None,
+                        "mapping_start_ns": start_ns,
+                        "mapping_end_ns": end_ns,
+                        "regularMarketTime": self._feed_time.get(key, 0),
+                    })
+                    self._meta[key] = meta
             return
 
         # ErrorMsg has no guaranteed instrument mapping. Route symbol-specific errors
@@ -520,6 +569,13 @@ class Databento:
 
         with self._lock:
             key = self._instrument_to_symbol.get(iid) if iid is not None else None
+            if key is not None and iid is not None:
+                window = self._instrument_windows.get(iid)
+                if window is not None and hasattr(record, "ts_event"):
+                    _, start_ns, end_ns = window
+                    ts_ns = int(getattr(record, "ts_event"))
+                    if (start_ns is not None and ts_ns < start_ns) or (end_ns is not None and ts_ns >= end_ns):
+                        key = None
             if key is not None and key not in self._live_started:
                 key = None
             if key is None and iid is None and len(self._live_started) == 1:
@@ -625,6 +681,7 @@ class Databento:
                     self._subscriptions.clear()
                     self._continuous_to_symbol.clear()
                     self._instrument_to_symbol.clear()
+                    self._instrument_windows.clear()
                     self._ready.clear()
                     self._errors.clear()
                 raise
@@ -701,6 +758,7 @@ class Databento:
                     self._subscriptions.clear()
                     self._continuous_to_symbol.clear()
                     self._instrument_to_symbol.clear()
+                    self._instrument_windows.clear()
                     self._ready.clear()
                     self._errors.clear()
                 raise
@@ -741,6 +799,7 @@ class Databento:
             self._subscriptions.clear()
             self._continuous_to_symbol.clear()
             self._instrument_to_symbol.clear()
+            self._instrument_windows.clear()
             self._ready.clear()
             self._errors.clear()
 
