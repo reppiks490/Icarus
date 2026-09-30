@@ -112,17 +112,6 @@ def inspect(base_dir: str | None = None, *, today: date | None = None) -> Dict[s
     _check(items, "ICARUS_FEED / ICARUS_HOME", True,
            f"ICARUS_FEED={feed}  ICARUS_HOME={home or '(cwd)'} — file = HistoryHub; yahoo = delayed continuous; databento = live GLBX.MDP3",
            level="ok")
-    if feed == "databento":
-        sdk_ok = importlib.util.find_spec("databento") is not None
-        key_ok = bool(os.environ.get("DATABENTO_API_KEY"))
-        _check(
-            items,
-            "Databento adapter prerequisites",
-            sdk_ok and key_ok,
-            f"SDK={'installed' if sdk_ok else 'missing'}  DATABENTO_API_KEY={'set' if key_ok else 'missing'} — no network request made",
-            level="fail",
-        )
-
     env_path = os.path.join(root, ".env")
     _check(items, ".env present", os.path.isfile(env_path),
            env_path if os.path.isfile(env_path) else "copy icarus_bridge/.env.example — required only for the Alpaca bridge",
@@ -141,6 +130,19 @@ def inspect(base_dir: str | None = None, *, today: date | None = None) -> Dict[s
         _check(items, "ADMIN_TOKEN", secrets.get("ADMIN_TOKEN", "change-me-too") not in ("", "change-me-too", "replace-me-too", "replace-me"),
                "still the default",
                level="fail")
+
+    if feed == "databento":
+        sdk_ok = importlib.util.find_spec("databento") is not None
+        key = (os.environ.get("DATABENTO_API_KEY") or secrets.get("DATABENTO_API_KEY") or "").strip()
+        dataset = (os.environ.get("DATABENTO_DATASET") or secrets.get("DATABENTO_DATASET") or "GLBX.MDP3").strip()
+        rule = (os.environ.get("DATABENTO_ROLL_RULE") or secrets.get("DATABENTO_ROLL_RULE") or "v").strip().lower()
+        ok = sdk_ok and bool(key) and dataset == "GLBX.MDP3" and rule in ("v", "n", "c")
+        detail = (
+            f"SDK={'installed' if sdk_ok else 'missing'}  "
+            f"DATABENTO_API_KEY={'set' if key else 'missing'}  dataset={dataset or '(blank)'}  roll_rule={rule or '(blank)'} "
+            "— no network request made"
+        )
+        _check(items, "Databento adapter prerequisites", ok, detail, level="fail")
 
     bak = [n for n in ("icarus_engine/runtime_v1.py.bak", "icarus_engine/cli_v1.py.bak") if os.path.isfile(os.path.join(root, n))]
     _check(items, "editor leftovers (.bak)", not bak,
