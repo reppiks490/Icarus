@@ -596,7 +596,8 @@ class Databento:
                 row = self._event_record(record)
                 with self._lock:
                     self._depth[key].append(row)
-                    self._depth_errors.pop(key, None)
+                    if not self._depth_broken:
+                        self._depth_errors.pop(key, None)
                     self._depth_ready[key].set()
         except Exception as ex:
             with self._lock:
