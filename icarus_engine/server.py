@@ -412,6 +412,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                                 "sources": list(r.cfg.sources or []),
                                 "preset": r.cfg.preset,
                                 "live_from_ts": r.live_from_ts,
+                                "live_closed_start": r.live_closed_start,
                                 "override_path": override_path,
                                 "override_bytes": (Path(override_path).read_bytes() if os.path.exists(override_path) else None),
                             }
@@ -442,6 +443,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                                     r.cfg.preset = snap["preset"]
                                     r.rewarm(copy.deepcopy(snap["inputs"]), list(snap["sources"]), reset_live_boundary=False)
                                     r.live_from_ts = snap["live_from_ts"]
+                                    r.live_closed_start = snap["live_closed_start"]
                                 except Exception as rollback_ex:
                                     rollback_errors.append(f"{r.symbol}: {type(rollback_ex).__name__}: {rollback_ex}")
                             if rollback_errors:
