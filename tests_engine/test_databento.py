@@ -349,6 +349,22 @@ def test_mbo_snapshot_omits_non_mbo_stream_records():
     assert rows[0]["order_id"] == 7
 
 
+def test_replay_rows_cannot_rewind_live_price_or_trade_tape():
+    feed = make_feed()
+    feed._live_callback("NQ=F", Ohlcv(2_000, 200, 201, 199, 200.5, 1))
+    feed._live_callback("NQ=F", Ohlcv(1_999, 100, 101, 99, 100.5, 9))
+    assert len(feed._second_bars["NQ=F"]) == 1
+    assert feed._second_bars["NQ=F"][-1].ts == 2_000
+    assert feed._last_price["NQ=F"] == 200.5
+
+    feed._live_callback("NQ=F", Trade(2_001, 201.0, 1, sequence=10))
+    feed._live_callback("NQ=F", Trade(2_000, 99.0, 1, sequence=9))
+    ticks = list(feed._trades["NQ=F"])
+    assert len(ticks) == 1
+    assert ticks[-1].price == 201.0
+    assert feed._last_price["NQ=F"] == 201.0
+
+
 def test_shared_live_start_failure_resets_client_for_clean_retry():
     class FailStart(FakeLive):
         def __init__(self):
@@ -433,6 +449,55 @@ def test_all_registered_futures_share_one_live_session():
     assert live.stopped is False
     feed.stop_live()
     assert live.stopped is True
+
+
+def test_daily_refresh_preserves_exact_per_symbol_schema_sets():
+    first = FakeLive()
+    second = FakeLive()
+    feed = make_feed(lives=[first, second])
+    feed.prepare_live(["NQ=F", "ES=F"])
+    feed.depth_events("NQ=F", schema="mbo")
+    assert any(sub["schema"] == "mbo" and sub["symbols"] == "NQ.v.0" for sub in first.subscriptions)
+    assert not any(sub["schema"] == "mbo" and sub["symbols"] == "ES.v.0" for sub in first.subscriptions)
+
+    feed.refresh_live(["NQ=F", "ES=F"], start_ts=5_000)
+    assert first.stopped is True
+    assert second.started is True
+    nq_schemas = {sub["schema"] for sub in second.subscriptions if sub["symbols"] == "NQ.v.0"}
+    es_schemas = {sub["schema"] for sub in second.subscriptions if sub["symbols"] == "ES.v.0"}
+    assert nq_schemas == {"ohlcv-1s", "trades", "mbo"}
+    assert es_schemas == {"ohlcv-1s", "trades"}
+    assert all("start" in sub for sub in second.subscriptions)
+
+
+def test_failed_daily_refresh_keeps_desired_depth_for_retry():
+    class FailStart(FakeLive):
+        def __init__(self):
+            super().__init__()
+            self.terminated = False
+
+        def start(self):
+            raise RuntimeError("refresh failed")
+
+        def terminate(self):
+            self.terminated = True
+
+    first = FakeLive()
+    bad = FailStart()
+    good = FakeLive()
+    feed = make_feed(lives=[first, bad, good])
+    feed.prepare_live(["NQ=F", "ES=F"])
+    feed.depth_events("NQ=F", schema="mbp-10")
+
+    with pytest.raises(RuntimeError, match="refresh failed"):
+        feed.refresh_live(["NQ=F", "ES=F"], start_ts=5_000)
+    assert bad.terminated is True
+
+    feed.refresh_live(["NQ=F", "ES=F"], start_ts=5_100)
+    nq_schemas = {sub["schema"] for sub in good.subscriptions if sub["symbols"] == "NQ.v.0"}
+    es_schemas = {sub["schema"] for sub in good.subscriptions if sub["symbols"] == "ES.v.0"}
+    assert nq_schemas == {"ohlcv-1s", "trades", "mbp-10"}
+    assert es_schemas == {"ohlcv-1s", "trades"}
 
 
 def test_shared_session_detach_readd_does_not_duplicate_or_misroute():
@@ -530,6 +595,44 @@ def test_dynamic_future_add_prepares_live_before_spawn(monkeypatch, tmp_path):
     runner = port.add_asset(resolve("NQ"), start=True)
     assert runner.symbol == "NQ"
     assert events == [("prepare", ("NQ=F",)), ("spawn", "NQ")]
+
+
+def test_portfolio_refreshes_continuous_feed_once_on_new_utc_day(tmp_path):
+    calls = []
+
+    class Feed:
+        def refresh_live(self, symbols, start_ts=None):
+            calls.append((tuple(symbols), start_ts))
+
+    feed = Feed()
+    port = Portfolio(Journal(":memory:"), str(tmp_path))
+    port._continuous_refresh_day = 100
+    port.runners = {
+        "NQ": SimpleNamespace(feed=feed, spec=resolve("NQ")),
+        "ES": SimpleNamespace(feed=feed, spec=resolve("ES")),
+    }
+    port.order = ["NQ", "ES"]
+    now = 101 * 86400 + 123
+    assert port._refresh_continuous_feeds(now) is True
+    assert calls == [(("NQ=F", "ES=F"), int(now) - 300)]
+    assert port._continuous_refresh_day == 101
+    assert port._refresh_continuous_feeds(now + 60) is False
+    assert len(calls) == 1
+
+
+def test_portfolio_does_not_advance_roll_day_when_refresh_fails(tmp_path):
+    class Feed:
+        def refresh_live(self, symbols, start_ts=None):
+            raise RuntimeError("refresh unavailable")
+
+    feed = Feed()
+    port = Portfolio(Journal(":memory:"), str(tmp_path))
+    port._continuous_refresh_day = 100
+    port.runners = {"NQ": SimpleNamespace(feed=feed, spec=resolve("NQ"))}
+    port.order = ["NQ"]
+    with pytest.raises(RuntimeError, match="refresh unavailable"):
+        port._refresh_continuous_feeds(101 * 86400)
+    assert port._continuous_refresh_day == 100
 
 
 def test_portfolio_databento_mode_routes_futures_transport(monkeypatch, tmp_path):
