@@ -407,12 +407,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                         for r in targets:
                             override_path = os.path.join(port.base_dir, f"inputs.{r.symbol}.json")
                             snapshots[r.symbol] = {
-                                "spec": copy.deepcopy(r.spec),
-                                "inputs": copy.deepcopy(r.inputs_base),
-                                "sources": list(r.cfg.sources or []),
-                                "preset": r.cfg.preset,
-                                "live_from_ts": r.live_from_ts,
-                                "live_closed_start": r.live_closed_start,
+                                "runtime": r.configuration_snapshot(),
                                 "override_path": override_path,
                                 "override_bytes": (Path(override_path).read_bytes() if os.path.exists(override_path) else None),
                             }
@@ -437,13 +432,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                                         tmp = pth + ".batch-rollback.tmp"
                                         Path(tmp).write_bytes(raw_before)
                                         os.replace(tmp, pth)
-                                    # Preserve the AssetSpec object identity shared with RunnerConfig.
-                                    r.spec.__dict__.clear()
-                                    r.spec.__dict__.update(copy.deepcopy(snap["spec"].__dict__))
-                                    r.cfg.preset = snap["preset"]
-                                    r.rewarm(copy.deepcopy(snap["inputs"]), list(snap["sources"]), reset_live_boundary=False)
-                                    r.live_from_ts = snap["live_from_ts"]
-                                    r.live_closed_start = snap["live_closed_start"]
+                                    r.restore_configuration_snapshot(snap["runtime"])
                                 except Exception as rollback_ex:
                                     rollback_errors.append(f"{r.symbol}: {type(rollback_ex).__name__}: {rollback_ex}")
                             if rollback_errors:
