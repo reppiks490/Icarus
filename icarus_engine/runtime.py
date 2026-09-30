@@ -867,17 +867,24 @@ class AssetRunner:
 
 
     def ensure_cached_chart_timeframe(self, timeframe: object) -> str:
-        """Prove the cached tape can construct the requested chart without inventing finer bars."""
+        """Prove the cache contains genuine bars fine enough for the requested chart.
+
+        Mixed caches are valid: e.g. Yahoo may retain older 5m bars for HTF state
+        plus a recent 1m tail. For a 1m/2m chart the 5m rows still feed compatible
+        HTF chains, while the chart aggregator naturally ignores them. No finer
+        chart bars are synthesized from coarser data.
+        """
         tf = normalize_chart_timeframe(timeframe)
         minutes = tf_minutes(tf)
         if minutes == self.chart_minutes:
             return tf
         if not self.subbars:
             raise ValueError(f"{self.symbol}: no cached sub-bars are available to rebuild a {tf} chart")
-        incompatible = sorted({int(sub) for _, sub in self.subbars if int(sub) > minutes or minutes % int(sub) != 0})
-        if incompatible:
+        compatible = [(b, int(sub)) for b, sub in self.subbars if int(sub) <= minutes and minutes % int(sub) == 0]
+        if not compatible:
+            have = sorted({int(sub) for _, sub in self.subbars})
             raise ValueError(
-                f"{self.symbol}: cached source bars {incompatible}m cannot be losslessly rebuilt as {tf}; "
+                f"{self.symbol}: cached source bars {have}m cannot be losslessly rebuilt as {tf}; "
                 "load 1-minute history first"
             )
         return tf
