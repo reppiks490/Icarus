@@ -222,6 +222,32 @@ def test_live_error_message_fails_closed_instead_of_silently_waiting():
     assert "failed to resolve" in meta["live_error"]
 
 
+def test_fatal_core_error_cannot_be_cleared_by_buffered_market_data_before_reconnect():
+    live = FakeLive({
+        "ohlcv-1s": [
+            Error("invalid core subscription", code=5),
+            Ohlcv(1_001, 100, 101, 99, 100.5, 1),
+        ]
+    })
+    feed = make_feed(lives=[live])
+
+    with pytest.raises(RuntimeError, match="code=5.*invalid core subscription"):
+        feed.recent_ex("NQ=F", 1)
+    assert feed._second_bars["NQ=F"]  # buffered data arrived after the fatal error
+    meta = feed.meta("NQ=F")
+    assert meta["core_session_ok"] is False
+    assert "invalid core subscription" in meta["live_error"]
+
+    # A real SDK reconnect establishes a new integrity boundary. Only a subsequent
+    # valid market event may clear the prior fatal error.
+    live.reconnect_callback("before", "after")
+    live.callback(Trade(1_002, 101.0, 1, sequence=2))
+    feed._raise_live_error("NQ=F")
+    meta = feed.meta("NQ=F")
+    assert meta["core_session_ok"] is True
+    assert "live_error" not in meta
+
+
 def test_undefined_databento_price_is_never_promoted_to_a_fake_market_price():
     undef = (1 << 63) - 1
     row = Depth(1_500, 100.0, order_id=11)
