@@ -160,7 +160,7 @@ def export_paper_book(db_path: str, out_path: str, *, live_only: bool = False) -
 def write_paper_csv(con: sqlite3.Connection, path: str, *, live_only: bool = False) -> int:
     """Write the paper book. Not a broker statement. Not CME.
 
-    Grok (xAI) — 2026-09-20. ``live=0`` is warmup replay; ``live=1`` is since go-live.
+    Grok (xAI) — 2026-09-20. Journal ``live=0`` is replay; ``live=1`` records fills processed live. In-memory epoch metrics reset on successful warm/re-warm.
     """
     from datetime import datetime, timezone
     try:
@@ -1119,7 +1119,7 @@ class Portfolio:
         self.runners: Dict[str, AssetRunner] = {}
         self.order: List[str] = []
         self.started = time.time()
-        self.equity_epoch = self.started                 # paper equity chart covers only the active configuration regime
+        self.equity_epoch = self.started                 # paper equity chart covers only the active engine epoch
         self.paused = False
         self._threads: Dict[str, threading.Thread] = {}
         self._stop = threading.Event()
