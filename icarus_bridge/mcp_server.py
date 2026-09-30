@@ -13,7 +13,7 @@ import os
 from typing import Any, Dict, Optional
 
 import httpx
-from mcp.server import MCPServer
+from mcp.server.mcpserver import MCPServer
 
 BASE = os.environ.get("ICARUS_BRIDGE_URL", "http://127.0.0.1:8787").rstrip("/")
 TOKEN = os.environ.get("ICARUS_ADMIN_TOKEN", "")
