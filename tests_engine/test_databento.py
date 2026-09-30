@@ -534,22 +534,36 @@ def test_real_live_factory_requests_heartbeats_reconnect_and_no_skip():
     assert captured["slow_reader_behavior"] == "warn"
 
 
-def test_reconnect_gap_is_published_in_feed_metadata():
-    live = FakeLive({"ohlcv-1s": [Ohlcv(1000, 100, 101, 99, 100.5)]})
-    feed = make_feed(lives=[live])
+def test_reconnect_gap_is_published_and_repaired_on_next_poll(monkeypatch):
+    monkeypatch.setattr("icarus_engine.feeds.databento.time.time", lambda: 1_100)
+    live1 = FakeLive({"ohlcv-1s": [Ohlcv(1_000, 100, 101, 99, 100.5)]})
+    live2 = FakeLive({"ohlcv-1s": [Ohlcv(1_000, 200, 201, 199, 200.5)]})
+    feed = make_feed(lives=[live1, live2])
     feed.recent_ex("NQ=F", 1)
-    assert callable(live.reconnect_callback)
-    assert callable(live.reconnect_exception_callback)
-    live.reconnect_callback("2026-09-30T10:00:00Z", "2026-09-30T10:00:02Z")
+    assert callable(live1.reconnect_callback)
+    assert callable(live1.reconnect_exception_callback)
+    live1.reconnect_callback("2026-09-30T10:00:00Z", "2026-09-30T10:00:02Z")
     meta = feed.meta("NQ=F")
     assert meta["reconnect_count"] == 1
     assert meta["last_reconnect_gap"]["previous"].endswith("10:00:00Z")
     assert meta["last_reconnect_gap"]["resumed"].endswith("10:00:02Z")
-    # Later market data must not erase reconnect diagnostics.
+    assert meta["recovery_pending"] is True
+    assert "reconnect gap" in meta["live_error"]
+
+    # A later record must not hide the outstanding gap before explicit replay.
     feed._live_callback("NQ=F", Trade(1_001, 100.75, 1))
+    assert feed.meta("NQ=F")["recovery_pending"] is True
+
+    # The next ordinary feed call performs the controlled replay and replaces the
+    # overlap rather than merely recording the outage.
+    feed.start_live("NQ=F")
+    assert live1.stopped is True and live2.started is True
     meta = feed.meta("NQ=F")
     assert meta["reconnect_count"] == 1
-    assert meta["last_reconnect_gap"]["previous"].endswith("10:00:00Z")
+    assert meta["recovery_count"] == 1
+    assert meta["recovery_pending"] is False
+    assert "reconnect gap" in meta["last_recovery_reason"]
+    assert [b.c for b in feed._second_bars["NQ=F"]] == [200.5]
 
 
 def test_live_continuous_mapping_is_recorded_without_faking_market_readiness():
