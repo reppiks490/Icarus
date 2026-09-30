@@ -175,9 +175,12 @@ def test_continuous_volume_front_symbology_and_capabilities(monkeypatch):
     assert caps["continuous_futures"] is True
     assert caps["continuous_rule"] == "volume_front"
     assert caps["continuous_rule_code"] == "v"
-    assert caps["live_session_model"] == "shared_core_plus_isolated_depth_per_dataset"
+    assert caps["live_session_model"] == "shared_core_plus_schema_isolated_depth_per_dataset"
+    assert caps["persistent_live_sessions_max"] == 3
+    assert caps["snapshot_sessions_serialized"] is True
     assert caps["live_symbol_routing"] == "SymbolMappingMsg/instrument_id"
     assert caps["depth_failure_isolation"] is True
+    assert caps["depth_schema_isolation"] is True
     assert caps["continuous_live_refresh"] == "automatic_utc_day"
     assert caps["minimum_ohlcv_resolution_seconds"] == 1
     assert caps["ticks"] is True
@@ -277,21 +280,22 @@ def test_symbol_resolution_error_remains_scoped_on_shared_core_session():
     assert feed.meta("ES=F")["core_session_ok"] is True
 
 
-def test_fatal_depth_session_error_marks_every_active_depth_symbol_failed_closed():
+def test_fatal_depth_session_error_marks_every_symbol_on_that_schema_failed_closed():
     feed = make_feed()
-    feed._depth_live_symbols.update({"NQ=F", "ES=F"})
-    feed._depth_continuous_to_symbol.update({"NQ.v.0": "NQ=F", "ES.v.0": "ES=F"})
+    feed._depth_live_symbols["mbp-10"].update({"NQ=F", "ES=F"})
+    feed._depth_continuous_to_symbol["mbp-10"].update({"NQ.v.0": "NQ=F", "ES.v.0": "ES=F"})
     feed._depth_wanted["NQ=F"].add("mbp-10")
     feed._depth_wanted["ES=F"].add("mbp-10")
 
-    feed._dispatch_depth_live(Error("NQ.v.0 invalid depth subscription", code=5))
+    feed._dispatch_depth_live("mbp-10", Error("NQ.v.0 invalid depth subscription", code=5))
 
     with pytest.raises(RuntimeError, match="code=5"):
-        feed._raise_depth_error("NQ=F")
+        feed._raise_depth_error("NQ=F", "mbp-10")
     with pytest.raises(RuntimeError, match="code=5"):
-        feed._raise_depth_error("ES=F")
+        feed._raise_depth_error("ES=F", "mbp-10")
     assert feed.meta("NQ=F")["depth_session_ok"] is False
-    assert feed.meta("ES=F")["depth_session_ok"] is False
+    assert feed.meta("NQ=F")["depth_schema_health"]["mbp-10"] is False
+    assert feed.meta("NQ=F")["depth_schema_health"]["mbo"] is True
 
 
 def test_symbol_resolution_failure_rearms_only_failed_core_symbol():
@@ -446,8 +450,9 @@ def test_live_second_bars_trades_and_depth_use_core_plus_isolated_depth_sessions
     depth = Depth(1_060, 106.25, levels=[Level(106.0, 106.25)])
     mbo = Depth(1_061, 106.25, order_id=99)
     core = FakeLive({"ohlcv-1s": second_rows, "trades": [trade]})
-    book = FakeLive({"mbp-10": [depth], "mbo": [mbo]})
-    feed = make_feed(lives=[core, book])
+    mbp_book = FakeLive({"mbp-10": [depth]})
+    mbo_book = FakeLive({"mbo": [mbo]})
+    feed = make_feed(lives=[core, mbp_book, mbo_book])
 
     bars, ft, px = feed.recent_ex("NQ=F", 60)
     assert len(bars) == 2  # 1000-1019 partial UTC minute + 1020-1059 full minute
@@ -463,12 +468,12 @@ def test_live_second_bars_trades_and_depth_use_core_plus_isolated_depth_sessions
     assert depth_rows and depth_rows[-1]["levels"][0]["bid_px"] == 106.0
     assert depth_rows[-1]["schema"] == "mbp-10"
     assert depth_rows[-1]["ts_event_ns"] == 1_060 * NS
-    assert [s["schema"] for s in book.subscriptions] == ["mbp-10"]
+    assert [s["schema"] for s in mbp_book.subscriptions] == ["mbp-10"]
 
     mbo_rows = feed.depth_events("NQ=F", schema="mbo")
     assert mbo_rows and mbo_rows[-1]["order_id"] == 99
     assert mbo_rows[-1]["schema"] == "mbo"
-    assert [s["schema"] for s in book.subscriptions] == ["mbp-10", "mbo"]
+    assert [s["schema"] for s in mbo_book.subscriptions] == ["mbo"]
     assert all(row["schema"] == "mbo" for row in mbo_rows)
     assert all(row["schema"] == "mbp-10" for row in depth_rows)
 
@@ -497,8 +502,9 @@ def test_depth_mbo_trade_cannot_duplicate_core_tape_or_move_core_mark():
 
 def test_depth_readiness_is_independent_per_symbol_and_schema():
     core = FakeLive()
-    book = FakeLive({"mbp-10": [Depth(1_000, 100.5, levels=[Level(100.25, 100.5)])]})
-    feed = make_feed(lives=[core, book])
+    mbp_book = FakeLive({"mbp-10": [Depth(1_000, 100.5, levels=[Level(100.25, 100.5)])]})
+    mbo_book = FakeLive()
+    feed = make_feed(lives=[core, mbp_book, mbo_book])
     feed.start_live("NQ=F")
     assert feed.depth_events("NQ=F", schema="mbp-10")
     assert feed._depth_ready[("NQ=F", "mbp-10")].is_set() is True
@@ -507,6 +513,25 @@ def test_depth_readiness_is_independent_per_symbol_and_schema():
     feed._prepare_depth_live(["NQ=F"], "mbo")
     assert feed._depth_ready[("NQ=F", "mbo")].is_set() is False
     assert feed._depth_ready[("NQ=F", "mbp-10")].is_set() is True
+
+
+def test_mbo_subscription_failure_does_not_poison_working_mbp10():
+    core = FakeLive()
+    mbp_book = FakeLive({"mbp-10": [Depth(1_000, 100.5, levels=[Level(100.25, 100.5)])]})
+    mbo_book = FakeLive({"mbo": [Error("MBO entitlement missing", code=5)]})
+    feed = make_feed(lives=[core, mbp_book, mbo_book])
+
+    feed.start_live("NQ=F")
+    assert feed.depth_events("NQ=F", schema="mbp-10")
+    with pytest.raises(RuntimeError, match="MBO entitlement missing"):
+        feed.depth_events("NQ=F", schema="mbo")
+
+    # The MBP-10 session and its data remain healthy.
+    assert feed.depth_events("NQ=F", schema="mbp-10")
+    meta = feed.meta("NQ=F")
+    assert meta["depth_schema_health"]["mbp-10"] is True
+    assert meta["depth_schema_health"]["mbo"] is False
+    assert "mbo" in meta["depth_errors"]
 
 
 def test_fatal_depth_subscription_error_does_not_poison_core_session():
