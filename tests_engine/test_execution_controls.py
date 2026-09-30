@@ -293,3 +293,28 @@ def test_admin_pause_flatten_and_config_success_are_completed_on_return(admin):
     status, response = post("/admin/flatten", {"asset": "TEST", "confirm": True})
     assert status == 200 and response["closed"] == {"TEST": 0}
     assert not r.em._pending_entries
+
+
+def test_chart_configuration_rebuilds_paper_engine_and_persists_meta(configured):
+    port, r, path = configured
+    r.subbars = [(Bar(k * 60, 100 + k, 101 + k, 99 + k, 100.5 + k, 1), 1) for k in range(12)]
+    port.rewarm_asset("TEST", {}, True, chart={
+        "timeframe": "2m", "chart_type": "heikin_ashi", "fill_on": "real", "security_source": "chart"
+    })
+    assert r.chart_minutes == 2
+    assert r.spec.chart_tf == "2" and r.spec.chart_type == "heikin_ashi"
+    assert r.spec.fill_on == "real" and r.spec.security_source == "chart"
+    persisted = json.loads(path.read_text())
+    assert persisted["_meta"]["timeframe"] == "2"
+    assert persisted["_meta"]["chart_type"] == "heikin_ashi"
+    assert len(r.bars) == 6
+
+
+def test_chart_configuration_refuses_to_invent_finer_bars(configured):
+    port, r, path = configured
+    before = path.read_bytes()
+    r.subbars = [(Bar(k * 300, 100, 101, 99, 100, 1), 5) for k in range(6)]
+    with pytest.raises(ValueError, match="cannot be losslessly rebuilt"):
+        port.rewarm_asset("TEST", {}, True, chart={"timeframe": "2"})
+    assert path.read_bytes() == before
+    assert r.chart_minutes == 1
