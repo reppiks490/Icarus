@@ -562,6 +562,26 @@ def test_continuous_resolution_failure_is_fail_closed():
         feed.start_live("NQ=F")
 
 
+def test_remove_asset_releases_its_databento_live_session(monkeypatch, tmp_path):
+    class Feed:
+        def __init__(self):
+            self.stopped = []
+        def stop_live(self, symbol=None):
+            self.stopped.append(symbol)
+
+    feed = Feed()
+    monkeypatch.setenv("ICARUS_FEED", "databento")
+    monkeypatch.setattr("icarus_engine.runtime.Databento", lambda: feed)
+    port = Portfolio(Journal(":memory:"), str(tmp_path))
+    runner = SimpleNamespace(spec=resolve("NQ"), feed=feed, paused=False, _removed=False)
+    port.runners["NQ"] = runner
+    port.order = ["NQ"]
+    assert port.remove_asset("NQ") is True
+    assert feed.stopped == ["NQ=F"]
+    assert runner.paused is True and runner._removed is True
+    port.journal.con.close()
+
+
 def test_portfolio_stop_closes_databento_live_sessions(monkeypatch, tmp_path):
     class Feed:
         def __init__(self):
