@@ -25,7 +25,7 @@ import time
 from typing import Optional
 
 from . import brand
-from .assets import REGISTRY, parse_spec
+from .assets import REGISTRY, parse_spec, pin_config
 from .feeds.bars import file_feed_mode  # Grok (xAI) — 2026-09-20
 from .runtime import AssetRunner, Journal, Portfolio, export_paper_book, resolve_inputs
 
@@ -58,19 +58,27 @@ def _portfolio(args: argparse.Namespace, journal: Journal) -> Portfolio:
     port = Portfolio(journal, _base_dir(), poll_sec=getattr(args, "poll", 5.0), profile=args.profile, preset=args.preset,
                      warmup_bars=args.warmup, pts_ref_symbol=args.pts_ref_symbol)
     for tok in [a for a in args.assets.split(",") if a.strip()]:
-        spec = parse_spec(tok, args.tf)
+        spec = parse_spec(tok, getattr(args, "tf", None) or "20")
+        if getattr(args, "tf", None) is not None and "@" not in tok:
+            spec = pin_config(spec, "timeframe")
         if args.fill_on:
             spec.fill_on = args.fill_on
+            spec = pin_config(spec, "fill_on")
         if args.chart_type:
             spec.chart_type = args.chart_type
+            spec = pin_config(spec, "chart_type")
         if args.slippage is not None:
             spec.slippage_ticks = args.slippage
-        if args.capital:
+            spec = pin_config(spec, "slippage_ticks")
+        if args.capital is not None:
             spec.capital = args.capital
+            spec = pin_config(spec, "capital")
         if getattr(args, "session", None) and spec.calendar == "cme":
             spec.session = args.session
+            spec = pin_config(spec, "session")
         if getattr(args, "security_source", None):
             spec.security_source = args.security_source
+            spec = pin_config(spec, "security_source")
         if getattr(args, "roll", None):
             spec.roll = args.roll
         port.add_asset(spec, start=False)
@@ -115,9 +123,9 @@ def cmd_run(args: argparse.Namespace) -> int:
     from .server import serve
     journal = Journal(_journal_path(args))
     port = _portfolio(args, journal)
-    journal.log("INFO", f"ICARUS Engine starting: {port.order} tf={args.tf}m preset={args.preset} profile={args.profile} fills={args.fill_on or 'preset/real'}")
+    journal.log("INFO", f"ICARUS Engine starting: {port.order} tf={args.tf or 'preset/default'} preset={args.preset} profile={args.profile} fills={args.fill_on or 'preset/real'}")
     port.start()
-    print(f"\nICARUS ENGINE  assets={port.order}  tf={args.tf}m  preset={args.preset}")
+    print(f"\nICARUS ENGINE  assets={port.order}  tf={args.tf or 'preset/default'}  preset={args.preset}")
     print(f"  dashboard : http://127.0.0.1:{args.port}/     admin token: {args.token}")
     print(f"  data dir  : {_base_dir()}  db={journal.path}")
     if file_feed_mode():
@@ -136,7 +144,7 @@ def cmd_run(args: argparse.Namespace) -> int:
 
 
 def cmd_inputs(args: argparse.Namespace) -> int:
-    spec = parse_spec(args.asset or "NQ", args.tf)
+    spec = parse_spec(args.asset or "NQ", args.tf or "20")
     inputs, meta, sources = resolve_inputs(spec, _base_dir(), args.profile, args.preset)
     d = inputs.to_dict()
     d["_sources"] = sources
@@ -305,7 +313,7 @@ def main(argv: Optional[list] = None) -> int:
     def common(s: argparse.ArgumentParser, multi: bool = True) -> None:
         if multi:
             s.add_argument("--assets", default="NQ,ES,YM,GC,SI,PL,PA,BTCF,BTC", help="comma list of asset tokens (see `assets`)")
-        s.add_argument("--tf", default="20", help="chart timeframe in minutes (per-asset with NQ@10)")
+        s.add_argument("--tf", default=None, help="explicit chart timeframe (otherwise preset/default 20; per-asset with NQ@10)")
         s.add_argument("--preset", default="NQ-20m-ultracoded-0914", help="presets/<name>.json applied to every asset (per-asset with GC:NAME); '' for none")
         s.add_argument("--profile", default="nq", choices=["nq", "crypto"], help="base defaults before presets/overrides")
         s.add_argument("--fill-on", default=None, choices=["real", "chart"], help="fill orders on real bars (default) or on the chart's Heikin Ashi bars (TradingView 'Heikin Ashi bars')")
