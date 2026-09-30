@@ -955,13 +955,13 @@ class AssetRunner:
         return _clean({
             "symbol": self.symbol, "name": self.spec.name, "product": self.spec.ticker, "feed": self.spec.feed, "kind": self.spec.kind,
             "contract": self.live_ticker if self.roller else None, "next_contract": self.roller.next_ticker if self.roller else None,
-            "session_mode": getattr(self.cal, "session", "24/7"), "security_source": self.spec.security_source,
+            "session_mode": _session_mode(self.cal), "security_source": self.spec.security_source,
             "tf": self.chart_minutes, "mintick": self.mintick, "contract_size": self.em.contract_size, "multiplier": self.spec.multiplier,
             "chart_type": self.spec.chart_type, "fill_on": self.spec.fill_on, "slippage_ticks": self.spec.slippage_ticks,
             "calculation_basis": {
                 "timeframe": self.spec.chart_tf, "timeframe_minutes": self.chart_minutes,
                 "chart_type": self.spec.chart_type, "fill_on": self.spec.fill_on,
-                "security_source": self.spec.security_source, "session": getattr(self.cal, "session", "24/7"),
+                "security_source": self.spec.security_source, "session": _session_mode(self.cal),
             },
             "preset": self.cfg.preset or self.spec.preset, "inputs_sources": self.cfg.sources or [], "pts_scale": self.pts_scale,
             "price": mark, "price_age": (time.time() - self.last_price_ts) if self.last_price_ts else None,
@@ -1009,7 +1009,7 @@ class AssetRunner:
                 f_row = [nb, self.last_price, self.last_price, self.last_price, self.last_price, 0.0]
         return _clean({"symbol": self.symbol, "tf": self.chart_minutes, "mintick": self.mintick,
                        "chart_type": self.spec.chart_type, "fill_on": self.spec.fill_on,
-                       "security_source": self.spec.security_source, "session": getattr(self.cal, "session", "24/7"),
+                       "security_source": self.spec.security_source, "session": _session_mode(self.cal),
                        "bars": [[b.ts, b.o, b.h, b.l, b.c, b.v] for b in bars], "forming": f_row,
                        "overlays": ov, "fills": fills, "live_from": self.live_from_ts})
 
