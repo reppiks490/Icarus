@@ -93,6 +93,7 @@ class Databento:
             slow_reader_behavior="warn",
         ))
         self._lock = threading.RLock()
+        self._session_lock = threading.RLock()
         # One Live client/session per Databento dataset. Databento explicitly supports
         # many symbols/schemas on one session; this avoids exhausting team session limits
         # when ICARUS runs its full registered futures universe.
@@ -172,6 +173,7 @@ class Databento:
             "continuous_rule_code": self.roll_rule,
             "live_session_model": "shared_per_dataset",
             "live_symbol_routing": "SymbolMappingMsg/instrument_id",
+            "continuous_live_refresh": "automatic_utc_day",
             "ohlcv_seconds": True,
             "minimum_ohlcv_resolution_seconds": 1,
             "trades": True,
@@ -412,7 +414,13 @@ class Databento:
             # OHLCV record
             if all(hasattr(record, key) for key in ("open", "high", "low", "close", "volume")):
                 b = self._ohlcv_record(record)
-                self._second_bars[symbol].append(b)
+                q = self._second_bars[symbol]
+                if not q or b.ts > q[-1].ts:
+                    q.append(b)
+                elif b.ts == q[-1].ts:
+                    q[-1] = b
+                # Older replay rows are already buffered; ignore them rather than
+                # duplicating one-second volume across a daily session refresh.
                 self._last_price[symbol] = b.c
                 market_event = True
             else:
@@ -532,7 +540,7 @@ class Databento:
             meta["reconnect_count"] = len(self._reconnect_gaps[str(symbol)])
             self._meta[str(symbol)] = meta
 
-    def prepare_live(
+    def _prepare_live_unlocked(
         self,
         symbols: Sequence[str],
         *,
@@ -606,6 +614,25 @@ class Databento:
                     self._errors.clear()
                 raise
 
+    def prepare_live(
+        self,
+        symbols: Sequence[str],
+        *,
+        schemas: Sequence[str] = ("ohlcv-1s", "trades"),
+        start_ts: Optional[int] = None,
+        include_depth: Optional[str] = None,
+    ) -> Any:
+        with self._session_lock:
+            return self._prepare_live_unlocked(
+                symbols, schemas=schemas, start_ts=start_ts, include_depth=include_depth
+            )
+
+    def refresh_live(self, symbols: Sequence[str], *, start_ts: Optional[int] = None) -> Any:
+        """Atomically re-resolve all continuous symbols on a fresh Live session."""
+        with self._session_lock:
+            self._stop_live_unlocked()
+            return self._prepare_live_unlocked(symbols, start_ts=start_ts)
+
     def start_live(
         self,
         symbol: str,
@@ -618,7 +645,7 @@ class Databento:
             [symbol], schemas=schemas, start_ts=start_ts, include_depth=include_depth
         )
 
-    def stop_live(self, symbol: Optional[str] = None) -> None:
+    def _stop_live_unlocked(self, symbol: Optional[str] = None) -> None:
         client = None
         with self._lock:
             if symbol is not None:
@@ -657,6 +684,10 @@ class Databento:
                         client.block_for_close(timeout=5.0)
                 except Exception:
                     raise stop_ex
+
+    def stop_live(self, symbol: Optional[str] = None) -> None:
+        with self._session_lock:
+            self._stop_live_unlocked(symbol)
 
     def recent_ex(
         self,
