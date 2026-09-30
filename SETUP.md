@@ -64,6 +64,20 @@ py -3 -m pip install -e ".[bridge]"
 
 CSV/offline later (Plus): `icarus-plant start --assets NQ --offline` after a 1m dump is in `history/`.
 
+## Databento live CME feed
+
+Databento is optional and is the ICARUS path for genuine real-time CME data, 1-second OHLCV, trades, MBP-10, and MBO snapshots. It uses Databento's volume-front continuous symbols (for example `NQ.v.0`) so ICARUS still requires no dated-contract rollover maintenance.
+
+```powershell
+py -3 -m pip install -e ".[databento]"
+$env:DATABENTO_API_KEY="db-your-key-here"
+# Optional: v=volume front (default/closest to TradingView 1!), n=open-interest, c=calendar
+$env:DATABENTO_ROLL_RULE="v"
+icarus-plant start --assets NQ,MNQ,ES --feed databento
+```
+
+The key stays in your local environment; do not commit it. All three roll rules remain automatic continuous contracts—no dated-contract maintenance. Run `icarus-engine doctor --json` with `ICARUS_FEED=databento` to verify the SDK/key prerequisites without making a market-data request.
+
 ## Not this
 
 | Place | No |

@@ -226,11 +226,15 @@ class Plant:
 
 
 def default_engine_service(root: str, repo: str, *, assets: str = "NQ", port: int = 8791,
-                           token: str = "icarus", offline: bool = False, preset: str = "NQ-20m-ultracoded") -> Service:
+                           token: str = "icarus", offline: bool = False, preset: str = "NQ-20m-ultracoded",
+                           feed: Optional[str] = None) -> Service:
     ensure(root)
+    selected_feed = "file" if offline else (feed or os.environ.get("ICARUS_FEED", "yahoo")).strip().lower()
+    if selected_feed not in ("yahoo", "file", "databento"):
+        raise ValueError(f"unsupported ICARUS feed {selected_feed!r}")
     env = {
         "ICARUS_HOME": root,
-        "ICARUS_FEED": "file" if offline else os.environ.get("ICARUS_FEED", "yahoo"),
+        "ICARUS_FEED": selected_feed,
         "PYTHONPATH": repo + os.pathsep + os.environ.get("PYTHONPATH", ""),
     }
     db = os.path.join(root, "icarus_engine.db")
@@ -239,8 +243,8 @@ def default_engine_service(root: str, repo: str, *, assets: str = "NQ", port: in
         "--assets", assets, "--port", str(port), "--token", token,
         "--preset", preset, "--db", db,
     ]
-    if offline:
-        argv += ["--feed", "file"]
+    if selected_feed != "yahoo":
+        argv += ["--feed", selected_feed]
     return Service(
         name="engine",
         argv=argv,
