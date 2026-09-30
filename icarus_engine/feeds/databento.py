@@ -60,8 +60,9 @@ class Databento:
     def __init__(
         self,
         api_key: Optional[str] = None,
-        dataset: str = _DATASET,
+        dataset: Optional[str] = None,
         *,
+        roll_rule: Optional[str] = None,
         sdk: Any = None,
         historical: Any = None,
         live_factory: Any = None,
@@ -70,7 +71,12 @@ class Databento:
         max_depth: int = 20_000,
     ):
         self.api_key = api_key or os.environ.get("DATABENTO_API_KEY") or ""
-        self.dataset = dataset
+        self.dataset = (dataset or os.environ.get("DATABENTO_DATASET") or _DATASET).strip()
+        self.roll_rule = (roll_rule or os.environ.get("DATABENTO_ROLL_RULE") or "v").strip().lower()
+        if self.dataset != _DATASET:
+            raise ValueError(f"Databento CME futures adapter requires {_DATASET}, got {self.dataset!r}")
+        if self.roll_rule not in ("v", "n", "c"):
+            raise ValueError("DATABENTO_ROLL_RULE must be v, n, or c")
         self._sdk = sdk or self._load_sdk()
         if not self.api_key and historical is None:
             raise RuntimeError(
@@ -78,7 +84,7 @@ class Databento:
                 "Install the SDK with: pip install -e '.[databento]'"
             )
         self._historical = historical if historical is not None else self._sdk.Historical(self.api_key)
-        self._live_factory = live_factory or (lambda: self._sdk.Live(key=self.api_key))
+        self._live_factory = live_factory or (lambda: self._sdk.Live(key=self.api_key, slow_reader_behavior="warn"))
         self._lock = threading.RLock()
         self._live: Dict[str, Any] = {}
         self._live_started: set[str] = set()
@@ -96,6 +102,7 @@ class Databento:
         self._last_price: Dict[str, float] = {}
         self._feed_time: Dict[str, int] = {}
         self._meta: Dict[str, Dict[str, Any]] = {}
+        self._errors: Dict[str, str] = {}
         self.requests = 0
 
     @staticmethod
@@ -123,21 +130,25 @@ class Databento:
         return ticker[:-2]
 
     @classmethod
-    def continuous_symbol(cls, symbol: str) -> str:
-        """Databento volume-based front month, closest to TradingView's volume-roll 1!."""
-        return f"{cls.root(symbol)}.v.0"
+    def continuous_symbol(cls, symbol: str, roll_rule: Optional[str] = None) -> str:
+        """Databento continuous front contract using c/n/v smart symbology."""
+        rule = (roll_rule or os.environ.get("DATABENTO_ROLL_RULE") or "v").strip().lower()
+        if rule not in ("v", "n", "c"):
+            raise ValueError("Databento continuous roll rule must be v, n, or c")
+        return f"{cls.root(symbol)}.{rule}.0"
 
     @classmethod
     def parent_symbol(cls, symbol: str) -> str:
         return f"{cls.root(symbol)}.FUT"
 
-    @staticmethod
-    def capabilities() -> Dict[str, Any]:
+    def capabilities(self) -> Dict[str, Any]:
+        rule_name = {"v": "volume_front", "n": "open_interest_front", "c": "calendar_front"}[self.roll_rule]
         return {
             "provider": "databento",
-            "dataset": _DATASET,
+            "dataset": self.dataset,
             "continuous_futures": True,
-            "continuous_rule": "volume_front",
+            "continuous_rule": rule_name,
+            "continuous_rule_code": self.roll_rule,
             "ohlcv_seconds": True,
             "minimum_ohlcv_resolution_seconds": 1,
             "trades": True,
@@ -283,7 +294,7 @@ class Databento:
         return self._historical.timeseries.get_range(
             dataset=self.dataset,
             schema=schema,
-            symbols=self.continuous_symbol(symbol),
+            symbols=self.continuous_symbol(symbol, self.roll_rule),
             stype_in="continuous",
             start=self._iso(start_ts),
             end=self._iso(end_ts),
@@ -318,6 +329,22 @@ class Databento:
     def _live_callback(self, symbol: str, record: Any) -> None:
         now_sec = self._ts_sec(record) if hasattr(record, "ts_event") else int(time.time())
         with self._lock:
+            # ErrorMsg records are delivered through the same callback as market data.
+            # Since 2026 symbol-resolution failures can be non-fatal at the gateway,
+            # so fail closed here instead of silently waiting on an unresolved stream.
+            if hasattr(record, "err"):
+                code = int(getattr(record, "code", 0) or 0)
+                err = str(getattr(record, "err", "") or "Databento live error")
+                self._errors[symbol] = f"Databento live error code={code}: {err}"
+                self._ready[symbol].set()
+                self._meta[symbol] = {
+                    "regularMarketTime": self._feed_time.get(symbol, 0),
+                    "provider": "databento",
+                    "dataset": self.dataset,
+                    "continuous_symbol": self.continuous_symbol(symbol, self.roll_rule),
+                    "live_error": self._errors[symbol],
+                }
+                return
             market_event = False
             # OHLCV record
             if all(hasattr(record, key) for key in ("open", "high", "low", "close", "volume")):
@@ -342,8 +369,14 @@ class Databento:
                 "regularMarketTime": self._feed_time[symbol],
                 "provider": "databento",
                 "dataset": self.dataset,
-                "continuous_symbol": self.continuous_symbol(symbol),
+                "continuous_symbol": self.continuous_symbol(symbol, self.roll_rule),
             }
+
+    def _raise_live_error(self, symbol: str) -> None:
+        with self._lock:
+            err = self._errors.get(str(symbol))
+        if err:
+            raise RuntimeError(err)
 
     def start_live(
         self,
@@ -369,7 +402,7 @@ class Databento:
                     client.subscribe(
                         dataset=self.dataset,
                         schema=schema,
-                        symbols=self.continuous_symbol(symbol),
+                        symbols=self.continuous_symbol(symbol, self.roll_rule),
                         stype_in="continuous",
                     )
                     self._subscriptions[key].add(schema)
@@ -377,7 +410,7 @@ class Databento:
             client = self._live_factory()
             kwargs: Dict[str, Any] = {
                 "dataset": self.dataset,
-                "symbols": self.continuous_symbol(symbol),
+                "symbols": self.continuous_symbol(symbol, self.roll_rule),
                 "stype_in": "continuous",
             }
             if start_ts is not None:
@@ -420,6 +453,7 @@ class Databento:
         start = max(now - 23 * 3600, int(since_ts or (now - 900)) - 120)
         self.start_live(symbol, start_ts=start)
         self._ready[str(symbol)].wait(timeout=2.0)
+        self._raise_live_error(symbol)
         with self._lock:
             rows = list(self._second_bars[str(symbol)])
             ft = int(self._feed_time.get(str(symbol), 0))
@@ -435,11 +469,13 @@ class Databento:
     def ticker(self, symbol: str) -> Optional[float]:
         self.start_live(symbol)
         self._ready[str(symbol)].wait(timeout=2.0)
+        self._raise_live_error(symbol)
         with self._lock:
             return self._last_price.get(str(symbol))
 
     def trades(self, symbol: str, since_ts: Optional[int] = None, limit: int = 10_000) -> List[TradeTick]:
         self.start_live(symbol, schemas=("ohlcv-1s", "trades"))
+        self._raise_live_error(symbol)
         with self._lock:
             rows = list(self._trades[str(symbol)])
         if since_ts is not None:
@@ -450,6 +486,7 @@ class Databento:
         if schema not in ("mbp-10", "mbo"):
             raise ValueError("schema must be 'mbp-10' or 'mbo'")
         self.start_live(symbol, include_depth=schema)
+        self._raise_live_error(symbol)
         with self._lock:
             rows = list(self._depth[str(symbol)])
         return rows[-max(0, int(limit)):]
@@ -470,7 +507,7 @@ class Databento:
         client.subscribe(
             dataset=self.dataset,
             schema="mbo",
-            symbols=self.continuous_symbol(symbol),
+            symbols=self.continuous_symbol(symbol, self.roll_rule),
             stype_in="continuous",
             snapshot=True,
         )
