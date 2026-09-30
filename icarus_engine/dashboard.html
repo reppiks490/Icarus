@@ -249,7 +249,7 @@ function assetCard(a) {
     : `<span class="muted">flat</span>` + (st.armed_long?` <span class="chip b">ARMED LONG</span>`:'') + (st.armed_short?` <span class="chip r">ARMED SHORT</span>`:'');
   const warm = a.warm ? (a.rewarming ? `<span class="chip w">re-warming</span>` : '') : `<span class="chip w">warming ${a.bar_index>=0?a.bar_index+1+' bars':''}</span>`;
   return `<div class="asset ${side}" data-sym="${a.symbol}">
-    <div class="ah"><span class="sym">${a.symbol}</span><span class="px tnum">${px(a.price)}</span>
+    <div class="ah"><span class="sym" title="ICARUS key ${esc(a.symbol)}">${esc(a.continuous_symbol||a.symbol)}</span><span class="px tnum">${px(a.price)}</span>
       <span class="dir ${st.rate_uptrend?'up':'dn'}" title="RATE SuperTrend direction">${st.rate_uptrend==null?'':st.rate_uptrend?'▲':'▼'}</span>
       <span class="chip ${regClass(st.rate_regime_str)}">${esc(st.rate_regime_str||'—')} ${st.rate_regime!=null?(st.rate_regime*100).toFixed(0)+'%':''}</span>${marketChip(a)}${warm}${a.paused?'<span class="chip r">paused</span>':''}
       <span class="muted small" style="margin-left:auto" title="Calculation basis">${a.tf}m · ${a.chart_type==='heikin_ashi'?'HA':'OHLC'} · fill ${a.fill_on==='chart'?'chart':'real'} · MTF ${a.security_source==='standard'?'standard':'chart'} · ${a.errors?`<span class="neg">${a.errors} err</span>`:'bar '+age(a.bar_age)}</span></div>
@@ -269,7 +269,7 @@ function setView(v) { view = v; if (!solo) location.hash = v; lastView = null; i
 function tabsHtml(A) {
   if (solo) return `<span class="tab active"><b class="s">${esc(params.get('asset').toUpperCase())}</b> · solo view</span><a class="tab" href="/">← all assets</a>`;
   const t = [`<span class="tab ${view==='overview'?'active':''}" data-v="overview">Overview</span>`];
-  A.forEach(a => { const pos = a.position||0; t.push(`<span class="tab ${view==='asset:'+a.symbol?'active':''}" data-v="asset:${a.symbol}"><span class="dot ${pos>0?'long':pos<0?'short':(a.market&&a.market.open===false?'closed':'')}"></span><b class="s">${a.symbol}</b> <span class="muted small tnum">${px(a.price)}</span></span>`); });
+  A.forEach(a => { const pos = a.position||0; t.push(`<span class="tab ${view==='asset:'+a.symbol?'active':''}" data-v="asset:${a.symbol}"><span class="dot ${pos>0?'long':pos<0?'short':(a.market&&a.market.open===false?'closed':'')}"></span><b class="s">${esc(a.continuous_symbol||a.symbol)}</b> <span class="muted small tnum">${px(a.price)}</span></span>`); });
   t.push(`<span class="tab" data-v="add" title="Add an asset">＋</span>`);
   t.push(`<span class="tab util ${view==='golive'?'active':''}" data-v="golive">Go-live</span><span class="tab util ${view==='agent'?'active':''}" data-v="agent">Agent</span><span class="tab util ${view==='inputs'?'active':''}" data-v="inputs">Inputs</span><span class="tab util ${view==='backtest'?'active':''}" data-v="backtest">Backtest</span>${typeof researchHtml==='function'?`<span class="tab util ${view==='research'?'active':''}" data-v="research">Research</span>`:''}${typeof sourcesHtml==='function'?`<span class="tab util ${view==='sources'?'active':''}" data-v="sources">Financial &amp; data</span>`:''}<span class="tab util ${view==='commands'?'active':''}" data-v="commands">Commands</span><span class="tab util ${view==='log'?'active':''}" data-v="log">Log</span>`);
   return t.join('');
