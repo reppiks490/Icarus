@@ -27,6 +27,7 @@ import urllib.request
 from typing import Deque, Iterable, List, Optional
 
 from ..microstructure import TradeEvent
+from ..pine.timeframe import Bar
 
 _UA = {"User-Agent": "icarus-engine/0.1 (+paper trading event adapter)"}
 
@@ -381,3 +382,20 @@ def make_event_feed(spec, mintick: float, *, db_module=None):
     if getattr(spec, "feed", None) == "coinbase":
         return CoinbaseTradeEvents(spec.ticker, mintick)
     return None
+
+
+
+def event_bar_to_bar(raw: dict, mintick: float) -> Bar:
+    """Convert an authenticated event-aggregator bar to the engine's real OHLCV Bar."""
+    for key in ("start_ns", "open_ticks", "high_ticks", "low_ticks", "close_ticks", "volume"):
+        if key not in raw:
+            raise ValueError(f"event bar missing {key}")
+    q = float(mintick)
+    return Bar(
+        int(raw["start_ns"]) // 1_000_000_000,
+        float(raw["open_ticks"]) * q,
+        float(raw["high_ticks"]) * q,
+        float(raw["low_ticks"]) * q,
+        float(raw["close_ticks"]) * q,
+        float(raw["volume"]),
+    )
