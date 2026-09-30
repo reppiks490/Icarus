@@ -289,12 +289,12 @@ def test_admin_all_assets_rolls_back_prior_success_on_late_replay_failure(admin,
     original = other.rewarm
     calls = 0
 
-    def fail_once(inputs, sources=None):
+    def fail_once(inputs, sources=None, **kwargs):
         nonlocal calls
         calls += 1
         if calls == 1:
             raise RuntimeError("synthetic second replay failure")
-        return original(inputs, sources)
+        return original(inputs, sources, **kwargs)
 
     monkeypatch.setattr(other, "rewarm", fail_once)
     status, body = post("/admin/inputs", {"asset": "*", "values": {"tp1_pts": 80}, "persist": True})
@@ -364,12 +364,12 @@ def test_failed_configuration_replay_never_persists_candidate(configured, monkey
     original = r.rewarm
     calls = 0
 
-    def fail_once(inputs, sources=None):
+    def fail_once(inputs, sources=None, **kwargs):
         nonlocal calls
         calls += 1
         if calls == 1:
             raise RuntimeError("synthetic replay failure")
-        return original(inputs, sources)
+        return original(inputs, sources, **kwargs)
 
     monkeypatch.setattr(r, "rewarm", fail_once)
     with pytest.raises(RuntimeError, match="synthetic replay failure"):
@@ -439,12 +439,12 @@ def test_failed_all_assets_update_restores_equity_epoch(admin, monkeypatch):
     original = other.rewarm
     calls = 0
 
-    def fail_once(inputs, sources=None):
+    def fail_once(inputs, sources=None, **kwargs):
         nonlocal calls
         calls += 1
         if calls == 1:
             raise RuntimeError("synthetic epoch rollback failure")
-        return original(inputs, sources)
+        return original(inputs, sources, **kwargs)
 
     monkeypatch.setattr(other, "rewarm", fail_once)
     status, _ = post("/admin/inputs", {"asset": "*", "values": {"tp1_pts": 81}, "persist": True})
