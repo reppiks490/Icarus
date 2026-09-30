@@ -515,7 +515,7 @@ def test_warmup_uses_only_provider_continuous_ticker(tmp_path):
     assert summary["continuous_contract"] is True
     assert summary["continuous_symbol"] == "CME_MINI:NQ1!"
     assert summary["provider_symbol"] == "NQ=F"
-    assert summary["contract"] is None and summary["next_contract"] is None
+    assert "contract" not in summary and "next_contract" not in summary
 
 
 def test_point_scaling_reference_is_the_last_completed_daily_close(tmp_path):
