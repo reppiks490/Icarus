@@ -548,18 +548,27 @@ def test_shared_session_detach_readd_does_not_duplicate_or_misroute():
     feed = make_feed(lives=[live])
     feed.start_live("NQ=F")
     feed.start_live("ES=F")
-    live.callback(Mapping("NQ.v.0", 101))
-    live.callback(Mapping("ES.v.0", 202))
+    live.callback(Mapping("NQ.v.0", 101, raw_symbol="NQU6"))
+    live.callback(Mapping("ES.v.0", 202, raw_symbol="ESU6"))
     subscriptions_before = len(live.subscriptions)
+    assert feed.meta("NQ=F")["mapping_active"] is True
 
     feed.stop_live("NQ=F")
+    assert feed.meta("NQ=F")["mapping_active"] is False
+    # The gateway subscription still exists and may emit a newer mapping, but local
+    # routing remains detached and status must continue to say inactive.
+    live.callback(Mapping("NQ.v.0", 303, raw_symbol="NQZ6"))
+    assert feed.meta("NQ=F")["resolved_raw_symbol"] == "NQZ6"
+    assert feed.meta("NQ=F")["mapping_active"] is False
+
     stray = Ohlcv(6_000, 111, 112, 110, 111.5, 1)
-    stray.instrument_id = 101
+    stray.instrument_id = 303
     live.callback(stray)
     assert not feed._second_bars["NQ=F"]
     assert not feed._second_bars["ES=F"]
 
     feed.start_live("NQ=F")
+    assert feed.meta("NQ=F")["mapping_active"] is True
     assert len(live.subscriptions) == subscriptions_before
     live.callback(stray)
     assert feed._second_bars["NQ=F"][-1].c == 111.5
