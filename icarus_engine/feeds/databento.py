@@ -41,6 +41,7 @@ _NATIVE_SCHEMAS = {
 }
 _PRICE_SCALE = 1_000_000_000.0
 _UNDEF_PRICE = (1 << 63) - 1
+_GLBX_HISTORY_START_TS = int(datetime(2010, 6, 6, tzinfo=timezone.utc).timestamp())
 
 
 @dataclass(frozen=True)
@@ -60,6 +61,7 @@ class Databento:
 
     GRANULARITIES = (1, 2, 5, 10, 15, 20, 30, 60, 120, 180, 240, 300, 600, 900, 1200, 1800, 3600, 14400, 86400)
     DATASET = _DATASET
+    HISTORICAL_START_TS = _GLBX_HISTORY_START_TS
 
     def __init__(
         self,
@@ -199,6 +201,10 @@ class Databento:
             "depth_failure_isolation": True,
             "depth_schema_isolation": True,
             "continuous_live_refresh": "automatic_utc_day",
+            "cme_session_daily_weekly": True,
+            "native_ohlcv_1d_basis": "utc",
+            "session_daily_source": "ohlcv-1h",
+            "historical_start": "2010-06-06",
             "ohlcv_seconds": True,
             "minimum_ohlcv_resolution_seconds": 1,
             "trades": True,
@@ -474,13 +480,50 @@ class Databento:
             end=self._iso(end_ts),
         )
 
+    def _session_bars(self, symbol: str, minutes: int, start_ts: int, end_ts: int) -> List[Bar]:
+        """Build CME-session daily/weekly bars from UTC-hourly Databento records."""
+        from ..assets import resolve
+        from ..calendar import get_calendar
+
+        if int(minutes) < 1440:
+            raise ValueError("session bars require a daily-or-higher timeframe")
+        spec = resolve(str(symbol))
+        cal = get_calendar(spec.calendar, spec.anchor_et, session=spec.session, group=spec.group)
+        start = max(int(start_ts), self.HISTORICAL_START_TS)
+        end = int(end_ts)
+        if end <= start:
+            return []
+
+        store = self._get_range(symbol, "ohlcv-1h", start, end)
+        buckets: Dict[int, Bar] = {}
+        for rec in store:
+            b = self._ohlcv_record(rec)
+            if b.ts < start or b.ts >= end or not cal.is_open(b.ts):
+                continue
+            bucket = cal.bucket_start(b.ts, int(minutes))
+            prev = buckets.get(bucket)
+            if prev is None:
+                buckets[bucket] = Bar(bucket, b.o, b.h, b.l, b.c, b.v)
+            else:
+                buckets[bucket] = Bar(bucket, prev.o, max(prev.h, b.h), min(prev.l, b.l), b.c, prev.v + b.v)
+        return [buckets[k] for k in sorted(buckets)]
+
     def candles(self, symbol: str, granularity: int, start_ts: int, end_ts: int) -> List[Bar]:
-        base_sec, schema = self._schema_for(granularity)
-        store = self._get_range(symbol, schema, int(start_ts), int(end_ts))
+        g = int(granularity)
+        # Databento's native ohlcv-1d is UTC-date based. ICARUS futures charts use
+        # CME session days/weeks, so aggregate those timeframes from hourly records.
+        if g >= 86400 and g % 86400 == 0:
+            return self._session_bars(symbol, g // 60, int(start_ts), int(end_ts))
+        start = max(int(start_ts), self.HISTORICAL_START_TS)
+        end = int(end_ts)
+        if end <= start:
+            return []
+        base_sec, schema = self._schema_for(g)
+        store = self._get_range(symbol, schema, start, end)
         bars = [self._ohlcv_record(rec) for rec in store]
-        bars = [b for b in bars if int(start_ts) <= b.ts < int(end_ts)]
-        if int(granularity) != base_sec:
-            bars = self._aggregate(bars, int(granularity))
+        bars = [b for b in bars if start <= b.ts < end]
+        if g != base_sec:
+            bars = self._aggregate(bars, g)
         return bars
 
     def daily_volume(self, symbol: str, days: int = 5) -> List[Tuple[int, float, float]]:
