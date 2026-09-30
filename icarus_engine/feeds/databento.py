@@ -192,6 +192,35 @@ class Databento:
         """Historical genuine 1-second bars; no interpolation."""
         return self.candles(product, 1, start_ts, end_ts)
 
+    def records(self, product: str, schema: str, start_ts: int, end_ts: int) -> List[Any]:
+        """Return native DBN records for trades/order-book research.
+
+        Supported here intentionally mirrors the CME schemas ICARUS will use for
+        order-flow work. Records remain native Databento objects so sequence,
+        flags, depth and instrument IDs are not lossy-transformed.
+        """
+        schema = str(schema).lower()
+        allowed = {"trades", "mbp-1", "mbp-10", "mbo"}
+        if schema not in allowed:
+            raise ValueError(f"Databento native schema must be one of {sorted(allowed)}")
+        store = self._request(product, schema, int(start_ts), int(end_ts))
+        return list(store)
+
+    def trades(self, product: str, start_ts: int, end_ts: int) -> List[Dict[str, Any]]:
+        """Convenience normalized trade prints while preserving nanosecond event time."""
+        out: List[Dict[str, Any]] = []
+        for rec in self.records(product, "trades", start_ts, end_ts):
+            if not hasattr(rec, "ts_event") or not hasattr(rec, "pretty_price"):
+                continue
+            out.append({
+                "ts_event_ns": int(rec.ts_event),
+                "price": float(rec.pretty_price),
+                "size": int(getattr(rec, "size", 0) or 0),
+                "side": str(getattr(rec, "side", "")),
+                "instrument_id": int(getattr(rec, "instrument_id", 0) or 0),
+            })
+        return out
+
     def daily_volume(self, product: str, days: int = 5) -> List[Tuple[int, float, float]]:
         now = int(time.time())
         rows = self.candles(product, 86400, now - max(2, int(days) + 2) * 86400, now)
