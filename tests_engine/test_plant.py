@@ -378,3 +378,31 @@ def test_plant_status_is_healthy_without_optional_bridge(tmp_path, capsys):
         httpd.shutdown()
         httpd.server_close()
         thread.join(5)
+
+
+def test_supervisor_spawn_closes_parent_log_handle(tmp_path, monkeypatch):
+    import icarus_plant.supervisor as supervisor
+
+    captured = {}
+
+    class FakePopen:
+        pid = 424242
+
+        def __init__(self, argv, **kwargs):
+            captured["stdout"] = kwargs["stdout"]
+
+        def poll(self):
+            return None
+
+    monkeypatch.setattr(supervisor.subprocess, "Popen", FakePopen)
+    plant = Plant(str(tmp_path), repo=str(tmp_path))
+    svc = Service(
+        name="dummy",
+        argv=[sys.executable, "-c", "pass"],
+        health_url="",
+        cwd=str(tmp_path),
+        pidfile=os.path.join(str(tmp_path), "run", "dummy.pid"),
+    )
+    plant.spawn(svc)
+    assert captured["stdout"].closed is True
+    assert os.path.isfile(svc.pidfile)
