@@ -1238,7 +1238,6 @@ class Portfolio:
 
             r.ensure_cached_timeframes(inputs)
             spec.chart_tf = r.ensure_cached_chart_timeframe(spec.chart_tf)
-            reset_boundary = bool(reset or preset is not _UNCHANGED or requested_chart or overrides)
 
             runtime_before = r.configuration_snapshot()
             tmp = path + ".tmp"
@@ -1248,7 +1247,7 @@ class Portfolio:
                     setattr(r.spec, field, getattr(spec, field))
                 if preset is not _UNCHANGED:
                     r.cfg.preset = spec.preset
-                r.rewarm(inputs, sources, reset_live_boundary=reset_boundary)
+                r.rewarm(inputs, sources, reset_live_boundary=True)
 
                 # Commit persistence after the successful replay. A failed replay therefore
                 # cannot leave the next process start on a configuration the live engine rejected.
@@ -1258,8 +1257,7 @@ class Portfolio:
                     os.replace(tmp, path)
                 elif delete_file:
                     os.remove(path)
-                if reset_boundary:
-                    self.equity_epoch = time.time()
+                self.equity_epoch = time.time()
             except Exception:
                 try:
                     if os.path.exists(tmp):
