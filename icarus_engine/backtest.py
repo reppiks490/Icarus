@@ -336,7 +336,8 @@ def run_backtest(port, symbol: str, *, preset: Optional[str] = None, inputs: Opt
     r.journal.con.close()
     return {
         "asset": r.symbol, "bars": bars_n, "config": {
-            "preset": preset_name, "fill_on": spec.fill_on, "chart_type": spec.chart_type, "slippage_ticks": spec.slippage_ticks,
+            "preset": preset_name, "fill_on": spec.fill_on, "chart_type": spec.chart_type,
+            "security_source": spec.security_source, "slippage_ticks": spec.slippage_ticks,
             "commission": spec.commission, "capital": spec.capital, "session": getattr(r.cal, "session", "24/7"), "tf": r.chart_minutes,
             "point_value": r.em.contract_size, "overrides": inputs or {}, "sources": sources, "leverage": leverage,
             "window_start": window_start, "window_end": window_end, "pts_scale": r.pts_scale,
