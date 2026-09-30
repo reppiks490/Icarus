@@ -368,6 +368,29 @@ def test_all_registered_futures_share_one_live_session():
     assert live.stopped is True
 
 
+def test_shared_session_detach_readd_does_not_duplicate_or_misroute():
+    live = FakeLive()
+    feed = make_feed(lives=[live])
+    feed.start_live("NQ=F")
+    feed.start_live("ES=F")
+    live.callback(Mapping("NQ.v.0", 101))
+    live.callback(Mapping("ES.v.0", 202))
+    subscriptions_before = len(live.subscriptions)
+
+    feed.stop_live("NQ=F")
+    stray = Ohlcv(6_000, 111, 112, 110, 111.5, 1)
+    stray.instrument_id = 101
+    live.callback(stray)
+    assert not feed._second_bars["NQ=F"]
+    assert not feed._second_bars["ES=F"]
+
+    feed.start_live("NQ=F")
+    assert len(live.subscriptions) == subscriptions_before
+    live.callback(stray)
+    assert feed._second_bars["NQ=F"][-1].c == 111.5
+    assert not feed._second_bars["ES=F"]
+
+
 def test_shared_live_session_routes_records_by_symbol_mapping():
     live = FakeLive()
     feed = make_feed(lives=[live])
