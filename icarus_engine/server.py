@@ -261,7 +261,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                                         "overrides": {k: v for k, v in over.items() if not k.startswith("_")}, "preset": r.cfg.preset, "pts_scale": r.pts_scale,
                                         "chart": {"timeframe": r.spec.chart_tf, "chart_type": r.spec.chart_type,
                                                   "fill_on": r.spec.fill_on, "security_source": r.spec.security_source},
-                                        "chart_capabilities": chart_capabilities()})
+                                        "chart_capabilities": r.chart_capability_view()})
             self._json(404, {"error": "not found"})
 
         def _drain_body(self) -> None:
