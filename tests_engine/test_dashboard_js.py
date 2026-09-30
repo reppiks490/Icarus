@@ -49,3 +49,10 @@ def test_strategy_tester_timeframes_are_cache_aware():
     assert "cached_source_resolutions_minutes" in src
     assert "$('#btAsset').addEventListener('change'" in src
     assert "BT.res = null; BT.compare = null" in src
+
+
+def test_databento_dashboard_distinguishes_raw_feed_from_strategy_chart():
+    src = (REPO / "icarus_engine/dashboard.html").read_text(encoding="utf-8")
+    assert "Databento raw · 1s · ticks · MBP-10 · MBO" in src
+    assert "strategy chart · minute-native" in src
+    assert "a.feed_provider==='databento'" in src
