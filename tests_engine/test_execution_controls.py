@@ -717,7 +717,7 @@ def test_portfolio_mutations_accept_continuous_aliases(tmp_path):
 
 
 def test_engine_control_http_pause_resume_and_config(admin):
-    _, r, path, post = admin
+    port, r, path, post = admin
 
     status, body = post("/admin/engine-control", {
         "action": "asset.pause",
@@ -752,7 +752,8 @@ def test_engine_control_http_pause_resume_and_config(admin):
     })
     assert status == 200 and body["ok"] is True
     assert not path.exists()
-    assert r.inputs_base.tp1_pts == 51
+    assert port.preset_for(r) is None
+    assert r.inputs_base.tp1_pts == 15
 
 
 def test_engine_control_http_rejects_bad_confirmation_and_unknown_asset_args(admin):

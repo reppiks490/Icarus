@@ -12,6 +12,12 @@ def _write(root: Path, rel: str, value: dict) -> None:
     path.write_text(json.dumps(value), encoding="utf-8")
 
 
+
+def _install_contract(root: Path) -> None:
+    source = Path(__file__).resolve().parents[1] / "automation_intelligence/mcp_interface/contract.json"
+    contract = json.loads(source.read_text(encoding="utf-8"))
+    _write(root, "automation_intelligence/mcp_interface/contract.json", contract)
+
 def _event(**overrides):
     base = {
         "schema_version": "icarus-interface-event-v1",
@@ -38,6 +44,7 @@ def test_mcp_projector_surfaces_only_valid_important_repository_events(tmp_path:
     readme = tmp_path / "automation_intelligence/mcp_interface/README.md"
     readme.parent.mkdir(parents=True, exist_ok=True)
     readme.write_text("# MCP feed\n", encoding="utf-8")
+    _install_contract(tmp_path)
     _write(
         tmp_path,
         "automation_intelligence/mcp_interface/events/20261001T010000Z-repair.json",
@@ -45,7 +52,7 @@ def test_mcp_projector_surfaces_only_valid_important_repository_events(tmp_path:
     )
 
     status = MCPControlPlane(tmp_path).status()
-    assert status["schema_version"] == "icarus-mcp-operator-evidence-v2"
+    assert status["schema_version"] == "icarus-mcp-operator-evidence-v3"
     assert status["status"] == "green"
     assert status["authority"]["read_only"] is True
     assert status["authority"]["execution_authorized"] is False
@@ -56,11 +63,11 @@ def test_mcp_projector_surfaces_only_valid_important_repository_events(tmp_path:
     assert status["contract"]["validator"] == "evolution_sync.normalize_interface_event"
     event = status["events"][0]
     assert event["event_id"] == "repair-1"
-    assert event["commit"] == "a" * 40
+    assert event["source_commit"] == "a" * 40
     assert event["subsystems"] == ["nexus", "psi"]
     assert event["execution_authorized"] is False
     assert event["event_path"].endswith("20261001T010000Z-repair.json")
-    assert len(event["blob_sha"]) == 40
+    assert len(event["local_blob_sha"]) == 40
 
 
 def test_mcp_projector_orders_newest_first_and_bounds_limit(tmp_path: Path):
