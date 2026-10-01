@@ -792,6 +792,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._send(200, (html_path.parent / "research-ui.js").read_bytes(), "text/javascript")
             if p.path == "/sources-ui.js":
                 return self._send(200, (html_path.parent / "sources-ui.js").read_bytes(), "text/javascript")
+            if p.path == "/market-data-ui.js":
+                return self._send(200, (html_path.parent / "market-data-ui.js").read_bytes(), "text/javascript")
             if p.path == "/integrity-ui.js":
                 return self._send(200, (html_path.parent / "integrity-ui.js").read_bytes(), "text/javascript")
             if p.path == "/engine-control-ui.js":
