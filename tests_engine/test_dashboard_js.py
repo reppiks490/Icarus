@@ -133,3 +133,21 @@ def test_dashboard_surfaces_repository_native_mcp_evolution_panel():
     assert "automation_intelligence/mcp_interface/events" in sync
     assert "execution_authorized must be false" in sync
     assert "production_decision_authorized must be false" in sync
+
+
+def test_dashboard_surfaces_oracle_psi_possibility_panel():
+    dashboard = (REPO / "icarus_engine/dashboard.html").read_text(encoding="utf-8")
+    ui = (REPO / "icarus_engine/possibility-ui.js").read_text(encoding="utf-8")
+    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
+    engine = (REPO / "icarus_engine/possibility.py").read_text(encoding="utf-8")
+    assert '/possibility-ui.js' in dashboard
+    assert 'data-v="possibility">ORACLE Ψ</span>' in dashboard
+    assert "wirePossibility()" in dashboard
+    assert "/api/possibility" in ui
+    assert "execution_authorized" in ui
+    assert 'p.path == "/api/possibility"' in server
+    assert 'p.path == "/admin/possibility/evidence"' in server
+    assert "PossibilityEngine" in server
+    assert "consensus_requires_distinct_evidence_domains" in engine
+    assert "confidence_weighted_coverage" in engine
+
