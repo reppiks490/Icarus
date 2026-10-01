@@ -44,7 +44,8 @@ mcp = MCPServer(
         "the exact source repository/branch/40-character commit through record_engine_integrity_event so the "
         "Data Integrity panel stays aligned. For agent/subsystem learning, regime research, drift, training, "
         "evaluation, or rigorously-qualified candidate lifecycle updates, use record_engine_brain_event so the "
-        "Adaptive Brain panel receives durable evidence. Use the performance-proof tools for immutable forecast/outcome/replay "
+        "Adaptive Brain panel receives durable evidence. Use candidate-qualification receipts for every promotion gate and "
+        "qualify_engine_candidate_shadow only after exact-revision proof is complete. Use the performance-proof tools for immutable forecast/outcome/replay "
         "evidence and engine_latency_telemetry for measured timing. Brain publication is research/shadow-only and cannot "
         "grant production decision or broker authority. Those publication tools are diagnostic-only. "
         "pause_trading / resume_trading / flatten_all / "
@@ -452,6 +453,94 @@ def record_engine_brain_event(
             "source_commit": source_commit,
         })
     return _safe_engine(lambda: _engine_post("/admin/brain/event", body))
+
+
+@mcp.tool()
+def engine_candidate_qualification(
+    candidate_id: str,
+    source_repo: str,
+    source_commit: str,
+) -> dict:
+    """Read exact-revision proof-gate state for one research/shadow candidate."""
+    return _safe_engine(lambda: _engine_get(
+        "/api/candidate-qualification",
+        candidate_id=candidate_id,
+        source_repo=source_repo,
+        source_commit=source_commit,
+    ))
+
+
+@mcp.tool()
+def record_engine_candidate_gate_receipt(
+    candidate_id: str,
+    source_repo: str,
+    source_commit: str,
+    gate: str,
+    passed: bool,
+    reviewer_role: str,
+    reviewer_id: str,
+    observed_at: str,
+    evidence_hash: str,
+    evidence_json: str,
+    independent: bool = False,
+) -> dict:
+    """Append one immutable candidate qualification receipt.
+
+    Passing independent_verification requires an independent AEGIS, ASCENSION,
+    or DAEDALUS reviewer. This tool cannot grant production or execution authority.
+    """
+    try:
+        evidence = json.loads(evidence_json or "[]")
+    except json.JSONDecodeError as ex:
+        return {"error": f"invalid evidence_json: {ex}"}
+    if not isinstance(evidence, list) or not evidence:
+        return {"error": "evidence_json must decode to a non-empty list"}
+    body = {
+        "candidate_id": candidate_id,
+        "source_repo": source_repo,
+        "source_commit": source_commit,
+        "gate": gate,
+        "passed": bool(passed),
+        "reviewer_role": reviewer_role,
+        "reviewer_id": reviewer_id,
+        "independent": bool(independent),
+        "observed_at": observed_at,
+        "evidence_hash": evidence_hash,
+        "evidence": evidence,
+    }
+    return _safe_engine(lambda: _engine_post("/admin/candidate-qualification/receipt", body))
+
+
+@mcp.tool()
+def qualify_engine_candidate_shadow(
+    candidate_id: str,
+    source_repo: str,
+    source_commit: str,
+    regimes_json: str,
+    metrics_json: str = "{}",
+) -> dict:
+    """Promote a candidate to qualified_shadow only if every receipt gate is proven.
+
+    The engine revalidates the append-only qualification ledger and emits the
+    Adaptive Brain event itself. Production and execution authority remain false.
+    """
+    try:
+        regimes = json.loads(regimes_json or "[]")
+        metrics = json.loads(metrics_json or "{}")
+    except json.JSONDecodeError as ex:
+        return {"error": f"invalid candidate JSON: {ex}"}
+    if not isinstance(regimes, list) or not regimes:
+        return {"error": "regimes_json must decode to a non-empty list"}
+    if not isinstance(metrics, dict):
+        return {"error": "metrics_json must decode to an object"}
+    body = {
+        "candidate_id": candidate_id,
+        "source_repo": source_repo,
+        "source_commit": source_commit,
+        "regimes": regimes,
+        "metrics": metrics,
+    }
+    return _safe_engine(lambda: _engine_post("/admin/candidate-qualification/promote", body))
 
 
 @mcp.tool()
