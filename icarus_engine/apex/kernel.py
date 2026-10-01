@@ -12,6 +12,7 @@ from .force_field import pressure_tensor
 from .information_gain import rank_experiments
 from .institutional import institutional_mechanics
 from .liquidity import liquidity_topology
+from .macro_state import economic_world_state
 from .participants import participant_state
 from .store import ApexStore
 
