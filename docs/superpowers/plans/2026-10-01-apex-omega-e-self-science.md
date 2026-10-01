@@ -41,9 +41,10 @@
 **Interfaces:**
 - `reality_gap(*, predictions, observations, calibration_contract) -> dict[str, Any]`
 - states `NORMAL|DRIFTING|DEGRADED|INVALID|QUARANTINED|UNMEASURED`.
-- `credibility_score` consumes reality-gap state and cannot increase on degradation.
+- `effective_model_diversity(models: Sequence[Mapping[str, Any]]) -> dict[str, Any]`
+- `credibility_score` consumes reality-gap state and cannot increase on degradation or model-monoculture evidence.
 
-- [ ] RED tests for degradation, unmeasured state, regime mismatch, historical strength/current failure, and quarantine.
+- [ ] RED tests for degradation, unmeasured state, regime mismatch, historical strength/current failure, quarantine, and nominal-ten/effective-one model monoculture.
 - [ ] Run RED.
 - [ ] Implement.
 - [ ] Run GREEN.
@@ -93,8 +94,10 @@
 **Interfaces:**
 - `rank_observations(candidates, *, uncertainty_state, acquisition_costs, availability) -> list[dict[str, Any]]`
 - `rank_experiments(hypotheses, experiments) -> list[dict[str, Any]]`
+- `rank_compute_jobs(jobs, *, opportunity, uncertainty_reduction, impact, urgency, compute_cost) -> list[dict[str, Any]]`
+- `scientific_governor_snapshot(*, unresolved_hypotheses, anomalies, experiments, compute_jobs) -> dict[str, Any]`
 
-- [ ] RED tests for unavailable candidate exclusion, redundant-evidence penalty, cost penalty, discriminative hypothesis value, and deterministic ranking.
+- [ ] RED tests for unavailable candidate exclusion, redundant-evidence penalty, cost penalty, discriminative hypothesis value, deterministic ranking, expensive-low-value simulation deprioritization, and governor preservation of unresolved hypotheses.
 - [ ] Run RED.
 - [ ] Implement bounded normalized ranking; never claim unmeasured entropy as measured.
 - [ ] Run GREEN.
@@ -117,7 +120,50 @@
 - [ ] Run GREEN.
 - [ ] Update docs and commit `feat(apex): evaluate bounded self evolution`.
 
-### Task 6: Project-E verification gate
+### Task 6: Theory library, temporal knowledge, and Project-E persistence
+
+**Files:**
+- Create: `icarus_engine/apex/theory.py`
+- Modify: `icarus_engine/apex/store.py`
+- Modify: `icarus_engine/apex/credibility.py`
+- Modify: `icarus_engine/apex/reality_gap.py`
+- Modify: `icarus_engine/apex/conscience.py`
+- Create: `tests_engine/test_apex_theory_persistence.py`
+
+**Interfaces:**
+- Produces:
+  - `class TheoryLibrary`
+  - `TheoryLibrary.record(body: Mapping[str, Any]) -> dict[str, Any]`
+  - `TheoryLibrary.transition(theory_id: str, state: str, *, evidence_ids: Sequence[str], reason: str) -> dict[str, Any]`
+  - `TheoryLibrary.as_of(as_of: str) -> list[dict[str, Any]]`
+  - theory states `supported|rejected|conditional|regime_specific|unresolved|obsolete`
+  - `ApexStore.record_model_credibility(...)`
+  - `ApexStore.record_reality_gap(...)`
+  - `ApexStore.record_conscience_verdict(...)`
+
+- [ ] **Step 1: Write RED theory/temporal/durability tests**
+
+Cover negative-result preservation, validity intervals, historical `what was known at T` reconstruction, append-only theory transitions, credibility/reality-gap/conscience reopen replay, and no future transition leakage.
+
+- [ ] **Step 2: Run RED**
+
+Run: `python -m pytest tests_engine/test_apex_theory_persistence.py -q`  
+Expected: FAIL.
+
+- [ ] **Step 3: Implement theory library and additive durable tables**
+
+Add `theory_records`, `model_credibility`, `reality_gap`, and `conscience_verdicts` tables. Use validity intervals and append-only events so historical knowledge reconstruction cannot see future state changes.
+
+- [ ] **Step 4: Run GREEN**
+
+Run: `python -m pytest tests_engine/test_apex_theory_persistence.py -q`  
+Expected: PASS.
+
+- [ ] **Step 5: Commit**
+
+`git add icarus_engine/apex/theory.py icarus_engine/apex/store.py icarus_engine/apex/credibility.py icarus_engine/apex/reality_gap.py icarus_engine/apex/conscience.py tests_engine/test_apex_theory_persistence.py && git commit -m "feat(apex): persist self science knowledge"`
+
+### Task 7: Project-E verification gate
 
 - [ ] Run all Project-E tests — Expected PASS.
 - [ ] Run Projects A-D tests — Expected PASS.
