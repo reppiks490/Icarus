@@ -6,7 +6,7 @@ import math
 import os
 import sqlite3
 import threading
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -537,8 +537,8 @@ class PantheonKernel:
         evidence = body.get("evidence", [])
         if isinstance(evidence, str):
             evidence = [evidence]
-        if not isinstance(evidence, list) or len(evidence) > 64:
-            raise ValueError("evidence must be a list with at most 64 items")
+        if not isinstance(evidence, list) or not evidence or len(evidence) > 64:
+            raise ValueError("evidence must contain 1-64 items")
         evidence = [text(item, "evidence item", 700) for item in evidence]
         evidence_json = json_canonical(evidence, "evidence", 65536)
         semantic = json_canonical(
@@ -557,7 +557,8 @@ class PantheonKernel:
 
         with _LOCK, self._connect() as con:
             claim = con.execute(
-                """SELECT c.*,o.observed_at AS claim_observed_at
+                """SELECT c.*,o.observed_at AS claim_observed_at,
+                          o.horizon_ms AS claim_horizon_ms,o.asset AS claim_asset
                    FROM claims c JOIN observations o ON o.observation_id=c.observation_id
                    WHERE c.claim_id=?""",
                 (claim_id,),
@@ -567,7 +568,7 @@ class PantheonKernel:
             source_observation = None
             if source_observation_id is not None:
                 source_observation = con.execute(
-                    "SELECT observation_id,observed_at FROM observations WHERE observation_id=?",
+                    "SELECT observation_id,observed_at,asset FROM observations WHERE observation_id=?",
                     (source_observation_id,),
                 ).fetchone()
                 if source_observation is None:
@@ -582,10 +583,13 @@ class PantheonKernel:
             outcome_time = datetime.fromisoformat(observed_at.replace("Z", "+00:00"))
             if source_observation is not None:
                 source_time = datetime.fromisoformat(str(source_observation["observed_at"]).replace("Z", "+00:00"))
-                if outcome_time < source_time:
-                    raise ValueError("claim outcome cannot precede its source observation")
-            if outcome_time < claim_time:
-                raise ValueError("claim outcome cannot precede claim availability")
+                if str(source_observation["asset"]) != str(claim["claim_asset"]):
+                    raise ValueError("claim outcome source asset must match claim asset")
+                if outcome_time != source_time:
+                    raise ValueError("claim outcome time must match its source observation time")
+            maturity_time = claim_time + timedelta(milliseconds=int(claim["claim_horizon_ms"]))
+            if outcome_time < maturity_time:
+                raise ValueError("claim outcome cannot precede claim horizon maturity")
             prior_time = con.execute(
                 "SELECT * FROM claim_outcomes WHERE claim_id=? AND observed_at=?",
                 (claim_id, observed_at),
@@ -613,7 +617,7 @@ class PantheonKernel:
             if positive_weight > 1e-12:
                 fitness = sum(float(row["utility"]) * float(row["confidence"]) for row in outcomes) / positive_weight
             else:
-                fitness = sum(float(row["utility"]) for row in outcomes) / max(1, len(outcomes))
+                fitness = 0.0
             n = len(outcomes)
             if n >= 3 and fitness <= -0.20:
                 stage = "retired"
