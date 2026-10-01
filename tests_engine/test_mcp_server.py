@@ -53,6 +53,7 @@ def test_mcp_server_imports_and_registers_engine_surface():
         "engine_learning_state",
         "engine_learning_scorecards",
         "engine_learning_datasets",
+        "engine_learning_experience",
         "configure_engine_learning",
         "record_engine_learning_prediction",
         "record_engine_learning_outcome",
@@ -865,3 +866,14 @@ def test_mcp_manual_learning_cycle_route(monkeypatch):
     out = mcp_server.run_engine_learning_cycle()
     assert out["execution_authorized"] is False
     assert seen == [("/admin/learning/tick", {})]
+
+
+def test_mcp_learning_experience_route(monkeypatch):
+    seen = []
+    monkeypatch.setattr(mcp_server, "_engine_get", lambda path: (seen.append(path) or {
+        "count": 0, "summary": [], "execution_authorized": False,
+        "production_decision_authorized": False,
+    }))
+    out = mcp_server.engine_learning_experience()
+    assert out["execution_authorized"] is False
+    assert seen == ["/api/learning/experience"]
