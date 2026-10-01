@@ -76,14 +76,14 @@ def test_engine_dashboard_surfaces_repository_mcp_audit():
 def test_system_tab_surfaces_mcp_evolution_ledger():
     dashboard = (REPO / "icarus_engine" / "dashboard.html").read_text(encoding="utf-8")
     research_ui = (REPO / "icarus_engine" / "research-ui.js").read_text(encoding="utf-8")
-    research_service = (REPO / "icarus_engine" / "research_service.py").read_text(encoding="utf-8")
+    system_audit = (REPO / "icarus_engine" / "system_audit.py").read_text(encoding="utf-8")
     assert 'data-v="system">System</span>' in dashboard
     assert "mcpEvolutionCard" in research_ui
     assert "System evolution &amp; audit" in research_ui
-    assert "data.system_evolution" in research_ui
+    assert "data.evolution" in research_ui
     assert "source_commit" in research_ui
     assert "Execution authority:" in research_ui
-    assert '"system_evolution": evolution_report()' in research_service
+    assert 'out["evolution"] = evolution_report()' in system_audit
 
 
 def test_mcp_evolution_ledger_is_fail_closed():
