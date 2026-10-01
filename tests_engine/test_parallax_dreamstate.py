@@ -398,6 +398,35 @@ def test_parallax_hac_can_reject_naive_significance_under_serial_dependence(tmp_
     assert signal["candidate_eligible"] is False
 
 
+def test_parallax_bh_uses_dependence_adjusted_screen_p_values():
+    rows = [
+        {
+            "asset": "NQ",
+            "regime": "trend",
+            "source_commit": "a" * 40,
+            "comparison_contract_hash": "c" * 64,
+            "branch_label": "naively_tiny_but_hac_weak",
+            "p_one_sided": 0.001,
+            "screen_p_one_sided": 0.20,
+        },
+        {
+            "asset": "NQ",
+            "regime": "trend",
+            "source_commit": "a" * 40,
+            "comparison_contract_hash": "c" * 64,
+            "branch_label": "naively_larger_but_hac_strong",
+            "p_one_sided": 0.05,
+            "screen_p_one_sided": 0.01,
+        },
+    ]
+
+    ParallaxStore._apply_bh(rows)
+    by_label = {row["branch_label"]: row for row in rows}
+
+    assert by_label["naively_tiny_but_hac_weak"]["q_value"] == pytest.approx(0.20)
+    assert by_label["naively_larger_but_hac_strong"]["q_value"] == pytest.approx(0.02)
+
+
 def test_parallax_cross_revision_contradiction_blocks_robust_readiness(tmp_path):
     store = ParallaxStore(tmp_path)
     for i in range(6):
