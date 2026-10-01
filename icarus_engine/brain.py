@@ -469,6 +469,7 @@ def brain_snapshot(
     system_audit: Mapping[str, Any] | None = None,
     integrity: Mapping[str, Any] | None = None,
     remote_sync: Mapping[str, Any] | None = None,
+    research_sync: Mapping[str, Any] | None = None,
     limit: int = 1000,
 ) -> dict[str, Any]:
     """Build the operator brain state from measured local evidence only."""
@@ -567,6 +568,12 @@ def brain_snapshot(
         "candidates": candidates,
         "regime_routes": routes,
         "remote_sync": dict(remote_sync) if isinstance(remote_sync, Mapping) else {
+            "enabled": False,
+            "status": "not_configured",
+            "execution_authorized": False,
+            "production_decision_authorized": False,
+        },
+        "research_sync": dict(research_sync) if isinstance(research_sync, Mapping) else {
             "enabled": False,
             "status": "not_configured",
             "execution_authorized": False,
