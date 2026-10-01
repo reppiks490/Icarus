@@ -7,6 +7,7 @@ import urllib.request
 import pytest
 
 from icarus_mobile_gateway.auth import AuthError, SessionSigner
+from icarus_mobile_gateway.proxy import UpstreamClient, UpstreamError
 from icarus_mobile_gateway.push import system_alerts, validate_push_token
 from icarus_mobile_gateway.server import make_server
 from icarus_mobile_gateway.store import DeviceStore
@@ -58,6 +59,17 @@ def test_push_token_validation():
     assert validate_push_token("ExpoPushToken[abcDEF_123456789]")
     with pytest.raises(ValueError):
         validate_push_token("https://example.com/not-a-token")
+
+
+def test_mobile_proxy_rejects_execution_mutations_and_unknown_backtest_fields():
+    client = UpstreamClient("http://127.0.0.1:1", admin_token="secret")
+    with pytest.raises(UpstreamError) as denied:
+        client.mobile_post("/v1/pause", {"asset": "NQ"})
+    assert denied.value.status == 404
+
+    with pytest.raises(UpstreamError) as invalid:
+        client.mobile_post("/v1/backtest", {"asset": "NQ", "confirm": True})
+    assert invalid.value.status == 400
 
 
 class FakeUpstream:
@@ -156,7 +168,15 @@ def test_gateway_pair_refresh_read_and_revoke(tmp_path):
         code, disabled = _request(base + "/v1/notifications/unregister", "POST", {}, token=session)
         assert code == 200 and disabled["enabled"] is False
 
-        code, started = _request(base + "/v1/backtest", "POST", {"asset": "NQ"}, token=session)
+        code, forbidden = _request(base + "/v1/pause", "POST", {"asset": "NQ"}, token=session)
+        assert code == 404
+
+        code, started = _request(
+            base + "/v1/backtest",
+            "POST",
+            {"asset": "NQ", "chart_type": "heikin_ashi", "session": "rth", "timeframe": "20"},
+            token=session,
+        )
         assert code == 200
         assert started["job"] == "job-123"
 

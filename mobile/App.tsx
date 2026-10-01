@@ -26,6 +26,18 @@ import type {
 } from './src/types';
 
 type Tab = 'overview' | 'intelligence' | 'lab' | 'system' | 'settings';
+type LabChartType = 'real' | 'heikin_ashi';
+type LabSession = 'rth' | 'eth';
+type LabVariant = {
+  key: string;
+  label: string;
+  chartType: LabChartType;
+  session: LabSession;
+  jobId: string;
+  status: string;
+  job: JsonObject | null;
+  error?: string;
+};
 
 function errorText(error: unknown): string {
   if (error instanceof IcarusApiError) return error.message;
@@ -48,6 +60,52 @@ function ageLabel(age: unknown): string {
 function timeLabel(epoch: unknown): string {
   if (typeof epoch !== 'number' || !Number.isFinite(epoch)) return '—';
   return new Date(epoch * 1000).toLocaleString();
+}
+
+function objectValue(value: unknown): JsonObject | null {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+    ? value as JsonObject
+    : null;
+}
+
+function backtestMetric(job: JsonObject | null, key: string): unknown {
+  const result = objectValue(job?.result);
+  const summary = objectValue(result?.summary);
+  const metric = objectValue(summary?.[key]);
+  return metric?.all;
+}
+
+function metricWithSuffix(value: unknown, suffix = ''): string {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? numberLabel(value) + suffix
+    : '—';
+}
+
+function BacktestComparisonCard({ row }: { row: LabVariant }) {
+  return (
+    <View style={styles.card}>
+      <View style={styles.rowBetween}>
+        <Text style={styles.cardTitle}>{row.label}</Text>
+        <View style={[
+          styles.pill,
+          row.status === 'done' ? styles.pillGood
+            : row.status === 'error' || row.status === 'failed' ? styles.pillBad
+              : styles.pillWarn,
+        ]}>
+          <Text style={styles.pillText}>{row.status.toUpperCase()}</Text>
+        </View>
+      </View>
+      <View style={styles.metricGrid}>
+        <Metric label="Net profit" value={metricWithSuffix(backtestMetric(row.job, 'net_profit'))} />
+        <Metric label="Trades" value={metricWithSuffix(backtestMetric(row.job, 'total_trades'))} />
+        <Metric label="Win rate" value={metricWithSuffix(backtestMetric(row.job, 'percent_profitable'), '%')} />
+        <Metric label="Profit factor" value={metricWithSuffix(backtestMetric(row.job, 'profit_factor'))} />
+        <Metric label="Max drawdown" value={metricWithSuffix(backtestMetric(row.job, 'max_drawdown'))} />
+      </View>
+      {row.error ? <Text style={styles.errorText}>{row.error}</Text> : null}
+      {row.jobId ? <Text style={styles.hint}>Job {row.jobId}</Text> : null}
+    </View>
+  );
 }
 
 function AssetCard({ asset, selected, onPress }: {
@@ -152,6 +210,11 @@ export default function App() {
   const [backtestJobId, setBacktestJobId] = useState('');
   const [labAsset, setLabAsset] = useState('');
   const [labBusy, setLabBusy] = useState(false);
+  const [labChartType, setLabChartType] = useState<LabChartType>('real');
+  const [labSession, setLabSession] = useState<LabSession>('rth');
+  const [labTimeframe, setLabTimeframe] = useState('');
+  const [matrixBusy, setMatrixBusy] = useState(false);
+  const [matrix, setMatrix] = useState<LabVariant[]>([]);
   const [pushStatus, setPushStatus] = useState<JsonObject | null>(null);
   const [pushBusy, setPushBusy] = useState(false);
   const [pairUrl, setPairUrl] = useState('');
@@ -317,6 +380,42 @@ export default function App() {
     };
   }, [client, backtestJobId]);
 
+  const matrixJobsKey = matrix.map((row) => row.jobId).filter(Boolean).join('|');
+
+  useEffect(() => {
+    if (!client || !matrixJobsKey) return;
+    const jobs = matrix.filter((row) => row.jobId).map((row) => ({ key: row.key, jobId: row.jobId }));
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const terminal = new Set(['done', 'error', 'failed']);
+
+    const poll = async () => {
+      const updates = await Promise.all(jobs.map(async (row) => {
+        try {
+          const job = await client.backtest(row.jobId);
+          return { key: row.key, job, status: String(job.status || 'unknown'), error: '' };
+        } catch (reason) {
+          return { key: row.key, job: null, status: 'error', error: errorText(reason) };
+        }
+      }));
+      if (cancelled) return;
+      const byKey = new Map(updates.map((row) => [row.key, row]));
+      setMatrix((current) => current.map((row) => {
+        const update = byKey.get(row.key);
+        return update ? { ...row, ...update } : row;
+      }));
+      if (updates.some((row) => !terminal.has(row.status))) {
+        timer = setTimeout(() => void poll(), 1500);
+      }
+    };
+
+    void poll();
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [client, matrixJobsKey]);
+
   useEffect(() => {
     if (!client || tab !== 'settings') return;
     let cancelled = false;
@@ -369,11 +468,18 @@ export default function App() {
     }
   };
 
+  const selectedBacktestRequest = () => ({
+    asset: labAsset,
+    chart_type: labChartType,
+    session: labSession,
+    ...(labTimeframe.trim() ? { timeframe: labTimeframe.trim() } : {}),
+  });
+
   const startBacktest = async () => {
     if (!client || !labAsset) return;
     setLabBusy(true);
     try {
-      const started = await client.startBacktest(labAsset);
+      const started = await client.startBacktest(selectedBacktestRequest());
       const job = String(started.job || '');
       if (!job) throw new IcarusApiError('ICARUS did not return a backtest job id');
       setBacktest(started);
@@ -383,6 +489,50 @@ export default function App() {
       setError(errorText(reason));
     } finally {
       setLabBusy(false);
+    }
+  };
+
+  const runComparisonMatrix = async () => {
+    if (!client || !labAsset) return;
+    setMatrixBusy(true);
+    const variants: Array<Omit<LabVariant, 'jobId' | 'status' | 'job' | 'error'>> = [
+      { key: 'regular-rth', label: 'Regular · RTH', chartType: 'real', session: 'rth' },
+      { key: 'regular-eth', label: 'Regular · ETH', chartType: 'real', session: 'eth' },
+      { key: 'ha-rth', label: 'Heikin Ashi · RTH', chartType: 'heikin_ashi', session: 'rth' },
+      { key: 'ha-eth', label: 'Heikin Ashi · ETH', chartType: 'heikin_ashi', session: 'eth' },
+    ];
+    const rows: LabVariant[] = [];
+    try {
+      for (const variant of variants) {
+        try {
+          const started = await client.startBacktest({
+            asset: labAsset,
+            chart_type: variant.chartType,
+            session: variant.session,
+            ...(labTimeframe.trim() ? { timeframe: labTimeframe.trim() } : {}),
+          });
+          const jobId = String(started.job || '');
+          rows.push({
+            ...variant,
+            jobId,
+            status: jobId ? String(started.status || 'queued') : 'error',
+            job: started,
+            error: jobId ? undefined : 'ICARUS did not return a backtest job id',
+          });
+        } catch (reason) {
+          rows.push({
+            ...variant,
+            jobId: '',
+            status: 'error',
+            job: null,
+            error: errorText(reason),
+          });
+        }
+      }
+      setMatrix(rows);
+      setError('');
+    } finally {
+      setMatrixBusy(false);
     }
   };
 
@@ -582,16 +732,71 @@ export default function App() {
                   );
                 })}
               </View>
+
+              <Text style={styles.sectionLabel}>CANDLE TYPE</Text>
+              <View style={styles.assetPicker}>
+                {([
+                  ['real', 'Regular'],
+                  ['heikin_ashi', 'Heikin Ashi'],
+                ] as const).map(([value, label]) => (
+                  <Pressable
+                    key={value}
+                    onPress={() => setLabChartType(value)}
+                    style={[styles.assetChip, labChartType === value && styles.assetChipActive]}
+                  >
+                    <Text style={[styles.assetChipText, labChartType === value && styles.assetChipTextActive]}>{label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+
+              <Text style={styles.sectionLabel}>SESSION</Text>
+              <View style={styles.assetPicker}>
+                {(['rth', 'eth'] as const).map((value) => (
+                  <Pressable
+                    key={value}
+                    onPress={() => setLabSession(value)}
+                    style={[styles.assetChip, labSession === value && styles.assetChipActive]}
+                  >
+                    <Text style={[styles.assetChipText, labSession === value && styles.assetChipTextActive]}>{value.toUpperCase()}</Text>
+                  </Pressable>
+                ))}
+              </View>
+
+              <Text style={styles.fieldLabel}>Timeframe in minutes (optional)</Text>
+              <TextInput
+                keyboardType="number-pad"
+                placeholder="Use current timeframe"
+                placeholderTextColor="#566078"
+                value={labTimeframe}
+                onChangeText={setLabTimeframe}
+                style={styles.input}
+              />
+
               <Pressable
                 style={[styles.primaryButton, (labBusy || !labAsset) && styles.buttonDisabled]}
                 disabled={labBusy || !labAsset}
                 onPress={() => void startBacktest()}
               >
-                <Text style={styles.primaryButtonText}>{labBusy ? 'STARTING…' : 'RUN CURRENT CONFIG BACKTEST'}</Text>
+                <Text style={styles.primaryButtonText}>{labBusy ? 'STARTING…' : 'RUN SELECTED CONFIG'}</Text>
               </Pressable>
-              {backtestJobId ? <Text style={styles.hint}>Job {backtestJobId}</Text> : null}
+              <Pressable
+                style={[styles.secondaryButton, (matrixBusy || !labAsset) && styles.buttonDisabled]}
+                disabled={matrixBusy || !labAsset}
+                onPress={() => void runComparisonMatrix()}
+              >
+                <Text style={styles.secondaryButtonText}>{matrixBusy ? 'LAUNCHING MATRIX…' : 'RUN REGULAR/HA × RTH/ETH MATRIX'}</Text>
+              </Pressable>
+              {backtestJobId ? <Text style={styles.hint}>Selected job {backtestJobId}</Text> : null}
             </View>
-            <JsonPanel title="Backtest Job" data={backtest} />
+
+            {matrix.length ? (
+              <>
+                <Text style={styles.sectionLabel}>COMPARISON MATRIX</Text>
+                {matrix.map((row) => <BacktestComparisonCard key={row.key} row={row} />)}
+              </>
+            ) : null}
+
+            <JsonPanel title="Selected Backtest Job" data={backtest} />
             <JsonPanel title="Research State" data={research} />
           </>
         ) : null}

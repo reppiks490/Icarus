@@ -165,7 +165,7 @@ def make_server(
         upstream=upstream_client,
         cache=cache,
         limiter=PairRateLimiter(),
-        actions=PairRateLimiter(attempts=4, window=60),
+        actions=PairRateLimiter(attempts=8, window=60),
     )
 
     class H(BaseHTTPRequestHandler):

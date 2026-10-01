@@ -237,8 +237,15 @@ export class IcarusClient {
     return this.get<JsonObject>('/v1/research').then((value) => value || {});
   }
 
-  startBacktest(asset: string): Promise<JsonObject> {
-    return this.post<JsonObject>('/v1/backtest', { asset });
+  startBacktest(request: {
+    asset: string;
+    chart_type?: 'real' | 'heikin_ashi';
+    session?: 'rth' | 'eth';
+    timeframe?: string;
+    window_start?: number;
+    window_end?: number;
+  }): Promise<JsonObject> {
+    return this.post<JsonObject>('/v1/backtest', request);
   }
 
   backtest(jobId: string): Promise<JsonObject> {
