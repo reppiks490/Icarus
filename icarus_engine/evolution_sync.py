@@ -51,6 +51,11 @@ def _git_blob_sha(raw: bytes) -> str:
     return hashlib.sha1(header + raw).hexdigest()
 
 
+def git_blob_sha(raw: bytes) -> str:
+    """Public Git-blob digest helper for repository-native event verification."""
+    return _git_blob_sha(raw)
+
+
 def _is_sha(value: Any) -> bool:
     return isinstance(value, str) and len(value) == 40 and all(
         c in "0123456789abcdef" for c in value.lower()
