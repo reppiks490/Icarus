@@ -536,6 +536,98 @@ def test_dreamstate_carries_dependence_and_transportability_evidence(tmp_path):
         assert robust["transportability"]["stable"] is True
 
 
+def test_parallax_distributional_fragility_blocks_outlier_driven_mean(tmp_path):
+    store = ParallaxStore(tmp_path)
+    values = [3.0, -0.1, 3.0, -0.1, 3.0, -0.1, 3.0, -0.1, 3.0, -0.1, -0.1, -0.1]
+    for i, value in enumerate(values):
+        _record_pair(store, i, delay_utility=value)
+
+    signal = next(
+        row for row in store.hypotheses(min_samples=5)
+        if row["branch_label"] == "delay_1"
+    )
+    assert signal["candidate_eligible"] is True
+    assert signal["temporal_stability"]["stable"] is True
+    distribution = signal["distributional_robustness"]
+    assert distribution["evaluable"] is True
+    assert distribution["median_delta"] == pytest.approx(-0.1)
+    assert distribution["positive_fraction"] == pytest.approx(5 / 12)
+    assert distribution["positive_fraction_ok"] is False
+    assert distribution["stable"] is False
+    assert "nonpositive_episode_median" in signal["robustness_blockers"]
+    assert "low_positive_episode_fraction" in signal["robustness_blockers"]
+    assert signal["robust_candidate_eligible"] is False
+    assert not [
+        row for row in store.mutation_signals(min_samples=5)
+        if row["branch_label"] == "delay_1"
+    ]
+
+
+def test_parallax_distributional_breadth_allows_consistent_effect(tmp_path):
+    store = ParallaxStore(tmp_path)
+    for i in range(9):
+        _record_pair(store, i, delay_utility=1.0)
+
+    signal = next(
+        row for row in store.mutation_signals(min_samples=5)
+        if row["branch_label"] == "delay_1"
+    )
+    distribution = signal["distributional_robustness"]
+    assert distribution["evaluable"] is True
+    assert distribution["median_delta"] == pytest.approx(1.0)
+    assert distribution["positive_fraction"] == pytest.approx(1.0)
+    assert distribution["leave_one_out_min_mean"] == pytest.approx(1.0)
+    assert distribution["single_episode_fragile"] is False
+    assert distribution["stable"] is True
+
+
+def test_parallax_distributional_helper_detects_single_episode_fragility():
+    result = ParallaxStore._distributional_robustness(
+        [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, -0.2, -0.2, 2.0]
+    )
+    assert result["evaluable"] is True
+    assert result["median_positive"] is True
+    assert result["positive_fraction_ok"] is True
+    assert result["leave_one_out_min_mean"] < 0
+    assert result["single_episode_fragile"] is True
+    assert result["stable"] is False
+
+
+def test_dreamstate_retires_when_distributional_robustness_collapses(tmp_path):
+    store = ParallaxStore(tmp_path)
+    values = [3.0, -0.1, 3.0, -0.1, 3.0, -0.1, 3.0, -0.1, 3.0, -0.1, -0.1, -0.1]
+    for i, value in enumerate(values[:5]):
+        _record_pair(store, i, delay_utility=value)
+
+    lab = DreamstateLab(tmp_path, parallax=store)
+    candidate = next(
+        c for c in lab.refresh(min_samples=5)["candidates"]
+        if c["mutation"]["op"] == "set_execution_delay_bars"
+    )
+    assert candidate["stage"] == "proposed"
+
+    for i, value in enumerate(values[5:], start=5):
+        _record_pair(store, i, delay_utility=value)
+
+    source = next(
+        row for row in store.hypotheses(min_samples=5)
+        if row["branch_label"] == "delay_1"
+    )
+    assert source["candidate_eligible"] is True
+    assert source["temporal_stability"]["stable"] is True
+    assert source["distributional_robustness"]["stable"] is False
+    assert source["robust_candidate_eligible"] is False
+
+    refreshed = lab.refresh(min_samples=5)
+    retired = next(
+        c for c in refreshed["candidates"]
+        if c["candidate_id"] == candidate["candidate_id"]
+    )
+    assert retired["stage"] == "retired"
+    assert candidate["candidate_id"] in refreshed["refresh"]["auto_retired_source_decay"]
+    assert any("robustness screen" in item for item in retired["evidence"])
+
+
 def test_parallax_temporal_instability_blocks_robust_candidate_even_when_primary_screen_passes(tmp_path):
     store = ParallaxStore(tmp_path)
     for i in range(12):
@@ -1270,7 +1362,7 @@ def test_dreamstate_auto_retires_active_candidate_when_source_disappears(tmp_pat
     assert candidate["candidate_id"] in second["refresh"]["auto_retired_source_decay"]
     assert any("source signal is absent" in item for item in retired["evidence"])
 
-def test_v4_robustness_versions_are_explicit_without_breaking_v2_schema(tmp_path):
+def test_v5_robustness_versions_are_explicit_without_breaking_v2_schema(tmp_path):
     store = ParallaxStore(tmp_path)
     for i in range(5):
         _record_pair(store, i)
@@ -1281,10 +1373,10 @@ def test_v4_robustness_versions_are_explicit_without_breaking_v2_schema(tmp_path
     dream = lab.snapshot()
 
     assert snap["schema_version"] == "icarus-parallax-v2"
-    assert snap["robustness_version"] == "icarus-parallax-robustness-v2"
-    assert report["robustness_version"] == "icarus-parallax-robustness-v2"
+    assert snap["robustness_version"] == "icarus-parallax-robustness-v3"
+    assert report["robustness_version"] == "icarus-parallax-robustness-v3"
     assert dream["schema_version"] == "icarus-dreamstate-v2"
-    assert dream["robustness_version"] == "icarus-dreamstate-robustness-v2"
+    assert dream["robustness_version"] == "icarus-dreamstate-robustness-v3"
 
 
 def test_operator_status_is_lightweight_and_read_only(tmp_path):
