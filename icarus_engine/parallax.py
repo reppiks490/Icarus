@@ -10,7 +10,10 @@ evidence-complete paired screening, approximate one-sided significance screening
 with Benjamini-Hochberg FDR control, context-strata diagnostics, and richer
 counterfactual branch families. V3 adds chronological stability diagnostics and
 parameter-basin robustness so isolated lucky settings do not automatically enter
-DREAMSTATE. These are hypothesis screens, not causal proof.
+DREAMSTATE. V4 adds episode-aware effective sample sizes, autocorrelation-aware
+Newey-West/HAC inference, and cross-revision contradiction diagnostics so dense
+market episodes and serial dependence cannot manufacture confidence. These are
+hypothesis screens, not causal proof.
 """
 from __future__ import annotations
 
@@ -38,6 +41,8 @@ _DERIVED_STRATA_KEYS = (
 )
 _TEMPORAL_FOLD_COUNT = 3
 _TEMPORAL_MIN_PAIRS = 9
+_HAC_MIN_EFFECTIVE_PAIRS = 6
+_TRANSPORT_MIN_REVISIONS = 2
 _PARAMETER_AXES = {
     "delay": "delay_bars",
     "stop": "stop_multiplier",
@@ -554,7 +559,7 @@ class ParallaxStore:
             return con.execute(
                 """
                 SELECT d.decision_id,d.asset,d.regime,d.source_commit,d.contract_json,d.strata_json,
-                       d.observed_at AS decision_observed_at,
+                       d.context_json,d.observed_at AS decision_observed_at,
                        a.utility AS actual_utility,a.evidence_json AS actual_evidence_json,
                        b.kind,b.label,b.utility AS branch_utility,b.params_json,
                        b.evidence_json AS branch_evidence_json
@@ -614,6 +619,90 @@ class ParallaxStore:
             "ci95_high": mean + 1.96 * se,
             "p_one_sided": max(0.0, min(1.0, p)),
             "positive_fraction": positive_fraction,
+        }
+
+    @staticmethod
+    def _collapse_episodes(
+        samples: list[tuple[str, str, str, float]],
+    ) -> tuple[list[tuple[str, str, float]], dict[str, Any]]:
+        """Collapse repeated decisions from the same caller-supplied market episode."""
+        episodes: dict[str, dict[str, Any]] = {}
+        for observed_at, decision_id, episode_id, delta in samples:
+            bucket = episodes.setdefault(
+                episode_id,
+                {
+                    "episode_id": episode_id,
+                    "observed_at": observed_at,
+                    "decision_id": decision_id,
+                    "values": [],
+                },
+            )
+            current_time = _timestamp(bucket["observed_at"], "episode.observed_at")[1]
+            candidate_time = _timestamp(observed_at, "episode.observed_at")[1]
+            if (candidate_time, decision_id) < (current_time, str(bucket["decision_id"])):
+                bucket["observed_at"] = observed_at
+                bucket["decision_id"] = decision_id
+            bucket["values"].append(float(delta))
+
+        collapsed: list[tuple[str, str, float]] = []
+        sizes: list[int] = []
+        for bucket in episodes.values():
+            values = list(bucket["values"])
+            sizes.append(len(values))
+            collapsed.append(
+                (
+                    str(bucket["observed_at"]),
+                    str(bucket["decision_id"]),
+                    sum(values) / len(values),
+                )
+            )
+        collapsed.sort(key=lambda row: (_timestamp(row[0], "episode.observed_at")[1], row[1]))
+        return collapsed, {
+            "episode_count": len(collapsed),
+            "raw_pair_count": sum(sizes),
+            "clustered_pair_count": max(0, sum(sizes) - len(collapsed)),
+            "largest_episode_size": max(sizes) if sizes else 0,
+            "used_episode_clustering": any(size > 1 for size in sizes),
+        }
+
+    @staticmethod
+    def _hac_diagnostics(values: list[float]) -> dict[str, Any]:
+        """Newey-West mean uncertainty for chronologically ordered effective samples."""
+        n = len(values)
+        if n < _HAC_MIN_EFFECTIVE_PAIRS:
+            return {
+                "evaluable": False,
+                "required_effective_pairs": _HAC_MIN_EFFECTIVE_PAIRS,
+                "lag": None,
+                "std_error": None,
+                "ci95_low": None,
+                "ci95_high": None,
+                "p_one_sided": None,
+            }
+        mean = sum(values) / n
+        centered = [value - mean for value in values]
+        lag = min(n - 1, max(1, int(n ** (1.0 / 3.0))))
+        gamma0 = sum(value * value for value in centered) / n
+        long_run = gamma0
+        for k in range(1, lag + 1):
+            gamma = sum(centered[t] * centered[t - k] for t in range(k, n)) / n
+            weight = 1.0 - (k / (lag + 1.0))
+            long_run += 2.0 * weight * gamma
+        variance_of_mean = max(0.0, long_run / n)
+        se = math.sqrt(variance_of_mean)
+        if se <= 0:
+            p = 0.0 if mean > 0 else (0.5 if mean == 0 else 1.0)
+        else:
+            z = mean / se
+            p = 0.5 * math.erfc(z / math.sqrt(2.0))
+        return {
+            "evaluable": True,
+            "required_effective_pairs": _HAC_MIN_EFFECTIVE_PAIRS,
+            "lag": lag,
+            "std_error": se,
+            "ci95_low": mean - 1.96 * se,
+            "ci95_high": mean + 1.96 * se,
+            "p_one_sided": max(0.0, min(1.0, p)),
         }
 
     @classmethod
@@ -685,7 +774,7 @@ class ParallaxStore:
     def _apply_bh(items: list[dict[str, Any]]) -> None:
         by_family: dict[tuple[str, str, str, str], list[dict[str, Any]]] = {}
         for item in items:
-            p = item.get("p_one_sided")
+            p = item.get("screen_p_one_sided", item.get("p_one_sided"))
             if p is None:
                 item["q_value"] = None
                 continue
@@ -747,12 +836,12 @@ class ParallaxStore:
                 if idx > 0:
                     left_row = rows[idx - 1]
                     left_gap = abs(float(item["_parameter_axis_value"]) - float(left_row["_parameter_axis_value"]))
-                    if left_gap <= max_gap and int(left_row.get("evidence_pair_count") or 0) >= min_samples:
+                    if left_gap <= max_gap and int(left_row.get("effective_pair_count", left_row.get("evidence_pair_count")) or 0) >= min_samples:
                         neighbors.append(left_row)
                 if idx + 1 < len(rows):
                     right_row = rows[idx + 1]
                     right_gap = abs(float(right_row["_parameter_axis_value"]) - float(item["_parameter_axis_value"]))
-                    if right_gap <= max_gap and int(right_row.get("evidence_pair_count") or 0) >= min_samples:
+                    if right_gap <= max_gap and int(right_row.get("effective_pair_count", right_row.get("evidence_pair_count")) or 0) >= min_samples:
                         neighbors.append(right_row)
                 def basin_supports(row: Mapping[str, Any]) -> bool:
                     temporal = row.get("temporal_stability") or {}
@@ -762,7 +851,7 @@ class ParallaxStore:
                 supporting = [row for row in neighbors if basin_supports(row)]
                 family_evaluable_points = sum(
                     1 for row in rows
-                    if int(row.get("evidence_pair_count") or 0) >= min_samples
+                    if int(row.get("effective_pair_count", row.get("evidence_pair_count")) or 0) >= min_samples
                 )
                 evaluable = bool(neighbors)
                 local_support_missing = (
@@ -809,6 +898,52 @@ class ParallaxStore:
             item.pop("_parameter_axis_value", None)
             item.pop("_parameter_remainder_signature", None)
 
+    @staticmethod
+    def _annotate_transportability(items: list[dict[str, Any]], min_samples: int) -> None:
+        """Diagnose whether the same mutation survives independent ICARUS source revisions."""
+        families: dict[tuple[str, str, str, str, str, str], list[dict[str, Any]]] = {}
+        for item in items:
+            key = (
+                str(item.get("asset") or ""),
+                str(item.get("regime") or ""),
+                str(item.get("comparison_contract_hash") or ""),
+                str(item.get("kind") or ""),
+                str(item.get("branch_label") or ""),
+                str(item.get("branch_params_hash") or ""),
+            )
+            families.setdefault(key, []).append(item)
+
+        for rows in families.values():
+            evaluable = [
+                row for row in rows
+                if int(row.get("effective_pair_count", row.get("evidence_pair_count")) or 0) >= min_samples
+            ]
+            revisions = {str(row.get("source_commit") or "") for row in evaluable}
+            supporting = {
+                str(row.get("source_commit") or "")
+                for row in evaluable
+                if row.get("robust_candidate_eligible") is True
+            }
+            contradictory = {
+                str(row.get("source_commit") or "")
+                for row in evaluable
+                if row.get("screen_ci95_high") is not None
+                and float(row["screen_ci95_high"]) <= 0.0
+            }
+            is_evaluable = len(revisions) >= _TRANSPORT_MIN_REVISIONS
+            stable = is_evaluable and len(supporting) >= _TRANSPORT_MIN_REVISIONS and not contradictory
+            for item in rows:
+                item["transportability"] = {
+                    "evaluable": is_evaluable,
+                    "required_revisions": _TRANSPORT_MIN_REVISIONS,
+                    "evaluable_revision_count": len(revisions),
+                    "supporting_revision_count": len(supporting),
+                    "contradictory_revision_count": len(contradictory),
+                    "supporting_revisions": sorted(supporting),
+                    "contradictory_revisions": sorted(contradictory),
+                    "stable": stable,
+                }
+
     def _screened_hypotheses(
         self,
         min_samples: int = 5,
@@ -852,7 +987,7 @@ class ParallaxStore:
                     "branch_params_hash": params_hash,
                     "pair_count_total": 0,
                     "values": [],
-                    "temporal_samples": [],
+                    "episode_samples": [],
                     "strata": {},
                 },
             )
@@ -863,7 +998,14 @@ class ParallaxStore:
                 continue
             delta = float(row["branch_utility"]) - float(row["actual_utility"])
             group["values"].append(delta)
-            group["temporal_samples"].append((str(row["decision_observed_at"]), str(row["decision_id"]), delta))
+            context = json.loads(row["context_json"] or "{}")
+            episode_raw = context.get("episode_id") if isinstance(context, Mapping) else None
+            episode_id = str(episode_raw).strip() if episode_raw is not None else str(row["decision_id"])
+            if not episode_id:
+                episode_id = str(row["decision_id"])
+            group["episode_samples"].append(
+                (str(row["decision_observed_at"]), str(row["decision_id"]), episode_id, delta)
+            )
             strata = json.loads(row["strata_json"] or "{}")
             strata_json = _json(strata, "strata", 8192)
             signature = "unstratified" if not strata else _sha(strata_json)[:16]
@@ -872,8 +1014,17 @@ class ParallaxStore:
 
         hypotheses: list[dict[str, Any]] = []
         for group in groups.values():
-            stats = self._stats(group.pop("values"))
-            temporal = self._temporal_stability(group.pop("temporal_samples"))
+            raw_values = group.pop("values")
+            raw_pair_count = len(raw_values)
+            collapsed, dependence = self._collapse_episodes(group.pop("episode_samples"))
+            effective_values = [float(value) for _, _, value in collapsed]
+            stats = self._stats(effective_values)
+            raw_stats = self._stats(raw_values)
+            hac = self._hac_diagnostics(effective_values)
+            temporal = self._temporal_stability(collapsed)
+            screen_p = hac["p_one_sided"] if hac.get("evaluable") else stats.get("p_one_sided")
+            screen_low = hac["ci95_low"] if hac.get("evaluable") else stats.get("ci95_low")
+            screen_high = hac["ci95_high"] if hac.get("evaluable") else stats.get("ci95_high")
             strata_stats = []
             for bucket in group.pop("strata").values():
                 row_stats = self._stats(bucket.pop("values"))
@@ -882,10 +1033,17 @@ class ParallaxStore:
             item = {
                 **group,
                 **stats,
-                "evidence_pair_count": stats["n"],
+                "evidence_pair_count": raw_pair_count,
+                "effective_pair_count": stats["n"],
                 "evidence_pair_coverage": (
-                    stats["n"] / group["pair_count_total"] if group["pair_count_total"] else 0.0
+                    raw_pair_count / group["pair_count_total"] if group["pair_count_total"] else 0.0
                 ),
+                "episode_dependence": dependence,
+                "raw_pair_stats": raw_stats,
+                "hac_inference": hac,
+                "screen_p_one_sided": screen_p,
+                "screen_ci95_low": screen_low,
+                "screen_ci95_high": screen_high,
                 "strata_stats": strata_stats,
                 "strata_count": len(strata_stats),
                 "temporal_stability": temporal,
@@ -902,10 +1060,16 @@ class ParallaxStore:
             blockers: list[str] = []
             if item["evidence_pair_count"] < min_samples:
                 blockers.append("insufficient_evidence_pairs")
+            elif item["effective_pair_count"] < min_samples:
+                blockers.append("insufficient_independent_episodes")
             if not item["comparison_contract_complete"]:
                 blockers.append("comparison_contract_incomplete")
-            if item["ci95_low"] is None or float(item["ci95_low"]) <= min_effect:
-                blockers.append("effect_lower_bound_not_positive")
+            if item["screen_ci95_low"] is None or float(item["screen_ci95_low"]) <= min_effect:
+                blockers.append(
+                    "dependence_adjusted_lower_bound_not_positive"
+                    if (item.get("hac_inference") or {}).get("evaluable")
+                    else "effect_lower_bound_not_positive"
+                )
             if item.get("q_value") is None or float(item["q_value"]) > max_fdr:
                 blockers.append("fdr_screen_not_cleared")
             item["screen_blockers"] = blockers
@@ -925,12 +1089,19 @@ class ParallaxStore:
             item["robustness_blockers"] = robustness_blockers
             item["robust_candidate_eligible"] = bool(item["candidate_eligible"]) and not robustness_blockers
 
+        self._annotate_transportability(hypotheses, min_samples)
+        for item in hypotheses:
+            transport = item.get("transportability") or {}
+            if transport.get("evaluable") is True and int(transport.get("contradictory_revision_count") or 0) > 0:
+                item["robustness_blockers"].append("cross_revision_contradiction")
+                item["robust_candidate_eligible"] = False
+
         hypotheses.sort(
             key=lambda x: (
                 bool(x["robust_candidate_eligible"]),
                 bool(x["candidate_eligible"]),
                 -(float(x["q_value"]) if x.get("q_value") is not None else 1.0),
-                float(x["ci95_low"]) if x.get("ci95_low") is not None else -1e99,
+                float(x["screen_ci95_low"]) if x.get("screen_ci95_low") is not None else -1e99,
                 float(x["mean_delta"]) if x.get("mean_delta") is not None else -1e99,
             ),
             reverse=True,
@@ -986,7 +1157,7 @@ class ParallaxStore:
             for reason in item.get("robustness_blockers", []):
                 robustness_blockers[reason] = robustness_blockers.get(reason, 0) + 1
         return {
-            "robustness_version": "icarus-parallax-robustness-v1",
+            "robustness_version": "icarus-parallax-robustness-v2",
             "hypotheses_total": len(hypotheses),
             "candidate_ready": sum(1 for item in hypotheses if item["candidate_eligible"]),
             "robust_candidate_ready": sum(1 for item in hypotheses if item["robust_candidate_eligible"]),
@@ -1005,8 +1176,12 @@ class ParallaxStore:
             "method": {
                 "paired_delta": True,
                 "approximate_one_sided_normal_p": True,
+                "newey_west_hac_for_effective_episode_means_when_evaluable": True,
+                "benjamini_hochberg_uses_dependence_adjusted_p_when_evaluable": True,
                 "benjamini_hochberg_within_asset_regime_revision_contract": True,
-                "chronological_three_fold_stability_when_nine_pairs_available": True,
+                "episode_id_context_collapses_correlated_decisions_to_one_effective_sample": True,
+                "cross_revision_contradiction_screen_without_effect_pooling": True,
+                "chronological_three_fold_stability_when_nine_effective_pairs_available": True,
                 "adjacent_parameter_basin_screen_when_neighbors_are_evaluable": True,
                 "robustness_is_hypothesis_filter_not_causal_proof": True,
                 "causal_proof": False,
@@ -1150,7 +1325,7 @@ class ParallaxStore:
 
         return {
             "schema_version": SCHEMA_VERSION,
-            "robustness_version": "icarus-parallax-robustness-v1",
+            "robustness_version": "icarus-parallax-robustness-v2",
             "counts": {
                 "decisions": counts["decisions"],
                 "branches": counts["branches"],
@@ -1179,7 +1354,10 @@ class ParallaxStore:
                 "candidate_signals_require_complete_comparison_contract": True,
                 "candidate_signals_require_evidence_on_both_paired_paths": True,
                 "candidate_signals_use_bh_fdr_screen": True,
-                "temporal_robustness_is_advisory_until_nine_pairs": True,
+                "caller_supplied_episode_ids_reduce_effective_sample_size_instead_of_inflating_n": True,
+                "hac_uncertainty_is_used_when_enough_effective_episode_means_exist": True,
+                "cross_revision_effects_are_never_pooled_but_strong_contradictions_block_robust_readiness": True,
+                "temporal_robustness_is_advisory_until_nine_effective_pairs": True,
                 "evaluable_temporal_instability_blocks_robust_candidates": True,
                 "evaluable_isolated_parameter_spikes_block_robust_candidates": True,
                 "sampled_parameter_families_without_local_support_block_robust_candidates": True,
