@@ -1,0 +1,36 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "argus-athena-research-bridge-verified-20261001T193100Z",
+  "category": "EVOLUTION",
+  "severity": "success",
+  "status": "verified",
+  "subsystems": [
+    "argus",
+    "athena",
+    "research_validation",
+    "uncertainty",
+    "provenance"
+  ],
+  "recorded_at": "2026-10-01T19:31:00Z",
+  "title": "ARGUS to ATHENA receipt-time research bridge verified",
+  "summary": "A verified cross-system sidepath now carries prospectively locked ARGUS v2 order-block survival research into ATHENA as research/advisory evidence. ARGUS recomputes registered Kaplan-Meier uncertainty with the predeclared alpha, waits until the study follow-up cutoff, preserves manifest/cohort IDs, evidence tiers and censor lineage, and ATHENA exposes the artifact only after local ingestion time. The path is separate from live NEXUS market truth and retains zero execution or production-decision authority.",
+  "source_repository": "reppiks490/divine-providence",
+  "source_ref": "main",
+  "source_commit": "e7775ce158e0d3bf6ce0d4d0282100301d157da1",
+  "evidence": [
+    "divine-providence PR #23 merged at e7775ce158e0d3bf6ce0d4d0282100301d157da1",
+    "exact-head subsystem-evolution workflow run 36914408472 completed success",
+    "Linux and Windows ARGUS/ATHENA/AION subsystem jobs passed",
+    "intelligence-fabric and hub connection tests passed",
+    "full twelve-system validation passed",
+    "ARGUS export cannot publish before the predeclared follow-up cutoff",
+    "ATHENA publication time does not bypass local ingestion-time causality",
+    "manifest/cohort IDs, lifecycle revision, evidence tiers, confidence alpha and censor lineage are preserved",
+    "retrospective research remains separate from live NEXUS instant evidence",
+    "execution_authorized=false",
+    "production_authorized=false",
+    "production_decision_authorized=false"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}
