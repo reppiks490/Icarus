@@ -93,7 +93,47 @@ For one-dimensional delay, stop, target, and size families, PARALLAX also constr
 
 This deliberately prefers plateaus over magic numbers. It is still a research robustness screen, not proof of causality or expected profit.
 
-Storage: research/parallax.sqlite3 using SQLite WAL. V2 performs backward-compatible schema migration for comparison-contract and strata fields; V3 adds computed diagnostics without a destructive storage migration.
+### V4 dependence layer: effective N + HAC + revision transport
+
+V4 adds a stricter layer for evidence dependence without destroying V3 compatibility.
+
+**Episode-aware effective sample size**
+
+A decision may optionally place an `episode_id` inside its immutable context. When multiple evidence-complete paired decisions carry the same episode id, PARALLAX treats them as one effective observation for statistical screening by averaging their paired deltas inside that episode.
+
+- raw paired evidence count remains visible;
+- effective paired count becomes the number of distinct episodes;
+- clustered-pair count and largest episode size are exposed;
+- if no episode id is supplied, every immutable decision remains its own episode, preserving existing behavior;
+- a large burst of correlated decisions from one market shock can no longer satisfy a minimum-sample gate merely by repetition.
+
+**Newey-West / HAC uncertainty**
+
+When at least six effective episode means are available, PARALLAX computes a Newey-West heteroskedasticity-and-autocorrelation-consistent standard error for the chronological effective sample.
+
+- the lag is deterministic from effective N;
+- the screen uses the HAC one-sided p-value and HAC 95% lower bound when evaluable;
+- before HAC is evaluable, the existing paired normal approximation remains the screen;
+- Benjamini-Hochberg FDR consumes the dependence-adjusted p-value when HAC is active;
+- both naïve and HAC diagnostics remain visible for audit.
+
+This prevents serially correlated positive runs from appearing more certain simply because adjacent outcomes resemble one another.
+
+**Cross-revision transportability**
+
+PARALLAX also compares the same exact asset/regime/comparison-contract/branch/parameter hypothesis across distinct ICARUS source commits.
+
+It does **not** pool effect sizes across revisions. Instead it reports:
+
+- evaluable revision count;
+- supporting robust revision count;
+- strongly contradictory revision count;
+- supporting and contradictory revision identities;
+- whether revision transport is stable.
+
+Transportability becomes evaluable after at least two independently sampled source revisions. A strongly contradictory revision—defined conservatively as a dependence-adjusted 95% upper bound at or below zero—blocks robust readiness for the matching mutation family. Missing or merely underpowered revisions do not count as contradictions.
+
+Storage: research/parallax.sqlite3 using SQLite WAL. V2 performs backward-compatible schema migration for comparison-contract and strata fields; V3 and V4 add computed diagnostics without a destructive storage migration.
 
 ---
 
@@ -138,6 +178,22 @@ DREAMSTATE V3 consumes robust_candidate_eligible, not merely the primary FDR-qua
 
 Robustness clearance does not replace the protected OOS, holdout, cost, replay, calibration, OOD/drift, or independent-verification gates.
 
+### V4 dependence authority
+
+DREAMSTATE V4 carries the dependence diagnostics from the exact current PARALLAX source into every candidate rather than recomputing or weakening them.
+
+Candidate policy contracts, Adaptive Brain mirrors, and search accounting expose:
+
+- raw paired N and effective paired N;
+- episode-clustered pair count and largest episode size;
+- HAC evaluability, lag, standard-error interval, and dependence-adjusted screen lower bound;
+- cross-revision transport evaluability;
+- supporting and contradictory revision counts.
+
+DREAMSTATE still creates candidates only from `robust_candidate_eligible` PARALLAX sources. Because the live source is re-read before every validation update, later episode clustering, HAC uncertainty, temporal instability, parameter-basin collapse, or a strong contradictory source revision can retire an active shadow candidate.
+
+Cross-revision transport does not merge or average separate code revisions. Revision boundaries remain immutable evidence boundaries.
+
 ### Protected gates
 
 Candidate stages are proposed -> study -> validated -> qualified_shadow, or terminal rejected / retired. The maximum possible stage inside DREAMSTATE is qualified_shadow.
@@ -168,11 +224,11 @@ PARALLAX/DREAMSTATE robustness is an upstream research-admission screen. It does
 
 ## Trader interface
 
-The existing PARALLAX / DREAMSTATE tab now exposes V3 robustness intelligence without changing the dashboard/server ownership surfaces currently used by other ICARUS workstreams.
+The existing PARALLAX / DREAMSTATE tab now exposes V4 dependence and V3 robustness intelligence without changing the dashboard/server ownership surfaces currently used by other ICARUS workstreams.
 
-The tab includes total twin decisions, comparison-contract readiness, statistical-ready and robust-ready hypothesis counts, blocked-hypothesis diagnostics, FDR q-values, chronological fold stability, worst-fold mean, parameter-basin support/spike state, paired evidence counts and coverage, context strata, non-pooled regret status, revision-isolated ablation attribution, branch-kind replay coverage, DREAMSTATE candidates, family trial budgets, candidate gate state, source revision, and explicit shadow-only authority.
+The tab includes total twin decisions, comparison-contract readiness, statistical-ready and robust-ready hypothesis counts, blocked-hypothesis diagnostics, raw versus effective paired N, episode-cluster counts, HAC-adjusted lower bounds, FDR q-values, chronological fold stability, worst-fold mean, parameter-basin support/spike state, cross-revision transport/contradiction state, paired evidence coverage, context strata, non-pooled regret status, revision-isolated ablation attribution, branch-kind replay coverage, DREAMSTATE candidates, family trial budgets, candidate gate state, source revision, and explicit shadow-only authority.
 
-The interface continues to read GET /api/parallax and GET /api/dreamstate. No new dashboard or engine-server route is required for V3. The existing schema versions remain backward-compatible; snapshots expose separate robustness_version markers for the V3 overlay.
+The interface continues to read GET /api/parallax and GET /api/dreamstate. No new dashboard or engine-server route is required for V4. The existing storage/API schema versions remain backward-compatible; snapshots expose separate robustness_version markers for the computed V4 overlay.
 
 ---
 
@@ -190,7 +246,7 @@ These APIs manipulate research evidence only. They do not edit strategy inputs, 
 
 ## Truth contract
 
-PARALLAX/DREAMSTATE V3 deliberately refuses these invalid shortcuts:
+PARALLAX/DREAMSTATE V4 deliberately refuses these invalid shortcuts:
 
 - unobserved counterfactual outcomes are not fabricated;
 - missing evidence does not count as a statistical pair;
@@ -206,6 +262,10 @@ PARALLAX/DREAMSTATE V3 deliberately refuses these invalid shortcuts:
 - context-specific evidence is not silently generalized beyond observed strata;
 - an opposite-side branch does not auto-create an inversion strategy;
 - compound success does not prove each component;
+- repeated decisions from the same declared market episode do not inflate effective sample size;
+- serial dependence does not retain the naïve confidence interval once HAC is evaluable;
+- cross-revision effects are not pooled to manufacture a larger sample;
+- a strongly contradictory exact code revision blocks robust readiness for the matching mutation;
 - repeated searches do not bypass family budgets or multiple-testing controls;
 - source-signal decay may retire a shadow candidate;
 - successful research does not silently mutate live ICARUS behavior;
