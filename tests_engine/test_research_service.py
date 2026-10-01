@@ -256,3 +256,29 @@ def test_early_rejections_read_the_body_so_the_client_gets_its_answer(http, monk
     assert [http("POST", "/research/events", raw)[0] for _ in range(600)] == [503] * 600
     monkeypatch.setenv("ICARUS_INGEST_SECRET", "x" * 32)
     assert [http("POST", "/research/events", raw)[0] for _ in range(300)] == [401] * 300
+
+
+def test_operator_status_does_not_initialize_lazy_research_services(tmp_path):
+    from icarus_engine.research_service import ResearchWorkspace
+    from icarus_engine.runtime import Portfolio, Journal
+
+    port=Portfolio(Journal(":memory:"),str(tmp_path))
+    research=ResearchWorkspace(port)
+    before={
+        "ledger":research._ledger,
+        "analysis":research._analysis,
+        "activation":research._activation,
+        "market_sources":research._market_sources,
+        "adaptation":research._adaptation,
+        "source_watch":research._source_watch,
+    }
+    status=research.operator_status()
+    assert status["schema_version"]=="icarus-research-operator-status-v1"
+    assert status["execution_authorized"] is False
+    assert all(v is False for v in status["initialized_services"].values())
+    assert research._ledger is before["ledger"] is None
+    assert research._analysis is before["analysis"] is None
+    assert research._activation is before["activation"] is None
+    assert research._market_sources is before["market_sources"] is None
+    assert research._adaptation is before["adaptation"] is None
+    assert research._source_watch is before["source_watch"] is None

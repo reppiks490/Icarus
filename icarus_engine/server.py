@@ -14,6 +14,7 @@
   GET  /api/agent                 Field Agent recipes + paste-packs (Grok). Never executes. Never arms a broker.
   GET  /api/system/audit          latest local GitHub/MCP repository + CI audit snapshot
   GET  /api/integrity             export checklist, corpus, repairs, and MCP change receipts
+  GET  /api/engine-control        authenticated registered engine/subsystem control snapshot
   GET  /api/brain                 adaptive multi-agent brain, subsystem fabric, regimes, learning and shadow candidates
   GET  /api/possibility           ICARUS Psi latent pressure, counterfactual price, future-space diagnostics
   POST /admin/pause | /admin/resume        {"asset": "NQ"} or all          (Bearer token)
@@ -30,6 +31,7 @@
   POST /admin/brain/event                  append evidence-backed learning/agent/subsystem/candidate event; shadow only
   POST /admin/possibility/evidence          provenance-labelled gamma/basis/CTA/liquidation/rebalance research inputs
   POST /admin/rewarm                       {"asset": "NQ"}
+  POST /admin/engine-control               typed registered operator command with audit receipt
 """
 from __future__ import annotations
 
@@ -75,6 +77,8 @@ from .parallax import ParallaxStore
 from .dreamstate import DreamstateLab
 from .possibility import PossibilityEngine
 from .autopilot import TacticalAutopilot
+from .engine_control import ControlAction, EngineControlPlane
+from .mcp_control import MCPControlPlane
 from .pantheon import PantheonKernel, subsystem_context
 
 
@@ -138,6 +142,522 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     parallax = ParallaxStore(port.base_dir)
     dreamstate = DreamstateLab(port.base_dir, parallax=parallax)
     pantheon = PantheonKernel(port.base_dir)
+    mcp_control = MCPControlPlane(port.base_dir)
+
+    def _control_runner(target: str):
+        try:
+            key = resolve(target or "").symbol
+        except ValueError as ex:
+            raise ValueError(f"unknown asset {target}") from ex
+        runner = port.runners.get(key)
+        if runner is None:
+            raise ValueError(f"unknown running asset {target}")
+        return runner
+
+    def _run_all_assets(operation: str, fn):
+        results = {}
+        errors = {}
+        for runner in list(port.runner_list()):
+            try:
+                results[runner.symbol] = fn(runner)
+            except Exception as ex:
+                errors[runner.symbol] = f"{type(ex).__name__}: {ex}"[:800]
+        if errors:
+            raise RuntimeError(
+                f"{operation} partial failure; completed={sorted(results)} errors={errors}"
+            )
+        return results
+
+    def _pause_all(payload):
+        # Global pause is desired/default state. Set it before touching runners so
+        # a concurrently added asset cannot start accepting entries.
+        port.paused = True
+        port.journal.log("WARN", f"PAUSE ALL requested: {payload['reason']}")
+        results = _run_all_assets("pause_all", lambda runner: runner.set_paused(True))
+        return {"paused": sorted(results), "global_pause_intent": True}
+
+    def _resume_all(payload):
+        # Resume is likewise a global intent. Individual runners may still fail
+        # closed (for example activation quarantine); those failures are reported.
+        port.paused = False
+        port.journal.log("INFO", f"RESUME ALL requested: {payload['reason']}")
+        results = _run_all_assets("resume_all", lambda runner: runner.set_paused(False))
+        return {"resumed": sorted(results), "global_pause_intent": False}
+
+    def _flatten_all(payload):
+        closed = _run_all_assets(
+            "flatten_all",
+            lambda runner: runner.flatten(payload["reason"]),
+        )
+        return {"closed": closed, "total": sum(closed.values())}
+
+    def _asset_pause(payload):
+        runner = _control_runner(payload["target"])
+        runner.set_paused(True)
+        return {"asset": runner.symbol, "paused": True}
+
+    def _asset_resume(payload):
+        runner = _control_runner(payload["target"])
+        runner.set_paused(False)
+        return {"asset": runner.symbol, "paused": False}
+
+    def _asset_flatten(payload):
+        runner = _control_runner(payload["target"])
+        return {"asset": runner.symbol, "closed": runner.flatten(payload["reason"])}
+
+    def _asset_rewarm(payload):
+        runner = _control_runner(payload["target"])
+        port.rewarm_asset(runner.symbol)
+        return {"asset": runner.symbol, "rewarmed": True}
+
+    def _asset_remove(payload):
+        runner = _control_runner(payload["target"])
+        ok = port.remove_asset(runner.symbol)
+        if not ok:
+            raise ValueError(f"asset {runner.symbol} could not be removed")
+        return {"asset": runner.symbol, "removed": True}
+
+    def _asset_apply_config(payload):
+        runner = _control_runner(payload["target"])
+        args = payload["args"]
+        allowed = {"values", "chart", "persist", "preset"}
+        extra = set(args) - allowed
+        if extra:
+            raise ValueError(f"unknown asset configuration fields: {sorted(extra)}")
+        values = args.get("values")
+        if values is not None and not isinstance(values, dict):
+            raise ValueError("values must be an object")
+        chart = validate_chart_config(args.get("chart"))
+        persist = args.get("persist", True)
+        if type(persist) is not bool:
+            raise ValueError("persist must be boolean")
+        kwargs = {}
+        if "preset" in args:
+            raw_preset = args.get("preset")
+            if raw_preset is not None and not isinstance(raw_preset, str):
+                raise ValueError("preset must be a string or null")
+            preset = (raw_preset or "").strip() or None
+            if preset and not os.path.exists(preset_path(port.base_dir, preset)):
+                raise ValueError(f"preset {preset} not found")
+            kwargs["preset"] = preset
+        rebuilt = port.rewarm_asset(
+            runner.symbol,
+            values,
+            persist,
+            chart=chart,
+            **kwargs,
+        )
+        return {
+            "asset": rebuilt.symbol,
+            "rewarmed": True,
+            "persisted": persist,
+            "chart": chart or None,
+            "preset": port.preset_for(rebuilt),
+        }
+
+    def _asset_reset_config(payload):
+        runner = _control_runner(payload["target"])
+        rebuilt = port.rewarm_asset(runner.symbol, reset=True)
+        return {
+            "asset": rebuilt.symbol,
+            "rewarmed": True,
+            "asset_overrides_reset": True,
+        }
+
+    def _asset_add(payload):
+        target = payload["target"]
+        args = payload["args"]
+        allowed = {"tf", "preset", "chart_type", "fill_on", "security_source"}
+        extra = set(args) - allowed
+        if extra:
+            raise ValueError(f"unknown asset-add fields: {sorted(extra)}")
+        running = port.runner_list()
+        default_tf = str(args.get("tf") or (running[0].spec.chart_tf if running else "20"))
+        spec = parse_spec(target, default_tf)
+        if args.get("tf") not in (None, "") and "@" not in target:
+            spec = pin_config(spec, "timeframe")
+        chart = {
+            k: args[k]
+            for k in ("chart_type", "fill_on", "security_source")
+            if args.get(k) not in (None, "")
+        }
+        if chart:
+            spec = apply_chart_config(spec, validate_chart_config(chart), pin=True)
+        if args.get("preset"):
+            name = str(args["preset"])
+            if not os.path.exists(preset_path(port.base_dir, name)):
+                raise ValueError(f"preset {name} not found")
+            spec.preset = name
+        runner = port.add_asset(spec)
+        return {"asset": runner.symbol, "added": True, "timeframe": spec.chart_tf}
+
+    def _syncers():
+        return {
+            "loop_intelligence": loop_intelligence_sync,
+            "brain_remote": brain_remote_sync,
+            "brain_research": brain_research_sync,
+            "evolution": evolution_remote_sync,
+        }
+
+    def _sync_all(_payload):
+        results = {}
+        errors = {}
+        for name, syncer in _syncers().items():
+            try:
+                results[name] = syncer.sync_once()
+            except Exception as ex:
+                errors[name] = f"{type(ex).__name__}: {ex}"[:800]
+        if errors:
+            raise RuntimeError(
+                f"sync_all partial failure; completed={sorted(results)} errors={errors}"
+            )
+        return results
+
+    def _run_sync_lifecycle(operation: str, method: str):
+        results = {}
+        errors = {}
+        for name, syncer in _syncers().items():
+            try:
+                getattr(syncer, method)()
+                results[name] = operation
+            except Exception as ex:
+                errors[name] = f"{type(ex).__name__}: {ex}"[:800]
+        if errors:
+            raise RuntimeError(
+                f"{operation} sync partial failure; completed={sorted(results)} errors={errors}"
+            )
+        return results
+
+    def _start_all_syncs(_payload):
+        return _run_sync_lifecycle("started", "start")
+
+    def _stop_all_syncs(_payload):
+        return _run_sync_lifecycle("stopped", "close")
+
+    def _control_args(payload, *, allowed=None, required=()):
+        args = payload.get("args") or {}
+        if not isinstance(args, dict):
+            raise ValueError("args must be an object")
+        if allowed is not None:
+            extra = set(args) - set(allowed)
+            if extra:
+                raise ValueError(f"unknown action args: {sorted(extra)}")
+        missing = [key for key in required if key not in args]
+        if missing:
+            raise ValueError(f"missing required action args: {missing}")
+        return dict(args)
+
+    def _backtests_snapshot():
+        rows = []
+        for job_id, job in list(JOBS.items())[-200:]:
+            params = job.get("params") or {}
+            rows.append({
+                "id": job_id,
+                "status": job.get("status"),
+                "progress": job.get("progress"),
+                "started": job.get("started"),
+                "finished": job.get("finished"),
+                "error": job.get("error"),
+                "asset": params.get("asset"),
+            })
+        return {"count": len(rows), "jobs": rows}
+
+    def _backtest_start_control(payload):
+        from .backtest import validate_backtest_params
+        runner = _control_runner(payload["target"])
+        if not runner.warm:
+            raise ValueError(f"{runner.symbol} is still warming up")
+        allowed = {
+            "preset", "fill_on", "chart_type", "timeframe", "security_source",
+            "session", "slippage_ticks", "commission", "capital", "leverage",
+            "window_start", "window_end", "inputs",
+        }
+        args = _control_args(payload, allowed=allowed)
+        params = validate_backtest_params(args)
+        params["asset"] = runner.symbol
+        if "preset" in params and not os.path.exists(preset_path(port.base_dir, params["preset"])):
+            raise ValueError(f"preset {params['preset']} not found")
+        job_id = start_job(port, params)
+        return {"job": job_id, "asset": runner.symbol, "started": True}
+
+    def _backtest_compare_control(payload):
+        job_id = payload["target"]
+        job = JOBS.get(job_id)
+        if not job or job.get("status") != "done":
+            raise ValueError("unknown or unfinished backtest job")
+        args = _control_args(payload, allowed={"csv", "tol"}, required=("csv",))
+        text = str(args["csv"])
+        if not text.strip():
+            raise ValueError("csv text required")
+        tol = args.get("tol", 1)
+        if isinstance(tol, bool) or not isinstance(tol, (int, float, str)):
+            raise ValueError("tol must be a positive integer")
+        try:
+            tol = int(tol)
+        except (ValueError, OverflowError):
+            raise ValueError("tol must be a positive integer") from None
+        if tol < 1:
+            raise ValueError("tol must be a positive integer")
+        tv = read_tv_trades_text(text)
+        eng = engine_trades_from_rows(job["result"]["trades"])
+        report = compare_lists(
+            eng,
+            tv,
+            int(job["result"]["config"]["tf"]) * 60,
+            tol,
+        )
+        return {"job": job_id, "report": report}
+
+    def _market_mbo_snapshot_control(payload):
+        runner = _control_runner(payload["target"])
+        args = _control_args(payload, allowed={"timeout"})
+        if not hasattr(runner.feed, "mbo_snapshot"):
+            raise ValueError(f"{type(runner.feed).__name__} does not expose MBO snapshots")
+        timeout = max(0.1, min(30.0, float(args.get("timeout", 5.0))))
+        rows = runner.feed.mbo_snapshot(runner.spec.ticker, timeout=timeout)
+        return {
+            "asset": runner.symbol,
+            "provider": type(runner.feed).__name__.lower(),
+            "schema": "mbo",
+            "snapshot": rows,
+        }
+
+    def _research_start_control(payload):
+        args = _control_args(payload, allowed={"grid", "windows", "policy"}, required=("grid", "windows"))
+        return research.start({"asset": payload["target"], **args})
+
+    def _research_propose_control(payload):
+        args = _control_args(payload, allowed={"evidence_ids", "rationale"}, required=("evidence_ids", "rationale"))
+        return research.propose_study({"job": payload["target"], **args})
+
+    def _research_analysis_control(payload):
+        args = _control_args(payload, allowed={"evidence_ids", "rationale", "apply"}, required=("evidence_ids", "rationale"))
+        return research.analysis.start({"job": payload["target"], **args})
+
+    def _research_activate_control(payload):
+        args = _control_args(payload, allowed={"operation_id"}, required=("operation_id",))
+        return research.activate({"proposal_id": payload["target"], "operation_id": args["operation_id"]})
+
+    def _research_rollback_control(payload):
+        args = _control_args(payload, allowed={"operation_id"}, required=("operation_id",))
+        return research.rollback({"asset": payload["target"], "operation_id": args["operation_id"]})
+
+    def _research_collect_control(payload):
+        args = _control_args(payload, allowed={"options"})
+        return research.market_sources.collect(payload["target"], args.get("options"))
+
+    def _parallax_decision_control(payload):
+        args = _control_args(payload)
+        if not args.get("source_commit"):
+            provenance = local_code_provenance()
+            if not provenance.get("candidate_revision_eligible") or not provenance.get("commit"):
+                raise ValueError("exact clean ICARUS code provenance is required when source_commit is omitted")
+            args["source_commit"] = provenance["commit"]
+        return parallax.record_decision(args)
+
+    def _parallax_outcome_control(payload):
+        args = _control_args(payload)
+        result = parallax.record_outcome(args)
+        try:
+            result["dreamstate_refresh"] = dreamstate.refresh().get("refresh", {})
+        except Exception as ex:
+            port.journal.log("WARN", f"DREAMSTATE rescreen after PARALLAX outcome: {type(ex).__name__}: {ex}")
+            result["dreamstate_refresh"] = {
+                "status": "degraded",
+                "error": f"{type(ex).__name__}: {ex}",
+                "outcome_committed": True,
+            }
+        return result
+
+    def _dreamstate_evaluate_control(payload):
+        args = _control_args(payload, allowed={"validation", "evidence"}, required=("validation",))
+        return dreamstate.evaluate(payload["target"], args)
+
+    def _dreamstate_retire_control(payload):
+        args = _control_args(payload, allowed={"reason"}, required=("reason",))
+        return dreamstate.retire(payload["target"], args["reason"])
+
+    def _possibility_evidence_control(payload):
+        args = _control_args(
+            payload,
+            allowed={"values", "source", "observed_at", "ttl_seconds"},
+            required=("values", "source"),
+        )
+        if not isinstance(args["values"], dict):
+            raise ValueError("values must be an object")
+        return possibility.ingest_external(
+            payload["target"],
+            args["values"],
+            source=args["source"],
+            observed_at=args.get("observed_at"),
+            ttl_seconds=args.get("ttl_seconds", 300.0),
+        )
+
+    def _system_audit_control(payload):
+        args = _control_args(payload)
+        current = load_repository_audit(port.base_dir)
+        merged = dict(args)
+        # Root Control may update the repository/CI snapshot, but it must never
+        # erase the durable command/event/loop receipts that prove prior actions.
+        for key in ("events", "loops"):
+            incoming = merged.get(key, [])
+            if incoming is None:
+                incoming = []
+            if not isinstance(incoming, list):
+                raise ValueError(f"{key} must be an array")
+            existing = current.get(key, [])
+            combined = []
+            seen = set()
+            for row in [*incoming, *existing]:
+                if not isinstance(row, dict):
+                    raise ValueError(f"{key} entries must be objects")
+                ident = str(row.get("id") or "")
+                fingerprint = ident or json.dumps(row, sort_keys=True, separators=(",", ":"), allow_nan=False)
+                if fingerprint in seen:
+                    continue
+                seen.add(fingerprint)
+                combined.append(row)
+            merged[key] = combined[:200 if key == "events" else 32]
+        if "loop_sync" not in merged and isinstance(current.get("loop_sync"), dict):
+            merged["loop_sync"] = current["loop_sync"]
+        return save_repository_audit(port.base_dir, merged)
+
+    def _system_event_control(payload):
+        args = _control_args(payload)
+        return append_system_event(port.base_dir, args)
+
+    def _system_loop_control(payload):
+        args = _control_args(payload)
+        return upsert_loop_status(port.base_dir, args)
+
+    def _integrity_event_control(payload):
+        args = _control_args(payload)
+        provenance_keys = ("source_repo", "source_branch", "source_commit")
+        supplied = [key in args for key in provenance_keys]
+        if any(supplied) and not all(supplied):
+            raise ValueError("source_repo, source_branch and source_commit must be supplied together")
+        if not any(supplied):
+            provenance = local_code_provenance()
+            if not provenance.get("candidate_revision_eligible") or not provenance.get("commit"):
+                raise ValueError(
+                    "exact clean ICARUS code provenance is required when integrity provenance is omitted"
+                )
+            args["source_repo"] = provenance["repository"]
+            args["source_branch"] = "local-clean-checkout"
+            args["source_commit"] = provenance["commit"]
+        return record_integrity_event(port.base_dir, args)
+
+    def _brain_event_control(payload):
+        args = _control_args(payload)
+        return record_brain_event(port.base_dir, args)
+
+    control = EngineControlPlane(
+        port.base_dir,
+        snapshotters={
+            "portfolio": port.status,
+            "research": research.operator_status,
+            "repository_audit": lambda: load_repository_audit(port.base_dir),
+            "integrity": lambda: integrity_snapshot(port.base_dir),
+            "mcp_repository": lambda: mcp_control.status(200),
+            "brain_remote_sync": brain_remote_sync.status,
+            "brain_research_sync": brain_research_sync.status,
+            "evolution_sync": evolution_remote_sync.status,
+            "autopilot": autopilot.status,
+            "parallax": parallax.status,
+            "dreamstate": dreamstate.status,
+            "possibility": possibility.status,
+            "backtests": _backtests_snapshot,
+            "code_provenance": local_code_provenance,
+            "go_live": lambda: golive_report(port),
+        },
+        actions={
+            action.action_id: action
+            for action in (
+                ControlAction("engine.pause_all", "Pause all entries", "Engine", "Pause new entries on every running asset; exits remain active.", _pause_all),
+                ControlAction("engine.resume_all", "Resume all entries", "Engine", "Resume new entries on every running asset.", _resume_all),
+                ControlAction("engine.flatten_all", "Flatten all paper positions", "Engine", "Immediately close every open local paper position.", _flatten_all, danger=True, confirmation="FLATTEN ALL PAPER POSITIONS"),
+
+                ControlAction("asset.add", "Add asset", "Assets", "Add and warm a registered asset.", _asset_add, target="asset",
+                              args_example={"tf": "20", "chart_type": "Candles"}),
+                ControlAction("asset.pause", "Pause asset", "Assets", "Pause new entries for one running asset.", _asset_pause, target="asset"),
+                ControlAction("asset.resume", "Resume asset", "Assets", "Resume new entries for one running asset.", _asset_resume, target="asset"),
+                ControlAction("asset.rewarm", "Re-warm asset", "Assets", "Rebuild one asset from cached history.", _asset_rewarm, target="asset"),
+                ControlAction("asset.apply_config", "Apply asset configuration", "Assets", "Apply input/chart/preset configuration through ICARUS's atomic re-warm path.", _asset_apply_config, target="asset",
+                              args_example={"values": {}, "chart": {"chart_type": "Candles"}, "persist": True}),
+                ControlAction("asset.reset_config", "Reset asset overrides", "Assets", "Remove per-asset configuration overrides and atomically re-warm the asset.", _asset_reset_config, danger=True, confirmation="RESET ASSET CONFIG", target="asset"),
+                ControlAction("asset.flatten", "Flatten asset", "Assets", "Close the selected asset's open paper position.", _asset_flatten, danger=True, confirmation="FLATTEN PAPER POSITION", target="asset"),
+                ControlAction("asset.remove", "Remove asset", "Assets", "Stop and remove one running asset.", _asset_remove, danger=True, confirmation="REMOVE ASSET", target="asset"),
+
+                ControlAction("market.mbo_snapshot", "Capture MBO snapshot", "Market Data", "Request one bounded market-by-order snapshot from the selected running asset's provider.", _market_mbo_snapshot_control, target="asset",
+                              args_example={"timeout": 5.0}),
+                ControlAction("backtest.start", "Start backtest", "Backtest", "Start a Strategy Tester-compatible backtest against the selected asset's cached tape.", _backtest_start_control, target="asset",
+                              args_example={"timeframe": "20", "session": "rth"}),
+                ControlAction("backtest.compare", "Compare backtest to TradingView CSV", "Backtest", "Compare a completed ICARUS backtest job against pasted TradingView List-of-Trades CSV.", _backtest_compare_control, target="job",
+                              args_example={"csv": "Trade #,Type,Date/Time,Signal,Price,Contracts\n", "tol": 1}),
+
+                ControlAction("sync.loop_intelligence", "Sync loop intelligence", "Intelligence", "Refresh verified automation-loop receipts now.", lambda _: loop_intelligence_sync.sync_once()),
+                ControlAction("sync.brain_remote", "Sync Adaptive Brain remote evidence", "Intelligence", "Pull the latest verified Adaptive Brain repository evidence.", lambda _: brain_remote_sync.sync_once()),
+                ControlAction("sync.brain_research", "Sync research into Adaptive Brain", "Intelligence", "Refresh research-to-brain evidence now.", lambda _: brain_research_sync.sync_once()),
+                ControlAction("sync.evolution", "Sync MCP evolution evidence", "Intelligence", "Refresh repository-native MCP repair/audit/evolution evidence.", lambda _: evolution_remote_sync.sync_once()),
+                ControlAction("sync.all", "Sync all intelligence planes", "Intelligence", "Run all registered intelligence synchronizers once.", _sync_all),
+                ControlAction("sync.start_all", "Start all intelligence sync loops", "Intelligence", "Start all registered background intelligence synchronizers.", _start_all_syncs),
+                ControlAction("sync.stop_all", "Stop all intelligence sync loops", "Intelligence", "Stop all registered background intelligence synchronizers.", _stop_all_syncs, danger=True, confirmation="STOP ALL INTELLIGENCE SYNCS"),
+
+                ControlAction("autopilot.configure", "Configure Tactical Autopilot", "Autopilot", "Update bounded Autopilot configuration.", lambda p: autopilot.configure(p["args"]),
+                              args_example={"enabled": True, "assets": ["NQ"], "cadence_seconds": 15, "robustness_windows": 3}),
+                ControlAction("autopilot.start", "Start Tactical Autopilot", "Autopilot", "Enable and start the Tactical Autopilot background loop.", lambda _: autopilot.start()),
+                ControlAction("autopilot.stop", "Stop Tactical Autopilot", "Autopilot", "Disable the Tactical Autopilot background loop.", lambda _: autopilot.stop()),
+                ControlAction("autopilot.step", "Run one Tactical Autopilot cycle", "Autopilot", "Run exactly one Tactical Autopilot research cycle.", lambda _: autopilot.cycle_once()),
+                ControlAction("autopilot.reset", "Reset Tactical Autopilot", "Autopilot", "Clear Tactical Autopilot runtime state and leave it disabled.", lambda _: autopilot.reset(), danger=True, confirmation="RESET AUTOPILOT"),
+
+                ControlAction("research.start", "Start research study", "Research", "Launch one bounded study on the selected asset.", _research_start_control, target="asset",
+                              args_example={"grid": {}, "windows": {"train_start": 0, "train_end": 1, "validation_start": 2, "validation_end": 3, "holdout_start": 4, "holdout_end": 5}}),
+                ControlAction("research.cancel", "Cancel research job", "Research", "Request cancellation of the active research study by job id.", lambda p: research.cancel(p["target"]), target="job"),
+                ControlAction("research.propose", "Create research proposal", "Research", "Create a proposal from a qualified study and bound evidence.", _research_propose_control, target="job",
+                              args_example={"evidence_ids": ["current-evidence-id"], "rationale": "operator review"}),
+                ControlAction("research.export", "Export qualified proposal", "Research", "Export one qualified proposal artifact for further paper evaluation.", lambda p: research.export(p["target"]), target="proposal"),
+                ControlAction("research.analysis", "Start specialist analysis", "Research", "Start specialist analysis bound to one qualified study and evidence set.", _research_analysis_control, target="job",
+                              args_example={"evidence_ids": ["current-evidence-id"], "rationale": "operator review", "apply": False}),
+                ControlAction("research.analysis_cancel", "Cancel specialist analysis", "Research", "Cancel a running specialist analysis job.", lambda p: research.analysis.journal.cancel(p["target"]), target="job"),
+                ControlAction("research.activate", "Activate research candidate", "Research", "Apply a fully qualified research proposal to the paper engine through the activation boundary.", _research_activate_control, target="proposal",
+                              danger=True, confirmation="ACTIVATE RESEARCH CANDIDATE", args_example={"operation_id": "operator-operation-id"}),
+                ControlAction("research.rollback", "Roll back research activation", "Research", "Roll back the selected asset's current research activation.", _research_rollback_control, target="asset",
+                              danger=True, confirmation="ROLL BACK RESEARCH ACTIVATION", args_example={"operation_id": "operator-operation-id"}),
+                ControlAction("research.recover", "Recover asset research activation", "Research", "Recover the selected asset's research activation state.", lambda p: research.recover({"asset": p["target"]}), target="asset"),
+                ControlAction("research.collect", "Collect research source", "Research", "Run one registered research-source collection operation.", _research_collect_control, target="source",
+                              args_example={"options": {}}),
+                ControlAction("research.configure_adaptation", "Configure adaptation scheduler", "Research", "Update bounded automatic research-adaptation settings.", lambda p: research.configure_adaptation(p["args"]),
+                              args_example={"enabled": False}),
+                ControlAction("research.configure_source_watch", "Configure source watch", "Research", "Update bounded research source-watch settings.", lambda p: research.configure_source_watch(p["args"]),
+                              args_example={"enabled": False}),
+
+                ControlAction("parallax.record_decision", "Record PARALLAX decision", "PARALLAX", "Record a causally timestamped PARALLAX decision and counterfactual branches.", _parallax_decision_control,
+                              args_example={"asset": "NQ", "action": "abstain", "observed_at": "2026-10-01T00:00:00Z", "regime": "unknown", "context": {}, "subsystem_votes": {}}),
+                ControlAction("parallax.record_outcome", "Record PARALLAX outcome", "PARALLAX", "Record an observed branch outcome and trigger DREAMSTATE re-screening.", _parallax_outcome_control,
+                              args_example={"decision_id": "decision-id", "label": "actual", "utility": 0.0, "metrics": {}, "evidence": []}),
+                ControlAction("dreamstate.refresh", "Refresh DREAMSTATE", "DREAMSTATE", "Re-screen PARALLAX counterfactual evidence into DREAMSTATE candidates.", lambda p: dreamstate.refresh((p["args"] or {}).get("min_samples", 5)),
+                              args_example={"min_samples": 5}),
+                ControlAction("dreamstate.evaluate", "Evaluate DREAMSTATE candidate", "DREAMSTATE", "Apply explicit validation-gate evidence to one candidate.", _dreamstate_evaluate_control, target="candidate",
+                              args_example={"validation": {"causal_time": True}, "evidence": ["operator-reviewed evidence"]}),
+                ControlAction("dreamstate.retire", "Retire DREAMSTATE candidate", "DREAMSTATE", "Retire one candidate with a durable reason.", _dreamstate_retire_control, target="candidate",
+                              danger=True, confirmation="RETIRE DREAMSTATE CANDIDATE", args_example={"reason": "operator decision"}),
+
+                ControlAction("possibility.ingest_evidence", "Ingest ICARUS Psi evidence", "Possibility", "Inject provenance-labelled bounded external possibility-force evidence for research only.", _possibility_evidence_control, target="asset",
+                              args_example={"values": {"gamma_pressure": {"value": 0.0, "confidence": 1.0}}, "source": "operator", "ttl_seconds": 300.0}),
+
+                ControlAction("system.record_audit", "Update repository audit snapshot", "Observability", "Update the System Intelligence repository/CI snapshot while preserving durable event and loop receipts.", _system_audit_control,
+                              danger=True, confirmation="UPDATE SYSTEM AUDIT SNAPSHOT", args_example={"status": "unknown", "source": "operator-root-control"}),
+                ControlAction("system.record_event", "Record System Intelligence event", "Observability", "Append one durable system repair/audit/integration event.", _system_event_control,
+                              args_example={"id": "event-id", "kind": "audit", "severity": "info", "title": "Operator event", "detail": "details", "recorded_at": "2026-10-01T00:00:00Z", "repository": "reppiks490/Icarus", "ref": "manual"}),
+                ControlAction("system.upsert_loop", "Upsert automation-loop status", "Observability", "Write one durable automation-loop status receipt into System Intelligence.", _system_loop_control,
+                              args_example={"id": "loop-id", "title": "Loop", "status": "active"}),
+                ControlAction("integrity.record_event", "Record Data Integrity event", "Observability", "Append one provenance-labelled integrity/MCP receipt.", _integrity_event_control,
+                              args_example={"kind": "audit", "area": "operator-control", "summary": "operator integrity event", "status": "observed", "severity": "info", "verification": "operator observation", "interface_effect": "visible in Data Integrity and Root Control", "evidence": []}),
+                ControlAction("brain.record_event", "Record Adaptive Brain event", "Observability", "Append one evidence-backed brain/subsystem/candidate event.", _brain_event_control,
+                              args_example={"kind": "learning", "subject": "operator-control", "summary": "operator brain event", "status": "observed", "evidence": []}),
+            )
+        },
+    )
 
     class H(BaseHTTPRequestHandler):
         server_version = "icarus"
@@ -199,6 +719,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._send(200, (html_path.parent / "sources-ui.js").read_bytes(), "text/javascript")
             if p.path == "/integrity-ui.js":
                 return self._send(200, (html_path.parent / "integrity-ui.js").read_bytes(), "text/javascript")
+            if p.path == "/engine-control-ui.js":
+                return self._send(200, (html_path.parent / "engine-control-ui.js").read_bytes(), "text/javascript")
             if p.path == "/autopilot-ui.js":
                 return self._send(200, (html_path.parent / "autopilot-ui.js").read_bytes(), "text/javascript")
             if p.path == "/brain-ui.js":
@@ -238,6 +760,10 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
                 return self._json(200, evolution_remote_sync.status())
+            if p.path == "/api/engine-control":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                return self._json(200, control.status())
             if p.path == "/api/autopilot":
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
@@ -486,11 +1012,25 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._json(413, {"detail": "body too large"})
             raw = self.rfile.read(n) if n else b""
             try:
-                body = strict_json(raw) if p.path.startswith(("/admin/research/", "/admin/integrity/", "/admin/parallax/", "/admin/dreamstate/", "/admin/possibility/", "/admin/autopilot/", "/admin/pantheon/")) else (json.loads(raw, parse_constant=_no_json_constants) if raw else {})
+                body = strict_json(raw) if p.path.startswith(("/admin/research/", "/admin/integrity/", "/admin/parallax/", "/admin/dreamstate/", "/admin/possibility/", "/admin/autopilot/", "/admin/engine-control", "/admin/pantheon/")) else (json.loads(raw, parse_constant=_no_json_constants) if raw else {})
             except ValueError as ex:
                 return self._json(400, {"detail": f"bad JSON body: {ex}"})
             if not isinstance(body, dict):
                 return self._json(400, {"detail": "JSON body must be an object"})
+            if p.path == "/admin/engine-control":
+                try:
+                    return self._json(200, control.run(body))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log(
+                        "ERROR",
+                        f"Engine Control request failed: {type(ex).__name__}: {ex}",
+                    )
+                    return self._json(
+                        500,
+                        {"detail": f"{type(ex).__name__}: {ex}"},
+                    )
             if p.path == "/admin/system/audit":
                 try:
                     audit = save_repository_audit(port.base_dir, body.get("audit", body))
@@ -666,23 +1206,40 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                         raise ValueError("collection requires source and optional options")
                     return self._json(200, research.market_sources.collect(body["source"], body.get("options")))
                 if p.path == "/admin/pause":
-                    for r in targets:
-                        r.set_paused(True)
+                    reason = _reason(body)
                     if not asset or asset == "*":
                         port.paused = True
-                    port.journal.log("WARN", f"PAUSED {asset or 'ALL'}: {_reason(body)}")
-                    return self._json(200, {"ok": True, "note": f"paused {asset or 'all'} - no new entries"})
-                if p.path == "/admin/resume":
+                        port.journal.log("WARN", f"PAUSE ALL requested: {reason}")
+                        results = _run_all_assets("pause_all", lambda r: r.set_paused(True))
+                        return self._json(200, {
+                            "ok": True, "note": "paused all - no new entries",
+                            "paused": sorted(results), "global_pause_intent": True,
+                        })
                     for r in targets:
-                        r.set_paused(False)
+                        r.set_paused(True)
+                    port.journal.log("WARN", f"PAUSED {asset}: {reason}")
+                    return self._json(200, {"ok": True, "note": f"paused {asset} - no new entries"})
+                if p.path == "/admin/resume":
                     if not asset or asset == "*":
                         port.paused = False
-                    port.journal.log("INFO", f"RESUMED {asset or 'ALL'}")
-                    return self._json(200, {"ok": True, "note": f"resumed {asset or 'all'}"})
+                        port.journal.log("INFO", "RESUME ALL requested")
+                        results = _run_all_assets("resume_all", lambda r: r.set_paused(False))
+                        return self._json(200, {
+                            "ok": True, "note": "resumed all",
+                            "resumed": sorted(results), "global_pause_intent": False,
+                        })
+                    for r in targets:
+                        r.set_paused(False)
+                    port.journal.log("INFO", f"RESUMED {asset}")
+                    return self._json(200, {"ok": True, "note": f"resumed {asset}"})
                 if p.path == "/admin/flatten":
                     if not body.get("confirm"):
                         return self._json(400, {"detail": "pass {\"confirm\": true}"})
-                    closed = {r.symbol: r.flatten(_reason(body, "dashboard")) for r in targets}
+                    reason = _reason(body, "dashboard")
+                    if not asset or asset == "*":
+                        closed = _run_all_assets("flatten_all", lambda r: r.flatten(reason))
+                    else:
+                        closed = {r.symbol: r.flatten(reason) for r in targets}
                     return self._json(200, {"ok": True, "closed": closed, "note": f"flattened {sum(closed.values())} position(s)"})
                 if p.path == "/admin/market-data/mbo-snapshot":
                     if len(targets) != 1 or targets[0] is None:

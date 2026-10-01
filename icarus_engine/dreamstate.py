@@ -368,6 +368,27 @@ class DreamstateLab:
             "execution_authorized": False, "production_decision_authorized": False,
         }
 
+    def status(self) -> dict[str, Any]:
+        """Lightweight read-only operator status for frequent root-panel polling."""
+        with _LOCK, self._connect() as con:
+            stage_rows = con.execute(
+                "SELECT stage,COUNT(*) AS n FROM candidates GROUP BY stage"
+            ).fetchall()
+            latest = con.execute(
+                "SELECT MAX(updated_at) AS latest_updated_at,COUNT(*) AS total FROM candidates"
+            ).fetchone()
+        stages = {stage: 0 for stage in sorted(_ALLOWED_STAGES)}
+        stages.update({row["stage"]: row["n"] for row in stage_rows})
+        return {
+            "schema_version": "icarus-dreamstate-status-v1",
+            "status": "ready",
+            "candidate_count": latest["total"],
+            "latest_updated_at": latest["latest_updated_at"],
+            "stages": stages,
+            "execution_authorized": False,
+            "production_decision_authorized": False,
+        }
+
     def snapshot(self, limit: int = 200) -> dict[str, Any]:
         with _LOCK, self._connect() as con:
             rows = con.execute("SELECT candidate_id FROM candidates ORDER BY updated_at DESC LIMIT ?", (max(1, min(1000, int(limit))),)).fetchall()

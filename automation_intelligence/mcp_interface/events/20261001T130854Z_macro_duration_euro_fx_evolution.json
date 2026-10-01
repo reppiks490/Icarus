@@ -1,0 +1,87 @@
+{
+  "schema_version": "icarus-mcp-event-v1",
+  "event_id": "macro-automation-20261001T130854Z-euro-duration-fx-transmission",
+  "category": "EVOLUTION",
+  "severity": "material",
+  "status": "active_research_hypothesis",
+  "source": "MACRO_AUTOMATION",
+  "recorded_at": "2026-10-01T13:08:54Z",
+  "title": "Global duration shock broadens into European FX stress",
+  "net_new_delta": "EUR reached a 17-month low as European assets absorbed the combined pressure of high oil, inflation risk, political uncertainty and globally elevated sovereign yields; US 10Y briefly reached 5.34% before easing near 5.27%, while equities remained comparatively resilient.",
+  "affected_instruments": [
+    "NQ/MNQ",
+    "US 10Y/30Y proxies",
+    "DXY/USD",
+    "EUR/USD",
+    "GC/MGC",
+    "Brent/WTI",
+    "STOXX 600"
+  ],
+  "assumptions_affected": [
+    "US-centric duration-shock framing",
+    "stationary FX-duration beta",
+    "uniform risk-off equity response",
+    "near-term Fed expectations as sufficient rates-state proxy"
+  ],
+  "evidence": [
+    {
+      "type": "FACT",
+      "source": "Reuters",
+      "date": "2026-10-01",
+      "finding": "EUR fell to a 17-month low as European assets were pressured by higher oil, inflation and political uncertainty."
+    },
+    {
+      "type": "FACT",
+      "source": "Reuters",
+      "date": "2026-10-01",
+      "finding": "US 10Y briefly reached about 5.34%, highest since 2002, then eased near 5.27%; UK 30Y exceeded 6% and France 10Y approached 5%."
+    },
+    {
+      "type": "FACT",
+      "source": "Reuters",
+      "date": "2026-10-01",
+      "finding": "December Brent traded around/above $100 after China suspended October fuel exports outside Hong Kong and Macau."
+    },
+    {
+      "type": "SOURCE_CLAIM",
+      "source": "Reuters",
+      "date": "2026-10-01",
+      "finding": "European FX weakness reflects the combined rates, energy/inflation and political backdrop rather than a single Fed-policy channel."
+    }
+  ],
+  "conflicts": [
+    "Softer US inflation reduced immediate Fed-hike expectations while long-end sovereign yields remain at multi-decade extremes.",
+    "Equities remain comparatively resilient despite severe duration stress.",
+    "Recovering Gulf crude exports conflict with tightening refined-product supply after China's export suspension."
+  ],
+  "unknown": [
+    "Persistence of EUR weakness and >5% US 10Y yields",
+    "Causal weights among fiscal risk, term premium, energy inflation and political risk",
+    "Unavailable order-flow/depth/positioning data"
+  ],
+  "confidence": "HIGH on observed duration/FX broadening; MEDIUM on persistence and causal decomposition",
+  "next_decisive_check": "Test whether EUR remains weak and DXY firm if US 10Y holds near/above 5% and Brent remains near/above $100 through the next official US labor release; measure EUR-duration and NQ-duration conditional-beta stability.",
+  "oracle": {
+    "status": "MATERIAL_DELTA",
+    "finding": "Duration stress has broadened into European FX transmission; promote a cross-region duration/FX regime hypothesis and test EUR/USD and NQ conditional betas without retuning strategy parameters."
+  },
+  "supermesh_x": {
+    "status": "MATERIAL_DELTA",
+    "finding": "Fresh Reuters evidence coherently spans US/European sovereign rates, EUR/USD, oil and equities; preserve distinct rates, energy and political-risk channels and keep unavailable microstructure fields explicit."
+  },
+  "execution_authorized": false,
+  "production_decision_authorized": false,
+  "provenance": {
+    "repository": "reppiks490/Icarus",
+    "branch": "main",
+    "paths": [
+      "automation_intelligence/mcp_interface/events/"
+    ],
+    "sources": [
+      "Reuters 2026-10-01 global bonds",
+      "Reuters 2026-10-01 euro/dollar",
+      "Reuters 2026-10-01 oil/China fuel exports",
+      "Reuters 2026-10-01 global markets"
+    ]
+  }
+}

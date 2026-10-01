@@ -1164,6 +1164,10 @@ class Portfolio:
             if spec.symbol in self.runners:
                 raise ValueError(f"{spec.symbol} already running")
         r = self.make_runner(spec)                            # may touch the network (tick size, NQ reference price)
+        # A portfolio-wide pause is a durable desired state. Assets added while
+        # that intent is active must never begin accepting entries unpaused.
+        if self.paused:
+            r.set_paused(True)
         with self._lock:
             if spec.symbol in self.runners:
                 raise ValueError(f"{spec.symbol} already running")
@@ -1191,12 +1195,20 @@ class Portfolio:
     def remove_asset(self, symbol: str) -> bool:
         key = resolve(symbol).symbol
         with self._lock:
-            r = self.runners.pop(key, None)
+            r = self.runners.get(key)
             if not r:
                 return False
-            self.order = [s for s in self.order if s != key]
-            r.paused = True
-            r._removed = True
+            with r.lock:
+                if r.em.open or r.em._pending_entries or r.em._pending_closes:
+                    raise ValueError(
+                        f"{key}: flatten open positions and cancel pending orders before removing the asset"
+                    )
+                if r.rewarming:
+                    raise ValueError(f"{key}: configuration replay is running; wait before removing the asset")
+                self.runners.pop(key, None)
+                self.order = [s for s in self.order if s != key]
+                r.paused = True
+                r._removed = True
         # Shared live feeds cannot unsubscribe at the gateway, but they can detach
         # this asset's local routing immediately without disrupting sibling assets.
         detach = getattr(r.feed, "stop_live", None)
@@ -1422,6 +1434,9 @@ class Portfolio:
         live_profit = sum(x["live_profit"] for x in rs)
         return _clean({
             "now": time.time(), "uptime_sec": time.time() - self.started, "paused": self.paused,
+            "global_pause_intent": self.paused,
+            "paused_assets": sorted(r.symbol for r in self.runner_list() if r.paused),
+            "mixed_pause_state": any(r.paused != self.paused for r in self.runner_list()),
             "equity": eq, "capital": cap, "net": eq - cap, "live_profit": live_profit,
             "open_profit": sum(x["open_profit"] or 0.0 for x in rs), "positions": sum(1 for x in rs if x["position"]),
             "assets": rs, "log": list(self.journal.log_tail)[-80:],

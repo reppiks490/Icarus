@@ -26,6 +26,7 @@ NODE = shutil.which("node")
         "icarus_engine/possibility-ui.js",
         "icarus_engine/pantheon-ui.js",
         "icarus_engine/integrity-ui.js",
+        "icarus_engine/engine-control-ui.js",
         "icarus_engine/autopilot-ui.js",
         "icarus_engine/experience-ui.js",
     ],
@@ -155,3 +156,76 @@ def test_dashboard_surfaces_icarus_psi_without_replacing_oracle_or_parallax():
     assert '{"id": "psi", "title": "ICARUS Ψ"' in brain
     assert '{"id": "parallax", "title": "PARALLAX"' in brain
     assert "execution_authorized=false" in ui
+
+
+def test_dashboard_surfaces_authenticated_engine_control_panel():
+    dashboard = (REPO / "icarus_engine/dashboard.html").read_text(encoding="utf-8")
+    ui = (REPO / "icarus_engine/engine-control-ui.js").read_text(encoding="utf-8")
+    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
+    backend = (REPO / "icarus_engine/engine_control.py").read_text(encoding="utf-8")
+
+    assert '<script src="/engine-control-ui.js"></script>' in dashboard
+    assert 'data-v="engine-control">Engine Control</span>' in dashboard
+    assert "view === 'engine-control'" in dashboard
+    assert "wireEngineControl()" in dashboard
+    assert 'p.path == "/engine-control-ui.js"' in server
+    assert 'p.path == "/api/engine-control"' in server
+    assert 'p.path == "/admin/engine-control"' in server
+    assert "EngineControlPlane(" in server
+    assert "ControlAction(" in server
+    assert "arbitrary_shell" in backend
+    assert "broker_arming" in backend
+    assert "/api/engine-control" in ui
+    assert "/admin/engine-control" in ui
+    assert "MCP / audit mirror" in ui
+    assert "Specialized control surfaces" in ui
+    assert "asset.apply_config" in server
+    assert "sync.stop_all" in server
+    assert "FLATTEN ALL PAPER POSITIONS" in server
+    assert "RESET ASSET CONFIG" in server
+    assert "RESET AUTOPILOT" in server
+    assert "STOP ALL INTELLIGENCE SYNCS" in server
+    assert '"mcp_repository": lambda: mcp_control.status(200)' in server
+    assert 'ControlAction("backtest.start"' in server
+    assert 'ControlAction("research.start"' in server
+    assert 'ControlAction("parallax.record_decision"' in server
+    assert 'ControlAction("possibility.ingest_evidence"' in server
+    assert "data-ec-template" in ui
+    assert "ecEventTable" in ui
+
+
+def test_dashboard_surfaces_tactical_autopilot_and_root_engine_control():
+    dashboard = (REPO / "icarus_engine/dashboard.html").read_text(encoding="utf-8")
+    autopilot = (REPO / "icarus_engine/autopilot-ui.js").read_text(encoding="utf-8")
+    control = (REPO / "icarus_engine/engine-control-ui.js").read_text(encoding="utf-8")
+    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
+    assert '/autopilot-ui.js' in dashboard
+    assert 'data-v="autopilot">Tactical Autopilot</span>' in dashboard
+    assert "wireAutopilot()" in dashboard
+    assert '/engine-control-ui.js' in dashboard
+    assert 'data-v="engine-control">Engine Control</span>' in dashboard
+    assert "wireEngineControl()" in dashboard
+    assert "/api/autopilot" in autopilot
+    assert "robustness_windows" in autopilot
+    assert "Tactical learning map" in autopilot
+    assert "/api/engine-control" in control
+    assert "Tactical Autopilot" in control
+    assert 'p.path == "/api/autopilot"' in server
+    assert 'p.path == "/api/engine-control"' in server
+    assert 'ControlAction("autopilot.configure"' in server
+    assert '"autopilot": autopilot.status' in server
+
+
+def test_engine_control_ui_supports_every_registered_target_and_generic_args():
+    ui = (REPO / "icarus_engine/engine-control-ui.js").read_text(encoding="utf-8")
+    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
+    for target in ("job", "candidate", "proposal", "source"):
+        assert target + ":" in ui
+    assert "action.args_example" in ui
+    assert "JSON.stringify(action.args_example)" in ui
+    assert 'ControlAction("research.export"' in server
+    assert 'target="proposal"' in server
+    assert 'ControlAction("research.collect"' in server
+    assert 'target="source"' in server
+    assert 'ControlAction("dreamstate.evaluate"' in server
+    assert 'target="candidate"' in server

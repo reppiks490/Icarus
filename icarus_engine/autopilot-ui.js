@@ -7,7 +7,7 @@ function apDelta(d){if(!d)return'—';if(d.kind==='baseline')return'<span class=
 function apInputs(candidate,champion){
   const vals=(candidate&&candidate.inputs)||{},ch=(champion&&champion.inputs)||{};
   return Object.keys(vals).sort().map(k=>{
-    const changed=ch[k]!==undefined&&ch[k]!==vals[k];
+    const changed=(candidate&&candidate.delta&&candidate.delta.name===k)||(ch[k]!==undefined&&ch[k]!==vals[k]);
     return '<tr class="'+(changed?'new':'')+'"><td><code>'+esc(k)+'</code></td><td class="tnum"><b>'+esc(String(vals[k]))+'</b></td><td class="tnum muted">'+(ch[k]===undefined?'—':esc(String(ch[k])))+'</td></tr>';
   }).join('')||'<tr><td colspan="3" class="empty">No candidate inputs yet.</td></tr>';
 }
@@ -18,18 +18,22 @@ function autopilotHtml(A){
     '<div class="callout" style="border-color:var(--s1)"><div><b>Autonomous research plane</b><span class="small muted">Continuously searches bounded inputs and chart/session context on frozen cached data. It does not alter broker/live or canonical paper inputs. Winners flow upward through the qualified activation path.</span></div></div>'+
     '<div class="toolbar" style="margin-top:12px"><button class="primary" id="apStart">Start autonomous loop</button><button id="apStop">Stop</button><button id="apStep">Run one cycle now</button><button id="apRefresh">Refresh</button>'+
     '<label class="small">Cadence <input id="apCadence" type="number" min="5" max="3600" value="15" style="width:84px"> sec</label>'+
+    '<label class="small">Robustness <select id="apWindows"><option value="1">1 window</option><option value="2">2 windows</option><option value="3">3 windows</option></select></label>'+
     '<label class="small">Asset <select id="apAsset"><option value="">all / round-robin</option>'+opts+'</select></label><span id="apStatus" class="small muted">loading…</span></div>'+
     '<div class="tiles" id="apSummary"></div></section>'+
     '<section class="card c6"><h2>Current candidate <span class="sub" id="apCandidateStage">—</span></h2><div id="apCurrent" class="small"></div>'+
     '<div class="scroll" style="max-height:430px;margin-top:10px"><table><thead><tr><th>Input</th><th>Candidate</th><th>Champion</th></tr></thead><tbody id="apInputRows"></tbody></table></div></section>'+
     '<section class="card c6"><h2>Best observed champion <span class="sub">within tested search space</span></h2><div id="apChampion"></div><h2 style="margin-top:18px">Score decomposition</h2><div class="tiles" id="apMetrics"></div></section>'+
+    '<section class="card c12"><h2>Tactical learning map <span class="sub">dimensions the optimizer is learning to revisit</span></h2><div class="scroll"><table><thead><tr><th>Dimension</th><th>Trials</th><th>Champion wins</th><th>Avg improvement</th><th>Best improvement</th><th>Last score</th></tr></thead><tbody id="apDimensions"></tbody></table></div></section>'+
     '<section class="card c12"><h2>Leaderboard <span class="sub">highest robust shadow scores</span></h2><div class="scroll"><table><thead><tr><th>#</th><th>Asset</th><th>Score</th><th>P&amp;L</th><th>Max DD</th><th>Return/DD</th><th>Win rate</th><th>PF</th><th>Trades</th><th>Mutation</th></tr></thead><tbody id="apLeaderboard"></tbody></table></div></section>'+
     '<section class="card c12"><h2>Autonomous trial stream <span class="sub">every tested mutation is retained</span></h2><div class="scroll" style="max-height:520px"><table><thead><tr><th>Time</th><th>Asset</th><th>Result</th><th>Score</th><th>Mutation</th><th>Chart</th><th>Session</th><th>Candidate ID</th></tr></thead><tbody id="apHistory"></tbody></table></div></section>';
 }
 function apMetricTiles(m){m=m||{};return[
  ['score',apFmt(m.score,5)],['P&L',m.pnl==null?'—':fmt$(m.pnl,0)],['max drawdown',m.max_drawdown==null?'—':fmt$(m.max_drawdown,0)],
  ['return / DD',apFmt(m.return_to_drawdown,4)],['win rate',m.win_rate==null?'—':(Number(m.win_rate)*100).toFixed(1)+'%'],
- ['profit factor',apFmt(m.profit_factor,3)],['trades',m.trades??'—'],['bars',m.bars??'—']
+ ['profit factor',apFmt(m.profit_factor,3)],['trades',m.trades??'—'],['bars',m.bars??'—'],
+ ['full score',apFmt(m.full_score,5)],['worst window',apFmt(m.worst_window_score,5)],
+ ['score dispersion',apFmt(m.score_dispersion,5)],['robust windows',m.robustness_windows??'—']
 ].map(x=>'<div class="tile"><div class="k">'+esc(x[0])+'</div><div class="v">'+esc(String(x[1]))+'</div></div>').join('');}
 async function loadAutopilot(){
   if(autopilotLoading||view!=='autopilot')return;autopilotLoading=true;
@@ -40,19 +44,22 @@ async function loadAutopilot(){
     autopilotLast=d;const cfg=d.config||{},active=d.active||{},cand=active.candidate||null,champion=cand?(d.champions||{})[cand.asset]:null;
     $('#apStatus').innerHTML=(d.running?'<span class="pos">RUNNING</span>':'<span class="muted">STOPPED</span>')+' · cycle '+esc(String(d.cursor||0))+' · '+esc(d.mode||'');
     if($('#apCadence'))$('#apCadence').value=cfg.cadence_seconds||15;
+    if($('#apWindows'))$('#apWindows').value=String(cfg.robustness_windows||1);
     $('#apSummary').innerHTML=
       '<div class="tile"><div class="k">Loop</div><div class="v '+(d.running?'pos':'')+'">'+(d.running?'AUTONOMOUS':'STOPPED')+'</div></div>'+
       '<div class="tile"><div class="k">Trials</div><div class="v">'+(d.history||[]).length+'</div></div>'+
       '<div class="tile"><div class="k">Champions</div><div class="v">'+Object.keys(d.champions||{}).length+'</div></div>'+
       '<div class="tile"><div class="k">Live mutation</div><div class="v pos">DISABLED</div></div>'+
       '<div class="tile"><div class="k">Broker control</div><div class="v pos">DISABLED</div></div>'+
-      '<div class="tile"><div class="k">Search fill</div><div class="v">REAL PRICE</div></div>';
-    $('#apCandidateStage').innerHTML=apBadge(active.stage||'idle');
+      '<div class="tile"><div class="k">Search fill</div><div class="v">REAL PRICE</div></div>'+
+      '<div class="tile"><div class="k">Robustness</div><div class="v">'+esc(String(cfg.robustness_windows||1))+' WINDOWS</div></div>';
+    $('#apCandidateStage').innerHTML=apBadge(active.stage||'idle')+(active.robustness_label?' · '+esc(active.robustness_label)+' '+esc(String(active.robustness_index||''))+'/'+esc(String(active.robustness_total||'')):'');
     $('#apCurrent').innerHTML=cand?'<div class="tiles">'+
       '<div class="tile"><div class="k">Asset</div><div class="v">'+esc(cand.asset)+'</div></div>'+
       '<div class="tile"><div class="k">Mutation</div><div class="v" style="font-size:13px">'+apDelta(cand.delta)+'</div></div>'+
       '<div class="tile"><div class="k">Chart</div><div class="v">'+esc(cand.chart_type||'engine')+'</div></div>'+
       '<div class="tile"><div class="k">Session</div><div class="v">'+esc(cand.session||'engine')+'</div></div>'+
+      '<div class="tile"><div class="k">Search mode</div><div class="v">'+esc(String(cand.search_mode||'baseline').toUpperCase())+'</div></div>'+
       '<div class="tile"><div class="k">Candidate</div><div class="v" style="font-size:12px"><code>'+esc(cand.id||'')+'</code></div></div></div>'+
       '<div class="small muted" style="margin-top:8px">'+esc(cand.reason||'')+'</div>':'<div class="empty">Waiting for the first autonomous cycle.</div>';
     $('#apInputRows').innerHTML=apInputs(cand,champion);
@@ -63,6 +70,12 @@ async function loadAutopilot(){
         '<div class="tile"><div class="k">Candidate</div><div class="v" style="font-size:12px"><code>'+esc(champion.id)+'</code></div></div></div>';
       $('#apMetrics').innerHTML=apMetricTiles(champion.metrics);
     }else{$('#apChampion').innerHTML='<div class="empty">No champion yet.</div>';$('#apMetrics').innerHTML='';}
+    const dimRows=Object.entries(d.dimension_stats||{}).map(([key,row])=>{
+      const trials=Number(row.trials||0),wins=Number(row.champion_wins||0);
+      const avg=trials?Number(row.improvement_sum||0)/trials:0;
+      return {key,trials,wins,avg,best:row.best_improvement,last:row.last_score};
+    }).sort((a,b)=>(b.avg+0.1*(b.wins/Math.max(1,b.trials)))-(a.avg+0.1*(a.wins/Math.max(1,a.trials))));
+    $('#apDimensions').innerHTML=dimRows.slice(0,40).map(x=>'<tr><td><code>'+esc(x.key)+'</code></td><td>'+x.trials+'</td><td>'+x.wins+'</td><td class="tnum '+(x.avg>0?'pos':x.avg<0?'neg':'')+'">'+apFmt(x.avg,5)+'</td><td class="tnum">'+apFmt(x.best,5)+'</td><td class="tnum">'+apFmt(x.last,5)+'</td></tr>').join('')||'<tr><td colspan="6" class="empty">Learning begins after the first non-baseline mutation.</td></tr>';
     $('#apLeaderboard').innerHTML=(d.leaderboard||[]).map((x,i)=>{const m=x.metrics||{};return '<tr><td>'+(i+1)+'</td><td><b>'+esc(x.asset)+'</b></td><td class="tnum '+(x.champion?'pos':'')+'">'+apFmt(m.score,5)+'</td><td class="tnum">'+(m.pnl==null?'—':fmt$(m.pnl,0))+'</td><td class="tnum">'+(m.max_drawdown==null?'—':fmt$(m.max_drawdown,0))+'</td><td>'+apFmt(m.return_to_drawdown,3)+'</td><td>'+(m.win_rate==null?'—':(100*m.win_rate).toFixed(1)+'%')+'</td><td>'+apFmt(m.profit_factor,2)+'</td><td>'+(m.trades??'—')+'</td><td>'+apDelta(x.delta)+'</td></tr>';}).join('')||'<tr><td colspan="10" class="empty">No completed trials.</td></tr>';
     $('#apHistory').innerHTML=(d.history||[]).slice().reverse().map(x=>'<tr><td class="tnum">'+(x.tested_at?new Date(x.tested_at*1000).toLocaleTimeString():'—')+'</td><td><b>'+esc(x.asset)+'</b></td><td>'+(x.champion?'<span class="chip b">NEW CHAMPION</span>':'<span class="chip">tested</span>')+'</td><td class="tnum">'+apFmt(x.metrics&&x.metrics.score,5)+'</td><td>'+apDelta(x.delta)+'</td><td>'+esc(x.chart_type||'engine')+'</td><td>'+esc(x.session||'engine')+'</td><td><code>'+esc(x.id||'')+'</code></td></tr>').join('')||'<tr><td colspan="8" class="empty">No autonomous trials yet.</td></tr>';
     if(d.last_error)$('#apStatus').innerHTML+=' · <span class="neg">'+esc(d.last_error.detail||d.last_error.type||'error')+'</span>';
@@ -75,6 +88,7 @@ function wireAutopilot(){
   $('#apStop')&&$('#apStop').addEventListener('click',async()=>{await admin('/admin/autopilot/stop',{});loadAutopilot();});
   $('#apStep')&&$('#apStep').addEventListener('click',async()=>{await admin('/admin/autopilot/step',{},true);loadAutopilot();});
   $('#apCadence')&&$('#apCadence').addEventListener('change',async e=>{await admin('/admin/autopilot/config',{cadence_seconds:Number(e.target.value)},true);loadAutopilot();});
+  $('#apWindows')&&$('#apWindows').addEventListener('change',async e=>{await admin('/admin/autopilot/config',{robustness_windows:Number(e.target.value)},true);loadAutopilot();});
   $('#apAsset')&&$('#apAsset').addEventListener('change',async e=>{await admin('/admin/autopilot/config',{assets:e.target.value?[e.target.value]:[]},true);loadAutopilot();});
   loadAutopilot();autopilotTimer=setInterval(loadAutopilot,1200);
 }

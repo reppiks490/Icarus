@@ -38,7 +38,7 @@ _ALLOWED_STATUSES = {
 _ALLOWED_SUBSYSTEMS = {
     "aegis", "aion", "argus", "ascension", "athena", "daedalus",
     "infrastructure", "janus", "nexus", "oracle", "parallax",
-    "prometheus", "provenance", "supermesh-x", "ml", "data", "dreamstate",
+    "prometheus", "provenance", "supermesh-x", "ml", "data", "dreamstate", "psi",
 }
 
 
@@ -49,6 +49,11 @@ def _utc_now() -> str:
 def _git_blob_sha(raw: bytes) -> str:
     header = f"blob {len(raw)}\0".encode("ascii")
     return hashlib.sha1(header + raw).hexdigest()
+
+
+def git_blob_sha(raw: bytes) -> str:
+    """Public Git-blob digest helper for repository-native event verification."""
+    return _git_blob_sha(raw)
 
 
 def _is_sha(value: Any) -> bool:
@@ -165,10 +170,16 @@ def _normalize_event(payload: Mapping[str, Any], *, remote_path: str, blob_sha: 
     source_repository = _text(payload.get("source_repository"), 180, "source_repository")
     source_ref = _text(payload.get("source_ref"), 240, "source_ref")
     source_commit = str(payload.get("source_commit") or "").strip().lower()
-    if source_commit and not _is_sha(source_commit):
+    if not _is_sha(source_commit):
         raise ValueError("source_commit must be a 40-character Git SHA")
 
     recorded_at = _text(payload.get("recorded_at"), 80, "recorded_at")
+    try:
+        recorded_dt = datetime.fromisoformat(recorded_at.replace("Z", "+00:00"))
+    except ValueError as ex:
+        raise ValueError("recorded_at must be RFC3339/ISO-8601") from ex
+    if recorded_dt.tzinfo is None or recorded_dt.utcoffset() is None:
+        raise ValueError("recorded_at must include a timezone")
     title = _text(payload.get("title"), 220, "title")
     summary = _text(payload.get("summary"), 2400, "summary")
 
@@ -197,6 +208,13 @@ def _normalize_event(payload: Mapping[str, Any], *, remote_path: str, blob_sha: 
         "execution_authorized": False,
         "production_decision_authorized": False,
     }
+
+
+def normalize_interface_event(
+    payload: Mapping[str, Any], *, source_path: str, blob_sha: str
+) -> dict[str, Any]:
+    """Public fail-closed validator shared by remote sync and local UI projection."""
+    return _normalize_event(payload, remote_path=source_path, blob_sha=blob_sha)
 
 
 def _brain_status(status: str) -> str:

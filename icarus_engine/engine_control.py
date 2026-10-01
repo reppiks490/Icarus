@@ -11,6 +11,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Callable, Dict, Mapping
+import json
+import math
+import re
+import threading
+import uuid
 
 from .system_audit import append_system_event, load_repository_audit
 
@@ -22,8 +27,10 @@ def _utc_now() -> str:
 def _compact(value: Any, depth: int = 0) -> Any:
     if depth > 4:
         return None
-    if value is None or isinstance(value, (bool, int, float)):
+    if value is None or isinstance(value, (bool, int)):
         return value
+    if isinstance(value, float):
+        return value if math.isfinite(value) else None
     if isinstance(value, str):
         return value[:2000]
     if isinstance(value, Mapping):
@@ -46,6 +53,7 @@ class ControlAction:
     danger: bool = False
     confirmation: str | None = None
     target: str = "none"
+    args_example: Mapping[str, Any] | None = None
 
     def __post_init__(self) -> None:
         for name, value in (
@@ -56,10 +64,23 @@ class ControlAction:
         ):
             if not isinstance(value, str) or not value.strip():
                 raise ValueError(f"{name} is required")
-        if self.target not in {"none", "asset", "job"}:
-            raise ValueError("target must be none, asset, or job")
+            if value != value.strip():
+                raise ValueError(f"{name} must be trimmed")
+        if not re.fullmatch(r"[a-z0-9][a-z0-9._-]{0,119}", self.action_id):
+            raise ValueError("action_id must be a canonical lowercase identifier")
+        if not callable(self.handler):
+            raise TypeError("handler must be callable")
+        if self.target not in {"none", "asset", "job", "candidate", "proposal", "source"}:
+            raise ValueError("unsupported target type")
         if self.danger and not self.confirmation:
             raise ValueError("dangerous actions require an exact confirmation phrase")
+        if self.args_example is not None:
+            if not isinstance(self.args_example, Mapping):
+                raise TypeError("args_example must be a mapping or None")
+            try:
+                json.dumps(self.args_example, sort_keys=True, separators=(",", ":"), allow_nan=False)
+            except (TypeError, ValueError) as ex:
+                raise ValueError("args_example must be finite JSON data") from ex
 
     def public(self) -> Dict[str, Any]:
         return {
@@ -70,6 +91,7 @@ class ControlAction:
             "danger": self.danger,
             "confirmation": self.confirmation,
             "target": self.target,
+            "args_example": _compact(dict(self.args_example)) if self.args_example is not None else None,
         }
 
 
@@ -88,10 +110,26 @@ class EngineControlPlane:
         self.actions = dict(actions)
         if set(self.actions) != {a.action_id for a in self.actions.values()}:
             raise ValueError("action registry keys must equal ControlAction.action_id")
+        self._lock = threading.RLock()
 
     def _snapshot_one(self, name: str, fn: Callable[[], Any]) -> Dict[str, Any]:
         try:
-            return {"status": "ok", "data": _compact(fn())}
+            raw = fn()
+            data = _compact(raw)
+            reported = None
+            health = "ok"
+            if isinstance(raw, Mapping):
+                for key in ("status", "health", "state"):
+                    value = raw.get(key)
+                    if isinstance(value, str) and value.strip():
+                        reported = value.strip()
+                        break
+                normalized = str(reported or "").lower()
+                if any(word in normalized for word in ("error", "fail", "blocked", "degraded")):
+                    health = "error"
+                elif any(word in normalized for word in ("warn", "unknown", "unverified")):
+                    health = "warn"
+            return {"status": health, "reported_status": reported, "data": data}
         except Exception as ex:
             return {
                 "status": "error",
@@ -99,11 +137,12 @@ class EngineControlPlane:
             }
 
     def status(self) -> Dict[str, Any]:
-        subsystems = {
-            name: self._snapshot_one(name, fn)
-            for name, fn in sorted(self.snapshotters.items())
-        }
-        audit = load_repository_audit(self.base_dir)
+        with self._lock:
+            subsystems = {
+                name: self._snapshot_one(name, fn)
+                for name, fn in sorted(self.snapshotters.items())
+            }
+            audit = load_repository_audit(self.base_dir)
         important = []
         for row in audit.get("events", [])[:80]:
             if not isinstance(row, dict):
@@ -118,8 +157,11 @@ class EngineControlPlane:
                 "repository": row.get("repository"),
                 "ref": row.get("ref"),
             })
+        groups: Dict[str, int] = {}
+        for action in self.actions.values():
+            groups[action.group] = groups.get(action.group, 0) + 1
         return {
-            "schema_version": "icarus-engine-control-v1",
+            "schema_version": "icarus-engine-control-v2",
             "generated_at": _utc_now(),
             "authority": {
                 "admin_auth_required": True,
@@ -133,8 +175,10 @@ class EngineControlPlane:
             "summary": {
                 "registered_actions": len(self.actions),
                 "subsystems": len(subsystems),
-                "subsystem_errors": sum(1 for x in subsystems.values() if x["status"] != "ok"),
+                "subsystem_errors": sum(1 for x in subsystems.values() if x["status"] == "error"),
+                "subsystem_warnings": sum(1 for x in subsystems.values() if x["status"] == "warn"),
                 "important_events": len(important),
+                "action_groups": dict(sorted(groups.items())),
             },
             "actions": [self.actions[k].public() for k in sorted(self.actions)],
             "subsystems": subsystems,
@@ -144,6 +188,10 @@ class EngineControlPlane:
     def run(self, body: Mapping[str, Any]) -> Dict[str, Any]:
         if not isinstance(body, Mapping):
             raise ValueError("control request must be an object")
+        try:
+            json.dumps(body, sort_keys=True, separators=(",", ":"), allow_nan=False)
+        except (TypeError, ValueError) as ex:
+            raise ValueError("control request must be finite JSON data") from ex
         allowed = {"action", "target", "confirm", "reason", "args"}
         extra = set(body) - allowed
         if extra:
@@ -153,7 +201,8 @@ class EngineControlPlane:
         if action is None:
             raise ValueError(f"unknown engine-control action: {action_id or '(empty)'}")
 
-        target = str(body.get("target") or "").strip().upper()
+        raw_target = str(body.get("target") or "").strip()
+        target = raw_target.upper() if action.target == "asset" else raw_target
         if action.target != "none" and not target:
             raise ValueError(f"{action_id} requires target={action.target}")
         if action.target == "none" and target:
@@ -166,7 +215,9 @@ class EngineControlPlane:
                     f"{action_id} requires exact confirmation: {action.confirmation}"
                 )
 
-        args = body.get("args") or {}
+        args = body.get("args", {})
+        if args is None:
+            args = {}
         if not isinstance(args, dict):
             raise ValueError("args must be an object")
         payload = {
@@ -176,43 +227,75 @@ class EngineControlPlane:
         }
 
         started = _utc_now()
-        try:
-            result = action.handler(payload)
-        except Exception as ex:
-            append_system_event(self.base_dir, {
-                "id": f"engine-control:{action_id}:{started}",
-                "kind": "finding",
-                "severity": "error",
-                "title": f"Engine Control failed: {action.title}",
-                "detail": f"{type(ex).__name__}: {ex}"[:2200],
-                "recorded_at": started,
-                "repository": "reppiks490/Icarus",
-                "ref": action_id,
-            })
-            raise
-
-        finished = _utc_now()
-        event = append_system_event(self.base_dir, {
-            "id": f"engine-control:{action_id}:{finished}",
+        event_id = f"engine-control:{action_id}:{started}:{uuid.uuid4().hex[:12]}"
+        intent = {
+            "id": event_id,
             "kind": "integration",
-            "severity": "success",
-            "title": f"Engine Control: {action.title}",
+            "severity": "info",
+            "title": f"Engine Control requested: {action.title}",
             "detail": (
                 f"action={action_id}"
                 + (f" target={target}" if target else "")
-                + f" reason={payload['reason']}"
+                + f" reason={payload['reason']} status=REQUESTED"
             )[:2200],
-            "recorded_at": finished,
+            "recorded_at": started,
             "repository": "reppiks490/Icarus",
             "ref": action_id,
-        })
+        }
+
+        with self._lock:
+            # Mutation is forbidden if the durable intent receipt cannot be written.
+            append_system_event(self.base_dir, intent)
+            try:
+                result = action.handler(payload)
+            except Exception as ex:
+                failed = dict(intent)
+                failed.update({
+                    "severity": "error",
+                    "title": f"Engine Control failed: {action.title}",
+                    "detail": (
+                        f"action={action_id}"
+                        + (f" target={target}" if target else "")
+                        + f" error={type(ex).__name__}: {ex}"
+                    )[:2200],
+                    "recorded_at": _utc_now(),
+                })
+                try:
+                    append_system_event(self.base_dir, failed)
+                except Exception:
+                    # The pre-mutation intent remains durable even if finalization
+                    # cannot update it; do not hide the real command exception.
+                    pass
+                raise
+
+            finished = _utc_now()
+            completed = dict(intent)
+            completed.update({
+                "severity": "success",
+                "title": f"Engine Control: {action.title}",
+                "detail": (
+                    f"action={action_id}"
+                    + (f" target={target}" if target else "")
+                    + f" reason={payload['reason']} status=SUCCEEDED"
+                )[:2200],
+                "recorded_at": finished,
+            })
+            audit_recorded = True
+            audit_error = None
+            try:
+                append_system_event(self.base_dir, completed)
+            except Exception as ex:
+                # State already changed; the durable REQUESTED intent is retained.
+                audit_recorded = False
+                audit_error = f"{type(ex).__name__}: {ex}"[:1000]
         return {
             "ok": True,
+            "note": f"{action.title} completed",
             "action": action.public(),
             "target": target or None,
             "started_at": started,
             "finished_at": finished,
             "result": _compact(result),
-            "audit_recorded": True,
-            "audit_status": event.get("status", "unknown"),
+            "audit_recorded": audit_recorded,
+            "audit_error": audit_error,
         }
