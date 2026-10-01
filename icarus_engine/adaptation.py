@@ -205,6 +205,16 @@ class AdaptationScheduler:
                 if runner.cal.intraday_open(bar.ts) and runner.chart_minutes % sub_minutes == 0:
                     bars.extend(agg.push(bar, sub_minutes))
             grid, next_cursor = (config["grids"][asset], cursor) if asset in config["grids"] else self._auto_grid(runner, cursor)
+            raw_state = getattr(runner, "state", None)
+            raw_state = raw_state if isinstance(raw_state, dict) else {}
+            regime_score = raw_state.get("rate_regime")
+            if isinstance(regime_score, bool) or not isinstance(regime_score, (int, float)):
+                regime_score = None
+            regime_context = {
+                "label": str(raw_state.get("rate_regime_str") or "UNKNOWN"),
+                "regime_score": regime_score,
+                "observed_market_ts": raw_state.get("ts"),
+            }
             minutes = runner.chart_minutes
         total = config["train_bars"] + config["validation_bars"] + config["holdout_bars"] + 2
         if len(bars) < total:
@@ -217,7 +227,12 @@ class AdaptationScheduler:
                           bars[t + v + 2].ts, cal.bucket_end(bars[-1].ts, minutes))
         if windows.holdout_start <= self._watermark(self.workspace.root / "holdouts.sqlite3", asset):
             raise ValueError("no new held-out interval beyond durable revealed/claimed watermark")
-        return {"asset": asset, "grid": grid, "windows": asdict(windows), "policy": config["policy"]}, [e["event_id"] for e in evidence[:config["max_evidence"]]], next_cursor
+        return (
+            {"asset": asset, "grid": grid, "windows": asdict(windows), "policy": config["policy"]},
+            [e["event_id"] for e in evidence[:config["max_evidence"]]],
+            next_cursor,
+            regime_context,
+        )
 
     def tick(self):
         with self._mutex, self._locked():
@@ -250,7 +265,7 @@ class AdaptationScheduler:
                 if time.time() < prior.get("next_due", 0):
                     continue
                 try:
-                    request, ids, dimension = self._prepare(asset, config, prior.get("dimension", 0))
+                    request, ids, dimension, regime_context = self._prepare(asset, config, prior.get("dimension", 0))
                     # A completed no-candidate study on the same frozen data is final.
                     if max(prior.get("no_candidate_cutoff", -1), prior.get("last_attempt_cutoff", -1)) >= request["windows"]["holdout_end"]:
                         continue
@@ -262,6 +277,7 @@ class AdaptationScheduler:
                           "process": self._process,
                           "apply": config["apply"],
                           "review_mode": config.get("review_mode", "dual_model"),
+                          "regime_context": regime_context,
                           "request": request, "evidence_ids": ids, "started": time.time()}
                 state["active"] = active
                 state["cursor"] = (start + offset + 1) % len(assets)
@@ -348,7 +364,9 @@ class AdaptationScheduler:
             prior = state["assets"].setdefault(asset, {})
             prior.update(status=status, reason=reason, last_job=active.get("job"),
                          last_workflow=active.get("workflow"), last_proposal=active.get("proposal_id"),
-                         review_mode=active.get("review_mode", "dual_model"), finished=time.time(),
+                         review_mode=active.get("review_mode", "dual_model"),
+                         regime_context=active.get("regime_context", {"label": "UNKNOWN"}),
+                         finished=time.time(),
                          last_attempt_cutoff=active["request"]["windows"]["holdout_end"],
                          next_due=time.time() + config["cadence_seconds"])
             if status == "no_candidate":
