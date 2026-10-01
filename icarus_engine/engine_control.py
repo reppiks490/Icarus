@@ -52,6 +52,7 @@ class ControlAction:
     danger: bool = False
     confirmation: str | None = None
     target: str = "none"
+    args_example: Mapping[str, Any] | None = None
 
     def __post_init__(self) -> None:
         for name, value in (
@@ -68,10 +69,17 @@ class ControlAction:
             raise ValueError("action_id must be a canonical lowercase identifier")
         if not callable(self.handler):
             raise TypeError("handler must be callable")
-        if self.target not in {"none", "asset", "job"}:
-            raise ValueError("target must be none, asset, or job")
+        if self.target not in {"none", "asset", "job", "candidate", "proposal", "source"}:
+            raise ValueError("unsupported target type")
         if self.danger and not self.confirmation:
             raise ValueError("dangerous actions require an exact confirmation phrase")
+        if self.args_example is not None:
+            if not isinstance(self.args_example, Mapping):
+                raise TypeError("args_example must be a mapping or None")
+            try:
+                json.dumps(self.args_example, sort_keys=True, separators=(",", ":"), allow_nan=False)
+            except (TypeError, ValueError) as ex:
+                raise ValueError("args_example must be finite JSON data") from ex
 
     def public(self) -> Dict[str, Any]:
         return {
@@ -82,6 +90,7 @@ class ControlAction:
             "danger": self.danger,
             "confirmation": self.confirmation,
             "target": self.target,
+            "args_example": _compact(dict(self.args_example)) if self.args_example is not None else None,
         }
 
 
@@ -131,8 +140,11 @@ class EngineControlPlane:
                 "repository": row.get("repository"),
                 "ref": row.get("ref"),
             })
+        groups: Dict[str, int] = {}
+        for action in self.actions.values():
+            groups[action.group] = groups.get(action.group, 0) + 1
         return {
-            "schema_version": "icarus-engine-control-v1",
+            "schema_version": "icarus-engine-control-v2",
             "generated_at": _utc_now(),
             "authority": {
                 "admin_auth_required": True,
@@ -148,6 +160,7 @@ class EngineControlPlane:
                 "subsystems": len(subsystems),
                 "subsystem_errors": sum(1 for x in subsystems.values() if x["status"] != "ok"),
                 "important_events": len(important),
+                "action_groups": dict(sorted(groups.items())),
             },
             "actions": [self.actions[k].public() for k in sorted(self.actions)],
             "subsystems": subsystems,
