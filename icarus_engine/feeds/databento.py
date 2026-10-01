@@ -123,6 +123,7 @@ class Databento:
         self._depth_continuous_to_symbol: Dict[str, Dict[str, str]] = collections.defaultdict(dict)
         self._depth_instrument_to_symbol: Dict[str, Dict[int, str]] = collections.defaultdict(dict)
         self._depth_errors: Dict[Tuple[str, str], str] = {}
+        self._depth_error_code: Dict[str, int] = {}
         self._depth_ready: Dict[Tuple[str, str], threading.Event] = collections.defaultdict(threading.Event)
         self._depth_broken: set[str] = set()
         self._ready: Dict[str, threading.Event] = collections.defaultdict(threading.Event)
@@ -558,6 +559,8 @@ class Databento:
             out["depth_schema_health"] = {
                 schema: schema not in self._depth_broken for schema in ("mbp-10", "mbo")
             }
+            if self._depth_error_code:
+                out["depth_error_codes"] = dict(self._depth_error_code)
             return out
 
     def _live_callback(self, symbol: str, record: Any) -> None:
@@ -753,6 +756,7 @@ class Databento:
                         self._depth_subscriptions[schema].discard(key)
                 if fatal:
                     self._depth_broken.add(schema)
+                    self._depth_error_code[schema] = code
             return
 
         with self._lock:
@@ -794,6 +798,7 @@ class Databento:
     def _record_depth_reconnect_all(self, schema: str, previous: Any, resumed: Any) -> None:
         with self._lock:
             self._depth_broken.discard(schema)
+            self._depth_error_code.pop(schema, None)
             symbols = list(self._depth_live_symbols[schema])
         for symbol in symbols:
             self._record_reconnect(symbol, previous, resumed)
@@ -812,7 +817,10 @@ class Databento:
             return self._depth_live.get(schema)
 
         with self._depth_session_lock:
-            if schema in self._depth_broken:
+            with self._lock:
+                broken = schema in self._depth_broken
+                code = self._depth_error_code.get(schema)
+            if broken and code in (6, 7, 8):
                 self._refresh_depth_schema_live(schema, start_ts=max(0, int(time.time()) - 300))
             with self._lock:
                 if schema in self._depth_broken:
@@ -887,6 +895,7 @@ class Databento:
             client = self._depth_live.pop(schema, None)
             self._depth_started.discard(schema)
             self._depth_broken.discard(schema)
+            self._depth_error_code.pop(schema, None)
             symbols = set(self._depth_live_symbols.pop(schema, set()))
             self._depth_subscriptions.pop(schema, None)
             self._depth_continuous_to_symbol.pop(schema, None)
@@ -950,6 +959,7 @@ class Databento:
             with self._lock:
                 self._depth_live[schema] = client
                 self._depth_broken.discard(schema)
+                self._depth_error_code.pop(schema, None)
             try:
                 with self._lock:
                     for key in active:
@@ -981,6 +991,7 @@ class Databento:
                     self._depth_live.pop(schema, None)
                     self._depth_started.discard(schema)
                     self._depth_broken.add(schema)
+                    self._depth_error_code[schema] = 6
                     self._depth_live_symbols[schema].update(active)
                     self._depth_subscriptions[schema].clear()
                     self._depth_continuous_to_symbol[schema].clear()
