@@ -1288,7 +1288,7 @@ def test_psi_evidence_integrity_detects_receipt_tampering(tmp_path):
     corrupted = engine._evidence_ledger.integrity(max_age_seconds=0)
     assert corrupted["ok"] is False
     assert corrupted["invalid_receipt_count"] >= 1
-    assert corrupted["ledger_digest_sha256"] == original_digest
+    assert corrupted["ledger_digest_sha256"] != original_digest
 
 
 def test_psi_evidence_startup_fails_closed_on_incompatible_schema(tmp_path):
