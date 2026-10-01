@@ -53,6 +53,8 @@ For example, order-book imbalance, trade imbalance and sweep detection may all o
 
 This is the central protection against false "future collapse" caused by correlated evidence.
 
+SIBYL also applies a source-revision guard. For each named source, only observations from that source's newest observed `source_commit` participate in the live lightcone. Historical rows remain in the immutable ledger for audit and replay, but an older implementation cannot be blended with a newer implementation to manufacture agreement. Repeated emissions from one source are averaged before domain fusion and cannot increase that source's authority simply by publishing more rows.
+
 ## Multi-horizon future basins
 
 Default horizons:
