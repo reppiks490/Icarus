@@ -58,6 +58,7 @@ def test_mcp_server_imports_and_registers_engine_surface():
         "record_engine_learning_outcome",
         "scan_engine_learning_history",
         "backfill_engine_learning_dataset",
+        "run_engine_learning_cycle",
         "engine_apex_state",
         "engine_apex_participants",
         "engine_apex_crowdhunt",
@@ -854,3 +855,13 @@ def test_mcp_learning_json_mutations_reject_non_object_json():
     ):
         assert "error" in fn("[]")
         assert "error" in fn("{bad")
+
+
+def test_mcp_manual_learning_cycle_route(monkeypatch):
+    seen = []
+    monkeypatch.setattr(mcp_server, "_engine_post", lambda path, body: (seen.append((path, body)) or {
+        "status": "ok", "execution_authorized": False, "production_decision_authorized": False
+    }))
+    out = mcp_server.run_engine_learning_cycle()
+    assert out["execution_authorized"] is False
+    assert seen == [("/admin/learning/tick", {})]
