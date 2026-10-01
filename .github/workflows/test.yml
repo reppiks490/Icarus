@@ -3,6 +3,10 @@ name: tests
 on:
   push:
   pull_request:
+
+concurrency:
+  group: icarus-tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   engine:
     runs-on: ubuntu-latest

@@ -17,11 +17,13 @@ import os
 from pathlib import Path
 import threading
 import time
+from datetime import datetime, timezone
 from typing import Any
 
 from .backtest import run_backtest
 from .runtime import validate_values
 from .strategy.meta import load_meta
+from .system_audit import append_system_event
 
 
 DEFAULT_CONFIG = {
@@ -48,6 +50,7 @@ class TacticalAutopilot:
         self.root = Path(port.base_dir) / "research" / "autopilot"
         self.path = self.root / "state.json"
         self._lock = threading.RLock()
+        self._cycle_lock = threading.Lock()
         self._thread: threading.Thread | None = None
         self._stop = threading.Event()
         self._meta = {x["name"]: x for x in load_meta() if isinstance(x, dict) and x.get("name")}
@@ -157,13 +160,21 @@ class TacticalAutopilot:
     def _eligible(self, inputs):
         dims = []
         protected = {
-            "qty_contracts", "point_value",
+            "qty_contracts", "point_value", "size_mode", "risk_usd_per_trade",
+            "vol_rank_bars", "vol_low_mult", "vol_mid_mult", "tide_qty",
+            "use_conviction_sizing", "conv_min_mult", "conv_floor", "conv_ceiling",
         }
         for name in sorted(inputs):
             value = inputs[name]
-            if name in protected or name.startswith(("rate_", "htf_tf_")):
-                continue
             entry = self._meta.get(name, {})
+            group = str(entry.get("group") or "").lower()
+            if (
+                name in protected
+                or name.endswith("_qty")
+                or "sizing" in group
+                or name.startswith(("rate_", "htf_tf_"))
+            ):
+                continue
             choices = []
             if type(value) is bool:
                 choices = [not value]
@@ -284,6 +295,18 @@ class TacticalAutopilot:
         return metrics
 
     def cycle_once(self):
+        # Manual and background requests must never race the same shadow state.
+        if not self._cycle_lock.acquire(blocking=False):
+            out = self.status()
+            out["cycle_busy"] = True
+            out["note"] = "A Tactical Autopilot cycle is already running."
+            return out
+        try:
+            return self._cycle_once_serial()
+        finally:
+            self._cycle_lock.release()
+
+    def _cycle_once_serial(self):
         with self._lock:
             state = self._read()
             cfg = state["config"]
@@ -359,6 +382,8 @@ class TacticalAutopilot:
                 }
                 state["last_error"] = None
                 self._write(state)
+            if record["champion"]:
+                self._mirror_champion(record)
             return self.status()
         except Exception as ex:
             with self._lock:
@@ -376,6 +401,32 @@ class TacticalAutopilot:
                 self._write(state)
             return self.status()
 
+    def _mirror_champion(self, record):
+        """Mirror new autonomous champions into ICARUS System Intelligence."""
+        try:
+            delta = record.get("delta") or {}
+            metrics = record.get("metrics") or {}
+            append_system_event(self.port.base_dir, {
+                "id": "autopilot-champion:" + str(record.get("asset")) + ":" + str(record.get("id")),
+                "kind": "integration",
+                "severity": "success",
+                "title": "Tactical Autopilot champion: " + str(record.get("asset")),
+                "detail": (
+                    "candidate=" + str(record.get("id"))
+                    + " score=" + str(metrics.get("score"))
+                    + " delta=" + str(delta.get("name"))
+                    + " " + str(delta.get("from")) + "->" + str(delta.get("to"))
+                    + " shadow-only; no paper/live input mutation"
+                ),
+                "recorded_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+                "repository": "reppiks490/Icarus",
+                "ref": str(record.get("id")),
+            })
+        except Exception:
+            # The optimizer journal remains authoritative if the auxiliary UI
+            # mirror is temporarily unavailable.
+            return
+
     def status(self):
         with self._lock:
             state = self._read()
@@ -390,6 +441,7 @@ class TacticalAutopilot:
             "history": history[-60:],
             "leaderboard": leaderboard,
             "running": bool(self._thread and self._thread.is_alive()),
+            "cycle_busy": self._cycle_lock.locked(),
             "mode": "autonomous shadow research",
             "execution_authorized": False,
             "broker_control": False,
@@ -409,12 +461,14 @@ class TacticalAutopilot:
 
     def start(self):
         with self._lock:
-            if self._thread and self._thread.is_alive():
-                return self.status()
             state = self._read()
             state["config"]["enabled"] = True
             self._write(state)
+            # If stop() timed out while a replay was finishing, resume the
+            # existing single worker instead of spawning a second one.
             self._stop.clear()
+            if self._thread and self._thread.is_alive():
+                return self.status()
 
             def run():
                 while not self._stop.is_set():
@@ -449,12 +503,17 @@ class TacticalAutopilot:
         return self.status()
 
     def reset(self):
-        self._stop.set()
-        with self._lock:
-            state = self._initial()
-            state["config"]["enabled"] = False
-            self._write(state)
-        return self.status()
+        if not self._cycle_lock.acquire(blocking=False):
+            raise ValueError("cannot reset Tactical Autopilot while a cycle is active; stop it and wait for the replay to finish")
+        try:
+            self._stop.set()
+            with self._lock:
+                state = self._initial()
+                state["config"]["enabled"] = False
+                self._write(state)
+            return self.status()
+        finally:
+            self._cycle_lock.release()
 
     def close(self):
         self._stop.set()
