@@ -26,6 +26,8 @@ def test_mcp_server_imports_and_registers_engine_surface():
         "record_engine_brain_event",
         "engine_possibility_state",
         "record_engine_possibility_evidence",
+        "engine_pantheon_state",
+        "record_engine_pantheon_observation",
     ):
         assert callable(getattr(mcp_server, name))
 
@@ -325,3 +327,48 @@ def test_mcp_icarus_psi_routes_are_research_only(monkeypatch):
 def test_mcp_icarus_psi_rejects_non_object_evidence_json():
     assert "error" in mcp_server.record_engine_possibility_evidence("NQ", "fixture", "[]")
     assert "error" in mcp_server.record_engine_possibility_evidence("NQ", "fixture", "{bad")
+
+def test_mcp_pantheon_routes_are_shadow_only(monkeypatch):
+    seen = []
+
+    def get(path):
+        seen.append(("get", path))
+        return {"authority": {"execution_authorized": False, "production_decision_authorized": False}}
+
+    def post(path, body):
+        seen.append(("post", path, body))
+        return {"analysis": {"authority": {"execution_authorized": False, "production_decision_authorized": False}}}
+
+    monkeypatch.setattr(mcp_server, "_engine_get", get)
+    monkeypatch.setattr(mcp_server, "_engine_post", post)
+
+    state = mcp_server.engine_pantheon_state()
+    assert state["authority"]["execution_authorized"] is False
+    result = mcp_server.record_engine_pantheon_observation(
+        "nq",
+        "2026-10-01T06:05:00Z",
+        '{"data_quality":0.9,"risk":0.2}',
+        horizon_ms=15000,
+        evidence_json='["fixture"]',
+        subsystem_outputs_json='{"custom":{"value":1}}',
+        source_commit="a" * 40,
+        observation_id="pan-mcp-fixture",
+    )
+    assert result["analysis"]["authority"]["execution_authorized"] is False
+    assert seen[0] == ("get", "/api/pantheon")
+    assert seen[1] == ("post", "/admin/pantheon/observe", {
+        "asset": "NQ",
+        "observed_at": "2026-10-01T06:05:00Z",
+        "horizon_ms": 15000,
+        "signals": {"data_quality": 0.9, "risk": 0.2},
+        "evidence": ["fixture"],
+        "subsystem_outputs": {"custom": {"value": 1}},
+        "source_commit": "a" * 40,
+        "observation_id": "pan-mcp-fixture",
+    })
+
+
+def test_mcp_pantheon_rejects_bad_json_shapes():
+    assert "error" in mcp_server.record_engine_pantheon_observation("NQ", "2026-10-01T06:05:00Z", "[]")
+    assert "error" in mcp_server.record_engine_pantheon_observation("NQ", "2026-10-01T06:05:00Z", "{}", evidence_json="{}")
+    assert "error" in mcp_server.record_engine_pantheon_observation("NQ", "2026-10-01T06:05:00Z", "{}", subsystem_outputs_json="[]")

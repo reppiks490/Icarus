@@ -285,7 +285,7 @@ class PantheonKernel:
         ]
         latest = observations[0] if observations else None
         catalog = {
-            "ORACLE": {"mode": "external/native subsystem", "ownership": "preserved; not reimplemented here"},
+            "ORACLE": {"mode": "native subsystem via read-only adapter", "ownership": "preserved; not reimplemented here"},
             "PARALLAX": {"mode": "native subsystem", "ownership": "preserved"},
             "DREAMSTATE": {"mode": "native subsystem", "ownership": "preserved"},
             "NEMESIS": {"mode": "pantheon faculty"},

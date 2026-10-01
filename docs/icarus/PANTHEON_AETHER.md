@@ -87,3 +87,13 @@ read-only adapter. The adapter copies bounded diagnostics such as latent
 pressure, evidence coverage, future-space collapse and edge state; it does not
 duplicate ORACLE's engine, mutate its state, reinterpret scenario shares as
 calibrated probabilities, or inherit execution authority.
+
+
+## MCP parity
+
+The ICARUS MCP surface exposes a read tool for PANTHEON/AETHER state and a
+provenance-bound observation-ingest tool. Native ORACLE Ψ, PARALLAX and
+DREAMSTATE context is attached inside the engine rather than duplicated by MCP.
+The same PANTHEON/AETHER state is visible in the trader interface. MCP exposure
+does not increase authority: observations remain shadow research and cannot
+authorize orders, sizing, broker actions or production promotion.

@@ -454,6 +454,55 @@ def record_engine_brain_event(
 
 
 @mcp.tool()
+def engine_pantheon_state() -> dict:
+    """Read PANTHEON faculties, AETHER swarm state, sentinel cells and durable shadow claims."""
+    return _safe_engine(lambda: _engine_get("/api/pantheon"))
+
+
+@mcp.tool()
+def record_engine_pantheon_observation(
+    asset: str,
+    observed_at: str,
+    signals_json: str,
+    horizon_ms: int = 1000,
+    evidence_json: str = "[]",
+    subsystem_outputs_json: str = "{}",
+    source_commit: str = "",
+    observation_id: str = "",
+) -> dict:
+    """Submit one immutable PANTHEON shadow observation.
+
+    Native ORACLE Psi, PARALLAX and DREAMSTATE evidence is attached by the engine.
+    This tool cannot authorize execution, sizing, broker actions or production promotion.
+    """
+    try:
+        signals = json.loads(signals_json or "{}")
+        evidence = json.loads(evidence_json or "[]")
+        subsystem_outputs = json.loads(subsystem_outputs_json or "{}")
+    except json.JSONDecodeError as ex:
+        return {"error": f"PANTHEON JSON input is invalid: {ex}"}
+    if not isinstance(signals, dict):
+        return {"error": "signals_json must decode to an object"}
+    if not isinstance(evidence, list):
+        return {"error": "evidence_json must decode to a list"}
+    if not isinstance(subsystem_outputs, dict):
+        return {"error": "subsystem_outputs_json must decode to an object"}
+    body: Dict[str, Any] = {
+        "asset": asset.strip().upper(),
+        "observed_at": observed_at.strip(),
+        "horizon_ms": int(horizon_ms),
+        "signals": signals,
+        "evidence": evidence,
+        "subsystem_outputs": subsystem_outputs,
+    }
+    if source_commit.strip():
+        body["source_commit"] = source_commit.strip()
+    if observation_id.strip():
+        body["observation_id"] = observation_id.strip()
+    return _safe_engine(lambda: _engine_post("/admin/pantheon/observe", body))
+
+
+@mcp.tool()
 def engine_possibility_state(asset: str = "NQ") -> dict:
     """Read ICARUS Ψ latent-pressure, possibility-space and information-wave diagnostics."""
     asset = asset.strip().upper()
