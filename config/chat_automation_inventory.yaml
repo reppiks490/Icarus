@@ -1,0 +1,26 @@
+# Migration snapshot; not proof of current scheduler state.
+snapshot_date: "2026-09-28"
+timezone_context: "America/Chicago"
+execution_authorized: false
+source_of_truth_rule: "repository evidence outranks chat automation metadata"
+loops:
+  - {title: "AEGIS Corpus Collector", state_at_snapshot: active, class: collection_pipeline, known_repo_sink: "reppiks490/Icarus:docs/icarus/research/aegis_challenger_forge/"}
+  - {title: "Advanced CSV Data Collector", state_at_snapshot: active, class: collection_pipeline, known_repo_sink: "reppiks490/icarus-csv-evidence-lab"}
+  - {title: "Microstructure Sensor Grid", state_at_snapshot: active, class: collection_pipeline, known_repo_sink: "reppiks490/Icarus"}
+  - {title: "Macro Regime Data Grid", state_at_snapshot: active, class: collection_pipeline, known_repo_sink: "Icarus-engine automation_intelligence/macro + fundamental; verify current ownership"}
+  - {title: "Onchain Event Intelligence Grid", state_at_snapshot: paused_or_disabled, class: collection_pipeline, known_repo_sink: "reppiks490/Icarus handoff inbox"}
+  - {title: "Icarus Build Loop", state_at_snapshot: paused_or_disabled, class: build_evolution_worker}
+  - {title: "Infrastructure Loop Build", state_at_snapshot: paused_or_disabled, class: build_evolution_worker}
+  - {title: "VECTOR ∞ Loop", state_at_snapshot: paused_or_disabled, class: build_evolution_worker}
+  - {title: "AEGIS Challenger Forge", state_at_snapshot: paused_or_disabled, class: specialized_research_pipeline, known_repo_sink: "reppiks490/Icarus:docs/icarus/research/aegis_challenger_forge/"}
+  - {title: "MASTER LOOP GOVERNOR", state_at_snapshot: paused_or_disabled, class: governance_component}
+  - {title: "SuperMesh-X Evolution", state_at_snapshot: paused_or_disabled, class: build_evolution_worker}
+  - {title: "ASCENSION ∞ Series", state_at_snapshot: paused_or_disabled, class: build_evolution_worker}
+  - {title: "Advanced CSV Loop", state_at_snapshot: paused_or_disabled, class: build_evolution_worker, known_repo_sink: "reppiks490/icarus-csv-evidence-lab"}
+  - {title: "Icarus Central Orchestration", state_at_snapshot: paused_or_disabled, class: governance_component}
+  - {title: "PROMETHEUS Loop", state_at_snapshot: paused_or_disabled, class: build_evolution_worker}
+notes:
+  - "Do not automatically enable paused loops."
+  - "Do not automatically disable active loops."
+  - "Scheduler timestamps are not verified checkpoints."
+  - "Paused does not mean obsolete."

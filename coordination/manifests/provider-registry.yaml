@@ -1,0 +1,92 @@
+schema_version: icarus-provider-registry-v1
+pipeline_policy_version: icarus-control-v1
+
+authority_rule: >
+  Provider availability does not grant strategy or execution authority.
+  Provider outputs terminate at evidence, research, diagnostics, or presentation
+  boundaries unless separately qualified and promoted through the pipeline.
+
+providers:
+  - name: Massive
+    domain: market_data
+    role: institutional_market_evidence
+    direct_execution_authority: false
+
+  - name: Twelve Data
+    domain: market_data
+    role: market_and_technical_evidence
+    direct_execution_authority: false
+
+  - name: FMP
+    domain: financial_data
+    role: fundamentals_macro_market_evidence
+    direct_execution_authority: false
+
+  - name: Bigdata.com
+    domain: financial_research
+    role: cited_financial_research_and_market_context
+    direct_execution_authority: false
+
+  - name: Zacks Financial Data
+    domain: financial_research
+    role: curated_financial_and_analyst_evidence
+    direct_execution_authority: false
+
+  - name: StackerScan
+    domain: precious_metals
+    role: spot_premium_and_history_evidence
+    direct_execution_authority: false
+
+  - name: U.S. Gold Bureau Metal Spots
+    domain: precious_metals
+    role: spot_reference_evidence
+    direct_execution_authority: false
+
+  - name: Bybit
+    domain: crypto_market_data
+    role: crypto_price_orderbook_funding_evidence
+    direct_execution_authority: false
+
+  - name: Blockscout
+    domain: blockchain
+    role: evm_onchain_evidence
+    direct_execution_authority: false
+
+  - name: Scite
+    domain: scientific_literature
+    role: literature_verification_and_citation_context
+    direct_execution_authority: false
+
+  - name: Agent Reach
+    domain: external_research
+    role: public_research_retrieval
+    direct_execution_authority: false
+
+  - name: DataBlue
+    domain: web_data
+    role: public_web_retrieval_and_structured_extraction
+    direct_execution_authority: false
+
+  - name: Figma
+    domain: design
+    role: architecture_and_interface_design
+    direct_execution_authority: false
+
+  - name: Visualize
+    domain: visualization
+    role: architecture_and_diagnostic_visualization
+    direct_execution_authority: false
+
+  - name: Runway
+    domain: media
+    role: presentation_and_media_generation
+    direct_execution_authority: false
+
+integration_requirements:
+  - canonical_source_identity
+  - timestamp_and_freshness_metadata
+  - raw_artifact_hash_when_possible
+  - failure_mode_documentation
+  - normalization_boundary
+  - no_direct_trade_command_path
+  - reproducibility_metadata_when_used_for_research

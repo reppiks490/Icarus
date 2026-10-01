@@ -91,7 +91,7 @@ def from_status(
             "id": "warmup_is_not_money",
             "ok": True,
             "level": "info",
-            "detail": f"Warm-up replay P&L {warmup_pnl:,.2f} is historical emulator, not a deposit. Live book {live_pnl + open_pnl:,.2f}.",
+            "detail": f"Warm-up replay P&L {warmup_pnl:,.2f} is historical emulator, not a deposit. Active paper-engine epoch {live_pnl + open_pnl:,.2f}.",
         },
         {
             "id": "tape",
@@ -170,6 +170,7 @@ def from_status(
         "warmup_pnl": warmup_pnl,
         "live_pnl": live_pnl,
         "open_pnl": open_pnl,
+        "live_pnl_basis": "closed paper trades since each asset's latest successful warm/re-warm cutover",
         "brains": {
             "A": "TradingView Pine → icarus-bridge → Alpaca QQQ (not NQ). Off unless you started the bridge.",
             "B": "This dashboard. Yahoo NQ=F or FileFeed CSV. Local emulator fills.",
