@@ -205,6 +205,101 @@ def test_sentinel_cells_preserve_latest_observed_state_under_late_ingestion(tmp_
     assert cell["last_observed_at"] == "2026-10-01T06:00:02Z"
 
 
+def _feedback_payload(observation_id: str, observed_at: str, claim_id: str, utility: float):
+    return {
+        "observation_id": observation_id,
+        "observed_at": observed_at,
+        "asset": "NQ",
+        "horizon_ms": 15000,
+        "source_commit": "a" * 40,
+        "signals": {
+            "data_quality": 0.50,
+            "risk": 0.10,
+            "world_scores": {"identified": 1.0, "other": 0.0},
+            "transition_cost_up": 1.0,
+            "transition_cost_down": 1.0,
+        },
+        "evidence": [f"feedback:{observation_id}"],
+        "claim_outcomes": [
+            {
+                "claim_id": claim_id,
+                "observed_at": observed_at,
+                "utility": utility,
+                "confidence": 0.90,
+                "evidence": [f"observed-outcome:{observation_id}"],
+            }
+        ],
+    }
+
+
+def test_aether_ecology_requires_observed_fitness_for_speciation_and_genesis(tmp_path):
+    kernel = PantheonKernel(tmp_path)
+    first = kernel.record_observation(_payload(observation_id="pan-origin"))
+    ontology_claim = next(c for c in first["claims"] if c["kind"] == "ontology_candidate")
+
+    for i in range(1, 4):
+        result = kernel.record_observation(
+            _feedback_payload(
+                f"pan-positive-{i}",
+                f"2026-10-01T06:00:0{i}Z",
+                ontology_claim["claim_id"],
+                0.80,
+            )
+        )
+        assert result["ecology_outcomes"][0]["execution_authorized"] is False
+
+    ecology = kernel.snapshot()["ecology"]
+    parent = next(x for x in ecology["species"] if x["origin_claim_id"] == ontology_claim["claim_id"] and x["generation"] == 0)
+    children = [x for x in ecology["species"] if x["parent_species_id"] == parent["species_id"]]
+    assert parent["stage"] == "surviving_shadow"
+    assert parent["fitness_credit"] == pytest.approx(0.80)
+    assert parent["evidence_count"] == 3
+    assert len(children) == 1
+    assert children[0]["generation"] == 1
+    assert ecology["alpha_food_web"]
+    assert any(x["species_id"] == parent["species_id"] for x in ecology["cognitive_genesis_candidates"])
+    assert ecology["authority"]["execution_authorized"] is False
+    assert ecology["contracts"]["cognitive_genesis_never_auto_creates_production_code"] is True
+
+
+def test_aether_ecology_retires_repeated_negative_species(tmp_path):
+    kernel = PantheonKernel(tmp_path)
+    first = kernel.record_observation(_payload(observation_id="pan-neg-origin"))
+    edge_claim = next(c for c in first["claims"] if c["kind"] == "monetization_candidate")
+
+    for i in range(1, 4):
+        kernel.record_observation(
+            _feedback_payload(
+                f"pan-negative-{i}",
+                f"2026-10-01T06:01:0{i}Z",
+                edge_claim["claim_id"],
+                -0.75,
+            )
+        )
+
+    ecology = kernel.snapshot()["ecology"]
+    parent = next(x for x in ecology["species"] if x["origin_claim_id"] == edge_claim["claim_id"] and x["generation"] == 0)
+    assert parent["stage"] == "retired"
+    assert parent["fitness_credit"] == pytest.approx(-0.75)
+    assert any(x["species_id"] == parent["species_id"] for x in ecology["extinct_species"])
+
+
+def test_claim_outcomes_cannot_precede_originating_observation(tmp_path):
+    kernel = PantheonKernel(tmp_path)
+    first = kernel.record_observation(_payload(observation_id="pan-time-origin"))
+    claim = first["claims"][0]
+    with pytest.raises(ValueError, match="cannot precede"):
+        kernel.record_claim_outcome(
+            {
+                "claim_id": claim["claim_id"],
+                "observed_at": "2026-10-01T05:59:59Z",
+                "utility": 0.5,
+                "confidence": 1.0,
+                "evidence": ["invalid-retroactive-outcome"],
+            }
+        )
+
+
 def test_snapshot_preserves_existing_engine_ownership(tmp_path):
     kernel = PantheonKernel(tmp_path)
     state = kernel.snapshot()
@@ -228,6 +323,9 @@ def test_pantheon_is_visible_in_trader_interface():
     assert "/api/pantheon" in ui
     assert "NO CAPITAL AUTHORITY" in ui
     assert "SHADOW ONLY" in ui
+    assert "AETHER alpha food web" in ui
+    assert "Cognitive genesis" in ui
+    assert "SIBYL structural evidence bridge" in ui
     assert 'p.path == "/api/pantheon"' in server
     assert 'p.path == "/admin/pantheon/observe"' in server
     for subsystem in ("PANTHEON", "NEMESIS Ω", "GÖDEL Ω", "SOCRATES", "ANANKĒ", "EX NIHILO", "MINT Ω", "NULLSPACE Ω", "ARCHON Ω", "AETHER Ω"):
