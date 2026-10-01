@@ -17,6 +17,8 @@ import urllib.request
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
+from icarus_engine.process_identity import identity
+
 from .downloads import ingest_downloads
 from .drop import ingest_drop
 from .layout import ensure, plant_root, repo_root
@@ -50,6 +52,7 @@ class Service:
     popen: Optional[subprocess.Popen] = None
     restarts: int = 0
     last_exit: Optional[int] = None
+    next_ok: float = 0.0
 
 
 def _write_pid(path: str, pid: int) -> None:
@@ -82,13 +85,8 @@ def _kill_pid(pid: int) -> None:
 
 
 def _alive(pid: int) -> bool:
-    if pid <= 0:
-        return False
-    try:
-        os.kill(pid, 0)
-        return True
-    except OSError:
-        return False
+    """True unless the PID is confirmed dead. Never signals. Windows signal 0 is CTRL_C."""
+    return identity(pid) is not False
 
 
 def _terminate(proc: subprocess.Popen, grace: float = 8.0) -> None:
@@ -117,19 +115,23 @@ class Plant:
         env = os.environ.copy()
         env.update(svc.env)
         env["ICARUS_HOME"] = self.root
-        log = open(os.path.join(self.root, "logs", f"{svc.name}.log"), "ab")
-        kw: Dict[str, object] = dict(
-            cwd=svc.cwd,
-            env=env,
-            stdout=log,
-            stderr=subprocess.STDOUT,
-        )
-        # Grok (xAI) — 2026-09-20: start_new_session is POSIX-only; Windows needs a new process group.
-        if os.name == "nt":
-            kw["creationflags"] = int(getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0))
-        else:
-            kw["start_new_session"] = True
-        svc.popen = subprocess.Popen(svc.argv, **kw)  # type: ignore[arg-type]
+        log_path = os.path.join(self.root, "logs", f"{svc.name}.log")
+        # Popen duplicates/inherits the output handle it needs. Close the parent's
+        # file object immediately after spawn so repeated crash/restart cycles do
+        # not leak one descriptor/handle per restart.
+        with open(log_path, "ab") as log:
+            kw: Dict[str, object] = dict(
+                cwd=svc.cwd,
+                env=env,
+                stdout=log,
+                stderr=subprocess.STDOUT,
+            )
+            # Grok (xAI) — 2026-09-20: start_new_session is POSIX-only; Windows needs a new process group.
+            if os.name == "nt":
+                kw["creationflags"] = int(getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0))
+            else:
+                kw["start_new_session"] = True
+            svc.popen = subprocess.Popen(svc.argv, **kw)  # type: ignore[arg-type]
         if svc.pidfile:
             _write_pid(svc.pidfile, svc.popen.pid)
 
@@ -155,21 +157,24 @@ class Plant:
     def reap_and_restart(self, now: Optional[float] = None) -> None:
         now = now or time.time()
         for svc in self.services.values():
-            if svc.popen is None:
-                continue
-            code = svc.popen.poll()
-            if code is None:
-                continue
-            svc.last_exit = code
-            svc.popen = None
-            if self._stop:
-                continue
-            svc.restarts += 1
-            delay = min(30.0, 2 ** min(svc.restarts, 5))
-            time.sleep(delay)
-            if self._stop:
-                return
-            self.spawn(svc)
+            if svc.popen is not None:
+                code = svc.popen.poll()
+                if code is None:
+                    continue
+                svc.last_exit = code
+                svc.popen = None
+                if self._stop:
+                    continue
+                svc.restarts += 1
+                svc.next_ok = now + min(30.0, 2 ** min(svc.restarts, 5))
+            if (
+                svc.popen is None
+                and not self._stop
+                and svc.argv
+                and now >= svc.next_ok
+                and svc.last_exit is not None
+            ):
+                self.spawn(svc)
 
     def status(self) -> Dict[str, object]:
         items = []
@@ -188,6 +193,14 @@ class Plant:
 
     def loop(self, *, poll: float = 5.0, drop: bool = True, downloads: bool = True) -> None:
         _write_pid(os.path.join(self.root, "run", "plant.pid"), os.getpid())
+
+        def _term(*_a: object) -> None:
+            self._stop = True
+
+        try:
+            signal.signal(signal.SIGTERM, _term)
+        except (ValueError, OSError, AttributeError):
+            pass
         try:
             while not self._stop:
                 if drop:
@@ -213,11 +226,15 @@ class Plant:
 
 
 def default_engine_service(root: str, repo: str, *, assets: str = "NQ", port: int = 8791,
-                           token: str = "icarus", offline: bool = False, preset: str = "NQ-20m-ultracoded") -> Service:
+                           token: str = "icarus", offline: bool = False, preset: str = "NQ-20m-ultracoded",
+                           feed: Optional[str] = None) -> Service:
     ensure(root)
+    selected_feed = "file" if offline else (feed or os.environ.get("ICARUS_FEED", "yahoo")).strip().lower()
+    if selected_feed not in ("yahoo", "file", "databento"):
+        raise ValueError(f"unsupported ICARUS feed {selected_feed!r}")
     env = {
         "ICARUS_HOME": root,
-        "ICARUS_FEED": "file" if offline else os.environ.get("ICARUS_FEED", "yahoo"),
+        "ICARUS_FEED": selected_feed,
         "PYTHONPATH": repo + os.pathsep + os.environ.get("PYTHONPATH", ""),
     }
     db = os.path.join(root, "icarus_engine.db")
@@ -226,8 +243,8 @@ def default_engine_service(root: str, repo: str, *, assets: str = "NQ", port: in
         "--assets", assets, "--port", str(port), "--token", token,
         "--preset", preset, "--db", db,
     ]
-    if offline:
-        argv += ["--feed", "file", "--roll", "none"]
+    if selected_feed != "yahoo":
+        argv += ["--feed", selected_feed]
     return Service(
         name="engine",
         argv=argv,
@@ -258,6 +275,12 @@ def default_bridge_service(root: str, repo: str, *, port: int = 8787) -> Service
 
 
 def write_status(root: str, payload: Dict[str, object]) -> None:
+    """Publish supervisor status atomically so readers never observe truncated JSON."""
     path = os.path.join(root, "run", "status.json")
-    with open(path, "w", encoding="utf-8") as fh:
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as fh:
         json.dump(payload, fh, indent=2)
+        fh.flush()
+        os.fsync(fh.fileno())
+    os.replace(tmp, path)

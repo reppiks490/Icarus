@@ -1,0 +1,159 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://icarus.local/schemas/handoff.schema.json",
+  "title": "ICARUS Pipeline Handoff",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "handoff_schema_version",
+    "pipeline_policy_version",
+    "cycle_id",
+    "execution_instance_id",
+    "source_stage",
+    "next_expected_stage",
+    "repository",
+    "evidence_ids",
+    "claim_ids",
+    "implementation_status",
+    "execution_authorized"
+  ],
+  "properties": {
+    "handoff_schema_version": {
+      "const": "icarus-pipeline-v1"
+    },
+    "pipeline_policy_version": {
+      "const": "icarus-control-v1"
+    },
+    "policy_epoch": {
+      "type": ["string", "integer", "null"]
+    },
+    "cycle_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "execution_instance_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_stage": {
+      "type": "string"
+    },
+    "next_expected_stage": {
+      "type": "string"
+    },
+    "repository": {
+      "type": "object",
+      "required": ["full_name", "revision"],
+      "properties": {
+        "full_name": {"type": "string"},
+        "revision": {"type": "string"},
+        "config_digest": {"type": ["string", "null"]},
+        "snapshot_status": {"type": ["string", "null"]}
+      }
+    },
+    "evidence_ids": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "claim_ids": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "research_attempt_ids": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "dependencies": {
+      "type": "array",
+      "items": {"type": "object"}
+    },
+    "conflicts": {
+      "type": "array",
+      "items": {"type": "object"}
+    },
+    "data_sufficiency_status": {
+      "type": ["string", "null"]
+    },
+    "estimator_validity_status": {
+      "type": ["string", "null"]
+    },
+    "ablation_readiness_status": {
+      "type": ["string", "null"]
+    },
+    "redundancy_status": {
+      "type": ["string", "null"]
+    },
+    "factual_provenance_status": {
+      "type": ["string", "null"]
+    },
+    "stress_falsification_status": {
+      "type": ["string", "null"]
+    },
+    "oracle": {
+      "type": "object",
+      "properties": {
+        "test_oracle_origin": {"type": ["string", "null"]},
+        "test_oracle_derived_from": {
+          "type": ["array", "null"],
+          "items": {"type": "string"}
+        },
+        "oracle_independence_status": {
+          "enum": ["INDEPENDENT", "PARTIALLY_INDEPENDENT", "TAUTOLOGICAL", "UNKNOWN", null]
+        },
+        "golden_vector_provenance": {"type": ["string", "null"]},
+        "negative_controls": {
+          "type": ["array", "null"],
+          "items": {"type": "string"}
+        },
+        "mutation_or_fault_injection_plan": {
+          "type": ["array", "null"],
+          "items": {"type": "string"}
+        }
+      }
+    },
+    "files_changed": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "tests_added": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "red_evidence": {
+      "type": ["array", "null"],
+      "items": {"type": "string"}
+    },
+    "green_evidence": {
+      "type": ["array", "null"],
+      "items": {"type": "string"}
+    },
+    "full_suite_evidence": {
+      "type": ["array", "null"],
+      "items": {"type": "string"}
+    },
+    "failures": {
+      "type": "array",
+      "items": {"type": "object"}
+    },
+    "implementation_status": {
+      "enum": [
+        "REPAIRED",
+        "IMPLEMENTED_APPROVED",
+        "DESIGN_AWAITING_APPROVAL",
+        "SPEC_ONLY",
+        "BLOCKED",
+        "NO_CHANGE"
+      ]
+    },
+    "rollback_plan": {
+      "type": ["string", "null"]
+    },
+    "residual_risks": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "execution_authorized": {
+      "const": false
+    }
+  }
+}

@@ -178,13 +178,16 @@ def detect_granularity(bars: List[Bar]) -> int:
     if not deltas:
         return 60
     med = int(statistics.median(deltas))
-    return min(_COMMON_TF, key=lambda t: abs(t - med))
+    near = min(_COMMON_TF, key=lambda t: abs(t - med))
+    # Claude (Opus 5.5) 2026-09-27: snap only clock jitter (within 1%). 61m is not 60m, and weekly or monthly
+    # bars used to snap to daily and merge into the daily file.
+    return near if abs(near - med) <= 0.01 * near else med
 
 
 def merge_bars(existing: Iterable[Bar], incoming: Iterable[Bar]) -> List[Bar]:
     """Union by bar-open timestamp. Incoming wins on a collision. No invented rows.
 
-    Grok (xAI) — 2026-09-20. Essential's 10K-bar export is a sliding window;
+    Grok (xAI) — 2026-09-20. Plus's chart export is a sliding window;
     merging successive Supercharts dumps accumulates history the owner already paid for.
     """
     by: Dict[int, Bar] = {b.ts: b for b in existing}
@@ -195,11 +198,13 @@ def merge_bars(existing: Iterable[Bar], incoming: Iterable[Bar]) -> List[Bar]:
 def write_canonical(path: str, bars: Iterable[Bar]) -> int:
     os.makedirs(os.path.dirname(os.path.abspath(path)) or ".", exist_ok=True)
     rows = list(bars)
-    with open(path, "w", encoding="utf-8", newline="") as fh:
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8", newline="") as fh:
         w = csv.writer(fh)
         w.writerow(["ts", "open", "high", "low", "close", "volume"])
         for b in rows:
             w.writerow([b.ts, b.o, b.h, b.l, b.c, b.v])
+    os.replace(tmp, path)
     return len(rows)
 
 
@@ -320,7 +325,7 @@ class FileFeed:
 
 
 def _hub_symbol(ticker: str) -> str:
-    """Map a feed ticker (NQ=F, NQU26.CME, CME_MINI:NQ1!) onto a registry symbol."""
+    """Map a continuous provider/chart ticker (NQ=F, CME_MINI:NQ1!, MNQ=F, etc.) onto a registry symbol."""
     from ..assets import REGISTRY
     raw = (ticker or "").upper().split(":")[-1]
     for spec in REGISTRY.values():

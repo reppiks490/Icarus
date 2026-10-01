@@ -18,6 +18,7 @@ import threading
 import time
 from typing import Optional
 
+from icarus_engine import brand
 from .config import Settings
 
 
@@ -137,8 +138,9 @@ def cmd_doctor(args: argparse.Namespace) -> int:
 
     # config
     check("EXECUTION_MODE", True, cfg.execution_mode)
-    check("WEBHOOK_SECRET set", cfg.webhook_secret not in ("", "change-me"), "default value - change it", warn=True)
-    check("ADMIN_TOKEN set", cfg.admin_token not in ("", "change-me-too"), "default value - change it", warn=True)
+    _DEFAULT = ("", "change-me", "change-me-too", "replace-me", "replace-me-too")
+    check("WEBHOOK_SECRET set", cfg.webhook_secret not in _DEFAULT, "default value - change it", warn=True)
+    check("ADMIN_TOKEN set", cfg.admin_token not in _DEFAULT, "default value - change it", warn=True)
     check("Alpaca keys present", bool(cfg.alpaca_api_key and cfg.alpaca_secret_key),
           "ALPACA_API_KEY / ALPACA_SECRET_KEY missing in .env", warn=(cfg.execution_mode == "shadow"))
     check("symbol map has NQ1!", "NQ1!" in cfg.symbol_map, str(cfg.symbol_map.get("NQ1!")))
@@ -219,7 +221,7 @@ def cmd_tunnel_url(args: argparse.Namespace) -> int:
 
 
 def main(argv: Optional[list] = None) -> int:
-    p = argparse.ArgumentParser(prog="icarus-bridge", description="TradingView → Alpaca paper bridge")
+    p = argparse.ArgumentParser(prog="icarus-bridge", description=f"{brand.NAME} - TradingView to Alpaca paper bridge")
     sub = p.add_subparsers(dest="cmd", required=True)
 
     s = sub.add_parser("serve", help="run the webhook receiver + dashboard (+ tunnel)")

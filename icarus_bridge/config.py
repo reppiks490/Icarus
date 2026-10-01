@@ -10,10 +10,24 @@ from typing import Dict, List
 def _load_dotenv() -> None:
     try:
         from dotenv import load_dotenv  # type: ignore
-    except Exception:  # dotenv is optional; plain env vars still work
+    except Exception:  # plain environment variables still work
         return
-    # project-local .env first, then the user's home .icarus-bridge/.env
-    for p in (Path.cwd() / ".env", Path.home() / ".icarus-bridge" / ".env"):
+
+    # The plant owns $ICARUS_HOME/.env (icarus-plant init writes it there).
+    # Load that location first so a supervised bridge sees the same persisted
+    # settings after restart even though its working directory is the repo.
+    candidates = []
+    home = os.environ.get("ICARUS_HOME")
+    if home:
+        candidates.append(Path(home).expanduser() / ".env")
+    candidates.extend((Path.cwd() / ".env", Path.home() / ".icarus-bridge" / ".env"))
+
+    seen = set()
+    for p in candidates:
+        key = str(p.resolve()) if p.exists() else str(p.absolute())
+        if key in seen:
+            continue
+        seen.add(key)
         if p.exists():
             load_dotenv(p, override=False)
 

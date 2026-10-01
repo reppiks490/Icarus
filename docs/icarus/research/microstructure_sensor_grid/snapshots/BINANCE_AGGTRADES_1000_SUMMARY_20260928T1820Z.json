@@ -1,0 +1,56 @@
+{
+  "run_id": "ICARUS-MICRO-20260928T1820Z",
+  "reconstruction_method": "Ten deterministic Binance aggregate-trade pages of 100 IDs each, beginning from the first ID returned by a contemporaneous limit=1000 capture. Each BTC/ETH page was preserved by DataBlue as a complete conversation attachment, then locally decoded and continuity-checked.",
+  "BTCUSDT": {
+    "records": 1000,
+    "first_aggregate_id": 3468349446,
+    "last_aggregate_id": 3468350445,
+    "first_time_ms": 1790619394996,
+    "last_time_ms": 1790619482873,
+    "span_ms": 87877,
+    "min_price": 83862,
+    "max_price": 83938.1,
+    "total_quantity": 70.719,
+    "m_true_quantity": 32.768,
+    "m_false_quantity": 37.951,
+    "largest_aggregate_quantity": 10.721,
+    "largest_aggregate_id": 3468349838,
+    "largest_aggregate_price": 83938,
+    "largest_aggregate_time_ms": 1790619424588,
+    "aggregate_id_gaps": 0,
+    "page_count": 10,
+    "page_size": 100
+  },
+  "ETHUSDT": {
+    "records": 1000,
+    "first_aggregate_id": 3102957908,
+    "last_aggregate_id": 3102958907,
+    "first_time_ms": 1790619397088,
+    "last_time_ms": 1790619490937,
+    "span_ms": 93849,
+    "min_price": 2694.08,
+    "max_price": 2698.1,
+    "total_quantity": 1141.027,
+    "m_true_quantity": 623.273,
+    "m_false_quantity": 517.754,
+    "largest_aggregate_quantity": 90.685,
+    "largest_aggregate_id": 3102957935,
+    "largest_aggregate_price": 2696.62,
+    "largest_aggregate_time_ms": 1790619403146,
+    "aggregate_id_gaps": 0,
+    "page_count": 10,
+    "page_size": 100
+  },
+  "SOLUSDT": {
+    "status": "blocked",
+    "reason": "All ten deterministic 100-record DataBlue jobs were cancelled or deleted before completion during this run. The previously persisted 100-record SOL tape remains the latest durable raw SOL tape."
+  },
+  "quality_flags": [
+    "BTC_ETH_1000_ID_CONTINUITY_VERIFIED",
+    "SHORT_EVENT_TIME_WINDOWS",
+    "AGGREGATE_TRADES_NOT_MBO",
+    "M_FLAG_PRESERVED_NO_DIRECTIONAL_INFERENCE",
+    "SOL_PAGING_UPSTREAM_CANCELLED",
+    "RAW_1000_PAGE_ATTACHMENTS_NOT_COMBINED_IN_REPOSITORY_THIS_RUN"
+  ]
+}

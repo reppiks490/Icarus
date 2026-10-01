@@ -1,0 +1,100 @@
+{
+  "handoff_schema_version": "icarus-pipeline-v1",
+  "required_common_fields": [
+    "handoff_schema_version",
+    "pipeline_policy_version",
+    "pipeline_policy_epoch",
+    "cycle_id",
+    "execution_instance_id",
+    "stage",
+    "producer",
+    "repo_baseline_revision",
+    "repo_snapshot_set",
+    "policy_contract_digest",
+    "handoff_schema_digest",
+    "prior_stage_digest",
+    "claims",
+    "dependencies",
+    "conflicts",
+    "evidence_lineage",
+    "stage_payload",
+    "execution_authorized",
+    "receipt_digest"
+  ],
+  "producer_required_fields": [
+    "id",
+    "kind"
+  ],
+  "snapshot_required_fields": [
+    "repo",
+    "revision"
+  ],
+  "claim_required_fields": [
+    "claim_id",
+    "maturity",
+    "status",
+    "dependencies",
+    "evidence_ids"
+  ],
+  "evidence_required_fields": [
+    "evidence_id",
+    "origin",
+    "independence",
+    "derived_from"
+  ],
+  "evidence_independence_values": [
+    "PRIMARY",
+    "INDEPENDENT_REPLICATION",
+    "DERIVED",
+    "DUPLICATE",
+    "UNKNOWN"
+  ],
+  "s4_stage_payload_required_fields": [
+    "test_oracle_origin",
+    "test_oracle_derived_from",
+    "oracle_independence_status",
+    "golden_vector_provenance",
+    "negative_controls",
+    "mutation_or_fault_injection_plan"
+  ],
+  "oracle_independence_values": [
+    "INDEPENDENT",
+    "PARTIALLY_INDEPENDENT",
+    "TAUTOLOGICAL",
+    "UNVERIFIED",
+    "INVALID"
+  ],
+  "s5_stage_payload_required_fields": [
+    "verification_oracle_status",
+    "promotion_path_valid",
+    "release_status",
+    "cycle_outcome"
+  ],
+  "verification_oracle_values": [
+    "INDEPENDENT",
+    "PARTIALLY_INDEPENDENT",
+    "TAUTOLOGICAL",
+    "UNVERIFIED",
+    "INVALID"
+  ],
+  "claim_status_values": [
+    "SUPPORTED",
+    "PARTIALLY_VERIFIED",
+    "REJECTED",
+    "CONTRADICTED",
+    "BROKEN",
+    "UNKNOWN"
+  ],
+  "conflict_required_fields": [
+    "conflict_id",
+    "status",
+    "claim_ids",
+    "material",
+    "scope"
+  ],
+  "conflict_status_values": [
+    "OPEN",
+    "RESOLVED",
+    "SUPERSEDED"
+  ]
+}

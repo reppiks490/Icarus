@@ -1,0 +1,999 @@
+# ICARUS / AEGIS — STAGE 3/5 AGENT REACH EDGE RESEARCH
+## Complete Research-State + Continuation Handoff Package
+
+Generated: 2026-09-24 (Chicago cycle context)
+PIPELINE_POLICY_VERSION: icarus-control-v1
+HANDOFF_SCHEMA_VERSION: icarus-pipeline-v1
+STAGE: S3 — ICARUS Agent Reach Edge Research
+NEXT_EXPECTED_STAGE: ARCHITECTURE_EXTRACTION_FORGE
+execution_authorized: false
+
+---
+
+# 1. PURPOSE
+
+Continuously expand the empirical knowledge base of ICARUS/AEGIS by discovering, cross-referencing,
+decomposing, falsifying, and stress-testing quantitative trading edges before any finding is bucketed
+or allowed to influence implementation.
+
+Do not:
+- manufacture edge claims;
+- treat backtest profitability as proof;
+- add features merely to keep the research loop busy;
+- use synthetic bars as empirical market evidence;
+- invent trainer slots/features;
+- rewrite Pulse in S3;
+- silently mix revisions/policies;
+- allow uncertainty to increase authority;
+- fabricate plugin, source, experiment, worker, replication, or repository activity.
+
+S3 is an empirical research stage. It may promote findings only as far as EMPIRICALLY_SUPPORTED,
+and only when every required gate is satisfied. Implementation authority remains false.
+
+---
+
+# 2. REQUIRED ROUTING / RESEARCH DISCIPLINE
+
+Invoke Superpowers first and use only triggered subskills.
+
+Use:
+- systematic-debugging for contradictory evidence, unexpected behavior, repository defects, or
+  incompatible repo claims;
+- verification-before-completion before positive completion/success claims;
+- Agent Reach for broad research expansion through search/web/dev and, when useful and available,
+  social/video strictly as hypothesis-discovery surfaces.
+
+Evidence preference:
+1. Primary papers.
+2. Exchange / venue / regulator documentation.
+3. Reproducible research.
+4. Canonical code.
+5. High-quality independent replications.
+6. Secondary material only for discovery/context.
+
+Use direct GitHub evidence for ICARUS repository facts.
+
+Never report a route, source, experiment, worker, diagnostic, ablation, replication, test, or plugin
+as executed unless it was actually executed.
+
+---
+
+# 3. PROGRESSIVE EDGE REGISTRY
+
+Maintain a progressive registry. Never restart the registry because a cycle changes.
+
+Families include:
+- trend / momentum;
+- carry / term structure / basis / funding;
+- short-horizon reversal;
+- volatility and variance-risk structure;
+- liquidity provision;
+- order-flow / queue imbalance;
+- lead-lag and price discovery;
+- cross-asset transmission;
+- event / macro effects;
+- intraday / session / overnight periodicities;
+- calendar / seasonal effects;
+- dispersion / correlation;
+- regime-conditioned effects;
+- robust combinations;
+- additional families only when credible evidence warrants them.
+
+An edge name is not evidence that the edge exists.
+
+---
+
+# 4. ATTEMPT LEDGER / MULTIPLE TESTING
+
+Record every materially tested:
+- hypothesis;
+- variant;
+- parameter family;
+- discarded candidate;
+- failed result.
+
+Do not record only survivors.
+
+Use stable identifiers where practical:
+- RESEARCH_ATTEMPT_ID
+- CLAIM_ID
+- EVIDENCE_ID
+
+Track dependent variants so eventual Deflated Sharpe, PBO, CSCV, or other multiple-testing
+diagnostics use an honest trial universe.
+
+Never reset the effective trial count because:
+- a candidate failed;
+- a dataset changed;
+- a cycle changed;
+- a model was renamed;
+- a result was discarded.
+
+If adequate multiple-testing diagnostics are unavailable:
+MULTIPLE_TESTING_STATUS = UNCONTROLLED or PARTIAL.
+
+Claims whose apparent strength depends materially on missing multiple-testing control may not receive
+full empirical promotion.
+
+Current program-wide status from the accumulated S3 work:
+MULTIPLE_TESTING_STATUS = UNCONTROLLED
+
+---
+
+# 5. CROSS-REFERENCE GATE
+
+For every serious candidate record:
+- exact claim;
+- markets/instruments;
+- sample period;
+- prediction/holding horizon;
+- implementation assumptions;
+- evidence population;
+- publication date;
+- data dates when known;
+- contrary evidence;
+- independent origins.
+
+Collapse duplicate/derived reports.
+
+Where practical, require at least two genuinely independent credible evidence origins before calling
+a phenomenon broadly established.
+
+One strong primary source may establish a serious hypothesis. It does not establish universal
+robustness.
+
+---
+
+# 6. MECHANISM DECOMPOSITION
+
+For every candidate determine the plausible causal/economic mechanism, including where applicable:
+- economic risk transfer;
+- behavioral bias;
+- institutional constraint;
+- market-design/mechanical effect;
+- inventory/liquidity premium;
+- information diffusion;
+- forced flow;
+- hedging pressure;
+- funding/capital constraint;
+- latency/queue effect.
+
+Explicitly identify:
+- who plausibly pays;
+- why the effect can persist;
+- why it should decay/crowd;
+- conditions that should strengthen it;
+- conditions that should weaken it;
+- conditions that should reverse/destroy it.
+
+No coherent and falsifiable mechanism => unresolved, regardless of attractive historical returns.
+
+---
+
+# 7. MECHANISM-OBSERVABILITY / DATA-SUFFICIENCY GATE
+
+Allowed classifications:
+DATA_SUFFICIENCY_STATUS =
+  SUFFICIENT | PARTIAL | DATA_BLOCKED | PROXY_ONLY | UNKNOWN
+
+Minimum observable requirements must follow the mechanism.
+
+Examples:
+- True carry requires point-in-time synchronized maturities and/or spot/fair-value information.
+- Queue/order-flow imbalance requires actual quote/order events or defensible L1/L2 state.
+- Variance-risk premium requires options/implied variance, not ATR alone.
+- Lead-lag requires synchronized multi-market observations with timestamp quality appropriate to the
+  claimed lag.
+- Genuine passive liquidity-provision research requires order-book/queue/fill observability.
+
+Never substitute a convenient indicator unless independent evidence validates it as a proxy for the
+exact claim.
+
+DATA_BLOCKED or PROXY_ONLY findings remain hypotheses/specifications.
+
+---
+
+# 8. ESTIMATOR-VALIDITY GATE
+
+Allowed classifications:
+ESTIMATOR_VALIDITY_STATUS =
+  VALIDATED | PARTIAL | HEURISTIC_ONLY | CONTRADICTED | UNKNOWN
+
+When an ICARUS feature is used as evidence for a latent property such as:
+- persistence;
+- mean reversion;
+- regime;
+- entropy;
+- fractality;
+- predictability;
+- volatility state;
+- correlation structure;
+
+test whether the estimator actually identifies that property under realistic financial time-series
+conditions.
+
+Check:
+- finite-sample bias;
+- short-memory contamination;
+- heteroskedasticity;
+- structural breaks;
+- nonstationarity;
+- overlapping-window dependence;
+- estimator/window sensitivity.
+
+Require appropriate null/synthetic controls for estimator validation (not as empirical market
+evidence) and at least one conceptually independent estimator/diagnostic when the latent-property
+claim materially affects promotion.
+
+HURST SPECIAL RULE:
+Classical R/S Hurst alone must never authorize trend or mean-reversion claims. Compare against a
+short-memory-robust or frequency-domain alternative and ablate Hurst before granting authority.
+
+---
+
+# 9. REDUNDANCY / INCREMENTAL-INFORMATION GATE
+
+Build an explicit dependency DAG:
+
+raw observables
+  -> transforms
+  -> composite features
+  -> votes
+  -> adaptive weights/thresholds
+  -> entries
+
+Classify channels as:
+- PRIMARY_OBSERVABLE
+- TRANSFORM
+- DERIVED_COMPOSITE
+- EXTERNAL_INDEPENDENT
+
+A nonlinear composite of existing ICARUS features is not an independent evidence source.
+
+CONTROL REQUIREMENT FOR pulse.py XGBoost5:
+The user's governing specification states that current pulse.py XGBoost5 is a hand-built composite
+of ADX, Hurst, FDI, supply/demand distance, cycle state, rate direction, and rate_regime. Therefore
+classify its evidence lineage as DERIVED unless direct repository evidence at the pinned revision
+proves otherwise.
+
+Adaptive hit/miss statistics computed from the same strategy outcomes do not create statistical
+independence between correlated votes.
+
+For material confluence families require, when feasible:
+- train-only pairwise association;
+- nonlinear dependence such as MI/HSIC;
+- minimum-redundancy/relevance analysis;
+- leave-one-vote-out ablation;
+- leave-one-family-out ablation;
+- conditional/incremental predictive value against a simpler baseline;
+- block/bootstrap or time-respecting permutation rather than IID shuffling.
+
+Track OOS changes in:
+- net-after-costs;
+- drawdown/tails;
+- calibration;
+- turnover;
+- regime stability.
+
+Predictive alone + no conditional OOS value => REDUNDANT.
+
+Improved in-sample fit + no held-out improvement => REJECTED or UNRESOLVED.
+
+Do not reward correlated evidence repeatedly through raw vote count, family bonus, and adaptive
+weighting unless dependence correction is explicitly validated OOS.
+
+---
+
+# 10. ABLATION READINESS
+
+If code cannot independently enable/disable or diagnose a signal:
+ABLATION_READINESS_STATUS = BLOCKED or PARTIAL.
+
+Send S4 the smallest behavior-neutral instrumentation/design request.
+
+Do not infer incremental signal value from aggregate strategy results.
+
+Instrumentation must preserve strategy behavior when disabled and be independently tested before its
+output is accepted as research evidence.
+
+---
+
+# 11. FACT-CHECK / FALSIFICATION GATE
+
+No candidate advances beyond hypothesis without verified provenance and deliberate contrary-evidence
+search.
+
+Check:
+- data mining / multiple testing;
+- lookahead / revision leakage;
+- survivorship / selection bias;
+- contract roll / continuous-futures artifacts;
+- timestamp/session/time-zone errors;
+- adjustment errors;
+- train/test contamination;
+- duplicated observations;
+- hidden leverage;
+- unrealistic sizing;
+- benchmark mismatch.
+
+Use UNKNOWN instead of guessing.
+
+---
+
+# 12. STRESS GATE
+
+Use the strongest checks actually available:
+- disjoint train / validation / untouched holdout;
+- walk-forward evaluation;
+- realistic commission/spread/slippage/latency;
+- partial fills;
+- parameter-neighborhood sensitivity;
+- subperiod/regime stability;
+- instrument/market transfer;
+- timeframe sensitivity;
+- execution-delay perturbation;
+- capacity/impact/turnover;
+- bootstrap/resampling;
+- tail/drawdown behavior;
+- simple baseline;
+- feature/family ablation;
+- crowding/decay analysis;
+- DSR/PBO/CSCV when appropriate and genuinely available.
+
+A candidate that cannot be stress-tested remains unresolved.
+
+---
+
+# 13. BUCKETING AUTHORITY
+
+Maturities:
+OBSERVED
+HYPOTHESIS
+SPECIFIED
+EMPIRICALLY_SUPPORTED
+IMPLEMENTATION_READY
+VERIFIED_FOR_INTEGRATION
+BLOCKED
+REJECTED
+
+S3 may promote only as far as EMPIRICALLY_SUPPORTED.
+
+Promotion requires:
+- compatible pinned revision/config;
+- SUFFICIENT data;
+- adequate estimator validity;
+- adequate OOS/held-out evidence;
+- realistic costs where relevant;
+- dependency closure;
+- no unresolved material conflict;
+- verified provenance;
+- non-inflated evidence lineage;
+- acceptable multiple-testing status;
+- acceptable redundancy/incremental-information status;
+- passed fact and stress gates.
+
+Retain rejected/contradicted findings and their reasons.
+
+---
+
+# 14. CONTROL PLANE / SNAPSHOT
+
+PIPELINE_POLICY_VERSION = icarus-control-v1
+HANDOFF_SCHEMA_VERSION = icarus-pipeline-v1
+
+CYCLE_ID:
+scheduled Chicago local hour YYYYMMDD-HH
+
+EXECUTION_INSTANCE_ID:
+CYCLE_ID + "-S3"
+
+Consume only same-cycle compatible S1/S2 plus pinned repository evidence.
+
+Treat as non-authoritative:
+- mixed-policy input;
+- stale input;
+- cross-revision input;
+- contradictory input;
+- duplicate-only input;
+- broken provenance;
+- blocking conflict.
+
+Never silently mix revisions.
+
+Preserve stable claim/evidence/attempt lineage.
+
+Hash unavailable => UNVERIFIED/UNAVAILABLE.
+
+---
+
+# 15. S4 HANDOFF CONTRACT
+
+For accepted findings provide:
+- CLAIM_ID;
+- RESEARCH_ATTEMPT_ID(s);
+- edge family;
+- mechanism;
+- DATA_SUFFICIENCY_STATUS;
+- ESTIMATOR_VALIDITY_STATUS;
+- ABLATION_READINESS_STATUS;
+- REDUNDANCY_STATUS;
+- evidence origins;
+- stress results;
+- MULTIPLE_TESTING_STATUS;
+- failure regimes;
+- assumptions;
+- data requirements;
+- execution requirements;
+- risk requirements;
+- dependencies/conflicts;
+- incremental value versus current ICARUS logic;
+- required independent test oracle;
+- non-goals.
+
+For verified defects:
+- minimal repair specification;
+- reproduction/evidence;
+- affected files/interfaces;
+- severity;
+- falsification attempt;
+- failing-test requirement.
+
+S3 does not silently fix code.
+
+---
+
+# 16. ACCUMULATED S3 REGISTRY
+
+IMPORTANT:
+The entries below preserve the accumulated research state from the preceding S3 cycles. They are not
+claims that every experiment or repository diagnostic was rerun while creating this package.
+
+## EDGE-TSMOM-001 — Time-Series Momentum / Trend
+
+RESEARCH_ATTEMPT_ID: S3-TSMOM-001
+Maturity: HYPOTHESIS
+
+Accumulated finding:
+Credible literature supports time-series momentum/trend effects across futures/forwards, but
+medium-horizon literature cannot automatically validate very-short-horizon ICARUS return features.
+
+Status:
+DATA_SUFFICIENCY_STATUS = PARTIAL
+ESTIMATOR_VALIDITY_STATUS = PARTIAL
+MULTIPLE_TESTING_STATUS = UNCONTROLLED
+
+No authority was granted to Hurst/fractal/entropy features merely from trend literature.
+
+Required oracle:
+Compare simple lagged-return/trend baselines against existing ICARUS logic using chronological OOS
+data, costs, parameter-neighborhood tests, family ablations, and dependence controls.
+
+No promotion to EMPIRICALLY_SUPPORTED recorded.
+
+---
+
+## EDGE-OFI-001 — Order Flow / Queue Imbalance
+
+RESEARCH_ATTEMPT_ID: S3-OFI-001
+Maturity: HYPOTHESIS
+
+Accumulated finding:
+External microstructure literature supports short-horizon predictive information in order-flow /
+book imbalance under some conditions, but execution costs and latency can eliminate tradability.
+
+True observability requires timestamped bid/ask price/size and quote/order events; stronger queue
+claims require L1/L2/MBO-quality state.
+
+Status:
+DATA_SUFFICIENCY_STATUS = DATA_BLOCKED
+ESTIMATOR_VALIDITY_STATUS = PARTIAL externally / UNKNOWN for proxy
+ABLATION_READINESS_STATUS = BLOCKED
+REDUNDANCY_STATUS = UNKNOWN
+
+Associated attempt:
+S3-OFI-COST-001 — predictive microstructure information may disappear after spread/crossing costs.
+
+No OHLCV liquidity indicator may be relabeled as true OFI without independent proxy validation.
+
+No promotion to EMPIRICALLY_SUPPORTED recorded.
+
+---
+
+## S3-XGB5-LINEAGE-001 — XGBoost5 Lineage Control
+
+This is a repository-lineage control issue.
+
+Governing specification:
+pulse.py XGBoost5 is to be treated as a hand-built composite of ADX, Hurst, FDI,
+supply/demand distance, cycle state, rate direction, and rate_regime, therefore DERIVED unless direct
+pinned-revision repository evidence proves otherwise.
+
+Earlier research state contained contradictory repository observations about the presence/location
+of pulse.py/XGBoost5.
+
+Required continuation:
+Trigger systematic-debugging.
+Resolve using direct GitHub evidence at one pinned revision.
+Do not mix old/new revisions.
+Do not grant independent-model status based on its name.
+
+Current safe status:
+LINEAGE = UNRESOLVED / DERIVED BY GOVERNING SPECIFICATION UNTIL PROVEN OTHERWISE.
+
+---
+
+## EDGE-CARRY-001 — Carry / Term Structure
+
+RESEARCH_ATTEMPT_ID: S3-CARRY-001
+Maturity: HYPOTHESIS
+
+Accumulated finding:
+Carry/basis/term-structure phenomena have credible external support, but true carry cannot be
+identified from a single front contract or a generic technical indicator.
+
+Required observables:
+- synchronized point-in-time multiple futures maturities;
+- expiration/roll metadata;
+- spot/fair-value where mechanism requires it;
+- commodity inventory/physical information where relevant.
+
+Status:
+DATA_SUFFICIENCY_STATUS = DATA_BLOCKED
+ESTIMATOR_VALIDITY_STATUS = PARTIAL externally / UNKNOWN proxy
+ABLATION_READINESS_STATUS = BLOCKED
+REDUNDANCY_STATUS = UNKNOWN
+
+S3-HEDGE-001:
+"Commercial hedging pressure alone predicts futures returns" retained as a rejected simplification /
+materially conflicting claim.
+
+No promotion to EMPIRICALLY_SUPPORTED recorded.
+
+---
+
+## EDGE-VRP-001 — Variance Risk Premium
+
+RESEARCH_ATTEMPT_ID: S3-VRP-001
+Maturity: HYPOTHESIS
+
+Definition:
+VRP requires a distinction between risk-neutral/implied variance and physical expected/realized
+variance.
+
+Status:
+DATA_SUFFICIENCY_STATUS = DATA_BLOCKED
+ESTIMATOR_VALIDITY_STATUS = PARTIAL externally / UNKNOWN proxy
+ABLATION_READINESS_STATUS = BLOCKED
+REDUNDANCY_STATUS = UNKNOWN
+
+S3-VRP-PROXY-001:
+"ATR or realized volatility alone represents VRP" = REJECTED as an identification claim.
+
+S3-VRP-COMDIR-001:
+"VRP universally predicts commodity/futures direction" = CONFLICTED / UNRESOLVED.
+
+Required data:
+- point-in-time option surface across strikes/maturities;
+- synchronized underlying/futures;
+- independent realized-variance estimator.
+
+Required sequence:
+null -> realized volatility -> implied volatility -> VRP -> existing ICARUS + VRP,
+with OOS ablations.
+
+No promotion to EMPIRICALLY_SUPPORTED recorded.
+
+---
+
+## EDGE-TOD-001 — Intraday / Session Periodicity
+
+RESEARCH_ATTEMPT_ID: S3-TOD-001
+Maturity: HYPOTHESIS
+
+Accumulated finding:
+Expected return/volatility/liquidity can exhibit recurring clock-time structure, but this does not
+establish a universal session trading rule or a universal first-period-to-last-period momentum rule.
+
+Related attempts:
+S3-INTRADAY-MOM-001 — intraday momentum formulation; conflicting/OOS-decay evidence preserved.
+S3-FOMC-DRIFT-001 — pre-FOMC anomaly; evidence of substantial post-discovery decay preserved.
+
+Status:
+DATA_SUFFICIENCY_STATUS = PARTIAL
+ESTIMATOR_VALIDITY_STATUS = PARTIAL
+ABLATION_READINESS_STATUS = PARTIAL
+REDUNDANCY_STATUS = UNKNOWN
+MULTIPLE_TESTING_STATUS = UNCONTROLLED
+
+Confounds:
+- DST/time-zone normalization;
+- changing market hours;
+- contract rolls;
+- event clustering;
+- overlapping observations;
+- regime composition;
+- execution costs;
+- multiple clock-bin search.
+
+Required oracle:
+Normalize exchange/session time, freeze clock bins on train only, evaluate chronological OOS, compare
+null -> clock-only -> existing baseline -> baseline+clock, perturb boundaries/delays, and perform
+leave-period-out tests.
+
+Do not hard-code London/New York/COMEX bonuses from literature alone.
+
+No promotion to EMPIRICALLY_SUPPORTED recorded.
+
+---
+
+## EDGE-XLAG-001 — Cross-Market Lead/Lag and Information Transmission
+
+RESEARCH_ATTEMPT_ID: S3-XLAG-001
+Maturity: HYPOTHESIS
+
+Accumulated finding:
+Cross-market information transmission can exist, but fixed leader/follower relationships are not
+universal and contemporaneous correlation does not establish predictive temporal precedence.
+
+Related:
+S3-FIXEDLEADER-001 — permanent leader/follower rule = REJECTED as a general claim.
+S3-CORRVOTE-001 — contemporaneous correlation as independent predictive evidence = REJECTED as an
+identification claim.
+
+Status:
+DATA_SUFFICIENCY_STATUS = DATA_BLOCKED
+ESTIMATOR_VALIDITY_STATUS = PARTIAL externally / UNKNOWN proxy
+ABLATION_READINESS_STATUS = BLOCKED
+REDUNDANCY_STATUS = UNKNOWN
+MULTIPLE_TESTING_STATUS = UNCONTROLLED
+
+Required observables:
+- synchronized multi-market point-in-time observations;
+- sufficient timestamp precision;
+- exchange calendars;
+- roll provenance;
+- no future-market forward fill.
+
+Required oracle:
+Target own-history baseline versus baseline + lagged source-market information, followed by
+time-respecting dependence tests, lag perturbation, execution delay, session alignment tests, regime
+splits, leader reversal tests, costs, and source-market ablation.
+
+Do not add DXY/VIX/Treasury/S&P/Dow bonuses merely because assets are correlated.
+
+No promotion to EMPIRICALLY_SUPPORTED recorded.
+
+---
+
+## EDGE-REV-001 — Short-Horizon Reversal
+
+RESEARCH_ATTEMPT_ID: S3-REV-001
+Maturity: HYPOTHESIS
+
+Accumulated finding:
+Reversal evidence is highly horizon- and mechanism-dependent.
+
+Separate:
+- microstructure/liquidity reversal;
+- behavioral overreaction reversal;
+- long-horizon physical supply/demand mean reversion.
+
+These must not be collapsed into one generic "mean reversion" vote.
+
+S3-REV-GENERIC-001:
+"Prices are mean reverting, therefore fade extremes" = REJECTED as a general identification claim.
+
+Status for coarse bar reversal:
+DATA_SUFFICIENCY_STATUS = PARTIAL
+
+Status for genuine microstructure reversal:
+DATA_SUFFICIENCY_STATUS = DATA_BLOCKED
+
+ESTIMATOR_VALIDITY_STATUS = PARTIAL
+ABLATION_READINESS_STATUS = UNKNOWN/PARTIAL
+REDUNDANCY_STATUS = UNKNOWN
+MULTIPLE_TESTING_STATUS = UNCONTROLLED
+
+Potential redundant channels include RSI, distance-from-average, overextension, support/resistance
+distance, and lagged-return transforms.
+
+Required oracle:
+null -> simple lagged-return reversal -> existing ICARUS -> ICARUS+simple reversal, with chronological
+OOS, costs, delay perturbation, market/regime transfer, parameter neighborhoods, and
+leave-reversal-family-out ablation.
+
+No promotion to EMPIRICALLY_SUPPORTED recorded.
+
+---
+
+## EDGE-BASISREV-001 — Adjacent-Maturity Basis Reversal
+
+RESEARCH_ATTEMPT_ID: S3-BASISREV-001
+Maturity: OBSERVED / HYPOTHESIS
+
+Accumulated finding:
+Emerging working-paper evidence suggests negative autocorrelation in return spreads between adjacent
+commodity futures maturities, distinct from reversal of individual contracts.
+
+Independent replication was not established.
+
+Status:
+DATA_SUFFICIENCY_STATUS = DATA_BLOCKED
+
+Requires synchronized point-in-time adjacent maturities and inherits the curve-data requirements of
+the carry family.
+
+No promotion to EMPIRICALLY_SUPPORTED recorded.
+
+---
+
+## EDGE-LP-001 — Liquidity Provision / Market Making
+
+RESEARCH_ATTEMPT_ID: S3-LP-001
+Maturity: HYPOTHESIS
+
+Accumulated finding:
+Liquidity provision involves compensation for adverse selection, inventory risk, queue/fill risk,
+fees and impact. A resting order does not mechanically earn the quoted spread.
+
+Conceptual accounting:
+spread compensation
+ - adverse selection
+ - inventory risk
+ - fees
+ - queue/fill cost
+ - impact
+ = actual liquidity-provision result.
+
+S3-SPREADCAPTURE-001:
+"Resting at bid/ask earns the spread" = REJECTED as a general edge claim.
+
+S3-LP-QUEUE-001:
+Queue state materially affects execution and risk = OBSERVED externally; not an ICARUS replication.
+
+Status:
+DATA_SUFFICIENCY_STATUS = DATA_BLOCKED
+ESTIMATOR_VALIDITY_STATUS = PARTIAL externally / UNKNOWN proxy
+ABLATION_READINESS_STATUS = BLOCKED
+REDUNDANCY_STATUS = UNKNOWN
+MULTIPLE_TESTING_STATUS = UNCONTROLLED
+
+Required observables:
+LOB state -> queue position -> order lifecycle -> fill -> post-fill markout -> inventory trajectory.
+
+A bar low touching a resting buy limit must not automatically be treated as a guaranteed fill.
+
+Required future comparison:
+naive touch-fill simulator
+ -> conservative queue model
+ -> event-replay model,
+with latency, cancellation latency, partial fills, adverse markouts, fees, inventory constraints and
+stress regimes.
+
+No promotion to EMPIRICALLY_SUPPORTED recorded.
+
+---
+
+## EDGE-LIQPREM-001 — Liquidity Risk Premium
+
+RESEARCH_ATTEMPT_ID: S3-LIQPREM-001
+Maturity: HYPOTHESIS
+
+Accumulated finding:
+Slower-horizon liquidity risk may be priced in commodity futures.
+
+Critical separation:
+"Liquidity risk is priced" != "passive market making is profitable."
+
+Keep this claim separate from EDGE-LP-001.
+
+No promotion to EMPIRICALLY_SUPPORTED recorded.
+
+---
+
+# 17. CURRENT GLOBAL S3 STATE
+
+No accumulated S3 finding in this package is authorized as:
+IMPLEMENTATION_READY
+or
+VERIFIED_FOR_INTEGRATION.
+
+No finding should be treated as EMPIRICALLY_SUPPORTED merely because external literature supports
+the phenomenon.
+
+Current decisive blockers recur across families:
+- missing pinned-revision empirical replication;
+- missing untouched OOS evaluation;
+- missing realistic execution/cost treatment;
+- missing honest global multiple-testing control;
+- missing signal-family ablations;
+- missing dependence/redundancy diagnostics;
+- missing mechanism-specific data;
+- unresolved repository lineage where revisions conflict.
+
+Program-wide:
+MULTIPLE_TESTING_STATUS = UNCONTROLLED
+
+execution_authorized = false
+
+---
+
+# 18. UNFINISHED RESEARCH FAMILIES
+
+Continue progressively rather than restarting.
+
+Material families still unfinished or incompletely investigated include:
+- event/macro effects beyond the limited FOMC work;
+- calendar/seasonal effects;
+- overnight versus regular-session effects;
+- dispersion/correlation structures;
+- regime-conditioned effects;
+- robust signal combinations;
+- funding/basis variants where appropriate;
+- volatility term structure beyond VRP;
+- cross-sectional futures effects;
+- price-discovery leadership under synchronized data;
+- capacity/crowding/decay of established families;
+- estimator validation for Hurst/FDI/entropy/regime features;
+- full ICARUS feature-lineage and redundancy DAG.
+
+Use adaptive depth:
+take the smallest research action capable of changing maturity, mechanism confidence, data
+sufficiency, estimator validity, redundancy, conflict state, implementation relevance, or blocker.
+
+Otherwise record:
+NO_CHANGE_JUSTIFIED.
+
+---
+
+# 19. HIGH-PRIORITY UNRESOLVED ICARUS REPOSITORY WORK
+
+1. Pin one repository revision before drawing implementation conclusions.
+2. Resolve pulse.py / XGBoost5 lineage contradiction with direct GitHub evidence.
+3. Build/verify the signal lineage DAG.
+4. Identify independent enable/disable seams for material signal families.
+5. Determine which raw datasets actually exist and their timestamp/roll provenance.
+6. Verify chronological split/holdout logic.
+7. Verify whether costs/slippage/fill assumptions are realistic for each tested mechanism.
+8. Verify global research-attempt accounting.
+9. Do not infer incremental edge from aggregate strategy P&L.
+10. Route only verified defects to S4.
+
+If the XGBoost5/repository contradiction is encountered:
+invoke systematic-debugging before proposing a repair.
+
+---
+
+# 20. MINIMUM S4 REQUESTS ALREADY IDENTIFIED
+
+S4 should prefer small behavior-neutral instrumentation seams, not strategy rewrites.
+
+Potential seams already justified by S3:
+- time_of_session diagnostic + deterministic session-calendar contract;
+- synchronized multi-market timestamp-validity diagnostic;
+- reversal-family isolation/ablation seam;
+- execution/fill diagnostic distinguishing touch, executable quantity, queue eligibility, partial
+  fill and post-fill markout;
+- feature-family enable/disable diagnostics needed for incremental-information tests;
+- lineage metadata sufficient to distinguish raw observable, transform, derived composite and
+  independent external information.
+
+Non-goals:
+- no automatic session bonuses;
+- no generic mean-reversion bonus;
+- no correlation bonus;
+- no DXY/VIX/Treasury bonus without independent lagged OOS evidence;
+- no ATR-as-VRP substitution;
+- no single-contract proxy relabeled carry;
+- no OHLCV proxy relabeled true OFI;
+- no touch=fill market-making assumption;
+- no XGBoost5 independent-model designation without repository proof;
+- no Pulse rewrite from S3.
+
+---
+
+# 21. REQUIRED EXECUTION RECEIPT FORMAT FOR FUTURE S3 CYCLES
+
+Report only actual activity:
+- Superpowers routes actually invoked;
+- Agent Reach routes actually used;
+- GitHub objects actually inspected;
+- source classes actually inspected;
+- evidence origins actually read;
+- experiments actually run;
+- stress tests actually run;
+- estimator checks actually run;
+- dependence diagnostics actually run;
+- ablations actually run;
+- defects actually reproduced;
+- duplicates actually collapsed;
+- independent replications actually established.
+
+Include:
+ATTEMPTS_ADDED
+NET_NEW_DELTA
+STATE_CHANGE_CLASS
+maturity changes
+rejections
+unresolved conflicts
+data blockers
+ablation blockers
+TOKEN_EFFICIENCY_NOTE
+
+Never manufacture an execution receipt.
+
+---
+
+# 22. REQUIRED CYCLE OUTPUT
+
+Every S3 cycle must emit:
+
+PIPELINE_DISPOSITION =
+  ADVANCE |
+  SHORT_CIRCUIT_NO_CHANGE |
+  SHORT_CIRCUIT_ESCALATION |
+  SHORT_CIRCUIT_UNSAFE |
+  BLOCKED |
+  DUPLICATE_SUPPRESSED |
+  RESTART_CYCLE_REQUIRED
+
+EFFECT_OR_FAILURE
+CONFOUNDS
+IMPLEMENTATION_RELEVANCE
+DATA_SUFFICIENCY_STATUS
+ESTIMATOR_VALIDITY_STATUS
+ABLATION_READINESS_STATUS
+REDUNDANCY_STATUS
+MULTIPLE_TESTING_STATUS
+BLOCKERS
+ESCALATION_REQUIRED
+REQUEST_TO_NEXT_STAGE
+NEXT_EXPECTED_STAGE = ARCHITECTURE_EXTRACTION_FORGE
+
+Always preserve:
+execution_authorized = false
+
+---
+
+# 23. HANDOFF INTEGRITY
+
+Future handoffs should carry:
+- prior digest;
+- producer/time;
+- policy fields;
+- pinned revision;
+- evidence lineage;
+- attempt-ledger delta;
+- data sufficiency;
+- estimator validity;
+- redundancy/ablation status;
+- multiple-testing status;
+- claim/dependency/conflict state;
+- material fact/stress results.
+
+Canonicalize deterministically and hash when supported.
+
+If hashing is unavailable:
+HASH_STATUS = UNVERIFIED/UNAVAILABLE
+
+Never invent a digest.
+
+---
+
+# 24. CONTINUATION COMMAND
+
+Continue Stage 3/5 from this file as the durable research state.
+
+Do not restart completed families merely to generate activity.
+Select the smallest decisive unfinished research action.
+Preserve all attempt counts, rejected claims, conflicts, and blockers.
+Use current pinned GitHub evidence before making ICARUS-specific assertions.
+Use Agent Reach for broad external research and Superpowers according to the routing rules above.
+Do not modify production strategy code.
+Do not promote an edge beyond the evidence.
+When the next candidate is blocked by data/ablation/estimator validity, record the blocker and move on
+only when another family can provide material new information.
+
+execution_authorized=false
+
+END OF HANDOFF PACKAGE
