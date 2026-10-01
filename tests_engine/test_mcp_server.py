@@ -12,6 +12,7 @@ def test_mcp_server_imports_and_registers_engine_surface():
         "record_engine_repository_audit",
         "engine_system_evolution",
         "record_engine_system_evolution",
+        "record_engine_system_evolution_item",
         "engine_configuration",
         "set_engine_chart_config",
         "start_engine_backtest",
@@ -181,3 +182,20 @@ def test_mcp_system_evolution_routes(monkeypatch):
 def test_mcp_system_evolution_rejects_non_object_json():
     assert "error" in mcp_server.record_engine_system_evolution("[]")
     assert "error" in mcp_server.record_engine_system_evolution("{bad")
+
+
+def test_mcp_system_evolution_item_is_additive_route(monkeypatch):
+    seen = []
+
+    def post(path, body):
+        seen.append((path, body))
+        return {"ok": True}
+
+    monkeypatch.setattr(mcp_server, "_engine_post", post)
+    item = '{"id":"a","subsystem":"ARGUS","kind":"audit","status":"verified","severity":"notice","important":true,"summary":"done","interface_surface":"System"}'
+    assert mcp_server.record_engine_system_evolution_item(item) == {"ok": True}
+    assert seen == [("/admin/system/evolution/item", {"item": {
+        "id": "a", "subsystem": "ARGUS", "kind": "audit", "status": "verified",
+        "severity": "notice", "important": True, "summary": "done", "interface_surface": "System",
+    }})]
+    assert "error" in mcp_server.record_engine_system_evolution_item("[]")
