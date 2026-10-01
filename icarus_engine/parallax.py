@@ -914,7 +914,7 @@ class ParallaxStore:
                 max_fdr=max_fdr,
                 min_effect=min_effect,
             )
-            if item["candidate_eligible"]
+            if item["robust_candidate_eligible"]
         ]
 
     def screening_report(
@@ -930,14 +930,23 @@ class ParallaxStore:
             min_effect=min_effect,
         )
         blockers: dict[str, int] = {}
+        robustness_blockers: dict[str, int] = {}
         for item in hypotheses:
             for reason in item["screen_blockers"]:
                 blockers[reason] = blockers.get(reason, 0) + 1
+            for reason in item.get("robustness_blockers", []):
+                robustness_blockers[reason] = robustness_blockers.get(reason, 0) + 1
         return {
             "hypotheses_total": len(hypotheses),
             "candidate_ready": sum(1 for item in hypotheses if item["candidate_eligible"]),
+            "robust_candidate_ready": sum(1 for item in hypotheses if item["robust_candidate_eligible"]),
             "blocked": sum(1 for item in hypotheses if not item["candidate_eligible"]),
+            "robustness_blocked": sum(
+                1 for item in hypotheses
+                if item["candidate_eligible"] and not item["robust_candidate_eligible"]
+            ),
             "blocker_counts": blockers,
+            "robustness_blocker_counts": robustness_blockers,
             "min_samples": max(2, min(10000, int(min_samples))),
             "max_fdr": max(1e-6, min(1.0, float(max_fdr))),
             "min_effect": float(min_effect),
@@ -947,6 +956,9 @@ class ParallaxStore:
                 "paired_delta": True,
                 "approximate_one_sided_normal_p": True,
                 "benjamini_hochberg_within_asset_regime_revision_contract": True,
+                "chronological_three_fold_stability_when_nine_pairs_available": True,
+                "adjacent_parameter_basin_screen_when_neighbors_are_evaluable": True,
+                "robustness_is_hypothesis_filter_not_causal_proof": True,
                 "causal_proof": False,
             },
         }
