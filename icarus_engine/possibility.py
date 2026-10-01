@@ -761,12 +761,45 @@ class PossibilityEngine:
                 if snapshots:
                     latest = snapshots[-1]
                     levels = [x for x in latest["levels"] if isinstance(x, Mapping)]
-                    bid_sz = sum(max(0.0, _finite(x.get("bid_sz")) or 0.0) for x in levels[:10])
-                    ask_sz = sum(max(0.0, _finite(x.get("ask_sz")) or 0.0) for x in levels[:10])
-                    total = bid_sz + ask_sz
-                    if total > 0:
-                        queue = _clamp((bid_sz - ask_sz) / total)
-                        result["queue_pressure"] = Feature(queue, _clamp(total / 250.0, 0.10, 1.0), True, "Databento MBP-10", "top-10 aggregate size imbalance")
+                    weighted_bid = 0.0
+                    weighted_ask = 0.0
+                    raw_bid = 0.0
+                    raw_ask = 0.0
+                    observed_levels = 0
+                    for level_index, level in enumerate(levels[:10]):
+                        bid_size = max(0.0, _finite(level.get("bid_sz")) or 0.0)
+                        ask_size = max(0.0, _finite(level.get("ask_sz")) or 0.0)
+                        distance_weight = 1.0 / (1.0 + level_index)
+                        weighted_bid += bid_size * distance_weight
+                        weighted_ask += ask_size * distance_weight
+                        raw_bid += bid_size
+                        raw_ask += ask_size
+                        if bid_size > 0 or ask_size > 0:
+                            observed_levels += 1
+                    weighted_total = weighted_bid + weighted_ask
+                    raw_total = raw_bid + raw_ask
+                    if weighted_total > 0:
+                        queue = _clamp((weighted_bid - weighted_ask) / weighted_total)
+                        depth_coverage = observed_levels / 10.0
+                        size_confidence = min(1.0, weighted_total / 120.0)
+                        confidence = _clamp(depth_coverage * size_confidence, 0.05, 1.0)
+                        concentration = (
+                            (max(weighted_bid, weighted_ask) / weighted_total)
+                            if weighted_total > 0 else 0.5
+                        )
+                        result["queue_pressure"] = Feature(
+                            queue, confidence, True, "Databento MBP-10",
+                            f"distance-weighted top-10 imbalance; levels={observed_levels}/10",
+                        )
+                        result["book_pressure"] = {
+                            "weighted_bid_size": weighted_bid,
+                            "weighted_ask_size": weighted_ask,
+                            "raw_bid_size": raw_bid,
+                            "raw_ask_size": raw_ask,
+                            "observed_levels": observed_levels,
+                            "depth_coverage": depth_coverage,
+                            "side_concentration": concentration,
+                        }
                     top = levels[0] if levels else {}
                     bid = _finite(top.get("bid_px"))
                     ask = _finite(top.get("ask_px"))
@@ -1023,34 +1056,91 @@ class PossibilityEngine:
             out["forced_flow_pressure"] = Feature(None, 0.0, False, "unavailable", "CTA/liquidation/rebalance evidence absent")
         return out
 
-    def _elasticity(self, history: Sequence[Mapping[str, float]], micro: Mapping[str, Any]) -> dict[str, Any]:
+    def _elasticity(self, history: Sequence[Mapping[str, Any]], micro: Mapping[str, Any]) -> dict[str, Any]:
         flow = micro.get("aggressive_flow")
         displacement = _finite(micro.get("trade_displacement"))
         if not isinstance(flow, Mapping) or displacement is None:
-            return {"available": False, "value": None, "state": "UNAVAILABLE", "detail": "requires live signed ticks and price displacement"}
+            return {
+                "available": False,
+                "value": None,
+                "state": "UNAVAILABLE",
+                "normalization": "unavailable",
+                "detail": "requires live signed ticks and price displacement",
+            }
         imbalance = _finite(flow.get("imbalance"))
         gross = _finite(flow.get("gross_size"))
         if imbalance is None or gross is None or gross <= 0:
-            return {"available": False, "value": None, "state": "UNAVAILABLE", "detail": "insufficient signed flow"}
+            return {
+                "available": False,
+                "value": None,
+                "state": "UNAVAILABLE",
+                "normalization": "unavailable",
+                "detail": "insufficient signed flow",
+            }
+
         signed_intensity = imbalance * math.log1p(gross)
         if abs(signed_intensity) < 1e-9:
-            return {"available": True, "value": 0.0, "state": "BALANCED", "detail": "near-zero net aggressive flow"}
+            return {
+                "available": True,
+                "value": 0.0,
+                "state": "BALANCED",
+                "normalization": "flow_zero",
+                "flow_imbalance": imbalance,
+                "gross_size": gross,
+                "price_displacement": displacement,
+                "detail": "near-zero net aggressive flow",
+            }
+
         elasticity = displacement / signed_intensity
-        response = abs(displacement)
         flow_strength = abs(imbalance)
-        if flow_strength >= 0.45 and response < 0.00015:
-            state = "BUYER_ABSORPTION" if imbalance < 0 else "SELLER_ABSORPTION"
-        elif flow_strength <= 0.25 and response > 0.00035:
-            state = "OFFER_VACUUM" if displacement > 0 else "BID_VACUUM"
+        returns = [float(row["ret"]) for row in history if _finite(row.get("ret")) is not None]
+        bar_vol = _stdev(returns[-80:]) if len(returns) >= 8 else 0.0
+        tick_window = micro.get("tick_window") if isinstance(micro.get("tick_window"), Mapping) else {}
+        duration = _finite(tick_window.get("duration_seconds"))
+        chart_minutes = None
+        if history:
+            chart_minutes = _finite(history[-1].get("chart_minutes"))
+        sigma_window = None
+        response_z = None
+        normalization = "fixed_fallback"
+        if bar_vol > 1e-9 and duration is not None and duration > 0 and chart_minutes is not None and chart_minutes > 0:
+            bar_seconds = float(chart_minutes) * 60.0
+            sigma_window = max(bar_vol * math.sqrt(min(1.0, duration / bar_seconds)), 1e-7)
+            response_z = abs(displacement) / sigma_window
+            normalization = "realized_vol_window"
+            if flow_strength >= 0.45 and response_z < 0.35:
+                state = "BUYER_ABSORPTION" if imbalance < 0 else "SELLER_ABSORPTION"
+            elif flow_strength <= 0.25 and response_z > 1.25:
+                state = "OFFER_VACUUM" if displacement > 0 else "BID_VACUUM"
+            else:
+                state = "NORMAL_RESPONSE"
         else:
-            state = "NORMAL_RESPONSE"
+            response = abs(displacement)
+            if flow_strength >= 0.45 and response < 0.00015:
+                state = "BUYER_ABSORPTION" if imbalance < 0 else "SELLER_ABSORPTION"
+            elif flow_strength <= 0.25 and response > 0.00035:
+                state = "OFFER_VACUUM" if displacement > 0 else "BID_VACUUM"
+            else:
+                state = "NORMAL_RESPONSE"
+
         return {
             "available": True,
             "value": elasticity,
             "state": state,
+            "normalization": normalization,
             "flow_imbalance": imbalance,
             "gross_size": gross,
             "price_displacement": displacement,
+            "bar_realized_vol": bar_vol if bar_vol > 0 else None,
+            "window_seconds": duration,
+            "sigma_window": sigma_window,
+            "response_z": response_z,
+            "thresholds": {
+                "absorption_flow_min": 0.45,
+                "absorption_response_z_max": 0.35 if normalization == "realized_vol_window" else None,
+                "vacuum_flow_max": 0.25,
+                "vacuum_response_z_min": 1.25 if normalization == "realized_vol_window" else None,
+            },
         }
 
     def _hidden_state(
@@ -1539,6 +1629,13 @@ class PossibilityEngine:
             blockers.append("effective scenario support below 35%")
         if leaders.get("status") != "observed":
             blockers.append("dynamic leader graph still warming")
+        else:
+            alignment_mode = str(leaders.get("alignment_mode") or "")
+            if alignment_mode != "exact_bar_timestamp":
+                blockers.append("dynamic leader graph is not exact-bar aligned")
+            leader_confidence = _finite(leaders.get("confidence"))
+            if leader_confidence is None or leader_confidence < 0.10:
+                blockers.append("dynamic leader confidence below 10%")
         observed_domains = sum(
             1 for key in ("ticks", "depth")
             if bool((micro.get("health") or {}).get(key))
