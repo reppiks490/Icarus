@@ -396,9 +396,14 @@ class ResearchWorkspace:
                                         frozen, asset, inputs=patch, fill_on="real", window_start=start, window_end=end, **costs))
                 with self._lock:
                     job["result"], job["status"] = result, result["status"]
+                    # Publish terminal state to disk before another thread can observe
+                    # it through job(). Otherwise a new workspace can see a stale
+                    # persisted "running" job and falsely classify it as interrupted.
+                    self._save(job)
             except Exception as ex:
                 with self._lock:
                     job["status"], job["error"] = "error", f"{type(ex).__name__}: {ex}"
+                    self._save(job)
             finally:
                 with self._lock:
                     job["finished"] = time.time()
