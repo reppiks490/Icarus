@@ -20,6 +20,7 @@ NODE = shutil.which("node")
         "icarus_bridge/dashboard.html",
         "icarus_engine/research-ui.js",
         "icarus_engine/sources-ui.js",
+        "icarus_engine/system-intelligence-ui.js",
         "icarus_engine/experience-ui.js",
     ],
 )
@@ -62,3 +63,11 @@ def test_asset_adder_uses_registry_and_timeframe_suggestions_and_single_flight_s
     assert "b.disabled = true" in src
     assert "await admin('/admin/assets/add'" in src
     assert "j.detail||j.error||'request failed'" in src
+
+
+def test_engine_dashboard_surfaces_system_intelligence():
+    src = (REPO / "icarus_engine/dashboard.html").read_text(encoding="utf-8")
+    assert '<script src="/system-intelligence-ui.js"></script>' in src
+    assert 'data-v="intelligence">Intelligence</span>' in src
+    assert "view === 'intelligence'" in src
+    assert "loadSystemIntelligence()" in src
