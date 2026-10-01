@@ -277,3 +277,33 @@ def test_pantheon_http_apex_lineage_unknown_id_fails_closed(apex_http):
     })
     assert code == 400
     assert "APEX evidence lineage integrity failure" in body["detail"]
+
+
+def test_pantheon_http_unverified_lineage_is_not_allowed_to_drive_echo(apex_http):
+    _, _, request = apex_http
+    code, body = request("POST", "/admin/pantheon/observe", body={
+        "observation_id": "pan-http-unverified-lineage",
+        "observed_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "asset": "NQ",
+        "horizon_ms": 15000,
+        "source_commit": "f" * 40,
+        "signals": {
+            "engine_scores": {"oracle": 0.9, "athena": 0.9},
+            "engine_reliability": {"oracle": 0.9, "athena": 0.9},
+            "engine_evidence_lineage": {
+                "oracle": ["caller:claimed-independent-a"],
+                "athena": ["caller:claimed-independent-b"],
+            },
+            "data_quality": 0.9,
+            "risk": 0.2,
+        },
+        "evidence": ["unverified-lineage-fixture"],
+    })
+    assert code == 200, body
+    bridge = body["apex_lineage_bridge"]
+    echo = body["analysis"]["faculties"]["echo"]
+    assert bridge["status"] == "UNAVAILABLE"
+    assert bridge["claimed_lineage_present"] is True
+    assert echo["status"] == "abstain"
+    assert echo["reason"] == "engine_evidence_lineage required to prove evidence independence"
+    assert "engine_evidence_lineage" not in body["input"]["signals"]

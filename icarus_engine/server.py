@@ -1415,12 +1415,14 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     if not isinstance(signals, dict):
                         raise ValueError("signals must be an object")
                     signals = dict(signals)
+                    claimed_lineage = signals.pop("engine_evidence_lineage", None)
                     apex_lineage = {
                         "schema_version": "icarus-apex-engine-lineage-v1",
                         "status": "UNAVAILABLE",
                         "reason": "engine_evidence_ids not supplied",
                         "engine_evidence_lineage": {},
                         "engine_support": {},
+                        "claimed_lineage_present": claimed_lineage is not None,
                         "lineage_owner": "APEX_EVIDENCE_ANCESTRY",
                         "execution_authorized": False,
                         "production_decision_authorized": False,
@@ -1430,8 +1432,10 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                             signals["engine_evidence_ids"],
                             as_of=payload.get("observed_at"),
                         )
-                        # APEX roots are authoritative whenever evidence IDs are supplied.
-                        # Caller-provided tokens cannot override verified ancestry.
+                        apex_lineage["claimed_lineage_present"] = claimed_lineage is not None
+                        # Only APEX-verified roots may drive ECHO on the network path.
+                        # Caller-provided lineage labels are audit-only and never
+                        # become evidence-independence input.
                         signals["engine_evidence_lineage"] = apex_lineage["engine_evidence_lineage"]
                     payload["signals"] = signals
                     psi_state = None

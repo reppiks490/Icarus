@@ -376,3 +376,17 @@ path fails closed rather than falling back to a claimed independent lineage.
 This preserves subsystem ownership: APEX proves ancestry; ECHO diagnoses
 consensus illusion; ARCHON discounts research attention; AETHER investigates.
 None of these steps can authorize an order.
+
+
+### Verified-lineage-only network policy
+
+On the authenticated HTTP/MCP observation path, ECHO is not allowed to act on
+caller-supplied lineage labels alone. Unverified caller lineage is removed from
+the signal payload before PANTHEON evaluation. Without
+`engine_evidence_ids`, ECHO abstains. When evidence IDs are present, APEX Ω
+resolves them to verified root tokens and those verified roots are the only
+lineage allowed to drive ECHO, ARCHON attention discounts, or AETHER
+consensus-illusion research.
+
+The audit receipt records whether a caller attempted to supply lineage, without
+promoting that claim into evidence.
