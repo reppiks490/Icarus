@@ -13,7 +13,7 @@ def test_chronofold_server_and_dashboard_are_wired():
     assert "chronofold = ChronofoldEngine(port, possibility=possibility)" in server
     assert '"/api/chronofold"' in server
     assert '"/chronofold-ui.js"' in server
-    assert '"chronofold": chronofold.snapshot' in server
+    assert '"chronofold": chronofold.status' in server
 
     assert '<script src="/chronofold-ui.js"></script>' in dashboard
     assert "view==='chronofold'" in dashboard
