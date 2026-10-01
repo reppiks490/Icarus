@@ -1061,6 +1061,182 @@ class LearningFabric:
             **_authority(),
         }
 
+    def rebuild_shadow_calibrators(self, *, min_samples: int = 30) -> dict[str, Any]:
+        if isinstance(min_samples, bool) or not isinstance(min_samples, int) or not 20 <= min_samples <= 100000:
+            raise ValueError("min_samples must be an integer in [20,100000]")
+        rows = self._conn.execute(
+            """SELECT p.prediction_id,p.producer,p.asset,p.regime,p.horizon_seconds,p.target,
+                      p.probability,o.success,o.observed_at,o.observed_ts
+               FROM predictions p JOIN outcomes o ON o.prediction_id=p.prediction_id
+               WHERE o.success IS NOT NULL AND p.target IN ('direction','class','event')
+               ORDER BY p.producer,p.asset,p.regime,p.horizon_seconds,p.target,
+                        o.observed_ts,p.prediction_id"""
+        ).fetchall()
+        groups: dict[tuple[str, str, str, int, str], list[sqlite3.Row]] = {}
+        for row in rows:
+            key = (
+                row["producer"], row["asset"], row["regime"],
+                int(row["horizon_seconds"]), row["target"],
+            )
+            groups.setdefault(key, []).append(row)
+
+        built: list[dict[str, Any]] = []
+        skipped: dict[str, str] = {}
+        for key, group in sorted(groups.items()):
+            producer, asset, regime, horizon, target = key
+            scope = f"{producer}:{asset}:{regime}:{horizon}:{target}"
+            n = len(group)
+            if n < min_samples:
+                skipped[scope] = f"need {min_samples} settled samples; have {n}"
+                continue
+            validation_count = max(6, int(math.ceil(n * 0.20)))
+            train_count = n - validation_count
+            if train_count < 20:
+                skipped[scope] = "chronological training partition is too small"
+                continue
+            train = group[:train_count]
+            validation = group[train_count:]
+            train_ps = [float(r["probability"]) for r in train]
+            train_ys = [int(r["success"]) for r in train]
+            if len(set(round(p, 12) for p in train_ps)) < 2:
+                skipped[scope] = "training probabilities have insufficient variation"
+                continue
+            if len(set(train_ys)) < 2:
+                skipped[scope] = "training outcomes have only one class"
+                continue
+
+            model = isotonic_fit(train_ps, train_ys)
+            raw_validation_brier = sum(
+                (float(r["probability"]) - float(r["success"])) ** 2 for r in validation
+            ) / validation_count
+            calibrated_validation_brier = sum(
+                (float(isotonic_apply(model, float(r["probability"]))) - float(r["success"])) ** 2
+                for r in validation
+            ) / validation_count
+            status = (
+                "SHADOW_VALIDATED"
+                if calibrated_validation_brier <= raw_validation_brier + 1e-12
+                else "SHADOW_REJECTED"
+            )
+            source_payload = [
+                {
+                    "prediction_id": r["prediction_id"],
+                    "probability": float(r["probability"]),
+                    "success": int(r["success"]),
+                    "observed_at": r["observed_at"],
+                }
+                for r in group
+            ]
+            source_hash = hashlib.sha256(
+                _json(source_payload, "calibration source").encode("utf-8")
+            ).hexdigest()
+            calibrator_id = "cal-" + hashlib.sha256(
+                f"{scope}|{source_hash}".encode("utf-8")
+            ).hexdigest()
+            fit_cutoff = train[-1]["observed_at"]
+            training_cutoff = validation[-1]["observed_at"]
+            created_at = _utc_now()
+            with self._lock, self._conn:
+                self._conn.execute(
+                    """INSERT OR IGNORE INTO calibration_models(
+                       calibrator_id,producer,asset,regime,horizon_seconds,target,status,
+                       train_count,validation_count,fit_cutoff,training_cutoff,model_json,
+                       raw_validation_brier,calibrated_validation_brier,source_hash,created_at)
+                       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    (
+                        calibrator_id, producer, asset, regime, horizon, target, status,
+                        train_count, validation_count, fit_cutoff, training_cutoff,
+                        _json(model, "isotonic model"), raw_validation_brier,
+                        calibrated_validation_brier, source_hash, created_at,
+                    ),
+                )
+            built.append({
+                "calibrator_id": calibrator_id,
+                "producer": producer,
+                "asset": asset,
+                "regime": regime,
+                "horizon_seconds": horizon,
+                "target": target,
+                "status": status,
+                "train_count": train_count,
+                "validation_count": validation_count,
+                "fit_cutoff": fit_cutoff,
+                "training_cutoff": training_cutoff,
+                "raw_validation_brier": raw_validation_brier,
+                "calibrated_validation_brier": calibrated_validation_brier,
+                "source_hash": source_hash,
+                **_authority(),
+            })
+        return {
+            "status": "ok",
+            "built": len(built),
+            "validated": sum(1 for row in built if row["status"] == "SHADOW_VALIDATED"),
+            "rejected": sum(1 for row in built if row["status"] == "SHADOW_REJECTED"),
+            "models": built,
+            "skipped": skipped,
+            **_authority(),
+        }
+
+    def shadow_calibration_state(self) -> dict[str, Any]:
+        rows = self._conn.execute(
+            """SELECT m.* FROM calibration_models m
+               WHERE NOT EXISTS (
+                 SELECT 1 FROM calibration_models newer
+                 WHERE newer.producer=m.producer AND newer.asset=m.asset
+                   AND newer.regime=m.regime AND newer.horizon_seconds=m.horizon_seconds
+                   AND newer.target=m.target
+                   AND (newer.training_cutoff>m.training_cutoff OR
+                        (newer.training_cutoff=m.training_cutoff AND newer.created_at>m.created_at))
+               )
+               ORDER BY m.producer,m.asset,m.regime,m.horizon_seconds,m.target"""
+        ).fetchall()
+        models = [
+            {
+                "calibrator_id": row["calibrator_id"],
+                "producer": row["producer"],
+                "asset": row["asset"],
+                "regime": row["regime"],
+                "horizon_seconds": int(row["horizon_seconds"]),
+                "target": row["target"],
+                "status": row["status"],
+                "train_count": int(row["train_count"]),
+                "validation_count": int(row["validation_count"]),
+                "fit_cutoff": row["fit_cutoff"],
+                "training_cutoff": row["training_cutoff"],
+                "raw_validation_brier": float(row["raw_validation_brier"]),
+                "calibrated_validation_brier": float(row["calibrated_validation_brier"]),
+                "source_hash": row["source_hash"],
+                **_authority(),
+            }
+            for row in rows
+        ]
+        settled = self._conn.execute(
+            """SELECT COUNT(*) AS n,AVG(raw_brier) AS raw,AVG(calibrated_brier) AS calibrated
+               FROM shadow_calibrations WHERE status='SETTLED'"""
+        ).fetchone()
+        pending = int(self._conn.execute(
+            "SELECT COUNT(*) FROM shadow_calibrations WHERE status='PENDING'"
+        ).fetchone()[0])
+        return {
+            "schema_version": "icarus-shadow-calibration-v1",
+            "model_count": len(models),
+            "validated_model_count": sum(1 for row in models if row["status"] == "SHADOW_VALIDATED"),
+            "rejected_model_count": sum(1 for row in models if row["status"] == "SHADOW_REJECTED"),
+            "models": models,
+            "assessments": {
+                "pending": pending,
+                "settled": int(settled["n"] or 0),
+                "mean_raw_brier": settled["raw"],
+                "mean_calibrated_brier": settled["calibrated"],
+            },
+            "authority": {
+                "shadow_only": True,
+                "automatic_probability_rewrite": False,
+                "automatic_production_promotion": False,
+            },
+            **_authority(),
+        }
+
     def scorecards(self) -> list[dict[str, Any]]:
         rows = self._conn.execute(
             """SELECT p.*,o.success,o.brier,o.absolute_error
@@ -2280,6 +2456,13 @@ class LearningFabric:
         except Exception as ex:
             errors["backfill"] = f"{type(ex).__name__}: {ex}"[:500]
         summary["scorecards"] = self.scorecards()
+        try:
+            summary["shadow_calibration"] = self.rebuild_shadow_calibrators()
+        except Exception as ex:
+            errors["shadow_calibration"] = f"{type(ex).__name__}: {ex}"[:500]
+            summary["shadow_calibration"] = {
+                "status": "degraded", "error": errors["shadow_calibration"], **_authority()
+            }
         summary["apex_feedback"] = self._publish_apex_credibility(summary["scorecards"])
         finished = _utc_now()
         status = "partial" if errors else "ok"
@@ -2348,8 +2531,10 @@ class LearningFabric:
             "health": self.health(),
             "experiences": self.experience_state(),
             "scorecards": self.scorecards(),
+            "shadow_calibration": self.shadow_calibration_state(),
             "coverage": {
                 "historical_trainers": "protected_replay",
+                "shadow_recalibration": "chronological_holdout_validated_research_only",
                 "historical_trade_lists": "immutable_realized_experience",
                 "runtime_trade_outcomes": "fully_closed_live_sim_experience",
                 "sibyl": "native_prediction_outcome",
