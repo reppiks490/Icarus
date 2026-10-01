@@ -411,3 +411,17 @@ consensus. The server-owned APEX ancestry bridge can restore non-zero
 independence only by supplying verified roots. This is intentionally
 conservative and affects research attention only; it does not grant or modify
 execution authority.
+
+
+### PANTHEON → SIBYL provenance binding
+
+A structural ANANKĒ result is no longer eligible for downstream SIBYL export
+solely because its diagnostic gates pass. The export must also carry the exact
+originating PANTHEON observation ID and at least one explicit evidence reference
+from that immutable observation. Those references become part of the SIBYL
+evidence payload and therefore part of its semantic identity.
+
+If a PANTHEON observation has no explicit origin evidence, its structural
+diagnostic may remain visible inside PANTHEON, but it is not published into
+SIBYL. This prevents evidence-free derived conclusions from becoming a new
+downstream "source" simply by crossing an internal subsystem boundary.

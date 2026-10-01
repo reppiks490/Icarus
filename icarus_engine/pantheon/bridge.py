@@ -121,6 +121,8 @@ def sibyl_evidence_candidates(
     asset: str,
     horizon_ms: int,
     source_commit: str,
+    origin_observation_id: str,
+    evidence_refs: list[str],
     faculties: Mapping[str, Any],
     aether: Mapping[str, Any],
 ) -> list[dict[str, Any]]:
@@ -129,7 +131,20 @@ def sibyl_evidence_candidates(
     PANTHEON does not turn every faculty into a directional vote.  ANANKE may
     emit a structural asymmetry, while GODEL, NEMESIS and data quality only
     determine whether that asymmetry is reliable enough to publish.
+
+    A downstream SIBYL record is also evidence, so it must remain traceable to
+    the exact PANTHEON observation and at least one immutable origin-evidence
+    reference. Evidence-free structural votes are suppressed rather than
+    laundered into a downstream source.
     """
+    if not isinstance(origin_observation_id, str) or not origin_observation_id.strip():
+        return []
+    if not isinstance(evidence_refs, list) or not evidence_refs:
+        return []
+    if any(not isinstance(ref, str) or not ref.strip() for ref in evidence_refs):
+        return []
+    origin_observation_id = origin_observation_id.strip()
+    clean_evidence_refs = [ref.strip() for ref in evidence_refs]
     f = _obj(faculties)
     ananke = _obj(f.get("ananke"))
     godel = _obj(f.get("godel"))
@@ -169,6 +184,13 @@ def sibyl_evidence_candidates(
         "source_commit": source_commit,
         "payload": {
             "producer": "PANTHEON/ANANKE",
+            "origin_observation_id": origin_observation_id,
+            "origin_evidence_refs": clean_evidence_refs,
+            "origin_evidence_count": len(clean_evidence_refs),
+            "provenance_contract": {
+                "explicit_origin_evidence_required": True,
+                "source_commit_bound": True,
+            },
             "least_cost_direction": ananke.get("least_cost_direction"),
             "freedom": freedom,
             "causal_event_horizon_side": ananke.get("causal_event_horizon_side"),

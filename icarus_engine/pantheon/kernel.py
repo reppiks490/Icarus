@@ -278,6 +278,8 @@ class PantheonKernel:
                     asset=normalized["asset"],
                     horizon_ms=normalized["horizon_ms"],
                     source_commit=normalized["source_commit"],
+                    origin_observation_id=observation_id,
+                    evidence_refs=normalized["evidence"],
                     faculties=faculties,
                     aether=aether,
                 )
@@ -287,6 +289,7 @@ class PantheonKernel:
                 "heuristics_are_not_calibrated_probabilities": True,
                 "engine_disagreement_is_preserved": True,
                 "shared_evidence_is_not_counted_as_independent_confirmation": True,
+                "sibyl_exports_require_origin_evidence": True,
                 "missing_inputs_produce_abstention": True,
                 "new_concepts_begin_as_hypotheses": True,
                 "execution_requires_separate_hard_risk_kernel": True,
