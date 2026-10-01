@@ -470,6 +470,31 @@ def test_dreamstate_auto_retires_active_candidate_when_source_screen_decays(tmp_
     assert candidate["candidate_id"] in second["refresh"]["auto_retired_source_decay"]
 
 
+def test_dreamstate_evaluation_rechecks_current_source_without_refresh(tmp_path):
+    store = ParallaxStore(tmp_path)
+    for i in range(5):
+        _record_pair(store, i, delay_utility=1.0)
+    lab = DreamstateLab(tmp_path, parallax=store)
+    candidate = next(
+        c for c in lab.refresh(min_samples=5)["candidates"]
+        if c["mutation"]["op"] == "set_execution_delay_bars"
+    )
+    assert candidate["stage"] == "proposed"
+
+    # Deteriorate the exact source hypothesis, but intentionally do not call refresh.
+    for i in range(5, 15):
+        _record_pair(store, i, delay_utility=-3.0)
+
+    with pytest.raises(ValueError, match="source PARALLAX hypothesis"):
+        lab.evaluate(
+            candidate["candidate_id"],
+            {"validation": {"provenance": True}, "evidence": ["stale-source evaluation attempt"]},
+        )
+    retired = lab.candidate(candidate["candidate_id"])
+    assert retired["stage"] == "retired"
+    assert any("source PARALLAX hypothesis" in item for item in retired["evidence"])
+
+
 def test_dreamstate_failed_gate_is_terminal_for_candidate_revision(tmp_path):
     store = ParallaxStore(tmp_path)
     for i in range(5):
