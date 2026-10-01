@@ -132,3 +132,13 @@ The deliberation state reports directional disagreement and stated confidence
 without electing a trade or forcing consensus. Agent claims remain research
 evidence with execution_authorized=false and
 production_decision_authorized=false.
+
+
+## Blind-round visibility barrier
+
+First-pass claim content is now redacted from PANTHEON read surfaces until all
+four mandatory independent roles have committed. Before that barrier clears,
+the system may reveal that an agent has committed, but not its thesis,
+direction, confidence, evidence, or falsifier. This makes the blind-first-pass
+property enforceable at the shared API/UI layer rather than relying only on a
+caller assertion.

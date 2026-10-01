@@ -353,6 +353,7 @@ class PantheonKernel:
             "mean_stated_confidence": (sum(confidence_values) / len(confidence_values)) if confidence_values else None,
             "blind_first_pass_complete": not missing,
             "peer_conclusions_hidden_during_first_pass": True,
+            "claim_bodies_visible": not missing,
             "consensus_forced": False,
             "execution_authorized": False,
             "production_decision_authorized": False,
@@ -365,6 +366,17 @@ class PantheonKernel:
                 raise ValueError("unknown PANTHEON observation")
             claim_rows = con.execute("SELECT * FROM claims WHERE observation_id=? ORDER BY rowid", (observation_id,)).fetchall()
         agent_claims, deliberation = self._agent_claim_state(observation_id)
+        visible_agent_claims = agent_claims if deliberation["claim_bodies_visible"] else [
+            {
+                "claim_id": item["claim_id"],
+                "agent_id": item["agent_id"],
+                "role": item["role"],
+                "committed": True,
+                "claim": None,
+                "created_at": item["created_at"],
+            }
+            for item in agent_claims
+        ]
         return {
             "observation_id": row["observation_id"],
             "observed_at": row["observed_at"],
@@ -373,7 +385,7 @@ class PantheonKernel:
             "source_commit": row["source_commit"],
             "input": json.loads(row["payload_json"]),
             "analysis": json.loads(row["analysis_json"]),
-            "agent_claims": agent_claims,
+            "agent_claims": visible_agent_claims,
             "deliberation": deliberation,
             "claims": [
                 {

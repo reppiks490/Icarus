@@ -417,3 +417,43 @@ def test_aether_first_pass_claim_is_idempotent_but_immutable(tmp_path):
 
     with pytest.raises(ValueError, match="not an active"):
         kernel.record_agent_claim(dict(payload, agent_id="aeth-not-real"))
+
+
+def test_blind_claim_bodies_are_hidden_until_mandatory_round_completes(tmp_path):
+    kernel = PantheonKernel(tmp_path, swarm=AetherSwarm(threshold=0.0, max_agents=8))
+    observation = kernel.record_observation(_payload(observation_id="pan-blind-visibility"))
+    agents = {row["role"]: row for row in observation["analysis"]["aether"]["agents"]}
+
+    first = kernel.record_agent_claim({
+        "observation_id": observation["observation_id"],
+        "agent_id": agents["falsifier"]["agent_id"],
+        "peer_context_used": False,
+        "claim": {
+            "thesis": "must remain hidden",
+            "direction": "short",
+            "confidence": 0.7,
+            "falsifier": "counterexample",
+            "evidence": ["partition:adversarial"],
+        },
+    })
+    assert first["deliberation"]["ready_for_deliberation"] is False
+    assert first["deliberation"]["claim_bodies_visible"] is False
+    assert first["agent_claims"][0]["claim"] is None
+
+    for role, direction in (("alternative_cause", "long"), ("provenance_guard", "flat"), ("risk_guard", "short")):
+        state = kernel.record_agent_claim({
+            "observation_id": observation["observation_id"],
+            "agent_id": agents[role]["agent_id"],
+            "peer_context_used": False,
+            "claim": {
+                "thesis": f"{role} thesis",
+                "direction": direction,
+                "confidence": 0.6,
+                "falsifier": "counterexample",
+                "evidence": [f"partition:{agents[role]['information_partition']}"],
+            },
+        })
+
+    assert state["deliberation"]["ready_for_deliberation"] is True
+    assert state["deliberation"]["claim_bodies_visible"] is True
+    assert any((row["claim"] or {}).get("thesis") == "must remain hidden" for row in state["agent_claims"])
