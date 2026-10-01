@@ -627,7 +627,7 @@ def test_fatal_depth_subscription_error_does_not_poison_core_session():
     assert bars and px == 100.5
     with pytest.raises(RuntimeError, match="depth error code=5.*rejected"):
         feed.depth_events("NQ=F", schema="mbp-10")
-    assert feed._depth["NQ=F"]  # later buffered data cannot clear the fatal state
+    assert feed._depth[("NQ=F", "mbp-10")]  # later buffered data cannot clear the fatal state
 
     assert feed._shared_live is core
     assert feed._shared_started is True
@@ -705,8 +705,27 @@ def test_replay_backfill_keeps_trade_and_depth_buffers_receive_time_ordered_and_
         assert feed._append_depth_locked("NQ=F", newer) is True
         assert feed._append_depth_locked("NQ=F", older) is True
         assert feed._append_depth_locked("NQ=F", older) is False
-        rows = list(feed._depth["NQ=F"])
+        rows = list(feed._depth[("NQ=F", "mbo")])
     assert [row["order_id"] for row in rows] == [19, 20]
+
+
+def test_mbo_volume_cannot_evict_mbp10_buffer():
+    feed = Databento(
+        api_key="db-test",
+        sdk=FakeSDK,
+        historical=FakeHistorical({}),
+        live_factory=lambda: FakeLive(),
+        max_depth=1000,
+    )
+    mbp = Databento._event_record(Depth(1_000, 100.0, order_id=1, levels=[Level(99.75, 100.0)]))
+    with feed._lock:
+        assert feed._append_depth_locked("NQ=F", mbp)
+        for i in range(1_250):
+            mbo = Databento._event_record(Depth(1_001 + i, 100.0 + i / 1000, order_id=10_000 + i))
+            assert feed._append_depth_locked("NQ=F", mbo)
+    assert len(feed._depth[("NQ=F", "mbo")]) == 1000
+    assert len(feed._depth[("NQ=F", "mbp-10")]) == 1
+    assert feed._depth[("NQ=F", "mbp-10")][0]["order_id"] == 1
 
 
 def test_mbo_snapshots_are_serialized_to_one_temporary_session_at_a_time():
