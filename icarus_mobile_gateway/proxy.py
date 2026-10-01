@@ -10,7 +10,8 @@ import urllib.request
 from typing import Any
 
 
-_SYMBOL = re.compile(r"^[A-Z0-9!._-]{1,24}$")\n_JOB = re.compile(r"^[A-Za-z0-9_-]{1,96}$")
+_SYMBOL = re.compile(r"^[A-Z0-9!._-]{1,24}$")
+_JOB = re.compile(r"^[A-Za-z0-9_-]{1,96}$")
 
 
 class UpstreamError(RuntimeError):
