@@ -30,6 +30,7 @@
   POST /admin/integrity/event              fully-provenanced, idempotent MCP audit receipt; never changes trading
   POST /admin/brain/event                  append evidence-backed learning/agent/subsystem/candidate event; shadow only
   POST /admin/possibility/evidence          provenance-labelled gamma/basis/CTA/liquidation/rebalance research inputs
+  POST /admin/parallax/decision/current      atomically capture current Psi vote and PARALLAX decision
   POST /admin/rewarm                       {"asset": "NQ"}
 """
 from __future__ import annotations
@@ -43,6 +44,7 @@ import time
 import threading
 from contextlib import ExitStack
 from dataclasses import replace
+from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Dict
@@ -551,6 +553,35 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                         body["asset"], body["values"], source=body["source"],
                         observed_at=body.get("observed_at"), ttl_seconds=body.get("ttl_seconds", 300.0),
                     ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+            if p.path == "/admin/parallax/decision/current":
+                try:
+                    payload = dict(body)
+                    if payload.get("observed_at") not in (None, ""):
+                        raise ValueError("current decision capture owns observed_at; use /admin/parallax/decision for historical records")
+                    votes = payload.get("subsystem_votes", {})
+                    if not isinstance(votes, dict):
+                        raise ValueError("subsystem_votes must be an object")
+                    if "psi" in votes:
+                        raise ValueError("current decision capture owns the psi vote")
+                    asset = str(payload.get("asset") or "").strip().upper()
+                    if not asset:
+                        raise ValueError("asset is required")
+                    psi_vote = possibility.parallax_vote(asset)
+                    votes = dict(votes)
+                    votes["psi"] = psi_vote
+                    payload["subsystem_votes"] = votes
+                    payload["observed_at"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+                    if not payload.get("source_commit"):
+                        provenance = local_code_provenance()
+                        if not provenance.get("candidate_revision_eligible") or not provenance.get("commit"):
+                            raise ValueError("exact clean ICARUS code provenance is required when source_commit is omitted")
+                        payload["source_commit"] = provenance["commit"]
+                    result = parallax.record_decision(payload)
+                    result["capture_mode"] = "atomic_current"
+                    result["captured_psi_vote"] = psi_vote
+                    return self._json(200, result)
                 except (ValueError, TypeError) as ex:
                     return self._json(400, {"detail": str(ex)})
             if p.path == "/admin/parallax/decision":
