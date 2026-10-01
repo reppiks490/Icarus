@@ -359,3 +359,15 @@ def test_http_manual_learning_cycle_is_authenticated_and_research_only(http):
     assert cycle["cycle_id"].startswith("cycle-")
     assert cycle["execution_authorized"] is False
     assert cycle["production_decision_authorized"] is False
+
+
+def test_http_learning_experience_surface_is_authenticated(http):
+    auth = {"Authorization": "Bearer test-token"}
+    assert http("GET", "/api/learning/experience")[0] == 401
+    code, raw = http("GET", "/api/learning/experience", headers=auth)
+    assert code == 200
+    body = json.loads(raw)
+    assert body["count"] == 0
+    assert body["summary"] == []
+    assert body["execution_authorized"] is False
+    assert body["production_decision_authorized"] is False

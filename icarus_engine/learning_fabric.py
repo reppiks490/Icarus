@@ -208,6 +208,29 @@ class LearningFabric:
                     UNIQUE(dataset_id, slot)
                 );
 
+                CREATE TABLE IF NOT EXISTS experiences (
+                    experience_id TEXT PRIMARY KEY,
+                    source TEXT NOT NULL,
+                    source_record_id TEXT NOT NULL,
+                    asset TEXT NOT NULL,
+                    direction TEXT NOT NULL,
+                    entry_at TEXT NOT NULL,
+                    entry_ts REAL NOT NULL,
+                    exit_at TEXT NOT NULL,
+                    exit_ts REAL NOT NULL,
+                    qty REAL NOT NULL,
+                    entry_price REAL NOT NULL,
+                    exit_price REAL NOT NULL,
+                    pnl REAL NOT NULL,
+                    profitable INTEGER NOT NULL CHECK(profitable IN (0,1)),
+                    metadata_json TEXT NOT NULL,
+                    semantic_json TEXT NOT NULL,
+                    recorded_at TEXT NOT NULL,
+                    UNIQUE(source, source_record_id)
+                );
+                CREATE INDEX IF NOT EXISTS idx_learning_experience_scope
+                    ON experiences(source, asset, exit_ts);
+
                 CREATE TABLE IF NOT EXISTS cycles (
                     cycle_id TEXT PRIMARY KEY,
                     started_at TEXT NOT NULL,
@@ -534,6 +557,138 @@ class LearningFabric:
                 errors[pid] = f"{type(ex).__name__}: {ex}"[:500]
         return {"settled": len(ids), "prediction_ids": ids, "errors": errors, **_authority()}
 
+    def record_experience(self, body: Mapping[str, Any]) -> dict[str, Any]:
+        """Record one immutable realized trade experience.
+
+        Experience is outcome memory, not a forecast and not evidence that a
+        strategy will continue to perform. It can inform research but cannot
+        authorize production or execution.
+        """
+        if not isinstance(body, Mapping):
+            raise ValueError("experience must be an object")
+        source = _text(body.get("source"), "source", 64).lower()
+        source_record_id = _text(body.get("source_record_id"), "source_record_id", 256)
+        asset = _text(body.get("asset"), "asset", 32).upper()
+        direction = _text(body.get("direction"), "direction", 16).lower()
+        if direction not in {"long", "short"}:
+            raise ValueError("direction must be long or short")
+        entry = _parse_time(body.get("entry_at"), "entry_at")
+        exit_at = _parse_time(body.get("exit_at"), "exit_at")
+        if exit_at < entry:
+            raise ValueError("exit_at cannot precede entry_at")
+        qty = _finite(body.get("qty"), "qty")
+        entry_price = _finite(body.get("entry_price"), "entry_price")
+        exit_price = _finite(body.get("exit_price"), "exit_price")
+        pnl = _finite(body.get("pnl"), "pnl")
+        if qty <= 0:
+            raise ValueError("qty must be positive")
+        if entry_price <= 0 or exit_price <= 0:
+            raise ValueError("entry_price and exit_price must be positive")
+        metadata = body.get("metadata", {})
+        if not isinstance(metadata, Mapping):
+            raise ValueError("metadata must be an object")
+        semantic = {
+            "schema_version": "icarus-learning-experience-v1",
+            "source": source,
+            "source_record_id": source_record_id,
+            "asset": asset,
+            "direction": direction,
+            "entry_at": _iso(entry),
+            "exit_at": _iso(exit_at),
+            "qty": qty,
+            "entry_price": entry_price,
+            "exit_price": exit_price,
+            "pnl": pnl,
+            "profitable": pnl > 0.0,
+            "metadata": dict(metadata),
+            **_authority(),
+        }
+        raw = _json(semantic, "experience")
+        experience_id = "exp-" + hashlib.sha256(raw.encode("utf-8")).hexdigest()
+        with self._lock, self._conn:
+            prior = self._conn.execute(
+                "SELECT experience_id,semantic_json FROM experiences WHERE source=? AND source_record_id=?",
+                (source, source_record_id),
+            ).fetchone()
+            if prior is not None:
+                existing = json.loads(prior["semantic_json"])
+                if existing == semantic:
+                    return {
+                        "ok": True, "idempotent": True,
+                        "experience": {**existing, "experience_id": prior["experience_id"]},
+                        **_authority(),
+                    }
+                raise ValueError("experience is immutable for source/source_record_id")
+            self._conn.execute(
+                """INSERT INTO experiences(
+                   experience_id,source,source_record_id,asset,direction,entry_at,entry_ts,
+                   exit_at,exit_ts,qty,entry_price,exit_price,pnl,profitable,metadata_json,
+                   semantic_json,recorded_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (
+                    experience_id, source, source_record_id, asset, direction,
+                    semantic["entry_at"], entry.timestamp(), semantic["exit_at"], exit_at.timestamp(),
+                    qty, entry_price, exit_price, pnl, int(pnl > 0.0),
+                    _json(dict(metadata), "experience metadata"), raw, _utc_now(),
+                ),
+            )
+        return {
+            "ok": True, "idempotent": False,
+            "experience": {**semantic, "experience_id": experience_id},
+            **_authority(),
+        }
+
+    def experience_summary(self) -> list[dict[str, Any]]:
+        rows = self._conn.execute(
+            "SELECT source,asset,direction,entry_at,exit_at,pnl FROM experiences "
+            "ORDER BY source,asset,exit_ts,experience_id"
+        ).fetchall()
+        groups: dict[tuple[str, str], list[sqlite3.Row]] = {}
+        for row in rows:
+            groups.setdefault((row["source"], row["asset"]), []).append(row)
+        out = []
+        for (source, asset), group in sorted(groups.items()):
+            pnls = [float(row["pnl"]) for row in group]
+            wins = sum(1 for value in pnls if value > 0)
+            losses = sum(1 for value in pnls if value < 0)
+            breakeven = len(pnls) - wins - losses
+            gross_profit = sum(value for value in pnls if value > 0)
+            gross_loss = sum(value for value in pnls if value < 0)
+            long_count = sum(1 for row in group if row["direction"] == "long")
+            short_count = sum(1 for row in group if row["direction"] == "short")
+            direction = "long" if long_count and not short_count else ("short" if short_count and not long_count else "mixed")
+            out.append({
+                "source": source,
+                "asset": asset,
+                "direction": direction,
+                "long_count": long_count,
+                "short_count": short_count,
+                "count": len(pnls),
+                "wins": wins,
+                "losses": losses,
+                "breakeven": breakeven,
+                "win_rate": wins / len(pnls) if pnls else None,
+                "net_pnl": sum(pnls),
+                "average_pnl": sum(pnls) / len(pnls) if pnls else None,
+                "gross_profit": gross_profit,
+                "gross_loss": gross_loss,
+                "profit_factor": (gross_profit / abs(gross_loss)) if gross_loss < 0 else None,
+                "first_entry_at": min(row["entry_at"] for row in group),
+                "last_exit_at": max(row["exit_at"] for row in group),
+                "status": "MEASURED" if len(pnls) >= 30 else "EARLY",
+                **_authority(),
+            })
+        return out
+
+    def experience_state(self) -> dict[str, Any]:
+        count = int(self._conn.execute("SELECT COUNT(*) FROM experiences").fetchone()[0])
+        return {
+            "schema_version": "icarus-learning-experience-state-v1",
+            "count": count,
+            "summary": self.experience_summary(),
+            "rule": "Realized trade experience is descriptive outcome memory, not forecast calibration or a future-performance guarantee.",
+            **_authority(),
+        }
+
     def scorecards(self) -> list[dict[str, Any]]:
         rows = self._conn.execute(
             """SELECT p.*,o.success,o.brier,o.absolute_error
@@ -801,10 +956,95 @@ class LearningFabric:
             **_authority(),
         }
 
+    def _import_trade_list_dataset(self, dataset: Mapping[str, Any]) -> dict[str, Any]:
+        dataset_id = str(dataset["dataset_id"])
+        slot = "trade_experience"
+        existing = self._conn.execute(
+            "SELECT * FROM training_runs WHERE dataset_id=? AND slot=?",
+            (dataset_id, slot),
+        ).fetchone()
+        if existing is not None:
+            report = json.loads(existing["report_json"])
+            return {
+                "dataset_id": dataset_id,
+                "status": "complete",
+                "runs": [{"run_id": existing["run_id"], "slot": slot, "idempotent": True, "report": report}],
+                **_authority(),
+            }
+
+        from .parity import read_tv_trades
+        trades = read_tv_trades(str(dataset["path"]))
+        imported = 0
+        complete = 0
+        errors: dict[str, str] = {}
+        for trade in trades:
+            pieces = list(trade.get("pieces") or [])
+            if not pieces or any(piece.get("ts") is None for piece in pieces):
+                continue
+            record_key = f"{dataset_id}:{trade.get('no')}:{trade.get('entry_ts')}:{trade.get('dir')}:{trade.get('entry_px')}"
+            try:
+                qty = float(trade.get("qty") or 0.0)
+                exit_qty = sum(float(piece.get("qty") or 0.0) for piece in pieces)
+                if qty <= 0 or exit_qty <= 0:
+                    raise ValueError("trade quantity must be positive")
+                exit_price = sum(float(piece["px"]) * float(piece.get("qty") or 0.0) for piece in pieces) / exit_qty
+                pnl = sum(float(piece.get("pnl") or 0.0) for piece in pieces)
+                entry_ts = int(trade["entry_ts"])
+                exit_ts = max(int(piece["ts"]) for piece in pieces)
+                result = self.record_experience({
+                    "source": "historical_trade_list",
+                    "source_record_id": record_key,
+                    "asset": dataset["asset"],
+                    "direction": "long" if int(trade["dir"]) > 0 else "short",
+                    "entry_at": _iso(datetime.fromtimestamp(entry_ts, tz=timezone.utc)),
+                    "exit_at": _iso(datetime.fromtimestamp(exit_ts, tz=timezone.utc)),
+                    "qty": qty,
+                    "entry_price": float(trade["entry_px"]),
+                    "exit_price": exit_price,
+                    "pnl": pnl,
+                    "metadata": {
+                        "dataset_id": dataset_id,
+                        "dataset_sha256": dataset["raw_sha256"],
+                        "trade_number": trade.get("no"),
+                        "entry_signal": trade.get("entry_sig"),
+                        "exit_signals": [piece.get("sig") for piece in pieces],
+                        "time_quality": "UNVERIFIED_TIMEZONE",
+                        "time_interpretation": "TradingView export parsed with parity UTC compatibility; do not infer session/regime until timezone is independently bound.",
+                    },
+                })
+                complete += 1
+                imported += int(not result["idempotent"])
+            except Exception as ex:
+                errors[record_key] = f"{type(ex).__name__}: {ex}"[:500]
+
+        report = {
+            "status": "imported" if not errors else "partial",
+            "artifact_class": "trade_list",
+            "experience_count": complete,
+            "new_experiences": imported,
+            "time_quality": "UNVERIFIED_TIMEZONE",
+            "errors": errors,
+            **_authority(),
+        }
+        run_id = "train-" + hashlib.sha256(f"{dataset_id}|{slot}".encode()).hexdigest()
+        with self._lock, self._conn:
+            self._conn.execute(
+                "INSERT OR IGNORE INTO training_runs(run_id,dataset_id,slot,report_json,status,created_at) VALUES(?,?,?,?,?,?)",
+                (run_id, dataset_id, slot, _json(report, "trade experience report"), report["status"], _utc_now()),
+            )
+        return {
+            "dataset_id": dataset_id,
+            "status": "complete" if not errors else "partial",
+            "runs": [{"run_id": run_id, "slot": slot, "idempotent": False, "report": report}],
+            **_authority(),
+        }
+
     def backfill_dataset(self, dataset_id: str, *, slots: Sequence[str] | None = None) -> dict[str, Any]:
         dataset = self.dataset(dataset_id)
+        if dataset["artifact_class"] == "trade_list":
+            return self._import_trade_list_dataset(dataset)
         if dataset["artifact_class"] != "ohlc":
-            return {"dataset_id": dataset_id, "status": "skipped", "reason": "dataset is not OHLC", "runs": [], **_authority()}
+            return {"dataset_id": dataset_id, "status": "skipped", "reason": "dataset is neither OHLC nor trade-list experience", "runs": [], **_authority()}
         requested = list(slots if slots is not None else self._config["auto_train_slots"])
         runs = []
         for raw_slot in requested:
@@ -1104,6 +1344,104 @@ class LearningFabric:
         out.update(_authority())
         return out
 
+    def _harvest_runtime_experience(self) -> dict[str, Any]:
+        if self.port is None or not hasattr(self.port, "runner_list"):
+            return {"status": "unavailable", "imported": 0, "eligible": 0, **_authority()}
+        imported = 0
+        eligible = 0
+        skipped_open = 0
+        skipped_warmup = 0
+        skipped_no_live_boundary = 0
+        errors: dict[str, str] = {}
+        for runner in list(self.port.runner_list()):
+            symbol = str(getattr(runner, "symbol", "") or "").strip().upper()
+            em = getattr(runner, "em", None)
+            if not symbol or em is None:
+                continue
+            raw_live_from = getattr(runner, "live_from_ts", None)
+            if raw_live_from is None:
+                skipped_no_live_boundary += 1
+                continue
+            live_from = float(raw_live_from)
+            closed_all = list(getattr(em, "closed", []) or [])
+            live_closed_start = int(getattr(runner, "live_closed_start", 0) or 0)
+            live_closed_start = max(0, min(live_closed_start, len(closed_all)))
+            live_closed = closed_all[live_closed_start:]
+            skipped_warmup += live_closed_start
+            open_keys = {
+                (
+                    str(getattr(row, "entry_id", "")),
+                    int(getattr(row, "entry_ts", 0) or 0),
+                    int(getattr(row, "direction", 0) or 0),
+                    round(float(getattr(row, "entry_price", 0.0) or 0.0), 10),
+                )
+                for row in list(getattr(em, "open", []) or [])
+            }
+            groups: dict[tuple[Any, ...], list[Any]] = {}
+            for row in live_closed:
+                key = (
+                    str(getattr(row, "entry_id", "")),
+                    int(getattr(row, "entry_ts", 0) or 0),
+                    int(getattr(row, "direction", 0) or 0),
+                    round(float(getattr(row, "entry_price", 0.0) or 0.0), 10),
+                    int(getattr(row, "lot_id", 0) or 0),
+                )
+                groups.setdefault(key, []).append(row)
+            for key, pieces in groups.items():
+                entry_id, entry_ts, direction, entry_price, lot_id = key
+                if key[:4] in open_keys:
+                    skipped_open += 1
+                    continue
+                exit_ts = max(int(getattr(piece, "exit_ts", 0) or 0) for piece in pieces)
+                if exit_ts < live_from:
+                    skipped_warmup += 1
+                    continue
+                source_record_id = f"{symbol}:{entry_ts}:{entry_id}:{lot_id}:{direction}:{entry_price}"
+                try:
+                    qty = sum(float(getattr(piece, "qty", 0.0) or 0.0) for piece in pieces)
+                    if qty <= 0:
+                        raise ValueError("closed live-sim position has no positive quantity")
+                    exit_price = sum(
+                        float(getattr(piece, "exit_price", 0.0) or 0.0) * float(getattr(piece, "qty", 0.0) or 0.0)
+                        for piece in pieces
+                    ) / qty
+                    pnl = sum(float(getattr(piece, "profit", 0.0) or 0.0) for piece in pieces)
+                    result = self.record_experience({
+                        "source": "runtime_live_sim",
+                        "source_record_id": source_record_id,
+                        "asset": symbol,
+                        "direction": "long" if direction > 0 else "short",
+                        "entry_at": _iso(datetime.fromtimestamp(entry_ts, tz=timezone.utc)),
+                        "exit_at": _iso(datetime.fromtimestamp(exit_ts, tz=timezone.utc)),
+                        "qty": qty,
+                        "entry_price": entry_price,
+                        "exit_price": exit_price,
+                        "pnl": pnl,
+                        "metadata": {
+                            "entry_id": entry_id,
+                            "lot_id": lot_id,
+                            "entry_qty": max(int(getattr(piece, "entry_qty", 0) or 0) for piece in pieces),
+                            "exit_comments": [str(getattr(piece, "exit_comment", "") or "") for piece in pieces],
+                            "exit_kinds": [str(getattr(piece, "exit_kind", "") or "") for piece in pieces],
+                            "time_quality": "OBSERVED_UNIX_EVENT_TIME",
+                            "live_from_ts": live_from,
+                        },
+                    })
+                    eligible += 1
+                    imported += int(not result["idempotent"])
+                except Exception as ex:
+                    errors[source_record_id] = f"{type(ex).__name__}: {ex}"[:500]
+        return {
+            "status": "ok" if not errors else "partial",
+            "imported": imported,
+            "eligible": eligible,
+            "skipped_open": skipped_open,
+            "skipped_warmup": skipped_warmup,
+            "skipped_no_live_boundary": skipped_no_live_boundary,
+            "errors": errors,
+            **_authority(),
+        }
+
     def _observe_portfolio(self) -> dict[str, Any]:
         if self.port is None or not self._config["settle_live_prices"]:
             return {"status": "unavailable", "assets": {}}
@@ -1122,6 +1460,21 @@ class LearningFabric:
                 continue
             assets[symbol] = self.observe_price(symbol, now, float(raw), evidence=["portfolio:observed-price"])
         return {"status": "ok", "assets": assets}
+
+    def _next_trade_experience(self, limit: int) -> list[str]:
+        if limit <= 0:
+            return []
+        rows = self._conn.execute(
+            """SELECT d.dataset_id FROM datasets d
+               WHERE d.artifact_class='trade_list'
+               AND NOT EXISTS (
+                   SELECT 1 FROM training_runs t
+                   WHERE t.dataset_id=d.dataset_id AND t.slot='trade_experience'
+               )
+               ORDER BY d.discovered_at,d.dataset_id LIMIT ?""",
+            (limit,),
+        ).fetchall()
+        return [row["dataset_id"] for row in rows]
 
     def _next_untrained(self, limit: int) -> list[str]:
         if limit <= 0 or not self._config["auto_train_slots"]:
@@ -1187,6 +1540,10 @@ class LearningFabric:
             summary["settlement"] = self._observe_portfolio()
         except Exception as ex:
             errors["settlement"] = f"{type(ex).__name__}: {ex}"[:500]
+        try:
+            summary["experience"] = {"runtime": self._harvest_runtime_experience()}
+        except Exception as ex:
+            errors["experience"] = f"{type(ex).__name__}: {ex}"[:500]
         if self._config["harvest_native"]:
             try:
                 summary["native"] = self.harvest_native()
@@ -1200,7 +1557,10 @@ class LearningFabric:
                 errors["history"] = f"{type(ex).__name__}: {ex}"[:500]
         runs = []
         try:
-            for dataset_id in self._next_untrained(self._config["max_backfills_per_cycle"]):
+            batch_limit = self._config["max_backfills_per_cycle"]
+            for dataset_id in self._next_trade_experience(batch_limit):
+                runs.append(self.backfill_dataset(dataset_id))
+            for dataset_id in self._next_untrained(batch_limit):
                 runs.append(self.backfill_dataset(dataset_id))
             summary["backfills"] = runs
         except Exception as ex:
@@ -1261,18 +1621,22 @@ class LearningFabric:
         train_count = int(self._conn.execute("SELECT COUNT(*) FROM training_runs").fetchone()[0])
         prediction_count = int(self._conn.execute("SELECT COUNT(*) FROM predictions").fetchone()[0])
         outcome_count = int(self._conn.execute("SELECT COUNT(*) FROM outcomes").fetchone()[0])
+        experience_count = int(self._conn.execute("SELECT COUNT(*) FROM experiences").fetchone()[0])
         cycle_count = int(self._conn.execute("SELECT COUNT(*) FROM cycles").fetchone()[0])
         last_cycle = self._conn.execute("SELECT summary_json FROM cycles ORDER BY finished_at DESC LIMIT 1").fetchone()
         return {
             "schema_version": _SCHEMA,
-            "status": "LEARNING" if outcome_count or train_count else "WARMING",
+            "status": "LEARNING" if outcome_count or train_count or experience_count else "WARMING",
             "config": dict(self._config),
             "datasets": {"count": dataset_count},
             "training": {"run_count": train_count},
             "predictions": {"count": prediction_count, "settled": outcome_count, "pending": max(0, prediction_count-outcome_count)},
+            "experiences": self.experience_state(),
             "scorecards": self.scorecards(),
             "coverage": {
                 "historical_trainers": "protected_replay",
+                "historical_trade_lists": "immutable_realized_experience",
+                "runtime_trade_outcomes": "fully_closed_live_sim_experience",
                 "sibyl": "native_prediction_outcome",
                 "performance_proof": "native_immutable_forecast_outcome",
                 "source_reliability": "native_observed_quality_context",
@@ -1281,8 +1645,6 @@ class LearningFabric:
                 "dreamstate": "native_candidate_lifecycle",
                 "pantheon": "native_research_metrics",
                 "apex": "empirical_credibility_feedback",
-                "performance_proof": "native_immutable_forecast_outcome",
-                "source_reliability": "native_observed_quality_context",
                 "possibility": "forecast_contract_required",
                 "chronofold": "calibrated_via_commissioning",
             },

@@ -420,3 +420,132 @@ def test_native_harvest_absorbs_performance_proof_and_source_reliability(tmp_pat
     snap = fabric.snapshot()
     assert snap["coverage"]["performance_proof"] == "native_immutable_forecast_outcome"
     assert snap["coverage"]["source_reliability"] == "native_observed_quality_context"
+
+
+def _trade_list(path: Path) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        "Trade number,Type,Date and time,Signal,Price USD,Size (qty),Net PnL USD\n"
+        "1,Exit long,2024-06-03 11:00,L_TP,101.0,1,50.0\n"
+        "1,Entry long,2024-06-03 10:20,Long,100.0,1,50.0\n"
+        "2,Exit short,2024-06-03 12:20,S_SL,103.0,1,-75.0\n"
+        "2,Entry short,2024-06-03 11:40,Short,102.0,1,-75.0\n",
+        encoding="utf-8",
+    )
+    return path
+
+
+def test_trade_list_dataset_becomes_realized_experience(tmp_path):
+    from icarus_engine.learning_fabric import LearningFabric
+
+    path = _trade_list(tmp_path / "history" / "drop" / "THE_PULSE_NQ.csv")
+    fabric = LearningFabric(tmp_path)
+    dataset = fabric.register_dataset(path, asset="NQ")["dataset"]
+    assert dataset["artifact_class"] == "trade_list"
+
+    result = fabric.backfill_dataset(dataset["dataset_id"], slots=["logit"])
+    assert result["status"] == "complete"
+    assert result["runs"][0]["slot"] == "trade_experience"
+    assert result["runs"][0]["report"]["status"] == "imported"
+    assert result["runs"][0]["report"]["experience_count"] == 2
+    assert result["runs"][0]["report"]["time_quality"] == "UNVERIFIED_TIMEZONE"
+
+    snap = fabric.snapshot()
+    assert snap["experiences"]["count"] == 2
+    row = next(x for x in snap["experiences"]["summary"] if x["source"] == "historical_trade_list")
+    assert row["asset"] == "NQ"
+    assert row["count"] == 2
+    assert row["wins"] == 1
+    assert row["losses"] == 1
+    assert row["net_pnl"] == pytest.approx(-25.0)
+    assert row["win_rate"] == pytest.approx(0.5)
+    assert row["profit_factor"] == pytest.approx(50.0 / 75.0)
+
+    again = fabric.backfill_dataset(dataset["dataset_id"], slots=["logit"])
+    assert again["runs"][0]["idempotent"] is True
+    assert fabric.snapshot()["experiences"]["count"] == 2
+
+
+def test_runtime_learning_harvests_only_fully_closed_live_sim_positions(tmp_path):
+    from types import SimpleNamespace
+    from icarus_engine.emulator import ClosedTrade, OpenTrade
+    from icarus_engine.learning_fabric import LearningFabric
+
+    closed = [
+        ClosedTrade("L", 1, 1, 100.0, 1, 100, 101.0, 2, 200, "TP1", 40.0, lot_id=7, entry_qty=2),
+        ClosedTrade("L", 1, 1, 100.0, 1, 100, 102.0, 3, 220, "TP2", 80.0, lot_id=7, entry_qty=2),
+        ClosedTrade("OLD", -1, 1, 105.0, 1, 50, 104.0, 2, 90, "TP", 20.0, lot_id=3, entry_qty=1),
+        ClosedTrade("OPEN", 1, 1, 110.0, 1, 160, 111.0, 2, 210, "TP1", 10.0, lot_id=9, entry_qty=2),
+    ]
+    open_rows = [OpenTrade("OPEN", 1, 1, 2, 110.0, 1, 160)]
+    runner = SimpleNamespace(
+        symbol="NQ",
+        live_from_ts=150,
+        em=SimpleNamespace(closed=closed, open=open_rows),
+    )
+    port = SimpleNamespace(
+        runner_list=lambda: [runner],
+        status=lambda: {"assets": []},
+    )
+    fabric = LearningFabric(tmp_path, port=port)
+
+    cycle = fabric.tick()
+    runtime = cycle["summary"]["experience"]["runtime"]
+    assert runtime["imported"] == 1
+    snap = fabric.snapshot()
+    assert snap["experiences"]["count"] == 1
+    row = next(x for x in snap["experiences"]["summary"] if x["source"] == "runtime_live_sim")
+    assert row["count"] == 1
+    assert row["wins"] == 1
+    assert row["net_pnl"] == pytest.approx(120.0)
+
+    again = fabric.tick()
+    assert again["summary"]["experience"]["runtime"]["imported"] == 0
+    assert fabric.snapshot()["experiences"]["count"] == 1
+
+
+def test_experience_records_are_immutable_and_research_only(tmp_path):
+    from icarus_engine.learning_fabric import LearningFabric
+
+    fabric = LearningFabric(tmp_path)
+    body = {
+        "source": "fixture",
+        "source_record_id": "trade-1",
+        "asset": "NQ",
+        "direction": "long",
+        "entry_at": "2026-09-30T14:00:00Z",
+        "exit_at": "2026-09-30T14:20:00Z",
+        "qty": 2,
+        "entry_price": 25000.0,
+        "exit_price": 25010.0,
+        "pnl": 400.0,
+        "metadata": {"regime": "trend"},
+    }
+    first = fabric.record_experience(body)
+    assert first["experience"]["execution_authorized"] is False
+    assert first["experience"]["production_decision_authorized"] is False
+    assert fabric.record_experience(body)["idempotent"] is True
+    with pytest.raises(ValueError, match="immutable"):
+        fabric.record_experience({**body, "pnl": -400.0})
+
+
+def test_runtime_experience_fails_closed_before_live_boundary(tmp_path):
+    from types import SimpleNamespace
+    from icarus_engine.emulator import ClosedTrade
+    from icarus_engine.learning_fabric import LearningFabric
+
+    runner = SimpleNamespace(
+        symbol="NQ",
+        live_from_ts=None,
+        live_closed_start=0,
+        em=SimpleNamespace(
+            closed=[ClosedTrade("WARM", 1, 1, 100.0, 1, 100, 101.0, 2, 200, "TP", 40.0, lot_id=1, entry_qty=1)],
+            open=[],
+        ),
+    )
+    port = SimpleNamespace(runner_list=lambda: [runner], status=lambda: {"assets": []})
+    fabric = LearningFabric(tmp_path, port=port)
+    cycle = fabric.tick()
+    assert cycle["summary"]["experience"]["runtime"]["imported"] == 0
+    assert cycle["summary"]["experience"]["runtime"]["skipped_no_live_boundary"] == 1
+    assert fabric.snapshot()["experiences"]["count"] == 0

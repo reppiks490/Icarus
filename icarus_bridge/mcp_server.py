@@ -737,6 +737,12 @@ def engine_learning_datasets() -> dict:
 
 
 @mcp.tool()
+def engine_learning_experience() -> dict:
+    """Read realized historical/live-sim trade experience summaries."""
+    return _safe_engine(lambda: _engine_get("/api/learning/experience"))
+
+
+@mcp.tool()
 def configure_engine_learning(config_json: str) -> dict:
     """Configure the bounded research-only continual-learning loop."""
     body, error = _apex_json_object(config_json, "config_json")
