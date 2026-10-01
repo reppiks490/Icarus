@@ -211,9 +211,18 @@ class PossibilityEngine:
         source = str(source or "").strip()
         if not source:
             raise ValueError("source is required")
-        ttl = max(1.0, min(float(ttl_seconds), 86400.0))
+        if len(source) > 180:
+            raise ValueError("source exceeds 180 characters")
+        ttl_value = _finite(ttl_seconds)
+        if ttl_value is None or ttl_value <= 0:
+            raise ValueError("ttl_seconds must be finite and positive")
+        ttl = min(ttl_value, 86400.0)
         now = time.time()
         observed = _utc_now() if observed_at is None else _observed_time(observed_at)
+        observed_ts = datetime.fromisoformat(observed.replace("Z", "+00:00")).timestamp()
+        expires_ts = observed_ts + ttl
+        if expires_ts <= now:
+            raise ValueError("external evidence is already stale at receipt for the requested ttl_seconds")
         stored: dict[str, Any] = {}
         with self._lock:
             for key, raw in values.items():
@@ -221,20 +230,24 @@ class PossibilityEngine:
                     raise ValueError(f"unsupported external feature: {key}")
                 if isinstance(raw, Mapping):
                     value = _finite(raw.get("value"))
-                    confidence = _finite(raw.get("confidence"))
+                    if "confidence" in raw:
+                        confidence = _finite(raw.get("confidence"))
+                        if confidence is None or not 0.0 <= confidence <= 1.0:
+                            raise ValueError(f"{key}.confidence must be finite and within [0,1]")
+                    else:
+                        confidence = 1.0
                 else:
                     value = _finite(raw)
                     confidence = 1.0
                 if value is None or not -1.0 <= value <= 1.0:
                     raise ValueError(f"{key} must be finite and within [-1,1]")
-                confidence = 1.0 if confidence is None else _clamp(confidence, 0.0, 1.0)
                 row = {
                     "value": float(value),
                     "confidence": float(confidence),
                     "source": source,
                     "observed_at": observed,
                     "received_ts": now,
-                    "expires_ts": now + ttl,
+                    "expires_ts": expires_ts,
                 }
                 self._external[asset][key] = row
                 stored[key] = dict(row)
@@ -305,6 +318,8 @@ class PossibilityEngine:
                 "missing_evidence_imputed": False,
                 "confidence_weighted_coverage": True,
                 "consensus_requires_distinct_evidence_domains": True,
+                "same_snapshot_unexplained_residual_not_identifiable": True,
+                "external_ttl_anchored_to_observation_time": True,
                 "rule": "Model diagnostics only. Missing evidence stays unavailable and NO_EDGE is mandatory when gates fail.",
             },
             "latent_pressure_engine": {
@@ -706,10 +721,11 @@ class PossibilityEngine:
         latest = returns[-1]
         mu = _mean(baseline)
         sigma = max(_stdev(baseline), vol, 1e-9)
-        leader_pressure = _finite(leaders.get("pressure")) or 0.0
         observed_pressure = _finite(latent) or 0.0
+        # Lagged cross-asset pressure is already represented inside latent pressure.
+        # Conditioning on the leader graph again would double count that domain.
         expected = sigma * 1.75 * _clamp(
-            observed_pressure * (0.35 + 0.45 * coverage) + 0.25 * leader_pressure
+            observed_pressure * (0.35 + 0.45 * coverage)
         )
         residual = latest - expected
         residual_z = abs(residual - mu) / sigma
@@ -749,31 +765,50 @@ class PossibilityEngine:
         leaders: Mapping[str, Any],
     ) -> dict[str, Any]:
         if latent is None:
-            return {"available": False, "synthetic_price": None, "dislocation": None, "unexplained_dislocation": None}
+            return {
+                "available": False,
+                "synthetic_price": None,
+                "dislocation": None,
+                "unexplained_dislocation": None,
+                "unexplained_dislocation_available": False,
+            }
         horizon_scale = max(price * vol * 8.0, price * 0.00015)
-        leader_term = (_finite(leaders.get("pressure")) or 0.0) * 0.35
-        synthetic_move = horizon_scale * _clamp(0.72 * latent + leader_term)
-        synthetic = price + synthetic_move
 
-        explained = 0.0
-        contributions = {}
+        # Cross-asset pressure is already one component of the normalized latent
+        # pressure. Do not add the leader graph a second time here.
+        effective: dict[str, tuple[float, float]] = {}
+        denominator = 0.0
         for name, feature in features.items():
             if not feature.available or feature.value is None:
                 continue
             weight = _COMPONENT_WEIGHTS.get(name, 0.5)
-            contribution = horizon_scale * 0.22 * feature.value * weight * feature.confidence
-            contributions[name] = contribution
-            explained += contribution
+            confidence = _clamp(feature.confidence, 0.0, 1.0)
+            scale = abs(weight) * confidence
+            if scale <= 0:
+                continue
+            effective[name] = (weight, confidence)
+            denominator += scale
+
+        contributions: dict[str, float] = {}
+        if denominator > 0:
+            for name, (weight, confidence) in effective.items():
+                feature = features[name]
+                normalized_pressure = float(feature.value) * weight * confidence / denominator
+                contributions[name] = horizon_scale * 0.72 * normalized_pressure
+
+        synthetic_move = sum(contributions.values())
+        synthetic = price + synthetic_move
         dislocation = synthetic - price
-        unexplained = dislocation - explained
         return {
             "available": True,
             "synthetic_price": synthetic,
             "dislocation": dislocation,
-            "known_force_contribution": explained,
-            "unexplained_dislocation": unexplained,
+            "known_force_contribution": synthetic_move,
+            "unexplained_dislocation": None,
+            "unexplained_dislocation_available": False,
             "contributions": contributions,
-            "model": "local normalized force-balance counterfactual",
+            "model": "normalized force-balance counterfactual without duplicated leader pressure",
+            "note": "An independent unexplained residual is not identifiable from the same evidence used to construct synthetic price.",
         }
 
     def _future_space(

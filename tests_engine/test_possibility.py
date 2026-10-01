@@ -300,3 +300,71 @@ def test_parallax_vote_is_distinct_fail_closed_research_context():
     assert vote["production_decision_authorized"] is False
     assert "latent_pressure" in vote
     assert "future_space_collapse" in vote
+
+def test_external_evidence_rejects_invalid_confidence_and_ttl():
+    engine = PossibilityEngine(Port())
+    with pytest.raises(ValueError, match="confidence"):
+        engine.ingest_external(
+            "NQ",
+            {"gamma_pressure": {"value": 0.2, "confidence": float("nan")}},
+            source="fixture",
+        )
+    with pytest.raises(ValueError, match="confidence"):
+        engine.ingest_external(
+            "NQ",
+            {"gamma_pressure": {"value": 0.2, "confidence": 1.5}},
+            source="fixture",
+        )
+    with pytest.raises(ValueError, match="ttl_seconds"):
+        engine.ingest_external(
+            "NQ",
+            {"gamma_pressure": 0.2},
+            source="fixture",
+            ttl_seconds=float("nan"),
+        )
+
+
+def test_external_evidence_ttl_is_anchored_to_observation_time():
+    engine = PossibilityEngine(Port())
+    stale = (datetime.now(timezone.utc) - timedelta(minutes=10)).isoformat()
+    with pytest.raises(ValueError, match="already stale"):
+        engine.ingest_external(
+            "NQ",
+            {"gamma_pressure": 0.2},
+            source="fixture",
+            observed_at=stale,
+            ttl_seconds=60,
+        )
+
+
+def test_synthetic_price_does_not_double_count_cross_asset_leader_pressure():
+    engine = PossibilityEngine(Port())
+    features = {
+        "cross_asset_pressure": Feature(0.8, 0.9, True, "fixture"),
+        "queue_pressure": Feature(0.4, 0.8, True, "fixture"),
+    }
+    latent, _ = _weighted(features, {"cross_asset_pressure": 1.0, "queue_pressure": 1.10})
+    positive = engine._synthetic_price(20000.0, 0.001, latent, features, {"pressure": 1.0})
+    negative = engine._synthetic_price(20000.0, 0.001, latent, features, {"pressure": -1.0})
+    assert positive["synthetic_price"] == pytest.approx(negative["synthetic_price"])
+    assert sum(positive["contributions"].values()) == pytest.approx(positive["dislocation"])
+    assert positive["known_force_contribution"] == pytest.approx(positive["dislocation"])
+    assert positive["unexplained_dislocation"] is None
+    assert positive["unexplained_dislocation_available"] is False
+
+
+def test_information_wave_does_not_double_count_leader_graph():
+    engine = PossibilityEngine(Port())
+    history = [
+        {"ret": 0.0001 + (i % 3) * 0.00001}
+        for i in range(20)
+    ]
+    micro = {
+        "repricing_pressure": Feature(0.2, 1.0, True, "fixture"),
+        "volume_pressure": Feature(0.1, 1.0, True, "fixture"),
+    }
+    positive = engine._information_wave(history, 0.0001, 0.4, 0.7, micro, {"pressure": 1.0})
+    negative = engine._information_wave(history, 0.0001, 0.4, 0.7, micro, {"pressure": -1.0})
+    assert positive["expected_return_component"] == pytest.approx(negative["expected_return_component"])
+    assert positive["score"] == pytest.approx(negative["score"])
+
