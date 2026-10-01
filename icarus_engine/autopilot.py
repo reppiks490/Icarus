@@ -63,12 +63,13 @@ class TacticalAutopilot:
 
     def _initial(self):
         return {
-            "schema": "icarus.tactical-autopilot.v1",
+            "schema": "icarus.tactical-autopilot.v2",
             "config": dict(DEFAULT_CONFIG),
             "cursor": 0,
             "asset_cursor": 0,
             "active": None,
             "champions": {},
+            "dimension_stats": {},
             "history": [],
             "last_error": None,
             "created_at": time.time(),
@@ -86,6 +87,7 @@ class TacticalAutopilot:
             return self._initial()
         state["config"] = {**DEFAULT_CONFIG, **(state.get("config") or {})}
         state.setdefault("champions", {})
+        state.setdefault("dimension_stats", {})
         state.setdefault("history", [])
         state.setdefault("cursor", 0)
         state.setdefault("asset_cursor", 0)
@@ -236,7 +238,33 @@ class TacticalAutopilot:
         if not search:
             raise ValueError("no bounded autopilot search dimensions are available")
 
-        kind, name, choices = search[cycle % len(search)]
+        stats = state.get("dimension_stats") or {}
+        explored = [
+            item for item in search
+            if int((stats.get(item[0] + ":" + item[1]) or {}).get("trials", 0)) > 0
+        ]
+        # Every third candidate is systematic exploration. The other cycles
+        # exploit dimensions that have produced robust gains, with a small UCB
+        # exploration bonus so a promising but lightly-tested dimension can
+        # re-enter the search.
+        search_mode = "explore"
+        selected = search[cycle % len(search)]
+        if cycle % 3 and explored:
+            total_trials = max(
+                1,
+                sum(int((stats.get(x[0] + ":" + x[1]) or {}).get("trials", 0)) for x in explored),
+            )
+            def tactical_value(item):
+                row = stats.get(item[0] + ":" + item[1]) or {}
+                trials = max(1, int(row.get("trials", 0)))
+                mean_gain = float(row.get("improvement_sum", 0.0)) / trials
+                win_rate = float(row.get("champion_wins", 0)) / trials
+                exploration = math.sqrt(math.log(total_trials + 1.0) / trials)
+                return mean_gain + 0.15 * win_rate + 0.20 * exploration
+            selected = max(explored, key=lambda item: (tactical_value(item), item[1]))
+            search_mode = "exploit"
+
+        kind, name, choices = selected
         current = base_inputs.get(name) if kind == "input" else (chart_type if name == "chart_type" else session)
         alternatives = [x for x in choices if x != current] or list(choices)
         choice = alternatives[(cycle // max(1, len(search))) % len(alternatives)]
@@ -255,7 +283,9 @@ class TacticalAutopilot:
             "session": session,
             "fill_on": "real",
             "delta": {"kind": kind, "name": name, "from": current, "to": choice},
-            "reason": f"bounded one-dimension search around champion: {name}",
+            "reason": f"{search_mode} bounded one-dimension search around champion: {name}",
+            "search_mode": search_mode,
+            "dimension_key": f"{kind}:{name}",
         }
 
     @staticmethod
