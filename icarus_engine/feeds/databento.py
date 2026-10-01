@@ -750,7 +750,7 @@ class Databento:
         resumed_ts = self._timestamp_sec(resumed)
         with self._lock:
             symbols = list(self._live_started)
-            permanent = self._core_broken and self._core_error_code in (1, 2, 3, 5)
+            permanent = self._core_broken and self._core_error_code in (1, 2, 3, 5, 8)
             if not permanent and previous_ts is not None and resumed_ts is not None and resumed_ts > previous_ts:
                 self._core_broken = True
                 self._core_error_code = 7
@@ -842,7 +842,7 @@ class Databento:
         resumed_ts = self._timestamp_sec(resumed)
         with self._lock:
             symbols = list(self._depth_live_symbols[schema])
-            permanent = schema in self._depth_broken and self._depth_error_code.get(schema) in (1, 2, 3, 5)
+            permanent = schema in self._depth_broken and self._depth_error_code.get(schema) in (1, 2, 3, 5, 8)
             if not permanent and previous_ts is not None and resumed_ts is not None and resumed_ts > previous_ts:
                 self._depth_broken.add(schema)
                 self._depth_error_code[schema] = 7
