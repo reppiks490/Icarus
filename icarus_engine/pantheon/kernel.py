@@ -141,6 +141,16 @@ class PantheonKernel:
         source_outputs = dict(mapping(source_outputs, "subsystem_outputs"))
         if len(source_outputs) > 64:
             raise ValueError("subsystem_outputs exceeds 64 entries")
+        claim_outcomes = payload.get("claim_outcomes", [])
+        if claim_outcomes is None:
+            claim_outcomes = []
+        if not isinstance(claim_outcomes, list) or len(claim_outcomes) > 32:
+            raise ValueError("claim_outcomes must be a list with at most 32 items")
+        clean_outcomes = []
+        for i, row in enumerate(claim_outcomes):
+            if not isinstance(row, Mapping):
+                raise ValueError(f"claim_outcomes[{i}] must be an object")
+            clean_outcomes.append(dict(row))
         normalized = {
             "schema_version": OBSERVATION_SCHEMA,
             "observed_at": observed_at,
@@ -150,6 +160,7 @@ class PantheonKernel:
             "signals": signals,
             "evidence": evidence,
             "subsystem_outputs": source_outputs,
+            "claim_outcomes": clean_outcomes,
         }
         raw = json_canonical(normalized, "observation", 262144)
         identity = digest(raw)
@@ -164,7 +175,15 @@ class PantheonKernel:
             if existing:
                 if existing["identity_hash"] != identity:
                     raise ValueError("observation_id already exists with different immutable identity")
-                return self.observation(observation_id)
+                result = self.observation(observation_id)
+                result["ecology_outcomes"] = [
+                    self.record_claim_outcome({
+                        **row,
+                        "observed_at": row.get("observed_at") or normalized["observed_at"],
+                    })
+                    for row in normalized.get("claim_outcomes", [])
+                ]
+                return result
 
         faculties = evaluate_faculties(normalized["signals"], observation_id)
         aether = self.swarm.evaluate(
@@ -300,7 +319,15 @@ class PantheonKernel:
                     now,
                 ),
             )
-        return self.observation(observation_id)
+        result = self.observation(observation_id)
+        result["ecology_outcomes"] = [
+            self.record_claim_outcome({
+                **row,
+                "observed_at": row.get("observed_at") or normalized["observed_at"],
+            })
+            for row in normalized.get("claim_outcomes", [])
+        ]
+        return result
 
     def record_claim_outcome(self, body: Mapping[str, Any]) -> dict[str, Any]:
         """Record one immutable observed claim result and update research fitness.
