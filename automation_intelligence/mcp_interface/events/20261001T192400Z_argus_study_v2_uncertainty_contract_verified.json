@@ -1,0 +1,36 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "argus-study-v2-uncertainty-contract-verified-20261001T192400Z",
+  "category": "EVOLUTION",
+  "severity": "success",
+  "status": "verified",
+  "subsystems": [
+    "argus",
+    "order_blocks",
+    "research_validation",
+    "uncertainty",
+    "provenance"
+  ],
+  "recorded_at": "2026-10-01T19:24:00Z",
+  "title": "ARGUS v2 prospective survival-uncertainty contract verified",
+  "summary": "ARGUS now preserves exact v1 prospective study semantics for historical replay while adding argus-orderblock-study-v2. V2 content-addresses confidence_alpha before the cohort begins, can predeclare kaplan_meier_uncertainty, and requires registered uncertainty analysis to use that exact alpha. V1 cannot silently acquire uncertainty analysis or alpha, and tampering with the v2 confidence policy breaks manifest identity.",
+  "source_repository": "reppiks490/divine-providence",
+  "source_ref": "main",
+  "source_commit": "01b1e3859d4bd22002a786176b73eaab2b569bde",
+  "evidence": [
+    "divine-providence PR #22 merged at 01b1e3859d4bd22002a786176b73eaab2b569bde",
+    "exact-head subsystem-evolution workflow run 36913659455 completed success",
+    "Linux and Windows ARGUS causal subsystem jobs passed",
+    "intelligence-fabric job passed",
+    "full twelve-system validation passed",
+    "argus-orderblock-study-v1 payload/ID semantics remain preserved",
+    "argus-orderblock-study-v2 content-addresses confidence_alpha",
+    "registered kaplan_meier_uncertainty must use predeclared alpha",
+    "v1 cannot silently acquire v2 uncertainty policy",
+    "tampered v2 alpha invalidates manifest identity",
+    "execution_authorized=false",
+    "production_decision_authorized=false"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}
