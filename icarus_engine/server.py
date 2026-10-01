@@ -78,6 +78,7 @@ from .dreamstate import DreamstateLab
 from .possibility import PossibilityEngine
 from .autopilot import TacticalAutopilot
 from .engine_control import ControlAction, EngineControlPlane
+from .mcp_control import MCPControlPlane
 
 
 def _no_json_constants(name: str):
@@ -139,6 +140,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     autopilot = TacticalAutopilot(port)
     parallax = ParallaxStore(port.base_dir)
     dreamstate = DreamstateLab(port.base_dir, parallax=parallax)
+    mcp_control = MCPControlPlane(port.base_dir)
 
     def _control_runner(target: str):
         try:
