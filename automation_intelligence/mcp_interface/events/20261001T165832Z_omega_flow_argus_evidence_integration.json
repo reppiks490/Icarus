@@ -1,0 +1,46 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "omega-integration-20261001T165832Z",
+  "category": "INTEGRATION",
+  "severity": "warn",
+  "status": "qualified",
+  "subsystems": [
+    "athena",
+    "janus",
+    "infrastructure",
+    "argus",
+    "data",
+    "provenance"
+  ],
+  "recorded_at": "2026-10-01T16:58:32Z",
+  "title": "OMEGA qualifies Flow with ARGUS evidence-tier firewall",
+  "summary": "OMEGA reconciled the latest Flow audit with newly verified ARGUS liquidity/trade-flow capabilities. Bybit spot and linear agree that BTC 15:00 UTC range contracted versus the prior hour, while Twelve Data reports an uncorroborated 84,744 high and 912.01 range; that provider conflict remains quarantined. ARGUS now supplies causal TRUE_DEPTH liquidity dynamics and evidence-tiered trade-flow dynamics, but those capabilities do not retroactively validate this Flow snapshot or authorize execution. Highest-value target: route future Flow observations through ARGUS evidence tiers and provenance so TRUE_DEPTH/TRUE_TRADE evidence is distinguished from inferred/provider-conflicted evidence before synthesis.",
+  "source_repository": "reppiks490/Icarus",
+  "source_ref": "main",
+  "source_commit": "a3dcffdca1dad89fbf9a9d406f0a7443e0c9c46d",
+  "evidence": [
+    "Flow event automation_intelligence/mcp_interface/events/20261001T162127Z_flow_velocity_audit.json: Bybit spot 15:00 range 533.7 USD vs prior 793.7; linear 545.7 vs prior 802.7; Twelve Data 15:00 range 912.01 with high 84,744, explicitly quarantined.",
+    "ARGUS liquidity event automation_intelligence/mcp_interface/events/20261001T160031Z_argus_liquidity_dynamics_verified.json: deterministic TRUE_DEPTH persistence/replenishment/cancellation/centroid/concentration with fail-closed validation.",
+    "ARGUS flow event automation_intelligence/mcp_interface/events/20261001T164714Z_argus_flow_dynamics_verified.json: TRUE_TRADE requires explicit aggressor side; tick-rule inference downgrades the whole result to INFERRED_TRADE.",
+    "Latest inspected main includes ARGUS UI/MCP surfacing and PANTHEON ECHO merge through a3dcffdca1dad89fbf9a9d406f0a7443e0c9c46d.",
+    "execution_authorized=false"
+  ],
+  "athena": {
+    "status": "ACTIONABLE",
+    "finding": "Treat the unresolved Twelve Data/Bybit disagreement as elevated epistemic uncertainty; do not promote the BTC normalization observation beyond qualified research evidence."
+  },
+  "janus": {
+    "status": "ACTIONABLE",
+    "finding": "Reconcile future Flow claims by evidence class: provider-conflicted snapshots, TRUE_DEPTH, TRUE_TRADE, and INFERRED_TRADE must remain distinct until provenance-compatible fusion."
+  },
+  "infrastructure": {
+    "status": "VERIFIED",
+    "finding": "The repository-native MCP feed contract is present on main and ARGUS liquidity/trade-flow evolution receipts are already surfaced through immutable events."
+  },
+  "helios_prime": {
+    "status": "ACTIONABLE",
+    "finding": "Highest-value cross-system bridge is Flow -> ARGUS evidence-tier/provenance qualification -> OMEGA synthesis, preserving fail-closed semantics and no execution authority."
+  },
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}
