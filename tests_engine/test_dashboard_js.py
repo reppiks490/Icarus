@@ -183,3 +183,25 @@ def test_dashboard_surfaces_authenticated_engine_control_panel():
     assert "RESET ASSET CONFIG" in server
     assert "RESET AUTOPILOT" in server
     assert "STOP ALL INTELLIGENCE SYNCS" in server
+
+
+def test_dashboard_surfaces_tactical_autopilot_and_root_engine_control():
+    dashboard = (REPO / "icarus_engine/dashboard.html").read_text(encoding="utf-8")
+    autopilot = (REPO / "icarus_engine/autopilot-ui.js").read_text(encoding="utf-8")
+    control = (REPO / "icarus_engine/engine-control-ui.js").read_text(encoding="utf-8")
+    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
+    assert '/autopilot-ui.js' in dashboard
+    assert 'data-v="autopilot">Tactical Autopilot</span>' in dashboard
+    assert "wireAutopilot()" in dashboard
+    assert '/engine-control-ui.js' in dashboard
+    assert 'data-v="engine-control">Engine Control</span>' in dashboard
+    assert "wireEngineControl()" in dashboard
+    assert "/api/autopilot" in autopilot
+    assert "robustness_windows" in autopilot
+    assert "Tactical learning map" in autopilot
+    assert "/api/engine-control" in control
+    assert "Tactical Autopilot" in control
+    assert 'p.path == "/api/autopilot"' in server
+    assert 'p.path == "/api/engine-control"' in server
+    assert 'ControlAction("autopilot.configure"' in server
+    assert '"autopilot": autopilot.status' in server
