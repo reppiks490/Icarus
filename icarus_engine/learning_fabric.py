@@ -215,6 +215,11 @@ class LearningFabric:
                     status TEXT NOT NULL,
                     summary_json TEXT NOT NULL
                 );
+                CREATE TABLE IF NOT EXISTS harvest_cursors (
+                    adapter TEXT PRIMARY KEY,
+                    cursor_json TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                );
                 """
             )
 
@@ -284,7 +289,7 @@ class LearningFabric:
         return self.status()
 
     def bind_native(self, **engines: Any) -> None:
-        allowed = {"sibyl", "commissioning", "parallax", "dreamstate", "pantheon", "apex", "possibility", "chronofold"}
+        allowed = {"sibyl", "commissioning", "parallax", "dreamstate", "pantheon", "apex", "possibility", "chronofold", "performance_proof", "source_reliability"}
         unknown = set(engines) - allowed
         if unknown:
             raise ValueError("unsupported native learning adapters: " + ", ".join(sorted(unknown)))
@@ -909,6 +914,148 @@ class LearningFabric:
             outcomes_imported += int(not result["idempotent"])
         return {"status": "ok", "forecasts_imported": forecasts_imported, "outcomes_imported": outcomes_imported}
 
+    def _harvest_cursor(self, adapter: str) -> dict[str, Any] | None:
+        row = self._conn.execute(
+            "SELECT cursor_json FROM harvest_cursors WHERE adapter=?",
+            (adapter,),
+        ).fetchone()
+        if row is None:
+            return None
+        value = json.loads(row["cursor_json"])
+        return value if isinstance(value, dict) else None
+
+    def _set_harvest_cursor(self, adapter: str, cursor: Mapping[str, Any]) -> None:
+        payload = dict(cursor)
+        _json(payload, "harvest cursor")
+        with self._lock, self._conn:
+            self._conn.execute(
+                "INSERT INTO harvest_cursors(adapter,cursor_json,updated_at) VALUES(?,?,?) "
+                "ON CONFLICT(adapter) DO UPDATE SET cursor_json=excluded.cursor_json, updated_at=excluded.updated_at",
+                (adapter, _json(payload, "harvest cursor"), _utc_now()),
+            )
+
+    def _harvest_performance_proof(self) -> dict[str, Any]:
+        """Incrementally fuse immutable proof outcomes into the common ledger."""
+        engine = self._native.get("performance_proof")
+        if engine is None or not hasattr(engine, "settled_records"):
+            return {"status": "unavailable", "forecasts_imported": 0, "outcomes_imported": 0}
+        cursor = self._harvest_cursor("performance_proof")
+        request: dict[str, Any] = {"limit": 1000}
+        if cursor:
+            request["after_observed_at"] = cursor.get("observed_at")
+            request["after_forecast_id"] = cursor.get("forecast_id")
+        try:
+            export = engine.settled_records(**request)
+        except Exception as ex:
+            return {
+                "status": "degraded",
+                "forecasts_imported": 0,
+                "outcomes_imported": 0,
+                "cursor": cursor,
+                "error": f"{type(ex).__name__}: {ex}"[:500],
+            }
+
+        forecasts_imported = 0
+        outcomes_imported = 0
+        processed = 0
+        errors: dict[str, str] = {}
+        last_success = cursor
+        for row in export.get("items", []) if isinstance(export, Mapping) else []:
+            if not isinstance(row, Mapping):
+                continue
+            native_id = str(row.get("forecast_id") or "")
+            try:
+                decision = _parse_time(row.get("decision_at"), "decision_at")
+                maturity = _parse_time(row.get("matures_at"), "matures_at")
+                horizon = int((maturity - decision).total_seconds())
+                if horizon <= 0:
+                    raise ValueError("performance-proof horizon must be positive")
+                candidate_id = _text(row.get("candidate_id"), "candidate_id", 180)
+                candidate_token = hashlib.sha256(candidate_id.encode("utf-8")).hexdigest()[:16]
+                prediction = self.record_prediction({
+                    "producer": f"performance-proof:{candidate_token}",
+                    "asset": row.get("asset"),
+                    "target": "event",
+                    "prediction": True,
+                    "probability": row.get("probability_success"),
+                    "emitted_at": _iso(decision),
+                    "horizon_seconds": horizon,
+                    "regime": str(row.get("regime") or "unknown").lower(),
+                    "evidence_ids": [
+                        f"performance-proof:{native_id}",
+                        f"dataset:{row.get('dataset_hash')}",
+                        f"evidence:{row.get('evidence_hash')}",
+                    ],
+                    "source_commit": row.get("source_commit"),
+                    "metadata": {
+                        "native_engine": "performance_proof",
+                        "native_forecast_id": native_id,
+                        "candidate_id": candidate_id,
+                        "success_definition": row.get("success_definition"),
+                        "source_repo": row.get("source_repo"),
+                    },
+                })
+                forecasts_imported += int(not prediction["idempotent"])
+                outcome = self.record_outcome({
+                    "prediction_id": prediction["prediction"]["prediction_id"],
+                    "observed_at": row.get("observed_at"),
+                    "actual_value": bool(row.get("success")),
+                    "evidence": [f"performance-proof-outcome:{row.get('outcome_hash')}"],
+                    "metadata": {
+                        "native_engine": "performance_proof",
+                        "native_forecast_id": native_id,
+                        "realized_value": row.get("realized_value"),
+                        "source": row.get("source"),
+                    },
+                })
+                outcomes_imported += int(not outcome["idempotent"])
+                processed += 1
+                last_success = {
+                    "observed_at": row.get("observed_at"),
+                    "forecast_id": native_id,
+                }
+            except Exception as ex:
+                errors[native_id or "unknown"] = f"{type(ex).__name__}: {ex}"[:500]
+                break
+
+        if last_success and last_success != cursor:
+            self._set_harvest_cursor("performance_proof", last_success)
+        available = int(export.get("total") or 0) if isinstance(export, Mapping) else 0
+        return {
+            "status": "ok" if not errors else "partial",
+            "forecasts_imported": forecasts_imported,
+            "outcomes_imported": outcomes_imported,
+            "processed": processed,
+            "settled_available_after_cursor": available,
+            "backlog_remaining": max(0, available - processed),
+            "cursor": last_success,
+            "batch_limit": 1000,
+            "errors": errors,
+        }
+
+    def _harvest_source_reliability(self) -> dict[str, Any]:
+        """Surface observed source quality without pretending it is model accuracy."""
+        engine = self._native.get("source_reliability")
+        if engine is None or not hasattr(engine, "snapshot"):
+            return {"status": "unavailable", "observation_count": 0, "source_stream_count": 0, "sources": []}
+        try:
+            snap = engine.snapshot()
+            return {
+                "status": "ok",
+                "observation_count": int(snap.get("observation_count") or 0),
+                "source_stream_count": int(snap.get("source_stream_count") or 0),
+                "sources": list(snap.get("sources") or []),
+                "rule": snap.get("rule"),
+            }
+        except Exception as ex:
+            return {
+                "status": "degraded",
+                "observation_count": 0,
+                "source_stream_count": 0,
+                "sources": [],
+                "error": f"{type(ex).__name__}: {ex}"[:500],
+            }
+
     def _harvest_commissioning_metrics(self) -> dict[str, Any]:
         engine = self._native.get("commissioning")
         if engine is None:
@@ -936,6 +1083,8 @@ class LearningFabric:
 
     def harvest_native(self) -> dict[str, Any]:
         out = {"sibyl": self._harvest_sibyl()}
+        out["performance_proof"] = self._harvest_performance_proof()
+        out["source_reliability"] = self._harvest_source_reliability()
         out["commissioning"] = self._harvest_commissioning_metrics()
         for name in ("parallax", "dreamstate", "pantheon"):
             metric = self._harvest_snapshot_metric(name)
@@ -1125,11 +1274,15 @@ class LearningFabric:
             "coverage": {
                 "historical_trainers": "protected_replay",
                 "sibyl": "native_prediction_outcome",
+                "performance_proof": "native_immutable_forecast_outcome",
+                "source_reliability": "native_observed_quality_context",
                 "commissioning_chronofold": "native_metrics_and_existing_outcomes",
                 "parallax": "native_regret_metrics",
                 "dreamstate": "native_candidate_lifecycle",
                 "pantheon": "native_research_metrics",
                 "apex": "empirical_credibility_feedback",
+                "performance_proof": "native_immutable_forecast_outcome",
+                "source_reliability": "native_observed_quality_context",
                 "possibility": "forecast_contract_required",
                 "chronofold": "calibrated_via_commissioning",
             },

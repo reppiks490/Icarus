@@ -232,6 +232,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
         apex=apex,
         possibility=possibility,
         chronofold=chronofold,
+        performance_proof=performance_proof,
+        source_reliability=source_reliability,
     )
 
     def _control_runner(target: str):
@@ -1255,6 +1257,11 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             if p.path == "/admin/learning/config":
                 try:
                     return self._json(200, research.configure_learning(body))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+            if p.path == "/admin/learning/tick":
+                try:
+                    return self._json(200, learning.tick())
                 except (ValueError, TypeError) as ex:
                     return self._json(400, {"detail": str(ex)})
             if p.path == "/admin/learning/prediction":

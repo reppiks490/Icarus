@@ -781,6 +781,12 @@ def backfill_engine_learning_dataset(dataset_id: str, slots: str = "logit") -> d
     return _safe_engine(lambda: _engine_post("/admin/learning/backfill", {"dataset_id": did, "slots": parsed}))
 
 
+@mcp.tool()
+def run_engine_learning_cycle() -> dict:
+    """Run one bounded research-only learning/harvest/replay cycle immediately."""
+    return _safe_engine(lambda: _engine_post("/admin/learning/tick", {}))
+
+
 # ── APEX Ω research / world-intelligence tools ──
 def _apex_route(path: str, *, asset: str = "", as_of: str = "") -> str:
     params = []

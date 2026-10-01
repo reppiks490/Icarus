@@ -307,6 +307,83 @@ class PerformanceProofStore:
             "rule": "Backlog items are matured forecasts awaiting observed outcomes; no outcome is inferred or synthesized.",
         }
 
+    def settled_records(
+        self,
+        *,
+        as_of: str | None = None,
+        limit: int = 10000,
+        after_observed_at: str | None = None,
+        after_forecast_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Return immutable source-bound forecast/outcome pairs for empirical learning.
+
+        Pagination uses the stable tuple (observed_at, forecast_id), so a learner
+        can advance monotonically without rescanning the full proof ledger.
+        """
+        if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 10000:
+            raise ValueError("limit must be an integer within [1,10000]")
+        cutoff = _iso(as_of, "as_of") if as_of is not None else _now().isoformat().replace("+00:00", "Z")
+        if (after_observed_at is None) != (after_forecast_id is None):
+            raise ValueError("after_observed_at and after_forecast_id must be supplied together")
+        cursor_time = _iso(after_observed_at, "after_observed_at") if after_observed_at is not None else None
+        cursor_id = _sha(after_forecast_id, "after_forecast_id") if after_forecast_id is not None else None
+
+        where = "f.matures_at <= ? AND o.observed_at <= ?"
+        params: list[Any] = [cutoff, cutoff]
+        if cursor_time is not None:
+            where += " AND (o.observed_at > ? OR (o.observed_at = ? AND f.forecast_id > ?))"
+            params.extend([cursor_time, cursor_time, cursor_id])
+        with self._lock, self._connect() as con:
+            rows = [dict(x) for x in con.execute(
+                "SELECT f.*, o.observed_at, o.success, o.realized_value, o.outcome_hash, o.source "
+                "FROM forecasts f JOIN outcomes o ON o.forecast_id=f.forecast_id "
+                f"WHERE {where} ORDER BY o.observed_at, f.forecast_id LIMIT ?",
+                (*params, limit),
+            ).fetchall()]
+            total = int(con.execute(
+                "SELECT COUNT(*) FROM forecasts f JOIN outcomes o ON o.forecast_id=f.forecast_id "
+                f"WHERE {where}",
+                tuple(params),
+            ).fetchone()[0])
+        items = []
+        for row in rows:
+            items.append({
+                "forecast_id": row["forecast_id"],
+                "candidate_id": row["candidate_id"],
+                "asset": row["asset"],
+                "regime": row["regime"],
+                "decision_at": row["decision_at"],
+                "matures_at": row["matures_at"],
+                "probability_success": row["probability_success"],
+                "success_definition": row["success_definition"],
+                "source_repo": row["source_repo"],
+                "source_commit": row["source_commit"],
+                "dataset_hash": row["dataset_hash"],
+                "evidence_hash": row["evidence_hash"],
+                "observed_at": row["observed_at"],
+                "success": bool(row["success"]),
+                "realized_value": row["realized_value"],
+                "outcome_hash": row["outcome_hash"],
+                "source": row["source"],
+            })
+        next_cursor = None
+        if items:
+            next_cursor = {
+                "observed_at": items[-1]["observed_at"],
+                "forecast_id": items[-1]["forecast_id"],
+            }
+        return {
+            "schema_version": "icarus-performance-settled-records-v1",
+            "as_of": cutoff,
+            "total": total,
+            "returned": len(items),
+            "next_cursor": next_cursor,
+            "items": items,
+            "execution_authorized": False,
+            "production_decision_authorized": False,
+            "rule": "Only already-settled immutable forecast/outcome pairs are exported; no missing result is synthesized.",
+        }
+
     @staticmethod
     def _calibration(rows: list[Mapping[str, Any]]) -> tuple[float | None, list[dict[str, Any]]]:
         if not rows:
