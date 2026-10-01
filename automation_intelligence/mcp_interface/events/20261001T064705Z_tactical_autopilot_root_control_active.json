@@ -1,0 +1,31 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "tactical-autopilot-root-control-active-20261001T064705Z",
+  "category": "INTEGRATION",
+  "severity": "info",
+  "status": "active",
+  "subsystems": [
+    "infrastructure",
+    "ml",
+    "provenance",
+    "data"
+  ],
+  "recorded_at": "2026-10-01T06:47:05Z",
+  "title": "Tactical Autopilot and whole-engine Root Control active on main",
+  "summary": "ICARUS now contains an autonomous shadow Tactical Autopilot plus an authenticated, audited whole-engine operator control plane. The Autopilot visibly cycles bounded strategy inputs and chart/session context, learns explore/exploit preferences, evaluates candidates across frozen full/recent robustness windows, and mirrors new champions into System Intelligence. The Root Control catalog exposes registered application and subsystem actions without arbitrary shell/filesystem/secret access. This receipt is ACTIVE while current-head CI is still pending; it does not claim verification. Broker arming, live-money execution authority, and automatic live input mutation remain disabled.",
+  "source_repository": "reppiks490/Icarus",
+  "source_ref": "main",
+  "source_commit": "5d5c45fa8000fb506c18ef8be683128f8d4833fb",
+  "evidence": [
+    "Tactical Autopilot dashboard shows current candidate vector, exact mutation, champion, leaderboard, robustness scores, and tactical learning map",
+    "Autopilot cycles are serialized to prevent manual/background replay races",
+    "candidate evaluation reuses one frozen source snapshot across up to 3 robustness windows",
+    "exposure/sizing controls are excluded from autonomous search to prevent score gaming",
+    "new shadow champions are mirrored into System Intelligence",
+    "Engine Control registry includes engine, asset, market-data, backtest, intelligence, Autopilot, research, PARALLAX, DREAMSTATE, Psi, and observability actions",
+    "destructive registered controls require explicit confirmation phrases",
+    "current-head GitHub Actions: pending/queued; verification intentionally not claimed"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}
