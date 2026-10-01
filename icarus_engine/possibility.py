@@ -1464,14 +1464,44 @@ class PossibilityEngine:
         drift = step_sigma * 0.50 * latent * (0.45 + 0.55 * coverage)
         mean_revert = max(0.0, 0.55 - regime_strength) * 0.14
 
+        completed_returns = [
+            float(row["ret"])
+            for row in list(self._history.get(symbol, ()))[-240:]
+            if _finite(row.get("ret")) is not None
+        ]
+        empirical_mean = _mean(completed_returns) if completed_returns else 0.0
+        empirical_vol = _stdev(completed_returns)
+        empirical_shocks = (
+            [_clamp((ret - empirical_mean) / max(empirical_vol, 1e-7), -4.0, 4.0) for ret in completed_returns]
+            if len(completed_returns) >= 20 and empirical_vol > 1e-9
+            else []
+        )
+        shock_model = "empirical_block_bootstrap" if empirical_shocks else "low_discrepancy_gaussian_fallback"
+        empirical_tail_ratio = (
+            sum(1 for shock in empirical_shocks if abs(shock) >= 2.0) / len(empirical_shocks)
+            if empirical_shocks else None
+        )
+
         generated = self.scenarios
         viable: list[tuple[float, float]] = []
         for i in range(1, generated + 1):
             px = price
             weight = 1.0
+            block_start = (
+                int(_radical_inverse(i, 2) * len(empirical_shocks)) % len(empirical_shocks)
+                if empirical_shocks else 0
+            )
             for step in range(1, 7):
-                shock = _normalish(i + step * generated, 2 + (step % 3), 5 + (step % 2))
-                shock = _clamp(shock, -2.8, 2.8)
+                gaussian = _clamp(
+                    _normalish(i + step * generated, 2 + (step % 3), 5 + (step % 2)),
+                    -4.0,
+                    4.0,
+                )
+                if empirical_shocks:
+                    empirical = empirical_shocks[(block_start + step - 1) % len(empirical_shocks)]
+                    shock = _clamp(0.85 * empirical + 0.15 * gaussian, -4.0, 4.0)
+                else:
+                    shock = _clamp(gaussian, -2.8, 2.8)
                 pull = (price - px) * mean_revert
                 liquidity_asym = latent * abs(shock) * step_sigma * 0.08
                 px += drift + shock * step_sigma * 0.72 + pull + liquidity_asym
@@ -1540,9 +1570,17 @@ class PossibilityEngine:
                 1.0,
             ),
             "reliability_note": "Heuristic support diagnostic from evidence coverage, effective scenario mass, and completed history; not a calibrated forecast confidence.",
+            "shock_model": shock_model,
+            "empirical_sample_count": len(completed_returns),
+            "empirical_tail_ratio": empirical_tail_ratio,
+            "empirical_return_mean": empirical_mean if completed_returns else None,
+            "empirical_return_vol": empirical_vol if completed_returns else None,
             "horizon_steps": 6,
             "step_sigma": step_sigma,
-            "model_note": "Deterministic constraint-aware scenario lattice; cluster shares are not calibrated probabilities.",
+            "model_note": (
+                "Deterministic constraint-aware scenario lattice using contiguous empirical completed-bar shock blocks "
+                "plus bounded low-discrepancy jitter when enough history exists; cluster shares are not calibrated probabilities."
+            ),
         }
 
     def _phase_boundary(
@@ -1554,7 +1592,13 @@ class PossibilityEngine:
         features: Mapping[str, Feature],
     ) -> dict[str, Any]:
         if latent is None:
-            return {"available": False, "phase_boundary": None, "event_horizon": None, "direction": None}
+            return {
+                "available": False,
+                "phase_boundary": None,
+                "event_horizon": None,
+                "direction": None,
+                "note": "Latent pressure is unavailable.",
+            }
         if abs(latent) < 1e-12:
             return {
                 "available": False,
@@ -1563,25 +1607,80 @@ class PossibilityEngine:
                 "direction": "NEUTRAL",
                 "note": "No directional phase boundary is emitted from exactly neutral latent pressure.",
             }
+
         direction = 1.0 if latent > 0 else -1.0
-        sigma = _finite(futures.get("step_sigma")) or max(price * vol, price * 0.00004)
+        reliability = _finite(futures.get("reliability")) or 0.0
+        if reliability < 0.25:
+            return {
+                "available": False,
+                "phase_boundary": None,
+                "event_horizon": None,
+                "direction": "UP" if direction > 0 else "DOWN",
+                "scenario_reliability": reliability,
+                "note": "Scenario support is too weak to emit a phase boundary.",
+            }
+
+        if direction > 0:
+            boundary_ret = _finite(futures.get("endpoint_return_p75"))
+            horizon_ret = _finite(futures.get("endpoint_return_p90"))
+            supported = (
+                boundary_ret is not None and horizon_ret is not None
+                and boundary_ret > 0 and horizon_ret >= boundary_ret
+            )
+        else:
+            boundary_ret = _finite(futures.get("endpoint_return_p25"))
+            horizon_ret = _finite(futures.get("endpoint_return_p10"))
+            supported = (
+                boundary_ret is not None and horizon_ret is not None
+                and boundary_ret < 0 and horizon_ret <= boundary_ret
+            )
+
+        if not supported:
+            return {
+                "available": False,
+                "phase_boundary": None,
+                "event_horizon": None,
+                "direction": "UP" if direction > 0 else "DOWN",
+                "scenario_reliability": reliability,
+                "boundary_return_quantile": boundary_ret,
+                "horizon_return_quantile": horizon_ret,
+                "note": "The weighted scenario endpoint distribution does not support a same-direction phase boundary.",
+            }
+
+        boundary = price * (1.0 + float(boundary_ret))
+        horizon = price * (1.0 + float(horizon_ret))
         collapse = (_finite(futures.get("future_space_collapse")) or 0.0) / 100.0
-        distance = sigma * (1.6 - 0.7 * collapse)
-        boundary = price + direction * distance
-        horizon = boundary + direction * sigma * (0.35 + 0.35 * collapse)
         mechanisms = []
-        for name, f in features.items():
-            if f.available and f.value is not None and f.value * direction > 0.15 and f.confidence >= 0.35:
+        for name, feature in features.items():
+            if (
+                feature.available
+                and feature.value is not None
+                and feature.value * direction > 0.15
+                and feature.confidence >= 0.35
+            ):
                 mechanisms.append(name)
+
+        persistence = _clamp(
+            0.20
+            + 0.35 * collapse
+            + 0.25 * reliability
+            + min(0.20, len(mechanisms) * 0.04),
+            0.0,
+            0.95,
+        )
         return {
             "available": True,
             "direction": "UP" if direction > 0 else "DOWN",
             "phase_boundary": boundary,
             "event_horizon": horizon,
             "distance_to_boundary": abs(boundary - price),
+            "boundary_return_quantile": boundary_ret,
+            "horizon_return_quantile": horizon_ret,
+            "scenario_reliability": reliability,
             "aligned_mechanisms": mechanisms,
-            "persistence_model": _clamp(0.35 + collapse * 0.45 + min(0.2, len(mechanisms) * 0.04), 0.0, 0.95),
-            "note": "Research phase-transition threshold; not an exchange-native trigger unless a listed mechanism is directly observed.",
+            "persistence_model": persistence,
+            "calibrated": False,
+            "note": "Scenario-quantile research threshold; not an exchange-native trigger and not a calibrated transition probability.",
         }
 
     def _forced_consensus(self, features: Mapping[str, Feature]) -> dict[str, Any]:
