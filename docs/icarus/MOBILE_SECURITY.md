@@ -37,3 +37,8 @@ If remote access is not required, a private overlay network or device VPN is pre
 ## Push notifications
 
 Push tokens are registered only after explicit OS permission and device opt-in. They are stored inside the mode-0600 gateway device registry and removed on unregister/revocation. Push messages are limited to transition-based system-health alerts; unchanged snapshots do not generate repeat notifications. The Expo access token, when enabled for hardened push-service access, is supplied through `EXPO_ACCESS_TOKEN` and is never stored in the repository.
+
+
+## Gateway receipts
+
+Pairing, session rotation, device revocation, notification registration, and mobile backtest launches create secret-free append-only receipts in `$ICARUS_HOME/mobile_gateway/audit.jsonl`. The file is best-effort mode 0600 and rotates locally when it reaches its size ceiling. Refresh credentials, pairing secrets, admin tokens, and push tokens are never written to this audit log.

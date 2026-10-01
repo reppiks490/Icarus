@@ -6,11 +6,21 @@ import urllib.request
 
 import pytest
 
+from icarus_mobile_gateway.audit import GatewayAuditLog
 from icarus_mobile_gateway.auth import AuthError, SessionSigner
 from icarus_mobile_gateway.proxy import UpstreamClient, UpstreamError
 from icarus_mobile_gateway.push import system_alerts, validate_push_token
 from icarus_mobile_gateway.server import make_server
 from icarus_mobile_gateway.store import DeviceStore
+
+
+def test_gateway_audit_log_records_secret_free_receipts(tmp_path):
+    log = GatewayAuditLog(tmp_path / "audit.jsonl", max_bytes=65536)
+    log.record("backtest_start", device_id="device-1", metadata={"asset": "NQ", "session": "rth"})
+    rows = log.tail()
+    assert rows[-1]["event"] == "backtest_start"
+    assert rows[-1]["device_id"] == "device-1"
+    assert rows[-1]["metadata"]["asset"] == "NQ"
 
 
 def test_session_signer_rejects_tamper_and_expiry():
@@ -133,6 +143,9 @@ def test_gateway_pair_refresh_read_and_revoke(tmp_path):
     try:
         code, health = _request(base + "/healthz")
         assert code == 200 and health["upstream_ok"] is True
+        assert health["api_version"] == 1
+        assert health["execution_mutations"] is False
+        assert "backtest" in health["capabilities"]
 
         code, denied = _request(base + "/v1/status")
         assert code == 401

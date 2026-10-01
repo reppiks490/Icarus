@@ -58,3 +58,8 @@ The app can also revoke its own current credential.
 ## Remaining release dependencies
 
 A store-signed install still requires the operator's Apple/Google developer credentials and the final public/private gateway hostname. Those credentials are deliberately not committed or requested by the codebase.
+
+
+## Compatibility
+
+The app requires the ICARUS Mobile API v1 health contract and verifies that trade-state mutations are disabled before pairing. Windows launch instructions: [../docs/icarus/MOBILE_WINDOWS.md](../docs/icarus/MOBILE_WINDOWS.md).
