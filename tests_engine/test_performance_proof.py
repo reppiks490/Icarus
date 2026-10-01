@@ -210,3 +210,34 @@ def test_pending_settlement_limit_validation(tmp_path):
     store = PerformanceProofStore(tmp_path)
     with pytest.raises(ValueError, match="limit"):
         store.pending_settlements(limit=0)
+
+
+def test_settled_records_exposes_source_bound_forecast_outcome_pairs(tmp_path):
+    store = PerformanceProofStore(tmp_path)
+    body = _forecast(7, candidate="candidate-alpha", regime="VOLATILE")
+    rec = store.register_forecast(body)
+    _, _, observed = _times(7)
+    store.record_outcome({
+        "forecast_id": rec["forecast_id"],
+        "observed_at": observed,
+        "success": False,
+        "realized_value": -2.5,
+        "outcome_hash": "e" * 64,
+        "source": "observed fixture",
+    })
+
+    rows = store.settled_records()
+    assert rows["returned"] == 1
+    item = rows["items"][0]
+    assert item["forecast_id"] == rec["forecast_id"]
+    assert item["candidate_id"] == "candidate-alpha"
+    assert item["asset"] == "NQ"
+    assert item["regime"] == "VOLATILE"
+    assert item["probability_success"] == 0.8
+    assert item["success"] is False
+    assert item["realized_value"] == -2.5
+    assert item["source_commit"] == "a" * 40
+    assert item["dataset_hash"] == body["dataset_hash"]
+    assert item["evidence_hash"] == body["evidence_hash"]
+    assert rows["execution_authorized"] is False
+    assert rows["production_decision_authorized"] is False
