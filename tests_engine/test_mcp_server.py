@@ -24,6 +24,11 @@ def test_mcp_server_imports_and_registers_engine_surface():
         "record_engine_integrity_event",
         "engine_brain_state",
         "record_engine_brain_event",
+        "engine_performance_proof",
+        "record_engine_performance_forecast",
+        "record_engine_performance_outcome",
+        "record_engine_replay_proof",
+        "engine_latency_telemetry",
         "engine_possibility_state",
         "record_engine_possibility_evidence",
     ):
@@ -325,3 +330,63 @@ def test_mcp_icarus_psi_routes_are_research_only(monkeypatch):
 def test_mcp_icarus_psi_rejects_non_object_evidence_json():
     assert "error" in mcp_server.record_engine_possibility_evidence("NQ", "fixture", "[]")
     assert "error" in mcp_server.record_engine_possibility_evidence("NQ", "fixture", "{bad")
+
+def test_mcp_performance_proof_and_latency_routes(monkeypatch):
+    seen = []
+
+    def get(path):
+        seen.append(("get", path))
+        return {"ok": True}
+
+    def post(path, body):
+        seen.append(("post", path, body))
+        return {"ok": True, "execution_authorized": False, "production_decision_authorized": False}
+
+    monkeypatch.setattr(mcp_server, "_engine_get", get)
+    monkeypatch.setattr(mcp_server, "_engine_post", post)
+
+    assert mcp_server.engine_performance_proof() == {"ok": True}
+    assert mcp_server.engine_latency_telemetry() == {"ok": True}
+
+    forecast = mcp_server.record_engine_performance_forecast(
+        candidate_id="nq-trend-v1",
+        asset="nq",
+        regime="STRONG",
+        decision_at="2026-10-01T12:00:00Z",
+        matures_at="2026-10-01T12:05:00Z",
+        probability_success=0.8,
+        success_definition="positive net outcome after configured costs",
+        source_repo="reppiks490/Icarus",
+        source_commit="a" * 40,
+        dataset_hash="b" * 64,
+        evidence_hash="c" * 64,
+    )
+    assert forecast["execution_authorized"] is False
+
+    outcome = mcp_server.record_engine_performance_outcome(
+        forecast_id="d" * 64,
+        observed_at="2026-10-01T12:05:01Z",
+        success=True,
+        realized_value=1.25,
+        outcome_hash="e" * 64,
+        source="unit-test",
+    )
+    assert outcome["production_decision_authorized"] is False
+
+    replay = mcp_server.record_engine_replay_proof(
+        subject="nq-trend-v1",
+        source_commit="a" * 40,
+        input_hash="f" * 64,
+        first_output_hash="1" * 64,
+        second_output_hash="1" * 64,
+        observed_at="2026-10-01T12:06:00Z",
+    )
+    assert replay["execution_authorized"] is False
+
+    assert seen[0] == ("get", "/api/performance-proof")
+    assert seen[1] == ("get", "/api/latency")
+    assert seen[2][0:2] == ("post", "/admin/performance-proof/forecast")
+    assert seen[2][2]["asset"] == "nq"
+    assert seen[3][0:2] == ("post", "/admin/performance-proof/outcome")
+    assert seen[3][2]["success"] is True
+    assert seen[4][0:2] == ("post", "/admin/performance-proof/replay")
