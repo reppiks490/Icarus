@@ -223,9 +223,11 @@ def test_existing_research_subsystems_are_compacted_without_authority():
                 {"candidate_id": "c1", "family_id": "f1", "stage": "proposed", "asset": "NQ", "regime": "trend", "secret": "not copied"}
             ],
         },
-        existing={"oracle": {"latent_pressure": 0.5}},
+        existing={"oracle": {"latent_pressure": 0.5}, "custom": {"preserved": True}},
     )
-    assert out["oracle"]["latent_pressure"] == 0.5
+    assert out["oracle"]["status"] == "unavailable"
+    assert out["oracle"]["latent_pressure"] is None
+    assert out["custom"]["preserved"] is True
     assert out["parallax"]["counts"]["decisions"] == 4
     assert len(out["parallax"]["mutation_signals"]) == 12
     assert out["dreamstate"]["candidates"][0]["candidate_id"] == "c1"
@@ -370,7 +372,7 @@ def test_pantheon_time_is_canonical_utc_and_future_closed(tmp_path):
 
 
 def test_aether_claim_protocol_preserves_independence_and_disagreement(tmp_path):
-    kernel = PantheonKernel(tmp_path, swarm=AetherSwarm(threshold=0.0, max_agents=8))
+    kernel = PantheonKernel(tmp_path, swarm=AetherSwarm(threshold=0.0, max_agents=4))
     observation = kernel.record_observation(_payload(observation_id="pan-claims"))
     mandatory = {"falsifier", "alternative_cause", "provenance_guard", "risk_guard"}
     agents = {row["role"]: row for row in observation["analysis"]["aether"]["agents"] if row["role"] in mandatory}
@@ -551,7 +553,7 @@ def test_aether_ecology_requires_observed_fitness_for_speciation_and_genesis(tmp
         result = kernel.record_observation(
             _feedback_payload(
                 f"pan-positive-{i}",
-                f"2026-10-01T06:00:0{i}Z",
+                f"2026-10-01T06:00:2{i}Z",
                 ontology_claim["claim_id"],
                 0.80,
             )
@@ -583,6 +585,24 @@ def test_aether_offspring_has_independent_claim_identity_and_can_be_scored(tmp_p
         )
     ecology = kernel.snapshot()["ecology"]
     child = next(x for x in ecology["species"] if x["parent_species_id"] is not None)
+    birth_observation = kernel.observation("pan-parent-fit-3")
+    assert any(c["claim_id"] == child["origin_claim_id"] for c in birth_observation["claims"])
+    with pytest.raises(ValueError, match="cannot precede"):
+        kernel.record_claim_outcome({
+            "claim_id": child["origin_claim_id"],
+            "observed_at": "2026-10-01T06:02:02Z",
+            "utility": 0.40,
+            "confidence": 0.80,
+            "evidence": ["retroactive-child-outcome"],
+        })
+    with pytest.raises(ValueError, match="horizon maturity"):
+        kernel.record_claim_outcome({
+            "claim_id": child["origin_claim_id"],
+            "observed_at": "2026-10-01T06:02:10Z",
+            "utility": 0.40,
+            "confidence": 0.80,
+            "evidence": ["premature-child-outcome"],
+        })
     scored = kernel.record_claim_outcome({
         "claim_id": child["origin_claim_id"],
         "observed_at": "2026-10-01T06:03:00Z",
@@ -621,6 +641,22 @@ def test_claim_outcome_is_causal_and_immutable_per_claim_time(tmp_path):
             "confidence": 1.0,
             "evidence": ["invalid-retroactive-outcome"],
         })
+    with pytest.raises(ValueError, match="horizon maturity"):
+        kernel.record_claim_outcome({
+            "claim_id": claim["claim_id"],
+            "observed_at": "2026-10-01T06:00:10Z",
+            "utility": 0.5,
+            "confidence": 1.0,
+            "evidence": ["premature-outcome"],
+        })
+    with pytest.raises(ValueError, match="1-64"):
+        kernel.record_claim_outcome({
+            "claim_id": claim["claim_id"],
+            "observed_at": "2026-10-01T06:00:20Z",
+            "utility": 0.5,
+            "confidence": 1.0,
+            "evidence": [],
+        })
 
     payload = {
         "claim_id": claim["claim_id"],
@@ -634,8 +670,12 @@ def test_claim_outcome_is_causal_and_immutable_per_claim_time(tmp_path):
     assert again["outcome_id"] == first_score["outcome_id"]
     with pytest.raises(ValueError, match="immutable"):
         kernel.record_claim_outcome({**payload, "utility": -0.5})
-
-
+    with pytest.raises(ValueError, match="between -1 and 1"):
+        kernel.record_claim_outcome({
+            **payload,
+            "observed_at": "2026-10-01T06:05:00Z",
+            "utility": 1.5,
+        })
 
 def test_aether_claim_requires_confidence_evidence_and_role_falsifier(tmp_path):
     kernel = PantheonKernel(tmp_path, swarm=AetherSwarm(threshold=0.0, max_agents=4))
@@ -664,3 +704,140 @@ def test_aether_claim_requires_confidence_evidence_and_role_falsifier(tmp_path):
             **base,
             "claim": {"thesis": "x", "direction": "unknown", "confidence": 0.5, "falsifier": "", "evidence": ["z"]},
         })
+
+def test_blind_claim_bodies_are_hidden_until_mandatory_round_completes(tmp_path):
+    kernel = PantheonKernel(tmp_path, swarm=AetherSwarm(threshold=0.0, max_agents=8))
+    observation = kernel.record_observation(_payload(observation_id="pan-blind-visibility"))
+    agents = {row["role"]: row for row in observation["analysis"]["aether"]["agents"]}
+
+    first = kernel.record_agent_claim({
+        "observation_id": observation["observation_id"],
+        "agent_id": agents["falsifier"]["agent_id"],
+        "peer_context_used": False,
+        "claim": {
+            "thesis": "must remain hidden",
+            "direction": "short",
+            "confidence": 0.7,
+            "falsifier": "counterexample",
+            "evidence": ["partition:adversarial"],
+        },
+    })
+    assert first["deliberation"]["ready_for_deliberation"] is False
+    assert first["deliberation"]["claim_bodies_visible"] is False
+    assert first["agent_claims"][0]["claim"] is None
+
+    for role, direction in (("alternative_cause", "long"), ("provenance_guard", "flat"), ("risk_guard", "short")):
+        state = kernel.record_agent_claim({
+            "observation_id": observation["observation_id"],
+            "agent_id": agents[role]["agent_id"],
+            "peer_context_used": False,
+            "claim": {
+                "thesis": f"{role} thesis",
+                "direction": direction,
+                "confidence": 0.6,
+                "falsifier": "counterexample",
+                "evidence": [f"partition:{agents[role]['information_partition']}"],
+            },
+        })
+
+    assert state["deliberation"]["mandatory_roles_complete"] is True
+    assert state["deliberation"]["ready_for_deliberation"] is False
+    assert state["deliberation"]["claim_bodies_visible"] is False
+    assert all(row["claim"] is None for row in state["agent_claims"])
+
+    submitted = {row["agent_id"] for row in state["agent_claims"]}
+    for agent in observation["analysis"]["aether"]["agents"]:
+        if agent["agent_id"] in submitted:
+            continue
+        state = kernel.record_agent_claim({
+            "observation_id": observation["observation_id"],
+            "agent_id": agent["agent_id"],
+            "peer_context_used": False,
+            "claim": {
+                "thesis": f"{agent['role']} optional thesis",
+                "direction": "unknown",
+                "confidence": 0.5,
+                "falsifier": "counterexample",
+                "evidence": [f"partition:{agent['information_partition']}"],
+            },
+        })
+
+    assert state["deliberation"]["ready_for_deliberation"] is True
+    assert state["deliberation"]["blind_first_pass_complete"] is True
+    assert state["deliberation"]["claim_bodies_visible"] is True
+    assert any((row["claim"] or {}).get("thesis") == "must remain hidden" for row in state["agent_claims"])
+
+
+@pytest.mark.parametrize(
+    "field,value,match",
+    [
+        ("risk", 1.1, "between 0 and 1"),
+        ("data_quality", -0.1, "between 0 and 1"),
+    ],
+)
+
+def test_normalized_faculty_inputs_fail_closed_instead_of_clamping(tmp_path, field, value, match):
+    payload = _payload(observation_id=f"pan-invalid-{field}")
+    payload["signals"] = dict(payload["signals"])
+    payload["signals"][field] = value
+    with pytest.raises(ValueError, match=match):
+        PantheonKernel(tmp_path).record_observation(payload)
+
+def test_structural_and_monetization_inputs_reject_invalid_economics(tmp_path):
+    bad_transition = _payload(observation_id="pan-bad-transition")
+    bad_transition["signals"] = dict(bad_transition["signals"], transition_cost_up=-0.1)
+    with pytest.raises(ValueError, match="transition costs"):
+        PantheonKernel(tmp_path / "a").record_observation(bad_transition)
+
+    bad_world = _payload(observation_id="pan-bad-world")
+    bad_world["signals"] = dict(bad_world["signals"], world_scores={"a": 1.0, "b": -0.1})
+    with pytest.raises(ValueError, match="non-negative"):
+        PantheonKernel(tmp_path / "b").record_observation(bad_world)
+
+    bad_risk = _payload(observation_id="pan-bad-risk-capital")
+    bad_risk["signals"] = dict(bad_risk["signals"])
+    bad_risk["signals"]["candidate_expressions"] = [{
+        "name": "invalid",
+        "expected_gross": 10.0,
+        "costs": 1.0,
+        "risk_capital": -100.0,
+        "duration_seconds": 10.0,
+        "capacity_remaining": 0.5,
+    }]
+    with pytest.raises(ValueError, match="risk_capital must be positive"):
+        PantheonKernel(tmp_path / "c").record_observation(bad_risk)
+
+def test_ecology_upgrade_backfills_legacy_claims_and_sentinel_clock(tmp_path):
+    kernel = PantheonKernel(tmp_path)
+    observation = kernel.record_observation(_payload(observation_id="pan-legacy-upgrade"))
+    durable_claim = next(c for c in observation["claims"] if c["kind"] == "ontology_candidate")
+    expected_time = observation["observed_at"]
+
+    with kernel._connect() as con:
+        con.execute("DELETE FROM species")
+        con.execute("UPDATE sentinel_cells SET last_observed_at=''")
+
+    upgraded = PantheonKernel(tmp_path)
+    state = upgraded.snapshot()
+    assert any(
+        row["origin_claim_id"] == durable_claim["claim_id"]
+        for row in state["ecology"]["species"]
+    )
+    assert state["sentinel_cells"][0]["last_observed_at"] == expected_time
+
+def test_zero_confidence_outcome_cannot_create_aether_fitness(tmp_path):
+    kernel = PantheonKernel(tmp_path)
+    first = kernel.record_observation(_payload(observation_id="pan-zero-confidence-origin"))
+    claim = next(c for c in first["claims"] if c["kind"] == "ontology_candidate")
+    scored = kernel.record_claim_outcome({
+        "claim_id": claim["claim_id"],
+        "observed_at": "2026-10-01T06:04:00Z",
+        "utility": 1.0,
+        "confidence": 0.0,
+        "evidence": ["observed-but-zero-confidence"],
+    })
+    assert scored["fitness_credit"] == 0.0
+    ecology = kernel.snapshot()["ecology"]
+    species = next(x for x in ecology["species"] if x["origin_claim_id"] == claim["claim_id"])
+    assert species["fitness_credit"] == 0.0
+    assert species["stage"] == "hypothesis"
