@@ -533,6 +533,314 @@ def echo(signals: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def _veritas_signature(item: Mapping[str, Any], index: int) -> dict[str, Any]:
+    if not isinstance(item, Mapping):
+        raise ValueError(f"mechanism_certificate.expected_signatures[{index}] must be an object")
+    key = item.get("key")
+    if not isinstance(key, str) or not key.strip():
+        raise ValueError(f"mechanism_certificate.expected_signatures[{index}].key is required")
+    key = key.strip()
+    if len(key) > 96:
+        raise ValueError(f"mechanism_certificate.expected_signatures[{index}].key exceeds 96 characters")
+    operator = str(item.get("operator") or "").strip().lower()
+    allowed = {"truthy", "falsy", "positive", "negative", "gte", "lte", "between"}
+    if operator not in allowed:
+        raise ValueError(
+            f"mechanism_certificate.expected_signatures[{index}].operator must be one of "
+            + ",".join(sorted(allowed))
+        )
+    weight = unit(item.get("weight"), f"mechanism_certificate.expected_signatures[{index}].weight", 1.0)
+    if weight <= 0:
+        raise ValueError(f"mechanism_certificate.expected_signatures[{index}].weight must be positive")
+    out = {"key": key, "operator": operator, "weight": weight}
+    if operator in {"gte", "lte"}:
+        if "threshold" not in item:
+            raise ValueError(f"mechanism_certificate.expected_signatures[{index}].threshold is required")
+        out["threshold"] = finite(item["threshold"], f"mechanism_certificate.expected_signatures[{index}].threshold")
+    elif operator == "between":
+        if "lower" not in item or "upper" not in item:
+            raise ValueError(f"mechanism_certificate.expected_signatures[{index}] lower and upper are required")
+        lower = finite(item["lower"], f"mechanism_certificate.expected_signatures[{index}].lower")
+        upper = finite(item["upper"], f"mechanism_certificate.expected_signatures[{index}].upper")
+        if lower > upper:
+            raise ValueError(f"mechanism_certificate.expected_signatures[{index}] lower cannot exceed upper")
+        out["lower"] = lower
+        out["upper"] = upper
+    return out
+
+
+def veritas(signals: Mapping[str, Any], observation_id: str) -> dict[str, Any]:
+    """Freeze a falsifiable mechanism certificate before the future is observed.
+
+    VERITAS exists to prevent a profitable or directionally correct outcome from
+    being learned as evidence for a mechanism whose predicted intermediate
+    signatures never occurred.
+    """
+    out = _base("VERITAS")
+    raw = signals.get("mechanism_certificate")
+    if raw is None:
+        return {
+            **out,
+            "status": "abstain",
+            "reason": "mechanism_certificate required",
+            "reconciliation_state": "unavailable",
+            "reinforcement_eligible": False,
+        }
+    if not isinstance(raw, Mapping):
+        raise ValueError("mechanism_certificate must be an object")
+    mechanism_id = raw.get("mechanism_id")
+    if not isinstance(mechanism_id, str) or not mechanism_id.strip():
+        raise ValueError("mechanism_certificate.mechanism_id is required")
+    mechanism_id = mechanism_id.strip()
+    if len(mechanism_id) > 96:
+        raise ValueError("mechanism_certificate.mechanism_id exceeds 96 characters")
+    thesis = raw.get("thesis")
+    if not isinstance(thesis, str) or not thesis.strip():
+        raise ValueError("mechanism_certificate.thesis is required")
+    thesis = thesis.strip()
+    if len(thesis) > 1200:
+        raise ValueError("mechanism_certificate.thesis exceeds 1200 characters")
+    direction = str(raw.get("direction") or "").strip().lower()
+    if direction not in {"long", "short", "flat", "unknown"}:
+        raise ValueError("mechanism_certificate.direction must be long, short, flat or unknown")
+    if "confidence" not in raw:
+        raise ValueError("mechanism_certificate.confidence is required")
+    confidence = unit(raw["confidence"], "mechanism_certificate.confidence")
+    fidelity_threshold = unit(
+        raw.get("fidelity_threshold"),
+        "mechanism_certificate.fidelity_threshold",
+        0.70,
+    )
+    if fidelity_threshold < 0.50:
+        raise ValueError("mechanism_certificate.fidelity_threshold must be at least 0.50")
+    min_reconciliation_confidence = unit(
+        raw.get("min_reconciliation_confidence"),
+        "mechanism_certificate.min_reconciliation_confidence",
+        0.65,
+    )
+    if min_reconciliation_confidence < 0.50:
+        raise ValueError("mechanism_certificate.min_reconciliation_confidence must be at least 0.50")
+    expected = raw.get("expected_signatures")
+    if not isinstance(expected, list) or not 1 <= len(expected) <= 24:
+        raise ValueError("mechanism_certificate.expected_signatures must contain 1-24 items")
+    signatures = [_veritas_signature(item, i) for i, item in enumerate(expected)]
+    keys = [row["key"] for row in signatures]
+    if len(set(keys)) != len(keys):
+        raise ValueError("mechanism_certificate.expected_signatures keys must be unique")
+    invalidators = raw.get("invalidators", [])
+    if isinstance(invalidators, str):
+        invalidators = [invalidators]
+    if not isinstance(invalidators, list) or len(invalidators) > 16:
+        raise ValueError("mechanism_certificate.invalidators must be a list with at most 16 items")
+    normalized_invalidators = []
+    for i, item in enumerate(invalidators):
+        if not isinstance(item, str) or not item.strip():
+            raise ValueError(f"mechanism_certificate.invalidators[{i}] must be a non-empty string")
+        value = item.strip()
+        if len(value) > 500:
+            raise ValueError(f"mechanism_certificate.invalidators[{i}] exceeds 500 characters")
+        normalized_invalidators.append(value)
+
+    raw_invalidating = raw.get("invalidating_signatures", [])
+    if raw_invalidating is None:
+        raw_invalidating = []
+    if not isinstance(raw_invalidating, list) or len(raw_invalidating) > 16:
+        raise ValueError("mechanism_certificate.invalidating_signatures must be a list with at most 16 items")
+    invalidating_signatures = [
+        _veritas_signature(item, i) for i, item in enumerate(raw_invalidating)
+    ]
+    invalidating_keys = [row["key"] for row in invalidating_signatures]
+    if len(set(invalidating_keys)) != len(invalidating_keys):
+        raise ValueError("mechanism_certificate.invalidating_signatures keys must be unique")
+    certificate_id = "ver-" + digest(observation_id, mechanism_id)[:24]
+    return {
+        **out,
+        "certificate_id": certificate_id,
+        "mechanism_id": mechanism_id,
+        "thesis": thesis,
+        "direction": direction,
+        "confidence": confidence,
+        "fidelity_threshold": fidelity_threshold,
+        "min_reconciliation_confidence": min_reconciliation_confidence,
+        "expected_signatures": signatures,
+        "invalidators": normalized_invalidators,
+        "invalidating_signatures": invalidating_signatures,
+        "reconciliation_state": "pending",
+        "reinforcement_eligible": False,
+        "lucky_outcome_quarantine": False,
+        "semantics": "pre-outcome causal-mechanism certificate; future success is not learning credit until predicted signatures reconcile",
+    }
+
+
+def score_veritas_reconciliation(
+    certificate: Mapping[str, Any],
+    realized_signatures: Mapping[str, Any],
+    realized_direction: str,
+    confidence: float,
+) -> dict[str, Any]:
+    if not isinstance(certificate, Mapping) or certificate.get("status") != "active":
+        raise ValueError("VERITAS certificate is not active")
+    if not isinstance(realized_signatures, Mapping):
+        raise ValueError("realized_signatures must be an object")
+    realized_direction = str(realized_direction or "").strip().lower()
+    if realized_direction not in {"long", "short", "flat", "unknown"}:
+        raise ValueError("realized_direction must be long, short, flat or unknown")
+    confidence = unit(confidence, "confidence")
+    expected = certificate.get("expected_signatures", [])
+    if not isinstance(expected, list) or not expected:
+        raise ValueError("VERITAS certificate has no expected signatures")
+
+    evaluated = []
+    matched_weight = 0.0
+    total_weight = 0.0
+    for i, sig in enumerate(expected):
+        if not isinstance(sig, Mapping):
+            raise ValueError(f"VERITAS expected signature {i} is invalid")
+        key = str(sig.get("key") or "")
+        operator = str(sig.get("operator") or "")
+        weight = unit(sig.get("weight"), f"VERITAS signature {key}.weight", 1.0)
+        total_weight += weight
+        present = key in realized_signatures
+        value = realized_signatures.get(key)
+        matched = False
+        if present:
+            if operator in {"truthy", "falsy"}:
+                if type(value) is not bool:
+                    raise ValueError(f"realized_signatures.{key} must be boolean for {operator}")
+                matched = value if operator == "truthy" else not value
+            else:
+                numeric = finite(value, f"realized_signatures.{key}")
+                if operator == "positive":
+                    matched = numeric > 0
+                elif operator == "negative":
+                    matched = numeric < 0
+                elif operator == "gte":
+                    matched = numeric >= finite(sig.get("threshold"), f"VERITAS signature {key}.threshold")
+                elif operator == "lte":
+                    matched = numeric <= finite(sig.get("threshold"), f"VERITAS signature {key}.threshold")
+                elif operator == "between":
+                    lower = finite(sig.get("lower"), f"VERITAS signature {key}.lower")
+                    upper = finite(sig.get("upper"), f"VERITAS signature {key}.upper")
+                    matched = lower <= numeric <= upper
+                else:
+                    raise ValueError(f"VERITAS signature {key} has unsupported operator")
+        if matched:
+            matched_weight += weight
+        evaluated.append({
+            "key": key,
+            "operator": operator,
+            "weight": weight,
+            "present": present,
+            "realized": value if present else None,
+            "matched": matched,
+        })
+
+    mechanism_fidelity = matched_weight / total_weight if total_weight > 0 else 0.0
+    threshold = unit(certificate.get("fidelity_threshold"), "VERITAS fidelity_threshold", 0.70)
+
+    invalidator_evaluated = []
+    for i, sig in enumerate(certificate.get("invalidating_signatures", [])):
+        if not isinstance(sig, Mapping):
+            raise ValueError(f"VERITAS invalidating signature {i} is invalid")
+        key = str(sig.get("key") or "")
+        operator = str(sig.get("operator") or "")
+        present = key in realized_signatures
+        value = realized_signatures.get(key)
+        matched = False
+        if present:
+            if operator in {"truthy", "falsy"}:
+                if type(value) is not bool:
+                    raise ValueError(f"realized_signatures.{key} must be boolean for {operator}")
+                matched = value if operator == "truthy" else not value
+            else:
+                numeric = finite(value, f"realized_signatures.{key}")
+                if operator == "positive":
+                    matched = numeric > 0
+                elif operator == "negative":
+                    matched = numeric < 0
+                elif operator == "gte":
+                    matched = numeric >= finite(sig.get("threshold"), f"VERITAS invalidator {key}.threshold")
+                elif operator == "lte":
+                    matched = numeric <= finite(sig.get("threshold"), f"VERITAS invalidator {key}.threshold")
+                elif operator == "between":
+                    lower = finite(sig.get("lower"), f"VERITAS invalidator {key}.lower")
+                    upper = finite(sig.get("upper"), f"VERITAS invalidator {key}.upper")
+                    matched = lower <= numeric <= upper
+                else:
+                    raise ValueError(f"VERITAS invalidating signature {key} has unsupported operator")
+        invalidator_evaluated.append({
+            "key": key,
+            "operator": operator,
+            "present": present,
+            "realized": value if present else None,
+            "triggered": matched,
+        })
+    triggered_invalidators = [row["key"] for row in invalidator_evaluated if row["triggered"]]
+    invalidator_triggered = bool(triggered_invalidators)
+
+    predicted_direction = str(certificate.get("direction") or "unknown").lower()
+    endpoint_known = predicted_direction in {"long", "short", "flat"} and realized_direction in {"long", "short", "flat"}
+    directional_match = endpoint_known and predicted_direction == realized_direction
+    mechanism_match = mechanism_fidelity >= threshold and not invalidator_triggered
+
+    if not endpoint_known:
+        classification = "mechanism_only"
+    elif directional_match and mechanism_match:
+        classification = "right_for_right_reasons"
+    elif directional_match and not mechanism_match:
+        classification = "right_for_wrong_reasons"
+    elif not directional_match and mechanism_match:
+        classification = "mechanism_without_endpoint"
+    else:
+        classification = "wrong_for_wrong_reasons"
+
+    min_reconciliation_confidence = unit(
+        certificate.get("min_reconciliation_confidence"),
+        "VERITAS min_reconciliation_confidence",
+        0.65,
+    )
+    confidence_gate_passed = confidence >= min_reconciliation_confidence
+    reinforcement_eligible = classification == "right_for_right_reasons" and confidence_gate_passed
+    lucky_quarantine = classification == "right_for_wrong_reasons"
+    if reinforcement_eligible:
+        learning_credit = confidence * mechanism_fidelity
+    elif classification == "wrong_for_wrong_reasons":
+        learning_credit = -confidence * (1.0 - mechanism_fidelity)
+    else:
+        learning_credit = 0.0
+    missing = [row["key"] for row in evaluated if not row["present"]]
+    failed = [row["key"] for row in evaluated if row["present"] and not row["matched"]]
+
+    return {
+        "faculty": "VERITAS",
+        "status": "reconciled",
+        "certificate_id": certificate.get("certificate_id"),
+        "mechanism_id": certificate.get("mechanism_id"),
+        "predicted_direction": predicted_direction,
+        "realized_direction": realized_direction,
+        "endpoint_known": endpoint_known,
+        "directional_match": directional_match,
+        "mechanism_fidelity": mechanism_fidelity,
+        "fidelity_threshold": threshold,
+        "mechanism_match": mechanism_match,
+        "invalidator_triggered": invalidator_triggered,
+        "triggered_invalidators": triggered_invalidators,
+        "invalidating_signatures": invalidator_evaluated,
+        "classification": classification,
+        "reinforcement_eligible": reinforcement_eligible,
+        "lucky_outcome_quarantine": lucky_quarantine,
+        "learning_credit": learning_credit,
+        "reconciliation_confidence": confidence,
+        "min_reconciliation_confidence": min_reconciliation_confidence,
+        "confidence_gate_passed": confidence_gate_passed,
+        "missing_signatures": missing,
+        "failed_signatures": failed,
+        "evaluated_signatures": evaluated,
+        "authority": authority_block(),
+        "semantics": "right-for-right-reasons audit; learning credit is diagnostic only and cannot authorize execution or production promotion",
+    }
+
+
 def archon(
     signals: Mapping[str, Any],
     godel_state: Mapping[str, Any],
@@ -645,6 +953,7 @@ def evaluate_faculties(signals: Mapping[str, Any], observation_id: str) -> dict[
     xn = ex_nihilo(signals, observation_id)
     mt = mint(signals)
     ec = echo(signals)
+    vt = veritas(signals, observation_id)
     ar = archon(signals, gd, ec)
     states = {
         "nullspace": ns,
@@ -654,6 +963,7 @@ def evaluate_faculties(signals: Mapping[str, Any], observation_id: str) -> dict[
         "ex_nihilo": xn,
         "mint": mt,
         "echo": ec,
+        "veritas": vt,
         "archon": ar,
     }
     states["socrates"] = socrates(states)

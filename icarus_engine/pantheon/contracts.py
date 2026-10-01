@@ -26,6 +26,7 @@ FACULTIES = (
     "mint",
     "nullspace",
     "echo",
+    "veritas",
     "archon",
     "aether",
 )
