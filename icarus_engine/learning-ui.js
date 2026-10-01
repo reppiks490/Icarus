@@ -124,6 +124,7 @@
     const datasets = (data || {}).datasets || [];
     const runs = (data || {}).training_runs || [];
     const latest = ((state.cycles || {}).latest) || {};
+    const psi = ((((latest.summary || {}).native || {}).possibility) || {});
     panel.innerHTML =
       '<div class="tiles">' +
         '<div class="tile"><div class="k">LEARNING STATE</div><div class="v">' + chip(state.status) + '</div><div class="small muted">background ' + (state.background && state.background.running ? 'RUNNING' : 'STOPPED') + ' · cycle ' + val(cfg.cycle_seconds,0) + 's</div></div>' +
@@ -133,6 +134,7 @@
         '<div class="tile"><div class="k">LIVE MATURITY</div><div class="v">' + val(preds.settled,0) + ' / ' + val(preds.count,0) + '</div><div class="small muted">' + val(preds.pending,0) + ' pending forecasts</div></div>' +
         '<div class="tile"><div class="k">REALIZED EXPERIENCE</div><div class="v">' + val(experience.count,0) + '</div><div class="small muted">runtime_live_sim + historical_trade_list · outcome memory, not forecast accuracy</div></div>' +
         '<div class="tile"><div class="k">EMPIRICAL SCORECARDS</div><div class="v">' + val((state.scorecards || []).length,0) + '</div><div class="small muted">producer × asset × regime × horizon</div></div>' +
+        '<div class="tile"><div class="k">Ψ SCENARIO CALIBRATION</div><div class="v">' + chip(psi.status || 'UNAVAILABLE') + '</div><div class="small muted">captured ' + val(psi.forecasts_imported,0) + ' · matured ' + val(psi.outcomes_imported,0) + ' · overlap withheld ' + val(psi.overlap_withheld,0) + ' · RAW SHARES UNCALIBRATED · producer psi-scenario-v1</div></div>' +
         '<div class="tile"><div class="k">HISTORY SCAN</div><div class="v">' + (state.background && state.background.last_history_scan_epoch ? new Date(state.background.last_history_scan_epoch*1000).toLocaleString() : 'UNAVAILABLE') + '</div><div class="small muted">history/, history/drop/, research/imports/</div></div>' +
         '<div class="tile"><div class="k">LAST CYCLE</div><div class="v">' + chip(latest.status || 'UNAVAILABLE') + '</div><div class="small muted">' + val((state.cycles || {}).count,0) + ' durable cycles</div></div>' +
         '<div class="tile"><div class="k">AUTHORITY</div><div class="v">RESEARCH ONLY</div><div class="small muted">AUTOMATIC PRODUCTION PROMOTION: OFF · execution_authorized=false</div></div>' +
