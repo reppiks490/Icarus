@@ -963,3 +963,65 @@ def test_future_clock_depth_snapshot_is_not_admitted():
     assert micro["queue_pressure"].available is False
     assert micro["health"]["depth"] is False
     assert any("future" in error for error in micro["health"]["errors"])
+
+
+
+def test_stale_trade_tape_is_not_admitted_to_latent_pressure():
+    engine = PossibilityEngine(Port())
+
+    class StaleTradeFeed(Feed):
+        def trades(self, ticker, limit=500):
+            now = int(time.time())
+            return [
+                Tick(100.0 + i * 0.01, 10, "B", now - 180 - i, i)
+                for i in range(20)
+            ]
+
+    engine.port.runners["NQ"].feed = StaleTradeFeed()
+    micro = engine._microstructure("NQ")
+    assert micro["volume_pressure"].available is False
+    assert micro["health"]["ticks"] is False
+    assert any("stale" in error for error in micro["health"]["errors"])
+
+
+def test_future_clock_trade_tape_is_not_admitted():
+    engine = PossibilityEngine(Port())
+
+    class FutureTradeFeed(Feed):
+        def trades(self, ticker, limit=500):
+            now = int(time.time())
+            return [
+                Tick(100.0 + i * 0.01, 10, "B", now + 60 + i, i)
+                for i in range(20)
+            ]
+
+    engine.port.runners["NQ"].feed = FutureTradeFeed()
+    micro = engine._microstructure("NQ")
+    assert micro["volume_pressure"].available is False
+    assert micro["health"]["ticks"] is False
+    assert any("future" in error for error in micro["health"]["errors"])
+
+
+def test_trade_pressure_uses_fresh_window_not_entire_adapter_buffer():
+    engine = PossibilityEngine(Port())
+    engine.port.runners["NQ"].chart_minutes = 1
+
+    class MixedAgeTradeFeed(Feed):
+        def trades(self, ticker, limit=500):
+            now = int(time.time())
+            old = [
+                Tick(100.0, 50, "A", now - 300 + i, i)
+                for i in range(100)
+            ]
+            fresh = [
+                Tick(100.0 + i * 0.01, 10, "B", now - 5 + i, 100 + i)
+                for i in range(6)
+            ]
+            return old + fresh
+
+    engine.port.runners["NQ"].feed = MixedAgeTradeFeed()
+    micro = engine._microstructure("NQ")
+    assert micro["volume_pressure"].available is True
+    assert micro["volume_pressure"].value > 0
+    assert micro["aggressive_flow"]["tick_count"] == 6
+    assert micro["tick_window"]["requested_window_seconds"] == pytest.approx(60.0)
