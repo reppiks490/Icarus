@@ -1,6 +1,6 @@
 {
   "schema_version": "icarus-interface-ledger-v2",
-  "generated_at": "2026-09-30T21:35:00-05:00",
+  "generated_at": "2026-09-30T21:40:00-05:00",
   "execution_authorized": false,
   "policy": {
     "mcp_mirror_required": true,
@@ -201,6 +201,37 @@
         "64a883f7a4715cc0f34116aa0a20b698900bb268",
         "1ffe027843e83522173ab25cd300d1aed24a5bb1"
       ]
+    },
+    {
+      "id": "review-authority-persistence-and-migration",
+      "status": "verified",
+      "summary": "The reviewed-representation registry persists atomically, validates exact schema shape and hashes on load, and migrated four-axis authority to registry v2 while preserving verified v1 replay compatibility.",
+      "evidence": [
+        "Atomic strict registry persistence",
+        "Four-axis authority schema v2",
+        "Reviewed v1→v2 migration regression"
+      ],
+      "source_commits": [
+        "be4bb005ed200062449c4132777e7593211eb20a",
+        "a2e4cc63300d98ab1341628a6328e0da830e477d",
+        "d98e09665560927e37fa466cce34f7b4a07f6a85"
+      ]
+    },
+    {
+      "id": "sealed-review-triage-semantics",
+      "status": "verified",
+      "summary": "Representation review queue/triage now handles malformed hypothesis metadata deterministically and verifies sealed cluster identities, counts, symbols, reasons, and evidence requirements.",
+      "evidence": [
+        "Sealed review-summary semantics",
+        "Malformed hypothesis handling",
+        "Invalid cluster identity regression"
+      ],
+      "source_commits": [
+        "4bb16009474a723b195a15d97886ccd17d0d5cdf",
+        "54bc1a6efdcb38e941d6b241bee06584c0f871a0",
+        "b98f3729eb05057980079847eda9a3f9b1c3fd76",
+        "9ef2a007263fb5b56b844e8a1597d88820c3c9b4"
+      ]
     }
   ],
   "events": [
@@ -382,6 +413,58 @@
       "details": {
         "policy": "mcp_mirror_required"
       }
+    },
+    {
+      "recorded_at": "2026-09-30T21:18:48-05:00",
+      "source": "mcp",
+      "kind": "hardening",
+      "area": "NEXUS reviewed authority persistence",
+      "summary": "Reviewed representation authority is now saved atomically under strict schema/hash validation and versioned as v2 with validated v1 migration for replay compatibility.",
+      "status": "verified",
+      "severity": "important",
+      "source_repo": "reppiks490/divine-providence",
+      "source_branch": "main",
+      "source_commit": "a2e4cc63300d98ab1341628a6328e0da830e477d",
+      "verification": "MCP diff inspection confirmed atomic fsync/replace persistence, strict load shape/hash checks, schema v2 authority, and verified legacy migration coverage.",
+      "interface_effect": "The Data Integrity panel exposes durability and migration guarantees for reviewed representation identity.",
+      "evidence": [
+        "be4bb005ed200062449c4132777e7593211eb20a",
+        "d7a11e52e2ae8f287afe8212ab2e8a8c73de5a9b",
+        "d98e09665560927e37fa466cce34f7b4a07f6a85"
+      ],
+      "details": {
+        "checklist": "O14"
+      }
+    },
+    {
+      "recorded_at": "2026-09-30T21:24:21-05:00",
+      "source": "mcp",
+      "kind": "hardening",
+      "area": "NEXUS representation review triage",
+      "summary": "Representation review triage verifies sealed cluster semantics and the review queue handles malformed representation-hypothesis metadata deterministically.",
+      "status": "verified",
+      "severity": "important",
+      "source_repo": "reppiks490/divine-providence",
+      "source_branch": "main",
+      "source_commit": "54bc1a6efdcb38e941d6b241bee06584c0f871a0",
+      "verification": "MCP diff inspection confirmed deterministic malformed-metadata handling and sealed cluster count/identity validation; paired regressions were found through the audited main head.",
+      "interface_effect": "The Data Integrity panel makes review-queue/triage integrity visible as part of the O14 evidence workflow.",
+      "evidence": [
+        "4bb16009474a723b195a15d97886ccd17d0d5cdf",
+        "b98f3729eb05057980079847eda9a3f9b1c3fd76",
+        "9ef2a007263fb5b56b844e8a1597d88820c3c9b4"
+      ],
+      "details": {
+        "checklist": "O14",
+        "audit_cutoff": "9ef2a007263fb5b56b844e8a1597d88820c3c9b4"
+      }
     }
-  ]
+  ],
+  "audit_cutoff": {
+    "repo": "reppiks490/divine-providence",
+    "branch": "main",
+    "head_sha": "9ef2a007263fb5b56b844e8a1597d88820c3c9b4",
+    "audited_at": "2026-09-30T21:40:00-05:00",
+    "scope": "Find Export Checklist / O14 representation, review-authority, quality, lineage and replay hardening"
+  }
 }

@@ -294,6 +294,7 @@ def integrity_snapshot(
         "schema_version": SCHEMA_VERSION,
         "execution_authorized": False,
         "policy": manifest.get("policy", {}),
+        "audit_cutoff": manifest.get("audit_cutoff", {}),
         "export_intake": manifest.get("export_intake", {}),
         "checklist": manifest.get("checklist", []),
         "repairs": manifest.get("repairs", []),

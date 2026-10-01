@@ -197,6 +197,22 @@
       "verification": "The replacement SHA was checked against the current divine-providence history; the Data Integrity ledger now points at the exact regression commit.",
       "interface_effect": "Both the specialized Data Integrity panel and the System evolution ledger disclose the correction.",
       "execution_authorized": false
+    },
+    {
+      "id": "mcp-20260930-nexus-reviewed-authority-durability",
+      "recorded_date": "2026-09-30",
+      "subsystem": "NEXUS",
+      "kind": "hardening",
+      "status": "integrated_branch",
+      "severity": "important",
+      "title": "Reviewed representation authority made durable and reviewable",
+      "summary": "The four-axis reviewed-representation authority registry now persists atomically under strict schema/hash validation, supports verified v1→v2 migration, and feeds deterministic sealed review triage.",
+      "source_repo": "reppiks490/divine-providence",
+      "source_branch": "main",
+      "source_commit": "a2e4cc63300d98ab1341628a6328e0da830e477d",
+      "verification": "Registry persistence/migration and sealed review-triage implementation plus regressions were inspected through MCP through main head 9ef2a007263fb5b56b844e8a1597d88820c3c9b4.",
+      "interface_effect": "The System ledger records the subsystem hardening; the Data Integrity panel exposes detailed commits and the exact MCP audit cutoff.",
+      "execution_authorized": false
     }
   ]
 }

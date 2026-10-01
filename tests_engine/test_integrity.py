@@ -12,6 +12,7 @@ def _manifest(path):
         "schema_version": "icarus-interface-ledger-v2",
         "execution_authorized": False,
         "policy": {"mcp_mirror_required": True},
+        "audit_cutoff": {"repo": "reppiks490/divine-providence", "head_sha": "9ef2a007263fb5b56b844e8a1597d88820c3c9b4"},
         "export_intake": {"unique_payloads": 11},
         "checklist": [{"id": "O14", "status": "verified"}],
         "repairs": [],
@@ -42,6 +43,7 @@ def test_integrity_snapshot_is_fail_closed_and_loads_manifest(tmp_path):
     snap = integrity_snapshot(tmp_path, manifest_path=manifest)
     assert snap["execution_authorized"] is False
     assert snap["policy"]["mcp_mirror_required"] is True
+    assert snap["audit_cutoff"]["head_sha"] == "9ef2a007263fb5b56b844e8a1597d88820c3c9b4"
     assert snap["export_intake"]["unique_payloads"] == 11
     assert snap["runtime_event_count"] == 0
     assert snap["manifest_error"] is None
