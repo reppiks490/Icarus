@@ -280,11 +280,10 @@ class PossibilityEngine:
             })
 
         stored: dict[str, Any] = {}
-        inserted = 0
         with self._lock:
-            for row in normalized:
-                receipt = self._evidence_ledger.record(row)
-                inserted += int(bool(receipt.get("inserted")))
+            receipts = self._evidence_ledger.record_many(normalized)
+            inserted = sum(int(bool(receipt.get("inserted"))) for receipt in receipts)
+            for row, receipt in zip(normalized, receipts):
                 self._external[asset][row["feature"]] = dict(receipt)
                 stored[row["feature"]] = dict(receipt)
 
