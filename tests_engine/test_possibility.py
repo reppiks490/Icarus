@@ -7,6 +7,7 @@ from types import SimpleNamespace
 import pytest
 
 from icarus_engine.possibility import Feature, PossibilityEngine, _weighted
+from icarus_engine.server import _current_parallax_payload
 
 
 class Tick:
@@ -593,3 +594,53 @@ def test_runner_bar_leader_stability_is_exposed_and_bounded():
     assert 0.0 <= leader["stability"] <= 1.0
     assert len(leader["fold_correlations"]) >= 2
     assert 0.0 <= leader["lead_strength"] <= 1.0
+
+
+
+def test_current_parallax_capture_stamps_decision_after_psi_vote():
+    generated = (datetime.now(timezone.utc) - timedelta(seconds=1)).isoformat().replace("+00:00", "Z")
+
+    class Psi:
+        def parallax_vote(self, asset):
+            return {"subsystem": "psi", "asset": asset, "generated_at": generated, "state": "NO_EDGE"}
+
+    payload, vote = _current_parallax_payload(Psi(), {
+        "asset": "nq",
+        "action": "long",
+        "subsystem_votes": {"argus": {"state": "aligned"}},
+    })
+    decision_time = datetime.fromisoformat(payload["observed_at"].replace("Z", "+00:00"))
+    vote_time = datetime.fromisoformat(vote["generated_at"].replace("Z", "+00:00"))
+    assert payload["asset"] == "NQ"
+    assert payload["subsystem_votes"]["psi"] == vote
+    assert decision_time >= vote_time
+
+
+def test_current_parallax_capture_rejects_historical_timestamp_and_supplied_psi():
+    class Psi:
+        def parallax_vote(self, asset):
+            return {"subsystem": "psi", "asset": asset}
+
+    with pytest.raises(ValueError, match="owns observed_at"):
+        _current_parallax_payload(Psi(), {
+            "asset": "NQ",
+            "action": "long",
+            "observed_at": "2026-10-01T06:00:00Z",
+        })
+    with pytest.raises(ValueError, match="owns the psi vote"):
+        _current_parallax_payload(Psi(), {
+            "asset": "NQ",
+            "action": "long",
+            "subsystem_votes": {"psi": {"state": "forged"}},
+        })
+
+
+def test_current_parallax_capture_rejects_future_psi_timestamp():
+    future = (datetime.now(timezone.utc) + timedelta(minutes=1)).isoformat().replace("+00:00", "Z")
+
+    class Psi:
+        def parallax_vote(self, asset):
+            return {"subsystem": "psi", "asset": asset, "generated_at": future}
+
+    with pytest.raises(ValueError, match="cannot follow"):
+        _current_parallax_payload(Psi(), {"asset": "NQ", "action": "long"})
