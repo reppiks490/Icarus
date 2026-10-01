@@ -43,6 +43,10 @@ Authenticated research callers may POST provenance-labelled evidence to `POST /a
 
 Supported values are `gamma_pressure`, `basis_pressure`, `cta_pressure`, `liquidation_pressure`, and `rebalance_pressure`. Values are bounded to `[-1,+1]`, confidence to `[0,1]`, and evidence expires after a bounded TTL anchored to its observation time. RFC3339 timestamps require an explicit timezone, future observations are rejected, and evidence already stale at receipt is rejected. Unknown feature names are rejected.
 
+Accepted evidence is persisted in an append-only local SQLite ledger when ICARUS has a durable `base_dir`. Exact receipts are idempotent, restart recovery is deterministic, and the ledger preserves the causal receipt rules already enforced by Ψ: future observations and observations already stale for their requested TTL are rejected before storage.
+
+Authenticated readers can inspect the ledger through `GET /api/possibility/evidence` or the MCP `engine_possibility_evidence` tool. The optional `as_of` timestamp returns only observations that were causally available by that historical time, so later evidence cannot leak backward into replay.
+
 ## Fabric integration
 
 ARGUS / NEXUS / DATA provide live market evidence. Ψ produces latent-pressure and possibility state for the trader UI and contributes a distinct `psi` research vote to PARALLAX. PARALLAX can then measure Ψ through paired ablation; DREAMSTATE only generates hypotheses from observed counterfactual evidence.
