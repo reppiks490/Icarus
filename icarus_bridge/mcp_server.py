@@ -44,7 +44,8 @@ mcp = MCPServer(
         "the exact source repository/branch/40-character commit through record_engine_integrity_event so the "
         "Data Integrity panel stays aligned. For agent/subsystem learning, regime research, drift, training, "
         "evaluation, or rigorously-qualified candidate lifecycle updates, use record_engine_brain_event so the "
-        "Adaptive Brain panel receives durable evidence. Brain publication is research/shadow-only and cannot "
+        "Adaptive Brain panel receives durable evidence. Use the performance-proof tools for immutable forecast/outcome/replay "
+        "evidence and engine_latency_telemetry for measured timing. Brain publication is research/shadow-only and cannot "
         "grant production decision or broker authority. Those publication tools are diagnostic-only. "
         "pause_trading / resume_trading / flatten_all / "
         "simulate_alert change live paper state — confirm with the user before calling them unless they "
@@ -458,7 +459,6 @@ def engine_pantheon_state() -> dict:
     """Read PANTHEON faculties, AETHER swarm state, sentinel cells and durable shadow claims."""
     return _safe_engine(lambda: _engine_get("/api/pantheon"))
 
-
 @mcp.tool()
 def record_engine_pantheon_observation(
     asset: str,
@@ -501,7 +501,6 @@ def record_engine_pantheon_observation(
         body["observation_id"] = observation_id.strip()
     return _safe_engine(lambda: _engine_post("/admin/pantheon/observe", body))
 
-
 @mcp.tool()
 def record_engine_aether_claim(
     observation_id: str,
@@ -537,12 +536,109 @@ def record_engine_aether_claim(
     }
     return _safe_engine(lambda: _engine_post("/admin/pantheon/claim", body))
 
+@mcp.tool()
+def engine_performance_proof() -> dict:
+    """Read causal forecast/outcome/replay proof, calibration and closed-sample metrics."""
+    return _safe_engine(lambda: _engine_get("/api/performance-proof"))
+
+
+@mcp.tool()
+def record_engine_performance_forecast(
+    candidate_id: str,
+    asset: str,
+    regime: str,
+    decision_at: str,
+    matures_at: str,
+    probability_success: float,
+    success_definition: str,
+    source_repo: str,
+    source_commit: str,
+    dataset_hash: str,
+    evidence_hash: str,
+) -> dict:
+    """Record one immutable research/shadow forecast before its outcome matures."""
+    return _safe_engine(lambda: _engine_post("/admin/performance-proof/forecast", {
+        "candidate_id": candidate_id,
+        "asset": asset,
+        "regime": regime,
+        "decision_at": decision_at,
+        "matures_at": matures_at,
+        "probability_success": float(probability_success),
+        "success_definition": success_definition,
+        "source_repo": source_repo,
+        "source_commit": source_commit,
+        "dataset_hash": dataset_hash,
+        "evidence_hash": evidence_hash,
+    }))
+
+
+@mcp.tool()
+def record_engine_performance_outcome(
+    forecast_id: str,
+    observed_at: str,
+    success: bool,
+    outcome_hash: str,
+    source: str,
+    realized_value: Optional[float] = None,
+) -> dict:
+    """Settle one matured proof forecast exactly once; conflicting rewrites fail closed."""
+    return _safe_engine(lambda: _engine_post("/admin/performance-proof/outcome", {
+        "forecast_id": forecast_id,
+        "observed_at": observed_at,
+        "success": bool(success),
+        "realized_value": realized_value,
+        "outcome_hash": outcome_hash,
+        "source": source,
+    }))
+
+
+@mcp.tool()
+def record_engine_replay_proof(
+    subject: str,
+    source_commit: str,
+    input_hash: str,
+    first_output_hash: str,
+    second_output_hash: str,
+    observed_at: str,
+) -> dict:
+    """Record a deterministic replay comparison for one exact input and source revision."""
+    return _safe_engine(lambda: _engine_post("/admin/performance-proof/replay", {
+        "subject": subject,
+        "source_commit": source_commit,
+        "input_hash": input_hash,
+        "first_output_hash": first_output_hash,
+        "second_output_hash": second_output_hash,
+        "observed_at": observed_at,
+    }))
+
+
+@mcp.tool()
+def engine_latency_telemetry() -> dict:
+    """Read measured ICARUS processing latency percentiles and budget status."""
+    return _safe_engine(lambda: _engine_get("/api/latency"))
+
 
 @mcp.tool()
 def engine_possibility_state(asset: str = "NQ") -> dict:
     """Read ICARUS Ψ latent-pressure, possibility-space and information-wave diagnostics."""
     asset = asset.strip().upper()
     return _safe_engine(lambda: _engine_get(f"/api/possibility?asset={asset}"))
+
+@mcp.tool()
+def engine_possibility_evidence(
+    asset: str = "NQ",
+    limit: int = 100,
+    include_expired: bool = False,
+    as_of: str = "",
+) -> dict:
+    """Read the durable ICARUS Ψ evidence ledger and causal active as-of selection."""
+    from urllib.parse import quote
+    asset = asset.strip().upper()
+    limit = max(1, min(1000, int(limit)))
+    query = f"/api/possibility/evidence?asset={asset}&limit={limit}&include_expired={'true' if include_expired else 'false'}"
+    if as_of.strip():
+        query += "&as_of=" + quote(as_of.strip(), safe="")
+    return _safe_engine(lambda: _engine_get(query))
 
 
 @mcp.tool()
@@ -573,6 +669,185 @@ def record_engine_possibility_evidence(
     if observed_at.strip():
         body["observed_at"] = observed_at.strip()
     return _safe_engine(lambda: _engine_post("/admin/possibility/evidence", body))
+
+
+@mcp.tool()
+def engine_parallax_state() -> dict:
+    """Read the shadow-only PARALLAX decision/branch/ablation ledger."""
+    return _safe_engine(lambda: _engine_get("/api/parallax"))
+
+
+@mcp.tool()
+def engine_dreamstate_state() -> dict:
+    """Read DREAMSTATE hypothesis state derived from observed PARALLAX evidence."""
+    return _safe_engine(lambda: _engine_get("/api/dreamstate"))
+
+
+@mcp.tool()
+def record_current_parallax_decision_with_psi(
+    asset: str,
+    action: str,
+    regime: str = "unknown",
+    context_json: str = "{}",
+    subsystem_votes_json: str = "{}",
+    branches_json: str = "",
+    decision_id: str = "",
+    source_commit: str = "",
+) -> dict:
+    """Atomically capture the current Psi vote and record a causal PARALLAX decision."""
+    try:
+        context = json.loads(context_json or "{}")
+        votes = json.loads(subsystem_votes_json or "{}")
+        branches = json.loads(branches_json) if branches_json.strip() else None
+    except json.JSONDecodeError as ex:
+        return {"error": f"invalid JSON argument: {ex}"}
+    if not isinstance(context, dict) or not isinstance(votes, dict):
+        return {"error": "context_json and subsystem_votes_json must decode to objects"}
+    if "psi" in votes:
+        return {"error": "psi vote is captured atomically by the engine; omit it"}
+    if branches is not None and not isinstance(branches, list):
+        return {"error": "branches_json must decode to a list"}
+    if source_commit.strip():
+        source_sha = source_commit.strip().lower()
+        if len(source_sha) != 40 or any(ch not in "0123456789abcdef" for ch in source_sha):
+            return {"error": "source_commit must be an exact 40-character hexadecimal git SHA"}
+    body: Dict[str, Any] = {
+        "asset": asset.strip().upper(),
+        "action": action.strip().lower(),
+        "regime": regime.strip() or "unknown",
+        "context": context,
+        "subsystem_votes": votes,
+    }
+    if branches is not None:
+        body["branches"] = branches
+    if decision_id.strip():
+        body["decision_id"] = decision_id.strip()
+    if source_commit.strip():
+        body["source_commit"] = source_sha
+    return _safe_engine(lambda: _engine_post("/admin/parallax/decision/current", body))
+
+
+@mcp.tool()
+def record_engine_parallax_outcome(
+    decision_id: str,
+    label: str,
+    utility: float,
+    metrics_json: str = "{}",
+    evidence_json: str = "[]",
+    observed_at: str = "",
+) -> dict:
+    """Record one actually observed PARALLAX branch outcome; never infer an unobserved branch."""
+    try:
+        metrics = json.loads(metrics_json or "{}")
+        evidence = json.loads(evidence_json or "[]")
+    except json.JSONDecodeError as ex:
+        return {"error": f"invalid JSON argument: {ex}"}
+    if not isinstance(metrics, dict) or not isinstance(evidence, list):
+        return {"error": "metrics_json must be an object and evidence_json a list"}
+    body: Dict[str, Any] = {
+        "decision_id": decision_id.strip(),
+        "label": label.strip().lower(),
+        "utility": float(utility),
+        "metrics": metrics,
+        "evidence": evidence,
+    }
+    if observed_at.strip():
+        body["observed_at"] = observed_at.strip()
+    return _safe_engine(lambda: _engine_post("/admin/parallax/outcome", body))
+
+
+@mcp.tool()
+def refresh_engine_dreamstate(min_samples: int = 5) -> dict:
+    """Re-screen DREAMSTATE hypotheses from observed PARALLAX outcomes."""
+    return _safe_engine(lambda: _engine_post("/admin/dreamstate/refresh", {"min_samples": int(min_samples)}))
+
+
+@mcp.tool()
+def record_historical_parallax_decision(
+    asset: str,
+    action: str,
+    observed_at: str,
+    source_commit: str,
+    regime: str = "unknown",
+    context_json: str = "{}",
+    subsystem_votes_json: str = "{}",
+    branches_json: str = "",
+    decision_id: str = "",
+) -> dict:
+    """Record a historical PARALLAX decision with already-captured causal votes.
+
+    No current Psi snapshot is injected into this route.
+    """
+    try:
+        context = json.loads(context_json or "{}")
+        votes = json.loads(subsystem_votes_json or "{}")
+        branches = json.loads(branches_json) if branches_json.strip() else None
+    except json.JSONDecodeError as ex:
+        return {"error": f"invalid JSON argument: {ex}"}
+    if not isinstance(context, dict) or not isinstance(votes, dict):
+        return {"error": "context_json and subsystem_votes_json must decode to objects"}
+    if branches is not None and not isinstance(branches, list):
+        return {"error": "branches_json must decode to a list"}
+    if not observed_at.strip():
+        return {"error": "observed_at is required for historical PARALLAX decisions"}
+    source_sha = source_commit.strip().lower()
+    if len(source_sha) != 40 or any(ch not in "0123456789abcdef" for ch in source_sha):
+        return {"error": "source_commit must be an exact 40-character hexadecimal git SHA"}
+    body: Dict[str, Any] = {
+        "asset": asset.strip().upper(),
+        "action": action.strip().lower(),
+        "regime": regime.strip() or "unknown",
+        "observed_at": observed_at.strip(),
+        "source_commit": source_sha,
+        "context": context,
+        "subsystem_votes": votes,
+    }
+    if branches is not None:
+        body["branches"] = branches
+    if decision_id.strip():
+        body["decision_id"] = decision_id.strip()
+    return _safe_engine(lambda: _engine_post("/admin/parallax/decision", body))
+
+
+@mcp.tool()
+def evaluate_engine_dreamstate_candidate(
+    candidate_id: str,
+    validation_json: str,
+    evidence_json: str = "[]",
+) -> dict:
+    """Apply explicit validation-gate results to a DREAMSTATE research candidate."""
+    try:
+        validation = json.loads(validation_json or "{}")
+        evidence = json.loads(evidence_json or "[]")
+    except json.JSONDecodeError as ex:
+        return {"error": f"invalid JSON argument: {ex}"}
+    if not isinstance(validation, dict) or not validation:
+        return {"error": "validation_json must decode to a non-empty object"}
+    if not isinstance(evidence, list):
+        return {"error": "evidence_json must decode to a list"}
+    candidate_id = candidate_id.strip()
+    if not candidate_id:
+        return {"error": "candidate_id is required"}
+    return _safe_engine(lambda: _engine_post("/admin/dreamstate/evaluate", {
+        "candidate_id": candidate_id,
+        "validation": validation,
+        "evidence": evidence,
+    }))
+
+
+@mcp.tool()
+def retire_engine_dreamstate_candidate(candidate_id: str, reason: str) -> dict:
+    """Retire a DREAMSTATE research candidate with an explicit evidence reason."""
+    candidate_id = candidate_id.strip()
+    reason = reason.strip()
+    if not candidate_id:
+        return {"error": "candidate_id is required"}
+    if not reason:
+        return {"error": "reason is required"}
+    return _safe_engine(lambda: _engine_post("/admin/dreamstate/retire", {
+        "candidate_id": candidate_id,
+        "reason": reason,
+    }))
 
 
 # ── control tools (state-changing) ──

@@ -116,7 +116,15 @@ def test_dashboard_surfaces_adaptive_brain_fabric():
     assert "/api/brain" in ui
     assert "5 custom agents" in ui
     assert "SHADOW_ONLY" in ui
-    assert "True success rate" in ui
+    assert "Observed success rate" in ui
+    assert "Closed-sample 100%" in ui
+    assert "Hot-path p99" in ui
+    assert "Evidence champion / challenger tournaments" in ui
+    assert "/api/performance-proof" in server
+    assert "/api/latency" in server
+    assert "/admin/performance-proof/forecast" in server
+    assert "/admin/performance-proof/outcome" in server
+    assert "/admin/performance-proof/replay" in server
     assert 'p.path == "/api/brain"' in server
     assert 'p.path == "/admin/brain/event"' in server
 
@@ -157,6 +165,16 @@ def test_dashboard_surfaces_icarus_psi_without_replacing_oracle_or_parallax():
     assert '{"id": "psi", "title": "ICARUS Ψ"' in brain
     assert '{"id": "parallax", "title": "PARALLAX"' in brain
     assert "execution_authorized=false" in ui
+    assert "Evidence ledger" in ui
+    assert "Active evidence" in ui
+    assert "Evidence history" in ui
+    assert "History source" in ui
+    assert "Chart cadence" in ui
+    assert "Gap returns skipped" in ui
+    assert "Leader alignment" in ui
+    assert "POST-BAR CAUSAL WINDOW" in ui
+    assert "Ledger integrity" in ui
+    assert '/api/possibility/evidence' in server
 
 
 def test_dashboard_surfaces_authenticated_engine_control_panel():

@@ -16,6 +16,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Mapping
 
+from .champion_challenger import select_shadow_champion
+
 SCHEMA_VERSION = "icarus-adaptive-brain-v1"
 _EVENT_SCHEMA = "icarus-brain-event-v1"
 _EVENT_LOCK = threading.Lock()
@@ -571,6 +573,8 @@ def brain_snapshot(
     integrity: Mapping[str, Any] | None = None,
     remote_sync: Mapping[str, Any] | None = None,
     research_sync: Mapping[str, Any] | None = None,
+    proof_status: Mapping[str, Any] | None = None,
+    latency_status: Mapping[str, Any] | None = None,
     limit: int = 1000,
 ) -> dict[str, Any]:
     """Build the operator brain state from measured local evidence only."""
@@ -623,6 +627,34 @@ def brain_snapshot(
     audit_events = len((system_audit or {}).get("events", []) or []) if isinstance(system_audit, Mapping) else 0
     integrity_events = len((integrity or {}).get("events", []) or []) if isinstance(integrity, Mapping) else 0
     incubator = _research_incubator(research_status)
+    proof = dict(proof_status) if isinstance(proof_status, Mapping) else {
+        "metrics": {"success_rate": None, "outcome_coverage": None, "brier_score": None, "expected_calibration_error": None},
+        "closed_sample": {"complete": False, "historical_100_percent_established": False, "future_guarantee": False},
+        "replay": {"determinism_rate": None, "historical_100_percent_established": False},
+        "candidate_statistics": [], "execution_authorized": False, "production_decision_authorized": False,
+    }
+    latency = dict(latency_status) if isinstance(latency_status, Mapping) else {
+        "hot_path": None, "stages": [], "targets_are_measured_not_assumed": True,
+        "execution_authorized": False, "production_decision_authorized": False,
+    }
+    proof_metrics = proof.get("metrics") if isinstance(proof.get("metrics"), Mapping) else {}
+    proof_closed = proof.get("closed_sample") if isinstance(proof.get("closed_sample"), Mapping) else {}
+    proof_rows = proof.get("candidate_statistics") if isinstance(proof.get("candidate_statistics"), list) else []
+    grouped: dict[tuple[str, str, str, int], list[Mapping[str, Any]]] = {}
+    for row in proof_rows:
+        if not isinstance(row, Mapping):
+            continue
+        try:
+            key = (str(row.get("asset") or ""), str(row.get("regime") or ""), str(row.get("success_definition") or ""), int(row.get("horizon_seconds") or 0))
+        except (TypeError, ValueError):
+            continue
+        grouped.setdefault(key, []).append(row)
+    tournaments = []
+    for rows in grouped.values():
+        try:
+            tournaments.append(select_shadow_champion(rows))
+        except (TypeError, ValueError) as ex:
+            tournaments.append({"status": "BLOCKED", "detail": str(ex), "shadow_champion": None, "execution_authorized": False, "production_decision_authorized": False})
 
     return {
         "schema_version": SCHEMA_VERSION,
@@ -635,12 +667,17 @@ def brain_snapshot(
             "candidate_router": "SHADOW_ONLY",
         },
         "truth_contract": {
-            "success_rate": None,
-            "success_rate_status": "UNMEASURED_UNLESS_SUPPLIED_BY_VERIFIED_EVIDENCE",
+            "success_rate": proof_metrics.get("success_rate"),
+            "success_rate_status": ("ESTABLISHED_100_PERCENT_CLOSED_SAMPLE" if proof_closed.get("historical_100_percent_established") is True else "MEASURED_FROM_SETTLED_EVIDENCE" if proof_metrics.get("success_rate") is not None else "UNMEASURED_UNLESS_SUPPLIED_BY_VERIFIED_EVIDENCE"),
+            "outcome_coverage": proof_metrics.get("outcome_coverage"),
+            "brier_score": proof_metrics.get("brier_score"),
+            "expected_calibration_error": proof_metrics.get("expected_calibration_error"),
+            "historical_100_percent_established": proof_closed.get("historical_100_percent_established") is True,
+            "future_guarantee": False,
             "omniscience_claim": False,
             "omnipresence_claim": False,
             "omnipotence_claim": False,
-            "rule": "Display measured coverage, latency, calibration, drift and verified performance only; never convert aspiration into a factual metric.",
+            "rule": "100% may be displayed only for the exact closed, fully-settled sample that proves it; it is never generalized into a future guarantee.",
         },
         "architecture": {
             "agent_count": len(AGENTS),
@@ -682,6 +719,9 @@ def brain_snapshot(
             "execution_authorized": False,
             "production_decision_authorized": False,
         },
+        "performance_proof": proof,
+        "latency_telemetry": latency,
+        "evidence_tournaments": tournaments,
         "learning": {
             "brain_events_total": len(events),
             "brain_events_last_hour": last_hour,

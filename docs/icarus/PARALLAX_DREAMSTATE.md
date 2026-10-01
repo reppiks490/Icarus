@@ -70,7 +70,30 @@ Subsystem-ablation attribution is isolated by subsystem, asset, regime, source c
 
 The trader interface exposes branch-kind totals, observed counts, evidence-complete counts, evidence coverage, comparison-contract readiness, candidate-ready screens, and blocked-screen reasons. Missing replay evidence is visible instead of looking neutral.
 
-Storage: research/parallax.sqlite3 using SQLite WAL. V2 performs backward-compatible schema migration for comparison-contract and strata fields.
+### V3 robustness layer: time stability + parameter basins
+
+The V3 layer distinguishes statistically eligible from robustly eligible hypotheses.
+
+Chronological stability becomes evaluable after nine evidence-complete pairs. PARALLAX orders those pairs by immutable decision time and splits them into three contiguous chronological folds. It reports each fold's paired statistics, positive-fold fraction, and worst-fold mean.
+
+These simple retrospective evidence folds are internal to PARALLAX and are not the ICARUS Xi CHRONOFOLD causal-navigation subsystem. V3 creates no dependency on, ownership overlap with, or substitute for CHRONOFOLD.
+
+- Before nine pairs, temporal robustness is explicitly marked not yet evaluable and does not block exploratory research.
+- Once evaluable, every chronological fold must retain a positive mean paired effect for the source to remain robust-ready.
+- A statistically positive aggregate can therefore be withheld when the effect has disappeared or reversed in a later block.
+
+For one-dimensional delay, stop, target, and size families, PARALLAX also constructs a local parameter basin whenever adjacent parameter values have enough paired evidence.
+
+- A statistically eligible point with locally comparable neighbors but no statistically eligible, temporally coherent adjacent neighbor is labeled an isolated parameter spike and withheld from robust-ready mutation signals.
+- Basin neighborhoods are restricted to the same non-axis parameter signature, so a stop multiplier does not borrow support from another setting that silently changes an entry filter or other hidden parameter.
+- Locality is bounded by an axis-specific maximum gap; far-apart sampled points do not validate each other as neighbors.
+- If a parameter family has multiple sufficiently observed points but none are locally comparable, the source is labeled sparse local coverage and withheld from robust-ready signals.
+- Contiguous statistically eligible, temporally coherent settings form a basin. PARALLAX reports basin support count, width, adjacent supporting values, family coverage, and whether the point is isolated.
+- If only one sufficiently observed point exists in the comparable family, basin robustness remains not yet evaluable rather than treating missing exploration as a failure.
+
+This deliberately prefers plateaus over magic numbers. It is still a research robustness screen, not proof of causality or expected profit.
+
+Storage: research/parallax.sqlite3 using SQLite WAL. V2 performs backward-compatible schema migration for comparison-contract and strata fields; V3 adds computed diagnostics without a destructive storage migration.
 
 ---
 
@@ -104,6 +127,17 @@ This does not roll back or alter ICARUS production behavior; DREAMSTATE has no p
 
 DREAMSTATE also re-checks the exact current PARALLAX source hypothesis immediately before accepting any new validation-gate update. This closes the interval between evidence deterioration and the next scheduled/manual refresh: stale source evidence cannot continue advancing a candidate simply because its original signal snapshot was stronger.
 
+### V3 robustness authority
+
+DREAMSTATE V3 consumes robust_candidate_eligible, not merely the primary FDR-qualified flag.
+
+- A source can remain statistically significant yet be automatically retired if chronological fold stability becomes negative.
+- A source can remain statistically significant yet be withheld or retired if it becomes an isolated parameter spike once neighboring settings are evaluable.
+- Early sources are not rejected merely because temporal folds or neighboring parameter points do not yet have enough evidence; those robustness dimensions remain explicitly unevaluable.
+- Policy contracts, Adaptive Brain mirrors, and candidate search accounting carry temporal/basin diagnostics so downstream reviewers can see why a source is robust-ready or withheld.
+
+Robustness clearance does not replace the protected OOS, holdout, cost, replay, calibration, OOD/drift, or independent-verification gates.
+
 ### Protected gates
 
 Candidate stages are proposed -> study -> validated -> qualified_shadow, or terminal rejected / retired. The maximum possible stage inside DREAMSTATE is qualified_shadow.
@@ -126,15 +160,19 @@ DREAMSTATE mirrors each candidate into the existing Adaptive Brain candidate jou
 
 Adaptive Brain remains the shared fail-closed shadow-routing gatekeeper. PARALLAX and DREAMSTATE remain under AION PRIME ownership and have no broker authority.
 
+### Downstream evidence boundary
+
+PARALLAX/DREAMSTATE robustness is an upstream research-admission screen. It does not replace the separate Performance Proof ledger or Champion/Challenger shadow tournament now present in ICARUS. A robust-ready or even qualified-shadow DREAMSTATE candidate still requires independently settled proof records and the downstream tournament's own comparable-scope/sample/coverage gates before it can be treated as a shadow champion. None of these stages grants production or execution authority.
+
 ---
 
 ## Trader interface
 
-The existing PARALLAX / DREAMSTATE tab now exposes V2 intelligence without changing the dashboard/server ownership surfaces currently used by other ICARUS workstreams.
+The existing PARALLAX / DREAMSTATE tab now exposes V3 robustness intelligence without changing the dashboard/server ownership surfaces currently used by other ICARUS workstreams.
 
-The tab includes total twin decisions, comparison-contract readiness, candidate-ready hypothesis count, blocked-hypothesis diagnostics, FDR q-values, paired evidence counts and coverage, context strata, non-pooled regret status, revision-isolated ablation attribution, branch-kind replay coverage, DREAMSTATE candidates, family trial budgets, candidate gate state, source revision, and explicit shadow-only authority.
+The tab includes total twin decisions, comparison-contract readiness, statistical-ready and robust-ready hypothesis counts, blocked-hypothesis diagnostics, FDR q-values, chronological fold stability, worst-fold mean, parameter-basin support/spike state, paired evidence counts and coverage, context strata, non-pooled regret status, revision-isolated ablation attribution, branch-kind replay coverage, DREAMSTATE candidates, family trial budgets, candidate gate state, source revision, and explicit shadow-only authority.
 
-The interface continues to read GET /api/parallax and GET /api/dreamstate. No new dashboard or engine-server route is required for V2.
+The interface continues to read GET /api/parallax and GET /api/dreamstate. No new dashboard or engine-server route is required for V3. The existing schema versions remain backward-compatible; snapshots expose separate robustness_version markers for the V3 overlay.
 
 ---
 
@@ -152,7 +190,7 @@ These APIs manipulate research evidence only. They do not edit strategy inputs, 
 
 ## Truth contract
 
-PARALLAX/DREAMSTATE V2 deliberately refuses these invalid shortcuts:
+PARALLAX/DREAMSTATE V3 deliberately refuses these invalid shortcuts:
 
 - unobserved counterfactual outcomes are not fabricated;
 - missing evidence does not count as a statistical pair;
@@ -160,6 +198,11 @@ PARALLAX/DREAMSTATE V2 deliberately refuses these invalid shortcuts:
 - regret is not averaged across incomparable utility/evidence scopes;
 - paired ablation is not labeled causal proof;
 - a low p/q value is not labeled guaranteed alpha;
+- an aggregate effect that fails chronological stability is not promoted as robust;
+- an isolated winning parameter surrounded by evaluable losing neighbors is not promoted as robust;
+- far-apart parameter points or settings with different hidden non-axis parameters cannot manufacture a false basin;
+- a sampled parameter family with no local comparable support is not mislabeled a plateau;
+- unevaluable temporal/basin evidence is labeled early rather than silently assumed good or bad;
 - context-specific evidence is not silently generalized beyond observed strata;
 - an opposite-side branch does not auto-create an inversion strategy;
 - compound success does not prove each component;
