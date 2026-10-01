@@ -91,9 +91,13 @@ class SystemMsg:
 
 
 class Mapping:
-    def __init__(self, symbol, instrument_id):
+    def __init__(self, symbol, instrument_id, raw_symbol="", start_ts=None, end_ts=None):
         self.stype_in_symbol = symbol
+        self.stype_out_symbol = raw_symbol
         self.instrument_id = int(instrument_id)
+        undef = (1 << 64) - 1
+        self.start_ts = undef if start_ts is None else int(start_ts)
+        self.end_ts = undef if end_ts is None else int(end_ts)
 
 
 class FakeStore(list):
@@ -180,6 +184,8 @@ def test_continuous_volume_front_symbology_and_capabilities(monkeypatch):
     assert caps["persistent_live_sessions_max"] == 3
     assert caps["snapshot_sessions_serialized"] is True
     assert caps["live_symbol_routing"] == "SymbolMappingMsg/instrument_id"
+    assert caps["continuous_mapping_windows"] is True
+    assert caps["resolved_contract_metadata"] is True
     assert caps["depth_failure_isolation"] is True
     assert caps["depth_schema_isolation"] is True
     assert caps["continuous_live_refresh"] == "automatic_utc_day"
@@ -1023,22 +1029,74 @@ def test_shared_session_detach_readd_does_not_duplicate_or_misroute():
     feed = make_feed(lives=[live])
     feed.start_live("NQ=F")
     feed.start_live("ES=F")
-    live.callback(Mapping("NQ.v.0", 101))
-    live.callback(Mapping("ES.v.0", 202))
+    live.callback(Mapping("NQ.v.0", 101, raw_symbol="NQU6"))
+    live.callback(Mapping("ES.v.0", 202, raw_symbol="ESU6"))
     subscriptions_before = len(live.subscriptions)
-
+    assert feed.meta("NQ=F")["mapping_active"] is True
     feed.stop_live("NQ=F")
-    stray = Ohlcv(6_000, 111, 112, 110, 111.5, 1)
-    stray.instrument_id = 101
+    assert feed.meta("NQ=F")["mapping_active"] is False
+    live.callback(Mapping("NQ.v.0", 303, raw_symbol="NQZ6"))
+    assert feed.meta("NQ=F")["resolved_raw_symbol"] == "NQZ6"
+    assert feed.meta("NQ=F")["mapping_active"] is False
+    stray = Ohlcv(6_000, 111, 112, 110, 111.5, 1); stray.instrument_id = 303
     live.callback(stray)
-    assert not feed._second_bars["NQ=F"]
-    assert not feed._second_bars["ES=F"]
-
+    assert not feed._second_bars["NQ=F"] and not feed._second_bars["ES=F"]
     feed.start_live("NQ=F")
+    assert feed.meta("NQ=F")["mapping_active"] is True
     assert len(live.subscriptions) == subscriptions_before
     live.callback(stray)
     assert feed._second_bars["NQ=F"][-1].c == 111.5
     assert not feed._second_bars["ES=F"]
+
+
+def test_current_symbol_mapping_retires_stale_contract_id_and_updates_metadata():
+    live = FakeLive(); feed = make_feed(lives=[live]); feed.start_live("NQ=F")
+    live.callback(Mapping("NQ.v.0", 101, raw_symbol="NQU6"))
+    first = Ohlcv(5_000, 100, 101, 99, 100.5, 1); first.instrument_id = 101; live.callback(first)
+    live.callback(Mapping("NQ.v.0", 303, raw_symbol="NQZ6"))
+    stale = Ohlcv(5_001, 150, 151, 149, 150.5, 9); stale.instrument_id = 101
+    current = Ohlcv(5_002, 200, 201, 199, 200.5, 2); current.instrument_id = 303
+    live.callback(stale); live.callback(current)
+    assert 101 not in feed._instrument_to_symbol and feed._instrument_to_symbol[303] == "NQ=F"
+    assert [row.ts for row in feed._second_bars["NQ=F"]] == [5_000, 5_002]
+    meta = feed.meta("NQ=F")
+    assert meta["resolved_instrument_id"] == 303 and meta["resolved_raw_symbol"] == "NQZ6"
+    assert meta["mapping_current"] is True and meta["mapping_active"] is True
+
+
+def test_finite_replay_mapping_windows_route_only_valid_contract_records():
+    live = FakeLive(); feed = make_feed(lives=[live]); feed.start_live("NQ=F")
+    feed._dispatch_shared_live(Mapping("NQ.v.0", 101, raw_symbol="NQU6", start_ts=5_000 * NS, end_ts=5_002 * NS))
+    feed._dispatch_shared_live(Mapping("NQ.v.0", 303, raw_symbol="NQZ6", start_ts=5_002 * NS, end_ts=5_005 * NS))
+    old_valid = Ohlcv(5_001, 100, 101, 99, 100.5, 1); old_valid.instrument_id = 101
+    old_invalid = Ohlcv(5_003, 150, 151, 149, 150.5, 9); old_invalid.instrument_id = 101
+    new_valid = Ohlcv(5_003, 200, 201, 199, 200.5, 2); new_valid.instrument_id = 303
+    feed._dispatch_shared_live(old_valid); feed._dispatch_shared_live(old_invalid); feed._dispatch_shared_live(new_valid)
+    rows = list(feed._second_bars["NQ=F"])
+    assert [row.ts for row in rows] == [5_001, 5_003] and rows[-1].c == 200.5
+    meta = feed.meta("NQ=F")
+    assert meta["resolved_instrument_id"] == 303 and meta["resolved_raw_symbol"] == "NQZ6"
+    assert meta["mapping_current"] is False
+
+
+def test_finite_replay_mapping_cannot_narrow_same_current_instrument():
+    feed = make_feed(); feed._live_started.add("NQ=F"); feed._continuous_to_symbol["NQ.v.0"] = "NQ=F"
+    feed._dispatch_shared_live(Mapping("NQ.v.0", 303, raw_symbol="NQZ6"))
+    feed._dispatch_shared_live(Mapping("NQ.v.0", 303, raw_symbol="NQZ6", start_ts=5_000 * NS, end_ts=5_005 * NS))
+    assert feed._instrument_windows[303] == ("NQ=F", None, None)
+    assert feed.meta("NQ=F")["mapping_current"] is True
+
+
+def test_depth_mapping_window_rejects_stale_contract_records_after_current_remap():
+    feed = make_feed(); schema = "mbp-10"
+    feed._depth_live_symbols[schema].add("NQ=F"); feed._depth_continuous_to_symbol[schema]["NQ.v.0"] = "NQ=F"
+    feed._dispatch_depth_live(schema, Mapping("NQ.v.0", 101, raw_symbol="NQU6"))
+    feed._dispatch_depth_live(schema, Mapping("NQ.v.0", 303, raw_symbol="NQZ6"))
+    stale = Depth(5_001, 150.0, levels=[Level(149.75, 150.0)]); stale.instrument_id = 101
+    current = Depth(5_002, 200.0, levels=[Level(199.75, 200.0)]); current.instrument_id = 303
+    feed._dispatch_depth_live(schema, stale); feed._dispatch_depth_live(schema, current)
+    rows = list(feed._depth[("NQ=F", schema)])
+    assert len(rows) == 1 and rows[0]["price"] == 200.0
 
 
 def test_shared_live_session_routes_records_by_symbol_mapping():
@@ -1411,6 +1469,8 @@ def test_engine_http_exposes_databento_capabilities_ticks_depth_and_mbo(tmp_path
     })
     snapshot_live = FakeLive({"mbo": [Depth(4_002, 100.5, flags=1)]})
     feed = make_feed(lives=[core_live, depth_live, snapshot_live])
+    feed.start_live("NQ=F")
+    core_live.callback(Mapping("NQ.v.0", 42, raw_symbol="NQZ6"))
 
     journal = Journal(":memory:")
     port = Portfolio(journal, str(tmp_path))
@@ -1436,6 +1496,10 @@ def test_engine_http_exposes_databento_capabilities_ticks_depth_and_mbo(tmp_path
             assert body["provider"] == "databento"
             assert body["capabilities"]["ticks"] is True
             assert body["capabilities"]["mbp_10"] is True
+            assert body["metadata"]["resolved_instrument_id"] == 42
+            assert body["metadata"]["resolved_raw_symbol"] == "NQZ6"
+            assert body["metadata"]["mapping_current"] is True
+            assert runner.summary()["feed_health"]["resolved_raw_symbol"] == "NQZ6"
 
         with urllib.request.urlopen(base + "/api/market-data/NQ1!/ticks?limit=10", timeout=5) as reply:
             body = json.load(reply)

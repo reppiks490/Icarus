@@ -49,3 +49,12 @@ def test_strategy_tester_timeframes_are_cache_aware():
     assert "cached_source_resolutions_minutes" in src
     assert "$('#btAsset').addEventListener('change'" in src
     assert "BT.res = null; BT.compare = null" in src
+
+
+def test_asset_adder_uses_registry_suggestions_and_single_flight_submit():
+    src = (REPO / "icarus_engine/dashboard.html").read_text(encoding="utf-8")
+    assert 'list="addAssetOptions"' in src
+    assert 'datalist id="addAssetOptions"' in src
+    assert "REGISTRY.map" in src
+    assert "b.disabled = true" in src
+    assert "await admin('/admin/assets/add'" in src
