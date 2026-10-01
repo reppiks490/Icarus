@@ -561,6 +561,7 @@ def brain_snapshot(
     integrity: Mapping[str, Any] | None = None,
     remote_sync: Mapping[str, Any] | None = None,
     research_sync: Mapping[str, Any] | None = None,
+    proof_status: Mapping[str, Any] | None = None,
     limit: int = 1000,
 ) -> dict[str, Any]:
     """Build the operator brain state from measured local evidence only."""
@@ -613,6 +614,38 @@ def brain_snapshot(
     audit_events = len((system_audit or {}).get("events", []) or []) if isinstance(system_audit, Mapping) else 0
     integrity_events = len((integrity or {}).get("events", []) or []) if isinstance(integrity, Mapping) else 0
     incubator = _research_incubator(research_status)
+    if isinstance(proof_status, Mapping):
+        proof = dict(proof_status)
+    else:
+        try:
+            from .performance_proof import PerformanceProofStore
+            proof = PerformanceProofStore(base_dir).snapshot()
+        except Exception:
+            # Proof collection must never make the trading dashboard unavailable.
+            # Failure to load evidence fails closed to an unmeasured state.
+            proof = {
+                "metrics": {
+                    "success_rate": None,
+                    "outcome_coverage": None,
+                    "brier_score": None,
+                    "expected_calibration_error": None,
+                },
+                "closed_sample": {
+                    "complete": False,
+                    "historical_100_percent_established": False,
+                    "future_guarantee": False,
+                },
+                "replay": {
+                    "determinism_rate": None,
+                    "historical_100_percent_established": False,
+                },
+                "candidate_statistics": [],
+                "regime_champions": [],
+                "execution_authorized": False,
+                "production_decision_authorized": False,
+            }
+    proof_metrics = proof.get("metrics") if isinstance(proof.get("metrics"), Mapping) else {}
+    proof_closed = proof.get("closed_sample") if isinstance(proof.get("closed_sample"), Mapping) else {}
 
     return {
         "schema_version": SCHEMA_VERSION,
@@ -625,12 +658,22 @@ def brain_snapshot(
             "candidate_router": "SHADOW_ONLY",
         },
         "truth_contract": {
-            "success_rate": None,
-            "success_rate_status": "UNMEASURED_UNLESS_SUPPLIED_BY_VERIFIED_EVIDENCE",
+            "success_rate": proof_metrics.get("success_rate"),
+            "success_rate_status": (
+                "ESTABLISHED_100_PERCENT_CLOSED_SAMPLE"
+                if proof_closed.get("historical_100_percent_established") is True
+                else "MEASURED_FROM_SETTLED_EVIDENCE" if proof_metrics.get("success_rate") is not None
+                else "UNMEASURED_UNLESS_SUPPLIED_BY_VERIFIED_EVIDENCE"
+            ),
+            "outcome_coverage": proof_metrics.get("outcome_coverage"),
+            "brier_score": proof_metrics.get("brier_score"),
+            "expected_calibration_error": proof_metrics.get("expected_calibration_error"),
+            "historical_100_percent_established": proof_closed.get("historical_100_percent_established") is True,
+            "future_guarantee": False,
             "omniscience_claim": False,
             "omnipresence_claim": False,
             "omnipotence_claim": False,
-            "rule": "Display measured coverage, latency, calibration, drift and verified performance only; never convert aspiration into a factual metric.",
+            "rule": "100% may be displayed only when an exact closed, fully-settled sample proves it; historical proof is never generalized into guaranteed future market success.",
         },
         "architecture": {
             "agent_count": len(AGENTS),
@@ -672,6 +715,7 @@ def brain_snapshot(
             "execution_authorized": False,
             "production_decision_authorized": False,
         },
+        "performance_proof": proof,
         "learning": {
             "brain_events_total": len(events),
             "brain_events_last_hour": last_hour,
