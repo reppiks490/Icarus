@@ -133,7 +133,21 @@ It does **not** pool effect sizes across revisions. Instead it reports:
 
 Transportability becomes evaluable after at least two independently sampled source revisions. A strongly contradictory revision—defined conservatively as a dependence-adjusted 95% upper bound at or below zero—blocks robust readiness for the matching mutation family. Missing or merely underpowered revisions do not count as contradictions.
 
-Storage: research/parallax.sqlite3 using SQLite WAL. V2 performs backward-compatible schema migration for comparison-contract and strata fields; V3 and V4 add computed diagnostics without a destructive storage migration.
+### V5 distributional robustness: breadth + leave-one-out stability
+
+V5 adds a deterministic distributional screen over the **effective independent episode means** produced by V4. It does not use raw clustered rows.
+
+The screen becomes evaluable at nine effective episodes and requires all of the following for robust readiness:
+
+- median paired episode effect strictly above zero;
+- at least two-thirds of effective episode means strictly positive;
+- leave-one-episode-out mean remains strictly above zero for every episode.
+
+This catches effects whose average looks attractive only because a minority of oversized winners overwhelms a losing median, weak positive breadth, or one dominant episode. Before nine effective episodes, distributional robustness remains explicitly early/unevaluable rather than silently penalizing young hypotheses.
+
+Distributional diagnostics are scale-free relative to the supplied utility definition: PARALLAX does not invent a universal loss threshold or P&L target.
+
+Storage: research/parallax.sqlite3 using SQLite WAL. V2 performs backward-compatible schema migration for comparison-contract and strata fields; V3, V4, and V5 add computed diagnostics without a destructive storage migration.
 
 ---
 
@@ -194,6 +208,18 @@ DREAMSTATE still creates candidates only from `robust_candidate_eligible` PARALL
 
 Cross-revision transport does not merge or average separate code revisions. Revision boundaries remain immutable evidence boundaries.
 
+### V5 distributional authority
+
+DREAMSTATE V5 carries the exact PARALLAX distributional diagnostics into policy contracts, search accounting, Adaptive Brain mirrors, refresh retirement, and live gate revalidation.
+
+A source that remains mean-significant and temporally stable can still be withheld or retired when:
+
+- the median effective episode effect is non-positive;
+- fewer than two-thirds of effective episodes are positive;
+- removing any single effective episode makes the remaining mean non-positive.
+
+Distributional robustness is advisory until nine effective episodes, matching PARALLAX. It never grants production, sizing, broker, or execution authority.
+
 ### Protected gates
 
 Candidate stages are proposed -> study -> validated -> qualified_shadow, or terminal rejected / retired. The maximum possible stage inside DREAMSTATE is qualified_shadow.
@@ -224,11 +250,11 @@ PARALLAX/DREAMSTATE robustness is an upstream research-admission screen. It does
 
 ## Trader interface
 
-The existing PARALLAX / DREAMSTATE tab now exposes V4 dependence and V3 robustness intelligence without changing the dashboard/server ownership surfaces currently used by other ICARUS workstreams.
+The existing PARALLAX / DREAMSTATE tab now exposes V5 distributional breadth, V4 dependence, and V3 temporal/parameter robustness intelligence without changing the dashboard/server ownership surfaces currently used by other ICARUS workstreams.
 
-The tab includes total twin decisions, comparison-contract readiness, statistical-ready and robust-ready hypothesis counts, blocked-hypothesis diagnostics, raw versus effective paired N, episode-cluster counts, HAC-adjusted lower bounds, FDR q-values, chronological fold stability, worst-fold mean, parameter-basin support/spike state, cross-revision transport/contradiction state, paired evidence coverage, context strata, non-pooled regret status, revision-isolated ablation attribution, branch-kind replay coverage, DREAMSTATE candidates, family trial budgets, candidate gate state, source revision, and explicit shadow-only authority.
+The tab includes total twin decisions, comparison-contract readiness, statistical-ready and robust-ready hypothesis counts, blocked-hypothesis diagnostics, raw versus effective paired N, episode-cluster counts, HAC-adjusted lower bounds, FDR q-values, distribution median/positive breadth/leave-one-out stability, chronological fold stability, worst-fold mean, parameter-basin support/spike state, cross-revision transport/contradiction state, paired evidence coverage, context strata, non-pooled regret status, revision-isolated ablation attribution, branch-kind replay coverage, DREAMSTATE candidates, family trial budgets, candidate gate state, source revision, and explicit shadow-only authority.
 
-The interface continues to read GET /api/parallax and GET /api/dreamstate. No new dashboard or engine-server route is required for V4. The existing storage/API schema versions remain backward-compatible; snapshots expose separate robustness_version markers for the computed V4 overlay.
+The interface continues to read GET /api/parallax and GET /api/dreamstate. No new dashboard or engine-server route is required for V5. The existing storage/API schema versions remain backward-compatible; snapshots expose separate robustness_version markers for the computed V5 overlay.
 
 ---
 
@@ -246,7 +272,7 @@ These APIs manipulate research evidence only. They do not edit strategy inputs, 
 
 ## Truth contract
 
-PARALLAX/DREAMSTATE V4 deliberately refuses these invalid shortcuts:
+PARALLAX/DREAMSTATE V5 deliberately refuses these invalid shortcuts:
 
 - unobserved counterfactual outcomes are not fabricated;
 - missing evidence does not count as a statistical pair;
@@ -264,6 +290,9 @@ PARALLAX/DREAMSTATE V4 deliberately refuses these invalid shortcuts:
 - compound success does not prove each component;
 - repeated decisions from the same declared market episode do not inflate effective sample size;
 - serial dependence does not retain the naïve confidence interval once HAC is evaluable;
+- a positive mean with a non-positive episode median is not labeled robust once distribution breadth is evaluable;
+- a minority of positive episodes cannot hide weak breadth once the V5 threshold is evaluable;
+- one dominant episode cannot preserve robust readiness if leave-one-episode-out mean turns non-positive;
 - cross-revision effects are not pooled to manufacture a larger sample;
 - a strongly contradictory exact code revision blocks robust readiness for the matching mutation;
 - repeated searches do not bypass family budgets or multiple-testing controls;

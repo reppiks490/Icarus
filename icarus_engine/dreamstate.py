@@ -13,6 +13,9 @@ PARALLAX robustness clearance when chronological or neighboring-parameter eviden
 is rich enough to evaluate it. V4 carries episode-aware effective sample size,
 Newey-West/HAC uncertainty, and cross-revision transportability diagnostics into
 policy contracts, search accounting, Brain mirrors, and live source revalidation.
+V5 additionally carries distributional episode robustness so outlier-driven means,
+weak positive-episode breadth, and single-episode fragility remain visible and
+fail closed during candidate refresh and gate updates.
 """
 from __future__ import annotations
 
@@ -300,6 +303,7 @@ class DreamstateLab:
                     "parameter_basin": signal.get("parameter_basin", {}),
                     "episode_dependence": signal.get("episode_dependence", {}),
                     "hac_inference": signal.get("hac_inference", {}),
+                    "distributional_robustness": signal.get("distributional_robustness", {}),
                     "transportability": signal.get("transportability", {}),
                 },
             },
@@ -353,6 +357,13 @@ class DreamstateLab:
             "source_hac_lag": (signal.get("hac_inference") or {}).get("lag"),
             "source_hac_ci95_low": (signal.get("hac_inference") or {}).get("ci95_low"),
             "source_hac_ci95_high": (signal.get("hac_inference") or {}).get("ci95_high"),
+            "source_distribution_evaluable": bool((signal.get("distributional_robustness") or {}).get("evaluable")),
+            "source_distribution_stable": (signal.get("distributional_robustness") or {}).get("stable"),
+            "source_distribution_median_delta": (signal.get("distributional_robustness") or {}).get("median_delta"),
+            "source_distribution_positive_fraction": (signal.get("distributional_robustness") or {}).get("positive_fraction"),
+            "source_distribution_minimum_positive_fraction": (signal.get("distributional_robustness") or {}).get("minimum_positive_fraction"),
+            "source_distribution_leave_one_out_min_mean": (signal.get("distributional_robustness") or {}).get("leave_one_out_min_mean"),
+            "source_single_episode_fragile": (signal.get("distributional_robustness") or {}).get("single_episode_fragile"),
             "source_screen_ci95_low": signal.get("screen_ci95_low"),
             "source_screen_p_one_sided": signal.get("screen_p_one_sided"),
             "source_transport_evaluable": bool((signal.get("transportability") or {}).get("evaluable")),
@@ -408,6 +419,7 @@ class DreamstateLab:
         basin = signal.get("parameter_basin") if isinstance(signal.get("parameter_basin"), Mapping) else {}
         episode = signal.get("episode_dependence") if isinstance(signal.get("episode_dependence"), Mapping) else {}
         hac = signal.get("hac_inference") if isinstance(signal.get("hac_inference"), Mapping) else {}
+        distributional = signal.get("distributional_robustness") if isinstance(signal.get("distributional_robustness"), Mapping) else {}
         transport = signal.get("transportability") if isinstance(signal.get("transportability"), Mapping) else {}
         metrics.update({
             "temporal_stable": temporal.get("stable"),
@@ -423,6 +435,12 @@ class DreamstateLab:
             "hac_lag": hac.get("lag"),
             "hac_ci95_low": hac.get("ci95_low"),
             "hac_ci95_high": hac.get("ci95_high"),
+            "distribution_evaluable": distributional.get("evaluable"),
+            "distribution_stable": distributional.get("stable"),
+            "distribution_median_delta": distributional.get("median_delta"),
+            "distribution_positive_fraction": distributional.get("positive_fraction"),
+            "distribution_leave_one_out_min_mean": distributional.get("leave_one_out_min_mean"),
+            "single_episode_fragile": distributional.get("single_episode_fragile"),
             "transport_evaluable": transport.get("evaluable"),
             "transport_stable": transport.get("stable"),
             "transport_supporting_revisions": transport.get("supporting_revision_count"),
@@ -844,7 +862,7 @@ class DreamstateLab:
         families = self._family_summaries(candidates)
         return {
             "schema_version": SCHEMA_VERSION,
-            "robustness_version": "icarus-dreamstate-robustness-v2",
+            "robustness_version": "icarus-dreamstate-robustness-v3",
             "stages": stages,
             "candidates": candidates,
             "families": families,
@@ -871,6 +889,9 @@ class DreamstateLab:
                 "isolated_parameter_spikes_can_retire_shadow_candidates": True,
                 "episode_clustering_reduces_effective_source_sample_size": True,
                 "hac_dependence_adjustment_can_block_shadow_candidates": True,
+                "distributional_episode_fragility_can_retire_shadow_candidates": True,
+                "nonpositive_episode_median_or_low_positive_episode_fraction_can_block_shadow_candidates": True,
+                "single_episode_leave_one_out_fragility_can_block_shadow_candidates": True,
                 "cross_revision_contradiction_can_retire_shadow_candidates": True,
                 "transportability_never_pools_effect_sizes_across_code_revisions": True,
                 "multiple_testing_gate_required": True,
