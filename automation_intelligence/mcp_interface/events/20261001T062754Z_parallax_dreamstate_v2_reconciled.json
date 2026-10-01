@@ -1,0 +1,36 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "parallax-dreamstate-v2-reconciled-20261001T062754Z",
+  "category": "EVOLUTION",
+  "severity": "success",
+  "status": "active",
+  "subsystems": [
+    "parallax",
+    "dreamstate",
+    "aion",
+    "athena",
+    "provenance",
+    "ml"
+  ],
+  "recorded_at": "2026-10-01T06:27:54Z",
+  "title": "PARALLAX and DREAMSTATE V2 reconciled on latest main",
+  "summary": "Exact green PARALLAX/DREAMSTATE V2 state from PR #96 has been replayed onto the latest ICARUS mainline without touching autopilot or other concurrent workstreams. V2 includes comparison-contract identity, causal-time and immutable branch plans, evidence-complete paired screening, context strata, source/contract/parameter isolation, target and bounded compound twins, non-pooled regret, BH-FDR screening, DREAMSTATE source-decay retirement including disappeared source hypotheses, live source revalidation before gate updates, revision/contract-isolated policy families, search budgets, policy contracts, and richer Adaptive Brain/UI diagnostics. Authority remains research/shadow only.",
+  "source_repository": "reppiks490/Icarus",
+  "source_ref": "chatgpt/parallax-dreamstate-v2-reconciled-20261001",
+  "source_commit": "04051a1200830bc4a7b6c994ad91698f916379a0",
+  "evidence": [
+    "icarus_engine/parallax.py",
+    "icarus_engine/dreamstate.py",
+    "icarus_engine/parallax-ui.js",
+    "tests_engine/test_parallax_dreamstate.py",
+    "docs/icarus/PARALLAX_DREAMSTATE.md",
+    "PR #96 exact-head Linux CI passed",
+    "PR #96 exact-head Windows CI passed",
+    "source-disappears retirement regression preserved",
+    "autopilot mainline files untouched",
+    "execution_authorized=false",
+    "production_decision_authorized=false"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}
