@@ -104,6 +104,25 @@ class ApexStore:
                 );
                 CREATE INDEX IF NOT EXISTS idx_apex_cascade_edges_asof
                     ON cascade_edges(as_of_ts);
+                CREATE TABLE IF NOT EXISTS world_states (
+                    world_record_id TEXT PRIMARY KEY,
+                    world_id TEXT NOT NULL,
+                    as_of TEXT NOT NULL,
+                    as_of_ts REAL NOT NULL,
+                    semantic_json TEXT NOT NULL,
+                    recorded_at TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_apex_world_states_asof
+                    ON world_states(as_of_ts, world_id);
+                CREATE TABLE IF NOT EXISTS unknown_force_events (
+                    event_id TEXT PRIMARY KEY,
+                    as_of TEXT NOT NULL,
+                    as_of_ts REAL NOT NULL,
+                    semantic_json TEXT NOT NULL,
+                    recorded_at TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_apex_unknown_force_asof
+                    ON unknown_force_events(as_of_ts);
                 """
             )
 
@@ -368,4 +387,88 @@ class ApexStore:
             except ValueError:
                 continue
             out.append(semantic)
+        return out
+
+
+    def record_world_state(self, world: Mapping[str, Any]) -> dict[str, Any]:
+        if not isinstance(world, Mapping):
+            raise ValueError("world state must be an object")
+        semantic=dict(world)
+        self._validate_research_authority(semantic)
+        world_id=semantic.get("world_id")
+        if not isinstance(world_id,str) or not world_id.strip():
+            raise ValueError("world_id is required")
+        as_of=semantic.get("as_of")
+        if not isinstance(as_of,str):
+            raise ValueError("world as_of is required")
+        as_of_ts=parse_utc(as_of,"as_of").timestamp()
+        try:
+            raw=json.dumps(semantic,sort_keys=True,separators=(",",":"),allow_nan=False)
+        except (TypeError,ValueError) as ex:
+            raise ValueError("world state must be finite JSON") from ex
+        import hashlib
+        rid=hashlib.sha256(raw.encode("utf-8")).hexdigest()
+        with self._lock,self._conn:
+            cur=self._conn.execute(
+                "INSERT OR IGNORE INTO world_states(world_record_id,world_id,as_of,as_of_ts,semantic_json,recorded_at) VALUES(?,?,?,?,?,?)",
+                (rid,world_id.strip(),as_of,as_of_ts,raw,self._utc_now()),
+            )
+        return {"ok":True,"idempotent":cur.rowcount==0,"world_record_id":rid,**authority_flags()}
+
+    def world_states_as_of(self, as_of: str) -> list[dict[str, Any]]:
+        boundary=parse_utc(as_of,"as_of").timestamp()
+        with self._lock:
+            rows=self._conn.execute("SELECT * FROM world_states WHERE as_of_ts<=? ORDER BY as_of_ts,world_record_id",(boundary,)).fetchall()
+        out=[]
+        for row in rows:
+            try:
+                semantic=json.loads(row["semantic_json"])
+            except (TypeError,json.JSONDecodeError):
+                continue
+            if not isinstance(semantic,dict):
+                continue
+            try:
+                self._validate_research_authority(semantic)
+            except ValueError:
+                continue
+            item=dict(semantic); item["world_record_id"]=row["world_record_id"]; item["recorded_at"]=row["recorded_at"]; out.append(item)
+        return out
+
+    def record_unknown_force(self, event: Mapping[str, Any]) -> dict[str, Any]:
+        if not isinstance(event, Mapping):
+            raise ValueError("unknown-force event must be an object")
+        semantic=dict(event)
+        self._validate_research_authority(semantic)
+        eid=semantic.get("event_id")
+        if not isinstance(eid,str) or not eid.strip():
+            raise ValueError("event_id is required")
+        as_of=semantic.get("as_of")
+        if not isinstance(as_of,str):
+            raise ValueError("unknown-force as_of is required")
+        as_of_ts=parse_utc(as_of,"as_of").timestamp()
+        raw=json.dumps(semantic,sort_keys=True,separators=(",",":"),allow_nan=False)
+        with self._lock,self._conn:
+            cur=self._conn.execute(
+                "INSERT OR IGNORE INTO unknown_force_events(event_id,as_of,as_of_ts,semantic_json,recorded_at) VALUES(?,?,?,?,?)",
+                (eid.strip(),as_of,as_of_ts,raw,self._utc_now()),
+            )
+        return {"ok":True,"idempotent":cur.rowcount==0,"event_id":eid.strip(),**authority_flags()}
+
+    def unknown_force_events_as_of(self, as_of: str) -> list[dict[str, Any]]:
+        boundary=parse_utc(as_of,"as_of").timestamp()
+        with self._lock:
+            rows=self._conn.execute("SELECT * FROM unknown_force_events WHERE as_of_ts<=? ORDER BY as_of_ts,event_id",(boundary,)).fetchall()
+        out=[]
+        for row in rows:
+            try:
+                semantic=json.loads(row["semantic_json"])
+            except (TypeError,json.JSONDecodeError):
+                continue
+            if not isinstance(semantic,dict):
+                continue
+            try:
+                self._validate_research_authority(semantic)
+            except ValueError:
+                continue
+            item=dict(semantic); item["recorded_at"]=row["recorded_at"]; out.append(item)
         return out
