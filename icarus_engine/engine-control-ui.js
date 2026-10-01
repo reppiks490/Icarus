@@ -50,6 +50,8 @@ function ecActionRow(action,data){
     ? '<input data-ec-args="'+esc(action.id)+'" placeholder=\'{"tf":"20"}\' style="width:180px">'
     : action.id==='asset.apply_config'
     ? '<input data-ec-args="'+esc(action.id)+'" placeholder=\'{"values":{},"chart":{}}\' style="width:240px">'
+    : action.id==='autopilot.configure'
+    ? '<input data-ec-args="'+esc(action.id)+'" placeholder=\'{"cadence_seconds":15,"robustness_windows":3}\' style="width:300px">'
     : action.id==='dreamstate.refresh'
     ? '<input data-ec-args="'+esc(action.id)+'" placeholder=\'{"min_samples":5}\' style="width:180px">'
     : '';
