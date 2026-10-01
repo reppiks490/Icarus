@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import os
+from urllib.parse import quote
 from typing import Any, Dict, Optional
 
 import httpx
