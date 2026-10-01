@@ -51,7 +51,14 @@ def _mean(xs: Sequence[float]) -> float:
 
 
 def _std(xs: Sequence[float]) -> float:
-    return statistics.pstdev(xs) if len(xs) > 1 else 0.0
+    vals = [float(x) for x in xs if math.isfinite(float(x))]
+    if len(vals) <= 1:
+        return 0.0
+    mean = math.fsum(vals) / len(vals)
+    scale = max((abs(x - mean) for x in vals), default=0.0)
+    if not math.isfinite(scale) or scale <= EPS:
+        return 0.0
+    return scale * math.sqrt(math.fsum(((x - mean) / scale) ** 2 for x in vals) / len(vals))
 
 
 def _mad(xs: Sequence[float]) -> float:
@@ -247,7 +254,8 @@ class ChronofoldEngine:
                 continue
             hist = self._history[symbol]
             prev = hist[-1].price if hist else price
-            ret = math.log(max(price, EPS) / max(prev, EPS)) if prev > 0 else 0.0
+            ret = (math.log(max(price, EPS)) - math.log(max(prev, EPS))) if prev > 0 else 0.0
+            ret = _finite(ret)
             obs = ChronofoldObservation(
                 symbol=symbol,
                 ts=event_ts,
