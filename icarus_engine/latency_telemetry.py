@@ -191,6 +191,8 @@ class LatencyTelemetry:
             "schema_version": "icarus-latency-telemetry-v1",
             "clock": "time.perf_counter_ns",
             "measurement_type": "LOCAL_PROCESSING_ELAPSED_TIME",
+            "hot_path_scope": "LIVE_CHART_BAR_DECISION_ONLY",
+            "replay_and_warmup_excluded": True,
             "targets_are_measured_not_assumed": True,
             "hot_path": hot,
             "stages": stages,
