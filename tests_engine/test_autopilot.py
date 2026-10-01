@@ -230,3 +230,25 @@ def test_robustness_score_penalizes_recent_window_collapse(tmp_path, monkeypatch
     assert metrics["full_score"] > metrics["score"]
     assert metrics["worst_window_score"] == -999.0
     assert len(metrics["window_scores"]) == 3
+
+
+def test_tactical_scheduler_switches_from_exploration_to_learned_exploitation(tmp_path, monkeypatch):
+    port = FakePort(tmp_path)
+    original = port.runners["NQ"].inputs.to_dict()
+
+    def replay(_port, asset, **kwargs):
+        changed = kwargs["inputs"] != original or kwargs.get("chart_type") != "real" or kwargs.get("session") is not None
+        return fake_result(kwargs["inputs"], better=changed)
+
+    monkeypatch.setattr("icarus_engine.autopilot.run_backtest", replay)
+    ap = TacticalAutopilot(port)
+    ap.configure({"robustness_windows": 1, "enabled": False})
+    ap.cycle_once()  # baseline
+    second = ap.cycle_once()
+    learned = second["history"][-1]["dimension_key"]
+    assert second["history"][-1]["search_mode"] == "explore"
+    assert learned in second["dimension_stats"]
+
+    third = ap.cycle_once()
+    assert third["history"][-1]["search_mode"] == "exploit"
+    assert third["history"][-1]["dimension_key"] == learned
