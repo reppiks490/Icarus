@@ -133,6 +133,54 @@
       "verification": "The implementation includes fail-closed manifest/journal validation, exact-SHA provenance enforcement, idempotency tests, MCP bridge contract tests, and dashboard JavaScript contract coverage; repository Actions is the final branch verification.",
       "interface_effect": "A Data Integrity tab exposes O03/O04/O05/O06/O14, corpus statistics, repaired NEXUS blockers, and future material MCP receipts. The System evolution panel also records this integration.",
       "execution_authorized": false
+    },
+    {
+      "id": "mcp-20260930-nexus-four-axis-identity",
+      "recorded_date": "2026-09-30",
+      "subsystem": "NEXUS",
+      "kind": "hardening",
+      "status": "integrated_branch",
+      "severity": "important",
+      "title": "Exact-byte four-axis representation authority",
+      "summary": "NEXUS reviewed identity now binds exact raw bytes and requires coherent chart family, price geometry, sampling domain, and sampling construction before authoritative model use.",
+      "source_repo": "reppiks490/divine-providence",
+      "source_branch": "main",
+      "source_commit": "3a123904d0bf2ac4a3bc1a10269e18c55aef9ec6",
+      "verification": "The representation-registry, model-plane bridge, four-axis gate, and paired regression commits were inspected through MCP.",
+      "interface_effect": "The specialized Data Integrity panel exposes the full commit set and O14 relationship; this System ledger exposes the material subsystem evolution.",
+      "execution_authorized": false
+    },
+    {
+      "id": "mcp-20260930-nexus-quality-plane-hardening",
+      "recorded_date": "2026-09-30",
+      "subsystem": "NEXUS",
+      "kind": "hardening",
+      "status": "integrated_branch",
+      "severity": "important",
+      "title": "Quality-plane identity and telemetry fail-closed hardening",
+      "summary": "NEXUS binds quality state to canonical stream identity, verifies aggregate telemetry against stream state, assigns zero evidence to omitted explicit quality weights, and rejects malformed integrity counters.",
+      "source_repo": "reppiks490/divine-providence",
+      "source_branch": "main",
+      "source_commit": "7bc8f52ef5866bb0eb2550f0762fc64f2bec7dbb",
+      "verification": "Implementation diffs and dedicated regression commits were inspected through MCP.",
+      "interface_effect": "The System evolution ledger records the material hardening; the Data Integrity panel carries detailed provenance/evidence.",
+      "execution_authorized": false
+    },
+    {
+      "id": "mcp-20260930-nexus-replay-lineage",
+      "recorded_date": "2026-09-30",
+      "subsystem": "NEXUS",
+      "kind": "hardening",
+      "status": "integrated_branch",
+      "severity": "important",
+      "title": "Run-lineage semantics and atomic replay checkpoints",
+      "summary": "Research run manifests validate semantic genealogy and artifact identity beyond outer hashes, while replay checkpoints reject invalid state and persist atomically.",
+      "source_repo": "reppiks490/divine-providence",
+      "source_branch": "main",
+      "source_commit": "1ffe027843e83522173ab25cd300d1aed24a5bb1",
+      "verification": "Run-manifest and checkpoint diffs plus paired tamper/atomic-persistence tests were inspected through MCP.",
+      "interface_effect": "The System evolution ledger surfaces replay-lineage durability; detailed commit provenance remains visible in Data Integrity.",
+      "execution_authorized": false
     }
   ]
 }

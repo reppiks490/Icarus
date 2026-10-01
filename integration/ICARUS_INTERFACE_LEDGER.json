@@ -1,6 +1,6 @@
 {
   "schema_version": "icarus-interface-ledger-v2",
-  "generated_at": "2026-09-30T21:30:00-05:00",
+  "generated_at": "2026-09-30T21:35:00-05:00",
   "execution_authorized": false,
   "policy": {
     "mcp_mirror_required": true,
@@ -154,6 +154,53 @@
         "47df68167443b9b9c8666f8ce9b62939c79408d1",
         "295457d1f64746e8ed88e16f00bb19f28161904c"
       ]
+    },
+    {
+      "id": "exact-byte-four-axis-representation-authority",
+      "status": "verified",
+      "summary": "Reviewed representation authority is bound to exact raw bytes and requires coherent chart-view family, price geometry, sampling domain, and sampling construction before entering the model plane.",
+      "evidence": [
+        "Exact-byte structured registry authority",
+        "Reviewed-identity bridge",
+        "All four axes required",
+        "Contradictory axes rejected"
+      ],
+      "source_commits": [
+        "759bcc5a3f53c543dc126c0dd10ca70660126b4c",
+        "114137020e13d7de0f3131b13f21ad846d238125",
+        "07abebdaf4ed46decefc75fac14cd3b2c6109718",
+        "3a123904d0bf2ac4a3bc1a10269e18c55aef9ec6"
+      ]
+    },
+    {
+      "id": "quality-plane-identity-and-consistency",
+      "status": "verified",
+      "summary": "Quality telemetry is bound to canonical stream identity, aggregate metrics must agree with per-stream state, and unspecified explicit quality weights contribute zero rather than silently defaulting to full weight.",
+      "evidence": [
+        "Manifest/uncertainty stream binding",
+        "Self-consistent quality telemetry",
+        "Unspecified quality weights fail closed",
+        "Counter coercion rejected"
+      ],
+      "source_commits": [
+        "0625f57f7a2f5899b56fe7b29c8687daf5e09456",
+        "f1ea4ddd7a8925513db3d546bde1e40426a07162",
+        "7c3d4df8c9ed995e94eea70bbe54c5c48f9053b0",
+        "7bc8f52ef5866bb0eb2550f0762fc64f2bec7dbb"
+      ]
+    },
+    {
+      "id": "run-lineage-and-checkpoint-integrity",
+      "status": "verified",
+      "summary": "Research-run manifests validate semantic identity beyond outer hashes, and replay checkpoints refuse invalid state and save atomically.",
+      "evidence": [
+        "Semantic run-manifest verification",
+        "Atomic verified checkpoint persistence"
+      ],
+      "source_commits": [
+        "64a883f7a4715cc0f34116aa0a20b698900bb268",
+        "1ffe027843e83522173ab25cd300d1aed24a5bb1"
+      ]
     }
   ],
   "events": [
@@ -239,6 +286,78 @@
         "2d8dd154f7fecffd69e061b0c9d44481dab0d7a4",
         "47df68167443b9b9c8666f8ce9b62939c79408d1",
         "295457d1f64746e8ed88e16f00bb19f28161904c"
+      ],
+      "details": {
+        "checklist": "O14"
+      }
+    },
+    {
+      "recorded_at": "2026-09-30T21:13:40-05:00",
+      "source": "mcp",
+      "kind": "hardening",
+      "area": "NEXUS representation authority",
+      "summary": "Reviewed model identity is exact-byte bound and fail-closed across four orthogonal axes: chart family, price geometry, sampling domain, and sampling construction.",
+      "status": "verified",
+      "severity": "important",
+      "source_repo": "reppiks490/divine-providence",
+      "source_branch": "main",
+      "source_commit": "3a123904d0bf2ac4a3bc1a10269e18c55aef9ec6",
+      "verification": "Implementation commits were inspected through MCP; paired tests cover exact-byte authority, model-plane bridging, sampling-domain identity, and contradictory-axis rejection.",
+      "interface_effect": "The Data Integrity panel exposes this representation-authority hardening as part of O14 provenance.",
+      "evidence": [
+        "759bcc5a3f53c543dc126c0dd10ca70660126b4c",
+        "114137020e13d7de0f3131b13f21ad846d238125",
+        "07abebdaf4ed46decefc75fac14cd3b2c6109718",
+        "e75ff693e7a76acd8f99cc41513503f64a794694",
+        "805c158fdaaef72d6268749dcccf921ae2972ad7",
+        "d500e4eb533b24e68222e8310a5316e819076624"
+      ],
+      "details": {
+        "checklist": "O14"
+      }
+    },
+    {
+      "recorded_at": "2026-09-30T21:21:52-05:00",
+      "source": "mcp",
+      "kind": "hardening",
+      "area": "NEXUS quality and integrity telemetry",
+      "summary": "Quality telemetry is now identity-bound and self-consistent; explicit but unspecified quality weights contribute no evidence, and malformed/coerced integrity counters fail closed.",
+      "status": "verified",
+      "severity": "high",
+      "source_repo": "reppiks490/divine-providence",
+      "source_branch": "main",
+      "source_commit": "7bc8f52ef5866bb0eb2550f0762fc64f2bec7dbb",
+      "verification": "MCP diff inspection confirmed stream-id binding, aggregate consistency checks, zero-weight default for omitted explicit weights, and strict integrity metadata counters; dedicated regressions accompany each hardening.",
+      "interface_effect": "The Data Integrity panel exposes the stricter quality-plane contract instead of leaving it only in NEXUS repository history.",
+      "evidence": [
+        "0625f57f7a2f5899b56fe7b29c8687daf5e09456",
+        "f1ea4ddd7a8925513db3d546bde1e40426a07162",
+        "7c3d4df8c9ed995e94eea70bbe54c5c48f9053b0",
+        "134a1111b38dd55c9883f8ffcb6f93de035582ae",
+        "79a9d04ea88533c338fd2594c107ccf1b821c8c7",
+        "7a07c03b07cae02efd4053096df8049b3dff3b9c"
+      ],
+      "details": {
+        "checklist": "O14"
+      }
+    },
+    {
+      "recorded_at": "2026-09-30T21:10:49-05:00",
+      "source": "mcp",
+      "kind": "hardening",
+      "area": "NEXUS replay lineage",
+      "summary": "Research-run genealogy is semantically validated beyond outer hashes, and replay checkpoints reject invalid state before atomic persistence.",
+      "status": "verified",
+      "severity": "important",
+      "source_repo": "reppiks490/divine-providence",
+      "source_branch": "main",
+      "source_commit": "1ffe027843e83522173ab25cd300d1aed24a5bb1",
+      "verification": "MCP diff inspection confirmed semantic run-manifest verification and fsync/replace checkpoint persistence; dedicated tamper and atomic-persistence tests were found.",
+      "interface_effect": "The Data Integrity panel now exposes replay/lineage durability relevant to recovered-corpus research.",
+      "evidence": [
+        "64a883f7a4715cc0f34116aa0a20b698900bb268",
+        "02fe234acd60cbbc0f34116aa0a5316e819076624",
+        "cffe8a254990e8b64f5f6740d45c40cf05f1726b"
       ],
       "details": {
         "checklist": "O14"
