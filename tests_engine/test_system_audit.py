@@ -326,3 +326,49 @@ def test_loop_signal_extraction_captures_real_nested_run_core_and_provider_gaps(
     assert sig["DATA_GAPS"] == ["no depth snapshot"]
     assert sig["schema_representation_availability_findings"] == ["schema stable"]
     assert "irrelevant_blob" not in sig
+
+
+def test_private_loop_can_fail_over_to_verified_public_ui_mirror():
+    spec = {
+        "id": "advanced-csv",
+        "title": "Advanced CSV Data Collector",
+        "scheduler_id": "sched-csv",
+        "schedule": ":15 hourly",
+        "repository": "private/csv",
+        "root": "automation/csv",
+        "mirror_repository": "public/engine",
+        "mirror_path": "automation_intelligence/ui_feeds/advanced-csv.json",
+    }
+    mirror = {
+        "schema_version": "icarus-ui-loop-feed-v1",
+        "loop_id": "advanced-csv",
+        "source_repository": "private/csv",
+        "RUN_ID": "advanced-csv-20261001T031500Z",
+        "RUN_STATUS": "RUN_PERSISTED",
+        "scheduler_id": "sched-csv",
+        "finalization_commit_sha": "csv-final-commit",
+        "finalization_state_blob_sha": "a" * 40,
+        "source_verified": True,
+        "execution_authorized": False,
+        "signals": {
+            "latest": {
+                "NET_NEW_DELTA": {"corpus": "NO_NEW_CORPUS_EVIDENCE"},
+                "conflicts_gaps": ["MNQ overlap unresolved"],
+                "PASSES_COMPLETED": 10,
+            }
+        },
+    }
+    mirror_raw = json.dumps(mirror).encode()
+
+    def fetch(repo, ref, path):
+        if (repo, ref, path) == ("public/engine", "main", spec["mirror_path"]):
+            return mirror_raw
+        raise FileNotFoundError(path)
+
+    row, event = collect_loop_snapshot(spec, fetch_bytes=fetch)
+    assert row["status"] == "RUN_PERSISTED"
+    assert row["run_id"] == mirror["RUN_ID"]
+    assert row["verification"]["source_mode"] == "verified-public-mirror"
+    assert row["signals"]["latest"]["PASSES_COMPLETED"] == 10
+    assert event["severity"] == "success"
+    assert "mirror" in row["detail"].lower()
