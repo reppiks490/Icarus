@@ -295,3 +295,16 @@ def test_parallax_requires_timezone_aware_timestamps(tmp_path):
             "context": {},
             "subsystem_votes": {},
         })
+
+
+def test_operator_status_is_lightweight_and_read_only(tmp_path):
+    p=ParallaxStore(tmp_path)
+    d=DreamstateLab(tmp_path,parallax=p)
+    ps=p.status()
+    ds=d.status()
+    assert ps["schema_version"]=="icarus-parallax-status-v1"
+    assert ps["counts"]=={"decisions":0,"branches":0,"observed_outcomes":0}
+    assert ps["execution_authorized"] is False
+    assert ds["schema_version"]=="icarus-dreamstate-status-v1"
+    assert ds["candidate_count"]==0
+    assert ds["execution_authorized"] is False
