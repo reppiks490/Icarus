@@ -31,20 +31,18 @@ function ecTargetControl(action,data){
     return '<select data-ec-target="'+esc(action.id)+'">'+opts+'</select>';
   }
   const placeholders={
-    job:'job / analysis id',
-    candidate:'DREAMSTATE candidate id',
-    proposal:'research proposal id',
-    source:'registered source id'
+    job:'research job id',
+    candidate:'candidate id',
+    proposal:'proposal id',
+    source:'source id'
   };
-  return '<input data-ec-target="'+esc(action.id)+'" placeholder="'+esc(placeholders[action.target]||'target id')+'" style="width:200px">';
+  if(placeholders[action.target]) return '<input data-ec-target="'+esc(action.id)+'" placeholder="'+esc(placeholders[action.target])+'" style="width:190px">';
+  return '';
 }
 
 function ecActionRow(action,data){
-  const hasArgs=action.args_example!==null && action.args_example!==undefined;
-  const example=hasArgs?JSON.stringify(action.args_example):'';
-  const argControl=hasArgs
-    ? '<input data-ec-args="'+esc(action.id)+'" placeholder="'+esc(example)+'" style="width:230px">'+
-      '<button type="button" class="sm" data-ec-template="'+esc(action.id)+'" title="Load the example JSON into the args field">Template</button>'
+  const args = action.args_example
+    ? '<input data-ec-args="'+esc(action.id)+'" placeholder="'+esc(JSON.stringify(action.args_example))+'" style="width:300px">'
     : '';
   return '<div class="cmd">'+
     '<div><b>'+esc(action.title)+'</b><div class="small muted">'+esc(action.group)+(action.danger?' · destructive':'')+'</div></div>'+
