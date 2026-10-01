@@ -241,3 +241,36 @@ def test_settled_records_exposes_source_bound_forecast_outcome_pairs(tmp_path):
     assert item["evidence_hash"] == body["evidence_hash"]
     assert rows["execution_authorized"] is False
     assert rows["production_decision_authorized"] is False
+
+
+def test_settled_records_supports_stable_incremental_cursor(tmp_path):
+    store = PerformanceProofStore(tmp_path)
+    ids = []
+    observed_times = []
+    for i in range(3):
+        rec = store.register_forecast(_forecast(i, candidate=f"candidate-{i}"))
+        _, _, observed = _times(i)
+        store.record_outcome({
+            "forecast_id": rec["forecast_id"],
+            "observed_at": observed,
+            "success": i != 1,
+            "realized_value": float(i),
+            "outcome_hash": ("%064x" % (9000 + i))[-64:],
+            "source": "cursor fixture",
+        })
+        ids.append(rec["forecast_id"])
+        observed_times.append(observed)
+
+    first = store.settled_records(limit=1)
+    assert first["returned"] == 1
+    cursor = first["next_cursor"]
+    assert cursor["observed_at"] == first["items"][0]["observed_at"]
+    assert cursor["forecast_id"] == first["items"][0]["forecast_id"]
+
+    second = store.settled_records(
+        after_observed_at=cursor["observed_at"],
+        after_forecast_id=cursor["forecast_id"],
+        limit=10,
+    )
+    assert second["returned"] == 2
+    assert first["items"][0]["forecast_id"] not in {x["forecast_id"] for x in second["items"]}
