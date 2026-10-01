@@ -1,0 +1,58 @@
+{
+  "schema": "icarus-mcp-event-v1",
+  "category": "AUDIT",
+  "source": "FLOW_AUTOMATION",
+  "event_time": "2026-10-01T20:00:00Z",
+  "retrieval_time": "2026-10-01T21:29:13.353Z",
+  "execution_authorized": false,
+  "net_new_delta": "MATERIAL_DELTA",
+  "finding": "BTC 20:00 UTC completed hour confirmed persistence of post-17:00 volatility compression across Bybit spot, Bybit linear, and Twelve Data BTC/USD; turnover also declined on both Bybit representations.",
+  "evidence": {
+    "bybit_spot": {
+      "range_usd": 311.4,
+      "volume_btc": 114.857472,
+      "prior_19h_range_usd": 317.1,
+      "prior_19h_volume_btc": 149.915636
+    },
+    "bybit_linear": {
+      "range_usd": 327.7,
+      "reported_volume": 985.062,
+      "prior_19h_range_usd": 322.4,
+      "prior_19h_reported_volume": 1759.304
+    },
+    "twelve_data_btcusd": {
+      "range_usd": 296.51,
+      "high": 84860.05,
+      "low": 84563.54
+    },
+    "bybit_spot_depth_snapshot": {
+      "server_time": "2026-10-01T21:29:13.353Z",
+      "best_bid": {
+        "price": 84595.8,
+        "qty_btc": 0.617909
+      },
+      "best_ask": {
+        "price": 84595.9,
+        "qty_btc": 0.550653
+      },
+      "displayed_spread_usd": 0.1
+    }
+  },
+  "regime_implication": "The 17:00 abnormal impulse has transitioned into two consecutive completed hours of materially lower range, with 20:00 turnover declining further. Evidence favors post-impulse compression rather than sustained volatility expansion.",
+  "data_gaps": [
+    "Direct NQ/MNQ, GC/MGC, SI, DXY and volatility-index observations were not authenticated in this cycle.",
+    "Historical trade/depth sequencing unavailable; snapshot depth must not be interpreted as historical order flow or persistent liquidity."
+  ],
+  "conflicts": [
+    "Twelve Data 15:00 BTC/USD high remains an unresolved source-specific outlier and is not admitted to fused anomaly baselines."
+  ],
+  "next_decisive_check": "Test whether the next completed BTC hour remains compressed or re-expands, and acquire synchronous direct futures/USD/rates/volatility evidence before promoting any cross-market regime transition.",
+  "argus": {
+    "status": "MATERIAL_DELTA",
+    "finding": "Bybit spot authenticated point-in-time depth showed $84,595.8 bid x 0.617909 BTC and $84,595.9 ask x 0.550653 BTC, $0.10 displayed spread; no historical order-flow or persistent-liquidity inference."
+  },
+  "nexus": {
+    "status": "MATERIAL_DELTA",
+    "finding": "Bybit spot, Bybit linear, and Twelve Data independently reconcile on 20:00 UTC BTC range compression; Bybit turnover declined further, supporting a post-impulse compression state while preserving representation-specific volume semantics."
+  }
+}
