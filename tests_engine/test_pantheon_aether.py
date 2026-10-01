@@ -217,6 +217,7 @@ def _veritas_payload(observation_id: str = "pan-veritas") -> dict:
         "direction": "long",
         "confidence": 0.8,
         "fidelity_threshold": 0.70,
+        "min_reconciliation_confidence": 0.65,
         "expected_signatures": [
             {"key": "basis_expands", "operator": "truthy", "weight": 0.4},
             {"key": "queue_replenishment", "operator": "gte", "threshold": 0.6, "weight": 0.35},
@@ -328,6 +329,38 @@ def test_veritas_mechanism_can_match_even_when_endpoint_fails(tmp_path):
     assert score["mechanism_fidelity"] == pytest.approx(1.0)
     assert score["reinforcement_eligible"] is False
     assert score["learning_credit"] == pytest.approx(0.0)
+
+
+def test_veritas_low_confidence_right_reasons_are_not_reinforced(tmp_path):
+    kernel = PantheonKernel(tmp_path)
+    obs = kernel.record_observation(_veritas_payload("pan-veritas-low-confidence"))
+    source = kernel.record_observation(_veritas_source_payload(
+        "pan-veritas-low-confidence-source",
+        "2026-10-01T06:00:20Z",
+        basis_expands=True,
+        queue_replenishment=0.8,
+        cross_asset_lead=0.2,
+    ))
+    state = kernel.record_veritas_reconciliation({
+        "observation_id": obs["observation_id"],
+        "source_observation_id": source["observation_id"],
+        "observed_at": source["observed_at"],
+        "confidence": 0.20,
+        "evidence": ["fixture:low-confidence-right-path"],
+    })
+    score = state["reconciliation"]["score"]
+    assert score["classification"] == "right_for_right_reasons"
+    assert score["mechanism_fidelity"] == pytest.approx(1.0)
+    assert score["confidence_gate_passed"] is False
+    assert score["reinforcement_eligible"] is False
+    assert score["learning_credit"] == pytest.approx(0.0)
+
+
+def test_veritas_refuses_trivial_reconciliation_confidence_gate(tmp_path):
+    payload = _veritas_payload("pan-veritas-low-confidence-gate")
+    payload["signals"]["mechanism_certificate"]["min_reconciliation_confidence"] = 0.1
+    with pytest.raises(ValueError, match="min_reconciliation_confidence must be at least 0.50"):
+        PantheonKernel(tmp_path).record_observation(payload)
 
 
 def test_veritas_machine_invalidator_overrides_signature_fidelity(tmp_path):

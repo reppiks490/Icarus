@@ -613,6 +613,13 @@ def veritas(signals: Mapping[str, Any], observation_id: str) -> dict[str, Any]:
     )
     if fidelity_threshold < 0.50:
         raise ValueError("mechanism_certificate.fidelity_threshold must be at least 0.50")
+    min_reconciliation_confidence = unit(
+        raw.get("min_reconciliation_confidence"),
+        "mechanism_certificate.min_reconciliation_confidence",
+        0.65,
+    )
+    if min_reconciliation_confidence < 0.50:
+        raise ValueError("mechanism_certificate.min_reconciliation_confidence must be at least 0.50")
     expected = raw.get("expected_signatures")
     if not isinstance(expected, list) or not 1 <= len(expected) <= 24:
         raise ValueError("mechanism_certificate.expected_signatures must contain 1-24 items")
@@ -654,6 +661,7 @@ def veritas(signals: Mapping[str, Any], observation_id: str) -> dict[str, Any]:
         "direction": direction,
         "confidence": confidence,
         "fidelity_threshold": fidelity_threshold,
+        "min_reconciliation_confidence": min_reconciliation_confidence,
         "expected_signatures": signatures,
         "invalidators": normalized_invalidators,
         "invalidating_signatures": invalidating_signatures,
@@ -786,7 +794,13 @@ def score_veritas_reconciliation(
     else:
         classification = "wrong_for_wrong_reasons"
 
-    reinforcement_eligible = classification == "right_for_right_reasons"
+    min_reconciliation_confidence = unit(
+        certificate.get("min_reconciliation_confidence"),
+        "VERITAS min_reconciliation_confidence",
+        0.65,
+    )
+    confidence_gate_passed = confidence >= min_reconciliation_confidence
+    reinforcement_eligible = classification == "right_for_right_reasons" and confidence_gate_passed
     lucky_quarantine = classification == "right_for_wrong_reasons"
     if reinforcement_eligible:
         learning_credit = confidence * mechanism_fidelity
@@ -817,6 +831,8 @@ def score_veritas_reconciliation(
         "lucky_outcome_quarantine": lucky_quarantine,
         "learning_credit": learning_credit,
         "reconciliation_confidence": confidence,
+        "min_reconciliation_confidence": min_reconciliation_confidence,
+        "confidence_gate_passed": confidence_gate_passed,
         "missing_signatures": missing,
         "failed_signatures": failed,
         "evaluated_signatures": evaluated,

@@ -511,3 +511,14 @@ the mechanism cannot pass even when its weighted expected-signature fidelity is
 otherwise high. This prevents a superficially matching path from receiving
 right-for-right-reasons credit after an explicitly predeclared falsifier
 actually occurred.
+
+
+### VERITAS confidence gate
+
+A mechanism can reconcile cleanly while the realized evidence itself is too
+weak to justify positive learning credit. Each certificate therefore freezes a
+`min_reconciliation_confidence` (default 0.65, never below 0.50).
+`right_for_right_reasons` remains the descriptive classification when the
+path matches, but `reinforcement_eligible` stays false unless the reconciliation
+confidence also clears that predeclared gate. This prevents a zero- or
+low-confidence observation from unlocking full positive AETHER fitness.
