@@ -101,6 +101,22 @@
       "verification": "Merged on main with dashboard and server test coverage for the System tab, audit endpoint, badge, and refresh loop.",
       "interface_effect": "The System tab displays repository audit state, main SHA, Linux and Windows checks, audited branches, failures, pending work, and unresolved findings.",
       "execution_authorized": false
+    },
+    {
+      "id": "mcp-20260930-system-evolution-contract-test-repair",
+      "recorded_date": "2026-09-30",
+      "subsystem": "ICARUS",
+      "kind": "repair",
+      "status": "integrated_branch",
+      "severity": "important",
+      "title": "System-evolution interface contract test repaired",
+      "summary": "The MCP-to-interface evolution surface changed from the research-status payload to the repository-audit payload; the dashboard contract test was repaired to verify the actual System-tab data path instead of a stale field name.",
+      "source_repo": "reppiks490/Icarus",
+      "source_branch": "sol/icarus-system-evolution-20260930",
+      "source_commit": "9f2ece530c340cdd0f629ad2c3f46a29534a2358",
+      "verification": "The repair updates only the stale contract assertions; repository Actions is the authoritative regression check for the branch.",
+      "interface_effect": "The System evolution & audit panel remains continuously test-covered against /api/system/audit -> evolution.",
+      "execution_authorized": false
     }
   ]
 }
