@@ -472,7 +472,7 @@ def test_dreamstate_carries_dependence_and_transportability_evidence(tmp_path):
 def test_parallax_temporal_instability_blocks_robust_candidate_even_when_primary_screen_passes(tmp_path):
     store = ParallaxStore(tmp_path)
     for i in range(12):
-        _record_pair(store, i, delay_utility=2.0 if i < 8 else -1.0)
+        _record_pair(store, i, delay_utility=3.0 if i < 8 else -0.5)
 
     signal = next(
         row for row in store.hypotheses(min_samples=5)
@@ -627,7 +627,7 @@ def test_dreamstate_retires_when_source_remains_statistical_but_loses_temporal_r
     )
 
     for i in range(5, 12):
-        _record_pair(store, i, delay_utility=2.0 if i < 8 else -1.0)
+        _record_pair(store, i, delay_utility=3.0 if i < 8 else -0.5)
 
     source = next(
         row for row in store.hypotheses(min_samples=5)
@@ -668,7 +668,7 @@ def test_parallax_temporally_unstable_neighbor_does_not_support_parameter_basin(
                 "evidence": [f"actual:{i}"],
             }
         )
-        stop075 = 2.0 if i < 8 else -1.0
+        stop075 = 3.0 if i < 8 else -0.5
         for label, utility in (("stop_0.75", stop075), ("stop_1.25", 1.0), ("stop_1.50", -0.2)):
             store.record_outcome(
                 {
@@ -1172,7 +1172,7 @@ def test_dreamstate_auto_retires_active_candidate_when_source_disappears(tmp_pat
     assert candidate["candidate_id"] in second["refresh"]["auto_retired_source_decay"]
     assert any("source signal is absent" in item for item in retired["evidence"])
 
-def test_v3_robustness_versions_are_explicit_without_breaking_v2_schema(tmp_path):
+def test_v4_robustness_versions_are_explicit_without_breaking_v2_schema(tmp_path):
     store = ParallaxStore(tmp_path)
     for i in range(5):
         _record_pair(store, i)
@@ -1183,10 +1183,10 @@ def test_v3_robustness_versions_are_explicit_without_breaking_v2_schema(tmp_path
     dream = lab.snapshot()
 
     assert snap["schema_version"] == "icarus-parallax-v2"
-    assert snap["robustness_version"] == "icarus-parallax-robustness-v1"
-    assert report["robustness_version"] == "icarus-parallax-robustness-v1"
+    assert snap["robustness_version"] == "icarus-parallax-robustness-v2"
+    assert report["robustness_version"] == "icarus-parallax-robustness-v2"
     assert dream["schema_version"] == "icarus-dreamstate-v2"
-    assert dream["robustness_version"] == "icarus-dreamstate-robustness-v1"
+    assert dream["robustness_version"] == "icarus-dreamstate-robustness-v2"
 
 
 def test_operator_status_is_lightweight_and_read_only(tmp_path):
