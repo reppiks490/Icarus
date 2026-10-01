@@ -73,6 +73,7 @@ class PantheonKernel:
                     asset TEXT NOT NULL,
                     horizon_ms INTEGER NOT NULL,
                     last_observation_id TEXT NOT NULL,
+                    last_observed_at TEXT NOT NULL,
                     last_energy REAL NOT NULL,
                     last_status TEXT NOT NULL,
                     observation_count INTEGER NOT NULL DEFAULT 1,
@@ -83,6 +84,9 @@ class PantheonKernel:
                 CREATE INDEX IF NOT EXISTS idx_pantheon_cells_energy ON sentinel_cells(last_energy, updated_at);
                 """
             )
+            columns = {row["name"] for row in con.execute("PRAGMA table_info(sentinel_cells)").fetchall()}
+            if "last_observed_at" not in columns:
+                con.execute("ALTER TABLE sentinel_cells ADD COLUMN last_observed_at TEXT NOT NULL DEFAULT ''")
 
     def _normalize(self, payload: Mapping[str, Any]) -> tuple[dict[str, Any], str, str]:
         if not isinstance(payload, Mapping):
@@ -214,12 +218,19 @@ class PantheonKernel:
             cell_id = "cell-" + digest(normalized["asset"], str(normalized["horizon_ms"]))[:18]
             con.execute(
                 """INSERT INTO sentinel_cells(
-                    cell_id,asset,horizon_ms,last_observation_id,last_energy,last_status,observation_count,updated_at
-                ) VALUES(?,?,?,?,?,?,1,?)
+                    cell_id,asset,horizon_ms,last_observation_id,last_observed_at,last_energy,last_status,observation_count,updated_at
+                ) VALUES(?,?,?,?,?,?,?,1,?)
                 ON CONFLICT(cell_id) DO UPDATE SET
-                    last_observation_id=excluded.last_observation_id,
-                    last_energy=excluded.last_energy,
-                    last_status=excluded.last_status,
+                    last_observation_id=CASE
+                        WHEN excluded.last_observed_at >= sentinel_cells.last_observed_at
+                        THEN excluded.last_observation_id ELSE sentinel_cells.last_observation_id END,
+                    last_observed_at=MAX(sentinel_cells.last_observed_at, excluded.last_observed_at),
+                    last_energy=CASE
+                        WHEN excluded.last_observed_at >= sentinel_cells.last_observed_at
+                        THEN excluded.last_energy ELSE sentinel_cells.last_energy END,
+                    last_status=CASE
+                        WHEN excluded.last_observed_at >= sentinel_cells.last_observed_at
+                        THEN excluded.last_status ELSE sentinel_cells.last_status END,
                     observation_count=sentinel_cells.observation_count+1,
                     updated_at=excluded.updated_at""",
                 (
@@ -227,6 +238,7 @@ class PantheonKernel:
                     normalized["asset"],
                     normalized["horizon_ms"],
                     observation_id,
+                    normalized["observed_at"],
                     float(aether["field"]["energy"]),
                     str(aether["status"]),
                     now,
@@ -276,6 +288,7 @@ class PantheonKernel:
                 "asset": row["asset"],
                 "horizon_ms": row["horizon_ms"],
                 "last_observation_id": row["last_observation_id"],
+                "last_observed_at": row["last_observed_at"],
                 "energy": row["last_energy"],
                 "status": row["last_status"],
                 "observation_count": row["observation_count"],
