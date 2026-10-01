@@ -2,7 +2,8 @@
 (() => {
   let timer = null;
   let loading = false;
-  let selected = '';\n  let assetNames = [];
+  let selected = '';
+  let assetNames = [];
 
   const h = value => String(value ?? '').replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
   const n = (value, digits=2) => (value == null || Number.isNaN(Number(value))) ? '—' : Number(value).toLocaleString(undefined,{maximumFractionDigits:digits,minimumFractionDigits:digits});
@@ -28,6 +29,7 @@
 
   function possibilityHtml(A) {
     const assets = (A||[]).map(a=>String(a.symbol||'')).filter(Boolean);
+    assetNames = assets.slice();
     if (!selected || !assets.includes(selected)) selected = assets.includes('NQ') ? 'NQ' : (assets[0] || '');
     const options = assets.map(x=>'<option value="'+h(x)+'" '+(x===selected?'selected':'')+'>'+h(x)+'</option>').join('');
     return '<style>'+
@@ -100,8 +102,7 @@
       '<div class="small muted" style="margin-top:12px"><b>Truth contract:</b> scenario shares are not calibrated probabilities; dynamic leader scores do not prove causality; missing evidence is never imputed; the engine has no broker or production-decision authority.</div>';
 
     const sel = el.querySelector('#possAsset');
-    const assets = ((window.last && window.last.assets)||[]).map(a=>String(a.symbol||'')).filter(Boolean);
-    sel.innerHTML = assets.map(x=>'<option value="'+h(x)+'" '+(x===data.asset?'selected':'')+'>'+h(x)+'</option>').join('');
+    sel.innerHTML = assetNames.map(x=>'<option value="'+h(x)+'" '+(x===data.asset?'selected':'')+'>'+h(x)+'</option>').join('');
     selected = data.asset || selected;
     sel.onchange = () => { selected = sel.value; loadPossibility(); };
     el.querySelector('#possRefresh').onclick = loadPossibility;
