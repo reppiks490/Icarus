@@ -24,9 +24,10 @@ import sys
 import time
 from typing import Optional
 
-from .assets import REGISTRY, parse_spec
+from . import brand
+from .assets import REGISTRY, parse_spec, pin_config
 from .feeds.bars import file_feed_mode  # Grok (xAI) — 2026-09-20
-from .runtime import AssetRunner, Journal, Portfolio, resolve_inputs
+from .runtime import AssetRunner, Journal, Portfolio, export_paper_book, resolve_inputs
 
 
 def _base_dir() -> str:
@@ -52,26 +53,30 @@ def _portfolio(args: argparse.Namespace, journal: Journal) -> Portfolio:
     feed = getattr(args, "feed", None)
     if feed:
         os.environ["ICARUS_FEED"] = feed
-    if file_feed_mode() and not getattr(args, "roll", None):
-        args.roll = "none"  # Grok (xAI) — FileFeed volumes are not CME 1!
     port = Portfolio(journal, _base_dir(), poll_sec=getattr(args, "poll", 5.0), profile=args.profile, preset=args.preset,
                      warmup_bars=args.warmup, pts_ref_symbol=args.pts_ref_symbol)
     for tok in [a for a in args.assets.split(",") if a.strip()]:
-        spec = parse_spec(tok, args.tf)
+        spec = parse_spec(tok, getattr(args, "tf", None) or "20")
+        if getattr(args, "tf", None) is not None and "@" not in tok:
+            spec = pin_config(spec, "timeframe")
         if args.fill_on:
             spec.fill_on = args.fill_on
+            spec = pin_config(spec, "fill_on")
         if args.chart_type:
             spec.chart_type = args.chart_type
+            spec = pin_config(spec, "chart_type")
         if args.slippage is not None:
             spec.slippage_ticks = args.slippage
-        if args.capital:
+            spec = pin_config(spec, "slippage_ticks")
+        if args.capital is not None:
             spec.capital = args.capital
+            spec = pin_config(spec, "capital")
         if getattr(args, "session", None) and spec.calendar == "cme":
             spec.session = args.session
+            spec = pin_config(spec, "session")
         if getattr(args, "security_source", None):
             spec.security_source = args.security_source
-        if getattr(args, "roll", None):
-            spec.roll = args.roll
+            spec = pin_config(spec, "security_source")
         port.add_asset(spec, start=False)
     return port
 
@@ -114,13 +119,15 @@ def cmd_run(args: argparse.Namespace) -> int:
     from .server import serve
     journal = Journal(_journal_path(args))
     port = _portfolio(args, journal)
-    journal.log("INFO", f"ICARUS Engine starting: {port.order} tf={args.tf}m preset={args.preset} profile={args.profile} fills={args.fill_on or 'preset/real'}")
+    journal.log("INFO", f"ICARUS Engine starting: {port.order} tf={args.tf or 'preset/default'} preset={args.preset} profile={args.profile} fills={args.fill_on or 'preset/real'}")
     port.start()
-    print(f"\nICARUS ENGINE  assets={port.order}  tf={args.tf}m  preset={args.preset}")
+    print(f"\nICARUS ENGINE  assets={port.order}  tf={args.tf or 'preset/default'}  preset={args.preset}")
     print(f"  dashboard : http://127.0.0.1:{args.port}/     admin token: {args.token}")
     print(f"  data dir  : {_base_dir()}  db={journal.path}")
     if file_feed_mode():
         print("  feed      : HistoryHub (ICARUS_FEED=file) — Yahoo is not contacted; live bars arrive via history/drop/")
+    elif os.environ.get("ICARUS_FEED", "").strip().lower() == "databento":
+        print("  feed      : Databento GLBX.MDP3 — volume-front continuous futures; live 1s/trades available")
     print("  warming up each asset from history, then LIVE (futures wait for the CME open); Ctrl+C to stop\n")
     if args.open:
         import webbrowser
@@ -135,7 +142,7 @@ def cmd_run(args: argparse.Namespace) -> int:
 
 
 def cmd_inputs(args: argparse.Namespace) -> int:
-    spec = parse_spec(args.asset or "NQ", args.tf)
+    spec = parse_spec(args.asset or "NQ", args.tf or "20")
     inputs, meta, sources = resolve_inputs(spec, _base_dir(), args.profile, args.preset)
     d = inputs.to_dict()
     d["_sources"] = sources
@@ -147,7 +154,12 @@ def cmd_inputs(args: argparse.Namespace) -> int:
 
 def cmd_assets(args: argparse.Namespace) -> int:
     for s in REGISTRY.values():
-        print(f"  {s.symbol:<5} {s.name:<30} feed={s.feed:<8} calendar={s.calendar:<6} tick={s.mintick:<6} $/pt={s.multiplier:<7} tv={s.tv_symbol}")
+        ident = s.tv_symbol if s.kind == "futures" else s.symbol
+        policy = "continuous-only" if s.kind == "futures" else s.kind
+        print(
+            f"  {ident:<20} key={s.symbol:<5} {s.name:<30} feed={s.feed:<8} provider={s.ticker:<10} "
+            f"calendar={s.calendar:<10} tick={s.mintick:<6} $/pt={s.multiplier:<7} {policy}"
+        )
     return 0
 
 
@@ -275,7 +287,7 @@ def cmd_paper_export(args: argparse.Namespace) -> int:
         print(f"no journal at {db}", file=sys.stderr)
         return 1
     out = args.out or os.path.join(_base_dir(), "paper-trades.csv")
-    n = Journal(db).export_trades_csv(out, live_only=bool(args.live_only))
+    n = export_paper_book(db, out, live_only=bool(args.live_only))
     kind = "live-only" if args.live_only else "warmup+live"
     print(f"{n} {kind} paper trades -> {out}")
     print("Icarus emulator book. Not a broker statement. live=0 is warmup replay.")
@@ -298,13 +310,13 @@ def cmd_parity(args: argparse.Namespace) -> int:
 
 
 def main(argv: Optional[list] = None) -> int:
-    p = argparse.ArgumentParser(prog="icarus-engine", description="THE PULSE OF ICARUS - self-contained paper-trading engine")
+    p = argparse.ArgumentParser(prog="icarus-engine", description=f"{brand.NAME} - paper-trading engine for {brand.STRATEGY}")
     sub = p.add_subparsers(dest="cmd", required=True)
 
     def common(s: argparse.ArgumentParser, multi: bool = True) -> None:
         if multi:
             s.add_argument("--assets", default="NQ,ES,YM,GC,SI,PL,PA,BTCF,BTC", help="comma list of asset tokens (see `assets`)")
-        s.add_argument("--tf", default="20", help="chart timeframe in minutes (per-asset with NQ@10)")
+        s.add_argument("--tf", default=None, help="explicit chart timeframe (otherwise preset/default 20; per-asset with NQ@10)")
         s.add_argument("--preset", default="NQ-20m-ultracoded-0914", help="presets/<name>.json applied to every asset (per-asset with GC:NAME); '' for none")
         s.add_argument("--profile", default="nq", choices=["nq", "crypto"], help="base defaults before presets/overrides")
         s.add_argument("--fill-on", default=None, choices=["real", "chart"], help="fill orders on real bars (default) or on the chart's Heikin Ashi bars (TradingView 'Heikin Ashi bars')")
@@ -312,8 +324,7 @@ def main(argv: Optional[list] = None) -> int:
         s.add_argument("--slippage", type=int, default=None, help="override the preset's slippage (ticks)")
         s.add_argument("--session", default=None, choices=["rth", "eth"], help="CME chart session: rth = TradingView 'Regular trading hours' 09:30-16:15 ET (default, your charts), eth = full Globex session")
         s.add_argument("--security-source", default=None, choices=["chart", "standard"], help="what the HTF/LTF request.security chains see on a Heikin Ashi chart: chart = HA bars (TradingView, default), standard = real bars")
-        s.add_argument("--roll", default=None, choices=["volume", "none"], help="live-feed contract roll for NQ/ES/YM: volume = TradingView's 1! rule (default), none = Yahoo's =F front month")
-        s.add_argument("--feed", default=None, choices=["yahoo", "file"], help="yahoo (default) or file = HistoryHub over history/*.csv (ICARUS_FEED; plant --offline). Grok (xAI)")
+        s.add_argument("--feed", default=None, choices=["yahoo", "file", "databento"], help="yahoo (default), file = HistoryHub, or databento = real-time/historical CME GLBX.MDP3 continuous futures (requires DATABENTO_API_KEY)")
         s.add_argument("--capital", type=float, default=None, help="override initial capital per asset")
         s.add_argument("--warmup", type=int, default=1200, help="chart bars of history to replay before going live")
         s.add_argument("--pts-ref-symbol", default="NQ", help="asset whose price anchors the *_pts inputs (they are NQ points)")

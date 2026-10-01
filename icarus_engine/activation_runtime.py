@@ -160,6 +160,9 @@ class _Boundary:
         if cfg_values["inputs"] != values or cfg_values["sources"] != profile["sources"]:
             raise ActivationError("overlay inputs/sources disagree with runner configuration")
         spec = AssetSpec(**cfg_values.pop("spec"))
+        base_spec = cfg_values.get("base_spec")
+        if isinstance(base_spec, dict):
+            cfg_values["base_spec"] = AssetSpec(**base_spec)
         cfg_values["inputs"] = inputs
         target_cfg = RunnerConfig(spec=spec, **cfg_values)
         if asdict(spec) != asdict(r.spec):
