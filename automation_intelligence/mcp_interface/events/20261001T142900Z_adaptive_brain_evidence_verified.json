@@ -1,0 +1,38 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "adaptive-brain-evidence-proof-live-20261001T142900Z",
+  "category": "INTEGRATION",
+  "severity": "success",
+  "status": "verified",
+  "subsystems": [
+    "aion",
+    "athena",
+    "daedalus",
+    "infrastructure",
+    "provenance",
+    "ml",
+    "data"
+  ],
+  "recorded_at": "2026-10-01T14:29:00Z",
+  "title": "Adaptive Brain proof, latency and tournament evidence verified on main",
+  "summary": "ICARUS main retains the causal Performance Proof ledger, measured hot-path latency telemetry, and evidence-gated Champion/Challenger selection wired through the Adaptive Brain, authenticated server APIs, MCP tools, and operator UI. Exact-main Linux and Windows CI passed for commit 22df8271a1312ecdef7be587a3aa006f9a695b32. Historical 100% remains restricted to an exact closed fully-settled sample and is never generalized into future certainty. Candidate tournaments remain empirical shadow-only.",
+  "source_repository": "reppiks490/Icarus",
+  "source_ref": "main",
+  "source_commit": "22df8271a1312ecdef7be587a3aa006f9a695b32",
+  "evidence": [
+    "PR #124 merged causal performance proof, latency telemetry, and champion/challenger cores",
+    "PR #127 merged Adaptive Brain, UI, server, and MCP integration",
+    "exact-main workflow run 36876726241 completed success",
+    "engine job 110417948744 completed success",
+    "engine-windows job 110417948107 completed success",
+    "icarus_engine/performance_proof.py present on main",
+    "icarus_engine/latency_telemetry.py present on main",
+    "icarus_engine/champion_challenger.py present on main",
+    "Adaptive Brain exposes performance_proof, latency_telemetry, and evidence_tournaments",
+    "MCP exposes performance proof capture and measured latency reads",
+    "execution_authorized=false",
+    "production_decision_authorized=false"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}
