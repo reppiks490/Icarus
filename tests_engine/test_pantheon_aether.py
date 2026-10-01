@@ -370,7 +370,7 @@ def test_pantheon_time_is_canonical_utc_and_future_closed(tmp_path):
 
 
 def test_aether_claim_protocol_preserves_independence_and_disagreement(tmp_path):
-    kernel = PantheonKernel(tmp_path, swarm=AetherSwarm(threshold=0.0, max_agents=8))
+    kernel = PantheonKernel(tmp_path, swarm=AetherSwarm(threshold=0.0, max_agents=4))
     observation = kernel.record_observation(_payload(observation_id="pan-claims"))
     mandatory = {"falsifier", "alternative_cause", "provenance_guard", "risk_guard"}
     agents = {row["role"]: row for row in observation["analysis"]["aether"]["agents"] if row["role"] in mandatory}
@@ -664,3 +664,106 @@ def test_aether_claim_requires_confidence_evidence_and_role_falsifier(tmp_path):
             **base,
             "claim": {"thesis": "x", "direction": "unknown", "confidence": 0.5, "falsifier": "", "evidence": ["z"]},
         })
+
+
+def test_blind_claim_bodies_are_hidden_until_mandatory_round_completes(tmp_path):
+    kernel = PantheonKernel(tmp_path, swarm=AetherSwarm(threshold=0.0, max_agents=8))
+    observation = kernel.record_observation(_payload(observation_id="pan-blind-visibility"))
+    agents = {row["role"]: row for row in observation["analysis"]["aether"]["agents"]}
+
+    first = kernel.record_agent_claim({
+        "observation_id": observation["observation_id"],
+        "agent_id": agents["falsifier"]["agent_id"],
+        "peer_context_used": False,
+        "claim": {
+            "thesis": "must remain hidden",
+            "direction": "short",
+            "confidence": 0.7,
+            "falsifier": "counterexample",
+            "evidence": ["partition:adversarial"],
+        },
+    })
+    assert first["deliberation"]["ready_for_deliberation"] is False
+    assert first["deliberation"]["claim_bodies_visible"] is False
+    assert first["agent_claims"][0]["claim"] is None
+
+    for role, direction in (("alternative_cause", "long"), ("provenance_guard", "flat"), ("risk_guard", "short")):
+        state = kernel.record_agent_claim({
+            "observation_id": observation["observation_id"],
+            "agent_id": agents[role]["agent_id"],
+            "peer_context_used": False,
+            "claim": {
+                "thesis": f"{role} thesis",
+                "direction": direction,
+                "confidence": 0.6,
+                "falsifier": "counterexample",
+                "evidence": [f"partition:{agents[role]['information_partition']}"],
+            },
+        })
+
+    assert state["deliberation"]["mandatory_roles_complete"] is True
+    assert state["deliberation"]["ready_for_deliberation"] is False
+    assert state["deliberation"]["claim_bodies_visible"] is False
+    assert all(row["claim"] is None for row in state["agent_claims"])
+
+    submitted = {row["agent_id"] for row in state["agent_claims"]}
+    for agent in observation["analysis"]["aether"]["agents"]:
+        if agent["agent_id"] in submitted:
+            continue
+        state = kernel.record_agent_claim({
+            "observation_id": observation["observation_id"],
+            "agent_id": agent["agent_id"],
+            "peer_context_used": False,
+            "claim": {
+                "thesis": f"{agent['role']} optional thesis",
+                "direction": "unknown",
+                "confidence": 0.5,
+                "falsifier": "counterexample",
+                "evidence": [f"partition:{agent['information_partition']}"],
+            },
+        })
+
+    assert state["deliberation"]["ready_for_deliberation"] is True
+    assert state["deliberation"]["blind_first_pass_complete"] is True
+    assert state["deliberation"]["claim_bodies_visible"] is True
+    assert any((row["claim"] or {}).get("thesis") == "must remain hidden" for row in state["agent_claims"])
+
+
+@pytest.mark.parametrize(
+    "field,value,match",
+    [
+        ("risk", 1.1, "between 0 and 1"),
+        ("data_quality", -0.1, "between 0 and 1"),
+    ],
+)
+def test_normalized_faculty_inputs_fail_closed_instead_of_clamping(tmp_path, field, value, match):
+    payload = _payload(observation_id=f"pan-invalid-{field}")
+    payload["signals"] = dict(payload["signals"])
+    payload["signals"][field] = value
+    with pytest.raises(ValueError, match=match):
+        PantheonKernel(tmp_path).record_observation(payload)
+
+
+def test_structural_and_monetization_inputs_reject_invalid_economics(tmp_path):
+    bad_transition = _payload(observation_id="pan-bad-transition")
+    bad_transition["signals"] = dict(bad_transition["signals"], transition_cost_up=-0.1)
+    with pytest.raises(ValueError, match="transition costs"):
+        PantheonKernel(tmp_path / "a").record_observation(bad_transition)
+
+    bad_world = _payload(observation_id="pan-bad-world")
+    bad_world["signals"] = dict(bad_world["signals"], world_scores={"a": 1.0, "b": -0.1})
+    with pytest.raises(ValueError, match="non-negative"):
+        PantheonKernel(tmp_path / "b").record_observation(bad_world)
+
+    bad_risk = _payload(observation_id="pan-bad-risk-capital")
+    bad_risk["signals"] = dict(bad_risk["signals"])
+    bad_risk["signals"]["candidate_expressions"] = [{
+        "name": "invalid",
+        "expected_gross": 10.0,
+        "costs": 1.0,
+        "risk_capital": -100.0,
+        "duration_seconds": 10.0,
+        "capacity_remaining": 0.5,
+    }]
+    with pytest.raises(ValueError, match="risk_capital must be positive"):
+        PantheonKernel(tmp_path / "c").record_observation(bad_risk)

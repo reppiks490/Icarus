@@ -247,3 +247,33 @@ AETHER first-pass claims must carry explicit bounded confidence and at least one
 evidence reference. Roles marked as falsifier-required must also state the
 condition that would falsify their thesis. Missing claim-quality fields fail
 closed instead of becoming zero-confidence or evidence-free pseudo-claims.
+
+
+## Blind-round visibility barrier
+
+First-pass claim content is now redacted from PANTHEON read surfaces until all
+four mandatory independent roles have committed. Before that barrier clears,
+the system may reveal that an agent has committed, but not its thesis,
+direction, confidence, evidence, or falsifier. This makes the blind-first-pass
+property enforceable at the shared API/UI layer rather than relying only on a
+caller assertion.
+
+
+## Full-swarm blind barrier
+
+The visibility barrier now covers every AETHER agent actually spawned for an
+observation, not only the four mandatory guard roles. Completing the mandatory
+roles is reported separately, but deliberation and claim-body visibility remain
+closed until every spawned research partition has committed its first-pass
+claim. This prevents optional specialists from reading mandatory-role
+conclusions before submitting their own independent view.
+
+
+## Invalid-input handling
+
+Normalized confidence, risk, quality, reliability, novelty and similar fields
+now fail closed when they fall outside their declared bounds instead of being
+silently clipped. Structural costs must be non-negative, and MINT rejects
+negative costs, non-positive risk capital, and non-positive duration. This
+prevents malformed upstream data from being converted into plausible-looking
+research diagnostics.
