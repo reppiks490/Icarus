@@ -471,31 +471,38 @@ def echo(signals: Mapping[str, Any]) -> dict[str, Any]:
     mean_overlap = overlap_numerator / overlap_denominator if overlap_denominator > 0 else 0.0
     unresolved_weight = sum(row["directional_weight"] for row in dominant if not row["lineage"])
     unresolved_fraction = unresolved_weight / dominant_weight if dominant_weight > 0 else 0.0
-    ancestry_duplication = min(1.0, 0.80 * mean_overlap + 0.20 * unresolved_fraction)
-    echo_risk = min(1.0, raw_agreement * ancestry_duplication)
 
+    # Graph-style de-duplication: a fully duplicated N-engine cluster counts like
+    # roughly one independent witness (each engine receives 1/N independence).
+    # Missing lineage receives zero independence because ECHO cannot prove it is
+    # an independent source; this is intentionally fail-closed.
     independence = {}
     for row in rows:
         if row["direction"] != dominant_direction:
             independence[row["engine"]] = 1.0
             continue
         if not row["lineage"]:
-            independence[row["engine"]] = 0.75
+            independence[row["engine"]] = 0.0
             continue
         samples = per_engine_overlap.get(row["engine"], [])
-        if samples:
-            weighted = sum(overlap * weight for overlap, weight in samples)
-            denom = sum(weight for _, weight in samples)
-            avg_overlap = weighted / denom if denom > 0 else 0.0
-        else:
-            avg_overlap = 0.0
-        independence[row["engine"]] = max(0.0, min(1.0, 1.0 - 0.75 * avg_overlap))
+        redundancy_mass = sum(overlap for overlap, _ in samples)
+        independence[row["engine"]] = 1.0 / (1.0 + redundancy_mass)
+
+    independent_weight = sum(
+        row["directional_weight"] * independence.get(row["engine"], 0.0)
+        for row in dominant
+    )
+    effective_independence = (
+        independent_weight / dominant_weight if dominant_weight > 0 else 0.0
+    )
+    effective_independence = max(0.0, min(1.0, effective_independence))
+    echo_risk = max(0.0, min(1.0, raw_agreement * (1.0 - effective_independence)))
 
     duplicated = sorted(
         (row for row in pair_rows if row["overlap"] >= 0.50),
         key=lambda row: (-row["overlap"], row["left"], row["right"]),
     )[:12]
-    effective_support = max(0.0, min(1.0, raw_agreement * (1.0 - echo_risk)))
+    effective_support = max(0.0, min(1.0, raw_agreement * effective_independence))
     illusion = len(dominant) >= 2 and raw_agreement >= 0.67 and echo_risk >= 0.35
     distinct_sources = sorted(set().union(*(row["lineage"] for row in dominant))) if dominant else []
 
@@ -505,6 +512,7 @@ def echo(signals: Mapping[str, Any]) -> dict[str, Any]:
         "raw_directional_agreement": raw_agreement,
         "mean_lineage_overlap": mean_overlap,
         "unresolved_lineage_fraction": unresolved_fraction,
+        "effective_independence_factor": effective_independence,
         "echo_risk": echo_risk,
         "effective_independent_support": effective_support,
         "consensus_illusion_candidate": illusion,

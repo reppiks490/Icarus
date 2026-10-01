@@ -119,15 +119,16 @@ def test_echo_detects_consensus_illusion_and_archon_discounts_shared_evidence(tm
     assert echo_state["status"] == "active"
     assert echo_state["raw_directional_agreement"] == pytest.approx(1.0)
     assert echo_state["mean_lineage_overlap"] == pytest.approx(1.0)
-    assert echo_state["echo_risk"] == pytest.approx(0.8)
+    assert echo_state["effective_independence_factor"] == pytest.approx(1.0 / 3.0)
+    assert echo_state["echo_risk"] == pytest.approx(2.0 / 3.0)
     assert echo_state["consensus_illusion_candidate"] is True
-    assert echo_state["effective_independent_support"] == pytest.approx(0.2)
+    assert echo_state["effective_independent_support"] == pytest.approx(1.0 / 3.0)
     assert len(echo_state["duplicated_ancestry_pairs"]) == 3
-    assert all(value == pytest.approx(0.25) for value in echo_state["engine_independence"].values())
+    assert all(value == pytest.approx(1.0 / 3.0) for value in echo_state["engine_independence"].values())
     assert archon_state["evidence_independence_discounted"] is True
     assert archon_state["consensus_illusion_candidate"] is True
-    assert all(row["evidence_independence"] == pytest.approx(0.25) for row in archon_state["engine_states"])
-    assert swarm["field"]["echo_risk"] == pytest.approx(0.8)
+    assert all(row["evidence_independence"] == pytest.approx(1.0 / 3.0) for row in archon_state["engine_states"])
+    assert swarm["field"]["echo_risk"] == pytest.approx(2.0 / 3.0)
     assert "redundancy_hunter" in {agent["role"] for agent in swarm["agents"]}
     assert swarm["authority"]["execution_authorized"] is False
 
@@ -148,12 +149,30 @@ def test_echo_preserves_genuinely_independent_confirmation(tmp_path):
 
     assert echo_state["raw_directional_agreement"] == pytest.approx(1.0)
     assert echo_state["mean_lineage_overlap"] == pytest.approx(0.0)
+    assert echo_state["effective_independence_factor"] == pytest.approx(1.0)
     assert echo_state["echo_risk"] == pytest.approx(0.0)
     assert echo_state["effective_independent_support"] == pytest.approx(1.0)
     assert echo_state["consensus_illusion_candidate"] is False
     assert echo_state["duplicated_ancestry_pairs"] == []
     assert all(value == pytest.approx(1.0) for value in echo_state["engine_independence"].values())
     assert all(row["evidence_independence"] == pytest.approx(1.0) for row in archon_state["engine_states"])
+
+
+def test_echo_treats_missing_lineage_as_unproven_independence(tmp_path):
+    payload = _payload(observation_id="pan-echo-missing-lineage")
+    payload["signals"] = dict(payload["signals"])
+    payload["signals"]["engine_scores"] = {"oracle": 0.90, "athena": 0.86, "argus": 0.82}
+    payload["signals"]["engine_reliability"] = {"oracle": 0.90, "athena": 0.88, "argus": 0.84}
+    payload["signals"]["engine_evidence_lineage"] = {
+        "oracle": ["orderbook:nq"],
+        "athena": ["options:dealer-gamma"],
+    }
+    obs = PantheonKernel(tmp_path).record_observation(payload)
+    echo_state = obs["analysis"]["faculties"]["echo"]
+    assert echo_state["unresolved_lineage_fraction"] > 0
+    assert echo_state["engine_independence"]["argus"] == 0.0
+    assert echo_state["effective_independence_factor"] < 1.0
+    assert echo_state["echo_risk"] > 0.0
 
 
 def test_echo_fails_closed_on_malformed_lineage(tmp_path):
