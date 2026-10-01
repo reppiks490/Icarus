@@ -193,6 +193,13 @@ class PantheonKernel:
                 },
             })
         with _LOCK, self._connect() as con:
+            # Recheck under the insertion lock. Evaluation happens outside the lock,
+            # so another request may have committed the same immutable observation.
+            existing = con.execute("SELECT identity_hash FROM observations WHERE observation_id=?", (observation_id,)).fetchone()
+            if existing:
+                if existing["identity_hash"] != identity:
+                    raise ValueError("observation_id already exists with different immutable identity")
+                return self.observation(observation_id)
             con.execute(
                 """INSERT INTO observations(
                     observation_id,observed_at,asset,horizon_ms,source_commit,identity_hash,payload_json,analysis_json,created_at

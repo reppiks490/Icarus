@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
@@ -314,3 +315,20 @@ def test_failed_native_oracle_adapter_cannot_fall_back_to_spoofed_context():
     assert out["oracle"]["latent_pressure"] is None
     assert out["custom"]["preserved"] is True
     assert out["oracle"]["authority"]["execution_authorized"] is False
+
+
+def test_concurrent_duplicate_observation_is_idempotent(tmp_path):
+    kernel = PantheonKernel(tmp_path)
+    payload = _payload(observation_id="pan-concurrent-idempotent")
+
+    def record(_):
+        return kernel.record_observation(payload)["observation_id"]
+
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        ids = list(pool.map(record, range(24)))
+
+    assert set(ids) == {"pan-concurrent-idempotent"}
+    state = kernel.snapshot()
+    assert state["counts"]["observations"] == 1
+    assert state["counts"]["sentinel_cells"] == 1
+    assert state["sentinel_cells"][0]["observation_count"] == 1
