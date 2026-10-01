@@ -568,6 +568,8 @@ def record_engine_sibyl_evidence(
         return {"error": f"payload_json is invalid JSON: {ex}"}
     if not isinstance(payload, dict):
         return {"error": "payload_json must decode to an object"}
+    if source.strip().lower() == "pantheon-ananke":
+        return {"error": "pantheon-ananke is reserved for the internal validated PANTHEON bridge"}
     body: Dict[str, Any] = {
         "asset": asset.strip().upper(),
         "source": source.strip().lower(),
