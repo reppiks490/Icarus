@@ -137,6 +137,7 @@ class Journal:
             if len(fingerprint) != 64 or any(ch not in "0123456789abcdef" for ch in fingerprint):
                 raise ValueError("strategy_fingerprint must be a 64-character SHA-256 hex digest")
             ctx["strategy_fingerprint"] = fingerprint
+            ctx.setdefault("provenance_quality", "CLOSURE_TIME_CONFIG")
         context_json = json.dumps(ctx, sort_keys=True, separators=(",", ":"), allow_nan=False)
         lot_id = int(getattr(t, "lot_id", 0) or 0)
         entry_qty = int(getattr(t, "entry_qty", 0) or 0)
