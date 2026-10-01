@@ -1055,6 +1055,23 @@ def test_dreamstate_auto_retires_active_candidate_when_source_disappears(tmp_pat
     assert candidate["candidate_id"] in second["refresh"]["auto_retired_source_decay"]
     assert any("source signal is absent" in item for item in retired["evidence"])
 
+def test_v3_robustness_versions_are_explicit_without_breaking_v2_schema(tmp_path):
+    store = ParallaxStore(tmp_path)
+    for i in range(5):
+        _record_pair(store, i)
+    report = store.screening_report(min_samples=5)
+    snap = store.snapshot()
+    lab = DreamstateLab(tmp_path, parallax=store)
+    lab.refresh(min_samples=5)
+    dream = lab.snapshot()
+
+    assert snap["schema_version"] == "icarus-parallax-v2"
+    assert snap["robustness_version"] == "icarus-parallax-robustness-v1"
+    assert report["robustness_version"] == "icarus-parallax-robustness-v1"
+    assert dream["schema_version"] == "icarus-dreamstate-v2"
+    assert dream["robustness_version"] == "icarus-dreamstate-robustness-v1"
+
+
 def test_operator_status_is_lightweight_and_read_only(tmp_path):
     p = ParallaxStore(tmp_path)
     d = DreamstateLab(tmp_path, parallax=p)
