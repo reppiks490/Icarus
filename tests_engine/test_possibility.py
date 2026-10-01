@@ -723,3 +723,38 @@ def test_edge_gate_fails_closed_on_weak_scenario_support():
     )
     assert edge["state"] == "NO_EDGE"
     assert "effective scenario support below 35%" in edge["blockers"]
+
+
+
+def test_multi_force_evidence_batch_is_atomic_and_idempotent(tmp_path):
+    engine = PossibilityEngine(Port(tmp_path))
+    values = {
+        "gamma_pressure": {"value": 0.4, "confidence": 0.8},
+        "basis_pressure": {"value": 0.2, "confidence": 0.7},
+        "cta_pressure": {"value": -0.1, "confidence": 0.6},
+    }
+    first = engine.ingest_external("NQ", values, source="batch-fixture", ttl_seconds=600)
+    second = engine.ingest_external("NQ", values, source="batch-fixture", ttl_seconds=600)
+    assert first["inserted"] == 3
+    assert second["inserted"] == 0
+    assert second["idempotent_duplicates"] == 3
+    ledger = engine.evidence_snapshot("NQ", include_expired=True)
+    assert ledger["total_history_count"] == 3
+    assert ledger["active_count"] == 3
+
+
+def test_invalid_multi_force_request_leaves_no_partial_evidence(tmp_path):
+    engine = PossibilityEngine(Port(tmp_path))
+    with pytest.raises(ValueError, match="basis_pressure"):
+        engine.ingest_external(
+            "NQ",
+            {
+                "gamma_pressure": {"value": 0.4, "confidence": 0.8},
+                "basis_pressure": {"value": 2.0, "confidence": 0.7},
+            },
+            source="atomic-failure-fixture",
+            ttl_seconds=600,
+        )
+    ledger = engine.evidence_snapshot("NQ", include_expired=True)
+    assert ledger["total_history_count"] == 0
+    assert ledger["active_count"] == 0
