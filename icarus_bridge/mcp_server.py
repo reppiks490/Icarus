@@ -723,6 +723,21 @@ def engine_performance_proof() -> dict:
 
 
 @mcp.tool()
+def engine_pending_performance_settlements(limit: int = 100, as_of: str = "") -> dict:
+    """Read matured forecasts that still require an observed immutable outcome.
+
+    This tool never infers or fabricates an outcome. It only exposes the exact
+    settlement backlog so an evidence-capable agent can resolve it causally.
+    """
+    bounded = max(1, min(1000, int(limit)))
+    return _safe_engine(lambda: _engine_get(
+        "/api/performance-proof/pending",
+        limit=bounded,
+        as_of=as_of.strip() or None,
+    ))
+
+
+@mcp.tool()
 def record_engine_performance_forecast(
     candidate_id: str,
     asset: str,
