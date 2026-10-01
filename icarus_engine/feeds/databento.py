@@ -107,6 +107,7 @@ class Databento:
         self._shared_started = False
         self._core_broken = False
         self._core_error_code: Optional[int] = None
+        self._core_retry_from_ts: Optional[int] = None
         self._live: Dict[str, Any] = {}  # compatibility/status view: active symbol -> shared client
         self._live_started: set[str] = set()
         # Desired schemas survive socket replacement; _subscriptions describes only
@@ -124,6 +125,7 @@ class Databento:
         self._depth_instrument_to_symbol: Dict[str, Dict[int, str]] = collections.defaultdict(dict)
         self._depth_errors: Dict[Tuple[str, str], str] = {}
         self._depth_error_code: Dict[str, int] = {}
+        self._depth_retry_from_ts: Dict[str, int] = {}
         self._depth_ready: Dict[Tuple[str, str], threading.Event] = collections.defaultdict(threading.Event)
         self._depth_broken: set[str] = set()
         self._ready: Dict[str, threading.Event] = collections.defaultdict(threading.Event)
@@ -220,6 +222,24 @@ class Databento:
     @staticmethod
     def _iso(ts: int | float) -> str:
         return datetime.fromtimestamp(float(ts), timezone.utc).isoformat().replace("+00:00", "Z")
+
+    @staticmethod
+    def _timestamp_sec(value: Any) -> Optional[int]:
+        """Best-effort conversion of Databento/pandas reconnect timestamps to epoch seconds."""
+        if value is None:
+            return None
+        try:
+            if hasattr(value, "timestamp"):
+                return int(float(value.timestamp()))
+            if isinstance(value, (int, float)):
+                x = float(value)
+                if abs(x) > 10_000_000_000:
+                    x /= 1_000_000_000.0
+                return int(x)
+            text = str(value).strip().replace("Z", "+00:00")
+            return int(datetime.fromisoformat(text).timestamp())
+        except Exception:
+            return None
 
     @staticmethod
     def _optional_price(record: Any, field: str) -> Optional[float]:
@@ -726,13 +746,20 @@ class Databento:
             self._dispatch_live(key, record)
 
     def _record_reconnect_all(self, previous: Any, resumed: Any) -> None:
+        previous_ts = self._timestamp_sec(previous)
+        resumed_ts = self._timestamp_sec(resumed)
         with self._lock:
-            # A real transport reconnect creates a new integrity boundary. Keep the
-            # prior error visible until a valid market event arrives, but allow that
-            # event to clear the broken-state latch.
-            self._core_broken = False
-            self._core_error_code = None
             symbols = list(self._live_started)
+            if previous_ts is not None and resumed_ts is not None and resumed_ts > previous_ts:
+                self._core_broken = True
+                self._core_error_code = 7
+                self._core_retry_from_ts = max(self.HISTORICAL_START_TS, previous_ts - 1)
+                message = f"Databento reconnect gap {previous} -> {resumed}; replay required"
+                for symbol in symbols:
+                    self._errors[symbol] = message
+                    for schema in self._wanted_subscriptions.get(symbol, {"ohlcv-1s", "trades"}):
+                        self._core_ready[(symbol, schema)].set()
+                    self._ready[symbol].set()
         for symbol in symbols:
             self._record_reconnect(symbol, previous, resumed)
 
@@ -810,10 +837,18 @@ class Databento:
             raise RuntimeError(f"Databento {schema} depth session is in a fatal/integrity error state")
 
     def _record_depth_reconnect_all(self, schema: str, previous: Any, resumed: Any) -> None:
+        previous_ts = self._timestamp_sec(previous)
+        resumed_ts = self._timestamp_sec(resumed)
         with self._lock:
-            self._depth_broken.discard(schema)
-            self._depth_error_code.pop(schema, None)
             symbols = list(self._depth_live_symbols[schema])
+            if previous_ts is not None and resumed_ts is not None and resumed_ts > previous_ts:
+                self._depth_broken.add(schema)
+                self._depth_error_code[schema] = 7
+                self._depth_retry_from_ts[schema] = max(self.HISTORICAL_START_TS, previous_ts - 1)
+                message = f"Databento {schema} reconnect gap {previous} -> {resumed}; replay required"
+                for symbol in symbols:
+                    self._depth_errors[(symbol, schema)] = message
+                    self._depth_ready[(symbol, schema)].set()
         for symbol in symbols:
             self._record_reconnect(symbol, previous, resumed)
 
@@ -834,8 +869,12 @@ class Databento:
             with self._lock:
                 broken = schema in self._depth_broken
                 code = self._depth_error_code.get(schema)
-            if broken and code in (6, 7, 8):
-                self._refresh_depth_schema_live(schema, start_ts=max(0, int(time.time()) - 300))
+            if broken and code in (6, 7):
+                with self._lock:
+                    retry_from = self._depth_retry_from_ts.get(schema)
+                start = retry_from if retry_from is not None else max(0, int(time.time()) - 300)
+                if start >= int(time.time()) - 23 * 3600:
+                    self._refresh_depth_schema_live(schema, start_ts=start)
             with self._lock:
                 if schema in self._depth_broken:
                     detail = next(
@@ -910,6 +949,7 @@ class Databento:
             self._depth_started.discard(schema)
             self._depth_broken.discard(schema)
             self._depth_error_code.pop(schema, None)
+            self._depth_retry_from_ts.pop(schema, None)
             symbols = set(self._depth_live_symbols.pop(schema, set()))
             self._depth_subscriptions.pop(schema, None)
             self._depth_continuous_to_symbol.pop(schema, None)
@@ -974,6 +1014,7 @@ class Databento:
                 self._depth_live[schema] = client
                 self._depth_broken.discard(schema)
                 self._depth_error_code.pop(schema, None)
+                self._depth_retry_from_ts.pop(schema, None)
             try:
                 with self._lock:
                     for key in active:
@@ -1137,12 +1178,13 @@ class Databento:
                 broken = self._core_broken
                 code = self._core_error_code
                 active = list(self._live_started)
-            if broken and code in (6, 7, 8):
+            if broken and code in (6, 7):
                 retry_symbols = list(dict.fromkeys(active + [str(x) for x in symbols]))
-                self._refresh_core_live(
-                    retry_symbols,
-                    start_ts=max(0, int(time.time()) - 300),
-                )
+                with self._lock:
+                    retry_from = self._core_retry_from_ts
+                start = retry_from if retry_from is not None else max(0, int(time.time()) - 300)
+                if start >= int(time.time()) - 23 * 3600:
+                    self._refresh_core_live(retry_symbols, start_ts=start)
             client = self._prepare_live_unlocked(
                 symbols, schemas=schemas, start_ts=start_ts, include_depth=None
             )
@@ -1174,6 +1216,7 @@ class Databento:
                 self._shared_live = client
                 self._core_broken = False
                 self._core_error_code = None
+                self._core_retry_from_ts = None
             try:
                 with self._lock:
                     for key, desired in wanted.items():
@@ -1262,6 +1305,7 @@ class Databento:
             self._shared_started = False
             self._core_broken = False
             self._core_error_code = None
+            self._core_retry_from_ts = None
             self._live.clear()
             self._live_started.clear()
             self._subscriptions.clear()
