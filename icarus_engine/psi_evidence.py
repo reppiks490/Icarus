@@ -450,7 +450,22 @@ class PsiEvidenceLedger:
                         "evidence_id": str(row.get("evidence_id") or ""),
                         "reason": "payload_hash",
                     })
-                digest_parts.append(f"{row.get('evidence_id')}:{row.get('payload_hash')}")
+                digest_parts.append(json.dumps({
+                    "evidence_id": row.get("evidence_id"),
+                    "schema_version": row.get("schema_version"),
+                    "asset": row.get("asset"),
+                    "feature": row.get("feature"),
+                    "value": row.get("value"),
+                    "confidence": row.get("confidence"),
+                    "source": row.get("source"),
+                    "observed_at": row.get("observed_at"),
+                    "observed_ts": row.get("observed_ts"),
+                    "received_ts": row.get("received_ts"),
+                    "expires_ts": row.get("expires_ts"),
+                    "ttl_seconds": row.get("ttl_seconds"),
+                    "payload_hash": row.get("payload_hash"),
+                    "created_at": row.get("created_at"),
+                }, sort_keys=True, separators=(",", ":"), allow_nan=False))
 
             digest = hashlib.sha256("\n".join(digest_parts).encode("utf-8")).hexdigest()
             ok = quick_check in {"ok", "memory"} and not invalid
