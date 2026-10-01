@@ -1168,17 +1168,27 @@ class PossibilityEngine:
             "volume_pressure": micro.get("volume_pressure") if isinstance(micro.get("volume_pressure"), Feature) else Feature(None, 0.0, False, "unavailable"),
         }
 
-        if leaders.get("status") == "observed" and _finite(leaders.get("pressure")) is not None:
+        leader_pressure = _finite(leaders.get("pressure"))
+        exact_leaders = (
+            leaders.get("status") == "observed"
+            and leaders.get("alignment_mode") == "exact_bar_timestamp"
+            and leader_pressure is not None
+        )
+        if exact_leaders:
             out["cross_asset_pressure"] = Feature(
-                _finite(leaders.get("pressure")),
+                leader_pressure,
                 _finite(leaders.get("confidence")) or 0.0,
                 True,
                 "lagged cross-asset graph",
-                "dynamic lag-1 leader ensemble",
+                "exact-bar-aligned dynamic lag-1 leader ensemble",
             )
         else:
-            # Strategy pulse is deliberately a weak fallback, not a cross-asset substitute.
-            out["cross_asset_pressure"] = Feature(None, 0.0, False, "unavailable", "leader graph warming")
+            reason = (
+                "leader graph is not exact-bar aligned"
+                if leaders.get("status") == "observed"
+                else "leader graph warming"
+            )
+            out["cross_asset_pressure"] = Feature(None, 0.0, False, "unavailable", reason)
 
         basis = external["basis_pressure"]
         gamma = external["gamma_pressure"]
