@@ -1,0 +1,32 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "mcp-evolution-panel-merged-20261001T050804Z",
+  "category": "INTEGRATION",
+  "severity": "success",
+  "status": "verified",
+  "subsystems": [
+    "aion",
+    "parallax",
+    "argus",
+    "athena",
+    "provenance",
+    "ml"
+  ],
+  "recorded_at": "2026-10-01T05:08:04Z",
+  "title": "MCP Evolution trader panel verified and merged",
+  "summary": "The repository-native MCP Evolution feed is now integrated into the ICARUS trading interface. Verified Git-blob receipts are mirrored into the dedicated MCP Evolution panel, System Intelligence, and Adaptive Brain while remaining read-only. The exact PR head passed Linux and Windows CI before merge. Asset, timeframe, chart, sub-minute, broker-routing, strategy execution, and order authority were not changed by this integration.",
+  "source_repository": "reppiks490/Icarus",
+  "source_ref": "main",
+  "source_commit": "10c8805694579e82a2934386c9a2e348480d9d0c",
+  "evidence": [
+    "PR #75 merged at 10c8805694579e82a2934386c9a2e348480d9d0c",
+    "PR head 104d3f84cfba8e4711c41294a6a0abe06c8ae591",
+    "GitHub Actions Linux engine: success",
+    "GitHub Actions Windows engine-windows: success",
+    "MCP feed rejects execution_authorized=true",
+    "MCP feed rejects production_decision_authorized=true",
+    "MCP feed validates exact Git blob SHA before ingest"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}
