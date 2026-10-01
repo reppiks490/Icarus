@@ -1,0 +1,37 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "argus-paper-broker-transfer-verified-20261001T235600Z",
+  "category": "EVOLUTION",
+  "severity": "success",
+  "status": "verified",
+  "subsystems": [
+    "argus",
+    "execution_research",
+    "calibration",
+    "transfer_validation",
+    "provenance"
+  ],
+  "recorded_at": "2026-10-01T23:56:00Z",
+  "title": "ARGUS paper-to-broker calibration transfer audit verified",
+  "summary": "ARGUS now supports a prospectively registered transfer-compatibility audit that compares ICARUS paper-emulator impact calibration with broker-confirmed calibration without pooling or relabeling the evidence classes. The plan content-addresses the exact study, metric set, tolerances, confidence alpha, deterministic seed, replicate count and minimum observations before the cohort begins. Each metric reports paper-minus-broker with a deterministic two-sample percentile interval and is within tolerance only when the full interval lies inside its predeclared bound.",
+  "source_repository": "reppiks490/divine-providence",
+  "source_ref": "main",
+  "source_commit": "c35bc6de37ae1bbfed41b16a3bf2a1a83b8bff3a",
+  "evidence": [
+    "divine-providence PR #30 merged at c35bc6de37ae1bbfed41b16a3bf2a1a83b8bff3a",
+    "exact-head subsystem-evolution workflow run 36942637761 completed success",
+    "Linux and Windows ARGUS/ATHENA/AION causal subsystem jobs passed",
+    "intelligence-fabric and hub tests passed",
+    "full twelve-system validation passed",
+    "transfer plan must be created at or before cohort_start_ns",
+    "BROKER_CONFIRMED and ICARUS_PAPER_EMULATOR remain separate evidence classes",
+    "paper_minus_broker is reported directly for each predeclared metric",
+    "within_tolerance requires the entire interval to fit inside the predeclared +/- tolerance",
+    "zero-fill rows never become invented slippage observations",
+    "within_tolerance is not a formal equivalence test or broker-substitution authorization",
+    "execution_authorized=false",
+    "production_decision_authorized=false"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}
