@@ -136,13 +136,13 @@
         '<div class="tile"><div class="k">Future convergence</div><div class="v tnum">' + pct(collapse.convergence) + '</div><div class="small muted">entropy ' + pct(collapse.entropy) + '</div></div>' +
         '<div class="tile"><div class="k">Collapse score</div><div class="v tnum">' + pct(collapse.collapse_score) + '</div><div class="small muted">' + h(collapse.domain_count || 0) + ' independent domains</div></div>' +
         '<div class="tile"><div class="k">Fracture score</div><div class="v tnum">' + pct(fracture.bifurcation_score) + '</div><div class="small muted">highest bifurcation horizon ' + h(horizonLabel(fracture.horizon_seconds)) + '</div></div>' +
-        '<div class="tile"><div class="k">Evidence</div><div class="v tnum">' + h(ev.count || 0) + '</div><div class="small muted">' + h((ev.sources || []).length) + ' sources · ' + h(ev.distinct_domain_count || 0) + ' domains</div></div>' +
+        '<div class="tile"><div class="k">Evidence</div><div class="v tnum">' + h(ev.count || 0) + '</div><div class="small muted">' + h((ev.sources || []).length) + ' sources · ' + h(ev.distinct_domain_count || 0) + ' domains · ' + h(ev.ledger_count == null ? ev.count || 0 : ev.ledger_count) + ' ledger rows</div></div>' +
         '<div class="tile"><div class="k">Calibration</div><div class="v">' + h(String(cal.status || 'unmeasured').toUpperCase()) + '</div><div class="small muted">' + h(cal.outcome_count || 0) + ' realized forecast outcomes</div></div>' +
         '<div class="tile"><div class="k">Authority</div><div class="v">SHADOW ONLY</div><div class="small muted">no order routing · no production promotion</div></div>' +
       '</div>' +
 
       '<div class="px-grid" style="margin-top:12px">' +
-        '<div class="px-box"><b>Correlation guard</b><div class="small muted" style="margin-top:6px">' + h(ev.correlation_guard || '') + '</div></div>' +
+        '<div class="px-box"><b>Correlation / revision guard</b><div class="small muted" style="margin-top:6px">' + h(ev.correlation_guard || '') + '<br>' + h(ev.revision_guard || '') + '</div></div>' +
         '<div class="px-box"><b>Integration contract</b><div class="small muted" style="margin-top:6px">' + h(ctx.integration_rule || '') + '</div></div>' +
       '</div>' +
 
