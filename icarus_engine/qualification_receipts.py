@@ -131,7 +131,6 @@ def build_shadow_promotion_event(
         "evidence": [f"qualification-receipt:{receipt_id}" for receipt_id in receipt_ids],
         "details": {
             "promotion_plane": "QUALIFICATION_RECEIPTS",
-            "promoted_from_stage": stage,
             "candidate_source_revision": f"{source_repo}@{source_commit}",
             "gate_receipts": receipt_provenance,
             "execution_authorized": False,
@@ -139,6 +138,87 @@ def build_shadow_promotion_event(
         },
         "candidate_id": candidate_id,
         "stage": "qualified_shadow",
+        "regimes": list(regimes),
+        "metrics": dict(metrics),
+        "validation": dict(validation),
+        "source_repo": source_repo,
+        "source_commit": source_commit,
+        "execution_authorized": False,
+        "production_decision_authorized": False,
+    }
+
+
+def build_shadow_revocation_event(
+    candidate: Mapping[str, Any],
+    qualification: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Build a deterministic event that removes a no-longer-qualified shadow candidate."""
+    if not isinstance(candidate, Mapping) or not isinstance(qualification, Mapping):
+        raise ValueError("candidate and qualification must be objects")
+    candidate_id = _text(candidate.get("candidate_id"), "candidate.candidate_id", 180)
+    source_repo = _text(candidate.get("source_repo"), "candidate.source_repo", 180)
+    source_commit = _sha(candidate.get("source_commit"), "candidate.source_commit", 40)
+    if qualification.get("qualification_ready") is True:
+        raise ValueError("qualification is still ready; revocation is not allowed")
+    if _text(qualification.get("candidate_id"), "qualification.candidate_id", 180) != candidate_id:
+        raise ValueError("qualification candidate_id does not match candidate")
+    q_repo = _text(qualification.get("candidate_source_repo"), "qualification.candidate_source_repo", 180)
+    q_commit = _sha(qualification.get("candidate_source_commit"), "qualification.candidate_source_commit", 40)
+    if (q_repo, q_commit) != (source_repo, source_commit):
+        raise ValueError("qualification source revision does not match candidate")
+    if _text(candidate.get("stage"), "candidate.stage", 40) != "qualified_shadow":
+        raise ValueError("only a qualified_shadow candidate can be revoked by this transition")
+
+    regimes = candidate.get("regimes")
+    metrics = candidate.get("metrics")
+    validation = qualification.get("validation")
+    blockers = qualification.get("blockers")
+    receipts = qualification.get("latest_gate_receipts")
+    if not isinstance(regimes, list) or not regimes:
+        raise ValueError("candidate regimes are required")
+    if not isinstance(metrics, Mapping):
+        raise ValueError("candidate metrics are required")
+    if not isinstance(validation, Mapping):
+        raise ValueError("qualification validation map is required")
+    if not isinstance(blockers, list) or not blockers:
+        raise ValueError("qualification blockers are required")
+    if not isinstance(receipts, list):
+        raise ValueError("qualification receipts must be a list")
+
+    evidence = []
+    receipt_provenance = []
+    for row in receipts:
+        if not isinstance(row, Mapping):
+            continue
+        receipt_id = row.get("receipt_id")
+        if receipt_id:
+            rid = _sha(receipt_id, "receipt_id", 64)
+            evidence.append(f"qualification-receipt:{rid}")
+            receipt_provenance.append({
+                "gate": _text(row.get("gate"), "receipt.gate", 96),
+                "passed": row.get("passed") is True,
+                "receipt_id": rid,
+                "verifier_id": row.get("verifier_id"),
+                "verifier_source_revision": row.get("verifier_source_revision"),
+                "evidence_hash": row.get("evidence_hash"),
+            })
+
+    return {
+        "kind": "candidate",
+        "subject": candidate_id,
+        "summary": "candidate removed from shadow eligibility after qualification evidence changed",
+        "status": "blocked",
+        "evidence": evidence,
+        "details": {
+            "promotion_plane": "QUALIFICATION_RECEIPTS",
+            "candidate_source_revision": f"{source_repo}@{source_commit}",
+            "blockers": list(blockers),
+            "gate_receipts": receipt_provenance,
+            "execution_authorized": False,
+            "production_decision_authorized": False,
+        },
+        "candidate_id": candidate_id,
+        "stage": "validated",
         "regimes": list(regimes),
         "metrics": dict(metrics),
         "validation": dict(validation),
