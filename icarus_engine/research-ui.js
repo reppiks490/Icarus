@@ -250,8 +250,10 @@ async function loadSystemEvolutionSurface() {
   if(systemEvolutionLoading||typeof view==='undefined'||view!=='system') return;
   systemEvolutionLoading=true;
   try {
-    const data=await researchGet('/api/research');
-    systemEvolutionCache=data.system_evolution||null;
+    const response=await fetch('/api/system/audit',{cache:'no-store'});
+    const data=await response.json();
+    if(!response.ok) throw new Error(data.detail||data.error||('HTTP '+response.status));
+    systemEvolutionCache=data.evolution||null;
   } catch(_) {
     systemEvolutionCache=null;
   } finally {
