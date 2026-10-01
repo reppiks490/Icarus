@@ -178,6 +178,24 @@ def http(portfolio):
     srv.shutdown(); srv.server_close(); thread.join(5)
 
 
+def test_status_public_survives_nan_and_never_empty_replies(http, portfolio):
+    r = portfolio.runners["NQ"]
+    r.state["hurst"] = float("nan")
+    r.last_price = float("inf")
+    status, data = http("GET", "/status/public")
+    assert data, "empty reply is what paints ENGINE UNREACHABLE"
+    assert status == 200
+    assert json.loads(data)["assets"][0]["symbol"] == "NQ"
+
+    def boom():
+        raise RuntimeError("synthetic summary failure")
+    portfolio.runners["NQ"].summary = boom
+    status, data = http("GET", "/status/public")
+    assert data
+    json.loads(data)
+    assert status in (200, 500)
+
+
 def test_http_auth_static_json_validation_and_no_provider_calls(http, monkeypatch):
     import icarus_engine.advisory as advisory
     monkeypatch.setattr(advisory, "_provider_review", lambda *a: pytest.fail("unexpected model call"))
@@ -228,3 +246,13 @@ def test_http_signed_ingestion_replay_and_unconfigured_receiver(http, monkeypatc
     assert status == 200
     record = json.loads(data)["events"][0]
     assert record["source_event_id"] == "fixture" and record["received_at"]
+
+
+def test_early_rejections_read_the_body_so_the_client_gets_its_answer(http, monkeypatch):
+    # Claude (Opus 5.5) 2026-09-27. Answering before reading the body and then closing resets the connection:
+    # 3 in 500 unconfigured POSTs lost their 503 (WinError 10053) before the receiver drained the body.
+    raw = json.dumps(event()).encode()
+    monkeypatch.delenv("ICARUS_INGEST_SECRET", raising=False)
+    assert [http("POST", "/research/events", raw)[0] for _ in range(600)] == [503] * 600
+    monkeypatch.setenv("ICARUS_INGEST_SECRET", "x" * 32)
+    assert [http("POST", "/research/events", raw)[0] for _ in range(300)] == [401] * 300

@@ -1,0 +1,91 @@
+{
+  "schema_version": "1.0.0",
+  "mesh_id": "icarus-capability-fabric",
+  "canonical_repository": "reppiks490/Icarus",
+  "canonical_default_branch": "main",
+  "generated_from": {
+    "producer": "ChatGPT",
+    "purpose": "architecture-and-integration-consolidation",
+    "date": "2026-09-24"
+  },
+  "policy": {
+    "default_trust": "none",
+    "conflict_resolution": "preserve-and-adjudicate",
+    "production_mutation_from_provider": false,
+    "cross_revision_authority": false,
+    "authority_monotonicity": true
+  },
+  "authority_classes": [
+    "OBSERVE",
+    "RESEARCH",
+    "PROPOSE",
+    "IMPLEMENT",
+    "ASSURE",
+    "RELEASE"
+  ],
+  "nodes": [
+    {
+      "id": "icarus-main",
+      "repository": "reppiks490/Icarus",
+      "role": "canonical",
+      "status": "active"
+    },
+    {
+      "id": "icarus-engine",
+      "repository": "reppiks490/Icarus-engine",
+      "role": "candidate-satellite",
+      "status": "candidate"
+    },
+    {
+      "id": "icarus-owner-actions",
+      "repository": "reppiks490/icarus-owner-actions",
+      "role": "candidate-satellite",
+      "status": "candidate"
+    },
+    {
+      "id": "icarus-causal-router",
+      "repository": "reppiks490/icarus-causal-router",
+      "role": "candidate-satellite",
+      "status": "candidate"
+    },
+    {
+      "id": "icarus-csv-evidence-lab",
+      "repository": "reppiks490/icarus-csv-evidence-lab",
+      "role": "candidate-satellite",
+      "status": "candidate"
+    }
+  ],
+  "lanes": [
+    {
+      "id": "raw-evidence",
+      "from": "provider-or-satellite",
+      "to": "evidence-fabric",
+      "max_authority": "OBSERVE"
+    },
+    {
+      "id": "research",
+      "from": "evidence-fabric",
+      "to": "research-lab",
+      "max_authority": "RESEARCH"
+    },
+    {
+      "id": "implementation-proposal",
+      "from": "research-lab",
+      "to": "protected-core",
+      "max_authority": "PROPOSE"
+    },
+    {
+      "id": "assurance",
+      "from": "implementation",
+      "to": "s5-assurance",
+      "max_authority": "ASSURE"
+    },
+    {
+      "id": "release",
+      "from": "s5-assurance",
+      "to": "production",
+      "max_authority": "RELEASE",
+      "requires_explicit_owner_authorization": true
+    }
+  ]
+}

@@ -1,0 +1,96 @@
+# AEGIS Challenger Forge — State Capsule
+
+- workstream: AEGIS Challenger Forge
+- last_productive_run_id: AEGIS_CF_20260928_OPTA_COVERAGE_04
+- updated_date: 2026-09-28
+- mode: COLLECTION_ONLY
+- execution_authorized: false
+- downstream_mutation: false
+- repository: reppiks490/Icarus
+- branch: main
+- owned_path: docs/icarus/research/aegis_challenger_forge/
+- last_run_manifest: runs/AEGIS_CF_20260928_OPTA_COVERAGE_04.md
+- admitted_ids:
+  - AEGIS-CF-ICEBERG-CME-ARXIV-1909.09495-v1
+  - AEGIS-CF-ROUGHMULTI-SPXVIX-2112.14310-v2
+  - AEGIS-CF-ROUGH-FALSIFICATION-2401.03345-v2
+  - AEGIS-CF-BTC-OFLOW-IMAGE-2304.02472-v2
+  - AEGIS-CF-CME-MATCHALG-DOCSNAP-20260928T1637Z
+  - AEGIS-CF-PINE-DOMCYCLE-TV-cY7DdxyZ-20220416
+  - AEGIS-CF-GOLD-CVOL-CME-v1.7.1-20260318
+  - AEGIS-CF-QRLOB-GH-SaadSouilmi-3080096cc0c7
+  - AEGIS-CF-BTC-BYBIT-V5-DERIV-DOCSNAP-20260928T1637Z
+  - AEGIS-CF-BTC-BINANCE-COINM-DOCSNAP-20260928T1637Z
+  - AEGIS-CF-PRO-RATA-ARXIV-1205.3051
+  - AEGIS-CF-QR-SIM-ARXIV-2603.24137-v1
+  - AEGIS-CF-OFLOW-ROUGH-IMPACT-ARXIV-2601.23172-v2
+  - AEGIS-CF-BTC-SUNSHINE-HYPERLIQ-ARXIV-2606.15715-v1
+  - AEGIS-CF-HHT-CEEMD-FEATURES-ARXIV-2105.10871-v1
+  - AEGIS-CF-WAVELET-MFA-GH-neurospin-ad254f31500a
+  - AEGIS-CF-CME-OPTVOL-GREEKS-DOCSNAP-20260928T1705Z
+  - AEGIS-CF-BTC-OKX-DERIV-DOCSNAP-20260928T1705Z
+  - AEGIS-CF-BTC-DERIBIT-DERIV-DOCSNAP-20260928T1705Z
+  - AEGIS-CF-ICEBERG-ASX-JFR-10.1111-JFIR.12414
+  - AEGIS-CF-TMX-ICEBERG-GUIDE-v1.77-20260914
+  - AEGIS-CF-PINE-GYTS-FILTERS-TV-Mm789eKn-v2-20250305
+  - AEGIS-CF-PINE-GYTS-VOLTOOL-TV-Th3bPWea-SNAPSHOT-20260928
+  - AEGIS-CF-CME-NQ-MNQ-FIFO-FAQ-20190311
+  - AEGIS-CF-CME-OPTA-REST-DOC-v20251030
+  - AEGIS-CF-HFTBACKTEST-GH-5f3ec40b2afb
+  - AEGIS-CF-BTC-BVX-CFB-v1.7-20260529
+  - AEGIS-CF-BTC-BVXS-CFB-v1.6-20260420
+  - AEGIS-CF-RANGE-PARKINSON-DOI-10.1086-296071
+  - AEGIS-CF-RANGE-GK-DOI-10.1086-296072
+  - AEGIS-CF-RANGE-RS-DOI-10.1214-aoap-1177005835
+  - AEGIS-CF-RANGE-YZ-DOI-10.1086-209650
+  - AEGIS-CF-RANGE-TTR-GH-d152a3f6ddc7
+  - AEGIS-CF-CME-BVIFUT-SPECS-DOCSNAP-20260928
+  - AEGIS-CF-CME-BVIFUT-CODECHANGE-SER9819-20260909
+  - AEGIS-CF-RANGE-ABD-DOI-10.1111-1540-6261.00454
+  - AEGIS-CF-BTC-YZ-PREPRINT-10.20944-PREPRINTS202602.0560.v1
+  - AEGIS-CF-YZ-SWIMPACTS-DOI-10.1016-J.SIMPA.2024.100613
+  - AEGIS-CF-YZ-GH-HUGOGOBATO-deaa987542ce
+  - AEGIS-CF-BTC-BINANCE-KLINE-DAYBOUNDARY-DOCSNAP-20260928
+  - AEGIS-CF-CME-NQ-SESSION-DOCSNAP-20260928
+  - AEGIS-CF-CME-GC-SESSION-DOCSNAP-20260928
+  - AEGIS-CF-CME-GC-MGC-MATCHALG-GCC-20260922
+  - AEGIS-CF-CME-MGC-SESSION-DOCSNAP-20260928
+  - AEGIS-CF-ICEBERG-GH-TAYOR-v0.1.0-3651fdd044ed
+  - AEGIS-CF-CME-OPTA-PRODUCTLIST-20250801
+  - AEGIS-CF-CME-OPTA-FAQ-20250911
+- quarantined_ids: []
+- resolved_quarantine:
+  - AEGIS-CF-OFLOW-ROUGH-IMPACT-2601.23172-CANDIDATE -> AEGIS-CF-OFLOW-ROUGH-IMPACT-ARXIV-2601.23172-v2
+- resolved_gaps:
+  - standard GC outright MatchAlgorithm = F/FIFO from CME GCC workbook dated 2026-09-22
+  - standard MGC outright MatchAlgorithm = F/FIFO from CME GCC workbook dated 2026-09-22
+  - GC-GC and MGC-MGC calendar-spread rows = F/FIFO in same workbook
+  - MGC-specific session/trading-hours metadata independently pinned from current CME specs
+  - CME Options Analytics static product list explicitly supports NQ, MNQ and GC
+  - Options Analytics REST retention=current Sunday-Friday window; DataMine historical availability back to 2020
+- persistent_quality_gates:
+  - collection only; never score/rank/promote/backtest/code from this workstream
+  - observed facts remain separate from author/unverified claims
+  - preprints must remain explicitly labeled and must not be promoted to peer-reviewed evidence
+  - mutable documentation sources require retrieval snapshot identity
+  - live workbook/reference data should preserve both retrieval date and embedded source date when available
+  - product-specific matching rules must not be generalized across strategy types; TAS/TAM/options remain separate from standard outright GC/MGC
+  - benchmark methodology must be version-pinned separately from underlying data access/license
+  - future-effective exchange metadata must not be applied before its effective date
+  - implementation identities must be version/tag/commit pinned when possible
+  - OHLC day/session boundary must be preserved as provenance; 24/7 UTC day and CME venue session are not interchangeable
+  - market-data documentation does not imply entitlement to underlying data
+  - source version/date and access constraints must be preserved
+  - sibling and parallel AEGIS checkpoints must be reconciled, never overwritten
+  - overlapping Pine subfunctions must be deduplicated at method-family level, not only script level
+- next_targets:
+  - pin exact CME DataMine Options Analytics dataset identity, field schema and filenames
+  - licensed CME MBO/trade-summary corpora for NQ/MNQ/GC/MGC
+  - GC/MGC-specific display/priority/iceberg empirical evidence under current FIFO rules
+  - independent validation/paper lineage for commit-pinned hidden-liquidity implementations
+  - Bitcoin Volatility Futures historical field/retention/licensing semantics
+  - primary research on venue-native vs common-clock cross-market volatility aggregation
+  - normalize article/preprint licenses for Software Impacts 100613 and Preprints 202602.0560
+  - Deribit/OKX options historical retention and timestamp semantics interoperable with BVX/BVXS
+  - novel Pine DSP families beyond existing DominantCycle and overlapping FiltersToolkit functions
+- quality_rule: no corpus identity implies production admission or trading edge.

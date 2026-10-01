@@ -1,0 +1,63 @@
+{
+  "schema_version": "1.0.0",
+  "generated_at": "2026-09-24T23:33:00Z",
+  "repository": "reppiks490/Icarus",
+  "baseline_commit": "007e70189945b8e112904cf92b2b1a12e43792d6",
+  "handoff_branch": "icarus/masterbuild-handoff-2026-09-24",
+  "mission": "Increase empirical rigor, execution realism, data integrity, observability, and integration capacity without weakening working behavior or introducing unsupported claims.",
+  "invariants": [
+    "missing_or_unknown_data_must_not_increase_authority",
+    "research_output_does_not_directly_authorize_live_execution",
+    "simulation_fidelity_must_not_exceed_data_fidelity",
+    "broker_truth_is_distinct_from_engine_intent",
+    "every_material_improvement_requires_tests_and_a_rollback_path",
+    "complexity_requires_incremental_information_or_safety_value"
+  ],
+  "current_maturity": {
+    "overall": "advanced_independent_quant_r_and_d_pre_institutional",
+    "research_governance": "strong",
+    "reproducibility": "strong",
+    "execution_infrastructure": "prototype_to_early_professional",
+    "portfolio_risk": "incomplete",
+    "hpc_scale": "early",
+    "demonstrated_alpha": "unranked"
+  },
+  "priority_workstreams": [
+    "p0_ci_qualification",
+    "p1_provider_capability_and_point_in_time_truth",
+    "p2_research_multiple_testing_controls",
+    "p3_futures_execution_state_machine",
+    "p4_portfolio_risk_kernel",
+    "p5_microstructure_l1_l2",
+    "p6_tamper_evident_observability",
+    "p7_distributed_scale"
+  ],
+  "verified_repo_findings": [
+    "holdout_governance_exists",
+    "frozen_replay_and_fingerprinting_exist",
+    "activation_and_execution_safety_boundaries_exist",
+    "trade_only_microstructure_does_not_invent_quote_book_state",
+    "ci_root_argument_order_was_incorrect_at_baseline"
+  ],
+  "transient_external_states": {
+    "Bigdata.com": "available_on_tested_routes",
+    "Bybit": "available_on_tested_public_routes",
+    "StackerScan": "available_on_tested_routes",
+    "U.S. Gold Bureau": "network_or_ip_restricted_on_test",
+    "Massive": "futures_entitlement_blocked_on_test",
+    "FMP_direct_commodity": "plan_restricted_on_test",
+    "Scite": "quota_blocked_on_test",
+    "Figma": "connected",
+    "Runway": "connected_with_capacity_constraint_observed"
+  },
+  "agent_bootstrap_docs": [
+    "docs/icarus_masterbuild/README.md",
+    "docs/icarus_masterbuild/SYSTEM_ASSESSMENT.md",
+    "docs/icarus_masterbuild/FINDINGS_LEDGER.md",
+    "docs/icarus_masterbuild/ARCHITECTURE_EXPANSION.md",
+    "docs/icarus_masterbuild/PROVIDER_MATRIX.md",
+    "docs/icarus_masterbuild/RESEARCH_GOVERNANCE.md",
+    "docs/icarus_masterbuild/INTEGRATION_PROTOCOL.md",
+    "docs/icarus_masterbuild/ROADMAP.md"
+  ]
+}

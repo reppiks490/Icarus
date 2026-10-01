@@ -1,0 +1,1778 @@
+{
+  "study": "2026-09-27-slot01",
+  "repo_revision": "657f9ab619f7724bdffa3ef976f8e9b799d75907",
+  "q": 0.1,
+  "n_selected": 23,
+  "n_fitted": 23,
+  "excluded": [
+    [
+      "CBOT_MINI_DL_YM1!, 1",
+      "300 rows < 400 for clock_minutes"
+    ],
+    [
+      "CBOT_MINI_DL_YM1!, 30S",
+      "300 rows < 800 for clock_seconds"
+    ],
+    [
+      "CME_MINI_DL_ES1!, 1 2",
+      "382 rows < 400 for clock_minutes"
+    ],
+    [
+      "CME_MINI_DL_ES1!, 1",
+      "391 rows < 400 for clock_minutes"
+    ],
+    [
+      "CME_MINI_DL_ES1!, 30S",
+      "300 rows < 800 for clock_seconds"
+    ],
+    [
+      "CME_MINI_DL_NQ1!, 1",
+      "383 rows < 400 for clock_minutes"
+    ],
+    [
+      "CME_MINI_DL_NQ1!, 30S",
+      "300 rows < 800 for clock_seconds"
+    ],
+    [
+      "CME_MINI_DL_NQ1!, 5S",
+      "645 rows < 800 for clock_seconds"
+    ],
+    [
+      "COMEX_DL_GC1!, 1 2",
+      "384 rows < 400 for clock_minutes"
+    ],
+    [
+      "COMEX_DL_GC1!, 1",
+      "301 rows < 400 for clock_minutes"
+    ],
+    [
+      "COMEX_DL_GC1!, 30S",
+      "300 rows < 800 for clock_seconds"
+    ],
+    [
+      "COMEX_DL_SI1!, 1",
+      "300 rows < 400 for clock_minutes"
+    ],
+    [
+      "COMEX_DL_SI1!, 30S",
+      "300 rows < 800 for clock_seconds"
+    ],
+    [
+      "NYMEX_DL_PA1!, 1",
+      "300 rows < 400 for clock_minutes"
+    ],
+    [
+      "NYMEX_DL_PL1!, 1",
+      "300 rows < 400 for clock_minutes"
+    ],
+    [
+      "NYMEX_DL_PL1!, 30S",
+      "300 rows < 800 for clock_seconds"
+    ]
+  ],
+  "studies": [
+    {
+      "symbol": "ES",
+      "family": "clock_daily",
+      "file": "CME_MINI_DL_ES1!, 1D",
+      "chart": "1D",
+      "rows": 300,
+      "path": "C:\\Users\\tripl\\Downloads\\Csv\\Csv\\CME_MINI_DL_ES1!, 1D.csv",
+      "raw_sha256": "5c3b1a66f5a72386cc5b4c98597e7ac2742e93987204d31850c862f3422b0af9",
+      "slot0": {
+        "status": "fitted",
+        "reason": null,
+        "holdout_acc": 0.5,
+        "holdout_rows": 60
+      },
+      "slot1": {
+        "status": "fitted",
+        "reason": null,
+        "n_train": 178,
+        "n_valid": 59,
+        "n_hold": 60,
+        "best_iteration": 0,
+        "holdout_acc": 0.48333333333333334,
+        "holdout_logloss": 0.6948582533703143,
+        "baseline": {
+          "null_p": 0.5224719101123596,
+          "null_logloss": 0.6956573127480148,
+          "logit_logloss": 0.7014516948371237,
+          "logit_acc": 0.55
+        },
+        "incremental_value_status": "PASS",
+        "holdout_claim": {
+          "status": "NEW",
+          "hold_start_ts": 1782338400.0,
+          "hold_end_ts": 1789682400.0,
+          "ledger": "C:\\Users\\tripl\\icarus-studies\\holdout_ledger.sqlite3"
+        }
+      },
+      "dataset_manifest": {
+        "parser": "icarus.trainer.integrity/1",
+        "path": "C:\\Users\\tripl\\Downloads\\Csv\\Csv\\CME_MINI_DL_ES1!, 1D.csv",
+        "raw_sha256": "5c3b1a66f5a72386cc5b4c98597e7ac2742e93987204d31850c862f3422b0af9",
+        "rows_total": 300,
+        "rows_used": 300,
+        "unparseable_time": 0,
+        "missing_close": 0,
+        "missing_ohlc": 0,
+        "invalid_ohlc": 0,
+        "out_of_order": 0,
+        "duplicate_exact": 0,
+        "duplicate_conflict": 0,
+        "first_ts": 1752530400.0,
+        "last_ts": 1789941600.0,
+        "median_step": 86400.0,
+        "canonical_rows_sha256": "8ad8bbbc395aa29e64c5c51fe37829ebfb53fb604ba7b856b2e0a22807b48a64",
+        "status": "clean",
+        "reason": ""
+      },
+      "qualification": [
+        "VALID_RAW_CHALLENGER",
+        "raw challenger replayed from the execution rows; calibrated layer is PENDING_FORWARD"
+      ],
+      "paired": {
+        "n_hold": 60,
+        "mean_logloss_diff_vs_logit": -0.006593441466809071,
+        "sd": 0.16683299990092612,
+        "z": -0.30612995043318375,
+        "p_one_sided": 0.3797528523815958,
+        "holdout_acc_wilson95": [
+          0.3617484128577001,
+          0.6069240514915643
+        ]
+      },
+      "bh_significant_q10": false
+    },
+    {
+      "symbol": "ES",
+      "family": "clock_hours",
+      "file": "CME_MINI_DL_ES1!, 4",
+      "chart": "4h",
+      "rows": 1175,
+      "path": "C:\\Users\\tripl\\Downloads\\Csv\\Csv\\CME_MINI_DL_ES1!, 4.csv",
+      "raw_sha256": "4a6829497ef389df1d5e78006fbcd1dbeb5ff56388e62f1be2e32f6ae04fb37e",
+      "slot0": {
+        "status": "fitted",
+        "reason": null,
+        "holdout_acc": 0.44871794871794873,
+        "holdout_rows": 234
+      },
+      "slot1": {
+        "status": "fitted",
+        "reason": null,
+        "n_train": 701,
+        "n_valid": 233,
+        "n_hold": 234,
+        "best_iteration": 2,
+        "holdout_acc": 0.5,
+        "holdout_logloss": 0.6972312181098891,
+        "baseline": {
+          "null_p": 0.5320970042796006,
+          "null_logloss": 0.692464761668908,
+          "logit_logloss": 0.7182310776007997,
+          "logit_acc": 0.44871794871794873
+        },
+        "incremental_value_status": "FAIL",
+        "holdout_claim": {
+          "status": "NEW",
+          "hold_start_ts": 1785189600.0,
+          "hold_end_ts": 1789941600.0,
+          "ledger": "C:\\Users\\tripl\\icarus-studies\\holdout_ledger.sqlite3"
+        }
+      },
+      "dataset_manifest": {
+        "parser": "icarus.trainer.integrity/1",
+        "path": "C:\\Users\\tripl\\Downloads\\Csv\\Csv\\CME_MINI_DL_ES1!, 4.csv",
+        "raw_sha256": "4a6829497ef389df1d5e78006fbcd1dbeb5ff56388e62f1be2e32f6ae04fb37e",
+        "rows_total": 1175,
+        "rows_used": 1175,
+        "unparseable_time": 0,
+        "missing_close": 0,
+        "missing_ohlc": 0,
+        "invalid_ohlc": 0,
+        "out_of_order": 0,
+        "duplicate_exact": 0,
+        "duplicate_conflict": 0,
+        "first_ts": 1765839600.0,
+        "last_ts": 1789956000.0,
+        "median_step": 14400.0,
+        "canonical_rows_sha256": "0ecd6e18d025945eb6c53b6e97ec0c9385a5495327e0224f016ec9d885f10a25",
+        "status": "clean",
+        "reason": ""
+      },
+      "qualification": [
+        "BLOCKED_BASELINE_NOT_BEATEN",
+        "raw holdout logloss does not beat logit and null"
+      ],
+      "paired": {
+        "n_hold": 234,
+        "mean_logloss_diff_vs_logit": -0.020999859490911616,
+        "sd": 0.10699033077558617,
+        "z": -3.002477678608102,
+        "p_one_sided": 0.001338958055824957,
+        "holdout_acc_wilson95": [
+          0.43645488546694855,
+          0.5635451145330514
+        ]
+      },
+      "bh_significant_q10": true
+    },
+    {
+      "symbol": "ES",
+      "family": "clock_minutes",
+      "file": "CME_MINI_DL_ES1!, 1 5",
+      "chart": "1m",
+      "rows": 1782,
+      "path": "C:\\Users\\tripl\\Downloads\\Csv\\Csv\\CME_MINI_DL_ES1!, 1 5.csv",
+      "raw_sha256": "8af195c26179891ec787b340c6134b14112e6fd696f28da30a52dcdc0871d596",
+      "slot0": {
+        "status": "fitted",
+        "reason": null,
+        "holdout_acc": 0.5117056856187291,
+        "holdout_rows": 299
+      },
+      "slot1": {
+        "status": "fitted",
+        "reason": null,
+        "n_train": 893,
+        "n_valid": 297,
+        "n_hold": 299,
+        "best_iteration": 1,
+        "holdout_acc": 0.5016722408026756,
+        "holdout_logloss": 0.6916043429175388,
+        "baseline": {
+          "null_p": 0.5218365061590146,
+          "null_logloss": 0.693955600642679,
+          "logit_logloss": 0.6926223282005037,
+          "logit_acc": 0.5050167224080268
+        },
+        "incremental_value_status": "PASS",
+        "holdout_claim": {
+          "status": "NEW",
+          "hold_start_ts": 1789943760.0,
+          "hold_end_ts": 1789965540.0,
+          "ledger": "C:\\Users\\tripl\\icarus-studies\\holdout_ledger.sqlite3"
+        }
+      },
+      "dataset_manifest": {
+        "parser": "icarus.trainer.integrity/1",
+        "path": "C:\\Users\\tripl\\Downloads\\Csv\\Csv\\CME_MINI_DL_ES1!, 1 5.csv",
+        "raw_sha256": "8af195c26179891ec787b340c6134b14112e6fd696f28da30a52dcdc0871d596",
+        "rows_total": 1782,
+        "rows_used": 1782,
+        "unparseable_time": 0,
+        "missing_close": 0,
+        "missing_ohlc": 0,
+        "invalid_ohlc": 0,
+        "out_of_order": 0,
+        "duplicate_exact": 0,
+        "duplicate_conflict": 0,
+        "first_ts": 1789682400.0,
+        "last_ts": 1789965660.0,
+        "median_step": 60.0,
+        "canonical_rows_sha256": "dd80d20f4114f9c870330591a05af215d34b325a213ce7994b4d7b58857f75a9",
+        "status": "clean",
+        "reason": ""
+      },
+      "qualification": [
+        "VALID_RAW_CHALLENGER",
+        "raw challenger replayed from the execution rows; calibrated layer is PENDING_FORWARD"
+      ],
+      "paired": {
+        "n_hold": 299,
+        "mean_logloss_diff_vs_logit": -0.0010179852829656048,
+        "sd": 0.08248539864056664,
+        "z": -0.2134027521351337,
+        "p_one_sided": 0.4155064170263649,
+        "holdout_acc_wilson95": [
+          0.44533708841528785,
+          0.5579649678411842
+        ]
+      },
+      "bh_significant_q10": false
+    },
+    {
+      "symbol": "ES",
+      "family": "range",
+      "file": "CME_MINI_DL_ES1!, 1 6",
+      "chart": "range",
+      "rows": 1122,
+      "path": "C:\\Users\\tripl\\Downloads\\Csv\\Csv\\CME_MINI_DL_ES1!, 1 6.csv",
+      "raw_sha256": "f929017343a948b9425ceede5649531c51d6f7cb88bb2e947f30c74879aff974",
+      "slot0": {
+        "status": "fitted",
+        "reason": null,
+        "holdout_acc": 0.7777777777777778,
+        "holdout_rows": 225
+      },
+      "slot1": {
+        "status": "fitted",
+        "reason": null,
+        "n_train": 671,
+        "n_valid": 223,
+        "n_hold": 225,
+        "best_iteration": 170,
+        "holdout_acc": 0.7777777777777778,
+        "holdout_logloss": 0.5318737470771482,
+        "baseline": {
+          "null_p": 0.6035767511177347,
+          "null_logloss": 0.6618279529730845,
+          "logit_logloss": 0.5264069453234609,
+          "logit_acc": 0.7777777777777778
+        },
+        "incremental_value_status": "FAIL",
+        "holdout_claim": {
+          "status": "NEW",
+          "hold_start_ts": 1789742940.0,
+          "hold_end_ts": 1789964160.0,
+          "ledger": "C:\\Users\\tripl\\icarus-studies\\holdout_ledger.sqlite3"
+        }
+      },
+      "dataset_manifest": {
+        "parser": "icarus.trainer.integrity/1",
+        "path": "C:\\Users\\tripl\\Downloads\\Csv\\Csv\\CME_MINI_DL_ES1!, 1 6.csv",
+        "raw_sha256": "f929017343a948b9425ceede5649531c51d6f7cb88bb2e947f30c74879aff974",
+        "rows_total": 1122,
+        "rows_used": 1122,
+        "unparseable_time": 0,
+        "missing_close": 0,
+        "missing_ohlc": 0,
+        "invalid_ohlc": 0,
+        "out_of_order": 0,
+        "duplicate_exact": 0,
+        "duplicate_conflict": 0,
+        "first_ts": 1789586700.002,
+        "last_ts": 1789964280.0,
+        "median_step": 60.0,
+        "canonical_rows_sha256": "76583ba068805b489d9e12d79543e5c5bd4246ea9fad92a872d7e8aa609f39b2",
+        "status": "clean",
+        "reason": ""
+      },
+      "qualification": [
+        "BLOCKED_BASELINE_NOT_BEATEN",
+        "raw holdout logloss does not beat logit and null"
+      ],
+      "paired": {
+        "n_hold": 225,
+        "mean_logloss_diff_vs_logit": 0.005466801753687819,
+        "sd": 0.11371198171051144,
+        "z": 0.7211379581272136,
+        "p_one_sided": 0.7645876805136269,
+        "holdout_acc_wilson95": [
+          0.7190477891233493,
+          0.8271815677767946
+        ]
+      },
+      "bh_significant_q10": false
+    },
+    {
+      "symbol": "GC",
+      "family": "clock_hours",
+      "file": "COMEX_DL_GC1!, 60",
+      "chart": "1h",
+      "rows": 741,
+      "path": "C:\\Users\\tripl\\Downloads\\Csv\\Csv\\COMEX_DL_GC1!, 60.csv",
+      "raw_sha256": "33c344fbcc328dee3bc3efdab3f8bc4fa389b2fb1de5df156cfb1ba991febd75",
+      "slot0": {
+        "status": "fitted",
+        "reason": null,
+        "holdout_acc": 0.5405405405405406,
+        "holdout_rows": 148
+      },
+      "slot1": {
+        "status": "fitted",
+        "reason": null,
+        "n_train": 441,
+        "n_valid": 146,
+        "n_hold": 148,
+        "best_iteration": 22,
+        "holdout_acc": 0.5405405405405406,
+        "holdout_logloss": 0.6782844092649821,
+        "baseline": {
+          "null_p": 0.4852607709750567,
+          "null_logloss": 0.6919879672368507,
+          "logit_logloss": 0.7091164968624449,
+          "logit_acc": 0.5135135135135135
+        },
+        "incremental_value_status": "PASS",
+        "holdout_claim": {
+          "status": "NEW",
+          "hold_start_ts": 1789059600.0,
+          "hold_end_ts": 1789959600.0,
+          "ledger": "C:\\Users\\tripl\\icarus-studies\\holdout_ledger.sqlite3"
+        }
+      },
+      "dataset_manifest": {
+        "parser": "icarus.trainer.integrity/1",
+        "path": "C:\\Users\\tripl\\Downloads\\Csv\\Csv\\COMEX_DL_GC1!, 60.csv",
+        "raw_sha256": "33c344fbcc328dee3bc3efdab3f8bc4fa389b2fb1de5df156cfb1ba991febd75",
+        "rows_total": 741,
+        "rows_used": 741,
+        "unparseable_time": 0,
+        "missing_close": 0,
+        "missing_ohlc": 0,
+        "invalid_ohlc": 0,
+        "out_of_order": 0,
+        "duplicate_exact": 0,
+        "duplicate_conflict": 0,
+        "first_ts": 1785967200.0,
+        "last_ts": 1789963200.0,
+        "median_step": 3600.0,
+        "canonical_rows_sha256": "57874d90888118f5be6529de66d4da0b0d519464686ca6249ad69d2cebf86c00",
+        "status": "clean",
+        "reason": ""
+      },
+      "qualification": [
+        "VALID_RAW_CHALLENGER",
+        "raw challenger replayed from the execution rows; calibrated layer is PENDING_FORWARD"
+      ],
+      "paired": {
+        "n_hold": 148,
+        "mean_logloss_diff_vs_logit": -0.030832087597462733,
+        "sd": 0.1677965168188106,
+        "z": -2.2353773573408806,
+        "p_one_sided": 0.012696292668729292,
+        "holdout_acc_wilson95": [
+          0.4602401325306648,
+          0.6187895931835007
+        ]
+      },
+      "bh_significant_q10": true
+    },
+    {
+      "symbol": "GC",
+      "family": "clock_minutes",
+      "file": "COMEX_DL_GC1!, 1 4",
+      "chart": "1m",
+      "rows": 1782,
+      "path": "C:\\Users\\tripl\\Downloads\\Csv\\Csv\\COMEX_DL_GC1!, 1 4.csv",
+      "raw_sha256": "8a4ca5cd1b38ad277e654aeb15c9b38294db8136fd57374590526978857e155a",
+      "slot0": {
+        "status": "fitted",
+        "reason": null,
+        "holdout_acc": 0.46647230320699706,
+        "holdout_rows": 343
+      },
+      "slot1": {
+        "status": "fitted",
+        "reason": null,
+        "n_train": 1026,
+        "n_valid": 341,
+        "n_hold": 343,
+        "best_iteration": 3,
+        "holdout_acc": 0.5364431486880467,
+        "holdout_logloss": 0.6927859517363261,
+        "baseline": {
+          "null_p": 0.5029239766081871,
+          "null_logloss": 0.6932495282339822,
+          "logit_logloss": 0.6962499984290611,
+          "logit_acc": 0.4606413994169096
+        },
+        "incremental_value_status": "PASS",
+        "holdout_claim": {
+          "status": "NEW",
+          "hold_start_ts": 1789944480.0,
+          "hold_end_ts": 1789965660.0,
+          "ledger": "C:\\Users\\tripl\\icarus-studies\\holdout_ledger.sqlite3"
+        }
+      },
+      "dataset_manifest": {
+        "parser": "icarus.trainer.integrity/1",
+        "path": "C:\\Users\\tripl\\Downloads\\Csv\\Csv\\COMEX_DL_GC1!, 1 4.csv",
+        "raw_sha256": "8a4ca5cd1b38ad277e654aeb15c9b38294db8136fd57374590526978857e155a",
+        "rows_total": 1782,
+        "rows_used": 1782,
+        "unparseable_time": 0,
+        "missing_close": 0,
+        "missing_ohlc": 0,
+        "invalid_ohlc": 0,
+        "out_of_order": 0,
+        "duplicate_exact": 0,
+        "duplicate_conflict": 0,
+        "first_ts": 1789682400.0,
+        "last_ts": 1789965720.0,
+        "median_step": 60.0,
+        "canonical_rows_sha256": "6f626a874b0946e6adc2f94124aa48c0964e64fdcab6de65d43f31ed836ad36f",
+        "status": "clean",
+        "reason": ""
+      },
+      "qualification": [
+        "VALID_RAW_CHALLENGER",
+        "raw challenger replayed from the execution rows; calibrated layer is PENDING_FORWARD"
+      ],
+      "paired": {
+        "n_hold": 343,
+        "mean_logloss_diff_vs_logit": -0.00346404669273434,
+        "sd": 0.031123035194823352,
+        "z": -2.0613363108912557,
+        "p_one_sided": 0.019635483172909418,
+        "holdout_acc_wilson95": [
+          0.48355674460587367,
+          0.5885222678309275
+        ]
+      },
+      "bh_significant_q10": false
+    },
+    {
+      "symbol": "GC",
+      "family": "range",
+      "file": "COMEX_DL_GC1!, 1 5",
+      "chart": "range",
+      "rows": 1139,
+      "path": "C:\\Users\\tripl\\Downloads\\Csv\\Csv\\COMEX_DL_GC1!, 1 5.csv",
+      "raw_sha256": "025fe1402c0ffd7e69a85928cddea36cba77867301fc632c9ea840b2bc9d2878",
+      "slot0": {
+        "status": "fitted",
+        "reason": null,
+        "holdout_acc": 0.7368421052631579,
+        "holdout_rows": 228
+      },
+      "slot1": {
+        "status": "fitted",
+        "reason": null,
+        "n_train": 681,
+        "n_valid": 227,
+        "n_hold": 228,
+        "best_iteration": 26,
+        "holdout_acc": 0.7368421052631579,
+        "holdout_logloss": 0.5796410775548666,
+        "baseline": {
+          "null_p": 0.5359765051395007,
+          "null_logloss": 0.6976393007226488,
+          "logit_logloss": 0.596245598533525,
+          "logit_acc": 0.7368421052631579
+        },
+        "incremental_value_status": "PASS",
+        "holdout_claim": {
+          "status": "NEW",
+          "hold_start_ts": 1789737780.0,
+          "hold_end_ts": 1789965000.0,
+          "ledger": "C:\\Users\\tripl\\icarus-studies\\holdout_ledger.sqlite3"
+        }
+      },
+      "dataset_manifest": {
+        "parser": "icarus.trainer.integrity/1",
+        "path": "C:\\Users\\tripl\\Downloads\\Csv\\Csv\\COMEX_DL_GC1!, 1 5.csv",
+        "raw_sha256": "025fe1402c0ffd7e69a85928cddea36cba77867301fc632c9ea840b2bc9d2878",
+        "rows_total": 1139,
+        "rows_used": 1139,
+        "unparseable_time": 0,
+        "missing_close": 0,
+        "missing_ohlc": 0,
+        "invalid_ohlc": 0,
+        "out_of_order": 0,
+        "duplicate_exact": 0,
+        "duplicate_conflict": 0,
+        "first_ts": 1789583880.004,
+        "last_ts": 1789966260.0,
+        "median_step": 60.0,
+        "canonical_rows_sha256": "071692fc9d2c08d3c122f167b5b211fce56d93f436b033aa9adc6df8fc873600",
+        "status": "clean",
+        "reason": ""
+      },
+      "qualification": [
+        "VALID_RAW_CHALLENGER",
+        "raw challenger replayed from the execution rows; calibrated layer is PENDING_FORWARD"
+      ],
+      "paired": {
+        "n_hold": 228,
+        "mean_logloss_diff_vs_logit": -0.016604520978657573,
+        "sd": 0.2258231295605091,
+        "z": -1.110261685858481,
+        "p_one_sided": 0.13344313907729616,
+        "holdout_acc_wilson95": [
+          0.6760985663154306,
+          0.7897367281269816
+        ]
+      },
+      "bh_significant_q10": false
+    },
+    {
+      "symbol": "NQ",
+      "family": "clock_daily",
+      "file": "CME_MINI_DL_NQ1!, 1D",
+      "chart": "1D",
+      "rows": 300,
+      "path": "C:\\Users\\tripl\\Downloads\\Csv\\Csv\\CME_MINI_DL_NQ1!, 1D.csv",
+      "raw_sha256": "c5ae6b4d065073ca355b25e0e640e2f206088847d21d93a4673e71fb16614d93",
+      "slot0": {
+        "status": "fitted",
+        "reason": null,
+        "holdout_acc": 0.5333333333333333,
+        "holdout_rows": 60
+      },
+      "slot1": {
+        "status": "fitted",
+        "reason": null,
+        "n_train": 178,
+        "n_valid": 59,
+        "n_hold": 60,
+        "best_iteration": 6,
+        "holdout_acc": 0.4666666666666667,
+        "holdout_logloss": 0.6965587373756892,
+        "baseline": {
+          "null_p": 0.5449438202247191,
+          "null_logloss": 0.6972034837041746,
+          "logit_logloss": 0.7261371239263785,
+          "logit_acc": 0.5166666666666667
+        },
+        "incremental_value_status": "PASS",
+        "holdout_claim": {
+          "status": "NEW",
+          "hold_start_ts": 1782338400.0,
+          "hold_end_ts": 1789682400.0,
+          "ledger": "C:\\Users\\tripl\\icarus-studies\\holdout_ledger.sqlite3"
+        }
+      },
+      "dataset_manifest": {
+        "parser": "icarus.trainer.integrity/1",
+        "path": "C:\\Users\\tripl\\Downloads\\Csv\\Csv\\CME_MINI_DL_NQ1!, 1D.csv",
+        "raw_sha256": "c5ae6b4d065073ca355b25e0e640e2f206088847d21d93a4673e71fb16614d93",
+        "rows_total": 300,
+        "rows_used": 300,
+        "unparseable_time": 0,
+        "missing_close": 0,
+        "missing_ohlc": 0,
+        "invalid_ohlc": 0,
+        "out_of_order": 0,
+        "duplicate_exact": 0,
+        "duplicate_conflict": 0,
+        "first_ts": 1752530400.0,
+        "last_ts": 1789941600.0,
+        "median_step": 86400.0,
+        "canonical_rows_sha256": "eb37c47dc02e84cad53bd16bd122c1db9141e66ace253708b49c95906d8e7911",
+        "status": "clean",
+        "reason": ""
+      },
+      "qualification": [
+        "VALID_RAW_CHALLENGER",
+        "raw challenger replayed from the execution rows; calibrated layer is PENDING_FORWARD"
+      ],
+      "paired": {
+        "n_hold": 60,
+        "mean_logloss_diff_vs_logit": -0.02957838655068942,
+        "sd": 0.2691519016270802,
+        "z": -0.8512412346038551,
+        "p_one_sided": 0.19731768070668854,
+        "holdout_acc_wilson95": [
+          0.34627701540988,
+          0.5910679132886489
+        ]
+      },
+      "bh_significant_q10": false
+    },
+    {
+      "symbol": "NQ",
+      "family": "clock_hours",
+      "file": "CME_MINI_DL_NQ1!, 3",
+      "chart": "4h",
+      "rows": 1187,
+      "path": "C:\\Users\\tripl\\Downloads\\Csv\\Csv\\CME_MINI_DL_NQ1!, 3.csv",
+      "raw_sha256": "d6911e44a25f5a1ff92586b5c85243fd12baf7771817ce246aeaacba17844668",
+      "slot0": {
+        "status": "fitted",
+        "reason": null,
+        "holdout_acc": 0.48739495798319327,
+        "holdout_rows": 238
+      },
+      "slot1": {
+        "status": "fitted",
+        "reason": null,
+        "n_train": 710,
+        "n_valid": 236,
+        "n_hold": 238,
+        "best_iteration": 102,
+        "holdout_acc": 0.5084033613445378,
+        "holdout_logloss": 0.7179362059809781,
+        "baseline": {
+          "null_p": 0.5352112676056338,
+          "null_logloss": 0.6920764131274062,
+          "logit_logloss": 0.6987650123895817,
+          "logit_acc": 0.5042016806722689
+        },
+        "incremental_value_status": "FAIL",
+        "holdout_claim": {
+          "status": "NEW",
+          "hold_start_ts": 1785132000.0,
+          "hold_end_ts": 1789941600.0,
+          "ledger": "C:\\Users\\tripl\\icarus-studies\\holdout_ledger.sqlite3"
+        }
+      },
+      "dataset_manifest": {
+        "parser": "icarus.trainer.integrity/1",
+        "path": "C:\\Users\\tripl\\Downloads\\Csv\\Csv\\CME_MINI_DL_NQ1!, 3.csv",
+        "raw_sha256": "d6911e44a25f5a1ff92586b5c85243fd12baf7771817ce246aeaacba17844668",
+        "rows_total": 1187,
+        "rows_used": 1187,
+        "unparseable_time": 0,
+        "missing_close": 0,
+        "missing_ohlc": 0,
+        "invalid_ohlc": 0,
+        "out_of_order": 0,
+        "duplicate_exact": 0,
+        "duplicate_conflict": 0,
+        "first_ts": 1765494000.0,
+        "last_ts": 1789956000.0,
+        "median_step": 14400.0,
+        "canonical_rows_sha256": "50fa87ddf687f681e3040f3a92084107b37f920e01a231526e7c4766eba7051b",
+        "status": "clean",
+        "reason": ""
+      },
+      "qualification": [
+        "BLOCKED_BASELINE_NOT_BEATEN",
+        "raw holdout logloss does not beat logit and null"
+      ],
+      "paired": {
+        "n_hold": 238,
+        "mean_logloss_diff_vs_logit": 0.019171193591396095,
+        "sd": 0.21826608036687714,
+        "z": 1.3550377108063116,
+        "p_one_sided": 0.9122972287537605,
+        "holdout_acc_wilson95": [
+          0.44526122197080764,
+          0.5712785296682816
+        ]
+      },
+      "bh_significant_q10": false
+    },
+    {
+      "symbol": "NQ",
+      "family": "clock_minutes",
+      "file": "CME_MINI_DL_NQ1!, 1 4",
+      "chart": "1m",
+      "rows": 1782,
+      "path": "C:\\Users\\tripl\\Downloads\\Csv\\Csv\\CME_MINI_DL_NQ1!, 1 4.csv",
+      "raw_sha256": "3a570fc29a2f7ffb3c11aa9a4fda23e12ce720d2e24a9b6542356d7e52f2a742",
+      "slot0": {
+        "status": "fitted",
+        "reason": null,
+        "holdout_acc": 0.498567335243553,
+        "holdout_rows": 349
+      },
+      "slot1": {
+        "status": "fitted",
+        "reason": null,
+        "n_train": 1045,
+        "n_valid": 348,
+        "n_hold": 349,
+        "best_iteration": 18,
+        "holdout_acc": 0.48424068767908307,
+        "holdout_logloss": 0.6987303473800747,
+        "baseline": {
+          "null_p": 0.522488038277512,
+          "null_logloss": 0.6929990041235625,
+          "logit_logloss": 0.6943343592390622,
+          "logit_acc": 0.4899713467048711
+        },
+        "incremental_value_status": "FAIL",
+        "holdout_claim": {
+          "status": "NEW",
+          "hold_start_ts": 1789944420.0,
+          "hold_end_ts": 1789965600.0,
+          "ledger": "C:\\Users\\tripl\\icarus-studies\\holdout_ledger.sqlite3"
+        }
+      },
+      "dataset_manifest": {
+        "parser": "icarus.trainer.integrity/1",
+        "path": "C:\\Users\\tripl\\Downloads\\Csv\\Csv\\CME_MINI_DL_NQ1!, 1 4.csv",
+        "raw_sha256": "3a570fc29a2f7ffb3c11aa9a4fda23e12ce720d2e24a9b6542356d7e52f2a742",
+        "rows_total": 1782,
+        "rows_used": 1782,
+        "unparseable_time": 0,
+        "missing_close": 0,
+        "missing_ohlc": 0,
+        "invalid_ohlc": 0,
+        "out_of_order": 0,
+        "duplicate_exact": 0,
+        "duplicate_conflict": 0,
+        "first_ts": 1789682400.0,
+        "last_ts": 1789965660.0,
+        "median_step": 60.0,
+        "canonical_rows_sha256": "e9e45b71f1d33519d1e6933e91f1e5b1c13d2071919b296edc09f49f4814f3d6",
+        "status": "clean",
+        "reason": ""
+      },
+      "qualification": [
+        "BLOCKED_BASELINE_NOT_BEATEN",
+        "raw holdout logloss does not beat logit and null"
+      ],
+      "paired": {
+        "n_hold": 349,
+        "mean_logloss_diff_vs_logit": 0.004395988141012049,
+        "sd": 0.0702210294976677,
+        "z": 1.16950486659792,
+        "p_one_sided": 0.8788998591741004,
+        "holdout_acc_wilson95": [
+          0.43226606370067966,
+          0.5365584739955556
+        ]
+      },
+      "bh_significant_q10": false
+    },
+    {
+      "symbol": "NQ",
+      "family": "range",
+      "file": "CME_MINI_DL_NQ1!, 1 5",
+      "chart": "range",
+      "rows": 1110,
+      "path": "C:\\Users\\tripl\\Downloads\\Csv\\Csv\\CME_MINI_DL_NQ1!, 1 5.csv",
+      "raw_sha256": "8f22e3f06499cfa21937bb0a0a76c8b93511f0423b2362fc9795307451dee99a",
+      "slot0": {
+        "status": "fitted",
+        "reason": null,
+        "holdout_acc": 0.7882882882882883,
+        "holdout_rows": 222
+      },
+      "slot1": {
+        "status": "fitted",
+        "reason": null,
+        "n_train": 664,
+        "n_valid": 221,
+        "n_hold": 222,
+        "best_iteration": 129,
+        "holdout_acc": 0.7882882882882883,
+        "holdout_logloss": 0.497292280239392,
+        "baseline": {
+          "null_p": 0.588855421686747,
+          "null_logloss": 0.646083486183091,
+          "logit_logloss": 0.5091024548279455,
+          "logit_acc": 0.7882882882882883
+        },
+        "incremental_value_status": "PASS",
+        "holdout_claim": {
+          "status": "NEW",
+          "hold_start_ts": 1789748580.002,
+          "hold_end_ts": 1789965060.0,
+          "ledger": "C:\\Users\\tripl\\icarus-studies\\holdout_ledger.sqlite3"
+        }
+      },
+      "dataset_manifest": {
+        "parser": "icarus.trainer.integrity/1",
+        "path": "C:\\Users\\tripl\\Downloads\\Csv\\Csv\\CME_MINI_DL_NQ1!, 1 5.csv",
+        "raw_sha256": "8f22e3f06499cfa21937bb0a0a76c8b93511f0423b2362fc9795307451dee99a",
+        "rows_total": 1110,
+        "rows_used": 1110,
+        "unparseable_time": 0,
+        "missing_close": 0,
+        "missing_ohlc": 0,
+        "invalid_ohlc": 0,
+        "out_of_order": 0,
+        "duplicate_exact": 0,
+        "duplicate_conflict": 0,
+        "first_ts": 1789597500.003,
+        "last_ts": 1789966200.0,
+        "median_step": 60.0,
+        "canonical_rows_sha256": "12c15b31a649109a598e175b0a865ba7ef1970a815a098d458f58027edb54e32",
+        "status": "clean",
+        "reason": ""
+      },
+      "qualification": [
+        "VALID_RAW_CHALLENGER",
+        "raw challenger replayed from the execution rows; calibrated layer is PENDING_FORWARD"
+      ],
+      "paired": {
+        "n_hold": 222,
+        "mean_logloss_diff_vs_logit": -0.011810174588553976,
+        "sd": 0.10000427620930567,
+        "z": -1.7596011375623142,
+        "p_one_sided": 0.03923772926420832,
+        "holdout_acc_wilson95": [
+          0.7298786711936088,
+          0.8368902500325958
+        ]
+      },
+      "bh_significant_q10": false
+    },
+    {
+      "symbol": "PA",
+      "family": "clock_hours",
+      "file": "NYMEX_DL_PA1!, 2",
+      "chart": "4h",
+      "rows": 1170,
+      "path": "C:\\Users\\tripl\\Downloads\\Csv\\Csv\\NYMEX_DL_PA1!, 2.csv",
+      "raw_sha256": "6722ba09307d94f8a717979012a1cede695cf3235cd6b3b50972e9219035526c",
+      "slot0": {
+        "status": "fitted",
+        "reason": null,
+        "holdout_acc": 0.5217391304347826,
+        "holdout_rows": 230
+      },
+      "slot1": {
+        "status": "fitted",
+        "reason": null,
+        "n_train": 688,
+        "n_valid": 229,
+        "n_hold": 230,
+        "best_iteration": 6,
+        "holdout_acc": 0.46956521739130436,
+        "holdout_logloss": 0.6951679691051337,
+        "baseline": {
+          "null_p": 0.4883720930232558,
+          "null_logloss": 0.6920018435898923,
+          "logit_logloss": 0.6976566749712338,
+          "logit_acc": 0.508695652173913
+        },
+        "incremental_value_status": "FAIL",
+        "holdout_claim": {
+          "status": "NEW",
+          "hold_start_ts": 1785132000.0,
+          "hold_end_ts": 1789941600.0,
+          "ledger": "C:\\Users\\tripl\\icarus-studies\\holdout_ledger.sqlite3"
+        }
+      },
+      "dataset_manifest": {
+        "parser": "icarus.trainer.integrity/1",
+        "path": "C:\\Users\\tripl\\Downloads\\Csv\\Csv\\NYMEX_DL_PA1!, 2.csv",
+        "raw_sha256": "6722ba09307d94f8a717979012a1cede695cf3235cd6b3b50972e9219035526c",
+        "rows_total": 1170,
+        "rows_used": 1170,
+        "unparseable_time": 0,
+        "missing_close": 0,
+        "missing_ohlc": 0,
+        "invalid_ohlc": 0,
+        "out_of_order": 0,
+        "duplicate_exact": 0,
+        "duplicate_conflict": 0,
+        "first_ts": 1765810800.0,
+        "last_ts": 1789956000.0,
+        "median_step": 14400.0,
+        "canonical_rows_sha256": "e02b226cc2fe966febcd3fbb3ca738513ba5a4d7a1207e91636ece6396429243",
+        "status": "clean",
+        "reason": ""
+      },
+      "qualification": [
+        "BLOCKED_BASELINE_NOT_BEATEN",
+        "raw holdout logloss does not beat logit and null"
+      ],
+      "paired": {
+        "n_hold": 230,
+        "mean_logloss_diff_vs_logit": -0.0024887058660995956,
+        "sd": 0.07326138159183943,
+        "z": -0.5151840216350976,
+        "p_one_sided": 0.3032122167354463,
+        "holdout_acc_wilson95": [
+          0.40609578733922413,
+          0.5340346257267147
+        ]
+      },
+      "bh_significant_q10": false
+    },
+    {
+      "symbol": "PA",
+      "family": "clock_minutes",
+      "file": "NYMEX_DL_PA1!, 1 3",
+      "chart": "1m",
+      "rows": 2183,
+      "path": "C:\\Users\\tripl\\Downloads\\Csv\\Csv\\NYMEX_DL_PA1!, 1 3.csv",
+      "raw_sha256": "e38706a65c9e40d422fd1bd56b63e997e3a16d48f4824de7cee4d81e374d986b",
+      "slot0": {
+        "status": "fitted",
+        "reason": null,
+        "holdout_acc": 0.5350877192982456,
+        "holdout_rows": 342
+      },
+      "slot1": {
+        "status": "fitted",
+        "reason": null,
+        "n_train": 1025,
+        "n_valid": 341,
+        "n_hold": 342,
+        "best_iteration": 6,
+        "holdout_acc": 0.4766081871345029,
+        "holdout_logloss": 0.6934259269484127,
+        "baseline": {
+          "null_p": 0.4975609756097561,
+          "null_logloss": 0.6929308637628485,
+          "logit_logloss": 0.6855277765697914,
+          "logit_acc": 0.5263157894736842
+        },
+        "incremental_value_status": "FAIL",
+        "holdout_claim": {
+          "status": "NEW",
+          "hold_start_ts": 1789734660.0,
+          "hold_end_ts": 1789964820.0,
+          "ledger": "C:\\Users\\tripl\\icarus-studies\\holdout_ledger.sqlite3"
+        }
+      },
+      "dataset_manifest": {
+        "parser": "icarus.trainer.integrity/1",
+        "path": "C:\\Users\\tripl\\Downloads\\Csv\\Csv\\NYMEX_DL_PA1!, 1 3.csv",
+        "raw_sha256": "e38706a65c9e40d422fd1bd56b63e997e3a16d48f4824de7cee4d81e374d986b",
+        "rows_total": 2183,
+        "rows_used": 2183,
+        "unparseable_time": 0,
+        "missing_close": 0,
+        "missing_ohlc": 0,
+        "invalid_ohlc": 0,
+        "out_of_order": 0,
+        "duplicate_exact": 0,
+        "duplicate_conflict": 0,
+        "first_ts": 1789547100.0,
+        "last_ts": 1789965000.0,
+        "median_step": 60.0,
+        "canonical_rows_sha256": "0d272af962184c64cd9b394660fdd90066d6a545c942715e6ddfc0a93d02aeb6",
+        "status": "clean",
+        "reason": ""
+      },
+      "qualification": [
+        "BLOCKED_BASELINE_NOT_BEATEN",
+        "raw holdout logloss does not beat logit and null"
+      ],
+      "paired": {
+        "n_hold": 342,
+        "mean_logloss_diff_vs_logit": 0.007898150378621198,
+        "sd": 0.05921539474928884,
+        "z": 2.466628939872699,
+        "p_one_sided": 0.9931804193405325,
+        "holdout_acc_wilson95": [
+          0.4242278922354236,
+          0.529508153399341
+        ]
+      },
+      "bh_significant_q10": false
+    },
+    {
+      "symbol": "PA",
+      "family": "range",
+      "file": "NYMEX_DL_PA1!, 1 5",
+      "chart": "range",
+      "rows": 852,
+      "path": "C:\\Users\\tripl\\Downloads\\Csv\\Csv\\NYMEX_DL_PA1!, 1 5.csv",
+      "raw_sha256": "5316344f21e5fceb2142d5307937f2b8d9d3005e9a906e5ce06d927db89ca83f",
+      "slot0": {
+        "status": "fitted",
+        "reason": null,
+        "holdout_acc": 0.631578947368421,
+        "holdout_rows": 171
+      },
+      "slot1": {
+        "status": "fitted",
+        "reason": null,
+        "n_train": 509,
+        "n_valid": 169,
+        "n_hold": 171,
+        "best_iteration": 69,
+        "holdout_acc": 0.631578947368421,
+        "holdout_logloss": 0.7087088683449808,
+        "baseline": {
+          "null_p": 0.47347740667976423,
+          "null_logloss": 0.6973505344713516,
+          "logit_logloss": 0.6957180863185828,
+          "logit_acc": 0.631578947368421
+        },
+        "incremental_value_status": "FAIL",
+        "holdout_claim": {
+          "status": "NEW",
+          "hold_start_ts": 1789656720.0,
+          "hold_end_ts": 1789964340.0,
+          "ledger": "C:\\Users\\tripl\\icarus-studies\\holdout_ledger.sqlite3"
+        }
+      },
+      "dataset_manifest": {
+        "parser": "icarus.trainer.integrity/1",
+        "path": "C:\\Users\\tripl\\Downloads\\Csv\\Csv\\NYMEX_DL_PA1!, 1 5.csv",
+        "raw_sha256": "5316344f21e5fceb2142d5307937f2b8d9d3005e9a906e5ce06d927db89ca83f",
+        "rows_total": 852,
+        "rows_used": 852,
+        "unparseable_time": 0,
+        "missing_close": 0,
+        "missing_ohlc": 0,
+        "invalid_ohlc": 0,
+        "out_of_order": 0,
+        "duplicate_exact": 0,
+        "duplicate_conflict": 0,
+        "first_ts": 1789131480.0,
+        "last_ts": 1789964460.0,
+        "median_step": 240.0,
+        "canonical_rows_sha256": "f898f92bf080f24064f1eeeb44335010d389bff17ccba3a66482c16b173b2606",
+        "status": "clean",
+        "reason": ""
+      },
+      "qualification": [
+        "BLOCKED_BASELINE_NOT_BEATEN",
+        "raw holdout logloss does not beat logit and null"
+      ],
+      "paired": {
+        "n_hold": 171,
+        "mean_logloss_diff_vs_logit": 0.012990782026398265,
+        "sd": 0.12652701976476066,
+        "z": 1.3426106018124708,
+        "p_one_sided": 0.9103009521805058,
+        "holdout_acc_wilson95": [
+          0.5571272338149912,
+          0.7002485852120596
+        ]
+      },
+      "bh_significant_q10": false
+    },
+    {
+      "symbol": "PL",
+      "family": "clock_hours",
+      "file": "NYMEX_DL_PL1!, 3",
+      "chart": "4h",
+      "rows": 1175,
+      "path": "C:\\Users\\tripl\\Downloads\\Csv\\Csv\\NYMEX_DL_PL1!, 3.csv",
+      "raw_sha256": "1eee07bf3a00a350eff71049678d0b6d18bd1fd66dbca81c74fccf13c680ca32",
+      "slot0": {
+        "status": "fitted",
+        "reason": null,
+        "holdout_acc": 0.49572649572649574,
+        "holdout_rows": 234
+      },
+      "slot1": {
+        "status": "fitted",
+        "reason": null,
+        "n_train": 700,
+        "n_valid": 233,
+        "n_hold": 234,
+        "best_iteration": 23,
+        "holdout_acc": 0.47863247863247865,
+        "holdout_logloss": 0.6978726244864836,
+        "baseline": {
+          "null_p": 0.5085714285714286,
+          "null_logloss": 0.6928545374245558,
+          "logit_logloss": 0.6951677050203243,
+          "logit_acc": 0.47863247863247865
+        },
+        "incremental_value_status": "FAIL",
+        "holdout_claim": {
+          "status": "NEW",
+          "hold_start_ts": 1785204000.0,
+          "hold_end_ts": 1789941600.0,
+          "ledger": "C:\\Users\\tripl\\icarus-studies\\holdout_ledger.sqlite3"
+        }
+      },
+      "dataset_manifest": {
+        "parser": "icarus.trainer.integrity/1",
+        "path": "C:\\Users\\tripl\\Downloads\\Csv\\Csv\\NYMEX_DL_PL1!, 3.csv",
+        "raw_sha256": "1eee07bf3a00a350eff71049678d0b6d18bd1fd66dbca81c74fccf13c680ca32",
+        "rows_total": 1175,
+        "rows_used": 1175,
+        "unparseable_time": 0,
+        "missing_close": 0,
+        "missing_ohlc": 0,
+        "invalid_ohlc": 0,
+        "out_of_order": 0,
+        "duplicate_exact": 0,
+        "duplicate_conflict": 0,
+        "first_ts": 1765839600.0,
+        "last_ts": 1789956000.0,
+        "median_step": 14400.0,
+        "canonical_rows_sha256": "3f5391c048b4066dc91128a5ff7304c3ce2f1d25292ed1d335fdfc8bf85da1d7",
+        "status": "clean",
+        "reason": ""
+      },
+      "qualification": [
+        "BLOCKED_BASELINE_NOT_BEATEN",
+        "raw holdout logloss does not beat logit and null"
+      ],
+      "paired": {
+        "n_hold": 234,
+        "mean_logloss_diff_vs_logit": 0.002704919466159324,
+        "sd": 0.09130026659215035,
+        "z": 0.45320033518377023,
+        "p_one_sided": 0.6747977544378477,
+        "holdout_acc_wilson95": [
+          0.4154896048793992,
+          0.5424656056472708
+        ]
+      },
+      "bh_significant_q10": false
+    },
+    {
+      "symbol": "PL",
+      "family": "clock_minutes",
+      "file": "NYMEX_DL_PL1!, 1 3",
+      "chart": "1m",
+      "rows": 2189,
+      "path": "C:\\Users\\tripl\\Downloads\\Csv\\Csv\\NYMEX_DL_PL1!, 1 3.csv",
+      "raw_sha256": "d4a1deccef498f0e9552dab2fea66b663125e8917b71ec4c6dfdef747f98f590",
+      "slot0": {
+        "status": "fitted",
+        "reason": null,
+        "holdout_acc": 0.4855072463768116,
+        "holdout_rows": 414
+      },
+      "slot1": {
+        "status": "fitted",
+        "reason": null,
+        "n_train": 1241,
+        "n_valid": 413,
+        "n_hold": 414,
+        "best_iteration": 23,
+        "holdout_acc": 0.49516908212560384,
+        "holdout_logloss": 0.6947307720935262,
+        "baseline": {
+          "null_p": 0.5012087026591459,
+          "null_logloss": 0.6931384241834055,
+          "logit_logloss": 0.6945755248434353,
+          "logit_acc": 0.4927536231884058
+        },
+        "incremental_value_status": "FAIL",
+        "holdout_claim": {
+          "status": "NEW",
+          "hold_start_ts": 1789751880.0,
+          "hold_end_ts": 1789964820.0,
+          "ledger": "C:\\Users\\tripl\\icarus-studies\\holdout_ledger.sqlite3"
+        }
+      },
+      "dataset_manifest": {
+        "parser": "icarus.trainer.integrity/1",
+        "path": "C:\\Users\\tripl\\Downloads\\Csv\\Csv\\NYMEX_DL_PL1!, 1 3.csv",
+        "raw_sha256": "d4a1deccef498f0e9552dab2fea66b663125e8917b71ec4c6dfdef747f98f590",
+        "rows_total": 2189,
+        "rows_used": 2189,
+        "unparseable_time": 0,
+        "missing_close": 0,
+        "missing_ohlc": 0,
+        "invalid_ohlc": 0,
+        "out_of_order": 0,
+        "duplicate_exact": 0,
+        "duplicate_conflict": 0,
+        "first_ts": 1789630800.0,
+        "last_ts": 1789964940.0,
+        "median_step": 60.0,
+        "canonical_rows_sha256": "ca929ea7d5892304ba1973dbb204d65556b0b1d2fc377d9ab3c22e62cf3a307c",
+        "status": "clean",
+        "reason": ""
+      },
+      "qualification": [
+        "BLOCKED_BASELINE_NOT_BEATEN",
+        "raw holdout logloss does not beat logit and null"
+      ],
+      "paired": {
+        "n_hold": 414,
+        "mean_logloss_diff_vs_logit": 0.00015524725009132532,
+        "sd": 0.06582809983894428,
+        "z": 0.047985803099357516,
+        "p_one_sided": 0.5191362214707933,
+        "holdout_acc_wilson95": [
+          0.4472732628673732,
+          0.543153731476895
+        ]
+      },
+      "bh_significant_q10": false
+    },
+    {
+      "symbol": "PL",
+      "family": "range",
+      "file": "NYMEX_DL_PL1!, 1 5",
+      "chart": "range",
+      "rows": 1139,
+      "path": "C:\\Users\\tripl\\Downloads\\Csv\\Csv\\NYMEX_DL_PL1!, 1 5.csv",
+      "raw_sha256": "90b570fcd1078a038c8253261546cbb0b96df92d71099d8bd51370fd19216729",
+      "slot0": {
+        "status": "fitted",
+        "reason": null,
+        "holdout_acc": 0.75,
+        "holdout_rows": 228
+      },
+      "slot1": {
+        "status": "fitted",
+        "reason": null,
+        "n_train": 681,
+        "n_valid": 227,
+        "n_hold": 228,
+        "best_iteration": 44,
+        "holdout_acc": 0.75,
+        "holdout_logloss": 0.5774545062767575,
+        "baseline": {
+          "null_p": 0.49045521292217326,
+          "null_logloss": 0.6934968924376046,
+          "logit_logloss": 0.5751065159711427,
+          "logit_acc": 0.75
+        },
+        "incremental_value_status": "FAIL",
+        "holdout_claim": {
+          "status": "NEW",
+          "hold_start_ts": 1789734840.0,
+          "hold_end_ts": 1789964580.0,
+          "ledger": "C:\\Users\\tripl\\icarus-studies\\holdout_ledger.sqlite3"
+        }
+      },
+      "dataset_manifest": {
+        "parser": "icarus.trainer.integrity/1",
+        "path": "C:\\Users\\tripl\\Downloads\\Csv\\Csv\\NYMEX_DL_PL1!, 1 5.csv",
+        "raw_sha256": "90b570fcd1078a038c8253261546cbb0b96df92d71099d8bd51370fd19216729",
+        "rows_total": 1139,
+        "rows_used": 1139,
+        "unparseable_time": 0,
+        "missing_close": 0,
+        "missing_ohlc": 0,
+        "invalid_ohlc": 0,
+        "out_of_order": 0,
+        "duplicate_exact": 0,
+        "duplicate_conflict": 0,
+        "first_ts": 1789570500.0,
+        "last_ts": 1789964940.0,
+        "median_step": 60.0,
+        "canonical_rows_sha256": "459167c54fa4506d95f66284a793c340ecc5870ef5175400fcc5020d6629b8b2",
+        "status": "clean",
+        "reason": ""
+      },
+      "qualification": [
+        "BLOCKED_BASELINE_NOT_BEATEN",
+        "raw holdout logloss does not beat logit and null"
+      ],
+      "paired": {
+        "n_hold": 228,
+        "mean_logloss_diff_vs_logit": 0.0023479903056138882,
+        "sd": 0.11702459797657977,
+        "z": 0.30296088804429533,
+        "p_one_sided": 0.6190401657756422,
+        "holdout_acc_wilson95": [
+          0.689964558224925,
+          0.8017504747976214
+        ]
+      },
+      "bh_significant_q10": false
+    },
+    {
+      "symbol": "SI",
+      "family": "clock_hours",
+      "file": "COMEX_DL_SI1!, 3",
+      "chart": "4h",
+      "rows": 1175,
+      "path": "C:\\Users\\tripl\\Downloads\\Csv\\Csv\\COMEX_DL_SI1!, 3.csv",
+      "raw_sha256": "b746e8a8ee9571ff74bb2aea6743cf196969f5cbb81c72792d2fe4c46dd22c5d",
+      "slot0": {
+        "status": "fitted",
+        "reason": null,
+        "holdout_acc": 0.5170940170940171,
+        "holdout_rows": 234
+      },
+      "slot1": {
+        "status": "fitted",
+        "reason": null,
+        "n_train": 701,
+        "n_valid": 233,
+        "n_hold": 234,
+        "best_iteration": 1,
+        "holdout_acc": 0.5128205128205128,
+        "holdout_logloss": 0.6930489495647113,
+        "baseline": {
+          "null_p": 0.5178316690442225,
+          "null_logloss": 0.6937835221606571,
+          "logit_logloss": 0.692961783213904,
+          "logit_acc": 0.5213675213675214
+        },
+        "incremental_value_status": "FAIL",
+        "holdout_claim": {
+          "status": "NEW",
+          "hold_start_ts": 1785204000.0,
+          "hold_end_ts": 1789941600.0,
+          "ledger": "C:\\Users\\tripl\\icarus-studies\\holdout_ledger.sqlite3"
+        }
+      },
+      "dataset_manifest": {
+        "parser": "icarus.trainer.integrity/1",
+        "path": "C:\\Users\\tripl\\Downloads\\Csv\\Csv\\COMEX_DL_SI1!, 3.csv",
+        "raw_sha256": "b746e8a8ee9571ff74bb2aea6743cf196969f5cbb81c72792d2fe4c46dd22c5d",
+        "rows_total": 1175,
+        "rows_used": 1175,
+        "unparseable_time": 0,
+        "missing_close": 0,
+        "missing_ohlc": 0,
+        "invalid_ohlc": 0,
+        "out_of_order": 0,
+        "duplicate_exact": 0,
+        "duplicate_conflict": 0,
+        "first_ts": 1765839600.0,
+        "last_ts": 1789956000.0,
+        "median_step": 14400.0,
+        "canonical_rows_sha256": "86f6dceeac7d932dcd1b8f19d4a4a48e735b4c436794a82059db92bf7061d47b",
+        "status": "clean",
+        "reason": ""
+      },
+      "qualification": [
+        "BLOCKED_BASELINE_NOT_BEATEN",
+        "raw holdout logloss does not beat logit and null"
+      ],
+      "paired": {
+        "n_hold": 234,
+        "mean_logloss_diff_vs_logit": 8.716635080759533e-05,
+        "sd": 0.07509052243872638,
+        "z": 0.017757084752977305,
+        "p_one_sided": 0.507083679618716,
+        "holdout_acc_wilson95": [
+          0.4490888774870365,
+          0.5761379961969615
+        ]
+      },
+      "bh_significant_q10": false
+    },
+    {
+      "symbol": "SI",
+      "family": "clock_minutes",
+      "file": "COMEX_DL_SI1!, 1 4",
+      "chart": "1m",
+      "rows": 1777,
+      "path": "C:\\Users\\tripl\\Downloads\\Csv\\Csv\\COMEX_DL_SI1!, 1 4.csv",
+      "raw_sha256": "7d5834fdad271cc92b11ae463fcdf5d4ba62b2a687fcaf9d753cca5b73150116",
+      "slot0": {
+        "status": "fitted",
+        "reason": null,
+        "holdout_acc": 0.5481927710843374,
+        "holdout_rows": 332
+      },
+      "slot1": {
+        "status": "fitted",
+        "reason": null,
+        "n_train": 995,
+        "n_valid": 331,
+        "n_hold": 332,
+        "best_iteration": 18,
+        "holdout_acc": 0.49096385542168675,
+        "holdout_logloss": 0.6991863630412509,
+        "baseline": {
+          "null_p": 0.5226130653266332,
+          "null_logloss": 0.6947161944592007,
+          "logit_logloss": 0.692979249991233,
+          "logit_acc": 0.5542168674698795
+        },
+        "incremental_value_status": "FAIL",
+        "holdout_claim": {
+          "status": "NEW",
+          "hold_start_ts": 1789944480.0,
+          "hold_end_ts": 1789965960.0,
+          "ledger": "C:\\Users\\tripl\\icarus-studies\\holdout_ledger.sqlite3"
+        }
+      },
+      "dataset_manifest": {
+        "parser": "icarus.trainer.integrity/1",
+        "path": "C:\\Users\\tripl\\Downloads\\Csv\\Csv\\COMEX_DL_SI1!, 1 4.csv",
+        "raw_sha256": "7d5834fdad271cc92b11ae463fcdf5d4ba62b2a687fcaf9d753cca5b73150116",
+        "rows_total": 1777,
+        "rows_used": 1777,
+        "unparseable_time": 0,
+        "missing_close": 0,
+        "missing_ohlc": 0,
+        "invalid_ohlc": 0,
+        "out_of_order": 0,
+        "duplicate_exact": 0,
+        "duplicate_conflict": 0,
+        "first_ts": 1789677000.0,
+        "last_ts": 1789966080.0,
+        "median_step": 60.0,
+        "canonical_rows_sha256": "541b76f39caaeb988b46706e264a28f2ba1b673f3a44e01de3074062121aa8f7",
+        "status": "clean",
+        "reason": ""
+      },
+      "qualification": [
+        "BLOCKED_BASELINE_NOT_BEATEN",
+        "raw holdout logloss does not beat logit and null"
+      ],
+      "paired": {
+        "n_hold": 332,
+        "mean_logloss_diff_vs_logit": 0.00620711305001792,
+        "sd": 0.09416837761773163,
+        "z": 1.2010293177182219,
+        "p_one_sided": 0.8851300854973759,
+        "holdout_acc_wilson95": [
+          0.43759986139174634,
+          0.5445345734132333
+        ]
+      },
+      "bh_significant_q10": false
+    },
+    {
+      "symbol": "YM",
+      "family": "clock_daily",
+      "file": "CBOT_MINI_DL_YM1!, 1D",
+      "chart": "1D",
+      "rows": 300,
+      "path": "C:\\Users\\tripl\\Downloads\\Csv\\Csv\\CBOT_MINI_DL_YM1!, 1D.csv",
+      "raw_sha256": "d59fb06612836bc2bc0107f9eb26c3fef79c025552b660ea95d2fa92cda29009",
+      "slot0": {
+        "status": "fitted",
+        "reason": null,
+        "holdout_acc": 0.5333333333333333,
+        "holdout_rows": 60
+      },
+      "slot1": {
+        "status": "fitted",
+        "reason": null,
+        "n_train": 178,
+        "n_valid": 59,
+        "n_hold": 60,
+        "best_iteration": 68,
+        "holdout_acc": 0.5833333333333334,
+        "holdout_logloss": 0.7198924842768559,
+        "baseline": {
+          "null_p": 0.5393258426966292,
+          "null_logloss": 0.6936226818559812,
+          "logit_logloss": 0.7000842647354312,
+          "logit_acc": 0.5166666666666667
+        },
+        "incremental_value_status": "FAIL",
+        "holdout_claim": {
+          "status": "NEW",
+          "hold_start_ts": 1782338400.0,
+          "hold_end_ts": 1789682400.0,
+          "ledger": "C:\\Users\\tripl\\icarus-studies\\holdout_ledger.sqlite3"
+        }
+      },
+      "dataset_manifest": {
+        "parser": "icarus.trainer.integrity/1",
+        "path": "C:\\Users\\tripl\\Downloads\\Csv\\Csv\\CBOT_MINI_DL_YM1!, 1D.csv",
+        "raw_sha256": "d59fb06612836bc2bc0107f9eb26c3fef79c025552b660ea95d2fa92cda29009",
+        "rows_total": 300,
+        "rows_used": 300,
+        "unparseable_time": 0,
+        "missing_close": 0,
+        "missing_ohlc": 0,
+        "invalid_ohlc": 0,
+        "out_of_order": 0,
+        "duplicate_exact": 0,
+        "duplicate_conflict": 0,
+        "first_ts": 1752530400.0,
+        "last_ts": 1789941600.0,
+        "median_step": 86400.0,
+        "canonical_rows_sha256": "16e3928f0a928113af6213e32eda33df39806e75adb8db56c5f8642440669b6c",
+        "status": "clean",
+        "reason": ""
+      },
+      "qualification": [
+        "BLOCKED_BASELINE_NOT_BEATEN",
+        "raw holdout logloss does not beat logit and null"
+      ],
+      "paired": {
+        "n_hold": 60,
+        "mean_logloss_diff_vs_logit": 0.019808219541424407,
+        "sd": 0.21167243723109244,
+        "z": 0.7248643744598803,
+        "p_one_sided": 0.7657323808073317,
+        "holdout_acc_wilson95": [
+          0.45727854313239624,
+          0.6993591351212818
+        ]
+      },
+      "bh_significant_q10": false
+    },
+    {
+      "symbol": "YM",
+      "family": "clock_hours",
+      "file": "CBOT_MINI_DL_YM1!, 4",
+      "chart": "4h",
+      "rows": 1175,
+      "path": "C:\\Users\\tripl\\Downloads\\Csv\\Csv\\CBOT_MINI_DL_YM1!, 4.csv",
+      "raw_sha256": "c9019af45f9b9d55eb270dcfb97ca35ffd556bbb5d9e292bedd3cf10c889a818",
+      "slot0": {
+        "status": "fitted",
+        "reason": null,
+        "holdout_acc": 0.47435897435897434,
+        "holdout_rows": 234
+      },
+      "slot1": {
+        "status": "fitted",
+        "reason": null,
+        "n_train": 701,
+        "n_valid": 233,
+        "n_hold": 234,
+        "best_iteration": 0,
+        "holdout_acc": 0.5170940170940171,
+        "holdout_logloss": 0.6925287175729978,
+        "baseline": {
+          "null_p": 0.5192582025677603,
+          "null_logloss": 0.6925720361206473,
+          "logit_logloss": 0.7114846935449902,
+          "logit_acc": 0.47435897435897434
+        },
+        "incremental_value_status": "PASS",
+        "holdout_claim": {
+          "status": "NEW",
+          "hold_start_ts": 1785189600.0,
+          "hold_end_ts": 1789941600.0,
+          "ledger": "C:\\Users\\tripl\\icarus-studies\\holdout_ledger.sqlite3"
+        }
+      },
+      "dataset_manifest": {
+        "parser": "icarus.trainer.integrity/1",
+        "path": "C:\\Users\\tripl\\Downloads\\Csv\\Csv\\CBOT_MINI_DL_YM1!, 4.csv",
+        "raw_sha256": "c9019af45f9b9d55eb270dcfb97ca35ffd556bbb5d9e292bedd3cf10c889a818",
+        "rows_total": 1175,
+        "rows_used": 1175,
+        "unparseable_time": 0,
+        "missing_close": 0,
+        "missing_ohlc": 0,
+        "invalid_ohlc": 0,
+        "out_of_order": 0,
+        "duplicate_exact": 0,
+        "duplicate_conflict": 0,
+        "first_ts": 1765839600.0,
+        "last_ts": 1789956000.0,
+        "median_step": 14400.0,
+        "canonical_rows_sha256": "01da3d1d77745dc8c30d5e7f43fe94e6dd35a4b827ff2e1524af62bd73cf2b13",
+        "status": "clean",
+        "reason": ""
+      },
+      "qualification": [
+        "VALID_RAW_CHALLENGER",
+        "raw challenger replayed from the execution rows; calibrated layer is PENDING_FORWARD"
+      ],
+      "paired": {
+        "n_hold": 234,
+        "mean_logloss_diff_vs_logit": -0.018955975971992126,
+        "sd": 0.11360894721383775,
+        "z": -2.5523577257991925,
+        "p_one_sided": 0.005349829942412232,
+        "holdout_acc_wilson95": [
+          0.45330934839463244,
+          0.5803264831840318
+        ]
+      },
+      "bh_significant_q10": true
+    },
+    {
+      "symbol": "YM",
+      "family": "clock_minutes",
+      "file": "CBOT_MINI_DL_YM1!, 1 4",
+      "chart": "1m",
+      "rows": 1768,
+      "path": "C:\\Users\\tripl\\Downloads\\Csv\\Csv\\CBOT_MINI_DL_YM1!, 1 4.csv",
+      "raw_sha256": "5f98dfd472a31009fb4afc0cf6e6efe9727b2def084c472e347c47bc81a881e3",
+      "slot0": {
+        "status": "fitted",
+        "reason": null,
+        "holdout_acc": 0.5261538461538462,
+        "holdout_rows": 325
+      },
+      "slot1": {
+        "status": "fitted",
+        "reason": null,
+        "n_train": 971,
+        "n_valid": 323,
+        "n_hold": 325,
+        "best_iteration": 3,
+        "holdout_acc": 0.5107692307692308,
+        "holdout_logloss": 0.6918592340775118,
+        "baseline": {
+          "null_p": 0.5159629248197735,
+          "null_logloss": 0.6929692029435081,
+          "logit_logloss": 0.6896351855310384,
+          "logit_acc": 0.5076923076923077
+        },
+        "incremental_value_status": "FAIL",
+        "holdout_claim": {
+          "status": "NEW",
+          "hold_start_ts": 1789943100.0,
+          "hold_end_ts": 1789965540.0,
+          "ledger": "C:\\Users\\tripl\\icarus-studies\\holdout_ledger.sqlite3"
+        }
+      },
+      "dataset_manifest": {
+        "parser": "icarus.trainer.integrity/1",
+        "path": "C:\\Users\\tripl\\Downloads\\Csv\\Csv\\CBOT_MINI_DL_YM1!, 1 4.csv",
+        "raw_sha256": "5f98dfd472a31009fb4afc0cf6e6efe9727b2def084c472e347c47bc81a881e3",
+        "rows_total": 1768,
+        "rows_used": 1768,
+        "unparseable_time": 0,
+        "missing_close": 0,
+        "missing_ohlc": 0,
+        "invalid_ohlc": 0,
+        "out_of_order": 0,
+        "duplicate_exact": 0,
+        "duplicate_conflict": 0,
+        "first_ts": 1789677420.0,
+        "last_ts": 1789965660.0,
+        "median_step": 60.0,
+        "canonical_rows_sha256": "b99335d4e6d34df5d4da5111a6c9a0d8da02c750538a0b8e31174fc82918c822",
+        "status": "clean",
+        "reason": ""
+      },
+      "qualification": [
+        "BLOCKED_BASELINE_NOT_BEATEN",
+        "raw holdout logloss does not beat logit and null"
+      ],
+      "paired": {
+        "n_hold": 325,
+        "mean_logloss_diff_vs_logit": 0.002224048546473233,
+        "sd": 0.05563744957910225,
+        "z": 0.7206406057514856,
+        "p_one_sided": 0.764434668021829,
+        "holdout_acc_wilson95": [
+          0.45661365239075963,
+          0.5646731920960691
+        ]
+      },
+      "bh_significant_q10": false
+    },
+    {
+      "symbol": "YM",
+      "family": "range",
+      "file": "CBOT_MINI_DL_YM1!, 1 5",
+      "chart": "range",
+      "rows": 1139,
+      "path": "C:\\Users\\tripl\\Downloads\\Csv\\Csv\\CBOT_MINI_DL_YM1!, 1 5.csv",
+      "raw_sha256": "c80dc21a39cd99195fd3f88a61bf16091442d5ecde10889d7bdc8a74de01266d",
+      "slot0": {
+        "status": "fitted",
+        "reason": null,
+        "holdout_acc": 0.7587719298245614,
+        "holdout_rows": 228
+      },
+      "slot1": {
+        "status": "fitted",
+        "reason": null,
+        "n_train": 681,
+        "n_valid": 227,
+        "n_hold": 228,
+        "best_iteration": 63,
+        "holdout_acc": 0.7587719298245614,
+        "holdout_logloss": 0.5835321040464988,
+        "baseline": {
+          "null_p": 0.4845814977973568,
+          "null_logloss": 0.7011992703975013,
+          "logit_logloss": 0.5683689106422906,
+          "logit_acc": 0.7587719298245614
+        },
+        "incremental_value_status": "FAIL",
+        "holdout_claim": {
+          "status": "NEW",
+          "hold_start_ts": 1789751100.0,
+          "hold_end_ts": 1789964880.0,
+          "ledger": "C:\\Users\\tripl\\icarus-studies\\holdout_ledger.sqlite3"
+        }
+      },
+      "dataset_manifest": {
+        "parser": "icarus.trainer.integrity/1",
+        "path": "C:\\Users\\tripl\\Downloads\\Csv\\Csv\\CBOT_MINI_DL_YM1!, 1 5.csv",
+        "raw_sha256": "c80dc21a39cd99195fd3f88a61bf16091442d5ecde10889d7bdc8a74de01266d",
+        "rows_total": 1139,
+        "rows_used": 1139,
+        "unparseable_time": 0,
+        "missing_close": 0,
+        "missing_ohlc": 0,
+        "invalid_ohlc": 0,
+        "out_of_order": 0,
+        "duplicate_exact": 0,
+        "duplicate_conflict": 0,
+        "first_ts": 1789658100.0,
+        "last_ts": 1789966320.0,
+        "median_step": 59.99900007247925,
+        "canonical_rows_sha256": "e8c6b923ccae6babcf807525845e44d1321a490eb37189c26d64dca9deb21523",
+        "status": "clean",
+        "reason": ""
+      },
+      "qualification": [
+        "BLOCKED_BASELINE_NOT_BEATEN",
+        "raw holdout logloss does not beat logit and null"
+      ],
+      "paired": {
+        "n_hold": 228,
+        "mean_logloss_diff_vs_logit": 0.01516319340420791,
+        "sd": 0.11561569395863855,
+        "z": 1.9803470582932141,
+        "p_one_sided": 0.9761677277854144,
+        "holdout_acc_wilson95": [
+          0.6992455408107826,
+          0.8097226512651866
+        ]
+      },
+      "bh_significant_q10": false
+    }
+  ],
+  "execution_authorized": false
+}
