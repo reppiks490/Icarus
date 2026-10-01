@@ -251,6 +251,7 @@ class EngineControlPlane:
             except Exception as ex:
                 failed = dict(intent)
                 failed.update({
+                    "id": event_id + ":failed",
                     "severity": "error",
                     "title": f"Engine Control failed: {action.title}",
                     "detail": (
@@ -271,8 +272,9 @@ class EngineControlPlane:
             finished = _utc_now()
             completed = dict(intent)
             completed.update({
+                "id": event_id + ":succeeded",
                 "severity": "success",
-                "title": f"Engine Control: {action.title}",
+                "title": f"Engine Control succeeded: {action.title}",
                 "detail": (
                     f"action={action_id}"
                     + (f" target={target}" if target else "")
