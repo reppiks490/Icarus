@@ -714,3 +714,79 @@ def test_portfolio_mutations_accept_continuous_aliases(tmp_path):
     assert out is r and r.inputs_base.tp1_pts == 80
     assert port.remove_asset("NQ1!") is True
     assert "NQ" not in port.runners and "NQ" not in port.order
+
+
+def test_engine_control_http_pause_resume_and_config(admin):
+    _, r, path, post = admin
+
+    status, body = post("/admin/engine-control", {
+        "action": "asset.pause",
+        "target": "test",
+        "reason": "http integration test",
+    })
+    assert status == 200 and body["ok"] is True
+    assert body["target"] == "TEST"
+    assert r.paused is True
+    assert body["audit_recorded"] is True
+
+    status, body = post("/admin/engine-control", {
+        "action": "asset.resume",
+        "target": "TEST",
+    })
+    assert status == 200 and body["ok"] is True
+    assert r.paused is False
+
+    status, body = post("/admin/engine-control", {
+        "action": "asset.apply_config",
+        "target": "TEST",
+        "args": {"values": {"tp1_pts": 80}, "persist": True},
+    })
+    assert status == 200 and body["ok"] is True
+    assert r.inputs_base.tp1_pts == 80
+    assert json.loads(path.read_text())["tp1_pts"] == 80
+
+    status, body = post("/admin/engine-control", {
+        "action": "asset.reset_config",
+        "target": "TEST",
+        "confirm": "RESET ASSET CONFIG",
+    })
+    assert status == 200 and body["ok"] is True
+    assert not path.exists()
+    assert r.inputs_base.tp1_pts == 51
+
+
+def test_engine_control_http_rejects_bad_confirmation_and_unknown_asset_args(admin):
+    _, _, _, post = admin
+    status, body = post("/admin/engine-control", {
+        "action": "asset.reset_config",
+        "target": "TEST",
+        "confirm": "reset it",
+    })
+    assert status == 400
+    assert "exact confirmation" in body["detail"]
+
+    status, body = post("/admin/engine-control", {
+        "action": "asset.add",
+        "target": "MGC",
+        "args": {"unexpected": True},
+    })
+    assert status == 400
+    assert "unknown asset-add fields" in body["detail"]
+
+
+def test_engine_control_http_returns_structured_internal_failure(admin, monkeypatch):
+    port, _, _, post = admin
+
+    def explode(_payload):
+        raise RuntimeError("synthetic control failure")
+
+    # Force a registered action handler to fail through a normal mutable engine
+    # method without bypassing the authenticated HTTP route.
+    monkeypatch.setattr(port, "remove_asset", lambda _symbol: (_ for _ in ()).throw(RuntimeError("synthetic control failure")))
+    status, body = post("/admin/engine-control", {
+        "action": "asset.remove",
+        "target": "TEST",
+        "confirm": "REMOVE ASSET",
+    })
+    assert status == 500
+    assert "RuntimeError: synthetic control failure" in body["detail"]
