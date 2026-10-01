@@ -1,0 +1,35 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "argus-orderblock-survival-verified-20261001T181700Z",
+  "category": "EVOLUTION",
+  "severity": "success",
+  "status": "verified",
+  "subsystems": [
+    "argus",
+    "order_blocks",
+    "research_validation",
+    "ml"
+  ],
+  "recorded_at": "2026-10-01T18:17:00Z",
+  "title": "ARGUS order-block survival research verified",
+  "summary": "ARGUS now converts confirmed terminal order-block lifecycles into retrospective survival-study records and estimates Kaplan-Meier survival with INVALIDATED as the event and EXPIRED as right-censoring. The research layer reports at-risk/event/censor counts, survival probability, observed median survival, restricted mean survival, evidence-tier strata, and explicitly retrospective final-test-count strata. It does not claim profitability, causal predictive power, statistical significance, stationarity, transferability, or production readiness.",
+  "source_repository": "reppiks490/divine-providence",
+  "source_ref": "main",
+  "source_commit": "de4f359c60461f102386353366a1be1fd0ae0cbf",
+  "evidence": [
+    "divine-providence PR #19 merged at de4f359c60461f102386353366a1be1fd0ae0cbf",
+    "exact-head subsystem-evolution workflow run 36905297758 completed success",
+    "Linux and Windows ARGUS causal subsystem jobs passed",
+    "intelligence-fabric job passed",
+    "full twelve-system validation passed",
+    "INVALIDATED is modeled as survival event",
+    "EXPIRED is modeled as right-censoring",
+    "duplicate block IDs and inconsistent terminal records fail closed",
+    "evidence tiers remain stratified",
+    "final test-count strata are explicitly retrospective",
+    "execution_authorized=false",
+    "production_decision_authorized=false"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}
