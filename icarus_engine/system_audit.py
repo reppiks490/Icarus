@@ -28,10 +28,10 @@ DEFAULT_REPOSITORY_AUDIT: Dict[str, Any] = {
     "repository": "reppiks490/Icarus",
     "source": "github-mcp",
     "status": "green",
-    "recorded_at": "2026-10-01T02:24:49Z",
+    "recorded_at": "2026-10-01T02:25:55Z",
     "main": {
-        "sha": "3bedc5a3a122caa063a7a473bf4585c9b74febd2",
-        "workflow_run": 36804732200,
+        "sha": "ad010c6b3329ce25f3d6628e17d3da937dbae068",
+        "workflow_run": 36805649545,
         "linux": "success",
         "windows": "success",
     },
@@ -115,6 +115,16 @@ DEFAULT_REPOSITORY_AUDIT: Dict[str, Any] = {
         },
     ],
     "events": [
+        {
+            "id": "audit:system-intelligence-main:ad010c6b",
+            "kind": "audit",
+            "severity": "success",
+            "title": "System Intelligence integration verified on main",
+            "detail": "Post-merge Linux and Windows CI both passed on the exact main merge SHA.",
+            "recorded_at": "2026-10-01T02:25:55Z",
+            "repository": "reppiks490/Icarus",
+            "ref": "ad010c6b3329ce25f3d6628e17d3da937dbae068",
+        },
         {
             "id": "repair:advanced-csv:0215",
             "kind": "repair",
