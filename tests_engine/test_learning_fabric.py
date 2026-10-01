@@ -938,15 +938,11 @@ def _settled_calibration_case(fabric, *, start, n=40):
             "evidence_ids": [f"cal:{i}"],
             "source_commit": "a" * 40,
         })["prediction"]
-        # Deliberately over/under-confident but monotone: empirical event rate is
-        # 0% at 0.2, 25% at 0.4, 75% at 0.6, 100% at 0.8.
+        # Deliberately miscalibrated but monotone and stable across the
+        # chronological holdout: 0.2/0.4 never occur, 0.6/0.8 always occur.
+        # Isotonic calibration should therefore improve future top-label Brier.
         bucket = i % 4
-        cycle = (i // 4) % 4
-        actual = (
-            False if bucket == 0 else
-            (cycle == 0 if bucket == 1 else
-             cycle != 0 if bucket == 2 else True)
-        )
+        actual = bucket >= 2
         fabric.record_outcome({
             "prediction_id": pred["prediction_id"],
             "observed_at": pred["resolves_at"],
