@@ -33,8 +33,11 @@
         '<div class="scroll"><table><thead><tr><th>Faculty</th><th>Mode</th><th>Boundary</th></tr></thead><tbody>'+engineRows+'</tbody></table></div>';
       return;
     }
-    const an=latest.analysis||{}, f=an.faculties||{}, ae=an.aether||{}, field=ae.field||{}, exportsState=an.exports||{};
+    const an=latest.analysis||{}, f=an.faculties||{}, ae=an.aether||{}, field=ae.field||{}, exportsState=an.exports||{}, eco=state.ecology||{};
     const sibylExports=Array.isArray(exportsState.sibyl_evidence)?exportsState.sibyl_evidence:[];
+    const alphaWeb=Array.isArray(eco.alpha_food_web)?eco.alpha_food_web:[];
+    const interactions=Array.isArray(eco.interactions)?eco.interactions:[];
+    const genesis=Array.isArray(eco.cognitive_genesis_candidates)?eco.cognitive_genesis_candidates:[];
     const facultyRows=Object.entries(f).map(function(kv){
       const row=kv[1]||{};
       let key='—';
@@ -64,6 +67,8 @@
         '<div class="tile"><div class="k">Contradiction</div><div class="v tnum">'+pct(field.contradiction)+'</div></div>'+
         '<div class="tile"><div class="k">Sentinel cells</div><div class="v tnum">'+h((state.counts||{}).sentinel_cells||0)+'</div></div>'+
         '<div class="tile"><div class="k">SIBYL exports</div><div class="v tnum">'+h(sibylExports.length)+'</div><div class="small muted">confidence-gated structural evidence only</div></div>'+
+        '<div class="tile"><div class="k">Species</div><div class="v tnum">'+h(eco.species_count||0)+'</div><div class="small muted">'+h(eco.claim_outcome_count||0)+' observed claim outcomes</div></div>'+
+        '<div class="tile"><div class="k">Extinct</div><div class="v tnum">'+h((eco.extinct_species||[]).length)+'</div><div class="small muted">repeated negative research fitness</div></div>'+
         '<div class="tile"><div class="k">Authority</div><div class="v">SHADOW ONLY</div></div>'+
       '</div>'+
       '<div class="pan-grid" style="margin-top:12px">'+
@@ -86,6 +91,18 @@
       '</tbody></table></div>'+
       '<h3 class="small" style="margin:16px 0 8px">AETHER ephemeral swarm</h3>'+
       '<div class="scroll"><table><thead><tr><th>Agent</th><th>Role</th><th>Scope</th><th>TTL</th><th>Authority</th></tr></thead><tbody>'+(agents||'<tr><td colspan="5" class="empty">Field below activation threshold; no expensive swarm spawned.</td></tr>')+'</tbody></table></div>'+
+      '<h3 class="small" style="margin:16px 0 8px">AETHER alpha food web</h3>'+
+      '<div class="scroll"><table><thead><tr><th>Species</th><th>Kind</th><th>Stage</th><th>Fitness</th><th>Evidence</th><th>Alpha mass</th></tr></thead><tbody>'+
+      (alphaWeb.map(function(x){return '<tr><td class="tnum">'+h(x.species_id||'')+'</td><td>'+h(x.kind||'')+'</td><td>'+chip(x.stage||'')+'</td><td class="tnum">'+num(x.fitness_credit,3)+'</td><td class="tnum">'+h(x.evidence_count||0)+'</td><td class="tnum">'+num(x.alpha_mass,3)+'</td></tr>';}).join('')||'<tr><td colspan="6" class="empty">No species has accumulated positive observed shadow fitness yet.</td></tr>')+
+      '</tbody></table></div>'+
+      '<h3 class="small" style="margin:16px 0 8px">Ecology interactions</h3>'+
+      '<div class="scroll"><table><thead><tr><th>Type</th><th>Participants</th><th>Basis</th></tr></thead><tbody>'+
+      (interactions.map(function(x){const who=x.type==='predation'?((x.predator||'')+' → '+(x.prey||'')):((x.species||[]).join(' + '));return '<tr><td>'+chip(x.type||'')+'</td><td class="tnum">'+h(who)+'</td><td class="small muted">'+h(x.basis||'')+'</td></tr>';}).join('')||'<tr><td colspan="3" class="empty">No predation or symbiosis relationship has enough observed research fitness yet.</td></tr>')+
+      '</tbody></table></div>'+
+      '<h3 class="small" style="margin:16px 0 8px">Cognitive genesis</h3>'+
+      '<div class="scroll"><table><thead><tr><th>Species</th><th>Asset</th><th>Reason</th><th>Next action</th></tr></thead><tbody>'+
+      (genesis.map(function(x){return '<tr><td class="tnum">'+h(x.species_id||'')+'</td><td>'+h(x.asset||'')+'</td><td class="small">'+h(x.reason||'')+'</td><td class="small muted">'+h(x.recommended_action||'')+'</td></tr>';}).join('')||'<tr><td colspan="4" class="empty">No ontology species has survived enough observed outcomes to justify a missing-engine study.</td></tr>')+
+      '</tbody></table></div>'+
       '<h3 class="small" style="margin:16px 0 8px">Durable claims</h3>'+
       '<div class="scroll"><table><thead><tr><th>Claim</th><th>Kind</th><th>Stage</th><th>Payload</th></tr></thead><tbody>'+(claims||'<tr><td colspan="4" class="empty">No durable claim survived the current observation.</td></tr>')+'</tbody></table></div>'+
       '<div class="small muted" style="margin-top:12px">AETHER agents are disposable research workers. Claims are durable; orders are not. PANTHEON cannot place orders, change sizing, bypass the hard Risk Kernel, or promote itself to production.</div>';
