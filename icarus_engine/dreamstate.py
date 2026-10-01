@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from .parallax import ParallaxStore
+from .brain import record_brain_event
 
 SCHEMA_VERSION = "icarus-dreamstate-v1"
 REQUIRED_GATES = (
@@ -151,10 +152,65 @@ class DreamstateLab:
             )
         return None
 
+    def _mirror_candidate(self, candidate: Mapping[str, Any]) -> dict[str, Any]:
+        stage_map = {
+            "proposed": "discovered",
+            "study": "training",
+            "validated": "validated",
+            "qualified_shadow": "qualified_shadow",
+            "rejected": "rejected",
+            "retired": "retired",
+        }
+        status_map = {
+            "proposed": "unverified",
+            "study": "active",
+            "validated": "verified",
+            "qualified_shadow": "qualified",
+            "rejected": "rejected",
+            "retired": "retired",
+        }
+        signal = candidate.get("source_signal") if isinstance(candidate.get("source_signal"), Mapping) else {}
+        metrics = {
+            key: signal.get(key)
+            for key in ("n", "mean_delta", "ci95_low", "ci95_high", "branch_label", "kind")
+            if key in signal
+        }
+        evidence = list(candidate.get("evidence") or [])
+        evidence.append(
+            "PARALLAX paired signal "
+            + str(signal.get("branch_label") or "unknown")
+            + " n=" + str(signal.get("n") or 0)
+        )
+        return record_brain_event(
+            self.base_dir,
+            {
+                "kind": "candidate",
+                "subject": str(candidate["candidate_id"]),
+                "summary": str(candidate["hypothesis"]),
+                "status": status_map[str(candidate["stage"])],
+                "candidate_id": str(candidate["candidate_id"]),
+                "stage": stage_map[str(candidate["stage"])],
+                "regimes": [str(candidate["regime"])],
+                "metrics": metrics,
+                "validation": dict(candidate["validation"]),
+                "source_repo": "reppiks490/Icarus",
+                "source_commit": str(candidate["source_commit"]),
+                "evidence": evidence[-32:],
+                "details": {
+                    "origin": "DREAMSTATE",
+                    "family_id": candidate["family_id"],
+                    "trial_index": candidate["trial_index"],
+                    "mutation": candidate["mutation"],
+                    "authority": "shadow_only",
+                },
+            },
+        )
+
     def refresh(self, min_samples: int = 5) -> dict[str, Any]:
         min_samples = max(3, min(1000, int(min_samples)))
         signals = self.parallax.mutation_signals(min_samples=min_samples)
         created: list[str] = []
+        touched: list[str] = []
         with _LOCK, self._connect() as con:
             for signal in signals:
                 proposal = self._mutation(signal)
@@ -162,12 +218,13 @@ class DreamstateLab:
                     continue
                 mutation, hypothesis = proposal
                 asset = _text(signal.get("asset"), "asset", 32).upper()
-                regime = _text(signal.get("regime"), "regime", 120)
+                regime = _text(signal.get("regime"), "regime", 80)
                 source_commit = _git_sha(signal.get("source_commit"))
                 family_id = "dsf-" + _sha(asset + "|" + regime + "|" + str(mutation.get("op")) + "|" + str(mutation.get("subsystem", "")))[:20]
                 signal_json = _json(dict(signal), "source_signal", 32768)
                 mutation_json = _json(mutation, "mutation", 32768)
                 candidate_id = "ds-" + _sha(family_id + "|" + signal_json + "|" + mutation_json)[:24]
+                touched.append(candidate_id)
                 if con.execute("SELECT 1 FROM candidates WHERE candidate_id=?", (candidate_id,)).fetchone():
                     continue
                 trial_index = 1 + int(con.execute("SELECT COUNT(*) FROM candidates WHERE family_id=?", (family_id,)).fetchone()[0])
@@ -184,8 +241,9 @@ class DreamstateLab:
                     ),
                 )
                 created.append(candidate_id)
+        mirrors = [self._mirror_candidate(self.candidate(candidate_id)) for candidate_id in dict.fromkeys(touched)]
         out = self.snapshot()
-        out["refresh"] = {"created": created, "signal_count": len(signals), "min_samples": min_samples}
+        out["refresh"] = {"created": created, "signal_count": len(signals), "min_samples": min_samples, "brain_mirrors": len(mirrors)}
         return out
 
     def evaluate(self, candidate_id: str, payload: Mapping[str, Any]) -> dict[str, Any]:
@@ -235,7 +293,9 @@ class DreamstateLab:
                 "UPDATE candidates SET stage=?,validation_json=?,evidence_json=?,updated_at=? WHERE candidate_id=?",
                 (stage, _json(validation, "validation"), _json(merged_evidence, "evidence"), _utc_now(), candidate_id),
             )
-        return self.candidate(candidate_id)
+        candidate = self.candidate(candidate_id)
+        candidate["brain_mirror"] = self._mirror_candidate(candidate)
+        return candidate
 
     def retire(self, candidate_id: str, reason: str) -> dict[str, Any]:
         candidate_id = _text(candidate_id, "candidate_id", 96)
@@ -250,7 +310,9 @@ class DreamstateLab:
                 "UPDATE candidates SET stage='retired',evidence_json=?,updated_at=? WHERE candidate_id=?",
                 (_json(evidence, "evidence"), _utc_now(), candidate_id),
             )
-        return self.candidate(candidate_id)
+        candidate = self.candidate(candidate_id)
+        candidate["brain_mirror"] = self._mirror_candidate(candidate)
+        return candidate
 
     def candidate(self, candidate_id: str) -> dict[str, Any]:
         with _LOCK, self._connect() as con:
