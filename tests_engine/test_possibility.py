@@ -132,7 +132,7 @@ def test_external_evidence_is_bounded_and_research_only():
         engine.ingest_external("NQ", {"gamma_pressure": 1.1}, source="unit-test")
 
 
-def test_oracle_and_psi_surface_observed_microstructure_and_future_space():
+def test_psi_surface_observed_microstructure_and_future_space():
     engine = PossibilityEngine(Port(), scenarios=192)
     _seed(engine)
     engine.ingest_external(
