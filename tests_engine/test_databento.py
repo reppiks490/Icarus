@@ -676,7 +676,9 @@ def test_replay_rows_cannot_rewind_live_price_and_ts_event_is_not_used_as_orderi
     feed._live_callback("NQ=F", Trade(1_998, 50.0, 1, sequence=8, ts_recv=1_998.50))
     ticks = list(feed._trades["NQ=F"])
     assert len(ticks) == 3
-    assert ticks[-1].price == 50.0
+    assert any(tick.price == 50.0 for tick in ticks)
+    assert [tick.ts_recv_ns for tick in ticks] == sorted(tick.ts_recv_ns for tick in ticks)
+    assert ticks[-1].price == 202.0
     assert feed._last_price["NQ=F"] == 202.0
 
 
