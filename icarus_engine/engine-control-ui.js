@@ -92,6 +92,7 @@ function engineControlRender(data){
   const subs=actions.filter(a=>!['Engine','Assets'].includes(a.group));
   const coreEl=document.querySelector('#ecCore'); if(coreEl) coreEl.innerHTML=core.map(a=>ecActionRow(a,data)).join('');
   const actionEl=document.querySelector('#ecSubsystemActions'); if(actionEl) actionEl.innerHTML=subs.map(a=>ecActionRow(a,data)).join('');
+  document.querySelectorAll('[data-ec-run]').forEach(b=>{b.onclick=()=>ecRun(b.dataset.ecRun);});
   const subEl=document.querySelector('#ecSubsystems'); if(subEl) subEl.innerHTML=ecSubsystemTable(data);
   const ev=document.querySelector('#ecEvents'); if(ev) ev.innerHTML=ecEventTable(data);
   const raw=document.querySelector('#ecRaw'); if(raw) raw.textContent=JSON.stringify(data,null,2);
@@ -144,9 +145,5 @@ function wireEngineControl(){
   if(refresh) refresh.onclick=loadEngineControl;
   const sync=document.querySelector('#ecSyncAll');
   if(sync) sync.onclick=()=>ecRun('sync.all');
-  document.querySelector('#view')?.addEventListener('click',function ecClick(ev){
-    const b=ev.target.closest('[data-ec-run]');
-    if(b) ecRun(b.dataset.ecRun);
-  },{once:true});
   loadEngineControl();
 }
