@@ -219,6 +219,10 @@ class PossibilityEngine:
         ttl = min(ttl_value, 86400.0)
         now = time.time()
         observed = _utc_now() if observed_at is None else _observed_time(observed_at)
+        observed_ts = datetime.fromisoformat(observed.replace("Z", "+00:00")).timestamp()
+        expires_ts = observed_ts + ttl
+        if expires_ts <= now:
+            raise ValueError("external evidence is already stale at receipt for the requested ttl_seconds")
         stored: dict[str, Any] = {}
         with self._lock:
             for key, raw in values.items():
@@ -243,7 +247,7 @@ class PossibilityEngine:
                     "source": source,
                     "observed_at": observed,
                     "received_ts": now,
-                    "expires_ts": now + ttl,
+                    "expires_ts": expires_ts,
                 }
                 self._external[asset][key] = row
                 stored[key] = dict(row)

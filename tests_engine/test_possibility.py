@@ -315,3 +315,15 @@ def test_synthetic_price_does_not_double_count_leader_pressure():
     assert positive["unexplained_dislocation"] is None
     assert positive["unexplained_dislocation_available"] is False
 
+def test_external_evidence_ttl_is_anchored_to_observation_time():
+    engine = PossibilityEngine(Port())
+    stale = (datetime.now(timezone.utc) - timedelta(minutes=10)).isoformat()
+    with pytest.raises(ValueError, match="already stale"):
+        engine.ingest_external(
+            "NQ",
+            {"gamma_pressure": 0.2},
+            source="fixture",
+            observed_at=stale,
+            ttl_seconds=60,
+        )
+
