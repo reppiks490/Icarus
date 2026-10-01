@@ -347,3 +347,15 @@ def test_http_continuous_learning_surface_is_authenticated_and_research_only(htt
     assert cards[0]["producer"] == "fixture"
 
     assert http("POST", "/admin/learning/config", b'{"cycle_seconds":0}', auth)[0] == 400
+
+
+def test_http_manual_learning_cycle_is_authenticated_and_research_only(http):
+    auth = {"Authorization": "Bearer test-token", "Content-Type": "application/json"}
+    assert http("POST", "/admin/learning/tick", b"{}")[0] == 401
+    code, raw = http("POST", "/admin/learning/tick", b"{}", auth)
+    assert code == 200
+    cycle = json.loads(raw)
+    assert cycle["status"] in {"ok", "partial"}
+    assert cycle["cycle_id"].startswith("cycle-")
+    assert cycle["execution_authorized"] is False
+    assert cycle["production_decision_authorized"] is False
