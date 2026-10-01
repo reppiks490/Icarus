@@ -935,6 +935,10 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
                 return self._json(200, learning.snapshot())
+            if p.path == "/api/learning/health":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                return self._json(200, learning.health())
             if p.path == "/api/learning/experience":
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
@@ -1265,7 +1269,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     return self._json(400, {"detail": str(ex)})
             if p.path == "/admin/learning/tick":
                 try:
-                    return self._json(200, learning.tick())
+                    return self._json(200, learning.run_cycle())
                 except (ValueError, TypeError) as ex:
                     return self._json(400, {"detail": str(ex)})
             if p.path == "/admin/learning/prediction":
