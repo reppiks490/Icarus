@@ -252,11 +252,8 @@ class QualificationLedger:
             and row.get("source_commit") == commit
         ]
 
-        validation = candidate.get("validation") if isinstance(candidate.get("validation"), Mapping) else {}
-        gate_state: dict[str, bool | None] = {
-            gate: (validation.get(gate) if type(validation.get(gate)) is bool else None)
-            for gate in REQUIRED_GATES
-        }
+        candidate_validation = candidate.get("validation") if isinstance(candidate.get("validation"), Mapping) else {}
+        gate_state: dict[str, bool | None] = {gate: None for gate in REQUIRED_GATES}
         evidence_by_gate: dict[str, list[str]] = {gate: [] for gate in REQUIRED_GATES}
         reviewer_sets: dict[str, set[str]] = {gate: set() for gate in REQUIRED_GATES}
 
@@ -282,6 +279,10 @@ class QualificationLedger:
             "source_commit": commit,
             "qualified_shadow_ready": ready,
             "gate_state": gate_state,
+            "candidate_declared_validation": {
+                gate: (candidate_validation.get(gate) if type(candidate_validation.get(gate)) is bool else None)
+                for gate in REQUIRED_GATES
+            },
             "gate_receipt_hashes": evidence_by_gate,
             "independent_reviewers": sorted(reviewer_sets["independent_verification"]),
             "required_independent_reviewers": min_independent_reviewers,
