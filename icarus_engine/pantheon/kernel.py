@@ -577,7 +577,11 @@ class PantheonKernel:
         maturity_time = observation_time + timedelta(milliseconds=int(observation["horizon_ms"]))
         if outcome_time < maturity_time:
             raise ValueError("VERITAS reconciliation cannot precede observation maturity")
-        source_signals = source_observation.get("input", {}).get("signals", {})
+        source_input = source_observation.get("input", {})
+        source_evidence = source_input.get("evidence", []) if isinstance(source_input, Mapping) else []
+        if not isinstance(source_evidence, list) or not source_evidence:
+            raise ValueError("VERITAS source observation must carry immutable evidence references")
+        source_signals = source_input.get("signals", {}) if isinstance(source_input, Mapping) else {}
         if not isinstance(source_signals, Mapping):
             raise ValueError("VERITAS source observation signals are unavailable")
         realized_direction = source_signals.get("veritas_realized_direction")
@@ -604,6 +608,7 @@ class PantheonKernel:
             "observed_at": observed_at,
             "realized_direction": realized_direction,
             "source_observation_id": source_observation_id,
+            "source_evidence": list(source_evidence),
             "realized_signatures": realized,
             "confidence": confidence,
             "evidence": evidence,

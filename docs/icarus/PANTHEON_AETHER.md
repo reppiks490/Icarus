@@ -522,3 +522,12 @@ weak to justify positive learning credit. Each certificate therefore freezes a
 path matches, but `reinforcement_eligible` stays false unless the reconciliation
 confidence also clears that predeclared gate. This prevents a zero- or
 low-confidence observation from unlocking full positive AETHER fitness.
+
+
+### VERITAS source-evidence floor
+
+A later source observation is not accepted merely because it contains the right
+signal fields. It must also carry at least one immutable evidence reference in
+the PANTHEON observation ledger. The source evidence list is copied into the
+VERITAS reconciliation payload, preserving the proof path used to score
+mechanism fidelity. Empty-evidence endpoint snapshots fail closed.

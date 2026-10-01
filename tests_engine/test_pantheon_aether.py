@@ -474,6 +474,28 @@ def test_veritas_reconciliation_is_bound_to_immutable_source_observation(tmp_pat
         })
 
 
+def test_veritas_source_requires_immutable_evidence_references(tmp_path):
+    kernel = PantheonKernel(tmp_path)
+    obs = kernel.record_observation(_veritas_payload("pan-veritas-source-evidence"))
+    source = _veritas_source_payload(
+        "pan-veritas-source-evidence-later",
+        "2026-10-01T06:00:20Z",
+        basis_expands=True,
+        queue_replenishment=0.8,
+        cross_asset_lead=0.2,
+    )
+    source["evidence"] = []
+    source_obs = kernel.record_observation(source)
+    with pytest.raises(ValueError, match="immutable evidence references"):
+        kernel.record_veritas_reconciliation({
+            "observation_id": obs["observation_id"],
+            "source_observation_id": source_obs["observation_id"],
+            "observed_at": source_obs["observed_at"],
+            "confidence": 0.8,
+            "evidence": ["fixture:reconciliation-request"],
+        })
+
+
 def test_veritas_source_must_immutably_declare_realized_direction(tmp_path):
     kernel = PantheonKernel(tmp_path)
     obs = kernel.record_observation(_veritas_payload("pan-veritas-source-direction"))
