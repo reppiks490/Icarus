@@ -20,6 +20,7 @@ NODE = shutil.which("node")
         "icarus_bridge/dashboard.html",
         "icarus_engine/research-ui.js",
         "icarus_engine/sources-ui.js",
+        "icarus_engine/brain-ui.js",
         "icarus_engine/integrity-ui.js",
         "icarus_engine/experience-ui.js",
     ],
@@ -96,3 +97,18 @@ def test_dashboard_surfaces_export_data_integrity_and_mcp_receipts():
     assert "execution" in ui.lower()
     assert 'p.path == "/api/integrity"' in server
     assert 'p.path == "/admin/integrity/event"' in server
+
+
+def test_dashboard_surfaces_adaptive_brain_fabric():
+    dashboard = (REPO / "icarus_engine/dashboard.html").read_text(encoding="utf-8")
+    ui = (REPO / "icarus_engine/brain-ui.js").read_text(encoding="utf-8")
+    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
+    assert '/brain-ui.js' in dashboard
+    assert 'data-v="brain">Adaptive Brain</span>' in dashboard
+    assert "wireBrain()" in dashboard
+    assert "/api/brain" in ui
+    assert "5 custom agents" in ui
+    assert "SHADOW_ONLY" in ui
+    assert "True success rate" in ui
+    assert 'p.path == "/api/brain"' in server
+    assert 'p.path == "/admin/brain/event"' in server

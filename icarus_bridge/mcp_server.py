@@ -42,7 +42,10 @@ mcp = MCPServer(
         "record_engine_loop_status when applicable so the trader System Intelligence panel stays aligned. "
         "For export, corpus, data-quality, representation, replay-lineage, or provenance work, also publish "
         "the exact source repository/branch/40-character commit through record_engine_integrity_event so the "
-        "Data Integrity panel stays aligned. Those publication tools are diagnostic-only. "
+        "Data Integrity panel stays aligned. For agent/subsystem learning, regime research, drift, training, "
+        "evaluation, or rigorously-qualified candidate lifecycle updates, use record_engine_brain_event so the "
+        "Adaptive Brain panel receives durable evidence. Brain publication is research/shadow-only and cannot "
+        "grant production decision or broker authority. Those publication tools are diagnostic-only. "
         "pause_trading / resume_trading / flatten_all / "
         "simulate_alert change live paper state — confirm with the user before calling them unless they "
         "asked for exactly that action."
@@ -379,6 +382,75 @@ def record_engine_integrity_event(
         "details": details,
     }
     return _safe_engine(lambda: _engine_post("/admin/integrity/event", body))
+
+
+@mcp.tool()
+def engine_brain_state() -> dict:
+    """Read the Adaptive Brain multi-agent/subsystem, learning, regime and shadow-candidate state."""
+    return _safe_engine(lambda: _engine_get("/api/brain"))
+
+
+@mcp.tool()
+def record_engine_brain_event(
+    kind: str,
+    subject: str,
+    summary: str,
+    status: str = "observed",
+    evidence_json: str = "[]",
+    details_json: str = "{}",
+    candidate_id: str = "",
+    stage: str = "",
+    regimes_json: str = "[]",
+    metrics_json: str = "{}",
+    validation_json: str = "{}",
+    source_repo: str = "",
+    source_commit: str = "",
+) -> dict:
+    """Publish one evidence-backed Adaptive Brain event.
+
+    Candidate events require an exact source repository + 40-character Git SHA,
+    explicit regime tags, metrics, and every validation gate. This endpoint is
+    research/shadow-only and always preserves production_decision_authorized=false
+    and execution_authorized=false.
+    """
+    try:
+        evidence = json.loads(evidence_json or "[]")
+        details = json.loads(details_json or "{}")
+        regimes = json.loads(regimes_json or "[]")
+        metrics = json.loads(metrics_json or "{}")
+        validation = json.loads(validation_json or "{}")
+    except json.JSONDecodeError as ex:
+        return {"error": f"invalid JSON metadata: {ex}"}
+    if not isinstance(evidence, list):
+        return {"error": "evidence_json must decode to a list"}
+    if not isinstance(details, dict):
+        return {"error": "details_json must decode to an object"}
+    if not isinstance(regimes, list):
+        return {"error": "regimes_json must decode to a list"}
+    if not isinstance(metrics, dict):
+        return {"error": "metrics_json must decode to an object"}
+    if not isinstance(validation, dict):
+        return {"error": "validation_json must decode to an object"}
+
+    body: Dict[str, Any] = {
+        "kind": kind,
+        "subject": subject,
+        "summary": summary,
+        "status": status,
+        "evidence": evidence,
+        "details": details,
+    }
+    if kind.strip().lower() == "candidate":
+        body.update({
+            "candidate_id": candidate_id,
+            "stage": stage,
+            "regimes": regimes,
+            "metrics": metrics,
+            "validation": validation,
+            "source_repo": source_repo,
+            "source_commit": source_commit,
+        })
+    return _safe_engine(lambda: _engine_post("/admin/brain/event", body))
 
 
 # ── control tools (state-changing) ──

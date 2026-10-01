@@ -14,6 +14,7 @@
   GET  /api/agent                 Field Agent recipes + paste-packs (Grok). Never executes. Never arms a broker.
   GET  /api/system/audit          latest local GitHub/MCP repository + CI audit snapshot
   GET  /api/integrity             export checklist, corpus, repairs, and MCP change receipts
+  GET  /api/brain                 adaptive multi-agent brain, subsystem fabric, regimes, learning and shadow candidates
   POST /admin/pause | /admin/resume        {"asset": "NQ"} or all          (Bearer token)
   POST /admin/flatten                      {"confirm": true, "asset"?: "NQ"}
   POST /admin/inputs                       {"asset": "NQ"|"*", "values": {...}, "chart": {...}, "persist": true}  → re-warm
@@ -25,6 +26,7 @@
   POST /admin/system/event                 {"event": {...}}  append important MCP repair/audit/evolution event
   POST /admin/system/loop                  {"loop": {...}}   upsert one loop durability receipt/status
   POST /admin/integrity/event              fully-provenanced, idempotent MCP audit receipt; never changes trading
+  POST /admin/brain/event                  append evidence-backed learning/agent/subsystem/candidate event; shadow only
   POST /admin/rewarm                       {"asset": "NQ"}
 """
 from __future__ import annotations
@@ -62,6 +64,7 @@ from .system_audit import (
     upsert_loop_status,
 )
 from .integrity import integrity_snapshot, record_integrity_event
+from .brain import brain_snapshot, record_brain_event
 
 
 def _no_json_constants(name: str):
@@ -177,6 +180,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._send(200, (html_path.parent / "sources-ui.js").read_bytes(), "text/javascript")
             if p.path == "/integrity-ui.js":
                 return self._send(200, (html_path.parent / "integrity-ui.js").read_bytes(), "text/javascript")
+            if p.path == "/brain-ui.js":
+                return self._send(200, (html_path.parent / "brain-ui.js").read_bytes(), "text/javascript")
             if p.path in ("/experience-ui.js", "/experience-ui.css"):
                 ctype = "text/javascript" if p.path.endswith(".js") else "text/css"
                 return self._send(200, (html_path.parent / p.path[1:]).read_bytes(), ctype)
@@ -200,6 +205,24 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
                 return self._json(200, integrity_snapshot(port.base_dir))
+            if p.path == "/api/brain":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                try:
+                    market = port.status()
+                except Exception:
+                    market = {}
+                try:
+                    research_state = research.status()
+                except Exception:
+                    research_state = {}
+                return self._json(200, brain_snapshot(
+                    port.base_dir,
+                    market_status=market,
+                    research_status=research_state,
+                    system_audit=load_repository_audit(port.base_dir),
+                    integrity=integrity_snapshot(port.base_dir),
+                ))
             if p.path == "/api/input-meta":
                 return self._json(200, meta)
             if p.path.startswith("/api/research"):
@@ -421,6 +444,11 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             if p.path == "/admin/integrity/event":
                 try:
                     return self._json(200, record_integrity_event(port.base_dir, body))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+            if p.path == "/admin/brain/event":
+                try:
+                    return self._json(200, record_brain_event(port.base_dir, body))
                 except (ValueError, TypeError) as ex:
                     return self._json(400, {"detail": str(ex)})
             asset = str(body.get("asset") or body.get("symbol") or "").upper()

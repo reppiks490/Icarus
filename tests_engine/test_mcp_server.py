@@ -22,6 +22,8 @@ def test_mcp_server_imports_and_registers_engine_surface():
         "engine_mbo_snapshot",
         "engine_integrity_state",
         "record_engine_integrity_event",
+        "engine_brain_state",
+        "record_engine_brain_event",
     ):
         assert callable(getattr(mcp_server, name))
 
@@ -235,3 +237,49 @@ def test_mcp_integrity_receipt_uses_same_engine_plane_and_exact_provenance(monke
             "details": {"ci": "green"},
         }),
     ]
+
+
+def test_mcp_adaptive_brain_routes(monkeypatch):
+    seen = []
+
+    def get(path):
+        seen.append(("get", path))
+        return {"authority": {"execution_authorized": False}}
+
+    def post(path, body):
+        seen.append(("post", path, body))
+        return {
+            "ok": True,
+            "execution_authorized": False,
+            "production_decision_authorized": False,
+        }
+
+    monkeypatch.setattr(mcp_server, "_engine_get", get)
+    monkeypatch.setattr(mcp_server, "_engine_post", post)
+
+    assert mcp_server.engine_brain_state()["authority"]["execution_authorized"] is False
+    result = mcp_server.record_engine_brain_event(
+        kind="candidate",
+        subject="nq-strong-v1",
+        summary="qualified regime specialist",
+        status="qualified",
+        evidence_json='["walk-forward","independent oracle"]',
+        candidate_id="nq-strong-v1",
+        stage="qualified_shadow",
+        regimes_json='["STRONG"]',
+        metrics_json='{"validation_score":0.84}',
+        validation_json='{"causal_time":true,"provenance":true,"oos":true,"protected_holdout":true,"multiple_testing":true,"costs_slippage_latency":true,"ablation":true,"calibration":true,"ood_drift":true,"deterministic_replay":true,"independent_verification":true}',
+        source_repo="reppiks490/Icarus",
+        source_commit="a" * 40,
+    )
+    assert result["execution_authorized"] is False
+    assert result["production_decision_authorized"] is False
+    assert seen[0] == ("get", "/api/brain")
+    assert seen[1][0] == "post"
+    assert seen[1][1] == "/admin/brain/event"
+    body = seen[1][2]
+    assert body["candidate_id"] == "nq-strong-v1"
+    assert body["stage"] == "qualified_shadow"
+    assert body["regimes"] == ["STRONG"]
+    assert body["validation"]["independent_verification"] is True
+    assert body["source_commit"] == "a" * 40
