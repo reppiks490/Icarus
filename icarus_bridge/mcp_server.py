@@ -44,7 +44,8 @@ mcp = MCPServer(
         "the exact source repository/branch/40-character commit through record_engine_integrity_event so the "
         "Data Integrity panel stays aligned. For agent/subsystem learning, regime research, drift, training, "
         "evaluation, or rigorously-qualified candidate lifecycle updates, use record_engine_brain_event so the "
-        "Adaptive Brain panel receives durable evidence. Brain publication is research/shadow-only and cannot "
+        "Adaptive Brain panel receives durable evidence. Use the performance-proof tools for immutable forecast/outcome/replay "
+        "evidence and engine_latency_telemetry for measured timing. Brain publication is research/shadow-only and cannot "
         "grant production decision or broker authority. Those publication tools are diagnostic-only. "
         "pause_trading / resume_trading / flatten_all / "
         "simulate_alert change live paper state — confirm with the user before calling them unless they "
@@ -451,6 +452,91 @@ def record_engine_brain_event(
             "source_commit": source_commit,
         })
     return _safe_engine(lambda: _engine_post("/admin/brain/event", body))
+
+
+@mcp.tool()
+def engine_performance_proof() -> dict:
+    """Read causal forecast/outcome/replay proof, calibration and closed-sample metrics."""
+    return _safe_engine(lambda: _engine_get("/api/performance-proof"))
+
+
+@mcp.tool()
+def record_engine_performance_forecast(
+    candidate_id: str,
+    asset: str,
+    regime: str,
+    decision_at: str,
+    matures_at: str,
+    probability_success: float,
+    success_definition: str,
+    source_repo: str,
+    source_commit: str,
+    dataset_hash: str,
+    evidence_hash: str,
+) -> dict:
+    """Record one immutable research/shadow forecast before its outcome matures."""
+    body = {
+        "candidate_id": candidate_id,
+        "asset": asset,
+        "regime": regime,
+        "decision_at": decision_at,
+        "matures_at": matures_at,
+        "probability_success": float(probability_success),
+        "success_definition": success_definition,
+        "source_repo": source_repo,
+        "source_commit": source_commit,
+        "dataset_hash": dataset_hash,
+        "evidence_hash": evidence_hash,
+    }
+    return _safe_engine(lambda: _engine_post("/admin/performance-proof/forecast", body))
+
+
+@mcp.tool()
+def record_engine_performance_outcome(
+    forecast_id: str,
+    observed_at: str,
+    success: bool,
+    outcome_hash: str,
+    source: str,
+    realized_value: Optional[float] = None,
+) -> dict:
+    """Settle one matured proof forecast exactly once; conflicting rewrites fail closed."""
+    body = {
+        "forecast_id": forecast_id,
+        "observed_at": observed_at,
+        "success": bool(success),
+        "realized_value": realized_value,
+        "outcome_hash": outcome_hash,
+        "source": source,
+    }
+    return _safe_engine(lambda: _engine_post("/admin/performance-proof/outcome", body))
+
+
+@mcp.tool()
+def record_engine_replay_proof(
+    subject: str,
+    source_commit: str,
+    input_hash: str,
+    first_output_hash: str,
+    second_output_hash: str,
+    observed_at: str,
+) -> dict:
+    """Record a deterministic replay comparison for one exact input and source revision."""
+    body = {
+        "subject": subject,
+        "source_commit": source_commit,
+        "input_hash": input_hash,
+        "first_output_hash": first_output_hash,
+        "second_output_hash": second_output_hash,
+        "observed_at": observed_at,
+    }
+    return _safe_engine(lambda: _engine_post("/admin/performance-proof/replay", body))
+
+
+@mcp.tool()
+def engine_latency_telemetry() -> dict:
+    """Read measured ICARUS processing latency percentiles and budget status."""
+    return _safe_engine(lambda: _engine_get("/api/latency"))
 
 
 @mcp.tool()
