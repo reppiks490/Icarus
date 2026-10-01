@@ -340,6 +340,13 @@ class BrainRemoteSync:
                         processed.add(blob_sha)
                         continue
 
+                    schema = payload.get("schema_version", payload.get("schema"))
+                    if schema != "icarus-mcp-event-v1":
+                        raise ValueError("unsupported custom-agent event schema")
+                    category = str(payload.get("category") or "").strip().upper()
+                    if category not in {"REPAIR", "AUDIT", "EVOLUTION", "INTEGRATION"}:
+                        raise ValueError("unsupported custom-agent event category")
+
                     evidence = _compact_evidence(payload, path, blob_sha)
                     details = _event_details(payload, path, blob_sha)
                     record_brain_event(
