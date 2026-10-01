@@ -109,7 +109,7 @@ def test_repository_audit_rejects_bad_system_event_enums():
 def test_git_blob_sha_matches_git_object_encoding():
     raw = b'{"RUN_ID":"alpha-synthesis-20261001T022500Z"}'
     import hashlib
-    expected = hashlib.sha1(b"blob " + str(len(raw)).encode() + b"\\0" + raw).hexdigest()
+    expected = hashlib.sha1(b"blob " + str(len(raw)).encode() + b"\0" + raw).hexdigest()
     assert git_blob_sha(raw) == expected
 
 
