@@ -1,0 +1,211 @@
+from __future__ import annotations
+
+from types import SimpleNamespace
+
+import pytest
+
+from icarus_engine.possibility import PossibilityEngine
+
+
+class Tick:
+    def __init__(self, price: float, size: int, side: str):
+        self.price = price
+        self.size = size
+        self.side = side
+
+
+class Feed:
+    def trades(self, ticker, limit=500):
+        rows = []
+        for i in range(180):
+            side = "B" if i % 5 else "A"
+            rows.append(Tick(20000.0 + i * 0.02, 3 + (i % 4), side))
+        return rows[-limit:]
+
+    def depth_events(self, ticker, *, schema="mbp-10", limit=120):
+        rows = []
+        for i in range(40):
+            mid = 20000.0 + i * 0.01
+            levels = [
+                {
+                    "bid_px": mid - 0.25 - level * 0.25,
+                    "ask_px": mid + 0.25 + level * 0.25,
+                    "bid_sz": 30 - level,
+                    "ask_sz": 10 + level,
+                    "bid_ct": 3,
+                    "ask_ct": 2,
+                }
+                for level in range(10)
+            ]
+            rows.append({"levels": levels, "ts_event": 1000 + i})
+        return rows[-limit:]
+
+
+class Port:
+    def __init__(self):
+        self.runners = {
+            "NQ": SimpleNamespace(feed=Feed(), spec=SimpleNamespace(ticker="NQ.v.0")),
+            "ES": SimpleNamespace(feed=Feed(), spec=SimpleNamespace(ticker="ES.v.0")),
+        }
+        self._price = 20000.0
+
+    def status(self):
+        return {
+            "assets": [
+                {
+                    "symbol": "NQ",
+                    "price": self._price,
+                    "warm": True,
+                    "paused": False,
+                    "state": {"rate_regime": 0.82, "rate_regime_str": "STRONG", "pulse_l": 0.76, "pulse_s": 0.18},
+                },
+                {
+                    "symbol": "ES",
+                    "price": 6800.0,
+                    "warm": True,
+                    "paused": False,
+                    "state": {"rate_regime": 0.78, "rate_regime_str": "STRONG", "pulse_l": 0.70, "pulse_s": 0.20},
+                },
+            ]
+        }
+
+
+def _seed(engine: PossibilityEngine) -> None:
+    nq = engine._history["NQ"]
+    es = engine._history["ES"]
+    for i in range(40):
+        nq_price = 20000.0 + i * 1.5
+        es_price = 6800.0 + i * 0.45
+        nq.append(
+            {
+                "ts": float(i),
+                "price": nq_price,
+                "ret": 0.00008 + (i % 4) * 0.00001,
+                "pulse": 0.4,
+                "regime": 0.8,
+            }
+        )
+        es.append(
+            {
+                "ts": float(i),
+                "price": es_price,
+                "ret": 0.00007 + ((i + 1) % 4) * 0.00001,
+                "pulse": 0.35,
+                "regime": 0.75,
+            }
+        )
+
+
+def test_empty_port_fails_closed():
+    class Empty:
+        runners = {}
+
+        def status(self):
+            return {"assets": []}
+
+    out = PossibilityEngine(Empty()).snapshot()
+    assert out["edge_state"]["state"] == "NO_EDGE"
+    assert out["authority"]["execution_authorized"] is False
+    assert out["authority"]["production_decision_authorized"] is False
+
+
+def test_external_evidence_is_bounded_and_research_only():
+    engine = PossibilityEngine(Port())
+    result = engine.ingest_external(
+        "NQ",
+        {
+            "gamma_pressure": {"value": 0.7, "confidence": 0.8},
+            "cta_pressure": 0.5,
+            "liquidation_pressure": 0.3,
+        },
+        source="unit-test",
+        ttl_seconds=60,
+    )
+    assert result["execution_authorized"] is False
+    assert result["production_decision_authorized"] is False
+    assert result["stored"]["gamma_pressure"]["value"] == pytest.approx(0.7)
+
+    with pytest.raises(ValueError):
+        engine.ingest_external("NQ", {"made_up_force": 1.0}, source="unit-test")
+    with pytest.raises(ValueError):
+        engine.ingest_external("NQ", {"gamma_pressure": 1.1}, source="unit-test")
+
+
+def test_oracle_and_psi_surface_observed_microstructure_and_future_space():
+    engine = PossibilityEngine(Port(), scenarios=192)
+    _seed(engine)
+    engine.ingest_external(
+        "NQ",
+        {
+            "gamma_pressure": {"value": 0.55, "confidence": 0.75},
+            "basis_pressure": {"value": 0.30, "confidence": 0.60},
+            "cta_pressure": {"value": 0.45, "confidence": 0.70},
+            "liquidation_pressure": {"value": 0.20, "confidence": 0.65},
+            "rebalance_pressure": {"value": 0.25, "confidence": 0.60},
+        },
+        source="unit-test",
+    )
+    out = engine.snapshot("NQ")
+
+    assert out["schema_version"] == "icarus-possibility-v1"
+    assert out["authority"]["execution_authorized"] is False
+    assert out["truth_contract"]["scenario_probabilities_calibrated"] is False
+    assert out["truth_contract"]["causality_proven"] is False
+    assert out["truth_contract"]["missing_evidence_imputed"] is False
+
+    components = out["oracle"]["components"]
+    assert components["volume_pressure"]["available"] is True
+    assert components["volume_pressure"]["value"] > 0
+    assert components["queue_pressure"]["available"] is True
+    assert components["queue_pressure"]["value"] > 0
+    assert components["repricing_pressure"]["available"] is True
+    assert components["gamma_pressure"]["available"] is True
+    assert components["basis_pressure"]["available"] is True
+    assert out["oracle"]["latent_pressure"] is not None
+    assert out["oracle"]["evidence_coverage"] > 0.7
+
+    assert out["causal_leadership"]["status"] == "observed"
+    assert out["causal_leadership"]["leaders"][0]["asset"] == "ES"
+
+    poss = out["possibility"]
+    assert poss["status"] == "observed"
+    assert poss["scenarios_generated"] == 192
+    assert poss["viable_futures"] > 0
+    assert 0 <= poss["future_entropy"] <= 100
+    assert 0 <= poss["future_space_collapse"] <= 100
+    assert poss["dominant_cluster"] in {"UP", "DOWN", "FLAT"}
+
+    assert out["counterfactual"]["available"] is True
+    assert out["phase_transition"]["available"] is True
+    assert isinstance(out["market_shadows"], list)
+    assert out["data_health"]["microstructure"]["ticks"] is True
+    assert out["data_health"]["microstructure"]["depth"] is True
+    assert out["edge_state"]["state"] in {"NO_EDGE", "LONG_BIAS", "SHORT_BIAS"}
+
+
+def test_missing_optional_forces_stay_unavailable_instead_of_zero_imputation():
+    engine = PossibilityEngine(Port(), scenarios=96)
+    _seed(engine)
+    out = engine.snapshot("NQ")
+    components = out["oracle"]["components"]
+    assert components["gamma_pressure"]["available"] is False
+    assert components["gamma_pressure"]["value"] is None
+    assert components["basis_pressure"]["available"] is False
+    assert components["basis_pressure"]["value"] is None
+    assert components["forced_flow_pressure"]["available"] is False
+    assert components["forced_flow_pressure"]["value"] is None
+
+
+def test_pressure_price_elasticity_detects_absorption_direction():
+    engine = PossibilityEngine(Port())
+    micro = {
+        "aggressive_flow": {"imbalance": -0.8, "gross_size": 1000},
+        "trade_displacement": -0.00001,
+    }
+    out = engine._elasticity([], micro)
+    assert out["available"] is True
+    assert out["state"] == "BUYER_ABSORPTION"
+
+    micro["aggressive_flow"]["imbalance"] = 0.8
+    out = engine._elasticity([], micro)
+    assert out["state"] == "SELLER_ABSORPTION"
