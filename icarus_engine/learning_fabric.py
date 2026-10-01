@@ -20,6 +20,7 @@ from typing import Any, Mapping, Sequence
 
 from .champion_challenger import wilson_interval
 from .code_provenance import local_code_provenance
+from .trainers.calibrate import isotonic_fit, isotonic_apply
 from .trainers.integrity import inspect_ohlc
 from .trainers.run import train_file, train_xgb_file
 
@@ -176,6 +177,43 @@ class LearningFabric:
                     semantic_json TEXT NOT NULL,
                     recorded_at TEXT NOT NULL
                 );
+
+                CREATE TABLE IF NOT EXISTS calibration_models (
+                    calibrator_id TEXT PRIMARY KEY,
+                    producer TEXT NOT NULL,
+                    asset TEXT NOT NULL,
+                    regime TEXT NOT NULL,
+                    horizon_seconds INTEGER NOT NULL,
+                    target TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    train_count INTEGER NOT NULL,
+                    validation_count INTEGER NOT NULL,
+                    fit_cutoff TEXT NOT NULL,
+                    training_cutoff TEXT NOT NULL,
+                    model_json TEXT NOT NULL,
+                    raw_validation_brier REAL NOT NULL,
+                    calibrated_validation_brier REAL NOT NULL,
+                    source_hash TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    UNIQUE(producer,asset,regime,horizon_seconds,target,source_hash)
+                );
+                CREATE INDEX IF NOT EXISTS idx_learning_calibrator_scope
+                    ON calibration_models(producer,asset,regime,horizon_seconds,target,training_cutoff);
+
+                CREATE TABLE IF NOT EXISTS shadow_calibrations (
+                    prediction_id TEXT PRIMARY KEY REFERENCES predictions(prediction_id),
+                    calibrator_id TEXT NOT NULL REFERENCES calibration_models(calibrator_id),
+                    raw_probability REAL NOT NULL,
+                    calibrated_probability REAL NOT NULL,
+                    assigned_at TEXT NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'PENDING',
+                    success INTEGER,
+                    raw_brier REAL,
+                    calibrated_brier REAL,
+                    settled_at TEXT
+                );
+                CREATE INDEX IF NOT EXISTS idx_learning_shadow_calibrator
+                    ON shadow_calibrations(calibrator_id,status);
 
                 CREATE TABLE IF NOT EXISTS datasets (
                     dataset_id TEXT PRIMARY KEY,
