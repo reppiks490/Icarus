@@ -1,4 +1,10 @@
-import type { JsonObject, PublicStatus, SystemAudit } from './types';
+import type {
+  ChartPayload,
+  DeviceCredentials,
+  GatewaySnapshot,
+  JsonObject,
+  TradeRow,
+} from './types';
 
 export class IcarusApiError extends Error {
   constructor(
@@ -18,82 +24,198 @@ function normalizeBaseUrl(input: string): string {
   return value;
 }
 
+type PairResponse = {
+  device_id: string;
+  refresh_token: string;
+  session_token: string;
+  session_expires_at: number;
+};
+
+async function requestJson<T>(
+  baseUrl: string,
+  path: string,
+  options: {
+    method?: string;
+    body?: unknown;
+    token?: string;
+    signal?: AbortSignal;
+    allow204?: boolean;
+  } = {},
+): Promise<T | null> {
+  const headers: Record<string, string> = { Accept: 'application/json' };
+  if (options.body !== undefined) headers['Content-Type'] = 'application/json';
+  if (options.token) headers.Authorization = 'Bearer ' + options.token;
+  const response = await fetch(baseUrl + path, {
+    method: options.method || 'GET',
+    headers,
+    body: options.body === undefined ? undefined : JSON.stringify(options.body),
+    cache: 'no-store',
+    signal: options.signal,
+  });
+  if (response.status === 204 && options.allow204) return null;
+  const text = await response.text();
+  let payload: unknown = {};
+  try {
+    payload = text ? JSON.parse(text) : {};
+  } catch {
+    throw new IcarusApiError('ICARUS gateway returned non-JSON data', response.status);
+  }
+  if (!response.ok) {
+    const detail = typeof payload === 'object' && payload !== null && 'detail' in payload
+      ? String((payload as { detail?: unknown }).detail || '')
+      : '';
+    throw new IcarusApiError(detail || 'ICARUS gateway request failed', response.status);
+  }
+  return payload as T;
+}
+
 export class IcarusClient {
-  readonly baseUrl: string;
+  private credentials: DeviceCredentials;
+  private refreshPromise: Promise<void> | null = null;
 
-  constructor(baseUrl: string, private readonly token = '') {
-    this.baseUrl = normalizeBaseUrl(baseUrl);
+  constructor(
+    credentials: DeviceCredentials,
+    private readonly onCredentials?: (next: DeviceCredentials) => void | Promise<void>,
+  ) {
+    this.credentials = { ...credentials, baseUrl: normalizeBaseUrl(credentials.baseUrl) };
   }
 
-  private async get<T>(path: string, authenticated = false): Promise<T> {
-    const headers: Record<string, string> = { Accept: 'application/json' };
-    if (authenticated) {
-      if (!this.token) throw new IcarusApiError('Admin token is required for this panel');
-      headers.Authorization = 'Bearer ' + this.token;
-    }
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 8000);
-    try {
-      const response = await fetch(this.baseUrl + path, {
-        method: 'GET',
-        headers,
-        cache: 'no-store',
-        signal: controller.signal,
+  get baseUrl(): string {
+    return this.credentials.baseUrl;
+  }
+
+  static async health(baseUrl: string): Promise<JsonObject> {
+    const normalized = normalizeBaseUrl(baseUrl);
+    const value = await requestJson<JsonObject>(normalized, '/healthz');
+    return value || {};
+  }
+
+  static async pair(baseUrl: string, deviceName: string, pairingSecret: string): Promise<DeviceCredentials> {
+    const normalized = normalizeBaseUrl(baseUrl);
+    await IcarusClient.health(normalized);
+    const value = await requestJson<PairResponse>(normalized, '/v1/pair', {
+      method: 'POST',
+      body: {
+        device_name: deviceName.trim() || 'ICARUS Mobile',
+        pairing_secret: pairingSecret,
+      },
+    });
+    if (!value) throw new IcarusApiError('Gateway returned an empty pairing response');
+    return {
+      baseUrl: normalized,
+      deviceId: value.device_id,
+      refreshToken: value.refresh_token,
+      sessionToken: value.session_token,
+      sessionExpiresAt: value.session_expires_at,
+    };
+  }
+
+  private async persist(next: DeviceCredentials): Promise<void> {
+    this.credentials = next;
+    await this.onCredentials?.(next);
+  }
+
+  private async refreshSession(): Promise<void> {
+    if (this.refreshPromise) return this.refreshPromise;
+    this.refreshPromise = (async () => {
+      const value = await requestJson<PairResponse>(this.baseUrl, '/v1/session', {
+        method: 'POST',
+        body: {
+          device_id: this.credentials.deviceId,
+          refresh_token: this.credentials.refreshToken,
+        },
       });
-      const text = await response.text();
-      let payload: unknown = {};
-      try {
-        payload = text ? JSON.parse(text) : {};
-      } catch {
-        throw new IcarusApiError('ICARUS returned non-JSON data', response.status);
-      }
-      if (!response.ok) {
-        const detail = typeof payload === 'object' && payload !== null && 'detail' in payload
-          ? String((payload as { detail?: unknown }).detail || '')
-          : '';
-        throw new IcarusApiError(detail || 'ICARUS request failed', response.status);
-      }
-      return payload as T;
-    } catch (error) {
-      if (error instanceof IcarusApiError) throw error;
-      if (error instanceof Error && error.name === 'AbortError') {
-        throw new IcarusApiError('ICARUS gateway timed out');
-      }
-      throw new IcarusApiError(error instanceof Error ? error.message : 'Network error');
+      if (!value) throw new IcarusApiError('Gateway returned an empty refresh response');
+      await this.persist({
+        ...this.credentials,
+        deviceId: value.device_id,
+        refreshToken: value.refresh_token,
+        sessionToken: value.session_token,
+        sessionExpiresAt: value.session_expires_at,
+      });
+    })();
+    try {
+      await this.refreshPromise;
     } finally {
-      clearTimeout(timer);
+      this.refreshPromise = null;
     }
   }
 
-  health(): Promise<JsonObject> {
-    return this.get('/healthz');
+  private async ensureSession(): Promise<void> {
+    if (this.credentials.sessionExpiresAt > Date.now() / 1000 + 45) return;
+    await this.refreshSession();
   }
 
-  status(): Promise<PublicStatus> {
-    return this.get('/status/public');
+  private async get<T>(path: string, signal?: AbortSignal, allow204 = false): Promise<T | null> {
+    await this.ensureSession();
+    try {
+      return await requestJson<T>(this.baseUrl, path, {
+        token: this.credentials.sessionToken,
+        signal,
+        allow204,
+      });
+    } catch (error) {
+      if (error instanceof IcarusApiError && error.status === 401) {
+        await this.refreshSession();
+        return requestJson<T>(this.baseUrl, path, {
+          token: this.credentials.sessionToken,
+          signal,
+          allow204,
+        });
+      }
+      throw error;
+    }
   }
 
-  audit(): Promise<SystemAudit> {
-    return this.get('/api/system/audit');
+  snapshot(signal?: AbortSignal): Promise<GatewaySnapshot> {
+    return this.get<GatewaySnapshot>('/v1/snapshot', signal).then((value) => value as GatewaySnapshot);
   }
 
-  briefing(): Promise<JsonObject> {
-    return this.get('/api/briefing');
+  events(cursor: string, wait = 25, signal?: AbortSignal): Promise<GatewaySnapshot | null> {
+    const query = '?cursor=' + encodeURIComponent(cursor) + '&wait=' + Math.max(1, Math.min(30, wait));
+    return this.get<GatewaySnapshot>('/v1/events' + query, signal, true);
+  }
+
+  chart(symbol: string, n = 180): Promise<ChartPayload> {
+    return this.get<ChartPayload>('/v1/chart/' + encodeURIComponent(symbol) + '?n=' + n)
+      .then((value) => value as ChartPayload);
+  }
+
+  trades(symbol: string, limit = 50): Promise<TradeRow[]> {
+    return this.get<TradeRow[]>('/v1/trades/' + encodeURIComponent(symbol) + '?limit=' + limit)
+      .then((value) => value || []);
   }
 
   brain(): Promise<JsonObject> {
-    return this.get('/api/brain', true);
+    return this.get<JsonObject>('/v1/brain').then((value) => value || {});
   }
 
   apex(): Promise<JsonObject> {
-    return this.get('/api/apex', true);
+    return this.get<JsonObject>('/v1/apex').then((value) => value || {});
   }
 
   learningHealth(): Promise<JsonObject> {
-    return this.get('/api/learning/health', true);
+    return this.get<JsonObject>('/v1/learning/health').then((value) => value || {});
+  }
+
+  possibility(): Promise<JsonObject> {
+    return this.get<JsonObject>('/v1/possibility').then((value) => value || {});
   }
 
   engineControl(): Promise<JsonObject> {
-    return this.get('/api/engine-control', true);
+    return this.get<JsonObject>('/v1/engine-control').then((value) => value || {});
+  }
+
+  integrity(): Promise<JsonObject> {
+    return this.get<JsonObject>('/v1/integrity').then((value) => value || {});
+  }
+
+  async revoke(): Promise<void> {
+    await this.ensureSession();
+    await requestJson<JsonObject>(this.baseUrl, '/v1/revoke', {
+      method: 'POST',
+      body: {},
+      token: this.credentials.sessionToken,
+    });
   }
 }
