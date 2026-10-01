@@ -74,6 +74,7 @@ from .code_provenance import local_code_provenance
 from .parallax import ParallaxStore
 from .dreamstate import DreamstateLab
 from .possibility import PossibilityEngine
+from .performance_proof import PerformanceProofStore
 from .autopilot import TacticalAutopilot
 
 
@@ -133,6 +134,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     brain_research_sync = BrainResearchSync(port.base_dir)
     evolution_remote_sync = EvolutionRemoteSync(port.base_dir)
     possibility = PossibilityEngine(port)
+    performance_proof = PerformanceProofStore(port.base_dir)
     autopilot = TacticalAutopilot(port)
     parallax = ParallaxStore(port.base_dir)
     dreamstate = DreamstateLab(port.base_dir, parallax=parallax)
@@ -260,6 +262,13 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 except Exception as ex:
                     port.journal.log("WARN", f"possibility snapshot: {type(ex).__name__}: {ex}")
                     return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/api/performance-proof":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                try:
+                    return self._json(200, performance_proof.snapshot())
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
             if p.path == "/api/brain":
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
@@ -279,6 +288,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     integrity=integrity_snapshot(port.base_dir),
                     remote_sync=brain_remote_sync.status(),
                     research_sync=brain_research_sync.status(),
+                    proof_status=performance_proof.snapshot(),
                 ))
             if p.path == "/api/input-meta":
                 return self._json(200, meta)
@@ -475,7 +485,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._json(413, {"detail": "body too large"})
             raw = self.rfile.read(n) if n else b""
             try:
-                body = strict_json(raw) if p.path.startswith(("/admin/research/", "/admin/integrity/", "/admin/parallax/", "/admin/dreamstate/", "/admin/possibility/", "/admin/autopilot/")) else (json.loads(raw, parse_constant=_no_json_constants) if raw else {})
+                body = strict_json(raw) if p.path.startswith(("/admin/research/", "/admin/integrity/", "/admin/parallax/", "/admin/dreamstate/", "/admin/possibility/", "/admin/autopilot/", "/admin/performance-proof/")) else (json.loads(raw, parse_constant=_no_json_constants) if raw else {})
             except ValueError as ex:
                 return self._json(400, {"detail": f"bad JSON body: {ex}"})
             if not isinstance(body, dict):
@@ -506,6 +516,21 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             if p.path == "/admin/brain/event":
                 try:
                     return self._json(200, record_brain_event(port.base_dir, body))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+            if p.path == "/admin/performance-proof/forecast":
+                try:
+                    return self._json(200, performance_proof.register_forecast(body))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+            if p.path == "/admin/performance-proof/outcome":
+                try:
+                    return self._json(200, performance_proof.record_outcome(body))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+            if p.path == "/admin/performance-proof/replay":
+                try:
+                    return self._json(200, performance_proof.record_replay(body))
                 except (ValueError, TypeError) as ex:
                     return self._json(400, {"detail": str(ex)})
             if p.path == "/admin/autopilot/config":
@@ -828,6 +853,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     srv.brain_research_sync = brain_research_sync
     srv.evolution_remote_sync = evolution_remote_sync
     srv.possibility = possibility
+    srv.performance_proof = performance_proof
     srv.autopilot = autopilot
     srv.daemon_threads = True
     if not start:
