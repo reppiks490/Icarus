@@ -47,6 +47,7 @@
       else if(kv[0]==='nemesis') key='survival '+pct(row.survival_score)+(row.edge_half_life_seconds!=null?' · half-life '+num(row.edge_half_life_seconds,1)+'s':' · half-life unmeasured');
       else if(kv[0]==='ex_nihilo') key='surprise '+pct(row.ontology_surprise);
       else if(kv[0]==='echo') key=(row.lineage_verified===false?'lineage UNVERIFIED · ':'')+'echo risk '+pct(row.echo_risk)+' · independent support '+pct(row.effective_independent_support)+(row.consensus_illusion_candidate?' · ILLUSION CANDIDATE':'');
+      else if(kv[0]==='veritas') key='mechanism '+pct(row.mechanism_fidelity)+' · mismatch '+pct(row.mechanism_mismatch)+(row.right_for_wrong_reason_candidate?' · RIGHT / WRONG REASON':'');
       else if(kv[0]==='archon') key='conflict '+pct(row.contradiction)+' · echo '+pct(row.echo_risk);
       else if(kv[0]==='socrates') key='priority '+pct(row.question_priority)+' · '+h((row.question_queue||[]).length)+' questions · '+h((row.hypothesis_queue||[]).length)+' hypotheses';
       else if(kv[0]==='mint') key=row.best_candidate?('best '+h(row.best_candidate.name)+' · stress net '+num(row.best_candidate.stress_expected_net,2)):'no positive candidate';
@@ -83,6 +84,7 @@
         '<div class="pan-field"><div class="k">Novelty</div><b>'+pct(field.novelty)+'</b></div>'+
         '<div class="pan-field"><div class="k">Uncertainty</div><b>'+pct(field.uncertainty)+'</b></div>'+
         '<div class="pan-field"><div class="k">Echo risk</div><b>'+pct(field.echo_risk)+'</b></div>'+
+        '<div class="pan-field"><div class="k">Mechanism mismatch</div><b>'+pct(field.mechanism_mismatch)+'</b></div>'+
         '<div class="pan-field"><div class="k">APEX lineage</div><b>'+h(apexLineage.status||'UNAVAILABLE')+'</b><div class="small muted">'+h(apexLineage.lineage_owner||'no verified root map')+'</div></div>'+
         '<div class="pan-field"><div class="k">Risk</div><b>'+pct(field.risk)+'</b></div>'+
       '</div>'+
@@ -103,8 +105,8 @@
       '<div class="small muted" style="margin-bottom:8px">submitted '+h(deliberation.submitted_claims||0)+' · ready '+h(deliberation.ready_for_deliberation?'YES':'NO')+' · disagreement '+pct(deliberation.disagreement_index)+' · forced consensus OFF</div>'+
       '<div class="scroll"><table><thead><tr><th>Independent role</th><th>Direction</th><th>Confidence</th><th>Thesis</th><th>Falsifier</th></tr></thead><tbody>'+(agentClaims||'<tr><td colspan="5" class="empty">No independent AETHER claims committed yet.</td></tr>')+'</tbody></table></div>'+
       '<h3 class="small" style="margin:16px 0 8px">AETHER alpha food web</h3>'+
-      '<div class="scroll"><table><thead><tr><th>Species</th><th>Kind</th><th>Stage</th><th>Fitness</th><th>Evidence</th><th>Alpha mass</th></tr></thead><tbody>'+
-      (alphaWeb.map(function(x){return '<tr><td class="tnum">'+h(x.species_id||'')+'</td><td>'+h(x.kind||'')+'</td><td>'+chip(x.stage||'')+'</td><td class="tnum">'+num(x.fitness_credit,3)+'</td><td class="tnum">'+h(x.evidence_count||0)+'</td><td class="tnum">'+num(x.alpha_mass,3)+'</td></tr>';}).join('')||'<tr><td colspan="6" class="empty">No species has accumulated positive observed shadow fitness yet.</td></tr>')+
+      '<div class="scroll"><table><thead><tr><th>Species</th><th>Kind</th><th>Stage</th><th>Economic fitness</th><th>Epistemic fitness</th><th>Mechanism evidence</th><th>Alpha mass</th></tr></thead><tbody>'+
+      (alphaWeb.map(function(x){return '<tr><td class="tnum">'+h(x.species_id||'')+'</td><td>'+h(x.kind||'')+'</td><td>'+chip(x.stage||'')+'</td><td class="tnum">'+num(x.fitness_credit,3)+'</td><td class="tnum">'+num(x.epistemic_fitness_credit,3)+'</td><td class="tnum">'+h(x.mechanism_evidence_count||0)+'</td><td class="tnum">'+num(x.alpha_mass,3)+'</td></tr>';}).join('')||'<tr><td colspan="7" class="empty">No species has accumulated positive observed shadow fitness yet.</td></tr>')+
       '</tbody></table></div>'+
       '<h3 class="small" style="margin:16px 0 8px">Ecology interactions</h3>'+
       '<div class="scroll"><table><thead><tr><th>Type</th><th>Participants</th><th>Basis</th></tr></thead><tbody>'+

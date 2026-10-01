@@ -25,6 +25,7 @@ _OPTIONAL_ROLES = (
     "information_gain",
     "ontology_scout",
     "redundancy_hunter",
+    "mechanism_auditor",
 )
 _ROLE_PARTITIONS = {
     "falsifier": "adversarial",
@@ -39,6 +40,7 @@ _ROLE_PARTITIONS = {
     "information_gain": "epistemic",
     "ontology_scout": "novelty",
     "redundancy_hunter": "ablation",
+    "mechanism_auditor": "mechanism_validation",
 }
 
 class AetherSwarm:
@@ -65,6 +67,10 @@ class AetherSwarm:
         causal = unit(faculties.get("nullspace", {}).get("debt_normalized"), "nullspace.debt_normalized")
         uncertainty = unit(faculties.get("godel", {}).get("ambiguity"), "godel.ambiguity", 1.0)
         echo_risk = unit(faculties.get("echo", {}).get("echo_risk"), "echo.echo_risk")
+        mechanism_mismatch = unit(
+            faculties.get("veritas", {}).get("mechanism_mismatch"),
+            "veritas.mechanism_mismatch",
+        )
         risk = unit(signals.get("risk"), "risk")
         data_quality = unit(signals.get("data_quality"), "data_quality", 0.5)
         raw_energy = (
@@ -74,7 +80,7 @@ class AetherSwarm:
             + 0.20 * causal
             + 0.17 * uncertainty
         )
-        raw_energy = min(1.0, raw_energy + 0.12 * echo_risk)
+        raw_energy = min(1.0, raw_energy + 0.12 * echo_risk + 0.10 * mechanism_mismatch)
         energy = max(0.0, min(1.0, raw_energy * (1.0 - 0.45 * risk) * (0.50 + 0.50 * data_quality)))
         active = energy >= self.threshold and data_quality >= 0.35
         agents = []
@@ -83,9 +89,14 @@ class AetherSwarm:
             ttl = max(1, min(180, int(max(1, horizon_ms) / 1000) * 2))
             roles = list(_MANDATORY_INDEPENDENT_ROLES)
             optional_roles = list(_OPTIONAL_ROLES)
-            if echo_risk >= 0.35 and "redundancy_hunter" in optional_roles:
-                optional_roles.remove("redundancy_hunter")
-                optional_roles.insert(0, "redundancy_hunter")
+            priority_roles = []
+            if mechanism_mismatch >= 0.35:
+                priority_roles.append("mechanism_auditor")
+            if echo_risk >= 0.35:
+                priority_roles.append("redundancy_hunter")
+            optional_roles = priority_roles + [
+                role for role in optional_roles if role not in priority_roles
+            ]
             roles.extend(optional_roles[: max(0, count - len(roles))])
             for role in roles[:count]:
                 aid = "aeth-" + digest(observation_id, role)[:18]
@@ -123,6 +134,7 @@ class AetherSwarm:
                 "causal_debt": causal,
                 "uncertainty": uncertainty,
                 "echo_risk": echo_risk,
+                "mechanism_mismatch": mechanism_mismatch,
                 "risk": risk,
                 "data_quality": data_quality,
                 "energy": energy,
@@ -139,6 +151,7 @@ class AetherSwarm:
                 "mandatory_roles": list(_MANDATORY_INDEPENDENT_ROLES) if active else [],
                 "forced_consensus": False,
                 "shared_evidence_consensus_is_discounted": True,
+                "right_for_wrong_reason_is_audited": True,
             },
             "truth_contract": {
                 "agents_are_ephemeral_research_workers": True,

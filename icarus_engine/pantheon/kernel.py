@@ -88,6 +88,7 @@ class PantheonKernel:
                     observed_at TEXT NOT NULL,
                     utility REAL NOT NULL,
                     confidence REAL NOT NULL,
+                    mechanism_fidelity REAL,
                     evidence_json TEXT NOT NULL,
                     created_at TEXT NOT NULL
                 );
@@ -101,6 +102,8 @@ class PantheonKernel:
                     stage TEXT NOT NULL,
                     fitness_credit REAL NOT NULL,
                     evidence_count INTEGER NOT NULL,
+                    epistemic_fitness_credit REAL NOT NULL DEFAULT 0.0,
+                    mechanism_evidence_count INTEGER NOT NULL DEFAULT 0,
                     payload_json TEXT NOT NULL,
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL
@@ -125,6 +128,16 @@ class PantheonKernel:
                 CREATE INDEX IF NOT EXISTS idx_pantheon_cells_energy ON sentinel_cells(last_energy, updated_at);
                 """
             )
+            outcome_columns = {row["name"] for row in con.execute("PRAGMA table_info(claim_outcomes)").fetchall()}
+            if "mechanism_fidelity" not in outcome_columns:
+                con.execute("ALTER TABLE claim_outcomes ADD COLUMN mechanism_fidelity REAL")
+
+            species_columns = {row["name"] for row in con.execute("PRAGMA table_info(species)").fetchall()}
+            if "epistemic_fitness_credit" not in species_columns:
+                con.execute("ALTER TABLE species ADD COLUMN epistemic_fitness_credit REAL NOT NULL DEFAULT 0.0")
+            if "mechanism_evidence_count" not in species_columns:
+                con.execute("ALTER TABLE species ADD COLUMN mechanism_evidence_count INTEGER NOT NULL DEFAULT 0")
+
             columns = {row["name"] for row in con.execute("PRAGMA table_info(sentinel_cells)").fetchall()}
             if "last_observed_at" not in columns:
                 con.execute("ALTER TABLE sentinel_cells ADD COLUMN last_observed_at TEXT NOT NULL DEFAULT ''")
@@ -287,6 +300,7 @@ class PantheonKernel:
                 "heuristics_are_not_calibrated_probabilities": True,
                 "engine_disagreement_is_preserved": True,
                 "shared_evidence_is_not_counted_as_independent_confirmation": True,
+                "profitable_outcomes_do_not_prove_the_predicted_mechanism": True,
                 "missing_inputs_produce_abstention": True,
                 "new_concepts_begin_as_hypotheses": True,
                 "execution_requires_separate_hard_risk_kernel": True,
@@ -533,6 +547,9 @@ class PantheonKernel:
         if "confidence" not in body:
             raise ValueError("confidence is required")
         confidence = unit(body.get("confidence"), "confidence")
+        mechanism_fidelity = None
+        if "mechanism_fidelity" in body and body.get("mechanism_fidelity") is not None:
+            mechanism_fidelity = unit(body.get("mechanism_fidelity"), "mechanism_fidelity")
         source_observation_id = body.get("_source_observation_id")
         if source_observation_id is not None:
             source_observation_id = text(source_observation_id, "_source_observation_id", 96)
@@ -549,6 +566,7 @@ class PantheonKernel:
                 "observed_at": observed_at,
                 "utility": utility,
                 "confidence": confidence,
+                "mechanism_fidelity": mechanism_fidelity,
                 "evidence": evidence,
             },
             "claim outcome",
@@ -599,6 +617,14 @@ class PantheonKernel:
             if prior_time is not None and (
                 abs(float(prior_time["utility"]) - utility) > 1e-12
                 or abs(float(prior_time["confidence"]) - confidence) > 1e-12
+                or (
+                    (prior_time["mechanism_fidelity"] is None) != (mechanism_fidelity is None)
+                )
+                or (
+                    mechanism_fidelity is not None
+                    and prior_time["mechanism_fidelity"] is not None
+                    and abs(float(prior_time["mechanism_fidelity"]) - mechanism_fidelity) > 1e-12
+                )
                 or prior_time["evidence_json"] != evidence_json
             ):
                 raise ValueError("claim outcome is immutable for claim_id + observed_at")
@@ -606,13 +632,22 @@ class PantheonKernel:
             if prior is None and prior_time is None:
                 con.execute(
                     """INSERT INTO claim_outcomes(
-                        outcome_id,claim_id,observed_at,utility,confidence,evidence_json,created_at
-                    ) VALUES(?,?,?,?,?,?,?)""",
-                    (outcome_id, claim_id, observed_at, utility, confidence, evidence_json, now),
+                        outcome_id,claim_id,observed_at,utility,confidence,mechanism_fidelity,evidence_json,created_at
+                    ) VALUES(?,?,?,?,?,?,?,?)""",
+                    (
+                        outcome_id,
+                        claim_id,
+                        observed_at,
+                        utility,
+                        confidence,
+                        mechanism_fidelity,
+                        evidence_json,
+                        now,
+                    ),
                 )
 
             outcomes = con.execute(
-                "SELECT utility,confidence FROM claim_outcomes WHERE claim_id=? ORDER BY observed_at",
+                "SELECT utility,confidence,mechanism_fidelity FROM claim_outcomes WHERE claim_id=? ORDER BY observed_at",
                 (claim_id,),
             ).fetchall()
             positive_weight = sum(float(row["confidence"]) for row in outcomes)
@@ -622,6 +657,26 @@ class PantheonKernel:
                 fitness = 0.0
             n = len(outcomes)
             effective_n = sum(1 for row in outcomes if float(row["confidence"]) > 0.0)
+            mechanism_rows = [
+                row for row in outcomes
+                if float(row["confidence"]) > 0.0 and row["mechanism_fidelity"] is not None
+            ]
+            mechanism_weight = sum(float(row["confidence"]) for row in mechanism_rows)
+            if mechanism_weight > 1e-12:
+                epistemic_fitness = sum(
+                    float(row["utility"])
+                    * float(row["confidence"])
+                    * float(row["mechanism_fidelity"])
+                    for row in mechanism_rows
+                ) / mechanism_weight
+            else:
+                epistemic_fitness = 0.0
+            mechanism_n = len(mechanism_rows)
+            right_for_wrong_reason_count = sum(
+                1 for row in mechanism_rows
+                if float(row["utility"]) >= 0.20 and float(row["mechanism_fidelity"]) < 0.50
+            )
+
             if effective_n >= 3 and fitness <= -0.20:
                 stage = "retired"
             elif effective_n >= 3 and fitness >= 0.20:
@@ -638,8 +693,19 @@ class PantheonKernel:
             child_id = None
             if species is not None:
                 con.execute(
-                    "UPDATE species SET stage=?,fitness_credit=?,evidence_count=?,updated_at=? WHERE species_id=?",
-                    (stage, fitness, effective_n, now, species["species_id"]),
+                    """UPDATE species
+                       SET stage=?,fitness_credit=?,evidence_count=?,
+                           epistemic_fitness_credit=?,mechanism_evidence_count=?,updated_at=?
+                       WHERE species_id=?""",
+                    (
+                        stage,
+                        fitness,
+                        effective_n,
+                        epistemic_fitness,
+                        mechanism_n,
+                        now,
+                        species["species_id"],
+                    ),
                 )
                 child = con.execute(
                     "SELECT species_id FROM species WHERE parent_species_id=? ORDER BY generation LIMIT 1",
@@ -649,6 +715,7 @@ class PantheonKernel:
                     child is None
                     and stage == "surviving_shadow"
                     and fitness >= 0.50
+                    and (mechanism_n == 0 or epistemic_fitness >= 0.20)
                     and int(species["generation"]) < 3
                 ):
                     child_id = "species-" + digest(species["species_id"], "mutant", str(effective_n))[:18]
@@ -659,6 +726,8 @@ class PantheonKernel:
                         "mutation_trigger": {
                             "fitness_credit": fitness,
                             "evidence_count": effective_n,
+                            "epistemic_fitness_credit": epistemic_fitness,
+                            "mechanism_evidence_count": mechanism_n,
                             "observed_at": observed_at,
                         },
                         "stage": "research_variant",
@@ -704,8 +773,12 @@ class PantheonKernel:
             "observed_at": observed_at,
             "utility": utility,
             "confidence": confidence,
+            "mechanism_fidelity": mechanism_fidelity,
             "fitness_credit": fitness,
+            "epistemic_fitness_credit": epistemic_fitness,
             "evidence_count": effective_n,
+            "mechanism_evidence_count": mechanism_n,
+            "right_for_wrong_reason_count": right_for_wrong_reason_count,
             "outcome_count": n,
             "species_stage": stage,
             "offspring_species_id": child_id,
@@ -724,6 +797,9 @@ class PantheonKernel:
         for row in rows:
             payload = json.loads(row["payload_json"])
             alpha_mass = max(0.0, float(row["fitness_credit"])) * (1.0 + math.log1p(int(row["evidence_count"])))
+            epistemic_mass = max(0.0, float(row["epistemic_fitness_credit"])) * (
+                1.0 + math.log1p(int(row["mechanism_evidence_count"]))
+            )
             species.append(
                 {
                     "species_id": row["species_id"],
@@ -735,7 +811,14 @@ class PantheonKernel:
                     "stage": row["stage"],
                     "fitness_credit": row["fitness_credit"],
                     "evidence_count": row["evidence_count"],
+                    "epistemic_fitness_credit": row["epistemic_fitness_credit"],
+                    "mechanism_evidence_count": row["mechanism_evidence_count"],
+                    "mechanism_verified": (
+                        int(row["mechanism_evidence_count"]) >= 3
+                        and float(row["epistemic_fitness_credit"]) >= 0.20
+                    ),
                     "alpha_mass": alpha_mass,
+                    "epistemic_mass": epistemic_mass,
                     "payload": payload,
                     "updated_at": row["updated_at"],
                 }
@@ -810,6 +893,13 @@ class PantheonKernel:
             if row["kind"] == "ontology_candidate"
             and row["stage"] == "surviving_shadow"
             and row["evidence_count"] >= 3
+            and (
+                row["mechanism_evidence_count"] == 0
+                or (
+                    row["mechanism_evidence_count"] >= 3
+                    and row["epistemic_fitness_credit"] >= 0.20
+                )
+            )
         ][:12]
         extinct = [row for row in species if row["stage"] == "retired"]
 
@@ -826,6 +916,8 @@ class PantheonKernel:
                 "extinction_requires_repeated_negative_observed_fitness": True,
                 "predation_and_symbiosis_are_research_relationships_only": True,
                 "cognitive_genesis_never_auto_creates_production_code": True,
+                "economic_and_epistemic_fitness_are_separate": True,
+                "explicit_mechanism_evidence_can_block_lucky_speciation": True,
             },
             "authority": authority_block(),
         }
@@ -909,6 +1001,7 @@ class PantheonKernel:
             "MINT": {"mode": "pantheon faculty"},
             "NULLSPACE": {"mode": "pantheon faculty"},
             "ECHO": {"mode": "pantheon faculty; evidence-ancestry de-duplication"},
+            "VERITAS": {"mode": "pantheon faculty; causal-mechanism fidelity adjudication"},
             "ARCHON": {"mode": "pantheon faculty"},
             "AETHER": {"mode": "ephemeral swarm ecology"},
         }

@@ -411,3 +411,35 @@ consensus. The server-owned APEX ancestry bridge can restore non-zero
 independence only by supplying verified roots. This is intentionally
 conservative and affects research attention only; it does not grant or modify
 execution authority.
+
+
+## VERITAS — right-for-wrong-reason adjudication
+
+A profitable outcome is not automatically evidence that ICARUS understood why
+the move happened. PANTHEON now includes **VERITAS**, a causal-signature
+adjudicator that compares an explicitly falsifiable expected mechanism path
+against observed mechanism evidence.
+
+Inputs are bounded `expected_causal_signatures` and
+`observed_causal_signatures`, with optional per-signature weights and an
+optional realized utility. VERITAS reports signature coverage, conditional
+similarity, sign agreement, mechanism fidelity, mechanism mismatch, unexpected
+or missing signatures, and explicit classifications such as
+`right_for_wrong_reason_candidate` and
+`mechanism_supported_outcome_failed`.
+
+AETHER treats high mechanism mismatch as a research problem and prioritizes a
+`mechanism_auditor` partition. SOCRATES turns the mismatch into a falsifiable
+question rather than allowing a profitable direction to close the inquiry.
+
+Durable claim outcomes may additionally carry bounded
+`mechanism_fidelity`. Economic fitness and epistemic fitness are stored
+separately. Historical outcomes without mechanism evidence retain their legacy
+behavior. When explicit mechanism evidence exists and indicates a profitable
+result arrived through the wrong mechanism, low epistemic credit can block
+shadow speciation and cognitive-genesis recommendations even while economic
+fitness remains positive.
+
+VERITAS is research-only. Its scores are diagnostics, not calibrated
+probabilities, and it cannot place orders, size positions, bypass the Risk
+Kernel, or promote itself to production.

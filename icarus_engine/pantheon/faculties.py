@@ -533,6 +533,148 @@ def echo(signals: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def veritas(signals: Mapping[str, Any]) -> dict[str, Any]:
+    """Separate directional success from causal-mechanism fidelity."""
+    out = _base("VERITAS")
+    expected_raw = signals.get("expected_causal_signatures")
+    observed_raw = signals.get("observed_causal_signatures")
+    if not isinstance(expected_raw, Mapping) or not expected_raw:
+        return {
+            **out,
+            "status": "abstain",
+            "reason": "expected_causal_signatures required",
+            "mechanism_fidelity": 0.0,
+            "mechanism_mismatch": 0.0,
+            "right_for_wrong_reason_candidate": False,
+        }
+    if not isinstance(observed_raw, Mapping) or not observed_raw:
+        return {
+            **out,
+            "status": "abstain",
+            "reason": "observed_causal_signatures required",
+            "mechanism_fidelity": 0.0,
+            "mechanism_mismatch": 0.0,
+            "right_for_wrong_reason_candidate": False,
+        }
+    if len(expected_raw) > 32 or len(observed_raw) > 64:
+        raise ValueError("causal signature maps exceed bounded size")
+
+    weights_raw = signals.get("causal_signature_weights", {})
+    if weights_raw is None:
+        weights_raw = {}
+    if not isinstance(weights_raw, Mapping):
+        raise ValueError("causal_signature_weights must be an object")
+    if any(not isinstance(key, str) for key in weights_raw):
+        raise ValueError("causal_signature_weights keys must be strings")
+
+    expected: dict[str, float] = {}
+    observed: dict[str, float] = {}
+    weights: dict[str, float] = {}
+    for raw_key, value in expected_raw.items():
+        if not isinstance(raw_key, str):
+            raise ValueError("expected_causal_signatures keys must be strings")
+        key = raw_key.strip()
+        if not key or len(key) > 96:
+            raise ValueError("expected_causal_signatures keys must be 1-96 characters")
+        if key in expected:
+            raise ValueError("expected_causal_signatures contains duplicate normalized keys")
+        expected[key] = signed_unit(value, f"expected_causal_signatures.{key}")
+        weight_value = weights_raw.get(raw_key, weights_raw.get(key))
+        weights[key] = unit(weight_value, f"causal_signature_weights.{key}", 1.0)
+
+    unknown_weights = {key.strip() for key in weights_raw} - set(expected)
+    if unknown_weights:
+        raise ValueError("causal_signature_weights contains unknown signature keys")
+
+    for raw_key, value in observed_raw.items():
+        if not isinstance(raw_key, str):
+            raise ValueError("observed_causal_signatures keys must be strings")
+        key = raw_key.strip()
+        if not key or len(key) > 96:
+            raise ValueError("observed_causal_signatures keys must be 1-96 characters")
+        if key in observed:
+            raise ValueError("observed_causal_signatures contains duplicate normalized keys")
+        observed[key] = signed_unit(value, f"observed_causal_signatures.{key}")
+
+    total_weight = sum(weights.values())
+    if total_weight <= 1e-12:
+        return {
+            **out,
+            "status": "abstain",
+            "reason": "causal signature weights carry zero information",
+            "mechanism_fidelity": 0.0,
+            "mechanism_mismatch": 0.0,
+            "right_for_wrong_reason_candidate": False,
+        }
+
+    matched = sorted(set(expected) & set(observed))
+    matched_weight = sum(weights[key] for key in matched)
+    coverage = matched_weight / total_weight
+    if matched_weight > 1e-12:
+        weighted_distance = sum(
+            weights[key] * (abs(expected[key] - observed[key]) / 2.0)
+            for key in matched
+        ) / matched_weight
+        conditional_similarity = max(0.0, min(1.0, 1.0 - weighted_distance))
+
+        def _sign_bucket(value: float) -> int:
+            return 1 if value >= 0.10 else -1 if value <= -0.10 else 0
+
+        sign_agreement = sum(
+            weights[key]
+            for key in matched
+            if _sign_bucket(expected[key]) == _sign_bucket(observed[key])
+        ) / matched_weight
+    else:
+        conditional_similarity = 0.0
+        sign_agreement = 0.0
+
+    fidelity = max(0.0, min(1.0, coverage * conditional_similarity))
+    mismatch = 1.0 - fidelity
+    realized = None
+    if "realized_utility" in signals and signals.get("realized_utility") is not None:
+        realized = signed_unit(signals.get("realized_utility"), "realized_utility")
+
+    if realized is None:
+        adjudication = "mechanism_only"
+    elif realized >= 0.20 and fidelity >= 0.75:
+        adjudication = "outcome_and_mechanism_aligned"
+    elif realized >= 0.20 and fidelity < 0.50:
+        adjudication = "right_for_wrong_reason_candidate"
+    elif realized <= -0.20 and fidelity >= 0.75:
+        adjudication = "mechanism_supported_outcome_failed"
+    elif realized <= -0.20 and fidelity < 0.50:
+        adjudication = "mechanism_and_outcome_failed"
+    else:
+        adjudication = "mixed"
+
+    right_wrong = realized is not None and realized >= 0.20 and fidelity < 0.50
+    return {
+        **out,
+        "mechanism_fidelity": fidelity,
+        "mechanism_mismatch": mismatch,
+        "signature_coverage": coverage,
+        "conditional_similarity": conditional_similarity,
+        "sign_agreement": sign_agreement,
+        "matched_signatures": matched,
+        "missing_expected_signatures": sorted(set(expected) - set(observed)),
+        "unexpected_observed_signatures": sorted(set(observed) - set(expected)),
+        "realized_utility": realized,
+        "adjudication": adjudication,
+        "right_for_wrong_reason_candidate": right_wrong,
+        "mechanism_supported_outcome_failed": (
+            realized is not None and realized <= -0.20 and fidelity >= 0.75
+        ),
+        "lucky_outcome_risk": (
+            max(realized, 0.0) * mismatch if realized is not None else None
+        ),
+        "epistemic_credit": (
+            realized * fidelity if realized is not None else None
+        ),
+        "semantics": "causal-signature fidelity diagnostic; profitable direction is not proof of a correct mechanism and no output authorizes execution",
+    }
+
+
 def archon(
     signals: Mapping[str, Any],
     godel_state: Mapping[str, Any],
@@ -603,12 +745,14 @@ def socrates(states: Mapping[str, Mapping[str, Any]]) -> dict[str, Any]:
     novelty = unit(states.get("ex_nihilo", {}).get("ontology_surprise"), "ex_nihilo.ontology_surprise")
     contradiction = unit(states.get("archon", {}).get("contradiction"), "archon.contradiction")
     echo_risk = unit(states.get("echo", {}).get("echo_risk"), "echo.echo_risk")
+    mechanism_mismatch = unit(states.get("veritas", {}).get("mechanism_mismatch"), "veritas.mechanism_mismatch")
     options = [
         (uncertainty, "Which observation most efficiently separates the competing market worlds?"),
         (debt, "Where did the missing reaction route: delay, absorption, diversion, or causal-model failure?"),
         (novelty, "Does the current residual require a new concept, or can an existing concept explain it out of sample?"),
         (contradiction, "Which engine disagreement is mechanism-specific rather than mere noise or horizon mismatch?"),
         (echo_risk, "Which agreeing engines only look independent because they inherit the same upstream evidence?"),
+        (mechanism_mismatch, "Was the outcome produced by the predicted mechanism, or was the system merely directionally lucky?"),
     ]
     ranked = sorted(options, key=lambda x: x[0], reverse=True)
     hypothesis_templates = [
@@ -617,6 +761,7 @@ def socrates(states: Mapping[str, Mapping[str, Any]]) -> dict[str, Any]:
         (novelty, "Current residual structure is not represented by the existing ontology.", "Run EX NIHILO ablation/OOS tests before admitting a new concept."),
         (contradiction, "Engine disagreement reflects a mechanism or horizon mismatch rather than noise.", "Partition ARCHON conflict by horizon/mechanism and test each branch independently."),
         (echo_risk, "Apparent multi-engine consensus is inflated by shared evidence ancestry.", "Ablate shared lineage sources and require the directional thesis to survive on genuinely independent evidence."),
+        (mechanism_mismatch, "Observed causal signatures do not sufficiently match the mechanism that justified the thesis.", "Replay the thesis against the expected signature path and reject causal credit if the mismatch survives independent evidence."),
     ]
     hypotheses = [
         {"priority": score, "hypothesis": hypothesis, "falsifier": falsifier}
@@ -645,6 +790,7 @@ def evaluate_faculties(signals: Mapping[str, Any], observation_id: str) -> dict[
     xn = ex_nihilo(signals, observation_id)
     mt = mint(signals)
     ec = echo(signals)
+    vt = veritas(signals)
     ar = archon(signals, gd, ec)
     states = {
         "nullspace": ns,
@@ -654,6 +800,7 @@ def evaluate_faculties(signals: Mapping[str, Any], observation_id: str) -> dict[
         "ex_nihilo": xn,
         "mint": mt,
         "echo": ec,
+        "veritas": vt,
         "archon": ar,
     }
     states["socrates"] = socrates(states)

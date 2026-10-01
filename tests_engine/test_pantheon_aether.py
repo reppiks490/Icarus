@@ -71,7 +71,7 @@ def test_pantheon_runs_independent_faculties_and_never_grants_execution(tmp_path
     obs = kernel.record_observation(_payload())
     analysis = obs["analysis"]
     assert set(analysis["faculties"]) == {
-        "nullspace", "godel", "ananke", "nemesis", "ex_nihilo", "mint", "echo", "archon", "socrates"
+        "nullspace", "godel", "ananke", "nemesis", "ex_nihilo", "mint", "echo", "veritas", "archon", "socrates"
     }
     assert analysis["faculties"]["nullspace"]["routing_state"] == "absorbed"
     assert analysis["faculties"]["nullspace"]["debt_state"] == "absorbed"
@@ -98,6 +98,89 @@ def test_pantheon_runs_independent_faculties_and_never_grants_execution(tmp_path
     assert analysis["authority"]["execution_authorized"] is False
     assert analysis["authority"]["production_decision_authorized"] is False
     assert all(not lease["execution_authorized"] for lease in analysis["faculties"]["archon"]["leases"])
+
+
+def test_veritas_detects_right_for_wrong_reason_and_spawns_mechanism_auditor(tmp_path):
+    payload = _payload(observation_id="pan-veritas-lucky")
+    payload["signals"] = dict(payload["signals"])
+    payload["signals"].update({
+        "expected_causal_signatures": {
+            "queue_replenishment": 0.90,
+            "basis_lead": 0.80,
+            "dealer_gamma": -0.70,
+        },
+        "observed_causal_signatures": {
+            "queue_replenishment": -0.80,
+            "basis_lead": -0.70,
+            "dealer_gamma": 0.60,
+        },
+        "causal_signature_weights": {
+            "queue_replenishment": 1.0,
+            "basis_lead": 0.8,
+            "dealer_gamma": 0.6,
+        },
+        "realized_utility": 0.80,
+    })
+    obs = PantheonKernel(
+        tmp_path,
+        swarm=AetherSwarm(threshold=0.0, max_agents=9),
+    ).record_observation(payload)
+    state = obs["analysis"]["faculties"]["veritas"]
+    swarm = obs["analysis"]["aether"]
+    assert state["status"] == "active"
+    assert state["signature_coverage"] == pytest.approx(1.0)
+    assert state["mechanism_fidelity"] < 0.20
+    assert state["mechanism_mismatch"] > 0.80
+    assert state["right_for_wrong_reason_candidate"] is True
+    assert state["adjudication"] == "right_for_wrong_reason_candidate"
+    assert state["lucky_outcome_risk"] > 0.60
+    assert swarm["field"]["mechanism_mismatch"] > 0.80
+    assert "mechanism_auditor" in {agent["role"] for agent in swarm["agents"]}
+    assert swarm["authority"]["execution_authorized"] is False
+
+
+def test_veritas_rewards_observed_mechanism_not_merely_direction(tmp_path):
+    payload = _payload(observation_id="pan-veritas-supported")
+    payload["signals"] = dict(payload["signals"])
+    payload["signals"].update({
+        "expected_causal_signatures": {
+            "queue_replenishment": 0.90,
+            "basis_lead": 0.80,
+            "dealer_gamma": -0.70,
+        },
+        "observed_causal_signatures": {
+            "queue_replenishment": 0.85,
+            "basis_lead": 0.75,
+            "dealer_gamma": -0.65,
+        },
+        "realized_utility": 0.70,
+    })
+    state = PantheonKernel(tmp_path).record_observation(payload)["analysis"]["faculties"]["veritas"]
+    assert state["signature_coverage"] == pytest.approx(1.0)
+    assert state["mechanism_fidelity"] > 0.95
+    assert state["right_for_wrong_reason_candidate"] is False
+    assert state["adjudication"] == "outcome_and_mechanism_aligned"
+    assert state["epistemic_credit"] > 0.65
+
+
+def test_veritas_abstains_before_observed_mechanism_exists(tmp_path):
+    payload = _payload(observation_id="pan-veritas-awaiting-observation")
+    payload["signals"] = dict(payload["signals"])
+    payload["signals"]["expected_causal_signatures"] = {"queue": 0.5}
+    payload["signals"]["observed_causal_signatures"] = {}
+    state = PantheonKernel(tmp_path).record_observation(payload)["analysis"]["faculties"]["veritas"]
+    assert state["status"] == "abstain"
+    assert state["mechanism_mismatch"] == 0.0
+
+
+def test_veritas_fails_closed_on_malformed_signature_contract(tmp_path):
+    payload = _payload(observation_id="pan-veritas-invalid")
+    payload["signals"] = dict(payload["signals"])
+    payload["signals"]["expected_causal_signatures"] = {"queue": 0.5}
+    payload["signals"]["observed_causal_signatures"] = {"queue": 0.4}
+    payload["signals"]["causal_signature_weights"] = {"unknown": 1.0}
+    with pytest.raises(ValueError, match="unknown signature keys"):
+        PantheonKernel(tmp_path).record_observation(payload)
 
 
 def test_echo_detects_consensus_illusion_and_archon_discounts_shared_evidence(tmp_path):
@@ -668,6 +751,88 @@ def _feedback_payload(observation_id: str, observed_at: str, claim_id: str, util
     }
 
 
+def test_mechanism_fidelity_is_separate_from_economic_fitness_and_blocks_lucky_speciation(tmp_path):
+    kernel = PantheonKernel(tmp_path)
+    first = kernel.record_observation(_payload(observation_id="pan-veritas-ecology-origin"))
+    claim = next(c for c in first["claims"] if c["kind"] == "ontology_candidate")
+    last = None
+    for i in range(1, 4):
+        last = kernel.record_claim_outcome({
+            "claim_id": claim["claim_id"],
+            "observed_at": f"2026-10-01T06:05:0{i}Z",
+            "utility": 0.80,
+            "confidence": 0.90,
+            "mechanism_fidelity": 0.10,
+            "evidence": [f"profitable-but-mechanism-missed:{i}"],
+        })
+    assert last["fitness_credit"] == pytest.approx(0.80)
+    assert last["epistemic_fitness_credit"] == pytest.approx(0.08)
+    assert last["mechanism_evidence_count"] == 3
+    assert last["right_for_wrong_reason_count"] == 3
+    assert last["species_stage"] == "surviving_shadow"
+    assert last["offspring_species_id"] is None
+    ecology = kernel.snapshot()["ecology"]
+    parent = next(
+        row for row in ecology["species"]
+        if row["origin_claim_id"] == claim["claim_id"] and row["generation"] == 0
+    )
+    assert parent["fitness_credit"] == pytest.approx(0.80)
+    assert parent["epistemic_fitness_credit"] == pytest.approx(0.08)
+    assert parent["mechanism_evidence_count"] == 3
+    assert parent["mechanism_verified"] is False
+    assert not any(row["parent_species_id"] == parent["species_id"] for row in ecology["species"])
+    assert not any(row["species_id"] == parent["species_id"] for row in ecology["cognitive_genesis_candidates"])
+
+
+def test_supported_mechanism_allows_normal_shadow_speciation(tmp_path):
+    kernel = PantheonKernel(tmp_path)
+    first = kernel.record_observation(_payload(observation_id="pan-veritas-supported-origin"))
+    claim = next(c for c in first["claims"] if c["kind"] == "ontology_candidate")
+    last = None
+    for i in range(1, 4):
+        last = kernel.record_claim_outcome({
+            "claim_id": claim["claim_id"],
+            "observed_at": f"2026-10-01T06:06:0{i}Z",
+            "utility": 0.80,
+            "confidence": 0.90,
+            "mechanism_fidelity": 0.90,
+            "evidence": [f"profitable-and-mechanism-supported:{i}"],
+        })
+    assert last["fitness_credit"] == pytest.approx(0.80)
+    assert last["epistemic_fitness_credit"] == pytest.approx(0.72)
+    assert last["mechanism_evidence_count"] == 3
+    assert last["offspring_species_id"] is not None
+    ecology = kernel.snapshot()["ecology"]
+    parent = next(
+        row for row in ecology["species"]
+        if row["origin_claim_id"] == claim["claim_id"] and row["generation"] == 0
+    )
+    assert parent["mechanism_verified"] is True
+    assert any(row["species_id"] == parent["species_id"] for row in ecology["cognitive_genesis_candidates"])
+
+
+def test_claim_outcome_mechanism_fidelity_is_immutable_and_bounded(tmp_path):
+    kernel = PantheonKernel(tmp_path)
+    first = kernel.record_observation(_payload(observation_id="pan-veritas-outcome-contract"))
+    claim = first["claims"][0]
+    base = {
+        "claim_id": claim["claim_id"],
+        "observed_at": "2026-10-01T06:07:00Z",
+        "utility": 0.50,
+        "confidence": 0.80,
+        "mechanism_fidelity": 0.70,
+        "evidence": ["mechanism-observed"],
+    }
+    kernel.record_claim_outcome(base)
+    with pytest.raises(ValueError, match="immutable"):
+        kernel.record_claim_outcome({**base, "mechanism_fidelity": 0.60})
+    bounded = dict(base)
+    bounded["observed_at"] = "2026-10-01T06:08:00Z"
+    bounded["mechanism_fidelity"] = 1.10
+    with pytest.raises(ValueError, match="between 0 and 1"):
+        kernel.record_claim_outcome(bounded)
+
+
 def test_aether_ecology_requires_observed_fitness_for_speciation_and_genesis(tmp_path):
     kernel = PantheonKernel(tmp_path)
     first = kernel.record_observation(_payload(observation_id="pan-origin"))
@@ -1011,6 +1176,12 @@ def test_ecology_upgrade_backfills_legacy_claims_and_sentinel_clock(tmp_path):
     state = upgraded.snapshot()
     assert any(row["origin_claim_id"] == durable_claim["claim_id"] for row in state["ecology"]["species"])
     assert state["sentinel_cells"][0]["last_observed_at"] == expected_time
+    with upgraded._connect() as con:
+        outcome_columns = {row["name"] for row in con.execute("PRAGMA table_info(claim_outcomes)").fetchall()}
+        species_columns = {row["name"] for row in con.execute("PRAGMA table_info(species)").fetchall()}
+    assert "mechanism_fidelity" in outcome_columns
+    assert "epistemic_fitness_credit" in species_columns
+    assert "mechanism_evidence_count" in species_columns
 
 
 def test_zero_confidence_outcomes_do_not_satisfy_fitness_evidence_thresholds(tmp_path):
