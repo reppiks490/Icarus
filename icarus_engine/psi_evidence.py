@@ -396,6 +396,7 @@ class PsiEvidenceLedger:
             "history": history,
             "total_history_count": total,
             "disagreement": self.disagreement(asset, as_of_ts=ts) if asset else {},
+            "integrity": self.integrity(),
             "execution_authorized": False,
             "production_decision_authorized": False,
         }
