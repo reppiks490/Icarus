@@ -1,0 +1,82 @@
+ICARUS UNIFIED CONTROL CYCLE — REPOSITORY SNAPSHOT
+Policy version: icarus-control-v1
+Handoff schema: icarus-pipeline-v1
+
+Run one complete ICARUS 5-stage control cycle sequentially inside a single execution so same-cycle policy, snapshot, evidence, claim, dependency, conflict, and integrity state remain in-memory.
+
+GLOBAL CONTROL CONTRACT
+- PIPELINE_POLICY_VERSION='icarus-control-v1'
+- HANDOFF_SCHEMA_VERSION='icarus-pipeline-v1'
+- CYCLE_ID=scheduled America/Chicago local hour in YYYYMMDD-HH
+- EXECUTION_INSTANCE_ID=CYCLE_ID+'-UNIFIED'
+- PIPELINE_POLICY_EPOCH=CYCLE_ID
+- execution_authorized=false
+- no synthetic bars as empirical evidence
+- no invented trainer slots/features
+- no Pulse rewrite
+- fail-closed qualification
+- deterministic canonical serialization/replay where applicable
+- tamper-evident provenance/audit
+- strict temporal integrity
+- uncertainty cannot increase authority
+- never fabricate plugin, worker, test, evidence, repository, persistence, lock, or execution activity
+
+SINGLE-FLIGHT / OVERLAP GUARD
+Before substantive work, determine whether an earlier unified execution is legitimately IN_PROGRESS using only actually available metadata or validated durable state. Record OVERLAP_STATUS={NO_OVERLAP|OVERLAP_DETECTED|UNVERIFIED|UNKNOWN}, PRIOR_ACTIVE_EXECUTION_INSTANCE_ID, and SINGLE_FLIGHT_EVIDENCE. If a prior same/newer authoritative unified execution is demonstrably running, suppress the duplicate cycle. Never infer a distributed lock from stale state or claim a lock unless actually acquired.
+
+Treat hourly cadence as a hard liveness boundary. Record CYCLE_TIME_BUDGET_STATUS={WITHIN_BUDGET|AT_RISK|EXCEEDED|UNVERIFIED|UNKNOWN}. At risk means avoid non-decisive deep work. Exceeded means stop substantive work and finalize fail-closed/incomplete.
+
+ROUTING
+Use Superpowers first with only triggered subskills. Astral Orbit by default; Event Horizon only for observed material risk. Baton semantics only when prior state is actually available; never fabricate persisted Baton state. Akinator read-only unless writes are authorized. Prefer direct read-only GitHub evidence. Agent Reach only in empirical research when external research can materially change the claim. Enterprise only when relevant. Orchestrator Lite only in actual Cloud Work.
+
+CROSS-CYCLE CONTINUITY
+Attempt to recover prior authoritative unified-cycle state using a real permitted durable mechanism. Record PRIOR_CYCLE_ID, PRIOR_CYCLE_STATE_STATUS, CROSS_CYCLE_CONTINUITY_STATUS, STATE_PERSISTENCE_METHOD, PRIOR_STATE_EVIDENCE_REF. Prior state is valid only when cycle identity, policy, claim/evidence/research-attempt registries, and provenance are actually recoverable and consistent.
+
+Reuse stable CLAIM_ID, EVIDENCE_ID, RESEARCH_ATTEMPT_ID, dependency links, conflict-set IDs, supersession/rejection history, and multiple-testing attempt counts when valid prior state proves identity. Never reset failed/discarded attempts. Missing/unverified/incompatible state degrades lineage and multiple-testing status.
+
+At cycle end, attempt to persist compact authoritative state through an actually available permitted mechanism without repository mutation unless writes are authorized. Record STATE_PERSISTENCE_RESULT and STATE_PERSISTENCE_EVIDENCE. Never claim next-cycle continuity if persistence failed/unavailable.
+
+SNAPSHOT RULE
+At S1 pin immutable repository revisions for every materially used repository. Freeze REPO_SNAPSHOT_SET for S2-S5. Never rebase mid-cycle. Later branch drift is DRIFT_DETECTED/CROSS_REVISION and cannot silently support same-cycle promotion.
+
+EVIDENCE / CLAIM RULES
+Preserve stable evidence/claim/attempt/dependency/conflict identity. Same underlying commit/test/backtest/result counts once regardless of summaries or agents. Independent replication requires genuinely distinct measurement/test/source with compatible scope and no shared decisive dependency. Use UNKNOWN/NONE instead of guessing. Never resolve conflicts by vote, repetition, confidence wording, or averaging incompatible evidence.
+
+MATURITY LADDER
+OBSERVED -> HYPOTHESIS -> SPECIFIED -> EMPIRICALLY_SUPPORTED -> IMPLEMENTATION_READY -> VERIFIED_FOR_INTEGRATION
+Also BLOCKED and REJECTED.
+S1 may not promote above OBSERVED.
+S2 may promote only to HYPOTHESIS/SPECIFIED.
+S3 may promote only to EMPIRICALLY_SUPPORTED.
+S4 may produce IMPLEMENTATION_READY only for evidence-backed approved/canonical behavior.
+Only S5 may promote to VERIFIED_FOR_INTEGRATION.
+
+ADAPTIVE DEPTH
+Each stage records RISK_TIER, VALUE_OF_INFORMATION, WORK_BUDGET_CLASS, BUDGET_ESCALATION_REASON, EARLY_STOP_REASON. Default MINIMAL. Escalate only when another check can materially change maturity, blocker, ownership, dependency/conflict state, evidence independence, data sufficiency, implementation readiness, or release verdict.
+
+STAGE 1 — EVIDENCE CONVERGENCE
+Establish repository truth and one evidence-backed priority. Inspect minimum current repo/CI/research evidence needed for baseline, ownership, changed state, failures, drift, duplication, contradictions, and lineage. Repository evidence overrides summaries. Pin immutable snapshot. Build/refresh claim, dependency, conflict, evidence and attempt ledgers. No positive-EV action -> NO_CHANGE_JUSTIFIED.
+
+STAGE 2 — SUBSYSTEM ROTATION
+Round-robin NEXUS -> AION -> ARGUS -> ATHENA -> DAEDALUS -> ORACLE.
+Do not depend on external pointer state.
+Fixed epoch: 2026-09-24 07:00 America/Chicago.
+rotation_index = scheduled hourly cycles since epoch modulo 6.
+Establish canonical responsibility from pinned evidence; never infer from name. Select highest-value unresolved issue that belongs to the active subsystem. Produce the smallest useful artifact: invariant, adversarial test, interface/adapter contract, algorithm refinement, extraction-ready pseudocode/Python, or implementation plan. Blocked work records the blocker and advances rotation.
+
+STAGE 3 — EMPIRICAL RESEARCH
+Use Agent Reach when external research can materially change the selected claim. Preserve honest attempt ledger and multiple-testing universe. For serious candidates identify exact claim, mechanism, population, horizon, assumptions, contrary evidence, who plausibly pays, persistence/decay, minimum observables, DATA_SUFFICIENCY_STATUS, estimator validity, signal-lineage dependence, redundancy/incremental information, realistic costs, OOS/holdout/walk-forward evidence where available, and failure regimes. Do not treat backtest profitability as proof. Do not count derived composites as independent evidence. If ablation is impossible, mark ABLATION_READINESS_STATUS blocked/partial and request the smallest diagnostic seam.
+
+STAGE 4 — REPAIR / ARCHITECTURE FORGE
+Consume only mature same-run S3 findings and pinned revision. For verified defects with canonical behavior, use systematic debugging + TDD: establish root cause, write minimal failing regression test, verify expected failure, implement smallest authorized fix only when repository mutation is authorized, then run focused/full applicable verification. If writes are unavailable, produce extraction-ready repair package. New functionality/behavior changes require design/approval and otherwise remain design/spec only. Record TEST_ORACLE_ORIGIN and ORACLE_INDEPENDENCE_STATUS.
+
+STAGE 5 — VERIFICATION / RELEASE ASSURANCE
+Independently reconcile S1-S4. Verify policy chain, immutable snapshot chain, evidence lineage/deduplication, claim authority, dependency closure, conflicts/supersession, oracle independence, liveness, handoff integrity, continuity assertions, single-flight assertions, time-budget state, and actual tests/checks. Only S5 may promote to VERIFIED_FOR_INTEGRATION, requiring same-policy pinned-revision evidence, valid dependency closure, no blocking conflicts, non-inflated lineage, sufficiently independent oracle, fresh applicable verification, and no material overlap/continuity ambiguity. Technical acceptance never implies permission to merge, deploy, trade, or publish.
+
+ANTI-STAGNATION
+Compute PROGRESS_FINGERPRINT from active subsystem, pinned revision, selected claim, blocker/conflict/dependency state, and decisive evidence IDs. If valid prior fingerprints repeat materially twice without delta, mark STALLED and narrow to one decisive check or advance via deterministic rotation. If prior fingerprints unavailable, STALL_STATUS=UNVERIFIED.
+
+CYCLE OUTPUT
+Emit one compact authoritative report containing cycle/instance/run/overlap/time-budget/policy/schema/continuity/persistence/snapshot/drift/subsystem/priority/evidence/claim/dependency/conflict/attempt-ledger deltas, maturity changes, data/estimator/ablation/redundancy/multiple-testing status where relevant, work product, empirical question, tests/checks actually run, oracle status, net-new delta, state-change class, progress fingerprint/stall state, risk/value/budget fields, blockers, remediation, disposition, outcome, next-cycle request, and a factual execution receipt listing only routes/tools/plugins/evidence/repo objects/delegations/tests actually used.
+
+If a stage has no valid work, short-circuit explicitly. If S1 cannot pin the required snapshot/policy, stop as degraded/incomplete rather than inventing authority.

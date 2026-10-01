@@ -14,7 +14,7 @@ Documented departures (also in module docstrings):
 | A4 | VIX / DXY / TNX `request.security` | Informational in the Pine; **not fetched** here |
 | A5 | LTF `lookahead_on` | Historical = first intrabar (backtest default `ltf_intrabar=first`). Live TV uses the last. **Live TV ≠ Icarus backtest** on the 2m/5m failure check |
 | A9 | RTH session | 09:30–16:15 ET, 20m at `:10/:30/:50`, last bar is a 5-minute stub |
-| Roll | `NQ1!` vs `NQ=F` | Live feed applies TV volume roll on contract tickers; warm-up history is still Yahoo `=F` unless you ingest a `NQ1!` export |
+| Continuous futures | TradingView `1!` vs provider continuous `=F` | ICARUS never selects month-coded expiring contracts. Yahoo-backed futures use the provider-native continuous `=F` series for live/warm-up data and retain the TradingView `1!` identity for chart/parity metadata. Provider roll timing can differ from TradingView around rollover sessions. |
 | Fills | Bar Magnifier | Off. `process_orders_on_close = false`. Intrabar path is O→H→L→C or O→L→H→C |
 | HA | Tick quantize | Each HA open/close rounded to `mintick` |
 

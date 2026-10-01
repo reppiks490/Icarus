@@ -11,8 +11,9 @@ Limits of the public endpoint (documented, not worked around):
     aligned, O=H=L=C=last price, volume 0) and, before it, the feed's still-forming minute.
     `_bars` drops the quote row; `recent_ex` reports `feed_time` so callers can drop the forming
     minute (closed <=> ts + 60 <= feed_time).
-  * `NQ=F` is Yahoo's front contract by EXPIRY; TradingView's `NQ1!` rolls by volume ~the Tuesday
-    of expiry week - see `contracts.py` for the roll rule and contract-specific tickers.
+  * Futures use Yahoo's provider-native continuous `=F` symbols end-to-end. ICARUS intentionally
+    does not select month-coded expiring contracts. TradingView `1!` remains the parity/display identity,
+    and its rollover timing can differ from Yahoo around rollover sessions.
 A real-time feed (Databento, a broker API, TradingView alerts through icarus_bridge) plugs in
 through the same `candles/recent_ex/ticker` interface.
 """

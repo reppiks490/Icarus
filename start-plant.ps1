@@ -65,9 +65,9 @@ if (-not (Test-Path -LiteralPath $hist1)) {
     Write-Host ('  Inbox:     ' + $drop)
     Write-Host ('  Downloads: ' + $downloads)
     Write-Host ''
-    Write-Host 'TradingView: NQ1!  then 1 minute  then Download chart data'
+    Write-Host 'TradingView CSV export needs Plus or higher. Essential cannot download Supercharts.'
     Write-Host 'Typical filename: CME_MINI_NQ1!, 1.csv'
-    Write-Host 'Essential is enough. You do not need Plus or Premium.'
+    Write-Host 'No Plus: press Ctrl+C and run  start-yahoo.bat  (Yahoo NQ=F, delayed).'
     Write-Host ''
     Read-Host 'Press Enter AFTER the CSV is downloaded - or Enter to start anyway'
 }
