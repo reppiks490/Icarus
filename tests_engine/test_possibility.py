@@ -189,6 +189,8 @@ def test_psi_surface_observed_microstructure_and_future_space():
     assert 0 <= poss["reliability"] <= 1
     assert poss["endpoint_return_p10"] <= poss["endpoint_return_p25"] <= poss["endpoint_return_p50"]
     assert poss["endpoint_return_p50"] <= poss["endpoint_return_p75"] <= poss["endpoint_return_p90"]
+    assert poss["shock_model"] in {"empirical_block_bootstrap", "low_discrepancy_gaussian_fallback"}
+    assert poss["empirical_sample_count"] >= 8
 
     assert out["counterfactual"]["available"] is True
     assert out["phase_transition"]["available"] is True
@@ -1048,3 +1050,79 @@ def test_zero_confidence_external_forces_do_not_leak_into_forced_flow():
     assert forced.available is False
     assert forced.value is None
     assert forced.confidence == 0.0
+
+
+
+def test_future_space_uses_empirical_block_shocks_with_sufficient_runner_history():
+    engine = PossibilityEngine(ReplayPort(), scenarios=192)
+    out = engine.snapshot("NQ")
+    poss = out["possibility"]
+    assert poss["shock_model"] == "empirical_block_bootstrap"
+    assert poss["empirical_sample_count"] >= 60
+    assert poss["empirical_return_vol"] is not None
+    assert poss["empirical_tail_ratio"] is not None
+    assert 0.0 <= poss["empirical_tail_ratio"] <= 1.0
+
+
+def test_phase_boundary_is_derived_from_same_direction_endpoint_quantiles():
+    engine = PossibilityEngine(Port())
+    features = {
+        "gamma_pressure": Feature(0.8, 0.8, True, "fixture"),
+        "cross_asset_pressure": Feature(0.6, 0.7, True, "fixture"),
+    }
+    futures = {
+        "reliability": 0.8,
+        "future_space_collapse": 60.0,
+        "endpoint_return_p75": 0.004,
+        "endpoint_return_p90": 0.008,
+        "endpoint_return_p25": -0.003,
+        "endpoint_return_p10": -0.007,
+    }
+    up = engine._phase_boundary(20000.0, 0.001, 0.7, futures, features)
+    assert up["available"] is True
+    assert up["phase_boundary"] == pytest.approx(20080.0)
+    assert up["event_horizon"] == pytest.approx(20160.0)
+    assert up["calibrated"] is False
+
+    down = engine._phase_boundary(20000.0, 0.001, -0.7, futures, {
+        "gamma_pressure": Feature(-0.8, 0.8, True, "fixture"),
+    })
+    assert down["available"] is True
+    assert down["phase_boundary"] == pytest.approx(19940.0)
+    assert down["event_horizon"] == pytest.approx(19860.0)
+
+
+def test_phase_boundary_fails_closed_when_scenarios_do_not_support_direction():
+    engine = PossibilityEngine(Port())
+    futures = {
+        "reliability": 0.8,
+        "future_space_collapse": 70.0,
+        "endpoint_return_p75": -0.001,
+        "endpoint_return_p90": 0.0005,
+        "endpoint_return_p25": 0.001,
+        "endpoint_return_p10": -0.0005,
+    }
+    up = engine._phase_boundary(20000.0, 0.001, 0.8, futures, {})
+    assert up["available"] is False
+    assert "does not support" in up["note"]
+
+    down = engine._phase_boundary(20000.0, 0.001, -0.8, futures, {})
+    assert down["available"] is False
+    assert "does not support" in down["note"]
+
+
+def test_phase_boundary_fails_closed_on_weak_scenario_reliability():
+    engine = PossibilityEngine(Port())
+    result = engine._phase_boundary(
+        20000.0,
+        0.001,
+        0.8,
+        {
+            "reliability": 0.1,
+            "endpoint_return_p75": 0.01,
+            "endpoint_return_p90": 0.02,
+        },
+        {},
+    )
+    assert result["available"] is False
+    assert "too weak" in result["note"]
