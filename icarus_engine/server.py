@@ -516,11 +516,9 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             if p.path == "/admin/parallax/decision":
                 try:
                     payload = dict(body)
-                    votes = payload.get("subsystem_votes", {})
-                    if isinstance(votes, dict) and "psi" not in votes:
-                        votes = dict(votes)
-                        votes["psi"] = possibility.parallax_vote(payload.get("asset"))
-                        payload["subsystem_votes"] = votes
+                    # Do not inject a fresh Psi snapshot into a decision after the
+                    # caller's observed_at. Any Psi vote must be captured causally
+                    # at that decision instant and supplied explicitly.
                     if not payload.get("source_commit"):
                         provenance = local_code_provenance()
                         if not provenance.get("candidate_revision_eligible") or not provenance.get("commit"):

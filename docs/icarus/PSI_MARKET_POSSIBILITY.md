@@ -22,7 +22,7 @@ It combines:
 1. Latent pressure — queue, repricing, aggressive-volume, cross-asset, basis, gamma and forced-flow evidence.
 2. Pressure/price elasticity — absorption and liquidity-vacuum diagnostics.
 3. Dynamic leadership — rolling lagged cross-asset association, explicitly diagnostic rather than proof of causality.
-4. Counterfactual price — local force-balance synthetic price plus unexplained dislocation.
+4. Counterfactual price — local force-balance synthetic price plus explicit residual-identifiability status. The same snapshot cannot independently identify an unexplained residual from the forces used to build that synthetic price.
 5. Future-space lattice — deterministic constraint-aware scenarios clustered into UP / FLAT / DOWN.
 6. Future entropy / collapse — normalized Shannon entropy over scenario clusters.
 7. Phase boundary / event horizon — research transition thresholds.
@@ -41,13 +41,13 @@ When the active feed supports it, Ψ consumes signed trade ticks, MBP-10 depth, 
 
 Authenticated research callers may POST provenance-labelled evidence to `POST /admin/possibility/evidence`.
 
-Supported values are `gamma_pressure`, `basis_pressure`, `cta_pressure`, `liquidation_pressure`, and `rebalance_pressure`. Values are bounded to `[-1,+1]`, confidence to `[0,1]`, and evidence expires after a bounded TTL. Unknown feature names are rejected.
+Supported values are `gamma_pressure`, `basis_pressure`, `cta_pressure`, `liquidation_pressure`, and `rebalance_pressure`. Values are bounded to `[-1,+1]`, confidence to `[0,1]`, and evidence expires after a bounded TTL anchored to its observation time. RFC3339 timestamps require an explicit timezone, future observations are rejected, and evidence already stale at receipt is rejected. Unknown feature names are rejected.
 
 ## Fabric integration
 
 ARGUS / NEXUS / DATA provide live market evidence. Ψ produces latent-pressure and possibility state for the trader UI and contributes a distinct `psi` research vote to PARALLAX. PARALLAX can then measure Ψ through paired ablation; DREAMSTATE only generates hypotheses from observed counterfactual evidence.
 
-PARALLAX decision ingestion automatically adds a fresh `psi` subsystem vote when the caller did not provide one. This vote is research context and never an execution vote.
+PARALLAX decision ingestion does **not** auto-inject a fresh Ψ snapshot. A Ψ packet may be bound only when it was captured causally at the decision instant and supplied explicitly; this prevents look-ahead and preserves immutable decision identity.
 
 AEGIS / DAEDALUS remain the falsification and protected-validation authorities for future Ψ-derived candidates. Adaptive Brain registers Ψ separately so it cannot be confused with ORACLE, ARGUS, PARALLAX, DREAMSTATE, or ML.
 
@@ -59,6 +59,6 @@ Passing the research gate can produce `LONG_BIAS` or `SHORT_BIAS`, but those lab
 
 ## Trader interface
 
-The first-class **ICARUS Ψ** tab shows latent pressure, component provenance, evidence coverage, elasticity, information-wave novelty, synthetic price, unexplained dislocation, future entropy/collapse, future clusters, leaders, phase boundary/event horizon, forced consensus, hidden-state hypotheses, market shadows, explicit `NO_EDGE` blockers, and data health.
+The first-class **ICARUS Ψ** tab shows latent pressure, component provenance, evidence coverage, elasticity, information-wave novelty, synthetic price, residual-identifiability status, future entropy/collapse, future clusters, leaders, phase boundary/event horizon, forced consensus, hidden-state hypotheses, market shadows, explicit `NO_EDGE` blockers, and data health.
 
 The panel polls only while the Ψ tab is active.
