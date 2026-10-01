@@ -55,9 +55,16 @@ def test_chronofold_full_surface_and_truth_contract():
     assert out["truth_contract"]["future_data_used"] is False
     assert out["truth_contract"]["physics_literalism"] is False
     assert out["time_boundary"]["causal_integrity"] == "PASS"
+    assert out["time_machine"]["live_future_access"] is False
+    assert out["time_machine"]["backward_smoothing_live"] is False
     assert out["chronon"]["market_proper_time"] > 0
     assert out["multitime"]["information_time"] > 0
     assert 0 <= out["geometry"]["curvature"] <= 1
+    assert out["market_potential"]["literal_gravity_claim"] is False
+    assert 0 <= out["market_potential"]["energy"] <= 1
+    assert out["price_phase_field"]["status"] == "observed"
+    assert out["macro_field"]["directional_claim"] is False
+    assert out["macro_field"]["status"] == "observed"
     assert out["causal_cone"]["structural_causality_proven"] is False
     assert out["koopman"]["status"] == "observed"
     assert out["path_signature"]["status"] == "observed"
