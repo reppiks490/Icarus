@@ -640,23 +640,28 @@ class LearningFabric:
     def experience_summary(self) -> list[dict[str, Any]]:
         rows = self._conn.execute(
             "SELECT source,asset,direction,entry_at,exit_at,pnl FROM experiences "
-            "ORDER BY source,asset,direction,exit_ts,experience_id"
+            "ORDER BY source,asset,exit_ts,experience_id"
         ).fetchall()
-        groups: dict[tuple[str, str, str], list[sqlite3.Row]] = {}
+        groups: dict[tuple[str, str], list[sqlite3.Row]] = {}
         for row in rows:
-            groups.setdefault((row["source"], row["asset"], row["direction"]), []).append(row)
+            groups.setdefault((row["source"], row["asset"]), []).append(row)
         out = []
-        for (source, asset, direction), group in sorted(groups.items()):
+        for (source, asset), group in sorted(groups.items()):
             pnls = [float(row["pnl"]) for row in group]
             wins = sum(1 for value in pnls if value > 0)
             losses = sum(1 for value in pnls if value < 0)
             breakeven = len(pnls) - wins - losses
             gross_profit = sum(value for value in pnls if value > 0)
             gross_loss = sum(value for value in pnls if value < 0)
+            long_count = sum(1 for row in group if row["direction"] == "long")
+            short_count = sum(1 for row in group if row["direction"] == "short")
+            direction = "long" if long_count and not short_count else ("short" if short_count and not long_count else "mixed")
             out.append({
                 "source": source,
                 "asset": asset,
                 "direction": direction,
+                "long_count": long_count,
+                "short_count": short_count,
                 "count": len(pnls),
                 "wins": wins,
                 "losses": losses,
