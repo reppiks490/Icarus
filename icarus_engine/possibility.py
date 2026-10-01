@@ -927,6 +927,7 @@ class PossibilityEngine:
         vol = max(_stdev(t_returns[-80:]), 1e-7)
         rows: list[dict[str, Any]] = []
         rejected: list[dict[str, Any]] = []
+        statistical_tests = 0
 
         with self._lock:
             peers = [(name, list(hist)) for name, hist in self._history.items()]
@@ -977,6 +978,7 @@ class PossibilityEngine:
                 if len(lead_pairs) < 5:
                     rejected.append({"asset": peer, "reason": "insufficient_exact_lag_pairs", "pairs": len(lead_pairs)})
                     continue
+                statistical_tests += 1
                 lead_corr = _corr(
                     [x[0] for x in lead_pairs],
                     [x[1] for x in lead_pairs],
@@ -1019,12 +1021,16 @@ class PossibilityEngine:
                 latest_peer_z = _clamp(latest_peer / max(peer_vol * 2.0, 1e-7), -1.0, 1.0)
                 directional = _clamp(lead_corr * latest_peer_z)
                 lead_strength = abs(lead_corr) * min(1.0, len(lead_pairs) / 40.0) * stability
+                fisher_r = _clamp(lead_corr, -0.999999, 0.999999)
+                fisher_z = abs(math.atanh(fisher_r)) * math.sqrt(max(1.0, len(lead_pairs) - 3.0))
+                raw_p = math.erfc(fisher_z / math.sqrt(2.0))
                 rows.append({
                     "asset": peer,
                     "lag1_correlation": lead_corr,
                     "contemporaneous_correlation": contemporaneous,
                     "directional_pressure": directional,
                     "lead_strength": lead_strength,
+                    "raw_p_value_heuristic": raw_p,
                     "stability": stability,
                     "fold_correlations": fold_corrs,
                     "latest_peer_z": latest_peer_z,
@@ -1063,6 +1069,25 @@ class PossibilityEngine:
                 })
             alignment_mode = "poll_snapshot_fallback"
 
+        if alignment_mode == "exact_bar_timestamp" and rows:
+            accepted: list[dict[str, Any]] = []
+            test_count = max(1, statistical_tests)
+            for row in rows:
+                adjusted = min(1.0, float(row.get("raw_p_value_heuristic", 1.0)) * test_count)
+                row["adjusted_p_value_heuristic"] = adjusted
+                row["multiple_testing_method"] = "bonferroni_fisher_z_heuristic"
+                if adjusted <= 0.10:
+                    row["lead_strength"] *= max(0.0, 1.0 - adjusted)
+                    accepted.append(row)
+                else:
+                    rejected.append({
+                        "asset": row["asset"],
+                        "reason": "multiple_testing_screen",
+                        "adjusted_p_value_heuristic": adjusted,
+                        "peer_test_count": test_count,
+                    })
+            rows = accepted
+
         rows.sort(key=lambda x: (-x["lead_strength"], x["asset"]))
         leader_rows = rows[:8]
         if not leader_rows:
@@ -1072,6 +1097,11 @@ class PossibilityEngine:
                 "sample_count": len(t_returns),
                 "alignment_mode": alignment_mode,
                 "chart_minutes": target_minutes,
+                "peer_test_count": statistical_tests,
+                "multiple_testing_method": (
+                    "bonferroni_fisher_z_heuristic"
+                    if alignment_mode == "exact_bar_timestamp" else None
+                ),
                 "rejected_peers": rejected[:16],
             }
         total = sum(x["lead_strength"] for x in leader_rows) or 1.0
@@ -1085,6 +1115,11 @@ class PossibilityEngine:
             "sample_count": len(t_returns),
             "alignment_mode": alignment_mode,
             "chart_minutes": target_minutes,
+            "peer_test_count": statistical_tests,
+            "multiple_testing_method": (
+                "bonferroni_fisher_z_heuristic"
+                if alignment_mode == "exact_bar_timestamp" else None
+            ),
             "rejected_peers": rejected[:16],
             "interpretation": "Lagged association diagnostic; exact bar timestamps/cadence are required when runner history is available. Not proof of structural causality.",
         }
