@@ -43,6 +43,10 @@ class Piece:
     drawdown: Optional[float] = None    # adverse excursion, USD (negative or 0)
     bars: int = 0
     entry_id: str = ""
+    lot_id: int = 0
+    entry_qty: int = 0
+    entry_bar: int = -1
+    exit_bar: int = -1
 
     @property
     def notional(self) -> float:

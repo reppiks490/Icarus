@@ -94,6 +94,8 @@ def test_incomplete_final_bar_cannot_supply_prices_or_fills(replay, end):
 
 def test_start_preserves_positions_but_excludes_their_pnl(replay):
     result, runner = replay(window_start=180, window_end=360)
+    assert result["config"]["window_boundary_clean"] is False
+    assert result["config"]["window_boundary"]["open_lots"] > 0
     assert any(t.entry_id == "carry" for t in runner.em.closed)
     assert [t["entry_signal"] for t in result["trades"]] == ["new", "new"]
     assert result["summary"]["net_profit"]["all"] == 26
