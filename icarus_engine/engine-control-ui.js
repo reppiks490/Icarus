@@ -149,6 +149,9 @@ async function ecRun(actionId){
   }
   const result=await admin('/admin/engine-control',body,false);
   if(result){
+    if(result.audit_recorded===false){
+      toast(action.title+': state changed but final audit receipt failed — '+(result.audit_error||'unknown audit error'),true);
+    }
     await loadEngineControl();
     if(typeof refresh==='function') refresh();
     if(typeof refreshAudit==='function') refreshAudit();
