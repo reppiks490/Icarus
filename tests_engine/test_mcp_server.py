@@ -30,6 +30,9 @@ def test_mcp_server_imports_and_registers_engine_surface():
         "refresh_engine_dreamstate",
         "record_engine_parallax_outcome",
         "record_current_parallax_decision_with_psi",
+        "retire_engine_dreamstate_candidate",
+        "evaluate_engine_dreamstate_candidate",
+        "record_historical_parallax_decision",
         "engine_dreamstate_state",
         "engine_parallax_state",
     ):
@@ -414,3 +417,83 @@ def test_mcp_current_parallax_capture_rejects_caller_supplied_psi_vote():
     )
     assert "error" in result
     assert "captured atomically" in result["error"]
+
+
+
+def test_mcp_historical_parallax_and_dreamstate_candidate_routes(monkeypatch):
+    seen = []
+
+    def post(path, body):
+        seen.append((path, body))
+        return {"execution_authorized": False, "production_decision_authorized": False}
+
+    monkeypatch.setattr(mcp_server, "_engine_post", post)
+
+    historical = mcp_server.record_historical_parallax_decision(
+        "nq",
+        "long",
+        "2026-10-01T12:00:00Z",
+        "b" * 40,
+        regime="trend",
+        context_json='{"fixture":true}',
+        subsystem_votes_json='{"psi":{"state":"NO_EDGE"}}',
+        branches_json='[{"kind":"actual","label":"actual","params":{}}]',
+        decision_id="hist-1",
+    )
+    assert historical["execution_authorized"] is False
+
+    evaluated = mcp_server.evaluate_engine_dreamstate_candidate(
+        "ds-fixture",
+        '{"causal_time":true,"provenance":true}',
+        '["fixture evidence"]',
+    )
+    assert evaluated["production_decision_authorized"] is False
+
+    retired = mcp_server.retire_engine_dreamstate_candidate(
+        "ds-fixture",
+        "negative holdout evidence",
+    )
+    assert retired["execution_authorized"] is False
+
+    assert seen[0] == ("/admin/parallax/decision", {
+        "asset": "NQ",
+        "action": "long",
+        "regime": "trend",
+        "observed_at": "2026-10-01T12:00:00Z",
+        "source_commit": "b" * 40,
+        "context": {"fixture": True},
+        "subsystem_votes": {"psi": {"state": "NO_EDGE"}},
+        "branches": [{"kind": "actual", "label": "actual", "params": {}}],
+        "decision_id": "hist-1",
+    })
+    assert seen[1] == ("/admin/dreamstate/evaluate", {
+        "candidate_id": "ds-fixture",
+        "validation": {"causal_time": True, "provenance": True},
+        "evidence": ["fixture evidence"],
+    })
+    assert seen[2] == ("/admin/dreamstate/retire", {
+        "candidate_id": "ds-fixture",
+        "reason": "negative holdout evidence",
+    })
+
+
+def test_mcp_historical_parallax_requires_explicit_time_and_exact_sha():
+    missing_time = mcp_server.record_historical_parallax_decision(
+        "NQ", "long", "", "a" * 40,
+    )
+    assert "observed_at is required" in missing_time["error"]
+
+    bad_sha = mcp_server.record_historical_parallax_decision(
+        "NQ", "long", "2026-10-01T12:00:00Z", "not-a-sha",
+    )
+    assert "40-character hexadecimal" in bad_sha["error"]
+
+
+def test_mcp_dreamstate_candidate_tools_require_identity_and_reason():
+    empty_candidate = mcp_server.evaluate_engine_dreamstate_candidate(
+        "", '{"causal_time":true}',
+    )
+    assert "candidate_id is required" in empty_candidate["error"]
+
+    missing_reason = mcp_server.retire_engine_dreamstate_candidate("ds-1", "")
+    assert "reason is required" in missing_reason["error"]
