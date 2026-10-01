@@ -1,0 +1,40 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "parallax-dreamstate-v4-dependence-20261001T142219Z",
+  "category": "EVOLUTION",
+  "severity": "success",
+  "status": "active",
+  "subsystems": [
+    "parallax",
+    "dreamstate",
+    "aion",
+    "athena",
+    "provenance",
+    "ml"
+  ],
+  "recorded_at": "2026-10-01T14:22:19Z",
+  "title": "PARALLAX / DREAMSTATE V4 dependence-aware robustness",
+  "summary": "PARALLAX V4 adds episode-aware effective sample size, Newey-West/HAC dependence-adjusted inference, and cross-revision contradiction/transportability diagnostics on top of V3 temporal and parameter-basin robustness. DREAMSTATE V4 carries these diagnostics into policy contracts, Brain mirrors, search accounting, refresh, and live source revalidation. All authority remains research/shadow only.",
+  "source_repository": "reppiks490/Icarus",
+  "source_ref": "chatgpt/parallax-dreamstate-v4-live-main-20261001",
+  "source_commit": "facfb94a94d7a49dda50ed831afdb51026111cb3",
+  "evidence": [
+    "icarus_engine/parallax.py",
+    "icarus_engine/dreamstate.py",
+    "icarus_engine/parallax-ui.js",
+    "tests_engine/test_parallax_dreamstate.py",
+    "docs/icarus/PARALLAX_DREAMSTATE.md",
+    "context.episode_id collapses repeated decisions into one effective episode mean",
+    "raw evidence N and effective N remain separately visible",
+    "Newey-West/HAC uncertainty replaces naive screen uncertainty when evaluable",
+    "Benjamini-Hochberg FDR consumes dependence-adjusted p-values when HAC is active",
+    "cross-revision diagnostics never pool effect sizes",
+    "strong contradictory revisions block robust readiness for matching mutation families",
+    "DREAMSTATE carries dependence diagnostics into policy contracts and Adaptive Brain mirrors",
+    "V3 temporal folds and parameter-basin robustness preserved",
+    "execution_authorized=false",
+    "production_decision_authorized=false"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}
