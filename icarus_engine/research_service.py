@@ -130,16 +130,19 @@ class ResearchWorkspace:
                 assets.append({"asset": r.symbol, "cached_subbars": len(r.subbars), "warm": r.warm,
                                "timeframe_minutes": r.chart_minutes,
                                "configuration_changes_require_flat": True})
+        adaptation = self.adaptation.status()
         return {"mode": "qualified paper adaptation", "execution_authorized": False, "assets": assets,
                 "ledger": self.ledger.status(), "jobs": jobs,
                 "analysis": self.analysis.status(), "activation": self.activation.status(),
+                "adaptation": adaptation,
                 "capabilities": {"zapier_receiver_configured": bool(os.environ.get("ICARUS_INGEST_SECRET")),
                                  "zapier_connected": False, "sp_global_connected": False,
                                  "licensed_tick_feed_connected": False,
                                  "offline_tick_seconds_footprint": True,
+                                 "zero_cost_study_only_incubation": True,
                                  "automatic_input_application": True,
                                  "automatic_application_requires_qualified_dual_review": True},
-                "note": "API keys configure review clients; a configured client is not a verified connection."}
+                "note": "Study-only incubation can run without paid review calls and can only preserve unreviewed candidates. API keys configure review clients; a configured client is not a verified connection."}
 
     def _save(self, job):
         directory = self.root / "studies"

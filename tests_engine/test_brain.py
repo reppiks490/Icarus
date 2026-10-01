@@ -47,6 +47,65 @@ def test_brain_registers_five_custom_agents_and_twelve_plus_subsystems(tmp_path)
     assert out["remote_sync"]["status"] == "not_configured"
 
 
+def test_brain_surfaces_zero_cost_incubator_without_promotion_authority(tmp_path):
+    research = {
+        "adaptation": {
+            "assets": {
+                "NQ": {
+                    "last_proposal": "p" * 64,
+                    "review_mode": "study_only",
+                    "status": "candidate_proposed",
+                    "regime_context": {
+                        "label": "STRONG TREND",
+                        "regime_score": 0.81,
+                        "observed_market_ts": 660,
+                    },
+                }
+            }
+        },
+        "ledger": {
+            "proposals": [
+                {
+                    "proposal_id": "p" * 64,
+                    "state": "proposed",
+                    "candidate": {
+                        "asset": "NQ",
+                        "inputs": {"use_cycle": False},
+                        "decision_at": "2026-10-01T05:00:00Z",
+                        "expires_at": "2026-10-01T06:00:00Z",
+                    },
+                    "reviews": [],
+                },
+                {
+                    "proposal_id": "a" * 64,
+                    "state": "approved",
+                    "candidate": {
+                        "asset": "GC",
+                        "inputs": {"conf_min_votes": 5},
+                        "decision_at": "2026-10-01T05:00:00Z",
+                        "expires_at": "2026-10-01T06:00:00Z",
+                    },
+                    "reviews": [{"provider": "openai"}, {"provider": "anthropic"}],
+                },
+            ]
+        }
+    }
+    out = brain_snapshot(tmp_path, research_status=research)
+    assert out["incubator"]["available"] is True
+    assert out["incubator"]["proposal_count"] == 2
+    assert out["incubator"]["review_required"] == 1
+    assert out["incubator"]["approved"] == 1
+    nq = next(row for row in out["incubator"]["proposals"] if row["asset"] == "NQ")
+    assert nq["review_mode"] == "study_only"
+    assert nq["scheduler_status"] == "candidate_proposed"
+    assert nq["regime_context"]["label"] == "STRONG TREND"
+    assert nq["regime_context"]["regime_score"] == 0.81
+    assert out["incubator"]["execution_authorized"] is False
+    assert out["incubator"]["production_decision_authorized"] is False
+    assert out["learning"]["incubator_proposals"] == 2
+    assert out["learning"]["incubator_review_required"] == 1
+
+
 def test_candidate_gate_is_fail_closed_until_every_validation_gate_passes(tmp_path):
     body = _candidate()
     rec = record_brain_event(tmp_path, body)
