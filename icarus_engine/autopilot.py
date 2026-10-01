@@ -48,6 +48,7 @@ class TacticalAutopilot:
         self.root = Path(port.base_dir) / "research" / "autopilot"
         self.path = self.root / "state.json"
         self._lock = threading.RLock()
+        self._cycle_lock = threading.Lock()
         self._thread: threading.Thread | None = None
         self._stop = threading.Event()
         self._meta = {x["name"]: x for x in load_meta() if isinstance(x, dict) and x.get("name")}
@@ -157,13 +158,21 @@ class TacticalAutopilot:
     def _eligible(self, inputs):
         dims = []
         protected = {
-            "qty_contracts", "point_value",
+            "qty_contracts", "point_value", "size_mode", "risk_usd_per_trade",
+            "vol_rank_bars", "vol_low_mult", "vol_mid_mult", "tide_qty",
+            "use_conviction_sizing", "conv_min_mult", "conv_floor", "conv_ceiling",
         }
         for name in sorted(inputs):
             value = inputs[name]
-            if name in protected or name.startswith(("rate_", "htf_tf_")):
-                continue
             entry = self._meta.get(name, {})
+            group = str(entry.get("group") or "").lower()
+            if (
+                name in protected
+                or name.endswith("_qty")
+                or "sizing" in group
+                or name.startswith(("rate_", "htf_tf_"))
+            ):
+                continue
             choices = []
             if type(value) is bool:
                 choices = [not value]
