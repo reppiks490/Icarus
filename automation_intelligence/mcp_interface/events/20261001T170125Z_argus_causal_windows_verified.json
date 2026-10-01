@@ -1,0 +1,37 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "argus-causal-windows-verified-20261001T170125Z",
+  "category": "INTEGRATION",
+  "severity": "success",
+  "status": "verified",
+  "subsystems": [
+    "argus",
+    "provenance",
+    "ml",
+    "data"
+  ],
+  "recorded_at": "2026-10-01T17:01:25Z",
+  "title": "ARGUS feature engines now bind to receipt-time causal journal windows",
+  "summary": "ARGUS now constructs trade and depth feature windows directly from authenticated append-only journal evidence available by the decision receipt time. Future rows are excluded, late unsequenced trade events are not silently reordered, unresolved depth sequence gaps fail closed, provider recovery snapshots reset reconstruction, duplicate raw book levels are rejected before collapse, exact retained-state row-hash lineage is preserved, and source staleness is surfaced with every combined flow/depth snapshot.",
+  "source_repository": "reppiks490/divine-providence",
+  "source_ref": "main",
+  "source_commit": "77b079e295a2fe00449ee79d06fe49917f60de7b",
+  "evidence": [
+    "divine-providence PR #14 merged at 77b079e295a2fe00449ee79d06fe49917f60de7b",
+    "exact-head subsystem-evolution workflow run 36895983749 completed success",
+    "Linux and Windows ARGUS causal subsystem jobs passed",
+    "intelligence-fabric job passed",
+    "full twelve-system validation passed",
+    "trade windows enforce received_time_ns <= decision time",
+    "late unsequenced event-time trade history fails closed instead of being reordered",
+    "unresolved contiguous depth gaps block feature construction",
+    "provider_recovery snapshots reset causal reconstruction even without a prior observed gap",
+    "duplicate raw snapshot price levels fail closed before dictionary collapse",
+    "depth lineage contains exactly the journal rows required by retained states",
+    "combined snapshots expose latest source receipt times and source staleness in nanoseconds",
+    "execution_authorized=false",
+    "production_decision_authorized=false"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}
