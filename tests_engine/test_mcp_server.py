@@ -25,6 +25,7 @@ def test_mcp_server_imports_and_registers_engine_surface():
         "engine_brain_state",
         "record_engine_brain_event",
         "engine_possibility_state",
+        "engine_possibility_evidence",
         "record_engine_possibility_evidence",
     ):
         assert callable(getattr(mcp_server, name))
@@ -303,6 +304,13 @@ def test_mcp_icarus_psi_routes_are_research_only(monkeypatch):
 
     state = mcp_server.engine_possibility_state("nq")
     assert state["authority"]["execution_authorized"] is False
+    evidence = mcp_server.engine_possibility_evidence(
+        "nq",
+        limit=25,
+        include_expired=True,
+        as_of="2026-10-01T05:01:00Z",
+    )
+    assert evidence["authority"]["execution_authorized"] is False
     result = mcp_server.record_engine_possibility_evidence(
         "nq",
         "unit-test",
@@ -313,7 +321,8 @@ def test_mcp_icarus_psi_routes_are_research_only(monkeypatch):
     assert result["execution_authorized"] is False
     assert result["production_decision_authorized"] is False
     assert seen[0] == ("get", "/api/possibility?asset=NQ")
-    assert seen[1] == ("post", "/admin/possibility/evidence", {
+    assert seen[1] == ("get", "/api/possibility/evidence?asset=NQ&limit=25&include_expired=true&as_of=2026-10-01T05%3A01%3A00Z")
+    assert seen[2] == ("post", "/admin/possibility/evidence", {
         "asset": "NQ",
         "source": "unit-test",
         "values": {"gamma_pressure": {"value": 0.4, "confidence": 0.7}},
