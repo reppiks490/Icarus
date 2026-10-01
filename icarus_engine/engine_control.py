@@ -153,7 +153,8 @@ class EngineControlPlane:
         if action is None:
             raise ValueError(f"unknown engine-control action: {action_id or '(empty)'}")
 
-        target = str(body.get("target") or "").strip().upper()
+        raw_target = str(body.get("target") or "").strip()
+        target = raw_target.upper() if action.target == "asset" else raw_target
         if action.target != "none" and not target:
             raise ValueError(f"{action_id} requires target={action.target}")
         if action.target == "none" and target:
