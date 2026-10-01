@@ -305,10 +305,22 @@ def test_parallax_never_pools_same_label_with_different_branch_parameters(tmp_pa
             }
         )
         store.record_outcome(
-            {"decision_id": decision["decision_id"], "label": "actual", "utility": 0.0, "evidence": [f"a:{i}"]}
+            {
+                "decision_id": decision["decision_id"],
+                "label": "actual",
+                "utility": 0.0,
+                "observed_at": f"2026-10-01T09:{i:02d}:00Z",
+                "evidence": [f"a:{i}"],
+            }
         )
         store.record_outcome(
-            {"decision_id": decision["decision_id"], "label": "custom_delay", "utility": 1.0, "evidence": [f"b:{i}"]}
+            {
+                "decision_id": decision["decision_id"],
+                "label": "custom_delay",
+                "utility": 1.0,
+                "observed_at": f"2026-10-01T09:{i:02d}:30Z",
+                "evidence": [f"b:{i}"],
+            }
         )
     report = store.screening_report(min_samples=5)
     rows = [row for row in report["hypotheses"] if row["branch_label"] == "custom_delay"]
@@ -407,6 +419,7 @@ def test_dreamstate_builds_target_and_compound_hypotheses(tmp_path):
                     "decision_id": decision["decision_id"],
                     "label": label,
                     "utility": utility,
+                    "observed_at": f"2026-10-01T08:{i:02d}:00Z",
                     "evidence": [f"{label}:{i}"],
                 }
             )
