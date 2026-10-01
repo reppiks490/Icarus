@@ -310,6 +310,9 @@ def test_parallax_vote_is_distinct_fail_closed_research_context():
     assert vote["production_decision_authorized"] is False
     assert "latent_pressure" in vote
     assert "future_space_collapse" in vote
+    assert "information_wave_status" in vote
+    assert "information_wave_causal_leading" in vote
+    assert "leader_alignment_mode" in vote
 
 def test_external_evidence_rejects_invalid_confidence_and_ttl():
     engine = PossibilityEngine(Port())
