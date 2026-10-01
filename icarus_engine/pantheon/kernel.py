@@ -119,6 +119,7 @@ class PantheonKernel:
                 CREATE INDEX IF NOT EXISTS idx_pantheon_claim_obs ON claims(observation_id, kind);
                 CREATE INDEX IF NOT EXISTS idx_pantheon_agent_claim_obs ON agent_claims(observation_id, role);
                 CREATE INDEX IF NOT EXISTS idx_pantheon_outcome_claim ON claim_outcomes(claim_id, observed_at);
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_pantheon_outcome_claim_time ON claim_outcomes(claim_id, observed_at);
                 CREATE INDEX IF NOT EXISTS idx_pantheon_species_asset ON species(asset, stage, fitness_credit);
                 CREATE INDEX IF NOT EXISTS idx_pantheon_cells_energy ON sentinel_cells(last_energy, updated_at);
                 """
@@ -488,8 +489,18 @@ class PantheonKernel:
             outcome_time = datetime.fromisoformat(observed_at.replace("Z", "+00:00"))
             if outcome_time < claim_time:
                 raise ValueError("claim outcome cannot precede the originating observation")
+            prior_time = con.execute(
+                "SELECT * FROM claim_outcomes WHERE claim_id=? AND observed_at=?",
+                (claim_id, observed_at),
+            ).fetchone()
+            if prior_time is not None and (
+                abs(float(prior_time["utility"]) - utility) > 1e-12
+                or abs(float(prior_time["confidence"]) - confidence) > 1e-12
+                or prior_time["evidence_json"] != evidence_json
+            ):
+                raise ValueError("claim outcome is immutable for claim_id + observed_at")
             prior = con.execute("SELECT * FROM claim_outcomes WHERE outcome_id=?", (outcome_id,)).fetchone()
-            if prior is None:
+            if prior is None and prior_time is None:
                 con.execute(
                     """INSERT INTO claim_outcomes(
                         outcome_id,claim_id,observed_at,utility,confidence,evidence_json,created_at
@@ -537,16 +548,30 @@ class PantheonKernel:
                     and int(species["generation"]) < 3
                 ):
                     child_id = "species-" + digest(species["species_id"], "mutant", str(n))[:18]
+                    child_claim_id = "mut-" + digest(child_id, claim_id)[:20]
                     child_payload = {
                         "parent_species_id": species["species_id"],
+                        "parent_claim_id": claim_id,
                         "mutation_trigger": {
                             "fitness_credit": fitness,
                             "evidence_count": n,
-                            "claim_id": claim_id,
                         },
                         "stage": "research_variant",
                         "automatic_production_authority": False,
                     }
+                    con.execute(
+                        """INSERT OR IGNORE INTO claims(
+                            claim_id,observation_id,kind,stage,payload_json,created_at
+                        ) VALUES(?,?,?,?,?,?)""",
+                        (
+                            child_claim_id,
+                            claim["observation_id"],
+                            "mutation_candidate",
+                            "hypothesis",
+                            json_canonical(child_payload, "mutant claim", 65536),
+                            now,
+                        ),
+                    )
                     con.execute(
                         """INSERT OR IGNORE INTO species(
                             species_id,asset,kind,origin_claim_id,parent_species_id,generation,
@@ -555,8 +580,8 @@ class PantheonKernel:
                         (
                             child_id,
                             species["asset"],
-                            species["kind"],
-                            claim_id,
+                            "mutation_candidate",
+                            child_claim_id,
                             species["species_id"],
                             int(species["generation"]) + 1,
                             "hypothesis",
