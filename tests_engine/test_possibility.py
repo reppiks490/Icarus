@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 import math
+import sqlite3
 import time
 from types import SimpleNamespace
 
@@ -1263,3 +1264,39 @@ def test_multiple_testing_rejects_weak_spurious_peer():
             "multiple_testing_screen",
             "degenerate_lag_series",
         }
+
+
+
+def test_psi_evidence_integrity_detects_receipt_tampering(tmp_path):
+    engine = PossibilityEngine(Port(tmp_path))
+    engine.ingest_external(
+        "NQ",
+        {"gamma_pressure": {"value": 0.4, "confidence": 0.8}},
+        source="integrity-fixture",
+        ttl_seconds=600,
+    )
+    healthy = engine._evidence_ledger.integrity(max_age_seconds=0)
+    assert healthy["ok"] is True
+    assert healthy["invalid_receipt_count"] == 0
+    assert healthy["receipt_count"] == 1
+    original_digest = healthy["ledger_digest_sha256"]
+
+    db = tmp_path / "research" / "psi_evidence.sqlite3"
+    with sqlite3.connect(db) as con:
+        con.execute("UPDATE evidence SET value=0.9")
+
+    corrupted = engine._evidence_ledger.integrity(max_age_seconds=0)
+    assert corrupted["ok"] is False
+    assert corrupted["invalid_receipt_count"] >= 1
+    assert corrupted["ledger_digest_sha256"] == original_digest
+
+
+def test_psi_evidence_startup_fails_closed_on_incompatible_schema(tmp_path):
+    research = tmp_path / "research"
+    research.mkdir(parents=True)
+    db = research / "psi_evidence.sqlite3"
+    with sqlite3.connect(db) as con:
+        con.execute("CREATE TABLE evidence (evidence_id TEXT PRIMARY KEY)")
+
+    with pytest.raises(RuntimeError, match="schema is incompatible"):
+        PsiEvidenceLedger(tmp_path)
