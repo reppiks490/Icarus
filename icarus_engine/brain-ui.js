@@ -43,7 +43,7 @@
   function renderBrain(b) {
     const el = document.querySelector('#brainPanel');
     if (!el) return;
-    const auth = b.authority || {}, learn = b.learning || {}, truth = b.truth_contract || {}, sync = b.remote_sync || {}, inc = b.incubator || {}, researchSync = b.research_sync || {}, proof = b.performance_proof || {}, latency = b.latency_telemetry || {}, graph = b.evidence_graph || {}, reliability = b.source_reliability || {};
+    const auth = b.authority || {}, learn = b.learning || {}, truth = b.truth_contract || {}, sync = b.remote_sync || {}, inc = b.incubator || {}, researchSync = b.research_sync || {}, proof = b.performance_proof || {}, latency = b.latency_telemetry || {}, graph = b.evidence_graph || {}, reliability = b.source_reliability || {}, qualification = b.qualification_receipts || {};
     const agents = ((b.architecture || {}).agents || []);
     const subs = ((b.architecture || {}).subsystems || []);
     const lanes = ((b.architecture || {}).latency_tiers || []);
@@ -52,10 +52,12 @@
     const regimes = ((b.market || {}).regimes || []);
     const tournaments = b.evidence_tournaments || [];
     const proofMetrics = proof.metrics || {}, proofClosed = proof.closed_sample || {}, proofReplay = proof.replay || {};
+    const proofBacklog = proof.settlement_backlog || {};
     const hotLatency = latency.hot_path || {};
     const graphMetrics = graph.metrics || {};
     const reliabilityRows = reliability.sources || [];
     const measuredReliability = reliabilityRows.filter(r => r.measurement_status === "MEASURED").length;
+    const qualificationRows = qualification.candidates || [];
 
     const agentHtml = agents.map(a => `<div class="brain-agent ${statusClass(a.status)}"><div style="display:flex;justify-content:space-between;gap:8px"><b>${h(a.title)}</b><span class="chip">${h(a.status)}</span></div><div class="small muted" style="margin-top:5px">${h(a.job)}</div><div class="small" style="margin-top:7px"><b>Owns:</b> ${(a.owns||[]).map(x=>h(x)).join(' · ')}</div><div class="small muted" style="margin-top:5px">${h(a.detail||'')}</div></div>`).join('');
 
@@ -65,7 +67,8 @@
 
     const candRows = candidates.map(c => {
       const gates = Object.entries(c.validation||{}).map(([k,v]) => `<span class="${v===true?'brain-good':v===false?'brain-bad':'brain-warn'}">${h(k)}: ${v===true?'PASS':v===false?'FAIL':'UNKNOWN'}</span>`).join('');
-      return `<tr><td><b>${h(c.candidate_id)}</b><div class="small muted">${h((c.regimes||[]).join(', '))}</div></td><td><span class="chip ${c.eligible_for_regime_swap?'brain-good':statusClass(c.stage)}">${h(c.stage)}</span></td><td>${c.metrics&&c.metrics.validation_score!=null?h(String(c.metrics.validation_score)):'—'}</td><td>${c.eligible_for_regime_swap?'SHADOW ELIGIBLE':'BLOCKED'}<div class="small muted">${h((c.gate_blockers||[]).join(' · '))}</div><div class="brain-gate">${gates}</div></td></tr>`;
+      const q = c.qualification_receipts || {};
+      return `<tr><td><b>${h(c.candidate_id)}</b><div class="small muted">${h((c.regimes||[]).join(', '))}</div></td><td><span class="chip ${c.eligible_for_regime_swap?'brain-good':statusClass(c.stage)}">${h(c.stage)}</span></td><td>${c.metrics&&c.metrics.validation_score!=null?h(String(c.metrics.validation_score)):'—'}</td><td>${c.eligible_for_regime_swap?'SHADOW ELIGIBLE':'BLOCKED'}<div class="small muted">${h((c.gate_blockers||[]).join(' · '))}</div><div class="small ${q.qualification_ready?'brain-good':'muted'}">receipts: ${num(q.receipt_count)} · ${q.qualification_ready?'READY':'NOT READY'}</div><div class="brain-gate">${gates}</div></td></tr>`;
     }).join('');
 
     const routeHtml = routes.map(r => `<div class="brain-route"><b>${h(r.asset)} · ${h(r.regime||'UNKNOWN')}</b>\nselected: ${h(r.selected_candidate||'none')}\neligible: ${h((r.eligible_shadow_candidates||[]).map(x=>x.candidate_id).join(', ')||'none')}\nmode: ${h(r.selection_mode)}</div>`).join('');
@@ -97,6 +100,7 @@
             <div class="tile"><div class="k">Candidate qualification share</div><div class="v">${pct(learn.qualified_share_of_decided)}</div></div>
             <div class="tile"><div class="k">Observed success rate</div><div class="v">${pct(truth.success_rate)}</div><div class="small muted">${h(truth.success_rate_status)}</div></div>
             <div class="tile"><div class="k">Outcome coverage</div><div class="v">${pct(truth.outcome_coverage)}</div><div class="small muted">${num(proofMetrics.settled_forecasts)} / ${num(proofMetrics.matured_forecasts)} matured</div></div>
+            <div class="tile"><div class="k">Matured unsettled</div><div class="v ${proofBacklog.count>0?'brain-warn':'brain-good'}">${num(proofBacklog.count)}</div><div class="small muted">${proofBacklog.oldest_matures_at?h("oldest "+proofBacklog.oldest_matures_at):"settlement backlog clear"}</div></div>
             <div class="tile"><div class="k">Brier score</div><div class="v">${proofMetrics.brier_score==null?"UNMEASURED":h(Number(proofMetrics.brier_score).toFixed(4))}</div><div class="small muted">lower is better</div></div>
             <div class="tile"><div class="k">Closed-sample 100%</div><div class="v ${proofClosed.historical_100_percent_established?"brain-good":"brain-warn"}">${proofClosed.historical_100_percent_established?"ESTABLISHED":"NOT ESTABLISHED"}</div><div class="small muted">${h(proofClosed.claim||"requires a closed fully-settled sample")}</div></div>
             <div class="tile"><div class="k">Replay determinism</div><div class="v">${pct(proofReplay.determinism_rate)}</div><div class="small muted">${proofReplay.historical_100_percent_established?"100% established for recorded replay sample":"not yet established"}</div></div>
@@ -104,6 +108,7 @@
             <div class="tile"><div class="k">Evidence graph</div><div class="v">${num(graphMetrics.node_count)}</div><div class="small muted">${num(graphMetrics.edge_count)} edges · ${num(graphMetrics.source_revision_count)} exact revisions</div></div>
             <div class="tile"><div class="k">Independent corroboration</div><div class="v">${num(graphMetrics.independently_corroborated_evidence_count)}</div><div class="small muted">${num(graphMetrics.duplicate_evidence_count)} repeated evidence nodes tracked separately</div></div>
             <div class="tile"><div class="k">Source reliability</div><div class="v">${num(measuredReliability)} / ${num(reliability.source_stream_count)}</div><div class="small muted">${num(reliability.observation_count)} causal observations retained</div></div>
+            <div class="tile"><div class="k">Qualification-ready revisions</div><div class="v">${num(qualification.qualification_ready_count)} / ${num(qualification.candidate_revision_count)}</div><div class="small muted">immutable gate-receipt state · shadow only</div></div>
             <div class="tile"><div class="k">Router</div><div class="v">${h(auth.candidate_router||'—')}</div></div>
             <div class="tile"><div class="k">Agent repo sync</div><div class="v ${statusClass(sync.status)}">${h(String(sync.status||'not configured').toUpperCase())}</div><div class="small muted">${h(sync.last_success_at?'last '+sync.last_success_at:'awaiting first verified ingest')}</div></div>
             <div class="tile"><div class="k">Remote agent events</div><div class="v tnum">${num(sync.ingested_total)}</div><div class="small muted">poll ${num(sync.interval_seconds)}s · rejected ${num(sync.rejected_total)}</div></div>
@@ -145,6 +150,10 @@
         <h3 class="small" style="margin:16px 0 8px">Zero-cost local candidate incubator</h3>
         <div class="small muted" style="margin-bottom:7px">${h(inc.rule||'Local deterministic studies can preserve candidates without paid model calls; independent review remains mandatory before activation.')}</div>
         <div class="scroll" style="max-height:300px"><table><thead><tr><th>Asset / proposal</th><th>State / mode</th><th>Observed regime</th><th>Inputs</th><th>Reviews</th><th>Authority</th></tr></thead><tbody>${incubatorRows || '<tr><td colspan=6 class="empty">No locally incubated proposals yet.</td></tr>'}</tbody></table></div>
+
+        <h3 class="small" style="margin:16px 0 8px">Immutable qualification receipts</h3>
+        <div class="small muted" style="margin-bottom:7px">Each candidate revision must prove every configured gate. The last positive gate can create a qualified-shadow event; a later negative receipt removes shadow eligibility. Neither transition grants production or execution authority.</div>
+        <div class="scroll" style="max-height:320px"><table><thead><tr><th>Candidate</th><th>Revision</th><th>Receipts</th><th>Gate state</th><th>Recommended stage</th><th>Blockers</th></tr></thead><tbody>${qualificationRows.map(q => { const vals=Object.values(q.validation||{}), passed=vals.filter(v=>v===true).length; return `<tr><td><b>${h(q.candidate_id||"")}</b></td><td class="small">${h(String(q.candidate_source_revision||"").slice(0,28))}</td><td>${num(q.receipt_count)}</td><td class="${q.qualification_ready?'brain-good':'brain-warn'}">${passed}/${vals.length} ${q.qualification_ready?'READY':'INCOMPLETE'}</td><td>${h(q.recommended_stage||"validated")}</td><td class="small muted">${h((q.blockers||[]).join(" · ")||"none")}</td></tr>`; }).join("") || '<tr><td colspan=6 class="empty">No qualification receipts recorded yet.</td></tr>'}</tbody></table></div>
 
         <h3 class="small" style="margin:16px 0 8px">Candidate lifecycle & rigorous gates</h3>
         <div class="scroll" style="max-height:520px"><table><thead><tr><th>Candidate</th><th>Stage</th><th>Validation score</th><th>Gate state</th></tr></thead><tbody>${candRows || '<tr><td colspan=4 class="empty">No candidate events recorded yet. Qualification remains empty/fail-closed.</td></tr>'}</tbody></table></div>
