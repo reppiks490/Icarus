@@ -9,7 +9,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Mapping
 
 SCHEMA_VERSION = "icarus-pantheon-v1"
@@ -75,7 +75,7 @@ def exact_git_sha(value: Any) -> str:
         raise ValueError("source_commit must be an exact 40-character Git SHA")
     return value
 
-def iso_aware(value: Any, field: str = "observed_at") -> str:
+def iso_aware(value: Any, field: str = "observed_at", *, allow_future_seconds: float = 5.0) -> str:
     value = text(value, field, 80)
     candidate = value[:-1] + "+00:00" if value.endswith("Z") else value
     try:
@@ -84,7 +84,10 @@ def iso_aware(value: Any, field: str = "observed_at") -> str:
         raise ValueError(f"{field} must be ISO-8601") from ex
     if parsed.tzinfo is None or parsed.utcoffset() is None:
         raise ValueError(f"{field} must include a timezone")
-    return value
+    parsed = parsed.astimezone(timezone.utc)
+    if (parsed - datetime.now(timezone.utc)).total_seconds() > allow_future_seconds:
+        raise ValueError(f"{field} cannot be in the future")
+    return parsed.isoformat().replace("+00:00", "Z")
 
 def json_canonical(value: Any, field: str, max_bytes: int = 131072) -> str:
     try:
