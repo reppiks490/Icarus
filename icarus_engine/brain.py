@@ -45,7 +45,7 @@ AGENTS = (
         "id": "aion",
         "title": "AION PRIME Quant Scientist",
         "job": "Maintain causal market memory, evolve falsifiable research hypotheses, and independently evaluate trust/collision evidence.",
-        "owns": ["AION", "ASCENSION", "PROMETHEUS", "PARALLAX", "DREAMSTATE", "PSI", "PANTHEON", "ML"],
+        "owns": ["AION", "ASCENSION", "PROMETHEUS", "PARALLAX", "DREAMSTATE", "PSI", "PANTHEON", "SIBYL", "ML"],
     },
     {
         "id": "daedalus",
@@ -74,6 +74,7 @@ SUBSYSTEMS = (
     {"id": "psi", "title": "ICARUS Ψ", "owner": "aion", "job": "Research-only latent-pressure and possibility engine: microstructure elasticity, dynamic leadership, counterfactual price, future-space entropy/collapse, phase boundaries, forced consensus, and fail-closed abstention."},
     {"id": "dreamstate", "title": "DREAMSTATE", "owner": "aion", "job": "Counterfactual-policy incubator: turn repeated statistically screened PARALLAX regret patterns into versioned hypotheses held behind the full protected validation gate stack."},
     {"id": "pantheon", "title": "PANTHEON", "owner": "aion", "job": "Independent research-faculty fabric that preserves disagreement, provenance, bounded authority, and falsifiable claims across advanced market-intelligence faculties."},
+    {"id": "sibyl", "title": "SIBYL Ω", "owner": "aion", "job": "Deterministic as-of future-lightcone synthesis: bounded multi-horizon basins, temporal collapse/fracture, calibration, counterfactual scenarios, and strictly gated structural evidence with zero execution authority."},
     {"id": "nemesis", "title": "NEMESIS Ω", "owner": "pantheon", "job": "Adversarial fragility, minimum-failure-distance, sensitivity, edge half-life, subsystem-ablation survival, and edge-survival diagnostics."},
     {"id": "godel", "title": "GÖDEL Ω", "owner": "pantheon", "job": "Epistemic identifiability and indistinguishable-world diagnostics; expose what available evidence cannot resolve."},
     {"id": "socrates", "title": "SOCRATES", "owner": "pantheon", "job": "Autonomous research-question and falsifiable-hypothesis selection driven by uncertainty, causal debt, novelty, and disagreement."},
