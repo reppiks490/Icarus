@@ -1,0 +1,41 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "parallax-dreamstate-v3-robustness-20261001T135402Z",
+  "category": "EVOLUTION",
+  "severity": "success",
+  "status": "staged",
+  "subsystems": [
+    "parallax",
+    "dreamstate",
+    "aion",
+    "athena",
+    "provenance",
+    "ml"
+  ],
+  "recorded_at": "2026-10-01T13:54:02Z",
+  "title": "PARALLAX / DREAMSTATE V3 robustness layer staged",
+  "summary": "PARALLAX V3 separates statistical significance from structural robustness using deterministic chronological evidence folds and local parameter-basin topology. Robust-ready sources must retain positive temporal folds once evaluable and cannot be isolated parameter spikes or sparsely sampled nonlocal points. DREAMSTATE consumes and continuously revalidates only robust-ready sources while preserving V2 FDR, provenance, bounded family search, source-decay retirement and shadow-only authority. This work is explicitly separate from the ICARUS Xi CHRONOFOLD subsystem.",
+  "source_repository": "reppiks490/Icarus",
+  "source_ref": "chatgpt/parallax-dreamstate-v3-live-main-20261001",
+  "source_commit": "2d42157d8f663c188e40efe6d5214580cc9c885b",
+  "evidence": [
+    "icarus_engine/parallax.py",
+    "icarus_engine/dreamstate.py",
+    "icarus_engine/parallax-ui.js",
+    "tests_engine/test_parallax_dreamstate.py",
+    "docs/icarus/PARALLAX_DREAMSTATE.md",
+    "three chronological evidence folds activate at nine evidence-complete pairs",
+    "deterministic timestamp plus decision-id fold ordering",
+    "local parameter basins require same non-axis parameter signature",
+    "axis-specific local distance prevents far parameter points from validating each other",
+    "temporally unstable neighbors cannot support a basin",
+    "isolated parameter spikes and sparse local coverage block robust-ready sources",
+    "DREAMSTATE live-source gate revalidation requires robust_candidate_eligible",
+    "V2 schema compatibility preserved with explicit robustness_version markers",
+    "CHRONOFOLD ownership remains separate",
+    "execution_authorized=false",
+    "production_decision_authorized=false"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}
