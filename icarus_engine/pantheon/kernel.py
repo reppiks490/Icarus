@@ -594,24 +594,26 @@ class PantheonKernel:
             if prior is not None:
                 if prior["payload_json"] != payload_json or prior["evidence_json"] != evidence_json:
                     raise ValueError("VERITAS reconciliation is immutable for observation_id")
-                return self._veritas_state(observation_id)
-            con.execute(
-                """INSERT INTO veritas_reconciliations(
-                    reconciliation_id,observation_id,observed_at,classification,
-                    mechanism_fidelity,reinforcement_eligible,payload_json,evidence_json,created_at
-                ) VALUES(?,?,?,?,?,?,?,?,?)""",
-                (
-                    reconciliation_id,
-                    observation_id,
-                    observed_at,
-                    scored["classification"],
-                    scored["mechanism_fidelity"],
-                    1 if scored["reinforcement_eligible"] else 0,
-                    payload_json,
-                    evidence_json,
-                    now,
-                ),
-            )
+            else:
+                con.execute(
+                    """INSERT INTO veritas_reconciliations(
+                        reconciliation_id,observation_id,observed_at,classification,
+                        mechanism_fidelity,reinforcement_eligible,payload_json,evidence_json,created_at
+                    ) VALUES(?,?,?,?,?,?,?,?,?)""",
+                    (
+                        reconciliation_id,
+                        observation_id,
+                        observed_at,
+                        scored["classification"],
+                        scored["mechanism_fidelity"],
+                        1 if scored["reinforcement_eligible"] else 0,
+                        payload_json,
+                        evidence_json,
+                        now,
+                    ),
+                )
+        # Read only after the transaction closes so a new SQLite connection sees
+        # the committed reconciliation on every platform.
         return self._veritas_state(observation_id)
 
     def _veritas_state(self, observation_id: str) -> dict[str, Any]:
