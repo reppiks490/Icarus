@@ -12,7 +12,7 @@
   };
 
   function parallaxHtml() {
-    return '<section class="card c12" id="parallaxPanel"><h2>PARALLAX / DREAMSTATE <span class="sub">counterfactual twins · evidence contracts · FDR screening · bounded policy incubation · shadow only</span></h2><div class="empty">loading counterfactual research state…</div></section>';
+    return '<section class="card c12" id="parallaxPanel"><h2>PARALLAX / DREAMSTATE <span class="sub">counterfactual twins · FDR · temporal stability · parameter basins · bounded policy incubation · shadow only</span></h2><div class="empty">loading counterfactual research state…</div></section>';
   }
 
   function attributionRows(rows) {
@@ -35,20 +35,25 @@
       '<td class="tnum">'+num(r.mean_delta)+'</td>' +
       '<td class="tnum">'+num(r.ci95_low)+'</td>' +
       '<td class="tnum">'+num(r.q_value, 4)+'</td>' +
+      '<td><span class="chip '+(((r.temporal_stability||{}).evaluable)?(((r.temporal_stability||{}).stable)?'b':'r'):'w')+'">'+(((r.temporal_stability||{}).evaluable)?(((r.temporal_stability||{}).stable)?'STABLE':'UNSTABLE'):'EARLY')+'</span><div class="small muted">worst '+num((r.temporal_stability||{}).worst_fold_mean)+'</div></td>' +
+      '<td><span class="chip '+(((r.parameter_basin||{}).isolated_spike||(r.parameter_basin||{}).local_support_missing)?'r':((r.parameter_basin||{}).evaluable?'b':'w'))+'">'+((r.parameter_basin||{}).isolated_spike?'SPIKE':((r.parameter_basin||{}).local_support_missing?'SPARSE':((r.parameter_basin||{}).evaluable?'BASIN':'EARLY')))+'</span><div class="small muted">support '+h((r.parameter_basin||{}).basin_support_count ?? 0)+' · family '+h((r.parameter_basin||{}).family_evaluable_point_count ?? 0)+'</div></td>' +
       '<td class="tnum">'+h(r.strata_count ?? 0)+'</td>' +
       '<td><span class="chip '+(r.comparison_contract_complete?'b':'r')+'">'+(r.comparison_contract_complete?'READY':'INCOMPLETE')+'</span><div class="small muted tnum">'+h(short(r.comparison_contract_hash, 10))+'</div></td>' +
       '</tr>').join('');
   }
 
   function blockedRows(rows) {
-    return (rows || []).filter(r => !r.candidate_eligible).slice(0, 30).map(r => '<tr>' +
-      '<td><b>'+h(r.asset || '')+'</b><div class="small muted">'+h(r.regime || '')+'</div></td>' +
-      '<td>'+h(r.branch_label || '')+'</td>' +
-      '<td class="tnum">'+h(r.evidence_pair_count ?? 0)+'</td>' +
-      '<td class="tnum">'+num(r.q_value, 4)+'</td>' +
-      '<td>'+h((r.screen_blockers || []).join(', '))+'</td>' +
-      '<td class="tnum">'+h(short(r.source_commit, 10))+'</td>' +
-      '</tr>').join('');
+    return (rows || []).filter(r => !r.robust_candidate_eligible).slice(0, 40).map(r => {
+      const blockers = [...(r.screen_blockers || []), ...(r.robustness_blockers || [])];
+      return '<tr>' +
+        '<td><b>'+h(r.asset || '')+'</b><div class="small muted">'+h(r.regime || '')+'</div></td>' +
+        '<td>'+h(r.branch_label || '')+'</td>' +
+        '<td class="tnum">'+h(r.evidence_pair_count ?? 0)+'</td>' +
+        '<td class="tnum">'+num(r.q_value, 4)+'</td>' +
+        '<td>'+h(blockers.join(', '))+'</td>' +
+        '<td class="tnum">'+h(short(r.source_commit, 10))+'</td>' +
+        '</tr>';
+    }).join('');
   }
 
   function candidateRows(rows, gates) {
@@ -63,7 +68,7 @@
         '<td><b>'+h(c.asset || '')+'</b><div class="small muted">'+h(c.regime || '')+'</div><div class="small muted tnum">'+h(short(scope.comparison_contract_hash, 10))+'</div></td>' +
         '<td><span class="chip '+cls(c.stage)+'">'+h(String(c.stage || '').toUpperCase())+'</span></td>' +
         '<td>'+h(c.hypothesis || '')+'<div class="small muted tnum">'+h(JSON.stringify(c.mutation || {}))+'</div></td>' +
-        '<td class="tnum">'+num(acct.source_q_value, 4)+'<div class="small muted">n='+h(acct.source_evidence_pairs ?? '—')+'</div></td>' +
+        '<td class="tnum">'+num(acct.source_q_value, 4)+'<div class="small muted">n='+h(acct.source_evidence_pairs ?? '—')+'</div><div class="small muted">'+(acct.source_temporal_evaluable?(acct.source_temporal_stable?'time stable':'time unstable'):'time early')+' · '+(acct.source_isolated_parameter_spike?'spike':(acct.source_parameter_local_support_missing?'sparse':(acct.source_parameter_basin_evaluable?'basin '+h(acct.source_parameter_basin_support_count ?? 0):'basin early')))+'</div></td>' +
         '<td class="tnum">'+h(acct.family_trial_budget_remaining ?? '—')+'<div class="small muted">remaining</div></td>' +
         '<td class="tnum">'+h(passed)+'/'+h((gates || []).length)+(failed ? '<div class="small neg">'+h(failed)+' failed</div>' : '')+'</td>' +
         '<td class="tnum">'+h(short(c.source_commit, 10))+'</td>' +
@@ -126,11 +131,11 @@
       '.px-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}' +
       '.px-box{border:1px solid var(--ring);border-radius:12px;padding:10px;background:var(--surface-2)}' +
       '</style>' +
-      '<h2>PARALLAX / DREAMSTATE <span class="sub">observed twins · comparison contracts · paired evidence · BH-FDR · bounded policy incubation · execution_authorized=false</span></h2>' +
+      '<h2>PARALLAX / DREAMSTATE <span class="sub">observed twins · BH-FDR · temporal folds · parameter basins · bounded policy incubation · execution_authorized=false</span></h2>' +
       '<div class="tiles" style="margin-top:0">' +
         '<div class="tile"><div class="k">Twin decisions</div><div class="v tnum">'+h(counts.decisions ?? 0)+'</div><div class="small muted">'+h(counts.observed_outcomes ?? 0)+' observed outcomes</div></div>' +
         '<div class="tile"><div class="k">Contract-ready recent</div><div class="v tnum">'+h(contractReady)+'/'+h(recentN)+'</div><div class="small muted">utility · horizon · dataset · costs · clock</div></div>' +
-        '<div class="tile"><div class="k">Candidate-ready signals</div><div class="v tnum">'+h(screening.candidate_ready ?? 0)+'</div><div class="small muted">'+h(screening.blocked ?? 0)+' blocked · FDR ≤ '+num(screening.max_fdr,2)+'</div></div>' +
+        '<div class="tile"><div class="k">Robust-ready signals</div><div class="v tnum">'+h(screening.robust_candidate_ready ?? 0)+'</div><div class="small muted">'+h(screening.candidate_ready ?? 0)+' statistical · '+h(screening.robustness_blocked ?? 0)+' robustness-blocked</div></div>' +
         '<div class="tile"><div class="k">Comparable mean regret</div><div class="v tnum">'+num(regret.mean_delta)+'</div><div class="small muted">'+(regret.comparable_globally ? 'single comparable evidence scope' : 'not pooled across incomparable scopes')+'</div></div>' +
         '<div class="tile"><div class="k">DREAMSTATE families</div><div class="v tnum">'+h(search.family_count ?? 0)+'</div><div class="small muted">'+h(search.active_family_count ?? 0)+' active · '+h(search.budget_exhausted_family_count ?? 0)+' exhausted</div></div>' +
         '<div class="tile"><div class="k">Qualified shadow</div><div class="v tnum">'+h(qualified)+'</div><div class="small muted">maximum authority stage</div></div>' +
@@ -139,13 +144,13 @@
       '</div>' +
 
       '<div class="px-grid" style="margin-top:12px">' +
-        '<div class="px-box"><b>PARALLAX V2 evidence contract</b><div class="small muted" style="margin-top:6px">Candidate signals require evidence on both paired paths, an exact source revision, a complete utility/horizon/dataset/cost/clock contract, positive paired lower bound, and Benjamini-Hochberg FDR control inside the asset/regime/revision/contract family.</div></div>' +
-        '<div class="px-box"><b>DREAMSTATE V2 policy contract</b><div class="small muted" style="margin-top:6px">Candidates are scoped to observed asset, regime, code revision, comparison contract and context strata. Families have one active trial, a hard search budget, immutable failures, baseline fallback, source-decay retirement, and no production or broker authority.</div></div>' +
+        '<div class="px-box"><b>PARALLAX V3 robustness contract</b><div class="small muted" style="margin-top:6px">Statistical candidates still require paired evidence, exact revision/contract identity, positive lower bound and BH-FDR. Once evidence is rich enough, robust-ready also requires positive chronological folds and rejects isolated parameter spikes when adjacent settings are evaluable.</div></div>' +
+        '<div class="px-box"><b>DREAMSTATE V3 policy contract</b><div class="small muted" style="margin-top:6px">DREAMSTATE consumes only robust-ready PARALLAX sources when robustness is evaluable. Candidates retire if time stability collapses or a setting becomes an isolated spike. Families retain bounded trials, immutable failures, baseline fallback and zero production/broker authority.</div></div>' +
       '</div>' +
 
-      '<h3 class="small" style="margin:16px 0 8px">Candidate-ready PARALLAX signals</h3>' +
-      '<div class="scroll" style="max-height:360px"><table><thead><tr><th>Scope</th><th>Branch</th><th>Evidence N</th><th>Pair coverage</th><th>Mean Δ</th><th>95% lower</th><th>FDR q</th><th>Strata</th><th>Contract</th></tr></thead><tbody>' +
-      (signalRows(px.mutation_signals) || '<tr><td colspan="9" class="empty">No counterfactual hypothesis currently clears every candidate screen.</td></tr>') + '</tbody></table></div>' +
+      '<h3 class="small" style="margin:16px 0 8px">Robust-ready PARALLAX signals</h3>' +
+      '<div class="scroll" style="max-height:360px"><table><thead><tr><th>Scope</th><th>Branch</th><th>Evidence N</th><th>Pair coverage</th><th>Mean Δ</th><th>95% lower</th><th>FDR q</th><th>Time</th><th>Basin</th><th>Strata</th><th>Contract</th></tr></thead><tbody>' +
+      (signalRows(px.mutation_signals) || '<tr><td colspan="11" class="empty">No counterfactual hypothesis currently clears every statistical and robustness screen.</td></tr>') + '</tbody></table></div>' +
 
       '<h3 class="small" style="margin:16px 0 8px">Blocked hypothesis diagnostics</h3>' +
       '<div class="scroll" style="max-height:300px"><table><thead><tr><th>Scope</th><th>Branch</th><th>Evidence N</th><th>FDR q</th><th>Blockers</th><th>Revision</th></tr></thead><tbody>' +
@@ -171,7 +176,7 @@
       '<div class="scroll" style="max-height:440px"><table><thead><tr><th>Observed</th><th>Scope</th><th>Action</th><th>Contract</th><th>Branch coverage</th><th>Evidence coverage</th><th>Regret</th><th>Best observed</th><th>Revision</th></tr></thead><tbody>' +
       (decisionRows(px.decisions) || '<tr><td colspan="9" class="empty">No PARALLAX decisions recorded yet.</td></tr>') + '</tbody></table></div>' +
 
-      '<div class="small muted" style="margin-top:12px">PARALLAX and DREAMSTATE are research/shadow systems. Statistical screens prioritize hypotheses; they do not prove causality or expected profit. A qualified-shadow candidate cannot authorize orders, sizing, broker actions, or production promotion.</div>';
+      '<div class="small muted" style="margin-top:12px">PARALLAX and DREAMSTATE are research/shadow systems. Statistical and robustness screens prioritize hypotheses; they do not prove causality or expected profit. A qualified-shadow candidate cannot authorize orders, sizing, broker actions, or production promotion.</div>';
   }
 
   async function loadParallax() {
