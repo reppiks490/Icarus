@@ -75,6 +75,7 @@ from .parallax import ParallaxStore
 from .dreamstate import DreamstateLab
 from .possibility import PossibilityEngine
 from .autopilot import TacticalAutopilot
+from .engine_control import ControlAction, EngineControlPlane
 
 
 def _no_json_constants(name: str):
@@ -137,6 +138,137 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     parallax = ParallaxStore(port.base_dir)
     dreamstate = DreamstateLab(port.base_dir, parallax=parallax)
 
+    def _control_runner(target: str):
+        try:
+            key = resolve(target or "").symbol
+        except ValueError as ex:
+            raise ValueError(f"unknown asset {target}") from ex
+        runner = port.runners.get(key)
+        if runner is None:
+            raise ValueError(f"unknown running asset {target}")
+        return runner
+
+    def _pause_all(payload):
+        for runner in port.runner_list():
+            runner.set_paused(True)
+        port.paused = True
+        port.journal.log("WARN", f"PAUSED ALL: {payload['reason']}")
+        return {"paused": [r.symbol for r in port.runner_list()]}
+
+    def _resume_all(payload):
+        for runner in port.runner_list():
+            runner.set_paused(False)
+        port.paused = False
+        port.journal.log("INFO", f"RESUMED ALL: {payload['reason']}")
+        return {"resumed": [r.symbol for r in port.runner_list()]}
+
+    def _flatten_all(payload):
+        closed = {
+            runner.symbol: runner.flatten(payload["reason"])
+            for runner in port.runner_list()
+        }
+        return {"closed": closed, "total": sum(closed.values())}
+
+    def _asset_pause(payload):
+        runner = _control_runner(payload["target"])
+        runner.set_paused(True)
+        return {"asset": runner.symbol, "paused": True}
+
+    def _asset_resume(payload):
+        runner = _control_runner(payload["target"])
+        runner.set_paused(False)
+        return {"asset": runner.symbol, "paused": False}
+
+    def _asset_flatten(payload):
+        runner = _control_runner(payload["target"])
+        return {"asset": runner.symbol, "closed": runner.flatten(payload["reason"])}
+
+    def _asset_rewarm(payload):
+        runner = _control_runner(payload["target"])
+        port.rewarm_asset(runner.symbol)
+        return {"asset": runner.symbol, "rewarmed": True}
+
+    def _asset_remove(payload):
+        runner = _control_runner(payload["target"])
+        ok = port.remove_asset(runner.symbol)
+        if not ok:
+            raise ValueError(f"asset {runner.symbol} could not be removed")
+        return {"asset": runner.symbol, "removed": True}
+
+    def _asset_add(payload):
+        target = payload["target"]
+        args = payload["args"]
+        running = port.runner_list()
+        default_tf = str(args.get("tf") or (running[0].spec.chart_tf if running else "20"))
+        spec = parse_spec(target, default_tf)
+        if args.get("tf") not in (None, "") and "@" not in target:
+            spec = pin_config(spec, "timeframe")
+        chart = {
+            k: args[k]
+            for k in ("chart_type", "fill_on", "security_source")
+            if args.get(k) not in (None, "")
+        }
+        if chart:
+            spec = apply_chart_config(spec, validate_chart_config(chart), pin=True)
+        if args.get("preset"):
+            name = str(args["preset"])
+            if not os.path.exists(preset_path(port.base_dir, name)):
+                raise ValueError(f"preset {name} not found")
+            spec.preset = name
+        runner = port.add_asset(spec)
+        return {"asset": runner.symbol, "added": True, "timeframe": spec.chart_tf}
+
+    def _sync_all(_payload):
+        return {
+            "loop_intelligence": loop_intelligence_sync.sync_once(),
+            "brain_remote": brain_remote_sync.sync_once(),
+            "brain_research": brain_research_sync.sync_once(),
+            "evolution": evolution_remote_sync.sync_once(),
+        }
+
+    control = EngineControlPlane(
+        port.base_dir,
+        snapshotters={
+            "portfolio": port.status,
+            "research": research.status,
+            "repository_audit": lambda: load_repository_audit(port.base_dir),
+            "integrity": lambda: integrity_snapshot(port.base_dir),
+            "brain_remote_sync": brain_remote_sync.status,
+            "brain_research_sync": brain_research_sync.status,
+            "evolution_sync": evolution_remote_sync.status,
+            "autopilot": autopilot.status,
+            "parallax": parallax.snapshot,
+            "dreamstate": dreamstate.snapshot,
+            "possibility": possibility.snapshot,
+        },
+        actions={
+            action.action_id: action
+            for action in (
+                ControlAction("engine.pause_all", "Pause all entries", "Engine", "Pause new entries on every running asset; exits remain active.", _pause_all),
+                ControlAction("engine.resume_all", "Resume all entries", "Engine", "Resume new entries on every running asset.", _resume_all),
+                ControlAction("engine.flatten_all", "Flatten all paper positions", "Engine", "Immediately close every open local paper position.", _flatten_all, danger=True, confirmation="FLATTEN ALL PAPER POSITIONS"),
+                ControlAction("asset.add", "Add asset", "Assets", "Add and warm a registered asset.", _asset_add, target="asset"),
+                ControlAction("asset.pause", "Pause asset", "Assets", "Pause new entries for one running asset.", _asset_pause, target="asset"),
+                ControlAction("asset.resume", "Resume asset", "Assets", "Resume new entries for one running asset.", _asset_resume, target="asset"),
+                ControlAction("asset.rewarm", "Re-warm asset", "Assets", "Rebuild one asset from cached history.", _asset_rewarm, target="asset"),
+                ControlAction("asset.flatten", "Flatten asset", "Assets", "Close the selected asset's open paper position.", _asset_flatten, danger=True, confirmation="FLATTEN PAPER POSITION", target="asset"),
+                ControlAction("asset.remove", "Remove asset", "Assets", "Stop and remove one running asset.", _asset_remove, danger=True, confirmation="REMOVE ASSET", target="asset"),
+                ControlAction("sync.loop_intelligence", "Sync loop intelligence", "Intelligence", "Refresh verified automation-loop receipts now.", lambda _: loop_intelligence_sync.sync_once()),
+                ControlAction("sync.brain_remote", "Sync Adaptive Brain remote evidence", "Intelligence", "Pull the latest verified Adaptive Brain repository evidence.", lambda _: brain_remote_sync.sync_once()),
+                ControlAction("sync.brain_research", "Sync research into Adaptive Brain", "Intelligence", "Refresh research-to-brain evidence now.", lambda _: brain_research_sync.sync_once()),
+                ControlAction("sync.evolution", "Sync MCP evolution evidence", "Intelligence", "Refresh repository-native MCP repair/audit/evolution evidence.", lambda _: evolution_remote_sync.sync_once()),
+                ControlAction("sync.all", "Sync all intelligence planes", "Intelligence", "Run all registered intelligence synchronizers once.", _sync_all),
+                ControlAction("autopilot.start", "Start Tactical Autopilot", "Autopilot", "Enable and start the Tactical Autopilot background loop.", lambda _: autopilot.start()),
+                ControlAction("autopilot.stop", "Stop Tactical Autopilot", "Autopilot", "Disable the Tactical Autopilot background loop.", lambda _: autopilot.stop()),
+                ControlAction("autopilot.step", "Run one Tactical Autopilot cycle", "Autopilot", "Run exactly one Tactical Autopilot research cycle.", lambda _: autopilot.cycle_once()),
+                ControlAction("autopilot.reset", "Reset Tactical Autopilot", "Autopilot", "Clear Tactical Autopilot runtime state and leave it disabled.", lambda _: autopilot.reset(), danger=True, confirmation="RESET AUTOPILOT"),
+                ControlAction("dreamstate.refresh", "Refresh DREAMSTATE", "Research", "Re-screen PARALLAX counterfactual evidence into DREAMSTATE candidates.", lambda p: dreamstate.refresh((p["args"] or {}).get("min_samples", 5))),
+                ControlAction("research.cancel", "Cancel research job", "Research", "Request cancellation of the active research study by job id.", lambda p: research.cancel(p["target"]), target="job"),
+                ControlAction("research.recover", "Recover asset research activation", "Research", "Recover the selected asset's research activation state.", lambda p: research.recover({"asset": p["target"]}), target="asset"),
+            )
+        },
+    )
+
     class H(BaseHTTPRequestHandler):
         server_version = "icarus"
         sys_version = ""
@@ -197,6 +329,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._send(200, (html_path.parent / "sources-ui.js").read_bytes(), "text/javascript")
             if p.path == "/integrity-ui.js":
                 return self._send(200, (html_path.parent / "integrity-ui.js").read_bytes(), "text/javascript")
+            if p.path == "/engine-control-ui.js":
+                return self._send(200, (html_path.parent / "engine-control-ui.js").read_bytes(), "text/javascript")
             if p.path == "/autopilot-ui.js":
                 return self._send(200, (html_path.parent / "autopilot-ui.js").read_bytes(), "text/javascript")
             if p.path == "/brain-ui.js":
@@ -234,6 +368,10 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
                 return self._json(200, evolution_remote_sync.status())
+            if p.path == "/api/engine-control":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                return self._json(200, control.status())
             if p.path == "/api/autopilot":
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
@@ -475,11 +613,16 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._json(413, {"detail": "body too large"})
             raw = self.rfile.read(n) if n else b""
             try:
-                body = strict_json(raw) if p.path.startswith(("/admin/research/", "/admin/integrity/", "/admin/parallax/", "/admin/dreamstate/", "/admin/possibility/", "/admin/autopilot/")) else (json.loads(raw, parse_constant=_no_json_constants) if raw else {})
+                body = strict_json(raw) if p.path.startswith(("/admin/research/", "/admin/integrity/", "/admin/parallax/", "/admin/dreamstate/", "/admin/possibility/", "/admin/autopilot/", "/admin/engine-control")) else (json.loads(raw, parse_constant=_no_json_constants) if raw else {})
             except ValueError as ex:
                 return self._json(400, {"detail": f"bad JSON body: {ex}"})
             if not isinstance(body, dict):
                 return self._json(400, {"detail": "JSON body must be an object"})
+            if p.path == "/admin/engine-control":
+                try:
+                    return self._json(200, control.run(body))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
             if p.path == "/admin/system/audit":
                 try:
                     audit = save_repository_audit(port.base_dir, body.get("audit", body))
