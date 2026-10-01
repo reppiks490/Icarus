@@ -1,0 +1,90 @@
+{
+  "schema": "icarus.system-evolution.v1",
+  "interface_contract": {
+    "important_mcp_changes_must_surface": true,
+    "scope": "Repairs, audits, hardening, provenance changes, research/evidence upgrades, and subsystem evolutions that materially affect ICARUS understanding or operation.",
+    "display_policy": "Show the change, provenance, verification state, interface effect, and execution-authority boundary. Do not imply deployment or trading authority from a repository change."
+  },
+  "entries": [
+    {
+      "id": "mcp-20260930-aion-parallax-sync",
+      "recorded_date": "2026-09-30",
+      "subsystem": "AION / PARALLAX",
+      "kind": "evolution",
+      "status": "integrated_branch",
+      "severity": "important",
+      "title": "AION/PARALLAX evidence lineage synchronized",
+      "summary": "Current AION/PARALLAX evidence contracts, provenance inventory, retrospective labeling, and causal replay foundation were synchronized into the consolidated research branch.",
+      "source_repo": "reppiks490/divine-providence",
+      "source_branch": "sol/subsystem-evolution-v2-20260930",
+      "source_commit": "299441251fd23599844510f3512b7a8341f6e811",
+      "verification": "Source commit exists; integration remains research-only until the owning branch is reviewed and merged.",
+      "interface_effect": "System panel exposes the lineage and current integration state.",
+      "execution_authorized": false
+    },
+    {
+      "id": "mcp-20260930-parallax-atlas",
+      "recorded_date": "2026-09-30",
+      "subsystem": "PARALLAX",
+      "kind": "evolution",
+      "status": "integrated_branch",
+      "severity": "important",
+      "title": "Causal analog atlas and outcome-gated memory",
+      "summary": "PARALLAX gained decision-time fingerprints, historical analog retrieval, source ablation, and outcome summaries that hide future or unverified outcomes.",
+      "source_repo": "reppiks490/divine-providence",
+      "source_branch": "sol/subsystem-evolution-v2-20260930",
+      "source_commit": "a778372eb5c58068fae53d1c8b19275a3e42672b",
+      "verification": "Regression tests were added on the subsystem branch; no production authorization is granted.",
+      "interface_effect": "System panel reports the causal-memory capability and its research-only boundary.",
+      "execution_authorized": false
+    },
+    {
+      "id": "mcp-20260930-argus-journal",
+      "recorded_date": "2026-09-30",
+      "subsystem": "ARGUS",
+      "kind": "hardening",
+      "status": "integrated_branch",
+      "severity": "important",
+      "title": "Receipt-time microstructure journal hardened",
+      "summary": "ARGUS now requires explicit source capabilities and verified source identity for authenticated trade/depth evidence, preserves source-local sequencing, detects tampering, and replays depth causally.",
+      "source_repo": "reppiks490/divine-providence",
+      "source_branch": "sol/subsystem-evolution-v2-20260930",
+      "source_commit": "c726f84c7085e5296612eaa9f5d73c3e6a936785",
+      "verification": "Capability, causal-clock, replay-integrity, tamper, and recovery tests were added.",
+      "interface_effect": "System panel exposes the evidence-tier and source-integrity hardening instead of leaving it hidden in MCP work.",
+      "execution_authorized": false
+    },
+    {
+      "id": "mcp-20260930-athena-causal",
+      "recorded_date": "2026-09-30",
+      "subsystem": "ATHENA",
+      "kind": "hardening",
+      "status": "integrated_branch",
+      "severity": "important",
+      "title": "Causal advisory replay and outcome-gated competence",
+      "summary": "ATHENA now treats actual ingestion as the hard replay boundary, surfaces source-quality and sequence gaps, and updates competence only from verified outcomes recorded after they are actually available.",
+      "source_repo": "reppiks490/divine-providence",
+      "source_branch": "sol/subsystem-evolution-v2-20260930",
+      "source_commit": "78b96c98fefc331ff45d64e01ad7e6f1a209d35b",
+      "verification": "Causal replay, quality abstention, immutable outcome identity, and research-only learning tests were added.",
+      "interface_effect": "System panel surfaces the advisory safety state and research-only learning boundary.",
+      "execution_authorized": false
+    },
+    {
+      "id": "mcp-20260930-nexus-reconcile",
+      "recorded_date": "2026-09-30",
+      "subsystem": "NEXUS",
+      "kind": "repair",
+      "status": "integrated_branch",
+      "severity": "important",
+      "title": "Current NEXUS hardening reconciled into subsystem branch",
+      "summary": "The subsystem workstream was reconciled with current NEXUS provenance and validation-hardening changes so the research branch does not silently regress newer main-line safeguards.",
+      "source_repo": "reppiks490/divine-providence",
+      "source_branch": "sol/subsystem-evolution-v2-20260930",
+      "source_commit": "4700244300ce8d388dca85ed68f194922154afd2",
+      "verification": "Reconciliation commit preserves the current main-line NEXUS hardening in the subsystem branch tree.",
+      "interface_effect": "System panel makes cross-branch reconciliation visible and traceable.",
+      "execution_authorized": false
+    }
+  ]
+}
