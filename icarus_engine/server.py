@@ -956,6 +956,16 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
                 return self._json(200, performance_proof.snapshot())
+            if p.path == "/api/performance-proof/pending":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                try:
+                    return self._json(200, performance_proof.pending_settlements(
+                        as_of=q.get("as_of", [None])[0],
+                        limit=int(q.get("limit", ["100"])[0]),
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
             if p.path == "/api/latency":
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
