@@ -297,6 +297,100 @@ class TacticalAutopilot:
         }
         return metrics
 
+    def _progress(self, candidate, label, index, total):
+        with self._lock:
+            state = self._read()
+            active = state.get("active") or {}
+            current = active.get("candidate") or {}
+            if current.get("id") != candidate.get("id"):
+                return
+            active.update(
+                stage="robustness",
+                robustness_label=label,
+                robustness_index=index,
+                robustness_total=total,
+            )
+            state["active"] = active
+            self._write(state)
+
+    def _evaluate_candidate(self, candidate, cfg):
+        """Evaluate one candidate on one frozen source across several horizons."""
+        asset = candidate["asset"]
+        frozen = freeze_replay_port(self.port, asset)
+        common = {
+            "inputs": candidate["inputs"],
+            "chart_type": candidate.get("chart_type"),
+            "fill_on": "real",
+            "session": candidate.get("session"),
+        }
+        requested = int(cfg.get("robustness_windows", 1))
+        self._progress(candidate, "full history", 1, requested)
+        full = run_backtest(frozen, asset, **common)
+        evaluations = [{
+            "label": "full",
+            "metrics": self._score(full, cfg["min_trades"]),
+            "window_start": (full.get("range") or {}).get("start"),
+            "window_end": (full.get("range") or {}).get("end"),
+        }]
+
+        bounds = full.get("range") or {}
+        start, end = bounds.get("start"), bounds.get("end")
+        fractions = {1: (), 2: (0.50,), 3: (0.50, 0.75,)}[requested]
+        if type(start) is int and type(end) is int and end > start:
+            for offset, fraction in enumerate(fractions, start=2):
+                window_start = int(start + (end - start) * fraction)
+                if window_start >= end:
+                    continue
+                label = "recent half" if fraction == 0.50 else "recent quarter"
+                self._progress(candidate, label, offset, requested)
+                result = run_backtest(
+                    frozen,
+                    asset,
+                    **common,
+                    window_start=window_start,
+                    window_end=end,
+                )
+                evaluations.append({
+                    "label": label,
+                    "metrics": self._score(result, cfg["min_trades"]),
+                    "window_start": window_start,
+                    "window_end": end,
+                })
+
+        scores = [float(x["metrics"]["score"]) for x in evaluations]
+        full_score = scores[0]
+        median_score = float(statistics.median(scores))
+        worst_score = min(scores)
+        dispersion = float(statistics.pstdev(scores)) if len(scores) > 1 else 0.0
+        robust_score = (
+            0.45 * median_score
+            + 0.35 * worst_score
+            + 0.20 * full_score
+            - 0.15 * dispersion
+        )
+        metrics = dict(evaluations[0]["metrics"])
+        metrics.update({
+            "score": round(robust_score, 8),
+            "full_score": round(full_score, 8),
+            "median_window_score": round(median_score, 8),
+            "worst_window_score": round(worst_score, 8),
+            "score_dispersion": round(dispersion, 8),
+            "robustness_windows": len(evaluations),
+            "window_scores": [
+                {
+                    "label": x["label"],
+                    "score": x["metrics"]["score"],
+                    "trades": x["metrics"]["trades"],
+                    "pnl": x["metrics"]["pnl"],
+                    "max_drawdown": x["metrics"]["max_drawdown"],
+                    "window_start": x["window_start"],
+                    "window_end": x["window_end"],
+                }
+                for x in evaluations
+            ],
+        })
+        return full, metrics
+
     def cycle_once(self):
         # Manual and background requests must never race the same shadow state.
         if not self._cycle_lock.acquire(blocking=False):
@@ -340,15 +434,7 @@ class TacticalAutopilot:
             self._write(state)
 
         try:
-            result = run_backtest(
-                self.port,
-                asset,
-                inputs=candidate["inputs"],
-                chart_type=candidate.get("chart_type"),
-                fill_on="real",
-                session=candidate.get("session"),
-            )
-            metrics = self._score(result, cfg["min_trades"])
+            result, metrics = self._evaluate_candidate(candidate, cfg)
             record = {
                 "id": candidate["id"],
                 "asset": asset,
