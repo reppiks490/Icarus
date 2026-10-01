@@ -790,3 +790,32 @@ def test_engine_control_http_returns_structured_internal_failure(admin, monkeypa
     })
     assert status == 500
     assert "RuntimeError: synthetic control failure" in body["detail"]
+
+
+@pytest.mark.parametrize("exposure", ["pending", "open"])
+def test_remove_asset_rejects_open_or_pending_exposure(configured, exposure):
+    port, r, _ = configured
+    pending(r)
+    if exposure == "open":
+        r.em.process_bar(Bar(0, 100, 100, 100, 100, 1), 0)
+    with pytest.raises(ValueError, match="flatten open positions"):
+        port.remove_asset("TEST")
+    assert port.runners["TEST"] is r
+    assert "TEST" in port.order
+    assert not r._removed
+
+
+@pytest.mark.parametrize("exposure", ["pending", "open"])
+def test_engine_control_remove_rejects_exposure(admin, exposure):
+    port, r, _, post = admin
+    pending(r)
+    if exposure == "open":
+        r.em.process_bar(Bar(0, 100, 100, 100, 100, 1), 0)
+    status, body = post("/admin/engine-control", {
+        "action": "asset.remove",
+        "target": "TEST",
+        "confirm": "REMOVE ASSET",
+    })
+    assert status == 400
+    assert "flatten open positions" in body["detail"]
+    assert port.runners["TEST"] is r
