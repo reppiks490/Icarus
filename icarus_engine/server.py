@@ -68,6 +68,8 @@ from .brain import brain_snapshot, record_brain_event
 from .brain_sync import BrainRemoteSync
 from .research_brain_sync import BrainResearchSync
 from .evolution_sync import EvolutionRemoteSync
+from .parallax import ParallaxStore
+from .dreamstate import DreamstateLab
 
 
 def _no_json_constants(name: str):
@@ -125,6 +127,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     brain_remote_sync = BrainRemoteSync(port.base_dir)
     brain_research_sync = BrainResearchSync(port.base_dir)
     evolution_remote_sync = EvolutionRemoteSync(port.base_dir)
+    parallax = ParallaxStore(port.base_dir)
+    dreamstate = DreamstateLab(port.base_dir, parallax=parallax)
 
     class H(BaseHTTPRequestHandler):
         server_version = "icarus"
@@ -190,6 +194,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._send(200, (html_path.parent / "brain-ui.js").read_bytes(), "text/javascript")
             if p.path == "/evolution-ui.js":
                 return self._send(200, (html_path.parent / "evolution-ui.js").read_bytes(), "text/javascript")
+            if p.path == "/parallax-ui.js":
+                return self._send(200, (html_path.parent / "parallax-ui.js").read_bytes(), "text/javascript")
             if p.path in ("/experience-ui.js", "/experience-ui.css"):
                 ctype = "text/javascript" if p.path.endswith(".js") else "text/css"
                 return self._send(200, (html_path.parent / p.path[1:]).read_bytes(), ctype)
@@ -217,6 +223,20 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
                 return self._json(200, evolution_remote_sync.status())
+            if p.path == "/api/parallax":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                try:
+                    return self._json(200, parallax.snapshot())
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+            if p.path == "/api/dreamstate":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                try:
+                    return self._json(200, dreamstate.snapshot())
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
             if p.path == "/api/brain":
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
@@ -463,6 +483,31 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             if p.path == "/admin/brain/event":
                 try:
                     return self._json(200, record_brain_event(port.base_dir, body))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+            if p.path == "/admin/parallax/decision":
+                try:
+                    return self._json(200, parallax.record_decision(body))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+            if p.path == "/admin/parallax/outcome":
+                try:
+                    return self._json(200, parallax.record_outcome(body))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+            if p.path == "/admin/dreamstate/refresh":
+                try:
+                    return self._json(200, dreamstate.refresh(body.get("min_samples", 5)))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+            if p.path == "/admin/dreamstate/evaluate":
+                try:
+                    return self._json(200, dreamstate.evaluate(body.get("candidate_id"), body))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+            if p.path == "/admin/dreamstate/retire":
+                try:
+                    return self._json(200, dreamstate.retire(body.get("candidate_id"), body.get("reason")))
                 except (ValueError, TypeError) as ex:
                     return self._json(400, {"detail": str(ex)})
             asset = str(body.get("asset") or body.get("symbol") or "").upper()
