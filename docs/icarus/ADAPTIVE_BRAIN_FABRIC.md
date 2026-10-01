@@ -65,6 +65,16 @@ The local research workflow may truthfully establish dataset/baseline provenance
 
 No-candidate, failed, timed-out, cancelled, and interrupted studies are also retained as durable learning so the system does not repeatedly rediscover the same failed research path. A dirty or unknown code revision cannot mint a Brain candidate.
 
+## Performance proof kernel
+
+The Adaptive Brain consumes a causal proof ledger for forecasts, settled outcomes and deterministic replay checks. Forecast identities bind candidate, asset, regime, decision time, maturity, success definition, exact source revision, dataset hash and evidence hash. Outcomes are immutable and cannot be recorded before maturity or in the future.
+
+A **100% observed success** value may be displayed only when the denominator is a scope-coherent, closed, fully-settled sample with at least 30 matured forecasts and every settled outcome is successful. That statement applies only to that exact historical sample. It never becomes a future guarantee or production authority.
+
+The evidence plane also exposes outcome coverage, Brier score, calibration error, deterministic-replay rate and statistically gated champion/challenger tournaments. Comparable tournaments require matching asset, regime, success definition and horizon and remain `EMPIRICAL_SHADOW_ONLY`.
+
+Latency is measured with a monotonic nanosecond clock and surfaced as p50/p95/p99 distributions against explicit budgets. Targets remain targets until measurements exist; heavy training and falsification stay off the hot path.
+
 ## Truthful operator metrics
 
 The panel shows measured values only. A missing success rate is rendered as UNMEASURED. Latency targets are labeled targets until instrumentation supplies actual distributions. Learning is evidenced by durable events and before/after validation state, not by an unsupported claim that the model "self-learned."
