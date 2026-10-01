@@ -187,6 +187,16 @@ class PantheonKernel:
         observation_id = text(observation_id, "observation_id", 96)
         return normalized, identity, observation_id
 
+    def _attach_ecology_outcomes(self, result: dict[str, Any], normalized: Mapping[str, Any]) -> dict[str, Any]:
+        result["ecology_outcomes"] = [
+            self.record_claim_outcome({
+                **row,
+                "observed_at": row.get("observed_at") or normalized["observed_at"],
+            })
+            for row in normalized.get("claim_outcomes", [])
+        ]
+        return result
+
     def record_observation(self, payload: Mapping[str, Any]) -> dict[str, Any]:
         normalized, identity, observation_id = self._normalize(payload)
         with _LOCK, self._connect() as con:
@@ -194,7 +204,7 @@ class PantheonKernel:
             if existing:
                 if existing["identity_hash"] != identity:
                     raise ValueError("observation_id already exists with different immutable identity")
-                return self.observation(observation_id)
+                return self._attach_ecology_outcomes(self.observation(observation_id), normalized)
 
         faculties = evaluate_faculties(normalized["signals"], observation_id)
         aether = self.swarm.evaluate(
@@ -263,7 +273,7 @@ class PantheonKernel:
             if existing:
                 if existing["identity_hash"] != identity:
                     raise ValueError("observation_id already exists with different immutable identity")
-                return self.observation(observation_id)
+                return self._attach_ecology_outcomes(self.observation(observation_id), normalized)
             con.execute(
                 """INSERT INTO observations(
                     observation_id,observed_at,asset,horizon_ms,source_commit,identity_hash,payload_json,analysis_json,created_at
