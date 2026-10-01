@@ -78,6 +78,11 @@
         '</td><td><button type="button" data-learn-backfill="' + h(r.dataset_id) + '">Replay</button></td></tr>';
     });
   }
+  function backlogRows(backlog) {
+    return Object.keys(backlog || {}).sort().map(function (k) {
+      return '<tr><td><b>' + h(k) + '</b></td><td class="tnum">' + val(backlog[k],0) + '</td></tr>';
+    });
+  }
   function coverageRows(coverage) {
     return Object.keys(coverage || {}).sort().map(function (k) {
       return '<tr><td><b>' + h(k) + '</b></td><td>' + h(coverage[k]) + '</td></tr>';
@@ -98,12 +103,14 @@
     const preds = state.predictions || {};
     const training = state.training || {};
     const experience = state.experiences || {};
+    const health = state.health || {};
     const datasets = (data || {}).datasets || [];
     const runs = (data || {}).training_runs || [];
     const latest = ((state.cycles || {}).latest) || {};
     panel.innerHTML =
       '<div class="tiles">' +
         '<div class="tile"><div class="k">LEARNING STATE</div><div class="v">' + chip(state.status) + '</div><div class="small muted">background ' + (state.background && state.background.running ? 'RUNNING' : 'STOPPED') + ' · cycle ' + val(cfg.cycle_seconds,0) + 's</div></div>' +
+        '<div class="tile"><div class="k">LEARNER HEALTH</div><div class="v">' + chip(health.status) + '</div><div class="small muted">CONSECUTIVE FAILURES ' + val(health.consecutive_failures,0) + ' · partial ' + val(health.consecutive_partial,0) + ' · ' + (health.stale ? 'STALE' : 'fresh') + '</div></div>' +
         '<div class="tile"><div class="k">DATASET COVERAGE</div><div class="v">' + val((state.datasets || {}).count,0) + '</div><div class="small muted">content-hash deduplicated local datasets</div></div>' +
         '<div class="tile"><div class="k">TRAINING REPLAY</div><div class="v">' + val(training.run_count,0) + '</div><div class="small muted">purged walk-forward / protected holdout trainers</div></div>' +
         '<div class="tile"><div class="k">LIVE MATURITY</div><div class="v">' + val(preds.settled,0) + ' / ' + val(preds.count,0) + '</div><div class="small muted">' + val(preds.pending,0) + ' pending forecasts</div></div>' +
@@ -119,6 +126,9 @@
       table(['Source','Asset','Direction','State','Count','Win rate','Net P&L','Avg P&L','PROFIT FACTOR'], experienceRows(experience.summary), 'UNMEASURED — no fully closed realized trade experience yet.') +
       '<h3 class="small" style="margin:16px 0 8px">DATASET COVERAGE · TRAINING REPLAY</h3>' +
       table(['Asset','Cadence','Class','Rows','Coverage','Representation','Replay status','Action'], datasetRows(datasets,runs), 'UNAVAILABLE — no local historical datasets catalogued yet.') +
+      '<h3 class="small" style="margin:16px 0 8px">LEARNING BACKLOG</h3>' +
+      table(['BACKLOG','Pending'], backlogRows(health.backlog), 'UNAVAILABLE') +
+      '<div class="small muted">Last completed: ' + h(health.last_completed_at || 'UNAVAILABLE') + ' · last error: ' + h(health.last_error || 'none') + '</div>' +
       '<h3 class="small" style="margin:16px 0 8px">SYSTEM LEARNING COVERAGE</h3>' +
       table(['Subsystem','Learning contract'], coverageRows(state.coverage), 'UNAVAILABLE') +
       '<div class="small muted" style="margin-top:12px">The learner does not treat repeated model agreement as new evidence. Credibility moves only from matured observed outcomes or protected historical replay. Missing metrics remain UNAVAILABLE/UNMEASURED.</div>';
@@ -127,8 +137,8 @@
     const panel = document.querySelector('#learningPanel');
     if (!panel) return;
     try {
-      const pair = await Promise.all([getJson('/api/learning'), getJson('/api/learning/datasets')]);
-      lastState = pair[0]; lastDatasets = pair[1]; render(lastState, lastDatasets);
+      const triple = await Promise.all([getJson('/api/learning'), getJson('/api/learning/datasets'), getJson('/api/learning/health')]);
+      lastState = triple[0]; lastState.health = triple[2]; lastDatasets = triple[1]; render(lastState, lastDatasets);
     } catch (err) {
       panel.innerHTML = '<div class="empty">Learning Fabric UNAVAILABLE: ' + h(err && err.message ? err.message : err) + '</div>';
     }
