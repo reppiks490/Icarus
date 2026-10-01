@@ -87,6 +87,7 @@ from .engine_control import ControlAction, EngineControlPlane
 from .mcp_control import MCPControlPlane
 from .chronofold import ChronofoldEngine
 from .pantheon import PantheonKernel, subsystem_context
+from .sibyl import SibylEngine
 
 
 def _no_json_constants(name: str):
@@ -199,6 +200,32 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     mcp_control = MCPControlPlane(port.base_dir)
     chronofold = ChronofoldEngine(port, possibility=possibility)
     pantheon = PantheonKernel(port.base_dir)
+    sibyl = SibylEngine(port.base_dir)
+
+    def _sibyl_ingest_pantheon(observation: Dict[str, Any]) -> Dict[str, Any]:
+        try:
+            return sibyl.record_pantheon_exports(observation)
+        except (ValueError, TypeError) as ex:
+            port.journal.log("WARN", f"SIBYL PANTHEON gate: {type(ex).__name__}: {ex}")
+            return {
+                "accepted": 0,
+                "rejected": [{"reason": f"{type(ex).__name__}: {ex}"}],
+                "evidence": [],
+                "contract": "pantheon-identified-structural-only",
+                "execution_authorized": False,
+                "production_decision_authorized": False,
+            }
+
+    # Idempotently recover previously persisted native PANTHEON structural
+    # exports. This never turns other faculty/context data into SIBYL votes.
+    try:
+        _pantheon_history = pantheon.snapshot(limit=250).get("observations", [])
+        if isinstance(_pantheon_history, list):
+            for _observation in reversed(_pantheon_history):
+                if isinstance(_observation, dict):
+                    _sibyl_ingest_pantheon(_observation)
+    except Exception as ex:
+        port.journal.log("WARN", f"SIBYL PANTHEON backfill: {type(ex).__name__}: {ex}")
 
     def _control_runner(target: str):
         try:
@@ -623,6 +650,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             "dreamstate": dreamstate.status,
             "possibility": possibility.status,
             "pantheon": pantheon.snapshot,
+            "sibyl": sibyl.snapshot,
             "chronofold": chronofold.status,
             "backtests": _backtests_snapshot,
             "code_provenance": local_code_provenance,
@@ -791,6 +819,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._send(200, (html_path.parent / "possibility-ui.js").read_bytes(), "text/javascript")
             if p.path == "/pantheon-ui.js":
                 return self._send(200, (html_path.parent / "pantheon-ui.js").read_bytes(), "text/javascript")
+            if p.path == "/sibyl-ui.js":
+                return self._send(200, (html_path.parent / "sibyl-ui.js").read_bytes(), "text/javascript")
             if p.path == "/chronofold-ui.js":
                 return self._send(200, (html_path.parent / "chronofold-ui.js").read_bytes(), "text/javascript")
             if p.path in ("/experience-ui.js", "/experience-ui.css"):
@@ -868,6 +898,44 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     return self._json(401, {"detail": "bad admin token"})
                 try:
                     return self._json(200, pantheon.snapshot())
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+            if p.path == "/api/sibyl":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                try:
+                    try:
+                        market_state = port.status()
+                    except Exception:
+                        market_state = {}
+                    try:
+                        parallax_state = parallax.snapshot()
+                    except Exception:
+                        parallax_state = {}
+                    try:
+                        dreamstate_state = dreamstate.snapshot()
+                    except Exception:
+                        dreamstate_state = {}
+                    try:
+                        brain_state = brain_snapshot(
+                            port.base_dir,
+                            market_status=market_state,
+                            system_audit=load_repository_audit(port.base_dir),
+                            integrity=integrity_snapshot(port.base_dir),
+                            remote_sync=brain_remote_sync.status(),
+                            research_sync=brain_research_sync.status(),
+                            proof_status=performance_proof.snapshot(),
+                            latency_status=latency_telemetry.snapshot(),
+                        )
+                    except Exception:
+                        brain_state = {}
+                    return self._json(200, sibyl.snapshot(
+                        q.get("asset", [None])[0],
+                        market_status=market_state,
+                        parallax_state=parallax_state,
+                        dreamstate_state=dreamstate_state,
+                        brain_state=brain_state,
+                    ))
                 except (ValueError, TypeError) as ex:
                     return self._json(400, {"detail": str(ex)})
             if p.path == "/api/chronofold":
@@ -1103,7 +1171,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._json(413, {"detail": "body too large"})
             raw = self.rfile.read(n) if n else b""
             try:
-                body = strict_json(raw) if p.path.startswith(("/admin/research/", "/admin/integrity/", "/admin/parallax/", "/admin/dreamstate/", "/admin/possibility/", "/admin/autopilot/", "/admin/engine-control", "/admin/pantheon/")) else (json.loads(raw, parse_constant=_no_json_constants) if raw else {})
+                body = strict_json(raw) if p.path.startswith(("/admin/research/", "/admin/integrity/", "/admin/parallax/", "/admin/dreamstate/", "/admin/possibility/", "/admin/autopilot/", "/admin/engine-control", "/admin/pantheon/", "/admin/sibyl/")) else (json.loads(raw, parse_constant=_no_json_constants) if raw else {})
             except ValueError as ex:
                 return self._json(400, {"detail": f"bad JSON body: {ex}"})
             if not isinstance(body, dict):
@@ -1239,7 +1307,47 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                         psi_snapshot=psi_state,
                         existing=existing_outputs,
                     )
-                    return self._json(200, pantheon.record_observation(payload))
+                    result = pantheon.record_observation(payload)
+                    result["sibyl_ingestion"] = _sibyl_ingest_pantheon(result)
+                    return self._json(200, result)
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+            if p.path == "/admin/sibyl/evidence":
+                try:
+                    payload = dict(body)
+                    if not payload.get("source_commit"):
+                        provenance = local_code_provenance()
+                        if not provenance.get("candidate_revision_eligible") or not provenance.get("commit"):
+                            raise ValueError("exact clean ICARUS code provenance is required when source_commit is omitted")
+                        payload["source_commit"] = provenance["commit"]
+                    return self._json(200, sibyl.record_evidence(payload))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+            if p.path == "/admin/sibyl/forecast":
+                try:
+                    payload = dict(body)
+                    if not payload.get("source_commit"):
+                        provenance = local_code_provenance()
+                        if not provenance.get("candidate_revision_eligible") or not provenance.get("commit"):
+                            raise ValueError("exact clean ICARUS code provenance is required when source_commit is omitted")
+                        payload["source_commit"] = provenance["commit"]
+                    # current_price must be supplied explicitly; historical
+                    # forecasts can never borrow today's live market price.
+                    return self._json(200, sibyl.record_forecast(payload))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+            if p.path == "/admin/sibyl/outcome":
+                try:
+                    return self._json(200, sibyl.record_outcome(body))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+            if p.path == "/admin/sibyl/scenario":
+                try:
+                    try:
+                        market_state = port.status()
+                    except Exception:
+                        market_state = {}
+                    return self._json(200, sibyl.scenario(body, market_status=market_state))
                 except (ValueError, TypeError) as ex:
                     return self._json(400, {"detail": str(ex)})
             if p.path == "/admin/parallax/decision":
@@ -1555,6 +1663,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     srv.latency_telemetry = latency_telemetry
     srv.autopilot = autopilot
     srv.pantheon = pantheon
+    srv.sibyl = sibyl
     srv.daemon_threads = True
     srv.background_workers_enabled = bool(start)
     if not start:
