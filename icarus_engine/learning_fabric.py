@@ -951,10 +951,95 @@ class LearningFabric:
             **_authority(),
         }
 
+    def _import_trade_list_dataset(self, dataset: Mapping[str, Any]) -> dict[str, Any]:
+        dataset_id = str(dataset["dataset_id"])
+        slot = "trade_experience"
+        existing = self._conn.execute(
+            "SELECT * FROM training_runs WHERE dataset_id=? AND slot=?",
+            (dataset_id, slot),
+        ).fetchone()
+        if existing is not None:
+            report = json.loads(existing["report_json"])
+            return {
+                "dataset_id": dataset_id,
+                "status": "complete",
+                "runs": [{"run_id": existing["run_id"], "slot": slot, "idempotent": True, "report": report}],
+                **_authority(),
+            }
+
+        from .parity import read_tv_trades
+        trades = read_tv_trades(str(dataset["path"]))
+        imported = 0
+        complete = 0
+        errors: dict[str, str] = {}
+        for trade in trades:
+            pieces = list(trade.get("pieces") or [])
+            if not pieces or any(piece.get("ts") is None for piece in pieces):
+                continue
+            record_key = f"{dataset_id}:{trade.get('no')}:{trade.get('entry_ts')}:{trade.get('dir')}:{trade.get('entry_px')}"
+            try:
+                qty = float(trade.get("qty") or 0.0)
+                exit_qty = sum(float(piece.get("qty") or 0.0) for piece in pieces)
+                if qty <= 0 or exit_qty <= 0:
+                    raise ValueError("trade quantity must be positive")
+                exit_price = sum(float(piece["px"]) * float(piece.get("qty") or 0.0) for piece in pieces) / exit_qty
+                pnl = sum(float(piece.get("pnl") or 0.0) for piece in pieces)
+                entry_ts = int(trade["entry_ts"])
+                exit_ts = max(int(piece["ts"]) for piece in pieces)
+                result = self.record_experience({
+                    "source": "historical_trade_list",
+                    "source_record_id": record_key,
+                    "asset": dataset["asset"],
+                    "direction": "long" if int(trade["dir"]) > 0 else "short",
+                    "entry_at": _iso(datetime.fromtimestamp(entry_ts, tz=timezone.utc)),
+                    "exit_at": _iso(datetime.fromtimestamp(exit_ts, tz=timezone.utc)),
+                    "qty": qty,
+                    "entry_price": float(trade["entry_px"]),
+                    "exit_price": exit_price,
+                    "pnl": pnl,
+                    "metadata": {
+                        "dataset_id": dataset_id,
+                        "dataset_sha256": dataset["raw_sha256"],
+                        "trade_number": trade.get("no"),
+                        "entry_signal": trade.get("entry_sig"),
+                        "exit_signals": [piece.get("sig") for piece in pieces],
+                        "time_quality": "UNVERIFIED_TIMEZONE",
+                        "time_interpretation": "TradingView export parsed with parity UTC compatibility; do not infer session/regime until timezone is independently bound.",
+                    },
+                })
+                complete += 1
+                imported += int(not result["idempotent"])
+            except Exception as ex:
+                errors[record_key] = f"{type(ex).__name__}: {ex}"[:500]
+
+        report = {
+            "status": "imported" if not errors else "partial",
+            "artifact_class": "trade_list",
+            "experience_count": complete,
+            "new_experiences": imported,
+            "time_quality": "UNVERIFIED_TIMEZONE",
+            "errors": errors,
+            **_authority(),
+        }
+        run_id = "train-" + hashlib.sha256(f"{dataset_id}|{slot}".encode()).hexdigest()
+        with self._lock, self._conn:
+            self._conn.execute(
+                "INSERT OR IGNORE INTO training_runs(run_id,dataset_id,slot,report_json,status,created_at) VALUES(?,?,?,?,?,?)",
+                (run_id, dataset_id, slot, _json(report, "trade experience report"), report["status"], _utc_now()),
+            )
+        return {
+            "dataset_id": dataset_id,
+            "status": "complete" if not errors else "partial",
+            "runs": [{"run_id": run_id, "slot": slot, "idempotent": False, "report": report}],
+            **_authority(),
+        }
+
     def backfill_dataset(self, dataset_id: str, *, slots: Sequence[str] | None = None) -> dict[str, Any]:
         dataset = self.dataset(dataset_id)
+        if dataset["artifact_class"] == "trade_list":
+            return self._import_trade_list_dataset(dataset)
         if dataset["artifact_class"] != "ohlc":
-            return {"dataset_id": dataset_id, "status": "skipped", "reason": "dataset is not OHLC", "runs": [], **_authority()}
+            return {"dataset_id": dataset_id, "status": "skipped", "reason": "dataset is neither OHLC nor trade-list experience", "runs": [], **_authority()}
         requested = list(slots if slots is not None else self._config["auto_train_slots"])
         runs = []
         for raw_slot in requested:
@@ -1254,6 +1339,93 @@ class LearningFabric:
         out.update(_authority())
         return out
 
+    def _harvest_runtime_experience(self) -> dict[str, Any]:
+        if self.port is None or not hasattr(self.port, "runner_list"):
+            return {"status": "unavailable", "imported": 0, "eligible": 0, **_authority()}
+        imported = 0
+        eligible = 0
+        skipped_open = 0
+        skipped_warmup = 0
+        errors: dict[str, str] = {}
+        for runner in list(self.port.runner_list()):
+            symbol = str(getattr(runner, "symbol", "") or "").strip().upper()
+            em = getattr(runner, "em", None)
+            if not symbol or em is None:
+                continue
+            live_from = float(getattr(runner, "live_from_ts", 0.0) or 0.0)
+            open_keys = {
+                (
+                    str(getattr(row, "entry_id", "")),
+                    int(getattr(row, "entry_ts", 0) or 0),
+                    int(getattr(row, "direction", 0) or 0),
+                    round(float(getattr(row, "entry_price", 0.0) or 0.0), 10),
+                )
+                for row in list(getattr(em, "open", []) or [])
+            }
+            groups: dict[tuple[Any, ...], list[Any]] = {}
+            for row in list(getattr(em, "closed", []) or []):
+                key = (
+                    str(getattr(row, "entry_id", "")),
+                    int(getattr(row, "entry_ts", 0) or 0),
+                    int(getattr(row, "direction", 0) or 0),
+                    round(float(getattr(row, "entry_price", 0.0) or 0.0), 10),
+                    int(getattr(row, "lot_id", 0) or 0),
+                )
+                groups.setdefault(key, []).append(row)
+            for key, pieces in groups.items():
+                entry_id, entry_ts, direction, entry_price, lot_id = key
+                if key[:4] in open_keys:
+                    skipped_open += 1
+                    continue
+                exit_ts = max(int(getattr(piece, "exit_ts", 0) or 0) for piece in pieces)
+                if exit_ts < live_from:
+                    skipped_warmup += 1
+                    continue
+                source_record_id = f"{symbol}:{entry_ts}:{entry_id}:{lot_id}:{direction}:{entry_price}"
+                try:
+                    qty = sum(float(getattr(piece, "qty", 0.0) or 0.0) for piece in pieces)
+                    if qty <= 0:
+                        raise ValueError("closed live-sim position has no positive quantity")
+                    exit_price = sum(
+                        float(getattr(piece, "exit_price", 0.0) or 0.0) * float(getattr(piece, "qty", 0.0) or 0.0)
+                        for piece in pieces
+                    ) / qty
+                    pnl = sum(float(getattr(piece, "profit", 0.0) or 0.0) for piece in pieces)
+                    result = self.record_experience({
+                        "source": "runtime_live_sim",
+                        "source_record_id": source_record_id,
+                        "asset": symbol,
+                        "direction": "long" if direction > 0 else "short",
+                        "entry_at": _iso(datetime.fromtimestamp(entry_ts, tz=timezone.utc)),
+                        "exit_at": _iso(datetime.fromtimestamp(exit_ts, tz=timezone.utc)),
+                        "qty": qty,
+                        "entry_price": entry_price,
+                        "exit_price": exit_price,
+                        "pnl": pnl,
+                        "metadata": {
+                            "entry_id": entry_id,
+                            "lot_id": lot_id,
+                            "entry_qty": max(int(getattr(piece, "entry_qty", 0) or 0) for piece in pieces),
+                            "exit_comments": [str(getattr(piece, "exit_comment", "") or "") for piece in pieces],
+                            "exit_kinds": [str(getattr(piece, "exit_kind", "") or "") for piece in pieces],
+                            "time_quality": "OBSERVED_UNIX_EVENT_TIME",
+                            "live_from_ts": live_from,
+                        },
+                    })
+                    eligible += 1
+                    imported += int(not result["idempotent"])
+                except Exception as ex:
+                    errors[source_record_id] = f"{type(ex).__name__}: {ex}"[:500]
+        return {
+            "status": "ok" if not errors else "partial",
+            "imported": imported,
+            "eligible": eligible,
+            "skipped_open": skipped_open,
+            "skipped_warmup": skipped_warmup,
+            "errors": errors,
+            **_authority(),
+        }
+
     def _observe_portfolio(self) -> dict[str, Any]:
         if self.port is None or not self._config["settle_live_prices"]:
             return {"status": "unavailable", "assets": {}}
@@ -1272,6 +1444,21 @@ class LearningFabric:
                 continue
             assets[symbol] = self.observe_price(symbol, now, float(raw), evidence=["portfolio:observed-price"])
         return {"status": "ok", "assets": assets}
+
+    def _next_trade_experience(self, limit: int) -> list[str]:
+        if limit <= 0:
+            return []
+        rows = self._conn.execute(
+            """SELECT d.dataset_id FROM datasets d
+               WHERE d.artifact_class='trade_list'
+               AND NOT EXISTS (
+                   SELECT 1 FROM training_runs t
+                   WHERE t.dataset_id=d.dataset_id AND t.slot='trade_experience'
+               )
+               ORDER BY d.discovered_at,d.dataset_id LIMIT ?""",
+            (limit,),
+        ).fetchall()
+        return [row["dataset_id"] for row in rows]
 
     def _next_untrained(self, limit: int) -> list[str]:
         if limit <= 0 or not self._config["auto_train_slots"]:
