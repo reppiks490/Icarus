@@ -44,6 +44,12 @@ _PARAMETER_AXES = {
     "target": "target_multiplier",
     "size": "size_multiplier",
 }
+_PARAMETER_MAX_GAP = {
+    "delay_bars": 2.0,
+    "stop_multiplier": 0.75,
+    "target_multiplier": 0.75,
+    "size_multiplier": 1.0,
+}
 _LOCK = threading.RLock()
 
 
@@ -661,7 +667,7 @@ class ParallaxStore:
         }
 
     @staticmethod
-    def _parameter_axis(kind: str, params: Mapping[str, Any]) -> tuple[str, float] | None:
+    def _parameter_axis(kind: str, params: Mapping[str, Any]) -> tuple[str, float, str] | None:
         key = _PARAMETER_AXES.get(str(kind))
         if not key or key not in params:
             return None
@@ -671,7 +677,9 @@ class ParallaxStore:
         value = float(value)
         if not math.isfinite(value):
             return None
-        return key, value
+        remainder = {str(k): v for k, v in params.items() if str(k) != key}
+        signature = _sha(_json(remainder, "parameter basin remainder", 8192))
+        return key, value, signature
 
     @staticmethod
     def _apply_bh(items: list[dict[str, Any]]) -> None:
@@ -700,7 +708,7 @@ class ParallaxStore:
 
     @classmethod
     def _annotate_parameter_basins(cls, items: list[dict[str, Any]], min_samples: int) -> None:
-        families: dict[tuple[str, str, str, str, str, str], list[dict[str, Any]]] = {}
+        families: dict[tuple[str, str, str, str, str, str, str], list[dict[str, Any]]] = {}
         for item in items:
             axis = cls._parameter_axis(str(item.get("kind") or ""), item.get("branch_params") or {})
             if axis is None:
@@ -716,8 +724,9 @@ class ParallaxStore:
                     "basin_width": None,
                 }
                 continue
-            axis_name, axis_value = axis
+            axis_name, axis_value, remainder_signature = axis
             item["_parameter_axis_value"] = axis_value
+            item["_parameter_remainder_signature"] = remainder_signature
             family = (
                 str(item["asset"]),
                 str(item["regime"]),
@@ -725,18 +734,26 @@ class ParallaxStore:
                 str(item["comparison_contract_hash"]),
                 str(item["kind"]),
                 axis_name,
+                remainder_signature,
             )
             families.setdefault(family, []).append(item)
 
         for family, rows in families.items():
-            axis_name = family[-1]
+            axis_name = family[-2]
+            max_gap = float(_PARAMETER_MAX_GAP.get(axis_name, float("inf")))
             rows.sort(key=lambda row: float(row["_parameter_axis_value"]))
             for idx, item in enumerate(rows):
                 neighbors = []
-                if idx > 0 and int(rows[idx - 1].get("evidence_pair_count") or 0) >= min_samples:
-                    neighbors.append(rows[idx - 1])
-                if idx + 1 < len(rows) and int(rows[idx + 1].get("evidence_pair_count") or 0) >= min_samples:
-                    neighbors.append(rows[idx + 1])
+                if idx > 0:
+                    left_row = rows[idx - 1]
+                    left_gap = abs(float(item["_parameter_axis_value"]) - float(left_row["_parameter_axis_value"]))
+                    if left_gap <= max_gap and int(left_row.get("evidence_pair_count") or 0) >= min_samples:
+                        neighbors.append(left_row)
+                if idx + 1 < len(rows):
+                    right_row = rows[idx + 1]
+                    right_gap = abs(float(right_row["_parameter_axis_value"]) - float(item["_parameter_axis_value"]))
+                    if right_gap <= max_gap and int(right_row.get("evidence_pair_count") or 0) >= min_samples:
+                        neighbors.append(right_row)
                 def basin_supports(row: Mapping[str, Any]) -> bool:
                     temporal = row.get("temporal_stability") or {}
                     temporal_ok = temporal.get("evaluable") is not True or temporal.get("stable") is True
@@ -747,10 +764,18 @@ class ParallaxStore:
                 isolated = bool(item.get("candidate_eligible")) and evaluable and not supporting
 
                 left = idx
-                while left > 0 and basin_supports(rows[left - 1]):
+                while left > 0:
+                    candidate = rows[left - 1]
+                    gap = abs(float(rows[left]["_parameter_axis_value"]) - float(candidate["_parameter_axis_value"]))
+                    if gap > max_gap or not basin_supports(candidate):
+                        break
                     left -= 1
                 right = idx
-                while right + 1 < len(rows) and basin_supports(rows[right + 1]):
+                while right + 1 < len(rows):
+                    candidate = rows[right + 1]
+                    gap = abs(float(candidate["_parameter_axis_value"]) - float(rows[right]["_parameter_axis_value"]))
+                    if gap > max_gap or not basin_supports(candidate):
+                        break
                     right += 1
                 basin_rows = rows[left:right + 1] if item.get("candidate_eligible") is True else []
                 basin_values = [float(row["_parameter_axis_value"]) for row in basin_rows]
@@ -765,10 +790,13 @@ class ParallaxStore:
                     "isolated_spike": isolated,
                     "basin_support_count": len(basin_rows),
                     "basin_width": width,
+                    "max_neighbor_gap": max_gap,
+                    "remainder_signature": remainder_signature,
                 }
 
         for item in items:
             item.pop("_parameter_axis_value", None)
+            item.pop("_parameter_remainder_signature", None)
 
     def _screened_hypotheses(
         self,
