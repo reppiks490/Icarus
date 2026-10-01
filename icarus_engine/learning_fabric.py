@@ -215,6 +215,11 @@ class LearningFabric:
                     status TEXT NOT NULL,
                     summary_json TEXT NOT NULL
                 );
+                CREATE TABLE IF NOT EXISTS harvest_cursors (
+                    adapter TEXT PRIMARY KEY,
+                    cursor_json TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                );
                 """
             )
 
@@ -909,24 +914,52 @@ class LearningFabric:
             outcomes_imported += int(not result["idempotent"])
         return {"status": "ok", "forecasts_imported": forecasts_imported, "outcomes_imported": outcomes_imported}
 
+    def _harvest_cursor(self, adapter: str) -> dict[str, Any] | None:
+        row = self._conn.execute(
+            "SELECT cursor_json FROM harvest_cursors WHERE adapter=?",
+            (adapter,),
+        ).fetchone()
+        if row is None:
+            return None
+        value = json.loads(row["cursor_json"])
+        return value if isinstance(value, dict) else None
+
+    def _set_harvest_cursor(self, adapter: str, cursor: Mapping[str, Any]) -> None:
+        payload = dict(cursor)
+        _json(payload, "harvest cursor")
+        with self._lock, self._conn:
+            self._conn.execute(
+                "INSERT INTO harvest_cursors(adapter,cursor_json,updated_at) VALUES(?,?,?) "
+                "ON CONFLICT(adapter) DO UPDATE SET cursor_json=excluded.cursor_json, updated_at=excluded.updated_at",
+                (adapter, _json(payload, "harvest cursor"), _utc_now()),
+            )
+
     def _harvest_performance_proof(self) -> dict[str, Any]:
-        """Import immutable candidate forecasts/outcomes into the common ledger."""
+        """Incrementally fuse immutable proof outcomes into the common ledger."""
         engine = self._native.get("performance_proof")
         if engine is None or not hasattr(engine, "settled_records"):
             return {"status": "unavailable", "forecasts_imported": 0, "outcomes_imported": 0}
+        cursor = self._harvest_cursor("performance_proof")
+        request: dict[str, Any] = {"limit": 1000}
+        if cursor:
+            request["after_observed_at"] = cursor.get("observed_at")
+            request["after_forecast_id"] = cursor.get("forecast_id")
         try:
-            export = engine.settled_records(limit=10000)
+            export = engine.settled_records(**request)
         except Exception as ex:
             return {
                 "status": "degraded",
                 "forecasts_imported": 0,
                 "outcomes_imported": 0,
+                "cursor": cursor,
                 "error": f"{type(ex).__name__}: {ex}"[:500],
             }
 
         forecasts_imported = 0
         outcomes_imported = 0
+        processed = 0
         errors: dict[str, str] = {}
+        last_success = cursor
         for row in export.get("items", []) if isinstance(export, Mapping) else []:
             if not isinstance(row, Mapping):
                 continue
@@ -976,13 +1009,27 @@ class LearningFabric:
                     },
                 })
                 outcomes_imported += int(not outcome["idempotent"])
+                processed += 1
+                last_success = {
+                    "observed_at": row.get("observed_at"),
+                    "forecast_id": native_id,
+                }
             except Exception as ex:
                 errors[native_id or "unknown"] = f"{type(ex).__name__}: {ex}"[:500]
+                break
+
+        if last_success and last_success != cursor:
+            self._set_harvest_cursor("performance_proof", last_success)
+        available = int(export.get("total") or 0) if isinstance(export, Mapping) else 0
         return {
             "status": "ok" if not errors else "partial",
             "forecasts_imported": forecasts_imported,
             "outcomes_imported": outcomes_imported,
-            "settled_available": export.get("total") if isinstance(export, Mapping) else None,
+            "processed": processed,
+            "settled_available_after_cursor": available,
+            "backlog_remaining": max(0, available - processed),
+            "cursor": last_success,
+            "batch_limit": 1000,
             "errors": errors,
         }
 
