@@ -62,3 +62,8 @@ def test_asset_adder_uses_registry_and_timeframe_suggestions_and_single_flight_s
     assert "b.disabled = true" in src
     assert "await admin('/admin/assets/add'" in src
     assert "j.detail||j.error||'request failed'" in src
+
+
+def test_system_evolution_contract_files_exist():
+    assert (REPO / "icarus_engine" / "system_evolution.json").exists()
+    assert (REPO / "icarus_engine" / "evolution.py").exists()
