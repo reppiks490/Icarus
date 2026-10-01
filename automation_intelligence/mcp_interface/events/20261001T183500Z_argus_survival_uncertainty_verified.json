@@ -1,0 +1,35 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "argus-survival-uncertainty-verified-20261001T183500Z",
+  "category": "EVOLUTION",
+  "severity": "success",
+  "status": "verified",
+  "subsystems": [
+    "argus",
+    "order_blocks",
+    "research_validation",
+    "uncertainty"
+  ],
+  "recorded_at": "2026-10-01T18:35:00Z",
+  "title": "ARGUS Kaplan-Meier uncertainty and cumulative hazard verified",
+  "summary": "ARGUS order-block survival research now reports Greenwood variance and standard error, pointwise complementary-log-log confidence intervals, and Nelson-Aalen cumulative hazard on top of validated Kaplan-Meier curves. The uncertainty layer revalidates risk-set accounting, event/censor totals, survival recurrence, median and restricted-mean survival before accepting a curve, and keeps the output explicitly descriptive rather than turning uncertainty into a trading score.",
+  "source_repository": "reppiks490/divine-providence",
+  "source_ref": "main",
+  "source_commit": "676d8990562cd96a28545f089f353c3e8dbc915e",
+  "evidence": [
+    "divine-providence PR #21 merged at 676d8990562cd96a28545f089f353c3e8dbc915e",
+    "exact-head subsystem-evolution workflow run 36907550232 completed success",
+    "Linux and Windows ARGUS causal subsystem jobs passed",
+    "intelligence-fabric job passed",
+    "full twelve-system validation passed",
+    "Greenwood variance and standard error are reported",
+    "pointwise complementary-log-log confidence intervals are bounded in [0,1]",
+    "Nelson-Aalen cumulative hazard is reported",
+    "tampered Kaplan-Meier risk-set/survival/RMST accounting fails closed",
+    "uncertainty remains descriptive and does not authorize production or execution",
+    "execution_authorized=false",
+    "production_decision_authorized=false"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}
