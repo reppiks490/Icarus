@@ -47,6 +47,8 @@ def test_brain_registers_five_custom_agents_and_twelve_plus_subsystems(tmp_path)
     assert out["truth_contract"]["omnipotence_claim"] is False
     assert out["remote_sync"]["status"] == "not_configured"
     assert out["research_sync"]["status"] == "not_configured"
+    assert out["performance_proof"]["metrics"]["success_rate"] is None
+    assert out["truth_contract"]["historical_100_percent_established"] is False
 
 
 def test_brain_surfaces_zero_cost_incubator_without_promotion_authority(tmp_path):
@@ -149,3 +151,35 @@ def test_candidate_requires_exact_git_provenance(tmp_path):
         assert "40-character Git SHA" in str(ex)
     else:
         raise AssertionError("candidate without exact source revision must fail")
+
+
+def test_brain_surfaces_closed_sample_proof_without_future_guarantee(tmp_path):
+    proof = {
+        "metrics": {
+            "success_rate": 1.0,
+            "outcome_coverage": 1.0,
+            "brier_score": 0.04,
+            "expected_calibration_error": 0.02,
+            "matured_forecasts": 30,
+            "settled_forecasts": 30,
+        },
+        "closed_sample": {
+            "complete": True,
+            "historical_100_percent_established": True,
+            "future_guarantee": False,
+        },
+        "replay": {
+            "determinism_rate": 1.0,
+            "historical_100_percent_established": True,
+        },
+        "candidate_statistics": [],
+        "regime_champions": [],
+        "execution_authorized": False,
+        "production_decision_authorized": False,
+    }
+    out = brain_snapshot(tmp_path, proof_status=proof)
+    assert out["truth_contract"]["success_rate"] == 1.0
+    assert out["truth_contract"]["success_rate_status"] == "ESTABLISHED_100_PERCENT_CLOSED_SAMPLE"
+    assert out["truth_contract"]["historical_100_percent_established"] is True
+    assert out["truth_contract"]["future_guarantee"] is False
+    assert out["performance_proof"]["execution_authorized"] is False
