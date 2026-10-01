@@ -48,6 +48,17 @@ def _text(value: Any, field: str, limit: int, required: bool = True) -> str:
     return value
 
 
+def _timestamp(value: Any, field: str) -> tuple[str, datetime]:
+    raw = _text(value, field, 80)
+    try:
+        parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except ValueError as ex:
+        raise ValueError(f"{field} must be an ISO 8601 timestamp with timezone") from ex
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        raise ValueError(f"{field} must include a timezone")
+    return raw, parsed.astimezone(timezone.utc)
+
+
 def _json(value: Any, field: str, max_bytes: int = 131072) -> str:
     try:
         raw = json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False)
@@ -144,7 +155,7 @@ class ParallaxStore:
         action = _text(payload.get("action"), "action", 16).lower()
         if action not in _ALLOWED_ACTIONS:
             raise ValueError("unsupported action")
-        observed_at = _text(payload.get("observed_at"), "observed_at", 80)
+        observed_at, _decision_time = _timestamp(payload.get("observed_at"), "observed_at")
         regime = _text(payload.get("regime", "unknown"), "regime", 80)
         source_commit = _exact_git_sha(payload.get("source_commit"))
         context = payload.get("context", {})
@@ -184,8 +195,35 @@ class ParallaxStore:
         with _LOCK, self._connect() as con:
             existing = con.execute("SELECT * FROM decisions WHERE decision_id=?", (decision_id,)).fetchone()
             if existing:
-                if existing["context_hash"] != context_hash or existing["source_commit"] != source_commit:
+                immutable_identity = (
+                    existing["context_hash"],
+                    existing["source_commit"],
+                    existing["asset"],
+                    existing["action"],
+                    existing["regime"],
+                    existing["observed_at"],
+                )
+                requested_identity = (
+                    context_hash,
+                    source_commit,
+                    asset,
+                    action,
+                    regime,
+                    observed_at,
+                )
+                if immutable_identity != requested_identity:
                     raise ValueError("decision_id already exists with different immutable identity")
+                stored_branches = con.execute(
+                    "SELECT branch_id,kind,label,params_json FROM branches "
+                    "WHERE decision_id=? ORDER BY rowid",
+                    (decision_id,),
+                ).fetchall()
+                stored_plan = [
+                    (row["branch_id"], row["kind"], row["label"], row["params_json"])
+                    for row in stored_branches
+                ]
+                if stored_plan != normalized:
+                    raise ValueError("decision_id already exists with different immutable branch plan")
                 return self.decision(decision_id)
             con.execute(
                 """INSERT INTO decisions(
@@ -218,15 +256,30 @@ class ParallaxStore:
             raise ValueError("evidence must be a list with at most 32 items")
         metrics_json = _json(dict(metrics), "metrics", 32768)
         evidence_json = _json([_text(x, "evidence item", 700) for x in evidence], "evidence", 32768)
-        observed_at = _text(payload.get("observed_at", _utc_now()), "observed_at", 80)
+        observed_at, outcome_time = _timestamp(
+            payload.get("observed_at", _utc_now()), "observed_at"
+        )
 
         with _LOCK, self._connect() as con:
             if branch_id:
-                row = con.execute("SELECT * FROM branches WHERE decision_id=? AND branch_id=?", (decision_id, str(branch_id))).fetchone()
+                row = con.execute(
+                    "SELECT b.*, d.observed_at AS decision_observed_at "
+                    "FROM branches b JOIN decisions d ON d.decision_id=b.decision_id "
+                    "WHERE b.decision_id=? AND b.branch_id=?",
+                    (decision_id, str(branch_id)),
+                ).fetchone()
             else:
-                row = con.execute("SELECT * FROM branches WHERE decision_id=? AND label=?", (decision_id, str(label or "").lower())).fetchone()
+                row = con.execute(
+                    "SELECT b.*, d.observed_at AS decision_observed_at "
+                    "FROM branches b JOIN decisions d ON d.decision_id=b.decision_id "
+                    "WHERE b.decision_id=? AND b.label=?",
+                    (decision_id, str(label or "").lower()),
+                ).fetchone()
             if not row:
                 raise ValueError("unknown PARALLAX branch")
+            _, decision_time = _timestamp(row["decision_observed_at"], "decision.observed_at")
+            if outcome_time < decision_time:
+                raise ValueError("outcome observed_at cannot precede the decision")
             if row["status"] == "observed":
                 prior = float(row["utility"])
                 if abs(prior - utility) > 1e-12 or (row["metrics_json"] or "{}") != metrics_json:
