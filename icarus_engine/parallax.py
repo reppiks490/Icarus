@@ -786,12 +786,16 @@ class ParallaxStore:
             )
             by_family.setdefault(family, []).append(item)
         for rows in by_family.values():
-            ranked = sorted(rows, key=lambda x: float(x["p_one_sided"]))
+            ranked = sorted(
+                rows,
+                key=lambda x: float(x.get("screen_p_one_sided", x.get("p_one_sided"))),
+            )
             m = len(ranked)
             running = 1.0
             for rank in range(m, 0, -1):
                 row = ranked[rank - 1]
-                raw_q = float(row["p_one_sided"]) * m / rank
+                screen_p = float(row.get("screen_p_one_sided", row.get("p_one_sided")))
+                raw_q = screen_p * m / rank
                 running = min(running, raw_q)
                 row["q_value"] = max(0.0, min(1.0, running))
 
