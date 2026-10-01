@@ -1,0 +1,37 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "argus-prospective-impact-calibration-study-verified-20261001T213700Z",
+  "category": "EVOLUTION",
+  "severity": "success",
+  "status": "verified",
+  "subsystems": [
+    "argus",
+    "execution_research",
+    "calibration",
+    "provenance",
+    "prospective_validation"
+  ],
+  "recorded_at": "2026-10-01T21:37:00Z",
+  "title": "ARGUS prospective impact-calibration study contract verified",
+  "summary": "ARGUS can now prospectively register realized-fill impact-calibration studies before the cohort begins. The manifest pins cohort and observation windows, exact impact/calibration revisions, exact execution-source repository/commit revisions, symbols, evidence classes, minimum observations per stratum, optional snapshot-age/completion-latency limits and the registered analysis. Cohorts cannot lock before the observation cutoff, duplicate execution receipts fail closed, and broker-confirmed and ICARUS paper-emulator evidence remain separate.",
+  "source_repository": "reppiks490/divine-providence",
+  "source_ref": "main",
+  "source_commit": "6483589ca2a3516e2de238d1b5c7880e24cb0467",
+  "evidence": [
+    "divine-providence PR #26 merged at 6483589ca2a3516e2de238d1b5c7880e24cb0467",
+    "exact-head subsystem-evolution workflow run 36929133674 completed success",
+    "Linux and Windows ARGUS causal subsystem jobs passed",
+    "intelligence-fabric job passed",
+    "full twelve-system validation passed",
+    "study registration must occur at or before cohort_start_ns",
+    "cohort lock cannot occur before the predeclared observation cutoff",
+    "exact execution-source repository/commit revisions are predeclared",
+    "every declared evidence stratum must meet its predeclared minimum count",
+    "duplicate execution receipts cannot be counted against multiple curves",
+    "broker-confirmed and ICARUS paper-emulator summaries remain separate",
+    "execution_authorized=false",
+    "production_decision_authorized=false"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}
