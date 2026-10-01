@@ -398,3 +398,16 @@ The Adaptive Brain registry also exposes ECHO Ω as a first-class PANTHEON
 subsystem. This keeps the system map, PANTHEON UI, faculty output, and audit
 surface in agreement: ECHO is visible as evidence-ancestry de-duplication
 research and carries no execution, sizing, broker, or production authority.
+
+
+### Unproven independence fails closed
+
+ECHO no longer allows missing ancestry metadata to become an implicit claim that
+engines are independent. When two or more engine scores are present but no
+verified `engine_evidence_lineage` reaches PANTHEON, ECHO abstains, marks
+`lineage_verified=false`, assigns zero **proven** independence to those
+engines, and ARCHON grants no research-attention lease based on that unverified
+consensus. The server-owned APEX ancestry bridge can restore non-zero
+independence only by supplying verified roots. This is intentionally
+conservative and affects research attention only; it does not grant or modify
+execution authority.
