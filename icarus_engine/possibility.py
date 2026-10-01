@@ -864,7 +864,18 @@ class PossibilityEngine:
                         result["spread"] = ask - bid
 
                     mids: list[float] = []
-                    for event in snapshots[-40:]:
+                    midpoint_times: list[float] = []
+                    latest_depth_ts = _finite(result["health"].get("depth_last_event_ts"))
+                    for event in snapshots[-80:]:
+                        ens = _finite(event.get("ts_event_ns"))
+                        ets = (ens / 1_000_000_000.0) if ens is not None else _finite(event.get("ts_event"))
+                        if (
+                            latest_depth_ts is None
+                            or ets is None
+                            or ets < latest_depth_ts - 15.0
+                            or ets > latest_depth_ts + 1e-9
+                        ):
+                            continue
                         lv = event.get("levels") or []
                         if not lv or not isinstance(lv[0], Mapping):
                             continue
@@ -872,14 +883,26 @@ class PossibilityEngine:
                         a = _finite(lv[0].get("ask_px"))
                         if b is not None and a is not None and a >= b:
                             mids.append((a + b) / 2.0)
+                            midpoint_times.append(ets)
                     if len(mids) >= 4:
                         scale = max(abs(mids[0]), 1e-9)
                         move = (mids[-1] - mids[0]) / scale
                         local = _stdev([(mids[i] - mids[i - 1]) / scale for i in range(1, len(mids))])
                         denom = max(local * math.sqrt(max(1, len(mids) - 1)), 1e-7)
-                        result["repricing_pressure"] = Feature(_clamp(move / (3.0 * denom)), _clamp(len(mids) / 30.0, 0.10, 1.0), True, "Databento MBP-10", "midquote repricing")
+                        result["repricing_pressure"] = Feature(
+                            _clamp(move / (3.0 * denom)),
+                            _clamp(len(mids) / 30.0, 0.10, 1.0),
+                            True,
+                            "Databento MBP-10",
+                            f"fresh midquote repricing; {len(mids)} snapshots/{(midpoint_times[-1]-midpoint_times[0]):.3f}s",
+                        )
+                    elif snapshots:
+                        result["health"]["errors"].append(
+                            f"insufficient fresh depth snapshots for repricing ({len(mids)}/4)"
+                        )
                     result["health"]["depth"] = True
                     result["health"]["depth_events"] = len(events)
+                    result["health"]["fresh_depth_snapshots"] = len(mids)
             except Exception as ex:
                 result["health"]["errors"].append(f"depth: {type(ex).__name__}: {ex}")
 
