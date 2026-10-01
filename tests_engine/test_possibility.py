@@ -809,6 +809,26 @@ def test_multi_force_evidence_batch_is_atomic_and_idempotent(tmp_path):
     assert ledger["active_count"] == 3
 
 
+def test_default_evidence_snapshot_uses_receipt_wall_clock_not_formatted_now(tmp_path, monkeypatch):
+    engine = PossibilityEngine(Port(tmp_path))
+    observed = (datetime.now(timezone.utc) - timedelta(seconds=5)).isoformat()
+    engine.ingest_external(
+        "NQ",
+        {"gamma_pressure": {"value": 0.4, "confidence": 0.8}},
+        source="clock-resolution-fixture",
+        observed_at=observed,
+        ttl_seconds=600,
+    )
+
+    import icarus_engine.possibility as possibility_mod
+    monkeypatch.setattr(possibility_mod, "_utc_now", lambda: "2000-01-01T00:00:00Z")
+
+    ledger = engine.evidence_snapshot("NQ", include_expired=True)
+    assert ledger["total_history_count"] == 1
+    assert ledger["active_count"] == 1
+    assert ledger["history"][0]["source"] == "clock-resolution-fixture"
+
+
 def test_invalid_multi_force_request_leaves_no_partial_evidence(tmp_path):
     engine = PossibilityEngine(Port(tmp_path))
     with pytest.raises(ValueError, match="basis_pressure"):

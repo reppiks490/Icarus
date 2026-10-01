@@ -315,8 +315,16 @@ class PossibilityEngine:
     ) -> dict[str, Any]:
         """Read append-only evidence history and deterministic causal as-of state."""
         symbol = str(asset or "").strip().upper()
-        as_of_text = _utc_now() if as_of is None else _observed_time(as_of, "as_of")
-        as_of_ts = datetime.fromisoformat(as_of_text.replace("Z", "+00:00")).timestamp()
+        if as_of is None:
+            # Use the same wall-clock source as evidence received_ts. On Windows,
+            # datetime.now() can lag time.time() by a few milliseconds because the
+            # APIs have different effective resolution, which made an immediate
+            # snapshot causally precede the receipt it had just written.
+            as_of_ts = time.time()
+            as_of_text = datetime.fromtimestamp(as_of_ts, timezone.utc).isoformat().replace("+00:00", "Z")
+        else:
+            as_of_text = _observed_time(as_of, "as_of")
+            as_of_ts = datetime.fromisoformat(as_of_text.replace("Z", "+00:00")).timestamp()
         return self._evidence_ledger.snapshot(
             symbol,
             as_of_ts=as_of_ts,
