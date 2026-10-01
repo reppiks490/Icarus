@@ -1063,6 +1063,7 @@ class PossibilityEngine:
                     "stability": stability,
                     "fold_correlations": fold_corrs,
                     "latest_peer_z": latest_peer_z,
+                    "peer_gap_returns_skipped": self._history_gaps_skipped.get(peer, 0),
                     "samples": len(lead_pairs),
                     "chart_minutes": target_minutes,
                     "alignment_mode": "exact_bar_timestamp",
