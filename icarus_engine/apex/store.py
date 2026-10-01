@@ -211,6 +211,12 @@ class ApexStore:
         out = dict(semantic)
         out["evidence_id"] = row["evidence_id"]
         out["recorded_at"] = row["recorded_at"]
+        local_received_ts = row["local_received_ts"]
+        out["local_received_at"] = (
+            None
+            if local_received_ts is None
+            else datetime.fromtimestamp(float(local_received_ts), timezone.utc).isoformat().replace("+00:00", "Z")
+        )
         return out
 
     def record_evidence(

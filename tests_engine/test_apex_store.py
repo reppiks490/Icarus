@@ -134,3 +134,19 @@ def test_apex_store_migrates_pre_local_receipt_schema(tmp_path):
     with sqlite3.connect(store.path) as conn:
         columns = {row[1] for row in conn.execute("PRAGMA table_info(evidence)").fetchall()}
     assert "local_received_ts" in columns
+
+
+def test_network_local_receipt_is_exposed_as_audit_metadata(tmp_path):
+    from icarus_engine.apex.store import ApexStore
+    store = ApexStore(tmp_path)
+    out = store.record_evidence(
+        _body(
+            observed="2026-10-01T17:59:58Z",
+            received="2026-10-01T17:59:59Z",
+        ),
+        local_received_at="2026-10-01T18:00:00Z",
+    )
+    evidence = out["evidence"]
+    assert evidence["local_received_at"] == "2026-10-01T18:00:00Z"
+    replay = store.evidence_as_of("2026-10-01T18:00:00Z")
+    assert replay[0]["local_received_at"] == "2026-10-01T18:00:00Z"
