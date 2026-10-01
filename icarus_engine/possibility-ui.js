@@ -343,7 +343,12 @@
     if (!sel) return;
     const assets = (A||[]).map(a=>String(a.symbol||'')).filter(Boolean);
     const preferred = assets.includes(sel.value) ? sel.value : (assets.includes(selected) ? selected : (assets.includes('NQ') ? 'NQ' : (assets[0] || '')));
-    sel.innerHTML = assets.map(x=>'<option value="'+h(x)+'" '+(x===preferred?'selected':'')+'>'+h(x)+'</option>').join('');
+    const existing = Array.from(sel.options).map(x=>x.value);
+    if (existing.join('|') !== assets.join('|')) {
+      sel.innerHTML = assets.map(x=>'<option value="'+h(x)+'" '+(x===preferred?'selected':'')+'>'+h(x)+'</option>').join('');
+    } else if (preferred && sel.value !== preferred) {
+      sel.value = preferred;
+    }
     if (preferred) selected = preferred;
     sel.onchange = () => { selected = sel.value; loadPossibilityQuickOverview(true); };
     const refresh = document.querySelector('#psiQuickOverviewRefresh');
