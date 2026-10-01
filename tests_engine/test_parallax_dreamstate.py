@@ -6,6 +6,7 @@ import pytest
 
 from icarus_engine.dreamstate import DreamstateLab, REQUIRED_GATES
 from icarus_engine.parallax import ParallaxStore
+from icarus_engine.brain import brain_snapshot
 
 
 def _record_pair(store: ParallaxStore, i: int, *, delay_utility: float = 1.0):
@@ -128,6 +129,11 @@ def test_dreamstate_generates_hypothesis_but_caps_authority_at_qualified_shadow(
     assert state["authority"]["maximum_stage"] == "qualified_shadow"
     assert state["authority"]["automatic_production_promotion"] is False
     assert state["authority"]["execution_authorized"] is False
+    brain = brain_snapshot(tmp_path)
+    mirrored = next(c for c in brain["candidates"] if c["candidate_id"] == candidate["candidate_id"])
+    assert mirrored["stage"] == "discovered"
+    assert mirrored["details"]["origin"] == "DREAMSTATE"
+    assert mirrored["eligible_for_regime_swap"] is False
 
     qualified = lab.evaluate(
         candidate["candidate_id"],
@@ -139,6 +145,10 @@ def test_dreamstate_generates_hypothesis_but_caps_authority_at_qualified_shadow(
     assert qualified["stage"] == "qualified_shadow"
     assert qualified["execution_authorized"] is False
     assert qualified["production_decision_authorized"] is False
+    brain = brain_snapshot(tmp_path)
+    mirrored = next(c for c in brain["candidates"] if c["candidate_id"] == candidate["candidate_id"])
+    assert mirrored["stage"] == "qualified_shadow"
+    assert mirrored["eligible_for_regime_swap"] is True
 
 
 def test_dreamstate_failed_gate_is_terminal_for_candidate_revision(tmp_path):
