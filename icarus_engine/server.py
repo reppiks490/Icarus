@@ -215,8 +215,11 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             raise ValueError("persist must be boolean")
         kwargs = {}
         if "preset" in args:
-            preset = args.get("preset") or None
-            if preset and not os.path.exists(preset_path(port.base_dir, str(preset))):
+            raw_preset = args.get("preset")
+            if raw_preset is not None and not isinstance(raw_preset, str):
+                raise ValueError("preset must be a string or null")
+            preset = (raw_preset or "").strip() or None
+            if preset and not os.path.exists(preset_path(port.base_dir, preset)):
                 raise ValueError(f"preset {preset} not found")
             kwargs["preset"] = preset
         rebuilt = port.rewarm_asset(
@@ -246,6 +249,10 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     def _asset_add(payload):
         target = payload["target"]
         args = payload["args"]
+        allowed = {"tf", "preset", "chart_type", "fill_on", "security_source"}
+        extra = set(args) - allowed
+        if extra:
+            raise ValueError(f"unknown asset-add fields: {sorted(extra)}")
         running = port.runner_list()
         default_tf = str(args.get("tf") or (running[0].spec.chart_tf if running else "20"))
         spec = parse_spec(target, default_tf)
