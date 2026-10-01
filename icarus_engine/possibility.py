@@ -190,6 +190,7 @@ class PossibilityEngine:
         self._history_source: dict[str, str] = {}
         self._history_chart_minutes: dict[str, int] = {}
         self._history_gaps_skipped: dict[str, int] = {}
+        self._history_price_basis: dict[str, str] = {}
         self._external: dict[str, dict[str, dict[str, Any]]] = defaultdict(dict)
         self._micro_cache: dict[str, tuple[float, dict[str, Any]]] = {}
         self._evidence_ledger = PsiEvidenceLedger(getattr(port, "base_dir", None))
@@ -390,6 +391,7 @@ class PossibilityEngine:
                     "source": self._history_source.get(symbol, "unavailable"),
                     "chart_minutes": self._history_chart_minutes.get(symbol),
                     "gap_returns_skipped": self._history_gaps_skipped.get(symbol, 0),
+                    "price_basis": self._history_price_basis.get(symbol),
                     "poll_independent": self._history_source.get(symbol) == "runner_bar",
                     "timestamp_aligned_leaders": leaders.get("alignment_mode") == "exact_bar_timestamp",
                 },
@@ -471,20 +473,40 @@ class PossibilityEngine:
                 if lock is not None:
                     with lock:
                         bars = list(getattr(runner, "bars", ()) or ())
+                        overlays = list(getattr(runner, "overlays", ()) or ())
                 else:
                     bars = list(getattr(runner, "bars", ()) or ())
+                    overlays = list(getattr(runner, "overlays", ()) or ())
             except Exception:
                 continue
             if len(bars) < 2:
                 continue
 
+            real_close_by_ts: dict[int, float] = {}
+            for overlay in overlays:
+                if not isinstance(overlay, Mapping):
+                    continue
+                ots = _finite(overlay.get("ts"))
+                real_close = _finite(overlay.get("real_c"))
+                if ots is not None and real_close is not None and real_close > 0:
+                    real_close_by_ts[int(ots)] = float(real_close)
+
             points: dict[int, float] = {}
+            real_close_used = 0
             for bar in bars:
                 ts = _finite(getattr(bar, "ts", None) if not isinstance(bar, Mapping) else bar.get("ts"))
-                close = _finite(getattr(bar, "c", None) if not isinstance(bar, Mapping) else bar.get("c"))
-                if ts is None or close is None or close <= 0:
+                chart_close = _finite(getattr(bar, "c", None) if not isinstance(bar, Mapping) else bar.get("c"))
+                if ts is None:
                     continue
-                points[int(ts)] = float(close)
+                stamp = int(ts)
+                close = real_close_by_ts.get(stamp)
+                if close is not None:
+                    real_close_used += 1
+                else:
+                    close = chart_close
+                if close is None or close <= 0:
+                    continue
+                points[stamp] = float(close)
             ordered = sorted(points.items())
             if len(ordered) < 2:
                 continue
@@ -521,6 +543,11 @@ class PossibilityEngine:
                 self._history_source[symbol] = "runner_bar"
                 self._history_chart_minutes[symbol] = chart_minutes
                 self._history_gaps_skipped[symbol] = gaps_skipped
+                self._history_price_basis[symbol] = (
+                    "real_close" if real_close_used >= len(points) and points
+                    else "mixed_real_and_chart_close" if real_close_used
+                    else "chart_close"
+                )
             synced[symbol] = {
                 "source": "runner_bar",
                 "chart_minutes": chart_minutes,
@@ -760,15 +787,50 @@ class PossibilityEngine:
                 if lead_corr is None:
                     rejected.append({"asset": peer, "reason": "degenerate_lag_series", "pairs": len(lead_pairs)})
                     continue
-                latest_peer_ts = max(peer_map)
+                target_latest_ts = max(target_map)
+                if target_latest_ts not in peer_map:
+                    rejected.append({
+                        "asset": peer,
+                        "reason": "latest_bar_not_aligned",
+                        "target_latest_ts": target_latest_ts,
+                        "peer_latest_ts": max(peer_map) if peer_map else None,
+                    })
+                    continue
+
+                fold_corrs: list[float] = []
+                fold_size = max(5, len(lead_pairs) // 3)
+                for start in range(0, len(lead_pairs), fold_size):
+                    fold = lead_pairs[start:start + fold_size]
+                    if len(fold) < 5:
+                        continue
+                    fcorr = _corr([x[0] for x in fold], [x[1] for x in fold])
+                    if fcorr is not None:
+                        fold_corrs.append(fcorr)
+                if len(fold_corrs) >= 2:
+                    signs = [1.0 if x > 0 else -1.0 if x < 0 else 0.0 for x in fold_corrs]
+                    sign_stability = abs(sum(signs)) / len(signs)
+                    mean_fold = _mean(fold_corrs)
+                    dispersion = _stdev(fold_corrs) / max(abs(mean_fold), 0.20)
+                    magnitude_stability = 1.0 - min(1.0, dispersion)
+                    stability = _clamp(0.5 * sign_stability + 0.5 * magnitude_stability, 0.0, 1.0)
+                else:
+                    stability = 0.5
+
+                latest_peer_ts = target_latest_ts
                 latest_peer = peer_map[latest_peer_ts]
-                directional = _clamp(lead_corr * latest_peer / max(vol * 2.0, 1e-7))
+                peer_vol = max(_stdev(list(peer_map.values())[-80:]), 1e-7)
+                latest_peer_z = _clamp(latest_peer / max(peer_vol * 2.0, 1e-7), -1.0, 1.0)
+                directional = _clamp(lead_corr * latest_peer_z)
+                lead_strength = abs(lead_corr) * min(1.0, len(lead_pairs) / 40.0) * stability
                 rows.append({
                     "asset": peer,
                     "lag1_correlation": lead_corr,
                     "contemporaneous_correlation": contemporaneous,
                     "directional_pressure": directional,
-                    "lead_strength": abs(lead_corr) * min(1.0, len(lead_pairs) / 40.0),
+                    "lead_strength": lead_strength,
+                    "stability": stability,
+                    "fold_correlations": fold_corrs,
+                    "latest_peer_z": latest_peer_z,
                     "samples": len(lead_pairs),
                     "chart_minutes": target_minutes,
                     "alignment_mode": "exact_bar_timestamp",
