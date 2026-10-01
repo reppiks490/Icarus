@@ -57,6 +57,14 @@
         '</td><td class="tnum">' + val(r.mean_brier) + '</td><td class="tnum">' + pct(r.calibration_gap) + '</td></tr>';
     });
   }
+  function experienceRows(rows) {
+    return (rows || []).map(function (r) {
+      return '<tr><td><b>' + h(r.source) + '</b></td><td>' + h(r.asset) + '</td><td>' + h(r.direction) +
+        '</td><td>' + chip(r.status) + '</td><td class="tnum">' + val(r.count,0) +
+        '</td><td class="tnum">' + pct(r.win_rate) + '</td><td class="tnum">' + val(r.net_pnl,2) +
+        '</td><td class="tnum">' + val(r.average_pnl,2) + '</td><td class="tnum">' + val(r.profit_factor,3) + '</td></tr>';
+    });
+  }
   function datasetRows(rows, training) {
     const byDataset = {};
     (training || []).forEach(function (r) { (byDataset[r.dataset_id] ||= []).push(r); });
@@ -89,6 +97,7 @@
     const cfg = state.config || {};
     const preds = state.predictions || {};
     const training = state.training || {};
+    const experience = state.experiences || {};
     const datasets = (data || {}).datasets || [];
     const runs = (data || {}).training_runs || [];
     const latest = ((state.cycles || {}).latest) || {};
@@ -98,6 +107,7 @@
         '<div class="tile"><div class="k">DATASET COVERAGE</div><div class="v">' + val((state.datasets || {}).count,0) + '</div><div class="small muted">content-hash deduplicated local datasets</div></div>' +
         '<div class="tile"><div class="k">TRAINING REPLAY</div><div class="v">' + val(training.run_count,0) + '</div><div class="small muted">purged walk-forward / protected holdout trainers</div></div>' +
         '<div class="tile"><div class="k">LIVE MATURITY</div><div class="v">' + val(preds.settled,0) + ' / ' + val(preds.count,0) + '</div><div class="small muted">' + val(preds.pending,0) + ' pending forecasts</div></div>' +
+        '<div class="tile"><div class="k">REALIZED EXPERIENCE</div><div class="v">' + val(experience.count,0) + '</div><div class="small muted">runtime_live_sim + historical_trade_list · outcome memory, not forecast accuracy</div></div>' +
         '<div class="tile"><div class="k">EMPIRICAL SCORECARDS</div><div class="v">' + val((state.scorecards || []).length,0) + '</div><div class="small muted">producer × asset × regime × horizon</div></div>' +
         '<div class="tile"><div class="k">HISTORY SCAN</div><div class="v">' + (state.background && state.background.last_history_scan_epoch ? new Date(state.background.last_history_scan_epoch*1000).toLocaleString() : 'UNAVAILABLE') + '</div><div class="small muted">history/, history/drop/, research/imports/</div></div>' +
         '<div class="tile"><div class="k">LAST CYCLE</div><div class="v">' + chip(latest.status || 'UNAVAILABLE') + '</div><div class="small muted">' + val((state.cycles || {}).count,0) + ' durable cycles</div></div>' +
@@ -105,6 +115,8 @@
       '</div>' +
       '<h3 class="small" style="margin:16px 0 8px">EMPIRICAL SCORECARDS</h3>' +
       table(['Producer','Asset','Regime','Horizon s','Target','State','Settled','Hit rate','Mean Brier','Calibration gap'], scoreRows(state.scorecards), 'UNMEASURED — no matured outcomes yet.') +
+      '<h3 class="small" style="margin:16px 0 8px">REALIZED EXPERIENCE · P&L MEMORY</h3>' +
+      table(['Source','Asset','Direction','State','Count','Win rate','Net P&L','Avg P&L','PROFIT FACTOR'], experienceRows(experience.summary), 'UNMEASURED — no fully closed realized trade experience yet.') +
       '<h3 class="small" style="margin:16px 0 8px">DATASET COVERAGE · TRAINING REPLAY</h3>' +
       table(['Asset','Cadence','Class','Rows','Coverage','Representation','Replay status','Action'], datasetRows(datasets,runs), 'UNAVAILABLE — no local historical datasets catalogued yet.') +
       '<h3 class="small" style="margin:16px 0 8px">SYSTEM LEARNING COVERAGE</h3>' +
