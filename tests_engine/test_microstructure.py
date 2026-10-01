@@ -1,6 +1,6 @@
 import pytest
 
-from icarus_engine.microstructure import TradeEvent, TradeAggregator
+from icarus_engine.microstructure import TradeEvent, TradeAggregator, TickAggregator
 
 
 def tick(seq, ns, price=100, qty=1, side="unknown", received=None):
@@ -75,3 +75,28 @@ def test_negative_futures_prices_are_valid_and_cross_instrument_rejected():
     a.push(tick(1, 0, -3))
     with pytest.raises(ValueError, match="wrong venue"):
         a.push(TradeEvent("TEST", "ESZ26", 2, 1, 2, 100, 1))
+
+
+
+def test_tick_aggregator_uses_exact_authentic_trade_count():
+    a = TickAggregator("TEST", "NQ.v.0", 3, contiguous_sequence=True)
+    e1 = TradeEvent("TEST", "NQ.v.0", 1, 100, 110, 100, 1, "buy")
+    e2 = TradeEvent("TEST", "NQ.v.0", 2, 200, 210, 102, 2, "sell")
+    e3 = TradeEvent("TEST", "NQ.v.0", 3, 300, 310, 101, 3, "unknown")
+    assert a.push(e1) == []
+    assert a.push(e2) == []
+    bars = a.push(e3)
+    assert len(bars) == 1
+    b = bars[0]
+    assert (b["open_ticks"], b["high_ticks"], b["low_ticks"], b["close_ticks"]) == (100, 102, 100, 101)
+    assert b["trades"] == 3 and b["volume"] == 6
+    assert b["first_sequence"] == 1 and b["last_sequence"] == 3
+    assert not b["aggressor_complete"]
+
+
+def test_tick_aggregator_never_emits_partial_or_fake_bar():
+    a = TickAggregator("TEST", "ES.v.0", 2)
+    e = TradeEvent("TEST", "ES.v.0", 10, 100, 110, 400, 1)
+    assert a.push(e) == []
+    assert a.bucket["trades"] == 1
+    assert a.status()["active_bucket_is_partial"] is True

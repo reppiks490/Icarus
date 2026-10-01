@@ -16,25 +16,34 @@ from typing import Dict, List, Optional
 # chart choices exposed by the UI/MCP; arbitrary positive minute values remain
 # accepted by the parser for backward compatibility with existing presets.
 PRIMARY_INTRADAY_TIMEFRAMES = ("1", "2", "5", "10", "20", "30")
+PRIMARY_SECOND_TIMEFRAMES = ("1S", "5S", "10S", "15S", "30S")
+PRIMARY_TICK_TIMEFRAMES = ("50T", "100T", "250T", "500T", "1000T")
 CHART_TIMEFRAME_OPTIONS = ("1", "2", "3", "5", "10", "15", "20", "30", "45", "60", "120", "180", "240", "D", "W")
 CHART_TYPES = ("heikin_ashi", "real")
 FILL_MODES = ("real", "chart")
 SECURITY_SOURCES = ("chart", "standard")
 
 
-def normalize_chart_timeframe(value: object) -> str:
-    """Canonicalize chart timeframes while refusing synthetic sub-minute/tick precision.
-
-    Accepts Pine-style values ("20", "4H", "D", "W") and the human-readable
-    strings TradingView exports ("20 minutes", "1 hour", "1 day", "1 week").
-    """
+def chart_timeframe_parts(value: object) -> tuple[str, int]:
+    """Return (mode, value) where mode is minutes, seconds, or ticks."""
     t = re.sub(r"\s+", " ", str(value).strip().upper())
     if not t:
         raise ValueError("chart timeframe is required")
-    if re.fullmatch(r"\d+\s*(?:T|TICK|TICKS)", t):
-        raise ValueError("tick charts require a true tick-data adapter; the current ICARUS feeds do not provide one")
-    if re.fullmatch(r"\d+\s*(?:S|SEC|SECS|SECOND|SECONDS)", t):
-        raise ValueError("second charts require a sub-minute data adapter; the current ICARUS feeds are 1-minute minimum")
+
+    tick = re.fullmatch(r"(\d+)\s*(?:T|TICK|TICKS)", t)
+    if tick:
+        n = int(tick.group(1))
+        if not 1 <= n <= 100000:
+            raise ValueError("tick chart size must be between 1 and 100000 trades")
+        return "ticks", n
+
+    sec = re.fullmatch(r"(\d+)\s*(?:S|SEC|SECS|SECOND|SECONDS)", t)
+    if sec:
+        n = int(sec.group(1))
+        if not 1 <= n < 60:
+            raise ValueError("second chart size must be between 1 and 59 seconds; use minute timeframes at 60 seconds or above")
+        return "seconds", n
+
     words = re.fullmatch(r"(\d+)\s*(MIN|MINS|MINUTE|MINUTES|HOUR|HOURS|DAY|DAYS|WEEK|WEEKS)", t)
     if words:
         n = int(words.group(1))
@@ -43,21 +52,43 @@ def normalize_chart_timeframe(value: object) -> str:
         mins = n * mult
         if mins <= 0 or mins > 10080:
             raise ValueError("chart timeframe must be between 1 minute and one week")
-        return "D" if mins == 1440 else "W" if mins == 10080 else str(mins)
+        return "minutes", mins
     if t in ("D", "1D"):
-        return "D"
+        return "minutes", 1440
     if t in ("W", "1W"):
-        return "W"
+        return "minutes", 10080
     if t.endswith("H") and t[:-1].isdigit():
-        n = int(t[:-1]) * 60
-        return str(n) if 0 < n <= 10080 else _bad_timeframe(value)
+        mins = int(t[:-1]) * 60
+        if 0 < mins <= 10080:
+            return "minutes", mins
+        return _bad_timeframe(value)
     if t.endswith("M") and t[:-1].isdigit():
         t = t[:-1]
     if not t.isdigit() or int(t) <= 0:
         return _bad_timeframe(value)
-    if int(t) > 10080:
+    mins = int(t)
+    if mins > 10080:
         raise ValueError("chart timeframe must be at most one week (10080 minutes)")
-    return str(int(t))
+    return "minutes", mins
+
+
+def normalize_chart_timeframe(value: object) -> str:
+    """Canonicalize strategy chart timeframes.
+
+    The branch retains authentic event/tick adapters internally, but the Pine-style
+    strategy/backtest contract remains minute-native until every downstream consumer
+    (HTF chains, cache replay, Strategy Tester) is event-timeframe aware.
+    """
+    mode, n = chart_timeframe_parts(value)
+    if mode == "seconds":
+        raise ValueError("sub-minute chart timeframes are raw-event capabilities, not strategy chart timeframes")
+    if mode == "ticks":
+        raise ValueError("tick chart timeframes are raw-event capabilities, not strategy chart timeframes")
+    if n == 1440:
+        return "D"
+    if n == 10080:
+        return "W"
+    return str(n)
 
 
 def _bad_timeframe(value: object) -> str:
@@ -68,13 +99,18 @@ def chart_capabilities() -> Dict[str, object]:
     return {
         "timeframes": list(CHART_TIMEFRAME_OPTIONS),
         "primary_intraday_timeframes": list(PRIMARY_INTRADAY_TIMEFRAMES),
+        "primary_second_timeframes": [],
+        "primary_tick_timeframes": [],
         "chart_types": list(CHART_TYPES),
         "fill_modes": list(FILL_MODES),
         "security_sources": list(SECURITY_SOURCES),
         "seconds": False,
         "ticks": False,
-        "minimum_live_resolution": "1m",
-        "note": "Strategy chart execution is minute-native. Databento may expose genuine 1-second/tick/depth data through the raw market-data APIs, but ICARUS never fabricates sub-minute chart bars or ticks.",
+        "raw_event_seconds": True,
+        "raw_event_ticks": True,
+        "minimum_live_resolution": "trade-event",
+        "requires_event_feed": False,
+        "note": "Authentic event/tick adapters are retained as raw capabilities; strategy charts remain minute-native and ICARUS never fabricates ticks.",
     }
 
 

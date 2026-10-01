@@ -27,13 +27,15 @@ from dataclasses import dataclass, replace
 from datetime import datetime
 from typing import Any, Deque, Dict, List, Optional, Tuple
 
-from .assets import AssetSpec, apply_chart_config, chart_capabilities, normalize_chart_timeframe, resolve, validate_chart_config
+from .assets import AssetSpec, apply_chart_config, chart_capabilities, chart_timeframe_parts, normalize_chart_timeframe, resolve, validate_chart_config
 from .calendar import get_calendar
 from .emulator import Emulator, Fill
 from .feeds import Coinbase, Kraken
+from .feeds.events import event_bar_to_bar, make_event_feed
 from .feeds.bars import HistoryHub, detect_granularity, file_feed_mode, find_history, parse_ohlcv_csv, read_text_csv  # Grok (xAI) — 2026-09-20
 from .feeds.databento import Databento
 from .feeds.yahoo import Yahoo
+from .microstructure import TickAggregator, TradeAggregator, TradeEvent
 from .pine.series import NAN, na
 from .pine.timeframe import Aggregator, Bar, tf_minutes
 from .strategy.inputs import Inputs, crypto_profile
@@ -380,8 +382,17 @@ class AssetRunner:
         self.feed = feeds.get(self.spec.feed) or (Yahoo() if self.spec.feed == "yahoo" else Coinbase())
         self.kraken = Kraken()
         self.cal = get_calendar(self.spec.calendar, self.spec.anchor_et, session=self.spec.session, group=self.spec.group)
-        self.chart_minutes = tf_minutes(self.spec.chart_tf)
+        self.chart_mode, self.chart_value = chart_timeframe_parts(self.spec.chart_tf)
+        self.chart_minutes = self.chart_value if self.chart_mode == "minutes" else 0
+        self.chart_seconds = self.chart_value * 60 if self.chart_mode == "minutes" else (self.chart_value if self.chart_mode == "seconds" else None)
         self.mintick = cfg.mintick if cfg.mintick is not None else (self.spec.mintick if self.spec.feed == "yahoo" else self.feed.mintick(self.spec.ticker))
+        self.trade_events: List[TradeEvent] = []
+        self.event_feed = feeds.get("events")
+        if self.chart_mode != "minutes" and self.event_feed is None:
+            self.event_feed = make_event_feed(self.spec, self.mintick)
+        self.event_chart_agg = None
+        self.event_minute_agg = None
+        self._event_chart_session: Optional[str] = None
         # Active futures never resolve to expiring month-coded contracts. The provider-native
         # continuous ticker is the live/data ticker; tv_symbol carries the TradingView 1! identity.
         self.live_ticker = self.spec.ticker                 # compatibility alias: always provider-native continuous for futures
@@ -423,7 +434,9 @@ class AssetRunner:
     # ── engine construction (also used by re-warm) ──
     def _build_engine(self) -> None:
         sp = self.spec
-        self.chart_minutes = tf_minutes(sp.chart_tf)
+        self.chart_mode, self.chart_value = chart_timeframe_parts(sp.chart_tf)
+        self.chart_minutes = self.chart_value if self.chart_mode == "minutes" else 0
+        self.chart_seconds = self.chart_value * 60 if self.chart_mode == "minutes" else (self.chart_value if self.chart_mode == "seconds" else None)
         self.cal = get_calendar(sp.calendar, sp.anchor_et, session=sp.session, group=sp.group)   # a preset may switch the chart session
         self.em = Emulator(sp.capital, sp.commission, self.mintick, sp.multiplier, pyramiding=2, slippage_ticks=sp.slippage_ticks)
         self.strat: Optional[PulseStrategy] = None
@@ -432,7 +445,10 @@ class AssetRunner:
         ha_chains = sp.chart_type == "heikin_ashi" and sp.security_source == "chart"      # TradingView: request.security on an HA chart returns HA data
         self.chains: Dict[int, TFChain] = {m: TFChain(m, self.cal.bucket_start, self.cal.bucket_end, ha=ha_chains, ltf_intrabar=ib.ltf_intrabar, mintick=self.mintick)
                                            for m in sorted(set(self.htf_tfs + [2, 5]))}
-        self.chart_agg = Aggregator(self.chart_minutes, self.cal.bucket_start, self.cal.bucket_end)
+        self.chart_agg = Aggregator(self.chart_minutes, self.cal.bucket_start, self.cal.bucket_end) if self.chart_mode == "minutes" else None
+        self.event_chart_agg = None
+        self.event_minute_agg = None
+        self._event_chart_session = None
         self.ha = HeikinAshi(mintick=self.mintick) if sp.chart_type == "heikin_ashi" else None
         self._real_ohlc_warned = False
 
@@ -467,10 +483,10 @@ class AssetRunner:
         if abs(inp.point_value - self.spec.multiplier) > 1e-9 and inp.point_value == Inputs().point_value:
             inp = replace(inp, point_value=self.spec.multiplier)          # the Pine's 20 = NQ; Risk-$ sizing needs this asset's $/point
         self.inputs = inp
-        self.strat = PulseStrategy(inp, self.em, mintick=self.mintick, tf_minutes=self.chart_minutes, session_key=self.cal.session_id)
+        self.strat = PulseStrategy(inp, self.em, mintick=self.mintick, tf_minutes=max(1, self.chart_minutes), session_key=self.cal.session_id)
 
     # ── core bar path ──
-    def _on_chart_bar(self, real: Bar, live: bool) -> None:
+    def _on_chart_bar(self, real: Bar, live: bool, *, time_close: Optional[int] = None) -> None:
         if self.strat is None:
             self._init_strategy(real.c)
         ha_bar = self.ha.transform(real) if self.ha else None
@@ -491,8 +507,16 @@ class AssetRunner:
             self._cancel_pending_entries()
         self.em.process_bar(fill_bar, self.bar_index)
         htf = [self.chains[m].htf_values(chart.ts) for m in self.htf_tfs]
-        t_close = self.cal.bucket_end(chart.ts, self.chart_minutes)
-        ltf = [self.chains[2].ltf_values(chart.ts, self.chart_minutes, t_close), self.chains[5].ltf_values(chart.ts, self.chart_minutes, t_close)]
+        if time_close is not None:
+            t_close = int(time_close)
+        elif self.chart_mode == "minutes":
+            t_close = self.cal.bucket_end(chart.ts, self.chart_minutes)
+        elif self.chart_mode == "seconds":
+            t_close = int(chart.ts) + int(self.chart_value)
+        else:
+            t_close = int(chart.ts) + 1
+        security_chart_minutes = self.chart_minutes if self.chart_mode == "minutes" else 0
+        ltf = [self.chains[2].ltf_values(chart.ts, security_chart_minutes, t_close), self.chains[5].ltf_values(chart.ts, security_chart_minutes, t_close)]
         st = self.strat.on_bar(chart, self.bar_index, htf, ltf, time_close=t_close)
         self.state = st
         self.bars.append(chart)
@@ -522,23 +546,68 @@ class AssetRunner:
         self.strat.events.clear()
 
     def on_sub_bar(self, b: Bar, sub_minutes: int, live: bool, record: bool = True) -> None:
-        """Feed one sub-bar (1m or 5m) to every chain and the chart aggregator."""
+        """Feed one genuine minute-or-coarser sub-bar to HTF chains and minute charts."""
         with self.lock:
             if self.last_sub_ts is not None and b.ts <= self.last_sub_ts:
                 return
-            if not self.cal.is_open(b.ts):                    # bars outside the session (Yahoo sometimes returns them) are ignored
+            if not self.cal.is_open(b.ts):
                 return
             self.last_sub_ts = b.ts
             if record:
                 self.subbars.append((b, sub_minutes))
-            intraday = self.cal.intraday_open(b.ts)             # RTH charts: intraday bars exist 09:30-16:15 ET only
+            intraday = self.cal.intraday_open(b.ts)
             for ch in self.chains.values():
                 if sub_minutes <= ch.minutes and ch.minutes % sub_minutes == 0 and (ch.minutes >= 1440 or intraday):
                     ch.push_sub_bar(b, sub_minutes)
-            if intraday and self.chart_minutes % sub_minutes == 0:
+            if self.chart_mode == "minutes" and intraday and self.chart_minutes % sub_minutes == 0:
                 for cb in self.chart_agg.push(b, sub_minutes):
                     self._on_chart_bar(cb, live)
             self.last_price = b.c
+
+    def _reset_event_chart_aggregator(self, event: TradeEvent) -> None:
+        contiguous = str(event.venue).startswith("coinbase")
+        if self.chart_mode == "seconds":
+            self.event_chart_agg = TradeAggregator(event.venue, event.instrument, seconds=self.chart_value,
+                                                   contiguous_sequence=contiguous)
+        elif self.chart_mode == "ticks":
+            self.event_chart_agg = TickAggregator(event.venue, event.instrument, self.chart_value,
+                                                  contiguous_sequence=contiguous)
+        else:
+            self.event_chart_agg = None
+        self._event_chart_session = self.cal.session_id(event.event_ns // 1_000_000_000)
+
+    def _ensure_event_aggregators(self, event: TradeEvent) -> None:
+        contiguous = str(event.venue).startswith("coinbase")
+        if self.event_minute_agg is None:
+            self.event_minute_agg = TradeAggregator(event.venue, event.instrument, seconds=60,
+                                                    contiguous_sequence=contiguous)
+        session = self.cal.session_id(event.event_ns // 1_000_000_000)
+        if self.event_chart_agg is None or self._event_chart_session != session:
+            self._reset_event_chart_aggregator(event)
+
+    def on_trade_event(self, event: TradeEvent, live: bool, record: bool = True) -> None:
+        """Feed one authentic trade event. Never synthesizes an empty second or fake tick."""
+        with self.lock:
+            ts = event.event_ns // 1_000_000_000
+            if not self.cal.is_open(ts):
+                return
+            self._ensure_event_aggregators(event)
+            if record:
+                self.trade_events.append(event)
+
+            for raw in self.event_minute_agg.push(event):
+                minute = event_bar_to_bar(raw, self.mintick)
+                self.on_sub_bar(minute, 1, live=live, record=True)
+
+            if self.chart_mode in ("seconds", "ticks") and self.cal.intraday_open(ts):
+                for raw in self.event_chart_agg.push(event):
+                    bar = event_bar_to_bar(raw, self.mintick)
+                    end_ns = int(raw.get("end_ns") or raw.get("start_ns") or event.event_ns)
+                    if self.chart_mode == "seconds":
+                        end_ns = int(raw["start_ns"]) + self.chart_value * 1_000_000_000
+                    self._on_chart_bar(bar, live, time_close=max(bar.ts + 1, (end_ns + 999_999_999) // 1_000_000_000))
+            self.last_price = event.price_ticks * self.mintick
+            self.last_price_ts = max(self.last_price_ts, event.received_ns / 1_000_000_000)
 
     # ── warm-up ──
     def warmup(self, now_ts: Optional[int] = None) -> None:

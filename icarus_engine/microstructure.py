@@ -129,3 +129,88 @@ class TradeAggregator:
                 "last_event": asdict(self.last) if self.last else None, "sequence_gap": self.gap,
                 "active_bucket_is_partial": self.bucket is not None, "provider_connected": False,
                 "sequence_continuity_checked": self.contiguous_sequence}
+
+
+
+class TickAggregator:
+    """Aggregate exactly N authentic trade events per bar.
+
+    No synthetic trades, no wall-clock closure, and no interpolation. A bar is
+    emitted only after its Nth real trade arrives.
+    """
+
+    def __init__(self, venue: str, instrument: str, trades: int, *, contiguous_sequence: bool = False):
+        if type(trades) is not int or not 1 <= trades <= 100000:
+            raise ValueError("trades must be an integer in [1, 100000]")
+        if type(contiguous_sequence) is not bool:
+            raise ValueError("contiguous_sequence must be Boolean")
+        TradeEvent(venue, instrument, 0, 0, 0, 0, 1)
+        self.venue = venue
+        self.instrument = instrument
+        self.trades = trades
+        self.contiguous_sequence = contiguous_sequence
+        self.last = None
+        self.bucket = None
+        self.gap = False
+
+    def _validate(self, event: TradeEvent) -> bool:
+        if event.venue != self.venue or event.instrument != self.instrument:
+            raise ValueError("wrong venue/instrument")
+        if self.gap:
+            raise ValueError("sequence gap: obtain a provider replay before continuing")
+        if self.last and event.sequence == self.last.sequence:
+            if event == self.last:
+                return False
+            self.gap = True
+            raise ValueError("conflicting duplicate sequence")
+        if self.last and (event.sequence < self.last.sequence or event.event_ns < self.last.event_ns
+                          or event.received_ns < self.last.received_ns):
+            self.gap = True
+            raise ValueError("out-of-order trade stream")
+        if self.last and self.contiguous_sequence and event.sequence != self.last.sequence + 1:
+            self.gap = True
+            raise ValueError("sequence gap: aggregation halted")
+        return True
+
+    def push(self, event: TradeEvent):
+        if not self._validate(event):
+            return []
+        if self.bucket is None:
+            self.bucket = {
+                "venue": self.venue, "instrument": self.instrument,
+                "start_ns": event.event_ns, "end_ns": event.event_ns,
+                "open_ticks": event.price_ticks, "high_ticks": event.price_ticks,
+                "low_ticks": event.price_ticks, "close_ticks": event.price_ticks,
+                "volume": 0.0, "trades": 0, "footprint": {},
+                "first_sequence": event.sequence, "last_sequence": event.sequence,
+                "last_received_ns": event.received_ns, "authentic_trade_events": True,
+            }
+        b = self.bucket
+        b["end_ns"] = event.event_ns
+        b["high_ticks"] = max(b["high_ticks"], event.price_ticks)
+        b["low_ticks"] = min(b["low_ticks"], event.price_ticks)
+        b["close_ticks"] = event.price_ticks
+        b["volume"] += event.quantity
+        b["trades"] += 1
+        b["last_sequence"] = event.sequence
+        b["last_received_ns"] = event.received_ns
+        level = b["footprint"].setdefault(str(event.price_ticks), {"buy": 0.0, "sell": 0.0, "unknown": 0.0})
+        level[event.aggressor] += event.quantity
+        self.last = event
+        if b["trades"] < self.trades:
+            return []
+        out, self.bucket = b, None
+        out["available_at_ns"] = out["last_received_ns"]
+        out["aggressor_complete"] = all(v["unknown"] == 0 for v in out["footprint"].values())
+        return [out]
+
+    def status(self):
+        return {
+            "venue": self.venue, "instrument": self.instrument,
+            "ticks_per_bar": self.trades,
+            "last_event": asdict(self.last) if self.last else None,
+            "sequence_gap": self.gap,
+            "active_bucket_is_partial": self.bucket is not None,
+            "provider_connected": False,
+            "sequence_continuity_checked": self.contiguous_sequence,
+        }
