@@ -196,6 +196,11 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     possibility = PossibilityEngine(port)
     performance_proof = PerformanceProofStore(port.base_dir)
     latency_telemetry = LatencyTelemetry()
+    # Bind one collector to the existing live runners; Portfolio.make_runner
+    # propagates the same sink to assets added later.
+    port.latency_telemetry = latency_telemetry
+    for runner in port.runner_list():
+        runner.latency_telemetry = latency_telemetry
     autopilot = TacticalAutopilot(port)
     parallax = ParallaxStore(port.base_dir)
     dreamstate = DreamstateLab(port.base_dir, parallax=parallax)
