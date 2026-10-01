@@ -65,6 +65,14 @@ The local research workflow may truthfully establish dataset/baseline provenance
 
 No-candidate, failed, timed-out, cancelled, and interrupted studies are also retained as durable learning so the system does not repeatedly rediscover the same failed research path. A dirty or unknown code revision cannot mint a Brain candidate.
 
+## Performance proof kernel
+
+The Adaptive Brain now has a causal proof ledger for forecasts, settled outcomes and deterministic replay checks. Forecast identities are content-addressed and bind candidate, asset, regime, decision time, maturity, success definition, exact source revision, dataset hash and evidence hash. Outcomes are immutable and cannot be recorded before forecast maturity.
+
+The proof kernel may display **100% observed success** only when the denominator is a closed, fully-settled sample with at least 30 matured forecasts and every settled outcome is successful. That statement applies only to the exact historical sample. It does not become a future guarantee, an omniscience claim, or production authority.
+
+The same proof plane computes outcome coverage, Brier score, calibration error, replay determinism, candidate/regime statistics and empirical shadow champions. A regime champion requires a fully-settled regime sample and remains `EMPIRICAL_SHADOW_ONLY`.
+
 ## Truthful operator metrics
 
-The panel shows measured values only. A missing success rate is rendered as UNMEASURED. Latency targets are labeled targets until instrumentation supplies actual distributions. Learning is evidenced by durable events and before/after validation state, not by an unsupported claim that the model "self-learned."
+The panel shows measured values only. Missing values are rendered as UNMEASURED. A 100% value is shown only when its exact closed sample proves it. Latency targets are labeled targets until instrumentation supplies actual distributions. Learning is evidenced by durable events and before/after validation state, not by an unsupported claim that the model "self-learned."
