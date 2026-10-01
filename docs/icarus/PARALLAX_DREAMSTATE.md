@@ -82,9 +82,12 @@ Chronological stability becomes evaluable after nine evidence-complete pairs. PA
 
 For one-dimensional delay, stop, target, and size families, PARALLAX also constructs a local parameter basin whenever adjacent parameter values have enough paired evidence.
 
-- A statistically eligible point with no statistically eligible adjacent neighbor is labeled an isolated parameter spike and withheld from robust-ready mutation signals.
-- Contiguous statistically eligible settings form a basin. PARALLAX reports basin support count, width, adjacent supporting values, and whether the point is isolated.
-- If adjacent settings are not yet sufficiently observed, basin robustness remains not yet evaluable rather than treating missing neighbors as failures.
+- A statistically eligible point with locally comparable neighbors but no statistically eligible, temporally coherent adjacent neighbor is labeled an isolated parameter spike and withheld from robust-ready mutation signals.
+- Basin neighborhoods are restricted to the same non-axis parameter signature, so a stop multiplier does not borrow support from another setting that silently changes an entry filter or other hidden parameter.
+- Locality is bounded by an axis-specific maximum gap; far-apart sampled points do not validate each other as neighbors.
+- If a parameter family has multiple sufficiently observed points but none are locally comparable, the source is labeled sparse local coverage and withheld from robust-ready signals.
+- Contiguous statistically eligible, temporally coherent settings form a basin. PARALLAX reports basin support count, width, adjacent supporting values, family coverage, and whether the point is isolated.
+- If only one sufficiently observed point exists in the comparable family, basin robustness remains not yet evaluable rather than treating missing exploration as a failure.
 
 This deliberately prefers plateaus over magic numbers. It is still a research robustness screen, not proof of causality or expected profit.
 
@@ -163,7 +166,7 @@ The existing PARALLAX / DREAMSTATE tab now exposes V3 robustness intelligence wi
 
 The tab includes total twin decisions, comparison-contract readiness, statistical-ready and robust-ready hypothesis counts, blocked-hypothesis diagnostics, FDR q-values, chronological fold stability, worst-fold mean, parameter-basin support/spike state, paired evidence counts and coverage, context strata, non-pooled regret status, revision-isolated ablation attribution, branch-kind replay coverage, DREAMSTATE candidates, family trial budgets, candidate gate state, source revision, and explicit shadow-only authority.
 
-The interface continues to read GET /api/parallax and GET /api/dreamstate. No new dashboard or engine-server route is required for V2.
+The interface continues to read GET /api/parallax and GET /api/dreamstate. No new dashboard or engine-server route is required for V3. The existing schema versions remain backward-compatible; snapshots expose separate robustness_version markers for the V3 overlay.
 
 ---
 
@@ -191,6 +194,8 @@ PARALLAX/DREAMSTATE V3 deliberately refuses these invalid shortcuts:
 - a low p/q value is not labeled guaranteed alpha;
 - an aggregate effect that fails chronological stability is not promoted as robust;
 - an isolated winning parameter surrounded by evaluable losing neighbors is not promoted as robust;
+- far-apart parameter points or settings with different hidden non-axis parameters cannot manufacture a false basin;
+- a sampled parameter family with no local comparable support is not mislabeled a plateau;
 - unevaluable temporal/basin evidence is labeled early rather than silently assumed good or bad;
 - context-specific evidence is not silently generalized beyond observed strata;
 - an opposite-side branch does not auto-create an inversion strategy;
