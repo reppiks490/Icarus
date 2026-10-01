@@ -227,6 +227,7 @@ _EXPIRING_FUTURE_RE = re.compile(
 _ANY_DATED_FUTURE_RE = re.compile(
     r"^[A-Z]{1,6}[FGHJKMNQUVXZ]\d{1,4}(?:\.(?:CME|CBT|CMX|NYM|NYMEX|COMEX))?$"
 )
+_CONTINUOUS_FUTURE_STYLE_RE = re.compile(r"^[A-Z]{1,8}(?:1!?|=F)$")
 
 
 def resolve(symbol: str) -> AssetSpec:
@@ -237,9 +238,15 @@ def resolve(symbol: str) -> AssetSpec:
             f"expiring futures symbol {symbol!r} is forbidden; ICARUS is continuous-only — use a continuous 1!/=F identity"
             + (f" for {root}" if root != "future" else "")
         )
+    raw = s
     s = ALIASES.get(s, s)
     if s in REGISTRY:
         return replace(REGISTRY[s])
+    if _CONTINUOUS_FUTURE_STYLE_RE.fullmatch(raw):
+        raise ValueError(
+            f"unsupported continuous futures symbol {symbol!r}; ICARUS only accepts registered continuous futures "
+            "(TradingView 1! / provider =F) and never reinterprets them as crypto"
+        )
     if not _SYMBOL_RE.fullmatch(s):
         raise ValueError(f"bad symbol {symbol!r}: letters, digits, '-', '.', '=' and '!' only")
     # unknown → assume a Coinbase spot pair (keyless), 24/7
