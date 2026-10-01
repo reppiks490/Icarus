@@ -1,0 +1,55 @@
+{
+  "schema_version": "icarus-apex-integration-receipt-v1",
+  "subsystem": "APEX Ω",
+  "status": "integration_candidate_pending_exact_head_ci",
+  "source_repository": "reppiks490/Icarus",
+  "source_branch": "chatgpt/apex-omega-current-main-20261001",
+  "source_commit": "cddd9cec812094a19d15f316ce9d26d4a81a3f96",
+  "documentation": "docs/icarus/APEX_OMEGA.md",
+  "architecture_spec": "docs/superpowers/specs/2026-10-01-apex-omega-design.md",
+  "installed_projects": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "E",
+    "F"
+  ],
+  "installed_surfaces": {
+    "kernel": "icarus_engine/apex/kernel.py",
+    "http": "icarus_engine/server.py",
+    "mcp": "icarus_bridge/mcp_server.py",
+    "dashboard": "icarus_engine/apex-ui.js",
+    "persistence": "research/apex.sqlite3"
+  },
+  "verification": {
+    "apex_unit_suite_local": {
+      "status": "passed",
+      "tests": 120
+    },
+    "full_repository_ci": {
+      "status": "pending_exact_head"
+    },
+    "linux_ci": {
+      "status": "pending_exact_head"
+    },
+    "windows_ci": {
+      "status": "pending_exact_head"
+    }
+  },
+  "truth_contract": {
+    "evidence_kinds": [
+      "observed",
+      "derived",
+      "reconstructed",
+      "inferred",
+      "unavailable"
+    ],
+    "future_evidence_excluded": true,
+    "missing_data_remains_unavailable": true,
+    "inference_never_promoted_to_observation": true
+  },
+  "execution_authorized": false,
+  "production_decision_authorized": false,
+  "main_merge_authorized": false
+}
