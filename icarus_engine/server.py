@@ -825,6 +825,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._send(200, (html_path.parent / "pantheon-ui.js").read_bytes(), "text/javascript")
             if p.path == "/sibyl-ui.js":
                 return self._send(200, (html_path.parent / "sibyl-ui.js").read_bytes(), "text/javascript")
+            if p.path == "/apex-ui.js":
+                return self._send(200, (html_path.parent / "apex-ui.js").read_bytes(), "text/javascript")
             if p.path == "/chronofold-ui.js":
                 return self._send(200, (html_path.parent / "chronofold-ui.js").read_bytes(), "text/javascript")
             if p.path == "/commissioning-ui.js":
