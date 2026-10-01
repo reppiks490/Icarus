@@ -10,8 +10,7 @@ from __future__ import annotations
 from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
-from tempfile import NamedTemporaryFile
-from typing import Any, Dict, Iterable, Mapping
+from typing import Any, Dict, Mapping
 import hashlib
 import json
 import math
@@ -178,7 +177,10 @@ class CommissioningEngine:
 
     def _append(self, path: Path, kind: str, payload: Mapping[str, Any]) -> Dict[str, Any]:
         path.parent.mkdir(parents=True, exist_ok=True)
+        before_errors = len(self._chain_errors)
         existing = self._read_chain(path, kind)
+        if len(self._chain_errors) > before_errors:
+            raise RuntimeError(f"{kind} ledger integrity failure; refusing append")
         prev_hash = str(existing[-1].get("record_hash")) if existing else "GENESIS"
         body = {
             "ledger_schema": LEDGER_SCHEMA,
@@ -341,6 +343,14 @@ class CommissioningEngine:
                     logret = math.log(max(current_price, EPS)) - math.log(start_price)
                     realized = math.expm1(_clip(logret, -50.0, 50.0))
                     threshold = max(0.0, _finite(pred.get("branch_threshold")))
+                    target_tau = _finite(pred.get("target_tau"))
+                    overshoot = max(0.0, current_tau - target_tau)
+                    horizon = max(1.0, _finite(pred.get("horizon_chronons"), 1.0))
+                    horizon_tolerance = max(1.0, 0.25 * horizon)
+                    horizon_valid = overshoot <= horizon_tolerance
+                    causal = pred.get("causal_boundary") if isinstance(pred.get("causal_boundary"), Mapping) else {}
+                    causal_valid = str(causal.get("causal_integrity") or "").upper() in {"PASS", "BOUNDED"}
+                    score_eligible = bool(horizon_valid and causal_valid)
                     actual = _direction(realized, threshold)
                     probs = pred.get("branch_weights") if isinstance(pred.get("branch_weights"), Mapping) else {}
                     brier = sum(
@@ -365,6 +375,11 @@ class CommissioningEngine:
                         "start_tau": pred.get("start_tau"),
                         "target_tau": pred.get("target_tau"),
                         "settle_tau": current_tau,
+                        "chronon_overshoot": overshoot,
+                        "horizon_tolerance": horizon_tolerance,
+                        "horizon_valid": horizon_valid,
+                        "causal_valid": causal_valid,
+                        "score_eligible": score_eligible,
                         "start_price": start_price,
                         "settle_price": current_price,
                         "realized_return": realized,
@@ -441,11 +456,18 @@ class CommissioningEngine:
         requested = str(asset or "").strip().upper()
         with self._lock:
             pairs = []
+            excluded = {"horizon": 0, "causal": 0}
             for pid, out in self._outcomes.items():
                 pred = self._predictions.get(pid)
                 if not pred:
                     continue
                 if requested and pred.get("asset") != requested:
+                    continue
+                if out.get("score_eligible") is not True:
+                    if out.get("horizon_valid") is False:
+                        excluded["horizon"] += 1
+                    if out.get("causal_valid") is False:
+                        excluded["causal"] += 1
                     continue
                 pairs.append((pred, out))
             n = len(pairs)
@@ -461,6 +483,7 @@ class CommissioningEngine:
                     "unknown_error_correlation": None,
                     "variants": [],
                     "regimes": [],
+                    "excluded_outcomes": excluded,
                 }
             errors = [_finite(out.get("forecast_error")) for _, out in pairs]
             abs_errors = [abs(x) for x in errors]
@@ -489,6 +512,7 @@ class CommissioningEngine:
                 "unknown_error_correlation": _corr(unknowns, abs_errors),
                 "variants": self._variant_tournament(pairs),
                 "regimes": regime_rows,
+                "excluded_outcomes": excluded,
             }
 
     def promotion_gate(self, asset: str = "") -> Dict[str, Any]:
@@ -641,6 +665,15 @@ class CommissioningEngine:
             if self._thread and self._thread.is_alive():
                 return
             self._stop.clear()
+        # Commission immediately on start; do not make the first evidence receipt
+        # wait one full cadence. Sampling errors remain non-fatal and shadow-only.
+        try:
+            self.tick()
+        except Exception:
+            pass
+        with self._lock:
+            if self._thread and self._thread.is_alive():
+                return
             self._thread = threading.Thread(target=self._loop, name="icarus-commissioning", daemon=True)
             self._thread.start()
 
