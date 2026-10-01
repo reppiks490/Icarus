@@ -17,6 +17,7 @@ from dataclasses import asdict
 from .advisory import AdvisoryLedger, strict_json, canonical_hash, _iso, _now
 from .backtest import freeze_replay_port, run_backtest
 from .research import Policy, Windows, digest, run_search
+from .code_provenance import local_code_provenance
 
 DEFAULT_SOURCES = {
     "cftc": ["publicreporting.cftc.gov", "www.cftc.gov"],
@@ -368,6 +369,17 @@ class ResearchWorkspace:
         latest = max(b.ts + minutes * 60 for b, minutes in src.subbars)
         if windows.train_start < earliest or windows.holdout_end > latest:
             raise ValueError("study windows exceed the frozen cached data range")
+        with self.port.runners[asset].lock:
+            raw_state = self.port.runners[asset].state if isinstance(self.port.runners[asset].state, dict) else {}
+            regime_score = raw_state.get("rate_regime")
+            if isinstance(regime_score, bool) or not isinstance(regime_score, (int, float)):
+                regime_score = None
+            regime_context = {
+                "label": str(raw_state.get("rate_regime_str") or "UNCLASSIFIED"),
+                "regime_score": regime_score,
+                "observed_market_ts": raw_state.get("ts"),
+            }
+        provenance = local_code_provenance()
         with self._lock:
             if self._active is not None:
                 raise ValueError("one research study may run at a time")
@@ -375,6 +387,11 @@ class ResearchWorkspace:
             job = {"id": job_id, "status": "running", "asset": asset, "started": time.time(),
                    "dataset_hash": dataset_hash, "baseline_hash": baseline_hash,
                    "data_cutoff": windows.holdout_end,
+                   "source_repo": provenance["repository"],
+                   "source_commit": provenance["commit"],
+                   "source_revision_status": provenance["status"],
+                   "source_revision_eligible": provenance["candidate_revision_eligible"],
+                   "regime_context": regime_context,
                    "baseline": baseline, "result": None, "error": None}
             self._save(job)
             self._active, self._stop = job_id, threading.Event()

@@ -43,7 +43,7 @@
   function renderBrain(b) {
     const el = document.querySelector('#brainPanel');
     if (!el) return;
-    const auth = b.authority || {}, learn = b.learning || {}, truth = b.truth_contract || {}, sync = b.remote_sync || {}, inc = b.incubator || {};
+    const auth = b.authority || {}, learn = b.learning || {}, truth = b.truth_contract || {}, sync = b.remote_sync || {}, inc = b.incubator || {}, researchSync = b.research_sync || {};
     const agents = ((b.architecture || {}).agents || []);
     const subs = ((b.architecture || {}).subsystems || []);
     const lanes = ((b.architecture || {}).latency_tiers || []);
@@ -92,6 +92,8 @@
             <div class="tile"><div class="k">Router</div><div class="v">${h(auth.candidate_router||'—')}</div></div>
             <div class="tile"><div class="k">Agent repo sync</div><div class="v ${statusClass(sync.status)}">${h(String(sync.status||'not configured').toUpperCase())}</div><div class="small muted">${h(sync.last_success_at?'last '+sync.last_success_at:'awaiting first verified ingest')}</div></div>
             <div class="tile"><div class="k">Remote agent events</div><div class="v tnum">${num(sync.ingested_total)}</div><div class="small muted">poll ${num(sync.interval_seconds)}s · rejected ${num(sync.rejected_total)}</div></div>
+            <div class="tile"><div class="k">Research → Brain</div><div class="v ${statusClass(researchSync.status)}">${h(String(researchSync.status||'not configured').toUpperCase())}</div><div class="small muted">candidates ${num(researchSync.candidates_recorded)} · negatives ${num(researchSync.negative_results_recorded)}</div></div>
+            <div class="tile"><div class="k">Revision-blocked studies</div><div class="v tnum">${num(researchSync.blocked_revision_count)}</div><div class="small muted">candidate admission fails closed without exact clean source revision</div></div>
             <div class="tile"><div class="k">Local incubator</div><div class="v tnum">${num(inc.proposal_count)}</div><div class="small muted">review required ${num(inc.review_required)}</div></div>
             <div class="tile"><div class="k">Independently approved</div><div class="v tnum">${num(inc.approved)}</div><div class="small muted">paper activation still gated</div></div>
           </div>

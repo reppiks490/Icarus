@@ -37,19 +37,19 @@ AGENTS = (
         "id": "flow",
         "title": "Flow Velocity Engine",
         "job": "Measure authenticated microstructure/flow anomalies and maintain causal market-data identity, clocks, quality, replay, and source health.",
-        "owns": ["ARGUS", "NEXUS"],
+        "owns": ["ARGUS", "NEXUS", "DATA"],
     },
     {
         "id": "aion",
         "title": "AION PRIME Quant Scientist",
         "job": "Maintain causal market memory, evolve falsifiable research hypotheses, and independently evaluate trust/collision evidence.",
-        "owns": ["AION", "ASCENSION", "PROMETHEUS"],
+        "owns": ["AION", "ASCENSION", "PROMETHEUS", "PARALLAX", "ML"],
     },
     {
         "id": "daedalus",
         "title": "DAEDALUS PRIME Systems Auditor",
         "job": "Run protected scientific validation and adversarial falsification for the entire fabric; never self-clear a defect.",
-        "owns": ["DAEDALUS", "AEGIS"],
+        "owns": ["DAEDALUS", "AEGIS", "PROVENANCE"],
     },
 )
 
@@ -68,6 +68,10 @@ SUBSYSTEMS = (
     {"id": "infrastructure", "title": "INFRASTRUCTURE", "owner": "omega", "job": "Runtime health, recovery, rollback, bounded-autonomy supervision, durability, and dependency/topology safety."},
     {"id": "helios-prime", "title": "HELIOS PRIME", "owner": "omega", "job": "Cross-system integration, source economy, sibling adapters, and meta-research/self-audit."},
     {"id": "supermesh-x", "title": "SUPERMESH-X", "owner": "macro", "job": "Capability/provider discovery, health/drift-aware routing, provenance, failover, and execution-contract boundaries."},
+    {"id": "parallax", "title": "PARALLAX", "owner": "aion", "job": "Parallel/frozen-evidence lineage and cross-view comparison so alternative research paths stay reproducible and non-circular."},
+    {"id": "provenance", "title": "PROVENANCE", "owner": "daedalus", "job": "Exact code/data/artifact lineage, commit binding, receipt integrity, and proof-chain validation."},
+    {"id": "ml", "title": "ML", "owner": "aion", "job": "Research-only model lifecycle, training evidence, calibration, drift/OOD state, reproducibility, and candidate packaging."},
+    {"id": "data", "title": "DATA", "owner": "flow", "job": "Raw-source identity, availability-time truth, representation quality, freshness, and replay-safe market evidence."},
 )
 
 LATENCY_TIERS = (
@@ -554,6 +558,7 @@ def brain_snapshot(
     system_audit: Mapping[str, Any] | None = None,
     integrity: Mapping[str, Any] | None = None,
     remote_sync: Mapping[str, Any] | None = None,
+    research_sync: Mapping[str, Any] | None = None,
     limit: int = 1000,
 ) -> dict[str, Any]:
     """Build the operator brain state from measured local evidence only."""
@@ -654,6 +659,12 @@ def brain_snapshot(
         "regime_routes": routes,
         "incubator": incubator,
         "remote_sync": dict(remote_sync) if isinstance(remote_sync, Mapping) else {
+            "enabled": False,
+            "status": "not_configured",
+            "execution_authorized": False,
+            "production_decision_authorized": False,
+        },
+        "research_sync": dict(research_sync) if isinstance(research_sync, Mapping) else {
             "enabled": False,
             "status": "not_configured",
             "execution_authorized": False,
