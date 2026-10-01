@@ -1,0 +1,32 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "dreamstate-v4-effective-revision-20261001T154030Z",
+  "category": "EVOLUTION",
+  "severity": "success",
+  "status": "active",
+  "subsystems": [
+    "dreamstate",
+    "parallax",
+    "aion",
+    "provenance",
+    "ml"
+  ],
+  "recorded_at": "2026-10-01T15:40:30Z",
+  "title": "DREAMSTATE V4 independent-episode revision gating",
+  "summary": "DREAMSTATE family revisions now require strictly more effective independent episode evidence, not merely more raw paired rows. Additional observations inside already-counted market episodes cannot unlock another bounded family trial. The live PARALLAX V4 HAC/FDR, temporal, basin, and cross-revision transportability logic remains unchanged.",
+  "source_repository": "reppiks490/Icarus",
+  "source_ref": "chatgpt/dreamstate-v4-effective-revision-20261001",
+  "source_commit": "32165597d7828f663dd879d2e11a81fb089a3ed7",
+  "evidence": [
+    "icarus_engine/dreamstate.py",
+    "tests_engine/test_parallax_dreamstate.py",
+    "docs/icarus/PARALLAX_DREAMSTATE.md",
+    "candidate revision compares effective_pair_count before evidence_pair_count fallback",
+    "duplicate observations inside an existing episode do not unlock a new candidate revision",
+    "Adaptive Brain evidence string exposes raw and effective N",
+    "execution_authorized=false",
+    "production_decision_authorized=false"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}
