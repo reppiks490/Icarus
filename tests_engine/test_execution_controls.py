@@ -847,3 +847,150 @@ def test_engine_control_flatten_all_attempts_every_asset_on_partial_failure(admi
     assert called == ["TEST", "OTHER"]
     assert "partial failure" in body["detail"]
     assert "TEST" in body["detail"]
+
+
+def test_global_pause_intent_applies_to_assets_added_later(monkeypatch, tmp_path):
+    port = Portfolio(Journal(":memory:"), str(tmp_path))
+    candidate = make_runner("NEW")
+    monkeypatch.setattr(port, "make_runner", lambda _spec: candidate)
+    port.paused = True
+
+    out = port.add_asset(candidate.spec, start=False)
+    assert out is candidate
+    assert candidate.paused is True
+    status = port.status()
+    assert status["global_pause_intent"] is True
+    assert status["paused_assets"] == ["NEW"]
+    assert status["mixed_pause_state"] is False
+
+    candidate.set_paused(False)
+    status = port.status()
+    assert status["global_pause_intent"] is True
+    assert status["mixed_pause_state"] is True
+
+
+def test_engine_control_pause_all_partial_failure_keeps_global_intent_and_attempts_all(admin, monkeypatch):
+    port, first, _, post = admin
+    other = make_runner("OTHER")
+    port.runners["OTHER"] = other
+    port.order.append("OTHER")
+    called = []
+
+    def fail_first(_paused):
+        called.append(("TEST", _paused))
+        raise RuntimeError("synthetic TEST pause failure")
+
+    original_other = other.set_paused
+    def set_other(paused):
+        called.append(("OTHER", paused))
+        return original_other(paused)
+
+    monkeypatch.setattr(first, "set_paused", fail_first)
+    monkeypatch.setattr(other, "set_paused", set_other)
+
+    status, body = post("/admin/engine-control", {"action": "engine.pause_all"})
+    assert status == 500
+    assert called == [("TEST", True), ("OTHER", True)]
+    assert "partial failure" in body["detail"]
+    assert port.paused is True
+    assert other.paused is True
+    state = port.status()
+    assert state["global_pause_intent"] is True
+    assert state["mixed_pause_state"] is True
+
+
+def test_engine_control_resume_all_partial_failure_keeps_resume_intent_and_attempts_all(admin, monkeypatch):
+    port, first, _, post = admin
+    other = make_runner("OTHER")
+    first.set_paused(True)
+    other.set_paused(True)
+    port.runners["OTHER"] = other
+    port.order.append("OTHER")
+    port.paused = True
+    called = []
+
+    def fail_first(_paused):
+        called.append(("TEST", _paused))
+        raise RuntimeError("synthetic TEST resume failure")
+
+    original_other = other.set_paused
+    def set_other(paused):
+        called.append(("OTHER", paused))
+        return original_other(paused)
+
+    monkeypatch.setattr(first, "set_paused", fail_first)
+    monkeypatch.setattr(other, "set_paused", set_other)
+
+    status, body = post("/admin/engine-control", {"action": "engine.resume_all"})
+    assert status == 500
+    assert called == [("TEST", False), ("OTHER", False)]
+    assert "partial failure" in body["detail"]
+    assert port.paused is False
+    assert other.paused is False
+    state = port.status()
+    assert state["global_pause_intent"] is False
+    assert state["mixed_pause_state"] is True
+
+
+def test_legacy_global_pause_and_flatten_attempt_every_asset_on_partial_failure(admin, monkeypatch):
+    port, first, _, post = admin
+    other = make_runner("OTHER")
+    port.runners["OTHER"] = other
+    port.order.append("OTHER")
+
+    pause_calls = []
+    original_other_pause = other.set_paused
+    monkeypatch.setattr(
+        first, "set_paused",
+        lambda paused: pause_calls.append(("TEST", paused)) or (_ for _ in ()).throw(RuntimeError("pause fail")),
+    )
+    monkeypatch.setattr(
+        other, "set_paused",
+        lambda paused: pause_calls.append(("OTHER", paused)) or original_other_pause(paused),
+    )
+    status, body = post("/admin/pause", {"asset": "*"})
+    assert status == 500
+    assert pause_calls == [("TEST", True), ("OTHER", True)]
+    assert port.paused is True
+    assert "partial failure" in body["detail"]
+
+    flatten_calls = []
+    monkeypatch.setattr(
+        first, "flatten",
+        lambda _reason="dashboard": flatten_calls.append("TEST") or (_ for _ in ()).throw(RuntimeError("flatten fail")),
+    )
+    monkeypatch.setattr(
+        other, "flatten",
+        lambda _reason="dashboard": flatten_calls.append("OTHER") or 0,
+    )
+    status, body = post("/admin/flatten", {"asset": "*", "confirm": True})
+    assert status == 500
+    assert flatten_calls == ["TEST", "OTHER"]
+    assert "partial failure" in body["detail"]
+
+
+def test_engine_control_sync_all_attempts_every_synchronizer_on_partial_failure(admin, monkeypatch):
+    import icarus_engine.server as server_mod
+
+    _, _, _, post = admin
+    calls = []
+
+    def fail_loop(self):
+        calls.append("loop_intelligence")
+        raise RuntimeError("synthetic loop sync failure")
+
+    def ok(name):
+        def run(self):
+            calls.append(name)
+            return {"status": "green"}
+        return run
+
+    monkeypatch.setattr(server_mod.LoopIntelligenceSync, "sync_once", fail_loop)
+    monkeypatch.setattr(server_mod.BrainRemoteSync, "sync_once", ok("brain_remote"))
+    monkeypatch.setattr(server_mod.BrainResearchSync, "sync_once", ok("brain_research"))
+    monkeypatch.setattr(server_mod.EvolutionRemoteSync, "sync_once", ok("evolution"))
+
+    status, body = post("/admin/engine-control", {"action": "sync.all"})
+    assert status == 500
+    assert calls == ["loop_intelligence", "brain_remote", "brain_research", "evolution"]
+    assert "sync_all partial failure" in body["detail"]
