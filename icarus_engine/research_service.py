@@ -137,9 +137,10 @@ class ResearchWorkspace:
                                  "zapier_connected": False, "sp_global_connected": False,
                                  "licensed_tick_feed_connected": False,
                                  "offline_tick_seconds_footprint": True,
+                                 "zero_cost_study_only_incubation": True,
                                  "automatic_input_application": True,
                                  "automatic_application_requires_qualified_dual_review": True},
-                "note": "API keys configure review clients; a configured client is not a verified connection."}
+                "note": "Study-only incubation can run without paid review calls and can only preserve unreviewed candidates. API keys configure review clients; a configured client is not a verified connection."}
 
     def _save(self, job):
         directory = self.root / "studies"
