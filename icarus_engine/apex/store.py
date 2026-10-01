@@ -123,6 +123,56 @@ class ApexStore:
                 );
                 CREATE INDEX IF NOT EXISTS idx_apex_unknown_force_asof
                     ON unknown_force_events(as_of_ts);
+                CREATE TABLE IF NOT EXISTS theory_records (
+                    theory_id TEXT PRIMARY KEY,
+                    semantic_json TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    created_ts REAL NOT NULL,
+                    valid_from_ts REAL NOT NULL,
+                    valid_until_ts REAL
+                );
+                CREATE TABLE IF NOT EXISTS theory_events (
+                    event_id TEXT PRIMARY KEY,
+                    theory_id TEXT NOT NULL REFERENCES theory_records(theory_id),
+                    state TEXT NOT NULL,
+                    evidence_json TEXT NOT NULL,
+                    reason TEXT NOT NULL,
+                    event_at TEXT NOT NULL,
+                    event_ts REAL NOT NULL,
+                    semantic_json TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_apex_theory_events_asof
+                    ON theory_events(theory_id, event_ts);
+                CREATE TABLE IF NOT EXISTS model_credibility (
+                    record_id TEXT PRIMARY KEY,
+                    model_id TEXT NOT NULL,
+                    as_of TEXT NOT NULL,
+                    as_of_ts REAL NOT NULL,
+                    semantic_json TEXT NOT NULL,
+                    recorded_at TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_apex_model_credibility_asof
+                    ON model_credibility(as_of_ts, model_id);
+                CREATE TABLE IF NOT EXISTS reality_gap (
+                    record_id TEXT PRIMARY KEY,
+                    model_id TEXT NOT NULL,
+                    as_of TEXT NOT NULL,
+                    as_of_ts REAL NOT NULL,
+                    semantic_json TEXT NOT NULL,
+                    recorded_at TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_apex_reality_gap_asof
+                    ON reality_gap(as_of_ts, model_id);
+                CREATE TABLE IF NOT EXISTS conscience_verdicts (
+                    record_id TEXT PRIMARY KEY,
+                    belief_id TEXT NOT NULL,
+                    as_of TEXT NOT NULL,
+                    as_of_ts REAL NOT NULL,
+                    semantic_json TEXT NOT NULL,
+                    recorded_at TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_apex_conscience_asof
+                    ON conscience_verdicts(as_of_ts, belief_id);
                 """
             )
 
@@ -472,3 +522,75 @@ class ApexStore:
                 continue
             item=dict(semantic); item["recorded_at"]=row["recorded_at"]; out.append(item)
         return out
+
+
+    def _record_temporal_state(self, table: str, subject_field: str, body: Mapping[str, Any]) -> dict[str, Any]:
+        allowed={"model_credibility":"model_id","reality_gap":"model_id","conscience_verdicts":"belief_id"}
+        if allowed.get(table) != subject_field:
+            raise ValueError("unsupported temporal state table")
+        if not isinstance(body, Mapping):
+            raise ValueError("temporal state must be an object")
+        semantic=dict(body)
+        self._validate_research_authority(semantic)
+        subject=semantic.get(subject_field)
+        if not isinstance(subject,str) or not subject.strip():
+            raise ValueError(f"{subject_field} is required")
+        as_of=semantic.get("as_of")
+        if not isinstance(as_of,str):
+            raise ValueError("as_of is required")
+        as_of_ts=parse_utc(as_of,"as_of").timestamp()
+        try:
+            raw=json.dumps(semantic,sort_keys=True,separators=(",",":"),allow_nan=False)
+        except (TypeError,ValueError) as ex:
+            raise ValueError("temporal state must be finite JSON") from ex
+        import hashlib
+        rid=hashlib.sha256(raw.encode("utf-8")).hexdigest()
+        with self._lock,self._conn:
+            cur=self._conn.execute(
+                f"INSERT OR IGNORE INTO {table}(record_id,{subject_field},as_of,as_of_ts,semantic_json,recorded_at) VALUES(?,?,?,?,?,?)",
+                (rid,subject.strip(),as_of,as_of_ts,raw,self._utc_now()),
+            )
+        return {"ok":True,"idempotent":cur.rowcount==0,"record_id":rid,**authority_flags()}
+
+    def _temporal_states_as_of(self, table: str, subject_field: str, as_of: str) -> list[dict[str, Any]]:
+        allowed={"model_credibility":"model_id","reality_gap":"model_id","conscience_verdicts":"belief_id"}
+        if allowed.get(table) != subject_field:
+            raise ValueError("unsupported temporal state table")
+        boundary=parse_utc(as_of,"as_of").timestamp()
+        with self._lock:
+            rows=self._conn.execute(
+                f"SELECT * FROM {table} WHERE as_of_ts<=? ORDER BY as_of_ts,record_id",
+                (boundary,),
+            ).fetchall()
+        out=[]
+        for row in rows:
+            try:
+                semantic=json.loads(row["semantic_json"])
+            except (TypeError,json.JSONDecodeError):
+                continue
+            if not isinstance(semantic,dict):
+                continue
+            try:
+                self._validate_research_authority(semantic)
+            except ValueError:
+                continue
+            item=dict(semantic); item["record_id"]=row["record_id"]; item["recorded_at"]=row["recorded_at"]; out.append(item)
+        return out
+
+    def record_model_credibility(self, state: Mapping[str, Any]) -> dict[str, Any]:
+        return self._record_temporal_state("model_credibility","model_id",state)
+
+    def model_credibility_as_of(self, as_of: str) -> list[dict[str, Any]]:
+        return self._temporal_states_as_of("model_credibility","model_id",as_of)
+
+    def record_reality_gap(self, state: Mapping[str, Any]) -> dict[str, Any]:
+        return self._record_temporal_state("reality_gap","model_id",state)
+
+    def reality_gap_as_of(self, as_of: str) -> list[dict[str, Any]]:
+        return self._temporal_states_as_of("reality_gap","model_id",as_of)
+
+    def record_conscience_verdict(self, state: Mapping[str, Any]) -> dict[str, Any]:
+        return self._record_temporal_state("conscience_verdicts","belief_id",state)
+
+    def conscience_verdicts_as_of(self, as_of: str) -> list[dict[str, Any]]:
+        return self._temporal_states_as_of("conscience_verdicts","belief_id",as_of)
