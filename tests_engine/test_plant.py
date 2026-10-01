@@ -214,6 +214,19 @@ def test_file_mode_rewarm_when_csv_arrives_after_start(tmp_path, monkeypatch):
     assert len(r.subbars) >= 1
 
 
+def test_disabled_settle_gate_accepts_future_mtime(tmp_path, monkeypatch):
+    paths = ensure(str(tmp_path))
+    src = os.path.join(paths["history/drop"], "NQ.csv")
+    with open(src, "w", encoding="utf-8") as fh:
+        fh.write(_CSV)
+    future = time.time() + 2.0
+    os.utime(src, (future, future))
+    monkeypatch.setattr(drop_mod, "_SETTLE_SEC", 0.0)
+    recs = ingest_drop(str(tmp_path))
+    assert recs and recs[0]["symbol"] == "NQ"
+    assert os.path.isfile(os.path.join(tmp_path, "history", "NQ_1m.csv"))
+
+
 def test_ingest_drop_merges_and_unique_done(tmp_path):
     paths = ensure(str(tmp_path))
     src = os.path.join(paths["history/drop"], "NQ.csv")
