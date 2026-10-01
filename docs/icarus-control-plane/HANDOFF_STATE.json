@@ -1,0 +1,124 @@
+{
+  "handoff_schema_version": "icarus-pipeline-v1",
+  "integration_manifest_version": "icarus-integration-manifest-v1",
+  "pipeline_policy_version": "icarus-control-v1",
+  "prepared_at_ct": "2026-09-24T18:30:00-05:00",
+  "prepared_by": "GPT-5.6 Sol",
+  "repository_write_authorized": true,
+  "execution_authorized": false,
+  "repo": {
+    "canonical": "reppiks490/Icarus",
+    "baseline_revision": "007e70189945b8e112904cf92b2b1a12e43792d6",
+    "handoff_branch": "chatgpt/icarus-control-plane-handoff-20260924",
+    "handoff_parent_revision": "c1c331a7a743bcad3dc1e7128eb5cb6f61ac8225"
+  },
+  "verified_stacks": {
+    "control_runtime": {
+      "revision": "76569e1962e721b0f4dc973df21358f40c31ce81",
+      "pr": 18,
+      "state": "IMPLEMENTED_STACKED_CI_WORKAROUND_PUBLIC_CLI_CONTRACT_OPEN"
+    },
+    "data_vintage": {
+      "revision": "e05c122f7a8e5501d98251c7449cbe7ce3ec6dda",
+      "pr": 19,
+      "state": "IMPLEMENTED_VERIFIED_STACKED",
+      "verified_run": 36065964176
+    },
+    "omnivision": {
+      "current_revision": "9f3c792d44fd9142e0b98676224dfe50d740db3b",
+      "stage0_verified_revision": "511814e1d4f4a2527abaa3b6e3472a66df666281",
+      "state": "STAGE0_VERIFIED_STAGE1_PLANNED",
+      "verified_runs": [
+        36071102061,
+        36071102460
+      ]
+    }
+  },
+  "sibling_evidence": {
+    "AION": {
+      "repo": "reppiks490/aion-parallax-research",
+      "revision": "12a7cb8ef99e84ce50b766db0aea1592b3906f80",
+      "state": "VERIFIED_BOUNDARY_OPEN_DEFECT",
+      "artifact": "AION-GAP-INTEGRITY-v1"
+    },
+    "DAEDALUS": {
+      "repo": "reppiks490/daedalus-research-os",
+      "revision": "74ad94149b02ddd3f69d535ee5fdc00c1fdbe096",
+      "state": "VERIFIED_BOUNDARY_OPEN_DEFECT",
+      "artifact": "DAEDALUS-PROTECTED-LINEAGE-v4"
+    },
+    "ARGUS": {
+      "repo": null,
+      "revision": null,
+      "state": "CANONICAL_REPO_NOT_FOUND_FAIL_CLOSED"
+    },
+    "ATHENA": {
+      "repo": null,
+      "revision": null,
+      "state": "CANONICAL_REPO_NOT_FOUND_FAIL_CLOSED"
+    },
+    "NEXUS": {
+      "repo": null,
+      "revision": null,
+      "state": "CANONICAL_REPO_NOT_FOUND_FAIL_CLOSED"
+    },
+    "ORACLE": {
+      "repo": null,
+      "revision": null,
+      "state": "CANONICAL_REPO_NOT_FOUND_FAIL_CLOSED"
+    }
+  },
+  "control_plane": {
+    "old_independent_stage_automations": "DISABLED",
+    "replacement": "single unified hourly S1->S5 cycle",
+    "rotation_epoch_ct": "2026-09-24T07:00:00-05:00",
+    "rotation": [
+      "NEXUS",
+      "AION",
+      "ARGUS",
+      "ATHENA",
+      "DAEDALUS",
+      "ORACLE"
+    ],
+    "external_scheduler_is_repo_native": false,
+    "repo_native_verifier": {
+      "branch": "chatgpt/icarus-control-plane-runtime-20260924",
+      "package": "icarus_control",
+      "cli": "icarus-control",
+      "status": "IMPLEMENTED_CI_GREEN_AWAITING_FINAL_HEAD_CHECK",
+      "scheduler_scope": "EXTERNAL_ONLY",
+      "recommended_evidence_branch": "control-evidence",
+      "receipt_path_template": "control/receipts/<CYCLE_ID>/S<1-5>.json",
+      "verification": {
+        "workflow_run_id": 36064742770,
+        "linux": "PASS_FULL_ENGINE_SUITE_CONTROL_CLI_PLANT_DOCTOR",
+        "windows": "PASS_FOCUSED_ENGINE_AND_PLANT_SETUP",
+        "note": "A later documentation/matrix commit requires a final-head CI check before acceptance."
+      }
+    },
+    "receipt_contracts": [
+      "docs/icarus-control-plane/contracts/icarus-control-v1.json",
+      "docs/icarus-control-plane/contracts/icarus-pipeline-v1.json"
+    ]
+  },
+  "constraints": [
+    "live trading execution_authorized=false",
+    "no synthetic bars as empirical evidence",
+    "no invented trainer slots/features",
+    "no Pulse rewrite",
+    "fail-closed qualification",
+    "strict temporal integrity",
+    "deterministic canonical serialization/replay where applicable",
+    "tamper-evident provenance",
+    "uncertainty cannot increase authority"
+  ],
+  "next_proof_obligations": [
+    "final-head CI for repo-native control verifier branch",
+    "AION gap-history tamper detection",
+    "DAEDALUS descendant-snapshot protected-evidence lineage",
+    "recover current ARGUS implementation",
+    "recover current ATHENA implementation",
+    "establish canonical NEXUS implementation/ownership",
+    "establish canonical ORACLE implementation/ownership"
+  ]
+}

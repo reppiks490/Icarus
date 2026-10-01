@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import Any, Dict
 from urllib.parse import urlparse, parse_qs
 
+from icarus_engine import brand
 from .brokers.shadow import ShadowBroker
 from .config import Settings
 from .executor import ExecutionEngine
@@ -153,7 +154,7 @@ class Demo:
 def serve(port: int = 8790, speed: float = 1.0, open_browser: bool = False) -> None:
     demo = Demo(port, speed)
     demo.start()
-    html = (Path(__file__).parent / "dashboard.html").read_bytes()
+    html = brand.render((Path(__file__).parent / "dashboard.html").read_bytes())
 
     class H(BaseHTTPRequestHandler):
         def log_message(self, *a: Any) -> None:  # quiet

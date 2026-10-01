@@ -1,0 +1,41 @@
+{
+  "policy_version": "icarus-control-v1",
+  "handoff_schema_version": "icarus-pipeline-v1",
+  "stage_order": [
+    "S1",
+    "S2",
+    "S3",
+    "S4",
+    "S5"
+  ],
+  "stage_maturity_ceiling": {
+    "S1": "OBSERVED",
+    "S2": "SPECIFIED",
+    "S3": "EMPIRICALLY_SUPPORTED",
+    "S4": "IMPLEMENTATION_READY",
+    "S5": "VERIFIED_FOR_INTEGRATION"
+  },
+  "maturity_order": [
+    "OBSERVED",
+    "SPECIFIED",
+    "EMPIRICALLY_SUPPORTED",
+    "IMPLEMENTATION_READY",
+    "VERIFIED_FOR_INTEGRATION"
+  ],
+  "immutable_invariants": [
+    "execution_authorized=false",
+    "no synthetic bars as empirical evidence",
+    "no invented trainer slots/features",
+    "no Pulse rewrite",
+    "fail-closed qualification",
+    "deterministic canonical serialization/replay",
+    "immutable/tamper-evident audit",
+    "strict temporal integrity",
+    "uncertainty cannot increase authority"
+  ],
+  "authority_rules": {
+    "only_stage_may_reach_verified_for_integration": "S5",
+    "technical_acceptance_implies_execution_permission": false,
+    "unknown_or_ambiguous_semantics": "FAIL_CLOSED"
+  }
+}

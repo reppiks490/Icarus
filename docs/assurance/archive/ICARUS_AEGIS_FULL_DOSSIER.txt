@@ -1,0 +1,764 @@
+# ICARUS AEGIS Ω — Masterbuild Package
+
+This package consolidates the work produced in this chat around ICARUS / AEGIS Ω.
+
+## Status
+This package contains research synthesis, architecture, implementation planning, operating constraints, and Codex handoff material.
+It does not claim that the full AEGIS system has already been integrated into a live repository.
+
+## Contents
+- 01_research_synthesis.md
+- 02_aegis_omega_architecture_spec.md
+- 03_aegis_kernel_implementation_plan.md
+- 04_masterbuild_constraints_and_loops.md
+- 05_codex_handoff.md
+- FULL_AEGIS_DOSSIER.txt
+
+
+
+
+---
+
+
+
+# Research Synthesis
+
+## Core finding
+There is no single universally dominant algorithm across every asset and timeframe.
+The strongest recurring architecture is layered:
+
+Market state → structural edge → path forecast → risk normalization → execution → validation.
+
+## Durable mechanism families
+- time-series momentum / trend following
+- volatility normalization
+- order-flow imbalance / queue imbalance / microprice
+- carry / term structure / basis
+- cross-sectional relative strength
+- factor-neutral residual mean reversion
+- regime / changepoint detection
+- ML-based nonlinear interaction modeling
+- Kalman / state-space estimation
+- Hawkes/event-intensity modeling
+- explicit transaction-cost and execution modeling
+
+## Important corrections
+1. Trend following is a robust strategy family, but universal TSM predictability is too strong a claim.
+2. Volatility targeting is not universally beneficial; turnover and costs can erase the benefit.
+3. Short-horizon microstructure signals can be predictive, but predictability is not automatically tradable alpha.
+4. Hawkes models estimate event excitation, not directional alpha by themselves.
+5. Kalman filters are state estimators, not standalone alpha.
+6. Mean reversion is strongest on stable residual relationships, not raw oscillator excursions.
+7. Carry and term structure deserve first-class treatment in futures systems.
+8. ML complexity must prove incremental out-of-sample information net of cost.
+9. Execution can veto otherwise attractive signals.
+10. Multiple-testing control is mandatory in large-scale research.
+
+## Global ticker-tape design
+Use a dynamic influence graph instead of a flat voting basket.
+
+For each edge store:
+- lag
+- sign
+- strength
+- stability
+- regime dependence
+- decay
+- redundancy
+- confidence
+
+Prefer Influence(i,j,tau,t) over static correlation.
+
+Suggested information universes:
+- micro tape: 20–100 tightly related instruments
+- intraday global tape: 200–500 instruments
+- macro tape: 500–2,000+ instruments / series
+
+Use sparse attention / Top-K influence rather than treating every input equally.
+
+## Major failure modes
+- regime inversion
+- lead-lag collapse
+- spurious causality
+- hidden common drivers
+- timestamp leakage
+- clock synchronization errors
+- stale-feed artifacts
+- latency disadvantage
+- transaction-cost domination
+- capacity collapse
+- crowding
+- model convergence / redundant experts
+- attention instability
+- online-learning instability
+- confidence miscalibration
+- distribution shift
+- constituent drift
+- continuous-futures contamination
+- revised macro-data leakage
+- extreme-event blindness
+- correlation collapse
+- graph explosion
+- multiple-testing blindness
+- research/live mismatch
+- silent infrastructure failures
+
+## Governing principle
+Predict → Doubt → Attack → Verify → Decide
+
+
+
+
+---
+
+
+
+# ICARUS AEGIS Ω — Advanced Architecture Specification
+
+## Mission
+AEGIS Ω is the supervisory intelligence substrate of Icarus.
+
+It determines:
+- what the market most likely is doing
+- what could invalidate that interpretation
+- how uncertain the system is
+- whether the opportunity survives adverse assumptions
+- how much authority each model deserves
+- whether Icarus should act at all
+
+Absolute immunity to all market conditions cannot be guaranteed.
+The engineering target is:
+
+No known single failure should silently convert bad evidence into increased trading authority.
+
+Failures must be detected, localized, downgraded, quarantined, or cause abstention.
+
+## High-level hierarchy
+
+DAEDALUS
+  discovery / research
+      ↓
+NEXUS
+  global market world model
+      ↓
+EXISTING ICARUS ENGINES
+  RATE / TIDE / structure / ML
+      ↓
+ICARUS AEGIS Ω
+  Evidence Fabric
+  Temporal Reconstruction
+  Multiscale World Model
+  Dynamic Influence Graph
+  Expert Lattice
+  Regime Memory
+  Causal-Skeptic Layer
+  Drift / OOD Detection
+  Distributional Path Forecasting
+  Uncertainty Decomposition
+  Adversarial Falsification
+  Robust Decision Optimization
+  Portfolio Intelligence
+  Execution Qualification
+  Immutable Decision Ledger
+      ↓
+RISK / EXECUTION
+
+Daedalus = Discover
+Nexus = Understand
+Icarus = Predict
+AEGIS = Decide what deserves trust
+
+## Core architectural layers
+
+### 1. Evidence Fabric
+Every observation carries:
+- value
+- instrument
+- venue
+- contract
+- event timestamp
+- source timestamp
+- ingest timestamp
+- processing timestamp
+- sequence identifier
+- revision state
+- latency estimate
+- freshness
+- schema version
+- quality score
+- provenance hash
+
+Conflicting feeds are not silently averaged.
+Historical replay must be deterministic.
+
+### 2. Temporal Integrity Engine
+Detect:
+- sequence errors
+- lateness
+- clock offsets
+- stale feeds
+- missing events
+- out-of-order events
+
+Cross-market relationships are only valid when source information was actually observable before target events.
+
+### 3. Multiscale Market Representation
+Maintain separate memories for:
+- microstructure
+- seconds
+- minutes
+- hours
+- daily
+- weekly/slower structural state
+
+Do not force all horizons to agree.
+
+### 4. Continuous World State
+Represent continuous latent dimensions such as:
+- persistence
+- volatility
+- liquidity
+- directional flow
+- flow toxicity
+- crowding
+- jump intensity
+- drift
+- structural stability
+- uncertainty
+- event pressure
+
+### 5. Dynamic Influence Graph
+Represent markets as G_t=(V,E_t).
+
+Each edge may contain:
+- lag
+- direction
+- strength
+- stability
+- regime
+- decay
+- redundancy
+- confidence
+- cost relevance
+
+### 6. Causal-Skeptic Layer
+Compare:
+- X→Y
+- Y→X
+- hidden common driver Z→X,Y
+- temporal coincidence
+
+Use:
+- lag perturbation
+- placebo variables
+- feature removal
+- counterfactuals
+- common-driver analysis
+
+### 7. Expert Lattice
+Expert families:
+- persistence
+- equilibrium
+- microstructure
+- liquidity
+- cross-market
+- curve/carry
+- volatility
+- event
+- structural break
+- execution
+- failure expert
+
+### 8. Model Population
+Each family may maintain:
+- frozen expert
+- adaptive expert
+- regime specialists
+- simple baseline
+
+Complex models must prove incremental value.
+
+### 9. Episodic Regime Memory
+Retrieve historical states similar to the current latent state.
+Store:
+- which experts worked
+- which failed
+- transition behavior
+- alpha decay
+
+Memory informs priors, not truth.
+
+### 10. Dynamic Expert Credibility
+Update trust based on:
+- OOS history
+- regime fit
+- calibration
+- residual drift
+- cost robustness
+- redundancy
+- live contribution
+
+Trust should fall faster than it rises.
+
+### 11. Redundancy Control
+Correlated technical indicators do not count as independent evidence.
+Reduce influence when signals share the same latent information.
+
+### 12. Distributional Path Intelligence
+Forecast:
+- expected return
+- quantiles
+- skew
+- tail probability
+- MFE
+- MAE
+- first-passage probabilities
+- time-to-event
+
+Prefer questions like:
+P(+100 before -25)
+over:
+P(next candle up)
+
+### 13. Hazard Engine
+Estimate hazards for:
+- reversal
+- breakout
+- stop
+- target
+- liquidity failure
+
+### 14. Uncertainty Decomposition
+Separate:
+- aleatoric uncertainty
+- epistemic uncertainty
+- drift uncertainty
+- data uncertainty
+- model disagreement
+- execution uncertainty
+
+### 15. Calibration Layer
+Raw model confidence is not trading confidence.
+Monitor empirical probability and interval coverage by regime/horizon.
+
+### 16. OOD and Drift Intelligence
+Track:
+- feature drift
+- representation drift
+- residual drift
+- relationship drift
+- calibration drift
+- execution drift
+
+### 17. Adversarial Falsification Engine
+Stress candidates using:
+- feed delays
+- stale markets
+- feature corruption
+- missing instruments
+- correlation reversal
+- spread widening
+- volatility spikes
+- liquidity disappearance
+- expert dropout
+- timestamp shifts
+- common-driver substitution
+- regime shocks
+
+### 18. Counterfactual Engine
+Compare:
+- action
+- opposite action
+- abstention
+- expert-removal scenarios
+
+### 19. Distributionally Robust Optimizer
+Optimize decisions over a neighborhood of plausible distributions.
+Include:
+- CVaR
+- drawdown proxies
+- turnover penalties
+- cost uncertainty
+- correlation exposure
+- liquidity constraints
+
+### 20. Decision Lower Bound
+Require conservative net edge > 0 after:
+- spread
+- slippage
+- fees
+- impact
+- adverse selection
+- latency
+
+### 21. Portfolio Intelligence
+Optimize portfolio-level risk, not isolated trade signals.
+Control:
+- factor concentration
+- correlation
+- liquidity
+- contagion
+- tail dependency
+
+### 22. Execution Qualification
+Estimate:
+- fill probability
+- fill time
+- queue position
+- adverse selection
+- spread evolution
+- temporary/permanent impact
+
+Reject signals whose expected edge is smaller than expected execution cost.
+
+### 23. Formal Safety Invariants
+- uncertainty increase must not increase authority
+- bad data integrity blocks qualification
+- stale critical feeds block new authority
+- unknown schema is rejected
+- OOD increase reduces max authority
+- execution cost greater than edge rejects trade
+
+### 24. Reliability Quorum
+Independent domains matter more than indicator count.
+Correlated votes cannot substitute for missing evidence domains.
+
+### 25. Research Integrity Ledger
+Record every hypothesis and every failed variation.
+Track:
+- variants
+- parameters searched
+- assets
+- periods
+- regimes
+- costs
+- OOS behavior
+- failure regimes
+
+### 26. Champion/Challenger Evolution
+New models are challengers.
+Promotion requires superiority across:
+- predictive quality
+- calibration
+- cost-adjusted performance
+- drawdown
+- tail behavior
+- cross-regime stability
+- adversarial resilience
+- live shadow performance
+
+### 27. Shadow Deployment
+Challengers run without authority first.
+Promotion requires sustained live-shadow evidence.
+
+### 28. Digital Market Twin
+Use deterministic replay and fault injection for falsification.
+Synthetic test disturbances must never be confused with live/historical bars.
+
+### 29. Software Reliability Plane
+Every decision links:
+DataVersion → FeatureVersion → ModelVersion → ConfigVersion → DecisionVersion
+
+### 30. Security Plane
+- validate model/config integrity
+- treat external data as untrusted
+- keep credentials separate
+- never execute arbitrary research-generated code
+- isolate research and production environments
+
+### 31. Computational Degradation
+Full → ReducedExpert → Baseline → ObserveOnly → Halt
+
+### 32. Immutable Decision Envelope
+Statuses:
+- QUALIFIED
+- DEGRADED
+- ABSTAIN
+- QUARANTINED
+
+`execution_authorized` must remain false under the current contract.
+
+## Governing law
+Every new component must produce:
+- incremental information
+or
+- incremental robustness
+or
+- incremental safety
+
+Otherwise it does not belong.
+
+
+
+
+---
+
+
+
+# AEGIS Ω Kernel Implementation Plan
+
+## Goal
+Build the supervisory kernel before any advanced ML.
+
+## Phase 1 components
+1. immutable evidence / decision contracts
+2. temporal integrity
+3. fail-closed qualification
+4. tamper-evident ledger
+5. deterministic replay
+6. verification CLI
+7. property and fault-injection tests
+8. documentation/handoff synchronization
+
+## Task 1 — Immutable contracts
+Create:
+- icarus_engine/aegis/__init__.py
+- icarus_engine/aegis/models.py
+- tests_engine/test_aegis_models.py
+
+Interfaces:
+- EvidenceRecord
+- EvidenceQuality
+- DecisionStatus
+- DecisionEnvelope
+- canonical_json
+- canonical_sha256
+
+DecisionStatus:
+QUALIFIED / DEGRADED / ABSTAIN / QUARANTINED
+
+EvidenceQuality:
+GOOD / DEGRADED / INVALID
+
+DecisionEnvelope must reject:
+- execution_authorized=True
+- risk_authority outside [0,1]
+
+Canonical serialization must sort keys and use stable separators.
+
+## Task 2 — Temporal integrity
+Create:
+- icarus_engine/aegis/timeguard.py
+- tests_engine/test_aegis_timeguard.py
+
+Detect:
+- future-dated evidence
+- stale evidence
+- sequence regression
+
+No silent interpolation or correction.
+
+## Task 3 — Fail-closed qualification
+Create:
+- icarus_engine/aegis/invariants.py
+- icarus_engine/aegis/qualification.py
+- tests_engine/test_aegis_qualification.py
+
+Safety precedence:
+QUARANTINED > ABSTAIN > DEGRADED > QUALIFIED
+
+Hard rules:
+- bad data integrity -> QUARANTINED
+- unknown schema -> QUARANTINED
+- stale critical feed -> ABSTAIN
+- edge_lcb <= 0 -> ABSTAIN
+- failed cost stress -> ABSTAIN
+- greater uncertainty must never increase risk authority
+
+## Task 4 — Tamper-evident ledger
+Create:
+- icarus_engine/aegis/audit.py
+- tests_engine/test_aegis_audit.py
+
+Use chained SHA-256 records.
+Detect:
+- edits
+- deletions
+- reordering
+
+## Task 5 — Deterministic replay
+Create:
+- icarus_engine/aegis/replay.py
+- tests_engine/test_aegis_replay.py
+
+Pipeline:
+deserialize
+→ schema validation
+→ temporal validation
+→ safety context
+→ qualification
+→ envelope creation
+→ canonical hash
+
+Same inputs must produce same output hash.
+
+## Task 6 — CLI
+Create:
+- icarus_engine/aegis/__main__.py
+- tests_engine/test_aegis_cli.py
+
+Commands:
+- doctor
+- verify-ledger
+- replay
+
+## Task 7 — Property/fault tests
+Test:
+- future timestamps
+- negative freshness
+- duplicate sequence
+- sequence regression
+- massive staleness
+- boundary timestamps
+- uncertainty monotonicity
+- canonical hash stability
+- ledger corruption
+
+## Task 8 — Documentation
+Create:
+- docs/aegis/README.md
+- docs/aegis/contracts.md
+- docs/aegis/safety-invariants.md
+- docs/aegis/audit-ledger.md
+- docs/aegis/replay.md
+
+## Kernel acceptance criteria
+1. malformed critical evidence cannot qualify
+2. future/stale critical evidence cannot silently qualify
+3. uncertainty cannot increase authority
+4. non-positive conservative edge cannot qualify
+5. ledger tampering is detectable
+6. replay is deterministic
+7. existing Icarus tests remain green
+8. AEGIS tests are green
+9. execution_authorized remains false
+10. documentation matches implementation
+
+
+
+
+---
+
+
+
+# Masterbuild Loops and Constraints
+
+## Non-negotiables
+- execution_authorized=false
+- no synthetic bars
+- no invented Icarus trainer slots/features
+- no Pulse rewrite
+- deterministic canonical serialization
+- strict time-order validation
+- fail-closed qualification
+- tamper-evident audit
+- deterministic replay
+- uncertainty cannot increase authority
+- critical stale/unknown data cannot silently qualify
+- no model gets authority without incremental OOS value net of cost
+
+## Build order
+1. evidence/provenance/temporal kernel
+2. multiscale state representation
+3. dynamic cross-market influence graph
+4. expert lattice and redundancy controls
+5. drift/OOD/calibration
+6. distributional path/hazard forecasting
+7. adversarial falsification/robust optimization
+8. portfolio/execution qualification
+9. champion-challenger/shadow/digital twin
+10. full integration and simplification audit
+
+## Masterbuild loop
+Each run:
+- choose the weakest remaining layer
+- identify the strongest unresolved failure mode
+- refine exact interfaces/schemas/invariants/algorithms
+- add adversarial tests
+- remove ornamental complexity
+- produce extraction-ready code/specification
+- verify consistency with prior constraints
+- state what remains unproven
+
+## Red-team loop
+Each run:
+- attack silent failure
+- attack overfitting
+- attack timestamp leakage
+- attack miscalibration
+- attack nonstationarity
+- attack hidden common drivers
+- attack redundant experts
+- attack execution-cost blindness
+- attack fault propagation
+- attack schema ambiguity
+- attack nondeterminism
+- attack security/integrity gaps
+
+Then:
+- identify highest-severity weakness
+- construct concrete counterexample
+- specify exact invariant/test/interface fix
+- recommend simplification where useful
+- state remaining unknowns
+
+The two loops are complementary:
+- Masterbuild = build
+- Red-team = break
+
+
+
+
+---
+
+
+
+# Codex Handoff
+
+## What this package is
+This is the complete architecture/research/implementation-plan handoff for ICARUS AEGIS Ω.
+
+## What not to assume
+Do not assume the full AEGIS system is already implemented or repository-integrated.
+Recreate and verify implementation from source.
+
+## Immediate task
+Start with the Kernel plan.
+Do not begin advanced graph/transformer/expert-routing work until the kernel is green.
+
+## Required order
+1. Kernel
+2. World-state substrate
+3. Expert lattice
+4. Epistemic intelligence
+5. Falsification / robust control
+6. Portfolio / execution qualification
+7. Evolution / deployment
+
+## Immutable invariants
+1. execution_authorized=false
+2. no synthetic bars
+3. no invented trainer slots/features
+4. no Pulse rewrite
+5. deterministic canonical serialization
+6. strict time ordering
+7. fail closed on critical data uncertainty
+8. deterministic replay
+9. tamper-evident audit
+10. uncertainty cannot increase authority
+11. stale/unknown critical data cannot silently qualify
+12. complexity must prove incremental OOS value net of cost
+
+## Definition of complete
+- kernel gate green
+- no bypass around kernel controls
+- deterministic replay end-to-end
+- explicit OOD/drift behavior
+- calibrated uncertainty
+- conservative decision lower bounds
+- portfolio-aware qualification
+- execution-cost veto
+- champion/challenger deployment discipline
+- full-system red-team audit
+- simplification audit
+- no hidden execution authority
