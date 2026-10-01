@@ -1,0 +1,129 @@
+{
+  "schema": "icarus.system-intelligence.v1",
+  "generated_at": "2026-10-01T02:10:00Z",
+  "mirror_required": true,
+  "execution_authorized": false,
+  "production_authorized": false,
+  "items": [
+    {
+      "id": "aion-parallax-upstream-sync-20260930",
+      "subsystem": "AION / PARALLAX",
+      "kind": "evolution",
+      "status": "in_progress",
+      "severity": "notice",
+      "important": true,
+      "summary": "Synchronized the current AION/PARALLAX evidence foundation into the subsystem evolution branch, including prediction-v2 frozen evidence, retrospective replay labeling, inventory lineage, and updated regression tests.",
+      "detail": "This remains research-only and does not authorize orders. Full consolidated verification is still required before merge.",
+      "source_repo": "reppiks490/divine-providence",
+      "source_branch": "sol/ml-subsystems-evolution-isolated-20260930",
+      "source_commit": "299441251fd23599844510f3512b7a8341f6e811",
+      "updated_at": "2026-10-01T01:50:00Z",
+      "interface_surface": "Intelligence",
+      "validation": {
+        "state": "partial",
+        "checks": [
+          {
+            "name": "upstream lineage",
+            "status": "recorded",
+            "detail": "Source revision 7b99df66f08ddbe50b0c30148fe7acadfbfa4b57 is recorded in the synchronized tree."
+          },
+          {
+            "name": "full consolidated suite",
+            "status": "pending",
+            "detail": "Run after remaining subsystem work is complete."
+          }
+        ]
+      }
+    },
+    {
+      "id": "argus-receipt-journal-evidence-bridge-20260930",
+      "subsystem": "ARGUS",
+      "kind": "evolution",
+      "status": "in_progress",
+      "severity": "notice",
+      "important": true,
+      "summary": "Added receipt-time microstructure journaling, deterministic depth replay, sequence-gap invalidation, provider recovery semantics, and an explicit evidence-capability bridge.",
+      "detail": "The bridge forbids numeric tier translation between incompatible evidence taxonomies and keeps execution authorization false.",
+      "source_repo": "reppiks490/divine-providence",
+      "source_branch": "sol/ml-subsystems-evolution-isolated-20260930",
+      "source_commit": "24381966a344ac7d48391ffecf4021b7e6da5d10",
+      "updated_at": "2026-10-01T01:55:00Z",
+      "interface_surface": "Intelligence",
+      "validation": {
+        "state": "tests-added",
+        "checks": [
+          {
+            "name": "gap/recovery regression",
+            "status": "added",
+            "detail": "Tests cover future receipt hiding, depth-gap invalidation, provider recovery, capability mapping, and tamper detection."
+          },
+          {
+            "name": "full consolidated suite",
+            "status": "pending",
+            "detail": "Run before merge."
+          }
+        ]
+      }
+    },
+    {
+      "id": "athena-advisory-learning-20260930",
+      "subsystem": "ATHENA",
+      "kind": "evolution",
+      "status": "in_progress",
+      "severity": "notice",
+      "important": true,
+      "summary": "Added a deterministic advisory evidence journal and outcome-gated competence memory for research/shadow expert routing.",
+      "detail": "Future and unverified outcomes are excluded from competence updates; stale evidence forces abstention. Production authorization remains false.",
+      "source_repo": "reppiks490/divine-providence",
+      "source_branch": "sol/ml-subsystems-evolution-isolated-20260930",
+      "source_commit": "cfd428516f644b40ca211c022a4204909c4280ee",
+      "updated_at": "2026-10-01T02:00:00Z",
+      "interface_surface": "Intelligence",
+      "validation": {
+        "state": "tests-added",
+        "checks": [
+          {
+            "name": "outcome leakage regression",
+            "status": "added",
+            "detail": "Tests verify future and unverified outcomes cannot affect competence state."
+          },
+          {
+            "name": "full consolidated suite",
+            "status": "pending",
+            "detail": "Run before merge."
+          }
+        ]
+      }
+    },
+    {
+      "id": "icarus-system-intelligence-panel-20260930",
+      "subsystem": "ICARUS Interface",
+      "kind": "integration",
+      "status": "in_progress",
+      "severity": "info",
+      "important": true,
+      "summary": "Adding a read-only Intelligence panel so important MCP repairs, audits, subsystem evolutions, validation state, and provenance are visible inside the trading interface.",
+      "detail": "This integration is intentionally outside asset, timeframe, chart-construction, sub-minute, broker-routing, and order-execution ownership.",
+      "source_repo": "reppiks490/Icarus",
+      "source_branch": "sol/system-intelligence-panel-20260930",
+      "source_commit": "1e73a18f08341d53d921adb12ce6f6a1af095ba9",
+      "updated_at": "2026-10-01T02:10:00Z",
+      "interface_surface": "Intelligence",
+      "validation": {
+        "state": "implementation-in-progress",
+        "checks": [
+          {
+            "name": "manifest service",
+            "status": "committed",
+            "detail": "Read-only manifest parser and mirror policy are present."
+          },
+          {
+            "name": "interface panel",
+            "status": "in_progress",
+            "detail": "Dashboard UI and endpoint wiring are being added."
+          }
+        ]
+      }
+    }
+  ]
+}
