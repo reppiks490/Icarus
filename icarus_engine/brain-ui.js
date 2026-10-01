@@ -43,7 +43,7 @@
   function renderBrain(b) {
     const el = document.querySelector('#brainPanel');
     if (!el) return;
-    const auth = b.authority || {}, learn = b.learning || {}, truth = b.truth_contract || {}, sync = b.remote_sync || {}, inc = b.incubator || {}, researchSync = b.research_sync || {}, proof = b.performance_proof || {}, latency = b.latency_telemetry || {};
+    const auth = b.authority || {}, learn = b.learning || {}, truth = b.truth_contract || {}, sync = b.remote_sync || {}, inc = b.incubator || {}, researchSync = b.research_sync || {}, proof = b.performance_proof || {}, latency = b.latency_telemetry || {}, qualification = b.qualification || {};
     const agents = ((b.architecture || {}).agents || []);
     const subs = ((b.architecture || {}).subsystems || []);
     const lanes = ((b.architecture || {}).latency_tiers || []);
@@ -53,6 +53,7 @@
     const tournaments = b.evidence_tournaments || [];
     const proofMetrics = proof.metrics || {}, proofClosed = proof.closed_sample || {}, proofReplay = proof.replay || {};
     const hotLatency = latency.hot_path || {};
+    const qualificationCandidates = qualification.candidates || [];
 
     const agentHtml = agents.map(a => `<div class="brain-agent ${statusClass(a.status)}"><div style="display:flex;justify-content:space-between;gap:8px"><b>${h(a.title)}</b><span class="chip">${h(a.status)}</span></div><div class="small muted" style="margin-top:5px">${h(a.job)}</div><div class="small" style="margin-top:7px"><b>Owns:</b> ${(a.owns||[]).map(x=>h(x)).join(' · ')}</div><div class="small muted" style="margin-top:5px">${h(a.detail||'')}</div></div>`).join('');
 
@@ -69,6 +70,7 @@
 
     const regimeHtml = regimes.map(r => `<span class="chip ${r.paused?'r':r.warm?'b':'w'}">${h(r.asset)} · ${h(r.regime||'UNKNOWN')} · ${pct(r.confidence)}</span>`).join(' ');
     const tournamentRows = tournaments.map(t => `<tr><td><b>${h((t.scope||{}).asset||"—")}</b></td><td>${h((t.scope||{}).regime||"UNKNOWN")}</td><td><b>${h(t.shadow_champion||"none")}</b></td><td>${h(t.status||"")}</td><td>${h(t.decision||"")}</td></tr>`).join("");
+    const qualificationRows = qualificationCandidates.map(q => `<tr><td><b>${h(q.candidate_id||"—")}</b><div class="small muted">${h(String(q.source_commit||"").slice(0,12))}</div></td><td><span class="chip ${q.qualified_shadow_ready?"brain-good":"brain-warn"}">${q.qualified_shadow_ready?"PROOF READY":"BLOCKED"}</span></td><td class="tnum">${num(q.receipt_count)}</td><td>${h((q.independent_reviewers||[]).join(", ")||"none")}</td><td class="small muted">${h((q.blockers||[]).join(" · ")||"none")}</td></tr>`).join("");
     const incubatorRows = (inc.proposals||[]).map(p => {
       const rc = p.regime_context || {};
       return `<tr><td><b>${h(p.asset||'—')}</b><div class="small muted">${h(String(p.proposal_id||'').slice(0,18))}</div></td><td><span class="chip ${statusClass(p.state)}">${h(String(p.state||'unknown').toUpperCase())}</span><div class="small muted">${h(p.review_mode||'')}</div></td><td><b>${h(rc.label||'UNKNOWN')}</b><div class="small muted">${rc.regime_score==null?'score —':'score '+h(String(rc.regime_score))}</div></td><td class="tnum">${num(p.input_count)}</td><td class="tnum">${num(p.review_count)}</td><td>${p.review_required?'INDEPENDENT REVIEW REQUIRED':'—'}</td></tr>`;
@@ -91,6 +93,8 @@
             <div class="tile"><div class="k">Brain events / hour</div><div class="v tnum">${num(learn.brain_events_last_hour)}</div></div>
             <div class="tile"><div class="k">Events / 24h</div><div class="v tnum">${num(learn.brain_events_last_24h)}</div></div>
             <div class="tile"><div class="k">Qualified shadow candidates</div><div class="v tnum">${num(learn.qualified_shadow_candidates)}</div></div>
+            <div class="tile"><div class="k">Proof-ready candidates</div><div class="v tnum">${num(qualification.ready_count)}</div><div class="small muted">all receipt gates proven</div></div>
+            <div class="tile"><div class="k">Qualification blocked</div><div class="v tnum">${num(qualification.blocked_count)}</div><div class="small muted">fails closed until receipts clear every gate</div></div>
             <div class="tile"><div class="k">Candidate qualification share</div><div class="v">${pct(learn.qualified_share_of_decided)}</div></div>
             <div class="tile"><div class="k">Observed success rate</div><div class="v">${pct(truth.success_rate)}</div><div class="small muted">${h(truth.success_rate_status)}</div></div>
             <div class="tile"><div class="k">Outcome coverage</div><div class="v">${pct(truth.outcome_coverage)}</div><div class="small muted">${num(proofMetrics.settled_forecasts)} / ${num(proofMetrics.matured_forecasts)} matured</div></div>
@@ -131,6 +135,10 @@
         <h3 class="small" style="margin:16px 0 8px">Zero-cost local candidate incubator</h3>
         <div class="small muted" style="margin-bottom:7px">${h(inc.rule||'Local deterministic studies can preserve candidates without paid model calls; independent review remains mandatory before activation.')}</div>
         <div class="scroll" style="max-height:300px"><table><thead><tr><th>Asset / proposal</th><th>State / mode</th><th>Observed regime</th><th>Inputs</th><th>Reviews</th><th>Authority</th></tr></thead><tbody>${incubatorRows || '<tr><td colspan=6 class="empty">No locally incubated proposals yet.</td></tr>'}</tbody></table></div>
+
+        <h3 class="small" style="margin:16px 0 8px">Proof-carrying candidate qualification</h3>
+        <div class="small muted" style="margin-bottom:7px">Embedded candidate claims do not qualify a model. Every required gate must have durable exact-revision receipts; independent verification requires distinct trusted reviewers.</div>
+        <div class="scroll" style="max-height:360px"><table><thead><tr><th>Candidate</th><th>Proof state</th><th>Receipts</th><th>Independent reviewers</th><th>Blockers</th></tr></thead><tbody>${qualificationRows || '<tr><td colspan=5 class="empty">No candidate qualification receipts recorded yet.</td></tr>'}</tbody></table></div>
 
         <h3 class="small" style="margin:16px 0 8px">Candidate lifecycle & rigorous gates</h3>
         <div class="scroll" style="max-height:520px"><table><thead><tr><th>Candidate</th><th>Stage</th><th>Validation score</th><th>Gate state</th></tr></thead><tbody>${candRows || '<tr><td colspan=4 class="empty">No candidate events recorded yet. Qualification remains empty/fail-closed.</td></tr>'}</tbody></table></div>
