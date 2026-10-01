@@ -935,6 +935,10 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
                 return self._json(200, learning.snapshot())
+            if p.path == "/api/learning/experience":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                return self._json(200, learning.experience_state())
             if p.path == "/api/learning/scorecards":
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
