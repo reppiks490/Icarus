@@ -300,3 +300,21 @@ to the source observation time plus horizon_ms and rejects same-instant or
 premature feedback. This prevents deterministic claim IDs or same-request
 feedback from manufacturing apparent research fitness before the claim had any
 causal opportunity to be tested.
+
+## Causal fitness provenance and upgrade continuity
+
+Claim outcomes attached through a PANTHEON feedback observation are bound to
+that observation's asset and exact observed timestamp. Descendant mutation
+claims are bound to the feedback observation that created them, and their
+maturity clock starts no earlier than that mutation event.
+
+Zero-confidence outcomes remain durable audit records but contribute neither
+fitness nor effective evidence count. Stage transitions, speciation, extinction,
+alpha-food-web evidence mass, and cognitive-genesis thresholds therefore cannot
+be satisfied by zero-confidence rows.
+
+On upgrade, PANTHEON backfills missing sentinel observed-time chronology from
+its immutable observation ledger and reconstructs missing research species from
+existing durable ontology, monetization, and mutation claims. This migration
+does not invent historical fitness or production authority.
+
