@@ -14,6 +14,7 @@ from __future__ import annotations
 import collections
 import copy
 import csv
+import hashlib
 import dataclasses
 import io
 import json
@@ -87,8 +88,16 @@ class Journal:
         CREATE TABLE IF NOT EXISTS log (ts REAL, level TEXT, msg TEXT);
         """)
         self.run_id = int(time.time())                        # every process start is a run; rows carry it (audit D2)
-        for table, col, typ in (("trades", "piece", "INTEGER DEFAULT 0"), ("trades", "run_id", "INTEGER DEFAULT 0"),
-                                ("fills", "run_id", "INTEGER DEFAULT 0"), ("log", "run_id", "INTEGER DEFAULT 0")):
+        for table, col, typ in (
+            ("trades", "piece", "INTEGER DEFAULT 0"),
+            ("trades", "run_id", "INTEGER DEFAULT 0"),
+            ("trades", "lot_id", "INTEGER DEFAULT 0"),
+            ("trades", "entry_qty", "INTEGER DEFAULT 0"),
+            ("trades", "strategy_fingerprint", "TEXT"),
+            ("trades", "strategy_context_json", "TEXT"),
+            ("fills", "run_id", "INTEGER DEFAULT 0"),
+            ("log", "run_id", "INTEGER DEFAULT 0"),
+        ):
             cols = [r[1] for r in self.con.execute(f"PRAGMA table_info({table})")]
             if col not in cols:
                 self.con.execute(f"ALTER TABLE {table} ADD COLUMN {col} {typ}")
@@ -96,10 +105,15 @@ class Journal:
         # `piece` distinguishes two pieces of one position that close identically on the same bar (audit D1);
         # fills are distinguished by the position they leave behind.
         self.con.executescript("""
-        DROP INDEX IF EXISTS trades_uq; DROP INDEX IF EXISTS fills_uq;
-        DELETE FROM trades WHERE rowid NOT IN (SELECT MIN(rowid) FROM trades GROUP BY run_id,symbol,entry_id,direction,qty,entry_price,entry_ts,exit_price,exit_ts,exit_comment,piece);
+        DROP INDEX IF EXISTS trades_uq; DROP INDEX IF EXISTS trades_uq2; DROP INDEX IF EXISTS fills_uq;
+        DELETE FROM trades WHERE rowid NOT IN (
+            SELECT MIN(rowid) FROM trades
+            GROUP BY run_id,symbol,entry_id,direction,qty,entry_price,entry_ts,exit_price,exit_ts,exit_comment,piece,lot_id
+        );
         DELETE FROM fills WHERE rowid NOT IN (SELECT MIN(rowid) FROM fills GROUP BY run_id,symbol,ts,entry_id,side,qty,price,kind,comment,position_after);
-        CREATE UNIQUE INDEX IF NOT EXISTS trades_uq2 ON trades (run_id,symbol,entry_id,direction,qty,entry_price,entry_ts,exit_price,exit_ts,exit_comment,piece);
+        CREATE UNIQUE INDEX IF NOT EXISTS trades_uq3 ON trades (
+            run_id,symbol,entry_id,direction,qty,entry_price,entry_ts,exit_price,exit_ts,exit_comment,piece,lot_id
+        );
         CREATE UNIQUE INDEX IF NOT EXISTS fills_uq2 ON fills (run_id,symbol,ts,entry_id,side,qty,price,kind,comment,position_after);
         """)
         self.con.execute("DELETE FROM log WHERE ts < ?", (time.time() - 14 * 86400,))
@@ -113,10 +127,31 @@ class Journal:
             self.con.execute("INSERT INTO log (ts,level,msg,run_id) VALUES (?,?,?,?)", (row["ts"], level, msg, self.run_id))
             self.con.commit()
 
-    def add_trade(self, symbol: str, t, live: bool, piece: int = 0) -> None:
+    def add_trade(self, symbol: str, t, live: bool, piece: int = 0, *, context: Optional[Dict[str, Any]] = None) -> None:
+        ctx = _clean(dict(context or {}))
+        if not isinstance(ctx, dict):
+            raise ValueError("trade context must be an object")
+        fingerprint = ctx.get("strategy_fingerprint")
+        if fingerprint not in (None, ""):
+            fingerprint = str(fingerprint).lower()
+            if len(fingerprint) != 64 or any(ch not in "0123456789abcdef" for ch in fingerprint):
+                raise ValueError("strategy_fingerprint must be a 64-character SHA-256 hex digest")
+            ctx["strategy_fingerprint"] = fingerprint
+            ctx.setdefault("provenance_quality", "CLOSURE_TIME_CONFIG")
+        context_json = json.dumps(ctx, sort_keys=True, separators=(",", ":"), allow_nan=False)
+        lot_id = int(getattr(t, "lot_id", 0) or 0)
+        entry_qty = int(getattr(t, "entry_qty", 0) or 0)
         with self._lock:
-            self.con.execute("INSERT OR IGNORE INTO trades (symbol,entry_id,direction,qty,entry_price,entry_ts,exit_price,exit_ts,exit_comment,profit,live,piece,run_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                             (symbol, t.entry_id, t.direction, t.qty, t.entry_price, t.entry_ts, t.exit_price, t.exit_ts, t.exit_comment, t.profit, int(live), int(piece), self.run_id))
+            self.con.execute(
+                "INSERT OR IGNORE INTO trades "
+                "(symbol,entry_id,direction,qty,entry_price,entry_ts,exit_price,exit_ts,exit_comment,profit,live,piece,run_id,lot_id,entry_qty,strategy_fingerprint,strategy_context_json) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                (
+                    symbol, t.entry_id, t.direction, t.qty, t.entry_price, t.entry_ts,
+                    t.exit_price, t.exit_ts, t.exit_comment, t.profit, int(live), int(piece),
+                    self.run_id, lot_id, entry_qty, fingerprint, context_json,
+                ),
+            )
             self.con.commit()
 
     def add_fill(self, symbol: str, f: Fill, live: bool) -> None:
@@ -554,7 +589,7 @@ class AssetRunner:
             if live or not self.rewarming:
                 key = (t.entry_id, t.entry_ts, t.exit_ts, t.exit_comment, t.qty, t.exit_price)
                 piece = sum(1 for u in self.em.closed[:idx] if (u.entry_id, u.entry_ts, u.exit_ts, u.exit_comment, u.qty, u.exit_price) == key)
-                self.journal.add_trade(self.symbol, t, live, piece)
+                self.journal.add_trade(self.symbol, t, live, piece, context=self._trade_learning_context())
         self._closed_seen = len(self.em.closed)
         for ev in self.strat.events:
             self.recent_events.append(dict(ev, live=live))
@@ -1083,6 +1118,36 @@ class AssetRunner:
             value = cached.get(self.spec.ticker, {})
             return dict(value) if isinstance(value, dict) else {}
         return {}
+
+    def _trade_learning_context(self) -> Dict[str, Any]:
+        """Immutable configuration receipt captured when a trade piece closes."""
+        inputs_payload = _clean(self.inputs_base.to_dict())
+        inputs_json = json.dumps(inputs_payload, sort_keys=True, separators=(",", ":"), allow_nan=False)
+        inputs_hash = hashlib.sha256(inputs_json.encode("utf-8")).hexdigest()
+        scope = _clean({
+            "asset": self.symbol,
+            "provider_symbol": self.spec.ticker,
+            "continuous_symbol": self.spec.tv_symbol or self.spec.ticker,
+            "chart_type": self.spec.chart_type,
+            "timeframe": self.spec.chart_tf,
+            "fill_on": self.spec.fill_on,
+            "security_source": self.spec.security_source,
+            "session_mode": _session_mode(self.cal),
+            "profile": self.cfg.profile,
+            "preset": self.cfg.preset or self.spec.preset,
+            "slippage_ticks": self.spec.slippage_ticks,
+            "commission": self.spec.commission,
+            "multiplier": self.spec.multiplier,
+            "mintick": self.mintick,
+            "pts_scale": self.pts_scale,
+            "inputs_hash": inputs_hash,
+        })
+        raw = json.dumps(scope, sort_keys=True, separators=(",", ":"), allow_nan=False)
+        return {
+            **scope,
+            "strategy_fingerprint": hashlib.sha256(raw.encode("utf-8")).hexdigest(),
+            "provenance_quality": "CLOSURE_TIME_CONFIG",
+        }
 
     def _summary(self) -> Dict[str, Any]:
         st = self.state or {}
