@@ -23,7 +23,7 @@ NODE = shutil.which("node")
         "icarus_engine/brain-ui.js",
         "icarus_engine/evolution-ui.js",
         "icarus_engine/parallax-ui.js",
-        "icarus_engine/pantheon-ui.js",
+        "icarus_engine/possibility-ui.js",
         "icarus_engine/integrity-ui.js",
         "icarus_engine/experience-ui.js",
     ],
@@ -134,3 +134,21 @@ def test_dashboard_surfaces_repository_native_mcp_evolution_panel():
     assert "automation_intelligence/mcp_interface/events" in sync
     assert "execution_authorized must be false" in sync
     assert "production_decision_authorized must be false" in sync
+
+
+def test_dashboard_surfaces_icarus_psi_without_replacing_oracle_or_parallax():
+    dashboard = (REPO / "icarus_engine/dashboard.html").read_text(encoding="utf-8")
+    ui = (REPO / "icarus_engine/possibility-ui.js").read_text(encoding="utf-8")
+    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
+    brain = (REPO / "icarus_engine/brain.py").read_text(encoding="utf-8")
+    assert '/possibility-ui.js' in dashboard
+    assert 'data-v="possibility">ICARUS Ψ</span>' in dashboard
+    assert "wirePossibility()" in dashboard
+    assert "/api/possibility" in ui
+    assert 'p.path == "/api/possibility"' in server
+    assert 'p.path == "/admin/possibility/evidence"' in server
+    assert 'votes["psi"] = possibility.parallax_vote' in server
+    assert '{"id": "oracle", "title": "ORACLE"' in brain
+    assert '{"id": "psi", "title": "ICARUS Ψ"' in brain
+    assert '{"id": "parallax", "title": "PARALLAX"' in brain
+    assert "execution_authorized=false" in ui
