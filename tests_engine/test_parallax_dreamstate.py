@@ -398,6 +398,44 @@ def test_parallax_hac_can_reject_naive_significance_under_serial_dependence(tmp_
     assert signal["candidate_eligible"] is False
 
 
+def test_parallax_parameter_basin_keeps_each_remainder_signature():
+    rows = [
+        {
+            "asset": "NQ",
+            "regime": "trend",
+            "source_commit": "a" * 40,
+            "comparison_contract_hash": "c" * 64,
+            "kind": "delay",
+            "branch_params": {"delay_bars": 1, "variant": "alpha"},
+            "effective_pair_count": 5,
+            "evidence_pair_count": 5,
+            "candidate_eligible": True,
+            "temporal_stability": {"evaluable": False, "stable": None},
+        },
+        {
+            "asset": "NQ",
+            "regime": "trend",
+            "source_commit": "a" * 40,
+            "comparison_contract_hash": "c" * 64,
+            "kind": "delay",
+            "branch_params": {"delay_bars": 1, "variant": "beta"},
+            "effective_pair_count": 5,
+            "evidence_pair_count": 5,
+            "candidate_eligible": True,
+            "temporal_stability": {"evaluable": False, "stable": None},
+        },
+    ]
+    expected = [
+        ParallaxStore._parameter_axis(row["kind"], row["branch_params"])[2]
+        for row in rows
+    ]
+
+    ParallaxStore._annotate_parameter_basins(rows, min_samples=5)
+
+    assert [row["parameter_basin"]["remainder_signature"] for row in rows] == expected
+    assert expected[0] != expected[1]
+
+
 def test_parallax_bh_uses_dependence_adjusted_screen_p_values():
     rows = [
         {
