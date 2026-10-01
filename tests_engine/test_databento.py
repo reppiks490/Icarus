@@ -656,8 +656,9 @@ def test_replay_rows_cannot_rewind_live_price_and_ts_event_is_not_used_as_orderi
     feed = make_feed()
     feed._live_callback("NQ=F", Ohlcv(2_000, 200, 201, 199, 200.5, 1))
     feed._live_callback("NQ=F", Ohlcv(1_999, 100, 101, 99, 100.5, 9))
-    assert len(feed._second_bars["NQ=F"]) == 1
-    assert feed._second_bars["NQ=F"][-1].ts == 2_000
+    # Replay may backfill a genuinely missing older second, but it remains ordered
+    # and must never rewind the current live mark.
+    assert [b.ts for b in feed._second_bars["NQ=F"]] == [1_999, 2_000]
     assert feed._last_price["NQ=F"] == 200.5
 
     # Databento guarantees monotonic ts_recv per symbol, not ts_event. A later-
