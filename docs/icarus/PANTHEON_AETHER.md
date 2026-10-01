@@ -313,3 +313,21 @@ A separately supplied `oracle` object is preserved as ORACLE context and is
 never overwritten or relabelled by the Ψ adapter. The legacy
 `oracle_context()` helper remains only as a compatibility alias that returns
 a payload explicitly identified as `subsystem=psi`.
+
+## Causal fitness provenance and upgrade continuity
+
+Claim outcomes attached through a PANTHEON feedback observation are bound to
+that observation's asset and exact observed timestamp. Descendant mutation
+claims are bound to the feedback observation that created them, and their
+maturity clock starts no earlier than that mutation event.
+
+Zero-confidence outcomes remain durable audit records but contribute neither
+fitness nor effective evidence count. Stage transitions, speciation, extinction,
+alpha-food-web evidence mass, and cognitive-genesis thresholds therefore cannot
+be satisfied by zero-confidence rows.
+
+On upgrade, PANTHEON backfills missing sentinel observed-time chronology from
+its immutable observation ledger and reconstructs missing research species from
+existing durable ontology, monetization, and mutation claims. This migration
+does not invent historical fitness or production authority.
+

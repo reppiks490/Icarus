@@ -128,6 +128,57 @@ class PantheonKernel:
             columns = {row["name"] for row in con.execute("PRAGMA table_info(sentinel_cells)").fetchall()}
             if "last_observed_at" not in columns:
                 con.execute("ALTER TABLE sentinel_cells ADD COLUMN last_observed_at TEXT NOT NULL DEFAULT ''")
+            con.execute(
+                """UPDATE sentinel_cells
+                   SET last_observed_at=COALESCE(
+                       (SELECT observed_at FROM observations
+                        WHERE observation_id=sentinel_cells.last_observation_id),
+                       last_observed_at
+                   )
+                   WHERE last_observed_at=''"""
+            )
+
+            legacy_claims = con.execute(
+                """SELECT c.claim_id,c.kind,c.payload_json,c.created_at,o.asset
+                   FROM claims c
+                   JOIN observations o ON o.observation_id=c.observation_id
+                   WHERE c.kind IN ('ontology_candidate','monetization_candidate','mutation_candidate')
+                   ORDER BY c.created_at,c.rowid"""
+            ).fetchall()
+            for claim in legacy_claims:
+                present = con.execute(
+                    "SELECT species_id FROM species WHERE origin_claim_id=? LIMIT 1",
+                    (claim["claim_id"],),
+                ).fetchone()
+                if present is not None:
+                    continue
+                payload = json.loads(claim["payload_json"])
+                parent_species_id = payload.get("parent_species_id") if isinstance(payload, Mapping) else None
+                generation = 0
+                if parent_species_id:
+                    parent_row = con.execute(
+                        "SELECT generation FROM species WHERE species_id=?",
+                        (str(parent_species_id),),
+                    ).fetchone()
+                    generation = (int(parent_row["generation"]) + 1) if parent_row is not None else 1
+                species_id = "species-" + digest(claim["claim_id"], claim["asset"])[:18]
+                con.execute(
+                    """INSERT OR IGNORE INTO species(
+                        species_id,asset,kind,origin_claim_id,parent_species_id,generation,
+                        stage,fitness_credit,evidence_count,payload_json,created_at,updated_at
+                    ) VALUES(?,?,?,?,?,?,'hypothesis',0.0,0,?,?,?)""",
+                    (
+                        species_id,
+                        claim["asset"],
+                        claim["kind"],
+                        claim["claim_id"],
+                        str(parent_species_id) if parent_species_id else None,
+                        generation,
+                        claim["payload_json"],
+                        claim["created_at"],
+                        claim["created_at"],
+                    ),
+                )
 
     def _normalize(self, payload: Mapping[str, Any]) -> tuple[dict[str, Any], str, str]:
         if not isinstance(payload, Mapping):
@@ -194,6 +245,7 @@ class PantheonKernel:
             self.record_claim_outcome({
                 **row,
                 "observed_at": row.get("observed_at") or normalized["observed_at"],
+                "_source_observation_id": result.get("observation_id"),
             })
             for row in normalized.get("claim_outcomes", [])
         ]
@@ -480,6 +532,9 @@ class PantheonKernel:
         if "confidence" not in body:
             raise ValueError("confidence is required")
         confidence = unit(body.get("confidence"), "confidence")
+        source_observation_id = body.get("_source_observation_id")
+        if source_observation_id is not None:
+            source_observation_id = text(source_observation_id, "_source_observation_id", 96)
         evidence = body.get("evidence", [])
         if isinstance(evidence, str):
             evidence = [evidence]
@@ -503,17 +558,36 @@ class PantheonKernel:
 
         with _LOCK, self._connect() as con:
             claim = con.execute(
-                """SELECT c.*,o.observed_at AS claim_observed_at,o.horizon_ms AS claim_horizon_ms
+                """SELECT c.*,o.observed_at AS claim_observed_at,
+                          o.horizon_ms AS claim_horizon_ms,o.asset AS claim_asset
                    FROM claims c JOIN observations o ON o.observation_id=c.observation_id
                    WHERE c.claim_id=?""",
                 (claim_id,),
             ).fetchone()
             if claim is None:
                 raise ValueError("unknown PANTHEON claim")
+            source_observation = None
+            if source_observation_id is not None:
+                source_observation = con.execute(
+                    "SELECT observation_id,observed_at,asset FROM observations WHERE observation_id=?",
+                    (source_observation_id,),
+                ).fetchone()
+                if source_observation is None:
+                    raise ValueError("unknown source observation for claim outcome")
             claim_time = datetime.fromisoformat(str(claim["claim_observed_at"]).replace("Z", "+00:00"))
+            claim_payload = json.loads(claim["payload_json"])
+            mutation_trigger = claim_payload.get("mutation_trigger") if isinstance(claim_payload, Mapping) else None
+            if isinstance(mutation_trigger, Mapping) and mutation_trigger.get("observed_at"):
+                mutation_time = datetime.fromisoformat(str(mutation_trigger["observed_at"]).replace("Z", "+00:00"))
+                if mutation_time > claim_time:
+                    claim_time = mutation_time
             outcome_time = datetime.fromisoformat(observed_at.replace("Z", "+00:00"))
-            if outcome_time < claim_time:
-                raise ValueError("claim outcome cannot precede the originating observation")
+            if source_observation is not None:
+                source_time = datetime.fromisoformat(str(source_observation["observed_at"]).replace("Z", "+00:00"))
+                if str(source_observation["asset"]) != str(claim["claim_asset"]):
+                    raise ValueError("claim outcome source asset must match claim asset")
+                if outcome_time != source_time:
+                    raise ValueError("claim outcome time must match its source observation time")
             maturity_time = claim_time + timedelta(milliseconds=int(claim["claim_horizon_ms"]))
             if outcome_time < maturity_time:
                 raise ValueError("claim outcome cannot precede claim maturity")
@@ -544,13 +618,14 @@ class PantheonKernel:
             if positive_weight > 1e-12:
                 fitness = sum(float(row["utility"]) * float(row["confidence"]) for row in outcomes) / positive_weight
             else:
-                fitness = sum(float(row["utility"]) for row in outcomes) / max(1, len(outcomes))
+                fitness = 0.0
             n = len(outcomes)
-            if n >= 3 and fitness <= -0.20:
+            effective_n = sum(1 for row in outcomes if float(row["confidence"]) > 0.0)
+            if effective_n >= 3 and fitness <= -0.20:
                 stage = "retired"
-            elif n >= 3 and fitness >= 0.20:
+            elif effective_n >= 3 and fitness >= 0.20:
                 stage = "surviving_shadow"
-            elif n >= 2:
+            elif effective_n >= 2:
                 stage = "contested"
             else:
                 stage = "hypothesis"
@@ -563,7 +638,7 @@ class PantheonKernel:
             if species is not None:
                 con.execute(
                     "UPDATE species SET stage=?,fitness_credit=?,evidence_count=?,updated_at=? WHERE species_id=?",
-                    (stage, fitness, n, now, species["species_id"]),
+                    (stage, fitness, effective_n, now, species["species_id"]),
                 )
                 child = con.execute(
                     "SELECT species_id FROM species WHERE parent_species_id=? ORDER BY generation LIMIT 1",
@@ -575,14 +650,15 @@ class PantheonKernel:
                     and fitness >= 0.50
                     and int(species["generation"]) < 3
                 ):
-                    child_id = "species-" + digest(species["species_id"], "mutant", str(n))[:18]
+                    child_id = "species-" + digest(species["species_id"], "mutant", str(effective_n))[:18]
                     child_claim_id = "mut-" + digest(child_id, claim_id)[:20]
                     child_payload = {
                         "parent_species_id": species["species_id"],
                         "parent_claim_id": claim_id,
                         "mutation_trigger": {
                             "fitness_credit": fitness,
-                            "evidence_count": n,
+                            "evidence_count": effective_n,
+                            "observed_at": observed_at,
                         },
                         "stage": "research_variant",
                         "automatic_production_authority": False,
@@ -593,7 +669,7 @@ class PantheonKernel:
                         ) VALUES(?,?,?,?,?,?)""",
                         (
                             child_claim_id,
-                            claim["observation_id"],
+                            source_observation_id or claim["observation_id"],
                             "mutation_candidate",
                             "hypothesis",
                             json_canonical(child_payload, "mutant claim", 65536),
@@ -628,7 +704,8 @@ class PantheonKernel:
             "utility": utility,
             "confidence": confidence,
             "fitness_credit": fitness,
-            "evidence_count": n,
+            "evidence_count": effective_n,
+            "outcome_count": n,
             "species_stage": stage,
             "offspring_species_id": child_id,
             "authority": authority_block(),
