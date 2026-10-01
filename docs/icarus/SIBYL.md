@@ -98,6 +98,54 @@ A **Temporal Fracture** identifies a horizon where opposing directional basins r
 
 This is a decision-instability state: small new evidence may rapidly move the distribution from one basin to another.
 
+## Future world forker
+
+SIBYL converts the marginal basin distributions across horizons into a bounded beam of coherent future-world paths. Each retained world contains:
+
+- a basin state at every requested horizon;
+- a compact path signature;
+- terminal basin;
+- relative weight within the retained beam.
+
+Transition penalties discourage implausibly violent basin flips without making them impossible. The displayed weights are explicitly **relative across retained beam paths**, not an exhaustive joint probability claim.
+
+## Liquidity gravity field
+
+Attractor and invalidation clusters are projected onto a local price grid around the current market. Attractors pull the normalized field toward concentrated target levels; invalidations act as repulsive thesis-failure boundaries.
+
+The field exposes:
+
+- normalized local force;
+- strongest attractor;
+- strongest invalidation;
+- approximate local equilibrium price.
+
+This is a synthesis visualization of published evidence, not a physical law or guaranteed price destination.
+
+## Causal delay radar
+
+Evidence payloads may publish bounded `causal_edges` such as:
+
+- source node;
+- target node;
+- reported lag in milliseconds;
+- relation;
+- edge confidence.
+
+SIBYL preserves the publisher, evidence domain, observation time, and source revision with every edge. It does not independently relabel a reported lead/lag relationship as proven causality.
+
+## Derivatives forward surface
+
+Evidence payloads may publish a `forward_surface` by horizon containing values such as:
+
+- expected return;
+- implied volatility;
+- skew;
+- upside tail mass;
+- downside tail mass.
+
+SIBYL source-collapses repeated rows and confidence-weights the surviving sources into a horizon surface. Missing derivatives data produces an explicit empty surface rather than a fabricated estimate.
+
 ## Attractors and invalidations
 
 Evidence publishers may attach:
