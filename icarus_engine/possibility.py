@@ -223,9 +223,14 @@ class PossibilityEngine:
         source = str(source or "").strip()
         if not source:
             raise ValueError("source is required")
+        if len(source) > 240:
+            raise ValueError("source exceeds 240 characters")
         if not isinstance(values, Mapping) or not values:
             raise ValueError("values must be a non-empty object")
-        ttl = max(1.0, min(float(ttl_seconds), 86400.0))
+        ttl_raw = _finite(ttl_seconds)
+        if ttl_raw is None:
+            raise ValueError("ttl_seconds must be finite")
+        ttl = max(1.0, min(ttl_raw, 86400.0))
         now = time.time()
         observed = _utc_now() if observed_at is None else _observed_time(observed_at)
         observed_ts = datetime.fromisoformat(observed.replace("Z", "+00:00")).timestamp()
@@ -237,13 +242,16 @@ class PossibilityEngine:
                 raise ValueError(f"unsupported external feature: {key}")
             if isinstance(raw, Mapping):
                 value = _finite(raw.get("value"))
-                confidence = _finite(raw.get("confidence"))
+                confidence_present = "confidence" in raw
+                confidence = _finite(raw.get("confidence")) if confidence_present else 1.0
+                if confidence_present and confidence is None:
+                    raise ValueError(f"{key}.confidence must be finite")
             else:
                 value = _finite(raw)
                 confidence = 1.0
             if value is None or not -1.0 <= value <= 1.0:
                 raise ValueError(f"{key} must be finite and within [-1,1]")
-            confidence = 1.0 if confidence is None else _clamp(confidence, 0.0, 1.0)
+            confidence = _clamp(float(confidence), 0.0, 1.0)
             identity = {
                 "schema_version": EVIDENCE_SCHEMA_VERSION,
                 "asset": asset,
