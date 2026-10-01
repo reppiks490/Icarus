@@ -854,6 +854,15 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     return self._json(200, control.run(body))
                 except (ValueError, TypeError) as ex:
                     return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log(
+                        "ERROR",
+                        f"Engine Control request failed: {type(ex).__name__}: {ex}",
+                    )
+                    return self._json(
+                        500,
+                        {"detail": f"{type(ex).__name__}: {ex}"},
+                    )
             if p.path == "/admin/system/audit":
                 try:
                     audit = save_repository_audit(port.base_dir, body.get("audit", body))
