@@ -17,10 +17,11 @@ import os
 from pathlib import Path
 import threading
 import time
+import statistics
 from datetime import datetime, timezone
 from typing import Any
 
-from .backtest import run_backtest
+from .backtest import freeze_replay_port, run_backtest
 from .runtime import validate_values
 from .strategy.meta import load_meta
 from .system_audit import append_system_event
@@ -32,6 +33,7 @@ DEFAULT_CONFIG = {
     "cadence_seconds": 15,
     "max_history": 120,
     "min_trades": 8,
+    "robustness_windows": 3,
     "search_chart_type": True,
     "search_session": True,
 }
@@ -125,6 +127,7 @@ class TacticalAutopilot:
                 ("cadence_seconds", 5, 3600),
                 ("max_history", 20, 1000),
                 ("min_trades", 1, 10000),
+                ("robustness_windows", 1, 3),
             ):
                 if type(cfg[key]) is not int or not lo <= cfg[key] <= hi:
                     raise ValueError(f"{key} is outside supported bounds")
