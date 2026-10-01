@@ -818,3 +818,107 @@ def test_external_force_fusion_uses_latest_receipt_per_source(tmp_path):
     assert by_source["provider-a"]["value"] == pytest.approx(0.7)
     feature = engine._external_features("NQ")["gamma_pressure"]
     assert feature.value == pytest.approx(0.6)
+
+
+
+def test_distance_weighted_queue_pressure_prioritizes_near_book_liquidity():
+    engine = PossibilityEngine(Port())
+    levels = []
+    for i in range(10):
+        levels.append({
+            "bid_px": 100.0 - i * 0.25,
+            "ask_px": 100.5 + i * 0.25,
+            "bid_sz": 100 if i == 0 else 1,
+            "ask_sz": 1 if i == 0 else 20,
+        })
+
+    class DepthFeed(Feed):
+        def depth_events(self, ticker, *, schema="mbp-10", limit=120):
+            return [{"levels": levels, "ts_event": int(time.time())}]
+
+    engine.port.runners["NQ"].feed = DepthFeed()
+    micro = engine._microstructure("NQ")
+    assert micro["queue_pressure"].available is True
+    assert micro["queue_pressure"].value > 0
+    assert micro["book_pressure"]["weighted_bid_size"] > 0
+    assert micro["book_pressure"]["depth_coverage"] == pytest.approx(1.0)
+
+
+def test_elasticity_uses_realized_volatility_window_when_available():
+    engine = PossibilityEngine(Port())
+    history = [
+        {
+            "ret": 0.001 if i % 2 == 0 else -0.001,
+            "chart_minutes": 1,
+        }
+        for i in range(30)
+    ]
+    micro = {
+        "aggressive_flow": {"imbalance": 0.8, "gross_size": 1000},
+        "trade_displacement": 0.00001,
+        "tick_window": {"duration_seconds": 30},
+    }
+    out = engine._elasticity(history, micro)
+    assert out["normalization"] == "realized_vol_window"
+    assert out["response_z"] is not None
+    assert out["state"] == "SELLER_ABSORPTION"
+
+
+def test_elasticity_vacuum_threshold_scales_with_volatility():
+    engine = PossibilityEngine(Port())
+    history = [
+        {
+            "ret": 0.0001 if i % 2 == 0 else -0.0001,
+            "chart_minutes": 1,
+        }
+        for i in range(30)
+    ]
+    micro = {
+        "aggressive_flow": {"imbalance": 0.10, "gross_size": 200},
+        "trade_displacement": 0.001,
+        "tick_window": {"duration_seconds": 30},
+    }
+    out = engine._elasticity(history, micro)
+    assert out["normalization"] == "realized_vol_window"
+    assert out["response_z"] > 1.25
+    assert out["state"] == "OFFER_VACUUM"
+
+
+def test_edge_gate_rejects_polling_derived_leader_graph():
+    engine = PossibilityEngine(Port())
+    edge = engine._edge_gate(
+        latent=0.8,
+        coverage=0.9,
+        collapse=80.0,
+        future_reliability=0.9,
+        effective_sample_ratio=0.9,
+        consensus={"active": True, "alignment": 0.9},
+        micro={"health": {"ticks": True, "depth": True}},
+        leaders={
+            "status": "observed",
+            "alignment_mode": "poll_snapshot_fallback",
+            "confidence": 0.8,
+        },
+    )
+    assert edge["state"] == "NO_EDGE"
+    assert "dynamic leader graph is not exact-bar aligned" in edge["blockers"]
+
+
+def test_edge_gate_rejects_low_confidence_exact_leaders():
+    engine = PossibilityEngine(Port())
+    edge = engine._edge_gate(
+        latent=0.8,
+        coverage=0.9,
+        collapse=80.0,
+        future_reliability=0.9,
+        effective_sample_ratio=0.9,
+        consensus={"active": True, "alignment": 0.9},
+        micro={"health": {"ticks": True, "depth": True}},
+        leaders={
+            "status": "observed",
+            "alignment_mode": "exact_bar_timestamp",
+            "confidence": 0.05,
+        },
+    )
+    assert edge["state"] == "NO_EDGE"
+    assert "dynamic leader confidence below 10%" in edge["blockers"]
