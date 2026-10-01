@@ -577,6 +577,7 @@ def brain_snapshot(
     research_sync: Mapping[str, Any] | None = None,
     proof_status: Mapping[str, Any] | None = None,
     latency_status: Mapping[str, Any] | None = None,
+    source_reliability: Mapping[str, Any] | None = None,
     limit: int = 1000,
 ) -> dict[str, Any]:
     """Build the operator brain state from measured local evidence only."""
@@ -637,6 +638,10 @@ def brain_snapshot(
     }
     latency = dict(latency_status) if isinstance(latency_status, Mapping) else {
         "hot_path": None, "stages": [], "targets_are_measured_not_assumed": True,
+        "execution_authorized": False, "production_decision_authorized": False,
+    }
+    reliability = dict(source_reliability) if isinstance(source_reliability, Mapping) else {
+        "observation_count": 0, "source_stream_count": 0, "sources": [],
         "execution_authorized": False, "production_decision_authorized": False,
     }
     evidence_graph = build_evidence_graph(events, proof)
@@ -725,6 +730,7 @@ def brain_snapshot(
         "performance_proof": proof,
         "evidence_graph": evidence_graph,
         "latency_telemetry": latency,
+        "source_reliability": reliability,
         "evidence_tournaments": tournaments,
         "learning": {
             "brain_events_total": len(events),

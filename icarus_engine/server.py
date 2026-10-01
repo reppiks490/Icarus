@@ -83,6 +83,7 @@ from .dreamstate import DreamstateLab
 from .possibility import PossibilityEngine
 from .performance_proof import PerformanceProofStore
 from .latency_telemetry import LatencyTelemetry
+from .source_reliability import SourceReliabilityStore
 from .autopilot import TacticalAutopilot
 from .engine_control import ControlAction, EngineControlPlane
 from .mcp_control import MCPControlPlane
@@ -196,6 +197,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     possibility = PossibilityEngine(port)
     performance_proof = PerformanceProofStore(port.base_dir)
     latency_telemetry = LatencyTelemetry()
+    source_reliability = SourceReliabilityStore(port.base_dir)
     # Bind one collector to the existing live runners; Portfolio.make_runner
     # propagates the same sink to assets added later.
     port.latency_telemetry = latency_telemetry
@@ -958,6 +960,10 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
                 return self._json(200, latency_telemetry.snapshot())
+            if p.path == "/api/source-reliability":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                return self._json(200, source_reliability.snapshot())
             if p.path == "/api/brain":
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
@@ -979,6 +985,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     research_sync=brain_research_sync.status(),
                     proof_status=performance_proof.snapshot(),
                     latency_status=latency_telemetry.snapshot(),
+                    source_reliability=source_reliability.snapshot(),
                 ))
             if p.path == "/api/input-meta":
                 return self._json(200, meta)
@@ -1220,6 +1227,11 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             if p.path == "/admin/brain/event":
                 try:
                     return self._json(200, record_brain_event(port.base_dir, body))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+            if p.path == "/admin/source-reliability/observation":
+                try:
+                    return self._json(200, source_reliability.record_observation(body))
                 except (ValueError, TypeError) as ex:
                     return self._json(400, {"detail": str(ex)})
             if p.path == "/admin/performance-proof/forecast":
@@ -1690,6 +1702,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     srv.possibility = possibility
     srv.performance_proof = performance_proof
     srv.latency_telemetry = latency_telemetry
+    srv.source_reliability = source_reliability
     srv.autopilot = autopilot
     srv.pantheon = pantheon
     srv.sibyl = sibyl

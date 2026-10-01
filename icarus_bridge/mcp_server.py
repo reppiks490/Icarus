@@ -681,6 +681,42 @@ def record_engine_sibyl_scenario(
 
 
 @mcp.tool()
+def engine_source_reliability() -> dict:
+    """Read causal source/stream reliability measurements from ICARUS."""
+    return _safe_engine(lambda: _engine_get("/api/source-reliability"))
+
+
+@mcp.tool()
+def record_engine_source_reliability_observation(
+    source_id: str,
+    stream: str,
+    observed_at: str,
+    event_time: str,
+    retrieval_time: str,
+    expected_freshness_seconds: float,
+    complete: bool,
+    evidence_hash: str,
+    revision: bool = False,
+    agreement_bps: Optional[float] = None,
+    agreement_tolerance_bps: Optional[float] = None,
+) -> dict:
+    """Record one immutable causal-time source reliability observation."""
+    return _safe_engine(lambda: _engine_post("/admin/source-reliability/observation", {
+        "source_id": source_id,
+        "stream": stream,
+        "observed_at": observed_at,
+        "event_time": event_time,
+        "retrieval_time": retrieval_time,
+        "expected_freshness_seconds": float(expected_freshness_seconds),
+        "complete": bool(complete),
+        "agreement_bps": agreement_bps,
+        "agreement_tolerance_bps": agreement_tolerance_bps,
+        "revision": bool(revision),
+        "evidence_hash": evidence_hash,
+    }))
+
+
+@mcp.tool()
 def engine_performance_proof() -> dict:
     """Read causal forecast/outcome/replay proof, calibration and closed-sample metrics."""
     return _safe_engine(lambda: _engine_get("/api/performance-proof"))

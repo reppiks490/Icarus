@@ -43,7 +43,7 @@
   function renderBrain(b) {
     const el = document.querySelector('#brainPanel');
     if (!el) return;
-    const auth = b.authority || {}, learn = b.learning || {}, truth = b.truth_contract || {}, sync = b.remote_sync || {}, inc = b.incubator || {}, researchSync = b.research_sync || {}, proof = b.performance_proof || {}, latency = b.latency_telemetry || {}, graph = b.evidence_graph || {};
+    const auth = b.authority || {}, learn = b.learning || {}, truth = b.truth_contract || {}, sync = b.remote_sync || {}, inc = b.incubator || {}, researchSync = b.research_sync || {}, proof = b.performance_proof || {}, latency = b.latency_telemetry || {}, graph = b.evidence_graph || {}, reliability = b.source_reliability || {};
     const agents = ((b.architecture || {}).agents || []);
     const subs = ((b.architecture || {}).subsystems || []);
     const lanes = ((b.architecture || {}).latency_tiers || []);
@@ -54,6 +54,8 @@
     const proofMetrics = proof.metrics || {}, proofClosed = proof.closed_sample || {}, proofReplay = proof.replay || {};
     const hotLatency = latency.hot_path || {};
     const graphMetrics = graph.metrics || {};
+    const reliabilityRows = reliability.sources || [];
+    const measuredReliability = reliabilityRows.filter(r => r.measurement_status === "MEASURED").length;
 
     const agentHtml = agents.map(a => `<div class="brain-agent ${statusClass(a.status)}"><div style="display:flex;justify-content:space-between;gap:8px"><b>${h(a.title)}</b><span class="chip">${h(a.status)}</span></div><div class="small muted" style="margin-top:5px">${h(a.job)}</div><div class="small" style="margin-top:7px"><b>Owns:</b> ${(a.owns||[]).map(x=>h(x)).join(' · ')}</div><div class="small muted" style="margin-top:5px">${h(a.detail||'')}</div></div>`).join('');
 
@@ -101,6 +103,7 @@
             <div class="tile"><div class="k">Hot-path p99</div><div class="v">${hotLatency.p99_ms==null?"UNMEASURED":h(Number(hotLatency.p99_ms).toFixed(3))+" ms"}</div><div class="small muted">${h(hotLatency.budget_status||"awaiting instrumentation")}</div></div>
             <div class="tile"><div class="k">Evidence graph</div><div class="v">${num(graphMetrics.node_count)}</div><div class="small muted">${num(graphMetrics.edge_count)} edges · ${num(graphMetrics.source_revision_count)} exact revisions</div></div>
             <div class="tile"><div class="k">Independent corroboration</div><div class="v">${num(graphMetrics.independently_corroborated_evidence_count)}</div><div class="small muted">${num(graphMetrics.duplicate_evidence_count)} repeated evidence nodes tracked separately</div></div>
+            <div class="tile"><div class="k">Source reliability</div><div class="v">${num(measuredReliability)} / ${num(reliability.source_stream_count)}</div><div class="small muted">${num(reliability.observation_count)} causal observations retained</div></div>
             <div class="tile"><div class="k">Router</div><div class="v">${h(auth.candidate_router||'—')}</div></div>
             <div class="tile"><div class="k">Agent repo sync</div><div class="v ${statusClass(sync.status)}">${h(String(sync.status||'not configured').toUpperCase())}</div><div class="small muted">${h(sync.last_success_at?'last '+sync.last_success_at:'awaiting first verified ingest')}</div></div>
             <div class="tile"><div class="k">Remote agent events</div><div class="v tnum">${num(sync.ingested_total)}</div><div class="small muted">poll ${num(sync.interval_seconds)}s · rejected ${num(sync.rejected_total)}</div></div>
@@ -126,6 +129,10 @@
 
         <h3 class="small" style="margin:16px 0 8px">Regime-specialist shadow router</h3>
         <div class="brain-grid">${routeHtml || '<div class="muted small">No eligible candidates. The router fails closed instead of inventing one.</div>'}</div>
+
+        <h3 class="small" style="margin:16px 0 8px">Source reliability memory</h3>
+        <div class="small muted" style="margin-bottom:7px">Freshness, completeness, independent agreement and revision stability are measured per source/stream with Beta smoothing; low samples never become fake certainty.</div>
+        <div class="scroll" style="max-height:280px"><table><thead><tr><th>Source</th><th>Stream</th><th>N</th><th>Fresh</th><th>Complete</th><th>Agree</th><th>Revision</th><th>Posterior</th><th>Status</th></tr></thead><tbody>${reliabilityRows.map(r => `<tr><td><b>${h(r.source_id||"")}</b></td><td>${h(r.stream||"")}</td><td>${num(r.sample_count)}</td><td>${pct(r.fresh_rate)}</td><td>${pct(r.complete_rate)}</td><td>${pct(r.agreement_rate)}</td><td>${pct(r.revision_rate)}</td><td>${pct(r.reliability_posterior_mean)}</td><td>${h(r.measurement_status||"")}</td></tr>`).join("") || '<tr><td colspan=9 class="empty">No source-reliability observations have been recorded yet.</td></tr>'}</tbody></table></div>
 
         <h3 class="small" style="margin:16px 0 8px">Causal evidence graph</h3>
         <div class="small muted" style="margin-bottom:7px">Connects exact source revisions, recorded evidence, candidates, regimes and validation gates. Repeated evidence is not treated as independent corroboration unless it comes from distinct exact revisions.</div>
