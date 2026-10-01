@@ -2,107 +2,176 @@
   let timer = null;
   const h = value => String(value ?? '').replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
   const num = (v, d=3) => (typeof v === 'number' && Number.isFinite(v)) ? v.toFixed(d) : '—';
+  const pct = v => (typeof v === 'number' && Number.isFinite(v)) ? (100 * v).toFixed(0) + '%' : '—';
+  const short = (v, n=12) => String(v || '').slice(0, n);
   const cls = value => {
     const s = String(value || '').toUpperCase();
-    if (s.includes('QUALIFIED') || s.includes('VALIDATED') || s === 'GREEN') return 'b';
+    if (s.includes('QUALIFIED') || s.includes('VALIDATED') || s === 'GREEN' || s === 'READY') return 'b';
     if (s.includes('REJECT') || s.includes('RETIRED') || s.includes('ERROR') || s.includes('BLOCK')) return 'r';
     return 'w';
   };
 
   function parallaxHtml() {
-    return '<section class="card c12" id="parallaxPanel"><h2>PARALLAX / DREAMSTATE <span class="sub">counterfactual twins · regret · ablation · policy incubation · shadow only</span></h2><div class="empty">loading counterfactual research state…</div></section>';
+    return '<section class="card c12" id="parallaxPanel"><h2>PARALLAX / DREAMSTATE <span class="sub">counterfactual twins · evidence contracts · FDR screening · bounded policy incubation · shadow only</span></h2><div class="empty">loading counterfactual research state…</div></section>';
   }
 
   function attributionRows(rows) {
-    return (rows || []).slice(0, 24).map(r => '<tr>' +
+    return (rows || []).slice(0, 30).map(r => '<tr>' +
       '<td><b>'+h(String(r.subsystem || '').toUpperCase())+'</b></td>' +
+      '<td>'+h(r.asset || '')+'<div class="small muted">'+h(r.regime || '')+'</div></td>' +
       '<td class="tnum">'+h(r.n ?? 0)+'</td>' +
       '<td class="tnum">'+num(r.mean_delta)+'</td>' +
       '<td class="tnum">'+num(r.ci95_low)+' → '+num(r.ci95_high)+'</td>' +
+      '<td class="tnum">'+h(short(r.source_commit, 10))+'</td>' +
       '</tr>').join('');
   }
 
   function signalRows(rows) {
-    return (rows || []).slice(0, 30).map(r => '<tr>' +
-      '<td><b>'+h(r.asset || '')+'</b></td><td>'+h(r.regime || '')+'</td>' +
-      '<td><span class="chip">'+h(r.branch_label || '')+'</span></td>' +
-      '<td class="tnum">'+h(r.n ?? 0)+'</td><td class="tnum">'+num(r.mean_delta)+'</td>' +
-      '<td class="tnum">'+num(r.ci95_low)+'</td></tr>').join('');
+    return (rows || []).slice(0, 40).map(r => '<tr>' +
+      '<td><b>'+h(r.asset || '')+'</b><div class="small muted">'+h(r.regime || '')+'</div></td>' +
+      '<td><span class="chip">'+h(r.branch_label || '')+'</span><div class="small muted">'+h(r.kind || '')+'</div></td>' +
+      '<td class="tnum">'+h(r.evidence_pair_count ?? r.n ?? 0)+'</td>' +
+      '<td class="tnum">'+pct(r.evidence_pair_coverage)+'</td>' +
+      '<td class="tnum">'+num(r.mean_delta)+'</td>' +
+      '<td class="tnum">'+num(r.ci95_low)+'</td>' +
+      '<td class="tnum">'+num(r.q_value, 4)+'</td>' +
+      '<td class="tnum">'+h(r.strata_count ?? 0)+'</td>' +
+      '<td><span class="chip '+(r.comparison_contract_complete?'b':'r')+'">'+(r.comparison_contract_complete?'READY':'INCOMPLETE')+'</span><div class="small muted tnum">'+h(short(r.comparison_contract_hash, 10))+'</div></td>' +
+      '</tr>').join('');
+  }
+
+  function blockedRows(rows) {
+    return (rows || []).filter(r => !r.candidate_eligible).slice(0, 30).map(r => '<tr>' +
+      '<td><b>'+h(r.asset || '')+'</b><div class="small muted">'+h(r.regime || '')+'</div></td>' +
+      '<td>'+h(r.branch_label || '')+'</td>' +
+      '<td class="tnum">'+h(r.evidence_pair_count ?? 0)+'</td>' +
+      '<td class="tnum">'+num(r.q_value, 4)+'</td>' +
+      '<td>'+h((r.screen_blockers || []).join(', '))+'</td>' +
+      '<td class="tnum">'+h(short(r.source_commit, 10))+'</td>' +
+      '</tr>').join('');
   }
 
   function candidateRows(rows, gates) {
-    return (rows || []).slice(0, 60).map(c => {
+    return (rows || []).slice(0, 80).map(c => {
       const passed = (gates || []).filter(g => c.validation && c.validation[g] === true).length;
       const failed = (gates || []).filter(g => c.validation && c.validation[g] === false).length;
+      const acct = c.search_accounting || {};
+      const pc = c.policy_contract || {};
+      const scope = pc.scope || {};
       return '<tr>' +
         '<td class="tnum">'+h(c.candidate_id || '')+'<div class="small muted">'+h(c.family_id || '')+' · trial '+h(c.trial_index ?? '—')+'</div></td>' +
-        '<td><b>'+h(c.asset || '')+'</b><div class="small muted">'+h(c.regime || '')+'</div></td>' +
+        '<td><b>'+h(c.asset || '')+'</b><div class="small muted">'+h(c.regime || '')+'</div><div class="small muted tnum">'+h(short(scope.comparison_contract_hash, 10))+'</div></td>' +
         '<td><span class="chip '+cls(c.stage)+'">'+h(String(c.stage || '').toUpperCase())+'</span></td>' +
         '<td>'+h(c.hypothesis || '')+'<div class="small muted tnum">'+h(JSON.stringify(c.mutation || {}))+'</div></td>' +
+        '<td class="tnum">'+num(acct.source_q_value, 4)+'<div class="small muted">n='+h(acct.source_evidence_pairs ?? '—')+'</div></td>' +
+        '<td class="tnum">'+h(acct.family_trial_budget_remaining ?? '—')+'<div class="small muted">remaining</div></td>' +
         '<td class="tnum">'+h(passed)+'/'+h((gates || []).length)+(failed ? '<div class="small neg">'+h(failed)+' failed</div>' : '')+'</td>' +
-        '<td class="tnum">'+h(String(c.source_commit || '').slice(0,16))+'</td>' +
+        '<td class="tnum">'+h(short(c.source_commit, 10))+'</td>' +
       '</tr>';
     }).join('');
   }
 
+  function familyRows(rows) {
+    return (rows || []).slice(0, 40).map(f => '<tr>' +
+      '<td class="tnum">'+h(f.family_id || '')+'</td>' +
+      '<td><b>'+h(f.asset || '')+'</b><div class="small muted">'+h(f.regime || '')+'</div></td>' +
+      '<td class="tnum">'+h(f.trials ?? 0)+'/'+h(f.trial_budget ?? '—')+'</td>' +
+      '<td>'+h(f.active_candidate || '—')+'</td>' +
+      '<td>'+Object.entries(f.stages || {}).map(([k,v])=>'<span class="chip '+cls(k)+'">'+h(k)+':'+h(v)+'</span>').join(' ')+'</td>' +
+      '<td class="tnum">'+h(short(f.source_commit, 10))+'</td>' +
+      '</tr>').join('');
+  }
+
   function decisionRows(rows) {
-    return (rows || []).slice(0, 40).map(d => {
+    return (rows || []).slice(0, 50).map(d => {
       const a = d.analysis || {};
-      return '<tr><td class="tnum">'+h(d.observed_at || '')+'</td><td><b>'+h(d.asset || '')+'</b></td>' +
-        '<td>'+h(String(d.action || '').toUpperCase())+'</td><td>'+h(d.regime || '')+'</td>' +
-        '<td class="tnum">'+num(a.actual_utility)+'</td><td class="tnum">'+num(a.regret)+'</td>' +
-        '<td>'+h(a.best_observed_branch || '—')+'</td><td class="tnum">'+h(a.observed_branch_count ?? 0)+'/'+h((d.branches || []).length)+'</td></tr>';
+      return '<tr>' +
+        '<td class="tnum">'+h(d.observed_at || '')+'</td>' +
+        '<td><b>'+h(d.asset || '')+'</b><div class="small muted">'+h(d.regime || '')+'</div></td>' +
+        '<td>'+h(String(d.action || '').toUpperCase())+'</td>' +
+        '<td><span class="chip '+(d.comparison_contract_complete?'b':'r')+'">'+(d.comparison_contract_complete?'READY':'INCOMPLETE')+'</span><div class="small muted">'+h((d.comparison_contract || {}).utility_metric || '')+'</div></td>' +
+        '<td class="tnum">'+pct(a.branch_coverage_ratio)+'</td>' +
+        '<td class="tnum">'+pct(a.evidence_coverage_ratio)+'</td>' +
+        '<td class="tnum">'+num(a.regret)+'</td>' +
+        '<td>'+h(a.best_observed_branch || '—')+'</td>' +
+        '<td class="tnum">'+h(short(d.source_commit, 10))+'</td>' +
+      '</tr>';
     }).join('');
+  }
+
+  function kindCoverageRows(kinds) {
+    return Object.entries(kinds || {}).map(([kind,row]) => '<tr>' +
+      '<td>'+h(kind)+'</td><td class="tnum">'+h(row.total ?? 0)+'</td>' +
+      '<td class="tnum">'+h(row.observed ?? 0)+'</td>' +
+      '<td class="tnum">'+h(row.with_evidence ?? 0)+'</td>' +
+      '<td class="tnum">'+pct((row.total||0) ? (row.with_evidence||0)/(row.total||1) : 0)+'</td></tr>').join('');
   }
 
   function render(px, ds) {
     const el = document.querySelector('#parallaxPanel');
     if (!el) return;
     const counts = px.counts || {};
+    const coverage = px.coverage || {};
     const regret = px.regret || {};
+    const screening = px.screening || {};
     const stages = ds.stages || {};
+    const search = ds.search || {};
     const gates = ds.required_gates || [];
     const qualified = stages.qualified_shadow || 0;
-    const proposed = stages.proposed || 0;
-    const validated = stages.validated || 0;
     const rejected = stages.rejected || 0;
+    const contractReady = coverage.recent_decisions_with_complete_comparison_contract || 0;
+    const recentN = coverage.recent_decision_count || 0;
 
     el.innerHTML = '<style>' +
       '.px-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}' +
       '.px-box{border:1px solid var(--ring);border-radius:12px;padding:10px;background:var(--surface-2)}' +
       '</style>' +
-      '<h2>PARALLAX / DREAMSTATE <span class="sub">observed counterfactual twins · conservative policy incubation · execution_authorized=false</span></h2>' +
+      '<h2>PARALLAX / DREAMSTATE <span class="sub">observed twins · comparison contracts · paired evidence · BH-FDR · bounded policy incubation · execution_authorized=false</span></h2>' +
       '<div class="tiles" style="margin-top:0">' +
-        '<div class="tile"><div class="k">Twin decisions</div><div class="v tnum">'+h(counts.decisions ?? 0)+'</div><div class="small muted">'+h(counts.observed_outcomes ?? 0)+' observed branch outcomes</div></div>' +
-        '<div class="tile"><div class="k">Mean observed regret</div><div class="v tnum">'+num(regret.mean_delta)+'</div><div class="small muted">n='+h(regret.n ?? 0)+' · only scored branches</div></div>' +
-        '<div class="tile"><div class="k">DREAMSTATE candidates</div><div class="v tnum">'+h((ds.candidates || []).length)+'</div><div class="small muted">'+h(proposed)+' proposed · '+h(validated)+' validated</div></div>' +
+        '<div class="tile"><div class="k">Twin decisions</div><div class="v tnum">'+h(counts.decisions ?? 0)+'</div><div class="small muted">'+h(counts.observed_outcomes ?? 0)+' observed outcomes</div></div>' +
+        '<div class="tile"><div class="k">Contract-ready recent</div><div class="v tnum">'+h(contractReady)+'/'+h(recentN)+'</div><div class="small muted">utility · horizon · dataset · costs · clock</div></div>' +
+        '<div class="tile"><div class="k">Candidate-ready signals</div><div class="v tnum">'+h(screening.candidate_ready ?? 0)+'</div><div class="small muted">'+h(screening.blocked ?? 0)+' blocked · FDR ≤ '+num(screening.max_fdr,2)+'</div></div>' +
+        '<div class="tile"><div class="k">Comparable mean regret</div><div class="v tnum">'+num(regret.mean_delta)+'</div><div class="small muted">'+(regret.comparable_globally ? 'single comparable evidence scope' : 'not pooled across incomparable scopes')+'</div></div>' +
+        '<div class="tile"><div class="k">DREAMSTATE families</div><div class="v tnum">'+h(search.family_count ?? 0)+'</div><div class="small muted">'+h(search.active_family_count ?? 0)+' active · '+h(search.budget_exhausted_family_count ?? 0)+' exhausted</div></div>' +
         '<div class="tile"><div class="k">Qualified shadow</div><div class="v tnum">'+h(qualified)+'</div><div class="small muted">maximum authority stage</div></div>' +
-        '<div class="tile"><div class="k">Rejected</div><div class="v tnum '+(rejected ? 'neg' : '')+'">'+h(rejected)+'</div><div class="small muted">failed gates are immutable</div></div>' +
-        '<div class="tile"><div class="k">Authority</div><div class="v">SHADOW ONLY</div><div class="small muted">no broker · no production promotion</div></div>' +
+        '<div class="tile"><div class="k">Rejected / retired</div><div class="v tnum '+(rejected ? 'neg' : '')+'">'+h(rejected)+' / '+h(stages.retired ?? 0)+'</div><div class="small muted">failures preserved as evidence</div></div>' +
+        '<div class="tile"><div class="k">Authority</div><div class="v">SHADOW ONLY</div><div class="small muted">no broker · no automatic activation</div></div>' +
       '</div>' +
 
       '<div class="px-grid" style="margin-top:12px">' +
-        '<div class="px-box"><b>PARALLAX truth contract</b><div class="small muted" style="margin-top:6px">Unobserved counterfactuals are never scored. Ablation deltas are paired attribution, not standalone proof of causality. All alternate outcomes must be supplied by replay/shadow observation.</div></div>' +
-        '<div class="px-box"><b>DREAMSTATE truth contract</b><div class="small muted" style="margin-top:6px">Counterfactual advantage creates a hypothesis only. Protected holdout, multiple-testing, latency/cost, calibration, OOD/drift, deterministic replay and independent verification gates remain mandatory.</div></div>' +
+        '<div class="px-box"><b>PARALLAX V2 evidence contract</b><div class="small muted" style="margin-top:6px">Candidate signals require evidence on both paired paths, an exact source revision, a complete utility/horizon/dataset/cost/clock contract, positive paired lower bound, and Benjamini-Hochberg FDR control inside the asset/regime/revision/contract family.</div></div>' +
+        '<div class="px-box"><b>DREAMSTATE V2 policy contract</b><div class="small muted" style="margin-top:6px">Candidates are scoped to observed asset, regime, code revision, comparison contract and context strata. Families have one active trial, a hard search budget, immutable failures, baseline fallback, source-decay retirement, and no production or broker authority.</div></div>' +
       '</div>' +
 
-      '<h3 class="small" style="margin:16px 0 8px">Paired subsystem ablation attribution</h3>' +
-      '<div class="scroll" style="max-height:300px"><table><thead><tr><th>Subsystem</th><th>N</th><th>Mean contribution</th><th>95% interval</th></tr></thead><tbody>' +
-      (attributionRows(px.paired_ablation_attribution) || '<tr><td colspan="4" class="empty">No paired ablation outcomes yet.</td></tr>') + '</tbody></table></div>' +
+      '<h3 class="small" style="margin:16px 0 8px">Candidate-ready PARALLAX signals</h3>' +
+      '<div class="scroll" style="max-height:360px"><table><thead><tr><th>Scope</th><th>Branch</th><th>Evidence N</th><th>Pair coverage</th><th>Mean Δ</th><th>95% lower</th><th>FDR q</th><th>Strata</th><th>Contract</th></tr></thead><tbody>' +
+      (signalRows(px.mutation_signals) || '<tr><td colspan="9" class="empty">No counterfactual hypothesis currently clears every candidate screen.</td></tr>') + '</tbody></table></div>' +
 
-      '<h3 class="small" style="margin:16px 0 8px">Statistically conservative mutation signals</h3>' +
-      '<div class="scroll" style="max-height:320px"><table><thead><tr><th>Asset</th><th>Regime</th><th>Branch</th><th>N</th><th>Mean Δ</th><th>95% lower</th></tr></thead><tbody>' +
-      (signalRows(px.mutation_signals) || '<tr><td colspan="6" class="empty">No branch has cleared the minimum paired evidence + positive 95% lower-bound screen.</td></tr>') + '</tbody></table></div>' +
+      '<h3 class="small" style="margin:16px 0 8px">Blocked hypothesis diagnostics</h3>' +
+      '<div class="scroll" style="max-height:300px"><table><thead><tr><th>Scope</th><th>Branch</th><th>Evidence N</th><th>FDR q</th><th>Blockers</th><th>Revision</th></tr></thead><tbody>' +
+      (blockedRows(screening.hypotheses) || '<tr><td colspan="6" class="empty">No blocked observed hypotheses.</td></tr>') + '</tbody></table></div>' +
+
+      '<h3 class="small" style="margin:16px 0 8px">Paired subsystem-ablation attribution</h3>' +
+      '<div class="scroll" style="max-height:320px"><table><thead><tr><th>Subsystem</th><th>Scope</th><th>N</th><th>Mean contribution</th><th>95% interval</th><th>Revision</th></tr></thead><tbody>' +
+      (attributionRows(px.paired_ablation_attribution) || '<tr><td colspan="6" class="empty">No evidence-complete paired ablation outcomes yet.</td></tr>') + '</tbody></table></div>' +
+
+      '<h3 class="small" style="margin:16px 0 8px">Counterfactual branch coverage</h3>' +
+      '<div class="scroll" style="max-height:300px"><table><thead><tr><th>Branch kind</th><th>Total</th><th>Observed</th><th>With evidence</th><th>Evidence coverage</th></tr></thead><tbody>' +
+      (kindCoverageRows(coverage.branch_kinds) || '<tr><td colspan="5" class="empty">No branch coverage yet.</td></tr>') + '</tbody></table></div>' +
 
       '<h3 class="small" style="margin:16px 0 8px">DREAMSTATE candidate population</h3>' +
-      '<div class="scroll" style="max-height:440px"><table><thead><tr><th>Candidate</th><th>Scope</th><th>Stage</th><th>Hypothesis / mutation</th><th>Gates</th><th>Source</th></tr></thead><tbody>' +
-      (candidateRows(ds.candidates, gates) || '<tr><td colspan="6" class="empty">No DREAMSTATE candidates yet. Candidates appear only after PARALLAX evidence clears its conservative screen.</td></tr>') + '</tbody></table></div>' +
+      '<div class="scroll" style="max-height:480px"><table><thead><tr><th>Candidate</th><th>Scope</th><th>Stage</th><th>Hypothesis / mutation</th><th>Source q</th><th>Trial budget</th><th>Gates</th><th>Revision</th></tr></thead><tbody>' +
+      (candidateRows(ds.candidates, gates) || '<tr><td colspan="8" class="empty">No DREAMSTATE candidates. Candidates exist only after PARALLAX clears the comparison-contract, paired-evidence and FDR screens.</td></tr>') + '</tbody></table></div>' +
+
+      '<h3 class="small" style="margin:16px 0 8px">DREAMSTATE family search accounting</h3>' +
+      '<div class="scroll" style="max-height:320px"><table><thead><tr><th>Family</th><th>Scope</th><th>Trials</th><th>Active candidate</th><th>Stages</th><th>Revision</th></tr></thead><tbody>' +
+      (familyRows(ds.families) || '<tr><td colspan="6" class="empty">No candidate families yet.</td></tr>') + '</tbody></table></div>' +
 
       '<h3 class="small" style="margin:16px 0 8px">Recent twin decisions</h3>' +
-      '<div class="scroll" style="max-height:420px"><table><thead><tr><th>Observed</th><th>Asset</th><th>Action</th><th>Regime</th><th>Actual utility</th><th>Regret</th><th>Best observed</th><th>Coverage</th></tr></thead><tbody>' +
-      (decisionRows(px.decisions) || '<tr><td colspan="8" class="empty">No PARALLAX decisions recorded yet.</td></tr>') + '</tbody></table></div>' +
+      '<div class="scroll" style="max-height:440px"><table><thead><tr><th>Observed</th><th>Scope</th><th>Action</th><th>Contract</th><th>Branch coverage</th><th>Evidence coverage</th><th>Regret</th><th>Best observed</th><th>Revision</th></tr></thead><tbody>' +
+      (decisionRows(px.decisions) || '<tr><td colspan="9" class="empty">No PARALLAX decisions recorded yet.</td></tr>') + '</tbody></table></div>' +
 
-      '<div class="small muted" style="margin-top:12px">PARALLAX and DREAMSTATE are research/shadow systems. A qualified-shadow candidate is not a live trading rule and cannot authorize orders, sizing, broker actions, or production promotion.</div>';
+      '<div class="small muted" style="margin-top:12px">PARALLAX and DREAMSTATE are research/shadow systems. Statistical screens prioritize hypotheses; they do not prove causality or expected profit. A qualified-shadow candidate cannot authorize orders, sizing, broker actions, or production promotion.</div>';
   }
 
   async function loadParallax() {
