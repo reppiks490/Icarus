@@ -443,6 +443,11 @@ def test_historical_one_second_and_lossless_resampling_use_continuous_stype():
     assert call["stype_in"] == "continuous"
 
 
+def test_every_advertised_chart_timeframe_is_declared_by_databento():
+    expected = {tf_minutes(tf) * 60 for tf in CHART_TIMEFRAME_OPTIONS}
+    assert expected <= set(Databento.GRANULARITIES)
+
+
 def test_every_advertised_chart_timeframe_has_a_lossless_databento_source_path():
     for tf in CHART_TIMEFRAME_OPTIONS:
         seconds = tf_minutes(tf) * 60
