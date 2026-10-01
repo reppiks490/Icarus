@@ -293,6 +293,18 @@ class TacticalAutopilot:
         return metrics
 
     def cycle_once(self):
+        # Manual and background requests must never race the same shadow state.
+        if not self._cycle_lock.acquire(blocking=False):
+            out = self.status()
+            out["cycle_busy"] = True
+            out["note"] = "A Tactical Autopilot cycle is already running."
+            return out
+        try:
+            return self._cycle_once_serial()
+        finally:
+            self._cycle_lock.release()
+
+    def _cycle_once_serial(self):
         with self._lock:
             state = self._read()
             cfg = state["config"]
@@ -399,6 +411,7 @@ class TacticalAutopilot:
             "history": history[-60:],
             "leaderboard": leaderboard,
             "running": bool(self._thread and self._thread.is_alive()),
+            "cycle_busy": self._cycle_lock.locked(),
             "mode": "autonomous shadow research",
             "execution_authorized": False,
             "broker_control": False,
