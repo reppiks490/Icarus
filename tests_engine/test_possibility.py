@@ -1472,8 +1472,17 @@ def test_edge_gate_allows_only_aligned_cross_layer_bias():
     assert edge["confidence"] > 0
 
 
-def test_psi_exposes_uncalibrated_six_bar_forecast_contract():
-    engine = PossibilityEngine(Port(), scenarios=192)
+def test_psi_exposes_uncalibrated_six_bar_forecast_contract(monkeypatch):
+    import icarus_engine.possibility as possibility_module
+    from icarus_engine.calendar import get_calendar
+
+    emitted = "2026-10-01T14:00:30Z"  # 10:00:30 ET; current 20m RTH bar is already partial.
+    monkeypatch.setattr(possibility_module, "_utc_now", lambda: emitted)
+
+    port = Port()
+    port.runners["NQ"].chart_minutes = 20
+    port.runners["NQ"].cal = get_calendar("cme", session="rth")
+    engine = PossibilityEngine(port, scenarios=192)
     _seed(engine)
     engine._history_chart_minutes["NQ"] = 20
     out = engine.snapshot("NQ")
@@ -1484,8 +1493,14 @@ def test_psi_exposes_uncalibrated_six_bar_forecast_contract():
     assert contract["reference_price"] == pytest.approx(out["price"])
     assert contract["chart_minutes"] == 20
     assert contract["horizon_steps"] == 6
-    assert contract["horizon_seconds"] == 20 * 60 * 6
-    assert contract["emitted_at"] == out["generated_at"]
+    assert contract["maturity_semantics"] == "SIX_FULL_FUTURE_CHART_BARS"
+    assert contract["emitted_at"] == emitted
+    assert contract["first_future_bar_open_at"] == "2026-10-01T14:10:00Z"
+    assert contract["target_bar_open_at"] == "2026-10-01T15:50:00Z"
+    assert contract["target_bar_close_at"] == "2026-10-01T16:10:00Z"
+    assert contract["target_bar_open_ts"] == 1790869800
+    assert contract["target_bar_close_ts"] == 1790871000
+    assert contract["horizon_seconds"] == 7770
     assert contract["classification_threshold_return"] > 0
     assert set(contract["cluster_shares"]) == {"UP", "FLAT", "DOWN"}
     assert sum(contract["cluster_shares"].values()) == pytest.approx(1.0)
@@ -1494,6 +1509,27 @@ def test_psi_exposes_uncalibrated_six_bar_forecast_contract():
     assert contract["execution_authorized"] is False
     assert contract["production_decision_authorized"] is False
     assert out["truth_contract"]["scenario_probabilities_calibrated"] is False
+
+
+def test_psi_forecast_contract_counts_actual_rth_bars_across_weekend(monkeypatch):
+    import icarus_engine.possibility as possibility_module
+    from icarus_engine.calendar import get_calendar
+
+    emitted = "2026-10-02T20:12:00Z"  # Fri 16:12 ET, inside the final RTH stub bar.
+    monkeypatch.setattr(possibility_module, "_utc_now", lambda: emitted)
+
+    port = Port()
+    port.runners["NQ"].chart_minutes = 20
+    port.runners["NQ"].cal = get_calendar("cme", session="rth")
+    engine = PossibilityEngine(port, scenarios=192)
+    _seed(engine)
+    engine._history_chart_minutes["NQ"] = 20
+    contract = engine.snapshot("NQ")["forecast_calibration_contract"]
+
+    assert contract["status"] == "ELIGIBLE_UNCALIBRATED"
+    assert contract["first_future_bar_open_at"] == "2026-10-05T13:30:00Z"
+    assert contract["target_bar_close_at"] == "2026-10-05T15:30:00Z"
+    assert contract["horizon_seconds"] > 2 * 86400
 
 
 def test_psi_forecast_contract_withholds_unknown_chart_cadence():
