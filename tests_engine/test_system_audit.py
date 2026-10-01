@@ -175,6 +175,8 @@ def test_collect_loop_snapshot_verifies_exact_receipt_and_extracts_signals():
     assert "ignored_chatty_field" not in row["signals"]["latest"]
     assert event["severity"] == "success"
     assert event["ref"] == "commit-alpha"
+    assert "NEW_EVIDENCE" in event["detail"]
+    assert "cost model advanced" in event["detail"]
 
 
 def test_collect_loop_snapshot_fails_closed_on_blob_mismatch():
