@@ -1,0 +1,833 @@
+"""SIBYL Omega probabilistic future-lightcone synthesis engine.
+
+SIBYL fuses timestamped, provenance-bearing research evidence into a bounded
+multi-horizon distribution over reachable market states. It deliberately does
+not claim deterministic foresight and has no production-decision, sizing,
+broker, or execution authority.
+
+The engine is designed around five invariants:
+1. evidence is immutable and time-valid;
+2. correlated sources are collapsed by evidence domain before consensus;
+3. uncertainty is first-class and can force abstention;
+4. forecasts are revision-bound and scored only against observed outcomes;
+5. counterfactual scenarios never mutate the evidence ledger.
+"""
+from __future__ import annotations
+
+import hashlib
+import json
+import math
+import os
+import sqlite3
+import threading
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Iterable, Mapping
+
+SCHEMA_VERSION = "icarus-sibyl-v1"
+EVIDENCE_SCHEMA = "icarus-sibyl-evidence-v1"
+FORECAST_SCHEMA = "icarus-sibyl-forecast-v1"
+OUTCOME_SCHEMA = "icarus-sibyl-outcome-v1"
+DEFAULT_HORIZONS = (60, 300, 900, 3600, 14400)
+MAX_EVIDENCE = 512
+_LOCK = threading.RLock()
+
+
+def _utc_now() -> str:
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def _sha(value: str) -> str:
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+
+def _finite(value: Any, field: str, lo: float | None = None, hi: float | None = None) -> float:
+    try:
+        out = float(value)
+    except (TypeError, ValueError) as ex:
+        raise ValueError(f"{field} must be numeric") from ex
+    if not math.isfinite(out):
+        raise ValueError(f"{field} must be finite")
+    if lo is not None and out < lo:
+        raise ValueError(f"{field} must be >= {lo}")
+    if hi is not None and out > hi:
+        raise ValueError(f"{field} must be <= {hi}")
+    return out
+
+
+def _integer(value: Any, field: str, lo: int, hi: int) -> int:
+    if isinstance(value, bool):
+        raise ValueError(f"{field} must be an integer")
+    try:
+        out = int(value)
+    except (TypeError, ValueError) as ex:
+        raise ValueError(f"{field} must be an integer") from ex
+    if out < lo or out > hi:
+        raise ValueError(f"{field} must be between {lo} and {hi}")
+    return out
+
+
+def _text(value: Any, field: str, limit: int, *, required: bool = True) -> str:
+    if value is None and not required:
+        return ""
+    if not isinstance(value, str):
+        raise ValueError(f"{field} must be a string")
+    out = value.strip()
+    if required and not out:
+        raise ValueError(f"{field} is required")
+    if len(out) > limit:
+        raise ValueError(f"{field} exceeds {limit} characters")
+    return out
+
+
+def _timestamp(value: Any, field: str = "observed_at", *, allow_future_seconds: float = 5.0) -> str:
+    raw = _text(value, field, 80)
+    try:
+        dt = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except ValueError as ex:
+        raise ValueError(f"{field} must be RFC3339/ISO-8601") from ex
+    if dt.tzinfo is None or dt.utcoffset() is None:
+        raise ValueError(f"{field} must include an explicit timezone")
+    dt = dt.astimezone(timezone.utc)
+    if (dt - datetime.now(timezone.utc)).total_seconds() > allow_future_seconds:
+        raise ValueError(f"{field} cannot be in the future")
+    return dt.isoformat().replace("+00:00", "Z")
+
+
+def _parse_time(value: str) -> datetime:
+    return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(timezone.utc)
+
+
+def _json(value: Any, field: str, max_bytes: int = 262144) -> str:
+    try:
+        raw = json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False)
+    except (TypeError, ValueError) as ex:
+        raise ValueError(f"{field} must be finite JSON") from ex
+    if len(raw.encode("utf-8")) > max_bytes:
+        raise ValueError(f"{field} exceeds {max_bytes} bytes")
+    return raw
+
+
+def _git_sha(value: Any) -> str:
+    raw = _text(value, "source_commit", 40).lower()
+    if len(raw) != 40 or any(c not in "0123456789abcdef" for c in raw):
+        raise ValueError("source_commit must be a 40-character git SHA")
+    return raw
+
+
+def _asset(value: Any) -> str:
+    raw = _text(value, "asset", 24).upper()
+    if any(c not in "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-" for c in raw):
+        raise ValueError("asset contains unsupported characters")
+    return raw
+
+
+def _softmax(values: Iterable[float]) -> list[float]:
+    vals = [float(v) for v in values]
+    m = max(vals)
+    ex = [math.exp(v - m) for v in vals]
+    z = sum(ex) or 1.0
+    return [v / z for v in ex]
+
+
+def _entropy(probs: Iterable[float]) -> float:
+    p = [max(0.0, float(x)) for x in probs]
+    raw = -sum(x * math.log(x) for x in p if x > 0.0)
+    return raw / math.log(max(2, len(p)))
+
+
+def _clamp(value: float, lo: float = 0.0, hi: float = 1.0) -> float:
+    return max(lo, min(hi, value))
+
+
+def _market_asset(market_status: Mapping[str, Any] | None, asset: str) -> Mapping[str, Any] | None:
+    if not isinstance(market_status, Mapping):
+        return None
+    rows = market_status.get("assets")
+    if not isinstance(rows, list):
+        return None
+    for row in rows:
+        if not isinstance(row, Mapping):
+            continue
+        keys = {
+            str(row.get("symbol") or "").upper(),
+            str(row.get("continuous_symbol") or "").upper(),
+        }
+        if asset in keys:
+            return row
+    return None
+
+
+class SibylEngine:
+    """Durable probabilistic future-state synthesizer."""
+
+    def __init__(self, base_dir: str | os.PathLike[str]):
+        self.base_dir = Path(base_dir)
+        self.db_path = self.base_dir / "research" / "sibyl.sqlite3"
+        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        self._init_db()
+
+    def _connect(self) -> sqlite3.Connection:
+        conn = sqlite3.connect(self.db_path, timeout=30)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA foreign_keys=ON")
+        return conn
+
+    def _init_db(self) -> None:
+        with _LOCK, self._connect() as conn:
+            conn.executescript(
+                """
+                CREATE TABLE IF NOT EXISTS evidence (
+                    evidence_id TEXT PRIMARY KEY,
+                    asset TEXT NOT NULL,
+                    source TEXT NOT NULL,
+                    domain TEXT NOT NULL,
+                    observed_at TEXT NOT NULL,
+                    direction REAL NOT NULL,
+                    magnitude REAL NOT NULL,
+                    confidence REAL NOT NULL,
+                    horizon_seconds INTEGER NOT NULL,
+                    target_price REAL,
+                    invalidation_price REAL,
+                    source_commit TEXT NOT NULL,
+                    payload_json TEXT NOT NULL,
+                    recorded_at TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_sibyl_evidence_asset_time
+                    ON evidence(asset, observed_at DESC);
+
+                CREATE TABLE IF NOT EXISTS forecasts (
+                    forecast_id TEXT PRIMARY KEY,
+                    asset TEXT NOT NULL,
+                    observed_at TEXT NOT NULL,
+                    current_price REAL NOT NULL,
+                    volatility_pct REAL NOT NULL,
+                    source_commit TEXT NOT NULL,
+                    forecast_json TEXT NOT NULL,
+                    recorded_at TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_sibyl_forecasts_asset_time
+                    ON forecasts(asset, observed_at DESC);
+
+                CREATE TABLE IF NOT EXISTS outcomes (
+                    forecast_id TEXT NOT NULL,
+                    horizon_seconds INTEGER NOT NULL,
+                    observed_at TEXT NOT NULL,
+                    realized_price REAL NOT NULL,
+                    realized_class TEXT NOT NULL,
+                    brier REAL NOT NULL,
+                    evidence_json TEXT NOT NULL,
+                    recorded_at TEXT NOT NULL,
+                    PRIMARY KEY(forecast_id, horizon_seconds),
+                    FOREIGN KEY(forecast_id) REFERENCES forecasts(forecast_id)
+                );
+                """
+            )
+
+    def record_evidence(self, body: Mapping[str, Any]) -> dict[str, Any]:
+        asset = _asset(body.get("asset"))
+        source = _text(body.get("source"), "source", 64).lower()
+        domain = _text(body.get("domain"), "domain", 64).lower()
+        observed_at = _timestamp(body.get("observed_at"))
+        direction = _finite(body.get("direction"), "direction", -1.0, 1.0)
+        magnitude = _finite(body.get("magnitude", 1.0), "magnitude", 0.0, 4.0)
+        confidence = _finite(body.get("confidence"), "confidence", 0.0, 1.0)
+        horizon = _integer(body.get("horizon_seconds"), "horizon_seconds", 1, 604800)
+        target = body.get("target_price")
+        invalidation = body.get("invalidation_price")
+        target_price = None if target is None else _finite(target, "target_price", 0.0)
+        invalidation_price = None if invalidation is None else _finite(invalidation, "invalidation_price", 0.0)
+        source_commit = _git_sha(body.get("source_commit"))
+        payload = body.get("payload", {})
+        payload_json = _json(payload, "payload")
+        semantic = {
+            "schema_version": EVIDENCE_SCHEMA,
+            "asset": asset,
+            "source": source,
+            "domain": domain,
+            "observed_at": observed_at,
+            "direction": direction,
+            "magnitude": magnitude,
+            "confidence": confidence,
+            "horizon_seconds": horizon,
+            "target_price": target_price,
+            "invalidation_price": invalidation_price,
+            "source_commit": source_commit,
+            "payload": json.loads(payload_json),
+        }
+        evidence_id = _sha(_json(semantic, "semantic"))
+        row = (
+            evidence_id, asset, source, domain, observed_at, direction, magnitude,
+            confidence, horizon, target_price, invalidation_price, source_commit,
+            payload_json, _utc_now(),
+        )
+        with _LOCK, self._connect() as conn:
+            conn.execute(
+                """INSERT OR IGNORE INTO evidence
+                   (evidence_id, asset, source, domain, observed_at, direction, magnitude,
+                    confidence, horizon_seconds, target_price, invalidation_price,
+                    source_commit, payload_json, recorded_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                row,
+            )
+            saved = conn.execute("SELECT * FROM evidence WHERE evidence_id=?", (evidence_id,)).fetchone()
+        return self._evidence_dict(saved)
+
+    @staticmethod
+    def _evidence_dict(row: sqlite3.Row | None) -> dict[str, Any]:
+        if row is None:
+            raise ValueError("evidence record not found")
+        return {
+            "schema_version": EVIDENCE_SCHEMA,
+            "evidence_id": row["evidence_id"],
+            "asset": row["asset"],
+            "source": row["source"],
+            "domain": row["domain"],
+            "observed_at": row["observed_at"],
+            "direction": row["direction"],
+            "magnitude": row["magnitude"],
+            "confidence": row["confidence"],
+            "horizon_seconds": row["horizon_seconds"],
+            "target_price": row["target_price"],
+            "invalidation_price": row["invalidation_price"],
+            "source_commit": row["source_commit"],
+            "payload": json.loads(row["payload_json"]),
+            "recorded_at": row["recorded_at"],
+        }
+
+    def _evidence(self, asset: str, limit: int = MAX_EVIDENCE) -> list[dict[str, Any]]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT * FROM evidence WHERE asset=? ORDER BY observed_at DESC LIMIT ?",
+                (asset, max(1, min(MAX_EVIDENCE, int(limit)))),
+            ).fetchall()
+        return [self._evidence_dict(row) for row in rows]
+
+    @staticmethod
+    def _horizon_weight(e: Mapping[str, Any], horizon: int, now: datetime) -> float:
+        observed = _parse_time(str(e["observed_at"]))
+        age = max(0.0, (now - observed).total_seconds())
+        fresh_window = max(60.0, min(21600.0, float(horizon) * 2.0))
+        freshness = math.exp(-age / fresh_window)
+        eh = max(1.0, float(e["horizon_seconds"]))
+        mismatch = abs(math.log((horizon + 1.0) / (eh + 1.0)))
+        horizon_fit = math.exp(-0.85 * mismatch)
+        return float(e["confidence"]) * freshness * horizon_fit
+
+    def _fuse_horizon(
+        self,
+        evidence: list[Mapping[str, Any]],
+        horizon: int,
+        current_price: float | None,
+        volatility_pct: float,
+    ) -> dict[str, Any]:
+        now = datetime.now(timezone.utc)
+        domains: dict[str, list[tuple[float, float]]] = {}
+        contributing = 0
+        for e in evidence:
+            w = self._horizon_weight(e, horizon, now)
+            if w <= 0.002:
+                continue
+            signal = float(e["direction"]) * float(e["magnitude"])
+            domains.setdefault(str(e["domain"]), []).append((signal, w))
+            contributing += 1
+
+        domain_rows = []
+        for domain, rows in sorted(domains.items()):
+            total_w = sum(w for _, w in rows)
+            if total_w <= 0:
+                continue
+            score = sum(s * w for s, w in rows) / total_w
+            domain_rows.append({"domain": domain, "score": score, "weight": min(1.0, total_w)})
+
+        if domain_rows:
+            denom = sum(r["weight"] for r in domain_rows)
+            score = sum(r["score"] * r["weight"] for r in domain_rows) / max(1e-12, denom)
+            mean_domain_weight = denom / len(domain_rows)
+        else:
+            score = 0.0
+            mean_domain_weight = 0.0
+
+        score = max(-2.0, min(2.0, score))
+        coverage = _clamp((len(domain_rows) / 4.0) * mean_domain_weight)
+        up_logit = 2.15 * score
+        down_logit = -2.15 * score
+        flat_logit = 0.55 - 1.05 * abs(score) + 0.35 * (1.0 - coverage)
+        p_up, p_flat, p_down = _softmax((up_logit, flat_logit, down_logit))
+        ent = _entropy((p_up, p_flat, p_down))
+        convergence = _clamp(1.0 - ent)
+        sample_strength = _clamp(contributing / 10.0)
+        collapse_score = _clamp(convergence * (0.35 + 0.65 * coverage) * (0.55 + 0.45 * sample_strength))
+        directional_split = _clamp(4.0 * p_up * p_down)
+        bifurcation_score = _clamp(directional_split * (1.0 - p_flat) * (0.45 + 0.55 * coverage))
+        probs = {"up": p_up, "rotation": p_flat, "down": p_down}
+        dominant = max(probs, key=probs.get)
+        collapse_detected = bool(
+            len(domain_rows) >= 3
+            and coverage >= 0.48
+            and probs[dominant] >= 0.67
+            and ent <= 0.72
+        )
+
+        band = None
+        if current_price is not None and current_price > 0:
+            scale = max(0.25, math.sqrt(max(1.0, horizon) / 300.0))
+            vol = max(0.00005, volatility_pct) * scale
+            drift = max(-0.025, min(0.025, score * vol * 0.95))
+            center = current_price * (1.0 + drift)
+            width = current_price * vol * (0.70 + 0.55 * ent)
+            band = {
+                "low": max(0.0, center - width),
+                "mid": center,
+                "high": center + width,
+                "volatility_pct": vol,
+            }
+
+        return {
+            "horizon_seconds": horizon,
+            "probabilities": probs,
+            "dominant_basin": dominant,
+            "entropy": ent,
+            "convergence": convergence,
+            "coverage": coverage,
+            "collapse_score": collapse_score,
+            "collapse_detected": collapse_detected,
+            "bifurcation_score": bifurcation_score,
+            "domain_count": len(domain_rows),
+            "contributing_evidence": contributing,
+            "domain_fusion": domain_rows,
+            "reachable_band": band,
+        }
+
+    @staticmethod
+    def _cluster_levels(
+        evidence: list[Mapping[str, Any]],
+        field: str,
+        current_price: float | None,
+        *,
+        limit: int = 6,
+    ) -> list[dict[str, Any]]:
+        points: list[tuple[float, float, str]] = []
+        now = datetime.now(timezone.utc)
+        for e in evidence:
+            value = e.get(field)
+            if value is None:
+                continue
+            try:
+                price = float(value)
+            except (TypeError, ValueError):
+                continue
+            if not math.isfinite(price) or price <= 0:
+                continue
+            age = max(0.0, (now - _parse_time(str(e["observed_at"]))).total_seconds())
+            freshness = math.exp(-age / max(300.0, float(e["horizon_seconds"]) * 2.0))
+            weight = float(e["confidence"]) * max(0.05, float(e["magnitude"])) * freshness
+            points.append((price, weight, str(e["source"])))
+        if not points:
+            return []
+        points.sort(key=lambda x: x[0])
+        basis = current_price if current_price and current_price > 0 else points[len(points) // 2][0]
+        tol = max(0.01, basis * 0.0015)
+        clusters: list[list[tuple[float, float, str]]] = []
+        for point in points:
+            if not clusters:
+                clusters.append([point])
+                continue
+            center = sum(p * w for p, w, _ in clusters[-1]) / max(1e-12, sum(w for _, w, _ in clusters[-1]))
+            if abs(point[0] - center) <= tol:
+                clusters[-1].append(point)
+            else:
+                clusters.append([point])
+        out = []
+        for rows in clusters:
+            total = sum(w for _, w, _ in rows)
+            level = sum(p * w for p, w, _ in rows) / max(1e-12, total)
+            out.append({
+                "price": level,
+                "mass": total,
+                "sources": sorted({s for _, _, s in rows}),
+                "distance_pct": None if not current_price else (level / current_price - 1.0) * 100.0,
+            })
+        out.sort(key=lambda x: x["mass"], reverse=True)
+        return out[:limit]
+
+    def _build(
+        self,
+        asset: str,
+        *,
+        current_price: float | None,
+        volatility_pct: float,
+        evidence: list[Mapping[str, Any]],
+        horizons: Iterable[int] = DEFAULT_HORIZONS,
+        context: Mapping[str, Any] | None = None,
+        counterfactual: bool = False,
+    ) -> dict[str, Any]:
+        horizon_rows = [
+            self._fuse_horizon(evidence, _integer(h, "horizon_seconds", 1, 604800), current_price, volatility_pct)
+            for h in horizons
+        ]
+        strongest = max(horizon_rows, key=lambda x: x["collapse_score"]) if horizon_rows else None
+        fracture = max(horizon_rows, key=lambda x: x["bifurcation_score"]) if horizon_rows else None
+        domains = sorted({str(e["domain"]) for e in evidence})
+        sources = sorted({str(e["source"]) for e in evidence})
+        return {
+            "schema_version": SCHEMA_VERSION,
+            "asset": asset,
+            "generated_at": _utc_now(),
+            "counterfactual": counterfactual,
+            "current_price": current_price,
+            "volatility_pct": volatility_pct,
+            "evidence": {
+                "count": len(evidence),
+                "sources": sources,
+                "domains": domains,
+                "distinct_domain_count": len(domains),
+                "correlation_guard": "sources are collapsed by evidence domain before cross-domain consensus",
+            },
+            "horizons": horizon_rows,
+            "temporal_collapse": strongest,
+            "temporal_fracture": fracture,
+            "attractors": self._cluster_levels(evidence, "target_price", current_price),
+            "repulsion_or_invalidation": self._cluster_levels(evidence, "invalidation_price", current_price),
+            "context": dict(context or {}),
+            "authority": {
+                "research_only": True,
+                "shadow_only": True,
+                "production_decision_authorized": False,
+                "execution_authorized": False,
+                "automatic_order_routing": False,
+                "deterministic_foresight_claim": False,
+            },
+        }
+
+    def snapshot(
+        self,
+        asset: str | None = None,
+        *,
+        market_status: Mapping[str, Any] | None = None,
+        parallax_state: Mapping[str, Any] | None = None,
+        dreamstate_state: Mapping[str, Any] | None = None,
+        brain_state: Mapping[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        chosen = _asset(asset) if asset else ""
+        if not chosen and isinstance(market_status, Mapping):
+            rows = market_status.get("assets")
+            if isinstance(rows, list) and rows:
+                first = rows[0] if isinstance(rows[0], Mapping) else {}
+                raw = first.get("symbol") or first.get("continuous_symbol")
+                if raw:
+                    chosen = _asset(raw)
+        if not chosen:
+            with self._connect() as conn:
+                row = conn.execute("SELECT asset FROM evidence ORDER BY observed_at DESC LIMIT 1").fetchone()
+            chosen = str(row["asset"]) if row else "NQ"
+
+        market_row = _market_asset(market_status, chosen)
+        price = None
+        if isinstance(market_row, Mapping) and market_row.get("price") is not None:
+            try:
+                px = float(market_row["price"])
+                price = px if math.isfinite(px) and px > 0 else None
+            except (TypeError, ValueError):
+                pass
+
+        evidence = self._evidence(chosen)
+        volatility = 0.0025
+        vol_candidates = []
+        for e in evidence[:64]:
+            payload = e.get("payload")
+            if isinstance(payload, Mapping) and payload.get("volatility_pct") is not None:
+                try:
+                    v = float(payload["volatility_pct"])
+                    if math.isfinite(v) and 0.00001 <= v <= 0.25:
+                        vol_candidates.append(v)
+                except (TypeError, ValueError):
+                    pass
+        if vol_candidates:
+            vol_candidates.sort()
+            volatility = vol_candidates[len(vol_candidates) // 2]
+
+        context = {
+            "parallax": {
+                "available": isinstance(parallax_state, Mapping),
+                "decision_count": ((parallax_state or {}).get("counts") or {}).get("decisions", 0)
+                if isinstance((parallax_state or {}).get("counts"), Mapping) else 0,
+            },
+            "dreamstate": {
+                "available": isinstance(dreamstate_state, Mapping),
+                "candidate_count": len((dreamstate_state or {}).get("candidates", []) or [])
+                if isinstance((dreamstate_state or {}).get("candidates", []), list) else 0,
+            },
+            "adaptive_brain": {
+                "available": isinstance(brain_state, Mapping),
+                "subsystem_count": (((brain_state or {}).get("architecture") or {}).get("subsystem_count"))
+                if isinstance((brain_state or {}).get("architecture"), Mapping) else None,
+            },
+            "integration_rule": "context is visible but cannot become directional evidence unless a subsystem publishes through the SIBYL evidence contract",
+        }
+        built = self._build(
+            chosen,
+            current_price=price,
+            volatility_pct=volatility,
+            evidence=evidence,
+            context=context,
+        )
+        built["calibration"] = self.calibration(chosen)
+        built["recent_forecasts"] = self.recent_forecasts(chosen, limit=12)
+        return built
+
+    def record_forecast(
+        self,
+        body: Mapping[str, Any],
+        *,
+        market_status: Mapping[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        asset = _asset(body.get("asset"))
+        observed_at = _timestamp(body.get("observed_at", _utc_now()))
+        source_commit = _git_sha(body.get("source_commit"))
+        market_row = _market_asset(market_status, asset)
+        raw_price = body.get("current_price")
+        if raw_price is None and isinstance(market_row, Mapping):
+            raw_price = market_row.get("price")
+        current_price = _finite(raw_price, "current_price", 0.0000001)
+        volatility = _finite(body.get("volatility_pct", 0.0025), "volatility_pct", 0.00001, 0.25)
+        horizons = body.get("horizons", DEFAULT_HORIZONS)
+        if not isinstance(horizons, (list, tuple)) or not horizons:
+            raise ValueError("horizons must be a non-empty list")
+        parsed_horizons = sorted({
+            _integer(x, "horizon_seconds", 1, 604800) for x in horizons
+        })
+        evidence = self._evidence(asset)
+        built = self._build(
+            asset,
+            current_price=current_price,
+            volatility_pct=volatility,
+            evidence=evidence,
+            horizons=parsed_horizons,
+        )
+        semantic = {
+            "schema_version": FORECAST_SCHEMA,
+            "asset": asset,
+            "observed_at": observed_at,
+            "current_price": current_price,
+            "volatility_pct": volatility,
+            "source_commit": source_commit,
+            "horizons": parsed_horizons,
+            "evidence_ids": [e["evidence_id"] for e in evidence],
+            "forecast": built,
+        }
+        forecast_id = _sha(_json(semantic, "forecast semantic"))
+        with _LOCK, self._connect() as conn:
+            conn.execute(
+                """INSERT OR IGNORE INTO forecasts
+                   (forecast_id, asset, observed_at, current_price, volatility_pct,
+                    source_commit, forecast_json, recorded_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    forecast_id, asset, observed_at, current_price, volatility,
+                    source_commit, _json(built, "forecast"), _utc_now(),
+                ),
+            )
+        return {
+            "schema_version": FORECAST_SCHEMA,
+            "forecast_id": forecast_id,
+            "asset": asset,
+            "observed_at": observed_at,
+            "source_commit": source_commit,
+            "forecast": built,
+            "execution_authorized": False,
+            "production_decision_authorized": False,
+        }
+
+    def record_outcome(self, body: Mapping[str, Any]) -> dict[str, Any]:
+        forecast_id = _text(body.get("forecast_id"), "forecast_id", 64)
+        horizon = _integer(body.get("horizon_seconds"), "horizon_seconds", 1, 604800)
+        observed_at = _timestamp(body.get("observed_at"))
+        realized_price = _finite(body.get("realized_price"), "realized_price", 0.0000001)
+        evidence_json = _json(body.get("evidence", []), "evidence")
+        with _LOCK, self._connect() as conn:
+            row = conn.execute("SELECT * FROM forecasts WHERE forecast_id=?", (forecast_id,)).fetchone()
+            if row is None:
+                raise ValueError("unknown forecast_id")
+            forecast = json.loads(row["forecast_json"])
+            hrow = next((x for x in forecast.get("horizons", []) if int(x.get("horizon_seconds", -1)) == horizon), None)
+            if hrow is None:
+                raise ValueError("horizon_seconds was not part of this forecast")
+            ftime = _parse_time(row["observed_at"])
+            otime = _parse_time(observed_at)
+            if otime < ftime:
+                raise ValueError("outcome cannot precede forecast")
+            current_price = float(row["current_price"])
+            vol = float(row["volatility_pct"])
+            neutral = current_price * vol * 0.25 * max(0.25, math.sqrt(horizon / 300.0))
+            delta = realized_price - current_price
+            realized_class = "rotation" if abs(delta) <= neutral else ("up" if delta > 0 else "down")
+            probs = hrow["probabilities"]
+            targets = {
+                "up": 1.0 if realized_class == "up" else 0.0,
+                "rotation": 1.0 if realized_class == "rotation" else 0.0,
+                "down": 1.0 if realized_class == "down" else 0.0,
+            }
+            brier = sum((float(probs[k]) - targets[k]) ** 2 for k in targets) / 3.0
+            existing = conn.execute(
+                "SELECT * FROM outcomes WHERE forecast_id=? AND horizon_seconds=?",
+                (forecast_id, horizon),
+            ).fetchone()
+            if existing is not None:
+                if (
+                    existing["observed_at"] == observed_at
+                    and abs(float(existing["realized_price"]) - realized_price) < 1e-12
+                    and existing["evidence_json"] == evidence_json
+                ):
+                    return self._outcome_dict(existing)
+                raise ValueError("outcome is immutable for forecast_id + horizon_seconds")
+            conn.execute(
+                """INSERT INTO outcomes
+                   (forecast_id, horizon_seconds, observed_at, realized_price,
+                    realized_class, brier, evidence_json, recorded_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    forecast_id, horizon, observed_at, realized_price,
+                    realized_class, brier, evidence_json, _utc_now(),
+                ),
+            )
+            saved = conn.execute(
+                "SELECT * FROM outcomes WHERE forecast_id=? AND horizon_seconds=?",
+                (forecast_id, horizon),
+            ).fetchone()
+        return self._outcome_dict(saved)
+
+    @staticmethod
+    def _outcome_dict(row: sqlite3.Row | None) -> dict[str, Any]:
+        if row is None:
+            raise ValueError("outcome record not found")
+        return {
+            "schema_version": OUTCOME_SCHEMA,
+            "forecast_id": row["forecast_id"],
+            "horizon_seconds": row["horizon_seconds"],
+            "observed_at": row["observed_at"],
+            "realized_price": row["realized_price"],
+            "realized_class": row["realized_class"],
+            "brier": row["brier"],
+            "evidence": json.loads(row["evidence_json"]),
+            "recorded_at": row["recorded_at"],
+            "execution_authorized": False,
+            "production_decision_authorized": False,
+        }
+
+    def calibration(self, asset: str) -> dict[str, Any]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                """SELECT o.horizon_seconds, o.brier, o.realized_class, f.forecast_json
+                   FROM outcomes o JOIN forecasts f ON f.forecast_id=o.forecast_id
+                   WHERE f.asset=? ORDER BY o.recorded_at DESC LIMIT 1000""",
+                (asset,),
+            ).fetchall()
+        by_h: dict[int, list[sqlite3.Row]] = {}
+        for row in rows:
+            by_h.setdefault(int(row["horizon_seconds"]), []).append(row)
+        horizon_rows = []
+        for horizon, group in sorted(by_h.items()):
+            hits = 0
+            confidence = []
+            for row in group:
+                forecast = json.loads(row["forecast_json"])
+                hrow = next(x for x in forecast["horizons"] if int(x["horizon_seconds"]) == horizon)
+                probs = hrow["probabilities"]
+                dominant = max(probs, key=probs.get)
+                hits += int(dominant == row["realized_class"])
+                confidence.append(float(probs[dominant]))
+            horizon_rows.append({
+                "horizon_seconds": horizon,
+                "n": len(group),
+                "mean_brier": sum(float(r["brier"]) for r in group) / len(group),
+                "dominant_hit_rate": hits / len(group),
+                "mean_dominant_confidence": sum(confidence) / len(confidence),
+            })
+        return {
+            "outcome_count": len(rows),
+            "horizons": horizon_rows,
+            "status": "measured" if rows else "unmeasured",
+            "rule": "forecast confidence is descriptive until supported by observed calibration outcomes",
+        }
+
+    def recent_forecasts(self, asset: str, limit: int = 12) -> list[dict[str, Any]]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT * FROM forecasts WHERE asset=? ORDER BY observed_at DESC LIMIT ?",
+                (asset, max(1, min(50, int(limit)))),
+            ).fetchall()
+        out = []
+        for row in rows:
+            forecast = json.loads(row["forecast_json"])
+            collapse = forecast.get("temporal_collapse") or {}
+            out.append({
+                "forecast_id": row["forecast_id"],
+                "observed_at": row["observed_at"],
+                "source_commit": row["source_commit"],
+                "dominant_basin": collapse.get("dominant_basin"),
+                "collapse_score": collapse.get("collapse_score"),
+                "collapse_detected": collapse.get("collapse_detected"),
+            })
+        return out
+
+    def scenario(
+        self,
+        body: Mapping[str, Any],
+        *,
+        market_status: Mapping[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        asset = _asset(body.get("asset"))
+        market_row = _market_asset(market_status, asset)
+        raw_price = body.get("current_price")
+        if raw_price is None and isinstance(market_row, Mapping):
+            raw_price = market_row.get("price")
+        price = None if raw_price is None else _finite(raw_price, "current_price", 0.0000001)
+        volatility = _finite(body.get("volatility_pct", 0.0025), "volatility_pct", 0.00001, 0.25)
+        interventions = body.get("interventions", [])
+        if not isinstance(interventions, list) or not interventions:
+            raise ValueError("interventions must be a non-empty list")
+        if len(interventions) > 32:
+            raise ValueError("at most 32 interventions are allowed")
+
+        evidence: list[dict[str, Any]] = self._evidence(asset)
+        now = _utc_now()
+        for i, raw in enumerate(interventions):
+            if not isinstance(raw, Mapping):
+                raise ValueError("each intervention must be an object")
+            direction = _finite(raw.get("direction"), f"interventions[{i}].direction", -1.0, 1.0)
+            magnitude = _finite(raw.get("magnitude", 1.0), f"interventions[{i}].magnitude", 0.0, 4.0)
+            confidence = _finite(raw.get("confidence", 1.0), f"interventions[{i}].confidence", 0.0, 1.0)
+            horizon = _integer(raw.get("horizon_seconds", 300), f"interventions[{i}].horizon_seconds", 1, 604800)
+            domain = _text(raw.get("domain", f"counterfactual-{i}"), f"interventions[{i}].domain", 64).lower()
+            source = _text(raw.get("source", "counterfactual"), f"interventions[{i}].source", 64).lower()
+            target = raw.get("target_price")
+            invalidation = raw.get("invalidation_price")
+            evidence.append({
+                "evidence_id": f"counterfactual:{i}",
+                "asset": asset,
+                "source": source,
+                "domain": domain,
+                "observed_at": now,
+                "direction": direction,
+                "magnitude": magnitude,
+                "confidence": confidence,
+                "horizon_seconds": horizon,
+                "target_price": None if target is None else _finite(target, "target_price", 0.0),
+                "invalidation_price": None if invalidation is None else _finite(invalidation, "invalidation_price", 0.0),
+                "source_commit": "0" * 40,
+                "payload": {"counterfactual": True},
+            })
+        horizons = body.get("horizons", DEFAULT_HORIZONS)
+        if not isinstance(horizons, (list, tuple)) or not horizons:
+            raise ValueError("horizons must be a non-empty list")
+        return self._build(
+            asset,
+            current_price=price,
+            volatility_pct=volatility,
+            evidence=evidence,
+            horizons=horizons,
+            context={"intervention_count": len(interventions)},
+            counterfactual=True,
+        )
