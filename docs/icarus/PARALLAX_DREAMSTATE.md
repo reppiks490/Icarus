@@ -102,6 +102,8 @@ DREAMSTATE re-screens active source hypotheses whenever it refreshes. If the exa
 
 This does not roll back or alter ICARUS production behavior; DREAMSTATE has no production authority.
 
+DREAMSTATE also re-checks the exact current PARALLAX source hypothesis immediately before accepting any new validation-gate update. This closes the interval between evidence deterioration and the next scheduled/manual refresh: stale source evidence cannot continue advancing a candidate simply because its original signal snapshot was stronger.
+
 ### Protected gates
 
 Candidate stages are proposed -> study -> validated -> qualified_shadow, or terminal rejected / retired. The maximum possible stage inside DREAMSTATE is qualified_shadow.
