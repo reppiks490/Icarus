@@ -132,7 +132,7 @@ def _contract_complete(contract: Mapping[str, Any]) -> bool:
 
 def _normalize_strata(raw: Any, context: Mapping[str, Any]) -> dict[str, str]:
     if raw is None:
-        raw = {key: context[key] for key in _DERIVED_STRATA_KEYS if key in context}
+        raw = {key: context[key] for key in _DERIVED_STRATA_KEYS if key in context and context[key] is not None}
     if not isinstance(raw, Mapping):
         raise ValueError("strata must be an object")
     if len(raw) > 8:
@@ -322,8 +322,19 @@ class ParallaxStore:
         with _LOCK, self._connect() as con:
             existing = con.execute("SELECT * FROM decisions WHERE decision_id=?", (decision_id,)).fetchone()
             if existing:
-                if existing["context_hash"] != context_hash or existing["source_commit"] != source_commit:
+                if existing["source_commit"] != source_commit:
                     raise ValueError("decision_id already exists with different immutable identity")
+                if existing["context_hash"] != context_hash:
+                    legacy_hash = _sha(source_commit + "|" + asset + "|" + observed_at + "|" + context_json + "|" + votes_json)
+                    legacy_compatible = (
+                        existing["context_hash"] == legacy_hash
+                        and existing["action"] == action
+                        and existing["regime"] == regime
+                        and not strata
+                        and not _contract_complete(contract)
+                    )
+                    if not legacy_compatible:
+                        raise ValueError("decision_id already exists with different immutable identity")
                 return self.decision(decision_id)
             con.execute(
                 """INSERT INTO decisions(
@@ -581,12 +592,16 @@ class ParallaxStore:
         min_samples = max(2, min(10000, int(min_samples)))
         max_fdr = max(1e-6, min(1.0, float(max_fdr)))
         min_effect = float(min_effect)
+        if not math.isfinite(max_fdr) or not math.isfinite(min_effect):
+            raise ValueError("screening thresholds must be finite")
 
-        groups: dict[tuple[str, str, str, str, str, str], dict[str, Any]] = {}
+        groups: dict[tuple[str, str, str, str, str, str, str], dict[str, Any]] = {}
         for row in self._paired_rows():
             contract = _normalize_contract(json.loads(row["contract_json"] or "{}"))
             contract_json = _json(contract, "comparison_contract", 16384)
             contract_hash = _sha(contract_json)
+            params_json = row["params_json"] or "{}"
+            params_hash = _sha(params_json)
             key = (
                 row["asset"],
                 row["regime"],
@@ -594,6 +609,7 @@ class ParallaxStore:
                 contract_hash,
                 row["kind"],
                 row["label"],
+                params_hash,
             )
             group = groups.setdefault(
                 key,
@@ -606,7 +622,8 @@ class ParallaxStore:
                     "comparison_contract_complete": _contract_complete(contract),
                     "kind": row["kind"],
                     "branch_label": row["label"],
-                    "branch_params": json.loads(row["params_json"] or "{}"),
+                    "branch_params": json.loads(params_json),
+                    "branch_params_hash": params_hash,
                     "pair_count_total": 0,
                     "values": [],
                     "strata": {},
@@ -713,7 +730,7 @@ class ParallaxStore:
             "min_samples": max(2, min(10000, int(min_samples))),
             "max_fdr": max(1e-6, min(1.0, float(max_fdr))),
             "min_effect": float(min_effect),
-            "hypotheses": hypotheses[:100],
+            "hypotheses": hypotheses,
             "method": {
                 "paired_delta": True,
                 "approximate_one_sided_normal_p": True,
