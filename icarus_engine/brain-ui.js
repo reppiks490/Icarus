@@ -65,7 +65,10 @@
     const routeHtml = routes.map(r => `<div class="brain-route"><b>${h(r.asset)} · ${h(r.regime||'UNKNOWN')}</b>\nselected: ${h(r.selected_candidate||'none')}\neligible: ${h((r.eligible_shadow_candidates||[]).map(x=>x.candidate_id).join(', ')||'none')}\nmode: ${h(r.selection_mode)}</div>`).join('');
 
     const regimeHtml = regimes.map(r => `<span class="chip ${r.paused?'r':r.warm?'b':'w'}">${h(r.asset)} · ${h(r.regime||'UNKNOWN')} · ${pct(r.confidence)}</span>`).join(' ');
-    const incubatorRows = (inc.proposals||[]).map(p => `<tr><td><b>${h(p.asset||'—')}</b><div class="small muted">${h(String(p.proposal_id||'').slice(0,18))}</div></td><td><span class="chip ${statusClass(p.state)}">${h(String(p.state||'unknown').toUpperCase())}</span></td><td class="tnum">${num(p.input_count)}</td><td class="tnum">${num(p.review_count)}</td><td>${p.review_required?'INDEPENDENT REVIEW REQUIRED':'—'}</td></tr>`).join('');
+    const incubatorRows = (inc.proposals||[]).map(p => {
+      const rc = p.regime_context || {};
+      return `<tr><td><b>${h(p.asset||'—')}</b><div class="small muted">${h(String(p.proposal_id||'').slice(0,18))}</div></td><td><span class="chip ${statusClass(p.state)}">${h(String(p.state||'unknown').toUpperCase())}</span><div class="small muted">${h(p.review_mode||'')}</div></td><td><b>${h(rc.label||'UNKNOWN')}</b><div class="small muted">${rc.regime_score==null?'score —':'score '+h(String(rc.regime_score))}</div></td><td class="tnum">${num(p.input_count)}</td><td class="tnum">${num(p.review_count)}</td><td>${p.review_required?'INDEPENDENT REVIEW REQUIRED':'—'}</td></tr>`;
+    }).join('');
 
     el.innerHTML = `<style>
         .brain-shell{position:relative;overflow:hidden;min-height:520px;background:
@@ -112,7 +115,7 @@
 
         <h3 class="small" style="margin:16px 0 8px">Zero-cost local candidate incubator</h3>
         <div class="small muted" style="margin-bottom:7px">${h(inc.rule||'Local deterministic studies can preserve candidates without paid model calls; independent review remains mandatory before activation.')}</div>
-        <div class="scroll" style="max-height:300px"><table><thead><tr><th>Asset / proposal</th><th>State</th><th>Inputs</th><th>Reviews</th><th>Authority</th></tr></thead><tbody>${incubatorRows || '<tr><td colspan=5 class="empty">No locally incubated proposals yet.</td></tr>'}</tbody></table></div>
+        <div class="scroll" style="max-height:300px"><table><thead><tr><th>Asset / proposal</th><th>State / mode</th><th>Observed regime</th><th>Inputs</th><th>Reviews</th><th>Authority</th></tr></thead><tbody>${incubatorRows || '<tr><td colspan=6 class="empty">No locally incubated proposals yet.</td></tr>'}</tbody></table></div>
 
         <h3 class="small" style="margin:16px 0 8px">Candidate lifecycle & rigorous gates</h3>
         <div class="scroll" style="max-height:520px"><table><thead><tr><th>Candidate</th><th>Stage</th><th>Validation score</th><th>Gate state</th></tr></thead><tbody>${candRows || '<tr><td colspan=4 class="empty">No candidate events recorded yet. Qualification remains empty/fail-closed.</td></tr>'}</tbody></table></div>
