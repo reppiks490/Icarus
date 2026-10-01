@@ -6,6 +6,9 @@ import pytest
 
 from icarus_engine.system_audit import (
     DEFAULT_REPOSITORY_AUDIT,
+    LoopIntelligenceSync,
+    collect_loop_snapshot,
+    git_blob_sha,
     load_repository_audit,
     normalize_repository_audit,
     repository_audit_path,
@@ -101,3 +104,161 @@ def test_repository_audit_rejects_bad_system_event_enums():
         normalize_repository_audit({"events": [{"kind": "trade", "title": "bad"}]})
     with pytest.raises(ValueError):
         normalize_repository_audit({"events": [{"kind": "audit", "severity": "panic", "title": "bad"}]})
+
+
+def test_git_blob_sha_matches_git_object_encoding():
+    raw = b'{"RUN_ID":"alpha-synthesis-20261001T022500Z"}'
+    import hashlib
+    expected = hashlib.sha1(b"blob " + str(len(raw)).encode() + b"\\0" + raw).hexdigest()
+    assert git_blob_sha(raw) == expected
+
+
+def test_collect_loop_snapshot_verifies_exact_receipt_and_extracts_signals():
+    final = {
+        "schema_version": "scheduler-finalization-v5.7",
+        "RUN_ID": "alpha-synthesis-20261001T022500Z",
+        "RUN_STATUS": "RUN_PERSISTED",
+        "completion_semantics": "DURABILITY_RECEIPT_ONLY",
+        "work_status": "BASELINE_PERSISTED",
+        "payload": {
+            "result": "NEW_EVIDENCE",
+            "NET_NEW_DELTA": 4,
+            "NEXT": "Evaluate cost sensitivity",
+            "findings": ["cost model advanced"],
+        },
+        "execution_authorized": False,
+    }
+    final_raw = json.dumps(final, sort_keys=True).encode()
+    blob = git_blob_sha(final_raw)
+    heartbeat = {
+        "RUN_ID": final["RUN_ID"],
+        "RUN_STATUS": "RUN_PERSISTED",
+        "scheduler_id": "sched-alpha",
+        "finalization_commit_sha": "commit-alpha",
+        "finalization_state_blob_sha": blob,
+        "execution_authorized": False,
+    }
+    latest = {
+        "RUN_ID": final["RUN_ID"],
+        "findings": ["bootstrap stable"],
+        "risks": ["cost uncertainty"],
+        "NEXT": "Stress test",
+        "ignored_chatty_field": "x" * 5000,
+    }
+    spec = {
+        "id": "alpha-synthesis",
+        "title": "Alpha Synthesis Evolution",
+        "scheduler_id": "sched-alpha",
+        "schedule": ":25 hourly",
+        "repository": "owner/repo",
+        "root": "automation/alpha",
+    }
+    files = {
+        ("owner/repo", "main", "automation/alpha/finalization_state.json"): final_raw,
+        ("owner/repo", "main", "automation/alpha/heartbeat.json"): json.dumps(heartbeat).encode(),
+        ("owner/repo", "commit-alpha", "automation/alpha/finalization_state.json"): final_raw,
+        ("owner/repo", "main", "automation/alpha/latest.json"): json.dumps(latest).encode(),
+    }
+
+    def fetch(repo, ref, path):
+        if (repo, ref, path) not in files:
+            raise FileNotFoundError(path)
+        return files[(repo, ref, path)]
+
+    row, event = collect_loop_snapshot(spec, fetch_bytes=fetch)
+    assert row["status"] == "RUN_PERSISTED"
+    assert row["run_id"] == final["RUN_ID"]
+    assert row["finalization_state_blob_sha"] == blob
+    assert row["verification"]["commit_blob_matches"] is True
+    assert row["signals"]["finalization"]["payload"]["NET_NEW_DELTA"] == 4
+    assert row["signals"]["latest"]["risks"] == ["cost uncertainty"]
+    assert "ignored_chatty_field" not in row["signals"]["latest"]
+    assert event["severity"] == "success"
+    assert event["ref"] == "commit-alpha"
+
+
+def test_collect_loop_snapshot_fails_closed_on_blob_mismatch():
+    final = {
+        "RUN_ID": "flow-20261001T023500Z",
+        "RUN_STATUS": "RUN_PERSISTED",
+        "payload": {"result": "NO_NEW_EVIDENCE_YET"},
+        "execution_authorized": False,
+    }
+    final_raw = json.dumps(final).encode()
+    heartbeat = {
+        "RUN_ID": final["RUN_ID"],
+        "RUN_STATUS": "RUN_PERSISTED",
+        "scheduler_id": "sched-flow",
+        "finalization_commit_sha": "commit-flow",
+        "finalization_state_blob_sha": "0" * 40,
+        "execution_authorized": False,
+    }
+    spec = {
+        "id": "flow",
+        "title": "Microstructure Sensor Grid",
+        "scheduler_id": "sched-flow",
+        "schedule": ":35 hourly",
+        "repository": "owner/repo",
+        "root": "automation/flow",
+    }
+    files = {
+        ("owner/repo", "main", "automation/flow/finalization_state.json"): final_raw,
+        ("owner/repo", "main", "automation/flow/heartbeat.json"): json.dumps(heartbeat).encode(),
+        ("owner/repo", "commit-flow", "automation/flow/finalization_state.json"): final_raw,
+    }
+
+    def fetch(repo, ref, path):
+        if (repo, ref, path) not in files:
+            raise FileNotFoundError(path)
+        return files[(repo, ref, path)]
+
+    row, event = collect_loop_snapshot(spec, fetch_bytes=fetch)
+    assert row["status"] == "RECEIPT_MISMATCH"
+    assert row["verification"]["current_blob_matches"] is False
+    assert event["severity"] == "error"
+
+
+def test_loop_intelligence_sync_updates_runtime_state_and_deduplicates_events(tmp_path):
+    final = {
+        "RUN_ID": "robustness-guardian-20261001T030500Z",
+        "RUN_STATUS": "RUN_PERSISTED",
+        "payload": {"result": "NO_NEW_EVIDENCE_YET", "NEXT": "Continue"},
+        "execution_authorized": False,
+    }
+    final_raw = json.dumps(final).encode()
+    blob = git_blob_sha(final_raw)
+    heartbeat = {
+        "RUN_ID": final["RUN_ID"],
+        "RUN_STATUS": "RUN_PERSISTED",
+        "scheduler_id": "sched-rg",
+        "finalization_commit_sha": "commit-rg",
+        "finalization_state_blob_sha": blob,
+        "execution_authorized": False,
+    }
+    spec = {
+        "id": "robustness-guardian",
+        "title": "Robustness Guardian Evolution",
+        "scheduler_id": "sched-rg",
+        "schedule": ":05 hourly",
+        "repository": "owner/repo",
+        "root": "automation/rg",
+    }
+    files = {
+        ("owner/repo", "main", "automation/rg/finalization_state.json"): final_raw,
+        ("owner/repo", "main", "automation/rg/heartbeat.json"): json.dumps(heartbeat).encode(),
+        ("owner/repo", "commit-rg", "automation/rg/finalization_state.json"): final_raw,
+    }
+
+    def fetch(repo, ref, path):
+        if (repo, ref, path) not in files:
+            raise FileNotFoundError(path)
+        return files[(repo, ref, path)]
+
+    sync = LoopIntelligenceSync(tmp_path, specs=[spec], fetch_bytes=fetch, interval_seconds=60)
+    first = sync.sync_once()
+    second = sync.sync_once()
+    assert first["loop_sync"]["status"] == "green"
+    assert second["loops"][0]["run_id"] == final["RUN_ID"]
+    ids = [x["id"] for x in second["events"]]
+    assert ids.count("loop:robustness-guardian:" + final["RUN_ID"]) == 1
+    assert second["execution_authorized"] is False
