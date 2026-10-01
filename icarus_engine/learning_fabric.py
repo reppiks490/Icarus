@@ -19,6 +19,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Mapping, Sequence
 
 from .champion_challenger import wilson_interval
+from .code_provenance import local_code_provenance
 from .trainers.integrity import inspect_ohlc
 from .trainers.run import train_file, train_xgb_file
 
@@ -1540,6 +1541,236 @@ class LearningFabric:
                 "error": f"{type(ex).__name__}: {ex}"[:500],
             }
 
+    def _harvest_possibility_calibration(self) -> dict[str, Any]:
+        """Calibrate Psi scenario shares against non-overlapping matured endpoints.
+
+        Raw Psi cluster shares remain labelled uncalibrated inputs. This adapter
+        measures them; it does not rewrite Psi weights, promote production policy,
+        or grant execution authority.
+        """
+        engine = self._native.get("possibility")
+        if engine is None or not hasattr(engine, "snapshot"):
+            return {
+                "status": "unavailable",
+                "forecasts_imported": 0,
+                "outcomes_imported": 0,
+                "overlap_withheld": 0,
+                **_authority(),
+            }
+
+        now_text = _utc_now()
+        now = _parse_time(now_text, "now")
+        now_ts = now.timestamp()
+
+        # Settle matured committed Psi forecasts first, using only a price observed
+        # at or after maturity. Class labels are reconstructed from the immutable
+        # threshold recorded with the forecast.
+        outcomes_imported = 0
+        settlement_errors: dict[str, str] = {}
+        prices: dict[str, float] = {}
+        if self.port is not None:
+            try:
+                status = self.port.status()
+                for row in status.get("assets", []) if isinstance(status, Mapping) else []:
+                    if not isinstance(row, Mapping):
+                        continue
+                    symbol = str(row.get("symbol") or "").strip().upper()
+                    raw = row.get("price")
+                    if symbol and not isinstance(raw, bool) and isinstance(raw, (int, float)) and math.isfinite(float(raw)) and float(raw) > 0:
+                        prices[symbol] = float(raw)
+            except Exception as ex:
+                settlement_errors["portfolio"] = f"{type(ex).__name__}: {ex}"[:500]
+
+        matured = self._conn.execute(
+            """SELECT prediction_id,asset,reference_value,metadata_json
+               FROM predictions
+               WHERE producer='psi-scenario-v1' AND target='class' AND resolves_ts<=?
+               AND prediction_id NOT IN (SELECT prediction_id FROM outcomes)
+               ORDER BY resolves_ts,prediction_id""",
+            (now_ts,),
+        ).fetchall()
+        for row in matured:
+            pid = row["prediction_id"]
+            symbol = str(row["asset"] or "").upper()
+            px = prices.get(symbol)
+            if px is None:
+                settlement_errors[pid] = "observed portfolio price unavailable at maturity"
+                continue
+            try:
+                reference = float(row["reference_value"])
+                meta = json.loads(row["metadata_json"])
+                threshold = float(meta.get("classification_threshold_return"))
+                realized_return = (px / reference) - 1.0
+                actual = "up" if realized_return > threshold else "down" if realized_return < -threshold else "flat"
+                result = self.record_outcome({
+                    "prediction_id": pid,
+                    "observed_at": now_text,
+                    "actual_value": actual,
+                    "evidence": [f"psi-observed-price:{symbol}:{now_text}"],
+                    "metadata": {
+                        "settled_by": "psi_observed_endpoint",
+                        "realized_price": px,
+                        "realized_return": realized_return,
+                        "classification_threshold_return": threshold,
+                        "input_semantics": "UNCALIBRATED_SCENARIO_SHARE",
+                    },
+                })
+                outcomes_imported += int(not result["idempotent"])
+            except Exception as ex:
+                settlement_errors[pid] = f"{type(ex).__name__}: {ex}"[:500]
+
+        provenance = local_code_provenance()
+        if not provenance.get("candidate_revision_eligible") or not provenance.get("commit"):
+            return {
+                "status": "WITHHELD_REVISION",
+                "reason": provenance.get("status") or provenance.get("reason") or "exact clean revision unavailable",
+                "forecasts_imported": 0,
+                "outcomes_imported": outcomes_imported,
+                "overlap_withheld": 0,
+                "settlement_errors": settlement_errors,
+                **_authority(),
+            }
+        source_commit = _git_sha(provenance.get("commit"))
+
+        try:
+            native_status = engine.status() if hasattr(engine, "status") else {}
+        except Exception as ex:
+            return {
+                "status": "degraded",
+                "forecasts_imported": 0,
+                "outcomes_imported": outcomes_imported,
+                "overlap_withheld": 0,
+                "settlement_errors": settlement_errors,
+                "error": f"{type(ex).__name__}: {ex}"[:500],
+                **_authority(),
+            }
+
+        assets_raw = native_status.get("assets") if isinstance(native_status, Mapping) else {}
+        if isinstance(assets_raw, Mapping):
+            assets = [str(x).strip().upper() for x in assets_raw if str(x).strip()]
+        elif isinstance(assets_raw, list):
+            assets = []
+            for row in assets_raw:
+                if isinstance(row, Mapping):
+                    symbol = str(row.get("symbol") or row.get("asset") or "").strip().upper()
+                else:
+                    symbol = str(row or "").strip().upper()
+                if symbol:
+                    assets.append(symbol)
+        else:
+            assets = []
+        assets = sorted(set(assets))
+
+        forecasts_imported = 0
+        overlap_withheld = 0
+        unavailable = 0
+        capture_errors: dict[str, str] = {}
+        for symbol in assets:
+            # Any unsettled committed Psi forecast blocks a new one for that asset,
+            # including matured forecasts that could not yet be settled. This keeps
+            # the calibration sample non-overlapping by construction.
+            pending = self._conn.execute(
+                """SELECT prediction_id FROM predictions
+                   WHERE producer='psi-scenario-v1' AND asset=?
+                   AND prediction_id NOT IN (SELECT prediction_id FROM outcomes)
+                   ORDER BY resolves_ts LIMIT 1""",
+                (symbol,),
+            ).fetchone()
+            if pending is not None:
+                overlap_withheld += 1
+                continue
+
+            try:
+                snap = engine.snapshot(symbol)
+                contract = snap.get("forecast_calibration_contract") if isinstance(snap, Mapping) else None
+                if not isinstance(contract, Mapping) or contract.get("status") != "ELIGIBLE_UNCALIBRATED":
+                    unavailable += 1
+                    continue
+                if contract.get("calibrated") is not False:
+                    raise ValueError("Psi raw scenario contract must remain explicitly uncalibrated")
+                if contract.get("execution_authorized") is not False or contract.get("production_decision_authorized") is not False:
+                    raise ValueError("Psi calibration contract cannot grant execution or production authority")
+
+                emitted_at = _iso(_parse_time(contract.get("emitted_at"), "emitted_at"))
+                horizon = contract.get("horizon_seconds")
+                if isinstance(horizon, bool) or not isinstance(horizon, int) or horizon <= 0:
+                    raise ValueError("Psi calibration horizon_seconds must be positive integer")
+                reference = _finite(contract.get("reference_price"), "reference_price")
+                if reference <= 0:
+                    raise ValueError("Psi reference_price must be positive")
+                threshold = _finite(contract.get("classification_threshold_return"), "classification_threshold_return")
+                if threshold <= 0:
+                    raise ValueError("Psi classification threshold must be positive")
+                raw_shares = contract.get("cluster_shares")
+                if not isinstance(raw_shares, Mapping):
+                    raise ValueError("Psi cluster_shares must be an object")
+                probabilities = {
+                    label.lower(): _probability(raw_shares.get(label), f"cluster_shares.{label}")
+                    for label in ("UP", "FLAT", "DOWN")
+                }
+                total = sum(probabilities.values())
+                if total <= 0:
+                    raise ValueError("Psi cluster_shares require positive mass")
+                probabilities = {k: v / total for k, v in probabilities.items()}
+                dominant = str(contract.get("dominant_cluster") or "").strip().lower()
+                if dominant not in probabilities:
+                    raise ValueError("Psi dominant_cluster is outside cluster shares")
+
+                semantic_contract = {
+                    "asset": symbol,
+                    "emitted_at": emitted_at,
+                    "reference_price": reference,
+                    "horizon_seconds": horizon,
+                    "classification_threshold_return": threshold,
+                    "cluster_shares": probabilities,
+                    "dominant_cluster": dominant,
+                    "chart_minutes": contract.get("chart_minutes"),
+                    "horizon_steps": contract.get("horizon_steps"),
+                }
+                contract_hash = hashlib.sha256(
+                    _json(semantic_contract, "psi calibration contract").encode("utf-8")
+                ).hexdigest()
+                result = self.record_prediction({
+                    "producer": "psi-scenario-v1",
+                    "asset": symbol,
+                    "target": "class",
+                    "prediction": dominant,
+                    "probabilities": probabilities,
+                    "reference_value": reference,
+                    "emitted_at": emitted_at,
+                    "horizon_seconds": horizon,
+                    "regime": str(((snap.get("edge_state") or {}).get("state") or "unknown")).lower(),
+                    "source_commit": source_commit,
+                    "evidence_ids": [f"psi-calibration-contract:{contract_hash}"],
+                    "metadata": {
+                        "native_engine": "possibility",
+                        "input_semantics": "UNCALIBRATED_SCENARIO_SHARE",
+                        "classification_threshold_return": threshold,
+                        "chart_minutes": contract.get("chart_minutes"),
+                        "horizon_steps": contract.get("horizon_steps"),
+                        "raw_cluster_shares": dict(raw_shares),
+                        "scenario_probabilities_calibrated": False,
+                        "contract_hash": contract_hash,
+                    },
+                })
+                forecasts_imported += int(not result["idempotent"])
+            except Exception as ex:
+                capture_errors[symbol] = f"{type(ex).__name__}: {ex}"[:500]
+
+        errors = {**settlement_errors, **capture_errors}
+        return {
+            "status": "ok" if not errors else "partial",
+            "forecasts_imported": forecasts_imported,
+            "outcomes_imported": outcomes_imported,
+            "overlap_withheld": overlap_withheld,
+            "unavailable_contracts": unavailable,
+            "source_commit": source_commit,
+            "settlement_errors": settlement_errors,
+            "capture_errors": capture_errors,
+            "rule": "Psi scenario shares are measured as uncalibrated inputs; empirical scoring never grants production or execution authority.",
+            **_authority(),
+        }
+
     def _harvest_commissioning_metrics(self) -> dict[str, Any]:
         engine = self._native.get("commissioning")
         if engine is None:
@@ -1567,6 +1798,7 @@ class LearningFabric:
 
     def harvest_native(self) -> dict[str, Any]:
         out = {"sibyl": self._harvest_sibyl()}
+        out["possibility"] = self._harvest_possibility_calibration()
         out["performance_proof"] = self._harvest_performance_proof()
         out["source_reliability"] = self._harvest_source_reliability()
         out["commissioning"] = self._harvest_commissioning_metrics()

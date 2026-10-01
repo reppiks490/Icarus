@@ -404,9 +404,12 @@ class PossibilityEngine:
             leaders=leaders,
         )
 
+        generated_at = _utc_now()
+        calibration_contract = self._forecast_calibration_contract(symbol, generated_at, price, futures)
+
         return {
             "schema_version": SCHEMA_VERSION,
-            "generated_at": _utc_now(),
+            "generated_at": generated_at,
             "asset": symbol,
             "price": price,
             "authority": {
@@ -443,6 +446,7 @@ class PossibilityEngine:
             "causal_leadership": leaders,
             "counterfactual": synthetic,
             "possibility": futures,
+            "forecast_calibration_contract": calibration_contract,
             "phase_transition": phase,
             "forced_consensus": consensus,
             "market_shadows": shadows,
@@ -468,6 +472,104 @@ class PossibilityEngine:
                     for key, feature in external.items()
                 },
             },
+        }
+
+    def _forecast_calibration_contract(
+        self,
+        symbol: str,
+        generated_at: str,
+        price: float,
+        futures: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        """Expose a falsifiable, explicitly uncalibrated future-space forecast contract.
+
+        This contract does not change Psi's edge state or grant authority. It only
+        makes the already-produced six-step scenario lattice measurable against a
+        later observed endpoint.
+        """
+        base = {
+            "schema_version": "icarus-psi-calibration-contract-v1",
+            "asset": symbol,
+            "emitted_at": generated_at,
+            "reference_price": price,
+            "calibrated": False,
+            "execution_authorized": False,
+            "production_decision_authorized": False,
+        }
+        chart_minutes = int(self._history_chart_minutes.get(symbol, 0) or 0)
+        horizon_steps = int(_finite(futures.get("horizon_steps")) or 0)
+        step_sigma = _finite(futures.get("step_sigma"))
+        clusters = futures.get("clusters") if isinstance(futures.get("clusters"), list) else []
+        shares: dict[str, float] = {}
+        for row in clusters:
+            if not isinstance(row, Mapping):
+                continue
+            name = str(row.get("name") or "").upper()
+            share = _finite(row.get("share"))
+            if name in {"UP", "FLAT", "DOWN"} and share is not None and share >= 0.0:
+                shares[name] = float(share)
+        if futures.get("status") != "observed":
+            return {
+                **base,
+                "status": "UNAVAILABLE",
+                "reason": "future-space scenario lattice is not yet observed",
+                "chart_minutes": chart_minutes or None,
+                "horizon_steps": horizon_steps or None,
+                "horizon_seconds": None,
+                "classification_threshold_return": None,
+                "cluster_shares": {},
+                "dominant_cluster": None,
+            }
+        if chart_minutes <= 0:
+            return {
+                **base,
+                "status": "UNAVAILABLE",
+                "reason": "exact chart cadence is unavailable; maturity cannot be bound causally",
+                "chart_minutes": None,
+                "horizon_steps": horizon_steps or None,
+                "horizon_seconds": None,
+                "classification_threshold_return": None,
+                "cluster_shares": shares,
+                "dominant_cluster": futures.get("dominant_cluster"),
+            }
+        if horizon_steps <= 0 or step_sigma is None or step_sigma <= 0 or price <= 0:
+            return {
+                **base,
+                "status": "UNAVAILABLE",
+                "reason": "future-space horizon or classification scale is unavailable",
+                "chart_minutes": chart_minutes,
+                "horizon_steps": horizon_steps or None,
+                "horizon_seconds": None,
+                "classification_threshold_return": None,
+                "cluster_shares": shares,
+                "dominant_cluster": futures.get("dominant_cluster"),
+            }
+        if set(shares) != {"UP", "FLAT", "DOWN"} or sum(shares.values()) <= 0:
+            return {
+                **base,
+                "status": "UNAVAILABLE",
+                "reason": "complete UP/FLAT/DOWN scenario shares are unavailable",
+                "chart_minutes": chart_minutes,
+                "horizon_steps": horizon_steps,
+                "horizon_seconds": chart_minutes * 60 * horizon_steps,
+                "classification_threshold_return": None,
+                "cluster_shares": shares,
+                "dominant_cluster": futures.get("dominant_cluster"),
+            }
+        total = sum(shares.values())
+        normalized = {name: shares[name] / total for name in ("UP", "FLAT", "DOWN")}
+        threshold_return = (step_sigma * 0.65) / price
+        return {
+            **base,
+            "status": "ELIGIBLE_UNCALIBRATED",
+            "reason": "raw scenario shares are committed for empirical calibration; they are not calibrated probabilities",
+            "chart_minutes": chart_minutes,
+            "horizon_steps": horizon_steps,
+            "horizon_seconds": chart_minutes * 60 * horizon_steps,
+            "classification_threshold_return": threshold_return,
+            "cluster_shares": normalized,
+            "dominant_cluster": str(futures.get("dominant_cluster") or "").upper() or None,
+            "input_semantics": "UNCALIBRATED_SCENARIO_SHARE",
         }
 
     def parallax_vote(self, asset: str | None) -> dict[str, Any]:

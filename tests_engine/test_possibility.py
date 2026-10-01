@@ -1470,3 +1470,38 @@ def test_edge_gate_allows_only_aligned_cross_layer_bias():
     assert edge["state"] == "LONG_BIAS"
     assert edge["blockers"] == []
     assert edge["confidence"] > 0
+
+
+def test_psi_exposes_uncalibrated_six_bar_forecast_contract():
+    engine = PossibilityEngine(Port(), scenarios=192)
+    _seed(engine)
+    engine._history_chart_minutes["NQ"] = 20
+    out = engine.snapshot("NQ")
+
+    contract = out["forecast_calibration_contract"]
+    assert contract["status"] == "ELIGIBLE_UNCALIBRATED"
+    assert contract["asset"] == "NQ"
+    assert contract["reference_price"] == pytest.approx(out["price"])
+    assert contract["chart_minutes"] == 20
+    assert contract["horizon_steps"] == 6
+    assert contract["horizon_seconds"] == 20 * 60 * 6
+    assert contract["emitted_at"] == out["generated_at"]
+    assert contract["classification_threshold_return"] > 0
+    assert set(contract["cluster_shares"]) == {"UP", "FLAT", "DOWN"}
+    assert sum(contract["cluster_shares"].values()) == pytest.approx(1.0)
+    assert contract["dominant_cluster"] == out["possibility"]["dominant_cluster"]
+    assert contract["calibrated"] is False
+    assert contract["execution_authorized"] is False
+    assert contract["production_decision_authorized"] is False
+    assert out["truth_contract"]["scenario_probabilities_calibrated"] is False
+
+
+def test_psi_forecast_contract_withholds_unknown_chart_cadence():
+    engine = PossibilityEngine(Port(), scenarios=192)
+    _seed(engine)
+    out = engine.snapshot("NQ")
+    contract = out["forecast_calibration_contract"]
+    assert contract["status"] == "UNAVAILABLE"
+    assert contract["horizon_seconds"] is None
+    assert "cadence" in contract["reason"].lower()
+    assert contract["calibrated"] is False
