@@ -136,6 +136,7 @@ def test_dashboard_surfaces_repository_native_mcp_evolution_panel():
     assert "Chart cadence" in ui
     assert "Gap returns skipped" in ui
     assert "Leader alignment" in ui
+    assert "POST-BAR CAUSAL WINDOW" in ui
     assert '/api/possibility/evidence' in server
     assert 'p.path == "/api/evolution"' in server
     assert "EvolutionRemoteSync" in server
