@@ -170,3 +170,110 @@ AETHER first-pass claims must carry explicit bounded confidence and at least one
 evidence reference. Roles marked as falsifier-required must also state the
 condition that would falsify their thesis. Missing claim-quality fields fail
 closed instead of becoming zero-confidence or evidence-free pseudo-claims.
+
+## Completed faculty depth
+
+The PANTHEON faculties remain independent rather than being averaged into one
+confidence score.
+
+- **NEMESIS Ω**: minimum failure distance, sensitivity vectors, measured/derived
+  edge half-life, subsystem-ablation survival, and a ranked DREAMSTATE
+  falsification curriculum.
+- **GÖDEL Ω**: identifiability, ambiguity, effective-world count, resolution
+  gap, epistemic blindspots, and ranked discriminating observations.
+- **SOCRATES**: ranked research questions plus matching falsifiable
+  hypothesis/falsifier pairs.
+- **ANANKĒ**: structural transition cost, directional reachability, constraint
+  pressure, reachable-space collapse, causal event horizons, and optional
+  cross-world reachability intersection.
+- **EX NIHILO**: ontology surprise, representation-failure hypotheses,
+  falsification questions, and retirement through observed ecology fitness.
+- **MINT Ω**: explicit/stressed costs, risk capital, duration, capacity,
+  crowding, optional half-life, profit density, profit surface, profit chains,
+  and alpha metabolism.
+- **NULLSPACE Ω**: causal debt, response elasticity, repayment pressure, debt
+  change/migration, absorption/diversion/delay, cliffs, and insolvency
+  candidates.
+- **ARCHON Ω**: temporary revocable research-attention leases, contradiction,
+  and attention concentration; no forced consensus.
+- **AETHER Ω**: mandatory independent blind-first-pass roles plus durable claim
+  lineage, observed fitness, speciation/extinction, and bounded research
+  ecology.
+
+## SIBYL Ω evidence bridge
+
+PANTHEON does not turn every faculty into a SIBYL vote. Only structurally
+directional ANANKĒ evidence may become a SIBYL evidence candidate, and its
+confidence is reduced by GÖDEL ambiguity, NEMESIS survival, and observed data
+quality.
+
+The export lives at:
+
+`observation.analysis.exports.sibyl_evidence`
+
+Ambiguous states export zero directional evidence. MINT, SOCRATES, AETHER and
+other non-directional faculties cannot inflate SIBYL consensus merely by being
+present. The exported evidence preserves exact observation time and source
+commit and remains research/shadow-only.
+
+## Durable AETHER ecology
+
+AETHER separates disposable workers from durable evolutionary state. The
+PANTHEON ledger stores immutable observations, blind-first-pass agent claims,
+durable research claims, observed claim outcomes, species lineage, and
+asset/horizon sentinel cells.
+
+EX NIHILO ontology claims and MINT monetization claims seed research species.
+Species start at zero fitness. Only observed claim outcomes update fitness:
+
+- fewer than two outcomes: `hypothesis`;
+- at least two without decisive fitness: `contested`;
+- at least three with fitness >= 0.20: `surviving_shadow`;
+- at least three with fitness <= -0.20: `retired`.
+
+A surviving species with fitness >= 0.50 may produce one bounded descendant up
+to generation three. Every offspring receives its own durable mutation claim
+identity and begins at zero fitness, so it must earn evidence independently.
+There is no inherited production authority.
+
+Repeated negative observed fitness produces **economic extinction**. The
+research ecology may derive:
+
+- same-kind **predation** when observed fitness separates materially;
+- cross-kind **symbiosis** when independent species both show positive shadow
+  fitness;
+- historical **parasitic drag** from retired negative-fitness species that
+  competed for the same asset attention;
+- an **alpha food web** ranking surviving species by observed fitness and
+  evidence mass;
+- **cognitive-genesis candidates** when an ontology species survives at least
+  three observed outcomes.
+
+Cognitive genesis only recommends a bounded independent engine-design study.
+It never creates, promotes, or activates production code automatically.
+
+### Outcome ingestion
+
+No additional live-control endpoint is required. The existing authenticated
+
+`POST /admin/pantheon/observe`
+
+accepts an optional bounded `claim_outcomes` list. An outcome names a prior
+claim, observation time, bounded utility, confidence, and evidence. Outcomes
+cannot predate their originating claim and are immutable for a given
+`claim_id + observed_at`. Idempotent retries are safe.
+
+## Causal chronology
+
+- Observation timestamps require an explicit timezone, canonicalize to UTC, and
+  reject future-dated evidence beyond transport tolerance.
+- Sentinel cells retain the newest **observed** state even when older evidence
+  arrives later.
+- Late ingestion still increases audit coverage but cannot roll the live
+  sentinel state backward.
+- Ambient ORACLE Ψ/PARALLAX/DREAMSTATE snapshots remain outside immutable
+  observation identity, preserving the parent branch's retry semantics.
+- Adaptive Brain registers PANTHEON and each faculty as first-class research
+  subsystems while preserving ICARUS Ψ, ORACLE, PARALLAX, DREAMSTATE,
+  DAEDALUS/AEGIS and execution ownership.
+
