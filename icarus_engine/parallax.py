@@ -732,6 +732,19 @@ class ParallaxStore:
         )
         return hypotheses
 
+    def hypotheses(
+        self,
+        min_samples: int = 5,
+        max_fdr: float = 0.10,
+        min_effect: float = 0.0,
+    ) -> list[dict[str, Any]]:
+        """Return all observed hypothesis screens, including blocked hypotheses."""
+        return self._screened_hypotheses(
+            min_samples=min_samples,
+            max_fdr=max_fdr,
+            min_effect=min_effect,
+        )
+
     def mutation_signals(
         self,
         min_samples: int = 5,
@@ -753,8 +766,9 @@ class ParallaxStore:
         min_samples: int = 5,
         max_fdr: float = 0.10,
         min_effect: float = 0.0,
+        hypothesis_limit: int = 200,
     ) -> dict[str, Any]:
-        hypotheses = self._screened_hypotheses(
+        hypotheses = self.hypotheses(
             min_samples=min_samples,
             max_fdr=max_fdr,
             min_effect=min_effect,
@@ -771,7 +785,8 @@ class ParallaxStore:
             "min_samples": max(2, min(10000, int(min_samples))),
             "max_fdr": max(1e-6, min(1.0, float(max_fdr))),
             "min_effect": float(min_effect),
-            "hypotheses": hypotheses,
+            "hypotheses": hypotheses[: max(1, min(2000, int(hypothesis_limit)))],
+            "hypotheses_truncated": len(hypotheses) > max(1, min(2000, int(hypothesis_limit))),
             "method": {
                 "paired_delta": True,
                 "approximate_one_sided_normal_p": True,
@@ -907,7 +922,7 @@ class ParallaxStore:
             },
             "regret": self._regret_summary(decisions),
             "paired_ablation_attribution": self._ablation_attribution(),
-            "mutation_signals": [item for item in screening["hypotheses"] if item["candidate_eligible"]],
+            "mutation_signals": self.mutation_signals(),
             "screening": screening,
             "decisions": decisions,
             "authority": {
