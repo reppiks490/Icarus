@@ -306,18 +306,17 @@ class ParallaxStore:
         grouped: dict[tuple[str, str, str], list[float]] = {}
         commits: dict[tuple[str, str, str], str] = {}
         for row in self._paired_rows():
-            key = (row["asset"], row["regime"], row["label"])
+            key = (row["asset"], row["regime"], row["kind"], row["label"])
             grouped.setdefault(key, []).append(float(row["branch_utility"]) - float(row["actual_utility"]))
             commits[key] = row["source_commit"]
         signals = []
-        for (asset, regime, label), values in grouped.items():
+        for (asset, regime, kind, label), values in grouped.items():
             stats = self._stats(values)
             if stats["n"] < min_samples or stats["ci95_low"] is None or stats["ci95_low"] <= 0:
                 continue
-            kind = label.split("_", 1)[0]
             signals.append({
                 "asset": asset, "regime": regime, "branch_label": label, "kind": kind,
-                "source_commit": commits[(asset, regime, label)], **stats,
+                "source_commit": commits[(asset, regime, kind, label)], **stats,
             })
         return sorted(signals, key=lambda x: (x["ci95_low"], x["mean_delta"]), reverse=True)
 
