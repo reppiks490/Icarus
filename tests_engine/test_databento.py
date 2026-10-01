@@ -581,6 +581,39 @@ def test_depth_readiness_is_independent_per_symbol_and_schema():
     assert feed._depth_ready[("NQ=F", "mbp-10")].is_set() is True
 
 
+def test_depth_reconnect_gap_replays_only_affected_schema_from_boundary():
+    first = FakeLive({"mbp-10": [Depth(1_000, 100.0, levels=[Level(99.75, 100.0)])]})
+    second = FakeLive({"mbp-10": [Depth(1_001, 101.0, levels=[Level(100.75, 101.0)])]})
+    feed = make_feed(lives=[first, second])
+    assert feed.depth_events("NQ=F", schema="mbp-10")
+    assert callable(first.reconnect_callback)
+
+    first.reconnect_callback("2026-09-30T10:00:00Z", "2026-09-30T10:00:03Z")
+    meta = feed.meta("NQ=F")
+    assert meta["depth_schema_health"]["mbp-10"] is False
+    assert meta["depth_error_codes"]["mbp-10"] == 7
+
+    rows = feed.depth_events("NQ=F", schema="mbp-10")
+    assert first.stopped is True
+    assert second.started is True
+    assert rows[-1]["price"] == 101.0
+    assert {row.get("start") for row in second.subscriptions} == {"2026-09-30T09:59:59Z"}
+    assert feed.meta("NQ=F")["depth_schema_health"]["mbp-10"] is True
+
+
+def test_depth_replay_aged_out_stays_latched_without_session_churn():
+    first = FakeLive()
+    unused = FakeLive()
+    feed = make_feed(lives=[first, unused])
+    feed._prepare_depth_live(["NQ=F"], "mbo")
+    feed._dispatch_depth_live("mbo", Error("MBO replay aged out", code=8))
+
+    with pytest.raises(RuntimeError, match="code=8"):
+        feed.depth_events("NQ=F", schema="mbo")
+    assert unused.started is False
+    assert feed.meta("NQ=F")["depth_error_codes"]["mbo"] == 8
+
+
 def test_mbo_subscription_failure_does_not_poison_mbp10_or_churn_mbo_session():
     core = FakeLive()
     mbp_book = FakeLive({"mbp-10": [Depth(1_000, 100.5, levels=[Level(100.25, 100.5)])]})
