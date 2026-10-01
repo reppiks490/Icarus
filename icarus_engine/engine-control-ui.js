@@ -19,6 +19,7 @@ function engineControlHtml(){
     '<div class="toolbar" id="ecSurfaces">'+
       '<button data-ec-view="inputs">Inputs / chart config</button>'+
       '<button data-ec-view="research">Research</button>'+
+      '<button data-ec-view="autopilot">Tactical Autopilot</button>'+
       '<button data-ec-view="brain">Adaptive Brain</button>'+
       '<button data-ec-view="evolution">MCP Evolution</button>'+
       '<button data-ec-view="parallax">PARALLAX / DREAMSTATE</button>'+
