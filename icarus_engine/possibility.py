@@ -273,6 +273,7 @@ class PossibilityEngine:
         vol = max(_stdev(returns[-80:]), 1e-7)
         elasticity = self._elasticity(history, micro)
         hidden = self._hidden_state(latent, elasticity, micro, leaders)
+        information_wave = self._information_wave(history, vol, latent, coverage, micro, leaders)
         synthetic = self._synthetic_price(price, vol, latent, features, leaders)
         futures = self._future_space(symbol, price, vol, latent, coverage, features, target)
         phase = self._phase_boundary(price, vol, latent, futures, features)
@@ -306,7 +307,7 @@ class PossibilityEngine:
                 "consensus_requires_distinct_evidence_domains": True,
                 "rule": "Model diagnostics only. Missing evidence stays unavailable and NO_EDGE is mandatory when gates fail.",
             },
-            "oracle": {
+            "latent_pressure_engine": {
                 "latent_pressure": latent,
                 "latent_pressure_score": None if latent is None else round(latent * 100.0, 2),
                 "evidence_coverage": round(coverage, 4),
@@ -314,6 +315,7 @@ class PossibilityEngine:
                 "pressure_price_elasticity": elasticity,
                 "hidden_state": hidden,
             },
+            "information_wave": information_wave,
             "causal_leadership": leaders,
             "counterfactual": synthetic,
             "possibility": futures,
@@ -355,7 +357,7 @@ class PossibilityEngine:
                 "production_decision_authorized": False,
             }
         edge = state.get("edge_state") if isinstance(state.get("edge_state"), Mapping) else {}
-        oracle = state.get("oracle") if isinstance(state.get("oracle"), Mapping) else {}
+        latent_state = state.get("latent_pressure_engine") if isinstance(state.get("latent_pressure_engine"), Mapping) else {}
         possibility = state.get("possibility") if isinstance(state.get("possibility"), Mapping) else {}
         return {
             "subsystem": "psi",
@@ -364,8 +366,8 @@ class PossibilityEngine:
             "generated_at": state.get("generated_at"),
             "state": edge.get("state", "NO_EDGE"),
             "confidence": _finite(edge.get("confidence")) or 0.0,
-            "latent_pressure": _finite(oracle.get("latent_pressure")),
-            "evidence_coverage": _finite(oracle.get("evidence_coverage")) or 0.0,
+            "latent_pressure": _finite(latent_state.get("latent_pressure")),
+            "evidence_coverage": _finite(latent_state.get("evidence_coverage")) or 0.0,
             "future_space_collapse": _finite(possibility.get("future_space_collapse")),
             "dominant_cluster": possibility.get("dominant_cluster"),
             "blockers": list(edge.get("blockers") or [])[:16],
@@ -674,6 +676,68 @@ class PossibilityEngine:
             "primary": hypotheses[0]["state"] if hypotheses else "UNRESOLVED",
             "hypotheses": hypotheses[:5],
             "rule": "Inverse inference ranks explanations; it does not claim unobserved participant identity as fact.",
+        }
+
+    def _information_wave(
+        self,
+        history: Sequence[Mapping[str, float]],
+        vol: float,
+        latent: float | None,
+        coverage: float,
+        micro: Mapping[str, Any],
+        leaders: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        """Detect unexplained information arrival before its source is identified.
+
+        This is a novelty/residual detector, not a claim that a hidden actor or news
+        event exists. It asks whether current price change is unusually large after
+        conditioning on the pressure state that Ψ can presently observe.
+        """
+        returns = [float(row["ret"]) for row in history if _finite(row.get("ret")) is not None]
+        if len(returns) < 12:
+            return {
+                "status": "WARMING",
+                "score": None,
+                "direction": None,
+                "source_identified": False,
+                "detail": "requires at least 12 observed return transitions",
+            }
+        baseline = returns[-61:-1] if len(returns) > 12 else returns[:-1]
+        latest = returns[-1]
+        mu = _mean(baseline)
+        sigma = max(_stdev(baseline), vol, 1e-9)
+        leader_pressure = _finite(leaders.get("pressure")) or 0.0
+        observed_pressure = _finite(latent) or 0.0
+        expected = sigma * 1.75 * _clamp(
+            observed_pressure * (0.35 + 0.45 * coverage) + 0.25 * leader_pressure
+        )
+        residual = latest - expected
+        residual_z = abs(residual - mu) / sigma
+
+        repricing = micro.get("repricing_pressure")
+        volume = micro.get("volume_pressure")
+        conflict = 0.0
+        domains = 1
+        if isinstance(repricing, Feature) and isinstance(volume, Feature):
+            if repricing.available and volume.available and repricing.value is not None and volume.value is not None:
+                conflict = abs(repricing.value - volume.value)
+                domains += 1
+
+        novelty = 0.78 * residual_z + 0.22 * min(3.0, conflict * 2.0)
+        score = 100.0 * (1.0 - math.exp(-max(0.0, novelty) / 2.2))
+        status = "EVENT" if score >= 75.0 else "WATCH" if score >= 50.0 else "QUIET"
+        direction = "UP" if residual > 0 else "DOWN" if residual < 0 else None
+        return {
+            "status": status,
+            "score": min(100.0, score),
+            "direction": direction,
+            "source_identified": False,
+            "return_surprise_z": residual_z,
+            "microstructure_conflict": conflict,
+            "observed_domains": domains,
+            "expected_return_component": expected,
+            "residual_return": residual,
+            "detail": "Source-agnostic residual novelty; investigate provenance before assigning a cause.",
         }
 
     def _synthetic_price(
