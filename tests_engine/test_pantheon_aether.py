@@ -552,7 +552,7 @@ def test_aether_ecology_requires_observed_fitness_for_speciation_and_genesis(tmp
         result = kernel.record_observation(
             _feedback_payload(
                 f"pan-positive-{i}",
-                f"2026-10-01T06:00:0{i}Z",
+                f"2026-10-01T06:00:{19 + i:02d}Z",
                 ontology_claim["claim_id"],
                 0.80,
             )
@@ -621,6 +621,14 @@ def test_claim_outcome_is_causal_and_immutable_per_claim_time(tmp_path):
             "utility": 0.5,
             "confidence": 1.0,
             "evidence": ["invalid-retroactive-outcome"],
+        })
+    with pytest.raises(ValueError, match="claim maturity"):
+        kernel.record_claim_outcome({
+            "claim_id": claim["claim_id"],
+            "observed_at": "2026-10-01T06:00:05Z",
+            "utility": 0.5,
+            "confidence": 1.0,
+            "evidence": ["invalid-before-horizon-maturity"],
         })
 
     payload = {

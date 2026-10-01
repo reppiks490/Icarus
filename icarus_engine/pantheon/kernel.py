@@ -6,7 +6,7 @@ import math
 import os
 import sqlite3
 import threading
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -503,7 +503,7 @@ class PantheonKernel:
 
         with _LOCK, self._connect() as con:
             claim = con.execute(
-                """SELECT c.*,o.observed_at AS claim_observed_at
+                """SELECT c.*,o.observed_at AS claim_observed_at,o.horizon_ms AS claim_horizon_ms
                    FROM claims c JOIN observations o ON o.observation_id=c.observation_id
                    WHERE c.claim_id=?""",
                 (claim_id,),
@@ -514,6 +514,9 @@ class PantheonKernel:
             outcome_time = datetime.fromisoformat(observed_at.replace("Z", "+00:00"))
             if outcome_time < claim_time:
                 raise ValueError("claim outcome cannot precede the originating observation")
+            maturity_time = claim_time + timedelta(milliseconds=int(claim["claim_horizon_ms"]))
+            if outcome_time < maturity_time:
+                raise ValueError("claim outcome cannot precede claim maturity")
             prior_time = con.execute(
                 "SELECT * FROM claim_outcomes WHERE claim_id=? AND observed_at=?",
                 (claim_id, observed_at),

@@ -290,3 +290,13 @@ NEMESIS rejects negative edge-decay rates and half-lives, MINT rejects
 sub-unit cost-stress multipliers and negative half-lives, and ARCHON rejects
 fractional or out-of-range lease TTLs. These checks keep malformed upstream
 research metadata from being normalized into plausible-looking evidence.
+
+
+## Claim-maturity chronology
+
+Observed research outcomes cannot score a claim before its originating
+observation's horizon has matured. PANTHEON now binds each durable claim outcome
+to the source observation time plus horizon_ms and rejects same-instant or
+premature feedback. This prevents deterministic claim IDs or same-request
+feedback from manufacturing apparent research fitness before the claim had any
+causal opportunity to be tested.
