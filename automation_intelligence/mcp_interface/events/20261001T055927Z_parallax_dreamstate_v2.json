@@ -1,0 +1,40 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "parallax-dreamstate-v2-mainline-20261001T055927Z",
+  "category": "EVOLUTION",
+  "severity": "success",
+  "status": "active",
+  "subsystems": [
+    "parallax",
+    "dreamstate",
+    "aion",
+    "athena",
+    "provenance",
+    "ml"
+  ],
+  "recorded_at": "2026-10-01T05:59:27Z",
+  "title": "PARALLAX and DREAMSTATE V2 evidence science upgrade",
+  "summary": "PARALLAX V2 now binds action/regime/comparison contracts into immutable decision identity, preserves causal-time and immutable branch-plan protections, requires evidence-complete paired paths, isolates source revisions/contracts/branch parameters, adds context strata, richer target/compound twins, non-pooled regret, and Benjamini-Hochberg FDR screening. DREAMSTATE V2 consumes only candidate-ready PARALLAX signals, isolates families by revision/contract, adds target and compound hypotheses, policy contracts, family search accounting, source-decay retirement, and stronger gate preconditions. All authority remains research/shadow only.",
+  "source_repository": "reppiks490/Icarus",
+  "source_ref": "chatgpt/parallax-dreamstate-v2-mainline-20261001",
+  "source_commit": "92ffbba0269866eb002a60a5a26b6b9d3e73a605",
+  "evidence": [
+    "icarus_engine/parallax.py",
+    "icarus_engine/dreamstate.py",
+    "icarus_engine/parallax-ui.js",
+    "tests_engine/test_parallax_dreamstate.py",
+    "docs/icarus/PARALLAX_DREAMSTATE.md",
+    "PR #87 causal-time and immutable branch-plan protections preserved",
+    "comparison-contract identity and backward-compatible SQLite migration",
+    "paired evidence completeness and branch-parameter isolation",
+    "Benjamini-Hochberg FDR screen within exact evidence families",
+    "regret and ablation isolation by comparable evidence scope",
+    "DREAMSTATE revision/contract-isolated candidate families",
+    "one active candidate per family and 12-trial budget",
+    "source-signal decay retirement",
+    "execution_authorized=false",
+    "production_decision_authorized=false"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}
