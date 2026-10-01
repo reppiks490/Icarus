@@ -186,7 +186,9 @@ class PossibilityEngine:
         self.scenarios = max(96, min(4096, int(scenarios)))
         self.micro_cache_seconds = max(0.25, float(micro_cache_seconds))
         self._lock = threading.RLock()
-        self._history: dict[str, Deque[dict[str, float]]] = defaultdict(lambda: deque(maxlen=self.history))
+        self._history: dict[str, Deque[dict[str, Any]]] = defaultdict(lambda: deque(maxlen=self.history))
+        self._history_source: dict[str, str] = {}
+        self._history_chart_minutes: dict[str, int] = {}
         self._external: dict[str, dict[str, dict[str, Any]]] = defaultdict(dict)
         self._micro_cache: dict[str, tuple[float, dict[str, Any]]] = {}
         self._evidence_ledger = PsiEvidenceLedger(getattr(port, "base_dir", None))
@@ -306,6 +308,7 @@ class PossibilityEngine:
         rows = [x for x in (market.get("assets") or []) if isinstance(x, Mapping)]
         if not rows:
             return self._empty("no running assets")
+        self._sync_history_from_runners()
         self._record_market(rows)
 
         requested = str(asset or "").strip().upper()
@@ -382,6 +385,12 @@ class PossibilityEngine:
             "edge_state": edge,
             "data_health": {
                 "market_history_observations": len(history),
+                "history": {
+                    "source": self._history_source.get(symbol, "unavailable"),
+                    "chart_minutes": self._history_chart_minutes.get(symbol),
+                    "poll_independent": self._history_source.get(symbol) == "runner_bar",
+                    "timestamp_aligned_leaders": leaders.get("alignment_mode") == "exact_bar_timestamp",
+                },
                 "microstructure": micro.get("health", {}),
                 "evidence_ledger": self._evidence_ledger.health(symbol),
                 "external_features": {
@@ -436,19 +445,101 @@ class PossibilityEngine:
 
     # ---------- evidence capture ----------
 
+    def _sync_history_from_runners(self) -> dict[str, dict[str, Any]]:
+        """Warm Ψ history from the engine's own replayed chart bars.
+
+        This makes leader state independent of UI/API polling frequency. A runner's
+        bar clock is authoritative only for that runner; cross-asset leadership later
+        requires an equal chart cadence and exact timestamp alignment.
+        """
+        synced: dict[str, dict[str, Any]] = {}
+        runners = getattr(self.port, "runners", {})
+        if not isinstance(runners, Mapping):
+            return synced
+
+        for raw_symbol, runner in list(runners.items()):
+            symbol = str(raw_symbol or "").upper()
+            if not symbol:
+                continue
+            chart_minutes = int(_finite(getattr(runner, "chart_minutes", None)) or 0)
+            if chart_minutes <= 0:
+                continue
+            try:
+                lock = getattr(runner, "lock", None)
+                if lock is not None:
+                    with lock:
+                        bars = list(getattr(runner, "bars", ()) or ())
+                else:
+                    bars = list(getattr(runner, "bars", ()) or ())
+            except Exception:
+                continue
+            if len(bars) < 2:
+                continue
+
+            points: dict[int, float] = {}
+            for bar in bars:
+                ts = _finite(getattr(bar, "ts", None) if not isinstance(bar, Mapping) else bar.get("ts"))
+                close = _finite(getattr(bar, "c", None) if not isinstance(bar, Mapping) else bar.get("c"))
+                if ts is None or close is None or close <= 0:
+                    continue
+                points[int(ts)] = float(close)
+            ordered = sorted(points.items())
+            if len(ordered) < 2:
+                continue
+            ordered = ordered[-(self.history + 1):]
+
+            q: Deque[dict[str, Any]] = deque(maxlen=self.history)
+            prev_ts, prev_price = ordered[0]
+            for ts, price in ordered[1:]:
+                if ts <= prev_ts or prev_price <= 0:
+                    prev_ts, prev_price = ts, price
+                    continue
+                q.append({
+                    "ts": float(ts),
+                    "price": price,
+                    "ret": math.log(price / prev_price),
+                    "pulse": 0.0,
+                    "regime": 0.0,
+                    "source": "runner_bar",
+                    "chart_minutes": chart_minutes,
+                })
+                prev_ts, prev_price = ts, price
+
+            if not q:
+                continue
+            with self._lock:
+                self._history[symbol] = q
+                self._history_source[symbol] = "runner_bar"
+                self._history_chart_minutes[symbol] = chart_minutes
+            synced[symbol] = {
+                "source": "runner_bar",
+                "chart_minutes": chart_minutes,
+                "observations": len(q),
+                "first_ts": q[0]["ts"],
+                "last_ts": q[-1]["ts"],
+            }
+        return synced
+
     def _record_market(self, rows: Sequence[Mapping[str, Any]]) -> None:
+        """Fallback market history when a runner has no replayed bars.
+
+        Runner-bar history always wins. This path exists for tests/minimal adapters
+        that expose status but no chart-bar tape.
+        """
         now = time.time()
         with self._lock:
             for row in rows:
                 symbol = str(row.get("symbol") or "").upper()
+                if self._history_source.get(symbol) == "runner_bar":
+                    continue
                 price = _finite(row.get("price"))
                 if not symbol or price is None or price <= 0:
                     continue
                 q = self._history[symbol]
                 prev = q[-1] if q else None
-                if prev and now - prev["ts"] < 0.20:
+                if prev and now - float(prev["ts"]) < 0.20:
                     continue
-                ret = 0.0 if not prev or prev["price"] <= 0 else math.log(price / prev["price"])
+                ret = 0.0 if not prev or float(prev["price"]) <= 0 else math.log(price / float(prev["price"]))
                 st = row.get("state") if isinstance(row.get("state"), Mapping) else {}
                 pulse_l = _finite(st.get("pulse_l")) or 0.0
                 pulse_s = _finite(st.get("pulse_s")) or 0.0
@@ -459,7 +550,9 @@ class PossibilityEngine:
                     "ret": ret,
                     "pulse": _clamp(pulse_l - pulse_s),
                     "regime": _clamp(regime, 0.0, 1.0),
+                    "source": "status_poll",
                 })
+                self._history_source[symbol] = "status_poll"
 
     def _external_features(self, symbol: str) -> dict[str, Feature]:
         now = time.time()
@@ -585,50 +678,145 @@ class PossibilityEngine:
 
     def _dynamic_leaders(self, symbol: str) -> dict[str, Any]:
         target = list(self._history.get(symbol, ()))
-        t_returns = [x["ret"] for x in target]
+        t_returns = [float(x["ret"]) for x in target if _finite(x.get("ret")) is not None]
         if len(t_returns) < 8:
-            return {"status": "warming", "leaders": [], "sample_count": len(t_returns)}
+            return {
+                "status": "warming",
+                "leaders": [],
+                "sample_count": len(t_returns),
+                "alignment_mode": "insufficient_history",
+            }
+
+        target_source = self._history_source.get(symbol, "status_poll")
+        target_minutes = self._history_chart_minutes.get(symbol)
         vol = max(_stdev(t_returns[-80:]), 1e-7)
-        rows = []
+        rows: list[dict[str, Any]] = []
+        rejected: list[dict[str, Any]] = []
+
         with self._lock:
-            peers = list(self._history.items())
-        for peer, hist in peers:
-            if peer == symbol:
-                continue
-            p = list(hist)
-            n = min(len(target), len(p), 120)
-            if n < 8:
-                continue
-            tr = [x["ret"] for x in target[-n:]]
-            pr = [x["ret"] for x in p[-n:]]
-            lead_corr = _corr(pr[:-1], tr[1:])
-            contemporaneous = _corr(pr, tr)
-            if lead_corr is None:
-                continue
-            latest_peer = pr[-1]
-            directional = _clamp(lead_corr * latest_peer / max(vol * 2.0, 1e-7))
-            rows.append({
-                "asset": peer,
-                "lag1_correlation": lead_corr,
-                "contemporaneous_correlation": contemporaneous,
-                "directional_pressure": directional,
-                "lead_strength": abs(lead_corr) * min(1.0, n / 40.0),
-                "samples": n - 1,
-            })
+            peers = [(name, list(hist)) for name, hist in self._history.items()]
+
+        if target_source == "runner_bar" and target_minutes:
+            target_map = {
+                int(float(row["ts"])): float(row["ret"])
+                for row in target
+                if row.get("source") == "runner_bar" and _finite(row.get("ts")) is not None and _finite(row.get("ret")) is not None
+            }
+            target_times = sorted(target_map)
+            step_seconds = int(target_minutes) * 60
+
+            for peer, hist in peers:
+                if peer == symbol:
+                    continue
+                peer_source = self._history_source.get(peer)
+                peer_minutes = self._history_chart_minutes.get(peer)
+                if peer_source != "runner_bar":
+                    rejected.append({"asset": peer, "reason": "no_runner_bar_history"})
+                    continue
+                if peer_minutes != target_minutes:
+                    rejected.append({
+                        "asset": peer,
+                        "reason": "chart_cadence_mismatch",
+                        "target_minutes": target_minutes,
+                        "peer_minutes": peer_minutes,
+                    })
+                    continue
+
+                peer_map = {
+                    int(float(row["ts"])): float(row["ret"])
+                    for row in hist
+                    if row.get("source") == "runner_bar" and _finite(row.get("ts")) is not None and _finite(row.get("ret")) is not None
+                }
+                common = [ts for ts in target_times if ts in peer_map]
+                common = common[-120:]
+                contemporaneous = _corr(
+                    [peer_map[ts] for ts in common],
+                    [target_map[ts] for ts in common],
+                ) if len(common) >= 5 else None
+
+                lead_pairs = [
+                    (peer_map[ts - step_seconds], target_map[ts])
+                    for ts in target_times
+                    if ts in target_map and (ts - step_seconds) in peer_map
+                ][-120:]
+                if len(lead_pairs) < 5:
+                    rejected.append({"asset": peer, "reason": "insufficient_exact_lag_pairs", "pairs": len(lead_pairs)})
+                    continue
+                lead_corr = _corr(
+                    [x[0] for x in lead_pairs],
+                    [x[1] for x in lead_pairs],
+                )
+                if lead_corr is None:
+                    rejected.append({"asset": peer, "reason": "degenerate_lag_series", "pairs": len(lead_pairs)})
+                    continue
+                latest_peer_ts = max(peer_map)
+                latest_peer = peer_map[latest_peer_ts]
+                directional = _clamp(lead_corr * latest_peer / max(vol * 2.0, 1e-7))
+                rows.append({
+                    "asset": peer,
+                    "lag1_correlation": lead_corr,
+                    "contemporaneous_correlation": contemporaneous,
+                    "directional_pressure": directional,
+                    "lead_strength": abs(lead_corr) * min(1.0, len(lead_pairs) / 40.0),
+                    "samples": len(lead_pairs),
+                    "chart_minutes": target_minutes,
+                    "alignment_mode": "exact_bar_timestamp",
+                    "latest_peer_ts": latest_peer_ts,
+                })
+            alignment_mode = "exact_bar_timestamp"
+        else:
+            # Minimal/status-only adapters keep the historical fallback, but it is
+            # explicitly labeled polling-dependent and cannot masquerade as bar-aligned.
+            for peer, hist in peers:
+                if peer == symbol:
+                    continue
+                p = list(hist)
+                n = min(len(target), len(p), 120)
+                if n < 8:
+                    continue
+                tr = [float(x["ret"]) for x in target[-n:]]
+                pr = [float(x["ret"]) for x in p[-n:]]
+                lead_corr = _corr(pr[:-1], tr[1:])
+                contemporaneous = _corr(pr, tr)
+                if lead_corr is None:
+                    continue
+                latest_peer = pr[-1]
+                directional = _clamp(lead_corr * latest_peer / max(vol * 2.0, 1e-7))
+                rows.append({
+                    "asset": peer,
+                    "lag1_correlation": lead_corr,
+                    "contemporaneous_correlation": contemporaneous,
+                    "directional_pressure": directional,
+                    "lead_strength": abs(lead_corr) * min(1.0, n / 40.0),
+                    "samples": n - 1,
+                    "alignment_mode": "poll_snapshot_fallback",
+                })
+            alignment_mode = "poll_snapshot_fallback"
+
         rows.sort(key=lambda x: (-x["lead_strength"], x["asset"]))
-        leaders = rows[:8]
-        if not leaders:
-            return {"status": "warming", "leaders": [], "sample_count": len(t_returns)}
-        total = sum(x["lead_strength"] for x in leaders) or 1.0
-        pressure = sum(x["directional_pressure"] * x["lead_strength"] for x in leaders) / total
-        confidence = _clamp(sum(x["lead_strength"] for x in leaders[:4]) / max(1.0, len(leaders[:4])), 0.0, 1.0)
+        leader_rows = rows[:8]
+        if not leader_rows:
+            return {
+                "status": "warming",
+                "leaders": [],
+                "sample_count": len(t_returns),
+                "alignment_mode": alignment_mode,
+                "chart_minutes": target_minutes,
+                "rejected_peers": rejected[:16],
+            }
+        total = sum(x["lead_strength"] for x in leader_rows) or 1.0
+        pressure = sum(x["directional_pressure"] * x["lead_strength"] for x in leader_rows) / total
+        confidence = _clamp(sum(x["lead_strength"] for x in leader_rows[:4]) / max(1.0, len(leader_rows[:4])), 0.0, 1.0)
         return {
             "status": "observed",
-            "leaders": leaders,
+            "leaders": leader_rows,
             "pressure": _clamp(pressure),
             "confidence": confidence,
             "sample_count": len(t_returns),
-            "interpretation": "Lagged association diagnostic; not proof of structural causality.",
+            "alignment_mode": alignment_mode,
+            "chart_minutes": target_minutes,
+            "rejected_peers": rejected[:16],
+            "interpretation": "Lagged association diagnostic; exact bar timestamps/cadence are required when runner history is available. Not proof of structural causality.",
         }
 
     def _features(
