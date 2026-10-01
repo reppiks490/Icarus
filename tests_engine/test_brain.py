@@ -45,6 +45,7 @@ def test_brain_registers_five_custom_agents_and_twelve_plus_subsystems(tmp_path)
     assert out["truth_contract"]["success_rate"] is None
     assert out["truth_contract"]["omnipotence_claim"] is False
     assert out["remote_sync"]["status"] == "not_configured"
+    assert out["research_sync"]["status"] == "not_configured"
 
 
 def test_candidate_gate_is_fail_closed_until_every_validation_gate_passes(tmp_path):
