@@ -1,6 +1,6 @@
 {
   "schema_version": "icarus-interface-ledger-v2",
-  "generated_at": "2026-09-30T21:40:00-05:00",
+  "generated_at": "2026-09-30T21:44:00-05:00",
   "execution_authorized": false,
   "policy": {
     "mcp_mirror_required": true,
@@ -466,5 +466,16 @@
     "head_sha": "9ef2a007263fb5b56b844e8a1597d88820c3c9b4",
     "audited_at": "2026-09-30T21:40:00-05:00",
     "scope": "Find Export Checklist / O14 representation, review-authority, quality, lineage and replay hardening"
+  },
+  "provenance_audit": {
+    "checked_at": "2026-09-30T21:44:00-05:00",
+    "unique_commit_references": 47,
+    "verified_commit_references": 47,
+    "invalid_commit_references": 0,
+    "repositories": [
+      "reppiks490/divine-providence",
+      "reppiks490/Icarus"
+    ],
+    "method": "Every 40-character commit reference present in the Data Integrity manifest was resolved through GitHub MCP against the owning repositories after correcting one detected typo."
   }
 }

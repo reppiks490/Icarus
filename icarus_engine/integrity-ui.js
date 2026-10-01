@@ -44,12 +44,12 @@ async function integrityGet(path){
 }
 
 function integrityRender(data){
-  const policy=data.policy||{}, cutoff=data.audit_cutoff||{}, intake=data.export_intake||{}, corpus=intake.historical_corpus||{}, n20=intake.nq_20m_pair||{};
+  const policy=data.policy||{}, cutoff=data.audit_cutoff||{}, provenance=data.provenance_audit||{}, intake=data.export_intake||{}, corpus=intake.historical_corpus||{}, n20=intake.nq_20m_pair||{};
   const status=document.querySelector('#integrityStatus');
   if(status){
     status.innerHTML='Mirror contract '+integrityChip(policy.mcp_mirror_required?'ENFORCED':'MISSING')+
       ' · execution '+integrityChip(data.execution_authorized===false?'DISABLED':'INVALID')+
-      ' · runtime MCP receipts <b class="tnum">'+esc(data.runtime_event_count||0)+'</b>'+ (cutoff.head_sha?' · audited '+esc(cutoff.repo||'')+' through <code>'+esc(String(cutoff.head_sha).slice(0,12))+'</code>':'')+
+      ' · runtime MCP receipts <b class="tnum">'+esc(data.runtime_event_count||0)+'</b>'+ (cutoff.head_sha?' · audited '+esc(cutoff.repo||'')+' through <code>'+esc(String(cutoff.head_sha).slice(0,12))+'</code>':'')+ (provenance.unique_commit_references!=null?' · provenance <b>'+esc(provenance.verified_commit_references||0)+'/'+esc(provenance.unique_commit_references)+'</b> refs verified':'')+
       (data.journal_errors?' · <span class="neg">invalid journal rows '+esc(data.journal_errors)+'</span>':'')+
       (data.manifest_error?' · <span class="neg">manifest '+esc(data.manifest_error)+'</span>':'');
   }

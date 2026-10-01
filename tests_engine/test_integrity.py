@@ -13,6 +13,7 @@ def _manifest(path):
         "execution_authorized": False,
         "policy": {"mcp_mirror_required": True},
         "audit_cutoff": {"repo": "reppiks490/divine-providence", "head_sha": "9ef2a007263fb5b56b844e8a1597d88820c3c9b4"},
+        "provenance_audit": {"unique_commit_references": 47, "verified_commit_references": 47, "invalid_commit_references": 0},
         "export_intake": {"unique_payloads": 11},
         "checklist": [{"id": "O14", "status": "verified"}],
         "repairs": [],
@@ -44,6 +45,7 @@ def test_integrity_snapshot_is_fail_closed_and_loads_manifest(tmp_path):
     assert snap["execution_authorized"] is False
     assert snap["policy"]["mcp_mirror_required"] is True
     assert snap["audit_cutoff"]["head_sha"] == "9ef2a007263fb5b56b844e8a1597d88820c3c9b4"
+    assert snap["provenance_audit"]["verified_commit_references"] == 47
     assert snap["export_intake"]["unique_payloads"] == 11
     assert snap["runtime_event_count"] == 0
     assert snap["manifest_error"] is None

@@ -295,6 +295,7 @@ def integrity_snapshot(
         "execution_authorized": False,
         "policy": manifest.get("policy", {}),
         "audit_cutoff": manifest.get("audit_cutoff", {}),
+        "provenance_audit": manifest.get("provenance_audit", {}),
         "export_intake": manifest.get("export_intake", {}),
         "checklist": manifest.get("checklist", []),
         "repairs": manifest.get("repairs", []),
