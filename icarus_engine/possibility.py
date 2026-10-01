@@ -728,28 +728,65 @@ class PossibilityEngine:
                     sign = 1.0 if side in {"B", "BUY", "BID"} else -1.0 if side in {"A", "S", "SELL", "ASK"} else 0.0
                     signed += sign * size
                     gross += abs(size)
-                if gross > 0:
-                    imbalance = _clamp(signed / gross)
-                    confidence = _clamp(min(1.0, gross / 250.0) * min(1.0, len(ticks) / 120.0), 0.05, 1.0)
-                    result["volume_pressure"] = Feature(imbalance, confidence, True, "live trade ticks", f"{len(ticks)} ticks")
-                    result["aggressive_flow"] = {"imbalance": imbalance, "gross_size": gross, "tick_count": len(ticks)}
-                    result["health"]["ticks"] = True
-                if len(prices) >= 3:
-                    first, last = prices[0], prices[-1]
-                    displacement = (last - first) / max(abs(first), 1e-9)
-                    result["trade_displacement"] = displacement
                 if event_times:
-                    first_ts, last_ts = min(event_times), max(event_times)
-                    result["tick_window"] = {
-                        "first_ts": first_ts,
-                        "last_ts": last_ts,
-                        "duration_seconds": max(0.0, last_ts - first_ts),
-                        "age_seconds": now - last_ts,
-                        "event_clock": "exchange",
-                    }
-                    result["tick_samples"] = tick_samples
+                    last_ts = max(event_times)
+                    tick_age = now - last_ts
                     result["health"]["tick_last_event_ts"] = last_ts
-                    result["health"]["tick_age_seconds"] = now - last_ts
+                    result["health"]["tick_age_seconds"] = tick_age
+                    if tick_age < -5.0:
+                        result["health"]["errors"].append(f"trade exchange clock is {-tick_age:.3f}s in the future")
+                    elif tick_age > 15.0:
+                        result["health"]["errors"].append(f"trade tape stale by {tick_age:.3f}s")
+                    else:
+                        chart_minutes = int(_finite(getattr(runner, "chart_minutes", None)) or 1)
+                        flow_window_seconds = min(300.0, max(15.0, float(chart_minutes) * 60.0))
+                        cutoff = last_ts - flow_window_seconds
+                        fresh_samples = [row for row in tick_samples if row["ts"] >= cutoff]
+                        if fresh_samples:
+                            fresh_signed = 0.0
+                            fresh_gross = 0.0
+                            fresh_prices: list[float] = []
+                            for row in fresh_samples:
+                                side = str(row["side"] or "").upper()
+                                sign = 1.0 if side in {"B", "BUY", "BID"} else -1.0 if side in {"A", "S", "SELL", "ASK"} else 0.0
+                                fresh_signed += sign * float(row["size"])
+                                fresh_gross += abs(float(row["size"]))
+                                fresh_prices.append(float(row["price"]))
+                            if fresh_gross > 0:
+                                imbalance = _clamp(fresh_signed / fresh_gross)
+                                confidence = _clamp(
+                                    min(1.0, fresh_gross / 250.0)
+                                    * min(1.0, len(fresh_samples) / 120.0),
+                                    0.05,
+                                    1.0,
+                                )
+                                result["volume_pressure"] = Feature(
+                                    imbalance,
+                                    confidence,
+                                    True,
+                                    "live trade ticks",
+                                    f"{len(fresh_samples)} fresh ticks/{flow_window_seconds:.0f}s window",
+                                )
+                                result["aggressive_flow"] = {
+                                    "imbalance": imbalance,
+                                    "gross_size": fresh_gross,
+                                    "tick_count": len(fresh_samples),
+                                    "window_seconds": flow_window_seconds,
+                                }
+                                result["health"]["ticks"] = True
+                            if len(fresh_prices) >= 3:
+                                first, last = fresh_prices[0], fresh_prices[-1]
+                                result["trade_displacement"] = (last - first) / max(abs(first), 1e-9)
+                            first_ts = min(row["ts"] for row in fresh_samples)
+                            result["tick_window"] = {
+                                "first_ts": first_ts,
+                                "last_ts": last_ts,
+                                "duration_seconds": max(0.0, last_ts - first_ts),
+                                "age_seconds": tick_age,
+                                "requested_window_seconds": flow_window_seconds,
+                                "event_clock": "exchange",
+                            }
+                            result["tick_samples"] = fresh_samples
             except Exception as ex:
                 result["health"]["errors"].append(f"ticks: {type(ex).__name__}: {ex}")
 
