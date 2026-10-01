@@ -431,12 +431,14 @@ class TacticalAutopilot:
 
     def start(self):
         with self._lock:
-            if self._thread and self._thread.is_alive():
-                return self.status()
             state = self._read()
             state["config"]["enabled"] = True
             self._write(state)
+            # If stop() timed out while a replay was finishing, resume the
+            # existing single worker instead of spawning a second one.
             self._stop.clear()
+            if self._thread and self._thread.is_alive():
+                return self.status()
 
             def run():
                 while not self._stop.is_set():
@@ -471,12 +473,17 @@ class TacticalAutopilot:
         return self.status()
 
     def reset(self):
-        self._stop.set()
-        with self._lock:
-            state = self._initial()
-            state["config"]["enabled"] = False
-            self._write(state)
-        return self.status()
+        if not self._cycle_lock.acquire(blocking=False):
+            raise ValueError("cannot reset Tactical Autopilot while a cycle is active; stop it and wait for the replay to finish")
+        try:
+            self._stop.set()
+            with self._lock:
+                state = self._initial()
+                state["config"]["enabled"] = False
+                self._write(state)
+            return self.status()
+        finally:
+            self._cycle_lock.release()
 
     def close(self):
         self._stop.set()
