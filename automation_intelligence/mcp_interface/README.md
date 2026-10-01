@@ -8,6 +8,8 @@ Cloud agents cannot call the operator's localhost trader directly. Important rep
 
 The engine's background `EvolutionRemoteSync` verifies the Git blob, validates the event schema, mirrors the event into System Intelligence and the Adaptive Brain, and displays it in the **MCP Evolution** trader panel.
 
+Machine-readable contract: `automation_intelligence/mcp_interface/contract.json`. Both the local Engine Control projector and remote Evolution sync must remain compatible with this contract.
+
 ## Required event schema
 
 ```json
@@ -32,7 +34,7 @@ The engine's background `EvolutionRemoteSync` verifies the Git blob, validates t
 
 Allowed subsystem identifiers are:
 
-`aegis, aion, argus, ascension, athena, daedalus, infrastructure, janus, nexus, oracle, parallax, prometheus, provenance, supermesh-x, ml, data`.
+`aegis, aion, argus, ascension, athena, daedalus, infrastructure, janus, nexus, oracle, parallax, prometheus, provenance, supermesh-x, ml, data, dreamstate, psi`.
 
 ## Mandatory policy
 

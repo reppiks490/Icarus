@@ -1164,6 +1164,10 @@ class Portfolio:
             if spec.symbol in self.runners:
                 raise ValueError(f"{spec.symbol} already running")
         r = self.make_runner(spec)                            # may touch the network (tick size, NQ reference price)
+        # A portfolio-wide pause is a durable desired state. Assets added while
+        # that intent is active must never begin accepting entries unpaused.
+        if self.paused:
+            r.set_paused(True)
         with self._lock:
             if spec.symbol in self.runners:
                 raise ValueError(f"{spec.symbol} already running")
@@ -1430,6 +1434,9 @@ class Portfolio:
         live_profit = sum(x["live_profit"] for x in rs)
         return _clean({
             "now": time.time(), "uptime_sec": time.time() - self.started, "paused": self.paused,
+            "global_pause_intent": self.paused,
+            "paused_assets": sorted(r.symbol for r in self.runner_list() if r.paused),
+            "mixed_pause_state": any(r.paused != self.paused for r in self.runner_list()),
             "equity": eq, "capital": cap, "net": eq - cap, "live_profit": live_profit,
             "open_profit": sum(x["open_profit"] or 0.0 for x in rs), "positions": sum(1 for x in rs if x["position"]),
             "assets": rs, "log": list(self.journal.log_tail)[-80:],
