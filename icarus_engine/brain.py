@@ -480,6 +480,23 @@ def _research_incubator(research_status: Mapping[str, Any] | None) -> dict[str, 
     if not isinstance(proposals, list):
         proposals = []
 
+    adaptation = research_status.get("adaptation")
+    adaptation_assets = adaptation.get("assets", {}) if isinstance(adaptation, Mapping) else {}
+    proposal_context: dict[str, dict[str, Any]] = {}
+    if isinstance(adaptation_assets, Mapping):
+        for asset, value in adaptation_assets.items():
+            if not isinstance(value, Mapping):
+                continue
+            proposal_id = str(value.get("last_proposal") or "")
+            if not proposal_id:
+                continue
+            proposal_context[proposal_id] = {
+                "asset": str(asset),
+                "review_mode": str(value.get("review_mode") or ""),
+                "regime_context": dict(value.get("regime_context")) if isinstance(value.get("regime_context"), Mapping) else {},
+                "scheduler_status": str(value.get("status") or ""),
+            }
+
     state_counts: dict[str, int] = {}
     rows: list[dict[str, Any]] = []
     for proposal in proposals[:100]:
@@ -490,10 +507,12 @@ def _research_incubator(research_status: Mapping[str, Any] | None) -> dict[str, 
         candidate = proposal.get("candidate") if isinstance(proposal.get("candidate"), Mapping) else {}
         reviews = proposal.get("reviews") if isinstance(proposal.get("reviews"), list) else []
         inputs = candidate.get("inputs") if isinstance(candidate.get("inputs"), Mapping) else {}
+        proposal_id = str(proposal.get("proposal_id") or "")
+        context = proposal_context.get(proposal_id, {})
         rows.append(
             {
-                "proposal_id": str(proposal.get("proposal_id") or ""),
-                "asset": str(candidate.get("asset") or ""),
+                "proposal_id": proposal_id,
+                "asset": str(candidate.get("asset") or context.get("asset") or ""),
                 "state": state,
                 "decision_at": candidate.get("decision_at"),
                 "expires_at": candidate.get("expires_at"),
@@ -501,6 +520,9 @@ def _research_incubator(research_status: Mapping[str, Any] | None) -> dict[str, 
                 "input_count": len(inputs),
                 "inputs": dict(list(inputs.items())[:24]),
                 "review_required": state in {"proposed", "advised"},
+                "review_mode": context.get("review_mode"),
+                "scheduler_status": context.get("scheduler_status"),
+                "regime_context": context.get("regime_context", {}),
                 "execution_authorized": False,
                 "production_decision_authorized": False,
             }
