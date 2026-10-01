@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 
 import pytest
 
-from icarus_engine.possibility import PossibilityEngine
+from icarus_engine.possibility import Feature, PossibilityEngine, _weighted
 
 
 class Tick:
@@ -209,3 +210,70 @@ def test_pressure_price_elasticity_detects_absorption_direction():
     micro["aggressive_flow"]["imbalance"] = 0.8
     out = engine._elasticity([], micro)
     assert out["state"] == "SELLER_ABSORPTION"
+
+def test_evidence_coverage_is_confidence_weighted():
+    latent, coverage = _weighted(
+        {
+            "a": Feature(1.0, 0.10, True, "fixture"),
+            "b": Feature(None, 0.0, False, "missing"),
+        },
+        {"a": 1.0, "b": 1.0},
+    )
+    assert latent == pytest.approx(1.0)
+    assert coverage == pytest.approx(0.05)
+
+
+def test_forced_consensus_requires_distinct_evidence_domains():
+    engine = PossibilityEngine(Port())
+    same_domain = {
+        "queue_pressure": Feature(0.9, 1.0, True, "fixture"),
+        "repricing_pressure": Feature(0.8, 1.0, True, "fixture"),
+        "volume_pressure": Feature(0.7, 1.0, True, "fixture"),
+    }
+    result = engine._forced_consensus(same_domain)
+    assert result["active"] is False
+    assert result["observed_domain_count"] == 1
+
+    diverse = {
+        **same_domain,
+        "cross_asset_pressure": Feature(0.8, 1.0, True, "fixture"),
+        "gamma_pressure": Feature(0.7, 1.0, True, "fixture"),
+    }
+    result = engine._forced_consensus(diverse)
+    assert result["active"] is True
+    assert result["direction"] == "UP"
+    assert result["observed_domain_count"] == 3
+
+
+def test_external_evidence_rejects_naive_and_future_observation_times():
+    engine = PossibilityEngine(Port())
+    with pytest.raises(ValueError, match="explicit timezone"):
+        engine.ingest_external(
+            "NQ",
+            {"gamma_pressure": 0.2},
+            source="fixture",
+            observed_at="2026-10-01T05:00:00",
+        )
+    future = (datetime.now(timezone.utc) + timedelta(days=1)).isoformat()
+    with pytest.raises(ValueError, match="future"):
+        engine.ingest_external(
+            "NQ",
+            {"gamma_pressure": 0.2},
+            source="fixture",
+            observed_at=future,
+        )
+
+
+def test_exactly_neutral_latent_pressure_has_no_directional_phase_boundary():
+    engine = PossibilityEngine(Port())
+    result = engine._phase_boundary(
+        20000.0,
+        0.001,
+        0.0,
+        {},
+        {},
+    )
+    assert result["available"] is False
+    assert result["direction"] == "NEUTRAL"
+    assert result["phase_boundary"] is None
+

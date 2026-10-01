@@ -73,6 +73,22 @@ def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
+def _observed_time(value: Any, field: str = "observed_at") -> str:
+    raw = str(value or "").strip()
+    if not raw:
+        raise ValueError(f"{field} is required")
+    try:
+        parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except ValueError as ex:
+        raise ValueError(f"{field} must be an RFC3339 timestamp") from ex
+    if parsed.tzinfo is None:
+        raise ValueError(f"{field} must include an explicit timezone")
+    parsed = parsed.astimezone(timezone.utc)
+    if parsed.timestamp() > time.time() + 5.0:
+        raise ValueError(f"{field} cannot be in the future")
+    return parsed.isoformat().replace("+00:00", "Z")
+
+
 def _finite(value: Any) -> float | None:
     if isinstance(value, bool):
         return None
@@ -145,7 +161,7 @@ def _weighted(features: Mapping[str, Feature], weights: Mapping[str, float]) -> 
         effective = abs(weight) * _clamp(feature.confidence, 0.0, 1.0)
         numerator += feature.value * weight * _clamp(feature.confidence, 0.0, 1.0)
         denominator += effective
-        available_weight += abs(weight)
+        available_weight += effective
     if denominator <= 1e-12:
         return None, 0.0
     coverage = available_weight / total_weight if total_weight else 0.0
@@ -197,6 +213,7 @@ class PossibilityEngine:
             raise ValueError("source is required")
         ttl = max(1.0, min(float(ttl_seconds), 86400.0))
         now = time.time()
+        observed = _utc_now() if observed_at is None else _observed_time(observed_at)
         stored: dict[str, Any] = {}
         with self._lock:
             for key, raw in values.items():
@@ -215,7 +232,7 @@ class PossibilityEngine:
                     "value": float(value),
                     "confidence": float(confidence),
                     "source": source,
-                    "observed_at": observed_at or _utc_now(),
+                    "observed_at": observed,
                     "received_ts": now,
                     "expires_ts": now + ttl,
                 }
@@ -285,6 +302,8 @@ class PossibilityEngine:
                 "scenario_probabilities_calibrated": False,
                 "causality_proven": False,
                 "missing_evidence_imputed": False,
+                "confidence_weighted_coverage": True,
+                "consensus_requires_distinct_evidence_domains": True,
                 "rule": "Model diagnostics only. Missing evidence stays unavailable and NO_EDGE is mandatory when gates fail.",
             },
             "oracle": {
@@ -743,7 +762,15 @@ class PossibilityEngine:
     ) -> dict[str, Any]:
         if latent is None:
             return {"available": False, "phase_boundary": None, "event_horizon": None, "direction": None}
-        direction = 1.0 if latent >= 0 else -1.0
+        if abs(latent) < 1e-12:
+            return {
+                "available": False,
+                "phase_boundary": None,
+                "event_horizon": None,
+                "direction": "NEUTRAL",
+                "note": "No directional phase boundary is emitted from exactly neutral latent pressure.",
+            }
+        direction = 1.0 if latent > 0 else -1.0
         sigma = _finite(futures.get("step_sigma")) or max(price * vol, price * 0.00004)
         collapse = (_finite(futures.get("future_space_collapse")) or 0.0) / 100.0
         distance = sigma * (1.6 - 0.7 * collapse)
@@ -765,28 +792,65 @@ class PossibilityEngine:
         }
 
     def _forced_consensus(self, features: Mapping[str, Feature]) -> dict[str, Any]:
-        votes = []
+        domain_for = {
+            "queue_pressure": "microstructure",
+            "repricing_pressure": "microstructure",
+            "volume_pressure": "microstructure",
+            "cross_asset_pressure": "cross_asset",
+            "basis_pressure": "basis",
+            "gamma_pressure": "gamma",
+            "forced_flow_pressure": "forced_flow",
+        }
+        mechanisms = []
+        grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
         for name, feature in features.items():
             if not feature.available or feature.value is None or feature.confidence < 0.20 or abs(feature.value) < 0.10:
                 continue
-            votes.append({
+            vote = {
                 "name": name,
+                "domain": domain_for.get(name, name),
                 "sign": 1 if feature.value > 0 else -1,
                 "strength": abs(feature.value) * feature.confidence,
+            }
+            mechanisms.append(vote)
+            grouped[vote["domain"]].append(vote)
+
+        domains = []
+        for domain, votes in sorted(grouped.items()):
+            signed = sum(v["sign"] * v["strength"] for v in votes)
+            gross = sum(v["strength"] for v in votes)
+            if gross <= 1e-12 or abs(signed) <= 1e-12:
+                continue
+            domains.append({
+                "name": domain,
+                "sign": 1 if signed > 0 else -1,
+                "strength": abs(signed),
+                "internal_alignment": abs(signed) / gross,
+                "components": [v["name"] for v in votes],
             })
-        if not votes:
-            return {"active": False, "direction": None, "alignment": 0.0, "mechanisms": []}
-        signed = sum(v["sign"] * v["strength"] for v in votes)
-        gross = sum(v["strength"] for v in votes) or 1.0
+
+        if not domains:
+            return {
+                "active": False,
+                "direction": None,
+                "alignment": 0.0,
+                "mechanisms": mechanisms,
+                "domains": [],
+                "observed_domain_count": 0,
+            }
+        signed = sum(v["sign"] * v["strength"] for v in domains)
+        gross = sum(v["strength"] for v in domains) or 1.0
         alignment = abs(signed) / gross
         direction = "UP" if signed > 0 else "DOWN"
-        active = len(votes) >= 3 and alignment >= 0.72
+        active = len(domains) >= 3 and alignment >= 0.72
         return {
             "active": active,
             "direction": direction if active else None,
             "alignment": alignment,
-            "mechanisms": votes,
-            "independent_mechanism_count": len(votes),
+            "mechanisms": mechanisms,
+            "domains": domains,
+            "observed_domain_count": len(domains),
+            "note": "Consensus counts distinct evidence domains; correlated features from one domain cannot satisfy the gate by themselves.",
         }
 
     def _market_shadows(
