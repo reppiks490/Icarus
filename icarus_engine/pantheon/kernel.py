@@ -87,6 +87,7 @@ class PantheonKernel:
                     claim_id TEXT NOT NULL,
                     observed_at TEXT NOT NULL,
                     utility REAL NOT NULL,
+                    fitness_utility REAL NOT NULL,
                     confidence REAL NOT NULL,
                     evidence_json TEXT NOT NULL,
                     created_at TEXT NOT NULL
@@ -137,6 +138,10 @@ class PantheonKernel:
                 CREATE INDEX IF NOT EXISTS idx_pantheon_cells_energy ON sentinel_cells(last_energy, updated_at);
                 """
             )
+            outcome_columns = {row["name"] for row in con.execute("PRAGMA table_info(claim_outcomes)").fetchall()}
+            if "fitness_utility" not in outcome_columns:
+                con.execute("ALTER TABLE claim_outcomes ADD COLUMN fitness_utility REAL")
+                con.execute("UPDATE claim_outcomes SET fitness_utility=utility WHERE fitness_utility IS NULL")
             columns = {row["name"] for row in con.execute("PRAGMA table_info(sentinel_cells)").fetchall()}
             if "last_observed_at" not in columns:
                 con.execute("ALTER TABLE sentinel_cells ADD COLUMN last_observed_at TEXT NOT NULL DEFAULT ''")
@@ -698,7 +703,8 @@ class PantheonKernel:
         with _LOCK, self._connect() as con:
             claim = con.execute(
                 """SELECT c.*,o.observed_at AS claim_observed_at,
-                          o.horizon_ms AS claim_horizon_ms,o.asset AS claim_asset
+                          o.horizon_ms AS claim_horizon_ms,o.asset AS claim_asset,
+                          o.analysis_json AS claim_analysis_json
                    FROM claims c JOIN observations o ON o.observation_id=c.observation_id
                    WHERE c.claim_id=?""",
                 (claim_id,),
@@ -730,6 +736,30 @@ class PantheonKernel:
             maturity_time = claim_time + timedelta(milliseconds=int(claim["claim_horizon_ms"]))
             if outcome_time < maturity_time:
                 raise ValueError("claim outcome cannot precede claim maturity")
+            fitness_utility = utility
+            veritas_gate = "not_required"
+            claim_analysis = json.loads(claim["claim_analysis_json"])
+            veritas_faculty = claim_analysis.get("faculties", {}).get("veritas", {})
+            if claim["kind"] == "monetization_candidate" and isinstance(veritas_faculty, Mapping) and veritas_faculty.get("status") == "active":
+                veritas_row = con.execute(
+                    "SELECT * FROM veritas_reconciliations WHERE observation_id=?",
+                    (claim["observation_id"],),
+                ).fetchone()
+                if utility > 0 and veritas_row is None:
+                    raise ValueError("positive monetization outcome requires VERITAS reconciliation")
+                if utility > 0 and veritas_row is not None:
+                    veritas_payload = json.loads(veritas_row["payload_json"])
+                    veritas_score = veritas_payload.get("score", {})
+                    if bool(veritas_score.get("reinforcement_eligible")):
+                        fitness_utility = utility
+                        veritas_gate = "right_for_right_reasons"
+                    else:
+                        fitness_utility = 0.0
+                        veritas_gate = "positive_outcome_quarantined"
+                elif utility <= 0:
+                    fitness_utility = utility
+                    veritas_gate = "negative_outcome_counts"
+
             prior_time = con.execute(
                 "SELECT * FROM claim_outcomes WHERE claim_id=? AND observed_at=?",
                 (claim_id, observed_at),
@@ -744,18 +774,18 @@ class PantheonKernel:
             if prior is None and prior_time is None:
                 con.execute(
                     """INSERT INTO claim_outcomes(
-                        outcome_id,claim_id,observed_at,utility,confidence,evidence_json,created_at
-                    ) VALUES(?,?,?,?,?,?,?)""",
-                    (outcome_id, claim_id, observed_at, utility, confidence, evidence_json, now),
+                        outcome_id,claim_id,observed_at,utility,fitness_utility,confidence,evidence_json,created_at
+                    ) VALUES(?,?,?,?,?,?,?,?)""",
+                    (outcome_id, claim_id, observed_at, utility, fitness_utility, confidence, evidence_json, now),
                 )
 
             outcomes = con.execute(
-                "SELECT utility,confidence FROM claim_outcomes WHERE claim_id=? ORDER BY observed_at",
+                "SELECT utility,fitness_utility,confidence FROM claim_outcomes WHERE claim_id=? ORDER BY observed_at",
                 (claim_id,),
             ).fetchall()
             positive_weight = sum(float(row["confidence"]) for row in outcomes)
             if positive_weight > 1e-12:
-                fitness = sum(float(row["utility"]) * float(row["confidence"]) for row in outcomes) / positive_weight
+                fitness = sum(float(row["fitness_utility"]) * float(row["confidence"]) for row in outcomes) / positive_weight
             else:
                 fitness = 0.0
             n = len(outcomes)
@@ -841,6 +871,8 @@ class PantheonKernel:
             "claim_id": claim_id,
             "observed_at": observed_at,
             "utility": utility,
+            "fitness_utility": fitness_utility,
+            "veritas_gate": veritas_gate,
             "confidence": confidence,
             "fitness_credit": fitness,
             "evidence_count": effective_n,

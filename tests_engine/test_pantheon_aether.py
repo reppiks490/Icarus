@@ -441,6 +441,97 @@ def test_veritas_refuses_trivial_fidelity_threshold(tmp_path):
         PantheonKernel(tmp_path).record_observation(payload)
 
 
+def _monetization_claim(observation: dict) -> dict:
+    return next(claim for claim in observation["claims"] if claim["kind"] == "monetization_candidate")
+
+
+def test_veritas_quarantines_lucky_positive_monetization_fitness(tmp_path):
+    kernel = PantheonKernel(tmp_path)
+    origin = kernel.record_observation(_veritas_payload("pan-veritas-fitness-lucky"))
+    claim = _monetization_claim(origin)
+    source = kernel.record_observation(_veritas_source_payload(
+        "pan-veritas-fitness-lucky-source",
+        "2026-10-01T06:00:20Z",
+        basis_expands=False,
+        queue_replenishment=0.1,
+        cross_asset_lead=-0.2,
+    ))
+
+    with pytest.raises(ValueError, match="requires VERITAS reconciliation"):
+        kernel.record_claim_outcome({
+            "claim_id": claim["claim_id"],
+            "observed_at": source["observed_at"],
+            "utility": 0.8,
+            "confidence": 0.9,
+            "evidence": ["fixture:profitable-before-veritas"],
+        })
+
+    kernel.record_veritas_reconciliation({
+        "observation_id": origin["observation_id"],
+        "source_observation_id": source["observation_id"],
+        "observed_at": source["observed_at"],
+        "confidence": 0.9,
+        "evidence": ["fixture:lucky-path-failed"],
+    })
+    outcome = kernel.record_claim_outcome({
+        "claim_id": claim["claim_id"],
+        "observed_at": source["observed_at"],
+        "utility": 0.8,
+        "confidence": 0.9,
+        "evidence": ["fixture:profitable-after-veritas"],
+    })
+    assert outcome["utility"] == pytest.approx(0.8)
+    assert outcome["fitness_utility"] == pytest.approx(0.0)
+    assert outcome["veritas_gate"] == "positive_outcome_quarantined"
+    assert outcome["fitness_credit"] == pytest.approx(0.0)
+
+
+def test_veritas_allows_positive_monetization_fitness_only_for_right_reasons(tmp_path):
+    kernel = PantheonKernel(tmp_path)
+    origin = kernel.record_observation(_veritas_payload("pan-veritas-fitness-right"))
+    claim = _monetization_claim(origin)
+    source = kernel.record_observation(_veritas_source_payload(
+        "pan-veritas-fitness-right-source",
+        "2026-10-01T06:00:20Z",
+        basis_expands=True,
+        queue_replenishment=0.8,
+        cross_asset_lead=0.2,
+    ))
+    kernel.record_veritas_reconciliation({
+        "observation_id": origin["observation_id"],
+        "source_observation_id": source["observation_id"],
+        "observed_at": source["observed_at"],
+        "confidence": 0.9,
+        "evidence": ["fixture:right-reasons"],
+    })
+    outcome = kernel.record_claim_outcome({
+        "claim_id": claim["claim_id"],
+        "observed_at": source["observed_at"],
+        "utility": 0.8,
+        "confidence": 0.9,
+        "evidence": ["fixture:profitable-right-reasons"],
+    })
+    assert outcome["fitness_utility"] == pytest.approx(0.8)
+    assert outcome["veritas_gate"] == "right_for_right_reasons"
+    assert outcome["fitness_credit"] == pytest.approx(0.8)
+
+
+def test_veritas_never_hides_negative_monetization_fitness(tmp_path):
+    kernel = PantheonKernel(tmp_path)
+    origin = kernel.record_observation(_veritas_payload("pan-veritas-fitness-loss"))
+    claim = _monetization_claim(origin)
+    outcome = kernel.record_claim_outcome({
+        "claim_id": claim["claim_id"],
+        "observed_at": "2026-10-01T06:00:20Z",
+        "utility": -0.6,
+        "confidence": 0.9,
+        "evidence": ["fixture:loss-counts-without-veritas"],
+    })
+    assert outcome["fitness_utility"] == pytest.approx(-0.6)
+    assert outcome["veritas_gate"] == "negative_outcome_counts"
+    assert outcome["fitness_credit"] == pytest.approx(-0.6)
+
+
 def test_veritas_certificate_fails_closed_on_malformed_signatures(tmp_path):
     payload = _veritas_payload("pan-veritas-invalid")
     payload["signals"]["mechanism_certificate"]["expected_signatures"] = [

@@ -464,3 +464,20 @@ observation's timestamp, and the certificate horizon must already have matured.
 Realized direction and signature values are read from the immutable source
 observation's signals. Fidelity thresholds below 0.50 are rejected so a trivial threshold
 cannot turn a zero-fidelity lucky outcome into "right for right reasons."
+
+
+### VERITAS fitness quarantine
+
+VERITAS now reaches the actual AETHER research-fitness loop for MINT
+monetization candidates. When a candidate's originating observation contains an
+active VERITAS certificate, a positive claim outcome cannot be recorded before
+that certificate is reconciled. If the outcome was profitable but VERITAS
+classifies it as anything other than `right_for_right_reasons`, the raw
+outcome remains visible but its `fitness_utility` is zero, so it cannot
+increase species fitness, trigger positive speciation, or teach the ecology that
+a causally false explanation was good.
+
+Negative outcomes are never hidden by this gate: losses continue to count
+against research fitness even if VERITAS has not reconciled yet. Existing
+pre-VERITAS databases are migrated by backfilling `fitness_utility=utility`
+for historical rows, preserving prior recorded evidence.
