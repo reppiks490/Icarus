@@ -15,20 +15,25 @@ The ICARUS Ψ engine combines:
 7. phase-boundary and event-horizon diagnostics,
 8. forced-consensus detection,
 9. market-shadow force removal,
-10. a strict NO_EDGE state when coverage or agreement is insufficient.
+10. a strict NO_EDGE state when coverage or agreement is insufficient,\n11. a durable provenance-bound evidence ledger with deterministic restart recovery.
 """
 from __future__ import annotations
 
 from collections import defaultdict, deque
 from dataclasses import dataclass
 from datetime import datetime, timezone
+import hashlib
+import json
 import math
+from pathlib import Path
+import sqlite3
 import statistics
 import threading
 import time
 from typing import Any, Deque, Iterable, Mapping, Sequence
 
 SCHEMA_VERSION = "icarus-possibility-v1"
+EVIDENCE_SCHEMA_VERSION = "icarus-psi-evidence-v1"
 DEFAULT_SCENARIOS = 768
 DEFAULT_HISTORY = 720
 
@@ -187,6 +192,12 @@ class PossibilityEngine:
         self._history: dict[str, Deque[dict[str, float]]] = defaultdict(lambda: deque(maxlen=self.history))
         self._external: dict[str, dict[str, dict[str, Any]]] = defaultdict(dict)
         self._micro_cache: dict[str, tuple[float, dict[str, Any]]] = {}
+        base_dir = getattr(port, "base_dir", None)
+        self._evidence_path = (Path(base_dir) / "research" / "psi_evidence.sqlite3") if base_dir else None
+        if self._evidence_path is not None:
+            self._evidence_path.parent.mkdir(parents=True, exist_ok=True)
+            self._init_evidence_store()
+            self._hydrate_external()
 
     # ---------- public API ----------
 
@@ -199,11 +210,12 @@ class PossibilityEngine:
         observed_at: str | None = None,
         ttl_seconds: float = 300.0,
     ) -> dict[str, Any]:
-        """Inject provenance-labelled optional force evidence.
+        """Persist provenance-labelled optional force evidence.
 
-        This is intentionally in-memory and research-only. Unknown fields are rejected.
-        Values use [-1,+1], where sign is directional pressure. A caller may supply
-        either a number or {"value": x, "confidence": y}.
+        Evidence is append-only and idempotent when a durable base_dir is available.
+        Active state is selected deterministically by observed time, receipt time,
+        then evidence ID. TTL is anchored to observed_at rather than ingestion time,
+        so stale evidence can remain auditable without becoming active.
         """
         asset = str(asset or "").strip().upper()
         if not asset:
@@ -211,40 +223,175 @@ class PossibilityEngine:
         source = str(source or "").strip()
         if not source:
             raise ValueError("source is required")
+        if not isinstance(values, Mapping) or not values:
+            raise ValueError("values must be a non-empty object")
         ttl = max(1.0, min(float(ttl_seconds), 86400.0))
         now = time.time()
         observed = _utc_now() if observed_at is None else _observed_time(observed_at)
-        stored: dict[str, Any] = {}
+        observed_ts = datetime.fromisoformat(observed.replace("Z", "+00:00")).timestamp()
+        expires_ts = observed_ts + ttl
+
+        normalized: list[dict[str, Any]] = []
+        for key, raw in values.items():
+            if key not in _EXTERNAL_KEYS:
+                raise ValueError(f"unsupported external feature: {key}")
+            if isinstance(raw, Mapping):
+                value = _finite(raw.get("value"))
+                confidence = _finite(raw.get("confidence"))
+            else:
+                value = _finite(raw)
+                confidence = 1.0
+            if value is None or not -1.0 <= value <= 1.0:
+                raise ValueError(f"{key} must be finite and within [-1,1]")
+            confidence = 1.0 if confidence is None else _clamp(confidence, 0.0, 1.0)
+            identity = {
+                "schema_version": EVIDENCE_SCHEMA_VERSION,
+                "asset": asset,
+                "feature": key,
+                "value": float(value),
+                "confidence": float(confidence),
+                "source": source,
+                "observed_at": observed,
+                "ttl_seconds": ttl,
+            }
+            raw_identity = json.dumps(identity, sort_keys=True, separators=(",", ":"), allow_nan=False)
+            evidence_id = "psi-" + hashlib.sha256(raw_identity.encode("utf-8")).hexdigest()[:32]
+            normalized.append({
+                **identity,
+                "evidence_id": evidence_id,
+                "payload_hash": hashlib.sha256(raw_identity.encode("utf-8")).hexdigest(),
+                "observed_ts": observed_ts,
+                "received_ts": now,
+                "expires_ts": expires_ts,
+                "created_at": _utc_now(),
+            })
+
+        inserted = 0
         with self._lock:
-            for key, raw in values.items():
-                if key not in _EXTERNAL_KEYS:
-                    raise ValueError(f"unsupported external feature: {key}")
-                if isinstance(raw, Mapping):
-                    value = _finite(raw.get("value"))
-                    confidence = _finite(raw.get("confidence"))
-                else:
-                    value = _finite(raw)
-                    confidence = 1.0
-                if value is None or not -1.0 <= value <= 1.0:
-                    raise ValueError(f"{key} must be finite and within [-1,1]")
-                confidence = 1.0 if confidence is None else _clamp(confidence, 0.0, 1.0)
-                row = {
-                    "value": float(value),
-                    "confidence": float(confidence),
-                    "source": source,
-                    "observed_at": observed,
-                    "received_ts": now,
-                    "expires_ts": now + ttl,
-                }
-                self._external[asset][key] = row
-                stored[key] = dict(row)
+            if self._evidence_path is not None:
+                with self._evidence_connect() as con:
+                    for row in normalized:
+                        cur = con.execute(
+                            """INSERT OR IGNORE INTO evidence(
+                                   evidence_id,schema_version,asset,feature,value,confidence,source,
+                                   observed_at,observed_ts,received_ts,expires_ts,ttl_seconds,
+                                   payload_hash,created_at
+                               ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                            (
+                                row["evidence_id"], row["schema_version"], row["asset"], row["feature"],
+                                row["value"], row["confidence"], row["source"], row["observed_at"],
+                                row["observed_ts"], row["received_ts"], row["expires_ts"],
+                                row["ttl_seconds"], row["payload_hash"], row["created_at"],
+                            ),
+                        )
+                        inserted += int(cur.rowcount > 0)
+                self._refresh_external_asset(asset, now)
+            else:
+                for row in normalized:
+                    current = self._external[asset].get(row["feature"])
+                    order = (row["observed_ts"], row["received_ts"], row["evidence_id"])
+                    current_order = (
+                        _finite(current.get("observed_ts")) or -1.0,
+                        _finite(current.get("received_ts")) or -1.0,
+                        str(current.get("evidence_id") or ""),
+                    ) if current else (-1.0, -1.0, "")
+                    if order >= current_order:
+                        self._external[asset][row["feature"]] = dict(row)
+                    inserted += 1
+
+        stored = {row["feature"]: dict(row) for row in normalized}
         return {
             "ok": True,
             "asset": asset,
             "stored": stored,
+            "inserted": inserted,
+            "idempotent_duplicates": len(normalized) - inserted,
+            "durable": self._evidence_path is not None,
             "execution_authorized": False,
             "production_decision_authorized": False,
         }
+
+    def evidence_snapshot(
+        self,
+        asset: str | None = None,
+        *,
+        limit: int = 100,
+        include_expired: bool = False,
+        as_of: str | None = None,
+    ) -> dict[str, Any]:
+        """Return durable evidence history plus deterministic active selection."""
+        symbol = str(asset or "").strip().upper()
+        limit = max(1, min(1000, int(limit)))
+        as_of_text = _utc_now() if as_of is None else _observed_time(as_of, "as_of")
+        as_of_ts = datetime.fromisoformat(as_of_text.replace("Z", "+00:00")).timestamp()
+
+        if self._evidence_path is None:
+            rows = []
+            for sym, features in self._external.items():
+                if symbol and sym != symbol:
+                    continue
+                for feature, row in features.items():
+                    item = dict(row)
+                    item.setdefault("asset", sym)
+                    item.setdefault("feature", feature)
+                    rows.append(item)
+            rows.sort(key=lambda x: (
+                _finite(x.get("observed_ts")) or -1.0,
+                _finite(x.get("received_ts")) or -1.0,
+                str(x.get("evidence_id") or ""),
+            ), reverse=True)
+            selected = self._select_active_rows(rows, as_of_ts)
+            if not include_expired:
+                rows = [x for x in rows if (_finite(x.get("observed_ts")) or float("inf")) <= as_of_ts < (_finite(x.get("expires_ts")) or -1.0)]
+            return self._evidence_payload(symbol, as_of_text, rows[:limit], selected, durable=False)
+
+        clauses = []
+        params: list[Any] = []
+        if symbol:
+            clauses.append("asset=?")
+            params.append(symbol)
+        if not include_expired:
+            clauses.append("observed_ts<=?")
+            clauses.append("expires_ts>?")
+            params.extend([as_of_ts, as_of_ts])
+        where = (" WHERE " + " AND ".join(clauses)) if clauses else ""
+        with self._evidence_connect() as con:
+            rows = [
+                dict(row) for row in con.execute(
+                    f"""SELECT evidence_id,schema_version,asset,feature,value,confidence,source,
+                               observed_at,observed_ts,received_ts,expires_ts,ttl_seconds,payload_hash,created_at
+                        FROM evidence{where}
+                        ORDER BY observed_ts DESC, received_ts DESC, evidence_id DESC
+                        LIMIT ?""",
+                    (*params, limit),
+                ).fetchall()
+            ]
+            active_params: list[Any] = []
+            active_where = ["observed_ts<=?", "expires_ts>?"]
+            active_params.extend([as_of_ts, as_of_ts])
+            if symbol:
+                active_where.append("asset=?")
+                active_params.append(symbol)
+            active_rows = [
+                dict(row) for row in con.execute(
+                    f"""SELECT evidence_id,schema_version,asset,feature,value,confidence,source,
+                               observed_at,observed_ts,received_ts,expires_ts,ttl_seconds,payload_hash,created_at
+                        FROM evidence
+                        WHERE {" AND ".join(active_where)}
+                        ORDER BY observed_ts DESC, received_ts DESC, evidence_id DESC""",
+                    tuple(active_params),
+                ).fetchall()
+            ]
+            selected = self._select_active_rows(active_rows, as_of_ts)
+            count_where = (" WHERE asset=?") if symbol else ""
+            total = con.execute(
+                f"SELECT COUNT(*) AS n FROM evidence{count_where}",
+                (symbol,) if symbol else (),
+            ).fetchone()["n"]
+
+        payload = self._evidence_payload(symbol, as_of_text, rows, selected, durable=True)
+        payload["total_history_count"] = int(total)
+        return payload
 
     def snapshot(self, asset: str | None = None) -> dict[str, Any]:
         market = self.port.status()
@@ -326,6 +473,7 @@ class PossibilityEngine:
             "data_health": {
                 "market_history_observations": len(history),
                 "microstructure": micro.get("health", {}),
+                "evidence_ledger": self._evidence_health(symbol),
                 "external_features": {
                     key: {
                         "available": feature.available,
@@ -376,6 +524,135 @@ class PossibilityEngine:
             "truth_contract": "research/shadow context for PARALLAX ablation; not an execution vote",
         }
 
+    # ---------- durable evidence ledger ----------
+
+    def _evidence_connect(self) -> sqlite3.Connection:
+        if self._evidence_path is None:
+            raise RuntimeError("durable evidence store unavailable")
+        con = sqlite3.connect(str(self._evidence_path), timeout=15)
+        con.row_factory = sqlite3.Row
+        con.execute("PRAGMA journal_mode=WAL")
+        con.execute("PRAGMA synchronous=NORMAL")
+        return con
+
+    def _init_evidence_store(self) -> None:
+        with self._evidence_connect() as con:
+            con.executescript(
+                """
+                CREATE TABLE IF NOT EXISTS evidence (
+                    evidence_id TEXT PRIMARY KEY,
+                    schema_version TEXT NOT NULL,
+                    asset TEXT NOT NULL,
+                    feature TEXT NOT NULL,
+                    value REAL NOT NULL,
+                    confidence REAL NOT NULL,
+                    source TEXT NOT NULL,
+                    observed_at TEXT NOT NULL,
+                    observed_ts REAL NOT NULL,
+                    received_ts REAL NOT NULL,
+                    expires_ts REAL NOT NULL,
+                    ttl_seconds REAL NOT NULL,
+                    payload_hash TEXT NOT NULL,
+                    created_at TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_psi_evidence_asset_feature_time
+                    ON evidence(asset, feature, observed_ts DESC, received_ts DESC);
+                CREATE INDEX IF NOT EXISTS idx_psi_evidence_expiry
+                    ON evidence(expires_ts);
+                """
+            )
+
+    @staticmethod
+    def _select_active_rows(rows: Sequence[Mapping[str, Any]], as_of_ts: float) -> dict[str, dict[str, Any]]:
+        selected: dict[str, dict[str, Any]] = {}
+        ordered = sorted(
+            (dict(row) for row in rows),
+            key=lambda row: (
+                _finite(row.get("observed_ts")) or -1.0,
+                _finite(row.get("received_ts")) or -1.0,
+                str(row.get("evidence_id") or ""),
+            ),
+            reverse=True,
+        )
+        for row in ordered:
+            observed_ts = _finite(row.get("observed_ts"))
+            expires_ts = _finite(row.get("expires_ts"))
+            feature = str(row.get("feature") or "")
+            if not feature or observed_ts is None or expires_ts is None:
+                continue
+            if observed_ts <= as_of_ts < expires_ts and feature not in selected:
+                selected[feature] = row
+        return selected
+
+    @staticmethod
+    def _evidence_payload(
+        asset: str,
+        as_of: str,
+        rows: Sequence[Mapping[str, Any]],
+        selected: Mapping[str, Mapping[str, Any]],
+        *,
+        durable: bool,
+    ) -> dict[str, Any]:
+        return {
+            "schema_version": EVIDENCE_SCHEMA_VERSION,
+            "asset": asset or None,
+            "as_of": as_of,
+            "durable": durable,
+            "active_count": len(selected),
+            "active": {key: dict(value) for key, value in sorted(selected.items())},
+            "history": [dict(row) for row in rows],
+            "execution_authorized": False,
+            "production_decision_authorized": False,
+        }
+
+    def _hydrate_external(self) -> None:
+        now = time.time()
+        with self._lock, self._evidence_connect() as con:
+            rows = [
+                dict(row) for row in con.execute(
+                    """SELECT evidence_id,schema_version,asset,feature,value,confidence,source,
+                              observed_at,observed_ts,received_ts,expires_ts,ttl_seconds,payload_hash,created_at
+                       FROM evidence
+                       WHERE observed_ts<=? AND expires_ts>?
+                       ORDER BY observed_ts DESC, received_ts DESC, evidence_id DESC""",
+                    (now, now),
+                ).fetchall()
+            ]
+            self._external.clear()
+            by_asset: dict[str, list[dict[str, Any]]] = defaultdict(list)
+            for row in rows:
+                by_asset[str(row.get("asset") or "").upper()].append(row)
+            for asset, asset_rows in by_asset.items():
+                self._external[asset] = self._select_active_rows(asset_rows, now)
+
+    def _refresh_external_asset(self, asset: str, as_of_ts: float | None = None) -> None:
+        if self._evidence_path is None:
+            return
+        ts = time.time() if as_of_ts is None else float(as_of_ts)
+        with self._evidence_connect() as con:
+            rows = [
+                dict(row) for row in con.execute(
+                    """SELECT evidence_id,schema_version,asset,feature,value,confidence,source,
+                              observed_at,observed_ts,received_ts,expires_ts,ttl_seconds,payload_hash,created_at
+                       FROM evidence
+                       WHERE asset=? AND observed_ts<=? AND expires_ts>?
+                       ORDER BY observed_ts DESC, received_ts DESC, evidence_id DESC""",
+                    (asset, ts, ts),
+                ).fetchall()
+            ]
+        self._external[asset] = self._select_active_rows(rows, ts)
+
+    def _evidence_health(self, asset: str) -> dict[str, Any]:
+        snap = self.evidence_snapshot(asset, limit=1, include_expired=True)
+        history = snap.get("history") or []
+        return {
+            "durable": bool(snap.get("durable")),
+            "active_count": int(snap.get("active_count") or 0),
+            "total_history_count": int(snap.get("total_history_count") or len(history)),
+            "latest_observed_at": history[0].get("observed_at") if history else None,
+            "schema_version": EVIDENCE_SCHEMA_VERSION,
+        }
+
     # ---------- evidence capture ----------
 
     def _record_market(self, rows: Sequence[Mapping[str, Any]]) -> None:
@@ -407,6 +684,8 @@ class PossibilityEngine:
         now = time.time()
         out: dict[str, Feature] = {}
         with self._lock:
+            if self._evidence_path is not None:
+                self._refresh_external_asset(symbol, now)
             rows = self._external.get(symbol, {})
             expired = [k for k, v in rows.items() if _finite(v.get("expires_ts")) is None or float(v["expires_ts"]) <= now]
             for key in expired:
