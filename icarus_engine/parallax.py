@@ -986,6 +986,7 @@ class ParallaxStore:
             for reason in item.get("robustness_blockers", []):
                 robustness_blockers[reason] = robustness_blockers.get(reason, 0) + 1
         return {
+            "robustness_version": "icarus-parallax-robustness-v1",
             "hypotheses_total": len(hypotheses),
             "candidate_ready": sum(1 for item in hypotheses if item["candidate_eligible"]),
             "robust_candidate_ready": sum(1 for item in hypotheses if item["robust_candidate_eligible"]),
@@ -1149,6 +1150,7 @@ class ParallaxStore:
 
         return {
             "schema_version": SCHEMA_VERSION,
+            "robustness_version": "icarus-parallax-robustness-v1",
             "counts": {
                 "decisions": counts["decisions"],
                 "branches": counts["branches"],
