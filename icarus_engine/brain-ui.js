@@ -92,6 +92,8 @@
             <div class="tile"><div class="k">Brain events / hour</div><div class="v tnum">${num(learn.brain_events_last_hour)}</div></div>
             <div class="tile"><div class="k">Events / 24h</div><div class="v tnum">${num(learn.brain_events_last_24h)}</div></div>
             <div class="tile"><div class="k">Qualified shadow candidates</div><div class="v tnum">${num(learn.qualified_shadow_candidates)}</div></div>
+            <div class="tile"><div class="k">Proof-ready candidates</div><div class="v tnum">${num(qualification.ready_count)}</div><div class="small muted">all receipt gates proven</div></div>
+            <div class="tile"><div class="k">Qualification blocked</div><div class="v tnum">${num(qualification.blocked_count)}</div><div class="small muted">fails closed until receipts clear every gate</div></div>
             <div class="tile"><div class="k">Candidate qualification share</div><div class="v">${pct(learn.qualified_share_of_decided)}</div></div>
             <div class="tile"><div class="k">Observed success rate</div><div class="v">${pct(truth.success_rate)}</div><div class="small muted">${h(truth.success_rate_status)}</div></div>
             <div class="tile"><div class="k">Outcome coverage</div><div class="v">${pct(truth.outcome_coverage)}</div><div class="small muted">${num(proofMetrics.settled_forecasts)} / ${num(proofMetrics.matured_forecasts)} matured</div></div>
