@@ -230,11 +230,18 @@ class PossibilityEngine:
         asset = str(asset or "").strip().upper()
         if not asset:
             raise ValueError("asset is required")
+        if len(asset) > 32:
+            raise ValueError("asset exceeds 32 characters")
+        runners = getattr(self.port, "runners", {})
+        if isinstance(runners, Mapping) and runners and asset not in runners:
+            raise ValueError("external evidence asset is not active in ICARUS")
         source = str(source or "").strip()
         if not source:
             raise ValueError("source is required")
         if len(source) > 180:
             raise ValueError("source exceeds 180 characters")
+        if any(ord(ch) < 32 or ord(ch) == 127 for ch in source):
+            raise ValueError("source contains control characters")
         if not isinstance(values, Mapping) or not values:
             raise ValueError("values must be a non-empty object")
         ttl_value = _finite(ttl_seconds)
