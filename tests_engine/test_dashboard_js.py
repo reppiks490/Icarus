@@ -127,6 +127,7 @@ def test_dashboard_surfaces_adaptive_brain_fabric():
     assert '/api/candidate-qualification' in server
     assert '/admin/candidate-qualification/receipt' in server
     assert '/admin/candidate-qualification/promote' in server
+    assert "qualified_shadow requires receipt-backed qualification" in server
     assert "/api/performance-proof" in server
     assert "/api/latency" in server
     assert "/admin/performance-proof/forecast" in server
