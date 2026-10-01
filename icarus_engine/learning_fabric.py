@@ -630,7 +630,92 @@ class LearningFabric:
                     raw, _utc_now(),
                 ),
             )
-        return {"ok": True, "idempotent": cur.rowcount == 0, "prediction": pred, **_authority()}
+        idempotent = cur.rowcount == 0
+        self._attach_shadow_calibration(pred)
+        return {"ok": True, "idempotent": idempotent, "prediction": pred, **_authority()}
+
+    def _attach_shadow_calibration(self, pred: Mapping[str, Any]) -> None:
+        if pred.get("target") not in {"direction", "class", "event"}:
+            return
+        emitted_at = str(pred.get("emitted_at") or "")
+        row = self._conn.execute(
+            """SELECT * FROM calibration_models
+               WHERE producer=? AND asset=? AND regime=? AND horizon_seconds=? AND target=?
+               AND status='SHADOW_VALIDATED' AND training_cutoff<=?
+               ORDER BY training_cutoff DESC, created_at DESC LIMIT 1""",
+            (
+                pred.get("producer"), pred.get("asset"), pred.get("regime"),
+                int(pred.get("horizon_seconds") or 0), pred.get("target"), emitted_at,
+            ),
+        ).fetchone()
+        if row is None:
+            return
+        model = json.loads(row["model_json"])
+        raw_probability = float(pred.get("probability"))
+        calibrated = float(isotonic_apply(model, raw_probability))
+        with self._lock, self._conn:
+            self._conn.execute(
+                """INSERT OR IGNORE INTO shadow_calibrations(
+                   prediction_id,calibrator_id,raw_probability,calibrated_probability,
+                   assigned_at,status) VALUES(?,?,?,?,?,'PENDING')""",
+                (
+                    pred["prediction_id"], row["calibrator_id"], raw_probability,
+                    calibrated, _utc_now(),
+                ),
+            )
+
+    def _settle_shadow_calibration(self, prediction_id: str, success: bool | None, observed_at: str) -> None:
+        if success is None:
+            return
+        with self._lock, self._conn:
+            row = self._conn.execute(
+                "SELECT * FROM shadow_calibrations WHERE prediction_id=?",
+                (prediction_id,),
+            ).fetchone()
+            if row is None or row["status"] == "SETTLED":
+                return
+            y = 1.0 if bool(success) else 0.0
+            raw_brier = (float(row["raw_probability"]) - y) ** 2
+            calibrated_brier = (float(row["calibrated_probability"]) - y) ** 2
+            self._conn.execute(
+                """UPDATE shadow_calibrations
+                   SET status='SETTLED',success=?,raw_brier=?,calibrated_brier=?,settled_at=?
+                   WHERE prediction_id=? AND status='PENDING'""",
+                (int(bool(success)), raw_brier, calibrated_brier, observed_at, prediction_id),
+            )
+
+    def shadow_calibration(self, prediction_id: str) -> dict[str, Any] | None:
+        pid = _text(prediction_id, "prediction_id", 96)
+        row = self._conn.execute(
+            """SELECT s.*,m.producer,m.asset,m.regime,m.horizon_seconds,m.target,
+                      m.training_cutoff,m.status AS calibrator_status
+               FROM shadow_calibrations s
+               JOIN calibration_models m ON m.calibrator_id=s.calibrator_id
+               WHERE s.prediction_id=?""",
+            (pid,),
+        ).fetchone()
+        if row is None:
+            return None
+        return {
+            "prediction_id": row["prediction_id"],
+            "calibrator_id": row["calibrator_id"],
+            "producer": row["producer"],
+            "asset": row["asset"],
+            "regime": row["regime"],
+            "horizon_seconds": int(row["horizon_seconds"]),
+            "target": row["target"],
+            "training_cutoff": row["training_cutoff"],
+            "calibrator_status": row["calibrator_status"],
+            "raw_probability": float(row["raw_probability"]),
+            "calibrated_probability": float(row["calibrated_probability"]),
+            "assigned_at": row["assigned_at"],
+            "status": row["status"],
+            "success": None if row["success"] is None else bool(row["success"]),
+            "raw_brier": row["raw_brier"],
+            "calibrated_brier": row["calibrated_brier"],
+            "settled_at": row["settled_at"],
+            **_authority(),
+        }
 
     def _prediction_row(self, prediction_id: str) -> tuple[sqlite3.Row, dict[str, Any]]:
         pid = _text(prediction_id, "prediction_id", 96)
@@ -704,6 +789,9 @@ class LearningFabric:
             if existing is not None:
                 prior = json.loads(existing["semantic_json"])
                 if prior == semantic:
+                    self._settle_shadow_calibration(
+                        pred["prediction_id"], prior.get("success"), prior.get("observed_at")
+                    )
                     return {"ok": True, "idempotent": True, "outcome": prior, **_authority()}
                 raise ValueError("outcome is immutable for prediction_id")
             self._conn.execute(
@@ -717,6 +805,7 @@ class LearningFabric:
                     _json(dict(metadata), "metadata"), raw, _utc_now(),
                 ),
             )
+        self._settle_shadow_calibration(pred["prediction_id"], success, semantic["observed_at"])
         return {"ok": True, "idempotent": False, "outcome": semantic, **_authority()}
 
     def outcome(self, prediction_id: str) -> dict[str, Any] | None:
