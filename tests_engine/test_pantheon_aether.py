@@ -842,22 +842,49 @@ def test_extended_faculty_timing_and_stress_inputs_fail_closed(tmp_path):
     with pytest.raises(ValueError, match="lease_ttl_seconds must be an integer"):
         kernel.record_observation(bad_ttl)
 
+def test_pantheon_psi_adapter_preserves_oracle_identity():
+    snapshot = {
+        "schema_version": "icarus-possibility-v1",
+        "asset": "NQ",
+        "generated_at": "2026-10-01T06:00:00Z",
+        "latent_pressure_engine": {
+            "latent_pressure": 0.42,
+            "latent_pressure_score": 42.0,
+            "evidence_coverage": 0.75,
+        },
+        "possibility": {"future_entropy": 31.0, "future_space_collapse": 69.0},
+        "edge_state": {"state": "LONG_BIAS", "confidence": 0.61},
+        "phase_transition": {"direction": "UP"},
+        "forced_consensus": {"active": True, "direction": "UP"},
+        "causal_leadership": {"status": "observed"},
+    }
+    existing = {"oracle": {"status": "external-oracle", "identity": "oracle"}}
+    out = subsystem_context({}, {}, psi_snapshot=snapshot, existing=existing)
+    assert out["oracle"] == existing["oracle"]
+    assert out["psi"]["subsystem"] == "psi"
+    assert out["psi"]["latent_pressure"] == pytest.approx(0.42)
+    assert out["psi"]["evidence_coverage"] == pytest.approx(0.75)
+    assert "distinct from ORACLE" in out["psi"]["source_semantics"]
+
+
+def test_pantheon_numeric_contracts_reject_out_of_range_values():
+    from icarus_engine.pantheon.contracts import unit, signed_unit
+    with pytest.raises(ValueError, match="between 0 and 1"):
+        unit(1.1, "confidence")
+    with pytest.raises(ValueError, match="between -1 and 1"):
+        signed_unit(-1.1, "direction")
+
 def test_ecology_upgrade_backfills_legacy_claims_and_sentinel_clock(tmp_path):
     kernel = PantheonKernel(tmp_path)
     observation = kernel.record_observation(_payload(observation_id="pan-legacy-upgrade"))
     durable_claim = next(c for c in observation["claims"] if c["kind"] == "ontology_candidate")
     expected_time = observation["observed_at"]
-
     with kernel._connect() as con:
         con.execute("DELETE FROM species")
         con.execute("UPDATE sentinel_cells SET last_observed_at=''")
-
     upgraded = PantheonKernel(tmp_path)
     state = upgraded.snapshot()
-    assert any(
-        row["origin_claim_id"] == durable_claim["claim_id"]
-        for row in state["ecology"]["species"]
-    )
+    assert any(row["origin_claim_id"] == durable_claim["claim_id"] for row in state["ecology"]["species"])
     assert state["sentinel_cells"][0]["last_observed_at"] == expected_time
 
 
@@ -865,7 +892,6 @@ def test_zero_confidence_outcomes_do_not_satisfy_fitness_evidence_thresholds(tmp
     kernel = PantheonKernel(tmp_path)
     first = kernel.record_observation(_payload(observation_id="pan-zero-confidence-origin"))
     claim = next(c for c in first["claims"] if c["kind"] == "ontology_candidate")
-
     last = None
     for i in range(3):
         last = kernel.record_claim_outcome({
@@ -875,7 +901,6 @@ def test_zero_confidence_outcomes_do_not_satisfy_fitness_evidence_thresholds(tmp
             "confidence": 0.0,
             "evidence": [f"observed-but-zero-confidence:{i}"],
         })
-
     assert last["fitness_credit"] == 0.0
     assert last["evidence_count"] == 0
     assert last["outcome_count"] == 3
@@ -892,23 +917,11 @@ def test_attached_claim_outcome_is_bound_to_feedback_asset_and_timestamp(tmp_pat
     kernel = PantheonKernel(tmp_path)
     first = kernel.record_observation(_payload(observation_id="pan-feedback-origin"))
     claim = next(c for c in first["claims"] if c["kind"] == "ontology_candidate")
-
-    bad_asset = _feedback_payload(
-        "pan-feedback-wrong-asset",
-        "2026-10-01T06:01:00Z",
-        claim["claim_id"],
-        0.5,
-    )
+    bad_asset = _feedback_payload("pan-feedback-wrong-asset", "2026-10-01T06:01:00Z", claim["claim_id"], 0.5)
     bad_asset["asset"] = "ES"
     with pytest.raises(ValueError, match="source asset"):
         kernel.record_observation(bad_asset)
-
-    mismatched = _feedback_payload(
-        "pan-feedback-wrong-time",
-        "2026-10-01T06:02:00Z",
-        claim["claim_id"],
-        0.5,
-    )
+    mismatched = _feedback_payload("pan-feedback-wrong-time", "2026-10-01T06:02:00Z", claim["claim_id"], 0.5)
     mismatched["claim_outcomes"][0]["observed_at"] = "2026-10-01T06:02:01Z"
     with pytest.raises(ValueError, match="source observation time"):
         kernel.record_observation(mismatched)

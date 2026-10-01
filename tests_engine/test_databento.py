@@ -7,7 +7,7 @@ import json
 import threading
 import urllib.error
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 
 import pytest
@@ -597,7 +597,12 @@ def test_depth_reconnect_gap_replays_only_affected_schema_from_boundary():
     assert feed.depth_events("NQ=F", schema="mbp-10")
     assert callable(first.reconnect_callback)
 
-    first.reconnect_callback("2026-09-30T10:00:00Z", "2026-09-30T10:00:03Z")
+    now = datetime.now(timezone.utc).replace(microsecond=0)
+    previous = now - timedelta(seconds=4)
+    resumed = now - timedelta(seconds=1)
+    previous_text = previous.isoformat().replace("+00:00", "Z")
+    resumed_text = resumed.isoformat().replace("+00:00", "Z")
+    first.reconnect_callback(previous_text, resumed_text)
     meta = feed.meta("NQ=F")
     assert meta["depth_schema_health"]["mbp-10"] is False
     assert meta["depth_error_codes"]["mbp-10"] == 7
@@ -606,7 +611,8 @@ def test_depth_reconnect_gap_replays_only_affected_schema_from_boundary():
     assert first.stopped is True
     assert second.started is True
     assert rows[-1]["price"] == 101.0
-    assert {row.get("start") for row in second.subscriptions} == {"2026-09-30T09:59:59Z"}
+    expected_start = (previous - timedelta(seconds=1)).isoformat().replace("+00:00", "Z")
+    assert {row.get("start") for row in second.subscriptions} == {expected_start}
     assert feed.meta("NQ=F")["depth_schema_health"]["mbp-10"] is True
 
 
@@ -1316,11 +1322,16 @@ def test_reconnect_gap_is_published_and_replayed_from_actual_boundary():
     feed.recent_ex("NQ=F", 1)
     assert callable(first.reconnect_callback)
 
-    first.reconnect_callback("2026-09-30T10:00:00Z", "2026-09-30T10:00:02Z")
+    now = datetime.now(timezone.utc).replace(microsecond=0)
+    previous = now - timedelta(seconds=3)
+    resumed = now - timedelta(seconds=1)
+    previous_text = previous.isoformat().replace("+00:00", "Z")
+    resumed_text = resumed.isoformat().replace("+00:00", "Z")
+    first.reconnect_callback(previous_text, resumed_text)
     meta = feed.meta("NQ=F")
     assert meta["reconnect_count"] == 1
-    assert meta["last_reconnect_gap"]["previous"].endswith("10:00:00Z")
-    assert meta["last_reconnect_gap"]["resumed"].endswith("10:00:02Z")
+    assert meta["last_reconnect_gap"]["previous"] == previous_text
+    assert meta["last_reconnect_gap"]["resumed"] == resumed_text
     assert meta["core_session_ok"] is False
     assert meta["core_error_code"] == 7
 
@@ -1329,7 +1340,8 @@ def test_reconnect_gap_is_published_and_replayed_from_actual_boundary():
     assert second.started is True
     assert feed.meta("NQ=F")["core_session_ok"] is True
     starts = {row.get("start") for row in second.subscriptions}
-    assert starts == {"2026-09-30T09:59:59Z"}
+    expected_start = (previous - timedelta(seconds=1)).isoformat().replace("+00:00", "Z")
+    assert starts == {expected_start}
 
 
 def test_terminal_databento_close_prevents_any_session_reopen():

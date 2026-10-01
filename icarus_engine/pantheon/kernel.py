@@ -156,11 +156,11 @@ class PantheonKernel:
                 parent_species_id = payload.get("parent_species_id") if isinstance(payload, Mapping) else None
                 generation = 0
                 if parent_species_id:
-                    parent = con.execute(
+                    parent_row = con.execute(
                         "SELECT generation FROM species WHERE species_id=?",
                         (str(parent_species_id),),
                     ).fetchone()
-                    generation = (int(parent["generation"]) + 1) if parent is not None else 1
+                    generation = (int(parent_row["generation"]) + 1) if parent_row is not None else 1
                 species_id = "species-" + digest(claim["claim_id"], claim["asset"])[:18]
                 con.execute(
                     """INSERT OR IGNORE INTO species(
@@ -896,7 +896,8 @@ class PantheonKernel:
         latest = observations[0] if observations else None
         ecology = self._ecology_snapshot(limit=100)
         catalog = {
-            "ORACLE": {"mode": "native subsystem via read-only adapter", "ownership": "preserved; not reimplemented here"},
+            "ORACLE": {"mode": "native subsystem; separate identity", "ownership": "preserved; not reimplemented or relabeled here"},
+            "ICARUS Ψ": {"mode": "native subsystem via read-only adapter", "ownership": "preserved; distinct from ORACLE"},
             "PARALLAX": {"mode": "native subsystem", "ownership": "preserved"},
             "DREAMSTATE": {"mode": "native subsystem", "ownership": "preserved"},
             "NEMESIS": {"mode": "pantheon faculty"},
@@ -924,6 +925,7 @@ class PantheonKernel:
                 "no_direct_agent_trading": True,
                 "no_forced_consensus": True,
                 "oracle_parallax_dreamstate_ownership_preserved": True,
+                "psi_identity_distinct_from_oracle": True,
                 "risk_kernel_remains_external_hard_gate": True,
                 "aether_evolution_requires_observed_claim_outcomes": True,
                 "cognitive_genesis_never_auto_creates_production_code": True,

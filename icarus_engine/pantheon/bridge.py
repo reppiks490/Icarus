@@ -12,9 +12,14 @@ from .contracts import authority_block
 def _obj(value: Any) -> Mapping[str, Any]:
     return value if isinstance(value, Mapping) else {}
 
-def oracle_context(snapshot: Mapping[str, Any]) -> dict[str, Any]:
+def psi_context(snapshot: Mapping[str, Any]) -> dict[str, Any]:
+    """Compact read-only adapter for ICARUS Ψ.
+
+    Ψ is distinct from ORACLE. The adapter intentionally reads only the
+    current Psi schema and never relabels Psi evidence as ORACLE evidence.
+    """
     src = _obj(snapshot)
-    oracle = _obj(src.get("oracle"))
+    latent = _obj(src.get("latent_pressure_engine"))
     possibility = _obj(src.get("possibility"))
     edge = _obj(src.get("edge_state"))
     phase = _obj(src.get("phase_transition"))
@@ -22,12 +27,13 @@ def oracle_context(snapshot: Mapping[str, Any]) -> dict[str, Any]:
     leadership = _obj(src.get("causal_leadership"))
     return {
         "status": "observed" if src else "unavailable",
+        "subsystem": "psi",
         "schema_version": src.get("schema_version"),
         "asset": src.get("asset"),
         "generated_at": src.get("generated_at"),
-        "latent_pressure": oracle.get("latent_pressure"),
-        "latent_pressure_score": oracle.get("latent_pressure_score"),
-        "evidence_coverage": oracle.get("evidence_coverage"),
+        "latent_pressure": latent.get("latent_pressure"),
+        "latent_pressure_score": latent.get("latent_pressure_score"),
+        "evidence_coverage": latent.get("evidence_coverage"),
         "future_entropy": possibility.get("future_entropy"),
         "future_space_collapse": possibility.get("future_space_collapse"),
         "edge_state": edge.get("state"),
@@ -37,8 +43,17 @@ def oracle_context(snapshot: Mapping[str, Any]) -> dict[str, Any]:
         "forced_consensus_direction": consensus.get("direction"),
         "causal_leadership_status": leadership.get("status"),
         "authority": authority_block(),
-        "source_semantics": "compact read-only ORACLE Psi diagnostics; association/scenario shares are not causal or calibrated probability",
+        "source_semantics": "compact read-only ICARUS Psi diagnostics; Psi is distinct from ORACLE; association/scenario shares are not causal or calibrated probability",
     }
+
+
+def oracle_context(snapshot: Mapping[str, Any]) -> dict[str, Any]:
+    """Deprecated compatibility alias for legacy callers.
+
+    The returned payload is explicitly identified as Psi so callers cannot
+    mistake this adapter for the separate ORACLE subsystem.
+    """
+    return psi_context(snapshot)
 
 def parallax_context(snapshot: Mapping[str, Any]) -> dict[str, Any]:
     src = _obj(snapshot)
@@ -87,11 +102,16 @@ def subsystem_context(
     parallax_snapshot: Mapping[str, Any],
     dreamstate_snapshot: Mapping[str, Any],
     *,
+    psi_snapshot: Mapping[str, Any] | None = None,
     oracle_snapshot: Mapping[str, Any] | None = None,
     existing: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     out = dict(existing or {})
-    out["oracle"] = oracle_context(oracle_snapshot or {})
+    # Preserve a caller-supplied ORACLE payload. ICARUS Ψ must never overwrite
+    # or masquerade as the separate ORACLE subsystem.
+    psi_source = psi_snapshot if psi_snapshot is not None else oracle_snapshot
+    if psi_source is not None:
+        out["psi"] = psi_context(psi_source)
     out["parallax"] = parallax_context(parallax_snapshot)
     out["dreamstate"] = dreamstate_context(dreamstate_snapshot)
     return out
