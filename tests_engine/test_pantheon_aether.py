@@ -301,3 +301,16 @@ def test_ambient_subsystem_context_does_not_break_idempotent_retries(tmp_path):
     assert retry["observation_id"] == first["observation_id"]
     assert retry["analysis"]["external_subsystems"] == {"oracle": {"snapshot": 1}}
     assert retry["analysis"]["truth_contract"]["ambient_subsystem_context_excluded_from_immutable_identity"] is True
+
+
+def test_failed_native_oracle_adapter_cannot_fall_back_to_spoofed_context():
+    out = subsystem_context(
+        {"counts": {}, "regret": {}, "mutation_signals": [], "paired_ablation_attribution": []},
+        {"stages": {}, "candidates": [], "required_gates": []},
+        oracle_snapshot=None,
+        existing={"oracle": {"latent_pressure": 999}, "custom": {"preserved": True}},
+    )
+    assert out["oracle"]["status"] == "unavailable"
+    assert out["oracle"]["latent_pressure"] is None
+    assert out["custom"]["preserved"] is True
+    assert out["oracle"]["authority"]["execution_authorized"] is False

@@ -21,6 +21,7 @@ def oracle_context(snapshot: Mapping[str, Any]) -> dict[str, Any]:
     consensus = _obj(src.get("forced_consensus"))
     leadership = _obj(src.get("causal_leadership"))
     return {
+        "status": "observed" if src else "unavailable",
         "schema_version": src.get("schema_version"),
         "asset": src.get("asset"),
         "generated_at": src.get("generated_at"),
@@ -90,8 +91,7 @@ def subsystem_context(
     existing: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     out = dict(existing or {})
-    if oracle_snapshot is not None:
-        out["oracle"] = oracle_context(oracle_snapshot)
+    out["oracle"] = oracle_context(oracle_snapshot or {})
     out["parallax"] = parallax_context(parallax_snapshot)
     out["dreamstate"] = dreamstate_context(dreamstate_snapshot)
     return out
