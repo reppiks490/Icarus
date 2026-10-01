@@ -1,0 +1,36 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "argus-liquidity-dynamics-verified-20261001T160031Z",
+  "category": "EVOLUTION",
+  "severity": "success",
+  "status": "verified",
+  "subsystems": [
+    "argus",
+    "provenance",
+    "ml",
+    "data"
+  ],
+  "recorded_at": "2026-10-01T16:00:31Z",
+  "title": "ARGUS causal TRUE_DEPTH liquidity dynamics verified",
+  "summary": "ARGUS now derives deterministic distance-to-touch depth tensors and causal liquidity dynamics from ordered TRUE_DEPTH snapshot history. The new layer measures per-bucket depth persistence, replenishment, cancellation, centroid migration and concentration while failing closed on crossed/locked books, invalid sizes, duplicate levels, off-tick geometry and out-of-order history. It is descriptive research evidence only and does not grant execution authority.",
+  "source_repository": "reppiks490/divine-providence",
+  "source_ref": "main",
+  "source_commit": "eab353fc4eb217140e0b1322f7ffa5a1c28b8e94",
+  "evidence": [
+    "divine-providence PR #12 merged at eab353fc4eb217140e0b1322f7ffa5a1c28b8e94",
+    "distance-to-touch depth tensors are translation invariant",
+    "per-bucket persistence, replenishment and cancellation rates are deterministic",
+    "bid/ask depth centroid and latest migration are recorded in ticks",
+    "depth concentration is normalized and bounded by construction",
+    "history must be strictly ordered by event_time_ns and sequence",
+    "crossed/locked, duplicate-level, invalid-size and off-tick snapshots fail closed",
+    "exact-head subsystem-evolution workflow run 36888452654 completed success",
+    "Linux and Windows ARGUS causal subsystem jobs passed",
+    "intelligence-fabric job passed",
+    "full twelve-system validation passed",
+    "execution_authorized=false",
+    "production_decision_authorized=false"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}
