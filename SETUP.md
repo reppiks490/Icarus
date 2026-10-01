@@ -76,7 +76,7 @@ $env:DATABENTO_ROLL_RULE="v"
 icarus-plant start --assets NQ,MNQ,ES --feed databento
 ```
 
-The key stays local; do not commit it. You may either export the variables in your shell or put `DATABENTO_API_KEY`, `DATABENTO_DATASET=GLBX.MDP3`, and `DATABENTO_ROLL_RULE=v` in the plant root `.env`; `icarus-plant start` loads that file without overriding variables already exported by the process. All three roll rules remain automatic continuous contracts—no dated-contract maintenance. Run `ICARUS_FEED=databento icarus-engine doctor --json` (or the PowerShell equivalent) to verify the SDK/key/dataset/roll prerequisites without making a market-data request.
+The key stays in your local environment; do not commit it. All three roll rules remain automatic continuous contracts—no dated-contract maintenance. ICARUS multiplexes configured CME futures onto one shared core `GLBX.MDP3` Live session for 1-second OHLCV/trades. MBP-10 and MBO are isolated into one shared session per depth schema, so an entitlement or subscription failure in one book feed cannot kill core prices or the other depth schema. Temporary MBO snapshots are serialized. ICARUS automatically rebuilds the active sessions on each new UTC date so Databento's continuous `.v.0/.n.0/.c.0` mappings are re-resolved without you ever selecting a month-coded contract; the refresh replays the last five minutes and deduplicates/backfills overlapping data. Run `icarus-engine doctor --json` with `ICARUS_FEED=databento` to verify the SDK/key prerequisites without making a market-data request.
 
 ## Not this
 

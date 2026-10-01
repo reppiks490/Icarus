@@ -179,7 +179,7 @@ function toast(msg, bad) { let t = $('#toast'); if (!t) { t = document.createEle
 async function admin(path, body, quiet) {
   const tok = localStorage.getItem(tokKey) || $('#token').value.trim(); if (!tok) { $('#ctl').classList.add('open'); return null; }
   const r = await fetch(path, {method:'POST', headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'}, body: JSON.stringify(body||{})});
-  const j = await r.json().catch(()=>({})); const msg = r.ok ? (j.note||'ok') : ('error '+r.status+': '+(j.detail||''));
+  const j = await r.json().catch(()=>({})); const msg = r.ok ? (j.note||'ok') : ('error '+r.status+': '+(j.detail||j.error||'request failed'));
   if (!quiet) toast(msg, !r.ok); setTimeout(refresh, 400); return r.ok ? j : null;
 }
 
@@ -346,7 +346,7 @@ function assetHead(a) {
   const exits = (a.exits||[]).map(e => `${e.id}: ${e.qty??'all'} tp ${px(e.limit)} / sl ${px(e.stop)}`).join(' · ');
   return `<div style="display:flex; align-items:baseline; gap:12px; flex-wrap:wrap">
     <h3 style="margin:0;font-size:22px">${a.symbol} <span class="muted" style="font-size:14px;font-weight:400">${esc(a.name)} · ${esc(a.continuous_symbol||a.product)} · ${a.tf}m</span></h3><span class="tnum" style="font-size:22px;font-weight:600">${px(a.price)}</span>
-    ${marketChip(a)}<span class="chip ${regClass(st.rate_regime_str)}">${esc(st.rate_regime_str||'')}</span><span class="chip">${a.chart_type==='heikin_ashi'?'Heikin Ashi chart':'real bars'} · fills on ${a.fill_on==='chart'?'HA/chart bars':'real prices'} · HTF/LTF ${a.security_source==='standard'?'standard OHLC':'selected chart source'} · slip ${a.slippage_ticks}t</span>${a.feed_provider==='databento'?'<span class="chip mkt-open" title="Raw Databento feed capability; strategy chart aggregation remains minute-native">Databento raw · 1s · ticks · MBP-10 · MBO</span><span class="chip w">strategy chart · minute-native</span>':''}<span class="chip">preset ${esc(a.preset||'none')}</span>${a.paused?'<span class="chip r">paused</span>':''}${a.rewarming?'<span class="chip w">re-warming</span>':''}
+    ${marketChip(a)}<span class="chip ${regClass(st.rate_regime_str)}">${esc(st.rate_regime_str||'')}</span><span class="chip">${a.chart_type==='heikin_ashi'?'Heikin Ashi chart':'real bars'} · fills on ${a.fill_on==='chart'?'HA/chart bars':'real prices'} · HTF/LTF ${a.security_source==='standard'?'standard OHLC':'selected chart source'} · slip ${a.slippage_ticks}t</span><span class="chip">preset ${esc(a.preset||'none')}</span>${a.paused?'<span class="chip r">paused</span>':''}${a.rewarming?'<span class="chip w">re-warming</span>':''}
     <span style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap"><button class="sm" data-cmd="pause" data-a="${a.symbol}">Pause</button><button class="sm" data-cmd="resume" data-a="${a.symbol}">Resume</button><button class="sm danger" data-cmd="flatten" data-a="${a.symbol}">Flatten</button><button class="sm" data-cmd="inputs" data-a="${a.symbol}">Inputs</button><button class="sm" data-cmd="rewarm" data-a="${a.symbol}">Re-warm</button><button class="sm" data-cmd="export" data-a="${a.symbol}">Export CSV</button>${solo?'':`<button class="sm" data-cmd="open-tab" data-a="${a.symbol}">Open in tab ↗</button>`}</span></div>
     <div class="exec" style="margin-top:8px">${esc(st.exec||'')}${pending?` · pending: ${esc(pending)}`:''}${exits?` · resting: ${esc(exits)}`:''}</div>
     <div id="dChart" style="margin-top:10px"></div>
@@ -372,10 +372,12 @@ function inputsHtml(A) {
 }
 function commandsHtml(A) {
   const opts = `<option value="*">all assets</option>` + A.map(a => `<option value="${a.symbol}">${esc(a.continuous_symbol||a.symbol)}</option>`).join('');
+  const assetOptions = REGISTRY.map(r => `<option value="${esc(r.symbol)}">${esc(r.name)} · ${esc(r.continuous_symbol||r.provider_symbol||r.symbol)}</option>`).join('');
+  const addTfOptions = ['1','2','3','5','10','15','20','30','45','60','120','180','240','D','W'].map(tf => `<option value="${tf}"></option>`).join('');
   return `<section class="card c8"><h2>Commands <span class="sub">or press <kbd>Ctrl</kbd>+<kbd>K</kbd> anywhere</span></h2>
     <div>${COMMANDS.map(c => `<div class="cmd"><b>${esc(c.label)}</b><span class="desc">${esc(c.desc)}</span><span>${c.scope!=='all'?`<select data-scope="${c.id}">${opts}</select>`:''}</span><button class="sm ${c.danger?'danger':''}" data-run="${c.id}">Run</button></div>`).join('')}</div>
     <h2 style="margin-top:18px">Add an asset</h2>
-    <div class="row"><input id="addSym" type="text" placeholder="symbol (NQ1!, MNQ1!, ES1!, GC1!, BTC…)" style="width:170px"><input id="addTf" type="text" placeholder="tf (20)" style="width:80px"><select id="addPreset"><option value="">preset: engine default</option>${PRESETS.map(p=>`<option value="${esc(p.name)}">${esc(p.name)}</option>`).join('')}</select><button class="primary sm" id="addBtn">Add</button></div>
+    <div class="row"><input id="addSym" list="addAssetOptions" type="text" placeholder="symbol (MGC, NQ1!, ES1!, BTC…)" autocomplete="off" style="width:170px"><datalist id="addAssetOptions">${assetOptions}</datalist><input id="addTf" list="addTfOptions" type="text" placeholder="tf (20)" autocomplete="off" style="width:80px"><datalist id="addTfOptions">${addTfOptions}</datalist><select id="addPreset"><option value="">preset: engine default</option>${PRESETS.map(p=>`<option value="${esc(p.name)}">${esc(p.name)}</option>`).join('')}</select><button class="primary sm" id="addBtn">Add</button></div>
     <div class="small muted" style="margin-top:6px">Registry: ${REGISTRY.map(r=>`<code>${esc(r.continuous_symbol||r.symbol)}</code>`).join(' ')} — futures are continuous-only; anything else is treated as a Coinbase spot pair.</div></section>
   <section class="card c4"><h2>Terminal commands</h2><pre class="cli">py -3 -m icarus_engine.cli run --assets NQ,ES,YM,GC,SI,PL,PA,BTCF,BTC --tf 20
 py -3 -m icarus_engine.cli run --assets NQ@10 --preset NQ-10m-original
@@ -457,7 +459,16 @@ document.addEventListener('click', async ev => {
   if (b.id === 'inRevert') { inState.edits = {}; inState.chartEdits = {}; renderChartConfig(); renderInputs(); }
   if (b.id === 'inReset') { if (confirm(`Remove all per-asset overrides for ${inState.asset}?`)) { await admin('/admin/inputs/reset', {asset: inState.asset}); setTimeout(()=>loadInputsTab(), 1500); } }
   if (b.id === 'inApplyPreset') { await admin('/admin/preset', {asset: inState.asset, preset: $('#inPreset').value || null}); setTimeout(()=>loadInputsTab(), 1500); }
-  if (b.id === 'addBtn') { const s = $('#addSym').value.trim(); if (!s) return; await admin('/admin/assets/add', {symbol: s, tf: $('#addTf').value.trim() || undefined, preset: $('#addPreset').value || undefined}); }
+  if (b.id === 'addBtn') {
+    const s = $('#addSym').value.trim(); if (!s) return;
+    b.disabled = true;
+    try {
+      const added = await admin('/admin/assets/add', {symbol: s, tf: $('#addTf').value.trim() || undefined, preset: $('#addPreset').value || undefined});
+      if (added && $('#addSym')) $('#addSym').value = '';
+    } finally {
+      if (document.body.contains(b)) b.disabled = false;
+    }
+  }
   if (b.dataset.agentRecipe) {
     const r = (window.ICARUS_AGENT && window.ICARUS_AGENT.recipes || []).find(x => x.id === b.dataset.agentRecipe);
     if (r) { navigator.clipboard.writeText((r.lines||[]).join('\n')); toast('copied recipe — not executed'); }
