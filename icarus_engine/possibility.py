@@ -15,7 +15,8 @@ The ICARUS Ψ engine combines:
 7. phase-boundary and event-horizon diagnostics,
 8. forced-consensus detection,
 9. market-shadow force removal,
-10. a strict NO_EDGE state when coverage or agreement is insufficient,\n11. a durable provenance-bound evidence ledger with deterministic restart recovery.
+10. a strict NO_EDGE state when coverage or agreement is insufficient,
+11. a durable provenance-bound evidence ledger with deterministic restart recovery.
 """
 from __future__ import annotations
 
