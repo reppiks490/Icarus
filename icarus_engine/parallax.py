@@ -885,7 +885,8 @@ class ParallaxStore:
                 "SELECT COUNT(*) AS decisions,"
                 "(SELECT COUNT(*) FROM branches) AS branches,"
                 "(SELECT COUNT(*) FROM branches WHERE status='observed') AS observed,"
-                "(SELECT MAX(observed_at) FROM decisions) AS latest_observed_at"
+                "MAX(observed_at) AS latest_observed_at "
+                "FROM decisions"
             ).fetchone()
         return {
             "schema_version": "icarus-parallax-status-v1",
