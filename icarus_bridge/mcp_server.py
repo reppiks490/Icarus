@@ -182,7 +182,7 @@ def set_engine_chart_config(asset: str = "NQ", timeframe: Optional[str] = None,
 
     Supported chart modes are standard OHLC (real) and Heikin Ashi (heikin_ashi).
     Real fills remain recommended even when the strategy calculates on Heikin Ashi.
-    Seconds/ticks are rejected unless the engine later gains a genuine sub-minute/tick adapter.
+    Databento now supplies genuine 1-second/tick/depth data, but chart-timeframe execution remains minute-based until the chart aggregator is upgraded for sub-minute/tick bars.
     """
     chart = {k: v for k, v in {
         "timeframe": timeframe, "chart_type": chart_type, "fill_on": fill_on,
@@ -220,6 +220,42 @@ def start_engine_backtest(asset: str = "NQ", timeframe: Optional[str] = None,
 def engine_backtest_status(job_id: str) -> dict:
     """Read a cached backtest job, including recalculated metrics/trades when it is complete."""
     return _safe_engine(lambda: _engine_get(f"/api/backtest/{job_id.strip()}"))
+
+
+@mcp.tool()
+def engine_market_data_capabilities(asset: str = "NQ") -> dict:
+    """Active raw-feed capabilities. Databento exposes 1s OHLCV, ticks, MBP-10, and MBO."""
+    asset = asset.strip().upper()
+    return _safe_engine(lambda: _engine_get(f"/api/market-data/{asset}/capabilities"))
+
+
+@mcp.tool()
+def engine_recent_ticks(asset: str = "NQ", limit: int = 1000, since_ts: int = 0) -> dict:
+    """Recent raw trade ticks from the active engine feed."""
+    asset = asset.strip().upper()
+    qs = f"?limit={max(1, min(10000, int(limit)))}"
+    if int(since_ts) > 0:
+        qs += f"&since_ts={int(since_ts)}"
+    return _safe_engine(lambda: _engine_get(f"/api/market-data/{asset}/ticks{qs}"))
+
+
+@mcp.tool()
+def engine_order_book_events(asset: str = "NQ", schema: str = "mbp-10", limit: int = 1000) -> dict:
+    """Recent Databento L2/L3 events. schema must be mbp-10 or mbo."""
+    schema = schema.strip().lower()
+    if schema not in ("mbp-10", "mbo"):
+        return {"error": "schema must be mbp-10 or mbo"}
+    asset = asset.strip().upper()
+    return _safe_engine(lambda: _engine_get(
+        f"/api/market-data/{asset}/depth?schema={schema}&limit={max(1, min(10000, int(limit)))}"
+    ))
+
+
+@mcp.tool()
+def engine_mbo_snapshot(asset: str = "NQ", timeout: float = 5.0) -> dict:
+    """Request a live Databento MBO snapshot for the continuous front contract."""
+    body = {"asset": asset.strip().upper(), "timeout": max(0.1, min(30.0, float(timeout)))}
+    return _safe_engine(lambda: _engine_post("/admin/market-data/mbo-snapshot", body))
 
 
 # ── control tools (state-changing) ──

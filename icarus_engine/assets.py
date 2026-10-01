@@ -11,9 +11,10 @@ from dataclasses import dataclass, field, replace
 from typing import Dict, List, Optional
 
 
-# The live adapters currently provide minute OHLC bars. These are the chart choices
-# exposed by the UI/MCP; arbitrary positive minute values remain accepted by the
-# parser for backward compatibility with existing presets.
+# The strategy/chart execution layer is intentionally minute-native even when the
+# active raw feed (Databento) exposes 1-second bars, ticks, and depth. These are the
+# chart choices exposed by the UI/MCP; arbitrary positive minute values remain
+# accepted by the parser for backward compatibility with existing presets.
 PRIMARY_INTRADAY_TIMEFRAMES = ("1", "2", "5", "10", "20", "30")
 CHART_TIMEFRAME_OPTIONS = ("1", "2", "3", "5", "10", "15", "20", "30", "45", "60", "120", "180", "240", "D", "W")
 CHART_TYPES = ("heikin_ashi", "real")
@@ -73,7 +74,7 @@ def chart_capabilities() -> Dict[str, object]:
         "seconds": False,
         "ticks": False,
         "minimum_live_resolution": "1m",
-        "note": "Seconds/ticks are capability-gated until a genuine sub-minute/tick feed is installed; ICARUS never fabricates ticks.",
+        "note": "Strategy chart execution is minute-native. Databento may expose genuine 1-second/tick/depth data through the raw market-data APIs, but ICARUS never fabricates sub-minute chart bars or ticks.",
     }
 
 

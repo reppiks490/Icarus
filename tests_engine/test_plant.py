@@ -101,6 +101,9 @@ def test_default_engine_service_offline_argv(tmp_path):
     assert svc.health_url == "http://127.0.0.1:8791/healthz"
     live = default_engine_service(str(tmp_path), "/repo", offline=False)
     assert "--roll" not in live.argv  # continuous futures require no expiry/roll CLI override
+    db = default_engine_service(str(tmp_path), "/repo", feed="databento")
+    assert db.env["ICARUS_FEED"] == "databento"
+    assert db.argv[db.argv.index("--feed") + 1] == "databento"
 
 
 def test_supervisor_spawn_and_stop(tmp_path):
@@ -510,3 +513,20 @@ def test_start_rejects_healthy_engine_without_live_supervisor(tmp_path, capsys):
         httpd.shutdown()
         httpd.server_close()
         thread.join(5)
+
+
+def test_plant_loads_databento_key_from_local_env_without_overriding_process_env(tmp_path, monkeypatch):
+    import icarus_plant.cli as plant_cli
+    (tmp_path / ".env").write_text(
+        "DATABENTO_API_KEY=db-from-file\nDATABENTO_DATASET=GLBX.MDP3\n",
+        encoding="utf-8",
+    )
+    monkeypatch.delenv("DATABENTO_API_KEY", raising=False)
+    monkeypatch.delenv("DATABENTO_DATASET", raising=False)
+    plant_cli._load_root_env(str(tmp_path))
+    assert os.environ["DATABENTO_API_KEY"] == "db-from-file"
+    assert os.environ["DATABENTO_DATASET"] == "GLBX.MDP3"
+
+    monkeypatch.setenv("DATABENTO_API_KEY", "db-from-process")
+    plant_cli._load_root_env(str(tmp_path))
+    assert os.environ["DATABENTO_API_KEY"] == "db-from-process"
