@@ -1,0 +1,36 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "argus-execution-evidence-lineage-verified-20261001T194900Z",
+  "category": "EVOLUTION",
+  "severity": "success",
+  "status": "verified",
+  "subsystems": [
+    "argus",
+    "execution_research",
+    "calibration",
+    "provenance"
+  ],
+  "recorded_at": "2026-10-01T19:49:00Z",
+  "title": "ARGUS execution-evidence lineage firewall verified",
+  "summary": "ARGUS now separates BROKER_CONFIRMED execution evidence from ICARUS_PAPER_EMULATOR outcomes before impact calibration is aggregated. Receipts are content-addressed and bind source repository/commit/run/execution identity, source-payload SHA-256, clocks, size, price and broker lineage. ICARUS live=true remains paper-emulator evidence and cannot claim broker confirmation. Receipt-plus-calibration lineage is also content-addressed, and the safe aggregation path never pools paper and broker calibration summaries.",
+  "source_repository": "reppiks490/divine-providence",
+  "source_ref": "main",
+  "source_commit": "05d8786f767362d5f329aa7bfa02d7ea148efea5",
+  "evidence": [
+    "divine-providence PR #25 merged at 05d8786f767362d5f329aa7bfa02d7ea148efea5",
+    "exact-head subsystem-evolution workflow run 36916474946 completed success",
+    "Linux and Windows ARGUS causal subsystem jobs passed",
+    "intelligence-fabric job passed",
+    "full twelve-system validation passed",
+    "BROKER_CONFIRMED requires broker/order/fill lineage",
+    "ICARUS_PAPER_EMULATOR cannot carry broker confirmation fields",
+    "ICARUS live=true is explicitly not broker-confirmed execution",
+    "current ICARUS paper fill rows do not preserve order-decision time, so ARGUS requires it explicitly instead of inventing it",
+    "paper and broker calibration summaries are emitted as separate evidence strata",
+    "receipt and receipt-plus-calibration identities are content-addressed",
+    "execution_authorized=false",
+    "production_decision_authorized=false"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}
