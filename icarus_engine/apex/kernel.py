@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 import hashlib,json
 from pathlib import Path
 from typing import Any, Mapping
-from .adapters import sibling_evidence
+from .adapters import safe_snapshot, sibling_evidence
 from .ancestry import EvidenceAncestry
 from .contracts import authority_flags, parse_utc
 from .crowdhunt import crowd_map
@@ -25,8 +25,8 @@ def _finite_json_copy(body:Mapping[str,Any])->dict[str,Any]:
     except (TypeError,ValueError) as ex:raise ValueError("research mutation must be finite JSON") from ex
     return out
 class ApexKernel:
-    def __init__(self,base_dir,*,possibility=None,chronofold=None,pantheon=None,parallax=None,dreamstate=None,sibyl=None):
-        self.base_dir=Path(base_dir);self.store=ApexStore(self.base_dir);self._siblings={"possibility":possibility,"chronofold":chronofold,"pantheon":pantheon,"parallax":parallax,"dreamstate":dreamstate,"sibyl":sibyl};self._research_events_path=self.base_dir/"research"/"apex-research-events.jsonl";self._research_events_path.parent.mkdir(parents=True,exist_ok=True)
+    def __init__(self,base_dir,*,possibility=None,chronofold=None,pantheon=None,parallax=None,dreamstate=None,sibyl=None,learning=None):
+        self.base_dir=Path(base_dir);self.store=ApexStore(self.base_dir);self._siblings={"possibility":possibility,"chronofold":chronofold,"pantheon":pantheon,"parallax":parallax,"dreamstate":dreamstate,"sibyl":sibyl};self._learning=learning;self._research_events_path=self.base_dir/"research"/"apex-research-events.jsonl";self._research_events_path.parent.mkdir(parents=True,exist_ok=True)
     def ingest_evidence(
         self,
         body:Mapping[str,Any],
@@ -142,11 +142,13 @@ class ApexKernel:
     def snapshot(self,*,as_of:str|None=None,asset:str|None=None)->dict[str,Any]:
         boundary=as_of or _now();parse_utc(boundary,"as_of");normalized_asset=None if asset is None else str(asset).strip().upper();evidence=self.store.evidence_as_of(boundary)
         siblings=sibling_evidence(possibility=self._siblings["possibility"],chronofold=self._siblings["chronofold"],pantheon=self._siblings["pantheon"],parallax=self._siblings["parallax"],dreamstate=self._siblings["dreamstate"],sibyl=self._siblings["sibyl"]);epistemics=epistemic_kernel_snapshot(self.store,as_of=boundary);economic_world=economic_world_state(evidence,as_of=boundary)
+        learning_state=safe_snapshot("learning-fabric",self._learning) if callable(self._learning) else {"subsystem":"learning-fabric","status":"UNAVAILABLE","snapshot":None,"error":None,**authority_flags()}
         if normalized_asset:
             participants=participant_state(evidence,asset=normalized_asset,as_of=boundary,horizon_seconds=300);grid=self._price_grid(evidence);crowd=crowd_map(participants,price_grid=grid);institutional=institutional_mechanics(evidence,asset=normalized_asset,as_of=boundary,horizon_seconds=300);liquidity=liquidity_topology(evidence,asset=normalized_asset,as_of=boundary,price_grid=grid);forces=pressure_tensor(participants=participants,crowd=crowd,institutional=institutional,liquidity=liquidity,price_grid=grid,horizons=[300]);forces["status"]="ACTIVE" if any(c.get("status")=="ACTIVE" for c in forces.get("cells",[])) else "UNAVAILABLE"
         else:
             participants={"status":"UNAVAILABLE","classes":[],**authority_flags()};crowd={"status":"UNAVAILABLE","cells":[],**authority_flags()};institutional={"status":"UNAVAILABLE","mechanisms":[],**authority_flags()};liquidity={"status":"UNAVAILABLE","depth_status":"UNAVAILABLE","cells":[],**authority_flags()};forces={"status":"UNAVAILABLE","cells":[],**authority_flags()}
         causal_edges=self.store.causal_edges_as_of(boundary);cascade_edges=self.store.cascade_edges_as_of(boundary);worlds=self.store.world_states_as_of(boundary);unknown=self.store.unknown_force_events_as_of(boundary);model_health=self.store.model_credibility_as_of(boundary);reality=self.store.reality_gap_as_of(boundary);conscience=self.store.conscience_verdicts_as_of(boundary);degraded=[x["subsystem"] for x in siblings if x.get("status")=="DEGRADED"]
+        if learning_state.get("status")=="DEGRADED": degraded.append("learning-fabric")
         status="DEGRADED" if degraded else ("EMPTY" if epistemics["status"]=="EMPTY" and not causal_edges and not cascade_edges and not worlds and not unknown else "ACTIVE")
-        result={"schema_version":"icarus-apex-kernel-v1","as_of":boundary,"asset":normalized_asset,"status":status,"siblings":siblings,"epistemics":epistemics,"economic_world":economic_world,"participants":participants,"crowdhunt":crowd,"institutional":institutional,"liquidity":liquidity,"forces":forces,"causality":{"edges":causal_edges,**authority_flags()},"cascades":{"edges":cascade_edges,**authority_flags()},"worlds":{"states":worlds,**authority_flags()},"unknown_force":{"events":unknown,**authority_flags()},"self":{"model_health":model_health,"reality_gap":reality,"degraded_siblings":degraded,**authority_flags()},"conscience":{"verdicts":conscience,"status":"UNMEASURED" if not conscience else "AVAILABLE",**authority_flags()},**authority_flags()}
+        result={"schema_version":"icarus-apex-kernel-v1","as_of":boundary,"asset":normalized_asset,"status":status,"siblings":siblings,"epistemics":epistemics,"economic_world":economic_world,"learning":learning_state,"participants":participants,"crowdhunt":crowd,"institutional":institutional,"liquidity":liquidity,"forces":forces,"causality":{"edges":causal_edges,**authority_flags()},"cascades":{"edges":cascade_edges,**authority_flags()},"worlds":{"states":worlds,**authority_flags()},"unknown_force":{"events":unknown,**authority_flags()},"self":{"model_health":model_health,"reality_gap":reality,"degraded_siblings":degraded,**authority_flags()},"conscience":{"verdicts":conscience,"status":"UNMEASURED" if not conscience else "AVAILABLE",**authority_flags()},**authority_flags()}
         json.dumps(result,sort_keys=True,separators=(",",":"),allow_nan=False);return result
