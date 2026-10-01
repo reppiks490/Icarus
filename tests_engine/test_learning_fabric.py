@@ -1152,3 +1152,183 @@ def test_shadow_calibration_state_is_research_only_and_scope_specific(tmp_path):
     assert state["authority"]["automatic_probability_rewrite"] is False
     assert state["execution_authorized"] is False
     assert state["production_decision_authorized"] is False
+
+
+def _settled_revision_case(
+    fabric,
+    *,
+    start,
+    source_commit,
+    n=40,
+    step_seconds=600,
+    horizon_seconds=60,
+    producer="effective-cal",
+):
+    for i in range(n):
+        p = [0.2, 0.4, 0.6, 0.8][i % 4]
+        emitted = start + timedelta(seconds=i * step_seconds)
+        pred = fabric.record_prediction({
+            "producer": producer,
+            "asset": "NQ",
+            "target": "event",
+            "prediction": True,
+            "probability": p,
+            "emitted_at": _iso(emitted),
+            "horizon_seconds": horizon_seconds,
+            "regime": "trend",
+            "evidence_ids": [f"{producer}:{source_commit[:6]}:{i}"],
+            "source_commit": source_commit,
+        })["prediction"]
+        fabric.record_outcome({
+            "prediction_id": pred["prediction_id"],
+            "observed_at": pred["resolves_at"],
+            "actual_value": (i % 4) >= 2,
+            "evidence": [f"{producer}-truth:{source_commit[:6]}:{i}"],
+        })
+
+
+def test_shadow_calibrator_counts_only_non_overlapping_forecast_windows(tmp_path):
+    from icarus_engine.learning_fabric import LearningFabric
+
+    dense = LearningFabric(tmp_path / "dense")
+    _settled_revision_case(
+        dense,
+        start=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        source_commit="c" * 40,
+        n=60,
+        step_seconds=60,
+        horizon_seconds=600,
+    )
+    blocked = dense.rebuild_shadow_calibrators(min_samples=30)
+    assert blocked["built"] == 0
+    assert blocked["validated"] == 0
+    assert len(blocked["skipped"]) == 1
+    reason = next(iter(blocked["skipped"].values()))
+    assert "60 raw" in reason
+    assert "6 effective" in reason
+    assert "overlap" in reason.lower()
+
+    spaced = LearningFabric(tmp_path / "spaced")
+    _settled_revision_case(
+        spaced,
+        start=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        source_commit="d" * 40,
+        n=40,
+        step_seconds=601,
+        horizon_seconds=600,
+    )
+    built = spaced.rebuild_shadow_calibrators(min_samples=30)
+    assert built["validated"] == 1
+    model = built["models"][0]
+    assert model["raw_count"] == 40
+    assert model["effective_count"] == 40
+    assert model["overlap_dropped"] == 0
+    assert model["source_commit"] == "d" * 40
+
+
+def test_shadow_calibration_is_isolated_by_exact_source_revision(tmp_path):
+    from icarus_engine.learning_fabric import LearningFabric
+
+    fabric = LearningFabric(tmp_path)
+    start = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    _settled_revision_case(
+        fabric,
+        start=start,
+        source_commit="a" * 40,
+        n=40,
+        step_seconds=600,
+        horizon_seconds=60,
+    )
+    first = fabric.rebuild_shadow_calibrators(min_samples=30)
+    assert first["validated"] == 1
+    assert first["models"][0]["source_commit"] == "a" * 40
+
+    # A different code revision must not inherit revision A's calibrator.
+    unseen_revision = fabric.record_prediction({
+        "producer": "effective-cal",
+        "asset": "NQ",
+        "target": "event",
+        "prediction": True,
+        "probability": 0.6,
+        "emitted_at": _iso(start + timedelta(days=2)),
+        "horizon_seconds": 60,
+        "regime": "trend",
+        "evidence_ids": ["revision-b-unseen"],
+        "source_commit": "b" * 40,
+    })["prediction"]
+    assert fabric.shadow_calibration(unseen_revision["prediction_id"]) is None
+
+    _settled_revision_case(
+        fabric,
+        start=start + timedelta(days=3),
+        source_commit="b" * 40,
+        n=40,
+        step_seconds=600,
+        horizon_seconds=60,
+    )
+    rebuilt = fabric.rebuild_shadow_calibrators(min_samples=30)
+    assert rebuilt["validated"] == 2
+    assert {row["source_commit"] for row in rebuilt["models"]} == {"a" * 40, "b" * 40}
+
+    state = fabric.shadow_calibration_state()
+    assert state["model_count"] == 2
+    assert {row["source_commit"] for row in state["models"]} == {"a" * 40, "b" * 40}
+
+    b_cutoff = max(
+        datetime.fromisoformat(row["training_cutoff"].replace("Z", "+00:00"))
+        for row in rebuilt["models"] if row["source_commit"] == "b" * 40
+    )
+    future_b = fabric.record_prediction({
+        "producer": "effective-cal",
+        "asset": "NQ",
+        "target": "event",
+        "prediction": True,
+        "probability": 0.6,
+        "emitted_at": _iso(b_cutoff + timedelta(seconds=1)),
+        "horizon_seconds": 60,
+        "regime": "trend",
+        "evidence_ids": ["revision-b-future"],
+        "source_commit": "b" * 40,
+    })["prediction"]
+    shadow = fabric.shadow_calibration(future_b["prediction_id"])
+    assert shadow is not None
+    assert shadow["source_commit"] == "b" * 40
+
+
+def test_learning_database_migrates_existing_calibration_models_for_revision_and_effective_counts(tmp_path):
+    import sqlite3
+    from icarus_engine.learning_fabric import LearningFabric
+
+    research = tmp_path / "research"
+    research.mkdir(parents=True)
+    con = sqlite3.connect(research / "learning.sqlite3")
+    con.execute(
+        """CREATE TABLE calibration_models (
+           calibrator_id TEXT PRIMARY KEY,
+           producer TEXT NOT NULL,
+           asset TEXT NOT NULL,
+           regime TEXT NOT NULL,
+           horizon_seconds INTEGER NOT NULL,
+           target TEXT NOT NULL,
+           status TEXT NOT NULL,
+           train_count INTEGER NOT NULL,
+           validation_count INTEGER NOT NULL,
+           fit_cutoff TEXT NOT NULL,
+           training_cutoff TEXT NOT NULL,
+           model_json TEXT NOT NULL,
+           raw_validation_brier REAL NOT NULL,
+           calibrated_validation_brier REAL NOT NULL,
+           source_hash TEXT NOT NULL,
+           created_at TEXT NOT NULL,
+           UNIQUE(producer,asset,regime,horizon_seconds,target,source_hash)
+        )"""
+    )
+    con.commit()
+    con.close()
+
+    fabric = LearningFabric(tmp_path)
+    cols = {
+        row["name"]
+        for row in fabric._conn.execute("PRAGMA table_info(calibration_models)").fetchall()
+    }
+    assert {"source_commit", "raw_count", "effective_count", "overlap_dropped"} <= cols
