@@ -15,6 +15,7 @@ from icarus_engine.system_audit import (
     repository_audit_path,
     save_repository_audit,
     save_system_evolution,
+    upsert_system_evolution_item,
 )
 
 
@@ -136,3 +137,44 @@ def test_default_evolution_has_every_important_item_mirrored_and_read_only():
 def test_system_evolution_rejects_invalid_shapes(bad):
     with pytest.raises(ValueError):
         normalize_system_evolution(bad)
+
+
+
+def test_evolution_item_upsert_preserves_siblings_and_updates_by_id(tmp_path):
+    initial = normalize_system_evolution(DEFAULT_SYSTEM_EVOLUTION)
+    save_system_evolution(tmp_path, initial)
+    before_ids = {x["id"] for x in load_system_evolution(tmp_path)["items"]}
+
+    updated = upsert_system_evolution_item(tmp_path, {
+        "id": "athena-causal-learning-repair-20260930",
+        "subsystem": "ATHENA",
+        "kind": "repair",
+        "status": "verified",
+        "severity": "notice",
+        "important": True,
+        "summary": "verified repair",
+        "detail": "exact-head tests green",
+        "source_repo": "reppiks490/divine-providence",
+        "source_branch": "branch",
+        "source_commit": "c" * 40,
+        "validation_state": "green",
+        "interface_surface": "System",
+    })
+    after_ids = {x["id"] for x in updated["items"]}
+    assert after_ids == before_ids
+    athena = next(x for x in updated["items"] if x["id"] == "athena-causal-learning-repair-20260930")
+    assert athena["status"] == "verified"
+    assert athena["summary"] == "verified repair"
+
+    expanded = upsert_system_evolution_item(tmp_path, {
+        "id": "new-audit",
+        "subsystem": "NEXUS",
+        "kind": "audit",
+        "status": "in_progress",
+        "severity": "warning",
+        "important": True,
+        "summary": "new audit",
+        "interface_surface": "System",
+    })
+    assert {x["id"] for x in expanded["items"]} == before_ids | {"new-audit"}
+    assert expanded["mirror_ok"] is True
