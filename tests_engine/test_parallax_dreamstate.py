@@ -527,6 +527,93 @@ def test_dreamstate_retires_when_source_remains_statistical_but_loses_temporal_r
     assert any("robustness screen" in item for item in retired["evidence"])
 
 
+def test_parallax_temporally_unstable_neighbor_does_not_support_parameter_basin(tmp_path):
+    store = ParallaxStore(tmp_path)
+    for i in range(12):
+        decision = store.record_decision(
+            {
+                "asset": "NQ",
+                "action": "long",
+                "observed_at": f"2026-10-01T14:{i:02d}:00Z",
+                "regime": "trend",
+                "source_commit": "a" * 40,
+                "context": {"bar": i},
+                "comparison_contract": _contract(),
+                "subsystem_votes": {},
+            }
+        )
+        store.record_outcome(
+            {
+                "decision_id": decision["decision_id"],
+                "label": "actual",
+                "utility": 0.0,
+                "observed_at": f"2026-10-01T15:{i:02d}:00Z",
+                "evidence": [f"actual:{i}"],
+            }
+        )
+        stop075 = 2.0 if i < 8 else -1.0
+        for label, utility in (("stop_0.75", stop075), ("stop_1.25", 1.0), ("stop_1.50", -0.2)):
+            store.record_outcome(
+                {
+                    "decision_id": decision["decision_id"],
+                    "label": label,
+                    "utility": utility,
+                    "observed_at": f"2026-10-01T15:{i:02d}:30Z",
+                    "evidence": [f"{label}:{i}"],
+                }
+            )
+
+    neighbor = next(row for row in store.hypotheses(min_samples=5) if row["branch_label"] == "stop_0.75")
+    middle = next(row for row in store.hypotheses(min_samples=5) if row["branch_label"] == "stop_1.25")
+    assert neighbor["candidate_eligible"] is True
+    assert neighbor["temporal_stability"]["stable"] is False
+    assert middle["candidate_eligible"] is True
+    assert middle["temporal_stability"]["stable"] is True
+    assert middle["parameter_basin"]["supporting_neighbor_count"] == 0
+    assert middle["parameter_basin"]["isolated_spike"] is True
+    assert middle["robust_candidate_eligible"] is False
+
+
+def test_parallax_temporal_fold_tiebreak_is_deterministic_for_equal_timestamps():
+    timestamp = "2026-10-01T16:00:00Z"
+    samples = [
+        (timestamp, decision_id, value)
+        for decision_id, value in reversed([
+            ("px-a", 1.0), ("px-b", 2.0), ("px-c", 3.0),
+            ("px-d", 4.0), ("px-e", 5.0), ("px-f", 6.0),
+            ("px-g", 7.0), ("px-h", 8.0), ("px-i", 9.0),
+        ])
+    ]
+    result = ParallaxStore._temporal_stability(samples)
+    assert result["evaluable"] is True
+    assert [row["mean_delta"] for row in result["folds"]] == [2.0, 5.0, 8.0]
+    assert result["stable"] is True
+
+
+def test_dreamstate_live_gate_recheck_retires_after_temporal_robustness_collapses(tmp_path):
+    store = ParallaxStore(tmp_path)
+    for i in range(5):
+        _record_pair(store, i, delay_utility=2.0)
+    lab = DreamstateLab(tmp_path, parallax=store)
+    candidate = next(
+        c for c in lab.refresh(min_samples=5)["candidates"]
+        if c["mutation"]["op"] == "set_execution_delay_bars"
+    )
+    assert candidate["stage"] == "proposed"
+
+    for i in range(5, 12):
+        _record_pair(store, i, delay_utility=2.0 if i < 8 else -1.0)
+
+    with pytest.raises(ValueError, match="robustness screen"):
+        lab.evaluate(
+            candidate["candidate_id"],
+            {"validation": {"provenance": True}, "evidence": ["temporal collapse detected live"]},
+        )
+    retired = lab.candidate(candidate["candidate_id"])
+    assert retired["stage"] == "retired"
+    assert any("robustness screen" in row for row in retired["evidence"])
+
+
 def test_dreamstate_generates_scoped_hypothesis_but_caps_authority_at_qualified_shadow(tmp_path):
     store = ParallaxStore(tmp_path)
     for i in range(5):
