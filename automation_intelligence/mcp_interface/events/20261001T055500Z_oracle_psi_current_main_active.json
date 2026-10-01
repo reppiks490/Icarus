@@ -1,0 +1,27 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "oracle-psi-current-main-reconciliation-20261001T055500Z",
+  "category": "REPAIR",
+  "severity": "info",
+  "status": "active",
+  "subsystems": ["oracle", "ml", "data", "provenance"],
+  "recorded_at": "2026-10-01T05:55:00Z",
+  "title": "ORACLE Psi rebuilt on current ICARUS main and hardened",
+  "summary": "The ORACLE latent-pressure / ICARUS Psi possibility layer has been rebuilt on current main rather than merging its stale draft branch. The clean reconciliation preserves PARALLAX/DREAMSTATE and MCP Evolution, adds the actual ORACLE Psi trader tab, and hardens temporal/probabilistic semantics: confidence-weighted coverage, distinct-domain consensus, RFC3339 non-future external evidence, observation-time TTL expiry, neutral-pressure abstention, no duplicate cross-asset force counting, and no fabricated same-snapshot unexplained residual. Exact-head Linux/Windows CI is pending before merge.",
+  "source_repository": "reppiks490/Icarus",
+  "source_ref": "sol/oracle-psi-current-main-20261001",
+  "source_commit": "7112f6e19899e2c37c4620d12fcc077315140481",
+  "evidence": [
+    "replacement PR #89 opened from current main",
+    "stale PR #86 is not being merged directly",
+    "ORACLE Psi added to global dashboard JavaScript parse regression",
+    "external evidence expiry anchored to observed_at rather than receipt time",
+    "same-snapshot force model does not claim an independently identifiable unexplained residual",
+    "cross-asset pressure is not double-counted in synthetic price",
+    "verification state: exact-head CI pending",
+    "execution_authorized=false",
+    "production_decision_authorized=false"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}
