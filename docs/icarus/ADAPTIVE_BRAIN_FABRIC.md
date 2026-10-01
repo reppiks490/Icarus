@@ -29,6 +29,19 @@ A candidate is only **shadow-route eligible** after all of these are verified: c
 
 The Adaptive Brain may select a regime specialist for shadow evaluation. It cannot silently change the production strategy or place an order.
 
+## Continuous custom-agent ingestion
+
+The five cloud automations persist material results as immutable `icarus-mcp-event-v1` files in `reppiks490/Icarus-engine/automation_intelligence/mcp_interface/events/`. The local engine's `BrainRemoteSync` polls that repository plane and accepts an event only when:
+
+- the source is one of the five custom-agent source identities,
+- `execution_authorized=false` is explicit,
+- the downloaded bytes reproduce the exact Git blob SHA advertised by GitHub,
+- the event is converted to an idempotent local Adaptive Brain event.
+
+Recognized nested subsystem findings such as ARGUS/NEXUS are also projected into subsystem state. Unknown MCP sources are ignored rather than silently treated as brain evidence. Network/sync failure cannot crash the trading engine. The default poll interval is 60 seconds when a GitHub token is available and 300 seconds otherwise.
+
+This closes the cloud-to-local evidence path without giving a cloud agent production or broker authority.
+
 ## Truthful operator metrics
 
 The panel shows measured values only. A missing success rate is rendered as UNMEASURED. Latency targets are labeled targets until instrumentation supplies actual distributions. Learning is evidenced by durable events and before/after validation state, not by an unsupported claim that the model "self-learned."
