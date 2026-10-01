@@ -127,6 +127,57 @@ class PantheonKernel:
             columns = {row["name"] for row in con.execute("PRAGMA table_info(sentinel_cells)").fetchall()}
             if "last_observed_at" not in columns:
                 con.execute("ALTER TABLE sentinel_cells ADD COLUMN last_observed_at TEXT NOT NULL DEFAULT ''")
+            con.execute(
+                """UPDATE sentinel_cells
+                   SET last_observed_at=COALESCE(
+                       (SELECT observed_at FROM observations
+                        WHERE observation_id=sentinel_cells.last_observation_id),
+                       last_observed_at
+                   )
+                   WHERE last_observed_at=''"""
+            )
+
+            legacy_claims = con.execute(
+                """SELECT c.claim_id,c.kind,c.payload_json,c.created_at,o.asset
+                   FROM claims c
+                   JOIN observations o ON o.observation_id=c.observation_id
+                   WHERE c.kind IN ('ontology_candidate','monetization_candidate','mutation_candidate')
+                   ORDER BY c.created_at,c.rowid"""
+            ).fetchall()
+            for claim in legacy_claims:
+                present = con.execute(
+                    "SELECT species_id FROM species WHERE origin_claim_id=? LIMIT 1",
+                    (claim["claim_id"],),
+                ).fetchone()
+                if present is not None:
+                    continue
+                payload = json.loads(claim["payload_json"])
+                parent_species_id = payload.get("parent_species_id") if isinstance(payload, Mapping) else None
+                generation = 0
+                if parent_species_id:
+                    parent = con.execute(
+                        "SELECT generation FROM species WHERE species_id=?",
+                        (str(parent_species_id),),
+                    ).fetchone()
+                    generation = (int(parent["generation"]) + 1) if parent is not None else 1
+                species_id = "species-" + digest(claim["claim_id"], claim["asset"])[:18]
+                con.execute(
+                    """INSERT OR IGNORE INTO species(
+                        species_id,asset,kind,origin_claim_id,parent_species_id,generation,
+                        stage,fitness_credit,evidence_count,payload_json,created_at,updated_at
+                    ) VALUES(?,?,?,?,?,?,'hypothesis',0.0,0,?,?,?)""",
+                    (
+                        species_id,
+                        claim["asset"],
+                        claim["kind"],
+                        claim["claim_id"],
+                        str(parent_species_id) if parent_species_id else None,
+                        generation,
+                        claim["payload_json"],
+                        claim["created_at"],
+                        claim["created_at"],
+                    ),
+                )
 
     def _normalize(self, payload: Mapping[str, Any]) -> tuple[dict[str, Any], str, str]:
         if not isinstance(payload, Mapping):
