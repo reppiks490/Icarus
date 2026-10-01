@@ -86,6 +86,7 @@ from .autopilot import TacticalAutopilot
 from .engine_control import ControlAction, EngineControlPlane
 from .mcp_control import MCPControlPlane
 from .chronofold import ChronofoldEngine
+from .pantheon import PantheonKernel, subsystem_context
 
 
 def _no_json_constants(name: str):
@@ -197,6 +198,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     dreamstate = DreamstateLab(port.base_dir, parallax=parallax)
     mcp_control = MCPControlPlane(port.base_dir)
     chronofold = ChronofoldEngine(port, possibility=possibility)
+    pantheon = PantheonKernel(port.base_dir)
 
     def _control_runner(target: str):
         try:
@@ -620,6 +622,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             "parallax": parallax.status,
             "dreamstate": dreamstate.status,
             "possibility": possibility.status,
+            "pantheon": pantheon.snapshot,
             "chronofold": chronofold.status,
             "backtests": _backtests_snapshot,
             "code_provenance": local_code_provenance,
@@ -786,6 +789,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._send(200, (html_path.parent / "parallax-ui.js").read_bytes(), "text/javascript")
             if p.path == "/possibility-ui.js":
                 return self._send(200, (html_path.parent / "possibility-ui.js").read_bytes(), "text/javascript")
+            if p.path == "/pantheon-ui.js":
+                return self._send(200, (html_path.parent / "pantheon-ui.js").read_bytes(), "text/javascript")
             if p.path == "/chronofold-ui.js":
                 return self._send(200, (html_path.parent / "chronofold-ui.js").read_bytes(), "text/javascript")
             if p.path in ("/experience-ui.js", "/experience-ui.css"):
@@ -858,6 +863,13 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 except Exception as ex:
                     port.journal.log("WARN", f"possibility snapshot: {type(ex).__name__}: {ex}")
                     return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/api/pantheon":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                try:
+                    return self._json(200, pantheon.snapshot())
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
             if p.path == "/api/chronofold":
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
@@ -1091,7 +1103,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._json(413, {"detail": "body too large"})
             raw = self.rfile.read(n) if n else b""
             try:
-                body = strict_json(raw) if p.path.startswith(("/admin/research/", "/admin/integrity/", "/admin/parallax/", "/admin/dreamstate/", "/admin/possibility/", "/admin/autopilot/", "/admin/engine-control")) else (json.loads(raw, parse_constant=_no_json_constants) if raw else {})
+                body = strict_json(raw) if p.path.startswith(("/admin/research/", "/admin/integrity/", "/admin/parallax/", "/admin/dreamstate/", "/admin/possibility/", "/admin/autopilot/", "/admin/engine-control", "/admin/pantheon/")) else (json.loads(raw, parse_constant=_no_json_constants) if raw else {})
             except ValueError as ex:
                 return self._json(400, {"detail": f"bad JSON body: {ex}"})
             if not isinstance(body, dict):
@@ -1196,6 +1208,38 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     result["capture_mode"] = "atomic_current"
                     result["captured_psi_vote"] = psi_vote
                     return self._json(200, result)
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+            if p.path == "/admin/pantheon/claim":
+                try:
+                    return self._json(200, pantheon.record_agent_claim(body))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+            if p.path == "/admin/pantheon/observe":
+                try:
+                    payload = dict(body)
+                    if not payload.get("source_commit"):
+                        provenance = local_code_provenance()
+                        if not provenance.get("candidate_revision_eligible") or not provenance.get("commit"):
+                            raise ValueError("exact clean ICARUS code provenance is required when source_commit is omitted")
+                        payload["source_commit"] = provenance["commit"]
+                    existing_outputs = payload.get("subsystem_outputs", {})
+                    if existing_outputs is None:
+                        existing_outputs = {}
+                    if not isinstance(existing_outputs, dict):
+                        raise ValueError("subsystem_outputs must be an object")
+                    psi_state = None
+                    try:
+                        psi_state = possibility.snapshot(payload.get("asset", ""))
+                    except Exception as ex:
+                        port.journal.log("WARN", f"PANTHEON Psi adapter: {type(ex).__name__}: {ex}")
+                    payload["subsystem_outputs"] = subsystem_context(
+                        parallax.snapshot(limit=12),
+                        dreamstate.snapshot(limit=20),
+                        psi_snapshot=psi_state,
+                        existing=existing_outputs,
+                    )
+                    return self._json(200, pantheon.record_observation(payload))
                 except (ValueError, TypeError) as ex:
                     return self._json(400, {"detail": str(ex)})
             if p.path == "/admin/parallax/decision":
@@ -1510,6 +1554,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     srv.performance_proof = performance_proof
     srv.latency_telemetry = latency_telemetry
     srv.autopilot = autopilot
+    srv.pantheon = pantheon
     srv.daemon_threads = True
     srv.background_workers_enabled = bool(start)
     if not start:

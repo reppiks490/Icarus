@@ -1,0 +1,29 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "pantheon-aether-active-20261001T060000Z",
+  "category": "EVOLUTION",
+  "severity": "info",
+  "status": "active",
+  "subsystems": ["pantheon", "aether", "nemesis", "godel", "socrates", "ananke", "ex_nihilo", "mint", "nullspace", "archon", "provenance", "ui"],
+  "recorded_at": "2026-10-01T06:00:00Z",
+  "title": "PANTHEON faculties and AETHER bounded research swarm staged",
+  "summary": "A branch-isolated PANTHEON/AETHER integration now implements independent falsification, identifiability, structural-reachability, ontology-surprise, causal-debt, research-question, monetization, and authority-arbitration faculties plus a bounded ephemeral swarm. The design preserves ORACLE, PARALLAX and DREAMSTATE ownership, retains engine disagreement instead of forced consensus, uses blind first-pass information partitions for mandatory adversarial/provenance/risk roles, keeps a lightweight asset/horizon sentinel-cell registry, and surfaces the fabric in the ICARUS trader interface. All new authority remains research/shadow only pending exact-head CI and merge.",
+  "source_repository": "reppiks490/Icarus",
+  "source_ref": "chatgpt/pantheon-aether-20261001",
+  "source_commit": "4e8d40e15d0f411da30e0ba7492d0a81c9b0379e",
+  "evidence": [
+    "draft PR #92 opened on isolated branch",
+    "ORACLE/PARALLAX/DREAMSTATE are referenced but not reimplemented or overwritten",
+    "AETHER agents carry capital_authority=NONE",
+    "execution_authorized=false across all new authority blocks",
+    "production_decision_authorized=false across all new authority blocks",
+    "forced consensus disabled; disagreement remains first-class state",
+    "mandatory blind-first-pass roles: falsifier, alternative cause, provenance guard, risk guard",
+    "sentinel cells track research attention only and carry no trade authority",
+    "PANTHEON / AETHER trader-interface tab and authenticated API added",
+    "new regression tests cover immutable provenance, abstention, bounded swarm authority, diversity lock, sentinel cells and UI wiring",
+    "verification state: exact-head Linux/Windows CI pending"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}

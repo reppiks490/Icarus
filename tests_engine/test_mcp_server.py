@@ -32,6 +32,9 @@ def test_mcp_server_imports_and_registers_engine_surface():
         "engine_possibility_state",
         "engine_possibility_evidence",
         "record_engine_possibility_evidence",
+        "engine_pantheon_state",
+        "record_engine_pantheon_observation",
+        "record_engine_aether_claim",
         "refresh_engine_dreamstate",
         "record_engine_parallax_outcome",
         "record_current_parallax_decision_with_psi",
@@ -502,3 +505,86 @@ def test_mcp_dreamstate_candidate_tools_require_identity_and_reason():
 
     missing_reason = mcp_server.retire_engine_dreamstate_candidate("ds-1", "")
     assert "reason is required" in missing_reason["error"]
+
+def test_mcp_pantheon_routes_are_shadow_only(monkeypatch):
+    seen = []
+
+    def get(path):
+        seen.append(("get", path))
+        return {"authority": {"execution_authorized": False, "production_decision_authorized": False}}
+
+    def post(path, body):
+        seen.append(("post", path, body))
+        return {"analysis": {"authority": {"execution_authorized": False, "production_decision_authorized": False}}}
+
+    monkeypatch.setattr(mcp_server, "_engine_get", get)
+    monkeypatch.setattr(mcp_server, "_engine_post", post)
+
+    state = mcp_server.engine_pantheon_state()
+    assert state["authority"]["execution_authorized"] is False
+    result = mcp_server.record_engine_pantheon_observation(
+        "nq",
+        "2026-10-01T06:05:00Z",
+        '{"data_quality":0.9,"risk":0.2}',
+        horizon_ms=15000,
+        evidence_json='["fixture"]',
+        subsystem_outputs_json='{"custom":{"value":1}}',
+        source_commit="a" * 40,
+        observation_id="pan-mcp-fixture",
+    )
+    assert result["analysis"]["authority"]["execution_authorized"] is False
+    assert seen[0] == ("get", "/api/pantheon")
+    assert seen[1] == ("post", "/admin/pantheon/observe", {
+        "asset": "NQ",
+        "observed_at": "2026-10-01T06:05:00Z",
+        "horizon_ms": 15000,
+        "signals": {"data_quality": 0.9, "risk": 0.2},
+        "evidence": ["fixture"],
+        "subsystem_outputs": {"custom": {"value": 1}},
+        "source_commit": "a" * 40,
+        "observation_id": "pan-mcp-fixture",
+    })
+
+def test_mcp_pantheon_rejects_bad_json_shapes():
+    assert "error" in mcp_server.record_engine_pantheon_observation("NQ", "2026-10-01T06:05:00Z", "[]")
+    assert "error" in mcp_server.record_engine_pantheon_observation("NQ", "2026-10-01T06:05:00Z", "{}", evidence_json="{}")
+    assert "error" in mcp_server.record_engine_pantheon_observation("NQ", "2026-10-01T06:05:00Z", "{}", subsystem_outputs_json="[]")
+
+def test_mcp_aether_claim_route_is_blind_and_shadow_only(monkeypatch):
+    seen = {}
+
+    def post(path, body):
+        seen["path"] = path
+        seen["body"] = body
+        return {"deliberation": {"execution_authorized": False, "consensus_forced": False}}
+
+    monkeypatch.setattr(mcp_server, "_engine_post", post)
+    out = mcp_server.record_engine_aether_claim(
+        "pan-1",
+        "aeth-1",
+        "independent thesis",
+        direction="short",
+        confidence=0.65,
+        falsifier="opposite queue behavior",
+        evidence_json='["partition:risk"]',
+    )
+    assert out["deliberation"]["execution_authorized"] is False
+    assert seen["path"] == "/admin/pantheon/claim"
+    assert seen["body"] == {
+        "observation_id": "pan-1",
+        "agent_id": "aeth-1",
+        "peer_context_used": False,
+        "claim": {
+            "thesis": "independent thesis",
+            "direction": "short",
+            "confidence": 0.65,
+            "falsifier": "opposite queue behavior",
+            "evidence": ["partition:risk"],
+        },
+    }
+
+def test_mcp_aether_claim_rejects_non_list_evidence():
+    assert "error" in mcp_server.record_engine_aether_claim(
+        "pan-1", "aeth-1", "thesis", evidence_json="{}"
+    )
+
