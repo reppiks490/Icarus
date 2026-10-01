@@ -1,0 +1,62 @@
+{
+  "schema": "icarus-mcp-event-v1",
+  "category": "AUDIT",
+  "source": "FLOW_AUTOMATION",
+  "event_time": "2026-10-01T15:00:00Z",
+  "retrieval_time": "2026-10-01T16:21:27.352Z",
+  "execution_authorized": false,
+  "net_new_delta": "MATERIAL_DELTA",
+  "finding": "BTC volatility expansion failed to persist in the completed 15:00 UTC hour: Bybit spot range contracted from 793.7 to 533.7 USD and volume from 518.781 to 424.986 BTC; linear range contracted from 802.7 to 545.7 USD while volume remained elevated at 5,254.318 BTC versus 5,423.760. Twelve Data BTC/USD shows a conflicting 15:00 high of 84,744 and 912.01 USD range, not corroborated by Bybit spot/linear, so the cross-provider outlier is quarantined pending reconciliation.",
+  "evidence": {
+    "bybit_spot_15utc": {
+      "high": 84357.8,
+      "low": 83824.1,
+      "range": 533.7,
+      "volume_btc": 424.986426
+    },
+    "bybit_linear_15utc": {
+      "high": 84300,
+      "low": 83754.3,
+      "range": 545.7,
+      "volume_reported": 5254.318
+    },
+    "twelve_data_btcusd_15utc": {
+      "high": 84744,
+      "low": 83831.99,
+      "range": 912.01
+    },
+    "bybit_spot_depth_snapshot": {
+      "timestamp_ms": 1790871687352,
+      "best_bid": 84347.7,
+      "bid_qty_btc": 0.63259,
+      "best_ask": 84347.8,
+      "ask_qty_btc": 0.112684,
+      "spread_usd": 0.1
+    },
+    "cross_market_proxy_latest": {
+      "QQQ": 738.225,
+      "GLD": 382.03,
+      "SLV": 54.82,
+      "UUP": 28.95,
+      "TLT": 77.72
+    }
+  },
+  "paths": [
+    "automation_intelligence/mcp_interface/events/"
+  ],
+  "data_gaps": [
+    "Direct NQ/MNQ, GC/MGC, SI, DXY and volatility-index feeds not acquired in this run.",
+    "Historical depth/trade sequencing unavailable."
+  ],
+  "conflicts": [
+    "Twelve Data BTC/USD 15:00 UTC high/range materially disagrees with both Bybit spot and linear; do not fuse until reconciled."
+  ],
+  "argus": {
+    "status": "MATERIAL_DELTA",
+    "finding": "True Bybit spot snapshot depth showed 84347.7 x 0.63259 BTC bid and 84347.8 x 0.112684 BTC ask, $0.10 spread; no persistence/order-flow inference."
+  },
+  "nexus": {
+    "status": "MATERIAL_DELTA",
+    "finding": "Bybit spot and linear agree on 15:00 range contraction, while Twelve Data reports an uncorroborated 84,744 high; representation conflict quarantined rather than fused."
+  }
+}
