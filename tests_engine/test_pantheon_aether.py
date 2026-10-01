@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from icarus_engine.pantheon import AetherSwarm, PantheonKernel
+from icarus_engine.pantheon import AetherSwarm, PantheonKernel, subsystem_context
 
 
 def _payload(**overrides):
@@ -179,3 +179,31 @@ def test_sentinel_cells_accumulate_without_becoming_trade_authority(tmp_path):
     assert state["sentinel_cells"][0]["asset"] == "NQ"
     assert state["sentinel_cells"][0]["horizon_ms"] == 15000
     assert state["authority"]["execution_authorized"] is False
+
+
+def test_existing_research_subsystems_are_compacted_without_authority():
+    out = subsystem_context(
+        {
+            "schema_version": "px",
+            "counts": {"decisions": 4},
+            "regret": {"n": 3, "mean_delta": 0.2},
+            "mutation_signals": [{"branch_label": "delay_1"}] * 30,
+            "paired_ablation_attribution": [{"subsystem": "athena"}],
+        },
+        {
+            "schema_version": "ds",
+            "stages": {"proposed": 2},
+            "required_gates": ["oos", "costs"],
+            "candidates": [
+                {"candidate_id": "c1", "family_id": "f1", "stage": "proposed", "asset": "NQ", "regime": "trend", "secret": "not copied"}
+            ],
+        },
+        existing={"oracle": {"latent_pressure": 0.5}},
+    )
+    assert out["oracle"]["latent_pressure"] == 0.5
+    assert out["parallax"]["counts"]["decisions"] == 4
+    assert len(out["parallax"]["mutation_signals"]) == 12
+    assert out["dreamstate"]["candidates"][0]["candidate_id"] == "c1"
+    assert "secret" not in out["dreamstate"]["candidates"][0]
+    assert out["parallax"]["authority"]["execution_authorized"] is False
+    assert out["dreamstate"]["authority"]["production_decision_authorized"] is False

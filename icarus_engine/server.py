@@ -71,7 +71,7 @@ from .evolution_sync import EvolutionRemoteSync
 from .code_provenance import local_code_provenance
 from .parallax import ParallaxStore
 from .dreamstate import DreamstateLab
-from .pantheon import PantheonKernel
+from .pantheon import PantheonKernel, subsystem_context
 
 
 def _no_json_constants(name: str):
@@ -505,6 +505,16 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                         if not provenance.get("candidate_revision_eligible") or not provenance.get("commit"):
                             raise ValueError("exact clean ICARUS code provenance is required when source_commit is omitted")
                         payload["source_commit"] = provenance["commit"]
+                    existing_outputs = payload.get("subsystem_outputs", {})
+                    if existing_outputs is None:
+                        existing_outputs = {}
+                    if not isinstance(existing_outputs, dict):
+                        raise ValueError("subsystem_outputs must be an object")
+                    payload["subsystem_outputs"] = subsystem_context(
+                        parallax.snapshot(limit=12),
+                        dreamstate.snapshot(limit=20),
+                        existing=existing_outputs,
+                    )
                     return self._json(200, pantheon.record_observation(payload))
                 except (ValueError, TypeError) as ex:
                     return self._json(400, {"detail": str(ex)})

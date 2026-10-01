@@ -68,3 +68,13 @@ Research rationale: recent simulated-market work reports that multi-agent
 reasoning quality alone did not track financial performance, while an
 intervention preserving disagreement improved Sharpe and Sortino:
 https://arxiv.org/abs/2609.29701
+
+
+## Existing subsystem feed
+
+Every `/admin/pantheon/observe` ingestion automatically attaches compact,
+read-only PARALLAX and DREAMSTATE evidence from their native stores. Caller
+supplied subsystem evidence is preserved rather than overwritten. This makes
+existing research state visible to PANTHEON without transferring ownership or
+authority. ORACLE remains an external contract until its current-main
+reconciliation is merged and can be adapted without duplicating its engine.
