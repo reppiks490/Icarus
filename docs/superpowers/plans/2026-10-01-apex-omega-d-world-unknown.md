@@ -116,7 +116,28 @@
 - [ ] Run GREEN.
 - [ ] Update docs and commit `feat(apex): add latent discovery and information waves`.
 
-### Task 6: Project-D verification gate
+### Task 6: Persist world and unknown-force state
+
+**Files:**
+- Modify: `icarus_engine/apex/store.py`
+- Modify: `icarus_engine/apex/worlds.py`
+- Modify: `icarus_engine/apex/unknown_force.py`
+- Create: `tests_engine/test_apex_world_persistence.py`
+
+**Interfaces:**
+- Produces:
+  - `ApexStore.record_world_state(world: Mapping[str, Any]) -> dict[str, Any]`
+  - `ApexStore.world_states_as_of(as_of: str) -> list[dict[str, Any]]`
+  - `ApexStore.record_unknown_force(event: Mapping[str, Any]) -> dict[str, Any]`
+  - `ApexStore.unknown_force_events_as_of(as_of: str) -> list[dict[str, Any]]`
+
+- [ ] Write RED tests for deterministic world identity, historical weight replay, unknown-force idempotence, anonymous latent candidate preservation, and corrupted-row quarantine.
+- [ ] Run `python -m pytest tests_engine/test_apex_world_persistence.py -q` — Expected FAIL.
+- [ ] Add additive `world_states` and `unknown_force_events` WAL tables and methods.
+- [ ] Re-run — Expected PASS.
+- [ ] Commit `feat(apex): persist world and unknown state`.
+
+### Task 7: Project-D verification gate
 
 - [ ] Run all Project-D tests — Expected PASS.
 - [ ] Run Projects A-C tests — Expected PASS.
