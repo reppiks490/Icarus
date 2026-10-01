@@ -4,7 +4,7 @@
   "status": "integration_candidate_exact_head_ci_requested",
   "source_repository": "reppiks490/Icarus",
   "source_branch": "chatgpt/apex-omega-current-main-20261001",
-  "source_commit": "61d491df2d9118209e4dffc18a951f6865d3a80f",
+  "source_commit": "3384dabb7b0769a2e8e34fa7e530aa1149e61cc8",
   "documentation": "docs/icarus/APEX_OMEGA.md",
   "architecture_spec": "docs/superpowers/specs/2026-10-01-apex-omega-design.md",
   "installed_projects": [
@@ -29,7 +29,7 @@
     },
     "full_repository_ci": {
       "status": "requested",
-      "candidate_commit": "61d491df2d9118209e4dffc18a951f6865d3a80f"
+      "candidate_commit": "3384dabb7b0769a2e8e34fa7e530aa1149e61cc8"
     },
     "linux_ci": {
       "status": "requested"
