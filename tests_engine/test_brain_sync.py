@@ -91,3 +91,18 @@ def test_remote_sync_detects_blob_substitution(tmp_path):
     assert status["rejected_total"] == 1
     assert "Git blob SHA mismatch" in status["last_error"]
     assert brain_snapshot(tmp_path)["events"] == []
+
+
+def test_remote_sync_rejects_invalid_custom_agent_schema(tmp_path):
+    raw, _sha, _path, url, listing = _fixture(_remote_event(schema="wrong-schema"))
+    sync = BrainRemoteSync(
+        tmp_path,
+        interval_seconds=60,
+        fetch_json=lambda _: listing,
+        fetch_bytes=lambda requested: raw if requested == url else b"",
+    )
+    status = sync.sync_once()
+    assert status["status"] == "degraded"
+    assert status["rejected_total"] == 1
+    assert "unsupported custom-agent event schema" in status["last_error"]
+    assert brain_snapshot(tmp_path)["events"] == []
