@@ -132,6 +132,10 @@ def test_dashboard_surfaces_repository_native_mcp_evolution_panel():
     assert "Evidence ledger" in ui
     assert "Active evidence" in ui
     assert "Evidence history" in ui
+    assert "History source" in ui
+    assert "Chart cadence" in ui
+    assert "Gap returns skipped" in ui
+    assert "Leader alignment" in ui
     assert '/api/possibility/evidence' in server
     assert 'p.path == "/api/evolution"' in server
     assert "EvolutionRemoteSync" in server
