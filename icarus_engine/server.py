@@ -207,8 +207,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     sibyl = SibylEngine(port.base_dir)
     apex = ApexKernel(
         port.base_dir,
-        possibility=None,
-        chronofold=None,
+        possibility=possibility.status,
+        chronofold=chronofold.status,
         pantheon=pantheon.snapshot,
         parallax=parallax.snapshot,
         dreamstate=dreamstate.snapshot,
