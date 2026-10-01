@@ -797,6 +797,7 @@ class DreamstateLab:
         families = self._family_summaries(candidates)
         return {
             "schema_version": SCHEMA_VERSION,
+            "robustness_version": "icarus-dreamstate-robustness-v1",
             "stages": stages,
             "candidates": candidates,
             "families": families,
