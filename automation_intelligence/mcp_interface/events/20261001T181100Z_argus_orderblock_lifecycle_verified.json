@@ -1,0 +1,34 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "argus-orderblock-lifecycle-verified-20261001T181100Z",
+  "category": "EVOLUTION",
+  "severity": "success",
+  "status": "verified",
+  "subsystems": [
+    "argus",
+    "order_blocks",
+    "provenance",
+    "ml"
+  ],
+  "recorded_at": "2026-10-01T18:11:00Z",
+  "title": "ARGUS empirical order-block lifecycle state verified",
+  "summary": "ARGUS now treats order blocks as explicit time-causal hypotheses rather than permanent rectangles. The lifecycle tracks CREATED, CONFIRMED, TESTED, WEAKENED, INVALIDATED and EXPIRED states with evidence-aware confirmation, penetration depth, test count, rejection count, close-based invalidation, optional expiry, stable identity and strict monotone observation time. This is a deterministic lifecycle foundation only; it does not claim that order blocks have predictive value until later untouched outcome/survival validation is performed.",
+  "source_repository": "reppiks490/divine-providence",
+  "source_ref": "main",
+  "source_commit": "ebab6ea2f0f10ff6b74af046694f1453f0d7f26e",
+  "evidence": [
+    "divine-providence PR #18 merged at ebab6ea2f0f10ff6b74af046694f1453f0d7f26e",
+    "exact-head subsystem-evolution workflow run 36904652339 completed success",
+    "Linux and Windows ARGUS causal subsystem jobs passed",
+    "intelligence-fabric job passed",
+    "full twelve-system validation passed",
+    "lifecycle states=CREATED/CONFIRMED/TESTED/WEAKENED/INVALIDATED/EXPIRED",
+    "confirmation uses the existing evidence-tier-aware composite score",
+    "penetration, repeated tests and rejection state are tracked causally",
+    "terminal states reject further observations",
+    "execution_authorized=false",
+    "production_decision_authorized=false"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}
