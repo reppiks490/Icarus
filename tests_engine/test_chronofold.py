@@ -1,5 +1,6 @@
 from __future__ import annotations
 from types import SimpleNamespace
+import math
 
 import pytest
 
@@ -153,3 +154,29 @@ def test_identical_snapshot_is_idempotent_and_status_is_read_only():
     assert health["read_only"] is True
     assert port.calls == calls_before
     assert health["authority"]["execution_authorized"] is False
+
+
+def test_extreme_finite_prices_do_not_overflow_future_worlds():
+    class Extreme:
+        def __init__(self):
+            self.i = 0
+        def status(self):
+            self.i += 1
+            px = 1e300 if self.i % 2 else 1e-200
+            return {"assets": [
+                {"symbol": "NQ", "price": px, "warm": True, "paused": False,
+                 "state": {"pulse_l": 0.7, "pulse_s": 0.1, "rate_regime": 0.8}},
+                {"symbol": "ES", "price": max(1e-100, px * 1e-200), "warm": True, "paused": False,
+                 "state": {"pulse_l": 0.6, "pulse_s": 0.2, "rate_regime": 0.7}},
+            ]}
+
+    engine = ChronofoldEngine(Extreme(), scenarios=32, horizon=8)
+    out = None
+    for _ in range(12):
+        out = engine.snapshot("NQ")
+    assert out is not None
+    mv = out["multiverse"]
+    assert math.isfinite(mv["expected_return"])
+    assert math.isfinite(mv["p05_return"])
+    assert math.isfinite(mv["p95_return"])
+    assert all(math.isfinite(x) for path in mv["sample_paths"] for x in path)
