@@ -14,10 +14,10 @@
   ],
   "recorded_at": "2026-10-01T06:27:54Z",
   "title": "PARALLAX and DREAMSTATE V2 reconciled on latest main",
-  "summary": "Exact green PARALLAX/DREAMSTATE V2 state from PR #96 has been replayed onto the latest ICARUS mainline without touching autopilot or other concurrent workstreams. V2 includes comparison-contract identity, causal-time and immutable branch plans, evidence-complete paired screening, context strata, source/contract/parameter isolation, target and bounded compound twins, non-pooled regret, BH-FDR screening, DREAMSTATE source-decay retirement including disappeared source hypotheses, live source revalidation before gate updates, revision/contract-isolated policy families, search budgets, policy contracts, and richer Adaptive Brain/UI diagnostics. Authority remains research/shadow only.",
+  "summary": "PARALLAX/DREAMSTATE V2 is reconciled on the current ICARUS mainline using a non-force merge commit that preserves concurrent autopilot, engine-control, dashboard, workflow, and sibling subsystem work. V2 retains comparison-contract identity, causal-time and immutable branch plans, evidence-complete paired screening, context strata, source/contract/parameter isolation, target and bounded compound twins, non-pooled regret, BH-FDR screening, source-weakening and source-disappearance retirement, live source revalidation before gate updates, revision/contract-isolated policy families, search budgets, policy contracts, Adaptive Brain metadata, and trader-UI diagnostics. Authority remains research/shadow only.",
   "source_repository": "reppiks490/Icarus",
-  "source_ref": "chatgpt/parallax-dreamstate-v2-reconciled-20261001",
-  "source_commit": "04051a1200830bc4a7b6c994ad91698f916379a0",
+  "source_ref": "chatgpt/parallax-dreamstate-v2-atomic-20261001",
+  "source_commit": "78db0134fa38ff4a74717be3df74604dbb27dcea",
   "evidence": [
     "icarus_engine/parallax.py",
     "icarus_engine/dreamstate.py",
@@ -29,7 +29,9 @@
     "source-disappears retirement regression preserved",
     "autopilot mainline files untouched",
     "execution_authorized=false",
-    "production_decision_authorized=false"
+    "production_decision_authorized=false",
+    "current main merged into reconciliation branch without force push",
+    "GitHub workflow concurrency cancellation preserved from current main"
   ],
   "execution_authorized": false,
   "production_decision_authorized": false
