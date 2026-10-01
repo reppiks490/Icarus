@@ -537,6 +537,150 @@ def record_engine_aether_claim(
     return _safe_engine(lambda: _engine_post("/admin/pantheon/claim", body))
 
 @mcp.tool()
+def engine_sibyl_state(asset: str = "NQ") -> dict:
+    """Read SIBYL Omega causal as-of future-lightcone state."""
+    return _safe_engine(lambda: _engine_get("/api/sibyl", asset=asset.strip().upper()))
+
+
+@mcp.tool()
+def record_engine_sibyl_evidence(
+    asset: str,
+    source: str,
+    domain: str,
+    observed_at: str,
+    direction: float,
+    confidence: float,
+    horizon_seconds: int,
+    magnitude: float = 1.0,
+    source_commit: str = "",
+    target_price: Optional[float] = None,
+    invalidation_price: Optional[float] = None,
+    payload_json: str = "{}",
+) -> dict:
+    """Publish one provenance-bearing SIBYL research evidence row.
+
+    The reserved pantheon-ananke identity cannot be submitted through this
+    generic tool; PANTHEON uses its internal validated bridge.
+    """
+    try:
+        payload = json.loads(payload_json or "{}")
+    except json.JSONDecodeError as ex:
+        return {"error": f"payload_json is invalid JSON: {ex}"}
+    if not isinstance(payload, dict):
+        return {"error": "payload_json must decode to an object"}
+    if source.strip().lower() == "pantheon-ananke":
+        return {"error": "pantheon-ananke is reserved for the internal validated PANTHEON bridge"}
+    body: Dict[str, Any] = {
+        "asset": asset.strip().upper(),
+        "source": source.strip().lower(),
+        "domain": domain.strip().lower(),
+        "observed_at": observed_at.strip(),
+        "direction": float(direction),
+        "magnitude": float(magnitude),
+        "confidence": float(confidence),
+        "horizon_seconds": int(horizon_seconds),
+        "payload": payload,
+    }
+    if source_commit.strip():
+        body["source_commit"] = source_commit.strip()
+    if target_price is not None:
+        body["target_price"] = float(target_price)
+    if invalidation_price is not None:
+        body["invalidation_price"] = float(invalidation_price)
+    return _safe_engine(lambda: _engine_post("/admin/sibyl/evidence", body))
+
+
+@mcp.tool()
+def record_engine_sibyl_forecast(
+    asset: str,
+    horizons_json: str = "[60,300,900,3600,14400]",
+    observed_at: str = "",
+    current_price: Optional[float] = None,
+    volatility_pct: float = 0.0025,
+    source_commit: str = "",
+) -> dict:
+    """Persist one immutable SIBYL forecast.
+
+    Historical forecasts must supply both observed_at and current_price; the
+    engine refuses to borrow the live market price for replay.
+    """
+    try:
+        horizons = json.loads(horizons_json or "[]")
+    except json.JSONDecodeError as ex:
+        return {"error": f"horizons_json is invalid JSON: {ex}"}
+    if not isinstance(horizons, list) or not horizons:
+        return {"error": "horizons_json must decode to a non-empty list"}
+    body: Dict[str, Any] = {
+        "asset": asset.strip().upper(),
+        "horizons": horizons,
+        "volatility_pct": float(volatility_pct),
+    }
+    if observed_at.strip():
+        body["observed_at"] = observed_at.strip()
+    if current_price is not None:
+        body["current_price"] = float(current_price)
+    if source_commit.strip():
+        body["source_commit"] = source_commit.strip()
+    return _safe_engine(lambda: _engine_post("/admin/sibyl/forecast", body))
+
+
+@mcp.tool()
+def record_engine_sibyl_outcome(
+    forecast_id: str,
+    horizon_seconds: int,
+    observed_at: str,
+    realized_price: float,
+    evidence_json: str = "[]",
+) -> dict:
+    """Score one matured SIBYL forecast horizon exactly once."""
+    try:
+        evidence = json.loads(evidence_json or "[]")
+    except json.JSONDecodeError as ex:
+        return {"error": f"evidence_json is invalid JSON: {ex}"}
+    if not isinstance(evidence, list):
+        return {"error": "evidence_json must decode to a list"}
+    return _safe_engine(lambda: _engine_post("/admin/sibyl/outcome", {
+        "forecast_id": forecast_id.strip(),
+        "horizon_seconds": int(horizon_seconds),
+        "observed_at": observed_at.strip(),
+        "realized_price": float(realized_price),
+        "evidence": evidence,
+    }))
+
+
+@mcp.tool()
+def record_engine_sibyl_scenario(
+    asset: str,
+    interventions_json: str,
+    horizons_json: str = "[60,300,900,3600,14400]",
+    as_of: str = "",
+    current_price: Optional[float] = None,
+    volatility_pct: float = 0.0025,
+) -> dict:
+    """Run one non-persistent SIBYL counterfactual future map."""
+    try:
+        interventions = json.loads(interventions_json or "[]")
+        horizons = json.loads(horizons_json or "[]")
+    except json.JSONDecodeError as ex:
+        return {"error": f"SIBYL scenario JSON is invalid: {ex}"}
+    if not isinstance(interventions, list) or not interventions:
+        return {"error": "interventions_json must decode to a non-empty list"}
+    if not isinstance(horizons, list) or not horizons:
+        return {"error": "horizons_json must decode to a non-empty list"}
+    body: Dict[str, Any] = {
+        "asset": asset.strip().upper(),
+        "interventions": interventions,
+        "horizons": horizons,
+        "volatility_pct": float(volatility_pct),
+    }
+    if as_of.strip():
+        body["as_of"] = as_of.strip()
+    if current_price is not None:
+        body["current_price"] = float(current_price)
+    return _safe_engine(lambda: _engine_post("/admin/sibyl/scenario", body))
+
+
+@mcp.tool()
 def engine_performance_proof() -> dict:
     """Read causal forecast/outcome/replay proof, calibration and closed-sample metrics."""
     return _safe_engine(lambda: _engine_get("/api/performance-proof"))

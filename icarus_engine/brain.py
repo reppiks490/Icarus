@@ -45,7 +45,7 @@ AGENTS = (
         "id": "aion",
         "title": "AION PRIME Quant Scientist",
         "job": "Maintain causal market memory, evolve falsifiable research hypotheses, and independently evaluate trust/collision evidence.",
-        "owns": ["AION", "ASCENSION", "PROMETHEUS", "PARALLAX", "DREAMSTATE", "PSI", "PANTHEON", "ML"],
+        "owns": ["AION", "ASCENSION", "PROMETHEUS", "PARALLAX", "DREAMSTATE", "PSI", "PANTHEON", "SIBYL", "ML"],
     },
     {
         "id": "daedalus",
@@ -83,6 +83,7 @@ SUBSYSTEMS = (
     {"id": "nullspace", "title": "NULLSPACE Ω", "owner": "pantheon", "job": "Missing-reaction, causal-debt, migration, absorption, diversion, delay, cliff, and relationship-failure diagnostics."},
     {"id": "archon", "title": "ARCHON Ω", "owner": "pantheon", "job": "Temporary revocable research-attention arbitration that preserves disagreement and never grants trading authority."},
     {"id": "aether", "title": "AETHER Ω", "owner": "pantheon", "job": "Bounded ephemeral research-swarm ecology with blind independent roles, claim fitness, speciation/extinction, food-web interactions, zero capital authority, and durable lineage."},
+    {"id": "sibyl", "title": "SIBYL Ω", "owner": "aion", "job": "Causal as-of future-lightcone synthesis: time-valid independent evidence domains, reachable-state basins, entropy/convergence, temporal collapse/fracture, counterfactuals, attractors/invalidations, and observed calibration with no deterministic-foresight claim."},
     {"id": "provenance", "title": "PROVENANCE", "owner": "daedalus", "job": "Exact code/data/artifact lineage, commit binding, receipt integrity, and proof-chain validation."},
     {"id": "ml", "title": "ML", "owner": "aion", "job": "Research-only model lifecycle, training evidence, calibration, drift/OOD state, reproducibility, and candidate packaging."},
     {"id": "data", "title": "DATA", "owner": "flow", "job": "Raw-source identity, availability-time truth, representation quality, freshness, and replay-safe market evidence."},
