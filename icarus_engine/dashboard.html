@@ -125,6 +125,7 @@ pre.cli { background:var(--surface-2); border:1px solid var(--ring); border-radi
       <span class="small muted" id="meta">—</span><span class="small muted tnum" id="clock" title="your computer's clock (local zone) and the strategy's session clock (New York)"></span>
       <span class="badge" id="phase">—</span>
       <span class="badge" id="armed">—</span>
+      <span class="badge" id="repoHealth" title="Latest local GitHub/MCP repository audit snapshot">REPO —</span>
       <button class="icon-btn" id="btnPal" title="Command palette (Ctrl+K)">⌘ Commands</button>
       <button class="icon-btn" id="btnControls">⚙︎ Token</button>
       <button class="icon-btn" id="btnTheme" title="Toggle theme">◐</button>
@@ -271,8 +272,30 @@ function tabsHtml(A) {
   const t = [`<span class="tab ${view==='overview'?'active':''}" data-v="overview">Overview</span>`];
   A.forEach(a => { const pos = a.position||0; t.push(`<span class="tab ${view==='asset:'+a.symbol?'active':''}" data-v="asset:${a.symbol}"><span class="dot ${pos>0?'long':pos<0?'short':(a.market&&a.market.open===false?'closed':'')}"></span><b class="s">${esc(a.continuous_symbol||a.symbol)}</b> <span class="muted small tnum">${px(a.price)}</span></span>`); });
   t.push(`<span class="tab" data-v="add" title="Add an asset">＋</span>`);
-  t.push(`<span class="tab util ${view==='golive'?'active':''}" data-v="golive">Go-live</span><span class="tab util ${view==='agent'?'active':''}" data-v="agent">Agent</span><span class="tab util ${view==='inputs'?'active':''}" data-v="inputs">Inputs</span><span class="tab util ${view==='backtest'?'active':''}" data-v="backtest">Backtest</span>${typeof researchHtml==='function'?`<span class="tab util ${view==='research'?'active':''}" data-v="research">Research</span>`:''}${typeof sourcesHtml==='function'?`<span class="tab util ${view==='sources'?'active':''}" data-v="sources">Financial &amp; data</span>`:''}<span class="tab util ${view==='commands'?'active':''}" data-v="commands">Commands</span><span class="tab util ${view==='log'?'active':''}" data-v="log">Log</span>`);
+  t.push(`<span class="tab util ${view==='system'?'active':''}" data-v="system">System</span><span class="tab util ${view==='golive'?'active':''}" data-v="golive">Go-live</span><span class="tab util ${view==='agent'?'active':''}" data-v="agent">Agent</span><span class="tab util ${view==='inputs'?'active':''}" data-v="inputs">Inputs</span><span class="tab util ${view==='backtest'?'active':''}" data-v="backtest">Backtest</span>${typeof researchHtml==='function'?`<span class="tab util ${view==='research'?'active':''}" data-v="research">Research</span>`:''}${typeof sourcesHtml==='function'?`<span class="tab util ${view==='sources'?'active':''}" data-v="sources">Financial &amp; data</span>`:''}<span class="tab util ${view==='commands'?'active':''}" data-v="commands">Commands</span><span class="tab util ${view==='log'?'active':''}" data-v="log">Log</span>`);
   return t.join('');
+}
+function repositoryAuditCard(a, compact=false) {
+  if (!a) return `<section class="card c12" id="repoAuditCard"><h2>Repository / MCP health</h2><div class="empty">loading local audit snapshot…</div></section>`;
+  const s = a.summary || {}, m = a.main || {}, issue = a.issue || {};
+  const stat = String(a.status || 'unknown').toLowerCase();
+  const cls = stat === 'green' ? 'b' : stat === 'red' ? 'r' : 'w';
+  const checks = (a.checks || []).map(x => `<div class="irow"><div><span class="chip ${String(x.status||'').toLowerCase()==='success'?'b':String(x.status||'').toLowerCase()==='failure'?'r':'w'}">${esc(x.name||'check')}</span></div><div class="small" style="grid-column:span 3">${esc(x.detail||x.status||'')}</div></div>`).join('');
+  const issueLink = issue.url ? `<a href="${esc(issue.url)}" target="_blank" rel="noreferrer">GitHub audit #${esc(issue.number||'')}</a>` : '';
+  return `<section class="card c12" id="repoAuditCard">
+    <h2>Repository / MCP health <span class="sub">${esc(a.repository||'')} · local snapshot · ${esc(a.recorded_at||'time unknown')}</span></h2>
+    <div class="tiles" style="margin-top:0">
+      <div class="tile"><div class="k">Audit state</div><div class="v"><span class="chip ${cls}">${esc(stat.toUpperCase())}</span></div></div>
+      <div class="tile"><div class="k">Main SHA</div><div class="v tnum" style="font-size:14px">${esc(String(m.sha||'—').slice(0,12))}</div></div>
+      <div class="tile"><div class="k">Linux</div><div class="v">${esc(String(m.linux||'unknown').toUpperCase())}</div></div>
+      <div class="tile"><div class="k">Windows</div><div class="v">${esc(String(m.windows||'unknown').toUpperCase())}</div></div>
+      <div class="tile"><div class="k">Branches audited</div><div class="v tnum">${s.branches_audited ?? '—'}</div></div>
+      <div class="tile"><div class="k">Current-head failures</div><div class="v tnum ${(s.current_head_failures||0)>0?'neg':'pos'}">${s.current_head_failures ?? '—'}</div></div>
+      <div class="tile"><div class="k">Pending</div><div class="v tnum">${s.pending ?? '—'}</div></div>
+      <div class="tile"><div class="k">Unresolved</div><div class="v tnum">${s.unresolved ?? '—'}</div></div>
+    </div>
+    ${compact ? '' : `<div class="small muted" style="margin-top:10px">${esc(a.note||'')}${issueLink ? ' · '+issueLink : ''}</div>${checks ? `<div style="margin-top:10px">${checks}</div>` : ''}`}
+  </section>`;
 }
 function goliveCard(g) {
   if (!g) return `<section class="card c12" id="goliveCard"><h2>Go-live integrity</h2><div class="empty">loading…</div></section>`;
@@ -321,6 +344,7 @@ function overviewHtml(d, A) {
   const sinceLive = (d.live_profit||0) + (d.open_profit||0), histNet = (d.net||0) - sinceLive;
   return `
   ${goliveCard(window.ICARUS_GOLIVE)}
+  ${repositoryAuditCard(window.ICARUS_AUDIT, true)}
   ${d.all_warm ? '' : `<div class="callout"><div>⏳</div><div><b>Warming up</b>Each asset replays its history (deep native bars for the slow timeframes, then 5-minute and 1-minute sub-bars aggregated exactly like live data). Futures cards then wait for the CME open; crypto goes live immediately.</div></div>`}
   <section class="card c3" id="heroCard"><h2>Portfolio · active engine epoch</h2>
     <div class="hero"><div class="n tnum ${sinceLive>=0?'up':'dn'}">${sgn$(sinceLive)}</div><div class="pct tnum">${d.capital?`${(sinceLive/d.capital*100).toFixed(2)}% on ${fmt$(d.capital,0)} · closed live trades + open positions`:''}</div></div>
@@ -513,14 +537,14 @@ function palItems(q) {
   const A = (last&&last.assets)||[]; const items = [];
   COMMANDS.forEach(c => { if (c.scope === 'all') items.push({label:c.label, sub:'all assets', id:c.id, a:'*'}); else { if (c.scope.includes('all')) items.push({label:c.label, sub:'all assets', id:c.id, a:'*'}); A.forEach(a => items.push({label:`${c.label} ${a.symbol}`, sub:a.name, id:c.id, a:a.symbol})); } });
   A.forEach(a => items.push({label:`Go to ${a.symbol}`, sub:'asset tab', id:'goto', a:a.symbol}));
-  items.push({label:'Overview', sub:'tab', id:'goto', a:'overview'}, {label:'Go-live tab', sub:'tab', id:'goto', a:'golive'}, {label:'Agent tab', sub:'tab', id:'goto', a:'agent'}, {label:'Inputs tab', sub:'tab', id:'goto', a:'inputs'}, {label:'Commands tab', sub:'tab', id:'goto', a:'commands'}, {label:'Log tab', sub:'tab', id:'goto', a:'log'});
+  items.push({label:'Overview', sub:'tab', id:'goto', a:'overview'}, {label:'System health tab', sub:'tab', id:'goto', a:'system'}, {label:'Go-live tab', sub:'tab', id:'goto', a:'golive'}, {label:'Agent tab', sub:'tab', id:'goto', a:'agent'}, {label:'Inputs tab', sub:'tab', id:'goto', a:'inputs'}, {label:'Commands tab', sub:'tab', id:'goto', a:'commands'}, {label:'Log tab', sub:'tab', id:'goto', a:'log'});
   const words = q.toLowerCase().split(/\s+/).filter(Boolean);
   return items.filter(it => words.every(w => (it.label+' '+it.sub).toLowerCase().includes(w))).slice(0, 14);
 }
 function renderPal() { const items = palItems($('#palq').value); palSel = Math.min(palSel, Math.max(0, items.length-1)); $('#palList').innerHTML = items.map((it,i)=>`<div class="item ${i===palSel?'sel':''}" data-i="${i}"><b>${esc(it.label)}</b><span class="muted small">${esc(it.sub)}</span><span class="k">${i===palSel?'↵':''}</span></div>`).join('') || '<div class="item muted">no match</div>'; $('#palList')._items = items; }
 function openPal() { $('#pal').classList.add('open'); $('#palq').value=''; palSel=0; renderPal(); setTimeout(()=>$('#palq').focus(), 30); }
 function closePal() { $('#pal').classList.remove('open'); }
-async function palRun(it) { closePal(); if (!it) return; if (it.id === 'goto') { setView(['overview','inputs','commands','log','golive','agent'].includes(it.a) ? it.a : 'asset:'+it.a); return; } await runCommand(it.id, it.a); }
+async function palRun(it) { closePal(); if (!it) return; if (it.id === 'goto') { setView(['overview','system','inputs','commands','log','golive','agent'].includes(it.a) ? it.a : 'asset:'+it.a); return; } await runCommand(it.id, it.a); }
 $('#btnPal').onclick = openPal; $('#palq').addEventListener('input', () => { palSel=0; renderPal(); });
 $('#palq').addEventListener('keydown', ev => { const items = $('#palList')._items||[]; if (ev.key==='ArrowDown') { palSel=Math.min(items.length-1, palSel+1); renderPal(); ev.preventDefault(); } else if (ev.key==='ArrowUp') { palSel=Math.max(0, palSel-1); renderPal(); ev.preventDefault(); } else if (ev.key==='Enter') { palRun(items[palSel]); } else if (ev.key==='Escape') closePal(); });
 $('#palList').addEventListener('click', ev => { const it = ev.target.closest('.item'); if (it && it.dataset.i!=null) palRun(($('#palList')._items||[])[+it.dataset.i]); });
@@ -679,13 +703,20 @@ function render(d) {
   $('#phase').textContent = d.all_warm ? 'LIVE' : `WARMING ${A.filter(a=>a.warm).length}/${A.length}`; $('#phase').className = 'badge ' + (d.all_warm?'armed':'warm');
   $('#armed').textContent = d.paused ? 'PAUSED · entries off' : 'ARMED'; $('#armed').className = 'badge ' + (d.paused?'paused':'armed');
   $('#meta').textContent = `${A.length} assets · preset ${d.preset||'none'}`;
+  const rh = $('#repoHealth'), ra = window.ICARUS_AUDIT;
+  if (rh) {
+    const st = String(ra?.status || 'unknown').toLowerCase();
+    rh.textContent = st === 'green' ? 'REPO ✓' : st === 'red' ? 'REPO !' : 'REPO ?';
+    rh.className = 'badge ' + (st === 'green' ? 'armed' : st === 'red' ? 'paused' : 'warm');
+    rh.title = ra ? `Repository audit ${ra.recorded_at||''} · main ${String(ra.main?.sha||'').slice(0,12)}` : 'Repository audit unavailable';
+  }
   $('#tabs').innerHTML = tabsHtml(A);
   const viewAsset = view.startsWith('asset:') ? A.find(a => a.symbol === view.slice(6)) : null;
   if (view.startsWith('asset:') && !viewAsset && !solo) view = 'overview';
   const rebuild = lastView !== view;
   if (view === 'overview') {
     if (rebuild) $('#view').innerHTML = overviewHtml(d, A);
-    else { const g = $('#assets'); if (g) g.innerHTML = A.map(assetCard).join(''); const h = document.createElement('div'); h.innerHTML = overviewHtml(d, A); ['goliveCard','heroCard','engineCard'].forEach(id => { const nu = h.querySelector('#'+id), cur = $('#'+id); if (nu && cur) cur.replaceWith(nu); }); }
+    else { const g = $('#assets'); if (g) g.innerHTML = A.map(assetCard).join(''); const h = document.createElement('div'); h.innerHTML = overviewHtml(d, A); ['goliveCard','repoAuditCard','heroCard','engineCard'].forEach(id => { const nu = h.querySelector('#'+id), cur = $('#'+id); if (nu && cur) cur.replaceWith(nu); }); }
     lineChart($('#eqChart'), d.equity_series, {baseline: d.capital});
     A.forEach(a => { const el = $(`#ch-${a.symbol}`); if (el) { const c = charts[a.symbol+80]; if (c) candles(el, c, {height:170}); } });
     const rows = []; A.forEach(a => (tradesCache[a.symbol]||[]).forEach(t => rows.push({...t, symbol:a.symbol}))); rows.sort((x,y)=>y.exit_ts-x.exit_ts);
@@ -716,6 +747,7 @@ function render(d) {
   } }
   else if (view === 'research') { if(typeof researchHtml!=='function') $('#view').innerHTML='<section class="card c12">Research requires the updated engine server. The running engine has not been restarted.</section>'; else if (rebuild) { $('#view').innerHTML = researchHtml(A); wireResearch(); } else loadResearch(); }
   else if (view === 'sources') { if(typeof sourcesHtml!=='function') $('#view').innerHTML='<section class="card c12">Financial data requires the updated engine server. The running engine has not been restarted.</section>'; else if (rebuild) { $('#view').innerHTML = sourcesHtml(A); wireSources(); } else loadSources(); }
+  else if (view === 'system') { if (rebuild) $('#view').innerHTML = repositoryAuditCard(window.ICARUS_AUDIT, false); }
   else if (view === 'golive') { if (rebuild) $('#view').innerHTML = goliveCard(window.ICARUS_GOLIVE); else { const nu = document.createElement('div'); nu.innerHTML = goliveCard(window.ICARUS_GOLIVE); const cur = $('#goliveCard'); if (nu.firstElementChild && cur) cur.replaceWith(nu.firstElementChild); } }
   else if (view === 'agent') { if (rebuild) $('#view').innerHTML = agentCard(window.ICARUS_AGENT); }
   else if (view === 'log') { if (rebuild) $('#view').innerHTML = `<section class="card c12"><h2>Engine log</h2><div class="log" id="log2" style="max-height:80vh"></div></section>`; $('#log2').innerHTML = (d.log||[]).slice().reverse().map(l => `<div class="${l.level}">${tms(l.ts)} ${l.level.padEnd(5)} ${esc(l.msg)}</div>`).join(''); }
@@ -767,11 +799,21 @@ async function refreshAgent() {
     }
   } catch (e) {}
 }
+async function refreshAudit() {
+  try {
+    const r = await fetch('/api/system/audit', {cache:'no-store'});
+    if (!r.ok) throw new Error('audit '+r.status);
+    window.ICARUS_AUDIT = await r.json();
+  } catch (e) {
+    window.ICARUS_AUDIT = {status:'unknown', repository:'reppiks490/Icarus', note:'Local repository audit unavailable'};
+  }
+  if (last) render(last);
+}
 async function refreshCharts() { if (!last) return; if (view === 'overview') { for (const a of (last.assets||[])) await loadChart(a.symbol, 80, $(`#ch-${a.symbol}`), {height:170}); refreshFills(); } if (view.startsWith('asset:')) await loadChart(view.slice(6), 300, $('#dChart'), {height:360, compact:false}); }
 async function refreshTrades(only) { if (!last) return; for (const a of (last.assets||[])) { if (only && a.symbol !== only) continue; try { const r = await fetch(`/api/trades/${a.symbol}?limit=80`); tradesCache[a.symbol] = await r.json(); } catch(e) {} } }
 (async () => { [PRESETS, COMMANDS, REGISTRY] = await Promise.all([fetch('/api/presets').then(r=>r.json()).catch(()=>[]), fetch('/api/commands').then(r=>r.json()).catch(()=>[]), fetch('/api/assets').then(r=>r.json()).then(j=>j.registry).catch(()=>[])]);
-  await refresh(); await refreshGolive(); await refreshAgent(); await refreshCharts(); await refreshTrades(); if (last) render(last); })();
-setInterval(refresh, 3000); setInterval(refreshGolive, 8000); setInterval(refreshCharts, 8000); setInterval(()=>refreshTrades(), 20000);
+  await refreshAudit(); await refresh(); await refreshGolive(); await refreshAgent(); await refreshCharts(); await refreshTrades(); if (last) render(last); })();
+setInterval(refresh, 3000); setInterval(refreshGolive, 8000); setInterval(refreshCharts, 8000); setInterval(refreshAudit, 20000); setInterval(()=>refreshTrades(), 20000);
 window.addEventListener('resize', () => { if (last) { lastView = null; render(last); } });
 setInterval(() => { const el = $('#clock'); if (el) el.textContent = `${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'})} ${TZ} · ${etClock()} ET`; }, 1000);
 window.addEventListener('hashchange', () => { if (!solo) { const v = location.hash.slice(1) || 'overview'; if (v !== view) { view = v; lastView = null; if (last) render(last); } } });

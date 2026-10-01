@@ -62,3 +62,12 @@ def test_asset_adder_uses_registry_and_timeframe_suggestions_and_single_flight_s
     assert "b.disabled = true" in src
     assert "await admin('/admin/assets/add'" in src
     assert "j.detail||j.error||'request failed'" in src
+
+
+def test_engine_dashboard_surfaces_repository_mcp_audit():
+    src = (REPO / "icarus_engine/dashboard.html").read_text(encoding="utf-8")
+    assert 'id="repoHealth"' in src
+    assert 'data-v="system">System</span>' in src
+    assert "repositoryAuditCard(window.ICARUS_AUDIT" in src
+    assert "fetch('/api/system/audit'" in src
+    assert "setInterval(refreshAudit, 20000)" in src

@@ -8,6 +8,8 @@ def test_mcp_server_imports_and_registers_engine_surface():
     assert mcp_server.mcp is not None
     for name in (
         "engine_status",
+        "engine_repository_audit",
+        "record_engine_repository_audit",
         "engine_configuration",
         "set_engine_chart_config",
         "start_engine_backtest",
@@ -117,3 +119,30 @@ def test_mcp_databento_market_data_routes(monkeypatch):
         ("get", "/api/market-data/NQ/depth?schema=mbp-10&limit=50"),
         ("post", "/admin/market-data/mbo-snapshot", {"asset": "NQ", "timeout": 2.5}),
     ]
+
+
+def test_mcp_repository_audit_routes(monkeypatch):
+    seen = []
+
+    def get(path):
+        seen.append(("get", path))
+        return {"status": "green"}
+
+    def post(path, body):
+        seen.append(("post", path, body))
+        return {"ok": True}
+
+    monkeypatch.setattr(mcp_server, "_engine_get", get)
+    monkeypatch.setattr(mcp_server, "_engine_post", post)
+
+    assert mcp_server.engine_repository_audit() == {"status": "green"}
+    assert mcp_server.record_engine_repository_audit('{"status":"green","repository":"reppiks490/Icarus"}') == {"ok": True}
+    assert seen == [
+        ("get", "/api/system/audit"),
+        ("post", "/admin/system/audit", {"audit": {"status": "green", "repository": "reppiks490/Icarus"}}),
+    ]
+
+
+def test_mcp_repository_audit_rejects_non_object_json():
+    assert "error" in mcp_server.record_engine_repository_audit("[]")
+    assert "error" in mcp_server.record_engine_repository_audit("{bad")

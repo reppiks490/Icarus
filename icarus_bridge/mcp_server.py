@@ -168,6 +168,27 @@ def engine_status() -> dict:
 
 
 @mcp.tool()
+def engine_repository_audit() -> dict:
+    """Latest local GitHub/MCP repository + CI audit snapshot shown in the ICARUS trader dashboard."""
+    return _safe_engine(lambda: _engine_get("/api/system/audit"))
+
+
+@mcp.tool()
+def record_engine_repository_audit(audit_json: str) -> dict:
+    """Persist a verified repository/CI audit so MCP and the trader dashboard surface the same state.
+
+    This only updates local diagnostic state; it cannot pause, resume, place, cancel, or flatten trades.
+    """
+    try:
+        audit = json.loads(audit_json)
+    except json.JSONDecodeError as ex:
+        return {"error": f"audit_json is invalid JSON: {ex}"}
+    if not isinstance(audit, dict):
+        return {"error": "audit_json must decode to an object"}
+    return _safe_engine(lambda: _engine_post("/admin/system/audit", {"audit": audit}))
+
+
+@mcp.tool()
 def engine_configuration(asset: str = "NQ") -> dict:
     """Effective strategy inputs plus chart timeframe/type/fill/source capabilities for one engine asset."""
     asset = asset.strip().upper()
