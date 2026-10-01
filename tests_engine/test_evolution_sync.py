@@ -96,6 +96,8 @@ def test_sync_is_idempotent_by_verified_git_blob(tmp_path):
         {"category": "TRADE"},
         {"subsystems": ["unknown-subsystem"]},
         {"source_commit": "short"},
+        {"source_commit": ""},
+        {"recorded_at": "2026-10-01T05:00:00"},
     ],
 )
 def test_invalid_or_authority_escalating_event_is_rejected(tmp_path, change):
@@ -146,3 +148,11 @@ def test_disabled_sync_never_fetches_network(tmp_path):
     state = sync.sync_once()
     assert state["status"] == "disabled"
     assert state["execution_authorized"] is False
+
+
+def test_psi_is_a_supported_mcp_subsystem(tmp_path):
+    sync = make_sync(tmp_path, event_payload(subsystems=["psi", "parallax"]))
+    state = sync.sync_once()
+    assert state["status"] == "green"
+    assert state["ingested_total"] == 1
+    assert set(state["subsystems"]) >= {"psi", "parallax"}
