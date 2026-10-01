@@ -52,6 +52,8 @@ def test_brain_registers_five_custom_agents_and_twelve_plus_subsystems(tmp_path)
     assert out["evidence_tournaments"] == []
     assert out["evidence_graph"]["metrics"]["node_count"] == 0
     assert out["evidence_graph"]["execution_authorized"] is False
+    assert out["source_reliability"]["observation_count"] == 0
+    assert out["source_reliability"]["execution_authorized"] is False
 
 
 def test_brain_surfaces_zero_cost_incubator_without_promotion_authority(tmp_path):
