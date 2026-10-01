@@ -527,3 +527,25 @@ def test_experience_records_are_immutable_and_research_only(tmp_path):
     assert fabric.record_experience(body)["idempotent"] is True
     with pytest.raises(ValueError, match="immutable"):
         fabric.record_experience({**body, "pnl": -400.0})
+
+
+def test_runtime_experience_fails_closed_before_live_boundary(tmp_path):
+    from types import SimpleNamespace
+    from icarus_engine.emulator import ClosedTrade
+    from icarus_engine.learning_fabric import LearningFabric
+
+    runner = SimpleNamespace(
+        symbol="NQ",
+        live_from_ts=None,
+        live_closed_start=0,
+        em=SimpleNamespace(
+            closed=[ClosedTrade("WARM", 1, 1, 100.0, 1, 100, 101.0, 2, 200, "TP", 40.0, lot_id=1, entry_qty=1)],
+            open=[],
+        ),
+    )
+    port = SimpleNamespace(runner_list=lambda: [runner], status=lambda: {"assets": []})
+    fabric = LearningFabric(tmp_path, port=port)
+    cycle = fabric.tick()
+    assert cycle["summary"]["experience"]["runtime"]["imported"] == 0
+    assert cycle["summary"]["experience"]["runtime"]["skipped_no_live_boundary"] == 1
+    assert fabric.snapshot()["experiences"]["count"] == 0
