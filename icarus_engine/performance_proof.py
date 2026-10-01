@@ -307,6 +307,59 @@ class PerformanceProofStore:
             "rule": "Backlog items are matured forecasts awaiting observed outcomes; no outcome is inferred or synthesized.",
         }
 
+    def settled_records(self, *, as_of: str | None = None, limit: int = 1000) -> dict[str, Any]:
+        """Return immutable forecast/outcome pairs for downstream calibration.
+
+        This is a read-only research export. The as-of boundary applies to both
+        forecast maturity and the observed outcome so historical replay cannot see
+        evidence that had not arrived yet.
+        """
+        if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 10000:
+            raise ValueError("limit must be an integer within [1,10000]")
+        cutoff = _iso(as_of, "as_of") if as_of is not None else _now().isoformat().replace("+00:00", "Z")
+        with self._lock, self._connect() as con:
+            rows = [dict(x) for x in con.execute(
+                "SELECT f.*, o.observed_at, o.success, o.realized_value, o.outcome_hash, o.source "
+                "FROM forecasts f JOIN outcomes o ON o.forecast_id=f.forecast_id "
+                "WHERE f.matures_at <= ? AND o.observed_at <= ? "
+                "ORDER BY o.observed_at, f.forecast_id LIMIT ?",
+                (cutoff, cutoff, limit),
+            ).fetchall()]
+            total = int(con.execute(
+                "SELECT COUNT(*) FROM forecasts f JOIN outcomes o ON o.forecast_id=f.forecast_id "
+                "WHERE f.matures_at <= ? AND o.observed_at <= ?",
+                (cutoff, cutoff),
+            ).fetchone()[0])
+        items = [{
+            "forecast_id": row["forecast_id"],
+            "candidate_id": row["candidate_id"],
+            "asset": row["asset"],
+            "regime": row["regime"],
+            "decision_at": row["decision_at"],
+            "matures_at": row["matures_at"],
+            "probability_success": row["probability_success"],
+            "success_definition": row["success_definition"],
+            "source_repo": row["source_repo"],
+            "source_commit": row["source_commit"],
+            "dataset_hash": row["dataset_hash"],
+            "evidence_hash": row["evidence_hash"],
+            "observed_at": row["observed_at"],
+            "success": bool(row["success"]),
+            "realized_value": row["realized_value"],
+            "outcome_hash": row["outcome_hash"],
+            "source": row["source"],
+        } for row in rows]
+        return {
+            "schema_version": "icarus-performance-settled-records-v1",
+            "as_of": cutoff,
+            "total": total,
+            "returned": len(items),
+            "items": items,
+            "execution_authorized": False,
+            "production_decision_authorized": False,
+            "rule": "Only immutable source-bound forecasts with observed matured outcomes are exported.",
+        }
+
     @staticmethod
     def _calibration(rows: list[Mapping[str, Any]]) -> tuple[float | None, list[dict[str, Any]]]:
         if not rows:
