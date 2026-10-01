@@ -157,7 +157,7 @@ Each candidate family is isolated by asset, regime, source commit, comparison-co
 
 Each family has a hard 12-trial budget. Candidate metadata exposes current trial index, trials used, trials remaining, source paired evidence count, source pair coverage, source p-value, source FDR q-value, source strata count, and comparison-contract readiness.
 
-A new revision after rejection/retirement requires strictly more paired evidence than the previous family revision. This prevents incremental sample-count changes from silently exploding the hypothesis search space.
+A new revision after rejection/retirement requires strictly more **effective independent episode evidence** than the previous family revision. Additional raw decisions inside episodes already represented in the family do not unlock another trial. This prevents clustered observations and incremental row-count changes from silently exploding the hypothesis search space.
 
 ### Source-signal decay
 
