@@ -108,6 +108,7 @@ class GatewayContext:
     upstream: UpstreamClient
     cache: SnapshotCache
     limiter: PairRateLimiter
+    actions: PairRateLimiter
 
 
 def make_server(
@@ -138,6 +139,7 @@ def make_server(
         upstream=upstream_client,
         cache=cache,
         limiter=PairRateLimiter(),
+        actions=PairRateLimiter(attempts=4, window=60),
     )
 
     class H(BaseHTTPRequestHandler):
@@ -287,13 +289,24 @@ def make_server(
                 except ValueError:
                     return self._json(401, {"detail": "invalid device credential"})
 
+            try:
+                device_id = self._session_device()
+            except AuthError as ex:
+                return self._json(401, {"detail": str(ex)})
+
             if parsed.path == "/v1/revoke":
-                try:
-                    device_id = self._session_device()
-                except AuthError as ex:
-                    return self._json(401, {"detail": str(ex)})
                 self.ctx.devices.revoke(device_id)
                 return self._json(200, {"ok": True, "device_id": device_id, "revoked": True})
+
+            if parsed.path == "/v1/backtest":
+                if not self.ctx.actions.allow("backtest:" + device_id):
+                    return self._json(429, {"detail": "backtest launch rate limit reached"})
+                try:
+                    return self._json(200, self.ctx.upstream.mobile_post(parsed.path, body))
+                except UpstreamError as ex:
+                    return self._json(ex.status, {"detail": ex.detail})
+                except Exception as ex:
+                    return self._json(502, {"detail": f"gateway upstream error: {type(ex).__name__}"})
 
             return self._json(404, {"detail": "unknown mobile resource"})
 

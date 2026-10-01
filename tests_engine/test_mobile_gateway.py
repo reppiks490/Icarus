@@ -56,6 +56,13 @@ class FakeUpstream:
             return {"assets": [{"symbol": "NQ"}]}
         if path == "/v1/brain":
             return {"execution_authorized": False}
+        if path.startswith("/v1/backtest/"):
+            return {"id": path.rsplit("/", 1)[1], "status": "done", "result": {"asset": "NQ"}}
+        raise RuntimeError(path)
+
+    def mobile_post(self, path, body):
+        if path == "/v1/backtest":
+            return {"ok": True, "job": "job-123", "asset": body["asset"]}
         raise RuntimeError(path)
 
 
@@ -112,6 +119,14 @@ def test_gateway_pair_refresh_read_and_revoke(tmp_path):
         code, brain = _request(base + "/v1/brain", token=session)
         assert code == 200
         assert brain["execution_authorized"] is False
+
+        code, started = _request(base + "/v1/backtest", "POST", {"asset": "NQ"}, token=session)
+        assert code == 200
+        assert started["job"] == "job-123"
+
+        code, job = _request(base + "/v1/backtest/job-123", token=session)
+        assert code == 200
+        assert job["status"] == "done"
 
         code, refreshed = _request(
             base + "/v1/session",
