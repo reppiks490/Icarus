@@ -9,6 +9,14 @@ from icarus_engine.autopilot import TacticalAutopilot
 from icarus_engine.strategy.inputs import Inputs
 
 
+@pytest.fixture(autouse=True)
+def _freeze_passthrough(monkeypatch):
+    monkeypatch.setattr(
+        "icarus_engine.autopilot.freeze_replay_port",
+        lambda port, asset: port,
+    )
+
+
 class FakeRunner:
     def __init__(self):
         self.symbol = "NQ"
@@ -117,6 +125,8 @@ def test_autopilot_configuration_is_fail_closed(tmp_path):
         ap.configure({"cadence_seconds": 1})
     with pytest.raises(ValueError, match="assets"):
         ap.configure({"assets": ["ES"]})
+    with pytest.raises(ValueError, match="robustness_windows"):
+        ap.configure({"robustness_windows": 4})
     with pytest.raises(ValueError, match="unknown"):
         ap.configure({"god_mode": True})
 
@@ -183,3 +193,40 @@ def test_new_champion_is_mirrored_to_system_intelligence(tmp_path, monkeypatch):
     assert event["kind"] == "integration"
     assert "Tactical Autopilot champion" in event["title"]
     assert "shadow-only" in event["detail"]
+
+
+def test_robustness_score_penalizes_recent_window_collapse(tmp_path, monkeypatch):
+    port = FakePort(tmp_path)
+    ap = TacticalAutopilot(port)
+    candidate = {
+        "id": "candidate",
+        "asset": "NQ",
+        "inputs": port.runners["NQ"].inputs.to_dict(),
+        "chart_type": "real",
+        "session": None,
+        "fill_on": "real",
+        "delta": {"kind": "baseline", "name": "current_engine", "from": None, "to": None},
+        "reason": "test",
+    }
+    state = ap._read()
+    state["active"] = {"candidate": candidate, "stage": "backtest", "started": 1.0}
+    ap._write(state)
+
+    def replay(_port, asset, **kwargs):
+        result = fake_result(kwargs["inputs"], better=True)
+        result["range"] = {"start": 0, "end": 1000}
+        if kwargs.get("window_start", 0) >= 750:
+            result["trades"] = []
+            result["equity"] = [[750, 100000.0], [1000, 100000.0]]
+            result["drawdown"] = [[750, 0.0], [1000, 0.0]]
+        return result
+
+    monkeypatch.setattr("icarus_engine.autopilot.run_backtest", replay)
+    _full, metrics = ap._evaluate_candidate(
+        candidate,
+        {**ap._read()["config"], "robustness_windows": 3},
+    )
+    assert metrics["robustness_windows"] == 3
+    assert metrics["full_score"] > metrics["score"]
+    assert metrics["worst_window_score"] == -999.0
+    assert len(metrics["window_scores"]) == 3
