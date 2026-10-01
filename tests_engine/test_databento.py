@@ -1200,6 +1200,24 @@ def test_portfolio_stop_closes_databento_live_sessions(monkeypatch, tmp_path):
     assert feed.stops == 1
 
 
+def test_core_readiness_is_independent_for_ohlcv_and_trades():
+    feed = make_feed()
+    feed._live_callback("NQ=F", Trade(3_000, 123.25, 2))
+    assert feed._core_ready[("NQ=F", "trades")].is_set() is True
+    assert feed._core_ready[("NQ=F", "ohlcv-1s")].is_set() is False
+
+    feed._live_callback("NQ=F", Ohlcv(3_000, 123.0, 124.0, 122.5, 123.5, 5))
+    assert feed._core_ready[("NQ=F", "ohlcv-1s")].is_set() is True
+
+
+def test_core_error_unblocks_each_desired_schema_gate():
+    feed = make_feed()
+    feed._wanted_subscriptions["NQ=F"].update({"ohlcv-1s", "trades"})
+    feed._live_callback("NQ=F", Error("NQ.v.0 failed", code=4))
+    assert feed._core_ready[("NQ=F", "ohlcv-1s")].is_set() is True
+    assert feed._core_ready[("NQ=F", "trades")].is_set() is True
+
+
 def test_system_message_before_first_market_event_does_not_crash_or_fake_readiness():
     feed = make_feed()
     feed._live_callback("NQ=F", SystemMsg())
