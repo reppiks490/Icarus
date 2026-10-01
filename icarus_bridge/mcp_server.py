@@ -593,6 +593,80 @@ def refresh_engine_dreamstate(min_samples: int = 5) -> dict:
     return _safe_engine(lambda: _engine_post("/admin/dreamstate/refresh", {"min_samples": int(min_samples)}))
 
 
+@mcp.tool()
+def record_historical_parallax_decision(
+    asset: str,
+    action: str,
+    observed_at: str,
+    source_commit: str,
+    regime: str = "unknown",
+    context_json: str = "{}",
+    subsystem_votes_json: str = "{}",
+    branches_json: str = "",
+    decision_id: str = "",
+) -> dict:
+    """Record a historical PARALLAX decision with already-captured causal votes.
+
+    No current Psi snapshot is injected into this route.
+    """
+    try:
+        context = json.loads(context_json or "{}")
+        votes = json.loads(subsystem_votes_json or "{}")
+        branches = json.loads(branches_json) if branches_json.strip() else None
+    except json.JSONDecodeError as ex:
+        return {"error": f"invalid JSON argument: {ex}"}
+    if not isinstance(context, dict) or not isinstance(votes, dict):
+        return {"error": "context_json and subsystem_votes_json must decode to objects"}
+    if branches is not None and not isinstance(branches, list):
+        return {"error": "branches_json must decode to a list"}
+    body: Dict[str, Any] = {
+        "asset": asset.strip().upper(),
+        "action": action.strip().lower(),
+        "regime": regime.strip() or "unknown",
+        "observed_at": observed_at.strip(),
+        "source_commit": source_commit.strip(),
+        "context": context,
+        "subsystem_votes": votes,
+    }
+    if branches is not None:
+        body["branches"] = branches
+    if decision_id.strip():
+        body["decision_id"] = decision_id.strip()
+    return _safe_engine(lambda: _engine_post("/admin/parallax/decision", body))
+
+
+@mcp.tool()
+def evaluate_engine_dreamstate_candidate(
+    candidate_id: str,
+    validation_json: str,
+    evidence_json: str = "[]",
+) -> dict:
+    """Apply explicit validation-gate results to a DREAMSTATE research candidate."""
+    try:
+        validation = json.loads(validation_json or "{}")
+        evidence = json.loads(evidence_json or "[]")
+    except json.JSONDecodeError as ex:
+        return {"error": f"invalid JSON argument: {ex}"}
+    if not isinstance(validation, dict) or not validation:
+        return {"error": "validation_json must decode to a non-empty object"}
+    if not isinstance(evidence, list):
+        return {"error": "evidence_json must decode to a list"}
+    return _safe_engine(lambda: _engine_post("/admin/dreamstate/evaluate", {
+        "candidate_id": candidate_id.strip(),
+        "validation": validation,
+        "evidence": evidence,
+    }))
+
+
+@mcp.tool()
+def retire_engine_dreamstate_candidate(candidate_id: str, reason: str) -> dict:
+    """Retire a DREAMSTATE research candidate with an explicit evidence reason."""
+    return _safe_engine(lambda: _engine_post("/admin/dreamstate/retire", {
+        "candidate_id": candidate_id.strip(),
+        "reason": reason.strip(),
+    }))
+
+
 # ── control tools (state-changing) ──
 @mcp.tool()
 def pause_trading(reason: str = "paused via MCP") -> dict:
