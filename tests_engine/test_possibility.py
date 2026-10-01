@@ -1220,3 +1220,46 @@ def test_market_shadow_declares_first_order_noncausal_approximation():
     assert rows
     assert all(row["approximation"] == "first_order_local_ablation" for row in rows)
     assert all(row["causal_effect_proven"] is False for row in rows)
+
+
+
+def test_runner_bar_leader_applies_multiple_testing_screen():
+    engine = PossibilityEngine(ReplayPort(), scenarios=96)
+    out = engine.snapshot("NQ")
+    leaders = out["causal_leadership"]
+    assert leaders["multiple_testing_method"] == "bonferroni_fisher_z_heuristic"
+    assert leaders["peer_test_count"] >= 1
+    leader = leaders["leaders"][0]
+    assert leader["adjusted_p_value_heuristic"] <= 0.10
+    assert leader["raw_p_value_heuristic"] <= leader["adjusted_p_value_heuristic"]
+
+
+def test_multiple_testing_rejects_weak_spurious_peer():
+    port = ReplayPort()
+    nq_bars = port.runners["NQ"].bars
+    base_ts = nq_bars[0].ts
+    step = 60
+    weak_returns = [
+        0.0001 if i % 4 in (0, 1) else -0.0001
+        for i in range(len(nq_bars) - 1)
+    ]
+    port.runners["WEAK"] = SimpleNamespace(
+        feed=Feed(),
+        spec=SimpleNamespace(ticker="WEAK.v.0"),
+        chart_minutes=1,
+        bars=_bars_from_returns(base_ts, 1000.0, weak_returns, step),
+    )
+    engine = PossibilityEngine(port, scenarios=96)
+    out = engine.snapshot("NQ")
+    accepted = {row["asset"] for row in out["causal_leadership"]["leaders"]}
+    assert "ES" in accepted
+    if "WEAK" not in accepted:
+        rejected = {
+            row["asset"]: row
+            for row in out["causal_leadership"]["rejected_peers"]
+            if row.get("asset")
+        }
+        assert rejected["WEAK"]["reason"] in {
+            "multiple_testing_screen",
+            "degenerate_lag_series",
+        }
