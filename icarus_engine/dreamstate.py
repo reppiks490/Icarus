@@ -878,6 +878,7 @@ class DreamstateLab:
                 "failed_gate_requires_new_candidate_revision": True,
                 "one_active_candidate_per_family": True,
                 "family_trial_budget_enforced": True,
+                "new_candidate_revisions_require_more_effective_independent_episode_evidence": True,
                 "families_are_isolated_by_source_revision_and_comparison_contract": True,
                 "source_signal_decay_can_retire_shadow_candidates": True,
                 "opposite_side_counterfactual_never_auto_inverts_policy": True,
