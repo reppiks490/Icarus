@@ -68,6 +68,7 @@ from .brain import brain_snapshot, record_brain_event
 from .brain_sync import BrainRemoteSync
 from .research_brain_sync import BrainResearchSync
 from .evolution_sync import EvolutionRemoteSync
+from .code_provenance import local_code_provenance
 from .parallax import ParallaxStore
 from .dreamstate import DreamstateLab
 
@@ -487,12 +488,20 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     return self._json(400, {"detail": str(ex)})
             if p.path == "/admin/parallax/decision":
                 try:
-                    return self._json(200, parallax.record_decision(body))
+                    payload = dict(body)
+                    if not payload.get("source_commit"):
+                        provenance = local_code_provenance()
+                        if not provenance.get("candidate_revision_eligible") or not provenance.get("commit"):
+                            raise ValueError("exact clean ICARUS code provenance is required when source_commit is omitted")
+                        payload["source_commit"] = provenance["commit"]
+                    return self._json(200, parallax.record_decision(payload))
                 except (ValueError, TypeError) as ex:
                     return self._json(400, {"detail": str(ex)})
             if p.path == "/admin/parallax/outcome":
                 try:
-                    return self._json(200, parallax.record_outcome(body))
+                    result = parallax.record_outcome(body)
+                    result["dreamstate_refresh"] = dreamstate.refresh().get("refresh", {})
+                    return self._json(200, result)
                 except (ValueError, TypeError) as ex:
                     return self._json(400, {"detail": str(ex)})
             if p.path == "/admin/dreamstate/refresh":
