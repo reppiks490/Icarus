@@ -72,12 +72,32 @@ LOOP_FEED_SPECS = (
 )
 
 _SIGNAL_KEY_RE = re.compile(
-    r"^(result|next|findings?|risks?|warnings?|errors?|built|verified|merged|tests?|metrics?|"
-    r"artifacts?|blockers?|conflicts?|gaps?|coverage|baseline|net_new_delta|passes_completed|"
-    r"backlog_depth|oldest_unsent_run|replayed_run_ids|duplicate_run_ids_skipped|"
-    r"new_.+|candidates?|components?|corpus.+|evidence.+|data_quality.+|persistence.+)$",
+    r"^(run_id|run_status|result|next|findings?|risks?|warnings?|errors?|built.*|verified.*|merged.*|"
+    r"tests?.*|metrics?.*|artifacts?.*|blockers?.*|conflicts?.*|.*conflicts?.*|gaps?.*|.*gaps?.*|"
+    r"coverage.*|baseline.*|net_new_delta|passes_completed|backlog_depth|oldest_unsent_run|"
+    r"replayed_run_ids|duplicate_run_ids_skipped|new_.+|candidates?.*|components?.*|corpus.*|"
+    r"evidence.*|.*evidence.*|data_quality.*|quality_notes?|persistence.*|.*findings?.*)$",
     re.IGNORECASE,
 )
+_SIGNAL_CONTAINER_KEYS = {
+    "run_core",
+    "authoritative_checkpoint",
+    "authoritative_reconciliation",
+    "observations",
+    "source_provenance",
+    "provenance_source_identities",
+    "candidate_branches",
+    "specialist_states_consumed",
+    "test_state",
+    "tests_workflows",
+    "pr_state",
+    "pr_commit_evidence",
+    "decision_contract",
+    "evidence_contract",
+    "internal_topology",
+    "disagreements_collisions",
+    "unresolved_risks",
+}
 
 DEFAULT_REPOSITORY_AUDIT: Dict[str, Any] = {
     "schema_version": 2,
@@ -304,13 +324,23 @@ def _compact_value(value: Any, depth: int = 0) -> Any:
     return str(value)[:1000]
 
 
-def _signal_subset(value: Any) -> Dict[str, Any]:
-    if not isinstance(value, dict):
+def _signal_subset(value: Any, depth: int = 0) -> Dict[str, Any]:
+    if not isinstance(value, dict) or depth > 3:
         return {}
     out: Dict[str, Any] = {}
     for key, item in value.items():
-        if _SIGNAL_KEY_RE.match(str(key)):
-            out[str(key)[:120]] = _compact_value(item)
+        name = str(key)
+        lower = name.lower()
+        if lower in _SIGNAL_CONTAINER_KEYS:
+            out[name[:120]] = _compact_value(item)
+            continue
+        if _SIGNAL_KEY_RE.match(name):
+            out[name[:120]] = _compact_value(item)
+            continue
+        if isinstance(item, dict):
+            nested = _signal_subset(item, depth + 1)
+            if nested:
+                out[name[:120]] = nested
     return out
 
 
