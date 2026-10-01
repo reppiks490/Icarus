@@ -339,6 +339,8 @@ class DreamstateLab:
             "source_parameter_basin_support_count": (signal.get("parameter_basin") or {}).get("basin_support_count"),
             "source_parameter_basin_width": (signal.get("parameter_basin") or {}).get("basin_width"),
             "source_isolated_parameter_spike": bool((signal.get("parameter_basin") or {}).get("isolated_spike")),
+            "source_parameter_local_support_missing": bool((signal.get("parameter_basin") or {}).get("local_support_missing")),
+            "source_parameter_family_evaluable_points": (signal.get("parameter_basin") or {}).get("family_evaluable_point_count"),
         }
 
     def _mirror_candidate(self, candidate: Mapping[str, Any]) -> dict[str, Any]:
@@ -388,6 +390,8 @@ class DreamstateLab:
             "parameter_basin_support_count": basin.get("basin_support_count"),
             "parameter_basin_width": basin.get("basin_width"),
             "isolated_parameter_spike": basin.get("isolated_spike"),
+            "parameter_local_support_missing": basin.get("local_support_missing"),
+            "parameter_family_evaluable_points": basin.get("family_evaluable_point_count"),
         })
         evidence.append(
             "PARALLAX paired signal "
