@@ -390,3 +390,11 @@ consensus-illusion research.
 
 The audit receipt records whether a caller attempted to supply lineage, without
 promoting that claim into evidence.
+
+
+### ECHO registry parity
+
+The Adaptive Brain registry also exposes ECHO Ω as a first-class PANTHEON
+subsystem. This keeps the system map, PANTHEON UI, faculty output, and audit
+surface in agreement: ECHO is visible as evidence-ancestry de-duplication
+research and carries no execution, sizing, broker, or production authority.

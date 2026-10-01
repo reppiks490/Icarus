@@ -189,3 +189,18 @@ def test_brain_registers_apex_omega_research_subsystem(tmp_path):
     assert "epistemic" in rows["apex-omega"]["job"].lower()
     assert out["authority"]["production_decision_authorized"] is False
     assert out["authority"]["execution_authorized"] is False
+
+
+def test_brain_registers_pantheon_echo_research_subsystem(tmp_path):
+    out = brain_snapshot(tmp_path)
+    rows = {x["id"]: x for x in SUBSYSTEMS}
+    assert "echo" in rows
+    assert rows["echo"]["title"] == "ECHO Ω"
+    assert rows["echo"]["owner"] == "pantheon"
+    assert "evidence-ancestry" in rows["echo"]["job"].lower()
+    assert "without trading authority" in rows["echo"]["job"].lower()
+    surfaced = {x["id"]: x for x in out["architecture"]["subsystems"]}
+    assert surfaced["echo"]["title"] == "ECHO Ω"
+    assert surfaced["echo"]["status"] == "REGISTERED"
+    assert out["authority"]["production_decision_authorized"] is False
+    assert out["authority"]["execution_authorized"] is False

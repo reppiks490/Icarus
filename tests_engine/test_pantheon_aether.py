@@ -276,7 +276,7 @@ def test_pantheon_is_visible_in_trader_interface():
     assert '"pantheon": pantheon.snapshot' in server
     assert "resolve_engine_evidence_lineage" in server
     assert '"apex_lineage"' in server
-    for subsystem in ("PANTHEON", "NEMESIS Ω", "GÖDEL Ω", "SOCRATES", "ANANKĒ", "EX NIHILO", "MINT Ω", "NULLSPACE Ω", "ARCHON Ω", "AETHER Ω"):
+    for subsystem in ("PANTHEON", "NEMESIS Ω", "GÖDEL Ω", "SOCRATES", "ANANKĒ", "EX NIHILO", "MINT Ω", "NULLSPACE Ω", "ECHO Ω", "ARCHON Ω", "AETHER Ω"):
         assert subsystem in brain
 
 
