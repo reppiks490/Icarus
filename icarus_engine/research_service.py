@@ -17,7 +17,6 @@ from dataclasses import asdict
 from .advisory import AdvisoryLedger, strict_json, canonical_hash, _iso, _now
 from .backtest import freeze_replay_port, run_backtest
 from .research import Policy, Windows, digest, run_search
-from .evolution import report as evolution_report
 
 DEFAULT_SOURCES = {
     "cftc": ["publicreporting.cftc.gov", "www.cftc.gov"],
@@ -133,7 +132,6 @@ class ResearchWorkspace:
                                "configuration_changes_require_flat": True})
         return {"mode": "qualified paper adaptation", "execution_authorized": False, "assets": assets,
                 "ledger": self.ledger.status(), "jobs": jobs,
-                "system_evolution": evolution_report(),
                 "analysis": self.analysis.status(), "activation": self.activation.status(),
                 "capabilities": {"zapier_receiver_configured": bool(os.environ.get("ICARUS_INGEST_SECRET")),
                                  "zapier_connected": False, "sp_global_connected": False,
