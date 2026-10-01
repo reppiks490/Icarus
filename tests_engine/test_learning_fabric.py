@@ -912,3 +912,11 @@ def test_psi_learning_withholds_capture_when_exact_revision_is_not_clean(tmp_pat
     assert out["status"] == "WITHHELD_REVISION"
     assert out["forecasts_imported"] == 0
     assert fabric._conn.execute("SELECT COUNT(*) FROM predictions WHERE producer='psi-scenario-v1'").fetchone()[0] == 0
+
+
+def test_learning_snapshot_reports_psi_empirical_calibration_coverage(tmp_path):
+    from icarus_engine.learning_fabric import LearningFabric
+
+    snap = LearningFabric(tmp_path).snapshot()
+    assert snap["coverage"]["possibility"] == "native_non_overlapping_scenario_calibration"
+    assert "forecast_contract_required" not in snap["coverage"].values()
