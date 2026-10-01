@@ -71,3 +71,8 @@ def test_engine_dashboard_surfaces_repository_mcp_audit():
     assert "repositoryAuditCard(window.ICARUS_AUDIT" in src
     assert "fetch('/api/system/audit'" in src
     assert "setInterval(refreshAudit, 20000)" in src
+    assert "System Intelligence" in src
+    assert "Automation loops" in src
+    assert "MCP activity" in src
+    assert "a.loops || []" in src
+    assert "a.events || []" in src
