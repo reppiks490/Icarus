@@ -71,3 +71,28 @@ def test_engine_dashboard_surfaces_repository_mcp_audit():
     assert "repositoryAuditCard(window.ICARUS_AUDIT" in src
     assert "fetch('/api/system/audit'" in src
     assert "setInterval(refreshAudit, 20000)" in src
+
+
+def test_system_tab_surfaces_mcp_evolution_ledger():
+    dashboard = (REPO / "icarus_engine" / "dashboard.html").read_text(encoding="utf-8")
+    research_ui = (REPO / "icarus_engine" / "research-ui.js").read_text(encoding="utf-8")
+    research_service = (REPO / "icarus_engine" / "research_service.py").read_text(encoding="utf-8")
+    assert 'data-v="system">System</span>' in dashboard
+    assert "mcpEvolutionCard" in research_ui
+    assert "System evolution &amp; audit" in research_ui
+    assert "data.system_evolution" in research_ui
+    assert "source_commit" in research_ui
+    assert "Execution authority:" in research_ui
+    assert '"system_evolution": evolution_report()' in research_service
+
+
+def test_mcp_evolution_ledger_is_fail_closed():
+    from icarus_engine.evolution import report
+    data = report()
+    assert data["interface_contract"]["important_mcp_changes_must_surface"] is True
+    assert data["entry_count"] == len(data["entries"])
+    assert data["entry_count"] >= 1
+    assert len(data["ledger_sha256"]) == 64
+    assert data["execution_authorized"] is False
+    assert all(row["execution_authorized"] is False for row in data["entries"])
+    assert len({row["id"] for row in data["entries"]}) == data["entry_count"]
