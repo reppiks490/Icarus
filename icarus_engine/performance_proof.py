@@ -307,7 +307,8 @@ class PerformanceProofStore:
         ece, calibration = self._calibration(settled)
         scope_keys = {
             (
-                row["asset"], row["regime"], row["success_definition"],
+                row["asset"], row["regime"], row["candidate_id"], row["source_commit"],
+                row["success_definition"],
                 int((_dt(row["matures_at"]) - _dt(row["decision_at"])).total_seconds()),
             )
             for row in matured
