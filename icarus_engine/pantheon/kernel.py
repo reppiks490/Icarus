@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 import sqlite3
 import threading
@@ -335,9 +336,18 @@ class PantheonKernel:
         now = _utc_now()
 
         with _LOCK, self._connect() as con:
-            claim = con.execute("SELECT * FROM claims WHERE claim_id=?", (claim_id,)).fetchone()
+            claim = con.execute(
+                """SELECT c.*,o.observed_at AS claim_observed_at
+                   FROM claims c JOIN observations o ON o.observation_id=c.observation_id
+                   WHERE c.claim_id=?""",
+                (claim_id,),
+            ).fetchone()
             if claim is None:
                 raise ValueError("unknown PANTHEON claim")
+            claim_time = datetime.fromisoformat(str(claim["claim_observed_at"]).replace("Z", "+00:00"))
+            outcome_time = datetime.fromisoformat(observed_at.replace("Z", "+00:00"))
+            if outcome_time < claim_time:
+                raise ValueError("claim outcome cannot precede the originating observation")
             prior = con.execute("SELECT * FROM claim_outcomes WHERE outcome_id=?", (outcome_id,)).fetchone()
             if prior is None:
                 con.execute(
