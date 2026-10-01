@@ -45,7 +45,7 @@ class Feed:
                 }
                 for level in range(10)
             ]
-            rows.append({"levels": levels, "ts_event": 1000 + i})
+            rows.append({"levels": levels, "ts_event": int(time.time()) - (39 - i)})
         return rows[-limit:]
 
 
@@ -922,3 +922,44 @@ def test_edge_gate_rejects_low_confidence_exact_leaders():
     )
     assert edge["state"] == "NO_EDGE"
     assert "dynamic leader confidence below 10%" in edge["blockers"]
+
+
+
+def test_stale_depth_snapshot_is_not_admitted_as_queue_pressure():
+    engine = PossibilityEngine(Port())
+
+    class StaleDepthFeed(Feed):
+        def depth_events(self, ticker, *, schema="mbp-10", limit=120):
+            levels = [{
+                "bid_px": 100.0,
+                "ask_px": 100.5,
+                "bid_sz": 100,
+                "ask_sz": 1,
+            }]
+            return [{"levels": levels, "ts_event": int(time.time()) - 120}]
+
+    engine.port.runners["NQ"].feed = StaleDepthFeed()
+    micro = engine._microstructure("NQ")
+    assert micro["queue_pressure"].available is False
+    assert micro["health"]["depth"] is False
+    assert any("stale" in error for error in micro["health"]["errors"])
+
+
+def test_future_clock_depth_snapshot_is_not_admitted():
+    engine = PossibilityEngine(Port())
+
+    class FutureDepthFeed(Feed):
+        def depth_events(self, ticker, *, schema="mbp-10", limit=120):
+            levels = [{
+                "bid_px": 100.0,
+                "ask_px": 100.5,
+                "bid_sz": 100,
+                "ask_sz": 1,
+            }]
+            return [{"levels": levels, "ts_event": int(time.time()) + 60}]
+
+    engine.port.runners["NQ"].feed = FutureDepthFeed()
+    micro = engine._microstructure("NQ")
+    assert micro["queue_pressure"].available is False
+    assert micro["health"]["depth"] is False
+    assert any("future" in error for error in micro["health"]["errors"])
