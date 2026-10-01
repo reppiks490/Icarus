@@ -98,6 +98,7 @@ class Databento:
             slow_reader_behavior="warn",
         ))
         self._lock = threading.RLock()
+        self._closed = False
         self._session_lock = threading.RLock()
         self._depth_session_lock = threading.RLock()
         self._snapshot_lock = threading.Lock()
@@ -158,6 +159,11 @@ class Databento:
             lambda: collections.deque(maxlen=100)
         )
         self.requests = 0
+
+    def _ensure_open(self) -> None:
+        with self._lock:
+            if self._closed:
+                raise RuntimeError("Databento adapter is closed")
 
     @staticmethod
     def _load_sdk():
@@ -949,6 +955,7 @@ class Databento:
     ) -> Any:
         if schema not in ("mbp-10", "mbo"):
             raise ValueError("schema must be 'mbp-10' or 'mbo'")
+        self._ensure_open()
         keys = [(str(symbol), self.continuous_symbol(symbol, self.roll_rule)) for symbol in symbols]
         if not keys:
             return self._depth_live.get(schema)
@@ -1270,7 +1277,9 @@ class Databento:
         start_ts: Optional[int] = None,
         include_depth: Optional[str] = None,
     ) -> Any:
+        self._ensure_open()
         with self._session_lock:
+            self._ensure_open()
             with self._lock:
                 broken = self._core_broken
                 code = self._core_error_code
@@ -1443,6 +1452,18 @@ class Databento:
         with self._depth_session_lock:
             self._stop_depth_unlocked(symbol)
 
+    def close(self) -> None:
+        """Terminal adapter shutdown used by the ICARUS plant.
+
+        Unlike per-symbol stop_live(), close() is intentionally not reversible.
+        """
+        with self._lock:
+            self._closed = True
+        with self._session_lock:
+            self._stop_live_unlocked()
+        with self._depth_session_lock:
+            self._stop_depth_unlocked()
+
     def recent_ex(
         self,
         symbol: str,
@@ -1517,7 +1538,9 @@ class Databento:
 
     def mbo_snapshot(self, symbol: str, timeout: float = 5.0) -> List[Dict[str, Any]]:
         """Return a live MBO snapshot. Databento marks the final snapshot record F_LAST."""
+        self._ensure_open()
         with self._snapshot_lock:
+            self._ensure_open()
             return self._mbo_snapshot_locked(symbol, timeout)
 
     def _mbo_snapshot_locked(self, symbol: str, timeout: float) -> List[Dict[str, Any]]:

@@ -1327,6 +1327,34 @@ def test_reconnect_gap_is_published_and_replayed_from_actual_boundary():
     assert starts == {"2026-09-30T09:59:59Z"}
 
 
+def test_terminal_databento_close_prevents_any_session_reopen():
+    core = FakeLive()
+    mbp = FakeLive()
+    feed = make_feed(lives=[core, mbp])
+    feed.start_live("NQ=F")
+    feed.depth_events("NQ=F", schema="mbp-10")
+    feed.close()
+
+    assert core.stopped is True
+    assert mbp.stopped is True
+    with pytest.raises(RuntimeError, match="adapter is closed"):
+        feed.start_live("NQ=F")
+    with pytest.raises(RuntimeError, match="adapter is closed"):
+        feed.depth_events("NQ=F", schema="mbp-10")
+    with pytest.raises(RuntimeError, match="adapter is closed"):
+        feed.mbo_snapshot("NQ=F", timeout=0.1)
+
+
+def test_per_symbol_stop_remains_reusable_before_terminal_close():
+    core = FakeLive()
+    feed = make_feed(lives=[core])
+    feed.start_live("NQ=F")
+    feed.start_live("ES=F")
+    feed.stop_live("NQ=F")
+    assert core.stopped is False
+    assert feed.start_live("NQ=F") is core
+
+
 def test_portfolio_stop_closes_databento_live_sessions(monkeypatch, tmp_path):
     class Feed:
         def __init__(self):
