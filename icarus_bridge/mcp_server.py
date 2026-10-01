@@ -456,6 +456,55 @@ def record_engine_brain_event(
 
 
 @mcp.tool()
+def engine_candidate_qualification_receipts() -> dict:
+    """Read immutable exact-revision candidate qualification receipts and blockers."""
+    return _safe_engine(lambda: _engine_get("/api/qualification-receipts"))
+
+
+@mcp.tool()
+def record_engine_candidate_qualification_receipt(
+    candidate_id: str,
+    candidate_source_repo: str,
+    candidate_source_commit: str,
+    gate: str,
+    passed: bool,
+    verifier_id: str,
+    verifier_source_repo: str,
+    verifier_source_commit: str,
+    observed_at: str,
+    evidence_hash: str,
+) -> dict:
+    """Record one exact-revision gate receipt and reconcile shadow eligibility."""
+    body = {
+        "candidate_id": candidate_id.strip(),
+        "candidate_source_repo": candidate_source_repo.strip(),
+        "candidate_source_commit": candidate_source_commit.strip().lower(),
+        "gate": gate.strip(),
+        "passed": bool(passed),
+        "verifier_id": verifier_id.strip(),
+        "verifier_source_repo": verifier_source_repo.strip(),
+        "verifier_source_commit": verifier_source_commit.strip().lower(),
+        "observed_at": observed_at.strip(),
+        "evidence_hash": evidence_hash.strip().lower(),
+    }
+    return _safe_engine(lambda: _engine_post("/admin/qualification-receipts/record", body))
+
+
+@mcp.tool()
+def sync_engine_candidate_qualification(
+    candidate_id: str,
+    candidate_source_repo: str,
+    candidate_source_commit: str,
+) -> dict:
+    """Reconcile one exact candidate revision with its current immutable gate receipts."""
+    return _safe_engine(lambda: _engine_post("/admin/qualification-receipts/sync", {
+        "candidate_id": candidate_id.strip(),
+        "candidate_source_repo": candidate_source_repo.strip(),
+        "candidate_source_commit": candidate_source_commit.strip().lower(),
+    }))
+
+
+@mcp.tool()
 def engine_pantheon_state() -> dict:
     """Read PANTHEON faculties, AETHER swarm state, sentinel cells and durable shadow claims."""
     return _safe_engine(lambda: _engine_get("/api/pantheon"))
@@ -902,6 +951,17 @@ def propose_engine_apex_experiment(experiment_json: str) -> dict:
 def engine_performance_proof() -> dict:
     """Read causal forecast/outcome/replay proof, calibration and closed-sample metrics."""
     return _safe_engine(lambda: _engine_get("/api/performance-proof"))
+
+
+@mcp.tool()
+def engine_pending_performance_settlements(limit: int = 100, as_of: str = "") -> dict:
+    """Read matured forecasts that still require an observed immutable outcome."""
+    bounded = max(1, min(1000, int(limit)))
+    return _safe_engine(lambda: _engine_get(
+        "/api/performance-proof/pending",
+        limit=bounded,
+        as_of=as_of.strip() or None,
+    ))
 
 
 @mcp.tool()
