@@ -1,0 +1,34 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "argus-depth-impact-verified-20261001T180700Z",
+  "category": "EVOLUTION",
+  "severity": "success",
+  "status": "verified",
+  "subsystems": [
+    "argus",
+    "execution_research",
+    "provenance",
+    "data"
+  ],
+  "recorded_at": "2026-10-01T18:07:00Z",
+  "title": "ARGUS TRUE_DEPTH impact and capacity curves verified",
+  "summary": "ARGUS now computes deterministic static-book impact and displayed-capacity curves from authenticated TRUE_DEPTH snapshots. For requested size grids it reports displayed fill fraction, VWAP, marginal price, average slippage from best, implementation shortfall from mid and microprice, consumed levels and book exhaustion. It also reports displayed capacity within configurable marginal-price thresholds. The result explicitly assumes static_visible_depth_only and does not claim queue priority, latency, hidden liquidity, replenishment, future cancellation, routing, or actual future fills.",
+  "source_repository": "reppiks490/divine-providence",
+  "source_ref": "main",
+  "source_commit": "791782dfa9116ef0872fbb7e21140a64ef35148a",
+  "evidence": [
+    "divine-providence PR #17 merged at 791782dfa9116ef0872fbb7e21140a64ef35148a",
+    "exact-head subsystem-evolution workflow run 36903974346 completed success",
+    "Linux and Windows ARGUS causal subsystem jobs passed",
+    "intelligence-fabric job passed",
+    "full twelve-system validation passed",
+    "impact output evidence tier=TRUE_DEPTH",
+    "static_visible_depth_only assumption is explicit",
+    "duplicate levels, crossed/locked books, invalid sizes, non-finite depth and off-tick geometry fail closed",
+    "displayed capacity is marginal-price capacity, not an average-slippage or fill guarantee",
+    "execution_authorized=false",
+    "production_decision_authorized=false"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}
