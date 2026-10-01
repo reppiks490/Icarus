@@ -758,3 +758,63 @@ def test_invalid_multi_force_request_leaves_no_partial_evidence(tmp_path):
     ledger = engine.evidence_snapshot("NQ", include_expired=True)
     assert ledger["total_history_count"] == 0
     assert ledger["active_count"] == 0
+
+
+
+def test_external_force_fusion_penalizes_opposing_sources(tmp_path):
+    now = datetime.now(timezone.utc)
+    engine = PossibilityEngine(Port(tmp_path))
+    engine.ingest_external(
+        "NQ", {"gamma_pressure": {"value": 0.8, "confidence": 0.9}},
+        source="provider-a", observed_at=(now - timedelta(seconds=10)).isoformat(), ttl_seconds=600,
+    )
+    engine.ingest_external(
+        "NQ", {"gamma_pressure": {"value": -0.8, "confidence": 0.9}},
+        source="provider-b", observed_at=(now - timedelta(seconds=5)).isoformat(), ttl_seconds=600,
+    )
+    feature = engine._external_features("NQ")["gamma_pressure"]
+    assert feature.available is True
+    assert abs(feature.value) < 1e-9
+    assert feature.confidence == pytest.approx(0.0)
+    ledger = engine.evidence_snapshot("NQ", include_expired=True)
+    assert ledger["disagreement"]["gamma_pressure"]["sign_conflict"] is True
+
+
+def test_external_force_fusion_preserves_agreeing_sources(tmp_path):
+    now = datetime.now(timezone.utc)
+    engine = PossibilityEngine(Port(tmp_path))
+    engine.ingest_external(
+        "NQ", {"basis_pressure": {"value": 0.6, "confidence": 0.8}},
+        source="provider-a", observed_at=(now - timedelta(seconds=10)).isoformat(), ttl_seconds=600,
+    )
+    engine.ingest_external(
+        "NQ", {"basis_pressure": {"value": 0.8, "confidence": 0.8}},
+        source="provider-b", observed_at=(now - timedelta(seconds=5)).isoformat(), ttl_seconds=600,
+    )
+    feature = engine._external_features("NQ")["basis_pressure"]
+    assert feature.value == pytest.approx(0.7)
+    assert 0.5 < feature.confidence < 0.8
+    assert feature.source == "fused:2 sources"
+
+
+def test_external_force_fusion_uses_latest_receipt_per_source(tmp_path):
+    now = datetime.now(timezone.utc)
+    engine = PossibilityEngine(Port(tmp_path))
+    engine.ingest_external(
+        "NQ", {"gamma_pressure": {"value": -0.7, "confidence": 0.8}},
+        source="provider-a", observed_at=(now - timedelta(seconds=20)).isoformat(), ttl_seconds=600,
+    )
+    engine.ingest_external(
+        "NQ", {"gamma_pressure": {"value": 0.7, "confidence": 0.8}},
+        source="provider-a", observed_at=(now - timedelta(seconds=10)).isoformat(), ttl_seconds=600,
+    )
+    engine.ingest_external(
+        "NQ", {"gamma_pressure": {"value": 0.5, "confidence": 0.8}},
+        source="provider-b", observed_at=(now - timedelta(seconds=5)).isoformat(), ttl_seconds=600,
+    )
+    groups = engine._evidence_ledger.active_by_source("NQ")
+    assert len(groups["gamma_pressure"]) == 2
+    by_source = {row["source"]: row for row in groups["gamma_pressure"]}
+    assert by_source["provider-a"]["value"] == pytest.approx(0.7)
+    feature = engine._external_features("NQ")["gamma_pressure"]
+    assert feature.value == pytest.approx(0.6)
