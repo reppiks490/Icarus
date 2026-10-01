@@ -87,7 +87,14 @@ export class IcarusClient {
   static async health(baseUrl: string): Promise<JsonObject> {
     const normalized = normalizeBaseUrl(baseUrl);
     const value = await requestJson<JsonObject>(normalized, '/healthz');
-    return value || {};
+    const health = value || {};
+    if (health.gateway !== 'icarus-mobile') {
+      throw new IcarusApiError('The URL is not an ICARUS Mobile gateway');
+    }
+    if (health.api_version !== 1 || health.execution_mutations !== false) {
+      throw new IcarusApiError('ICARUS Mobile gateway API is incompatible with this app');
+    }
+    return health;
   }
 
   static async pair(baseUrl: string, deviceName: string, pairingSecret: string): Promise<DeviceCredentials> {

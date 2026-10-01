@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
+from .audit import GatewayAuditLog
 from .auth import AuthError, SessionSigner, load_or_create_key
 from .proxy import UpstreamClient, UpstreamError
 from .push import ExpoPushClient, system_alerts, validate_push_token
@@ -18,6 +19,17 @@ from .store import DeviceStore
 
 
 MAX_BODY = 64 * 1024
+MOBILE_API_VERSION = 1
+MOBILE_CAPABILITIES = [
+    "pairing",
+    "rotating_sessions",
+    "long_poll",
+    "charts",
+    "trades",
+    "intelligence",
+    "backtest",
+    "push",
+]
 
 
 class PairRateLimiter:
@@ -121,6 +133,7 @@ class GatewayContext:
     cache: SnapshotCache
     limiter: PairRateLimiter
     actions: PairRateLimiter
+    audit: GatewayAuditLog
 
 
 def make_server(
@@ -141,6 +154,7 @@ def make_server(
     root = Path(data_dir)
     gateway_dir = root / "mobile_gateway"
     devices = DeviceStore(gateway_dir / "devices.json")
+    audit = GatewayAuditLog(gateway_dir / "audit.jsonl")
     signer = SessionSigner(load_or_create_key(gateway_dir / "session.key"), ttl=session_ttl)
     upstream_client = upstream or UpstreamClient(engine_url, admin_token=admin_token)
     push_client = ExpoPushClient(access_token=os.environ.get("EXPO_ACCESS_TOKEN", ""))
@@ -166,6 +180,7 @@ def make_server(
         cache=cache,
         limiter=PairRateLimiter(),
         actions=PairRateLimiter(attempts=8, window=60),
+        audit=audit,
     )
 
     class H(BaseHTTPRequestHandler):
@@ -245,6 +260,9 @@ def make_server(
                 return self._json(200, {
                     "ok": True,
                     "gateway": "icarus-mobile",
+                    "api_version": MOBILE_API_VERSION,
+                    "capabilities": MOBILE_CAPABILITIES,
+                    "execution_mutations": False,
                     "upstream_ok": upstream_ok,
                 })
 
@@ -288,13 +306,16 @@ def make_server(
             if parsed.path == "/v1/pair":
                 peer = str(self.client_address[0])
                 if not self.ctx.limiter.allow(peer):
+                    self.ctx.audit.record("pair", status="rate_limited")
                     return self._json(429, {"detail": "too many pairing attempts"})
                 supplied = str(body.get("pairing_secret") or "")
                 if not hmac.compare_digest(supplied, self.ctx.pairing_secret):
+                    self.ctx.audit.record("pair", status="denied")
                     return self._json(401, {"detail": "invalid pairing secret"})
                 try:
                     device_id, refresh = self.ctx.devices.pair(str(body.get("device_name") or "ICARUS Mobile"))
                     session, exp = self.ctx.signer.issue(device_id)
+                    self.ctx.audit.record("pair", device_id=device_id)
                     return self._json(201, {
                         "device_id": device_id,
                         "refresh_token": refresh,
@@ -310,6 +331,7 @@ def make_server(
                 try:
                     rotated = self.ctx.devices.rotate_refresh(device_id, refresh)
                     session, exp = self.ctx.signer.issue(device_id)
+                    self.ctx.audit.record("session_refresh", device_id=device_id)
                     return self._json(200, {
                         "device_id": device_id,
                         "refresh_token": rotated,
@@ -317,6 +339,7 @@ def make_server(
                         "session_expires_at": exp,
                     })
                 except ValueError:
+                    self.ctx.audit.record("session_refresh", status="denied", device_id=device_id)
                     return self._json(401, {"detail": "invalid device credential"})
 
             try:
@@ -326,6 +349,7 @@ def make_server(
 
             if parsed.path == "/v1/revoke":
                 self.ctx.devices.revoke(device_id)
+                self.ctx.audit.record("revoke", device_id=device_id)
                 return self._json(200, {"ok": True, "device_id": device_id, "revoked": True})
 
             if parsed.path == "/v1/notifications/register":
@@ -337,20 +361,36 @@ def make_server(
                     topics = body.get("topics", ["system"])
                     if not isinstance(topics, list) or not all(isinstance(x, str) for x in topics):
                         raise ValueError("topics must be a string array")
-                    return self._json(200, self.ctx.devices.set_push(device_id, token, platform, topics))
+                    result = self.ctx.devices.set_push(device_id, token, platform, topics)
+                    self.ctx.audit.record("push_register", device_id=device_id, metadata={"platform": platform, "topics": topics})
+                    return self._json(200, result)
                 except ValueError as ex:
                     return self._json(400, {"detail": str(ex)})
 
             if parsed.path == "/v1/notifications/unregister":
                 self.ctx.devices.clear_push(device_id)
+                self.ctx.audit.record("push_unregister", device_id=device_id)
                 return self._json(200, {"enabled": False, "topics": []})
 
             if parsed.path == "/v1/backtest":
                 if not self.ctx.actions.allow("backtest:" + device_id):
                     return self._json(429, {"detail": "backtest launch rate limit reached"})
                 try:
-                    return self._json(200, self.ctx.upstream.mobile_post(parsed.path, body))
+                    result = self.ctx.upstream.mobile_post(parsed.path, body)
+                    self.ctx.audit.record(
+                        "backtest_start",
+                        device_id=device_id,
+                        metadata={
+                            "asset": body.get("asset"),
+                            "chart_type": body.get("chart_type"),
+                            "session": body.get("session"),
+                            "timeframe": body.get("timeframe"),
+                            "job": result.get("job") if isinstance(result, dict) else None,
+                        },
+                    )
+                    return self._json(200, result)
                 except UpstreamError as ex:
+                    self.ctx.audit.record("backtest_start", status="upstream_error", device_id=device_id, detail=ex.detail)
                     return self._json(ex.status, {"detail": ex.detail})
                 except Exception as ex:
                     return self._json(502, {"detail": f"gateway upstream error: {type(ex).__name__}"})
