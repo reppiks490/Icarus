@@ -1102,13 +1102,31 @@ class PossibilityEngine:
             external["liquidation_pressure"],
             external["rebalance_pressure"],
         ]
-        avail = [x for x in forced_parts if x.available and x.value is not None]
+        avail = [
+            x for x in forced_parts
+            if x.available and x.value is not None and _clamp(x.confidence, 0.0, 1.0) > 0.0
+        ]
         if avail:
-            denom = sum(max(0.01, x.confidence) for x in avail)
-            value = sum(float(x.value) * max(0.01, x.confidence) for x in avail) / denom
-            out["forced_flow_pressure"] = Feature(_clamp(value), _clamp(denom / len(avail)), True, "external forced-flow evidence", f"{len(avail)}/3 force channels")
+            denom = sum(_clamp(x.confidence, 0.0, 1.0) for x in avail)
+            value = sum(
+                float(x.value) * _clamp(x.confidence, 0.0, 1.0)
+                for x in avail
+            ) / denom
+            out["forced_flow_pressure"] = Feature(
+                _clamp(value),
+                _clamp(denom / len(avail)),
+                True,
+                "external forced-flow evidence",
+                f"{len(avail)}/3 confidence-bearing force channels",
+            )
         else:
-            out["forced_flow_pressure"] = Feature(None, 0.0, False, "unavailable", "CTA/liquidation/rebalance evidence absent")
+            out["forced_flow_pressure"] = Feature(
+                None,
+                0.0,
+                False,
+                "unavailable",
+                "CTA/liquidation/rebalance evidence absent or confidence rejected",
+            )
         return out
 
     def _elasticity(self, history: Sequence[Mapping[str, Any]], micro: Mapping[str, Any]) -> dict[str, Any]:
