@@ -169,6 +169,20 @@ def _weighted(features: Mapping[str, Feature], weights: Mapping[str, float]) -> 
     coverage = available_weight / total_weight if total_weight else 0.0
     return _clamp(numerator / denominator), _clamp(coverage, 0.0, 1.0)
 
+def _weighted_quantile(rows: Sequence[tuple[float, float]], quantile: float) -> float | None:
+    ordered = sorted((float(value), max(0.0, float(weight))) for value, weight in rows if math.isfinite(float(value)) and math.isfinite(float(weight)))
+    total = sum(weight for _, weight in ordered)
+    if not ordered or total <= 0:
+        return None
+    target = _clamp(float(quantile), 0.0, 1.0) * total
+    cumulative = 0.0
+    for value, weight in ordered:
+        cumulative += weight
+        if cumulative >= target:
+            return value
+    return ordered[-1][0]
+
+
 
 class PossibilityEngine:
     """Stateful read-only research engine attached to one Portfolio."""
@@ -343,6 +357,8 @@ class PossibilityEngine:
             latent=latent,
             coverage=coverage,
             collapse=futures["future_space_collapse"],
+            future_reliability=futures.get("reliability"),
+            effective_sample_ratio=futures.get("effective_sample_ratio"),
             consensus=consensus,
             micro=micro,
             leaders=leaders,
@@ -1291,6 +1307,18 @@ class PossibilityEngine:
             key = "UP" if delta > threshold else "DOWN" if delta < -threshold else "FLAT"
             buckets[key] += weight
         total = sum(buckets.values())
+        weights = [weight for _, weight in viable]
+        weight_sq = sum(weight * weight for weight in weights)
+        effective_scenarios = (total * total / weight_sq) if total > 0 and weight_sq > 0 else 0.0
+        effective_sample_ratio = effective_scenarios / generated if generated else 0.0
+        endpoint_rows = [((endpoint / price) - 1.0, weight) for endpoint, weight in viable]
+        endpoint_mean = (
+            sum(ret * weight for ret, weight in endpoint_rows) / total
+            if total > 0 else None
+        )
+        endpoint_std = None
+        if endpoint_mean is not None and total > 0:
+            endpoint_std = math.sqrt(max(0.0, sum(weight * (ret - endpoint_mean) ** 2 for ret, weight in endpoint_rows) / total))
         probs = {k: (v / total if total else 0.0) for k, v in buckets.items()}
         entropy = 0.0
         for p in probs.values():
@@ -1309,6 +1337,23 @@ class PossibilityEngine:
             "future_space_collapse": collapse,
             "dominant_cluster": dominant,
             "dominant_share": probs.get(dominant) if dominant else None,
+            "effective_scenarios": effective_scenarios,
+            "effective_sample_ratio": effective_sample_ratio,
+            "endpoint_return_mean": endpoint_mean,
+            "endpoint_return_std": endpoint_std,
+            "endpoint_return_p10": _weighted_quantile(endpoint_rows, 0.10),
+            "endpoint_return_p25": _weighted_quantile(endpoint_rows, 0.25),
+            "endpoint_return_p50": _weighted_quantile(endpoint_rows, 0.50),
+            "endpoint_return_p75": _weighted_quantile(endpoint_rows, 0.75),
+            "endpoint_return_p90": _weighted_quantile(endpoint_rows, 0.90),
+            "reliability": _clamp(
+                min(1.0, coverage / 0.70)
+                * min(1.0, effective_sample_ratio / 0.60)
+                * min(1.0, len(self._history.get(symbol, ())) / 40.0),
+                0.0,
+                1.0,
+            ),
+            "reliability_note": "Heuristic support diagnostic from evidence coverage, effective scenario mass, and completed history; not a calibrated forecast confidence.",
             "horizon_steps": 6,
             "step_sigma": step_sigma,
             "model_note": "Deterministic constraint-aware scenario lattice; cluster shares are not calibrated probabilities.",
@@ -1447,6 +1492,8 @@ class PossibilityEngine:
         latent: float | None,
         coverage: float,
         collapse: Any,
+        future_reliability: Any,
+        effective_sample_ratio: Any,
         consensus: Mapping[str, Any],
         micro: Mapping[str, Any],
         leaders: Mapping[str, Any],
@@ -1461,6 +1508,12 @@ class PossibilityEngine:
             blockers.append("evidence coverage below 42%")
         if collapse_value is None or collapse_value < 22.0:
             blockers.append("future-space collapse below 22")
+        reliability_value = _finite(future_reliability)
+        if reliability_value is None or reliability_value < 0.35:
+            blockers.append("future-space reliability below 35%")
+        effective_ratio = _finite(effective_sample_ratio)
+        if effective_ratio is None or effective_ratio < 0.35:
+            blockers.append("effective scenario support below 35%")
         if leaders.get("status") != "observed":
             blockers.append("dynamic leader graph still warming")
         observed_domains = sum(
@@ -1478,8 +1531,9 @@ class PossibilityEngine:
             confidence = _clamp(
                 0.34 * abs(latent)
                 + 0.28 * coverage
-                + 0.20 * (collapse_value / 100.0)
-                + 0.18 * (_finite(consensus.get("alignment")) or 0.0),
+                + 0.16 * (collapse_value / 100.0)
+                + 0.12 * (reliability_value or 0.0)
+                + 0.10 * (_finite(consensus.get("alignment")) or 0.0),
                 0.0,
                 1.0,
             )
