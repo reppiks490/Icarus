@@ -484,6 +484,70 @@ class ChronofoldEngine:
             "interpretation": "joint-state support distance; not an arbitrage guarantee",
         }
 
+    @staticmethod
+    def _economic_domain(symbol: str) -> str:
+        s = symbol.upper()
+        if s in {"DX", "DXY", "6E", "6J", "6B", "6A", "6C", "6S"}:
+            return "FX_USD"
+        if s in {"ZN", "ZB", "ZT", "ZF", "UB", "SR3"}:
+            return "RATES"
+        if s in {"GC", "MGC", "SI", "HG", "PL", "PA"}:
+            return "METALS"
+        if s in {"CL", "NG", "RB", "HO", "BZ"}:
+            return "ENERGY"
+        if s in {"BTC", "BTCF", "MBT", "ETH", "SOL"}:
+            return "CRYPTO"
+        if s in {"NQ", "MNQ", "ES", "MES", "YM", "MYM", "RTY", "M2K"}:
+            return "EQUITY_INDEX"
+        return "OTHER"
+
+    def _macro_field(self, target: str) -> Dict[str, Any]:
+        rows: list[Dict[str, Any]] = []
+        magnitudes: list[float] = []
+        correlations: list[float] = []
+        target_rets = [x.ret for x in self._history[target]][-64:]
+        for symbol, hist_dq in sorted(self._history.items()):
+            if symbol == target or not hist_dq:
+                continue
+            hist = list(hist_dq)
+            rets = [x.ret for x in hist][-64:]
+            latest = rets[-1] if rets else 0.0
+            scale = max(_std(rets[:-1]), 1e-6)
+            standardized = _clip(latest / scale, -8.0, 8.0)
+            corr = _corr(rets, target_rets)
+            magnitudes.append(abs(standardized))
+            correlations.append(abs(corr))
+            rows.append({
+                "asset": symbol,
+                "domain": self._economic_domain(symbol),
+                "return": latest,
+                "standardized_move": standardized,
+                "synchronous_association": corr,
+            })
+        rows.sort(key=lambda x: abs(x["standardized_move"]), reverse=True)
+        return {
+            "status": "observed" if rows else "warming",
+            "drivers": rows[:16],
+            "stress": _clip(_mean(magnitudes) / 4.0, 0.0, 1.0),
+            "synchronization": _clip(_mean(correlations), 0.0, 1.0),
+            "directional_claim": False,
+            "interpretation": "cross-asset economic field; observed co-movement is not structural causality",
+        }
+
+    def _price_phase_field(self, symbol: str, graph: Mapping[str, Any]) -> Dict[str, Any]:
+        hist = list(self._history[symbol])
+        if not hist:
+            return {"status": "warming", "log_price": None, "phase_radians": None}
+        obs = hist[-1]
+        phase = math.atan2(_finite(graph.get("incoming_pressure")), obs.ret * 1000.0)
+        return {
+            "status": "observed",
+            "log_price": math.log(max(obs.price, EPS)),
+            "phase_radians": phase,
+            "phase_degrees": math.degrees(phase),
+            "interpretation": "complex-field analogue: log-price magnitude plus cross-state phase",
+        }
+
     def _multiverse(self, symbol: str, density: Mapping[str, Any], geometry: Mapping[str, Any], graph: Mapping[str, Any], poss: Mapping[str, Any]) -> Dict[str, Any]:
         h = list(self._history[symbol])
         price = h[-1].price if h else 0.0
@@ -601,12 +665,33 @@ class ChronofoldEngine:
             phase = self._phase_transition(symbol, geometry, density, graph)
             laws = self._symbolic_laws(symbol, graph)
             fracture = self._impossible_state(symbol, geometry)
+            macro_field = self._macro_field(symbol)
+            price_phase = self._price_phase_field(symbol, graph)
             multiverse = self._multiverse(symbol, density, geometry, graph, poss)
             hist_n = len(self._history[symbol])
             support_unknown = _clip(1.0 - hist_n / 96.0, 0.0, 1.0)
             density_unknown = _finite(density.get("normalized_entropy"), 1.0)
             fracture_unknown = _clip((_finite(fracture.get("distance_sigma")) - 1.5) / 3.0, 0.0, 1.0) if fracture.get("distance_sigma") is not None else 0.5
             unknown_mass = _clip(0.45 * support_unknown + 0.35 * density_unknown + 0.20 * fracture_unknown, 0.0, 1.0)
+            potential_energy = _clip(
+                0.30 * _finite(geometry.get("curvature"))
+                + 0.25 * _finite(phase.get("order_parameter"))
+                + 0.25 * density_unknown
+                + 0.20 * _finite(macro_field.get("stress")),
+                0.0,
+                1.0,
+            )
+            market_potential = {
+                "energy": potential_energy,
+                "force_proxy": -_finite(graph.get("incoming_pressure")),
+                "components": {
+                    "curvature": _finite(geometry.get("curvature")),
+                    "phase_transition": _finite(phase.get("order_parameter")),
+                    "uncertainty": density_unknown,
+                    "macro_stress": _finite(macro_field.get("stress")),
+                },
+                "literal_gravity_claim": False,
+            }
             counterfactuals = self._counterfactuals(multiverse, graph, poss)
             guidance = self._guidance(density, multiverse, unknown_mass)
             return {
@@ -640,7 +725,16 @@ class ChronofoldEngine:
                     "definition": "one unit of accumulated informational activity, not wall-clock time",
                 },
                 "multitime": multitime,
+                "time_machine": {
+                    "live_future_access": False,
+                    "backward_smoothing_live": False,
+                    "supported_modes": ["causal_rewind_replay", "counterfactual_branching"],
+                    "replay_boundary": "event_time <= availability_time <= retrieval_time",
+                },
+                "price_phase_field": price_phase,
                 "geometry": geometry,
+                "market_potential": market_potential,
+                "macro_field": macro_field,
                 "causal_cone": graph,
                 "renormalization": renorm,
                 "koopman": koopman,
