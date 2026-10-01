@@ -8,7 +8,9 @@ production authority.
 V2 adds an explicit comparison contract, exact-code/context evidence isolation,
 evidence-complete paired screening, approximate one-sided significance screening
 with Benjamini-Hochberg FDR control, context-strata diagnostics, and richer
-counterfactual branch families. These are hypothesis screens, not causal proof.
+counterfactual branch families. V3 adds chronological stability diagnostics and
+parameter-basin robustness so isolated lucky settings do not automatically enter
+DREAMSTATE. These are hypothesis screens, not causal proof.
 """
 from __future__ import annotations
 
@@ -34,6 +36,20 @@ _DERIVED_STRATA_KEYS = (
     "macro_regime",
     "trend_regime",
 )
+_TEMPORAL_FOLD_COUNT = 3
+_TEMPORAL_MIN_PAIRS = 9
+_PARAMETER_AXES = {
+    "delay": "delay_bars",
+    "stop": "stop_multiplier",
+    "target": "target_multiplier",
+    "size": "size_multiplier",
+}
+_PARAMETER_MAX_GAP = {
+    "delay_bars": 2.0,
+    "stop_multiplier": 0.75,
+    "target_multiplier": 0.75,
+    "size_multiplier": 1.0,
+}
 _LOCK = threading.RLock()
 
 
@@ -538,6 +554,7 @@ class ParallaxStore:
             return con.execute(
                 """
                 SELECT d.decision_id,d.asset,d.regime,d.source_commit,d.contract_json,d.strata_json,
+                       d.observed_at AS decision_observed_at,
                        a.utility AS actual_utility,a.evidence_json AS actual_evidence_json,
                        b.kind,b.label,b.utility AS branch_utility,b.params_json,
                        b.evidence_json AS branch_evidence_json
@@ -599,6 +616,71 @@ class ParallaxStore:
             "positive_fraction": positive_fraction,
         }
 
+    @classmethod
+    def _temporal_stability(cls, samples: list[tuple[str, str, float]]) -> dict[str, Any]:
+        """Chronological fold diagnostics; advisory until enough paired evidence exists."""
+        n = len(samples)
+        if n < _TEMPORAL_MIN_PAIRS:
+            return {
+                "evaluable": False,
+                "required_pairs": _TEMPORAL_MIN_PAIRS,
+                "fold_count": 0,
+                "stable": None,
+                "positive_fold_fraction": None,
+                "worst_fold_mean": None,
+                "folds": [],
+            }
+
+        ordered = sorted(
+            samples,
+            key=lambda row: (_timestamp(row[0], "decision.observed_at")[1], row[1]),
+        )
+        fold_count = min(_TEMPORAL_FOLD_COUNT, n)
+        base = n // fold_count
+        remainder = n % fold_count
+        folds: list[dict[str, Any]] = []
+        offset = 0
+        for idx in range(fold_count):
+            size = base + (1 if idx < remainder else 0)
+            chunk = ordered[offset: offset + size]
+            offset += size
+            values = [float(value) for _, _, value in chunk]
+            stats = cls._stats(values)
+            folds.append({
+                "index": idx,
+                "start_observed_at": chunk[0][0],
+                "end_observed_at": chunk[-1][0],
+                **stats,
+            })
+
+        means = [float(row["mean_delta"]) for row in folds if row.get("mean_delta") is not None]
+        positive = sum(1 for mean in means if mean > 0)
+        stable = bool(means) and positive == len(means)
+        return {
+            "evaluable": True,
+            "required_pairs": _TEMPORAL_MIN_PAIRS,
+            "fold_count": len(folds),
+            "stable": stable,
+            "positive_fold_fraction": positive / len(means) if means else None,
+            "worst_fold_mean": min(means) if means else None,
+            "folds": folds,
+        }
+
+    @staticmethod
+    def _parameter_axis(kind: str, params: Mapping[str, Any]) -> tuple[str, float, str] | None:
+        key = _PARAMETER_AXES.get(str(kind))
+        if not key or key not in params:
+            return None
+        value = params.get(key)
+        if type(value) not in (int, float):
+            return None
+        value = float(value)
+        if not math.isfinite(value):
+            return None
+        remainder = {str(k): v for k, v in params.items() if str(k) != key}
+        signature = _sha(_json(remainder, "parameter basin remainder", 8192))
+        return key, value, signature
+
     @staticmethod
     def _apply_bh(items: list[dict[str, Any]]) -> None:
         by_family: dict[tuple[str, str, str, str], list[dict[str, Any]]] = {}
@@ -623,6 +705,109 @@ class ParallaxStore:
                 raw_q = float(row["p_one_sided"]) * m / rank
                 running = min(running, raw_q)
                 row["q_value"] = max(0.0, min(1.0, running))
+
+    @classmethod
+    def _annotate_parameter_basins(cls, items: list[dict[str, Any]], min_samples: int) -> None:
+        families: dict[tuple[str, str, str, str, str, str, str], list[dict[str, Any]]] = {}
+        for item in items:
+            axis = cls._parameter_axis(str(item.get("kind") or ""), item.get("branch_params") or {})
+            if axis is None:
+                item["parameter_basin"] = {
+                    "evaluable": False,
+                    "axis": None,
+                    "value": None,
+                    "neighbor_count": 0,
+                    "supporting_neighbor_count": 0,
+                    "supporting_neighbor_values": [],
+                    "isolated_spike": False,
+                    "basin_support_count": 0,
+                    "basin_width": None,
+                }
+                continue
+            axis_name, axis_value, remainder_signature = axis
+            item["_parameter_axis_value"] = axis_value
+            item["_parameter_remainder_signature"] = remainder_signature
+            family = (
+                str(item["asset"]),
+                str(item["regime"]),
+                str(item["source_commit"]),
+                str(item["comparison_contract_hash"]),
+                str(item["kind"]),
+                axis_name,
+                remainder_signature,
+            )
+            families.setdefault(family, []).append(item)
+
+        for family, rows in families.items():
+            axis_name = family[-2]
+            max_gap = float(_PARAMETER_MAX_GAP.get(axis_name, float("inf")))
+            rows.sort(key=lambda row: float(row["_parameter_axis_value"]))
+            for idx, item in enumerate(rows):
+                neighbors = []
+                if idx > 0:
+                    left_row = rows[idx - 1]
+                    left_gap = abs(float(item["_parameter_axis_value"]) - float(left_row["_parameter_axis_value"]))
+                    if left_gap <= max_gap and int(left_row.get("evidence_pair_count") or 0) >= min_samples:
+                        neighbors.append(left_row)
+                if idx + 1 < len(rows):
+                    right_row = rows[idx + 1]
+                    right_gap = abs(float(right_row["_parameter_axis_value"]) - float(item["_parameter_axis_value"]))
+                    if right_gap <= max_gap and int(right_row.get("evidence_pair_count") or 0) >= min_samples:
+                        neighbors.append(right_row)
+                def basin_supports(row: Mapping[str, Any]) -> bool:
+                    temporal = row.get("temporal_stability") or {}
+                    temporal_ok = temporal.get("evaluable") is not True or temporal.get("stable") is True
+                    return row.get("candidate_eligible") is True and temporal_ok
+
+                supporting = [row for row in neighbors if basin_supports(row)]
+                family_evaluable_points = sum(
+                    1 for row in rows
+                    if int(row.get("evidence_pair_count") or 0) >= min_samples
+                )
+                evaluable = bool(neighbors)
+                local_support_missing = (
+                    bool(item.get("candidate_eligible"))
+                    and family_evaluable_points >= 2
+                    and not neighbors
+                )
+                isolated = bool(item.get("candidate_eligible")) and evaluable and not supporting
+
+                left = idx
+                while left > 0:
+                    candidate = rows[left - 1]
+                    gap = abs(float(rows[left]["_parameter_axis_value"]) - float(candidate["_parameter_axis_value"]))
+                    if gap > max_gap or not basin_supports(candidate):
+                        break
+                    left -= 1
+                right = idx
+                while right + 1 < len(rows):
+                    candidate = rows[right + 1]
+                    gap = abs(float(candidate["_parameter_axis_value"]) - float(rows[right]["_parameter_axis_value"]))
+                    if gap > max_gap or not basin_supports(candidate):
+                        break
+                    right += 1
+                basin_rows = rows[left:right + 1] if item.get("candidate_eligible") is True else []
+                basin_values = [float(row["_parameter_axis_value"]) for row in basin_rows]
+                width = (max(basin_values) - min(basin_values)) if len(basin_values) >= 2 else 0.0 if basin_values else None
+                item["parameter_basin"] = {
+                    "evaluable": evaluable,
+                    "axis": axis_name,
+                    "value": float(item["_parameter_axis_value"]),
+                    "neighbor_count": len(neighbors),
+                    "family_evaluable_point_count": family_evaluable_points,
+                    "supporting_neighbor_count": len(supporting),
+                    "supporting_neighbor_values": [float(row["_parameter_axis_value"]) for row in supporting],
+                    "isolated_spike": isolated,
+                    "local_support_missing": local_support_missing,
+                    "basin_support_count": len(basin_rows),
+                    "basin_width": width,
+                    "max_neighbor_gap": max_gap,
+                    "remainder_signature": remainder_signature,
+                }
+
+        for item in items:
+            item.pop("_parameter_axis_value", None)
+            item.pop("_parameter_remainder_signature", None)
 
     def _screened_hypotheses(
         self,
@@ -667,6 +852,7 @@ class ParallaxStore:
                     "branch_params_hash": params_hash,
                     "pair_count_total": 0,
                     "values": [],
+                    "temporal_samples": [],
                     "strata": {},
                 },
             )
@@ -677,6 +863,7 @@ class ParallaxStore:
                 continue
             delta = float(row["branch_utility"]) - float(row["actual_utility"])
             group["values"].append(delta)
+            group["temporal_samples"].append((str(row["decision_observed_at"]), str(row["decision_id"]), delta))
             strata = json.loads(row["strata_json"] or "{}")
             strata_json = _json(strata, "strata", 8192)
             signature = "unstratified" if not strata else _sha(strata_json)[:16]
@@ -686,6 +873,7 @@ class ParallaxStore:
         hypotheses: list[dict[str, Any]] = []
         for group in groups.values():
             stats = self._stats(group.pop("values"))
+            temporal = self._temporal_stability(group.pop("temporal_samples"))
             strata_stats = []
             for bucket in group.pop("strata").values():
                 row_stats = self._stats(bucket.pop("values"))
@@ -700,6 +888,7 @@ class ParallaxStore:
                 ),
                 "strata_stats": strata_stats,
                 "strata_count": len(strata_stats),
+                "temporal_stability": temporal,
                 "screening": {
                     "min_samples": min_samples,
                     "max_fdr": max_fdr,
@@ -721,8 +910,24 @@ class ParallaxStore:
                 blockers.append("fdr_screen_not_cleared")
             item["screen_blockers"] = blockers
             item["candidate_eligible"] = not blockers
+
+        self._annotate_parameter_basins(hypotheses, min_samples)
+        for item in hypotheses:
+            robustness_blockers: list[str] = []
+            temporal = item.get("temporal_stability") or {}
+            if temporal.get("evaluable") is True and temporal.get("stable") is not True:
+                robustness_blockers.append("temporal_instability")
+            basin = item.get("parameter_basin") or {}
+            if basin.get("evaluable") is True and basin.get("isolated_spike") is True:
+                robustness_blockers.append("isolated_parameter_spike")
+            if basin.get("local_support_missing") is True:
+                robustness_blockers.append("parameter_local_support_missing")
+            item["robustness_blockers"] = robustness_blockers
+            item["robust_candidate_eligible"] = bool(item["candidate_eligible"]) and not robustness_blockers
+
         hypotheses.sort(
             key=lambda x: (
+                bool(x["robust_candidate_eligible"]),
                 bool(x["candidate_eligible"]),
                 -(float(x["q_value"]) if x.get("q_value") is not None else 1.0),
                 float(x["ci95_low"]) if x.get("ci95_low") is not None else -1e99,
@@ -758,7 +963,7 @@ class ParallaxStore:
                 max_fdr=max_fdr,
                 min_effect=min_effect,
             )
-            if item["candidate_eligible"]
+            if item["robust_candidate_eligible"]
         ]
 
     def screening_report(
@@ -774,14 +979,24 @@ class ParallaxStore:
             min_effect=min_effect,
         )
         blockers: dict[str, int] = {}
+        robustness_blockers: dict[str, int] = {}
         for item in hypotheses:
             for reason in item["screen_blockers"]:
                 blockers[reason] = blockers.get(reason, 0) + 1
+            for reason in item.get("robustness_blockers", []):
+                robustness_blockers[reason] = robustness_blockers.get(reason, 0) + 1
         return {
+            "robustness_version": "icarus-parallax-robustness-v1",
             "hypotheses_total": len(hypotheses),
             "candidate_ready": sum(1 for item in hypotheses if item["candidate_eligible"]),
+            "robust_candidate_ready": sum(1 for item in hypotheses if item["robust_candidate_eligible"]),
             "blocked": sum(1 for item in hypotheses if not item["candidate_eligible"]),
+            "robustness_blocked": sum(
+                1 for item in hypotheses
+                if item["candidate_eligible"] and not item["robust_candidate_eligible"]
+            ),
             "blocker_counts": blockers,
+            "robustness_blocker_counts": robustness_blockers,
             "min_samples": max(2, min(10000, int(min_samples))),
             "max_fdr": max(1e-6, min(1.0, float(max_fdr))),
             "min_effect": float(min_effect),
@@ -791,6 +1006,9 @@ class ParallaxStore:
                 "paired_delta": True,
                 "approximate_one_sided_normal_p": True,
                 "benjamini_hochberg_within_asset_regime_revision_contract": True,
+                "chronological_three_fold_stability_when_nine_pairs_available": True,
+                "adjacent_parameter_basin_screen_when_neighbors_are_evaluable": True,
+                "robustness_is_hypothesis_filter_not_causal_proof": True,
                 "causal_proof": False,
             },
         }
@@ -932,6 +1150,7 @@ class ParallaxStore:
 
         return {
             "schema_version": SCHEMA_VERSION,
+            "robustness_version": "icarus-parallax-robustness-v1",
             "counts": {
                 "decisions": counts["decisions"],
                 "branches": counts["branches"],
@@ -960,6 +1179,11 @@ class ParallaxStore:
                 "candidate_signals_require_complete_comparison_contract": True,
                 "candidate_signals_require_evidence_on_both_paired_paths": True,
                 "candidate_signals_use_bh_fdr_screen": True,
+                "temporal_robustness_is_advisory_until_nine_pairs": True,
+                "evaluable_temporal_instability_blocks_robust_candidates": True,
+                "evaluable_isolated_parameter_spikes_block_robust_candidates": True,
+                "sampled_parameter_families_without_local_support_block_robust_candidates": True,
+                "parameter_basin_support_requires_adjacent_statistical_and_temporally_coherent_candidates": True,
                 "regret_is_not_pooled_across_incomparable_contracts": True,
                 "source_revisions_are_never_pooled": True,
             },
