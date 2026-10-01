@@ -421,7 +421,7 @@ class DreamstateLab:
     def refresh(self, min_samples: int = 5) -> dict[str, Any]:
         min_samples = max(3, min(1000, int(min_samples)))
         screening = self.parallax.screening_report(min_samples=min_samples, max_fdr=SOURCE_FDR_MAX)
-        all_hypotheses = screening.get("hypotheses", [])
+        all_hypotheses = self.parallax.hypotheses(min_samples=min_samples, max_fdr=SOURCE_FDR_MAX)
         hypothesis_map = {
             _signal_key(signal): signal
             for signal in all_hypotheses
@@ -542,6 +542,21 @@ class DreamstateLab:
         }
         return out
 
+    def _current_source_hypothesis(self, candidate: Mapping[str, Any]) -> dict[str, Any] | None:
+        source = candidate.get("source_signal") if isinstance(candidate.get("source_signal"), Mapping) else {}
+        screening = source.get("screening") if isinstance(source.get("screening"), Mapping) else {}
+        min_samples = max(2, min(10000, int(screening.get("min_samples", 5))))
+        max_fdr = float(screening.get("max_fdr", SOURCE_FDR_MAX))
+        min_effect = float(screening.get("min_effect", 0.0))
+        for hypothesis in self.parallax.hypotheses(
+            min_samples=min_samples,
+            max_fdr=max_fdr,
+            min_effect=min_effect,
+        ):
+            if _signal_key(hypothesis) == _signal_key(source):
+                return hypothesis
+        return None
+
     def _validate_gate_preconditions(
         self,
         candidate: Mapping[str, Any],
@@ -580,7 +595,17 @@ class DreamstateLab:
         evidence = [_text(x, "evidence item", 700) for x in evidence]
 
         candidate = self.candidate(candidate_id)
-        self._validate_gate_preconditions(candidate, updates)
+        if candidate["stage"] in {"rejected", "retired"}:
+            raise ValueError("terminal DREAMSTATE candidate cannot be requalified")
+
+        current_source = self._current_source_hypothesis(candidate)
+        if current_source is None or current_source.get("candidate_eligible") is not True:
+            self.retire(candidate_id, "source PARALLAX hypothesis no longer clears the current candidate screen")
+            raise ValueError("source PARALLAX hypothesis no longer clears the current candidate screen")
+
+        current_candidate = dict(candidate)
+        current_candidate["source_signal"] = current_source
+        self._validate_gate_preconditions(current_candidate, updates)
 
         with _LOCK, self._connect() as con:
             row = con.execute("SELECT * FROM candidates WHERE candidate_id=?", (candidate_id,)).fetchone()
