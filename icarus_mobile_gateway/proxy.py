@@ -10,7 +10,7 @@ import urllib.request
 from typing import Any
 
 
-_SYMBOL = re.compile(r"^[A-Z0-9!._-]{1,24}$")
+_SYMBOL = re.compile(r"^[A-Z0-9!._-]{1,24}$")\n_JOB = re.compile(r"^[A-Za-z0-9_-]{1,96}$")
 
 
 class UpstreamError(RuntimeError):
@@ -81,6 +81,42 @@ class UpstreamClient:
         except json.JSONDecodeError as ex:
             raise UpstreamError(502, "ICARUS upstream returned invalid JSON") from ex
 
+    def _post(self, path: str, body: dict[str, Any], authenticated: bool = False) -> Any:
+        url = self.base_url + path
+        headers = {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "User-Agent": "icarus-mobile-gateway/0.1",
+        }
+        if authenticated:
+            if not self.admin_token:
+                raise UpstreamError(503, "gateway has no ICARUS admin token configured")
+            headers["Authorization"] = "Bearer " + self.admin_token
+        raw_body = json.dumps(body, separators=(",", ":"), allow_nan=False).encode("utf-8")
+        req = urllib.request.Request(url, data=raw_body, headers=headers, method="POST")
+        try:
+            with urllib.request.urlopen(req, timeout=self.timeout) as response:
+                raw = response.read(4 * 1024 * 1024 + 1)
+                if len(raw) > 4 * 1024 * 1024:
+                    raise UpstreamError(502, "ICARUS response exceeded gateway limit")
+                return json.loads(raw.decode("utf-8")) if raw else {}
+        except urllib.error.HTTPError as ex:
+            raw = ex.read(65536)
+            detail = f"ICARUS upstream returned HTTP {ex.code}"
+            try:
+                payload = json.loads(raw.decode("utf-8"))
+                if isinstance(payload, dict):
+                    detail = str(payload.get("detail") or payload.get("error") or detail)
+            except Exception:
+                pass
+            raise UpstreamError(ex.code, detail) from ex
+        except urllib.error.URLError as ex:
+            raise UpstreamError(502, f"ICARUS upstream unavailable: {ex.reason}") from ex
+        except (TypeError, ValueError) as ex:
+            raise UpstreamError(400, f"invalid analysis request: {ex}") from ex
+        except json.JSONDecodeError as ex:
+            raise UpstreamError(502, "ICARUS upstream returned invalid JSON") from ex
+
     def health(self) -> Any:
         return self._get("/healthz", False)
 
@@ -118,7 +154,35 @@ class UpstreamClient:
                     False,
                     {key: self._clamped_int(query, key, default, lo, hi)},
                 )
+        if path.startswith("/v1/backtest/"):
+            job_id = path[len("/v1/backtest/"):].strip()
+            if not _JOB.fullmatch(job_id):
+                raise UpstreamError(400, "invalid backtest job id")
+            full = "0" if str((query.get("full") or ["1"])[0]) == "0" else "1"
+            return self._get("/api/backtest/" + urllib.parse.quote(job_id, safe="_-"), False, {"full": full})
+
         raise UpstreamError(404, "unknown mobile resource")
+
+    def mobile_post(self, path: str, body: dict[str, Any]) -> Any:
+        if path != "/v1/backtest":
+            raise UpstreamError(404, "unknown mobile analysis resource")
+        allowed = {
+            "asset", "preset", "fill_on", "chart_type", "timeframe", "security_source",
+            "session", "slippage_ticks", "commission", "capital", "leverage",
+            "window_start", "window_end", "inputs",
+        }
+        unknown = set(body) - allowed
+        if unknown:
+            raise UpstreamError(400, "unsupported backtest fields: " + ", ".join(sorted(unknown)))
+        asset = str(body.get("asset") or "").strip().upper()
+        if not _SYMBOL.fullmatch(asset):
+            raise UpstreamError(400, "valid asset is required")
+        payload = {key: value for key, value in body.items() if key in allowed}
+        payload["asset"] = asset
+        inputs = payload.get("inputs")
+        if inputs is not None and not isinstance(inputs, dict):
+            raise UpstreamError(400, "inputs must be an object")
+        return self._post("/admin/backtest", payload, True)
 
     def snapshot(self) -> dict[str, Any]:
         payload = {
