@@ -15,6 +15,7 @@
   GET  /api/system/audit          latest local GitHub/MCP repository + CI audit snapshot
   GET  /api/integrity             export checklist, corpus, repairs, and MCP change receipts
   GET  /api/brain                 adaptive multi-agent brain, subsystem fabric, regimes, learning and shadow candidates
+  GET  /api/possibility           ORACLE + Psi latent pressure, counterfactual price, future-space diagnostics
   POST /admin/pause | /admin/resume        {"asset": "NQ"} or all          (Bearer token)
   POST /admin/flatten                      {"confirm": true, "asset"?: "NQ"}
   POST /admin/inputs                       {"asset": "NQ"|"*", "values": {...}, "chart": {...}, "persist": true}  → re-warm
@@ -27,6 +28,7 @@
   POST /admin/system/loop                  {"loop": {...}}   upsert one loop durability receipt/status
   POST /admin/integrity/event              fully-provenanced, idempotent MCP audit receipt; never changes trading
   POST /admin/brain/event                  append evidence-backed learning/agent/subsystem/candidate event; shadow only
+  POST /admin/possibility/evidence          provenance-labelled gamma/basis/CTA/liquidation/rebalance research inputs
   POST /admin/rewarm                       {"asset": "NQ"}
 """
 from __future__ import annotations
@@ -68,6 +70,7 @@ from .brain import brain_snapshot, record_brain_event
 from .brain_sync import BrainRemoteSync
 from .research_brain_sync import BrainResearchSync
 from .evolution_sync import EvolutionRemoteSync
+from .possibility import PossibilityEngine
 
 
 def _no_json_constants(name: str):
@@ -125,6 +128,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     brain_remote_sync = BrainRemoteSync(port.base_dir)
     brain_research_sync = BrainResearchSync(port.base_dir)
     evolution_remote_sync = EvolutionRemoteSync(port.base_dir)
+    possibility = PossibilityEngine(port)
 
     class H(BaseHTTPRequestHandler):
         server_version = "icarus"
@@ -190,6 +194,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._send(200, (html_path.parent / "brain-ui.js").read_bytes(), "text/javascript")
             if p.path == "/evolution-ui.js":
                 return self._send(200, (html_path.parent / "evolution-ui.js").read_bytes(), "text/javascript")
+            if p.path == "/possibility-ui.js":
+                return self._send(200, (html_path.parent / "possibility-ui.js").read_bytes(), "text/javascript")
             if p.path in ("/experience-ui.js", "/experience-ui.css"):
                 ctype = "text/javascript" if p.path.endswith(".js") else "text/css"
                 return self._send(200, (html_path.parent / p.path[1:]).read_bytes(), ctype)
@@ -217,6 +223,14 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
                 return self._json(200, evolution_remote_sync.status())
+            if p.path == "/api/possibility":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                try:
+                    return self._json(200, possibility.snapshot(q.get("asset", [""])[0]))
+                except Exception as ex:
+                    port.journal.log("WARN", f"possibility snapshot: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
             if p.path == "/api/brain":
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
@@ -432,7 +446,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._json(413, {"detail": "body too large"})
             raw = self.rfile.read(n) if n else b""
             try:
-                body = strict_json(raw) if p.path.startswith(("/admin/research/", "/admin/integrity/")) else (json.loads(raw, parse_constant=_no_json_constants) if raw else {})
+                body = strict_json(raw) if p.path.startswith(("/admin/research/", "/admin/integrity/", "/admin/possibility/")) else (json.loads(raw, parse_constant=_no_json_constants) if raw else {})
             except ValueError as ex:
                 return self._json(400, {"detail": f"bad JSON body: {ex}"})
             if not isinstance(body, dict):
@@ -463,6 +477,19 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             if p.path == "/admin/brain/event":
                 try:
                     return self._json(200, record_brain_event(port.base_dir, body))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+            if p.path == "/admin/possibility/evidence":
+                try:
+                    allowed = {"asset", "values", "source", "observed_at", "ttl_seconds"}
+                    if set(body) - allowed or not {"asset", "values", "source"} <= set(body):
+                        raise ValueError("possibility evidence requires asset, values, source and optional observed_at/ttl_seconds")
+                    if not isinstance(body.get("values"), dict):
+                        raise ValueError("values must be an object")
+                    return self._json(200, possibility.ingest_external(
+                        body["asset"], body["values"], source=body["source"],
+                        observed_at=body.get("observed_at"), ttl_seconds=body.get("ttl_seconds", 300.0),
+                    ))
                 except (ValueError, TypeError) as ex:
                     return self._json(400, {"detail": str(ex)})
             asset = str(body.get("asset") or body.get("symbol") or "").upper()
@@ -706,6 +733,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     srv.brain_remote_sync = brain_remote_sync
     srv.brain_research_sync = brain_research_sync
     srv.evolution_remote_sync = evolution_remote_sync
+    srv.possibility = possibility
     srv.daemon_threads = True
     if not start:
         return srv
