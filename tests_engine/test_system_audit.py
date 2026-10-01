@@ -58,3 +58,46 @@ def test_repository_audit_rejects_invalid_status_and_negative_counts():
         normalize_repository_audit({"status": "perfect"})
     with pytest.raises(ValueError):
         normalize_repository_audit({"status": "green", "summary": {"current_head_failures": -1}})
+
+
+def test_repository_audit_normalizes_loop_receipts_and_mcp_events():
+    payload = {
+        "status": "warn",
+        "loops": [{
+            "id": "alpha-synthesis",
+            "title": "Alpha Synthesis Evolution",
+            "scheduler_id": "sched-alpha",
+            "schedule": ":25 hourly",
+            "status": "RUN_PERSISTED",
+            "run_id": "alpha-synthesis-20261001T012500Z",
+            "recorded_at": "2026-10-01T01:26:00Z",
+            "repository": "reppiks490/Icarus-engine",
+            "finalization_commit_sha": "abc123",
+            "finalization_state_blob_sha": "def456",
+            "detail": "durability verified",
+        }],
+        "events": [{
+            "id": "evt-1",
+            "kind": "repair",
+            "severity": "success",
+            "title": "Alpha durability repaired",
+            "detail": "Restored matching finalization and heartbeat receipts.",
+            "recorded_at": "2026-10-01T01:27:00Z",
+            "repository": "reppiks490/Icarus-engine",
+            "ref": "abc123",
+        }],
+    }
+    out = normalize_repository_audit(payload)
+    assert out["schema_version"] == 2
+    assert out["execution_authorized"] is False
+    assert out["loops"][0]["id"] == "alpha-synthesis"
+    assert out["loops"][0]["status"] == "RUN_PERSISTED"
+    assert out["events"][0]["kind"] == "repair"
+    assert out["events"][0]["severity"] == "success"
+
+
+def test_repository_audit_rejects_bad_system_event_enums():
+    with pytest.raises(ValueError):
+        normalize_repository_audit({"events": [{"kind": "trade", "title": "bad"}]})
+    with pytest.raises(ValueError):
+        normalize_repository_audit({"events": [{"kind": "audit", "severity": "panic", "title": "bad"}]})

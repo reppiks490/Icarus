@@ -21,6 +21,8 @@
   POST /admin/assets/add                   {"symbol": "GC", "tf": "20", "preset"?: ...}
   POST /admin/assets/remove                {"symbol": "GC"}
   POST /admin/system/audit                 {"audit": {...}}  local diagnostic state only; never changes trading
+  POST /admin/system/event                 {"event": {...}}  append important MCP repair/audit/evolution event
+  POST /admin/system/loop                  {"loop": {...}}   upsert one loop durability receipt/status
   POST /admin/rewarm                       {"asset": "NQ"}
 """
 from __future__ import annotations
@@ -50,7 +52,12 @@ from .runtime import Portfolio, _clean, _read_json, apply_spec_meta, preset_path
 from .strategy.meta import load_meta
 from .advisory import MAX_BODY_BYTES, strict_json
 from .research_service import ResearchWorkspace
-from .system_audit import load_repository_audit, save_repository_audit
+from .system_audit import (
+    append_system_event,
+    load_repository_audit,
+    save_repository_audit,
+    upsert_loop_status,
+)
 
 
 def _no_json_constants(name: str):
@@ -387,7 +394,19 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     audit = save_repository_audit(port.base_dir, body.get("audit", body))
                 except (ValueError, TypeError) as ex:
                     return self._json(400, {"detail": str(ex)})
-                return self._json(200, {"ok": True, "audit": audit, "note": "repository audit recorded"})
+                return self._json(200, {"ok": True, "audit": audit, "note": "system intelligence snapshot recorded"})
+            if p.path == "/admin/system/event":
+                try:
+                    audit = append_system_event(port.base_dir, body.get("event", body))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                return self._json(200, {"ok": True, "audit": audit, "note": "system intelligence event recorded"})
+            if p.path == "/admin/system/loop":
+                try:
+                    audit = upsert_loop_status(port.base_dir, body.get("loop", body))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                return self._json(200, {"ok": True, "audit": audit, "note": "loop status recorded"})
             asset = str(body.get("asset") or body.get("symbol") or "").upper()
             # Add is the one admin route whose subject is intentionally not already
             # running. Do not reject it through the generic runner lookup.
