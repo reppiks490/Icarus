@@ -76,6 +76,8 @@ The V3 layer distinguishes statistically eligible from robustly eligible hypothe
 
 Chronological stability becomes evaluable after nine evidence-complete pairs. PARALLAX orders those pairs by immutable decision time and splits them into three contiguous chronological folds. It reports each fold's paired statistics, positive-fold fraction, and worst-fold mean.
 
+These simple retrospective evidence folds are internal to PARALLAX and are not the ICARUS Xi CHRONOFOLD causal-navigation subsystem. V3 creates no dependency on, ownership overlap with, or substitute for CHRONOFOLD.
+
 - Before nine pairs, temporal robustness is explicitly marked not yet evaluable and does not block exploratory research.
 - Once evaluable, every chronological fold must retain a positive mean paired effect for the source to remain robust-ready.
 - A statistically positive aggregate can therefore be withheld when the effect has disappeared or reversed in a later block.
