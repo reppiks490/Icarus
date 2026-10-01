@@ -27,7 +27,14 @@ def _finite_json_copy(body:Mapping[str,Any])->dict[str,Any]:
 class ApexKernel:
     def __init__(self,base_dir,*,possibility=None,chronofold=None,pantheon=None,parallax=None,dreamstate=None,sibyl=None):
         self.base_dir=Path(base_dir);self.store=ApexStore(self.base_dir);self._siblings={"possibility":possibility,"chronofold":chronofold,"pantheon":pantheon,"parallax":parallax,"dreamstate":dreamstate,"sibyl":sibyl};self._research_events_path=self.base_dir/"research"/"apex-research-events.jsonl";self._research_events_path.parent.mkdir(parents=True,exist_ok=True)
-    def ingest_evidence(self,body:Mapping[str,Any])->dict[str,Any]:return self.store.record_evidence(body)
+    def ingest_evidence(
+        self,
+        body:Mapping[str,Any],
+        *,
+        enforce_local_receipt:bool=False,
+    )->dict[str,Any]:
+        local_received_at=_now() if enforce_local_receipt else None
+        return self.store.record_evidence(body,local_received_at=local_received_at)
     def resolve_engine_evidence_lineage(self,engine_evidence_ids:Mapping[str,Any],*,as_of:str|None=None)->dict[str,Any]:
         """Resolve engine evidence IDs into verified APEX root-source ancestry."""
         if not isinstance(engine_evidence_ids,Mapping) or not engine_evidence_ids:
