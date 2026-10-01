@@ -30,12 +30,16 @@ def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
+def _strict_number(value: Any) -> float | None:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    x = float(value)
+    return x if math.isfinite(x) else None
+
+
 def _finite(value: Any, default: float = 0.0) -> float:
-    try:
-        x = float(value)
-    except (TypeError, ValueError):
-        return default
-    return x if math.isfinite(x) else default
+    x = _strict_number(value)
+    return default if x is None else x
 
 
 def _clip(value: float, lo: float, hi: float) -> float:
@@ -174,6 +178,7 @@ class ChronofoldEngine:
         self._last_order_parameter: Dict[str, float] = defaultdict(float)
         self._last_input_fingerprint: Dict[str, str] = {}
         self._last_snapshot: Dict[str, Dict[str, Any]] = {}
+        self._observation_health: Dict[str, Dict[str, Any]] = {}
         self._lock = threading.RLock()
 
     @staticmethod
@@ -182,26 +187,70 @@ class ChronofoldEngine:
         return [r for r in rows if isinstance(r, Mapping) and r.get("symbol")]
 
     @staticmethod
-    def _state_fields(row: Mapping[str, Any]) -> tuple[float, float]:
+    def _state_fields(row: Mapping[str, Any]) -> tuple[float, float, bool]:
         state = row.get("state") if isinstance(row.get("state"), Mapping) else {}
-        pulse = max(_finite(state.get("pulse_l")), _finite(state.get("pulse_s")))
-        regime = _finite(state.get("rate_regime"))
-        return _clip(pulse, 0.0, 1.0), _clip(regime, -1.0, 1.0)
+        raw = (state.get("pulse_l"), state.get("pulse_s"), state.get("rate_regime"))
+        valid = all(value is None or _strict_number(value) is not None for value in raw)
+        pulse = max(_finite(raw[0]), _finite(raw[1]))
+        regime = _finite(raw[2])
+        return _clip(pulse, 0.0, 1.0), _clip(regime, -1.0, 1.0), valid
+
+    @staticmethod
+    def _event_time(row: Mapping[str, Any], retrieval_ts: float) -> tuple[float, str, str]:
+        price_age = _strict_number(row.get("price_age"))
+        if price_age is not None:
+            if price_age < -1e-6:
+                return retrieval_ts, "price_age", "FUTURE_REJECTED"
+            return max(0.0, retrieval_ts - price_age), "price_age", "OBSERVED"
+        state = row.get("state") if isinstance(row.get("state"), Mapping) else {}
+        for source, raw in (("state.ts", state.get("ts")), ("last_bar_ts", row.get("last_bar_ts"))):
+            event_ts = _strict_number(raw)
+            if event_ts is None or event_ts <= 0:
+                continue
+            if event_ts > retrieval_ts + 1.0:
+                return event_ts, source, "FUTURE_REJECTED"
+            return event_ts, source, "OBSERVED"
+        return retrieval_ts, "retrieval_upper_bound", "BOUNDED"
 
     def _observe(self, status: Mapping[str, Any], ts: float) -> Dict[str, ChronofoldObservation]:
         out: Dict[str, ChronofoldObservation] = {}
         for row in self._asset_rows(status):
             symbol = str(row.get("symbol") or "").upper()
-            price = _finite(row.get("price"))
-            if not symbol or price <= 0:
+            raw_price = _strict_number(row.get("price"))
+            if not symbol or raw_price is None or raw_price <= 0:
+                if symbol:
+                    self._observation_health[symbol] = {
+                        "status": "REJECTED",
+                        "reason": "invalid_price",
+                        "causal_integrity": "UNAVAILABLE",
+                    }
+                continue
+            price = raw_price
+            pulse, regime, state_valid = self._state_fields(row)
+            if not state_valid:
+                self._observation_health[symbol] = {
+                    "status": "REJECTED",
+                    "reason": "malformed_state_numeric_field",
+                    "causal_integrity": "UNAVAILABLE",
+                }
+                continue
+            event_ts, event_source, time_status = self._event_time(row, ts)
+            if time_status == "FUTURE_REJECTED":
+                self._observation_health[symbol] = {
+                    "status": "REJECTED",
+                    "reason": "future_source_timestamp",
+                    "event_time": event_ts,
+                    "retrieval_time": ts,
+                    "event_time_source": event_source,
+                    "causal_integrity": "FAIL",
+                }
                 continue
             hist = self._history[symbol]
             prev = hist[-1].price if hist else price
             ret = math.log(max(price, EPS) / max(prev, EPS)) if prev > 0 else 0.0
-            pulse, regime = self._state_fields(row)
             obs = ChronofoldObservation(
                 symbol=symbol,
-                ts=ts,
+                ts=event_ts,
                 price=price,
                 ret=ret,
                 pulse=pulse,
@@ -214,6 +263,16 @@ class ChronofoldEngine:
                 hist[-1] = obs
             else:
                 hist.append(obs)
+            self._observation_health[symbol] = {
+                "status": "OBSERVED",
+                "event_time": event_ts,
+                "retrieval_time": ts,
+                "event_time_source": event_source,
+                "event_time_verified": time_status == "OBSERVED",
+                "availability_time_exact": False,
+                "availability_time_upper_bound": ts,
+                "causal_integrity": "PASS" if time_status == "OBSERVED" else "BOUNDED",
+            }
             out[symbol] = obs
         return out
 
@@ -229,7 +288,7 @@ class ChronofoldEngine:
     def _input_fingerprint(self, status: Mapping[str, Any], symbol: str, poss: Mapping[str, Any]) -> str:
         rows = []
         for row in sorted(self._asset_rows(status), key=lambda x: str(x.get("symbol") or "")):
-            pulse, regime = self._state_fields(row)
+            pulse, regime, state_valid = self._state_fields(row)
             rows.append((
                 str(row.get("symbol") or "").upper(),
                 _finite(row.get("price")),
@@ -237,6 +296,7 @@ class ChronofoldEngine:
                 regime,
                 bool(row.get("warm", False)),
                 bool(row.get("paused", False)),
+                state_valid,
             ))
         info = poss.get("information_wave") if isinstance(poss.get("information_wave"), Mapping) else {}
         latent = poss.get("latent_pressure_engine") if isinstance(poss.get("latent_pressure_engine"), Mapping) else {}
@@ -462,6 +522,8 @@ class ChronofoldEngine:
         return {
             "basis": ["UP", "FLAT", "DOWN"],
             "probabilities": {"UP": probs[0], "FLAT": probs[1], "DOWN": probs[2]},
+            "probabilities_calibrated": False,
+            "model_weights_only": True,
             "density_matrix": matrix,
             "normalized_entropy": _entropy(probs),
             "coherence_proxy": coherence,
@@ -754,6 +816,7 @@ class ChronofoldEngine:
             }
             counterfactuals = self._counterfactuals(multiverse, graph, poss)
             guidance = self._guidance(density, multiverse, unknown_mass)
+            observation_health = dict(self._observation_health.get(symbol) or {})
             result = {
                 "schema_version": self.SCHEMA_VERSION,
                 "generated_at": _utc_now(),
@@ -771,13 +834,18 @@ class ChronofoldEngine:
                     "future_data_used": False,
                     "structural_causality_proven": False,
                     "scenario_probabilities_calibrated": False,
+                    "density_probabilities_calibrated": False,
+                    "availability_time_exact": False,
                     "unknowns_explicit": True,
                 },
                 "time_boundary": {
-                    "event_time": retrieval_ts,
+                    "event_time": observation_health.get("event_time", observed[symbol].ts),
+                    "event_time_source": observation_health.get("event_time_source", "unknown"),
+                    "source_event_time_verified": bool(observation_health.get("event_time_verified", False)),
                     "retrieval_time": retrieval_ts,
-                    "availability_time": retrieval_ts,
-                    "causal_integrity": "PASS",
+                    "availability_time_upper_bound": retrieval_ts,
+                    "availability_time_exact": False,
+                    "causal_integrity": observation_health.get("causal_integrity", "UNAVAILABLE"),
                 },
                 "chronon": {
                     "market_proper_time": self._tau_total[symbol],

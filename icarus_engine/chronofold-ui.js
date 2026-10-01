@@ -40,7 +40,7 @@
         ['GNC guidance',gnc.guidance||'NO_EDGE','confidence '+pct(gnc.confidence)+' · '+(gnc.control||'SHADOW_ONLY')]
       ])+
       '<div class="tiles" style="margin-top:12px">'+
-        '<div class="tile"><div class="k">Density state</div><div class="v">UP '+pct(probs.UP)+' · FLAT '+pct(probs.FLAT)+' · DOWN '+pct(probs.DOWN)+'</div><div class="small muted">quantum-inspired representation; no quantum-market claim</div></div>'+
+        '<div class="tile"><div class="k">Density state</div><div class="v">UP '+pct(probs.UP)+' · FLAT '+pct(probs.FLAT)+' · DOWN '+pct(probs.DOWN)+'</div><div class="small muted">uncalibrated softmax model weights · quantum-inspired representation; no quantum-market claim</div></div>'+
         '<div class="tile"><div class="k">Reachable multiverse</div><div class="v">UP '+pct(clusters.UP)+' · FLAT '+pct(clusters.FLAT)+' · DOWN '+pct(clusters.DOWN)+'</div><div class="small muted">'+h(mv.scenarios||0)+' paths · '+h(mv.horizon_chronons||0)+' χ horizon · not calibrated probabilities</div></div>'+
         '<div class="tile"><div class="k">Koopman mode</div><div class="v">'+h((data.koopman||{}).mode||'WARMING')+'</div><div class="small muted">λ '+n((data.koopman||{}).eigenvalue,5)+'</div></div>'+
         '<div class="tile"><div class="k">Scale stability</div><div class="v">'+pct((data.renormalization||{}).scale_stability)+'</div><div class="small muted">structure surviving coarse-graining</div></div>'+

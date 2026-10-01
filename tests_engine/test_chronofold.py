@@ -55,7 +55,7 @@ def test_chronofold_full_surface_and_truth_contract():
     assert out["authority"]["execution_authorized"] is False
     assert out["truth_contract"]["future_data_used"] is False
     assert out["truth_contract"]["physics_literalism"] is False
-    assert out["time_boundary"]["causal_integrity"] == "PASS"
+    assert out["time_boundary"]["causal_integrity"] == "BOUNDED"
     assert out["time_machine"]["live_future_access"] is False
     assert out["time_machine"]["backward_smoothing_live"] is False
     assert out["chronon"]["market_proper_time"] > 0
@@ -73,6 +73,7 @@ def test_chronofold_full_surface_and_truth_contract():
     assert sum(out["density_state"]["probabilities"].values()) == pytest.approx(1.0)
     assert 0 <= out["density_state"]["normalized_entropy"] <= 1
     assert out["density_state"]["quantum_claim"] is False
+    assert out["density_state"]["probabilities_calibrated"] is False
     assert out["multiverse"]["scenarios"] == 96
     assert sum(out["multiverse"]["cluster_weights"].values()) == pytest.approx(1.0)
     assert out["multiverse"]["probabilities_calibrated"] is False
@@ -180,3 +181,44 @@ def test_extreme_finite_prices_do_not_overflow_future_worlds():
     assert math.isfinite(mv["p05_return"])
     assert math.isfinite(mv["p95_return"])
     assert all(math.isfinite(x) for path in mv["sample_paths"] for x in path)
+
+def test_chronofold_uses_observed_price_age_for_causal_time_boundary():
+    class Timed:
+        def status(self):
+            return {"assets": [{
+                "symbol": "NQ",
+                "price": 100.0,
+                "price_age": 0.25,
+                "warm": True,
+                "paused": False,
+                "state": {"pulse_l": 0.5, "pulse_s": 0.2, "rate_regime": 0.3},
+            }]}
+    out = ChronofoldEngine(Timed(), scenarios=32).snapshot("NQ")
+    boundary = out["time_boundary"]
+    assert boundary["causal_integrity"] == "PASS"
+    assert boundary["event_time_source"] == "price_age"
+    assert boundary["source_event_time_verified"] is True
+    assert boundary["event_time"] <= boundary["retrieval_time"]
+    assert boundary["availability_time_exact"] is False
+
+
+def test_chronofold_rejects_future_source_timestamp_and_malformed_bool_price():
+    now = time.time()
+    class Future:
+        def status(self):
+            return {"assets": [{
+                "symbol": "NQ", "price": 100.0, "warm": True, "paused": False,
+                "state": {"ts": now + 60.0, "pulse_l": 0.5, "pulse_s": 0.2, "rate_regime": 0.3},
+            }]}
+    out = ChronofoldEngine(Future(), scenarios=32).snapshot("NQ")
+    assert out["status"] == "NO_STATE"
+
+    class BoolPrice:
+        def status(self):
+            return {"assets": [{
+                "symbol": "NQ", "price": True, "warm": True, "paused": False,
+                "state": {"pulse_l": 0.5, "pulse_s": 0.2, "rate_regime": 0.3},
+            }]}
+    out = ChronofoldEngine(BoolPrice(), scenarios=32).snapshot("NQ")
+    assert out["status"] == "NO_STATE"
+
