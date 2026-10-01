@@ -354,13 +354,190 @@ def mint(signals: Mapping[str, Any]) -> dict[str, Any]:
         "semantics": "expression-ranking heuristic before risk-kernel review; never an order instruction",
     }
 
-def archon(signals: Mapping[str, Any], godel_state: Mapping[str, Any]) -> dict[str, Any]:
+def echo(signals: Mapping[str, Any]) -> dict[str, Any]:
+    """Detect consensus that is only apparent because engines share evidence ancestry.
+
+    ECHO does not decide direction. It estimates how much directional agreement is
+    duplicated by common upstream evidence so ARCHON can avoid allocating research
+    attention as if correlated engines were independent witnesses.
+    """
+    out = _base("ECHO")
+    scores = signals.get("engine_scores")
+    lineage = signals.get("engine_evidence_lineage")
+    reliabilities = signals.get("engine_reliability")
+    if not isinstance(scores, Mapping) or len(scores) < 2:
+        return {
+            **out,
+            "status": "abstain",
+            "reason": "at least two engine_scores required",
+            "echo_risk": 0.0,
+            "effective_independent_support": 0.0,
+            "consensus_illusion_candidate": False,
+            "engine_independence": {},
+            "duplicated_ancestry_pairs": [],
+        }
+    if not isinstance(lineage, Mapping):
+        return {
+            **out,
+            "status": "abstain",
+            "reason": "engine_evidence_lineage required to prove evidence independence",
+            "echo_risk": 0.0,
+            "effective_independent_support": 0.0,
+            "consensus_illusion_candidate": False,
+            "engine_independence": {},
+            "duplicated_ancestry_pairs": [],
+        }
+
+    rel = reliabilities if isinstance(reliabilities, Mapping) else {}
+    rows = []
+    for name, raw_score in scores.items():
+        engine = str(name)
+        score = signed_unit(raw_score, f"engine_scores.{name}")
+        reliability = unit(rel.get(name), f"engine_reliability.{name}", 0.5)
+        raw_tokens = lineage.get(name, lineage.get(engine))
+        if raw_tokens is None:
+            tokens = set()
+        else:
+            if isinstance(raw_tokens, str):
+                raw_tokens = [raw_tokens]
+            if not isinstance(raw_tokens, (list, tuple, set)):
+                raise ValueError(f"engine_evidence_lineage.{engine} must be a list of source tokens")
+            if len(raw_tokens) > 32:
+                raise ValueError(f"engine_evidence_lineage.{engine} exceeds 32 source tokens")
+            tokens = set()
+            for token in raw_tokens:
+                if not isinstance(token, str):
+                    raise ValueError(f"engine_evidence_lineage.{engine} tokens must be strings")
+                normalized = token.strip().lower()
+                if not normalized:
+                    raise ValueError(f"engine_evidence_lineage.{engine} contains an empty source token")
+                if len(normalized) > 160:
+                    raise ValueError(f"engine_evidence_lineage.{engine} source token exceeds 160 characters")
+                tokens.add(normalized)
+        direction = "long" if score >= 0.10 else "short" if score <= -0.10 else "flat"
+        directional_weight = reliability * abs(score) if direction != "flat" else 0.0
+        rows.append({
+            "engine": engine,
+            "score": score,
+            "reliability": reliability,
+            "direction": direction,
+            "directional_weight": directional_weight,
+            "lineage": tokens,
+        })
+
+    long_weight = sum(row["directional_weight"] for row in rows if row["direction"] == "long")
+    short_weight = sum(row["directional_weight"] for row in rows if row["direction"] == "short")
+    total_directional = long_weight + short_weight
+    if total_directional <= 1e-12:
+        return {
+            **out,
+            "status": "abstain",
+            "reason": "no directional engine support above the 0.10 score floor",
+            "echo_risk": 0.0,
+            "effective_independent_support": 0.0,
+            "consensus_illusion_candidate": False,
+            "engine_independence": {row["engine"]: 1.0 for row in rows},
+            "duplicated_ancestry_pairs": [],
+        }
+
+    dominant_direction = "long" if long_weight >= short_weight else "short"
+    dominant_weight = max(long_weight, short_weight)
+    raw_agreement = dominant_weight / total_directional
+    dominant = [row for row in rows if row["direction"] == dominant_direction]
+    pair_rows = []
+    overlap_numerator = 0.0
+    overlap_denominator = 0.0
+    per_engine_overlap: dict[str, list[tuple[float, float]]] = {row["engine"]: [] for row in dominant}
+    for i, left in enumerate(dominant):
+        for right in dominant[i + 1:]:
+            union = left["lineage"] | right["lineage"]
+            if not union:
+                continue
+            overlap = len(left["lineage"] & right["lineage"]) / len(union)
+            pair_weight = min(left["directional_weight"], right["directional_weight"])
+            if pair_weight <= 0:
+                continue
+            overlap_numerator += overlap * pair_weight
+            overlap_denominator += pair_weight
+            per_engine_overlap[left["engine"]].append((overlap, pair_weight))
+            per_engine_overlap[right["engine"]].append((overlap, pair_weight))
+            pair_rows.append({
+                "left": left["engine"],
+                "right": right["engine"],
+                "overlap": overlap,
+                "shared_sources": sorted(left["lineage"] & right["lineage"])[:12],
+            })
+
+    mean_overlap = overlap_numerator / overlap_denominator if overlap_denominator > 0 else 0.0
+    unresolved_weight = sum(row["directional_weight"] for row in dominant if not row["lineage"])
+    unresolved_fraction = unresolved_weight / dominant_weight if dominant_weight > 0 else 0.0
+
+    # Graph-style de-duplication: a fully duplicated N-engine cluster counts like
+    # roughly one independent witness (each engine receives 1/N independence).
+    # Missing lineage receives zero independence because ECHO cannot prove it is
+    # an independent source; this is intentionally fail-closed.
+    independence = {}
+    for row in rows:
+        if row["direction"] != dominant_direction:
+            independence[row["engine"]] = 1.0
+            continue
+        if not row["lineage"]:
+            independence[row["engine"]] = 0.0
+            continue
+        samples = per_engine_overlap.get(row["engine"], [])
+        redundancy_mass = sum(overlap for overlap, _ in samples)
+        independence[row["engine"]] = 1.0 / (1.0 + redundancy_mass)
+
+    independent_weight = sum(
+        row["directional_weight"] * independence.get(row["engine"], 0.0)
+        for row in dominant
+    )
+    effective_independence = (
+        independent_weight / dominant_weight if dominant_weight > 0 else 0.0
+    )
+    effective_independence = max(0.0, min(1.0, effective_independence))
+    echo_risk = max(0.0, min(1.0, raw_agreement * (1.0 - effective_independence)))
+
+    duplicated = sorted(
+        (row for row in pair_rows if row["overlap"] >= 0.50),
+        key=lambda row: (-row["overlap"], row["left"], row["right"]),
+    )[:12]
+    effective_support = max(0.0, min(1.0, raw_agreement * effective_independence))
+    illusion = len(dominant) >= 2 and raw_agreement >= 0.67 and echo_risk >= 0.35
+    distinct_sources = sorted(set().union(*(row["lineage"] for row in dominant))) if dominant else []
+
+    return {
+        **out,
+        "dominant_direction": dominant_direction,
+        "raw_directional_agreement": raw_agreement,
+        "mean_lineage_overlap": mean_overlap,
+        "unresolved_lineage_fraction": unresolved_fraction,
+        "effective_independence_factor": effective_independence,
+        "echo_risk": echo_risk,
+        "effective_independent_support": effective_support,
+        "consensus_illusion_candidate": illusion,
+        "dominant_engine_count": len(dominant),
+        "distinct_lineage_source_count": len(distinct_sources),
+        "engine_independence": independence,
+        "duplicated_ancestry_pairs": duplicated,
+        "semantics": "evidence-ancestry de-duplication heuristic; shared inputs are not independent confirmation and this faculty never authorizes execution",
+    }
+
+
+def archon(
+    signals: Mapping[str, Any],
+    godel_state: Mapping[str, Any],
+    echo_state: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
     out = _base("ARCHON")
     scores = signals.get("engine_scores")
     reliabilities = signals.get("engine_reliability")
     if not isinstance(scores, Mapping) or not scores:
         return {**out, "status": "abstain", "reason": "engine_scores required", "leases": [], "contradiction": 0.0}
     rel = reliabilities if isinstance(reliabilities, Mapping) else {}
+    echo_independence = (echo_state or {}).get("engine_independence", {})
+    if not isinstance(echo_independence, Mapping):
+        echo_independence = {}
     data_quality = unit(signals.get("data_quality"), "data_quality", 0.5)
     uncertainty = unit(godel_state.get("ambiguity"), "godel.ambiguity", 1.0)
     rows = []
@@ -368,8 +545,15 @@ def archon(signals: Mapping[str, Any], godel_state: Mapping[str, Any]) -> dict[s
     for name, value in scores.items():
         score = signed_unit(value, f"engine_scores.{name}")
         reliability = unit(rel.get(name), f"engine_reliability.{name}", 0.5)
-        attention = reliability * data_quality * (1.0 - 0.5 * uncertainty)
-        rows.append({"engine": str(name), "score": score, "reliability": reliability, "attention_weight": attention})
+        independence = unit(echo_independence.get(str(name)), f"echo.engine_independence.{name}", 1.0)
+        attention = reliability * independence * data_quality * (1.0 - 0.5 * uncertainty)
+        rows.append({
+            "engine": str(name),
+            "score": score,
+            "reliability": reliability,
+            "evidence_independence": independence,
+            "attention_weight": attention,
+        })
         vals.append(score)
     rows.sort(key=lambda x: x["attention_weight"], reverse=True)
     contradiction = (max(vals) - min(vals)) / 2.0 if len(vals) > 1 else 0.0
@@ -395,6 +579,9 @@ def archon(signals: Mapping[str, Any], godel_state: Mapping[str, Any]) -> dict[s
         "engine_states": rows,
         "contradiction": contradiction,
         "attention_concentration": attention_concentration,
+        "evidence_independence_discounted": bool(echo_independence),
+        "echo_risk": (echo_state or {}).get("echo_risk", 0.0),
+        "consensus_illusion_candidate": bool((echo_state or {}).get("consensus_illusion_candidate", False)),
         "leases": leases,
         "consensus_forced": False,
         "semantics": "temporary research-attention leases; disagreement is retained and no lease grants trading authority",
@@ -406,11 +593,13 @@ def socrates(states: Mapping[str, Mapping[str, Any]]) -> dict[str, Any]:
     debt = unit(states.get("nullspace", {}).get("debt_normalized"), "nullspace.debt_normalized")
     novelty = unit(states.get("ex_nihilo", {}).get("ontology_surprise"), "ex_nihilo.ontology_surprise")
     contradiction = unit(states.get("archon", {}).get("contradiction"), "archon.contradiction")
+    echo_risk = unit(states.get("echo", {}).get("echo_risk"), "echo.echo_risk")
     options = [
         (uncertainty, "Which observation most efficiently separates the competing market worlds?"),
         (debt, "Where did the missing reaction route: delay, absorption, diversion, or causal-model failure?"),
         (novelty, "Does the current residual require a new concept, or can an existing concept explain it out of sample?"),
         (contradiction, "Which engine disagreement is mechanism-specific rather than mere noise or horizon mismatch?"),
+        (echo_risk, "Which agreeing engines only look independent because they inherit the same upstream evidence?"),
     ]
     ranked = sorted(options, key=lambda x: x[0], reverse=True)
     hypothesis_templates = [
@@ -418,6 +607,7 @@ def socrates(states: Mapping[str, Mapping[str, Any]]) -> dict[str, Any]:
         (debt, "The expected reaction has been absorbed, delayed, diverted, or the causal relation failed.", "Trace NULLSPACE routing and reject the claim if relationship validity collapses."),
         (novelty, "Current residual structure is not represented by the existing ontology.", "Run EX NIHILO ablation/OOS tests before admitting a new concept."),
         (contradiction, "Engine disagreement reflects a mechanism or horizon mismatch rather than noise.", "Partition ARCHON conflict by horizon/mechanism and test each branch independently."),
+        (echo_risk, "Apparent multi-engine consensus is inflated by shared evidence ancestry.", "Ablate shared lineage sources and require the directional thesis to survive on genuinely independent evidence."),
     ]
     hypotheses = [
         {"priority": score, "hypothesis": hypothesis, "falsifier": falsifier}
@@ -445,7 +635,8 @@ def evaluate_faculties(signals: Mapping[str, Any], observation_id: str) -> dict[
     nm = nemesis(signals)
     xn = ex_nihilo(signals, observation_id)
     mt = mint(signals)
-    ar = archon(signals, gd)
+    ec = echo(signals)
+    ar = archon(signals, gd, ec)
     states = {
         "nullspace": ns,
         "godel": gd,
@@ -453,6 +644,7 @@ def evaluate_faculties(signals: Mapping[str, Any], observation_id: str) -> dict[
         "nemesis": nm,
         "ex_nihilo": xn,
         "mint": mt,
+        "echo": ec,
         "archon": ar,
     }
     states["socrates"] = socrates(states)
