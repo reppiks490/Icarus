@@ -17,7 +17,7 @@
   "summary": "PARALLAX V2 binds action/regime/comparison contracts into immutable decision identity, preserves causal-time and immutable branch-plan protections, requires evidence-complete paired paths, isolates source revisions/contracts/branch parameters, adds context strata, richer target/compound twins, non-pooled regret, bounded UI screening snapshots, and Benjamini-Hochberg FDR control. DREAMSTATE V2 consumes the complete internal hypothesis screen, isolates families by revision/contract, adds target and compound hypotheses, policy contracts, family search accounting, source-decay retirement, re-checks current PARALLAX evidence immediately before any gate update, and enforces stronger gate preconditions. All authority remains research/shadow only.",
   "source_repository": "reppiks490/Icarus",
   "source_ref": "chatgpt/parallax-dreamstate-v2-final-20261001",
-  "source_commit": "ea8dfb65eea185e519a099f4cc835a2360aa6b2f",
+  "source_commit": "5392c310f948ab9fbd6c3d5b8ca9fda1348ebfc7",
   "evidence": [
     "icarus_engine/parallax.py",
     "icarus_engine/dreamstate.py",
@@ -36,7 +36,8 @@
     "execution_authorized=false",
     "production_decision_authorized=false",
     "DREAMSTATE gate updates revalidate the exact current PARALLAX source hypothesis",
-    "PARALLAX UI screening snapshot is bounded while DREAMSTATE consumes the complete internal hypothesis set"
+    "PARALLAX UI screening snapshot is bounded while DREAMSTATE consumes the complete internal hypothesis set",
+    "Causal-time regression fixtures explicitly timestamp outcomes after decisions"
   ],
   "execution_authorized": false,
   "production_decision_authorized": false
