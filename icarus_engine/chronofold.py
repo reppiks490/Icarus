@@ -172,6 +172,8 @@ class ChronofoldEngine:
         self._clock_total: Dict[str, Dict[str, float]] = defaultdict(lambda: defaultdict(float))
         self._last_graph: Dict[str, Dict[str, float]] = defaultdict(dict)
         self._last_order_parameter: Dict[str, float] = defaultdict(float)
+        self._last_input_fingerprint: Dict[str, str] = {}
+        self._last_snapshot: Dict[str, Dict[str, Any]] = {}
         self._lock = threading.RLock()
 
     @staticmethod
@@ -223,6 +225,55 @@ class ChronofoldEngine:
         except Exception:
             return {}
         return value if isinstance(value, Mapping) else {}
+
+    def _input_fingerprint(self, status: Mapping[str, Any], symbol: str, poss: Mapping[str, Any]) -> str:
+        rows = []
+        for row in sorted(self._asset_rows(status), key=lambda x: str(x.get("symbol") or "")):
+            pulse, regime = self._state_fields(row)
+            rows.append((
+                str(row.get("symbol") or "").upper(),
+                _finite(row.get("price")),
+                pulse,
+                regime,
+                bool(row.get("warm", False)),
+                bool(row.get("paused", False)),
+            ))
+        info = poss.get("information_wave") if isinstance(poss.get("information_wave"), Mapping) else {}
+        latent = poss.get("latent_pressure_engine") if isinstance(poss.get("latent_pressure_engine"), Mapping) else {}
+        phase = poss.get("phase_transition") if isinstance(poss.get("phase_transition"), Mapping) else {}
+        health = poss.get("data_health") if isinstance(poss.get("data_health"), Mapping) else {}
+        micro = health.get("microstructure") if isinstance(health.get("microstructure"), Mapping) else {}
+        used_possibility = (
+            _finite(info.get("score")),
+            _finite(latent.get("latent_pressure")),
+            _finite(phase.get("event_horizon")),
+            bool(micro.get("depth", False)),
+        )
+        return hashlib.sha256(repr((symbol, rows, used_possibility)).encode("utf-8")).hexdigest()
+
+    def status(self) -> Dict[str, Any]:
+        """Read-only operator health; never advances market state."""
+        with self._lock:
+            return {
+                "schema_version": self.SCHEMA_VERSION,
+                "generated_at": _utc_now(),
+                "authority": {
+                    "research_only": True,
+                    "shadow_only": True,
+                    "execution_authorized": False,
+                    "production_decision_authorized": False,
+                    "broker_authority": False,
+                },
+                "configured": {
+                    "max_history": self.max_history,
+                    "scenarios": self.scenarios,
+                    "horizon_chronons": self.horizon,
+                },
+                "tracked_assets": sorted(self._history),
+                "cached_assets": sorted(self._last_snapshot),
+                "observations": {k: len(v) for k, v in sorted(self._history.items())},
+                "read_only": True,
+            }
 
     def _chronon_activity(self, symbol: str, poss: Mapping[str, Any]) -> Dict[str, float]:
         hist = list(self._history[symbol])
@@ -646,13 +697,20 @@ class ChronofoldEngine:
                 return self._empty(f"portfolio status unavailable: {type(ex).__name__}: {ex}")
             if not isinstance(status, Mapping):
                 return self._empty("portfolio status unavailable")
-            observed = self._observe(status, retrieval_ts)
-            if not observed:
+            rows = self._asset_rows(status)
+            if not rows:
                 return self._empty("no observed assets")
-            symbol = str(asset or next(iter(observed))).upper()
-            if symbol not in observed:
+            symbols = [str(row.get("symbol") or "").upper() for row in rows]
+            symbol = str(asset or symbols[0]).upper()
+            if symbol not in symbols:
                 return self._empty(f"unknown observed asset {symbol}")
             poss = self._possibility_snapshot(symbol)
+            fingerprint = self._input_fingerprint(status, symbol, poss)
+            if self._last_input_fingerprint.get(symbol) == fingerprint and symbol in self._last_snapshot:
+                return self._last_snapshot[symbol]
+            observed = self._observe(status, retrieval_ts)
+            if symbol not in observed:
+                return self._empty(f"unknown observed asset {symbol}")
             activity = self._chronon_activity(symbol, poss)
             self._tau_total[symbol] += activity["activity"]
             graph = self._causal_graph(symbol)
@@ -694,7 +752,7 @@ class ChronofoldEngine:
             }
             counterfactuals = self._counterfactuals(multiverse, graph, poss)
             guidance = self._guidance(density, multiverse, unknown_mass)
-            return {
+            result = {
                 "schema_version": self.SCHEMA_VERSION,
                 "generated_at": _utc_now(),
                 "asset": symbol,
@@ -749,6 +807,9 @@ class ChronofoldEngine:
                 "gnc": guidance,
                 "observations": hist_n,
             }
+            self._last_input_fingerprint[symbol] = fingerprint
+            self._last_snapshot[symbol] = result
+            return result
 
     def _empty(self, detail: str) -> Dict[str, Any]:
         return {
