@@ -717,6 +717,8 @@ def test_aether_offspring_has_independent_claim_identity_and_can_be_scored(tmp_p
         )
     ecology = kernel.snapshot()["ecology"]
     child = next(x for x in ecology["species"] if x["parent_species_id"] is not None)
+    birth_observation = kernel.observation("pan-parent-fit-3")
+    assert any(c["claim_id"] == child["origin_claim_id"] for c in birth_observation["claims"])
     with pytest.raises(ValueError, match="cannot precede"):
         kernel.record_claim_outcome({
             "claim_id": child["origin_claim_id"],
@@ -776,5 +778,11 @@ def test_claim_outcome_is_causal_and_immutable_per_claim_time(tmp_path):
     assert again["outcome_id"] == first_score["outcome_id"]
     with pytest.raises(ValueError, match="immutable"):
         kernel.record_claim_outcome({**payload, "utility": -0.5})
+    with pytest.raises(ValueError, match="between -1 and 1"):
+        kernel.record_claim_outcome({
+            **payload,
+            "observed_at": "2026-10-01T06:05:00Z",
+            "utility": 1.5,
+        })
 
 
