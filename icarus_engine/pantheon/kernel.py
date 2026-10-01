@@ -508,9 +508,15 @@ class PantheonKernel:
             if claim is None:
                 raise ValueError("unknown PANTHEON claim")
             claim_time = datetime.fromisoformat(str(claim["claim_observed_at"]).replace("Z", "+00:00"))
+            claim_payload = json.loads(claim["payload_json"])
+            mutation_trigger = claim_payload.get("mutation_trigger") if isinstance(claim_payload, Mapping) else None
+            if isinstance(mutation_trigger, Mapping) and mutation_trigger.get("observed_at"):
+                mutation_time = datetime.fromisoformat(str(mutation_trigger["observed_at"]).replace("Z", "+00:00"))
+                if mutation_time > claim_time:
+                    claim_time = mutation_time
             outcome_time = datetime.fromisoformat(observed_at.replace("Z", "+00:00"))
             if outcome_time < claim_time:
-                raise ValueError("claim outcome cannot precede the originating observation")
+                raise ValueError("claim outcome cannot precede claim availability")
             prior_time = con.execute(
                 "SELECT * FROM claim_outcomes WHERE claim_id=? AND observed_at=?",
                 (claim_id, observed_at),
@@ -577,6 +583,7 @@ class PantheonKernel:
                         "mutation_trigger": {
                             "fitness_credit": fitness,
                             "evidence_count": n,
+                            "observed_at": observed_at,
                         },
                         "stage": "research_variant",
                         "automatic_production_authority": False,
