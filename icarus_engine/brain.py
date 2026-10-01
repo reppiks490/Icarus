@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from .champion_challenger import select_shadow_champion
+from .evidence_graph import build_evidence_graph
 
 SCHEMA_VERSION = "icarus-adaptive-brain-v1"
 _EVENT_SCHEMA = "icarus-brain-event-v1"
@@ -638,6 +639,7 @@ def brain_snapshot(
         "hot_path": None, "stages": [], "targets_are_measured_not_assumed": True,
         "execution_authorized": False, "production_decision_authorized": False,
     }
+    evidence_graph = build_evidence_graph(events, proof)
     proof_metrics = proof.get("metrics") if isinstance(proof.get("metrics"), Mapping) else {}
     proof_closed = proof.get("closed_sample") if isinstance(proof.get("closed_sample"), Mapping) else {}
     proof_rows = proof.get("candidate_statistics") if isinstance(proof.get("candidate_statistics"), list) else []
@@ -721,6 +723,7 @@ def brain_snapshot(
             "production_decision_authorized": False,
         },
         "performance_proof": proof,
+        "evidence_graph": evidence_graph,
         "latency_telemetry": latency,
         "evidence_tournaments": tournaments,
         "learning": {
