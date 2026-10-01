@@ -685,7 +685,7 @@ def test_aether_ecology_requires_observed_fitness_for_speciation_and_genesis(tmp
         result = kernel.record_observation(
             _feedback_payload(
                 f"pan-positive-{i}",
-                f"2026-10-01T06:00:0{i}Z",
+                f"2026-10-01T06:00:2{i}Z",
                 ontology_claim["claim_id"],
                 0.80,
             )
@@ -727,6 +727,14 @@ def test_aether_offspring_has_independent_claim_identity_and_can_be_scored(tmp_p
             "confidence": 0.80,
             "evidence": ["retroactive-child-outcome"],
         })
+    with pytest.raises(ValueError, match="horizon maturity"):
+        kernel.record_claim_outcome({
+            "claim_id": child["origin_claim_id"],
+            "observed_at": "2026-10-01T06:02:10Z",
+            "utility": 0.40,
+            "confidence": 0.80,
+            "evidence": ["premature-child-outcome"],
+        })
     scored = kernel.record_claim_outcome({
         "claim_id": child["origin_claim_id"],
         "observed_at": "2026-10-01T06:03:00Z",
@@ -765,6 +773,22 @@ def test_claim_outcome_is_causal_and_immutable_per_claim_time(tmp_path):
             "confidence": 1.0,
             "evidence": ["invalid-retroactive-outcome"],
         })
+    with pytest.raises(ValueError, match="horizon maturity"):
+        kernel.record_claim_outcome({
+            "claim_id": claim["claim_id"],
+            "observed_at": "2026-10-01T06:00:10Z",
+            "utility": 0.5,
+            "confidence": 1.0,
+            "evidence": ["premature-outcome"],
+        })
+    with pytest.raises(ValueError, match="1-64"):
+        kernel.record_claim_outcome({
+            "claim_id": claim["claim_id"],
+            "observed_at": "2026-10-01T06:00:20Z",
+            "utility": 0.5,
+            "confidence": 1.0,
+            "evidence": [],
+        })
 
     payload = {
         "claim_id": claim["claim_id"],
@@ -802,4 +826,21 @@ def test_ecology_upgrade_backfills_legacy_claims_and_sentinel_clock(tmp_path):
         for row in state["ecology"]["species"]
     )
     assert state["sentinel_cells"][0]["last_observed_at"] == expected_time
+
+def test_zero_confidence_outcome_cannot_create_aether_fitness(tmp_path):
+    kernel = PantheonKernel(tmp_path)
+    first = kernel.record_observation(_payload(observation_id="pan-zero-confidence-origin"))
+    claim = next(c for c in first["claims"] if c["kind"] == "ontology_candidate")
+    scored = kernel.record_claim_outcome({
+        "claim_id": claim["claim_id"],
+        "observed_at": "2026-10-01T06:04:00Z",
+        "utility": 1.0,
+        "confidence": 0.0,
+        "evidence": ["observed-but-zero-confidence"],
+    })
+    assert scored["fitness_credit"] == 0.0
+    ecology = kernel.snapshot()["ecology"]
+    species = next(x for x in ecology["species"] if x["origin_claim_id"] == claim["claim_id"])
+    assert species["fitness_credit"] == 0.0
+    assert species["stage"] == "hypothesis"
 
