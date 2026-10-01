@@ -1,13 +1,16 @@
-"""Repository/MCP audit state shared by the engine API, dashboard, and MCP server.
+"""Repository/MCP system-intelligence state shared by the engine API, dashboard, and MCP server.
 
-The status endpoint is deliberately local-file-only: reading trader health must never
-trigger GitHub/provider network I/O. A verified agent can update the snapshot through
-the authenticated /admin/system/audit endpoint (or the MCP wrapper).
+The read endpoint is deliberately local-file-only: opening trader health must never
+trigger GitHub/provider network I/O. Verified agents can publish repository audits,
+loop durability receipts, and important repair/audit/evolution events through the
+authenticated admin API (or MCP wrappers). This surface is diagnostic only and
+never grants execution authority.
 """
 from __future__ import annotations
 
 import json
 import os
+import threading
 from copy import deepcopy
 from datetime import datetime, timezone
 from pathlib import Path
@@ -16,16 +19,19 @@ from typing import Any, Dict
 
 AUDIT_FILENAME = "repository_audit.json"
 _ALLOWED_STATUS = {"green", "warn", "red", "unknown"}
+_ALLOWED_EVENT_KIND = {"repair", "audit", "evolution", "integration", "finding"}
+_ALLOWED_EVENT_SEVERITY = {"info", "success", "warn", "error"}
+_AUDIT_LOCK = threading.Lock()
 
 DEFAULT_REPOSITORY_AUDIT: Dict[str, Any] = {
-    "schema_version": 1,
+    "schema_version": 2,
     "repository": "reppiks490/Icarus",
     "source": "github-mcp",
     "status": "green",
-    "recorded_at": "2026-10-01T02:01:54Z",
+    "recorded_at": "2026-10-01T02:14:05Z",
     "main": {
-        "sha": "427c4a1f60c91f72cd6d16d6218b25105e12e93a",
-        "workflow_run": 36802107082,
+        "sha": "3bedc5a3a122caa063a7a473bf4585c9b74febd2",
+        "workflow_run": 36804732200,
         "linux": "success",
         "windows": "success",
     },
@@ -42,8 +48,83 @@ DEFAULT_REPOSITORY_AUDIT: Dict[str, Any] = {
         {"name": "codex/ml-d9d4db8", "status": "success", "detail": "Exact head f897686b7c0d passed tests"},
         {"name": "chatgpt/real-subminute-tick-adapter", "status": "success", "detail": "Exact head 8a21fd6e848e passed tests"},
     ],
+    "loops": [
+        {
+            "id": "robustness-guardian",
+            "title": "Robustness Guardian Evolution",
+            "scheduler_id": "6abaf924e0248191b8a11bd1d32bf0b7",
+            "schedule": ":05 hourly",
+            "status": "STALE_RECEIPT",
+            "run_id": "robustness-guardian-20261001T000500Z",
+            "repository": "reppiks490/Icarus-engine",
+            "finalization_commit_sha": "cc38b3aed0c8034d12c046490f585b3412da94e2",
+            "finalization_state_blob_sha": "8f81170da4df7fca44efd6394db952c661315460",
+            "detail": "Scheduler fired after this receipt; durable state has not advanced yet.",
+        },
+        {
+            "id": "advanced-csv",
+            "title": "Advanced CSV Data Collector",
+            "scheduler_id": "6abaef9d5c28819190d98a5af7f308b8",
+            "schedule": ":15 hourly",
+            "status": "RUN_PERSISTED",
+            "run_id": "advanced-csv-20261001T011500Z",
+            "repository": "reppiks490/icarus-csv-evidence-lab",
+            "finalization_commit_sha": "3bfba9c603a595dd2bbf20c5864a50d15d4d3d85",
+            "finalization_state_blob_sha": "4bfdfc9913a6e6522abd87395b5e7aa238f5caec",
+            "detail": "Matching finalization and heartbeat receipt verified.",
+        },
+        {
+            "id": "alpha-synthesis",
+            "title": "Alpha Synthesis Evolution",
+            "scheduler_id": "6abaf8d75cf48191bc7ce06bc0006f1c",
+            "schedule": ":25 hourly",
+            "status": "STALE_RECEIPT",
+            "run_id": "alpha-synthesis-20261001T002500Z",
+            "repository": "reppiks490/Icarus-engine",
+            "finalization_commit_sha": "590872a8c477a70d3e024678afb209edb5aeaff9",
+            "finalization_state_blob_sha": "52cfc1bb8647d3fb289fc4207cbaa519be1581ac",
+            "detail": "Scheduler fired after this receipt; durable state has not advanced yet.",
+        },
+        {
+            "id": "flow",
+            "title": "Microstructure Sensor Grid",
+            "scheduler_id": "6abaef8effb48191aa5c959455451681",
+            "schedule": ":35 hourly",
+            "status": "RUN_PERSISTED",
+            "run_id": "flow-20261001T013500Z",
+            "repository": "reppiks490/Icarus-engine",
+            "finalization_commit_sha": "cac7d9daad70edd45539d29ac5529ae71339b311",
+            "finalization_state_blob_sha": "de8655ce63e18428c3675b82ec16e8bd162d3908",
+            "detail": "Matching finalization and heartbeat receipt verified.",
+        },
+        {
+            "id": "apex-council",
+            "title": "Apex Council Evolution",
+            "scheduler_id": "6ababd570fac81918777c8f809cf67c9",
+            "schedule": ":45 hourly",
+            "status": "STALE_RECEIPT",
+            "run_id": "apex-council-20261001T004500Z",
+            "repository": "reppiks490/Icarus-engine",
+            "finalization_commit_sha": "65cda547c7001642446581e1be030d0b61a4dd1c",
+            "finalization_state_blob_sha": "d0d4e8510695593a49ac737482953cdd4f46c8ba",
+            "detail": "Scheduler fired after this receipt; durable state has not advanced yet.",
+        },
+    ],
+    "events": [
+        {
+            "id": "integration:3bedc5a3",
+            "kind": "integration",
+            "severity": "success",
+            "title": "Repository MCP audit dashboard merged",
+            "detail": "Verified repository/CI audit is now exposed in the ICARUS trader UI and local MCP surface.",
+            "recorded_at": "2026-10-01T02:12:26Z",
+            "repository": "reppiks490/Icarus",
+            "ref": "3bedc5a3a122caa063a7a473bf4585c9b74febd2",
+        }
+    ],
     "issue": {"number": 62, "url": "https://github.com/reppiks490/Icarus/issues/62"},
-    "note": "Current-head audit snapshot. Historical superseded red runs are not counted as current defects.",
+    "note": "Current-head repository audit plus MCP-visible system intelligence. Historical superseded red runs are not counted as current defects.",
+    "execution_authorized": False,
 }
 
 
@@ -63,6 +144,57 @@ def _nonnegative_int(value: Any, name: str) -> int:
     if out < 0:
         raise ValueError(f"{name} must be non-negative")
     return out
+
+
+def _utc_now() -> str:
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def _normalize_loop(row: Any) -> Dict[str, Any]:
+    if not isinstance(row, dict):
+        raise ValueError("each loop must be an object")
+    loop_id = _text(row.get("id"), 120)
+    if not loop_id:
+        raise ValueError("loop id is required")
+    return {
+        "id": loop_id,
+        "title": _text(row.get("title") or loop_id, 160),
+        "scheduler_id": _text(row.get("scheduler_id"), 160),
+        "schedule": _text(row.get("schedule"), 120),
+        "status": _text(row.get("status", "UNKNOWN"), 64).upper() or "UNKNOWN",
+        "run_id": _text(row.get("run_id"), 200),
+        "recorded_at": _text(row.get("recorded_at"), 64),
+        "repository": _text(row.get("repository"), 200),
+        "finalization_commit_sha": _text(row.get("finalization_commit_sha"), 64),
+        "finalization_state_blob_sha": _text(row.get("finalization_state_blob_sha"), 64),
+        "detail": _text(row.get("detail"), 1000),
+    }
+
+
+def _normalize_event(row: Any) -> Dict[str, Any]:
+    if not isinstance(row, dict):
+        raise ValueError("each event must be an object")
+    kind = _text(row.get("kind", "finding"), 32).lower() or "finding"
+    severity = _text(row.get("severity", "info"), 32).lower() or "info"
+    if kind not in _ALLOWED_EVENT_KIND:
+        raise ValueError("event kind must be repair, audit, evolution, integration, or finding")
+    if severity not in _ALLOWED_EVENT_SEVERITY:
+        raise ValueError("event severity must be info, success, warn, or error")
+    title = _text(row.get("title"), 200)
+    if not title:
+        raise ValueError("event title is required")
+    recorded_at = _text(row.get("recorded_at"), 64) or _utc_now()
+    event_id = _text(row.get("id"), 200) or _text(f"{kind}:{recorded_at}:{title}", 200)
+    return {
+        "id": event_id,
+        "kind": kind,
+        "severity": severity,
+        "title": title,
+        "detail": _text(row.get("detail"), 2000),
+        "recorded_at": recorded_at,
+        "repository": _text(row.get("repository"), 200),
+        "ref": _text(row.get("ref"), 500),
+    }
 
 
 def normalize_repository_audit(value: Any) -> Dict[str, Any]:
@@ -91,12 +223,20 @@ def normalize_repository_audit(value: Any) -> Dict[str, Any]:
             "detail": _text(row.get("detail"), 500),
         })
 
-    recorded_at = _text(value.get("recorded_at"), 64)
-    if not recorded_at:
-        recorded_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    raw_loops = value.get("loops") or []
+    if not isinstance(raw_loops, list):
+        raise ValueError("loops must be an array")
+    loops = [_normalize_loop(row) for row in raw_loops[:32]]
+
+    raw_events = value.get("events") or []
+    if not isinstance(raw_events, list):
+        raise ValueError("events must be an array")
+    events = [_normalize_event(row) for row in raw_events[:200]]
+
+    recorded_at = _text(value.get("recorded_at"), 64) or _utc_now()
 
     out: Dict[str, Any] = {
-        "schema_version": 1,
+        "schema_version": 2,
         "repository": _text(value.get("repository", "reppiks490/Icarus"), 160) or "reppiks490/Icarus",
         "source": _text(value.get("source", "mcp"), 64) or "mcp",
         "status": status,
@@ -114,11 +254,14 @@ def normalize_repository_audit(value: Any) -> Dict[str, Any]:
             "unresolved": _nonnegative_int(summary_in.get("unresolved", 0), "summary.unresolved"),
         },
         "checks": checks,
+        "loops": loops,
+        "events": events,
         "issue": {
             "number": _nonnegative_int(issue_in.get("number", 0), "issue.number"),
             "url": _text(issue_in.get("url"), 500),
         },
         "note": _text(value.get("note"), 1000),
+        "execution_authorized": False,
     }
     return out
 
@@ -133,11 +276,11 @@ def load_repository_audit(base_dir: str | os.PathLike[str]) -> Dict[str, Any]:
         out = normalize_repository_audit(json.loads(path.read_text(encoding="utf-8")))
         out["storage"] = {"source": "runtime", "path": str(path)}
         return out
-    except Exception as ex:  # fail visibly; never report a corrupt runtime audit as green
+    except Exception as ex:
         out = deepcopy(DEFAULT_REPOSITORY_AUDIT)
         out["status"] = "unknown"
         out["storage"] = {"source": "bundled-default", "path": str(path), "error": f"{type(ex).__name__}: {ex}"}
-        out["note"] = "Runtime repository audit is unreadable; showing bundled snapshot only."
+        out["note"] = "Runtime system-intelligence audit is unreadable; showing bundled snapshot only."
         return out
 
 
@@ -164,3 +307,29 @@ def save_repository_audit(base_dir: str | os.PathLike[str], value: Any) -> Dict[
     out = deepcopy(audit)
     out["storage"] = {"source": "runtime", "path": str(path)}
     return out
+
+
+def append_system_event(base_dir: str | os.PathLike[str], event: Any) -> Dict[str, Any]:
+    """Atomically append/replace one diagnostic MCP event without touching trading state."""
+    normalized = _normalize_event(event)
+    with _AUDIT_LOCK:
+        current = load_repository_audit(base_dir)
+        current.pop("storage", None)
+        prior = [row for row in current.get("events", []) if row.get("id") != normalized["id"]]
+        current["events"] = [normalized, *prior][:200]
+        current["recorded_at"] = normalized["recorded_at"]
+        return save_repository_audit(base_dir, current)
+
+
+def upsert_loop_status(base_dir: str | os.PathLike[str], loop: Any) -> Dict[str, Any]:
+    """Atomically publish one loop receipt/status row, keyed by loop id."""
+    normalized = _normalize_loop(loop)
+    if not normalized["recorded_at"]:
+        normalized["recorded_at"] = _utc_now()
+    with _AUDIT_LOCK:
+        current = load_repository_audit(base_dir)
+        current.pop("storage", None)
+        prior = [row for row in current.get("loops", []) if row.get("id") != normalized["id"]]
+        current["loops"] = [normalized, *prior][:32]
+        current["recorded_at"] = normalized["recorded_at"]
+        return save_repository_audit(base_dir, current)
