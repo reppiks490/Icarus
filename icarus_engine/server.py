@@ -14,6 +14,7 @@
   GET  /api/agent                 Field Agent recipes + paste-packs (Grok). Never executes. Never arms a broker.
   GET  /api/system/audit          latest local GitHub/MCP repository + CI audit snapshot
   GET  /api/integrity             export checklist, corpus, repairs, and MCP change receipts
+  GET  /api/engine-control        authenticated registered engine/subsystem control snapshot
   GET  /api/brain                 adaptive multi-agent brain, subsystem fabric, regimes, learning and shadow candidates
   GET  /api/possibility           ICARUS Psi latent pressure, counterfactual price, future-space diagnostics
   POST /admin/pause | /admin/resume        {"asset": "NQ"} or all          (Bearer token)
@@ -30,6 +31,7 @@
   POST /admin/brain/event                  append evidence-backed learning/agent/subsystem/candidate event; shadow only
   POST /admin/possibility/evidence          provenance-labelled gamma/basis/CTA/liquidation/rebalance research inputs
   POST /admin/rewarm                       {"asset": "NQ"}
+  POST /admin/engine-control               typed registered operator command with audit receipt
 """
 from __future__ import annotations
 
@@ -195,6 +197,50 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             raise ValueError(f"asset {runner.symbol} could not be removed")
         return {"asset": runner.symbol, "removed": True}
 
+    def _asset_apply_config(payload):
+        runner = _control_runner(payload["target"])
+        args = payload["args"]
+        allowed = {"values", "chart", "persist", "preset"}
+        extra = set(args) - allowed
+        if extra:
+            raise ValueError(f"unknown asset configuration fields: {sorted(extra)}")
+        values = args.get("values")
+        if values is not None and not isinstance(values, dict):
+            raise ValueError("values must be an object")
+        chart = validate_chart_config(args.get("chart"))
+        persist = args.get("persist", True)
+        if type(persist) is not bool:
+            raise ValueError("persist must be boolean")
+        kwargs = {}
+        if "preset" in args:
+            preset = args.get("preset") or None
+            if preset and not os.path.exists(preset_path(port.base_dir, str(preset))):
+                raise ValueError(f"preset {preset} not found")
+            kwargs["preset"] = preset
+        rebuilt = port.rewarm_asset(
+            runner.symbol,
+            values,
+            persist,
+            chart=chart,
+            **kwargs,
+        )
+        return {
+            "asset": rebuilt.symbol,
+            "rewarmed": True,
+            "persisted": persist,
+            "chart": chart or None,
+            "preset": port.preset_for(rebuilt),
+        }
+
+    def _asset_reset_config(payload):
+        runner = _control_runner(payload["target"])
+        rebuilt = port.rewarm_asset(runner.symbol, reset=True)
+        return {
+            "asset": rebuilt.symbol,
+            "rewarmed": True,
+            "asset_overrides_reset": True,
+        }
+
     def _asset_add(payload):
         target = payload["target"]
         args = payload["args"]
@@ -226,6 +272,30 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             "evolution": evolution_remote_sync.sync_once(),
         }
 
+    def _start_all_syncs(_payload):
+        loop_intelligence_sync.start()
+        brain_remote_sync.start()
+        brain_research_sync.start()
+        evolution_remote_sync.start()
+        return {
+            "loop_intelligence": "started",
+            "brain_remote": "started",
+            "brain_research": "started",
+            "evolution": "started",
+        }
+
+    def _stop_all_syncs(_payload):
+        loop_intelligence_sync.close()
+        brain_remote_sync.close()
+        brain_research_sync.close()
+        evolution_remote_sync.close()
+        return {
+            "loop_intelligence": "stopped",
+            "brain_remote": "stopped",
+            "brain_research": "stopped",
+            "evolution": "stopped",
+        }
+
     control = EngineControlPlane(
         port.base_dir,
         snapshotters={
@@ -251,6 +321,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 ControlAction("asset.pause", "Pause asset", "Assets", "Pause new entries for one running asset.", _asset_pause, target="asset"),
                 ControlAction("asset.resume", "Resume asset", "Assets", "Resume new entries for one running asset.", _asset_resume, target="asset"),
                 ControlAction("asset.rewarm", "Re-warm asset", "Assets", "Rebuild one asset from cached history.", _asset_rewarm, target="asset"),
+                ControlAction("asset.apply_config", "Apply asset configuration", "Assets", "Apply input/chart/preset configuration through ICARUS's atomic re-warm path. Args: values, chart, persist, preset.", _asset_apply_config, target="asset"),
+                ControlAction("asset.reset_config", "Reset asset overrides", "Assets", "Remove per-asset configuration overrides and atomically re-warm the asset.", _asset_reset_config, danger=True, confirmation="RESET ASSET CONFIG", target="asset"),
                 ControlAction("asset.flatten", "Flatten asset", "Assets", "Close the selected asset's open paper position.", _asset_flatten, danger=True, confirmation="FLATTEN PAPER POSITION", target="asset"),
                 ControlAction("asset.remove", "Remove asset", "Assets", "Stop and remove one running asset.", _asset_remove, danger=True, confirmation="REMOVE ASSET", target="asset"),
                 ControlAction("sync.loop_intelligence", "Sync loop intelligence", "Intelligence", "Refresh verified automation-loop receipts now.", lambda _: loop_intelligence_sync.sync_once()),
@@ -258,6 +330,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 ControlAction("sync.brain_research", "Sync research into Adaptive Brain", "Intelligence", "Refresh research-to-brain evidence now.", lambda _: brain_research_sync.sync_once()),
                 ControlAction("sync.evolution", "Sync MCP evolution evidence", "Intelligence", "Refresh repository-native MCP repair/audit/evolution evidence.", lambda _: evolution_remote_sync.sync_once()),
                 ControlAction("sync.all", "Sync all intelligence planes", "Intelligence", "Run all registered intelligence synchronizers once.", _sync_all),
+                ControlAction("sync.start_all", "Start all intelligence sync loops", "Intelligence", "Start all registered background intelligence synchronizers.", _start_all_syncs),
+                ControlAction("sync.stop_all", "Stop all intelligence sync loops", "Intelligence", "Stop all registered background intelligence synchronizers.", _stop_all_syncs, danger=True, confirmation="STOP ALL INTELLIGENCE SYNCS"),
                 ControlAction("autopilot.start", "Start Tactical Autopilot", "Autopilot", "Enable and start the Tactical Autopilot background loop.", lambda _: autopilot.start()),
                 ControlAction("autopilot.stop", "Stop Tactical Autopilot", "Autopilot", "Disable the Tactical Autopilot background loop.", lambda _: autopilot.stop()),
                 ControlAction("autopilot.step", "Run one Tactical Autopilot cycle", "Autopilot", "Run exactly one Tactical Autopilot research cycle.", lambda _: autopilot.cycle_once()),
