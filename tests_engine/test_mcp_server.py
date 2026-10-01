@@ -27,6 +27,11 @@ def test_mcp_server_imports_and_registers_engine_surface():
         "engine_possibility_state",
         "engine_possibility_evidence",
         "record_engine_possibility_evidence",
+        "refresh_engine_dreamstate",
+        "record_engine_parallax_outcome",
+        "record_current_parallax_decision_with_psi",
+        "engine_dreamstate_state",
+        "engine_parallax_state",
     ):
         assert callable(getattr(mcp_server, name))
 
@@ -334,3 +339,78 @@ def test_mcp_icarus_psi_routes_are_research_only(monkeypatch):
 def test_mcp_icarus_psi_rejects_non_object_evidence_json():
     assert "error" in mcp_server.record_engine_possibility_evidence("NQ", "fixture", "[]")
     assert "error" in mcp_server.record_engine_possibility_evidence("NQ", "fixture", "{bad")
+
+
+def test_mcp_parallax_dreamstate_research_routes(monkeypatch):
+    seen = []
+
+    def get(path):
+        seen.append(("get", path))
+        return {"authority": {"execution_authorized": False}}
+
+    def post(path, body):
+        seen.append(("post", path, body))
+        return {"execution_authorized": False, "production_decision_authorized": False}
+
+    monkeypatch.setattr(mcp_server, "_engine_get", get)
+    monkeypatch.setattr(mcp_server, "_engine_post", post)
+
+    assert mcp_server.engine_parallax_state()["authority"]["execution_authorized"] is False
+    assert mcp_server.engine_dreamstate_state()["authority"]["execution_authorized"] is False
+
+    decision = mcp_server.record_current_parallax_decision_with_psi(
+        "nq",
+        "long",
+        regime="strong",
+        context_json='{"setup":"fixture"}',
+        subsystem_votes_json='{"argus":{"state":"aligned"}}',
+        branches_json='[{"kind":"actual","label":"actual","params":{}}]',
+        decision_id="fixture-decision",
+        source_commit="a" * 40,
+    )
+    assert decision["execution_authorized"] is False
+
+    outcome = mcp_server.record_engine_parallax_outcome(
+        "fixture-decision",
+        "actual",
+        1.25,
+        metrics_json='{"pnl":125}',
+        evidence_json='["observed replay"]',
+        observed_at="2026-10-01T06:30:00Z",
+    )
+    assert outcome["production_decision_authorized"] is False
+
+    refreshed = mcp_server.refresh_engine_dreamstate(7)
+    assert refreshed["execution_authorized"] is False
+
+    assert seen[0] == ("get", "/api/parallax")
+    assert seen[1] == ("get", "/api/dreamstate")
+    assert seen[2] == ("post", "/admin/parallax/decision/current", {
+        "asset": "NQ",
+        "action": "long",
+        "regime": "strong",
+        "context": {"setup": "fixture"},
+        "subsystem_votes": {"argus": {"state": "aligned"}},
+        "branches": [{"kind": "actual", "label": "actual", "params": {}}],
+        "decision_id": "fixture-decision",
+        "source_commit": "a" * 40,
+    })
+    assert seen[3] == ("post", "/admin/parallax/outcome", {
+        "decision_id": "fixture-decision",
+        "label": "actual",
+        "utility": 1.25,
+        "metrics": {"pnl": 125},
+        "evidence": ["observed replay"],
+        "observed_at": "2026-10-01T06:30:00Z",
+    })
+    assert seen[4] == ("post", "/admin/dreamstate/refresh", {"min_samples": 7})
+
+
+def test_mcp_current_parallax_capture_rejects_caller_supplied_psi_vote():
+    result = mcp_server.record_current_parallax_decision_with_psi(
+        "NQ",
+        "long",
+        subsystem_votes_json='{"psi":{"state":"forged"}}',
+    )
+    assert "error" in result
+    assert "captured atomically" in result["error"]
