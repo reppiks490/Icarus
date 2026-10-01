@@ -74,6 +74,7 @@ from .code_provenance import local_code_provenance
 from .parallax import ParallaxStore
 from .dreamstate import DreamstateLab
 from .possibility import PossibilityEngine
+from .autopilot import TacticalAutopilot
 from .pantheon import PantheonKernel, subsystem_context
 
 
@@ -133,6 +134,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     brain_research_sync = BrainResearchSync(port.base_dir)
     evolution_remote_sync = EvolutionRemoteSync(port.base_dir)
     possibility = PossibilityEngine(port)
+    autopilot = TacticalAutopilot(port)
     parallax = ParallaxStore(port.base_dir)
     dreamstate = DreamstateLab(port.base_dir, parallax=parallax)
     pantheon = PantheonKernel(port.base_dir)
@@ -197,6 +199,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._send(200, (html_path.parent / "sources-ui.js").read_bytes(), "text/javascript")
             if p.path == "/integrity-ui.js":
                 return self._send(200, (html_path.parent / "integrity-ui.js").read_bytes(), "text/javascript")
+            if p.path == "/autopilot-ui.js":
+                return self._send(200, (html_path.parent / "autopilot-ui.js").read_bytes(), "text/javascript")
             if p.path == "/brain-ui.js":
                 return self._send(200, (html_path.parent / "brain-ui.js").read_bytes(), "text/javascript")
             if p.path == "/evolution-ui.js":
@@ -234,6 +238,10 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
                 return self._json(200, evolution_remote_sync.status())
+            if p.path == "/api/autopilot":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                return self._json(200, autopilot.status())
             if p.path == "/api/parallax":
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
@@ -478,7 +486,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._json(413, {"detail": "body too large"})
             raw = self.rfile.read(n) if n else b""
             try:
-                body = strict_json(raw) if p.path.startswith(("/admin/research/", "/admin/integrity/", "/admin/parallax/", "/admin/dreamstate/", "/admin/possibility/", "/admin/pantheon/")) else (json.loads(raw, parse_constant=_no_json_constants) if raw else {})
+                body = strict_json(raw) if p.path.startswith(("/admin/research/", "/admin/integrity/", "/admin/parallax/", "/admin/dreamstate/", "/admin/possibility/", "/admin/autopilot/", "/admin/pantheon/")) else (json.loads(raw, parse_constant=_no_json_constants) if raw else {})
             except ValueError as ex:
                 return self._json(400, {"detail": f"bad JSON body: {ex}"})
             if not isinstance(body, dict):
@@ -511,6 +519,24 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     return self._json(200, record_brain_event(port.base_dir, body))
                 except (ValueError, TypeError) as ex:
                     return self._json(400, {"detail": str(ex)})
+            if p.path == "/admin/autopilot/config":
+                try:
+                    return self._json(200, autopilot.configure(body))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+            if p.path == "/admin/autopilot/start":
+                return self._json(200, autopilot.start())
+            if p.path == "/admin/autopilot/stop":
+                return self._json(200, autopilot.stop())
+            if p.path == "/admin/autopilot/step":
+                try:
+                    return self._json(200, autopilot.cycle_once())
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+            if p.path == "/admin/autopilot/reset":
+                if body.get("confirm") is not True:
+                    return self._json(400, {"detail": "pass {\"confirm\": true}"})
+                return self._json(200, autopilot.reset())
             if p.path == "/admin/possibility/evidence":
                 try:
                     allowed = {"asset", "values", "source", "observed_at", "ttl_seconds"}
@@ -814,6 +840,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     class ResearchHTTPServer(ThreadingHTTPServer):
         def serve_forever(self, poll_interval=.5):
             research.start_background()
+            autopilot.start_background()
             loop_intelligence_sync.start()
             brain_remote_sync.start()
             brain_research_sync.start()
@@ -821,6 +848,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             try:
                 return super().serve_forever(poll_interval)
             finally:
+                autopilot.close()
                 evolution_remote_sync.close()
                 brain_research_sync.close()
                 brain_remote_sync.close()
@@ -828,6 +856,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 research.close()
 
         def server_close(self):
+            autopilot.close()
             evolution_remote_sync.close()
             brain_research_sync.close()
             brain_remote_sync.close()
@@ -842,6 +871,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     srv.brain_research_sync = brain_research_sync
     srv.evolution_remote_sync = evolution_remote_sync
     srv.possibility = possibility
+    srv.autopilot = autopilot
     srv.pantheon = pantheon
     srv.daemon_threads = True
     if not start:
