@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 import sqlite3
 import threading
@@ -17,6 +18,7 @@ from .contracts import (
     authority_block,
     digest,
     exact_git_sha,
+    finite,
     iso_aware,
     json_canonical,
     mapping,
@@ -24,6 +26,7 @@ from .contracts import (
     unit,
 )
 from .faculties import evaluate_faculties
+from .bridge import sibyl_evidence_candidates
 
 _LOCK = threading.RLock()
 
@@ -78,11 +81,35 @@ class PantheonKernel:
                     created_at TEXT NOT NULL,
                     UNIQUE(observation_id, agent_id)
                 );
+                CREATE TABLE IF NOT EXISTS claim_outcomes (
+                    outcome_id TEXT PRIMARY KEY,
+                    claim_id TEXT NOT NULL,
+                    observed_at TEXT NOT NULL,
+                    utility REAL NOT NULL,
+                    confidence REAL NOT NULL,
+                    evidence_json TEXT NOT NULL,
+                    created_at TEXT NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS species (
+                    species_id TEXT PRIMARY KEY,
+                    asset TEXT NOT NULL,
+                    kind TEXT NOT NULL,
+                    origin_claim_id TEXT NOT NULL,
+                    parent_species_id TEXT,
+                    generation INTEGER NOT NULL,
+                    stage TEXT NOT NULL,
+                    fitness_credit REAL NOT NULL,
+                    evidence_count INTEGER NOT NULL,
+                    payload_json TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                );
                 CREATE TABLE IF NOT EXISTS sentinel_cells (
                     cell_id TEXT PRIMARY KEY,
                     asset TEXT NOT NULL,
                     horizon_ms INTEGER NOT NULL,
                     last_observation_id TEXT NOT NULL,
+                    last_observed_at TEXT NOT NULL,
                     last_energy REAL NOT NULL,
                     last_status TEXT NOT NULL,
                     observation_count INTEGER NOT NULL DEFAULT 1,
@@ -91,9 +118,14 @@ class PantheonKernel:
                 CREATE INDEX IF NOT EXISTS idx_pantheon_obs_asset ON observations(asset, observed_at);
                 CREATE INDEX IF NOT EXISTS idx_pantheon_claim_obs ON claims(observation_id, kind);
                 CREATE INDEX IF NOT EXISTS idx_pantheon_agent_claim_obs ON agent_claims(observation_id, role);
+                CREATE INDEX IF NOT EXISTS idx_pantheon_outcome_claim ON claim_outcomes(claim_id, observed_at);
+                CREATE INDEX IF NOT EXISTS idx_pantheon_species_asset ON species(asset, stage, fitness_credit);
                 CREATE INDEX IF NOT EXISTS idx_pantheon_cells_energy ON sentinel_cells(last_energy, updated_at);
                 """
             )
+            columns = {row["name"] for row in con.execute("PRAGMA table_info(sentinel_cells)").fetchall()}
+            if "last_observed_at" not in columns:
+                con.execute("ALTER TABLE sentinel_cells ADD COLUMN last_observed_at TEXT NOT NULL DEFAULT ''")
 
     def _normalize(self, payload: Mapping[str, Any]) -> tuple[dict[str, Any], str, str]:
         if not isinstance(payload, Mapping):
