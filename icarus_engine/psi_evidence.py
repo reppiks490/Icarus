@@ -233,25 +233,70 @@ class PsiEvidenceLedger:
         )
         return rows
 
+    def _active_rows(self, asset: str, as_of_ts: float) -> list[dict[str, Any]]:
+        asset = str(asset or "").strip().upper()
+        if self.path is None:
+            return self._memory_rows(asset, as_of_ts, include_expired=False)
+        with self._connect() as con:
+            return [
+                dict(row) for row in con.execute(
+                    """SELECT evidence_id,schema_version,asset,feature,value,confidence,source,
+                              observed_at,observed_ts,received_ts,expires_ts,ttl_seconds,
+                              payload_hash,created_at
+                       FROM evidence
+                       WHERE asset=? AND observed_ts<=? AND expires_ts>?
+                       ORDER BY observed_ts DESC, received_ts DESC, evidence_id DESC""",
+                    (asset, as_of_ts, as_of_ts),
+                ).fetchall()
+            ]
+
     def active(self, asset: str, *, as_of_ts: float | None = None) -> dict[str, dict[str, Any]]:
         asset = str(asset or "").strip().upper()
         ts = time.time() if as_of_ts is None else float(as_of_ts)
-        if self.path is None:
-            rows = self._memory_rows(asset, ts, include_expired=False)
-        else:
-            with self._connect() as con:
-                rows = [
-                    dict(row) for row in con.execute(
-                        """SELECT evidence_id,schema_version,asset,feature,value,confidence,source,
-                                  observed_at,observed_ts,received_ts,expires_ts,ttl_seconds,
-                                  payload_hash,created_at
-                           FROM evidence
-                           WHERE asset=? AND observed_ts<=? AND expires_ts>?
-                           ORDER BY observed_ts DESC, received_ts DESC, evidence_id DESC""",
-                        (asset, ts, ts),
-                    ).fetchall()
-                ]
+        rows = self._active_rows(asset, ts)
         return self._select(rows, as_of_ts=ts, asset_filter=asset)
+
+    def active_by_source(self, asset: str, *, as_of_ts: float | None = None) -> dict[str, list[dict[str, Any]]]:
+        """Latest causally-active receipt per feature and source."""
+        asset = str(asset or "").strip().upper()
+        ts = time.time() if as_of_ts is None else float(as_of_ts)
+        rows = self._active_rows(asset, ts)
+        latest: dict[tuple[str, str], dict[str, Any]] = {}
+        for row in rows:
+            key = (str(row.get("feature") or ""), str(row.get("source") or ""))
+            if not key[0] or not key[1] or key in latest:
+                continue
+            latest[key] = dict(row)
+        grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        for (feature, _source), row in latest.items():
+            grouped[feature].append(row)
+        for feature in grouped:
+            grouped[feature].sort(key=lambda row: str(row.get("source") or ""))
+        return dict(grouped)
+
+    def disagreement(self, asset: str, *, as_of_ts: float | None = None) -> dict[str, dict[str, Any]]:
+        groups = self.active_by_source(asset, as_of_ts=as_of_ts)
+        out: dict[str, dict[str, Any]] = {}
+        for feature, rows in groups.items():
+            values = [float(row["value"]) for row in rows]
+            weights = [max(0.0, float(row["confidence"])) for row in rows]
+            total = sum(weights)
+            mean = sum(v * w for v, w in zip(values, weights)) / total if total > 0 else sum(values) / len(values)
+            variance = (
+                sum(w * (v - mean) ** 2 for v, w in zip(values, weights)) / total
+                if total > 0 else sum((v - mean) ** 2 for v in values) / len(values)
+            )
+            spread = max(values) - min(values) if values else 0.0
+            sign_conflict = any(v > 0.10 for v in values) and any(v < -0.10 for v in values)
+            out[feature] = {
+                "source_count": len(rows),
+                "sources": [str(row["source"]) for row in rows],
+                "weighted_mean": mean,
+                "weighted_std": variance ** 0.5,
+                "range": spread,
+                "sign_conflict": sign_conflict,
+            }
+        return out
 
     def snapshot(
         self,
@@ -329,6 +374,7 @@ class PsiEvidenceLedger:
             "active": {key: dict(value) for key, value in sorted(selected.items())},
             "history": history,
             "total_history_count": total,
+            "disagreement": self.disagreement(asset, as_of_ts=ts) if asset else {},
             "execution_authorized": False,
             "production_decision_authorized": False,
         }
@@ -348,5 +394,6 @@ class PsiEvidenceLedger:
             "active_count": int(snap.get("active_count") or 0),
             "total_history_count": int(snap.get("total_history_count") or 0),
             "latest_observed_at": history[0].get("observed_at") if history else None,
+            "conflicting_feature_count": sum(1 for row in (snap.get("disagreement") or {}).values() if row.get("sign_conflict")),
             "schema_version": SCHEMA_VERSION,
         }
