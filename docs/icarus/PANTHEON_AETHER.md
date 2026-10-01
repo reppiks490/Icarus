@@ -490,3 +490,13 @@ source observation used by the VERITAS reconciliation. A later unrelated
 observation cannot reuse an earlier right-for-right-reasons result to launder a
 new positive outcome into AETHER fitness. Negative outcomes remain countable
 without this positive-credit proof chain.
+
+
+### Claim-outcome source provenance
+
+Each claim-outcome row now persists the exact `source_observation_id` used for
+its evidence. The source identifier is part of the outcome's immutable semantic
+identity and duplicate check, so a recorded result cannot later be silently
+rebound to a different observation at the same timestamp. Legacy rows retain a
+null source identifier; all newly source-bound VERITAS fitness evidence carries
+the durable observation link.

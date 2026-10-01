@@ -86,6 +86,7 @@ class PantheonKernel:
                     outcome_id TEXT PRIMARY KEY,
                     claim_id TEXT NOT NULL,
                     observed_at TEXT NOT NULL,
+                    source_observation_id TEXT,
                     utility REAL NOT NULL,
                     fitness_utility REAL NOT NULL,
                     confidence REAL NOT NULL,
@@ -142,6 +143,8 @@ class PantheonKernel:
             if "fitness_utility" not in outcome_columns:
                 con.execute("ALTER TABLE claim_outcomes ADD COLUMN fitness_utility REAL")
                 con.execute("UPDATE claim_outcomes SET fitness_utility=utility WHERE fitness_utility IS NULL")
+            if "source_observation_id" not in outcome_columns:
+                con.execute("ALTER TABLE claim_outcomes ADD COLUMN source_observation_id TEXT")
             columns = {row["name"] for row in con.execute("PRAGMA table_info(sentinel_cells)").fetchall()}
             if "last_observed_at" not in columns:
                 con.execute("ALTER TABLE sentinel_cells ADD COLUMN last_observed_at TEXT NOT NULL DEFAULT ''")
@@ -690,6 +693,7 @@ class PantheonKernel:
             {
                 "claim_id": claim_id,
                 "observed_at": observed_at,
+                "source_observation_id": source_observation_id,
                 "utility": utility,
                 "confidence": confidence,
                 "evidence": evidence,
@@ -772,6 +776,7 @@ class PantheonKernel:
             if prior_time is not None and (
                 abs(float(prior_time["utility"]) - utility) > 1e-12
                 or abs(float(prior_time["confidence"]) - confidence) > 1e-12
+                or (prior_time["source_observation_id"] or None) != source_observation_id
                 or prior_time["evidence_json"] != evidence_json
             ):
                 raise ValueError("claim outcome is immutable for claim_id + observed_at")
@@ -779,9 +784,9 @@ class PantheonKernel:
             if prior is None and prior_time is None:
                 con.execute(
                     """INSERT INTO claim_outcomes(
-                        outcome_id,claim_id,observed_at,utility,fitness_utility,confidence,evidence_json,created_at
-                    ) VALUES(?,?,?,?,?,?,?,?)""",
-                    (outcome_id, claim_id, observed_at, utility, fitness_utility, confidence, evidence_json, now),
+                        outcome_id,claim_id,observed_at,source_observation_id,utility,fitness_utility,confidence,evidence_json,created_at
+                    ) VALUES(?,?,?,?,?,?,?,?,?)""",
+                    (outcome_id, claim_id, observed_at, source_observation_id, utility, fitness_utility, confidence, evidence_json, now),
                 )
 
             outcomes = con.execute(
@@ -875,6 +880,7 @@ class PantheonKernel:
             "outcome_id": outcome_id,
             "claim_id": claim_id,
             "observed_at": observed_at,
+            "source_observation_id": source_observation_id,
             "utility": utility,
             "fitness_utility": fitness_utility,
             "veritas_gate": veritas_gate,

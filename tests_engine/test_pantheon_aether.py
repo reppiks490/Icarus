@@ -571,6 +571,42 @@ def test_veritas_never_hides_negative_monetization_fitness(tmp_path):
     assert outcome["fitness_credit"] == pytest.approx(-0.6)
 
 
+def test_claim_outcome_persists_source_observation_provenance(tmp_path):
+    kernel = PantheonKernel(tmp_path)
+    origin = kernel.record_observation(_veritas_payload("pan-veritas-source-provenance"))
+    claim = _monetization_claim(origin)
+    source = kernel.record_observation(_veritas_source_payload(
+        "pan-veritas-source-provenance-later",
+        "2026-10-01T06:00:20Z",
+        basis_expands=True,
+        queue_replenishment=0.8,
+        cross_asset_lead=0.2,
+    ))
+    kernel.record_veritas_reconciliation({
+        "observation_id": origin["observation_id"],
+        "source_observation_id": source["observation_id"],
+        "observed_at": source["observed_at"],
+        "confidence": 0.9,
+        "evidence": ["fixture:source-provenance"],
+    })
+    outcome = kernel.record_claim_outcome({
+        "claim_id": claim["claim_id"],
+        "observed_at": source["observed_at"],
+        "utility": 0.5,
+        "confidence": 0.9,
+        "_source_observation_id": source["observation_id"],
+        "evidence": ["fixture:source-provenance-outcome"],
+    })
+    assert outcome["source_observation_id"] == source["observation_id"]
+
+    with kernel._connect() as con:
+        row = con.execute(
+            "SELECT source_observation_id FROM claim_outcomes WHERE outcome_id=?",
+            (outcome["outcome_id"],),
+        ).fetchone()
+    assert row["source_observation_id"] == source["observation_id"]
+
+
 def test_veritas_certificate_fails_closed_on_malformed_signatures(tmp_path):
     payload = _veritas_payload("pan-veritas-invalid")
     payload["signals"]["mechanism_certificate"]["expected_signatures"] = [
