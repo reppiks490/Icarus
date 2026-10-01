@@ -1,0 +1,148 @@
+{
+  "schema_version": "icarus-provenance-ledger-v1",
+  "generated_cycle_id": "20260924-18",
+  "evidence": [
+    {
+      "evidence_id": "EVID-ICARUS-BASELINE-001",
+      "repo": "reppiks490/Icarus",
+      "commit": "007e70189945b8e112904cf92b2b1a12e43792d6",
+      "tree": "43c5be83943d50515525c57d5f20271032a2ff78",
+      "kind": "repository_snapshot"
+    },
+    {
+      "evidence_id": "EVID-ICARUS-MODELS-001",
+      "repo": "reppiks490/Icarus",
+      "commit": "007e70189945b8e112904cf92b2b1a12e43792d6",
+      "path": "icarus_bridge/models.py",
+      "blob_sha": "2578d03b23879f31a326c9021f812efc322218ae",
+      "kind": "source"
+    },
+    {
+      "evidence_id": "EVID-ICARUS-WEBHOOK-001",
+      "repo": "reppiks490/Icarus",
+      "commit": "007e70189945b8e112904cf92b2b1a12e43792d6",
+      "path": "icarus_bridge/webhook.py",
+      "blob_sha": "65aedbf544241af0d2751d344027e5089ec9e2e3",
+      "kind": "source"
+    },
+    {
+      "evidence_id": "EVID-ICARUS-EXECUTOR-001",
+      "repo": "reppiks490/Icarus",
+      "commit": "007e70189945b8e112904cf92b2b1a12e43792d6",
+      "path": "icarus_bridge/executor.py",
+      "blob_sha": "e56d6e2844d82020a09f947cdc7eda358071fc9b",
+      "kind": "source"
+    },
+    {
+      "evidence_id": "EVID-ICARUS-BRIDGE-TESTS-001",
+      "repo": "reppiks490/Icarus",
+      "commit": "007e70189945b8e112904cf92b2b1a12e43792d6",
+      "path": "tests_engine/test_bridge.py",
+      "blob_sha": "03f9295ae36086543fc2ca1fcee4dfc31610bd78",
+      "kind": "test_source"
+    },
+    {
+      "evidence_id": "EVID-ICARUS-SPEC-001",
+      "repo": "reppiks490/Icarus",
+      "commit": "007e70189945b8e112904cf92b2b1a12e43792d6",
+      "path": "SPEC.md",
+      "blob_sha": "e064aa4f3975b704a0872b6308f6e961977a6ea9",
+      "kind": "frozen_spec"
+    },
+    {
+      "evidence_id": "EVID-ICARUS-XGB-STUB-001",
+      "repo": "reppiks490/Icarus",
+      "commit": "007e70189945b8e112904cf92b2b1a12e43792d6",
+      "path": "icarus_engine/trainers/xgb_slot.py",
+      "blob_sha": "9cfffe7c1b51e6885556e01ce3e986e1813a0a10",
+      "kind": "source"
+    },
+    {
+      "evidence_id": "EVID-AION-STORE-001",
+      "repo": "reppiks490/aion-parallax-research",
+      "commit": "12a7cb8ef99e84ce50b766db0aea1592b3906f80",
+      "path": "aion/store.py",
+      "blob_sha": "a0fa57cdbfa0ef77f053bcfeeb7c92074f2a2714",
+      "kind": "source"
+    },
+    {
+      "evidence_id": "EVID-AION-MEMORY-TESTS-001",
+      "repo": "reppiks490/aion-parallax-research",
+      "commit": "12a7cb8ef99e84ce50b766db0aea1592b3906f80",
+      "path": "tests/test_memory.py",
+      "blob_sha": "e65dfad41e179f96b30fd77e58359446f1109d3f",
+      "kind": "test_source"
+    },
+    {
+      "evidence_id": "EVID-AION-INTEGRATION-001",
+      "repo": "reppiks490/aion-parallax-research",
+      "commit": "12a7cb8ef99e84ce50b766db0aea1592b3906f80",
+      "path": "docs/INTEGRATION.md",
+      "blob_sha": "edf5bb45777bd2f15ddb27619f20b26ea59b667f",
+      "kind": "interface_doc"
+    },
+    {
+      "evidence_id": "EVID-ARGUS-ATLAS-001",
+      "repo": "reppiks490/aion-parallax-research",
+      "commit": "12a7cb8ef99e84ce50b766db0aea1592b3906f80",
+      "path": "docs/CODE_ATLAS/ARGUS.md",
+      "blob_sha": "f63d91d269687f09cd7086927e999d846a46c99c",
+      "kind": "interface_doc"
+    },
+    {
+      "evidence_id": "EVID-ATHENA-ATLAS-001",
+      "repo": "reppiks490/aion-parallax-research",
+      "commit": "12a7cb8ef99e84ce50b766db0aea1592b3906f80",
+      "path": "docs/CODE_ATLAS/ATHENA.md",
+      "blob_sha": "ffac63f88b82f78368b1ab6a24449104bf9cf0cb",
+      "kind": "interface_doc"
+    },
+    {
+      "evidence_id": "EVID-DAEDALUS-ATLAS-001",
+      "repo": "reppiks490/aion-parallax-research",
+      "commit": "12a7cb8ef99e84ce50b766db0aea1592b3906f80",
+      "path": "docs/CODE_ATLAS/DAEDALUS.md",
+      "blob_sha": "d30ddee29ea7b11fd9b0a828a4e7707d671b0d19",
+      "kind": "interface_doc"
+    },
+    {
+      "evidence_id": "EVID-NEXUS-SYSTEM-MAP-001",
+      "repo": "reppiks490/icarus-csv-evidence-lab",
+      "commit": "d6a5868e3f3202ef82579aca40b83cb3f8a4b491",
+      "path": "docs/SYSTEM_MAP.md",
+      "blob_sha": "4194b2386b3a3ab2d5696ebcf37736e961411a81",
+      "kind": "handoff_doc"
+    },
+    {
+      "evidence_id": "EVID-NEXUS-AUDIT-001",
+      "repo": "reppiks490/icarus-csv-evidence-lab",
+      "commit": "d6a5868e3f3202ef82579aca40b83cb3f8a4b491",
+      "path": "docs/NEXUS_HANDOFF_AUDIT.md",
+      "blob_sha": "20e58c276d036ce528a43246757b03c55b0161cf",
+      "kind": "audit_doc"
+    },
+    {
+      "evidence_id": "EVID-DAEDALUS-README-001",
+      "repo": "reppiks490/daedalus-research-os",
+      "commit": "74ad94149b02ddd3f69d535ee5fdc00c1fdbe096",
+      "path": "README.md",
+      "blob_sha": "3d5e3d454210d22c2da2176fc82bd71aace56124",
+      "kind": "repository_doc"
+    },
+    {
+      "evidence_id": "EVID-ATHENA-SUPERVISORY-001",
+      "repo": "reppiks490/daedalus-research-os",
+      "commit": "74ad94149b02ddd3f69d535ee5fdc00c1fdbe096",
+      "path": "docs/ATHENA_SUPERVISORY_FABRIC.md",
+      "blob_sha": "930a46d6951db6b12c93ba76ea903ddc6bab83b2",
+      "kind": "interface_doc"
+    }
+  ],
+  "lineage_rules": {
+    "same_commit_or_underlying_test_counts_once": true,
+    "summaries_do_not_create_independent_evidence": true,
+    "derived_composites_not_independent_replication": true,
+    "cross_revision_requires_revalidation": true,
+    "unknown_history_does_not_become_clean_multiple_testing": false
+  }
+}

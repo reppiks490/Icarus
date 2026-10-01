@@ -178,7 +178,10 @@ def detect_granularity(bars: List[Bar]) -> int:
     if not deltas:
         return 60
     med = int(statistics.median(deltas))
-    return min(_COMMON_TF, key=lambda t: abs(t - med))
+    near = min(_COMMON_TF, key=lambda t: abs(t - med))
+    # Claude (Opus 5.5) 2026-09-27: snap only clock jitter (within 1%). 61m is not 60m, and weekly or monthly
+    # bars used to snap to daily and merge into the daily file.
+    return near if abs(near - med) <= 0.01 * near else med
 
 
 def merge_bars(existing: Iterable[Bar], incoming: Iterable[Bar]) -> List[Bar]:
@@ -322,7 +325,7 @@ class FileFeed:
 
 
 def _hub_symbol(ticker: str) -> str:
-    """Map a feed ticker (NQ=F, NQU26.CME, CME_MINI:NQ1!) onto a registry symbol."""
+    """Map a continuous provider/chart ticker (NQ=F, CME_MINI:NQ1!, MNQ=F, etc.) onto a registry symbol."""
     from ..assets import REGISTRY
     raw = (ticker or "").upper().split(":")[-1]
     for spec in REGISTRY.values():

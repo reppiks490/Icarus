@@ -1,0 +1,53 @@
+{
+  "generated_at": "2026-09-24T18:33:00-05:00",
+  "timezone": "America/Chicago",
+  "policy_version": "icarus-control-v1",
+  "handoff_schema_version": "icarus-pipeline-v1",
+  "active": [
+    {
+      "id": "6ab50595ccb0819184e68bf620480e91",
+      "title": "ICARUS Unified Control Cycle",
+      "enabled": true,
+      "schedule": "FREQ=HOURLY;BYMINUTE=0;BYSECOND=0",
+      "updated_at": "2026-09-24T23:03:17.377748Z",
+      "last_run_time": "2026-09-24T23:02:53.140641Z",
+      "latest_prompt_runtime_verified": false,
+      "reason": "last_run_time <= updated_at"
+    }
+  ],
+  "disabled": [
+    {
+      "id": "6ab487f2edac8191ac50c99b26775ad1",
+      "title": "1/5 ICARUS Evidence Convergence"
+    },
+    {
+      "id": "6ab47d0f7ab08191a5293ec9181e4fce",
+      "title": "2/5 ICARUS Subsystem Rotation"
+    },
+    {
+      "id": "6ab45acb71a481919e7cda2fcae073a1",
+      "title": "3/5 ICARUS Agent Reach Edge Research"
+    },
+    {
+      "id": "6ab47cac6eec8191b4e22fcdf4314cf2",
+      "title": "4/5 ICARUS Repair & Architecture Forge"
+    },
+    {
+      "id": "6ab45cd29df4819182b4ad09661de84e",
+      "title": "5/5 ICARUS Verification & Release"
+    },
+    {
+      "id": "6ab487512e9c8191b7bbc2bd42bfd304",
+      "title": "ICARUS Implementation Extraction Loop"
+    },
+    {
+      "id": "6ab47d3efef48191874fc2fdba18ef74",
+      "title": "ICARUS Release Cohesion Loop"
+    },
+    {
+      "id": "6ab47a8451088191970b043ccaa58abb",
+      "title": "HELIOS Audit Loop"
+    }
+  ],
+  "invariant": "execution_authorized=false"
+}

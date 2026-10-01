@@ -1,0 +1,97 @@
+{
+  "pipeline_policy_version": "icarus-control-v1",
+  "handoff_schema_version": "icarus-pipeline-v1",
+  "cycle_id": "20260924-18",
+  "execution_instance_id": "20260924-18-UNIFIED",
+  "pipeline_policy_epoch": "20260924-18",
+  "execution_authorized": false,
+  "repository_write_authorization": "explicit user authorization for organized handoff to repository",
+  "repository_mutation_scope": "integration branch documentation/handoff package only",
+  "merge_authorized": false,
+  "deploy_authorized": false,
+  "trade_authorized": false,
+  "baseline": {
+    "repo": "reppiks490/Icarus",
+    "branch": "main",
+    "commit": "007e70189945b8e112904cf92b2b1a12e43792d6",
+    "tree": "43c5be83943d50515525c57d5f20271032a2ff78",
+    "drift_status_at_packaging": "NO_DRIFT"
+  },
+  "continuity": {
+    "prior_cycle_state_status": "UNVERIFIED",
+    "cross_cycle_continuity_status": "UNAVAILABLE",
+    "historical_attempt_universe": "NOT_RECOVERED"
+  },
+  "claims": [
+    {
+      "claim_id": "ICARUS-RISK-001",
+      "status": "CONFIRMED_DEFECT",
+      "maturity": "SPECIFIED",
+      "authority_ceiling": "REPAIR_READY"
+    },
+    {
+      "claim_id": "AION-INTEGRITY-001",
+      "status": "CONFIRMED_SCOPE_GAP",
+      "maturity": "SPECIFIED",
+      "authority_ceiling": "DESIGN_REQUIRED"
+    },
+    {
+      "claim_id": "TRAINER-CALIBRATION-001",
+      "status": "CONFIRMED_SPECIFICATION_CONFLICT",
+      "maturity": "SPECIFIED",
+      "authority_ceiling": "DESIGN_AWAITING_APPROVAL"
+    },
+    {
+      "claim_id": "NEXUS-RELEASE-001",
+      "status": "CONFIRMED_HANDOFF_BLOCKER",
+      "maturity": "EVIDENCE_ONLY",
+      "authority_ceiling": "SOURCE_REQUIRED"
+    }
+  ],
+  "conflicts": [
+    {
+      "conflict_set_id": "CONFLICT-TRAINER-001",
+      "members": [
+        "final holdout should measure data unused by fitting/calibration",
+        "SPEC.md requires isotonic calibration fitted on that holdout"
+      ],
+      "status": "OPEN"
+    }
+  ],
+  "dependencies": [
+    {
+      "from": "ICARUS-RISK-001",
+      "requires": [
+        "negative event regression",
+        "fail-closed parser/dispatcher",
+        "fresh bridge/full applicable tests"
+      ]
+    },
+    {
+      "from": "AION-INTEGRITY-001",
+      "requires": [
+        "approved integrity architecture",
+        "tamper-detection oracle",
+        "replay compatibility verification"
+      ]
+    },
+    {
+      "from": "TRAINER-CALIBRATION-001",
+      "requires": [
+        "owner-approved temporal calibration/evaluation protocol"
+      ]
+    },
+    {
+      "from": "NEXUS-RELEASE-001",
+      "requires": [
+        "canonical source identity",
+        "unified ten-ZIP manifest",
+        "regenerated verified seal"
+      ]
+    }
+  ],
+  "multiple_testing_status": "PARTIAL",
+  "no_synthetic_bars": true,
+  "no_pulse_rewrite": true,
+  "state_persistence_note": "This repository handoff is a newly authorized durable package; it does not retroactively validate unavailable prior-cycle state."
+}

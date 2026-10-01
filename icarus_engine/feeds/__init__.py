@@ -1,5 +1,7 @@
-"""Market-data feeds (stdlib only, no API keys).
+"""Market-data feeds.
 
+  databento Optional authenticated CME/Globex adapter: continuous volume-front futures,
+            1-second OHLCV, trades, MBP-10 and MBO snapshots.
   coinbase  Coinbase Exchange public REST — the same prints TradingView shows for
             COINBASE:BTCUSD, so a parity check against a TradingView chart of the
             same symbol compares like with like. History is paged (300 candles per
