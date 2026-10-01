@@ -398,6 +398,30 @@ def test_parallax_hac_can_reject_naive_significance_under_serial_dependence(tmp_
     assert signal["candidate_eligible"] is False
 
 
+def test_parallax_fdr_uses_dependence_adjusted_screen_p_value():
+    items = [
+        {
+            "asset": "NQ",
+            "regime": "trend",
+            "source_commit": "a" * 40,
+            "comparison_contract_hash": "c" * 64,
+            "p_one_sided": 0.001,
+            "screen_p_one_sided": 0.40,
+        },
+        {
+            "asset": "NQ",
+            "regime": "trend",
+            "source_commit": "a" * 40,
+            "comparison_contract_hash": "c" * 64,
+            "p_one_sided": 0.002,
+            "screen_p_one_sided": 0.50,
+        },
+    ]
+    ParallaxStore._apply_bh(items)
+    assert items[0]["q_value"] == pytest.approx(0.50)
+    assert items[1]["q_value"] == pytest.approx(0.50)
+
+
 def test_parallax_cross_revision_contradiction_blocks_robust_readiness(tmp_path):
     store = ParallaxStore(tmp_path)
     for i in range(6):
@@ -945,6 +969,37 @@ def test_dreamstate_keeps_one_active_trial_per_revision_contract_family_as_evide
     assert same_family[0]["candidate_id"] == first_id
     assert second["refresh"]["skipped_active_family"] >= 1
     assert second["family_trial_budget"] == 12
+
+
+def test_dreamstate_revision_requires_more_independent_episodes_not_more_raw_pairs(tmp_path):
+    store = ParallaxStore(tmp_path)
+    for i in range(5):
+        _record_pair(store, i, delay_utility=1.0, episode_id=f"episode-{i}")
+
+    lab = DreamstateLab(tmp_path, parallax=store)
+    first = lab.refresh(min_samples=5)
+    candidate = next(
+        c for c in first["candidates"]
+        if c["mutation"]["op"] == "set_execution_delay_bars"
+    )
+    assert candidate["search_accounting"]["source_effective_pairs"] == 5
+    lab.retire(candidate["candidate_id"], "test terminal revision")
+
+    _record_pair(store, 5, delay_utility=1.0, episode_id="episode-0")
+    source = next(
+        row for row in store.hypotheses(min_samples=5)
+        if row["branch_label"] == "delay_1"
+    )
+    assert source["evidence_pair_count"] == 6
+    assert source["effective_pair_count"] == 5
+
+    refreshed = lab.refresh(min_samples=5)
+    family = [
+        c for c in refreshed["candidates"]
+        if c["family_id"] == candidate["family_id"]
+    ]
+    assert len(family) == 1
+    assert refreshed["refresh"]["skipped_stale_evidence"] >= 1
 
 
 def test_dreamstate_isolates_families_across_source_revisions(tmp_path):
