@@ -260,12 +260,17 @@ No additional live-control endpoint is required. The existing authenticated
 
 accepts an optional bounded `claim_outcomes` list. An outcome names a prior
 claim, observation time, bounded utility, confidence, and evidence. Utility
-must lie in `[-1, 1]` and fails closed outside that range. Outcomes cannot
-predate their claim's causal availability and are immutable for a given
-`claim_id + observed_at`. When a feedback observation causes speciation, the
-offspring mutation claim is bound to that feedback observation (and its
-observation time), not retroactively attached to the older parent observation.
-Idempotent retries are safe.
+must lie in `[-1, 1]` and fails closed outside that range. Every scored
+outcome requires at least one evidence reference. A claim cannot receive
+fitness before its originating market horizon has matured; mutation descendants
+inherit the same rule from their own causal availability time. When feedback is
+attached through a PANTHEON observation, the outcome timestamp must equal that
+source observation timestamp and its asset must match the claim asset.
+Zero-confidence observations remain durable evidence but contribute zero
+fitness. Outcomes are immutable for a given `claim_id + observed_at`. When a
+feedback observation causes speciation, the offspring mutation claim is bound
+to that feedback observation (and its observation time), not retroactively
+attached to the older parent observation. Idempotent retries are safe.
 
 ## Causal chronology
 
