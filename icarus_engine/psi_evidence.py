@@ -95,7 +95,7 @@ class PsiEvidenceLedger:
         digest = hashlib.sha256(raw.encode("utf-8")).hexdigest()
         return "psi-" + digest[:32], digest
 
-    def record(self, row: Mapping[str, Any]) -> dict[str, Any]:
+    def _prepare(self, row: Mapping[str, Any]) -> dict[str, Any]:
         required = {
             "asset", "feature", "value", "confidence", "source", "observed_at",
             "observed_ts", "received_ts", "expires_ts", "ttl_seconds", "created_at",
@@ -124,42 +124,67 @@ class PsiEvidenceLedger:
         for field in ("value", "confidence", "observed_ts", "received_ts", "expires_ts", "ttl_seconds"):
             if _finite(stored[field]) is None:
                 raise ValueError(f"{field} must be finite")
+        return stored
+
+    def record_many(self, rows: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
+        """Atomically record one evidence submission.
+
+        SQLite commits all prepared receipts in one transaction. The in-memory
+        fallback stages new rows and publishes them only after every row is prepared.
+        """
+        prepared = [self._prepare(row) for row in rows]
+        if not prepared:
+            return []
 
         with self._lock:
             if self.path is None:
-                existing = self._memory.get(evidence_id)
-                if existing is not None:
-                    return {**dict(existing), "inserted": False}
-                self._memory[evidence_id] = dict(stored)
-                return {**stored, "inserted": True}
+                staged = dict(self._memory)
+                results: list[dict[str, Any]] = []
+                for stored in prepared:
+                    evidence_id = stored["evidence_id"]
+                    existing = staged.get(evidence_id)
+                    if existing is not None:
+                        results.append({**dict(existing), "inserted": False})
+                    else:
+                        staged[evidence_id] = dict(stored)
+                        results.append({**stored, "inserted": True})
+                self._memory = staged
+                return results
 
+            results = []
             with self._connect() as con:
-                cur = con.execute(
-                    """INSERT OR IGNORE INTO evidence(
-                           evidence_id,schema_version,asset,feature,value,confidence,source,
-                           observed_at,observed_ts,received_ts,expires_ts,ttl_seconds,
-                           payload_hash,created_at
-                       ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-                    (
-                        stored["evidence_id"], stored["schema_version"], stored["asset"],
-                        stored["feature"], stored["value"], stored["confidence"], stored["source"],
-                        stored["observed_at"], stored["observed_ts"], stored["received_ts"],
-                        stored["expires_ts"], stored["ttl_seconds"], stored["payload_hash"],
-                        stored["created_at"],
-                    ),
-                )
-                if cur.rowcount > 0:
-                    return {**stored, "inserted": True}
-                existing = con.execute(
-                    """SELECT evidence_id,schema_version,asset,feature,value,confidence,source,
-                              observed_at,observed_ts,received_ts,expires_ts,ttl_seconds,
-                              payload_hash,created_at
-                       FROM evidence WHERE evidence_id=?""",
-                    (evidence_id,),
-                ).fetchone()
-                if existing is None:
-                    raise RuntimeError("idempotent Psi evidence receipt disappeared after INSERT OR IGNORE")
-                return {**dict(existing), "inserted": False}
+                for stored in prepared:
+                    cur = con.execute(
+                        """INSERT OR IGNORE INTO evidence(
+                               evidence_id,schema_version,asset,feature,value,confidence,source,
+                               observed_at,observed_ts,received_ts,expires_ts,ttl_seconds,
+                               payload_hash,created_at
+                           ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                        (
+                            stored["evidence_id"], stored["schema_version"], stored["asset"],
+                            stored["feature"], stored["value"], stored["confidence"], stored["source"],
+                            stored["observed_at"], stored["observed_ts"], stored["received_ts"],
+                            stored["expires_ts"], stored["ttl_seconds"], stored["payload_hash"],
+                            stored["created_at"],
+                        ),
+                    )
+                    if cur.rowcount > 0:
+                        results.append({**stored, "inserted": True})
+                        continue
+                    existing = con.execute(
+                        """SELECT evidence_id,schema_version,asset,feature,value,confidence,source,
+                                  observed_at,observed_ts,received_ts,expires_ts,ttl_seconds,
+                                  payload_hash,created_at
+                           FROM evidence WHERE evidence_id=?""",
+                        (stored["evidence_id"],),
+                    ).fetchone()
+                    if existing is None:
+                        raise RuntimeError("idempotent Psi evidence receipt disappeared after INSERT OR IGNORE")
+                    results.append({**dict(existing), "inserted": False})
+            return results
+
+    def record(self, row: Mapping[str, Any]) -> dict[str, Any]:
+        return self.record_many([row])[0]
 
     @staticmethod
     def _select(
