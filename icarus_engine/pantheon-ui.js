@@ -47,6 +47,7 @@
       else if(kv[0]==='nemesis') key='survival '+pct(row.survival_score)+(row.edge_half_life_seconds!=null?' · half-life '+num(row.edge_half_life_seconds,1)+'s':' · half-life unmeasured');
       else if(kv[0]==='ex_nihilo') key='surprise '+pct(row.ontology_surprise);
       else if(kv[0]==='echo') key=(row.lineage_verified===false?'lineage UNVERIFIED · ':'')+'echo risk '+pct(row.echo_risk)+' · independent support '+pct(row.effective_independent_support)+(row.consensus_illusion_candidate?' · ILLUSION CANDIDATE':'');
+      else if(kv[0]==='veritas') key=row.status==='active'?('certificate '+h(row.mechanism_id||'')+' · '+h(row.direction||'unknown')+' · reconciliation PENDING'):'no mechanism certificate';
       else if(kv[0]==='archon') key='conflict '+pct(row.contradiction)+' · echo '+pct(row.echo_risk);
       else if(kv[0]==='socrates') key='priority '+pct(row.question_priority)+' · '+h((row.question_queue||[]).length)+' questions · '+h((row.hypothesis_queue||[]).length)+' hypotheses';
       else if(kv[0]==='mint') key=row.best_candidate?('best '+h(row.best_candidate.name)+' · stress net '+num(row.best_candidate.stress_expected_net,2)):'no positive candidate';
@@ -63,6 +64,10 @@
       return '<tr><td><b>'+h(c.role||'')+'</b><div class="small muted tnum">'+h(c.agent_id||'')+'</div></td><td>'+h(q.direction||'unknown')+'</td><td class="tnum">'+pct(q.confidence)+'</td><td>'+h(q.thesis||'')+'</td><td class="small muted">'+h(q.falsifier||'')+'</td></tr>';
     }).join('');
     const deliberation=latest.deliberation||{};
+    const veritasState=latest.veritas_reconciliation||{};
+    const veritasPayload=veritasState.reconciliation||{};
+    const veritasScore=veritasPayload.score||{};
+    const veritasFaculty=f.veritas||{};
     el.innerHTML='<style>.pan-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}.pan-field{border:1px solid var(--ring);border-radius:12px;padding:10px;background:var(--surface-2)}</style>'+
       '<h2>PANTHEON / AETHER <span class="sub">distributed research ecology · execution_authorized=false</span></h2>'+
       '<div class="tiles" style="margin-top:0">'+
@@ -74,6 +79,7 @@
         '<div class="tile"><div class="k">Sentinel cells</div><div class="v tnum">'+h((state.counts||{}).sentinel_cells||0)+'</div></div>'+
         '<div class="tile"><div class="k">SIBYL exports</div><div class="v tnum">'+h(sibylExports.length)+'</div><div class="small muted">gated structural evidence only</div></div>'+
         '<div class="tile"><div class="k">Species</div><div class="v tnum">'+h(eco.species_count||0)+'</div><div class="small muted">'+h(eco.claim_outcome_count||0)+' observed outcomes</div></div>'+
+        '<div class="tile"><div class="k">VERITAS</div><div class="v">'+h(veritasState.status==='reconciled'?(veritasScore.classification||'reconciled'):(veritasFaculty.status==='active'?'PENDING':'ABSTAIN'))+'</div><div class="small muted">'+(veritasState.status==='reconciled'?('fidelity '+pct(veritasScore.mechanism_fidelity)):'right reasons audit')+'</div></div>'+
         '<div class="tile"><div class="k">Extinct</div><div class="v tnum">'+h((eco.extinct_species||[]).length)+'</div></div>'+
         '<div class="tile"><div class="k">Authority</div><div class="v">SHADOW ONLY</div></div>'+
       '</div>'+
@@ -89,6 +95,13 @@
       '<h3 class="small" style="margin:16px 0 8px">Independent faculties — disagreement preserved</h3>'+
       '<div class="scroll"><table><thead><tr><th>Faculty</th><th>Status</th><th>Key state</th><th>Semantics</th></tr></thead><tbody>'+facultyRows+'</tbody></table></div>'+
       '<div class="small muted" style="margin-top:10px">Diversity lock: blind first pass · peer conclusions hidden until commitment · forced consensus disabled.</div>'+
+      '<h3 class="small" style="margin:16px 0 8px">VERITAS right-for-right-reasons audit</h3>'+
+      '<div class="scroll"><table><thead><tr><th>Mechanism</th><th>Predicted</th><th>Realized</th><th>Fidelity</th><th>Classification</th><th>Reinforcement</th></tr></thead><tbody>'+
+      (veritasFaculty.status==='active'
+        ? '<tr><td>'+h(veritasFaculty.mechanism_id||'')+'</td><td>'+h(veritasFaculty.direction||'unknown')+'</td><td>'+h(veritasScore.realized_direction||'pending')+'</td><td class="tnum">'+(veritasState.status==='reconciled'?pct(veritasScore.mechanism_fidelity):'—')+'</td><td>'+h(veritasScore.classification||'pending')+'</td><td>'+chip(veritasScore.reinforcement_eligible?'ELIGIBLE':'QUARANTINED / PENDING')+'</td></tr>'
+        : '<tr><td colspan="6" class="empty">No immutable mechanism certificate on the latest observation.</td></tr>')+
+      '</tbody></table></div>'+
+      '<div class="small muted" style="margin-top:8px">Directional success alone is not learning credit. A correct endpoint with failed mechanism signatures is quarantined as right-for-wrong-reasons.</div>'+
       '<h3 class="small" style="margin:16px 0 8px">SOCRATES research queue</h3>'+
       '<div class="scroll"><table><thead><tr><th>Priority</th><th>Question</th><th>Hypothesis / falsifier</th></tr></thead><tbody>'+
       (((f.socrates||{}).question_queue||[]).map(function(q,i){const hyp=((f.socrates||{}).hypothesis_queue||[])[i]||{};return '<tr><td class="tnum">'+pct(q.priority)+'</td><td>'+h(q.question||'')+'</td><td class="small">'+h(hyp.hypothesis||'')+'<div class="muted">'+h(hyp.falsifier||'')+'</div></td></tr>';}).join('')||'<tr><td colspan="3" class="empty">No research question cleared the current priority floor.</td></tr>')+

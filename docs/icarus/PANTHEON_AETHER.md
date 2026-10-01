@@ -442,3 +442,12 @@ actions, or automatic production promotion.
 This matters because profitable outcomes can otherwise poison a self-learning
 system by reinforcing explanations that were causally false. VERITAS turns
 "made money" and "understood why" into two separate questions.
+
+
+### VERITAS surfaces
+
+VERITAS reconciliation is available through the authenticated engine route
+`POST /admin/pantheon/veritas`, an MCP research tool, the PANTHEON API state,
+the Adaptive Brain registry, and the PANTHEON trader panel. These surfaces all
+preserve the same authority boundary: mechanism fidelity can affect research
+interpretation, but cannot authorize trading or automatic production learning.

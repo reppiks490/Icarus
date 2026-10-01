@@ -36,6 +36,7 @@ def test_mcp_server_imports_and_registers_engine_surface():
         "record_engine_possibility_evidence",
         "engine_pantheon_state",
         "record_engine_pantheon_observation",
+        "record_engine_veritas_reconciliation",
         "record_engine_aether_claim",
         "engine_sibyl_state",
         "record_engine_sibyl_evidence",
@@ -570,6 +571,49 @@ def test_mcp_pantheon_rejects_bad_json_shapes():
     assert "error" in mcp_server.record_engine_pantheon_observation("NQ", "2026-10-01T06:05:00Z", "[]")
     assert "error" in mcp_server.record_engine_pantheon_observation("NQ", "2026-10-01T06:05:00Z", "{}", evidence_json="{}")
     assert "error" in mcp_server.record_engine_pantheon_observation("NQ", "2026-10-01T06:05:00Z", "{}", subsystem_outputs_json="[]")
+
+def test_mcp_veritas_reconciliation_route_is_research_only(monkeypatch):
+    seen = {}
+
+    def post(path, body):
+        seen["path"] = path
+        seen["body"] = body
+        return {
+            "classification": "right_for_wrong_reasons",
+            "reinforcement_eligible": False,
+            "authority": {"execution_authorized": False, "production_decision_authorized": False},
+        }
+
+    monkeypatch.setattr(mcp_server, "_engine_post", post)
+    out = mcp_server.record_engine_veritas_reconciliation(
+        "pan-v1",
+        "2026-10-01T06:01:00Z",
+        "long",
+        '{"basis_expands":false,"queue_replenishment":0.1}',
+        0.8,
+        '["fixture:post-horizon"]',
+    )
+    assert out["reinforcement_eligible"] is False
+    assert out["authority"]["execution_authorized"] is False
+    assert seen["path"] == "/admin/pantheon/veritas"
+    assert seen["body"] == {
+        "observation_id": "pan-v1",
+        "observed_at": "2026-10-01T06:01:00Z",
+        "realized_direction": "long",
+        "realized_signatures": {"basis_expands": False, "queue_replenishment": 0.1},
+        "confidence": 0.8,
+        "evidence": ["fixture:post-horizon"],
+    }
+
+
+def test_mcp_veritas_reconciliation_rejects_bad_shapes():
+    assert "error" in mcp_server.record_engine_veritas_reconciliation(
+        "pan-v1", "2026-10-01T06:01:00Z", "long", "[]", 0.8, '["e"]'
+    )
+    assert "error" in mcp_server.record_engine_veritas_reconciliation(
+        "pan-v1", "2026-10-01T06:01:00Z", "long", "{}", 0.8, "[]"
+    )
+
 
 def test_mcp_aether_claim_route_is_blind_and_shadow_only(monkeypatch):
     seen = {}
