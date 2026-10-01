@@ -453,6 +453,43 @@ def record_engine_brain_event(
     return _safe_engine(lambda: _engine_post("/admin/brain/event", body))
 
 
+@mcp.tool()
+def engine_possibility_state(asset: str = "NQ") -> dict:
+    """Read ICARUS Ψ latent-pressure, possibility-space and information-wave diagnostics."""
+    asset = asset.strip().upper()
+    return _safe_engine(lambda: _engine_get(f"/api/possibility?asset={asset}"))
+
+
+@mcp.tool()
+def record_engine_possibility_evidence(
+    asset: str,
+    source: str,
+    values_json: str,
+    observed_at: str = "",
+    ttl_seconds: float = 300.0,
+) -> dict:
+    """Publish provenance-labelled optional force evidence to ICARUS Ψ.
+
+    Supported force names are validated by the engine. This is research/shadow
+    evidence only and cannot authorize a trade or production decision.
+    """
+    try:
+        values = json.loads(values_json or "{}")
+    except json.JSONDecodeError as ex:
+        return {"error": f"values_json is invalid JSON: {ex}"}
+    if not isinstance(values, dict):
+        return {"error": "values_json must decode to an object"}
+    body: Dict[str, Any] = {
+        "asset": asset.strip().upper(),
+        "source": source.strip(),
+        "values": values,
+        "ttl_seconds": float(ttl_seconds),
+    }
+    if observed_at.strip():
+        body["observed_at"] = observed_at.strip()
+    return _safe_engine(lambda: _engine_post("/admin/possibility/evidence", body))
+
+
 # ── control tools (state-changing) ──
 @mcp.tool()
 def pause_trading(reason: str = "paused via MCP") -> dict:
