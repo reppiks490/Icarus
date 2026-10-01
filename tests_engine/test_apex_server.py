@@ -19,7 +19,7 @@ def apex_http(tmp_path):
     thread.start()
     base = f"http://127.0.0.1:{srv.server_address[1]}"
 
-    def request(method: str, route: str, *, body=None, raw: bytes | None = None, auth: bool = True):
+    def request(method: str, route: str, *, body=None, raw: bytes | None = None, auth: bool = True, content_length: int | None = None):
         headers = {}
         if auth:
             headers["Authorization"] = "Bearer apex-token"
@@ -28,6 +28,8 @@ def apex_http(tmp_path):
             data = json.dumps(body, allow_nan=False).encode()
         if data is not None:
             headers["Content-Type"] = "application/json"
+        if content_length is not None:
+            headers["Content-Length"] = str(content_length)
         req = urllib.request.Request(base + route, data=data, headers=headers, method=method)
         try:
             with urllib.request.urlopen(req, timeout=10) as reply:
@@ -125,8 +127,12 @@ def test_apex_http_bad_and_oversized_json_fail_without_mutating_evidence(apex_ht
     assert "bad JSON body" in body["detail"]
     assert srv.apex.store.integrity_status()["evidence_rows"] == before
 
-    oversized = b"{" + (b" " * ((1 << 20) + 1)) + b"}"
-    code, body = request("POST", "/admin/apex/evidence", raw=oversized)
+    code, body = request(
+        "POST",
+        "/admin/apex/evidence",
+        raw=b"{}",
+        content_length=(1 << 20) + 1,
+    )
     assert code == 413
     assert "body too large" in body["detail"]
     assert srv.apex.store.integrity_status()["evidence_rows"] == before
