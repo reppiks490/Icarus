@@ -500,10 +500,18 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             if p.path == "/admin/parallax/outcome":
                 try:
                     result = parallax.record_outcome(body)
-                    result["dreamstate_refresh"] = dreamstate.refresh().get("refresh", {})
-                    return self._json(200, result)
                 except (ValueError, TypeError) as ex:
                     return self._json(400, {"detail": str(ex)})
+                try:
+                    result["dreamstate_refresh"] = dreamstate.refresh().get("refresh", {})
+                except Exception as ex:
+                    port.journal.log("WARN", f"DREAMSTATE rescreen after PARALLAX outcome: {type(ex).__name__}: {ex}")
+                    result["dreamstate_refresh"] = {
+                        "status": "degraded",
+                        "error": f"{type(ex).__name__}: {ex}",
+                        "outcome_committed": True,
+                    }
+                return self._json(200, result)
             if p.path == "/admin/dreamstate/refresh":
                 try:
                     return self._json(200, dreamstate.refresh(body.get("min_samples", 5)))
