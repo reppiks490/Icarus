@@ -838,13 +838,98 @@ class LearningFabric:
             })
         return out
 
+    def experience_configuration_summary(self) -> list[dict[str, Any]]:
+        """Realized trade memory partitioned by closure-time strategy fingerprint."""
+        rows = self._conn.execute(
+            "SELECT source,asset,direction,entry_at,exit_at,exit_ts,pnl,metadata_json "
+            "FROM experiences ORDER BY exit_ts,experience_id"
+        ).fetchall()
+        groups: dict[tuple[str, str, str, str], list[tuple[sqlite3.Row, dict[str, Any]]]] = {}
+        for row in rows:
+            try:
+                meta = json.loads(row["metadata_json"])
+            except (TypeError, json.JSONDecodeError):
+                continue
+            if not isinstance(meta, dict):
+                continue
+            fingerprint = str(meta.get("strategy_fingerprint") or "").lower()
+            if (
+                len(fingerprint) != 64
+                or any(ch not in "0123456789abcdef" for ch in fingerprint)
+                or meta.get("provenance_quality") != "CLOSURE_TIME_CONFIG"
+            ):
+                continue
+            key = (row["source"], row["asset"], row["direction"], fingerprint)
+            groups.setdefault(key, []).append((row, meta))
+
+        out: list[dict[str, Any]] = []
+        for (source, asset, direction, fingerprint), group in sorted(groups.items()):
+            pnls = [float(row["pnl"]) for row, _ in group]
+            wins = [value for value in pnls if value > 0]
+            losses = [value for value in pnls if value < 0]
+            breakeven = len(pnls) - len(wins) - len(losses)
+            gross_profit = sum(wins)
+            gross_loss = sum(losses)
+            cumulative = 0.0
+            peak = 0.0
+            max_drawdown = 0.0
+            for value in pnls:
+                cumulative += value
+                peak = max(peak, cumulative)
+                max_drawdown = max(max_drawdown, peak - cumulative)
+            first_meta = group[0][1]
+            average_win = (sum(wins) / len(wins)) if wins else None
+            average_loss = (sum(losses) / len(losses)) if losses else None
+            payoff_ratio = (
+                average_win / abs(average_loss)
+                if average_win is not None and average_loss is not None and average_loss < 0
+                else None
+            )
+            out.append({
+                "source": source,
+                "asset": asset,
+                "direction": direction,
+                "strategy_fingerprint": fingerprint,
+                "inputs_hash": first_meta.get("inputs_hash"),
+                "chart_type": first_meta.get("chart_type"),
+                "timeframe": first_meta.get("timeframe"),
+                "fill_on": first_meta.get("fill_on"),
+                "security_source": first_meta.get("security_source"),
+                "session_mode": first_meta.get("session_mode"),
+                "profile": first_meta.get("profile"),
+                "preset": first_meta.get("preset"),
+                "count": len(pnls),
+                "wins": len(wins),
+                "losses": len(losses),
+                "breakeven": breakeven,
+                "win_rate": len(wins) / len(pnls) if pnls else None,
+                "net_pnl": sum(pnls),
+                "average_pnl": sum(pnls) / len(pnls) if pnls else None,
+                "average_win": average_win,
+                "average_loss": average_loss,
+                "gross_profit": gross_profit,
+                "gross_loss": gross_loss,
+                "profit_factor": (gross_profit / abs(gross_loss)) if gross_loss < 0 else None,
+                "payoff_ratio": payoff_ratio,
+                "max_cumulative_drawdown": max_drawdown,
+                "first_entry_at": min(row["entry_at"] for row, _ in group),
+                "last_exit_at": max(row["exit_at"] for row, _ in group),
+                "status": "MEASURED" if len(pnls) >= 30 else "EARLY",
+                **_authority(),
+            })
+        return out
+
     def experience_state(self) -> dict[str, Any]:
         count = int(self._conn.execute("SELECT COUNT(*) FROM experiences").fetchone()[0])
+        by_configuration = self.experience_configuration_summary()
+        scoped_count = sum(int(row.get("count") or 0) for row in by_configuration)
         return {
-            "schema_version": "icarus-learning-experience-state-v1",
+            "schema_version": "icarus-learning-experience-state-v2",
             "count": count,
             "summary": self.experience_summary(),
-            "rule": "Realized trade experience is descriptive outcome memory, not forecast calibration or a future-performance guarantee.",
+            "by_configuration": by_configuration,
+            "unscoped_count": max(0, count - scoped_count),
+            "rule": "Realized trade experience is descriptive outcome memory; configuration scorecards require closure-time provenance and never authorize production or execution.",
             **_authority(),
         }
 
@@ -1503,7 +1588,117 @@ class LearningFabric:
         out.update(_authority())
         return out
 
+    def _harvest_journal_experience(self) -> dict[str, Any]:
+        """Harvest fully closed live-sim trades from the durable runtime journal."""
+        journal = getattr(self.port, "journal", None) if self.port is not None else None
+        con = getattr(journal, "con", None)
+        if journal is None or con is None:
+            return {"status": "unavailable", "source": "journal", "imported": 0, "eligible": 0, **_authority()}
+        lock = getattr(journal, "_lock", None)
+        try:
+            if lock is None:
+                columns = {row[1] for row in con.execute("PRAGMA table_info(trades)").fetchall()}
+                rows = con.execute(
+                    "SELECT id,run_id,symbol,entry_id,direction,qty,entry_price,entry_ts,exit_price,exit_ts,"
+                    "exit_comment,profit,live,piece,lot_id,entry_qty,strategy_fingerprint,strategy_context_json "
+                    "FROM trades WHERE live=1 ORDER BY run_id,symbol,entry_ts,id"
+                ).fetchall()
+            else:
+                with lock:
+                    columns = {row[1] for row in con.execute("PRAGMA table_info(trades)").fetchall()}
+                    required = {"lot_id","entry_qty","strategy_fingerprint","strategy_context_json"}
+                    if not required.issubset(columns):
+                        return {"status": "unavailable", "source": "journal", "imported": 0, "eligible": 0, "reason": "legacy journal schema", **_authority()}
+                    rows = con.execute(
+                        "SELECT id,run_id,symbol,entry_id,direction,qty,entry_price,entry_ts,exit_price,exit_ts,"
+                        "exit_comment,profit,live,piece,lot_id,entry_qty,strategy_fingerprint,strategy_context_json "
+                        "FROM trades WHERE live=1 ORDER BY run_id,symbol,entry_ts,id"
+                    ).fetchall()
+            required = {"lot_id","entry_qty","strategy_fingerprint","strategy_context_json"}
+            if not required.issubset(columns):
+                return {"status": "unavailable", "source": "journal", "imported": 0, "eligible": 0, "reason": "legacy journal schema", **_authority()}
+        except Exception as ex:
+            return {"status": "degraded", "source": "journal", "imported": 0, "eligible": 0, "error": f"{type(ex).__name__}: {ex}"[:500], **_authority()}
+
+        groups: dict[tuple[Any, ...], list[Any]] = {}
+        skipped_unscoped = 0
+        for row in rows:
+            fingerprint = str(row[16] or "").lower()
+            if len(fingerprint) != 64 or any(ch not in "0123456789abcdef" for ch in fingerprint):
+                skipped_unscoped += 1
+                continue
+            key = (
+                int(row[1] or 0), str(row[2] or "").upper(), str(row[3] or ""),
+                int(row[4] or 0), int(row[7] or 0), round(float(row[6] or 0.0), 10),
+                int(row[14] or 0), fingerprint, str(row[17] or "{}"),
+            )
+            groups.setdefault(key, []).append(row)
+
+        imported = 0
+        eligible = 0
+        skipped_incomplete = 0
+        errors: dict[str, str] = {}
+        for key, pieces in groups.items():
+            run_id, symbol, entry_id, direction, entry_ts, entry_price, lot_id, fingerprint, context_json = key
+            try:
+                entry_qty = max(int(piece[15] or 0) for piece in pieces)
+                qty = sum(float(piece[5] or 0.0) for piece in pieces)
+                if entry_qty <= 0 or qty + 1e-9 < float(entry_qty):
+                    skipped_incomplete += 1
+                    continue
+                if qty <= 0 or entry_price <= 0:
+                    raise ValueError("journaled closed trade has invalid quantity or entry price")
+                exit_ts = max(int(piece[9] or 0) for piece in pieces)
+                exit_price = sum(float(piece[8] or 0.0) * float(piece[5] or 0.0) for piece in pieces) / qty
+                pnl = sum(float(piece[11] or 0.0) for piece in pieces)
+                context = json.loads(context_json) if context_json else {}
+                if not isinstance(context, dict):
+                    context = {}
+                context = {
+                    **context,
+                    "strategy_fingerprint": fingerprint,
+                    "provenance_quality": "CLOSURE_TIME_CONFIG",
+                    "runtime_run_id": run_id,
+                    "entry_id": entry_id,
+                    "lot_id": lot_id,
+                    "entry_qty": entry_qty,
+                    "exit_comments": [str(piece[10] or "") for piece in pieces],
+                    "time_quality": "OBSERVED_UNIX_EVENT_TIME",
+                }
+                source_record_id = f"{run_id}:{symbol}:{entry_ts}:{entry_id}:{lot_id}:{direction}:{entry_price}:{fingerprint}"
+                result = self.record_experience({
+                    "source": "runtime_live_sim",
+                    "source_record_id": source_record_id,
+                    "asset": symbol,
+                    "direction": "long" if direction > 0 else "short",
+                    "entry_at": _iso(datetime.fromtimestamp(entry_ts, tz=timezone.utc)),
+                    "exit_at": _iso(datetime.fromtimestamp(exit_ts, tz=timezone.utc)),
+                    "qty": qty,
+                    "entry_price": entry_price,
+                    "exit_price": exit_price,
+                    "pnl": pnl,
+                    "metadata": context,
+                })
+                eligible += 1
+                imported += int(not result["idempotent"])
+            except Exception as ex:
+                source = f"{run_id}:{symbol}:{entry_ts}:{entry_id}:{lot_id}"
+                errors[source] = f"{type(ex).__name__}: {ex}"[:500]
+        return {
+            "status": "ok" if not errors else "partial",
+            "source": "journal",
+            "imported": imported,
+            "eligible": eligible,
+            "skipped_incomplete": skipped_incomplete,
+            "skipped_unscoped": skipped_unscoped,
+            "errors": errors,
+            **_authority(),
+        }
+
     def _harvest_runtime_experience(self) -> dict[str, Any]:
+        journal_result = self._harvest_journal_experience()
+        if journal_result.get("status") != "unavailable":
+            return journal_result
         if self.port is None or not hasattr(self.port, "runner_list"):
             return {"status": "unavailable", "imported": 0, "eligible": 0, **_authority()}
         imported = 0
@@ -1592,6 +1787,7 @@ class LearningFabric:
                     errors[source_record_id] = f"{type(ex).__name__}: {ex}"[:500]
         return {
             "status": "ok" if not errors else "partial",
+            "source": "runner_memory",
             "imported": imported,
             "eligible": eligible,
             "skipped_open": skipped_open,
