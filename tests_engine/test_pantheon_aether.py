@@ -227,9 +227,15 @@ def _veritas_payload(observation_id: str = "pan-veritas") -> dict:
     return payload
 
 
-def _veritas_source_payload(observation_id: str, observed_at: str, **signatures) -> dict:
+def _veritas_source_payload(
+    observation_id: str,
+    observed_at: str,
+    realized_direction: str = "long",
+    **signatures,
+) -> dict:
     payload = _payload(observation_id=observation_id, observed_at=observed_at)
     payload["signals"] = dict(payload["signals"])
+    payload["signals"]["veritas_realized_direction"] = realized_direction
     payload["signals"].update(signatures)
     return payload
 
@@ -262,7 +268,6 @@ def test_veritas_distinguishes_right_reasons_from_lucky_direction(tmp_path):
         "observation_id": obs["observation_id"],
         "source_observation_id": source["observation_id"],
         "observed_at": source["observed_at"],
-        "realized_direction": "long",
         "confidence": 0.9,
         "evidence": ["fixture:all-predicted-signatures-observed"],
     })
@@ -303,6 +308,7 @@ def test_veritas_mechanism_can_match_even_when_endpoint_fails(tmp_path):
     source = kernel.record_observation(_veritas_source_payload(
         "pan-veritas-endpoint-fail-source",
         "2026-10-01T06:00:20Z",
+        realized_direction="short",
         basis_expands=True,
         queue_replenishment=0.7,
         cross_asset_lead=0.1,
@@ -311,7 +317,6 @@ def test_veritas_mechanism_can_match_even_when_endpoint_fails(tmp_path):
         "observation_id": obs["observation_id"],
         "source_observation_id": source["observation_id"],
         "observed_at": source["observed_at"],
-        "realized_direction": "short",
         "confidence": 0.8,
         "evidence": ["fixture:path-matched-endpoint-failed"],
     })
@@ -381,7 +386,6 @@ def test_veritas_reconciliation_is_bound_to_immutable_source_observation(tmp_pat
             "observation_id": obs["observation_id"],
             "source_observation_id": source["observation_id"],
             "observed_at": "2026-10-01T06:00:21Z",
-            "realized_direction": "long",
             "confidence": 0.8,
             "evidence": ["fixture:mismatched-time"],
         })
@@ -403,6 +407,30 @@ def test_veritas_reconciliation_is_bound_to_immutable_source_observation(tmp_pat
             "realized_direction": "long",
             "confidence": 0.8,
             "evidence": ["fixture:wrong-asset"],
+        })
+
+
+def test_veritas_source_must_immutably_declare_realized_direction(tmp_path):
+    kernel = PantheonKernel(tmp_path)
+    obs = kernel.record_observation(_veritas_payload("pan-veritas-source-direction"))
+    source = _payload(
+        observation_id="pan-veritas-source-direction-later",
+        observed_at="2026-10-01T06:00:20Z",
+    )
+    source["signals"] = dict(source["signals"])
+    source["signals"].update({
+        "basis_expands": True,
+        "queue_replenishment": 0.8,
+        "cross_asset_lead": 0.2,
+    })
+    source_obs = kernel.record_observation(source)
+    with pytest.raises(ValueError, match="veritas_realized_direction"):
+        kernel.record_veritas_reconciliation({
+            "observation_id": obs["observation_id"],
+            "source_observation_id": source_obs["observation_id"],
+            "observed_at": source_obs["observed_at"],
+            "confidence": 0.8,
+            "evidence": ["fixture:missing-endpoint"],
         })
 
 

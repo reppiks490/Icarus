@@ -507,15 +507,14 @@ def record_engine_veritas_reconciliation(
     observation_id: str,
     source_observation_id: str,
     observed_at: str,
-    realized_direction: str,
     confidence: float,
     evidence_json: str,
 ) -> dict:
     """Reconcile one immutable VERITAS certificate against a later PANTHEON observation.
 
-    Realized mechanism signatures are derived by the engine from the immutable
-    source observation; callers cannot inject the signature values here. A
-    correct endpoint is not reinforcement-eligible unless that path reconciles.
+    Realized direction and mechanism signatures are derived by the engine from
+    the immutable source observation; callers cannot inject either outcome here.
+    A correct endpoint is not reinforcement-eligible unless that path reconciles.
     """
     try:
         evidence = json.loads(evidence_json or "[]")
@@ -527,7 +526,6 @@ def record_engine_veritas_reconciliation(
         "observation_id": observation_id.strip(),
         "source_observation_id": source_observation_id.strip(),
         "observed_at": observed_at.strip(),
-        "realized_direction": realized_direction.strip().lower(),
         "confidence": float(confidence),
         "evidence": evidence,
     }

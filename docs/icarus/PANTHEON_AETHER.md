@@ -424,9 +424,9 @@ immutable PANTHEON observation, it cannot be rewritten after the market moves.
 
 After the observation horizon matures, a separate immutable VERITAS
 reconciliation identifies a later immutable PANTHEON source observation plus
-the realized direction, confidence, and evidence. VERITAS derives the realized
-mechanism-signature values from that source observation instead of accepting
-caller-injected signature values. VERITAS computes weighted mechanism fidelity and
+confidence and evidence. VERITAS derives both the realized direction
+(`veritas_realized_direction`) and the realized mechanism-signature values
+from that source observation instead of accepting caller-injected outcomes. VERITAS computes weighted mechanism fidelity and
 classifies the result as:
 
 - `right_for_right_reasons`
@@ -461,6 +461,6 @@ A VERITAS reconciliation cannot manufacture its own path evidence. Its
 `source_observation_id` must point to a distinct later PANTHEON observation for
 the same asset, the reconciliation timestamp must equal that source
 observation's timestamp, and the certificate horizon must already have matured.
-Realized signature values are read from the immutable source observation's
-signals. Fidelity thresholds below 0.50 are rejected so a trivial threshold
+Realized direction and signature values are read from the immutable source
+observation's signals. Fidelity thresholds below 0.50 are rejected so a trivial threshold
 cannot turn a zero-fidelity lucky outcome into "right for right reasons."

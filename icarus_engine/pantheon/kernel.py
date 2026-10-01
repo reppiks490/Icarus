@@ -542,7 +542,6 @@ class PantheonKernel:
             raise ValueError("VERITAS reconciliation must be an object")
         observation_id = text(body.get("observation_id"), "observation_id", 96)
         observed_at = iso_aware(body.get("observed_at"))
-        realized_direction = text(body.get("realized_direction"), "realized_direction", 16).lower()
         source_observation_id = text(body.get("source_observation_id"), "source_observation_id", 96)
         if "confidence" not in body:
             raise ValueError("confidence is required")
@@ -573,6 +572,12 @@ class PantheonKernel:
         source_signals = source_observation.get("input", {}).get("signals", {})
         if not isinstance(source_signals, Mapping):
             raise ValueError("VERITAS source observation signals are unavailable")
+        realized_direction = source_signals.get("veritas_realized_direction")
+        if not isinstance(realized_direction, str):
+            raise ValueError("VERITAS source observation must include veritas_realized_direction")
+        realized_direction = realized_direction.strip().lower()
+        if realized_direction not in {"long", "short", "flat", "unknown"}:
+            raise ValueError("veritas_realized_direction must be long, short, flat or unknown")
         expected = faculty.get("expected_signatures", [])
         realized = {
             str(sig.get("key")): source_signals[str(sig.get("key"))]

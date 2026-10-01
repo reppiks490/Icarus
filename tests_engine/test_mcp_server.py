@@ -589,7 +589,6 @@ def test_mcp_veritas_reconciliation_route_is_research_only(monkeypatch):
         "pan-v1",
         "pan-v1-source",
         "2026-10-01T06:01:00Z",
-        "long",
         0.8,
         '["fixture:post-horizon"]',
     )
@@ -600,7 +599,6 @@ def test_mcp_veritas_reconciliation_route_is_research_only(monkeypatch):
         "observation_id": "pan-v1",
         "source_observation_id": "pan-v1-source",
         "observed_at": "2026-10-01T06:01:00Z",
-        "realized_direction": "long",
         "confidence": 0.8,
         "evidence": ["fixture:post-horizon"],
     }
@@ -608,10 +606,10 @@ def test_mcp_veritas_reconciliation_route_is_research_only(monkeypatch):
 
 def test_mcp_veritas_reconciliation_rejects_bad_evidence_shape():
     assert "error" in mcp_server.record_engine_veritas_reconciliation(
-        "pan-v1", "pan-v1-source", "2026-10-01T06:01:00Z", "long", 0.8, "{}"
+        "pan-v1", "pan-v1-source", "2026-10-01T06:01:00Z", 0.8, "{}"
     )
     assert "error" in mcp_server.record_engine_veritas_reconciliation(
-        "pan-v1", "pan-v1-source", "2026-10-01T06:01:00Z", "long", 0.8, "[]"
+        "pan-v1", "pan-v1-source", "2026-10-01T06:01:00Z", 0.8, "[]"
     )
 
 
