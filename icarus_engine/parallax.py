@@ -760,7 +760,16 @@ class ParallaxStore:
                     return row.get("candidate_eligible") is True and temporal_ok
 
                 supporting = [row for row in neighbors if basin_supports(row)]
+                family_evaluable_points = sum(
+                    1 for row in rows
+                    if int(row.get("evidence_pair_count") or 0) >= min_samples
+                )
                 evaluable = bool(neighbors)
+                local_support_missing = (
+                    bool(item.get("candidate_eligible"))
+                    and family_evaluable_points >= 2
+                    and not neighbors
+                )
                 isolated = bool(item.get("candidate_eligible")) and evaluable and not supporting
 
                 left = idx
@@ -785,9 +794,11 @@ class ParallaxStore:
                     "axis": axis_name,
                     "value": float(item["_parameter_axis_value"]),
                     "neighbor_count": len(neighbors),
+                    "family_evaluable_point_count": family_evaluable_points,
                     "supporting_neighbor_count": len(supporting),
                     "supporting_neighbor_values": [float(row["_parameter_axis_value"]) for row in supporting],
                     "isolated_spike": isolated,
+                    "local_support_missing": local_support_missing,
                     "basin_support_count": len(basin_rows),
                     "basin_width": width,
                     "max_neighbor_gap": max_gap,
@@ -909,6 +920,8 @@ class ParallaxStore:
             basin = item.get("parameter_basin") or {}
             if basin.get("evaluable") is True and basin.get("isolated_spike") is True:
                 robustness_blockers.append("isolated_parameter_spike")
+            if basin.get("local_support_missing") is True:
+                robustness_blockers.append("parameter_local_support_missing")
             item["robustness_blockers"] = robustness_blockers
             item["robust_candidate_eligible"] = bool(item["candidate_eligible"]) and not robustness_blockers
 
@@ -1167,7 +1180,8 @@ class ParallaxStore:
                 "temporal_robustness_is_advisory_until_nine_pairs": True,
                 "evaluable_temporal_instability_blocks_robust_candidates": True,
                 "evaluable_isolated_parameter_spikes_block_robust_candidates": True,
-                "parameter_basin_support_requires_adjacent_statistical_candidates": True,
+                "sampled_parameter_families_without_local_support_block_robust_candidates": True,
+                "parameter_basin_support_requires_adjacent_statistical_and_temporally_coherent_candidates": True,
                 "regret_is_not_pooled_across_incomparable_contracts": True,
                 "source_revisions_are_never_pooled": True,
             },
