@@ -31,6 +31,7 @@ def test_mcp_server_imports_and_registers_engine_surface():
         "engine_source_reliability",
         "record_engine_source_reliability_observation",
         "engine_performance_proof",
+        "engine_pending_performance_settlements",
         "engine_possibility_state",
         "engine_possibility_evidence",
         "record_engine_possibility_evidence",
@@ -731,3 +732,24 @@ def test_mcp_source_reliability_routes(monkeypatch):
     assert seen[1][0:2] == ("post", "/admin/source-reliability/observation")
     assert seen[1][2]["source_id"] == "provider-a"
     assert seen[1][2]["complete"] is True
+
+
+def test_mcp_pending_performance_settlements_route(monkeypatch):
+    seen = []
+
+    def get(path, **params):
+        seen.append((path, params))
+        return {"total_matured_unsettled": 2, "execution_authorized": False}
+
+    monkeypatch.setattr(mcp_server, "_engine_get", get)
+
+    out = mcp_server.engine_pending_performance_settlements(
+        limit=25,
+        as_of="2026-10-01T12:30:00Z",
+    )
+    assert out["total_matured_unsettled"] == 2
+    assert out["execution_authorized"] is False
+    assert seen == [(
+        "/api/performance-proof/pending",
+        {"limit": 25, "as_of": "2026-10-01T12:30:00Z"},
+    )]
