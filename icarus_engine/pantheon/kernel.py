@@ -23,6 +23,7 @@ from .contracts import (
     text,
 )
 from .faculties import evaluate_faculties
+from .bridge import sibyl_evidence_candidates
 
 _LOCK = threading.RLock()
 
@@ -149,6 +150,16 @@ class PantheonKernel:
             "faculties": faculties,
             "aether": aether,
             "external_subsystems": normalized["subsystem_outputs"],
+            "exports": {
+                "sibyl_evidence": sibyl_evidence_candidates(
+                    observed_at=normalized["observed_at"],
+                    asset=normalized["asset"],
+                    horizon_ms=normalized["horizon_ms"],
+                    source_commit=normalized["source_commit"],
+                    faculties=faculties,
+                    aether=aether,
+                )
+            },
             "authority": authority_block(),
             "truth_contract": {
                 "heuristics_are_not_calibrated_probabilities": True,
