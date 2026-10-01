@@ -38,7 +38,7 @@ _ALLOWED_STATUSES = {
 _ALLOWED_SUBSYSTEMS = {
     "aegis", "aion", "argus", "ascension", "athena", "daedalus",
     "infrastructure", "janus", "nexus", "oracle", "parallax",
-    "prometheus", "provenance", "supermesh-x", "ml", "data",
+    "prometheus", "provenance", "supermesh-x", "ml", "data", "dreamstate",
 }
 
 
