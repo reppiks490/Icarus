@@ -10,6 +10,8 @@ def test_mcp_server_imports_and_registers_engine_surface():
         "engine_status",
         "engine_repository_audit",
         "record_engine_repository_audit",
+        "engine_system_evolution",
+        "record_engine_system_evolution",
         "engine_configuration",
         "set_engine_chart_config",
         "start_engine_backtest",
@@ -146,3 +148,36 @@ def test_mcp_repository_audit_routes(monkeypatch):
 def test_mcp_repository_audit_rejects_non_object_json():
     assert "error" in mcp_server.record_engine_repository_audit("[]")
     assert "error" in mcp_server.record_engine_repository_audit("{bad")
+
+
+def test_mcp_system_evolution_routes(monkeypatch):
+    seen = []
+
+    def get(path):
+        seen.append(("get", path))
+        return {"mirror_ok": True}
+
+    def post(path, body):
+        seen.append(("post", path, body))
+        return {"ok": True}
+
+    monkeypatch.setattr(mcp_server, "_engine_get", get)
+    monkeypatch.setattr(mcp_server, "_engine_post", post)
+
+    assert mcp_server.engine_system_evolution() == {"mirror_ok": True}
+    payload = '{"items":[{"id":"x","subsystem":"ATHENA","kind":"repair","status":"verified","severity":"notice","important":true,"summary":"x","interface_surface":"System"}]}'
+    assert mcp_server.record_engine_system_evolution(payload) == {"ok": True}
+    assert seen == [
+        ("get", "/api/system/evolution"),
+        ("post", "/admin/system/evolution", {"evolution": {
+            "items": [{
+                "id": "x", "subsystem": "ATHENA", "kind": "repair", "status": "verified",
+                "severity": "notice", "important": True, "summary": "x", "interface_surface": "System",
+            }]
+        }}),
+    ]
+
+
+def test_mcp_system_evolution_rejects_non_object_json():
+    assert "error" in mcp_server.record_engine_system_evolution("[]")
+    assert "error" in mcp_server.record_engine_system_evolution("{bad")
