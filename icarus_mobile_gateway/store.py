@@ -97,6 +97,62 @@ class DeviceStore:
             self._write(state)
             return True
 
+    def set_push(self, device_id: str, token: str, platform: str, topics: list[str] | None = None) -> dict[str, Any]:
+        clean_topics = sorted(set(topics or ["system"]))
+        if any(topic not in {"system"} for topic in clean_topics):
+            raise ValueError("unsupported notification topic")
+        with self._lock:
+            state = self._read()
+            row = state["devices"].get(device_id)
+            if not isinstance(row, dict) or row.get("revoked_at"):
+                raise ValueError("unknown or revoked device")
+            row["push"] = {
+                "token": str(token),
+                "platform": str(platform),
+                "topics": clean_topics,
+                "updated_at": int(time.time()),
+            }
+            self._write(state)
+            return self.push_status(device_id)
+
+    def clear_push(self, device_id: str) -> bool:
+        with self._lock:
+            state = self._read()
+            row = state["devices"].get(device_id)
+            if not isinstance(row, dict) or row.get("revoked_at"):
+                return False
+            existed = isinstance(row.get("push"), dict)
+            row.pop("push", None)
+            self._write(state)
+            return existed
+
+    def push_status(self, device_id: str) -> dict[str, Any]:
+        with self._lock:
+            row = self._read()["devices"].get(device_id)
+            push = row.get("push") if isinstance(row, dict) else None
+            if not isinstance(push, dict):
+                return {"enabled": False, "topics": []}
+            return {
+                "enabled": True,
+                "platform": push.get("platform"),
+                "topics": list(push.get("topics") or []),
+                "updated_at": push.get("updated_at"),
+            }
+
+    def push_targets(self, topic: str = "system") -> list[str]:
+        with self._lock:
+            out: list[str] = []
+            for row in self._read()["devices"].values():
+                if not isinstance(row, dict) or row.get("revoked_at"):
+                    continue
+                push = row.get("push")
+                if not isinstance(push, dict) or topic not in (push.get("topics") or []):
+                    continue
+                token = str(push.get("token") or "").strip()
+                if token:
+                    out.append(token)
+            return out
+
     def list_devices(self) -> list[dict[str, Any]]:
         with self._lock:
             devices = self._read()["devices"]
@@ -109,5 +165,6 @@ class DeviceStore:
                     "last_refresh_at": row.get("last_refresh_at"),
                     "revoked_at": row.get("revoked_at"),
                     "active": not bool(row.get("revoked_at")),
+                    "push_enabled": isinstance(row.get("push"), dict),
                 })
             return sorted(out, key=lambda row: int(row.get("created_at") or 0), reverse=True)
