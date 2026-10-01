@@ -1,9 +1,14 @@
 """DREAMSTATE policy incubator fed by PARALLAX counterfactual evidence.
 
-DREAMSTATE turns repeated, statistically conservative PARALLAX regret patterns into
+DREAMSTATE turns statistically screened PARALLAX counterfactual patterns into
 versioned research hypotheses. Candidates remain shadow-only until every protected
 validation gate is explicitly satisfied. Even then the terminal stage is
 qualified_shadow; this module has no production or broker authority.
+
+V2 consumes PARALLAX comparison-contract/FDR evidence, isolates search families by
+exact code revision and comparison contract, supports target and compound policy
+hypotheses, accounts for family search budget, and retires active hypotheses when
+their underlying PARALLAX screen no longer holds.
 """
 from __future__ import annotations
 
@@ -19,7 +24,7 @@ from typing import Any, Mapping
 from .parallax import ParallaxStore
 from .brain import record_brain_event
 
-SCHEMA_VERSION = "icarus-dreamstate-v1"
+SCHEMA_VERSION = "icarus-dreamstate-v2"
 REQUIRED_GATES = (
     "causal_time",
     "provenance",
@@ -36,6 +41,7 @@ REQUIRED_GATES = (
 _ALLOWED_STAGES = {"proposed", "study", "validated", "qualified_shadow", "rejected", "retired"}
 _TERMINAL_REVISION_STAGES = {"rejected", "retired"}
 FAMILY_TRIAL_BUDGET = 12
+SOURCE_FDR_MAX = 0.10
 _LOCK = threading.RLock()
 
 
@@ -73,6 +79,17 @@ def _git_sha(value: Any) -> str:
     if len(value) != 40 or any(c not in "0123456789abcdef" for c in value):
         raise ValueError("source_commit must be an exact 40-character Git SHA")
     return value
+
+
+def _signal_key(signal: Mapping[str, Any]) -> tuple[str, str, str, str, str, str]:
+    return (
+        str(signal.get("asset") or ""),
+        str(signal.get("regime") or ""),
+        str(signal.get("source_commit") or ""),
+        str(signal.get("comparison_contract_hash") or ""),
+        str(signal.get("kind") or ""),
+        str(signal.get("branch_label") or ""),
+    )
 
 
 class DreamstateLab:
@@ -118,41 +135,192 @@ class DreamstateLab:
             )
 
     @staticmethod
-    def _mutation(signal: Mapping[str, Any]) -> tuple[dict[str, Any], str] | None:
+    def _bounded_number(value: Any, name: str, low: float, high: float) -> float:
+        if type(value) not in (int, float):
+            raise ValueError(f"{name} must be numeric")
+        value = float(value)
+        if not low <= value <= high:
+            raise ValueError(f"{name} must be between {low} and {high}")
+        return value
+
+    @classmethod
+    def _mutation(cls, signal: Mapping[str, Any]) -> tuple[dict[str, Any], str] | None:
         label = str(signal.get("branch_label") or "").lower()
         kind = str(signal.get("kind") or "").lower()
+        params = signal.get("branch_params") if isinstance(signal.get("branch_params"), Mapping) else {}
+
         if kind == "opposite":
             return None
-        if kind == "delay" and label.startswith("delay_"):
-            value = int(label.rsplit("_", 1)[1])
+
+        if kind == "delay":
+            value = int(params.get("delay_bars", label.rsplit("_", 1)[-1]))
+            if not 0 <= value <= 20:
+                raise ValueError("delay candidate is outside the bounded research envelope")
             return (
-                {"op": "set_execution_delay_bars", "value": value, "scope": "research_candidate"},
-                f"Test whether delaying entry by {value} bars reduces paired counterfactual regret in this regime.",
+                {
+                    "op": "set_execution_delay_bars",
+                    "family": "execution_delay",
+                    "value": value,
+                    "scope": "research_candidate",
+                },
+                f"Test whether delaying entry by {value} bars reduces paired counterfactual regret in this evidence scope.",
             )
-        if kind == "stop" and label.startswith("stop_"):
-            value = float(label.rsplit("_", 1)[1])
+
+        if kind == "stop":
+            value = cls._bounded_number(params.get("stop_multiplier", label.rsplit("_", 1)[-1]), "stop multiplier", 0.25, 4.0)
             return (
-                {"op": "scale_stop_distance", "value": value, "scope": "research_candidate"},
-                f"Test a {value:.2f}x stop-distance policy against the immutable baseline.",
+                {
+                    "op": "scale_stop_distance",
+                    "family": "stop_scale",
+                    "value": value,
+                    "scope": "research_candidate",
+                },
+                f"Test a {value:.2f}x stop-distance policy against the immutable comparison baseline.",
             )
-        if kind == "size" and label.startswith("size_"):
-            value = float(label.rsplit("_", 1)[1])
+
+        if kind == "target":
+            value = cls._bounded_number(params.get("target_multiplier", label.rsplit("_", 1)[-1]), "target multiplier", 0.25, 4.0)
             return (
-                {"op": "scale_position_size", "value": value, "scope": "research_candidate", "risk_authority": False},
+                {
+                    "op": "scale_target_distance",
+                    "family": "target_scale",
+                    "value": value,
+                    "scope": "research_candidate",
+                },
+                f"Test a {value:.2f}x target-distance policy against the immutable comparison baseline.",
+            )
+
+        if kind == "size":
+            value = cls._bounded_number(params.get("size_multiplier", label.rsplit("_", 1)[-1]), "size multiplier", 0.10, 2.0)
+            return (
+                {
+                    "op": "scale_position_size",
+                    "family": "size_scale",
+                    "value": value,
+                    "scope": "research_candidate",
+                    "risk_authority": False,
+                },
                 f"Test {value:.2f}x sizing only under independent risk-normalized evaluation.",
             )
+
         if kind == "skip" or label == "skip":
             return (
-                {"op": "learn_abstention_gate", "scope": "research_candidate", "requires_context_clustering": True},
-                "Test a causal abstention gate for contexts where skipping repeatedly outperformed the baseline.",
+                {
+                    "op": "learn_abstention_gate",
+                    "family": "context_abstention",
+                    "scope": "research_candidate",
+                    "requires_context_clustering": True,
+                },
+                "Test a causal abstention gate only inside the observed context/regime scope where skipping outperformed baseline.",
             )
+
         if kind == "ablation" or label.startswith("without_"):
-            subsystem = label.removeprefix("without_")
+            subsystem = str(params.get("remove_subsystem") or label.removeprefix("without_")).strip().lower()
+            subsystem = _text(subsystem, "ablation subsystem", 96)
             return (
-                {"op": "review_subsystem_weight", "subsystem": subsystem, "scope": "research_candidate", "automatic_removal": False},
-                f"Test whether {subsystem} should be gated or reweighted; never remove it solely from paired ablation evidence.",
+                {
+                    "op": "review_subsystem_weight",
+                    "family": "subsystem_weight:" + subsystem,
+                    "subsystem": subsystem,
+                    "scope": "research_candidate",
+                    "automatic_removal": False,
+                },
+                f"Test whether {subsystem} should be context-gated or reweighted; paired ablation alone never authorizes removal.",
+            )
+
+        if kind == "compound":
+            operations: list[dict[str, Any]] = []
+            if "delay_bars" in params:
+                delay = int(params["delay_bars"])
+                if not 0 <= delay <= 20:
+                    raise ValueError("compound delay is outside the bounded research envelope")
+                operations.append({"op": "set_execution_delay_bars", "value": delay})
+            if "stop_multiplier" in params:
+                operations.append(
+                    {
+                        "op": "scale_stop_distance",
+                        "value": cls._bounded_number(params["stop_multiplier"], "compound stop multiplier", 0.25, 4.0),
+                    }
+                )
+            if "target_multiplier" in params:
+                operations.append(
+                    {
+                        "op": "scale_target_distance",
+                        "value": cls._bounded_number(params["target_multiplier"], "compound target multiplier", 0.25, 4.0),
+                    }
+                )
+            if "size_multiplier" in params:
+                operations.append(
+                    {
+                        "op": "scale_position_size",
+                        "value": cls._bounded_number(params["size_multiplier"], "compound size multiplier", 0.10, 2.0),
+                        "risk_authority": False,
+                    }
+                )
+            if len(operations) < 2:
+                return None
+            return (
+                {
+                    "op": "compound_policy",
+                    "family": "compound_policy",
+                    "operations": operations,
+                    "scope": "research_candidate",
+                    "risk_authority": False,
+                },
+                "Test the observed compound counterfactual as one indivisible shadow policy; do not infer the value of any component from the compound result.",
             )
         return None
+
+    @staticmethod
+    def _policy_contract(candidate: Mapping[str, Any]) -> dict[str, Any]:
+        signal = candidate.get("source_signal") if isinstance(candidate.get("source_signal"), Mapping) else {}
+        strata_stats = signal.get("strata_stats") if isinstance(signal.get("strata_stats"), list) else []
+        observed_strata = [
+            row.get("strata", {})
+            for row in strata_stats
+            if isinstance(row, Mapping) and isinstance(row.get("strata"), Mapping)
+        ]
+        return {
+            "scope": {
+                "asset": candidate.get("asset"),
+                "regime": candidate.get("regime"),
+                "source_commit": candidate.get("source_commit"),
+                "comparison_contract_hash": signal.get("comparison_contract_hash"),
+                "comparison_contract": signal.get("comparison_contract", {}),
+                "observed_strata": observed_strata,
+            },
+            "mutation": candidate.get("mutation", {}),
+            "baseline_fallback": {
+                "type": "immutable_icarus_baseline",
+                "source_commit": candidate.get("source_commit"),
+            },
+            "reversible": True,
+            "automatic_activation": False,
+            "production_decision_authorized": False,
+            "execution_authorized": False,
+            "broker_authority": False,
+            "risk_authority": False,
+        }
+
+    def _search_accounting(self, candidate: Mapping[str, Any]) -> dict[str, Any]:
+        with _LOCK, self._connect() as con:
+            trials_used = int(
+                con.execute("SELECT COUNT(*) FROM candidates WHERE family_id=?", (candidate["family_id"],)).fetchone()[0]
+            )
+        signal = candidate.get("source_signal") if isinstance(candidate.get("source_signal"), Mapping) else {}
+        return {
+            "family_trial_index": int(candidate["trial_index"]),
+            "family_trials_used": trials_used,
+            "family_trial_budget": FAMILY_TRIAL_BUDGET,
+            "family_trial_budget_remaining": max(0, FAMILY_TRIAL_BUDGET - trials_used),
+            "source_p_one_sided": signal.get("p_one_sided"),
+            "source_q_value": signal.get("q_value"),
+            "source_fdr_limit": SOURCE_FDR_MAX,
+            "source_evidence_pairs": signal.get("evidence_pair_count", signal.get("n")),
+            "source_pair_coverage": signal.get("evidence_pair_coverage"),
+            "source_strata_count": signal.get("strata_count", 0),
+            "comparison_contract_complete": bool(signal.get("comparison_contract_complete")),
+        }
 
     def _mirror_candidate(self, candidate: Mapping[str, Any]) -> dict[str, Any]:
         stage_map = {
@@ -174,14 +342,31 @@ class DreamstateLab:
         signal = candidate.get("source_signal") if isinstance(candidate.get("source_signal"), Mapping) else {}
         metrics = {
             key: signal.get(key)
-            for key in ("n", "mean_delta", "ci95_low", "ci95_high", "branch_label", "kind")
+            for key in (
+                "n",
+                "evidence_pair_count",
+                "evidence_pair_coverage",
+                "mean_delta",
+                "median_delta",
+                "ci95_low",
+                "ci95_high",
+                "p_one_sided",
+                "q_value",
+                "positive_fraction",
+                "branch_label",
+                "kind",
+                "strata_count",
+            )
             if key in signal
         }
         evidence = list(candidate.get("evidence") or [])
         evidence.append(
             "PARALLAX paired signal "
             + str(signal.get("branch_label") or "unknown")
-            + " n=" + str(signal.get("n") or 0)
+            + " n="
+            + str(signal.get("evidence_pair_count", signal.get("n", 0)))
+            + " q="
+            + str(signal.get("q_value"))
         )
         return record_brain_event(
             self.base_dir,
@@ -203,30 +388,82 @@ class DreamstateLab:
                     "family_id": candidate["family_id"],
                     "trial_index": candidate["trial_index"],
                     "mutation": candidate["mutation"],
+                    "policy_contract": candidate["policy_contract"],
+                    "search_accounting": candidate["search_accounting"],
                     "authority": "shadow_only",
                 },
             },
         )
 
+    def _retire_decayed_sources(self, hypothesis_map: Mapping[tuple[str, str, str, str, str, str], Mapping[str, Any]]) -> list[str]:
+        retired: list[str] = []
+        with _LOCK, self._connect() as con:
+            rows = con.execute(
+                "SELECT candidate_id,stage,source_signal_json,evidence_json FROM candidates "
+                "WHERE stage NOT IN ('rejected','retired')"
+            ).fetchall()
+            for row in rows:
+                source = json.loads(row["source_signal_json"])
+                current = hypothesis_map.get(_signal_key(source))
+                if current is None or current.get("candidate_eligible") is not False:
+                    continue
+                evidence = json.loads(row["evidence_json"])
+                reason = "auto-retired: PARALLAX source signal no longer clears current candidate screen"
+                evidence = list(dict.fromkeys((evidence + [reason])[-128:]))
+                con.execute(
+                    "UPDATE candidates SET stage='retired',evidence_json=?,updated_at=? WHERE candidate_id=?",
+                    (_json(evidence, "evidence"), _utc_now(), row["candidate_id"]),
+                )
+                retired.append(row["candidate_id"])
+        return retired
+
     def refresh(self, min_samples: int = 5) -> dict[str, Any]:
         min_samples = max(3, min(1000, int(min_samples)))
-        signals = self.parallax.mutation_signals(min_samples=min_samples)
+        screening = self.parallax.screening_report(min_samples=min_samples, max_fdr=SOURCE_FDR_MAX)
+        all_hypotheses = screening.get("hypotheses", [])
+        hypothesis_map = {
+            _signal_key(signal): signal
+            for signal in all_hypotheses
+            if isinstance(signal, Mapping)
+        }
+        auto_retired = self._retire_decayed_sources(hypothesis_map)
+        signals = [
+            signal
+            for signal in all_hypotheses
+            if isinstance(signal, Mapping) and signal.get("candidate_eligible") is True
+        ]
+
         created: list[str] = []
-        touched: list[str] = []
+        touched: list[str] = list(auto_retired)
         skipped_active = 0
         skipped_budget = 0
         skipped_stale = 0
+        skipped_unmappable = 0
+
         with _LOCK, self._connect() as con:
             for signal in signals:
                 proposal = self._mutation(signal)
                 if proposal is None:
+                    skipped_unmappable += 1
                     continue
                 mutation, hypothesis = proposal
                 asset = _text(signal.get("asset"), "asset", 32).upper()
                 regime = _text(signal.get("regime"), "regime", 80)
                 source_commit = _git_sha(signal.get("source_commit"))
-                family_id = "dsf-" + _sha(asset + "|" + regime + "|" + str(mutation.get("op")) + "|" + str(mutation.get("subsystem", "")))[:20]
-                signal_json = _json(dict(signal), "source_signal", 32768)
+                contract_hash = _text(signal.get("comparison_contract_hash"), "comparison_contract_hash", 64)
+                family = _text(str(mutation.get("family") or mutation.get("op")), "mutation family", 160)
+                family_id = "dsf-" + _sha(
+                    asset
+                    + "|"
+                    + regime
+                    + "|"
+                    + source_commit
+                    + "|"
+                    + contract_hash
+                    + "|"
+                    + family
+                )[:20]
+                signal_json = _json(dict(signal), "source_signal", 65536)
                 mutation_json = _json(mutation, "mutation", 32768)
                 candidate_id = "ds-" + _sha(family_id + "|" + signal_json + "|" + mutation_json)[:24]
                 exact = con.execute("SELECT candidate_id FROM candidates WHERE candidate_id=?", (candidate_id,)).fetchone()
@@ -235,7 +472,8 @@ class DreamstateLab:
                     continue
 
                 history = con.execute(
-                    "SELECT candidate_id,trial_index,stage,source_signal_json FROM candidates WHERE family_id=? ORDER BY trial_index DESC",
+                    "SELECT candidate_id,trial_index,stage,source_signal_json FROM candidates "
+                    "WHERE family_id=? ORDER BY trial_index DESC",
                     (family_id,),
                 ).fetchall()
                 parent_candidate_id = None
@@ -249,8 +487,8 @@ class DreamstateLab:
                         skipped_budget += 1
                         continue
                     previous_signal = json.loads(latest["source_signal_json"])
-                    previous_n = int(previous_signal.get("n") or 0)
-                    current_n = int(signal.get("n") or 0)
+                    previous_n = int(previous_signal.get("evidence_pair_count", previous_signal.get("n", 0)) or 0)
+                    current_n = int(signal.get("evidence_pair_count", signal.get("n", 0)) or 0)
                     if current_n <= previous_n:
                         skipped_stale += 1
                         continue
@@ -264,26 +502,64 @@ class DreamstateLab:
                        source_commit,source_signal_json,stage,validation_json,evidence_json,parent_candidate_id,created_at,updated_at)
                        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                     (
-                        candidate_id, family_id, trial_index, asset, regime, hypothesis, mutation_json,
-                        source_commit, signal_json, "proposed", _json(validation, "validation"),
-                        "[]", parent_candidate_id, now, now,
+                        candidate_id,
+                        family_id,
+                        trial_index,
+                        asset,
+                        regime,
+                        hypothesis,
+                        mutation_json,
+                        source_commit,
+                        signal_json,
+                        "proposed",
+                        _json(validation, "validation"),
+                        "[]",
+                        parent_candidate_id,
+                        now,
+                        now,
                     ),
                 )
                 created.append(candidate_id)
                 touched.append(candidate_id)
+
         mirrors = [self._mirror_candidate(self.candidate(candidate_id)) for candidate_id in dict.fromkeys(touched)]
         out = self.snapshot()
         out["refresh"] = {
             "created": created,
+            "auto_retired_source_decay": auto_retired,
             "signal_count": len(signals),
+            "screened_hypotheses": screening.get("hypotheses_total", 0),
+            "screen_blockers": screening.get("blocker_counts", {}),
+            "source_fdr_limit": SOURCE_FDR_MAX,
             "min_samples": min_samples,
             "brain_mirrors": len(mirrors),
             "skipped_active_family": skipped_active,
             "skipped_family_budget": skipped_budget,
             "skipped_stale_evidence": skipped_stale,
+            "skipped_unmappable_signal": skipped_unmappable,
             "family_trial_budget": FAMILY_TRIAL_BUDGET,
         }
         return out
+
+    def _validate_gate_preconditions(
+        self,
+        candidate: Mapping[str, Any],
+        updates: Mapping[str, Any],
+    ) -> None:
+        signal = candidate.get("source_signal") if isinstance(candidate.get("source_signal"), Mapping) else {}
+        contract_complete = bool(signal.get("comparison_contract_complete"))
+        q_value = signal.get("q_value")
+        if updates.get("multiple_testing") is True:
+            if q_value is None or float(q_value) > SOURCE_FDR_MAX:
+                raise ValueError("multiple_testing gate cannot pass while the PARALLAX source FDR screen is not cleared")
+            if not contract_complete:
+                raise ValueError("multiple_testing gate requires a complete PARALLAX comparison contract")
+        if updates.get("deterministic_replay") is True and not contract_complete:
+            raise ValueError("deterministic_replay gate requires a complete PARALLAX comparison contract")
+        if updates.get("costs_slippage_latency") is True:
+            contract = signal.get("comparison_contract") if isinstance(signal.get("comparison_contract"), Mapping) else {}
+            if not contract_complete or not str(contract.get("cost_model_id") or ""):
+                raise ValueError("costs_slippage_latency gate requires a complete cost-bound comparison contract")
 
     def evaluate(self, candidate_id: str, payload: Mapping[str, Any]) -> dict[str, Any]:
         candidate_id = _text(candidate_id, "candidate_id", 96)
@@ -301,6 +577,9 @@ class DreamstateLab:
         if not isinstance(evidence, list) or len(evidence) > 64:
             raise ValueError("evidence must be a list with at most 64 items")
         evidence = [_text(x, "evidence item", 700) for x in evidence]
+
+        candidate = self.candidate(candidate_id)
+        self._validate_gate_preconditions(candidate, updates)
 
         with _LOCK, self._connect() as con:
             row = con.execute("SELECT * FROM candidates WHERE candidate_id=?", (candidate_id,)).fetchone()
@@ -358,27 +637,85 @@ class DreamstateLab:
             row = con.execute("SELECT * FROM candidates WHERE candidate_id=?", (candidate_id,)).fetchone()
         if not row:
             raise ValueError("unknown DREAMSTATE candidate")
-        return {
-            "candidate_id": row["candidate_id"], "family_id": row["family_id"], "trial_index": row["trial_index"],
-            "asset": row["asset"], "regime": row["regime"], "hypothesis": row["hypothesis"],
-            "mutation": json.loads(row["mutation_json"]), "source_commit": row["source_commit"],
-            "source_signal": json.loads(row["source_signal_json"]), "stage": row["stage"],
-            "validation": json.loads(row["validation_json"]), "evidence": json.loads(row["evidence_json"]),
-            "parent_candidate_id": row["parent_candidate_id"], "created_at": row["created_at"], "updated_at": row["updated_at"],
-            "execution_authorized": False, "production_decision_authorized": False,
+        base = {
+            "candidate_id": row["candidate_id"],
+            "family_id": row["family_id"],
+            "trial_index": row["trial_index"],
+            "asset": row["asset"],
+            "regime": row["regime"],
+            "hypothesis": row["hypothesis"],
+            "mutation": json.loads(row["mutation_json"]),
+            "source_commit": row["source_commit"],
+            "source_signal": json.loads(row["source_signal_json"]),
+            "stage": row["stage"],
+            "validation": json.loads(row["validation_json"]),
+            "evidence": json.loads(row["evidence_json"]),
+            "parent_candidate_id": row["parent_candidate_id"],
+            "created_at": row["created_at"],
+            "updated_at": row["updated_at"],
+            "execution_authorized": False,
+            "production_decision_authorized": False,
         }
+        base["policy_contract"] = self._policy_contract(base)
+        base["search_accounting"] = self._search_accounting(base)
+        return base
+
+    def _family_summaries(self, candidates: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        families: dict[str, dict[str, Any]] = {}
+        for candidate in candidates:
+            row = families.setdefault(
+                candidate["family_id"],
+                {
+                    "family_id": candidate["family_id"],
+                    "asset": candidate["asset"],
+                    "regime": candidate["regime"],
+                    "source_commit": candidate["source_commit"],
+                    "comparison_contract_hash": candidate["source_signal"].get("comparison_contract_hash"),
+                    "trials": 0,
+                    "stages": {},
+                    "latest_updated_at": "",
+                    "active_candidate": None,
+                },
+            )
+            row["trials"] += 1
+            stage = candidate["stage"]
+            row["stages"][stage] = row["stages"].get(stage, 0) + 1
+            if candidate["updated_at"] >= row["latest_updated_at"]:
+                row["latest_updated_at"] = candidate["updated_at"]
+            if stage not in _TERMINAL_REVISION_STAGES:
+                row["active_candidate"] = candidate["candidate_id"]
+        out = []
+        for row in families.values():
+            row["trial_budget"] = FAMILY_TRIAL_BUDGET
+            row["trial_budget_remaining"] = max(0, FAMILY_TRIAL_BUDGET - row["trials"])
+            row["budget_exhausted"] = row["trials"] >= FAMILY_TRIAL_BUDGET
+            out.append(row)
+        out.sort(key=lambda x: (x["latest_updated_at"], x["family_id"]), reverse=True)
+        return out
 
     def snapshot(self, limit: int = 200) -> dict[str, Any]:
         with _LOCK, self._connect() as con:
-            rows = con.execute("SELECT candidate_id FROM candidates ORDER BY updated_at DESC LIMIT ?", (max(1, min(1000, int(limit))),)).fetchall()
+            rows = con.execute(
+                "SELECT candidate_id FROM candidates ORDER BY updated_at DESC LIMIT ?",
+                (max(1, min(1000, int(limit))),),
+            ).fetchall()
             stage_rows = con.execute("SELECT stage,COUNT(*) AS n FROM candidates GROUP BY stage").fetchall()
         candidates = [self.candidate(row["candidate_id"]) for row in rows]
         stages = {stage: 0 for stage in sorted(_ALLOWED_STAGES)}
         stages.update({row["stage"]: row["n"] for row in stage_rows})
+        families = self._family_summaries(candidates)
         return {
             "schema_version": SCHEMA_VERSION,
             "stages": stages,
             "candidates": candidates,
+            "families": families,
+            "search": {
+                "family_count": len(families),
+                "active_family_count": sum(1 for row in families if row["active_candidate"]),
+                "budget_exhausted_family_count": sum(1 for row in families if row["budget_exhausted"]),
+                "family_trial_budget": FAMILY_TRIAL_BUDGET,
+                "source_fdr_limit": SOURCE_FDR_MAX,
+            },
             "required_gates": list(REQUIRED_GATES),
             "family_trial_budget": FAMILY_TRIAL_BUDGET,
             "authority": {
@@ -389,10 +726,14 @@ class DreamstateLab:
             },
             "truth_contract": {
                 "counterfactual_signal_is_hypothesis_generation_only": True,
+                "source_signal_must_clear_parallax_fdr_and_comparison_contract_screen": True,
                 "multiple_testing_gate_required": True,
                 "independent_verification_required": True,
                 "failed_gate_requires_new_candidate_revision": True,
                 "one_active_candidate_per_family": True,
                 "family_trial_budget_enforced": True,
+                "families_are_isolated_by_source_revision_and_comparison_contract": True,
+                "source_signal_decay_can_retire_shadow_candidates": True,
+                "opposite_side_counterfactual_never_auto_inverts_policy": True,
             },
         }
