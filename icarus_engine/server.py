@@ -17,6 +17,7 @@
   GET  /api/engine-control        authenticated registered engine/subsystem control snapshot
   GET  /api/brain                 adaptive multi-agent brain, subsystem fabric, regimes, learning and shadow candidates
   GET  /api/possibility           ICARUS Psi latent pressure, counterfactual price, future-space diagnostics
+  GET  /api/possibility/evidence  durable Psi evidence ledger with causal as-of replay
   POST /admin/pause | /admin/resume        {"asset": "NQ"} or all          (Bearer token)
   POST /admin/flatten                      {"confirm": true, "asset"?: "NQ"}
   POST /admin/inputs                       {"asset": "NQ"|"*", "values": {...}, "chart": {...}, "persist": true}  → re-warm
@@ -776,6 +777,19 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     return self._json(401, {"detail": "bad admin token"})
                 try:
                     return self._json(200, dreamstate.snapshot())
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+            if p.path == "/api/possibility/evidence":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                try:
+                    include_expired = str(q.get("include_expired", ["false"])[0]).strip().lower() in {"1", "true", "yes", "on"}
+                    return self._json(200, possibility.evidence_snapshot(
+                        q.get("asset", [""])[0],
+                        limit=int(q.get("limit", ["100"])[0]),
+                        include_expired=include_expired,
+                        as_of=q.get("as_of", [None])[0],
+                    ))
                 except (ValueError, TypeError) as ex:
                     return self._json(400, {"detail": str(ex)})
             if p.path == "/api/possibility":

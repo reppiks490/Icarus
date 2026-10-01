@@ -461,6 +461,23 @@ def engine_possibility_state(asset: str = "NQ") -> dict:
 
 
 @mcp.tool()
+def engine_possibility_evidence(
+    asset: str = "NQ",
+    limit: int = 100,
+    include_expired: bool = False,
+    as_of: str = "",
+) -> dict:
+    """Read durable ICARUS Ψ evidence receipts and causal as-of selection."""
+    asset = asset.strip().upper()
+    limit = max(1, min(1000, int(limit)))
+    params = [f"asset={asset}", f"limit={limit}", f"include_expired={'true' if include_expired else 'false'}"]
+    if as_of.strip():
+        from urllib.parse import quote
+        params.append("as_of=" + quote(as_of.strip(), safe=":-+TZ"))
+    return _safe_engine(lambda: _engine_get("/api/possibility/evidence?" + "&".join(params)))
+
+
+@mcp.tool()
 def record_engine_possibility_evidence(
     asset: str,
     source: str,

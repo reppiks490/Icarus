@@ -62,3 +62,9 @@ Passing the research gate can produce `LONG_BIAS` or `SHORT_BIAS`, but those lab
 The first-class **ICARUS Ψ** tab shows latent pressure, component provenance, evidence coverage, elasticity, information-wave novelty, synthetic price, residual-identifiability status, future entropy/collapse, future clusters, leaders, phase boundary/event horizon, forced consensus, hidden-state hypotheses, market shadows, explicit `NO_EDGE` blockers, and data health.
 
 The panel polls only while the Ψ tab is active.
+
+## Durable external-evidence ledger
+
+Optional provenance-labelled force evidence (gamma, basis, CTA, liquidation and rebalance inputs) is stored in an append-only local SQLite ledger when the engine has a writable base directory. Exact duplicate receipts are idempotent. A causal replay at time `T` may use a row only when both its source observation time **and its local receipt time** are at or before `T`, and the row has not expired. This prevents backdated observations received later from leaking into historical replay.
+
+The trader's **ICARUS Ψ** panel shows whether this ledger is durable, its active evidence count and retained history count. The same evidence can be inspected through authenticated `GET /api/possibility/evidence` and the MCP `engine_possibility_evidence` read tool. This does not expand production or execution authority.
