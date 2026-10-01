@@ -174,3 +174,39 @@ def test_mixed_success_definitions_do_not_establish_one_global_100_percent_claim
     assert snap["closed_sample"]["scope_coherent"] is False
     assert snap["closed_sample"]["scope_count"] == 2
     assert snap["closed_sample"]["historical_100_percent_established"] is False
+
+
+def test_pending_settlement_backlog_returns_only_matured_unsettled(tmp_path):
+    store = PerformanceProofStore(tmp_path)
+
+    matured = store.register_forecast(_forecast(0))
+    _, _, observed = _times(0)
+    store.record_outcome({
+        "forecast_id": matured["forecast_id"],
+        "observed_at": observed,
+        "success": True,
+        "realized_value": 1.0,
+        "outcome_hash": "a" * 64,
+        "source": "settled fixture",
+    })
+
+    pending_body = _forecast(1)
+    pending = store.register_forecast(pending_body)
+
+    backlog = store.pending_settlements()
+    assert backlog["total_matured_unsettled"] == 1
+    assert backlog["returned"] == 1
+    assert backlog["items"][0]["forecast_id"] == pending["forecast_id"]
+    assert backlog["items"][0]["candidate_id"] == pending_body["candidate_id"]
+    assert backlog["execution_authorized"] is False
+    assert backlog["production_decision_authorized"] is False
+
+    snap = store.snapshot()
+    assert snap["settlement_backlog"]["count"] == 1
+    assert snap["settlement_backlog"]["fully_settled"] is False
+
+
+def test_pending_settlement_limit_validation(tmp_path):
+    store = PerformanceProofStore(tmp_path)
+    with pytest.raises(ValueError, match="limit"):
+        store.pending_settlements(limit=0)

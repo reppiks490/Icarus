@@ -265,6 +265,48 @@ class PerformanceProofStore:
             "production_decision_authorized": False,
         }
 
+    def pending_settlements(self, *, as_of: str | None = None, limit: int = 100) -> dict[str, Any]:
+        """Return matured forecasts that still lack an immutable outcome."""
+        if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 1000:
+            raise ValueError("limit must be an integer within [1,1000]")
+        cutoff = _iso(as_of, "as_of") if as_of is not None else _now().isoformat().replace("+00:00", "Z")
+        with self._lock, self._connect() as con:
+            rows = [dict(x) for x in con.execute(
+                "SELECT f.* FROM forecasts f LEFT JOIN outcomes o ON o.forecast_id=f.forecast_id "
+                "WHERE f.matures_at <= ? AND o.forecast_id IS NULL "
+                "ORDER BY f.matures_at, f.forecast_id LIMIT ?",
+                (cutoff, limit),
+            ).fetchall()]
+            total = con.execute(
+                "SELECT COUNT(*) FROM forecasts f LEFT JOIN outcomes o ON o.forecast_id=f.forecast_id "
+                "WHERE f.matures_at <= ? AND o.forecast_id IS NULL",
+                (cutoff,),
+            ).fetchone()[0]
+        items = [{
+            "forecast_id": row["forecast_id"],
+            "candidate_id": row["candidate_id"],
+            "asset": row["asset"],
+            "regime": row["regime"],
+            "decision_at": row["decision_at"],
+            "matures_at": row["matures_at"],
+            "probability_success": row["probability_success"],
+            "success_definition": row["success_definition"],
+            "source_repo": row["source_repo"],
+            "source_commit": row["source_commit"],
+            "dataset_hash": row["dataset_hash"],
+            "evidence_hash": row["evidence_hash"],
+        } for row in rows]
+        return {
+            "schema_version": "icarus-performance-settlement-backlog-v1",
+            "as_of": cutoff,
+            "total_matured_unsettled": int(total),
+            "returned": len(items),
+            "items": items,
+            "execution_authorized": False,
+            "production_decision_authorized": False,
+            "rule": "Backlog items are matured forecasts awaiting observed outcomes; no outcome is inferred or synthesized.",
+        }
+
     @staticmethod
     def _calibration(rows: list[Mapping[str, Any]]) -> tuple[float | None, list[dict[str, Any]]]:
         if not rows:
@@ -296,6 +338,7 @@ class PerformanceProofStore:
             pending = con.execute("SELECT COUNT(*) FROM forecasts WHERE matures_at > ?", (cutoff,)).fetchone()[0]
             replays = [dict(x) for x in con.execute("SELECT * FROM replay_proofs ORDER BY observed_at, proof_id").fetchall()]
 
+        unsettled = [x for x in matured if x["observed_at"] is None]
         settled = [x for x in matured if x["observed_at"] is not None]
         successes = sum(int(x["success"]) for x in settled)
         outcome_coverage = (len(settled) / len(matured)) if matured else None
@@ -368,6 +411,11 @@ class PerformanceProofStore:
                 "shadow_selection_authorized": True,
                 "production_decision_authorized": False,
                 "execution_authorized": False,
+            },
+            "settlement_backlog": {
+                "count": len(unsettled),
+                "oldest_matures_at": unsettled[0]["matures_at"] if unsettled else None,
+                "fully_settled": len(unsettled) == 0,
             },
             "metrics": {
                 "matured_forecasts": len(matured),
