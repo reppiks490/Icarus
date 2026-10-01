@@ -418,7 +418,7 @@ def test_durable_evidence_exact_receipt_is_idempotent(tmp_path):
     assert ledger["total_history_count"] == 1
 
 
-def test_durable_evidence_as_of_replay_excludes_later_observations(tmp_path):
+def test_durable_evidence_as_of_replay_excludes_later_receipts(tmp_path):
     now = datetime.now(timezone.utc)
     early = now - timedelta(minutes=4)
     late = now - timedelta(minutes=2)
@@ -438,16 +438,19 @@ def test_durable_evidence_as_of_replay_excludes_later_observations(tmp_path):
         ttl_seconds=600,
     )
 
-    between = engine.evidence_snapshot(
+    # Both observations were received only now. Replaying a historical instant
+    # before local receipt must not leak either row into the past.
+    historical = engine.evidence_snapshot(
         "NQ",
         include_expired=True,
         as_of=(early + timedelta(minutes=1)).isoformat(),
     )
     current = engine.evidence_snapshot("NQ", include_expired=True)
-    assert between["active"]["gamma_pressure"]["value"] == pytest.approx(-0.35)
-    assert all(row["observed_ts"] <= datetime.fromisoformat(between["as_of"].replace("Z", "+00:00")).timestamp() for row in between["history"])
+    assert "gamma_pressure" not in historical["active"]
+    assert historical["history"] == []
+    assert historical["total_history_count"] == 0
     assert current["active"]["gamma_pressure"]["value"] == pytest.approx(0.55)
-    assert between["active"]["gamma_pressure"]["evidence_id"] != current["active"]["gamma_pressure"]["evidence_id"]
+    assert current["total_history_count"] == 2
 
 
 def test_snapshot_surfaces_durable_evidence_health(tmp_path):
