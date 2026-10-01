@@ -251,3 +251,12 @@ def test_subsystem_context_adds_oracle_without_overwriting_caller_owned_data():
     assert out["oracle"]["latent_pressure"] == 0.4
     assert out["oracle"]["future_space_collapse"] == 70.0
     assert out["oracle"]["authority"]["execution_authorized"] is False
+
+
+def test_aether_enforces_minimum_independent_population(tmp_path):
+    kernel = PantheonKernel(tmp_path, swarm=AetherSwarm(threshold=0.0, max_agents=1))
+    obs = kernel.record_observation(_payload(observation_id="pan-min-pop"))
+    swarm = obs["analysis"]["aether"]
+    assert swarm["status"] == "active"
+    assert len(swarm["agents"]) >= 4
+    assert {"falsifier", "alternative_cause", "provenance_guard", "risk_guard"} <= {a["role"] for a in swarm["agents"]}

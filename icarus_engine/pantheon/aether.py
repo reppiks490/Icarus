@@ -44,7 +44,7 @@ _ROLE_PARTITIONS = {
 class AetherSwarm:
     def __init__(self, threshold: float = 0.58, max_agents: int = 12):
         self.threshold = max(0.0, min(1.0, float(threshold)))
-        self.max_agents = max(1, min(32, int(max_agents)))
+        self.max_agents = max(4, min(32, int(max_agents)))
 
     def evaluate(
         self,
