@@ -491,6 +491,208 @@ class SibylEngine:
         out.sort(key=lambda x: x["mass"], reverse=True)
         return out[:limit]
 
+    @staticmethod
+    def _world_forks(horizon_rows: list[Mapping[str, Any]], limit: int = 12) -> dict[str, Any]:
+        """Beam-search coherent basin sequences across horizons.
+
+        These are structured summaries of the marginal horizon distributions,
+        not claims that individual paths are independent or exhaustive.
+        """
+        beam: list[tuple[list[dict[str, Any]], float, str | None]] = [([], 1.0, None)]
+        for row in horizon_rows:
+            probs = row.get("probabilities") or {}
+            expanded: list[tuple[list[dict[str, Any]], float, str]] = []
+            for states, weight, previous in beam:
+                for basin in ("up", "rotation", "down"):
+                    p = max(0.0, float(probs.get(basin, 0.0)))
+                    if p <= 0:
+                        continue
+                    if previous is None or previous == basin:
+                        transition = 1.0
+                    elif "rotation" in (previous, basin):
+                        transition = 0.86
+                    else:
+                        transition = 0.62
+                    expanded.append(
+                        (
+                            states + [{
+                                "horizon_seconds": int(row["horizon_seconds"]),
+                                "basin": basin,
+                                "marginal_probability": p,
+                            }],
+                            weight * p * transition,
+                            basin,
+                        )
+                    )
+            expanded.sort(key=lambda x: x[1], reverse=True)
+            beam = expanded[: max(limit * 4, 24)]
+
+        top = beam[:limit]
+        retained = sum(weight for _, weight, _ in top)
+        worlds = []
+        for rank, (states, weight, terminal) in enumerate(top, 1):
+            normalized = weight / retained if retained > 0 else 0.0
+            signature = ">".join(str(x["basin"])[0].upper() for x in states)
+            worlds.append({
+                "rank": rank,
+                "signature": signature,
+                "states": states,
+                "terminal_basin": terminal,
+                "relative_weight": normalized,
+                "raw_weight": weight,
+            })
+        return {
+            "worlds": worlds,
+            "retained_raw_weight": retained,
+            "normalization": "relative across retained beam paths; not exhaustive joint probability mass",
+        }
+
+    @staticmethod
+    def _gravity_field(
+        attractors: list[Mapping[str, Any]],
+        invalidations: list[Mapping[str, Any]],
+        current_price: float | None,
+        volatility_pct: float,
+    ) -> dict[str, Any]:
+        if current_price is None or current_price <= 0 or (not attractors and not invalidations):
+            return {"available": False, "points": [], "equilibrium_price": None}
+        span = current_price * max(0.002, min(0.08, volatility_pct * 3.0))
+        soft = max(1e-9, 0.0005)
+        raw_points = []
+        for i in range(17):
+            price = current_price - span + (2.0 * span * i / 16.0)
+            force = 0.0
+            for row in attractors:
+                delta = (float(row["price"]) - price) / current_price
+                mass = min(5.0, max(0.0, float(row.get("mass") or 0.0)))
+                force += mass * delta / (delta * delta + soft * soft)
+            for row in invalidations:
+                delta = (float(row["price"]) - price) / current_price
+                mass = min(5.0, max(0.0, float(row.get("mass") or 0.0)))
+                force -= mass * delta / (delta * delta + soft * soft)
+            raw_points.append((price, force))
+        scale = max((abs(force) for _, force in raw_points), default=0.0) or 1.0
+        points = [{"price": price, "force": force / scale} for price, force in raw_points]
+        equilibrium = min(raw_points, key=lambda x: abs(x[1]))[0] if raw_points else None
+        return {
+            "available": True,
+            "points": points,
+            "equilibrium_price": equilibrium,
+            "strongest_attractor": attractors[0] if attractors else None,
+            "strongest_invalidation": invalidations[0] if invalidations else None,
+            "force_scale": "normalized to [-1, 1] across the displayed local price grid",
+        }
+
+    @staticmethod
+    def _causal_delay_radar(evidence: list[Mapping[str, Any]], limit: int = 32) -> list[dict[str, Any]]:
+        rows = []
+        for e in evidence:
+            payload = e.get("payload")
+            if not isinstance(payload, Mapping):
+                continue
+            edges = payload.get("causal_edges")
+            if not isinstance(edges, list):
+                continue
+            for edge in edges[:32]:
+                if not isinstance(edge, Mapping):
+                    continue
+                try:
+                    lag = float(edge.get("lag_ms"))
+                    confidence = float(edge.get("confidence", 1.0)) * float(e.get("confidence", 0.0))
+                except (TypeError, ValueError):
+                    continue
+                if not math.isfinite(lag) or lag < 0 or lag > 86_400_000:
+                    continue
+                if not math.isfinite(confidence):
+                    continue
+                source_node = str(edge.get("from") or "").strip()[:64]
+                target_node = str(edge.get("to") or "").strip()[:64]
+                if not source_node or not target_node:
+                    continue
+                rows.append({
+                    "publisher": str(e.get("source") or ""),
+                    "domain": str(e.get("domain") or ""),
+                    "from": source_node,
+                    "to": target_node,
+                    "lag_ms": lag,
+                    "relation": str(edge.get("relation") or "reported")[:32],
+                    "confidence": _clamp(confidence),
+                    "observed_at": str(e.get("observed_at") or ""),
+                    "source_commit": str(e.get("source_commit") or ""),
+                })
+        rows.sort(key=lambda x: (x["confidence"], x["observed_at"]), reverse=True)
+        return rows[:limit]
+
+    @staticmethod
+    def _forward_surface(evidence: list[Mapping[str, Any]]) -> list[dict[str, Any]]:
+        per_key: dict[tuple[int, str], list[tuple[dict[str, float], float]]] = {}
+        fields = ("expected_return", "implied_vol", "skew", "tail_up", "tail_down")
+        for e in evidence:
+            payload = e.get("payload")
+            if not isinstance(payload, Mapping):
+                continue
+            surface = payload.get("forward_surface")
+            entries: list[Mapping[str, Any]] = []
+            if isinstance(surface, list):
+                entries = [x for x in surface if isinstance(x, Mapping)]
+            elif isinstance(surface, Mapping):
+                for key, value in surface.items():
+                    if isinstance(value, Mapping):
+                        row = dict(value)
+                        row.setdefault("horizon_seconds", key)
+                        entries.append(row)
+            for row in entries[:64]:
+                try:
+                    horizon = int(row.get("horizon_seconds"))
+                except (TypeError, ValueError):
+                    continue
+                if horizon < 1 or horizon > 604800:
+                    continue
+                values: dict[str, float] = {}
+                for field in fields:
+                    if row.get(field) is None:
+                        continue
+                    try:
+                        value = float(row[field])
+                    except (TypeError, ValueError):
+                        continue
+                    if math.isfinite(value):
+                        values[field] = value
+                if not values:
+                    continue
+                key = (horizon, str(e.get("source") or ""))
+                per_key.setdefault(key, []).append((values, float(e.get("confidence") or 0.0)))
+
+        per_horizon: dict[int, list[tuple[dict[str, float], float, str]]] = {}
+        for (horizon, source), rows in per_key.items():
+            source_weight = max((max(0.0, min(1.0, w)) for _, w in rows), default=0.0)
+            merged: dict[str, float] = {}
+            for field in fields:
+                vals = [(v[field], max(0.0, w)) for v, w in rows if field in v]
+                if vals:
+                    denom = sum(w for _, w in vals) or float(len(vals))
+                    merged[field] = sum(value * (w if w > 0 else 1.0) for value, w in vals) / (
+                        sum((w if w > 0 else 1.0) for _, w in vals) or 1.0
+                    )
+            if merged:
+                per_horizon.setdefault(horizon, []).append((merged, source_weight, source))
+
+        out = []
+        for horizon, sources in sorted(per_horizon.items()):
+            row: dict[str, Any] = {
+                "horizon_seconds": horizon,
+                "sources": sorted(source for _, _, source in sources),
+            }
+            for field in fields:
+                vals = [(values[field], weight) for values, weight, _ in sources if field in values]
+                if vals:
+                    denom = sum(weight for _, weight in vals) or float(len(vals))
+                    row[field] = sum(value * (weight if weight > 0 else 1.0) for value, weight in vals) / (
+                        sum((weight if weight > 0 else 1.0) for _, weight in vals) or 1.0
+                    )
+            out.append(row)
+        return out
+
     def _build(
         self,
         asset: str,
@@ -510,6 +712,8 @@ class SibylEngine:
         fracture = max(horizon_rows, key=lambda x: x["bifurcation_score"]) if horizon_rows else None
         domains = sorted({str(e["domain"]) for e in evidence})
         sources = sorted({str(e["source"]) for e in evidence})
+        attractors = self._cluster_levels(evidence, "target_price", current_price)
+        invalidations = self._cluster_levels(evidence, "invalidation_price", current_price)
         return {
             "schema_version": SCHEMA_VERSION,
             "asset": asset,
@@ -527,8 +731,12 @@ class SibylEngine:
             "horizons": horizon_rows,
             "temporal_collapse": strongest,
             "temporal_fracture": fracture,
-            "attractors": self._cluster_levels(evidence, "target_price", current_price),
-            "repulsion_or_invalidation": self._cluster_levels(evidence, "invalidation_price", current_price),
+            "future_world_forks": self._world_forks(horizon_rows),
+            "attractors": attractors,
+            "repulsion_or_invalidation": invalidations,
+            "liquidity_gravity_field": self._gravity_field(attractors, invalidations, current_price, volatility_pct),
+            "causal_delay_radar": self._causal_delay_radar(evidence),
+            "derivatives_forward_surface": self._forward_surface(evidence),
             "context": dict(context or {}),
             "authority": {
                 "research_only": True,
