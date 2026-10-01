@@ -42,6 +42,14 @@ Recognized nested subsystem findings such as ARGUS/NEXUS are also projected into
 
 This closes the cloud-to-local evidence path without giving a cloud agent production or broker authority.
 
+## Continuous local research learning
+
+Completed bounded ICARUS research studies are continuously scanned into the Brain without changing production behavior. New studies capture the exact clean ICARUS Git revision at study start when it can be proven. A research-qualified study becomes a `validated` candidate, **not** a `qualified_shadow` candidate.
+
+The local research workflow may truthfully establish dataset/baseline provenance, disjoint train/validation evidence, protected holdout consumption, and stressed commission/slippage evidence. It does not by itself establish feature-level causal correctness, latency realism, multiple-testing control, ablation sufficiency, calibration, OOD/drift robustness, deterministic rerun equality, or independent verification. Those gates remain UNKNOWN/closed until separate evidence exists.
+
+No-candidate, failed, timed-out, cancelled, and interrupted studies are also retained as durable learning so the system does not repeatedly rediscover the same failed research path. A dirty or unknown code revision cannot mint a Brain candidate.
+
 ## Truthful operator metrics
 
 The panel shows measured values only. A missing success rate is rendered as UNMEASURED. Latency targets are labeled targets until instrumentation supplies actual distributions. Learning is evidenced by durable events and before/after validation state, not by an unsupported claim that the model "self-learned."
