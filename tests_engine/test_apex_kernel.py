@@ -158,3 +158,24 @@ def test_apex_lineage_tokens_are_compact_even_for_long_source_identity(tmp_path)
     assert len(token) == len("apex-root:") + 32
     assert len(full_root) > len(token)
     assert out["engine_support"]["oracle"]["root_tokens"] == [token]
+
+
+def test_apex_kernel_surfaces_continuous_learning_state(tmp_path):
+    from icarus_engine.apex.kernel import ApexKernel
+
+    good = lambda: {
+        "status": "LEARNING",
+        "scorecards": [{"producer": "sibyl", "settled": 42, "mean_brier": 0.19}],
+        "execution_authorized": False,
+        "production_decision_authorized": False,
+    }
+    out = ApexKernel(tmp_path, learning=good).snapshot(as_of="2026-10-01T14:00:00Z")
+    assert out["learning"]["status"] == "AVAILABLE"
+    assert out["learning"]["snapshot"]["status"] == "LEARNING"
+    assert out["learning"]["snapshot"]["scorecards"][0]["settled"] == 42
+    assert out["learning"]["execution_authorized"] is False
+
+    bad = lambda: (_ for _ in ()).throw(RuntimeError("learning unavailable"))
+    degraded = ApexKernel(tmp_path, learning=bad).snapshot(as_of="2026-10-01T14:00:00Z")
+    assert degraded["learning"]["status"] == "DEGRADED"
+    assert "learning unavailable" in degraded["learning"]["error"]
