@@ -117,6 +117,22 @@
       "verification": "The repair updates only the stale contract assertions; repository Actions is the authoritative regression check for the branch.",
       "interface_effect": "The System evolution & audit panel remains continuously test-covered against /api/system/audit -> evolution.",
       "execution_authorized": false
+    },
+    {
+      "id": "mcp-20260930-export-data-integrity-panel",
+      "recorded_date": "2026-09-30",
+      "subsystem": "ICARUS / NEXUS",
+      "kind": "integration",
+      "status": "integrated_branch",
+      "severity": "important",
+      "title": "Export/Data Integrity and MCP receipt panel integrated",
+      "summary": "ICARUS gained a dedicated Data Integrity interface for the export checklist, recovered corpus, representation/data-quality repairs, and idempotent runtime MCP change receipts with exact repository/branch/commit provenance.",
+      "source_repo": "reppiks490/Icarus",
+      "source_branch": "chatgpt/icarus-mcp-integrity-panel-20260930",
+      "source_commit": "ccef035f465e76aa6985b346dbf2b4e00306e8a6",
+      "verification": "The implementation includes fail-closed manifest/journal validation, exact-SHA provenance enforcement, idempotency tests, MCP bridge contract tests, and dashboard JavaScript contract coverage; repository Actions is the final branch verification.",
+      "interface_effect": "A Data Integrity tab exposes O03/O04/O05/O06/O14, corpus statistics, repaired NEXUS blockers, and future material MCP receipts. The System evolution panel also records this integration.",
+      "execution_authorized": false
     }
   ]
 }
