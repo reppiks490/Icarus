@@ -83,6 +83,7 @@ from .dreamstate import DreamstateLab
 from .possibility import PossibilityEngine
 from .performance_proof import PerformanceProofStore
 from .latency_telemetry import LatencyTelemetry
+from .candidate_qualification import QualificationLedger
 from .autopilot import TacticalAutopilot
 from .engine_control import ControlAction, EngineControlPlane
 from .mcp_control import MCPControlPlane
@@ -195,6 +196,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     possibility = PossibilityEngine(port)
     performance_proof = PerformanceProofStore(port.base_dir)
     latency_telemetry = LatencyTelemetry()
+    qualification = QualificationLedger(port.base_dir)
     autopilot = TacticalAutopilot(port)
     parallax = ParallaxStore(port.base_dir)
     dreamstate = DreamstateLab(port.base_dir, parallax=parallax)
