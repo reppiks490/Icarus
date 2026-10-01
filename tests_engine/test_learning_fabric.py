@@ -342,3 +342,62 @@ def test_background_learning_never_blocks_engine_startup(tmp_path, monkeypatch):
     assert entered.wait(1)
     release.set()
     fabric.stop()
+
+
+def test_trade_list_dataset_builds_realized_success_failure_memory(tmp_path):
+    from icarus_engine.learning_fabric import LearningFabric
+
+    path = tmp_path / "history" / "THE_PULSE_OF_ICARUS_CME_MINI_ES1!_2026-09-30.csv"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        "index,Trade number,Type,Date and time,Signal,Price USD,Size (qty),Net PnL USD,Commission USD,Favorable excursion USD,Adverse excursion USD,Duration (bars)\n"
+        "0,1,Exit long,2019-02-07 09:10,L_TP1,2713,1,333.5,4,710.5,-2,1\n"
+        "1,1,Entry long,2019-02-07 08:50,Long,2706,1,333.5,4,710.5,-2,1\n"
+        "2,2,Exit short,2019-02-14 09:30,S_SL,2737,1,-77,4,100,-300,2\n"
+        "3,2,Entry short,2019-02-14 08:50,Short,2744,1,-77,4,100,-300,2\n",
+        encoding="utf-8",
+    )
+    fabric = LearningFabric(tmp_path)
+    ds = fabric.register_dataset(path, asset="ES", chart_type="20m")["dataset"]
+    memory = ds["manifest"]["trade_outcomes"]
+    assert ds["artifact_class"] == "trade_list"
+    assert memory["settled_trades"] == 2
+    assert memory["wins"] == 1
+    assert memory["losses"] == 1
+    assert memory["win_rate"] == pytest.approx(0.5)
+    assert memory["net_pnl_usd"] == pytest.approx(256.5)
+    assert memory["worst_trade_pnl_usd"] == pytest.approx(-77.0)
+
+    aggregate = fabric.trade_memory()
+    assert aggregate["settled_trades"] == 2
+    assert aggregate["losses"] == 1
+    assert aggregate["execution_authorized"] is False
+
+
+def test_signal_replay_scores_existing_icarus_long_short_columns_without_future_leakage(tmp_path):
+    from icarus_engine.learning_fabric import LearningFabric
+
+    path = tmp_path / "history" / "NQ-20m-signals.csv"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        "time,open,high,low,close,Long,Short,TIDE Long,TIDE Short\n"
+        "1700000000,100,101,99,100,1,0,0,0\n"
+        "1700001200,100,103,100,102,0,1,0,0\n"
+        "1700002400,102,103,98,99,0,0,1,0\n"
+        "1700003600,99,105,99,104,0,0,0,1\n"
+        "1700004800,104,105,100,101,0,0,0,0\n",
+        encoding="utf-8",
+    )
+    fabric = LearningFabric(tmp_path)
+    ds = fabric.register_dataset(path, asset="NQ", chart_type="20m")["dataset"]
+    result = fabric.replay_signals(ds["dataset_id"], horizon_bars=1)
+    by = {x["signal"]: x for x in result["signals"]}
+    assert by["Long"]["samples"] == 1 and by["Long"]["successes"] == 1
+    assert by["Short"]["samples"] == 1 and by["Short"]["successes"] == 1
+    assert by["TIDE Long"]["samples"] == 1 and by["TIDE Long"]["successes"] == 1
+    assert by["TIDE Short"]["samples"] == 1 and by["TIDE Short"]["successes"] == 1
+    assert all(x["execution_authorized"] is False for x in result["signals"])
+
+    again = fabric.replay_signals(ds["dataset_id"], horizon_bars=1)
+    assert again == result
+    assert fabric.snapshot()["historical_signal_replay"]["run_count"] == 4
