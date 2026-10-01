@@ -85,6 +85,25 @@ class ApexStore:
                 );
                 CREATE INDEX IF NOT EXISTS idx_apex_force_fields_asof
                     ON force_fields(as_of_ts, asset);
+                CREATE TABLE IF NOT EXISTS causal_edges (
+                    edge_id TEXT PRIMARY KEY,
+                    horizon_seconds INTEGER NOT NULL,
+                    observed_ts REAL NOT NULL,
+                    received_ts REAL NOT NULL,
+                    semantic_json TEXT NOT NULL,
+                    recorded_at TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_apex_causal_edges_asof
+                    ON causal_edges(received_ts, horizon_seconds);
+                CREATE TABLE IF NOT EXISTS cascade_edges (
+                    edge_id TEXT PRIMARY KEY,
+                    as_of TEXT NOT NULL,
+                    as_of_ts REAL NOT NULL,
+                    semantic_json TEXT NOT NULL,
+                    recorded_at TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_apex_cascade_edges_asof
+                    ON cascade_edges(as_of_ts);
                 """
             )
 
@@ -257,3 +276,96 @@ class ApexStore:
 
     def force_fields_as_of(self, as_of: str, *, asset: str | None = None) -> list[dict[str, Any]]:
         return self._research_states_as_of("force_fields", "field_id", as_of, asset=asset)
+
+
+    @staticmethod
+    def _validate_research_authority(body: Mapping[str, Any]) -> None:
+        if body.get("execution_authorized") is not False or body.get("production_decision_authorized") is not False:
+            raise ValueError("research authority escalation is forbidden")
+
+    def record_causal_edge(self, edge: Mapping[str, Any]) -> dict[str, Any]:
+        if not isinstance(edge, Mapping):
+            raise ValueError("causal edge must be an object")
+        semantic = dict(edge)
+        self._validate_research_authority(semantic)
+        eid = semantic.get("edge_id")
+        if not isinstance(eid, str) or not eid.strip():
+            raise ValueError("causal edge_id is required")
+        horizon = semantic.get("horizon_seconds")
+        if isinstance(horizon, bool) or not isinstance(horizon, int) or horizon <= 0:
+            raise ValueError("horizon_seconds must be a positive integer")
+        observed_ts = parse_utc(str(semantic.get("observed_at") or ""), "observed_at").timestamp()
+        received_ts = parse_utc(str(semantic.get("received_at") or ""), "received_at").timestamp()
+        if received_ts < observed_ts:
+            raise ValueError("received_at cannot precede observed_at")
+        raw = json.dumps(semantic, sort_keys=True, separators=(",", ":"), allow_nan=False)
+        with self._lock, self._conn:
+            cur = self._conn.execute(
+                "INSERT OR IGNORE INTO causal_edges(edge_id,horizon_seconds,observed_ts,received_ts,semantic_json,recorded_at) VALUES(?,?,?,?,?,?)",
+                (eid.strip(), horizon, observed_ts, received_ts, raw, self._utc_now()),
+            )
+        return {"ok": True, "idempotent": cur.rowcount == 0, "edge_id": eid.strip(), **authority_flags()}
+
+    def causal_edges_as_of(self, as_of: str, *, horizon_seconds: int | None = None) -> list[dict[str, Any]]:
+        boundary = parse_utc(as_of, "as_of").timestamp()
+        sql = "SELECT * FROM causal_edges WHERE observed_ts<=? AND received_ts<=?"
+        params: list[Any] = [boundary, boundary]
+        if horizon_seconds is not None:
+            sql += " AND horizon_seconds=?"
+            params.append(horizon_seconds)
+        sql += " ORDER BY received_ts, edge_id"
+        with self._lock:
+            rows = self._conn.execute(sql, params).fetchall()
+        out=[]
+        for row in rows:
+            try:
+                semantic=json.loads(row["semantic_json"])
+            except (TypeError,json.JSONDecodeError):
+                continue
+            if not isinstance(semantic,dict):
+                continue
+            try:
+                self._validate_research_authority(semantic)
+            except ValueError:
+                continue
+            out.append(semantic)
+        return out
+
+    def record_cascade_edge(self, edge: Mapping[str, Any]) -> dict[str, Any]:
+        if not isinstance(edge, Mapping):
+            raise ValueError("cascade edge must be an object")
+        semantic = dict(edge)
+        self._validate_research_authority(semantic)
+        eid = semantic.get("edge_id")
+        if not isinstance(eid, str) or not eid.strip():
+            raise ValueError("cascade edge_id is required")
+        as_of = semantic.get("as_of")
+        if not isinstance(as_of, str):
+            raise ValueError("cascade as_of is required")
+        as_of_ts=parse_utc(as_of,"as_of").timestamp()
+        raw=json.dumps(semantic,sort_keys=True,separators=(",",":"),allow_nan=False)
+        with self._lock,self._conn:
+            cur=self._conn.execute(
+                "INSERT OR IGNORE INTO cascade_edges(edge_id,as_of,as_of_ts,semantic_json,recorded_at) VALUES(?,?,?,?,?)",
+                (eid.strip(),as_of,as_of_ts,raw,self._utc_now()),
+            )
+        return {"ok":True,"idempotent":cur.rowcount==0,"edge_id":eid.strip(),**authority_flags()}
+
+    def cascade_edges_as_of(self, as_of: str) -> list[dict[str, Any]]:
+        boundary=parse_utc(as_of,"as_of").timestamp()
+        with self._lock:
+            rows=self._conn.execute("SELECT * FROM cascade_edges WHERE as_of_ts<=? ORDER BY as_of_ts,edge_id",(boundary,)).fetchall()
+        out=[]
+        for row in rows:
+            try:
+                semantic=json.loads(row["semantic_json"])
+            except (TypeError,json.JSONDecodeError):
+                continue
+            if not isinstance(semantic,dict):
+                continue
+            try:
+                self._validate_research_authority(semantic)
+            except ValueError:
+                continue
+            out.append(semantic)
+        return out
