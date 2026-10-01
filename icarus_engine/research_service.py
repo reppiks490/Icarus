@@ -121,6 +121,41 @@ class ResearchWorkspace:
                 self._ledger = AdvisoryLedger(self.root / "advisory.sqlite3", allowed_sources=sources)
             return self._ledger
 
+    def operator_status(self):
+        """Read-only root-panel status that never instantiates lazy research services."""
+        with self._lock:
+            jobs = [
+                {k: j.get(k) for k in ("id", "status", "asset", "started", "finished", "error")}
+                for j in self._jobs.values()
+            ]
+            active = self._active
+            initialized = {
+                "ledger": self._ledger is not None,
+                "analysis": self._analysis is not None,
+                "activation": self._activation is not None,
+                "market_sources": self._market_sources is not None,
+                "adaptation": self._adaptation is not None,
+                "source_watch": self._source_watch is not None,
+            }
+        assets = []
+        for r in self.port.runner_list():
+            with r.lock:
+                assets.append({
+                    "asset": r.symbol,
+                    "warm": r.warm,
+                    "cached_subbars": len(r.subbars),
+                    "timeframe_minutes": r.chart_minutes,
+                })
+        return {
+            "schema_version": "icarus-research-operator-status-v1",
+            "status": "ready",
+            "active_job": active,
+            "jobs": jobs,
+            "assets": assets,
+            "initialized_services": initialized,
+            "execution_authorized": False,
+        }
+
     def status(self):
         with self._lock:
             jobs = [{k: j.get(k) for k in ("id", "status", "asset", "started", "finished", "error")}
