@@ -37,6 +37,8 @@ It combines:
 
 When the active feed supports it, Ψ consumes signed trade ticks, MBP-10 depth, and ICARUS cross-asset observations. Unsupported domains remain unavailable.
 
+For dynamic cross-asset leadership, Ψ now warm-starts from the engine's replayed `AssetRunner.bars` rather than accumulating history from dashboard/API polling. Peers are eligible only when chart cadence matches the target and lag pairs line up on exact bar timestamps. Returns spanning missing-bar gaps are discarded and reported in data health. Status-poll history remains an explicitly labelled fallback for minimal adapters that do not expose runner bars.
+
 ### Optional external evidence
 
 Authenticated research callers may POST provenance-labelled evidence to `POST /admin/possibility/evidence`.
