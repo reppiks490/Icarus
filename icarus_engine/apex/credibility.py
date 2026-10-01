@@ -26,3 +26,22 @@ def credibility_score(*, calibration: float | None, data_quality: float, indepen
     gap = 0.0 if reality_gap is None else _unit(reality_gap, "reality_gap")
     score = max(0.0, min(1.0, cal * quality * indep * (1.0 - gap)))
     return {"status": "MEASURED", "score": score, "calibration": cal, "data_quality": quality, "independence": indep, "reality_gap": gap}
+
+
+def effective_model_diversity(models: list[dict[str, Any]]) -> dict[str, Any]:
+    signatures: set[tuple[Any, ...]] = set()
+    for model in models:
+        if not isinstance(model, dict):
+            raise ValueError("models must contain objects")
+        data = tuple(sorted(str(x) for x in model.get("data_families", []) or []))
+        features = tuple(sorted(str(x) for x in model.get("features", []) or []))
+        architecture = str(model.get("architecture") or "")
+        residual = str(model.get("residual_signature") or "")
+        signatures.add((data, features, architecture, residual))
+    nominal = len(models)
+    effective = len(signatures)
+    return {
+        "nominal_model_count": nominal,
+        "effective_model_count": effective,
+        "monoculture_ratio": 0.0 if nominal == 0 else 1.0 - (effective / nominal),
+    }
