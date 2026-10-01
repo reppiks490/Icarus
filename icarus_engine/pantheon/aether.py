@@ -64,6 +64,7 @@ class AetherSwarm:
         novelty = unit(faculties.get("ex_nihilo", {}).get("ontology_surprise"), "ex_nihilo.ontology_surprise")
         causal = unit(faculties.get("nullspace", {}).get("debt_normalized"), "nullspace.debt_normalized")
         uncertainty = unit(faculties.get("godel", {}).get("ambiguity"), "godel.ambiguity", 1.0)
+        echo_risk = unit(faculties.get("echo", {}).get("echo_risk"), "echo.echo_risk")
         risk = unit(signals.get("risk"), "risk")
         data_quality = unit(signals.get("data_quality"), "data_quality", 0.5)
         raw_energy = (
@@ -73,6 +74,7 @@ class AetherSwarm:
             + 0.20 * causal
             + 0.17 * uncertainty
         )
+        raw_energy = min(1.0, raw_energy + 0.12 * echo_risk)
         energy = max(0.0, min(1.0, raw_energy * (1.0 - 0.45 * risk) * (0.50 + 0.50 * data_quality)))
         active = energy >= self.threshold and data_quality >= 0.35
         agents = []
@@ -80,7 +82,11 @@ class AetherSwarm:
             count = min(self.max_agents, max(4, 4 + int(round(energy * 8))))
             ttl = max(1, min(180, int(max(1, horizon_ms) / 1000) * 2))
             roles = list(_MANDATORY_INDEPENDENT_ROLES)
-            roles.extend(_OPTIONAL_ROLES[: max(0, count - len(roles))])
+            optional_roles = list(_OPTIONAL_ROLES)
+            if echo_risk >= 0.35 and "redundancy_hunter" in optional_roles:
+                optional_roles.remove("redundancy_hunter")
+                optional_roles.insert(0, "redundancy_hunter")
+            roles.extend(optional_roles[: max(0, count - len(roles))])
             for role in roles[:count]:
                 aid = "aeth-" + digest(observation_id, role)[:18]
                 agents.append({
@@ -116,6 +122,7 @@ class AetherSwarm:
                 "novelty": novelty,
                 "causal_debt": causal,
                 "uncertainty": uncertainty,
+                "echo_risk": echo_risk,
                 "risk": risk,
                 "data_quality": data_quality,
                 "energy": energy,
@@ -131,6 +138,7 @@ class AetherSwarm:
                 "minimum_independent_roles": 4 if active else 0,
                 "mandatory_roles": list(_MANDATORY_INDEPENDENT_ROLES) if active else [],
                 "forced_consensus": False,
+                "shared_evidence_consensus_is_discounted": True,
             },
             "truth_contract": {
                 "agents_are_ephemeral_research_workers": True,

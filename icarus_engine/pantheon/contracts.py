@@ -25,6 +25,7 @@ FACULTIES = (
     "ex_nihilo",
     "mint",
     "nullspace",
+    "echo",
     "archon",
     "aether",
 )

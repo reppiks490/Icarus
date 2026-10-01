@@ -286,6 +286,7 @@ class PantheonKernel:
             "truth_contract": {
                 "heuristics_are_not_calibrated_probabilities": True,
                 "engine_disagreement_is_preserved": True,
+                "shared_evidence_is_not_counted_as_independent_confirmation": True,
                 "missing_inputs_produce_abstention": True,
                 "new_concepts_begin_as_hypotheses": True,
                 "execution_requires_separate_hard_risk_kernel": True,
@@ -907,6 +908,7 @@ class PantheonKernel:
             "EX_NIHILO": {"mode": "pantheon faculty"},
             "MINT": {"mode": "pantheon faculty"},
             "NULLSPACE": {"mode": "pantheon faculty"},
+            "ECHO": {"mode": "pantheon faculty; evidence-ancestry de-duplication"},
             "ARCHON": {"mode": "pantheon faculty"},
             "AETHER": {"mode": "ephemeral swarm ecology"},
         }
