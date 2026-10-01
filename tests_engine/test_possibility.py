@@ -1126,3 +1126,38 @@ def test_phase_boundary_fails_closed_on_weak_scenario_reliability():
     )
     assert result["available"] is False
     assert "too weak" in result["note"]
+
+
+
+def test_forced_consensus_domain_weight_does_not_scale_with_feature_count():
+    engine = PossibilityEngine(Port())
+    features = {
+        "queue_pressure": Feature(1.0, 1.0, True, "fixture"),
+        "repricing_pressure": Feature(1.0, 1.0, True, "fixture"),
+        "volume_pressure": Feature(1.0, 1.0, True, "fixture"),
+        "gamma_pressure": Feature(-1.0, 1.0, True, "fixture"),
+        "basis_pressure": Feature(-1.0, 1.0, True, "fixture"),
+    }
+    result = engine._forced_consensus(features)
+    domains = {row["name"]: row for row in result["domains"]}
+    assert domains["microstructure"]["component_count"] == 3
+    assert domains["microstructure"]["strength"] == pytest.approx(1.0)
+    assert domains["gamma"]["strength"] == pytest.approx(1.0)
+    assert domains["basis"]["strength"] == pytest.approx(1.0)
+    assert result["active"] is False
+
+
+def test_market_shadow_declares_first_order_noncausal_approximation():
+    engine = PossibilityEngine(Port())
+    rows = engine._market_shadows(
+        100.0,
+        {
+            "available": True,
+            "synthetic_price": 102.0,
+            "contributions": {"gamma_pressure": 1.0, "basis_pressure": 1.0},
+        },
+        {},
+    )
+    assert rows
+    assert all(row["approximation"] == "first_order_local_ablation" for row in rows)
+    assert all(row["causal_effect_proven"] is False for row in rows)
