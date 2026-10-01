@@ -335,6 +335,45 @@ class PossibilityEngine:
             },
         }
 
+    def parallax_vote(self, asset: str | None) -> dict[str, Any]:
+        """Return a bounded research vote for PARALLAX decision context.
+
+        PARALLAX gets an explicit unavailable vote rather than a fabricated neutral
+        value if Ψ cannot observe enough evidence. The vote never grants execution
+        or production-decision authority.
+        """
+        try:
+            state = self.snapshot(asset)
+        except Exception as ex:
+            return {
+                "subsystem": "psi",
+                "status": "UNAVAILABLE",
+                "state": "NO_EDGE",
+                "confidence": 0.0,
+                "reason": f"{type(ex).__name__}: {ex}",
+                "execution_authorized": False,
+                "production_decision_authorized": False,
+            }
+        edge = state.get("edge_state") if isinstance(state.get("edge_state"), Mapping) else {}
+        oracle = state.get("oracle") if isinstance(state.get("oracle"), Mapping) else {}
+        possibility = state.get("possibility") if isinstance(state.get("possibility"), Mapping) else {}
+        return {
+            "subsystem": "psi",
+            "status": "OBSERVED" if state.get("asset") else "UNAVAILABLE",
+            "asset": state.get("asset"),
+            "generated_at": state.get("generated_at"),
+            "state": edge.get("state", "NO_EDGE"),
+            "confidence": _finite(edge.get("confidence")) or 0.0,
+            "latent_pressure": _finite(oracle.get("latent_pressure")),
+            "evidence_coverage": _finite(oracle.get("evidence_coverage")) or 0.0,
+            "future_space_collapse": _finite(possibility.get("future_space_collapse")),
+            "dominant_cluster": possibility.get("dominant_cluster"),
+            "blockers": list(edge.get("blockers") or [])[:16],
+            "execution_authorized": False,
+            "production_decision_authorized": False,
+            "truth_contract": "research/shadow context for PARALLAX ablation; not an execution vote",
+        }
+
     # ---------- evidence capture ----------
 
     def _record_market(self, rows: Sequence[Mapping[str, Any]]) -> None:
