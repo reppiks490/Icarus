@@ -1,0 +1,26 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "integration:chronofold-main:6eb00258",
+  "category": "INTEGRATION",
+  "severity": "success",
+  "status": "verified",
+  "subsystems": [
+    "infrastructure",
+    "provenance",
+    "data"
+  ],
+  "recorded_at": "2026-10-01T13:49:00Z",
+  "title": "ICARUS Xi Chronofold integrated and verified on main",
+  "summary": "Chronofold causal-navigation research plane merged through PR #112 and passed exact post-merge Linux and Windows CI on main. Root Control receipt durability, start-false lifecycle isolation, Databento replay-test determinism, and MCP v3 regression alignment are included in the verified merge.",
+  "source_repository": "reppiks490/Icarus",
+  "source_ref": "main",
+  "source_commit": "6eb002585e8f310d91109aa0054df62711cb5c1d",
+  "evidence": [
+    "PR #112 merged at 6eb002585e8f310d91109aa0054df62711cb5c1d",
+    "GitHub Actions run 36870961268 / run 2326 concluded success",
+    "Linux full tests_engine suite passed",
+    "Windows targeted engine suite and plant setup passed"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}
