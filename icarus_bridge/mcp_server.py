@@ -506,6 +506,93 @@ def record_engine_possibility_evidence(
     return _safe_engine(lambda: _engine_post("/admin/possibility/evidence", body))
 
 
+@mcp.tool()
+def engine_parallax_state() -> dict:
+    """Read the shadow-only PARALLAX decision/branch/ablation ledger."""
+    return _safe_engine(lambda: _engine_get("/api/parallax"))
+
+
+@mcp.tool()
+def engine_dreamstate_state() -> dict:
+    """Read DREAMSTATE hypothesis state derived from observed PARALLAX evidence."""
+    return _safe_engine(lambda: _engine_get("/api/dreamstate"))
+
+
+@mcp.tool()
+def record_current_parallax_decision_with_psi(
+    asset: str,
+    action: str,
+    regime: str = "unknown",
+    context_json: str = "{}",
+    subsystem_votes_json: str = "{}",
+    branches_json: str = "",
+    decision_id: str = "",
+    source_commit: str = "",
+) -> dict:
+    """Atomically capture the current Psi vote and record a causal PARALLAX decision."""
+    try:
+        context = json.loads(context_json or "{}")
+        votes = json.loads(subsystem_votes_json or "{}")
+        branches = json.loads(branches_json) if branches_json.strip() else None
+    except json.JSONDecodeError as ex:
+        return {"error": f"invalid JSON argument: {ex}"}
+    if not isinstance(context, dict) or not isinstance(votes, dict):
+        return {"error": "context_json and subsystem_votes_json must decode to objects"}
+    if "psi" in votes:
+        return {"error": "psi vote is captured atomically by the engine; omit it"}
+    if branches is not None and not isinstance(branches, list):
+        return {"error": "branches_json must decode to a list"}
+    body: Dict[str, Any] = {
+        "asset": asset.strip().upper(),
+        "action": action.strip().lower(),
+        "regime": regime.strip() or "unknown",
+        "context": context,
+        "subsystem_votes": votes,
+    }
+    if branches is not None:
+        body["branches"] = branches
+    if decision_id.strip():
+        body["decision_id"] = decision_id.strip()
+    if source_commit.strip():
+        body["source_commit"] = source_commit.strip()
+    return _safe_engine(lambda: _engine_post("/admin/parallax/decision/current", body))
+
+
+@mcp.tool()
+def record_engine_parallax_outcome(
+    decision_id: str,
+    label: str,
+    utility: float,
+    metrics_json: str = "{}",
+    evidence_json: str = "[]",
+    observed_at: str = "",
+) -> dict:
+    """Record one actually observed PARALLAX branch outcome; never infer an unobserved branch."""
+    try:
+        metrics = json.loads(metrics_json or "{}")
+        evidence = json.loads(evidence_json or "[]")
+    except json.JSONDecodeError as ex:
+        return {"error": f"invalid JSON argument: {ex}"}
+    if not isinstance(metrics, dict) or not isinstance(evidence, list):
+        return {"error": "metrics_json must be an object and evidence_json a list"}
+    body: Dict[str, Any] = {
+        "decision_id": decision_id.strip(),
+        "label": label.strip().lower(),
+        "utility": float(utility),
+        "metrics": metrics,
+        "evidence": evidence,
+    }
+    if observed_at.strip():
+        body["observed_at"] = observed_at.strip()
+    return _safe_engine(lambda: _engine_post("/admin/parallax/outcome", body))
+
+
+@mcp.tool()
+def refresh_engine_dreamstate(min_samples: int = 5) -> dict:
+    """Re-screen DREAMSTATE hypotheses from observed PARALLAX outcomes."""
+    return _safe_engine(lambda: _engine_post("/admin/dreamstate/refresh", {"min_samples": int(min_samples)}))
+
+
 # ── control tools (state-changing) ──
 @mcp.tool()
 def pause_trading(reason: str = "paused via MCP") -> dict:
