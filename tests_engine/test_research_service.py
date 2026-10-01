@@ -371,3 +371,15 @@ def test_http_learning_experience_surface_is_authenticated(http):
     assert body["summary"] == []
     assert body["execution_authorized"] is False
     assert body["production_decision_authorized"] is False
+
+
+def test_http_learning_health_surface_is_authenticated(http):
+    auth = {"Authorization": "Bearer test-token"}
+    assert http("GET", "/api/learning/health")[0] == 401
+    code, raw = http("GET", "/api/learning/health", headers=auth)
+    assert code == 200
+    body = json.loads(raw)
+    assert body["status"] in {"WARMING", "HEALTHY", "DEGRADED", "STALE"}
+    assert "backlog" in body
+    assert body["execution_authorized"] is False
+    assert body["production_decision_authorized"] is False
