@@ -195,6 +195,8 @@ class PerformanceProofStore:
             raise ValueError("outcome requires exactly: " + ", ".join(sorted(_ALLOWED_OUTCOME)))
         forecast_id = _sha(body["forecast_id"], "forecast_id")
         observed_at = _iso(body["observed_at"], "observed_at")
+        if _dt(observed_at) > _now():
+            raise ValueError("observed_at cannot be in the future")
         if type(body["success"]) is not bool:
             raise ValueError("success must be Boolean")
         realized = body["realized_value"]
@@ -303,12 +305,21 @@ class PerformanceProofStore:
             if settled else None
         )
         ece, calibration = self._calibration(settled)
-        closed = len(matured) >= MIN_CLOSED_SAMPLE and len(settled) == len(matured)
+        scope_keys = {
+            (
+                row["asset"], row["regime"], row["success_definition"],
+                int((_dt(row["matures_at"]) - _dt(row["decision_at"])).total_seconds()),
+            )
+            for row in matured
+        }
+        coherent_scope = len(scope_keys) == 1
+        closed = len(matured) >= MIN_CLOSED_SAMPLE and len(settled) == len(matured) and coherent_scope
         historical_100 = bool(closed and successes == len(settled))
 
-        groups: dict[tuple[str, str, str], dict[str, Any]] = {}
+        groups: dict[tuple[str, str, str, str, int], dict[str, Any]] = {}
         for row in matured:
-            key = (row["asset"], row["regime"], row["candidate_id"])
+            horizon_seconds = int((_dt(row["matures_at"]) - _dt(row["decision_at"])).total_seconds())
+            key = (row["asset"], row["regime"], row["candidate_id"], row["success_definition"], horizon_seconds)
             group = groups.setdefault(key, {"matured": 0, "settled": 0, "successes": 0, "brier_sum": 0.0})
             group["matured"] += 1
             if row["observed_at"] is not None:
@@ -317,12 +328,13 @@ class PerformanceProofStore:
                 group["brier_sum"] += (float(row["probability_success"]) - int(row["success"])) ** 2
 
         candidates = []
-        for (asset, regime, candidate_id), g in groups.items():
+        for (asset, regime, candidate_id, success_definition, horizon_seconds), g in groups.items():
             rate = g["successes"] / g["settled"] if g["settled"] else None
             brier_g = g["brier_sum"] / g["settled"] if g["settled"] else None
             complete = g["matured"] >= MIN_REGIME_SAMPLE and g["settled"] == g["matured"]
             candidates.append({
                 "asset": asset, "regime": regime, "candidate_id": candidate_id,
+                "success_definition": success_definition, "horizon_seconds": horizon_seconds,
                 "matured": g["matured"], "settled": g["settled"],
                 "outcome_coverage": (g["settled"] / g["matured"]) if g["matured"] else None,
                 "success_rate": rate, "brier_score": brier_g,
@@ -330,13 +342,15 @@ class PerformanceProofStore:
             })
 
         champions = []
-        scopes = sorted({(x["asset"], x["regime"]) for x in candidates})
-        for asset, regime in scopes:
-            eligible = [x for x in candidates if x["asset"] == asset and x["regime"] == regime and x["closed_regime_sample"]]
+        scopes = sorted({(x["asset"], x["regime"], x["success_definition"], x["horizon_seconds"]) for x in candidates})
+        for asset, regime, success_definition, horizon_seconds in scopes:
+            eligible = [x for x in candidates if x["asset"] == asset and x["regime"] == regime and x["success_definition"] == success_definition and x["horizon_seconds"] == horizon_seconds and x["closed_regime_sample"]]
             eligible.sort(key=lambda x: (-(x["success_rate"] or 0.0), x["brier_score"] if x["brier_score"] is not None else 2.0, -x["settled"], x["candidate_id"]))
             champions.append({
                 "asset": asset,
                 "regime": regime,
+                "success_definition": success_definition,
+                "horizon_seconds": horizon_seconds,
                 "shadow_champion": eligible[0]["candidate_id"] if eligible else None,
                 "selection_mode": "EMPIRICAL_SHADOW_ONLY",
                 "eligible_candidates": [x["candidate_id"] for x in eligible],
@@ -368,6 +382,8 @@ class PerformanceProofStore:
             "closed_sample": {
                 "minimum_required": MIN_CLOSED_SAMPLE,
                 "complete": closed,
+                "scope_coherent": coherent_scope,
+                "scope_count": len(scope_keys),
                 "historical_100_percent_established": historical_100,
                 "claim": (
                     f"100% observed success established for this closed, fully-settled {len(settled)}-forecast sample."
