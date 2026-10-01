@@ -20,6 +20,7 @@ NODE = shutil.which("node")
         "icarus_bridge/dashboard.html",
         "icarus_engine/research-ui.js",
         "icarus_engine/sources-ui.js",
+        "icarus_engine/integrity-ui.js",
         "icarus_engine/experience-ui.js",
     ],
 )
@@ -96,3 +97,18 @@ def test_mcp_evolution_ledger_is_fail_closed():
     assert data["execution_authorized"] is False
     assert all(row["execution_authorized"] is False for row in data["entries"])
     assert len({row["id"] for row in data["entries"]}) == data["entry_count"]
+
+
+def test_dashboard_surfaces_export_data_integrity_and_mcp_receipts():
+    dashboard = (REPO / "icarus_engine/dashboard.html").read_text(encoding="utf-8")
+    ui = (REPO / "icarus_engine/integrity-ui.js").read_text(encoding="utf-8")
+    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
+    assert '/integrity-ui.js' in dashboard
+    assert 'data-v="integrity">Data Integrity</span>' in dashboard
+    assert "wireIntegrity()" in dashboard
+    assert "/api/integrity" in ui
+    assert "MCP change ledger" in ui
+    assert "source_commit" in ui
+    assert "execution" in ui.lower()
+    assert 'p.path == "/api/integrity"' in server
+    assert 'p.path == "/admin/integrity/event"' in server

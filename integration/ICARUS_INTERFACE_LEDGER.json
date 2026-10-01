@@ -1,0 +1,248 @@
+{
+  "schema_version": "icarus-interface-ledger-v2",
+  "generated_at": "2026-09-30T21:30:00-05:00",
+  "execution_authorized": false,
+  "policy": {
+    "mcp_mirror_required": true,
+    "rule": "Any material repair, audit, hardening, provenance correction, data-quality change, or evolution performed through MCP must also be surfaced inside the ICARUS trading interface with repository, branch, exact commit, verification state, interface effect, and execution-authority boundary.",
+    "runtime_receipts": "Authenticated MCP writes are idempotent by semantic event hash and cannot change trading authority.",
+    "effect_on_trading": "none"
+  },
+  "export_intake": {
+    "observed_filenames": 21,
+    "unique_payloads": 11,
+    "duplicate_payloads": 10,
+    "nq_observed": 15,
+    "nq_unique": 7,
+    "es_observed": 6,
+    "es_unique": 4,
+    "nq_20m_pair": {
+      "aligned_bars": 41239,
+      "utc_start": "2024-06-02T22:00:00Z",
+      "utc_end": "2026-09-30T13:20:00Z",
+      "representations": [
+        "heikin_ashi",
+        "standard_ohlc"
+      ],
+      "transform_alignment": "verified_post_seed"
+    },
+    "historical_corpus": {
+      "zip_archives": 10,
+      "physical_files": 803,
+      "usable_csv_members": 659,
+      "byte_distinct_contents": 542,
+      "records": 13788256
+    }
+  },
+  "checklist": [
+    {
+      "id": "O03",
+      "title": "Standard timeframe coverage",
+      "status": "pending",
+      "detail": "20-minute evidence is verified; standard 1m, 5m, 60m, 240m and daily exports remain outside the verified packet."
+    },
+    {
+      "id": "O04",
+      "title": "HA signal chart with Standard-bars execution-price evidence",
+      "status": "pending",
+      "detail": "Still requires explicit TradingView Standard bars execution-price proof plus separate trade-list/summary/settings evidence."
+    },
+    {
+      "id": "O05",
+      "title": "RTH / ETH session evidence",
+      "status": "reconciled_with_note",
+      "detail": "The chat audit classified 2019-start exports as RTH and 2024-start exports as ETH and accepted the screenshots plus normal/Nov-28-2025 shortened-session evidence; an earlier durable intake README was more conservative, so the interface preserves that discrepancy instead of flattening it."
+    },
+    {
+      "id": "O06",
+      "title": "Private originals + SHA-256 provenance",
+      "status": "waived",
+      "detail": "A reproducible checksum/provenance manifest exists and raw licensed files stay outside GitHub; strict owner-local checksum completion was waived/trusted in the chat path."
+    },
+    {
+      "id": "O14",
+      "title": "Inventory existing corpus before bulk re-export",
+      "status": "verified",
+      "detail": "Bulk re-export was replaced by corpus recovery/inventory plus representation-aware ingestion. The three end-of-chat hardening blockers were subsequently repaired in NEXUS and are shown below with exact commits."
+    }
+  ],
+  "repairs": [
+    {
+      "id": "representation-identity-and-sampling",
+      "status": "verified",
+      "summary": "Representation claims distinguish chart family from sampling construction and preserve unresolved identity rather than silently collapsing it.",
+      "evidence": [
+        "Conservative representation claims",
+        "Tick/range sampling semantics",
+        "Chart-family vs sampling separation"
+      ],
+      "source_commits": [
+        "226e7de899cea31060752cb37a58cdeeec91061f",
+        "cb1b0b860db9b7b26b371ba6cb04f85735c3f096",
+        "27192b88991a9e39120e668f064c21ab64cf1ca8"
+      ]
+    },
+    {
+      "id": "ha-standard-fail-closed",
+      "status": "verified",
+      "summary": "Heikin-Ashi versus standard OHLC identity is separately proven where available; unresolved identity remains non-authoritative.",
+      "evidence": [
+        "41,239 aligned NQ 20m timestamps",
+        "Recursive HA-open proof",
+        "O14 chart-identity probe"
+      ],
+      "source_commits": [
+        "9bb487aa11eea8c8f52ddc275a0e1ec9807ad3da",
+        "39feccb3663fb9aaa079ab9ceb6692395de9dd71"
+      ]
+    },
+    {
+      "id": "family-balanced-fusion",
+      "status": "verified",
+      "summary": "Fusion balances representation families before cross-asset weighting so dense chart/timeframe families cannot manufacture extra evidence weight.",
+      "evidence": [
+        "Family-balanced fusion implementation",
+        "Manifest-backed family fusion requirement"
+      ],
+      "source_commits": [
+        "642dc26d49cd0023e0b99091ccc38ce072ee1545",
+        "adcd7319e2aa664c581e56495d29f59c7676d1e0"
+      ]
+    },
+    {
+      "id": "explicit-clock-backward-timestamps",
+      "status": "repaired",
+      "summary": "CSV/source-time ingestion now rejects backward source timestamps before replay, including the generic numeric source-time path.",
+      "evidence": [
+        "All CSV readers backward-time regression",
+        "Generic numeric source-time regression"
+      ],
+      "source_commits": [
+        "74f7d7ceb262f579782d395dbdf51e85e820502d",
+        "72d5cf646b505898f2ea9a896b359f33e130bb65",
+        "4a27b4776a56bd63bedd3243696316440c5a8ef8"
+      ]
+    },
+    {
+      "id": "ablation-component-weight-cap",
+      "status": "repaired",
+      "summary": "Ablation paths preserve the original component-weight cap and now have a dedicated regression test.",
+      "evidence": [
+        "Ablation cap implementation",
+        "Ablation cap regression"
+      ],
+      "source_commits": [
+        "1f1284e3d9f9dfa808022bc937c327390f94954c",
+        "74d689771a7791f554b101ac069136d2b0300254",
+        "24f9ae6cbde159fffd5cb6159254e69e46b2138d"
+      ]
+    },
+    {
+      "id": "synthetic-factor-missingness",
+      "status": "repaired",
+      "summary": "Historical factor fitting, synthetic factor state, topology estimation, and unfitted latent state preserve missingness instead of treating missing observations as zero.",
+      "evidence": [
+        "Synthetic-factor missingness",
+        "Historical factor fit",
+        "Topology missingness",
+        "Unfitted latent state"
+      ],
+      "source_commits": [
+        "fc945f0fea2ac6d344f8b5f21d317637f5bb554c",
+        "8097f97267139061a8c9aef2e78d3acd48d56ba8",
+        "2d8dd154f7fecffd69e061b0c9d44481dab0d7a4",
+        "47df68167443b9b9c8666f8ce9b62939c79408d1",
+        "295457d1f64746e8ed88e16f00bb19f28161904c"
+      ]
+    }
+  ],
+  "events": [
+    {
+      "recorded_at": "2026-09-30T10:17:06-05:00",
+      "source": "mcp",
+      "kind": "hardening",
+      "area": "NEXUS representation fusion",
+      "summary": "Family-balanced fusion prevents representation-count vote inflation and requires manifest-backed representation-family identity.",
+      "status": "verified",
+      "severity": "important",
+      "source_repo": "reppiks490/divine-providence",
+      "source_branch": "main",
+      "source_commit": "642dc26d49cd0023e0b99091ccc38ce072ee1545",
+      "verification": "Implementation commit and paired representation-family regression were located during the continuation audit.",
+      "interface_effect": "The Export / Data Integrity panel shows family-balanced fusion as verified with source provenance.",
+      "evidence": [
+        "7ccdbba781e3a6dde889f66e3164ddb7b3cfe190",
+        "adcd7319e2aa664c581e56495d29f59c7676d1e0"
+      ],
+      "details": {
+        "checklist": "O14"
+      }
+    },
+    {
+      "recorded_at": "2026-09-30T12:57:07-05:00",
+      "source": "mcp",
+      "kind": "repair",
+      "area": "NEXUS temporal ingestion",
+      "summary": "Backward source timestamps are rejected across CSV ingestion paths, including generic numeric source time.",
+      "status": "repaired",
+      "severity": "high",
+      "source_repo": "reppiks490/divine-providence",
+      "source_branch": "main",
+      "source_commit": "4a27b4776a56bd63bedd3243696316440c5a8ef8",
+      "verification": "Implementation and all-CSV-reader regressions were located and cross-checked by commit history.",
+      "interface_effect": "The prior backward-timestamp blocker is shown as repaired rather than stale/blocked.",
+      "evidence": [
+        "74f7d7ceb262f579782d395dbdf51e85e820502d",
+        "72d5cf646b505898f2ea9a896b359f33e130bb65"
+      ],
+      "details": {
+        "checklist": "O14"
+      }
+    },
+    {
+      "recorded_at": "2026-09-30T12:51:42-05:00",
+      "source": "mcp",
+      "kind": "repair",
+      "area": "NEXUS ablation controls",
+      "summary": "Ablation runs preserve the component-weight cap and are protected by a dedicated regression.",
+      "status": "repaired",
+      "severity": "high",
+      "source_repo": "reppiks490/divine-providence",
+      "source_branch": "main",
+      "source_commit": "24f9ae6cbde159fffd5cb6159254e69e46b2138d",
+      "verification": "Implementation and regression commits were located during the continuation audit.",
+      "interface_effect": "The prior ablation-cap blocker is shown as repaired with exact source commits.",
+      "evidence": [
+        "1f1284e3d9f9dfa808022bc937c327390f94954c",
+        "74d689771a7791f554b101ac069136d2b0300254"
+      ],
+      "details": {
+        "checklist": "O14"
+      }
+    },
+    {
+      "recorded_at": "2026-09-30T12:58:23-05:00",
+      "source": "mcp",
+      "kind": "repair",
+      "area": "NEXUS synthetic factors",
+      "summary": "Synthetic-factor and historical factor paths preserve missingness; missing observations are no longer fitted or represented as zero evidence.",
+      "status": "repaired",
+      "severity": "high",
+      "source_repo": "reppiks490/divine-providence",
+      "source_branch": "main",
+      "source_commit": "f6f712d52ae4d4fbb29e1ca938354412e113b420",
+      "verification": "Synthetic-factor, historical-fit, topology, and latent-state missingness repairs and regressions were located in repository history.",
+      "interface_effect": "The prior missing-data leakage blocker is shown as repaired while preserving provenance to all contributing commits.",
+      "evidence": [
+        "fc945f0fea2ac6d344f8b5f21d317637f5bb554c",
+        "8097f97267139061a8c9aef2e78d3acd48d56ba8",
+        "2d8dd154f7fecffd69e061b0c9d44481dab0d7a4",
+        "47df68167443b9b9c8666f8ce9b62939c79408d1",
+        "295457d1f64746e8ed88e16f00bb19f28161904c"
+      ],
+      "details": {
+        "checklist": "O14"
+      }
+    }
+  ]
+}
