@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -139,6 +140,35 @@ def test_pantheon_fails_closed_on_bad_time_commit_or_shape(tmp_path):
     bad["signals"] = []
     with pytest.raises(ValueError, match="signals must be an object"):
         kernel.record_observation(bad)
+
+
+def test_pantheon_rejects_future_dated_observations(tmp_path):
+    kernel = PantheonKernel(tmp_path)
+    future = (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat()
+    with pytest.raises(ValueError, match="future"):
+        kernel.record_observation(_payload(observed_at=future))
+
+
+def test_aether_never_configures_below_mandatory_independence_floor(tmp_path):
+    swarm = AetherSwarm(threshold=0.0, max_agents=1)
+    kernel = PantheonKernel(tmp_path, swarm=swarm)
+    obs = kernel.record_observation(_payload())
+    agents = obs["analysis"]["aether"]["agents"]
+    assert len(agents) >= 4
+    assert {"falsifier", "alternative_cause", "provenance_guard", "risk_guard"} <= {a["role"] for a in agents}
+
+
+def test_sentinel_cells_preserve_latest_observed_state_under_late_ingestion(tmp_path):
+    kernel = PantheonKernel(tmp_path, swarm=AetherSwarm(threshold=0.25))
+    newer = _payload(observation_id="pan-newer", observed_at="2026-10-01T06:00:02Z")
+    older = _payload(observation_id="pan-older", observed_at="2026-10-01T06:00:01Z")
+    kernel.record_observation(newer)
+    kernel.record_observation(older)
+    state = kernel.snapshot()
+    cell = state["sentinel_cells"][0]
+    assert cell["observation_count"] == 2
+    assert cell["last_observation_id"] == "pan-newer"
+    assert cell["last_observed_at"] == "2026-10-01T06:00:02Z"
 
 
 def test_snapshot_preserves_existing_engine_ownership(tmp_path):
