@@ -373,6 +373,28 @@ class ParallaxStore:
             })
         return sorted(signals, key=lambda x: (x["ci95_low"], x["mean_delta"]), reverse=True)
 
+    def status(self) -> dict[str, Any]:
+        """Lightweight read-only operator status for frequent root-panel polling."""
+        with _LOCK, self._connect() as con:
+            counts = con.execute(
+                "SELECT COUNT(*) AS decisions,"
+                "(SELECT COUNT(*) FROM branches) AS branches,"
+                "(SELECT COUNT(*) FROM branches WHERE status='observed') AS observed,"
+                "(SELECT MAX(observed_at) FROM decisions) AS latest_observed_at"
+            ).fetchone()
+        return {
+            "schema_version": "icarus-parallax-status-v1",
+            "status": "ready",
+            "counts": {
+                "decisions": counts["decisions"],
+                "branches": counts["branches"],
+                "observed_outcomes": counts["observed"],
+            },
+            "latest_observed_at": counts["latest_observed_at"],
+            "execution_authorized": False,
+            "production_decision_authorized": False,
+        }
+
     def snapshot(self, limit: int = 100) -> dict[str, Any]:
         with _LOCK, self._connect() as con:
             rows = con.execute("SELECT decision_id FROM decisions ORDER BY observed_at DESC LIMIT ?", (max(1, min(500, int(limit))),)).fetchall()
