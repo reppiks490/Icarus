@@ -63,3 +63,8 @@ A store-signed install still requires the operator's Apple/Google developer cred
 ## Compatibility
 
 The app requires the ICARUS Mobile API v1 health contract and verifies that trade-state mutations are disabled before pairing. Windows launch instructions: [../docs/icarus/MOBILE_WINDOWS.md](../docs/icarus/MOBILE_WINDOWS.md).
+
+
+## Signed builds
+
+The repository includes a manual-only EAS build workflow. It cannot run successfully until the operator links an Expo project and supplies the `EXPO_TOKEN` GitHub secret. See [../docs/icarus/MOBILE_RELEASE.md](../docs/icarus/MOBILE_RELEASE.md).

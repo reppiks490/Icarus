@@ -1,0 +1,54 @@
+name: mobile-eas-build
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: Mobile platform to build
+        required: true
+        default: all
+        type: choice
+        options:
+          - all
+          - ios
+          - android
+      profile:
+        description: EAS build profile
+        required: true
+        default: preview
+        type: choice
+        options:
+          - development
+          - preview
+          - production
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: mobile
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.13"
+      - name: Require Expo authentication
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "EXPO_TOKEN repository secret is required."
+            exit 2
+          fi
+      - run: npm install --no-audit --no-fund
+      - run: npx expo install --check
+      - run: npm run typecheck
+      - name: Verify EAS project link
+        run: npx --yes eas-cli@24.8.0 project:info --json
+      - name: Trigger EAS build
+        run: npx --yes eas-cli@24.8.0 build --platform "${{ inputs.platform }}" --profile "${{ inputs.profile }}" --non-interactive --no-wait

@@ -786,3 +786,129 @@ def test_unscoped_experience_is_not_promoted_into_configuration_scorecard(tmp_pa
     assert state["count"] == 1
     assert state["by_configuration"] == []
     assert state["unscoped_count"] == 1
+
+
+def test_learning_fabric_calibrates_psi_raw_scenario_shares_without_overlap(tmp_path, monkeypatch):
+    import icarus_engine.learning_fabric as learning_module
+    from icarus_engine.learning_fabric import LearningFabric
+
+    clock = {"now": datetime(2026, 10, 1, 14, 0, tzinfo=timezone.utc)}
+    monkeypatch.setattr(learning_module, "_utc_now", lambda: _iso(clock["now"]))
+    monkeypatch.setattr(
+        learning_module,
+        "local_code_provenance",
+        lambda: {"candidate_revision_eligible": True, "commit": "a" * 40},
+        raising=False,
+    )
+
+    class Port:
+        def __init__(self):
+            self.price = 100.0
+        def status(self):
+            return {"assets": [{"symbol": "NQ", "price": self.price}]}
+
+    class Psi:
+        def status(self):
+            return {"assets": {"NQ": {}}, "execution_authorized": False, "production_decision_authorized": False}
+        def snapshot(self, asset=None):
+            return {
+                "asset": "NQ",
+                "generated_at": _iso(clock["now"]),
+                "price": 100.0,
+                "edge_state": {"state": "NO_EDGE"},
+                "forecast_calibration_contract": {
+                    "status": "ELIGIBLE_UNCALIBRATED",
+                    "asset": "NQ",
+                    "emitted_at": _iso(clock["now"]),
+                    "reference_price": 100.0,
+                    "chart_minutes": 1,
+                    "horizon_steps": 10,
+                    "horizon_seconds": 600,
+                    "classification_threshold_return": 0.005,
+                    "cluster_shares": {"UP": 0.7, "FLAT": 0.2, "DOWN": 0.1},
+                    "dominant_cluster": "UP",
+                    "calibrated": False,
+                    "execution_authorized": False,
+                    "production_decision_authorized": False,
+                },
+            }
+
+    port = Port()
+    fabric = LearningFabric(tmp_path, port=port)
+    fabric.bind_native(possibility=Psi())
+
+    first = fabric.harvest_native()["possibility"]
+    assert first["forecasts_imported"] == 1
+    assert first["outcomes_imported"] == 0
+    assert first["overlap_withheld"] == 0
+
+    again = fabric.harvest_native()["possibility"]
+    assert again["forecasts_imported"] == 0
+    assert again["overlap_withheld"] == 1
+    assert fabric.scorecards() == []
+
+    clock["now"] += timedelta(seconds=601)
+    port.price = 101.0
+    matured = fabric.harvest_native()["possibility"]
+    assert matured["outcomes_imported"] == 1
+    assert matured["forecasts_imported"] == 1
+
+    cards = [x for x in fabric.scorecards() if x["producer"] == "psi-scenario-v1"]
+    assert len(cards) == 1
+    assert cards[0]["settled"] == 1
+    assert cards[0]["successes"] == 1
+    assert cards[0]["mean_brier"] == pytest.approx(((0.7 - 1.0) ** 2 + 0.2 ** 2 + 0.1 ** 2) / 3.0)
+
+    row = fabric._conn.execute(
+        "SELECT semantic_json FROM predictions WHERE producer='psi-scenario-v1' ORDER BY emitted_ts LIMIT 1"
+    ).fetchone()
+    prediction = json.loads(row["semantic_json"])
+    assert prediction["metadata"]["input_semantics"] == "UNCALIBRATED_SCENARIO_SHARE"
+    assert prediction["metadata"]["classification_threshold_return"] == pytest.approx(0.005)
+    assert prediction["execution_authorized"] is False
+    assert prediction["production_decision_authorized"] is False
+
+
+def test_psi_learning_withholds_capture_when_exact_revision_is_not_clean(tmp_path, monkeypatch):
+    import icarus_engine.learning_fabric as learning_module
+    from icarus_engine.learning_fabric import LearningFabric
+
+    monkeypatch.setattr(
+        learning_module,
+        "local_code_provenance",
+        lambda: {"candidate_revision_eligible": False, "commit": None, "reason": "dirty tree"},
+        raising=False,
+    )
+
+    class Psi:
+        def status(self):
+            return {"assets": {"NQ": {}}}
+        def snapshot(self, asset=None):
+            return {
+                "asset": "NQ",
+                "generated_at": "2026-10-01T14:00:00Z",
+                "price": 100.0,
+                "edge_state": {"state": "NO_EDGE"},
+                "forecast_calibration_contract": {
+                    "status": "ELIGIBLE_UNCALIBRATED",
+                    "asset": "NQ",
+                    "emitted_at": "2026-10-01T14:00:00Z",
+                    "reference_price": 100.0,
+                    "chart_minutes": 1,
+                    "horizon_steps": 10,
+                    "horizon_seconds": 600,
+                    "classification_threshold_return": 0.005,
+                    "cluster_shares": {"UP": 0.6, "FLAT": 0.2, "DOWN": 0.2},
+                    "dominant_cluster": "UP",
+                    "calibrated": False,
+                    "execution_authorized": False,
+                    "production_decision_authorized": False,
+                },
+            }
+
+    fabric = LearningFabric(tmp_path)
+    fabric.bind_native(possibility=Psi())
+    out = fabric.harvest_native()["possibility"]
+    assert out["status"] == "WITHHELD_REVISION"
+    assert out["forecasts_imported"] == 0
+    assert fabric._conn.execute("SELECT COUNT(*) FROM predictions WHERE producer='psi-scenario-v1'").fetchone()[0] == 0
