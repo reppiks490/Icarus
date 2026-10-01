@@ -360,6 +360,36 @@ def _extract_signals(finalization: Dict[str, Any], latest: Any = None, state: An
     return out
 
 
+def _signal_event_summary(signals: Dict[str, Any]) -> str:
+    """Compact meaningful run output into the persistent activity ledger."""
+    parts = []
+
+    def walk(value: Any, path: str = "", depth: int = 0) -> None:
+        if len(parts) >= 12 or depth > 4:
+            return
+        if isinstance(value, dict):
+            for key, item in value.items():
+                if len(parts) >= 12:
+                    break
+                name = str(key)
+                lower = name.lower()
+                child_path = f"{path}.{name}" if path else name
+                important = any(token in lower for token in (
+                    "result", "finding", "risk", "next", "delta", "gap", "conflict",
+                    "built", "status", "metric", "test", "warning", "error",
+                ))
+                if important and not isinstance(item, dict):
+                    rendered = json.dumps(_compact_value(item), ensure_ascii=False, separators=(",", ":"))
+                    parts.append(f"{child_path}={rendered[:500]}")
+                walk(item, child_path, depth + 1)
+        elif isinstance(value, list):
+            for index, item in enumerate(value[:8]):
+                walk(item, f"{path}[{index}]", depth + 1)
+
+    walk(signals)
+    return "; ".join(parts)[:1400]
+
+
 def _parse_json_bytes(raw: bytes, label: str) -> Dict[str, Any]:
     try:
         value = json.loads(raw.decode("utf-8"))
@@ -455,6 +485,7 @@ def collect_loop_snapshot(spec: Dict[str, Any], fetch_bytes=None):
         if verified else
         "Automatic GitHub receipt verification failed: " + ", ".join(failed)
     )
+    signals = _extract_signals(finalization, latest, state)
     row = {
         "id": spec["id"],
         "title": spec.get("title") or spec["id"],
@@ -468,14 +499,16 @@ def collect_loop_snapshot(spec: Dict[str, Any], fetch_bytes=None):
         "finalization_state_blob_sha": current_blob,
         "detail": detail,
         "verification": verification,
-        "signals": _extract_signals(finalization, latest, state),
+        "signals": signals,
     }
+    signal_summary = _signal_event_summary(signals)
+    event_detail = detail + (f" | {signal_summary}" if signal_summary else "")
     event = {
         "id": f"loop:{spec['id']}:{row['run_id'] or 'unknown'}",
         "kind": "audit",
         "severity": "success" if verified else "error",
         "title": f"{row['title']} {'verified' if verified else 'receipt mismatch'}",
-        "detail": detail,
+        "detail": event_detail,
         "recorded_at": row["recorded_at"] or _utc_now(),
         "repository": repository,
         "ref": commit_sha,
