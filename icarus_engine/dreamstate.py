@@ -10,7 +10,9 @@ exact code revision and comparison contract, supports target and compound policy
 hypotheses, accounts for family search budget, and retires active hypotheses when
 their underlying PARALLAX screen no longer holds. V3 additionally requires
 PARALLAX robustness clearance when chronological or neighboring-parameter evidence
-is rich enough to evaluate it.
+is rich enough to evaluate it. V4 carries episode-aware effective sample size,
+Newey-West/HAC uncertainty, and cross-revision transportability diagnostics into
+policy contracts, search accounting, Brain mirrors, and live source revalidation.
 """
 from __future__ import annotations
 
@@ -296,6 +298,9 @@ class DreamstateLab:
                     "robustness_blockers": list(signal.get("robustness_blockers") or []),
                     "temporal_stability": signal.get("temporal_stability", {}),
                     "parameter_basin": signal.get("parameter_basin", {}),
+                    "episode_dependence": signal.get("episode_dependence", {}),
+                    "hac_inference": signal.get("hac_inference", {}),
+                    "transportability": signal.get("transportability", {}),
                 },
             },
             "mutation": candidate.get("mutation", {}),
@@ -326,6 +331,7 @@ class DreamstateLab:
             "source_q_value": signal.get("q_value"),
             "source_fdr_limit": SOURCE_FDR_MAX,
             "source_evidence_pairs": signal.get("evidence_pair_count", signal.get("n")),
+            "source_effective_pairs": signal.get("effective_pair_count", signal.get("n")),
             "source_pair_coverage": signal.get("evidence_pair_coverage"),
             "source_strata_count": signal.get("strata_count", 0),
             "comparison_contract_complete": bool(signal.get("comparison_contract_complete")),
@@ -341,6 +347,18 @@ class DreamstateLab:
             "source_isolated_parameter_spike": bool((signal.get("parameter_basin") or {}).get("isolated_spike")),
             "source_parameter_local_support_missing": bool((signal.get("parameter_basin") or {}).get("local_support_missing")),
             "source_parameter_family_evaluable_points": (signal.get("parameter_basin") or {}).get("family_evaluable_point_count"),
+            "source_episode_clustered_pairs": (signal.get("episode_dependence") or {}).get("clustered_pair_count"),
+            "source_largest_episode_size": (signal.get("episode_dependence") or {}).get("largest_episode_size"),
+            "source_hac_evaluable": bool((signal.get("hac_inference") or {}).get("evaluable")),
+            "source_hac_lag": (signal.get("hac_inference") or {}).get("lag"),
+            "source_hac_ci95_low": (signal.get("hac_inference") or {}).get("ci95_low"),
+            "source_hac_ci95_high": (signal.get("hac_inference") or {}).get("ci95_high"),
+            "source_screen_ci95_low": signal.get("screen_ci95_low"),
+            "source_screen_p_one_sided": signal.get("screen_p_one_sided"),
+            "source_transport_evaluable": bool((signal.get("transportability") or {}).get("evaluable")),
+            "source_transport_stable": (signal.get("transportability") or {}).get("stable"),
+            "source_transport_supporting_revisions": (signal.get("transportability") or {}).get("supporting_revision_count"),
+            "source_transport_contradictory_revisions": (signal.get("transportability") or {}).get("contradictory_revision_count"),
         }
 
     def _mirror_candidate(self, candidate: Mapping[str, Any]) -> dict[str, Any]:
@@ -366,12 +384,16 @@ class DreamstateLab:
             for key in (
                 "n",
                 "evidence_pair_count",
+                "effective_pair_count",
                 "evidence_pair_coverage",
                 "mean_delta",
                 "median_delta",
                 "ci95_low",
                 "ci95_high",
                 "p_one_sided",
+                "screen_p_one_sided",
+                "screen_ci95_low",
+                "screen_ci95_high",
                 "q_value",
                 "positive_fraction",
                 "branch_label",
@@ -384,6 +406,9 @@ class DreamstateLab:
         evidence = list(candidate.get("evidence") or [])
         temporal = signal.get("temporal_stability") if isinstance(signal.get("temporal_stability"), Mapping) else {}
         basin = signal.get("parameter_basin") if isinstance(signal.get("parameter_basin"), Mapping) else {}
+        episode = signal.get("episode_dependence") if isinstance(signal.get("episode_dependence"), Mapping) else {}
+        hac = signal.get("hac_inference") if isinstance(signal.get("hac_inference"), Mapping) else {}
+        transport = signal.get("transportability") if isinstance(signal.get("transportability"), Mapping) else {}
         metrics.update({
             "temporal_stable": temporal.get("stable"),
             "temporal_worst_fold_mean": temporal.get("worst_fold_mean"),
@@ -392,6 +417,16 @@ class DreamstateLab:
             "isolated_parameter_spike": basin.get("isolated_spike"),
             "parameter_local_support_missing": basin.get("local_support_missing"),
             "parameter_family_evaluable_points": basin.get("family_evaluable_point_count"),
+            "episode_clustered_pairs": episode.get("clustered_pair_count"),
+            "largest_episode_size": episode.get("largest_episode_size"),
+            "hac_evaluable": hac.get("evaluable"),
+            "hac_lag": hac.get("lag"),
+            "hac_ci95_low": hac.get("ci95_low"),
+            "hac_ci95_high": hac.get("ci95_high"),
+            "transport_evaluable": transport.get("evaluable"),
+            "transport_stable": transport.get("stable"),
+            "transport_supporting_revisions": transport.get("supporting_revision_count"),
+            "transport_contradictory_revisions": transport.get("contradictory_revision_count"),
         })
         evidence.append(
             "PARALLAX paired signal "
@@ -797,7 +832,7 @@ class DreamstateLab:
         families = self._family_summaries(candidates)
         return {
             "schema_version": SCHEMA_VERSION,
-            "robustness_version": "icarus-dreamstate-robustness-v1",
+            "robustness_version": "icarus-dreamstate-robustness-v2",
             "stages": stages,
             "candidates": candidates,
             "families": families,
@@ -822,6 +857,10 @@ class DreamstateLab:
                 "source_signal_must_clear_parallax_robustness_when_evaluable": True,
                 "temporal_instability_can_retire_shadow_candidates": True,
                 "isolated_parameter_spikes_can_retire_shadow_candidates": True,
+                "episode_clustering_reduces_effective_source_sample_size": True,
+                "hac_dependence_adjustment_can_block_shadow_candidates": True,
+                "cross_revision_contradiction_can_retire_shadow_candidates": True,
+                "transportability_never_pools_effect_sizes_across_code_revisions": True,
                 "multiple_testing_gate_required": True,
                 "independent_verification_required": True,
                 "failed_gate_requires_new_candidate_revision": True,
