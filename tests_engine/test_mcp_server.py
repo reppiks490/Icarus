@@ -35,6 +35,11 @@ def test_mcp_server_imports_and_registers_engine_surface():
         "engine_pantheon_state",
         "record_engine_pantheon_observation",
         "record_engine_aether_claim",
+        "engine_sibyl_state",
+        "record_engine_sibyl_evidence",
+        "record_engine_sibyl_forecast",
+        "record_engine_sibyl_outcome",
+        "record_engine_sibyl_scenario",
         "refresh_engine_dreamstate",
         "record_engine_parallax_outcome",
         "record_current_parallax_decision_with_psi",
@@ -586,5 +591,106 @@ def test_mcp_aether_claim_route_is_blind_and_shadow_only(monkeypatch):
 def test_mcp_aether_claim_rejects_non_list_evidence():
     assert "error" in mcp_server.record_engine_aether_claim(
         "pan-1", "aeth-1", "thesis", evidence_json="{}"
+    )
+
+def test_mcp_sibyl_routes_are_research_only(monkeypatch):
+    seen = []
+
+    def get(path, **params):
+        seen.append(("get", path, params))
+        return {
+            "asset": "NQ",
+            "authority": {
+                "execution_authorized": False,
+                "production_decision_authorized": False,
+            },
+        }
+
+    def post(path, body):
+        seen.append(("post", path, body))
+        return {
+            "execution_authorized": False,
+            "production_decision_authorized": False,
+        }
+
+    monkeypatch.setattr(mcp_server, "_engine_get", get)
+    monkeypatch.setattr(mcp_server, "_engine_post", post)
+
+    state = mcp_server.engine_sibyl_state("nq")
+    assert state["authority"]["execution_authorized"] is False
+
+    evidence = mcp_server.record_engine_sibyl_evidence(
+        "nq",
+        "fixture-source",
+        "macro",
+        "2026-10-01T06:00:00Z",
+        0.5,
+        0.8,
+        300,
+        magnitude=1.2,
+        source_commit="a" * 40,
+        target_price=25050.0,
+        invalidation_price=24950.0,
+        payload_json='{"fixture":true}',
+    )
+    assert evidence["execution_authorized"] is False
+
+    forecast = mcp_server.record_engine_sibyl_forecast(
+        "nq",
+        horizons_json="[60,300]",
+        observed_at="2026-10-01T06:00:00Z",
+        current_price=25000.0,
+        source_commit="b" * 40,
+    )
+    assert forecast["production_decision_authorized"] is False
+
+    outcome = mcp_server.record_engine_sibyl_outcome(
+        "fc-1",
+        300,
+        "2026-10-01T06:05:00Z",
+        25025.0,
+        evidence_json='["fixture"]',
+    )
+    assert outcome["execution_authorized"] is False
+
+    scenario = mcp_server.record_engine_sibyl_scenario(
+        "nq",
+        '[{"domain":"macro","direction":-0.5}]',
+        horizons_json="[300]",
+        as_of="2026-10-01T06:00:00Z",
+        current_price=25000.0,
+    )
+    assert scenario["production_decision_authorized"] is False
+
+    assert seen[0] == ("get", "/api/sibyl", {"asset": "NQ"})
+    assert seen[1][0:2] == ("post", "/admin/sibyl/evidence")
+    assert seen[1][2]["source"] == "fixture-source"
+    assert seen[1][2]["payload"] == {"fixture": True}
+    assert seen[2][0:2] == ("post", "/admin/sibyl/forecast")
+    assert seen[2][2]["observed_at"] == "2026-10-01T06:00:00Z"
+    assert seen[2][2]["current_price"] == 25000.0
+    assert seen[3][0:2] == ("post", "/admin/sibyl/outcome")
+    assert seen[4][0:2] == ("post", "/admin/sibyl/scenario")
+    assert seen[4][2]["as_of"] == "2026-10-01T06:00:00Z"
+
+
+def test_mcp_sibyl_rejects_bad_shapes_and_reserved_pantheon_identity():
+    assert "error" in mcp_server.record_engine_sibyl_evidence(
+        "NQ", "fixture", "macro", "2026-10-01T06:00:00Z", 0.2, 0.8, 300,
+        payload_json="[]",
+    )
+    reserved = mcp_server.record_engine_sibyl_evidence(
+        "NQ", "pantheon-ananke", "structural_constraints",
+        "2026-10-01T06:00:00Z", 0.2, 0.8, 300,
+    )
+    assert "reserved" in reserved["error"]
+    assert "error" in mcp_server.record_engine_sibyl_forecast(
+        "NQ", horizons_json="{}",
+    )
+    assert "error" in mcp_server.record_engine_sibyl_outcome(
+        "fc-1", 300, "2026-10-01T06:05:00Z", 25000.0, evidence_json="{}",
+    )
+    assert "error" in mcp_server.record_engine_sibyl_scenario(
+        "NQ", interventions_json="{}",
     )
 
