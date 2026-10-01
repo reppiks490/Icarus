@@ -396,6 +396,7 @@ function overviewHtml(d, A) {
   <section class="card c6"><h2>Equity · active engine epoch <span class="sub">${d.equity_series?.length?`${d.equity_series.length} samples · resets after every successful warm/re-warm · dashed = starting capital`:'collecting samples for the active configuration'}</span></h2><div id="eqChart"></div></section>
   <section class="card c3" id="engineCard"><h2>Engine</h2><div class="tiles" style="margin-top:0"><div class="tile"><div class="k">Assets</div><div class="v tnum">${A.length}</div></div><div class="tile"><div class="k">Live trades</div><div class="v tnum">${A.reduce((s,a)=>s+(a.live_trades||0),0)}</div></div><div class="tile"><div class="k">Hist. pieces</div><div class="v tnum">${A.reduce((s,a)=>s+(a.trades_total||0),0)}</div></div><div class="tile"><div class="k">Uptime</div><div class="v tnum">${age(d.uptime_sec)}</div></div></div>
     <div class="small muted" style="margin-top:8px">Preset <b>${esc(d.preset||'none')}</b> · NQ-point inputs scaled from NQ ${d.pts_ref&&d.pts_ref.price?px(d.pts_ref.price,0):'—'} · fills at real prices unless a card says otherwise · paper orders are local.</div></section>
+  ${typeof possibilityQuickOverviewHtml==='function'?possibilityQuickOverviewHtml(A):''}
   <div class="assets" id="assets">${A.map(assetCard).join('')}</div>
   <section class="card c7"><h2>Paper fills <span class="sub" id="fillsSub"></span></h2><div class="scroll"><table id="fills"><thead><tr><th>Time</th><th>Asset</th><th>Side</th><th>Qty</th><th>Price</th><th>Kind</th><th>Signal</th><th>P&amp;L</th><th>Pos</th></tr></thead><tbody></tbody></table></div></section>
   <section class="card c5"><h2>Engine log</h2><div class="log" id="log" style="max-height:300px"></div></section>
@@ -425,6 +426,7 @@ function assetHead(a) {
 }
 function assetHtml(a) {
   return `<section class="card c12" id="assetHead">${assetHead(a)}</section>
+  ${typeof possibilityQuickAssetHtml==='function'?possibilityQuickAssetHtml(a):''}
   <section class="card c7"><h2>Closed trades · ${a.symbol}</h2><div class="scroll" style="max-height:420px"><table id="dTrades"><thead><tr><th></th><th>Entry</th><th>Signal</th><th>Qty</th><th>Entry px</th><th>Exit</th><th>Exit px</th><th>Exit signal</th><th>P&amp;L</th></tr></thead><tbody></tbody></table></div></section>
   <section class="card c5"><h2>Fills · ${a.symbol}</h2><div class="scroll" style="max-height:420px"><table id="dFills"><thead><tr><th>Time</th><th>Side</th><th>Qty</th><th>Price</th><th>Signal</th><th>P&amp;L</th></tr></thead><tbody></tbody></table></div></section>`;
 }
@@ -769,6 +771,7 @@ function render(d) {
     $('#trades tbody').innerHTML = rows.slice(0,80).map(t => `<tr><td><b>${t.symbol}</b></td><td><span class="tag ${t.live?'live':''}">${t.live?'LIVE':'hist'}</span></td><td class="tnum">${dtz(t.entry_ts)}</td><td>${esc(t.id)}</td><td class="tnum">${t.qty}</td><td class="tnum">${px(t.entry)}</td><td class="tnum">${dtz(t.exit_ts)}</td><td class="tnum">${px(t.exit)}</td><td>${esc(t.comment)}</td><td class="tnum ${t.profit>=0?'pos':'neg'}">${sgn$(t.profit)}</td></tr>`).join('') || '<tr><td colspan=10 class="empty">no closed trades yet</td></tr>';
     $('#log').innerHTML = (d.log||[]).slice().reverse().map(l => `<div class="${l.level}">${tms(l.ts)} ${l.level.padEnd(5)} ${esc(l.msg)}</div>`).join('');
     refreshFills();
+    if (typeof wirePossibilityQuickOverview === 'function') wirePossibilityQuickOverview(A);
   } else if (viewAsset) {
     if (rebuild) { $('#view').innerHTML = assetHtml(viewAsset); }
     else { const keep = $('#dChart') ? $('#dChart').innerHTML : ''; $('#assetHead').innerHTML = assetHead(viewAsset); $('#dChart').innerHTML = keep; }
@@ -777,6 +780,8 @@ function render(d) {
     $('#dTrades tbody').innerHTML = tr.map(t => `<tr><td><span class="tag ${t.live?'live':''}">${t.live?'LIVE':'hist'}</span></td><td class="tnum">${dtz(t.entry_ts)}</td><td>${esc(t.id)}</td><td class="tnum">${t.qty}</td><td class="tnum">${px(t.entry)}</td><td class="tnum">${dtz(t.exit_ts)}</td><td class="tnum">${px(t.exit)}</td><td>${esc(t.comment)}</td><td class="tnum ${t.profit>=0?'pos':'neg'}">${sgn$(t.profit)}</td></tr>`).join('') || '<tr><td colspan=9 class="empty">no closed trades yet</td></tr>';
     const fl = ((c&&c.fills)||[]).slice().reverse();
     $('#dFills tbody').innerHTML = fl.map(f => `<tr><td class="tnum">${dtz(f.ts)}</td><td class="side ${f.side}">${f.side}</td><td class="tnum">${f.qty}</td><td class="tnum">${px(f.price)}</td><td>${esc(f.comment)} <span class="tag ${f.live?'live':''}">${f.live?'LIVE':'hist'}</span></td><td class="tnum ${f.profit==null?'':f.profit>=0?'pos':'neg'}">${f.profit!=null?sgn$(f.profit):''}</td></tr>`).join('') || '<tr><td colspan=6 class="empty">no fills in the chart window</td></tr>';
+    if (typeof wirePossibilityQuickAsset === 'function' && rebuild) wirePossibilityQuickAsset(viewAsset.symbol);
+    else if (typeof loadPossibilityQuickAsset === 'function') loadPossibilityQuickAsset(viewAsset.symbol, false);
   } else if (view === 'inputs') { if (rebuild) { $('#view').innerHTML = inputsHtml(A); loadInputsTab(); } }
   else if (view === 'commands') { if (rebuild) $('#view').innerHTML = commandsHtml(A); }
   else if (view === 'backtest') { if (rebuild) {
