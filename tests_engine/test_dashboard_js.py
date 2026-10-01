@@ -147,7 +147,9 @@ def test_dashboard_surfaces_icarus_psi_without_replacing_oracle_or_parallax():
     assert "wirePossibility()" in dashboard
     assert "/api/possibility" in ui
     assert 'p.path == "/api/possibility"' in server
+    assert 'p.path == "/api/possibility/evidence"' in server
     assert 'p.path == "/admin/possibility/evidence"' in server
+    assert "evidence_ledger" in ui
     assert 'votes["psi"] = possibility.parallax_vote' not in server
     assert "Any Psi vote must be captured causally" in server
     assert '{"id": "oracle", "title": "ORACLE"' in brain
