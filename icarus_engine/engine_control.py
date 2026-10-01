@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 from typing import Any, Callable, Dict, Mapping
 import json
 import math
+import re
 import threading
 
 from .system_audit import append_system_event, load_repository_audit
@@ -61,6 +62,12 @@ class ControlAction:
         ):
             if not isinstance(value, str) or not value.strip():
                 raise ValueError(f"{name} is required")
+            if value != value.strip():
+                raise ValueError(f"{name} must be trimmed")
+        if not re.fullmatch(r"[a-z0-9][a-z0-9._-]{0,119}", self.action_id):
+            raise ValueError("action_id must be a canonical lowercase identifier")
+        if not callable(self.handler):
+            raise TypeError("handler must be callable")
         if self.target not in {"none", "asset", "job"}:
             raise ValueError("target must be none, asset, or job")
         if self.danger and not self.confirmation:
@@ -250,6 +257,7 @@ class EngineControlPlane:
                 audit_error = f"{type(ex).__name__}: {ex}"[:1000]
         return {
             "ok": True,
+            "note": f"{action.title} completed",
             "action": action.public(),
             "target": target or None,
             "started_at": started,
