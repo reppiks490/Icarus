@@ -67,6 +67,43 @@ def test_sibyl_correlation_guard_prevents_source_count_from_faking_consensus(tmp
     assert row["collapse_detected"] is False
 
 
+def test_sibyl_uses_only_newest_source_revision_in_live_synthesis(tmp_path):
+    engine = SibylEngine(tmp_path)
+    first = engine.record_evidence(
+        {
+            "asset": "NQ",
+            "source": "oracle",
+            "domain": "macro",
+            "observed_at": (datetime.now(timezone.utc) - timedelta(seconds=2)).isoformat(),
+            "direction": -1.0,
+            "magnitude": 1.0,
+            "confidence": 0.95,
+            "horizon_seconds": 300,
+            "source_commit": "a" * 40,
+        }
+    )
+    second = engine.record_evidence(
+        {
+            "asset": "NQ",
+            "source": "oracle",
+            "domain": "macro",
+            "observed_at": _now(),
+            "direction": 1.0,
+            "magnitude": 1.0,
+            "confidence": 0.95,
+            "horizon_seconds": 300,
+            "source_commit": "b" * 40,
+        }
+    )
+    state = engine.snapshot("NQ", market_status=_market())
+    row = next(x for x in state["horizons"] if x["horizon_seconds"] == 300)
+
+    assert first["source_commit"] != second["source_commit"]
+    assert state["evidence"]["ledger_count"] == 2
+    assert state["evidence"]["count"] == 1
+    assert row["domain_fusion"][0]["score"] > 0
+
+
 def test_sibyl_rejects_future_or_timezone_free_evidence(tmp_path):
     engine = SibylEngine(tmp_path)
     body = {
