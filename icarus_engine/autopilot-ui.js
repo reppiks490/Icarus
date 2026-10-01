@@ -18,6 +18,7 @@ function autopilotHtml(A){
     '<div class="callout" style="border-color:var(--s1)"><div><b>Autonomous research plane</b><span class="small muted">Continuously searches bounded inputs and chart/session context on frozen cached data. It does not alter broker/live or canonical paper inputs. Winners flow upward through the qualified activation path.</span></div></div>'+
     '<div class="toolbar" style="margin-top:12px"><button class="primary" id="apStart">Start autonomous loop</button><button id="apStop">Stop</button><button id="apStep">Run one cycle now</button><button id="apRefresh">Refresh</button>'+
     '<label class="small">Cadence <input id="apCadence" type="number" min="5" max="3600" value="15" style="width:84px"> sec</label>'+
+    '<label class="small">Robustness <select id="apWindows"><option value="1">1 window</option><option value="2">2 windows</option><option value="3">3 windows</option></select></label>'+
     '<label class="small">Asset <select id="apAsset"><option value="">all / round-robin</option>'+opts+'</select></label><span id="apStatus" class="small muted">loading…</span></div>'+
     '<div class="tiles" id="apSummary"></div></section>'+
     '<section class="card c6"><h2>Current candidate <span class="sub" id="apCandidateStage">—</span></h2><div id="apCurrent" class="small"></div>'+
@@ -29,7 +30,9 @@ function autopilotHtml(A){
 function apMetricTiles(m){m=m||{};return[
  ['score',apFmt(m.score,5)],['P&L',m.pnl==null?'—':fmt$(m.pnl,0)],['max drawdown',m.max_drawdown==null?'—':fmt$(m.max_drawdown,0)],
  ['return / DD',apFmt(m.return_to_drawdown,4)],['win rate',m.win_rate==null?'—':(Number(m.win_rate)*100).toFixed(1)+'%'],
- ['profit factor',apFmt(m.profit_factor,3)],['trades',m.trades??'—'],['bars',m.bars??'—']
+ ['profit factor',apFmt(m.profit_factor,3)],['trades',m.trades??'—'],['bars',m.bars??'—'],
+ ['full score',apFmt(m.full_score,5)],['worst window',apFmt(m.worst_window_score,5)],
+ ['score dispersion',apFmt(m.score_dispersion,5)],['robust windows',m.robustness_windows??'—']
 ].map(x=>'<div class="tile"><div class="k">'+esc(x[0])+'</div><div class="v">'+esc(String(x[1]))+'</div></div>').join('');}
 async function loadAutopilot(){
   if(autopilotLoading||view!=='autopilot')return;autopilotLoading=true;
@@ -40,6 +43,7 @@ async function loadAutopilot(){
     autopilotLast=d;const cfg=d.config||{},active=d.active||{},cand=active.candidate||null,champion=cand?(d.champions||{})[cand.asset]:null;
     $('#apStatus').innerHTML=(d.running?'<span class="pos">RUNNING</span>':'<span class="muted">STOPPED</span>')+' · cycle '+esc(String(d.cursor||0))+' · '+esc(d.mode||'');
     if($('#apCadence'))$('#apCadence').value=cfg.cadence_seconds||15;
+    if($('#apWindows'))$('#apWindows').value=String(cfg.robustness_windows||1);
     $('#apSummary').innerHTML=
       '<div class="tile"><div class="k">Loop</div><div class="v '+(d.running?'pos':'')+'">'+(d.running?'AUTONOMOUS':'STOPPED')+'</div></div>'+
       '<div class="tile"><div class="k">Trials</div><div class="v">'+(d.history||[]).length+'</div></div>'+
@@ -47,7 +51,7 @@ async function loadAutopilot(){
       '<div class="tile"><div class="k">Live mutation</div><div class="v pos">DISABLED</div></div>'+
       '<div class="tile"><div class="k">Broker control</div><div class="v pos">DISABLED</div></div>'+
       '<div class="tile"><div class="k">Search fill</div><div class="v">REAL PRICE</div></div>';
-    $('#apCandidateStage').innerHTML=apBadge(active.stage||'idle');
+    $('#apCandidateStage').innerHTML=apBadge(active.stage||'idle')+(active.robustness_label?' · '+esc(active.robustness_label)+' '+esc(String(active.robustness_index||''))+'/'+esc(String(active.robustness_total||'')):'');
     $('#apCurrent').innerHTML=cand?'<div class="tiles">'+
       '<div class="tile"><div class="k">Asset</div><div class="v">'+esc(cand.asset)+'</div></div>'+
       '<div class="tile"><div class="k">Mutation</div><div class="v" style="font-size:13px">'+apDelta(cand.delta)+'</div></div>'+
@@ -75,6 +79,7 @@ function wireAutopilot(){
   $('#apStop')&&$('#apStop').addEventListener('click',async()=>{await admin('/admin/autopilot/stop',{});loadAutopilot();});
   $('#apStep')&&$('#apStep').addEventListener('click',async()=>{await admin('/admin/autopilot/step',{},true);loadAutopilot();});
   $('#apCadence')&&$('#apCadence').addEventListener('change',async e=>{await admin('/admin/autopilot/config',{cadence_seconds:Number(e.target.value)},true);loadAutopilot();});
+  $('#apWindows')&&$('#apWindows').addEventListener('change',async e=>{await admin('/admin/autopilot/config',{robustness_windows:Number(e.target.value)},true);loadAutopilot();});
   $('#apAsset')&&$('#apAsset').addEventListener('change',async e=>{await admin('/admin/autopilot/config',{assets:e.target.value?[e.target.value]:[]},true);loadAutopilot();});
   loadAutopilot();autopilotTimer=setInterval(loadAutopilot,1200);
 }

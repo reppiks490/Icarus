@@ -9,6 +9,14 @@ from icarus_engine.autopilot import TacticalAutopilot
 from icarus_engine.strategy.inputs import Inputs
 
 
+@pytest.fixture(autouse=True)
+def _freeze_passthrough(monkeypatch):
+    monkeypatch.setattr(
+        "icarus_engine.autopilot.freeze_replay_port",
+        lambda port, asset: port,
+    )
+
+
 class FakeRunner:
     def __init__(self):
         self.symbol = "NQ"
@@ -102,6 +110,11 @@ def test_autopilot_protects_economic_scale_inputs(tmp_path):
     dims = dict(ap._eligible(Inputs().to_dict()))
     assert "qty_contracts" not in dims
     assert "point_value" not in dims
+    assert "size_mode" not in dims
+    assert "risk_usd_per_trade" not in dims
+    assert "tide_qty" not in dims
+    assert "use_conviction_sizing" not in dims
+    assert all(not name.endswith("_qty") for name in dims)
     assert all(not name.startswith("rate_") for name in dims)
     assert all(not name.startswith("htf_tf_") for name in dims)
 
@@ -112,6 +125,8 @@ def test_autopilot_configuration_is_fail_closed(tmp_path):
         ap.configure({"cadence_seconds": 1})
     with pytest.raises(ValueError, match="assets"):
         ap.configure({"assets": ["ES"]})
+    with pytest.raises(ValueError, match="robustness_windows"):
+        ap.configure({"robustness_windows": 4})
     with pytest.raises(ValueError, match="unknown"):
         ap.configure({"god_mode": True})
 
@@ -127,3 +142,91 @@ def test_score_penalizes_no_trade_and_historical_invalidity():
     empty = fake_result({}, better=True)
     empty["trades"] = []
     assert TacticalAutopilot._score(empty, 8)["score"] == -999.0
+
+
+def test_autopilot_cycle_lock_prevents_overlapping_replays(tmp_path, monkeypatch):
+    ap = TacticalAutopilot(FakePort(tmp_path))
+    monkeypatch.setattr(
+        "icarus_engine.autopilot.run_backtest",
+        lambda *a, **k: (_ for _ in ()).throw(AssertionError("overlapping replay launched")),
+    )
+    assert ap._cycle_lock.acquire(blocking=False)
+    try:
+        status = ap.cycle_once()
+        assert status["cycle_busy"] is True
+        assert status["history"] == []
+        with pytest.raises(ValueError, match="cycle is active"):
+            ap.reset()
+    finally:
+        ap._cycle_lock.release()
+
+
+def test_autopilot_start_can_resume_single_worker_after_stop_signal(tmp_path):
+    ap = TacticalAutopilot(FakePort(tmp_path))
+    class Alive:
+        @staticmethod
+        def is_alive():
+            return True
+    ap._thread = Alive()
+    ap._stop.set()
+    status = ap.start()
+    assert not ap._stop.is_set()
+    assert status["config"]["enabled"] is True
+    assert status["running"] is True
+
+
+def test_new_champion_is_mirrored_to_system_intelligence(tmp_path, monkeypatch):
+    port = FakePort(tmp_path)
+    seen = []
+    monkeypatch.setattr(
+        "icarus_engine.autopilot.run_backtest",
+        lambda _port, asset, **kwargs: fake_result(kwargs["inputs"], better=True),
+    )
+    monkeypatch.setattr(
+        "icarus_engine.autopilot.append_system_event",
+        lambda base, event: seen.append((base, event)) or {"status": "ok"},
+    )
+    ap = TacticalAutopilot(port)
+    ap.cycle_once()
+    assert len(seen) == 1
+    event = seen[0][1]
+    assert event["kind"] == "integration"
+    assert "Tactical Autopilot champion" in event["title"]
+    assert "shadow-only" in event["detail"]
+
+
+def test_robustness_score_penalizes_recent_window_collapse(tmp_path, monkeypatch):
+    port = FakePort(tmp_path)
+    ap = TacticalAutopilot(port)
+    candidate = {
+        "id": "candidate",
+        "asset": "NQ",
+        "inputs": port.runners["NQ"].inputs.to_dict(),
+        "chart_type": "real",
+        "session": None,
+        "fill_on": "real",
+        "delta": {"kind": "baseline", "name": "current_engine", "from": None, "to": None},
+        "reason": "test",
+    }
+    state = ap._read()
+    state["active"] = {"candidate": candidate, "stage": "backtest", "started": 1.0}
+    ap._write(state)
+
+    def replay(_port, asset, **kwargs):
+        result = fake_result(kwargs["inputs"], better=True)
+        result["range"] = {"start": 0, "end": 1000}
+        if kwargs.get("window_start", 0) >= 750:
+            result["trades"] = []
+            result["equity"] = [[750, 100000.0], [1000, 100000.0]]
+            result["drawdown"] = [[750, 0.0], [1000, 0.0]]
+        return result
+
+    monkeypatch.setattr("icarus_engine.autopilot.run_backtest", replay)
+    _full, metrics = ap._evaluate_candidate(
+        candidate,
+        {**ap._read()["config"], "robustness_windows": 3},
+    )
+    assert metrics["robustness_windows"] == 3
+    assert metrics["full_score"] > metrics["score"]
+    assert metrics["worst_window_score"] == -999.0
+    assert len(metrics["window_scores"]) == 3

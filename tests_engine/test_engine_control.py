@@ -135,3 +135,94 @@ def test_failed_action_is_audited(tmp_path: Path):
     audit = load_repository_audit(tmp_path)
     assert audit["events"][0]["severity"] == "error"
     assert "Engine Control failed" in audit["events"][0]["title"]
+
+
+def test_intent_is_durable_before_handler_mutates(tmp_path: Path):
+    observed = {}
+
+    def handler(_payload):
+        audit = load_repository_audit(tmp_path)
+        observed["event"] = audit["events"][0]
+        return {"done": True}
+
+    cp = EngineControlPlane(
+        tmp_path,
+        snapshotters={},
+        actions={"mutate": ControlAction("mutate", "Mutate", "Test", "mutate", handler)},
+    )
+    out = cp.run({"action": "mutate"})
+    assert out["ok"] is True
+    assert observed["event"]["severity"] == "info"
+    assert "requested" in observed["event"]["title"].lower()
+    assert "status=REQUESTED" in observed["event"]["detail"]
+
+
+def test_failed_intent_write_prevents_mutation(tmp_path: Path, monkeypatch):
+    import icarus_engine.engine_control as mod
+
+    called = {"handler": False}
+
+    def handler(_payload):
+        called["handler"] = True
+        return {}
+
+    def fail_write(*_args, **_kwargs):
+        raise OSError("audit unavailable")
+
+    monkeypatch.setattr(mod, "append_system_event", fail_write)
+    cp = EngineControlPlane(
+        tmp_path,
+        snapshotters={},
+        actions={"mutate": ControlAction("mutate", "Mutate", "Test", "mutate", handler)},
+    )
+    with pytest.raises(OSError, match="audit unavailable"):
+        cp.run({"action": "mutate"})
+    assert called["handler"] is False
+
+
+def test_final_audit_failure_reports_partial_audit_without_repeating_mutation(tmp_path: Path, monkeypatch):
+    import icarus_engine.engine_control as mod
+
+    real_append = mod.append_system_event
+    calls = {"append": 0, "handler": 0}
+
+    def flaky_append(*args, **kwargs):
+        calls["append"] += 1
+        if calls["append"] == 2:
+            raise OSError("final audit unavailable")
+        return real_append(*args, **kwargs)
+
+    def handler(_payload):
+        calls["handler"] += 1
+        return {"changed": True}
+
+    monkeypatch.setattr(mod, "append_system_event", flaky_append)
+    cp = EngineControlPlane(
+        tmp_path,
+        snapshotters={},
+        actions={"mutate": ControlAction("mutate", "Mutate", "Test", "mutate", handler)},
+    )
+    out = cp.run({"action": "mutate"})
+    assert calls["handler"] == 1
+    assert out["ok"] is True
+    assert out["audit_recorded"] is False
+    assert "final audit unavailable" in out["audit_error"]
+    audit = load_repository_audit(tmp_path)
+    assert "requested" in audit["events"][0]["title"].lower()
+
+
+def test_control_request_rejects_nonfinite_json(tmp_path: Path):
+    cp = EngineControlPlane(
+        tmp_path,
+        snapshotters={},
+        actions={"noop": ControlAction("noop", "No-op", "Test", "noop", lambda _: {})},
+    )
+    with pytest.raises(ValueError, match="finite JSON"):
+        cp.run({"action": "noop", "args": {"x": float("nan")}})
+
+
+def test_control_action_identity_and_handler_are_validated():
+    with pytest.raises(ValueError, match="canonical lowercase"):
+        ControlAction("Bad Action", "Bad", "Test", "x", lambda _: None)
+    with pytest.raises(TypeError, match="handler"):
+        ControlAction("bad.handler", "Bad", "Test", "x", None)  # type: ignore[arg-type]

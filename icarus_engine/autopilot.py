@@ -17,11 +17,14 @@ import os
 from pathlib import Path
 import threading
 import time
+import statistics
+from datetime import datetime, timezone
 from typing import Any
 
-from .backtest import run_backtest
+from .backtest import freeze_replay_port, run_backtest
 from .runtime import validate_values
 from .strategy.meta import load_meta
+from .system_audit import append_system_event
 
 
 DEFAULT_CONFIG = {
@@ -30,6 +33,7 @@ DEFAULT_CONFIG = {
     "cadence_seconds": 15,
     "max_history": 120,
     "min_trades": 8,
+    "robustness_windows": 3,
     "search_chart_type": True,
     "search_session": True,
 }
@@ -48,6 +52,7 @@ class TacticalAutopilot:
         self.root = Path(port.base_dir) / "research" / "autopilot"
         self.path = self.root / "state.json"
         self._lock = threading.RLock()
+        self._cycle_lock = threading.Lock()
         self._thread: threading.Thread | None = None
         self._stop = threading.Event()
         self._meta = {x["name"]: x for x in load_meta() if isinstance(x, dict) and x.get("name")}
@@ -122,6 +127,7 @@ class TacticalAutopilot:
                 ("cadence_seconds", 5, 3600),
                 ("max_history", 20, 1000),
                 ("min_trades", 1, 10000),
+                ("robustness_windows", 1, 3),
             ):
                 if type(cfg[key]) is not int or not lo <= cfg[key] <= hi:
                     raise ValueError(f"{key} is outside supported bounds")
@@ -157,13 +163,21 @@ class TacticalAutopilot:
     def _eligible(self, inputs):
         dims = []
         protected = {
-            "qty_contracts", "point_value",
+            "qty_contracts", "point_value", "size_mode", "risk_usd_per_trade",
+            "vol_rank_bars", "vol_low_mult", "vol_mid_mult", "tide_qty",
+            "use_conviction_sizing", "conv_min_mult", "conv_floor", "conv_ceiling",
         }
         for name in sorted(inputs):
             value = inputs[name]
-            if name in protected or name.startswith(("rate_", "htf_tf_")):
-                continue
             entry = self._meta.get(name, {})
+            group = str(entry.get("group") or "").lower()
+            if (
+                name in protected
+                or name.endswith("_qty")
+                or "sizing" in group
+                or name.startswith(("rate_", "htf_tf_"))
+            ):
+                continue
             choices = []
             if type(value) is bool:
                 choices = [not value]
@@ -283,7 +297,113 @@ class TacticalAutopilot:
         }
         return metrics
 
+    def _progress(self, candidate, label, index, total):
+        with self._lock:
+            state = self._read()
+            active = state.get("active") or {}
+            current = active.get("candidate") or {}
+            if current.get("id") != candidate.get("id"):
+                return
+            active.update(
+                stage="robustness",
+                robustness_label=label,
+                robustness_index=index,
+                robustness_total=total,
+            )
+            state["active"] = active
+            self._write(state)
+
+    def _evaluate_candidate(self, candidate, cfg):
+        """Evaluate one candidate on one frozen source across several horizons."""
+        asset = candidate["asset"]
+        frozen = freeze_replay_port(self.port, asset)
+        common = {
+            "inputs": candidate["inputs"],
+            "chart_type": candidate.get("chart_type"),
+            "fill_on": "real",
+            "session": candidate.get("session"),
+        }
+        requested = int(cfg.get("robustness_windows", 1))
+        self._progress(candidate, "full history", 1, requested)
+        full = run_backtest(frozen, asset, **common)
+        evaluations = [{
+            "label": "full",
+            "metrics": self._score(full, cfg["min_trades"]),
+            "window_start": (full.get("range") or {}).get("start"),
+            "window_end": (full.get("range") or {}).get("end"),
+        }]
+
+        bounds = full.get("range") or {}
+        start, end = bounds.get("start"), bounds.get("end")
+        fractions = {1: (), 2: (0.50,), 3: (0.50, 0.75,)}[requested]
+        if type(start) is int and type(end) is int and end > start:
+            for offset, fraction in enumerate(fractions, start=2):
+                window_start = int(start + (end - start) * fraction)
+                if window_start >= end:
+                    continue
+                label = "recent half" if fraction == 0.50 else "recent quarter"
+                self._progress(candidate, label, offset, requested)
+                result = run_backtest(
+                    frozen,
+                    asset,
+                    **common,
+                    window_start=window_start,
+                    window_end=end,
+                )
+                evaluations.append({
+                    "label": label,
+                    "metrics": self._score(result, cfg["min_trades"]),
+                    "window_start": window_start,
+                    "window_end": end,
+                })
+
+        scores = [float(x["metrics"]["score"]) for x in evaluations]
+        full_score = scores[0]
+        median_score = float(statistics.median(scores))
+        worst_score = min(scores)
+        dispersion = float(statistics.pstdev(scores)) if len(scores) > 1 else 0.0
+        robust_score = (
+            0.45 * median_score
+            + 0.35 * worst_score
+            + 0.20 * full_score
+            - 0.15 * dispersion
+        )
+        metrics = dict(evaluations[0]["metrics"])
+        metrics.update({
+            "score": round(robust_score, 8),
+            "full_score": round(full_score, 8),
+            "median_window_score": round(median_score, 8),
+            "worst_window_score": round(worst_score, 8),
+            "score_dispersion": round(dispersion, 8),
+            "robustness_windows": len(evaluations),
+            "window_scores": [
+                {
+                    "label": x["label"],
+                    "score": x["metrics"]["score"],
+                    "trades": x["metrics"]["trades"],
+                    "pnl": x["metrics"]["pnl"],
+                    "max_drawdown": x["metrics"]["max_drawdown"],
+                    "window_start": x["window_start"],
+                    "window_end": x["window_end"],
+                }
+                for x in evaluations
+            ],
+        })
+        return full, metrics
+
     def cycle_once(self):
+        # Manual and background requests must never race the same shadow state.
+        if not self._cycle_lock.acquire(blocking=False):
+            out = self.status()
+            out["cycle_busy"] = True
+            out["note"] = "A Tactical Autopilot cycle is already running."
+            return out
+        try:
+            return self._cycle_once_serial()
+        finally:
+            self._cycle_lock.release()
+
+    def _cycle_once_serial(self):
         with self._lock:
             state = self._read()
             cfg = state["config"]
@@ -314,15 +434,7 @@ class TacticalAutopilot:
             self._write(state)
 
         try:
-            result = run_backtest(
-                self.port,
-                asset,
-                inputs=candidate["inputs"],
-                chart_type=candidate.get("chart_type"),
-                fill_on="real",
-                session=candidate.get("session"),
-            )
-            metrics = self._score(result, cfg["min_trades"])
+            result, metrics = self._evaluate_candidate(candidate, cfg)
             record = {
                 "id": candidate["id"],
                 "asset": asset,
@@ -359,6 +471,8 @@ class TacticalAutopilot:
                 }
                 state["last_error"] = None
                 self._write(state)
+            if record["champion"]:
+                self._mirror_champion(record)
             return self.status()
         except Exception as ex:
             with self._lock:
@@ -376,6 +490,32 @@ class TacticalAutopilot:
                 self._write(state)
             return self.status()
 
+    def _mirror_champion(self, record):
+        """Mirror new autonomous champions into ICARUS System Intelligence."""
+        try:
+            delta = record.get("delta") or {}
+            metrics = record.get("metrics") or {}
+            append_system_event(self.port.base_dir, {
+                "id": "autopilot-champion:" + str(record.get("asset")) + ":" + str(record.get("id")),
+                "kind": "integration",
+                "severity": "success",
+                "title": "Tactical Autopilot champion: " + str(record.get("asset")),
+                "detail": (
+                    "candidate=" + str(record.get("id"))
+                    + " score=" + str(metrics.get("score"))
+                    + " delta=" + str(delta.get("name"))
+                    + " " + str(delta.get("from")) + "->" + str(delta.get("to"))
+                    + " shadow-only; no paper/live input mutation"
+                ),
+                "recorded_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+                "repository": "reppiks490/Icarus",
+                "ref": str(record.get("id")),
+            })
+        except Exception:
+            # The optimizer journal remains authoritative if the auxiliary UI
+            # mirror is temporarily unavailable.
+            return
+
     def status(self):
         with self._lock:
             state = self._read()
@@ -390,6 +530,7 @@ class TacticalAutopilot:
             "history": history[-60:],
             "leaderboard": leaderboard,
             "running": bool(self._thread and self._thread.is_alive()),
+            "cycle_busy": self._cycle_lock.locked(),
             "mode": "autonomous shadow research",
             "execution_authorized": False,
             "broker_control": False,
@@ -409,12 +550,14 @@ class TacticalAutopilot:
 
     def start(self):
         with self._lock:
-            if self._thread and self._thread.is_alive():
-                return self.status()
             state = self._read()
             state["config"]["enabled"] = True
             self._write(state)
+            # If stop() timed out while a replay was finishing, resume the
+            # existing single worker instead of spawning a second one.
             self._stop.clear()
+            if self._thread and self._thread.is_alive():
+                return self.status()
 
             def run():
                 while not self._stop.is_set():
@@ -449,12 +592,17 @@ class TacticalAutopilot:
         return self.status()
 
     def reset(self):
-        self._stop.set()
-        with self._lock:
-            state = self._initial()
-            state["config"]["enabled"] = False
-            self._write(state)
-        return self.status()
+        if not self._cycle_lock.acquire(blocking=False):
+            raise ValueError("cannot reset Tactical Autopilot while a cycle is active; stop it and wait for the replay to finish")
+        try:
+            self._stop.set()
+            with self._lock:
+                state = self._initial()
+                state["config"]["enabled"] = False
+                self._write(state)
+            return self.status()
+        finally:
+            self._cycle_lock.release()
 
     def close(self):
         self._stop.set()
