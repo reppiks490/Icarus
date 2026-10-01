@@ -282,6 +282,61 @@ def admin(configured):
     thread.join(5)
 
 
+def test_admin_add_asset_accepts_not_yet_running_registry_symbol(admin, monkeypatch):
+    port, _, _, post = admin
+    captured = {}
+
+    def add_asset(spec, start=True):
+        captured["spec"] = spec
+        captured["start"] = start
+        return type("Added", (), {"symbol": spec.symbol})()
+
+    monkeypatch.setattr(port, "add_asset", add_asset)
+    status, body = post("/admin/assets/add", {"symbol": "mgc", "tf": "20"})
+    assert status == 200
+    assert body["asset"] == "MGC"
+    spec = captured["spec"]
+    assert spec.symbol == "MGC"
+    assert spec.ticker == "MGC=F"
+    assert spec.tv_symbol == "COMEX_MINI:MGC1!"
+    assert spec.chart_tf == "20"
+    assert spec.roll == "continuous"
+
+
+def test_admin_add_asset_honors_explicit_tf_when_portfolio_is_empty(admin, monkeypatch):
+    port, _, _, post = admin
+    port.runners.clear()
+    port.order.clear()
+    captured = {}
+
+    def add_asset(spec, start=True):
+        captured["spec"] = spec
+        return type("Added", (), {"symbol": spec.symbol})()
+
+    monkeypatch.setattr(port, "add_asset", add_asset)
+    status, body = post("/admin/assets/add", {"symbol": "MGC1!", "tf": "5"})
+    assert status == 200
+    assert body["asset"] == "MGC"
+    assert captured["spec"].chart_tf == "5"
+    assert "timeframe" in captured["spec"].config_pins
+
+
+def test_admin_add_asset_rejects_missing_preset_before_starting_asset(admin, monkeypatch):
+    port, _, _, post = admin
+    called = False
+
+    def add_asset(spec, start=True):
+        nonlocal called
+        called = True
+        return type("Added", (), {"symbol": spec.symbol})()
+
+    monkeypatch.setattr(port, "add_asset", add_asset)
+    status, body = post("/admin/assets/add", {"symbol": "MGC", "preset": "does-not-exist"})
+    assert status == 404
+    assert "preset" in body["detail"]
+    assert called is False
+
+
 def test_all_admin_configuration_routes_reject_pending_before_side_effects(admin):
     _, r, path, post = admin
     pending(r)
