@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 import math
+import time
 from types import SimpleNamespace
 
 import pytest
@@ -11,18 +12,22 @@ from icarus_engine.server import _current_parallax_payload
 
 
 class Tick:
-    def __init__(self, price: float, size: int, side: str):
+    def __init__(self, price: float, size: int, side: str, ts_event: int, sequence: int = 0):
         self.price = price
         self.size = size
         self.side = side
+        self.ts_event = ts_event
+        self.ts_event_ns = ts_event * 1_000_000_000
+        self.sequence = sequence
 
 
 class Feed:
     def trades(self, ticker, limit=500):
         rows = []
+        now = int(time.time())
         for i in range(180):
             side = "B" if i % 5 else "A"
-            rows.append(Tick(20000.0 + i * 0.02, 3 + (i % 4), side))
+            rows.append(Tick(20000.0 + i * 0.02, 3 + (i % 4), side, now - 179 + i, i))
         return rows[-limit:]
 
     def depth_events(self, ticker, *, schema="mbp-10", limit=120):
@@ -283,15 +288,16 @@ def test_exactly_neutral_latent_pressure_has_no_directional_phase_boundary():
 
 
 
-def test_information_wave_is_source_agnostic_and_bounded():
-    engine = PossibilityEngine(Port(), scenarios=96)
-    _seed(engine)
+def test_information_wave_is_source_agnostic_causal_and_bounded():
+    engine = PossibilityEngine(ReplayPort(), scenarios=96)
     out = engine.snapshot("NQ")
     wave = out["information_wave"]
     assert wave["status"] in {"QUIET", "WATCH", "EVENT"}
     assert 0.0 <= wave["score"] <= 100.0
+    assert wave["causal_leading"] is True
     assert wave["source_identified"] is False
     assert wave["direction"] in {"UP", "DOWN", None}
+    assert wave["tick_last_ts"] > wave["completed_bar_close_ts"]
 
 
 def test_parallax_vote_is_distinct_fail_closed_research_context():
@@ -357,19 +363,22 @@ def test_synthetic_price_does_not_double_count_cross_asset_leader_pressure():
     assert positive["unexplained_dislocation_available"] is False
 
 
-def test_information_wave_does_not_double_count_leader_graph():
-    engine = PossibilityEngine(Port())
-    history = [
-        {"ret": 0.0001 + (i % 3) * 0.00001}
-        for i in range(20)
-    ]
+def test_information_wave_does_not_use_contemporaneous_latent_pressure():
+    engine = PossibilityEngine(ReplayPort())
+    engine._sync_history_from_runners()
+    history = list(engine._history["NQ"])
+    close_ts = history[-1]["ts"] + 60
+    now = time.time()
+    start = max(close_ts + 1, now - 10)
     micro = {
-        "repricing_pressure": Feature(0.2, 1.0, True, "fixture"),
-        "volume_pressure": Feature(0.1, 1.0, True, "fixture"),
+        "tick_samples": [
+            {"ts": start + i, "price": 20000.0 + i * 0.25, "size": 5.0, "side": "B"}
+            for i in range(6)
+        ],
     }
-    positive = engine._information_wave(history, 0.0001, 0.4, 0.7, micro, {"pressure": 1.0})
-    negative = engine._information_wave(history, 0.0001, 0.4, 0.7, micro, {"pressure": -1.0})
-    assert positive["expected_return_component"] == pytest.approx(negative["expected_return_component"])
+    positive = engine._information_wave(history, 0.0002, 0.9, 1.0, micro, {"pressure": 0.2})
+    negative = engine._information_wave(history, 0.0002, -0.9, 0.1, micro, {"pressure": 0.2})
+    assert positive["causal_leading"] is True
     assert positive["score"] == pytest.approx(negative["score"])
 
 
@@ -477,24 +486,30 @@ def _bars_from_returns(start_ts: int, start_price: float, returns, step_seconds:
 class ReplayPort(Port):
     def __init__(self, *, nq_minutes=1, es_minutes=1):
         super().__init__()
-        base = 1_700_000_000
         peer_returns = [
             0.00011, -0.00007, 0.00016, -0.00004, 0.00009, -0.00013,
             0.00018, -0.00002, 0.00006, -0.00010,
         ] * 7
         target_returns = [0.00001] + peer_returns[:-1]
+        now = int(time.time())
+        nq_step = nq_minutes * 60
+        es_step = es_minutes * 60
+        nq_last_start = (now // nq_step) * nq_step - 2 * nq_step
+        es_last_start = (now // es_step) * es_step - 2 * es_step
+        nq_base = nq_last_start - len(target_returns) * nq_step
+        es_base = es_last_start - len(peer_returns) * es_step
         self.runners = {
             "NQ": SimpleNamespace(
                 feed=Feed(),
                 spec=SimpleNamespace(ticker="NQ.v.0"),
                 chart_minutes=nq_minutes,
-                bars=_bars_from_returns(base, 20000.0, target_returns, nq_minutes * 60),
+                bars=_bars_from_returns(nq_base, 20000.0, target_returns, nq_step),
             ),
             "ES": SimpleNamespace(
                 feed=Feed(),
                 spec=SimpleNamespace(ticker="ES.v.0"),
                 chart_minutes=es_minutes,
-                bars=_bars_from_returns(base, 6800.0, peer_returns, es_minutes * 60),
+                bars=_bars_from_returns(es_base, 6800.0, peer_returns, es_step),
             ),
         }
 
@@ -644,3 +659,29 @@ def test_current_parallax_capture_rejects_future_psi_timestamp():
 
     with pytest.raises(ValueError, match="cannot follow"):
         _current_parallax_payload(Psi(), {"asset": "NQ", "action": "long"})
+
+
+
+def test_information_wave_fails_closed_without_runner_bar_timing():
+    engine = PossibilityEngine(Port(), scenarios=96)
+    _seed(engine)
+    out = engine.snapshot("NQ")
+    assert out["information_wave"]["status"] == "UNAVAILABLE"
+    assert out["information_wave"]["causal_leading"] is False
+
+
+def test_information_wave_rejects_future_tick_clock_skew():
+    engine = PossibilityEngine(ReplayPort(), scenarios=96)
+    engine._sync_history_from_runners()
+    history = list(engine._history["NQ"])
+    close_ts = history[-1]["ts"] + 60
+    future = time.time() + 60
+    micro = {
+        "tick_samples": [
+            {"ts": max(close_ts + 1, future) + i, "price": 20000 + i, "size": 1, "side": "B"}
+            for i in range(4)
+        ]
+    }
+    wave = engine._information_wave(history, 0.0002, 0.0, 0.0, micro, {"pressure": 0.0})
+    assert wave["status"] == "CLOCK_SKEW"
+    assert wave["causal_leading"] is False
