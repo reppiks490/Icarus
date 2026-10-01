@@ -113,7 +113,28 @@
 - [ ] Run GREEN.
 - [ ] Update docs and commit `feat(apex): classify market criticality`.
 
-### Task 6: Project-C verification gate
+### Task 6: Persist causal and cascade state
+
+**Files:**
+- Modify: `icarus_engine/apex/store.py`
+- Modify: `icarus_engine/apex/causality.py`
+- Modify: `icarus_engine/apex/cascade.py`
+- Create: `tests_engine/test_apex_causal_persistence.py`
+
+**Interfaces:**
+- Produces:
+  - `ApexStore.record_causal_edge(edge: Mapping[str, Any]) -> dict[str, Any]`
+  - `ApexStore.causal_edges_as_of(as_of: str, *, horizon_seconds: int | None = None) -> list[dict[str, Any]]`
+  - `ApexStore.record_cascade_edge(edge: Mapping[str, Any]) -> dict[str, Any]`
+  - `ApexStore.cascade_edges_as_of(as_of: str) -> list[dict[str, Any]]`
+
+- [ ] Write RED tests for idempotent edge identity, contradiction-history preservation, horizon/as-of isolation, cycle-safe replay, and reopen determinism.
+- [ ] Run `python -m pytest tests_engine/test_apex_causal_persistence.py -q` — Expected FAIL.
+- [ ] Add additive `causal_edges` and `cascade_edges` WAL tables and methods.
+- [ ] Re-run — Expected PASS.
+- [ ] Commit `feat(apex): persist causal cascade state`.
+
+### Task 7: Project-C verification gate
 
 - [ ] Run all Project-C tests — Expected PASS.
 - [ ] Run all Project A-B tests — Expected PASS.
