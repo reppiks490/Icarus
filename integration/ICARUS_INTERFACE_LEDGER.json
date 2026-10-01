@@ -1,6 +1,6 @@
 {
   "schema_version": "icarus-interface-ledger-v2",
-  "generated_at": "2026-10-01T03:16:09Z",
+  "generated_at": "2026-09-30T22:28:00-05:00",
   "execution_authorized": false,
   "policy": {
     "mcp_mirror_required": true,
@@ -481,6 +481,31 @@
       "details": {
         "pr": 68,
         "workflow_run": 36809557055,
+        "execution_authorized": false
+      }
+    },
+    {
+      "recorded_at": "2026-10-01T03:28:00Z",
+      "source": "mcp",
+      "kind": "integration",
+      "area": "ICARUS Data Integrity mainline",
+      "summary": "The Find Export Checklist / NEXUS Data Integrity trader integration is merged on current ICARUS main and its post-merge Linux and Windows workflows passed.",
+      "status": "merged",
+      "severity": "important",
+      "source_repo": "reppiks490/Icarus",
+      "source_branch": "main",
+      "source_commit": "bf630ea0747bb9308222a8014c52302b3a8143f3",
+      "verification": "Post-merge GitHub Actions workflow 36810474617 passed both the Linux engine job and Windows engine-windows job on exact main merge commit bf630ea0747bb9308222a8014c52302b3a8143f3.",
+      "interface_effect": "The production-main trader source now contains the Data Integrity tab, export checklist/corpus state, repair provenance, and authenticated idempotent MCP integrity receipts alongside System Intelligence and automatic loop sync.",
+      "evidence": [
+        "PR #70",
+        "workflow 36810474617",
+        "Linux engine: success",
+        "Windows engine-windows: success"
+      ],
+      "details": {
+        "pr": 70,
+        "workflow_run": 36810474617,
         "execution_authorized": false
       }
     }
