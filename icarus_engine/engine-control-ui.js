@@ -95,9 +95,9 @@ function ecEventTable(data){
     recorded_at:x.recorded_at,repository:x.source_repo,ref:x.source_commit,source:'integrity'
   }));
   const mcp=((((data.subsystems||{}).mcp_repository||{}).data||{}).events||[]).map(x=>({
-    id:x.event_id,kind:x.category,severity:x.severity||x.status,title:x.summary,
-    detail:[x.status,x.surface,(x.evidence||[]).join(' · ')].filter(Boolean).join(' · '),
-    recorded_at:x.at_utc,repository:x.repository,ref:x.commit||x.branch,source:'MCP'
+    id:x.event_id,kind:x.category,severity:x.severity||x.status,title:x.title||x.summary,
+    detail:[x.status,(x.subsystems||[]).join(', '),(x.evidence||[]).join(' · ')].filter(Boolean).join(' · '),
+    recorded_at:x.recorded_at,repository:x.source_repository,ref:x.source_commit||x.source_ref,source:'MCP'
   }));
   const seen=new Set(), rows=[...sys,...integrity,...mcp]
     .sort((a,b)=>String(b.recorded_at||'').localeCompare(String(a.recorded_at||'')))
@@ -122,6 +122,7 @@ function engineControlRender(data){
     ['Action groups',Object.keys(sum.action_groups||{}).length],
     ['Subsystems',sum.subsystems],
     ['Subsystem errors',sum.subsystem_errors],
+    ['Subsystem warnings',sum.subsystem_warnings??0],
     ['MCP events',mcp.important_events??0],
     ['Dangerous actions',dangerous],
     ['Application control',auth.application_control?'ENABLED':'NO'],
@@ -178,11 +179,13 @@ async function ecRun(actionId){
     if(supplied!==action.confirmation) return toast('confirmation did not match',true);
     body.confirm=supplied;
   }
-  const result=await admin('/admin/engine-control',body,true);
+  const result=await admin('/admin/engine-control',body,false);
   if(result){
     const out=document.querySelector('#ecLastResult');
     if(out) out.textContent=JSON.stringify(result,null,2);
-    toast(action.title+' completed');
+    if(result.audit_recorded===false){
+      toast(action.title+': state changed but final audit receipt failed — '+(result.audit_error||'unknown audit error'),true);
+    }
     await loadEngineControl();
     if(typeof refresh==='function') refresh();
     if(typeof refreshAudit==='function') refreshAudit();
