@@ -110,9 +110,9 @@ def test_veritas_detects_right_for_wrong_reason_and_spawns_mechanism_auditor(tmp
             "dealer_gamma": -0.70,
         },
         "observed_causal_signatures": {
-            "queue_replenishment": -0.80,
-            "basis_lead": -0.70,
-            "dealer_gamma": 0.60,
+            "queue_replenishment": -0.90,
+            "basis_lead": -0.80,
+            "dealer_gamma": 0.70,
         },
         "causal_signature_weights": {
             "queue_replenishment": 1.0,
