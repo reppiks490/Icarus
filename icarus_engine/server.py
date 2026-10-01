@@ -22,7 +22,8 @@
   POST /admin/assets/add                   {"symbol": "GC", "tf": "20", "preset"?: ...}
   POST /admin/assets/remove                {"symbol": "GC"}
   POST /admin/system/audit                 {"audit": {...}}  local diagnostic state only; never changes trading
-  POST /admin/system/evolution             {"evolution": {...}} MCP evolution ledger only; never changes trading
+  POST /admin/system/evolution             {"evolution": {...}} replace evolution ledger; never changes trading
+  POST /admin/system/evolution/item        {"item": {...}} safe additive MCP upsert; never changes trading
   POST /admin/rewarm                       {"asset": "NQ"}
 """
 from __future__ import annotations
@@ -52,7 +53,8 @@ from .runtime import Portfolio, _clean, _read_json, apply_spec_meta, preset_path
 from .strategy.meta import load_meta
 from .advisory import MAX_BODY_BYTES, strict_json
 from .research_service import ResearchWorkspace
-from .system_audit import load_repository_audit, load_system_evolution, save_repository_audit, save_system_evolution
+from .system_audit import (load_repository_audit, load_system_evolution, save_repository_audit,
+                           save_system_evolution, upsert_system_evolution_item)
 
 
 def _no_json_constants(name: str):
@@ -399,6 +401,14 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     return self._json(400, {"detail": str(ex)})
                 return self._json(200, {"ok": True, "evolution": evolution,
                                         "note": "MCP system evolution ledger recorded; trading state unchanged"})
+            if p.path == "/admin/system/evolution/item":
+                try:
+                    item = body.get("item", body)
+                    evolution = upsert_system_evolution_item(port.base_dir, item)
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                return self._json(200, {"ok": True, "evolution": evolution,
+                                        "note": "MCP evolution item mirrored into the ICARUS System panel; trading state unchanged"})
             asset = str(body.get("asset") or body.get("symbol") or "").upper()
             # Add is the one admin route whose subject is intentionally not already
             # running. Do not reject it through the generic runner lookup.
