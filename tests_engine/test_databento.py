@@ -1250,6 +1250,51 @@ def test_doctor_roll_rule_contract_matches_adapter(monkeypatch, tmp_path):
     assert "continuous=open-interest .n.0" in item["detail"]
 
 
+def test_engine_http_maps_mbo_snapshot_timeout_and_upstream_failure(tmp_path):
+    feed = make_feed()
+    journal = Journal(":memory:")
+    port = Portfolio(journal, str(tmp_path))
+    spec = resolve("NQ")
+    runner = AssetRunner(
+        RunnerConfig(spec, Inputs(use_tide=False, use_eod_flat=False), base_dir=str(tmp_path)),
+        journal,
+        {"yahoo": feed},
+    )
+    runner.warm = True
+    port.runners["NQ"] = runner
+    port.order = ["NQ"]
+
+    srv = serve(port, 0, token="test-token", start=False)
+    thread = threading.Thread(target=srv.serve_forever, daemon=True)
+    thread.start()
+    base = f"http://127.0.0.1:{srv.server_port}"
+
+    def request():
+        return urllib.request.Request(
+            base + "/admin/market-data/mbo-snapshot",
+            data=json.dumps({"asset": "NQ", "timeout": 0.1}).encode(),
+            headers={"Authorization": "Bearer test-token", "Content-Type": "application/json"},
+        )
+
+    try:
+        feed.mbo_snapshot = lambda *args, **kwargs: (_ for _ in ()).throw(TimeoutError("snapshot deadline"))
+        with pytest.raises(urllib.error.HTTPError) as timeout:
+            urllib.request.urlopen(request(), timeout=5)
+        assert timeout.value.code == 504
+        assert "snapshot deadline" in timeout.value.read().decode()
+
+        feed.mbo_snapshot = lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("Databento unavailable"))
+        with pytest.raises(urllib.error.HTTPError) as upstream:
+            urllib.request.urlopen(request(), timeout=5)
+        assert upstream.value.code == 502
+        assert "Databento unavailable" in upstream.value.read().decode()
+    finally:
+        srv.shutdown()
+        srv.server_close()
+        thread.join(5)
+        journal.con.close()
+
+
 def test_engine_http_exposes_databento_capabilities_ticks_depth_and_mbo(tmp_path):
     core_live = FakeLive({
         "ohlcv-1s": [Ohlcv(4_000, 100, 101, 99, 100.5, 1)],
