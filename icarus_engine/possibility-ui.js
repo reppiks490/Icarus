@@ -15,6 +15,9 @@
   let ledgerIncludeExpired = false;
   let lastEvidenceMessage = '';
   let lastEvidenceKind = '';
+  const quickCache = new Map();
+  const quickInflight = new Map();
+  const QUICK_TTL_MS = 4000;
 
   const h = value => String(value ?? '').replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
   const n = (value, digits=2) => (value == null || Number.isNaN(Number(value))) ? '—' : Number(value).toLocaleString(undefined,{maximumFractionDigits:digits,minimumFractionDigits:digits});
@@ -273,7 +276,110 @@
     }, 2500);
   }
 
+  async function fetchQuickPossibility(asset, force=false) {
+    const symbol = String(asset || '').trim().toUpperCase();
+    if (!symbol) throw new Error('asset is required');
+    const cached = quickCache.get(symbol);
+    if (!force && cached && Date.now() - cached.at < QUICK_TTL_MS) return cached.data;
+    if (quickInflight.has(symbol)) return quickInflight.get(symbol);
+    const token = localStorage.getItem('icarus-engine-token') || 'icarus';
+    const task = (async () => {
+      const response = await fetch('/api/possibility?asset='+encodeURIComponent(symbol), {cache:'no-store', headers:{'Authorization':'Bearer '+token}});
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || data.error || ('HTTP '+response.status));
+      quickCache.set(symbol, {at:Date.now(), data});
+      return data;
+    })();
+    quickInflight.set(symbol, task);
+    try { return await task; } finally { quickInflight.delete(symbol); }
+  }
+
+  function quickPossibilityBody(data) {
+    const latent = data.latent_pressure_engine || {}, poss = data.possibility || {}, phase = data.phase_transition || {};
+    const edge = data.edge_state || {state:'NO_EDGE'}, health = data.data_health || {}, hist = health.history || {}, micro = health.microstructure || {}, ledger = health.evidence_ledger || {};
+    const lp = latent.latent_pressure;
+    const lpText = lp == null ? '—' : (lp >= 0 ? '+' : '') + score(latent.latent_pressure_score);
+    const blockers = (edge.blockers || []).slice(0,3).map(x=>h(x)).join(' · ');
+    return '<div class="tiles" style="margin-top:0">'+
+      '<div class="tile"><div class="k">Ψ edge gate</div><div class="v">'+chip(edge.state)+'</div><div class="small muted">confidence '+pct(edge.confidence)+'</div></div>'+
+      '<div class="tile"><div class="k">Latent pressure</div><div class="v tnum '+(lp==null?'':lp>0?'pos':lp<0?'neg':'')+'">'+lpText+'</div><div class="small muted">coverage '+pct(latent.evidence_coverage)+'</div></div>'+
+      '<div class="tile"><div class="k">Future collapse</div><div class="v tnum">'+(poss.future_space_collapse==null?'—':n(poss.future_space_collapse,1))+'</div><div class="small muted">reliability '+pct(poss.reliability)+'</div></div>'+
+      '<div class="tile"><div class="k">Phase</div><div class="v">'+h(phase.direction||'—')+'</div><div class="small muted">boundary '+n(phase.phase_boundary,4)+'</div></div>'+
+      '<div class="tile"><div class="k">Leader alignment</div><div class="v">'+h(hist.timestamp_aligned_leaders?'EXACT':(hist.source?'FALLBACK':'—'))+'</div><div class="small muted">'+h(hist.chart_minutes==null?'cadence —':hist.chart_minutes+'m · '+(hist.source||'unknown'))+'</div></div>'+
+      '<div class="tile"><div class="k">Microstructure</div><div class="v">'+h(micro.provider||'—')+'</div><div class="small muted">ticks '+(micro.ticks?'yes':'no')+' · depth '+(micro.depth?'yes':'no')+'</div></div>'+
+      '<div class="tile"><div class="k">Evidence ledger</div><div class="v">'+(ledger.storage_integrity_ok===false?'FAILED':ledger.durable?'VERIFIED':'MEMORY')+'</div><div class="small muted">active '+h(ledger.active_count||0)+' · history '+h(ledger.total_history_count||0)+'</div></div>'+
+    '</div>'+
+    (blockers?'<div class="small muted" style="margin-top:8px"><b>Current blockers:</b> '+blockers+'</div>':'<div class="small pos" style="margin-top:8px">All Ψ research gates currently satisfied.</div>')+
+    '<div class="small muted" style="margin-top:6px">Research diagnostics only · execution_authorized=false · production_decision_authorized=false</div>';
+  }
+
+  function openPossibilityConsole(asset) {
+    selected = String(asset || selected || '').trim().toUpperCase();
+    if (typeof window.setView === 'function') window.setView('possibility');
+    else location.hash = 'possibility';
+  }
+
+  function possibilityQuickOverviewHtml(A) {
+    const assets = (A||[]).map(a=>String(a.symbol||'')).filter(Boolean);
+    const current = selected && assets.includes(selected) ? selected : (assets.includes('NQ') ? 'NQ' : (assets[0] || ''));
+    if (current) selected = current;
+    const options = assets.map(x=>'<option value="'+h(x)+'" '+(x===current?'selected':'')+'>'+h(x)+'</option>').join('');
+    return '<section class="card c12" id="psiOverviewCard"><h2>ICARUS Ψ · LIVE RESEARCH MONITOR <span class="sub">embedded in the trading overview</span></h2>'+
+      '<div class="toolbar"><label class="small muted">Asset <select id="psiQuickOverviewAsset">'+options+'</select></label><button id="psiQuickOverviewRefresh">Refresh Ψ</button><button class="primary" id="psiQuickOverviewOpen">Open full Ψ console</button><span class="small muted">read-only monitor; evidence editing remains in the full console</span></div>'+
+      '<div id="psiQuickOverviewBody" class="empty">loading ICARUS Ψ…</div></section>';
+  }
+
+  async function loadPossibilityQuickOverview(force=false) {
+    const body = document.querySelector('#psiQuickOverviewBody');
+    const sel = document.querySelector('#psiQuickOverviewAsset');
+    if (!body || !sel || !sel.value) return;
+    const asset = sel.value;
+    try { body.innerHTML = quickPossibilityBody(await fetchQuickPossibility(asset, force)); }
+    catch (err) { body.innerHTML = '<div class="empty">ICARUS Ψ unavailable: '+h(err.message||err)+'</div>'; }
+  }
+
+  function wirePossibilityQuickOverview(A) {
+    const sel = document.querySelector('#psiQuickOverviewAsset');
+    if (!sel) return;
+    sel.onchange = () => { selected = sel.value; loadPossibilityQuickOverview(true); };
+    const refresh = document.querySelector('#psiQuickOverviewRefresh');
+    if (refresh) refresh.onclick = () => loadPossibilityQuickOverview(true);
+    const open = document.querySelector('#psiQuickOverviewOpen');
+    if (open) open.onclick = () => openPossibilityConsole(sel.value);
+    loadPossibilityQuickOverview(false);
+  }
+
+  function possibilityQuickAssetHtml(a) {
+    const symbol = String((a&&a.symbol)||'').toUpperCase();
+    return '<section class="card c12" id="psiAssetDock" data-psi-asset="'+h(symbol)+'"><h2>ICARUS Ψ · '+h(symbol)+' <span class="sub">research state beside the live asset workflow</span></h2>'+
+      '<div class="toolbar"><button id="psiAssetRefresh">Refresh Ψ</button><button class="primary" id="psiAssetOpen">Open full Ψ console</button><span class="small muted">no broker authority; does not alter strategy execution</span></div>'+
+      '<div id="psiAssetBody" class="empty">loading ICARUS Ψ…</div></section>';
+  }
+
+  async function loadPossibilityQuickAsset(asset, force=false) {
+    const body = document.querySelector('#psiAssetBody');
+    if (!body) return;
+    try { body.innerHTML = quickPossibilityBody(await fetchQuickPossibility(asset, force)); }
+    catch (err) { body.innerHTML = '<div class="empty">ICARUS Ψ unavailable: '+h(err.message||err)+'</div>'; }
+  }
+
+  function wirePossibilityQuickAsset(asset) {
+    const symbol = String(asset||'').toUpperCase();
+    const refresh = document.querySelector('#psiAssetRefresh');
+    if (refresh) refresh.onclick = () => loadPossibilityQuickAsset(symbol, true);
+    const open = document.querySelector('#psiAssetOpen');
+    if (open) open.onclick = () => openPossibilityConsole(symbol);
+    loadPossibilityQuickAsset(symbol, false);
+  }
+
   window.possibilityHtml = possibilityHtml;
   window.wirePossibility = wirePossibility;
   window.loadPossibility = loadPossibility;
+  window.possibilityQuickOverviewHtml = possibilityQuickOverviewHtml;
+  window.wirePossibilityQuickOverview = wirePossibilityQuickOverview;
+  window.loadPossibilityQuickOverview = loadPossibilityQuickOverview;
+  window.possibilityQuickAssetHtml = possibilityQuickAssetHtml;
+  window.wirePossibilityQuickAsset = wirePossibilityQuickAsset;
+  window.loadPossibilityQuickAsset = loadPossibilityQuickAsset;
+  window.openPossibilityConsole = openPossibilityConsole;
 })();
