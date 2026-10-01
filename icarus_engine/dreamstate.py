@@ -433,6 +433,8 @@ class DreamstateLab:
             + str(signal.get("branch_label") or "unknown")
             + " n="
             + str(signal.get("evidence_pair_count", signal.get("n", 0)))
+            + " eff="
+            + str(signal.get("effective_pair_count", signal.get("n", 0)))
             + " q="
             + str(signal.get("q_value"))
             + " robust="
@@ -564,8 +566,18 @@ class DreamstateLab:
                         skipped_budget += 1
                         continue
                     previous_signal = json.loads(latest["source_signal_json"])
-                    previous_n = int(previous_signal.get("evidence_pair_count", previous_signal.get("n", 0)) or 0)
-                    current_n = int(signal.get("evidence_pair_count", signal.get("n", 0)) or 0)
+                    previous_n = int(
+                        previous_signal.get(
+                            "effective_pair_count",
+                            previous_signal.get("evidence_pair_count", previous_signal.get("n", 0)),
+                        ) or 0
+                    )
+                    current_n = int(
+                        signal.get(
+                            "effective_pair_count",
+                            signal.get("evidence_pair_count", signal.get("n", 0)),
+                        ) or 0
+                    )
                     if current_n <= previous_n:
                         skipped_stale += 1
                         continue
