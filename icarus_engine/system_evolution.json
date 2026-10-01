@@ -85,6 +85,22 @@
       "verification": "Reconciliation commit preserves the current main-line NEXUS hardening in the subsystem branch tree.",
       "interface_effect": "System panel makes cross-branch reconciliation visible and traceable.",
       "execution_authorized": false
+    },
+    {
+      "id": "mcp-20260930-icarus-repo-audit-ui",
+      "recorded_date": "2026-09-30",
+      "subsystem": "ICARUS",
+      "kind": "audit",
+      "status": "merged",
+      "severity": "important",
+      "title": "Repository/MCP health surfaced in the trading interface",
+      "summary": "ICARUS main gained a visible System tab and repository/CI health surface so verified repository audits are visible from the trading dashboard rather than remaining only in GitHub or MCP output.",
+      "source_repo": "reppiks490/Icarus",
+      "source_branch": "main",
+      "source_commit": "3bedc5a3a122caa063a7a473bf4585c9b74febd2",
+      "verification": "Merged on main with dashboard and server test coverage for the System tab, audit endpoint, badge, and refresh loop.",
+      "interface_effect": "The System tab displays repository audit state, main SHA, Linux and Windows checks, audited branches, failures, pending work, and unresolved findings.",
+      "execution_authorized": false
     }
   ]
 }
