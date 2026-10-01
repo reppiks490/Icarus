@@ -1,55 +1,59 @@
 # ICARUS Mobile
 
-Native iOS/Android command-and-observation client for the canonical reppiks490/Icarus runtime.
+Native iOS/Android observation client for the canonical `reppiks490/Icarus` runtime.
 
-## Phase 1 boundary
+## What exists now
 
-This app is deliberately read-only for trading/execution. It consumes the existing engine surfaces:
+- Expo SDK 57 / React Native 0.86 client.
+- Device pairing through the dedicated read-only ICARUS mobile gateway.
+- Rotating per-device refresh credentials stored with Expo SecureStore.
+- Short-lived signed sessions; the phone never receives the engine admin token.
+- Long-poll live snapshots for engine status, system audit, and briefing.
+- Native candlestick chart and recent closed-trade drilldown.
+- Authenticated Adaptive Brain, APEX Ω, Learning Health, Possibility Ψ, Engine Control, and Data Integrity readouts.
+- Per-device revocation.
+- EAS build profiles for development, internal preview, and production.
 
-- /healthz
-- /status/public
-- /api/briefing
-- /api/system/audit
-- authenticated /api/brain
-- authenticated /api/apex
-- authenticated /api/learning/health
-- authenticated /api/engine-control
+Trade-state mutations remain intentionally absent from the mobile gateway.
 
-The engine currently protects itself by binding to loopback and rejecting non-loopback Host values. Keep that behavior. Mobile should reach ICARUS through a hardened HTTPS gateway/reverse proxy that terminates TLS and forwards to the local engine. Do not open port 8791 directly to the internet.
+## Development
 
-## Stack
+Requires Node.js 22.13.x or later for Expo SDK 57.
 
-- Expo SDK 57 stable
-- React Native 0.86
-- React 19.2
-- TypeScript 6
-- Expo SecureStore for gateway URL and admin token
+```bash
+cd mobile
+npm install
+npx expo install --check
+npm run typecheck
+npm run start
+```
 
-SDK 57 is used intentionally instead of the SDK 58 beta line.
+The repository CI also bundles the iOS and Android JavaScript exports.
 
-## Run
+## Pairing
 
-1. Change into the mobile directory.
-2. Run npm install.
-3. Run npm run typecheck.
-4. Run npm run start.
-5. Open Settings in the app and enter the HTTPS gateway URL plus the ICARUS admin token.
+Start the engine normally on loopback, then set gateway secrets outside the repository:
 
-The app tests /healthz before persisting the connection.
+```bash
+export ICARUS_ADMIN_TOKEN='<engine admin token>'
+export ICARUS_MOBILE_PAIRING_SECRET='<long random secret>'
+icarus-mobile-gateway doctor
+icarus-mobile-gateway serve
+```
 
-## Security invariants
+The gateway binds to `127.0.0.1:8792` by default. Put TLS in front of it with a local reverse proxy such as the sample Caddy configuration under `deploy/`. Do not expose engine port 8791.
 
-1. Never embed the ICARUS admin token in source, app config, EAS config, or repository-delivered client configuration.
-2. Keep execution controls server-side and authenticated.
-3. Do not weaken _host_ok() or the loopback bind merely to make phone connectivity convenient.
-4. Production transport must use HTTPS.
-5. The first mobile release remains observation-only. Execution controls require a later explicit threat-model, authorization, and audit gate.
+In the app, open Settings, enter the HTTPS gateway URL, a device label, and the pairing secret. The secret is used for that pairing request and is not retained after success.
 
-## Next integration slice
+## Device operations
 
-- Mobile gateway service with scoped, short-lived mobile sessions instead of shipping the engine admin token to the client.
-- WebSocket or SSE event stream for status, signal, loop, and system-health updates.
-- Native charts and time-series drilldown using /api/chart/<SYM>.
-- Push notifications for user-selected conditions.
-- Backtest and research views.
-- Controlled operator actions only after explicit mobile authorization design and audit logging.
+```bash
+icarus-mobile-gateway devices
+icarus-mobile-gateway revoke <device-id>
+```
+
+The app can also revoke its own current credential.
+
+## Remaining release dependencies
+
+A store-signed install still requires the operator's Apple/Google developer credentials and the final public/private gateway hostname. Those credentials are deliberately not committed or requested by the codebase.

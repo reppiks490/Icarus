@@ -36,3 +36,20 @@ jobs:
         env:
           TZ: UTC
       - run: python -m icarus_plant --root ${{ runner.temp }}/icarus-plant-ci setup
+
+  mobile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.13"
+      - run: npm install --no-audit --no-fund
+      - run: npx expo install --check
+      - run: npm run typecheck
+      - run: npx expo export --platform ios --output-dir dist-ci-ios
+      - run: npx expo export --platform android --output-dir dist-ci-android
