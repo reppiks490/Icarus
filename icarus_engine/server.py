@@ -74,6 +74,7 @@ from .code_provenance import local_code_provenance
 from .parallax import ParallaxStore
 from .dreamstate import DreamstateLab
 from .possibility import PossibilityEngine
+from .pantheon import PantheonKernel, subsystem_context
 
 
 def _no_json_constants(name: str):
@@ -134,6 +135,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     possibility = PossibilityEngine(port)
     parallax = ParallaxStore(port.base_dir)
     dreamstate = DreamstateLab(port.base_dir, parallax=parallax)
+    pantheon = PantheonKernel(port.base_dir)
 
     class H(BaseHTTPRequestHandler):
         server_version = "icarus"
@@ -203,6 +205,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._send(200, (html_path.parent / "parallax-ui.js").read_bytes(), "text/javascript")
             if p.path == "/possibility-ui.js":
                 return self._send(200, (html_path.parent / "possibility-ui.js").read_bytes(), "text/javascript")
+            if p.path == "/pantheon-ui.js":
+                return self._send(200, (html_path.parent / "pantheon-ui.js").read_bytes(), "text/javascript")
             if p.path in ("/experience-ui.js", "/experience-ui.css"):
                 ctype = "text/javascript" if p.path.endswith(".js") else "text/css"
                 return self._send(200, (html_path.parent / p.path[1:]).read_bytes(), ctype)
@@ -252,6 +256,13 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 except Exception as ex:
                     port.journal.log("WARN", f"possibility snapshot: {type(ex).__name__}: {ex}")
                     return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/api/pantheon":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                try:
+                    return self._json(200, pantheon.snapshot())
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
             if p.path == "/api/brain":
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
@@ -467,7 +478,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._json(413, {"detail": "body too large"})
             raw = self.rfile.read(n) if n else b""
             try:
-                body = strict_json(raw) if p.path.startswith(("/admin/research/", "/admin/integrity/", "/admin/parallax/", "/admin/dreamstate/", "/admin/possibility/")) else (json.loads(raw, parse_constant=_no_json_constants) if raw else {})
+                body = strict_json(raw) if p.path.startswith(("/admin/research/", "/admin/integrity/", "/admin/parallax/", "/admin/dreamstate/", "/admin/possibility/", "/admin/pantheon/")) else (json.loads(raw, parse_constant=_no_json_constants) if raw else {})
             except ValueError as ex:
                 return self._json(400, {"detail": f"bad JSON body: {ex}"})
             if not isinstance(body, dict):
@@ -511,6 +522,33 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                         body["asset"], body["values"], source=body["source"],
                         observed_at=body.get("observed_at"), ttl_seconds=body.get("ttl_seconds", 300.0),
                     ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+            if p.path == "/admin/pantheon/observe":
+                try:
+                    payload = dict(body)
+                    if not payload.get("source_commit"):
+                        provenance = local_code_provenance()
+                        if not provenance.get("candidate_revision_eligible") or not provenance.get("commit"):
+                            raise ValueError("exact clean ICARUS code provenance is required when source_commit is omitted")
+                        payload["source_commit"] = provenance["commit"]
+                    existing_outputs = payload.get("subsystem_outputs", {})
+                    if existing_outputs is None:
+                        existing_outputs = {}
+                    if not isinstance(existing_outputs, dict):
+                        raise ValueError("subsystem_outputs must be an object")
+                    oracle_state = None
+                    try:
+                        oracle_state = possibility.snapshot(payload.get("asset", ""))
+                    except Exception as ex:
+                        port.journal.log("WARN", f"PANTHEON ORACLE adapter: {type(ex).__name__}: {ex}")
+                    payload["subsystem_outputs"] = subsystem_context(
+                        parallax.snapshot(limit=12),
+                        dreamstate.snapshot(limit=20),
+                        oracle_snapshot=oracle_state,
+                        existing=existing_outputs,
+                    )
+                    return self._json(200, pantheon.record_observation(payload))
                 except (ValueError, TypeError) as ex:
                     return self._json(400, {"detail": str(ex)})
             if p.path == "/admin/parallax/decision":
@@ -801,6 +839,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     srv.brain_research_sync = brain_research_sync
     srv.evolution_remote_sync = evolution_remote_sync
     srv.possibility = possibility
+    srv.pantheon = pantheon
     srv.daemon_threads = True
     if not start:
         return srv

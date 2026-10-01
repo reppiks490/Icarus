@@ -12,6 +12,33 @@ from .contracts import authority_block
 def _obj(value: Any) -> Mapping[str, Any]:
     return value if isinstance(value, Mapping) else {}
 
+def oracle_context(snapshot: Mapping[str, Any]) -> dict[str, Any]:
+    src = _obj(snapshot)
+    oracle = _obj(src.get("oracle"))
+    possibility = _obj(src.get("possibility"))
+    edge = _obj(src.get("edge_state"))
+    phase = _obj(src.get("phase_transition"))
+    consensus = _obj(src.get("forced_consensus"))
+    leadership = _obj(src.get("causal_leadership"))
+    return {
+        "schema_version": src.get("schema_version"),
+        "asset": src.get("asset"),
+        "generated_at": src.get("generated_at"),
+        "latent_pressure": oracle.get("latent_pressure"),
+        "latent_pressure_score": oracle.get("latent_pressure_score"),
+        "evidence_coverage": oracle.get("evidence_coverage"),
+        "future_entropy": possibility.get("future_entropy"),
+        "future_space_collapse": possibility.get("future_space_collapse"),
+        "edge_state": edge.get("state"),
+        "edge_confidence": edge.get("confidence"),
+        "phase_direction": phase.get("direction"),
+        "forced_consensus_active": consensus.get("active"),
+        "forced_consensus_direction": consensus.get("direction"),
+        "causal_leadership_status": leadership.get("status"),
+        "authority": authority_block(),
+        "source_semantics": "compact read-only ORACLE Psi diagnostics; association/scenario shares are not causal or calibrated probability",
+    }
+
 def parallax_context(snapshot: Mapping[str, Any]) -> dict[str, Any]:
     src = _obj(snapshot)
     signals = src.get("mutation_signals")
@@ -59,9 +86,12 @@ def subsystem_context(
     parallax_snapshot: Mapping[str, Any],
     dreamstate_snapshot: Mapping[str, Any],
     *,
+    oracle_snapshot: Mapping[str, Any] | None = None,
     existing: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     out = dict(existing or {})
+    if oracle_snapshot is not None:
+        out.setdefault("oracle", oracle_context(oracle_snapshot))
     out.setdefault("parallax", parallax_context(parallax_snapshot))
     out.setdefault("dreamstate", dreamstate_context(dreamstate_snapshot))
     return out

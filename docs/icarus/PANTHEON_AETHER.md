@@ -78,3 +78,12 @@ supplied subsystem evidence is preserved rather than overwritten. This makes
 existing research state visible to PANTHEON without transferring ownership or
 authority. ORACLE remains an external contract until its current-main
 reconciliation is merged and can be adapted without duplicating its engine.
+
+
+## Native ORACLE Ψ adapter
+
+ORACLE Ψ is now present on ICARUS main and PANTHEON consumes it through a compact
+read-only adapter. The adapter copies bounded diagnostics such as latent
+pressure, evidence coverage, future-space collapse and edge state; it does not
+duplicate ORACLE's engine, mutate its state, reinterpret scenario shares as
+calibrated probabilities, or inherit execution authority.

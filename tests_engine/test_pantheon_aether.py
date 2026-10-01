@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from icarus_engine.pantheon import AetherSwarm, PantheonKernel, subsystem_context
+from icarus_engine.pantheon.bridge import oracle_context
 
 
 def _payload(**overrides):
@@ -207,3 +208,46 @@ def test_existing_research_subsystems_are_compacted_without_authority():
     assert "secret" not in out["dreamstate"]["candidates"][0]
     assert out["parallax"]["authority"]["execution_authorized"] is False
     assert out["dreamstate"]["authority"]["production_decision_authorized"] is False
+
+
+def test_oracle_context_is_compact_and_research_only():
+    out = oracle_context({
+        "schema_version": "icarus-possibility-v1",
+        "asset": "NQ",
+        "generated_at": "2026-10-01T06:02:00Z",
+        "oracle": {"latent_pressure": -0.7, "latent_pressure_score": -70.0, "evidence_coverage": 0.9, "components": {"large": "not copied"}},
+        "possibility": {"future_entropy": 22.0, "future_space_collapse": 78.0, "clusters": [1, 2, 3]},
+        "edge_state": {"state": "SHORT_BIAS", "confidence": 0.6},
+        "phase_transition": {"direction": "DOWN"},
+        "forced_consensus": {"active": True, "direction": "DOWN"},
+        "causal_leadership": {"status": "observed", "leaders": [{"asset": "ES"}]},
+    })
+    assert out["asset"] == "NQ"
+    assert out["latent_pressure"] == -0.7
+    assert out["edge_state"] == "SHORT_BIAS"
+    assert out["future_space_collapse"] == 78.0
+    assert "components" not in out
+    assert "clusters" not in out
+    assert out["authority"]["execution_authorized"] is False
+    assert out["authority"]["production_decision_authorized"] is False
+
+
+def test_subsystem_context_adds_oracle_without_overwriting_caller_owned_data():
+    out = subsystem_context(
+        {"counts": {}, "regret": {}, "mutation_signals": [], "paired_ablation_attribution": []},
+        {"stages": {}, "candidates": [], "required_gates": []},
+        oracle_snapshot={
+            "asset": "NQ",
+            "oracle": {"latent_pressure": 0.4, "latent_pressure_score": 40.0, "evidence_coverage": 0.8},
+            "possibility": {"future_entropy": 30.0, "future_space_collapse": 70.0},
+            "edge_state": {"state": "NO_EDGE", "confidence": 0.2},
+            "phase_transition": {"direction": "UP"},
+            "forced_consensus": {"active": False, "direction": None},
+            "causal_leadership": {"status": "observed"},
+        },
+        existing={"custom": {"preserved": True}},
+    )
+    assert out["custom"]["preserved"] is True
+    assert out["oracle"]["latent_pressure"] == 0.4
+    assert out["oracle"]["future_space_collapse"] == 70.0
+    assert out["oracle"]["authority"]["execution_authorized"] is False
