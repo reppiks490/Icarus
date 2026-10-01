@@ -741,6 +741,12 @@ def engine_learning_experience() -> dict:
     """Read realized historical/live-sim trade experience summaries."""
     return _safe_engine(lambda: _engine_get("/api/learning/experience"))
 
+@mcp.tool()
+def engine_learning_health() -> dict:
+    """Read durable Continuous Learning Fabric health, staleness and backlog."""
+    return _safe_engine(lambda: _engine_get("/api/learning/health"))
+
+
 
 @mcp.tool()
 def configure_engine_learning(config_json: str) -> dict:

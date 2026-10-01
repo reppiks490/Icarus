@@ -549,3 +549,115 @@ def test_runtime_experience_fails_closed_before_live_boundary(tmp_path):
     assert cycle["summary"]["experience"]["runtime"]["imported"] == 0
     assert cycle["summary"]["experience"]["runtime"]["skipped_no_live_boundary"] == 1
     assert fabric.snapshot()["experiences"]["count"] == 0
+
+
+def test_learning_health_is_durable_and_tracks_ok_partial_failure(tmp_path, monkeypatch):
+    from icarus_engine.learning_fabric import LearningFabric
+
+    fabric = LearningFabric(tmp_path)
+    initial = fabric.health()
+    assert initial["status"] == "WARMING"
+    assert initial["attempts"] == 0
+    assert initial["failures"] == 0
+    assert initial["execution_authorized"] is False
+
+    ok = fabric.run_cycle()
+    assert ok["status"] == "ok"
+    health = fabric.health()
+    assert health["attempts"] == 1
+    assert health["completed"] == 1
+    assert health["ok_cycles"] == 1
+    assert health["partial_cycles"] == 0
+    assert health["failures"] == 0
+    assert health["consecutive_failures"] == 0
+    assert health["last_ok_at"] is not None
+    assert health["last_completed_at"] is not None
+
+    original_tick = fabric.tick
+    monkeypatch.setattr(fabric, "tick", lambda: {"status": "partial", "errors": {"x": "fixture"}, "execution_authorized": False})
+    partial = fabric.run_cycle()
+    assert partial["status"] == "partial"
+    health = fabric.health()
+    assert health["attempts"] == 2
+    assert health["completed"] == 2
+    assert health["partial_cycles"] == 1
+    assert health["consecutive_partial"] == 1
+    assert health["failures"] == 0
+
+    monkeypatch.setattr(fabric, "tick", lambda: (_ for _ in ()).throw(RuntimeError("fixture crash")))
+    with pytest.raises(RuntimeError, match="fixture crash"):
+        fabric.run_cycle()
+    health = fabric.health()
+    assert health["attempts"] == 3
+    assert health["completed"] == 2
+    assert health["failures"] == 1
+    assert health["consecutive_failures"] == 1
+    assert "fixture crash" in health["last_error"]
+
+    reopened = LearningFabric(tmp_path)
+    persisted = reopened.health()
+    assert persisted["attempts"] == 3
+    assert persisted["failures"] == 1
+    assert persisted["last_error"] == health["last_error"]
+
+    monkeypatch.setattr(fabric, "tick", original_tick)
+
+
+def test_learning_health_reports_backlogs_and_staleness(tmp_path, monkeypatch):
+    from icarus_engine.learning_fabric import LearningFabric
+
+    _ohlc(tmp_path / "history" / "drop" / "NQ-20m.csv", rows=80)
+    _trade_list(tmp_path / "history" / "drop" / "NQ-trades.csv")
+    fabric = LearningFabric(tmp_path)
+    fabric.scan_history()
+    pred = fabric.record_prediction(_prediction(horizon=900))["prediction"]
+
+    health = fabric.health()
+    assert health["backlog"]["pending_predictions"] == 1
+    assert health["backlog"]["untrained_ohlc_datasets"] == 1
+    assert health["backlog"]["unimported_trade_lists"] == 1
+    assert health["stale"] is False
+
+    fabric.run_cycle()
+    fresh = fabric.health()
+    assert fresh["last_completed_at"] is not None
+    assert fresh["stale"] is False
+    assert fresh["backlog"]["pending_predictions"] == 1
+
+    old = "2026-09-30T00:00:00Z"
+    with fabric._lock, fabric._conn:
+        fabric._conn.execute(
+            "UPDATE service_health SET last_completed_at=?, last_ok_at=? WHERE service='learning'",
+            (old, old),
+        )
+    monkeypatch.setattr("icarus_engine.learning_fabric._utc_now", lambda: "2026-10-01T20:00:00Z")
+    stale = fabric.health()
+    assert stale["stale"] is True
+    assert stale["status"] == "STALE"
+
+
+def test_background_learning_records_crashes_instead_of_silently_swallowing(tmp_path, monkeypatch):
+    import time
+    from icarus_engine.learning_fabric import LearningFabric
+
+    fabric = LearningFabric(tmp_path)
+    fabric.configure({"cycle_seconds": 5})
+    calls = {"n": 0}
+
+    def boom():
+        calls["n"] += 1
+        raise RuntimeError("background fixture crash")
+
+    monkeypatch.setattr(fabric, "tick", boom)
+    fabric.start_background()
+    deadline = time.monotonic() + 2
+    while time.monotonic() < deadline and fabric.health()["failures"] < 1:
+        time.sleep(0.01)
+    fabric.stop()
+
+    health = fabric.health()
+    assert calls["n"] >= 1
+    assert health["failures"] >= 1
+    assert health["consecutive_failures"] >= 1
+    assert "background fixture crash" in health["last_error"]
+    assert health["background_running"] is False
