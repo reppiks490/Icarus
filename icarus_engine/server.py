@@ -305,6 +305,153 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             "evolution": "stopped",
         }
 
+    def _control_args(payload, *, allowed=None, required=()):
+        args = payload.get("args") or {}
+        if not isinstance(args, dict):
+            raise ValueError("args must be an object")
+        if allowed is not None:
+            extra = set(args) - set(allowed)
+            if extra:
+                raise ValueError(f"unknown action args: {sorted(extra)}")
+        missing = [key for key in required if key not in args]
+        if missing:
+            raise ValueError(f"missing required action args: {missing}")
+        return dict(args)
+
+    def _backtests_snapshot():
+        rows = []
+        for job_id, job in list(JOBS.items())[-200:]:
+            params = job.get("params") or {}
+            rows.append({
+                "id": job_id,
+                "status": job.get("status"),
+                "progress": job.get("progress"),
+                "started": job.get("started"),
+                "finished": job.get("finished"),
+                "error": job.get("error"),
+                "asset": params.get("asset"),
+            })
+        return {"count": len(rows), "jobs": rows}
+
+    def _backtest_start_control(payload):
+        from .backtest import validate_backtest_params
+        runner = _control_runner(payload["target"])
+        if not runner.warm:
+            raise ValueError(f"{runner.symbol} is still warming up")
+        allowed = {
+            "preset", "fill_on", "chart_type", "timeframe", "security_source",
+            "session", "slippage_ticks", "commission", "capital", "leverage",
+            "window_start", "window_end", "inputs",
+        }
+        args = _control_args(payload, allowed=allowed)
+        params = validate_backtest_params(args)
+        params["asset"] = runner.symbol
+        if "preset" in params and not os.path.exists(preset_path(port.base_dir, params["preset"])):
+            raise ValueError(f"preset {params['preset']} not found")
+        job_id = start_job(port, params)
+        return {"job": job_id, "asset": runner.symbol, "started": True}
+
+    def _market_mbo_snapshot_control(payload):
+        runner = _control_runner(payload["target"])
+        args = _control_args(payload, allowed={"timeout"})
+        if not hasattr(runner.feed, "mbo_snapshot"):
+            raise ValueError(f"{type(runner.feed).__name__} does not expose MBO snapshots")
+        timeout = max(0.1, min(30.0, float(args.get("timeout", 5.0))))
+        rows = runner.feed.mbo_snapshot(runner.spec.ticker, timeout=timeout)
+        return {
+            "asset": runner.symbol,
+            "provider": type(runner.feed).__name__.lower(),
+            "schema": "mbo",
+            "snapshot": rows,
+        }
+
+    def _research_start_control(payload):
+        args = _control_args(payload, allowed={"grid", "windows", "policy"}, required=("grid", "windows"))
+        return research.start({"asset": payload["target"], **args})
+
+    def _research_propose_control(payload):
+        args = _control_args(payload, allowed={"evidence_ids", "rationale"}, required=("evidence_ids", "rationale"))
+        return research.propose_study({"job": payload["target"], **args})
+
+    def _research_analysis_control(payload):
+        args = _control_args(payload, allowed={"evidence_ids", "rationale", "apply"}, required=("evidence_ids", "rationale"))
+        return research.analysis.start({"job": payload["target"], **args})
+
+    def _research_activate_control(payload):
+        args = _control_args(payload, allowed={"operation_id"}, required=("operation_id",))
+        return research.activate({"proposal_id": payload["target"], "operation_id": args["operation_id"]})
+
+    def _research_rollback_control(payload):
+        args = _control_args(payload, allowed={"operation_id"}, required=("operation_id",))
+        return research.rollback({"asset": payload["target"], "operation_id": args["operation_id"]})
+
+    def _research_collect_control(payload):
+        args = _control_args(payload, allowed={"options"})
+        return research.market_sources.collect(payload["target"], args.get("options"))
+
+    def _parallax_decision_control(payload):
+        args = _control_args(payload)
+        if not args.get("source_commit"):
+            provenance = local_code_provenance()
+            if not provenance.get("candidate_revision_eligible") or not provenance.get("commit"):
+                raise ValueError("exact clean ICARUS code provenance is required when source_commit is omitted")
+            args["source_commit"] = provenance["commit"]
+        return parallax.record_decision(args)
+
+    def _parallax_outcome_control(payload):
+        args = _control_args(payload)
+        result = parallax.record_outcome(args)
+        try:
+            result["dreamstate_refresh"] = dreamstate.refresh().get("refresh", {})
+        except Exception as ex:
+            port.journal.log("WARN", f"DREAMSTATE rescreen after PARALLAX outcome: {type(ex).__name__}: {ex}")
+            result["dreamstate_refresh"] = {
+                "status": "degraded",
+                "error": f"{type(ex).__name__}: {ex}",
+                "outcome_committed": True,
+            }
+        return result
+
+    def _dreamstate_evaluate_control(payload):
+        args = _control_args(payload, allowed={"validation", "evidence"}, required=("validation",))
+        return dreamstate.evaluate(payload["target"], args)
+
+    def _dreamstate_retire_control(payload):
+        args = _control_args(payload, allowed={"reason"}, required=("reason",))
+        return dreamstate.retire(payload["target"], args["reason"])
+
+    def _possibility_evidence_control(payload):
+        args = _control_args(
+            payload,
+            allowed={"values", "source", "observed_at", "ttl_seconds"},
+            required=("values", "source"),
+        )
+        if not isinstance(args["values"], dict):
+            raise ValueError("values must be an object")
+        return possibility.ingest_external(
+            payload["target"],
+            args["values"],
+            source=args["source"],
+            observed_at=args.get("observed_at"),
+            ttl_seconds=args.get("ttl_seconds", 300.0),
+        )
+
+    def _system_event_control(payload):
+        args = _control_args(payload)
+        return append_system_event(port.base_dir, args)
+
+    def _system_loop_control(payload):
+        args = _control_args(payload)
+        return upsert_loop_status(port.base_dir, args)
+
+    def _integrity_event_control(payload):
+        args = _control_args(payload)
+        return record_integrity_event(port.base_dir, args)
+
+    def _brain_event_control(payload):
+        args = _control_args(payload)
+        return record_brain_event(port.base_dir, args)
+
     control = EngineControlPlane(
         port.base_dir,
         snapshotters={
