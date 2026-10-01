@@ -36,7 +36,7 @@
         @keyframes brainPulse{70%{box-shadow:0 0 0 14px rgba(103,232,249,0)}100%{box-shadow:0 0 0 0 rgba(103,232,249,0)}}
         .brain-route{font:11px/1.5 ui-monospace,Consolas,monospace;background:rgba(0,0,0,.16);border-radius:8px;padding:8px;margin-top:6px;white-space:pre-wrap}
       </style>
-      <div class="brain-layer"><h2>Adaptive Brain <span class="sub">multi-agent learning fabric · evidence-backed · shadow routing only</span></h2><div class="empty">loading measured brain state…</div></div>
+      <div class="brain-layer"><h2>Adaptive Brain <span class="sub">multi-agent learning fabric · evidence-backed · router SHADOW_ONLY</span></h2><div class="empty">loading measured brain state…</div></div>
     </section>`;
   }
 
