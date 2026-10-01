@@ -178,3 +178,100 @@ function wireResearch() {
   $('#rsDisableAdaptation').onclick=()=>configure({enabled:false});
   loadResearch();
 }
+
+
+/* MCP -> ICARUS surface contract: important engineering changes render in System. */
+let systemEvolutionCache = null, systemEvolutionLoading = false;
+
+function systemEvolutionCommit(entry) {
+  const repo=String(entry.source_repo||''), sha=String(entry.source_commit||'');
+  if(!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repo)||!/^[0-9a-f]{40}$/i.test(sha))
+    return '<code>'+esc(sha.slice(0,12)||'unknown')+'</code>';
+  const href='https://github.com/'+repo+'/commit/'+sha;
+  return '<a href="'+esc(href)+'" target="_blank" rel="noopener noreferrer"><code>'+esc(sha.slice(0,12))+'</code></a>';
+}
+
+function systemEvolutionClass(value) {
+  value=String(value||'').toLowerCase();
+  return ['merged','verified','repair','hardening'].includes(value)?'b':
+         ['blocked','failed'].includes(value)?'r':'w';
+}
+
+function systemEvolutionCard(data) {
+  if(!data) return '<section class="card c12" id="mcpEvolutionCard"><h2>MCP evolution ledger</h2><div class="empty">Loading engineering provenance…</div></section>';
+  const rows=(data.entries||[]).slice().reverse();
+  const entries=rows.map(e=>'<details class="group" style="margin-bottom:8px"><summary>'+
+    '<span class="chip '+systemEvolutionClass(e.kind)+'">'+esc(e.kind)+'</span>'+
+    '<span class="chip '+systemEvolutionClass(e.status)+'">'+esc(e.status)+'</span>'+
+    '<b>'+esc(e.subsystem)+'</b> · '+esc(e.title)+
+    '<span class="cnt">'+esc(e.recorded_date)+'</span></summary>'+
+    '<div style="padding:0 14px 12px">'+
+      '<p class="small">'+esc(e.summary)+'</p>'+
+      '<div class="small muted"><b>Verification:</b> '+esc(e.verification)+'</div>'+
+      '<div class="small muted"><b>Interface:</b> '+esc(e.interface_effect)+'</div>'+
+      '<div class="small muted"><b>Source:</b> '+esc(e.source_repo)+' · '+esc(e.source_branch)+' · '+systemEvolutionCommit(e)+'</div>'+
+      '<div class="small" style="margin-top:5px"><b>Execution authority:</b> <span class="neg">NO</span></div>'+
+    '</div></details>').join('');
+  const contract=data.interface_contract||{};
+  return '<section class="card c12" id="mcpEvolutionCard">'+
+    '<h2>System evolution &amp; audit <span class="sub">MCP repairs · audits · hardening · provenance</span></h2>'+
+    '<div class="tiles" style="margin-top:0">'+
+      '<div class="tile"><div class="k">Important records</div><div class="v tnum">'+esc(data.entry_count||0)+'</div></div>'+
+      '<div class="tile"><div class="k">Subsystems</div><div class="v tnum">'+esc(Object.keys(data.subsystem_counts||{}).length)+'</div></div>'+
+      '<div class="tile"><div class="k">Surface contract</div><div class="v" style="font-size:14px">'+(contract.important_mcp_changes_must_surface===true?'ENFORCED':'MISSING')+'</div></div>'+
+      '<div class="tile"><div class="k">Execution authorized</div><div class="v neg">NO</div></div>'+
+    '</div>'+
+    '<div class="small muted" style="margin:10px 0">Ledger '+esc(String(data.ledger_sha256||'').slice(0,12))+
+      ' · latest '+esc(data.latest_recorded_date||'none')+
+      ' · branch-only work is shown as branch-only, never as deployed.</div>'+
+    (entries||'<div class="empty">No important MCP evolution records.</div>')+
+  '</section>';
+}
+
+function ensureSystemEvolutionSurface() {
+  if(typeof view==='undefined'||view!=='system') return;
+  const host=document.querySelector('#view'); if(!host) return;
+  const old=document.querySelector('#mcpEvolutionCard');
+  const html=systemEvolutionCard(systemEvolutionCache);
+  if(old) {
+    if(systemEvolutionCache && old.dataset.ledger!==systemEvolutionCache.ledger_sha256) {
+      const box=document.createElement('div'); box.innerHTML=html;
+      const next=box.firstElementChild;
+      if(next){next.dataset.ledger=systemEvolutionCache.ledger_sha256||'';old.replaceWith(next);}
+    }
+    return;
+  }
+  const box=document.createElement('div'); box.innerHTML=html;
+  const card=box.firstElementChild;
+  if(card){card.dataset.ledger=systemEvolutionCache?.ledger_sha256||'';host.appendChild(card);}
+}
+
+async function loadSystemEvolutionSurface() {
+  if(systemEvolutionLoading||typeof view==='undefined'||view!=='system') return;
+  systemEvolutionLoading=true;
+  try {
+    const data=await researchGet('/api/research');
+    systemEvolutionCache=data.system_evolution||null;
+  } catch(_) {
+    systemEvolutionCache=null;
+  } finally {
+    systemEvolutionLoading=false;
+    ensureSystemEvolutionSurface();
+  }
+}
+
+window.addEventListener('load',()=>{
+  const host=document.querySelector('#view');
+  if(!host) return;
+  const observer=new MutationObserver(()=>{
+    if(typeof view!=='undefined'&&view==='system') {
+      ensureSystemEvolutionSurface();
+      if(!systemEvolutionCache) loadSystemEvolutionSurface();
+    }
+  });
+  observer.observe(host,{childList:true,subtree:false});
+  document.addEventListener('click',ev=>{
+    const tab=ev.target.closest?.('[data-v="system"]');
+    if(tab) setTimeout(()=>{ensureSystemEvolutionSurface();loadSystemEvolutionSurface();},0);
+  });
+});
