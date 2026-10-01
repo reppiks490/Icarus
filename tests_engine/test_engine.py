@@ -4,10 +4,14 @@ from __future__ import annotations
 import math
 import random
 
+import pytest
+
+from icarus_engine.assets import chart_capabilities, normalize_chart_timeframe, pin_config, resolve
 from icarus_engine.emulator import Emulator
 from icarus_engine.pine import ta
 from icarus_engine.pine.series import NAN, Series, na, pmax
 from icarus_engine.pine.timeframe import Aggregator, Bar, in_session, ny_hour_minute, tf_minutes
+from icarus_engine.runtime import apply_spec_meta
 from icarus_engine.strategy.inputs import Inputs, crypto_profile
 from icarus_engine.strategy.pulse import PulseStrategy
 from icarus_engine.strategy.security import TFChain
@@ -15,6 +19,29 @@ from icarus_engine.strategy.security import TFChain
 
 def B(ts, o, h, l, c, v=100.0):
     return Bar(ts, o, h, l, c, v)
+
+
+def test_chart_capabilities_and_primary_heikin_ashi_defaults():
+    caps = chart_capabilities()
+    assert all(tf in caps["timeframes"] for tf in ("1", "2", "5", "10", "20", "30"))
+    assert caps["seconds"] is False and caps["ticks"] is False
+    assert resolve("NQ").chart_type == "heikin_ashi"
+    assert resolve("NQ").fill_on == "real"
+    assert normalize_chart_timeframe("2m") == "2"
+    assert normalize_chart_timeframe("4H") == "240"
+    assert normalize_chart_timeframe("20 minutes") == "20"
+    assert normalize_chart_timeframe("1 hour") == "60"
+    assert normalize_chart_timeframe("1 day") == "D"
+    with pytest.raises(ValueError, match="sub-minute"):
+        normalize_chart_timeframe("30 seconds")
+    with pytest.raises(ValueError, match="tick"):
+        normalize_chart_timeframe("100 ticks")
+    pinned = pin_config(resolve("NQ"), "timeframe", "chart_type")
+    pinned.chart_tf = "2"
+    pinned.chart_type = "real"
+    effective = apply_spec_meta(pinned, {"timeframe": "10", "chart_type": "heikin_ashi", "fill_on": "chart"})
+    assert effective.chart_tf == "2" and effective.chart_type == "real"
+    assert effective.fill_on == "chart"
 
 
 # ── Pine primitives ──

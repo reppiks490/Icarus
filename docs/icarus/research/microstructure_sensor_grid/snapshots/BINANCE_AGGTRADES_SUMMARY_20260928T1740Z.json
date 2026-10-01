@@ -1,0 +1,79 @@
+{
+  "run_id": "ICARUS-MICRO-20260928T1740Z",
+  "source": "Binance USDⓈ-M aggregate-trade endpoint via DataBlue full-result attachments",
+  "raw_blobs": {
+    "BTCUSDT": {
+      "blob_sha": "fdb540cbda8b86b805f53acce27bfae35dc95341",
+      "result_id": "ea5f59fd-0dba-4ddc-85e7-f8db83d3c6bf"
+    },
+    "ETHUSDT": {
+      "blob_sha": "6332ad88005b35f9f265f66e71cf1ba01472dceb",
+      "result_id": "51931e20-1b93-4e24-8208-b542419a21f7"
+    },
+    "SOLUSDT": {
+      "blob_sha": "b26652d2e3eede38cd3b5adf8f9bd62d107014ff",
+      "result_id": "f357622d-1188-439b-a91c-fccdf3fd63aa"
+    }
+  },
+  "tape_summary": {
+    "BTCUSDT": {
+      "records": 100,
+      "first_agg_id": 3468308318,
+      "last_agg_id": 3468308417,
+      "first_time_ms": 1790616370910,
+      "last_time_ms": 1790616378321,
+      "span_ms": 7411,
+      "min_price": 83956.5,
+      "max_price": 83964.4,
+      "total_qty": 8.4,
+      "m_true_qty": 3.085,
+      "m_false_qty": 5.315,
+      "largest_qty": 1.693,
+      "largest_agg_id": 3468308365,
+      "largest_price": 83964.4,
+      "largest_time_ms": 1790616373182
+    },
+    "ETHUSDT": {
+      "records": 100,
+      "first_agg_id": 3102913945,
+      "last_agg_id": 3102914044,
+      "first_time_ms": 1790616385113,
+      "last_time_ms": 1790616392041,
+      "span_ms": 6928,
+      "min_price": 2703.88,
+      "max_price": 2704.3,
+      "total_qty": 180.063,
+      "m_true_qty": 100.431,
+      "m_false_qty": 79.632,
+      "largest_qty": 40.733,
+      "largest_agg_id": 3102913953,
+      "largest_price": 2704.01,
+      "largest_time_ms": 1790616386538
+    },
+    "SOLUSDT": {
+      "records": 100,
+      "first_agg_id": 1101446810,
+      "last_agg_id": 1101446909,
+      "first_time_ms": 1790616381552,
+      "last_time_ms": 1790616406117,
+      "span_ms": 24565,
+      "min_price": 119.69,
+      "max_price": 119.77,
+      "total_qty": 4879.01,
+      "m_true_qty": 3732.48,
+      "m_false_qty": 1146.53,
+      "largest_qty": 751.92,
+      "largest_agg_id": 1101446853,
+      "largest_price": 119.74,
+      "largest_time_ms": 1790616392041
+    }
+  },
+  "field_note": "Binance aggregate-trade field m is preserved raw; this summary only totals m=true versus m=false quantity and does not assign a trading conclusion.",
+  "quality_flags": [
+    "RAW_PAYLOAD_DURABLE_GIT_BLOB",
+    "100_AGGREGATE_RECORDS_PER_SYMBOL",
+    "AGGREGATE_TRADES_NOT_INDIVIDUAL_ORDER_MESSAGES",
+    "NO_LIQUIDATION_HISTORY",
+    "NO_MBO_QUEUE_STATE"
+  ]
+}

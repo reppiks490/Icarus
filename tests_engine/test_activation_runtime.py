@@ -91,6 +91,7 @@ def test_adoption_and_rollback_keep_actual_accounting_and_owner_files(setup, tmp
     monkeypatch.setattr(type(runner.feed), "daily_volume", lambda *a, **k: pytest.fail("network used"))
     operation = store.activate(version["version_id"], "apply", adapter.boundary)
     assert operation["status"] == "applied", operation
+    assert isinstance(runner.cfg.base_spec, AssetSpec)
     assert runner.inputs_base.conf_min_votes == 9 and runner.strat.i.conf_min_votes == 9
     assert (runner.em, runner.em.closed, runner.em.fills, runner.em.netprofit, runner.em._seq) == accounting
     assert runner.strat.em is accounting[0] and runner.strat._prev_closed == len(runner.em.closed)
