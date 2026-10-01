@@ -8,7 +8,9 @@ production authority.
 V2 adds an explicit comparison contract, exact-code/context evidence isolation,
 evidence-complete paired screening, approximate one-sided significance screening
 with Benjamini-Hochberg FDR control, context-strata diagnostics, and richer
-counterfactual branch families. These are hypothesis screens, not causal proof.
+counterfactual branch families. V3 adds chronological stability diagnostics and
+parameter-basin robustness so isolated lucky settings do not automatically enter
+DREAMSTATE. These are hypothesis screens, not causal proof.
 """
 from __future__ import annotations
 
@@ -34,6 +36,14 @@ _DERIVED_STRATA_KEYS = (
     "macro_regime",
     "trend_regime",
 )
+_TEMPORAL_FOLD_COUNT = 3
+_TEMPORAL_MIN_PAIRS = 9
+_PARAMETER_AXES = {
+    "delay": "delay_bars",
+    "stop": "stop_multiplier",
+    "target": "target_multiplier",
+    "size": "size_multiplier",
+}
 _LOCK = threading.RLock()
 
 
@@ -538,6 +548,7 @@ class ParallaxStore:
             return con.execute(
                 """
                 SELECT d.decision_id,d.asset,d.regime,d.source_commit,d.contract_json,d.strata_json,
+                       d.observed_at AS decision_observed_at,
                        a.utility AS actual_utility,a.evidence_json AS actual_evidence_json,
                        b.kind,b.label,b.utility AS branch_utility,b.params_json,
                        b.evidence_json AS branch_evidence_json
@@ -598,6 +609,66 @@ class ParallaxStore:
             "p_one_sided": max(0.0, min(1.0, p)),
             "positive_fraction": positive_fraction,
         }
+
+    @classmethod
+    def _temporal_stability(cls, samples: list[tuple[str, float]]) -> dict[str, Any]:
+        """Chronological fold diagnostics; advisory until enough paired evidence exists."""
+        n = len(samples)
+        if n < _TEMPORAL_MIN_PAIRS:
+            return {
+                "evaluable": False,
+                "required_pairs": _TEMPORAL_MIN_PAIRS,
+                "fold_count": 0,
+                "stable": None,
+                "positive_fold_fraction": None,
+                "worst_fold_mean": None,
+                "folds": [],
+            }
+
+        ordered = sorted(samples, key=lambda row: _timestamp(row[0], "decision.observed_at")[1])
+        fold_count = min(_TEMPORAL_FOLD_COUNT, n)
+        base = n // fold_count
+        remainder = n % fold_count
+        folds: list[dict[str, Any]] = []
+        offset = 0
+        for idx in range(fold_count):
+            size = base + (1 if idx < remainder else 0)
+            chunk = ordered[offset: offset + size]
+            offset += size
+            values = [float(value) for _, value in chunk]
+            stats = cls._stats(values)
+            folds.append({
+                "index": idx,
+                "start_observed_at": chunk[0][0],
+                "end_observed_at": chunk[-1][0],
+                **stats,
+            })
+
+        means = [float(row["mean_delta"]) for row in folds if row.get("mean_delta") is not None]
+        positive = sum(1 for mean in means if mean > 0)
+        stable = bool(means) and positive == len(means)
+        return {
+            "evaluable": True,
+            "required_pairs": _TEMPORAL_MIN_PAIRS,
+            "fold_count": len(folds),
+            "stable": stable,
+            "positive_fold_fraction": positive / len(means) if means else None,
+            "worst_fold_mean": min(means) if means else None,
+            "folds": folds,
+        }
+
+    @staticmethod
+    def _parameter_axis(kind: str, params: Mapping[str, Any]) -> tuple[str, float] | None:
+        key = _PARAMETER_AXES.get(str(kind))
+        if not key or key not in params:
+            return None
+        value = params.get(key)
+        if type(value) not in (int, float):
+            return None
+        value = float(value)
+        if not math.isfinite(value):
+            return None
+        return key, value
 
     @staticmethod
     def _apply_bh(items: list[dict[str, Any]]) -> None:
