@@ -72,11 +72,18 @@ def test_pantheon_runs_independent_faculties_and_never_grants_execution(tmp_path
     }
     assert analysis["faculties"]["nullspace"]["routing_state"] == "absorbed"
     assert analysis["faculties"]["godel"]["identifiability"] < 0.01
+    assert analysis["faculties"]["godel"]["epistemic_blindspot"] is True
+    assert analysis["faculties"]["godel"]["effective_world_count"] > 1.9
     assert analysis["faculties"]["ananke"]["least_cost_direction"] == "up"
+    assert analysis["faculties"]["ananke"]["reachable_space_collapse"] > 0
     assert analysis["faculties"]["nemesis"]["survival_score"] > 0.70
+    assert analysis["faculties"]["nemesis"]["edge_half_life_source"] == "unmeasured"
     assert analysis["faculties"]["ex_nihilo"]["new_phenomenon_candidate"] is True
     assert analysis["faculties"]["mint"]["best_candidate"]["name"] == "nq_es_relative_value"
+    assert analysis["faculties"]["mint"]["best_candidate"]["stress_expected_net"] > 0
+    assert analysis["faculties"]["socrates"]["question_queue"]
     assert analysis["faculties"]["archon"]["contradiction"] > 0.80
+    assert 0 <= analysis["faculties"]["archon"]["attention_concentration"] <= 1
     assert analysis["faculties"]["archon"]["consensus_forced"] is False
     assert analysis["authority"]["execution_authorized"] is False
     assert analysis["authority"]["production_decision_authorized"] is False
@@ -142,6 +149,41 @@ def test_pantheon_fails_closed_on_bad_time_commit_or_shape(tmp_path):
         kernel.record_observation(bad)
 
 
+def test_pantheon_exports_only_identified_structural_constraint_evidence_to_sibyl(tmp_path):
+    kernel = PantheonKernel(tmp_path)
+    payload = _payload()
+    payload["signals"] = dict(payload["signals"])
+    payload["signals"]["world_scores"] = {"up_constraint": 0.98, "down_constraint": 0.02}
+    payload["signals"]["transition_cost_up"] = 0.10
+    payload["signals"]["transition_cost_down"] = 2.80
+    obs = kernel.record_observation(payload)
+    exported = obs["analysis"]["exports"]["sibyl_evidence"]
+    assert len(exported) == 1
+    row = exported[0]
+    assert row["source"] == "pantheon-ananke"
+    assert row["domain"] == "structural_constraints"
+    assert row["direction"] > 0
+    assert row["confidence"] > 0.10
+    assert row["source_commit"] == "a" * 40
+    assert row["payload"]["authority"]["execution_authorized"] is False
+
+    ambiguous = kernel.record_observation(
+        _payload(observation_id="pan-ambiguous", observed_at="2026-10-01T06:00:01Z")
+    )
+    assert ambiguous["analysis"]["exports"]["sibyl_evidence"] == []
+
+
+def test_nemesis_derives_edge_half_life_when_decay_is_supplied(tmp_path):
+    kernel = PantheonKernel(tmp_path)
+    payload = _payload()
+    payload["signals"] = dict(payload["signals"])
+    payload["signals"]["edge_decay_rate_per_second"] = 0.01
+    obs = kernel.record_observation(payload)
+    nemesis = obs["analysis"]["faculties"]["nemesis"]
+    assert nemesis["edge_half_life_source"] == "derived_from_decay_rate"
+    assert nemesis["edge_half_life_seconds"] == pytest.approx(69.314718, rel=1e-5)
+
+
 def test_pantheon_rejects_future_dated_observations(tmp_path):
     kernel = PantheonKernel(tmp_path)
     future = (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat()
@@ -187,6 +229,7 @@ def test_pantheon_is_visible_in_trader_interface():
     dashboard = (repo / "icarus_engine" / "dashboard.html").read_text(encoding="utf-8")
     ui = (repo / "icarus_engine" / "pantheon-ui.js").read_text(encoding="utf-8")
     server = (repo / "icarus_engine" / "server.py").read_text(encoding="utf-8")
+    brain = (repo / "icarus_engine" / "brain.py").read_text(encoding="utf-8")
     assert '/pantheon-ui.js' in dashboard
     assert 'data-v="pantheon">PANTHEON / AETHER</span>' in dashboard
     assert "wirePantheon()" in dashboard
@@ -195,6 +238,8 @@ def test_pantheon_is_visible_in_trader_interface():
     assert "SHADOW ONLY" in ui
     assert 'p.path == "/api/pantheon"' in server
     assert 'p.path == "/admin/pantheon/observe"' in server
+    for subsystem in ("PANTHEON", "NEMESIS Ω", "GÖDEL Ω", "SOCRATES", "ANANKĒ", "EX NIHILO", "MINT Ω", "NULLSPACE Ω", "ARCHON Ω", "AETHER Ω"):
+        assert subsystem in brain
 
 
 def test_sentinel_cells_accumulate_without_becoming_trade_authority(tmp_path):
