@@ -1713,11 +1713,14 @@ class PossibilityEngine:
             gross = sum(v["strength"] for v in votes)
             if gross <= 1e-12 or abs(signed) <= 1e-12:
                 continue
+            internal_alignment = abs(signed) / gross
+            average_component_strength = gross / len(votes)
             domains.append({
                 "name": domain,
                 "sign": 1 if signed > 0 else -1,
-                "strength": abs(signed),
-                "internal_alignment": abs(signed) / gross,
+                "strength": average_component_strength * internal_alignment,
+                "internal_alignment": internal_alignment,
+                "component_count": len(votes),
                 "components": [v["name"] for v in votes],
             })
 
@@ -1767,6 +1770,8 @@ class PossibilityEngine:
                 "counterfactual_price": full - c,
                 "force_contribution": c,
                 "distance_from_actual": (full - c) - price,
+                "approximation": "first_order_local_ablation",
+                "causal_effect_proven": False,
             })
         rows.sort(key=lambda x: -abs(x["force_contribution"]))
         return rows[:12]
