@@ -342,3 +342,73 @@ def test_background_learning_never_blocks_engine_startup(tmp_path, monkeypatch):
     assert entered.wait(1)
     release.set()
     fabric.stop()
+
+
+def test_native_harvest_absorbs_performance_proof_and_source_reliability(tmp_path):
+    from icarus_engine.learning_fabric import LearningFabric
+    from icarus_engine.performance_proof import PerformanceProofStore
+    from icarus_engine.source_reliability import SourceReliabilityStore
+
+    now = datetime.now(timezone.utc)
+    decision = now - timedelta(minutes=20)
+    maturity = decision + timedelta(minutes=5)
+    observed = maturity + timedelta(seconds=1)
+
+    proof = PerformanceProofStore(tmp_path)
+    registered = proof.register_forecast({
+        "candidate_id": "nq-alpha-v3",
+        "asset": "NQ",
+        "regime": "TREND",
+        "decision_at": _iso(decision),
+        "matures_at": _iso(maturity),
+        "probability_success": 0.75,
+        "success_definition": "positive net outcome after configured costs",
+        "source_repo": "reppiks490/Icarus",
+        "source_commit": "d" * 40,
+        "dataset_hash": "1" * 64,
+        "evidence_hash": "2" * 64,
+    })
+    proof.record_outcome({
+        "forecast_id": registered["forecast_id"],
+        "observed_at": _iso(observed),
+        "success": True,
+        "realized_value": 12.5,
+        "outcome_hash": "3" * 64,
+        "source": "observed holdout result",
+    })
+
+    reliability = SourceReliabilityStore(tmp_path)
+    reliability.record_observation({
+        "source_id": "provider-a",
+        "stream": "NQ-trades",
+        "observed_at": _iso(now - timedelta(seconds=1)),
+        "event_time": _iso(now - timedelta(seconds=3)),
+        "retrieval_time": _iso(now - timedelta(seconds=2)),
+        "expected_freshness_seconds": 5.0,
+        "complete": True,
+        "agreement_bps": 0.5,
+        "agreement_tolerance_bps": 1.0,
+        "revision": False,
+        "evidence_hash": "4" * 64,
+    })
+
+    fabric = LearningFabric(tmp_path)
+    fabric.bind_native(performance_proof=proof, source_reliability=reliability)
+    out = fabric.harvest_native()
+
+    assert out["performance_proof"]["forecasts_imported"] == 1
+    assert out["performance_proof"]["outcomes_imported"] == 1
+    assert out["source_reliability"]["status"] == "ok"
+    assert out["source_reliability"]["observation_count"] == 1
+    assert out["source_reliability"]["source_stream_count"] == 1
+
+    cards = [x for x in fabric.scorecards() if x["producer"].startswith("performance-proof:")]
+    assert len(cards) == 1
+    assert cards[0]["asset"] == "NQ"
+    assert cards[0]["settled"] == 1
+    assert cards[0]["successes"] == 1
+    assert cards[0]["mean_brier"] == pytest.approx((0.75 - 1.0) ** 2)
+
+    snap = fabric.snapshot()
+    assert snap["coverage"]["performance_proof"] == "native_immutable_forecast_outcome"
+    assert snap["coverage"]["source_reliability"] == "native_observed_quality_context"
