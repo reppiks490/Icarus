@@ -246,7 +246,7 @@ def test_aether_ecology_requires_observed_fitness_for_speciation_and_genesis(tmp
                 0.80,
             )
         )
-        assert result["ecology_outcomes"][0]["execution_authorized"] is False
+        assert result["ecology_outcomes"][0]["authority"]["execution_authorized"] is False
 
     ecology = kernel.snapshot()["ecology"]
     parent = next(x for x in ecology["species"] if x["origin_claim_id"] == ontology_claim["claim_id"] and x["generation"] == 0)
