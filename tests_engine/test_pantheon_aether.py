@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from icarus_engine.pantheon import AetherSwarm, PantheonKernel, subsystem_context
-from icarus_engine.pantheon.bridge import oracle_context
+from icarus_engine.pantheon.bridge import oracle_context, psi_context
 from icarus_engine.pantheon.contracts import iso_aware
 
 
@@ -235,18 +235,22 @@ def test_existing_research_subsystems_are_compacted_without_authority():
     assert out["dreamstate"]["authority"]["production_decision_authorized"] is False
 
 
-def test_oracle_context_is_compact_and_research_only():
-    out = oracle_context({
+def test_psi_context_is_compact_and_research_only():
+    snapshot = {
         "schema_version": "icarus-possibility-v1",
         "asset": "NQ",
         "generated_at": "2026-10-01T06:02:00Z",
-        "oracle": {"latent_pressure": -0.7, "latent_pressure_score": -70.0, "evidence_coverage": 0.9, "components": {"large": "not copied"}},
+        "latent_pressure_engine": {"latent_pressure": -0.7, "latent_pressure_score": -70.0, "evidence_coverage": 0.9, "components": {"large": "not copied"}},
         "possibility": {"future_entropy": 22.0, "future_space_collapse": 78.0, "clusters": [1, 2, 3]},
         "edge_state": {"state": "SHORT_BIAS", "confidence": 0.6},
         "phase_transition": {"direction": "DOWN"},
         "forced_consensus": {"active": True, "direction": "DOWN"},
         "causal_leadership": {"status": "observed", "leaders": [{"asset": "ES"}]},
-    })
+    }
+    out = psi_context(snapshot)
+    legacy = oracle_context(snapshot)
+    assert out["subsystem"] == "psi"
+    assert legacy == out
     assert out["asset"] == "NQ"
     assert out["latent_pressure"] == -0.7
     assert out["edge_state"] == "SHORT_BIAS"
@@ -257,25 +261,27 @@ def test_oracle_context_is_compact_and_research_only():
     assert out["authority"]["production_decision_authorized"] is False
 
 
-def test_subsystem_context_adds_oracle_without_overwriting_caller_owned_data():
+def test_subsystem_context_adds_psi_while_preserving_caller_oracle():
     out = subsystem_context(
         {"counts": {}, "regret": {}, "mutation_signals": [], "paired_ablation_attribution": []},
         {"stages": {}, "candidates": [], "required_gates": []},
-        oracle_snapshot={
+        psi_snapshot={
             "asset": "NQ",
-            "oracle": {"latent_pressure": 0.4, "latent_pressure_score": 40.0, "evidence_coverage": 0.8},
+            "latent_pressure_engine": {"latent_pressure": 0.4, "latent_pressure_score": 40.0, "evidence_coverage": 0.8},
             "possibility": {"future_entropy": 30.0, "future_space_collapse": 70.0},
             "edge_state": {"state": "NO_EDGE", "confidence": 0.2},
             "phase_transition": {"direction": "UP"},
             "forced_consensus": {"active": False, "direction": None},
             "causal_leadership": {"status": "observed"},
         },
-        existing={"custom": {"preserved": True}},
+        existing={"oracle": {"identity": "external-oracle"}, "custom": {"preserved": True}},
     )
     assert out["custom"]["preserved"] is True
-    assert out["oracle"]["latent_pressure"] == 0.4
-    assert out["oracle"]["future_space_collapse"] == 70.0
-    assert out["oracle"]["authority"]["execution_authorized"] is False
+    assert out["oracle"] == {"identity": "external-oracle"}
+    assert out["psi"]["subsystem"] == "psi"
+    assert out["psi"]["latent_pressure"] == 0.4
+    assert out["psi"]["future_space_collapse"] == 70.0
+    assert out["psi"]["authority"]["execution_authorized"] is False
 
 
 def test_aether_enforces_minimum_independent_population(tmp_path):
@@ -291,9 +297,9 @@ def test_native_subsystem_names_cannot_be_spoofed_by_caller_context():
     out = subsystem_context(
         {"counts": {"decisions": 7}, "regret": {}, "mutation_signals": [], "paired_ablation_attribution": []},
         {"stages": {"proposed": 1}, "candidates": [], "required_gates": []},
-        oracle_snapshot={
+        psi_snapshot={
             "asset": "NQ",
-            "oracle": {"latent_pressure": 0.25, "latent_pressure_score": 25.0, "evidence_coverage": 0.7},
+            "latent_pressure_engine": {"latent_pressure": 0.25, "latent_pressure_score": 25.0, "evidence_coverage": 0.7},
             "possibility": {},
             "edge_state": {"state": "NO_EDGE"},
             "phase_transition": {},
@@ -301,13 +307,15 @@ def test_native_subsystem_names_cannot_be_spoofed_by_caller_context():
             "causal_leadership": {},
         },
         existing={
-            "oracle": {"latent_pressure": 999},
+            "oracle": {"identity": "external-oracle"},
+            "psi": {"latent_pressure": 999},
             "parallax": {"counts": {"decisions": 999}},
             "dreamstate": {"stages": {"validated": 999}},
             "custom": {"preserved": True},
         },
     )
-    assert out["oracle"]["latent_pressure"] == 0.25
+    assert out["oracle"] == {"identity": "external-oracle"}
+    assert out["psi"]["latent_pressure"] == 0.25
     assert out["parallax"]["counts"]["decisions"] == 7
     assert out["dreamstate"]["stages"]["proposed"] == 1
     assert out["custom"]["preserved"] is True
@@ -328,17 +336,22 @@ def test_ambient_subsystem_context_does_not_break_idempotent_retries(tmp_path):
     assert retry["analysis"]["truth_contract"]["ambient_subsystem_context_excluded_from_immutable_identity"] is True
 
 
-def test_failed_native_oracle_adapter_cannot_fall_back_to_spoofed_context():
+def test_failed_native_psi_adapter_cannot_fall_back_to_spoofed_context():
     out = subsystem_context(
         {"counts": {}, "regret": {}, "mutation_signals": [], "paired_ablation_attribution": []},
         {"stages": {}, "candidates": [], "required_gates": []},
-        oracle_snapshot=None,
-        existing={"oracle": {"latent_pressure": 999}, "custom": {"preserved": True}},
+        psi_snapshot=None,
+        existing={
+            "oracle": {"identity": "external-oracle"},
+            "psi": {"latent_pressure": 999},
+            "custom": {"preserved": True},
+        },
     )
-    assert out["oracle"]["status"] == "unavailable"
-    assert out["oracle"]["latent_pressure"] is None
+    assert out["oracle"] == {"identity": "external-oracle"}
+    assert out["psi"]["status"] == "unavailable"
+    assert out["psi"]["latent_pressure"] is None
     assert out["custom"]["preserved"] is True
-    assert out["oracle"]["authority"]["execution_authorized"] is False
+    assert out["psi"]["authority"]["execution_authorized"] is False
 
 
 def test_concurrent_duplicate_observation_is_idempotent(tmp_path):

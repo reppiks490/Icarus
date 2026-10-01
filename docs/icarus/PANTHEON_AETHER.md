@@ -303,6 +303,17 @@ premature feedback. This prevents deterministic claim IDs or same-request
 feedback from manufacturing apparent research fitness before the claim had any
 causal opportunity to be tested.
 
+
+## Psi and ORACLE identity boundary
+
+ICARUS Ψ and ORACLE are distinct subsystem identities. PANTHEON reserves the
+`psi` slot for the native Ψ adapter and always publishes it as observed or
+unavailable, so caller JSON cannot impersonate Ψ when native data is missing.
+A separately supplied `oracle` object is preserved as ORACLE context and is
+never overwritten or relabelled by the Ψ adapter. The legacy
+`oracle_context()` helper remains only as a compatibility alias that returns
+a payload explicitly identified as `subsystem=psi`.
+
 ## Causal fitness provenance and upgrade continuity
 
 Claim outcomes attached through a PANTHEON feedback observation are bound to
