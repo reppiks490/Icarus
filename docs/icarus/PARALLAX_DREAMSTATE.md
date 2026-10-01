@@ -38,6 +38,8 @@ An opposite-side counterfactual never automatically becomes an inversion policy.
 
 Each candidate has a deterministic family ID, trial index, source commit, immutable PARALLAX signal, mutation specification, evidence list, and validation state. The trial index preserves family-level search lineage for later multiple-testing control.
 
+Only one non-terminal candidate may exist per mutation family at a time. Each family also has a hard 12-trial revision budget. A new revision after rejection/retirement requires strictly newer paired evidence, preventing incremental sample-count changes from silently exploding the search space.
+
 Candidate stages are:
 
 `proposed -> study -> validated -> qualified_shadow`
@@ -89,6 +91,8 @@ The UI reads authenticated `/api/parallax` and `/api/dreamstate` endpoints.
 ## Mutation APIs
 
 All mutation endpoints require the normal ICARUS admin bearer token and strict JSON parsing.
+
+When a PARALLAX decision omits `source_commit`, the server fills it only from a provably exact clean local ICARUS Git revision; dirty or unknown checkouts fail closed. Every accepted PARALLAX outcome automatically re-runs the DREAMSTATE conservative screen, so candidate discovery is continuous without granting activation authority.
 
 - `POST /admin/parallax/decision`
 - `POST /admin/parallax/outcome`
