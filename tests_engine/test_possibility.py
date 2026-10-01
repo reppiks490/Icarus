@@ -184,6 +184,11 @@ def test_psi_surface_observed_microstructure_and_future_space():
     assert 0 <= poss["future_entropy"] <= 100
     assert 0 <= poss["future_space_collapse"] <= 100
     assert poss["dominant_cluster"] in {"UP", "DOWN", "FLAT"}
+    assert 0 < poss["effective_scenarios"] <= poss["scenarios_generated"]
+    assert 0 < poss["effective_sample_ratio"] <= 1
+    assert 0 <= poss["reliability"] <= 1
+    assert poss["endpoint_return_p10"] <= poss["endpoint_return_p25"] <= poss["endpoint_return_p50"]
+    assert poss["endpoint_return_p50"] <= poss["endpoint_return_p75"] <= poss["endpoint_return_p90"]
 
     assert out["counterfactual"]["available"] is True
     assert out["phase_transition"]["available"] is True
@@ -688,3 +693,33 @@ def test_information_wave_rejects_future_tick_clock_skew():
     wave = engine._information_wave(history, 0.0002, 0.0, 0.0, micro, {"pressure": 0.0})
     assert wave["status"] == "CLOCK_SKEW"
     assert wave["causal_leading"] is False
+
+
+
+def test_edge_gate_fails_closed_on_weak_scenario_support():
+    engine = PossibilityEngine(Port())
+    edge = engine._edge_gate(
+        latent=0.8,
+        coverage=0.9,
+        collapse=80.0,
+        future_reliability=0.2,
+        effective_sample_ratio=0.9,
+        consensus={"active": True, "alignment": 0.9},
+        micro={"health": {"ticks": True, "depth": True}},
+        leaders={"status": "observed", "confidence": 0.8},
+    )
+    assert edge["state"] == "NO_EDGE"
+    assert "future-space reliability below 35%" in edge["blockers"]
+
+    edge = engine._edge_gate(
+        latent=0.8,
+        coverage=0.9,
+        collapse=80.0,
+        future_reliability=0.9,
+        effective_sample_ratio=0.2,
+        consensus={"active": True, "alignment": 0.9},
+        micro={"health": {"ticks": True, "depth": True}},
+        leaders={"status": "observed", "confidence": 0.8},
+    )
+    assert edge["state"] == "NO_EDGE"
+    assert "effective scenario support below 35%" in edge["blockers"]
