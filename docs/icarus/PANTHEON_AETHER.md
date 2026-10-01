@@ -259,9 +259,13 @@ No additional live-control endpoint is required. The existing authenticated
 `POST /admin/pantheon/observe`
 
 accepts an optional bounded `claim_outcomes` list. An outcome names a prior
-claim, observation time, bounded utility, confidence, and evidence. Outcomes
-cannot predate their originating claim and are immutable for a given
-`claim_id + observed_at`. Idempotent retries are safe.
+claim, observation time, bounded utility, confidence, and evidence. Utility
+must lie in `[-1, 1]` and fails closed outside that range. Outcomes cannot
+predate their claim's causal availability and are immutable for a given
+`claim_id + observed_at`. When a feedback observation causes speciation, the
+offspring mutation claim is bound to that feedback observation (and its
+observation time), not retroactively attached to the older parent observation.
+Idempotent retries are safe.
 
 ## Causal chronology
 
