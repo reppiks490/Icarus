@@ -772,9 +772,17 @@ class ParallaxStore:
 
     @staticmethod
     def _apply_bh(items: list[dict[str, Any]]) -> None:
+        """Apply BH to the same p-value used by the dependence-aware screen."""
         by_family: dict[tuple[str, str, str, str], list[dict[str, Any]]] = {}
+
+        def screen_p(row: Mapping[str, Any]) -> float | None:
+            value = row.get("screen_p_one_sided")
+            if value is None:
+                value = row.get("p_one_sided")
+            return None if value is None else float(value)
+
         for item in items:
-            p = item.get("screen_p_one_sided", item.get("p_one_sided"))
+            p = screen_p(item)
             if p is None:
                 item["q_value"] = None
                 continue
@@ -786,12 +794,15 @@ class ParallaxStore:
             )
             by_family.setdefault(family, []).append(item)
         for rows in by_family.values():
-            ranked = sorted(rows, key=lambda x: float(x["p_one_sided"]))
+            ranked = sorted(rows, key=lambda x: float(screen_p(x)))
             m = len(ranked)
             running = 1.0
             for rank in range(m, 0, -1):
                 row = ranked[rank - 1]
-                raw_q = float(row["p_one_sided"]) * m / rank
+                p = screen_p(row)
+                if p is None:
+                    raise ValueError("BH family unexpectedly contains a hypothesis without a p-value")
+                raw_q = p * m / rank
                 running = min(running, raw_q)
                 row["q_value"] = max(0.0, min(1.0, running))
 
