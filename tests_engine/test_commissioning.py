@@ -167,3 +167,55 @@ def test_truth_or_authority_violation_refuses_capture(tmp_path: Path):
     engine = CommissioningEngine(tmp_path, port, cf)
     with pytest.raises(RuntimeError, match="future-data"):
         engine.capture("NQ")
+
+
+def test_corrupt_ledger_refuses_future_appends(tmp_path: Path):
+    port = Port()
+    cf = Chronofold()
+    engine = CommissioningEngine(tmp_path, port, cf)
+    engine.capture("NQ", force=True)
+    engine.prediction_path.write_text(
+        engine.prediction_path.read_text(encoding="utf-8") + "{bad json\n",
+        encoding="utf-8",
+    )
+    reloaded = CommissioningEngine(tmp_path, port, cf)
+    with pytest.raises(RuntimeError, match="ledger integrity failure"):
+        reloaded.capture("NQ", force=True)
+
+
+def test_late_horizon_outcome_is_retained_but_excluded_from_metrics(tmp_path: Path):
+    port = Port()
+    cf = Chronofold()
+    engine = CommissioningEngine(tmp_path, port, cf, min_promotion_samples=20)
+    pred = engine.capture("NQ", force=True)["prediction"]
+    # Target is +3 Chronons; jump well beyond the +1 Chronon tolerance.
+    for _ in range(8):
+        cf.snapshot("NQ")
+    port.price = 103.0
+    settled = engine.settle_ready("NQ")
+    assert settled["settled"] == 1
+    outcome = settled["outcomes"][0]
+    assert outcome["horizon_valid"] is False
+    assert outcome["score_eligible"] is False
+    metrics = engine.metrics("NQ")
+    assert metrics["settled_predictions"] == 0
+    assert metrics["excluded_outcomes"]["horizon"] == 1
+    assert engine.promotion_gate("NQ")["research_influence_eligible"] is False
+
+
+def test_background_start_commissions_immediately_and_can_restart(tmp_path: Path):
+    port = Port()
+    cf = Chronofold()
+    engine = CommissioningEngine(tmp_path, port, cf, interval_seconds=60.0)
+    engine.start_background()
+    try:
+        assert engine.status("NQ")["ledger"]["predictions"] >= 1
+        assert engine.status()["background"]["running"] is True
+    finally:
+        engine.close()
+    assert engine.status()["background"]["running"] is False
+    engine.start_background()
+    try:
+        assert engine.status()["background"]["running"] is True
+    finally:
+        engine.close()
