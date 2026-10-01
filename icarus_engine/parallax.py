@@ -324,7 +324,7 @@ class ParallaxStore:
         with _LOCK, self._connect() as con:
             rows = con.execute("SELECT decision_id FROM decisions ORDER BY observed_at DESC LIMIT ?", (max(1, min(500, int(limit))),)).fetchall()
             counts = con.execute(
-                "SELECT COUNT(*) AS decisions,(SELECT COUNT(*) FROM branches) AS branches,(SELECT COUNT(*) FROM branches WHERE status='observed') AS observed"
+                "SELECT COUNT(*) AS decisions,(SELECT COUNT(*) FROM branches) AS branches,(SELECT COUNT(*) FROM branches WHERE status='observed') AS observed FROM decisions"
             ).fetchone()
         decisions = [self.decision(r["decision_id"]) for r in rows]
         complete = [d for d in decisions if d["analysis"].get("actual_utility") is not None]
