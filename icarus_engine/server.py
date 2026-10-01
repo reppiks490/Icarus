@@ -8,6 +8,13 @@ def _current_parallax_payload(possibility: Any, body: Dict[str, Any]) -> tuple[D
     decisions must arrive with their already-captured causal subsystem votes.
     """
     payload = dict(body)
+    allowed = {
+        "schema_version", "decision_id", "asset", "action", "regime",
+        "source_commit", "context", "subsystem_votes", "branches", "observed_at",
+    }
+    unknown = set(payload) - allowed
+    if unknown:
+        raise ValueError("unsupported current PARALLAX fields: " + ", ".join(sorted(unknown)))
     if payload.get("observed_at") not in (None, ""):
         raise ValueError("current decision capture owns observed_at; use /admin/parallax/decision for historical records")
     votes = payload.get("subsystem_votes", {})
