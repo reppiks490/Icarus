@@ -728,6 +728,16 @@ def test_mbo_volume_cannot_evict_mbp10_buffer():
     assert feed._depth[("NQ=F", "mbp-10")][0]["order_id"] == 1
 
 
+def test_mbo_snapshot_stops_collecting_after_f_last():
+    snapshot = Depth(2_000, 200.25, flags=1, order_id=1)
+    live_after = Depth(2_001, 201.00, flags=0, order_id=2)
+    live = FakeLive({"mbo": [snapshot, live_after]})
+    feed = make_feed(lives=[live])
+    rows = feed.mbo_snapshot("NQ=F", timeout=0.1)
+    assert [row["order_id"] for row in rows] == [1]
+    assert live.stopped is True
+
+
 def test_mbo_snapshot_subscribe_failure_still_closes_temporary_client():
     class FailSubscribe(FakeLive):
         def subscribe(self, **kwargs):
