@@ -917,6 +917,14 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
                 return self._json(200, latency_telemetry.snapshot())
+            if p.path == "/api/candidate-qualification":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                try:
+                    candidate = {"candidate_id": q.get("candidate_id", [""])[0], "source_repo": q.get("source_repo", [""])[0], "source_commit": q.get("source_commit", [""])[0]}
+                    return self._json(200, qualification.snapshot(candidate))
+                except (ValueError, TypeError, RuntimeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
             if p.path == "/api/brain":
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
