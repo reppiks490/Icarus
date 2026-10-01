@@ -28,6 +28,8 @@ import threading
 import time
 from typing import Any, Deque, Iterable, Mapping, Sequence
 
+from .psi_evidence import PsiEvidenceLedger
+
 SCHEMA_VERSION = "icarus-possibility-v1"
 DEFAULT_SCENARIOS = 768
 DEFAULT_HISTORY = 720
@@ -187,6 +189,7 @@ class PossibilityEngine:
         self._history: dict[str, Deque[dict[str, float]]] = defaultdict(lambda: deque(maxlen=self.history))
         self._external: dict[str, dict[str, dict[str, Any]]] = defaultdict(dict)
         self._micro_cache: dict[str, tuple[float, dict[str, Any]]] = {}
+        self._evidence_ledger = PsiEvidenceLedger(getattr(port, "base_dir", None))
 
     # ---------- public API ----------
 
@@ -199,11 +202,12 @@ class PossibilityEngine:
         observed_at: str | None = None,
         ttl_seconds: float = 300.0,
     ) -> dict[str, Any]:
-        """Inject provenance-labelled optional force evidence.
+        """Persist provenance-labelled optional force evidence.
 
-        This is intentionally in-memory and research-only. Unknown fields are rejected.
-        Values use [-1,+1], where sign is directional pressure. A caller may supply
-        either a number or {"value": x, "confidence": y}.
+        Causal receipt rules remain fail-closed: evidence cannot arrive from the
+        future, cannot already be stale for its requested TTL, and malformed values
+        are rejected before any receipt is written. Exact durable receipts are
+        idempotent.
         """
         asset = str(asset or "").strip().upper()
         if not asset:
@@ -213,6 +217,8 @@ class PossibilityEngine:
             raise ValueError("source is required")
         if len(source) > 180:
             raise ValueError("source exceeds 180 characters")
+        if not isinstance(values, Mapping) or not values:
+            raise ValueError("values must be a non-empty object")
         ttl_value = _finite(ttl_seconds)
         if ttl_value is None or ttl_value <= 0:
             raise ValueError("ttl_seconds must be finite and positive")
@@ -223,41 +229,77 @@ class PossibilityEngine:
         expires_ts = observed_ts + ttl
         if expires_ts <= now:
             raise ValueError("external evidence is already stale at receipt for the requested ttl_seconds")
-        stored: dict[str, Any] = {}
-        with self._lock:
-            for key, raw in values.items():
-                if key not in _EXTERNAL_KEYS:
-                    raise ValueError(f"unsupported external feature: {key}")
-                if isinstance(raw, Mapping):
-                    value = _finite(raw.get("value"))
-                    if "confidence" in raw:
-                        confidence = _finite(raw.get("confidence"))
-                        if confidence is None or not 0.0 <= confidence <= 1.0:
-                            raise ValueError(f"{key}.confidence must be finite and within [0,1]")
-                    else:
-                        confidence = 1.0
+
+        normalized: list[dict[str, Any]] = []
+        for key, raw in values.items():
+            if key not in _EXTERNAL_KEYS:
+                raise ValueError(f"unsupported external feature: {key}")
+            if isinstance(raw, Mapping):
+                value = _finite(raw.get("value"))
+                if "confidence" in raw:
+                    confidence = _finite(raw.get("confidence"))
+                    if confidence is None or not 0.0 <= confidence <= 1.0:
+                        raise ValueError(f"{key}.confidence must be finite and within [0,1]")
                 else:
-                    value = _finite(raw)
                     confidence = 1.0
-                if value is None or not -1.0 <= value <= 1.0:
-                    raise ValueError(f"{key} must be finite and within [-1,1]")
-                row = {
-                    "value": float(value),
-                    "confidence": float(confidence),
-                    "source": source,
-                    "observed_at": observed,
-                    "received_ts": now,
-                    "expires_ts": expires_ts,
-                }
-                self._external[asset][key] = row
-                stored[key] = dict(row)
+            else:
+                value = _finite(raw)
+                confidence = 1.0
+            if value is None or not -1.0 <= value <= 1.0:
+                raise ValueError(f"{key} must be finite and within [-1,1]")
+            normalized.append({
+                "asset": asset,
+                "feature": key,
+                "value": float(value),
+                "confidence": float(confidence),
+                "source": source,
+                "observed_at": observed,
+                "observed_ts": observed_ts,
+                "received_ts": now,
+                "expires_ts": expires_ts,
+                "ttl_seconds": ttl,
+                "created_at": _utc_now(),
+            })
+
+        stored: dict[str, Any] = {}
+        inserted = 0
+        with self._lock:
+            for row in normalized:
+                receipt = self._evidence_ledger.record(row)
+                inserted += int(bool(receipt.get("inserted")))
+                self._external[asset][row["feature"]] = dict(receipt)
+                stored[row["feature"]] = dict(receipt)
+
         return {
             "ok": True,
             "asset": asset,
             "stored": stored,
+            "inserted": inserted,
+            "idempotent_duplicates": len(normalized) - inserted,
+            "durable": self._evidence_ledger.durable,
             "execution_authorized": False,
             "production_decision_authorized": False,
         }
+
+    def evidence_snapshot(
+        self,
+        asset: str | None = None,
+        *,
+        limit: int = 100,
+        include_expired: bool = False,
+        as_of: str | None = None,
+    ) -> dict[str, Any]:
+        """Read append-only evidence history and deterministic causal as-of state."""
+        symbol = str(asset or "").strip().upper()
+        as_of_text = _utc_now() if as_of is None else _observed_time(as_of, "as_of")
+        as_of_ts = datetime.fromisoformat(as_of_text.replace("Z", "+00:00")).timestamp()
+        return self._evidence_ledger.snapshot(
+            symbol,
+            as_of_ts=as_of_ts,
+            as_of=as_of_text,
+            limit=limit,
+            include_expired=include_expired,
+        )
 
     def snapshot(self, asset: str | None = None) -> dict[str, Any]:
         market = self.port.status()
@@ -341,6 +383,7 @@ class PossibilityEngine:
             "data_health": {
                 "market_history_observations": len(history),
                 "microstructure": micro.get("health", {}),
+                "evidence_ledger": self._evidence_ledger.health(symbol),
                 "external_features": {
                     key: {
                         "available": feature.available,
@@ -422,10 +465,8 @@ class PossibilityEngine:
         now = time.time()
         out: dict[str, Feature] = {}
         with self._lock:
-            rows = self._external.get(symbol, {})
-            expired = [k for k, v in rows.items() if _finite(v.get("expires_ts")) is None or float(v["expires_ts"]) <= now]
-            for key in expired:
-                rows.pop(key, None)
+            rows = self._evidence_ledger.active(symbol, as_of_ts=now)
+            self._external[symbol] = {key: dict(value) for key, value in rows.items()}
             for key in _EXTERNAL_KEYS:
                 row = rows.get(key)
                 if not row:
@@ -436,7 +477,7 @@ class PossibilityEngine:
                         _finite(row.get("confidence")) or 0.0,
                         True,
                         str(row.get("source") or "external"),
-                        f"observed {row.get('observed_at')}",
+                        f"observed {row.get('observed_at')} · receipt {row.get('evidence_id')}",
                     )
         return out
 
