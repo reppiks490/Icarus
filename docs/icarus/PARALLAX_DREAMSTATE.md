@@ -160,6 +160,10 @@ DREAMSTATE mirrors each candidate into the existing Adaptive Brain candidate jou
 
 Adaptive Brain remains the shared fail-closed shadow-routing gatekeeper. PARALLAX and DREAMSTATE remain under AION PRIME ownership and have no broker authority.
 
+### Downstream evidence boundary
+
+PARALLAX/DREAMSTATE robustness is an upstream research-admission screen. It does not replace the separate Performance Proof ledger or Champion/Challenger shadow tournament now present in ICARUS. A robust-ready or even qualified-shadow DREAMSTATE candidate still requires independently settled proof records and the downstream tournament's own comparable-scope/sample/coverage gates before it can be treated as a shadow champion. None of these stages grants production or execution authority.
+
 ---
 
 ## Trader interface
