@@ -356,7 +356,7 @@
       "interface_effect": "The Data Integrity panel now exposes replay/lineage durability relevant to recovered-corpus research.",
       "evidence": [
         "64a883f7a4715cc0f34116aa0a20b698900bb268",
-        "02fe234acd60cbbc0f34116aa0a5316e819076624",
+        "02fe234acd60cbbc0f95e4289b0f26b07bc440bb",
         "cffe8a254990e8b64f5f6740d45c40cf05f1726b"
       ],
       "details": {
