@@ -174,3 +174,14 @@ def test_brain_surfaces_closed_sample_proof_and_tournament(tmp_path):
     assert out["truth_contract"]["future_guarantee"] is False
     assert out["latency_telemetry"]["hot_path"]["p99_ms"] == 12.5
     assert out["evidence_tournaments"][0]["shadow_champion"] == "nq-trend-v1"
+
+
+def test_brain_registers_apex_omega_research_subsystem(tmp_path):
+    out = brain_snapshot(tmp_path)
+    rows = {x["id"]: x for x in SUBSYSTEMS}
+    assert "apex-omega" in rows
+    assert rows["apex-omega"]["owner"] == "omega"
+    assert "world-state" in rows["apex-omega"]["job"].lower()
+    assert "epistemic" in rows["apex-omega"]["job"].lower()
+    assert out["authority"]["production_decision_authorized"] is False
+    assert out["authority"]["execution_authorized"] is False
