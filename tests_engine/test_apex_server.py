@@ -303,8 +303,15 @@ def test_pantheon_http_unverified_lineage_is_not_allowed_to_drive_echo(apex_http
     assert code == 200, body
     bridge = body["apex_lineage_bridge"]
     echo = body["analysis"]["faculties"]["echo"]
+    archon = body["analysis"]["faculties"]["archon"]
     assert bridge["status"] == "UNAVAILABLE"
     assert bridge["claimed_lineage_present"] is True
     assert echo["status"] == "abstain"
     assert echo["reason"] == "engine_evidence_lineage required to prove evidence independence"
+    assert echo["lineage_verified"] is False
+    assert echo["effective_independence_factor"] == 0.0
+    assert set(echo["engine_independence"]) == {"oracle", "athena"}
+    assert all(value == 0.0 for value in echo["engine_independence"].values())
+    assert all(row["attention_weight"] == 0.0 for row in archon["engine_states"])
+    assert archon["leases"] == []
     assert "engine_evidence_lineage" not in body["input"]["signals"]

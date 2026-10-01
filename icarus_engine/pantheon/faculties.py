@@ -377,14 +377,21 @@ def echo(signals: Mapping[str, Any]) -> dict[str, Any]:
             "duplicated_ancestry_pairs": [],
         }
     if not isinstance(lineage, Mapping):
+        # Fail closed: without ancestry proof, multiple engines must not be treated
+        # as independent confirmations by ARCHON. ECHO abstains from estimating
+        # overlap, but explicitly assigns zero proven independence until lineage
+        # arrives from the server-owned APEX ancestry bridge.
         return {
             **out,
             "status": "abstain",
             "reason": "engine_evidence_lineage required to prove evidence independence",
+            "lineage_verified": False,
+            "unresolved_lineage_fraction": 1.0,
             "echo_risk": 0.0,
+            "effective_independence_factor": 0.0,
             "effective_independent_support": 0.0,
             "consensus_illusion_candidate": False,
-            "engine_independence": {},
+            "engine_independence": {str(name): 0.0 for name in scores},
             "duplicated_ancestry_pairs": [],
         }
 
@@ -433,6 +440,7 @@ def echo(signals: Mapping[str, Any]) -> dict[str, Any]:
             **out,
             "status": "abstain",
             "reason": "no directional engine support above the 0.10 score floor",
+            "lineage_verified": True,
             "echo_risk": 0.0,
             "effective_independent_support": 0.0,
             "consensus_illusion_candidate": False,
@@ -509,6 +517,7 @@ def echo(signals: Mapping[str, Any]) -> dict[str, Any]:
     return {
         **out,
         "dominant_direction": dominant_direction,
+        "lineage_verified": True,
         "raw_directional_agreement": raw_agreement,
         "mean_lineage_overlap": mean_overlap,
         "unresolved_lineage_fraction": unresolved_fraction,

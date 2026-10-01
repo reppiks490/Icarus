@@ -158,6 +158,31 @@ def test_echo_preserves_genuinely_independent_confirmation(tmp_path):
     assert all(row["evidence_independence"] == pytest.approx(1.0) for row in archon_state["engine_states"])
 
 
+def test_echo_without_any_lineage_fails_closed_and_archon_grants_no_attention(tmp_path):
+    payload = _payload(observation_id="pan-echo-no-lineage")
+    payload["signals"] = dict(payload["signals"])
+    payload["signals"].pop("engine_evidence_lineage", None)
+    payload["signals"]["engine_scores"] = {"oracle": 0.90, "athena": 0.86, "argus": 0.82}
+    payload["signals"]["engine_reliability"] = {"oracle": 0.90, "athena": 0.88, "argus": 0.84}
+
+    obs = PantheonKernel(tmp_path).record_observation(payload)
+    echo_state = obs["analysis"]["faculties"]["echo"]
+    archon_state = obs["analysis"]["faculties"]["archon"]
+
+    assert echo_state["status"] == "abstain"
+    assert echo_state["lineage_verified"] is False
+    assert echo_state["unresolved_lineage_fraction"] == pytest.approx(1.0)
+    assert echo_state["effective_independence_factor"] == pytest.approx(0.0)
+    assert echo_state["effective_independent_support"] == pytest.approx(0.0)
+    assert set(echo_state["engine_independence"]) == {"oracle", "athena", "argus"}
+    assert all(value == 0.0 for value in echo_state["engine_independence"].values())
+    assert archon_state["evidence_independence_discounted"] is True
+    assert all(row["evidence_independence"] == 0.0 for row in archon_state["engine_states"])
+    assert all(row["attention_weight"] == 0.0 for row in archon_state["engine_states"])
+    assert archon_state["leases"] == []
+    assert archon_state["authority"]["execution_authorized"] is False
+
+
 def test_echo_treats_missing_lineage_as_unproven_independence(tmp_path):
     payload = _payload(observation_id="pan-echo-missing-lineage")
     payload["signals"] = dict(payload["signals"])
