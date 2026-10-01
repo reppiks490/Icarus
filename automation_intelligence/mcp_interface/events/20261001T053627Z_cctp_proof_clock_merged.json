@@ -1,0 +1,30 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "cctp-proof-clock-merged-20261001T053627Z",
+  "category": "EVOLUTION",
+  "severity": "success",
+  "status": "qualified",
+  "subsystems": [
+    "provenance",
+    "data",
+    "aion"
+  ],
+  "recorded_at": "2026-10-01T05:36:27Z",
+  "title": "CCTP proof clock verified and merged",
+  "summary": "The read-only Proof-to-Outcome / Circle CCTP V2 evidence clock is merged into divine-providence main after exact-head CI. It preserves raw provider-response bytes, local receipt-time lineage, decision-time replay, synthetic-fixture separation, and fail-closed malformed-response handling. This qualifies the attestation-observation lane only: destination receiveMessage, destination mint, external ledger witnessing, economic outcome, trading edge, and production/execution authorization remain unproven.",
+  "source_repository": "reppiks490/divine-providence",
+  "source_ref": "main",
+  "source_commit": "d4c822e59d9b19dcb26e32b8f879a0a3661678d0",
+  "evidence": [
+    "PR #4 merged from exact head 0dd95b2835a3fa3cf7d3038caa4a7454e905521c",
+    "onchain-proof-clock-tests: success",
+    "Linux + Windows proof-clock verification included in workflow matrix",
+    "append-only local hash-chain verification",
+    "decision-time timeline/asof reconstruction",
+    "complete provider status is not promoted to destination mint or economic outcome",
+    "execution_authorized=false",
+    "production_decision_authorized=false"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}
