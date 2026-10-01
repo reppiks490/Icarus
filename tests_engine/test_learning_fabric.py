@@ -920,3 +920,169 @@ def test_learning_snapshot_reports_psi_empirical_calibration_coverage(tmp_path):
     snap = LearningFabric(tmp_path).snapshot()
     assert snap["coverage"]["possibility"] == "native_non_overlapping_scenario_calibration"
     assert "forecast_contract_required" not in snap["coverage"].values()
+
+
+def _settled_calibration_case(fabric, *, start, n=40):
+    for i in range(n):
+        p = [0.2, 0.4, 0.6, 0.8][i % 4]
+        emitted = start + timedelta(minutes=i * 10)
+        pred = fabric.record_prediction({
+            "producer": "cal-test",
+            "asset": "NQ",
+            "target": "event",
+            "prediction": True,
+            "probability": p,
+            "emitted_at": _iso(emitted),
+            "horizon_seconds": 60,
+            "regime": "trend",
+            "evidence_ids": [f"cal:{i}"],
+            "source_commit": "a" * 40,
+        })["prediction"]
+        # Deliberately over/under-confident but monotone: empirical event rate is
+        # 0% at 0.2, 25% at 0.4, 75% at 0.6, 100% at 0.8.
+        bucket = i % 4
+        cycle = (i // 4) % 4
+        actual = (
+            False if bucket == 0 else
+            (cycle == 0 if bucket == 1 else
+             cycle != 0 if bucket == 2 else True)
+        )
+        fabric.record_outcome({
+            "prediction_id": pred["prediction_id"],
+            "observed_at": pred["resolves_at"],
+            "actual_value": actual,
+            "evidence": [f"cal-outcome:{i}"],
+        })
+
+
+def test_shadow_calibrator_is_holdout_validated_and_never_rewrites_raw_probability(tmp_path):
+    from icarus_engine.learning_fabric import LearningFabric
+
+    fabric = LearningFabric(tmp_path)
+    start = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    _settled_calibration_case(fabric, start=start, n=40)
+
+    rebuilt = fabric.rebuild_shadow_calibrators(min_samples=30)
+    assert rebuilt["validated"] == 1
+    model = rebuilt["models"][0]
+    assert model["status"] == "SHADOW_VALIDATED"
+    assert model["train_count"] == 32
+    assert model["validation_count"] == 8
+    assert model["calibrated_validation_brier"] < model["raw_validation_brier"]
+    assert model["execution_authorized"] is False
+    assert model["production_decision_authorized"] is False
+
+    emitted = start + timedelta(days=2)
+    fresh = fabric.record_prediction({
+        "producer": "cal-test",
+        "asset": "NQ",
+        "target": "event",
+        "prediction": True,
+        "probability": 0.6,
+        "emitted_at": _iso(emitted),
+        "horizon_seconds": 60,
+        "regime": "trend",
+        "evidence_ids": ["future:1"],
+        "source_commit": "a" * 40,
+    })["prediction"]
+
+    stored = fabric._conn.execute(
+        "SELECT probability,semantic_json FROM predictions WHERE prediction_id=?",
+        (fresh["prediction_id"],),
+    ).fetchone()
+    assert stored["probability"] == pytest.approx(0.6)
+    assert json.loads(stored["semantic_json"])["probability"] == pytest.approx(0.6)
+
+    shadow = fabric.shadow_calibration(fresh["prediction_id"])
+    assert shadow is not None
+    assert shadow["raw_probability"] == pytest.approx(0.6)
+    assert shadow["calibrated_probability"] != pytest.approx(0.6)
+    assert shadow["status"] == "PENDING"
+    assert shadow["execution_authorized"] is False
+    assert shadow["production_decision_authorized"] is False
+
+
+def test_shadow_calibration_refuses_temporal_leakage(tmp_path):
+    from icarus_engine.learning_fabric import LearningFabric
+
+    fabric = LearningFabric(tmp_path)
+    start = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    _settled_calibration_case(fabric, start=start, n=40)
+    rebuilt = fabric.rebuild_shadow_calibrators(min_samples=30)
+    assert rebuilt["validated"] == 1
+    cutoff = datetime.fromisoformat(
+        rebuilt["models"][0]["training_cutoff"].replace("Z", "+00:00")
+    )
+
+    old = fabric.record_prediction({
+        "producer": "cal-test",
+        "asset": "NQ",
+        "target": "event",
+        "prediction": True,
+        "probability": 0.6,
+        "emitted_at": _iso(cutoff - timedelta(seconds=1)),
+        "horizon_seconds": 60,
+        "regime": "trend",
+        "evidence_ids": ["old:1"],
+        "source_commit": "a" * 40,
+    })["prediction"]
+    assert fabric.shadow_calibration(old["prediction_id"]) is None
+
+
+def test_shadow_calibration_settlement_scores_raw_and_calibrated_probability(tmp_path):
+    from icarus_engine.learning_fabric import LearningFabric
+
+    fabric = LearningFabric(tmp_path)
+    start = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    _settled_calibration_case(fabric, start=start, n=40)
+    fabric.rebuild_shadow_calibrators(min_samples=30)
+
+    pred = fabric.record_prediction({
+        "producer": "cal-test",
+        "asset": "NQ",
+        "target": "event",
+        "prediction": True,
+        "probability": 0.6,
+        "emitted_at": _iso(start + timedelta(days=2)),
+        "horizon_seconds": 60,
+        "regime": "trend",
+        "evidence_ids": ["future:settle"],
+        "source_commit": "a" * 40,
+    })["prediction"]
+    before = fabric.shadow_calibration(pred["prediction_id"])
+    assert before["status"] == "PENDING"
+
+    fabric.record_outcome({
+        "prediction_id": pred["prediction_id"],
+        "observed_at": pred["resolves_at"],
+        "actual_value": True,
+        "evidence": ["future:truth"],
+    })
+    after = fabric.shadow_calibration(pred["prediction_id"])
+    assert after["status"] == "SETTLED"
+    assert after["success"] is True
+    assert after["raw_brier"] == pytest.approx((0.6 - 1.0) ** 2)
+    assert after["calibrated_brier"] == pytest.approx((after["calibrated_probability"] - 1.0) ** 2)
+    assert after["execution_authorized"] is False
+
+
+def test_shadow_calibration_state_is_research_only_and_scope_specific(tmp_path):
+    from icarus_engine.learning_fabric import LearningFabric
+
+    fabric = LearningFabric(tmp_path)
+    start = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    _settled_calibration_case(fabric, start=start, n=40)
+    fabric.rebuild_shadow_calibrators(min_samples=30)
+
+    state = fabric.shadow_calibration_state()
+    assert state["model_count"] == 1
+    assert state["validated_model_count"] == 1
+    assert state["models"][0]["producer"] == "cal-test"
+    assert state["models"][0]["asset"] == "NQ"
+    assert state["models"][0]["regime"] == "trend"
+    assert state["models"][0]["horizon_seconds"] == 60
+    assert state["models"][0]["target"] == "event"
+    assert state["authority"]["shadow_only"] is True
+    assert state["authority"]["automatic_probability_rewrite"] is False
+    assert state["execution_authorized"] is False
+    assert state["production_decision_authorized"] is False
