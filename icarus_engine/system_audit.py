@@ -8,20 +8,76 @@ never grants execution authority.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
+import re
 import threading
 from copy import deepcopy
 from datetime import datetime, timezone
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import Any, Dict
+from urllib.error import HTTPError, URLError
+from urllib.parse import quote
+from urllib.request import Request, urlopen
 
 AUDIT_FILENAME = "repository_audit.json"
 _ALLOWED_STATUS = {"green", "warn", "red", "unknown"}
 _ALLOWED_EVENT_KIND = {"repair", "audit", "evolution", "integration", "finding"}
 _ALLOWED_EVENT_SEVERITY = {"info", "success", "warn", "error"}
 _AUDIT_LOCK = threading.Lock()
+
+LOOP_FEED_SPECS = (
+    {
+        "id": "robustness-guardian",
+        "title": "Robustness Guardian Evolution",
+        "scheduler_id": "6abaf924e0248191b8a11bd1d32bf0b7",
+        "schedule": ":05 hourly",
+        "repository": "reppiks490/Icarus-engine",
+        "root": "automation_intelligence/agent_fabric/robustness_guardian",
+    },
+    {
+        "id": "advanced-csv",
+        "title": "Advanced CSV Data Collector",
+        "scheduler_id": "6abaef9d5c28819190d98a5af7f308b8",
+        "schedule": ":15 hourly",
+        "repository": "reppiks490/icarus-csv-evidence-lab",
+        "root": "automation_intelligence/advanced_csv",
+    },
+    {
+        "id": "alpha-synthesis",
+        "title": "Alpha Synthesis Evolution",
+        "scheduler_id": "6abaf8d75cf48191bc7ce06bc0006f1c",
+        "schedule": ":25 hourly",
+        "repository": "reppiks490/Icarus-engine",
+        "root": "automation_intelligence/agent_fabric/alpha_synthesis",
+    },
+    {
+        "id": "flow",
+        "title": "Microstructure Sensor Grid",
+        "scheduler_id": "6abaef8effb48191aa5c959455451681",
+        "schedule": ":35 hourly",
+        "repository": "reppiks490/Icarus-engine",
+        "root": "automation_intelligence/flow",
+    },
+    {
+        "id": "apex-council",
+        "title": "Apex Council Evolution",
+        "scheduler_id": "6ababd570fac81918777c8f809cf67c9",
+        "schedule": ":45 hourly",
+        "repository": "reppiks490/Icarus-engine",
+        "root": "automation_intelligence/agent_fabric/apex_council",
+    },
+)
+
+_SIGNAL_KEY_RE = re.compile(
+    r"^(result|next|findings?|risks?|warnings?|errors?|built|verified|merged|tests?|metrics?|"
+    r"artifacts?|blockers?|conflicts?|gaps?|coverage|baseline|net_new_delta|passes_completed|"
+    r"backlog_depth|oldest_unsent_run|replayed_run_ids|duplicate_run_ids_skipped|"
+    r"new_.+|candidates?|components?|corpus.+|evidence.+|data_quality.+|persistence.+)$",
+    re.IGNORECASE,
+)
 
 DEFAULT_REPOSITORY_AUDIT: Dict[str, Any] = {
     "schema_version": 2,
@@ -178,6 +234,15 @@ DEFAULT_REPOSITORY_AUDIT: Dict[str, Any] = {
     ],
     "issue": {"number": 62, "url": "https://github.com/reppiks490/Icarus/issues/62"},
     "note": "Current-head repository audit plus MCP-visible system intelligence. Historical superseded red runs are not counted as current defects.",
+    "loop_sync": {
+        "enabled": True,
+        "status": "bundled",
+        "interval_seconds": 300,
+        "source": "github-verified-loop-sync",
+        "last_attempt_at": "",
+        "last_success_at": "",
+        "errors": [],
+    },
     "execution_authorized": False,
 }
 
@@ -204,12 +269,198 @@ def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
+def git_blob_sha(raw: bytes) -> str:
+    """Return the Git object SHA-1 for raw file bytes."""
+    header = b"blob " + str(len(raw)).encode("ascii") + b"\0"
+    return hashlib.sha1(header + raw).hexdigest()
+
+
+def _run_recorded_at(run_id: str) -> str:
+    match = re.search(r"(\d{8}T\d{6}Z)", str(run_id or ""))
+    if not match:
+        return ""
+    try:
+        dt = datetime.strptime(match.group(1), "%Y%m%dT%H%M%SZ").replace(tzinfo=timezone.utc)
+        return dt.isoformat().replace("+00:00", "Z")
+    except ValueError:
+        return ""
+
+
+def _compact_value(value: Any, depth: int = 0) -> Any:
+    """Bound diagnostic payloads so loop chatter can never bloat the trader state file."""
+    if depth > 3:
+        return None
+    if value is None or isinstance(value, (bool, int, float)):
+        return value
+    if isinstance(value, str):
+        return value[:1000]
+    if isinstance(value, list):
+        return [_compact_value(x, depth + 1) for x in value[:25]]
+    if isinstance(value, dict):
+        out: Dict[str, Any] = {}
+        for key, item in list(value.items())[:40]:
+            out[str(key)[:120]] = _compact_value(item, depth + 1)
+        return out
+    return str(value)[:1000]
+
+
+def _signal_subset(value: Any) -> Dict[str, Any]:
+    if not isinstance(value, dict):
+        return {}
+    out: Dict[str, Any] = {}
+    for key, item in value.items():
+        if _SIGNAL_KEY_RE.match(str(key)):
+            out[str(key)[:120]] = _compact_value(item)
+    return out
+
+
+def _extract_signals(finalization: Dict[str, Any], latest: Any = None, state: Any = None) -> Dict[str, Any]:
+    final_signals: Dict[str, Any] = {
+        "work_status": _text(finalization.get("work_status"), 120),
+        "completion_semantics": _text(finalization.get("completion_semantics"), 120),
+        "payload": _compact_value(finalization.get("payload") or {}),
+    }
+    out: Dict[str, Any] = {"finalization": final_signals}
+    latest_subset = _signal_subset(latest)
+    state_subset = _signal_subset(state)
+    if latest_subset:
+        out["latest"] = latest_subset
+    if state_subset:
+        out["state"] = state_subset
+    return out
+
+
+def _parse_json_bytes(raw: bytes, label: str) -> Dict[str, Any]:
+    try:
+        value = json.loads(raw.decode("utf-8"))
+    except Exception as ex:
+        raise ValueError(f"{label} is not valid UTF-8 JSON: {ex}") from ex
+    if not isinstance(value, dict):
+        raise ValueError(f"{label} must be a JSON object")
+    return value
+
+
+def _default_fetch_bytes(repository: str, ref: str, path: str) -> bytes:
+    """Fetch one GitHub text file. Public repos use raw GitHub; private repos may use a token."""
+    token = os.environ.get("ICARUS_GITHUB_TOKEN") or os.environ.get("GITHUB_TOKEN")
+    timeout_raw = os.environ.get("ICARUS_LOOP_SYNC_HTTP_TIMEOUT_SECONDS", "8")
+    try:
+        timeout = max(1.0, min(30.0, float(timeout_raw)))
+    except ValueError:
+        timeout = 8.0
+    safe_path = quote(path, safe="/")
+    safe_ref = quote(ref, safe="")
+    headers = {"User-Agent": "icarus-system-intelligence/1"}
+    if token:
+        url = f"https://api.github.com/repos/{repository}/contents/{safe_path}?ref={safe_ref}"
+        headers["Accept"] = "application/vnd.github.raw+json"
+        headers["Authorization"] = f"Bearer {token}"
+    else:
+        url = f"https://raw.githubusercontent.com/{repository}/{safe_ref}/{safe_path}"
+    req = Request(url, headers=headers, method="GET")
+    try:
+        with urlopen(req, timeout=timeout) as resp:
+            raw = resp.read((1 << 20) + 1)
+    except HTTPError as ex:
+        if ex.code == 404:
+            raise FileNotFoundError(f"{repository}@{ref}:{path}") from ex
+        raise RuntimeError(f"GitHub HTTP {ex.code} for {repository}@{ref}:{path}") from ex
+    except URLError as ex:
+        raise RuntimeError(f"GitHub fetch failed for {repository}@{ref}:{path}: {ex.reason}") from ex
+    if len(raw) > (1 << 20):
+        raise ValueError(f"GitHub file too large for loop intelligence: {repository}@{ref}:{path}")
+    return raw
+
+
+def collect_loop_snapshot(spec: Dict[str, Any], fetch_bytes=None):
+    """Fetch and cryptographically cross-check one loop's current durable receipt."""
+    fetch = fetch_bytes or _default_fetch_bytes
+    repository = str(spec["repository"])
+    root = str(spec["root"]).rstrip("/")
+    final_path = f"{root}/finalization_state.json"
+    heartbeat_path = f"{root}/heartbeat.json"
+
+    final_raw = fetch(repository, "main", final_path)
+    heartbeat_raw = fetch(repository, "main", heartbeat_path)
+    finalization = _parse_json_bytes(final_raw, f"{spec['id']} finalization")
+    heartbeat = _parse_json_bytes(heartbeat_raw, f"{spec['id']} heartbeat")
+
+    commit_sha = _text(heartbeat.get("finalization_commit_sha"), 64)
+    expected_blob = _text(heartbeat.get("finalization_state_blob_sha"), 64)
+    current_blob = git_blob_sha(final_raw)
+    committed_raw = fetch(repository, commit_sha, final_path) if commit_sha else b""
+    committed_blob = git_blob_sha(committed_raw) if committed_raw else ""
+
+    final_run = _text(finalization.get("RUN_ID"), 200)
+    heartbeat_run = _text(heartbeat.get("RUN_ID"), 200)
+    verification = {
+        "run_id_matches": bool(final_run) and final_run == heartbeat_run,
+        "run_status_matches": finalization.get("RUN_STATUS") == "RUN_PERSISTED" and heartbeat.get("RUN_STATUS") == "RUN_PERSISTED",
+        "scheduler_matches": _text(heartbeat.get("scheduler_id"), 160) == _text(spec.get("scheduler_id"), 160),
+        "execution_authorized_false": finalization.get("execution_authorized") is False and heartbeat.get("execution_authorized") is False,
+        "current_blob_matches": bool(expected_blob) and current_blob == expected_blob,
+        "commit_blob_matches": bool(expected_blob) and committed_blob == expected_blob,
+        "current_equals_committed": bool(current_blob) and current_blob == committed_blob,
+    }
+    verified = all(verification.values())
+
+    latest = None
+    state = None
+    for filename, target in (("latest.json", "latest"), ("state.json", "state")):
+        try:
+            obj = _parse_json_bytes(fetch(repository, "main", f"{root}/{filename}"), f"{spec['id']} {filename}")
+        except FileNotFoundError:
+            obj = None
+        except Exception:
+            obj = None
+        if target == "latest":
+            latest = obj
+        else:
+            state = obj
+
+    failed = [key for key, ok in verification.items() if not ok]
+    status = "RUN_PERSISTED" if verified else "RECEIPT_MISMATCH"
+    detail = (
+        "Automatic GitHub receipt verification passed: finalization, heartbeat, current blob, and exact commit binding agree."
+        if verified else
+        "Automatic GitHub receipt verification failed: " + ", ".join(failed)
+    )
+    row = {
+        "id": spec["id"],
+        "title": spec.get("title") or spec["id"],
+        "scheduler_id": spec.get("scheduler_id", ""),
+        "schedule": spec.get("schedule", ""),
+        "status": status,
+        "run_id": final_run or heartbeat_run,
+        "recorded_at": _run_recorded_at(final_run or heartbeat_run),
+        "repository": repository,
+        "finalization_commit_sha": commit_sha,
+        "finalization_state_blob_sha": current_blob,
+        "detail": detail,
+        "verification": verification,
+        "signals": _extract_signals(finalization, latest, state),
+    }
+    event = {
+        "id": f"loop:{spec['id']}:{row['run_id'] or 'unknown'}",
+        "kind": "audit",
+        "severity": "success" if verified else "error",
+        "title": f"{row['title']} {'verified' if verified else 'receipt mismatch'}",
+        "detail": detail,
+        "recorded_at": row["recorded_at"] or _utc_now(),
+        "repository": repository,
+        "ref": commit_sha,
+    }
+    return row, event
+
+
 def _normalize_loop(row: Any) -> Dict[str, Any]:
     if not isinstance(row, dict):
         raise ValueError("each loop must be an object")
     loop_id = _text(row.get("id"), 120)
     if not loop_id:
         raise ValueError("loop id is required")
+    verification = row.get("verification") if isinstance(row.get("verification"), dict) else {}
+    signals = row.get("signals") if isinstance(row.get("signals"), dict) else {}
     return {
         "id": loop_id,
         "title": _text(row.get("title") or loop_id, 160),
@@ -222,6 +473,8 @@ def _normalize_loop(row: Any) -> Dict[str, Any]:
         "finalization_commit_sha": _text(row.get("finalization_commit_sha"), 64),
         "finalization_state_blob_sha": _text(row.get("finalization_state_blob_sha"), 64),
         "detail": _text(row.get("detail"), 1000),
+        "verification": _compact_value(verification),
+        "signals": _compact_value(signals),
     }
 
 
@@ -289,6 +542,13 @@ def normalize_repository_audit(value: Any) -> Dict[str, Any]:
 
     recorded_at = _text(value.get("recorded_at"), 64) or _utc_now()
 
+    raw_loop_sync = value.get("loop_sync") or {}
+    if not isinstance(raw_loop_sync, dict):
+        raise ValueError("loop_sync must be an object")
+    raw_sync_errors = raw_loop_sync.get("errors") or []
+    if not isinstance(raw_sync_errors, list):
+        raise ValueError("loop_sync.errors must be an array")
+
     out: Dict[str, Any] = {
         "schema_version": 2,
         "repository": _text(value.get("repository", "reppiks490/Icarus"), 160) or "reppiks490/Icarus",
@@ -315,6 +575,15 @@ def normalize_repository_audit(value: Any) -> Dict[str, Any]:
             "url": _text(issue_in.get("url"), 500),
         },
         "note": _text(value.get("note"), 1000),
+        "loop_sync": {
+            "enabled": bool(raw_loop_sync.get("enabled", True)),
+            "status": _text(raw_loop_sync.get("status", "unknown"), 32).lower() or "unknown",
+            "interval_seconds": max(0, _nonnegative_int(raw_loop_sync.get("interval_seconds", 0), "loop_sync.interval_seconds")),
+            "source": _text(raw_loop_sync.get("source", "github-verified-loop-sync"), 120) or "github-verified-loop-sync",
+            "last_attempt_at": _text(raw_loop_sync.get("last_attempt_at"), 64),
+            "last_success_at": _text(raw_loop_sync.get("last_success_at"), 64),
+            "errors": [_text(x, 500) for x in raw_sync_errors[:32]],
+        },
         "execution_authorized": False,
     }
     return out
@@ -387,3 +656,117 @@ def upsert_loop_status(base_dir: str | os.PathLike[str], loop: Any) -> Dict[str,
         current["loops"] = [normalized, *prior][:32]
         current["recorded_at"] = normalized["recorded_at"]
         return save_repository_audit(base_dir, current)
+
+
+
+class LoopIntelligenceSync:
+    """Background read-only GitHub synchronizer for the five ICARUS automation lanes."""
+
+    def __init__(self, base_dir, specs=None, fetch_bytes=None, interval_seconds=None, enabled=None):
+        self.base_dir = Path(base_dir)
+        self.specs = list(specs or LOOP_FEED_SPECS)
+        self.fetch_bytes = fetch_bytes or _default_fetch_bytes
+        raw_interval = interval_seconds if interval_seconds is not None else os.environ.get("ICARUS_LOOP_SYNC_INTERVAL_SECONDS", "300")
+        try:
+            self.interval_seconds = max(60, int(raw_interval))
+        except (TypeError, ValueError):
+            self.interval_seconds = 300
+        if enabled is None:
+            flag = str(os.environ.get("ICARUS_LOOP_SYNC", "1")).strip().lower()
+            enabled = flag not in {"0", "false", "off", "no"}
+        self.enabled = bool(enabled)
+        self._stop = threading.Event()
+        self._thread = None
+
+    def start(self) -> None:
+        if not self.enabled or (self._thread and self._thread.is_alive()):
+            return
+        self._stop.clear()
+        self._thread = threading.Thread(target=self._run, name="icarus-loop-intelligence-sync", daemon=True)
+        self._thread.start()
+
+    def close(self) -> None:
+        self._stop.set()
+        thread = self._thread
+        if thread and thread.is_alive() and thread is not threading.current_thread():
+            thread.join(timeout=2.0)
+
+    def _run(self) -> None:
+        while not self._stop.is_set():
+            try:
+                self.sync_once()
+            except Exception:
+                # The trading engine must never fail because observability synchronization failed.
+                pass
+            if self._stop.wait(self.interval_seconds):
+                break
+
+    def sync_once(self) -> Dict[str, Any]:
+        attempt_at = _utc_now()
+        initial = load_repository_audit(self.base_dir)
+        initial_by_id = {row.get("id"): row for row in initial.get("loops", []) if isinstance(row, dict)}
+        rows = []
+        new_events = []
+        errors = []
+
+        for spec in self.specs:
+            try:
+                row, event = collect_loop_snapshot(spec, fetch_bytes=self.fetch_bytes)
+            except Exception as ex:
+                prev = deepcopy(initial_by_id.get(spec.get("id")) or {})
+                row = {
+                    "id": spec.get("id", ""),
+                    "title": spec.get("title") or spec.get("id", ""),
+                    "scheduler_id": spec.get("scheduler_id", ""),
+                    "schedule": spec.get("schedule", ""),
+                    "status": "SYNC_ERROR",
+                    "run_id": prev.get("run_id", ""),
+                    "recorded_at": prev.get("recorded_at", ""),
+                    "repository": spec.get("repository", ""),
+                    "finalization_commit_sha": prev.get("finalization_commit_sha", ""),
+                    "finalization_state_blob_sha": prev.get("finalization_state_blob_sha", ""),
+                    "detail": f"Automatic loop sync failed: {type(ex).__name__}: {ex}",
+                    "verification": {"sync_error": True},
+                    "signals": prev.get("signals", {}),
+                }
+                event = {
+                    "id": f"loop-sync-error:{spec.get('id','unknown')}",
+                    "kind": "finding",
+                    "severity": "error",
+                    "title": f"{row['title']} automatic sync failed",
+                    "detail": row["detail"],
+                    "recorded_at": attempt_at,
+                    "repository": spec.get("repository", ""),
+                    "ref": "",
+                }
+                errors.append(f"{spec.get('id','unknown')}: {type(ex).__name__}: {ex}")
+            rows.append(row)
+            new_events.append(event)
+
+        statuses = {row.get("status") for row in rows}
+        sync_status = "green" if statuses == {"RUN_PERSISTED"} else ("red" if "RECEIPT_MISMATCH" in statuses else "warn")
+
+        with _AUDIT_LOCK:
+            current = load_repository_audit(self.base_dir)
+            current.pop("storage", None)
+            managed_ids = {str(spec.get("id")) for spec in self.specs}
+            unmanaged = [row for row in current.get("loops", []) if row.get("id") not in managed_ids]
+            current["loops"] = rows + unmanaged
+
+            events = list(current.get("events", []))
+            for event in new_events:
+                events = [event] + [old for old in events if old.get("id") != event.get("id")]
+            current["events"] = events[:200]
+
+            prior_sync = current.get("loop_sync") if isinstance(current.get("loop_sync"), dict) else {}
+            current["loop_sync"] = {
+                "enabled": self.enabled,
+                "status": sync_status,
+                "interval_seconds": self.interval_seconds,
+                "source": "github-verified-loop-sync",
+                "last_attempt_at": attempt_at,
+                "last_success_at": attempt_at if sync_status == "green" else prior_sync.get("last_success_at", ""),
+                "errors": errors,
+            }
+            current["recorded_at"] = attempt_at
+            return save_repository_audit(self.base_dir, current)
