@@ -1,10 +1,10 @@
 {
   "schema_version": "icarus-apex-integration-receipt-v1",
   "subsystem": "APEX Ω",
-  "status": "integration_candidate_pending_exact_head_ci",
+  "status": "integration_candidate_exact_head_ci_requested",
   "source_repository": "reppiks490/Icarus",
   "source_branch": "chatgpt/apex-omega-current-main-20261001",
-  "source_commit": "cddd9cec812094a19d15f316ce9d26d4a81a3f96",
+  "source_commit": "61d491df2d9118209e4dffc18a951f6865d3a80f",
   "documentation": "docs/icarus/APEX_OMEGA.md",
   "architecture_spec": "docs/superpowers/specs/2026-10-01-apex-omega-design.md",
   "installed_projects": [
@@ -28,13 +28,14 @@
       "tests": 120
     },
     "full_repository_ci": {
-      "status": "pending_exact_head"
+      "status": "requested",
+      "candidate_commit": "61d491df2d9118209e4dffc18a951f6865d3a80f"
     },
     "linux_ci": {
-      "status": "pending_exact_head"
+      "status": "requested"
     },
     "windows_ci": {
-      "status": "pending_exact_head"
+      "status": "requested"
     }
   },
   "truth_contract": {
