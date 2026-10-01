@@ -52,16 +52,16 @@
   function renderPossibility(data) {
     const el = document.querySelector('#possibilityPanel');
     if (!el) return;
-    const oracle = data.oracle || {}, poss = data.possibility || {}, cf = data.counterfactual || {};
+    const latent = data.latent_pressure_engine || {}, wave = data.information_wave || {}, poss = data.possibility || {}, cf = data.counterfactual || {};
     const phase = data.phase_transition || {}, fc = data.forced_consensus || {}, leaders = data.causal_leadership || {};
     const edge = data.edge_state || {state:'NO_EDGE'}, health = data.data_health || {};
-    const lp = oracle.latent_pressure;
+    const lp = latent.latent_pressure;
     const lpClass = lp == null ? 'neutral' : lp > 0 ? 'pos' : lp < 0 ? 'neg' : 'neutral';
     const blockers = (edge.blockers||[]).map(x=>'<li>'+h(x)+'</li>').join('');
     const clusters = (poss.clusters||[]).map(x=>'<tr><td><b>'+h(x.name)+'</b></td><td class="tnum">'+n(x.share*100,1)+'%</td><td class="tnum">'+n(x.weight,2)+'</td></tr>').join('');
     const leaderRows = (leaders.leaders||[]).map((x,i)=>'<tr><td>'+(i+1)+'</td><td><b>'+h(x.asset)+'</b></td><td class="tnum">'+n(x.lag1_correlation,3)+'</td><td class="tnum">'+n(x.directional_pressure,3)+'</td><td class="tnum">'+pct(x.lead_strength)+'</td><td class="tnum">'+h(x.samples)+'</td></tr>').join('');
     const shadows = (data.market_shadows||[]).map(x=>'<tr><td><b>'+h(x.removed_force.replaceAll('_',' '))+'</b></td><td class="tnum">'+n(x.force_contribution,4)+'</td><td class="tnum">'+n(x.counterfactual_price,4)+'</td><td class="tnum">'+n(x.distance_from_actual,4)+'</td></tr>').join('');
-    const hidden = oracle.hidden_state || {};
+    const hidden = latent.hidden_state || {};
     const hypotheses = (hidden.hypotheses||[]).map(x=>'<div class="psi-box"><h3>'+h(x.state)+'</h3><div class="psi-hero '+(x.state.includes('BUYER')||x.state.includes('OFFER')?'pos':x.state.includes('SELLER')||x.state.includes('BID')?'neg':'neutral')+'" style="font-size:20px">'+pct(x.strength)+'</div><div class="small muted">'+h((x.evidence||[]).join(' · '))+'</div></div>').join('');
     const mechanisms = (fc.mechanisms||[]).map(x=>'<span class="chip '+(x.sign>0?'b':'r')+'">'+h(x.name)+' '+(x.sign>0?'↑':'↓')+'</span>').join(' ');
     const micro = health.microstructure || {};
@@ -72,24 +72,25 @@
       '<div class="toolbar"><label class="small muted">Asset <select id="possAsset"></select></label><button id="possRefresh">Refresh</button>'+
         '<span>'+chip(edge.state)+'</span><span class="small muted">confidence '+pct(edge.confidence)+' · production '+(auth.production_decision_authorized?'ENABLED':'DISABLED')+' · execution '+(auth.execution_authorized?'ENABLED':'DISABLED')+'</span></div>'+
       '<div class="tiles" style="margin-top:0">'+
-        '<div class="tile"><div class="k">Latent pressure</div><div class="psi-hero '+lpClass+'">'+(lp==null?'—':(lp>=0?'+':'')+score(oracle.latent_pressure_score))+'</div>'+meter(lp,true)+'</div>'+
-        '<div class="tile"><div class="k">Evidence coverage</div><div class="v">'+pct(oracle.evidence_coverage)+'</div>'+meter(oracle.evidence_coverage)+'</div>'+
+        '<div class="tile"><div class="k">Latent pressure</div><div class="psi-hero '+lpClass+'">'+(lp==null?'—':(lp>=0?'+':'')+score(latent.latent_pressure_score))+'</div>'+meter(lp,true)+'</div>'+
+        '<div class="tile"><div class="k">Evidence coverage</div><div class="v">'+pct(latent.evidence_coverage)+'</div>'+meter(latent.evidence_coverage)+'</div>'+
         '<div class="tile"><div class="k">Future entropy</div><div class="v">'+(poss.future_entropy==null?'—':n(poss.future_entropy,1))+'</div><div class="small muted">0 constrained · 100 diffuse</div></div>'+
         '<div class="tile"><div class="k">Future-space collapse</div><div class="v">'+(poss.future_space_collapse==null?'—':n(poss.future_space_collapse,1))+'</div>'+meter(poss.future_space_collapse==null?null:poss.future_space_collapse/100)+'</div>'+
         '<div class="tile"><div class="k">Synthetic price</div><div class="v tnum">'+n(cf.synthetic_price,4)+'</div><div class="small muted">actual '+n(data.price,4)+' · gap '+n(cf.dislocation,4)+'</div></div>'+
         '<div class="tile"><div class="k">Unexplained gap</div><div class="v tnum">'+n(cf.unexplained_dislocation,4)+'</div><div class="small muted">after known force attribution</div></div>'+
         '<div class="tile"><div class="k">Phase boundary</div><div class="v tnum">'+n(phase.phase_boundary,4)+'</div><div class="small muted">'+h(phase.direction||'—')+' · horizon '+n(phase.event_horizon,4)+'</div></div>'+
         '<div class="tile"><div class="k">Forced consensus</div><div class="v">'+(fc.active?'ACTIVE':'INACTIVE')+'</div><div class="small muted">'+h(fc.direction||'—')+' · alignment '+pct(fc.alignment)+'</div></div>'+
+        '<div class="tile"><div class="k">Information wave</div><div class="v">'+h(wave.status||'WARMING')+'</div><div class="small muted">novelty '+(wave.score==null?'—':n(wave.score,1))+' · '+h(wave.direction||'—')+' · source unidentified</div></div>'+
       '</div>'+
       '<div class="psi-grid" style="margin-top:12px">'+
         '<div class="psi-box"><h3>Edge gate</h3><div class="psi-hero '+(String(edge.state).includes('LONG')?'pos':String(edge.state).includes('SHORT')?'neg':'neutral')+'" style="font-size:24px">'+h(edge.state||'NO_EDGE')+'</div>'+
           (blockers?'<ul class="small muted" style="padding-left:18px;margin:8px 0 0">'+blockers+'</ul>':'<div class="small pos">All research gates currently satisfied.</div>')+'</div>'+
-        '<div class="psi-box"><h3>Pressure / price elasticity</h3><div class="psi-hero '+(String((oracle.pressure_price_elasticity||{}).state).includes('BUYER')||String((oracle.pressure_price_elasticity||{}).state).includes('OFFER')?'pos':String((oracle.pressure_price_elasticity||{}).state).includes('SELLER')||String((oracle.pressure_price_elasticity||{}).state).includes('BID')?'neg':'neutral')+'" style="font-size:21px">'+h((oracle.pressure_price_elasticity||{}).state||'UNAVAILABLE')+'</div>'+
-          '<div class="small muted">elasticity '+n((oracle.pressure_price_elasticity||{}).value,8)+' · flow '+n((oracle.pressure_price_elasticity||{}).flow_imbalance,3)+' · displacement '+n((oracle.pressure_price_elasticity||{}).price_displacement,6)+'</div></div>'+
+        '<div class="psi-box"><h3>Pressure / price elasticity</h3><div class="psi-hero '+(String((latent.pressure_price_elasticity||{}).state).includes('BUYER')||String((latent.pressure_price_elasticity||{}).state).includes('OFFER')?'pos':String((latent.pressure_price_elasticity||{}).state).includes('SELLER')||String((latent.pressure_price_elasticity||{}).state).includes('BID')?'neg':'neutral')+'" style="font-size:21px">'+h((latent.pressure_price_elasticity||{}).state||'UNAVAILABLE')+'</div>'+
+          '<div class="small muted">elasticity '+n((latent.pressure_price_elasticity||{}).value,8)+' · flow '+n((latent.pressure_price_elasticity||{}).flow_imbalance,3)+' · displacement '+n((latent.pressure_price_elasticity||{}).price_displacement,6)+'</div></div>'+
         '<div class="psi-box"><h3>Inverse hidden-state inference</h3><div class="psi-hero neutral" style="font-size:21px">'+h(hidden.primary||'UNRESOLVED')+'</div><div class="small muted">Ranked explanation hypotheses; not participant-identity claims.</div></div>'+
         '<div class="psi-box"><h3>Evidence health</h3><div class="psi-kv"><div>History observations</div><div class="tnum">'+h(health.market_history_observations||0)+'</div><div>Tick tape</div><div>'+chip(micro.ticks?'OBSERVED':'UNAVAILABLE')+'</div><div>Order-book depth</div><div>'+chip(micro.depth?'OBSERVED':'UNAVAILABLE')+'</div><div>Provider</div><div>'+h(micro.provider||'—')+'</div></div></div>'+
       '</div>'+
-      '<section class="card c12" style="margin-top:12px"><h2>Latent force decomposition</h2>'+componentRows(oracle.components||{})+'</section>'+
+      '<section class="card c12" style="margin-top:12px"><h2>Latent force decomposition</h2>'+componentRows(latent.components||{})+'</section>'+
       '<div class="psi-grid" style="margin-top:12px">'+(hypotheses || '<div class="psi-box"><h3>Hidden state</h3><div class="small muted">No sufficiently strong hidden-state hypothesis yet.</div></div>')+'</div>'+
       '<section class="card c12" style="margin-top:12px"><h2>Future-space clusters <span class="sub">'+h(poss.viable_futures||0)+' viable / '+h(poss.scenarios_generated||0)+' generated · dominant '+h(poss.dominant_cluster||'—')+'</span></h2>'+
         '<div class="scroll"><table><thead><tr><th>Cluster</th><th>Share</th><th>Weight</th></tr></thead><tbody>'+(clusters||'<tr><td colspan="3" class="empty">scenario engine warming</td></tr>')+'</tbody></table></div>'+
