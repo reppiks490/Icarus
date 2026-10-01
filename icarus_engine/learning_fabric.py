@@ -243,6 +243,29 @@ class LearningFabric:
                     cursor_json TEXT NOT NULL,
                     updated_at TEXT NOT NULL
                 );
+                CREATE TABLE IF NOT EXISTS service_health (
+                    service TEXT PRIMARY KEY,
+                    attempts INTEGER NOT NULL,
+                    completed INTEGER NOT NULL,
+                    ok_cycles INTEGER NOT NULL,
+                    partial_cycles INTEGER NOT NULL,
+                    failures INTEGER NOT NULL,
+                    consecutive_failures INTEGER NOT NULL,
+                    consecutive_partial INTEGER NOT NULL,
+                    last_attempt_at TEXT,
+                    last_completed_at TEXT,
+                    last_ok_at TEXT,
+                    last_partial_at TEXT,
+                    last_failure_at TEXT,
+                    last_error TEXT,
+                    updated_at TEXT NOT NULL
+                );
+                INSERT OR IGNORE INTO service_health(
+                    service,attempts,completed,ok_cycles,partial_cycles,failures,
+                    consecutive_failures,consecutive_partial,last_attempt_at,
+                    last_completed_at,last_ok_at,last_partial_at,last_failure_at,
+                    last_error,updated_at
+                ) VALUES('learning',0,0,0,0,0,0,0,NULL,NULL,NULL,NULL,NULL,NULL,'1970-01-01T00:00:00Z');
                 """
             )
 
@@ -300,6 +323,142 @@ class LearningFabric:
         out["auto_train_slots"] = clean_slots
         out["history_roots"] = clean_roots
         return out
+
+    def _record_health_attempt(self) -> None:
+        now = _utc_now()
+        with self._lock, self._conn:
+            self._conn.execute(
+                "UPDATE service_health SET attempts=attempts+1,last_attempt_at=?,updated_at=? WHERE service='learning'",
+                (now, now),
+            )
+
+    def _record_health_result(self, status: str) -> None:
+        now = _utc_now()
+        normalized = str(status or "").strip().lower()
+        with self._lock, self._conn:
+            if normalized == "ok":
+                self._conn.execute(
+                    """UPDATE service_health SET
+                       completed=completed+1,ok_cycles=ok_cycles+1,
+                       consecutive_failures=0,consecutive_partial=0,
+                       last_completed_at=?,last_ok_at=?,last_error=NULL,updated_at=?
+                       WHERE service='learning'""",
+                    (now, now, now),
+                )
+            else:
+                self._conn.execute(
+                    """UPDATE service_health SET
+                       completed=completed+1,partial_cycles=partial_cycles+1,
+                       consecutive_failures=0,consecutive_partial=consecutive_partial+1,
+                       last_completed_at=?,last_partial_at=?,updated_at=?
+                       WHERE service='learning'""",
+                    (now, now, now),
+                )
+
+    def _record_health_failure(self, ex: BaseException) -> None:
+        now = _utc_now()
+        error = f"{type(ex).__name__}: {ex}"[:1000]
+        with self._lock, self._conn:
+            self._conn.execute(
+                """UPDATE service_health SET
+                   failures=failures+1,consecutive_failures=consecutive_failures+1,
+                   consecutive_partial=0,last_failure_at=?,last_error=?,updated_at=?
+                   WHERE service='learning'""",
+                (now, error, now),
+            )
+
+    def run_cycle(self) -> dict[str, Any]:
+        """Run one observable learning cycle with durable service-health accounting."""
+        self._record_health_attempt()
+        try:
+            result = self.tick()
+        except BaseException as ex:
+            self._record_health_failure(ex)
+            raise
+        self._record_health_result(str(result.get("status") or "partial"))
+        return result
+
+    def _backlog_state(self) -> dict[str, int]:
+        pending_predictions = int(self._conn.execute(
+            """SELECT COUNT(*) FROM predictions p
+               WHERE NOT EXISTS (SELECT 1 FROM outcomes o WHERE o.prediction_id=p.prediction_id)"""
+        ).fetchone()[0])
+        configured_slots = list(self._config.get("auto_train_slots") or [])
+        untrained_ohlc = 0
+        if configured_slots:
+            rows = self._conn.execute(
+                "SELECT dataset_id FROM datasets WHERE artifact_class='ohlc'"
+            ).fetchall()
+            for row in rows:
+                did = row["dataset_id"]
+                present = {
+                    x["slot"] for x in self._conn.execute(
+                        "SELECT slot FROM training_runs WHERE dataset_id=?", (did,)
+                    ).fetchall()
+                }
+                if any(slot not in present for slot in configured_slots):
+                    untrained_ohlc += 1
+        unimported_trade_lists = int(self._conn.execute(
+            """SELECT COUNT(*) FROM datasets d
+               WHERE d.artifact_class='trade_list'
+               AND NOT EXISTS (
+                   SELECT 1 FROM training_runs t
+                   WHERE t.dataset_id=d.dataset_id AND t.slot='trade_experience'
+               )"""
+        ).fetchone()[0])
+        return {
+            "pending_predictions": pending_predictions,
+            "untrained_ohlc_datasets": untrained_ohlc,
+            "unimported_trade_lists": unimported_trade_lists,
+        }
+
+    def health(self) -> dict[str, Any]:
+        row = self._conn.execute(
+            "SELECT * FROM service_health WHERE service='learning'"
+        ).fetchone()
+        if row is None:
+            raise RuntimeError("learning service health row is missing")
+        now = _parse_time(_utc_now(), "now")
+        last_completed = row["last_completed_at"]
+        stale_after = max(180, int(self._config["cycle_seconds"]) * 3)
+        stale = False
+        age_seconds = None
+        if last_completed:
+            age_seconds = max(0.0, (now - _parse_time(last_completed, "last_completed_at")).total_seconds())
+            stale = bool(self._config["enabled"] and age_seconds > stale_after)
+        attempts = int(row["attempts"])
+        if stale:
+            status = "STALE"
+        elif int(row["consecutive_failures"]) > 0 or int(row["consecutive_partial"]) > 0:
+            status = "DEGRADED"
+        elif attempts == 0:
+            status = "WARMING"
+        else:
+            status = "HEALTHY"
+        return {
+            "schema_version": "icarus-learning-health-v1",
+            "status": status,
+            "enabled": bool(self._config["enabled"]),
+            "background_running": bool(self._thread and self._thread.is_alive()),
+            "attempts": attempts,
+            "completed": int(row["completed"]),
+            "ok_cycles": int(row["ok_cycles"]),
+            "partial_cycles": int(row["partial_cycles"]),
+            "failures": int(row["failures"]),
+            "consecutive_failures": int(row["consecutive_failures"]),
+            "consecutive_partial": int(row["consecutive_partial"]),
+            "last_attempt_at": row["last_attempt_at"],
+            "last_completed_at": last_completed,
+            "last_ok_at": row["last_ok_at"],
+            "last_partial_at": row["last_partial_at"],
+            "last_failure_at": row["last_failure_at"],
+            "last_error": row["last_error"],
+            "age_since_completion_seconds": age_seconds,
+            "stale_after_seconds": stale_after,
+            "stale": stale,
+            "backlog": self._backlog_state(),
+            **_authority(),
+        }
 
     def configure(self, partial: Mapping[str, Any]) -> dict[str, Any]:
         if not isinstance(partial, Mapping):
