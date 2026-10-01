@@ -214,3 +214,84 @@ def test_parallax_dreamstate_are_visible_in_trader_interface():
     assert 'p.path == "/admin/parallax/outcome"' in server
     assert 'p.path == "/admin/dreamstate/refresh"' in server
     assert 'p.path == "/admin/dreamstate/evaluate"' in server
+
+
+def test_parallax_rejects_action_or_regime_alias_under_same_default_identity(tmp_path):
+    store = ParallaxStore(tmp_path)
+    base = {
+        "asset": "NQ",
+        "action": "long",
+        "observed_at": "2026-10-01T05:10:00Z",
+        "regime": "trend",
+        "source_commit": "a" * 40,
+        "context": {"price": 25000.0},
+        "subsystem_votes": {"athena": 0.7},
+    }
+    store.record_decision(base)
+
+    with pytest.raises(ValueError, match="different immutable identity"):
+        store.record_decision({**base, "action": "short"})
+    with pytest.raises(ValueError, match="different immutable identity"):
+        store.record_decision({**base, "regime": "range"})
+
+
+def test_parallax_rejects_silent_branch_plan_rewrite(tmp_path):
+    store = ParallaxStore(tmp_path)
+    base = {
+        "asset": "NQ",
+        "action": "long",
+        "observed_at": "2026-10-01T05:11:00Z",
+        "regime": "trend",
+        "source_commit": "a" * 40,
+        "context": {"price": 25000.0},
+        "subsystem_votes": {},
+        "branches": [
+            {"kind": "actual", "label": "actual", "params": {"action": "long"}},
+            {"kind": "delay", "label": "delay_1", "params": {"delay_bars": 1}},
+        ],
+    }
+    store.record_decision(base)
+    rewritten = {
+        **base,
+        "branches": [
+            {"kind": "actual", "label": "actual", "params": {"action": "long"}},
+            {"kind": "delay", "label": "delay_1", "params": {"delay_bars": 5}},
+        ],
+    }
+    with pytest.raises(ValueError, match="different immutable branch plan"):
+        store.record_decision(rewritten)
+
+
+def test_parallax_rejects_outcome_timestamp_before_decision(tmp_path):
+    store = ParallaxStore(tmp_path)
+    decision = store.record_decision({
+        "asset": "NQ",
+        "action": "long",
+        "observed_at": "2026-10-01T05:12:00Z",
+        "regime": "trend",
+        "source_commit": "a" * 40,
+        "context": {"price": 25000.0},
+        "subsystem_votes": {},
+    })
+    with pytest.raises(ValueError, match="cannot precede the decision"):
+        store.record_outcome({
+            "decision_id": decision["decision_id"],
+            "label": "actual",
+            "utility": 0.0,
+            "observed_at": "2026-10-01T05:11:59Z",
+            "evidence": ["causally impossible fixture"],
+        })
+
+
+def test_parallax_requires_timezone_aware_timestamps(tmp_path):
+    store = ParallaxStore(tmp_path)
+    with pytest.raises(ValueError, match="timezone"):
+        store.record_decision({
+            "asset": "NQ",
+            "action": "long",
+            "observed_at": "2026-10-01T05:12:00",
+            "regime": "trend",
+            "source_commit": "a" * 40,
+            "context": {},
+            "subsystem_votes": {},
+        })
