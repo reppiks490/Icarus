@@ -1,0 +1,38 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "argus-bootstrap-uncertainty-verified-20261001T215100Z",
+  "category": "EVOLUTION",
+  "severity": "success",
+  "status": "verified",
+  "subsystems": [
+    "argus",
+    "execution_research",
+    "calibration",
+    "uncertainty",
+    "provenance",
+    "prospective_validation"
+  ],
+  "recorded_at": "2026-10-01T21:51:00Z",
+  "title": "ARGUS prospective bootstrap uncertainty for impact calibration verified",
+  "summary": "ARGUS now supports a separately pre-registered deterministic bootstrap uncertainty addendum for prospective impact-calibration studies without changing the stable study-v1 manifest. The plan pins confidence alpha, replicate count, deterministic seed, metric set and minimum eligible observations before the cohort begins. Bootstrap uncertainty is computed separately by execution-evidence class, excludes zero-fill rows from slippage metrics without inventing values, and is explicitly descriptive percentile uncertainty rather than hypothesis testing, simultaneous coverage, multiplicity-adjusted inference or causal estimation.",
+  "source_repository": "reppiks490/divine-providence",
+  "source_ref": "main",
+  "source_commit": "2e4c0c4cb5c0287cc3d8a6abfc9defa7c0361e73",
+  "evidence": [
+    "divine-providence PR #28 merged at 2e4c0c4cb5c0287cc3d8a6abfc9defa7c0361e73",
+    "exact-head subsystem-evolution workflow run 36930254620 completed success",
+    "Linux and Windows ARGUS causal subsystem jobs passed",
+    "intelligence-fabric job passed",
+    "full twelve-system validation passed",
+    "bootstrap plan must be created at or before cohort_start_ns",
+    "confidence alpha, replicate count, deterministic seed, metric set and minimum eligible observations are content-addressed",
+    "broker-confirmed and ICARUS paper-emulator evidence strata remain separate",
+    "slippage metrics require realized slippage and never invent values for zero-fill observations",
+    "interval method is deterministic_nonparametric_percentile",
+    "simultaneous coverage, multiplicity adjustment, hypothesis testing and causal-effect claims are explicitly not implied",
+    "execution_authorized=false",
+    "production_decision_authorized=false"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}
