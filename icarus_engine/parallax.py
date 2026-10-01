@@ -840,6 +840,7 @@ class ParallaxStore:
 
         for family, rows in families.items():
             axis_name = family[-2]
+            remainder_signature = family[-1]
             max_gap = float(_PARAMETER_MAX_GAP.get(axis_name, float("inf")))
             rows.sort(key=lambda row: float(row["_parameter_axis_value"]))
             for idx, item in enumerate(rows):
