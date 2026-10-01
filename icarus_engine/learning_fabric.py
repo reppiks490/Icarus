@@ -641,14 +641,14 @@ class LearningFabric:
         row = self._conn.execute(
             """SELECT * FROM calibration_models
                WHERE producer=? AND asset=? AND regime=? AND horizon_seconds=? AND target=?
-               AND status='SHADOW_VALIDATED' AND training_cutoff<=?
-               ORDER BY training_cutoff DESC, created_at DESC LIMIT 1""",
+               AND training_cutoff<?
+               ORDER BY training_cutoff DESC, created_at DESC, calibrator_id DESC LIMIT 1""",
             (
                 pred.get("producer"), pred.get("asset"), pred.get("regime"),
                 int(pred.get("horizon_seconds") or 0), pred.get("target"), emitted_at,
             ),
         ).fetchone()
-        if row is None:
+        if row is None or row["status"] != "SHADOW_VALIDATED":
             return
         model = json.loads(row["model_json"])
         raw_probability = float(pred.get("probability"))
