@@ -463,6 +463,7 @@ def test_veritas_quarantines_lucky_positive_monetization_fitness(tmp_path):
             "observed_at": source["observed_at"],
             "utility": 0.8,
             "confidence": 0.9,
+            "_source_observation_id": source["observation_id"],
             "evidence": ["fixture:profitable-before-veritas"],
         })
 
@@ -478,7 +479,8 @@ def test_veritas_quarantines_lucky_positive_monetization_fitness(tmp_path):
         "observed_at": source["observed_at"],
         "utility": 0.8,
         "confidence": 0.9,
-        "evidence": ["fixture:profitable-after-veritas"],
+        "_source_observation_id": source["observation_id"],
+            "evidence": ["fixture:profitable-after-veritas"],
     })
     assert outcome["utility"] == pytest.approx(0.8)
     assert outcome["fitness_utility"] == pytest.approx(0.0)
@@ -509,11 +511,48 @@ def test_veritas_allows_positive_monetization_fitness_only_for_right_reasons(tmp
         "observed_at": source["observed_at"],
         "utility": 0.8,
         "confidence": 0.9,
-        "evidence": ["fixture:profitable-right-reasons"],
+        "_source_observation_id": source["observation_id"],
+            "evidence": ["fixture:profitable-right-reasons"],
     })
     assert outcome["fitness_utility"] == pytest.approx(0.8)
     assert outcome["veritas_gate"] == "right_for_right_reasons"
     assert outcome["fitness_credit"] == pytest.approx(0.8)
+
+
+def test_veritas_positive_fitness_requires_same_reconciliation_source(tmp_path):
+    kernel = PantheonKernel(tmp_path)
+    origin = kernel.record_observation(_veritas_payload("pan-veritas-fitness-source"))
+    claim = _monetization_claim(origin)
+    source = kernel.record_observation(_veritas_source_payload(
+        "pan-veritas-fitness-source-good",
+        "2026-10-01T06:00:20Z",
+        basis_expands=True,
+        queue_replenishment=0.8,
+        cross_asset_lead=0.2,
+    ))
+    other = kernel.record_observation(_veritas_source_payload(
+        "pan-veritas-fitness-source-other",
+        "2026-10-01T06:00:21Z",
+        basis_expands=True,
+        queue_replenishment=0.8,
+        cross_asset_lead=0.2,
+    ))
+    kernel.record_veritas_reconciliation({
+        "observation_id": origin["observation_id"],
+        "source_observation_id": source["observation_id"],
+        "observed_at": source["observed_at"],
+        "confidence": 0.9,
+        "evidence": ["fixture:right-reasons-source"],
+    })
+    with pytest.raises(ValueError, match="source must match reconciliation source"):
+        kernel.record_claim_outcome({
+            "claim_id": claim["claim_id"],
+            "observed_at": other["observed_at"],
+            "utility": 0.8,
+            "confidence": 0.9,
+            "_source_observation_id": other["observation_id"],
+            "evidence": ["fixture:wrong-positive-source"],
+        })
 
 
 def test_veritas_never_hides_negative_monetization_fitness(tmp_path):

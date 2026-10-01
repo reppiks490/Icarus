@@ -481,3 +481,12 @@ Negative outcomes are never hidden by this gate: losses continue to count
 against research fitness even if VERITAS has not reconciled yet. Existing
 pre-VERITAS databases are migrated by backfilling `fitness_utility=utility`
 for historical rows, preserving prior recorded evidence.
+
+
+### VERITAS positive-fitness source binding
+
+Positive VERITAS-gated MINT fitness is additionally bound to the same immutable
+source observation used by the VERITAS reconciliation. A later unrelated
+observation cannot reuse an earlier right-for-right-reasons result to launder a
+new positive outcome into AETHER fitness. Negative outcomes remain countable
+without this positive-credit proof chain.
