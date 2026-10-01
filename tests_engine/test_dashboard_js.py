@@ -25,6 +25,7 @@ NODE = shutil.which("node")
         "icarus_engine/parallax-ui.js",
         "icarus_engine/possibility-ui.js",
         "icarus_engine/integrity-ui.js",
+        "icarus_engine/autopilot-ui.js",
         "icarus_engine/experience-ui.js",
     ],
 )
