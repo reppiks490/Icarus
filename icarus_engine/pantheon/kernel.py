@@ -749,6 +749,11 @@ class PantheonKernel:
                     raise ValueError("positive monetization outcome requires VERITAS reconciliation")
                 if utility > 0 and veritas_row is not None:
                     veritas_payload = json.loads(veritas_row["payload_json"])
+                    reconciled_source_id = veritas_payload.get("source_observation_id")
+                    if source_observation_id is None:
+                        raise ValueError("positive VERITAS-gated outcome requires source observation")
+                    if source_observation_id != reconciled_source_id:
+                        raise ValueError("positive VERITAS-gated outcome source must match reconciliation source")
                     veritas_score = veritas_payload.get("score", {})
                     if bool(veritas_score.get("reinforcement_eligible")):
                         fitness_utility = utility
