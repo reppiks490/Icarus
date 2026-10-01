@@ -717,6 +717,14 @@ def test_aether_offspring_has_independent_claim_identity_and_can_be_scored(tmp_p
         )
     ecology = kernel.snapshot()["ecology"]
     child = next(x for x in ecology["species"] if x["parent_species_id"] is not None)
+    with pytest.raises(ValueError, match="cannot precede"):
+        kernel.record_claim_outcome({
+            "claim_id": child["origin_claim_id"],
+            "observed_at": "2026-10-01T06:02:02Z",
+            "utility": 0.40,
+            "confidence": 0.80,
+            "evidence": ["retroactive-child-outcome"],
+        })
     scored = kernel.record_claim_outcome({
         "claim_id": child["origin_claim_id"],
         "observed_at": "2026-10-01T06:03:00Z",
