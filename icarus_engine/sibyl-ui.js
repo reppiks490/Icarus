@@ -102,6 +102,47 @@
     }).join('');
   }
 
+  function worldRows(forks) {
+    return (((forks || {}).worlds) || []).map(function (w) {
+      var states = (w.states || []).map(function (x) {
+        return horizonLabel(x.horizon_seconds) + ':' + String(x.basin || '').toUpperCase();
+      }).join(' → ');
+      return '<tr>' +
+        '<td class="tnum">' + h(w.rank) + '</td>' +
+        '<td><b>' + h(w.signature || '—') + '</b></td>' +
+        '<td class="tnum">' + pct(w.relative_weight) + '</td>' +
+        '<td class="' + clsForBasin(w.terminal_basin) + '"><b>' + h(String(w.terminal_basin || '—').toUpperCase()) + '</b></td>' +
+        '<td class="small">' + h(states) + '</td>' +
+        '</tr>';
+    }).join('');
+  }
+
+  function causalRows(rows) {
+    return (rows || []).map(function (r) {
+      return '<tr>' +
+        '<td><b>' + h(r.from) + '</b> → <b>' + h(r.to) + '</b></td>' +
+        '<td class="tnum">' + h(Math.round(Number(r.lag_ms || 0))) + ' ms</td>' +
+        '<td>' + h(r.relation || 'reported') + '</td>' +
+        '<td class="tnum">' + pct(r.confidence) + '</td>' +
+        '<td class="small">' + h(r.publisher || '') + ' · ' + h(r.domain || '') + '</td>' +
+        '</tr>';
+    }).join('');
+  }
+
+  function forwardRows(rows) {
+    return (rows || []).map(function (r) {
+      return '<tr>' +
+        '<td class="tnum"><b>' + h(horizonLabel(r.horizon_seconds)) + '</b></td>' +
+        '<td class="tnum">' + pct(r.expected_return, 3) + '</td>' +
+        '<td class="tnum">' + pct(r.implied_vol, 2) + '</td>' +
+        '<td class="tnum">' + num(r.skew, 4) + '</td>' +
+        '<td class="tnum">' + pct(r.tail_up, 1) + '</td>' +
+        '<td class="tnum">' + pct(r.tail_down, 1) + '</td>' +
+        '<td class="small">' + h((r.sources || []).join(', ')) + '</td>' +
+        '</tr>';
+    }).join('');
+  }
+
   function sibylHtml() {
     return '<section class="card c12">' +
       '<div class="row" style="justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">' +
@@ -126,6 +167,7 @@
     var cal = d.calibration || {};
     var ctx = d.context || {};
     var levels = levelRows(d.attractors, 'Attractor') + levelRows(d.repulsion_or_invalidation, 'Invalidation');
+    var gravity = d.liquidity_gravity_field || {};
     var p = collapse.probabilities || {};
 
     el.innerHTML =
@@ -151,9 +193,28 @@
       (horizonRows(d.horizons) || '<tr><td colspan="11" class="empty">No horizon synthesis available.</td></tr>') +
       '</tbody></table></div>' +
 
-      '<h3 class="small" style="margin:16px 0 8px">Liquidity / scenario field</h3>' +
+      '<h3 class="small" style="margin:16px 0 8px">Future world forks</h3>' +
+      '<div class="scroll" style="max-height:320px"><table><thead><tr><th>Rank</th><th>Signature</th><th>Relative weight</th><th>Terminal</th><th>Path</th></tr></thead><tbody>' +
+      (worldRows(d.future_world_forks) || '<tr><td colspan="5" class="empty">No coherent future-world paths available.</td></tr>') +
+      '</tbody></table></div>' +
+
+      '<h3 class="small" style="margin:16px 0 8px">Liquidity gravity / scenario field</h3>' +
+      '<div class="px-grid" style="margin-bottom:8px">' +
+        '<div class="px-box"><b>Local equilibrium</b><div class="small muted" style="margin-top:6px">' + price(gravity.equilibrium_price) + '</div></div>' +
+        '<div class="px-box"><b>Gravity state</b><div class="small muted" style="margin-top:6px">' + h(gravity.available ? gravity.force_scale || 'available' : 'no target/invalidation evidence') + '</div></div>' +
+      '</div>' +
       '<div class="scroll" style="max-height:260px"><table><thead><tr><th>Type</th><th>Level</th><th>Mass</th><th>Distance</th><th>Sources</th></tr></thead><tbody>' +
       (levels || '<tr><td colspan="5" class="empty">No target or invalidation levels have been published into the SIBYL evidence contract.</td></tr>') +
+      '</tbody></table></div>' +
+
+      '<h3 class="small" style="margin:16px 0 8px">Causal delay radar</h3>' +
+      '<div class="scroll" style="max-height:260px"><table><thead><tr><th>Edge</th><th>Lag</th><th>Relation</th><th>Confidence</th><th>Publisher</th></tr></thead><tbody>' +
+      (causalRows(d.causal_delay_radar) || '<tr><td colspan="5" class="empty">No publisher-supplied causal/lead-lag edges are currently available.</td></tr>') +
+      '</tbody></table></div>' +
+
+      '<h3 class="small" style="margin:16px 0 8px">Derivatives forward surface</h3>' +
+      '<div class="scroll" style="max-height:280px"><table><thead><tr><th>Horizon</th><th>Expected return</th><th>Implied vol</th><th>Skew</th><th>Tail up</th><th>Tail down</th><th>Sources</th></tr></thead><tbody>' +
+      (forwardRows(d.derivatives_forward_surface) || '<tr><td colspan="7" class="empty">No forward-surface evidence has been published.</td></tr>') +
       '</tbody></table></div>' +
 
       '<h3 class="small" style="margin:16px 0 8px">Observed calibration</h3>' +
