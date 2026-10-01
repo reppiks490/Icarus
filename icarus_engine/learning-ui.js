@@ -88,7 +88,7 @@
       '<div class="row" style="justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">' +
         '<div><h2 style="margin-bottom:4px">LEARNING FABRIC Ω · Continuous Empirical Maturation</h2>' +
         '<div class="small muted">Historical replay → matured outcomes → calibration → credibility feedback. Research/shadow only.</div></div>' +
-        '<div class="row" style="gap:8px"><button id="learningRefresh" type="button">Refresh</button><button id="learningScan" type="button">Scan History</button><button id="learningToggle" type="button">Toggle Learning</button></div>' +
+        '<div class="row" style="gap:8px"><button id="learningRefresh" type="button">Refresh</button><button id="learningTick" type="button">Run Cycle</button><button id="learningScan" type="button">Scan History</button><button id="learningToggle" type="button">Toggle Learning</button></div>' +
       '</div><div id="learningPanel" style="margin-top:12px"><div class="empty">loading Learning Fabric…</div></div></section>';
   }
   function render(state, data) {
@@ -140,10 +140,12 @@
   }
   function wireLearning() {
     const refresh = document.querySelector('#learningRefresh');
+    const tick = document.querySelector('#learningTick');
     const scan = document.querySelector('#learningScan');
     const toggle = document.querySelector('#learningToggle');
     const panel = document.querySelector('#learningPanel');
     if (refresh) refresh.addEventListener('click', loadLearning);
+    if (tick) tick.addEventListener('click', function () { action(function () { return postJson('/admin/learning/tick', {}); }); });
     if (scan) scan.addEventListener('click', function () { action(function () { return postJson('/admin/learning/scan', {}); }); });
     if (toggle) toggle.addEventListener('click', function () { action(function () { return postJson('/admin/learning/config', {enabled: !(lastState && lastState.config && lastState.config.enabled)}); }); });
     if (panel) panel.addEventListener('click', function (ev) {
