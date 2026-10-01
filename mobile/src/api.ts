@@ -146,6 +146,29 @@ export class IcarusClient {
     await this.refreshSession();
   }
 
+  private async post<T>(path: string, body: unknown): Promise<T> {
+    await this.ensureSession();
+    try {
+      const value = await requestJson<T>(this.baseUrl, path, {
+        method: 'POST',
+        body,
+        token: this.credentials.sessionToken,
+      });
+      return value as T;
+    } catch (error) {
+      if (error instanceof IcarusApiError && error.status === 401) {
+        await this.refreshSession();
+        const value = await requestJson<T>(this.baseUrl, path, {
+          method: 'POST',
+          body,
+          token: this.credentials.sessionToken,
+        });
+        return value as T;
+      }
+      throw error;
+    }
+  }
+
   private async get<T>(path: string, signal?: AbortSignal, allow204 = false): Promise<T | null> {
     await this.ensureSession();
     try {
@@ -208,6 +231,19 @@ export class IcarusClient {
 
   integrity(): Promise<JsonObject> {
     return this.get<JsonObject>('/v1/integrity').then((value) => value || {});
+  }
+
+  research(): Promise<JsonObject> {
+    return this.get<JsonObject>('/v1/research').then((value) => value || {});
+  }
+
+  startBacktest(asset: string): Promise<JsonObject> {
+    return this.post<JsonObject>('/v1/backtest', { asset });
+  }
+
+  backtest(jobId: string): Promise<JsonObject> {
+    return this.get<JsonObject>('/v1/backtest/' + encodeURIComponent(jobId))
+      .then((value) => value || {});
   }
 
   async revoke(): Promise<void> {

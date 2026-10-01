@@ -5,7 +5,7 @@
 - Engine port 8791 stays loopback-only.
 - Mobile never stores the ICARUS engine admin token.
 - The gateway does not expose `/admin/*` or arbitrary upstream paths.
-- The first mobile release is observation-only.
+- Trading state remains read-only. The gateway may launch bounded analysis-only backtest jobs.
 - Production phone-to-gateway traffic uses HTTPS.
 - Pairing secrets, engine admin tokens, signing keys, refresh credentials, and store credentials are never committed.
 
@@ -24,7 +24,7 @@ The signing key is generated with `secrets.token_bytes(32)` and persisted with b
 - Upstream JSON responses are capped at 4 MiB.
 - Dynamic asset identifiers are allowlisted by syntax.
 - Chart/trade limits are clamped.
-- Gateway non-loopback binding requires an explicit override.
+- Backtest launches are device-authenticated and rate-limited.\n- Gateway non-loopback binding requires an explicit override.
 - Security headers disable framing, MIME sniffing, referrer leakage, camera, microphone, and geolocation permissions.
 
 ## Threats not solved by application code alone
