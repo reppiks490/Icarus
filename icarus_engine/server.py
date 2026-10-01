@@ -1367,21 +1367,24 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
 
     class ResearchHTTPServer(ThreadingHTTPServer):
         def serve_forever(self, poll_interval=.5):
-            research.start_background()
-            autopilot.start_background()
-            loop_intelligence_sync.start()
-            brain_remote_sync.start()
-            brain_research_sync.start()
-            evolution_remote_sync.start()
+            background = bool(getattr(self, "background_workers_enabled", True))
+            if background:
+                research.start_background()
+                autopilot.start_background()
+                loop_intelligence_sync.start()
+                brain_remote_sync.start()
+                brain_research_sync.start()
+                evolution_remote_sync.start()
             try:
                 return super().serve_forever(poll_interval)
             finally:
-                autopilot.close()
-                evolution_remote_sync.close()
-                brain_research_sync.close()
-                brain_remote_sync.close()
-                loop_intelligence_sync.close()
-                research.close()
+                if background:
+                    autopilot.close()
+                    evolution_remote_sync.close()
+                    brain_research_sync.close()
+                    brain_remote_sync.close()
+                    loop_intelligence_sync.close()
+                    research.close()
 
         def server_close(self):
             autopilot.close()
@@ -1401,6 +1404,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     srv.possibility = possibility
     srv.autopilot = autopilot
     srv.daemon_threads = True
+    srv.background_workers_enabled = bool(start)
     if not start:
         return srv
     srv.serve_forever()
