@@ -2,11 +2,13 @@ from __future__ import annotations
 
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
 from icarus_engine.pantheon import AetherSwarm, PantheonKernel, subsystem_context
 from icarus_engine.pantheon.bridge import oracle_context
+from icarus_engine.pantheon.contracts import iso_aware
 
 
 def _payload(**overrides):
@@ -332,3 +334,15 @@ def test_concurrent_duplicate_observation_is_idempotent(tmp_path):
     assert state["counts"]["observations"] == 1
     assert state["counts"]["sentinel_cells"] == 1
     assert state["sentinel_cells"][0]["observation_count"] == 1
+
+
+def test_pantheon_time_is_canonical_utc_and_future_closed(tmp_path):
+    assert iso_aware("2026-10-01T01:00:00-05:00") == "2026-10-01T06:00:00Z"
+    kernel = PantheonKernel(tmp_path)
+    equivalent = _payload(observation_id="pan-time-canonical", observed_at="2026-10-01T01:00:00-05:00")
+    out = kernel.record_observation(equivalent)
+    assert out["observed_at"] == "2026-10-01T06:00:00Z"
+
+    future = (datetime.now(timezone.utc) + timedelta(days=1)).isoformat()
+    with pytest.raises(ValueError, match="future"):
+        kernel.record_observation(_payload(observation_id="pan-future", observed_at=future))

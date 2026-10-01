@@ -108,3 +108,11 @@ the identity hash so an at-least-once retry cannot fail merely because a native
 subsystem advanced between attempts. Reserved native subsystem names are
 overwritten from the native stores at ingestion, so caller-supplied JSON cannot
 masquerade as ORACLE, PARALLAX or DREAMSTATE evidence.
+
+
+## Temporal integrity
+
+Observation timestamps must be timezone-aware ISO-8601, are canonicalized to UTC
+before hashing/storage, and fail closed when materially in the future. This
+prevents offset-string ordering errors and accidental look-ahead evidence from
+entering PANTHEON's immutable observation ledger.

@@ -9,7 +9,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Any, Mapping
 
 SCHEMA_VERSION = "icarus-pantheon-v1"
@@ -84,7 +84,10 @@ def iso_aware(value: Any, field: str = "observed_at") -> str:
         raise ValueError(f"{field} must be ISO-8601") from ex
     if parsed.tzinfo is None or parsed.utcoffset() is None:
         raise ValueError(f"{field} must include a timezone")
-    return value
+    parsed_utc = parsed.astimezone(timezone.utc)
+    if parsed_utc > datetime.now(timezone.utc) + timedelta(seconds=5):
+        raise ValueError(f"{field} cannot be in the future")
+    return parsed_utc.isoformat().replace("+00:00", "Z")
 
 def json_canonical(value: Any, field: str, max_bytes: int = 131072) -> str:
     try:
