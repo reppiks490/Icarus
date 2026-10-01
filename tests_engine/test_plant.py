@@ -66,6 +66,7 @@ def test_ingest_drop_writes_canonical_and_moves_src(tmp_path):
     src = os.path.join(paths["history/drop"], "CME_MINI_NQ1!_1m.csv")
     with open(src, "w", encoding="utf-8") as fh:
         fh.write(_CSV)
+    os.utime(src, (time.time() - 2, time.time() - 2))
     recs = ingest_drop(str(tmp_path))
     assert len(recs) == 1
     assert recs[0]["symbol"] == "NQ" and recs[0]["minutes"] == 1 and recs[0]["bars"] == 2
@@ -208,6 +209,7 @@ def test_ingest_drop_merges_and_unique_done(tmp_path):
     src = os.path.join(paths["history/drop"], "NQ.csv")
     with open(src, "w", encoding="utf-8") as fh:
         fh.write(_CSV)
+    os.utime(src, (time.time() - 2, time.time() - 2))
     ingest_drop(str(tmp_path))
     dest = os.path.join(tmp_path, "history", "NQ_1m.csv")
     assert len(parse_ohlcv_csv(open(dest, encoding="utf-8").read())) == 2
