@@ -29,6 +29,21 @@ A candidate is only **shadow-route eligible** after all of these are verified: c
 
 The Adaptive Brain may select a regime specialist for shadow evaluation. It cannot silently change the production strategy or place an order.
 
+## Zero-cost local candidate incubation
+
+The research scheduler supports two review modes:
+
+- `dual_model` keeps the existing full independent-review chain and may apply an approved candidate to the local paper engine only after every qualification/review/runtime gate passes.
+- `study_only` removes paid provider calls from the recurring incubation path. It runs the same frozen deterministic study, disjoint train/validation/holdout windows, holdout watermark, realistic-cost stress, and qualification logic, then persists the qualified result as an **unreviewed proposal**. It forcibly sets `apply=false`.
+
+This gives ICARUS an always-available local learning loop without pretending a locally selected candidate has independent validation. Study-only proposals remain in the incubator until a separate review path evaluates them. They cannot become paper overlays, production decisions, or broker actions by themselves.
+
+The intended cost architecture is therefore:
+
+`continuous zero-cost evidence + deterministic local studies -> sparse independent review of the strongest survivors -> shadow evaluation -> separately authorized paper activation`.
+
+Negative/no-candidate outcomes and holdout consumption remain durable so the scheduler does not repeatedly relearn the same failed frozen interval.
+
 ## Continuous custom-agent ingestion
 
 The five cloud automations persist material results as immutable `icarus-mcp-event-v1` files in `reppiks490/Icarus-engine/automation_intelligence/mcp_interface/events/`. The local engine's `BrainRemoteSync` polls that repository plane and accepts an event only when:
