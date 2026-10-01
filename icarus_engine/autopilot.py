@@ -156,9 +156,12 @@ class TacticalAutopilot:
 
     def _eligible(self, inputs):
         dims = []
+        protected = {
+            "qty_contracts", "point_value",
+        }
         for name in sorted(inputs):
             value = inputs[name]
-            if name.startswith(("rate_", "htf_tf_")):
+            if name in protected or name.startswith(("rate_", "htf_tf_")):
                 continue
             entry = self._meta.get(name, {})
             choices = []
