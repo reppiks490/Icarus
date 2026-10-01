@@ -71,6 +71,7 @@ from .evolution_sync import EvolutionRemoteSync
 from .code_provenance import local_code_provenance
 from .parallax import ParallaxStore
 from .dreamstate import DreamstateLab
+from .sibyl import SibylEngine
 
 
 def _no_json_constants(name: str):
@@ -130,6 +131,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     evolution_remote_sync = EvolutionRemoteSync(port.base_dir)
     parallax = ParallaxStore(port.base_dir)
     dreamstate = DreamstateLab(port.base_dir, parallax=parallax)
+    sibyl = SibylEngine(port.base_dir)
 
     class H(BaseHTTPRequestHandler):
         server_version = "icarus"
@@ -197,6 +199,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._send(200, (html_path.parent / "evolution-ui.js").read_bytes(), "text/javascript")
             if p.path == "/parallax-ui.js":
                 return self._send(200, (html_path.parent / "parallax-ui.js").read_bytes(), "text/javascript")
+            if p.path == "/sibyl-ui.js":
+                return self._send(200, (html_path.parent / "sibyl-ui.js").read_bytes(), "text/javascript")
             if p.path in ("/experience-ui.js", "/experience-ui.css"):
                 ctype = "text/javascript" if p.path.endswith(".js") else "text/css"
                 return self._send(200, (html_path.parent / p.path[1:]).read_bytes(), ctype)
@@ -236,6 +240,35 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     return self._json(401, {"detail": "bad admin token"})
                 try:
                     return self._json(200, dreamstate.snapshot())
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+            if p.path == "/api/sibyl":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                try:
+                    try:
+                        market_state = port.status()
+                    except Exception:
+                        market_state = {}
+                    try:
+                        parallax_state = parallax.snapshot()
+                    except Exception:
+                        parallax_state = {}
+                    try:
+                        dreamstate_state = dreamstate.snapshot()
+                    except Exception:
+                        dreamstate_state = {}
+                    try:
+                        brain_state = brain_snapshot(port.base_dir)
+                    except Exception:
+                        brain_state = {}
+                    return self._json(200, sibyl.snapshot(
+                        q.get("asset", [None])[0],
+                        market_status=market_state,
+                        parallax_state=parallax_state,
+                        dreamstate_state=dreamstate_state,
+                        brain_state=brain_state,
+                    ))
                 except (ValueError, TypeError) as ex:
                     return self._json(400, {"detail": str(ex)})
             if p.path == "/api/brain":
@@ -453,7 +486,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._json(413, {"detail": "body too large"})
             raw = self.rfile.read(n) if n else b""
             try:
-                body = strict_json(raw) if p.path.startswith(("/admin/research/", "/admin/integrity/", "/admin/parallax/", "/admin/dreamstate/")) else (json.loads(raw, parse_constant=_no_json_constants) if raw else {})
+                body = strict_json(raw) if p.path.startswith(("/admin/research/", "/admin/integrity/", "/admin/parallax/", "/admin/dreamstate/", "/admin/sibyl/")) else (json.loads(raw, parse_constant=_no_json_constants) if raw else {})
             except ValueError as ex:
                 return self._json(400, {"detail": f"bad JSON body: {ex}"})
             if not isinstance(body, dict):
@@ -525,6 +558,46 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             if p.path == "/admin/dreamstate/retire":
                 try:
                     return self._json(200, dreamstate.retire(body.get("candidate_id"), body.get("reason")))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+            if p.path == "/admin/sibyl/evidence":
+                try:
+                    payload = dict(body)
+                    if not payload.get("source_commit"):
+                        provenance = local_code_provenance()
+                        if not provenance.get("candidate_revision_eligible") or not provenance.get("commit"):
+                            raise ValueError("exact clean ICARUS code provenance is required when source_commit is omitted")
+                        payload["source_commit"] = provenance["commit"]
+                    return self._json(200, sibyl.record_evidence(payload))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+            if p.path == "/admin/sibyl/forecast":
+                try:
+                    payload = dict(body)
+                    if not payload.get("source_commit"):
+                        provenance = local_code_provenance()
+                        if not provenance.get("candidate_revision_eligible") or not provenance.get("commit"):
+                            raise ValueError("exact clean ICARUS code provenance is required when source_commit is omitted")
+                        payload["source_commit"] = provenance["commit"]
+                    try:
+                        market_state = port.status()
+                    except Exception:
+                        market_state = {}
+                    return self._json(200, sibyl.record_forecast(payload, market_status=market_state))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+            if p.path == "/admin/sibyl/outcome":
+                try:
+                    return self._json(200, sibyl.record_outcome(body))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+            if p.path == "/admin/sibyl/scenario":
+                try:
+                    try:
+                        market_state = port.status()
+                    except Exception:
+                        market_state = {}
+                    return self._json(200, sibyl.scenario(body, market_status=market_state))
                 except (ValueError, TypeError) as ex:
                     return self._json(400, {"detail": str(ex)})
             asset = str(body.get("asset") or body.get("symbol") or "").upper()
