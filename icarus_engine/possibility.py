@@ -1097,6 +1097,14 @@ class PossibilityEngine:
             }
 
         tick_first, tick_last = samples[0][0], samples[-1][0]
+        gap_after_bar = tick_first - completed_close_ts
+        if gap_after_bar > max(300.0, 2.0 * bar_seconds):
+            return {
+                "status": "DISCONTINUOUS", "score": None, "direction": None,
+                "causal_leading": False, "source_identified": False,
+                "gap_after_completed_bar_seconds": gap_after_bar,
+                "detail": "first current-window tick is too far after the latest completed bar",
+            }
         now = time.time()
         age = now - tick_last
         if age < -5.0:
