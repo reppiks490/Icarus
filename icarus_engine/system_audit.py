@@ -14,6 +14,8 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import Any, Dict
 
+from .evolution import report as evolution_report
+
 AUDIT_FILENAME = "repository_audit.json"
 _ALLOWED_STATUS = {"green", "warn", "red", "unknown"}
 
@@ -123,22 +125,40 @@ def normalize_repository_audit(value: Any) -> Dict[str, Any]:
     return out
 
 
+def _attach_evolution(audit: Dict[str, Any]) -> Dict[str, Any]:
+    out = deepcopy(audit)
+    try:
+        out["evolution"] = evolution_report()
+    except Exception as ex:
+        out["evolution"] = {
+            "schema": "icarus.system-evolution.v1",
+            "available": False,
+            "error": f"{type(ex).__name__}: {ex}",
+            "entries": [],
+            "entry_count": 0,
+            "status_counts": {},
+            "subsystem_counts": {},
+            "execution_authorized": False,
+        }
+    return out
+
+
 def load_repository_audit(base_dir: str | os.PathLike[str]) -> Dict[str, Any]:
     path = repository_audit_path(base_dir)
     if not path.exists():
         out = deepcopy(DEFAULT_REPOSITORY_AUDIT)
         out["storage"] = {"source": "bundled-default", "path": str(path)}
-        return out
+        return _attach_evolution(out)
     try:
         out = normalize_repository_audit(json.loads(path.read_text(encoding="utf-8")))
         out["storage"] = {"source": "runtime", "path": str(path)}
-        return out
+        return _attach_evolution(out)
     except Exception as ex:  # fail visibly; never report a corrupt runtime audit as green
         out = deepcopy(DEFAULT_REPOSITORY_AUDIT)
         out["status"] = "unknown"
         out["storage"] = {"source": "bundled-default", "path": str(path), "error": f"{type(ex).__name__}: {ex}"}
         out["note"] = "Runtime repository audit is unreadable; showing bundled snapshot only."
-        return out
+        return _attach_evolution(out)
 
 
 def save_repository_audit(base_dir: str | os.PathLike[str], value: Any) -> Dict[str, Any]:
@@ -163,4 +183,4 @@ def save_repository_audit(base_dir: str | os.PathLike[str], value: Any) -> Dict[
                 pass
     out = deepcopy(audit)
     out["storage"] = {"source": "runtime", "path": str(path)}
-    return out
+    return _attach_evolution(out)
