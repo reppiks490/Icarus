@@ -475,6 +475,8 @@ class TacticalAutopilot:
                 "fill_on": "real",
                 "delta": candidate["delta"],
                 "reason": candidate["reason"],
+                "search_mode": candidate.get("search_mode", "baseline"),
+                "dimension_key": candidate.get("dimension_key"),
                 "metrics": metrics,
                 "reproducibility": {
                     "source_config_sha256": ((result.get("config") or {}).get("reproducibility") or {}).get("source_config_sha256"),
@@ -485,11 +487,36 @@ class TacticalAutopilot:
             with self._lock:
                 state = self._read()
                 champion = state["champions"].get(asset)
-                if champion is None or metrics["score"] > float((champion.get("metrics") or {}).get("score", -math.inf)):
+                prior_score = (
+                    float((champion.get("metrics") or {}).get("score", -math.inf))
+                    if champion else -math.inf
+                )
+                if champion is None or metrics["score"] > prior_score:
                     record["champion"] = True
                     state["champions"][asset] = self._copy(record)
                 else:
                     record["champion"] = False
+
+                dimension_key = candidate.get("dimension_key")
+                if dimension_key:
+                    stats = state.setdefault("dimension_stats", {})
+                    row = stats.setdefault(dimension_key, {
+                        "trials": 0,
+                        "champion_wins": 0,
+                        "improvement_sum": 0.0,
+                        "best_improvement": None,
+                        "last_score": None,
+                    })
+                    improvement = 0.0 if not math.isfinite(prior_score) else float(metrics["score"] - prior_score)
+                    row["trials"] = int(row.get("trials", 0)) + 1
+                    row["champion_wins"] = int(row.get("champion_wins", 0)) + int(record["champion"])
+                    row["improvement_sum"] = float(row.get("improvement_sum", 0.0)) + improvement
+                    previous_best = row.get("best_improvement")
+                    row["best_improvement"] = improvement if previous_best is None else max(float(previous_best), improvement)
+                    row["last_score"] = float(metrics["score"])
+                    row["last_candidate_id"] = record["id"]
+                    row["last_tested_at"] = record["tested_at"]
+
                 state["history"].append(record)
                 state["history"] = state["history"][-int(state["config"]["max_history"]):]
                 state["active"] = {
