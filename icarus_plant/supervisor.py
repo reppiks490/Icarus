@@ -115,19 +115,23 @@ class Plant:
         env = os.environ.copy()
         env.update(svc.env)
         env["ICARUS_HOME"] = self.root
-        log = open(os.path.join(self.root, "logs", f"{svc.name}.log"), "ab")
-        kw: Dict[str, object] = dict(
-            cwd=svc.cwd,
-            env=env,
-            stdout=log,
-            stderr=subprocess.STDOUT,
-        )
-        # Grok (xAI) — 2026-09-20: start_new_session is POSIX-only; Windows needs a new process group.
-        if os.name == "nt":
-            kw["creationflags"] = int(getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0))
-        else:
-            kw["start_new_session"] = True
-        svc.popen = subprocess.Popen(svc.argv, **kw)  # type: ignore[arg-type]
+        log_path = os.path.join(self.root, "logs", f"{svc.name}.log")
+        # Popen duplicates/inherits the output handle it needs. Close the parent's
+        # file object immediately after spawn so repeated crash/restart cycles do
+        # not leak one descriptor/handle per restart.
+        with open(log_path, "ab") as log:
+            kw: Dict[str, object] = dict(
+                cwd=svc.cwd,
+                env=env,
+                stdout=log,
+                stderr=subprocess.STDOUT,
+            )
+            # Grok (xAI) — 2026-09-20: start_new_session is POSIX-only; Windows needs a new process group.
+            if os.name == "nt":
+                kw["creationflags"] = int(getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0))
+            else:
+                kw["start_new_session"] = True
+            svc.popen = subprocess.Popen(svc.argv, **kw)  # type: ignore[arg-type]
         if svc.pidfile:
             _write_pid(svc.pidfile, svc.popen.pid)
 
@@ -222,11 +226,15 @@ class Plant:
 
 
 def default_engine_service(root: str, repo: str, *, assets: str = "NQ", port: int = 8791,
-                           token: str = "icarus", offline: bool = False, preset: str = "NQ-20m-ultracoded") -> Service:
+                           token: str = "icarus", offline: bool = False, preset: str = "NQ-20m-ultracoded",
+                           feed: Optional[str] = None) -> Service:
     ensure(root)
+    selected_feed = "file" if offline else (feed or os.environ.get("ICARUS_FEED", "yahoo")).strip().lower()
+    if selected_feed not in ("yahoo", "file", "databento"):
+        raise ValueError(f"unsupported ICARUS feed {selected_feed!r}")
     env = {
         "ICARUS_HOME": root,
-        "ICARUS_FEED": "file" if offline else os.environ.get("ICARUS_FEED", "yahoo"),
+        "ICARUS_FEED": selected_feed,
         "PYTHONPATH": repo + os.pathsep + os.environ.get("PYTHONPATH", ""),
     }
     db = os.path.join(root, "icarus_engine.db")
@@ -235,8 +243,8 @@ def default_engine_service(root: str, repo: str, *, assets: str = "NQ", port: in
         "--assets", assets, "--port", str(port), "--token", token,
         "--preset", preset, "--db", db,
     ]
-    if offline:
-        argv += ["--feed", "file"]
+    if selected_feed != "yahoo":
+        argv += ["--feed", selected_feed]
     return Service(
         name="engine",
         argv=argv,
@@ -267,6 +275,12 @@ def default_bridge_service(root: str, repo: str, *, port: int = 8787) -> Service
 
 
 def write_status(root: str, payload: Dict[str, object]) -> None:
+    """Publish supervisor status atomically so readers never observe truncated JSON."""
     path = os.path.join(root, "run", "status.json")
-    with open(path, "w", encoding="utf-8") as fh:
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as fh:
         json.dump(payload, fh, indent=2)
+        fh.flush()
+        os.fsync(fh.fileno())
+    os.replace(tmp, path)

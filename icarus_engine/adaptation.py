@@ -19,8 +19,8 @@ from .strategy.meta import load_meta
 from .process_identity import identity as process_identity
 
 
-DEFAULT_CONFIG = {"enabled": False, "assets": [], "apply": True, "cadence_seconds": 3600,
-                  "train_bars": 600, "validation_bars": 200, "holdout_bars": 200,
+DEFAULT_CONFIG = {"enabled": False, "assets": [], "apply": True, "review_mode": "dual_model",
+                  "cadence_seconds": 3600, "train_bars": 600, "validation_bars": 200, "holdout_bars": 200,
                   "policy": {"max_trials": 16, "max_seconds": 120}, "grids": {}, "max_evidence": 8}
 
 
@@ -59,7 +59,10 @@ class AdaptationScheduler:
 
     def _read(self):
         if self.path.exists():
-            return json.loads(self.path.read_text(encoding="utf-8"))
+            state = json.loads(self.path.read_text(encoding="utf-8"))
+            if isinstance(state, dict) and isinstance(state.get("config"), dict):
+                state["config"] = {**DEFAULT_CONFIG, **state["config"]}
+            return state
         return {"config": dict(DEFAULT_CONFIG), "assets": {}, "cursor": 0, "active": None}
 
     def _write(self, state):
@@ -75,10 +78,16 @@ class AdaptationScheduler:
             raise ValueError("unknown adaptation configuration field")
         with self._mutex, self._locked():
             state = self._read()
-            config = {**state["config"], **partial}
+            config = {**DEFAULT_CONFIG, **state["config"], **partial}
             for key in ("enabled", "apply"):
                 if type(config[key]) is not bool:
                     raise ValueError(f"{key} must be Boolean")
+            if config.get("review_mode") not in ("dual_model", "study_only"):
+                raise ValueError("review_mode must be dual_model or study_only")
+            if config["review_mode"] == "study_only":
+                # Zero-cost incubation can discover and preserve candidates, but
+                # it cannot bypass the independent model-review activation gate.
+                config["apply"] = False
             if (type(config["assets"]) is not list or len(config["assets"]) > 32
                     or any(type(a) is not str or a not in self.workspace.port.runners for a in config["assets"])
                     or len(set(config["assets"])) != len(config["assets"])):
@@ -176,10 +185,11 @@ class AdaptationScheduler:
         return dict([eligible[cursor % len(eligible)]]), cursor + 1
 
     def _prepare(self, asset, config, cursor):
-        if not self._providers_ready():
-            raise ValueError("OpenAI and Anthropic provider credentials/models are not configured")
-        if not self._budget_ready():
-            raise ValueError("daily budget cannot reserve the full review chain")
+        if config.get("review_mode", "dual_model") == "dual_model":
+            if not self._providers_ready():
+                raise ValueError("OpenAI and Anthropic provider credentials/models are not configured")
+            if not self._budget_ready():
+                raise ValueError("daily budget cannot reserve the full review chain")
         evidence = self.workspace.ledger.events_as_of(asset, _iso(_now()))
         if not evidence:
             raise ValueError("no fresh actual ledger evidence for asset")
@@ -195,6 +205,16 @@ class AdaptationScheduler:
                 if runner.cal.intraday_open(bar.ts) and runner.chart_minutes % sub_minutes == 0:
                     bars.extend(agg.push(bar, sub_minutes))
             grid, next_cursor = (config["grids"][asset], cursor) if asset in config["grids"] else self._auto_grid(runner, cursor)
+            raw_state = getattr(runner, "state", None)
+            raw_state = raw_state if isinstance(raw_state, dict) else {}
+            regime_score = raw_state.get("rate_regime")
+            if isinstance(regime_score, bool) or not isinstance(regime_score, (int, float)):
+                regime_score = None
+            regime_context = {
+                "label": str(raw_state.get("rate_regime_str") or "UNKNOWN"),
+                "regime_score": regime_score,
+                "observed_market_ts": raw_state.get("ts"),
+            }
             minutes = runner.chart_minutes
         total = config["train_bars"] + config["validation_bars"] + config["holdout_bars"] + 2
         if len(bars) < total:
@@ -207,7 +227,12 @@ class AdaptationScheduler:
                           bars[t + v + 2].ts, cal.bucket_end(bars[-1].ts, minutes))
         if windows.holdout_start <= self._watermark(self.workspace.root / "holdouts.sqlite3", asset):
             raise ValueError("no new held-out interval beyond durable revealed/claimed watermark")
-        return {"asset": asset, "grid": grid, "windows": asdict(windows), "policy": config["policy"]}, [e["event_id"] for e in evidence[:config["max_evidence"]]], next_cursor
+        return (
+            {"asset": asset, "grid": grid, "windows": asdict(windows), "policy": config["policy"]},
+            [e["event_id"] for e in evidence[:config["max_evidence"]]],
+            next_cursor,
+            regime_context,
+        )
 
     def tick(self):
         with self._mutex, self._locked():
@@ -240,7 +265,7 @@ class AdaptationScheduler:
                 if time.time() < prior.get("next_due", 0):
                     continue
                 try:
-                    request, ids, dimension = self._prepare(asset, config, prior.get("dimension", 0))
+                    request, ids, dimension, regime_context = self._prepare(asset, config, prior.get("dimension", 0))
                     # A completed no-candidate study on the same frozen data is final.
                     if max(prior.get("no_candidate_cutoff", -1), prior.get("last_attempt_cutoff", -1)) >= request["windows"]["holdout_end"]:
                         continue
@@ -251,6 +276,8 @@ class AdaptationScheduler:
                 active = {"asset": asset, "stage": "study_intent", "owner": self._owner,
                           "process": self._process,
                           "apply": config["apply"],
+                          "review_mode": config.get("review_mode", "dual_model"),
+                          "regime_context": regime_context,
                           "request": request, "evidence_ids": ids, "started": time.time()}
                 state["active"] = active
                 state["cursor"] = (start + offset + 1) % len(assets)
@@ -282,6 +309,28 @@ class AdaptationScheduler:
             if job["status"] == "running":
                 return self.status()
             if job["status"] == "complete" and (job.get("result") or {}).get("research_qualified"):
+                if active.get("review_mode", "dual_model") == "study_only":
+                    try:
+                        proposal = self.workspace.propose_study({
+                            "job": active["job"],
+                            "evidence_ids": active["evidence_ids"],
+                            "rationale": (
+                                "Zero-cost scheduled bounded study. Candidate is preserved for independent "
+                                "review only; no paper or production inputs were applied."
+                            ),
+                        })
+                    except Exception as ex:
+                        return self._finish(
+                            active,
+                            "candidate_blocked",
+                            f"{type(ex).__name__}: deterministic candidate proposal failed",
+                        )
+                    active["proposal_id"] = proposal.get("proposal_id")
+                    return self._finish(
+                        active,
+                        "candidate_proposed",
+                        "Qualified local study preserved as an unreviewed candidate; independent review is required before activation.",
+                    )
                 active["stage"] = "analysis_intent"
                 request = {"job": active["job"], "evidence_ids": active["evidence_ids"],
                            "rationale": "Scheduled bounded paper adaptation using current source evidence and paired replay.",
@@ -314,7 +363,10 @@ class AdaptationScheduler:
             asset = active["asset"]
             prior = state["assets"].setdefault(asset, {})
             prior.update(status=status, reason=reason, last_job=active.get("job"),
-                         last_workflow=active.get("workflow"), finished=time.time(),
+                         last_workflow=active.get("workflow"), last_proposal=active.get("proposal_id"),
+                         review_mode=active.get("review_mode", "dual_model"),
+                         regime_context=active.get("regime_context", {"label": "UNKNOWN"}),
+                         finished=time.time(),
                          last_attempt_cutoff=active["request"]["windows"]["holdout_end"],
                          next_due=time.time() + config["cadence_seconds"])
             if status == "no_candidate":

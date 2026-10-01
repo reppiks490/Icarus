@@ -2,6 +2,7 @@
 """Plant infrastructure — no network, no broker, no invented ticks."""
 from __future__ import annotations
 
+import json
 import os
 import sys
 import time
@@ -100,6 +101,9 @@ def test_default_engine_service_offline_argv(tmp_path):
     assert svc.health_url == "http://127.0.0.1:8791/healthz"
     live = default_engine_service(str(tmp_path), "/repo", offline=False)
     assert "--roll" not in live.argv  # continuous futures require no expiry/roll CLI override
+    db = default_engine_service(str(tmp_path), "/repo", feed="databento")
+    assert db.env["ICARUS_FEED"] == "databento"
+    assert db.argv[db.argv.index("--feed") + 1] == "databento"
 
 
 def test_supervisor_spawn_and_stop(tmp_path):
@@ -208,6 +212,19 @@ def test_file_mode_rewarm_when_csv_arrives_after_start(tmp_path, monkeypatch):
     assert r._file_waiting is False
     assert r.last_sub_ts in (ET_0930, ET_0930 + 60)
     assert len(r.subbars) >= 1
+
+
+def test_disabled_settle_gate_accepts_future_mtime(tmp_path, monkeypatch):
+    paths = ensure(str(tmp_path))
+    src = os.path.join(paths["history/drop"], "NQ.csv")
+    with open(src, "w", encoding="utf-8") as fh:
+        fh.write(_CSV)
+    future = time.time() + 2.0
+    os.utime(src, (future, future))
+    monkeypatch.setattr(drop_mod, "_SETTLE_SEC", 0.0)
+    recs = ingest_drop(str(tmp_path))
+    assert recs and recs[0]["symbol"] == "NQ"
+    assert os.path.isfile(os.path.join(tmp_path, "history", "NQ_1m.csv"))
 
 
 def test_ingest_drop_merges_and_unique_done(tmp_path):
@@ -344,3 +361,185 @@ def test_plant_cli_setup_survives_cp1252_stdout(tmp_path):
     )
     stderr = proc.stderr.decode("utf-8", errors="replace")
     assert proc.returncode == 0, stderr
+
+
+def test_plant_status_is_healthy_without_optional_bridge(tmp_path, capsys):
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+    import threading
+
+    class H(BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(200 if self.path == "/healthz" else 404)
+            self.end_headers()
+            self.wfile.write(b"ok")
+
+        def log_message(self, *args):
+            return
+
+    paths = ensure(str(tmp_path))
+    (tmp_path / "run" / "engine.pid").write_text(str(os.getpid()), encoding="ascii")
+    httpd = HTTPServer(("127.0.0.1", 0), H)
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    try:
+        rc = plant_main([
+            "--root", str(tmp_path), "status",
+            "--engine-port", str(httpd.server_port), "--json",
+        ])
+        assert rc == 0
+        payload = capsys.readouterr().out
+        assert '"ok": true' in payload.lower()
+        assert '"name": "engine"' in payload
+        assert '"name": "bridge"' not in payload
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+        thread.join(5)
+
+
+def test_supervisor_spawn_closes_parent_log_handle(tmp_path, monkeypatch):
+    import icarus_plant.supervisor as supervisor
+
+    captured = {}
+
+    class FakePopen:
+        pid = 424242
+
+        def __init__(self, argv, **kwargs):
+            captured["stdout"] = kwargs["stdout"]
+
+        def poll(self):
+            return None
+
+    monkeypatch.setattr(supervisor.subprocess, "Popen", FakePopen)
+    plant = Plant(str(tmp_path), repo=str(tmp_path))
+    svc = Service(
+        name="dummy",
+        argv=[sys.executable, "-c", "pass"],
+        health_url="",
+        cwd=str(tmp_path),
+        pidfile=os.path.join(str(tmp_path), "run", "dummy.pid"),
+    )
+    plant.spawn(svc)
+    assert captured["stdout"].closed is True
+    assert os.path.isfile(svc.pidfile)
+
+
+def test_write_status_is_atomic_and_valid_json(tmp_path, monkeypatch):
+    import icarus_plant.supervisor as supervisor
+
+    ensure(str(tmp_path))
+    calls = []
+    real_replace = supervisor.os.replace
+
+    def tracked_replace(src, dst):
+        calls.append((src, dst))
+        return real_replace(src, dst)
+
+    monkeypatch.setattr(supervisor.os, "replace", tracked_replace)
+    payload = {"ok": True, "services": [{"name": "engine", "alive": True}]}
+    supervisor.write_status(str(tmp_path), payload)
+
+    path = tmp_path / "run" / "status.json"
+    assert json.loads(path.read_text(encoding="utf-8")) == payload
+    assert calls and calls[-1][1] == str(path)
+    assert not (tmp_path / "run" / "status.json.tmp").exists()
+
+
+def test_start_does_not_silently_ignore_requested_bridge(tmp_path, capsys):
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+    import threading
+
+    class H(BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(200 if self.path == "/healthz" else 404)
+            self.end_headers()
+            self.wfile.write(b"ok")
+
+        def log_message(self, *args):
+            return
+
+    ensure(str(tmp_path))
+    (tmp_path / "run" / "plant.pid").write_text(str(os.getpid()), encoding="ascii")
+    httpd = HTTPServer(("127.0.0.1", 0), H)
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    try:
+        rc = plant_main([
+            "--root", str(tmp_path), "start", "--bridge",
+            "--engine-port", str(httpd.server_port), "--bridge-port", "1",
+            "--no-browser",
+        ])
+        assert rc == 1
+        out = capsys.readouterr().out.lower()
+        assert "--bridge was requested" in out
+        assert "stop the plant" in out
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+        thread.join(5)
+
+
+def test_stop_returns_failure_when_supervisor_remains_alive(tmp_path, monkeypatch, capsys):
+    import icarus_plant.cli as plant_cli
+
+    ensure(str(tmp_path))
+    (tmp_path / "run" / "plant.pid").write_text("424242", encoding="ascii")
+    monkeypatch.setattr(plant_cli, "_alive", lambda pid: True)
+    monkeypatch.setattr(plant_cli, "_kill_pid", lambda pid: None)
+    monkeypatch.setattr(plant_cli.time, "sleep", lambda seconds: None)
+
+    rc = plant_main(["--root", str(tmp_path), "stop"])
+    assert rc == 1
+    err = capsys.readouterr().err.lower()
+    assert "still alive" in err
+    assert "refusing to claim success" in err
+
+
+def test_start_rejects_healthy_engine_without_live_supervisor(tmp_path, capsys):
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+    import threading
+
+    class H(BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(200 if self.path == "/healthz" else 404)
+            self.end_headers()
+            self.wfile.write(b"ok")
+
+        def log_message(self, *args):
+            return
+
+    ensure(str(tmp_path))
+    httpd = HTTPServer(("127.0.0.1", 0), H)
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    try:
+        rc = plant_main([
+            "--root", str(tmp_path), "start",
+            "--engine-port", str(httpd.server_port), "--no-browser",
+        ])
+        assert rc == 1
+        out = capsys.readouterr().out.lower()
+        assert "no live plant supervisor owns it" in out
+        assert "refusing to claim the plant is started" in out
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+        thread.join(5)
+
+
+def test_plant_loads_databento_key_from_local_env_without_overriding_process_env(tmp_path, monkeypatch):
+    import icarus_plant.cli as plant_cli
+    (tmp_path / ".env").write_text(
+        "DATABENTO_API_KEY=db-from-file\nDATABENTO_DATASET=GLBX.MDP3\n",
+        encoding="utf-8",
+    )
+    monkeypatch.delenv("DATABENTO_API_KEY", raising=False)
+    monkeypatch.delenv("DATABENTO_DATASET", raising=False)
+    plant_cli._load_root_env(str(tmp_path))
+    assert os.environ["DATABENTO_API_KEY"] == "db-from-file"
+    assert os.environ["DATABENTO_DATASET"] == "GLBX.MDP3"
+
+    monkeypatch.setenv("DATABENTO_API_KEY", "db-from-process")
+    plant_cli._load_root_env(str(tmp_path))
+    assert os.environ["DATABENTO_API_KEY"] == "db-from-process"

@@ -1,0 +1,28 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "sibyl-causal-integration-staged-20261001T134200Z",
+  "category": "EVOLUTION",
+  "severity": "info",
+  "status": "active",
+  "subsystems": ["sibyl","aion","ml","provenance","data"],
+  "recorded_at": "2026-10-01T13:42:00Z",
+  "title": "SIBYL Omega causal future-lightcone integration staged",
+  "summary": "SIBYL Omega has been rebuilt on the live ICARUS mainline with a dedicated trader tab and MCP tools. The staged integration fail-closes forecast evidence by observation and receipt time, requires horizon maturity and observation evidence before calibration, rejects bool/fractional coercion in numeric contracts, and requires explicit publisher source_commit for external evidence. It remains research-only pending exact-head verification.",
+  "source_repository": "reppiks490/Icarus",
+  "source_ref": "sol/sibyl-current-main-v2-20261001",
+  "source_commit": "adf3f3f7e1c30a5705a9d7f8c966c5c64c936702",
+  "evidence": [
+    "PR #120 opened from reconciled live main",
+    "dedicated SIBYL Omega trader interface tab added",
+    "MCP state/evidence/forecast/outcome/scenario tools added",
+    "forecast evidence filtered by source event and local receipt time",
+    "outcomes blocked before horizon maturity",
+    "non-empty outcome evidence required",
+    "external evidence requires explicit source_commit",
+    "execution_authorized=false",
+    "production_decision_authorized=false",
+    "verification state: pending exact-head CI"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}

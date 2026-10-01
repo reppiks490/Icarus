@@ -1,0 +1,28 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "psi-causal-integrity-verified-20261001T060700Z",
+  "category": "REPAIR",
+  "severity": "success",
+  "status": "verified",
+  "subsystems": ["psi", "parallax", "provenance", "data", "ml"],
+  "recorded_at": "2026-10-01T06:07:00Z",
+  "title": "ICARUS Psi causal-integrity repairs verified and merged",
+  "summary": "Post-merge audit hardening for ICARUS Psi is now on main. External evidence TTL is anchored to observation time, stale evidence is rejected, invalid confidence/TTL inputs fail closed, cross-asset pressure is not counted twice in synthetic price or information-wave conditioning, same-snapshot unexplained residuals are no longer fabricated, and the server no longer retroactively injects a fresh Psi snapshot into PARALLAX decisions. Exact-head Linux and Windows CI both passed before merge.",
+  "source_repository": "reppiks490/Icarus",
+  "source_ref": "main",
+  "source_commit": "9f58fbde41103227bb55cfc21f97dedaaf317163",
+  "evidence": [
+    "PR #95 merged from exact head f381fa839d2b8e0aa946d2c967288a965669029c",
+    "GitHub Actions engine: success",
+    "GitHub Actions engine-windows: success",
+    "external evidence expiry anchored to observed_at",
+    "stale-at-receipt evidence rejected",
+    "cross-asset pressure duplicate counting removed",
+    "same-snapshot unexplained residual marked unidentifiable",
+    "retroactive Psi -> PARALLAX injection removed",
+    "execution_authorized=false",
+    "production_decision_authorized=false"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}

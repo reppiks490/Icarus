@@ -11,9 +11,10 @@ from dataclasses import dataclass, field, replace
 from typing import Dict, List, Optional
 
 
-# The live adapters currently provide minute OHLC bars. These are the chart choices
-# exposed by the UI/MCP; arbitrary positive minute values remain accepted by the
-# parser for backward compatibility with existing presets.
+# The strategy/chart execution layer is intentionally minute-native even when the
+# active raw feed (Databento) exposes 1-second bars, ticks, and depth. These are the
+# chart choices exposed by the UI/MCP; arbitrary positive minute values remain
+# accepted by the parser for backward compatibility with existing presets.
 PRIMARY_INTRADAY_TIMEFRAMES = ("1", "2", "5", "10", "20", "30")
 PRIMARY_SECOND_TIMEFRAMES = ("1S", "5S", "10S", "15S", "30S")
 PRIMARY_TICK_TIMEFRAMES = ("50T", "100T", "250T", "500T", "1000T")
@@ -262,6 +263,7 @@ _EXPIRING_FUTURE_RE = re.compile(
 _ANY_DATED_FUTURE_RE = re.compile(
     r"^[A-Z]{1,6}[FGHJKMNQUVXZ]\d{1,4}(?:\.(?:CME|CBT|CMX|NYM|NYMEX|COMEX))?$"
 )
+_CONTINUOUS_FUTURE_STYLE_RE = re.compile(r"^[A-Z]{1,8}(?:1!?|=F)$")
 
 
 def resolve(symbol: str) -> AssetSpec:
@@ -272,9 +274,15 @@ def resolve(symbol: str) -> AssetSpec:
             f"expiring futures symbol {symbol!r} is forbidden; ICARUS is continuous-only — use a continuous 1!/=F identity"
             + (f" for {root}" if root != "future" else "")
         )
+    raw = s
     s = ALIASES.get(s, s)
     if s in REGISTRY:
         return replace(REGISTRY[s])
+    if _CONTINUOUS_FUTURE_STYLE_RE.fullmatch(raw):
+        raise ValueError(
+            f"unsupported continuous futures symbol {symbol!r}; ICARUS only accepts registered continuous futures "
+            "(TradingView 1! / provider =F) and never reinterprets them as crypto"
+        )
     if not _SYMBOL_RE.fullmatch(s):
         raise ValueError(f"bad symbol {symbol!r}: letters, digits, '-', '.', '=' and '!' only")
     # unknown → assume a Coinbase spot pair (keyless), 24/7

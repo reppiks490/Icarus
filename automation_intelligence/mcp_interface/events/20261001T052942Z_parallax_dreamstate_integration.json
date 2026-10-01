@@ -1,0 +1,38 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "parallax-dreamstate-integration-20261001T052942Z",
+  "category": "INTEGRATION",
+  "severity": "success",
+  "status": "active",
+  "subsystems": [
+    "parallax",
+    "dreamstate",
+    "aion",
+    "athena",
+    "provenance"
+  ],
+  "recorded_at": "2026-10-01T05:29:42Z",
+  "title": "PARALLAX counterfactual twins and DREAMSTATE policy incubator integrated",
+  "summary": "PARALLAX provides immutable observed counterfactual decision/branch evidence, regret and paired ablation attribution; DREAMSTATE converts statistically screened patterns into bounded, versioned shadow candidates behind the Adaptive Brain protected validation gates. One active candidate per family and a 12-trial family budget constrain research multiplicity. Exact code provenance is fail-closed and accepted outcomes automatically re-screen DREAMSTATE. The trader UI exposes both systems and all authority remains research/shadow only.",
+  "source_repository": "reppiks490/Icarus",
+  "source_ref": "chatgpt/parallax-dreamstate-final-20261001",
+  "source_commit": "257820eff901f97f686f92605117d5d33eac4482",
+  "evidence": [
+    "icarus_engine/parallax.py",
+    "icarus_engine/dreamstate.py",
+    "icarus_engine/parallax-ui.js",
+    "docs/icarus/PARALLAX_DREAMSTATE.md",
+    "tests_engine/test_parallax_dreamstate.py",
+    "DREAMSTATE one-active-trial-per-family and 12-trial family budget",
+    "Exact clean-code provenance fallback for PARALLAX decisions",
+    "Automatic DREAMSTATE rescreen after accepted PARALLAX outcomes",
+    "Adaptive Brain candidate mirroring enabled",
+    "execution_authorized=false",
+    "production_decision_authorized=false",
+    "PARALLAX explicit-column 10-field decision insert verified after Linux CI exposed arity defect",
+    "PARALLAX statistical groups isolated by exact source_commit",
+    "Committed PARALLAX outcomes remain authoritative if downstream DREAMSTATE rescreen degrades"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}

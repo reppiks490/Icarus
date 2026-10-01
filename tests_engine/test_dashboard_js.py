@@ -20,6 +20,14 @@ NODE = shutil.which("node")
         "icarus_bridge/dashboard.html",
         "icarus_engine/research-ui.js",
         "icarus_engine/sources-ui.js",
+        "icarus_engine/brain-ui.js",
+        "icarus_engine/evolution-ui.js",
+        "icarus_engine/parallax-ui.js",
+        "icarus_engine/possibility-ui.js",
+        "icarus_engine/chronofold-ui.js",
+        "icarus_engine/integrity-ui.js",
+        "icarus_engine/engine-control-ui.js",
+        "icarus_engine/autopilot-ui.js",
         "icarus_engine/experience-ui.js",
     ],
 )
@@ -49,3 +57,183 @@ def test_strategy_tester_timeframes_are_cache_aware():
     assert "cached_source_resolutions_minutes" in src
     assert "$('#btAsset').addEventListener('change'" in src
     assert "BT.res = null; BT.compare = null" in src
+
+
+def test_asset_adder_uses_registry_and_timeframe_suggestions_and_single_flight_submit():
+    src = (REPO / "icarus_engine/dashboard.html").read_text(encoding="utf-8")
+    assert 'list="addAssetOptions"' in src
+    assert 'datalist id="addAssetOptions"' in src
+    assert 'list="addTfOptions"' in src
+    assert 'datalist id="addTfOptions"' in src
+    assert "['1','2','3','5','10','15','20','30','45','60','120','180','240','D','W']" in src
+    assert "REGISTRY.map" in src
+    assert "b.disabled = true" in src
+    assert "await admin('/admin/assets/add'" in src
+    assert "j.detail||j.error||'request failed'" in src
+
+
+def test_engine_dashboard_surfaces_repository_mcp_audit():
+    src = (REPO / "icarus_engine/dashboard.html").read_text(encoding="utf-8")
+    assert 'id="repoHealth"' in src
+    assert 'data-v="system">System</span>' in src
+    assert "repositoryAuditCard(window.ICARUS_AUDIT" in src
+    assert "fetch('/api/system/audit'" in src
+    assert "setInterval(refreshAudit, 20000)" in src
+    assert "System Intelligence" in src
+    assert "Automation loops" in src
+    assert "MCP activity" in src
+    assert "a.loops || []" in src
+    assert "a.events || []" in src
+    assert "a.loop_sync || {}" in src
+    assert "Loop auto-sync" in src
+    assert "x.signals || {}" in src
+    assert "run output" in src
+
+
+def test_dashboard_surfaces_export_data_integrity_and_mcp_receipts():
+    dashboard = (REPO / "icarus_engine/dashboard.html").read_text(encoding="utf-8")
+    ui = (REPO / "icarus_engine/integrity-ui.js").read_text(encoding="utf-8")
+    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
+    assert '/integrity-ui.js' in dashboard
+    assert 'data-v="integrity">Data Integrity</span>' in dashboard
+    assert "wireIntegrity()" in dashboard
+    assert "/api/integrity" in ui
+    assert "MCP change ledger" in ui
+    assert "source_commit" in ui
+    assert "execution" in ui.lower()
+    assert 'p.path == "/api/integrity"' in server
+    assert 'p.path == "/admin/integrity/event"' in server
+
+
+def test_dashboard_surfaces_adaptive_brain_fabric():
+    dashboard = (REPO / "icarus_engine/dashboard.html").read_text(encoding="utf-8")
+    ui = (REPO / "icarus_engine/brain-ui.js").read_text(encoding="utf-8")
+    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
+    assert '/brain-ui.js' in dashboard
+    assert 'data-v="brain">Adaptive Brain</span>' in dashboard
+    assert "wireBrain()" in dashboard
+    assert "/api/brain" in ui
+    assert "5 custom agents" in ui
+    assert "SHADOW_ONLY" in ui
+    assert "Observed success rate" in ui
+    assert "Closed-sample 100%" in ui
+    assert "Hot-path p99" in ui
+    assert "Evidence champion / challenger tournaments" in ui
+    assert "/api/performance-proof" in server
+    assert "/api/latency" in server
+    assert "/admin/performance-proof/forecast" in server
+    assert "/admin/performance-proof/outcome" in server
+    assert "/admin/performance-proof/replay" in server
+    assert 'p.path == "/api/brain"' in server
+    assert 'p.path == "/admin/brain/event"' in server
+
+
+def test_dashboard_surfaces_repository_native_mcp_evolution_panel():
+    dashboard = (REPO / "icarus_engine/dashboard.html").read_text(encoding="utf-8")
+    ui = (REPO / "icarus_engine/evolution-ui.js").read_text(encoding="utf-8")
+    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
+    sync = (REPO / "icarus_engine/evolution_sync.py").read_text(encoding="utf-8")
+    assert '/evolution-ui.js' in dashboard
+    assert 'data-v="evolution">MCP Evolution</span>' in dashboard
+    assert "wireEvolution()" in dashboard
+    assert "/api/evolution" in ui
+    assert "Subsystem evolution state" in ui
+    assert "Important MCP activity" in ui
+    assert "execution_authorized=false" in ui
+    assert 'p.path == "/api/evolution"' in server
+    assert "EvolutionRemoteSync" in server
+    assert "automation_intelligence/mcp_interface/events" in sync
+    assert "execution_authorized must be false" in sync
+    assert "production_decision_authorized must be false" in sync
+
+
+def test_dashboard_surfaces_icarus_psi_without_replacing_oracle_or_parallax():
+    dashboard = (REPO / "icarus_engine/dashboard.html").read_text(encoding="utf-8")
+    ui = (REPO / "icarus_engine/possibility-ui.js").read_text(encoding="utf-8")
+    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
+    brain = (REPO / "icarus_engine/brain.py").read_text(encoding="utf-8")
+    assert '/possibility-ui.js' in dashboard
+    assert 'data-v="possibility">ICARUS Ψ</span>' in dashboard
+    assert "wirePossibility()" in dashboard
+    assert "/api/possibility" in ui
+    assert 'p.path == "/api/possibility"' in server
+    assert 'p.path == "/admin/possibility/evidence"' in server
+    assert 'votes["psi"] = possibility.parallax_vote' not in server
+    assert "Any Psi vote must be captured causally" in server
+    assert '{"id": "oracle", "title": "ORACLE"' in brain
+    assert '{"id": "psi", "title": "ICARUS Ψ"' in brain
+    assert '{"id": "parallax", "title": "PARALLAX"' in brain
+    assert "execution_authorized=false" in ui
+
+
+def test_dashboard_surfaces_authenticated_engine_control_panel():
+    dashboard = (REPO / "icarus_engine/dashboard.html").read_text(encoding="utf-8")
+    ui = (REPO / "icarus_engine/engine-control-ui.js").read_text(encoding="utf-8")
+    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
+    backend = (REPO / "icarus_engine/engine_control.py").read_text(encoding="utf-8")
+
+    assert '<script src="/engine-control-ui.js"></script>' in dashboard
+    assert 'data-v="engine-control">Engine Control</span>' in dashboard
+    assert "view === 'engine-control'" in dashboard
+    assert "wireEngineControl()" in dashboard
+    assert 'p.path == "/engine-control-ui.js"' in server
+    assert 'p.path == "/api/engine-control"' in server
+    assert 'p.path == "/admin/engine-control"' in server
+    assert "EngineControlPlane(" in server
+    assert "ControlAction(" in server
+    assert "arbitrary_shell" in backend
+    assert "broker_arming" in backend
+    assert "/api/engine-control" in ui
+    assert "/admin/engine-control" in ui
+    assert "MCP / audit mirror" in ui
+    assert "Specialized control surfaces" in ui
+    assert "asset.apply_config" in server
+    assert "sync.stop_all" in server
+    assert "FLATTEN ALL PAPER POSITIONS" in server
+    assert "RESET ASSET CONFIG" in server
+    assert "RESET AUTOPILOT" in server
+    assert "STOP ALL INTELLIGENCE SYNCS" in server
+    assert '"mcp_repository": lambda: mcp_control.status(200)' in server
+    assert 'ControlAction("backtest.start"' in server
+    assert 'ControlAction("research.start"' in server
+    assert 'ControlAction("parallax.record_decision"' in server
+    assert 'ControlAction("possibility.ingest_evidence"' in server
+    assert "data-ec-template" in ui
+    assert "ecEventTable" in ui
+
+
+def test_dashboard_surfaces_tactical_autopilot_and_root_engine_control():
+    dashboard = (REPO / "icarus_engine/dashboard.html").read_text(encoding="utf-8")
+    autopilot = (REPO / "icarus_engine/autopilot-ui.js").read_text(encoding="utf-8")
+    control = (REPO / "icarus_engine/engine-control-ui.js").read_text(encoding="utf-8")
+    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
+    assert '/autopilot-ui.js' in dashboard
+    assert 'data-v="autopilot">Tactical Autopilot</span>' in dashboard
+    assert "wireAutopilot()" in dashboard
+    assert '/engine-control-ui.js' in dashboard
+    assert 'data-v="engine-control">Engine Control</span>' in dashboard
+    assert "wireEngineControl()" in dashboard
+    assert "/api/autopilot" in autopilot
+    assert "robustness_windows" in autopilot
+    assert "Tactical learning map" in autopilot
+    assert "/api/engine-control" in control
+    assert "Tactical Autopilot" in control
+    assert 'p.path == "/api/autopilot"' in server
+    assert 'p.path == "/api/engine-control"' in server
+    assert 'ControlAction("autopilot.configure"' in server
+    assert '"autopilot": autopilot.status' in server
+
+
+def test_engine_control_ui_supports_every_registered_target_and_generic_args():
+    ui = (REPO / "icarus_engine/engine-control-ui.js").read_text(encoding="utf-8")
+    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
+    for target in ("job", "candidate", "proposal", "source"):
+        assert target + ":" in ui
+    assert "action.args_example" in ui
+    assert "JSON.stringify(action.args_example)" in ui
+    assert 'ControlAction("research.export"' in server
+    assert 'target="proposal"' in server
+    assert 'ControlAction("research.collect"' in server
+    assert 'target="source"' in server
+    assert 'ControlAction("dreamstate.evaluate"' in server
+    assert 'target="candidate"' in server

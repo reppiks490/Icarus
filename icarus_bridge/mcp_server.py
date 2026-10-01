@@ -15,10 +15,21 @@ from typing import Any, Dict, Optional
 import httpx
 from mcp.server.mcpserver import MCPServer
 
-BASE = os.environ.get("ICARUS_BRIDGE_URL", "http://127.0.0.1:8787").rstrip("/")
-TOKEN = os.environ.get("ICARUS_ADMIN_TOKEN", "")
-ENGINE_BASE = os.environ.get("ICARUS_ENGINE_URL", "http://127.0.0.1:8791").rstrip("/")
-ENGINE_TOKEN = os.environ.get("ICARUS_ENGINE_TOKEN", TOKEN)
+from .config import _load_dotenv
+
+
+def _endpoint_settings():
+    """Load MCP endpoints/tokens from explicit env or the same persisted .env as the bridge."""
+    _load_dotenv()
+    e = os.environ.get
+    bridge_url = (e("ICARUS_BRIDGE_URL") or "http://127.0.0.1:8787").rstrip("/")
+    bridge_token = e("ICARUS_ADMIN_TOKEN") or e("ADMIN_TOKEN") or ""
+    engine_url = (e("ICARUS_ENGINE_URL") or "http://127.0.0.1:8791").rstrip("/")
+    engine_token = e("ICARUS_ENGINE_TOKEN") or bridge_token
+    return bridge_url, bridge_token, engine_url, engine_token
+
+
+BASE, TOKEN, ENGINE_BASE, ENGINE_TOKEN = _endpoint_settings()
 
 mcp = MCPServer(
     "icarus-bridge",
@@ -26,8 +37,19 @@ mcp = MCPServer(
         "Control surface for the ICARUS Bridge: a local daemon that receives TradingView strategy "
         "webhooks and mirrors them onto an Alpaca PAPER account (NQ signals → QQQ proxy). Read tools are "
         "safe. The engine_* tools expose ICARUS strategy configuration, cached backtests and paper-engine "
-        "results. pause_trading / resume_trading / flatten_all / simulate_alert change live paper state — "
-        "confirm with the user before calling them unless they asked for exactly that action."
+        "results. After any material ICARUS repair, audit, evolution, integration, or loop durability "
+        "change performed through MCP, publish the verified result with record_engine_system_event and "
+        "record_engine_loop_status when applicable so the trader System Intelligence panel stays aligned. "
+        "For export, corpus, data-quality, representation, replay-lineage, or provenance work, also publish "
+        "the exact source repository/branch/40-character commit through record_engine_integrity_event so the "
+        "Data Integrity panel stays aligned. For agent/subsystem learning, regime research, drift, training, "
+        "evaluation, or rigorously-qualified candidate lifecycle updates, use record_engine_brain_event so the "
+        "Adaptive Brain panel receives durable evidence. Use the performance-proof tools for immutable forecast/outcome/replay "
+        "evidence and engine_latency_telemetry for measured timing. Brain publication is research/shadow-only and cannot "
+        "grant production decision or broker authority. Those publication tools are diagnostic-only. "
+        "pause_trading / resume_trading / flatten_all / "
+        "simulate_alert change live paper state — confirm with the user before calling them unless they "
+        "asked for exactly that action."
     ),
 )
 
@@ -157,6 +179,69 @@ def engine_status() -> dict:
 
 
 @mcp.tool()
+def engine_repository_audit() -> dict:
+    """Latest local GitHub/MCP repository + CI audit snapshot shown in the ICARUS trader dashboard."""
+    return _safe_engine(lambda: _engine_get("/api/system/audit"))
+
+
+@mcp.tool()
+def record_engine_repository_audit(audit_json: str) -> dict:
+    """Persist a verified repository/CI audit so MCP and the trader dashboard surface the same state.
+
+    This only updates local diagnostic state; it cannot pause, resume, place, cancel, or flatten trades.
+    """
+    try:
+        audit = json.loads(audit_json)
+    except json.JSONDecodeError as ex:
+        return {"error": f"audit_json is invalid JSON: {ex}"}
+    if not isinstance(audit, dict):
+        return {"error": "audit_json must decode to an object"}
+    return _safe_engine(lambda: _engine_post("/admin/system/audit", {"audit": audit}))
+
+
+@mcp.tool()
+def record_engine_system_event(kind: str, title: str, detail: str = "", severity: str = "info",
+                               repository: str = "", ref: str = "") -> dict:
+    """Publish an important verified MCP repair/audit/evolution/integration/finding to the trader UI.
+
+    Diagnostic-only: this cannot alter strategy state, broker state, orders, positions, or execution authority.
+    """
+    event = {
+        "kind": kind,
+        "severity": severity,
+        "title": title,
+        "detail": detail,
+        "repository": repository,
+        "ref": ref,
+    }
+    return _safe_engine(lambda: _engine_post("/admin/system/event", {"event": event}))
+
+
+@mcp.tool()
+def record_engine_loop_status(loop_id: str, title: str, status: str, run_id: str = "",
+                              scheduler_id: str = "", schedule: str = "", repository: str = "",
+                              finalization_commit_sha: str = "", finalization_state_blob_sha: str = "",
+                              detail: str = "") -> dict:
+    """Publish one verified automation-loop durability receipt/status to the trader UI.
+
+    Use after verifying the exact loop finalization + heartbeat binding. Diagnostic-only.
+    """
+    loop = {
+        "id": loop_id,
+        "title": title,
+        "status": status,
+        "run_id": run_id,
+        "scheduler_id": scheduler_id,
+        "schedule": schedule,
+        "repository": repository,
+        "finalization_commit_sha": finalization_commit_sha,
+        "finalization_state_blob_sha": finalization_state_blob_sha,
+        "detail": detail,
+    }
+    return _safe_engine(lambda: _engine_post("/admin/system/loop", {"loop": loop}))
+
+
+@mcp.tool()
 def engine_configuration(asset: str = "NQ") -> dict:
     """Effective strategy inputs plus chart timeframe/type/fill/source capabilities for one engine asset."""
     asset = asset.strip().upper()
@@ -171,7 +256,7 @@ def set_engine_chart_config(asset: str = "NQ", timeframe: Optional[str] = None,
 
     Supported chart modes are standard OHLC (real) and Heikin Ashi (heikin_ashi).
     Real fills remain recommended even when the strategy calculates on Heikin Ashi.
-    Seconds/ticks are rejected unless the engine later gains a genuine sub-minute/tick adapter.
+    Databento now supplies genuine 1-second/tick/depth data, but chart-timeframe execution remains minute-based until the chart aggregator is upgraded for sub-minute/tick bars.
     """
     chart = {k: v for k, v in {
         "timeframe": timeframe, "chart_type": chart_type, "fill_on": fill_on,
@@ -209,6 +294,283 @@ def start_engine_backtest(asset: str = "NQ", timeframe: Optional[str] = None,
 def engine_backtest_status(job_id: str) -> dict:
     """Read a cached backtest job, including recalculated metrics/trades when it is complete."""
     return _safe_engine(lambda: _engine_get(f"/api/backtest/{job_id.strip()}"))
+
+
+@mcp.tool()
+def engine_market_data_capabilities(asset: str = "NQ") -> dict:
+    """Active raw-feed capabilities. Databento exposes 1s OHLCV, ticks, MBP-10, and MBO."""
+    asset = asset.strip().upper()
+    return _safe_engine(lambda: _engine_get(f"/api/market-data/{asset}/capabilities"))
+
+
+@mcp.tool()
+def engine_recent_ticks(asset: str = "NQ", limit: int = 1000, since_ts: int = 0) -> dict:
+    """Recent raw trade ticks from the active engine feed."""
+    asset = asset.strip().upper()
+    qs = f"?limit={max(1, min(10000, int(limit)))}"
+    if int(since_ts) > 0:
+        qs += f"&since_ts={int(since_ts)}"
+    return _safe_engine(lambda: _engine_get(f"/api/market-data/{asset}/ticks{qs}"))
+
+
+@mcp.tool()
+def engine_order_book_events(asset: str = "NQ", schema: str = "mbp-10", limit: int = 1000) -> dict:
+    """Recent Databento L2/L3 events. schema must be mbp-10 or mbo."""
+    schema = schema.strip().lower()
+    if schema not in ("mbp-10", "mbo"):
+        return {"error": "schema must be mbp-10 or mbo"}
+    asset = asset.strip().upper()
+    return _safe_engine(lambda: _engine_get(
+        f"/api/market-data/{asset}/depth?schema={schema}&limit={max(1, min(10000, int(limit)))}"
+    ))
+
+
+@mcp.tool()
+def engine_mbo_snapshot(asset: str = "NQ", timeout: float = 5.0) -> dict:
+    """Request a live Databento MBO snapshot for the continuous front contract."""
+    body = {"asset": asset.strip().upper(), "timeout": max(0.1, min(30.0, float(timeout)))}
+    return _safe_engine(lambda: _engine_post("/admin/market-data/mbo-snapshot", body))
+
+
+@mcp.tool()
+def engine_integrity_state() -> dict:
+    """Read export/data integrity plus the MCP change ledger shown in the ICARUS trading interface."""
+    return _safe_engine(lambda: _engine_get("/api/integrity"))
+
+
+@mcp.tool()
+def record_engine_integrity_event(
+    kind: str,
+    area: str,
+    summary: str,
+    source_repo: str,
+    source_branch: str,
+    source_commit: str,
+    verification: str,
+    interface_effect: str,
+    status: str = "observed",
+    severity: str = "important",
+    evidence_json: str = "[]",
+    details_json: str = "{}",
+) -> dict:
+    """Mirror one material data/provenance MCP change into the ICARUS Data Integrity panel.
+
+    source_commit must be the exact 40-character source commit SHA. Writes are
+    idempotent by semantic event identity. This tool cannot change strategy or
+    broker state and always preserves execution_authorized=false.
+    """
+    try:
+        evidence = json.loads(evidence_json or "[]")
+        details = json.loads(details_json or "{}")
+    except json.JSONDecodeError as ex:
+        return {"error": f"invalid JSON metadata: {ex}"}
+    if not isinstance(evidence, list):
+        return {"error": "evidence_json must decode to a list"}
+    if not isinstance(details, dict):
+        return {"error": "details_json must decode to an object"}
+    body = {
+        "kind": kind,
+        "area": area,
+        "summary": summary,
+        "status": status,
+        "severity": severity,
+        "source_repo": source_repo,
+        "source_branch": source_branch,
+        "source_commit": source_commit,
+        "verification": verification,
+        "interface_effect": interface_effect,
+        "evidence": evidence,
+        "details": details,
+    }
+    return _safe_engine(lambda: _engine_post("/admin/integrity/event", body))
+
+
+@mcp.tool()
+def engine_brain_state() -> dict:
+    """Read the Adaptive Brain multi-agent/subsystem, learning, regime and shadow-candidate state."""
+    return _safe_engine(lambda: _engine_get("/api/brain"))
+
+
+@mcp.tool()
+def record_engine_brain_event(
+    kind: str,
+    subject: str,
+    summary: str,
+    status: str = "observed",
+    evidence_json: str = "[]",
+    details_json: str = "{}",
+    candidate_id: str = "",
+    stage: str = "",
+    regimes_json: str = "[]",
+    metrics_json: str = "{}",
+    validation_json: str = "{}",
+    source_repo: str = "",
+    source_commit: str = "",
+) -> dict:
+    """Publish one evidence-backed Adaptive Brain event.
+
+    Candidate events require an exact source repository + 40-character Git SHA,
+    explicit regime tags, metrics, and every validation gate. This endpoint is
+    research/shadow-only and always preserves production_decision_authorized=false
+    and execution_authorized=false.
+    """
+    try:
+        evidence = json.loads(evidence_json or "[]")
+        details = json.loads(details_json or "{}")
+        regimes = json.loads(regimes_json or "[]")
+        metrics = json.loads(metrics_json or "{}")
+        validation = json.loads(validation_json or "{}")
+    except json.JSONDecodeError as ex:
+        return {"error": f"invalid JSON metadata: {ex}"}
+    if not isinstance(evidence, list):
+        return {"error": "evidence_json must decode to a list"}
+    if not isinstance(details, dict):
+        return {"error": "details_json must decode to an object"}
+    if not isinstance(regimes, list):
+        return {"error": "regimes_json must decode to a list"}
+    if not isinstance(metrics, dict):
+        return {"error": "metrics_json must decode to an object"}
+    if not isinstance(validation, dict):
+        return {"error": "validation_json must decode to an object"}
+
+    body: Dict[str, Any] = {
+        "kind": kind,
+        "subject": subject,
+        "summary": summary,
+        "status": status,
+        "evidence": evidence,
+        "details": details,
+    }
+    if kind.strip().lower() == "candidate":
+        body.update({
+            "candidate_id": candidate_id,
+            "stage": stage,
+            "regimes": regimes,
+            "metrics": metrics,
+            "validation": validation,
+            "source_repo": source_repo,
+            "source_commit": source_commit,
+        })
+    return _safe_engine(lambda: _engine_post("/admin/brain/event", body))
+
+
+@mcp.tool()
+def engine_performance_proof() -> dict:
+    """Read causal forecast/outcome/replay proof, calibration and closed-sample metrics."""
+    return _safe_engine(lambda: _engine_get("/api/performance-proof"))
+
+
+@mcp.tool()
+def record_engine_performance_forecast(
+    candidate_id: str,
+    asset: str,
+    regime: str,
+    decision_at: str,
+    matures_at: str,
+    probability_success: float,
+    success_definition: str,
+    source_repo: str,
+    source_commit: str,
+    dataset_hash: str,
+    evidence_hash: str,
+) -> dict:
+    """Record one immutable research/shadow forecast before its outcome matures."""
+    return _safe_engine(lambda: _engine_post("/admin/performance-proof/forecast", {
+        "candidate_id": candidate_id,
+        "asset": asset,
+        "regime": regime,
+        "decision_at": decision_at,
+        "matures_at": matures_at,
+        "probability_success": float(probability_success),
+        "success_definition": success_definition,
+        "source_repo": source_repo,
+        "source_commit": source_commit,
+        "dataset_hash": dataset_hash,
+        "evidence_hash": evidence_hash,
+    }))
+
+
+@mcp.tool()
+def record_engine_performance_outcome(
+    forecast_id: str,
+    observed_at: str,
+    success: bool,
+    outcome_hash: str,
+    source: str,
+    realized_value: Optional[float] = None,
+) -> dict:
+    """Settle one matured proof forecast exactly once; conflicting rewrites fail closed."""
+    return _safe_engine(lambda: _engine_post("/admin/performance-proof/outcome", {
+        "forecast_id": forecast_id,
+        "observed_at": observed_at,
+        "success": bool(success),
+        "realized_value": realized_value,
+        "outcome_hash": outcome_hash,
+        "source": source,
+    }))
+
+
+@mcp.tool()
+def record_engine_replay_proof(
+    subject: str,
+    source_commit: str,
+    input_hash: str,
+    first_output_hash: str,
+    second_output_hash: str,
+    observed_at: str,
+) -> dict:
+    """Record a deterministic replay comparison for one exact input and source revision."""
+    return _safe_engine(lambda: _engine_post("/admin/performance-proof/replay", {
+        "subject": subject,
+        "source_commit": source_commit,
+        "input_hash": input_hash,
+        "first_output_hash": first_output_hash,
+        "second_output_hash": second_output_hash,
+        "observed_at": observed_at,
+    }))
+
+
+@mcp.tool()
+def engine_latency_telemetry() -> dict:
+    """Read measured ICARUS processing latency percentiles and budget status."""
+    return _safe_engine(lambda: _engine_get("/api/latency"))
+
+
+@mcp.tool()
+def engine_possibility_state(asset: str = "NQ") -> dict:
+    """Read ICARUS Ψ latent-pressure, possibility-space and information-wave diagnostics."""
+    asset = asset.strip().upper()
+    return _safe_engine(lambda: _engine_get(f"/api/possibility?asset={asset}"))
+
+
+@mcp.tool()
+def record_engine_possibility_evidence(
+    asset: str,
+    source: str,
+    values_json: str,
+    observed_at: str = "",
+    ttl_seconds: float = 300.0,
+) -> dict:
+    """Publish provenance-labelled optional force evidence to ICARUS Ψ.
+
+    Supported force names are validated by the engine. This is research/shadow
+    evidence only and cannot authorize a trade or production decision.
+    """
+    try:
+        values = json.loads(values_json or "{}")
+    except json.JSONDecodeError as ex:
+        return {"error": f"values_json is invalid JSON: {ex}"}
+    if not isinstance(values, dict):
+        return {"error": "values_json must decode to an object"}
+    body: Dict[str, Any] = {
+        "asset": asset.strip().upper(),
+        "source": source.strip(),
+        "values": values,
+        "ttl_seconds": float(ttl_seconds),
+    }
+    if observed_at.strip():
+        body["observed_at"] = observed_at.strip()
+    return _safe_engine(lambda: _engine_post("/admin/possibility/evidence", body))
 
 
 # ── control tools (state-changing) ──

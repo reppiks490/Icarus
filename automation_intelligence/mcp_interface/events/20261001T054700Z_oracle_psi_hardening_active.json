@@ -1,0 +1,32 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "oracle-psi-hardening-active-20261001T054700Z",
+  "category": "AUDIT",
+  "severity": "info",
+  "status": "active",
+  "subsystems": [
+    "oracle",
+    "ml",
+    "data",
+    "provenance"
+  ],
+  "recorded_at": "2026-10-01T05:47:00Z",
+  "title": "ORACLE Psi possibility engine audit hardening in progress",
+  "summary": "The draft ORACLE latent-pressure / ICARUS Psi possibility engine was audited before merge. A JavaScript selector regression was repaired and the research model was hardened so evidence coverage is confidence-weighted, external observation timestamps must be timezone-explicit and non-future, exactly neutral latent pressure cannot emit a directional phase boundary, and forced-consensus requires distinct evidence domains instead of counting correlated microstructure features as independent confirmation. Exact-head CI is still required before readiness or merge.",
+  "source_repository": "reppiks490/Icarus",
+  "source_ref": "chatgpt/icarus-psi-oracle-20261001",
+  "source_commit": "9937b68435c980be1a6a25e76e60da90896d4818",
+  "evidence": [
+    "possibility-ui selector syntax regression repaired before merge",
+    "coverage now weights available evidence by confidence",
+    "forced consensus collapses correlated microstructure features into one evidence domain",
+    "external observed_at requires RFC3339 timezone and rejects future timestamps",
+    "neutral latent pressure no longer creates directional phase boundary",
+    "new regression tests added",
+    "verification state: awaiting exact-head Linux/Windows CI",
+    "execution_authorized=false",
+    "production_decision_authorized=false"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}

@@ -1,0 +1,33 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "subsystem-stale-pr-cleanup-20261001T053900Z",
+  "category": "REPAIR",
+  "severity": "success",
+  "status": "verified",
+  "subsystems": [
+    "provenance",
+    "aion",
+    "parallax",
+    "argus",
+    "athena",
+    "nexus",
+    "prometheus",
+    "ml"
+  ],
+  "recorded_at": "2026-10-01T05:39:00Z",
+  "title": "Superseded subsystem drafts closed",
+  "summary": "Stale draft PR #1 (old CCTP proof clock) and PR #2 (older subsystem evolution branch) were explicitly marked superseded and closed after their current-main replacements were verified and merged as PR #4 and PR #3. This removes two accidental-merge paths without deleting their historical evidence.",
+  "source_repository": "reppiks490/divine-providence",
+  "source_ref": "main",
+  "source_commit": "d4c822e59d9b19dcb26e32b8f879a0a3661678d0",
+  "evidence": [
+    "PR #1 closed unmerged after supersession by merged PR #4",
+    "PR #2 closed unmerged after supersession by merged PR #3",
+    "historical PR conversations and branches preserved",
+    "no force reset, branch overwrite, or history deletion performed",
+    "execution_authorized=false",
+    "production_decision_authorized=false"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}

@@ -1,0 +1,37 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "parallax-dreamstate-verified-20261001T054300Z",
+  "category": "EVOLUTION",
+  "severity": "success",
+  "status": "verified",
+  "subsystems": [
+    "parallax",
+    "dreamstate",
+    "aion",
+    "athena",
+    "provenance",
+    "ml"
+  ],
+  "recorded_at": "2026-10-01T05:43:00Z",
+  "title": "PARALLAX and DREAMSTATE verified and merged",
+  "summary": "PARALLAX counterfactual twins and the DREAMSTATE policy incubator are merged into current ICARUS after exact-head Linux and Windows CI passed. PARALLAX records only observed branch outcomes and conservative paired evidence; DREAMSTATE converts screened patterns into versioned shadow candidates behind protected validation gates and mirrors them into Adaptive Brain. The integration adds no broker/order authority, no live input mutation, and no production promotion.",
+  "source_repository": "reppiks490/Icarus",
+  "source_ref": "main",
+  "source_commit": "4c848d5fe29727dca5a54c1f2c69780e8b18958b",
+  "evidence": [
+    "PR #84 merged from exact head da691c4b4194a7b7d7e1f46a27c44fa45c02b0ec",
+    "GitHub Actions engine: success",
+    "GitHub Actions engine-windows: success",
+    "PARALLAX unobserved branches are never scored",
+    "PARALLAX statistical evidence is isolated by exact source_commit",
+    "DREAMSTATE opposite-side branches cannot auto-create inversion policies",
+    "DREAMSTATE family trial budget: 12",
+    "DREAMSTATE maximum stage: qualified_shadow",
+    "Adaptive Brain mirroring regression: passed",
+    "dashboard JavaScript parse regression: passed",
+    "execution_authorized=false",
+    "production_decision_authorized=false"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}

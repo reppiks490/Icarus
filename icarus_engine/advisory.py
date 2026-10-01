@@ -339,9 +339,12 @@ class AdvisoryLedger:
 
     def _event(self, value, now):
         event = _object(value)
-        _keys(event, ("schema_version", "source", "source_event_id", "revision_id", "source_url", "event_type",
-                      "asset_ids", "instrument_id", "observed_at", "published_at", "values", "units"),
-              ("report_family", "text", "quality_flags", "timing_basis"))
+        required = ("schema_version", "source", "source_event_id", "revision_id", "source_url", "event_type",
+                    "asset_ids", "instrument_id", "observed_at", "published_at", "values", "units")
+        optional = ("report_family", "text", "quality_flags", "timing_basis")
+        if event.get("event_type") == "world_state":
+            optional += ("domain", "entity", "confidence")
+        _keys(event, required, optional)
         if type(event["schema_version"]) is not int or event["schema_version"] != SCHEMA_VERSION:
             raise AdvisoryError("unsupported event schema version")
         for name in ("source", "source_event_id", "revision_id", "instrument_id"):
@@ -356,7 +359,7 @@ class AdvisoryLedger:
             good_url = False
         if not good_url:
             raise AdvisoryError("source URL must use an allowlisted HTTPS hostname")
-        if event["event_type"] not in ("cot", "macro", "news", "correlation", "company"):
+        if event["event_type"] not in ("cot", "macro", "news", "correlation", "company", "world_state"):
             raise AdvisoryError("unsupported event type")
         assets = event["asset_ids"]
         if type(assets) is not list or not 1 <= len(assets) <= 32 or len(set(map(str, assets))) != len(assets):
@@ -394,6 +397,15 @@ class AdvisoryLedger:
                 raise AdvisoryError("evidence values must be finite numbers, never booleans")
             if event["event_type"] == "correlation" and not -1 <= number <= 1:
                 raise AdvisoryError("correlations must be between -1 and 1")
+        if event["event_type"] == "world_state":
+            if any(name not in event for name in ("domain", "entity", "confidence")):
+                raise AdvisoryError("world_state evidence requires domain, entity and confidence")
+            _identity(event["domain"], "domain")
+            _identity(event["entity"], "entity")
+            confidence = event["confidence"]
+            if (isinstance(confidence, bool) or type(confidence) not in (int, float)
+                    or not math.isfinite(confidence) or not 0 <= confidence <= 1):
+                raise AdvisoryError("world_state confidence must be a finite number in [0,1]")
         if "report_family" in event:
             _identity(event["report_family"], "report family")
         if event["event_type"] == "cot" and "report_family" not in event:

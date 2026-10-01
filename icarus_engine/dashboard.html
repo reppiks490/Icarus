@@ -125,6 +125,7 @@ pre.cli { background:var(--surface-2); border:1px solid var(--ring); border-radi
       <span class="small muted" id="meta">—</span><span class="small muted tnum" id="clock" title="your computer's clock (local zone) and the strategy's session clock (New York)"></span>
       <span class="badge" id="phase">—</span>
       <span class="badge" id="armed">—</span>
+      <span class="badge" id="repoHealth" title="Latest local ICARUS System Intelligence snapshot">SYS —</span>
       <button class="icon-btn" id="btnPal" title="Command palette (Ctrl+K)">⌘ Commands</button>
       <button class="icon-btn" id="btnControls">⚙︎ Token</button>
       <button class="icon-btn" id="btnTheme" title="Toggle theme">◐</button>
@@ -147,6 +148,14 @@ pre.cli { background:var(--surface-2); border:1px solid var(--ring); border-radi
 
 <script src="/research-ui.js"></script>
 <script src="/sources-ui.js"></script>
+<script src="/brain-ui.js"></script>
+<script src="/evolution-ui.js"></script>
+<script src="/parallax-ui.js"></script>
+<script src="/possibility-ui.js"></script>
+<script src="/chronofold-ui.js"></script>
+<script src="/integrity-ui.js"></script>
+<script src="/engine-control-ui.js"></script>
+<script src="/autopilot-ui.js"></script>
 <script src="/experience-ui.js"></script>
 <script>
 const $ = (s, r=document) => r.querySelector(s);
@@ -179,7 +188,7 @@ function toast(msg, bad) { let t = $('#toast'); if (!t) { t = document.createEle
 async function admin(path, body, quiet) {
   const tok = localStorage.getItem(tokKey) || $('#token').value.trim(); if (!tok) { $('#ctl').classList.add('open'); return null; }
   const r = await fetch(path, {method:'POST', headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'}, body: JSON.stringify(body||{})});
-  const j = await r.json().catch(()=>({})); const msg = r.ok ? (j.note||'ok') : ('error '+r.status+': '+(j.detail||''));
+  const j = await r.json().catch(()=>({})); const msg = r.ok ? (j.note||'ok') : ('error '+r.status+': '+(j.detail||j.error||'request failed'));
   if (!quiet) toast(msg, !r.ok); setTimeout(refresh, 400); return r.ok ? j : null;
 }
 
@@ -271,8 +280,64 @@ function tabsHtml(A) {
   const t = [`<span class="tab ${view==='overview'?'active':''}" data-v="overview">Overview</span>`];
   A.forEach(a => { const pos = a.position||0; t.push(`<span class="tab ${view==='asset:'+a.symbol?'active':''}" data-v="asset:${a.symbol}"><span class="dot ${pos>0?'long':pos<0?'short':(a.market&&a.market.open===false?'closed':'')}"></span><b class="s">${esc(a.continuous_symbol||a.symbol)}</b> <span class="muted small tnum">${px(a.price)}</span></span>`); });
   t.push(`<span class="tab" data-v="add" title="Add an asset">＋</span>`);
-  t.push(`<span class="tab util ${view==='golive'?'active':''}" data-v="golive">Go-live</span><span class="tab util ${view==='agent'?'active':''}" data-v="agent">Agent</span><span class="tab util ${view==='inputs'?'active':''}" data-v="inputs">Inputs</span><span class="tab util ${view==='backtest'?'active':''}" data-v="backtest">Backtest</span>${typeof researchHtml==='function'?`<span class="tab util ${view==='research'?'active':''}" data-v="research">Research</span>`:''}${typeof sourcesHtml==='function'?`<span class="tab util ${view==='sources'?'active':''}" data-v="sources">Financial &amp; data</span>`:''}<span class="tab util ${view==='commands'?'active':''}" data-v="commands">Commands</span><span class="tab util ${view==='log'?'active':''}" data-v="log">Log</span>`);
+  t.push(`<span class="tab util ${view==='system'?'active':''}" data-v="system">System</span><span class="tab util ${view==='golive'?'active':''}" data-v="golive">Go-live</span><span class="tab util ${view==='agent'?'active':''}" data-v="agent">Agent</span><span class="tab util ${view==='inputs'?'active':''}" data-v="inputs">Inputs</span><span class="tab util ${view==='backtest'?'active':''}" data-v="backtest">Backtest</span>${typeof researchHtml==='function'?`<span class="tab util ${view==='research'?'active':''}" data-v="research">Research</span>`:''}${typeof sourcesHtml==='function'?`<span class="tab util ${view==='sources'?'active':''}" data-v="sources">Financial &amp; data</span>`:''}${typeof brainHtml==='function'?`<span class="tab util ${view==='brain'?'active':''}" data-v="brain">Adaptive Brain</span>`:''}${typeof evolutionHtml==='function'?`<span class="tab util ${view==='evolution'?'active':''}" data-v="evolution">MCP Evolution</span>`:''}${typeof parallaxHtml==='function'?`<span class="tab util ${view==='parallax'?'active':''}" data-v="parallax">PARALLAX / DREAMSTATE</span>`:''}${typeof possibilityHtml==='function'?`<span class="tab util ${view==='possibility'?'active':''}" data-v="possibility">ICARUS Ψ</span>`:''}${typeof chronofoldHtml==='function'?`<span class="tab util ${view==='chronofold'?'active':''}" data-v="chronofold">ICARUS Ξ</span>`:''}${typeof integrityHtml==='function'?`<span class="tab util ${view==='integrity'?'active':''}" data-v="integrity">Data Integrity</span>`:''}${typeof engineControlHtml==='function'?`<span class="tab util ${view==='engine-control'?'active':''}" data-v="engine-control">Engine Control</span>`:''}<span class="tab util ${view==='commands'?'active':''}" data-v="commands">Commands</span><span class="tab util ${view==='log'?'active':''}" data-v="log">Log</span>`);
+  if (typeof autopilotHtml==='function') t.push(`<span class="tab util ${view==='autopilot'?'active':''}" data-v="autopilot">Tactical Autopilot</span>`);
   return t.join('');
+}
+function systemLoopClass(status) {
+  const s = String(status || 'UNKNOWN').toUpperCase();
+  if (s.includes('RUN_PERSISTED') || s.includes('FINALIZATION_VERIFIED') || s === 'VERIFIED' || s === 'CLEAN') return 'b';
+  if (s.includes('FAIL') || s.includes('BLOCK') || s.includes('ERROR')) return 'r';
+  return 'w';
+}
+function systemLoopOk(status) { return systemLoopClass(status) === 'b'; }
+function repositoryAuditCard(a, compact=false) {
+  if (!a) return `<section class="card c12" id="repoAuditCard"><h2>System Intelligence</h2><div class="empty">loading local repository, loop, and MCP snapshot…</div></section>`;
+  const s = a.summary || {}, m = a.main || {}, issue = a.issue || {}, sync = a.loop_sync || {};
+  const loops = a.loops || [], events = a.events || [];
+  const stat = String(a.status || 'unknown').toLowerCase();
+  const cls = stat === 'green' ? 'b' : stat === 'red' ? 'r' : 'w';
+  const loopGood = loops.filter(x => systemLoopOk(x.status)).length;
+  const loopBad = Math.max(0, loops.length - loopGood);
+  const checks = (a.checks || []).map(x => `<div class="irow"><div><span class="chip ${String(x.status||'').toLowerCase()==='success'?'b':String(x.status||'').toLowerCase()==='failure'?'r':'w'}">${esc(x.name||'check')}</span></div><div class="small" style="grid-column:span 3">${esc(x.detail||x.status||'')}</div></div>`).join('');
+  const loopRows = loops.map(x => {
+    const sig = x.signals || {};
+    const sigHtml = Object.keys(sig).length ? `<details style="margin-top:6px"><summary class="muted">run output</summary><pre class="small" style="white-space:pre-wrap;max-width:620px;max-height:260px;overflow:auto">${esc(JSON.stringify(sig,null,2))}</pre></details>` : '';
+    return `<tr><td><b>${esc(x.title||x.id)}</b><div class="muted small">${esc(x.schedule||'')}</div></td><td><span class="chip ${systemLoopClass(x.status)}">${esc(x.status||'UNKNOWN')}</span></td><td class="tnum">${esc(x.run_id||'—')}</td><td class="tnum">${esc(String(x.finalization_commit_sha||'—').slice(0,12))}</td><td class="small">${esc(x.detail||'')}${sigHtml}</td></tr>`;
+  }).join('');
+  const eventRows = events.slice(0,40).map(x => {
+    const sev = String(x.severity||'info').toLowerCase();
+    const k = sev === 'success' ? 'b' : sev === 'error' ? 'r' : sev === 'warn' ? 'w' : '';
+    return `<tr><td class="tnum">${esc(x.recorded_at||'—')}</td><td><span class="chip ${k}">${esc(String(x.kind||'finding').toUpperCase())}</span></td><td><b>${esc(x.title||'')}</b><div class="muted small">${esc(x.detail||'')}</div></td><td class="tnum">${esc(String(x.ref||'—').slice(0,16))}</td></tr>`;
+  }).join('');
+  const issueLink = issue.url ? `<a href="${esc(issue.url)}" target="_blank" rel="noreferrer">GitHub audit #${esc(issue.number||'')}</a>` : '';
+  const syncState = String(sync.status || 'unknown').toLowerCase();
+  const syncClass = syncState === 'green' ? 'pos' : syncState === 'red' ? 'neg' : '';
+  const compactLoops = loops.length ? `<div class="small" style="margin-top:10px"><b>Automation loops:</b> <span class="${loopBad?'neg':'pos'}">${loopGood}/${loops.length} receipt-verified</span>${loopBad ? ` · ${loopBad} need attention` : ''} · <b>auto-sync</b> <span class="${syncClass}">${esc(syncState.toUpperCase())}</span></div>` : '';
+  const lastEvent = events[0] ? `<div class="small muted" style="margin-top:5px"><b>Latest MCP:</b> ${esc(events[0].title||'')} · ${esc(events[0].recorded_at||'')}</div>` : '';
+  return `<section class="card c12" id="repoAuditCard">
+    <h2>System Intelligence <span class="sub">${esc(a.repository||'')} · local diagnostic snapshot · ${esc(a.recorded_at||'time unknown')}</span></h2>
+    <div class="tiles" style="margin-top:0">
+      <div class="tile"><div class="k">Repository audit</div><div class="v"><span class="chip ${cls}">${esc(stat.toUpperCase())}</span></div></div>
+      <div class="tile"><div class="k">Loop receipts</div><div class="v ${loopBad?'neg':'pos'}">${loops.length ? loopGood+'/'+loops.length : '—'}</div></div>
+      <div class="tile"><div class="k">MCP activity</div><div class="v tnum">${events.length}</div></div>
+      <div class="tile"><div class="k">Loop auto-sync</div><div class="v ${syncClass}">${esc(syncState.toUpperCase())}</div><div class="small muted">${sync.last_success_at ? 'last '+esc(sync.last_success_at) : 'no successful sync yet'}</div></div>
+      <div class="tile"><div class="k">Main SHA</div><div class="v tnum" style="font-size:14px">${esc(String(m.sha||'—').slice(0,12))}</div></div>
+      <div class="tile"><div class="k">Linux</div><div class="v">${esc(String(m.linux||'unknown').toUpperCase())}</div></div>
+      <div class="tile"><div class="k">Windows</div><div class="v">${esc(String(m.windows||'unknown').toUpperCase())}</div></div>
+      <div class="tile"><div class="k">Current-head failures</div><div class="v tnum ${(s.current_head_failures||0)>0?'neg':'pos'}">${s.current_head_failures ?? '—'}</div></div>
+      <div class="tile"><div class="k">Unresolved</div><div class="v tnum">${s.unresolved ?? '—'}</div></div>
+    </div>
+    ${compact ? compactLoops + lastEvent : `
+      <div class="small muted" style="margin-top:10px">${esc(a.note||'')}${issueLink ? ' · '+issueLink : ''} · diagnostic only · execution_authorized=false</div>
+      <div class="small muted" style="margin-top:6px"><b>Automatic loop ingest:</b> ${esc(syncState.toUpperCase())} · every ${esc(sync.interval_seconds||'—')}s · last attempt ${esc(sync.last_attempt_at||'—')}${(sync.errors||[]).length ? ' · '+esc((sync.errors||[]).join(' | ')) : ''}</div>
+      ${checks ? `<h3 class="small" style="margin:14px 0 6px">Repository checks</h3><div>${checks}</div>` : ''}
+      <h3 class="small" style="margin:16px 0 6px">Automation loops <span class="muted">${loopGood}/${loops.length} receipt-verified</span></h3>
+      <div class="scroll" style="max-height:320px"><table><thead><tr><th>Loop</th><th>Status</th><th>Run ID</th><th>Finalization</th><th>Detail</th></tr></thead><tbody>${loopRows || '<tr><td colspan=5 class="empty">no loop receipts published yet</td></tr>'}</tbody></table></div>
+      <h3 class="small" style="margin:16px 0 6px">MCP activity <span class="muted">repairs · audits · evolutions · integrations · findings</span></h3>
+      <div class="scroll" style="max-height:420px"><table><thead><tr><th>Time</th><th>Kind</th><th>Event</th><th>Ref</th></tr></thead><tbody>${eventRows || '<tr><td colspan=4 class="empty">no MCP events published yet</td></tr>'}</tbody></table></div>
+    `}
+  </section>`;
 }
 function goliveCard(g) {
   if (!g) return `<section class="card c12" id="goliveCard"><h2>Go-live integrity</h2><div class="empty">loading…</div></section>`;
@@ -321,6 +386,7 @@ function overviewHtml(d, A) {
   const sinceLive = (d.live_profit||0) + (d.open_profit||0), histNet = (d.net||0) - sinceLive;
   return `
   ${goliveCard(window.ICARUS_GOLIVE)}
+  ${repositoryAuditCard(window.ICARUS_AUDIT, true)}
   ${d.all_warm ? '' : `<div class="callout"><div>⏳</div><div><b>Warming up</b>Each asset replays its history (deep native bars for the slow timeframes, then 5-minute and 1-minute sub-bars aggregated exactly like live data). Futures cards then wait for the CME open; crypto goes live immediately.</div></div>`}
   <section class="card c3" id="heroCard"><h2>Portfolio · active engine epoch</h2>
     <div class="hero"><div class="n tnum ${sinceLive>=0?'up':'dn'}">${sgn$(sinceLive)}</div><div class="pct tnum">${d.capital?`${(sinceLive/d.capital*100).toFixed(2)}% on ${fmt$(d.capital,0)} · closed live trades + open positions`:''}</div></div>
@@ -372,10 +438,12 @@ function inputsHtml(A) {
 }
 function commandsHtml(A) {
   const opts = `<option value="*">all assets</option>` + A.map(a => `<option value="${a.symbol}">${esc(a.continuous_symbol||a.symbol)}</option>`).join('');
+  const assetOptions = REGISTRY.map(r => `<option value="${esc(r.symbol)}">${esc(r.name)} · ${esc(r.continuous_symbol||r.provider_symbol||r.symbol)}</option>`).join('');
+  const addTfOptions = ['1','2','3','5','10','15','20','30','45','60','120','180','240','D','W'].map(tf => `<option value="${tf}"></option>`).join('');
   return `<section class="card c8"><h2>Commands <span class="sub">or press <kbd>Ctrl</kbd>+<kbd>K</kbd> anywhere</span></h2>
     <div>${COMMANDS.map(c => `<div class="cmd"><b>${esc(c.label)}</b><span class="desc">${esc(c.desc)}</span><span>${c.scope!=='all'?`<select data-scope="${c.id}">${opts}</select>`:''}</span><button class="sm ${c.danger?'danger':''}" data-run="${c.id}">Run</button></div>`).join('')}</div>
     <h2 style="margin-top:18px">Add an asset</h2>
-    <div class="row"><input id="addSym" type="text" placeholder="symbol (NQ1!, MNQ1!, ES1!, GC1!, BTC…)" style="width:170px"><input id="addTf" type="text" placeholder="tf (20)" style="width:80px"><select id="addPreset"><option value="">preset: engine default</option>${PRESETS.map(p=>`<option value="${esc(p.name)}">${esc(p.name)}</option>`).join('')}</select><button class="primary sm" id="addBtn">Add</button></div>
+    <div class="row"><input id="addSym" list="addAssetOptions" type="text" placeholder="symbol (MGC, NQ1!, ES1!, BTC…)" autocomplete="off" style="width:170px"><datalist id="addAssetOptions">${assetOptions}</datalist><input id="addTf" list="addTfOptions" type="text" placeholder="tf (20)" autocomplete="off" style="width:80px"><datalist id="addTfOptions">${addTfOptions}</datalist><select id="addPreset"><option value="">preset: engine default</option>${PRESETS.map(p=>`<option value="${esc(p.name)}">${esc(p.name)}</option>`).join('')}</select><button class="primary sm" id="addBtn">Add</button></div>
     <div class="small muted" style="margin-top:6px">Registry: ${REGISTRY.map(r=>`<code>${esc(r.continuous_symbol||r.symbol)}</code>`).join(' ')} — futures are continuous-only; anything else is treated as a Coinbase spot pair.</div></section>
   <section class="card c4"><h2>Terminal commands</h2><pre class="cli">py -3 -m icarus_engine.cli run --assets NQ,ES,YM,GC,SI,PL,PA,BTCF,BTC --tf 20
 py -3 -m icarus_engine.cli run --assets NQ@10 --preset NQ-10m-original
@@ -457,7 +525,16 @@ document.addEventListener('click', async ev => {
   if (b.id === 'inRevert') { inState.edits = {}; inState.chartEdits = {}; renderChartConfig(); renderInputs(); }
   if (b.id === 'inReset') { if (confirm(`Remove all per-asset overrides for ${inState.asset}?`)) { await admin('/admin/inputs/reset', {asset: inState.asset}); setTimeout(()=>loadInputsTab(), 1500); } }
   if (b.id === 'inApplyPreset') { await admin('/admin/preset', {asset: inState.asset, preset: $('#inPreset').value || null}); setTimeout(()=>loadInputsTab(), 1500); }
-  if (b.id === 'addBtn') { const s = $('#addSym').value.trim(); if (!s) return; await admin('/admin/assets/add', {symbol: s, tf: $('#addTf').value.trim() || undefined, preset: $('#addPreset').value || undefined}); }
+  if (b.id === 'addBtn') {
+    const s = $('#addSym').value.trim(); if (!s) return;
+    b.disabled = true;
+    try {
+      const added = await admin('/admin/assets/add', {symbol: s, tf: $('#addTf').value.trim() || undefined, preset: $('#addPreset').value || undefined});
+      if (added && $('#addSym')) $('#addSym').value = '';
+    } finally {
+      if (document.body.contains(b)) b.disabled = false;
+    }
+  }
   if (b.dataset.agentRecipe) {
     const r = (window.ICARUS_AGENT && window.ICARUS_AGENT.recipes || []).find(x => x.id === b.dataset.agentRecipe);
     if (r) { navigator.clipboard.writeText((r.lines||[]).join('\n')); toast('copied recipe — not executed'); }
@@ -502,14 +579,14 @@ function palItems(q) {
   const A = (last&&last.assets)||[]; const items = [];
   COMMANDS.forEach(c => { if (c.scope === 'all') items.push({label:c.label, sub:'all assets', id:c.id, a:'*'}); else { if (c.scope.includes('all')) items.push({label:c.label, sub:'all assets', id:c.id, a:'*'}); A.forEach(a => items.push({label:`${c.label} ${a.symbol}`, sub:a.name, id:c.id, a:a.symbol})); } });
   A.forEach(a => items.push({label:`Go to ${a.symbol}`, sub:'asset tab', id:'goto', a:a.symbol}));
-  items.push({label:'Overview', sub:'tab', id:'goto', a:'overview'}, {label:'Go-live tab', sub:'tab', id:'goto', a:'golive'}, {label:'Agent tab', sub:'tab', id:'goto', a:'agent'}, {label:'Inputs tab', sub:'tab', id:'goto', a:'inputs'}, {label:'Commands tab', sub:'tab', id:'goto', a:'commands'}, {label:'Log tab', sub:'tab', id:'goto', a:'log'});
+  items.push({label:'Overview', sub:'tab', id:'goto', a:'overview'}, {label:'Engine Control tab', sub:'tab', id:'goto', a:'engine-control'}, {label:'System health tab', sub:'tab', id:'goto', a:'system'}, {label:'Go-live tab', sub:'tab', id:'goto', a:'golive'}, {label:'Agent tab', sub:'tab', id:'goto', a:'agent'}, {label:'Inputs tab', sub:'tab', id:'goto', a:'inputs'}, {label:'Commands tab', sub:'tab', id:'goto', a:'commands'}, {label:'Log tab', sub:'tab', id:'goto', a:'log'});
   const words = q.toLowerCase().split(/\s+/).filter(Boolean);
   return items.filter(it => words.every(w => (it.label+' '+it.sub).toLowerCase().includes(w))).slice(0, 14);
 }
 function renderPal() { const items = palItems($('#palq').value); palSel = Math.min(palSel, Math.max(0, items.length-1)); $('#palList').innerHTML = items.map((it,i)=>`<div class="item ${i===palSel?'sel':''}" data-i="${i}"><b>${esc(it.label)}</b><span class="muted small">${esc(it.sub)}</span><span class="k">${i===palSel?'↵':''}</span></div>`).join('') || '<div class="item muted">no match</div>'; $('#palList')._items = items; }
 function openPal() { $('#pal').classList.add('open'); $('#palq').value=''; palSel=0; renderPal(); setTimeout(()=>$('#palq').focus(), 30); }
 function closePal() { $('#pal').classList.remove('open'); }
-async function palRun(it) { closePal(); if (!it) return; if (it.id === 'goto') { setView(['overview','inputs','commands','log','golive','agent'].includes(it.a) ? it.a : 'asset:'+it.a); return; } await runCommand(it.id, it.a); }
+async function palRun(it) { closePal(); if (!it) return; if (it.id === 'goto') { setView(['overview','engine-control','system','inputs','commands','log','golive','agent'].includes(it.a) ? it.a : 'asset:'+it.a); return; } await runCommand(it.id, it.a); }
 $('#btnPal').onclick = openPal; $('#palq').addEventListener('input', () => { palSel=0; renderPal(); });
 $('#palq').addEventListener('keydown', ev => { const items = $('#palList')._items||[]; if (ev.key==='ArrowDown') { palSel=Math.min(items.length-1, palSel+1); renderPal(); ev.preventDefault(); } else if (ev.key==='ArrowUp') { palSel=Math.max(0, palSel-1); renderPal(); ev.preventDefault(); } else if (ev.key==='Enter') { palRun(items[palSel]); } else if (ev.key==='Escape') closePal(); });
 $('#palList').addEventListener('click', ev => { const it = ev.target.closest('.item'); if (it && it.dataset.i!=null) palRun(($('#palList')._items||[])[+it.dataset.i]); });
@@ -668,13 +745,22 @@ function render(d) {
   $('#phase').textContent = d.all_warm ? 'LIVE' : `WARMING ${A.filter(a=>a.warm).length}/${A.length}`; $('#phase').className = 'badge ' + (d.all_warm?'armed':'warm');
   $('#armed').textContent = d.paused ? 'PAUSED · entries off' : 'ARMED'; $('#armed').className = 'badge ' + (d.paused?'paused':'armed');
   $('#meta').textContent = `${A.length} assets · preset ${d.preset||'none'}`;
+  const rh = $('#repoHealth'), ra = window.ICARUS_AUDIT;
+  if (rh) {
+    const st = String(ra?.status || 'unknown').toLowerCase();
+    const ls = ra?.loops || [], loopBad = ls.filter(x => !systemLoopOk(x.status)).length;
+    const healthy = st === 'green' && (!ls.length || loopBad === 0);
+    rh.textContent = healthy ? 'SYS ✓' : (st === 'red' || loopBad) ? 'SYS !' : 'SYS ?';
+    rh.className = 'badge ' + (healthy ? 'armed' : (st === 'red' || loopBad) ? 'paused' : 'warm');
+    rh.title = ra ? `System Intelligence ${ra.recorded_at||''} · repo ${st} · loops ${ls.length-loopBad}/${ls.length} verified · main ${String(ra.main?.sha||'').slice(0,12)}` : 'System Intelligence unavailable';
+  }
   $('#tabs').innerHTML = tabsHtml(A);
   const viewAsset = view.startsWith('asset:') ? A.find(a => a.symbol === view.slice(6)) : null;
   if (view.startsWith('asset:') && !viewAsset && !solo) view = 'overview';
   const rebuild = lastView !== view;
   if (view === 'overview') {
     if (rebuild) $('#view').innerHTML = overviewHtml(d, A);
-    else { const g = $('#assets'); if (g) g.innerHTML = A.map(assetCard).join(''); const h = document.createElement('div'); h.innerHTML = overviewHtml(d, A); ['goliveCard','heroCard','engineCard'].forEach(id => { const nu = h.querySelector('#'+id), cur = $('#'+id); if (nu && cur) cur.replaceWith(nu); }); }
+    else { const g = $('#assets'); if (g) g.innerHTML = A.map(assetCard).join(''); const h = document.createElement('div'); h.innerHTML = overviewHtml(d, A); ['goliveCard','repoAuditCard','heroCard','engineCard'].forEach(id => { const nu = h.querySelector('#'+id), cur = $('#'+id); if (nu && cur) cur.replaceWith(nu); }); }
     lineChart($('#eqChart'), d.equity_series, {baseline: d.capital});
     A.forEach(a => { const el = $(`#ch-${a.symbol}`); if (el) { const c = charts[a.symbol+80]; if (c) candles(el, c, {height:170}); } });
     const rows = []; A.forEach(a => (tradesCache[a.symbol]||[]).forEach(t => rows.push({...t, symbol:a.symbol}))); rows.sort((x,y)=>y.exit_ts-x.exit_ts);
@@ -705,6 +791,15 @@ function render(d) {
   } }
   else if (view === 'research') { if(typeof researchHtml!=='function') $('#view').innerHTML='<section class="card c12">Research requires the updated engine server. The running engine has not been restarted.</section>'; else if (rebuild) { $('#view').innerHTML = researchHtml(A); wireResearch(); } else loadResearch(); }
   else if (view === 'sources') { if(typeof sourcesHtml!=='function') $('#view').innerHTML='<section class="card c12">Financial data requires the updated engine server. The running engine has not been restarted.</section>'; else if (rebuild) { $('#view').innerHTML = sourcesHtml(A); wireSources(); } else loadSources(); }
+  else if (view === 'brain') { if(typeof brainHtml!=='function') $('#view').innerHTML='<section class="card c12">Adaptive Brain requires the updated engine server. Restart the engine.</section>'; else if (rebuild) { $('#view').innerHTML = brainHtml(); wireBrain(); } else loadBrain(); }
+  else if (view === 'autopilot') { if(typeof autopilotHtml!=='function') $('#view').innerHTML='<section class="card c12">Tactical Autopilot requires the updated engine server. Restart the engine.</section>'; else if (rebuild) { $('#view').innerHTML = autopilotHtml(A); wireAutopilot(); } else loadAutopilot(); }
+  else if (view === 'evolution') { if(typeof evolutionHtml!=='function') $('#view').innerHTML='<section class="card c12">MCP Evolution requires the updated engine server. Restart the engine.</section>'; else if (rebuild) { $('#view').innerHTML = evolutionHtml(); wireEvolution(); } else loadEvolution(); }
+  else if (view === 'parallax') { if(typeof parallaxHtml!=='function') $('#view').innerHTML='<section class="card c12">PARALLAX / DREAMSTATE requires the updated engine server. Restart the engine.</section>'; else if (rebuild) { $('#view').innerHTML = parallaxHtml(); wireParallax(); } else loadParallax(); }
+  else if (view === 'possibility') { if(typeof possibilityHtml!=='function') $('#view').innerHTML='<section class="card c12">ICARUS Ψ requires the updated engine server. Restart the engine.</section>'; else if (rebuild) { $('#view').innerHTML = possibilityHtml(A); wirePossibility(); } else loadPossibility(); }
+  else if (view === 'chronofold') { if(typeof chronofoldHtml!=='function') $('#view').innerHTML='<section class="card c12">ICARUS Ξ Chronofold requires the updated engine server. Restart the engine.</section>'; else if (rebuild) { $('#view').innerHTML = chronofoldHtml(A); wireChronofold(); } else loadChronofold(); }
+  else if (view === 'integrity') { if(typeof integrityHtml!=='function') $('#view').innerHTML='<section class="card c12">Data Integrity requires the updated engine server. Restart the engine.</section>'; else if (rebuild) { $('#view').innerHTML = integrityHtml(); wireIntegrity(); } else loadIntegrity(); }
+  else if (view === 'engine-control') { if(typeof engineControlHtml!=='function') $('#view').innerHTML='<section class="card c12">Engine Control requires the updated engine server. Restart the engine.</section>'; else if (rebuild) { $('#view').innerHTML = engineControlHtml(); wireEngineControl(); } else loadEngineControl(); }
+  else if (view === 'system') { if (rebuild) $('#view').innerHTML = repositoryAuditCard(window.ICARUS_AUDIT, false); }
   else if (view === 'golive') { if (rebuild) $('#view').innerHTML = goliveCard(window.ICARUS_GOLIVE); else { const nu = document.createElement('div'); nu.innerHTML = goliveCard(window.ICARUS_GOLIVE); const cur = $('#goliveCard'); if (nu.firstElementChild && cur) cur.replaceWith(nu.firstElementChild); } }
   else if (view === 'agent') { if (rebuild) $('#view').innerHTML = agentCard(window.ICARUS_AGENT); }
   else if (view === 'log') { if (rebuild) $('#view').innerHTML = `<section class="card c12"><h2>Engine log</h2><div class="log" id="log2" style="max-height:80vh"></div></section>`; $('#log2').innerHTML = (d.log||[]).slice().reverse().map(l => `<div class="${l.level}">${tms(l.ts)} ${l.level.padEnd(5)} ${esc(l.msg)}</div>`).join(''); }
@@ -756,11 +851,21 @@ async function refreshAgent() {
     }
   } catch (e) {}
 }
+async function refreshAudit() {
+  try {
+    const r = await fetch('/api/system/audit', {cache:'no-store'});
+    if (!r.ok) throw new Error('audit '+r.status);
+    window.ICARUS_AUDIT = await r.json();
+  } catch (e) {
+    window.ICARUS_AUDIT = {status:'unknown', repository:'reppiks490/Icarus', note:'Local repository audit unavailable'};
+  }
+  if (last) render(last);
+}
 async function refreshCharts() { if (!last) return; if (view === 'overview') { for (const a of (last.assets||[])) await loadChart(a.symbol, 80, $(`#ch-${a.symbol}`), {height:170}); refreshFills(); } if (view.startsWith('asset:')) await loadChart(view.slice(6), 300, $('#dChart'), {height:360, compact:false}); }
 async function refreshTrades(only) { if (!last) return; for (const a of (last.assets||[])) { if (only && a.symbol !== only) continue; try { const r = await fetch(`/api/trades/${a.symbol}?limit=80`); tradesCache[a.symbol] = await r.json(); } catch(e) {} } }
 (async () => { [PRESETS, COMMANDS, REGISTRY] = await Promise.all([fetch('/api/presets').then(r=>r.json()).catch(()=>[]), fetch('/api/commands').then(r=>r.json()).catch(()=>[]), fetch('/api/assets').then(r=>r.json()).then(j=>j.registry).catch(()=>[])]);
-  await refresh(); await refreshGolive(); await refreshAgent(); await refreshCharts(); await refreshTrades(); if (last) render(last); })();
-setInterval(refresh, 3000); setInterval(refreshGolive, 8000); setInterval(refreshCharts, 8000); setInterval(()=>refreshTrades(), 20000);
+  await refreshAudit(); await refresh(); await refreshGolive(); await refreshAgent(); await refreshCharts(); await refreshTrades(); if (last) render(last); })();
+setInterval(refresh, 3000); setInterval(refreshGolive, 8000); setInterval(refreshCharts, 8000); setInterval(refreshAudit, 20000); setInterval(()=>refreshTrades(), 20000);
 window.addEventListener('resize', () => { if (last) { lastView = null; render(last); } });
 setInterval(() => { const el = $('#clock'); if (el) el.textContent = `${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'})} ${TZ} · ${etClock()} ET`; }, 1000);
 window.addEventListener('hashchange', () => { if (!solo) { const v = location.hash.slice(1) || 'overview'; if (v !== view) { view = v; lastView = null; if (last) render(last); } } });

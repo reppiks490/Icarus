@@ -70,6 +70,8 @@ class ClosedTrade:
     runup: float = 0.0           # TradingView "Favorable excursion": best gross excursion up to the exit fill, less the entry commission
     drawdown: float = 0.0        # TradingView "Adverse excursion": worst gross excursion (<= 0) less the entry commission
     bars: int = 0                # TradingView "Duration (bars)": exit bar - entry bar
+    lot_id: int = 0              # unique emulator entry sequence shared by partial exits
+    entry_qty: int = 0           # original lot size, for complete-exit accounting
 
 
 @dataclass
@@ -238,7 +240,7 @@ class Emulator:
         ddown = min(0.0, t.direction * (t.worst - t.entry_price)) * qty * self.contract_size - self.commission * qty
         self.closed.append(ClosedTrade(t.entry_id, t.direction, qty, t.entry_price, t.entry_bar, t.entry_ts,
                                        price, self.bar_index, bar.ts, comment, profit, t.entry_comment, kind,
-                                       runup, ddown, self.bar_index - t.entry_bar))
+                                       runup, ddown, self.bar_index - t.entry_bar, t.seq, t.qty_orig))
         self.netprofit += profit
         t.qty -= qty
         if t.qty <= 0:

@@ -17,6 +17,7 @@ from dataclasses import asdict
 from .advisory import AdvisoryLedger, strict_json, canonical_hash, _iso, _now
 from .backtest import freeze_replay_port, run_backtest
 from .research import Policy, Windows, digest, run_search
+from .code_provenance import local_code_provenance
 
 DEFAULT_SOURCES = {
     "cftc": ["publicreporting.cftc.gov", "www.cftc.gov"],
@@ -120,6 +121,41 @@ class ResearchWorkspace:
                 self._ledger = AdvisoryLedger(self.root / "advisory.sqlite3", allowed_sources=sources)
             return self._ledger
 
+    def operator_status(self):
+        """Read-only root-panel status that never instantiates lazy research services."""
+        with self._lock:
+            jobs = [
+                {k: j.get(k) for k in ("id", "status", "asset", "started", "finished", "error")}
+                for j in self._jobs.values()
+            ]
+            active = self._active
+            initialized = {
+                "ledger": self._ledger is not None,
+                "analysis": self._analysis is not None,
+                "activation": self._activation is not None,
+                "market_sources": self._market_sources is not None,
+                "adaptation": self._adaptation is not None,
+                "source_watch": self._source_watch is not None,
+            }
+        assets = []
+        for r in self.port.runner_list():
+            with r.lock:
+                assets.append({
+                    "asset": r.symbol,
+                    "warm": r.warm,
+                    "cached_subbars": len(r.subbars),
+                    "timeframe_minutes": r.chart_minutes,
+                })
+        return {
+            "schema_version": "icarus-research-operator-status-v1",
+            "status": "ready",
+            "active_job": active,
+            "jobs": jobs,
+            "assets": assets,
+            "initialized_services": initialized,
+            "execution_authorized": False,
+        }
+
     def status(self):
         with self._lock:
             jobs = [{k: j.get(k) for k in ("id", "status", "asset", "started", "finished", "error")}
@@ -130,16 +166,19 @@ class ResearchWorkspace:
                 assets.append({"asset": r.symbol, "cached_subbars": len(r.subbars), "warm": r.warm,
                                "timeframe_minutes": r.chart_minutes,
                                "configuration_changes_require_flat": True})
+        adaptation = self.adaptation.status()
         return {"mode": "qualified paper adaptation", "execution_authorized": False, "assets": assets,
                 "ledger": self.ledger.status(), "jobs": jobs,
                 "analysis": self.analysis.status(), "activation": self.activation.status(),
+                "adaptation": adaptation,
                 "capabilities": {"zapier_receiver_configured": bool(os.environ.get("ICARUS_INGEST_SECRET")),
                                  "zapier_connected": False, "sp_global_connected": False,
                                  "licensed_tick_feed_connected": False,
                                  "offline_tick_seconds_footprint": True,
+                                 "zero_cost_study_only_incubation": True,
                                  "automatic_input_application": True,
                                  "automatic_application_requires_qualified_dual_review": True},
-                "note": "API keys configure review clients; a configured client is not a verified connection."}
+                "note": "Study-only incubation can run without paid review calls and can only preserve unreviewed candidates. API keys configure review clients; a configured client is not a verified connection."}
 
     def _save(self, job):
         directory = self.root / "studies"
@@ -365,6 +404,17 @@ class ResearchWorkspace:
         latest = max(b.ts + minutes * 60 for b, minutes in src.subbars)
         if windows.train_start < earliest or windows.holdout_end > latest:
             raise ValueError("study windows exceed the frozen cached data range")
+        with self.port.runners[asset].lock:
+            raw_state = self.port.runners[asset].state if isinstance(self.port.runners[asset].state, dict) else {}
+            regime_score = raw_state.get("rate_regime")
+            if isinstance(regime_score, bool) or not isinstance(regime_score, (int, float)):
+                regime_score = None
+            regime_context = {
+                "label": str(raw_state.get("rate_regime_str") or "UNCLASSIFIED"),
+                "regime_score": regime_score,
+                "observed_market_ts": raw_state.get("ts"),
+            }
+        provenance = local_code_provenance()
         with self._lock:
             if self._active is not None:
                 raise ValueError("one research study may run at a time")
@@ -372,6 +422,11 @@ class ResearchWorkspace:
             job = {"id": job_id, "status": "running", "asset": asset, "started": time.time(),
                    "dataset_hash": dataset_hash, "baseline_hash": baseline_hash,
                    "data_cutoff": windows.holdout_end,
+                   "source_repo": provenance["repository"],
+                   "source_commit": provenance["commit"],
+                   "source_revision_status": provenance["status"],
+                   "source_revision_eligible": provenance["candidate_revision_eligible"],
+                   "regime_context": regime_context,
                    "baseline": baseline, "result": None, "error": None}
             self._save(job)
             self._active, self._stop = job_id, threading.Event()
@@ -396,9 +451,14 @@ class ResearchWorkspace:
                                         frozen, asset, inputs=patch, fill_on="real", window_start=start, window_end=end, **costs))
                 with self._lock:
                     job["result"], job["status"] = result, result["status"]
+                    # Publish terminal state to disk before another thread can observe
+                    # it through job(). Otherwise a new workspace can see a stale
+                    # persisted "running" job and falsely classify it as interrupted.
+                    self._save(job)
             except Exception as ex:
                 with self._lock:
                     job["status"], job["error"] = "error", f"{type(ex).__name__}: {ex}"
+                    self._save(job)
             finally:
                 with self._lock:
                     job["finished"] = time.time()

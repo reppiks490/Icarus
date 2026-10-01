@@ -126,6 +126,8 @@ def cmd_run(args: argparse.Namespace) -> int:
     print(f"  data dir  : {_base_dir()}  db={journal.path}")
     if file_feed_mode():
         print("  feed      : HistoryHub (ICARUS_FEED=file) — Yahoo is not contacted; live bars arrive via history/drop/")
+    elif os.environ.get("ICARUS_FEED", "").strip().lower() == "databento":
+        print("  feed      : Databento GLBX.MDP3 — volume-front continuous futures; live 1s/trades available")
     print("  warming up each asset from history, then LIVE (futures wait for the CME open); Ctrl+C to stop\n")
     if args.open:
         import webbrowser
@@ -322,7 +324,7 @@ def main(argv: Optional[list] = None) -> int:
         s.add_argument("--slippage", type=int, default=None, help="override the preset's slippage (ticks)")
         s.add_argument("--session", default=None, choices=["rth", "eth"], help="CME chart session: rth = TradingView 'Regular trading hours' 09:30-16:15 ET (default, your charts), eth = full Globex session")
         s.add_argument("--security-source", default=None, choices=["chart", "standard"], help="what the HTF/LTF request.security chains see on a Heikin Ashi chart: chart = HA bars (TradingView, default), standard = real bars")
-        s.add_argument("--feed", default=None, choices=["yahoo", "file"], help="yahoo (default) or file = HistoryHub over history/*.csv (ICARUS_FEED; plant --offline). Grok (xAI)")
+        s.add_argument("--feed", default=None, choices=["yahoo", "file", "databento"], help="yahoo (default), file = HistoryHub, or databento = real-time/historical CME GLBX.MDP3 continuous futures (requires DATABENTO_API_KEY)")
         s.add_argument("--capital", type=float, default=None, help="override initial capital per asset")
         s.add_argument("--warmup", type=int, default=1200, help="chart bars of history to replay before going live")
         s.add_argument("--pts-ref-symbol", default="NQ", help="asset whose price anchors the *_pts inputs (they are NQ points)")

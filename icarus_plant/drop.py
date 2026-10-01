@@ -128,7 +128,11 @@ def ingest_drop(root: Optional[str] = None) -> List[Dict[str, Any]]:
         if not os.path.isfile(src):
             continue
         try:
-            if now - os.path.getmtime(src) < _SETTLE_SEC:
+            # A zero/negative settle value explicitly disables the age gate. This
+            # matters in deterministic tests and also avoids treating a filesystem
+            # timestamp a few milliseconds in the future as an unfinished file
+            # when the gate has intentionally been disabled.
+            if _SETTLE_SEC > 0 and now - os.path.getmtime(src) < _SETTLE_SEC:
                 continue
         except OSError:
             continue

@@ -1,0 +1,43 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "parallax-dreamstate-v3-robustness-live-20261001T135752Z",
+  "category": "EVOLUTION",
+  "severity": "success",
+  "status": "staged",
+  "subsystems": [
+    "parallax",
+    "dreamstate",
+    "aion",
+    "athena",
+    "provenance",
+    "ml"
+  ],
+  "recorded_at": "2026-10-01T13:57:52Z",
+  "title": "PARALLAX / DREAMSTATE V3 robustness layer staged on live main",
+  "summary": "PARALLAX V3 separates statistical significance from structural robustness with deterministic chronological evidence folds and local parameter-basin topology. Robust-ready sources retain positive temporal folds once evaluable and cannot be isolated parameter spikes, sparsely sampled nonlocal points, or settings borrowing support from different hidden parameter signatures. DREAMSTATE consumes and continuously revalidates only robust-ready sources while preserving all V2 evidence, provenance, family-budget and shadow-authority boundaries. CHRONOFOLD remains a separate causal-navigation subsystem, while Performance Proof and Champion/Challenger remain downstream settled-evidence systems.",
+  "source_repository": "reppiks490/Icarus",
+  "source_ref": "chatgpt/parallax-dreamstate-v3-live-main-r2-20261001",
+  "source_commit": "70461f0f0d5edcaec47b0f8d1e7bfa1c85c5e9df",
+  "evidence": [
+    "icarus_engine/parallax.py",
+    "icarus_engine/dreamstate.py",
+    "icarus_engine/parallax-ui.js",
+    "tests_engine/test_parallax_dreamstate.py",
+    "docs/icarus/PARALLAX_DREAMSTATE.md",
+    "three deterministic chronological evidence folds activate at nine evidence-complete pairs",
+    "timestamp plus decision-id fold ordering handles equal timestamps deterministically",
+    "parameter basins require matching non-axis parameter signatures",
+    "axis-specific local gap limits prevent distant settings from validating each other",
+    "temporally unstable neighbors cannot support a parameter basin",
+    "isolated parameter spikes block robust-ready sources",
+    "sampled families with no local comparable support are marked sparse and blocked",
+    "DREAMSTATE live-source revalidation requires robust_candidate_eligible",
+    "V2 schema compatibility preserved with explicit robustness_version markers",
+    "CHRONOFOLD ownership remains separate",
+    "Performance Proof and Champion/Challenger remain downstream",
+    "execution_authorized=false",
+    "production_decision_authorized=false"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}

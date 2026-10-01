@@ -16,9 +16,10 @@ authors = [
 dependencies = ["tzdata"]
 
 [project.optional-dependencies]
-bridge = ["fastapi", "uvicorn", "httpx", "mcp>=2,<3"]
+bridge = ["fastapi", "uvicorn", "httpx", "mcp>=2,<3", "python-dotenv>=1,<2"]
 dev = ["pytest"]
 ml = ["xgboost>=2.0"]
+databento = ["databento>=0.87,<1"]
 
 [project.scripts]
 icarus-engine = "icarus_engine.cli:main"
