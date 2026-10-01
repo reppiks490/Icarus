@@ -48,6 +48,8 @@ def nullspace(signals: Mapping[str, Any]) -> dict[str, Any]:
         "debt_magnitude": abs(debt),
         "debt_normalized": debt_norm,
         "response_elasticity": elasticity,
+        "debt_direction": "positive" if debt > 0 else "negative" if debt < 0 else "flat",
+        "repayment_pressure": debt_norm * validity * (1.0 - absorber) * (1.0 - diversion),
         "absorber_strength": absorber,
         "relationship_validity": validity,
         "routing_state": route,
@@ -82,12 +84,25 @@ def godel(signals: Mapping[str, Any]) -> dict[str, Any]:
         scored.sort(reverse=True)
         next_obs = scored[0][1]
     ordered = sorted(((v / total, k) for k, v in worlds.items()), reverse=True)
+    effective_world_count = math.exp(entropy)
+    resolution_gap = ordered[0][0] - ordered[1][0] if len(ordered) > 1 else ordered[0][0]
+    diagnostics_ranked = []
+    if isinstance(diagnostics, Mapping):
+        diagnostics_ranked = [
+            {"observation": str(key), "separation_value": unit(value, f"diagnostic_values.{key}")}
+            for key, value in diagnostics.items()
+        ]
+        diagnostics_ranked.sort(key=lambda row: row["separation_value"], reverse=True)
     return {
         **out,
         "identifiability": ident,
         "ambiguity": 1.0 - ident,
+        "effective_world_count": effective_world_count,
+        "resolution_gap": resolution_gap,
+        "epistemic_blindspot": ident < 0.25,
         "worlds": [{"world": k, "relative_support": v} for v, k in ordered],
         "most_valuable_next_observation": next_obs,
+        "ranked_discriminating_observations": diagnostics_ranked[:8],
         "semantics": "relative world indistinguishability heuristic; not calibrated posterior probability",
     }
 
@@ -113,6 +128,8 @@ def ananke(signals: Mapping[str, Any]) -> dict[str, Any]:
         "structural_cost": {"up": up, "down": down},
         "reachability_score": {"up": reach_up, "down": reach_down},
         "freedom": freedom,
+        "constraint_pressure": 1.0 - freedom,
+        "reachable_space_collapse": 1.0 - freedom,
         "asymmetry": asym,
         "least_cost_direction": least,
         "causal_event_horizon_side": horizon,
@@ -132,12 +149,31 @@ def nemesis(signals: Mapping[str, Any]) -> dict[str, Any]:
         (("data", data_sens), ("execution", exec_sens), ("thesis", fragility), ("margin_shortfall", 1.0 - margin)),
         key=lambda x: x[1],
     )[0]
+    decay_rate = max(0.0, finite(signals.get("edge_decay_rate_per_second", 0.0), "edge_decay_rate_per_second"))
+    explicit_half_life = signals.get("edge_half_life_seconds")
+    if explicit_half_life is not None:
+        half_life = max(0.0, finite(explicit_half_life, "edge_half_life_seconds"))
+        half_life_source = "supplied"
+    elif decay_rate > 0:
+        half_life = math.log(2.0) / decay_rate
+        half_life_source = "derived_from_decay_rate"
+    else:
+        half_life = None
+        half_life_source = "unmeasured"
     return {
         **out,
         "survival_score": max(0.0, survival),
         "minimum_failure_distance": margin,
         "dominant_failure_axis": failure_axis,
+        "edge_half_life_seconds": half_life,
+        "edge_half_life_source": half_life_source,
         "sensitivities": {"data": data_sens, "execution": exec_sens, "thesis": fragility},
+        "robustness_vector": {
+            "perturbation_margin": margin,
+            "data_resilience": 1.0 - data_sens,
+            "execution_resilience": 1.0 - exec_sens,
+            "thesis_resilience": 1.0 - fragility,
+        },
         "semantics": "bounded adversarial robustness heuristic; not a guarantee of survival",
     }
 
@@ -154,6 +190,11 @@ def ex_nihilo(signals: Mapping[str, Any], observation_id: str) -> dict[str, Any]
         "new_phenomenon_candidate": candidate,
         "phenomenon_id": ("x-" + digest(observation_id, "ontology")[:16]) if candidate else None,
         "required_next_stage": "shadow_hypothesis_falsification" if candidate else "none",
+        "falsification_questions": [
+            "Does the residual survive out-of-sample and regime holdouts?",
+            "Can an existing feature family explain the residual after ablation?",
+            "Does the phenomenon survive costs, latency and source substitution?",
+        ] if candidate else [],
         "semantics": "representation inadequacy detector; candidate concepts have zero authority until independently validated",
     }
 
@@ -173,7 +214,10 @@ def mint(signals: Mapping[str, Any]) -> dict[str, Any]:
         duration = max(1.0, finite(item.get("duration_seconds", 1.0), f"candidate_expressions[{i}].duration_seconds"))
         capacity = unit(item.get("capacity_remaining", 1.0), f"candidate_expressions[{i}].capacity_remaining", 1.0)
         net = gross - costs
+        stress_mult = max(1.0, finite(item.get("cost_stress_multiplier", 1.5), f"candidate_expressions[{i}].cost_stress_multiplier"))
+        stress_net = gross - costs * stress_mult
         density = (net / (risk * duration)) * capacity
+        stress_density = (stress_net / (risk * duration)) * capacity
         candidates.append({
             "name": name,
             "expected_net": net,
@@ -182,8 +226,15 @@ def mint(signals: Mapping[str, Any]) -> dict[str, Any]:
             "duration_seconds": duration,
             "capacity_remaining": capacity,
             "profit_density": density,
+            "stress_cost_multiplier": stress_mult,
+            "stress_expected_net": stress_net,
+            "stress_profit_density": stress_density,
+            "robust_positive": net > 0 and stress_net > 0,
         })
-    candidates.sort(key=lambda x: (x["expected_net"] > 0, x["profit_density"], x["expected_net"]), reverse=True)
+    candidates.sort(
+        key=lambda x: (x["robust_positive"], x["expected_net"] > 0, x["stress_profit_density"], x["profit_density"], x["expected_net"]),
+        reverse=True,
+    )
     best = candidates[0] if candidates and candidates[0]["expected_net"] > 0 else None
     return {
         **out,
@@ -213,6 +264,11 @@ def archon(signals: Mapping[str, Any], godel_state: Mapping[str, Any]) -> dict[s
     rows.sort(key=lambda x: x["attention_weight"], reverse=True)
     contradiction = (max(vals) - min(vals)) / 2.0 if len(vals) > 1 else 0.0
     ttl = max(1, min(300, int(finite(signals.get("lease_ttl_seconds", 30), "lease_ttl_seconds"))))
+    total_attention = sum(row["attention_weight"] for row in rows)
+    attention_concentration = (
+        max((row["attention_weight"] for row in rows), default=0.0) / total_attention
+        if total_attention > 0 else 0.0
+    )
     leases = [{
         "engine": row["engine"],
         "scope": "research_attention",
@@ -225,6 +281,7 @@ def archon(signals: Mapping[str, Any], godel_state: Mapping[str, Any]) -> dict[s
         **out,
         "engine_states": rows,
         "contradiction": contradiction,
+        "attention_concentration": attention_concentration,
         "leases": leases,
         "consensus_forced": False,
         "semantics": "temporary research-attention leases; disagreement is retained and no lease grants trading authority",
@@ -242,11 +299,16 @@ def socrates(states: Mapping[str, Mapping[str, Any]]) -> dict[str, Any]:
         (novelty, "Does the current residual require a new concept, or can an existing concept explain it out of sample?"),
         (contradiction, "Which engine disagreement is mechanism-specific rather than mere noise or horizon mismatch?"),
     ]
-    strength, question = max(options, key=lambda x: x[0])
+    ranked = sorted(options, key=lambda x: x[0], reverse=True)
+    strength, question = ranked[0]
     return {
         **out,
         "question": question if strength >= 0.25 else None,
         "question_priority": strength,
+        "question_queue": [
+            {"priority": score, "question": item}
+            for score, item in ranked if score >= 0.10
+        ],
         "experiment_required": strength >= 0.25,
         "semantics": "question generator only; experiments must pass independent validation before affecting production",
     }
