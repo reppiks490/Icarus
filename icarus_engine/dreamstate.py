@@ -34,6 +34,8 @@ REQUIRED_GATES = (
     "independent_verification",
 )
 _ALLOWED_STAGES = {"proposed", "study", "validated", "qualified_shadow", "rejected", "retired"}
+_TERMINAL_REVISION_STAGES = {"rejected", "retired"}
+FAMILY_TRIAL_BUDGET = 12
 _LOCK = threading.RLock()
 
 
@@ -211,6 +213,9 @@ class DreamstateLab:
         signals = self.parallax.mutation_signals(min_samples=min_samples)
         created: list[str] = []
         touched: list[str] = []
+        skipped_active = 0
+        skipped_budget = 0
+        skipped_stale = 0
         with _LOCK, self._connect() as con:
             for signal in signals:
                 proposal = self._mutation(signal)
@@ -224,10 +229,34 @@ class DreamstateLab:
                 signal_json = _json(dict(signal), "source_signal", 32768)
                 mutation_json = _json(mutation, "mutation", 32768)
                 candidate_id = "ds-" + _sha(family_id + "|" + signal_json + "|" + mutation_json)[:24]
-                touched.append(candidate_id)
-                if con.execute("SELECT 1 FROM candidates WHERE candidate_id=?", (candidate_id,)).fetchone():
+                exact = con.execute("SELECT candidate_id FROM candidates WHERE candidate_id=?", (candidate_id,)).fetchone()
+                if exact:
+                    touched.append(candidate_id)
                     continue
-                trial_index = 1 + int(con.execute("SELECT COUNT(*) FROM candidates WHERE family_id=?", (family_id,)).fetchone()[0])
+
+                history = con.execute(
+                    "SELECT candidate_id,trial_index,stage,source_signal_json FROM candidates WHERE family_id=? ORDER BY trial_index DESC",
+                    (family_id,),
+                ).fetchall()
+                parent_candidate_id = None
+                if history:
+                    latest = history[0]
+                    if latest["stage"] not in _TERMINAL_REVISION_STAGES:
+                        touched.append(latest["candidate_id"])
+                        skipped_active += 1
+                        continue
+                    if len(history) >= FAMILY_TRIAL_BUDGET:
+                        skipped_budget += 1
+                        continue
+                    previous_signal = json.loads(latest["source_signal_json"])
+                    previous_n = int(previous_signal.get("n") or 0)
+                    current_n = int(signal.get("n") or 0)
+                    if current_n <= previous_n:
+                        skipped_stale += 1
+                        continue
+                    parent_candidate_id = latest["candidate_id"]
+
+                trial_index = len(history) + 1
                 validation = {gate: None for gate in REQUIRED_GATES}
                 now = _utc_now()
                 con.execute(
@@ -237,13 +266,23 @@ class DreamstateLab:
                     (
                         candidate_id, family_id, trial_index, asset, regime, hypothesis, mutation_json,
                         source_commit, signal_json, "proposed", _json(validation, "validation"),
-                        "[]", None, now, now,
+                        "[]", parent_candidate_id, now, now,
                     ),
                 )
                 created.append(candidate_id)
+                touched.append(candidate_id)
         mirrors = [self._mirror_candidate(self.candidate(candidate_id)) for candidate_id in dict.fromkeys(touched)]
         out = self.snapshot()
-        out["refresh"] = {"created": created, "signal_count": len(signals), "min_samples": min_samples, "brain_mirrors": len(mirrors)}
+        out["refresh"] = {
+            "created": created,
+            "signal_count": len(signals),
+            "min_samples": min_samples,
+            "brain_mirrors": len(mirrors),
+            "skipped_active_family": skipped_active,
+            "skipped_family_budget": skipped_budget,
+            "skipped_stale_evidence": skipped_stale,
+            "family_trial_budget": FAMILY_TRIAL_BUDGET,
+        }
         return out
 
     def evaluate(self, candidate_id: str, payload: Mapping[str, Any]) -> dict[str, Any]:
@@ -341,6 +380,7 @@ class DreamstateLab:
             "stages": stages,
             "candidates": candidates,
             "required_gates": list(REQUIRED_GATES),
+            "family_trial_budget": FAMILY_TRIAL_BUDGET,
             "authority": {
                 "maximum_stage": "qualified_shadow",
                 "automatic_production_promotion": False,
@@ -352,5 +392,7 @@ class DreamstateLab:
                 "multiple_testing_gate_required": True,
                 "independent_verification_required": True,
                 "failed_gate_requires_new_candidate_revision": True,
+                "one_active_candidate_per_family": True,
+                "family_trial_budget_enforced": True,
             },
         }
