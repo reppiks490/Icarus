@@ -520,3 +520,32 @@ def test_structural_and_monetization_inputs_reject_invalid_economics(tmp_path):
     }]
     with pytest.raises(ValueError, match="risk_capital must be positive"):
         PantheonKernel(tmp_path / "c").record_observation(bad_risk)
+
+
+def test_aether_claim_requires_confidence_evidence_and_role_falsifier(tmp_path):
+    kernel = PantheonKernel(tmp_path, swarm=AetherSwarm(threshold=0.0, max_agents=4))
+    observation = kernel.record_observation(_payload(observation_id="pan-claim-required-fields"))
+    agent = next(row for row in observation["analysis"]["aether"]["agents"] if row["role"] == "falsifier")
+    base = {
+        "observation_id": observation["observation_id"],
+        "agent_id": agent["agent_id"],
+        "peer_context_used": False,
+    }
+
+    with pytest.raises(ValueError, match="confidence is required"):
+        kernel.record_agent_claim({
+            **base,
+            "claim": {"thesis": "x", "direction": "unknown", "falsifier": "y", "evidence": ["z"]},
+        })
+
+    with pytest.raises(ValueError, match="1-24"):
+        kernel.record_agent_claim({
+            **base,
+            "claim": {"thesis": "x", "direction": "unknown", "confidence": 0.5, "falsifier": "y", "evidence": []},
+        })
+
+    with pytest.raises(ValueError, match="falsifier is required"):
+        kernel.record_agent_claim({
+            **base,
+            "claim": {"thesis": "x", "direction": "unknown", "confidence": 0.5, "falsifier": "", "evidence": ["z"]},
+        })

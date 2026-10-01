@@ -162,3 +162,11 @@ silently clipped. Structural costs must be non-negative, and MINT rejects
 negative costs, non-positive risk capital, and non-positive duration. This
 prevents malformed upstream data from being converted into plausible-looking
 research diagnostics.
+
+
+## Claim-quality gate
+
+AETHER first-pass claims must carry explicit bounded confidence and at least one
+evidence reference. Roles marked as falsifier-required must also state the
+condition that would falsify their thesis. Missing claim-quality fields fail
+closed instead of becoming zero-confidence or evidence-free pseudo-claims.

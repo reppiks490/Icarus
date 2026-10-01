@@ -275,13 +275,15 @@ class PantheonKernel:
         direction = text(claim.get("direction", "unknown"), "claim.direction", 16).lower()
         if direction not in {"long", "short", "flat", "unknown"}:
             raise ValueError("claim.direction must be long, short, flat or unknown")
+        if "confidence" not in claim:
+            raise ValueError("claim.confidence is required")
         confidence = unit(claim.get("confidence"), "claim.confidence")
         falsifier = text(claim.get("falsifier", ""), "claim.falsifier", 1200, required=False)
         evidence = claim.get("evidence", [])
         if isinstance(evidence, str):
             evidence = [evidence]
-        if not isinstance(evidence, list) or len(evidence) > 24:
-            raise ValueError("claim.evidence must be a list with at most 24 items")
+        if not isinstance(evidence, list) or not evidence or len(evidence) > 24:
+            raise ValueError("claim.evidence must contain 1-24 items")
         normalized_evidence = [text(x, "claim.evidence item", 700) for x in evidence]
 
         observation = self.observation(observation_id)
@@ -290,6 +292,8 @@ class PantheonKernel:
         if agent is None:
             raise ValueError("agent_id is not an active AETHER agent for this observation")
         role = text(agent.get("role"), "agent.role", 64)
+        if agent.get("falsifier_required") and not falsifier:
+            raise ValueError(f"falsifier is required for AETHER role {role}")
         normalized = {
             "thesis": thesis,
             "direction": direction,
