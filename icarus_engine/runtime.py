@@ -378,6 +378,9 @@ class AssetRunner:
             self.cfg.base_spec = replace(cfg.spec)
         self.symbol = self.spec.symbol
         self.journal = journal
+        # Bound by the server when measured live-decision telemetry is available.
+        # Warm-up/replay bars never contribute to live hot-path latency claims.
+        self.latency_telemetry = None
         feeds = feeds or {}
         self.feed = feeds.get(self.spec.feed) or (Yahoo() if self.spec.feed == "yahoo" else Coinbase())
         self.kraken = Kraken()
@@ -487,6 +490,11 @@ class AssetRunner:
 
     # ── core bar path ──
     def _on_chart_bar(self, real: Bar, live: bool, *, time_close: Optional[int] = None) -> None:
+        latency_started_ns = (
+            time.perf_counter_ns()
+            if live and self.latency_telemetry is not None
+            else None
+        )
         if self.strat is None:
             self._init_strategy(real.c)
         ha_bar = self.ha.transform(real) if self.ha else None
@@ -519,6 +527,15 @@ class AssetRunner:
         ltf = [self.chains[2].ltf_values(chart.ts, security_chart_minutes, t_close), self.chains[5].ltf_values(chart.ts, security_chart_minutes, t_close)]
         st = self.strat.on_bar(chart, self.bar_index, htf, ltf, time_close=t_close)
         self.state = st
+        if latency_started_ns is not None:
+            try:
+                self.latency_telemetry.observe_ns(
+                    "shadow_decision_total",
+                    time.perf_counter_ns() - latency_started_ns,
+                )
+            except Exception:
+                # Telemetry is observational only and must never break the decision path.
+                pass
         self.bars.append(chart)
         self.last_bar_wall = time.time()
         self.overlays.append({"ts": chart.ts, "st": st["rate_st_line"], "up": st["rate_uptrend"], "tp1": st["tp1_price"], "tp2": st["tp2_price"],
@@ -1191,6 +1208,9 @@ class Portfolio:
         self._threads: Dict[str, threading.Thread] = {}
         self._stop = threading.Event()
         self._lock = threading.RLock()
+        # Optional measured latency sink. The HTTP server binds one instance and
+        # make_runner propagates it to assets added after startup.
+        self.latency_telemetry = None
 
     # ── assets ──
     def _ref_price(self, now: Optional[int] = None) -> float:
@@ -1226,7 +1246,9 @@ class Portfolio:
         cfg = RunnerConfig(spec=spec, inputs=inputs, warmup_bars=self.warmup_bars, sources=sources, profile=self.profile,
                            preset=self.preset or spec.preset, pts_ref_price=scale, base_dir=self.base_dir,
                            base_spec=base_spec)
-        return AssetRunner(cfg, self.journal, self.feeds)
+        runner = AssetRunner(cfg, self.journal, self.feeds)
+        runner.latency_telemetry = self.latency_telemetry
+        return runner
 
     def add_asset(self, spec: AssetSpec, start: bool = True) -> AssetRunner:
         with self._lock:
