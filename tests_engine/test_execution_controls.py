@@ -819,3 +819,31 @@ def test_engine_control_remove_rejects_exposure(admin, exposure):
     assert status == 400
     assert "flatten open positions" in body["detail"]
     assert port.runners["TEST"] is r
+
+
+def test_engine_control_flatten_all_attempts_every_asset_on_partial_failure(admin, monkeypatch):
+    port, first, _, post = admin
+    other = make_runner("OTHER")
+    port.runners["OTHER"] = other
+    port.order.append("OTHER")
+    called = []
+
+    def fail_first(_reason="operator flatten"):
+        called.append("TEST")
+        raise RuntimeError("synthetic TEST flatten failure")
+
+    def flatten_other(_reason="operator flatten"):
+        called.append("OTHER")
+        return 0
+
+    monkeypatch.setattr(first, "flatten", fail_first)
+    monkeypatch.setattr(other, "flatten", flatten_other)
+
+    status, body = post("/admin/engine-control", {
+        "action": "engine.flatten_all",
+        "confirm": "FLATTEN ALL PAPER POSITIONS",
+    })
+    assert status == 500
+    assert called == ["TEST", "OTHER"]
+    assert "partial failure" in body["detail"]
+    assert "TEST" in body["detail"]
