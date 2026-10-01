@@ -65,6 +65,7 @@
     const hypotheses = (hidden.hypotheses||[]).map(x=>'<div class="psi-box"><h3>'+h(x.state)+'</h3><div class="psi-hero '+(x.state.includes('BUYER')||x.state.includes('OFFER')?'pos':x.state.includes('SELLER')||x.state.includes('BID')?'neg':'neutral')+'" style="font-size:20px">'+pct(x.strength)+'</div><div class="small muted">'+h((x.evidence||[]).join(' · '))+'</div></div>').join('');
     const mechanisms = (fc.mechanisms||[]).map(x=>'<span class="chip '+(x.sign>0?'b':'r')+'">'+h(x.name)+' '+(x.sign>0?'↑':'↓')+'</span>').join(' ');
     const micro = health.microstructure || {};
+    const ledger = health.evidence_ledger || {};
     const auth = data.authority || {};
 
     el.innerHTML =
@@ -88,7 +89,7 @@
         '<div class="psi-box"><h3>Pressure / price elasticity</h3><div class="psi-hero '+(String((latent.pressure_price_elasticity||{}).state).includes('BUYER')||String((latent.pressure_price_elasticity||{}).state).includes('OFFER')?'pos':String((latent.pressure_price_elasticity||{}).state).includes('SELLER')||String((latent.pressure_price_elasticity||{}).state).includes('BID')?'neg':'neutral')+'" style="font-size:21px">'+h((latent.pressure_price_elasticity||{}).state||'UNAVAILABLE')+'</div>'+
           '<div class="small muted">elasticity '+n((latent.pressure_price_elasticity||{}).value,8)+' · flow '+n((latent.pressure_price_elasticity||{}).flow_imbalance,3)+' · displacement '+n((latent.pressure_price_elasticity||{}).price_displacement,6)+'</div></div>'+
         '<div class="psi-box"><h3>Inverse hidden-state inference</h3><div class="psi-hero neutral" style="font-size:21px">'+h(hidden.primary||'UNRESOLVED')+'</div><div class="small muted">Ranked explanation hypotheses; not participant-identity claims.</div></div>'+
-        '<div class="psi-box"><h3>Evidence health</h3><div class="psi-kv"><div>History observations</div><div class="tnum">'+h(health.market_history_observations||0)+'</div><div>Tick tape</div><div>'+chip(micro.ticks?'OBSERVED':'UNAVAILABLE')+'</div><div>Order-book depth</div><div>'+chip(micro.depth?'OBSERVED':'UNAVAILABLE')+'</div><div>Provider</div><div>'+h(micro.provider||'—')+'</div></div></div>'+
+        '<div class="psi-box"><h3>Evidence health</h3><div class="psi-kv"><div>History observations</div><div class="tnum">'+h(health.market_history_observations||0)+'</div><div>Tick tape</div><div>'+chip(micro.ticks?'OBSERVED':'UNAVAILABLE')+'</div><div>Order-book depth</div><div>'+chip(micro.depth?'OBSERVED':'UNAVAILABLE')+'</div><div>Provider</div><div>'+h(micro.provider||'—')+'</div><div>Evidence ledger</div><div>'+chip(ledger.durable?'DURABLE':'MEMORY')+'</div><div>Active evidence</div><div class="tnum">'+h(ledger.active_count||0)+'</div><div>Evidence history</div><div class="tnum">'+h(ledger.total_history_count||0)+'</div></div></div>'+
       '</div>'+
       '<section class="card c12" style="margin-top:12px"><h2>Latent force decomposition</h2>'+componentRows(latent.components||{})+'</section>'+
       '<div class="psi-grid" style="margin-top:12px">'+(hypotheses || '<div class="psi-box"><h3>Hidden state</h3><div class="small muted">No sufficiently strong hidden-state hypothesis yet.</div></div>')+'</div>'+
