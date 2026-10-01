@@ -551,7 +551,7 @@ def test_aether_ecology_requires_observed_fitness_for_speciation_and_genesis(tmp
         result = kernel.record_observation(
             _feedback_payload(
                 f"pan-positive-{i}",
-                f"2026-10-01T06:00:0{i}Z",
+                f"2026-10-01T06:00:2{i}Z",
                 ontology_claim["claim_id"],
                 0.80,
             )
@@ -583,6 +583,16 @@ def test_aether_offspring_has_independent_claim_identity_and_can_be_scored(tmp_p
         )
     ecology = kernel.snapshot()["ecology"]
     child = next(x for x in ecology["species"] if x["parent_species_id"] is not None)
+    birth_observation = kernel.observation("pan-parent-fit-3")
+    assert any(c["claim_id"] == child["origin_claim_id"] for c in birth_observation["claims"])
+    with pytest.raises(ValueError, match="horizon maturity"):
+        kernel.record_claim_outcome({
+            "claim_id": child["origin_claim_id"],
+            "observed_at": "2026-10-01T06:02:10Z",
+            "utility": 0.40,
+            "confidence": 0.80,
+            "evidence": ["premature-child-outcome"],
+        })
     scored = kernel.record_claim_outcome({
         "claim_id": child["origin_claim_id"],
         "observed_at": "2026-10-01T06:03:00Z",
@@ -620,6 +630,14 @@ def test_claim_outcome_is_causal_and_immutable_per_claim_time(tmp_path):
             "utility": 0.5,
             "confidence": 1.0,
             "evidence": ["invalid-retroactive-outcome"],
+        })
+    with pytest.raises(ValueError, match="horizon maturity"):
+        kernel.record_claim_outcome({
+            "claim_id": claim["claim_id"],
+            "observed_at": "2026-10-01T06:00:10Z",
+            "utility": 0.5,
+            "confidence": 1.0,
+            "evidence": ["premature-outcome"],
         })
 
     payload = {
@@ -822,3 +840,66 @@ def test_extended_faculty_timing_and_stress_inputs_fail_closed(tmp_path):
     bad_ttl["signals"] = dict(bad_ttl["signals"], lease_ttl_seconds=30.5)
     with pytest.raises(ValueError, match="lease_ttl_seconds must be an integer"):
         kernel.record_observation(bad_ttl)
+
+def test_ecology_upgrade_backfills_legacy_claims_and_sentinel_clock(tmp_path):
+    kernel = PantheonKernel(tmp_path)
+    observation = kernel.record_observation(_payload(observation_id="pan-legacy-upgrade"))
+    durable_claim = next(c for c in observation["claims"] if c["kind"] == "ontology_candidate")
+    expected_time = observation["observed_at"]
+
+    with kernel._connect() as con:
+        con.execute("DELETE FROM species")
+        con.execute("UPDATE sentinel_cells SET last_observed_at=''")
+
+    upgraded = PantheonKernel(tmp_path)
+    state = upgraded.snapshot()
+    assert any(
+        row["origin_claim_id"] == durable_claim["claim_id"]
+        for row in state["ecology"]["species"]
+    )
+    assert state["sentinel_cells"][0]["last_observed_at"] == expected_time
+
+
+def test_zero_confidence_outcome_cannot_create_aether_fitness(tmp_path):
+    kernel = PantheonKernel(tmp_path)
+    first = kernel.record_observation(_payload(observation_id="pan-zero-confidence-origin"))
+    claim = next(c for c in first["claims"] if c["kind"] == "ontology_candidate")
+    scored = kernel.record_claim_outcome({
+        "claim_id": claim["claim_id"],
+        "observed_at": "2026-10-01T06:04:00Z",
+        "utility": 1.0,
+        "confidence": 0.0,
+        "evidence": ["observed-but-zero-confidence"],
+    })
+    assert scored["fitness_credit"] == 0.0
+    ecology = kernel.snapshot()["ecology"]
+    species = next(x for x in ecology["species"] if x["origin_claim_id"] == claim["claim_id"])
+    assert species["fitness_credit"] == 0.0
+    assert species["stage"] == "hypothesis"
+
+
+def test_attached_claim_outcome_is_bound_to_feedback_asset_and_timestamp(tmp_path):
+    kernel = PantheonKernel(tmp_path)
+    first = kernel.record_observation(_payload(observation_id="pan-feedback-origin"))
+    claim = next(c for c in first["claims"] if c["kind"] == "ontology_candidate")
+
+    bad_asset = _feedback_payload(
+        "pan-feedback-wrong-asset",
+        "2026-10-01T06:01:00Z",
+        claim["claim_id"],
+        0.5,
+    )
+    bad_asset["asset"] = "ES"
+    with pytest.raises(ValueError, match="source asset"):
+        kernel.record_observation(bad_asset)
+
+    mismatched = _feedback_payload(
+        "pan-feedback-wrong-time",
+        "2026-10-01T06:02:00Z",
+        claim["claim_id"],
+        0.5,
+    )
+    mismatched["claim_outcomes"][0]["observed_at"] = "2026-10-01T06:02:01Z"
+    with pytest.raises(ValueError, match="source observation time"):
+        kernel.record_observation(mismatched)
+
