@@ -189,6 +189,7 @@ class PossibilityEngine:
         self._history: dict[str, Deque[dict[str, Any]]] = defaultdict(lambda: deque(maxlen=self.history))
         self._history_source: dict[str, str] = {}
         self._history_chart_minutes: dict[str, int] = {}
+        self._history_gaps_skipped: dict[str, int] = {}
         self._external: dict[str, dict[str, dict[str, Any]]] = defaultdict(dict)
         self._micro_cache: dict[str, tuple[float, dict[str, Any]]] = {}
         self._evidence_ledger = PsiEvidenceLedger(getattr(port, "base_dir", None))
@@ -388,6 +389,7 @@ class PossibilityEngine:
                 "history": {
                     "source": self._history_source.get(symbol, "unavailable"),
                     "chart_minutes": self._history_chart_minutes.get(symbol),
+                    "gap_returns_skipped": self._history_gaps_skipped.get(symbol, 0),
                     "poll_independent": self._history_source.get(symbol) == "runner_bar",
                     "timestamp_aligned_leaders": leaders.get("alignment_mode") == "exact_bar_timestamp",
                 },
@@ -490,8 +492,15 @@ class PossibilityEngine:
 
             q: Deque[dict[str, Any]] = deque(maxlen=self.history)
             prev_ts, prev_price = ordered[0]
+            expected_step = chart_minutes * 60
+            gaps_skipped = 0
             for ts, price in ordered[1:]:
+                delta = ts - prev_ts
                 if ts <= prev_ts or prev_price <= 0:
+                    prev_ts, prev_price = ts, price
+                    continue
+                if delta != expected_step:
+                    gaps_skipped += 1
                     prev_ts, prev_price = ts, price
                     continue
                 q.append({
@@ -511,10 +520,12 @@ class PossibilityEngine:
                 self._history[symbol] = q
                 self._history_source[symbol] = "runner_bar"
                 self._history_chart_minutes[symbol] = chart_minutes
+                self._history_gaps_skipped[symbol] = gaps_skipped
             synced[symbol] = {
                 "source": "runner_bar",
                 "chart_minutes": chart_minutes,
                 "observations": len(q),
+                "gap_returns_skipped": gaps_skipped,
                 "first_ts": q[0]["ts"],
                 "last_ts": q[-1]["ts"],
             }
