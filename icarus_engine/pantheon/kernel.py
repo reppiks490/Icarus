@@ -6,7 +6,7 @@ import math
 import os
 import sqlite3
 import threading
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -127,6 +127,57 @@ class PantheonKernel:
             columns = {row["name"] for row in con.execute("PRAGMA table_info(sentinel_cells)").fetchall()}
             if "last_observed_at" not in columns:
                 con.execute("ALTER TABLE sentinel_cells ADD COLUMN last_observed_at TEXT NOT NULL DEFAULT ''")
+            con.execute(
+                """UPDATE sentinel_cells
+                   SET last_observed_at=COALESCE(
+                       (SELECT observed_at FROM observations
+                        WHERE observation_id=sentinel_cells.last_observation_id),
+                       last_observed_at
+                   )
+                   WHERE last_observed_at=''"""
+            )
+
+            legacy_claims = con.execute(
+                """SELECT c.claim_id,c.kind,c.payload_json,c.created_at,o.asset
+                   FROM claims c
+                   JOIN observations o ON o.observation_id=c.observation_id
+                   WHERE c.kind IN ('ontology_candidate','monetization_candidate','mutation_candidate')
+                   ORDER BY c.created_at,c.rowid"""
+            ).fetchall()
+            for claim in legacy_claims:
+                present = con.execute(
+                    "SELECT species_id FROM species WHERE origin_claim_id=? LIMIT 1",
+                    (claim["claim_id"],),
+                ).fetchone()
+                if present is not None:
+                    continue
+                payload = json.loads(claim["payload_json"])
+                parent_species_id = payload.get("parent_species_id") if isinstance(payload, Mapping) else None
+                generation = 0
+                if parent_species_id:
+                    parent = con.execute(
+                        "SELECT generation FROM species WHERE species_id=?",
+                        (str(parent_species_id),),
+                    ).fetchone()
+                    generation = (int(parent["generation"]) + 1) if parent is not None else 1
+                species_id = "species-" + digest(claim["claim_id"], claim["asset"])[:18]
+                con.execute(
+                    """INSERT OR IGNORE INTO species(
+                        species_id,asset,kind,origin_claim_id,parent_species_id,generation,
+                        stage,fitness_credit,evidence_count,payload_json,created_at,updated_at
+                    ) VALUES(?,?,?,?,?,?,'hypothesis',0.0,0,?,?,?)""",
+                    (
+                        species_id,
+                        claim["asset"],
+                        claim["kind"],
+                        claim["claim_id"],
+                        str(parent_species_id) if parent_species_id else None,
+                        generation,
+                        claim["payload_json"],
+                        claim["created_at"],
+                        claim["created_at"],
+                    ),
+                )
 
     def _normalize(self, payload: Mapping[str, Any]) -> tuple[dict[str, Any], str, str]:
         if not isinstance(payload, Mapping):
@@ -193,6 +244,7 @@ class PantheonKernel:
             self.record_claim_outcome({
                 **row,
                 "observed_at": row.get("observed_at") or normalized["observed_at"],
+                "_source_observation_id": result.get("observation_id"),
             })
             for row in normalized.get("claim_outcomes", [])
         ]
@@ -417,6 +469,10 @@ class PantheonKernel:
                 "SELECT * FROM agent_claims WHERE observation_id=? ORDER BY rowid",
                 (observation_id,),
             ).fetchall()
+            observation_row = con.execute(
+                "SELECT analysis_json FROM observations WHERE observation_id=?",
+                (observation_id,),
+            ).fetchone()
         claims = [
             {
                 "claim_id": row["claim_id"],
@@ -427,9 +483,18 @@ class PantheonKernel:
             }
             for row in rows
         ]
+        analysis = json.loads(observation_row["analysis_json"]) if observation_row else {}
+        expected_agents = analysis.get("aether", {}).get("agents", [])
+        expected_agents = [row for row in expected_agents if isinstance(row, Mapping) and row.get("agent_id")]
+        expected_ids = {str(row["agent_id"]) for row in expected_agents}
+        expected_roles = {str(row.get("role") or "") for row in expected_agents}
+        submitted_ids = {row["agent_id"] for row in claims}
         mandatory = {"falsifier", "alternative_cause", "provenance_guard", "risk_guard"}
-        present = {row["role"] for row in claims}
-        missing = sorted(mandatory - present)
+        present_roles = {row["role"] for row in claims}
+        missing_mandatory = sorted(mandatory - present_roles)
+        missing_agent_ids = sorted(expected_ids - submitted_ids)
+        mandatory_complete = not missing_mandatory
+        all_spawned_complete = bool(expected_ids) and not missing_agent_ids
         directional = [row["claim"].get("direction") for row in claims if row["claim"].get("direction") in {"long", "short", "flat"}]
         counts = {name: directional.count(name) for name in ("long", "short", "flat")}
         disagreement = None
@@ -437,15 +502,20 @@ class PantheonKernel:
             disagreement = 1.0 - (max(counts.values()) / len(directional))
         confidence_values = [float(row["claim"].get("confidence", 0.0)) for row in claims]
         return claims, {
-            "ready_for_deliberation": not missing,
+            "ready_for_deliberation": all_spawned_complete,
             "mandatory_roles": sorted(mandatory),
-            "missing_mandatory_roles": missing,
+            "expected_roles": sorted(role for role in expected_roles if role),
+            "expected_agent_claims": len(expected_ids),
+            "missing_mandatory_roles": missing_mandatory,
+            "missing_agent_ids": missing_agent_ids,
+            "mandatory_roles_complete": mandatory_complete,
             "submitted_claims": len(claims),
             "direction_counts": counts,
             "disagreement_index": disagreement,
             "mean_stated_confidence": (sum(confidence_values) / len(confidence_values)) if confidence_values else None,
-            "blind_first_pass_complete": not missing,
+            "blind_first_pass_complete": all_spawned_complete,
             "peer_conclusions_hidden_during_first_pass": True,
+            "claim_bodies_visible": all_spawned_complete,
             "consensus_forced": False,
             "execution_authorized": False,
             "production_decision_authorized": False,
@@ -457,13 +527,18 @@ class PantheonKernel:
             raise ValueError("claim outcome must be an object")
         claim_id = text(body.get("claim_id"), "claim_id", 96)
         observed_at = iso_aware(body.get("observed_at"))
-        utility = max(-1.0, min(1.0, finite(body.get("utility"), "utility")))
+        utility = finite(body.get("utility"), "utility")
+        if not -1.0 <= utility <= 1.0:
+            raise ValueError("utility must be between -1 and 1")
         confidence = unit(body.get("confidence"), "confidence", 1.0)
+        source_observation_id = body.get("_source_observation_id")
+        if source_observation_id is not None:
+            source_observation_id = text(source_observation_id, "_source_observation_id", 96)
         evidence = body.get("evidence", [])
         if isinstance(evidence, str):
             evidence = [evidence]
-        if not isinstance(evidence, list) or len(evidence) > 64:
-            raise ValueError("evidence must be a list with at most 64 items")
+        if not isinstance(evidence, list) or not evidence or len(evidence) > 64:
+            raise ValueError("evidence must contain 1-64 items")
         evidence = [text(item, "evidence item", 700) for item in evidence]
         evidence_json = json_canonical(evidence, "evidence", 65536)
         semantic = json_canonical(
@@ -482,17 +557,39 @@ class PantheonKernel:
 
         with _LOCK, self._connect() as con:
             claim = con.execute(
-                """SELECT c.*,o.observed_at AS claim_observed_at
+                """SELECT c.*,o.observed_at AS claim_observed_at,
+                          o.horizon_ms AS claim_horizon_ms,o.asset AS claim_asset
                    FROM claims c JOIN observations o ON o.observation_id=c.observation_id
                    WHERE c.claim_id=?""",
                 (claim_id,),
             ).fetchone()
             if claim is None:
                 raise ValueError("unknown PANTHEON claim")
+            source_observation = None
+            if source_observation_id is not None:
+                source_observation = con.execute(
+                    "SELECT observation_id,observed_at,asset FROM observations WHERE observation_id=?",
+                    (source_observation_id,),
+                ).fetchone()
+                if source_observation is None:
+                    raise ValueError("unknown source observation for claim outcome")
             claim_time = datetime.fromisoformat(str(claim["claim_observed_at"]).replace("Z", "+00:00"))
+            claim_payload = json.loads(claim["payload_json"])
+            mutation_trigger = claim_payload.get("mutation_trigger") if isinstance(claim_payload, Mapping) else None
+            if isinstance(mutation_trigger, Mapping) and mutation_trigger.get("observed_at"):
+                mutation_time = datetime.fromisoformat(str(mutation_trigger["observed_at"]).replace("Z", "+00:00"))
+                if mutation_time > claim_time:
+                    claim_time = mutation_time
             outcome_time = datetime.fromisoformat(observed_at.replace("Z", "+00:00"))
-            if outcome_time < claim_time:
-                raise ValueError("claim outcome cannot precede the originating observation")
+            if source_observation is not None:
+                source_time = datetime.fromisoformat(str(source_observation["observed_at"]).replace("Z", "+00:00"))
+                if str(source_observation["asset"]) != str(claim["claim_asset"]):
+                    raise ValueError("claim outcome source asset must match claim asset")
+                if outcome_time != source_time:
+                    raise ValueError("claim outcome time must match its source observation time")
+            maturity_time = claim_time + timedelta(milliseconds=int(claim["claim_horizon_ms"]))
+            if outcome_time < maturity_time:
+                raise ValueError("claim outcome cannot precede claim horizon maturity")
             prior_time = con.execute(
                 "SELECT * FROM claim_outcomes WHERE claim_id=? AND observed_at=?",
                 (claim_id, observed_at),
@@ -520,7 +617,7 @@ class PantheonKernel:
             if positive_weight > 1e-12:
                 fitness = sum(float(row["utility"]) * float(row["confidence"]) for row in outcomes) / positive_weight
             else:
-                fitness = sum(float(row["utility"]) for row in outcomes) / max(1, len(outcomes))
+                fitness = 0.0
             n = len(outcomes)
             if n >= 3 and fitness <= -0.20:
                 stage = "retired"
@@ -559,6 +656,7 @@ class PantheonKernel:
                         "mutation_trigger": {
                             "fitness_credit": fitness,
                             "evidence_count": n,
+                            "observed_at": observed_at,
                         },
                         "stage": "research_variant",
                         "automatic_production_authority": False,
@@ -569,7 +667,7 @@ class PantheonKernel:
                         ) VALUES(?,?,?,?,?,?)""",
                         (
                             child_claim_id,
-                            claim["observation_id"],
+                            source_observation_id or claim["observation_id"],
                             "mutation_candidate",
                             "hypothesis",
                             json_canonical(child_payload, "mutant claim", 65536),
@@ -735,6 +833,17 @@ class PantheonKernel:
                 raise ValueError("unknown PANTHEON observation")
             claim_rows = con.execute("SELECT * FROM claims WHERE observation_id=? ORDER BY rowid", (observation_id,)).fetchall()
         agent_claims, deliberation = self._agent_claim_state(observation_id)
+        visible_agent_claims = agent_claims if deliberation["claim_bodies_visible"] else [
+            {
+                "claim_id": item["claim_id"],
+                "agent_id": item["agent_id"],
+                "role": item["role"],
+                "committed": True,
+                "claim": None,
+                "created_at": item["created_at"],
+            }
+            for item in agent_claims
+        ]
         return {
             "observation_id": row["observation_id"],
             "observed_at": row["observed_at"],
@@ -743,7 +852,7 @@ class PantheonKernel:
             "source_commit": row["source_commit"],
             "input": json.loads(row["payload_json"]),
             "analysis": json.loads(row["analysis_json"]),
-            "agent_claims": agent_claims,
+            "agent_claims": visible_agent_claims,
             "deliberation": deliberation,
             "claims": [
                 {
