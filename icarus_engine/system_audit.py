@@ -44,6 +44,8 @@ LOOP_FEED_SPECS = (
         "schedule": ":15 hourly",
         "repository": "reppiks490/icarus-csv-evidence-lab",
         "root": "automation_intelligence/advanced_csv",
+        "mirror_repository": "reppiks490/Icarus-engine",
+        "mirror_path": "automation_intelligence/ui_feeds/advanced-csv.json",
     },
     {
         "id": "alpha-synthesis",
@@ -432,6 +434,64 @@ def _default_fetch_bytes(repository: str, ref: str, path: str) -> bytes:
     return raw
 
 
+def _collect_mirror_snapshot(spec: Dict[str, Any], fetch, direct_error: Exception | None = None):
+    mirror_repository = _text(spec.get("mirror_repository"), 200)
+    mirror_path = _text(spec.get("mirror_path"), 500)
+    if not mirror_repository or not mirror_path:
+        if direct_error is not None:
+            raise direct_error
+        raise FileNotFoundError("loop mirror is not configured")
+    mirror_raw = fetch(mirror_repository, "main", mirror_path)
+    mirror = _parse_json_bytes(mirror_raw, f"{spec['id']} public UI mirror")
+    verification = {
+        "source_mode": "verified-public-mirror",
+        "schema_matches": mirror.get("schema_version") == "icarus-ui-loop-feed-v1",
+        "loop_id_matches": _text(mirror.get("loop_id"), 120) == _text(spec.get("id"), 120),
+        "source_repository_matches": _text(mirror.get("source_repository"), 200) == _text(spec.get("repository"), 200),
+        "scheduler_matches": _text(mirror.get("scheduler_id"), 160) == _text(spec.get("scheduler_id"), 160),
+        "run_persisted": mirror.get("RUN_STATUS") == "RUN_PERSISTED",
+        "source_verified": mirror.get("source_verified") is True,
+        "execution_authorized_false": mirror.get("execution_authorized") is False,
+        "binding_present": bool(_text(mirror.get("finalization_commit_sha"), 64)) and bool(_text(mirror.get("finalization_state_blob_sha"), 64)),
+    }
+    verified = all(value is True or key == "source_mode" for key, value in verification.items())
+    run_id = _text(mirror.get("RUN_ID"), 200)
+    signals = mirror.get("signals") if isinstance(mirror.get("signals"), dict) else {}
+    status = "RUN_PERSISTED" if verified else "RECEIPT_MISMATCH"
+    detail = (
+        "Automatic UI sync used the scheduler-verified public metadata mirror because the authoritative loop repository is not publicly readable."
+        if verified else
+        "Public UI mirror verification failed: " + ", ".join(key for key, value in verification.items() if key != "source_mode" and value is not True)
+    )
+    row = {
+        "id": spec["id"],
+        "title": spec.get("title") or spec["id"],
+        "scheduler_id": spec.get("scheduler_id", ""),
+        "schedule": spec.get("schedule", ""),
+        "status": status,
+        "run_id": run_id,
+        "recorded_at": _run_recorded_at(run_id),
+        "repository": spec.get("repository", ""),
+        "finalization_commit_sha": _text(mirror.get("finalization_commit_sha"), 64),
+        "finalization_state_blob_sha": _text(mirror.get("finalization_state_blob_sha"), 64),
+        "detail": detail,
+        "verification": verification,
+        "signals": _compact_value(signals),
+    }
+    signal_summary = _signal_event_summary(row["signals"])
+    event = {
+        "id": f"loop:{spec['id']}:{run_id or 'unknown'}",
+        "kind": "audit",
+        "severity": "success" if verified else "error",
+        "title": f"{row['title']} {'verified via UI mirror' if verified else 'mirror mismatch'}",
+        "detail": detail + (f" | {signal_summary}" if signal_summary else ""),
+        "recorded_at": row["recorded_at"] or _utc_now(),
+        "repository": spec.get("repository", ""),
+        "ref": row["finalization_commit_sha"],
+    }
+    return row, event
+
+
 def collect_loop_snapshot(spec: Dict[str, Any], fetch_bytes=None):
     """Fetch and cryptographically cross-check one loop's current durable receipt."""
     fetch = fetch_bytes or _default_fetch_bytes
@@ -440,8 +500,13 @@ def collect_loop_snapshot(spec: Dict[str, Any], fetch_bytes=None):
     final_path = f"{root}/finalization_state.json"
     heartbeat_path = f"{root}/heartbeat.json"
 
-    final_raw = fetch(repository, "main", final_path)
-    heartbeat_raw = fetch(repository, "main", heartbeat_path)
+    try:
+        final_raw = fetch(repository, "main", final_path)
+        heartbeat_raw = fetch(repository, "main", heartbeat_path)
+    except (FileNotFoundError, RuntimeError) as ex:
+        if spec.get("mirror_repository") and spec.get("mirror_path"):
+            return _collect_mirror_snapshot(spec, fetch, ex)
+        raise
     finalization = _parse_json_bytes(final_raw, f"{spec['id']} finalization")
     heartbeat = _parse_json_bytes(heartbeat_raw, f"{spec['id']} heartbeat")
 
