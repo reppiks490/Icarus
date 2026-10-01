@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hmac
+import os
 import json
 import threading
 import time
@@ -12,6 +13,7 @@ from urllib.parse import parse_qs, urlparse
 
 from .auth import AuthError, SessionSigner, load_or_create_key
 from .proxy import UpstreamClient, UpstreamError
+from .push import ExpoPushClient, system_alerts, validate_push_token
 from .store import DeviceStore
 
 
@@ -38,8 +40,9 @@ class PairRateLimiter:
 
 
 class SnapshotCache:
-    def __init__(self, upstream: UpstreamClient, interval: float = 2.0) -> None:
+    def __init__(self, upstream: UpstreamClient, interval: float = 2.0, on_change=None) -> None:
         self.upstream = upstream
+        self.on_change = on_change
         self.interval = max(0.5, min(float(interval), 10.0))
         self._stop = threading.Event()
         self._cond = threading.Condition()
@@ -69,11 +72,20 @@ class SnapshotCache:
                     "generated_at": time.time(),
                     "error": f"{type(ex).__name__}: {ex}"[:500],
                 }
+            prior_payload = None
+            changed = False
             with self._cond:
+                prior_payload = dict(self._payload) if self._payload else None
                 previous = self._payload.get("cursor") if self._payload else None
                 self._payload = payload
-                if payload.get("cursor") != previous:
+                changed = payload.get("cursor") != previous
+                if changed:
                     self._cond.notify_all()
+            if changed and prior_payload is not None and self.on_change:
+                try:
+                    self.on_change(prior_payload, payload)
+                except Exception:
+                    pass
             self._stop.wait(self.interval)
 
     def current(self) -> dict[str, Any]:
@@ -131,7 +143,21 @@ def make_server(
     devices = DeviceStore(gateway_dir / "devices.json")
     signer = SessionSigner(load_or_create_key(gateway_dir / "session.key"), ttl=session_ttl)
     upstream_client = upstream or UpstreamClient(engine_url, admin_token=admin_token)
-    cache = SnapshotCache(upstream_client, interval=snapshot_interval)
+    push_client = ExpoPushClient(access_token=os.environ.get("EXPO_ACCESS_TOKEN", ""))
+
+    def _snapshot_notifications(previous, current):
+        tokens = devices.push_targets("system")
+        if not tokens:
+            return
+        for alert in system_alerts(previous, current):
+            push_client.send(
+                tokens,
+                title=alert["title"],
+                body=alert["body"],
+                data=alert.get("data") or {},
+            )
+
+    cache = SnapshotCache(upstream_client, interval=snapshot_interval, on_change=_snapshot_notifications)
     context = GatewayContext(
         pairing_secret=str(pairing_secret),
         signer=signer,
@@ -230,6 +256,10 @@ def make_server(
             if parsed.path == "/v1/snapshot":
                 return self._json(200, self.ctx.cache.current())
 
+            if parsed.path == "/v1/notifications":
+                device_id = self._session_device()
+                return self._json(200, self.ctx.devices.push_status(device_id))
+
             if parsed.path == "/v1/events":
                 cursor = str((query.get("cursor") or [""])[0])[:128]
                 try:
@@ -297,6 +327,23 @@ def make_server(
             if parsed.path == "/v1/revoke":
                 self.ctx.devices.revoke(device_id)
                 return self._json(200, {"ok": True, "device_id": device_id, "revoked": True})
+
+            if parsed.path == "/v1/notifications/register":
+                try:
+                    token = validate_push_token(str(body.get("expo_push_token") or ""))
+                    platform = str(body.get("platform") or "").strip().lower()
+                    if platform not in {"ios", "android"}:
+                        raise ValueError("platform must be ios or android")
+                    topics = body.get("topics", ["system"])
+                    if not isinstance(topics, list) or not all(isinstance(x, str) for x in topics):
+                        raise ValueError("topics must be a string array")
+                    return self._json(200, self.ctx.devices.set_push(device_id, token, platform, topics))
+                except ValueError as ex:
+                    return self._json(400, {"detail": str(ex)})
+
+            if parsed.path == "/v1/notifications/unregister":
+                self.ctx.devices.clear_push(device_id)
+                return self._json(200, {"enabled": False, "topics": []})
 
             if parsed.path == "/v1/backtest":
                 if not self.ctx.actions.allow("backtest:" + device_id):
