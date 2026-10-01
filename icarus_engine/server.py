@@ -167,16 +167,20 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
         return results
 
     def _pause_all(payload):
-        results = _run_all_assets("pause_all", lambda runner: runner.set_paused(True))
+        # Global pause is desired/default state. Set it before touching runners so
+        # a concurrently added asset cannot start accepting entries.
         port.paused = True
-        port.journal.log("WARN", f"PAUSED ALL: {payload['reason']}")
-        return {"paused": sorted(results)}
+        port.journal.log("WARN", f"PAUSE ALL requested: {payload['reason']}")
+        results = _run_all_assets("pause_all", lambda runner: runner.set_paused(True))
+        return {"paused": sorted(results), "global_pause_intent": True}
 
     def _resume_all(payload):
-        results = _run_all_assets("resume_all", lambda runner: runner.set_paused(False))
+        # Resume is likewise a global intent. Individual runners may still fail
+        # closed (for example activation quarantine); those failures are reported.
         port.paused = False
-        port.journal.log("INFO", f"RESUMED ALL: {payload['reason']}")
-        return {"resumed": sorted(results)}
+        port.journal.log("INFO", f"RESUME ALL requested: {payload['reason']}")
+        results = _run_all_assets("resume_all", lambda runner: runner.set_paused(False))
+        return {"resumed": sorted(results), "global_pause_intent": False}
 
     def _flatten_all(payload):
         closed = _run_all_assets(
@@ -285,24 +289,32 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
         runner = port.add_asset(spec)
         return {"asset": runner.symbol, "added": True, "timeframe": spec.chart_tf}
 
-    def _sync_all(_payload):
+    def _syncers():
         return {
-            "loop_intelligence": loop_intelligence_sync.sync_once(),
-            "brain_remote": brain_remote_sync.sync_once(),
-            "brain_research": brain_research_sync.sync_once(),
-            "evolution": evolution_remote_sync.sync_once(),
-        }
-
-    def _run_sync_lifecycle(operation: str, method: str):
-        results = {}
-        errors = {}
-        syncers = {
             "loop_intelligence": loop_intelligence_sync,
             "brain_remote": brain_remote_sync,
             "brain_research": brain_research_sync,
             "evolution": evolution_remote_sync,
         }
-        for name, syncer in syncers.items():
+
+    def _sync_all(_payload):
+        results = {}
+        errors = {}
+        for name, syncer in _syncers().items():
+            try:
+                results[name] = syncer.sync_once()
+            except Exception as ex:
+                errors[name] = f"{type(ex).__name__}: {ex}"[:800]
+        if errors:
+            raise RuntimeError(
+                f"sync_all partial failure; completed={sorted(results)} errors={errors}"
+            )
+        return results
+
+    def _run_sync_lifecycle(operation: str, method: str):
+        results = {}
+        errors = {}
+        for name, syncer in _syncers().items():
             try:
                 getattr(syncer, method)()
                 results[name] = operation
@@ -1090,23 +1102,40 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                         raise ValueError("collection requires source and optional options")
                     return self._json(200, research.market_sources.collect(body["source"], body.get("options")))
                 if p.path == "/admin/pause":
-                    for r in targets:
-                        r.set_paused(True)
+                    reason = _reason(body)
                     if not asset or asset == "*":
                         port.paused = True
-                    port.journal.log("WARN", f"PAUSED {asset or 'ALL'}: {_reason(body)}")
-                    return self._json(200, {"ok": True, "note": f"paused {asset or 'all'} - no new entries"})
-                if p.path == "/admin/resume":
+                        port.journal.log("WARN", f"PAUSE ALL requested: {reason}")
+                        results = _run_all_assets("pause_all", lambda r: r.set_paused(True))
+                        return self._json(200, {
+                            "ok": True, "note": "paused all - no new entries",
+                            "paused": sorted(results), "global_pause_intent": True,
+                        })
                     for r in targets:
-                        r.set_paused(False)
+                        r.set_paused(True)
+                    port.journal.log("WARN", f"PAUSED {asset}: {reason}")
+                    return self._json(200, {"ok": True, "note": f"paused {asset} - no new entries"})
+                if p.path == "/admin/resume":
                     if not asset or asset == "*":
                         port.paused = False
-                    port.journal.log("INFO", f"RESUMED {asset or 'ALL'}")
-                    return self._json(200, {"ok": True, "note": f"resumed {asset or 'all'}"})
+                        port.journal.log("INFO", "RESUME ALL requested")
+                        results = _run_all_assets("resume_all", lambda r: r.set_paused(False))
+                        return self._json(200, {
+                            "ok": True, "note": "resumed all",
+                            "resumed": sorted(results), "global_pause_intent": False,
+                        })
+                    for r in targets:
+                        r.set_paused(False)
+                    port.journal.log("INFO", f"RESUMED {asset}")
+                    return self._json(200, {"ok": True, "note": f"resumed {asset}"})
                 if p.path == "/admin/flatten":
                     if not body.get("confirm"):
                         return self._json(400, {"detail": "pass {\"confirm\": true}"})
-                    closed = {r.symbol: r.flatten(_reason(body, "dashboard")) for r in targets}
+                    reason = _reason(body, "dashboard")
+                    if not asset or asset == "*":
+                        closed = _run_all_assets("flatten_all", lambda r: r.flatten(reason))
+                    else:
+                        closed = {r.symbol: r.flatten(reason) for r in targets}
                     return self._json(200, {"ok": True, "closed": closed, "note": f"flattened {sum(closed.values())} position(s)"})
                 if p.path == "/admin/market-data/mbo-snapshot":
                     if len(targets) != 1 or targets[0] is None:
