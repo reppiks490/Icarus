@@ -1211,8 +1211,20 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     return self._json(400, {"detail": str(ex)})
             if p.path == "/admin/brain/event":
                 try:
-                    return self._json(200, record_brain_event(port.base_dir, body))
-                except (ValueError, TypeError) as ex:
+                    payload = dict(body)
+                    if (
+                        str(payload.get("kind") or "").strip().lower() == "candidate"
+                        and str(payload.get("stage") or "").strip().lower() == "qualified_shadow"
+                    ):
+                        proof = qualification.snapshot(payload)
+                        if proof.get("qualified_shadow_ready") is not True:
+                            raise ValueError(
+                                "qualified_shadow requires receipt-backed qualification: "
+                                + ", ".join(proof.get("blockers", []))
+                            )
+                        payload = qualification.qualification_event(payload)
+                    return self._json(200, record_brain_event(port.base_dir, payload))
+                except (ValueError, TypeError, RuntimeError) as ex:
                     return self._json(400, {"detail": str(ex)})
             if p.path == "/admin/candidate-qualification/receipt":
                 try:
