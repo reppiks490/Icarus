@@ -72,6 +72,8 @@ def test_pantheon_runs_independent_faculties_and_never_grants_execution(tmp_path
         "nullspace", "godel", "ananke", "nemesis", "ex_nihilo", "mint", "archon", "socrates"
     }
     assert analysis["faculties"]["nullspace"]["routing_state"] == "absorbed"
+    assert analysis["faculties"]["nullspace"]["debt_state"] == "absorbed"
+    assert analysis["faculties"]["nullspace"]["repayment_pressure"] >= 0
     assert analysis["faculties"]["godel"]["identifiability"] < 0.01
     assert analysis["faculties"]["godel"]["epistemic_blindspot"] is True
     assert analysis["faculties"]["godel"]["effective_world_count"] > 1.9
@@ -79,10 +81,15 @@ def test_pantheon_runs_independent_faculties_and_never_grants_execution(tmp_path
     assert analysis["faculties"]["ananke"]["reachable_space_collapse"] > 0
     assert analysis["faculties"]["nemesis"]["survival_score"] > 0.70
     assert analysis["faculties"]["nemesis"]["edge_half_life_source"] == "unmeasured"
+    assert analysis["faculties"]["nemesis"]["dreamstate_curriculum"]
     assert analysis["faculties"]["ex_nihilo"]["new_phenomenon_candidate"] is True
     assert analysis["faculties"]["mint"]["best_candidate"]["name"] == "nq_es_relative_value"
     assert analysis["faculties"]["mint"]["best_candidate"]["stress_expected_net"] > 0
+    assert analysis["faculties"]["mint"]["best_candidate"]["alpha_metabolism"]["stress_net_conversion"] > 0
+    assert analysis["faculties"]["mint"]["profit_surface"]["robust_positive_count"] >= 1
+    assert analysis["faculties"]["mint"]["profit_chain"]
     assert analysis["faculties"]["socrates"]["question_queue"]
+    assert analysis["faculties"]["socrates"]["hypothesis_queue"]
     assert analysis["faculties"]["archon"]["contradiction"] > 0.80
     assert 0 <= analysis["faculties"]["archon"]["attention_concentration"] <= 1
     assert analysis["faculties"]["archon"]["consensus_forced"] is False
@@ -172,6 +179,38 @@ def test_pantheon_exports_only_identified_structural_constraint_evidence_to_siby
         _payload(observation_id="pan-ambiguous", observed_at="2026-10-01T06:00:01Z")
     )
     assert ambiguous["analysis"]["exports"]["sibyl_evidence"] == []
+
+
+def test_pantheon_extended_constraints_ablation_and_causal_debt_states(tmp_path):
+    kernel = PantheonKernel(tmp_path)
+    payload = _payload(observation_id="pan-extended")
+    payload["signals"] = dict(payload["signals"])
+    payload["signals"].update({
+        "expected_response": 1.0,
+        "observed_response": 0.30,
+        "absorber_strength": 0.0,
+        "diversion_score": 0.0,
+        "lag_score": 0.0,
+        "debt_change_rate": 0.80,
+        "world_reachability": {
+            "macro_up": {"up": 0.80, "down": 0.20},
+            "flow_up": {"up": 0.65, "down": 0.30},
+        },
+        "subsystem_survival": {
+            "oracle": 0.90,
+            "argus": 0.35,
+            "athena": 0.70,
+        },
+    })
+    obs = kernel.record_observation(payload)
+    faculties = obs["analysis"]["faculties"]
+    assert faculties["nullspace"]["debt_state"] == "cliff"
+    cross = faculties["ananke"]["cross_world_reachability"]
+    assert cross["intersection"]["up"] == pytest.approx(0.65)
+    assert cross["intersection"]["down"] == pytest.approx(0.20)
+    ablation = faculties["nemesis"]["subsystem_ablation_survival"]
+    assert ablation[0]["subsystem"] == "argus"
+    assert any(row["target"] == "ablate:argus" for row in faculties["nemesis"]["dreamstate_curriculum"])
 
 
 def test_nemesis_derives_edge_half_life_when_decay_is_supplied(tmp_path):
