@@ -1380,18 +1380,31 @@ class Portfolio:
 
     def stop(self) -> None:
         self._stop.set()
+
+        # Do not tear down a live transport underneath a runner already inside poll().
+        # Give all runner threads one bounded shared shutdown window first.
+        deadline = time.monotonic() + 5.0
+        current = threading.current_thread()
+        for thread in list(self._threads.values()):
+            if thread is current or not thread.is_alive():
+                continue
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                break
+            thread.join(remaining)
+
         # Paid/live adapters own background network sessions. Close each distinct
-        # feed once so supervised restarts do not leak Databento connections.
+        # feed once so supervised restarts do not leak or reopen Databento connections.
         seen = set()
         for feed in self.feeds.values():
             if id(feed) in seen:
                 continue
             seen.add(id(feed))
             try:
-                if hasattr(feed, "stop_live"):
-                    feed.stop_live()
-                elif hasattr(feed, "close"):
+                if hasattr(feed, "close"):
                     feed.close()
+                elif hasattr(feed, "stop_live"):
+                    feed.stop_live()
             except Exception as ex:
                 self.journal.log("WARN", f"feed shutdown: {type(ex).__name__}: {ex}")
 
