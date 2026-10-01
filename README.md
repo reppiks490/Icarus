@@ -116,3 +116,10 @@ Installed architecture, API/MCP/UI surfaces, persistence, truth semantics, and v
 Prior ICARUS/AEGIS research, red-team findings, handoffs, Stage-5 verification material, related-build registry, and the implementation-assurance control-plane map are consolidated at [ASSURANCE_INDEX.md](ASSURANCE_INDEX.md).
 
 The archive is evidence/context, not execution authorization or proof of implementation. `execution_authorized=false` remains unchanged.
+
+
+## ICARUS Mobile
+
+The native iOS/Android client lives under [mobile/](mobile/README.md). It does not expose the loopback engine directly and does not carry the engine admin token. A separate read-only `icarus-mobile-gateway` performs device pairing, rotating refresh credentials, short-lived sessions, curated read routing, and live snapshot delivery.
+
+Architecture and deployment: [docs/icarus/MOBILE_APP.md](docs/icarus/MOBILE_APP.md). Security contract: [docs/icarus/MOBILE_SECURITY.md](docs/icarus/MOBILE_SECURITY.md).
