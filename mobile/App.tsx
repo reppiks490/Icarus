@@ -24,7 +24,7 @@ import type {
   TradeRow,
 } from './src/types';
 
-type Tab = 'overview' | 'intelligence' | 'system' | 'settings';
+type Tab = 'overview' | 'intelligence' | 'lab' | 'system' | 'settings';
 
 function errorText(error: unknown): string {
   if (error instanceof IcarusApiError) return error.message;
@@ -146,6 +146,11 @@ export default function App() {
   const [possibility, setPossibility] = useState<JsonObject | null>(null);
   const [control, setControl] = useState<JsonObject | null>(null);
   const [integrity, setIntegrity] = useState<JsonObject | null>(null);
+  const [research, setResearch] = useState<JsonObject | null>(null);
+  const [backtest, setBacktest] = useState<JsonObject | null>(null);
+  const [backtestJobId, setBacktestJobId] = useState('');
+  const [labAsset, setLabAsset] = useState('');
+  const [labBusy, setLabBusy] = useState(false);
   const [pairUrl, setPairUrl] = useState('');
   const [pairSecret, setPairSecret] = useState('');
   const [deviceName, setDeviceName] = useState('ICARUS ' + Platform.OS);
@@ -267,6 +272,49 @@ export default function App() {
   }, [client, tab]);
 
   useEffect(() => {
+    if (!labAsset && selectedAsset) setLabAsset(selectedAsset);
+  }, [labAsset, selectedAsset]);
+
+  useEffect(() => {
+    if (!client || tab !== 'lab') return;
+    let cancelled = false;
+    void client.research()
+      .then((nextResearch) => {
+        if (!cancelled) setResearch(nextResearch);
+      })
+      .catch((reason) => {
+        if (!cancelled) setError(errorText(reason));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [client, tab]);
+
+  useEffect(() => {
+    if (!client || !backtestJobId) return;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const poll = async () => {
+      try {
+        const next = await client.backtest(backtestJobId);
+        if (cancelled) return;
+        setBacktest(next);
+        const state = String(next.status || '');
+        if (state !== 'done' && state !== 'error' && state !== 'failed') {
+          timer = setTimeout(() => void poll(), 1500);
+        }
+      } catch (reason) {
+        if (!cancelled) setError(errorText(reason));
+      }
+    };
+    void poll();
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [client, backtestJobId]);
+
+  useEffect(() => {
     if (!client || tab !== 'system') return;
     let cancelled = false;
     void Promise.all([client.engineControl(), client.integrity()])
@@ -300,6 +348,23 @@ export default function App() {
       setError(errorText(reason));
     } finally {
       setRefreshing(false);
+    }
+  };
+
+  const startBacktest = async () => {
+    if (!client || !labAsset) return;
+    setLabBusy(true);
+    try {
+      const started = await client.startBacktest(labAsset);
+      const job = String(started.job || '');
+      if (!job) throw new IcarusApiError('ICARUS did not return a backtest job id');
+      setBacktest(started);
+      setBacktestJobId(job);
+      setError('');
+    } catch (reason) {
+      setError(errorText(reason));
+    } finally {
+      setLabBusy(false);
     }
   };
 
@@ -369,7 +434,7 @@ export default function App() {
       </View>
 
       <View style={styles.tabs}>
-        {(['overview', 'intelligence', 'system', 'settings'] as Tab[]).map((item) => (
+        {(['overview', 'intelligence', 'lab', 'system', 'settings'] as Tab[]).map((item) => (
           <Pressable key={item} onPress={() => setTab(item)} style={[styles.tab, tab === item && styles.tabActive]}>
             <Text style={[styles.tabText, tab === item && styles.tabTextActive]}>{item.toUpperCase()}</Text>
           </Pressable>
@@ -445,6 +510,42 @@ export default function App() {
             <JsonPanel title="APEX Ω" data={apex} />
             <JsonPanel title="Learning Health" data={learning} />
             <JsonPanel title="Possibility Ψ" data={possibility} />
+          </>
+        ) : null}
+
+        {tab === 'lab' ? (
+          <>
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Research + Backtest Lab</Text>
+              <Text style={styles.body}>
+                Backtests are analysis jobs only. This mobile path cannot pause, resume, flatten, place, or configure live trading state.
+              </Text>
+              <Text style={styles.sectionLabel}>BACKTEST ASSET</Text>
+              <View style={styles.assetPicker}>
+                {assets.map((asset, index) => {
+                  const symbol = String(asset.symbol || index);
+                  return (
+                    <Pressable
+                      key={symbol}
+                      onPress={() => setLabAsset(symbol)}
+                      style={[styles.assetChip, labAsset === symbol && styles.assetChipActive]}
+                    >
+                      <Text style={[styles.assetChipText, labAsset === symbol && styles.assetChipTextActive]}>{symbol}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+              <Pressable
+                style={[styles.primaryButton, (labBusy || !labAsset) && styles.buttonDisabled]}
+                disabled={labBusy || !labAsset}
+                onPress={() => void startBacktest()}
+              >
+                <Text style={styles.primaryButtonText}>{labBusy ? 'STARTING…' : 'RUN CURRENT CONFIG BACKTEST'}</Text>
+              </Pressable>
+              {backtestJobId ? <Text style={styles.hint}>Job {backtestJobId}</Text> : null}
+            </View>
+            <JsonPanel title="Backtest Job" data={backtest} />
+            <JsonPanel title="Research State" data={research} />
           </>
         ) : null}
 
@@ -591,6 +692,11 @@ const styles = StyleSheet.create({
   errorText: { color: '#ff8498', fontSize: 11 },
   code: { color: '#aeb9d9', fontFamily: 'monospace', fontSize: 10, lineHeight: 15 },
   sectionLabel: { color: '#71809e', fontSize: 10, fontWeight: '800', letterSpacing: 1.1, marginTop: 4 },
+  assetPicker: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
+  assetChip: { borderWidth: 1, borderColor: '#2c3448', borderRadius: 999, paddingHorizontal: 11, paddingVertical: 7 },
+  assetChipActive: { backgroundColor: '#dfe6ff', borderColor: '#dfe6ff' },
+  assetChipText: { color: '#8f9ab5', fontSize: 10, fontWeight: '800' },
+  assetChipTextActive: { color: '#11172a' },
   tradeList: { gap: 7 },
   tradeRow: { backgroundColor: '#090b11', borderRadius: 9, padding: 10, flexDirection: 'row', justifyContent: 'space-between', gap: 10 },
   tradeMain: { flex: 1, gap: 3 },

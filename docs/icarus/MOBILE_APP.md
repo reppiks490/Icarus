@@ -47,7 +47,7 @@ The gateway maintains one shared snapshot cache over status, repository/loop aud
 
 Curated routes currently include status, briefing, system audit, charts, closed trades, Brain, APEX, Learning Health, Engine Control, Integrity, Research, Possibility, Chronofold, Commissioning, Pantheon, Sibyl, Performance Proof, Latency, and Source Reliability.
 
-There is no generic proxy and no `/admin/*` forwarding.
+There is no generic proxy. The only permitted write-through operation is a tightly validated, rate-limited `/v1/backtest` analysis launch mapped to `/admin/backtest`; no trading-state mutation route is exposed.
 
 ## Packaging
 
