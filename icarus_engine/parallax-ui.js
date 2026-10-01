@@ -12,7 +12,7 @@
   };
 
   function parallaxHtml() {
-    return '<section class="card c12" id="parallaxPanel"><h2>PARALLAX / DREAMSTATE <span class="sub">counterfactual twins · FDR · temporal stability · parameter basins · bounded policy incubation · shadow only</span></h2><div class="empty">loading counterfactual research state…</div></section>';
+    return '<section class="card c12" id="parallaxPanel"><h2>PARALLAX / DREAMSTATE <span class="sub">counterfactual twins · FDR · effective-N · HAC · temporal stability · parameter basins · transportability · shadow only</span></h2><div class="empty">loading counterfactual research state…</div></section>';
   }
 
   function attributionRows(rows) {
@@ -30,13 +30,14 @@
     return (rows || []).slice(0, 40).map(r => '<tr>' +
       '<td><b>'+h(r.asset || '')+'</b><div class="small muted">'+h(r.regime || '')+'</div></td>' +
       '<td><span class="chip">'+h(r.branch_label || '')+'</span><div class="small muted">'+h(r.kind || '')+'</div></td>' +
-      '<td class="tnum">'+h(r.evidence_pair_count ?? r.n ?? 0)+'</td>' +
-      '<td class="tnum">'+pct(r.evidence_pair_coverage)+'</td>' +
+      '<td class="tnum">'+h(r.evidence_pair_count ?? r.n ?? 0)+'<div class="small muted">eff '+h(r.effective_pair_count ?? r.n ?? 0)+'</div></td>' +
+      '<td class="tnum">'+pct(r.evidence_pair_coverage)+'<div class="small muted">clustered '+h((r.episode_dependence||{}).clustered_pair_count ?? 0)+'</div></td>' +
       '<td class="tnum">'+num(r.mean_delta)+'</td>' +
-      '<td class="tnum">'+num(r.ci95_low)+'</td>' +
+      '<td class="tnum">'+num(r.screen_ci95_low ?? r.ci95_low)+'<div class="small muted">'+(((r.hac_inference||{}).evaluable)?'HAC lag '+h((r.hac_inference||{}).lag ?? '—'):'naive')+'</div></td>' +
       '<td class="tnum">'+num(r.q_value, 4)+'</td>' +
       '<td><span class="chip '+(((r.temporal_stability||{}).evaluable)?(((r.temporal_stability||{}).stable)?'b':'r'):'w')+'">'+(((r.temporal_stability||{}).evaluable)?(((r.temporal_stability||{}).stable)?'STABLE':'UNSTABLE'):'EARLY')+'</span><div class="small muted">worst '+num((r.temporal_stability||{}).worst_fold_mean)+'</div></td>' +
       '<td><span class="chip '+(((r.parameter_basin||{}).isolated_spike||(r.parameter_basin||{}).local_support_missing)?'r':((r.parameter_basin||{}).evaluable?'b':'w'))+'">'+((r.parameter_basin||{}).isolated_spike?'SPIKE':((r.parameter_basin||{}).local_support_missing?'SPARSE':((r.parameter_basin||{}).evaluable?'BASIN':'EARLY')))+'</span><div class="small muted">support '+h((r.parameter_basin||{}).basin_support_count ?? 0)+' · family '+h((r.parameter_basin||{}).family_evaluable_point_count ?? 0)+'</div></td>' +
+      '<td><span class="chip '+(((r.transportability||{}).evaluable)?(((r.transportability||{}).contradictory_revision_count||0)>0?'r':((r.transportability||{}).stable?'b':'w')):'w')+'">'+(((r.transportability||{}).evaluable)?(((r.transportability||{}).contradictory_revision_count||0)>0?'CONTRADICTED':((r.transportability||{}).stable?'TRANSPORT':'MIXED')):'EARLY')+'</span><div class="small muted">support '+h((r.transportability||{}).supporting_revision_count ?? 0)+' · oppose '+h((r.transportability||{}).contradictory_revision_count ?? 0)+'</div></td>' +
       '<td class="tnum">'+h(r.strata_count ?? 0)+'</td>' +
       '<td><span class="chip '+(r.comparison_contract_complete?'b':'r')+'">'+(r.comparison_contract_complete?'READY':'INCOMPLETE')+'</span><div class="small muted tnum">'+h(short(r.comparison_contract_hash, 10))+'</div></td>' +
       '</tr>').join('');
@@ -68,7 +69,7 @@
         '<td><b>'+h(c.asset || '')+'</b><div class="small muted">'+h(c.regime || '')+'</div><div class="small muted tnum">'+h(short(scope.comparison_contract_hash, 10))+'</div></td>' +
         '<td><span class="chip '+cls(c.stage)+'">'+h(String(c.stage || '').toUpperCase())+'</span></td>' +
         '<td>'+h(c.hypothesis || '')+'<div class="small muted tnum">'+h(JSON.stringify(c.mutation || {}))+'</div></td>' +
-        '<td class="tnum">'+num(acct.source_q_value, 4)+'<div class="small muted">n='+h(acct.source_evidence_pairs ?? '—')+'</div><div class="small muted">'+(acct.source_temporal_evaluable?(acct.source_temporal_stable?'time stable':'time unstable'):'time early')+' · '+(acct.source_isolated_parameter_spike?'spike':(acct.source_parameter_local_support_missing?'sparse':(acct.source_parameter_basin_evaluable?'basin '+h(acct.source_parameter_basin_support_count ?? 0):'basin early')))+'</div></td>' +
+        '<td class="tnum">'+num(acct.source_q_value, 4)+'<div class="small muted">raw '+h(acct.source_evidence_pairs ?? '—')+' · eff '+h(acct.source_effective_pairs ?? '—')+'</div><div class="small muted">'+(acct.source_hac_evaluable?'HAC '+num(acct.source_hac_ci95_low):'HAC early')+' · '+(acct.source_transport_evaluable?(acct.source_transport_stable?'transport stable':'transport mixed'):'transport early')+'</div><div class="small muted">'+(acct.source_temporal_evaluable?(acct.source_temporal_stable?'time stable':'time unstable'):'time early')+' · '+(acct.source_isolated_parameter_spike?'spike':(acct.source_parameter_local_support_missing?'sparse':(acct.source_parameter_basin_evaluable?'basin '+h(acct.source_parameter_basin_support_count ?? 0):'basin early')))+'</div></td>' +
         '<td class="tnum">'+h(acct.family_trial_budget_remaining ?? '—')+'<div class="small muted">remaining</div></td>' +
         '<td class="tnum">'+h(passed)+'/'+h((gates || []).length)+(failed ? '<div class="small neg">'+h(failed)+' failed</div>' : '')+'</td>' +
         '<td class="tnum">'+h(short(c.source_commit, 10))+'</td>' +
@@ -131,11 +132,11 @@
       '.px-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}' +
       '.px-box{border:1px solid var(--ring);border-radius:12px;padding:10px;background:var(--surface-2)}' +
       '</style>' +
-      '<h2>PARALLAX / DREAMSTATE <span class="sub">observed twins · BH-FDR · temporal folds · parameter basins · bounded policy incubation · execution_authorized=false</span></h2>' +
+      '<h2>PARALLAX / DREAMSTATE <span class="sub">observed twins · BH-FDR · effective-N · HAC · temporal folds · parameter basins · revision transport · execution_authorized=false</span></h2>' +
       '<div class="tiles" style="margin-top:0">' +
         '<div class="tile"><div class="k">Twin decisions</div><div class="v tnum">'+h(counts.decisions ?? 0)+'</div><div class="small muted">'+h(counts.observed_outcomes ?? 0)+' observed outcomes</div></div>' +
         '<div class="tile"><div class="k">Contract-ready recent</div><div class="v tnum">'+h(contractReady)+'/'+h(recentN)+'</div><div class="small muted">utility · horizon · dataset · costs · clock</div></div>' +
-        '<div class="tile"><div class="k">Robust-ready signals</div><div class="v tnum">'+h(screening.robust_candidate_ready ?? 0)+'</div><div class="small muted">'+h(screening.candidate_ready ?? 0)+' statistical · '+h(screening.robustness_blocked ?? 0)+' robustness-blocked</div></div>' +
+        '<div class="tile"><div class="k">Robust-ready signals</div><div class="v tnum">'+h(screening.robust_candidate_ready ?? 0)+'</div><div class="small muted">'+h(screening.candidate_ready ?? 0)+' statistical · '+h(screening.robustness_blocked ?? 0)+' dependence/robustness-blocked</div></div>' +
         '<div class="tile"><div class="k">Comparable mean regret</div><div class="v tnum">'+num(regret.mean_delta)+'</div><div class="small muted">'+(regret.comparable_globally ? 'single comparable evidence scope' : 'not pooled across incomparable scopes')+'</div></div>' +
         '<div class="tile"><div class="k">DREAMSTATE families</div><div class="v tnum">'+h(search.family_count ?? 0)+'</div><div class="small muted">'+h(search.active_family_count ?? 0)+' active · '+h(search.budget_exhausted_family_count ?? 0)+' exhausted</div></div>' +
         '<div class="tile"><div class="k">Qualified shadow</div><div class="v tnum">'+h(qualified)+'</div><div class="small muted">maximum authority stage</div></div>' +
@@ -144,13 +145,13 @@
       '</div>' +
 
       '<div class="px-grid" style="margin-top:12px">' +
-        '<div class="px-box"><b>PARALLAX V3 robustness contract</b><div class="small muted" style="margin-top:6px">Statistical candidates still require paired evidence, exact revision/contract identity, positive lower bound and BH-FDR. Once evidence is rich enough, robust-ready also requires positive chronological folds and rejects isolated parameter spikes when adjacent settings are evaluable.</div></div>' +
-        '<div class="px-box"><b>DREAMSTATE V3 policy contract</b><div class="small muted" style="margin-top:6px">DREAMSTATE consumes only robust-ready PARALLAX sources when robustness is evaluable. Candidates retire if time stability collapses or a setting becomes an isolated spike. Families retain bounded trials, immutable failures, baseline fallback and zero production/broker authority.</div></div>' +
+        '<div class="px-box"><b>PARALLAX V4 dependence contract</b><div class="small muted" style="margin-top:6px">Caller-supplied episode_id clusters repeated decisions into one effective observation. Once effective-N is sufficient, Newey-West/HAC replaces naïve uncertainty for the screen. V3 temporal folds and parameter basins remain active, and strong contradiction in another exact ICARUS revision blocks robust readiness without pooling effect sizes.</div></div>' +
+        '<div class="px-box"><b>DREAMSTATE V4 policy contract</b><div class="small muted" style="margin-top:6px">DREAMSTATE carries raw/effective N, HAC uncertainty, episode clustering and cross-revision transport into every candidate, Brain mirror and live source recheck. Candidates still have bounded trials, immutable failures, baseline fallback and zero production/broker authority.</div></div>' +
       '</div>' +
 
       '<h3 class="small" style="margin:16px 0 8px">Robust-ready PARALLAX signals</h3>' +
-      '<div class="scroll" style="max-height:360px"><table><thead><tr><th>Scope</th><th>Branch</th><th>Evidence N</th><th>Pair coverage</th><th>Mean Δ</th><th>95% lower</th><th>FDR q</th><th>Time</th><th>Basin</th><th>Strata</th><th>Contract</th></tr></thead><tbody>' +
-      (signalRows(px.mutation_signals) || '<tr><td colspan="11" class="empty">No counterfactual hypothesis currently clears every statistical and robustness screen.</td></tr>') + '</tbody></table></div>' +
+      '<div class="scroll" style="max-height:360px"><table><thead><tr><th>Scope</th><th>Branch</th><th>Raw / effective N</th><th>Pair coverage</th><th>Mean Δ</th><th>Screen lower</th><th>FDR q</th><th>Time</th><th>Basin</th><th>Revision transport</th><th>Strata</th><th>Contract</th></tr></thead><tbody>' +
+      (signalRows(px.mutation_signals) || '<tr><td colspan="12" class="empty">No counterfactual hypothesis currently clears every statistical, dependence and robustness screen.</td></tr>') + '</tbody></table></div>' +
 
       '<h3 class="small" style="margin:16px 0 8px">Blocked hypothesis diagnostics</h3>' +
       '<div class="scroll" style="max-height:300px"><table><thead><tr><th>Scope</th><th>Branch</th><th>Evidence N</th><th>FDR q</th><th>Blockers</th><th>Revision</th></tr></thead><tbody>' +

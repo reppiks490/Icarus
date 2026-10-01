@@ -31,7 +31,16 @@ def _record_pair(
     contract_tag: str = "base",
     actual_evidence: bool = True,
     branch_evidence: bool = True,
+    episode_id: str | None = None,
 ):
+    context = {
+        "bar": i,
+        "vix_accel": 0.2,
+        "session": "NY",
+        "volatility_regime": "high",
+    }
+    if episode_id is not None:
+        context["episode_id"] = episode_id
     decision = store.record_decision(
         {
             "asset": "NQ",
@@ -39,12 +48,7 @@ def _record_pair(
             "observed_at": f"2026-10-01T05:{i:02d}:00Z",
             "regime": "trend-high-vol",
             "source_commit": source_commit,
-            "context": {
-                "bar": i,
-                "vix_accel": 0.2,
-                "session": "NY",
-                "volatility_regime": "high",
-            },
+            "context": context,
             "strata": {"session": "NY", "volatility_regime": "high"},
             "comparison_contract": _contract(contract_tag),
             "subsystem_votes": {"athena": 0.8, "argus": 0.55},
@@ -352,10 +356,190 @@ def test_parallax_does_not_pool_regret_across_incomparable_contracts(tmp_path):
     assert len(snap["regret"]["groups"]) == 2
 
 
+def test_parallax_episode_clustering_prevents_correlated_pair_inflation(tmp_path):
+    store = ParallaxStore(tmp_path)
+    for i in range(10):
+        _record_pair(store, i, delay_utility=1.0, episode_id="single-market-shock")
+
+    signal = next(
+        row for row in store.hypotheses(min_samples=5)
+        if row["branch_label"] == "delay_1"
+    )
+    assert signal["evidence_pair_count"] == 10
+    assert signal["effective_pair_count"] == 1
+    assert signal["episode_dependence"]["episode_count"] == 1
+    assert signal["episode_dependence"]["clustered_pair_count"] == 9
+    assert signal["episode_dependence"]["largest_episode_size"] == 10
+    assert signal["episode_dependence"]["used_episode_clustering"] is True
+    assert "insufficient_independent_episodes" in signal["screen_blockers"]
+    assert signal["candidate_eligible"] is False
+    assert not [
+        row for row in store.mutation_signals(min_samples=5)
+        if row["branch_label"] == "delay_1"
+    ]
+
+
+def test_parallax_hac_can_reject_naive_significance_under_serial_dependence(tmp_path):
+    store = ParallaxStore(tmp_path)
+    values = [1.5] * 6 + [-0.2] * 6
+    for i, value in enumerate(values):
+        _record_pair(store, i, delay_utility=value)
+
+    signal = next(
+        row for row in store.hypotheses(min_samples=5)
+        if row["branch_label"] == "delay_1"
+    )
+    assert signal["effective_pair_count"] == 12
+    assert signal["ci95_low"] > 0
+    assert signal["hac_inference"]["evaluable"] is True
+    assert signal["hac_inference"]["ci95_low"] < 0
+    assert signal["screen_ci95_low"] == pytest.approx(signal["hac_inference"]["ci95_low"])
+    assert "dependence_adjusted_lower_bound_not_positive" in signal["screen_blockers"]
+    assert signal["candidate_eligible"] is False
+
+
+def test_parallax_parameter_basin_keeps_each_remainder_signature():
+    rows = [
+        {
+            "asset": "NQ",
+            "regime": "trend",
+            "source_commit": "a" * 40,
+            "comparison_contract_hash": "c" * 64,
+            "kind": "delay",
+            "branch_params": {"delay_bars": 1, "variant": "alpha"},
+            "effective_pair_count": 5,
+            "evidence_pair_count": 5,
+            "candidate_eligible": True,
+            "temporal_stability": {"evaluable": False, "stable": None},
+        },
+        {
+            "asset": "NQ",
+            "regime": "trend",
+            "source_commit": "a" * 40,
+            "comparison_contract_hash": "c" * 64,
+            "kind": "delay",
+            "branch_params": {"delay_bars": 1, "variant": "beta"},
+            "effective_pair_count": 5,
+            "evidence_pair_count": 5,
+            "candidate_eligible": True,
+            "temporal_stability": {"evaluable": False, "stable": None},
+        },
+    ]
+    expected = [
+        ParallaxStore._parameter_axis(row["kind"], row["branch_params"])[2]
+        for row in rows
+    ]
+
+    ParallaxStore._annotate_parameter_basins(rows, min_samples=5)
+
+    assert [row["parameter_basin"]["remainder_signature"] for row in rows] == expected
+    assert expected[0] != expected[1]
+
+
+def test_parallax_bh_uses_dependence_adjusted_screen_p_values():
+    rows = [
+        {
+            "asset": "NQ",
+            "regime": "trend",
+            "source_commit": "a" * 40,
+            "comparison_contract_hash": "c" * 64,
+            "branch_label": "naively_tiny_but_hac_weak",
+            "p_one_sided": 0.001,
+            "screen_p_one_sided": 0.20,
+        },
+        {
+            "asset": "NQ",
+            "regime": "trend",
+            "source_commit": "a" * 40,
+            "comparison_contract_hash": "c" * 64,
+            "branch_label": "naively_larger_but_hac_strong",
+            "p_one_sided": 0.05,
+            "screen_p_one_sided": 0.01,
+        },
+    ]
+
+    ParallaxStore._apply_bh(rows)
+    by_label = {row["branch_label"]: row for row in rows}
+
+    assert by_label["naively_tiny_but_hac_weak"]["q_value"] == pytest.approx(0.20)
+    assert by_label["naively_larger_but_hac_strong"]["q_value"] == pytest.approx(0.02)
+
+
+def test_parallax_cross_revision_contradiction_blocks_robust_readiness(tmp_path):
+    store = ParallaxStore(tmp_path)
+    for i in range(6):
+        _record_pair(store, i, delay_utility=1.0, source_commit="a" * 40)
+    for i in range(6, 12):
+        _record_pair(store, i, delay_utility=-1.0, source_commit="b" * 40)
+
+    rows = [
+        row for row in store.hypotheses(min_samples=5)
+        if row["branch_label"] == "delay_1"
+    ]
+    assert len(rows) == 2
+    positive = next(row for row in rows if row["source_commit"] == "a" * 40)
+    negative = next(row for row in rows if row["source_commit"] == "b" * 40)
+    assert positive["candidate_eligible"] is True
+    assert positive["transportability"]["evaluable"] is True
+    assert positive["transportability"]["supporting_revision_count"] == 1
+    assert positive["transportability"]["contradictory_revision_count"] == 1
+    assert "cross_revision_contradiction" in positive["robustness_blockers"]
+    assert positive["robust_candidate_eligible"] is False
+    assert negative["screen_ci95_high"] < 0
+    assert store.mutation_signals(min_samples=5) == []
+
+
+def test_parallax_consistent_revisions_create_transportability_support(tmp_path):
+    store = ParallaxStore(tmp_path)
+    for i in range(6):
+        _record_pair(store, i, delay_utility=1.0, source_commit="a" * 40)
+    for i in range(6, 12):
+        _record_pair(store, i, delay_utility=1.0, source_commit="b" * 40)
+
+    rows = [
+        row for row in store.mutation_signals(min_samples=5)
+        if row["branch_label"] == "delay_1"
+    ]
+    assert len(rows) == 2
+    for row in rows:
+        assert row["effective_pair_count"] == 6
+        assert row["hac_inference"]["evaluable"] is True
+        assert row["transportability"]["evaluable"] is True
+        assert row["transportability"]["stable"] is True
+        assert row["transportability"]["supporting_revision_count"] == 2
+        assert row["transportability"]["contradictory_revision_count"] == 0
+
+
+def test_dreamstate_carries_dependence_and_transportability_evidence(tmp_path):
+    store = ParallaxStore(tmp_path)
+    for i in range(6):
+        _record_pair(store, i, delay_utility=1.0, source_commit="a" * 40)
+    for i in range(6, 12):
+        _record_pair(store, i, delay_utility=1.0, source_commit="b" * 40)
+
+    lab = DreamstateLab(tmp_path, parallax=store)
+    state = lab.refresh(min_samples=5)
+    delays = [
+        c for c in state["candidates"]
+        if c["mutation"]["op"] == "set_execution_delay_bars"
+    ]
+    assert len(delays) == 2
+    for candidate in delays:
+        acct = candidate["search_accounting"]
+        robust = candidate["policy_contract"]["scope"]["source_robustness"]
+        assert acct["source_effective_pairs"] == 6
+        assert acct["source_hac_evaluable"] is True
+        assert acct["source_transport_evaluable"] is True
+        assert acct["source_transport_stable"] is True
+        assert acct["source_transport_supporting_revisions"] == 2
+        assert robust["hac_inference"]["evaluable"] is True
+        assert robust["transportability"]["stable"] is True
+
+
 def test_parallax_temporal_instability_blocks_robust_candidate_even_when_primary_screen_passes(tmp_path):
     store = ParallaxStore(tmp_path)
     for i in range(12):
-        _record_pair(store, i, delay_utility=2.0 if i < 8 else -1.0)
+        _record_pair(store, i, delay_utility=3.0 if i < 8 else -0.5)
 
     signal = next(
         row for row in store.hypotheses(min_samples=5)
@@ -510,7 +694,7 @@ def test_dreamstate_retires_when_source_remains_statistical_but_loses_temporal_r
     )
 
     for i in range(5, 12):
-        _record_pair(store, i, delay_utility=2.0 if i < 8 else -1.0)
+        _record_pair(store, i, delay_utility=3.0 if i < 8 else -0.5)
 
     source = next(
         row for row in store.hypotheses(min_samples=5)
@@ -551,7 +735,7 @@ def test_parallax_temporally_unstable_neighbor_does_not_support_parameter_basin(
                 "evidence": [f"actual:{i}"],
             }
         )
-        stop075 = 2.0 if i < 8 else -1.0
+        stop075 = 3.0 if i < 8 else -0.5
         for label, utility in (("stop_0.75", stop075), ("stop_1.25", 1.0), ("stop_1.50", -0.2)):
             store.record_outcome(
                 {
@@ -1055,7 +1239,7 @@ def test_dreamstate_auto_retires_active_candidate_when_source_disappears(tmp_pat
     assert candidate["candidate_id"] in second["refresh"]["auto_retired_source_decay"]
     assert any("source signal is absent" in item for item in retired["evidence"])
 
-def test_v3_robustness_versions_are_explicit_without_breaking_v2_schema(tmp_path):
+def test_v4_robustness_versions_are_explicit_without_breaking_v2_schema(tmp_path):
     store = ParallaxStore(tmp_path)
     for i in range(5):
         _record_pair(store, i)
@@ -1066,10 +1250,10 @@ def test_v3_robustness_versions_are_explicit_without_breaking_v2_schema(tmp_path
     dream = lab.snapshot()
 
     assert snap["schema_version"] == "icarus-parallax-v2"
-    assert snap["robustness_version"] == "icarus-parallax-robustness-v1"
-    assert report["robustness_version"] == "icarus-parallax-robustness-v1"
+    assert snap["robustness_version"] == "icarus-parallax-robustness-v2"
+    assert report["robustness_version"] == "icarus-parallax-robustness-v2"
     assert dream["schema_version"] == "icarus-dreamstate-v2"
-    assert dream["robustness_version"] == "icarus-dreamstate-robustness-v1"
+    assert dream["robustness_version"] == "icarus-dreamstate-robustness-v2"
 
 
 def test_operator_status_is_lightweight_and_read_only(tmp_path):
