@@ -82,7 +82,7 @@
         '<div class="tile"><div class="k">Unexplained residual</div><div class="v tnum">'+(cf.unexplained_dislocation_available?n(cf.unexplained_dislocation,4):'UNIDENTIFIED')+'</div><div class="small muted">not independently identifiable from the same force snapshot</div></div>'+
         '<div class="tile"><div class="k">Phase boundary</div><div class="v tnum">'+n(phase.phase_boundary,4)+'</div><div class="small muted">'+h(phase.direction||'—')+' · horizon '+n(phase.event_horizon,4)+'</div></div>'+
         '<div class="tile"><div class="k">Forced consensus</div><div class="v">'+(fc.active?'ACTIVE':'INACTIVE')+'</div><div class="small muted">'+h(fc.direction||'—')+' · alignment '+pct(fc.alignment)+'</div></div>'+
-        '<div class="tile"><div class="k">Information wave</div><div class="v">'+h(wave.status||'WARMING')+'</div><div class="small muted">novelty '+(wave.score==null?'—':n(wave.score,1))+' · '+h(wave.direction||'—')+' · source unidentified</div></div>'+
+        '<div class="tile"><div class="k">Information wave</div><div class="v">'+h(wave.status||'WARMING')+'</div><div class="small muted">novelty '+(wave.score==null?'—':n(wave.score,1))+' · '+h(wave.direction||'—')+' · '+(wave.causal_leading?'POST-BAR CAUSAL WINDOW':'NOT CAUSALLY ORDERED')+' · source unidentified</div></div>'+
       '</div>'+
       '<div class="psi-grid" style="margin-top:12px">'+
         '<div class="psi-box"><h3>Edge gate</h3><div class="psi-hero '+(String(edge.state).includes('LONG')?'pos':String(edge.state).includes('SHORT')?'neg':'neutral')+'" style="font-size:24px">'+h(edge.state||'NO_EDGE')+'</div>'+
