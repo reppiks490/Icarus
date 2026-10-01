@@ -446,6 +446,259 @@ class PantheonKernel:
             "production_decision_authorized": False,
         }
 
+    def record_claim_outcome(self, body: Mapping[str, Any]) -> dict[str, Any]:
+        """Record one immutable observed claim result and update research fitness."""
+        if not isinstance(body, Mapping):
+            raise ValueError("claim outcome must be an object")
+        claim_id = text(body.get("claim_id"), "claim_id", 96)
+        observed_at = iso_aware(body.get("observed_at"))
+        utility = max(-1.0, min(1.0, finite(body.get("utility"), "utility")))
+        confidence = unit(body.get("confidence"), "confidence", 1.0)
+        evidence = body.get("evidence", [])
+        if isinstance(evidence, str):
+            evidence = [evidence]
+        if not isinstance(evidence, list) or len(evidence) > 64:
+            raise ValueError("evidence must be a list with at most 64 items")
+        evidence = [text(item, "evidence item", 700) for item in evidence]
+        evidence_json = json_canonical(evidence, "evidence", 65536)
+        semantic = json_canonical(
+            {
+                "claim_id": claim_id,
+                "observed_at": observed_at,
+                "utility": utility,
+                "confidence": confidence,
+                "evidence": evidence,
+            },
+            "claim outcome",
+            131072,
+        )
+        outcome_id = "out-" + digest(semantic)[:24]
+        now = _utc_now()
+
+        with _LOCK, self._connect() as con:
+            claim = con.execute(
+                """SELECT c.*,o.observed_at AS claim_observed_at
+                   FROM claims c JOIN observations o ON o.observation_id=c.observation_id
+                   WHERE c.claim_id=?""",
+                (claim_id,),
+            ).fetchone()
+            if claim is None:
+                raise ValueError("unknown PANTHEON claim")
+            claim_time = datetime.fromisoformat(str(claim["claim_observed_at"]).replace("Z", "+00:00"))
+            outcome_time = datetime.fromisoformat(observed_at.replace("Z", "+00:00"))
+            if outcome_time < claim_time:
+                raise ValueError("claim outcome cannot precede the originating observation")
+            prior = con.execute("SELECT * FROM claim_outcomes WHERE outcome_id=?", (outcome_id,)).fetchone()
+            if prior is None:
+                con.execute(
+                    """INSERT INTO claim_outcomes(
+                        outcome_id,claim_id,observed_at,utility,confidence,evidence_json,created_at
+                    ) VALUES(?,?,?,?,?,?,?)""",
+                    (outcome_id, claim_id, observed_at, utility, confidence, evidence_json, now),
+                )
+
+            outcomes = con.execute(
+                "SELECT utility,confidence FROM claim_outcomes WHERE claim_id=? ORDER BY observed_at",
+                (claim_id,),
+            ).fetchall()
+            positive_weight = sum(float(row["confidence"]) for row in outcomes)
+            if positive_weight > 1e-12:
+                fitness = sum(float(row["utility"]) * float(row["confidence"]) for row in outcomes) / positive_weight
+            else:
+                fitness = sum(float(row["utility"]) for row in outcomes) / max(1, len(outcomes))
+            n = len(outcomes)
+            if n >= 3 and fitness <= -0.20:
+                stage = "retired"
+            elif n >= 3 and fitness >= 0.20:
+                stage = "surviving_shadow"
+            elif n >= 2:
+                stage = "contested"
+            else:
+                stage = "hypothesis"
+
+            species = con.execute(
+                "SELECT * FROM species WHERE origin_claim_id=? ORDER BY generation LIMIT 1",
+                (claim_id,),
+            ).fetchone()
+            child_id = None
+            if species is not None:
+                con.execute(
+                    "UPDATE species SET stage=?,fitness_credit=?,evidence_count=?,updated_at=? WHERE species_id=?",
+                    (stage, fitness, n, now, species["species_id"]),
+                )
+                child = con.execute(
+                    "SELECT species_id FROM species WHERE parent_species_id=? ORDER BY generation LIMIT 1",
+                    (species["species_id"],),
+                ).fetchone()
+                if (
+                    child is None
+                    and stage == "surviving_shadow"
+                    and fitness >= 0.50
+                    and int(species["generation"]) < 3
+                ):
+                    child_id = "species-" + digest(species["species_id"], "mutant", str(n))[:18]
+                    child_payload = {
+                        "parent_species_id": species["species_id"],
+                        "mutation_trigger": {
+                            "fitness_credit": fitness,
+                            "evidence_count": n,
+                            "claim_id": claim_id,
+                        },
+                        "stage": "research_variant",
+                        "automatic_production_authority": False,
+                    }
+                    con.execute(
+                        """INSERT OR IGNORE INTO species(
+                            species_id,asset,kind,origin_claim_id,parent_species_id,generation,
+                            stage,fitness_credit,evidence_count,payload_json,created_at,updated_at
+                        ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
+                        (
+                            child_id,
+                            species["asset"],
+                            species["kind"],
+                            claim_id,
+                            species["species_id"],
+                            int(species["generation"]) + 1,
+                            "hypothesis",
+                            0.0,
+                            0,
+                            json_canonical(child_payload, "species payload", 65536),
+                            now,
+                            now,
+                        ),
+                    )
+
+        return {
+            "outcome_id": outcome_id,
+            "claim_id": claim_id,
+            "observed_at": observed_at,
+            "utility": utility,
+            "confidence": confidence,
+            "fitness_credit": fitness,
+            "evidence_count": n,
+            "species_stage": stage,
+            "offspring_species_id": child_id,
+            "authority": authority_block(),
+        }
+
+    def _ecology_snapshot(self, limit: int = 100) -> dict[str, Any]:
+        with _LOCK, self._connect() as con:
+            rows = con.execute(
+                "SELECT * FROM species ORDER BY fitness_credit DESC,evidence_count DESC,updated_at DESC LIMIT ?",
+                (max(1, min(250, int(limit))),),
+            ).fetchall()
+            outcome_count = con.execute("SELECT COUNT(*) AS n FROM claim_outcomes").fetchone()["n"]
+
+        species = []
+        for row in rows:
+            payload = json.loads(row["payload_json"])
+            alpha_mass = max(0.0, float(row["fitness_credit"])) * (1.0 + math.log1p(int(row["evidence_count"])))
+            species.append(
+                {
+                    "species_id": row["species_id"],
+                    "asset": row["asset"],
+                    "kind": row["kind"],
+                    "origin_claim_id": row["origin_claim_id"],
+                    "parent_species_id": row["parent_species_id"],
+                    "generation": row["generation"],
+                    "stage": row["stage"],
+                    "fitness_credit": row["fitness_credit"],
+                    "evidence_count": row["evidence_count"],
+                    "alpha_mass": alpha_mass,
+                    "payload": payload,
+                    "updated_at": row["updated_at"],
+                }
+            )
+
+        interactions = []
+        for i, left in enumerate(species):
+            if left["stage"] == "retired":
+                continue
+            for right in species[i + 1:]:
+                if right["stage"] == "retired" or left["asset"] != right["asset"]:
+                    continue
+                if left["kind"] == right["kind"] and abs(left["fitness_credit"] - right["fitness_credit"]) >= 0.35:
+                    predator, prey = (left, right) if left["fitness_credit"] > right["fitness_credit"] else (right, left)
+                    interactions.append(
+                        {
+                            "type": "predation",
+                            "predator": predator["species_id"],
+                            "prey": prey["species_id"],
+                            "asset": left["asset"],
+                            "basis": "same-kind research fitness separation",
+                        }
+                    )
+                elif left["kind"] != right["kind"] and left["fitness_credit"] >= 0.20 and right["fitness_credit"] >= 0.20:
+                    interactions.append(
+                        {
+                            "type": "symbiosis",
+                            "species": [left["species_id"], right["species_id"]],
+                            "asset": left["asset"],
+                            "basis": "independent positive research fitness across distinct claim kinds",
+                        }
+                    )
+                if len(interactions) >= 64:
+                    break
+            if len(interactions) >= 64:
+                break
+
+        active_species = [row for row in species if row["stage"] != "retired"]
+        retired_species = [row for row in species if row["stage"] == "retired"]
+        for parasite in retired_species:
+            hosts = [
+                host for host in active_species
+                if host["asset"] == parasite["asset"] and host["fitness_credit"] >= 0.20
+            ]
+            if hosts:
+                host = max(hosts, key=lambda row: row["fitness_credit"])
+                interactions.append({
+                    "type": "parasitic_drag",
+                    "parasite": parasite["species_id"],
+                    "host": host["species_id"],
+                    "asset": parasite["asset"],
+                    "basis": "retired negative-fitness research species previously competed for the same asset attention",
+                })
+                if len(interactions) >= 64:
+                    break
+
+        alpha_food_web = sorted(
+            [row for row in species if row["stage"] != "retired" and row["alpha_mass"] > 0],
+            key=lambda row: (row["alpha_mass"], row["fitness_credit"], row["evidence_count"]),
+            reverse=True,
+        )[:20]
+        genesis = [
+            {
+                "species_id": row["species_id"],
+                "asset": row["asset"],
+                "origin_claim_id": row["origin_claim_id"],
+                "reason": "repeated ontology candidate survived observed shadow outcomes",
+                "recommended_action": "open bounded independent engine-design study",
+                "automatic_engine_creation": False,
+            }
+            for row in species
+            if row["kind"] == "ontology_candidate"
+            and row["stage"] == "surviving_shadow"
+            and row["evidence_count"] >= 3
+        ][:12]
+        extinct = [row for row in species if row["stage"] == "retired"]
+
+        return {
+            "species": species,
+            "species_count": len(species),
+            "claim_outcome_count": int(outcome_count),
+            "interactions": interactions,
+            "alpha_food_web": alpha_food_web,
+            "extinct_species": extinct,
+            "cognitive_genesis_candidates": genesis,
+            "contracts": {
+                "speciation_requires_observed_positive_fitness": True,
+                "extinction_requires_repeated_negative_observed_fitness": True,
+                "predation_and_symbiosis_are_research_relationships_only": True,
+                "cognitive_genesis_never_auto_creates_production_code": True,
+            },
+            "authority": authority_block(),
+        }
+
     def observation(self, observation_id: str) -> dict[str, Any]:
         with _LOCK, self._connect() as con:
             row = con.execute("SELECT * FROM observations WHERE observation_id=?", (observation_id,)).fetchone()
