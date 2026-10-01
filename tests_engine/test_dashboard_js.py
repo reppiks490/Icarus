@@ -186,6 +186,16 @@ def test_dashboard_surfaces_icarus_psi_without_replacing_oracle_or_parallax():
     assert "Leader alignment" in ui
     assert "POST-BAR CAUSAL WINDOW" in ui
     assert "Ledger integrity" in ui
+    assert "possibilityQuickOverviewHtml" in ui
+    assert "wirePossibilityQuickOverview" in ui
+    assert "possibilityQuickAssetHtml" in ui
+    assert "wirePossibilityQuickAsset" in ui
+    assert "ICARUS Ψ · LIVE RESEARCH MONITOR" in ui
+    assert "Open full Ψ console" in ui
+    assert "possibilityQuickOverviewHtml(A)" in dashboard
+    assert "possibilityQuickAssetHtml(a)" in dashboard
+    assert "wirePossibilityQuickOverview(A)" in dashboard
+    assert "wirePossibilityQuickAsset(viewAsset.symbol)" in dashboard
     assert '/api/possibility/evidence' in server
 
 
