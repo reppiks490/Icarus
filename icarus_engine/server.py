@@ -378,8 +378,13 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             if not isinstance(body, dict):
                 return self._json(400, {"detail": "JSON body must be an object"})
             asset = str(body.get("asset") or body.get("symbol") or "").upper()
-            targets = [self._runner(asset)] if asset and asset != "*" else list(port.runner_list())
-            if asset and asset != "*" and targets == [None]:
+            # Add is the one admin route whose subject is intentionally not already
+            # running. Do not reject it through the generic runner lookup.
+            adding_asset = p.path == "/admin/assets/add"
+            targets = [] if adding_asset else (
+                [self._runner(asset)] if asset and asset != "*" else list(port.runner_list())
+            )
+            if not adding_asset and asset and asset != "*" and targets == [None]:
                 return self._json(404, {"detail": f"unknown asset {asset}"})
             try:
                 if p.path == "/admin/research/studies":
@@ -534,12 +539,17 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     tok = str(body.get("symbol", "")).strip()
                     if not tok:
                         return self._json(400, {"detail": "symbol required"})
-                    spec = parse_spec(tok, str(body.get("tf") or port.runner_list()[0].spec.chart_tf if port.runner_list() else "20"))
+                    running = port.runner_list()
+                    default_tf = str(body.get("tf") or (running[0].spec.chart_tf if running else "20"))
+                    spec = parse_spec(tok, default_tf)
                     if body.get("tf") not in (None, "") and "@" not in tok:
                         spec = pin_config(spec, "timeframe")
                     spec = apply_chart_config(spec, {k: body[k] for k in ("chart_type", "fill_on", "security_source") if body.get(k) not in (None, "")}, pin=True)
                     if body.get("preset"):
-                        spec.preset = body["preset"]
+                        name = str(body["preset"])
+                        if not os.path.exists(preset_path(port.base_dir, name)):
+                            return self._json(404, {"detail": f"preset {name} not found"})
+                        spec.preset = name
                     r = port.add_asset(spec)
                     return self._json(200, {"ok": True, "note": f"{r.symbol} added ({spec.name}, {spec.chart_tf}m); warming up", "asset": r.symbol})
                 if p.path == "/admin/assets/remove":
