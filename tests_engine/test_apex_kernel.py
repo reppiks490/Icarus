@@ -136,3 +136,25 @@ def test_apex_lineage_resolution_rejects_unknown_or_future_evidence(tmp_path):
         k.resolve_engine_evidence_lineage({"oracle": ["missing-id"]}, as_of="2026-10-01T14:00:02Z")
     with pytest.raises(ValueError, match="integrity failure"):
         k.resolve_engine_evidence_lineage({"oracle": [saved]}, as_of="2026-10-01T14:00:02Z")
+
+
+def test_apex_lineage_tokens_are_compact_even_for_long_source_identity(tmp_path):
+    from icarus_engine.apex.kernel import ApexKernel
+    k = ApexKernel(tmp_path)
+    body = _apex_evidence(
+        record="r" * 120,
+        observed="2026-10-01T14:00:00Z",
+        received="2026-10-01T14:00:01Z",
+    )
+    body["source"]["source_repo"] = "repo/" + ("x" * 180)
+    saved = k.ingest_evidence(body)["evidence"]["evidence_id"]
+    out = k.resolve_engine_evidence_lineage(
+        {"oracle": [saved]},
+        as_of="2026-10-01T14:00:02Z",
+    )
+    token = out["engine_evidence_lineage"]["oracle"][0]
+    full_root = out["engine_support"]["oracle"]["root_ids"][0]
+    assert token.startswith("apex-root:")
+    assert len(token) == len("apex-root:") + 32
+    assert len(full_root) > len(token)
+    assert out["engine_support"]["oracle"]["root_tokens"] == [token]

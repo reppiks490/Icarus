@@ -69,10 +69,16 @@ class ApexKernel:
             for eid in ids: roots.update(ancestry.roots(eid))
             if not roots:
                 raise ValueError(f"APEX evidence lineage for {engine} resolved to no root sources")
-            lineage[engine]=sorted(roots)
+            root_ids=sorted(roots)
+            root_tokens=sorted(
+                "apex-root:" + hashlib.sha256(root.encode("utf-8")).hexdigest()[:32]
+                for root in root_ids
+            )
+            lineage[engine]=root_tokens
             support_by_engine[engine]={
                 "evidence_ids":ids,
-                "root_ids":sorted(roots),
+                "root_ids":root_ids,
+                "root_tokens":root_tokens,
                 "nominal_support":support["nominal_support"],
                 "effective_independent_families":support["effective_independent_families"],
                 "overlap_ratio":support["overlap_ratio"],
