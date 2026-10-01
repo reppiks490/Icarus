@@ -71,6 +71,7 @@ from .evolution_sync import EvolutionRemoteSync
 from .code_provenance import local_code_provenance
 from .parallax import ParallaxStore
 from .dreamstate import DreamstateLab
+from .pantheon import PantheonKernel
 
 
 def _no_json_constants(name: str):
@@ -130,6 +131,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     evolution_remote_sync = EvolutionRemoteSync(port.base_dir)
     parallax = ParallaxStore(port.base_dir)
     dreamstate = DreamstateLab(port.base_dir, parallax=parallax)
+    pantheon = PantheonKernel(port.base_dir)
 
     class H(BaseHTTPRequestHandler):
         server_version = "icarus"
@@ -197,6 +199,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._send(200, (html_path.parent / "evolution-ui.js").read_bytes(), "text/javascript")
             if p.path == "/parallax-ui.js":
                 return self._send(200, (html_path.parent / "parallax-ui.js").read_bytes(), "text/javascript")
+            if p.path == "/pantheon-ui.js":
+                return self._send(200, (html_path.parent / "pantheon-ui.js").read_bytes(), "text/javascript")
             if p.path in ("/experience-ui.js", "/experience-ui.css"):
                 ctype = "text/javascript" if p.path.endswith(".js") else "text/css"
                 return self._send(200, (html_path.parent / p.path[1:]).read_bytes(), ctype)
@@ -236,6 +240,13 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     return self._json(401, {"detail": "bad admin token"})
                 try:
                     return self._json(200, dreamstate.snapshot())
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+            if p.path == "/api/pantheon":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                try:
+                    return self._json(200, pantheon.snapshot())
                 except (ValueError, TypeError) as ex:
                     return self._json(400, {"detail": str(ex)})
             if p.path == "/api/brain":
@@ -484,6 +495,17 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             if p.path == "/admin/brain/event":
                 try:
                     return self._json(200, record_brain_event(port.base_dir, body))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+            if p.path == "/admin/pantheon/observe":
+                try:
+                    payload = dict(body)
+                    if not payload.get("source_commit"):
+                        provenance = local_code_provenance()
+                        if not provenance.get("candidate_revision_eligible") or not provenance.get("commit"):
+                            raise ValueError("exact clean ICARUS code provenance is required when source_commit is omitted")
+                        payload["source_commit"] = provenance["commit"]
+                    return self._json(200, pantheon.record_observation(payload))
                 except (ValueError, TypeError) as ex:
                     return self._json(400, {"detail": str(ex)})
             if p.path == "/admin/parallax/decision":
