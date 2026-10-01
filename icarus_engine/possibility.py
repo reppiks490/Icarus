@@ -622,20 +622,44 @@ class PossibilityEngine:
         now = time.time()
         out: dict[str, Feature] = {}
         with self._lock:
-            rows = self._evidence_ledger.active(symbol, as_of_ts=now)
-            self._external[symbol] = {key: dict(value) for key, value in rows.items()}
+            groups = self._evidence_ledger.active_by_source(symbol, as_of_ts=now)
+            selected = self._evidence_ledger.active(symbol, as_of_ts=now)
+            self._external[symbol] = {key: dict(value) for key, value in selected.items()}
             for key in _EXTERNAL_KEYS:
-                row = rows.get(key)
-                if not row:
+                candidates = groups.get(key, [])
+                if not candidates:
                     out[key] = Feature(None, 0.0, False, "unavailable", "no provenance-labelled external evidence")
+                    continue
+
+                values = [float(row["value"]) for row in candidates]
+                confidences = [_clamp(float(row["confidence"]), 0.0, 1.0) for row in candidates]
+                total_weight = sum(confidences)
+                if total_weight > 0:
+                    fused_value = sum(v * w for v, w in zip(values, confidences)) / total_weight
+                    variance = sum(w * (v - fused_value) ** 2 for v, w in zip(values, confidences)) / total_weight
+                    mean_confidence = sum(confidences) / len(confidences)
                 else:
-                    out[key] = Feature(
-                        _finite(row.get("value")),
-                        _finite(row.get("confidence")) or 0.0,
-                        True,
-                        str(row.get("source") or "external"),
-                        f"observed {row.get('observed_at')} · receipt {row.get('evidence_id')}",
-                    )
+                    fused_value = _mean(values)
+                    variance = _mean([(v - fused_value) ** 2 for v in values])
+                    mean_confidence = 0.0
+                disagreement = math.sqrt(max(0.0, variance))
+                agreement_factor = max(0.0, 1.0 - disagreement / 0.75)
+                sign_conflict = any(v > 0.10 for v in values) and any(v < -0.10 for v in values)
+                if sign_conflict:
+                    agreement_factor *= 0.5
+                fused_confidence = _clamp(mean_confidence * agreement_factor, 0.0, 1.0)
+                sources = [str(row.get("source") or "external") for row in candidates]
+                receipts = [str(row.get("evidence_id") or "") for row in candidates]
+                out[key] = Feature(
+                    _clamp(fused_value),
+                    fused_confidence,
+                    True,
+                    sources[0] if len(sources) == 1 else f"fused:{len(sources)} sources",
+                    (
+                        f"sources={','.join(sources)}; weighted_std={disagreement:.4f}; "
+                        f"sign_conflict={str(sign_conflict).lower()}; receipts={','.join(receipts)}"
+                    ),
+                )
         return out
 
     def _microstructure(self, symbol: str) -> dict[str, Any]:
