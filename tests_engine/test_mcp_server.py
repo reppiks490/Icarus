@@ -50,6 +50,20 @@ def test_mcp_server_imports_and_registers_engine_surface():
         "record_historical_parallax_decision",
         "engine_dreamstate_state",
         "engine_parallax_state",
+        "engine_apex_state",
+        "engine_apex_participants",
+        "engine_apex_crowdhunt",
+        "engine_apex_forces",
+        "engine_apex_cascades",
+        "engine_apex_causality",
+        "engine_apex_worlds",
+        "engine_apex_epistemics",
+        "engine_apex_self",
+        "engine_apex_conscience",
+        "record_engine_apex_evidence",
+        "record_engine_apex_outcome",
+        "record_engine_apex_model_observation",
+        "propose_engine_apex_experiment",
     ):
         assert callable(getattr(mcp_server, name))
 
@@ -731,3 +745,68 @@ def test_mcp_source_reliability_routes(monkeypatch):
     assert seen[1][0:2] == ("post", "/admin/source-reliability/observation")
     assert seen[1][2]["source_id"] == "provider-a"
     assert seen[1][2]["complete"] is True
+
+
+def test_mcp_apex_omega_routes_are_research_only(monkeypatch):
+    seen = []
+
+    def get(path):
+        seen.append(("get", path))
+        return {
+            "execution_authorized": False,
+            "production_decision_authorized": False,
+        }
+
+    def post(path, body):
+        seen.append(("post", path, body))
+        return {
+            "execution_authorized": False,
+            "production_decision_authorized": False,
+        }
+
+    monkeypatch.setattr(mcp_server, "_engine_get", get)
+    monkeypatch.setattr(mcp_server, "_engine_post", post)
+
+    assert mcp_server.engine_apex_state("NQ")["execution_authorized"] is False
+    assert mcp_server.engine_apex_participants("NQ")["production_decision_authorized"] is False
+    assert mcp_server.engine_apex_crowdhunt("NQ")["execution_authorized"] is False
+    assert mcp_server.engine_apex_forces("NQ")["execution_authorized"] is False
+    assert mcp_server.engine_apex_cascades()["execution_authorized"] is False
+    assert mcp_server.engine_apex_causality()["execution_authorized"] is False
+    assert mcp_server.engine_apex_worlds()["execution_authorized"] is False
+    assert mcp_server.engine_apex_epistemics()["execution_authorized"] is False
+    assert mcp_server.engine_apex_self()["execution_authorized"] is False
+    assert mcp_server.engine_apex_conscience()["execution_authorized"] is False
+
+    assert mcp_server.record_engine_apex_evidence('{"kind":"observed"}')["execution_authorized"] is False
+    assert mcp_server.record_engine_apex_outcome('{"outcome_id":"o1"}')["execution_authorized"] is False
+    assert mcp_server.record_engine_apex_model_observation('{"model_id":"m1"}')["execution_authorized"] is False
+    assert mcp_server.propose_engine_apex_experiment('{"id":"x1"}')["execution_authorized"] is False
+
+    assert seen == [
+        ("get", "/api/apex?asset=NQ"),
+        ("get", "/api/apex/participants?asset=NQ"),
+        ("get", "/api/apex/crowdhunt?asset=NQ"),
+        ("get", "/api/apex/forces?asset=NQ"),
+        ("get", "/api/apex/cascades"),
+        ("get", "/api/apex/causality"),
+        ("get", "/api/apex/worlds"),
+        ("get", "/api/apex/epistemics"),
+        ("get", "/api/apex/self"),
+        ("get", "/api/apex/conscience"),
+        ("post", "/admin/apex/evidence", {"kind": "observed"}),
+        ("post", "/admin/apex/outcome", {"outcome_id": "o1"}),
+        ("post", "/admin/apex/model-observation", {"model_id": "m1"}),
+        ("post", "/admin/apex/experiment", {"id": "x1"}),
+    ]
+
+
+def test_mcp_apex_mutations_reject_non_object_or_malformed_json():
+    for fn in (
+        mcp_server.record_engine_apex_evidence,
+        mcp_server.record_engine_apex_outcome,
+        mcp_server.record_engine_apex_model_observation,
+        mcp_server.propose_engine_apex_experiment,
+    ):
+        assert "error" in fn("[]")
+        assert "error" in fn("{bad")
