@@ -387,7 +387,11 @@ class PossibilityEngine:
             collapse=futures["future_space_collapse"],
             future_reliability=futures.get("reliability"),
             effective_sample_ratio=futures.get("effective_sample_ratio"),
+            dominant_cluster=futures.get("dominant_cluster"),
+            dominant_share=futures.get("dominant_share"),
             consensus=consensus,
+            information_wave=information_wave,
+            phase=phase,
             micro=micro,
             leaders=leaders,
         )
@@ -1882,7 +1886,11 @@ class PossibilityEngine:
         collapse: Any,
         future_reliability: Any,
         effective_sample_ratio: Any,
+        dominant_cluster: Any = None,
+        dominant_share: Any = None,
         consensus: Mapping[str, Any],
+        information_wave: Mapping[str, Any] | None = None,
+        phase: Mapping[str, Any] | None = None,
         micro: Mapping[str, Any],
         leaders: Mapping[str, Any],
     ) -> dict[str, Any]:
@@ -1919,6 +1927,41 @@ class PossibilityEngine:
             blockers.append("no live microstructure domain observed")
         if not consensus.get("active") and coverage < 0.60:
             blockers.append("forced-consensus gate inactive")
+
+        desired_direction = None
+        if latent is not None and abs(latent) >= 0.30:
+            desired_direction = "UP" if latent > 0 else "DOWN"
+
+        if desired_direction is not None:
+            cluster = str(dominant_cluster or "").upper()
+            cluster_share = _finite(dominant_share)
+            if cluster in {"UP", "DOWN", "FLAT"} and cluster_share is not None and cluster_share >= 0.40:
+                if cluster != desired_direction:
+                    blockers.append("future-space dominant cluster is not directionally aligned")
+
+            if consensus.get("active"):
+                consensus_direction = str(consensus.get("direction") or "").upper()
+                if consensus_direction in {"UP", "DOWN"} and consensus_direction != desired_direction:
+                    blockers.append("forced-consensus direction opposes latent pressure")
+
+            wave = information_wave if isinstance(information_wave, Mapping) else {}
+            wave_score = _finite(wave.get("score"))
+            wave_direction = str(wave.get("direction") or "").upper()
+            if (
+                bool(wave.get("causal_leading"))
+                and wave_score is not None
+                and wave_score >= 50.0
+                and wave_direction in {"UP", "DOWN"}
+                and wave_direction != desired_direction
+            ):
+                blockers.append("causal information wave opposes latent pressure")
+
+            if isinstance(phase, Mapping) and not bool(phase.get("available")):
+                blockers.append("scenario-derived phase boundary unavailable")
+            elif isinstance(phase, Mapping):
+                phase_direction = str(phase.get("direction") or "").upper()
+                if phase_direction in {"UP", "DOWN"} and phase_direction != desired_direction:
+                    blockers.append("phase boundary direction opposes latent pressure")
 
         state = "NO_EDGE" if blockers else ("LONG_BIAS" if float(latent) > 0 else "SHORT_BIAS")
         confidence = 0.0
