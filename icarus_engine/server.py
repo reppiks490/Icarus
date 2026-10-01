@@ -19,6 +19,7 @@
   GET  /api/possibility           ICARUS Psi latent pressure, counterfactual price, future-space diagnostics
   GET  /api/possibility/evidence  durable Psi external-evidence ledger and causal as-of selection
   GET  /api/chronofold            ICARUS Xi causal spacetime, multiverse, geometry, GNC and uncertainty
+  GET  /api/commissioning         append-only Chronofold prediction ledger, calibration, ablation and promotion gate
   POST /admin/pause | /admin/resume        {"asset": "NQ"} or all          (Bearer token)
   POST /admin/flatten                      {"confirm": true, "asset"?: "NQ"}
   POST /admin/inputs                       {"asset": "NQ"|"*", "values": {...}, "chart": {...}, "persist": true}  → re-warm
@@ -86,6 +87,7 @@ from .autopilot import TacticalAutopilot
 from .engine_control import ControlAction, EngineControlPlane
 from .mcp_control import MCPControlPlane
 from .chronofold import ChronofoldEngine
+from .commissioning import CommissioningEngine
 from .pantheon import PantheonKernel, subsystem_context
 
 
@@ -198,6 +200,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     dreamstate = DreamstateLab(port.base_dir, parallax=parallax)
     mcp_control = MCPControlPlane(port.base_dir)
     chronofold = ChronofoldEngine(port, possibility=possibility)
+    commissioning = CommissioningEngine(port.base_dir, port, chronofold)
     pantheon = PantheonKernel(port.base_dir)
 
     def _control_runner(target: str):
@@ -607,6 +610,12 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
         args = _control_args(payload)
         return record_brain_event(port.base_dir, args)
 
+    def _commissioning_capture_control(payload):
+        return commissioning.capture(payload["target"], force=True)
+
+    def _commissioning_settle_asset_control(payload):
+        return commissioning.settle_ready(payload["target"])
+
     control = EngineControlPlane(
         port.base_dir,
         snapshotters={
@@ -624,6 +633,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             "possibility": possibility.status,
             "pantheon": pantheon.snapshot,
             "chronofold": chronofold.status,
+            "commissioning": commissioning.status,
             "backtests": _backtests_snapshot,
             "code_provenance": local_code_provenance,
             "go_live": lambda: golive_report(port),
@@ -702,6 +712,13 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
 
                 ControlAction("possibility.ingest_evidence", "Ingest ICARUS Psi evidence", "Possibility", "Inject provenance-labelled bounded external possibility-force evidence for research only.", _possibility_evidence_control, target="asset",
                               args_example={"values": {"gamma_pressure": {"value": 0.0, "confidence": 1.0}}, "source": "operator", "ttl_seconds": 300.0}),
+
+                ControlAction("commissioning.capture", "Freeze Chronofold forecast", "Commissioning", "Append one immutable pre-outcome Chronofold forecast receipt for the selected asset.", _commissioning_capture_control, target="asset"),
+                ControlAction("commissioning.settle_asset", "Settle ready forecasts for asset", "Commissioning", "Append outcomes for selected-asset forecasts whose target Chronon has been reached.", _commissioning_settle_asset_control, target="asset"),
+                ControlAction("commissioning.settle_all", "Settle all ready forecasts", "Commissioning", "Append outcomes for every forecast whose target Chronon has been reached.", lambda _: commissioning.settle_ready()),
+                ControlAction("commissioning.tick", "Run scientific commissioning cycle", "Commissioning", "Capture eligible shadow forecasts and settle ready outcomes once.", lambda _: commissioning.tick()),
+                ControlAction("commissioning.start", "Start scientific commissioning loop", "Commissioning", "Start the append-only shadow commissioning sampler.", lambda _: (commissioning.start_background() or commissioning.status())),
+                ControlAction("commissioning.stop", "Stop scientific commissioning loop", "Commissioning", "Stop only the shadow commissioning sampler; trading authority is unaffected.", lambda _: (commissioning.close() or commissioning.status())),
 
                 ControlAction("system.record_audit", "Update repository audit snapshot", "Observability", "Update the System Intelligence repository/CI snapshot while preserving durable event and loop receipts.", _system_audit_control,
                               danger=True, confirmation="UPDATE SYSTEM AUDIT SNAPSHOT", args_example={"status": "unknown", "source": "operator-root-control"}),
@@ -793,6 +810,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._send(200, (html_path.parent / "pantheon-ui.js").read_bytes(), "text/javascript")
             if p.path == "/chronofold-ui.js":
                 return self._send(200, (html_path.parent / "chronofold-ui.js").read_bytes(), "text/javascript")
+            if p.path == "/commissioning-ui.js":
+                return self._send(200, (html_path.parent / "commissioning-ui.js").read_bytes(), "text/javascript")
             if p.path in ("/experience-ui.js", "/experience-ui.css"):
                 ctype = "text/javascript" if p.path.endswith(".js") else "text/css"
                 return self._send(200, (html_path.parent / p.path[1:]).read_bytes(), ctype)
@@ -877,6 +896,14 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     return self._json(200, chronofold.snapshot(q.get("asset", [""])[0]))
                 except Exception as ex:
                     port.journal.log("WARN", f"chronofold snapshot: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/api/commissioning":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                try:
+                    return self._json(200, commissioning.status(q.get("asset", [""])[0]))
+                except Exception as ex:
+                    port.journal.log("WARN", f"commissioning snapshot: {type(ex).__name__}: {ex}")
                     return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
             if p.path == "/api/performance-proof":
                 if not self._auth():
@@ -1524,6 +1551,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 brain_remote_sync.start()
                 brain_research_sync.start()
                 evolution_remote_sync.start()
+                commissioning.start_background()
             try:
                 return super().serve_forever(poll_interval)
             finally:
@@ -1533,6 +1561,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     brain_research_sync.close()
                     brain_remote_sync.close()
                     loop_intelligence_sync.close()
+                    commissioning.close()
                     research.close()
 
         def server_close(self):
@@ -1541,6 +1570,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             brain_research_sync.close()
             brain_remote_sync.close()
             loop_intelligence_sync.close()
+            commissioning.close()
             research.close()
             return super().server_close()
 
@@ -1555,6 +1585,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     srv.latency_telemetry = latency_telemetry
     srv.autopilot = autopilot
     srv.pantheon = pantheon
+    srv.chronofold = chronofold
+    srv.commissioning = commissioning
     srv.daemon_threads = True
     srv.background_workers_enabled = bool(start)
     if not start:
