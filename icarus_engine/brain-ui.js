@@ -52,6 +52,7 @@
     const regimes = ((b.market || {}).regimes || []);
     const tournaments = b.evidence_tournaments || [];
     const proofMetrics = proof.metrics || {}, proofClosed = proof.closed_sample || {}, proofReplay = proof.replay || {};
+    const proofBacklog = proof.settlement_backlog || {};
     const hotLatency = latency.hot_path || {};
     const graphMetrics = graph.metrics || {};
     const reliabilityRows = reliability.sources || [];
@@ -97,6 +98,7 @@
             <div class="tile"><div class="k">Candidate qualification share</div><div class="v">${pct(learn.qualified_share_of_decided)}</div></div>
             <div class="tile"><div class="k">Observed success rate</div><div class="v">${pct(truth.success_rate)}</div><div class="small muted">${h(truth.success_rate_status)}</div></div>
             <div class="tile"><div class="k">Outcome coverage</div><div class="v">${pct(truth.outcome_coverage)}</div><div class="small muted">${num(proofMetrics.settled_forecasts)} / ${num(proofMetrics.matured_forecasts)} matured</div></div>
+            <div class="tile"><div class="k">Matured unsettled</div><div class="v ${proofBacklog.count>0?'brain-warn':'brain-good'}">${num(proofBacklog.count)}</div><div class="small muted">${proofBacklog.oldest_matures_at?h("oldest "+proofBacklog.oldest_matures_at):"settlement backlog clear"}</div></div>
             <div class="tile"><div class="k">Brier score</div><div class="v">${proofMetrics.brier_score==null?"UNMEASURED":h(Number(proofMetrics.brier_score).toFixed(4))}</div><div class="small muted">lower is better</div></div>
             <div class="tile"><div class="k">Closed-sample 100%</div><div class="v ${proofClosed.historical_100_percent_established?"brain-good":"brain-warn"}">${proofClosed.historical_100_percent_established?"ESTABLISHED":"NOT ESTABLISHED"}</div><div class="small muted">${h(proofClosed.claim||"requires a closed fully-settled sample")}</div></div>
             <div class="tile"><div class="k">Replay determinism</div><div class="v">${pct(proofReplay.determinism_rate)}</div><div class="small muted">${proofReplay.historical_100_percent_established?"100% established for recorded replay sample":"not yet established"}</div></div>
