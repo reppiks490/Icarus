@@ -24,6 +24,9 @@ def test_mcp_server_imports_and_registers_engine_surface():
         "record_engine_integrity_event",
         "engine_brain_state",
         "record_engine_brain_event",
+        "engine_candidate_qualification_receipts",
+        "record_engine_candidate_qualification_receipt",
+        "sync_engine_candidate_qualification",
         "engine_latency_telemetry",
         "record_engine_replay_proof",
         "record_engine_performance_outcome",
@@ -731,3 +734,56 @@ def test_mcp_source_reliability_routes(monkeypatch):
     assert seen[1][0:2] == ("post", "/admin/source-reliability/observation")
     assert seen[1][2]["source_id"] == "provider-a"
     assert seen[1][2]["complete"] is True
+
+
+def test_mcp_candidate_qualification_routes(monkeypatch):
+    seen = []
+
+    def get(path):
+        seen.append(("get", path))
+        return {"candidate_revision_count": 0, "execution_authorized": False}
+
+    def post(path, body):
+        seen.append(("post", path, body))
+        return {
+            "ok": True,
+            "execution_authorized": False,
+            "production_decision_authorized": False,
+        }
+
+    monkeypatch.setattr(mcp_server, "_engine_get", get)
+    monkeypatch.setattr(mcp_server, "_engine_post", post)
+
+    state = mcp_server.engine_candidate_qualification_receipts()
+    assert state["execution_authorized"] is False
+
+    receipt = mcp_server.record_engine_candidate_qualification_receipt(
+        candidate_id="nq-trend-v1",
+        candidate_source_repo="reppiks490/Icarus",
+        candidate_source_commit="a" * 40,
+        gate="causal_time",
+        passed=True,
+        verifier_id="daedalus",
+        verifier_source_repo="reppiks490/Icarus",
+        verifier_source_commit="b" * 40,
+        observed_at="2026-10-01T12:00:00Z",
+        evidence_hash="c" * 64,
+    )
+    assert receipt["execution_authorized"] is False
+
+    synced = mcp_server.sync_engine_candidate_qualification(
+        "nq-trend-v1",
+        "reppiks490/Icarus",
+        "a" * 40,
+    )
+    assert synced["production_decision_authorized"] is False
+
+    assert seen[0] == ("get", "/api/qualification-receipts")
+    assert seen[1][0:2] == ("post", "/admin/qualification-receipts/record")
+    assert seen[1][2]["gate"] == "causal_time"
+    assert seen[1][2]["passed"] is True
+    assert seen[2] == ("post", "/admin/qualification-receipts/sync", {
+        "candidate_id": "nq-trend-v1",
+        "candidate_source_repo": "reppiks490/Icarus",
+        "candidate_source_commit": "a" * 40,
+    })
