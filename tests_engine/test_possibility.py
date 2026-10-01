@@ -8,6 +8,7 @@ from types import SimpleNamespace
 import pytest
 
 from icarus_engine.possibility import Feature, PossibilityEngine, _weighted
+from icarus_engine.psi_evidence import PsiEvidenceLedger
 from icarus_engine.server import _current_parallax_payload
 
 
@@ -439,19 +440,19 @@ def test_durable_evidence_exact_receipt_is_idempotent(tmp_path):
     assert ledger["total_history_count"] == 1
 
 
-def test_durable_evidence_as_of_replay_excludes_later_observations(tmp_path):
+def test_backfilled_evidence_does_not_leak_before_receipt_time(tmp_path):
     now = datetime.now(timezone.utc)
     early = now - timedelta(minutes=4)
     late = now - timedelta(minutes=2)
     engine = PossibilityEngine(Port(tmp_path))
-    engine.ingest_external(
+    first = engine.ingest_external(
         "NQ",
         {"gamma_pressure": {"value": -0.35, "confidence": 0.6}},
         source="replay-fixture",
         observed_at=early.isoformat(),
         ttl_seconds=600,
     )
-    engine.ingest_external(
+    second = engine.ingest_external(
         "NQ",
         {"gamma_pressure": {"value": 0.55, "confidence": 0.9}},
         source="replay-fixture",
@@ -459,16 +460,74 @@ def test_durable_evidence_as_of_replay_excludes_later_observations(tmp_path):
         ttl_seconds=600,
     )
 
-    between = engine.evidence_snapshot(
+    historical = engine.evidence_snapshot(
         "NQ",
         include_expired=True,
         as_of=(early + timedelta(minutes=1)).isoformat(),
     )
     current = engine.evidence_snapshot("NQ", include_expired=True)
-    assert between["active"]["gamma_pressure"]["value"] == pytest.approx(-0.35)
-    assert all(row["observed_ts"] <= datetime.fromisoformat(between["as_of"].replace("Z", "+00:00")).timestamp() for row in between["history"])
+    assert historical["active_count"] == 0
+    assert historical["history"] == []
     assert current["active"]["gamma_pressure"]["value"] == pytest.approx(0.55)
-    assert between["active"]["gamma_pressure"]["evidence_id"] != current["active"]["gamma_pressure"]["evidence_id"]
+    assert first["stored"]["gamma_pressure"]["received_ts"] > datetime.fromisoformat(
+        historical["as_of"].replace("Z", "+00:00")
+    ).timestamp()
+    assert second["stored"]["gamma_pressure"]["received_ts"] > datetime.fromisoformat(
+        historical["as_of"].replace("Z", "+00:00")
+    ).timestamp()
+
+
+def test_evidence_replay_uses_both_observation_and_receipt_time(tmp_path):
+    ledger = PsiEvidenceLedger(tmp_path)
+    base = datetime.now(timezone.utc) - timedelta(minutes=10)
+    base_ts = base.timestamp()
+
+    def row(value, observed_offset, received_offset, suffix):
+        observed = base + timedelta(seconds=observed_offset)
+        return {
+            "asset": "NQ",
+            "feature": "gamma_pressure",
+            "value": value,
+            "confidence": 0.8,
+            "source": f"historical-{suffix}",
+            "observed_at": observed.isoformat().replace("+00:00", "Z"),
+            "observed_ts": base_ts + observed_offset,
+            "received_ts": base_ts + received_offset,
+            "expires_ts": base_ts + observed_offset + 600,
+            "ttl_seconds": 600.0,
+            "created_at": observed.isoformat().replace("+00:00", "Z"),
+        }
+
+    ledger.record_many([
+        row(-0.4, 0, 30, "a"),
+        row(0.6, 120, 180, "b"),
+    ])
+
+    before_receipt = ledger.snapshot(
+        "NQ", as_of_ts=base_ts + 20,
+        as_of=(base + timedelta(seconds=20)).isoformat(),
+        include_expired=True,
+    )
+    after_first = ledger.snapshot(
+        "NQ", as_of_ts=base_ts + 60,
+        as_of=(base + timedelta(seconds=60)).isoformat(),
+        include_expired=True,
+    )
+    observed_but_not_received = ledger.snapshot(
+        "NQ", as_of_ts=base_ts + 150,
+        as_of=(base + timedelta(seconds=150)).isoformat(),
+        include_expired=True,
+    )
+    after_second = ledger.snapshot(
+        "NQ", as_of_ts=base_ts + 200,
+        as_of=(base + timedelta(seconds=200)).isoformat(),
+        include_expired=True,
+    )
+
+    assert before_receipt["active_count"] == 0
+    assert after_first["active"]["gamma_pressure"]["value"] == pytest.approx(-0.4)
+    assert observed_but_not_received["active"]["gamma_pressure"]["value"] == pytest.approx(-0.4)
+    assert after_second["active"]["gamma_pressure"]["value"] == pytest.approx(0.6)
 
 
 def test_snapshot_surfaces_durable_evidence_health(tmp_path):
