@@ -801,16 +801,33 @@ def test_learning_fabric_calibrates_psi_raw_scenario_shares_without_overlap(tmp_
         raising=False,
     )
 
+    class Calendar:
+        def bucket_end(self, ts, minutes):
+            return int(ts) + int(minutes) * 60
+
     class Port:
         def __init__(self):
             self.price = 100.0
+            self.runner = SimpleNamespace(
+                symbol="NQ",
+                chart_minutes=1,
+                cal=Calendar(),
+                bars=[],
+                overlays=[],
+                lock=threading.RLock(),
+            )
+            self.runners = {"NQ": self.runner}
         def status(self):
             return {"assets": [{"symbol": "NQ", "price": self.price}]}
+        def runner_list(self):
+            return [self.runner]
 
     class Psi:
         def status(self):
             return {"assets": {"NQ": {}}, "execution_authorized": False, "production_decision_authorized": False}
         def snapshot(self, asset=None):
+            target_close = clock["now"] + timedelta(seconds=600)
+            target_open = target_close - timedelta(seconds=60)
             return {
                 "asset": "NQ",
                 "generated_at": _iso(clock["now"]),
@@ -824,6 +841,11 @@ def test_learning_fabric_calibrates_psi_raw_scenario_shares_without_overlap(tmp_
                     "chart_minutes": 1,
                     "horizon_steps": 10,
                     "horizon_seconds": 600,
+                    "maturity_semantics": "SIX_FULL_FUTURE_CHART_BARS",
+                    "target_bar_open_at": _iso(target_open),
+                    "target_bar_close_at": _iso(target_close),
+                    "target_bar_open_ts": int(target_open.timestamp()),
+                    "target_bar_close_ts": int(target_close.timestamp()),
                     "classification_threshold_return": 0.005,
                     "cluster_shares": {"UP": 0.7, "FLAT": 0.2, "DOWN": 0.1},
                     "dominant_cluster": "UP",
@@ -848,10 +870,17 @@ def test_learning_fabric_calibrates_psi_raw_scenario_shares_without_overlap(tmp_
     assert fabric.scorecards() == []
 
     clock["now"] += timedelta(seconds=601)
-    port.price = 101.0
+    # Poll-time price is intentionally wrong. Settlement must use the exact
+    # completed target bar's real close, not current portfolio price or HA close.
+    port.price = 999.0
+    target_open = datetime(2026, 10, 1, 14, 9, tzinfo=timezone.utc)
+    port.runner.bars.append(SimpleNamespace(ts=int(target_open.timestamp()), c=150.0))
+    port.runner.overlays.append({"ts": int(target_open.timestamp()), "real_c": 101.0})
+
     matured = fabric.harvest_native()["possibility"]
     assert matured["outcomes_imported"] == 1
     assert matured["forecasts_imported"] == 1
+    assert matured["maturity_withheld"] == 0
 
     cards = [x for x in fabric.scorecards() if x["producer"] == "psi-scenario-v1"]
     assert len(cards) == 1
@@ -865,6 +894,18 @@ def test_learning_fabric_calibrates_psi_raw_scenario_shares_without_overlap(tmp_
     prediction = json.loads(row["semantic_json"])
     assert prediction["metadata"]["input_semantics"] == "UNCALIBRATED_SCENARIO_SHARE"
     assert prediction["metadata"]["classification_threshold_return"] == pytest.approx(0.005)
+    assert prediction["metadata"]["maturity_semantics"] == "SIX_FULL_FUTURE_CHART_BARS"
+    assert prediction["metadata"]["target_bar_close_ts"] == int(datetime(2026, 10, 1, 14, 10, tzinfo=timezone.utc).timestamp())
+    outcome_row = fabric._conn.execute(
+        "SELECT semantic_json FROM outcomes ORDER BY observed_at LIMIT 1"
+    ).fetchone()
+    outcome = json.loads(outcome_row["semantic_json"])
+    assert outcome["metadata"]["realized_price"] == pytest.approx(101.0)
+    assert outcome["metadata"]["price_basis"] == "runner_real_completed_bar_close"
+    assert outcome["metadata"]["event_time_quality"] == "OBSERVED_COMPLETED_BAR"
+    assert outcome["metadata"]["outcome_event_at"] == "2026-10-01T14:10:00Z"
+    assert outcome["metadata"]["retrieved_at"] == "2026-10-01T14:10:01Z"
+    assert outcome["metadata"]["maturity_lag_seconds"] == pytest.approx(1.0)
     assert prediction["execution_authorized"] is False
     assert prediction["production_decision_authorized"] is False
 
@@ -920,3 +961,75 @@ def test_learning_snapshot_reports_psi_empirical_calibration_coverage(tmp_path):
     snap = LearningFabric(tmp_path).snapshot()
     assert snap["coverage"]["possibility"] == "native_non_overlapping_scenario_calibration"
     assert "forecast_contract_required" not in snap["coverage"].values()
+
+
+def test_psi_maturity_waits_for_exact_completed_target_bar(tmp_path, monkeypatch):
+    import icarus_engine.learning_fabric as learning_module
+    from icarus_engine.learning_fabric import LearningFabric
+    from types import SimpleNamespace
+
+    clock = {"now": datetime(2026, 10, 1, 14, 0, tzinfo=timezone.utc)}
+    monkeypatch.setattr(learning_module, "_utc_now", lambda: _iso(clock["now"]))
+    monkeypatch.setattr(
+        learning_module,
+        "local_code_provenance",
+        lambda: {"candidate_revision_eligible": True, "commit": "b" * 40},
+        raising=False,
+    )
+
+    class Calendar:
+        def bucket_end(self, ts, minutes):
+            return int(ts) + int(minutes) * 60
+
+    runner = SimpleNamespace(
+        symbol="NQ", chart_minutes=1, cal=Calendar(),
+        bars=[], overlays=[], lock=threading.RLock(),
+    )
+
+    class Port:
+        runners = {"NQ": runner}
+        def runner_list(self):
+            return [runner]
+        def status(self):
+            return {"assets": [{"symbol": "NQ", "price": 500.0}]}
+
+    class Psi:
+        def status(self):
+            return {"assets": {"NQ": {}}}
+        def snapshot(self, asset=None):
+            return {
+                "asset": "NQ", "generated_at": _iso(clock["now"]), "price": 100.0,
+                "edge_state": {"state": "NO_EDGE"},
+                "forecast_calibration_contract": {
+                    "status": "ELIGIBLE_UNCALIBRATED",
+                    "asset": "NQ",
+                    "emitted_at": _iso(clock["now"]),
+                    "reference_price": 100.0,
+                    "chart_minutes": 1,
+                    "horizon_steps": 6,
+                    "horizon_seconds": 600,
+                    "maturity_semantics": "SIX_FULL_FUTURE_CHART_BARS",
+                    "target_bar_open_at": "2026-10-01T14:09:00Z",
+                    "target_bar_close_at": "2026-10-01T14:10:00Z",
+                    "target_bar_open_ts": int(datetime(2026, 10, 1, 14, 9, tzinfo=timezone.utc).timestamp()),
+                    "target_bar_close_ts": int(datetime(2026, 10, 1, 14, 10, tzinfo=timezone.utc).timestamp()),
+                    "classification_threshold_return": 0.005,
+                    "cluster_shares": {"UP": 0.6, "FLAT": 0.2, "DOWN": 0.2},
+                    "dominant_cluster": "UP",
+                    "calibrated": False,
+                    "execution_authorized": False,
+                    "production_decision_authorized": False,
+                },
+            }
+
+    fabric = LearningFabric(tmp_path, port=Port())
+    fabric.bind_native(possibility=Psi())
+    assert fabric.harvest_native()["possibility"]["forecasts_imported"] == 1
+
+    clock["now"] += timedelta(minutes=20)
+    # Wall-clock maturity passed and current price exists, but exact target bar is absent.
+    withheld = fabric.harvest_native()["possibility"]
+    assert withheld["outcomes_imported"] == 0
+    assert withheld["maturity_withheld"] == 1
+    assert withheld["overlap_withheld"] == 1
+    assert fabric._conn.execute("SELECT COUNT(*) FROM outcomes").fetchone()[0] == 0
