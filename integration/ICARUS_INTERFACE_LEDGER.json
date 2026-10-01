@@ -362,6 +362,26 @@
       "details": {
         "checklist": "O14"
       }
+    },
+    {
+      "recorded_at": "2026-09-30T21:38:00-05:00",
+      "source": "mcp",
+      "kind": "repair",
+      "area": "ICARUS integrity provenance",
+      "summary": "A mistyped NEXUS genealogy-regression SHA in the new Data Integrity ledger was detected during MCP re-audit and corrected to the exact repository commit.",
+      "status": "repaired",
+      "severity": "important",
+      "source_repo": "reppiks490/Icarus",
+      "source_branch": "chatgpt/icarus-mcp-integrity-panel-20260930",
+      "source_commit": "2a2a577a807275ecc7d2cc79e33481c6773ce7b6",
+      "verification": "The corrected SHA 02fe234acd60cbbc0f95e4289b0f26b07bc440bb was re-read from current divine-providence commit history before the repair was committed.",
+      "interface_effect": "The repair is itself visible in Data Integrity so provenance corrections are not silently rewritten.",
+      "evidence": [
+        "02fe234acd60cbbc0f95e4289b0f26b07bc440bb"
+      ],
+      "details": {
+        "policy": "mcp_mirror_required"
+      }
     }
   ]
 }

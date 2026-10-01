@@ -181,6 +181,22 @@
       "verification": "Run-manifest and checkpoint diffs plus paired tamper/atomic-persistence tests were inspected through MCP.",
       "interface_effect": "The System evolution ledger surfaces replay-lineage durability; detailed commit provenance remains visible in Data Integrity.",
       "execution_authorized": false
+    },
+    {
+      "id": "mcp-20260930-integrity-provenance-correction",
+      "recorded_date": "2026-09-30",
+      "subsystem": "ICARUS",
+      "kind": "repair",
+      "status": "integrated_branch",
+      "severity": "important",
+      "title": "Data-integrity provenance typo corrected visibly",
+      "summary": "A malformed NEXUS regression SHA introduced while extending the Data Integrity ledger was caught by MCP re-audit and corrected rather than left as unverifiable provenance.",
+      "source_repo": "reppiks490/Icarus",
+      "source_branch": "chatgpt/icarus-mcp-integrity-panel-20260930",
+      "source_commit": "2a2a577a807275ecc7d2cc79e33481c6773ce7b6",
+      "verification": "The replacement SHA was checked against the current divine-providence history; the Data Integrity ledger now points at the exact regression commit.",
+      "interface_effect": "Both the specialized Data Integrity panel and the System evolution ledger disclose the correction.",
+      "execution_authorized": false
     }
   ]
 }
