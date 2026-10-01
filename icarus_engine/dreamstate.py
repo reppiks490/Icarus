@@ -8,7 +8,9 @@ qualified_shadow; this module has no production or broker authority.
 V2 consumes PARALLAX comparison-contract/FDR evidence, isolates search families by
 exact code revision and comparison contract, supports target and compound policy
 hypotheses, accounts for family search budget, and retires active hypotheses when
-their underlying PARALLAX screen no longer holds.
+their underlying PARALLAX screen no longer holds. V3 additionally requires
+PARALLAX robustness clearance when chronological or neighboring-parameter evidence
+is rich enough to evaluate it.
 """
 from __future__ import annotations
 
@@ -289,6 +291,12 @@ class DreamstateLab:
                 "comparison_contract_hash": signal.get("comparison_contract_hash"),
                 "comparison_contract": signal.get("comparison_contract", {}),
                 "observed_strata": observed_strata,
+                "source_robustness": {
+                    "robust_candidate_eligible": bool(signal.get("robust_candidate_eligible")),
+                    "robustness_blockers": list(signal.get("robustness_blockers") or []),
+                    "temporal_stability": signal.get("temporal_stability", {}),
+                    "parameter_basin": signal.get("parameter_basin", {}),
+                },
             },
             "mutation": candidate.get("mutation", {}),
             "baseline_fallback": {
@@ -321,6 +329,18 @@ class DreamstateLab:
             "source_pair_coverage": signal.get("evidence_pair_coverage"),
             "source_strata_count": signal.get("strata_count", 0),
             "comparison_contract_complete": bool(signal.get("comparison_contract_complete")),
+            "source_statistical_candidate_eligible": bool(signal.get("candidate_eligible")),
+            "source_robust_candidate_eligible": bool(signal.get("robust_candidate_eligible")),
+            "source_robustness_blockers": list(signal.get("robustness_blockers") or []),
+            "source_temporal_evaluable": bool((signal.get("temporal_stability") or {}).get("evaluable")),
+            "source_temporal_stable": (signal.get("temporal_stability") or {}).get("stable"),
+            "source_temporal_worst_fold_mean": (signal.get("temporal_stability") or {}).get("worst_fold_mean"),
+            "source_parameter_basin_evaluable": bool((signal.get("parameter_basin") or {}).get("evaluable")),
+            "source_parameter_basin_support_count": (signal.get("parameter_basin") or {}).get("basin_support_count"),
+            "source_parameter_basin_width": (signal.get("parameter_basin") or {}).get("basin_width"),
+            "source_isolated_parameter_spike": bool((signal.get("parameter_basin") or {}).get("isolated_spike")),
+            "source_parameter_local_support_missing": bool((signal.get("parameter_basin") or {}).get("local_support_missing")),
+            "source_parameter_family_evaluable_points": (signal.get("parameter_basin") or {}).get("family_evaluable_point_count"),
         }
 
     def _mirror_candidate(self, candidate: Mapping[str, Any]) -> dict[str, Any]:
@@ -357,10 +377,22 @@ class DreamstateLab:
                 "branch_label",
                 "kind",
                 "strata_count",
+                "robust_candidate_eligible",
             )
             if key in signal
         }
         evidence = list(candidate.get("evidence") or [])
+        temporal = signal.get("temporal_stability") if isinstance(signal.get("temporal_stability"), Mapping) else {}
+        basin = signal.get("parameter_basin") if isinstance(signal.get("parameter_basin"), Mapping) else {}
+        metrics.update({
+            "temporal_stable": temporal.get("stable"),
+            "temporal_worst_fold_mean": temporal.get("worst_fold_mean"),
+            "parameter_basin_support_count": basin.get("basin_support_count"),
+            "parameter_basin_width": basin.get("basin_width"),
+            "isolated_parameter_spike": basin.get("isolated_spike"),
+            "parameter_local_support_missing": basin.get("local_support_missing"),
+            "parameter_family_evaluable_points": basin.get("family_evaluable_point_count"),
+        })
         evidence.append(
             "PARALLAX paired signal "
             + str(signal.get("branch_label") or "unknown")
@@ -368,6 +400,8 @@ class DreamstateLab:
             + str(signal.get("evidence_pair_count", signal.get("n", 0)))
             + " q="
             + str(signal.get("q_value"))
+            + " robust="
+            + str(bool(signal.get("robust_candidate_eligible")))
         )
         return record_brain_event(
             self.base_dir,
@@ -406,13 +440,16 @@ class DreamstateLab:
             for row in rows:
                 source = json.loads(row["source_signal_json"])
                 current = hypothesis_map.get(_signal_key(source))
-                if current is not None and current.get("candidate_eligible") is not False:
+                if current is not None and current.get("robust_candidate_eligible") is True:
                     continue
                 evidence = json.loads(row["evidence_json"])
                 reason = (
                     "auto-retired: PARALLAX source signal is absent from the current screen"
                     if current is None
-                    else "auto-retired: PARALLAX source signal no longer clears current candidate screen"
+                    else (
+                        "auto-retired: PARALLAX source signal no longer clears robustness screen: "
+                        + ",".join(str(x) for x in (current.get("robustness_blockers") or current.get("screen_blockers") or []))
+                    )
                 )
                 evidence = list(dict.fromkeys((evidence + [reason])[-128:]))
                 con.execute(
@@ -435,7 +472,7 @@ class DreamstateLab:
         signals = [
             signal
             for signal in all_hypotheses
-            if isinstance(signal, Mapping) and signal.get("candidate_eligible") is True
+            if isinstance(signal, Mapping) and signal.get("robust_candidate_eligible") is True
         ]
 
         created: list[str] = []
@@ -533,8 +570,11 @@ class DreamstateLab:
             "created": created,
             "auto_retired_source_decay": auto_retired,
             "signal_count": len(signals),
+            "robust_signal_count": len(signals),
+            "statistical_signal_count": screening.get("candidate_ready", 0),
             "screened_hypotheses": screening.get("hypotheses_total", 0),
             "screen_blockers": screening.get("blocker_counts", {}),
+            "robustness_blockers": screening.get("robustness_blocker_counts", {}),
             "source_fdr_limit": SOURCE_FDR_MAX,
             "min_samples": min_samples,
             "brain_mirrors": len(mirrors),
@@ -603,9 +643,9 @@ class DreamstateLab:
             raise ValueError("terminal DREAMSTATE candidate cannot be requalified")
 
         current_source = self._current_source_hypothesis(candidate)
-        if current_source is None or current_source.get("candidate_eligible") is not True:
-            self.retire(candidate_id, "source PARALLAX hypothesis no longer clears the current candidate screen")
-            raise ValueError("source PARALLAX hypothesis no longer clears the current candidate screen")
+        if current_source is None or current_source.get("robust_candidate_eligible") is not True:
+            self.retire(candidate_id, "source PARALLAX hypothesis no longer clears the current robustness screen")
+            raise ValueError("source PARALLAX hypothesis no longer clears the current robustness screen")
 
         current_candidate = dict(candidate)
         current_candidate["source_signal"] = current_source
@@ -757,6 +797,7 @@ class DreamstateLab:
         families = self._family_summaries(candidates)
         return {
             "schema_version": SCHEMA_VERSION,
+            "robustness_version": "icarus-dreamstate-robustness-v1",
             "stages": stages,
             "candidates": candidates,
             "families": families,
@@ -778,6 +819,9 @@ class DreamstateLab:
             "truth_contract": {
                 "counterfactual_signal_is_hypothesis_generation_only": True,
                 "source_signal_must_clear_parallax_fdr_and_comparison_contract_screen": True,
+                "source_signal_must_clear_parallax_robustness_when_evaluable": True,
+                "temporal_instability_can_retire_shadow_candidates": True,
+                "isolated_parameter_spikes_can_retire_shadow_candidates": True,
                 "multiple_testing_gate_required": True,
                 "independent_verification_required": True,
                 "failed_gate_requires_new_candidate_revision": True,
