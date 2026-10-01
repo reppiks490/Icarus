@@ -43,7 +43,7 @@
   function renderBrain(b) {
     const el = document.querySelector('#brainPanel');
     if (!el) return;
-    const auth = b.authority || {}, learn = b.learning || {}, truth = b.truth_contract || {}, sync = b.remote_sync || {};
+    const auth = b.authority || {}, learn = b.learning || {}, truth = b.truth_contract || {}, sync = b.remote_sync || {}, inc = b.incubator || {};
     const agents = ((b.architecture || {}).agents || []);
     const subs = ((b.architecture || {}).subsystems || []);
     const lanes = ((b.architecture || {}).latency_tiers || []);
@@ -65,6 +65,10 @@
     const routeHtml = routes.map(r => `<div class="brain-route"><b>${h(r.asset)} · ${h(r.regime||'UNKNOWN')}</b>\nselected: ${h(r.selected_candidate||'none')}\neligible: ${h((r.eligible_shadow_candidates||[]).map(x=>x.candidate_id).join(', ')||'none')}\nmode: ${h(r.selection_mode)}</div>`).join('');
 
     const regimeHtml = regimes.map(r => `<span class="chip ${r.paused?'r':r.warm?'b':'w'}">${h(r.asset)} · ${h(r.regime||'UNKNOWN')} · ${pct(r.confidence)}</span>`).join(' ');
+    const incubatorRows = (inc.proposals||[]).map(p => {
+      const rc = p.regime_context || {};
+      return `<tr><td><b>${h(p.asset||'—')}</b><div class="small muted">${h(String(p.proposal_id||'').slice(0,18))}</div></td><td><span class="chip ${statusClass(p.state)}">${h(String(p.state||'unknown').toUpperCase())}</span><div class="small muted">${h(p.review_mode||'')}</div></td><td><b>${h(rc.label||'UNKNOWN')}</b><div class="small muted">${rc.regime_score==null?'score —':'score '+h(String(rc.regime_score))}</div></td><td class="tnum">${num(p.input_count)}</td><td class="tnum">${num(p.review_count)}</td><td>${p.review_required?'INDEPENDENT REVIEW REQUIRED':'—'}</td></tr>`;
+    }).join('');
 
     el.innerHTML = `<style>
         .brain-shell{position:relative;overflow:hidden;min-height:520px;background:
@@ -88,6 +92,8 @@
             <div class="tile"><div class="k">Router</div><div class="v">${h(auth.candidate_router||'—')}</div></div>
             <div class="tile"><div class="k">Agent repo sync</div><div class="v ${statusClass(sync.status)}">${h(String(sync.status||'not configured').toUpperCase())}</div><div class="small muted">${h(sync.last_success_at?'last '+sync.last_success_at:'awaiting first verified ingest')}</div></div>
             <div class="tile"><div class="k">Remote agent events</div><div class="v tnum">${num(sync.ingested_total)}</div><div class="small muted">poll ${num(sync.interval_seconds)}s · rejected ${num(sync.rejected_total)}</div></div>
+            <div class="tile"><div class="k">Local incubator</div><div class="v tnum">${num(inc.proposal_count)}</div><div class="small muted">review required ${num(inc.review_required)}</div></div>
+            <div class="tile"><div class="k">Independently approved</div><div class="v tnum">${num(inc.approved)}</div><div class="small muted">paper activation still gated</div></div>
           </div>
           <div class="small muted" style="margin-top:9px">No 100%/omniscience claim is emitted. Millisecond targets apply only to the hot inference path; training, falsification and promotion stay off-path. Custom-agent cloud output is accepted only after repository-event source allowlisting, execution_authorized=false validation, and exact Git-blob verification.</div>
         </div>
@@ -107,10 +113,14 @@
         <h3 class="small" style="margin:16px 0 8px">Regime-specialist shadow router</h3>
         <div class="brain-grid">${routeHtml || '<div class="muted small">No eligible candidates. The router fails closed instead of inventing one.</div>'}</div>
 
+        <h3 class="small" style="margin:16px 0 8px">Zero-cost local candidate incubator</h3>
+        <div class="small muted" style="margin-bottom:7px">${h(inc.rule||'Local deterministic studies can preserve candidates without paid model calls; independent review remains mandatory before activation.')}</div>
+        <div class="scroll" style="max-height:300px"><table><thead><tr><th>Asset / proposal</th><th>State / mode</th><th>Observed regime</th><th>Inputs</th><th>Reviews</th><th>Authority</th></tr></thead><tbody>${incubatorRows || '<tr><td colspan=6 class="empty">No locally incubated proposals yet.</td></tr>'}</tbody></table></div>
+
         <h3 class="small" style="margin:16px 0 8px">Candidate lifecycle & rigorous gates</h3>
         <div class="scroll" style="max-height:520px"><table><thead><tr><th>Candidate</th><th>Stage</th><th>Validation score</th><th>Gate state</th></tr></thead><tbody>${candRows || '<tr><td colspan=4 class="empty">No candidate events recorded yet. Qualification remains empty/fail-closed.</td></tr>'}</tbody></table></div>
 
-        <div class="small muted" style="margin-top:12px">Learning loop: ${h(((b.architecture||{}).learning_loop||[]).join(' → '))}. This plane can learn and route research/shadow candidates, but cannot silently mutate production strategy or place orders.</div>
+        <div class="small muted" style="margin-top:12px">Learning loop: ${h(((b.architecture||{}).learning_loop||[]).join(' → '))}. Local study-only incubation is zero-cost and never applies inputs. The brain can learn and route research/shadow candidates, but cannot silently mutate production strategy or place orders.</div>
       </div>`;
   }
 
