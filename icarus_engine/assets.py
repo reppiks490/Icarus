@@ -17,7 +17,7 @@ from typing import Dict, List, Optional
 PRIMARY_INTRADAY_TIMEFRAMES = ("1", "2", "5", "10", "20", "30")
 PRIMARY_SECOND_TIMEFRAMES = ("1S", "5S", "10S", "15S", "30S")
 PRIMARY_TICK_TIMEFRAMES = ("50T", "100T", "250T", "500T", "1000T")
-CHART_TIMEFRAME_OPTIONS = PRIMARY_SECOND_TIMEFRAMES + PRIMARY_TICK_TIMEFRAMES + ("1", "2", "3", "5", "10", "15", "20", "30", "45", "60", "120", "180", "240", "D", "W")
+CHART_TIMEFRAME_OPTIONS = ("1", "2", "3", "5", "10", "15", "20", "30", "45", "60", "120", "180", "240", "D", "W")
 CHART_TYPES = ("heikin_ashi", "real")
 FILL_MODES = ("real", "chart")
 SECURITY_SOURCES = ("chart", "standard")
@@ -72,12 +72,17 @@ def chart_timeframe_parts(value: object) -> tuple[str, int]:
 
 
 def normalize_chart_timeframe(value: object) -> str:
-    """Canonicalize minute, second, and authentic trade-count chart timeframes."""
+    """Canonicalize strategy chart timeframes.
+
+    The branch retains authentic event/tick adapters internally, but the Pine-style
+    strategy/backtest contract remains minute-native until every downstream consumer
+    (HTF chains, cache replay, Strategy Tester) is event-timeframe aware.
+    """
     mode, n = chart_timeframe_parts(value)
     if mode == "seconds":
-        return f"{n}S"
+        raise ValueError("sub-minute chart timeframes are raw-event capabilities, not strategy chart timeframes")
     if mode == "ticks":
-        return f"{n}T"
+        raise ValueError("tick chart timeframes are raw-event capabilities, not strategy chart timeframes")
     if n == 1440:
         return "D"
     if n == 10080:
@@ -93,16 +98,18 @@ def chart_capabilities() -> Dict[str, object]:
     return {
         "timeframes": list(CHART_TIMEFRAME_OPTIONS),
         "primary_intraday_timeframes": list(PRIMARY_INTRADAY_TIMEFRAMES),
-        "primary_second_timeframes": list(PRIMARY_SECOND_TIMEFRAMES),
-        "primary_tick_timeframes": list(PRIMARY_TICK_TIMEFRAMES),
+        "primary_second_timeframes": [],
+        "primary_tick_timeframes": [],
         "chart_types": list(CHART_TYPES),
         "fill_modes": list(FILL_MODES),
         "security_sources": list(SECURITY_SOURCES),
-        "seconds": True,
-        "ticks": True,
+        "seconds": False,
+        "ticks": False,
+        "raw_event_seconds": True,
+        "raw_event_ticks": True,
         "minimum_live_resolution": "trade-event",
-        "requires_event_feed": True,
-        "note": "Seconds/ticks are engine-supported but remain unavailable per asset until an authentic trade-event adapter/cache is present. ICARUS never fabricates ticks.",
+        "requires_event_feed": False,
+        "note": "Authentic event/tick adapters are retained as raw capabilities; strategy charts remain minute-native and ICARUS never fabricates ticks.",
     }
 
 
