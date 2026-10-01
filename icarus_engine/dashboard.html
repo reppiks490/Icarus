@@ -275,6 +275,33 @@ function tabsHtml(A) {
   t.push(`<span class="tab util ${view==='system'?'active':''}" data-v="system">System</span><span class="tab util ${view==='golive'?'active':''}" data-v="golive">Go-live</span><span class="tab util ${view==='agent'?'active':''}" data-v="agent">Agent</span><span class="tab util ${view==='inputs'?'active':''}" data-v="inputs">Inputs</span><span class="tab util ${view==='backtest'?'active':''}" data-v="backtest">Backtest</span>${typeof researchHtml==='function'?`<span class="tab util ${view==='research'?'active':''}" data-v="research">Research</span>`:''}${typeof sourcesHtml==='function'?`<span class="tab util ${view==='sources'?'active':''}" data-v="sources">Financial &amp; data</span>`:''}<span class="tab util ${view==='commands'?'active':''}" data-v="commands">Commands</span><span class="tab util ${view==='log'?'active':''}" data-v="log">Log</span>`);
   return t.join('');
 }
+function systemEvolutionLedger(e) {
+  if (!e) return `<section class="card c12" id="evolutionLedger"><h2>MCP evolution ledger <span class="sub">repairs · audits · subsystem evolution</span></h2><div class="empty">loading evolution state…</div></section>`;
+  const sum=e.summary||{}, mirror=e.mirror_ok===true;
+  const cls=x => x==='merged'||x==='verified'?'b':x==='blocked'?'r':x==='in_progress'?'w':'';
+  const rows=(e.items||[]).map(x => `<tr>
+    <td><b>${esc(x.subsystem||'UNKNOWN')}</b><div class="small muted">${esc(x.kind||'')}</div></td>
+    <td><span class="chip ${cls(x.status)}">${esc(x.status||'unknown')}</span><div class="small muted">${esc(x.severity||'')}</div></td>
+    <td style="white-space:normal;min-width:300px"><b>${esc(x.summary||'')}</b><div class="small muted" style="margin-top:4px">${esc(x.detail||'')}</div></td>
+    <td><span class="chip ${String(x.validation_state||'').includes('green')||['verified','merged'].includes(x.status)?'b':x.status==='blocked'?'r':'w'}">${esc(x.validation_state||'unknown')}</span></td>
+    <td class="small" style="white-space:normal;min-width:190px"><div>${esc(x.source_repo||'')}</div><div class="muted">${esc(x.source_branch||'')}</div><code title="${esc(x.source_commit||'')}">${esc(String(x.source_commit||'—').slice(0,12))}</code></td>
+    <td><span class="chip ${x.surface_status==='mirrored'?'b':'r'}">${esc(x.interface_surface||'MISSING')}</span></td>
+  </tr>`).join('');
+  return `<section class="card c12" id="evolutionLedger">
+    <h2>MCP evolution ledger <span class="sub">important MCP work must be visible in this System interface</span></h2>
+    <div class="tiles" style="margin-top:0">
+      <div class="tile"><div class="k">Tracked</div><div class="v tnum">${sum.total??0}</div></div>
+      <div class="tile"><div class="k">Important</div><div class="v tnum">${sum.important??0}</div></div>
+      <div class="tile"><div class="k">Verified / merged</div><div class="v tnum">${sum.verified_or_merged??0}</div></div>
+      <div class="tile"><div class="k">In progress</div><div class="v tnum">${sum.in_progress??0}</div></div>
+      <div class="tile"><div class="k">Blocked</div><div class="v tnum ${(sum.blocked||0)?'neg':'pos'}">${sum.blocked??0}</div></div>
+      <div class="tile"><div class="k">Interface mirror</div><div class="v ${mirror?'pos':'neg'}">${mirror?'INTACT':'DEGRADED'}</div></div>
+    </div>
+    <div class="small muted" style="margin:10px 0">Recorded ${esc(e.recorded_at||'unknown')} · read-only evidence surface · execution_authorized=${String(e.execution_authorized===true)} · production_authorized=${String(e.production_authorized===true)}</div>
+    <div class="scroll" style="max-height:58vh"><table><thead><tr><th>Subsystem</th><th>Status</th><th>Change</th><th>Validation</th><th>Provenance</th><th>Interface</th></tr></thead>
+    <tbody>${rows||'<tr><td colspan="6" class="empty">No MCP evolution items recorded.</td></tr>'}</tbody></table></div>
+  </section>`;
+}
 function repositoryAuditCard(a, compact=false) {
   if (!a) return `<section class="card c12" id="repoAuditCard"><h2>Repository / MCP health</h2><div class="empty">loading local audit snapshot…</div></section>`;
   const s = a.summary || {}, m = a.main || {}, issue = a.issue || {};
@@ -293,9 +320,11 @@ function repositoryAuditCard(a, compact=false) {
       <div class="tile"><div class="k">Current-head failures</div><div class="v tnum ${(s.current_head_failures||0)>0?'neg':'pos'}">${s.current_head_failures ?? '—'}</div></div>
       <div class="tile"><div class="k">Pending</div><div class="v tnum">${s.pending ?? '—'}</div></div>
       <div class="tile"><div class="k">Unresolved</div><div class="v tnum">${s.unresolved ?? '—'}</div></div>
+      <div class="tile"><div class="k">MCP evolution</div><div class="v tnum ${(a.evolution?.summary?.blocked||0)>0?'neg':(a.evolution?.summary?.in_progress||0)>0?'':'pos'}">${(a.evolution?.summary?.blocked||0)>0?(a.evolution.summary.blocked+' BLOCKED'):(a.evolution?.summary?.in_progress||0)>0?(a.evolution.summary.in_progress+' ACTIVE'):(a.evolution?.summary?.verified_or_merged||0)+' VERIFIED'}</div></div>
+      <div class="tile"><div class="k">Evolution mirror</div><div class="v ${a.evolution?.mirror_ok===true?'pos':'neg'}">${a.evolution?.mirror_ok===true?'INTACT':'DEGRADED'}</div></div>
     </div>
     ${compact ? '' : `<div class="small muted" style="margin-top:10px">${esc(a.note||'')}${issueLink ? ' · '+issueLink : ''}</div>${checks ? `<div style="margin-top:10px">${checks}</div>` : ''}`}
-  </section>`;
+  </section>${compact ? '' : systemEvolutionLedger(a.evolution)}`;
 }
 function goliveCard(g) {
   if (!g) return `<section class="card c12" id="goliveCard"><h2>Go-live integrity</h2><div class="empty">loading…</div></section>`;
@@ -706,9 +735,11 @@ function render(d) {
   const rh = $('#repoHealth'), ra = window.ICARUS_AUDIT;
   if (rh) {
     const st = String(ra?.status || 'unknown').toLowerCase();
-    rh.textContent = st === 'green' ? 'REPO ✓' : st === 'red' ? 'REPO !' : 'REPO ?';
-    rh.className = 'badge ' + (st === 'green' ? 'armed' : st === 'red' ? 'paused' : 'warm');
-    rh.title = ra ? `Repository audit ${ra.recorded_at||''} · main ${String(ra.main?.sha||'').slice(0,12)}` : 'Repository audit unavailable';
+    const evo = ra?.evolution, blocked = Number(evo?.summary?.blocked||0), active = Number(evo?.summary?.in_progress||0);
+    const mirrorBad = evo && evo.mirror_ok !== true;
+    rh.textContent = st === 'red' ? 'SYSTEM !' : blocked ? `SYSTEM ! ${blocked}` : mirrorBad ? 'SYSTEM MIRROR !' : active ? `SYSTEM ◐ ${active}` : st === 'green' ? 'SYSTEM ✓' : 'SYSTEM ?';
+    rh.className = 'badge ' + ((st === 'red' || blocked || mirrorBad) ? 'paused' : active || st !== 'green' ? 'warm' : 'armed');
+    rh.title = ra ? `Repository audit ${ra.recorded_at||''} · main ${String(ra.main?.sha||'').slice(0,12)} · MCP evolution: ${blocked} blocked, ${active} in progress · mirror ${evo?.mirror_ok===true?'intact':'degraded'}` : 'System audit unavailable';
   }
   $('#tabs').innerHTML = tabsHtml(A);
   const viewAsset = view.startsWith('asset:') ? A.find(a => a.symbol === view.slice(6)) : null;
