@@ -10,6 +10,8 @@ def test_mcp_server_imports_and_registers_engine_surface():
         "engine_status",
         "engine_repository_audit",
         "record_engine_repository_audit",
+        "record_engine_system_event",
+        "record_engine_loop_status",
         "engine_configuration",
         "set_engine_chart_config",
         "start_engine_backtest",
@@ -146,3 +148,39 @@ def test_mcp_repository_audit_routes(monkeypatch):
 def test_mcp_repository_audit_rejects_non_object_json():
     assert "error" in mcp_server.record_engine_repository_audit("[]")
     assert "error" in mcp_server.record_engine_repository_audit("{bad")
+
+
+def test_mcp_system_intelligence_event_and_loop_routes(monkeypatch):
+    seen = []
+
+    def post(path, body):
+        seen.append((path, body))
+        return {"ok": True}
+
+    monkeypatch.setattr(mcp_server, "_engine_post", post)
+
+    assert mcp_server.record_engine_system_event(
+        kind="repair",
+        title="Alpha repaired",
+        detail="Durability chain restored",
+        severity="success",
+        repository="reppiks490/Icarus-engine",
+        ref="abc123",
+    ) == {"ok": True}
+    assert mcp_server.record_engine_loop_status(
+        loop_id="alpha-synthesis",
+        title="Alpha Synthesis Evolution",
+        status="RUN_PERSISTED",
+        run_id="alpha-synthesis-20261001T012500Z",
+        scheduler_id="sched-alpha",
+        schedule=":25 hourly",
+        repository="reppiks490/Icarus-engine",
+        finalization_commit_sha="abc123",
+        finalization_state_blob_sha="def456",
+        detail="verified",
+    ) == {"ok": True}
+
+    assert seen[0][0] == "/admin/system/event"
+    assert seen[0][1]["event"]["kind"] == "repair"
+    assert seen[1][0] == "/admin/system/loop"
+    assert seen[1][1]["loop"]["id"] == "alpha-synthesis"
