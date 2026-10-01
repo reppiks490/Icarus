@@ -133,6 +133,32 @@ without electing a trade or forcing consensus. Agent claims remain research
 evidence with execution_authorized=false and
 production_decision_authorized=false.
 
+## Blind-round visibility barrier
+
+First-pass claim content is now redacted from PANTHEON read surfaces until all
+four mandatory independent roles have committed. Before that barrier clears,
+the system may reveal that an agent has committed, but not its thesis,
+direction, confidence, evidence, or falsifier. This makes the blind-first-pass
+property enforceable at the shared API/UI layer rather than relying only on a
+caller assertion.
+
+## Full-swarm blind barrier
+
+The visibility barrier now covers every AETHER agent actually spawned for an
+observation, not only the four mandatory guard roles. Completing the mandatory
+roles is reported separately, but deliberation and claim-body visibility remain
+closed until every spawned research partition has committed its first-pass
+claim. This prevents optional specialists from reading mandatory-role
+conclusions before submitting their own independent view.
+
+## Invalid-input handling
+
+Normalized confidence, risk, quality, reliability, novelty and similar fields
+now fail closed when they fall outside their declared bounds instead of being
+silently clipped. Structural costs must be non-negative, and MINT rejects
+negative costs, non-positive risk capital, and non-positive duration. This
+prevents malformed upstream data from being converted into plausible-looking
+research diagnostics.
 
 ## Completed faculty depth
 
@@ -222,9 +248,18 @@ No additional live-control endpoint is required. The existing authenticated
 `POST /admin/pantheon/observe`
 
 accepts an optional bounded `claim_outcomes` list. An outcome names a prior
-claim, observation time, bounded utility, confidence, and evidence. Outcomes
-cannot predate their originating claim and are immutable for a given
-`claim_id + observed_at`. Idempotent retries are safe.
+claim, observation time, bounded utility, confidence, and evidence. Utility
+must lie in `[-1, 1]` and fails closed outside that range. Every scored
+outcome requires at least one evidence reference. A claim cannot receive
+fitness before its originating market horizon has matured; mutation descendants
+inherit the same rule from their own causal availability time. When feedback is
+attached through a PANTHEON observation, the outcome timestamp must equal that
+source observation timestamp and its asset must match the claim asset.
+Zero-confidence observations remain durable evidence but contribute zero
+fitness. Outcomes are immutable for a given `claim_id + observed_at`. When a
+feedback observation causes speciation, the offspring mutation claim is bound
+to that feedback observation (and its observation time), not retroactively
+attached to the older parent observation. Idempotent retries are safe.
 
 ## Causal chronology
 
