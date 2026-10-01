@@ -1886,13 +1886,13 @@ class PossibilityEngine:
         collapse: Any,
         future_reliability: Any,
         effective_sample_ratio: Any,
-        dominant_cluster: Any = None,
-        dominant_share: Any = None,
         consensus: Mapping[str, Any],
-        information_wave: Mapping[str, Any] | None = None,
-        phase: Mapping[str, Any] | None = None,
         micro: Mapping[str, Any],
         leaders: Mapping[str, Any],
+        dominant_cluster: Any = None,
+        dominant_share: Any = None,
+        information_wave: Mapping[str, Any] | None = None,
+        phase: Mapping[str, Any] | None = None,
     ) -> dict[str, Any]:
         blockers = []
         collapse_value = _finite(collapse)
