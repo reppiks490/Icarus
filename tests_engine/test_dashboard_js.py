@@ -205,3 +205,18 @@ def test_dashboard_surfaces_tactical_autopilot_and_root_engine_control():
     assert 'p.path == "/api/engine-control"' in server
     assert 'ControlAction("autopilot.configure"' in server
     assert '"autopilot": autopilot.status' in server
+
+
+def test_engine_control_ui_supports_every_registered_target_and_generic_args():
+    ui = (REPO / "icarus_engine/engine-control-ui.js").read_text(encoding="utf-8")
+    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
+    for target in ("job", "candidate", "proposal", "source"):
+        assert target + ":" in ui
+    assert "action.args_example" in ui
+    assert "JSON.stringify(action.args_example)" in ui
+    assert 'ControlAction("research.export"' in server
+    assert 'target="proposal"' in server
+    assert 'ControlAction("research.collect"' in server
+    assert 'target="source"' in server
+    assert 'ControlAction("dreamstate.evaluate"' in server
+    assert 'target="candidate"' in server
