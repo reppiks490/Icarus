@@ -1,0 +1,36 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "argus-impact-calibration-athena-bridge-verified-20261001T214300Z",
+  "category": "EVOLUTION",
+  "severity": "success",
+  "status": "verified",
+  "subsystems": [
+    "argus",
+    "athena",
+    "execution_research",
+    "calibration",
+    "provenance"
+  ],
+  "recorded_at": "2026-10-01T21:43:00Z",
+  "title": "ARGUS prospective impact-calibration to ATHENA research bridge verified",
+  "summary": "Prospectively locked ARGUS impact-calibration studies now have a verified receipt-time research/advisory path into ATHENA. The export revalidates the registered evidence-stratified study, cannot publish before cohort lock, preserves exact manifest/cohort/model/source lineage and keeps broker-confirmed and ICARUS paper-emulator evidence separate. The deterministic hub fixture intentionally uses paper-only evidence rather than fabricating broker confirmation, and ATHENA cannot expose the research artifact before local ingestion time.",
+  "source_repository": "reppiks490/divine-providence",
+  "source_ref": "main",
+  "source_commit": "824734756453c1be393d565ac64c648c75e2299c",
+  "evidence": [
+    "divine-providence PR #27 merged at 824734756453c1be393d565ac64c648c75e2299c",
+    "exact-head subsystem-evolution workflow run 36929650106 completed success",
+    "Linux and Windows ARGUS/ATHENA/AION causal subsystem jobs passed",
+    "intelligence-fabric and hub tests passed",
+    "full twelve-system validation passed",
+    "research export cannot publish before prospective cohort lock",
+    "ATHENA publication time cannot bypass local ingestion-time causality",
+    "study manifest/cohort IDs, model/calibration revisions, source revisions, exclusions and evidence strata are preserved",
+    "paper-only fixture remains broker_confirmed_observations=0",
+    "execution_authorized=false",
+    "production_authorized=false",
+    "production_decision_authorized=false"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}

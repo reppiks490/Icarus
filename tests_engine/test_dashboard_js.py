@@ -370,3 +370,14 @@ def test_dashboard_surfaces_continuous_learning_fabric():
     assert "UNAVAILABLE" in ui
     assert "UNMEASURED" in ui
     assert "v == null" in ui or "v === null" in ui
+
+
+def test_learning_dashboard_exposes_configuration_scoped_trade_experience():
+    ui = (REPO / "icarus_engine/learning-ui.js").read_text(encoding="utf-8")
+    assert "STRATEGY CONFIGURATION EXPERIENCE" in ui
+    assert "Strategy fingerprint" in ui
+    assert "PAYOFF RATIO" in ui
+    assert "MAX DRAWDOWN" in ui
+    assert "by_configuration" in ui
+    assert "unscoped_count" in ui
+    assert "CLOSURE-TIME PROVENANCE" in ui

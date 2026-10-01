@@ -65,6 +65,21 @@
         '</td><td class="tnum">' + val(r.average_pnl,2) + '</td><td class="tnum">' + val(r.profit_factor,3) + '</td></tr>';
     });
   }
+  function configurationExperienceRows(rows) {
+    return (rows || []).map(function (r) {
+      const fp = String(r.strategy_fingerprint || 'UNAVAILABLE');
+      const shortFp = fp === 'UNAVAILABLE' ? fp : fp.slice(0, 12) + '…';
+      const chart = [r.chart_type || 'UNAVAILABLE', r.timeframe || 'UNAVAILABLE'].join(' / ');
+      const execution = [r.fill_on || 'UNAVAILABLE', r.security_source || 'UNAVAILABLE'].join(' / ');
+      return '<tr><td title="' + h(fp) + '"><b>' + h(shortFp) + '</b></td><td>' + h(r.asset) +
+        '</td><td>' + h(r.direction) + '</td><td>' + h(r.session_mode || 'UNAVAILABLE') +
+        '</td><td>' + h(chart) + '</td><td>' + h(execution) +
+        '</td><td>' + h(r.preset || 'UNAVAILABLE') + '</td><td>' + chip(r.status) +
+        '</td><td class="tnum">' + val(r.count,0) + '</td><td class="tnum">' + pct(r.win_rate) +
+        '</td><td class="tnum">' + val(r.net_pnl,2) + '</td><td class="tnum">' + val(r.average_pnl,2) +
+        '</td><td class="tnum">' + val(r.payoff_ratio,3) + '</td><td class="tnum">' + val(r.max_cumulative_drawdown,2) + '</td></tr>';
+    });
+  }
   function datasetRows(rows, training) {
     const byDataset = {};
     (training || []).forEach(function (r) { (byDataset[r.dataset_id] ||= []).push(r); });
@@ -103,6 +118,8 @@
     const preds = state.predictions || {};
     const training = state.training || {};
     const experience = state.experiences || {};
+    const by_configuration = experience.by_configuration || [];
+    const unscoped_count = experience.unscoped_count == null ? 0 : experience.unscoped_count;
     const health = state.health || {};
     const datasets = (data || {}).datasets || [];
     const runs = (data || {}).training_runs || [];
@@ -124,6 +141,9 @@
       table(['Producer','Asset','Regime','Horizon s','Target','State','Settled','Hit rate','Mean Brier','Calibration gap'], scoreRows(state.scorecards), 'UNMEASURED — no matured outcomes yet.') +
       '<h3 class="small" style="margin:16px 0 8px">REALIZED EXPERIENCE · P&L MEMORY</h3>' +
       table(['Source','Asset','Direction','State','Count','Win rate','Net P&L','Avg P&L','PROFIT FACTOR'], experienceRows(experience.summary), 'UNMEASURED — no fully closed realized trade experience yet.') +
+      '<h3 class="small" style="margin:16px 0 8px">STRATEGY CONFIGURATION EXPERIENCE · CLOSURE-TIME PROVENANCE</h3>' +
+      '<div class="small muted" style="margin-bottom:8px">Only trades carrying an exact closure-time configuration receipt appear here. Unscoped realized experience: ' + val(unscoped_count,0) + '.</div>' +
+      table(['Strategy fingerprint','Asset','Side','Session','Chart / TF','Fill / Security','Preset','State','Count','Win rate','Net P&L','Avg P&L','PAYOFF RATIO','MAX DRAWDOWN'], configurationExperienceRows(by_configuration), 'UNMEASURED — no closure-scoped strategy experience yet.') +
       '<h3 class="small" style="margin:16px 0 8px">DATASET COVERAGE · TRAINING REPLAY</h3>' +
       table(['Asset','Cadence','Class','Rows','Coverage','Representation','Replay status','Action'], datasetRows(datasets,runs), 'UNAVAILABLE — no local historical datasets catalogued yet.') +
       '<h3 class="small" style="margin:16px 0 8px">LEARNING BACKLOG</h3>' +

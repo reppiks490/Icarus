@@ -661,3 +661,128 @@ def test_background_learning_records_crashes_instead_of_silently_swallowing(tmp_
     assert health["consecutive_failures"] >= 1
     assert "background fixture crash" in health["last_error"]
     assert health["background_running"] is False
+
+
+def test_journal_trade_context_survives_into_learning_after_runner_memory_is_gone(tmp_path):
+    from types import SimpleNamespace
+    from icarus_engine.learning_fabric import LearningFabric
+    from icarus_engine.runtime import Journal
+
+    journal = Journal(str(tmp_path / "paper.sqlite3"))
+    context = {
+        "strategy_fingerprint": "f" * 64,
+        "inputs_hash": "e" * 64,
+        "chart_type": "standard",
+        "timeframe": "20",
+        "fill_on": "real",
+        "security_source": "standard",
+        "session_mode": "rth",
+        "profile": "nq",
+        "preset": "alpha",
+    }
+    one = SimpleNamespace(
+        entry_id="L", direction=1, qty=1, entry_price=25000.0, entry_ts=100,
+        exit_price=25010.0, exit_ts=200, exit_comment="TP1", profit=200.0,
+        lot_id=7, entry_qty=2,
+    )
+    two = SimpleNamespace(
+        entry_id="L", direction=1, qty=1, entry_price=25000.0, entry_ts=100,
+        exit_price=25020.0, exit_ts=220, exit_comment="TP2", profit=400.0,
+        lot_id=7, entry_qty=2,
+    )
+    journal.add_trade("NQ", one, True, 0, context=context)
+    journal.add_trade("NQ", two, True, 0, context=context)
+
+    port = SimpleNamespace(
+        journal=journal,
+        runner_list=lambda: [],
+        status=lambda: {"assets": []},
+    )
+    fabric = LearningFabric(tmp_path, port=port)
+    cycle = fabric.tick()
+    runtime = cycle["summary"]["experience"]["runtime"]
+    assert runtime["source"] == "journal"
+    assert runtime["imported"] == 1
+
+    row = fabric._conn.execute("SELECT semantic_json FROM experiences").fetchone()
+    experience = json.loads(row["semantic_json"])
+    assert experience["pnl"] == pytest.approx(600.0)
+    assert experience["qty"] == pytest.approx(2.0)
+    assert experience["metadata"]["strategy_fingerprint"] == "f" * 64
+    assert experience["metadata"]["inputs_hash"] == "e" * 64
+    assert experience["metadata"]["session_mode"] == "rth"
+    assert experience["metadata"]["provenance_quality"] == "CLOSURE_TIME_CONFIG"
+
+
+def test_experience_configuration_summary_never_mixes_strategy_fingerprints(tmp_path):
+    from icarus_engine.learning_fabric import LearningFabric
+
+    fabric = LearningFabric(tmp_path)
+    rows = [
+        ("a" * 64, 100.0, "2026-09-30T14:00:00Z", "2026-09-30T14:20:00Z"),
+        ("a" * 64, -40.0, "2026-09-30T14:30:00Z", "2026-09-30T14:50:00Z"),
+        ("a" * 64, -30.0, "2026-09-30T15:00:00Z", "2026-09-30T15:20:00Z"),
+        ("b" * 64, 25.0, "2026-09-30T15:30:00Z", "2026-09-30T15:50:00Z"),
+    ]
+    for i, (fingerprint, pnl, entry_at, exit_at) in enumerate(rows):
+        fabric.record_experience({
+            "source": "runtime_live_sim",
+            "source_record_id": f"trade-{i}",
+            "asset": "NQ",
+            "direction": "long",
+            "entry_at": entry_at,
+            "exit_at": exit_at,
+            "qty": 1,
+            "entry_price": 25000.0,
+            "exit_price": 25001.0,
+            "pnl": pnl,
+            "metadata": {
+                "strategy_fingerprint": fingerprint,
+                "inputs_hash": ("1" if fingerprint.startswith("a") else "2") * 64,
+                "chart_type": "standard",
+                "timeframe": "20",
+                "session_mode": "rth",
+                "fill_on": "real",
+                "security_source": "standard",
+                "profile": "nq",
+                "preset": "alpha" if fingerprint.startswith("a") else "beta",
+                "provenance_quality": "CLOSURE_TIME_CONFIG",
+            },
+        })
+
+    state = fabric.experience_state()
+    cards = {x["strategy_fingerprint"]: x for x in state["by_configuration"]}
+    assert set(cards) == {"a" * 64, "b" * 64}
+    a = cards["a" * 64]
+    assert a["count"] == 3
+    assert a["net_pnl"] == pytest.approx(30.0)
+    assert a["average_pnl"] == pytest.approx(10.0)
+    assert a["max_cumulative_drawdown"] == pytest.approx(70.0)
+    assert a["average_win"] == pytest.approx(100.0)
+    assert a["average_loss"] == pytest.approx(-35.0)
+    assert a["payoff_ratio"] == pytest.approx(100.0 / 35.0)
+    assert a["preset"] == "alpha"
+    assert cards["b" * 64]["count"] == 1
+
+
+def test_unscoped_experience_is_not_promoted_into_configuration_scorecard(tmp_path):
+    from icarus_engine.learning_fabric import LearningFabric
+
+    fabric = LearningFabric(tmp_path)
+    fabric.record_experience({
+        "source": "historical_trade_list",
+        "source_record_id": "legacy",
+        "asset": "NQ",
+        "direction": "short",
+        "entry_at": "2024-06-03T10:00:00Z",
+        "exit_at": "2024-06-03T10:20:00Z",
+        "qty": 1,
+        "entry_price": 18000.0,
+        "exit_price": 17990.0,
+        "pnl": 200.0,
+        "metadata": {"time_quality": "UNVERIFIED_TIMEZONE"},
+    })
+    state = fabric.experience_state()
+    assert state["count"] == 1
+    assert state["by_configuration"] == []
+    assert state["unscoped_count"] == 1

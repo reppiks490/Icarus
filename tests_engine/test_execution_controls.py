@@ -1034,3 +1034,30 @@ def test_engine_control_backtest_compare_and_audit_snapshot_preserve_control_rec
     assert any("Engine Control requested: Update repository audit snapshot" in title for title in titles)
     assert any("Engine Control succeeded: Update repository audit snapshot" in title for title in titles)
     assert audit["status"] == "green"
+
+
+def test_journal_trade_configuration_receipt_is_persisted(tmp_path):
+    from types import SimpleNamespace
+    from icarus_engine.runtime import Journal
+
+    journal = Journal(str(tmp_path / "journal.sqlite3"))
+    trade = SimpleNamespace(
+        entry_id="L", direction=1, qty=1, entry_price=25000.0, entry_ts=100,
+        exit_price=25010.0, exit_ts=200, exit_comment="TP", profit=200.0,
+        lot_id=9, entry_qty=1,
+    )
+    context = {
+        "strategy_fingerprint": "a" * 64,
+        "inputs_hash": "b" * 64,
+        "chart_type": "standard",
+        "timeframe": "20",
+        "session_mode": "rth",
+    }
+    journal.add_trade("NQ", trade, True, 0, context=context)
+    row = journal.con.execute(
+        "SELECT lot_id,entry_qty,strategy_fingerprint,strategy_context_json FROM trades"
+    ).fetchone()
+    assert row[0] == 9
+    assert row[1] == 1
+    assert row[2] == "a" * 64
+    assert json.loads(row[3])["inputs_hash"] == "b" * 64
