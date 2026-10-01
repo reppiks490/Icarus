@@ -145,7 +145,7 @@ class ParallaxStore:
         if action not in _ALLOWED_ACTIONS:
             raise ValueError("unsupported action")
         observed_at = _text(payload.get("observed_at"), "observed_at", 80)
-        regime = _text(payload.get("regime", "unknown"), "regime", 120)
+        regime = _text(payload.get("regime", "unknown"), "regime", 80)
         source_commit = _exact_git_sha(payload.get("source_commit"))
         context = payload.get("context", {})
         votes = payload.get("subsystem_votes", {})
