@@ -91,3 +91,46 @@ def test_subject_filter_is_applied_after_causal_time_gate(tmp_path):
     store.record_evidence(_body(subject="ES:trade"))
     rows = store.evidence_as_of("2026-10-01T14:10:00Z", subject="NQ:trade")
     assert [row["subject"] for row in rows] == ["NQ:trade"]
+
+
+def test_local_receipt_gate_prevents_backdated_network_style_evidence(tmp_path):
+    from icarus_engine.apex.store import ApexStore
+    store = ApexStore(tmp_path)
+    body = _body(
+        observed="2000-01-01T00:00:00Z",
+        received="2000-01-01T00:00:01Z",
+    )
+    saved = store.record_evidence(body, local_received_at="2026-10-01T18:00:00Z")
+    assert saved["idempotent"] is False
+    assert store.evidence_as_of("2000-01-01T00:10:00Z") == []
+    assert len(store.evidence_as_of("2026-10-01T18:00:00Z")) == 1
+
+
+def test_apex_store_migrates_pre_local_receipt_schema(tmp_path):
+    from pathlib import Path
+    from icarus_engine.apex.store import ApexStore
+
+    research = Path(tmp_path) / "research"
+    research.mkdir(parents=True)
+    db = research / "apex.sqlite3"
+    with sqlite3.connect(db) as conn:
+        conn.execute(
+            """CREATE TABLE evidence (
+                evidence_id TEXT PRIMARY KEY,
+                subject TEXT NOT NULL,
+                kind TEXT NOT NULL,
+                observed_at TEXT NOT NULL,
+                received_at TEXT NOT NULL,
+                calculated_at TEXT NOT NULL,
+                observed_ts REAL NOT NULL,
+                received_ts REAL NOT NULL,
+                semantic_json TEXT NOT NULL,
+                recorded_at TEXT NOT NULL
+            )"""
+        )
+        conn.commit()
+
+    store = ApexStore(tmp_path)
+    with sqlite3.connect(store.path) as conn:
+        columns = {row[1] for row in conn.execute("PRAGMA table_info(evidence)").fetchall()}
+    assert "local_received_ts" in columns

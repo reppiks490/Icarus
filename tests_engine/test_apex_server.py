@@ -68,6 +68,41 @@ def test_apex_http_read_routes_are_authenticated_and_truthful(apex_http):
         assert payload["production_decision_authorized"] is False
 
 
+def test_apex_http_local_receipt_blocks_backdated_evidence_from_historical_replay(apex_http):
+    _, _, request = apex_http
+    evidence = {
+        "kind": "observed",
+        "subject": "NQ:receipt-causality",
+        "value": {"asset": "NQ", "price": 25000.0},
+        "source": {
+            "subsystem": "fixture",
+            "source_repo": "reppiks490/Icarus",
+            "source_commit": "e" * 40,
+            "source_record_id": "backdated-network-fixture",
+        },
+        "observed_at": "2000-01-01T00:00:00Z",
+        "received_at": "2000-01-01T00:00:01Z",
+        "calculated_at": "2000-01-01T00:00:01Z",
+        "valid_from": "2000-01-01T00:00:00Z",
+        "valid_until": None,
+        "confidence": 1.0,
+        "quality": 1.0,
+        "dependencies": [],
+        "contradictions": [],
+        "falsifiers": ["source correction"],
+    }
+    code, saved = request("POST", "/admin/apex/evidence", body=evidence)
+    assert code == 200, saved
+
+    code, past = request("GET", "/api/apex?as_of=2000-01-01T00:10:00Z")
+    assert code == 200
+    assert past["epistemics"]["evidence_count"] == 0
+
+    code, current = request("GET", "/api/apex")
+    assert code == 200
+    assert current["epistemics"]["evidence_count"] >= 1
+
+
 def test_apex_http_degraded_sibling_does_not_take_down_full_snapshot(apex_http):
     _, srv, request = apex_http
     srv.apex._siblings["chronofold"] = lambda: (_ for _ in ()).throw(RuntimeError("fixture failure"))
@@ -185,9 +220,10 @@ def test_pantheon_http_echo_uses_apex_verified_lineage_when_ids_are_supplied(ape
         assert code == 200
         derived.append(body["evidence"]["evidence_id"])
 
+    observation_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     code, body = request("POST", "/admin/pantheon/observe", body={
         "observation_id": "pan-http-apex-lineage",
-        "observed_at": "2026-10-01T14:00:02Z",
+        "observed_at": observation_at,
         "asset": "NQ",
         "horizon_ms": 15000,
         "source_commit": "c" * 40,
