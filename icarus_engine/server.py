@@ -915,6 +915,18 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
                 return self._json(200, latency_telemetry.snapshot())
+            if p.path == "/api/candidate-qualification":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                try:
+                    candidate = {
+                        "candidate_id": q.get("candidate_id", [""])[0],
+                        "source_repo": q.get("source_repo", [""])[0],
+                        "source_commit": q.get("source_commit", [""])[0],
+                    }
+                    return self._json(200, qualification.snapshot(candidate))
+                except (ValueError, TypeError, RuntimeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
             if p.path == "/api/brain":
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
@@ -926,7 +938,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     research_state = research.status()
                 except Exception:
                     research_state = {}
-                return self._json(200, brain_snapshot(
+                brain = brain_snapshot(
                     port.base_dir,
                     market_status=market,
                     research_status=research_state,
@@ -936,7 +948,30 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     research_sync=brain_research_sync.status(),
                     proof_status=performance_proof.snapshot(),
                     latency_status=latency_telemetry.snapshot(),
-                ))
+                )
+                qualification_rows = []
+                for candidate in brain.get("candidates", []):
+                    try:
+                        qualification_rows.append(qualification.snapshot(candidate))
+                    except (ValueError, TypeError, RuntimeError) as ex:
+                        qualification_rows.append({
+                            "candidate_id": candidate.get("candidate_id"),
+                            "source_repo": candidate.get("source_repo"),
+                            "source_commit": candidate.get("source_commit"),
+                            "qualified_shadow_ready": False,
+                            "blockers": [f"{type(ex).__name__}: {ex}"],
+                            "execution_authorized": False,
+                            "production_decision_authorized": False,
+                        })
+                brain["qualification"] = {
+                    "candidate_count": len(qualification_rows),
+                    "ready_count": sum(1 for row in qualification_rows if row.get("qualified_shadow_ready") is True),
+                    "blocked_count": sum(1 for row in qualification_rows if row.get("qualified_shadow_ready") is not True),
+                    "candidates": qualification_rows,
+                    "execution_authorized": False,
+                    "production_decision_authorized": False,
+                }
+                return self._json(200, brain)
             if p.path == "/api/input-meta":
                 return self._json(200, meta)
             if p.path.startswith("/api/research"):
