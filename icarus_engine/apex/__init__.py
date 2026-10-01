@@ -8,4 +8,7 @@ __all__ = [
     "evidence_id",
     "normalize_evidence",
     "parse_utc",
+    "ApexKernel",
 ]
+
+from .kernel import ApexKernel
