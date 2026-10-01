@@ -152,25 +152,37 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             raise ValueError(f"unknown running asset {target}")
         return runner
 
+    def _run_all_assets(operation: str, fn):
+        results = {}
+        errors = {}
+        for runner in list(port.runner_list()):
+            try:
+                results[runner.symbol] = fn(runner)
+            except Exception as ex:
+                errors[runner.symbol] = f"{type(ex).__name__}: {ex}"[:800]
+        if errors:
+            raise RuntimeError(
+                f"{operation} partial failure; completed={sorted(results)} errors={errors}"
+            )
+        return results
+
     def _pause_all(payload):
-        for runner in port.runner_list():
-            runner.set_paused(True)
+        results = _run_all_assets("pause_all", lambda runner: runner.set_paused(True))
         port.paused = True
         port.journal.log("WARN", f"PAUSED ALL: {payload['reason']}")
-        return {"paused": [r.symbol for r in port.runner_list()]}
+        return {"paused": sorted(results)}
 
     def _resume_all(payload):
-        for runner in port.runner_list():
-            runner.set_paused(False)
+        results = _run_all_assets("resume_all", lambda runner: runner.set_paused(False))
         port.paused = False
         port.journal.log("INFO", f"RESUMED ALL: {payload['reason']}")
-        return {"resumed": [r.symbol for r in port.runner_list()]}
+        return {"resumed": sorted(results)}
 
     def _flatten_all(payload):
-        closed = {
-            runner.symbol: runner.flatten(payload["reason"])
-            for runner in port.runner_list()
-        }
+        closed = _run_all_assets(
+            "flatten_all",
+            lambda runner: runner.flatten(payload["reason"]),
+        )
         return {"closed": closed, "total": sum(closed.values())}
 
     def _asset_pause(payload):
@@ -281,29 +293,32 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             "evolution": evolution_remote_sync.sync_once(),
         }
 
-    def _start_all_syncs(_payload):
-        loop_intelligence_sync.start()
-        brain_remote_sync.start()
-        brain_research_sync.start()
-        evolution_remote_sync.start()
-        return {
-            "loop_intelligence": "started",
-            "brain_remote": "started",
-            "brain_research": "started",
-            "evolution": "started",
+    def _run_sync_lifecycle(operation: str, method: str):
+        results = {}
+        errors = {}
+        syncers = {
+            "loop_intelligence": loop_intelligence_sync,
+            "brain_remote": brain_remote_sync,
+            "brain_research": brain_research_sync,
+            "evolution": evolution_remote_sync,
         }
+        for name, syncer in syncers.items():
+            try:
+                getattr(syncer, method)()
+                results[name] = operation
+            except Exception as ex:
+                errors[name] = f"{type(ex).__name__}: {ex}"[:800]
+        if errors:
+            raise RuntimeError(
+                f"{operation} sync partial failure; completed={sorted(results)} errors={errors}"
+            )
+        return results
+
+    def _start_all_syncs(_payload):
+        return _run_sync_lifecycle("started", "start")
 
     def _stop_all_syncs(_payload):
-        loop_intelligence_sync.close()
-        brain_remote_sync.close()
-        brain_research_sync.close()
-        evolution_remote_sync.close()
-        return {
-            "loop_intelligence": "stopped",
-            "brain_remote": "stopped",
-            "brain_research": "stopped",
-            "evolution": "stopped",
-        }
+        return _run_sync_lifecycle("stopped", "close")
 
     def _control_args(payload, *, allowed=None, required=()):
         args = payload.get("args") or {}
