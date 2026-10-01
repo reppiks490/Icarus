@@ -614,6 +614,122 @@ def test_dreamstate_live_gate_recheck_retires_after_temporal_robustness_collapse
     assert any("robustness screen" in row for row in retired["evidence"])
 
 
+def test_parallax_far_apart_parameter_points_do_not_create_fake_local_basin(tmp_path):
+    store = ParallaxStore(tmp_path)
+    for i in range(6):
+        decision = store.record_decision(
+            {
+                "asset": "NQ",
+                "action": "long",
+                "observed_at": f"2026-10-01T17:{i:02d}:00Z",
+                "regime": "trend",
+                "source_commit": "a" * 40,
+                "context": {"bar": i},
+                "comparison_contract": _contract(),
+                "subsystem_votes": {},
+                "branches": [
+                    {"kind": "actual", "label": "actual", "params": {"action": "long"}},
+                    {"kind": "stop", "label": "stop_sparse_low", "params": {"stop_multiplier": 0.50}},
+                    {"kind": "stop", "label": "stop_sparse_high", "params": {"stop_multiplier": 3.00}},
+                ],
+            }
+        )
+        store.record_outcome(
+            {
+                "decision_id": decision["decision_id"],
+                "label": "actual",
+                "utility": 0.0,
+                "observed_at": f"2026-10-01T18:{i:02d}:00Z",
+                "evidence": [f"actual:{i}"],
+            }
+        )
+        for label, utility in (("stop_sparse_low", 1.0), ("stop_sparse_high", 0.9)):
+            store.record_outcome(
+                {
+                    "decision_id": decision["decision_id"],
+                    "label": label,
+                    "utility": utility,
+                    "observed_at": f"2026-10-01T18:{i:02d}:30Z",
+                    "evidence": [f"{label}:{i}"],
+                }
+            )
+
+    rows = [
+        row for row in store.hypotheses(min_samples=5)
+        if row["branch_label"] in {"stop_sparse_low", "stop_sparse_high"}
+    ]
+    assert len(rows) == 2
+    for row in rows:
+        assert row["candidate_eligible"] is True
+        assert row["parameter_basin"]["neighbor_count"] == 0
+        assert row["parameter_basin"]["family_evaluable_point_count"] == 2
+        assert row["parameter_basin"]["local_support_missing"] is True
+        assert "parameter_local_support_missing" in row["robustness_blockers"]
+        assert row["robust_candidate_eligible"] is False
+
+
+def test_parallax_parameter_basin_never_crosses_hidden_non_axis_parameters(tmp_path):
+    store = ParallaxStore(tmp_path)
+    for i in range(6):
+        decision = store.record_decision(
+            {
+                "asset": "NQ",
+                "action": "long",
+                "observed_at": f"2026-10-01T19:{i:02d}:00Z",
+                "regime": "trend",
+                "source_commit": "a" * 40,
+                "context": {"bar": i},
+                "comparison_contract": _contract(),
+                "subsystem_votes": {},
+                "branches": [
+                    {"kind": "actual", "label": "actual", "params": {"action": "long"}},
+                    {
+                        "kind": "stop",
+                        "label": "stop_filter_a",
+                        "params": {"stop_multiplier": 1.00, "entry_filter": "a"},
+                    },
+                    {
+                        "kind": "stop",
+                        "label": "stop_filter_b",
+                        "params": {"stop_multiplier": 1.25, "entry_filter": "b"},
+                    },
+                ],
+            }
+        )
+        store.record_outcome(
+            {
+                "decision_id": decision["decision_id"],
+                "label": "actual",
+                "utility": 0.0,
+                "observed_at": f"2026-10-01T20:{i:02d}:00Z",
+                "evidence": [f"actual:{i}"],
+            }
+        )
+        for label in ("stop_filter_a", "stop_filter_b"):
+            store.record_outcome(
+                {
+                    "decision_id": decision["decision_id"],
+                    "label": label,
+                    "utility": 1.0,
+                    "observed_at": f"2026-10-01T20:{i:02d}:30Z",
+                    "evidence": [f"{label}:{i}"],
+                }
+            )
+
+    rows = [
+        row for row in store.hypotheses(min_samples=5)
+        if row["branch_label"] in {"stop_filter_a", "stop_filter_b"}
+    ]
+    assert len(rows) == 2
+    for row in rows:
+        assert row["candidate_eligible"] is True
+        assert row["parameter_basin"]["neighbor_count"] == 0
+        assert row["parameter_basin"]["family_evaluable_point_count"] == 1
+        assert row["parameter_basin"]["local_support_missing"] is False
+        assert row["parameter_basin"]["evaluable"] is False
+        assert row["robust_candidate_eligible"] is True
+
+
 def test_dreamstate_generates_scoped_hypothesis_but_caps_authority_at_qualified_shadow(tmp_path):
     store = ParallaxStore(tmp_path)
     for i in range(5):
