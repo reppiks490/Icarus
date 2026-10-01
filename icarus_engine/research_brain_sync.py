@@ -204,7 +204,7 @@ def _validation(result: Mapping[str, Any]) -> dict[str, bool | None]:
     # ablation, calibration, OOD/drift robustness, deterministic rerun equality,
     # or independent verification. Those remain explicitly unresolved.
     out: dict[str, bool | None] = {gate: None for gate in REQUIRED_CANDIDATE_GATES}
-    out["provenance"] = _provenance_ok_placeholder = True  # overwritten by caller
+    out["provenance"] = None  # exact job/result provenance is evaluated by the caller
     out["oos"] = _oos_ok(result)
     out["protected_holdout"] = _holdout_ok(result)
     # Cost and slippage are stressed, but the combined gate includes latency.
