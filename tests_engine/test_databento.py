@@ -227,7 +227,7 @@ def test_live_error_message_fails_closed_instead_of_silently_waiting():
     assert "failed to resolve" in meta["live_error"]
 
 
-def test_fatal_core_error_cannot_be_cleared_by_buffered_market_data_before_reconnect():
+def test_nonrecoverable_core_error_cannot_be_cleared_by_buffered_data_or_reconnect_callback():
     live = FakeLive({
         "ohlcv-1s": [
             Error("invalid core subscription", code=5),
@@ -239,18 +239,15 @@ def test_fatal_core_error_cannot_be_cleared_by_buffered_market_data_before_recon
     with pytest.raises(RuntimeError, match="code=5.*invalid core subscription"):
         feed.recent_ex("NQ=F", 1)
     assert feed._second_bars["NQ=F"]  # buffered data arrived after the fatal error
+    live.reconnect_callback("2026-09-30T10:00:00Z", "2026-09-30T10:00:02Z")
+    live.callback(Trade(1_002, 101.0, 1, sequence=2))
+
+    with pytest.raises(RuntimeError, match="code=5.*invalid core subscription"):
+        feed._raise_live_error("NQ=F")
     meta = feed.meta("NQ=F")
     assert meta["core_session_ok"] is False
+    assert meta["core_error_code"] == 5
     assert "invalid core subscription" in meta["live_error"]
-
-    # A real SDK reconnect establishes a new integrity boundary. Only a subsequent
-    # valid market event may clear the prior fatal error.
-    live.reconnect_callback("before", "after")
-    live.callback(Trade(1_002, 101.0, 1, sequence=2))
-    feed._raise_live_error("NQ=F")
-    meta = feed.meta("NQ=F")
-    assert meta["core_session_ok"] is True
-    assert "live_error" not in meta
 
 
 def test_fatal_core_session_error_marks_every_active_symbol_failed_closed():
@@ -350,6 +347,20 @@ def test_recoverable_core_fatal_error_rebuilds_shared_session_with_replay():
     assert feed._core_error_code is None
     assert {row["symbols"] for row in second.subscriptions} == {"NQ.v.0", "ES.v.0"}
     assert all("start" in row for row in second.subscriptions)
+
+
+def test_replay_aged_out_error_never_auto_discards_missing_interval():
+    first = FakeLive()
+    unused = FakeLive()
+    feed = make_feed(lives=[first, unused])
+    feed.prepare_live(["NQ=F"])
+    feed._dispatch_shared_live(Error("replay start aged out", code=8))
+
+    assert feed.start_live("NQ=F") is first
+    assert unused.started is False
+    assert feed._core_error_code == 8
+    with pytest.raises(RuntimeError, match="code=8"):
+        feed._raise_live_error("NQ=F")
 
 
 def test_connection_limit_error_never_auto_reopens_a_new_session():
@@ -1173,16 +1184,27 @@ def test_real_live_factory_requests_heartbeats_reconnect_and_no_skip():
     assert captured["slow_reader_behavior"] == "warn"
 
 
-def test_reconnect_gap_is_published_in_feed_metadata():
-    live = FakeLive({"ohlcv-1s": [Ohlcv(1000, 100, 101, 99, 100.5)]})
-    feed = make_feed(lives=[live])
+def test_reconnect_gap_is_published_and_replayed_from_actual_boundary():
+    first = FakeLive({"ohlcv-1s": [Ohlcv(1_000, 100, 101, 99, 100.5)]})
+    second = FakeLive({"ohlcv-1s": [Ohlcv(1_001, 100.5, 101.5, 100, 101.0)]})
+    feed = make_feed(lives=[first, second])
     feed.recent_ex("NQ=F", 1)
-    assert callable(live.reconnect_callback)
-    live.reconnect_callback("2026-09-30T10:00:00Z", "2026-09-30T10:00:02Z")
+    assert callable(first.reconnect_callback)
+
+    first.reconnect_callback("2026-09-30T10:00:00Z", "2026-09-30T10:00:02Z")
     meta = feed.meta("NQ=F")
     assert meta["reconnect_count"] == 1
     assert meta["last_reconnect_gap"]["previous"].endswith("10:00:00Z")
     assert meta["last_reconnect_gap"]["resumed"].endswith("10:00:02Z")
+    assert meta["core_session_ok"] is False
+    assert meta["core_error_code"] == 7
+
+    feed.start_live("NQ=F")
+    assert first.stopped is True
+    assert second.started is True
+    assert feed.meta("NQ=F")["core_session_ok"] is True
+    starts = {row.get("start") for row in second.subscriptions}
+    assert starts == {"2026-09-30T09:59:59Z"}
 
 
 def test_portfolio_stop_closes_databento_live_sessions(monkeypatch, tmp_path):
