@@ -45,7 +45,7 @@ def test_mcp_projector_surfaces_only_valid_important_repository_events(tmp_path:
     )
 
     status = MCPControlPlane(tmp_path).status()
-    assert status["schema_version"] == "icarus-mcp-operator-evidence-v2"
+    assert status["schema_version"] == "icarus-mcp-operator-evidence-v3"
     assert status["status"] == "green"
     assert status["authority"]["read_only"] is True
     assert status["authority"]["execution_authorized"] is False
