@@ -211,6 +211,22 @@ def record_engine_system_evolution(evolution_json: str) -> dict:
 
 
 @mcp.tool()
+def record_engine_system_evolution_item(item_json: str) -> dict:
+    """Add or update one important MCP repair/audit/evolution in the ICARUS System panel.
+
+    This additive path preserves all sibling items already in the ledger. It is the
+    preferred mirror path after an MCP repair or validation milestone.
+    """
+    try:
+        item = json.loads(item_json)
+    except json.JSONDecodeError as ex:
+        return {"error": f"item_json is invalid JSON: {ex}"}
+    if not isinstance(item, dict):
+        return {"error": "item_json must decode to an object"}
+    return _safe_engine(lambda: _engine_post("/admin/system/evolution/item", {"item": item}))
+
+
+@mcp.tool()
 def engine_configuration(asset: str = "NQ") -> dict:
     """Effective strategy inputs plus chart timeframe/type/fill/source capabilities for one engine asset."""
     asset = asset.strip().upper()
