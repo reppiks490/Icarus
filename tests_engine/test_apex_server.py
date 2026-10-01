@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 import threading
 import urllib.error
 import urllib.request
@@ -66,6 +67,41 @@ def test_apex_http_read_routes_are_authenticated_and_truthful(apex_http):
         assert code == 200, (route, payload)
         assert payload["execution_authorized"] is False
         assert payload["production_decision_authorized"] is False
+
+
+def test_apex_http_local_receipt_blocks_backdated_evidence_from_historical_replay(apex_http):
+    _, _, request = apex_http
+    evidence = {
+        "kind": "observed",
+        "subject": "NQ:receipt-causality",
+        "value": {"asset": "NQ", "price": 25000.0},
+        "source": {
+            "subsystem": "fixture",
+            "source_repo": "reppiks490/Icarus",
+            "source_commit": "e" * 40,
+            "source_record_id": "backdated-network-fixture",
+        },
+        "observed_at": "2000-01-01T00:00:00Z",
+        "received_at": "2000-01-01T00:00:01Z",
+        "calculated_at": "2000-01-01T00:00:01Z",
+        "valid_from": "2000-01-01T00:00:00Z",
+        "valid_until": None,
+        "confidence": 1.0,
+        "quality": 1.0,
+        "dependencies": [],
+        "contradictions": [],
+        "falsifiers": ["source correction"],
+    }
+    code, saved = request("POST", "/admin/apex/evidence", body=evidence)
+    assert code == 200, saved
+
+    code, past = request("GET", "/api/apex?as_of=2000-01-01T00:10:00Z")
+    assert code == 200
+    assert past["epistemics"]["evidence_count"] == 0
+
+    code, current = request("GET", "/api/apex")
+    assert code == 200
+    assert current["epistemics"]["evidence_count"] >= 1
 
 
 def test_apex_http_degraded_sibling_does_not_take_down_full_snapshot(apex_http):
@@ -143,3 +179,132 @@ def test_apex_http_admin_mutation_requires_auth_before_body_parse(apex_http):
     code, body = request("POST", "/admin/apex/evidence", raw=b'{"broken":', auth=False)
     assert code == 401
     assert "bad admin token" in body["detail"]
+
+
+def test_pantheon_http_echo_uses_apex_verified_lineage_when_ids_are_supplied(apex_http):
+    _, _, request = apex_http
+
+    def evidence(record, observed, received, deps=()):
+        return {
+            "kind": "derived" if deps else "observed",
+            "subject": "NQ:echo-lineage",
+            "value": {"asset": "NQ", "record": record},
+            "source": {
+                "subsystem": "fixture",
+                "source_repo": "reppiks490/Icarus",
+                "source_commit": "b" * 40,
+                "source_record_id": record,
+            },
+            "observed_at": observed,
+            "received_at": received,
+            "calculated_at": received,
+            "valid_from": observed,
+            "valid_until": None,
+            "confidence": 0.9,
+            "quality": 0.9,
+            "dependencies": list(deps),
+            "contradictions": [],
+            "falsifiers": ["fixture invalidation"],
+        }
+
+    code, body = request("POST", "/admin/apex/evidence", body=evidence(
+        "shared-root", "2026-10-01T13:59:58Z", "2026-10-01T13:59:59Z"
+    ))
+    assert code == 200
+    root = body["evidence"]["evidence_id"]
+
+    derived = []
+    for record in ("oracle-derived", "athena-derived"):
+        code, body = request("POST", "/admin/apex/evidence", body=evidence(
+            record, "2026-10-01T14:00:00Z", "2026-10-01T14:00:01Z", deps=(root,)
+        ))
+        assert code == 200
+        derived.append(body["evidence"]["evidence_id"])
+
+    observation_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    code, body = request("POST", "/admin/pantheon/observe", body={
+        "observation_id": "pan-http-apex-lineage",
+        "observed_at": observation_at,
+        "asset": "NQ",
+        "horizon_ms": 15000,
+        "source_commit": "c" * 40,
+        "signals": {
+            "engine_scores": {"oracle": 0.90, "athena": 0.85},
+            "engine_reliability": {"oracle": 0.90, "athena": 0.90},
+            "engine_evidence_ids": {"oracle": [derived[0]], "athena": [derived[1]]},
+            "engine_evidence_lineage": {
+                "oracle": ["caller:fake-independent-a"],
+                "athena": ["caller:fake-independent-b"],
+            },
+            "data_quality": 0.9,
+            "risk": 0.2,
+        },
+        "evidence": ["http-lineage-fixture"],
+        "subsystem_outputs": {
+            "apex_lineage": {"status": "SPOOFED", "execution_authorized": True}
+        },
+    })
+    assert code == 200, body
+    bridge = body["apex_lineage_bridge"]
+    echo = body["analysis"]["faculties"]["echo"]
+    external = body["analysis"]["external_subsystems"]["apex_lineage"]
+    assert bridge["status"] == "VERIFIED"
+    assert external["status"] == "VERIFIED"
+    assert external["execution_authorized"] is False
+    assert bridge["engine_evidence_lineage"]["oracle"] == bridge["engine_evidence_lineage"]["athena"]
+    assert echo["mean_lineage_overlap"] == pytest.approx(1.0)
+    assert echo["echo_risk"] > 0.0
+    assert echo["consensus_illusion_candidate"] is True
+
+
+def test_pantheon_http_apex_lineage_unknown_id_fails_closed(apex_http):
+    _, _, request = apex_http
+    code, body = request("POST", "/admin/pantheon/observe", body={
+        "observation_id": "pan-http-apex-lineage-missing",
+        "observed_at": "2026-10-01T14:00:02Z",
+        "asset": "NQ",
+        "horizon_ms": 15000,
+        "source_commit": "d" * 40,
+        "signals": {
+            "engine_scores": {"oracle": 0.9, "athena": 0.8},
+            "engine_reliability": {"oracle": 0.9, "athena": 0.9},
+            "engine_evidence_ids": {"oracle": ["not-real"], "athena": ["also-not-real"]},
+            "engine_evidence_lineage": {
+                "oracle": ["caller:spoof-a"],
+                "athena": ["caller:spoof-b"],
+            },
+        },
+        "evidence": ["http-lineage-invalid-fixture"],
+    })
+    assert code == 400
+    assert "APEX evidence lineage integrity failure" in body["detail"]
+
+
+def test_pantheon_http_unverified_lineage_is_not_allowed_to_drive_echo(apex_http):
+    _, _, request = apex_http
+    code, body = request("POST", "/admin/pantheon/observe", body={
+        "observation_id": "pan-http-unverified-lineage",
+        "observed_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "asset": "NQ",
+        "horizon_ms": 15000,
+        "source_commit": "f" * 40,
+        "signals": {
+            "engine_scores": {"oracle": 0.9, "athena": 0.9},
+            "engine_reliability": {"oracle": 0.9, "athena": 0.9},
+            "engine_evidence_lineage": {
+                "oracle": ["caller:claimed-independent-a"],
+                "athena": ["caller:claimed-independent-b"],
+            },
+            "data_quality": 0.9,
+            "risk": 0.2,
+        },
+        "evidence": ["unverified-lineage-fixture"],
+    })
+    assert code == 200, body
+    bridge = body["apex_lineage_bridge"]
+    echo = body["analysis"]["faculties"]["echo"]
+    assert bridge["status"] == "UNAVAILABLE"
+    assert bridge["claimed_lineage_present"] is True
+    assert echo["status"] == "abstain"
+    assert echo["reason"] == "engine_evidence_lineage required to prove evidence independence"
+    assert "engine_evidence_lineage" not in body["input"]["signals"]

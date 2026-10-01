@@ -63,3 +63,98 @@ def test_apex_kernel_surfaces_economic_world_state(tmp_path):
     assert out["economic_world"]["domains"]["growth"]["state"] == "slowing"
     assert out["economic_world"]["domains"]["growth"]["market_response"] == "equities_up"
     assert out["economic_world"]["domains"]["credit"]["status"] == "UNAVAILABLE"
+
+
+def _apex_evidence(*, record, observed, received, deps=()):
+    return {
+        "kind": "derived" if deps else "observed",
+        "subject": "NQ:echo-lineage",
+        "value": {"asset": "NQ", "record": record},
+        "source": {
+            "subsystem": "fixture",
+            "source_repo": "reppiks490/Icarus",
+            "source_commit": "a" * 40,
+            "source_record_id": record,
+        },
+        "observed_at": observed,
+        "received_at": received,
+        "calculated_at": received,
+        "valid_from": observed,
+        "valid_until": None,
+        "confidence": 0.9,
+        "quality": 0.9,
+        "dependencies": list(deps),
+        "contradictions": [],
+        "falsifiers": ["fixture invalidation"],
+    }
+
+
+def test_apex_resolves_engine_evidence_ids_to_shared_root_lineage(tmp_path):
+    from icarus_engine.apex.kernel import ApexKernel
+    k = ApexKernel(tmp_path)
+    root = k.ingest_evidence(_apex_evidence(
+        record="shared-root",
+        observed="2026-10-01T13:59:58Z",
+        received="2026-10-01T13:59:59Z",
+    ))["evidence"]["evidence_id"]
+    left = k.ingest_evidence(_apex_evidence(
+        record="derived-left",
+        observed="2026-10-01T14:00:00Z",
+        received="2026-10-01T14:00:01Z",
+        deps=(root,),
+    ))["evidence"]["evidence_id"]
+    right = k.ingest_evidence(_apex_evidence(
+        record="derived-right",
+        observed="2026-10-01T14:00:00Z",
+        received="2026-10-01T14:00:01Z",
+        deps=(root,),
+    ))["evidence"]["evidence_id"]
+
+    out = k.resolve_engine_evidence_lineage(
+        {"oracle": [left], "athena": [right]},
+        as_of="2026-10-01T14:00:02Z",
+    )
+    assert out["status"] == "VERIFIED"
+    assert out["engine_evidence_lineage"]["oracle"] == out["engine_evidence_lineage"]["athena"]
+    assert len(out["engine_evidence_lineage"]["oracle"]) == 1
+    assert out["engine_support"]["oracle"]["integrity_ok"] is True
+    assert out["execution_authorized"] is False
+    assert out["production_decision_authorized"] is False
+
+
+def test_apex_lineage_resolution_rejects_unknown_or_future_evidence(tmp_path):
+    from icarus_engine.apex.kernel import ApexKernel
+    k = ApexKernel(tmp_path)
+    saved = k.ingest_evidence(_apex_evidence(
+        record="future-receipt",
+        observed="2026-10-01T14:00:00Z",
+        received="2026-10-01T14:00:05Z",
+    ))["evidence"]["evidence_id"]
+
+    import pytest
+    with pytest.raises(ValueError, match="integrity failure"):
+        k.resolve_engine_evidence_lineage({"oracle": ["missing-id"]}, as_of="2026-10-01T14:00:02Z")
+    with pytest.raises(ValueError, match="integrity failure"):
+        k.resolve_engine_evidence_lineage({"oracle": [saved]}, as_of="2026-10-01T14:00:02Z")
+
+
+def test_apex_lineage_tokens_are_compact_even_for_long_source_identity(tmp_path):
+    from icarus_engine.apex.kernel import ApexKernel
+    k = ApexKernel(tmp_path)
+    body = _apex_evidence(
+        record="r" * 120,
+        observed="2026-10-01T14:00:00Z",
+        received="2026-10-01T14:00:01Z",
+    )
+    body["source"]["source_repo"] = "repo/" + ("x" * 180)
+    saved = k.ingest_evidence(body)["evidence"]["evidence_id"]
+    out = k.resolve_engine_evidence_lineage(
+        {"oracle": [saved]},
+        as_of="2026-10-01T14:00:02Z",
+    )
+    token = out["engine_evidence_lineage"]["oracle"][0]
+    full_root = out["engine_support"]["oracle"]["root_ids"][0]
+    assert token.startswith("apex-root:")
+    assert len(token) == len("apex-root:") + 32
+    assert len(full_root) > len(token)
+    assert out["engine_support"]["oracle"]["root_tokens"] == [token]

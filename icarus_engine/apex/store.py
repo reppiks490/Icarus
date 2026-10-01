@@ -40,6 +40,7 @@ class ApexStore:
                     calculated_at TEXT NOT NULL,
                     observed_ts REAL NOT NULL,
                     received_ts REAL NOT NULL,
+                    local_received_ts REAL,
                     semantic_json TEXT NOT NULL,
                     recorded_at TEXT NOT NULL
                 );
@@ -175,6 +176,18 @@ class ApexStore:
                     ON conscience_verdicts(as_of_ts, belief_id);
                 """
             )
+            evidence_columns = {
+                str(row["name"]) for row in self._conn.execute("PRAGMA table_info(evidence)").fetchall()
+            }
+            if "local_received_ts" not in evidence_columns:
+                self._conn.execute("ALTER TABLE evidence ADD COLUMN local_received_ts REAL")
+            self._conn.execute(
+                "UPDATE evidence SET local_received_ts=received_ts WHERE local_received_ts IS NULL"
+            )
+            self._conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_apex_evidence_local_asof "
+                "ON evidence(observed_ts, received_ts, local_received_ts)"
+            )
 
     @staticmethod
     def _utc_now() -> str:
@@ -198,14 +211,31 @@ class ApexStore:
         out = dict(semantic)
         out["evidence_id"] = row["evidence_id"]
         out["recorded_at"] = row["recorded_at"]
+        local_received_ts = row["local_received_ts"]
+        out["local_received_at"] = (
+            None
+            if local_received_ts is None
+            else datetime.fromtimestamp(float(local_received_ts), timezone.utc).isoformat().replace("+00:00", "Z")
+        )
         return out
 
-    def record_evidence(self, body: Mapping[str, Any]) -> dict[str, Any]:
+    def record_evidence(
+        self,
+        body: Mapping[str, Any],
+        *,
+        local_received_at: str | None = None,
+    ) -> dict[str, Any]:
         semantic = normalize_evidence(body)
         eid = evidence_id(semantic)
-        recorded_at = self._utc_now()
         observed_ts = parse_utc(semantic["observed_at"], "observed_at").timestamp()
         received_ts = parse_utc(semantic["received_at"], "received_at").timestamp()
+        if local_received_at is None:
+            local_received_ts = received_ts
+            recorded_at = self._utc_now()
+        else:
+            local_received_dt = parse_utc(local_received_at, "local_received_at")
+            local_received_ts = local_received_dt.timestamp()
+            recorded_at = local_received_dt.isoformat().replace("+00:00", "Z")
         raw = json.dumps(semantic, sort_keys=True, separators=(",", ":"), allow_nan=False)
 
         with self._lock, self._conn:
@@ -213,12 +243,13 @@ class ApexStore:
                 """
                 INSERT OR IGNORE INTO evidence(
                     evidence_id, subject, kind, observed_at, received_at,
-                    calculated_at, observed_ts, received_ts, semantic_json, recorded_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    calculated_at, observed_ts, received_ts, local_received_ts,
+                    semantic_json, recorded_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (eid, semantic["subject"], semantic["kind"], semantic["observed_at"],
                  semantic["received_at"], semantic["calculated_at"], observed_ts,
-                 received_ts, raw, recorded_at),
+                 received_ts, local_received_ts, raw, recorded_at),
             )
             row = self._conn.execute("SELECT * FROM evidence WHERE evidence_id = ?", (eid,)).fetchone()
         if row is None:
@@ -228,8 +259,11 @@ class ApexStore:
 
     def evidence_as_of(self, as_of: str, *, subject: str | None = None) -> list[dict[str, Any]]:
         boundary = parse_utc(as_of, "as_of").timestamp()
-        sql = "SELECT * FROM evidence WHERE observed_ts <= ? AND received_ts <= ?"
-        params: list[Any] = [boundary, boundary]
+        sql = (
+            "SELECT * FROM evidence WHERE observed_ts <= ? AND received_ts <= ? "
+            "AND COALESCE(local_received_ts, received_ts) <= ?"
+        )
+        params: list[Any] = [boundary, boundary, boundary]
         if subject is not None:
             if not isinstance(subject, str) or not subject.strip():
                 raise ValueError("subject filter must be a non-empty string")

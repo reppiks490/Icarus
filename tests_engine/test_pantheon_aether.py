@@ -268,11 +268,14 @@ def test_pantheon_is_visible_in_trader_interface():
     assert "AETHER alpha food web" in ui
     assert "Cognitive genesis" in ui
     assert "Echo risk" in ui
+    assert "APEX lineage" in ui
     assert "SIBYL structural evidence bridge" in ui
     assert 'p.path == "/api/pantheon"' in server
     assert 'p.path == "/admin/pantheon/observe"' in server
     assert 'p.path == "/admin/pantheon/claim"' in server
     assert '"pantheon": pantheon.snapshot' in server
+    assert "resolve_engine_evidence_lineage" in server
+    assert '"apex_lineage"' in server
     for subsystem in ("PANTHEON", "NEMESIS Ω", "GÖDEL Ω", "SOCRATES", "ANANKĒ", "EX NIHILO", "MINT Ω", "NULLSPACE Ω", "ARCHON Ω", "AETHER Ω"):
         assert subsystem in brain
 

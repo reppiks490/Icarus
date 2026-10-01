@@ -1228,7 +1228,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._json(400, {"detail": "JSON body must be an object"})
             if p.path == "/admin/apex/evidence":
                 try:
-                    return self._json(200, apex.ingest_evidence(body))
+                    return self._json(200, apex.ingest_evidence(body, enforce_local_receipt=True))
                 except (ValueError, TypeError) as ex:
                     return self._json(400, {"detail": str(ex)})
             if p.path == "/admin/apex/outcome":
@@ -1411,6 +1411,33 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                         existing_outputs = {}
                     if not isinstance(existing_outputs, dict):
                         raise ValueError("subsystem_outputs must be an object")
+                    signals = payload.get("signals", {})
+                    if not isinstance(signals, dict):
+                        raise ValueError("signals must be an object")
+                    signals = dict(signals)
+                    claimed_lineage = signals.pop("engine_evidence_lineage", None)
+                    apex_lineage = {
+                        "schema_version": "icarus-apex-engine-lineage-v1",
+                        "status": "UNAVAILABLE",
+                        "reason": "engine_evidence_ids not supplied",
+                        "engine_evidence_lineage": {},
+                        "engine_support": {},
+                        "claimed_lineage_present": claimed_lineage is not None,
+                        "lineage_owner": "APEX_EVIDENCE_ANCESTRY",
+                        "execution_authorized": False,
+                        "production_decision_authorized": False,
+                    }
+                    if "engine_evidence_ids" in signals:
+                        apex_lineage = apex.resolve_engine_evidence_lineage(
+                            signals["engine_evidence_ids"],
+                            as_of=payload.get("observed_at"),
+                        )
+                        apex_lineage["claimed_lineage_present"] = claimed_lineage is not None
+                        # Only APEX-verified roots may drive ECHO on the network path.
+                        # Caller-provided lineage labels are audit-only and never
+                        # become evidence-independence input.
+                        signals["engine_evidence_lineage"] = apex_lineage["engine_evidence_lineage"]
+                    payload["signals"] = signals
                     psi_state = None
                     try:
                         psi_state = possibility.snapshot(payload.get("asset", ""))
@@ -1422,7 +1449,10 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                         psi_snapshot=psi_state,
                         existing=existing_outputs,
                     )
+                    # Reserved, server-owned provenance slot. Always overwrite caller data.
+                    payload["subsystem_outputs"]["apex_lineage"] = apex_lineage
                     result = pantheon.record_observation(payload)
+                    result["apex_lineage_bridge"] = apex_lineage
                     bridge = {"attempted": 0, "accepted": [], "errors": []}
                     try:
                         analysis = result.get("analysis") if isinstance(result, dict) else {}
