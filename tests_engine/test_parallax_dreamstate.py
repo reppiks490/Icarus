@@ -151,6 +151,25 @@ def test_dreamstate_generates_hypothesis_but_caps_authority_at_qualified_shadow(
     assert mirrored["eligible_for_regime_swap"] is True
 
 
+def test_dreamstate_keeps_one_active_trial_per_family_as_evidence_grows(tmp_path):
+    store = ParallaxStore(tmp_path)
+    for i in range(5):
+        _record_pair(store, i)
+    lab = DreamstateLab(tmp_path, parallax=store)
+    first = lab.refresh(min_samples=5)
+    active = [c for c in first["candidates"] if c["mutation"]["op"] == "set_execution_delay_bars"]
+    assert len(active) == 1
+    first_id = active[0]["candidate_id"]
+
+    _record_pair(store, 5)
+    second = lab.refresh(min_samples=5)
+    same_family = [c for c in second["candidates"] if c["family_id"] == active[0]["family_id"]]
+    assert len(same_family) == 1
+    assert same_family[0]["candidate_id"] == first_id
+    assert second["refresh"]["skipped_active_family"] >= 1
+    assert second["family_trial_budget"] == 12
+
+
 def test_dreamstate_failed_gate_is_terminal_for_candidate_revision(tmp_path):
     store = ParallaxStore(tmp_path)
     for i in range(5):
