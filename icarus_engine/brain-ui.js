@@ -43,7 +43,7 @@
   function renderBrain(b) {
     const el = document.querySelector('#brainPanel');
     if (!el) return;
-    const auth = b.authority || {}, learn = b.learning || {}, truth = b.truth_contract || {};
+    const auth = b.authority || {}, learn = b.learning || {}, truth = b.truth_contract || {}, sync = b.remote_sync || {};
     const agents = ((b.architecture || {}).agents || []);
     const subs = ((b.architecture || {}).subsystems || []);
     const lanes = ((b.architecture || {}).latency_tiers || []);
@@ -86,8 +86,10 @@
             <div class="tile"><div class="k">Candidate qualification share</div><div class="v">${pct(learn.qualified_share_of_decided)}</div></div>
             <div class="tile"><div class="k">True success rate</div><div class="v">${pct(truth.success_rate)}</div><div class="small muted">${h(truth.success_rate_status)}</div></div>
             <div class="tile"><div class="k">Router</div><div class="v">${h(auth.candidate_router||'—')}</div></div>
+            <div class="tile"><div class="k">Agent repo sync</div><div class="v ${statusClass(sync.status)}">${h(String(sync.status||'not configured').toUpperCase())}</div><div class="small muted">${h(sync.last_success_at?'last '+sync.last_success_at:'awaiting first verified ingest')}</div></div>
+            <div class="tile"><div class="k">Remote agent events</div><div class="v tnum">${num(sync.ingested_total)}</div><div class="small muted">poll ${num(sync.interval_seconds)}s · rejected ${num(sync.rejected_total)}</div></div>
           </div>
-          <div class="small muted" style="margin-top:9px">No 100%/omniscience claim is emitted. Millisecond targets apply only to the hot inference path; training, falsification and promotion stay off-path.</div>
+          <div class="small muted" style="margin-top:9px">No 100%/omniscience claim is emitted. Millisecond targets apply only to the hot inference path; training, falsification and promotion stay off-path. Custom-agent cloud output is accepted only after repository-event source allowlisting, execution_authorized=false validation, and exact Git-blob verification.</div>
         </div>
 
         <h3 class="small" style="margin:16px 0 8px">5 custom agents · distinct vital jobs</h3>
