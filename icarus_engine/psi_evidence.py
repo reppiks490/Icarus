@@ -208,7 +208,10 @@ class PsiEvidenceLedger:
             expires_ts = _finite(row.get("expires_ts"))
             if observed_ts is None or expires_ts is None:
                 continue
-            if not (observed_ts <= as_of_ts < expires_ts):
+            received_ts = _finite(row.get("received_ts"))
+            if received_ts is None:
+                continue
+            if not (observed_ts <= as_of_ts and received_ts <= as_of_ts < expires_ts):
                 continue
             feature = str(row.get("feature") or "")
             asset = str(row.get("asset") or "").upper()
@@ -222,7 +225,7 @@ class PsiEvidenceLedger:
         for row in self._memory.values():
             if asset and row["asset"] != asset:
                 continue
-            if row["observed_ts"] > as_of_ts:
+            if row["observed_ts"] > as_of_ts or row["received_ts"] > as_of_ts:
                 continue
             if not include_expired and row["expires_ts"] <= as_of_ts:
                 continue
@@ -244,9 +247,9 @@ class PsiEvidenceLedger:
                               observed_at,observed_ts,received_ts,expires_ts,ttl_seconds,
                               payload_hash,created_at
                        FROM evidence
-                       WHERE asset=? AND observed_ts<=? AND expires_ts>?
+                       WHERE asset=? AND observed_ts<=? AND received_ts<=? AND expires_ts>?
                        ORDER BY observed_ts DESC, received_ts DESC, evidence_id DESC""",
-                    (asset, as_of_ts, as_of_ts),
+                    (asset, as_of_ts, as_of_ts, as_of_ts),
                 ).fetchall()
             ]
 
@@ -317,8 +320,8 @@ class PsiEvidenceLedger:
             selected = self._select(all_causal, as_of_ts=ts, asset_filter=asset)
             total = len(all_causal)
         else:
-            where = ["observed_ts<=?"]
-            params: list[Any] = [ts]
+            where = ["observed_ts<=?", "received_ts<=?"]
+            params: list[Any] = [ts, ts]
             if asset:
                 where.append("asset=?")
                 params.append(asset)
@@ -338,8 +341,8 @@ class PsiEvidenceLedger:
                         (*params, limit),
                     ).fetchall()
                 ]
-                active_where = ["observed_ts<=?", "expires_ts>?"]
-                active_params: list[Any] = [ts, ts]
+                active_where = ["observed_ts<=?", "received_ts<=?", "expires_ts>?"]
+                active_params: list[Any] = [ts, ts, ts]
                 if asset:
                     active_where.append("asset=?")
                     active_params.append(asset)
@@ -354,8 +357,8 @@ class PsiEvidenceLedger:
                         tuple(active_params),
                     ).fetchall()
                 ]
-                count_where = ["observed_ts<=?"]
-                count_params: list[Any] = [ts]
+                count_where = ["observed_ts<=?", "received_ts<=?"]
+                count_params: list[Any] = [ts, ts]
                 if asset:
                     count_where.append("asset=?")
                     count_params.append(asset)
