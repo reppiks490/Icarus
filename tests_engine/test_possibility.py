@@ -412,6 +412,8 @@ def test_durable_evidence_exact_receipt_is_idempotent(tmp_path):
     assert first["inserted"] == 1
     assert second["inserted"] == 0
     assert second["idempotent_duplicates"] == 1
+    assert second["stored"]["basis_pressure"]["evidence_id"] == first["stored"]["basis_pressure"]["evidence_id"]
+    assert second["stored"]["basis_pressure"]["received_ts"] == first["stored"]["basis_pressure"]["received_ts"]
     ledger = engine.evidence_snapshot("NQ", include_expired=True)
     assert ledger["total_history_count"] == 1
 
