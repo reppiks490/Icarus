@@ -137,10 +137,10 @@ class Databento:
         # trades + MBO/MBP-10). Keep the public tick tape event-unique instead of
         # double-counting one exchange trade when depth is enabled.
         self._trade_seen: Dict[str, set[Tuple[int, float, int, str, int]]] = collections.defaultdict(set)
-        self._depth: Dict[str, Deque[Dict[str, Any]]] = collections.defaultdict(
+        self._depth: Dict[Tuple[str, str], Deque[Dict[str, Any]]] = collections.defaultdict(
             lambda: collections.deque(maxlen=max(1000, int(max_depth)))
         )
-        self._depth_seen: Dict[str, set[Tuple[Any, ...]]] = collections.defaultdict(set)
+        self._depth_seen: Dict[Tuple[str, str], set[Tuple[Any, ...]]] = collections.defaultdict(set)
         self._last_price: Dict[str, float] = {}
         self._last_price_order_ns: Dict[str, int] = {}
         self._feed_time: Dict[str, int] = {}
@@ -322,18 +322,20 @@ class Databento:
         )
 
     def _append_depth_locked(self, symbol: str, row: Dict[str, Any]) -> bool:
+        schema = str(row.get("schema") or "unknown")
+        bucket = (str(symbol), schema)
         key = self._depth_key(row)
-        seen = self._depth_seen[symbol]
+        seen = self._depth_seen[bucket]
         if key in seen:
             return False
-        q = self._depth[symbol]
+        q = self._depth[bucket]
         order = self._depth_order_key(row)
         if not q or order >= self._depth_order_key(q[-1]):
             q.append(row)
             seen.add(key)
             if q.maxlen is not None and len(seen) > len(q):
                 # deque maxlen may have evicted the oldest row.
-                self._depth_seen[symbol] = {self._depth_key(x) for x in q}
+                self._depth_seen[bucket] = {self._depth_key(x) for x in q}
             return True
         rows = list(q)
         orders = [self._depth_order_key(x) for x in rows]
@@ -343,8 +345,8 @@ class Databento:
             rows = rows[-q.maxlen:]
         q.clear()
         q.extend(rows)
-        self._depth_seen[symbol] = {self._depth_key(x) for x in rows}
-        return key in self._depth_seen[symbol]
+        self._depth_seen[bucket] = {self._depth_key(x) for x in rows}
+        return key in self._depth_seen[bucket]
 
     @staticmethod
     def _trade_key(tick: TradeTick) -> Tuple[int, float, int, str, int]:
@@ -1318,13 +1320,12 @@ class Databento:
         key = str(symbol)
         self._prepare_depth_live([key], schema)
         with self._lock:
-            have = any(row.get("schema") == schema for row in self._depth[key])
             ready = self._depth_ready[(key, schema)]
-        if not have:
+        if not ready.is_set():
             ready.wait(timeout=2.0)
         self._raise_depth_error(key, schema)
         with self._lock:
-            rows = [row for row in self._depth[key] if row.get("schema") == schema]
+            rows = list(self._depth[(key, schema)])
         rows.sort(key=lambda row: (
             int(row.get("ts_recv_ns") or row.get("ts_event_ns") or 0),
             int(row.get("ts_event_ns") or 0),
