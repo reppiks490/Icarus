@@ -59,7 +59,11 @@ class TradeTick:
 class Databento:
     """Continuous CME feed backed by Databento Historical + Live APIs."""
 
-    GRANULARITIES = (1, 2, 5, 10, 15, 20, 30, 60, 120, 180, 240, 300, 600, 900, 1200, 1800, 3600, 14400, 86400)
+    GRANULARITIES = (
+        1, 2, 5, 10, 15, 20, 30,
+        60, 120, 180, 240, 300, 600, 900, 1200, 1800, 2700,
+        3600, 7200, 10800, 14400, 86400, 604800,
+    )
     DATASET = _DATASET
     HISTORICAL_START_TS = _GLBX_HISTORY_START_TS
 
