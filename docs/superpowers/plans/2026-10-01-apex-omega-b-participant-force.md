@@ -193,7 +193,44 @@ Run: `python -m pytest tests_engine/test_apex_force_field.py -q`
 
 Update `docs/icarus/APEX_OMEGA.md`; then commit `feat(apex): add participant force field`.
 
-### Task 6: Project-B verification gate
+### Task 6: Persist participant and force state
+
+**Files:**
+- Modify: `icarus_engine/apex/store.py`
+- Modify: `icarus_engine/apex/participants.py`
+- Modify: `icarus_engine/apex/force_field.py`
+- Create: `tests_engine/test_apex_participant_persistence.py`
+
+**Interfaces:**
+- Produces:
+  - `ApexStore.record_participant_state(state: Mapping[str, Any]) -> dict[str, Any]`
+  - `ApexStore.participant_states_as_of(as_of: str, *, asset: str | None = None) -> list[dict[str, Any]]`
+  - `ApexStore.record_force_field(field: Mapping[str, Any]) -> dict[str, Any]`
+  - `ApexStore.force_fields_as_of(as_of: str, *, asset: str | None = None) -> list[dict[str, Any]]`
+
+- [ ] **Step 1: Write RED durability tests**
+
+Cover append-only participant-state identity, idempotent force-field retry, historical as-of replay, source-evidence lineage retention, and reopen/replay determinism.
+
+- [ ] **Step 2: Run RED**
+
+Run: `python -m pytest tests_engine/test_apex_participant_persistence.py -q`  
+Expected: FAIL because Project-B durable tables/methods do not exist.
+
+- [ ] **Step 3: Add additive WAL tables and persistence methods**
+
+Add `participant_states` and `force_fields` tables without destructive migration. Persist exact source evidence IDs and distinct as-of/calculated clocks.
+
+- [ ] **Step 4: Run GREEN**
+
+Run: `python -m pytest tests_engine/test_apex_participant_persistence.py -q`  
+Expected: PASS.
+
+- [ ] **Step 5: Commit**
+
+`git add icarus_engine/apex/store.py icarus_engine/apex/participants.py icarus_engine/apex/force_field.py tests_engine/test_apex_participant_persistence.py && git commit -m "feat(apex): persist participant force state"`
+
+### Task 7: Project-B verification gate
 
 - [ ] Run: `python -m pytest tests_engine/test_apex_participants.py tests_engine/test_apex_crowdhunt.py tests_engine/test_apex_institutional.py tests_engine/test_apex_liquidity.py tests_engine/test_apex_force_field.py -q` — Expected PASS.
 - [ ] Run Project-A suite — Expected PASS.
