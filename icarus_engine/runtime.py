@@ -1191,12 +1191,20 @@ class Portfolio:
     def remove_asset(self, symbol: str) -> bool:
         key = resolve(symbol).symbol
         with self._lock:
-            r = self.runners.pop(key, None)
+            r = self.runners.get(key)
             if not r:
                 return False
-            self.order = [s for s in self.order if s != key]
-            r.paused = True
-            r._removed = True
+            with r.lock:
+                if r.em.open or r.em._pending_entries or r.em._pending_closes:
+                    raise ValueError(
+                        f"{key}: flatten open positions and cancel pending orders before removing the asset"
+                    )
+                if r.rewarming:
+                    raise ValueError(f"{key}: configuration replay is running; wait before removing the asset")
+                self.runners.pop(key, None)
+                self.order = [s for s in self.order if s != key]
+                r.paused = True
+                r._removed = True
         # Shared live feeds cannot unsubscribe at the gateway, but they can detach
         # this asset's local routing immediately without disrupting sibling assets.
         detach = getattr(r.feed, "stop_live", None)
