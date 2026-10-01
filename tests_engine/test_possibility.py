@@ -368,3 +368,22 @@ def test_information_wave_does_not_double_count_leader_graph():
     assert positive["expected_return_component"] == pytest.approx(negative["expected_return_component"])
     assert positive["score"] == pytest.approx(negative["score"])
 
+
+
+def test_operator_status_is_read_only_and_does_not_record_market_history():
+    engine = PossibilityEngine(Port())
+    assert not engine._history
+    before = engine.status()
+    after = engine.status()
+    assert before["schema_version"] == "icarus-possibility-status-v1"
+    assert before["execution_authorized"] is False
+    assert before["production_decision_authorized"] is False
+    assert before["assets"] == {}
+    assert after["assets"] == {}
+    assert not engine._history
+
+    engine.snapshot("NQ")
+    count = len(engine._history["NQ"])
+    status = engine.status()
+    assert status["assets"]["NQ"]["history_samples"] == count
+    assert len(engine._history["NQ"]) == count
