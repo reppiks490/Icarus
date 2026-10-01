@@ -154,7 +154,7 @@ def test_oracle_and_psi_surface_observed_microstructure_and_future_space():
     assert out["truth_contract"]["causality_proven"] is False
     assert out["truth_contract"]["missing_evidence_imputed"] is False
 
-    components = out["oracle"]["components"]
+    components = out["latent_pressure_engine"]["components"]
     assert components["volume_pressure"]["available"] is True
     assert components["volume_pressure"]["value"] > 0
     assert components["queue_pressure"]["available"] is True
@@ -162,8 +162,8 @@ def test_oracle_and_psi_surface_observed_microstructure_and_future_space():
     assert components["repricing_pressure"]["available"] is True
     assert components["gamma_pressure"]["available"] is True
     assert components["basis_pressure"]["available"] is True
-    assert out["oracle"]["latent_pressure"] is not None
-    assert out["oracle"]["evidence_coverage"] > 0.7
+    assert out["latent_pressure_engine"]["latent_pressure"] is not None
+    assert out["latent_pressure_engine"]["evidence_coverage"] > 0.7
 
     assert out["causal_leadership"]["status"] == "observed"
     assert out["causal_leadership"]["leaders"][0]["asset"] == "ES"
@@ -188,7 +188,7 @@ def test_missing_optional_forces_stay_unavailable_instead_of_zero_imputation():
     engine = PossibilityEngine(Port(), scenarios=96)
     _seed(engine)
     out = engine.snapshot("NQ")
-    components = out["oracle"]["components"]
+    components = out["latent_pressure_engine"]["components"]
     assert components["gamma_pressure"]["available"] is False
     assert components["gamma_pressure"]["value"] is None
     assert components["basis_pressure"]["available"] is False
@@ -277,3 +277,26 @@ def test_exactly_neutral_latent_pressure_has_no_directional_phase_boundary():
     assert result["direction"] == "NEUTRAL"
     assert result["phase_boundary"] is None
 
+
+
+def test_information_wave_is_source_agnostic_and_bounded():
+    engine = PossibilityEngine(Port(), scenarios=96)
+    _seed(engine)
+    out = engine.snapshot("NQ")
+    wave = out["information_wave"]
+    assert wave["status"] in {"QUIET", "WATCH", "EVENT"}
+    assert 0.0 <= wave["score"] <= 100.0
+    assert wave["source_identified"] is False
+    assert wave["direction"] in {"UP", "DOWN", None}
+
+
+def test_parallax_vote_is_distinct_fail_closed_research_context():
+    engine = PossibilityEngine(Port(), scenarios=96)
+    _seed(engine)
+    vote = engine.parallax_vote("NQ")
+    assert vote["subsystem"] == "psi"
+    assert vote["state"] in {"NO_EDGE", "LONG_BIAS", "SHORT_BIAS"}
+    assert vote["execution_authorized"] is False
+    assert vote["production_decision_authorized"] is False
+    assert "latent_pressure" in vote
+    assert "future_space_collapse" in vote
