@@ -15,6 +15,18 @@ function engineControlHtml(){
     '<div class="small muted">Full registered application control. Arbitrary shell/filesystem access, secret export, and broker arming are intentionally not exposed.</div>'+
   '</section>'+
   '<section class="card c12"><h2>Engine &amp; asset controls</h2><div id="ecCore"></div></section>'+
+  '<section class="card c12"><h2>Specialized control surfaces <span class="sub">deep configuration and subsystem-specific operations</span></h2>'+
+    '<div class="toolbar" id="ecSurfaces">'+
+      '<button data-ec-view="inputs">Inputs / chart config</button>'+
+      '<button data-ec-view="research">Research</button>'+
+      '<button data-ec-view="brain">Adaptive Brain</button>'+
+      '<button data-ec-view="evolution">MCP Evolution</button>'+
+      '<button data-ec-view="parallax">PARALLAX / DREAMSTATE</button>'+
+      '<button data-ec-view="possibility">ICARUS Ψ</button>'+
+      '<button data-ec-view="integrity">Data Integrity</button>'+
+      '<button data-ec-view="system">System Intelligence</button>'+
+      '<button data-ec-view="commands">Commands</button>'+
+    '</div></section>'+
   '<section class="card c7"><h2>Subsystem controls</h2><div id="ecSubsystemActions"></div></section>'+
   '<section class="card c5"><h2>Subsystem health</h2><div id="ecSubsystems"></div></section>'+
   '<section class="card c12"><h2>MCP / audit mirror <span class="sub">important repair, audit, evolution, integration and control receipts</span></h2><div id="ecEvents" class="scroll" style="max-height:560px"></div></section>'+
@@ -35,9 +47,11 @@ function ecTargetControl(action,data){
 
 function ecActionRow(action,data){
   const args = action.id==='asset.add'
-    ? '<input data-ec-args="'+esc(action.id)+'" placeholder='{"tf":"20"}' style="width:180px">'
+    ? '<input data-ec-args="'+esc(action.id)+'" placeholder=\'{"tf":"20"}\' style="width:180px">'
+    : action.id==='asset.apply_config'
+    ? '<input data-ec-args="'+esc(action.id)+'" placeholder=\'{"values":{},"chart":{}}\' style="width:240px">'
     : action.id==='dreamstate.refresh'
-    ? '<input data-ec-args="'+esc(action.id)+'" placeholder='{"min_samples":5}' style="width:180px">'
+    ? '<input data-ec-args="'+esc(action.id)+'" placeholder=\'{"min_samples":5}\' style="width:180px">'
     : '';
   return '<div class="cmd">'+
     '<div><b>'+esc(action.title)+'</b><div class="small muted">'+esc(action.group)+'</div></div>'+
@@ -131,9 +145,8 @@ async function ecRun(actionId){
     if(supplied!==action.confirmation) return toast('confirmation did not match',true);
     body.confirm=supplied;
   }
-  const result=await admin('/admin/engine-control',body,true);
+  const result=await admin('/admin/engine-control',body,false);
   if(result){
-    toast(action.title+' completed');
     await loadEngineControl();
     if(typeof refresh==='function') refresh();
     if(typeof refreshAudit==='function') refreshAudit();
@@ -145,5 +158,8 @@ function wireEngineControl(){
   if(refresh) refresh.onclick=loadEngineControl;
   const sync=document.querySelector('#ecSyncAll');
   if(sync) sync.onclick=()=>ecRun('sync.all');
+  document.querySelectorAll('[data-ec-view]').forEach(b=>{
+    b.onclick=()=>setView(b.dataset.ecView);
+  });
   loadEngineControl();
 }
