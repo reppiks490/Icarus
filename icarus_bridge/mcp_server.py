@@ -717,6 +717,70 @@ def record_engine_source_reliability_observation(
     }))
 
 
+# ── Continuous learning / replay / calibration tools ──
+@mcp.tool()
+def engine_learning_state() -> dict:
+    """Read the continuous ICARUS learning/replay/calibration state."""
+    return _safe_engine(lambda: _engine_get("/api/learning"))
+
+
+@mcp.tool()
+def engine_learning_scorecards() -> dict:
+    """Read empirical scorecards by producer, asset, regime and horizon."""
+    return _safe_engine(lambda: _engine_get("/api/learning/scorecards"))
+
+
+@mcp.tool()
+def engine_learning_datasets() -> dict:
+    """Read catalogued historical datasets and protected training runs."""
+    return _safe_engine(lambda: _engine_get("/api/learning/datasets"))
+
+
+@mcp.tool()
+def configure_engine_learning(config_json: str) -> dict:
+    """Configure the bounded research-only continual-learning loop."""
+    body, error = _apex_json_object(config_json, "config_json")
+    if error:
+        return error
+    return _safe_engine(lambda: _engine_post("/admin/learning/config", body))
+
+
+@mcp.tool()
+def record_engine_learning_prediction(prediction_json: str) -> dict:
+    """Record a standardized research prediction for later observed settlement."""
+    body, error = _apex_json_object(prediction_json, "prediction_json")
+    if error:
+        return error
+    return _safe_engine(lambda: _engine_post("/admin/learning/prediction", body))
+
+
+@mcp.tool()
+def record_engine_learning_outcome(outcome_json: str) -> dict:
+    """Record a matured observed outcome for a standardized research prediction."""
+    body, error = _apex_json_object(outcome_json, "outcome_json")
+    if error:
+        return error
+    return _safe_engine(lambda: _engine_post("/admin/learning/outcome", body))
+
+
+@mcp.tool()
+def scan_engine_learning_history() -> dict:
+    """Scan configured local history lanes for new/deduplicated research data."""
+    return _safe_engine(lambda: _engine_post("/admin/learning/scan", {}))
+
+
+@mcp.tool()
+def backfill_engine_learning_dataset(dataset_id: str, slots: str = "logit") -> dict:
+    """Run protected historical trainer slots for a catalogued dataset."""
+    did = str(dataset_id or "").strip()
+    if not did:
+        return {"error": "dataset_id is required"}
+    parsed = [x.strip().lower() for x in str(slots or "").split(",") if x.strip()]
+    if not parsed:
+        return {"error": "at least one slot is required"}
+    return _safe_engine(lambda: _engine_post("/admin/learning/backfill", {"dataset_id": did, "slots": parsed}))
+
+
 # ── APEX Ω research / world-intelligence tools ──
 def _apex_route(path: str, *, asset: str = "", as_of: str = "") -> str:
     params = []
