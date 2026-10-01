@@ -750,7 +750,8 @@ class Databento:
         resumed_ts = self._timestamp_sec(resumed)
         with self._lock:
             symbols = list(self._live_started)
-            if previous_ts is not None and resumed_ts is not None and resumed_ts > previous_ts:
+            permanent = self._core_broken and self._core_error_code in (1, 2, 3, 5)
+            if not permanent and previous_ts is not None and resumed_ts is not None and resumed_ts > previous_ts:
                 self._core_broken = True
                 self._core_error_code = 7
                 self._core_retry_from_ts = max(self.HISTORICAL_START_TS, previous_ts - 1)
@@ -841,7 +842,8 @@ class Databento:
         resumed_ts = self._timestamp_sec(resumed)
         with self._lock:
             symbols = list(self._depth_live_symbols[schema])
-            if previous_ts is not None and resumed_ts is not None and resumed_ts > previous_ts:
+            permanent = schema in self._depth_broken and self._depth_error_code.get(schema) in (1, 2, 3, 5)
+            if not permanent and previous_ts is not None and resumed_ts is not None and resumed_ts > previous_ts:
                 self._depth_broken.add(schema)
                 self._depth_error_code[schema] = 7
                 self._depth_retry_from_ts[schema] = max(self.HISTORICAL_START_TS, previous_ts - 1)
