@@ -695,6 +695,73 @@ class ParallaxStore:
                 running = min(running, raw_q)
                 row["q_value"] = max(0.0, min(1.0, running))
 
+    @classmethod
+    def _annotate_parameter_basins(cls, items: list[dict[str, Any]], min_samples: int) -> None:
+        families: dict[tuple[str, str, str, str, str, str], list[dict[str, Any]]] = {}
+        for item in items:
+            axis = cls._parameter_axis(str(item.get("kind") or ""), item.get("branch_params") or {})
+            if axis is None:
+                item["parameter_basin"] = {
+                    "evaluable": False,
+                    "axis": None,
+                    "value": None,
+                    "neighbor_count": 0,
+                    "supporting_neighbor_count": 0,
+                    "supporting_neighbor_values": [],
+                    "isolated_spike": False,
+                    "basin_support_count": 0,
+                    "basin_width": None,
+                }
+                continue
+            axis_name, axis_value = axis
+            item["_parameter_axis_value"] = axis_value
+            family = (
+                str(item["asset"]),
+                str(item["regime"]),
+                str(item["source_commit"]),
+                str(item["comparison_contract_hash"]),
+                str(item["kind"]),
+                axis_name,
+            )
+            families.setdefault(family, []).append(item)
+
+        for family, rows in families.items():
+            axis_name = family[-1]
+            rows.sort(key=lambda row: float(row["_parameter_axis_value"]))
+            for idx, item in enumerate(rows):
+                neighbors = []
+                if idx > 0 and int(rows[idx - 1].get("evidence_pair_count") or 0) >= min_samples:
+                    neighbors.append(rows[idx - 1])
+                if idx + 1 < len(rows) and int(rows[idx + 1].get("evidence_pair_count") or 0) >= min_samples:
+                    neighbors.append(rows[idx + 1])
+                supporting = [row for row in neighbors if row.get("candidate_eligible") is True]
+                evaluable = bool(neighbors)
+                isolated = bool(item.get("candidate_eligible")) and evaluable and not supporting
+
+                left = idx
+                while left > 0 and rows[left - 1].get("candidate_eligible") is True:
+                    left -= 1
+                right = idx
+                while right + 1 < len(rows) and rows[right + 1].get("candidate_eligible") is True:
+                    right += 1
+                basin_rows = rows[left:right + 1] if item.get("candidate_eligible") is True else []
+                basin_values = [float(row["_parameter_axis_value"]) for row in basin_rows]
+                width = (max(basin_values) - min(basin_values)) if len(basin_values) >= 2 else 0.0 if basin_values else None
+                item["parameter_basin"] = {
+                    "evaluable": evaluable,
+                    "axis": axis_name,
+                    "value": float(item["_parameter_axis_value"]),
+                    "neighbor_count": len(neighbors),
+                    "supporting_neighbor_count": len(supporting),
+                    "supporting_neighbor_values": [float(row["_parameter_axis_value"]) for row in supporting],
+                    "isolated_spike": isolated,
+                    "basin_support_count": len(basin_rows),
+                    "basin_width": width,
+                }
+
+        for item in items:
+            item.pop("_parameter_axis_value", None)
+
     def _screened_hypotheses(
         self,
         min_samples: int = 5,
@@ -738,6 +805,7 @@ class ParallaxStore:
                     "branch_params_hash": params_hash,
                     "pair_count_total": 0,
                     "values": [],
+                    "temporal_samples": [],
                     "strata": {},
                 },
             )
@@ -748,6 +816,7 @@ class ParallaxStore:
                 continue
             delta = float(row["branch_utility"]) - float(row["actual_utility"])
             group["values"].append(delta)
+            group["temporal_samples"].append((str(row["decision_observed_at"]), delta))
             strata = json.loads(row["strata_json"] or "{}")
             strata_json = _json(strata, "strata", 8192)
             signature = "unstratified" if not strata else _sha(strata_json)[:16]
@@ -757,6 +826,7 @@ class ParallaxStore:
         hypotheses: list[dict[str, Any]] = []
         for group in groups.values():
             stats = self._stats(group.pop("values"))
+            temporal = self._temporal_stability(group.pop("temporal_samples"))
             strata_stats = []
             for bucket in group.pop("strata").values():
                 row_stats = self._stats(bucket.pop("values"))
@@ -771,6 +841,7 @@ class ParallaxStore:
                 ),
                 "strata_stats": strata_stats,
                 "strata_count": len(strata_stats),
+                "temporal_stability": temporal,
                 "screening": {
                     "min_samples": min_samples,
                     "max_fdr": max_fdr,
@@ -792,8 +863,22 @@ class ParallaxStore:
                 blockers.append("fdr_screen_not_cleared")
             item["screen_blockers"] = blockers
             item["candidate_eligible"] = not blockers
+
+        self._annotate_parameter_basins(hypotheses, min_samples)
+        for item in hypotheses:
+            robustness_blockers: list[str] = []
+            temporal = item.get("temporal_stability") or {}
+            if temporal.get("evaluable") is True and temporal.get("stable") is not True:
+                robustness_blockers.append("temporal_instability")
+            basin = item.get("parameter_basin") or {}
+            if basin.get("evaluable") is True and basin.get("isolated_spike") is True:
+                robustness_blockers.append("isolated_parameter_spike")
+            item["robustness_blockers"] = robustness_blockers
+            item["robust_candidate_eligible"] = bool(item["candidate_eligible"]) and not robustness_blockers
+
         hypotheses.sort(
             key=lambda x: (
+                bool(x["robust_candidate_eligible"]),
                 bool(x["candidate_eligible"]),
                 -(float(x["q_value"]) if x.get("q_value") is not None else 1.0),
                 float(x["ci95_low"]) if x.get("ci95_low") is not None else -1e99,
