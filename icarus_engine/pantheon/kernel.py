@@ -193,6 +193,7 @@ class PantheonKernel:
             self.record_claim_outcome({
                 **row,
                 "observed_at": row.get("observed_at") or normalized["observed_at"],
+                "_source_observation_id": result.get("observation_id"),
             })
             for row in normalized.get("claim_outcomes", [])
         ]
@@ -475,8 +476,13 @@ class PantheonKernel:
             raise ValueError("claim outcome must be an object")
         claim_id = text(body.get("claim_id"), "claim_id", 96)
         observed_at = iso_aware(body.get("observed_at"))
-        utility = max(-1.0, min(1.0, finite(body.get("utility"), "utility")))
+        utility = finite(body.get("utility"), "utility")
+        if not -1.0 <= utility <= 1.0:
+            raise ValueError("utility must be between -1 and 1")
         confidence = unit(body.get("confidence"), "confidence", 1.0)
+        source_observation_id = body.get("_source_observation_id")
+        if source_observation_id is not None:
+            source_observation_id = text(source_observation_id, "_source_observation_id", 96)
         evidence = body.get("evidence", [])
         if isinstance(evidence, str):
             evidence = [evidence]
@@ -507,6 +513,14 @@ class PantheonKernel:
             ).fetchone()
             if claim is None:
                 raise ValueError("unknown PANTHEON claim")
+            source_observation = None
+            if source_observation_id is not None:
+                source_observation = con.execute(
+                    "SELECT observation_id,observed_at FROM observations WHERE observation_id=?",
+                    (source_observation_id,),
+                ).fetchone()
+                if source_observation is None:
+                    raise ValueError("unknown source observation for claim outcome")
             claim_time = datetime.fromisoformat(str(claim["claim_observed_at"]).replace("Z", "+00:00"))
             claim_payload = json.loads(claim["payload_json"])
             mutation_trigger = claim_payload.get("mutation_trigger") if isinstance(claim_payload, Mapping) else None
@@ -515,6 +529,10 @@ class PantheonKernel:
                 if mutation_time > claim_time:
                     claim_time = mutation_time
             outcome_time = datetime.fromisoformat(observed_at.replace("Z", "+00:00"))
+            if source_observation is not None:
+                source_time = datetime.fromisoformat(str(source_observation["observed_at"]).replace("Z", "+00:00"))
+                if outcome_time < source_time:
+                    raise ValueError("claim outcome cannot precede its source observation")
             if outcome_time < claim_time:
                 raise ValueError("claim outcome cannot precede claim availability")
             prior_time = con.execute(
@@ -594,7 +612,7 @@ class PantheonKernel:
                         ) VALUES(?,?,?,?,?,?)""",
                         (
                             child_claim_id,
-                            claim["observation_id"],
+                            source_observation_id or claim["observation_id"],
                             "mutation_candidate",
                             "hypothesis",
                             json_canonical(child_payload, "mutant claim", 65536),
