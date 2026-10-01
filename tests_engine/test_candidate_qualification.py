@@ -194,3 +194,14 @@ def test_receipt_for_other_revision_does_not_qualify_candidate(tmp_path):
     snap = ledger.snapshot(candidate())
     assert snap["receipt_count"] == 0
     assert "causal_time" in snap["blockers"]
+
+
+def test_declared_validation_cannot_bypass_receipt_proofs(tmp_path):
+    ledger = QualificationLedger(tmp_path)
+    claimed = candidate()
+    claimed["validation"] = {gate: True for gate in REQUIRED_GATES}
+    snap = ledger.snapshot(claimed)
+    assert snap["qualified_shadow_ready"] is False
+    assert set(snap["blockers"]) == set(REQUIRED_GATES)
+    assert all(snap["candidate_declared_validation"][gate] is True for gate in REQUIRED_GATES)
+    assert all(snap["gate_state"][gate] is None for gate in REQUIRED_GATES)
