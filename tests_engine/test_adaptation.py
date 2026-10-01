@@ -25,6 +25,7 @@ class FakeWorkspace:
         self.root.mkdir()
         runner = SimpleNamespace(lock=threading.RLock(), warm=True, bars=[], chart_minutes=1,
                                  cal=Calendar(), inputs_base=Inputs(),
+                                 state={"ts": 660, "rate_regime_str": "STRONG TREND", "rate_regime": 0.81},
                                  subbars=[(Bar(i * 60, 1, 2, 1, 2, 10), 1) for i in range(12)])
         self.port = SimpleNamespace(runners={"NQ": runner})
         self.ledger = SimpleNamespace(events_as_of=lambda asset, now: [{"event_id": "real-event"}])
@@ -168,6 +169,11 @@ def test_study_only_mode_skips_paid_provider_gate_and_never_applies(tmp_path):
     assert state["assets"]["NQ"]["status"] == "candidate_proposed"
     assert state["assets"]["NQ"]["last_proposal"] == "p" * 64
     assert state["assets"]["NQ"]["review_mode"] == "study_only"
+    assert state["assets"]["NQ"]["regime_context"] == {
+        "label": "STRONG TREND",
+        "regime_score": 0.81,
+        "observed_market_ts": 660,
+    }
     assert ws.proposed[0]["job"] == "a" * 16
     assert ws.proposed[0]["evidence_ids"] == ["real-event"]
     assert "no paper or production inputs were applied" in ws.proposed[0]["rationale"]
