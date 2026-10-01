@@ -188,7 +188,9 @@ class ParallaxStore:
                     raise ValueError("decision_id already exists with different immutable identity")
                 return self.decision(decision_id)
             con.execute(
-                "INSERT INTO decisions VALUES (?,?,?,?,?,?,?,?,?)",
+                """INSERT INTO decisions(
+                       decision_id,observed_at,asset,action,regime,source_commit,context_hash,context_json,votes_json,created_at
+                   ) VALUES (?,?,?,?,?,?,?,?,?,?)""",
                 (decision_id, observed_at, asset, action, regime, source_commit, context_hash, context_json, votes_json, _utc_now()),
             )
             con.executemany(
