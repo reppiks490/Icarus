@@ -656,6 +656,7 @@ class PossibilityEngine:
                 gross = 0.0
                 prices: list[float] = []
                 event_times: list[float] = []
+                tick_samples: list[dict[str, Any]] = []
                 for tick in ticks:
                     px = _finite(getattr(tick, "price", None) if not isinstance(tick, Mapping) else tick.get("price"))
                     size = _finite(getattr(tick, "size", None) if not isinstance(tick, Mapping) else tick.get("size"))
@@ -665,6 +666,13 @@ class PossibilityEngine:
                         event_times.append(event_ts)
                     if px is not None:
                         prices.append(px)
+                    if event_ts is not None and px is not None and size is not None and size > 0:
+                        tick_samples.append({
+                            "ts": event_ts,
+                            "price": px,
+                            "size": size,
+                            "side": side,
+                        })
                     if size is None or size <= 0:
                         continue
                     sign = 1.0 if side in {"B", "BUY", "BID"} else -1.0 if side in {"A", "S", "SELL", "ASK"} else 0.0
@@ -686,11 +694,12 @@ class PossibilityEngine:
                         "first_ts": first_ts,
                         "last_ts": last_ts,
                         "duration_seconds": max(0.0, last_ts - first_ts),
-                        "age_seconds": max(0.0, now - last_ts),
+                        "age_seconds": now - last_ts,
                         "event_clock": "exchange",
                     }
+                    result["tick_samples"] = tick_samples
                     result["health"]["tick_last_event_ts"] = last_ts
-                    result["health"]["tick_age_seconds"] = max(0.0, now - last_ts)
+                    result["health"]["tick_age_seconds"] = now - last_ts
             except Exception as ex:
                 result["health"]["errors"].append(f"ticks: {type(ex).__name__}: {ex}")
 
@@ -1031,86 +1040,101 @@ class PossibilityEngine:
         micro: Mapping[str, Any],
         leaders: Mapping[str, Any],
     ) -> dict[str, Any]:
-        """Detect a current-window disturbance only when causal ordering is provable.
+        """Detect a causally ordered current-window disturbance.
 
-        Exchange-timestamped tick evidence must occur after the latest completed
-        runner bar. Otherwise Ψ refuses to label the disturbance as leading.
+        Only exchange-timestamped trades strictly after the latest completed runner
+        bar are admitted. Completed-bar leader pressure is prior context; current
+        same-window latent pressure is deliberately not used to explain the move.
         """
         if len(history) < 12:
             return {
-                "status": "WARMING",
-                "score": None,
-                "direction": None,
-                "causal_leading": False,
-                "source_identified": False,
+                "status": "WARMING", "score": None, "direction": None,
+                "causal_leading": False, "source_identified": False,
                 "detail": "requires at least 12 completed return transitions",
-            }
-
-        flow = micro.get("aggressive_flow")
-        tick_window = micro.get("tick_window")
-        displacement = _finite(micro.get("trade_displacement"))
-        if not isinstance(flow, Mapping) or not isinstance(tick_window, Mapping) or displacement is None:
-            return {
-                "status": "UNAVAILABLE",
-                "score": None,
-                "direction": None,
-                "causal_leading": False,
-                "source_identified": False,
-                "detail": "requires exchange-timestamped signed ticks and same-window price displacement",
             }
 
         latest_row = history[-1]
         latest_ts = _finite(latest_row.get("ts"))
-        chart_minutes = int(_finite(latest_row.get("chart_minutes")) or self._history_chart_minutes.get(str(latest_row.get("symbol") or ""), 0) or 0)
-        if chart_minutes <= 0:
-            chart_minutes = int(self._history_chart_minutes.get(next(iter(self._history_chart_minutes), ""), 0) or 0)
-        bar_seconds = max(1, chart_minutes * 60) if chart_minutes else 60
-        completed_close_ts = (latest_ts + bar_seconds) if latest_ts is not None and latest_row.get("source") == "runner_bar" else latest_ts
-        tick_last = _finite(tick_window.get("last_ts"))
-        tick_first = _finite(tick_window.get("first_ts"))
-        age = _finite(tick_window.get("age_seconds"))
-        if tick_last is None or completed_close_ts is None or tick_last <= completed_close_ts:
+        chart_minutes = int(_finite(latest_row.get("chart_minutes")) or 0)
+        if latest_row.get("source") != "runner_bar" or latest_ts is None or chart_minutes <= 0:
             return {
-                "status": "NO_CURRENT_WINDOW",
-                "score": None,
-                "direction": None,
-                "causal_leading": False,
-                "source_identified": False,
-                "completed_bar_close_ts": completed_close_ts,
-                "tick_last_ts": tick_last,
-                "detail": "tick window does not follow the latest completed bar",
+                "status": "UNAVAILABLE", "score": None, "direction": None,
+                "causal_leading": False, "source_identified": False,
+                "detail": "causal leading mode requires replayed runner-bar timing",
             }
-        if age is not None and age > max(30.0, 2.0 * bar_seconds):
+        bar_seconds = chart_minutes * 60
+        completed_close_ts = latest_ts + bar_seconds
+
+        raw_samples = micro.get("tick_samples")
+        if not isinstance(raw_samples, list):
             return {
-                "status": "STALE",
-                "score": None,
-                "direction": None,
-                "causal_leading": False,
-                "source_identified": False,
-                "tick_age_seconds": age,
-                "detail": "latest tick window is stale",
+                "status": "UNAVAILABLE", "score": None, "direction": None,
+                "causal_leading": False, "source_identified": False,
+                "detail": "requires exchange-timestamped signed tick samples",
             }
 
-        duration = max(1.0, (tick_last - tick_first) if tick_first is not None else 1.0)
+        samples = []
+        for raw in raw_samples:
+            if not isinstance(raw, Mapping):
+                continue
+            ts = _finite(raw.get("ts"))
+            px = _finite(raw.get("price"))
+            size = _finite(raw.get("size"))
+            side = str(raw.get("side") or "").upper()
+            if ts is None or px is None or px <= 0 or size is None or size <= 0:
+                continue
+            if ts <= completed_close_ts:
+                continue
+            samples.append((ts, px, size, side))
+        samples.sort(key=lambda x: x[0])
+        if len(samples) < 3:
+            return {
+                "status": "NO_CURRENT_WINDOW", "score": None, "direction": None,
+                "causal_leading": False, "source_identified": False,
+                "completed_bar_close_ts": completed_close_ts,
+                "current_tick_count": len(samples),
+                "detail": "fewer than three valid exchange ticks follow the latest completed bar",
+            }
+
+        tick_first, tick_last = samples[0][0], samples[-1][0]
+        now = time.time()
+        age = now - tick_last
+        if age < -5.0:
+            return {
+                "status": "CLOCK_SKEW", "score": None, "direction": None,
+                "causal_leading": False, "source_identified": False,
+                "tick_clock_skew_seconds": -age,
+                "detail": "latest exchange tick is materially in the future relative to the engine clock",
+            }
+        if age > max(30.0, 2.0 * bar_seconds):
+            return {
+                "status": "STALE", "score": None, "direction": None,
+                "causal_leading": False, "source_identified": False,
+                "tick_age_seconds": age,
+                "detail": "latest causal tick window is stale",
+            }
+
+        first_price, last_price = samples[0][1], samples[-1][1]
+        displacement = (last_price - first_price) / max(abs(first_price), 1e-9)
+        signed = 0.0
+        gross = 0.0
+        for _, _, size, side in samples:
+            sign = 1.0 if side in {"B", "BUY", "BID"} else -1.0 if side in {"A", "S", "SELL", "ASK"} else 0.0
+            signed += sign * size
+            gross += abs(size)
+        imbalance = _clamp(signed / gross) if gross > 0 else 0.0
+
+        duration = max(1.0, tick_last - tick_first)
         sigma_window = max(vol * math.sqrt(min(1.0, duration / bar_seconds)), 1e-7)
         displacement_z = abs(displacement) / sigma_window
-        imbalance = _finite(flow.get("imbalance")) or 0.0
-
-        repricing = micro.get("repricing_pressure")
-        volume = micro.get("volume_pressure")
-        conflict = 0.0
-        if isinstance(repricing, Feature) and isinstance(volume, Feature):
-            if repricing.available and volume.available and repricing.value is not None and volume.value is not None:
-                conflict = abs(repricing.value - volume.value)
-
-        cross_divergence = abs((_finite(latent) or 0.0) - imbalance)
+        prior_pressure = _finite(leaders.get("pressure")) or 0.0
+        cross_divergence = abs(prior_pressure - imbalance)
         absorption_energy = abs(imbalance) * max(0.0, 1.0 - min(1.0, displacement_z))
         vacuum_energy = max(0.0, 1.0 - abs(imbalance)) * min(3.0, displacement_z)
         novelty = (
-            0.45 * min(4.0, displacement_z)
-            + 0.20 * min(2.0, conflict)
-            + 0.20 * max(absorption_energy, vacuum_energy)
-            + 0.15 * min(2.0, cross_divergence)
+            0.55 * min(4.0, displacement_z)
+            + 0.25 * max(absorption_energy, vacuum_energy)
+            + 0.20 * min(2.0, cross_divergence)
         )
         score = 100.0 * (1.0 - math.exp(-max(0.0, novelty) / 1.8))
         status = "EVENT" if score >= 75.0 else "WATCH" if score >= 50.0 else "QUIET"
@@ -1124,15 +1148,17 @@ class PossibilityEngine:
             "tick_first_ts": tick_first,
             "tick_last_ts": tick_last,
             "completed_bar_close_ts": completed_close_ts,
+            "current_tick_count": len(samples),
             "window_seconds": duration,
+            "tick_age_seconds": max(0.0, age),
             "price_displacement": displacement,
             "displacement_surprise_z": displacement_z,
             "aggressive_flow_imbalance": imbalance,
-            "microstructure_conflict": conflict,
+            "prior_leader_pressure": prior_pressure,
             "cross_pressure_divergence": cross_divergence,
             "absorption_energy": absorption_energy,
             "vacuum_energy": vacuum_energy,
-            "detail": "Causally ordered current-window novelty after the latest completed bar; source remains unidentified.",
+            "detail": "Exchange-timestamped current-window novelty after the latest completed bar; source remains unidentified.",
         }
 
     def _synthetic_price(
