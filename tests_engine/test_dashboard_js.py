@@ -123,6 +123,8 @@ def test_dashboard_surfaces_adaptive_brain_fabric():
     assert "Closed-sample 100%" in ui
     assert "Hot-path p99" in ui
     assert "Evidence champion / challenger tournaments" in ui
+    assert "Causal evidence graph" in ui
+    assert "Independent corroboration" in ui
     assert "/api/performance-proof" in server
     assert "/api/latency" in server
     assert "/admin/performance-proof/forecast" in server
