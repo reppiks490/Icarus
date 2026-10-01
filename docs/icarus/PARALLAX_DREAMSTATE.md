@@ -18,6 +18,8 @@ A branch is never assigned a result merely because a model thinks it would have 
 
 For each decision PARALLAX computes actual utility, best observed branch, regret, branch coverage, and completion state. Across decisions it computes paired branch deltas and paired subsystem-ablation contribution estimates. Mutation evidence is emitted only after the configured minimum paired sample count is met and the approximate 95% lower confidence bound of the paired advantage is above zero.
 
+Decision identity and aggregate statistical groups are bound to the exact `source_commit`; evidence from different ICARUS code revisions is never pooled into one mutation signal.
+
 These estimates are screening evidence, not standalone causal proof. The protected validation stack remains downstream.
 
 Storage: `research/parallax.sqlite3` (SQLite WAL).
@@ -93,6 +95,8 @@ The UI reads authenticated `/api/parallax` and `/api/dreamstate` endpoints.
 All mutation endpoints require the normal ICARUS admin bearer token and strict JSON parsing.
 
 When a PARALLAX decision omits `source_commit`, the server fills it only from a provably exact clean local ICARUS Git revision; dirty or unknown checkouts fail closed. Every accepted PARALLAX outcome automatically re-runs the DREAMSTATE conservative screen, so candidate discovery is continuous without granting activation authority.
+
+The PARALLAX outcome commit is authoritative even if the downstream DREAMSTATE re-screen encounters an operational error: the response reports a degraded re-screen instead of misreporting the already-committed outcome as rejected.
 
 - `POST /admin/parallax/decision`
 - `POST /admin/parallax/outcome`
