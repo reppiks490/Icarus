@@ -332,6 +332,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 ControlAction("sync.all", "Sync all intelligence planes", "Intelligence", "Run all registered intelligence synchronizers once.", _sync_all),
                 ControlAction("sync.start_all", "Start all intelligence sync loops", "Intelligence", "Start all registered background intelligence synchronizers.", _start_all_syncs),
                 ControlAction("sync.stop_all", "Stop all intelligence sync loops", "Intelligence", "Stop all registered background intelligence synchronizers.", _stop_all_syncs, danger=True, confirmation="STOP ALL INTELLIGENCE SYNCS"),
+                ControlAction("autopilot.configure", "Configure Tactical Autopilot", "Autopilot", "Update bounded Autopilot configuration. Args: enabled, assets, cadence_seconds, max_history, min_trades, robustness_windows, search_chart_type, search_session.", lambda p: autopilot.configure(p["args"])),
                 ControlAction("autopilot.start", "Start Tactical Autopilot", "Autopilot", "Enable and start the Tactical Autopilot background loop.", lambda _: autopilot.start()),
                 ControlAction("autopilot.stop", "Stop Tactical Autopilot", "Autopilot", "Disable the Tactical Autopilot background loop.", lambda _: autopilot.stop()),
                 ControlAction("autopilot.step", "Run one Tactical Autopilot cycle", "Autopilot", "Run exactly one Tactical Autopilot research cycle.", lambda _: autopilot.cycle_once()),
