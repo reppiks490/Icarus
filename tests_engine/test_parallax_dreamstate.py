@@ -728,6 +728,59 @@ def test_parallax_isolated_parameter_spike_is_withheld_from_robust_signals(tmp_p
     assert not [c for c in state["candidates"] if c["mutation"]["op"] == "scale_stop_distance"]
 
 
+def test_distributionally_fragile_neighbor_cannot_support_parameter_basin(tmp_path):
+    store = ParallaxStore(tmp_path)
+    fragile = [3.0, -0.1, 3.0, -0.1, 3.0, -0.1, 3.0, -0.1, 3.0, -0.1, -0.1, -0.1]
+    for i in range(12):
+        decision = store.record_decision(
+            {
+                "asset": "NQ",
+                "action": "long",
+                "observed_at": f"2026-10-01T21:{i:02d}:00Z",
+                "regime": "trend",
+                "source_commit": "a" * 40,
+                "context": {"bar": i},
+                "comparison_contract": _contract(),
+                "subsystem_votes": {},
+            }
+        )
+        store.record_outcome(
+            {
+                "decision_id": decision["decision_id"],
+                "label": "actual",
+                "utility": 0.0,
+                "observed_at": f"2026-10-01T22:{i:02d}:00Z",
+                "evidence": [f"actual:{i}"],
+            }
+        )
+        for label, utility in (
+            ("stop_0.75", fragile[i]),
+            ("stop_1.25", 1.0),
+            ("stop_1.50", -0.2),
+        ):
+            store.record_outcome(
+                {
+                    "decision_id": decision["decision_id"],
+                    "label": label,
+                    "utility": utility,
+                    "observed_at": f"2026-10-01T22:{i:02d}:30Z",
+                    "evidence": [f"{label}:{i}"],
+                }
+            )
+
+    left = next(row for row in store.hypotheses(min_samples=5) if row["branch_label"] == "stop_0.75")
+    middle = next(row for row in store.hypotheses(min_samples=5) if row["branch_label"] == "stop_1.25")
+    assert left["candidate_eligible"] is True
+    assert left["temporal_stability"]["stable"] is True
+    assert left["distributional_robustness"]["stable"] is False
+    assert middle["candidate_eligible"] is True
+    assert middle["distributional_robustness"]["stable"] is True
+    assert middle["parameter_basin"]["neighbor_count"] == 2
+    assert middle["parameter_basin"]["supporting_neighbor_count"] == 0
+    assert middle["parameter_basin"]["isolated_spike"] is True
+    assert middle["robust_candidate_eligible"] is False
+
+
 def test_parallax_parameter_plateau_is_robust_not_a_magic_point(tmp_path):
     store = ParallaxStore(tmp_path)
     for i in range(6):
