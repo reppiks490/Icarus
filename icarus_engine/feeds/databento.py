@@ -41,6 +41,7 @@ _NATIVE_SCHEMAS = {
 }
 _PRICE_SCALE = 1_000_000_000.0
 _UNDEF_PRICE = (1 << 63) - 1
+_UNDEF_TS = (1 << 64) - 1
 _GLBX_HISTORY_START_TS = int(datetime(2010, 6, 6, tzinfo=timezone.utc).timestamp())
 
 
@@ -116,6 +117,9 @@ class Databento:
         self._subscriptions: Dict[str, set[str]] = collections.defaultdict(set)
         self._continuous_to_symbol: Dict[str, str] = {}
         self._instrument_to_symbol: Dict[int, str] = {}
+        # Finite mapping windows are retained for replay that straddles a roll.
+        # Unbounded windows identify the current live resolved contract.
+        self._instrument_windows: Dict[int, Tuple[str, Optional[int], Optional[int]]] = {}
         self._depth_live: Dict[str, Any] = {}
         self._depth_started: set[str] = set()
         self._depth_live_symbols: Dict[str, set[str]] = collections.defaultdict(set)
@@ -123,6 +127,7 @@ class Databento:
         self._depth_subscriptions: Dict[str, set[str]] = collections.defaultdict(set)
         self._depth_continuous_to_symbol: Dict[str, Dict[str, str]] = collections.defaultdict(dict)
         self._depth_instrument_to_symbol: Dict[str, Dict[int, str]] = collections.defaultdict(dict)
+        self._depth_instrument_windows: Dict[str, Dict[int, Tuple[str, Optional[int], Optional[int]]]] = collections.defaultdict(dict)
         self._depth_errors: Dict[Tuple[str, str], str] = {}
         self._depth_error_code: Dict[str, int] = {}
         self._depth_retry_from_ts: Dict[str, int] = {}
@@ -605,13 +610,15 @@ class Databento:
                 for schema in self._wanted_subscriptions.get(symbol, {"ohlcv-1s", "trades"}):
                     self._core_ready[(symbol, schema)].set()
                 self._ready[symbol].set()
-                self._meta[symbol] = {
+                meta = dict(self._meta.get(symbol, {}))
+                meta.update({
                     "regularMarketTime": self._feed_time.get(symbol, 0),
                     "provider": "databento",
                     "dataset": self.dataset,
                     "continuous_symbol": self.continuous_symbol(symbol, self.roll_rule),
                     "live_error": self._errors[symbol],
-                }
+                })
+                self._meta[symbol] = meta
                 return
             market_event = False
             # OHLCV record
@@ -646,14 +653,18 @@ class Databento:
                 self._ready[symbol].set()
                 if not self._core_broken:
                     self._errors.pop(symbol, None)
-            self._meta[symbol] = {
+            meta = dict(self._meta.get(symbol, {}))
+            meta.update({
                 "regularMarketTime": self._feed_time.get(symbol, 0),
                 "provider": "databento",
                 "dataset": self.dataset,
                 "continuous_symbol": self.continuous_symbol(symbol, self.roll_rule),
-            }
+            })
             if symbol in self._errors:
-                self._meta[symbol]["live_error"] = self._errors[symbol]
+                meta["live_error"] = self._errors[symbol]
+            else:
+                meta.pop("live_error", None)
+            self._meta[symbol] = meta
 
     def _dispatch_live(self, symbol: str, record: Any) -> None:
         """Contain record-conversion failures inside feed health instead of killing the reader."""
@@ -687,21 +698,68 @@ class Databento:
             return None
 
     @staticmethod
-    def _mapping_symbol(record: Any) -> str:
-        value = getattr(record, "stype_in_symbol", "")
+    def _mapping_text(record: Any, field: str) -> str:
+        value = getattr(record, field, "")
         if isinstance(value, bytes):
             value = value.split(b"\0", 1)[0].decode("utf-8", "replace")
         return str(value or "").split("\0", 1)[0].strip()
+
+    @classmethod
+    def _mapping_symbol(cls, record: Any) -> str:
+        return cls._mapping_text(record, "stype_in_symbol")
+
+    @staticmethod
+    def _mapping_bound(record: Any, field: str) -> Optional[int]:
+        try:
+            value = int(getattr(record, field, _UNDEF_TS))
+        except (TypeError, ValueError, OverflowError):
+            return None
+        return None if value in (0, _UNDEF_TS) else value
 
     def _dispatch_shared_live(self, record: Any) -> None:
         """Route one record from the shared GLBX.MDP3 session to its ICARUS symbol."""
         mapping = self._mapping_symbol(record)
         iid = self._instrument_id(record)
         if mapping:
+            raw_symbol = self._mapping_text(record, "stype_out_symbol")
+            start_ns = self._mapping_bound(record, "start_ts")
+            end_ns = self._mapping_bound(record, "end_ts")
             with self._lock:
                 key = self._continuous_to_symbol.get(mapping)
                 if key is not None and iid is not None:
+                    current_mapping = start_ns is None and end_ns is None
+                    if current_mapping:
+                        for old_iid, window in list(self._instrument_windows.items()):
+                            old_key, old_start, old_end = window
+                            if old_key == key and old_iid != iid and old_start is None and old_end is None:
+                                self._instrument_windows.pop(old_iid, None)
+                                self._instrument_to_symbol.pop(old_iid, None)
                     self._instrument_to_symbol[iid] = key
+                    existing = self._instrument_windows.get(iid)
+                    existing_current = bool(existing and existing[1] is None and existing[2] is None)
+                    if current_mapping or not existing_current:
+                        self._instrument_windows[iid] = (key, start_ns, end_ns)
+
+                    meta = dict(self._meta.get(key, {}))
+                    prior_start = meta.get("mapping_start_ns")
+                    prior_current = bool(meta.get("mapping_current"))
+                    publish = current_mapping or not prior_current
+                    if publish and not current_mapping and prior_start is not None and start_ns is not None:
+                        publish = int(start_ns) >= int(prior_start)
+                    if publish:
+                        meta.update({
+                            "provider": "databento",
+                            "dataset": self.dataset,
+                            "continuous_symbol": mapping,
+                            "resolved_instrument_id": iid,
+                            "resolved_raw_symbol": raw_symbol or None,
+                            "mapping_start_ns": start_ns,
+                            "mapping_end_ns": end_ns,
+                            "mapping_current": current_mapping,
+                            "mapping_active": key in self._live_started,
+                            "regularMarketTime": self._feed_time.get(key, 0),
+                        })
+                        self._meta[key] = meta
             return
 
         # ErrorMsg has no guaranteed instrument mapping. Route symbol-specific errors
@@ -735,6 +793,13 @@ class Databento:
 
         with self._lock:
             key = self._instrument_to_symbol.get(iid) if iid is not None else None
+            if key is not None and iid is not None:
+                window = self._instrument_windows.get(iid)
+                if window is not None and hasattr(record, "ts_event"):
+                    _, start_ns, end_ns = window
+                    ts_ns = int(getattr(record, "ts_event"))
+                    if (start_ns is not None and ts_ns < start_ns) or (end_ns is not None and ts_ns >= end_ns):
+                        key = None
             if key is not None and key not in self._live_started:
                 key = None
             if key is None and iid is None and len(self._live_started) == 1:
@@ -769,10 +834,24 @@ class Databento:
         mapping = self._mapping_symbol(record)
         iid = self._instrument_id(record)
         if mapping:
+            start_ns = self._mapping_bound(record, "start_ts")
+            end_ns = self._mapping_bound(record, "end_ts")
             with self._lock:
                 key = self._depth_continuous_to_symbol[schema].get(mapping)
                 if key is not None and iid is not None:
+                    windows = self._depth_instrument_windows[schema]
+                    current_mapping = start_ns is None and end_ns is None
+                    if current_mapping:
+                        for old_iid, window in list(windows.items()):
+                            old_key, old_start, old_end = window
+                            if old_key == key and old_iid != iid and old_start is None and old_end is None:
+                                windows.pop(old_iid, None)
+                                self._depth_instrument_to_symbol[schema].pop(old_iid, None)
                     self._depth_instrument_to_symbol[schema][iid] = key
+                    existing = windows.get(iid)
+                    existing_current = bool(existing and existing[1] is None and existing[2] is None)
+                    if current_mapping or not existing_current:
+                        windows[iid] = (key, start_ns, end_ns)
             return
 
         if hasattr(record, "err"):
@@ -803,6 +882,13 @@ class Databento:
 
         with self._lock:
             key = self._depth_instrument_to_symbol[schema].get(iid) if iid is not None else None
+            if key is not None and iid is not None:
+                window = self._depth_instrument_windows[schema].get(iid)
+                if window is not None and hasattr(record, "ts_event"):
+                    _, start_ns, end_ns = window
+                    ts_ns = int(getattr(record, "ts_event"))
+                    if (start_ns is not None and ts_ns < start_ns) or (end_ns is not None and ts_ns >= end_ns):
+                        key = None
             if key is not None and key not in self._depth_live_symbols[schema]:
                 key = None
             if key is None and iid is None and len(self._depth_live_symbols[schema]) == 1:
@@ -936,6 +1022,7 @@ class Databento:
                         self._depth_subscriptions[schema].clear()
                         self._depth_continuous_to_symbol[schema].clear()
                         self._depth_instrument_to_symbol[schema].clear()
+                        self._depth_instrument_windows[schema].clear()
                 if not started:
                     try:
                         if hasattr(client, "terminate"):
@@ -956,6 +1043,7 @@ class Databento:
             self._depth_subscriptions.pop(schema, None)
             self._depth_continuous_to_symbol.pop(schema, None)
             self._depth_instrument_to_symbol.pop(schema, None)
+            self._depth_instrument_windows.pop(schema, None)
             for key in symbols:
                 self._depth_ready.pop((key, schema), None)
                 self._depth_errors.pop((key, schema), None)
@@ -1053,6 +1141,7 @@ class Databento:
                     self._depth_subscriptions[schema].clear()
                     self._depth_continuous_to_symbol[schema].clear()
                     self._depth_instrument_to_symbol[schema].clear()
+                    self._depth_instrument_windows[schema].clear()
                     message = f"Databento {schema} depth refresh error: {type(ex).__name__}: {ex}"
                     for key in active:
                         self._depth_errors[(key, schema)] = message
@@ -1141,6 +1230,11 @@ class Databento:
                         self._subscriptions[key].add(schema)
                     self._live[key] = client
                     self._live_started.add(key)
+                    if key in self._meta:
+                        meta = dict(self._meta[key])
+                        if meta.get("resolved_instrument_id") is not None:
+                            meta["mapping_active"] = True
+                            self._meta[key] = meta
 
                 if not self._shared_started:
                     client.start()
@@ -1162,6 +1256,7 @@ class Databento:
                     self._subscriptions.clear()
                     self._continuous_to_symbol.clear()
                     self._instrument_to_symbol.clear()
+                    self._instrument_windows.clear()
                     self._ready.clear()
                     self._core_ready.clear()
                     self._errors.clear()
@@ -1257,6 +1352,7 @@ class Databento:
                     self._subscriptions.clear()
                     self._continuous_to_symbol.clear()
                     self._instrument_to_symbol.clear()
+                    self._instrument_windows.clear()
                     self._ready.clear()
                     self._core_ready.clear()
                     self._errors.clear()
@@ -1295,6 +1391,11 @@ class Databento:
                 for ready_key in [rk for rk in self._core_ready if rk[0] == key]:
                     self._core_ready.pop(ready_key, None)
                 self._errors.pop(key, None)
+                if key in self._meta:
+                    meta = dict(self._meta[key])
+                    if meta.get("provider") == "databento":
+                        meta["mapping_active"] = False
+                        self._meta[key] = meta
                 # Databento has no per-subscription unsubscribe on a running session.
                 # Keep gateway subscriptions + instrument mappings so remove/re-add does
                 # not create duplicate subscriptions (which would double-count OHLCV).
@@ -1313,9 +1414,15 @@ class Databento:
             self._subscriptions.clear()
             self._continuous_to_symbol.clear()
             self._instrument_to_symbol.clear()
+            self._instrument_windows.clear()
             self._ready.clear()
             self._core_ready.clear()
             self._errors.clear()
+            for meta_key, meta0 in list(self._meta.items()):
+                meta = dict(meta0)
+                if meta.get("provider") == "databento":
+                    meta["mapping_active"] = False
+                    self._meta[meta_key] = meta
 
         if client is not None:
             try:

@@ -257,7 +257,9 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 feed = r.feed
                 if kind == "capabilities":
                     caps = feed.capabilities() if hasattr(feed, "capabilities") else {}
-                    return self._json(200, {"asset": r.symbol, "provider": type(feed).__name__.lower(), "capabilities": caps})
+                    metadata = feed.meta(r.spec.ticker) if hasattr(feed, "meta") else {}
+                    return self._json(200, {"asset": r.symbol, "provider": type(feed).__name__.lower(),
+                                            "capabilities": caps, "metadata": metadata})
                 if kind == "ticks":
                     if not hasattr(feed, "trades"):
                         return self._json(409, {"error": f"{type(feed).__name__} does not expose trade ticks"})
