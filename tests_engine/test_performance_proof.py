@@ -136,3 +136,41 @@ def test_replay_determinism_requires_a_real_sample(tmp_path):
     snap = store.snapshot()
     assert snap["replay"]["determinism_rate"] == 1.0
     assert snap["replay"]["historical_100_percent_established"] is True
+
+
+def test_future_outcome_is_rejected(tmp_path):
+    store = PerformanceProofStore(tmp_path)
+    rec = store.register_forecast(_forecast())
+    future = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat().replace("+00:00", "Z")
+    with pytest.raises(ValueError, match="observed_at cannot be in the future"):
+        store.record_outcome({
+            "forecast_id": rec["forecast_id"],
+            "observed_at": future,
+            "success": True,
+            "realized_value": 1.0,
+            "outcome_hash": "d" * 64,
+            "source": "future-test",
+        })
+
+
+def test_mixed_success_definitions_do_not_establish_one_global_100_percent_claim(tmp_path):
+    store = PerformanceProofStore(tmp_path)
+    for i in range(30):
+        body = _forecast(i)
+        if i >= 15:
+            body["success_definition"] = "different outcome definition"
+        rec = store.register_forecast(body)
+        _, _, observed = _times(i)
+        store.record_outcome({
+            "forecast_id": rec["forecast_id"],
+            "observed_at": observed,
+            "success": True,
+            "realized_value": 1.0,
+            "outcome_hash": ("%064x" % (i + 5001))[-64:],
+            "source": "deterministic test outcome",
+        })
+    snap = store.snapshot()
+    assert snap["metrics"]["success_rate"] == 1.0
+    assert snap["closed_sample"]["scope_coherent"] is False
+    assert snap["closed_sample"]["scope_count"] == 2
+    assert snap["closed_sample"]["historical_100_percent_established"] is False
