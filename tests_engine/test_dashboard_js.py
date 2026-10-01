@@ -25,6 +25,7 @@ NODE = shutil.which("node")
         "icarus_engine/parallax-ui.js",
         "icarus_engine/possibility-ui.js",
         "icarus_engine/integrity-ui.js",
+        "icarus_engine/engine-control-ui.js",
         "icarus_engine/autopilot-ui.js",
         "icarus_engine/experience-ui.js",
     ],
@@ -183,6 +184,13 @@ def test_dashboard_surfaces_authenticated_engine_control_panel():
     assert "RESET ASSET CONFIG" in server
     assert "RESET AUTOPILOT" in server
     assert "STOP ALL INTELLIGENCE SYNCS" in server
+    assert '"mcp_repository": lambda: mcp_control.status(200)' in server
+    assert 'ControlAction("backtest.start"' in server
+    assert 'ControlAction("research.start"' in server
+    assert 'ControlAction("parallax.record_decision"' in server
+    assert 'ControlAction("possibility.ingest_evidence"' in server
+    assert "data-ec-template" in ui
+    assert "ecEventTable" in ui
 
 
 def test_dashboard_surfaces_tactical_autopilot_and_root_engine_control():
