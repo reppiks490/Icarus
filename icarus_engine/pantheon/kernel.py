@@ -68,8 +68,19 @@ class PantheonKernel:
                     payload_json TEXT NOT NULL,
                     created_at TEXT NOT NULL
                 );
+                CREATE TABLE IF NOT EXISTS sentinel_cells (
+                    cell_id TEXT PRIMARY KEY,
+                    asset TEXT NOT NULL,
+                    horizon_ms INTEGER NOT NULL,
+                    last_observation_id TEXT NOT NULL,
+                    last_energy REAL NOT NULL,
+                    last_status TEXT NOT NULL,
+                    observation_count INTEGER NOT NULL DEFAULT 1,
+                    updated_at TEXT NOT NULL
+                );
                 CREATE INDEX IF NOT EXISTS idx_pantheon_obs_asset ON observations(asset, observed_at);
                 CREATE INDEX IF NOT EXISTS idx_pantheon_claim_obs ON claims(observation_id, kind);
+                CREATE INDEX IF NOT EXISTS idx_pantheon_cells_energy ON sentinel_cells(last_energy, updated_at);
                 """
             )
 
@@ -200,6 +211,27 @@ class PantheonKernel:
                         now,
                     ),
                 )
+            cell_id = "cell-" + digest(normalized["asset"], str(normalized["horizon_ms"]))[:18]
+            con.execute(
+                """INSERT INTO sentinel_cells(
+                    cell_id,asset,horizon_ms,last_observation_id,last_energy,last_status,observation_count,updated_at
+                ) VALUES(?,?,?,?,?,?,1,?)
+                ON CONFLICT(cell_id) DO UPDATE SET
+                    last_observation_id=excluded.last_observation_id,
+                    last_energy=excluded.last_energy,
+                    last_status=excluded.last_status,
+                    observation_count=sentinel_cells.observation_count+1,
+                    updated_at=excluded.updated_at""",
+                (
+                    cell_id,
+                    normalized["asset"],
+                    normalized["horizon_ms"],
+                    observation_id,
+                    float(aether["field"]["energy"]),
+                    str(aether["status"]),
+                    now,
+                ),
+            )
         return self.observation(observation_id)
 
     def observation(self, observation_id: str) -> dict[str, Any]:
@@ -232,9 +264,25 @@ class PantheonKernel:
         with _LOCK, self._connect() as con:
             rows = con.execute("SELECT observation_id FROM observations ORDER BY observed_at DESC LIMIT ?", (limit,)).fetchall()
             counts = con.execute(
-                "SELECT COUNT(*) AS observations,(SELECT COUNT(*) FROM claims) AS claims FROM observations"
+                "SELECT COUNT(*) AS observations,(SELECT COUNT(*) FROM claims) AS claims,(SELECT COUNT(*) FROM sentinel_cells) AS cells FROM observations"
             ).fetchone()
+            cell_rows = con.execute(
+                "SELECT * FROM sentinel_cells ORDER BY last_energy DESC,updated_at DESC LIMIT 100"
+            ).fetchall()
         observations = [self.observation(row["observation_id"]) for row in rows]
+        cells = [
+            {
+                "cell_id": row["cell_id"],
+                "asset": row["asset"],
+                "horizon_ms": row["horizon_ms"],
+                "last_observation_id": row["last_observation_id"],
+                "energy": row["last_energy"],
+                "status": row["last_status"],
+                "observation_count": row["observation_count"],
+                "updated_at": row["updated_at"],
+            }
+            for row in cell_rows
+        ]
         latest = observations[0] if observations else None
         catalog = {
             "ORACLE": {"mode": "external/native subsystem", "ownership": "preserved; not reimplemented here"},
@@ -252,7 +300,8 @@ class PantheonKernel:
         }
         return {
             "schema_version": SCHEMA_VERSION,
-            "counts": {"observations": counts["observations"], "claims": counts["claims"]},
+            "counts": {"observations": counts["observations"], "claims": counts["claims"], "sentinel_cells": counts["cells"]},
+            "sentinel_cells": cells,
             "engine_catalog": catalog,
             "faculty_names": list(FACULTIES),
             "latest": latest,

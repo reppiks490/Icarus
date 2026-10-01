@@ -10,9 +10,13 @@ from typing import Any, Mapping
 
 from .contracts import authority_block, digest, unit
 
-_AGENT_ROLES = (
+_MANDATORY_INDEPENDENT_ROLES = (
     "falsifier",
     "alternative_cause",
+    "provenance_guard",
+    "risk_guard",
+)
+_OPTIONAL_ROLES = (
     "monetization",
     "historical_analogue",
     "cross_asset",
@@ -20,10 +24,22 @@ _AGENT_ROLES = (
     "edge_half_life",
     "information_gain",
     "ontology_scout",
-    "provenance_guard",
-    "risk_guard",
     "redundancy_hunter",
 )
+_ROLE_PARTITIONS = {
+    "falsifier": "adversarial",
+    "alternative_cause": "mechanism",
+    "provenance_guard": "provenance",
+    "risk_guard": "risk",
+    "monetization": "economics",
+    "historical_analogue": "history",
+    "cross_asset": "cross_asset",
+    "execution_risk": "execution",
+    "edge_half_life": "decay",
+    "information_gain": "epistemic",
+    "ontology_scout": "novelty",
+    "redundancy_hunter": "ablation",
+}
 
 class AetherSwarm:
     def __init__(self, threshold: float = 0.58, max_agents: int = 12):
@@ -63,13 +79,18 @@ class AetherSwarm:
         if active:
             count = min(self.max_agents, max(4, 4 + int(round(energy * 8))))
             ttl = max(1, min(180, int(max(1, horizon_ms) / 1000) * 2))
-            for role in _AGENT_ROLES[:count]:
+            roles = list(_MANDATORY_INDEPENDENT_ROLES)
+            roles.extend(_OPTIONAL_ROLES[: max(0, count - len(roles))])
+            for role in roles[:count]:
                 aid = "aeth-" + digest(observation_id, role)[:18]
                 agents.append({
                     "agent_id": aid,
                     "role": role,
                     "claim_scope": f"{asset}:{horizon_ms}ms",
                     "falsifier_required": role not in {"provenance_guard", "risk_guard"},
+                    "information_partition": _ROLE_PARTITIONS[role],
+                    "independence_round": "blind_first_pass",
+                    "peer_context_authorized": False,
                     "ttl_seconds": ttl,
                     "ephemeral": True,
                     "capital_authority": "NONE",
@@ -104,6 +125,13 @@ class AetherSwarm:
             "species_candidates": species,
             "cognitive_mass": len(agents),
             "authority": authority_block(),
+            "diversity_contract": {
+                "blind_first_pass": True,
+                "peer_conclusions_hidden_until_commitment": True,
+                "minimum_independent_roles": 4 if active else 0,
+                "mandatory_roles": list(_MANDATORY_INDEPENDENT_ROLES) if active else [],
+                "forced_consensus": False,
+            },
             "truth_contract": {
                 "agents_are_ephemeral_research_workers": True,
                 "claims_not_agents_are_durable_units": True,

@@ -27,6 +27,7 @@
       el.innerHTML='<h2>PANTHEON / AETHER <span class="sub">SHADOW ONLY · execution_authorized=false</span></h2>'+
         '<div class="tiles"><div class="tile"><div class="k">Observations</div><div class="v tnum">'+h((state.counts||{}).observations||0)+'</div></div>'+
         '<div class="tile"><div class="k">Claims</div><div class="v tnum">'+h((state.counts||{}).claims||0)+'</div></div>'+
+        '<div class="tile"><div class="k">Sentinel cells</div><div class="v tnum">'+h((state.counts||{}).sentinel_cells||0)+'</div></div>'+
         '<div class="tile"><div class="k">Authority</div><div class="v">NONE</div><div class="small muted">research/shadow only</div></div></div>'+
         '<div class="empty" style="margin-top:12px">No PANTHEON observations yet. The engine catalog is live, but every faculty abstains until evidence is explicitly ingested.</div>'+
         '<div class="scroll"><table><thead><tr><th>Faculty</th><th>Mode</th><th>Boundary</th></tr></thead><tbody>'+engineRows+'</tbody></table></div>';
@@ -60,6 +61,7 @@
         '<div class="tile"><div class="k">Field energy</div><div class="v tnum">'+pct(field.energy)+'</div></div>'+
         '<div class="tile"><div class="k">Data quality</div><div class="v tnum">'+pct(field.data_quality)+'</div></div>'+
         '<div class="tile"><div class="k">Contradiction</div><div class="v tnum">'+pct(field.contradiction)+'</div></div>'+
+        '<div class="tile"><div class="k">Sentinel cells</div><div class="v tnum">'+h((state.counts||{}).sentinel_cells||0)+'</div></div>'+
         '<div class="tile"><div class="k">Authority</div><div class="v">SHADOW ONLY</div></div>'+
       '</div>'+
       '<div class="pan-grid" style="margin-top:12px">'+
@@ -71,6 +73,7 @@
       '</div>'+
       '<h3 class="small" style="margin:16px 0 8px">Independent faculties — disagreement preserved</h3>'+
       '<div class="scroll"><table><thead><tr><th>Faculty</th><th>Status</th><th>Key state</th><th>Semantics</th></tr></thead><tbody>'+facultyRows+'</tbody></table></div>'+
+      '<div class="small muted" style="margin-top:10px">Diversity lock: blind first pass · peer conclusions hidden until commitment · forced consensus disabled.</div>'+
       '<h3 class="small" style="margin:16px 0 8px">AETHER ephemeral swarm</h3>'+
       '<div class="scroll"><table><thead><tr><th>Agent</th><th>Role</th><th>Scope</th><th>TTL</th><th>Authority</th></tr></thead><tbody>'+(agents||'<tr><td colspan="5" class="empty">Field below activation threshold; no expensive swarm spawned.</td></tr>')+'</tbody></table></div>'+
       '<h3 class="small" style="margin:16px 0 8px">Durable claims</h3>'+

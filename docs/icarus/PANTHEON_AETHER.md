@@ -49,3 +49,22 @@ exact source commit. AETHER agents are disposable workers with bounded TTLs.
   observation and calculate PANTHEON / AETHER diagnostics.
 
 Observation schema: `icarus-pantheon-observation-v1`.
+
+
+## AETHER independence protocol
+
+Active swarms begin with four mandatory, information-partitioned roles:
+falsifier, alternative-cause investigator, provenance guard, and risk guard.
+Their first pass is blind to peer conclusions. This intentionally resists
+sycophantic convergence and preserves independent information instead of
+rewarding superficial consensus.
+
+The kernel also keeps a lightweight sentinel-cell registry keyed by asset and
+horizon. Sentinel cells remember field energy and observation count but have no
+execution or capital authority. They are an observability/attention substrate,
+not an always-on trading permission.
+
+Research rationale: recent simulated-market work reports that multi-agent
+reasoning quality alone did not track financial performance, while an
+intervention preserving disagreement improved Sharpe and Sortino:
+https://arxiv.org/abs/2609.29701

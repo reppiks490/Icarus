@@ -91,6 +91,11 @@ def test_aether_spawns_bounded_ephemeral_agents_with_zero_capital_authority(tmp_
     assert all(agent["ephemeral"] is True for agent in swarm["agents"])
     assert all(agent["capital_authority"] == "NONE" for agent in swarm["agents"])
     assert all(agent["execution_authorized"] is False for agent in swarm["agents"])
+    assert {"falsifier", "alternative_cause", "provenance_guard", "risk_guard"} <= {a["role"] for a in swarm["agents"]}
+    assert all(agent["independence_round"] == "blind_first_pass" for agent in swarm["agents"])
+    assert all(agent["peer_context_authorized"] is False for agent in swarm["agents"])
+    assert swarm["diversity_contract"]["peer_conclusions_hidden_until_commitment"] is True
+    assert swarm["diversity_contract"]["forced_consensus"] is False
     assert swarm["truth_contract"]["risk_kernel_bypass"] is False
 
 
@@ -144,6 +149,7 @@ def test_snapshot_preserves_existing_engine_ownership(tmp_path):
     assert state["engine_catalog"]["DREAMSTATE"]["ownership"] == "preserved"
     assert state["authority"]["execution_authorized"] is False
     assert state["truth_contract"]["no_direct_agent_trading"] is True
+    assert state["counts"]["sentinel_cells"] == 0
 
 
 def test_pantheon_is_visible_in_trader_interface():
@@ -159,3 +165,17 @@ def test_pantheon_is_visible_in_trader_interface():
     assert "SHADOW ONLY" in ui
     assert 'p.path == "/api/pantheon"' in server
     assert 'p.path == "/admin/pantheon/observe"' in server
+
+
+def test_sentinel_cells_accumulate_without_becoming_trade_authority(tmp_path):
+    kernel = PantheonKernel(tmp_path, swarm=AetherSwarm(threshold=0.25))
+    first = kernel.record_observation(_payload(observation_id="pan-cell-1"))
+    second_payload = _payload(observation_id="pan-cell-2", observed_at="2026-10-01T06:00:01Z")
+    second = kernel.record_observation(second_payload)
+    state = kernel.snapshot()
+    assert first["asset"] == second["asset"] == "NQ"
+    assert state["counts"]["sentinel_cells"] == 1
+    assert state["sentinel_cells"][0]["observation_count"] == 2
+    assert state["sentinel_cells"][0]["asset"] == "NQ"
+    assert state["sentinel_cells"][0]["horizon_ms"] == 15000
+    assert state["authority"]["execution_authorized"] is False
