@@ -226,3 +226,16 @@ def test_control_action_identity_and_handler_are_validated():
         ControlAction("Bad Action", "Bad", "Test", "x", lambda _: None)
     with pytest.raises(TypeError, match="handler"):
         ControlAction("bad.handler", "Bad", "Test", "x", None)  # type: ignore[arg-type]
+
+
+def test_control_request_rejects_falsey_non_object_args(tmp_path: Path):
+    cp = EngineControlPlane(
+        tmp_path,
+        snapshotters={},
+        actions={"noop": ControlAction("noop", "No-op", "Test", "noop", lambda _: {})},
+    )
+    with pytest.raises(ValueError, match="args must be an object"):
+        cp.run({"action": "noop", "args": []})
+    with pytest.raises(ValueError, match="args must be an object"):
+        cp.run({"action": "noop", "args": ""})
+    assert cp.run({"action": "noop", "args": None})["ok"] is True
