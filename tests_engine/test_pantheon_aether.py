@@ -480,3 +480,43 @@ def test_blind_claim_bodies_are_hidden_until_mandatory_round_completes(tmp_path)
     assert state["deliberation"]["blind_first_pass_complete"] is True
     assert state["deliberation"]["claim_bodies_visible"] is True
     assert any((row["claim"] or {}).get("thesis") == "must remain hidden" for row in state["agent_claims"])
+
+
+@pytest.mark.parametrize(
+    "field,value,match",
+    [
+        ("risk", 1.1, "between 0 and 1"),
+        ("data_quality", -0.1, "between 0 and 1"),
+    ],
+)
+def test_normalized_faculty_inputs_fail_closed_instead_of_clamping(tmp_path, field, value, match):
+    payload = _payload(observation_id=f"pan-invalid-{field}")
+    payload["signals"] = dict(payload["signals"])
+    payload["signals"][field] = value
+    with pytest.raises(ValueError, match=match):
+        PantheonKernel(tmp_path).record_observation(payload)
+
+
+def test_structural_and_monetization_inputs_reject_invalid_economics(tmp_path):
+    bad_transition = _payload(observation_id="pan-bad-transition")
+    bad_transition["signals"] = dict(bad_transition["signals"], transition_cost_up=-0.1)
+    with pytest.raises(ValueError, match="transition costs"):
+        PantheonKernel(tmp_path / "a").record_observation(bad_transition)
+
+    bad_world = _payload(observation_id="pan-bad-world")
+    bad_world["signals"] = dict(bad_world["signals"], world_scores={"a": 1.0, "b": -0.1})
+    with pytest.raises(ValueError, match="non-negative"):
+        PantheonKernel(tmp_path / "b").record_observation(bad_world)
+
+    bad_risk = _payload(observation_id="pan-bad-risk-capital")
+    bad_risk["signals"] = dict(bad_risk["signals"])
+    bad_risk["signals"]["candidate_expressions"] = [{
+        "name": "invalid",
+        "expected_gross": 10.0,
+        "costs": 1.0,
+        "risk_capital": -100.0,
+        "duration_seconds": 10.0,
+        "capacity_remaining": 0.5,
+    }]
+    with pytest.raises(ValueError, match="risk_capital must be positive"):
+        PantheonKernel(tmp_path / "c").record_observation(bad_risk)

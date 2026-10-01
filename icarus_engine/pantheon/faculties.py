@@ -62,7 +62,9 @@ def godel(signals: Mapping[str, Any]) -> dict[str, Any]:
     vals = []
     worlds = {}
     for key, value in raw.items():
-        v = max(0.0, finite(value, f"world_scores.{key}"))
+        v = finite(value, f"world_scores.{key}")
+        if v < 0:
+            raise ValueError(f"world_scores.{key} must be non-negative")
         worlds[str(key)] = v
         vals.append(v)
     total = sum(vals)
@@ -95,8 +97,10 @@ def ananke(signals: Mapping[str, Any]) -> dict[str, Any]:
     out = _base("ANANKE")
     if "transition_cost_up" not in signals or "transition_cost_down" not in signals:
         return {**out, "status": "abstain", "reason": "transition_cost_up/down required"}
-    up = max(0.0, finite(signals["transition_cost_up"], "transition_cost_up"))
-    down = max(0.0, finite(signals["transition_cost_down"], "transition_cost_down"))
+    up = finite(signals["transition_cost_up"], "transition_cost_up")
+    down = finite(signals["transition_cost_down"], "transition_cost_down")
+    if up < 0 or down < 0:
+        raise ValueError("transition costs must be non-negative")
     reach_up = math.exp(-up)
     reach_down = math.exp(-down)
     asym = reach_up - reach_down
@@ -168,9 +172,15 @@ def mint(signals: Mapping[str, Any]) -> dict[str, Any]:
             continue
         name = str(item.get("name") or f"candidate_{i}")[:96]
         gross = finite(item.get("expected_gross", 0.0), f"candidate_expressions[{i}].expected_gross")
-        costs = max(0.0, finite(item.get("costs", 0.0), f"candidate_expressions[{i}].costs"))
-        risk = max(1e-9, abs(finite(item.get("risk_capital", 1.0), f"candidate_expressions[{i}].risk_capital")))
-        duration = max(1.0, finite(item.get("duration_seconds", 1.0), f"candidate_expressions[{i}].duration_seconds"))
+        costs = finite(item.get("costs", 0.0), f"candidate_expressions[{i}].costs")
+        risk = finite(item.get("risk_capital", 1.0), f"candidate_expressions[{i}].risk_capital")
+        duration = finite(item.get("duration_seconds", 1.0), f"candidate_expressions[{i}].duration_seconds")
+        if costs < 0:
+            raise ValueError(f"candidate_expressions[{i}].costs must be non-negative")
+        if risk <= 0:
+            raise ValueError(f"candidate_expressions[{i}].risk_capital must be positive")
+        if duration <= 0:
+            raise ValueError(f"candidate_expressions[{i}].duration_seconds must be positive")
         capacity = unit(item.get("capacity_remaining", 1.0), f"candidate_expressions[{i}].capacity_remaining", 1.0)
         net = gross - costs
         density = (net / (risk * duration)) * capacity

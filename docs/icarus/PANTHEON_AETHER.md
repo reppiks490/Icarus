@@ -152,3 +152,13 @@ roles is reported separately, but deliberation and claim-body visibility remain
 closed until every spawned research partition has committed its first-pass
 claim. This prevents optional specialists from reading mandatory-role
 conclusions before submitting their own independent view.
+
+
+## Invalid-input handling
+
+Normalized confidence, risk, quality, reliability, novelty and similar fields
+now fail closed when they fall outside their declared bounds instead of being
+silently clipped. Structural costs must be non-negative, and MINT rejects
+negative costs, non-positive risk capital, and non-positive duration. This
+prevents malformed upstream data from being converted into plausible-looking
+research diagnostics.

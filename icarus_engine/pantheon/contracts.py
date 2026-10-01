@@ -61,13 +61,17 @@ def unit(value: Any, field: str, default: float = 0.0) -> float:
     if value is None:
         return default
     out = finite(value, field)
-    return max(0.0, min(1.0, out))
+    if not 0.0 <= out <= 1.0:
+        raise ValueError(f"{field} must be between 0 and 1")
+    return out
 
 def signed_unit(value: Any, field: str, default: float = 0.0) -> float:
     if value is None:
         return default
     out = finite(value, field)
-    return max(-1.0, min(1.0, out))
+    if not -1.0 <= out <= 1.0:
+        raise ValueError(f"{field} must be between -1 and 1")
+    return out
 
 def exact_git_sha(value: Any) -> str:
     value = text(value, "source_commit", 40).lower()
