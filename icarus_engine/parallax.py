@@ -12,8 +12,10 @@ counterfactual branch families. V3 adds chronological stability diagnostics and
 parameter-basin robustness so isolated lucky settings do not automatically enter
 DREAMSTATE. V4 adds episode-aware effective sample sizes, autocorrelation-aware
 Newey-West/HAC inference, and cross-revision contradiction diagnostics so dense
-market episodes and serial dependence cannot manufacture confidence. These are
-hypothesis screens, not causal proof.
+market episodes and serial dependence cannot manufacture confidence. V5 adds
+distributional robustness over effective episode means so a minority of oversized
+wins cannot hide a losing median, weak hit-rate, or single-episode fragility.
+These are hypothesis screens, not causal proof.
 """
 from __future__ import annotations
 
@@ -42,6 +44,8 @@ _DERIVED_STRATA_KEYS = (
 _TEMPORAL_FOLD_COUNT = 3
 _TEMPORAL_MIN_PAIRS = 9
 _HAC_MIN_EFFECTIVE_PAIRS = 6
+_DISTRIBUTIONAL_MIN_EFFECTIVE_PAIRS = 9
+_MIN_POSITIVE_EPISODE_FRACTION = 2.0 / 3.0
 _TRANSPORT_MIN_REVISIONS = 2
 _PARAMETER_AXES = {
     "delay": "delay_bars",
@@ -705,6 +709,50 @@ class ParallaxStore:
             "p_one_sided": max(0.0, min(1.0, p)),
         }
 
+    @staticmethod
+    def _distributional_robustness(values: list[float]) -> dict[str, Any]:
+        """Scale-free distributional diagnostics over independent episode means."""
+        n = len(values)
+        if n < _DISTRIBUTIONAL_MIN_EFFECTIVE_PAIRS:
+            return {
+                "evaluable": False,
+                "required_effective_pairs": _DISTRIBUTIONAL_MIN_EFFECTIVE_PAIRS,
+                "median_delta": None,
+                "positive_fraction": None,
+                "minimum_positive_fraction": _MIN_POSITIVE_EPISODE_FRACTION,
+                "leave_one_out_min_mean": None,
+                "median_positive": None,
+                "positive_fraction_ok": None,
+                "single_episode_fragile": None,
+                "stable": None,
+            }
+
+        ordered = sorted(float(value) for value in values)
+        mid = n // 2
+        median = ordered[mid] if n % 2 else (ordered[mid - 1] + ordered[mid]) / 2.0
+        positive_fraction = sum(1 for value in values if value > 0.0) / n
+        total = sum(values)
+        leave_one_out = [
+            (total - float(value)) / (n - 1)
+            for value in values
+        ]
+        leave_one_out_min = min(leave_one_out)
+        median_positive = median > 0.0
+        positive_fraction_ok = positive_fraction >= _MIN_POSITIVE_EPISODE_FRACTION
+        single_episode_fragile = leave_one_out_min <= 0.0
+        return {
+            "evaluable": True,
+            "required_effective_pairs": _DISTRIBUTIONAL_MIN_EFFECTIVE_PAIRS,
+            "median_delta": median,
+            "positive_fraction": positive_fraction,
+            "minimum_positive_fraction": _MIN_POSITIVE_EPISODE_FRACTION,
+            "leave_one_out_min_mean": leave_one_out_min,
+            "median_positive": median_positive,
+            "positive_fraction_ok": positive_fraction_ok,
+            "single_episode_fragile": single_episode_fragile,
+            "stable": median_positive and positive_fraction_ok and not single_episode_fragile,
+        }
+
     @classmethod
     def _temporal_stability(cls, samples: list[tuple[str, str, float]]) -> dict[str, Any]:
         """Chronological fold diagnostics; advisory until enough paired evidence exists."""
@@ -858,7 +906,12 @@ class ParallaxStore:
                 def basin_supports(row: Mapping[str, Any]) -> bool:
                     temporal = row.get("temporal_stability") or {}
                     temporal_ok = temporal.get("evaluable") is not True or temporal.get("stable") is True
-                    return row.get("candidate_eligible") is True and temporal_ok
+                    distributional = row.get("distributional_robustness") or {}
+                    distributional_ok = (
+                        distributional.get("evaluable") is not True
+                        or distributional.get("stable") is True
+                    )
+                    return row.get("candidate_eligible") is True and temporal_ok and distributional_ok
 
                 supporting = [row for row in neighbors if basin_supports(row)]
                 family_evaluable_points = sum(
@@ -1033,6 +1086,7 @@ class ParallaxStore:
             stats = self._stats(effective_values)
             raw_stats = self._stats(raw_values)
             hac = self._hac_diagnostics(effective_values)
+            distributional = self._distributional_robustness(effective_values)
             temporal = self._temporal_stability(collapsed)
             screen_p = hac["p_one_sided"] if hac.get("evaluable") else stats.get("p_one_sided")
             screen_low = hac["ci95_low"] if hac.get("evaluable") else stats.get("ci95_low")
@@ -1053,6 +1107,7 @@ class ParallaxStore:
                 "episode_dependence": dependence,
                 "raw_pair_stats": raw_stats,
                 "hac_inference": hac,
+                "distributional_robustness": distributional,
                 "screen_p_one_sided": screen_p,
                 "screen_ci95_low": screen_low,
                 "screen_ci95_high": screen_high,
@@ -1093,6 +1148,14 @@ class ParallaxStore:
             temporal = item.get("temporal_stability") or {}
             if temporal.get("evaluable") is True and temporal.get("stable") is not True:
                 robustness_blockers.append("temporal_instability")
+            distributional = item.get("distributional_robustness") or {}
+            if distributional.get("evaluable") is True:
+                if distributional.get("median_positive") is not True:
+                    robustness_blockers.append("nonpositive_episode_median")
+                if distributional.get("positive_fraction_ok") is not True:
+                    robustness_blockers.append("low_positive_episode_fraction")
+                if distributional.get("single_episode_fragile") is True:
+                    robustness_blockers.append("single_episode_fragility")
             basin = item.get("parameter_basin") or {}
             if basin.get("evaluable") is True and basin.get("isolated_spike") is True:
                 robustness_blockers.append("isolated_parameter_spike")
@@ -1169,7 +1232,7 @@ class ParallaxStore:
             for reason in item.get("robustness_blockers", []):
                 robustness_blockers[reason] = robustness_blockers.get(reason, 0) + 1
         return {
-            "robustness_version": "icarus-parallax-robustness-v2",
+            "robustness_version": "icarus-parallax-robustness-v3",
             "hypotheses_total": len(hypotheses),
             "candidate_ready": sum(1 for item in hypotheses if item["candidate_eligible"]),
             "robust_candidate_ready": sum(1 for item in hypotheses if item["robust_candidate_eligible"]),
@@ -1193,6 +1256,7 @@ class ParallaxStore:
                 "benjamini_hochberg_within_asset_regime_revision_contract": True,
                 "episode_id_context_collapses_correlated_decisions_to_one_effective_sample": True,
                 "cross_revision_contradiction_screen_without_effect_pooling": True,
+                "distributional_median_positive_fraction_and_leave_one_out_stability_when_nine_effective_pairs_available": True,
                 "chronological_three_fold_stability_when_nine_effective_pairs_available": True,
                 "adjacent_parameter_basin_screen_when_neighbors_are_evaluable": True,
                 "robustness_is_hypothesis_filter_not_causal_proof": True,
@@ -1337,7 +1401,7 @@ class ParallaxStore:
 
         return {
             "schema_version": SCHEMA_VERSION,
-            "robustness_version": "icarus-parallax-robustness-v2",
+            "robustness_version": "icarus-parallax-robustness-v3",
             "counts": {
                 "decisions": counts["decisions"],
                 "branches": counts["branches"],
@@ -1369,6 +1433,8 @@ class ParallaxStore:
                 "caller_supplied_episode_ids_reduce_effective_sample_size_instead_of_inflating_n": True,
                 "hac_uncertainty_is_used_when_enough_effective_episode_means_exist": True,
                 "cross_revision_effects_are_never_pooled_but_strong_contradictions_block_robust_readiness": True,
+                "distributional_robustness_blocks_outlier_driven_or_low_breadth_episode_effects_when_evaluable": True,
+                "single_episode_leave_one_out_fragility_blocks_robust_readiness_when_evaluable": True,
                 "temporal_robustness_is_advisory_until_nine_effective_pairs": True,
                 "evaluable_temporal_instability_blocks_robust_candidates": True,
                 "evaluable_isolated_parameter_spikes_block_robust_candidates": True,
