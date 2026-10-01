@@ -260,3 +260,44 @@ def test_aether_enforces_minimum_independent_population(tmp_path):
     assert swarm["status"] == "active"
     assert len(swarm["agents"]) >= 4
     assert {"falsifier", "alternative_cause", "provenance_guard", "risk_guard"} <= {a["role"] for a in swarm["agents"]}
+
+
+def test_native_subsystem_names_cannot_be_spoofed_by_caller_context():
+    out = subsystem_context(
+        {"counts": {"decisions": 7}, "regret": {}, "mutation_signals": [], "paired_ablation_attribution": []},
+        {"stages": {"proposed": 1}, "candidates": [], "required_gates": []},
+        oracle_snapshot={
+            "asset": "NQ",
+            "oracle": {"latent_pressure": 0.25, "latent_pressure_score": 25.0, "evidence_coverage": 0.7},
+            "possibility": {},
+            "edge_state": {"state": "NO_EDGE"},
+            "phase_transition": {},
+            "forced_consensus": {},
+            "causal_leadership": {},
+        },
+        existing={
+            "oracle": {"latent_pressure": 999},
+            "parallax": {"counts": {"decisions": 999}},
+            "dreamstate": {"stages": {"validated": 999}},
+            "custom": {"preserved": True},
+        },
+    )
+    assert out["oracle"]["latent_pressure"] == 0.25
+    assert out["parallax"]["counts"]["decisions"] == 7
+    assert out["dreamstate"]["stages"]["proposed"] == 1
+    assert out["custom"]["preserved"] is True
+
+
+def test_ambient_subsystem_context_does_not_break_idempotent_retries(tmp_path):
+    kernel = PantheonKernel(tmp_path)
+    first_payload = _payload(observation_id="pan-ambient-idempotent")
+    first_payload["subsystem_outputs"] = {"oracle": {"snapshot": 1}}
+    first = kernel.record_observation(first_payload)
+
+    retry_payload = _payload(observation_id="pan-ambient-idempotent")
+    retry_payload["subsystem_outputs"] = {"oracle": {"snapshot": 2}, "parallax": {"snapshot": 3}}
+    retry = kernel.record_observation(retry_payload)
+
+    assert retry["observation_id"] == first["observation_id"]
+    assert retry["analysis"]["external_subsystems"] == {"oracle": {"snapshot": 1}}
+    assert retry["analysis"]["truth_contract"]["ambient_subsystem_context_excluded_from_immutable_identity"] is True

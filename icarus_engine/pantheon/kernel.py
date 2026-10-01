@@ -118,7 +118,16 @@ class PantheonKernel:
             "evidence": evidence,
             "subsystem_outputs": source_outputs,
         }
-        raw = json_canonical(normalized, "observation", 262144)
+        identity_payload = {
+            "schema_version": OBSERVATION_SCHEMA,
+            "observed_at": observed_at,
+            "asset": asset,
+            "horizon_ms": horizon,
+            "source_commit": source_commit,
+            "signals": signals,
+            "evidence": evidence,
+        }
+        raw = json_canonical(identity_payload, "observation identity", 262144)
         identity = digest(raw)
         observation_id = str(payload.get("observation_id") or ("pan-" + identity[:24]))
         observation_id = text(observation_id, "observation_id", 96)
@@ -152,6 +161,7 @@ class PantheonKernel:
                 "missing_inputs_produce_abstention": True,
                 "new_concepts_begin_as_hypotheses": True,
                 "execution_requires_separate_hard_risk_kernel": True,
+                "ambient_subsystem_context_excluded_from_immutable_identity": True,
             },
         }
         payload_json = json_canonical(normalized, "normalized observation", 262144)

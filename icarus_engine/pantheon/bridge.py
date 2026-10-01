@@ -91,7 +91,7 @@ def subsystem_context(
 ) -> dict[str, Any]:
     out = dict(existing or {})
     if oracle_snapshot is not None:
-        out.setdefault("oracle", oracle_context(oracle_snapshot))
-    out.setdefault("parallax", parallax_context(parallax_snapshot))
-    out.setdefault("dreamstate", dreamstate_context(dreamstate_snapshot))
+        out["oracle"] = oracle_context(oracle_snapshot)
+    out["parallax"] = parallax_context(parallax_snapshot)
+    out["dreamstate"] = dreamstate_context(dreamstate_snapshot)
     return out

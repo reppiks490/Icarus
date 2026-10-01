@@ -97,3 +97,14 @@ DREAMSTATE context is attached inside the engine rather than duplicated by MCP.
 The same PANTHEON/AETHER state is visible in the trader interface. MCP exposure
 does not increase authority: observations remain shadow research and cannot
 authorize orders, sizing, broker actions or production promotion.
+
+
+## Provenance and retry semantics
+
+The immutable observation identity is bound to observation time, asset, horizon,
+exact source commit, signals and explicit evidence. Ambient ORACLE Ψ, PARALLAX
+and DREAMSTATE snapshots are stored with the first observation but excluded from
+the identity hash so an at-least-once retry cannot fail merely because a native
+subsystem advanced between attempts. Reserved native subsystem names are
+overwritten from the native stores at ingestion, so caller-supplied JSON cannot
+masquerade as ORACLE, PARALLAX or DREAMSTATE evidence.
