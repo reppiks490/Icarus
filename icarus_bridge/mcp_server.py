@@ -716,6 +716,123 @@ def record_engine_source_reliability_observation(
     }))
 
 
+# ── APEX Ω research / world-intelligence tools ──
+def _apex_route(path: str, *, asset: str = "", as_of: str = "") -> str:
+    params = []
+    asset = asset.strip().upper()
+    as_of = as_of.strip()
+    if asset:
+        params.append("asset=" + quote(asset, safe=""))
+    if as_of:
+        params.append("as_of=" + quote(as_of, safe=""))
+    return path + (("?" + "&".join(params)) if params else "")
+
+
+def _apex_json_object(raw: str, label: str) -> tuple[dict | None, dict | None]:
+    try:
+        value = json.loads(raw)
+    except json.JSONDecodeError as ex:
+        return None, {"error": f"{label} is invalid JSON: {ex}"}
+    if not isinstance(value, dict):
+        return None, {"error": f"{label} must decode to an object"}
+    return value, None
+
+
+@mcp.tool()
+def engine_apex_state(asset: str = "", as_of: str = "") -> dict:
+    """Read the full APEX Ω research-only world-state snapshot."""
+    return _safe_engine(lambda: _engine_get(_apex_route("/api/apex", asset=asset, as_of=as_of)))
+
+
+@mcp.tool()
+def engine_apex_participants(asset: str = "NQ", as_of: str = "") -> dict:
+    """Read APEX Ω participant-state reconstruction. Hidden account positions are never claimed as observed."""
+    return _safe_engine(lambda: _engine_get(_apex_route("/api/apex/participants", asset=asset, as_of=as_of)))
+
+
+@mcp.tool()
+def engine_apex_crowdhunt(asset: str = "NQ", as_of: str = "") -> dict:
+    """Read CROWDHUNT Ω retail crowd/stop/trap reconstruction with explicit uncertainty."""
+    return _safe_engine(lambda: _engine_get(_apex_route("/api/apex/crowdhunt", asset=asset, as_of=as_of)))
+
+
+@mcp.tool()
+def engine_apex_forces(asset: str = "NQ", as_of: str = "") -> dict:
+    """Read the APEX Ω market-pressure tensor. Opposing forces remain separate contributions."""
+    return _safe_engine(lambda: _engine_get(_apex_route("/api/apex/forces", asset=asset, as_of=as_of)))
+
+
+@mcp.tool()
+def engine_apex_cascades(as_of: str = "") -> dict:
+    """Read persisted APEX Ω cascade topology."""
+    return _safe_engine(lambda: _engine_get(_apex_route("/api/apex/cascades", as_of=as_of)))
+
+
+@mcp.tool()
+def engine_apex_causality(as_of: str = "") -> dict:
+    """Read typed APEX Ω causal claims; correlation alone is never promoted to causal proof."""
+    return _safe_engine(lambda: _engine_get(_apex_route("/api/apex/causality", as_of=as_of)))
+
+
+@mcp.tool()
+def engine_apex_worlds(as_of: str = "") -> dict:
+    """Read durable APEX Ω counterfactual world hypotheses."""
+    return _safe_engine(lambda: _engine_get(_apex_route("/api/apex/worlds", as_of=as_of)))
+
+
+@mcp.tool()
+def engine_apex_epistemics(as_of: str = "") -> dict:
+    """Read APEX Ω epistemic-kernel health, evidence/belief counts and store integrity."""
+    return _safe_engine(lambda: _engine_get(_apex_route("/api/apex/epistemics", as_of=as_of)))
+
+
+@mcp.tool()
+def engine_apex_self(as_of: str = "") -> dict:
+    """Read APEX Ω model-health / reality-gap / self-model state."""
+    return _safe_engine(lambda: _engine_get(_apex_route("/api/apex/self", as_of=as_of)))
+
+
+@mcp.tool()
+def engine_apex_conscience(as_of: str = "") -> dict:
+    """Read persisted independent APEX Ω conscience verdicts."""
+    return _safe_engine(lambda: _engine_get(_apex_route("/api/apex/conscience", as_of=as_of)))
+
+
+@mcp.tool()
+def record_engine_apex_evidence(evidence_json: str) -> dict:
+    """Persist one provenance-bearing APEX Ω research evidence object. Never authorizes execution."""
+    body, error = _apex_json_object(evidence_json, "evidence_json")
+    if error:
+        return error
+    return _safe_engine(lambda: _engine_post("/admin/apex/evidence", body))
+
+
+@mcp.tool()
+def record_engine_apex_outcome(outcome_json: str) -> dict:
+    """Persist one APEX Ω research outcome record. Never changes a position or strategy input."""
+    body, error = _apex_json_object(outcome_json, "outcome_json")
+    if error:
+        return error
+    return _safe_engine(lambda: _engine_post("/admin/apex/outcome", body))
+
+
+@mcp.tool()
+def record_engine_apex_model_observation(observation_json: str) -> dict:
+    """Persist one APEX Ω model/reality-gap observation for research credibility accounting."""
+    body, error = _apex_json_object(observation_json, "observation_json")
+    if error:
+        return error
+    return _safe_engine(lambda: _engine_post("/admin/apex/model-observation", body))
+
+
+@mcp.tool()
+def propose_engine_apex_experiment(experiment_json: str) -> dict:
+    """Record/evaluate an APEX Ω research experiment proposal. This cannot deploy a model."""
+    body, error = _apex_json_object(experiment_json, "experiment_json")
+    if error:
+        return error
+    return _safe_engine(lambda: _engine_post("/admin/apex/experiment", body))
+
 @mcp.tool()
 def engine_performance_proof() -> dict:
     """Read causal forecast/outcome/replay proof, calibration and closed-sample metrics."""
