@@ -28,6 +28,8 @@ def test_mcp_server_imports_and_registers_engine_surface():
         "record_engine_replay_proof",
         "record_engine_performance_outcome",
         "record_engine_performance_forecast",
+        "engine_source_reliability",
+        "record_engine_source_reliability_observation",
         "engine_performance_proof",
         "engine_possibility_state",
         "engine_possibility_evidence",
@@ -694,3 +696,38 @@ def test_mcp_sibyl_rejects_bad_shapes_and_reserved_pantheon_identity():
         "NQ", interventions_json="{}",
     )
 
+
+
+def test_mcp_source_reliability_routes(monkeypatch):
+    seen = []
+
+    def get(path):
+        seen.append(("get", path))
+        return {"observation_count": 0, "execution_authorized": False}
+
+    def post(path, body):
+        seen.append(("post", path, body))
+        return {"ok": True, "execution_authorized": False, "production_decision_authorized": False}
+
+    monkeypatch.setattr(mcp_server, "_engine_get", get)
+    monkeypatch.setattr(mcp_server, "_engine_post", post)
+
+    assert mcp_server.engine_source_reliability()["execution_authorized"] is False
+    out = mcp_server.record_engine_source_reliability_observation(
+        source_id="provider-a",
+        stream="NQ-trades",
+        observed_at="2026-10-01T12:00:02Z",
+        event_time="2026-10-01T12:00:00Z",
+        retrieval_time="2026-10-01T12:00:01Z",
+        expected_freshness_seconds=2.0,
+        complete=True,
+        evidence_hash="a" * 64,
+        revision=False,
+        agreement_bps=1.0,
+        agreement_tolerance_bps=2.0,
+    )
+    assert out["production_decision_authorized"] is False
+    assert seen[0] == ("get", "/api/source-reliability")
+    assert seen[1][0:2] == ("post", "/admin/source-reliability/observation")
+    assert seen[1][2]["source_id"] == "provider-a"
+    assert seen[1][2]["complete"] is True
