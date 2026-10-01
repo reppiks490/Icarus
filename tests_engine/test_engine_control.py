@@ -20,11 +20,12 @@ def test_control_plane_status_isolated_and_truthful(tmp_path: Path):
         },
     )
     status = cp.status()
-    assert status["schema_version"] == "icarus-engine-control-v1"
+    assert status["schema_version"] == "icarus-engine-control-v2"
     assert status["authority"]["application_control"] is True
     assert status["authority"]["arbitrary_shell"] is False
     assert status["authority"]["broker_arming"] is False
     assert status["summary"]["registered_actions"] == 1
+    assert status["summary"]["action_groups"] == {"Test": 1}
     assert status["summary"]["subsystem_errors"] == 1
     assert status["subsystems"]["ok"]["status"] == "ok"
     assert status["subsystems"]["bad"]["status"] == "error"
@@ -239,3 +240,25 @@ def test_control_request_rejects_falsey_non_object_args(tmp_path: Path):
     with pytest.raises(ValueError, match="args must be an object"):
         cp.run({"action": "noop", "args": ""})
     assert cp.run({"action": "noop", "args": None})["ok"] is True
+
+
+def test_control_action_publishes_argument_template_and_extended_target_types():
+    for target in ("candidate", "proposal", "source"):
+        action = ControlAction(
+            f"test.{target}", "Test", "Test", "x", lambda _: None,
+            target=target, args_example={"x": 1},
+        )
+        public = action.public()
+        assert public["target"] == target
+        assert public["args_example"] == {"x": 1}
+
+    with pytest.raises(ValueError, match="unsupported target"):
+        ControlAction("test.bad", "Bad", "Test", "x", lambda _: None, target="shell")
+
+
+def test_control_action_rejects_nonfinite_argument_template():
+    with pytest.raises(ValueError, match="args_example"):
+        ControlAction(
+            "test.nan", "Bad", "Test", "x", lambda _: None,
+            args_example={"x": float("nan")},
+        )
