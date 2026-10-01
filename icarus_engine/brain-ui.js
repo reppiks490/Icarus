@@ -70,6 +70,7 @@
 
     const regimeHtml = regimes.map(r => `<span class="chip ${r.paused?'r':r.warm?'b':'w'}">${h(r.asset)} · ${h(r.regime||'UNKNOWN')} · ${pct(r.confidence)}</span>`).join(' ');
     const tournamentRows = tournaments.map(t => `<tr><td><b>${h((t.scope||{}).asset||"—")}</b></td><td>${h((t.scope||{}).regime||"UNKNOWN")}</td><td><b>${h(t.shadow_champion||"none")}</b></td><td>${h(t.status||"")}</td><td>${h(t.decision||"")}</td></tr>`).join("");
+    const qualificationRows = qualificationCandidates.map(q => `<tr><td><b>${h(q.candidate_id||"—")}</b></td><td>${q.qualified_shadow_ready?"PROOF READY":"BLOCKED"}</td><td>${num(q.receipt_count)}</td><td>${h((q.independent_reviewers||[]).join(", ")||"none")}</td><td class="small muted">${h((q.blockers||[]).join(" · ")||"none")}</td></tr>`).join("");
     const incubatorRows = (inc.proposals||[]).map(p => {
       const rc = p.regime_context || {};
       return `<tr><td><b>${h(p.asset||'—')}</b><div class="small muted">${h(String(p.proposal_id||'').slice(0,18))}</div></td><td><span class="chip ${statusClass(p.state)}">${h(String(p.state||'unknown').toUpperCase())}</span><div class="small muted">${h(p.review_mode||'')}</div></td><td><b>${h(rc.label||'UNKNOWN')}</b><div class="small muted">${rc.regime_score==null?'score —':'score '+h(String(rc.regime_score))}</div></td><td class="tnum">${num(p.input_count)}</td><td class="tnum">${num(p.review_count)}</td><td>${p.review_required?'INDEPENDENT REVIEW REQUIRED':'—'}</td></tr>`;
