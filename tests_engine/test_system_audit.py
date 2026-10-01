@@ -262,3 +262,65 @@ def test_loop_intelligence_sync_updates_runtime_state_and_deduplicates_events(tm
     ids = [x["id"] for x in second["events"]]
     assert ids.count("loop:robustness-guardian:" + final["RUN_ID"]) == 1
     assert second["execution_authorized"] is False
+
+
+def test_loop_signal_extraction_captures_real_nested_run_core_and_provider_gaps():
+    final = {
+        "RUN_ID": "apex-council-20261001T034500Z",
+        "RUN_STATUS": "RUN_PERSISTED",
+        "payload": {"result": "NO_NEW_EVIDENCE_YET"},
+        "execution_authorized": False,
+    }
+    final_raw = json.dumps(final).encode()
+    blob = git_blob_sha(final_raw)
+    heartbeat = {
+        "RUN_ID": final["RUN_ID"],
+        "RUN_STATUS": "RUN_PERSISTED",
+        "scheduler_id": "sched-apex",
+        "finalization_commit_sha": "commit-apex",
+        "finalization_state_blob_sha": blob,
+        "execution_authorized": False,
+    }
+    latest = {
+        "RUN_ID": "apex-council-20260929T174500Z",
+        "RUN_STATUS": "RUN_PERSISTED",
+        "RUN_CORE": {
+            "findings": ["dependence evidence missing"],
+            "built_changes": ["new council guard"],
+            "unresolved_risks": ["shared contract collision"],
+            "NEXT": "Add auditable dependence semantics",
+        },
+        "PROVIDER_CONFLICTS": [{"field": "price", "explanation": "different timestamps"}],
+        "DATA_GAPS": ["no depth snapshot"],
+        "schema_representation_availability_findings": ["schema stable"],
+        "irrelevant_blob": "x" * 5000,
+    }
+    spec = {
+        "id": "apex-council",
+        "title": "Apex Council Evolution",
+        "scheduler_id": "sched-apex",
+        "schedule": ":45 hourly",
+        "repository": "owner/repo",
+        "root": "automation/apex",
+    }
+    files = {
+        ("owner/repo", "main", "automation/apex/finalization_state.json"): final_raw,
+        ("owner/repo", "main", "automation/apex/heartbeat.json"): json.dumps(heartbeat).encode(),
+        ("owner/repo", "commit-apex", "automation/apex/finalization_state.json"): final_raw,
+        ("owner/repo", "main", "automation/apex/latest.json"): json.dumps(latest).encode(),
+    }
+
+    def fetch(repo, ref, path):
+        if (repo, ref, path) not in files:
+            raise FileNotFoundError(path)
+        return files[(repo, ref, path)]
+
+    row, _ = collect_loop_snapshot(spec, fetch_bytes=fetch)
+    sig = row["signals"]["latest"]
+    assert sig["RUN_ID"] == "apex-council-20260929T174500Z"
+    assert sig["RUN_CORE"]["findings"] == ["dependence evidence missing"]
+    assert sig["RUN_CORE"]["NEXT"] == "Add auditable dependence semantics"
+    assert sig["PROVIDER_CONFLICTS"][0]["field"] == "price"
+    assert sig["DATA_GAPS"] == ["no depth snapshot"]
+    assert sig["schema_representation_availability_findings"] == ["schema stable"]
+    assert "irrelevant_blob" not in sig
