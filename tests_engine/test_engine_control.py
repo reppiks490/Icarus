@@ -11,6 +11,8 @@ def test_control_plane_status_isolated_and_truthful(tmp_path: Path):
         tmp_path,
         snapshotters={
             "ok": lambda: {"status": "green"},
+            "warn": lambda: {"status": "unverified"},
+            "reported_bad": lambda: {"status": "degraded"},
             "bad": lambda: (_ for _ in ()).throw(RuntimeError("boom")),
         },
         actions={
@@ -26,8 +28,11 @@ def test_control_plane_status_isolated_and_truthful(tmp_path: Path):
     assert status["authority"]["broker_arming"] is False
     assert status["summary"]["registered_actions"] == 1
     assert status["summary"]["action_groups"] == {"Test": 1}
-    assert status["summary"]["subsystem_errors"] == 1
+    assert status["summary"]["subsystem_errors"] == 2
+    assert status["summary"]["subsystem_warnings"] == 1
     assert status["subsystems"]["ok"]["status"] == "ok"
+    assert status["subsystems"]["warn"]["status"] == "warn"
+    assert status["subsystems"]["reported_bad"]["status"] == "error"
     assert status["subsystems"]["bad"]["status"] == "error"
 
 
