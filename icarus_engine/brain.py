@@ -43,7 +43,7 @@ AGENTS = (
         "id": "aion",
         "title": "AION PRIME Quant Scientist",
         "job": "Maintain causal market memory, evolve falsifiable research hypotheses, and independently evaluate trust/collision evidence.",
-        "owns": ["AION", "ASCENSION", "PROMETHEUS", "PARALLAX", "DREAMSTATE", "ML"],
+        "owns": ["AION", "ASCENSION", "PROMETHEUS", "PARALLAX", "DREAMSTATE", "SIBYL", "ML"],
     },
     {
         "id": "daedalus",
@@ -70,6 +70,7 @@ SUBSYSTEMS = (
     {"id": "supermesh-x", "title": "SUPERMESH-X", "owner": "macro", "job": "Capability/provider discovery, health/drift-aware routing, provenance, failover, and execution-contract boundaries."},
     {"id": "parallax", "title": "PARALLAX", "owner": "aion", "job": "Observed counterfactual twin ledger: immutable decision identity, paired replay, regret, branch coverage, subsystem ablation attribution, and reproducible alternative-path evidence."},
     {"id": "dreamstate", "title": "DREAMSTATE", "owner": "aion", "job": "Counterfactual-policy incubator: turn repeated statistically screened PARALLAX regret patterns into versioned hypotheses held behind the full protected validation gate stack."},
+    {"id": "sibyl", "title": "SIBYL Ω", "owner": "aion", "job": "Probabilistic future-lightcone synthesis: fuse time-valid independent evidence domains into reachable-state basins, entropy/convergence, temporal collapse/fracture, attractors, invalidations, counterfactuals, and observed calibration."},
     {"id": "provenance", "title": "PROVENANCE", "owner": "daedalus", "job": "Exact code/data/artifact lineage, commit binding, receipt integrity, and proof-chain validation."},
     {"id": "ml", "title": "ML", "owner": "aion", "job": "Research-only model lifecycle, training evidence, calibration, drift/OOD state, reproducibility, and candidate packaging."},
     {"id": "data", "title": "DATA", "owner": "flow", "job": "Raw-source identity, availability-time truth, representation quality, freshness, and replay-safe market evidence."},
