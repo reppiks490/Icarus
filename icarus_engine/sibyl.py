@@ -305,6 +305,27 @@ class SibylEngine:
         return [self._evidence_dict(row) for row in rows]
 
     @staticmethod
+    def _revision_isolate(evidence: list[Mapping[str, Any]]) -> list[Mapping[str, Any]]:
+        """Keep only the newest observed code revision for each named source.
+
+        A source may emit many observations under one revision, but once a newer
+        source_commit is observed we do not mix its older implementation into the
+        same live inference state.
+        """
+        latest: dict[str, tuple[datetime, str]] = {}
+        for e in evidence:
+            source = str(e.get("source") or "")
+            commit = str(e.get("source_commit") or "")
+            observed = _parse_time(str(e.get("observed_at")))
+            current = latest.get(source)
+            if current is None or observed > current[0]:
+                latest[source] = (observed, commit)
+        return [
+            e for e in evidence
+            if latest.get(str(e.get("source") or ""), (None, None))[1] == str(e.get("source_commit") or "")
+        ]
+
+    @staticmethod
     def _horizon_weight(e: Mapping[str, Any], horizon: int, now: datetime) -> float:
         observed = _parse_time(str(e["observed_at"]))
         age = max(0.0, (now - observed).total_seconds())
@@ -323,23 +344,41 @@ class SibylEngine:
         volatility_pct: float,
     ) -> dict[str, Any]:
         now = datetime.now(timezone.utc)
-        domains: dict[str, list[tuple[float, float]]] = {}
+        domains: dict[str, dict[str, list[tuple[float, float]]]] = {}
         contributing = 0
         for e in evidence:
             w = self._horizon_weight(e, horizon, now)
             if w <= 0.002:
                 continue
             signal = float(e["direction"]) * float(e["magnitude"])
-            domains.setdefault(str(e["domain"]), []).append((signal, w))
+            domain = str(e["domain"])
+            source = str(e["source"])
+            domains.setdefault(domain, {}).setdefault(source, []).append((signal, w))
             contributing += 1
 
         domain_rows = []
-        for domain, rows in sorted(domains.items()):
-            total_w = sum(w for _, w in rows)
-            if total_w <= 0:
+        for domain, source_map in sorted(domains.items()):
+            source_rows = []
+            for source, rows in sorted(source_map.items()):
+                total_w = sum(w for _, w in rows)
+                if total_w <= 0:
+                    continue
+                source_score = sum(signal * w for signal, w in rows) / total_w
+                # Repeated emissions improve recency sampling, not authority. One
+                # source cannot make its domain heavier by publishing more rows.
+                source_weight = min(1.0, max(w for _, w in rows))
+                source_rows.append((source, source_score, source_weight))
+            if not source_rows:
                 continue
-            score = sum(s * w for s, w in rows) / total_w
-            domain_rows.append({"domain": domain, "score": score, "weight": min(1.0, total_w)})
+            denom = sum(weight for _, _, weight in source_rows)
+            score = sum(source_score * weight for _, source_score, weight in source_rows) / max(1e-12, denom)
+            domain_weight = max(weight for _, _, weight in source_rows)
+            domain_rows.append({
+                "domain": domain,
+                "score": score,
+                "weight": domain_weight,
+                "source_count": len(source_rows),
+            })
 
         if domain_rows:
             denom = sum(r["weight"] for r in domain_rows)
@@ -532,7 +571,8 @@ class SibylEngine:
             except (TypeError, ValueError):
                 pass
 
-        evidence = self._evidence(chosen)
+        ledger_evidence = self._evidence(chosen)
+        evidence = list(self._revision_isolate(ledger_evidence))
         volatility = 0.0025
         vol_candidates = []
         for e in evidence[:64]:
@@ -573,6 +613,8 @@ class SibylEngine:
             evidence=evidence,
             context=context,
         )
+        built["evidence"]["ledger_count"] = len(ledger_evidence)
+        built["evidence"]["revision_guard"] = "only the newest observed source_commit per named source participates in live synthesis"
         built["calibration"] = self.calibration(chosen)
         built["recent_forecasts"] = self.recent_forecasts(chosen, limit=12)
         return built
@@ -598,7 +640,7 @@ class SibylEngine:
         parsed_horizons = sorted({
             _integer(x, "horizon_seconds", 1, 604800) for x in horizons
         })
-        evidence = self._evidence(asset)
+        evidence = list(self._revision_isolate(self._evidence(asset)))
         built = self._build(
             asset,
             current_price=current_price,
@@ -791,7 +833,9 @@ class SibylEngine:
         if len(interventions) > 32:
             raise ValueError("at most 32 interventions are allowed")
 
-        evidence: list[dict[str, Any]] = self._evidence(asset)
+        evidence: list[dict[str, Any]] = [
+            dict(e) for e in self._revision_isolate(self._evidence(asset))
+        ]
         now = _utc_now()
         for i, raw in enumerate(interventions):
             if not isinstance(raw, Mapping):
@@ -819,6 +863,7 @@ class SibylEngine:
                 "source_commit": "0" * 40,
                 "payload": {"counterfactual": True},
             })
+        evidence = [dict(e) for e in self._revision_isolate(evidence)]
         horizons = body.get("horizons", DEFAULT_HORIZONS)
         if not isinstance(horizons, (list, tuple)) or not horizons:
             raise ValueError("horizons must be a non-empty list")
