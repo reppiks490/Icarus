@@ -151,6 +151,16 @@ class PantheonKernel:
         source_outputs = dict(mapping(source_outputs, "subsystem_outputs"))
         if len(source_outputs) > 64:
             raise ValueError("subsystem_outputs exceeds 64 entries")
+        claim_outcomes = payload.get("claim_outcomes", [])
+        if claim_outcomes is None:
+            claim_outcomes = []
+        if not isinstance(claim_outcomes, list) or len(claim_outcomes) > 32:
+            raise ValueError("claim_outcomes must be a list with at most 32 items")
+        clean_outcomes = []
+        for i, row in enumerate(claim_outcomes):
+            if not isinstance(row, Mapping):
+                raise ValueError(f"claim_outcomes[{i}] must be an object")
+            clean_outcomes.append(dict(row))
         normalized = {
             "schema_version": OBSERVATION_SCHEMA,
             "observed_at": observed_at,
@@ -160,6 +170,7 @@ class PantheonKernel:
             "signals": signals,
             "evidence": evidence,
             "subsystem_outputs": source_outputs,
+            "claim_outcomes": clean_outcomes,
         }
         identity_payload = {
             "schema_version": OBSERVATION_SCHEMA,
@@ -197,6 +208,16 @@ class PantheonKernel:
             "faculties": faculties,
             "aether": aether,
             "external_subsystems": normalized["subsystem_outputs"],
+            "exports": {
+                "sibyl_evidence": sibyl_evidence_candidates(
+                    observed_at=normalized["observed_at"],
+                    asset=normalized["asset"],
+                    horizon_ms=normalized["horizon_ms"],
+                    source_commit=normalized["source_commit"],
+                    faculties=faculties,
+                    aether=aether,
+                )
+            },
             "authority": authority_block(),
             "truth_contract": {
                 "heuristics_are_not_calibrated_probabilities": True,
