@@ -169,7 +169,7 @@ def engine_status() -> dict:
 
 @mcp.tool()
 def engine_repository_audit() -> dict:
-    """Latest local GitHub/MCP repository + CI audit snapshot shown in the ICARUS trader dashboard."""
+    """Latest local GitHub/MCP repository + CI audit snapshot, including the System-panel evolution ledger."""
     return _safe_engine(lambda: _engine_get("/api/system/audit"))
 
 
@@ -186,6 +186,28 @@ def record_engine_repository_audit(audit_json: str) -> dict:
     if not isinstance(audit, dict):
         return {"error": "audit_json must decode to an object"}
     return _safe_engine(lambda: _engine_post("/admin/system/audit", {"audit": audit}))
+
+
+@mcp.tool()
+def engine_system_evolution() -> dict:
+    """Important MCP repairs, audits, integrations and subsystem evolutions mirrored in the ICARUS System panel."""
+    return _safe_engine(lambda: _engine_get("/api/system/evolution"))
+
+
+@mcp.tool()
+def record_engine_system_evolution(evolution_json: str) -> dict:
+    """Persist the MCP evolution ledger rendered by the ICARUS System panel.
+
+    This writes diagnostic/provenance state only. It cannot change assets, timeframes,
+    strategy inputs, broker state, positions, orders, or production authority.
+    """
+    try:
+        evolution = json.loads(evolution_json)
+    except json.JSONDecodeError as ex:
+        return {"error": f"evolution_json is invalid JSON: {ex}"}
+    if not isinstance(evolution, dict):
+        return {"error": "evolution_json must decode to an object"}
+    return _safe_engine(lambda: _engine_post("/admin/system/evolution", {"evolution": evolution}))
 
 
 @mcp.tool()
