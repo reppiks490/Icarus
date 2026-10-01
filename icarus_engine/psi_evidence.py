@@ -125,29 +125,41 @@ class PsiEvidenceLedger:
             if _finite(stored[field]) is None:
                 raise ValueError(f"{field} must be finite")
 
-        inserted = False
         with self._lock:
             if self.path is None:
-                inserted = evidence_id not in self._memory
-                self._memory.setdefault(evidence_id, dict(stored))
-            else:
-                with self._connect() as con:
-                    cur = con.execute(
-                        """INSERT OR IGNORE INTO evidence(
-                               evidence_id,schema_version,asset,feature,value,confidence,source,
-                               observed_at,observed_ts,received_ts,expires_ts,ttl_seconds,
-                               payload_hash,created_at
-                           ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-                        (
-                            stored["evidence_id"], stored["schema_version"], stored["asset"],
-                            stored["feature"], stored["value"], stored["confidence"], stored["source"],
-                            stored["observed_at"], stored["observed_ts"], stored["received_ts"],
-                            stored["expires_ts"], stored["ttl_seconds"], stored["payload_hash"],
-                            stored["created_at"],
-                        ),
-                    )
-                    inserted = cur.rowcount > 0
-        return {**stored, "inserted": inserted}
+                existing = self._memory.get(evidence_id)
+                if existing is not None:
+                    return {**dict(existing), "inserted": False}
+                self._memory[evidence_id] = dict(stored)
+                return {**stored, "inserted": True}
+
+            with self._connect() as con:
+                cur = con.execute(
+                    """INSERT OR IGNORE INTO evidence(
+                           evidence_id,schema_version,asset,feature,value,confidence,source,
+                           observed_at,observed_ts,received_ts,expires_ts,ttl_seconds,
+                           payload_hash,created_at
+                       ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    (
+                        stored["evidence_id"], stored["schema_version"], stored["asset"],
+                        stored["feature"], stored["value"], stored["confidence"], stored["source"],
+                        stored["observed_at"], stored["observed_ts"], stored["received_ts"],
+                        stored["expires_ts"], stored["ttl_seconds"], stored["payload_hash"],
+                        stored["created_at"],
+                    ),
+                )
+                if cur.rowcount > 0:
+                    return {**stored, "inserted": True}
+                existing = con.execute(
+                    """SELECT evidence_id,schema_version,asset,feature,value,confidence,source,
+                              observed_at,observed_ts,received_ts,expires_ts,ttl_seconds,
+                              payload_hash,created_at
+                       FROM evidence WHERE evidence_id=?""",
+                    (evidence_id,),
+                ).fetchone()
+                if existing is None:
+                    raise RuntimeError("idempotent Psi evidence receipt disappeared after INSERT OR IGNORE")
+                return {**dict(existing), "inserted": False}
 
     @staticmethod
     def _select(
