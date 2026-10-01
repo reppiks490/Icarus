@@ -524,13 +524,14 @@ def test_dreamstate_failed_gate_is_terminal_for_candidate_revision(tmp_path):
         lab.evaluate(candidate["candidate_id"], {"validation": {"protected_holdout": True}})
 
 
-def test_dreamstate_multiple_testing_gate_cannot_bypass_source_screen(tmp_path):
+def test_dreamstate_gate_preconditions_use_current_source_not_stale_frozen_q(tmp_path):
     store = ParallaxStore(tmp_path)
     for i in range(5):
         _record_pair(store, i)
     lab = DreamstateLab(tmp_path, parallax=store)
     candidate = lab.refresh(min_samples=5)["candidates"][0]
 
+    # Corrupt only the frozen candidate snapshot. Current PARALLAX evidence remains valid.
     with lab._connect() as con:
         source = dict(candidate["source_signal"])
         source["q_value"] = 0.99
@@ -541,11 +542,13 @@ def test_dreamstate_multiple_testing_gate_cannot_bypass_source_screen(tmp_path):
                 candidate["candidate_id"],
             ),
         )
-    with pytest.raises(ValueError, match="FDR"):
-        lab.evaluate(
-            candidate["candidate_id"],
-            {"validation": {"multiple_testing": True}, "evidence": ["attempted bypass"]},
-        )
+
+    updated = lab.evaluate(
+        candidate["candidate_id"],
+        {"validation": {"multiple_testing": True}, "evidence": ["current source screen is authoritative"]},
+    )
+    assert updated["validation"]["multiple_testing"] is True
+    assert updated["stage"] == "study"
 
 
 
