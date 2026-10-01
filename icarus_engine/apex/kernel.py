@@ -5,6 +5,7 @@ import hashlib,json
 from pathlib import Path
 from typing import Any, Mapping
 from .adapters import sibling_evidence
+from .ancestry import EvidenceAncestry
 from .contracts import authority_flags, parse_utc
 from .crowdhunt import crowd_map
 from .epistemics import epistemic_kernel_snapshot
@@ -55,6 +56,44 @@ class ApexKernel:
         if not eid:raise ValueError("experiment id is required")
         ranked=rank_experiments(["H1","H2"],[semantic]);proposal={**semantic,"score":ranked[0]["score"] if ranked else None,**authority_flags()}
         return self._record_research_event("experiment",proposal)
+    def evidence_support(self,engine_evidence_ids:Mapping[str,Any],*,as_of:str|None=None)->dict[str,Any]:
+        """Resolve engine evidence bundles to causally available independent roots."""
+        if not isinstance(engine_evidence_ids,Mapping) or not engine_evidence_ids:
+            raise ValueError("engine_evidence_ids must be a non-empty object")
+        if len(engine_evidence_ids)>64:raise ValueError("engine_evidence_ids exceeds 64 engines")
+        boundary=as_of or _now();parse_utc(boundary,"as_of");visible=self.store.evidence_as_of(boundary);dag=EvidenceAncestry();by_id={}
+        for row in visible:
+            dag.add(row);by_id[str(row["evidence_id"])]=row
+        engine_support={};all_ids=[]
+        for raw_engine,raw_ids in sorted(engine_evidence_ids.items(),key=lambda item:str(item[0])):
+            engine=str(raw_engine).strip()
+            if not engine or len(engine)>96:raise ValueError("engine_evidence_ids engine names must be 1-96 characters")
+            if not isinstance(raw_ids,list) or not raw_ids or len(raw_ids)>64:
+                raise ValueError(f"engine_evidence_ids.{engine} must contain 1-64 evidence ids")
+            ids=[]
+            for value in raw_ids:
+                if not isinstance(value,str) or not value.strip() or len(value.strip())>128:
+                    raise ValueError(f"engine_evidence_ids.{engine} contains an invalid evidence id")
+                ids.append(value.strip())
+            if len(set(ids))!=len(ids):raise ValueError(f"engine_evidence_ids.{engine} must not contain duplicate evidence ids")
+            support=dag.effective_support(ids);nominal=int(support.get("nominal_support",0));effective=int(support.get("effective_independent_families",0))
+            ratio=(max(0.0,min(1.0,effective/nominal)) if support.get("integrity_ok") and nominal>0 else 0.0)
+            rows=[by_id[eid] for eid in ids if eid in by_id]
+            qualities=[float(row["quality"]) for row in rows if isinstance(row.get("quality"),(int,float)) and not isinstance(row.get("quality"),bool)]
+            confidences=[float(row["confidence"]) for row in rows if isinstance(row.get("confidence"),(int,float)) and not isinstance(row.get("confidence"),bool)]
+            engine_support[engine]={
+                **support,
+                "independence_ratio":ratio,
+                "visible_evidence_count":len(rows),
+                "mean_quality":(sum(qualities)/len(qualities)) if qualities else None,
+                "mean_confidence":(sum(confidences)/len(confidences)) if confidences else None,
+            }
+            all_ids.extend(ids)
+        global_support=dag.effective_support(all_ids)
+        degraded=any(not row.get("integrity_ok") for row in engine_support.values())
+        result={"schema_version":"icarus-apex-evidence-support-v1","as_of":boundary,"status":"DEGRADED" if degraded else "AVAILABLE","engine_support":engine_support,"global_support":global_support,**authority_flags()}
+        json.dumps(result,sort_keys=True,separators=(",",":"),allow_nan=False);return result
+
     @staticmethod
     def _price_grid(evidence:list[Mapping[str,Any]])->list[float]:
         values=set()

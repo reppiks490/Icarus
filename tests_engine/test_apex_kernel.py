@@ -63,3 +63,43 @@ def test_apex_kernel_surfaces_economic_world_state(tmp_path):
     assert out["economic_world"]["domains"]["growth"]["state"] == "slowing"
     assert out["economic_world"]["domains"]["growth"]["market_response"] == "equities_up"
     assert out["economic_world"]["domains"]["credit"]["status"] == "UNAVAILABLE"
+
+
+def _support_body(*, kind="observed", record="r1", deps=None, observed="2026-10-01T14:00:00Z", received="2026-10-01T14:00:01Z"):
+    return {
+        "kind": kind,
+        "subject": "NQ:evidence-support",
+        "value": {"asset": "NQ", "price": 25000.0},
+        "source": {"subsystem": "test", "source_repo": "reppiks490/Icarus", "source_commit": "a" * 40, "source_record_id": record},
+        "observed_at": observed, "received_at": received, "calculated_at": received,
+        "valid_from": observed, "valid_until": None, "confidence": 0.9, "quality": 0.8,
+        "dependencies": list(deps or []), "contradictions": [], "falsifiers": ["source correction"],
+    }
+
+
+def test_apex_kernel_resolves_engine_evidence_support_from_causal_ancestry(tmp_path):
+    from icarus_engine.apex.kernel import ApexKernel
+    k = ApexKernel(tmp_path)
+    root_a = k.ingest_evidence(_support_body(record="root-a"))["evidence"]["evidence_id"]
+    root_b = k.ingest_evidence(_support_body(record="root-b"))["evidence"]["evidence_id"]
+    derived_a = k.ingest_evidence(_support_body(kind="derived", record="derived-a", deps=[root_a], observed="2026-10-01T14:00:02Z", received="2026-10-01T14:00:02Z"))["evidence"]["evidence_id"]
+    derived_b = k.ingest_evidence(_support_body(kind="derived", record="derived-b", deps=[root_a], observed="2026-10-01T14:00:02Z", received="2026-10-01T14:00:02Z"))["evidence"]["evidence_id"]
+    out = k.evidence_support({"oracle": [derived_a, derived_b], "macro": [root_b]}, as_of="2026-10-01T14:00:03Z")
+    assert out["status"] == "AVAILABLE"
+    assert out["engine_support"]["oracle"]["nominal_support"] == 2
+    assert out["engine_support"]["oracle"]["effective_independent_families"] == 1
+    assert out["engine_support"]["oracle"]["independence_ratio"] == 0.5
+    assert out["engine_support"]["macro"]["independence_ratio"] == 1.0
+    assert out["global_support"]["nominal_support"] == 3
+    assert out["global_support"]["effective_independent_families"] == 2
+    assert out["execution_authorized"] is False
+
+
+def test_apex_kernel_evidence_support_fails_closed_on_unknown_evidence(tmp_path):
+    from icarus_engine.apex.kernel import ApexKernel
+    out = ApexKernel(tmp_path).evidence_support({"oracle": ["f" * 64]}, as_of="2026-10-01T14:00:03Z")
+    row = out["engine_support"]["oracle"]
+    assert out["status"] == "DEGRADED"
+    assert row["integrity_ok"] is False
+    assert row["independence_ratio"] == 0.0
+    assert row["missing_dependencies"] == ["f" * 64]
