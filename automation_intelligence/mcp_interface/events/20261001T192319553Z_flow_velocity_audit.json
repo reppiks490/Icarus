@@ -1,0 +1,52 @@
+{
+  "schema": "icarus-mcp-event-v1",
+  "category": "AUDIT",
+  "source": "FLOW_AUTOMATION",
+  "event_time": "2026-10-01T18:00:00Z",
+  "retrieval_time": "2026-10-01T19:23:19.553Z",
+  "execution_authorized": false,
+  "net_new_delta": "MATERIAL_DELTA",
+  "finding": "BTC 18:00 UTC completed-hour volatility and turnover contracted after the abnormal 17:00 impulse: Bybit spot range 606.3 vs 895.7 and volume 332.182153 vs 512.305591 BTC; Bybit linear range 625.2 vs 910.3 and reported volume 3765.716 vs 5879.677. Spot and linear independently reconcile the contraction.",
+  "evidence": {
+    "bybit_spot": {
+      "symbol": "BTCUSDT",
+      "representation": "spot",
+      "hour_17_range": 895.7,
+      "hour_18_range": 606.3,
+      "hour_17_volume_btc": 512.305591,
+      "hour_18_volume_btc": 332.182153
+    },
+    "bybit_linear": {
+      "symbol": "BTCUSDT",
+      "representation": "linear",
+      "hour_17_range": 910.3,
+      "hour_18_range": 625.2,
+      "hour_17_reported_volume": 5879.677,
+      "hour_18_reported_volume": 3765.716
+    },
+    "depth_snapshot": {
+      "event_time": "2026-10-01T19:23:19.553Z",
+      "best_bid": 84617,
+      "bid_qty_btc": 0.173814,
+      "best_ask": 84617.1,
+      "ask_qty_btc": 0.166274,
+      "spread_usd": 0.1,
+      "semantics": "point-in-time displayed Bybit spot depth only"
+    }
+  },
+  "regime_implication": "The 17:00 abnormal expansion did not persist at the same intensity into 18:00; evidence favors impulse followed by partial normalization, while 18:00 range remains elevated versus many recent hours.",
+  "data_gaps": [
+    "Direct NQ/MNQ, GC/MGC, SI, DXY and volatility-index observations not acquired this cycle.",
+    "Historical trade/depth sequencing not acquired; no historical order-flow or persistent-liquidity inference."
+  ],
+  "conflicts": [],
+  "next_decisive_check": "Test the next completed BTC hour for continued compression versus renewed expansion and acquire synchronous direct futures/USD/volatility evidence.",
+  "argus": {
+    "status": "MATERIAL_DELTA",
+    "finding": "Bybit spot displayed depth at 19:23:19.553 UTC was 84617.0 bid x 0.173814 BTC / 84617.1 ask x 0.166274 BTC, $0.10 spread; snapshot semantics only."
+  },
+  "nexus": {
+    "status": "MATERIAL_DELTA",
+    "finding": "Bybit spot and linear independently reconcile 18:00 UTC range and turnover contraction after the 17:00 abnormal expansion; representation-specific volume semantics remain separate."
+  }
+}
