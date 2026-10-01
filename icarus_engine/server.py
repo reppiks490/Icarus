@@ -17,6 +17,7 @@
   GET  /api/engine-control        authenticated registered engine/subsystem control snapshot
   GET  /api/brain                 adaptive multi-agent brain, subsystem fabric, regimes, learning and shadow candidates
   GET  /api/possibility           ICARUS Psi latent pressure, counterfactual price, future-space diagnostics
+  GET  /api/chronofold            ICARUS Xi causal spacetime, multiverse, geometry, GNC and uncertainty
   POST /admin/pause | /admin/resume        {"asset": "NQ"} or all          (Bearer token)
   POST /admin/flatten                      {"confirm": true, "asset"?: "NQ"}
   POST /admin/inputs                       {"asset": "NQ"|"*", "values": {...}, "chart": {...}, "persist": true}  → re-warm
@@ -79,6 +80,7 @@ from .possibility import PossibilityEngine
 from .autopilot import TacticalAutopilot
 from .engine_control import ControlAction, EngineControlPlane
 from .mcp_control import MCPControlPlane
+from .chronofold import ChronofoldEngine
 
 
 def _no_json_constants(name: str):
@@ -141,6 +143,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     parallax = ParallaxStore(port.base_dir)
     dreamstate = DreamstateLab(port.base_dir, parallax=parallax)
     mcp_control = MCPControlPlane(port.base_dir)
+    chronofold = ChronofoldEngine(port, possibility=possibility)
 
     def _control_runner(target: str):
         try:
@@ -482,6 +485,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             "parallax": parallax.status,
             "dreamstate": dreamstate.status,
             "possibility": possibility.status,
+            "chronofold": chronofold.snapshot,
             "backtests": _backtests_snapshot,
             "code_provenance": local_code_provenance,
             "go_live": lambda: golive_report(port),
@@ -643,6 +647,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._send(200, (html_path.parent / "parallax-ui.js").read_bytes(), "text/javascript")
             if p.path == "/possibility-ui.js":
                 return self._send(200, (html_path.parent / "possibility-ui.js").read_bytes(), "text/javascript")
+            if p.path == "/chronofold-ui.js":
+                return self._send(200, (html_path.parent / "chronofold-ui.js").read_bytes(), "text/javascript")
             if p.path in ("/experience-ui.js", "/experience-ui.css"):
                 ctype = "text/javascript" if p.path.endswith(".js") else "text/css"
                 return self._send(200, (html_path.parent / p.path[1:]).read_bytes(), ctype)
@@ -699,6 +705,14 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     return self._json(200, possibility.snapshot(q.get("asset", [""])[0]))
                 except Exception as ex:
                     port.journal.log("WARN", f"possibility snapshot: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/api/chronofold":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                try:
+                    return self._json(200, chronofold.snapshot(q.get("asset", [""])[0]))
+                except Exception as ex:
+                    port.journal.log("WARN", f"chronofold snapshot: {type(ex).__name__}: {ex}")
                     return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
             if p.path == "/api/brain":
                 if not self._auth():
