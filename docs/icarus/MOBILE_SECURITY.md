@@ -32,3 +32,8 @@ The signing key is generated with `secrets.token_bytes(32)` and persisted with b
 A production deployment still needs OS patching, TLS certificate management, firewall policy, secure secret injection, device lock/biometric policy, Apple/Google signing protection, and monitoring of the public ingress layer.
 
 If remote access is not required, a private overlay network or device VPN is preferable to a public hostname.
+
+
+## Push notifications
+
+Push tokens are registered only after explicit OS permission and device opt-in. They are stored inside the mode-0600 gateway device registry and removed on unregister/revocation. Push messages are limited to transition-based system-health alerts; unchanged snapshots do not generate repeat notifications. The Expo access token, when enabled for hardened push-service access, is supplied through `EXPO_ACCESS_TOKEN` and is never stored in the repository.

@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { IcarusApiError, IcarusClient } from './src/api';
 import { PriceChart } from './src/PriceChart';
+import { registerForSystemPush } from './src/notifications';
 import { clearCredentials, loadCredentials, saveCredentials } from './src/storage';
 import type {
   ChartPayload,
@@ -151,6 +152,8 @@ export default function App() {
   const [backtestJobId, setBacktestJobId] = useState('');
   const [labAsset, setLabAsset] = useState('');
   const [labBusy, setLabBusy] = useState(false);
+  const [pushStatus, setPushStatus] = useState<JsonObject | null>(null);
+  const [pushBusy, setPushBusy] = useState(false);
   const [pairUrl, setPairUrl] = useState('');
   const [pairSecret, setPairSecret] = useState('');
   const [deviceName, setDeviceName] = useState('ICARUS ' + Platform.OS);
@@ -315,6 +318,21 @@ export default function App() {
   }, [client, backtestJobId]);
 
   useEffect(() => {
+    if (!client || tab !== 'settings') return;
+    let cancelled = false;
+    void client.notificationStatus()
+      .then((next) => {
+        if (!cancelled) setPushStatus(next);
+      })
+      .catch((reason) => {
+        if (!cancelled) setError(errorText(reason));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [client, tab]);
+
+  useEffect(() => {
     if (!client || tab !== 'system') return;
     let cancelled = false;
     void Promise.all([client.engineControl(), client.integrity()])
@@ -365,6 +383,35 @@ export default function App() {
       setError(errorText(reason));
     } finally {
       setLabBusy(false);
+    }
+  };
+
+  const enablePush = async () => {
+    if (!client) return;
+    setPushBusy(true);
+    try {
+      const registration = await registerForSystemPush();
+      const next = await client.registerPush(registration.expoPushToken, registration.platform);
+      setPushStatus(next);
+      setError('');
+    } catch (reason) {
+      setError(errorText(reason));
+    } finally {
+      setPushBusy(false);
+    }
+  };
+
+  const disablePush = async () => {
+    if (!client) return;
+    setPushBusy(true);
+    try {
+      const next = await client.unregisterPush();
+      setPushStatus(next);
+      setError('');
+    } catch (reason) {
+      setError(errorText(reason));
+    } finally {
+      setPushBusy(false);
     }
   };
 
@@ -428,7 +475,7 @@ export default function App() {
           <Text style={styles.title}>ICARUS MOBILE</Text>
         </View>
         <View style={styles.headerRight}>
-          <Text style={styles.readOnly}>READ ONLY</Text>
+          <Text style={styles.readOnly}>NO TRADE EXEC</Text>
           <View style={[styles.statusDot, connected && !error ? styles.dotGood : styles.dotBad]} />
         </View>
       </View>
@@ -570,6 +617,24 @@ export default function App() {
                   <Text style={styles.hint}>
                     Session credentials are short-lived. The refresh credential is encrypted by the device SecureStore and rotates whenever a new session is issued.
                   </Text>
+                  <View style={styles.subCard}>
+                    <Text style={styles.sectionLabel}>SYSTEM NOTIFICATIONS</Text>
+                    <Text style={styles.body}>
+                      {pushStatus?.enabled ? 'Enabled for system-health transitions.' : 'Disabled on this device.'}
+                    </Text>
+                    <Pressable
+                      style={[styles.primaryButton, pushBusy && styles.buttonDisabled]}
+                      disabled={pushBusy}
+                      onPress={() => void (pushStatus?.enabled ? disablePush() : enablePush())}
+                    >
+                      <Text style={styles.primaryButtonText}>
+                        {pushBusy ? 'UPDATING…' : pushStatus?.enabled ? 'DISABLE SYSTEM ALERTS' : 'ENABLE SYSTEM ALERTS'}
+                      </Text>
+                    </Pressable>
+                    <Text style={styles.hint}>
+                      Push registration requires a physical iOS/Android development or store build with an EAS project ID.
+                    </Text>
+                  </View>
                   <Pressable style={styles.dangerButton} onPress={() => void revokeAndForget()}>
                     <Text style={styles.dangerButtonText}>REVOKE DEVICE + FORGET</Text>
                   </Pressable>
@@ -675,6 +740,7 @@ const styles = StyleSheet.create({
   heroValue: { color: '#eef2ff', fontSize: 34, fontWeight: '800', marginTop: 4 },
   card: { padding: 15, borderRadius: 14, backgroundColor: '#0c0f17', borderWidth: 1, borderColor: '#1b2130', gap: 10 },
   cardSelected: { borderColor: '#7287c7' },
+  subCard: { backgroundColor: '#090b11', borderRadius: 10, padding: 12, gap: 9 },
   cardTitle: { color: '#f0f3ff', fontSize: 17, fontWeight: '800' },
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   asset: { color: '#f4f6ff', fontSize: 22, fontWeight: '800' },
