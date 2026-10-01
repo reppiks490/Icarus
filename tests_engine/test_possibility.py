@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+import math
 from types import SimpleNamespace
 
 import pytest
@@ -460,3 +461,94 @@ def test_snapshot_surfaces_durable_evidence_health(tmp_path):
     assert ledger["active_count"] == 1
     assert ledger["total_history_count"] == 1
     assert ledger["schema_version"] == "icarus-psi-evidence-v1"
+
+
+
+def _bars_from_returns(start_ts: int, start_price: float, returns, step_seconds: int):
+    bars = [SimpleNamespace(ts=start_ts, c=start_price)]
+    price = float(start_price)
+    for i, ret in enumerate(returns, start=1):
+        price *= math.exp(float(ret))
+        bars.append(SimpleNamespace(ts=start_ts + i * step_seconds, c=price))
+    return bars
+
+
+class ReplayPort(Port):
+    def __init__(self, *, nq_minutes=1, es_minutes=1):
+        super().__init__()
+        base = 1_700_000_000
+        peer_returns = [
+            0.00011, -0.00007, 0.00016, -0.00004, 0.00009, -0.00013,
+            0.00018, -0.00002, 0.00006, -0.00010,
+        ] * 7
+        target_returns = [0.00001] + peer_returns[:-1]
+        self.runners = {
+            "NQ": SimpleNamespace(
+                feed=Feed(),
+                spec=SimpleNamespace(ticker="NQ.v.0"),
+                chart_minutes=nq_minutes,
+                bars=_bars_from_returns(base, 20000.0, target_returns, nq_minutes * 60),
+            ),
+            "ES": SimpleNamespace(
+                feed=Feed(),
+                spec=SimpleNamespace(ticker="ES.v.0"),
+                chart_minutes=es_minutes,
+                bars=_bars_from_returns(base, 6800.0, peer_returns, es_minutes * 60),
+            ),
+        }
+
+
+def test_runner_bar_history_warms_leader_graph_on_first_snapshot():
+    engine = PossibilityEngine(ReplayPort(), scenarios=96)
+    out = engine.snapshot("NQ")
+    leaders = out["causal_leadership"]
+    assert leaders["status"] == "observed"
+    assert leaders["alignment_mode"] == "exact_bar_timestamp"
+    assert leaders["chart_minutes"] == 1
+    assert leaders["leaders"][0]["asset"] == "ES"
+    assert leaders["leaders"][0]["lag1_correlation"] > 0.95
+    assert leaders["leaders"][0]["samples"] >= 50
+    assert out["data_health"]["history"]["source"] == "runner_bar"
+    assert out["data_health"]["history"]["poll_independent"] is True
+    assert out["data_health"]["history"]["timestamp_aligned_leaders"] is True
+
+
+def test_runner_bar_history_is_independent_of_snapshot_poll_frequency():
+    engine = PossibilityEngine(ReplayPort(), scenarios=96)
+    first = engine.snapshot("NQ")
+    first_len = first["data_health"]["market_history_observations"]
+    first_leader = first["causal_leadership"]["leaders"][0]
+    for _ in range(8):
+        again = engine.snapshot("NQ")
+    assert again["data_health"]["market_history_observations"] == first_len
+    assert again["causal_leadership"]["leaders"][0]["samples"] == first_leader["samples"]
+    assert again["causal_leadership"]["leaders"][0]["lag1_correlation"] == pytest.approx(first_leader["lag1_correlation"])
+
+
+def test_runner_bar_leader_graph_rejects_mismatched_chart_cadence():
+    engine = PossibilityEngine(ReplayPort(nq_minutes=1, es_minutes=5), scenarios=96)
+    out = engine.snapshot("NQ")
+    leaders = out["causal_leadership"]
+    assert leaders["status"] == "warming"
+    assert leaders["alignment_mode"] == "exact_bar_timestamp"
+    rejected = {row["asset"]: row for row in leaders["rejected_peers"]}
+    assert rejected["ES"]["reason"] == "chart_cadence_mismatch"
+    assert rejected["ES"]["target_minutes"] == 1
+    assert rejected["ES"]["peer_minutes"] == 5
+
+
+def test_runner_bar_leader_graph_uses_exact_timestamps_not_tail_position():
+    port = ReplayPort()
+    # Delete several ES bars from the middle. Positional tail pairing would shift
+    # the series; exact timestamp pairing should simply reduce valid samples.
+    port.runners["ES"].bars = [
+        bar for i, bar in enumerate(port.runners["ES"].bars)
+        if i not in {12, 13, 27, 41}
+    ]
+    engine = PossibilityEngine(port, scenarios=96)
+    out = engine.snapshot("NQ")
+    leader = out["causal_leadership"]["leaders"][0]
+    assert leader["asset"] == "ES"
+    assert leader["alignment_mode"] == "exact_bar_timestamp"
+    assert leader["lag1_correlation"] > 0.95
+    assert leader["samples"] < 69
