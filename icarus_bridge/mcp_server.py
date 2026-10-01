@@ -542,6 +542,11 @@ def record_current_parallax_decision_with_psi(
         return {"error": "psi vote is captured atomically by the engine; omit it"}
     if branches is not None and not isinstance(branches, list):
         return {"error": "branches_json must decode to a list"}
+    if not observed_at.strip():
+        return {"error": "observed_at is required for historical PARALLAX decisions"}
+    source_sha = source_commit.strip().lower()
+    if len(source_sha) != 40 or any(ch not in "0123456789abcdef" for ch in source_sha):
+        return {"error": "source_commit must be an exact 40-character hexadecimal git SHA"}
     body: Dict[str, Any] = {
         "asset": asset.strip().upper(),
         "action": action.strip().lower(),
@@ -624,7 +629,7 @@ def record_historical_parallax_decision(
         "action": action.strip().lower(),
         "regime": regime.strip() or "unknown",
         "observed_at": observed_at.strip(),
-        "source_commit": source_commit.strip(),
+        "source_commit": source_sha,
         "context": context,
         "subsystem_votes": votes,
     }
@@ -651,8 +656,11 @@ def evaluate_engine_dreamstate_candidate(
         return {"error": "validation_json must decode to a non-empty object"}
     if not isinstance(evidence, list):
         return {"error": "evidence_json must decode to a list"}
+    candidate_id = candidate_id.strip()
+    if not candidate_id:
+        return {"error": "candidate_id is required"}
     return _safe_engine(lambda: _engine_post("/admin/dreamstate/evaluate", {
-        "candidate_id": candidate_id.strip(),
+        "candidate_id": candidate_id,
         "validation": validation,
         "evidence": evidence,
     }))
@@ -661,9 +669,15 @@ def evaluate_engine_dreamstate_candidate(
 @mcp.tool()
 def retire_engine_dreamstate_candidate(candidate_id: str, reason: str) -> dict:
     """Retire a DREAMSTATE research candidate with an explicit evidence reason."""
+    candidate_id = candidate_id.strip()
+    reason = reason.strip()
+    if not candidate_id:
+        return {"error": "candidate_id is required"}
+    if not reason:
+        return {"error": "reason is required"}
     return _safe_engine(lambda: _engine_post("/admin/dreamstate/retire", {
-        "candidate_id": candidate_id.strip(),
-        "reason": reason.strip(),
+        "candidate_id": candidate_id,
+        "reason": reason,
     }))
 
 
