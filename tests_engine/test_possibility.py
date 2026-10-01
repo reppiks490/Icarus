@@ -1375,3 +1375,78 @@ def test_features_reject_polling_derived_cross_asset_pressure():
     assert cross.value is None
     assert cross.confidence == 0.0
     assert "not exact-bar aligned" in cross.detail
+
+
+
+def _edge_gate_fixture(engine, **overrides):
+    args = {
+        "latent": 0.8,
+        "coverage": 0.9,
+        "collapse": 80.0,
+        "future_reliability": 0.9,
+        "effective_sample_ratio": 0.9,
+        "dominant_cluster": "UP",
+        "dominant_share": 0.75,
+        "consensus": {"active": True, "alignment": 0.9, "direction": "UP"},
+        "information_wave": {
+            "causal_leading": True,
+            "score": 70.0,
+            "direction": "UP",
+            "status": "WATCH",
+        },
+        "phase": {"available": True, "direction": "UP"},
+        "micro": {"health": {"ticks": True, "depth": True}},
+        "leaders": {
+            "status": "observed",
+            "alignment_mode": "exact_bar_timestamp",
+            "confidence": 0.8,
+        },
+    }
+    args.update(overrides)
+    return engine._edge_gate(**args)
+
+
+def test_edge_gate_rejects_cross_layer_direction_conflicts():
+    engine = PossibilityEngine(Port())
+
+    consensus = _edge_gate_fixture(
+        engine,
+        consensus={"active": True, "alignment": 0.9, "direction": "DOWN"},
+    )
+    assert consensus["state"] == "NO_EDGE"
+    assert "forced-consensus direction opposes latent pressure" in consensus["blockers"]
+
+    future = _edge_gate_fixture(
+        engine,
+        dominant_cluster="DOWN",
+        dominant_share=0.70,
+    )
+    assert future["state"] == "NO_EDGE"
+    assert "future-space dominant cluster is not directionally aligned" in future["blockers"]
+
+    wave = _edge_gate_fixture(
+        engine,
+        information_wave={
+            "causal_leading": True,
+            "score": 75.0,
+            "direction": "DOWN",
+            "status": "EVENT",
+        },
+    )
+    assert wave["state"] == "NO_EDGE"
+    assert "causal information wave opposes latent pressure" in wave["blockers"]
+
+    phase = _edge_gate_fixture(
+        engine,
+        phase={"available": False, "direction": "UP"},
+    )
+    assert phase["state"] == "NO_EDGE"
+    assert "scenario-derived phase boundary unavailable" in phase["blockers"]
+
+
+def test_edge_gate_allows_only_aligned_cross_layer_bias():
+    engine = PossibilityEngine(Port())
+    edge = _edge_gate_fixture(engine)
+    assert edge["state"] == "LONG_BIAS"
+    assert edge["blockers"] == []
+    assert edge["confidence"] > 0
