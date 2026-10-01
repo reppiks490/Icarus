@@ -1,0 +1,190 @@
+from __future__ import annotations
+
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+
+import pytest
+
+from icarus_engine.sibyl import SibylEngine
+
+
+def _now() -> str:
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def _evidence(engine: SibylEngine, domain: str, *, direction: float = 1.0, source: str | None = None):
+    return engine.record_evidence(
+        {
+            "asset": "NQ",
+            "source": source or domain,
+            "domain": domain,
+            "observed_at": _now(),
+            "direction": direction,
+            "magnitude": 1.0,
+            "confidence": 0.95,
+            "horizon_seconds": 300,
+            "target_price": 25075.0 if direction > 0 else 24925.0,
+            "invalidation_price": 24960.0 if direction > 0 else 25040.0,
+            "source_commit": "a" * 40,
+            "payload": {"volatility_pct": 0.0025},
+        }
+    )
+
+
+def _market(price: float = 25000.0):
+    return {"assets": [{"symbol": "NQ", "continuous_symbol": "NQ1!", "price": price}]}
+
+
+def test_sibyl_detects_collapse_only_with_independent_domains(tmp_path):
+    engine = SibylEngine(tmp_path)
+    _evidence(engine, "microstructure")
+    _evidence(engine, "derivatives")
+    _evidence(engine, "macro")
+
+    state = engine.snapshot("NQ", market_status=_market())
+    row = next(x for x in state["horizons"] if x["horizon_seconds"] == 300)
+
+    assert row["domain_count"] == 3
+    assert row["dominant_basin"] == "up"
+    assert row["collapse_detected"] is True
+    assert row["probabilities"]["up"] > row["probabilities"]["down"]
+    assert state["authority"]["execution_authorized"] is False
+    assert state["authority"]["deterministic_foresight_claim"] is False
+
+
+def test_sibyl_correlation_guard_prevents_source_count_from_faking_consensus(tmp_path):
+    engine = SibylEngine(tmp_path)
+    _evidence(engine, "microstructure", source="argus-book")
+    _evidence(engine, "microstructure", source="argus-trades")
+    _evidence(engine, "microstructure", source="argus-imbalance")
+
+    state = engine.snapshot("NQ", market_status=_market())
+    row = next(x for x in state["horizons"] if x["horizon_seconds"] == 300)
+
+    assert state["evidence"]["count"] == 3
+    assert state["evidence"]["distinct_domain_count"] == 1
+    assert row["domain_count"] == 1
+    assert row["collapse_detected"] is False
+
+
+def test_sibyl_rejects_future_or_timezone_free_evidence(tmp_path):
+    engine = SibylEngine(tmp_path)
+    body = {
+        "asset": "NQ",
+        "source": "oracle",
+        "domain": "macro",
+        "direction": 1.0,
+        "magnitude": 1.0,
+        "confidence": 0.8,
+        "horizon_seconds": 300,
+        "source_commit": "a" * 40,
+    }
+    with pytest.raises(ValueError, match="timezone"):
+        engine.record_evidence({**body, "observed_at": "2026-10-01T05:00:00"})
+
+    future = (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat()
+    with pytest.raises(ValueError, match="future"):
+        engine.record_evidence({**body, "observed_at": future})
+
+
+def test_sibyl_counterfactual_scenario_never_mutates_evidence_ledger(tmp_path):
+    engine = SibylEngine(tmp_path)
+    _evidence(engine, "microstructure")
+    before = engine.snapshot("NQ", market_status=_market())["evidence"]["count"]
+
+    scenario = engine.scenario(
+        {
+            "asset": "NQ",
+            "current_price": 25000.0,
+            "volatility_pct": 0.0025,
+            "horizons": [300],
+            "interventions": [
+                {
+                    "source": "counterfactual-vix",
+                    "domain": "volatility",
+                    "direction": -1.0,
+                    "magnitude": 1.8,
+                    "confidence": 0.9,
+                    "horizon_seconds": 300,
+                    "invalidation_price": 25040.0,
+                }
+            ],
+        },
+        market_status=_market(),
+    )
+
+    after = engine.snapshot("NQ", market_status=_market())["evidence"]["count"]
+    assert scenario["counterfactual"] is True
+    assert scenario["evidence"]["count"] == before + 1
+    assert before == after == 1
+
+
+def test_sibyl_forecasts_are_revision_bound_and_calibrated_by_observed_outcomes(tmp_path):
+    engine = SibylEngine(tmp_path)
+    _evidence(engine, "microstructure")
+    _evidence(engine, "derivatives")
+    _evidence(engine, "macro")
+
+    forecast = engine.record_forecast(
+        {
+            "asset": "NQ",
+            "observed_at": _now(),
+            "current_price": 25000.0,
+            "volatility_pct": 0.0025,
+            "horizons": [300],
+            "source_commit": "b" * 40,
+        },
+        market_status=_market(),
+    )
+    assert forecast["source_commit"] == "b" * 40
+    assert forecast["execution_authorized"] is False
+
+    outcome = engine.record_outcome(
+        {
+            "forecast_id": forecast["forecast_id"],
+            "horizon_seconds": 300,
+            "observed_at": _now(),
+            "realized_price": 25100.0,
+            "evidence": ["paper-replay:observed-close"],
+        }
+    )
+    assert outcome["realized_class"] == "up"
+    assert 0 <= outcome["brier"] <= 1
+
+    calibration = engine.calibration("NQ")
+    assert calibration["outcome_count"] == 1
+    assert calibration["horizons"][0]["n"] == 1
+    assert calibration["status"] == "measured"
+
+    with pytest.raises(ValueError, match="immutable"):
+        engine.record_outcome(
+            {
+                "forecast_id": forecast["forecast_id"],
+                "horizon_seconds": 300,
+                "observed_at": _now(),
+                "realized_price": 24900.0,
+                "evidence": ["different-observation"],
+            }
+        )
+
+
+def test_sibyl_is_visible_and_routed_in_icarus_interface():
+    repo = Path(__file__).resolve().parents[1]
+    dashboard = (repo / "icarus_engine" / "dashboard.html").read_text(encoding="utf-8")
+    ui = (repo / "icarus_engine" / "sibyl-ui.js").read_text(encoding="utf-8")
+    server = (repo / "icarus_engine" / "server.py").read_text(encoding="utf-8")
+    brain = (repo / "icarus_engine" / "brain.py").read_text(encoding="utf-8")
+
+    assert '/sibyl-ui.js' in dashboard
+    assert 'data-v="sibyl">SIBYL Ω</span>' in dashboard
+    assert "wireSibyl()" in dashboard
+    assert "/api/sibyl" in ui
+    assert "FUTURE COLLAPSE" in ui
+    assert "TEMPORAL FRACTURE" in ui
+    assert 'p.path == "/api/sibyl"' in server
+    assert 'p.path == "/admin/sibyl/evidence"' in server
+    assert 'p.path == "/admin/sibyl/forecast"' in server
+    assert 'p.path == "/admin/sibyl/outcome"' in server
+    assert 'p.path == "/admin/sibyl/scenario"' in server
+    assert '"SIBYL"' in brain
+    assert '"sibyl"' in brain
