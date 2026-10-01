@@ -640,13 +640,29 @@ class PossibilityEngine:
         if feed is not None and hasattr(feed, "trades"):
             try:
                 ticks = list(feed.trades(ticker, limit=500))
+                def _tick_order(tick: Any) -> tuple[int, int]:
+                    if isinstance(tick, Mapping):
+                        ns = _finite(tick.get("ts_event_ns"))
+                        sec = _finite(tick.get("ts_event"))
+                        seq = _finite(tick.get("sequence")) or 0
+                    else:
+                        ns = _finite(getattr(tick, "ts_event_ns", None))
+                        sec = _finite(getattr(tick, "ts_event", None))
+                        seq = _finite(getattr(tick, "sequence", None)) or 0
+                    order_ns = int(ns) if ns is not None else int((sec or 0) * 1_000_000_000)
+                    return order_ns, int(seq)
+                ticks.sort(key=_tick_order)
                 signed = 0.0
                 gross = 0.0
                 prices: list[float] = []
+                event_times: list[float] = []
                 for tick in ticks:
                     px = _finite(getattr(tick, "price", None) if not isinstance(tick, Mapping) else tick.get("price"))
                     size = _finite(getattr(tick, "size", None) if not isinstance(tick, Mapping) else tick.get("size"))
                     side = str(getattr(tick, "side", "") if not isinstance(tick, Mapping) else tick.get("side", "")).strip().upper()
+                    event_ts = _finite(getattr(tick, "ts_event", None) if not isinstance(tick, Mapping) else tick.get("ts_event"))
+                    if event_ts is not None:
+                        event_times.append(event_ts)
                     if px is not None:
                         prices.append(px)
                     if size is None or size <= 0:
@@ -664,6 +680,17 @@ class PossibilityEngine:
                     first, last = prices[0], prices[-1]
                     displacement = (last - first) / max(abs(first), 1e-9)
                     result["trade_displacement"] = displacement
+                if event_times:
+                    first_ts, last_ts = min(event_times), max(event_times)
+                    result["tick_window"] = {
+                        "first_ts": first_ts,
+                        "last_ts": last_ts,
+                        "duration_seconds": max(0.0, last_ts - first_ts),
+                        "age_seconds": max(0.0, now - last_ts),
+                        "event_clock": "exchange",
+                    }
+                    result["health"]["tick_last_event_ts"] = last_ts
+                    result["health"]["tick_age_seconds"] = max(0.0, now - last_ts)
             except Exception as ex:
                 result["health"]["errors"].append(f"ticks: {type(ex).__name__}: {ex}")
 
@@ -997,65 +1024,115 @@ class PossibilityEngine:
 
     def _information_wave(
         self,
-        history: Sequence[Mapping[str, float]],
+        history: Sequence[Mapping[str, Any]],
         vol: float,
         latent: float | None,
         coverage: float,
         micro: Mapping[str, Any],
         leaders: Mapping[str, Any],
     ) -> dict[str, Any]:
-        """Detect unexplained information arrival before its source is identified.
+        """Detect a current-window disturbance only when causal ordering is provable.
 
-        This is a novelty/residual detector, not a claim that a hidden actor or news
-        event exists. It asks whether current price change is unusually large after
-        conditioning on the pressure state that Ψ can presently observe.
+        Exchange-timestamped tick evidence must occur after the latest completed
+        runner bar. Otherwise Ψ refuses to label the disturbance as leading.
         """
-        returns = [float(row["ret"]) for row in history if _finite(row.get("ret")) is not None]
-        if len(returns) < 12:
+        if len(history) < 12:
             return {
                 "status": "WARMING",
                 "score": None,
                 "direction": None,
+                "causal_leading": False,
                 "source_identified": False,
-                "detail": "requires at least 12 observed return transitions",
+                "detail": "requires at least 12 completed return transitions",
             }
-        baseline = returns[-61:-1] if len(returns) > 12 else returns[:-1]
-        latest = returns[-1]
-        mu = _mean(baseline)
-        sigma = max(_stdev(baseline), vol, 1e-9)
-        observed_pressure = _finite(latent) or 0.0
-        # Lagged cross-asset pressure is already represented inside latent pressure.
-        # Conditioning on the leader graph again would double count that domain.
-        expected = sigma * 1.75 * _clamp(
-            observed_pressure * (0.35 + 0.45 * coverage)
-        )
-        residual = latest - expected
-        residual_z = abs(residual - mu) / sigma
+
+        flow = micro.get("aggressive_flow")
+        tick_window = micro.get("tick_window")
+        displacement = _finite(micro.get("trade_displacement"))
+        if not isinstance(flow, Mapping) or not isinstance(tick_window, Mapping) or displacement is None:
+            return {
+                "status": "UNAVAILABLE",
+                "score": None,
+                "direction": None,
+                "causal_leading": False,
+                "source_identified": False,
+                "detail": "requires exchange-timestamped signed ticks and same-window price displacement",
+            }
+
+        latest_row = history[-1]
+        latest_ts = _finite(latest_row.get("ts"))
+        chart_minutes = int(_finite(latest_row.get("chart_minutes")) or self._history_chart_minutes.get(str(latest_row.get("symbol") or ""), 0) or 0)
+        if chart_minutes <= 0:
+            chart_minutes = int(self._history_chart_minutes.get(next(iter(self._history_chart_minutes), ""), 0) or 0)
+        bar_seconds = max(1, chart_minutes * 60) if chart_minutes else 60
+        completed_close_ts = (latest_ts + bar_seconds) if latest_ts is not None and latest_row.get("source") == "runner_bar" else latest_ts
+        tick_last = _finite(tick_window.get("last_ts"))
+        tick_first = _finite(tick_window.get("first_ts"))
+        age = _finite(tick_window.get("age_seconds"))
+        if tick_last is None or completed_close_ts is None or tick_last <= completed_close_ts:
+            return {
+                "status": "NO_CURRENT_WINDOW",
+                "score": None,
+                "direction": None,
+                "causal_leading": False,
+                "source_identified": False,
+                "completed_bar_close_ts": completed_close_ts,
+                "tick_last_ts": tick_last,
+                "detail": "tick window does not follow the latest completed bar",
+            }
+        if age is not None and age > max(30.0, 2.0 * bar_seconds):
+            return {
+                "status": "STALE",
+                "score": None,
+                "direction": None,
+                "causal_leading": False,
+                "source_identified": False,
+                "tick_age_seconds": age,
+                "detail": "latest tick window is stale",
+            }
+
+        duration = max(1.0, (tick_last - tick_first) if tick_first is not None else 1.0)
+        sigma_window = max(vol * math.sqrt(min(1.0, duration / bar_seconds)), 1e-7)
+        displacement_z = abs(displacement) / sigma_window
+        imbalance = _finite(flow.get("imbalance")) or 0.0
 
         repricing = micro.get("repricing_pressure")
         volume = micro.get("volume_pressure")
         conflict = 0.0
-        domains = 1
         if isinstance(repricing, Feature) and isinstance(volume, Feature):
             if repricing.available and volume.available and repricing.value is not None and volume.value is not None:
                 conflict = abs(repricing.value - volume.value)
-                domains += 1
 
-        novelty = 0.78 * residual_z + 0.22 * min(3.0, conflict * 2.0)
-        score = 100.0 * (1.0 - math.exp(-max(0.0, novelty) / 2.2))
+        cross_divergence = abs((_finite(latent) or 0.0) - imbalance)
+        absorption_energy = abs(imbalance) * max(0.0, 1.0 - min(1.0, displacement_z))
+        vacuum_energy = max(0.0, 1.0 - abs(imbalance)) * min(3.0, displacement_z)
+        novelty = (
+            0.45 * min(4.0, displacement_z)
+            + 0.20 * min(2.0, conflict)
+            + 0.20 * max(absorption_energy, vacuum_energy)
+            + 0.15 * min(2.0, cross_divergence)
+        )
+        score = 100.0 * (1.0 - math.exp(-max(0.0, novelty) / 1.8))
         status = "EVENT" if score >= 75.0 else "WATCH" if score >= 50.0 else "QUIET"
-        direction = "UP" if residual > 0 else "DOWN" if residual < 0 else None
+        direction = "UP" if displacement > 0 else "DOWN" if displacement < 0 else None
         return {
             "status": status,
             "score": min(100.0, score),
             "direction": direction,
+            "causal_leading": True,
             "source_identified": False,
-            "return_surprise_z": residual_z,
+            "tick_first_ts": tick_first,
+            "tick_last_ts": tick_last,
+            "completed_bar_close_ts": completed_close_ts,
+            "window_seconds": duration,
+            "price_displacement": displacement,
+            "displacement_surprise_z": displacement_z,
+            "aggressive_flow_imbalance": imbalance,
             "microstructure_conflict": conflict,
-            "observed_domains": domains,
-            "expected_return_component": expected,
-            "residual_return": residual,
-            "detail": "Source-agnostic residual novelty; investigate provenance before assigning a cause.",
+            "cross_pressure_divergence": cross_divergence,
+            "absorption_energy": absorption_energy,
+            "vacuum_energy": vacuum_energy,
+            "detail": "Causally ordered current-window novelty after the latest completed bar; source remains unidentified.",
         }
 
     def _synthetic_price(
