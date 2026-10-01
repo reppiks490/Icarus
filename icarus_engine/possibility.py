@@ -367,6 +367,10 @@ class PossibilityEngine:
                 "consensus_requires_distinct_evidence_domains": True,
                 "same_snapshot_unexplained_residual_not_identifiable": True,
                 "external_ttl_anchored_to_observation_time": True,
+                "durable_external_evidence": self._evidence_ledger.durable,
+                "runner_history_poll_independent_when_available": True,
+                "leader_graph_requires_equal_cadence_and_exact_timestamps": True,
+                "information_wave_requires_post_bar_exchange_ticks": True,
                 "rule": "Model diagnostics only. Missing evidence stays unavailable and NO_EDGE is mandatory when gates fail.",
             },
             "latent_pressure_engine": {
@@ -430,6 +434,8 @@ class PossibilityEngine:
         edge = state.get("edge_state") if isinstance(state.get("edge_state"), Mapping) else {}
         latent_state = state.get("latent_pressure_engine") if isinstance(state.get("latent_pressure_engine"), Mapping) else {}
         possibility = state.get("possibility") if isinstance(state.get("possibility"), Mapping) else {}
+        wave = state.get("information_wave") if isinstance(state.get("information_wave"), Mapping) else {}
+        leaders = state.get("causal_leadership") if isinstance(state.get("causal_leadership"), Mapping) else {}
         return {
             "subsystem": "psi",
             "status": "OBSERVED" if state.get("asset") else "UNAVAILABLE",
@@ -441,6 +447,11 @@ class PossibilityEngine:
             "evidence_coverage": _finite(latent_state.get("evidence_coverage")) or 0.0,
             "future_space_collapse": _finite(possibility.get("future_space_collapse")),
             "dominant_cluster": possibility.get("dominant_cluster"),
+            "information_wave_status": wave.get("status"),
+            "information_wave_score": _finite(wave.get("score")),
+            "information_wave_causal_leading": bool(wave.get("causal_leading")),
+            "leader_alignment_mode": leaders.get("alignment_mode"),
+            "leader_confidence": _finite(leaders.get("confidence")) or 0.0,
             "blockers": list(edge.get("blockers") or [])[:16],
             "execution_authorized": False,
             "production_decision_authorized": False,
