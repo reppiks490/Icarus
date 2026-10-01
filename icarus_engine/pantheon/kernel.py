@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 import sqlite3
 import threading
@@ -17,6 +18,7 @@ from .contracts import (
     authority_block,
     digest,
     exact_git_sha,
+    finite,
     iso_aware,
     json_canonical,
     mapping,
@@ -24,6 +26,7 @@ from .contracts import (
     unit,
 )
 from .faculties import evaluate_faculties
+from .bridge import sibyl_evidence_candidates
 
 _LOCK = threading.RLock()
 
@@ -78,11 +81,35 @@ class PantheonKernel:
                     created_at TEXT NOT NULL,
                     UNIQUE(observation_id, agent_id)
                 );
+                CREATE TABLE IF NOT EXISTS claim_outcomes (
+                    outcome_id TEXT PRIMARY KEY,
+                    claim_id TEXT NOT NULL,
+                    observed_at TEXT NOT NULL,
+                    utility REAL NOT NULL,
+                    confidence REAL NOT NULL,
+                    evidence_json TEXT NOT NULL,
+                    created_at TEXT NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS species (
+                    species_id TEXT PRIMARY KEY,
+                    asset TEXT NOT NULL,
+                    kind TEXT NOT NULL,
+                    origin_claim_id TEXT NOT NULL,
+                    parent_species_id TEXT,
+                    generation INTEGER NOT NULL,
+                    stage TEXT NOT NULL,
+                    fitness_credit REAL NOT NULL,
+                    evidence_count INTEGER NOT NULL,
+                    payload_json TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                );
                 CREATE TABLE IF NOT EXISTS sentinel_cells (
                     cell_id TEXT PRIMARY KEY,
                     asset TEXT NOT NULL,
                     horizon_ms INTEGER NOT NULL,
                     last_observation_id TEXT NOT NULL,
+                    last_observed_at TEXT NOT NULL,
                     last_energy REAL NOT NULL,
                     last_status TEXT NOT NULL,
                     observation_count INTEGER NOT NULL DEFAULT 1,
@@ -91,9 +118,15 @@ class PantheonKernel:
                 CREATE INDEX IF NOT EXISTS idx_pantheon_obs_asset ON observations(asset, observed_at);
                 CREATE INDEX IF NOT EXISTS idx_pantheon_claim_obs ON claims(observation_id, kind);
                 CREATE INDEX IF NOT EXISTS idx_pantheon_agent_claim_obs ON agent_claims(observation_id, role);
+                CREATE INDEX IF NOT EXISTS idx_pantheon_outcome_claim ON claim_outcomes(claim_id, observed_at);
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_pantheon_outcome_claim_time ON claim_outcomes(claim_id, observed_at);
+                CREATE INDEX IF NOT EXISTS idx_pantheon_species_asset ON species(asset, stage, fitness_credit);
                 CREATE INDEX IF NOT EXISTS idx_pantheon_cells_energy ON sentinel_cells(last_energy, updated_at);
                 """
             )
+            columns = {row["name"] for row in con.execute("PRAGMA table_info(sentinel_cells)").fetchall()}
+            if "last_observed_at" not in columns:
+                con.execute("ALTER TABLE sentinel_cells ADD COLUMN last_observed_at TEXT NOT NULL DEFAULT ''")
 
     def _normalize(self, payload: Mapping[str, Any]) -> tuple[dict[str, Any], str, str]:
         if not isinstance(payload, Mapping):
@@ -119,6 +152,16 @@ class PantheonKernel:
         source_outputs = dict(mapping(source_outputs, "subsystem_outputs"))
         if len(source_outputs) > 64:
             raise ValueError("subsystem_outputs exceeds 64 entries")
+        claim_outcomes = payload.get("claim_outcomes", [])
+        if claim_outcomes is None:
+            claim_outcomes = []
+        if not isinstance(claim_outcomes, list) or len(claim_outcomes) > 32:
+            raise ValueError("claim_outcomes must be a list with at most 32 items")
+        clean_outcomes = []
+        for i, row in enumerate(claim_outcomes):
+            if not isinstance(row, Mapping):
+                raise ValueError(f"claim_outcomes[{i}] must be an object")
+            clean_outcomes.append(dict(row))
         normalized = {
             "schema_version": OBSERVATION_SCHEMA,
             "observed_at": observed_at,
@@ -128,6 +171,7 @@ class PantheonKernel:
             "signals": signals,
             "evidence": evidence,
             "subsystem_outputs": source_outputs,
+            "claim_outcomes": clean_outcomes,
         }
         identity_payload = {
             "schema_version": OBSERVATION_SCHEMA,
@@ -144,6 +188,16 @@ class PantheonKernel:
         observation_id = text(observation_id, "observation_id", 96)
         return normalized, identity, observation_id
 
+    def _attach_ecology_outcomes(self, result: dict[str, Any], normalized: Mapping[str, Any]) -> dict[str, Any]:
+        result["ecology_outcomes"] = [
+            self.record_claim_outcome({
+                **row,
+                "observed_at": row.get("observed_at") or normalized["observed_at"],
+            })
+            for row in normalized.get("claim_outcomes", [])
+        ]
+        return result
+
     def record_observation(self, payload: Mapping[str, Any]) -> dict[str, Any]:
         normalized, identity, observation_id = self._normalize(payload)
         with _LOCK, self._connect() as con:
@@ -151,7 +205,7 @@ class PantheonKernel:
             if existing:
                 if existing["identity_hash"] != identity:
                     raise ValueError("observation_id already exists with different immutable identity")
-                return self.observation(observation_id)
+                return self._attach_ecology_outcomes(self.observation(observation_id), normalized)
 
         faculties = evaluate_faculties(normalized["signals"], observation_id)
         aether = self.swarm.evaluate(
@@ -165,6 +219,16 @@ class PantheonKernel:
             "faculties": faculties,
             "aether": aether,
             "external_subsystems": normalized["subsystem_outputs"],
+            "exports": {
+                "sibyl_evidence": sibyl_evidence_candidates(
+                    observed_at=normalized["observed_at"],
+                    asset=normalized["asset"],
+                    horizon_ms=normalized["horizon_ms"],
+                    source_commit=normalized["source_commit"],
+                    faculties=faculties,
+                    aether=aether,
+                )
+            },
             "authority": authority_block(),
             "truth_contract": {
                 "heuristics_are_not_calibrated_probabilities": True,
@@ -210,7 +274,7 @@ class PantheonKernel:
             if existing:
                 if existing["identity_hash"] != identity:
                     raise ValueError("observation_id already exists with different immutable identity")
-                return self.observation(observation_id)
+                return self._attach_ecology_outcomes(self.observation(observation_id), normalized)
             con.execute(
                 """INSERT INTO observations(
                     observation_id,observed_at,asset,horizon_ms,source_commit,identity_hash,payload_json,analysis_json,created_at
@@ -228,6 +292,7 @@ class PantheonKernel:
                 ),
             )
             for claim in claims:
+                claim_payload_json = json_canonical(claim["payload"], "claim", 65536)
                 con.execute(
                     "INSERT OR IGNORE INTO claims(claim_id,observation_id,kind,stage,payload_json,created_at) VALUES(?,?,?,?,?,?)",
                     (
@@ -235,19 +300,42 @@ class PantheonKernel:
                         observation_id,
                         claim["kind"],
                         claim["stage"],
-                        json_canonical(claim["payload"], "claim", 65536),
+                        claim_payload_json,
+                        now,
+                    ),
+                )
+                species_id = "species-" + digest(claim["claim_id"], normalized["asset"])[:18]
+                con.execute(
+                    """INSERT OR IGNORE INTO species(
+                        species_id,asset,kind,origin_claim_id,parent_species_id,generation,
+                        stage,fitness_credit,evidence_count,payload_json,created_at,updated_at
+                    ) VALUES(?,?,?,?,NULL,0,'hypothesis',0.0,0,?,?,?)""",
+                    (
+                        species_id,
+                        normalized["asset"],
+                        claim["kind"],
+                        claim["claim_id"],
+                        claim_payload_json,
+                        now,
                         now,
                     ),
                 )
             cell_id = "cell-" + digest(normalized["asset"], str(normalized["horizon_ms"]))[:18]
             con.execute(
                 """INSERT INTO sentinel_cells(
-                    cell_id,asset,horizon_ms,last_observation_id,last_energy,last_status,observation_count,updated_at
-                ) VALUES(?,?,?,?,?,?,1,?)
+                    cell_id,asset,horizon_ms,last_observation_id,last_observed_at,last_energy,last_status,observation_count,updated_at
+                ) VALUES(?,?,?,?,?,?,?,1,?)
                 ON CONFLICT(cell_id) DO UPDATE SET
-                    last_observation_id=excluded.last_observation_id,
-                    last_energy=excluded.last_energy,
-                    last_status=excluded.last_status,
+                    last_observation_id=CASE
+                        WHEN excluded.last_observed_at >= sentinel_cells.last_observed_at
+                        THEN excluded.last_observation_id ELSE sentinel_cells.last_observation_id END,
+                    last_observed_at=MAX(sentinel_cells.last_observed_at, excluded.last_observed_at),
+                    last_energy=CASE
+                        WHEN excluded.last_observed_at >= sentinel_cells.last_observed_at
+                        THEN excluded.last_energy ELSE sentinel_cells.last_energy END,
+                    last_status=CASE
+                        WHEN excluded.last_observed_at >= sentinel_cells.last_observed_at
+                        THEN excluded.last_status ELSE sentinel_cells.last_status END,
                     observation_count=sentinel_cells.observation_count+1,
                     updated_at=excluded.updated_at""",
                 (
@@ -255,12 +343,13 @@ class PantheonKernel:
                     normalized["asset"],
                     normalized["horizon_ms"],
                     observation_id,
+                    normalized["observed_at"],
                     float(aether["field"]["energy"]),
                     str(aether["status"]),
                     now,
                 ),
             )
-        return self.observation(observation_id)
+        return self._attach_ecology_outcomes(self.observation(observation_id), normalized)
 
     def record_agent_claim(self, payload: Mapping[str, Any]) -> dict[str, Any]:
         """Commit one blind-first-pass claim from a spawned AETHER research agent."""
@@ -380,6 +469,283 @@ class PantheonKernel:
             "production_decision_authorized": False,
         }
 
+    def record_claim_outcome(self, body: Mapping[str, Any]) -> dict[str, Any]:
+        """Record one immutable observed claim result and update research fitness."""
+        if not isinstance(body, Mapping):
+            raise ValueError("claim outcome must be an object")
+        claim_id = text(body.get("claim_id"), "claim_id", 96)
+        observed_at = iso_aware(body.get("observed_at"))
+        utility = max(-1.0, min(1.0, finite(body.get("utility"), "utility")))
+        confidence = unit(body.get("confidence"), "confidence", 1.0)
+        evidence = body.get("evidence", [])
+        if isinstance(evidence, str):
+            evidence = [evidence]
+        if not isinstance(evidence, list) or len(evidence) > 64:
+            raise ValueError("evidence must be a list with at most 64 items")
+        evidence = [text(item, "evidence item", 700) for item in evidence]
+        evidence_json = json_canonical(evidence, "evidence", 65536)
+        semantic = json_canonical(
+            {
+                "claim_id": claim_id,
+                "observed_at": observed_at,
+                "utility": utility,
+                "confidence": confidence,
+                "evidence": evidence,
+            },
+            "claim outcome",
+            131072,
+        )
+        outcome_id = "out-" + digest(semantic)[:24]
+        now = _utc_now()
+
+        with _LOCK, self._connect() as con:
+            claim = con.execute(
+                """SELECT c.*,o.observed_at AS claim_observed_at
+                   FROM claims c JOIN observations o ON o.observation_id=c.observation_id
+                   WHERE c.claim_id=?""",
+                (claim_id,),
+            ).fetchone()
+            if claim is None:
+                raise ValueError("unknown PANTHEON claim")
+            claim_time = datetime.fromisoformat(str(claim["claim_observed_at"]).replace("Z", "+00:00"))
+            outcome_time = datetime.fromisoformat(observed_at.replace("Z", "+00:00"))
+            if outcome_time < claim_time:
+                raise ValueError("claim outcome cannot precede the originating observation")
+            prior_time = con.execute(
+                "SELECT * FROM claim_outcomes WHERE claim_id=? AND observed_at=?",
+                (claim_id, observed_at),
+            ).fetchone()
+            if prior_time is not None and (
+                abs(float(prior_time["utility"]) - utility) > 1e-12
+                or abs(float(prior_time["confidence"]) - confidence) > 1e-12
+                or prior_time["evidence_json"] != evidence_json
+            ):
+                raise ValueError("claim outcome is immutable for claim_id + observed_at")
+            prior = con.execute("SELECT * FROM claim_outcomes WHERE outcome_id=?", (outcome_id,)).fetchone()
+            if prior is None and prior_time is None:
+                con.execute(
+                    """INSERT INTO claim_outcomes(
+                        outcome_id,claim_id,observed_at,utility,confidence,evidence_json,created_at
+                    ) VALUES(?,?,?,?,?,?,?)""",
+                    (outcome_id, claim_id, observed_at, utility, confidence, evidence_json, now),
+                )
+
+            outcomes = con.execute(
+                "SELECT utility,confidence FROM claim_outcomes WHERE claim_id=? ORDER BY observed_at",
+                (claim_id,),
+            ).fetchall()
+            positive_weight = sum(float(row["confidence"]) for row in outcomes)
+            if positive_weight > 1e-12:
+                fitness = sum(float(row["utility"]) * float(row["confidence"]) for row in outcomes) / positive_weight
+            else:
+                fitness = sum(float(row["utility"]) for row in outcomes) / max(1, len(outcomes))
+            n = len(outcomes)
+            if n >= 3 and fitness <= -0.20:
+                stage = "retired"
+            elif n >= 3 and fitness >= 0.20:
+                stage = "surviving_shadow"
+            elif n >= 2:
+                stage = "contested"
+            else:
+                stage = "hypothesis"
+
+            species = con.execute(
+                "SELECT * FROM species WHERE origin_claim_id=? ORDER BY generation LIMIT 1",
+                (claim_id,),
+            ).fetchone()
+            child_id = None
+            if species is not None:
+                con.execute(
+                    "UPDATE species SET stage=?,fitness_credit=?,evidence_count=?,updated_at=? WHERE species_id=?",
+                    (stage, fitness, n, now, species["species_id"]),
+                )
+                child = con.execute(
+                    "SELECT species_id FROM species WHERE parent_species_id=? ORDER BY generation LIMIT 1",
+                    (species["species_id"],),
+                ).fetchone()
+                if (
+                    child is None
+                    and stage == "surviving_shadow"
+                    and fitness >= 0.50
+                    and int(species["generation"]) < 3
+                ):
+                    child_id = "species-" + digest(species["species_id"], "mutant", str(n))[:18]
+                    child_claim_id = "mut-" + digest(child_id, claim_id)[:20]
+                    child_payload = {
+                        "parent_species_id": species["species_id"],
+                        "parent_claim_id": claim_id,
+                        "mutation_trigger": {
+                            "fitness_credit": fitness,
+                            "evidence_count": n,
+                        },
+                        "stage": "research_variant",
+                        "automatic_production_authority": False,
+                    }
+                    con.execute(
+                        """INSERT OR IGNORE INTO claims(
+                            claim_id,observation_id,kind,stage,payload_json,created_at
+                        ) VALUES(?,?,?,?,?,?)""",
+                        (
+                            child_claim_id,
+                            claim["observation_id"],
+                            "mutation_candidate",
+                            "hypothesis",
+                            json_canonical(child_payload, "mutant claim", 65536),
+                            now,
+                        ),
+                    )
+                    con.execute(
+                        """INSERT OR IGNORE INTO species(
+                            species_id,asset,kind,origin_claim_id,parent_species_id,generation,
+                            stage,fitness_credit,evidence_count,payload_json,created_at,updated_at
+                        ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
+                        (
+                            child_id,
+                            species["asset"],
+                            "mutation_candidate",
+                            child_claim_id,
+                            species["species_id"],
+                            int(species["generation"]) + 1,
+                            "hypothesis",
+                            0.0,
+                            0,
+                            json_canonical(child_payload, "species payload", 65536),
+                            now,
+                            now,
+                        ),
+                    )
+
+        return {
+            "outcome_id": outcome_id,
+            "claim_id": claim_id,
+            "observed_at": observed_at,
+            "utility": utility,
+            "confidence": confidence,
+            "fitness_credit": fitness,
+            "evidence_count": n,
+            "species_stage": stage,
+            "offspring_species_id": child_id,
+            "authority": authority_block(),
+        }
+
+    def _ecology_snapshot(self, limit: int = 100) -> dict[str, Any]:
+        with _LOCK, self._connect() as con:
+            rows = con.execute(
+                "SELECT * FROM species ORDER BY fitness_credit DESC,evidence_count DESC,updated_at DESC LIMIT ?",
+                (max(1, min(250, int(limit))),),
+            ).fetchall()
+            outcome_count = con.execute("SELECT COUNT(*) AS n FROM claim_outcomes").fetchone()["n"]
+
+        species = []
+        for row in rows:
+            payload = json.loads(row["payload_json"])
+            alpha_mass = max(0.0, float(row["fitness_credit"])) * (1.0 + math.log1p(int(row["evidence_count"])))
+            species.append(
+                {
+                    "species_id": row["species_id"],
+                    "asset": row["asset"],
+                    "kind": row["kind"],
+                    "origin_claim_id": row["origin_claim_id"],
+                    "parent_species_id": row["parent_species_id"],
+                    "generation": row["generation"],
+                    "stage": row["stage"],
+                    "fitness_credit": row["fitness_credit"],
+                    "evidence_count": row["evidence_count"],
+                    "alpha_mass": alpha_mass,
+                    "payload": payload,
+                    "updated_at": row["updated_at"],
+                }
+            )
+
+        interactions = []
+        for i, left in enumerate(species):
+            if left["stage"] == "retired":
+                continue
+            for right in species[i + 1:]:
+                if right["stage"] == "retired" or left["asset"] != right["asset"]:
+                    continue
+                if left["kind"] == right["kind"] and abs(left["fitness_credit"] - right["fitness_credit"]) >= 0.35:
+                    predator, prey = (left, right) if left["fitness_credit"] > right["fitness_credit"] else (right, left)
+                    interactions.append(
+                        {
+                            "type": "predation",
+                            "predator": predator["species_id"],
+                            "prey": prey["species_id"],
+                            "asset": left["asset"],
+                            "basis": "same-kind research fitness separation",
+                        }
+                    )
+                elif left["kind"] != right["kind"] and left["fitness_credit"] >= 0.20 and right["fitness_credit"] >= 0.20:
+                    interactions.append(
+                        {
+                            "type": "symbiosis",
+                            "species": [left["species_id"], right["species_id"]],
+                            "asset": left["asset"],
+                            "basis": "independent positive research fitness across distinct claim kinds",
+                        }
+                    )
+                if len(interactions) >= 64:
+                    break
+            if len(interactions) >= 64:
+                break
+
+        active_species = [row for row in species if row["stage"] != "retired"]
+        retired_species = [row for row in species if row["stage"] == "retired"]
+        for parasite in retired_species:
+            hosts = [
+                host for host in active_species
+                if host["asset"] == parasite["asset"] and host["fitness_credit"] >= 0.20
+            ]
+            if hosts:
+                host = max(hosts, key=lambda row: row["fitness_credit"])
+                interactions.append({
+                    "type": "parasitic_drag",
+                    "parasite": parasite["species_id"],
+                    "host": host["species_id"],
+                    "asset": parasite["asset"],
+                    "basis": "retired negative-fitness research species previously competed for the same asset attention",
+                })
+                if len(interactions) >= 64:
+                    break
+
+        alpha_food_web = sorted(
+            [row for row in species if row["stage"] != "retired" and row["alpha_mass"] > 0],
+            key=lambda row: (row["alpha_mass"], row["fitness_credit"], row["evidence_count"]),
+            reverse=True,
+        )[:20]
+        genesis = [
+            {
+                "species_id": row["species_id"],
+                "asset": row["asset"],
+                "origin_claim_id": row["origin_claim_id"],
+                "reason": "repeated ontology candidate survived observed shadow outcomes",
+                "recommended_action": "open bounded independent engine-design study",
+                "automatic_engine_creation": False,
+            }
+            for row in species
+            if row["kind"] == "ontology_candidate"
+            and row["stage"] == "surviving_shadow"
+            and row["evidence_count"] >= 3
+        ][:12]
+        extinct = [row for row in species if row["stage"] == "retired"]
+
+        return {
+            "species": species,
+            "species_count": len(species),
+            "claim_outcome_count": int(outcome_count),
+            "interactions": interactions,
+            "alpha_food_web": alpha_food_web,
+            "extinct_species": extinct,
+            "cognitive_genesis_candidates": genesis,
+            "contracts": {
+                "speciation_requires_observed_positive_fitness": True,
+                "extinction_requires_repeated_negative_observed_fitness": True,
+                "predation_and_symbiosis_are_research_relationships_only": True,
+                "cognitive_genesis_never_auto_creates_production_code": True,
+            },
+            "authority": authority_block(),
+        }
+
     def observation(self, observation_id: str) -> dict[str, Any]:
         with _LOCK, self._connect() as con:
             row = con.execute("SELECT * FROM observations WHERE observation_id=?", (observation_id,)).fetchone()
@@ -436,6 +802,7 @@ class PantheonKernel:
                 "asset": row["asset"],
                 "horizon_ms": row["horizon_ms"],
                 "last_observation_id": row["last_observation_id"],
+                "last_observed_at": row["last_observed_at"],
                 "energy": row["last_energy"],
                 "status": row["last_status"],
                 "observation_count": row["observation_count"],
@@ -444,6 +811,7 @@ class PantheonKernel:
             for row in cell_rows
         ]
         latest = observations[0] if observations else None
+        ecology = self._ecology_snapshot(limit=100)
         catalog = {
             "ORACLE": {"mode": "native subsystem via read-only adapter", "ownership": "preserved; not reimplemented here"},
             "PARALLAX": {"mode": "native subsystem", "ownership": "preserved"},
@@ -464,6 +832,7 @@ class PantheonKernel:
             "sentinel_cells": cells,
             "engine_catalog": catalog,
             "faculty_names": list(FACULTIES),
+            "ecology": ecology,
             "latest": latest,
             "observations": observations,
             "authority": authority_block(),
@@ -473,5 +842,7 @@ class PantheonKernel:
                 "no_forced_consensus": True,
                 "oracle_parallax_dreamstate_ownership_preserved": True,
                 "risk_kernel_remains_external_hard_gate": True,
+                "aether_evolution_requires_observed_claim_outcomes": True,
+                "cognitive_genesis_never_auto_creates_production_code": True,
             },
         }
