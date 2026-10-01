@@ -455,6 +455,64 @@ def record_engine_brain_event(
 
 
 @mcp.tool()
+def engine_candidate_qualification_receipts() -> dict:
+    """Read immutable exact-revision candidate qualification receipts and blockers."""
+    return _safe_engine(lambda: _engine_get("/api/qualification-receipts"))
+
+
+@mcp.tool()
+def record_engine_candidate_qualification_receipt(
+    candidate_id: str,
+    candidate_source_repo: str,
+    candidate_source_commit: str,
+    gate: str,
+    passed: bool,
+    verifier_id: str,
+    verifier_source_repo: str,
+    verifier_source_commit: str,
+    observed_at: str,
+    evidence_hash: str,
+) -> dict:
+    """Record one exact-revision gate receipt and auto-sync shadow eligibility.
+
+    The engine may create or revoke a qualified_shadow Brain event when the
+    complete receipt set changes. Production and execution authority remain false.
+    """
+    body = {
+        "candidate_id": candidate_id.strip(),
+        "candidate_source_repo": candidate_source_repo.strip(),
+        "candidate_source_commit": candidate_source_commit.strip().lower(),
+        "gate": gate.strip(),
+        "passed": bool(passed),
+        "verifier_id": verifier_id.strip(),
+        "verifier_source_repo": verifier_source_repo.strip(),
+        "verifier_source_commit": verifier_source_commit.strip().lower(),
+        "observed_at": observed_at.strip(),
+        "evidence_hash": evidence_hash.strip().lower(),
+    }
+    return _safe_engine(lambda: _engine_post("/admin/qualification-receipts/record", body))
+
+
+@mcp.tool()
+def sync_engine_candidate_qualification(
+    candidate_id: str,
+    candidate_source_repo: str,
+    candidate_source_commit: str,
+) -> dict:
+    """Reconcile one exact candidate revision with its current gate receipts.
+
+    This can only affect research/shadow eligibility. It cannot promote a
+    production strategy or authorize broker execution.
+    """
+    body = {
+        "candidate_id": candidate_id.strip(),
+        "candidate_source_repo": candidate_source_repo.strip(),
+        "candidate_source_commit": candidate_source_commit.strip().lower(),
+    }
+    return _safe_engine(lambda: _engine_post("/admin/qualification-receipts/sync", body))
+
+
+@mcp.tool()
 def engine_pantheon_state() -> dict:
     """Read PANTHEON faculties, AETHER swarm state, sentinel cells and durable shadow claims."""
     return _safe_engine(lambda: _engine_get("/api/pantheon"))
