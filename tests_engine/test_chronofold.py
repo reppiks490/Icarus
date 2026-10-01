@@ -125,3 +125,31 @@ def test_invalid_configuration_fails_early():
         ChronofoldEngine(p, scenarios=4)
     with pytest.raises(ValueError, match="horizon"):
         ChronofoldEngine(p, horizon=1)
+
+
+def test_identical_snapshot_is_idempotent_and_status_is_read_only():
+    class Stable:
+        def __init__(self):
+            self.calls = 0
+        def status(self):
+            self.calls += 1
+            return {"assets": [
+                {"symbol": "NQ", "price": 100.0, "warm": True, "paused": False,
+                 "state": {"pulse_l": 0.6, "pulse_s": 0.2, "rate_regime": 0.4}},
+                {"symbol": "ES", "price": 50.0, "warm": True, "paused": False,
+                 "state": {"pulse_l": 0.55, "pulse_s": 0.25, "rate_regime": 0.35}},
+            ]}
+
+    port = Stable()
+    engine = ChronofoldEngine(port, scenarios=32, horizon=4)
+    first = engine.snapshot("NQ")
+    tau = first["chronon"]["market_proper_time"]
+    obs = first["observations"]
+    second = engine.snapshot("NQ")
+    assert second["chronon"]["market_proper_time"] == pytest.approx(tau)
+    assert second["observations"] == obs
+    calls_before = port.calls
+    health = engine.status()
+    assert health["read_only"] is True
+    assert port.calls == calls_before
+    assert health["authority"]["execution_authorized"] is False
