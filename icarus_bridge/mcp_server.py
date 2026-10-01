@@ -37,8 +37,12 @@ mcp = MCPServer(
         "Control surface for the ICARUS Bridge: a local daemon that receives TradingView strategy "
         "webhooks and mirrors them onto an Alpaca PAPER account (NQ signals → QQQ proxy). Read tools are "
         "safe. The engine_* tools expose ICARUS strategy configuration, cached backtests and paper-engine "
-        "results. pause_trading / resume_trading / flatten_all / simulate_alert change live paper state — "
-        "confirm with the user before calling them unless they asked for exactly that action."
+        "results. After any material ICARUS repair, audit, evolution, integration, or loop durability "
+        "change performed through MCP, publish the verified result with record_engine_system_event and "
+        "record_engine_loop_status when applicable so the trader System Intelligence panel stays aligned. "
+        "Those publication tools are diagnostic-only. pause_trading / resume_trading / flatten_all / "
+        "simulate_alert change live paper state — confirm with the user before calling them unless they "
+        "asked for exactly that action."
     ),
 )
 
@@ -186,6 +190,48 @@ def record_engine_repository_audit(audit_json: str) -> dict:
     if not isinstance(audit, dict):
         return {"error": "audit_json must decode to an object"}
     return _safe_engine(lambda: _engine_post("/admin/system/audit", {"audit": audit}))
+
+
+@mcp.tool()
+def record_engine_system_event(kind: str, title: str, detail: str = "", severity: str = "info",
+                               repository: str = "", ref: str = "") -> dict:
+    """Publish an important verified MCP repair/audit/evolution/integration/finding to the trader UI.
+
+    Diagnostic-only: this cannot alter strategy state, broker state, orders, positions, or execution authority.
+    """
+    event = {
+        "kind": kind,
+        "severity": severity,
+        "title": title,
+        "detail": detail,
+        "repository": repository,
+        "ref": ref,
+    }
+    return _safe_engine(lambda: _engine_post("/admin/system/event", {"event": event}))
+
+
+@mcp.tool()
+def record_engine_loop_status(loop_id: str, title: str, status: str, run_id: str = "",
+                              scheduler_id: str = "", schedule: str = "", repository: str = "",
+                              finalization_commit_sha: str = "", finalization_state_blob_sha: str = "",
+                              detail: str = "") -> dict:
+    """Publish one verified automation-loop durability receipt/status to the trader UI.
+
+    Use after verifying the exact loop finalization + heartbeat binding. Diagnostic-only.
+    """
+    loop = {
+        "id": loop_id,
+        "title": title,
+        "status": status,
+        "run_id": run_id,
+        "scheduler_id": scheduler_id,
+        "schedule": schedule,
+        "repository": repository,
+        "finalization_commit_sha": finalization_commit_sha,
+        "finalization_state_blob_sha": finalization_state_blob_sha,
+        "detail": detail,
+    }
+    return _safe_engine(lambda: _engine_post("/admin/system/loop", {"loop": loop}))
 
 
 @mcp.tool()
