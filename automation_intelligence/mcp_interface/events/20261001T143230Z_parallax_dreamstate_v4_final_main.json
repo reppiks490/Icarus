@@ -1,0 +1,42 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "parallax-dreamstate-v4-final-main-20261001T143230Z",
+  "category": "EVOLUTION",
+  "severity": "success",
+  "status": "active",
+  "subsystems": [
+    "parallax",
+    "dreamstate",
+    "aion",
+    "athena",
+    "provenance",
+    "ml"
+  ],
+  "recorded_at": "2026-10-01T14:32:30Z",
+  "title": "PARALLAX / DREAMSTATE V4 dependence-aware robustness on verified live main",
+  "summary": "Reconciles PARALLAX / DREAMSTATE V4 onto the latest ICARUS main after the unrelated Windows Psi evidence fix. V4 adds episode-aware effective sample size, Newey-West/HAC dependence-adjusted inference, and cross-revision contradiction/transportability diagnostics while preserving V3 temporal and parameter-basin robustness. DREAMSTATE carries the same evidence into policy contracts, Brain mirrors, search accounting, refresh, and live source revalidation. All authority remains research/shadow only.",
+  "source_repository": "reppiks490/Icarus",
+  "source_ref": "chatgpt/parallax-dreamstate-v4-final-main-20261001",
+  "source_commit": "3dbfdf20fa4f0342b7d00e637e4a57891abd20e7",
+  "evidence": [
+    "icarus_engine/parallax.py",
+    "icarus_engine/dreamstate.py",
+    "icarus_engine/parallax-ui.js",
+    "tests_engine/test_parallax_dreamstate.py",
+    "docs/icarus/PARALLAX_DREAMSTATE.md",
+    "context.episode_id collapses repeated decisions into one effective episode mean",
+    "raw paired N and effective N remain separately auditable",
+    "Newey-West/HAC uncertainty replaces naive screening uncertainty when evaluable",
+    "BH-FDR consumes dependence-adjusted p-values when HAC is active",
+    "cross-revision diagnostics never pool effect sizes",
+    "strong contradictory revisions block robust readiness",
+    "DREAMSTATE carries dependence diagnostics into policy contracts and Adaptive Brain mirrors",
+    "V3 temporal folds and parameter-basin robustness preserved",
+    "prior V4 Linux full suite passed on corrected implementation",
+    "unrelated Windows Psi failure was repaired separately in merged PR #134",
+    "execution_authorized=false",
+    "production_decision_authorized=false"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}
