@@ -259,6 +259,28 @@ class PossibilityEngine:
             "production_decision_authorized": False,
         }
 
+    def status(self) -> dict[str, Any]:
+        """Read-only operator status; unlike snapshot(), this records no market evidence."""
+        with self._lock:
+            assets = sorted(set(self._history) | set(self._external) | set(self._micro_cache))
+            return {
+                "schema_version": "icarus-possibility-status-v1",
+                "status": "ready",
+                "configured_history": self.history,
+                "configured_scenarios": self.scenarios,
+                "micro_cache_seconds": self.micro_cache_seconds,
+                "assets": {
+                    symbol: {
+                        "history_samples": len(self._history.get(symbol, ())),
+                        "external_features": sorted((self._external.get(symbol) or {}).keys()),
+                        "micro_cache_present": symbol in self._micro_cache,
+                    }
+                    for symbol in assets
+                },
+                "execution_authorized": False,
+                "production_decision_authorized": False,
+            }
+
     def snapshot(self, asset: str | None = None) -> dict[str, Any]:
         market = self.port.status()
         rows = [x for x in (market.get("assets") or []) if isinstance(x, Mapping)]
