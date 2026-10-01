@@ -611,7 +611,7 @@ class ParallaxStore:
         }
 
     @classmethod
-    def _temporal_stability(cls, samples: list[tuple[str, float]]) -> dict[str, Any]:
+    def _temporal_stability(cls, samples: list[tuple[str, str, float]]) -> dict[str, Any]:
         """Chronological fold diagnostics; advisory until enough paired evidence exists."""
         n = len(samples)
         if n < _TEMPORAL_MIN_PAIRS:
@@ -625,7 +625,10 @@ class ParallaxStore:
                 "folds": [],
             }
 
-        ordered = sorted(samples, key=lambda row: _timestamp(row[0], "decision.observed_at")[1])
+        ordered = sorted(
+            samples,
+            key=lambda row: (_timestamp(row[0], "decision.observed_at")[1], row[1]),
+        )
         fold_count = min(_TEMPORAL_FOLD_COUNT, n)
         base = n // fold_count
         remainder = n % fold_count
@@ -635,7 +638,7 @@ class ParallaxStore:
             size = base + (1 if idx < remainder else 0)
             chunk = ordered[offset: offset + size]
             offset += size
-            values = [float(value) for _, value in chunk]
+            values = [float(value) for _, _, value in chunk]
             stats = cls._stats(values)
             folds.append({
                 "index": idx,
@@ -734,15 +737,20 @@ class ParallaxStore:
                     neighbors.append(rows[idx - 1])
                 if idx + 1 < len(rows) and int(rows[idx + 1].get("evidence_pair_count") or 0) >= min_samples:
                     neighbors.append(rows[idx + 1])
-                supporting = [row for row in neighbors if row.get("candidate_eligible") is True]
+                def basin_supports(row: Mapping[str, Any]) -> bool:
+                    temporal = row.get("temporal_stability") or {}
+                    temporal_ok = temporal.get("evaluable") is not True or temporal.get("stable") is True
+                    return row.get("candidate_eligible") is True and temporal_ok
+
+                supporting = [row for row in neighbors if basin_supports(row)]
                 evaluable = bool(neighbors)
                 isolated = bool(item.get("candidate_eligible")) and evaluable and not supporting
 
                 left = idx
-                while left > 0 and rows[left - 1].get("candidate_eligible") is True:
+                while left > 0 and basin_supports(rows[left - 1]):
                     left -= 1
                 right = idx
-                while right + 1 < len(rows) and rows[right + 1].get("candidate_eligible") is True:
+                while right + 1 < len(rows) and basin_supports(rows[right + 1]):
                     right += 1
                 basin_rows = rows[left:right + 1] if item.get("candidate_eligible") is True else []
                 basin_values = [float(row["_parameter_axis_value"]) for row in basin_rows]
@@ -816,7 +824,7 @@ class ParallaxStore:
                 continue
             delta = float(row["branch_utility"]) - float(row["actual_utility"])
             group["values"].append(delta)
-            group["temporal_samples"].append((str(row["decision_observed_at"]), delta))
+            group["temporal_samples"].append((str(row["decision_observed_at"]), str(row["decision_id"]), delta))
             strata = json.loads(row["strata_json"] or "{}")
             strata_json = _json(strata, "strata", 8192)
             signature = "unstratified" if not strata else _sha(strata_json)[:16]
