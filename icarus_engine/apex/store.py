@@ -65,6 +65,26 @@ class ApexStore:
                 );
                 CREATE INDEX IF NOT EXISTS idx_apex_belief_events_asof
                     ON belief_events(belief_id, event_ts);
+                CREATE TABLE IF NOT EXISTS participant_states (
+                    state_id TEXT PRIMARY KEY,
+                    asset TEXT NOT NULL,
+                    as_of TEXT NOT NULL,
+                    as_of_ts REAL NOT NULL,
+                    semantic_json TEXT NOT NULL,
+                    recorded_at TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_apex_participant_states_asof
+                    ON participant_states(as_of_ts, asset);
+                CREATE TABLE IF NOT EXISTS force_fields (
+                    field_id TEXT PRIMARY KEY,
+                    asset TEXT NOT NULL,
+                    as_of TEXT NOT NULL,
+                    as_of_ts REAL NOT NULL,
+                    semantic_json TEXT NOT NULL,
+                    recorded_at TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_apex_force_fields_asof
+                    ON force_fields(as_of_ts, asset);
                 """
             )
 
@@ -159,3 +179,81 @@ class ApexStore:
             "quarantined_evidence_ids": corrupt,
             **authority_flags(),
         }
+
+    @staticmethod
+    def _research_state_semantic(body: Mapping[str, Any], *, id_field: str) -> tuple[dict[str, Any], str, str, float]:
+        if not isinstance(body, Mapping):
+            raise ValueError("research state must be an object")
+        semantic = dict(body)
+        semantic.pop(id_field, None)
+        semantic.pop("recorded_at", None)
+        if semantic.get("execution_authorized") is not False or semantic.get("production_decision_authorized") is not False:
+            raise ValueError("research state cannot authorize execution or production")
+        asset = semantic.get("asset")
+        if not isinstance(asset, str) or not asset.strip():
+            raise ValueError("research state asset is required")
+        asset = asset.strip().upper()
+        semantic["asset"] = asset
+        as_of = semantic.get("as_of")
+        if not isinstance(as_of, str):
+            raise ValueError("research state as_of is required")
+        as_of_ts = parse_utc(as_of, "as_of").timestamp()
+        try:
+            raw = json.dumps(semantic, sort_keys=True, separators=(",", ":"), allow_nan=False)
+        except (TypeError, ValueError) as ex:
+            raise ValueError("research state must be finite JSON") from ex
+        import hashlib
+        state_id = hashlib.sha256(raw.encode("utf-8")).hexdigest()
+        return semantic, state_id, raw, as_of_ts
+
+    def _record_research_state(self, table: str, id_field: str, body: Mapping[str, Any]) -> dict[str, Any]:
+        if table not in {"participant_states", "force_fields"}:
+            raise ValueError("unsupported research state table")
+        semantic, state_id, raw, as_of_ts = self._research_state_semantic(body, id_field=id_field)
+        recorded_at = self._utc_now()
+        sql = f"INSERT OR IGNORE INTO {table}({id_field}, asset, as_of, as_of_ts, semantic_json, recorded_at) VALUES(?,?,?,?,?,?)"
+        with self._lock, self._conn:
+            cur = self._conn.execute(sql, (state_id, semantic["asset"], semantic["as_of"], as_of_ts, raw, recorded_at))
+        return {"ok": True, "idempotent": cur.rowcount == 0, id_field: state_id, **authority_flags()}
+
+    def _research_states_as_of(self, table: str, id_field: str, as_of: str, *, asset: str | None = None) -> list[dict[str, Any]]:
+        if table not in {"participant_states", "force_fields"}:
+            raise ValueError("unsupported research state table")
+        boundary = parse_utc(as_of, "as_of").timestamp()
+        sql = f"SELECT * FROM {table} WHERE as_of_ts <= ?"
+        params: list[Any] = [boundary]
+        if asset is not None:
+            if not isinstance(asset, str) or not asset.strip():
+                raise ValueError("asset filter must be non-empty")
+            sql += " AND asset = ?"
+            params.append(asset.strip().upper())
+        sql += f" ORDER BY as_of_ts, {id_field}"
+        with self._lock:
+            rows = self._conn.execute(sql, params).fetchall()
+        out: list[dict[str, Any]] = []
+        for row in rows:
+            try:
+                semantic = json.loads(row["semantic_json"])
+            except (TypeError, json.JSONDecodeError):
+                continue
+            if not isinstance(semantic, dict):
+                continue
+            if semantic.get("execution_authorized") is not False or semantic.get("production_decision_authorized") is not False:
+                continue
+            item = dict(semantic)
+            item[id_field] = row[id_field]
+            item["recorded_at"] = row["recorded_at"]
+            out.append(item)
+        return out
+
+    def record_participant_state(self, state: Mapping[str, Any]) -> dict[str, Any]:
+        return self._record_research_state("participant_states", "state_id", state)
+
+    def participant_states_as_of(self, as_of: str, *, asset: str | None = None) -> list[dict[str, Any]]:
+        return self._research_states_as_of("participant_states", "state_id", as_of, asset=asset)
+
+    def record_force_field(self, field: Mapping[str, Any]) -> dict[str, Any]:
+        return self._record_research_state("force_fields", "field_id", field)
+
+    def force_fields_as_of(self, as_of: str, *, asset: str | None = None) -> list[dict[str, Any]]:
+        return self._research_states_as_of("force_fields", "field_id", as_of, asset=asset)
