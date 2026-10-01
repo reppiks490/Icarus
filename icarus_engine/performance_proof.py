@@ -335,7 +335,7 @@ class PerformanceProofStore:
             candidates.append({
                 "asset": asset, "regime": regime, "candidate_id": candidate_id,
                 "success_definition": success_definition, "horizon_seconds": horizon_seconds,
-                "matured": g["matured"], "settled": g["settled"],
+                "matured": g["matured"], "settled": g["settled"], "successes": g["successes"],
                 "outcome_coverage": (g["settled"] / g["matured"]) if g["matured"] else None,
                 "success_rate": rate, "brier_score": brier_g,
                 "closed_regime_sample": complete,
