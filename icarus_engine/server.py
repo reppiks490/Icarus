@@ -66,6 +66,7 @@ from .system_audit import (
 from .integrity import integrity_snapshot, record_integrity_event
 from .brain import brain_snapshot, record_brain_event
 from .brain_sync import BrainRemoteSync
+from .evolution_sync import EvolutionRemoteSync
 
 
 def _no_json_constants(name: str):
@@ -121,6 +122,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     research = ResearchWorkspace(port)
     loop_intelligence_sync = LoopIntelligenceSync(port.base_dir)
     brain_remote_sync = BrainRemoteSync(port.base_dir)
+    evolution_remote_sync = EvolutionRemoteSync(port.base_dir)
 
     class H(BaseHTTPRequestHandler):
         server_version = "icarus"
@@ -184,6 +186,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._send(200, (html_path.parent / "integrity-ui.js").read_bytes(), "text/javascript")
             if p.path == "/brain-ui.js":
                 return self._send(200, (html_path.parent / "brain-ui.js").read_bytes(), "text/javascript")
+            if p.path == "/evolution-ui.js":
+                return self._send(200, (html_path.parent / "evolution-ui.js").read_bytes(), "text/javascript")
             if p.path in ("/experience-ui.js", "/experience-ui.css"):
                 ctype = "text/javascript" if p.path.endswith(".js") else "text/css"
                 return self._send(200, (html_path.parent / p.path[1:]).read_bytes(), ctype)
@@ -207,6 +211,10 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
                 return self._json(200, integrity_snapshot(port.base_dir))
+            if p.path == "/api/evolution":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                return self._json(200, evolution_remote_sync.status())
             if p.path == "/api/brain":
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
@@ -670,14 +678,17 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             research.start_background()
             loop_intelligence_sync.start()
             brain_remote_sync.start()
+            evolution_remote_sync.start()
             try:
                 return super().serve_forever(poll_interval)
             finally:
+                evolution_remote_sync.close()
                 brain_remote_sync.close()
                 loop_intelligence_sync.close()
                 research.close()
 
         def server_close(self):
+            evolution_remote_sync.close()
             brain_remote_sync.close()
             loop_intelligence_sync.close()
             research.close()
@@ -687,6 +698,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     srv.research = research
     srv.loop_intelligence_sync = loop_intelligence_sync
     srv.brain_remote_sync = brain_remote_sync
+    srv.evolution_remote_sync = evolution_remote_sync
     srv.daemon_threads = True
     if not start:
         return srv
