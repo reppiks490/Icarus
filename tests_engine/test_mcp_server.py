@@ -20,6 +20,8 @@ def test_mcp_server_imports_and_registers_engine_surface():
         "engine_recent_ticks",
         "engine_order_book_events",
         "engine_mbo_snapshot",
+        "engine_integrity_state",
+        "record_engine_integrity_event",
     ):
         assert callable(getattr(mcp_server, name))
 
@@ -184,3 +186,52 @@ def test_mcp_system_intelligence_event_and_loop_routes(monkeypatch):
     assert seen[0][1]["event"]["kind"] == "repair"
     assert seen[1][0] == "/admin/system/loop"
     assert seen[1][1]["loop"]["id"] == "alpha-synthesis"
+
+
+def test_mcp_integrity_receipt_uses_same_engine_plane_and_exact_provenance(monkeypatch):
+    seen = []
+
+    def get(path):
+        seen.append(("get", path))
+        return {"execution_authorized": False}
+
+    def post(path, body):
+        seen.append(("post", path, body))
+        return {"ok": True, "execution_authorized": False, "idempotent": False}
+
+    monkeypatch.setattr(mcp_server, "_engine_get", get)
+    monkeypatch.setattr(mcp_server, "_engine_post", post)
+
+    assert mcp_server.engine_integrity_state()["execution_authorized"] is False
+    result = mcp_server.record_engine_integrity_event(
+        "repair",
+        "ingestion",
+        "Reject backward timestamps.",
+        "reppiks490/divine-providence",
+        "main",
+        "4a27b4776a56bd63bedd3243696316440c5a8ef8",
+        "Regression checked.",
+        "Blocker shown as repaired.",
+        status="repaired",
+        severity="high",
+        evidence_json='["pytest"]',
+        details_json='{"ci":"green"}',
+    )
+    assert result["execution_authorized"] is False
+    assert seen == [
+        ("get", "/api/integrity"),
+        ("post", "/admin/integrity/event", {
+            "kind": "repair",
+            "area": "ingestion",
+            "summary": "Reject backward timestamps.",
+            "status": "repaired",
+            "severity": "high",
+            "source_repo": "reppiks490/divine-providence",
+            "source_branch": "main",
+            "source_commit": "4a27b4776a56bd63bedd3243696316440c5a8ef8",
+            "verification": "Regression checked.",
+            "interface_effect": "Blocker shown as repaired.",
+            "evidence": ["pytest"],
+            "details": {"ci": "green"},
+        }),
+    ]
