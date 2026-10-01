@@ -2,7 +2,7 @@
 (() => {
   let timer = null;
   let loading = false;
-  let selected = '';
+  let selected = '';\n  let assetNames = [];
 
   const h = value => String(value ?? '').replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
   const n = (value, digits=2) => (value == null || Number.isNaN(Number(value))) ? '—' : Number(value).toLocaleString(undefined,{maximumFractionDigits:digits,minimumFractionDigits:digits});
