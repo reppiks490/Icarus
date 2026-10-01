@@ -76,3 +76,7 @@ def test_engine_dashboard_surfaces_repository_mcp_audit():
     assert "MCP activity" in src
     assert "a.loops || []" in src
     assert "a.events || []" in src
+    assert "a.loop_sync || {}" in src
+    assert "Loop auto-sync" in src
+    assert "x.signals || {}" in src
+    assert "run output" in src

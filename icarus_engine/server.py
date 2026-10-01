@@ -53,6 +53,7 @@ from .strategy.meta import load_meta
 from .advisory import MAX_BODY_BYTES, strict_json
 from .research_service import ResearchWorkspace
 from .system_audit import (
+    LoopIntelligenceSync,
     append_system_event,
     load_repository_audit,
     save_repository_audit,
@@ -111,6 +112,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     html_path = Path(__file__).parent / "dashboard.html"
     meta = load_meta()
     research = ResearchWorkspace(port)
+    loop_intelligence_sync = LoopIntelligenceSync(port.base_dir)
 
     class H(BaseHTTPRequestHandler):
         server_version = "icarus"
@@ -621,17 +623,21 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     class ResearchHTTPServer(ThreadingHTTPServer):
         def serve_forever(self, poll_interval=.5):
             research.start_background()
+            loop_intelligence_sync.start()
             try:
                 return super().serve_forever(poll_interval)
             finally:
+                loop_intelligence_sync.close()
                 research.close()
 
         def server_close(self):
+            loop_intelligence_sync.close()
             research.close()
             return super().server_close()
 
     srv = ResearchHTTPServer(("127.0.0.1", http_port), H)
     srv.research = research
+    srv.loop_intelligence_sync = loop_intelligence_sync
     srv.daemon_threads = True
     if not start:
         return srv
