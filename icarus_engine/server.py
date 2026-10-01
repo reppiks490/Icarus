@@ -48,6 +48,7 @@ from .runtime import Portfolio, _clean, _read_json, apply_spec_meta, preset_path
 from .strategy.meta import load_meta
 from .advisory import MAX_BODY_BYTES, strict_json
 from .research_service import ResearchWorkspace
+from .system_intelligence import report as system_intelligence_report
 
 
 def _no_json_constants(name: str):
@@ -160,6 +161,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._send(200, (html_path.parent / "research-ui.js").read_bytes(), "text/javascript")
             if p.path == "/sources-ui.js":
                 return self._send(200, (html_path.parent / "sources-ui.js").read_bytes(), "text/javascript")
+            if p.path == "/system-intelligence-ui.js":
+                return self._send(200, (html_path.parent / "system-intelligence-ui.js").read_bytes(), "text/javascript")
             if p.path in ("/experience-ui.js", "/experience-ui.css"):
                 ctype = "text/javascript" if p.path.endswith(".js") else "text/css"
                 return self._send(200, (html_path.parent / p.path[1:]).read_bytes(), ctype)
@@ -177,6 +180,12 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._json(200, agent_report())
             if p.path == "/api/briefing":
                 return self._json(200, briefing_report())
+            if p.path == "/api/system-intelligence":
+                return self._json(200, system_intelligence_report(port.base_dir, runtime={
+                    "feed_mode": getattr(port, "feed_mode", ""),
+                    "running_assets": list(port.order),
+                    "all_warm": all(r.warm for r in port.runners.values()) if port.runners else False,
+                }))
             if p.path == "/api/input-meta":
                 return self._json(200, meta)
             if p.path.startswith("/api/research"):
