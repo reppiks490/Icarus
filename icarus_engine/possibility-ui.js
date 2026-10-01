@@ -91,7 +91,7 @@
     }).join('');
   }
 
-  function renderPossibility(data, ledger) {
+  function renderPossibility(data, evidenceLedger) {
     const el = document.querySelector('#possibilityPanel');
     if (!el) return;
     const latent = data.latent_pressure_engine || {}, wave = data.information_wave || {}, poss = data.possibility || {}, cf = data.counterfactual || {};
@@ -156,7 +156,7 @@
     sel.onchange = () => { selected = sel.value; loadPossibility(); };
     el.querySelector('#possRefresh').onclick = loadPossibility;
     const ledgerEl = el.querySelector('#psiEvidenceLedger');
-    if (ledgerEl) ledgerEl.innerHTML = evidenceLedgerHtml(ledger);
+    if (ledgerEl) ledgerEl.innerHTML = evidenceLedgerHtml(evidenceLedger);
     wireEvidenceControls();
   }
 
@@ -176,7 +176,7 @@
     const submit = document.querySelector('#psiEvidenceSubmit');
     if (submit) submit.onclick = submitEvidence;
     const clear = document.querySelector('#psiEvidenceClear');
-    if (clear) clear.onclick = () => { evidenceDraft.values = {}; lastEvidenceMessage = ''; lastEvidenceKind = ''; if (window.last) loadPossibility(); else loadPossibility(); };
+    if (clear) clear.onclick = () => { evidenceDraft.values = {}; lastEvidenceMessage = ''; lastEvidenceKind = ''; loadPossibility(); };
     const refresh = document.querySelector('#psiEvidenceRefresh');
     if (refresh) refresh.onclick = loadPossibility;
   }
@@ -266,7 +266,10 @@
     loadPossibility();
     if (timer) clearInterval(timer);
     timer = setInterval(() => {
-      if ((location.hash || '#overview').slice(1) === 'possibility') loadPossibility();
+      if ((location.hash || '#overview').slice(1) !== 'possibility') return;
+      const active = document.activeElement;
+      if (active && active.closest && active.closest('#possibilityPanel') && /^(INPUT|SELECT)$/.test(active.tagName)) return;
+      loadPossibility();
     }, 2500);
   }
 
