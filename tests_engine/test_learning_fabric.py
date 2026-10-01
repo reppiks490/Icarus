@@ -1024,6 +1024,76 @@ def test_shadow_calibration_refuses_temporal_leakage(tmp_path):
     })["prediction"]
     assert fabric.shadow_calibration(old["prediction_id"]) is None
 
+    equal = fabric.record_prediction({
+        "producer": "cal-test",
+        "asset": "NQ",
+        "target": "event",
+        "prediction": True,
+        "probability": 0.6,
+        "emitted_at": _iso(cutoff),
+        "horizon_seconds": 60,
+        "regime": "trend",
+        "evidence_ids": ["equal-cutoff:1"],
+        "source_commit": "a" * 40,
+    })["prediction"]
+    assert fabric.shadow_calibration(equal["prediction_id"]) is None
+
+
+def test_newer_rejected_calibrator_suppresses_older_validated_map(tmp_path):
+    from icarus_engine.learning_fabric import LearningFabric
+
+    fabric = LearningFabric(tmp_path)
+    start = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    _settled_calibration_case(fabric, start=start, n=40)
+    first = fabric.rebuild_shadow_calibrators(min_samples=30)
+    assert first["validated"] == 1
+    assert first["rejected"] == 0
+
+    # Add a later regime of ten outcomes that reverses the earlier relationship.
+    # The latest chronological holdout must reject the old mapping.
+    late = start + timedelta(days=3)
+    for i in range(10):
+        p = [0.2, 0.4, 0.6, 0.8][i % 4]
+        pred = fabric.record_prediction({
+            "producer": "cal-test",
+            "asset": "NQ",
+            "target": "event",
+            "prediction": True,
+            "probability": p,
+            "emitted_at": _iso(late + timedelta(minutes=i * 10)),
+            "horizon_seconds": 60,
+            "regime": "trend",
+            "evidence_ids": [f"late-reversal:{i}"],
+            "source_commit": "a" * 40,
+        })["prediction"]
+        fabric.record_outcome({
+            "prediction_id": pred["prediction_id"],
+            "observed_at": pred["resolves_at"],
+            "actual_value": (i % 4) < 2,
+            "evidence": [f"late-reversal-truth:{i}"],
+        })
+
+    second = fabric.rebuild_shadow_calibrators(min_samples=30)
+    assert second["rejected"] == 1
+    assert second["models"][0]["status"] == "SHADOW_REJECTED"
+    cutoff = datetime.fromisoformat(
+        second["models"][0]["training_cutoff"].replace("Z", "+00:00")
+    )
+
+    future = fabric.record_prediction({
+        "producer": "cal-test",
+        "asset": "NQ",
+        "target": "event",
+        "prediction": True,
+        "probability": 0.6,
+        "emitted_at": _iso(cutoff + timedelta(seconds=1)),
+        "horizon_seconds": 60,
+        "regime": "trend",
+        "evidence_ids": ["after-rejection:1"],
+        "source_commit": "a" * 40,
+    })["prediction"]
+    assert fabric.shadow_calibration(future["prediction_id"]) is None
+
 
 def test_shadow_calibration_settlement_scores_raw_and_calibrated_probability(tmp_path):
     from icarus_engine.learning_fabric import LearningFabric
