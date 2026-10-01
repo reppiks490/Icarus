@@ -51,8 +51,11 @@ function ecTargetControl(action,data){
 }
 
 function ecActionRow(action,data){
-  const args = action.args_example
-    ? '<input data-ec-args="'+esc(action.id)+'" placeholder="'+esc(JSON.stringify(action.args_example))+'" style="width:300px">'
+  const hasArgs=action.args_example!==null && action.args_example!==undefined;
+  const example=hasArgs?JSON.stringify(action.args_example):'';
+  const argControl=hasArgs
+    ? '<input data-ec-args="'+esc(action.id)+'" placeholder="'+esc(example)+'" style="width:230px">'+
+      '<button type="button" class="sm" data-ec-template="'+esc(action.id)+'" title="Load example JSON">Template</button>'
     : '';
   return '<div class="cmd">'+
     '<div><b>'+esc(action.title)+'</b><div class="small muted">'+esc(action.group)+(action.danger?' · destructive':'')+'</div></div>'+
