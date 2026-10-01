@@ -125,6 +125,9 @@ def test_dashboard_surfaces_adaptive_brain_fabric():
     assert "Evidence champion / challenger tournaments" in ui
     assert "Causal evidence graph" in ui
     assert "Independent corroboration" in ui
+    assert "Source reliability memory" in ui
+    assert "/api/source-reliability" in server
+    assert "/admin/source-reliability/observation" in server
     assert "/api/performance-proof" in server
     assert "/api/latency" in server
     assert "/admin/performance-proof/forecast" in server
