@@ -1351,13 +1351,23 @@ class LearningFabric:
         eligible = 0
         skipped_open = 0
         skipped_warmup = 0
+        skipped_no_live_boundary = 0
         errors: dict[str, str] = {}
         for runner in list(self.port.runner_list()):
             symbol = str(getattr(runner, "symbol", "") or "").strip().upper()
             em = getattr(runner, "em", None)
             if not symbol or em is None:
                 continue
-            live_from = float(getattr(runner, "live_from_ts", 0.0) or 0.0)
+            raw_live_from = getattr(runner, "live_from_ts", None)
+            if raw_live_from is None:
+                skipped_no_live_boundary += 1
+                continue
+            live_from = float(raw_live_from)
+            closed_all = list(getattr(em, "closed", []) or [])
+            live_closed_start = int(getattr(runner, "live_closed_start", 0) or 0)
+            live_closed_start = max(0, min(live_closed_start, len(closed_all)))
+            live_closed = closed_all[live_closed_start:]
+            skipped_warmup += live_closed_start
             open_keys = {
                 (
                     str(getattr(row, "entry_id", "")),
@@ -1368,7 +1378,7 @@ class LearningFabric:
                 for row in list(getattr(em, "open", []) or [])
             }
             groups: dict[tuple[Any, ...], list[Any]] = {}
-            for row in list(getattr(em, "closed", []) or []):
+            for row in live_closed:
                 key = (
                     str(getattr(row, "entry_id", "")),
                     int(getattr(row, "entry_ts", 0) or 0),
@@ -1427,6 +1437,7 @@ class LearningFabric:
             "eligible": eligible,
             "skipped_open": skipped_open,
             "skipped_warmup": skipped_warmup,
+            "skipped_no_live_boundary": skipped_no_live_boundary,
             "errors": errors,
             **_authority(),
         }
