@@ -558,7 +558,7 @@ def record_current_parallax_decision_with_psi(
     if decision_id.strip():
         body["decision_id"] = decision_id.strip()
     if source_commit.strip():
-        body["source_commit"] = source_commit.strip()
+        body["source_commit"] = source_sha
     return _safe_engine(lambda: _engine_post("/admin/parallax/decision/current", body))
 
 
