@@ -570,23 +570,46 @@ def test_depth_readiness_is_independent_per_symbol_and_schema():
     assert feed._depth_ready[("NQ=F", "mbp-10")].is_set() is True
 
 
-def test_mbo_subscription_failure_does_not_poison_working_mbp10():
+def test_mbo_subscription_failure_does_not_poison_mbp10_or_churn_mbo_session():
     core = FakeLive()
     mbp_book = FakeLive({"mbp-10": [Depth(1_000, 100.5, levels=[Level(100.25, 100.5)])]})
     mbo_book = FakeLive({"mbo": [Error("MBO entitlement missing", code=5)]})
-    feed = make_feed(lives=[core, mbp_book, mbo_book])
+    unused = FakeLive()
+    feed = make_feed(lives=[core, mbp_book, mbo_book, unused])
 
     feed.start_live("NQ=F")
     assert feed.depth_events("NQ=F", schema="mbp-10")
     with pytest.raises(RuntimeError, match="MBO entitlement missing"):
         feed.depth_events("NQ=F", schema="mbo")
+    with pytest.raises(RuntimeError, match="MBO entitlement missing"):
+        feed.depth_events("NQ=F", schema="mbo")
+    assert unused.started is False
 
     # The MBP-10 session and its data remain healthy.
     assert feed.depth_events("NQ=F", schema="mbp-10")
     meta = feed.meta("NQ=F")
     assert meta["depth_schema_health"]["mbp-10"] is True
     assert meta["depth_schema_health"]["mbo"] is False
+    assert meta["depth_error_codes"]["mbo"] == 5
     assert "mbo" in meta["depth_errors"]
+
+
+def test_recoverable_depth_internal_error_rebuilds_only_that_schema():
+    core = FakeLive()
+    bad_mbo = FakeLive({"mbo": [Error("temporary MBO gateway failure", code=6)]})
+    good_mbo = FakeLive({"mbo": [Depth(1_010, 101.0, order_id=10)]})
+    feed = make_feed(lives=[core, bad_mbo, good_mbo])
+
+    feed.start_live("NQ=F")
+    with pytest.raises(RuntimeError, match="code=6"):
+        feed.depth_events("NQ=F", schema="mbo")
+
+    rows = feed.depth_events("NQ=F", schema="mbo")
+    assert bad_mbo.stopped is True
+    assert good_mbo.started is True
+    assert rows[-1]["order_id"] == 10
+    assert feed.meta("NQ=F")["depth_schema_health"]["mbo"] is True
+    assert "mbo" not in feed.meta("NQ=F").get("depth_error_codes", {})
 
 
 def test_fatal_depth_subscription_error_does_not_poison_core_session():
