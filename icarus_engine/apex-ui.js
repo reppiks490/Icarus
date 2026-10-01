@@ -40,6 +40,14 @@
       '</tbody></table></div>';
   }
 
+  function macroRows(d) {
+    const domains = (((d || {}).economic_world || {}).domains) || {};
+    return Object.keys(domains).sort().map(function (name) {
+      const r = domains[name] || {};
+      return '<tr><td><b>' + h(name.toUpperCase()) + '</b></td><td>' + status(r.status) + '</td><td>' + h(r.state == null ? 'UNAVAILABLE' : r.state) + '</td><td>' + h(r.market_response == null ? 'UNAVAILABLE' : r.market_response) + '</td><td class="tnum">' + val((r.hypotheses || []).length, 0) + '</td></tr>';
+    });
+  }
+
   function participantRows(d) {
     return (((d || {}).participants || {}).classes || []).map(function (r) {
       return '<tr><td><b>' + h(r.participant_class || 'unknown') + '</b></td><td>' + status(r.evidence_integrity_ok === false ? 'CONTRADICTED' : 'SUPPORTED') +
@@ -134,6 +142,7 @@
         '<div class="tile"><div class="k">SIBLING FABRIC</div><div class="v">' + h(JSON.stringify(siblingCounts)) + '</div><div class="small muted">failures degrade locally, not globally</div></div>' +
         '<div class="tile"><div class="k">AUTHORITY</div><div class="v">RESEARCH ONLY</div><div class="small muted">execution_authorized=false · production_decision_authorized=false</div></div>' +
       '</div>' +
+      '<h3 class="small" style="margin:16px 0 8px">WORLD</h3>' + table(['Domain','State','Hypothesis','Market response','Hypotheses'], macroRows(d), 'UNAVAILABLE — no causally eligible economic world evidence.') +
       '<h3 class="small" style="margin:16px 0 8px">PARTICIPANTS</h3>' + table(['Class','Integrity','Nominal evidence','Independent families','Confidence','Long','Short'], participantRows(d), 'UNAVAILABLE — no causally eligible participant evidence.') +
       '<h3 class="small" style="margin:16px 0 8px">CROWDHUNT</h3>' + table(['Price','Entry long','Entry short','Stops below','Stops above','Trapped long','Trapped short','Forced exit'], crowdRows(d), 'UNAVAILABLE — no reconstructed retail crowd topology.') +
       '<h3 class="small" style="margin:16px 0 8px">FORCES</h3>' + table(['Price','Horizon s','State','Net derived pressure','Confidence','Contributors'], forceRows(d), 'UNAVAILABLE — no pressure contributions.') +
