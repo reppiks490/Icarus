@@ -26,7 +26,7 @@ from .contracts import (
     text,
     unit,
 )
-from .faculties import evaluate_faculties
+from .faculties import evaluate_faculties, score_veritas_reconciliation
 from .bridge import sibyl_evidence_candidates
 
 _LOCK = threading.RLock()
@@ -91,6 +91,17 @@ class PantheonKernel:
                     evidence_json TEXT NOT NULL,
                     created_at TEXT NOT NULL
                 );
+                CREATE TABLE IF NOT EXISTS veritas_reconciliations (
+                    reconciliation_id TEXT PRIMARY KEY,
+                    observation_id TEXT NOT NULL UNIQUE,
+                    observed_at TEXT NOT NULL,
+                    classification TEXT NOT NULL,
+                    mechanism_fidelity REAL NOT NULL,
+                    reinforcement_eligible INTEGER NOT NULL,
+                    payload_json TEXT NOT NULL,
+                    evidence_json TEXT NOT NULL,
+                    created_at TEXT NOT NULL
+                );
                 CREATE TABLE IF NOT EXISTS species (
                     species_id TEXT PRIMARY KEY,
                     asset TEXT NOT NULL,
@@ -120,6 +131,7 @@ class PantheonKernel:
                 CREATE INDEX IF NOT EXISTS idx_pantheon_claim_obs ON claims(observation_id, kind);
                 CREATE INDEX IF NOT EXISTS idx_pantheon_agent_claim_obs ON agent_claims(observation_id, role);
                 CREATE INDEX IF NOT EXISTS idx_pantheon_outcome_claim ON claim_outcomes(claim_id, observed_at);
+                CREATE INDEX IF NOT EXISTS idx_pantheon_veritas_observation ON veritas_reconciliations(observation_id, observed_at);
                 CREATE UNIQUE INDEX IF NOT EXISTS idx_pantheon_outcome_claim_time ON claim_outcomes(claim_id, observed_at);
                 CREATE INDEX IF NOT EXISTS idx_pantheon_species_asset ON species(asset, stage, fitness_credit);
                 CREATE INDEX IF NOT EXISTS idx_pantheon_cells_energy ON sentinel_cells(last_energy, updated_at);
@@ -287,6 +299,7 @@ class PantheonKernel:
                 "heuristics_are_not_calibrated_probabilities": True,
                 "engine_disagreement_is_preserved": True,
                 "shared_evidence_is_not_counted_as_independent_confirmation": True,
+                "directional_success_without_mechanism_fidelity_is_not_reinforced": True,
                 "missing_inputs_produce_abstention": True,
                 "new_concepts_begin_as_hypotheses": True,
                 "execution_requires_separate_hard_risk_kernel": True,
@@ -521,6 +534,110 @@ class PantheonKernel:
             "consensus_forced": False,
             "execution_authorized": False,
             "production_decision_authorized": False,
+        }
+
+    def record_veritas_reconciliation(self, body: Mapping[str, Any]) -> dict[str, Any]:
+        """Reconcile one immutable pre-outcome VERITAS mechanism certificate."""
+        if not isinstance(body, Mapping):
+            raise ValueError("VERITAS reconciliation must be an object")
+        observation_id = text(body.get("observation_id"), "observation_id", 96)
+        observed_at = iso_aware(body.get("observed_at"))
+        realized_direction = text(body.get("realized_direction"), "realized_direction", 16).lower()
+        if "confidence" not in body:
+            raise ValueError("confidence is required")
+        confidence = unit(body.get("confidence"), "confidence")
+        realized = body.get("realized_signatures")
+        realized = dict(mapping(realized, "realized_signatures"))
+        if len(realized) > 64:
+            raise ValueError("realized_signatures exceeds 64 fields")
+        evidence = body.get("evidence", [])
+        if isinstance(evidence, str):
+            evidence = [evidence]
+        if not isinstance(evidence, list) or not evidence or len(evidence) > 64:
+            raise ValueError("evidence must contain 1-64 items")
+        evidence = [text(item, "evidence item", 700) for item in evidence]
+
+        observation = self.observation(observation_id)
+        faculty = observation.get("analysis", {}).get("faculties", {}).get("veritas", {})
+        if not isinstance(faculty, Mapping) or faculty.get("status") != "active":
+            raise ValueError("observation has no active VERITAS certificate")
+        observation_time = datetime.fromisoformat(str(observation["observed_at"]).replace("Z", "+00:00"))
+        outcome_time = datetime.fromisoformat(observed_at.replace("Z", "+00:00"))
+        maturity_time = observation_time + timedelta(milliseconds=int(observation["horizon_ms"]))
+        if outcome_time < maturity_time:
+            raise ValueError("VERITAS reconciliation cannot precede observation maturity")
+
+        scored = score_veritas_reconciliation(
+            faculty,
+            realized,
+            realized_direction,
+            confidence,
+        )
+        normalized = {
+            "observation_id": observation_id,
+            "observed_at": observed_at,
+            "realized_direction": realized_direction,
+            "realized_signatures": realized,
+            "confidence": confidence,
+            "evidence": evidence,
+            "score": scored,
+        }
+        payload_json = json_canonical(normalized, "VERITAS reconciliation", 262144)
+        evidence_json = json_canonical(evidence, "VERITAS evidence", 65536)
+        reconciliation_id = "vrec-" + digest(observation_id)[:24]
+        now = _utc_now()
+        with _LOCK, self._connect() as con:
+            prior = con.execute(
+                "SELECT * FROM veritas_reconciliations WHERE observation_id=?",
+                (observation_id,),
+            ).fetchone()
+            if prior is not None:
+                if prior["payload_json"] != payload_json or prior["evidence_json"] != evidence_json:
+                    raise ValueError("VERITAS reconciliation is immutable for observation_id")
+                return self._veritas_state(observation_id)
+            con.execute(
+                """INSERT INTO veritas_reconciliations(
+                    reconciliation_id,observation_id,observed_at,classification,
+                    mechanism_fidelity,reinforcement_eligible,payload_json,evidence_json,created_at
+                ) VALUES(?,?,?,?,?,?,?,?,?)""",
+                (
+                    reconciliation_id,
+                    observation_id,
+                    observed_at,
+                    scored["classification"],
+                    scored["mechanism_fidelity"],
+                    1 if scored["reinforcement_eligible"] else 0,
+                    payload_json,
+                    evidence_json,
+                    now,
+                ),
+            )
+        return self._veritas_state(observation_id)
+
+    def _veritas_state(self, observation_id: str) -> dict[str, Any]:
+        with _LOCK, self._connect() as con:
+            row = con.execute(
+                "SELECT * FROM veritas_reconciliations WHERE observation_id=?",
+                (observation_id,),
+            ).fetchone()
+        if row is None:
+            return {
+                "status": "pending",
+                "observation_id": observation_id,
+                "reconciliation": None,
+                "authority": authority_block(),
+            }
+        payload = json.loads(row["payload_json"])
+        return {
+            "status": "reconciled",
+            "reconciliation_id": row["reconciliation_id"],
+            "observation_id": row["observation_id"],
+            "observed_at": row["observed_at"],
+            "classification": row["classification"],
+            "mechanism_fidelity": row["mechanism_fidelity"],
+            "reinforcement_eligible": bool(row["reinforcement_eligible"]),
+            "reconciliation": payload,
+            "authority": authority_block(),
         }
 
     def record_claim_outcome(self, body: Mapping[str, Any]) -> dict[str, Any]:
@@ -826,6 +943,7 @@ class PantheonKernel:
                 "extinction_requires_repeated_negative_observed_fitness": True,
                 "predation_and_symbiosis_are_research_relationships_only": True,
                 "cognitive_genesis_never_auto_creates_production_code": True,
+                "veritas_learning_credit_is_diagnostic_only": True,
             },
             "authority": authority_block(),
         }
@@ -848,6 +966,7 @@ class PantheonKernel:
             }
             for item in agent_claims
         ]
+        veritas_state = self._veritas_state(observation_id)
         return {
             "observation_id": row["observation_id"],
             "observed_at": row["observed_at"],
@@ -858,6 +977,7 @@ class PantheonKernel:
             "analysis": json.loads(row["analysis_json"]),
             "agent_claims": visible_agent_claims,
             "deliberation": deliberation,
+            "veritas_reconciliation": veritas_state,
             "claims": [
                 {
                     "claim_id": r["claim_id"],
@@ -874,7 +994,7 @@ class PantheonKernel:
         with _LOCK, self._connect() as con:
             rows = con.execute("SELECT observation_id FROM observations ORDER BY observed_at DESC LIMIT ?", (limit,)).fetchall()
             counts = con.execute(
-                "SELECT COUNT(*) AS observations,(SELECT COUNT(*) FROM claims) AS claims,(SELECT COUNT(*) FROM agent_claims) AS agent_claims,(SELECT COUNT(*) FROM sentinel_cells) AS cells FROM observations"
+                "SELECT COUNT(*) AS observations,(SELECT COUNT(*) FROM claims) AS claims,(SELECT COUNT(*) FROM agent_claims) AS agent_claims,(SELECT COUNT(*) FROM veritas_reconciliations) AS veritas_reconciliations,(SELECT COUNT(*) FROM sentinel_cells) AS cells FROM observations"
             ).fetchone()
             cell_rows = con.execute(
                 "SELECT * FROM sentinel_cells ORDER BY last_energy DESC,updated_at DESC LIMIT 100"
@@ -909,12 +1029,13 @@ class PantheonKernel:
             "MINT": {"mode": "pantheon faculty"},
             "NULLSPACE": {"mode": "pantheon faculty"},
             "ECHO": {"mode": "pantheon faculty; evidence-ancestry de-duplication"},
+            "VERITAS": {"mode": "pantheon faculty; right-for-right-reasons reconciliation"},
             "ARCHON": {"mode": "pantheon faculty"},
             "AETHER": {"mode": "ephemeral swarm ecology"},
         }
         return {
             "schema_version": SCHEMA_VERSION,
-            "counts": {"observations": counts["observations"], "claims": counts["claims"], "agent_claims": counts["agent_claims"], "sentinel_cells": counts["cells"]},
+            "counts": {"observations": counts["observations"], "claims": counts["claims"], "agent_claims": counts["agent_claims"], "veritas_reconciliations": counts["veritas_reconciliations"], "sentinel_cells": counts["cells"]},
             "sentinel_cells": cells,
             "engine_catalog": catalog,
             "faculty_names": list(FACULTIES),

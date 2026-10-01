@@ -411,3 +411,34 @@ consensus. The server-owned APEX ancestry bridge can restore non-zero
 independence only by supplying verified roots. This is intentionally
 conservative and affects research attention only; it does not grant or modify
 execution authority.
+
+
+## VERITAS Ω — right-for-right-reasons auditor
+
+VERITAS prevents ICARUS from rewarding itself merely because a directional
+outcome happened to be correct. Before the future is known, an observation may
+carry a `mechanism_certificate` containing a named causal thesis, predicted
+direction, explicit confidence, a fidelity threshold, falsifiable intermediate
+signatures, and invalidators. Because the certificate is embedded in the
+immutable PANTHEON observation, it cannot be rewritten after the market moves.
+
+After the observation horizon matures, a separate immutable VERITAS
+reconciliation records the realized direction, realized mechanism signatures,
+confidence, and evidence. VERITAS computes weighted mechanism fidelity and
+classifies the result as:
+
+- `right_for_right_reasons`
+- `right_for_wrong_reasons`
+- `mechanism_without_endpoint`
+- `wrong_for_wrong_reasons`
+- `mechanism_only` when the endpoint is unresolved
+
+A directionally correct result with poor mechanism fidelity is placed in
+`lucky_outcome_quarantine` and receives no reinforcement eligibility. A
+right-for-right-reasons result receives diagnostic learning credit, but that
+credit is research metadata only: it cannot authorize orders, sizing, broker
+actions, or automatic production promotion.
+
+This matters because profitable outcomes can otherwise poison a self-learning
+system by reinforcing explanations that were causally false. VERITAS turns
+"made money" and "understood why" into two separate questions.
