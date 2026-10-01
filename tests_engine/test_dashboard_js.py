@@ -71,3 +71,8 @@ def test_engine_dashboard_surfaces_repository_mcp_audit():
     assert "repositoryAuditCard(window.ICARUS_AUDIT" in src
     assert "fetch('/api/system/audit'" in src
     assert "setInterval(refreshAudit, 20000)" in src
+    assert "systemEvolutionLedger" in src
+    assert "MCP evolution ledger" in src
+    assert "important MCP work must be visible in this System interface" in src
+    assert "Evolution mirror" in src
+    assert "SYSTEM MIRROR !" in src
