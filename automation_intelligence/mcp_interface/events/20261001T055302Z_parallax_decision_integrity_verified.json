@@ -1,0 +1,30 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "parallax-decision-integrity-verified-20261001T055302Z",
+  "category": "REPAIR",
+  "severity": "success",
+  "status": "verified",
+  "subsystems": [
+    "parallax",
+    "aion",
+    "athena",
+    "provenance",
+    "ml"
+  ],
+  "recorded_at": "2026-10-01T05:53:02Z",
+  "title": "PARALLAX decision identity and causal outcome time hardened",
+  "summary": "PARALLAX now binds idempotent decisions to action, regime, asset, observation time, context/provenance, exact source commit, and the immutable branch plan. Decision and outcome timestamps must be timezone-aware, and a branch outcome cannot be recorded before its parent decision. These checks close silent identity-alias and backdated-outcome paths while preserving PARALLAX/DREAMSTATE as shadow-only research systems.",
+  "source_repository": "reppiks490/Icarus",
+  "source_ref": "main",
+  "source_commit": "d15498209021e1d690c3e3c1d4c92c3b40f47a1b",
+  "evidence": [
+    "PR #87 merged from exact head 019bba2736b5e6c6241b33312d901d3913caa891",
+    "GitHub Actions tests: success",
+    "action/regime identity alias regression: passed",
+    "branch-plan rewrite regression: passed",
+    "backdated outcome regression: passed",
+    "timezone-aware timestamp regression: passed"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}
