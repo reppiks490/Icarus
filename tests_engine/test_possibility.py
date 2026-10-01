@@ -173,10 +173,13 @@ def test_psi_surface_observed_microstructure_and_future_space():
     assert components["repricing_pressure"]["available"] is True
     assert components["gamma_pressure"]["available"] is True
     assert components["basis_pressure"]["available"] is True
+    assert components["cross_asset_pressure"]["available"] is False
+    assert "not exact-bar aligned" in components["cross_asset_pressure"]["detail"]
     assert out["latent_pressure_engine"]["latent_pressure"] is not None
-    assert out["latent_pressure_engine"]["evidence_coverage"] > 0.55
+    assert out["latent_pressure_engine"]["evidence_coverage"] > 0.45
 
     assert out["causal_leadership"]["status"] == "observed"
+    assert out["causal_leadership"]["alignment_mode"] == "poll_snapshot_fallback"
     assert out["causal_leadership"]["leaders"][0]["asset"] == "ES"
 
     poss = out["possibility"]
@@ -1344,3 +1347,31 @@ def test_operator_status_is_read_only_and_does_not_record_market_history():
     status = engine.status()
     assert status["assets"]["NQ"]["history_samples"] == count
     assert len(engine._history["NQ"]) == count
+
+
+
+def test_features_reject_polling_derived_cross_asset_pressure():
+    engine = PossibilityEngine(Port())
+    features = engine._features(
+        "NQ",
+        {},
+        {},
+        {
+            "status": "observed",
+            "alignment_mode": "poll_snapshot_fallback",
+            "pressure": 0.9,
+            "confidence": 0.95,
+        },
+        {
+            "basis_pressure": Feature(None, 0.0, False, "unavailable"),
+            "gamma_pressure": Feature(None, 0.0, False, "unavailable"),
+            "cta_pressure": Feature(None, 0.0, False, "unavailable"),
+            "liquidation_pressure": Feature(None, 0.0, False, "unavailable"),
+            "rebalance_pressure": Feature(None, 0.0, False, "unavailable"),
+        },
+    )
+    cross = features["cross_asset_pressure"]
+    assert cross.available is False
+    assert cross.value is None
+    assert cross.confidence == 0.0
+    assert "not exact-bar aligned" in cross.detail
