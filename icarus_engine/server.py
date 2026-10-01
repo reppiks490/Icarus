@@ -13,6 +13,7 @@
   GET  /api/golive                paper≠live integrity (Grok). Never arms a broker.
   GET  /api/agent                 Field Agent recipes + paste-packs (Grok). Never executes. Never arms a broker.
   GET  /api/system/audit          latest local GitHub/MCP repository + CI audit snapshot
+  GET  /api/integrity             export checklist, corpus, repairs, and MCP change receipts
   POST /admin/pause | /admin/resume        {"asset": "NQ"} or all          (Bearer token)
   POST /admin/flatten                      {"confirm": true, "asset"?: "NQ"}
   POST /admin/inputs                       {"asset": "NQ"|"*", "values": {...}, "chart": {...}, "persist": true}  → re-warm
@@ -23,6 +24,7 @@
   POST /admin/system/audit                 {"audit": {...}}  local diagnostic state only; never changes trading
   POST /admin/system/event                 {"event": {...}}  append important MCP repair/audit/evolution event
   POST /admin/system/loop                  {"loop": {...}}   upsert one loop durability receipt/status
+  POST /admin/integrity/event              fully-provenanced, idempotent MCP audit receipt; never changes trading
   POST /admin/rewarm                       {"asset": "NQ"}
 """
 from __future__ import annotations
@@ -59,6 +61,7 @@ from .system_audit import (
     save_repository_audit,
     upsert_loop_status,
 )
+from .integrity import integrity_snapshot, record_integrity_event
 
 
 def _no_json_constants(name: str):
@@ -172,6 +175,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._send(200, (html_path.parent / "research-ui.js").read_bytes(), "text/javascript")
             if p.path == "/sources-ui.js":
                 return self._send(200, (html_path.parent / "sources-ui.js").read_bytes(), "text/javascript")
+            if p.path == "/integrity-ui.js":
+                return self._send(200, (html_path.parent / "integrity-ui.js").read_bytes(), "text/javascript")
             if p.path in ("/experience-ui.js", "/experience-ui.css"):
                 ctype = "text/javascript" if p.path.endswith(".js") else "text/css"
                 return self._send(200, (html_path.parent / p.path[1:]).read_bytes(), ctype)
@@ -191,6 +196,10 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._json(200, briefing_report())
             if p.path == "/api/system/audit":
                 return self._json(200, load_repository_audit(port.base_dir))
+            if p.path == "/api/integrity":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                return self._json(200, integrity_snapshot(port.base_dir))
             if p.path == "/api/input-meta":
                 return self._json(200, meta)
             if p.path.startswith("/api/research"):
@@ -386,7 +395,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._json(413, {"detail": "body too large"})
             raw = self.rfile.read(n) if n else b""
             try:
-                body = strict_json(raw) if p.path.startswith("/admin/research/") else (json.loads(raw, parse_constant=_no_json_constants) if raw else {})
+                body = strict_json(raw) if p.path.startswith(("/admin/research/", "/admin/integrity/")) else (json.loads(raw, parse_constant=_no_json_constants) if raw else {})
             except ValueError as ex:
                 return self._json(400, {"detail": f"bad JSON body: {ex}"})
             if not isinstance(body, dict):
@@ -409,6 +418,11 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 except (ValueError, TypeError) as ex:
                     return self._json(400, {"detail": str(ex)})
                 return self._json(200, {"ok": True, "audit": audit, "note": "loop status recorded"})
+            if p.path == "/admin/integrity/event":
+                try:
+                    return self._json(200, record_integrity_event(port.base_dir, body))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
             asset = str(body.get("asset") or body.get("symbol") or "").upper()
             # Add is the one admin route whose subject is intentionally not already
             # running. Do not reject it through the generic runner lookup.
