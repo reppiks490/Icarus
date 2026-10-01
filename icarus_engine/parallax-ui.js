@@ -36,7 +36,7 @@
       '<td class="tnum">'+num(r.ci95_low)+'</td>' +
       '<td class="tnum">'+num(r.q_value, 4)+'</td>' +
       '<td><span class="chip '+(((r.temporal_stability||{}).evaluable)?(((r.temporal_stability||{}).stable)?'b':'r'):'w')+'">'+(((r.temporal_stability||{}).evaluable)?(((r.temporal_stability||{}).stable)?'STABLE':'UNSTABLE'):'EARLY')+'</span><div class="small muted">worst '+num((r.temporal_stability||{}).worst_fold_mean)+'</div></td>' +
-      '<td><span class="chip '+(((r.parameter_basin||{}).evaluable)?(((r.parameter_basin||{}).isolated_spike)?'r':'b'):'w')+'">'+(((r.parameter_basin||{}).evaluable)?(((r.parameter_basin||{}).isolated_spike)?'SPIKE':'BASIN'):'EARLY')+'</span><div class="small muted">support '+h((r.parameter_basin||{}).basin_support_count ?? 0)+'</div></td>' +
+      '<td><span class="chip '+(((r.parameter_basin||{}).isolated_spike||(r.parameter_basin||{}).local_support_missing)?'r':((r.parameter_basin||{}).evaluable?'b':'w'))+'">'+((r.parameter_basin||{}).isolated_spike?'SPIKE':((r.parameter_basin||{}).local_support_missing?'SPARSE':((r.parameter_basin||{}).evaluable?'BASIN':'EARLY')))+'</span><div class="small muted">support '+h((r.parameter_basin||{}).basin_support_count ?? 0)+' · family '+h((r.parameter_basin||{}).family_evaluable_point_count ?? 0)+'</div></td>' +
       '<td class="tnum">'+h(r.strata_count ?? 0)+'</td>' +
       '<td><span class="chip '+(r.comparison_contract_complete?'b':'r')+'">'+(r.comparison_contract_complete?'READY':'INCOMPLETE')+'</span><div class="small muted tnum">'+h(short(r.comparison_contract_hash, 10))+'</div></td>' +
       '</tr>').join('');
@@ -68,7 +68,7 @@
         '<td><b>'+h(c.asset || '')+'</b><div class="small muted">'+h(c.regime || '')+'</div><div class="small muted tnum">'+h(short(scope.comparison_contract_hash, 10))+'</div></td>' +
         '<td><span class="chip '+cls(c.stage)+'">'+h(String(c.stage || '').toUpperCase())+'</span></td>' +
         '<td>'+h(c.hypothesis || '')+'<div class="small muted tnum">'+h(JSON.stringify(c.mutation || {}))+'</div></td>' +
-        '<td class="tnum">'+num(acct.source_q_value, 4)+'<div class="small muted">n='+h(acct.source_evidence_pairs ?? '—')+'</div><div class="small muted">'+(acct.source_temporal_evaluable?(acct.source_temporal_stable?'time stable':'time unstable'):'time early')+' · '+(acct.source_parameter_basin_evaluable?(acct.source_isolated_parameter_spike?'spike':'basin '+h(acct.source_parameter_basin_support_count ?? 0)):'basin early')+'</div></td>' +
+        '<td class="tnum">'+num(acct.source_q_value, 4)+'<div class="small muted">n='+h(acct.source_evidence_pairs ?? '—')+'</div><div class="small muted">'+(acct.source_temporal_evaluable?(acct.source_temporal_stable?'time stable':'time unstable'):'time early')+' · '+(acct.source_isolated_parameter_spike?'spike':(acct.source_parameter_local_support_missing?'sparse':(acct.source_parameter_basin_evaluable?'basin '+h(acct.source_parameter_basin_support_count ?? 0):'basin early')))+'</div></td>' +
         '<td class="tnum">'+h(acct.family_trial_budget_remaining ?? '—')+'<div class="small muted">remaining</div></td>' +
         '<td class="tnum">'+h(passed)+'/'+h((gates || []).length)+(failed ? '<div class="small neg">'+h(failed)+' failed</div>' : '')+'</td>' +
         '<td class="tnum">'+h(short(c.source_commit, 10))+'</td>' +
