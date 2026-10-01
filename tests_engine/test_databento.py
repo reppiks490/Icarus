@@ -7,12 +7,14 @@ import json
 import threading
 import urllib.error
 import urllib.request
+from datetime import datetime, timezone
 from types import SimpleNamespace
 
 import pytest
 
-from icarus_engine.assets import REGISTRY, resolve
+from icarus_engine.assets import CHART_TIMEFRAME_OPTIONS, REGISTRY, resolve
 from icarus_engine.feeds.databento import Databento
+from icarus_engine.pine.timeframe import tf_minutes
 from icarus_engine.runtime import AssetRunner, Journal, Portfolio, RunnerConfig
 from icarus_engine.server import serve
 from icarus_engine.strategy.inputs import Inputs
@@ -37,8 +39,9 @@ class Ohlcv:
 
 
 class Trade:
-    def __init__(self, ts, price, size=1, side="B", sequence=1):
+    def __init__(self, ts, price, size=1, side="B", sequence=1, ts_recv=None):
         self.ts_event = int(ts * NS)
+        self.ts_recv = int((ts if ts_recv is None else ts_recv) * NS)
         self.price = int(price * NS)
         self.pretty_price = float(price)
         self.size = int(size)
@@ -60,8 +63,9 @@ class Level:
 
 
 class Depth:
-    def __init__(self, ts, price=100.0, *, flags=0, order_id=7, levels=None):
+    def __init__(self, ts, price=100.0, *, flags=0, order_id=7, levels=None, ts_recv=None):
         self.ts_event = int(ts * NS)
+        self.ts_recv = int((ts if ts_recv is None else ts_recv) * NS)
         self.price = int(price * NS)
         self.pretty_price = float(price)
         self.size = 1
@@ -87,9 +91,13 @@ class SystemMsg:
 
 
 class Mapping:
-    def __init__(self, symbol, instrument_id):
+    def __init__(self, symbol, instrument_id, raw_symbol="", start_ts=None, end_ts=None):
         self.stype_in_symbol = symbol
+        self.stype_out_symbol = raw_symbol
         self.instrument_id = int(instrument_id)
+        undef = (1 << 64) - 1
+        self.start_ts = undef if start_ts is None else int(start_ts)
+        self.end_ts = undef if end_ts is None else int(end_ts)
 
 
 class FakeStore(list):
@@ -172,10 +180,13 @@ def test_continuous_volume_front_symbology_and_capabilities(monkeypatch):
     assert caps["continuous_futures"] is True
     assert caps["continuous_rule"] == "volume_front"
     assert caps["continuous_rule_code"] == "v"
-    assert caps["live_session_model"] == "shared_per_dataset"
+    assert caps["live_session_model"] == "shared_core_plus_schema_isolated_depth_per_dataset"
+    assert caps["persistent_live_sessions_max"] == 3
+    assert caps["snapshot_sessions_serialized"] is True
     assert caps["live_symbol_routing"] == "SymbolMappingMsg/instrument_id"
+    assert caps["depth_failure_isolation"] is True
+    assert caps["depth_schema_isolation"] is True
     assert caps["continuous_live_refresh"] == "automatic_utc_day"
-    assert caps["mbo_snapshot_sessions"] == "serialized"
     assert caps["minimum_ohlcv_resolution_seconds"] == 1
     assert caps["ticks"] is True
     assert caps["mbp_10"] is True and caps["mbo"] is True and caps["mbo_snapshot"] is True
@@ -220,6 +231,174 @@ def test_live_error_message_fails_closed_instead_of_silently_waiting():
     assert "failed to resolve" in meta["live_error"]
 
 
+def test_nonrecoverable_core_error_cannot_be_cleared_by_buffered_data_or_reconnect_callback():
+    live = FakeLive({
+        "ohlcv-1s": [
+            Error("invalid core subscription", code=5),
+            Ohlcv(1_001, 100, 101, 99, 100.5, 1),
+        ]
+    })
+    feed = make_feed(lives=[live])
+
+    with pytest.raises(RuntimeError, match="code=5.*invalid core subscription"):
+        feed.recent_ex("NQ=F", 1)
+    assert feed._second_bars["NQ=F"]  # buffered data arrived after the fatal error
+    live.reconnect_callback("2026-09-30T10:00:00Z", "2026-09-30T10:00:02Z")
+    live.callback(Trade(1_002, 101.0, 1, sequence=2))
+
+    with pytest.raises(RuntimeError, match="code=5.*invalid core subscription"):
+        feed._raise_live_error("NQ=F")
+    meta = feed.meta("NQ=F")
+    assert meta["core_session_ok"] is False
+    assert meta["core_error_code"] == 5
+    assert "invalid core subscription" in meta["live_error"]
+
+
+def test_fatal_core_session_error_marks_every_active_symbol_failed_closed():
+    feed = make_feed()
+    feed._live_started.update({"NQ=F", "ES=F"})
+    feed._continuous_to_symbol.update({"NQ.v.0": "NQ=F", "ES.v.0": "ES=F"})
+
+    feed._dispatch_shared_live(Error("NQ.v.0 invalid subscription", code=5))
+
+    with pytest.raises(RuntimeError, match="code=5"):
+        feed._raise_live_error("NQ=F")
+    with pytest.raises(RuntimeError, match="code=5"):
+        feed._raise_live_error("ES=F")
+    assert feed.meta("NQ=F")["core_session_ok"] is False
+    assert feed.meta("ES=F")["core_session_ok"] is False
+
+
+def test_symbol_resolution_error_remains_scoped_on_shared_core_session():
+    feed = make_feed()
+    feed._live_started.update({"NQ=F", "ES=F"})
+    feed._continuous_to_symbol.update({"NQ.v.0": "NQ=F", "ES.v.0": "ES=F"})
+
+    feed._dispatch_shared_live(Error("NQ.v.0 failed to resolve", code=4))
+
+    with pytest.raises(RuntimeError, match="code=4"):
+        feed._raise_live_error("NQ=F")
+    feed._raise_live_error("ES=F")
+    assert feed.meta("ES=F")["core_session_ok"] is True
+
+
+def test_fatal_depth_session_error_marks_every_symbol_on_that_schema_failed_closed():
+    feed = make_feed()
+    feed._depth_live_symbols["mbp-10"].update({"NQ=F", "ES=F"})
+    feed._depth_continuous_to_symbol["mbp-10"].update({"NQ.v.0": "NQ=F", "ES.v.0": "ES=F"})
+    feed._depth_wanted["NQ=F"].add("mbp-10")
+    feed._depth_wanted["ES=F"].add("mbp-10")
+
+    feed._dispatch_depth_live("mbp-10", Error("NQ.v.0 invalid depth subscription", code=5))
+
+    with pytest.raises(RuntimeError, match="code=5"):
+        feed._raise_depth_error("NQ=F", "mbp-10")
+    with pytest.raises(RuntimeError, match="code=5"):
+        feed._raise_depth_error("ES=F", "mbp-10")
+    assert feed.meta("NQ=F")["depth_session_ok"] is False
+    assert feed.meta("NQ=F")["depth_schema_health"]["mbp-10"] is False
+    assert feed.meta("NQ=F")["depth_schema_health"]["mbo"] is True
+
+
+def test_depth_symbol_resolution_failure_rearms_only_failed_schema_symbol():
+    mbp = FakeLive()
+    mbo = FakeLive()
+    feed = make_feed(lives=[mbp, mbo])
+    feed._prepare_depth_live(["NQ=F", "ES=F"], "mbp-10")
+    feed._prepare_depth_live(["NQ=F"], "mbo")
+
+    feed._dispatch_depth_live("mbp-10", Error("NQ.v.0 failed to resolve", code=4))
+
+    assert "NQ=F" not in feed._depth_subscriptions["mbp-10"]
+    assert "ES=F" in feed._depth_subscriptions["mbp-10"]
+    assert "NQ=F" in feed._depth_subscriptions["mbo"]
+    feed._prepare_depth_live(["NQ=F"], "mbp-10")
+    assert "NQ=F" in feed._depth_subscriptions["mbp-10"]
+    assert [row["symbols"] for row in mbp.subscriptions].count("NQ.v.0") == 2
+
+
+def test_symbol_resolution_failure_rearms_only_failed_core_symbol():
+    live = FakeLive()
+    feed = make_feed(lives=[live])
+    feed.prepare_live(["NQ=F", "ES=F"])
+    before = list(live.subscriptions)
+
+    feed._dispatch_shared_live(Error("NQ.v.0 failed to resolve", code=4))
+    assert feed._subscriptions["NQ=F"] == set()
+    assert feed._subscriptions["ES=F"] == {"ohlcv-1s", "trades"}
+
+    feed.start_live("NQ=F")
+    added = live.subscriptions[len(before):]
+    assert {row["schema"] for row in added} == {"ohlcv-1s", "trades"}
+    assert all(row["symbols"] == "NQ.v.0" for row in added)
+    assert not live.stopped
+
+
+def test_recoverable_core_fatal_error_rebuilds_shared_session_with_replay():
+    first = FakeLive()
+    second = FakeLive()
+    feed = make_feed(lives=[first, second])
+    feed.prepare_live(["NQ=F", "ES=F"])
+    feed._dispatch_shared_live(Error("internal gateway failure", code=6))
+    assert feed._core_broken is True
+    assert feed._core_error_code == 6
+
+    client = feed.start_live("NQ=F")
+    assert client is second
+    assert first.stopped is True
+    assert second.started is True
+    assert feed._core_broken is False
+    assert feed._core_error_code is None
+    assert {row["symbols"] for row in second.subscriptions} == {"NQ.v.0", "ES.v.0"}
+    assert all("start" in row for row in second.subscriptions)
+
+
+def test_replay_aged_out_error_never_auto_discards_missing_interval():
+    first = FakeLive()
+    unused = FakeLive()
+    feed = make_feed(lives=[first, unused])
+    feed.prepare_live(["NQ=F"])
+    feed._dispatch_shared_live(Error("replay start aged out", code=8))
+
+    assert feed.start_live("NQ=F") is first
+    assert unused.started is False
+    assert feed._core_error_code == 8
+    with pytest.raises(RuntimeError, match="code=8"):
+        feed._raise_live_error("NQ=F")
+
+
+def test_connection_limit_error_never_auto_reopens_a_new_session():
+    first = FakeLive()
+    unused = FakeLive()
+    feed = make_feed(lives=[first, unused])
+    feed.prepare_live(["NQ=F", "ES=F"])
+    feed._dispatch_shared_live(Error("connection limit exceeded", code=3))
+
+    client = feed.start_live("NQ=F")
+    assert client is first
+    assert first.stopped is False
+    assert unused.started is False
+    assert feed._core_error_code == 3
+    with pytest.raises(RuntimeError, match="code=3"):
+        feed._raise_live_error("ES=F")
+
+
+def test_nonrecoverable_core_fatal_error_stays_latched_without_reconnect_churn():
+    first = FakeLive()
+    unused = FakeLive()
+    feed = make_feed(lives=[first, unused])
+    feed.prepare_live(["NQ=F", "ES=F"])
+    feed._dispatch_shared_live(Error("invalid subscription", code=5))
+
+    client = feed.start_live("NQ=F")
+    assert client is first
+    assert first.stopped is False
+    assert unused.started is False
+    assert feed._core_error_code == 5
+    with pytest.raises(RuntimeError, match="code=5"):
+        feed._raise_live_error("ES=F")
+
+
 def test_undefined_databento_price_is_never_promoted_to_a_fake_market_price():
     undef = (1 << 63) - 1
     row = Depth(1_500, 100.0, order_id=11)
@@ -247,19 +426,20 @@ def test_undefined_mbp_level_prices_are_serialized_as_null_not_billions():
 
 
 def test_historical_one_second_and_lossless_resampling_use_continuous_stype():
+    base = 1_700_000_000
     hist = FakeHistorical({
         "ohlcv-1s": [
-            Ohlcv(100, 10, 11, 9, 10.5, 1),
-            Ohlcv(101, 10.5, 12, 10, 11, 2),
-            Ohlcv(104, 11, 13, 10.5, 12, 3),
-            Ohlcv(105, 12, 12.5, 11.5, 12.25, 4),
+            Ohlcv(base, 10, 11, 9, 10.5, 1),
+            Ohlcv(base + 1, 10.5, 12, 10, 11, 2),
+            Ohlcv(base + 4, 11, 13, 10.5, 12, 3),
+            Ohlcv(base + 5, 12, 12.5, 11.5, 12.25, 4),
         ]
     })
     feed = make_feed(historical=hist)
-    bars = feed.candles("NQ=F", 5, 100, 110)
+    bars = feed.candles("NQ=F", 5, base, base + 10)
     assert len(bars) == 2
-    assert (bars[0].ts, bars[0].o, bars[0].h, bars[0].l, bars[0].c, bars[0].v) == (100, 10, 13, 9, 12, 6)
-    assert (bars[1].ts, bars[1].o, bars[1].c, bars[1].v) == (105, 12, 12.25, 4)
+    assert (bars[0].ts, bars[0].o, bars[0].h, bars[0].l, bars[0].c, bars[0].v) == (base, 10, 13, 9, 12, 6)
+    assert (bars[1].ts, bars[1].o, bars[1].c, bars[1].v) == (base + 5, 12, 12.25, 4)
     call = hist.calls[-1]
     assert call["dataset"] == "GLBX.MDP3"
     assert call["schema"] == "ohlcv-1s"
@@ -267,13 +447,31 @@ def test_historical_one_second_and_lossless_resampling_use_continuous_stype():
     assert call["stype_in"] == "continuous"
 
 
+def test_every_advertised_chart_timeframe_is_declared_by_databento():
+    expected = {tf_minutes(tf) * 60 for tf in CHART_TIMEFRAME_OPTIONS}
+    assert expected <= set(Databento.GRANULARITIES)
+
+
+def test_every_advertised_chart_timeframe_has_a_lossless_databento_source_path():
+    for tf in CHART_TIMEFRAME_OPTIONS:
+        seconds = tf_minutes(tf) * 60
+        if seconds in (86400, 7 * 86400):
+            assert Databento(api_key="db-test", sdk=FakeSDK, historical=FakeHistorical({}),
+                             live_factory=lambda: FakeLive()).capabilities()["cme_session_daily_weekly"] is True
+        else:
+            base_seconds, schema = Databento._schema_for(seconds)
+            assert seconds % base_seconds == 0
+            assert schema in {"ohlcv-1m", "ohlcv-1h"}
+
+
 @pytest.mark.parametrize("minutes", [1, 2, 5, 10, 20, 30])
 def test_requested_primary_minute_timeframes_are_losslessly_resampled(minutes):
-    rows = [Ohlcv(3_600 + 60 * k, 100 + k, 101 + k, 99 + k, 100.5 + k, 1) for k in range(60)]
+    base = 1_700_000_000 - (1_700_000_000 % 3_600)
+    rows = [Ohlcv(base + 60 * k, 100 + k, 101 + k, 99 + k, 100.5 + k, 1) for k in range(60)]
     hist = FakeHistorical({"ohlcv-1m": rows})
     feed = make_feed(historical=hist)
     granularity = minutes * 60
-    bars = feed.candles("NQ=F", granularity, 3_600, 7_200)
+    bars = feed.candles("NQ=F", granularity, base, base + 3_600)
     assert len(bars) == 60 // minutes
     assert all(b.ts % granularity == 0 for b in bars)
     assert sum(b.v for b in bars) == 60
@@ -281,28 +479,61 @@ def test_requested_primary_minute_timeframes_are_losslessly_resampled(minutes):
     assert hist.calls[-1]["symbols"] == "NQ.v.0"
 
 
-def test_historical_minute_request_uses_native_ohlcv_1m():
-    hist = FakeHistorical({"ohlcv-1m": [Ohlcv(120, 20, 21, 19, 20.5, 10)]})
+def test_databento_daily_candles_follow_cme_session_not_utc_date():
+    def ts(value):
+        return int(datetime.fromisoformat(value).replace(tzinfo=timezone.utc).timestamp())
+
+    # September 2026 is EDT: the CME session starts 18:00 ET = 22:00 UTC.
+    first_open = ts("2026-09-29T22:00:00")
+    next_open = ts("2026-09-30T22:00:00")
+    hist = FakeHistorical({"ohlcv-1h": [
+        Ohlcv(first_open, 100, 101, 99, 100.5, 1),
+        Ohlcv(ts("2026-09-30T00:00:00"), 100.5, 102, 100, 101.5, 2),
+        Ohlcv(ts("2026-09-30T20:00:00"), 101.5, 103, 101, 102.5, 3),
+        Ohlcv(next_open, 110, 111, 109, 110.5, 4),
+    ]})
     feed = make_feed(historical=hist)
-    bars = feed.candles("ES=F", 60, 120, 180)
+
+    bars = feed.candles("NQ=F", 86400, first_open, next_open + 3600)
+    assert len(bars) == 2
+    assert bars[0].ts == first_open
+    assert (bars[0].o, bars[0].h, bars[0].l, bars[0].c, bars[0].v) == (100, 103, 99, 102.5, 6)
+    assert bars[1].ts == next_open and bars[1].o == 110 and bars[1].v == 4
+    assert hist.calls[-1]["schema"] == "ohlcv-1h"
+
+
+def test_databento_historical_requests_clamp_to_glbx_coverage_start():
+    hist = FakeHistorical({"ohlcv-1m": []})
+    feed = make_feed(historical=hist)
+    feed.candles("NQ=F", 60, 0, Databento.HISTORICAL_START_TS + 60)
+    assert hist.calls[-1]["start"].startswith("2010-06-06T00:00:00")
+
+
+def test_historical_minute_request_uses_native_ohlcv_1m():
+    base = 1_700_000_040
+    hist = FakeHistorical({"ohlcv-1m": [Ohlcv(base, 20, 21, 19, 20.5, 10)]})
+    feed = make_feed(historical=hist)
+    bars = feed.candles("ES=F", 60, base, base + 60)
     assert len(bars) == 1 and bars[0].c == 20.5
     assert hist.calls[-1]["schema"] == "ohlcv-1m"
     assert hist.calls[-1]["symbols"] == "ES.v.0"
 
 
-def test_live_second_bars_trades_and_depth_can_share_one_session():
+def test_live_second_bars_trades_and_depth_use_core_plus_isolated_depth_sessions():
     second_rows = [Ohlcv(1_000 + i, 100 + i / 10, 101 + i / 10, 99 + i / 10, 100.5 + i / 10, 1) for i in range(60)]
     trade = Trade(1_059, 106.5, 3)
     depth = Depth(1_060, 106.25, levels=[Level(106.0, 106.25)])
     mbo = Depth(1_061, 106.25, order_id=99)
-    live = FakeLive({"ohlcv-1s": second_rows, "trades": [trade], "mbp-10": [depth], "mbo": [mbo]})
-    feed = make_feed(lives=[live])
+    core = FakeLive({"ohlcv-1s": second_rows, "trades": [trade]})
+    mbp_book = FakeLive({"mbp-10": [depth]})
+    mbo_book = FakeLive({"mbo": [mbo]})
+    feed = make_feed(lives=[core, mbp_book, mbo_book])
 
     bars, ft, px = feed.recent_ex("NQ=F", 60)
     assert len(bars) == 2  # 1000-1019 partial UTC minute + 1020-1059 full minute
     assert ft == 1_059 and px == 106.5
-    assert [s["schema"] for s in live.subscriptions][:2] == ["ohlcv-1s", "trades"]
-    assert all(s["symbols"] == "NQ.v.0" and s["stype_in"] == "continuous" for s in live.subscriptions)
+    assert [s["schema"] for s in core.subscriptions] == ["ohlcv-1s", "trades"]
+    assert all(s["symbols"] == "NQ.v.0" and s["stype_in"] == "continuous" for s in core.subscriptions)
 
     ticks = feed.trades("NQ=F")
     assert ticks and ticks[-1].price == 106.5 and ticks[-1].size == 3
@@ -312,33 +543,156 @@ def test_live_second_bars_trades_and_depth_can_share_one_session():
     assert depth_rows and depth_rows[-1]["levels"][0]["bid_px"] == 106.0
     assert depth_rows[-1]["schema"] == "mbp-10"
     assert depth_rows[-1]["ts_event_ns"] == 1_060 * NS
-    assert any(s["schema"] == "mbp-10" for s in live.subscriptions)
+    assert [s["schema"] for s in mbp_book.subscriptions] == ["mbp-10"]
 
     mbo_rows = feed.depth_events("NQ=F", schema="mbo")
     assert mbo_rows and mbo_rows[-1]["order_id"] == 99
     assert mbo_rows[-1]["schema"] == "mbo"
+    assert [s["schema"] for s in mbo_book.subscriptions] == ["mbo"]
     assert all(row["schema"] == "mbo" for row in mbo_rows)
     assert all(row["schema"] == "mbp-10" for row in depth_rows)
 
 
-def test_trade_tape_deduplicates_same_event_seen_in_trades_and_mbo():
+def test_depth_mbo_trade_cannot_duplicate_core_tape_or_move_core_mark():
     trade = Trade(1_059, 106.5, 3, side="B", sequence=1)
-    mbo_trade = Depth(1_059, 106.5, order_id=99)
+    mbo_trade = Depth(1_060, 999.0, order_id=99)
     mbo_trade.action = "T"
     mbo_trade.side = "B"
     mbo_trade.size = 3
-    mbo_trade.sequence = 1
-    live = FakeLive({"ohlcv-1s": [Ohlcv(1_059, 106, 107, 105, 106.5, 1)],
-                     "trades": [trade], "mbo": [mbo_trade]})
-    feed = make_feed(lives=[live])
+    mbo_trade.sequence = 2
+    core = FakeLive({"ohlcv-1s": [Ohlcv(1_059, 106, 107, 105, 106.5, 1)], "trades": [trade]})
+    book = FakeLive({"mbo": [mbo_trade]})
+    feed = make_feed(lives=[core, book])
 
     feed.recent_ex("NQ=F", 1)
     assert len(feed.trades("NQ=F")) == 1
+    core_mark = feed._last_price["NQ=F"]
     feed.depth_events("NQ=F", schema="mbo")
     ticks = feed.trades("NQ=F")
     assert len(ticks) == 1
-    assert ticks[0].ts_event_ns == 1_059 * NS
-    assert ticks[0].price == 106.5 and ticks[0].size == 3
+    assert ticks[0].price == 106.5
+    assert feed._last_price["NQ=F"] == core_mark
+    assert feed.depth_events("NQ=F", schema="mbo")[-1]["price"] == 999.0
+
+
+def test_depth_readiness_is_independent_per_symbol_and_schema():
+    core = FakeLive()
+    mbp_book = FakeLive({"mbp-10": [Depth(1_000, 100.5, levels=[Level(100.25, 100.5)])]})
+    mbo_book = FakeLive()
+    feed = make_feed(lives=[core, mbp_book, mbo_book])
+    feed.start_live("NQ=F")
+    assert feed.depth_events("NQ=F", schema="mbp-10")
+    assert feed._depth_ready[("NQ=F", "mbp-10")].is_set() is True
+
+    # Adding MBO after MBP-10 must create a fresh, unsatisfied readiness gate.
+    feed._prepare_depth_live(["NQ=F"], "mbo")
+    assert feed._depth_ready[("NQ=F", "mbo")].is_set() is False
+    assert feed._depth_ready[("NQ=F", "mbp-10")].is_set() is True
+
+
+def test_depth_reconnect_gap_replays_only_affected_schema_from_boundary():
+    first = FakeLive({"mbp-10": [Depth(1_000, 100.0, levels=[Level(99.75, 100.0)])]})
+    second = FakeLive({"mbp-10": [Depth(1_001, 101.0, levels=[Level(100.75, 101.0)])]})
+    feed = make_feed(lives=[first, second])
+    assert feed.depth_events("NQ=F", schema="mbp-10")
+    assert callable(first.reconnect_callback)
+
+    first.reconnect_callback("2026-09-30T10:00:00Z", "2026-09-30T10:00:03Z")
+    meta = feed.meta("NQ=F")
+    assert meta["depth_schema_health"]["mbp-10"] is False
+    assert meta["depth_error_codes"]["mbp-10"] == 7
+
+    rows = feed.depth_events("NQ=F", schema="mbp-10")
+    assert first.stopped is True
+    assert second.started is True
+    assert rows[-1]["price"] == 101.0
+    assert {row.get("start") for row in second.subscriptions} == {"2026-09-30T09:59:59Z"}
+    assert feed.meta("NQ=F")["depth_schema_health"]["mbp-10"] is True
+
+
+def test_depth_replay_aged_out_stays_latched_without_session_churn():
+    first = FakeLive()
+    unused = FakeLive()
+    feed = make_feed(lives=[first, unused])
+    feed._prepare_depth_live(["NQ=F"], "mbo")
+    feed._dispatch_depth_live("mbo", Error("MBO replay aged out", code=8))
+
+    with pytest.raises(RuntimeError, match="code=8"):
+        feed.depth_events("NQ=F", schema="mbo")
+    assert unused.started is False
+    assert feed.meta("NQ=F")["depth_error_codes"]["mbo"] == 8
+
+
+def test_mbo_subscription_failure_does_not_poison_mbp10_or_churn_mbo_session():
+    core = FakeLive()
+    mbp_book = FakeLive({"mbp-10": [Depth(1_000, 100.5, levels=[Level(100.25, 100.5)])]})
+    mbo_book = FakeLive({"mbo": [Error("MBO entitlement missing", code=5)]})
+    unused = FakeLive()
+    feed = make_feed(lives=[core, mbp_book, mbo_book, unused])
+
+    feed.start_live("NQ=F")
+    assert feed.depth_events("NQ=F", schema="mbp-10")
+    with pytest.raises(RuntimeError, match="MBO entitlement missing"):
+        feed.depth_events("NQ=F", schema="mbo")
+    with pytest.raises(RuntimeError, match="MBO entitlement missing"):
+        feed.depth_events("NQ=F", schema="mbo")
+    assert unused.started is False
+
+    # The MBP-10 session and its data remain healthy.
+    assert feed.depth_events("NQ=F", schema="mbp-10")
+    meta = feed.meta("NQ=F")
+    assert meta["depth_schema_health"]["mbp-10"] is True
+    assert meta["depth_schema_health"]["mbo"] is False
+    assert meta["depth_error_codes"]["mbo"] == 5
+    assert "mbo" in meta["depth_errors"]
+
+
+def test_recoverable_depth_internal_error_rebuilds_only_that_schema():
+    core = FakeLive()
+    bad_mbo = FakeLive({"mbo": [Error("temporary MBO gateway failure", code=6)]})
+    good_mbo = FakeLive({"mbo": [Depth(1_010, 101.0, order_id=10)]})
+    feed = make_feed(lives=[core, bad_mbo, good_mbo])
+
+    feed.start_live("NQ=F")
+    with pytest.raises(RuntimeError, match="code=6"):
+        feed.depth_events("NQ=F", schema="mbo")
+
+    rows = feed.depth_events("NQ=F", schema="mbo")
+    assert bad_mbo.stopped is True
+    assert good_mbo.started is True
+    assert rows[-1]["order_id"] == 10
+    assert feed.meta("NQ=F")["depth_schema_health"]["mbo"] is True
+    assert "mbo" not in feed.meta("NQ=F").get("depth_error_codes", {})
+
+
+def test_fatal_depth_subscription_error_does_not_poison_core_session():
+    core = FakeLive({
+        "ohlcv-1s": [Ohlcv(1_000, 100, 101, 99, 100.5, 1)],
+        "trades": [Trade(1_000, 100.5, 2)],
+    })
+    book = FakeLive({"mbp-10": [
+        Error("depth subscription rejected", code=5),
+        Depth(1_001, 100.5, levels=[Level(100.25, 100.5)]),  # buffered after fatal error
+    ]})
+    feed = make_feed(lives=[core, book])
+
+    bars, _, px = feed.recent_ex("NQ=F", 1)
+    assert bars and px == 100.5
+    with pytest.raises(RuntimeError, match="depth error code=5.*rejected"):
+        feed.depth_events("NQ=F", schema="mbp-10")
+    assert feed._depth[("NQ=F", "mbp-10")]  # later buffered data cannot clear the fatal state
+
+    assert feed._shared_live is core
+    assert feed._shared_started is True
+    assert core.stopped is False
+    assert "NQ=F" not in feed._errors
+    feed._raise_live_error("NQ=F")
+
+    # Core data remains usable even though the optional depth session is fatal.
+    core.callback(Trade(1_001, 101.0, 1, sequence=2))
+    ticks = feed.trades("NQ=F")
+    assert ticks[-1].price == 101.0
+    assert feed._last_price["NQ=F"] == 101.0
 
 
 def test_mbo_snapshot_omits_non_mbo_stream_records():
@@ -351,20 +705,168 @@ def test_mbo_snapshot_omits_non_mbo_stream_records():
     assert rows[0]["order_id"] == 7
 
 
-def test_replay_rows_cannot_rewind_live_price_or_trade_tape():
+def test_replay_rows_cannot_rewind_live_price_and_ts_event_is_not_used_as_ordering():
     feed = make_feed()
     feed._live_callback("NQ=F", Ohlcv(2_000, 200, 201, 199, 200.5, 1))
     feed._live_callback("NQ=F", Ohlcv(1_999, 100, 101, 99, 100.5, 9))
-    assert len(feed._second_bars["NQ=F"]) == 1
-    assert feed._second_bars["NQ=F"][-1].ts == 2_000
+    # Replay may backfill a genuinely missing older second, but it remains ordered
+    # and must never rewind the current live mark.
+    assert [b.ts for b in feed._second_bars["NQ=F"]] == [1_999, 2_000]
     assert feed._last_price["NQ=F"] == 200.5
 
-    feed._live_callback("NQ=F", Trade(2_001, 201.0, 1, sequence=10))
-    feed._live_callback("NQ=F", Trade(2_000, 99.0, 1, sequence=9))
+    # Databento guarantees monotonic ts_recv per symbol, not ts_event. A later-
+    # received legitimate trade may therefore have an older exchange event time.
+    feed._live_callback("NQ=F", Trade(2_001, 201.0, 1, sequence=10, ts_recv=2_001.10))
+    feed._live_callback("NQ=F", Trade(2_000, 202.0, 1, sequence=11, ts_recv=2_001.20))
     ticks = list(feed._trades["NQ=F"])
-    assert len(ticks) == 1
-    assert ticks[-1].price == 201.0
-    assert feed._last_price["NQ=F"] == 201.0
+    assert len(ticks) == 2
+    assert ticks[-1].ts_event_ns < ticks[-2].ts_event_ns
+    assert ticks[-1].ts_recv_ns > ticks[-2].ts_recv_ns
+    assert feed._last_price["NQ=F"] == 202.0
+
+    # A replayed record with an older receive timestamp may be retained in the
+    # time-and-sales tape if it was previously missing, but it cannot rewind mark.
+    feed._live_callback("NQ=F", Trade(1_998, 50.0, 1, sequence=8, ts_recv=1_998.50))
+    ticks = list(feed._trades["NQ=F"])
+    assert len(ticks) == 3
+    assert any(tick.price == 50.0 for tick in ticks)
+    assert [tick.ts_recv_ns for tick in ticks] == sorted(tick.ts_recv_ns for tick in ticks)
+    assert ticks[-1].price == 202.0
+    assert feed._last_price["NQ=F"] == 202.0
+
+
+def test_roll_refresh_backfills_missing_second_bar_without_duplicates():
+    feed = make_feed()
+    for ts in (1_000, 1_002):
+        feed._live_callback("NQ=F", Ohlcv(ts, 100, 101, 99, 100.5, 1))
+    assert [b.ts for b in feed._second_bars["NQ=F"]] == [1_000, 1_002]
+
+    feed._live_callback("NQ=F", Ohlcv(1_001, 100.25, 101, 100, 100.75, 2))
+    feed._live_callback("NQ=F", Ohlcv(1_002, 100, 101, 99, 100.5, 1))
+    assert [b.ts for b in feed._second_bars["NQ=F"]] == [1_000, 1_001, 1_002]
+    assert [b.v for b in feed._second_bars["NQ=F"]] == [1, 2, 1]
+
+
+def test_replay_backfill_keeps_trade_and_depth_buffers_receive_time_ordered_and_unique():
+    feed = make_feed()
+    feed._live_callback("NQ=F", Trade(2_000, 200.0, sequence=20, ts_recv=2_000.20))
+    feed._live_callback("NQ=F", Trade(1_999, 199.0, sequence=19, ts_recv=1_999.90))
+    feed._live_callback("NQ=F", Trade(1_999, 199.0, sequence=19, ts_recv=1_999.90))
+    ticks = feed.trades("NQ=F")
+    assert [x.sequence for x in ticks] == [19, 20]
+
+    newer = Databento._event_record(Depth(2_000, 200.0, order_id=20, ts_recv=2_000.20))
+    older = Databento._event_record(Depth(1_999, 199.0, order_id=19, ts_recv=1_999.90))
+    with feed._lock:
+        assert feed._append_depth_locked("NQ=F", newer) is True
+        assert feed._append_depth_locked("NQ=F", older) is True
+        assert feed._append_depth_locked("NQ=F", older) is False
+        rows = list(feed._depth[("NQ=F", "mbo")])
+    assert [row["order_id"] for row in rows] == [19, 20]
+
+
+def test_mbo_volume_cannot_evict_mbp10_buffer():
+    feed = Databento(
+        api_key="db-test",
+        sdk=FakeSDK,
+        historical=FakeHistorical({}),
+        live_factory=lambda: FakeLive(),
+        max_depth=1000,
+    )
+    mbp = Databento._event_record(Depth(1_000, 100.0, order_id=1, levels=[Level(99.75, 100.0)]))
+    with feed._lock:
+        assert feed._append_depth_locked("NQ=F", mbp)
+        for i in range(1_250):
+            mbo = Databento._event_record(Depth(1_001 + i, 100.0 + i / 1000, order_id=10_000 + i))
+            assert feed._append_depth_locked("NQ=F", mbo)
+    assert len(feed._depth[("NQ=F", "mbo")]) == 1000
+    assert len(feed._depth[("NQ=F", "mbp-10")]) == 1
+    assert feed._depth[("NQ=F", "mbp-10")][0]["order_id"] == 1
+
+
+def test_mbo_snapshot_stops_collecting_after_f_last():
+    snapshot = Depth(2_000, 200.25, flags=1, order_id=1)
+    live_after = Depth(2_001, 201.00, flags=0, order_id=2)
+    live = FakeLive({"mbo": [snapshot, live_after]})
+    feed = make_feed(lives=[live])
+    rows = feed.mbo_snapshot("NQ=F", timeout=0.1)
+    assert [row["order_id"] for row in rows] == [1]
+    assert live.stopped is True
+
+
+def test_mbo_snapshot_subscribe_failure_still_closes_temporary_client():
+    class FailSubscribe(FakeLive):
+        def subscribe(self, **kwargs):
+            raise RuntimeError("snapshot subscribe failed")
+
+    live = FailSubscribe()
+    feed = make_feed(lives=[live])
+    with pytest.raises(RuntimeError, match="snapshot subscribe failed"):
+        feed.mbo_snapshot("NQ=F", timeout=0.1)
+    assert live.stopped is True
+
+
+def test_mbo_snapshot_malformed_record_fails_closed_and_cleans_up():
+    bad = Depth(2_000, 200.25, flags=1)
+    # Force event serialization itself to fail instead of relying on tolerant scalar conversion.
+    bad.levels = object()
+    live = FakeLive({"mbo": [bad]})
+    feed = make_feed(lives=[live])
+    with pytest.raises(RuntimeError, match="snapshot record error"):
+        feed.mbo_snapshot("NQ=F", timeout=0.1)
+    assert live.stopped is True
+
+
+def test_mbo_snapshot_requires_f_last_before_returning_rows():
+    live = FakeLive({"mbo": [Depth(2_000, 200.25, flags=0)]})
+    feed = make_feed(lives=[live])
+    with pytest.raises(TimeoutError, match="snapshot timed out"):
+        feed.mbo_snapshot("NQ=F", timeout=0.05)
+    assert live.stopped is True
+
+
+def test_mbo_snapshots_are_serialized_to_one_temporary_session_at_a_time():
+    active = 0
+    peak = 0
+    gate = threading.Event()
+    entered = threading.Event()
+    lock = threading.Lock()
+
+    class BlockingSnapshot(FakeLive):
+        def start(self):
+            nonlocal active, peak
+            with lock:
+                active += 1
+                peak = max(peak, active)
+                entered.set()
+            gate.wait(2)
+            super().start()
+
+        def stop(self):
+            nonlocal active
+            super().stop()
+            with lock:
+                active -= 1
+
+    clients = [
+        BlockingSnapshot({"mbo": [Depth(3_000, 100.0, flags=1)]}),
+        BlockingSnapshot({"mbo": [Depth(3_001, 101.0, flags=1)]}),
+    ]
+    feed = make_feed(lives=clients)
+    results = []
+
+    one = threading.Thread(target=lambda: results.append(feed.mbo_snapshot("NQ=F", timeout=1)))
+    two = threading.Thread(target=lambda: results.append(feed.mbo_snapshot("ES=F", timeout=1)))
+    one.start()
+    assert entered.wait(1)
+    two.start()
+    assert peak == 1
+    gate.set()
+    one.join(3)
+    two.join(3)
+    assert not one.is_alive() and not two.is_alive()
+    assert peak == 1
+    assert len(results) == 2
 
 
 def test_shared_live_start_failure_resets_client_for_clean_retry():
@@ -428,78 +930,96 @@ def test_shared_live_stop_falls_back_to_terminate():
     assert not feed._live_started
 
 
-def test_all_registered_futures_share_one_live_session():
-    live = FakeLive()
-    feed = make_feed(lives=[live])
+def test_all_registered_futures_share_one_core_live_session_and_depth_is_separate():
+    core = FakeLive()
+    book = FakeLive()
+    feed = make_feed(lives=[core, book])
     futures = [spec for spec in REGISTRY.values() if spec.kind == "futures"]
     assert len(futures) > 10  # guards the Databento Standard 10-session failure mode
     client = feed.prepare_live([spec.ticker for spec in futures], start_ts=1_000)
-    assert client is live
-    assert live.started is True
-    assert len(live.subscriptions) == len(futures) * 2
-    assert {sub["symbols"] for sub in live.subscriptions} == {f"{spec.ticker[:-2]}.v.0" for spec in futures}
-    # Batch preparation attaches replay before the one shared session starts.
-    assert all("start" in sub for sub in live.subscriptions)
+    assert client is core
+    assert core.started is True
+    assert len(core.subscriptions) == len(futures) * 2
+    assert {sub["symbols"] for sub in core.subscriptions} == {f"{spec.ticker[:-2]}.v.0" for spec in futures}
+    assert all("start" in sub for sub in core.subscriptions)
 
-    before = len(live.subscriptions)
+    before = len(core.subscriptions)
     feed.start_live(futures[0].ticker, include_depth="mbp-10", start_ts=2_000)
-    assert len(live.subscriptions) == before + 1
-    assert live.subscriptions[-1]["schema"] == "mbp-10"
-    assert "start" not in live.subscriptions[-1]
+    assert len(core.subscriptions) == before
+    assert book.started is True
+    assert [sub["schema"] for sub in book.subscriptions] == ["mbp-10"]
 
     feed.stop_live(futures[0].ticker)
-    assert live.stopped is False
+    assert core.stopped is False
+    assert book.stopped is True  # it was the only active depth symbol
     feed.stop_live()
-    assert live.stopped is True
+    assert core.stopped is True
 
 
-def test_daily_refresh_preserves_exact_per_symbol_schema_sets():
-    first = FakeLive()
-    second = FakeLive()
-    feed = make_feed(lives=[first, second])
+def test_daily_refresh_preserves_exact_core_and_depth_schema_sets():
+    first_core = FakeLive()
+    first_book = FakeLive()
+    second_core = FakeLive()
+    second_book = FakeLive()
+    feed = make_feed(lives=[first_core, first_book, second_core, second_book])
     feed.prepare_live(["NQ=F", "ES=F"])
     feed.depth_events("NQ=F", schema="mbo")
-    assert any(sub["schema"] == "mbo" and sub["symbols"] == "NQ.v.0" for sub in first.subscriptions)
-    assert not any(sub["schema"] == "mbo" and sub["symbols"] == "ES.v.0" for sub in first.subscriptions)
+
+    assert {sub["schema"] for sub in first_core.subscriptions} == {"ohlcv-1s", "trades"}
+    assert [sub["schema"] for sub in first_book.subscriptions] == ["mbo"]
 
     feed.refresh_live(["NQ=F", "ES=F"], start_ts=5_000)
-    assert first.stopped is True
-    assert second.started is True
-    nq_schemas = {sub["schema"] for sub in second.subscriptions if sub["symbols"] == "NQ.v.0"}
-    es_schemas = {sub["schema"] for sub in second.subscriptions if sub["symbols"] == "ES.v.0"}
-    assert nq_schemas == {"ohlcv-1s", "trades", "mbo"}
-    assert es_schemas == {"ohlcv-1s", "trades"}
-    assert all("start" in sub for sub in second.subscriptions)
+    assert first_core.stopped is True
+    assert first_book.stopped is True
+    assert second_core.started is True
+    assert second_book.started is True
+    nq_core = {sub["schema"] for sub in second_core.subscriptions if sub["symbols"] == "NQ.v.0"}
+    es_core = {sub["schema"] for sub in second_core.subscriptions if sub["symbols"] == "ES.v.0"}
+    assert nq_core == {"ohlcv-1s", "trades"}
+    assert es_core == {"ohlcv-1s", "trades"}
+    assert {sub["schema"] for sub in second_book.subscriptions if sub["symbols"] == "NQ.v.0"} == {"mbo"}
+    assert not [sub for sub in second_book.subscriptions if sub["symbols"] == "ES.v.0"]
+    assert all("start" in sub for sub in second_core.subscriptions + second_book.subscriptions)
 
 
-def test_failed_daily_refresh_keeps_desired_depth_for_retry():
+def test_failed_depth_refresh_does_not_churn_core_and_retries_on_next_depth_request():
     class FailStart(FakeLive):
         def __init__(self):
             super().__init__()
             self.terminated = False
 
         def start(self):
-            raise RuntimeError("refresh failed")
+            raise RuntimeError("depth refresh failed")
 
         def terminate(self):
             self.terminated = True
 
-    first = FakeLive()
-    bad = FailStart()
-    good = FakeLive()
-    feed = make_feed(lives=[first, bad, good])
+    first_core = FakeLive()
+    first_book = FakeLive({"mbp-10": [Depth(4_900, 100.0, levels=[Level(99.75, 100.0)])]})
+    refreshed_core = FakeLive()
+    bad_book = FailStart()
+    good_book = FakeLive({"mbp-10": [Depth(5_101, 101.0, levels=[Level(100.75, 101.0)])]})
+    feed = make_feed(lives=[first_core, first_book, refreshed_core, bad_book, good_book])
     feed.prepare_live(["NQ=F", "ES=F"])
-    feed.depth_events("NQ=F", schema="mbp-10")
+    assert feed.depth_events("NQ=F", schema="mbp-10")
 
-    with pytest.raises(RuntimeError, match="refresh failed"):
-        feed.refresh_live(["NQ=F", "ES=F"], start_ts=5_000)
-    assert bad.terminated is True
+    # Optional depth failure is recorded but does not fail/churn the refreshed core.
+    feed.refresh_live(["NQ=F", "ES=F"], start_ts=5_000)
+    assert bad_book.terminated is True
+    assert refreshed_core.started is True
+    assert refreshed_core.stopped is False
+    meta = feed.meta("NQ=F")
+    assert meta["depth_session_ok"] is False
+    assert "depth refresh failed" in meta["depth_error"]
 
-    feed.refresh_live(["NQ=F", "ES=F"], start_ts=5_100)
-    nq_schemas = {sub["schema"] for sub in good.subscriptions if sub["symbols"] == "NQ.v.0"}
-    es_schemas = {sub["schema"] for sub in good.subscriptions if sub["symbols"] == "ES.v.0"}
-    assert nq_schemas == {"ohlcv-1s", "trades", "mbp-10"}
-    assert es_schemas == {"ohlcv-1s", "trades"}
+    # The next explicit book request retries only the isolated depth socket.
+    rows = feed.depth_events("NQ=F", schema="mbp-10")
+    assert good_book.started is True
+    assert refreshed_core.stopped is False
+    assert rows[-1]["price"] == 101.0
+    meta = feed.meta("NQ=F")
+    assert meta["depth_session_ok"] is True
+    assert "depth_error" not in meta
 
 
 def test_shared_session_detach_readd_does_not_duplicate_or_misroute():
@@ -525,6 +1045,89 @@ def test_shared_session_detach_readd_does_not_duplicate_or_misroute():
     assert not feed._second_bars["ES=F"]
 
 
+def test_current_core_mapping_retires_stale_contract_id_and_reports_resolution():
+    live = FakeLive()
+    feed = make_feed(lives=[live])
+    feed.start_live("NQ=F")
+    live.callback(Mapping("NQ.v.0", 101, raw_symbol="NQU6"))
+    first = Ohlcv(5_000, 100, 101, 99, 100.5, 1)
+    first.instrument_id = 101
+    live.callback(first)
+
+    live.callback(Mapping("NQ.v.0", 303, raw_symbol="NQZ6"))
+    stale = Ohlcv(5_001, 150, 151, 149, 150.5, 9)
+    stale.instrument_id = 101
+    current = Ohlcv(5_002, 200, 201, 199, 200.5, 2)
+    current.instrument_id = 303
+    live.callback(stale)
+    live.callback(current)
+
+    assert 101 not in feed._instrument_to_symbol
+    assert feed._instrument_to_symbol[303] == "NQ=F"
+    assert [row.ts for row in feed._second_bars["NQ=F"]] == [5_000, 5_002]
+    meta = feed.meta("NQ=F")
+    assert meta["resolved_instrument_id"] == 303
+    assert meta["resolved_raw_symbol"] == "NQZ6"
+    assert meta["mapping_current"] is True
+    assert meta["mapping_active"] is True
+
+    feed.stop_live()
+    assert feed.meta("NQ=F")["mapping_active"] is False
+
+
+def test_finite_core_mapping_windows_route_only_valid_roll_replay_records():
+    feed = make_feed()
+    feed._live_started.add("NQ=F")
+    feed._continuous_to_symbol["NQ.v.0"] = "NQ=F"
+    feed._dispatch_shared_live(Mapping("NQ.v.0", 101, raw_symbol="NQU6",
+                                      start_ts=5_000 * NS, end_ts=5_002 * NS))
+    feed._dispatch_shared_live(Mapping("NQ.v.0", 303, raw_symbol="NQZ6",
+                                      start_ts=5_002 * NS, end_ts=5_005 * NS))
+    old_valid = Ohlcv(5_001, 100, 101, 99, 100.5, 1)
+    old_valid.instrument_id = 101
+    old_invalid = Ohlcv(5_003, 150, 151, 149, 150.5, 9)
+    old_invalid.instrument_id = 101
+    new_valid = Ohlcv(5_003, 200, 201, 199, 200.5, 2)
+    new_valid.instrument_id = 303
+    feed._dispatch_shared_live(old_valid)
+    feed._dispatch_shared_live(old_invalid)
+    feed._dispatch_shared_live(new_valid)
+    rows = list(feed._second_bars["NQ=F"])
+    assert [row.ts for row in rows] == [5_001, 5_003]
+    assert rows[-1].c == 200.5
+
+
+def test_finite_mapping_cannot_narrow_same_current_instrument():
+    feed = make_feed()
+    feed._live_started.add("NQ=F")
+    feed._continuous_to_symbol["NQ.v.0"] = "NQ=F"
+    feed._dispatch_shared_live(Mapping("NQ.v.0", 303, raw_symbol="NQZ6"))
+    feed._dispatch_shared_live(Mapping("NQ.v.0", 303, raw_symbol="NQZ6",
+                                      start_ts=5_000 * NS, end_ts=5_005 * NS))
+    assert feed._instrument_windows[303] == ("NQ=F", None, None)
+    assert feed.meta("NQ=F")["mapping_current"] is True
+
+
+def test_depth_mapping_windows_reject_stale_contract_records_per_schema():
+    feed = make_feed()
+    schema = "mbp-10"
+    feed._depth_live_symbols[schema].add("NQ=F")
+    feed._depth_continuous_to_symbol[schema]["NQ.v.0"] = "NQ=F"
+    feed._dispatch_depth_live(schema, Mapping("NQ.v.0", 101,
+                                             start_ts=5_000 * NS, end_ts=5_002 * NS))
+    feed._dispatch_depth_live(schema, Mapping("NQ.v.0", 303,
+                                             start_ts=5_002 * NS, end_ts=5_005 * NS))
+    stale = Depth(5_003, 150.0, levels=[Level(149.75, 150.0)])
+    stale.instrument_id = 101
+    valid = Depth(5_003, 200.0, levels=[Level(199.75, 200.0)])
+    valid.instrument_id = 303
+    feed._dispatch_depth_live(schema, stale)
+    feed._dispatch_depth_live(schema, valid)
+    rows = list(feed._depth[("NQ=F", schema)])
+    assert len(rows) == 1
+    assert rows[0]["price"] == 200.0
+
+
 def test_shared_live_session_routes_records_by_symbol_mapping():
     live = FakeLive()
     feed = make_feed(lives=[live])
@@ -548,50 +1151,6 @@ def test_shared_live_session_routes_records_by_symbol_mapping():
     assert all(row.c != 100.5 for row in es_rows)
 
 
-def test_concurrent_mbo_snapshots_are_serialized_to_one_transient_session():
-    release = threading.Event()
-    first_started = threading.Event()
-    started = []
-    results = []
-    errors = []
-
-    class DelayedSnapshotLive(FakeLive):
-        def start(self):
-            self.started = True
-            started.append(self)
-            first_started.set()
-
-            def emit():
-                release.wait(2.0)
-                for sub in self.subscriptions:
-                    self._emit(sub["schema"])
-
-            threading.Thread(target=emit, daemon=True).start()
-
-    live1 = DelayedSnapshotLive({"mbo": [Depth(2_000, 200.25, flags=1)]})
-    live2 = DelayedSnapshotLive({"mbo": [Depth(2_001, 200.50, flags=1)]})
-    feed = make_feed(lives=[live1, live2])
-
-    def snap():
-        try:
-            results.append(feed.mbo_snapshot("ES=F", timeout=1.0))
-        except Exception as ex:
-            errors.append(ex)
-
-    a = threading.Thread(target=snap)
-    b = threading.Thread(target=snap)
-    a.start()
-    assert first_started.wait(1.0)
-    b.start()
-    assert len(started) == 1
-    release.set()
-    a.join(3.0)
-    b.join(3.0)
-    assert not errors
-    assert len(started) == 2
-    assert len(results) == 2
-
-
 def test_mbo_snapshot_requests_continuous_snapshot_and_stops():
     snapshot = Depth(2_000, 200.25, flags=1)
     live = FakeLive({"mbo": [snapshot]})
@@ -604,6 +1163,26 @@ def test_mbo_snapshot_requests_continuous_snapshot_and_stops():
     assert sub["symbols"] == "ES.v.0"
     assert sub["stype_in"] == "continuous"
     assert live.stopped is True
+
+
+def test_runner_summary_reflects_databento_transport_health():
+    feed = make_feed()
+    feed._live_callback("NQ=F", Error("invalid core subscription", code=5))
+    journal = Journal(":memory:")
+    runner = AssetRunner(
+        RunnerConfig(resolve("NQ"), Inputs(use_tide=False, use_eod_flat=False)),
+        journal,
+        {"yahoo": feed},
+    )
+    try:
+        summary = runner.summary()
+        assert summary["feed_provider"] == "databento"
+        assert summary["feed_health"]["core_session_ok"] is False
+        assert summary["feed_health"]["core_error_code"] == 5
+        assert "invalid core subscription" in summary["feed_health"]["live_error"]
+        assert summary["feed_capabilities"]["depth_schema_isolation"] is True
+    finally:
+        journal.con.close()
 
 
 def test_portfolio_prepares_shared_live_feed_before_spawning_futures(monkeypatch, tmp_path):
@@ -730,16 +1309,55 @@ def test_real_live_factory_requests_heartbeats_reconnect_and_no_skip():
     assert captured["slow_reader_behavior"] == "warn"
 
 
-def test_reconnect_gap_is_published_in_feed_metadata():
-    live = FakeLive({"ohlcv-1s": [Ohlcv(1000, 100, 101, 99, 100.5)]})
-    feed = make_feed(lives=[live])
+def test_reconnect_gap_is_published_and_replayed_from_actual_boundary():
+    first = FakeLive({"ohlcv-1s": [Ohlcv(1_000, 100, 101, 99, 100.5)]})
+    second = FakeLive({"ohlcv-1s": [Ohlcv(1_001, 100.5, 101.5, 100, 101.0)]})
+    feed = make_feed(lives=[first, second])
     feed.recent_ex("NQ=F", 1)
-    assert callable(live.reconnect_callback)
-    live.reconnect_callback("2026-09-30T10:00:00Z", "2026-09-30T10:00:02Z")
+    assert callable(first.reconnect_callback)
+
+    first.reconnect_callback("2026-09-30T10:00:00Z", "2026-09-30T10:00:02Z")
     meta = feed.meta("NQ=F")
     assert meta["reconnect_count"] == 1
     assert meta["last_reconnect_gap"]["previous"].endswith("10:00:00Z")
     assert meta["last_reconnect_gap"]["resumed"].endswith("10:00:02Z")
+    assert meta["core_session_ok"] is False
+    assert meta["core_error_code"] == 7
+
+    feed.start_live("NQ=F")
+    assert first.stopped is True
+    assert second.started is True
+    assert feed.meta("NQ=F")["core_session_ok"] is True
+    starts = {row.get("start") for row in second.subscriptions}
+    assert starts == {"2026-09-30T09:59:59Z"}
+
+
+def test_terminal_databento_close_prevents_any_session_reopen():
+    core = FakeLive()
+    mbp = FakeLive()
+    feed = make_feed(lives=[core, mbp])
+    feed.start_live("NQ=F")
+    feed.depth_events("NQ=F", schema="mbp-10")
+    feed.close()
+
+    assert core.stopped is True
+    assert mbp.stopped is True
+    with pytest.raises(RuntimeError, match="adapter is closed"):
+        feed.start_live("NQ=F")
+    with pytest.raises(RuntimeError, match="adapter is closed"):
+        feed.depth_events("NQ=F", schema="mbp-10")
+    with pytest.raises(RuntimeError, match="adapter is closed"):
+        feed.mbo_snapshot("NQ=F", timeout=0.1)
+
+
+def test_per_symbol_stop_remains_reusable_before_terminal_close():
+    core = FakeLive()
+    feed = make_feed(lives=[core])
+    feed.start_live("NQ=F")
+    feed.start_live("ES=F")
+    feed.stop_live("NQ=F")
+    assert core.stopped is False
+    assert feed.start_live("NQ=F") is core
 
 
 def test_portfolio_stop_closes_databento_live_sessions(monkeypatch, tmp_path):
@@ -755,6 +1373,24 @@ def test_portfolio_stop_closes_databento_live_sessions(monkeypatch, tmp_path):
     port = Portfolio(Journal(":memory:"), str(tmp_path))
     port.stop()
     assert feed.stops == 1
+
+
+def test_core_readiness_is_independent_for_ohlcv_and_trades():
+    feed = make_feed()
+    feed._live_callback("NQ=F", Trade(3_000, 123.25, 2))
+    assert feed._core_ready[("NQ=F", "trades")].is_set() is True
+    assert feed._core_ready[("NQ=F", "ohlcv-1s")].is_set() is False
+
+    feed._live_callback("NQ=F", Ohlcv(3_000, 123.0, 124.0, 122.5, 123.5, 5))
+    assert feed._core_ready[("NQ=F", "ohlcv-1s")].is_set() is True
+
+
+def test_core_error_unblocks_each_desired_schema_gate():
+    feed = make_feed()
+    feed._wanted_subscriptions["NQ=F"].update({"ohlcv-1s", "trades"})
+    feed._live_callback("NQ=F", Error("NQ.v.0 failed", code=4))
+    assert feed._core_ready[("NQ=F", "ohlcv-1s")].is_set() is True
+    assert feed._core_ready[("NQ=F", "trades")].is_set() is True
 
 
 def test_system_message_before_first_market_event_does_not_crash_or_fake_readiness():
@@ -807,14 +1443,61 @@ def test_doctor_roll_rule_contract_matches_adapter(monkeypatch, tmp_path):
     assert "continuous=open-interest .n.0" in item["detail"]
 
 
+def test_engine_http_maps_mbo_snapshot_timeout_and_upstream_failure(tmp_path):
+    feed = make_feed()
+    journal = Journal(":memory:")
+    port = Portfolio(journal, str(tmp_path))
+    spec = resolve("NQ")
+    runner = AssetRunner(
+        RunnerConfig(spec, Inputs(use_tide=False, use_eod_flat=False), base_dir=str(tmp_path)),
+        journal,
+        {"yahoo": feed},
+    )
+    runner.warm = True
+    port.runners["NQ"] = runner
+    port.order = ["NQ"]
+
+    srv = serve(port, 0, token="test-token", start=False)
+    thread = threading.Thread(target=srv.serve_forever, daemon=True)
+    thread.start()
+    base = f"http://127.0.0.1:{srv.server_port}"
+
+    def request():
+        return urllib.request.Request(
+            base + "/admin/market-data/mbo-snapshot",
+            data=json.dumps({"asset": "NQ", "timeout": 0.1}).encode(),
+            headers={"Authorization": "Bearer test-token", "Content-Type": "application/json"},
+        )
+
+    try:
+        feed.mbo_snapshot = lambda *args, **kwargs: (_ for _ in ()).throw(TimeoutError("snapshot deadline"))
+        with pytest.raises(urllib.error.HTTPError) as timeout:
+            urllib.request.urlopen(request(), timeout=5)
+        assert timeout.value.code == 504
+        assert "snapshot deadline" in timeout.value.read().decode()
+
+        feed.mbo_snapshot = lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("Databento unavailable"))
+        with pytest.raises(urllib.error.HTTPError) as upstream:
+            urllib.request.urlopen(request(), timeout=5)
+        assert upstream.value.code == 502
+        assert "Databento unavailable" in upstream.value.read().decode()
+    finally:
+        srv.shutdown()
+        srv.server_close()
+        thread.join(5)
+        journal.con.close()
+
+
 def test_engine_http_exposes_databento_capabilities_ticks_depth_and_mbo(tmp_path):
-    live = FakeLive({
+    core_live = FakeLive({
         "ohlcv-1s": [Ohlcv(4_000, 100, 101, 99, 100.5, 1)],
         "trades": [Trade(4_000, 100.5, 2)],
+    })
+    depth_live = FakeLive({
         "mbp-10": [Depth(4_001, 100.5, levels=[Level(100.25, 100.5)])],
     })
     snapshot_live = FakeLive({"mbo": [Depth(4_002, 100.5, flags=1)]})
-    feed = make_feed(lives=[live, snapshot_live])
+    feed = make_feed(lives=[core_live, depth_live, snapshot_live])
 
     journal = Journal(":memory:")
     port = Portfolio(journal, str(tmp_path))
@@ -840,6 +1523,7 @@ def test_engine_http_exposes_databento_capabilities_ticks_depth_and_mbo(tmp_path
             assert body["provider"] == "databento"
             assert body["capabilities"]["ticks"] is True
             assert body["capabilities"]["mbp_10"] is True
+            assert "metadata" in body
 
         with urllib.request.urlopen(base + "/api/market-data/NQ1!/ticks?limit=10", timeout=5) as reply:
             body = json.load(reply)
