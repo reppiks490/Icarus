@@ -1234,6 +1234,8 @@ class LearningFabric:
                 "dreamstate": "native_candidate_lifecycle",
                 "pantheon": "native_research_metrics",
                 "apex": "empirical_credibility_feedback",
+                "performance_proof": "native_immutable_forecast_outcome",
+                "source_reliability": "native_observed_quality_context",
                 "possibility": "forecast_contract_required",
                 "chronofold": "calibrated_via_commissioning",
             },
