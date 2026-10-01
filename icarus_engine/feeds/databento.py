@@ -1352,6 +1352,8 @@ class Databento:
         error: List[str] = []
 
         def callback(record: Any) -> None:
+            if done.is_set():
+                return
             try:
                 if hasattr(record, "err"):
                     code = int(getattr(record, "code", 0) or 0)
