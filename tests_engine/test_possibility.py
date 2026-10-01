@@ -1300,3 +1300,26 @@ def test_psi_evidence_startup_fails_closed_on_incompatible_schema(tmp_path):
 
     with pytest.raises(RuntimeError, match="schema is incompatible"):
         PsiEvidenceLedger(tmp_path)
+
+
+
+def test_external_evidence_rejects_unknown_asset_and_bad_source_identity():
+    engine = PossibilityEngine(Port())
+    with pytest.raises(ValueError, match="not active"):
+        engine.ingest_external(
+            "UNKNOWN",
+            {"gamma_pressure": 0.2},
+            source="fixture",
+        )
+    with pytest.raises(ValueError, match="control characters"):
+        engine.ingest_external(
+            "NQ",
+            {"gamma_pressure": 0.2},
+            source="provider\nforged",
+        )
+    with pytest.raises(ValueError, match="source exceeds"):
+        engine.ingest_external(
+            "NQ",
+            {"gamma_pressure": 0.2},
+            source="x" * 181,
+        )
