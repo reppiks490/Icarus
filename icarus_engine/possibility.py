@@ -760,6 +760,24 @@ class PossibilityEngine:
                 snapshots = [e for e in events if isinstance(e, Mapping) and isinstance(e.get("levels"), list) and e.get("levels")]
                 if snapshots:
                     latest = snapshots[-1]
+                    latest_ns = _finite(latest.get("ts_event_ns"))
+                    latest_sec = _finite(latest.get("ts_event"))
+                    depth_ts = (latest_ns / 1_000_000_000.0) if latest_ns is not None else latest_sec
+                    depth_age = (now - depth_ts) if depth_ts is not None else None
+                    result["health"]["depth_last_event_ts"] = depth_ts
+                    result["health"]["depth_age_seconds"] = depth_age
+                    if depth_age is None:
+                        result["health"]["errors"].append("depth snapshot missing exchange timestamp")
+                        snapshots = []
+                    elif depth_age < -5.0:
+                        result["health"]["errors"].append(f"depth exchange clock is {-depth_age:.3f}s in the future")
+                        snapshots = []
+                    elif depth_age > 15.0:
+                        result["health"]["errors"].append(f"depth snapshot stale by {depth_age:.3f}s")
+                        snapshots = []
+
+                if snapshots:
+                    latest = snapshots[-1]
                     levels = [x for x in latest["levels"] if isinstance(x, Mapping)]
                     weighted_bid = 0.0
                     weighted_ask = 0.0
