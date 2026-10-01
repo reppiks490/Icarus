@@ -54,6 +54,8 @@ def test_brain_registers_five_custom_agents_and_twelve_plus_subsystems(tmp_path)
     assert out["evidence_graph"]["execution_authorized"] is False
     assert out["source_reliability"]["observation_count"] == 0
     assert out["source_reliability"]["execution_authorized"] is False
+    assert out["qualification_receipts"]["candidate_revision_count"] == 0
+    assert out["qualification_receipts"]["qualification_ready_count"] == 0
 
 
 def test_brain_surfaces_zero_cost_incubator_without_promotion_authority(tmp_path):
@@ -216,3 +218,58 @@ def test_brain_registers_continuous_learning_fabric(tmp_path):
     assert "historical replay" in rows["learning-fabric"]["job"].lower()
     assert out["authority"]["execution_authorized"] is False
     assert out["authority"]["production_decision_authorized"] is False
+
+
+def test_qualification_receipts_are_visible_but_do_not_bypass_durable_stage_transition(tmp_path):
+    validated = _candidate(
+        status="verified",
+        stage="validated",
+        validation={
+            "causal_time": None,
+            "provenance": None,
+            "oos": None,
+            "protected_holdout": None,
+            "multiple_testing": None,
+            "costs_slippage_latency": None,
+            "ablation": None,
+            "calibration": None,
+            "ood_drift": None,
+            "deterministic_replay": None,
+            "independent_verification": None,
+        },
+    )
+    record_brain_event(tmp_path, validated)
+    qualification = {
+        "required_gates": list(validated["validation"]),
+        "candidate_revision_count": 1,
+        "qualification_ready_count": 1,
+        "candidates": [{
+            "candidate_id": "nq-trend-v1",
+            "candidate_source_repo": "reppiks490/Icarus",
+            "candidate_source_commit": "a" * 40,
+            "candidate_source_revision": "reppiks490/Icarus@" + "a" * 40,
+            "receipt_count": 11,
+            "qualification_ready": True,
+            "recommended_stage": "qualified_shadow",
+            "blockers": [],
+            "validation": {gate: True for gate in validated["validation"]},
+            "execution_authorized": False,
+            "production_decision_authorized": False,
+        }],
+        "execution_authorized": False,
+        "production_decision_authorized": False,
+    }
+    out = brain_snapshot(
+        tmp_path,
+        qualification_receipts=qualification,
+        market_status={
+            "assets": [{"symbol": "NQ", "warm": True, "paused": False, "state": {"rate_regime_str": "STRONG"}}]
+        },
+    )
+    candidate = out["candidates"][0]
+    assert candidate["qualification_receipts"]["qualification_ready"] is True
+    assert candidate["qualification_receipts"]["receipt_count"] == 11
+    assert candidate["stage"] == "validated"
+    assert candidate["eligible_for_regime_swap"] is False
+    assert out["regime_routes"][0]["selected_candidate"] is None
+    assert out["learning"]["qualification_ready_revisions"] == 1
