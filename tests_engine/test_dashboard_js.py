@@ -355,6 +355,10 @@ def test_dashboard_surfaces_continuous_learning_fabric():
     assert "EMPIRICAL SCORECARDS" in ui
     assert "TRAINING REPLAY" in ui
     assert "LIVE MATURITY" in ui
+    assert "REALIZED EXPERIENCE" in ui
+    assert "PROFIT FACTOR" in ui
+    assert "runtime_live_sim" in ui
+    assert "historical_trade_list" in ui
     assert "AUTOMATIC PRODUCTION PROMOTION: OFF" in ui
     assert "UNAVAILABLE" in ui
     assert "UNMEASURED" in ui
