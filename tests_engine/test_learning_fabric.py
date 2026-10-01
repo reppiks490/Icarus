@@ -398,9 +398,17 @@ def test_native_harvest_absorbs_performance_proof_and_source_reliability(tmp_pat
 
     assert out["performance_proof"]["forecasts_imported"] == 1
     assert out["performance_proof"]["outcomes_imported"] == 1
+    imported_id = next(x for x in fabric.scorecards() if x["producer"].startswith("performance-proof:"))["producer"]
+    stored = fabric._conn.execute("SELECT semantic_json FROM predictions WHERE producer=?", (imported_id,)).fetchone()
+    imported = json.loads(stored["semantic_json"])
+    assert imported["reference_value"] is None
     assert out["source_reliability"]["status"] == "ok"
     assert out["source_reliability"]["observation_count"] == 1
     assert out["source_reliability"]["source_stream_count"] == 1
+
+    again = fabric.harvest_native()
+    assert again["performance_proof"]["forecasts_imported"] == 0
+    assert again["performance_proof"]["outcomes_imported"] == 0
 
     cards = [x for x in fabric.scorecards() if x["producer"].startswith("performance-proof:")]
     assert len(cards) == 1
