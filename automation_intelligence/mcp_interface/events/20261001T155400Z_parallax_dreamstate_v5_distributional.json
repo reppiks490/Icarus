@@ -1,0 +1,38 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "parallax-dreamstate-v5-distributional-20261001T155400Z",
+  "category": "EVOLUTION",
+  "severity": "success",
+  "status": "active",
+  "subsystems": [
+    "parallax",
+    "dreamstate",
+    "aion",
+    "athena",
+    "provenance",
+    "ml"
+  ],
+  "recorded_at": "2026-10-01T15:54:00Z",
+  "title": "PARALLAX / DREAMSTATE V5 distributional robustness",
+  "summary": "V5 adds scale-free distributional robustness over V4 effective independent episode means. At nine effective episodes robust readiness requires a positive median effect, at least two-thirds positive episode means, and positive leave-one-episode-out mean. Distributionally fragile sources cannot support parameter basins, DREAMSTATE carries the diagnostics through policy contracts/search accounting/Brain mirrors, and active shadow candidates retire if breadth later collapses.",
+  "source_repository": "reppiks490/Icarus",
+  "source_ref": "chatgpt/parallax-dreamstate-v5-distributional-20261001",
+  "source_commit": "83ed91b5a657664b3f21b20975a41502abc78000",
+  "evidence": [
+    "icarus_engine/parallax.py",
+    "icarus_engine/dreamstate.py",
+    "icarus_engine/parallax-ui.js",
+    "tests_engine/test_parallax_dreamstate.py",
+    "docs/icarus/PARALLAX_DREAMSTATE.md",
+    "distributional screen runs on effective episode means rather than raw clustered rows",
+    "positive median required once distributional screen is evaluable",
+    "minimum positive episode fraction is two-thirds",
+    "leave-one-effective-episode-out mean must remain positive",
+    "distributionally fragile neighbors cannot support parameter basins",
+    "DREAMSTATE live source revalidation inherits V5 robustness",
+    "execution_authorized=false",
+    "production_decision_authorized=false"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}
