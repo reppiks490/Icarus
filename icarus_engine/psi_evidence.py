@@ -55,9 +55,8 @@ class PsiEvidenceLedger:
 
     def _init_store(self) -> None:
         with self._connect() as con:
-            con.executescript(
-                """
-                CREATE TABLE IF NOT EXISTS evidence (
+            con.execute(
+                """CREATE TABLE IF NOT EXISTS evidence (
                     evidence_id TEXT PRIMARY KEY,
                     schema_version TEXT NOT NULL,
                     asset TEXT NOT NULL,
@@ -72,12 +71,7 @@ class PsiEvidenceLedger:
                     ttl_seconds REAL NOT NULL,
                     payload_hash TEXT NOT NULL,
                     created_at TEXT NOT NULL
-                );
-                CREATE INDEX IF NOT EXISTS idx_psi_evidence_asset_feature_time
-                    ON evidence(asset, feature, observed_ts DESC, received_ts DESC);
-                CREATE INDEX IF NOT EXISTS idx_psi_evidence_expiry
-                    ON evidence(expires_ts);
-                """
+                )"""
             )
             columns = {
                 str(row["name"])
@@ -94,6 +88,13 @@ class PsiEvidenceLedger:
                     "Psi evidence schema is incompatible; missing columns: "
                     + ", ".join(sorted(missing))
                 )
+            con.execute(
+                "CREATE INDEX IF NOT EXISTS idx_psi_evidence_asset_feature_time "
+                "ON evidence(asset, feature, observed_ts DESC, received_ts DESC)"
+            )
+            con.execute(
+                "CREATE INDEX IF NOT EXISTS idx_psi_evidence_expiry ON evidence(expires_ts)"
+            )
 
     @staticmethod
     def _identity(row: Mapping[str, Any]) -> tuple[str, str]:
