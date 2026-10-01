@@ -1,0 +1,27 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "proofclock-receipt-rollback-guard-verified-20261001T055301Z",
+  "category": "REPAIR",
+  "severity": "success",
+  "status": "verified",
+  "subsystems": [
+    "provenance",
+    "data",
+    "aion"
+  ],
+  "recorded_at": "2026-10-01T05:53:01Z",
+  "title": "ProofClock receipt-time rollback guard verified and merged",
+  "summary": "The CCTP proof clock now fails closed if a newly appended local receipt timestamp moves backward relative to the prior ledger row, preventing a host-clock rollback from making newly observed provider data appear historically earlier. The invariant is also checked during ledger verification and exact duplicate receipts remain idempotent. The repair was reconciled onto current subsystem main and passed exact-head proof-clock Linux/Windows plus repository-regression CI.",
+  "source_repository": "reppiks490/divine-providence",
+  "source_ref": "main",
+  "source_commit": "819777a5bf674dd05f29af05584a8da615b9aeeb",
+  "evidence": [
+    "replacement PR #7 merged from exact head 4a5d92707d8aea8d3276b89ffebd64a74f920cf7",
+    "stale PR #6 closed unmerged after current-main reconciliation",
+    "onchain-proof-clock-tests: success",
+    "receipt rollback regression: passed",
+    "destination mint/economic outcome remains unproven"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}
