@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import json
 from pathlib import Path
 
 import pytest
@@ -153,6 +155,53 @@ def test_parallax_identity_binds_action_regime_and_comparison_contract(tmp_path)
     assert len(ids) == 4
 
 
+def test_parallax_preserves_idempotency_for_legacy_v1_decision_identity(tmp_path):
+    store = ParallaxStore(tmp_path)
+    payload = {
+        "asset": "NQ",
+        "action": "long",
+        "observed_at": "2026-09-30T10:00:00Z",
+        "regime": "trend",
+        "source_commit": "a" * 40,
+        "context": {"bar": 1},
+        "subsystem_votes": {"athena": 0.5},
+    }
+    context_json = json.dumps(payload["context"], sort_keys=True, separators=(",", ":"))
+    votes_json = json.dumps(payload["subsystem_votes"], sort_keys=True, separators=(",", ":"))
+    legacy_hash = hashlib.sha256(
+        (payload["source_commit"] + "|" + payload["asset"] + "|" + payload["observed_at"] + "|" + context_json + "|" + votes_json).encode()
+    ).hexdigest()
+    decision_id = "px-" + legacy_hash[:24]
+    with store._connect() as con:
+        con.execute(
+            """INSERT INTO decisions(
+                   decision_id,observed_at,asset,action,regime,source_commit,context_hash,
+                   context_json,votes_json,contract_json,strata_json,created_at
+               ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (
+                decision_id,
+                payload["observed_at"],
+                payload["asset"],
+                payload["action"],
+                payload["regime"],
+                payload["source_commit"],
+                legacy_hash,
+                context_json,
+                votes_json,
+                "{}",
+                "{}",
+                "2026-09-30T10:00:00Z",
+            ),
+        )
+        con.execute(
+            "INSERT INTO branches(branch_id,decision_id,kind,label,params_json,status) VALUES (?,?,?,?,?,'pending')",
+            ("pxb-legacy", decision_id, "actual", "actual", json.dumps({"action": "long"})),
+        )
+    replay = store.record_decision({**payload, "decision_id": decision_id})
+    assert replay["decision_id"] == decision_id
+    assert replay["comparison_contract_complete"] is False
+
+
 def test_parallax_outcomes_are_immutable(tmp_path):
     store = ParallaxStore(tmp_path)
     decision = _record_pair(store, 0)
@@ -234,6 +283,39 @@ def test_parallax_missing_path_evidence_does_not_count_toward_candidate_n(tmp_pa
     assert delay["evidence_pair_count"] == 4
     assert delay["evidence_pair_coverage"] == 0.8
     assert "insufficient_evidence_pairs" in delay["screen_blockers"]
+
+
+def test_parallax_never_pools_same_label_with_different_branch_parameters(tmp_path):
+    store = ParallaxStore(tmp_path)
+    for i, delay in enumerate((1, 1, 1, 2, 2, 2)):
+        decision = store.record_decision(
+            {
+                "asset": "NQ",
+                "action": "long",
+                "observed_at": f"2026-10-01T08:{i:02d}:00Z",
+                "regime": "trend",
+                "source_commit": "a" * 40,
+                "context": {"bar": i},
+                "comparison_contract": _contract(),
+                "subsystem_votes": {},
+                "branches": [
+                    {"kind": "actual", "label": "actual", "params": {"action": "long"}},
+                    {"kind": "delay", "label": "custom_delay", "params": {"delay_bars": delay}},
+                ],
+            }
+        )
+        store.record_outcome(
+            {"decision_id": decision["decision_id"], "label": "actual", "utility": 0.0, "evidence": [f"a:{i}"]}
+        )
+        store.record_outcome(
+            {"decision_id": decision["decision_id"], "label": "custom_delay", "utility": 1.0, "evidence": [f"b:{i}"]}
+        )
+    report = store.screening_report(min_samples=5)
+    rows = [row for row in report["hypotheses"] if row["branch_label"] == "custom_delay"]
+    assert len(rows) == 2
+    assert {row["branch_params"]["delay_bars"] for row in rows} == {1, 2}
+    assert {row["evidence_pair_count"] for row in rows} == {3}
+    assert store.mutation_signals(min_samples=5) == []
 
 
 def test_parallax_never_pools_statistical_evidence_across_code_revisions_or_contracts(tmp_path):
@@ -417,7 +499,7 @@ def test_dreamstate_multiple_testing_gate_cannot_bypass_source_screen(tmp_path):
         con.execute(
             "UPDATE candidates SET source_signal_json=? WHERE candidate_id=?",
             (
-                __import__("json").dumps(source, sort_keys=True, separators=(",", ":")),
+                json.dumps(source, sort_keys=True, separators=(",", ":")),
                 candidate["candidate_id"],
             ),
         )
