@@ -127,6 +127,7 @@ class Databento:
         self._depth_ready: Dict[Tuple[str, str], threading.Event] = collections.defaultdict(threading.Event)
         self._depth_broken: set[str] = set()
         self._ready: Dict[str, threading.Event] = collections.defaultdict(threading.Event)
+        self._core_ready: Dict[Tuple[str, str], threading.Event] = collections.defaultdict(threading.Event)
         self._second_bars: Dict[str, Deque[Bar]] = collections.defaultdict(
             lambda: collections.deque(maxlen=max(60, int(max_live_seconds)))
         )
@@ -581,6 +582,8 @@ class Databento:
                 if code in (1, 2, 3, 5, 6, 7, 8):
                     self._core_broken = True
                     self._core_error_code = code
+                for schema in self._wanted_subscriptions.get(symbol, {"ohlcv-1s", "trades"}):
+                    self._core_ready[(symbol, schema)].set()
                 self._ready[symbol].set()
                 self._meta[symbol] = {
                     "regularMarketTime": self._feed_time.get(symbol, 0),
@@ -602,12 +605,15 @@ class Databento:
                     if bar_order_ns >= self._last_price_order_ns.get(symbol, 0):
                         self._last_price[symbol] = b.c
                         self._last_price_order_ns[symbol] = bar_order_ns
+                    self._core_ready[(symbol, "ohlcv-1s")].set()
                     market_event = True
             else:
                 # MBO trade records are both trades and order-book events; keep both views.
                 if hasattr(record, "price") and hasattr(record, "size") and str(getattr(record, "action", "T") or "T") == "T":
                     tick = self._trade_record(record)
-                    if self._append_trade_locked(symbol, tick):
+                    appended = self._append_trade_locked(symbol, tick)
+                    self._core_ready[(symbol, "trades")].set()
+                    if appended:
                         if tick.ts_recv_ns >= self._last_price_order_ns.get(symbol, 0):
                             self._last_price[symbol] = tick.price
                             self._last_price_order_ns[symbol] = tick.ts_recv_ns
@@ -635,9 +641,12 @@ class Databento:
             self._live_callback(symbol, record)
         except Exception as ex:
             with self._lock:
-                self._errors[str(symbol)] = f"Databento record error: {type(ex).__name__}: {ex}"
-                self._ready[str(symbol)].set()
-                meta = dict(self._meta.get(str(symbol), {}))
+                key = str(symbol)
+                self._errors[key] = f"Databento record error: {type(ex).__name__}: {ex}"
+                for schema in self._wanted_subscriptions.get(key, {"ohlcv-1s", "trades"}):
+                    self._core_ready[(key, schema)].set()
+                self._ready[key].set()
+                meta = dict(self._meta.get(key, {}))
                 meta.update({
                     "regularMarketTime": self._feed_time.get(str(symbol), 0),
                     "provider": "databento",
@@ -1076,6 +1085,7 @@ class Databento:
                     wanted = set(self._wanted_subscriptions[key])
                     missing = wanted - self._subscriptions[key]
                     for schema in sorted(missing):
+                        self._core_ready[(key, schema)].clear()
                         kwargs: Dict[str, Any] = {
                             "dataset": self.dataset,
                             "schema": schema,
@@ -1110,6 +1120,7 @@ class Databento:
                     self._continuous_to_symbol.clear()
                     self._instrument_to_symbol.clear()
                     self._ready.clear()
+                    self._core_ready.clear()
                     self._errors.clear()
                 raise
 
@@ -1202,6 +1213,7 @@ class Databento:
                     self._continuous_to_symbol.clear()
                     self._instrument_to_symbol.clear()
                     self._ready.clear()
+                    self._core_ready.clear()
                     self._errors.clear()
                 raise
 
@@ -1235,6 +1247,8 @@ class Databento:
                 self._live.pop(key, None)
                 self._live_started.discard(key)
                 self._ready.pop(key, None)
+                for ready_key in [rk for rk in self._core_ready if rk[0] == key]:
+                    self._core_ready.pop(ready_key, None)
                 self._errors.pop(key, None)
                 # Databento has no per-subscription unsubscribe on a running session.
                 # Keep gateway subscriptions + instrument mappings so remove/re-add does
@@ -1254,6 +1268,7 @@ class Databento:
             self._continuous_to_symbol.clear()
             self._instrument_to_symbol.clear()
             self._ready.clear()
+            self._core_ready.clear()
             self._errors.clear()
 
         if client is not None:
@@ -1286,12 +1301,17 @@ class Databento:
         now = int(time.time())
         start = max(now - 23 * 3600, int(since_ts or (now - 900)) - 120)
         self.start_live(symbol, start_ts=start)
-        self._ready[str(symbol)].wait(timeout=2.0)
+        key = str(symbol)
+        with self._lock:
+            have_bars = bool(self._second_bars[key])
+            ready = self._core_ready[(key, "ohlcv-1s")]
+        if not have_bars:
+            ready.wait(timeout=2.0)
         self._raise_live_error(symbol)
         with self._lock:
-            rows = list(self._second_bars[str(symbol)])
-            ft = int(self._feed_time.get(str(symbol), 0))
-            px = self._last_price.get(str(symbol))
+            rows = list(self._second_bars[key])
+            ft = int(self._feed_time.get(key, 0))
+            px = self._last_price.get(key)
         if since_ts is not None:
             rows = [b for b in rows if b.ts >= int(since_ts) - max(2, int(granularity))]
         bars = rows if int(granularity) == 1 else self._aggregate(rows, int(granularity))
@@ -1309,9 +1329,15 @@ class Databento:
 
     def trades(self, symbol: str, since_ts: Optional[int] = None, limit: int = 10_000) -> List[TradeTick]:
         self.start_live(symbol, schemas=("ohlcv-1s", "trades"))
+        key = str(symbol)
+        with self._lock:
+            have_ticks = bool(self._trades[key])
+            ready = self._core_ready[(key, "trades")]
+        if not have_ticks:
+            ready.wait(timeout=2.0)
         self._raise_live_error(symbol)
         with self._lock:
-            rows = list(self._trades[str(symbol)])
+            rows = list(self._trades[key])
         if since_ts is not None:
             rows = [x for x in rows if x.ts_event >= int(since_ts)]
         rows.sort(key=lambda x: (x.ts_recv_ns, x.ts_event_ns, x.sequence))
