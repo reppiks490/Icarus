@@ -131,6 +131,15 @@ def test_dashboard_surfaces_repository_native_mcp_evolution_panel():
     assert "Subsystem evolution state" in ui
     assert "Important MCP activity" in ui
     assert "execution_authorized=false" in ui
+    assert "Evidence ledger" in ui
+    assert "Active evidence" in ui
+    assert "Evidence history" in ui
+    assert "History source" in ui
+    assert "Chart cadence" in ui
+    assert "Gap returns skipped" in ui
+    assert "Leader alignment" in ui
+    assert "POST-BAR CAUSAL WINDOW" in ui
+    assert '/api/possibility/evidence' in server
     assert 'p.path == "/api/evolution"' in server
     assert "EvolutionRemoteSync" in server
     assert "automation_intelligence/mcp_interface/events" in sync
@@ -155,6 +164,7 @@ def test_dashboard_surfaces_icarus_psi_without_replacing_oracle_or_parallax():
     assert '{"id": "psi", "title": "ICARUS Ψ"' in brain
     assert '{"id": "parallax", "title": "PARALLAX"' in brain
     assert "execution_authorized=false" in ui
+
 
 
 def test_dashboard_surfaces_authenticated_engine_control_panel():
@@ -193,6 +203,7 @@ def test_dashboard_surfaces_authenticated_engine_control_panel():
     assert "ecEventTable" in ui
 
 
+
 def test_dashboard_surfaces_tactical_autopilot_and_root_engine_control():
     dashboard = (REPO / "icarus_engine/dashboard.html").read_text(encoding="utf-8")
     autopilot = (REPO / "icarus_engine/autopilot-ui.js").read_text(encoding="utf-8")
@@ -213,6 +224,7 @@ def test_dashboard_surfaces_tactical_autopilot_and_root_engine_control():
     assert 'p.path == "/api/engine-control"' in server
     assert 'ControlAction("autopilot.configure"' in server
     assert '"autopilot": autopilot.status' in server
+
 
 
 def test_engine_control_ui_supports_every_registered_target_and_generic_args():
