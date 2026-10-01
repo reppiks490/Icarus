@@ -744,6 +744,7 @@ class PantheonKernel:
                 "asset": row["asset"],
                 "horizon_ms": row["horizon_ms"],
                 "last_observation_id": row["last_observation_id"],
+                "last_observed_at": row["last_observed_at"],
                 "energy": row["last_energy"],
                 "status": row["last_status"],
                 "observation_count": row["observation_count"],
@@ -752,6 +753,7 @@ class PantheonKernel:
             for row in cell_rows
         ]
         latest = observations[0] if observations else None
+        ecology = self._ecology_snapshot(limit=100)
         catalog = {
             "ORACLE": {"mode": "native subsystem via read-only adapter", "ownership": "preserved; not reimplemented here"},
             "PARALLAX": {"mode": "native subsystem", "ownership": "preserved"},
@@ -772,6 +774,7 @@ class PantheonKernel:
             "sentinel_cells": cells,
             "engine_catalog": catalog,
             "faculty_names": list(FACULTIES),
+            "ecology": ecology,
             "latest": latest,
             "observations": observations,
             "authority": authority_block(),
@@ -781,5 +784,7 @@ class PantheonKernel:
                 "no_forced_consensus": True,
                 "oracle_parallax_dreamstate_ownership_preserved": True,
                 "risk_kernel_remains_external_hard_gate": True,
+                "aether_evolution_requires_observed_claim_outcomes": True,
+                "cognitive_genesis_never_auto_creates_production_code": True,
             },
         }
