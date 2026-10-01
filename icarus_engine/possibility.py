@@ -419,6 +419,8 @@ class PossibilityEngine:
                 "runner_history_poll_independent_when_available": True,
                 "leader_graph_requires_equal_cadence_and_exact_timestamps": True,
                 "information_wave_requires_post_bar_exchange_ticks": True,
+                "edge_requires_cross_layer_directional_agreement": True,
+                "edge_requires_scenario_derived_phase_boundary": True,
                 "rule": "Model diagnostics only. Missing evidence stays unavailable and NO_EDGE is mandatory when gates fail.",
             },
             "latent_pressure_engine": {
