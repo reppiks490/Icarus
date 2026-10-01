@@ -188,6 +188,7 @@ def test_pantheon_is_visible_in_trader_interface():
     assert 'p.path == "/api/pantheon"' in server
     assert 'p.path == "/admin/pantheon/observe"' in server
     assert 'p.path == "/admin/pantheon/claim"' in server
+    assert '"pantheon": pantheon.snapshot' in server
     for subsystem in ("PANTHEON", "NEMESIS Ω", "GÖDEL Ω", "SOCRATES", "ANANKĒ", "EX NIHILO", "MINT Ω", "NULLSPACE Ω", "ARCHON Ω", "AETHER Ω"):
         assert subsystem in brain
 

@@ -566,6 +566,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             "parallax": parallax.status,
             "dreamstate": dreamstate.status,
             "possibility": possibility.status,
+            "pantheon": pantheon.snapshot,
             "backtests": _backtests_snapshot,
             "code_provenance": local_code_provenance,
             "go_live": lambda: golive_report(port),
