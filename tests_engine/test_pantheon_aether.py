@@ -480,7 +480,7 @@ def test_veritas_quarantines_lucky_positive_monetization_fitness(tmp_path):
         "utility": 0.8,
         "confidence": 0.9,
         "_source_observation_id": source["observation_id"],
-            "evidence": ["fixture:profitable-after-veritas"],
+        "evidence": ["fixture:profitable-after-veritas"],
     })
     assert outcome["utility"] == pytest.approx(0.8)
     assert outcome["fitness_utility"] == pytest.approx(0.0)
@@ -512,7 +512,7 @@ def test_veritas_allows_positive_monetization_fitness_only_for_right_reasons(tmp
         "utility": 0.8,
         "confidence": 0.9,
         "_source_observation_id": source["observation_id"],
-            "evidence": ["fixture:profitable-right-reasons"],
+        "evidence": ["fixture:profitable-right-reasons"],
     })
     assert outcome["fitness_utility"] == pytest.approx(0.8)
     assert outcome["veritas_gate"] == "right_for_right_reasons"
