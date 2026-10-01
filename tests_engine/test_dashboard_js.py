@@ -129,6 +129,10 @@ def test_dashboard_surfaces_repository_native_mcp_evolution_panel():
     assert "Subsystem evolution state" in ui
     assert "Important MCP activity" in ui
     assert "execution_authorized=false" in ui
+    assert "Evidence ledger" in ui
+    assert "Active evidence" in ui
+    assert "Evidence history" in ui
+    assert '/api/possibility/evidence' in server
     assert 'p.path == "/api/evolution"' in server
     assert "EvolutionRemoteSync" in server
     assert "automation_intelligence/mcp_interface/events" in sync
