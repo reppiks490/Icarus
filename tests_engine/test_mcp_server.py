@@ -12,6 +12,10 @@ def test_mcp_server_imports_and_registers_engine_surface():
         "set_engine_chart_config",
         "start_engine_backtest",
         "engine_backtest_status",
+        "engine_market_data_capabilities",
+        "engine_recent_ticks",
+        "engine_order_book_events",
+        "engine_mbo_snapshot",
     ):
         assert callable(getattr(mcp_server, name))
 
@@ -87,3 +91,29 @@ def test_mcp_endpoint_settings_load_plant_env_and_blank_token_fallbacks(tmp_path
 
     monkeypatch.setenv("ICARUS_ENGINE_TOKEN", "engine-explicit")
     assert mcp_server._endpoint_settings()[3] == "engine-explicit"
+
+
+def test_mcp_databento_market_data_routes(monkeypatch):
+    seen = []
+
+    def get(path):
+        seen.append(("get", path))
+        return {"ok": True}
+
+    def post(path, body):
+        seen.append(("post", path, body))
+        return {"ok": True}
+
+    monkeypatch.setattr(mcp_server, "_engine_get", get)
+    monkeypatch.setattr(mcp_server, "_engine_post", post)
+
+    assert mcp_server.engine_market_data_capabilities("nq") == {"ok": True}
+    assert mcp_server.engine_recent_ticks("nq", limit=25, since_ts=123) == {"ok": True}
+    assert mcp_server.engine_order_book_events("nq", schema="mbp-10", limit=50) == {"ok": True}
+    assert mcp_server.engine_mbo_snapshot("nq", timeout=2.5) == {"ok": True}
+    assert seen == [
+        ("get", "/api/market-data/NQ/capabilities"),
+        ("get", "/api/market-data/NQ/ticks?limit=25&since_ts=123"),
+        ("get", "/api/market-data/NQ/depth?schema=mbp-10&limit=50"),
+        ("post", "/admin/market-data/mbo-snapshot", {"asset": "NQ", "timeout": 2.5}),
+    ]

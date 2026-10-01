@@ -245,6 +245,52 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 if not r:
                     return self._json(404, {"error": "unknown asset"})
                 return self._json(200, r.trades(self._int(q, "limit", 100, 1, 2000)))
+            if p.path.startswith("/api/market-data/"):
+                rest = p.path[len("/api/market-data/"):]
+                parts = [x for x in rest.split("/") if x]
+                if len(parts) != 2:
+                    return self._json(404, {"error": "market-data route is /api/market-data/<asset>/<capabilities|ticks|depth>"})
+                r = self._runner(parts[0])
+                if not r:
+                    return self._json(404, {"error": "unknown asset"})
+                kind = parts[1]
+                feed = r.feed
+                if kind == "capabilities":
+                    caps = feed.capabilities() if hasattr(feed, "capabilities") else {}
+                    metadata = feed.meta(r.spec.ticker) if hasattr(feed, "meta") else {}
+                    return self._json(200, {"asset": r.symbol, "provider": type(feed).__name__.lower(),
+                                            "capabilities": caps, "metadata": metadata})
+                if kind == "ticks":
+                    if not hasattr(feed, "trades"):
+                        return self._json(409, {"error": f"{type(feed).__name__} does not expose trade ticks"})
+                    limit = self._int(q, "limit", 1000, 1, 10000)
+                    since = self._int(q, "since_ts", 0, 0, 4_294_967_295)
+                    try:
+                        rows = feed.trades(r.spec.ticker, since_ts=(since or None), limit=limit)
+                    except ValueError as ex:
+                        return self._json(400, {"error": str(ex)})
+                    except Exception as ex:
+                        port.journal.log("WARN", f"market-data ticks {r.symbol}: {type(ex).__name__}: {ex}")
+                        return self._json(502, {"error": f"{type(ex).__name__}: {ex}"})
+                    return self._json(200, {"asset": r.symbol, "provider": type(feed).__name__.lower(),
+                                            "ticks": [vars(x) if hasattr(x, "__dict__") else x for x in rows]})
+                if kind == "depth":
+                    if not hasattr(feed, "depth_events"):
+                        return self._json(409, {"error": f"{type(feed).__name__} does not expose order-book depth"})
+                    schema = str(q.get("schema", ["mbp-10"])[0]).strip().lower()
+                    if schema not in ("mbp-10", "mbo"):
+                        return self._json(400, {"error": "schema must be mbp-10 or mbo"})
+                    limit = self._int(q, "limit", 1000, 1, 10000)
+                    try:
+                        rows = feed.depth_events(r.spec.ticker, schema=schema, limit=limit)
+                    except ValueError as ex:
+                        return self._json(400, {"error": str(ex)})
+                    except Exception as ex:
+                        port.journal.log("WARN", f"market-data depth {r.symbol}: {type(ex).__name__}: {ex}")
+                        return self._json(502, {"error": f"{type(ex).__name__}: {ex}"})
+                    return self._json(200, {"asset": r.symbol, "provider": type(feed).__name__.lower(),
+                                            "schema": schema, "events": rows})
+                return self._json(404, {"error": "unknown market-data resource"})
             if p.path.startswith("/api/backtest/"):
                 rest = p.path[len("/api/backtest/"):]
                 job_id, _, tail = rest.partition("/")
@@ -332,8 +378,13 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             if not isinstance(body, dict):
                 return self._json(400, {"detail": "JSON body must be an object"})
             asset = str(body.get("asset") or body.get("symbol") or "").upper()
-            targets = [self._runner(asset)] if asset and asset != "*" else list(port.runner_list())
-            if asset and asset != "*" and targets == [None]:
+            # Add is the one admin route whose subject is intentionally not already
+            # running. Do not reject it through the generic runner lookup.
+            adding_asset = p.path == "/admin/assets/add"
+            targets = [] if adding_asset else (
+                [self._runner(asset)] if asset and asset != "*" else list(port.runner_list())
+            )
+            if not adding_asset and asset and asset != "*" and targets == [None]:
                 return self._json(404, {"detail": f"unknown asset {asset}"})
             try:
                 if p.path == "/admin/research/studies":
@@ -384,6 +435,25 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                         return self._json(400, {"detail": "pass {\"confirm\": true}"})
                     closed = {r.symbol: r.flatten(_reason(body, "dashboard")) for r in targets}
                     return self._json(200, {"ok": True, "closed": closed, "note": f"flattened {sum(closed.values())} position(s)"})
+                if p.path == "/admin/market-data/mbo-snapshot":
+                    if len(targets) != 1 or targets[0] is None:
+                        raise ValueError("MBO snapshot requires exactly one running asset")
+                    r = targets[0]
+                    if not hasattr(r.feed, "mbo_snapshot"):
+                        return self._json(409, {"error": f"{type(r.feed).__name__} does not expose MBO snapshots"})
+                    timeout = max(0.1, min(30.0, float(body.get("timeout", 5.0))))
+                    try:
+                        rows = r.feed.mbo_snapshot(r.spec.ticker, timeout=timeout)
+                    except TimeoutError as ex:
+                        port.journal.log("WARN", f"market-data MBO snapshot {r.symbol}: {ex}")
+                        return self._json(504, {"error": str(ex)})
+                    except ValueError as ex:
+                        return self._json(400, {"error": str(ex)})
+                    except Exception as ex:
+                        port.journal.log("WARN", f"market-data MBO snapshot {r.symbol}: {type(ex).__name__}: {ex}")
+                        return self._json(502, {"error": f"{type(ex).__name__}: {ex}"})
+                    return self._json(200, {"asset": r.symbol, "provider": type(r.feed).__name__.lower(),
+                                            "schema": "mbo", "snapshot": rows})
                 if p.path in ("/admin/inputs", "/admin/inputs/reset", "/admin/preset", "/admin/rewarm"):
                     from .runtime import resolve_inputs as _resolve
                     vals = body.get("values", {}) if p.path == "/admin/inputs" else None
@@ -469,12 +539,17 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     tok = str(body.get("symbol", "")).strip()
                     if not tok:
                         return self._json(400, {"detail": "symbol required"})
-                    spec = parse_spec(tok, str(body.get("tf") or port.runner_list()[0].spec.chart_tf if port.runner_list() else "20"))
+                    running = port.runner_list()
+                    default_tf = str(body.get("tf") or (running[0].spec.chart_tf if running else "20"))
+                    spec = parse_spec(tok, default_tf)
                     if body.get("tf") not in (None, "") and "@" not in tok:
                         spec = pin_config(spec, "timeframe")
                     spec = apply_chart_config(spec, {k: body[k] for k in ("chart_type", "fill_on", "security_source") if body.get(k) not in (None, "")}, pin=True)
                     if body.get("preset"):
-                        spec.preset = body["preset"]
+                        name = str(body["preset"])
+                        if not os.path.exists(preset_path(port.base_dir, name)):
+                            return self._json(404, {"detail": f"preset {name} not found"})
+                        spec.preset = name
                     r = port.add_asset(spec)
                     return self._json(200, {"ok": True, "note": f"{r.symbol} added ({spec.name}, {spec.chart_tf}m); warming up", "asset": r.symbol})
                 if p.path == "/admin/assets/remove":
