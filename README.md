@@ -27,4 +27,10 @@ The previous README and operator instructions are preserved in [the historical a
 Copyright (c) 2026 reppiks490. **Proprietary — all rights reserved.**
 Public visibility does not grant permission to reuse, redistribute, sell, or claim this work as your own. Written permission is required except where applicable law, existing grants, third-party terms, or GitHub's terms provide otherwise. See [LICENSE.md](LICENSE.md) for the full notice and permission requests.
 
+## ICARUS Mobile
+
+The native iOS/Android client lives under [mobile/](mobile/README.md). It does not expose the loopback engine directly and does not carry the engine admin token. A separate read-only `icarus-mobile-gateway` performs device pairing, rotating refresh credentials, short-lived sessions, curated read routing, and live snapshot delivery.
+
+Architecture and deployment: [docs/icarus/MOBILE_APP.md](docs/icarus/MOBILE_APP.md). Security contract: [docs/icarus/MOBILE_SECURITY.md](docs/icarus/MOBILE_SECURITY.md).
+
 </details>
