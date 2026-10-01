@@ -461,6 +461,19 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
 
     def _integrity_event_control(payload):
         args = _control_args(payload)
+        provenance_keys = ("source_repo", "source_branch", "source_commit")
+        supplied = [key in args for key in provenance_keys]
+        if any(supplied) and not all(supplied):
+            raise ValueError("source_repo, source_branch and source_commit must be supplied together")
+        if not any(supplied):
+            provenance = local_code_provenance()
+            if not provenance.get("candidate_revision_eligible") or not provenance.get("commit"):
+                raise ValueError(
+                    "exact clean ICARUS code provenance is required when integrity provenance is omitted"
+                )
+            args["source_repo"] = provenance["repository"]
+            args["source_branch"] = "local-clean-checkout"
+            args["source_commit"] = provenance["commit"]
         return record_integrity_event(port.base_dir, args)
 
     def _brain_event_control(payload):
@@ -507,7 +520,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 ControlAction("market.mbo_snapshot", "Capture MBO snapshot", "Market Data", "Request one bounded market-by-order snapshot from the selected running asset's provider.", _market_mbo_snapshot_control, target="asset",
                               args_example={"timeout": 5.0}),
                 ControlAction("backtest.start", "Start backtest", "Backtest", "Start a Strategy Tester-compatible backtest against the selected asset's cached tape.", _backtest_start_control, target="asset",
-                              args_example={"timeframe": "20", "session": "RTH"}),
+                              args_example={"timeframe": "20", "session": "rth"}),
 
                 ControlAction("sync.loop_intelligence", "Sync loop intelligence", "Intelligence", "Refresh verified automation-loop receipts now.", lambda _: loop_intelligence_sync.sync_once()),
                 ControlAction("sync.brain_remote", "Sync Adaptive Brain remote evidence", "Intelligence", "Pull the latest verified Adaptive Brain repository evidence.", lambda _: brain_remote_sync.sync_once()),
@@ -528,10 +541,10 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                               args_example={"grid": {}, "windows": {"train_start": 0, "train_end": 1, "validation_start": 2, "validation_end": 3, "holdout_start": 4, "holdout_end": 5}}),
                 ControlAction("research.cancel", "Cancel research job", "Research", "Request cancellation of the active research study by job id.", lambda p: research.cancel(p["target"]), target="job"),
                 ControlAction("research.propose", "Create research proposal", "Research", "Create a proposal from a qualified study and bound evidence.", _research_propose_control, target="job",
-                              args_example={"evidence_ids": [], "rationale": "operator review"}),
+                              args_example={"evidence_ids": ["current-evidence-id"], "rationale": "operator review"}),
                 ControlAction("research.export", "Export qualified proposal", "Research", "Export one qualified proposal artifact for further paper evaluation.", lambda p: research.export(p["target"]), target="proposal"),
                 ControlAction("research.analysis", "Start specialist analysis", "Research", "Start specialist analysis bound to one qualified study and evidence set.", _research_analysis_control, target="job",
-                              args_example={"evidence_ids": [], "rationale": "operator review", "apply": None}),
+                              args_example={"evidence_ids": ["current-evidence-id"], "rationale": "operator review", "apply": False}),
                 ControlAction("research.analysis_cancel", "Cancel specialist analysis", "Research", "Cancel a running specialist analysis job.", lambda p: research.analysis.journal.cancel(p["target"]), target="job"),
                 ControlAction("research.activate", "Activate research candidate", "Research", "Apply a fully qualified research proposal to the paper engine through the activation boundary.", _research_activate_control, target="proposal",
                               danger=True, confirmation="ACTIVATE RESEARCH CANDIDATE", args_example={"operation_id": "operator-operation-id"}),
@@ -546,27 +559,27 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                               args_example={"enabled": False}),
 
                 ControlAction("parallax.record_decision", "Record PARALLAX decision", "PARALLAX", "Record a causally timestamped PARALLAX decision and counterfactual branches.", _parallax_decision_control,
-                              args_example={"asset": "NQ", "regime": "unknown", "decision": {}, "branches": []}),
+                              args_example={"asset": "NQ", "action": "abstain", "observed_at": "2026-10-01T00:00:00Z", "regime": "unknown", "context": {}, "subsystem_votes": {}}),
                 ControlAction("parallax.record_outcome", "Record PARALLAX outcome", "PARALLAX", "Record an observed branch outcome and trigger DREAMSTATE re-screening.", _parallax_outcome_control,
-                              args_example={"decision_id": "decision-id", "utility": 0.0, "metrics": {}, "evidence": []}),
+                              args_example={"decision_id": "decision-id", "label": "actual", "utility": 0.0, "metrics": {}, "evidence": []}),
                 ControlAction("dreamstate.refresh", "Refresh DREAMSTATE", "DREAMSTATE", "Re-screen PARALLAX counterfactual evidence into DREAMSTATE candidates.", lambda p: dreamstate.refresh((p["args"] or {}).get("min_samples", 5)),
                               args_example={"min_samples": 5}),
                 ControlAction("dreamstate.evaluate", "Evaluate DREAMSTATE candidate", "DREAMSTATE", "Apply explicit validation-gate evidence to one candidate.", _dreamstate_evaluate_control, target="candidate",
-                              args_example={"validation": {}, "evidence": []}),
+                              args_example={"validation": {"causal_time": True}, "evidence": ["operator-reviewed evidence"]}),
                 ControlAction("dreamstate.retire", "Retire DREAMSTATE candidate", "DREAMSTATE", "Retire one candidate with a durable reason.", _dreamstate_retire_control, target="candidate",
                               danger=True, confirmation="RETIRE DREAMSTATE CANDIDATE", args_example={"reason": "operator decision"}),
 
                 ControlAction("possibility.ingest_evidence", "Ingest ICARUS Psi evidence", "Possibility", "Inject provenance-labelled bounded external possibility-force evidence for research only.", _possibility_evidence_control, target="asset",
-                              args_example={"values": {}, "source": "operator", "ttl_seconds": 300.0}),
+                              args_example={"values": {"gamma_pressure": {"value": 0.0, "confidence": 1.0}}, "source": "operator", "ttl_seconds": 300.0}),
 
                 ControlAction("system.record_event", "Record System Intelligence event", "Observability", "Append one durable system repair/audit/integration event.", _system_event_control,
                               args_example={"id": "event-id", "kind": "audit", "severity": "info", "title": "Operator event", "detail": "details", "recorded_at": "2026-10-01T00:00:00Z", "repository": "reppiks490/Icarus", "ref": "manual"}),
                 ControlAction("system.upsert_loop", "Upsert automation-loop status", "Observability", "Write one durable automation-loop status receipt into System Intelligence.", _system_loop_control,
                               args_example={"id": "loop-id", "title": "Loop", "status": "active"}),
                 ControlAction("integrity.record_event", "Record Data Integrity event", "Observability", "Append one provenance-labelled integrity/MCP receipt.", _integrity_event_control,
-                              args_example={"area": "audit", "summary": "operator integrity event"}),
+                              args_example={"kind": "audit", "area": "operator-control", "summary": "operator integrity event", "status": "observed", "severity": "info", "verification": "operator observation", "interface_effect": "visible in Data Integrity and Root Control", "evidence": []}),
                 ControlAction("brain.record_event", "Record Adaptive Brain event", "Observability", "Append one evidence-backed brain/subsystem/candidate event.", _brain_event_control,
-                              args_example={"kind": "learning", "summary": "operator brain event"}),
+                              args_example={"kind": "learning", "subject": "operator-control", "summary": "operator brain event", "status": "observed", "evidence": []}),
             )
         },
     )
