@@ -83,6 +83,7 @@ from .dreamstate import DreamstateLab
 from .possibility import PossibilityEngine
 from .performance_proof import PerformanceProofStore
 from .latency_telemetry import LatencyTelemetry
+from .source_reliability import SourceReliabilityStore
 from .autopilot import TacticalAutopilot
 from .engine_control import ControlAction, EngineControlPlane
 from .mcp_control import MCPControlPlane
@@ -90,7 +91,6 @@ from .chronofold import ChronofoldEngine
 from .commissioning import CommissioningEngine
 from .pantheon import PantheonKernel, subsystem_context
 from .sibyl import SibylEngine
-from .apex import ApexKernel
 
 
 def _no_json_constants(name: str):
@@ -197,6 +197,12 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     possibility = PossibilityEngine(port)
     performance_proof = PerformanceProofStore(port.base_dir)
     latency_telemetry = LatencyTelemetry()
+    source_reliability = SourceReliabilityStore(port.base_dir)
+    # Bind one collector to the existing live runners; Portfolio.make_runner
+    # propagates the same sink to assets added later.
+    port.latency_telemetry = latency_telemetry
+    for runner in port.runner_list():
+        runner.latency_telemetry = latency_telemetry
     autopilot = TacticalAutopilot(port)
     parallax = ParallaxStore(port.base_dir)
     dreamstate = DreamstateLab(port.base_dir, parallax=parallax)
@@ -205,15 +211,6 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     commissioning = CommissioningEngine(port.base_dir, port, chronofold)
     pantheon = PantheonKernel(port.base_dir)
     sibyl = SibylEngine(port.base_dir)
-    apex = ApexKernel(
-        port.base_dir,
-        possibility=possibility.status,
-        chronofold=chronofold.status,
-        pantheon=pantheon.snapshot,
-        parallax=parallax.snapshot,
-        dreamstate=dreamstate.snapshot,
-        sibyl=sibyl.snapshot,
-    )
 
     def _control_runner(target: str):
         try:
@@ -825,8 +822,6 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._send(200, (html_path.parent / "pantheon-ui.js").read_bytes(), "text/javascript")
             if p.path == "/sibyl-ui.js":
                 return self._send(200, (html_path.parent / "sibyl-ui.js").read_bytes(), "text/javascript")
-            if p.path == "/apex-ui.js":
-                return self._send(200, (html_path.parent / "apex-ui.js").read_bytes(), "text/javascript")
             if p.path == "/chronofold-ui.js":
                 return self._send(200, (html_path.parent / "chronofold-ui.js").read_bytes(), "text/javascript")
             if p.path == "/commissioning-ui.js":
@@ -908,33 +903,6 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     return self._json(200, pantheon.snapshot())
                 except (ValueError, TypeError) as ex:
                     return self._json(400, {"detail": str(ex)})
-            apex_read_routes = {
-                "/api/apex": None,
-                "/api/apex/participants": "participants",
-                "/api/apex/crowdhunt": "crowdhunt",
-                "/api/apex/forces": "forces",
-                "/api/apex/cascades": "cascades",
-                "/api/apex/causality": "causality",
-                "/api/apex/worlds": "worlds",
-                "/api/apex/epistemics": "epistemics",
-                "/api/apex/self": "self",
-                "/api/apex/conscience": "conscience",
-            }
-            if p.path in apex_read_routes:
-                if not self._auth():
-                    return self._json(401, {"detail": "bad admin token"})
-                try:
-                    state = apex.snapshot(
-                        as_of=q.get("as_of", [None])[0],
-                        asset=q.get("asset", [None])[0],
-                    )
-                    key = apex_read_routes[p.path]
-                    return self._json(200, state if key is None else state[key])
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-                except Exception as ex:
-                    port.journal.log("WARN", f"APEX snapshot: {type(ex).__name__}: {ex}")
-                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
             if p.path == "/api/sibyl":
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
@@ -992,6 +960,10 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
                 return self._json(200, latency_telemetry.snapshot())
+            if p.path == "/api/source-reliability":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                return self._json(200, source_reliability.snapshot())
             if p.path == "/api/brain":
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
@@ -1013,6 +985,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     research_sync=brain_research_sync.status(),
                     proof_status=performance_proof.snapshot(),
                     latency_status=latency_telemetry.snapshot(),
+                    source_reliability=source_reliability.snapshot(),
                 ))
             if p.path == "/api/input-meta":
                 return self._json(200, meta)
@@ -1209,31 +1182,11 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._json(413, {"detail": "body too large"})
             raw = self.rfile.read(n) if n else b""
             try:
-                body = strict_json(raw) if p.path.startswith(("/admin/research/", "/admin/integrity/", "/admin/parallax/", "/admin/dreamstate/", "/admin/possibility/", "/admin/autopilot/", "/admin/engine-control", "/admin/pantheon/", "/admin/sibyl/", "/admin/apex/")) else (json.loads(raw, parse_constant=_no_json_constants) if raw else {})
+                body = strict_json(raw) if p.path.startswith(("/admin/research/", "/admin/integrity/", "/admin/parallax/", "/admin/dreamstate/", "/admin/possibility/", "/admin/autopilot/", "/admin/engine-control", "/admin/pantheon/", "/admin/sibyl/")) else (json.loads(raw, parse_constant=_no_json_constants) if raw else {})
             except ValueError as ex:
                 return self._json(400, {"detail": f"bad JSON body: {ex}"})
             if not isinstance(body, dict):
                 return self._json(400, {"detail": "JSON body must be an object"})
-            if p.path == "/admin/apex/evidence":
-                try:
-                    return self._json(200, apex.ingest_evidence(body))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-            if p.path == "/admin/apex/outcome":
-                try:
-                    return self._json(200, apex.record_outcome(body))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-            if p.path == "/admin/apex/model-observation":
-                try:
-                    return self._json(200, apex.record_model_observation(body))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-            if p.path == "/admin/apex/experiment":
-                try:
-                    return self._json(200, apex.propose_experiment(body))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
             if p.path == "/admin/engine-control":
                 try:
                     return self._json(200, control.run(body))
@@ -1274,6 +1227,11 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             if p.path == "/admin/brain/event":
                 try:
                     return self._json(200, record_brain_event(port.base_dir, body))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+            if p.path == "/admin/source-reliability/observation":
+                try:
+                    return self._json(200, source_reliability.record_observation(body))
                 except (ValueError, TypeError) as ex:
                     return self._json(400, {"detail": str(ex)})
             if p.path == "/admin/performance-proof/forecast":
@@ -1726,7 +1684,6 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     research.close()
 
         def server_close(self):
-            apex.store.close()
             autopilot.close()
             evolution_remote_sync.close()
             brain_research_sync.close()
@@ -1745,10 +1702,10 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     srv.possibility = possibility
     srv.performance_proof = performance_proof
     srv.latency_telemetry = latency_telemetry
+    srv.source_reliability = source_reliability
     srv.autopilot = autopilot
     srv.pantheon = pantheon
     srv.sibyl = sibyl
-    srv.apex = apex
     srv.chronofold = chronofold
     srv.commissioning = commissioning
     srv.daemon_threads = True

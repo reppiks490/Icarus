@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from .champion_challenger import select_shadow_champion
+from .evidence_graph import build_evidence_graph
 
 SCHEMA_VERSION = "icarus-adaptive-brain-v1"
 _EVENT_SCHEMA = "icarus-brain-event-v1"
@@ -84,7 +85,6 @@ SUBSYSTEMS = (
     {"id": "archon", "title": "ARCHON Ω", "owner": "pantheon", "job": "Temporary revocable research-attention arbitration that preserves disagreement and never grants trading authority."},
     {"id": "aether", "title": "AETHER Ω", "owner": "pantheon", "job": "Bounded ephemeral research-swarm ecology with blind independent roles, claim fitness, speciation/extinction, food-web interactions, zero capital authority, and durable lineage."},
     {"id": "sibyl", "title": "SIBYL Ω", "owner": "aion", "job": "Causal as-of future-lightcone synthesis: time-valid independent evidence domains, reachable-state basins, entropy/convergence, temporal collapse/fracture, counterfactuals, attractors/invalidations, and observed calibration with no deterministic-foresight claim."},
-    {"id": "apex-omega", "title": "APEX Ω", "owner": "omega", "job": "Federated world-state reconstruction, participant/force synthesis, evidence ancestry, epistemic governance, reality-gap/self-health, synthetic-conscience audit, and research-only scientific arbitration."},
     {"id": "provenance", "title": "PROVENANCE", "owner": "daedalus", "job": "Exact code/data/artifact lineage, commit binding, receipt integrity, and proof-chain validation."},
     {"id": "ml", "title": "ML", "owner": "aion", "job": "Research-only model lifecycle, training evidence, calibration, drift/OOD state, reproducibility, and candidate packaging."},
     {"id": "data", "title": "DATA", "owner": "flow", "job": "Raw-source identity, availability-time truth, representation quality, freshness, and replay-safe market evidence."},
@@ -577,6 +577,7 @@ def brain_snapshot(
     research_sync: Mapping[str, Any] | None = None,
     proof_status: Mapping[str, Any] | None = None,
     latency_status: Mapping[str, Any] | None = None,
+    source_reliability: Mapping[str, Any] | None = None,
     limit: int = 1000,
 ) -> dict[str, Any]:
     """Build the operator brain state from measured local evidence only."""
@@ -639,6 +640,11 @@ def brain_snapshot(
         "hot_path": None, "stages": [], "targets_are_measured_not_assumed": True,
         "execution_authorized": False, "production_decision_authorized": False,
     }
+    reliability = dict(source_reliability) if isinstance(source_reliability, Mapping) else {
+        "observation_count": 0, "source_stream_count": 0, "sources": [],
+        "execution_authorized": False, "production_decision_authorized": False,
+    }
+    evidence_graph = build_evidence_graph(events, proof)
     proof_metrics = proof.get("metrics") if isinstance(proof.get("metrics"), Mapping) else {}
     proof_closed = proof.get("closed_sample") if isinstance(proof.get("closed_sample"), Mapping) else {}
     proof_rows = proof.get("candidate_statistics") if isinstance(proof.get("candidate_statistics"), list) else []
@@ -722,7 +728,9 @@ def brain_snapshot(
             "production_decision_authorized": False,
         },
         "performance_proof": proof,
+        "evidence_graph": evidence_graph,
         "latency_telemetry": latency,
+        "source_reliability": reliability,
         "evidence_tournaments": tournaments,
         "learning": {
             "brain_events_total": len(events),

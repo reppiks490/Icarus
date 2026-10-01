@@ -27,7 +27,6 @@ NODE = shutil.which("node")
         "icarus_engine/possibility-ui.js",
         "icarus_engine/pantheon-ui.js",
         "icarus_engine/sibyl-ui.js",
-        "icarus_engine/apex-ui.js",
         "icarus_engine/chronofold-ui.js",
         "icarus_engine/commissioning-ui.js",
         "icarus_engine/integrity-ui.js",
@@ -124,6 +123,11 @@ def test_dashboard_surfaces_adaptive_brain_fabric():
     assert "Closed-sample 100%" in ui
     assert "Hot-path p99" in ui
     assert "Evidence champion / challenger tournaments" in ui
+    assert "Causal evidence graph" in ui
+    assert "Independent corroboration" in ui
+    assert "Source reliability memory" in ui
+    assert "/api/source-reliability" in server
+    assert "/admin/source-reliability/observation" in server
     assert "/api/performance-proof" in server
     assert "/api/latency" in server
     assert "/admin/performance-proof/forecast" in server
@@ -303,68 +307,3 @@ def test_dashboard_surfaces_authentic_market_data_console():
     assert "ts_event_ns" in ui
     assert "Sequence jumps in window" in ui
     assert "does not invent a buy/sell interpretation" in ui
-
-
-def test_dashboard_surfaces_apex_omega_world_model():
-    dashboard = (REPO / "icarus_engine/dashboard.html").read_text(encoding="utf-8")
-    ui = (REPO / "icarus_engine/apex-ui.js").read_text(encoding="utf-8")
-    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
-    brain = (REPO / "icarus_engine/brain.py").read_text(encoding="utf-8")
-
-    assert '<script src="/apex-ui.js"></script>' in dashboard
-    assert 'data-v="apex">APEX Ω</span>' in dashboard
-    assert "wireApex()" in dashboard
-    assert "view === 'apex'" in dashboard
-    assert "/api/apex" in ui
-    assert "execution_authorized=false" in ui
-    assert "production_decision_authorized=false" in ui
-    assert "UNAVAILABLE" in ui
-    assert "UNMEASURED" in ui
-    for panel in (
-        "WORLD",
-        "PARTICIPANTS",
-        "CROWDHUNT",
-        "FORCES",
-        "LIQUIDITY",
-        "CASCADES",
-        "CAUSAL GRAPH",
-        "COUNTERFACTUAL WORLDS",
-        "UNKNOWN FORCE",
-        "EPISTEMIC HEALTH",
-        "MODEL HEALTH",
-        "CONSCIENCE",
-    ):
-        assert panel in ui
-    assert 'p.path == "/apex-ui.js"' in server
-    assert '"/api/apex": None' in server
-    assert '"apex-omega"' in brain
-
-
-def test_dashboard_surfaces_apex_omega_world_intelligence():
-    dashboard = (REPO / "icarus_engine/dashboard.html").read_text(encoding="utf-8")
-    ui = (REPO / "icarus_engine/apex-ui.js").read_text(encoding="utf-8")
-    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
-
-    assert '<script src="/apex-ui.js"></script>' in dashboard
-    assert 'data-v="apex">APEX Ω</span>' in dashboard
-    assert "view === 'apex'" in dashboard
-    assert "wireApex()" in dashboard
-    assert 'p.path == "/apex-ui.js"' in server
-    assert "/api/apex" in ui
-    assert "WORLD" in ui
-    assert "PARTICIPANTS" in ui
-    assert "CROWDHUNT" in ui
-    assert "FORCES" in ui
-    assert "LIQUIDITY" in ui
-    assert "CASCADES" in ui
-    assert "CAUSAL GRAPH" in ui
-    assert "COUNTERFACTUAL WORLDS" in ui
-    assert "UNKNOWN FORCE" in ui
-    assert "EPISTEMIC HEALTH" in ui
-    assert "MODEL HEALTH" in ui
-    assert "CONSCIENCE" in ui
-    assert "UNAVAILABLE" in ui
-    assert "UNMEASURED" in ui
-    assert "execution_authorized=false" in ui
-    assert "production_decision_authorized=false" in ui
-    assert "v == null" in ui or "v === null" in ui
