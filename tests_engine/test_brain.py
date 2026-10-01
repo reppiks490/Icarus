@@ -49,6 +49,20 @@ def test_brain_registers_five_custom_agents_and_twelve_plus_subsystems(tmp_path)
 
 def test_brain_surfaces_zero_cost_incubator_without_promotion_authority(tmp_path):
     research = {
+        "adaptation": {
+            "assets": {
+                "NQ": {
+                    "last_proposal": "p" * 64,
+                    "review_mode": "study_only",
+                    "status": "candidate_proposed",
+                    "regime_context": {
+                        "label": "STRONG TREND",
+                        "regime_score": 0.81,
+                        "observed_market_ts": 660,
+                    },
+                }
+            }
+        },
         "ledger": {
             "proposals": [
                 {
@@ -81,6 +95,11 @@ def test_brain_surfaces_zero_cost_incubator_without_promotion_authority(tmp_path
     assert out["incubator"]["proposal_count"] == 2
     assert out["incubator"]["review_required"] == 1
     assert out["incubator"]["approved"] == 1
+    nq = next(row for row in out["incubator"]["proposals"] if row["asset"] == "NQ")
+    assert nq["review_mode"] == "study_only"
+    assert nq["scheduler_status"] == "candidate_proposed"
+    assert nq["regime_context"]["label"] == "STRONG TREND"
+    assert nq["regime_context"]["regime_score"] == 0.81
     assert out["incubator"]["execution_authorized"] is False
     assert out["incubator"]["production_decision_authorized"] is False
     assert out["learning"]["incubator_proposals"] == 2
