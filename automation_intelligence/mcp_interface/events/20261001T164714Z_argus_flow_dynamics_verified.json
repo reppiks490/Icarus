@@ -1,0 +1,36 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "argus-flow-dynamics-verified-20261001T164714Z",
+  "category": "EVOLUTION",
+  "severity": "success",
+  "status": "verified",
+  "subsystems": [
+    "argus",
+    "provenance",
+    "ml",
+    "data"
+  ],
+  "recorded_at": "2026-10-01T16:47:14Z",
+  "title": "ARGUS causal trade-flow dynamics verified",
+  "summary": "ARGUS now derives deterministic causal trade-flow dynamics from ordered trade prints while preserving its evidence-tier firewall. Explicit aggressor-side data remains TRUE_TRADE; any tick-rule inference downgrades the whole result to INFERRED_TRADE. The new layer measures signed volume, imbalance, print concentration, directional efficiency, flow-price alignment, pressure without displacement, side flips, same-side run concentration, aggressor VWAP separation, and trade/volume rates with strict chronology, sequence, finite-value, and tick-alignment checks.",
+  "source_repository": "reppiks490/divine-providence",
+  "source_ref": "main",
+  "source_commit": "65700f66a8c5e6f9ca9f9329546f6d568a108b16",
+  "evidence": [
+    "divine-providence PR #13 merged at 65700f66a8c5e6f9ca9f9329546f6d568a108b16",
+    "exact-head subsystem-evolution workflow run 36894602232 completed success",
+    "Linux and Windows ARGUS causal subsystem jobs passed",
+    "intelligence-fabric job passed",
+    "full twelve-system validation passed",
+    "TRUE_TRADE requires every print to carry explicit aggressor side",
+    "any tick-rule inference downgrades the complete result to INFERRED_TRADE",
+    "inference can be disabled to fail closed",
+    "trade history chronology and positive sequence ordering are validated",
+    "off-tick, non-finite, non-positive or invalid-side inputs fail closed",
+    "pressure_without_displacement is explicitly descriptive and not labelled true absorption",
+    "execution_authorized=false",
+    "production_decision_authorized=false"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}
