@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from icarus_engine.qualification_receipts import QualificationReceiptStore
+from icarus_engine.qualification_receipts import QualificationReceiptStore, build_shadow_promotion_event
 
 
 GATES = ("causal_time", "provenance", "independent_verification")
@@ -78,3 +78,61 @@ def test_candidate_revision_scopes_do_not_mix(tmp_path):
     assert first["validation"]["provenance"] is False
     assert second["validation"]["causal_time"] is False
     assert second["validation"]["provenance"] is True
+
+
+def _candidate(stage="validated", source_commit="a"*40):
+    return {
+        "candidate_id": "nq-trend-v1",
+        "stage": stage,
+        "regimes": ["TREND", "STRONG"],
+        "metrics": {"validation_score": 0.84},
+        "source_repo": "reppiks490/Icarus",
+        "source_commit": source_commit,
+        "execution_authorized": False,
+        "production_decision_authorized": False,
+    }
+
+
+def test_promotion_event_requires_exact_ready_receipts_and_preserves_candidate_identity(tmp_path):
+    store = QualificationReceiptStore(tmp_path, GATES)
+    store.record(_receipt("causal_time", i=0))
+    store.record(_receipt("provenance", i=1))
+    store.record(_receipt("independent_verification", i=2))
+    state = store.candidate_status("nq-trend-v1", "reppiks490/Icarus", "a"*40)
+    event = build_shadow_promotion_event(_candidate(), state)
+    assert event["kind"] == "candidate"
+    assert event["stage"] == "qualified_shadow"
+    assert event["status"] == "qualified"
+    assert event["candidate_id"] == "nq-trend-v1"
+    assert event["regimes"] == ["TREND", "STRONG"]
+    assert event["metrics"]["validation_score"] == 0.84
+    assert event["validation"] == state["validation"]
+    assert event["source_commit"] == "a" * 40
+    assert len(event["evidence"]) == len(GATES)
+    assert all(x.startswith("qualification-receipt:") for x in event["evidence"])
+    assert event["execution_authorized"] is False
+    assert event["production_decision_authorized"] is False
+
+
+def test_promotion_event_rejects_unready_or_wrong_revision(tmp_path):
+    store = QualificationReceiptStore(tmp_path, GATES)
+    store.record(_receipt("causal_time", i=0))
+    state = store.candidate_status("nq-trend-v1", "reppiks490/Icarus", "a"*40)
+    with pytest.raises(ValueError, match="not qualification-ready"):
+        build_shadow_promotion_event(_candidate(), state)
+
+    for i, gate in enumerate(GATES):
+        if not state["validation"][gate]:
+            store.record(_receipt(gate, i=10+i))
+    ready = store.candidate_status("nq-trend-v1", "reppiks490/Icarus", "a"*40)
+    with pytest.raises(ValueError, match="source revision"):
+        build_shadow_promotion_event(_candidate(source_commit="c"*40), ready)
+
+
+def test_promotion_event_rejects_candidate_before_validated_stage(tmp_path):
+    store = QualificationReceiptStore(tmp_path, GATES)
+    for i, gate in enumerate(GATES):
+        store.record(_receipt(gate, i=i))
+    ready = store.candidate_status("nq-trend-v1", "reppiks490/Icarus", "a"*40)
+    with pytest.raises(ValueError, match="must be validated"):
+        build_shadow_promotion_event(_candidate(stage="training"), ready)
