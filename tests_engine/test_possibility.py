@@ -553,3 +553,43 @@ def test_runner_bar_leader_graph_uses_exact_timestamps_not_tail_position():
     assert leader["lag1_correlation"] > 0.95
     assert leader["samples"] < 69
     assert out["data_health"]["history"]["gap_returns_skipped"] > 0
+
+
+
+def test_runner_bar_leaders_prefer_real_close_over_transformed_chart_close():
+    port = ReplayPort()
+    for runner in port.runners.values():
+        original = list(runner.bars)
+        runner.overlays = [{"ts": bar.ts, "real_c": bar.c} for bar in original]
+        runner.bars = [
+            SimpleNamespace(ts=bar.ts, c=100.0 + (i % 2) * 0.00001)
+            for i, bar in enumerate(original)
+        ]
+    engine = PossibilityEngine(port, scenarios=96)
+    out = engine.snapshot("NQ")
+    leader = out["causal_leadership"]["leaders"][0]
+    assert leader["asset"] == "ES"
+    assert leader["lag1_correlation"] > 0.95
+    assert leader["stability"] > 0.8
+    assert -1.0 <= leader["latest_peer_z"] <= 1.0
+    assert out["data_health"]["history"]["price_basis"] == "real_close"
+
+
+def test_runner_bar_leaders_reject_stale_latest_peer_bar():
+    port = ReplayPort()
+    port.runners["ES"].bars = port.runners["ES"].bars[:-1]
+    engine = PossibilityEngine(port, scenarios=96)
+    out = engine.snapshot("NQ")
+    leaders = out["causal_leadership"]
+    assert leaders["status"] == "warming"
+    rejected = {row["asset"]: row for row in leaders["rejected_peers"]}
+    assert rejected["ES"]["reason"] == "latest_bar_not_aligned"
+
+
+def test_runner_bar_leader_stability_is_exposed_and_bounded():
+    engine = PossibilityEngine(ReplayPort(), scenarios=96)
+    out = engine.snapshot("NQ")
+    leader = out["causal_leadership"]["leaders"][0]
+    assert 0.0 <= leader["stability"] <= 1.0
+    assert len(leader["fold_correlations"]) >= 2
+    assert 0.0 <= leader["lead_strength"] <= 1.0
