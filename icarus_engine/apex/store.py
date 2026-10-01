@@ -47,6 +47,24 @@ class ApexStore:
                     ON evidence(observed_ts, received_ts);
                 CREATE INDEX IF NOT EXISTS idx_apex_evidence_subject_asof
                     ON evidence(subject, observed_ts, received_ts);
+                CREATE TABLE IF NOT EXISTS beliefs (
+                    belief_id TEXT PRIMARY KEY,
+                    semantic_json TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    created_ts REAL NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS belief_events (
+                    event_id TEXT PRIMARY KEY,
+                    belief_id TEXT NOT NULL REFERENCES beliefs(belief_id),
+                    state TEXT NOT NULL,
+                    evidence_json TEXT NOT NULL,
+                    reason TEXT NOT NULL,
+                    event_at TEXT NOT NULL,
+                    event_ts REAL NOT NULL,
+                    semantic_json TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_apex_belief_events_asof
+                    ON belief_events(belief_id, event_ts);
                 """
             )
 
