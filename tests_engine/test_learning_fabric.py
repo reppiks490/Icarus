@@ -318,3 +318,27 @@ def test_empirical_scorecards_publish_research_only_apex_credibility(tmp_path):
     assert 0.0 <= row["score"] <= 1.0
     assert row["execution_authorized"] is False
     assert row["production_decision_authorized"] is False
+
+
+def test_background_learning_never_blocks_engine_startup(tmp_path, monkeypatch):
+    import threading
+    import time
+    from icarus_engine.learning_fabric import LearningFabric
+
+    fabric = LearningFabric(tmp_path)
+    entered = threading.Event()
+    release = threading.Event()
+
+    def slow_cycle():
+        entered.set()
+        release.wait(2)
+        return {"status": "ok", "execution_authorized": False}
+
+    monkeypatch.setattr(fabric, "tick", slow_cycle)
+    started = time.monotonic()
+    fabric.start_background()
+    elapsed = time.monotonic() - started
+    assert elapsed < 0.5
+    assert entered.wait(1)
+    release.set()
+    fabric.stop()
