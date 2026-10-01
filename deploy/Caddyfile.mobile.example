@@ -1,0 +1,11 @@
+# TLS terminator for ICARUS Mobile Gateway.
+# Replace mobile.example.com with a hostname you control.
+mobile.example.com {
+    encode zstd gzip
+    reverse_proxy 127.0.0.1:8792
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "no-referrer"
+    }
+}

@@ -1,0 +1,22 @@
+[Unit]
+Description=ICARUS Mobile Read-Only Gateway
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=icarus
+WorkingDirectory=/opt/icarus
+Environment=ICARUS_HOME=/var/lib/icarus
+EnvironmentFile=/etc/icarus/mobile-gateway.env
+ExecStart=/opt/icarus/.venv/bin/icarus-mobile-gateway --root /var/lib/icarus serve --host 127.0.0.1 --port 8792 --engine http://127.0.0.1:8791
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/icarus
+
+[Install]
+WantedBy=multi-user.target
