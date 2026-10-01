@@ -126,6 +126,11 @@ def test_dashboard_surfaces_adaptive_brain_fabric():
     assert "Causal evidence graph" in ui
     assert "Independent corroboration" in ui
     assert "Source reliability memory" in ui
+    assert "Immutable qualification receipts" in ui
+    assert "Qualification-ready revisions" in ui
+    assert "/api/qualification-receipts" in server
+    assert "/admin/qualification-receipts/record" in server
+    assert "/admin/qualification-receipts/sync" in server
     assert "/api/source-reliability" in server
     assert "/admin/source-reliability/observation" in server
     assert "/api/performance-proof" in server
