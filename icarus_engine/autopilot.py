@@ -382,6 +382,8 @@ class TacticalAutopilot:
                 }
                 state["last_error"] = None
                 self._write(state)
+            if record["champion"]:
+                self._mirror_champion(record)
             return self.status()
         except Exception as ex:
             with self._lock:
@@ -398,6 +400,32 @@ class TacticalAutopilot:
                 }
                 self._write(state)
             return self.status()
+
+    def _mirror_champion(self, record):
+        """Mirror new autonomous champions into ICARUS System Intelligence."""
+        try:
+            delta = record.get("delta") or {}
+            metrics = record.get("metrics") or {}
+            append_system_event(self.port.base_dir, {
+                "id": "autopilot-champion:" + str(record.get("asset")) + ":" + str(record.get("id")),
+                "kind": "integration",
+                "severity": "success",
+                "title": "Tactical Autopilot champion: " + str(record.get("asset")),
+                "detail": (
+                    "candidate=" + str(record.get("id"))
+                    + " score=" + str(metrics.get("score"))
+                    + " delta=" + str(delta.get("name"))
+                    + " " + str(delta.get("from")) + "->" + str(delta.get("to"))
+                    + " shadow-only; no paper/live input mutation"
+                ),
+                "recorded_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+                "repository": "reppiks490/Icarus",
+                "ref": str(record.get("id")),
+            })
+        except Exception:
+            # The optimizer journal remains authoritative if the auxiliary UI
+            # mirror is temporarily unavailable.
+            return
 
     def status(self):
         with self._lock:
