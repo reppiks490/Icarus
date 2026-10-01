@@ -117,3 +117,28 @@ class CausalGraph:
 
     def snapshot(self) -> dict[str,Any]:
         return {"edges":[dict(e) for e in sorted(self._edges.values(),key=lambda x:x["edge_id"])], **authority_flags()}
+
+
+def information_wave(edges, *, origin: str, as_of: str, max_depth: int = 8) -> dict[str, Any]:
+    if isinstance(max_depth,bool) or not isinstance(max_depth,int) or max_depth<1:
+        raise ValueError("max_depth must be positive")
+    adj: dict[str,list[Mapping[str,Any]]]={}
+    for e in edges:
+        if not isinstance(e,Mapping) or e.get("status") in {"contradicted","unknown"}:
+            continue
+        adj.setdefault(str(e.get("source")),[]).append(e)
+    out=[]
+    def walk(node: str,depth: int,confidence: float,contradictions: list[str],seen: set[str]):
+        if depth>=max_depth:
+            return
+        for e in adj.get(node,[]):
+            nxt=str(e.get("target"))
+            if nxt in seen:
+                continue
+            conf=confidence*max(0.0,min(1.0,float(e.get("confidence",0.0))))
+            cons=contradictions+list(e.get("contradictions",[]) or [])
+            out.append({"source":node,"target":nxt,"depth":depth+1,"confidence":conf,"contradictions":cons})
+            walk(nxt,depth+1,conf,cons,seen|{nxt})
+    walk(origin,0,1.0,[],{origin})
+    out.sort(key=lambda x:(x["depth"],-x["confidence"],x["source"],x["target"]))
+    return {"schema_version":"icarus-apex-information-wave-v1","origin":origin,"as_of":as_of,"paths":out,**authority_flags()}
