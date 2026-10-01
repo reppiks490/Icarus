@@ -84,3 +84,11 @@ def test_missing_or_invalid_manifest_fails_closed(tmp_path):
     assert invalid["mirror_ok"] is False
     assert invalid["items"] == []
     assert invalid["warnings"]
+
+
+def test_repository_manifest_satisfies_interface_mirror_policy():
+    repo = Path(__file__).resolve().parents[1]
+    result = load(repo)
+    assert result["mirror_ok"] is True, result["warnings"]
+    assert result["items"], "repository system-intelligence manifest must not be empty"
+    assert all(item["interface_surface"] == "Intelligence" for item in result["items"] if item["important"])
