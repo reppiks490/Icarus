@@ -81,7 +81,7 @@ def _git_sha(value: Any) -> str:
     return value
 
 
-def _signal_key(signal: Mapping[str, Any]) -> tuple[str, str, str, str, str, str]:
+def _signal_key(signal: Mapping[str, Any]) -> tuple[str, str, str, str, str, str, str]:
     return (
         str(signal.get("asset") or ""),
         str(signal.get("regime") or ""),
@@ -89,6 +89,7 @@ def _signal_key(signal: Mapping[str, Any]) -> tuple[str, str, str, str, str, str
         str(signal.get("comparison_contract_hash") or ""),
         str(signal.get("kind") or ""),
         str(signal.get("branch_label") or ""),
+        str(signal.get("branch_params_hash") or ""),
     )
 
 
@@ -395,7 +396,7 @@ class DreamstateLab:
             },
         )
 
-    def _retire_decayed_sources(self, hypothesis_map: Mapping[tuple[str, str, str, str, str, str], Mapping[str, Any]]) -> list[str]:
+    def _retire_decayed_sources(self, hypothesis_map: Mapping[tuple[str, str, str, str, str, str, str], Mapping[str, Any]]) -> list[str]:
         retired: list[str] = []
         with _LOCK, self._connect() as con:
             rows = con.execute(
