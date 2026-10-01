@@ -20,7 +20,7 @@ def test_control_plane_status_isolated_and_truthful(tmp_path: Path):
         },
     )
     status = cp.status()
-    assert status["schema_version"] == "icarus-engine-control-v1"
+    assert status["schema_version"] == "icarus-engine-control-v2"
     assert status["authority"]["application_control"] is True
     assert status["authority"]["arbitrary_shell"] is False
     assert status["authority"]["broker_arming"] is False
