@@ -116,3 +116,19 @@ Observation timestamps must be timezone-aware ISO-8601, are canonicalized to UTC
 before hashing/storage, and fail closed when materially in the future. This
 prevents offset-string ordering errors and accidental look-ahead evidence from
 entering PANTHEON's immutable observation ledger.
+
+
+## AETHER blind-claim protocol
+
+AETHER now has a durable first-pass claim protocol rather than only spawning
+agent descriptors. A spawned agent can commit exactly one immutable first-pass
+claim tied to its observation and information partition. The kernel verifies
+that the agent ID was actually spawned for that observation and rejects claims
+that declare peer context was used during the blind round. Falsifier,
+alternative-cause, provenance-guard and risk-guard claims are required before
+the observation is marked ready for deliberation.
+
+The deliberation state reports directional disagreement and stated confidence
+without electing a trade or forcing consensus. Agent claims remain research
+evidence with execution_authorized=false and
+production_decision_authorized=false.

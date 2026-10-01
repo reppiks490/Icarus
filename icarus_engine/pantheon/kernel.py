@@ -21,6 +21,7 @@ from .contracts import (
     json_canonical,
     mapping,
     text,
+    unit,
 )
 from .faculties import evaluate_faculties
 
@@ -68,6 +69,15 @@ class PantheonKernel:
                     payload_json TEXT NOT NULL,
                     created_at TEXT NOT NULL
                 );
+                CREATE TABLE IF NOT EXISTS agent_claims (
+                    claim_id TEXT PRIMARY KEY,
+                    observation_id TEXT NOT NULL,
+                    agent_id TEXT NOT NULL,
+                    role TEXT NOT NULL,
+                    payload_json TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    UNIQUE(observation_id, agent_id)
+                );
                 CREATE TABLE IF NOT EXISTS sentinel_cells (
                     cell_id TEXT PRIMARY KEY,
                     asset TEXT NOT NULL,
@@ -80,6 +90,7 @@ class PantheonKernel:
                 );
                 CREATE INDEX IF NOT EXISTS idx_pantheon_obs_asset ON observations(asset, observed_at);
                 CREATE INDEX IF NOT EXISTS idx_pantheon_claim_obs ON claims(observation_id, kind);
+                CREATE INDEX IF NOT EXISTS idx_pantheon_agent_claim_obs ON agent_claims(observation_id, role);
                 CREATE INDEX IF NOT EXISTS idx_pantheon_cells_energy ON sentinel_cells(last_energy, updated_at);
                 """
             )
@@ -251,12 +262,109 @@ class PantheonKernel:
             )
         return self.observation(observation_id)
 
+    def record_agent_claim(self, payload: Mapping[str, Any]) -> dict[str, Any]:
+        """Commit one blind-first-pass claim from a spawned AETHER research agent."""
+        if not isinstance(payload, Mapping):
+            raise ValueError("agent claim must be an object")
+        observation_id = text(payload.get("observation_id"), "observation_id", 96)
+        agent_id = text(payload.get("agent_id"), "agent_id", 96)
+        if payload.get("peer_context_used", False) is not False:
+            raise ValueError("blind first-pass AETHER claims cannot use peer context")
+        claim = mapping(payload.get("claim", {}), "claim")
+        thesis = text(claim.get("thesis"), "claim.thesis", 1200)
+        direction = text(claim.get("direction", "unknown"), "claim.direction", 16).lower()
+        if direction not in {"long", "short", "flat", "unknown"}:
+            raise ValueError("claim.direction must be long, short, flat or unknown")
+        confidence = unit(claim.get("confidence"), "claim.confidence")
+        falsifier = text(claim.get("falsifier", ""), "claim.falsifier", 1200, required=False)
+        evidence = claim.get("evidence", [])
+        if isinstance(evidence, str):
+            evidence = [evidence]
+        if not isinstance(evidence, list) or len(evidence) > 24:
+            raise ValueError("claim.evidence must be a list with at most 24 items")
+        normalized_evidence = [text(x, "claim.evidence item", 700) for x in evidence]
+
+        observation = self.observation(observation_id)
+        agents = observation.get("analysis", {}).get("aether", {}).get("agents", [])
+        agent = next((row for row in agents if isinstance(row, Mapping) and row.get("agent_id") == agent_id), None)
+        if agent is None:
+            raise ValueError("agent_id is not an active AETHER agent for this observation")
+        role = text(agent.get("role"), "agent.role", 64)
+        normalized = {
+            "thesis": thesis,
+            "direction": direction,
+            "confidence": confidence,
+            "falsifier": falsifier,
+            "evidence": normalized_evidence,
+            "peer_context_used": False,
+            "information_partition": agent.get("information_partition"),
+            "independence_round": agent.get("independence_round"),
+        }
+        raw = json_canonical(normalized, "agent claim", 65536)
+        claim_id = "aethc-" + digest(observation_id, agent_id)[:20]
+        now = _utc_now()
+        with _LOCK, self._connect() as con:
+            existing = con.execute(
+                "SELECT * FROM agent_claims WHERE observation_id=? AND agent_id=?",
+                (observation_id, agent_id),
+            ).fetchone()
+            if existing:
+                if existing["payload_json"] != raw or existing["role"] != role:
+                    raise ValueError("AETHER agent first-pass claim is immutable")
+                return self.observation(observation_id)
+            con.execute(
+                "INSERT INTO agent_claims(claim_id,observation_id,agent_id,role,payload_json,created_at) VALUES(?,?,?,?,?,?)",
+                (claim_id, observation_id, agent_id, role, raw, now),
+            )
+        return self.observation(observation_id)
+
+    def _agent_claim_state(self, observation_id: str) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+        with _LOCK, self._connect() as con:
+            rows = con.execute(
+                "SELECT * FROM agent_claims WHERE observation_id=? ORDER BY rowid",
+                (observation_id,),
+            ).fetchall()
+        claims = [
+            {
+                "claim_id": row["claim_id"],
+                "agent_id": row["agent_id"],
+                "role": row["role"],
+                "claim": json.loads(row["payload_json"]),
+                "created_at": row["created_at"],
+            }
+            for row in rows
+        ]
+        mandatory = {"falsifier", "alternative_cause", "provenance_guard", "risk_guard"}
+        present = {row["role"] for row in claims}
+        missing = sorted(mandatory - present)
+        directional = [row["claim"].get("direction") for row in claims if row["claim"].get("direction") in {"long", "short", "flat"}]
+        counts = {name: directional.count(name) for name in ("long", "short", "flat")}
+        disagreement = None
+        if directional:
+            disagreement = 1.0 - (max(counts.values()) / len(directional))
+        confidence_values = [float(row["claim"].get("confidence", 0.0)) for row in claims]
+        return claims, {
+            "ready_for_deliberation": not missing,
+            "mandatory_roles": sorted(mandatory),
+            "missing_mandatory_roles": missing,
+            "submitted_claims": len(claims),
+            "direction_counts": counts,
+            "disagreement_index": disagreement,
+            "mean_stated_confidence": (sum(confidence_values) / len(confidence_values)) if confidence_values else None,
+            "blind_first_pass_complete": not missing,
+            "peer_conclusions_hidden_during_first_pass": True,
+            "consensus_forced": False,
+            "execution_authorized": False,
+            "production_decision_authorized": False,
+        }
+
     def observation(self, observation_id: str) -> dict[str, Any]:
         with _LOCK, self._connect() as con:
             row = con.execute("SELECT * FROM observations WHERE observation_id=?", (observation_id,)).fetchone()
             if not row:
                 raise ValueError("unknown PANTHEON observation")
             claim_rows = con.execute("SELECT * FROM claims WHERE observation_id=? ORDER BY rowid", (observation_id,)).fetchall()
+        agent_claims, deliberation = self._agent_claim_state(observation_id)
         return {
             "observation_id": row["observation_id"],
             "observed_at": row["observed_at"],
@@ -265,6 +373,8 @@ class PantheonKernel:
             "source_commit": row["source_commit"],
             "input": json.loads(row["payload_json"]),
             "analysis": json.loads(row["analysis_json"]),
+            "agent_claims": agent_claims,
+            "deliberation": deliberation,
             "claims": [
                 {
                     "claim_id": r["claim_id"],
@@ -281,7 +391,7 @@ class PantheonKernel:
         with _LOCK, self._connect() as con:
             rows = con.execute("SELECT observation_id FROM observations ORDER BY observed_at DESC LIMIT ?", (limit,)).fetchall()
             counts = con.execute(
-                "SELECT COUNT(*) AS observations,(SELECT COUNT(*) FROM claims) AS claims,(SELECT COUNT(*) FROM sentinel_cells) AS cells FROM observations"
+                "SELECT COUNT(*) AS observations,(SELECT COUNT(*) FROM claims) AS claims,(SELECT COUNT(*) FROM agent_claims) AS agent_claims,(SELECT COUNT(*) FROM sentinel_cells) AS cells FROM observations"
             ).fetchone()
             cell_rows = con.execute(
                 "SELECT * FROM sentinel_cells ORDER BY last_energy DESC,updated_at DESC LIMIT 100"
@@ -317,7 +427,7 @@ class PantheonKernel:
         }
         return {
             "schema_version": SCHEMA_VERSION,
-            "counts": {"observations": counts["observations"], "claims": counts["claims"], "sentinel_cells": counts["cells"]},
+            "counts": {"observations": counts["observations"], "claims": counts["claims"], "agent_claims": counts["agent_claims"], "sentinel_cells": counts["cells"]},
             "sentinel_cells": cells,
             "engine_catalog": catalog,
             "faculty_names": list(FACULTIES),

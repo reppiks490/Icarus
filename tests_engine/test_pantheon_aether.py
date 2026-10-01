@@ -346,3 +346,73 @@ def test_pantheon_time_is_canonical_utc_and_future_closed(tmp_path):
     future = (datetime.now(timezone.utc) + timedelta(days=1)).isoformat()
     with pytest.raises(ValueError, match="future"):
         kernel.record_observation(_payload(observation_id="pan-future", observed_at=future))
+
+
+def test_aether_claim_protocol_preserves_independence_and_disagreement(tmp_path):
+    kernel = PantheonKernel(tmp_path, swarm=AetherSwarm(threshold=0.0, max_agents=8))
+    observation = kernel.record_observation(_payload(observation_id="pan-claims"))
+    mandatory = {"falsifier", "alternative_cause", "provenance_guard", "risk_guard"}
+    agents = {row["role"]: row for row in observation["analysis"]["aether"]["agents"] if row["role"] in mandatory}
+    assert set(agents) == mandatory
+
+    directions = {
+        "falsifier": "short",
+        "alternative_cause": "long",
+        "provenance_guard": "flat",
+        "risk_guard": "short",
+    }
+    state = observation
+    for role, agent in agents.items():
+        state = kernel.record_agent_claim({
+            "observation_id": observation["observation_id"],
+            "agent_id": agent["agent_id"],
+            "peer_context_used": False,
+            "claim": {
+                "thesis": f"{role} independent thesis",
+                "direction": directions[role],
+                "confidence": 0.6,
+                "falsifier": f"evidence that would falsify {role}",
+                "evidence": [f"partition:{agent['information_partition']}"],
+            },
+        })
+
+    assert state["deliberation"]["ready_for_deliberation"] is True
+    assert state["deliberation"]["blind_first_pass_complete"] is True
+    assert state["deliberation"]["consensus_forced"] is False
+    assert state["deliberation"]["submitted_claims"] == 4
+    assert state["deliberation"]["disagreement_index"] > 0
+    assert state["deliberation"]["execution_authorized"] is False
+    assert state["deliberation"]["production_decision_authorized"] is False
+    assert kernel.snapshot()["counts"]["agent_claims"] == 4
+
+
+def test_aether_first_pass_claim_is_idempotent_but_immutable(tmp_path):
+    kernel = PantheonKernel(tmp_path, swarm=AetherSwarm(threshold=0.0))
+    observation = kernel.record_observation(_payload(observation_id="pan-claim-immutable"))
+    agent = observation["analysis"]["aether"]["agents"][0]
+    payload = {
+        "observation_id": observation["observation_id"],
+        "agent_id": agent["agent_id"],
+        "peer_context_used": False,
+        "claim": {
+            "thesis": "first independent claim",
+            "direction": "unknown",
+            "confidence": 0.5,
+            "falsifier": "counterexample",
+            "evidence": ["fixture"],
+        },
+    }
+    first = kernel.record_agent_claim(payload)
+    again = kernel.record_agent_claim(payload)
+    assert again["agent_claims"] == first["agent_claims"]
+
+    changed = dict(payload)
+    changed["claim"] = dict(payload["claim"], thesis="mutated after seeing peers")
+    with pytest.raises(ValueError, match="immutable"):
+        kernel.record_agent_claim(changed)
+
+    with pytest.raises(ValueError, match="peer context"):
+        kernel.record_agent_claim(dict(payload, agent_id=observation["analysis"]["aether"]["agents"][1]["agent_id"], peer_context_used=True))
+
+    with pytest.raises(ValueError, match="not an active"):
+        kernel.record_agent_claim(dict(payload, agent_id="aeth-not-real"))

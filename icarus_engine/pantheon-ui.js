@@ -53,6 +53,11 @@
     const claims=(latest.claims||[]).map(function(c){
       return '<tr><td class="tnum">'+h(c.claim_id||'')+'</td><td>'+h(c.kind||'')+'</td><td>'+chip(c.stage||'')+'</td><td class="small muted">'+h(JSON.stringify(c.payload||{}))+'</td></tr>';
     }).join('');
+    const agentClaims=(latest.agent_claims||[]).map(function(c){
+      const q=c.claim||{};
+      return '<tr><td><b>'+h(c.role||'')+'</b><div class="small muted tnum">'+h(c.agent_id||'')+'</div></td><td>'+h(q.direction||'unknown')+'</td><td class="tnum">'+pct(q.confidence)+'</td><td>'+h(q.thesis||'')+'</td><td class="small muted">'+h(q.falsifier||'')+'</td></tr>';
+    }).join('');
+    const deliberation=latest.deliberation||{};
     el.innerHTML='<style>.pan-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}.pan-field{border:1px solid var(--ring);border-radius:12px;padding:10px;background:var(--surface-2)}</style>'+
       '<h2>PANTHEON / AETHER <span class="sub">distributed research ecology · execution_authorized=false</span></h2>'+
       '<div class="tiles" style="margin-top:0">'+
@@ -76,6 +81,9 @@
       '<div class="small muted" style="margin-top:10px">Diversity lock: blind first pass · peer conclusions hidden until commitment · forced consensus disabled.</div>'+
       '<h3 class="small" style="margin:16px 0 8px">AETHER ephemeral swarm</h3>'+
       '<div class="scroll"><table><thead><tr><th>Agent</th><th>Role</th><th>Scope</th><th>TTL</th><th>Authority</th></tr></thead><tbody>'+(agents||'<tr><td colspan="5" class="empty">Field below activation threshold; no expensive swarm spawned.</td></tr>')+'</tbody></table></div>'+
+      '<h3 class="small" style="margin:16px 0 8px">AETHER blind first-pass claims</h3>'+
+      '<div class="small muted" style="margin-bottom:8px">submitted '+h(deliberation.submitted_claims||0)+' · ready '+h(deliberation.ready_for_deliberation?'YES':'NO')+' · disagreement '+pct(deliberation.disagreement_index)+' · forced consensus OFF</div>'+
+      '<div class="scroll"><table><thead><tr><th>Independent role</th><th>Direction</th><th>Confidence</th><th>Thesis</th><th>Falsifier</th></tr></thead><tbody>'+(agentClaims||'<tr><td colspan="5" class="empty">No independent AETHER claims committed yet.</td></tr>')+'</tbody></table></div>'+
       '<h3 class="small" style="margin:16px 0 8px">Durable claims</h3>'+
       '<div class="scroll"><table><thead><tr><th>Claim</th><th>Kind</th><th>Stage</th><th>Payload</th></tr></thead><tbody>'+(claims||'<tr><td colspan="4" class="empty">No durable claim survived the current observation.</td></tr>')+'</tbody></table></div>'+
       '<div class="small muted" style="margin-top:12px">AETHER agents are disposable research workers. Claims are durable; orders are not. PANTHEON cannot place orders, change sizing, bypass the hard Risk Kernel, or promote itself to production.</div>';
