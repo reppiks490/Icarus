@@ -17,6 +17,7 @@
   GET  /api/engine-control        authenticated registered engine/subsystem control snapshot
   GET  /api/brain                 adaptive multi-agent brain, subsystem fabric, regimes, learning and shadow candidates
   GET  /api/possibility           ICARUS Psi latent pressure, counterfactual price, future-space diagnostics
+  GET  /api/possibility/evidence  durable Psi external-evidence ledger and causal as-of selection
   GET  /api/chronofold            ICARUS Xi causal spacetime, multiverse, geometry, GNC and uncertainty
   POST /admin/pause | /admin/resume        {"asset": "NQ"} or all          (Bearer token)
   POST /admin/flatten                      {"confirm": true, "asset"?: "NQ"}
@@ -31,6 +32,7 @@
   POST /admin/integrity/event              fully-provenanced, idempotent MCP audit receipt; never changes trading
   POST /admin/brain/event                  append evidence-backed learning/agent/subsystem/candidate event; shadow only
   POST /admin/possibility/evidence          provenance-labelled gamma/basis/CTA/liquidation/rebalance research inputs
+  POST /admin/parallax/decision/current      atomically capture current Psi vote and PARALLAX decision
   POST /admin/rewarm                       {"asset": "NQ"}
   POST /admin/engine-control               typed registered operator command with audit receipt
 """
@@ -45,6 +47,7 @@ import time
 import threading
 from contextlib import ExitStack
 from dataclasses import replace
+from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Dict
@@ -108,6 +111,52 @@ def dumps_safe(obj: Any) -> bytes:
     except Exception as ex:
         sys.stderr.write(f"icarus json dump failed: {type(ex).__name__}: {ex}\n")
         return json.dumps({"ok": False, "detail": f"json: {type(ex).__name__}: {ex}"}).encode("utf-8")
+
+
+def _current_parallax_payload(possibility: Any, body: Dict[str, Any]) -> tuple[Dict[str, Any], Dict[str, Any]]:
+    """Capture a Psi vote before stamping a new PARALLAX decision.
+
+    Present-time only. Historical decisions must carry their already-captured
+    subsystem votes and use /admin/parallax/decision.
+    """
+    payload = dict(body)
+    allowed = {
+        "schema_version", "decision_id", "asset", "action", "regime",
+        "source_commit", "context", "subsystem_votes", "branches", "observed_at",
+    }
+    unknown = set(payload) - allowed
+    if unknown:
+        raise ValueError("unsupported current PARALLAX fields: " + ", ".join(sorted(unknown)))
+    if payload.get("observed_at") not in (None, ""):
+        raise ValueError("current decision capture owns observed_at; use /admin/parallax/decision for historical records")
+    votes = payload.get("subsystem_votes", {})
+    if not isinstance(votes, dict):
+        raise ValueError("subsystem_votes must be an object")
+    if "psi" in votes:
+        raise ValueError("current decision capture owns the psi vote")
+    asset = str(payload.get("asset") or "").strip().upper()
+    if not asset:
+        raise ValueError("asset is required")
+
+    psi_vote = possibility.parallax_vote(asset)
+    if not isinstance(psi_vote, dict):
+        raise ValueError("Psi vote must be an object")
+    captured = datetime.now(timezone.utc)
+    generated_at = str(psi_vote.get("generated_at") or "").strip()
+    if generated_at:
+        try:
+            generated = datetime.fromisoformat(generated_at.replace("Z", "+00:00")).astimezone(timezone.utc)
+        except ValueError as ex:
+            raise ValueError("Psi vote generated_at is invalid") from ex
+        if generated > captured:
+            raise ValueError("Psi vote generated_at cannot follow PARALLAX decision capture")
+
+    merged_votes = dict(votes)
+    merged_votes["psi"] = psi_vote
+    payload["subsystem_votes"] = merged_votes
+    payload["asset"] = asset
+    payload["observed_at"] = captured.isoformat().replace("+00:00", "Z")
+    return payload, psi_vote
 
 
 def _reason(body: Dict[str, Any], default: str = "manual") -> str:
@@ -788,6 +837,19 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     return self._json(200, dreamstate.snapshot())
                 except (ValueError, TypeError) as ex:
                     return self._json(400, {"detail": str(ex)})
+            if p.path == "/api/possibility/evidence":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                try:
+                    include_expired = str(q.get("include_expired", ["false"])[0]).strip().lower() in {"1", "true", "yes", "on"}
+                    return self._json(200, possibility.evidence_snapshot(
+                        q.get("asset", [""])[0],
+                        limit=int(q.get("limit", ["100"])[0]),
+                        include_expired=include_expired,
+                        as_of=q.get("as_of", [None])[0],
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
             if p.path == "/api/possibility":
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
@@ -1120,6 +1182,20 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                         body["asset"], body["values"], source=body["source"],
                         observed_at=body.get("observed_at"), ttl_seconds=body.get("ttl_seconds", 300.0),
                     ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+            if p.path == "/admin/parallax/decision/current":
+                try:
+                    payload, psi_vote = _current_parallax_payload(possibility, body)
+                    if not payload.get("source_commit"):
+                        provenance = local_code_provenance()
+                        if not provenance.get("candidate_revision_eligible") or not provenance.get("commit"):
+                            raise ValueError("exact clean ICARUS code provenance is required when source_commit is omitted")
+                        payload["source_commit"] = provenance["commit"]
+                    result = parallax.record_decision(payload)
+                    result["capture_mode"] = "atomic_current"
+                    result["captured_psi_vote"] = psi_vote
+                    return self._json(200, result)
                 except (ValueError, TypeError) as ex:
                     return self._json(400, {"detail": str(ex)})
             if p.path == "/admin/parallax/decision":

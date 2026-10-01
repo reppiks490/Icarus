@@ -24,13 +24,22 @@ def test_mcp_server_imports_and_registers_engine_surface():
         "record_engine_integrity_event",
         "engine_brain_state",
         "record_engine_brain_event",
-        "engine_performance_proof",
-        "record_engine_performance_forecast",
-        "record_engine_performance_outcome",
-        "record_engine_replay_proof",
         "engine_latency_telemetry",
+        "record_engine_replay_proof",
+        "record_engine_performance_outcome",
+        "record_engine_performance_forecast",
+        "engine_performance_proof",
         "engine_possibility_state",
+        "engine_possibility_evidence",
         "record_engine_possibility_evidence",
+        "refresh_engine_dreamstate",
+        "record_engine_parallax_outcome",
+        "record_current_parallax_decision_with_psi",
+        "retire_engine_dreamstate_candidate",
+        "evaluate_engine_dreamstate_candidate",
+        "record_historical_parallax_decision",
+        "engine_dreamstate_state",
+        "engine_parallax_state",
     ):
         assert callable(getattr(mcp_server, name))
 
@@ -308,6 +317,13 @@ def test_mcp_icarus_psi_routes_are_research_only(monkeypatch):
 
     state = mcp_server.engine_possibility_state("nq")
     assert state["authority"]["execution_authorized"] is False
+    ledger = mcp_server.engine_possibility_evidence(
+        "nq",
+        limit=25,
+        include_expired=True,
+        as_of="2026-10-01T05:01:00Z",
+    )
+    assert ledger["authority"]["execution_authorized"] is False
     result = mcp_server.record_engine_possibility_evidence(
         "nq",
         "unit-test",
@@ -318,7 +334,8 @@ def test_mcp_icarus_psi_routes_are_research_only(monkeypatch):
     assert result["execution_authorized"] is False
     assert result["production_decision_authorized"] is False
     assert seen[0] == ("get", "/api/possibility?asset=NQ")
-    assert seen[1] == ("post", "/admin/possibility/evidence", {
+    assert seen[1] == ("get", "/api/possibility/evidence?asset=NQ&limit=25&include_expired=true&as_of=2026-10-01T05%3A01%3A00Z")
+    assert seen[2] == ("post", "/admin/possibility/evidence", {
         "asset": "NQ",
         "source": "unit-test",
         "values": {"gamma_pressure": {"value": 0.4, "confidence": 0.7}},
@@ -330,3 +347,158 @@ def test_mcp_icarus_psi_routes_are_research_only(monkeypatch):
 def test_mcp_icarus_psi_rejects_non_object_evidence_json():
     assert "error" in mcp_server.record_engine_possibility_evidence("NQ", "fixture", "[]")
     assert "error" in mcp_server.record_engine_possibility_evidence("NQ", "fixture", "{bad")
+
+
+def test_mcp_parallax_dreamstate_research_routes(monkeypatch):
+    seen = []
+
+    def get(path):
+        seen.append(("get", path))
+        return {"authority": {"execution_authorized": False}}
+
+    def post(path, body):
+        seen.append(("post", path, body))
+        return {"execution_authorized": False, "production_decision_authorized": False}
+
+    monkeypatch.setattr(mcp_server, "_engine_get", get)
+    monkeypatch.setattr(mcp_server, "_engine_post", post)
+
+    assert mcp_server.engine_parallax_state()["authority"]["execution_authorized"] is False
+    assert mcp_server.engine_dreamstate_state()["authority"]["execution_authorized"] is False
+
+    decision = mcp_server.record_current_parallax_decision_with_psi(
+        "nq",
+        "long",
+        regime="strong",
+        context_json='{"setup":"fixture"}',
+        subsystem_votes_json='{"argus":{"state":"aligned"}}',
+        branches_json='[{"kind":"actual","label":"actual","params":{}}]',
+        decision_id="fixture-decision",
+        source_commit="a" * 40,
+    )
+    assert decision["execution_authorized"] is False
+
+    outcome = mcp_server.record_engine_parallax_outcome(
+        "fixture-decision",
+        "actual",
+        1.25,
+        metrics_json='{"pnl":125}',
+        evidence_json='["observed replay"]',
+        observed_at="2026-10-01T06:30:00Z",
+    )
+    assert outcome["production_decision_authorized"] is False
+
+    refreshed = mcp_server.refresh_engine_dreamstate(7)
+    assert refreshed["execution_authorized"] is False
+
+    assert seen[0] == ("get", "/api/parallax")
+    assert seen[1] == ("get", "/api/dreamstate")
+    assert seen[2] == ("post", "/admin/parallax/decision/current", {
+        "asset": "NQ",
+        "action": "long",
+        "regime": "strong",
+        "context": {"setup": "fixture"},
+        "subsystem_votes": {"argus": {"state": "aligned"}},
+        "branches": [{"kind": "actual", "label": "actual", "params": {}}],
+        "decision_id": "fixture-decision",
+        "source_commit": "a" * 40,
+    })
+    assert seen[3] == ("post", "/admin/parallax/outcome", {
+        "decision_id": "fixture-decision",
+        "label": "actual",
+        "utility": 1.25,
+        "metrics": {"pnl": 125},
+        "evidence": ["observed replay"],
+        "observed_at": "2026-10-01T06:30:00Z",
+    })
+    assert seen[4] == ("post", "/admin/dreamstate/refresh", {"min_samples": 7})
+
+
+def test_mcp_current_parallax_capture_rejects_caller_supplied_psi_vote():
+    result = mcp_server.record_current_parallax_decision_with_psi(
+        "NQ",
+        "long",
+        subsystem_votes_json='{"psi":{"state":"forged"}}',
+    )
+    assert "error" in result
+    assert "captured atomically" in result["error"]
+
+
+
+def test_mcp_historical_parallax_and_dreamstate_candidate_routes(monkeypatch):
+    seen = []
+
+    def post(path, body):
+        seen.append((path, body))
+        return {"execution_authorized": False, "production_decision_authorized": False}
+
+    monkeypatch.setattr(mcp_server, "_engine_post", post)
+
+    historical = mcp_server.record_historical_parallax_decision(
+        "nq",
+        "long",
+        "2026-10-01T12:00:00Z",
+        "b" * 40,
+        regime="trend",
+        context_json='{"fixture":true}',
+        subsystem_votes_json='{"psi":{"state":"NO_EDGE"}}',
+        branches_json='[{"kind":"actual","label":"actual","params":{}}]',
+        decision_id="hist-1",
+    )
+    assert historical["execution_authorized"] is False
+
+    evaluated = mcp_server.evaluate_engine_dreamstate_candidate(
+        "ds-fixture",
+        '{"causal_time":true,"provenance":true}',
+        '["fixture evidence"]',
+    )
+    assert evaluated["production_decision_authorized"] is False
+
+    retired = mcp_server.retire_engine_dreamstate_candidate(
+        "ds-fixture",
+        "negative holdout evidence",
+    )
+    assert retired["execution_authorized"] is False
+
+    assert seen[0] == ("/admin/parallax/decision", {
+        "asset": "NQ",
+        "action": "long",
+        "regime": "trend",
+        "observed_at": "2026-10-01T12:00:00Z",
+        "source_commit": "b" * 40,
+        "context": {"fixture": True},
+        "subsystem_votes": {"psi": {"state": "NO_EDGE"}},
+        "branches": [{"kind": "actual", "label": "actual", "params": {}}],
+        "decision_id": "hist-1",
+    })
+    assert seen[1] == ("/admin/dreamstate/evaluate", {
+        "candidate_id": "ds-fixture",
+        "validation": {"causal_time": True, "provenance": True},
+        "evidence": ["fixture evidence"],
+    })
+    assert seen[2] == ("/admin/dreamstate/retire", {
+        "candidate_id": "ds-fixture",
+        "reason": "negative holdout evidence",
+    })
+
+
+def test_mcp_historical_parallax_requires_explicit_time_and_exact_sha():
+    missing_time = mcp_server.record_historical_parallax_decision(
+        "NQ", "long", "", "a" * 40,
+    )
+    assert "observed_at is required" in missing_time["error"]
+
+    bad_sha = mcp_server.record_historical_parallax_decision(
+        "NQ", "long", "2026-10-01T12:00:00Z", "not-a-sha",
+    )
+    assert "40-character hexadecimal" in bad_sha["error"]
+
+
+def test_mcp_dreamstate_candidate_tools_require_identity_and_reason():
+    empty_candidate = mcp_server.evaluate_engine_dreamstate_candidate(
+        "", '{"causal_time":true}',
+    )
+    assert "candidate_id is required" in empty_candidate["error"]
+
+    missing_reason = mcp_server.retire_engine_dreamstate_candidate("ds-1", "")
+    assert "reason is required" in missing_reason["error"]
