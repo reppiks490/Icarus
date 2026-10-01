@@ -767,3 +767,58 @@ def test_structural_and_monetization_inputs_reject_invalid_economics(tmp_path):
     }]
     with pytest.raises(ValueError, match="risk_capital must be positive"):
         PantheonKernel(tmp_path / "c").record_observation(bad_risk)
+
+
+def test_claim_outcome_quality_fields_fail_closed(tmp_path):
+    kernel = PantheonKernel(tmp_path)
+    first = kernel.record_observation(_payload(observation_id="pan-outcome-quality"))
+    claim = first["claims"][0]
+    base = {
+        "claim_id": claim["claim_id"],
+        "observed_at": "2026-10-01T06:10:00Z",
+        "utility": 0.5,
+        "confidence": 0.8,
+        "evidence": ["observed:fixture"],
+    }
+
+    with pytest.raises(ValueError, match="between -1 and 1"):
+        kernel.record_claim_outcome({**base, "utility": 1.2})
+    without_confidence = dict(base)
+    without_confidence.pop("confidence")
+    with pytest.raises(ValueError, match="confidence is required"):
+        kernel.record_claim_outcome(without_confidence)
+    with pytest.raises(ValueError, match="1-64"):
+        kernel.record_claim_outcome({**base, "evidence": []})
+
+
+def test_extended_faculty_timing_and_stress_inputs_fail_closed(tmp_path):
+    kernel = PantheonKernel(tmp_path)
+
+    neg_decay = _payload(observation_id="pan-neg-decay")
+    neg_decay["signals"] = dict(neg_decay["signals"], edge_decay_rate_per_second=-0.01)
+    with pytest.raises(ValueError, match="edge_decay_rate_per_second must be non-negative"):
+        kernel.record_observation(neg_decay)
+
+    neg_half_life = _payload(observation_id="pan-neg-half-life")
+    neg_half_life["signals"] = dict(neg_half_life["signals"], edge_half_life_seconds=-1.0)
+    with pytest.raises(ValueError, match="edge_half_life_seconds must be non-negative"):
+        kernel.record_observation(neg_half_life)
+
+    bad_stress = _payload(observation_id="pan-bad-stress")
+    bad_stress["signals"] = dict(bad_stress["signals"])
+    bad_stress["signals"]["candidate_expressions"] = [{
+        "name": "bad_stress",
+        "expected_gross": 10.0,
+        "costs": 1.0,
+        "risk_capital": 100.0,
+        "duration_seconds": 10.0,
+        "capacity_remaining": 0.5,
+        "cost_stress_multiplier": 0.9,
+    }]
+    with pytest.raises(ValueError, match="cost_stress_multiplier must be at least 1"):
+        kernel.record_observation(bad_stress)
+
+    bad_ttl = _payload(observation_id="pan-bad-ttl")
+    bad_ttl["signals"] = dict(bad_ttl["signals"], lease_ttl_seconds=30.5)
+    with pytest.raises(ValueError, match="lease_ttl_seconds must be an integer"):
+        kernel.record_observation(bad_ttl)

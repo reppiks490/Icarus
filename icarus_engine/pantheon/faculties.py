@@ -190,10 +190,14 @@ def nemesis(signals: Mapping[str, Any]) -> dict[str, Any]:
         (("data", data_sens), ("execution", exec_sens), ("thesis", fragility), ("margin_shortfall", 1.0 - margin)),
         key=lambda x: x[1],
     )[0]
-    decay_rate = max(0.0, finite(signals.get("edge_decay_rate_per_second", 0.0), "edge_decay_rate_per_second"))
+    decay_rate = finite(signals.get("edge_decay_rate_per_second", 0.0), "edge_decay_rate_per_second")
+    if decay_rate < 0:
+        raise ValueError("edge_decay_rate_per_second must be non-negative")
     explicit_half_life = signals.get("edge_half_life_seconds")
     if explicit_half_life is not None:
-        half_life = max(0.0, finite(explicit_half_life, "edge_half_life_seconds"))
+        half_life = finite(explicit_half_life, "edge_half_life_seconds")
+        if half_life < 0:
+            raise ValueError("edge_half_life_seconds must be non-negative")
         half_life_source = "supplied"
     elif decay_rate > 0:
         half_life = math.log(2.0) / decay_rate
@@ -284,12 +288,17 @@ def mint(signals: Mapping[str, Any]) -> dict[str, Any]:
             raise ValueError(f"candidate_expressions[{i}].duration_seconds must be positive")
         capacity = unit(item.get("capacity_remaining", 1.0), f"candidate_expressions[{i}].capacity_remaining", 1.0)
         net = gross - costs
-        stress_mult = max(1.0, finite(item.get("cost_stress_multiplier", 1.5), f"candidate_expressions[{i}].cost_stress_multiplier"))
+        stress_mult = finite(item.get("cost_stress_multiplier", 1.5), f"candidate_expressions[{i}].cost_stress_multiplier")
+        if stress_mult < 1.0:
+            raise ValueError(f"candidate_expressions[{i}].cost_stress_multiplier must be at least 1")
         stress_net = gross - costs * stress_mult
         density = (net / (risk * duration)) * capacity
         stress_density = (stress_net / (risk * duration)) * capacity
         decay_half_life = item.get("edge_half_life_seconds")
-        decay_half_life = None if decay_half_life is None else max(0.0, finite(decay_half_life, f"candidate_expressions[{i}].edge_half_life_seconds"))
+        if decay_half_life is not None:
+            decay_half_life = finite(decay_half_life, f"candidate_expressions[{i}].edge_half_life_seconds")
+            if decay_half_life < 0:
+                raise ValueError(f"candidate_expressions[{i}].edge_half_life_seconds must be non-negative")
         crowding = unit(item.get("crowding", 0.0), f"candidate_expressions[{i}].crowding")
         metabolism = {
             "gross_alpha_intake": gross,
@@ -364,7 +373,10 @@ def archon(signals: Mapping[str, Any], godel_state: Mapping[str, Any]) -> dict[s
         vals.append(score)
     rows.sort(key=lambda x: x["attention_weight"], reverse=True)
     contradiction = (max(vals) - min(vals)) / 2.0 if len(vals) > 1 else 0.0
-    ttl = max(1, min(300, int(finite(signals.get("lease_ttl_seconds", 30), "lease_ttl_seconds"))))
+    ttl_raw = signals.get("lease_ttl_seconds", 30)
+    if type(ttl_raw) is not int or not 1 <= ttl_raw <= 300:
+        raise ValueError("lease_ttl_seconds must be an integer from 1 to 300")
+    ttl = ttl_raw
     total_attention = sum(row["attention_weight"] for row in rows)
     attention_concentration = (
         max((row["attention_weight"] for row in rows), default=0.0) / total_attention

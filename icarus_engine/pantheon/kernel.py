@@ -22,6 +22,7 @@ from .contracts import (
     iso_aware,
     json_canonical,
     mapping,
+    signed_unit,
     text,
     unit,
 )
@@ -475,13 +476,15 @@ class PantheonKernel:
             raise ValueError("claim outcome must be an object")
         claim_id = text(body.get("claim_id"), "claim_id", 96)
         observed_at = iso_aware(body.get("observed_at"))
-        utility = max(-1.0, min(1.0, finite(body.get("utility"), "utility")))
-        confidence = unit(body.get("confidence"), "confidence", 1.0)
+        utility = signed_unit(body.get("utility"), "utility")
+        if "confidence" not in body:
+            raise ValueError("confidence is required")
+        confidence = unit(body.get("confidence"), "confidence")
         evidence = body.get("evidence", [])
         if isinstance(evidence, str):
             evidence = [evidence]
-        if not isinstance(evidence, list) or len(evidence) > 64:
-            raise ValueError("evidence must be a list with at most 64 items")
+        if not isinstance(evidence, list) or not evidence or len(evidence) > 64:
+            raise ValueError("evidence must contain 1-64 items")
         evidence = [text(item, "evidence item", 700) for item in evidence]
         evidence_json = json_canonical(evidence, "evidence", 65536)
         semantic = json_canonical(

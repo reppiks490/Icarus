@@ -277,3 +277,16 @@ silently clipped. Structural costs must be non-negative, and MINT rejects
 negative costs, non-positive risk capital, and non-positive duration. This
 prevents malformed upstream data from being converted into plausible-looking
 research diagnostics.
+
+
+## Outcome and stress-evidence quality
+
+Observed claim outcomes now fail closed rather than silently clipping malformed
+values: utility must already lie in [-1, 1], confidence is explicit and bounded,
+and every outcome must carry at least one evidence reference. Species fitness is
+confidence-weighted from those immutable observed outcomes.
+
+NEMESIS rejects negative edge-decay rates and half-lives, MINT rejects
+sub-unit cost-stress multipliers and negative half-lives, and ARCHON rejects
+fractional or out-of-range lease TTLs. These checks keep malformed upstream
+research metadata from being normalized into plausible-looking evidence.
