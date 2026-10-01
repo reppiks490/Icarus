@@ -35,6 +35,7 @@ class PsiEvidenceLedger:
         self._lock = threading.RLock()
         self.path = (Path(base_dir) / "research" / "psi_evidence.sqlite3") if base_dir else None
         self._memory: dict[str, dict[str, Any]] = {}
+        self._integrity_cache: tuple[float, dict[str, Any]] = (0.0, {})
         if self.path is not None:
             self.path.parent.mkdir(parents=True, exist_ok=True)
             self._init_store()
@@ -78,6 +79,21 @@ class PsiEvidenceLedger:
                     ON evidence(expires_ts);
                 """
             )
+            columns = {
+                str(row["name"])
+                for row in con.execute("PRAGMA table_info(evidence)").fetchall()
+            }
+            expected = {
+                "evidence_id", "schema_version", "asset", "feature", "value",
+                "confidence", "source", "observed_at", "observed_ts", "received_ts",
+                "expires_ts", "ttl_seconds", "payload_hash", "created_at",
+            }
+            missing = expected - columns
+            if missing:
+                raise RuntimeError(
+                    "Psi evidence schema is incompatible; missing columns: "
+                    + ", ".join(sorted(missing))
+                )
 
     @staticmethod
     def _identity(row: Mapping[str, Any]) -> tuple[str, str]:
@@ -149,6 +165,7 @@ class PsiEvidenceLedger:
                         staged[evidence_id] = dict(stored)
                         results.append({**stored, "inserted": True})
                 self._memory = staged
+                self._integrity_cache = (0.0, {})
                 return results
 
             results = []
@@ -181,6 +198,7 @@ class PsiEvidenceLedger:
                     if existing is None:
                         raise RuntimeError("idempotent Psi evidence receipt disappeared after INSERT OR IGNORE")
                     results.append({**dict(existing), "inserted": False})
+            self._integrity_cache = (0.0, {})
             return results
 
     def record(self, row: Mapping[str, Any]) -> dict[str, Any]:
@@ -382,6 +400,74 @@ class PsiEvidenceLedger:
             "production_decision_authorized": False,
         }
 
+    def integrity(self, *, max_age_seconds: float = 60.0) -> dict[str, Any]:
+        now = time.time()
+        cached_at, cached = self._integrity_cache
+        if cached and now - cached_at <= max(0.0, float(max_age_seconds)):
+            return dict(cached)
+
+        with self._lock:
+            if self.path is None:
+                rows = [dict(row) for row in self._memory.values()]
+                quick_check = "memory"
+            else:
+                with self._connect() as con:
+                    check_row = con.execute("PRAGMA quick_check").fetchone()
+                    quick_check = str(check_row[0] if check_row is not None else "unknown")
+                    rows = [
+                        dict(row) for row in con.execute(
+                            """SELECT evidence_id,schema_version,asset,feature,value,confidence,source,
+                                      observed_at,observed_ts,received_ts,expires_ts,ttl_seconds,
+                                      payload_hash,created_at
+                               FROM evidence
+                               ORDER BY received_ts, evidence_id"""
+                        ).fetchall()
+                    ]
+
+            invalid = []
+            digest_parts = []
+            for row in rows:
+                try:
+                    expected_id, expected_hash = self._identity(row)
+                except Exception as ex:
+                    invalid.append({
+                        "evidence_id": str(row.get("evidence_id") or ""),
+                        "reason": f"identity_recompute:{type(ex).__name__}",
+                    })
+                    continue
+                if row.get("schema_version") != SCHEMA_VERSION:
+                    invalid.append({
+                        "evidence_id": str(row.get("evidence_id") or ""),
+                        "reason": "schema_version",
+                    })
+                if row.get("evidence_id") != expected_id:
+                    invalid.append({
+                        "evidence_id": str(row.get("evidence_id") or ""),
+                        "reason": "evidence_id",
+                    })
+                if row.get("payload_hash") != expected_hash:
+                    invalid.append({
+                        "evidence_id": str(row.get("evidence_id") or ""),
+                        "reason": "payload_hash",
+                    })
+                digest_parts.append(f"{row.get('evidence_id')}:{row.get('payload_hash')}")
+
+            digest = hashlib.sha256("\n".join(digest_parts).encode("utf-8")).hexdigest()
+            ok = quick_check in {"ok", "memory"} and not invalid
+            result = {
+                "ok": ok,
+                "storage": "sqlite" if self.path is not None else "memory",
+                "quick_check": quick_check,
+                "receipt_count": len(rows),
+                "invalid_receipt_count": len(invalid),
+                "invalid_receipts": invalid[:20],
+                "ledger_digest_sha256": digest,
+                "schema_version": SCHEMA_VERSION,
+                "checked_at": now,
+            }
+            self._integrity_cache = (now, dict(result))
+            return result
+
     def health(self, asset: str) -> dict[str, Any]:
         now = time.time()
         snap = self.snapshot(
@@ -392,8 +478,12 @@ class PsiEvidenceLedger:
             include_expired=True,
         )
         history = snap.get("history") or []
+        integrity = self.integrity()
         return {
             "durable": self.durable,
+            "storage_integrity_ok": bool(integrity.get("ok")),
+            "ledger_digest_sha256": integrity.get("ledger_digest_sha256"),
+            "invalid_receipt_count": int(integrity.get("invalid_receipt_count") or 0),
             "active_count": int(snap.get("active_count") or 0),
             "total_history_count": int(snap.get("total_history_count") or 0),
             "latest_observed_at": history[0].get("observed_at") if history else None,
