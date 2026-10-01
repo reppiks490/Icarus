@@ -391,3 +391,16 @@ def test_learning_dashboard_surfaces_psi_scenario_calibration():
     assert "outcomes_imported" in ui
     assert "overlap_withheld" in ui
     assert "psi-scenario-v1" in ui
+
+
+def test_learning_dashboard_surfaces_shadow_recalibration():
+    ui = (REPO / "icarus_engine/learning-ui.js").read_text(encoding="utf-8")
+    assert "SHADOW RECALIBRATION" in ui
+    assert "VALIDATED MODELS" in ui
+    assert "REJECTED MODELS" in ui
+    assert "RAW VS CALIBRATED BRIER" in ui
+    assert "Holdout raw Brier" in ui
+    assert "Holdout calibrated Brier" in ui
+    assert "shadow_calibration" in ui
+    assert "calibrated_validation_brier" in ui
+    assert "automatic probability rewrite: off" in ui.lower()
