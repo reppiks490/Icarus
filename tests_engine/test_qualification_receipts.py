@@ -4,7 +4,11 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from icarus_engine.qualification_receipts import QualificationReceiptStore, build_shadow_promotion_event
+from icarus_engine.qualification_receipts import (
+    QualificationReceiptStore,
+    build_shadow_promotion_event,
+    build_shadow_revocation_event,
+)
 
 
 GATES = ("causal_time", "provenance", "independent_verification")
@@ -136,3 +140,31 @@ def test_promotion_event_rejects_candidate_before_validated_stage(tmp_path):
     ready = store.candidate_status("nq-trend-v1", "reppiks490/Icarus", "a"*40)
     with pytest.raises(ValueError, match="must be validated"):
         build_shadow_promotion_event(_candidate(stage="training"), ready)
+
+
+def test_revocation_event_drops_shadow_stage_when_latest_gate_fails(tmp_path):
+    store = QualificationReceiptStore(tmp_path, GATES)
+    for i, gate in enumerate(GATES):
+        store.record(_receipt(gate, i=i))
+    ready = store.candidate_status("nq-trend-v1", "reppiks490/Icarus", "a"*40)
+    promoted = build_shadow_promotion_event(_candidate(), ready)
+
+    store.record(_receipt("provenance", passed=False, i=20))
+    blocked = store.candidate_status("nq-trend-v1", "reppiks490/Icarus", "a"*40)
+    event = build_shadow_revocation_event(promoted, blocked)
+    assert event["stage"] == "validated"
+    assert event["status"] == "blocked"
+    assert event["validation"]["provenance"] is False
+    assert "provenance gate not verified" in event["details"]["blockers"]
+    assert event["execution_authorized"] is False
+    assert event["production_decision_authorized"] is False
+
+
+def test_revocation_event_rejects_ready_qualification(tmp_path):
+    store = QualificationReceiptStore(tmp_path, GATES)
+    for i, gate in enumerate(GATES):
+        store.record(_receipt(gate, i=i))
+    ready = store.candidate_status("nq-trend-v1", "reppiks490/Icarus", "a"*40)
+    promoted = build_shadow_promotion_event(_candidate(), ready)
+    with pytest.raises(ValueError, match="still ready"):
+        build_shadow_revocation_event(promoted, ready)
