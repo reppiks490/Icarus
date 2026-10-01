@@ -20,6 +20,7 @@ NODE = shutil.which("node")
         "icarus_bridge/dashboard.html",
         "icarus_engine/research-ui.js",
         "icarus_engine/sources-ui.js",
+        "icarus_engine/market-data-ui.js",
         "icarus_engine/brain-ui.js",
         "icarus_engine/evolution-ui.js",
         "icarus_engine/parallax-ui.js",
@@ -269,3 +270,34 @@ def test_engine_control_ui_supports_every_registered_target_and_generic_args():
     assert 'target="source"' in server
     assert 'ControlAction("dreamstate.evaluate"' in server
     assert 'target="candidate"' in server
+
+
+def test_dashboard_surfaces_authentic_market_data_console():
+    dashboard = (REPO / "icarus_engine/dashboard.html").read_text(encoding="utf-8")
+    ui = (REPO / "icarus_engine/market-data-ui.js").read_text(encoding="utf-8")
+    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
+
+    assert '<script src="/market-data-ui.js"></script>' in dashboard
+    assert 'data-v="market-data">Market Data</span>' in dashboard
+    assert "view === 'market-data'" in dashboard
+    assert "wireMarketData()" in dashboard
+    assert 'p.path == "/market-data-ui.js"' in server
+    assert "/api/market-data/" in ui
+    assert "/capabilities" in ui
+    assert "/ticks?limit=300" in ui
+    assert "/depth?schema=" in ui
+    assert "/admin/market-data/mbo-snapshot" in ui
+    assert "engine_market_data_capabilities" in ui
+    assert "engine_recent_ticks" in ui
+    assert "engine_order_book_events" in ui
+    assert "engine_mbo_snapshot" in ui
+    assert "continuous_symbol" in ui
+    assert "resolved_raw_symbol" in ui
+    assert "resolved_instrument_id" in ui
+    assert "core_session_ok" in ui
+    assert "depth_schema_health" in ui
+    assert "live_error" in ui
+    assert "ts_recv_ns" in ui
+    assert "ts_event_ns" in ui
+    assert "Sequence jumps in window" in ui
+    assert "does not invent a buy/sell interpretation" in ui
