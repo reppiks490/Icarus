@@ -1,0 +1,40 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "causal-ml-fabric-merged-20261001T053300Z",
+  "category": "EVOLUTION",
+  "severity": "success",
+  "status": "verified",
+  "subsystems": [
+    "aion",
+    "parallax",
+    "argus",
+    "athena",
+    "nexus",
+    "prometheus",
+    "provenance",
+    "ml"
+  ],
+  "recorded_at": "2026-10-01T05:33:00Z",
+  "title": "Causal ML and research subsystem fabric merged",
+  "summary": "The evolved AION/PARALLAX, ARGUS, ATHENA, NEXUS and PROMETHEUS research fabric is merged into divine-providence main after exact-head Linux and Windows verification. AION now preserves receipt-time/frozen-evidence semantics and causal PARALLAX fingerprints; ARGUS has authenticated receipt-time microstructure journaling and evidence capability boundaries; ATHENA has receipt-time advisory journaling and outcome-gated competence learning; NEXUS/PROMETHEUS contract and provenance gates were reconciled. The integration remains research/advisory only and does not alter ICARUS assets, timeframes, chart construction, sub-minute handling, broker routing, strategy execution, or order authority.",
+  "source_repository": "reppiks490/divine-providence",
+  "source_ref": "main",
+  "source_commit": "da8cfc937acdae11a0ac1330fcaa21b0841f82f1",
+  "evidence": [
+    "PR #3 merged from exact verified head 35723b6152015e2e8eee27a574571738900890fb",
+    "full twelve-system validation: 1,728 tests passed",
+    "compile gate: OK",
+    "all cross-system connections: OK",
+    "AION Linux + Windows: success",
+    "ARGUS Linux + Windows: success",
+    "ATHENA Linux + Windows: success",
+    "NEXUS workflow: success",
+    "causal intelligence-fabric integration: success",
+    "pinned v1.16 sibling-contract snapshot matched 65cba148bc5df86bd4b660ba15b14e6c58c113fa00fecdf3e22ea745a13ffe9a",
+    "causal intelligence-fabric bundle 738ca0867d14aa1e48c6d8753a9c4e6f9b5d7876a263c35fc1a310db33c76344",
+    "execution_authorized=false",
+    "production_decision_authorized=false"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}
