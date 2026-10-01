@@ -352,6 +352,384 @@ def test_parallax_does_not_pool_regret_across_incomparable_contracts(tmp_path):
     assert len(snap["regret"]["groups"]) == 2
 
 
+def test_parallax_temporal_instability_blocks_robust_candidate_even_when_primary_screen_passes(tmp_path):
+    store = ParallaxStore(tmp_path)
+    for i in range(12):
+        _record_pair(store, i, delay_utility=2.0 if i < 8 else -1.0)
+
+    signal = next(
+        row for row in store.hypotheses(min_samples=5)
+        if row["branch_label"] == "delay_1"
+    )
+    assert signal["candidate_eligible"] is True
+    assert signal["temporal_stability"]["evaluable"] is True
+    assert signal["temporal_stability"]["fold_count"] == 3
+    assert signal["temporal_stability"]["stable"] is False
+    assert signal["temporal_stability"]["worst_fold_mean"] < 0
+    assert "temporal_instability" in signal["robustness_blockers"]
+    assert signal["robust_candidate_eligible"] is False
+    assert not [
+        row for row in store.mutation_signals(min_samples=5)
+        if row["branch_label"] == "delay_1"
+    ]
+
+    report = store.screening_report(min_samples=5)
+    assert report["candidate_ready"] >= 1
+    assert report["robust_candidate_ready"] == 0
+    assert report["robustness_blocker_counts"]["temporal_instability"] >= 1
+
+
+def test_parallax_temporal_stability_allows_consistent_effect(tmp_path):
+    store = ParallaxStore(tmp_path)
+    for i in range(9):
+        _record_pair(store, i, delay_utility=1.0)
+
+    signal = next(
+        row for row in store.mutation_signals(min_samples=5)
+        if row["branch_label"] == "delay_1"
+    )
+    assert signal["candidate_eligible"] is True
+    assert signal["robust_candidate_eligible"] is True
+    assert signal["temporal_stability"]["evaluable"] is True
+    assert signal["temporal_stability"]["stable"] is True
+    assert signal["temporal_stability"]["positive_fold_fraction"] == 1.0
+    assert signal["temporal_stability"]["worst_fold_mean"] > 0
+
+
+def test_parallax_isolated_parameter_spike_is_withheld_from_robust_signals(tmp_path):
+    store = ParallaxStore(tmp_path)
+    for i in range(6):
+        decision = store.record_decision(
+            {
+                "asset": "NQ",
+                "action": "long",
+                "observed_at": f"2026-10-01T10:{i:02d}:00Z",
+                "regime": "trend",
+                "source_commit": "a" * 40,
+                "context": {"bar": i},
+                "comparison_contract": _contract(),
+                "subsystem_votes": {},
+            }
+        )
+        store.record_outcome(
+            {
+                "decision_id": decision["decision_id"],
+                "label": "actual",
+                "utility": 0.0,
+                "observed_at": f"2026-10-01T11:{i:02d}:00Z",
+                "evidence": [f"actual:{i}"],
+            }
+        )
+        for label, utility in (("stop_0.75", -0.2), ("stop_1.25", 1.0), ("stop_1.50", -0.2)):
+            store.record_outcome(
+                {
+                    "decision_id": decision["decision_id"],
+                    "label": label,
+                    "utility": utility,
+                    "observed_at": f"2026-10-01T11:{i:02d}:30Z",
+                    "evidence": [f"{label}:{i}"],
+                }
+            )
+
+    middle = next(
+        row for row in store.hypotheses(min_samples=5)
+        if row["branch_label"] == "stop_1.25"
+    )
+    assert middle["candidate_eligible"] is True
+    assert middle["parameter_basin"]["evaluable"] is True
+    assert middle["parameter_basin"]["neighbor_count"] == 2
+    assert middle["parameter_basin"]["supporting_neighbor_count"] == 0
+    assert middle["parameter_basin"]["isolated_spike"] is True
+    assert middle["robust_candidate_eligible"] is False
+    assert "isolated_parameter_spike" in middle["robustness_blockers"]
+    assert not [
+        row for row in store.mutation_signals(min_samples=5)
+        if row["branch_label"] == "stop_1.25"
+    ]
+
+    lab = DreamstateLab(tmp_path, parallax=store)
+    state = lab.refresh(min_samples=5)
+    assert not [c for c in state["candidates"] if c["mutation"]["op"] == "scale_stop_distance"]
+
+
+def test_parallax_parameter_plateau_is_robust_not_a_magic_point(tmp_path):
+    store = ParallaxStore(tmp_path)
+    for i in range(6):
+        decision = store.record_decision(
+            {
+                "asset": "NQ",
+                "action": "long",
+                "observed_at": f"2026-10-01T12:{i:02d}:00Z",
+                "regime": "trend",
+                "source_commit": "a" * 40,
+                "context": {"bar": i},
+                "comparison_contract": _contract(),
+                "subsystem_votes": {},
+            }
+        )
+        store.record_outcome(
+            {
+                "decision_id": decision["decision_id"],
+                "label": "actual",
+                "utility": 0.0,
+                "observed_at": f"2026-10-01T13:{i:02d}:00Z",
+                "evidence": [f"actual:{i}"],
+            }
+        )
+        for label, utility in (("stop_0.75", 0.8), ("stop_1.25", 1.0), ("stop_1.50", 0.9)):
+            store.record_outcome(
+                {
+                    "decision_id": decision["decision_id"],
+                    "label": label,
+                    "utility": utility,
+                    "observed_at": f"2026-10-01T13:{i:02d}:30Z",
+                    "evidence": [f"{label}:{i}"],
+                }
+            )
+
+    middle = next(
+        row for row in store.mutation_signals(min_samples=5)
+        if row["branch_label"] == "stop_1.25"
+    )
+    assert middle["parameter_basin"]["evaluable"] is True
+    assert middle["parameter_basin"]["supporting_neighbor_count"] == 2
+    assert middle["parameter_basin"]["isolated_spike"] is False
+    assert middle["parameter_basin"]["basin_support_count"] == 3
+    assert middle["parameter_basin"]["basin_width"] == pytest.approx(0.75)
+    assert middle["robust_candidate_eligible"] is True
+
+
+def test_dreamstate_retires_when_source_remains_statistical_but_loses_temporal_robustness(tmp_path):
+    store = ParallaxStore(tmp_path)
+    for i in range(5):
+        _record_pair(store, i, delay_utility=2.0)
+    lab = DreamstateLab(tmp_path, parallax=store)
+    candidate = next(
+        c for c in lab.refresh(min_samples=5)["candidates"]
+        if c["mutation"]["op"] == "set_execution_delay_bars"
+    )
+
+    for i in range(5, 12):
+        _record_pair(store, i, delay_utility=2.0 if i < 8 else -1.0)
+
+    source = next(
+        row for row in store.hypotheses(min_samples=5)
+        if row["branch_label"] == "delay_1"
+    )
+    assert source["candidate_eligible"] is True
+    assert source["robust_candidate_eligible"] is False
+    assert "temporal_instability" in source["robustness_blockers"]
+
+    refreshed = lab.refresh(min_samples=5)
+    retired = next(c for c in refreshed["candidates"] if c["candidate_id"] == candidate["candidate_id"])
+    assert retired["stage"] == "retired"
+    assert candidate["candidate_id"] in refreshed["refresh"]["auto_retired_source_decay"]
+    assert any("robustness screen" in item for item in retired["evidence"])
+
+
+def test_parallax_temporally_unstable_neighbor_does_not_support_parameter_basin(tmp_path):
+    store = ParallaxStore(tmp_path)
+    for i in range(12):
+        decision = store.record_decision(
+            {
+                "asset": "NQ",
+                "action": "long",
+                "observed_at": f"2026-10-01T14:{i:02d}:00Z",
+                "regime": "trend",
+                "source_commit": "a" * 40,
+                "context": {"bar": i},
+                "comparison_contract": _contract(),
+                "subsystem_votes": {},
+            }
+        )
+        store.record_outcome(
+            {
+                "decision_id": decision["decision_id"],
+                "label": "actual",
+                "utility": 0.0,
+                "observed_at": f"2026-10-01T15:{i:02d}:00Z",
+                "evidence": [f"actual:{i}"],
+            }
+        )
+        stop075 = 2.0 if i < 8 else -1.0
+        for label, utility in (("stop_0.75", stop075), ("stop_1.25", 1.0), ("stop_1.50", -0.2)):
+            store.record_outcome(
+                {
+                    "decision_id": decision["decision_id"],
+                    "label": label,
+                    "utility": utility,
+                    "observed_at": f"2026-10-01T15:{i:02d}:30Z",
+                    "evidence": [f"{label}:{i}"],
+                }
+            )
+
+    neighbor = next(row for row in store.hypotheses(min_samples=5) if row["branch_label"] == "stop_0.75")
+    middle = next(row for row in store.hypotheses(min_samples=5) if row["branch_label"] == "stop_1.25")
+    assert neighbor["candidate_eligible"] is True
+    assert neighbor["temporal_stability"]["stable"] is False
+    assert middle["candidate_eligible"] is True
+    assert middle["temporal_stability"]["stable"] is True
+    assert middle["parameter_basin"]["supporting_neighbor_count"] == 0
+    assert middle["parameter_basin"]["isolated_spike"] is True
+    assert middle["robust_candidate_eligible"] is False
+
+
+def test_parallax_temporal_fold_tiebreak_is_deterministic_for_equal_timestamps():
+    timestamp = "2026-10-01T16:00:00Z"
+    samples = [
+        (timestamp, decision_id, value)
+        for decision_id, value in reversed([
+            ("px-a", 1.0), ("px-b", 2.0), ("px-c", 3.0),
+            ("px-d", 4.0), ("px-e", 5.0), ("px-f", 6.0),
+            ("px-g", 7.0), ("px-h", 8.0), ("px-i", 9.0),
+        ])
+    ]
+    result = ParallaxStore._temporal_stability(samples)
+    assert result["evaluable"] is True
+    assert [row["mean_delta"] for row in result["folds"]] == [2.0, 5.0, 8.0]
+    assert result["stable"] is True
+
+
+def test_dreamstate_live_gate_recheck_retires_after_temporal_robustness_collapses(tmp_path):
+    store = ParallaxStore(tmp_path)
+    for i in range(5):
+        _record_pair(store, i, delay_utility=2.0)
+    lab = DreamstateLab(tmp_path, parallax=store)
+    candidate = next(
+        c for c in lab.refresh(min_samples=5)["candidates"]
+        if c["mutation"]["op"] == "set_execution_delay_bars"
+    )
+    assert candidate["stage"] == "proposed"
+
+    for i in range(5, 12):
+        _record_pair(store, i, delay_utility=2.0 if i < 8 else -1.0)
+
+    with pytest.raises(ValueError, match="robustness screen"):
+        lab.evaluate(
+            candidate["candidate_id"],
+            {"validation": {"provenance": True}, "evidence": ["temporal collapse detected live"]},
+        )
+    retired = lab.candidate(candidate["candidate_id"])
+    assert retired["stage"] == "retired"
+    assert any("robustness screen" in row for row in retired["evidence"])
+
+
+def test_parallax_far_apart_parameter_points_do_not_create_fake_local_basin(tmp_path):
+    store = ParallaxStore(tmp_path)
+    for i in range(6):
+        decision = store.record_decision(
+            {
+                "asset": "NQ",
+                "action": "long",
+                "observed_at": f"2026-10-01T17:{i:02d}:00Z",
+                "regime": "trend",
+                "source_commit": "a" * 40,
+                "context": {"bar": i},
+                "comparison_contract": _contract(),
+                "subsystem_votes": {},
+                "branches": [
+                    {"kind": "actual", "label": "actual", "params": {"action": "long"}},
+                    {"kind": "stop", "label": "stop_sparse_low", "params": {"stop_multiplier": 0.50}},
+                    {"kind": "stop", "label": "stop_sparse_high", "params": {"stop_multiplier": 3.00}},
+                ],
+            }
+        )
+        store.record_outcome(
+            {
+                "decision_id": decision["decision_id"],
+                "label": "actual",
+                "utility": 0.0,
+                "observed_at": f"2026-10-01T18:{i:02d}:00Z",
+                "evidence": [f"actual:{i}"],
+            }
+        )
+        for label, utility in (("stop_sparse_low", 1.0), ("stop_sparse_high", 0.9)):
+            store.record_outcome(
+                {
+                    "decision_id": decision["decision_id"],
+                    "label": label,
+                    "utility": utility,
+                    "observed_at": f"2026-10-01T18:{i:02d}:30Z",
+                    "evidence": [f"{label}:{i}"],
+                }
+            )
+
+    rows = [
+        row for row in store.hypotheses(min_samples=5)
+        if row["branch_label"] in {"stop_sparse_low", "stop_sparse_high"}
+    ]
+    assert len(rows) == 2
+    for row in rows:
+        assert row["candidate_eligible"] is True
+        assert row["parameter_basin"]["neighbor_count"] == 0
+        assert row["parameter_basin"]["family_evaluable_point_count"] == 2
+        assert row["parameter_basin"]["local_support_missing"] is True
+        assert "parameter_local_support_missing" in row["robustness_blockers"]
+        assert row["robust_candidate_eligible"] is False
+
+
+def test_parallax_parameter_basin_never_crosses_hidden_non_axis_parameters(tmp_path):
+    store = ParallaxStore(tmp_path)
+    for i in range(6):
+        decision = store.record_decision(
+            {
+                "asset": "NQ",
+                "action": "long",
+                "observed_at": f"2026-10-01T19:{i:02d}:00Z",
+                "regime": "trend",
+                "source_commit": "a" * 40,
+                "context": {"bar": i},
+                "comparison_contract": _contract(),
+                "subsystem_votes": {},
+                "branches": [
+                    {"kind": "actual", "label": "actual", "params": {"action": "long"}},
+                    {
+                        "kind": "stop",
+                        "label": "stop_filter_a",
+                        "params": {"stop_multiplier": 1.00, "entry_filter": "a"},
+                    },
+                    {
+                        "kind": "stop",
+                        "label": "stop_filter_b",
+                        "params": {"stop_multiplier": 1.25, "entry_filter": "b"},
+                    },
+                ],
+            }
+        )
+        store.record_outcome(
+            {
+                "decision_id": decision["decision_id"],
+                "label": "actual",
+                "utility": 0.0,
+                "observed_at": f"2026-10-01T20:{i:02d}:00Z",
+                "evidence": [f"actual:{i}"],
+            }
+        )
+        for label in ("stop_filter_a", "stop_filter_b"):
+            store.record_outcome(
+                {
+                    "decision_id": decision["decision_id"],
+                    "label": label,
+                    "utility": 1.0,
+                    "observed_at": f"2026-10-01T20:{i:02d}:30Z",
+                    "evidence": [f"{label}:{i}"],
+                }
+            )
+
+    rows = [
+        row for row in store.hypotheses(min_samples=5)
+        if row["branch_label"] in {"stop_filter_a", "stop_filter_b"}
+    ]
+    assert len(rows) == 2
+    for row in rows:
+        assert row["candidate_eligible"] is True
+        assert row["parameter_basin"]["neighbor_count"] == 0
+        assert row["parameter_basin"]["family_evaluable_point_count"] == 1
+        assert row["parameter_basin"]["local_support_missing"] is False
+        assert row["parameter_basin"]["evaluable"] is False
+        assert row["robust_candidate_eligible"] is True
+
+
 def test_dreamstate_generates_scoped_hypothesis_but_caps_authority_at_qualified_shadow(tmp_path):
     store = ParallaxStore(tmp_path)
     for i in range(5):
@@ -676,6 +1054,23 @@ def test_dreamstate_auto_retires_active_candidate_when_source_disappears(tmp_pat
     assert retired["stage"] == "retired"
     assert candidate["candidate_id"] in second["refresh"]["auto_retired_source_decay"]
     assert any("source signal is absent" in item for item in retired["evidence"])
+
+def test_v3_robustness_versions_are_explicit_without_breaking_v2_schema(tmp_path):
+    store = ParallaxStore(tmp_path)
+    for i in range(5):
+        _record_pair(store, i)
+    report = store.screening_report(min_samples=5)
+    snap = store.snapshot()
+    lab = DreamstateLab(tmp_path, parallax=store)
+    lab.refresh(min_samples=5)
+    dream = lab.snapshot()
+
+    assert snap["schema_version"] == "icarus-parallax-v2"
+    assert snap["robustness_version"] == "icarus-parallax-robustness-v1"
+    assert report["robustness_version"] == "icarus-parallax-robustness-v1"
+    assert dream["schema_version"] == "icarus-dreamstate-v2"
+    assert dream["robustness_version"] == "icarus-dreamstate-robustness-v1"
+
 
 def test_operator_status_is_lightweight_and_read_only(tmp_path):
     p = ParallaxStore(tmp_path)
