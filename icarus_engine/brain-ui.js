@@ -136,6 +136,10 @@
         <div class="small muted" style="margin-bottom:7px">${h(inc.rule||'Local deterministic studies can preserve candidates without paid model calls; independent review remains mandatory before activation.')}</div>
         <div class="scroll" style="max-height:300px"><table><thead><tr><th>Asset / proposal</th><th>State / mode</th><th>Observed regime</th><th>Inputs</th><th>Reviews</th><th>Authority</th></tr></thead><tbody>${incubatorRows || '<tr><td colspan=6 class="empty">No locally incubated proposals yet.</td></tr>'}</tbody></table></div>
 
+        <h3 class="small" style="margin:16px 0 8px">Proof-carrying candidate qualification</h3>
+        <div class="small muted" style="margin-bottom:7px">Embedded candidate claims do not qualify a model. Every gate needs durable exact-revision receipts and independent verification uses distinct trusted reviewers.</div>
+        <div class="scroll" style="max-height:360px"><table><thead><tr><th>Candidate</th><th>Proof state</th><th>Receipts</th><th>Independent reviewers</th><th>Blockers</th></tr></thead><tbody>${qualificationRows || '<tr><td colspan=5 class="empty">No candidate qualification receipts recorded yet.</td></tr>'}</tbody></table></div>
+
         <h3 class="small" style="margin:16px 0 8px">Candidate lifecycle & rigorous gates</h3>
         <div class="scroll" style="max-height:520px"><table><thead><tr><th>Candidate</th><th>Stage</th><th>Validation score</th><th>Gate state</th></tr></thead><tbody>${candRows || '<tr><td colspan=4 class="empty">No candidate events recorded yet. Qualification remains empty/fail-closed.</td></tr>'}</tbody></table></div>
 
