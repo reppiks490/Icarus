@@ -505,31 +505,29 @@ def record_engine_pantheon_observation(
 @mcp.tool()
 def record_engine_veritas_reconciliation(
     observation_id: str,
+    source_observation_id: str,
     observed_at: str,
     realized_direction: str,
-    realized_signatures_json: str,
     confidence: float,
     evidence_json: str,
 ) -> dict:
-    """Reconcile one immutable VERITAS mechanism certificate after its horizon matures.
+    """Reconcile one immutable VERITAS certificate against a later PANTHEON observation.
 
-    A correct endpoint is not reinforcement-eligible unless its pre-registered
-    mechanism signatures also reconcile. This tool is research-only.
+    Realized mechanism signatures are derived by the engine from the immutable
+    source observation; callers cannot inject the signature values here. A
+    correct endpoint is not reinforcement-eligible unless that path reconciles.
     """
     try:
-        realized_signatures = json.loads(realized_signatures_json or "{}")
         evidence = json.loads(evidence_json or "[]")
     except json.JSONDecodeError as ex:
         return {"error": f"VERITAS JSON input is invalid: {ex}"}
-    if not isinstance(realized_signatures, dict):
-        return {"error": "realized_signatures_json must decode to an object"}
     if not isinstance(evidence, list) or not evidence:
         return {"error": "evidence_json must decode to a non-empty list"}
     body: Dict[str, Any] = {
         "observation_id": observation_id.strip(),
+        "source_observation_id": source_observation_id.strip(),
         "observed_at": observed_at.strip(),
         "realized_direction": realized_direction.strip().lower(),
-        "realized_signatures": realized_signatures,
         "confidence": float(confidence),
         "evidence": evidence,
     }

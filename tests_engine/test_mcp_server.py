@@ -587,9 +587,9 @@ def test_mcp_veritas_reconciliation_route_is_research_only(monkeypatch):
     monkeypatch.setattr(mcp_server, "_engine_post", post)
     out = mcp_server.record_engine_veritas_reconciliation(
         "pan-v1",
+        "pan-v1-source",
         "2026-10-01T06:01:00Z",
         "long",
-        '{"basis_expands":false,"queue_replenishment":0.1}',
         0.8,
         '["fixture:post-horizon"]',
     )
@@ -598,20 +598,20 @@ def test_mcp_veritas_reconciliation_route_is_research_only(monkeypatch):
     assert seen["path"] == "/admin/pantheon/veritas"
     assert seen["body"] == {
         "observation_id": "pan-v1",
+        "source_observation_id": "pan-v1-source",
         "observed_at": "2026-10-01T06:01:00Z",
         "realized_direction": "long",
-        "realized_signatures": {"basis_expands": False, "queue_replenishment": 0.1},
         "confidence": 0.8,
         "evidence": ["fixture:post-horizon"],
     }
 
 
-def test_mcp_veritas_reconciliation_rejects_bad_shapes():
+def test_mcp_veritas_reconciliation_rejects_bad_evidence_shape():
     assert "error" in mcp_server.record_engine_veritas_reconciliation(
-        "pan-v1", "2026-10-01T06:01:00Z", "long", "[]", 0.8, '["e"]'
+        "pan-v1", "pan-v1-source", "2026-10-01T06:01:00Z", "long", 0.8, "{}"
     )
     assert "error" in mcp_server.record_engine_veritas_reconciliation(
-        "pan-v1", "2026-10-01T06:01:00Z", "long", "{}", 0.8, "[]"
+        "pan-v1", "pan-v1-source", "2026-10-01T06:01:00Z", "long", 0.8, "[]"
     )
 
 

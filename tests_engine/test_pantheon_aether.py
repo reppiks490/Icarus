@@ -227,6 +227,13 @@ def _veritas_payload(observation_id: str = "pan-veritas") -> dict:
     return payload
 
 
+def _veritas_source_payload(observation_id: str, observed_at: str, **signatures) -> dict:
+    payload = _payload(observation_id=observation_id, observed_at=observed_at)
+    payload["signals"] = dict(payload["signals"])
+    payload["signals"].update(signatures)
+    return payload
+
+
 def test_veritas_freezes_falsifiable_mechanism_certificate(tmp_path):
     kernel = PantheonKernel(tmp_path)
     obs = kernel.record_observation(_veritas_payload())
@@ -244,16 +251,19 @@ def test_veritas_freezes_falsifiable_mechanism_certificate(tmp_path):
 def test_veritas_distinguishes_right_reasons_from_lucky_direction(tmp_path):
     kernel = PantheonKernel(tmp_path)
     obs = kernel.record_observation(_veritas_payload("pan-veritas-right"))
+    source = kernel.record_observation(_veritas_source_payload(
+        "pan-veritas-right-source",
+        "2026-10-01T06:00:20Z",
+        basis_expands=True,
+        queue_replenishment=0.8,
+        cross_asset_lead=0.2,
+    ))
     right = kernel.record_veritas_reconciliation({
         "observation_id": obs["observation_id"],
-        "observed_at": "2026-10-01T06:00:20Z",
+        "source_observation_id": source["observation_id"],
+        "observed_at": source["observed_at"],
         "realized_direction": "long",
         "confidence": 0.9,
-        "realized_signatures": {
-            "basis_expands": True,
-            "queue_replenishment": 0.8,
-            "cross_asset_lead": 0.2,
-        },
         "evidence": ["fixture:all-predicted-signatures-observed"],
     })
     score = right["reconciliation"]["score"]
@@ -264,16 +274,19 @@ def test_veritas_distinguishes_right_reasons_from_lucky_direction(tmp_path):
     assert score["learning_credit"] == pytest.approx(0.9)
 
     obs2 = kernel.record_observation(_veritas_payload("pan-veritas-lucky"))
+    source2 = kernel.record_observation(_veritas_source_payload(
+        "pan-veritas-lucky-source",
+        "2026-10-01T06:00:20Z",
+        basis_expands=False,
+        queue_replenishment=0.1,
+        cross_asset_lead=-0.3,
+    ))
     lucky = kernel.record_veritas_reconciliation({
         "observation_id": obs2["observation_id"],
-        "observed_at": "2026-10-01T06:00:20Z",
+        "source_observation_id": source2["observation_id"],
+        "observed_at": source2["observed_at"],
         "realized_direction": "long",
         "confidence": 0.9,
-        "realized_signatures": {
-            "basis_expands": False,
-            "queue_replenishment": 0.1,
-            "cross_asset_lead": -0.3,
-        },
         "evidence": ["fixture:direction-right-path-wrong"],
     })
     lucky_score = lucky["reconciliation"]["score"]
@@ -287,16 +300,19 @@ def test_veritas_distinguishes_right_reasons_from_lucky_direction(tmp_path):
 def test_veritas_mechanism_can_match_even_when_endpoint_fails(tmp_path):
     kernel = PantheonKernel(tmp_path)
     obs = kernel.record_observation(_veritas_payload("pan-veritas-endpoint-fail"))
+    source = kernel.record_observation(_veritas_source_payload(
+        "pan-veritas-endpoint-fail-source",
+        "2026-10-01T06:00:20Z",
+        basis_expands=True,
+        queue_replenishment=0.7,
+        cross_asset_lead=0.1,
+    ))
     state = kernel.record_veritas_reconciliation({
         "observation_id": obs["observation_id"],
-        "observed_at": "2026-10-01T06:00:20Z",
+        "source_observation_id": source["observation_id"],
+        "observed_at": source["observed_at"],
         "realized_direction": "short",
         "confidence": 0.8,
-        "realized_signatures": {
-            "basis_expands": True,
-            "queue_replenishment": 0.7,
-            "cross_asset_lead": 0.1,
-        },
         "evidence": ["fixture:path-matched-endpoint-failed"],
     })
     score = state["reconciliation"]["score"]
@@ -309,30 +325,92 @@ def test_veritas_mechanism_can_match_even_when_endpoint_fails(tmp_path):
 def test_veritas_reconciliation_is_maturity_bound_idempotent_and_immutable(tmp_path):
     kernel = PantheonKernel(tmp_path)
     obs = kernel.record_observation(_veritas_payload("pan-veritas-immutable"))
+    source = kernel.record_observation(_veritas_source_payload(
+        "pan-veritas-immutable-source",
+        "2026-10-01T06:00:20Z",
+        basis_expands=True,
+        queue_replenishment=0.7,
+        cross_asset_lead=0.1,
+    ))
     body = {
         "observation_id": obs["observation_id"],
-        "observed_at": "2026-10-01T06:00:20Z",
+        "source_observation_id": source["observation_id"],
+        "observed_at": source["observed_at"],
         "realized_direction": "long",
         "confidence": 0.75,
-        "realized_signatures": {
-            "basis_expands": True,
-            "queue_replenishment": 0.7,
-            "cross_asset_lead": 0.1,
-        },
         "evidence": ["fixture:immutable"],
     }
     first = kernel.record_veritas_reconciliation(body)
     again = kernel.record_veritas_reconciliation(body)
     assert again == first
 
-    too_early = dict(body, observation_id="pan-veritas-early", observed_at="2026-10-01T06:00:00Z")
     kernel.record_observation(_veritas_payload("pan-veritas-early"))
+    early_source = kernel.record_observation(_veritas_source_payload(
+        "pan-veritas-early-source",
+        "2026-10-01T06:00:05Z",
+        basis_expands=True,
+        queue_replenishment=0.7,
+        cross_asset_lead=0.1,
+    ))
+    too_early = dict(
+        body,
+        observation_id="pan-veritas-early",
+        source_observation_id=early_source["observation_id"],
+        observed_at=early_source["observed_at"],
+    )
     with pytest.raises(ValueError, match="maturity"):
         kernel.record_veritas_reconciliation(too_early)
 
     changed = dict(body, confidence=0.6)
     with pytest.raises(ValueError, match="immutable"):
         kernel.record_veritas_reconciliation(changed)
+
+
+def test_veritas_reconciliation_is_bound_to_immutable_source_observation(tmp_path):
+    kernel = PantheonKernel(tmp_path)
+    obs = kernel.record_observation(_veritas_payload("pan-veritas-source-bound"))
+    source = kernel.record_observation(_veritas_source_payload(
+        "pan-veritas-source-bound-later",
+        "2026-10-01T06:00:20Z",
+        basis_expands=True,
+        queue_replenishment=0.8,
+        cross_asset_lead=0.2,
+    ))
+    with pytest.raises(ValueError, match="must match source observation time"):
+        kernel.record_veritas_reconciliation({
+            "observation_id": obs["observation_id"],
+            "source_observation_id": source["observation_id"],
+            "observed_at": "2026-10-01T06:00:21Z",
+            "realized_direction": "long",
+            "confidence": 0.8,
+            "evidence": ["fixture:mismatched-time"],
+        })
+
+    other = _veritas_source_payload(
+        "pan-veritas-source-other-asset",
+        "2026-10-01T06:00:20Z",
+        basis_expands=True,
+        queue_replenishment=0.8,
+        cross_asset_lead=0.2,
+    )
+    other["asset"] = "ES"
+    other_obs = kernel.record_observation(other)
+    with pytest.raises(ValueError, match="asset must match"):
+        kernel.record_veritas_reconciliation({
+            "observation_id": obs["observation_id"],
+            "source_observation_id": other_obs["observation_id"],
+            "observed_at": other_obs["observed_at"],
+            "realized_direction": "long",
+            "confidence": 0.8,
+            "evidence": ["fixture:wrong-asset"],
+        })
+
+
+def test_veritas_refuses_trivial_fidelity_threshold(tmp_path):
+    payload = _veritas_payload("pan-veritas-low-threshold")
+    payload["signals"]["mechanism_certificate"]["fidelity_threshold"] = 0.1
+    with pytest.raises(ValueError, match="at least 0.50"):
+        PantheonKernel(tmp_path).record_observation(payload)
 
 
 def test_veritas_certificate_fails_closed_on_malformed_signatures(tmp_path):

@@ -543,13 +543,10 @@ class PantheonKernel:
         observation_id = text(body.get("observation_id"), "observation_id", 96)
         observed_at = iso_aware(body.get("observed_at"))
         realized_direction = text(body.get("realized_direction"), "realized_direction", 16).lower()
+        source_observation_id = text(body.get("source_observation_id"), "source_observation_id", 96)
         if "confidence" not in body:
             raise ValueError("confidence is required")
         confidence = unit(body.get("confidence"), "confidence")
-        realized = body.get("realized_signatures")
-        realized = dict(mapping(realized, "realized_signatures"))
-        if len(realized) > 64:
-            raise ValueError("realized_signatures exceeds 64 fields")
         evidence = body.get("evidence", [])
         if isinstance(evidence, str):
             evidence = [evidence]
@@ -558,6 +555,13 @@ class PantheonKernel:
         evidence = [text(item, "evidence item", 700) for item in evidence]
 
         observation = self.observation(observation_id)
+        source_observation = self.observation(source_observation_id)
+        if source_observation_id == observation_id:
+            raise ValueError("VERITAS source observation must be a later distinct observation")
+        if source_observation.get("asset") != observation.get("asset"):
+            raise ValueError("VERITAS source observation asset must match certificate observation")
+        if source_observation.get("observed_at") != observed_at:
+            raise ValueError("VERITAS observed_at must match source observation time")
         faculty = observation.get("analysis", {}).get("faculties", {}).get("veritas", {})
         if not isinstance(faculty, Mapping) or faculty.get("status") != "active":
             raise ValueError("observation has no active VERITAS certificate")
@@ -566,6 +570,15 @@ class PantheonKernel:
         maturity_time = observation_time + timedelta(milliseconds=int(observation["horizon_ms"]))
         if outcome_time < maturity_time:
             raise ValueError("VERITAS reconciliation cannot precede observation maturity")
+        source_signals = source_observation.get("input", {}).get("signals", {})
+        if not isinstance(source_signals, Mapping):
+            raise ValueError("VERITAS source observation signals are unavailable")
+        expected = faculty.get("expected_signatures", [])
+        realized = {
+            str(sig.get("key")): source_signals[str(sig.get("key"))]
+            for sig in expected
+            if isinstance(sig, Mapping) and str(sig.get("key")) in source_signals
+        }
 
         scored = score_veritas_reconciliation(
             faculty,
@@ -577,6 +590,7 @@ class PantheonKernel:
             "observation_id": observation_id,
             "observed_at": observed_at,
             "realized_direction": realized_direction,
+            "source_observation_id": source_observation_id,
             "realized_signatures": realized,
             "confidence": confidence,
             "evidence": evidence,

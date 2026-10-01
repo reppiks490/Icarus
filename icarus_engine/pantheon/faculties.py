@@ -611,6 +611,8 @@ def veritas(signals: Mapping[str, Any], observation_id: str) -> dict[str, Any]:
         "mechanism_certificate.fidelity_threshold",
         0.70,
     )
+    if fidelity_threshold < 0.50:
+        raise ValueError("mechanism_certificate.fidelity_threshold must be at least 0.50")
     expected = raw.get("expected_signatures")
     if not isinstance(expected, list) or not 1 <= len(expected) <= 24:
         raise ValueError("mechanism_certificate.expected_signatures must contain 1-24 items")
