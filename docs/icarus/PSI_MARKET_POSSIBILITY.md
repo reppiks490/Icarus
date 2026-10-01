@@ -29,7 +29,7 @@ It combines:
 8. Forced consensus — multiple distinct observed mechanisms must align.
 9. Inverse hidden-state inference — ranked explanations without asserting an unobserved participant identity.
 10. Market shadows — remove one observed force at a time from the synthetic state.
-11. Information wave — source-agnostic residual novelty for unexplained information arrival before provenance is identified.
+11. Information wave — source-agnostic current-window novelty admitted only when exchange-timestamped trades occur after the latest completed runner bar; stale, future-clock, discontinuous, or non-causally ordered windows fail closed.
 
 ## Evidence hierarchy
 
@@ -37,7 +37,7 @@ It combines:
 
 When the active feed supports it, Ψ consumes signed trade ticks, MBP-10 depth, and ICARUS cross-asset observations. Unsupported domains remain unavailable.
 
-For dynamic cross-asset leadership, Ψ now warm-starts from the engine's replayed `AssetRunner.bars` rather than accumulating history from dashboard/API polling. Peers are eligible only when chart cadence matches the target and lag pairs line up on exact bar timestamps. Returns spanning missing-bar gaps are discarded and reported in data health. Status-poll history remains an explicitly labelled fallback for minimal adapters that do not expose runner bars.
+For dynamic cross-asset leadership, Ψ now warm-starts from the engine's replayed `AssetRunner.bars` rather than accumulating history from dashboard/API polling. Real closes from runner overlays are preferred over transformed chart closes, each peer is normalized by its own realized volatility, and leader correlations are stability-weighted across temporal folds. Peers are eligible only when chart cadence matches the target and lag pairs line up on exact bar timestamps. Returns spanning missing-bar gaps are discarded and reported in data health. Status-poll history remains an explicitly labelled fallback for minimal adapters that do not expose runner bars.
 
 ### Optional external evidence
 
