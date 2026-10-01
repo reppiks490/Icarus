@@ -1,0 +1,35 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "argus-impact-calibration-verified-20261001T193700Z",
+  "category": "EVOLUTION",
+  "severity": "success",
+  "status": "verified",
+  "subsystems": [
+    "argus",
+    "execution_research",
+    "calibration",
+    "provenance"
+  ],
+  "recorded_at": "2026-10-01T19:37:00Z",
+  "title": "ARGUS realized-fill impact calibration verified",
+  "summary": "ARGUS now compares its static TRUE_DEPTH displayed-book impact baseline with later realized fills. Calibration records snapshot age, completion latency, predicted-versus-realized fill fraction, adverse slippage error, displayed-depth utilization, book-exhaustion state and aggregate signed/absolute/RMSE error. Depth curves and calibration observations are self-validated before aggregation. This is retrospective calibration evidence only and does not claim that displayed depth predicts future fills or grant execution authority.",
+  "source_repository": "reppiks490/divine-providence",
+  "source_ref": "main",
+  "source_commit": "deb40cffc9a9c3280cd3c01ebe74d38cd078e446",
+  "evidence": [
+    "divine-providence PR #24 merged at deb40cffc9a9c3280cd3c01ebe74d38cd078e446",
+    "exact-head subsystem-evolution workflow run 36915131376 completed success",
+    "Linux and Windows ARGUS subsystem jobs passed",
+    "intelligence-fabric and hub tests passed",
+    "full twelve-system validation passed",
+    "impact calibration requires TRUE_DEPTH and static_visible_depth_only",
+    "realized outcomes cannot precede the impact snapshot",
+    "depth-curve arithmetic is revalidated before calibration",
+    "calibration observation arithmetic is revalidated before aggregation",
+    "aggregate metrics include signed error, MAE, RMSE and slippage-underprediction rate",
+    "execution_authorized=false",
+    "production_decision_authorized=false"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}
