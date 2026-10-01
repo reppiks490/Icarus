@@ -120,6 +120,7 @@ def test_dashboard_surfaces_adaptive_brain_fabric():
     assert "5 custom agents" in ui
     assert "SHADOW_ONLY" in ui
     assert "Observed success rate" in ui
+    assert "Matured unsettled" in ui
     assert "Closed-sample 100%" in ui
     assert "Hot-path p99" in ui
     assert "Evidence champion / challenger tournaments" in ui
@@ -129,6 +130,7 @@ def test_dashboard_surfaces_adaptive_brain_fabric():
     assert "/api/source-reliability" in server
     assert "/admin/source-reliability/observation" in server
     assert "/api/performance-proof" in server
+    assert "/api/performance-proof/pending" in server
     assert "/api/latency" in server
     assert "/admin/performance-proof/forecast" in server
     assert "/admin/performance-proof/outcome" in server
