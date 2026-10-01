@@ -1339,44 +1339,53 @@ class Databento:
             return self._mbo_snapshot_locked(symbol, timeout)
 
     def _mbo_snapshot_locked(self, symbol: str, timeout: float) -> List[Dict[str, Any]]:
-        # Snapshot requests use a temporary third session. Serialize them so concurrent
-        # HTTP/MCP callers cannot multiply sessions or race close/timeout handling.
+        # Snapshot requests use a temporary fourth session at peak (core + MBP-10 +
+        # MBO + snapshot). Serialize them so concurrent HTTP/MCP callers cannot
+        # multiply sessions or race close/timeout handling.
+        last_flag = int(getattr(getattr(self._sdk, "RecordFlags", object), "F_LAST", 0) or 0)
+        if not last_flag:
+            raise RuntimeError("Databento SDK does not expose RecordFlags.F_LAST; cannot verify MBO snapshot completeness")
+
         client = self._live_factory()
         done = threading.Event()
         rows: List[Dict[str, Any]] = []
         error: List[str] = []
-        last_flag = int(getattr(getattr(self._sdk, "RecordFlags", object), "F_LAST", 0) or 0)
 
         def callback(record: Any) -> None:
-            if hasattr(record, "err"):
-                code = int(getattr(record, "code", 0) or 0)
-                err = str(getattr(record, "err", "") or "Databento MBO snapshot error")
-                error.append(f"Databento MBO snapshot error code={code}: {err}")
-                done.set()
-                return
-            # Snapshot streams also contain SymbolMappingMsg/SystemMsg records.
-            # Only MBO records are part of the order-book snapshot returned to callers.
-            if not hasattr(record, "order_id"):
-                return
-            row = self._event_record(record)
-            if row.get("schema") != "mbo":
-                return
-            rows.append(row)
-            flags = int(getattr(record, "flags", 0) or 0)
-            if last_flag and flags & last_flag:
+            try:
+                if hasattr(record, "err"):
+                    code = int(getattr(record, "code", 0) or 0)
+                    err = str(getattr(record, "err", "") or "Databento MBO snapshot error")
+                    error.append(f"Databento MBO snapshot error code={code}: {err}")
+                    done.set()
+                    return
+                # Snapshot streams also contain SymbolMappingMsg/SystemMsg records.
+                # Only MBO records are part of the order-book snapshot returned to callers.
+                if not hasattr(record, "order_id"):
+                    return
+                row = self._event_record(record)
+                if row.get("schema") != "mbo":
+                    return
+                rows.append(row)
+                flags = int(getattr(record, "flags", 0) or 0)
+                if flags & last_flag:
+                    done.set()
+            except Exception as ex:
+                error.append(f"Databento MBO snapshot record error: {type(ex).__name__}: {ex}")
                 done.set()
 
-        client.subscribe(
-            dataset=self.dataset,
-            schema="mbo",
-            symbols=self.continuous_symbol(symbol, self.roll_rule),
-            stype_in="continuous",
-            snapshot=True,
-        )
-        client.add_callback(callback)
-        client.start()
+        completed = False
         try:
-            done.wait(max(0.1, float(timeout)))
+            client.subscribe(
+                dataset=self.dataset,
+                schema="mbo",
+                symbols=self.continuous_symbol(symbol, self.roll_rule),
+                stype_in="continuous",
+                snapshot=True,
+            )
+            client.add_callback(callback)
+            client.start()
+            completed = done.wait(max(0.1, float(timeout)))
         finally:
             try:
                 client.stop()
@@ -1391,6 +1400,6 @@ class Databento:
                     raise stop_ex
         if error:
             raise RuntimeError(error[0])
-        if last_flag and not done.is_set():
+        if not completed:
             raise TimeoutError(f"Databento MBO snapshot timed out for {symbol}")
         return rows
