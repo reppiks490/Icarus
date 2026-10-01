@@ -153,7 +153,7 @@ class ParallaxStore:
             raise ValueError("context and subsystem_votes must be objects")
         context_json = _json(dict(context), "context")
         votes_json = _json(dict(votes), "subsystem_votes")
-        context_hash = _sha(asset + "|" + observed_at + "|" + context_json + "|" + votes_json)
+        context_hash = _sha(source_commit + "|" + asset + "|" + observed_at + "|" + context_json + "|" + votes_json)
         decision_id = str(payload.get("decision_id") or ("px-" + context_hash[:24]))
         decision_id = _text(decision_id, "decision_id", 96)
 
@@ -305,20 +305,18 @@ class ParallaxStore:
         return {"n": n, "mean_delta": mean, "ci95_low": mean - 1.96 * se, "ci95_high": mean + 1.96 * se}
 
     def mutation_signals(self, min_samples: int = 5) -> list[dict[str, Any]]:
-        grouped: dict[tuple[str, str, str], list[float]] = {}
-        commits: dict[tuple[str, str, str], str] = {}
+        grouped: dict[tuple[str, str, str, str, str], list[float]] = {}
         for row in self._paired_rows():
-            key = (row["asset"], row["regime"], row["kind"], row["label"])
+            key = (row["asset"], row["regime"], row["source_commit"], row["kind"], row["label"])
             grouped.setdefault(key, []).append(float(row["branch_utility"]) - float(row["actual_utility"]))
-            commits[key] = row["source_commit"]
         signals = []
-        for (asset, regime, kind, label), values in grouped.items():
+        for (asset, regime, source_commit, kind, label), values in grouped.items():
             stats = self._stats(values)
             if stats["n"] < min_samples or stats["ci95_low"] is None or stats["ci95_low"] <= 0:
                 continue
             signals.append({
                 "asset": asset, "regime": regime, "branch_label": label, "kind": kind,
-                "source_commit": commits[(asset, regime, kind, label)], **stats,
+                "source_commit": source_commit, **stats,
             })
         return sorted(signals, key=lambda x: (x["ci95_low"], x["mean_delta"]), reverse=True)
 
