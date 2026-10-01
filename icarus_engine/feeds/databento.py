@@ -595,7 +595,10 @@ class Databento:
             if all(hasattr(record, key) for key in ("open", "high", "low", "close", "volume")):
                 b = self._ohlcv_record(record)
                 if self._upsert_second_bar_locked(symbol, b):
-                    bar_order_ns = (int(b.ts) + 1) * 1_000_000_000 - 1
+                    # Databento OHLCV ts_event is the bar start. Do not stamp a
+                    # synthetic end-of-second receive time: a genuine trade received
+                    # later in the same second must be allowed to become the live mark.
+                    bar_order_ns = int(b.ts) * 1_000_000_000
                     if bar_order_ns >= self._last_price_order_ns.get(symbol, 0):
                         self._last_price[symbol] = b.c
                         self._last_price_order_ns[symbol] = bar_order_ns
