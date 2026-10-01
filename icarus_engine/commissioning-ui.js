@@ -70,7 +70,7 @@
     const sel=document.querySelector('#scAsset'); if(sel){sel.value=selected;sel.onchange=()=>{selected=sel.value;loadCommissioning();};}
     const ref=document.querySelector('#scRefresh');if(ref)ref.onclick=loadCommissioning;
     const cap=document.querySelector('#scCapture');if(cap)cap.onclick=async()=>{if(!selected){alert('Select one asset to freeze a forecast.');return;}cap.disabled=true;try{await control('commissioning.capture',selected);await loadCommissioning();}catch(e){alert(e.message||e);}finally{cap.disabled=false;}};
-    const set=document.querySelector('#scSettle');if(set)set.onclick=async()=>{set.disabled=true;try{await control('commissioning.settle',selected);await loadCommissioning();}catch(e){alert(e.message||e);}finally{set.disabled=false;}};
+    const set=document.querySelector('#scSettle');if(set)set.onclick=async()=>{set.disabled=true;try{await control(selected?'commissioning.settle_asset':'commissioning.settle_all',selected);await loadCommissioning();}catch(e){alert(e.message||e);}finally{set.disabled=false;}};
     const tick=document.querySelector('#scTick');if(tick)tick.onclick=async()=>{tick.disabled=true;try{await control('commissioning.tick','');await loadCommissioning();}catch(e){alert(e.message||e);}finally{tick.disabled=false;}};
   }
 
