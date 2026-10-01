@@ -461,6 +461,69 @@ def _subsystem_rows(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return out
 
 
+def _research_incubator(research_status: Mapping[str, Any] | None) -> dict[str, Any]:
+    """Summarize deterministic local candidate incubation without granting promotion authority."""
+    if not isinstance(research_status, Mapping):
+        return {
+            "available": False,
+            "proposal_count": 0,
+            "review_required": 0,
+            "approved": 0,
+            "rejected_or_invalid": 0,
+            "proposals": [],
+            "execution_authorized": False,
+            "production_decision_authorized": False,
+        }
+
+    ledger = research_status.get("ledger")
+    proposals = ledger.get("proposals", []) if isinstance(ledger, Mapping) else []
+    if not isinstance(proposals, list):
+        proposals = []
+
+    state_counts: dict[str, int] = {}
+    rows: list[dict[str, Any]] = []
+    for proposal in proposals[:100]:
+        if not isinstance(proposal, Mapping):
+            continue
+        state = str(proposal.get("state") or "unknown").lower()
+        state_counts[state] = state_counts.get(state, 0) + 1
+        candidate = proposal.get("candidate") if isinstance(proposal.get("candidate"), Mapping) else {}
+        reviews = proposal.get("reviews") if isinstance(proposal.get("reviews"), list) else []
+        inputs = candidate.get("inputs") if isinstance(candidate.get("inputs"), Mapping) else {}
+        rows.append(
+            {
+                "proposal_id": str(proposal.get("proposal_id") or ""),
+                "asset": str(candidate.get("asset") or ""),
+                "state": state,
+                "decision_at": candidate.get("decision_at"),
+                "expires_at": candidate.get("expires_at"),
+                "review_count": len(reviews),
+                "input_count": len(inputs),
+                "inputs": dict(list(inputs.items())[:24]),
+                "review_required": state in {"proposed", "advised"},
+                "execution_authorized": False,
+                "production_decision_authorized": False,
+            }
+        )
+
+    return {
+        "available": True,
+        "proposal_count": len(rows),
+        "state_counts": state_counts,
+        "review_required": sum(1 for row in rows if row["review_required"]),
+        "approved": state_counts.get("approved", 0),
+        "rejected_or_invalid": (
+            state_counts.get("rejected", 0)
+            + state_counts.get("invalidated", 0)
+            + state_counts.get("expired", 0)
+        ),
+        "proposals": rows,
+        "execution_authorized": False,
+        "production_decision_authorized": False,
+        "rule": "Local study-only incubation may discover and preserve candidates, but independent review remains mandatory before any paper activation.",
+    }
+
+
 def brain_snapshot(
     base_dir: str | os.PathLike[str],
     *,
@@ -520,6 +583,7 @@ def brain_snapshot(
 
     audit_events = len((system_audit or {}).get("events", []) or []) if isinstance(system_audit, Mapping) else 0
     integrity_events = len((integrity or {}).get("events", []) or []) if isinstance(integrity, Mapping) else 0
+    incubator = _research_incubator(research_status)
 
     return {
         "schema_version": SCHEMA_VERSION,
@@ -566,6 +630,7 @@ def brain_snapshot(
         },
         "candidates": candidates,
         "regime_routes": routes,
+        "incubator": incubator,
         "remote_sync": dict(remote_sync) if isinstance(remote_sync, Mapping) else {
             "enabled": False,
             "status": "not_configured",
@@ -583,6 +648,8 @@ def brain_snapshot(
             "system_intelligence_events_visible": audit_events,
             "integrity_events_visible": integrity_events,
             "research_status_present": isinstance(research_status, Mapping),
+            "incubator_proposals": incubator["proposal_count"],
+            "incubator_review_required": incubator["review_required"],
             "journal_errors": journal_errors,
         },
         "candidate_gate": {
