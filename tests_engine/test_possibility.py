@@ -277,3 +277,41 @@ def test_exactly_neutral_latent_pressure_has_no_directional_phase_boundary():
     assert result["direction"] == "NEUTRAL"
     assert result["phase_boundary"] is None
 
+def test_external_evidence_rejects_invalid_confidence_and_ttl():
+    engine = PossibilityEngine(Port())
+    with pytest.raises(ValueError, match="confidence"):
+        engine.ingest_external(
+            "NQ",
+            {"gamma_pressure": {"value": 0.2, "confidence": float("nan")}},
+            source="fixture",
+        )
+    with pytest.raises(ValueError, match="confidence"):
+        engine.ingest_external(
+            "NQ",
+            {"gamma_pressure": {"value": 0.2, "confidence": 1.5}},
+            source="fixture",
+        )
+    with pytest.raises(ValueError, match="ttl_seconds"):
+        engine.ingest_external(
+            "NQ",
+            {"gamma_pressure": 0.2},
+            source="fixture",
+            ttl_seconds=float("nan"),
+        )
+
+
+def test_synthetic_price_does_not_double_count_leader_pressure():
+    engine = PossibilityEngine(Port())
+    features = {
+        "cross_asset_pressure": Feature(0.8, 0.9, True, "fixture"),
+        "queue_pressure": Feature(0.4, 0.8, True, "fixture"),
+    }
+    latent, _ = _weighted(features, {"cross_asset_pressure": 1.0, "queue_pressure": 1.10})
+    positive = engine._synthetic_price(20000.0, 0.001, latent, features, {"pressure": 1.0})
+    negative = engine._synthetic_price(20000.0, 0.001, latent, features, {"pressure": -1.0})
+    assert positive["synthetic_price"] == pytest.approx(negative["synthetic_price"])
+    assert sum(positive["contributions"].values()) == pytest.approx(positive["dislocation"])
+    assert positive["known_force_contribution"] == pytest.approx(positive["dislocation"])
+    assert positive["unexplained_dislocation"] is None
+    assert positive["unexplained_dislocation_available"] is False
+

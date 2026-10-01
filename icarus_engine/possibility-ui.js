@@ -75,7 +75,7 @@
         '<div class="tile"><div class="k">Future entropy</div><div class="v">'+(poss.future_entropy==null?'—':n(poss.future_entropy,1))+'</div><div class="small muted">0 constrained · 100 diffuse</div></div>'+
         '<div class="tile"><div class="k">Future-space collapse</div><div class="v">'+(poss.future_space_collapse==null?'—':n(poss.future_space_collapse,1))+'</div>'+meter(poss.future_space_collapse==null?null:poss.future_space_collapse/100)+'</div>'+
         '<div class="tile"><div class="k">Synthetic price</div><div class="v tnum">'+n(cf.synthetic_price,4)+'</div><div class="small muted">actual '+n(data.price,4)+' · gap '+n(cf.dislocation,4)+'</div></div>'+
-        '<div class="tile"><div class="k">Unexplained gap</div><div class="v tnum">'+n(cf.unexplained_dislocation,4)+'</div><div class="small muted">after known force attribution</div></div>'+
+        '<div class="tile"><div class="k">Unexplained residual</div><div class="v tnum">'+(cf.unexplained_dislocation_available?n(cf.unexplained_dislocation,4):'UNIDENTIFIED')+'</div><div class="small muted">same-snapshot force model cannot identify an independent residual</div></div>'+
         '<div class="tile"><div class="k">Phase boundary</div><div class="v tnum">'+n(phase.phase_boundary,4)+'</div><div class="small muted">'+h(phase.direction||'—')+' · horizon '+n(phase.event_horizon,4)+'</div></div>'+
         '<div class="tile"><div class="k">Forced consensus</div><div class="v">'+(fc.active?'ACTIVE':'INACTIVE')+'</div><div class="small muted">'+h(fc.direction||'—')+' · alignment '+pct(fc.alignment)+'</div></div>'+
       '</div>'+
