@@ -1,0 +1,36 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "argus-orderblock-study-manifest-verified-20261001T182900Z",
+  "category": "EVOLUTION",
+  "severity": "success",
+  "status": "verified",
+  "subsystems": [
+    "argus",
+    "order_blocks",
+    "research_validation",
+    "provenance"
+  ],
+  "recorded_at": "2026-10-01T18:29:00Z",
+  "title": "ARGUS prospective order-block study locks verified",
+  "summary": "ARGUS now locks prospective survival-study cohorts before outcomes are visible. The study contract pins its own schema revision, lifecycle revision, cohort window, assets, evidence tiers, directions, follow-up cutoff, optional analysis horizon and allowed analyses. Cohort receipts are content-addressed, record explicit exclusions, bind exact administrative-censor block IDs, self-verify manifest/cohort identities and administratively censor outcomes beyond the declared cutoff instead of leaking later results into the study.",
+  "source_repository": "reppiks490/divine-providence",
+  "source_ref": "main",
+  "source_commit": "a3a949c3ea8f8552d6fb91587dca45e7e2d283e0",
+  "evidence": [
+    "divine-providence PR #20 merged at a3a949c3ea8f8552d6fb91587dca45e7e2d283e0",
+    "exact-head subsystem-evolution workflow run 36906622463 completed success",
+    "Linux and Windows ARGUS causal subsystem jobs passed",
+    "intelligence-fabric job passed",
+    "full twelve-system validation passed",
+    "study schema pinned as argus-orderblock-study-v1",
+    "manifest must be created at or before cohort start",
+    "exact lifecycle revision and cohort inclusion rules are content-addressed",
+    "administrative censor count and exact block IDs are bound into cohort receipt",
+    "manifest and cohort content identities self-verify before registered analysis",
+    "future outcomes beyond declared follow-up are censored rather than leaked",
+    "execution_authorized=false",
+    "production_decision_authorized=false"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}
