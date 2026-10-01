@@ -13,17 +13,31 @@ import os
 from typing import Any, Dict, Optional
 
 import httpx
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
-BASE = os.environ.get("ICARUS_BRIDGE_URL", "http://127.0.0.1:8787").rstrip("/")
-TOKEN = os.environ.get("ICARUS_ADMIN_TOKEN", "")
+from .config import _load_dotenv
 
-mcp = FastMCP(
+
+def _endpoint_settings():
+    """Load MCP endpoints/tokens from explicit env or the same persisted .env as the bridge."""
+    _load_dotenv()
+    e = os.environ.get
+    bridge_url = (e("ICARUS_BRIDGE_URL") or "http://127.0.0.1:8787").rstrip("/")
+    bridge_token = e("ICARUS_ADMIN_TOKEN") or e("ADMIN_TOKEN") or ""
+    engine_url = (e("ICARUS_ENGINE_URL") or "http://127.0.0.1:8791").rstrip("/")
+    engine_token = e("ICARUS_ENGINE_TOKEN") or bridge_token
+    return bridge_url, bridge_token, engine_url, engine_token
+
+
+BASE, TOKEN, ENGINE_BASE, ENGINE_TOKEN = _endpoint_settings()
+
+mcp = MCPServer(
     "icarus-bridge",
     instructions=(
         "Control surface for the ICARUS Bridge: a local daemon that receives TradingView strategy "
         "webhooks and mirrors them onto an Alpaca PAPER account (NQ signals → QQQ proxy). Read tools are "
-        "safe. pause_trading / resume_trading / flatten_all / simulate_alert change live paper state — "
+        "safe. The engine_* tools expose ICARUS strategy configuration, cached backtests and paper-engine "
+        "results. pause_trading / resume_trading / flatten_all / simulate_alert change live paper state — "
         "confirm with the user before calling them unless they asked for exactly that action."
     ),
 )
@@ -47,6 +61,37 @@ def _post(path: str, body: Optional[Dict[str, Any]] = None, raw: Optional[str] =
         if r.status_code >= 400:
             return {"error": r.status_code, "detail": r.text}
         return r.json()
+
+
+def _engine_client() -> httpx.Client:
+    return httpx.Client(base_url=ENGINE_BASE, timeout=60.0,
+                        headers={"Authorization": f"Bearer {ENGINE_TOKEN}"})
+
+
+def _engine_get(path: str, **params: Any) -> Any:
+    with _engine_client() as c:
+        r = c.get(path, params={k: v for k, v in params.items() if v is not None})
+        r.raise_for_status()
+        return r.json()
+
+
+def _engine_post(path: str, body: Optional[Dict[str, Any]] = None) -> Any:
+    with _engine_client() as c:
+        r = c.post(path, content=json.dumps(body or {}), headers={"Content-Type": "application/json"})
+        if r.status_code >= 400:
+            return {"error": r.status_code, "detail": r.text}
+        return r.json()
+
+
+def _safe_engine(fn):
+    try:
+        return fn()
+    except httpx.ConnectError:
+        return {"error": f"ICARUS engine not reachable at {ENGINE_BASE} — start the paper engine/dashboard first"}
+    except httpx.HTTPStatusError as ex:
+        return {"error": ex.response.status_code, "detail": ex.response.text}
+    except Exception as ex:  # noqa: BLE001
+        return {"error": f"{type(ex).__name__}: {ex}"}
 
 
 def _safe(fn):
@@ -113,6 +158,104 @@ def recent_log(limit: int = 60) -> list:
 def get_config() -> dict:
     """Effective bridge configuration (secrets masked): mode, symbol map, sizing, risk limits."""
     return _safe(lambda: _get("/admin/config"))
+
+
+# ── ICARUS strategy/paper-engine tools ──
+@mcp.tool()
+def engine_status() -> dict:
+    """Paper-engine status and per-asset calculations after the active chart/input configuration is replayed."""
+    return _safe_engine(lambda: _engine_get("/status/public"))
+
+
+@mcp.tool()
+def engine_configuration(asset: str = "NQ") -> dict:
+    """Effective strategy inputs plus chart timeframe/type/fill/source capabilities for one engine asset."""
+    asset = asset.strip().upper()
+    return _safe_engine(lambda: _engine_get(f"/api/inputs/{asset}"))
+
+
+@mcp.tool()
+def set_engine_chart_config(asset: str = "NQ", timeframe: Optional[str] = None,
+                            chart_type: Optional[str] = None, fill_on: Optional[str] = None,
+                            security_source: Optional[str] = None, persist: bool = True) -> dict:
+    """Reconfigure and re-warm an engine asset from cached bars.
+
+    Supported chart modes are standard OHLC (real) and Heikin Ashi (heikin_ashi).
+    Real fills remain recommended even when the strategy calculates on Heikin Ashi.
+    Databento now supplies genuine 1-second/tick/depth data, but chart-timeframe execution remains minute-based until the chart aggregator is upgraded for sub-minute/tick bars.
+    """
+    chart = {k: v for k, v in {
+        "timeframe": timeframe, "chart_type": chart_type, "fill_on": fill_on,
+        "security_source": security_source,
+    }.items() if v not in (None, "")}
+    if not chart:
+        return {"error": "provide at least one chart setting"}
+    body = {"asset": asset.strip().upper(), "values": {}, "chart": chart, "persist": bool(persist)}
+    return _safe_engine(lambda: _engine_post("/admin/inputs", body))
+
+
+@mcp.tool()
+def start_engine_backtest(asset: str = "NQ", timeframe: Optional[str] = None,
+                          chart_type: Optional[str] = None, fill_on: Optional[str] = None,
+                          security_source: Optional[str] = None, preset: Optional[str] = None,
+                          inputs_json: str = "") -> dict:
+    """Start a cached ICARUS Strategy Tester replay using the requested timeframe/chart settings."""
+    body: Dict[str, Any] = {"asset": asset.strip().upper()}
+    for k, v in {"timeframe": timeframe, "chart_type": chart_type, "fill_on": fill_on,
+                 "security_source": security_source, "preset": preset}.items():
+        if v not in (None, ""):
+            body[k] = v
+    if inputs_json.strip():
+        try:
+            vals = json.loads(inputs_json)
+        except json.JSONDecodeError as ex:
+            return {"error": f"inputs_json is invalid JSON: {ex}"}
+        if not isinstance(vals, dict):
+            return {"error": "inputs_json must decode to an object"}
+        body["inputs"] = vals
+    return _safe_engine(lambda: _engine_post("/admin/backtest", body))
+
+
+@mcp.tool()
+def engine_backtest_status(job_id: str) -> dict:
+    """Read a cached backtest job, including recalculated metrics/trades when it is complete."""
+    return _safe_engine(lambda: _engine_get(f"/api/backtest/{job_id.strip()}"))
+
+
+@mcp.tool()
+def engine_market_data_capabilities(asset: str = "NQ") -> dict:
+    """Active raw-feed capabilities. Databento exposes 1s OHLCV, ticks, MBP-10, and MBO."""
+    asset = asset.strip().upper()
+    return _safe_engine(lambda: _engine_get(f"/api/market-data/{asset}/capabilities"))
+
+
+@mcp.tool()
+def engine_recent_ticks(asset: str = "NQ", limit: int = 1000, since_ts: int = 0) -> dict:
+    """Recent raw trade ticks from the active engine feed."""
+    asset = asset.strip().upper()
+    qs = f"?limit={max(1, min(10000, int(limit)))}"
+    if int(since_ts) > 0:
+        qs += f"&since_ts={int(since_ts)}"
+    return _safe_engine(lambda: _engine_get(f"/api/market-data/{asset}/ticks{qs}"))
+
+
+@mcp.tool()
+def engine_order_book_events(asset: str = "NQ", schema: str = "mbp-10", limit: int = 1000) -> dict:
+    """Recent Databento L2/L3 events. schema must be mbp-10 or mbo."""
+    schema = schema.strip().lower()
+    if schema not in ("mbp-10", "mbo"):
+        return {"error": "schema must be mbp-10 or mbo"}
+    asset = asset.strip().upper()
+    return _safe_engine(lambda: _engine_get(
+        f"/api/market-data/{asset}/depth?schema={schema}&limit={max(1, min(10000, int(limit)))}"
+    ))
+
+
+@mcp.tool()
+def engine_mbo_snapshot(asset: str = "NQ", timeout: float = 5.0) -> dict:
+    """Request a live Databento MBO snapshot for the continuous front contract."""
+    body = {"asset": asset.strip().upper(), "timeout": max(0.1, min(30.0, float(timeout)))}
+    return _safe_engine(lambda: _engine_post("/admin/market-data/mbo-snapshot", body))
 
 
 # ── control tools (state-changing) ──

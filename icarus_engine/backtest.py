@@ -26,9 +26,10 @@ from typing import Any, Dict, List, Optional
 from types import SimpleNamespace
 from zoneinfo import ZoneInfo
 
+from .assets import normalize_chart_timeframe
 from .metrics import PERFORMANCE_ROWS, RISK_ROWS, TRADES_ROWS, Piece, tv_summary
 from .pine.timeframe import Bar, tf_minutes
-from .runtime import AssetRunner, Journal, RunnerConfig, resolve_inputs, validate_values
+from .runtime import AssetRunner, Journal, RunnerConfig, _session_mode, resolve_inputs, validate_values
 from .strategy.inputs import Inputs
 
 JOBS: Dict[str, Dict[str, Any]] = {}
@@ -77,7 +78,12 @@ def _snapshot_hash(value: Any) -> str:
 def validate_backtest_params(params: Dict[str, Any]) -> Dict[str, Any]:
     """Validate before scheduling or replay; retain optional/default semantics."""
     out = copy.deepcopy(params)
-    modes = {"fill_on": ("real", "chart"), "chart_type": ("real", "heikin_ashi"), "session": ("rth", "eth")}
+    modes = {"fill_on": ("real", "chart"), "chart_type": ("real", "heikin_ashi"),
+             "security_source": ("chart", "standard"), "session": ("rth", "eth")}
+    if out.get("timeframe") in (None, ""):
+        out.pop("timeframe", None)
+    else:
+        out["timeframe"] = normalize_chart_timeframe(out["timeframe"])
     numbers = ("slippage_ticks", "commission", "capital", "leverage", "window_start", "window_end")
     for key in ("preset", *modes, *numbers):
         value = out.get(key)
@@ -128,7 +134,8 @@ def validate_backtest_params(params: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def run_backtest(port, symbol: str, *, preset: Optional[str] = None, inputs: Optional[Dict[str, Any]] = None,
-                 fill_on: Optional[str] = None, chart_type: Optional[str] = None, slippage_ticks: Optional[int] = None,
+                 fill_on: Optional[str] = None, chart_type: Optional[str] = None, timeframe: Optional[str] = None,
+                 security_source: Optional[str] = None, slippage_ticks: Optional[int] = None,
                  commission: Optional[float] = None, capital: Optional[float] = None, session: Optional[str] = None,
                  window_start: Optional[int] = None, window_end: Optional[int] = None, leverage: float = 50.0,
                  progress=None) -> Dict[str, Any]:
@@ -139,10 +146,12 @@ def run_backtest(port, symbol: str, *, preset: Optional[str] = None, inputs: Opt
     completed chart close; a partial final chart bar is not simulated.
     """
     params = validate_backtest_params({"preset": preset, "inputs": inputs, "fill_on": fill_on, "chart_type": chart_type,
+                                      "timeframe": timeframe, "security_source": security_source,
                                       "slippage_ticks": slippage_ticks, "commission": commission, "capital": capital,
                                       "session": session, "window_start": window_start, "window_end": window_end, "leverage": leverage})
     preset, inputs = params.get("preset"), params.get("inputs", {})
     fill_on, chart_type, session = params.get("fill_on"), params.get("chart_type"), params.get("session")
+    timeframe, security_source = params.get("timeframe"), params.get("security_source")
     slippage_ticks, commission, capital = params.get("slippage_ticks"), params.get("commission"), params.get("capital")
     window_start, window_end, leverage = params.get("window_start"), params.get("window_end"), params.get("leverage", 50.0)
     port = freeze_replay_port(port, symbol)
@@ -168,6 +177,12 @@ def run_backtest(port, symbol: str, *, preset: Optional[str] = None, inputs: Opt
         raise ValueError(f"{src.spec.symbol}: cached history unavailable for requested HTF minutes {sorted(missing)}; fetch compatible history first")
     if meta.get("chart_type") in ("real", "heikin_ashi"):
         spec.chart_type = meta["chart_type"]
+    if meta.get("timeframe") not in (None, ""):
+        spec.chart_tf = normalize_chart_timeframe(meta["timeframe"])
+    if meta.get("security_source") in ("chart", "standard"):
+        spec.security_source = meta["security_source"]
+    if meta.get("fill_on") in ("real", "chart"):
+        spec.fill_on = meta["fill_on"]
     if meta.get("slippage_ticks") is not None:
         spec.slippage_ticks = int(meta["slippage_ticks"])
     if meta.get("commission") is not None:
@@ -180,6 +195,10 @@ def run_backtest(port, symbol: str, *, preset: Optional[str] = None, inputs: Opt
         spec.fill_on = fill_on
     if chart_type in ("real", "heikin_ashi"):
         spec.chart_type = chart_type
+    if timeframe:
+        spec.chart_tf = timeframe
+    if security_source in ("chart", "standard"):
+        spec.security_source = security_source
     if slippage_ticks is not None:
         spec.slippage_ticks = int(slippage_ticks)
     if commission is not None:
@@ -188,6 +207,20 @@ def run_backtest(port, symbol: str, *, preset: Optional[str] = None, inputs: Opt
         spec.capital = float(capital)
     if session in ("rth", "eth") and spec.calendar == "cme":
         spec.session = session
+    requested_chart_minutes = tf_minutes(spec.chart_tf)
+    source_chart_minutes = tf_minutes(src.spec.chart_tf)
+    if requested_chart_minutes != source_chart_minutes:
+        if not src.subbars:
+            raise ValueError(f"{src.spec.symbol}: no cached sub-bars are available to rebuild a {spec.chart_tf} chart")
+        compatible = [(b, int(sub)) for b, sub in src.subbars
+                      if int(sub) <= requested_chart_minutes and requested_chart_minutes % int(sub) == 0]
+        if not compatible:
+            have = sorted({int(sub) for _, sub in src.subbars})
+            raise ValueError(
+                f"{src.spec.symbol}: cached source bars {have}m cannot be losslessly rebuilt as "
+                f"{spec.chart_tf}; load 1-minute history first"
+            )
+
     cfg = RunnerConfig(spec=spec, inputs=inp, warmup_bars=src.cfg.warmup_bars, sources=sources, profile=port.profile,
                        preset=preset_name or None, pts_ref_price=src.cfg.pts_ref_price,
                        fixed_pts_scale=src.pts_scale, mintick=src.mintick, scale_known_at=src.cfg.scale_known_at)
@@ -306,9 +339,14 @@ def run_backtest(port, symbol: str, *, preset: Optional[str] = None, inputs: Opt
     r.journal.con.close()
     return {
         "asset": r.symbol, "bars": bars_n, "config": {
-            "preset": preset_name, "fill_on": spec.fill_on, "chart_type": spec.chart_type, "slippage_ticks": spec.slippage_ticks,
-            "commission": spec.commission, "capital": spec.capital, "session": getattr(r.cal, "session", "24/7"), "tf": r.chart_minutes,
-            "point_value": r.em.contract_size, "overrides": inputs or {}, "sources": sources, "leverage": leverage,
+            "preset": preset_name, "fill_on": spec.fill_on, "chart_type": spec.chart_type,
+            "security_source": spec.security_source, "slippage_ticks": spec.slippage_ticks,
+            "commission": spec.commission, "capital": spec.capital, "session": _session_mode(r.cal), "tf": r.chart_minutes,
+            "point_value": r.em.contract_size,
+            "continuous_symbol": spec.tv_symbol if spec.kind == "futures" else None,
+            "provider_symbol": spec.ticker,
+            "contract_policy": "continuous_only" if spec.kind == "futures" else "not_applicable",
+            "overrides": inputs or {}, "sources": sources, "leverage": leverage,
             "window_start": window_start, "window_end": window_end, "pts_scale": r.pts_scale,
             "historical_scale_asof_valid": historical_scale_asof_valid, "reproducibility": reproducibility,
         },
@@ -380,7 +418,8 @@ def start_job(port, params: Dict[str, Any]) -> str:
     def run():
         try:
             res = run_backtest(port, params["asset"], preset=params.get("preset"), inputs=params.get("inputs"), fill_on=params.get("fill_on"),
-                               chart_type=params.get("chart_type"), slippage_ticks=params.get("slippage_ticks"), commission=params.get("commission"),
+                               chart_type=params.get("chart_type"), timeframe=params.get("timeframe"),
+                               security_source=params.get("security_source"), slippage_ticks=params.get("slippage_ticks"), commission=params.get("commission"),
                                capital=params.get("capital"), session=params.get("session"), window_start=params.get("window_start"),
                                window_end=params.get("window_end"), leverage=float(params.get("leverage") or 50.0),
                                progress=lambda n: job.__setitem__("progress", n))

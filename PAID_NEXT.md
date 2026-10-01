@@ -6,6 +6,8 @@ This is the list you asked to freeze. Call it later. It is **not** a promise tha
 
 Tonight’s plant (`http://127.0.0.1:8791/`) is **Brain B**: Yahoo `NQ=F`, local paper emulator, RTH 20m. Leave that PowerShell open.
 
+Every command in one dummy list: [COMMANDS.md](COMMANDS.md).
+
 We are **not scalpers**. Session is RTH (09:30–16:15 ET). Sunday Globex is not a trade.
 
 ---
@@ -16,6 +18,7 @@ We are **not scalpers**. Session is RTH (09:30–16:15 ET). Sunday Globex is not
 - Plant runs: `py -3 -m icarus_plant start --assets NQ` (Yahoo, **no** `--offline`)
 - Dashboard on the **PC**: `http://127.0.0.1:8791/` token `icarus`
 - Local paper journal: `icarus_engine.db` — Icarus’s book, not a broker statement
+- Export that book: `py -3 -m icarus_engine.cli paper-export` → `paper-trades.csv`
 - CSV export is **Plus**, not Essential (that was wrong earlier)
 
 ---
@@ -92,7 +95,7 @@ TradingView alert (PULSE)
 | Job | Webhook → many brokers (stocks, futures, crypto) | Strong on **futures** + prop |
 | Futures brokers | Tradovate, TradeStation, others | Tradovate, Rithmic, IB, TradeStation, ProjectX/TopstepX |
 | Icarus code change | None. Paste **their** webhook + JSON, not `ALERT_TEMPLATE.json` | Same |
-| `NQ1!` | They map continuous → front month on **their** roll calendar (can differ from TV). Prefer explicit contract (`NQZ2026`) if they say so | They generate the JSON; symbol is usually `NQ1!` / `MNQ1!` as you configure |
+| `NQ1!` | ICARUS policy is continuous-only. Use this route only when the connector automatically maps the continuous alias to its current executable contract; ICARUS will not ask you to enter a dated expiry symbol | They generate the JSON; symbol is usually `NQ1!` / `MNQ1!` as you configure |
 | PC must stay on | No (cloud) | No (cloud) |
 
 Check current prices on their sites. Class of cost: roughly tens of USD per month **plus** a futures account (margin, exchange data fees). Not “free with Essential.”
@@ -105,7 +108,7 @@ Check current prices on their sites. Class of cost: roughly tens of USD per mont
 4. Create a **Strategy** (asset class = futures, allowed tickers NQ/MNQ).
 5. Create a **Subscription** (size in **contracts**, not QQQ shares).
 6. Copy the strategy webhook URL (`https://webhooks.traderspost.io/trading/webhook/…`).
-7. TradingView alert → that URL. JSON from [their signal reference](https://docs.traderspost.io/docs/core-concepts/webhooks), not Icarus’s template. Example shape: `ticker` + `action`. For futures they warn: `NQ1!` roll may not match TV — use the contract they document.
+7. TradingView alert → that URL. JSON from their signal reference, not Icarus’s template. Example shape: `ticker` + `action`. ICARUS remains continuous-only: the connector must resolve the continuous alias automatically. If it requires you to maintain dated expiry symbols manually, that route is not enabled.
 8. Confirm a **sim** fill in Tradovate **before** any live account or prop.
 
 ### PickMyTrade (when paid)

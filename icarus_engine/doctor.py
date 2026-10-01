@@ -2,6 +2,7 @@
 """Offline health checks. No network, no broker, no paid feed."""
 from __future__ import annotations
 
+import importlib.util
 import os
 from datetime import date
 from typing import Any, Dict, List
@@ -73,6 +74,23 @@ def inspect(base_dir: str | None = None, *, today: date | None = None) -> Dict[s
            fomc_detail,
            level="warn")
 
+    futures = [spec for spec in REGISTRY.values() if spec.kind == "futures"]
+    invalid_futures = [
+        spec.symbol for spec in futures
+        if spec.roll != "continuous" or not spec.ticker.endswith("=F") or not spec.tv_symbol.endswith("1!")
+    ]
+    _check(
+        items,
+        "continuous-only futures registry",
+        bool(futures) and not invalid_futures,
+        (
+            f"{len(futures)} futures use provider-native =F data + TradingView 1! identities; "
+            "no expiry/month-contract routing is active"
+        ) if not invalid_futures else
+        "invalid futures: " + ", ".join(invalid_futures) + " — expiring/month-coded contracts are forbidden",
+        level="fail",
+    )
+
     found = []
     for spec in REGISTRY.values():
         path, minutes = find_history(root, spec.symbol, 20)
@@ -81,7 +99,7 @@ def inspect(base_dir: str | None = None, *, today: date | None = None) -> Dict[s
     _check(items, "TradingView chart dumps in history/",
            bool(found),
            (", ".join(found) + " — engine will warm from these instead of delayed Yahoo") if found
-           else "none yet. Supercharts → Export chart data → `icarus-engine ingest-bars FILE --symbol NQ`  (or drop the CSV in history/drop/ and `icarus-plant ingest-drop`)",
+           else "none yet. Supercharts CSV export needs TradingView Plus (not Essential). Yahoo path: `icarus-plant start --assets NQ`. Plus path: drop CSV in history/drop/ then ingest.",
            level="warn")
 
     drop = os.path.join(root, "history", "drop")
@@ -92,12 +110,11 @@ def inspect(base_dir: str | None = None, *, today: date | None = None) -> Dict[s
     feed = os.environ.get("ICARUS_FEED", "yahoo").strip() or "yahoo"
     home = os.environ.get("ICARUS_HOME")
     _check(items, "ICARUS_FEED / ICARUS_HOME", True,
-           f"ICARUS_FEED={feed}  ICARUS_HOME={home or '(cwd)'} — file = HistoryHub (no Yahoo); yahoo = delayed NQ=F",
+           f"ICARUS_FEED={feed}  ICARUS_HOME={home or '(cwd)'} — file = HistoryHub; yahoo = delayed continuous; databento = live GLBX.MDP3",
            level="ok")
-
     env_path = os.path.join(root, ".env")
     _check(items, ".env present", os.path.isfile(env_path),
-           env_path if os.path.isfile(env_path) else "copy icarus_bridge/.env.example — required only for the Alpaca bridge",
+           env_path if os.path.isfile(env_path) else "copy icarus_bridge/.env.example — used for bridge secrets and optional DATABENTO_API_KEY",
            level="warn")
 
     secrets: Dict[str, str] = {}
@@ -113,6 +130,21 @@ def inspect(base_dir: str | None = None, *, today: date | None = None) -> Dict[s
         _check(items, "ADMIN_TOKEN", secrets.get("ADMIN_TOKEN", "change-me-too") not in ("", "change-me-too", "replace-me-too", "replace-me"),
                "still the default",
                level="fail")
+
+    if feed == "databento":
+        sdk_ok = importlib.util.find_spec("databento") is not None
+        key = (os.environ.get("DATABENTO_API_KEY") or secrets.get("DATABENTO_API_KEY") or "").strip()
+        dataset = (os.environ.get("DATABENTO_DATASET") or secrets.get("DATABENTO_DATASET") or "GLBX.MDP3").strip()
+        rule = (os.environ.get("DATABENTO_ROLL_RULE") or secrets.get("DATABENTO_ROLL_RULE") or "v").strip().lower()
+        ok = sdk_ok and bool(key) and dataset == "GLBX.MDP3" and rule in ("v", "n", "c")
+        rule_name = {"v": "volume", "n": "open-interest", "c": "calendar"}.get(rule, "invalid")
+        detail = (
+            f"SDK={'installed' if sdk_ok else 'missing'}  "
+            f"DATABENTO_API_KEY={'set' if key else 'missing'}  "
+            f"dataset={dataset or '(blank)'}  roll_rule={rule or '(blank)'}  "
+            f"continuous={rule_name} .{rule}.0 — no network request made"
+        )
+        _check(items, "Databento adapter prerequisites", ok, detail, level="fail")
 
     bak = [n for n in ("icarus_engine/runtime_v1.py.bak", "icarus_engine/cli_v1.py.bak") if os.path.isfile(os.path.join(root, n))]
     _check(items, "editor leftovers (.bak)", not bak,
@@ -139,8 +171,8 @@ def inspect(base_dir: str | None = None, *, today: date | None = None) -> Dict[s
         "warns": warns,
         "ok": fails == 0,
         "notes": [
-            "Yahoo NQ=F is ~10 minutes delayed. A TradingView CME pack does not feed this process.",
-            "Export NQ1! 1-minute (or chart-TF) bars from TradingView and ingest them for free parity warm-up.",
+            "Yahoo continuous futures (=F) are delayed. Set ICARUS_FEED=databento with DATABENTO_API_KEY for real-time GLBX.MDP3 continuous futures.",
+            "Export the matching TradingView 1! chart (for example NQ1!, MNQ1!, GC1!) and ingest it for parity warm-up.",
             "Live NQ fills require a futures broker; the bridge maps NQ1! → QQQ on Alpaca.",
             "icarus-plant start --offline supervises the engine on FileFeed; drop Supercharts CSVs in history/drop/.",
         ],
