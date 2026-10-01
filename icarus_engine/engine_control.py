@@ -197,7 +197,9 @@ class EngineControlPlane:
                     f"{action_id} requires exact confirmation: {action.confirmation}"
                 )
 
-        args = body.get("args") or {}
+        args = body.get("args", {})
+        if args is None:
+            args = {}
         if not isinstance(args, dict):
             raise ValueError("args must be an object")
         payload = {
