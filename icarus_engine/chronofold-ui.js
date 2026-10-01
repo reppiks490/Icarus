@@ -1,13 +1,14 @@
 (function(){
   'use strict';
-  let loading=false, timer=null, selected='';
+  let loading=false, timer=null, selected='', assetsCache=[];
   const h=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const n=(v,d=3)=>v==null||!Number.isFinite(Number(v))?'—':Number(v).toFixed(d);
   const pct=v=>v==null||!Number.isFinite(Number(v))?'—':(Number(v)*100).toFixed(1)+'%';
   const chip=s=>'<span class="chip">'+h(s)+'</span>';
 
   function chronofoldHtml(A){
-    const opts=(A||[]).map(a=>'<option value="'+h(a.symbol)+'">'+h(a.continuous_symbol||a.symbol)+'</option>').join('');
+    assetsCache=Array.isArray(A)?A:[];
+    const opts=assetsCache.map(a=>'<option value="'+h(a.symbol)+'">'+h(a.continuous_symbol||a.symbol)+'</option>').join('');
     return '<section class="card c12" id="chronofoldPanel"><h2>ICARUS Ξ · CHRONOFOLD <span class="sub">causal navigation research plane</span></h2>'+
       '<div class="toolbar"><label class="small">Asset <select id="cfAsset">'+opts+'</select></label><button id="cfRefresh">Refresh</button><span class="small muted">research/shadow only · no broker authority</span></div>'+
       '<div class="empty" style="margin-top:12px">initializing Chronofold causal spacetime…</div></section>';
@@ -47,7 +48,7 @@
       '<section class="card c6"><h2>Darwinian law population</h2><div class="scroll"><table><thead><tr><th>#</th><th>terms</th><th>fitness</th><th>MSE</th></tr></thead><tbody>'+(theories||'<tr><td colspan="4" class="empty">symbolic law discovery warming</td></tr>')+'</tbody></table></div></section></div>'+
       '<section class="card c12" style="margin-top:12px"><h2>Truth contract</h2><div class="small muted">Chronofold uses physics, quantum and spacecraft concepts as mathematical machinery only. It does not claim literal market gravity, quantum causation, time travel, structural causal proof, calibrated scenario probabilities, future knowledge, broker authority, or production decision authority.</div></section>';
     const sel=el.querySelector('#cfAsset');
-    const assets=(window.last&&window.last.assets)||[];
+    const assets=assetsCache;
     sel.innerHTML=assets.map(a=>'<option value="'+h(a.symbol)+'" '+(a.symbol===data.asset?'selected':'')+'>'+h(a.continuous_symbol||a.symbol)+'</option>').join('');
     selected=data.asset||selected; sel.onchange=()=>{selected=sel.value;loadChronofold();}; el.querySelector('#cfRefresh').onclick=loadChronofold;
   }
