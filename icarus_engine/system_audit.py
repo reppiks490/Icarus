@@ -194,6 +194,16 @@ DEFAULT_REPOSITORY_AUDIT: Dict[str, Any] = {
     ],
     "events": [
         {
+            "id": "integration:data-integrity-main:bf630ea0",
+            "kind": "integration",
+            "severity": "success",
+            "title": "Data Integrity trader panel merged",
+            "detail": "Find Export Checklist / NEXUS integrity state is now a real ICARUS trader tab with exact-provenance MCP receipts. PR #70 head f143bc0ed07e passed Linux and Windows workflow 36810261296 before signed merge bf630ea0747b; execution_authorized remains false.",
+            "recorded_at": "2026-10-01T03:25:55Z",
+            "repository": "reppiks490/Icarus",
+            "ref": "bf630ea0747bb9308222a8014c52302b3a8143f3",
+        },
+        {
             "id": "audit:system-intelligence-main:ad010c6b",
             "kind": "audit",
             "severity": "success",
