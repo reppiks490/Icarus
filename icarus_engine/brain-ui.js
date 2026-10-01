@@ -43,7 +43,7 @@
   function renderBrain(b) {
     const el = document.querySelector('#brainPanel');
     if (!el) return;
-    const auth = b.authority || {}, learn = b.learning || {}, truth = b.truth_contract || {}, sync = b.remote_sync || {}, inc = b.incubator || {}, researchSync = b.research_sync || {}, proof = b.performance_proof || {}, latency = b.latency_telemetry || {};
+    const auth = b.authority || {}, learn = b.learning || {}, truth = b.truth_contract || {}, sync = b.remote_sync || {}, inc = b.incubator || {}, researchSync = b.research_sync || {}, proof = b.performance_proof || {}, latency = b.latency_telemetry || {}, qualification = b.qualification || {};
     const agents = ((b.architecture || {}).agents || []);
     const subs = ((b.architecture || {}).subsystems || []);
     const lanes = ((b.architecture || {}).latency_tiers || []);
