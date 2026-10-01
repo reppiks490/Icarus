@@ -17,7 +17,7 @@
   function tiles(rows){return '<div class="tiles">'+rows.map(x=>'<div class="tile"><div class="k">'+h(x[0])+'</div><div class="v">'+h(x[1])+'</div>'+(x[2]?'<div class="small muted">'+h(x[2])+'</div>':'')+'</div>').join('')+'</div>';}
   function renderChronofold(data){
     const el=document.querySelector('#chronofoldPanel'); if(!el)return;
-    const ch=data.chronon||{}, mt=data.multitime||{}, g=data.geometry||{}, cone=data.causal_cone||{}, den=data.density_state||{}, ph=data.phase_transition||{}, mv=data.multiverse||{}, frac=data.reality_fracture||{}, gnc=data.gnc||{}, laws=data.symbolic_physics||{};
+    const ch=data.chronon||{}, mt=data.multitime||{}, g=data.geometry||{}, cone=data.causal_cone||{}, den=data.density_state||{}, ph=data.phase_transition||{}, mv=data.multiverse||{}, frac=data.reality_fracture||{}, gnc=data.gnc||{}, laws=data.symbolic_physics||{}, pot=data.market_potential||{}, macro=data.macro_field||{}, phaseField=data.price_phase_field||{};
     const probs=den.probabilities||{}, clusters=mv.cluster_weights||{};
     const leaders=(cone.leaders||[]).slice(0,8).map((x,i)=>'<tr><td>'+(i+1)+'</td><td><b>'+h(x.asset)+'</b></td><td class="tnum">'+n(x.lagged_association,4)+'</td><td>'+h(x.direction)+'</td><td class="tnum">'+h(x.samples)+'</td></tr>').join('');
     const shadows=(data.counterfactual_shadows||[]).map(x=>'<tr><td>'+h(x.removed_force)+'</td><td class="tnum">'+pct(x.estimated_contribution)+'</td><td class="tnum">'+pct(x.shadow_expected_return)+'</td><td>diagnostic only</td></tr>').join('');
@@ -30,6 +30,9 @@
         ['Chronon activity',pct((ch.activity||{}).activity),'surprise + volatility + causal/event change'],
         ['Temporal shear',n(mt.temporal_shear,3),'desynchronization across internal clocks'],
         ['State curvature',n(g.curvature,4),'trajectory bending on learned state manifold'],
+        ['Market potential',pct(pot.energy),'energy landscape analogue · force '+n(pot.force_proxy,3)],
+        ['Economic field',pct(macro.stress),'stress · synchronization '+pct(macro.synchronization)],
+        ['Price phase',n(phaseField.phase_degrees,1)+'°','log-price + cross-state phase analogue'],
         ['Regime entropy',pct(den.normalized_entropy),'uncertainty across incompatible hypotheses'],
         ['Phase state',ph.state||'—','order '+n(ph.order_parameter,3)+' · Δ '+n(ph.transition_velocity,4)],
         ['Reality fracture',frac.reality_fracture?'ACTIVE':'clear',frac.distance_sigma==null?'warming':'distance '+n(frac.distance_sigma,2)+'σ'],
