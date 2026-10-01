@@ -208,6 +208,29 @@ class LearningFabric:
                     UNIQUE(dataset_id, slot)
                 );
 
+                CREATE TABLE IF NOT EXISTS experiences (
+                    experience_id TEXT PRIMARY KEY,
+                    source TEXT NOT NULL,
+                    source_record_id TEXT NOT NULL,
+                    asset TEXT NOT NULL,
+                    direction TEXT NOT NULL,
+                    entry_at TEXT NOT NULL,
+                    entry_ts REAL NOT NULL,
+                    exit_at TEXT NOT NULL,
+                    exit_ts REAL NOT NULL,
+                    qty REAL NOT NULL,
+                    entry_price REAL NOT NULL,
+                    exit_price REAL NOT NULL,
+                    pnl REAL NOT NULL,
+                    profitable INTEGER NOT NULL CHECK(profitable IN (0,1)),
+                    metadata_json TEXT NOT NULL,
+                    semantic_json TEXT NOT NULL,
+                    recorded_at TEXT NOT NULL,
+                    UNIQUE(source, source_record_id)
+                );
+                CREATE INDEX IF NOT EXISTS idx_learning_experience_scope
+                    ON experiences(source, asset, exit_ts);
+
                 CREATE TABLE IF NOT EXISTS cycles (
                     cycle_id TEXT PRIMARY KEY,
                     started_at TEXT NOT NULL,
@@ -533,6 +556,133 @@ class LearningFabric:
             except Exception as ex:
                 errors[pid] = f"{type(ex).__name__}: {ex}"[:500]
         return {"settled": len(ids), "prediction_ids": ids, "errors": errors, **_authority()}
+
+    def record_experience(self, body: Mapping[str, Any]) -> dict[str, Any]:
+        """Record one immutable realized trade experience.
+
+        Experience is outcome memory, not a forecast and not evidence that a
+        strategy will continue to perform. It can inform research but cannot
+        authorize production or execution.
+        """
+        if not isinstance(body, Mapping):
+            raise ValueError("experience must be an object")
+        source = _text(body.get("source"), "source", 64).lower()
+        source_record_id = _text(body.get("source_record_id"), "source_record_id", 256)
+        asset = _text(body.get("asset"), "asset", 32).upper()
+        direction = _text(body.get("direction"), "direction", 16).lower()
+        if direction not in {"long", "short"}:
+            raise ValueError("direction must be long or short")
+        entry = _parse_time(body.get("entry_at"), "entry_at")
+        exit_at = _parse_time(body.get("exit_at"), "exit_at")
+        if exit_at < entry:
+            raise ValueError("exit_at cannot precede entry_at")
+        qty = _finite(body.get("qty"), "qty")
+        entry_price = _finite(body.get("entry_price"), "entry_price")
+        exit_price = _finite(body.get("exit_price"), "exit_price")
+        pnl = _finite(body.get("pnl"), "pnl")
+        if qty <= 0:
+            raise ValueError("qty must be positive")
+        if entry_price <= 0 or exit_price <= 0:
+            raise ValueError("entry_price and exit_price must be positive")
+        metadata = body.get("metadata", {})
+        if not isinstance(metadata, Mapping):
+            raise ValueError("metadata must be an object")
+        semantic = {
+            "schema_version": "icarus-learning-experience-v1",
+            "source": source,
+            "source_record_id": source_record_id,
+            "asset": asset,
+            "direction": direction,
+            "entry_at": _iso(entry),
+            "exit_at": _iso(exit_at),
+            "qty": qty,
+            "entry_price": entry_price,
+            "exit_price": exit_price,
+            "pnl": pnl,
+            "profitable": pnl > 0.0,
+            "metadata": dict(metadata),
+            **_authority(),
+        }
+        raw = _json(semantic, "experience")
+        experience_id = "exp-" + hashlib.sha256(raw.encode("utf-8")).hexdigest()
+        with self._lock, self._conn:
+            prior = self._conn.execute(
+                "SELECT experience_id,semantic_json FROM experiences WHERE source=? AND source_record_id=?",
+                (source, source_record_id),
+            ).fetchone()
+            if prior is not None:
+                existing = json.loads(prior["semantic_json"])
+                if existing == semantic:
+                    return {
+                        "ok": True, "idempotent": True,
+                        "experience": {**existing, "experience_id": prior["experience_id"]},
+                        **_authority(),
+                    }
+                raise ValueError("experience is immutable for source/source_record_id")
+            self._conn.execute(
+                """INSERT INTO experiences(
+                   experience_id,source,source_record_id,asset,direction,entry_at,entry_ts,
+                   exit_at,exit_ts,qty,entry_price,exit_price,pnl,profitable,metadata_json,
+                   semantic_json,recorded_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (
+                    experience_id, source, source_record_id, asset, direction,
+                    semantic["entry_at"], entry.timestamp(), semantic["exit_at"], exit_at.timestamp(),
+                    qty, entry_price, exit_price, pnl, int(pnl > 0.0),
+                    _json(dict(metadata), "experience metadata"), raw, _utc_now(),
+                ),
+            )
+        return {
+            "ok": True, "idempotent": False,
+            "experience": {**semantic, "experience_id": experience_id},
+            **_authority(),
+        }
+
+    def experience_summary(self) -> list[dict[str, Any]]:
+        rows = self._conn.execute(
+            "SELECT source,asset,direction,entry_at,exit_at,pnl FROM experiences "
+            "ORDER BY source,asset,direction,exit_ts,experience_id"
+        ).fetchall()
+        groups: dict[tuple[str, str, str], list[sqlite3.Row]] = {}
+        for row in rows:
+            groups.setdefault((row["source"], row["asset"], row["direction"]), []).append(row)
+        out = []
+        for (source, asset, direction), group in sorted(groups.items()):
+            pnls = [float(row["pnl"]) for row in group]
+            wins = sum(1 for value in pnls if value > 0)
+            losses = sum(1 for value in pnls if value < 0)
+            breakeven = len(pnls) - wins - losses
+            gross_profit = sum(value for value in pnls if value > 0)
+            gross_loss = sum(value for value in pnls if value < 0)
+            out.append({
+                "source": source,
+                "asset": asset,
+                "direction": direction,
+                "count": len(pnls),
+                "wins": wins,
+                "losses": losses,
+                "breakeven": breakeven,
+                "win_rate": wins / len(pnls) if pnls else None,
+                "net_pnl": sum(pnls),
+                "average_pnl": sum(pnls) / len(pnls) if pnls else None,
+                "gross_profit": gross_profit,
+                "gross_loss": gross_loss,
+                "profit_factor": (gross_profit / abs(gross_loss)) if gross_loss < 0 else None,
+                "first_entry_at": min(row["entry_at"] for row in group),
+                "last_exit_at": max(row["exit_at"] for row in group),
+                "status": "MEASURED" if len(pnls) >= 30 else "EARLY",
+                **_authority(),
+            })
+        return out
+
+    def experience_state(self) -> dict[str, Any]:
+        count = int(self._conn.execute("SELECT COUNT(*) FROM experiences").fetchone()[0])
+        return {
+            "schema_version": "icarus-learning-experience-state-v1",
+            "count": count,
+            "summary": self.experience_summary(),
+            "rule": "Realized trade experience is descriptive outcome memory, not forecast calibration or a future-performance guarantee.",
+            **_authority(),
+        }
 
     def scorecards(self) -> list[dict[str, Any]]:
         rows = self._conn.execute(
