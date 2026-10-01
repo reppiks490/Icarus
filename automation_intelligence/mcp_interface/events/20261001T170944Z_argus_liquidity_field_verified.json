@@ -1,0 +1,37 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "argus-liquidity-field-verified-20261001T170944Z",
+  "category": "EVOLUTION",
+  "severity": "success",
+  "status": "verified",
+  "subsystems": [
+    "argus",
+    "provenance",
+    "ml",
+    "data"
+  ],
+  "recorded_at": "2026-10-01T17:09:44Z",
+  "title": "ARGUS TRUE_DEPTH liquidity-field state verified",
+  "summary": "ARGUS now derives an explainable TRUE_DEPTH liquidity-field state from the causal depth tensor and carries it inside the journal-native CausalMicrostructureSnapshot. The field measures total and near-touch depth pressure, near-touch share gradient, bounded distance/depth shape correlation, depth dispersion, persistence, replenishment, cancellation, resilience, centroid, migration, and concentration while validating tensor identity and refusing non-TRUE_DEPTH or internally inconsistent state.",
+  "source_repository": "reppiks490/divine-providence",
+  "source_ref": "main",
+  "source_commit": "e46199056e919ce6d516b9a6cc486be57d0faf88",
+  "evidence": [
+    "divine-providence PR #15 merged at e46199056e919ce6d516b9a6cc486be57d0faf88",
+    "exact-head subsystem-evolution workflow run 36897063277 completed success",
+    "Linux and Windows ARGUS causal subsystem jobs passed",
+    "intelligence-fabric job passed",
+    "full twelve-system validation passed",
+    "LiquidityField is bound into CausalMicrostructureSnapshot on the receipt-time journal lineage",
+    "non-TRUE_DEPTH evidence fails closed",
+    "tensor lengths and [0,1] temporal rates are validated",
+    "stored centroid and concentration must reproduce from the depth tensor",
+    "positive displayed depth is required at both touch buckets",
+    "distance/depth correlation is descriptive and is not mislabelled as calibrated convexity",
+    "hidden liquidity, queue position, fill probability, spoofing intent, and manipulation are not claimed",
+    "execution_authorized=false",
+    "production_decision_authorized=false"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}
