@@ -503,6 +503,42 @@ def record_engine_pantheon_observation(
 
 
 @mcp.tool()
+def record_engine_aether_claim(
+    observation_id: str,
+    agent_id: str,
+    thesis: str,
+    direction: str = "unknown",
+    confidence: float = 0.5,
+    falsifier: str = "",
+    evidence_json: str = "[]",
+) -> dict:
+    """Commit one immutable blind-first-pass AETHER research claim.
+
+    The engine verifies that agent_id was spawned for observation_id. This MCP
+    wrapper never supplies peer context and the resulting claim has no execution authority.
+    """
+    try:
+        evidence = json.loads(evidence_json or "[]")
+    except json.JSONDecodeError as ex:
+        return {"error": f"evidence_json is invalid JSON: {ex}"}
+    if not isinstance(evidence, list):
+        return {"error": "evidence_json must decode to a list"}
+    body: Dict[str, Any] = {
+        "observation_id": observation_id.strip(),
+        "agent_id": agent_id.strip(),
+        "peer_context_used": False,
+        "claim": {
+            "thesis": thesis.strip(),
+            "direction": direction.strip().lower(),
+            "confidence": float(confidence),
+            "falsifier": falsifier.strip(),
+            "evidence": evidence,
+        },
+    }
+    return _safe_engine(lambda: _engine_post("/admin/pantheon/claim", body))
+
+
+@mcp.tool()
 def engine_possibility_state(asset: str = "NQ") -> dict:
     """Read ICARUS Ψ latent-pressure, possibility-space and information-wave diagnostics."""
     asset = asset.strip().upper()

@@ -169,6 +169,7 @@ def test_pantheon_is_visible_in_trader_interface():
     assert "SHADOW ONLY" in ui
     assert 'p.path == "/api/pantheon"' in server
     assert 'p.path == "/admin/pantheon/observe"' in server
+    assert 'p.path == "/admin/pantheon/claim"' in server
 
 
 def test_sentinel_cells_accumulate_without_becoming_trade_authority(tmp_path):
