@@ -22,6 +22,7 @@ NODE = shutil.which("node")
         "icarus_engine/sources-ui.js",
         "icarus_engine/brain-ui.js",
         "icarus_engine/evolution-ui.js",
+        "icarus_engine/parallax-ui.js",
         "icarus_engine/integrity-ui.js",
         "icarus_engine/experience-ui.js",
     ],
