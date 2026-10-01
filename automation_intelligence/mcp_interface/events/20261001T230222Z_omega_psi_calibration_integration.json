@@ -1,0 +1,60 @@
+{
+  "schema_version": "icarus-mcp-event-v1",
+  "event_id": "omega-integration-20261001T230222Z-psi-calibration-admission",
+  "category": "INTEGRATION",
+  "severity": "material",
+  "status": "qualified",
+  "source": "OMEGA_AUTOMATION",
+  "recorded_at": "2026-10-01T23:02:22Z",
+  "execution_authorized": false,
+  "production_decision_authorized": false,
+  "net_new_delta": "PSI_SCENARIO_OUTPUTS_NOW_HAVE_CAUSAL_NON_OVERLAPPING_EMPIRICAL_CALIBRATION_WITH_EXACT_REVISION_GATING",
+  "finding": "Current main adds a verified research-only path that converts raw Psi scenario shares into falsifiable forecasts, admits only exact clean revisions, prevents overlapping unsettled forecasts per asset, settles matured forecasts only from observations at/after maturity, and scores multiclass calibration without granting execution or production authority.",
+  "accepted_findings": [
+    "Psi raw UP/FLAT/DOWN scenario shares can now be measured prospectively as explicitly uncalibrated inputs.",
+    "Non-overlap plus maturity-time settlement reduces repeated/correlated forecast counting and future leakage.",
+    "Flow 20:00 UTC BTC compression remains the freshest substantive specialist evidence found; Macro duration/EUR-FX remains an active research hypothesis."
+  ],
+  "rejected_findings": [
+    "Do not treat raw Psi scenario shares as calibrated probabilities before empirical maturation.",
+    "Do not treat Psi calibration infrastructure as confirmation of Flow, Macro, AION, or DAEDALUS claims.",
+    "Do not promote liveness/control-plane evidence into substantive specialist inference."
+  ],
+  "conflicts": [
+    "Evidence/calibration infrastructure is fresher than substantive specialist coverage; no substantive AION or DAEDALUS MCP event was found in the current event tree.",
+    "Flow remains BTC-centric and retains the quarantined Twelve Data 15:00 outlier; Macro remains unsettled on persistence/causal decomposition."
+  ],
+  "blockers": [
+    "Psi forecasts require exact chart cadence, clean exact source revision, non-overlapping unsettled state, and an observed endpoint at/after maturity.",
+    "Direct synchronous NQ/MNQ, GC/MGC, SI, DXY and volatility evidence remains absent from the freshest Flow receipt."
+  ],
+  "next_highest_value_integration_target": "Feed matured Psi calibration metrics into ATHENA uncertainty and JANUS reconciliation only after exact-revision, non-overlap and causal maturity settlement gates; use calibration as model-quality evidence, never as specialist market evidence or authority. Preserve GitHub-native v3 as authoritative liveness/persistence.",
+  "paths": [
+    "icarus_engine/learning_fabric.py",
+    "icarus_engine/possibility_engine.py",
+    "automation_intelligence/mcp_interface/events/20261001T212913353Z_flow_velocity_audit.json",
+    "automation_intelligence/mcp_interface/events/20261001T130854Z_macro_duration_euro_fx_evolution.json",
+    "coordination/CONTROL_PLANE_CONTRACT.md"
+  ],
+  "evidence": [
+    "main commit 03e9b082e2a0d9434fe165c0b7024b398a6e957a is GitHub-verified and merges non-overlapping Psi forecast maturation, exact-revision gating, and multiclass empirical scoring.",
+    "Flow 20261001T212913353Z records three-provider BTC 20:00 UTC compression while explicitly retaining cross-market data gaps.",
+    "Control-plane contract requires pinned revision/evidence lineage, forbids silent mid-cycle rebases, and states uncertainty cannot increase authority."
+  ],
+  "athena": {
+    "status": "ACTIONABLE",
+    "finding": "Psi calibration may reduce model uncertainty only after matured causal observations; missing cadence/revision/outcomes must remain explicit uncertainty."
+  },
+  "janus": {
+    "status": "ACTIONABLE",
+    "finding": "Track raw scenario contract, exact source revision, non-overlap state, maturity, observed outcome and calibration score as distinct reconciliation states."
+  },
+  "infrastructure": {
+    "status": "VERIFIED_WITH_DATA_GAPS",
+    "finding": "GitHub-verified main now contains causal non-overlapping Psi calibration infrastructure; substantive AION/DAEDALUS event coverage remains absent in the inspected MCP tree."
+  },
+  "helios_prime": {
+    "status": "ACTIONABLE",
+    "finding": "Highest-value bridge is Psi forecast contract -> causal maturity settlement -> calibration metrics -> ATHENA/JANUS research state, without competing with GitHub-native v3."
+  }
+}
