@@ -378,6 +378,34 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
         job_id = start_job(port, params)
         return {"job": job_id, "asset": runner.symbol, "started": True}
 
+    def _backtest_compare_control(payload):
+        job_id = payload["target"]
+        job = JOBS.get(job_id)
+        if not job or job.get("status") != "done":
+            raise ValueError("unknown or unfinished backtest job")
+        args = _control_args(payload, allowed={"csv", "tol"}, required=("csv",))
+        text = str(args["csv"])
+        if not text.strip():
+            raise ValueError("csv text required")
+        tol = args.get("tol", 1)
+        if isinstance(tol, bool) or not isinstance(tol, (int, float, str)):
+            raise ValueError("tol must be a positive integer")
+        try:
+            tol = int(tol)
+        except (ValueError, OverflowError):
+            raise ValueError("tol must be a positive integer") from None
+        if tol < 1:
+            raise ValueError("tol must be a positive integer")
+        tv = read_tv_trades_text(text)
+        eng = engine_trades_from_rows(job["result"]["trades"])
+        report = compare_lists(
+            eng,
+            tv,
+            int(job["result"]["config"]["tf"]) * 60,
+            tol,
+        )
+        return {"job": job_id, "report": report}
+
     def _market_mbo_snapshot_control(payload):
         runner = _control_runner(payload["target"])
         args = _control_args(payload, allowed={"timeout"})
@@ -463,6 +491,35 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             ttl_seconds=args.get("ttl_seconds", 300.0),
         )
 
+    def _system_audit_control(payload):
+        args = _control_args(payload)
+        current = load_repository_audit(port.base_dir)
+        merged = dict(args)
+        # Root Control may update the repository/CI snapshot, but it must never
+        # erase the durable command/event/loop receipts that prove prior actions.
+        for key in ("events", "loops"):
+            incoming = merged.get(key, [])
+            if incoming is None:
+                incoming = []
+            if not isinstance(incoming, list):
+                raise ValueError(f"{key} must be an array")
+            existing = current.get(key, [])
+            combined = []
+            seen = set()
+            for row in [*incoming, *existing]:
+                if not isinstance(row, dict):
+                    raise ValueError(f"{key} entries must be objects")
+                ident = str(row.get("id") or "")
+                fingerprint = ident or json.dumps(row, sort_keys=True, separators=(",", ":"), allow_nan=False)
+                if fingerprint in seen:
+                    continue
+                seen.add(fingerprint)
+                combined.append(row)
+            merged[key] = combined[:200 if key == "events" else 32]
+        if "loop_sync" not in merged and isinstance(current.get("loop_sync"), dict):
+            merged["loop_sync"] = current["loop_sync"]
+        return save_repository_audit(port.base_dir, merged)
+
     def _system_event_control(payload):
         args = _control_args(payload)
         return append_system_event(port.base_dir, args)
@@ -533,6 +590,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                               args_example={"timeout": 5.0}),
                 ControlAction("backtest.start", "Start backtest", "Backtest", "Start a Strategy Tester-compatible backtest against the selected asset's cached tape.", _backtest_start_control, target="asset",
                               args_example={"timeframe": "20", "session": "rth"}),
+                ControlAction("backtest.compare", "Compare backtest to TradingView CSV", "Backtest", "Compare a completed ICARUS backtest job against pasted TradingView List-of-Trades CSV.", _backtest_compare_control, target="job",
+                              args_example={"csv": "Trade #,Type,Date/Time,Signal,Price,Contracts\n", "tol": 1}),
 
                 ControlAction("sync.loop_intelligence", "Sync loop intelligence", "Intelligence", "Refresh verified automation-loop receipts now.", lambda _: loop_intelligence_sync.sync_once()),
                 ControlAction("sync.brain_remote", "Sync Adaptive Brain remote evidence", "Intelligence", "Pull the latest verified Adaptive Brain repository evidence.", lambda _: brain_remote_sync.sync_once()),
@@ -584,6 +643,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 ControlAction("possibility.ingest_evidence", "Ingest ICARUS Psi evidence", "Possibility", "Inject provenance-labelled bounded external possibility-force evidence for research only.", _possibility_evidence_control, target="asset",
                               args_example={"values": {"gamma_pressure": {"value": 0.0, "confidence": 1.0}}, "source": "operator", "ttl_seconds": 300.0}),
 
+                ControlAction("system.record_audit", "Update repository audit snapshot", "Observability", "Update the System Intelligence repository/CI snapshot while preserving durable event and loop receipts.", _system_audit_control,
+                              danger=True, confirmation="UPDATE SYSTEM AUDIT SNAPSHOT", args_example={"status": "unknown", "source": "operator-root-control"}),
                 ControlAction("system.record_event", "Record System Intelligence event", "Observability", "Append one durable system repair/audit/integration event.", _system_event_control,
                               args_example={"id": "event-id", "kind": "audit", "severity": "info", "title": "Operator event", "detail": "details", "recorded_at": "2026-10-01T00:00:00Z", "repository": "reppiks490/Icarus", "ref": "manual"}),
                 ControlAction("system.upsert_loop", "Upsert automation-loop status", "Observability", "Write one durable automation-loop status receipt into System Intelligence.", _system_loop_control,
