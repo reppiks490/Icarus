@@ -1,5 +1,45 @@
 """Dashboard + JSON API for the engine (standard library only).
 
+
+def _current_parallax_payload(possibility: Any, body: Dict[str, Any]) -> tuple[Dict[str, Any], Dict[str, Any]]:
+    """Capture a Psi vote before stamping a new PARALLAX decision.
+
+    This helper is intentionally only for present-time decisions. Historical
+    decisions must arrive with their already-captured causal subsystem votes.
+    """
+    payload = dict(body)
+    if payload.get("observed_at") not in (None, ""):
+        raise ValueError("current decision capture owns observed_at; use /admin/parallax/decision for historical records")
+    votes = payload.get("subsystem_votes", {})
+    if not isinstance(votes, dict):
+        raise ValueError("subsystem_votes must be an object")
+    if "psi" in votes:
+        raise ValueError("current decision capture owns the psi vote")
+    asset = str(payload.get("asset") or "").strip().upper()
+    if not asset:
+        raise ValueError("asset is required")
+
+    psi_vote = possibility.parallax_vote(asset)
+    if not isinstance(psi_vote, dict):
+        raise ValueError("Psi vote must be an object")
+    captured = datetime.now(timezone.utc)
+    generated_at = str(psi_vote.get("generated_at") or "").strip()
+    if generated_at:
+        try:
+            generated = datetime.fromisoformat(generated_at.replace("Z", "+00:00")).astimezone(timezone.utc)
+        except ValueError as ex:
+            raise ValueError("Psi vote generated_at is invalid") from ex
+        if generated > captured:
+            raise ValueError("Psi vote generated_at cannot follow PARALLAX decision capture")
+
+    merged_votes = dict(votes)
+    merged_votes["psi"] = psi_vote
+    payload["subsystem_votes"] = merged_votes
+    payload["asset"] = asset
+    payload["observed_at"] = captured.isoformat().replace("+00:00", "Z")
+    return payload, psi_vote
+
+
   GET  /                          dashboard (open /?asset=NQ for a single-asset tab)
   GET  /status/public             portfolio + every asset's strategy state
   GET  /api/chart/<SYM>?n=240     bars, overlays (RATE line, TP/SL, VWAP, Kalman), fills
@@ -557,22 +597,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     return self._json(400, {"detail": str(ex)})
             if p.path == "/admin/parallax/decision/current":
                 try:
-                    payload = dict(body)
-                    if payload.get("observed_at") not in (None, ""):
-                        raise ValueError("current decision capture owns observed_at; use /admin/parallax/decision for historical records")
-                    votes = payload.get("subsystem_votes", {})
-                    if not isinstance(votes, dict):
-                        raise ValueError("subsystem_votes must be an object")
-                    if "psi" in votes:
-                        raise ValueError("current decision capture owns the psi vote")
-                    asset = str(payload.get("asset") or "").strip().upper()
-                    if not asset:
-                        raise ValueError("asset is required")
-                    psi_vote = possibility.parallax_vote(asset)
-                    votes = dict(votes)
-                    votes["psi"] = psi_vote
-                    payload["subsystem_votes"] = votes
-                    payload["observed_at"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+                    payload, psi_vote = _current_parallax_payload(possibility, body)
                     if not payload.get("source_commit"):
                         provenance = local_code_provenance()
                         if not provenance.get("candidate_revision_eligible") or not provenance.get("commit"):
