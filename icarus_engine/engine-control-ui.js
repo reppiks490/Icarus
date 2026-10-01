@@ -18,6 +18,16 @@ function engineControlHtml(){
   '<section class="card c7"><h2>Subsystem controls</h2><div id="ecSubsystemActions"></div></section>'+
   '<section class="card c5"><h2>Subsystem health</h2><div id="ecSubsystems"></div></section>'+
   '<section class="card c12"><h2>Last operator result <span class="sub">command response + audit receipt state</span></h2><pre id="ecLastResult" class="log" style="max-height:360px">No operator command run in this browser session.</pre></section>'+
+  '<section class="card c12"><h2>Specialized control surfaces <span class="sub">deep subsystem views remain available alongside Root Control</span></h2>'+
+    '<div class="row">'+
+      '<button class="sm" data-ec-view="autopilot">Tactical Autopilot</button>'+
+      '<button class="sm" data-ec-view="research">Research Lab</button>'+
+      '<button class="sm" data-ec-view="integrity">Data Integrity</button>'+
+      '<button class="sm" data-ec-view="evolution">MCP Evolution</button>'+
+      '<button class="sm" data-ec-view="parallax">PARALLAX</button>'+
+      '<button class="sm" data-ec-view="possibility">ICARUS Ψ</button>'+
+      '<button class="sm" data-ec-view="brain">Adaptive Brain</button>'+
+    '</div></section>'+
   '<section class="card c12"><h2>MCP / audit mirror <span class="sub">repair, audit, evolution, integration, integrity and control receipts</span></h2><div id="ecEvents" class="scroll" style="max-height:620px"></div></section>'+
   '<section class="card c12"><details><summary>Raw control snapshot</summary><pre id="ecRaw" class="log" style="max-height:520px"></pre></details></section>';
 }
@@ -121,6 +131,7 @@ function engineControlRender(data){
   const coreEl=document.querySelector('#ecCore'); if(coreEl) coreEl.innerHTML=core.map(a=>ecActionRow(a,data)).join('');
   const actionEl=document.querySelector('#ecSubsystemActions'); if(actionEl) actionEl.innerHTML=ecActionGroups(subs,data);
   document.querySelectorAll('[data-ec-run]').forEach(b=>{b.onclick=()=>ecRun(b.dataset.ecRun);});
+  document.querySelectorAll('[data-ec-view]').forEach(b=>{b.onclick=()=>{location.hash=b.dataset.ecView;};});
   document.querySelectorAll('[data-ec-template]').forEach(b=>{b.onclick=()=>{
     const action=(engineControlLast&&engineControlLast.actions||[]).find(a=>a.id===b.dataset.ecTemplate);
     const field=document.querySelector('[data-ec-args="'+CSS.escape(b.dataset.ecTemplate)+'"]');
