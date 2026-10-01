@@ -785,4 +785,21 @@ def test_claim_outcome_is_causal_and_immutable_per_claim_time(tmp_path):
             "utility": 1.5,
         })
 
+def test_ecology_upgrade_backfills_legacy_claims_and_sentinel_clock(tmp_path):
+    kernel = PantheonKernel(tmp_path)
+    observation = kernel.record_observation(_payload(observation_id="pan-legacy-upgrade"))
+    durable_claim = next(c for c in observation["claims"] if c["kind"] == "ontology_candidate")
+    expected_time = observation["observed_at"]
+
+    with kernel._connect() as con:
+        con.execute("DELETE FROM species")
+        con.execute("UPDATE sentinel_cells SET last_observed_at=''")
+
+    upgraded = PantheonKernel(tmp_path)
+    state = upgraded.snapshot()
+    assert any(
+        row["origin_claim_id"] == durable_claim["claim_id"]
+        for row in state["ecology"]["species"]
+    )
+    assert state["sentinel_cells"][0]["last_observed_at"] == expected_time
 
