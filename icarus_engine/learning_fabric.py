@@ -590,6 +590,66 @@ class LearningFabric:
                 return f"{minutes}m"
         return "minutes"
 
+    @staticmethod
+    def _manifest_symbol(value: Any) -> str:
+        raw = str(value or "").strip().upper()
+        if ":" in raw:
+            raw = raw.split(":")[-1]
+        raw = raw.replace("!", "")
+        if raw.endswith("1"):
+            raw = raw[:-1]
+        for known in ("MNQ", "NQ", "MES", "ES", "MGC", "GC", "SI", "BTC", "ETH", "SOL"):
+            if raw.startswith(known):
+                return known
+        return raw or "UNKNOWN"
+
+    @staticmethod
+    def _manifest_timeframe(value: Any) -> str | None:
+        raw = str(value or "").strip().lower()
+        if not raw:
+            return None
+        import re
+        match = re.fullmatch(r"(\d+)\s*minutes?", raw)
+        if match:
+            return f"{int(match.group(1))}m"
+        match = re.fullmatch(r"(\d+)\s*hours?", raw)
+        if match:
+            return f"{int(match.group(1))}h"
+        return raw.replace(" ", "_")
+
+    def _intake_manifest_catalog(self) -> tuple[dict[str, dict[str, str]], dict[str, dict[str, str]]]:
+        by_hash: dict[str, dict[str, str]] = {}
+        by_name: dict[str, dict[str, str]] = {}
+        candidates: set[Path] = set()
+        for rel in self._config["history_roots"]:
+            root = (self.base_dir / rel).resolve()
+            if root.exists():
+                candidates.update(root.rglob("EXPORT_INTAKE_MANIFEST.csv"))
+                parent = root.parent / "EXPORT_INTAKE_MANIFEST.csv"
+                if parent.is_file():
+                    candidates.add(parent)
+        direct = self.base_dir / "EXPORT_INTAKE_MANIFEST.csv"
+        if direct.is_file():
+            candidates.add(direct)
+        for path in sorted(candidates):
+            try:
+                with path.open("r", encoding="utf-8-sig", newline="") as fh:
+                    for row in csv.DictReader(fh):
+                        if not isinstance(row, dict):
+                            continue
+                        clean = {str(k): str(v or "").strip() for k, v in row.items()}
+                        sha = clean.get("sha256", "").lower()
+                        if len(sha) == 64:
+                            by_hash[sha] = clean
+                        names = [clean.get("canonical_filename", "")]
+                        names.extend(x.strip() for x in clean.get("all_observed_filenames", "").split("|"))
+                        for name in names:
+                            if name:
+                                by_name[name] = clean
+            except (OSError, UnicodeDecodeError, csv.Error):
+                continue
+        return by_hash, by_name
+
     def register_dataset(
         self,
         path: str | os.PathLike[str],
@@ -597,6 +657,7 @@ class LearningFabric:
         asset: str | None = None,
         chart_type: str | None = None,
         schema: str = "ohlc",
+        intake: Mapping[str, Any] | None = None,
     ) -> dict[str, Any]:
         source = Path(path).resolve()
         if not source.is_file():
@@ -627,8 +688,20 @@ class LearningFabric:
             except (OSError, UnicodeDecodeError, csv.Error) as ex:
                 raise ValueError(f"dataset cannot be catalogued: {ex}") from ex
 
-        symbol = _text(asset or self._infer_asset(source), "asset", 32).upper()
-        chart = _text(chart_type or self._infer_chart_type(source), "chart_type", 64)
+        intake_clean = dict(intake or {})
+        if intake_clean:
+            _json(intake_clean, "intake manifest")
+            manifest["intake"] = intake_clean
+        symbol = _text(
+            asset or (self._manifest_symbol(intake_clean.get("symbol")) if intake_clean.get("symbol") else self._infer_asset(source)),
+            "asset",
+            32,
+        ).upper()
+        chart = _text(
+            chart_type or self._manifest_timeframe(intake_clean.get("timeframe")) or self._infer_chart_type(source),
+            "chart_type",
+            64,
+        )
         dataset_id = "ds-" + raw_sha
         now = _utc_now()
         with self._lock, self._conn:
@@ -680,6 +753,8 @@ class LearningFabric:
         registered = 0
         errors = {}
         roots = []
+        dataset_ids: list[str] = []
+        by_hash, by_name = self._intake_manifest_catalog()
         for rel in self._config["history_roots"]:
             root = (self.base_dir / rel).resolve()
             try:
@@ -690,11 +765,21 @@ class LearningFabric:
             if not root.exists():
                 continue
             for path in sorted(root.rglob("*.csv")):
-                if not path.is_file():
+                if not path.is_file() or path.name == "EXPORT_INTAKE_MANIFEST.csv":
                     continue
                 seen += 1
                 try:
-                    result = self.register_dataset(path)
+                    raw_sha = hashlib.sha256(path.read_bytes()).hexdigest()
+                    intake = by_hash.get(raw_sha) or by_name.get(path.name)
+                    intake_payload = None
+                    asset = chart = None
+                    if intake:
+                        intake_payload = dict(intake)
+                        intake_payload["manifest_sha256"] = str(intake.get("sha256") or raw_sha).lower()
+                        asset = self._manifest_symbol(intake.get("symbol"))
+                        chart = self._manifest_timeframe(intake.get("timeframe"))
+                    result = self.register_dataset(path, asset=asset, chart_type=chart, intake=intake_payload)
+                    dataset_ids.append(result["dataset"]["dataset_id"])
                     registered += int(not result["idempotent"])
                 except Exception as ex:
                     errors[str(path)] = f"{type(ex).__name__}: {ex}"[:500]
@@ -704,7 +789,9 @@ class LearningFabric:
             "files_seen": seen,
             "new_datasets": registered,
             "unique_datasets": unique,
+            "dataset_ids": sorted(set(dataset_ids)),
             "roots": roots,
+            "intake_manifest_entries": len(by_hash),
             "errors": errors,
             **_authority(),
         }
@@ -742,6 +829,25 @@ class LearningFabric:
                 )
             runs.append({"run_id": run_id, "slot": slot, "idempotent": False, "report": report})
         return {"dataset_id": dataset_id, "status": "complete", "runs": runs, **_authority()}
+
+    def datasets(self) -> list[dict[str, Any]]:
+        rows = self._conn.execute("SELECT dataset_id FROM datasets ORDER BY discovered_at,dataset_id").fetchall()
+        return [self.dataset(row["dataset_id"]) for row in rows]
+
+    def training_runs(self) -> list[dict[str, Any]]:
+        rows = self._conn.execute("SELECT * FROM training_runs ORDER BY created_at,run_id").fetchall()
+        return [
+            {
+                "run_id": row["run_id"],
+                "dataset_id": row["dataset_id"],
+                "slot": row["slot"],
+                "status": row["status"],
+                "report": json.loads(row["report_json"]),
+                "created_at": row["created_at"],
+                **_authority(),
+            }
+            for row in rows
+        ]
 
     def _harvest_sibyl(self) -> dict[str, Any]:
         path = self.root / "sibyl.sqlite3"
@@ -888,6 +994,42 @@ class LearningFabric:
         ).fetchall()
         return [r["dataset_id"] for r in rows]
 
+    def _publish_apex_credibility(self, cards: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+        apex = self._native.get("apex")
+        if apex is None or not hasattr(apex, "store") or not hasattr(apex.store, "record_model_credibility"):
+            return {"status": "unavailable", "published": 0}
+        published = 0
+        errors = {}
+        as_of = _utc_now()
+        for card in cards:
+            try:
+                brier = card.get("mean_brier")
+                gap = card.get("calibration_gap")
+                hit = card.get("hit_rate")
+                if brier is not None:
+                    score = max(0.0, min(1.0, (1.0 - float(brier)) * (1.0 - float(gap or 0.0))))
+                elif hit is not None:
+                    score = max(0.0, min(1.0, float(hit)))
+                else:
+                    continue
+                model_id = "learning:{producer}:{asset}:{regime}:{horizon_seconds}:{target}".format(**card)
+                apex.store.record_model_credibility({
+                    "model_id": model_id,
+                    "as_of": as_of,
+                    "score": score,
+                    "status": card.get("status") or "UNMEASURED",
+                    "sample_count": card.get("settled"),
+                    "hit_rate": hit,
+                    "mean_brier": brier,
+                    "calibration_gap": gap,
+                    "source": "continuous-learning-fabric",
+                    **_authority(),
+                })
+                published += 1
+            except Exception as ex:
+                errors[str(card.get("producer") or "unknown")] = f"{type(ex).__name__}: {ex}"[:500]
+        return {"status": "ok" if not errors else "partial", "published": published, "errors": errors}
+
     def tick(self) -> dict[str, Any]:
         started = _utc_now()
         errors = {}
@@ -915,6 +1057,7 @@ class LearningFabric:
         except Exception as ex:
             errors["backfill"] = f"{type(ex).__name__}: {ex}"[:500]
         summary["scorecards"] = self.scorecards()
+        summary["apex_feedback"] = self._publish_apex_credibility(summary["scorecards"])
         finished = _utc_now()
         status = "partial" if errors else "ok"
         record = {
@@ -935,13 +1078,14 @@ class LearningFabric:
         return {**record, "cycle_id": cycle_id}
 
     def _loop(self) -> None:
-        while not self._stop.wait(self._config["cycle_seconds"]):
-            if not self._config["enabled"]:
-                continue
-            try:
-                self.tick()
-            except Exception:
-                continue
+        while not self._stop.is_set():
+            if self._config["enabled"]:
+                try:
+                    self.tick()
+                except Exception:
+                    pass
+            if self._stop.wait(self._config["cycle_seconds"]):
+                break
 
     def start_background(self) -> dict[str, Any]:
         if not self._config["enabled"]:
@@ -950,14 +1094,8 @@ class LearningFabric:
             if self._thread and self._thread.is_alive():
                 return self.status()
             self._stop.clear()
-        try:
-            self.tick()
-        except Exception:
-            pass
-        with self._lock:
-            if not self._thread or not self._thread.is_alive():
-                self._thread = threading.Thread(target=self._loop, name="icarus-learning-fabric", daemon=True)
-                self._thread.start()
+            self._thread = threading.Thread(target=self._loop, name="icarus-learning-fabric", daemon=True)
+            self._thread.start()
         return self.status()
 
     def stop(self) -> dict[str, Any]:
@@ -984,6 +1122,17 @@ class LearningFabric:
             "training": {"run_count": train_count},
             "predictions": {"count": prediction_count, "settled": outcome_count, "pending": max(0, prediction_count-outcome_count)},
             "scorecards": self.scorecards(),
+            "coverage": {
+                "historical_trainers": "protected_replay",
+                "sibyl": "native_prediction_outcome",
+                "commissioning_chronofold": "native_metrics_and_existing_outcomes",
+                "parallax": "native_regret_metrics",
+                "dreamstate": "native_candidate_lifecycle",
+                "pantheon": "native_research_metrics",
+                "apex": "empirical_credibility_feedback",
+                "possibility": "forecast_contract_required",
+                "chronofold": "calibrated_via_commissioning",
+            },
             "cycles": {"count": cycle_count, "latest": None if last_cycle is None else json.loads(last_cycle["summary_json"])},
             "authority": {
                 "research_only": True,
