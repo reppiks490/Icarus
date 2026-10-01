@@ -356,3 +356,23 @@ votes. Genuinely disjoint evidence ancestry receives no discount.
 ECHO is deliberately conservative: without explicit lineage metadata it
 abstains rather than inventing independence. Its scores are diagnostic
 heuristics, not calibrated probabilities or promises of profitability.
+
+
+## APEX-verified ECHO ancestry
+
+ECHO can now operate on APEX-verified evidence roots rather than trusting free
+text lineage labels. When a PANTHEON observation carries
+`signals.engine_evidence_ids`, the server asks APEX Ω to resolve every
+evidence ID through its causal ancestry DAG at that observation's timestamp.
+The resulting root identities overwrite any caller-supplied
+`engine_evidence_lineage` before PANTHEON evaluation.
+
+The verification receipt is stored under
+`analysis.external_subsystems.apex_lineage` and surfaced in the PANTHEON UI
+as **APEX lineage: VERIFIED**. If IDs are missing, unresolved, future at the
+observation boundary, cyclic, or otherwise provenance-incomplete, the verified
+path fails closed rather than falling back to a claimed independent lineage.
+
+This preserves subsystem ownership: APEX proves ancestry; ECHO diagnoses
+consensus illusion; ARCHON discounts research attention; AETHER investigates.
+None of these steps can authorize an order.

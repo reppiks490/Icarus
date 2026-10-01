@@ -285,3 +285,22 @@ APEX Ω does not promise:
 - unrestricted self-modification.
 
 Its purpose is to maximize justified, replayable understanding while keeping uncertainty, disagreement, provenance and human authority explicit.
+
+
+## PANTHEON ECHO lineage verification
+
+APEX Ω now exposes an internal `resolve_engine_evidence_lineage` contract for
+PANTHEON ECHO. A PANTHEON observation may supply `engine_evidence_ids`; the
+HTTP integration resolves those IDs against the causal APEX evidence store at
+the observation's own `observed_at` boundary, walks the APEX evidence-ancestry
+DAG, and replaces any caller-provided lineage tokens with verified root-source
+identities.
+
+Unknown evidence, future/unavailable dependencies, cycles, duplicate IDs, empty
+evidence sets, or malformed mappings fail closed. The resolved map is stamped
+into the observation's external subsystem evidence as `apex_lineage` with
+`status=VERIFIED`. A caller cannot overwrite that reserved server-owned slot.
+
+This is deliberately one-way: APEX owns provenance ancestry; PANTHEON owns ECHO
+consensus diagnostics. It does not create a circular model dependency and does
+not grant either system execution authority.

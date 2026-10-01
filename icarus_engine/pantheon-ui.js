@@ -83,6 +83,7 @@
         '<div class="pan-field"><div class="k">Novelty</div><b>'+pct(field.novelty)+'</b></div>'+
         '<div class="pan-field"><div class="k">Uncertainty</div><b>'+pct(field.uncertainty)+'</b></div>'+
         '<div class="pan-field"><div class="k">Echo risk</div><b>'+pct(field.echo_risk)+'</b></div>'+
+        '<div class="pan-field"><div class="k">APEX lineage</div><b>'+h(apexLineage.status||'UNAVAILABLE')+'</b><div class="small muted">'+h(apexLineage.lineage_owner||'no verified root map')+'</div></div>'+
         '<div class="pan-field"><div class="k">Risk</div><b>'+pct(field.risk)+'</b></div>'+
       '</div>'+
       '<h3 class="small" style="margin:16px 0 8px">Independent faculties — disagreement preserved</h3>'+

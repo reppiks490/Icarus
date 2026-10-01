@@ -5,6 +5,7 @@ import hashlib,json
 from pathlib import Path
 from typing import Any, Mapping
 from .adapters import sibling_evidence
+from .ancestry import EvidenceAncestry
 from .contracts import authority_flags, parse_utc
 from .crowdhunt import crowd_map
 from .epistemics import epistemic_kernel_snapshot
@@ -27,6 +28,66 @@ class ApexKernel:
     def __init__(self,base_dir,*,possibility=None,chronofold=None,pantheon=None,parallax=None,dreamstate=None,sibyl=None):
         self.base_dir=Path(base_dir);self.store=ApexStore(self.base_dir);self._siblings={"possibility":possibility,"chronofold":chronofold,"pantheon":pantheon,"parallax":parallax,"dreamstate":dreamstate,"sibyl":sibyl};self._research_events_path=self.base_dir/"research"/"apex-research-events.jsonl";self._research_events_path.parent.mkdir(parents=True,exist_ok=True)
     def ingest_evidence(self,body:Mapping[str,Any])->dict[str,Any]:return self.store.record_evidence(body)
+    def resolve_engine_evidence_lineage(self,engine_evidence_ids:Mapping[str,Any],*,as_of:str|None=None)->dict[str,Any]:
+        """Resolve engine evidence IDs into verified APEX root-source ancestry."""
+        if not isinstance(engine_evidence_ids,Mapping) or not engine_evidence_ids:
+            raise ValueError("engine_evidence_ids must be a non-empty object")
+        if len(engine_evidence_ids)>32:
+            raise ValueError("engine_evidence_ids exceeds 32 engines")
+        boundary=as_of or _now();parse_utc(boundary,"as_of")
+        evidence=self.store.evidence_as_of(boundary)
+        ancestry=EvidenceAncestry()
+        for row in evidence: ancestry.add(row)
+        lineage={};support_by_engine={};seen_engines=set()
+        for raw_engine,raw_ids in engine_evidence_ids.items():
+            if not isinstance(raw_engine,str) or not raw_engine.strip():
+                raise ValueError("engine_evidence_ids engine names must be non-empty strings")
+            engine=raw_engine.strip()
+            if len(engine)>64:
+                raise ValueError("engine_evidence_ids engine name exceeds 64 characters")
+            if engine in seen_engines:
+                raise ValueError(f"duplicate normalized engine name: {engine}")
+            seen_engines.add(engine)
+            if not isinstance(raw_ids,list) or not raw_ids or len(raw_ids)>32:
+                raise ValueError(f"engine_evidence_ids.{engine} must contain 1-32 evidence IDs")
+            ids=[]
+            for raw_id in raw_ids:
+                if not isinstance(raw_id,str) or not raw_id.strip():
+                    raise ValueError(f"engine_evidence_ids.{engine} contains an invalid evidence ID")
+                eid=raw_id.strip()
+                if len(eid)>128:
+                    raise ValueError(f"engine_evidence_ids.{engine} evidence ID exceeds 128 characters")
+                ids.append(eid)
+            if len(set(ids))!=len(ids):
+                raise ValueError(f"engine_evidence_ids.{engine} must be unique")
+            support=ancestry.effective_support(ids)
+            if not support.get("integrity_ok"):
+                missing=", ".join(support.get("missing_dependencies",[])) or "none"
+                cycles=", ".join(support.get("cycle_evidence_ids",[])) or "none"
+                raise ValueError(f"APEX evidence lineage integrity failure for {engine}; missing={missing}; cycles={cycles}")
+            roots=set()
+            for eid in ids: roots.update(ancestry.roots(eid))
+            if not roots:
+                raise ValueError(f"APEX evidence lineage for {engine} resolved to no root sources")
+            lineage[engine]=sorted(roots)
+            support_by_engine[engine]={
+                "evidence_ids":ids,
+                "root_ids":sorted(roots),
+                "nominal_support":support["nominal_support"],
+                "effective_independent_families":support["effective_independent_families"],
+                "overlap_ratio":support["overlap_ratio"],
+                "semantic_duplicate_count":support["semantic_duplicate_count"],
+                "integrity_ok":True,
+            }
+        return {
+            "schema_version":"icarus-apex-engine-lineage-v1",
+            "status":"VERIFIED",
+            "as_of":boundary,
+            "engine_evidence_lineage":lineage,
+            "engine_support":support_by_engine,
+            "lineage_owner":"APEX_EVIDENCE_ANCESTRY",
+            **authority_flags(),
+        }
     def _record_research_event(self,event_type:str,body:Mapping[str,Any])->dict[str,Any]:
         semantic=_finite_json_copy(body);semantic.update(authority_flags());event={"event_type":event_type,"semantic":semantic};raw=json.dumps(event,sort_keys=True,separators=(",",":"),allow_nan=False);event_id=hashlib.sha256(raw.encode()).hexdigest();line=json.dumps({"event_id":event_id,**event},sort_keys=True,separators=(",",":"),allow_nan=False);existing=set()
         if self._research_events_path.exists():
