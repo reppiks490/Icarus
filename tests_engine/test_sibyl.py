@@ -104,6 +104,69 @@ def test_sibyl_uses_only_newest_source_revision_in_live_synthesis(tmp_path):
     assert row["domain_fusion"][0]["score"] > 0
 
 
+def test_sibyl_exposes_world_forks_gravity_causal_radar_and_forward_surface(tmp_path):
+    engine = SibylEngine(tmp_path)
+    engine.record_evidence(
+        {
+            "asset": "NQ",
+            "source": "oracle",
+            "domain": "macro",
+            "observed_at": _now(),
+            "direction": 0.75,
+            "magnitude": 1.1,
+            "confidence": 0.9,
+            "horizon_seconds": 300,
+            "target_price": 25080.0,
+            "invalidation_price": 24955.0,
+            "source_commit": "c" * 40,
+            "payload": {
+                "volatility_pct": 0.0025,
+                "causal_edges": [
+                    {
+                        "from": "TNX",
+                        "to": "NQ",
+                        "lag_ms": 18000,
+                        "relation": "reported-inverse",
+                        "confidence": 0.8,
+                    }
+                ],
+                "forward_surface": [
+                    {
+                        "horizon_seconds": 300,
+                        "expected_return": 0.0015,
+                        "implied_vol": 0.18,
+                        "skew": -0.12,
+                        "tail_up": 0.58,
+                        "tail_down": 0.42,
+                    }
+                ],
+            },
+        }
+    )
+    _evidence(engine, "microstructure")
+    _evidence(engine, "derivatives")
+
+    state = engine.snapshot("NQ", market_status=_market())
+
+    worlds = state["future_world_forks"]["worlds"]
+    assert worlds
+    assert abs(sum(x["relative_weight"] for x in worlds) - 1.0) < 1e-9
+    assert all(x["states"] for x in worlds)
+
+    gravity = state["liquidity_gravity_field"]
+    assert gravity["available"] is True
+    assert len(gravity["points"]) == 17
+    assert all(-1.0000001 <= x["force"] <= 1.0000001 for x in gravity["points"])
+
+    radar = state["causal_delay_radar"]
+    assert radar and radar[0]["from"] == "TNX" and radar[0]["to"] == "NQ"
+    assert radar[0]["lag_ms"] == 18000
+
+    surface = state["derivatives_forward_surface"]
+    assert surface and surface[0]["horizon_seconds"] == 300
+    assert surface[0]["expected_return"] == pytest.approx(0.0015)
+
+
 def test_sibyl_rejects_future_or_timezone_free_evidence(tmp_path):
     engine = SibylEngine(tmp_path)
     body = {
