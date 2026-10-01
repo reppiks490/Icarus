@@ -728,6 +728,39 @@ def test_mbo_volume_cannot_evict_mbp10_buffer():
     assert feed._depth[("NQ=F", "mbp-10")][0]["order_id"] == 1
 
 
+def test_mbo_snapshot_subscribe_failure_still_closes_temporary_client():
+    class FailSubscribe(FakeLive):
+        def subscribe(self, **kwargs):
+            raise RuntimeError("snapshot subscribe failed")
+
+    live = FailSubscribe()
+    feed = make_feed(lives=[live])
+    with pytest.raises(RuntimeError, match="snapshot subscribe failed"):
+        feed.mbo_snapshot("NQ=F", timeout=0.1)
+    assert live.stopped is True
+
+
+def test_mbo_snapshot_malformed_record_fails_closed_and_cleans_up():
+    bad = Depth(2_000, 200.25, flags=1)
+    bad.price = (1 << 63) - 1
+    bad.pretty_price = float("nan")
+    # _event_record tolerates undefined MBO price as None, so make order_id conversion fail.
+    bad.order_id = object()
+    live = FakeLive({"mbo": [bad]})
+    feed = make_feed(lives=[live])
+    with pytest.raises(RuntimeError, match="snapshot record error"):
+        feed.mbo_snapshot("NQ=F", timeout=0.1)
+    assert live.stopped is True
+
+
+def test_mbo_snapshot_requires_f_last_before_returning_rows():
+    live = FakeLive({"mbo": [Depth(2_000, 200.25, flags=0)]})
+    feed = make_feed(lives=[live])
+    with pytest.raises(TimeoutError, match="snapshot timed out"):
+        feed.mbo_snapshot("NQ=F", timeout=0.05)
+    assert live.stopped is True
+
+
 def test_mbo_snapshots_are_serialized_to_one_temporary_session_at_a_time():
     active = 0
     peak = 0
