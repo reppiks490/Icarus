@@ -246,3 +246,13 @@ def test_http_signed_ingestion_replay_and_unconfigured_receiver(http, monkeypatc
     assert status == 200
     record = json.loads(data)["events"][0]
     assert record["source_event_id"] == "fixture" and record["received_at"]
+
+
+def test_early_rejections_read_the_body_so_the_client_gets_its_answer(http, monkeypatch):
+    # Claude (Opus 5.5) 2026-09-27. Answering before reading the body and then closing resets the connection:
+    # 3 in 500 unconfigured POSTs lost their 503 (WinError 10053) before the receiver drained the body.
+    raw = json.dumps(event()).encode()
+    monkeypatch.delenv("ICARUS_INGEST_SECRET", raising=False)
+    assert [http("POST", "/research/events", raw)[0] for _ in range(600)] == [503] * 600
+    monkeypatch.setenv("ICARUS_INGEST_SECRET", "x" * 32)
+    assert [http("POST", "/research/events", raw)[0] for _ in range(300)] == [401] * 300

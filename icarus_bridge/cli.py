@@ -18,6 +18,7 @@ import threading
 import time
 from typing import Optional
 
+from icarus_engine import brand
 from .config import Settings
 
 
@@ -220,7 +221,7 @@ def cmd_tunnel_url(args: argparse.Namespace) -> int:
 
 
 def main(argv: Optional[list] = None) -> int:
-    p = argparse.ArgumentParser(prog="icarus-bridge", description="TradingView → Alpaca paper bridge")
+    p = argparse.ArgumentParser(prog="icarus-bridge", description=f"{brand.NAME} - TradingView to Alpaca paper bridge")
     sub = p.add_subparsers(dest="cmd", required=True)
 
     s = sub.add_parser("serve", help="run the webhook receiver + dashboard (+ tunnel)")

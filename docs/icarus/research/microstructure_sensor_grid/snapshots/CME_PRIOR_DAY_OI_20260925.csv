@@ -1,0 +1,11 @@
+contract,product,trade_date,settlement,estimated_volume,prior_day_open_interest,source
+NQZ6,E-mini Nasdaq-100,2026-09-25,30889.25,534590,271967,https://www.cmegroup.com/markets/equities/nasdaq/e-mini-nasdaq-100.settlements.html
+MNQZ6,Micro E-mini Nasdaq-100,2026-09-25,30889.25,2486228,131840,https://www.cmegroup.com/markets/equities/nasdaq/micro-e-mini-nasdaq-100.settlements.html
+ESZ6,E-mini S&P 500,2026-09-25,7803.75,1567642,1898072,https://www.cmegroup.com/markets/equities/sp/e-mini-sandp500.settlements.html
+MESZ6,Micro E-mini S&P 500,2026-09-25,7803.75,1114922,125245,https://www.cmegroup.com/markets/equities/sp/micro-e-mini-sandp-500.settlements.html
+YMZ6,E-mini Dow,2026-09-25,52163,75068,86106,https://www.cmegroup.com/markets/equities/dow-jones/e-mini-dow.settlements.html
+MYMZ6,Micro E-mini Dow,2026-09-25,52163,124017,19036,https://www.cmegroup.com/markets/equities/dow-jones/micro-e-mini-dow.settlements.html
+RTYZ6,E-mini Russell 2000,2026-09-25,2859.3,171653,417419,https://www.cmegroup.com/markets/equities/russell/e-mini-russell-2000.settlements.html
+M2KZ6,Micro E-mini Russell 2000,2026-09-25,2859.3,75633,33179,https://www.cmegroup.com/markets/equities/russell/micro-e-mini-russell-2000.settlements.html
+GCZ6,Gold,2026-09-25,4321.2,140092,317452,https://www.cmegroup.com/markets/metals/precious/gold.settlements.html
+MGCZ6,Micro Gold,2026-09-25,4321.2,,,https://www.cmegroup.com/markets/metals/precious/e-micro-gold.settlements.html

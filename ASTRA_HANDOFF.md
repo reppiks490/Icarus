@@ -1,10 +1,14 @@
 # Astra handoff — Field Agent panel (Grok)
 
-Grok (xAI) — 2026-09-21.
+Grok (xAI) — 2026-09-21. CSV/ML addendum 2026-09-22.
 
-Astra: this is already in the tree. **Do not re-implement it. Do not rewrite Pulse.**
+**Before anything else this session:** `ASTRA_ORDER.md` + `MODELS_GROK.md`.
+Build XGBoost trainers before candidate audit. Do not rewrite Pulse.
+Ignore MBT / SOL / ETHUSD. Obey `ASTRA_DO_NOT.md`.
 
-## What landed
+The rest of this file is the **Agent tab** already in the tree. Do not re-implement it.
+
+## What landed (Agent tab)
 
 A new **Agent** tab on the engine dashboard (next to **Go-live**).
 
@@ -24,20 +28,16 @@ Desk recipes (copy, not execute) and paste-packs for Claude / ChatGPT / Grok.
 
 ## What you must not do
 
-- Do not rewrite `icarus_engine/strategy/pulse.py` or `emulator.py` to “hook the agent.”
+- Do not rewrite `icarus_engine/strategy/pulse.py` or `emulator.py` to “hook the agent” or XGB.
 - Do not scrape TradingView. Do not invent ticks. Do not treat QQQ as NQ.
 - Do not bind the sidecar or the engine on `0.0.0.0`.
 - Do not add `XAI_API_KEY` to the plant.
 - Do not execute recipes from the dashboard (clipboard only).
+- Do not start MBT, SOL, or ETHUSD.
 
 ## If you restyle the dashboard
 
-Keep:
-
-- tab `data-v="agent"`
-- card id `agentCard`
-- `GET /api/agent` shape (`recipes`, `seats`, `sidecar`, `broker_armed`)
-- Go-live tab and `/api/golive` untouched unless the owner asks
+Keep tab `data-v="agent"`, card id `agentCard`, `GET /api/agent` shape (`recipes`, `seats`, `sidecar`, `broker_armed`). Go-live tab and `/api/golive` untouched unless the owner asks.
 
 Command palette id `agent` jumps to the tab. Hash `#agent`.
 

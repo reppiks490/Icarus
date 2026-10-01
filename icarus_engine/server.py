@@ -14,7 +14,7 @@
   GET  /api/agent                 Field Agent recipes + paste-packs (Grok). Never executes. Never arms a broker.
   POST /admin/pause | /admin/resume        {"asset": "NQ"} or all          (Bearer token)
   POST /admin/flatten                      {"confirm": true, "asset"?: "NQ"}
-  POST /admin/inputs                       {"asset": "NQ"|"*", "values": {...}, "persist": true}  → re-warm
+  POST /admin/inputs                       {"asset": "NQ"|"*", "values": {...}, "chart": {...}, "persist": true}  → re-warm
   POST /admin/inputs/reset                 {"asset": "NQ"}  (deletes inputs.<SYM>.json, re-warm)
   POST /admin/preset                       {"asset": "NQ", "preset": "NQ-10m-original"|null}
   POST /admin/assets/add                   {"symbol": "GC", "tf": "20", "preset"?: ...}
@@ -28,6 +28,7 @@ import json
 import os
 import re
 import sys
+import time
 import threading
 from contextlib import ExitStack
 from dataclasses import replace
@@ -36,13 +37,14 @@ from pathlib import Path
 from typing import Any, Dict
 from urllib.parse import parse_qs, urlparse
 
-from .assets import REGISTRY, parse_spec
+from . import brand
+from .assets import REGISTRY, apply_chart_config, chart_capabilities, parse_spec, pin_config, resolve, validate_chart_config
 from .backtest import JOBS, start_job
 from .parity import compare_lists, engine_trades_from_rows, read_tv_trades_text
 from .golive import report as golive_report
 from .agent import report as agent_report
 from .briefing import report as briefing_report
-from .runtime import Portfolio, _clean, _read_json, preset_path
+from .runtime import Portfolio, _clean, _read_json, apply_spec_meta, preset_path
 from .strategy.meta import load_meta
 from .advisory import MAX_BODY_BYTES, strict_json
 from .research_service import ResearchWorkspace
@@ -141,7 +143,11 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return default
 
         def _runner(self, sym: str):
-            return port.runners.get((sym or "").upper())
+            try:
+                key = resolve(sym or "").symbol
+            except ValueError:
+                return None
+            return port.runners.get(key)
 
         def do_GET(self) -> None:  # noqa: N802
             if not self._host_ok():
@@ -149,7 +155,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             p = urlparse(self.path)
             q = parse_qs(p.query)
             if p.path == "/":
-                return self._send(200, html_path.read_bytes(), "text/html")
+                return self._send(200, brand.render(html_path.read_bytes()), "text/html")
             if p.path == "/research-ui.js":
                 return self._send(200, (html_path.parent / "research-ui.js").read_bytes(), "text/javascript")
             if p.path == "/sources-ui.js":
@@ -214,8 +220,14 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                             out.append({"name": f[:-5], "meta": d.get("_meta", {}), "count": len([k for k in d if not k.startswith("_")])})
                 return self._json(200, out)
             if p.path == "/api/assets":
-                return self._json(200, {"registry": [{"symbol": s.symbol, "name": s.name, "feed": s.feed, "calendar": s.calendar, "mintick": s.mintick, "multiplier": s.multiplier, "kind": s.kind} for s in REGISTRY.values()],
-                                        "running": list(port.order)})
+                return self._json(200, {"registry": [{
+                                            "symbol": s.symbol, "name": s.name, "feed": s.feed, "calendar": s.calendar,
+                                            "mintick": s.mintick, "multiplier": s.multiplier, "kind": s.kind,
+                                            "continuous_symbol": s.tv_symbol if s.kind == "futures" else None,
+                                            "provider_symbol": s.ticker,
+                                            "contract_policy": "continuous_only" if s.kind == "futures" else "not_applicable",
+                                        } for s in REGISTRY.values()],
+                                        "running": list(port.order), "chart_capabilities": chart_capabilities()})
             if p.path == "/api/commands":
                 return self._json(200, COMMANDS)
             if p.path.startswith("/api/export/"):
@@ -233,6 +245,52 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 if not r:
                     return self._json(404, {"error": "unknown asset"})
                 return self._json(200, r.trades(self._int(q, "limit", 100, 1, 2000)))
+            if p.path.startswith("/api/market-data/"):
+                rest = p.path[len("/api/market-data/"):]
+                parts = [x for x in rest.split("/") if x]
+                if len(parts) != 2:
+                    return self._json(404, {"error": "market-data route is /api/market-data/<asset>/<capabilities|ticks|depth>"})
+                r = self._runner(parts[0])
+                if not r:
+                    return self._json(404, {"error": "unknown asset"})
+                kind = parts[1]
+                feed = r.feed
+                if kind == "capabilities":
+                    caps = feed.capabilities() if hasattr(feed, "capabilities") else {}
+                    metadata = feed.meta(r.spec.ticker) if hasattr(feed, "meta") else {}
+                    return self._json(200, {"asset": r.symbol, "provider": type(feed).__name__.lower(),
+                                            "capabilities": caps, "metadata": metadata})
+                if kind == "ticks":
+                    if not hasattr(feed, "trades"):
+                        return self._json(409, {"error": f"{type(feed).__name__} does not expose trade ticks"})
+                    limit = self._int(q, "limit", 1000, 1, 10000)
+                    since = self._int(q, "since_ts", 0, 0, 4_294_967_295)
+                    try:
+                        rows = feed.trades(r.spec.ticker, since_ts=(since or None), limit=limit)
+                    except ValueError as ex:
+                        return self._json(400, {"error": str(ex)})
+                    except Exception as ex:
+                        port.journal.log("WARN", f"market-data ticks {r.symbol}: {type(ex).__name__}: {ex}")
+                        return self._json(502, {"error": f"{type(ex).__name__}: {ex}"})
+                    return self._json(200, {"asset": r.symbol, "provider": type(feed).__name__.lower(),
+                                            "ticks": [vars(x) if hasattr(x, "__dict__") else x for x in rows]})
+                if kind == "depth":
+                    if not hasattr(feed, "depth_events"):
+                        return self._json(409, {"error": f"{type(feed).__name__} does not expose order-book depth"})
+                    schema = str(q.get("schema", ["mbp-10"])[0]).strip().lower()
+                    if schema not in ("mbp-10", "mbo"):
+                        return self._json(400, {"error": "schema must be mbp-10 or mbo"})
+                    limit = self._int(q, "limit", 1000, 1, 10000)
+                    try:
+                        rows = feed.depth_events(r.spec.ticker, schema=schema, limit=limit)
+                    except ValueError as ex:
+                        return self._json(400, {"error": str(ex)})
+                    except Exception as ex:
+                        port.journal.log("WARN", f"market-data depth {r.symbol}: {type(ex).__name__}: {ex}")
+                        return self._json(502, {"error": f"{type(ex).__name__}: {ex}"})
+                    return self._json(200, {"asset": r.symbol, "provider": type(feed).__name__.lower(),
+                                            "schema": schema, "events": rows})
+                return self._json(404, {"error": "unknown market-data resource"})
             if p.path.startswith("/api/backtest/"):
                 rest = p.path[len("/api/backtest/"):]
                 job_id, _, tail = rest.partition("/")
@@ -255,18 +313,41 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     return self._json(404, {"error": "unknown asset"})
                 over = _read_json(os.path.join(port.base_dir, f"inputs.{r.symbol}.json"))
                 return self._json(200, {"asset": r.symbol, "effective": r.inputs.to_dict(), "base": r.inputs_base.to_dict(), "sources": r.cfg.sources,
-                                        "overrides": {k: v for k, v in over.items() if not k.startswith("_")}, "preset": r.cfg.preset, "pts_scale": r.pts_scale})
+                                        "overrides": {k: v for k, v in over.items() if not k.startswith("_")}, "preset": r.cfg.preset, "pts_scale": r.pts_scale,
+                                        "instrument": {
+                                            "kind": r.spec.kind,
+                                            "continuous_symbol": r.spec.tv_symbol if r.spec.kind == "futures" else None,
+                                            "provider_symbol": r.spec.ticker,
+                                            "contract_policy": "continuous_only" if r.spec.kind == "futures" else "not_applicable",
+                                        },
+                                        "chart": {"timeframe": r.spec.chart_tf, "chart_type": r.spec.chart_type,
+                                                  "fill_on": r.spec.fill_on, "security_source": r.spec.security_source},
+                                        "chart_capabilities": r.chart_capability_view()})
             self._json(404, {"error": "not found"})
+
+        def _drain_body(self) -> None:
+            # Claude (Opus 5.5) 2026-09-27. Answering before the body is read and then closing makes the OS reset
+            # the connection, and the client can lose the answer (WinError 10053, 3 in 500 requests). Every early
+            # POST rejection discards the body unparsed; never more than MAX_BODY_BYTES, bounded by the timeout.
+            try:
+                n = int(self.headers.get("Content-Length", "0") or 0)
+            except ValueError:
+                return
+            if 0 < n <= MAX_BODY_BYTES and not self.headers.get("Transfer-Encoding"):
+                self.rfile.read(n)
 
         def do_POST(self) -> None:  # noqa: N802
             if not self._host_ok():
+                self._drain_body()
                 return self._json(403, {"detail": "bad host"})
             p = urlparse(self.path)
             if p.path == "/research/events":
                 secret = os.environ.get("ICARUS_INGEST_SECRET", "")
                 if not secret:
+                    self._drain_body()
                     return self._json(503, {"detail": "event receiver is not configured"})
                 if not self.headers.get("X-Icarus-Signature") or not self.headers.get("X-Icarus-Timestamp"):
+                    self._drain_body()
                     return self._json(401, {"detail": "signed event required"})
                 try:
                     n = int(self.headers.get("Content-Length", "0"))
@@ -278,8 +359,10 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 except (ValueError, TypeError) as ex:
                     return self._json(400, {"detail": str(ex)})
             if not p.path.startswith("/admin/"):
+                self._drain_body()
                 return self._json(404, {"error": "not found"})
-            if not self._auth():                                  # authenticate BEFORE reading any body
+            if not self._auth():                                  # authenticate BEFORE parsing any body
+                self._drain_body()                                # discard it unread, or the 401 can be lost
                 return self._json(401, {"detail": "bad admin token"})
             try:
                 n = int(self.headers.get("Content-Length", "0") or 0)
@@ -347,11 +430,31 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                         return self._json(400, {"detail": "pass {\"confirm\": true}"})
                     closed = {r.symbol: r.flatten(_reason(body, "dashboard")) for r in targets}
                     return self._json(200, {"ok": True, "closed": closed, "note": f"flattened {sum(closed.values())} position(s)"})
+                if p.path == "/admin/market-data/mbo-snapshot":
+                    if len(targets) != 1 or targets[0] is None:
+                        raise ValueError("MBO snapshot requires exactly one running asset")
+                    r = targets[0]
+                    if not hasattr(r.feed, "mbo_snapshot"):
+                        return self._json(409, {"error": f"{type(r.feed).__name__} does not expose MBO snapshots"})
+                    timeout = max(0.1, min(30.0, float(body.get("timeout", 5.0))))
+                    try:
+                        rows = r.feed.mbo_snapshot(r.spec.ticker, timeout=timeout)
+                    except TimeoutError as ex:
+                        port.journal.log("WARN", f"market-data MBO snapshot {r.symbol}: {ex}")
+                        return self._json(504, {"error": str(ex)})
+                    except ValueError as ex:
+                        return self._json(400, {"error": str(ex)})
+                    except Exception as ex:
+                        port.journal.log("WARN", f"market-data MBO snapshot {r.symbol}: {type(ex).__name__}: {ex}")
+                        return self._json(502, {"error": f"{type(ex).__name__}: {ex}"})
+                    return self._json(200, {"asset": r.symbol, "provider": type(r.feed).__name__.lower(),
+                                            "schema": "mbo", "snapshot": rows})
                 if p.path in ("/admin/inputs", "/admin/inputs/reset", "/admin/preset", "/admin/rewarm"):
                     from .runtime import resolve_inputs as _resolve
                     vals = body.get("values", {}) if p.path == "/admin/inputs" else None
                     if vals is not None and not isinstance(vals, dict):
                         raise ValueError("values must be an object")
+                    chart = validate_chart_config(body.get("chart")) if p.path == "/admin/inputs" else {}
                     kwargs = {}
                     if p.path == "/admin/preset":
                         name = body.get("preset") or None
@@ -365,25 +468,76 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                         for r in sorted(targets, key=lambda r: r.symbol):
                             locks.enter_context(r.lock)
                             r.ensure_configurable()
+                        # Preflight the entire batch before the first asset is persisted/replayed.
                         for r in targets:
-                            sp = replace(r.spec)
+                            sp = replace(r.cfg.base_spec or r.spec)
+                            sp.preset = r.spec.preset
                             name = port.preset_for(r)
                             if "preset" in kwargs:
                                 sp.preset = kwargs["preset"]
                                 name = kwargs["preset"] or port.preset
-                            inp, _, _ = _resolve(sp, port.base_dir, port.profile, name, vals,
-                                                 skip_asset_overrides=reset)
+                            inp, meta, _ = _resolve(sp, port.base_dir, port.profile, name, vals,
+                                                   skip_asset_overrides=reset)
+                            sp = apply_spec_meta(sp, meta)
+                            sp = apply_chart_config(sp, chart)
                             r.ensure_cached_timeframes(inp)
+                            r.ensure_cached_chart_timeframe(sp.chart_tf)
+                        equity_epoch_before = port.equity_epoch
+                        snapshots = {}
                         for r in targets:
-                            port.rewarm_asset(r.symbol, vals, bool(body.get("persist", True)) if vals is not None else False,
-                                              reset=reset, **kwargs)
+                            override_path = os.path.join(port.base_dir, f"inputs.{r.symbol}.json")
+                            snapshots[r.symbol] = {
+                                "runtime": r.configuration_snapshot(),
+                                "override_path": override_path,
+                                "override_bytes": (Path(override_path).read_bytes() if os.path.exists(override_path) else None),
+                            }
+                        applied = []
+                        try:
+                            for r in targets:
+                                port.rewarm_asset(r.symbol, vals, bool(body.get("persist", True)) if vals is not None else False,
+                                                  reset=reset, chart=chart, **kwargs)
+                                applied.append(r)
+                        except Exception as apply_ex:
+                            port.equity_epoch = equity_epoch_before
+                            rollback_errors = []
+                            for r in reversed(applied):
+                                snap = snapshots[r.symbol]
+                                try:
+                                    pth = snap["override_path"]
+                                    raw_before = snap["override_bytes"]
+                                    if raw_before is None:
+                                        if os.path.exists(pth):
+                                            os.remove(pth)
+                                    else:
+                                        tmp = pth + ".batch-rollback.tmp"
+                                        Path(tmp).write_bytes(raw_before)
+                                        os.replace(tmp, pth)
+                                    r.restore_configuration_snapshot(snap["runtime"])
+                                except Exception as rollback_ex:
+                                    rollback_errors.append(f"{r.symbol}: {type(rollback_ex).__name__}: {rollback_ex}")
+                            if rollback_errors:
+                                raise RuntimeError(
+                                    f"batch configuration failed ({type(apply_ex).__name__}: {apply_ex}); "
+                                    f"rollback incomplete: {'; '.join(rollback_errors)}"
+                                ) from apply_ex
+                            raise
+                        # One successful batch = one paper-engine epoch. All runners were rebuilt.
+                        cutover = time.time()
+                        for r in targets:
+                            r.live_from_ts = int(cutover)
+                            r.live_closed_start = len(r.em.closed)
+                        port.equity_epoch = cutover
                     done = [r.symbol for r in targets]
-                    return self._json(200, {"ok": True, "note": f"configuration applied and re-warmed {done}", "assets": done})
+                    return self._json(200, {"ok": True, "note": f"configuration applied and re-warmed {done}", "assets": done,
+                                            "chart": chart or None})
                 if p.path == "/admin/assets/add":
                     tok = str(body.get("symbol", "")).strip()
                     if not tok:
                         return self._json(400, {"detail": "symbol required"})
                     spec = parse_spec(tok, str(body.get("tf") or port.runner_list()[0].spec.chart_tf if port.runner_list() else "20"))
+                    if body.get("tf") not in (None, "") and "@" not in tok:
+                        spec = pin_config(spec, "timeframe")
+                    spec = apply_chart_config(spec, {k: body[k] for k in ("chart_type", "fill_on", "security_source") if body.get(k) not in (None, "")}, pin=True)
                     if body.get("preset"):
                         spec.preset = body["preset"]
                     r = port.add_asset(spec)
@@ -398,8 +552,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                         return self._json(404, {"detail": f"unknown asset {asset}"})
                     if not r.warm:
                         return self._json(409, {"detail": f"{r.symbol} is still warming up"})
-                    fields = ("preset", "fill_on", "chart_type", "session", "slippage_ticks", "commission", "capital",
-                              "leverage", "window_start", "window_end", "inputs")
+                    fields = ("preset", "fill_on", "chart_type", "timeframe", "security_source", "session",
+                              "slippage_ticks", "commission", "capital", "leverage", "window_start", "window_end", "inputs")
                     params = validate_backtest_params({k: body[k] for k in fields if k in body})
                     params["asset"] = r.symbol
                     if "preset" in params and not os.path.exists(preset_path(port.base_dir, params["preset"])):

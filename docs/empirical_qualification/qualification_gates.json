@@ -1,0 +1,117 @@
+{
+  "schema_version": 1,
+  "generated_date": "2026-09-24",
+  "execution_authorized": false,
+  "qualification_order": [
+    "SOURCE",
+    "DATA",
+    "TIME",
+    "BASELINE",
+    "XGB",
+    "ECONOMICS",
+    "ROBUSTNESS"
+  ],
+  "upstream_failure_rule": "downstream_authority_zero",
+  "gates": {
+    "SOURCE": {
+      "design_status": "FROZEN",
+      "empirical_status": "PARTIAL",
+      "required": [
+        "typed_provider_state",
+        "evidence_schema_identity",
+        "instrument_identity",
+        "source_event_received_available_separation",
+        "payload_hash",
+        "semantic_fallback_labeling"
+      ]
+    },
+    "DATA": {
+      "design_status": "FROZEN",
+      "empirical_status": "PENDING",
+      "required": [
+        "canonical_timestamp_parser",
+        "exact_chart_identity",
+        "duplicate_conflict_audit",
+        "ohlc_validity",
+        "raw_file_hash",
+        "canonical_row_hash",
+        "dataset_manifest"
+      ]
+    },
+    "TIME": {
+      "design_status": "FROZEN",
+      "empirical_status": "PENDING",
+      "required": [
+        "feature_availability_before_decision",
+        "decision_before_label_availability",
+        "event_availability_integrity",
+        "purged_train_validation",
+        "purged_validation_holdout",
+        "strict_candidate_lead"
+      ]
+    },
+    "BASELINE": {
+      "design_status": "FROZEN",
+      "empirical_status": "PENDING",
+      "required": [
+        "null_logloss",
+        "logistic_logloss",
+        "brier",
+        "calibration_diagnostics",
+        "reproducibility"
+      ]
+    },
+    "XGB": {
+      "design_status": "FROZEN",
+      "empirical_status": "PENDING_IMPLEMENTATION",
+      "required": [
+        "validation_only_early_stopping",
+        "untouched_holdout",
+        "pre_holdout_calibration",
+        "beat_logistic_and_null_oos",
+        "semantic_artifact_binding",
+        "serialization_replay"
+      ]
+    },
+    "ECONOMICS": {
+      "design_status": "FROZEN",
+      "empirical_status": "PENDING",
+      "required": [
+        "frozen_decision_rule",
+        "cost_slippage_latency_stress",
+        "positive_net_oos_expectancy",
+        "drawdown_tail_review",
+        "capacity_not_overstated"
+      ]
+    },
+    "ROBUSTNESS": {
+      "design_status": "FROZEN",
+      "empirical_status": "PENDING",
+      "required": [
+        "regime_stability",
+        "cross_asset_transfer",
+        "parameter_fragility",
+        "seed_sensitivity",
+        "ood_selective_risk",
+        "calibration_drift",
+        "corruption_monotonicity",
+        "ablation",
+        "multiple_testing_ledger",
+        "tail_risk_clustering"
+      ]
+    }
+  },
+  "p0_blockers": [
+    "canonical_timestamp_semantics",
+    "1M_vs_1m_chart_identity",
+    "60m_vs_61m_exact_identity",
+    "duplicate_and_ohlc_integrity",
+    "quote_snapshot_vs_ohlc_schema",
+    "source_event_vs_received_time",
+    "future_event_leakage",
+    "completed_bar_feature_availability",
+    "split_boundary_label_leakage",
+    "candidate_same_interval_pseudoprediction",
+    "semantic_model_artifact_binding"
+  ]
+}
