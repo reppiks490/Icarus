@@ -1,0 +1,27 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "integration:scientific-commissioning:f4a97c9b",
+  "category": "INTEGRATION",
+  "severity": "success",
+  "status": "verified",
+  "subsystems": [
+    "infrastructure",
+    "provenance",
+    "data"
+  ],
+  "recorded_at": "2026-10-01T14:53:00Z",
+  "title": "ICARUS Scientific Commissioning integrated and verified",
+  "summary": "Scientific Commissioning is live on main with append-only hash-chained Chronofold forecast and outcome ledgers, Chronon-target settlement, calibration and regime metrics, counterfactual tournament scoring, adversarial probes, causal replay contracts, automatic background shadow sampling, and a promotion gate that can only increase research influence.",
+  "source_repository": "reppiks490/Icarus",
+  "source_ref": "main",
+  "source_commit": "f4a97c9ba03bc8f85cb81404610f34502866188d",
+  "evidence": [
+    "PR #138 merged at f4a97c9ba03bc8f85cb81404610f34502866188d",
+    "GitHub Actions run 36879424691 / run 2579 concluded success",
+    "Linux full tests_engine suite passed",
+    "Windows targeted suite passed with test_commissioning.py and test_commissioning_integration.py",
+    "Scientific Commissioning execution_authorized=false, production_decision_authorized=false, broker_authority=false"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}
