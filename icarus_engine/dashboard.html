@@ -284,21 +284,27 @@ function systemLoopClass(status) {
 function systemLoopOk(status) { return systemLoopClass(status) === 'b'; }
 function repositoryAuditCard(a, compact=false) {
   if (!a) return `<section class="card c12" id="repoAuditCard"><h2>System Intelligence</h2><div class="empty">loading local repository, loop, and MCP snapshot…</div></section>`;
-  const s = a.summary || {}, m = a.main || {}, issue = a.issue || {};
+  const s = a.summary || {}, m = a.main || {}, issue = a.issue || {}, sync = a.loop_sync || {};
   const loops = a.loops || [], events = a.events || [];
   const stat = String(a.status || 'unknown').toLowerCase();
   const cls = stat === 'green' ? 'b' : stat === 'red' ? 'r' : 'w';
   const loopGood = loops.filter(x => systemLoopOk(x.status)).length;
   const loopBad = Math.max(0, loops.length - loopGood);
   const checks = (a.checks || []).map(x => `<div class="irow"><div><span class="chip ${String(x.status||'').toLowerCase()==='success'?'b':String(x.status||'').toLowerCase()==='failure'?'r':'w'}">${esc(x.name||'check')}</span></div><div class="small" style="grid-column:span 3">${esc(x.detail||x.status||'')}</div></div>`).join('');
-  const loopRows = loops.map(x => `<tr><td><b>${esc(x.title||x.id)}</b><div class="muted small">${esc(x.schedule||'')}</div></td><td><span class="chip ${systemLoopClass(x.status)}">${esc(x.status||'UNKNOWN')}</span></td><td class="tnum">${esc(x.run_id||'—')}</td><td class="tnum">${esc(String(x.finalization_commit_sha||'—').slice(0,12))}</td><td class="small">${esc(x.detail||'')}</td></tr>`).join('');
+  const loopRows = loops.map(x => {
+    const sig = x.signals || {};
+    const sigHtml = Object.keys(sig).length ? `<details style="margin-top:6px"><summary class="muted">run output</summary><pre class="small" style="white-space:pre-wrap;max-width:620px;max-height:260px;overflow:auto">${esc(JSON.stringify(sig,null,2))}</pre></details>` : '';
+    return `<tr><td><b>${esc(x.title||x.id)}</b><div class="muted small">${esc(x.schedule||'')}</div></td><td><span class="chip ${systemLoopClass(x.status)}">${esc(x.status||'UNKNOWN')}</span></td><td class="tnum">${esc(x.run_id||'—')}</td><td class="tnum">${esc(String(x.finalization_commit_sha||'—').slice(0,12))}</td><td class="small">${esc(x.detail||'')}${sigHtml}</td></tr>`;
+  }).join('');
   const eventRows = events.slice(0,40).map(x => {
     const sev = String(x.severity||'info').toLowerCase();
     const k = sev === 'success' ? 'b' : sev === 'error' ? 'r' : sev === 'warn' ? 'w' : '';
     return `<tr><td class="tnum">${esc(x.recorded_at||'—')}</td><td><span class="chip ${k}">${esc(String(x.kind||'finding').toUpperCase())}</span></td><td><b>${esc(x.title||'')}</b><div class="muted small">${esc(x.detail||'')}</div></td><td class="tnum">${esc(String(x.ref||'—').slice(0,16))}</td></tr>`;
   }).join('');
   const issueLink = issue.url ? `<a href="${esc(issue.url)}" target="_blank" rel="noreferrer">GitHub audit #${esc(issue.number||'')}</a>` : '';
-  const compactLoops = loops.length ? `<div class="small" style="margin-top:10px"><b>Automation loops:</b> <span class="${loopBad?'neg':'pos'}">${loopGood}/${loops.length} receipt-verified</span>${loopBad ? ` · ${loopBad} need attention` : ''}</div>` : '';
+  const syncState = String(sync.status || 'unknown').toLowerCase();
+  const syncClass = syncState === 'green' ? 'pos' : syncState === 'red' ? 'neg' : '';
+  const compactLoops = loops.length ? `<div class="small" style="margin-top:10px"><b>Automation loops:</b> <span class="${loopBad?'neg':'pos'}">${loopGood}/${loops.length} receipt-verified</span>${loopBad ? ` · ${loopBad} need attention` : ''} · <b>auto-sync</b> <span class="${syncClass}">${esc(syncState.toUpperCase())}</span></div>` : '';
   const lastEvent = events[0] ? `<div class="small muted" style="margin-top:5px"><b>Latest MCP:</b> ${esc(events[0].title||'')} · ${esc(events[0].recorded_at||'')}</div>` : '';
   return `<section class="card c12" id="repoAuditCard">
     <h2>System Intelligence <span class="sub">${esc(a.repository||'')} · local diagnostic snapshot · ${esc(a.recorded_at||'time unknown')}</span></h2>
@@ -306,6 +312,7 @@ function repositoryAuditCard(a, compact=false) {
       <div class="tile"><div class="k">Repository audit</div><div class="v"><span class="chip ${cls}">${esc(stat.toUpperCase())}</span></div></div>
       <div class="tile"><div class="k">Loop receipts</div><div class="v ${loopBad?'neg':'pos'}">${loops.length ? loopGood+'/'+loops.length : '—'}</div></div>
       <div class="tile"><div class="k">MCP activity</div><div class="v tnum">${events.length}</div></div>
+      <div class="tile"><div class="k">Loop auto-sync</div><div class="v ${syncClass}">${esc(syncState.toUpperCase())}</div><div class="small muted">${sync.last_success_at ? 'last '+esc(sync.last_success_at) : 'no successful sync yet'}</div></div>
       <div class="tile"><div class="k">Main SHA</div><div class="v tnum" style="font-size:14px">${esc(String(m.sha||'—').slice(0,12))}</div></div>
       <div class="tile"><div class="k">Linux</div><div class="v">${esc(String(m.linux||'unknown').toUpperCase())}</div></div>
       <div class="tile"><div class="k">Windows</div><div class="v">${esc(String(m.windows||'unknown').toUpperCase())}</div></div>
@@ -314,6 +321,7 @@ function repositoryAuditCard(a, compact=false) {
     </div>
     ${compact ? compactLoops + lastEvent : `
       <div class="small muted" style="margin-top:10px">${esc(a.note||'')}${issueLink ? ' · '+issueLink : ''} · diagnostic only · execution_authorized=false</div>
+      <div class="small muted" style="margin-top:6px"><b>Automatic loop ingest:</b> ${esc(syncState.toUpperCase())} · every ${esc(sync.interval_seconds||'—')}s · last attempt ${esc(sync.last_attempt_at||'—')}${(sync.errors||[]).length ? ' · '+esc((sync.errors||[]).join(' | ')) : ''}</div>
       ${checks ? `<h3 class="small" style="margin:14px 0 6px">Repository checks</h3><div>${checks}</div>` : ''}
       <h3 class="small" style="margin:16px 0 6px">Automation loops <span class="muted">${loopGood}/${loops.length} receipt-verified</span></h3>
       <div class="scroll" style="max-height:320px"><table><thead><tr><th>Loop</th><th>Status</th><th>Run ID</th><th>Finalization</th><th>Detail</th></tr></thead><tbody>${loopRows || '<tr><td colspan=5 class="empty">no loop receipts published yet</td></tr>'}</tbody></table></div>
