@@ -125,7 +125,7 @@ pre.cli { background:var(--surface-2); border:1px solid var(--ring); border-radi
       <span class="small muted" id="meta">—</span><span class="small muted tnum" id="clock" title="your computer's clock (local zone) and the strategy's session clock (New York)"></span>
       <span class="badge" id="phase">—</span>
       <span class="badge" id="armed">—</span>
-      <span class="badge" id="repoHealth" title="Latest local GitHub/MCP repository audit snapshot">REPO —</span>
+      <span class="badge" id="repoHealth" title="Latest local ICARUS System Intelligence snapshot">SYS —</span>
       <button class="icon-btn" id="btnPal" title="Command palette (Ctrl+K)">⌘ Commands</button>
       <button class="icon-btn" id="btnControls">⚙︎ Token</button>
       <button class="icon-btn" id="btnTheme" title="Toggle theme">◐</button>
@@ -275,26 +275,51 @@ function tabsHtml(A) {
   t.push(`<span class="tab util ${view==='system'?'active':''}" data-v="system">System</span><span class="tab util ${view==='golive'?'active':''}" data-v="golive">Go-live</span><span class="tab util ${view==='agent'?'active':''}" data-v="agent">Agent</span><span class="tab util ${view==='inputs'?'active':''}" data-v="inputs">Inputs</span><span class="tab util ${view==='backtest'?'active':''}" data-v="backtest">Backtest</span>${typeof researchHtml==='function'?`<span class="tab util ${view==='research'?'active':''}" data-v="research">Research</span>`:''}${typeof sourcesHtml==='function'?`<span class="tab util ${view==='sources'?'active':''}" data-v="sources">Financial &amp; data</span>`:''}<span class="tab util ${view==='commands'?'active':''}" data-v="commands">Commands</span><span class="tab util ${view==='log'?'active':''}" data-v="log">Log</span>`);
   return t.join('');
 }
+function systemLoopClass(status) {
+  const s = String(status || 'UNKNOWN').toUpperCase();
+  if (s.includes('RUN_PERSISTED') || s.includes('FINALIZATION_VERIFIED') || s === 'VERIFIED' || s === 'CLEAN') return 'b';
+  if (s.includes('FAIL') || s.includes('BLOCK') || s.includes('ERROR')) return 'r';
+  return 'w';
+}
+function systemLoopOk(status) { return systemLoopClass(status) === 'b'; }
 function repositoryAuditCard(a, compact=false) {
-  if (!a) return `<section class="card c12" id="repoAuditCard"><h2>Repository / MCP health</h2><div class="empty">loading local audit snapshot…</div></section>`;
+  if (!a) return `<section class="card c12" id="repoAuditCard"><h2>System Intelligence</h2><div class="empty">loading local repository, loop, and MCP snapshot…</div></section>`;
   const s = a.summary || {}, m = a.main || {}, issue = a.issue || {};
+  const loops = a.loops || [], events = a.events || [];
   const stat = String(a.status || 'unknown').toLowerCase();
   const cls = stat === 'green' ? 'b' : stat === 'red' ? 'r' : 'w';
+  const loopGood = loops.filter(x => systemLoopOk(x.status)).length;
+  const loopBad = Math.max(0, loops.length - loopGood);
   const checks = (a.checks || []).map(x => `<div class="irow"><div><span class="chip ${String(x.status||'').toLowerCase()==='success'?'b':String(x.status||'').toLowerCase()==='failure'?'r':'w'}">${esc(x.name||'check')}</span></div><div class="small" style="grid-column:span 3">${esc(x.detail||x.status||'')}</div></div>`).join('');
+  const loopRows = loops.map(x => `<tr><td><b>${esc(x.title||x.id)}</b><div class="muted small">${esc(x.schedule||'')}</div></td><td><span class="chip ${systemLoopClass(x.status)}">${esc(x.status||'UNKNOWN')}</span></td><td class="tnum">${esc(x.run_id||'—')}</td><td class="tnum">${esc(String(x.finalization_commit_sha||'—').slice(0,12))}</td><td class="small">${esc(x.detail||'')}</td></tr>`).join('');
+  const eventRows = events.slice(0,40).map(x => {
+    const sev = String(x.severity||'info').toLowerCase();
+    const k = sev === 'success' ? 'b' : sev === 'error' ? 'r' : sev === 'warn' ? 'w' : '';
+    return `<tr><td class="tnum">${esc(x.recorded_at||'—')}</td><td><span class="chip ${k}">${esc(String(x.kind||'finding').toUpperCase())}</span></td><td><b>${esc(x.title||'')}</b><div class="muted small">${esc(x.detail||'')}</div></td><td class="tnum">${esc(String(x.ref||'—').slice(0,16))}</td></tr>`;
+  }).join('');
   const issueLink = issue.url ? `<a href="${esc(issue.url)}" target="_blank" rel="noreferrer">GitHub audit #${esc(issue.number||'')}</a>` : '';
+  const compactLoops = loops.length ? `<div class="small" style="margin-top:10px"><b>Automation loops:</b> <span class="${loopBad?'neg':'pos'}">${loopGood}/${loops.length} receipt-verified</span>${loopBad ? ` · ${loopBad} need attention` : ''}</div>` : '';
+  const lastEvent = events[0] ? `<div class="small muted" style="margin-top:5px"><b>Latest MCP:</b> ${esc(events[0].title||'')} · ${esc(events[0].recorded_at||'')}</div>` : '';
   return `<section class="card c12" id="repoAuditCard">
-    <h2>Repository / MCP health <span class="sub">${esc(a.repository||'')} · local snapshot · ${esc(a.recorded_at||'time unknown')}</span></h2>
+    <h2>System Intelligence <span class="sub">${esc(a.repository||'')} · local diagnostic snapshot · ${esc(a.recorded_at||'time unknown')}</span></h2>
     <div class="tiles" style="margin-top:0">
-      <div class="tile"><div class="k">Audit state</div><div class="v"><span class="chip ${cls}">${esc(stat.toUpperCase())}</span></div></div>
+      <div class="tile"><div class="k">Repository audit</div><div class="v"><span class="chip ${cls}">${esc(stat.toUpperCase())}</span></div></div>
+      <div class="tile"><div class="k">Loop receipts</div><div class="v ${loopBad?'neg':'pos'}">${loops.length ? loopGood+'/'+loops.length : '—'}</div></div>
+      <div class="tile"><div class="k">MCP activity</div><div class="v tnum">${events.length}</div></div>
       <div class="tile"><div class="k">Main SHA</div><div class="v tnum" style="font-size:14px">${esc(String(m.sha||'—').slice(0,12))}</div></div>
       <div class="tile"><div class="k">Linux</div><div class="v">${esc(String(m.linux||'unknown').toUpperCase())}</div></div>
       <div class="tile"><div class="k">Windows</div><div class="v">${esc(String(m.windows||'unknown').toUpperCase())}</div></div>
-      <div class="tile"><div class="k">Branches audited</div><div class="v tnum">${s.branches_audited ?? '—'}</div></div>
       <div class="tile"><div class="k">Current-head failures</div><div class="v tnum ${(s.current_head_failures||0)>0?'neg':'pos'}">${s.current_head_failures ?? '—'}</div></div>
-      <div class="tile"><div class="k">Pending</div><div class="v tnum">${s.pending ?? '—'}</div></div>
       <div class="tile"><div class="k">Unresolved</div><div class="v tnum">${s.unresolved ?? '—'}</div></div>
     </div>
-    ${compact ? '' : `<div class="small muted" style="margin-top:10px">${esc(a.note||'')}${issueLink ? ' · '+issueLink : ''}</div>${checks ? `<div style="margin-top:10px">${checks}</div>` : ''}`}
+    ${compact ? compactLoops + lastEvent : `
+      <div class="small muted" style="margin-top:10px">${esc(a.note||'')}${issueLink ? ' · '+issueLink : ''} · diagnostic only · execution_authorized=false</div>
+      ${checks ? `<h3 class="small" style="margin:14px 0 6px">Repository checks</h3><div>${checks}</div>` : ''}
+      <h3 class="small" style="margin:16px 0 6px">Automation loops <span class="muted">${loopGood}/${loops.length} receipt-verified</span></h3>
+      <div class="scroll" style="max-height:320px"><table><thead><tr><th>Loop</th><th>Status</th><th>Run ID</th><th>Finalization</th><th>Detail</th></tr></thead><tbody>${loopRows || '<tr><td colspan=5 class="empty">no loop receipts published yet</td></tr>'}</tbody></table></div>
+      <h3 class="small" style="margin:16px 0 6px">MCP activity <span class="muted">repairs · audits · evolutions · integrations · findings</span></h3>
+      <div class="scroll" style="max-height:420px"><table><thead><tr><th>Time</th><th>Kind</th><th>Event</th><th>Ref</th></tr></thead><tbody>${eventRows || '<tr><td colspan=4 class="empty">no MCP events published yet</td></tr>'}</tbody></table></div>
+    `}
   </section>`;
 }
 function goliveCard(g) {
@@ -706,9 +731,11 @@ function render(d) {
   const rh = $('#repoHealth'), ra = window.ICARUS_AUDIT;
   if (rh) {
     const st = String(ra?.status || 'unknown').toLowerCase();
-    rh.textContent = st === 'green' ? 'REPO ✓' : st === 'red' ? 'REPO !' : 'REPO ?';
-    rh.className = 'badge ' + (st === 'green' ? 'armed' : st === 'red' ? 'paused' : 'warm');
-    rh.title = ra ? `Repository audit ${ra.recorded_at||''} · main ${String(ra.main?.sha||'').slice(0,12)}` : 'Repository audit unavailable';
+    const ls = ra?.loops || [], loopBad = ls.filter(x => !systemLoopOk(x.status)).length;
+    const healthy = st === 'green' && (!ls.length || loopBad === 0);
+    rh.textContent = healthy ? 'SYS ✓' : (st === 'red' || loopBad) ? 'SYS !' : 'SYS ?';
+    rh.className = 'badge ' + (healthy ? 'armed' : (st === 'red' || loopBad) ? 'paused' : 'warm');
+    rh.title = ra ? `System Intelligence ${ra.recorded_at||''} · repo ${st} · loops ${ls.length-loopBad}/${ls.length} verified · main ${String(ra.main?.sha||'').slice(0,12)}` : 'System Intelligence unavailable';
   }
   $('#tabs').innerHTML = tabsHtml(A);
   const viewAsset = view.startsWith('asset:') ? A.find(a => a.symbol === view.slice(6)) : null;
