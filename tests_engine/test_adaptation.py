@@ -34,6 +34,7 @@ class FakeWorkspace:
             "reserved_calls": 0, "reserved_tokens": 0}))
         self.started = []
         self.studies = {}
+        self.proposed = []
 
     def start(self, request):
         self.started.append(request)
@@ -41,6 +42,10 @@ class FakeWorkspace:
 
     def job(self, ident):
         return self.studies[ident]
+
+    def propose_study(self, body):
+        self.proposed.append(body)
+        return {"proposal_id": "p" * 64, "state": "proposed"}
 
 
 def configured(scheduler):
@@ -141,6 +146,31 @@ def test_study_launch_binds_apply_and_completes_full_analysis_chain(tmp_path):
     scheduler.tick()
     assert scheduler.status()["active"] is None
     assert scheduler.status()["assets"]["NQ"]["last_workflow"] == "workflow"
+
+
+def test_study_only_mode_skips_paid_provider_gate_and_never_applies(tmp_path):
+    ws = FakeWorkspace(tmp_path)
+    scheduler = AdaptationScheduler(ws)
+    configured(scheduler)
+    scheduler.configure({"review_mode": "study_only", "apply": True})
+    scheduler._providers_ready = lambda: (_ for _ in ()).throw(AssertionError("provider gate called"))
+    scheduler._budget_ready = lambda: (_ for _ in ()).throw(AssertionError("budget gate called"))
+
+    scheduler.tick()
+    assert len(ws.started) == 1
+    assert scheduler.status()["config"]["review_mode"] == "study_only"
+    assert scheduler.status()["config"]["apply"] is False
+
+    ws.studies["a" * 16] = {"status": "complete", "result": {"research_qualified": True}, "error": None}
+    scheduler.tick()
+    state = scheduler.status()
+    assert state["active"] is None
+    assert state["assets"]["NQ"]["status"] == "candidate_proposed"
+    assert state["assets"]["NQ"]["last_proposal"] == "p" * 64
+    assert state["assets"]["NQ"]["review_mode"] == "study_only"
+    assert ws.proposed[0]["job"] == "a" * 16
+    assert ws.proposed[0]["evidence_ids"] == ["real-event"]
+    assert "no paper or production inputs were applied" in ws.proposed[0]["rationale"]
 
 
 def test_restart_abandons_confirmed_dead_owner_without_replaying_interval(tmp_path, monkeypatch):
