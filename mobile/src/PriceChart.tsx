@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Line, Rect } from 'react-native-svg';
 import type { ChartPayload } from './types';
 
-type Candle = [number, number, number, number, number, number?];
+type Candle = [number, number, number, number, number, number];
 
 function validBar(row: number[]): row is Candle {
   return row.length >= 5 && row.slice(0, 5).every((value) => typeof value === 'number' && Number.isFinite(value));
