@@ -21,6 +21,7 @@ NODE = shutil.which("node")
         "icarus_engine/research-ui.js",
         "icarus_engine/sources-ui.js",
         "icarus_engine/brain-ui.js",
+        "icarus_engine/evolution-ui.js",
         "icarus_engine/integrity-ui.js",
         "icarus_engine/experience-ui.js",
     ],
@@ -112,3 +113,22 @@ def test_dashboard_surfaces_adaptive_brain_fabric():
     assert "True success rate" in ui
     assert 'p.path == "/api/brain"' in server
     assert 'p.path == "/admin/brain/event"' in server
+
+
+def test_dashboard_surfaces_repository_native_mcp_evolution_panel():
+    dashboard = (REPO / "icarus_engine/dashboard.html").read_text(encoding="utf-8")
+    ui = (REPO / "icarus_engine/evolution-ui.js").read_text(encoding="utf-8")
+    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
+    sync = (REPO / "icarus_engine/evolution_sync.py").read_text(encoding="utf-8")
+    assert '/evolution-ui.js' in dashboard
+    assert 'data-v="evolution">MCP Evolution</span>' in dashboard
+    assert "wireEvolution()" in dashboard
+    assert "/api/evolution" in ui
+    assert "Subsystem evolution state" in ui
+    assert "Important MCP activity" in ui
+    assert "execution_authorized=false" in ui
+    assert 'p.path == "/api/evolution"' in server
+    assert "EvolutionRemoteSync" in server
+    assert "automation_intelligence/mcp_interface/events" in sync
+    assert "execution_authorized must be false" in sync
+    assert "production_decision_authorized must be false" in sync
