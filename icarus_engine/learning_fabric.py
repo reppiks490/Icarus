@@ -1524,6 +1524,10 @@ class LearningFabric:
             summary["settlement"] = self._observe_portfolio()
         except Exception as ex:
             errors["settlement"] = f"{type(ex).__name__}: {ex}"[:500]
+        try:
+            summary["experience"] = {"runtime": self._harvest_runtime_experience()}
+        except Exception as ex:
+            errors["experience"] = f"{type(ex).__name__}: {ex}"[:500]
         if self._config["harvest_native"]:
             try:
                 summary["native"] = self.harvest_native()
@@ -1537,7 +1541,10 @@ class LearningFabric:
                 errors["history"] = f"{type(ex).__name__}: {ex}"[:500]
         runs = []
         try:
-            for dataset_id in self._next_untrained(self._config["max_backfills_per_cycle"]):
+            batch_limit = self._config["max_backfills_per_cycle"]
+            for dataset_id in self._next_trade_experience(batch_limit):
+                runs.append(self.backfill_dataset(dataset_id))
+            for dataset_id in self._next_untrained(batch_limit):
                 runs.append(self.backfill_dataset(dataset_id))
             summary["backfills"] = runs
         except Exception as ex:
@@ -1598,18 +1605,22 @@ class LearningFabric:
         train_count = int(self._conn.execute("SELECT COUNT(*) FROM training_runs").fetchone()[0])
         prediction_count = int(self._conn.execute("SELECT COUNT(*) FROM predictions").fetchone()[0])
         outcome_count = int(self._conn.execute("SELECT COUNT(*) FROM outcomes").fetchone()[0])
+        experience_count = int(self._conn.execute("SELECT COUNT(*) FROM experiences").fetchone()[0])
         cycle_count = int(self._conn.execute("SELECT COUNT(*) FROM cycles").fetchone()[0])
         last_cycle = self._conn.execute("SELECT summary_json FROM cycles ORDER BY finished_at DESC LIMIT 1").fetchone()
         return {
             "schema_version": _SCHEMA,
-            "status": "LEARNING" if outcome_count or train_count else "WARMING",
+            "status": "LEARNING" if outcome_count or train_count or experience_count else "WARMING",
             "config": dict(self._config),
             "datasets": {"count": dataset_count},
             "training": {"run_count": train_count},
             "predictions": {"count": prediction_count, "settled": outcome_count, "pending": max(0, prediction_count-outcome_count)},
+            "experiences": self.experience_state(),
             "scorecards": self.scorecards(),
             "coverage": {
                 "historical_trainers": "protected_replay",
+                "historical_trade_lists": "immutable_realized_experience",
+                "runtime_trade_outcomes": "fully_closed_live_sim_experience",
                 "sibyl": "native_prediction_outcome",
                 "performance_proof": "native_immutable_forecast_outcome",
                 "source_reliability": "native_observed_quality_context",
@@ -1618,8 +1629,6 @@ class LearningFabric:
                 "dreamstate": "native_candidate_lifecycle",
                 "pantheon": "native_research_metrics",
                 "apex": "empirical_credibility_feedback",
-                "performance_proof": "native_immutable_forecast_outcome",
-                "source_reliability": "native_observed_quality_context",
                 "possibility": "forecast_contract_required",
                 "chronofold": "calibrated_via_commissioning",
             },
