@@ -110,8 +110,7 @@ def subsystem_context(
     # Preserve a caller-supplied ORACLE payload. ICARUS Ψ must never overwrite
     # or masquerade as the separate ORACLE subsystem.
     psi_source = psi_snapshot if psi_snapshot is not None else oracle_snapshot
-    if psi_source is not None:
-        out["psi"] = psi_context(psi_source)
+    out["psi"] = psi_context(psi_source or {})
     out["parallax"] = parallax_context(parallax_snapshot)
     out["dreamstate"] = dreamstate_context(dreamstate_snapshot)
     return out
