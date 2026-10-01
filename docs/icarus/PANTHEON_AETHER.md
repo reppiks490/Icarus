@@ -222,9 +222,14 @@ No additional live-control endpoint is required. The existing authenticated
 `POST /admin/pantheon/observe`
 
 accepts an optional bounded `claim_outcomes` list. An outcome names a prior
-claim, observation time, bounded utility, confidence, and evidence. Outcomes
-cannot predate their originating claim and are immutable for a given
-`claim_id + observed_at`. Idempotent retries are safe.
+claim, observation time, bounded utility, confidence, and evidence. Scored
+fitness cannot update before the claim's market horizon has matured. Outcomes
+attached through a feedback observation must match that observation's asset and
+timestamp, and descendant mutation claims are bound to the feedback observation
+that created them. Zero-confidence outcomes remain durable evidence but
+contribute zero fitness. Upgrades backfill missing sentinel chronology and
+legacy durable claim species without inventing fitness. Outcomes remain
+immutable for a given `claim_id + observed_at`; idempotent retries are safe.
 
 ## Causal chronology
 
