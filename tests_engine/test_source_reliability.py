@@ -33,8 +33,9 @@ def _body(i=0, *, complete=True, revision=False, agreement_bps=1.0, tolerance=2.
 
 def test_observation_identity_is_idempotent_and_freshness_is_derived(tmp_path):
     store = SourceReliabilityStore(tmp_path)
-    first = store.record_observation(_body(age=1.0))
-    second = store.record_observation(_body(age=1.0))
+    body = _body(age=1.0)
+    first = store.record_observation(body)
+    second = store.record_observation(body)
     assert first["idempotent"] is False
     assert second["idempotent"] is True
     assert first["fresh"] is True
