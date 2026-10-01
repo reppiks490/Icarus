@@ -496,8 +496,6 @@ class SibylEngine:
             "reachable_band": band,
         }
 
-    @staticmethod
-
     def _cluster_levels(
         self,
         evidence: list[Mapping[str, Any]],
