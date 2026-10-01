@@ -616,14 +616,16 @@ class ChronofoldEngine:
         raw_cluster, paths = [], []
         for _ in range(self.scenarios):
             rsum, cost, p = 0.0, 0.0, price
+            logp = math.log(max(price, EPS))
             path = [price]
-            local_drift = drift + rng.gauss(0.0, vol * 0.08)
+            local_drift = _clip(drift + rng.gauss(0.0, vol * 0.08), -0.10, 0.10)
             for _step in range(self.horizon):
                 shock = rng.gauss(0.0, vol)
-                step_ret = local_drift + shock * (1.0 + 0.75 * curvature)
+                step_ret = _clip(local_drift + shock * (1.0 + 0.75 * curvature), -0.50, 0.50)
                 rsum += step_ret
                 cost += (shock / max(vol, EPS)) ** 2 + curvature * abs(step_ret) / max(vol, EPS)
-                p *= math.exp(step_ret)
+                logp = _clip(logp + step_ret, -700.0, 700.0)
+                p = math.exp(logp)
                 path.append(p)
             terminal_ret = math.exp(rsum) - 1.0
             label = "UP" if terminal_ret > vol * math.sqrt(self.horizon) * 0.45 else "DOWN" if terminal_ret < -vol * math.sqrt(self.horizon) * 0.45 else "FLAT"
