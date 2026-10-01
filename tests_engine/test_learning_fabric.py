@@ -260,3 +260,61 @@ def test_learning_fabric_config_and_cycles_are_bounded_and_research_only(tmp_pat
 
     with pytest.raises(ValueError):
         fabric.configure({"cycle_seconds": 0})
+
+
+def test_export_intake_manifest_enriches_real_icarius_filename_metadata(tmp_path):
+    from icarus_engine.learning_fabric import LearningFabric
+
+    data = _ohlc(tmp_path / "history" / "drop" / "CME_MINI_DL_NQ1!, 2(1).csv", rows=80)
+    raw_sha = __import__("hashlib").sha256(data.read_bytes()).hexdigest()
+    manifest = tmp_path / "history" / "EXPORT_INTAKE_MANIFEST.csv"
+    manifest.write_text(
+        "index,sha256,canonical_filename,duplicate_copies,all_observed_filenames,bytes,format,artifact_class,symbol,timeframe,chart_type,rows,first_or_trading_range,last_or_backtesting_range,last_trade_number,net_profit_usd,max_drawdown_intrabar_usd,notes\n"
+        f'0,{raw_sha},"CME_MINI_DL_NQ1!, 2(1).csv",0,"CME_MINI_DL_NQ1!, 2(1).csv",123,csv,chart_data,CME_MINI:NQ1!,20 minutes,Heikin Ashi (verified transform),80,2024-06-02T22:00:00+00:00,2026-09-30T13:20:00+00:00,,,,verified\n',
+        encoding="utf-8",
+    )
+    fabric = LearningFabric(tmp_path)
+    scan = fabric.scan_history()
+    dataset = fabric.dataset(scan["dataset_ids"][0])
+    assert dataset["asset"] == "NQ"
+    assert dataset["chart_type"] == "20m"
+    assert dataset["manifest"]["intake"]["chart_type"] == "Heikin Ashi (verified transform)"
+    assert dataset["manifest"]["intake"]["timeframe"] == "20 minutes"
+    assert dataset["manifest"]["intake"]["manifest_sha256"] == raw_sha
+
+
+def test_empirical_scorecards_publish_research_only_apex_credibility(tmp_path):
+    from icarus_engine.learning_fabric import LearningFabric
+
+    class Store:
+        def __init__(self):
+            self.rows = []
+        def record_model_credibility(self, row):
+            self.rows.append(dict(row))
+            return {"ok": True}
+
+    class Apex:
+        def __init__(self):
+            self.store = Store()
+
+    fabric = LearningFabric(tmp_path)
+    apex = Apex()
+    fabric.bind_native(apex=apex)
+    pred = fabric.record_prediction(_prediction())["prediction"]
+    fabric.record_outcome(
+        {
+            "prediction_id": pred["prediction_id"],
+            "observed_at": pred["resolves_at"],
+            "actual_value": 102.0,
+            "evidence": ["historical:close"],
+        }
+    )
+    cycle = fabric.tick()
+    assert cycle["status"] == "ok"
+    assert len(apex.store.rows) == 1
+    row = apex.store.rows[0]
+    assert row["model_id"].startswith("learning:psi:NQ:trend:300:direction")
+    assert row["status"] == "EARLY"
+    assert 0.0 <= row["score"] <= 1.0
+    assert row["execution_authorized"] is False
+    assert row["production_decision_authorized"] is False
