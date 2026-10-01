@@ -223,6 +223,9 @@ def _veritas_payload(observation_id: str = "pan-veritas") -> dict:
             {"key": "cross_asset_lead", "operator": "positive", "weight": 0.25},
         ],
         "invalidators": ["basis compresses while price rises", "queue replenishment disappears"],
+        "invalidating_signatures": [
+            {"key": "basis_compression", "operator": "truthy", "weight": 1.0},
+        ],
     }
     return payload
 
@@ -325,6 +328,34 @@ def test_veritas_mechanism_can_match_even_when_endpoint_fails(tmp_path):
     assert score["mechanism_fidelity"] == pytest.approx(1.0)
     assert score["reinforcement_eligible"] is False
     assert score["learning_credit"] == pytest.approx(0.0)
+
+
+def test_veritas_machine_invalidator_overrides_signature_fidelity(tmp_path):
+    kernel = PantheonKernel(tmp_path)
+    obs = kernel.record_observation(_veritas_payload("pan-veritas-invalidator"))
+    source = kernel.record_observation(_veritas_source_payload(
+        "pan-veritas-invalidator-source",
+        "2026-10-01T06:00:20Z",
+        basis_expands=True,
+        queue_replenishment=0.8,
+        cross_asset_lead=0.2,
+        basis_compression=True,
+    ))
+    state = kernel.record_veritas_reconciliation({
+        "observation_id": obs["observation_id"],
+        "source_observation_id": source["observation_id"],
+        "observed_at": source["observed_at"],
+        "confidence": 0.9,
+        "evidence": ["fixture:invalidator-triggered"],
+    })
+    score = state["reconciliation"]["score"]
+    assert score["mechanism_fidelity"] == pytest.approx(1.0)
+    assert score["invalidator_triggered"] is True
+    assert score["triggered_invalidators"] == ["basis_compression"]
+    assert score["mechanism_match"] is False
+    assert score["classification"] == "right_for_wrong_reasons"
+    assert score["reinforcement_eligible"] is False
+    assert score["lucky_outcome_quarantine"] is True
 
 
 def test_veritas_reconciliation_is_maturity_bound_idempotent_and_immutable(tmp_path):

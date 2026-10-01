@@ -500,3 +500,14 @@ identity and duplicate check, so a recorded result cannot later be silently
 rebound to a different observation at the same timestamp. Legacy rows retain a
 null source identifier; all newly source-bound VERITAS fitness evidence carries
 the durable observation link.
+
+
+### Machine-checkable invalidators
+
+VERITAS certificates can now include structured `invalidating_signatures` in
+addition to human-readable invalidator notes. They use the same predicate
+operators as expected signatures. If any invalidating predicate is observed,
+the mechanism cannot pass even when its weighted expected-signature fidelity is
+otherwise high. This prevents a superficially matching path from receiving
+right-for-right-reasons credit after an explicitly predeclared falsifier
+actually occurred.

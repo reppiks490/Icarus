@@ -633,6 +633,18 @@ def veritas(signals: Mapping[str, Any], observation_id: str) -> dict[str, Any]:
         if len(value) > 500:
             raise ValueError(f"mechanism_certificate.invalidators[{i}] exceeds 500 characters")
         normalized_invalidators.append(value)
+
+    raw_invalidating = raw.get("invalidating_signatures", [])
+    if raw_invalidating is None:
+        raw_invalidating = []
+    if not isinstance(raw_invalidating, list) or len(raw_invalidating) > 16:
+        raise ValueError("mechanism_certificate.invalidating_signatures must be a list with at most 16 items")
+    invalidating_signatures = [
+        _veritas_signature(item, i) for i, item in enumerate(raw_invalidating)
+    ]
+    invalidating_keys = [row["key"] for row in invalidating_signatures]
+    if len(set(invalidating_keys)) != len(invalidating_keys):
+        raise ValueError("mechanism_certificate.invalidating_signatures keys must be unique")
     certificate_id = "ver-" + digest(observation_id, mechanism_id)[:24]
     return {
         **out,
@@ -644,6 +656,7 @@ def veritas(signals: Mapping[str, Any], observation_id: str) -> dict[str, Any]:
         "fidelity_threshold": fidelity_threshold,
         "expected_signatures": signatures,
         "invalidators": normalized_invalidators,
+        "invalidating_signatures": invalidating_signatures,
         "reconciliation_state": "pending",
         "reinforcement_eligible": False,
         "lucky_outcome_quarantine": False,
@@ -716,10 +729,51 @@ def score_veritas_reconciliation(
 
     mechanism_fidelity = matched_weight / total_weight if total_weight > 0 else 0.0
     threshold = unit(certificate.get("fidelity_threshold"), "VERITAS fidelity_threshold", 0.70)
+
+    invalidator_evaluated = []
+    for i, sig in enumerate(certificate.get("invalidating_signatures", [])):
+        if not isinstance(sig, Mapping):
+            raise ValueError(f"VERITAS invalidating signature {i} is invalid")
+        key = str(sig.get("key") or "")
+        operator = str(sig.get("operator") or "")
+        present = key in realized_signatures
+        value = realized_signatures.get(key)
+        matched = False
+        if present:
+            if operator in {"truthy", "falsy"}:
+                if type(value) is not bool:
+                    raise ValueError(f"realized_signatures.{key} must be boolean for {operator}")
+                matched = value if operator == "truthy" else not value
+            else:
+                numeric = finite(value, f"realized_signatures.{key}")
+                if operator == "positive":
+                    matched = numeric > 0
+                elif operator == "negative":
+                    matched = numeric < 0
+                elif operator == "gte":
+                    matched = numeric >= finite(sig.get("threshold"), f"VERITAS invalidator {key}.threshold")
+                elif operator == "lte":
+                    matched = numeric <= finite(sig.get("threshold"), f"VERITAS invalidator {key}.threshold")
+                elif operator == "between":
+                    lower = finite(sig.get("lower"), f"VERITAS invalidator {key}.lower")
+                    upper = finite(sig.get("upper"), f"VERITAS invalidator {key}.upper")
+                    matched = lower <= numeric <= upper
+                else:
+                    raise ValueError(f"VERITAS invalidating signature {key} has unsupported operator")
+        invalidator_evaluated.append({
+            "key": key,
+            "operator": operator,
+            "present": present,
+            "realized": value if present else None,
+            "triggered": matched,
+        })
+    triggered_invalidators = [row["key"] for row in invalidator_evaluated if row["triggered"]]
+    invalidator_triggered = bool(triggered_invalidators)
+
     predicted_direction = str(certificate.get("direction") or "unknown").lower()
     endpoint_known = predicted_direction in {"long", "short", "flat"} and realized_direction in {"long", "short", "flat"}
     directional_match = endpoint_known and predicted_direction == realized_direction
-    mechanism_match = mechanism_fidelity >= threshold
+    mechanism_match = mechanism_fidelity >= threshold and not invalidator_triggered
 
     if not endpoint_known:
         classification = "mechanism_only"
@@ -755,6 +809,9 @@ def score_veritas_reconciliation(
         "mechanism_fidelity": mechanism_fidelity,
         "fidelity_threshold": threshold,
         "mechanism_match": mechanism_match,
+        "invalidator_triggered": invalidator_triggered,
+        "triggered_invalidators": triggered_invalidators,
+        "invalidating_signatures": invalidator_evaluated,
         "classification": classification,
         "reinforcement_eligible": reinforcement_eligible,
         "lucky_outcome_quarantine": lucky_quarantine,
