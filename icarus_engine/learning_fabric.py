@@ -2233,7 +2233,7 @@ class LearningFabric:
                 "dreamstate": "native_candidate_lifecycle",
                 "pantheon": "native_research_metrics",
                 "apex": "empirical_credibility_feedback",
-                "possibility": "forecast_contract_required",
+                "possibility": "native_non_overlapping_scenario_calibration",
                 "chronofold": "calibrated_via_commissioning",
             },
             "cycles": {"count": cycle_count, "latest": None if last_cycle is None else json.loads(last_cycle["summary_json"])},

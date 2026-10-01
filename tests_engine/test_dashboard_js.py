@@ -381,3 +381,13 @@ def test_learning_dashboard_exposes_configuration_scoped_trade_experience():
     assert "by_configuration" in ui
     assert "unscoped_count" in ui
     assert "CLOSURE-TIME PROVENANCE" in ui
+
+
+def test_learning_dashboard_surfaces_psi_scenario_calibration():
+    ui = (REPO / "icarus_engine/learning-ui.js").read_text(encoding="utf-8")
+    assert "Ψ SCENARIO CALIBRATION" in ui
+    assert "RAW SHARES UNCALIBRATED" in ui
+    assert "forecasts_imported" in ui
+    assert "outcomes_imported" in ui
+    assert "overlap_withheld" in ui
+    assert "psi-scenario-v1" in ui
