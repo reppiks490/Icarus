@@ -1,0 +1,17 @@
+{
+  "expo": {
+    "name": "ICARUS Mobile",
+    "slug": "icarus-mobile",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.icarus.mobile"
+    },
+    "android": {
+      "package": "com.icarus.mobile",
+      "predictiveBackGestureEnabled": false
+    }
+  }
+}
