@@ -17,11 +17,13 @@ import os
 from pathlib import Path
 import threading
 import time
+from datetime import datetime, timezone
 from typing import Any
 
 from .backtest import run_backtest
 from .runtime import validate_values
 from .strategy.meta import load_meta
+from .system_audit import append_system_event
 
 
 DEFAULT_CONFIG = {
