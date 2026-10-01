@@ -132,6 +132,19 @@ def test_external_evidence_is_bounded_and_research_only():
         engine.ingest_external("NQ", {"made_up_force": 1.0}, source="unit-test")
     with pytest.raises(ValueError):
         engine.ingest_external("NQ", {"gamma_pressure": 1.1}, source="unit-test")
+    with pytest.raises(ValueError, match="confidence must be finite"):
+        engine.ingest_external(
+            "NQ",
+            {"gamma_pressure": {"value": 0.2, "confidence": "bad"}},
+            source="unit-test",
+        )
+    with pytest.raises(ValueError, match="ttl_seconds must be finite"):
+        engine.ingest_external(
+            "NQ",
+            {"gamma_pressure": 0.2},
+            source="unit-test",
+            ttl_seconds=float("nan"),
+        )
 
 
 def test_psi_surface_observed_microstructure_and_future_space():
