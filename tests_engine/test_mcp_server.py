@@ -24,6 +24,11 @@ def test_mcp_server_imports_and_registers_engine_surface():
         "record_engine_integrity_event",
         "engine_brain_state",
         "record_engine_brain_event",
+        "engine_performance_proof",
+        "record_engine_performance_forecast",
+        "record_engine_performance_outcome",
+        "record_engine_replay_proof",
+        "engine_latency_telemetry",
         "engine_possibility_state",
         "record_engine_possibility_evidence",
     ):
