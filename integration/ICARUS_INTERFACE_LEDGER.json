@@ -1,0 +1,506 @@
+{
+  "schema_version": "icarus-interface-ledger-v2",
+  "generated_at": "2026-10-01T03:16:09Z",
+  "execution_authorized": false,
+  "policy": {
+    "mcp_mirror_required": true,
+    "rule": "Any material repair, audit, hardening, provenance correction, data-quality change, or evolution performed through MCP must also be surfaced inside the ICARUS trading interface with repository, branch, exact commit, verification state, interface effect, and execution-authority boundary.",
+    "runtime_receipts": "Authenticated MCP writes are idempotent by semantic event hash and cannot change trading authority.",
+    "effect_on_trading": "none"
+  },
+  "export_intake": {
+    "observed_filenames": 21,
+    "unique_payloads": 11,
+    "duplicate_payloads": 10,
+    "nq_observed": 15,
+    "nq_unique": 7,
+    "es_observed": 6,
+    "es_unique": 4,
+    "nq_20m_pair": {
+      "aligned_bars": 41239,
+      "utc_start": "2024-06-02T22:00:00Z",
+      "utc_end": "2026-09-30T13:20:00Z",
+      "representations": [
+        "heikin_ashi",
+        "standard_ohlc"
+      ],
+      "transform_alignment": "verified_post_seed"
+    },
+    "historical_corpus": {
+      "zip_archives": 10,
+      "physical_files": 803,
+      "usable_csv_members": 659,
+      "byte_distinct_contents": 542,
+      "records": 13788256
+    }
+  },
+  "checklist": [
+    {
+      "id": "O03",
+      "title": "Standard timeframe coverage",
+      "status": "pending",
+      "detail": "20-minute evidence is verified; standard 1m, 5m, 60m, 240m and daily exports remain outside the verified packet."
+    },
+    {
+      "id": "O04",
+      "title": "HA signal chart with Standard-bars execution-price evidence",
+      "status": "pending",
+      "detail": "Still requires explicit TradingView Standard bars execution-price proof plus separate trade-list/summary/settings evidence."
+    },
+    {
+      "id": "O05",
+      "title": "RTH / ETH session evidence",
+      "status": "reconciled_with_note",
+      "detail": "The chat audit classified 2019-start exports as RTH and 2024-start exports as ETH and accepted the screenshots plus normal/Nov-28-2025 shortened-session evidence; an earlier durable intake README was more conservative, so the interface preserves that discrepancy instead of flattening it."
+    },
+    {
+      "id": "O06",
+      "title": "Private originals + SHA-256 provenance",
+      "status": "waived",
+      "detail": "A reproducible checksum/provenance manifest exists and raw licensed files stay outside GitHub; strict owner-local checksum completion was waived/trusted in the chat path."
+    },
+    {
+      "id": "O14",
+      "title": "Inventory existing corpus before bulk re-export",
+      "status": "verified",
+      "detail": "Bulk re-export was replaced by corpus recovery/inventory plus representation-aware ingestion. The three end-of-chat hardening blockers were subsequently repaired in NEXUS and are shown below with exact commits."
+    }
+  ],
+  "repairs": [
+    {
+      "id": "representation-identity-and-sampling",
+      "status": "verified",
+      "summary": "Representation claims distinguish chart family from sampling construction and preserve unresolved identity rather than silently collapsing it.",
+      "evidence": [
+        "Conservative representation claims",
+        "Tick/range sampling semantics",
+        "Chart-family vs sampling separation"
+      ],
+      "source_commits": [
+        "226e7de899cea31060752cb37a58cdeeec91061f",
+        "cb1b0b860db9b7b26b371ba6cb04f85735c3f096",
+        "27192b88991a9e39120e668f064c21ab64cf1ca8"
+      ]
+    },
+    {
+      "id": "ha-standard-fail-closed",
+      "status": "verified",
+      "summary": "Heikin-Ashi versus standard OHLC identity is separately proven where available; unresolved identity remains non-authoritative.",
+      "evidence": [
+        "41,239 aligned NQ 20m timestamps",
+        "Recursive HA-open proof",
+        "O14 chart-identity probe"
+      ],
+      "source_commits": [
+        "9bb487aa11eea8c8f52ddc275a0e1ec9807ad3da",
+        "39feccb3663fb9aaa079ab9ceb6692395de9dd71"
+      ]
+    },
+    {
+      "id": "family-balanced-fusion",
+      "status": "verified",
+      "summary": "Fusion balances representation families before cross-asset weighting so dense chart/timeframe families cannot manufacture extra evidence weight.",
+      "evidence": [
+        "Family-balanced fusion implementation",
+        "Manifest-backed family fusion requirement"
+      ],
+      "source_commits": [
+        "642dc26d49cd0023e0b99091ccc38ce072ee1545",
+        "adcd7319e2aa664c581e56495d29f59c7676d1e0"
+      ]
+    },
+    {
+      "id": "explicit-clock-backward-timestamps",
+      "status": "repaired",
+      "summary": "CSV/source-time ingestion now rejects backward source timestamps before replay, including the generic numeric source-time path.",
+      "evidence": [
+        "All CSV readers backward-time regression",
+        "Generic numeric source-time regression"
+      ],
+      "source_commits": [
+        "74f7d7ceb262f579782d395dbdf51e85e820502d",
+        "72d5cf646b505898f2ea9a896b359f33e130bb65",
+        "4a27b4776a56bd63bedd3243696316440c5a8ef8"
+      ]
+    },
+    {
+      "id": "ablation-component-weight-cap",
+      "status": "repaired",
+      "summary": "Ablation paths preserve the original component-weight cap and now have a dedicated regression test.",
+      "evidence": [
+        "Ablation cap implementation",
+        "Ablation cap regression"
+      ],
+      "source_commits": [
+        "1f1284e3d9f9dfa808022bc937c327390f94954c",
+        "74d689771a7791f554b101ac069136d2b0300254",
+        "24f9ae6cbde159fffd5cb6159254e69e46b2138d"
+      ]
+    },
+    {
+      "id": "synthetic-factor-missingness",
+      "status": "repaired",
+      "summary": "Historical factor fitting, synthetic factor state, topology estimation, and unfitted latent state preserve missingness instead of treating missing observations as zero.",
+      "evidence": [
+        "Synthetic-factor missingness",
+        "Historical factor fit",
+        "Topology missingness",
+        "Unfitted latent state"
+      ],
+      "source_commits": [
+        "fc945f0fea2ac6d344f8b5f21d317637f5bb554c",
+        "8097f97267139061a8c9aef2e78d3acd48d56ba8",
+        "2d8dd154f7fecffd69e061b0c9d44481dab0d7a4",
+        "47df68167443b9b9c8666f8ce9b62939c79408d1",
+        "295457d1f64746e8ed88e16f00bb19f28161904c"
+      ]
+    },
+    {
+      "id": "exact-byte-four-axis-representation-authority",
+      "status": "verified",
+      "summary": "Reviewed representation authority is bound to exact raw bytes and requires coherent chart-view family, price geometry, sampling domain, and sampling construction before entering the model plane.",
+      "evidence": [
+        "Exact-byte structured registry authority",
+        "Reviewed-identity bridge",
+        "All four axes required",
+        "Contradictory axes rejected"
+      ],
+      "source_commits": [
+        "759bcc5a3f53c543dc126c0dd10ca70660126b4c",
+        "114137020e13d7de0f3131b13f21ad846d238125",
+        "07abebdaf4ed46decefc75fac14cd3b2c6109718",
+        "3a123904d0bf2ac4a3bc1a10269e18c55aef9ec6"
+      ]
+    },
+    {
+      "id": "quality-plane-identity-and-consistency",
+      "status": "verified",
+      "summary": "Quality telemetry is bound to canonical stream identity, aggregate metrics must agree with per-stream state, and unspecified explicit quality weights contribute zero rather than silently defaulting to full weight.",
+      "evidence": [
+        "Manifest/uncertainty stream binding",
+        "Self-consistent quality telemetry",
+        "Unspecified quality weights fail closed",
+        "Counter coercion rejected"
+      ],
+      "source_commits": [
+        "0625f57f7a2f5899b56fe7b29c8687daf5e09456",
+        "f1ea4ddd7a8925513db3d546bde1e40426a07162",
+        "7c3d4df8c9ed995e94eea70bbe54c5c48f9053b0",
+        "7bc8f52ef5866bb0eb2550f0762fc64f2bec7dbb"
+      ]
+    },
+    {
+      "id": "run-lineage-and-checkpoint-integrity",
+      "status": "verified",
+      "summary": "Research-run manifests validate semantic identity beyond outer hashes, and replay checkpoints refuse invalid state and save atomically.",
+      "evidence": [
+        "Semantic run-manifest verification",
+        "Atomic verified checkpoint persistence"
+      ],
+      "source_commits": [
+        "64a883f7a4715cc0f34116aa0a20b698900bb268",
+        "1ffe027843e83522173ab25cd300d1aed24a5bb1"
+      ]
+    },
+    {
+      "id": "review-authority-persistence-and-migration",
+      "status": "verified",
+      "summary": "The reviewed-representation registry persists atomically, validates exact schema shape and hashes on load, and migrated four-axis authority to registry v2 while preserving verified v1 replay compatibility.",
+      "evidence": [
+        "Atomic strict registry persistence",
+        "Four-axis authority schema v2",
+        "Reviewed v1→v2 migration regression"
+      ],
+      "source_commits": [
+        "be4bb005ed200062449c4132777e7593211eb20a",
+        "a2e4cc63300d98ab1341628a6328e0da830e477d",
+        "d98e09665560927e37fa466cce34f7b4a07f6a85"
+      ]
+    },
+    {
+      "id": "sealed-review-triage-semantics",
+      "status": "verified",
+      "summary": "Representation review queue/triage now handles malformed hypothesis metadata deterministically and verifies sealed cluster identities, counts, symbols, reasons, and evidence requirements.",
+      "evidence": [
+        "Sealed review-summary semantics",
+        "Malformed hypothesis handling",
+        "Invalid cluster identity regression"
+      ],
+      "source_commits": [
+        "4bb16009474a723b195a15d97886ccd17d0d5cdf",
+        "54bc1a6efdcb38e941d6b241bee06584c0f871a0",
+        "b98f3729eb05057980079847eda9a3f9b1c3fd76",
+        "9ef2a007263fb5b56b844e8a1597d88820c3c9b4"
+      ]
+    }
+  ],
+  "events": [
+    {
+      "recorded_at": "2026-09-30T10:17:06-05:00",
+      "source": "mcp",
+      "kind": "hardening",
+      "area": "NEXUS representation fusion",
+      "summary": "Family-balanced fusion prevents representation-count vote inflation and requires manifest-backed representation-family identity.",
+      "status": "verified",
+      "severity": "important",
+      "source_repo": "reppiks490/divine-providence",
+      "source_branch": "main",
+      "source_commit": "642dc26d49cd0023e0b99091ccc38ce072ee1545",
+      "verification": "Implementation commit and paired representation-family regression were located during the continuation audit.",
+      "interface_effect": "The Export / Data Integrity panel shows family-balanced fusion as verified with source provenance.",
+      "evidence": [
+        "7ccdbba781e3a6dde889f66e3164ddb7b3cfe190",
+        "adcd7319e2aa664c581e56495d29f59c7676d1e0"
+      ],
+      "details": {
+        "checklist": "O14"
+      }
+    },
+    {
+      "recorded_at": "2026-09-30T12:57:07-05:00",
+      "source": "mcp",
+      "kind": "repair",
+      "area": "NEXUS temporal ingestion",
+      "summary": "Backward source timestamps are rejected across CSV ingestion paths, including generic numeric source time.",
+      "status": "repaired",
+      "severity": "high",
+      "source_repo": "reppiks490/divine-providence",
+      "source_branch": "main",
+      "source_commit": "4a27b4776a56bd63bedd3243696316440c5a8ef8",
+      "verification": "Implementation and all-CSV-reader regressions were located and cross-checked by commit history.",
+      "interface_effect": "The prior backward-timestamp blocker is shown as repaired rather than stale/blocked.",
+      "evidence": [
+        "74f7d7ceb262f579782d395dbdf51e85e820502d",
+        "72d5cf646b505898f2ea9a896b359f33e130bb65"
+      ],
+      "details": {
+        "checklist": "O14"
+      }
+    },
+    {
+      "recorded_at": "2026-09-30T12:51:42-05:00",
+      "source": "mcp",
+      "kind": "repair",
+      "area": "NEXUS ablation controls",
+      "summary": "Ablation runs preserve the component-weight cap and are protected by a dedicated regression.",
+      "status": "repaired",
+      "severity": "high",
+      "source_repo": "reppiks490/divine-providence",
+      "source_branch": "main",
+      "source_commit": "24f9ae6cbde159fffd5cb6159254e69e46b2138d",
+      "verification": "Implementation and regression commits were located during the continuation audit.",
+      "interface_effect": "The prior ablation-cap blocker is shown as repaired with exact source commits.",
+      "evidence": [
+        "1f1284e3d9f9dfa808022bc937c327390f94954c",
+        "74d689771a7791f554b101ac069136d2b0300254"
+      ],
+      "details": {
+        "checklist": "O14"
+      }
+    },
+    {
+      "recorded_at": "2026-09-30T12:58:23-05:00",
+      "source": "mcp",
+      "kind": "repair",
+      "area": "NEXUS synthetic factors",
+      "summary": "Synthetic-factor and historical factor paths preserve missingness; missing observations are no longer fitted or represented as zero evidence.",
+      "status": "repaired",
+      "severity": "high",
+      "source_repo": "reppiks490/divine-providence",
+      "source_branch": "main",
+      "source_commit": "f6f712d52ae4d4fbb29e1ca938354412e113b420",
+      "verification": "Synthetic-factor, historical-fit, topology, and latent-state missingness repairs and regressions were located in repository history.",
+      "interface_effect": "The prior missing-data leakage blocker is shown as repaired while preserving provenance to all contributing commits.",
+      "evidence": [
+        "fc945f0fea2ac6d344f8b5f21d317637f5bb554c",
+        "8097f97267139061a8c9aef2e78d3acd48d56ba8",
+        "2d8dd154f7fecffd69e061b0c9d44481dab0d7a4",
+        "47df68167443b9b9c8666f8ce9b62939c79408d1",
+        "295457d1f64746e8ed88e16f00bb19f28161904c"
+      ],
+      "details": {
+        "checklist": "O14"
+      }
+    },
+    {
+      "recorded_at": "2026-09-30T21:13:40-05:00",
+      "source": "mcp",
+      "kind": "hardening",
+      "area": "NEXUS representation authority",
+      "summary": "Reviewed model identity is exact-byte bound and fail-closed across four orthogonal axes: chart family, price geometry, sampling domain, and sampling construction.",
+      "status": "verified",
+      "severity": "important",
+      "source_repo": "reppiks490/divine-providence",
+      "source_branch": "main",
+      "source_commit": "3a123904d0bf2ac4a3bc1a10269e18c55aef9ec6",
+      "verification": "Implementation commits were inspected through MCP; paired tests cover exact-byte authority, model-plane bridging, sampling-domain identity, and contradictory-axis rejection.",
+      "interface_effect": "The Data Integrity panel exposes this representation-authority hardening as part of O14 provenance.",
+      "evidence": [
+        "759bcc5a3f53c543dc126c0dd10ca70660126b4c",
+        "114137020e13d7de0f3131b13f21ad846d238125",
+        "07abebdaf4ed46decefc75fac14cd3b2c6109718",
+        "e75ff693e7a76acd8f99cc41513503f64a794694",
+        "805c158fdaaef72d6268749dcccf921ae2972ad7",
+        "d500e4eb533b24e68222e8310a5316e819076624"
+      ],
+      "details": {
+        "checklist": "O14"
+      }
+    },
+    {
+      "recorded_at": "2026-09-30T21:21:52-05:00",
+      "source": "mcp",
+      "kind": "hardening",
+      "area": "NEXUS quality and integrity telemetry",
+      "summary": "Quality telemetry is now identity-bound and self-consistent; explicit but unspecified quality weights contribute no evidence, and malformed/coerced integrity counters fail closed.",
+      "status": "verified",
+      "severity": "high",
+      "source_repo": "reppiks490/divine-providence",
+      "source_branch": "main",
+      "source_commit": "7bc8f52ef5866bb0eb2550f0762fc64f2bec7dbb",
+      "verification": "MCP diff inspection confirmed stream-id binding, aggregate consistency checks, zero-weight default for omitted explicit weights, and strict integrity metadata counters; dedicated regressions accompany each hardening.",
+      "interface_effect": "The Data Integrity panel exposes the stricter quality-plane contract instead of leaving it only in NEXUS repository history.",
+      "evidence": [
+        "0625f57f7a2f5899b56fe7b29c8687daf5e09456",
+        "f1ea4ddd7a8925513db3d546bde1e40426a07162",
+        "7c3d4df8c9ed995e94eea70bbe54c5c48f9053b0",
+        "134a1111b38dd55c9883f8ffcb6f93de035582ae",
+        "79a9d04ea88533c338fd2594c107ccf1b821c8c7",
+        "7a07c03b07cae02efd4053096df8049b3dff3b9c"
+      ],
+      "details": {
+        "checklist": "O14"
+      }
+    },
+    {
+      "recorded_at": "2026-09-30T21:10:49-05:00",
+      "source": "mcp",
+      "kind": "hardening",
+      "area": "NEXUS replay lineage",
+      "summary": "Research-run genealogy is semantically validated beyond outer hashes, and replay checkpoints reject invalid state before atomic persistence.",
+      "status": "verified",
+      "severity": "important",
+      "source_repo": "reppiks490/divine-providence",
+      "source_branch": "main",
+      "source_commit": "1ffe027843e83522173ab25cd300d1aed24a5bb1",
+      "verification": "MCP diff inspection confirmed semantic run-manifest verification and fsync/replace checkpoint persistence; dedicated tamper and atomic-persistence tests were found.",
+      "interface_effect": "The Data Integrity panel now exposes replay/lineage durability relevant to recovered-corpus research.",
+      "evidence": [
+        "64a883f7a4715cc0f34116aa0a20b698900bb268",
+        "02fe234acd60cbbc0f95e4289b0f26b07bc440bb",
+        "cffe8a254990e8b64f5f6740d45c40cf05f1726b"
+      ],
+      "details": {
+        "checklist": "O14"
+      }
+    },
+    {
+      "recorded_at": "2026-09-30T21:38:00-05:00",
+      "source": "mcp",
+      "kind": "repair",
+      "area": "ICARUS integrity provenance",
+      "summary": "A mistyped NEXUS genealogy-regression SHA in the new Data Integrity ledger was detected during MCP re-audit and corrected to the exact repository commit.",
+      "status": "repaired",
+      "severity": "important",
+      "source_repo": "reppiks490/Icarus",
+      "source_branch": "chatgpt/icarus-mcp-integrity-panel-20260930",
+      "source_commit": "2a2a577a807275ecc7d2cc79e33481c6773ce7b6",
+      "verification": "The corrected SHA 02fe234acd60cbbc0f95e4289b0f26b07bc440bb was re-read from current divine-providence commit history before the repair was committed.",
+      "interface_effect": "The repair is itself visible in Data Integrity so provenance corrections are not silently rewritten.",
+      "evidence": [
+        "02fe234acd60cbbc0f95e4289b0f26b07bc440bb"
+      ],
+      "details": {
+        "policy": "mcp_mirror_required"
+      }
+    },
+    {
+      "recorded_at": "2026-09-30T21:18:48-05:00",
+      "source": "mcp",
+      "kind": "hardening",
+      "area": "NEXUS reviewed authority persistence",
+      "summary": "Reviewed representation authority is now saved atomically under strict schema/hash validation and versioned as v2 with validated v1 migration for replay compatibility.",
+      "status": "verified",
+      "severity": "important",
+      "source_repo": "reppiks490/divine-providence",
+      "source_branch": "main",
+      "source_commit": "a2e4cc63300d98ab1341628a6328e0da830e477d",
+      "verification": "MCP diff inspection confirmed atomic fsync/replace persistence, strict load shape/hash checks, schema v2 authority, and verified legacy migration coverage.",
+      "interface_effect": "The Data Integrity panel exposes durability and migration guarantees for reviewed representation identity.",
+      "evidence": [
+        "be4bb005ed200062449c4132777e7593211eb20a",
+        "d7a11e52e2ae8f287afe8212ab2e8a8c73de5a9b",
+        "d98e09665560927e37fa466cce34f7b4a07f6a85"
+      ],
+      "details": {
+        "checklist": "O14"
+      }
+    },
+    {
+      "recorded_at": "2026-09-30T21:24:21-05:00",
+      "source": "mcp",
+      "kind": "hardening",
+      "area": "NEXUS representation review triage",
+      "summary": "Representation review triage verifies sealed cluster semantics and the review queue handles malformed representation-hypothesis metadata deterministically.",
+      "status": "verified",
+      "severity": "important",
+      "source_repo": "reppiks490/divine-providence",
+      "source_branch": "main",
+      "source_commit": "54bc1a6efdcb38e941d6b241bee06584c0f871a0",
+      "verification": "MCP diff inspection confirmed deterministic malformed-metadata handling and sealed cluster count/identity validation; paired regressions were found through the audited main head.",
+      "interface_effect": "The Data Integrity panel makes review-queue/triage integrity visible as part of the O14 evidence workflow.",
+      "evidence": [
+        "4bb16009474a723b195a15d97886ccd17d0d5cdf",
+        "b98f3729eb05057980079847eda9a3f9b1c3fd76",
+        "9ef2a007263fb5b56b844e8a1597d88820c3c9b4"
+      ],
+      "details": {
+        "checklist": "O14",
+        "audit_cutoff": "9ef2a007263fb5b56b844e8a1597d88820c3c9b4"
+      }
+    },
+    {
+      "recorded_at": "2026-10-01T03:16:09Z",
+      "source": "mcp",
+      "kind": "integration",
+      "area": "ICARUS Data Integrity interface",
+      "summary": "The Find Export Checklist / NEXUS integrity work is now wired into the current-main ICARUS trader as a dedicated Data Integrity panel with authenticated idempotent MCP receipts.",
+      "status": "verified",
+      "severity": "important",
+      "source_repo": "reppiks490/Icarus",
+      "source_branch": "chatgpt/data-integrity-mainline-20260930",
+      "source_commit": "0b830df912936908286da95c436137d7d41ee26c",
+      "verification": "GitHub Actions run 36809557055 passed both Linux engine and Windows engine-windows jobs on exact implementation head 0b830df912936908286da95c436137d7d41ee26c.",
+      "interface_effect": "The trader exposes export intake/corpus, O03/O04/O05/O06/O14, repair state, and a fully-provenanced MCP change ledger in the Data Integrity tab.",
+      "evidence": [
+        "PR #68",
+        "workflow 36809557055",
+        "Linux engine: success",
+        "Windows engine-windows: success"
+      ],
+      "details": {
+        "pr": 68,
+        "workflow_run": 36809557055,
+        "execution_authorized": false
+      }
+    }
+  ],
+  "audit_cutoff": {
+    "repo": "reppiks490/divine-providence",
+    "branch": "main",
+    "head_sha": "9ef2a007263fb5b56b844e8a1597d88820c3c9b4",
+    "audited_at": "2026-09-30T21:40:00-05:00",
+    "scope": "Find Export Checklist / O14 representation, review-authority, quality, lineage and replay hardening"
+  },
+  "provenance_audit": {
+    "checked_at": "2026-09-30T21:44:00-05:00",
+    "unique_commit_references": 47,
+    "verified_commit_references": 47,
+    "invalid_commit_references": 0,
+    "repositories": [
+      "reppiks490/divine-providence",
+      "reppiks490/Icarus"
+    ],
+    "method": "Every 40-character commit reference present in the Data Integrity manifest was resolved through GitHub MCP against the owning repositories after correcting one detected typo."
+  }
+}

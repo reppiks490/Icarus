@@ -40,7 +40,10 @@ mcp = MCPServer(
         "results. After any material ICARUS repair, audit, evolution, integration, or loop durability "
         "change performed through MCP, publish the verified result with record_engine_system_event and "
         "record_engine_loop_status when applicable so the trader System Intelligence panel stays aligned. "
-        "Those publication tools are diagnostic-only. pause_trading / resume_trading / flatten_all / "
+        "For export, corpus, data-quality, representation, replay-lineage, or provenance work, also publish "
+        "the exact source repository/branch/40-character commit through record_engine_integrity_event so the "
+        "Data Integrity panel stays aligned. Those publication tools are diagnostic-only. "
+        "pause_trading / resume_trading / flatten_all / "
         "simulate_alert change live paper state — confirm with the user before calling them unless they "
         "asked for exactly that action."
     ),
@@ -323,6 +326,59 @@ def engine_mbo_snapshot(asset: str = "NQ", timeout: float = 5.0) -> dict:
     """Request a live Databento MBO snapshot for the continuous front contract."""
     body = {"asset": asset.strip().upper(), "timeout": max(0.1, min(30.0, float(timeout)))}
     return _safe_engine(lambda: _engine_post("/admin/market-data/mbo-snapshot", body))
+
+
+@mcp.tool()
+def engine_integrity_state() -> dict:
+    """Read export/data integrity plus the MCP change ledger shown in the ICARUS trading interface."""
+    return _safe_engine(lambda: _engine_get("/api/integrity"))
+
+
+@mcp.tool()
+def record_engine_integrity_event(
+    kind: str,
+    area: str,
+    summary: str,
+    source_repo: str,
+    source_branch: str,
+    source_commit: str,
+    verification: str,
+    interface_effect: str,
+    status: str = "observed",
+    severity: str = "important",
+    evidence_json: str = "[]",
+    details_json: str = "{}",
+) -> dict:
+    """Mirror one material data/provenance MCP change into the ICARUS Data Integrity panel.
+
+    source_commit must be the exact 40-character source commit SHA. Writes are
+    idempotent by semantic event identity. This tool cannot change strategy or
+    broker state and always preserves execution_authorized=false.
+    """
+    try:
+        evidence = json.loads(evidence_json or "[]")
+        details = json.loads(details_json or "{}")
+    except json.JSONDecodeError as ex:
+        return {"error": f"invalid JSON metadata: {ex}"}
+    if not isinstance(evidence, list):
+        return {"error": "evidence_json must decode to a list"}
+    if not isinstance(details, dict):
+        return {"error": "details_json must decode to an object"}
+    body = {
+        "kind": kind,
+        "area": area,
+        "summary": summary,
+        "status": status,
+        "severity": severity,
+        "source_repo": source_repo,
+        "source_branch": source_branch,
+        "source_commit": source_commit,
+        "verification": verification,
+        "interface_effect": interface_effect,
+        "evidence": evidence,
+        "details": details,
+    }
+    return _safe_engine(lambda: _engine_post("/admin/integrity/event", body))
 
 
 # ── control tools (state-changing) ──
