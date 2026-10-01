@@ -42,6 +42,19 @@ def nullspace(signals: Mapping[str, Any]) -> dict[str, Any]:
     else:
         route = "unresolved"
     elasticity = None if abs(expected) <= 1e-12 else observed / expected
+    debt_change_rate = finite(signals.get("debt_change_rate", 0.0), "debt_change_rate")
+    migration_target = signals.get("debt_migration_target")
+    migration_target = str(migration_target)[:96] if migration_target not in (None, "") else None
+    if validity >= 0.65 and debt_norm >= 0.85 and route == "unresolved":
+        debt_state = "insolvency_candidate"
+    elif debt_norm >= 0.65 and abs(debt_change_rate) >= 0.50:
+        debt_state = "cliff"
+    elif migration_target and diversion >= 0.50:
+        debt_state = "migrating"
+    elif route in {"absorbed", "delayed", "diverted"}:
+        debt_state = route
+    else:
+        debt_state = "open"
     return {
         **out,
         "causal_debt": debt,
@@ -50,6 +63,9 @@ def nullspace(signals: Mapping[str, Any]) -> dict[str, Any]:
         "response_elasticity": elasticity,
         "debt_direction": "positive" if debt > 0 else "negative" if debt < 0 else "flat",
         "repayment_pressure": debt_norm * validity * (1.0 - absorber) * (1.0 - diversion),
+        "debt_change_rate": debt_change_rate,
+        "debt_state": debt_state,
+        "migration_target": migration_target,
         "absorber_strength": absorber,
         "relationship_validity": validity,
         "routing_state": route,
@@ -116,6 +132,26 @@ def ananke(signals: Mapping[str, Any]) -> dict[str, Any]:
     reach_down = math.exp(-down)
     asym = reach_up - reach_down
     freedom = (reach_up + reach_down) / 2.0
+    world_raw = signals.get("world_reachability")
+    cross_world = None
+    if isinstance(world_raw, Mapping) and world_raw:
+        parsed_worlds = []
+        for name, row in world_raw.items():
+            if not isinstance(row, Mapping):
+                continue
+            parsed_worlds.append({
+                "world": str(name)[:96],
+                "up": unit(row.get("up"), f"world_reachability.{name}.up"),
+                "down": unit(row.get("down"), f"world_reachability.{name}.down"),
+            })
+        if parsed_worlds:
+            cross_world = {
+                "worlds": parsed_worlds,
+                "intersection": {
+                    "up": min(row["up"] for row in parsed_worlds),
+                    "down": min(row["down"] for row in parsed_worlds),
+                },
+            }
     if abs(asym) < 0.10:
         least = "symmetric"
     else:
@@ -133,7 +169,8 @@ def ananke(signals: Mapping[str, Any]) -> dict[str, Any]:
         "asymmetry": asym,
         "least_cost_direction": least,
         "causal_event_horizon_side": horizon,
-        "semantics": "structural transition score; exp(-cost) is not a forecast probability",
+        "cross_world_reachability": cross_world,
+        "semantics": "structural transition score; exp(-cost) and cross-world intersections are not forecast probabilities",
     }
 
 def nemesis(signals: Mapping[str, Any]) -> dict[str, Any]:
@@ -160,6 +197,26 @@ def nemesis(signals: Mapping[str, Any]) -> dict[str, Any]:
     else:
         half_life = None
         half_life_source = "unmeasured"
+    subsystem_raw = signals.get("subsystem_survival")
+    subsystem_survival = []
+    if isinstance(subsystem_raw, Mapping):
+        for name, value in subsystem_raw.items():
+            subsystem_survival.append({
+                "subsystem": str(name)[:96],
+                "survival": unit(value, f"subsystem_survival.{name}"),
+            })
+        subsystem_survival.sort(key=lambda row: row["survival"])
+    curriculum = [
+        {"target": "data_sensitivity", "severity": data_sens},
+        {"target": "execution_sensitivity", "severity": exec_sens},
+        {"target": "thesis_fragility", "severity": fragility},
+        {"target": "margin_shortfall", "severity": 1.0 - margin},
+    ]
+    curriculum.extend({
+        "target": "ablate:" + row["subsystem"],
+        "severity": 1.0 - row["survival"],
+    } for row in subsystem_survival)
+    curriculum.sort(key=lambda row: row["severity"], reverse=True)
     return {
         **out,
         "survival_score": max(0.0, survival),
@@ -174,7 +231,9 @@ def nemesis(signals: Mapping[str, Any]) -> dict[str, Any]:
             "execution_resilience": 1.0 - exec_sens,
             "thesis_resilience": 1.0 - fragility,
         },
-        "semantics": "bounded adversarial robustness heuristic; not a guarantee of survival",
+        "subsystem_ablation_survival": subsystem_survival,
+        "dreamstate_curriculum": curriculum[:12],
+        "semantics": "bounded adversarial robustness heuristic; curriculum items are falsification targets, not a guarantee of survival",
     }
 
 def ex_nihilo(signals: Mapping[str, Any], observation_id: str) -> dict[str, Any]:
@@ -195,6 +254,7 @@ def ex_nihilo(signals: Mapping[str, Any], observation_id: str) -> dict[str, Any]
             "Can an existing feature family explain the residual after ablation?",
             "Does the phenomenon survive costs, latency and source substitution?",
         ] if candidate else [],
+        "retirement_condition": "retire ontology species after repeated negative observed shadow fitness",
         "semantics": "representation inadequacy detector; candidate concepts have zero authority until independently validated",
     }
 
@@ -218,6 +278,19 @@ def mint(signals: Mapping[str, Any]) -> dict[str, Any]:
         stress_net = gross - costs * stress_mult
         density = (net / (risk * duration)) * capacity
         stress_density = (stress_net / (risk * duration)) * capacity
+        decay_half_life = item.get("edge_half_life_seconds")
+        decay_half_life = None if decay_half_life is None else max(0.0, finite(decay_half_life, f"candidate_expressions[{i}].edge_half_life_seconds"))
+        crowding = unit(item.get("crowding", 0.0), f"candidate_expressions[{i}].crowding")
+        metabolism = {
+            "gross_alpha_intake": gross,
+            "cost_burn": costs,
+            "stress_cost_burn": costs * stress_mult,
+            "net_conversion": net,
+            "stress_net_conversion": stress_net,
+            "capacity_remaining": capacity,
+            "crowding": crowding,
+            "edge_half_life_seconds": decay_half_life,
+        }
         candidates.append({
             "name": name,
             "expected_net": net,
@@ -230,16 +303,34 @@ def mint(signals: Mapping[str, Any]) -> dict[str, Any]:
             "stress_expected_net": stress_net,
             "stress_profit_density": stress_density,
             "robust_positive": net > 0 and stress_net > 0,
+            "alpha_metabolism": metabolism,
         })
     candidates.sort(
         key=lambda x: (x["robust_positive"], x["expected_net"] > 0, x["stress_profit_density"], x["profit_density"], x["expected_net"]),
         reverse=True,
     )
     best = candidates[0] if candidates and candidates[0]["expected_net"] > 0 else None
+    robust = [row for row in candidates if row["robust_positive"]]
+    profit_chain = []
+    cumulative_stress_net = 0.0
+    for row in robust[:8]:
+        cumulative_stress_net += row["stress_expected_net"]
+        profit_chain.append({
+            "expression": row["name"],
+            "stress_expected_net": row["stress_expected_net"],
+            "capacity_remaining": row["capacity_remaining"],
+            "cumulative_research_net": cumulative_stress_net,
+        })
     return {
         **out,
         "candidates": candidates,
         "best_candidate": best,
+        "profit_surface": {
+            "robust_positive_count": len(robust),
+            "candidate_count": len(candidates),
+            "best_stress_profit_density": robust[0]["stress_profit_density"] if robust else None,
+        },
+        "profit_chain": profit_chain,
         "proposal_only": True,
         "semantics": "expression-ranking heuristic before risk-kernel review; never an order instruction",
     }
@@ -300,6 +391,17 @@ def socrates(states: Mapping[str, Mapping[str, Any]]) -> dict[str, Any]:
         (contradiction, "Which engine disagreement is mechanism-specific rather than mere noise or horizon mismatch?"),
     ]
     ranked = sorted(options, key=lambda x: x[0], reverse=True)
+    hypothesis_templates = [
+        (uncertainty, "Competing market worlds remain observationally aliased.", "Acquire the highest-separation GÖDEL observation and require posterior world separation."),
+        (debt, "The expected reaction has been absorbed, delayed, diverted, or the causal relation failed.", "Trace NULLSPACE routing and reject the claim if relationship validity collapses."),
+        (novelty, "Current residual structure is not represented by the existing ontology.", "Run EX NIHILO ablation/OOS tests before admitting a new concept."),
+        (contradiction, "Engine disagreement reflects a mechanism or horizon mismatch rather than noise.", "Partition ARCHON conflict by horizon/mechanism and test each branch independently."),
+    ]
+    hypotheses = [
+        {"priority": score, "hypothesis": hypothesis, "falsifier": falsifier}
+        for score, hypothesis, falsifier in sorted(hypothesis_templates, key=lambda x: x[0], reverse=True)
+        if score >= 0.10
+    ]
     strength, question = ranked[0]
     return {
         **out,
@@ -309,6 +411,7 @@ def socrates(states: Mapping[str, Mapping[str, Any]]) -> dict[str, Any]:
             {"priority": score, "question": item}
             for score, item in ranked if score >= 0.10
         ],
+        "hypothesis_queue": hypotheses,
         "experiment_required": strength >= 0.25,
         "semantics": "question generator only; experiments must pass independent validation before affecting production",
     }
