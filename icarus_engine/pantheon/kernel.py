@@ -291,6 +291,7 @@ class PantheonKernel:
                 ),
             )
             for claim in claims:
+                claim_payload_json = json_canonical(claim["payload"], "claim", 65536)
                 con.execute(
                     "INSERT OR IGNORE INTO claims(claim_id,observation_id,kind,stage,payload_json,created_at) VALUES(?,?,?,?,?,?)",
                     (
@@ -298,19 +299,42 @@ class PantheonKernel:
                         observation_id,
                         claim["kind"],
                         claim["stage"],
-                        json_canonical(claim["payload"], "claim", 65536),
+                        claim_payload_json,
+                        now,
+                    ),
+                )
+                species_id = "species-" + digest(claim["claim_id"], normalized["asset"])[:18]
+                con.execute(
+                    """INSERT OR IGNORE INTO species(
+                        species_id,asset,kind,origin_claim_id,parent_species_id,generation,
+                        stage,fitness_credit,evidence_count,payload_json,created_at,updated_at
+                    ) VALUES(?,?,?,?,NULL,0,'hypothesis',0.0,0,?,?,?)""",
+                    (
+                        species_id,
+                        normalized["asset"],
+                        claim["kind"],
+                        claim["claim_id"],
+                        claim_payload_json,
+                        now,
                         now,
                     ),
                 )
             cell_id = "cell-" + digest(normalized["asset"], str(normalized["horizon_ms"]))[:18]
             con.execute(
                 """INSERT INTO sentinel_cells(
-                    cell_id,asset,horizon_ms,last_observation_id,last_energy,last_status,observation_count,updated_at
-                ) VALUES(?,?,?,?,?,?,1,?)
+                    cell_id,asset,horizon_ms,last_observation_id,last_observed_at,last_energy,last_status,observation_count,updated_at
+                ) VALUES(?,?,?,?,?,?,?,1,?)
                 ON CONFLICT(cell_id) DO UPDATE SET
-                    last_observation_id=excluded.last_observation_id,
-                    last_energy=excluded.last_energy,
-                    last_status=excluded.last_status,
+                    last_observation_id=CASE
+                        WHEN excluded.last_observed_at >= sentinel_cells.last_observed_at
+                        THEN excluded.last_observation_id ELSE sentinel_cells.last_observation_id END,
+                    last_observed_at=MAX(sentinel_cells.last_observed_at, excluded.last_observed_at),
+                    last_energy=CASE
+                        WHEN excluded.last_observed_at >= sentinel_cells.last_observed_at
+                        THEN excluded.last_energy ELSE sentinel_cells.last_energy END,
+                    last_status=CASE
+                        WHEN excluded.last_observed_at >= sentinel_cells.last_observed_at
+                        THEN excluded.last_status ELSE sentinel_cells.last_status END,
                     observation_count=sentinel_cells.observation_count+1,
                     updated_at=excluded.updated_at""",
                 (
@@ -318,12 +342,13 @@ class PantheonKernel:
                     normalized["asset"],
                     normalized["horizon_ms"],
                     observation_id,
+                    normalized["observed_at"],
                     float(aether["field"]["energy"]),
                     str(aether["status"]),
                     now,
                 ),
             )
-        return self.observation(observation_id)
+        return self._attach_ecology_outcomes(self.observation(observation_id), normalized)
 
     def record_agent_claim(self, payload: Mapping[str, Any]) -> dict[str, Any]:
         """Commit one blind-first-pass claim from a spawned AETHER research agent."""
