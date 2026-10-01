@@ -154,3 +154,27 @@ def test_dashboard_surfaces_icarus_psi_without_replacing_oracle_or_parallax():
     assert '{"id": "psi", "title": "ICARUS Ψ"' in brain
     assert '{"id": "parallax", "title": "PARALLAX"' in brain
     assert "execution_authorized=false" in ui
+
+
+def test_dashboard_surfaces_authenticated_engine_control_panel():
+    dashboard = (REPO / "icarus_engine/dashboard.html").read_text(encoding="utf-8")
+    ui = (REPO / "icarus_engine/engine-control-ui.js").read_text(encoding="utf-8")
+    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
+    backend = (REPO / "icarus_engine/engine_control.py").read_text(encoding="utf-8")
+
+    assert '<script src="/engine-control-ui.js"></script>' in dashboard
+    assert 'data-v="engine-control">Engine Control</span>' in dashboard
+    assert "view === 'engine-control'" in dashboard
+    assert "wireEngineControl()" in dashboard
+    assert 'p.path == "/engine-control-ui.js"' in server
+    assert 'p.path == "/api/engine-control"' in server
+    assert 'p.path == "/admin/engine-control"' in server
+    assert "EngineControlPlane(" in server
+    assert "ControlAction(" in server
+    assert "arbitrary_shell" in backend
+    assert "broker_arming" in backend
+    assert "/api/engine-control" in ui
+    assert "/admin/engine-control" in ui
+    assert "MCP / audit mirror" in ui
+    assert "FLATTEN ALL PAPER POSITIONS" in server
+    assert "RESET AUTOPILOT" in server
