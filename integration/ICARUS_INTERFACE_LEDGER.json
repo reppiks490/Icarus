@@ -1,6 +1,6 @@
 {
   "schema_version": "icarus-interface-ledger-v2",
-  "generated_at": "2026-09-30T21:44:00-05:00",
+  "generated_at": "2026-10-01T03:16:09Z",
   "execution_authorized": false,
   "policy": {
     "mcp_mirror_required": true,
@@ -457,6 +457,31 @@
       "details": {
         "checklist": "O14",
         "audit_cutoff": "9ef2a007263fb5b56b844e8a1597d88820c3c9b4"
+      }
+    },
+    {
+      "recorded_at": "2026-10-01T03:16:09Z",
+      "source": "mcp",
+      "kind": "integration",
+      "area": "ICARUS Data Integrity interface",
+      "summary": "The Find Export Checklist / NEXUS integrity work is now wired into the current-main ICARUS trader as a dedicated Data Integrity panel with authenticated idempotent MCP receipts.",
+      "status": "verified",
+      "severity": "important",
+      "source_repo": "reppiks490/Icarus",
+      "source_branch": "chatgpt/data-integrity-mainline-20260930",
+      "source_commit": "0b830df912936908286da95c436137d7d41ee26c",
+      "verification": "GitHub Actions run 36809557055 passed both Linux engine and Windows engine-windows jobs on exact implementation head 0b830df912936908286da95c436137d7d41ee26c.",
+      "interface_effect": "The trader exposes export intake/corpus, O03/O04/O05/O06/O14, repair state, and a fully-provenanced MCP change ledger in the Data Integrity tab.",
+      "evidence": [
+        "PR #68",
+        "workflow 36809557055",
+        "Linux engine: success",
+        "Windows engine-windows: success"
+      ],
+      "details": {
+        "pr": 68,
+        "workflow_run": 36809557055,
+        "execution_authorized": false
       }
     }
   ],
