@@ -71,7 +71,7 @@ def test_pantheon_runs_independent_faculties_and_never_grants_execution(tmp_path
     obs = kernel.record_observation(_payload())
     analysis = obs["analysis"]
     assert set(analysis["faculties"]) == {
-        "nullspace", "godel", "ananke", "nemesis", "ex_nihilo", "mint", "archon", "socrates"
+        "nullspace", "godel", "ananke", "nemesis", "ex_nihilo", "mint", "echo", "archon", "socrates"
     }
     assert analysis["faculties"]["nullspace"]["routing_state"] == "absorbed"
     assert analysis["faculties"]["nullspace"]["debt_state"] == "absorbed"
@@ -98,6 +98,89 @@ def test_pantheon_runs_independent_faculties_and_never_grants_execution(tmp_path
     assert analysis["authority"]["execution_authorized"] is False
     assert analysis["authority"]["production_decision_authorized"] is False
     assert all(not lease["execution_authorized"] for lease in analysis["faculties"]["archon"]["leases"])
+
+
+def test_echo_detects_consensus_illusion_and_archon_discounts_shared_evidence(tmp_path):
+    payload = _payload(observation_id="pan-echo-illusion")
+    payload["signals"] = dict(payload["signals"])
+    payload["signals"]["engine_scores"] = {"oracle": 0.90, "athena": 0.86, "argus": 0.82}
+    payload["signals"]["engine_reliability"] = {"oracle": 0.90, "athena": 0.88, "argus": 0.84}
+    payload["signals"]["engine_evidence_lineage"] = {
+        "oracle": ["databento:nq:mbp10", "qqq:1m"],
+        "athena": ["databento:nq:mbp10", "qqq:1m"],
+        "argus": ["databento:nq:mbp10", "qqq:1m"],
+    }
+    kernel = PantheonKernel(tmp_path, swarm=AetherSwarm(threshold=0.0, max_agents=8))
+    obs = kernel.record_observation(payload)
+    echo_state = obs["analysis"]["faculties"]["echo"]
+    archon_state = obs["analysis"]["faculties"]["archon"]
+    swarm = obs["analysis"]["aether"]
+
+    assert echo_state["status"] == "active"
+    assert echo_state["raw_directional_agreement"] == pytest.approx(1.0)
+    assert echo_state["mean_lineage_overlap"] == pytest.approx(1.0)
+    assert echo_state["effective_independence_factor"] == pytest.approx(1.0 / 3.0)
+    assert echo_state["echo_risk"] == pytest.approx(2.0 / 3.0)
+    assert echo_state["consensus_illusion_candidate"] is True
+    assert echo_state["effective_independent_support"] == pytest.approx(1.0 / 3.0)
+    assert len(echo_state["duplicated_ancestry_pairs"]) == 3
+    assert all(value == pytest.approx(1.0 / 3.0) for value in echo_state["engine_independence"].values())
+    assert archon_state["evidence_independence_discounted"] is True
+    assert archon_state["consensus_illusion_candidate"] is True
+    assert all(row["evidence_independence"] == pytest.approx(1.0 / 3.0) for row in archon_state["engine_states"])
+    assert swarm["field"]["echo_risk"] == pytest.approx(2.0 / 3.0)
+    assert "redundancy_hunter" in {agent["role"] for agent in swarm["agents"]}
+    assert swarm["authority"]["execution_authorized"] is False
+
+
+def test_echo_preserves_genuinely_independent_confirmation(tmp_path):
+    payload = _payload(observation_id="pan-echo-independent")
+    payload["signals"] = dict(payload["signals"])
+    payload["signals"]["engine_scores"] = {"oracle": 0.90, "athena": 0.86, "argus": 0.82}
+    payload["signals"]["engine_reliability"] = {"oracle": 0.90, "athena": 0.88, "argus": 0.84}
+    payload["signals"]["engine_evidence_lineage"] = {
+        "oracle": ["orderbook:nq"],
+        "athena": ["options:dealer-gamma"],
+        "argus": ["macro:rates"],
+    }
+    obs = PantheonKernel(tmp_path).record_observation(payload)
+    echo_state = obs["analysis"]["faculties"]["echo"]
+    archon_state = obs["analysis"]["faculties"]["archon"]
+
+    assert echo_state["raw_directional_agreement"] == pytest.approx(1.0)
+    assert echo_state["mean_lineage_overlap"] == pytest.approx(0.0)
+    assert echo_state["effective_independence_factor"] == pytest.approx(1.0)
+    assert echo_state["echo_risk"] == pytest.approx(0.0)
+    assert echo_state["effective_independent_support"] == pytest.approx(1.0)
+    assert echo_state["consensus_illusion_candidate"] is False
+    assert echo_state["duplicated_ancestry_pairs"] == []
+    assert all(value == pytest.approx(1.0) for value in echo_state["engine_independence"].values())
+    assert all(row["evidence_independence"] == pytest.approx(1.0) for row in archon_state["engine_states"])
+
+
+def test_echo_treats_missing_lineage_as_unproven_independence(tmp_path):
+    payload = _payload(observation_id="pan-echo-missing-lineage")
+    payload["signals"] = dict(payload["signals"])
+    payload["signals"]["engine_scores"] = {"oracle": 0.90, "athena": 0.86, "argus": 0.82}
+    payload["signals"]["engine_reliability"] = {"oracle": 0.90, "athena": 0.88, "argus": 0.84}
+    payload["signals"]["engine_evidence_lineage"] = {
+        "oracle": ["orderbook:nq"],
+        "athena": ["options:dealer-gamma"],
+    }
+    obs = PantheonKernel(tmp_path).record_observation(payload)
+    echo_state = obs["analysis"]["faculties"]["echo"]
+    assert echo_state["unresolved_lineage_fraction"] > 0
+    assert echo_state["engine_independence"]["argus"] == 0.0
+    assert echo_state["effective_independence_factor"] < 1.0
+    assert echo_state["echo_risk"] > 0.0
+
+
+def test_echo_fails_closed_on_malformed_lineage(tmp_path):
+    payload = _payload(observation_id="pan-echo-invalid")
+    payload["signals"] = dict(payload["signals"])
+    payload["signals"]["engine_evidence_lineage"] = {"oracle": {"not": "a-list"}}
+    with pytest.raises(ValueError, match="engine_evidence_lineage.oracle"):
+        PantheonKernel(tmp_path).record_observation(payload)
 
 
 def test_aether_spawns_bounded_ephemeral_agents_with_zero_capital_authority(tmp_path):
@@ -184,6 +267,7 @@ def test_pantheon_is_visible_in_trader_interface():
     assert "SHADOW ONLY" in ui
     assert "AETHER alpha food web" in ui
     assert "Cognitive genesis" in ui
+    assert "Echo risk" in ui
     assert "SIBYL structural evidence bridge" in ui
     assert 'p.path == "/api/pantheon"' in server
     assert 'p.path == "/admin/pantheon/observe"' in server

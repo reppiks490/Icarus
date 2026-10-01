@@ -46,7 +46,8 @@
       else if(kv[0]==='ananke') key='asym '+num(row.asymmetry,3)+' · collapse '+pct(row.reachable_space_collapse);
       else if(kv[0]==='nemesis') key='survival '+pct(row.survival_score)+(row.edge_half_life_seconds!=null?' · half-life '+num(row.edge_half_life_seconds,1)+'s':' · half-life unmeasured');
       else if(kv[0]==='ex_nihilo') key='surprise '+pct(row.ontology_surprise);
-      else if(kv[0]==='archon') key='conflict '+pct(row.contradiction);
+      else if(kv[0]==='echo') key='echo risk '+pct(row.echo_risk)+' · independent support '+pct(row.effective_independent_support)+(row.consensus_illusion_candidate?' · ILLUSION CANDIDATE':'');
+      else if(kv[0]==='archon') key='conflict '+pct(row.contradiction)+' · echo '+pct(row.echo_risk);
       else if(kv[0]==='socrates') key='priority '+pct(row.question_priority)+' · '+h((row.question_queue||[]).length)+' questions · '+h((row.hypothesis_queue||[]).length)+' hypotheses';
       else if(kv[0]==='mint') key=row.best_candidate?('best '+h(row.best_candidate.name)+' · stress net '+num(row.best_candidate.stress_expected_net,2)):'no positive candidate';
       return '<tr><td><b>'+h(String(kv[0]).toUpperCase())+'</b></td><td>'+chip(row.status||'active')+'</td><td>'+key+'</td><td class="small muted">'+h(row.reason||row.semantics||'')+'</td></tr>';
@@ -81,6 +82,7 @@
         '<div class="pan-field"><div class="k">Causal debt</div><b>'+pct(field.causal_debt)+'</b></div>'+
         '<div class="pan-field"><div class="k">Novelty</div><b>'+pct(field.novelty)+'</b></div>'+
         '<div class="pan-field"><div class="k">Uncertainty</div><b>'+pct(field.uncertainty)+'</b></div>'+
+        '<div class="pan-field"><div class="k">Echo risk</div><b>'+pct(field.echo_risk)+'</b></div>'+
         '<div class="pan-field"><div class="k">Risk</div><b>'+pct(field.risk)+'</b></div>'+
       '</div>'+
       '<h3 class="small" style="margin:16px 0 8px">Independent faculties — disagreement preserved</h3>'+

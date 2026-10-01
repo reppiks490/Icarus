@@ -331,3 +331,28 @@ its immutable observation ledger and reconstructs missing research species from
 existing durable ontology, monetization, and mutation claims. This migration
 does not invent historical fitness or production authority.
 
+
+
+## ECHO — consensus-illusion detector
+
+PANTHEON now contains an **ECHO** faculty for a failure mode that ordinary
+ensembles routinely miss: several engines can agree while all inheriting the
+same upstream evidence. Three bullish modules that ultimately depend on the
+same order-book imbalance are not three independent confirmations.
+
+ECHO consumes `engine_evidence_lineage` alongside the existing engine scores
+and reliability values. It measures directional agreement, pairwise ancestry
+overlap, unresolved lineage, duplicated source pairs, and an `echo_risk`.
+ARCHON then discounts *research-attention weight* by per-engine evidence
+independence before issuing its temporary research leases. This does not alter
+the hard Risk Kernel and never grants execution authority.
+
+When apparent agreement is both strong and highly duplicated, ECHO marks a
+`consensus_illusion_candidate`. SOCRATES turns that state into a falsifiable
+question, and AETHER prioritizes its existing `redundancy_hunter` role so the
+swarm can attack shared-source dependence instead of celebrating correlated
+votes. Genuinely disjoint evidence ancestry receives no discount.
+
+ECHO is deliberately conservative: without explicit lineage metadata it
+abstains rather than inventing independence. Its scores are diagnostic
+heuristics, not calibrated probabilities or promises of profitability.
