@@ -1025,3 +1025,26 @@ def test_trade_pressure_uses_fresh_window_not_entire_adapter_buffer():
     assert micro["volume_pressure"].value > 0
     assert micro["aggressive_flow"]["tick_count"] == 6
     assert micro["tick_window"]["requested_window_seconds"] == pytest.approx(60.0)
+
+
+
+def test_zero_confidence_external_forces_do_not_leak_into_forced_flow():
+    engine = PossibilityEngine(Port())
+    external = {
+        "basis_pressure": Feature(None, 0.0, False, "unavailable"),
+        "gamma_pressure": Feature(None, 0.0, False, "unavailable"),
+        "cta_pressure": Feature(1.0, 0.0, True, "conflicted"),
+        "liquidation_pressure": Feature(-1.0, 0.0, True, "conflicted"),
+        "rebalance_pressure": Feature(0.8, 0.0, True, "conflicted"),
+    }
+    features = engine._features(
+        "NQ",
+        {},
+        {},
+        {"status": "warming"},
+        external,
+    )
+    forced = features["forced_flow_pressure"]
+    assert forced.available is False
+    assert forced.value is None
+    assert forced.confidence == 0.0
