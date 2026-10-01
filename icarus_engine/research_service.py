@@ -44,6 +44,7 @@ class ResearchWorkspace:
         self._market_sources = None
         self._adaptation = None
         self._source_watch = None
+        self._learning = None
 
     @property
     def source_watch(self):
@@ -56,6 +57,18 @@ class ResearchWorkspace:
     def configure_source_watch(self, partial):
         status = self.source_watch.configure(partial)
         return self.source_watch.start() if status["config"]["enabled"] else self.source_watch.stop()
+
+    @property
+    def learning(self):
+        with self._lock:
+            if self._learning is None:
+                from .learning_fabric import LearningFabric
+                self._learning = LearningFabric(self.port.base_dir, port=self.port)
+            return self._learning
+
+    def configure_learning(self, partial):
+        status = self.learning.configure(partial)
+        return self.learning.start_background() if status["config"]["enabled"] else self.learning.stop()
 
     @property
     def adaptation(self):
@@ -72,13 +85,17 @@ class ResearchWorkspace:
         return self.adaptation.stop(cancel=True)
 
     def start_background(self):
-        # Reading a dashboard must never enable work; resume only saved opt-in.
+        # Adaptation/source-watch resume only saved opt-in. Continuous learning is
+        # an explicit installed research service and starts from its persisted/default config.
+        self.learning.start_background()
         if (self.root / "adaptation.json").exists() and self.adaptation.status()["config"]["enabled"]:
             self.adaptation.start()
         if (self.root / "source-watch.sqlite3").exists() and self.source_watch.status()["config"]["enabled"]:
             self.source_watch.start()
 
     def close(self):
+        if self._learning is not None:
+            self._learning.stop()
         if self._adaptation is not None:
             self._adaptation.stop(cancel=True)
         self._stop.set()
@@ -136,6 +153,7 @@ class ResearchWorkspace:
                 "market_sources": self._market_sources is not None,
                 "adaptation": self._adaptation is not None,
                 "source_watch": self._source_watch is not None,
+                "learning": self._learning is not None,
             }
         assets = []
         for r in self.port.runner_list():
@@ -171,13 +189,16 @@ class ResearchWorkspace:
                 "ledger": self.ledger.status(), "jobs": jobs,
                 "analysis": self.analysis.status(), "activation": self.activation.status(),
                 "adaptation": adaptation,
+                "learning": self.learning.status(),
                 "capabilities": {"zapier_receiver_configured": bool(os.environ.get("ICARUS_INGEST_SECRET")),
                                  "zapier_connected": False, "sp_global_connected": False,
                                  "licensed_tick_feed_connected": False,
                                  "offline_tick_seconds_footprint": True,
                                  "zero_cost_study_only_incubation": True,
                                  "automatic_input_application": True,
-                                 "automatic_application_requires_qualified_dual_review": True},
+                                 "automatic_application_requires_qualified_dual_review": True,
+                                 "continuous_outcome_learning": True,
+                                 "historical_replay_learning": True},
                 "note": "Study-only incubation can run without paid review calls and can only preserve unreviewed candidates. API keys configure review clients; a configured client is not a verified connection."}
 
     def _save(self, job):

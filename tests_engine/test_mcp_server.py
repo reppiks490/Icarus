@@ -50,6 +50,14 @@ def test_mcp_server_imports_and_registers_engine_surface():
         "record_historical_parallax_decision",
         "engine_dreamstate_state",
         "engine_parallax_state",
+        "engine_learning_state",
+        "engine_learning_scorecards",
+        "engine_learning_datasets",
+        "configure_engine_learning",
+        "record_engine_learning_prediction",
+        "record_engine_learning_outcome",
+        "scan_engine_learning_history",
+        "backfill_engine_learning_dataset",
         "engine_apex_state",
         "engine_apex_participants",
         "engine_apex_crowdhunt",
@@ -807,6 +815,42 @@ def test_mcp_apex_mutations_reject_non_object_or_malformed_json():
         mcp_server.record_engine_apex_outcome,
         mcp_server.record_engine_apex_model_observation,
         mcp_server.propose_engine_apex_experiment,
+    ):
+        assert "error" in fn("[]")
+        assert "error" in fn("{bad")
+
+
+def test_mcp_learning_fabric_routes_are_research_only(monkeypatch):
+    seen = []
+    monkeypatch.setattr(mcp_server, "_engine_get", lambda path: (seen.append(("get", path)) or {"execution_authorized": False}))
+    monkeypatch.setattr(mcp_server, "_engine_post", lambda path, body: (seen.append(("post", path, body)) or {"execution_authorized": False}))
+
+    assert mcp_server.engine_learning_state()["execution_authorized"] is False
+    assert mcp_server.engine_learning_scorecards()["execution_authorized"] is False
+    assert mcp_server.engine_learning_datasets()["execution_authorized"] is False
+    assert mcp_server.configure_engine_learning('{"enabled":true}')["execution_authorized"] is False
+    assert mcp_server.record_engine_learning_prediction('{"producer":"x"}')["execution_authorized"] is False
+    assert mcp_server.record_engine_learning_outcome('{"prediction_id":"p"}')["execution_authorized"] is False
+    assert mcp_server.scan_engine_learning_history()["execution_authorized"] is False
+    assert mcp_server.backfill_engine_learning_dataset("ds-1", slots="logit,regime")["execution_authorized"] is False
+
+    assert seen == [
+        ("get", "/api/learning"),
+        ("get", "/api/learning/scorecards"),
+        ("get", "/api/learning/datasets"),
+        ("post", "/admin/learning/config", {"enabled": True}),
+        ("post", "/admin/learning/prediction", {"producer": "x"}),
+        ("post", "/admin/learning/outcome", {"prediction_id": "p"}),
+        ("post", "/admin/learning/scan", {}),
+        ("post", "/admin/learning/backfill", {"dataset_id": "ds-1", "slots": ["logit", "regime"]}),
+    ]
+
+
+def test_mcp_learning_json_mutations_reject_non_object_json():
+    for fn in (
+        mcp_server.configure_engine_learning,
+        mcp_server.record_engine_learning_prediction,
+        mcp_server.record_engine_learning_outcome,
     ):
         assert "error" in fn("[]")
         assert "error" in fn("{bad")

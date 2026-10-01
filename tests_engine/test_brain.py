@@ -204,3 +204,15 @@ def test_brain_registers_pantheon_echo_research_subsystem(tmp_path):
     assert surfaced["echo"]["status"] == "REGISTERED"
     assert out["authority"]["production_decision_authorized"] is False
     assert out["authority"]["execution_authorized"] is False
+
+
+def test_brain_registers_continuous_learning_fabric(tmp_path):
+    out = brain_snapshot(tmp_path)
+    rows = {x["id"]: x for x in SUBSYSTEMS}
+    assert "learning-fabric" in rows
+    assert rows["learning-fabric"]["owner"] == "aion"
+    assert "outcome" in rows["learning-fabric"]["job"].lower()
+    assert "calibration" in rows["learning-fabric"]["job"].lower()
+    assert "historical replay" in rows["learning-fabric"]["job"].lower()
+    assert out["authority"]["execution_authorized"] is False
+    assert out["authority"]["production_decision_authorized"] is False

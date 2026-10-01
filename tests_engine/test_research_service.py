@@ -282,3 +282,68 @@ def test_operator_status_does_not_initialize_lazy_research_services(tmp_path):
     assert research._market_sources is before["market_sources"] is None
     assert research._adaptation is before["adaptation"] is None
     assert research._source_watch is before["source_watch"] is None
+
+
+def test_research_workspace_owns_continuous_learning_lifecycle(portfolio):
+    ws = ResearchWorkspace(portfolio)
+    before = ws.operator_status()
+    assert before["initialized_services"]["learning"] is False
+
+    learning = ws.learning
+    status = learning.configure({"enabled": False})
+    assert status["config"]["enabled"] is False
+    assert status["execution_authorized"] is False
+
+    after = ws.operator_status()
+    assert after["initialized_services"]["learning"] is True
+    ws.close()
+    assert learning.status()["background"]["running"] is False
+
+
+def test_http_continuous_learning_surface_is_authenticated_and_research_only(http):
+    auth = {"Authorization": "Bearer test-token", "Content-Type": "application/json"}
+    assert http("GET", "/api/learning")[0] == 401
+
+    code, raw = http("GET", "/api/learning", headers=auth)
+    assert code == 200
+    state = json.loads(raw)
+    assert state["execution_authorized"] is False
+    assert state["authority"]["automatic_production_promotion"] is False
+
+    code, raw = http("POST", "/admin/learning/config", b'{"enabled":false}', auth)
+    assert code == 200
+    assert json.loads(raw)["config"]["enabled"] is False
+
+    prediction = {
+        "producer": "fixture",
+        "asset": "NQ",
+        "target": "direction",
+        "prediction": "up",
+        "probability": 0.8,
+        "reference_value": 100.0,
+        "emitted_at": "2026-10-01T14:00:00Z",
+        "horizon_seconds": 300,
+        "regime": "test",
+        "evidence_ids": ["fixture:e1"],
+        "source_commit": "a" * 40,
+    }
+    code, raw = http("POST", "/admin/learning/prediction", json.dumps(prediction).encode(), auth)
+    assert code == 200
+    pred = json.loads(raw)["prediction"]
+
+    outcome = {
+        "prediction_id": pred["prediction_id"],
+        "observed_at": pred["resolves_at"],
+        "actual_value": 101.0,
+        "evidence": ["fixture:bar"],
+    }
+    code, raw = http("POST", "/admin/learning/outcome", json.dumps(outcome).encode(), auth)
+    assert code == 200
+    assert json.loads(raw)["outcome"]["success"] is True
+
+    code, raw = http("GET", "/api/learning/scorecards", headers=auth)
+    assert code == 200
+    cards = json.loads(raw)["scorecards"]
+    assert cards[0]["producer"] == "fixture"
+
+    assert http("POST", "/admin/learning/config", b'{"cycle_seconds":0}', auth)[0] == 400

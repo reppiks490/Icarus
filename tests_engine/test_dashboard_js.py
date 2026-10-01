@@ -28,6 +28,7 @@ NODE = shutil.which("node")
         "icarus_engine/pantheon-ui.js",
         "icarus_engine/sibyl-ui.js",
         "icarus_engine/apex-ui.js",
+        "icarus_engine/learning-ui.js",
         "icarus_engine/chronofold-ui.js",
         "icarus_engine/commissioning-ui.js",
         "icarus_engine/integrity-ui.js",
@@ -337,4 +338,24 @@ def test_dashboard_surfaces_apex_omega_world_intelligence():
     assert "UNMEASURED" in ui
     assert "execution_authorized=false" in ui
     assert "production_decision_authorized=false" in ui
+    assert "v == null" in ui or "v === null" in ui
+
+
+def test_dashboard_surfaces_continuous_learning_fabric():
+    dashboard = (REPO / "icarus_engine/dashboard.html").read_text(encoding="utf-8")
+    ui = (REPO / "icarus_engine/learning-ui.js").read_text(encoding="utf-8")
+    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
+    assert '<script src="/learning-ui.js"></script>' in dashboard
+    assert 'data-v="learning">Learning Fabric</span>' in dashboard
+    assert "view === 'learning'" in dashboard
+    assert "wireLearning()" in dashboard
+    assert 'p.path == "/learning-ui.js"' in server
+    assert "/api/learning" in ui
+    assert "DATASET COVERAGE" in ui
+    assert "EMPIRICAL SCORECARDS" in ui
+    assert "TRAINING REPLAY" in ui
+    assert "LIVE MATURITY" in ui
+    assert "AUTOMATIC PRODUCTION PROMOTION: OFF" in ui
+    assert "UNAVAILABLE" in ui
+    assert "UNMEASURED" in ui
     assert "v == null" in ui or "v === null" in ui

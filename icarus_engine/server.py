@@ -212,6 +212,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     commissioning = CommissioningEngine(port.base_dir, port, chronofold)
     pantheon = PantheonKernel(port.base_dir)
     sibyl = SibylEngine(port.base_dir)
+    learning = research.learning
     apex = ApexKernel(
         port.base_dir,
         possibility=possibility.status,
@@ -220,6 +221,17 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
         parallax=parallax.snapshot,
         dreamstate=dreamstate.snapshot,
         sibyl=sibyl.snapshot,
+        learning=learning.snapshot,
+    )
+    learning.bind_native(
+        sibyl=sibyl,
+        commissioning=commissioning,
+        parallax=parallax,
+        dreamstate=dreamstate,
+        pantheon=pantheon,
+        apex=apex,
+        possibility=possibility,
+        chronofold=chronofold,
     )
 
     def _control_runner(target: str):
@@ -834,6 +846,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._send(200, (html_path.parent / "sibyl-ui.js").read_bytes(), "text/javascript")
             if p.path == "/apex-ui.js":
                 return self._send(200, (html_path.parent / "apex-ui.js").read_bytes(), "text/javascript")
+            if p.path == "/learning-ui.js":
+                return self._send(200, (html_path.parent / "learning-ui.js").read_bytes(), "text/javascript")
             if p.path == "/chronofold-ui.js":
                 return self._send(200, (html_path.parent / "chronofold-ui.js").read_bytes(), "text/javascript")
             if p.path == "/commissioning-ui.js":
@@ -915,6 +929,18 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     return self._json(200, pantheon.snapshot())
                 except (ValueError, TypeError) as ex:
                     return self._json(400, {"detail": str(ex)})
+            if p.path == "/api/learning":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                return self._json(200, learning.snapshot())
+            if p.path == "/api/learning/scorecards":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                return self._json(200, {"scorecards": learning.scorecards(), "execution_authorized": False, "production_decision_authorized": False})
+            if p.path == "/api/learning/datasets":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                return self._json(200, {"datasets": learning.datasets(), "training_runs": learning.training_runs(), "execution_authorized": False, "production_decision_authorized": False})
             apex_read_routes = {
                 "/api/apex": None,
                 "/api/apex/participants": "participants",
@@ -1221,11 +1247,40 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._json(413, {"detail": "body too large"})
             raw = self.rfile.read(n) if n else b""
             try:
-                body = strict_json(raw) if p.path.startswith(("/admin/research/", "/admin/integrity/", "/admin/parallax/", "/admin/dreamstate/", "/admin/possibility/", "/admin/autopilot/", "/admin/engine-control", "/admin/pantheon/", "/admin/sibyl/", "/admin/apex/")) else (json.loads(raw, parse_constant=_no_json_constants) if raw else {})
+                body = strict_json(raw) if p.path.startswith(("/admin/research/", "/admin/integrity/", "/admin/parallax/", "/admin/dreamstate/", "/admin/possibility/", "/admin/autopilot/", "/admin/engine-control", "/admin/pantheon/", "/admin/sibyl/", "/admin/apex/", "/admin/learning/")) else (json.loads(raw, parse_constant=_no_json_constants) if raw else {})
             except ValueError as ex:
                 return self._json(400, {"detail": f"bad JSON body: {ex}"})
             if not isinstance(body, dict):
                 return self._json(400, {"detail": "JSON body must be an object"})
+            if p.path == "/admin/learning/config":
+                try:
+                    return self._json(200, research.configure_learning(body))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+            if p.path == "/admin/learning/prediction":
+                try:
+                    return self._json(200, learning.record_prediction(body))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+            if p.path == "/admin/learning/outcome":
+                try:
+                    return self._json(200, learning.record_outcome(body))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+            if p.path == "/admin/learning/scan":
+                try:
+                    return self._json(200, learning.scan_history())
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+            if p.path == "/admin/learning/backfill":
+                try:
+                    dataset_id = body.get("dataset_id")
+                    slots = body.get("slots")
+                    if slots is not None and not isinstance(slots, list):
+                        raise ValueError("slots must be a list")
+                    return self._json(200, learning.backfill_dataset(dataset_id, slots=slots))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
             if p.path == "/admin/apex/evidence":
                 try:
                     return self._json(200, apex.ingest_evidence(body, enforce_local_receipt=True))
@@ -1796,6 +1851,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     srv.pantheon = pantheon
     srv.sibyl = sibyl
     srv.apex = apex
+    srv.learning = learning
     srv.chronofold = chronofold
     srv.commissioning = commissioning
     srv.daemon_threads = True
