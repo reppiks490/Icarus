@@ -552,3 +552,4 @@ def test_runner_bar_leader_graph_uses_exact_timestamps_not_tail_position():
     assert leader["alignment_mode"] == "exact_bar_timestamp"
     assert leader["lag1_correlation"] > 0.95
     assert leader["samples"] < 69
+    assert out["data_health"]["history"]["gap_returns_skipped"] > 0
