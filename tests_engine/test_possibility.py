@@ -43,7 +43,9 @@ class Feed:
 
 
 class Port:
-    def __init__(self):
+    def __init__(self, base_dir=None):
+        if base_dir is not None:
+            self.base_dir = base_dir
         self.runners = {
             "NQ": SimpleNamespace(feed=Feed(), spec=SimpleNamespace(ticker="NQ.v.0")),
             "ES": SimpleNamespace(feed=Feed(), spec=SimpleNamespace(ticker="ES.v.0")),
@@ -300,3 +302,110 @@ def test_parallax_vote_is_distinct_fail_closed_research_context():
     assert vote["production_decision_authorized"] is False
     assert "latent_pressure" in vote
     assert "future_space_collapse" in vote
+
+
+
+def test_durable_evidence_survives_engine_restart(tmp_path):
+    observed = (datetime.now(timezone.utc) - timedelta(seconds=5)).isoformat()
+    first = PossibilityEngine(Port(tmp_path))
+    result = first.ingest_external(
+        "NQ",
+        {"gamma_pressure": {"value": 0.62, "confidence": 0.81}},
+        source="restart-fixture",
+        observed_at=observed,
+        ttl_seconds=600,
+    )
+    assert result["durable"] is True
+    assert result["inserted"] == 1
+
+    second = PossibilityEngine(Port(tmp_path))
+    feature = second._external_features("NQ")["gamma_pressure"]
+    assert feature.available is True
+    assert feature.value == pytest.approx(0.62)
+    assert feature.confidence == pytest.approx(0.81)
+    health = second.evidence_snapshot("NQ", include_expired=True)
+    assert health["durable"] is True
+    assert health["active_count"] == 1
+    assert health["total_history_count"] == 1
+
+
+def test_durable_evidence_exact_receipt_is_idempotent(tmp_path):
+    observed = (datetime.now(timezone.utc) - timedelta(seconds=5)).isoformat()
+    engine = PossibilityEngine(Port(tmp_path))
+    kwargs = {
+        "asset": "NQ",
+        "values": {"basis_pressure": {"value": 0.25, "confidence": 0.7}},
+        "source": "idempotency-fixture",
+        "observed_at": observed,
+        "ttl_seconds": 600,
+    }
+    first = engine.ingest_external(**kwargs)
+    second = engine.ingest_external(**kwargs)
+    assert first["inserted"] == 1
+    assert second["inserted"] == 0
+    assert second["idempotent_duplicates"] == 1
+    ledger = engine.evidence_snapshot("NQ", include_expired=True)
+    assert ledger["total_history_count"] == 1
+
+
+def test_stale_durable_evidence_remains_auditable_but_inactive(tmp_path):
+    observed = (datetime.now(timezone.utc) - timedelta(minutes=3)).isoformat()
+    engine = PossibilityEngine(Port(tmp_path))
+    result = engine.ingest_external(
+        "NQ",
+        {"gamma_pressure": 0.9},
+        source="stale-fixture",
+        observed_at=observed,
+        ttl_seconds=30,
+    )
+    assert result["inserted"] == 1
+    active = engine.evidence_snapshot("NQ")
+    history = engine.evidence_snapshot("NQ", include_expired=True)
+    assert active["active_count"] == 0
+    assert active["history"] == []
+    assert history["total_history_count"] == 1
+    assert history["history"][0]["source"] == "stale-fixture"
+    assert engine._external_features("NQ")["gamma_pressure"].available is False
+
+
+def test_durable_evidence_as_of_replay_selects_causally_available_observation(tmp_path):
+    now = datetime.now(timezone.utc)
+    early = now - timedelta(minutes=4)
+    late = now - timedelta(minutes=2)
+    engine = PossibilityEngine(Port(tmp_path))
+    engine.ingest_external(
+        "NQ",
+        {"gamma_pressure": {"value": -0.35, "confidence": 0.6}},
+        source="replay-fixture",
+        observed_at=early.isoformat(),
+        ttl_seconds=600,
+    )
+    engine.ingest_external(
+        "NQ",
+        {"gamma_pressure": {"value": 0.55, "confidence": 0.9}},
+        source="replay-fixture",
+        observed_at=late.isoformat(),
+        ttl_seconds=600,
+    )
+
+    between = engine.evidence_snapshot(
+        "NQ",
+        include_expired=True,
+        as_of=(early + timedelta(minutes=1)).isoformat(),
+    )
+    current = engine.evidence_snapshot("NQ", include_expired=True)
+    assert between["active"]["gamma_pressure"]["value"] == pytest.approx(-0.35)
+    assert current["active"]["gamma_pressure"]["value"] == pytest.approx(0.55)
+    assert between["active"]["gamma_pressure"]["evidence_id"] != current["active"]["gamma_pressure"]["evidence_id"]
+
+
+def test_snapshot_surfaces_durable_evidence_health(tmp_path):
+    engine = PossibilityEngine(Port(tmp_path), scenarios=96)
+    _seed(engine)
+    engine.ingest_external("NQ", {"basis_pressure": 0.2}, source="health-fixture", ttl_seconds=600)
+    out = engine.snapshot("NQ")
+    ledger = out["data_health"]["evidence_ledger"]
+    assert ledger["durable"] is True
+    assert ledger["active_count"] == 1
+    assert ledger["total_history_count"] == 1
+    assert ledger["schema_version"] == "icarus-psi-evidence-v1"
