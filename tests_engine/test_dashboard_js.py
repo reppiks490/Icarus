@@ -166,6 +166,16 @@ def test_dashboard_surfaces_icarus_psi_without_replacing_oracle_or_parallax():
     assert '{"id": "psi", "title": "ICARUS Ψ"' in brain
     assert '{"id": "parallax", "title": "PARALLAX"' in brain
     assert "execution_authorized=false" in ui
+    assert "Research evidence console" in ui
+    assert "psiEvidenceSubmit" in ui
+    assert "psiEvidenceSource" in ui
+    assert "/admin/possibility/evidence" in ui
+    assert "/api/possibility/evidence" in ui
+    assert "gamma_pressure" in ui
+    assert "basis_pressure" in ui
+    assert "cta_pressure" in ui
+    assert "liquidation_pressure" in ui
+    assert "rebalance_pressure" in ui
     assert "Evidence ledger" in ui
     assert "Active evidence" in ui
     assert "Evidence history" in ui

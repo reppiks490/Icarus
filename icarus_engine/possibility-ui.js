@@ -4,6 +4,17 @@
   let loading = false;
   let selected = '';
   let assetNames = [];
+  const evidenceFeatures = [
+    ['gamma_pressure','Gamma pressure'],
+    ['basis_pressure','Basis pressure'],
+    ['cta_pressure','CTA pressure'],
+    ['liquidation_pressure','Liquidation pressure'],
+    ['rebalance_pressure','Rebalance pressure'],
+  ];
+  const evidenceDraft = {source:'ui:operator', ttl_seconds:300, values:{}};
+  let ledgerIncludeExpired = false;
+  let lastEvidenceMessage = '';
+  let lastEvidenceKind = '';
 
   const h = value => String(value ?? '').replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
   const n = (value, digits=2) => (value == null || Number.isNaN(Number(value))) ? '—' : Number(value).toLocaleString(undefined,{maximumFractionDigits:digits,minimumFractionDigits:digits});
@@ -27,15 +38,46 @@
     return '<div class="psi-meter signed-'+(signed?'1':'0')+'"><i class="'+cls+'" style="left:'+left+'%;width:'+width+'%"></i><span>'+(signed?(v>=0?'+':'')+v.toFixed(2):pct(v))+'</span></div>';
   }
 
+  function evidenceConsoleHtml() {
+    const rows = evidenceFeatures.map(([key,label]) => {
+      const draft = evidenceDraft.values[key] || {};
+      const value = draft.value == null ? '' : draft.value;
+      const confidence = draft.confidence == null ? 1 : draft.confidence;
+      return '<div class="psi-evidence-row"><div><b>'+h(label)+'</b><div class="small muted">'+h(key)+' · -1 bearish / +1 bullish</div></div>'+
+        '<input class="psi-evidence-input" data-psi-value="'+h(key)+'" type="number" min="-1" max="1" step="0.01" placeholder="optional" value="'+h(value)+'">'+
+        '<input class="psi-evidence-input" data-psi-confidence="'+h(key)+'" type="number" min="0" max="1" step="0.01" value="'+h(confidence)+'"></div>';
+    }).join('');
+    const msgCls = lastEvidenceKind === 'ok' ? 'pos' : lastEvidenceKind === 'error' ? 'neg' : 'muted';
+    return '<section class="card c12" style="margin-top:12px"><h2>Research evidence console <span class="sub">operator-supplied Ψ force evidence · durable causal ledger · no execution authority</span></h2>'+
+      '<div class="psi-evidence-toolbar"><label>Source <input id="psiEvidenceSource" type="text" maxlength="180" value="'+h(evidenceDraft.source)+'" placeholder="ui:operator"></label>'+
+      '<label>TTL seconds <input id="psiEvidenceTtl" type="number" min="1" max="86400" step="1" value="'+h(evidenceDraft.ttl_seconds)+'"></label>'+
+      '<label class="small"><input id="psiIncludeExpired" type="checkbox" '+(ledgerIncludeExpired?'checked':'')+'> include expired history</label>'+
+      '<button class="primary" id="psiEvidenceSubmit">Submit evidence</button><button id="psiEvidenceClear">Clear form</button><button id="psiEvidenceRefresh">Refresh ledger</button></div>'+
+      '<div class="small muted" style="margin:6px 0 10px">Only non-empty force values are submitted. Values must be within [-1,1], confidence within [0,1]. The current asset is <b>'+h(selected||'—')+'</b>.</div>'+
+      '<div class="psi-evidence-head"><div>Force</div><div>Value</div><div>Confidence</div></div>'+rows+
+      '<div id="psiEvidenceMessage" class="small '+msgCls+'" style="margin-top:8px">'+h(lastEvidenceMessage)+'</div>'+
+      '<div id="psiEvidenceLedger" style="margin-top:12px"><div class="empty">loading evidence ledger…</div></div></section>';
+  }
+
+  function evidenceLedgerHtml(ledger) {
+    if (!ledger || ledger.error) return '<div class="empty">evidence ledger unavailable: '+h((ledger&&ledger.error)||'unknown error')+'</div>';
+    const active = Object.entries(ledger.active||{}).map(([feature,row]) => '<tr><td><b>'+h(feature)+'</b></td><td class="tnum">'+n(row.value,3)+'</td><td class="tnum">'+pct(row.confidence)+'</td><td>'+h(row.source||'—')+'</td><td class="tnum">'+h(row.observed_at||'—')+'</td><td class="tnum">'+h(String(row.evidence_id||'').slice(0,16))+'</td></tr>').join('');
+    const history = (ledger.history||[]).map(row => '<tr><td>'+h(row.feature||'—')+'</td><td class="tnum">'+n(row.value,3)+'</td><td class="tnum">'+pct(row.confidence)+'</td><td>'+h(row.source||'—')+'</td><td class="tnum">'+h(row.observed_at||'—')+'</td><td class="tnum">'+h(row.created_at||'—')+'</td><td class="tnum">'+h(String(row.evidence_id||'').slice(0,16))+'</td></tr>').join('');
+    const integrity = ledger.integrity || {};
+    return '<div class="tiles" style="margin-top:0"><div class="tile"><div class="k">Active receipts</div><div class="v">'+h(ledger.active_count||0)+'</div></div><div class="tile"><div class="k">Causal history</div><div class="v">'+h(ledger.total_history_count||0)+'</div></div><div class="tile"><div class="k">Storage</div><div class="v">'+h(integrity.storage|| (ledger.durable?'sqlite':'memory'))+'</div></div><div class="tile"><div class="k">Integrity</div><div class="v">'+(integrity.ok===false?'FAILED':'VERIFIED')+'</div><div class="small muted">'+h(integrity.quick_check||'')+'</div></div></div>'+
+      '<h3 style="margin:12px 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted)">Active evidence</h3><div class="scroll"><table><thead><tr><th>Feature</th><th>Value</th><th>Confidence</th><th>Source</th><th>Observed</th><th>Receipt</th></tr></thead><tbody>'+(active||'<tr><td colspan="6" class="empty">no active external evidence for this asset</td></tr>')+'</tbody></table></div>'+
+      '<h3 style="margin:12px 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted)">Evidence history</h3><div class="scroll"><table><thead><tr><th>Feature</th><th>Value</th><th>Confidence</th><th>Source</th><th>Observed</th><th>Created</th><th>Receipt</th></tr></thead><tbody>'+(history||'<tr><td colspan="7" class="empty">no evidence receipts in the selected causal window</td></tr>')+'</tbody></table></div>';
+  }
+
   function possibilityHtml(A) {
     const assets = (A||[]).map(a=>String(a.symbol||'')).filter(Boolean);
     assetNames = assets.slice();
     if (!selected || !assets.includes(selected)) selected = assets.includes('NQ') ? 'NQ' : (assets[0] || '');
     const options = assets.map(x=>'<option value="'+h(x)+'" '+(x===selected?'selected':'')+'>'+h(x)+'</option>').join('');
     return '<style>'+
-      '.psi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}.psi-box{border:1px solid var(--ring);background:var(--surface-2);border-radius:12px;padding:11px}.psi-box h3{font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin:0 0 7px}.psi-meter{height:24px;border:1px solid var(--ring);border-radius:7px;position:relative;overflow:hidden;background:var(--surface);margin-top:5px}.psi-meter:before{content:"";position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--ring)}.psi-meter i{position:absolute;top:0;bottom:0;background:var(--s1);opacity:.7}.psi-meter i.posbar{background:var(--good)}.psi-meter i.negbar{background:var(--crit)}.psi-meter span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600}.psi-kv{display:grid;grid-template-columns:minmax(120px,1fr) minmax(90px,auto);gap:6px 12px;font-size:12px}.psi-kv div:nth-child(odd){color:var(--muted)}.psi-force{display:grid;grid-template-columns:minmax(145px,1fr) 1fr 72px;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--grid);font-size:12px}.psi-force:last-child{border-bottom:0}.psi-hero{font-size:34px;font-weight:700;letter-spacing:-.03em}.psi-hero.pos{color:var(--good)}.psi-hero.neg{color:var(--crit)}.psi-hero.neutral{color:var(--warn)}'+
+      '.psi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}.psi-box{border:1px solid var(--ring);background:var(--surface-2);border-radius:12px;padding:11px}.psi-box h3{font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin:0 0 7px}.psi-meter{height:24px;border:1px solid var(--ring);border-radius:7px;position:relative;overflow:hidden;background:var(--surface);margin-top:5px}.psi-meter:before{content:"";position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--ring)}.psi-meter i{position:absolute;top:0;bottom:0;background:var(--s1);opacity:.7}.psi-meter i.posbar{background:var(--good)}.psi-meter i.negbar{background:var(--crit)}.psi-meter span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600}.psi-kv{display:grid;grid-template-columns:minmax(120px,1fr) minmax(90px,auto);gap:6px 12px;font-size:12px}.psi-kv div:nth-child(odd){color:var(--muted)}.psi-force{display:grid;grid-template-columns:minmax(145px,1fr) 1fr 72px;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--grid);font-size:12px}.psi-force:last-child{border-bottom:0}.psi-hero{font-size:34px;font-weight:700;letter-spacing:-.03em}.psi-hero.pos{color:var(--good)}.psi-hero.neg{color:var(--crit)}.psi-hero.neutral{color:var(--warn)}.psi-evidence-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.psi-evidence-toolbar label{display:flex;gap:6px;align-items:center}.psi-evidence-toolbar input[type=text]{width:180px}.psi-evidence-head,.psi-evidence-row{display:grid;grid-template-columns:minmax(210px,1fr) 130px 130px;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid var(--grid)}.psi-evidence-head{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}.psi-evidence-input{width:100%!important}@media(max-width:760px){.psi-evidence-head,.psi-evidence-row{grid-template-columns:1fr 1fr}.psi-evidence-head div:first-child,.psi-evidence-row div:first-child{grid-column:span 2}}'+
       '</style>'+
-      '<section class="card c12" id="possibilityPanel"><h2>ICARUS Ψ · LATENT PRESSURE <span class="sub">latent pressure · causal leadership · counterfactual price · future-space collapse · read only</span></h2>'+
+      '<section class="card c12" id="possibilityPanel"><h2>ICARUS Ψ · LATENT PRESSURE <span class="sub">latent pressure · causal leadership · counterfactual price · future-space collapse · interactive research console</span></h2>'+
       '<div class="toolbar"><label class="small muted">Asset <select id="possAsset">'+options+'</select></label><button id="possRefresh">Refresh</button><span class="small muted">Research diagnostics only. Missing evidence stays unavailable; execution_authorized=false.</span></div>'+
       '<div class="empty">loading possibility engine…</div></section>';
   }
@@ -49,7 +91,7 @@
     }).join('');
   }
 
-  function renderPossibility(data) {
+  function renderPossibility(data, evidenceLedger) {
     const el = document.querySelector('#possibilityPanel');
     if (!el) return;
     const latent = data.latent_pressure_engine || {}, wave = data.information_wave || {}, poss = data.possibility || {}, cf = data.counterfactual || {};
@@ -95,6 +137,7 @@
         '<div class="psi-box"><h3>Inverse hidden-state inference</h3><div class="psi-hero neutral" style="font-size:21px">'+h(hidden.primary||'UNRESOLVED')+'</div><div class="small muted">Ranked explanation hypotheses; not participant-identity claims.</div></div>'+
         '<div class="psi-box"><h3>Evidence health</h3><div class="psi-kv"><div>History observations</div><div class="tnum">'+h(health.market_history_observations||0)+'</div><div>History source</div><div>'+h(history.source||'—')+'</div><div>Chart cadence</div><div class="tnum">'+(history.chart_minutes==null?'—':h(history.chart_minutes)+'m')+'</div><div>Price basis</div><div>'+h(history.price_basis||'—')+'</div><div>Gap returns skipped</div><div class="tnum">'+h(history.gap_returns_skipped||0)+'</div><div>Poll independent</div><div>'+chip(history.poll_independent?'YES':'NO')+'</div><div>Leader alignment</div><div>'+chip(history.timestamp_aligned_leaders?'EXACT':'FALLBACK')+'</div><div>Tick tape</div><div>'+chip(micro.ticks?'OBSERVED':'UNAVAILABLE')+'</div><div>Order-book depth</div><div>'+chip(micro.depth?'OBSERVED':'UNAVAILABLE')+'</div><div>Provider</div><div>'+h(micro.provider||'—')+'</div><div>Depth age</div><div class="tnum">'+(micro.depth_age_seconds==null?'—':n(micro.depth_age_seconds,2)+'s')+'</div><div>Evidence ledger</div><div>'+chip(ledger.durable?'DURABLE':'MEMORY')+'</div><div>Ledger integrity</div><div>'+chip(ledger.storage_integrity_ok?'VERIFIED':'FAILED')+'</div><div>Invalid receipts</div><div class="tnum">'+h(ledger.invalid_receipt_count||0)+'</div><div>Ledger digest</div><div class="tnum">'+h((ledger.ledger_digest_sha256||'—').slice(0,12))+'</div><div>Source conflicts</div><div>'+chip((ledger.conflicting_feature_count||0)>0?'CONFLICT':'CLEAR')+' '+h(ledger.conflicting_feature_count||0)+'</div><div>Active evidence</div><div class="tnum">'+h(ledger.active_count||0)+'</div><div>Evidence history</div><div class="tnum">'+h(ledger.total_history_count||0)+'</div></div></div>'+
       '</div>'+
+      evidenceConsoleHtml()+
       '<section class="card c12" style="margin-top:12px"><h2>Latent force decomposition</h2>'+componentRows(latent.components||{})+'</section>'+
       '<div class="psi-grid" style="margin-top:12px">'+(hypotheses || '<div class="psi-box"><h3>Hidden state</h3><div class="small muted">No sufficiently strong hidden-state hypothesis yet.</div></div>')+'</div>'+
       '<section class="card c12" style="margin-top:12px"><h2>Future-space clusters <span class="sub">'+h(poss.viable_futures||0)+' viable / '+h(poss.scenarios_generated||0)+' generated · dominant '+h(poss.dominant_cluster||'—')+'</span></h2>'+
@@ -112,6 +155,76 @@
     selected = data.asset || selected;
     sel.onchange = () => { selected = sel.value; loadPossibility(); };
     el.querySelector('#possRefresh').onclick = loadPossibility;
+    const ledgerEl = el.querySelector('#psiEvidenceLedger');
+    if (ledgerEl) ledgerEl.innerHTML = evidenceLedgerHtml(evidenceLedger);
+    wireEvidenceControls();
+  }
+
+  function wireEvidenceControls() {
+    const source = document.querySelector('#psiEvidenceSource');
+    if (source) source.oninput = () => { evidenceDraft.source = source.value; };
+    const ttl = document.querySelector('#psiEvidenceTtl');
+    if (ttl) ttl.oninput = () => { evidenceDraft.ttl_seconds = ttl.value; };
+    evidenceFeatures.forEach(([key]) => {
+      const value = document.querySelector('[data-psi-value="'+key+'"]');
+      const confidence = document.querySelector('[data-psi-confidence="'+key+'"]');
+      if (value) value.oninput = () => { evidenceDraft.values[key] = evidenceDraft.values[key] || {}; evidenceDraft.values[key].value = value.value; };
+      if (confidence) confidence.oninput = () => { evidenceDraft.values[key] = evidenceDraft.values[key] || {}; evidenceDraft.values[key].confidence = confidence.value; };
+    });
+    const expired = document.querySelector('#psiIncludeExpired');
+    if (expired) expired.onchange = () => { ledgerIncludeExpired = !!expired.checked; loadPossibility(); };
+    const submit = document.querySelector('#psiEvidenceSubmit');
+    if (submit) submit.onclick = submitEvidence;
+    const clear = document.querySelector('#psiEvidenceClear');
+    if (clear) clear.onclick = () => { evidenceDraft.values = {}; lastEvidenceMessage = ''; lastEvidenceKind = ''; loadPossibility(); };
+    const refresh = document.querySelector('#psiEvidenceRefresh');
+    if (refresh) refresh.onclick = loadPossibility;
+  }
+
+  async function submitEvidence() {
+    const button = document.querySelector('#psiEvidenceSubmit');
+    if (button) button.disabled = true;
+    try {
+      const values = {};
+      evidenceFeatures.forEach(([key]) => {
+        const valueEl = document.querySelector('[data-psi-value="'+key+'"]');
+        const confEl = document.querySelector('[data-psi-confidence="'+key+'"]');
+        const raw = valueEl ? valueEl.value.trim() : '';
+        if (raw === '') return;
+        const value = Number(raw);
+        const confidence = Number(confEl && confEl.value !== '' ? confEl.value : 1);
+        if (!Number.isFinite(value) || value < -1 || value > 1) throw new Error(key+' value must be within [-1,1]');
+        if (!Number.isFinite(confidence) || confidence < 0 || confidence > 1) throw new Error(key+' confidence must be within [0,1]');
+        values[key] = {value, confidence};
+      });
+      if (!Object.keys(values).length) throw new Error('Enter at least one force value before submitting.');
+      const sourceEl = document.querySelector('#psiEvidenceSource');
+      const ttlEl = document.querySelector('#psiEvidenceTtl');
+      const source = String(sourceEl ? sourceEl.value : evidenceDraft.source).trim();
+      const ttl = Number(ttlEl ? ttlEl.value : evidenceDraft.ttl_seconds);
+      if (!source) throw new Error('Evidence source is required.');
+      if (!Number.isFinite(ttl) || ttl <= 0 || ttl > 86400) throw new Error('TTL must be within 1..86400 seconds.');
+      evidenceDraft.source = source;
+      evidenceDraft.ttl_seconds = ttl;
+      const token = localStorage.getItem('icarus-engine-token') || 'icarus';
+      const response = await fetch('/admin/possibility/evidence', {
+        method:'POST', cache:'no-store', headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+        body:JSON.stringify({asset:selected, values, source, ttl_seconds:ttl}),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || data.error || ('HTTP '+response.status));
+      lastEvidenceKind = 'ok';
+      lastEvidenceMessage = 'Stored '+String(data.inserted ?? Object.keys(values).length)+' new receipt(s); '+String(data.idempotent_duplicates||0)+' idempotent duplicate(s).';
+      evidenceDraft.values = {};
+      await loadPossibility();
+    } catch (err) {
+      lastEvidenceKind = 'error';
+      lastEvidenceMessage = String(err && err.message ? err.message : err);
+      const message = document.querySelector('#psiEvidenceMessage');
+      if (message) { message.className = 'small neg'; message.textContent = lastEvidenceMessage; }
+    } finally {
+      if (button) button.disabled = false;
+    }
   }
 
   async function loadPossibility() {
@@ -122,10 +235,19 @@
     try {
       const token = localStorage.getItem('icarus-engine-token') || 'icarus';
       const query = selected ? '?asset='+encodeURIComponent(selected) : '';
-      const response = await fetch('/api/possibility'+query,{cache:'no-store',headers:{'Authorization':'Bearer '+token}});
+      const ledgerQuery = '?asset='+encodeURIComponent(selected||'')+'&limit=100&include_expired='+(ledgerIncludeExpired?'true':'false');
+      const [response, ledgerResponse] = await Promise.all([
+        fetch('/api/possibility'+query,{cache:'no-store',headers:{'Authorization':'Bearer '+token}}),
+        fetch('/api/possibility/evidence'+ledgerQuery,{cache:'no-store',headers:{'Authorization':'Bearer '+token}}),
+      ]);
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail || data.error || ('HTTP '+response.status));
-      renderPossibility(data);
+      let ledger;
+      try {
+        ledger = await ledgerResponse.json();
+        if (!ledgerResponse.ok) ledger = {error:ledger.detail || ledger.error || ('HTTP '+ledgerResponse.status)};
+      } catch (e) { ledger = {error:String(e && e.message ? e.message : e)}; }
+      renderPossibility(data, ledger);
     } catch (err) {
       panel.innerHTML = '<h2>ICARUS Ψ · LATENT PRESSURE</h2><div class="empty">possibility engine unavailable: '+h(err.message||err)+'</div>';
     } finally {
@@ -144,7 +266,10 @@
     loadPossibility();
     if (timer) clearInterval(timer);
     timer = setInterval(() => {
-      if ((location.hash || '#overview').slice(1) === 'possibility') loadPossibility();
+      if ((location.hash || '#overview').slice(1) !== 'possibility') return;
+      const active = document.activeElement;
+      if (active && active.closest && active.closest('#possibilityPanel') && /^(INPUT|SELECT)$/.test(active.tagName)) return;
+      loadPossibility();
     }, 2500);
   }
 
