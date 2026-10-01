@@ -15,6 +15,7 @@ import json
 import math
 import re
 import threading
+import uuid
 
 from .system_audit import append_system_event, load_repository_audit
 
@@ -113,7 +114,22 @@ class EngineControlPlane:
 
     def _snapshot_one(self, name: str, fn: Callable[[], Any]) -> Dict[str, Any]:
         try:
-            return {"status": "ok", "data": _compact(fn())}
+            raw = fn()
+            data = _compact(raw)
+            reported = None
+            health = "ok"
+            if isinstance(raw, Mapping):
+                for key in ("status", "health", "state"):
+                    value = raw.get(key)
+                    if isinstance(value, str) and value.strip():
+                        reported = value.strip()
+                        break
+                normalized = str(reported or "").lower()
+                if any(word in normalized for word in ("error", "fail", "blocked", "degraded")):
+                    health = "error"
+                elif any(word in normalized for word in ("warn", "unknown", "unverified")):
+                    health = "warn"
+            return {"status": health, "reported_status": reported, "data": data}
         except Exception as ex:
             return {
                 "status": "error",
@@ -121,11 +137,12 @@ class EngineControlPlane:
             }
 
     def status(self) -> Dict[str, Any]:
-        subsystems = {
-            name: self._snapshot_one(name, fn)
-            for name, fn in sorted(self.snapshotters.items())
-        }
-        audit = load_repository_audit(self.base_dir)
+        with self._lock:
+            subsystems = {
+                name: self._snapshot_one(name, fn)
+                for name, fn in sorted(self.snapshotters.items())
+            }
+            audit = load_repository_audit(self.base_dir)
         important = []
         for row in audit.get("events", [])[:80]:
             if not isinstance(row, dict):
@@ -158,7 +175,8 @@ class EngineControlPlane:
             "summary": {
                 "registered_actions": len(self.actions),
                 "subsystems": len(subsystems),
-                "subsystem_errors": sum(1 for x in subsystems.values() if x["status"] != "ok"),
+                "subsystem_errors": sum(1 for x in subsystems.values() if x["status"] == "error"),
+                "subsystem_warnings": sum(1 for x in subsystems.values() if x["status"] == "warn"),
                 "important_events": len(important),
                 "action_groups": dict(sorted(groups.items())),
             },
@@ -209,7 +227,7 @@ class EngineControlPlane:
         }
 
         started = _utc_now()
-        event_id = f"engine-control:{action_id}:{started}"
+        event_id = f"engine-control:{action_id}:{started}:{uuid.uuid4().hex[:12]}"
         intent = {
             "id": event_id,
             "kind": "integration",
