@@ -1,0 +1,37 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "parallax-dreamstate-v2-live-reconcile-20261001T132925Z",
+  "category": "EVOLUTION",
+  "severity": "success",
+  "status": "active",
+  "subsystems": [
+    "parallax",
+    "dreamstate",
+    "aion",
+    "athena",
+    "provenance",
+    "ml"
+  ],
+  "recorded_at": "2026-10-01T13:29:25Z",
+  "title": "PARALLAX / DREAMSTATE V2 reconciled onto live main with status fix",
+  "summary": "Reconciles the full PARALLAX / DREAMSTATE V2 evidence-science stack onto the live ICARUS mainline, preserves current root-panel status contracts and source-disappearance retirement, and fixes the PARALLAX empty-database status query so a fresh store reports zero decisions instead of SQLite's SELECT-without-FROM sentinel row. All authority remains research/shadow only.",
+  "source_repository": "reppiks490/Icarus",
+  "source_ref": "chatgpt/parallax-dreamstate-v2-live-fix-20261001",
+  "source_commit": "a0d84c899666d1069328665d1b09dcd661a522e5",
+  "evidence": [
+    "icarus_engine/parallax.py",
+    "icarus_engine/dreamstate.py",
+    "icarus_engine/parallax-ui.js",
+    "tests_engine/test_parallax_dreamstate.py",
+    "docs/icarus/PARALLAX_DREAMSTATE.md",
+    "PARALLAX status COUNT(*) now selects FROM decisions",
+    "DREAMSTATE source disappearance retirement preserved",
+    "current-source revalidation before gate updates preserved",
+    "comparison-contract / FDR / evidence-pair isolation preserved",
+    "root-panel status() read-only contract preserved",
+    "execution_authorized=false",
+    "production_decision_authorized=false"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}
