@@ -12,7 +12,8 @@
   GET  /api/export/<SYM>.csv      the asset's trade list as CSV
   GET  /api/golive                paper≠live integrity (Grok). Never arms a broker.
   GET  /api/agent                 Field Agent recipes + paste-packs (Grok). Never executes. Never arms a broker.
-  GET  /api/system/audit          latest local GitHub/MCP repository + CI audit snapshot
+  GET  /api/system/audit          latest local GitHub/MCP repository + CI audit + evolution ledger
+  GET  /api/system/evolution      important MCP repairs/audits/evolutions mirrored into the System panel
   POST /admin/pause | /admin/resume        {"asset": "NQ"} or all          (Bearer token)
   POST /admin/flatten                      {"confirm": true, "asset"?: "NQ"}
   POST /admin/inputs                       {"asset": "NQ"|"*", "values": {...}, "chart": {...}, "persist": true}  → re-warm
@@ -21,6 +22,7 @@
   POST /admin/assets/add                   {"symbol": "GC", "tf": "20", "preset"?: ...}
   POST /admin/assets/remove                {"symbol": "GC"}
   POST /admin/system/audit                 {"audit": {...}}  local diagnostic state only; never changes trading
+  POST /admin/system/evolution             {"evolution": {...}} MCP evolution ledger only; never changes trading
   POST /admin/rewarm                       {"asset": "NQ"}
 """
 from __future__ import annotations
@@ -50,7 +52,7 @@ from .runtime import Portfolio, _clean, _read_json, apply_spec_meta, preset_path
 from .strategy.meta import load_meta
 from .advisory import MAX_BODY_BYTES, strict_json
 from .research_service import ResearchWorkspace
-from .system_audit import load_repository_audit, save_repository_audit
+from .system_audit import load_repository_audit, load_system_evolution, save_repository_audit, save_system_evolution
 
 
 def _no_json_constants(name: str):
@@ -182,6 +184,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._json(200, briefing_report())
             if p.path == "/api/system/audit":
                 return self._json(200, load_repository_audit(port.base_dir))
+            if p.path == "/api/system/evolution":
+                return self._json(200, load_system_evolution(port.base_dir))
             if p.path == "/api/input-meta":
                 return self._json(200, meta)
             if p.path.startswith("/api/research"):
@@ -388,6 +392,13 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 except (ValueError, TypeError) as ex:
                     return self._json(400, {"detail": str(ex)})
                 return self._json(200, {"ok": True, "audit": audit, "note": "repository audit recorded"})
+            if p.path == "/admin/system/evolution":
+                try:
+                    evolution = save_system_evolution(port.base_dir, body.get("evolution", body))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                return self._json(200, {"ok": True, "evolution": evolution,
+                                        "note": "MCP system evolution ledger recorded; trading state unchanged"})
             asset = str(body.get("asset") or body.get("symbol") or "").upper()
             # Add is the one admin route whose subject is intentionally not already
             # running. Do not reject it through the generic runner lookup.
