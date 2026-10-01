@@ -246,6 +246,22 @@ export class IcarusClient {
       .then((value) => value || {});
   }
 
+  notificationStatus(): Promise<JsonObject> {
+    return this.get<JsonObject>('/v1/notifications').then((value) => value || {});
+  }
+
+  registerPush(expoPushToken: string, platform: 'ios' | 'android'): Promise<JsonObject> {
+    return this.post<JsonObject>('/v1/notifications/register', {
+      expo_push_token: expoPushToken,
+      platform,
+      topics: ['system'],
+    });
+  }
+
+  unregisterPush(): Promise<JsonObject> {
+    return this.post<JsonObject>('/v1/notifications/unregister', {});
+  }
+
   async revoke(): Promise<void> {
     await this.ensureSession();
     await requestJson<JsonObject>(this.baseUrl, '/v1/revoke', {
