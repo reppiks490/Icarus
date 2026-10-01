@@ -9,14 +9,14 @@ from icarus_engine.parallax import ParallaxStore
 from icarus_engine.brain import brain_snapshot
 
 
-def _record_pair(store: ParallaxStore, i: int, *, delay_utility: float = 1.0):
+def _record_pair(store: ParallaxStore, i: int, *, delay_utility: float = 1.0, source_commit: str = "a" * 40):
     decision = store.record_decision(
         {
             "asset": "NQ",
             "action": "long",
             "observed_at": f"2026-10-01T05:{i:02d}:00Z",
             "regime": "trend-high-vol",
-            "source_commit": "a" * 40,
+            "source_commit": source_commit,
             "context": {"bar": i, "vix_accel": 0.2},
             "subsystem_votes": {"athena": 0.8, "argus": 0.55},
         }
@@ -112,6 +112,16 @@ def test_parallax_requires_repeated_positive_lower_bound_before_signal(tmp_path)
     assert signals[0]["kind"] == "delay"
     assert signals[0]["n"] == 5
     assert signals[0]["ci95_low"] > 0
+
+
+def test_parallax_never_pools_statistical_evidence_across_code_revisions(tmp_path):
+    store = ParallaxStore(tmp_path)
+    for i in range(3):
+        _record_pair(store, i, source_commit="a" * 40)
+    for i in range(3, 6):
+        _record_pair(store, i, source_commit="b" * 40)
+    signals = [s for s in store.mutation_signals(min_samples=5) if s["branch_label"] == "delay_1"]
+    assert signals == []
 
 
 def test_dreamstate_generates_hypothesis_but_caps_authority_at_qualified_shadow(tmp_path):
