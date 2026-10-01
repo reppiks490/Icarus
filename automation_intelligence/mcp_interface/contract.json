@@ -1,0 +1,52 @@
+{
+  "schema_version": "icarus-mcp-interface-contract-v1",
+  "event_schema_version": "icarus-interface-event-v1",
+  "purpose": "Fail-closed repository-native bridge for important MCP repairs, audits, evolution, integrations, findings, provenance changes, and subsystem state changes into the ICARUS operator interface.",
+  "event_root": "automation_intelligence/mcp_interface/events",
+  "required_categories": [
+    "REPAIR",
+    "AUDIT",
+    "EVOLUTION",
+    "INTEGRATION",
+    "FINDING"
+  ],
+  "required_fields": [
+    "schema_version",
+    "event_id",
+    "category",
+    "severity",
+    "status",
+    "subsystems",
+    "recorded_at",
+    "title",
+    "summary",
+    "source_repository",
+    "source_ref",
+    "source_commit",
+    "evidence",
+    "execution_authorized",
+    "production_decision_authorized"
+  ],
+  "allowed_subsystems": [
+    "aegis",
+    "aion",
+    "argus",
+    "ascension",
+    "athena",
+    "daedalus",
+    "data",
+    "dreamstate",
+    "infrastructure",
+    "janus",
+    "ml",
+    "nexus",
+    "oracle",
+    "parallax",
+    "prometheus",
+    "provenance",
+    "psi",
+    "supermesh-x"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}
