@@ -994,3 +994,42 @@ def test_engine_control_sync_all_attempts_every_synchronizer_on_partial_failure(
     assert status == 500
     assert calls == ["loop_intelligence", "brain_remote", "brain_research", "evolution"]
     assert "sync_all partial failure" in body["detail"]
+
+
+def test_engine_control_backtest_compare_and_audit_snapshot_preserve_control_receipts(admin):
+    from icarus_engine.backtest import JOBS
+    from icarus_engine.system_audit import load_repository_audit
+
+    port, _, _, post = admin
+    job_id = "root-control-compare"
+    JOBS[job_id] = {
+        "status": "done",
+        "result": {"trades": [], "config": {"tf": "20"}},
+    }
+    try:
+        status, body = post("/admin/engine-control", {
+            "action": "backtest.compare",
+            "target": job_id,
+            "args": {"csv": "header\n", "tol": 1},
+        })
+        assert status == 200 and body["ok"] is True
+        assert body["result"]["report"]["summary"]["note"] == "nothing to compare"
+    finally:
+        JOBS.pop(job_id, None)
+
+    status, body = post("/admin/engine-control", {
+        "action": "system.record_audit",
+        "confirm": "UPDATE SYSTEM AUDIT SNAPSHOT",
+        "args": {
+            "status": "green",
+            "repository": "reppiks490/Icarus",
+            "source": "operator-root-control",
+        },
+    })
+    assert status == 200 and body["ok"] is True
+
+    audit = load_repository_audit(port.base_dir)
+    titles = [row.get("title", "") for row in audit.get("events", [])]
+    assert any("Engine Control requested: Update repository audit snapshot" in title for title in titles)
+    assert any("Engine Control succeeded: Update repository audit snapshot" in title for title in titles)
+    assert audit["status"] == "green"
