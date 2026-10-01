@@ -73,7 +73,7 @@ from .system_audit import (
     upsert_loop_status,
 )
 from .integrity import integrity_snapshot, record_integrity_event
-from .brain import brain_snapshot, record_brain_event
+from .brain import REQUIRED_CANDIDATE_GATES, brain_snapshot, record_brain_event
 from .brain_sync import BrainRemoteSync
 from .research_brain_sync import BrainResearchSync
 from .evolution_sync import EvolutionRemoteSync
@@ -84,6 +84,11 @@ from .possibility import PossibilityEngine
 from .performance_proof import PerformanceProofStore
 from .latency_telemetry import LatencyTelemetry
 from .source_reliability import SourceReliabilityStore
+from .qualification_receipts import (
+    QualificationReceiptStore,
+    build_shadow_promotion_event,
+    build_shadow_revocation_event,
+)
 from .autopilot import TacticalAutopilot
 from .engine_control import ControlAction, EngineControlPlane
 from .mcp_control import MCPControlPlane
@@ -198,6 +203,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     performance_proof = PerformanceProofStore(port.base_dir)
     latency_telemetry = LatencyTelemetry()
     source_reliability = SourceReliabilityStore(port.base_dir)
+    qualification_receipts = QualificationReceiptStore(port.base_dir, REQUIRED_CANDIDATE_GATES)
     # Bind one collector to the existing live runners; Portfolio.make_runner
     # propagates the same sink to assets added later.
     port.latency_telemetry = latency_telemetry
@@ -211,6 +217,38 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     commissioning = CommissioningEngine(port.base_dir, port, chronofold)
     pantheon = PantheonKernel(port.base_dir)
     sibyl = SibylEngine(port.base_dir)
+
+    def _qualification_sync(candidate_id: str, source_repo: str, source_commit: str) -> dict[str, Any]:
+        status = qualification_receipts.candidate_status(candidate_id, source_repo, source_commit)
+        snapshot = brain_snapshot(port.base_dir)
+        candidate = next(
+            (
+                row for row in snapshot.get("candidates", [])
+                if row.get("candidate_id") == candidate_id
+                and row.get("source_repo") == source_repo
+                and row.get("source_commit") == source_commit
+            ),
+            None,
+        )
+        transition = None
+        if candidate is not None:
+            if status.get("qualification_ready") is True and candidate.get("stage") in {"validated", "qualified_shadow"}:
+                transition = record_brain_event(
+                    port.base_dir,
+                    build_shadow_promotion_event(candidate, status),
+                )
+            elif status.get("qualification_ready") is not True and candidate.get("stage") == "qualified_shadow":
+                transition = record_brain_event(
+                    port.base_dir,
+                    build_shadow_revocation_event(candidate, status),
+                )
+        return {
+            "qualification": status,
+            "candidate_found": candidate is not None,
+            "transition": transition,
+            "execution_authorized": False,
+            "production_decision_authorized": False,
+        }
 
     def _control_runner(target: str):
         try:
@@ -964,6 +1002,10 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
                 return self._json(200, source_reliability.snapshot())
+            if p.path == "/api/qualification-receipts":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                return self._json(200, qualification_receipts.snapshot())
             if p.path == "/api/brain":
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
@@ -986,6 +1028,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     proof_status=performance_proof.snapshot(),
                     latency_status=latency_telemetry.snapshot(),
                     source_reliability=source_reliability.snapshot(),
+                    qualification_receipts=qualification_receipts.snapshot(),
                 ))
             if p.path == "/api/input-meta":
                 return self._json(200, meta)
@@ -1182,7 +1225,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._json(413, {"detail": "body too large"})
             raw = self.rfile.read(n) if n else b""
             try:
-                body = strict_json(raw) if p.path.startswith(("/admin/research/", "/admin/integrity/", "/admin/parallax/", "/admin/dreamstate/", "/admin/possibility/", "/admin/autopilot/", "/admin/engine-control", "/admin/pantheon/", "/admin/sibyl/")) else (json.loads(raw, parse_constant=_no_json_constants) if raw else {})
+                body = strict_json(raw) if p.path.startswith(("/admin/research/", "/admin/integrity/", "/admin/parallax/", "/admin/dreamstate/", "/admin/possibility/", "/admin/autopilot/", "/admin/engine-control", "/admin/pantheon/", "/admin/sibyl/", "/admin/qualification-receipts/")) else (json.loads(raw, parse_constant=_no_json_constants) if raw else {})
             except ValueError as ex:
                 return self._json(400, {"detail": f"bad JSON body: {ex}"})
             if not isinstance(body, dict):
@@ -1227,6 +1270,30 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             if p.path == "/admin/brain/event":
                 try:
                     return self._json(200, record_brain_event(port.base_dir, body))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+            if p.path == "/admin/qualification-receipts/record":
+                try:
+                    result = qualification_receipts.record(body)
+                    sync = _qualification_sync(
+                        str(body.get("candidate_id") or ""),
+                        str(body.get("candidate_source_repo") or ""),
+                        str(body.get("candidate_source_commit") or ""),
+                    )
+                    return self._json(200, {"ok": True, "receipt": result, **sync})
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+            if p.path == "/admin/qualification-receipts/sync":
+                try:
+                    allowed = {"candidate_id", "candidate_source_repo", "candidate_source_commit"}
+                    if set(body) != allowed:
+                        raise ValueError("qualification sync requires exactly candidate_id, candidate_source_repo, candidate_source_commit")
+                    result = _qualification_sync(
+                        str(body["candidate_id"]), str(body["candidate_source_repo"]), str(body["candidate_source_commit"])
+                    )
+                    if result["candidate_found"] is not True:
+                        return self._json(404, {"detail": "candidate revision is not present in the Adaptive Brain journal", **result})
+                    return self._json(200, {"ok": True, **result})
                 except (ValueError, TypeError) as ex:
                     return self._json(400, {"detail": str(ex)})
             if p.path == "/admin/source-reliability/observation":
@@ -1703,6 +1770,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     srv.performance_proof = performance_proof
     srv.latency_telemetry = latency_telemetry
     srv.source_reliability = source_reliability
+    srv.qualification_receipts = qualification_receipts
     srv.autopilot = autopilot
     srv.pantheon = pantheon
     srv.sibyl = sibyl
