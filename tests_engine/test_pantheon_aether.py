@@ -223,9 +223,11 @@ def test_existing_research_subsystems_are_compacted_without_authority():
                 {"candidate_id": "c1", "family_id": "f1", "stage": "proposed", "asset": "NQ", "regime": "trend", "secret": "not copied"}
             ],
         },
-        existing={"oracle": {"latent_pressure": 0.5}},
+        existing={"oracle": {"latent_pressure": 0.5}, "custom": {"preserved": True}},
     )
-    assert out["oracle"]["latent_pressure"] == 0.5
+    assert out["oracle"]["status"] == "unavailable"
+    assert out["oracle"]["latent_pressure"] is None
+    assert out["custom"]["preserved"] is True
     assert out["parallax"]["counts"]["decisions"] == 4
     assert len(out["parallax"]["mutation_signals"]) == 12
     assert out["dreamstate"]["candidates"][0]["candidate_id"] == "c1"
