@@ -1,0 +1,67 @@
+{
+  "schema_version": "icarus-mcp-event-v1",
+  "event_id": "omega-integration-20261001T180427Z-evidence-closure",
+  "category": "INTEGRATION",
+  "severity": "material",
+  "status": "qualified",
+  "source": "OMEGA_AUTOMATION",
+  "recorded_at": "2026-10-01T18:04:27Z",
+  "execution_authorized": false,
+  "production_decision_authorized": false,
+  "net_new_delta": "ADAPTIVE_BRAIN_EVIDENCE_CLOSURE_LOOP_NOW_HAS_SOURCE_RELIABILITY_REVISION_SCOPED_QUALIFICATION_AND_MATURED_SETTLEMENT_BACKLOG",
+  "finding": "Current main adds three complementary evidence controls after the prior OMEGA Flow/ARGUS integration: causal source-reliability memory exposed to the Adaptive Brain/MCP, immutable qualification receipts keyed to exact candidate source revisions with negative receipts able to reopen gates, and an explicit matured-but-unsettled forecast backlog that refuses to infer missing outcomes. Together they form a fail-closed evidence-closure path for future Macro/Flow/AION/DAEDALUS findings without granting production or execution authority.",
+  "accepted_findings": [
+    "Flow's Bybit spot/linear 15:00 UTC range contraction remains qualified research evidence; the Twelve Data high/range conflict remains quarantined.",
+    "Macro's duration/EUR-FX broadening remains an active research hypothesis requiring settlement and cross-lane corroboration.",
+    "Source reliability may now be learned only from immutable causal-time observations with freshness/completeness/agreement/revision evidence.",
+    "Candidate qualification is revision-scoped and latest negative evidence can reopen a previously passing gate.",
+    "Matured forecasts without observed outcomes are now explicitly surfaced as unsettled rather than synthesized."
+  ],
+  "rejected_findings": [
+    "Do not treat source-reliability machinery as proof that any source is currently reliable without recorded observations.",
+    "Do not treat qualification_ready as production authority; the implementation recommends qualified_shadow only.",
+    "Do not count matured forecasts lacking outcomes as successes/failures or as calibration evidence.",
+    "Do not promote provider-conflicted Flow evidence or the Macro hypothesis solely because the new qualification machinery exists."
+  ],
+  "conflicts": [
+    "Evidence infrastructure has advanced beyond the freshness of substantive specialist receipts: the latest material Flow event is 16:21Z and Macro event is 13:08Z; no newer substantive AION/DAEDALUS MCP event was found in the current event tree.",
+    "Flow retains an unresolved Twelve Data versus Bybit BTC representation conflict."
+  ],
+  "blockers": [
+    "Source-reliability state requires real observations before posterior reliability is decision-useful.",
+    "Candidate gates require independent revision-scoped receipts; absence remains a blocker.",
+    "Matured forecast settlement requires observed immutable outcomes; backlog entries cannot be auto-resolved."
+  ],
+  "next_highest_value_integration_target": "Feed future specialist evidence through source-reliability observation -> exact-revision qualification receipts -> forecast registration/settlement, then expose unresolved settlement and gate blockers to OMEGA/Adaptive Brain. Preserve GitHub-native v3 as authoritative liveness/persistence and keep all conclusions shadow/research-only.",
+  "paths": [
+    "icarus_engine/source_reliability.py",
+    "icarus_engine/qualification_receipts.py",
+    "icarus_engine/performance_proof.py",
+    "automation_intelligence/mcp_interface/events/20261001T162127Z_flow_velocity_audit.json",
+    "automation_intelligence/mcp_interface/events/20261001T130854Z_macro_duration_euro_fx_evolution.json",
+    "automation_intelligence/mcp_interface/events/20261001T165832Z_omega_flow_argus_evidence_integration.json"
+  ],
+  "evidence": [
+    "12eab76fe3ebb0486b1e51f50c9b6dd6343de04b wires causal source-reliability memory into Adaptive Brain/MCP and keeps low samples from becoming fake certainty.",
+    "3024b777436a3549640babd9671edb4c8900ec3e adds append-only candidate qualification receipts keyed to exact candidate source revision; latest negative receipt reopens a gate; readiness is qualified_shadow only.",
+    "97bdfad559ad7e7b03527ff0e2bd6e0ed7776d1b adds matured-unsettled forecast backlog and explicitly forbids inferred/synthesized outcomes.",
+    "Flow event 20261001T162127Z preserves the Bybit/Twelve Data conflict and lacks direct NQ/MNQ, GC/MGC, SI, DXY and volatility-index feeds.",
+    "Macro event 20261001T130854Z labels duration/EUR-FX broadening as an active research hypothesis with persistence/causal decomposition unknown."
+  ],
+  "athena": {
+    "status": "ACTIONABLE",
+    "finding": "Risk/uncertainty can now incorporate measured source reliability and explicit unsettled-outcome/gate blockers instead of collapsing missing evidence into confidence."
+  },
+  "janus": {
+    "status": "ACTIONABLE",
+    "finding": "Project-twin reconciliation should key candidate state to exact source revision and allow later negative qualification receipts to reopen gates while preserving immutable history."
+  },
+  "infrastructure": {
+    "status": "VERIFIED_WITH_DATA_GAPS",
+    "finding": "Main contains source-reliability MCP/Brain surfacing, immutable qualification receipts, and matured settlement backlog; these controls remain non-authoritative for execution and require real observations/outcomes."
+  },
+  "helios_prime": {
+    "status": "ACTIONABLE",
+    "finding": "Highest-value cross-system bridge is specialist evidence -> source reliability -> revision-scoped qualification -> forecast settlement -> OMEGA synthesis, with GitHub-native v3 unchanged as liveness/persistence authority."
+  }
+}
