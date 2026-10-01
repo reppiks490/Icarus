@@ -176,5 +176,10 @@ def test_dashboard_surfaces_authenticated_engine_control_panel():
     assert "/api/engine-control" in ui
     assert "/admin/engine-control" in ui
     assert "MCP / audit mirror" in ui
+    assert "Specialized control surfaces" in ui
+    assert "asset.apply_config" in server
+    assert "sync.stop_all" in server
     assert "FLATTEN ALL PAPER POSITIONS" in server
+    assert "RESET ASSET CONFIG" in server
     assert "RESET AUTOPILOT" in server
+    assert "STOP ALL INTELLIGENCE SYNCS" in server
