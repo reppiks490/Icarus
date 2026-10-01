@@ -228,3 +228,21 @@ def test_engine_control_ui_supports_every_registered_target_and_generic_args():
     assert 'target="source"' in server
     assert 'ControlAction("dreamstate.evaluate"' in server
     assert 'target="candidate"' in server
+
+def test_dashboard_surfaces_sibyl_future_lightcone_panel():
+    dashboard = (REPO / "icarus_engine/dashboard.html").read_text(encoding="utf-8")
+    ui = (REPO / "icarus_engine/sibyl-ui.js").read_text(encoding="utf-8")
+    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
+    brain = (REPO / "icarus_engine/brain.py").read_text(encoding="utf-8")
+    assert '<script src="/sibyl-ui.js"></script>' in dashboard
+    assert 'data-v="sibyl">SIBYL Ω</span>' in dashboard
+    assert "wireSibyl()" in dashboard
+    assert "/api/sibyl" in ui
+    assert 'p.path == "/api/sibyl"' in server
+    assert 'p.path == "/admin/sibyl/evidence"' in server
+    assert 'p.path == "/admin/sibyl/forecast"' in server
+    assert 'p.path == "/admin/sibyl/outcome"' in server
+    assert 'p.path == "/admin/sibyl/scenario"' in server
+    assert "publisher's explicit source_commit" in server
+    assert '{"id": "sibyl", "title": "SIBYL Ω"' in brain
+

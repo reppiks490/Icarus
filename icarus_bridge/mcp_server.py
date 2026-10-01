@@ -490,6 +490,61 @@ def record_engine_possibility_evidence(
     return _safe_engine(lambda: _engine_post("/admin/possibility/evidence", body))
 
 
+@mcp.tool()
+def engine_sibyl_state(asset: str = "NQ") -> dict:
+    """Read SIBYL Ω probabilistic future-lightcone research diagnostics."""
+    asset = asset.strip().upper()
+    return _safe_engine(lambda: _engine_get(f"/api/sibyl?asset={asset}"))
+
+
+@mcp.tool()
+def record_engine_sibyl_evidence(evidence_json: str) -> dict:
+    """Append provenance-bound SIBYL evidence. source_commit must be explicit."""
+    try:
+        body = json.loads(evidence_json)
+    except json.JSONDecodeError as ex:
+        return {"error": f"evidence_json is invalid JSON: {ex}"}
+    if not isinstance(body, dict):
+        return {"error": "evidence_json must decode to an object"}
+    return _safe_engine(lambda: _engine_post("/admin/sibyl/evidence", body))
+
+
+@mcp.tool()
+def record_engine_sibyl_forecast(forecast_json: str) -> dict:
+    """Record a bounded SIBYL forecast for later observed calibration."""
+    try:
+        body = json.loads(forecast_json)
+    except json.JSONDecodeError as ex:
+        return {"error": f"forecast_json is invalid JSON: {ex}"}
+    if not isinstance(body, dict):
+        return {"error": "forecast_json must decode to an object"}
+    return _safe_engine(lambda: _engine_post("/admin/sibyl/forecast", body))
+
+
+@mcp.tool()
+def record_engine_sibyl_outcome(outcome_json: str) -> dict:
+    """Score a matured SIBYL forecast against an observed outcome with evidence."""
+    try:
+        body = json.loads(outcome_json)
+    except json.JSONDecodeError as ex:
+        return {"error": f"outcome_json is invalid JSON: {ex}"}
+    if not isinstance(body, dict):
+        return {"error": "outcome_json must decode to an object"}
+    return _safe_engine(lambda: _engine_post("/admin/sibyl/outcome", body))
+
+
+@mcp.tool()
+def engine_sibyl_scenario(scenario_json: str) -> dict:
+    """Run a research-only SIBYL counterfactual scenario without mutating evidence."""
+    try:
+        body = json.loads(scenario_json)
+    except json.JSONDecodeError as ex:
+        return {"error": f"scenario_json is invalid JSON: {ex}"}
+    if not isinstance(body, dict):
+        return {"error": "scenario_json must decode to an object"}
+    return _safe_engine(lambda: _engine_post("/admin/sibyl/scenario", body))
+
+
 # ── control tools (state-changing) ──
 @mcp.tool()
 def pause_trading(reason: str = "paused via MCP") -> dict:

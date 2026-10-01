@@ -26,6 +26,11 @@ def test_mcp_server_imports_and_registers_engine_surface():
         "record_engine_brain_event",
         "engine_possibility_state",
         "record_engine_possibility_evidence",
+        "engine_sibyl_state",
+        "record_engine_sibyl_evidence",
+        "record_engine_sibyl_forecast",
+        "record_engine_sibyl_outcome",
+        "engine_sibyl_scenario",
     ):
         assert callable(getattr(mcp_server, name))
 
@@ -325,3 +330,33 @@ def test_mcp_icarus_psi_routes_are_research_only(monkeypatch):
 def test_mcp_icarus_psi_rejects_non_object_evidence_json():
     assert "error" in mcp_server.record_engine_possibility_evidence("NQ", "fixture", "[]")
     assert "error" in mcp_server.record_engine_possibility_evidence("NQ", "fixture", "{bad")
+
+def test_mcp_sibyl_routes_are_research_only(monkeypatch):
+    seen = []
+    def get(path):
+        seen.append(("get", path))
+        return {"execution_authorized": False, "production_decision_authorized": False}
+    def post(path, body):
+        seen.append(("post", path, body))
+        return {"execution_authorized": False, "production_decision_authorized": False}
+    monkeypatch.setattr(mcp_server, "_engine_get", get)
+    monkeypatch.setattr(mcp_server, "_engine_post", post)
+
+    state = mcp_server.engine_sibyl_state("nq")
+    assert state["execution_authorized"] is False
+    evidence = {
+        "asset":"NQ","source":"fixture","domain":"macro","observed_at":"2026-10-01T05:00:00Z",
+        "direction":0.3,"confidence":0.8,"horizon_seconds":300,"source_commit":"a"*40
+    }
+    result = mcp_server.record_engine_sibyl_evidence(__import__("json").dumps(evidence))
+    assert result["execution_authorized"] is False
+    assert seen[0] == ("get", "/api/sibyl?asset=NQ")
+    assert seen[1][0:2] == ("post", "/admin/sibyl/evidence")
+
+
+def test_mcp_sibyl_rejects_non_object_json():
+    assert "error" in mcp_server.record_engine_sibyl_evidence("[]")
+    assert "error" in mcp_server.record_engine_sibyl_forecast("[]")
+    assert "error" in mcp_server.record_engine_sibyl_outcome("[]")
+    assert "error" in mcp_server.engine_sibyl_scenario("[]")
+
