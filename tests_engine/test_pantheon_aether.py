@@ -160,7 +160,24 @@ def test_veritas_rewards_observed_mechanism_not_merely_direction(tmp_path):
     assert state["mechanism_fidelity"] > 0.95
     assert state["right_for_wrong_reason_candidate"] is False
     assert state["adjudication"] == "outcome_and_mechanism_aligned"
-    assert state["epistemic_credit"] > 0.65
+    assert state["mechanism_credit"] > 0.95
+    assert state["outcome_weighted_mechanism_credit"] > 0.65
+
+
+def test_veritas_separates_mechanism_truth_from_negative_outcome(tmp_path):
+    payload = _payload(observation_id="pan-veritas-mechanism-right-loss")
+    payload["signals"] = dict(payload["signals"])
+    payload["signals"].update({
+        "expected_causal_signatures": {"queue": 0.80, "basis": -0.70},
+        "observed_causal_signatures": {"queue": 0.78, "basis": -0.68},
+        "realized_utility": -0.60,
+    })
+    state = PantheonKernel(tmp_path).record_observation(payload)["analysis"]["faculties"]["veritas"]
+    assert state["mechanism_fidelity"] > 0.95
+    assert state["mechanism_supported_outcome_failed"] is True
+    assert state["adjudication"] == "mechanism_supported_outcome_failed"
+    assert state["mechanism_credit"] > 0.95
+    assert state["outcome_weighted_mechanism_credit"] < 0.0
 
 
 def test_veritas_abstains_before_observed_mechanism_exists(tmp_path):
@@ -766,7 +783,7 @@ def test_mechanism_fidelity_is_separate_from_economic_fitness_and_blocks_lucky_s
             "evidence": [f"profitable-but-mechanism-missed:{i}"],
         })
     assert last["fitness_credit"] == pytest.approx(0.80)
-    assert last["epistemic_fitness_credit"] == pytest.approx(0.08)
+    assert last["epistemic_fitness_credit"] == pytest.approx(0.10)
     assert last["mechanism_evidence_count"] == 3
     assert last["right_for_wrong_reason_count"] == 3
     assert last["species_stage"] == "surviving_shadow"
@@ -777,7 +794,7 @@ def test_mechanism_fidelity_is_separate_from_economic_fitness_and_blocks_lucky_s
         if row["origin_claim_id"] == claim["claim_id"] and row["generation"] == 0
     )
     assert parent["fitness_credit"] == pytest.approx(0.80)
-    assert parent["epistemic_fitness_credit"] == pytest.approx(0.08)
+    assert parent["epistemic_fitness_credit"] == pytest.approx(0.10)
     assert parent["mechanism_evidence_count"] == 3
     assert parent["mechanism_verified"] is False
     assert not any(row["parent_species_id"] == parent["species_id"] for row in ecology["species"])
@@ -799,7 +816,7 @@ def test_supported_mechanism_allows_normal_shadow_speciation(tmp_path):
             "evidence": [f"profitable-and-mechanism-supported:{i}"],
         })
     assert last["fitness_credit"] == pytest.approx(0.80)
-    assert last["epistemic_fitness_credit"] == pytest.approx(0.72)
+    assert last["epistemic_fitness_credit"] == pytest.approx(0.90)
     assert last["mechanism_evidence_count"] == 3
     assert last["offspring_species_id"] is not None
     ecology = kernel.snapshot()["ecology"]

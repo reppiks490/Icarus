@@ -434,11 +434,15 @@ question rather than allowing a profitable direction to close the inquiry.
 
 Durable claim outcomes may additionally carry bounded
 `mechanism_fidelity`. Economic fitness and epistemic fitness are stored
-separately. Historical outcomes without mechanism evidence retain their legacy
-behavior. When explicit mechanism evidence exists and indicates a profitable
+separately: economic fitness measures observed utility, while epistemic fitness
+is the confidence-weighted causal-mechanism fidelity independent of whether the
+trade won or lost. Historical outcomes without mechanism evidence retain their
+legacy behavior. When explicit mechanism evidence exists and indicates a profitable
 result arrived through the wrong mechanism, low epistemic credit can block
 shadow speciation and cognitive-genesis recommendations even while economic
-fitness remains positive.
+fitness remains positive. When mechanism evidence is supplied, at least three
+mechanism observations and 0.60 average epistemic fidelity are required for
+that mechanism evidence to clear the evolutionary gate.
 
 VERITAS is research-only. Its scores are diagnostics, not calibrated
 probabilities, and it cannot place orders, size positions, bypass the Risk

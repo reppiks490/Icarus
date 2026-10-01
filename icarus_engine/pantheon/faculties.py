@@ -668,7 +668,8 @@ def veritas(signals: Mapping[str, Any]) -> dict[str, Any]:
         "lucky_outcome_risk": (
             max(realized, 0.0) * mismatch if realized is not None else None
         ),
-        "epistemic_credit": (
+        "mechanism_credit": fidelity,
+        "outcome_weighted_mechanism_credit": (
             realized * fidelity if realized is not None else None
         ),
         "semantics": "causal-signature fidelity diagnostic; profitable direction is not proof of a correct mechanism and no output authorizes execution",

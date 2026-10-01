@@ -664,9 +664,7 @@ class PantheonKernel:
             mechanism_weight = sum(float(row["confidence"]) for row in mechanism_rows)
             if mechanism_weight > 1e-12:
                 epistemic_fitness = sum(
-                    float(row["utility"])
-                    * float(row["confidence"])
-                    * float(row["mechanism_fidelity"])
+                    float(row["confidence"]) * float(row["mechanism_fidelity"])
                     for row in mechanism_rows
                 ) / mechanism_weight
             else:
@@ -715,7 +713,10 @@ class PantheonKernel:
                     child is None
                     and stage == "surviving_shadow"
                     and fitness >= 0.50
-                    and (mechanism_n == 0 or epistemic_fitness >= 0.20)
+                    and (
+                        mechanism_n == 0
+                        or (mechanism_n >= 3 and epistemic_fitness >= 0.60)
+                    )
                     and int(species["generation"]) < 3
                 ):
                     child_id = "species-" + digest(species["species_id"], "mutant", str(effective_n))[:18]
@@ -815,7 +816,7 @@ class PantheonKernel:
                     "mechanism_evidence_count": row["mechanism_evidence_count"],
                     "mechanism_verified": (
                         int(row["mechanism_evidence_count"]) >= 3
-                        and float(row["epistemic_fitness_credit"]) >= 0.20
+                        and float(row["epistemic_fitness_credit"]) >= 0.60
                     ),
                     "alpha_mass": alpha_mass,
                     "epistemic_mass": epistemic_mass,
@@ -897,7 +898,7 @@ class PantheonKernel:
                 row["mechanism_evidence_count"] == 0
                 or (
                     row["mechanism_evidence_count"] >= 3
-                    and row["epistemic_fitness_credit"] >= 0.20
+                    and row["epistemic_fitness_credit"] >= 0.60
                 )
             )
         ][:12]
