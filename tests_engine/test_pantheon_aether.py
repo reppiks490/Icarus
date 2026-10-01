@@ -350,7 +350,7 @@ def test_pantheon_time_is_canonical_utc_and_future_closed(tmp_path):
 
 
 def test_aether_claim_protocol_preserves_independence_and_disagreement(tmp_path):
-    kernel = PantheonKernel(tmp_path, swarm=AetherSwarm(threshold=0.0, max_agents=8))
+    kernel = PantheonKernel(tmp_path, swarm=AetherSwarm(threshold=0.0, max_agents=4))
     observation = kernel.record_observation(_payload(observation_id="pan-claims"))
     mandatory = {"falsifier", "alternative_cause", "provenance_guard", "risk_guard"}
     agents = {row["role"]: row for row in observation["analysis"]["aether"]["agents"] if row["role"] in mandatory}
@@ -454,6 +454,29 @@ def test_blind_claim_bodies_are_hidden_until_mandatory_round_completes(tmp_path)
             },
         })
 
+    assert state["deliberation"]["mandatory_roles_complete"] is True
+    assert state["deliberation"]["ready_for_deliberation"] is False
+    assert state["deliberation"]["claim_bodies_visible"] is False
+    assert all(row["claim"] is None for row in state["agent_claims"])
+
+    submitted = {row["agent_id"] for row in state["agent_claims"]}
+    for agent in observation["analysis"]["aether"]["agents"]:
+        if agent["agent_id"] in submitted:
+            continue
+        state = kernel.record_agent_claim({
+            "observation_id": observation["observation_id"],
+            "agent_id": agent["agent_id"],
+            "peer_context_used": False,
+            "claim": {
+                "thesis": f"{agent['role']} optional thesis",
+                "direction": "unknown",
+                "confidence": 0.5,
+                "falsifier": "counterexample",
+                "evidence": [f"partition:{agent['information_partition']}"],
+            },
+        })
+
     assert state["deliberation"]["ready_for_deliberation"] is True
+    assert state["deliberation"]["blind_first_pass_complete"] is True
     assert state["deliberation"]["claim_bodies_visible"] is True
     assert any((row["claim"] or {}).get("thesis") == "must remain hidden" for row in state["agent_claims"])

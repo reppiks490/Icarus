@@ -324,6 +324,10 @@ class PantheonKernel:
                 "SELECT * FROM agent_claims WHERE observation_id=? ORDER BY rowid",
                 (observation_id,),
             ).fetchall()
+            observation_row = con.execute(
+                "SELECT analysis_json FROM observations WHERE observation_id=?",
+                (observation_id,),
+            ).fetchone()
         claims = [
             {
                 "claim_id": row["claim_id"],
@@ -334,9 +338,18 @@ class PantheonKernel:
             }
             for row in rows
         ]
+        analysis = json.loads(observation_row["analysis_json"]) if observation_row else {}
+        expected_agents = analysis.get("aether", {}).get("agents", [])
+        expected_agents = [row for row in expected_agents if isinstance(row, Mapping) and row.get("agent_id")]
+        expected_ids = {str(row["agent_id"]) for row in expected_agents}
+        expected_roles = {str(row.get("role") or "") for row in expected_agents}
+        submitted_ids = {row["agent_id"] for row in claims}
         mandatory = {"falsifier", "alternative_cause", "provenance_guard", "risk_guard"}
-        present = {row["role"] for row in claims}
-        missing = sorted(mandatory - present)
+        present_roles = {row["role"] for row in claims}
+        missing_mandatory = sorted(mandatory - present_roles)
+        missing_agent_ids = sorted(expected_ids - submitted_ids)
+        mandatory_complete = not missing_mandatory
+        all_spawned_complete = bool(expected_ids) and not missing_agent_ids
         directional = [row["claim"].get("direction") for row in claims if row["claim"].get("direction") in {"long", "short", "flat"}]
         counts = {name: directional.count(name) for name in ("long", "short", "flat")}
         disagreement = None
@@ -344,16 +357,20 @@ class PantheonKernel:
             disagreement = 1.0 - (max(counts.values()) / len(directional))
         confidence_values = [float(row["claim"].get("confidence", 0.0)) for row in claims]
         return claims, {
-            "ready_for_deliberation": not missing,
+            "ready_for_deliberation": all_spawned_complete,
             "mandatory_roles": sorted(mandatory),
-            "missing_mandatory_roles": missing,
+            "expected_roles": sorted(role for role in expected_roles if role),
+            "expected_agent_claims": len(expected_ids),
+            "missing_mandatory_roles": missing_mandatory,
+            "missing_agent_ids": missing_agent_ids,
+            "mandatory_roles_complete": mandatory_complete,
             "submitted_claims": len(claims),
             "direction_counts": counts,
             "disagreement_index": disagreement,
             "mean_stated_confidence": (sum(confidence_values) / len(confidence_values)) if confidence_values else None,
-            "blind_first_pass_complete": not missing,
+            "blind_first_pass_complete": all_spawned_complete,
             "peer_conclusions_hidden_during_first_pass": True,
-            "claim_bodies_visible": not missing,
+            "claim_bodies_visible": all_spawned_complete,
             "consensus_forced": False,
             "execution_authorized": False,
             "production_decision_authorized": False,
