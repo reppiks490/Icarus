@@ -1167,7 +1167,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._json(413, {"detail": "body too large"})
             raw = self.rfile.read(n) if n else b""
             try:
-                body = strict_json(raw) if p.path.startswith(("/admin/research/", "/admin/integrity/", "/admin/parallax/", "/admin/dreamstate/", "/admin/possibility/", "/admin/autopilot/", "/admin/engine-control", "/admin/pantheon/")) else (json.loads(raw, parse_constant=_no_json_constants) if raw else {})
+                body = strict_json(raw) if p.path.startswith(("/admin/research/", "/admin/integrity/", "/admin/parallax/", "/admin/dreamstate/", "/admin/possibility/", "/admin/autopilot/", "/admin/engine-control", "/admin/pantheon/", "/admin/candidate-qualification/")) else (json.loads(raw, parse_constant=_no_json_constants) if raw else {})
             except ValueError as ex:
                 return self._json(400, {"detail": f"bad JSON body: {ex}"})
             if not isinstance(body, dict):
@@ -1213,6 +1213,25 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 try:
                     return self._json(200, record_brain_event(port.base_dir, body))
                 except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+            if p.path == "/admin/candidate-qualification/receipt":
+                try:
+                    return self._json(200, qualification.record(body))
+                except (ValueError, TypeError, RuntimeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+            if p.path == "/admin/candidate-qualification/promote":
+                try:
+                    snap = qualification.snapshot(body)
+                    event = qualification.qualification_event(body)
+                    recorded = record_brain_event(port.base_dir, event)
+                    return self._json(200, {
+                        "ok": True,
+                        "qualification": snap,
+                        "brain_event": recorded,
+                        "execution_authorized": False,
+                        "production_decision_authorized": False,
+                    })
+                except (ValueError, TypeError, RuntimeError) as ex:
                     return self._json(400, {"detail": str(ex)})
             if p.path == "/admin/performance-proof/forecast":
                 try:
