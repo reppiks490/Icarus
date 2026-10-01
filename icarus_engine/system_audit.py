@@ -364,6 +364,21 @@ def save_system_evolution(base_dir: str | os.PathLike[str], value: Any) -> Dict[
     return out
 
 
+def upsert_system_evolution_item(base_dir: str | os.PathLike[str], item: Any) -> Dict[str, Any]:
+    """Upsert one MCP evolution item without allowing a caller to erase sibling records."""
+    normalized_item = _normalize_evolution_item(item, 0)
+    current = load_system_evolution(base_dir)
+    items = [dict(row) for row in current.get("items", []) if row.get("id") != normalized_item["id"]]
+    items.append(normalized_item)
+    # Keep deterministic display ordering independent of update order.
+    items.sort(key=lambda row: (row.get("subsystem", ""), row.get("id", "")))
+    return save_system_evolution(base_dir, {
+        "source": "mcp-upsert",
+        "recorded_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "items": items,
+    })
+
+
 def _attach_evolution(audit: Dict[str, Any], base_dir: str | os.PathLike[str]) -> Dict[str, Any]:
     audit["evolution"] = load_system_evolution(base_dir)
     # Repo CI can be green while an important subsystem evolution is still blocked.
