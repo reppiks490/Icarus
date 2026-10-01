@@ -44,7 +44,10 @@ _ROLE_PARTITIONS = {
 class AetherSwarm:
     def __init__(self, threshold: float = 0.58, max_agents: int = 12):
         self.threshold = max(0.0, min(1.0, float(threshold)))
-        self.max_agents = max(1, min(32, int(max_agents)))
+        # Active swarms always preserve the four mandatory independent roles.
+        # A caller may ask for fewer workers, but that cannot weaken the
+        # independence contract advertised by the swarm.
+        self.max_agents = max(len(_MANDATORY_INDEPENDENT_ROLES), min(32, int(max_agents)))
 
     def evaluate(
         self,
