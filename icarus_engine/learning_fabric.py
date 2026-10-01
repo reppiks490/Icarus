@@ -1749,7 +1749,7 @@ class LearningFabric:
         while not self._stop.is_set():
             if self._config["enabled"]:
                 try:
-                    self.tick()
+                    self.run_cycle()
                 except Exception:
                     pass
             if self._stop.wait(self._config["cycle_seconds"]):
@@ -1790,6 +1790,7 @@ class LearningFabric:
             "datasets": {"count": dataset_count},
             "training": {"run_count": train_count},
             "predictions": {"count": prediction_count, "settled": outcome_count, "pending": max(0, prediction_count-outcome_count)},
+            "health": self.health(),
             "experiences": self.experience_state(),
             "scorecards": self.scorecards(),
             "coverage": {
