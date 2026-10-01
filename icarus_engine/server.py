@@ -257,7 +257,9 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 feed = r.feed
                 if kind == "capabilities":
                     caps = feed.capabilities() if hasattr(feed, "capabilities") else {}
-                    return self._json(200, {"asset": r.symbol, "provider": type(feed).__name__.lower(), "capabilities": caps})
+                    metadata = feed.meta(r.spec.ticker) if hasattr(feed, "meta") else {}
+                    return self._json(200, {"asset": r.symbol, "provider": type(feed).__name__.lower(),
+                                            "capabilities": caps, "metadata": metadata})
                 if kind == "ticks":
                     if not hasattr(feed, "trades"):
                         return self._json(409, {"error": f"{type(feed).__name__} does not expose trade ticks"})
@@ -435,7 +437,16 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     if not hasattr(r.feed, "mbo_snapshot"):
                         return self._json(409, {"error": f"{type(r.feed).__name__} does not expose MBO snapshots"})
                     timeout = max(0.1, min(30.0, float(body.get("timeout", 5.0))))
-                    rows = r.feed.mbo_snapshot(r.spec.ticker, timeout=timeout)
+                    try:
+                        rows = r.feed.mbo_snapshot(r.spec.ticker, timeout=timeout)
+                    except TimeoutError as ex:
+                        port.journal.log("WARN", f"market-data MBO snapshot {r.symbol}: {ex}")
+                        return self._json(504, {"error": str(ex)})
+                    except ValueError as ex:
+                        return self._json(400, {"error": str(ex)})
+                    except Exception as ex:
+                        port.journal.log("WARN", f"market-data MBO snapshot {r.symbol}: {type(ex).__name__}: {ex}")
+                        return self._json(502, {"error": f"{type(ex).__name__}: {ex}"})
                     return self._json(200, {"asset": r.symbol, "provider": type(r.feed).__name__.lower(),
                                             "schema": "mbo", "snapshot": rows})
                 if p.path in ("/admin/inputs", "/admin/inputs/reset", "/admin/preset", "/admin/rewarm"):
