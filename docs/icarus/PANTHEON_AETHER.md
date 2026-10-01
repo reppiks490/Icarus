@@ -5,10 +5,12 @@ actions, sizing, or production promotion.
 
 ## Ownership boundary
 
-This integration deliberately **does not reimplement or absorb ORACLE, PARALLAX,
-or DREAMSTATE**. ORACLE remains the owner of latent market pressure / causal
-leadership work. PARALLAX remains the owner of counterfactual decision twins.
-DREAMSTATE remains the owner of shadow policy incubation.
+This integration deliberately **does not reimplement or absorb ORACLE, ICARUS Ψ,
+PARALLAX, or DREAMSTATE**. ORACLE remains a separate subsystem identity. ICARUS Ψ
+remains the owner of the current latent-pressure / market-possibility diagnostics
+adapted here. PANTHEON never relabels Ψ evidence as ORACLE evidence. PARALLAX
+remains the owner of counterfactual decision twins. DREAMSTATE remains the owner
+of shadow policy incubation.
 
 PANTHEON adds independent faculties:
 
@@ -40,7 +42,7 @@ exact source commit. AETHER agents are disposable workers with bounded TTLs.
 7. ARCHON leases research attention only.
 8. MINT outputs candidate expressions only.
 9. The external hard Risk Kernel remains mandatory.
-10. ORACLE / PARALLAX / DREAMSTATE ownership is preserved.
+10. ORACLE / ICARUS Ψ / PARALLAX / DREAMSTATE ownership is preserved, and Ψ is never renamed or absorbed into ORACLE.
 
 ## API
 

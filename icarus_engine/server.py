@@ -1109,15 +1109,15 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                         existing_outputs = {}
                     if not isinstance(existing_outputs, dict):
                         raise ValueError("subsystem_outputs must be an object")
-                    oracle_state = None
+                    psi_state = None
                     try:
-                        oracle_state = possibility.snapshot(payload.get("asset", ""))
+                        psi_state = possibility.snapshot(payload.get("asset", ""))
                     except Exception as ex:
-                        port.journal.log("WARN", f"PANTHEON ORACLE adapter: {type(ex).__name__}: {ex}")
+                        port.journal.log("WARN", f"PANTHEON Psi adapter: {type(ex).__name__}: {ex}")
                     payload["subsystem_outputs"] = subsystem_context(
                         parallax.snapshot(limit=12),
                         dreamstate.snapshot(limit=20),
-                        oracle_snapshot=oracle_state,
+                        psi_snapshot=psi_state,
                         existing=existing_outputs,
                     )
                     return self._json(200, pantheon.record_observation(payload))

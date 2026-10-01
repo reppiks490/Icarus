@@ -831,3 +831,36 @@ def test_extended_faculty_timing_and_stress_inputs_fail_closed(tmp_path):
     bad_ttl["signals"] = dict(bad_ttl["signals"], lease_ttl_seconds=30.5)
     with pytest.raises(ValueError, match="lease_ttl_seconds must be an integer"):
         kernel.record_observation(bad_ttl)
+
+def test_pantheon_psi_adapter_preserves_oracle_identity():
+    snapshot = {
+        "schema_version": "icarus-possibility-v1",
+        "asset": "NQ",
+        "generated_at": "2026-10-01T06:00:00Z",
+        "latent_pressure_engine": {
+            "latent_pressure": 0.42,
+            "latent_pressure_score": 42.0,
+            "evidence_coverage": 0.75,
+        },
+        "possibility": {"future_entropy": 31.0, "future_space_collapse": 69.0},
+        "edge_state": {"state": "LONG_BIAS", "confidence": 0.61},
+        "phase_transition": {"direction": "UP"},
+        "forced_consensus": {"active": True, "direction": "UP"},
+        "causal_leadership": {"status": "observed"},
+    }
+    existing = {"oracle": {"status": "external-oracle", "identity": "oracle"}}
+    out = subsystem_context({}, {}, psi_snapshot=snapshot, existing=existing)
+    assert out["oracle"] == existing["oracle"]
+    assert out["psi"]["subsystem"] == "psi"
+    assert out["psi"]["latent_pressure"] == pytest.approx(0.42)
+    assert out["psi"]["evidence_coverage"] == pytest.approx(0.75)
+    assert "distinct from ORACLE" in out["psi"]["source_semantics"]
+
+
+def test_pantheon_numeric_contracts_reject_out_of_range_values():
+    from icarus_engine.pantheon.contracts import unit, signed_unit
+    with pytest.raises(ValueError, match="between 0 and 1"):
+        unit(1.1, "confidence")
+    with pytest.raises(ValueError, match="between -1 and 1"):
+        signed_unit(-1.1, "direction")
+
