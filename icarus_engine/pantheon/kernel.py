@@ -528,6 +528,25 @@ class PantheonKernel:
             if len(interactions) >= 64:
                 break
 
+        active_species = [row for row in species if row["stage"] != "retired"]
+        retired_species = [row for row in species if row["stage"] == "retired"]
+        for parasite in retired_species:
+            hosts = [
+                host for host in active_species
+                if host["asset"] == parasite["asset"] and host["fitness_credit"] >= 0.20
+            ]
+            if hosts:
+                host = max(hosts, key=lambda row: row["fitness_credit"])
+                interactions.append({
+                    "type": "parasitic_drag",
+                    "parasite": parasite["species_id"],
+                    "host": host["species_id"],
+                    "asset": parasite["asset"],
+                    "basis": "retired negative-fitness research species previously competed for the same asset attention",
+                })
+                if len(interactions) >= 64:
+                    break
+
         alpha_food_web = sorted(
             [row for row in species if row["stage"] != "retired" and row["alpha_mass"] > 0],
             key=lambda row: (row["alpha_mass"], row["fitness_credit"], row["evidence_count"]),
