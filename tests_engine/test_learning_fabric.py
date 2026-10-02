@@ -1452,3 +1452,146 @@ def test_legacy_unversioned_calibrator_schema_migrates_fail_closed(tmp_path):
     assert fabric._conn.execute(
         "SELECT COUNT(*) FROM calibration_models WHERE source_commit<>''"
     ).fetchone()[0] == 0
+
+
+def test_shadow_calibrator_retires_on_post_validation_drift(tmp_path):
+    from icarus_engine.learning_fabric import LearningFabric
+
+    fabric = LearningFabric(tmp_path)
+    start = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    rebuilt = None
+    _settled_calibration_case(fabric, start=start, n=40)
+    rebuilt = fabric.rebuild_shadow_calibrators(min_samples=30)
+    model = rebuilt["models"][0]
+    assert model["status"] == "SHADOW_VALIDATED"
+    calibrator_id = model["calibrator_id"]
+    cutoff = datetime.fromisoformat(model["training_cutoff"].replace("Z", "+00:00"))
+
+    # Hold the validated revision stable and collect true OOS evidence. The
+    # historical map sends 0.6 toward event=True; the later world reverses.
+    for i in range(8):
+        pred = fabric.record_prediction({
+            "producer": "cal-test",
+            "asset": "NQ",
+            "target": "event",
+            "prediction": True,
+            "probability": 0.6,
+            "emitted_at": _iso(cutoff + timedelta(minutes=i + 1)),
+            "horizon_seconds": 60,
+            "regime": "trend",
+            "evidence_ids": [f"drift:{i}"],
+            "source_commit": "a" * 40,
+        })["prediction"]
+        shadow = fabric.shadow_calibration(pred["prediction_id"])
+        assert shadow is not None
+        assert shadow["calibrator_id"] == calibrator_id
+        fabric.record_outcome({
+            "prediction_id": pred["prediction_id"],
+            "observed_at": pred["resolves_at"],
+            "actual_value": False,
+            "evidence": [f"drift-truth:{i}"],
+        })
+
+    drift = fabric.evaluate_shadow_calibrator_drift(
+        min_samples=8, recent_window=8, degradation_margin=0.05
+    )
+    assert drift["retired"] == 1
+    row = next(x for x in drift["models"] if x["calibrator_id"] == calibrator_id)
+    assert row["action"] == "DRIFT_RETIRED"
+    assert row["calibrated_brier"] > row["raw_brier"] + 0.05
+
+    state = fabric.shadow_calibration_state()
+    assert state["drift_retired_model_count"] == 1
+    retired = next(x for x in state["models"] if x["calibrator_id"] == calibrator_id)
+    assert retired["status"] == "DRIFT_RETIRED"
+    assert retired["retired_at"] is not None
+    assert "out-of-sample" in retired["retirement_reason"].lower()
+
+    future = fabric.record_prediction({
+        "producer": "cal-test",
+        "asset": "NQ",
+        "target": "event",
+        "prediction": True,
+        "probability": 0.6,
+        "emitted_at": _iso(cutoff + timedelta(hours=1)),
+        "horizon_seconds": 60,
+        "regime": "trend",
+        "evidence_ids": ["after-drift-retirement"],
+        "source_commit": "a" * 40,
+    })["prediction"]
+    assert fabric.shadow_calibration(future["prediction_id"]) is None
+
+
+def test_shadow_calibrator_survives_when_oos_calibration_is_not_worse(tmp_path):
+    from icarus_engine.learning_fabric import LearningFabric
+
+    fabric = LearningFabric(tmp_path)
+    start = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    _settled_calibration_case(fabric, start=start, n=40)
+    model = fabric.rebuild_shadow_calibrators(min_samples=30)["models"][0]
+    cutoff = datetime.fromisoformat(model["training_cutoff"].replace("Z", "+00:00"))
+
+    for i in range(8):
+        pred = fabric.record_prediction({
+            "producer": "cal-test",
+            "asset": "NQ",
+            "target": "event",
+            "prediction": True,
+            "probability": 0.6,
+            "emitted_at": _iso(cutoff + timedelta(minutes=i + 1)),
+            "horizon_seconds": 60,
+            "regime": "trend",
+            "evidence_ids": [f"stable:{i}"],
+            "source_commit": "a" * 40,
+        })["prediction"]
+        fabric.record_outcome({
+            "prediction_id": pred["prediction_id"],
+            "observed_at": pred["resolves_at"],
+            "actual_value": True,
+            "evidence": [f"stable-truth:{i}"],
+        })
+
+    drift = fabric.evaluate_shadow_calibrator_drift(
+        min_samples=8, recent_window=8, degradation_margin=0.05
+    )
+    assert drift["retired"] == 0
+    state = fabric.shadow_calibration_state()
+    assert state["drift_retired_model_count"] == 0
+    assert state["models"][0]["status"] == "SHADOW_VALIDATED"
+
+
+def test_refresh_batch_holds_calibrator_stable_for_oos_measurement(tmp_path):
+    from icarus_engine.learning_fabric import LearningFabric
+
+    fabric = LearningFabric(tmp_path)
+    start = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    _settled_calibration_case(fabric, start=start, n=40)
+    first = fabric.rebuild_shadow_calibrators(min_samples=30)
+    first_id = first["models"][0]["calibrator_id"]
+    cutoff = datetime.fromisoformat(first["models"][0]["training_cutoff"].replace("Z", "+00:00"))
+
+    for i in range(5):
+        pred = fabric.record_prediction({
+            "producer": "cal-test",
+            "asset": "NQ",
+            "target": "event",
+            "prediction": True,
+            "probability": 0.6,
+            "emitted_at": _iso(cutoff + timedelta(minutes=i + 1)),
+            "horizon_seconds": 60,
+            "regime": "trend",
+            "evidence_ids": [f"refresh:{i}"],
+            "source_commit": "a" * 40,
+        })["prediction"]
+        fabric.record_outcome({
+            "prediction_id": pred["prediction_id"],
+            "observed_at": pred["resolves_at"],
+            "actual_value": False,
+            "evidence": [f"refresh-truth:{i}"],
+        })
+
+    held = fabric.rebuild_shadow_calibrators(min_samples=30, refresh_samples=12)
+    assert held["built"] == 0
+    assert held["awaiting_refresh"] == 1
+    state = fabric.shadow_calibration_state()
+    assert state["models"][0]["calibrator_id"] == first_id
