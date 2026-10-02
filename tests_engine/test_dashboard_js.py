@@ -524,7 +524,11 @@ def test_dashboard_catalogs_recover_after_transient_startup_failures():
     dashboard = (REPO / "icarus_engine/dashboard.html").read_text(encoding="utf-8")
     assert "async function refreshUiCatalogs()" in dashboard
     assert "Promise.allSettled([get('/api/presets'), get('/api/commands'), get('/api/assets')])" in dashboard
-    assert "if (!COMMANDS.length || !REGISTRY.length) refreshUiCatalogs();" in dashboard
+    assert "const CATALOG_READY = {presets:false, commands:false, registry:false};" in dashboard
+    assert "CATALOG_READY.presets = true;" in dashboard
+    assert "CATALOG_READY.commands = true;" in dashboard
+    assert "CATALOG_READY.registry = true;" in dashboard
+    assert "if (!CATALOG_READY.presets || !CATALOG_READY.commands || !CATALOG_READY.registry) refreshUiCatalogs();" in dashboard
     assert "catalogRefreshBusy" in dashboard
 
 
