@@ -1383,20 +1383,30 @@ class LearningFabric:
         evaluated = []
         retired = 0
         for model in models:
-            rows = self._conn.execute(
-                """SELECT prediction_id,raw_brier,calibrated_brier,settled_at
-                   FROM shadow_calibrations
-                   WHERE calibrator_id=? AND status='SETTLED'
-                     AND raw_brier IS NOT NULL AND calibrated_brier IS NOT NULL
-                   ORDER BY settled_at DESC,prediction_id DESC LIMIT ?""",
-                (model["calibrator_id"], recent_window),
+            candidate_limit = min(10000, max(recent_window * 50, min_samples * 50))
+            raw_rows = self._conn.execute(
+                """SELECT s.prediction_id,s.raw_brier,s.calibrated_brier,s.settled_at,
+                          p.emitted_ts,p.resolves_ts
+                   FROM shadow_calibrations s
+                   JOIN predictions p ON p.prediction_id=s.prediction_id
+                   WHERE s.calibrator_id=? AND s.status='SETTLED'
+                     AND s.raw_brier IS NOT NULL AND s.calibrated_brier IS NOT NULL
+                   ORDER BY p.emitted_ts DESC,s.prediction_id DESC LIMIT ?""",
+                (model["calibrator_id"], candidate_limit),
             ).fetchall()
+            raw_sample_count = len(raw_rows)
+            effective_all = self._purge_overlapping_prediction_rows(raw_rows)
+            overlap_purged = raw_sample_count - len(effective_all)
+            rows = effective_all[-recent_window:]
             n = len(rows)
             if n < min_samples:
                 evaluated.append({
                     "calibrator_id": model["calibrator_id"],
                     "action": "INSUFFICIENT_OOS",
                     "sample_count": n,
+                    "raw_sample_count": raw_sample_count,
+                    "effective_sample_count": n,
+                    "overlap_purged": overlap_purged,
                     "required_samples": min_samples,
                     **_authority(),
                 })
@@ -1409,7 +1419,8 @@ class LearningFabric:
             reason = (
                 f"out-of-sample calibrated Brier={calibrated_brier:.6f}, "
                 f"raw Brier={raw_brier:.6f}, degradation={degradation:.6f} "
-                f"over {n} recent settled shadow forecasts"
+                f"over {n} effective non-overlapping recent shadow forecasts "
+                f"from {raw_sample_count} raw settled forecasts"
             )
             if degradation > margin:
                 action = "DRIFT_RETIRED"
@@ -1452,6 +1463,9 @@ class LearningFabric:
                 "calibrator_id": model["calibrator_id"],
                 "action": action,
                 "sample_count": n,
+                "raw_sample_count": raw_sample_count,
+                "effective_sample_count": n,
+                "overlap_purged": overlap_purged,
                 "raw_brier": raw_brier,
                 "calibrated_brier": calibrated_brier,
                 "degradation": degradation,
