@@ -43,6 +43,7 @@
       let key='—';
       if(kv[0]==='nullspace') key='debt '+num(row.causal_debt,3)+' · '+h(row.debt_state||'open')+' · pressure '+pct(row.repayment_pressure);
       else if(kv[0]==='godel') key='ident '+pct(row.identifiability)+' · worlds '+num(row.effective_world_count,2)+(row.epistemic_blindspot?' · BLINDSPOT':'');
+      else if(kv[0]==='kairos') key='frontier '+h((row.frontier||[]).length)+' · positive '+h(row.positive_candidate_count||0)+(row.best_candidate?(' · '+h(row.best_candidate.name)+' '+num(row.best_candidate.net_information_value,3)):'');
       else if(kv[0]==='ananke') key='asym '+num(row.asymmetry,3)+' · collapse '+pct(row.reachable_space_collapse);
       else if(kv[0]==='nemesis') key='survival '+pct(row.survival_score)+(row.edge_half_life_seconds!=null?' · half-life '+num(row.edge_half_life_seconds,1)+'s':' · half-life unmeasured');
       else if(kv[0]==='ex_nihilo') key='surprise '+pct(row.ontology_surprise);
@@ -98,6 +99,7 @@
         '<div class="pan-field"><div class="k">Resurrection pressure</div><b>'+pct(field.resurrection_pressure)+'</b></div>'+
         '<div class="pan-field"><div class="k">Proof gap</div><b>'+pct(field.proof_gap)+'</b></div>'+
         '<div class="pan-field"><div class="k">Value of waiting</div><b>'+pct(field.information_value_pressure)+'</b><div class="small muted">'+h(field.value_of_waiting_action||'unavailable')+'</div></div>'+
+        '<div class="pan-field"><div class="k">Information frontier</div><b>'+pct(field.information_acquisition_value)+'</b><div class="small muted">'+h(field.information_acquisition_candidate||'no declared positive-value action')+'</div></div>'+
         '<div class="pan-field"><div class="k">Topology pressure</div><b>'+pct(field.topology_pressure)+'</b></div>'+
         '<div class="pan-field"><div class="k">Self-failure pressure</div><b>'+pct(field.self_failure_pressure)+'</b><div class="small muted">'+h(field.self_model_posture||'unavailable')+'</div></div>'+
         '<div class="pan-field"><div class="k">APEX lineage</div><b>'+h(apexLineage.status||'UNAVAILABLE')+'</b><div class="small muted">'+h(apexLineage.lineage_owner||'no verified root map')+'</div></div>'+
