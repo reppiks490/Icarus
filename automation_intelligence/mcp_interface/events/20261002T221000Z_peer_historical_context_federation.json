@@ -11,18 +11,18 @@
   ],
   "recorded_at": "2026-10-02T22:10:00Z",
   "title": "Validate Icarus-engine historical context as non-promotable foreign research evidence",
-  "summary": "Adaptive Brain now validates revision-bound historical peer artifacts against the producer contract, verifies immutable artifact/history identities, exposes them as context-only evidence, and fails closed on candidate-promotion or execution-authority escalation.",
+  "summary": "Adaptive Brain validates revision-bound historical peer artifacts against the producer contract, verifies each artifact ID plus the exact Git blob of its source latest.json at the packet source revision, exposes the result as context-only evidence, and fails closed on substitution, candidate-promotion, or execution-authority escalation.",
   "source_repository": "reppiks490/Icarus",
   "source_ref": "chatgpt/peer-historical-context-20261002",
-  "source_commit": "e38c8fae8788c2e011a8c39716893d4e28ee2a9c",
+  "source_commit": "611616a7992540f27d2ab668303dd8842dab6515",
   "evidence": [
     "icarus_engine/brain_sync.py",
     "icarus_engine/brain-ui.js",
     "tests_engine/test_brain_sync.py",
     "tests_engine/test_dashboard_js.py",
     ".github/workflows/live-engine-federation-gate.yml",
-    "peer contract: reppiks490/Icarus-engine/automation_intelligence/mcp_interface/icarus_consumer_contract.json",
-    "peer packet: reppiks490/Icarus-engine/automation_intelligence/interrepo/latest.json"
+    "producer source-blob binding merged in reppiks490/Icarus-engine@3080d1c97f2d40c39acf3faeb6d0d2e3c1c3cd52",
+    "live peer packet source artifact blobs are checked at the packet source_commit before context is accepted"
   ],
   "execution_authorized": false,
   "production_decision_authorized": false
