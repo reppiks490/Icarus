@@ -2799,3 +2799,195 @@ def test_already_imported_ambiguous_history_self_heals_when_manifest_adds_sessio
         ).fetchall()
     ]
     assert persisted_after == persisted_before
+
+
+
+def test_manifest_explicit_timeframe_disambiguates_report_candidates(tmp_path):
+    import hashlib
+    from icarus_engine.learning_fabric import LearningFabric
+
+    trade_path = _trade_list(
+        tmp_path / "history" / "drop" / "THE_PULSE_NQ_20M_EXPLICIT.csv"
+    )
+    trade_sha = hashlib.sha256(trade_path.read_bytes()).hexdigest()
+    _write_intake_manifest(
+        tmp_path / "history" / "EXPORT_INTAKE_MANIFEST.csv",
+        [
+            {
+                "sha256": trade_sha,
+                "canonical_filename": trade_path.name,
+                "format": "csv",
+                "artifact_class": "trade_list",
+                "symbol": "CME_MINI:NQ1!",
+                "timeframe": "20 minutes",
+                "session_mode": "RTH",
+                "rows": 4,
+                "last_trade_number": 2,
+            },
+            {
+                "sha256": "c" * 64,
+                "canonical_filename": "candidate-20m.xlsx",
+                "format": "xlsx",
+                "artifact_class": "strategy_report_xlsx",
+                "symbol": "CME_MINI:NQ1!",
+                "timeframe": "20m",
+                "session_mode": "RTH",
+                "rows": 4,
+                "last_trade_number": 2,
+            },
+            {
+                "sha256": "d" * 64,
+                "canonical_filename": "candidate-2m.xlsx",
+                "format": "xlsx",
+                "artifact_class": "strategy_report_xlsx",
+                "symbol": "CME_MINI:NQ1!",
+                "timeframe": "2 minutes",
+                "session_mode": "RTH",
+                "rows": 4,
+                "last_trade_number": 2,
+            },
+        ],
+    )
+
+    fabric = LearningFabric(tmp_path)
+    dataset_id = fabric.scan_history()["dataset_ids"][0]
+    fabric.backfill_dataset(dataset_id)
+    state = fabric.experience_state()
+
+    assert state["artifact_scoped_count"] == 2
+    assert state["unscoped_count"] == 0
+    card = state["by_artifact_configuration"][0]
+    assert card["timeframe"] == "20m"
+    assert card["strategy_report_sha256"] == "c" * 64
+    assert card["linkage_rule"] == "UNIQUE_SYMBOL_ROWS_LAST_TRADE_TIMEFRAME_SESSION_MODE"
+
+
+@pytest.mark.parametrize(
+    ("trade_chart", "matching_chart"),
+    [
+        ("Heikin Ashi (verified transform)", "Heikin Ashi"),
+        ("Candles", "standard candles"),
+    ],
+)
+def test_manifest_explicit_chart_representation_disambiguates_reports(
+    tmp_path, trade_chart, matching_chart
+):
+    import hashlib
+    from icarus_engine.learning_fabric import LearningFabric
+
+    trade_path = _trade_list(
+        tmp_path / "history" / "drop" / ("THE_PULSE_NQ_" + trade_chart.split()[0] + ".csv")
+    )
+    trade_sha = hashlib.sha256(trade_path.read_bytes()).hexdigest()
+    match_sha = "e" * 64
+    other_sha = "f" * 64
+    other_chart = "Candles" if "Heikin" in trade_chart else "Heikin Ashi"
+    _write_intake_manifest(
+        tmp_path / "history" / "EXPORT_INTAKE_MANIFEST.csv",
+        [
+            {
+                "sha256": trade_sha,
+                "canonical_filename": trade_path.name,
+                "format": "csv",
+                "artifact_class": "trade_list",
+                "symbol": "CME_MINI:NQ1!",
+                "timeframe": "20 minutes",
+                "chart_type": trade_chart,
+                "session_mode": "RTH",
+                "rows": 4,
+                "last_trade_number": 2,
+            },
+            {
+                "sha256": match_sha,
+                "canonical_filename": "candidate-match.xlsx",
+                "format": "xlsx",
+                "artifact_class": "strategy_report_xlsx",
+                "symbol": "CME_MINI:NQ1!",
+                "timeframe": "20m",
+                "chart_type": matching_chart,
+                "session_mode": "RTH",
+                "rows": 4,
+                "last_trade_number": 2,
+            },
+            {
+                "sha256": other_sha,
+                "canonical_filename": "candidate-other.xlsx",
+                "format": "xlsx",
+                "artifact_class": "strategy_report_xlsx",
+                "symbol": "CME_MINI:NQ1!",
+                "timeframe": "20m",
+                "chart_type": other_chart,
+                "session_mode": "RTH",
+                "rows": 4,
+                "last_trade_number": 2,
+            },
+        ],
+    )
+
+    fabric = LearningFabric(tmp_path)
+    dataset_id = fabric.scan_history()["dataset_ids"][0]
+    fabric.backfill_dataset(dataset_id)
+    state = fabric.experience_state()
+
+    assert state["artifact_scoped_count"] == 2
+    assert state["unscoped_count"] == 0
+    card = state["by_artifact_configuration"][0]
+    assert card["strategy_report_sha256"] == match_sha
+    assert card["linkage_rule"] == (
+        "UNIQUE_SYMBOL_ROWS_LAST_TRADE_TIMEFRAME_CHART_TYPE_SESSION_MODE"
+    )
+
+
+def test_manifest_missing_trade_chart_and_timeframe_does_not_guess(tmp_path):
+    import hashlib
+    from icarus_engine.learning_fabric import LearningFabric
+
+    trade_path = _trade_list(
+        tmp_path / "history" / "drop" / "THE_PULSE_NQ_NO_REPRESENTATION.csv"
+    )
+    trade_sha = hashlib.sha256(trade_path.read_bytes()).hexdigest()
+    _write_intake_manifest(
+        tmp_path / "history" / "EXPORT_INTAKE_MANIFEST.csv",
+        [
+            {
+                "sha256": trade_sha,
+                "canonical_filename": trade_path.name,
+                "format": "csv",
+                "artifact_class": "trade_list",
+                "symbol": "CME_MINI:NQ1!",
+                "rows": 4,
+                "last_trade_number": 2,
+            },
+            {
+                "sha256": "1" * 64,
+                "canonical_filename": "candidate-ha-20m.xlsx",
+                "format": "xlsx",
+                "artifact_class": "strategy_report_xlsx",
+                "symbol": "CME_MINI:NQ1!",
+                "timeframe": "20m",
+                "chart_type": "Heikin Ashi",
+                "rows": 4,
+                "last_trade_number": 2,
+            },
+            {
+                "sha256": "2" * 64,
+                "canonical_filename": "candidate-candles-2m.xlsx",
+                "format": "xlsx",
+                "artifact_class": "strategy_report_xlsx",
+                "symbol": "CME_MINI:NQ1!",
+                "timeframe": "2m",
+                "chart_type": "Candles",
+                "rows": 4,
+                "last_trade_number": 2,
+            },
+        ],
+    )
+
+    fabric = LearningFabric(tmp_path)
+    dataset_id = fabric.scan_history()["dataset_ids"][0]
+    fabric.backfill_dataset(dataset_id)
+    state = fabric.experience_state()
+
+    assert state["artifact_scoped_count"] == 0
+    assert state["unscoped_count"] == 2
+    assert state["by_artifact_configuration"] == []
