@@ -229,6 +229,8 @@ def _default_state(interval_seconds: int) -> dict[str, Any]:
             "legacy_exception_count": 0,
             "peer_packet_schema": None,
             "peer_packet_authority": "OBSERVE",
+            "peer_lane_source_witnesses_required": False,
+            "peer_lane_source_witness_fields": [],
             "historical_context_mode": "UNDECLARED",
             "historical_context_never_bypasses_foundry": True,
             "historical_context_never_bypasses_evaluator": True,
@@ -714,6 +716,8 @@ def _normalize_federation_contract(
             "peer_packet_freshness_required": True,
             "peer_packet_max_age_seconds": 1800,
             "peer_packet_max_future_skew_seconds": 300,
+            "peer_lane_source_witnesses_required": True,
+            "peer_lane_source_witness_fields": expected_lane_witness_fields,
             "historical_context_mode": (
                 "RESEARCH_CONTEXT_ONLY" if historical_sources else "UNDECLARED"
             ),
