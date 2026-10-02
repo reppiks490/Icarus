@@ -84,6 +84,23 @@ def _remote_compare_api(source_commit: str) -> str:
     return f"https://api.github.com/repos/{REMOTE_REPOSITORY}/compare/{source}...{REMOTE_REF}"
 
 
+def _remote_artifact_api(path: str, source_commit: str) -> str:
+    source = str(source_commit or "").strip().lower()
+    candidate = str(path or "").strip()
+    if not _is_sha(source):
+        raise ValueError("peer artifact source commit must be an exact 40-character Git SHA")
+    if (
+        not candidate.startswith("automation_intelligence/")
+        or candidate.startswith("/")
+        or ".." in candidate.split("/")
+    ):
+        raise ValueError("peer artifact path is outside the allowed automation_intelligence root")
+    return (
+        f"https://api.github.com/repos/{REMOTE_REPOSITORY}/contents/"
+        f"{candidate}?ref={source}"
+    )
+
+
 def _state_path(base_dir: str | os.PathLike[str]) -> Path:
     return Path(base_dir) / "audit" / "brain_remote_sync.json"
 
@@ -120,6 +137,7 @@ def _default_state(interval_seconds: int) -> dict[str, Any]:
         "peer_historical_artifacts": [],
         "peer_historical_context_count": 0,
         "peer_historical_collection_count": 0,
+        "peer_historical_source_blob_verified_count": 0,
         "consumer_contract_blob_sha": None,
         "producer_contract_blob_sha": None,
         "truth_contract": {
@@ -140,6 +158,8 @@ def _default_state(interval_seconds: int) -> dict[str, Any]:
             "peer_historical_context_source_count": 0,
             "peer_historical_context_candidate_evidence": False,
             "peer_historical_context_execution_authorized": False,
+            "peer_historical_source_blob_required": True,
+            "peer_historical_artifact_id_sha256_required": True,
         },
         "execution_authorized": False,
         "production_decision_authorized": False,
@@ -351,6 +371,10 @@ def _normalize_federation_contract(
         raise ValueError("Icarus-engine Brain federation historical context contract is missing")
     if historical_context.get("mode") != "RESEARCH_CONTEXT_ONLY":
         raise ValueError("Icarus-engine historical context mode must remain RESEARCH_CONTEXT_ONLY")
+    if historical_context.get("source_artifact_blob_required") is not True:
+        raise ValueError("Icarus-engine historical context must require exact source artifact blobs")
+    if historical_context.get("artifact_id_sha256_required") is not True:
+        raise ValueError("Icarus-engine historical context must require SHA-256 artifact IDs")
     for key in (
         "direct_candidate_evidence",
         "automatic_candidate_creation",
@@ -649,8 +673,15 @@ def _normalize_peer_packet(
 
         if raw.get("artifact_kind") != "HISTORICAL_LATEST":
             raise ValueError(f"Icarus-engine peer historical artifact {lane} has unsupported kind")
-        if str(raw.get("path") or "") != str(source.get("path") or ""):
+        artifact_path = str(raw.get("path") or "")
+        if artifact_path != str(source.get("path") or ""):
             raise ValueError(f"Icarus-engine peer historical artifact {lane} path mismatch")
+        _remote_artifact_api(artifact_path, source_commit)
+        source_artifact_blob_sha = str(raw.get("source_artifact_blob_sha") or "").lower()
+        if not _is_sha(source_artifact_blob_sha):
+            raise ValueError(
+                f"Icarus-engine peer historical artifact {lane} source artifact blob is invalid"
+            )
         if raw.get("evidence_status") != source.get("evidence_status"):
             raise ValueError(f"Icarus-engine peer historical artifact {lane} evidence status mismatch")
         if raw.get("research_context_eligible") is not True:
@@ -716,7 +747,9 @@ def _normalize_peer_packet(
             "artifact_id": artifact_id,
             "lane": lane,
             "artifact_kind": "HISTORICAL_LATEST",
-            "path": str(raw.get("path")),
+            "path": artifact_path,
+            "source_artifact_blob_sha": source_artifact_blob_sha,
+            "source_artifact_blob_verified": False,
             "run_id": run_id,
             "run_status": "RUN_PERSISTED",
             "evidence_status": str(raw.get("evidence_status")),
@@ -922,6 +955,59 @@ class BrainRemoteSync:
                     normalized_peer["peer_source_commit_verified"] = True
                     normalized_peer["peer_source_commit_relation"] = relation.upper()
 
+                    verified_historical = 0
+                    for artifact in normalized_peer["peer_historical_artifacts"]:
+                        artifact_api = _remote_artifact_api(
+                            artifact["path"],
+                            source_commit,
+                        )
+                        artifact_meta = self._fetch_json(artifact_api)
+                        if not isinstance(artifact_meta, Mapping):
+                            raise ValueError(
+                                f"peer historical artifact metadata is not an object: {artifact['lane']}"
+                            )
+                        artifact_blob = str(artifact_meta.get("sha") or "").lower()
+                        artifact_url = str(artifact_meta.get("url") or "")
+                        if not _is_sha(artifact_blob) or not artifact_url:
+                            raise ValueError(
+                                f"peer historical artifact has invalid GitHub blob metadata: {artifact['lane']}"
+                            )
+                        if artifact_blob != artifact["source_artifact_blob_sha"]:
+                            raise ValueError(
+                                f"peer historical artifact source blob mismatch: {artifact['lane']}"
+                            )
+                        artifact_raw = self._fetch_bytes(artifact_url)
+                        if _git_blob_sha(artifact_raw) != artifact_blob:
+                            raise ValueError(
+                                f"peer historical artifact Git blob SHA mismatch: {artifact['lane']}"
+                            )
+                        artifact_source = json.loads(artifact_raw.decode("utf-8"))
+                        if not isinstance(artifact_source, Mapping):
+                            raise ValueError(
+                                f"peer historical artifact source is not an object: {artifact['lane']}"
+                            )
+                        if artifact_source.get("execution_authorized") is True:
+                            raise ValueError(
+                                f"peer historical artifact source attempts execution authority: {artifact['lane']}"
+                            )
+                        source_run_id = artifact_source.get("RUN_ID") or artifact_source.get("run_id")
+                        source_run_status = (
+                            artifact_source.get("RUN_STATUS") or artifact_source.get("status")
+                        )
+                        if str(source_run_id or "") != artifact["run_id"]:
+                            raise ValueError(
+                                f"peer historical artifact source run_id mismatch: {artifact['lane']}"
+                            )
+                        if str(source_run_status or "").upper() != artifact["run_status"]:
+                            raise ValueError(
+                                f"peer historical artifact source run status mismatch: {artifact['lane']}"
+                            )
+                        artifact["source_artifact_blob_verified"] = True
+                        verified_historical += 1
+                    normalized_peer["peer_historical_source_blob_verified_count"] = (
+                        verified_historical
+                    )
+
                     now = self._now_utc()
                     if not isinstance(now, datetime) or now.tzinfo is None or now.utcoffset() is None:
                         raise ValueError("peer packet freshness clock must be timezone-aware")
@@ -969,6 +1055,7 @@ class BrainRemoteSync:
                         "peer_historical_artifacts": [],
                         "peer_historical_context_count": 0,
                         "peer_historical_collection_count": 0,
+                        "peer_historical_source_blob_verified_count": 0,
                     })
                     peer_error = f"{type(ex).__name__}: {ex}"[:1000]
 
