@@ -280,7 +280,11 @@ class PantheonKernel:
                     raise ValueError("observation_id already exists with different immutable identity")
                 return self._attach_ecology_outcomes(self.observation(observation_id), normalized)
 
-        faculties = evaluate_faculties(normalized["signals"], observation_id)
+        faculties = evaluate_faculties(
+            normalized["signals"],
+            observation_id,
+            normalized["observed_at"],
+        )
         aether = self.swarm.evaluate(
             observation_id,
             normalized["asset"],
@@ -308,6 +312,8 @@ class PantheonKernel:
                 "engine_disagreement_is_preserved": True,
                 "shared_evidence_is_not_counted_as_independent_confirmation": True,
                 "directional_success_without_mechanism_fidelity_is_not_reinforced": True,
+                "stale_research_memory_is_decayed_not_treated_as_timeless": True,
+                "dormant_memory_requires_fresh_mechanism_revalidation": True,
                 "missing_inputs_produce_abstention": True,
                 "new_concepts_begin_as_hypotheses": True,
                 "execution_requires_separate_hard_risk_kernel": True,
@@ -1104,6 +1110,7 @@ class PantheonKernel:
             "NULLSPACE": {"mode": "pantheon faculty"},
             "ECHO": {"mode": "pantheon faculty; evidence-ancestry de-duplication"},
             "VERITAS": {"mode": "pantheon faculty; right-for-right-reasons reconciliation"},
+            "LETHE": {"mode": "pantheon faculty; adaptive research-memory decay and evidence-gated resurrection"},
             "ARCHON": {"mode": "pantheon faculty"},
             "AETHER": {"mode": "ephemeral swarm ecology"},
         }
@@ -1123,6 +1130,7 @@ class PantheonKernel:
                 "no_forced_consensus": True,
                 "oracle_parallax_dreamstate_ownership_preserved": True,
                 "psi_identity_distinct_from_oracle": True,
+                "research_memory_decay_never_mutates_raw_evidence": True,
                 "risk_kernel_remains_external_hard_gate": True,
                 "aether_evolution_requires_observed_claim_outcomes": True,
                 "cognitive_genesis_never_auto_creates_production_code": True,

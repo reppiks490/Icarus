@@ -48,6 +48,7 @@
       else if(kv[0]==='ex_nihilo') key='surprise '+pct(row.ontology_surprise);
       else if(kv[0]==='echo') key=(row.lineage_verified===false?'lineage UNVERIFIED · ':'')+'echo risk '+pct(row.echo_risk)+' · independent support '+pct(row.effective_independent_support)+(row.consensus_illusion_candidate?' · ILLUSION CANDIDATE':'');
       else if(kv[0]==='veritas') key=row.status==='active'?('certificate '+h(row.mechanism_id||'')+' · '+h(row.direction||'unknown')+' · reconciliation PENDING'):'no mechanism certificate';
+      else if(kv[0]==='lethe') key='trust '+pct(row.effective_memory_trust)+' · stale '+pct(row.stale_memory_pressure)+' · resurrect '+pct(row.resurrection_pressure);
       else if(kv[0]==='archon') key='conflict '+pct(row.contradiction)+' · echo '+pct(row.echo_risk);
       else if(kv[0]==='socrates') key='priority '+pct(row.question_priority)+' · '+h((row.question_queue||[]).length)+' questions · '+h((row.hypothesis_queue||[]).length)+' hypotheses';
       else if(kv[0]==='mint') key=row.best_candidate?('best '+h(row.best_candidate.name)+' · stress net '+num(row.best_candidate.stress_expected_net,2)):'no positive candidate';
@@ -89,6 +90,8 @@
         '<div class="pan-field"><div class="k">Novelty</div><b>'+pct(field.novelty)+'</b></div>'+
         '<div class="pan-field"><div class="k">Uncertainty</div><b>'+pct(field.uncertainty)+'</b></div>'+
         '<div class="pan-field"><div class="k">Echo risk</div><b>'+pct(field.echo_risk)+'</b></div>'+
+        '<div class="pan-field"><div class="k">Memory staleness</div><b>'+pct(field.stale_memory_pressure)+'</b></div>'+
+        '<div class="pan-field"><div class="k">Resurrection pressure</div><b>'+pct(field.resurrection_pressure)+'</b></div>'+
         '<div class="pan-field"><div class="k">APEX lineage</div><b>'+h(apexLineage.status||'UNAVAILABLE')+'</b><div class="small muted">'+h(apexLineage.lineage_owner||'no verified root map')+'</div></div>'+
         '<div class="pan-field"><div class="k">Risk</div><b>'+pct(field.risk)+'</b></div>'+
       '</div>'+
