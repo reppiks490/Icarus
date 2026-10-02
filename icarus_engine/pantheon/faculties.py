@@ -125,6 +125,169 @@ def godel(signals: Mapping[str, Any]) -> dict[str, Any]:
         "semantics": "relative world indistinguishability heuristic; not calibrated posterior probability",
     }
 
+def aporia(
+    signals: Mapping[str, Any],
+    godel_state: Mapping[str, Any],
+    nemesis_state: Mapping[str, Any],
+    mint_state: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Price the research value of waiting for one more discriminating observation.
+
+    APORIA is an active-perception diagnostic. It does not say "trade now".
+    It asks whether a declared observation can reduce current ambiguity fast
+    enough to justify edge decay and acquisition cost while waiting.
+    """
+    out = _base("APORIA")
+    latency_raw = signals.get("diagnostic_latency_ms")
+    if latency_raw is None:
+        return {
+            **out, "status": "abstain",
+            "reason": "diagnostic_latency_ms required for active-perception economics",
+            "action": "unavailable", "timing_blocking": False,
+            "information_value_pressure": 0.0, "candidates": [],
+        }
+    if not isinstance(latency_raw, Mapping) or not latency_raw:
+        raise ValueError("diagnostic_latency_ms must be a non-empty mapping")
+
+    diagnostics = godel_state.get("ranked_discriminating_observations", [])
+    if godel_state.get("status") != "active" or not isinstance(diagnostics, list) or not diagnostics:
+        return {
+            **out, "status": "abstain",
+            "reason": "GODEL discriminating observations unavailable",
+            "action": "unavailable", "timing_blocking": False,
+            "information_value_pressure": 0.0, "candidates": [],
+        }
+
+    best_expression = mint_state.get("best_candidate")
+    if mint_state.get("status") != "active" or not isinstance(best_expression, Mapping):
+        return {
+            **out, "status": "abstain",
+            "reason": "MINT stressed opportunity value unavailable",
+            "action": "unavailable", "timing_blocking": False,
+            "information_value_pressure": 0.0, "candidates": [],
+        }
+    opportunity_value = finite(
+        best_expression.get("stress_expected_net", 0.0),
+        "mint.best_candidate.stress_expected_net",
+    )
+    if opportunity_value <= 0:
+        return {
+            **out, "status": "abstain",
+            "reason": "MINT has no positive stressed opportunity value",
+            "action": "unavailable", "timing_blocking": False,
+            "information_value_pressure": 0.0, "candidates": [],
+        }
+
+    half_life = nemesis_state.get("edge_half_life_seconds")
+    if nemesis_state.get("status") != "active" or half_life is None:
+        return {
+            **out, "status": "abstain",
+            "reason": "NEMESIS edge half-life required to price waiting",
+            "action": "unavailable", "timing_blocking": False,
+            "information_value_pressure": 0.0, "candidates": [],
+        }
+    half_life = finite(half_life, "nemesis.edge_half_life_seconds")
+    if half_life < 0:
+        raise ValueError("nemesis.edge_half_life_seconds must be non-negative")
+
+    costs_raw = signals.get("diagnostic_acquisition_costs", {})
+    if costs_raw is None:
+        costs_raw = {}
+    if not isinstance(costs_raw, Mapping):
+        raise ValueError("diagnostic_acquisition_costs must be a mapping")
+    max_loss = finite(signals.get("max_information_delay_loss", 0.20), "max_information_delay_loss")
+    if not 0.0 < max_loss < 1.0:
+        raise ValueError("max_information_delay_loss must be greater than 0 and less than 1")
+
+    ambiguity = unit(godel_state.get("ambiguity"), "godel.ambiguity")
+    latency_budget_ms = (
+        0.0 if half_life <= 0
+        else half_life * 1000.0 * (-math.log2(1.0 - max_loss))
+    )
+
+    candidates = []
+    for row in diagnostics[:16]:
+        if not isinstance(row, Mapping):
+            continue
+        name = str(row.get("observation") or "")[:160]
+        if not name or name not in latency_raw:
+            continue
+        latency = finite(latency_raw[name], f"diagnostic_latency_ms.{name}")
+        if latency < 0:
+            raise ValueError(f"diagnostic_latency_ms.{name} must be non-negative")
+        acquisition_cost = finite(costs_raw.get(name, 0.0), f"diagnostic_acquisition_costs.{name}")
+        if acquisition_cost < 0:
+            raise ValueError(f"diagnostic_acquisition_costs.{name} must be non-negative")
+        separation = unit(row.get("separation_value"), f"godel.diagnostic.{name}.separation_value")
+        latency_seconds = latency / 1000.0
+        retention = (
+            (1.0 if latency <= 0 else 0.0)
+            if half_life <= 0
+            else 2.0 ** (-latency_seconds / half_life)
+        )
+        information_gain_proxy = ambiguity * separation
+        clarity_value = opportunity_value * information_gain_proxy * retention
+        delay_loss = opportunity_value * (1.0 - retention)
+        net_information_value = clarity_value - delay_loss - acquisition_cost
+        candidates.append({
+            "observation": name,
+            "latency_ms": latency,
+            "separation_value": separation,
+            "ambiguity": ambiguity,
+            "information_gain_proxy": information_gain_proxy,
+            "edge_retention": retention,
+            "opportunity_value": opportunity_value,
+            "clarity_value": clarity_value,
+            "delay_loss": delay_loss,
+            "acquisition_cost": acquisition_cost,
+            "net_information_value": net_information_value,
+            "within_latency_budget": latency <= latency_budget_ms,
+        })
+
+    if not candidates:
+        return {
+            **out, "status": "abstain",
+            "reason": "no GODEL diagnostic has a declared latency",
+            "action": "unavailable", "timing_blocking": False,
+            "information_value_pressure": 0.0,
+            "latency_budget_ms": latency_budget_ms, "candidates": [],
+        }
+
+    candidates.sort(
+        key=lambda row: (
+            row["net_information_value"],
+            row["information_gain_proxy"],
+            -row["latency_ms"],
+            row["observation"],
+        ),
+        reverse=True,
+    )
+    best = candidates[0]
+    positive = best["net_information_value"] > 0.0
+    within_budget = bool(best["within_latency_budget"])
+    if positive and within_budget:
+        action, timing_blocking = "observe_then_reassess", True
+    elif positive:
+        action, timing_blocking = "information_arrives_too_late", False
+    else:
+        action, timing_blocking = "information_not_worth_delay", False
+
+    pressure = max(0.0, min(1.0, best["net_information_value"] / opportunity_value))
+    return {
+        **out,
+        "action": action,
+        "timing_blocking": timing_blocking,
+        "best_observation": best,
+        "candidates": candidates[:12],
+        "opportunity_value": opportunity_value,
+        "edge_half_life_seconds": half_life,
+        "latency_budget_ms": latency_budget_ms,
+        "max_delay_loss_fraction": max_loss,
+        "information_value_pressure": pressure,
+        "semantics": "active-perception value-of-waiting heuristic; ambiguity reduction is priced against edge decay and declared acquisition cost, and never authorizes execution",
+    }
+
+
 def ananke(signals: Mapping[str, Any]) -> dict[str, Any]:
     out = _base("ANANKE")
     if "transition_cost_up" not in signals or "transition_cost_down" not in signals:
@@ -1424,6 +1587,36 @@ def axiom(
             reason=None if boundary_pressure <= 0.75 else "state lies too near a competing-regime boundary",
         )
 
+    aporia_state = states.get("aporia", {})
+    aporia_declared = "diagnostic_latency_ms" in signals
+    if not aporia_declared:
+        add_gate(
+            "information_timing", "not_applicable",
+            source="APORIA",
+            reason="no active-perception latency dependency declared",
+        )
+    elif aporia_state.get("status") != "active":
+        add_gate(
+            "information_timing", "unproven",
+            source="APORIA",
+            reason=str(aporia_state.get("reason") or "value-of-waiting could not be evaluated"),
+        )
+    elif bool(aporia_state.get("timing_blocking")):
+        add_gate(
+            "information_timing", "unproven",
+            value=aporia_state.get("best_observation", {}).get("net_information_value"),
+            threshold="no positive in-budget information value remains unresolved",
+            source="APORIA",
+            reason="a positive-value discriminating observation should be acquired and the thesis reassessed",
+        )
+    else:
+        add_gate(
+            "information_timing", "pass",
+            value=aporia_state.get("action"),
+            threshold="no positive in-budget observation remains",
+            source="APORIA",
+        )
+
     add_gate(
         "observation_evidence",
         "pass" if evidence else "unproven",
@@ -1554,6 +1747,7 @@ def socrates(states: Mapping[str, Mapping[str, Any]]) -> dict[str, Any]:
     stale_memory = unit(states.get("lethe", {}).get("stale_memory_pressure"), "lethe.stale_memory_pressure")
     resurrection = unit(states.get("lethe", {}).get("resurrection_pressure"), "lethe.resurrection_pressure")
     proof_gap = unit(states.get("axiom", {}).get("proof_gap"), "axiom.proof_gap")
+    information_value = unit(states.get("aporia", {}).get("information_value_pressure"), "aporia.information_value_pressure")
     atlas_state = states.get("atlas", {})
     topology_pressure = max(
         unit(atlas_state.get("topological_novelty"), "atlas.topological_novelty"),
@@ -1568,6 +1762,7 @@ def socrates(states: Mapping[str, Mapping[str, Any]]) -> dict[str, Any]:
         (stale_memory, "Which current thesis still depends on memory whose evidence has decayed out of its trustworthy lifetime?"),
         (resurrection, "Which dormant mechanism is reappearing under a similar regime and deserves fresh causal revalidation rather than automatic reuse?"),
         (proof_gap, "Which missing proof axis prevents the current thesis from becoming a complete research certificate?"),
+        (information_value, "Which unresolved observation is worth waiting for before the current edge decays away?"),
         (topology_pressure, "Is the current market state approaching a learned-regime boundary or leaving the known manifold entirely?"),
     ]
     ranked = sorted(options, key=lambda x: x[0], reverse=True)
@@ -1580,6 +1775,7 @@ def socrates(states: Mapping[str, Mapping[str, Any]]) -> dict[str, Any]:
         (stale_memory, "The current thesis relies on stale knowledge whose relationship may have drifted.", "Revalidate the mechanism on fresh regime-matched evidence or retire its research trust."),
         (resurrection, "A previously stale mechanism may have returned under a structurally similar regime.", "Require fresh mechanism-consistent evidence before restoring research trust and reject automatic resurrection."),
         (proof_gap, "The current thesis has unresolved non-substitutable proof axes.", "Target the AXIOM failed/unproven gates independently and refuse confidence substitution."),
+        (information_value, "A specific discriminating observation is worth its delay cost before the current edge decays.", "Acquire the APORIA-ranked observation, then reject the timing thesis if ambiguity fails to fall enough to justify the wait."),
         (topology_pressure, "Current latent geometry is near a regime boundary or outside the learned manifold.", "Require a nearby-manifold explanation or independent evidence that the state is a genuinely new basin."),
     ]
     hypotheses = [
@@ -1617,6 +1813,7 @@ def evaluate_faculties(
     vt = veritas(signals, observation_id)
     lt = lethe(signals, observed_at, evidence_refs)
     at = atlas(signals)
+    ap = aporia(signals, gd, nm, mt)
     ar = archon(signals, gd, ec)
     states = {
         "nullspace": ns,
@@ -1629,6 +1826,7 @@ def evaluate_faculties(
         "veritas": vt,
         "lethe": lt,
         "atlas": at,
+        "aporia": ap,
         "archon": ar,
     }
     states["axiom"] = axiom(signals, states, observation_id, evidence_refs)
