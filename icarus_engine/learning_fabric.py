@@ -3425,6 +3425,7 @@ class LearningFabric:
                 "forecasts_imported": 0,
                 "outcomes_imported": 0,
                 "overlap_withheld": 0,
+                "maturity_withheld": 0,
                 **_authority(),
             }
 
@@ -3535,6 +3536,7 @@ class LearningFabric:
                 "forecasts_imported": 0,
                 "outcomes_imported": outcomes_imported,
                 "overlap_withheld": 0,
+                "maturity_withheld": maturity_withheld,
                 "settlement_errors": settlement_errors,
                 **_authority(),
             }
@@ -3548,6 +3550,7 @@ class LearningFabric:
                 "forecasts_imported": 0,
                 "outcomes_imported": outcomes_imported,
                 "overlap_withheld": 0,
+                "maturity_withheld": maturity_withheld,
                 "settlement_errors": settlement_errors,
                 "error": f"{type(ex).__name__}: {ex}"[:500],
                 **_authority(),
@@ -3634,6 +3637,14 @@ class LearningFabric:
                     "dominant_cluster": dominant,
                     "chart_minutes": contract.get("chart_minutes"),
                     "horizon_steps": contract.get("horizon_steps"),
+                    "maturity_semantics": contract.get("maturity_semantics"),
+                    "first_future_bar_open_at": contract.get("first_future_bar_open_at"),
+                    "target_bar_open_at": contract.get("target_bar_open_at"),
+                    "target_bar_close_at": contract.get("target_bar_close_at"),
+                    "target_bar_open_ts": contract.get("target_bar_open_ts"),
+                    "target_bar_close_ts": contract.get("target_bar_close_ts"),
+                    "calendar": contract.get("calendar"),
+                    "session": contract.get("session"),
                 }
                 contract_hash = hashlib.sha256(
                     _json(semantic_contract, "psi calibration contract").encode("utf-8")
@@ -3656,6 +3667,14 @@ class LearningFabric:
                         "classification_threshold_return": threshold,
                         "chart_minutes": contract.get("chart_minutes"),
                         "horizon_steps": contract.get("horizon_steps"),
+                        "maturity_semantics": contract.get("maturity_semantics"),
+                        "first_future_bar_open_at": contract.get("first_future_bar_open_at"),
+                        "target_bar_open_at": contract.get("target_bar_open_at"),
+                        "target_bar_close_at": contract.get("target_bar_close_at"),
+                        "target_bar_open_ts": contract.get("target_bar_open_ts"),
+                        "target_bar_close_ts": contract.get("target_bar_close_ts"),
+                        "calendar": contract.get("calendar"),
+                        "session": contract.get("session"),
                         "raw_cluster_shares": dict(raw_shares),
                         "scenario_probabilities_calibrated": False,
                         "contract_hash": contract_hash,
@@ -3671,6 +3690,7 @@ class LearningFabric:
             "forecasts_imported": forecasts_imported,
             "outcomes_imported": outcomes_imported,
             "overlap_withheld": overlap_withheld,
+            "maturity_withheld": maturity_withheld,
             "unavailable_contracts": unavailable,
             "source_commit": source_commit,
             "settlement_errors": settlement_errors,
