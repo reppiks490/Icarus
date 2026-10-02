@@ -1,0 +1,45 @@
+name: ascendancy-mechanism-contribution-contract
+
+on:
+  push:
+    branches:
+      - feat/ascendancy-mechanism-contribution-current-main
+    paths:
+      - "icarus_engine/ascendancy/mechanisms.py"
+      - "icarus_engine/ascendancy/contribution.py"
+      - "tests_engine/test_ascendancy_mechanisms.py"
+      - "tests_engine/test_ascendancy_contribution.py"
+      - ".github/workflows/ascendancy-mechanism-contribution-contract.yml"
+  pull_request:
+    paths:
+      - "icarus_engine/ascendancy/mechanisms.py"
+      - "icarus_engine/ascendancy/contribution.py"
+      - "tests_engine/test_ascendancy_mechanisms.py"
+      - "tests_engine/test_ascendancy_contribution.py"
+      - ".github/workflows/ascendancy-mechanism-contribution-contract.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ascendancy-mechanism-contribution-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contract:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev,bridge,databento]"
+      - run: |
+          python -m pytest tests_engine/test_ascendancy_mechanisms.py tests_engine/test_ascendancy_contribution.py -q
