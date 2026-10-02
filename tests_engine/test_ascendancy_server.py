@@ -113,6 +113,40 @@ def _unknown_event(**overrides):
     return body
 
 
+def _invention_seed(**overrides):
+    body = {
+        "source_repo": "reppiks490/Icarus",
+        "source_commit": "9" * 40,
+        "research_question": "Can an information-time phase state add protected information?",
+        "target_outcome": "incremental_information",
+        "observations": [
+            {"role": "price_series", "name": "price", "evidence_class": "observed"},
+            {"role": "returns", "name": "returns", "evidence_class": "derived"},
+            {"role": "volatility", "name": "realized_volatility", "evidence_class": "derived"},
+            {"role": "information_rate", "name": "information_rate", "evidence_class": "derived"},
+        ],
+        "target_roles": ["phase_state"],
+        "parent_candidate_ids": [],
+        "constraints": {"max_depth": 3, "max_candidates": 16, "max_cost_units": 7.0},
+        "evaluation_contract": {
+            "objectives": [
+                {"name": "incremental_information", "direction": "max"},
+                {"name": "instability", "direction": "min"},
+            ],
+            "descriptor_keys": ["regime", "complexity_band"],
+            "protected_holdout_required": True,
+        },
+        "resource_budget": {
+            "max_evaluations": 64,
+            "max_wall_seconds": 1800,
+            "max_cost_units": 50.0,
+        },
+        "context": {"asset": "NQ", "session": "RTH"},
+    }
+    body.update(overrides)
+    return body
+
+
 @pytest.fixture
 def ascendancy_genome_http(tmp_path):
     port = Portfolio(Journal(":memory:"), str(tmp_path))
@@ -426,3 +460,49 @@ def test_mechanism_lab_api_is_authenticated_candidate_bound_and_research_only(as
     assert port.paused is paused_before
     assert list(port.runners) == runners_before
     assert srv.ascendancy_mechanisms.snapshot()["experiment_count"] == 1
+
+
+def test_invention_api_generates_blueprints_and_feeds_foundry_research_only(ascendancy_genome_http):
+    port, srv, request = ascendancy_genome_http
+    paused_before = port.paused
+    runners_before = list(port.runners)
+
+    code, body = request("GET", "/api/ascendancy/inventions", auth=False)
+    assert code == 401
+    assert "admin token" in body["detail"]
+
+    code, generated = request(
+        "POST", "/admin/ascendancy/invention-generate", body=_invention_seed()
+    )
+    assert code == 200, generated
+    assert generated["generated_count"] > 0
+    assert generated["trading_state_unchanged"] is True
+    blueprint = next(
+        row for row in generated["blueprints"]
+        if row["primitive_ids"] == ["information_clock", "phase_embedding"]
+    )
+    assert blueprint["status"] == "UNTESTED_HYPOTHESIS"
+    assert blueprint["edge_claim_established"] is False
+
+    code, snapshot = request("GET", "/api/ascendancy/inventions")
+    assert code == 200
+    assert snapshot["blueprint_count"] == generated["generated_count"]
+    assert snapshot["truth_contract"]["generated_blueprint_is_not_validated_edge"] is True
+
+    code, promoted = request(
+        "POST",
+        "/admin/ascendancy/invention-to-candidate",
+        body={"blueprint_id": blueprint["blueprint_id"]},
+    )
+    assert code == 200, promoted
+    assert promoted["candidate"]["origin"] == "generated_math"
+    assert promoted["candidate"]["stage"] == "PROPOSED"
+    assert promoted["candidate"]["metadata"]["blueprint_id"] == blueprint["blueprint_id"]
+    assert promoted["trading_state_unchanged"] is True
+    assert promoted["execution_authorized"] is False
+    assert promoted["production_decision_authorized"] is False
+
+    assert port.paused is paused_before
+    assert list(port.runners) == runners_before
+    assert srv.ascendancy_inventions.snapshot()["blueprint_count"] > 0
+    assert srv.ascendancy_foundry.snapshot()["candidate_count"] == 1
