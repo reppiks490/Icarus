@@ -351,6 +351,58 @@ def test_transient_local_projection_failure_retries_valid_receipt(
     assert attempts["append"] == 2
 
 
+def test_partial_brain_projection_does_not_publish_partial_subsystem_state(
+    tmp_path,
+    monkeypatch,
+):
+    payload = event_payload(event_id="retry-mid-brain-projection")
+    raw = (json.dumps(payload, sort_keys=True) + "\n").encode()
+    sha = _git_blob_sha(raw)
+    listing = [{
+        "type": "file",
+        "name": "brain-projection.json",
+        "path": REMOTE_ROOT + "/brain-projection.json",
+        "sha": sha,
+        "url": "fixture://brain-projection",
+    }]
+    real_record = evolution_sync_module.record_brain_event
+    attempts = {"brain": 0}
+
+    def flaky_record(*args, **kwargs):
+        attempts["brain"] += 1
+        if attempts["brain"] == 2:
+            raise OSError("temporary brain journal failure")
+        return real_record(*args, **kwargs)
+
+    monkeypatch.setattr(
+        evolution_sync_module,
+        "record_brain_event",
+        flaky_record,
+    )
+    sync = EvolutionRemoteSync(
+        tmp_path,
+        interval_seconds=30,
+        fetch_json=lambda _url: listing,
+        fetch_bytes=lambda _url: raw,
+        enabled=True,
+    )
+
+    first = sync.sync_once()
+    second = sync.sync_once()
+
+    assert first["status"] == "degraded"
+    assert first["rejected_total"] == 0
+    assert first["ingested_total"] == 0
+    assert first["events"] == []
+    assert first["subsystems"] == {}
+
+    assert second["status"] == "green"
+    assert second["rejected_total"] == 0
+    assert second["ingested_total"] == 1
+    assert set(second["subsystems"]) >= {"argus", "athena", "parallax"}
+    assert attempts["brain"] == 5
+
+
 def test_blob_sha_mismatch_is_rejected(tmp_path):
     payload = event_payload()
     raw = (json.dumps(payload, sort_keys=True) + "\n").encode()
