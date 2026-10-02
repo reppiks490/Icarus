@@ -6,6 +6,7 @@ import pytest
 from icarus_engine.evolution_sync import (
     EvolutionRemoteSync,
     REMOTE_ROOT,
+    _IGNORED_SCHEMA_VERSIONS,
     _git_blob_sha,
     normalize_interface_event,
 )
@@ -245,7 +246,14 @@ def test_committed_interface_receipts_match_current_ingestion_contract():
     for path in sorted(root.glob("*.json")):
         raw = path.read_bytes()
         payload = json.loads(raw.decode("utf-8"))
-        if payload.get("schema_version") != "icarus-interface-event-v1":
+        declared_schema = payload.get("schema_version")
+        if declared_schema is None:
+            declared_schema = payload.get("schema")
+        if declared_schema != "icarus-interface-event-v1":
+            assert declared_schema in _IGNORED_SCHEMA_VERSIONS, (
+                f"{path.name} introduces an unregistered shared-directory "
+                f"schema: {declared_schema!r}"
+            )
             foreign += 1
             continue
         normalized = normalize_interface_event(
