@@ -192,6 +192,7 @@ def test_missing_or_unknown_schema_is_rejected(tmp_path, payload):
     assert first["rejected_total"] == 1
     assert first["current_rejected_count"] == 1
     assert first["ingested_total"] == 0
+    assert first["last_success_at"] is None
 
     # The same immutable bad Git blob remains a current error, but repeated
     # polls do not inflate the historical rejection counter or refetch it.
@@ -250,6 +251,7 @@ def test_rejected_receipt_recovers_when_git_blob_is_replaced(tmp_path):
     assert recovered["rejected_total"] == 1
     assert recovered["current_rejected_count"] == 0
     assert recovered["ingested_total"] == 1
+    assert recovered["last_success_at"] is not None
     assert recovered["events"][0]["event_id"] == "replacement-valid-event"
     assert fetches["bytes"] == 2
 
