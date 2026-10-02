@@ -61,6 +61,26 @@ OHLC datasets run through the existing protected trainer stack, preserving its e
 
 TradingView trade lists are imported into the realized-experience ledger instead of being treated as forecast calibration samples.
 
+When `EXPORT_INTAKE_MANIFEST.csv` contains exactly one compatible
+`strategy_report_xlsx` row for a trade-list row, the learner links the two by
+**normalized symbol + row count + last trade number**. The link is fail-closed:
+
+- exactly one matching report → `MANIFEST_UNIQUE_STRATEGY_REPORT_LINK`
+- zero matches → historical experience remains unscoped
+- more than one match → linkage is `AMBIGUOUS` and experience remains unscoped
+
+The learner derives an `artifact_configuration_fingerprint` from the exact
+trade-list/report pair plus report-declared timeframe, chart type, row/trade
+identity and execution notes. This is **artifact provenance**, not a reconstructed
+runtime strategy fingerprint. It may group realized historical P&L by the exact
+manifest-linked artifact pair, but it never claims the full Pine/runtime input
+state, session, timezone, or execution context unless those fields were
+independently observed.
+
+Existing immutable historical experience rows do not need to be rewritten:
+artifact scope can be resolved dynamically from their `dataset_id` and the
+current intake manifest.
+
 ## Prediction and outcome ledger
 
 A prediction record is immutable and includes, at minimum:
@@ -175,7 +195,21 @@ Configuration experience includes:
 - profit factor
 - max cumulative drawdown
 
-Legacy/unscoped experience remains visible but is excluded from exact-configuration scorecards.
+Historical artifact configuration is kept separate from closure-time runtime
+configuration. The historical artifact scorecard can include:
+
+- manifest-linked artifact fingerprint
+- linked strategy-report filename and SHA-256
+- report-declared chart type and timeframe
+- report-declared execution assumptions
+- realized P&L, win rate, payoff ratio, profit factor, and max cumulative drawdown
+
+It **does not** populate `strategy_fingerprint`, and it cannot appear in the
+closure-time configuration table.
+
+Legacy/unscoped experience remains visible. It is excluded from both exact
+runtime-configuration scorecards and manifest-linked artifact scorecards until
+its provenance can be established uniquely.
 
 ## API, MCP, and UI surfaces
 
@@ -198,7 +232,7 @@ Authenticated research/admin mutations:
 
 Equivalent research-oriented MCP tools expose the same bounded operations.
 
-The Learning Fabric dashboard panel surfaces dataset coverage, empirical scorecards, replay/training state, live maturity, realized trade experience, and exact-configuration experience.
+The Learning Fabric dashboard panel surfaces dataset coverage, empirical scorecards, replay/training state, live maturity, realized trade experience, exact closure-time configuration experience, and a separate **MANIFEST-LINKED historical artifact configuration** table. The UI intentionally prevents users from confusing artifact linkage with exact runtime configuration provenance.
 
 ## When not to trust a learned result
 
