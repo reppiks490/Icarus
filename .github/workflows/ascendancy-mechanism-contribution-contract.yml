@@ -3,7 +3,7 @@ name: ascendancy-mechanism-contribution-contract
 on:
   push:
     branches:
-      - feat/ascendancy-mechanism-contribution-current-main
+      - feat/ascendancy-mechanism-contribution-current-main-v2
     paths:
       - "icarus_engine/ascendancy/mechanisms.py"
       - "icarus_engine/ascendancy/contribution.py"
