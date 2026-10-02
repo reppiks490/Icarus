@@ -77,6 +77,13 @@ def _is_sha(value: Any) -> bool:
     return isinstance(value, str) and len(value) == 40 and all(c in "0123456789abcdef" for c in value.lower())
 
 
+def _remote_compare_api(source_commit: str) -> str:
+    source = str(source_commit or "").strip().lower()
+    if not _is_sha(source):
+        raise ValueError("peer source commit must be an exact 40-character Git SHA")
+    return f"https://api.github.com/repos/{REMOTE_REPOSITORY}/compare/{source}...{REMOTE_REF}"
+
+
 def _state_path(base_dir: str | os.PathLike[str]) -> Path:
     return Path(base_dir) / "audit" / "brain_remote_sync.json"
 
@@ -102,6 +109,8 @@ def _default_state(interval_seconds: int) -> dict[str, Any]:
         "peer_packet_blob_sha": None,
         "peer_packet_id": None,
         "peer_source_commit": None,
+        "peer_source_commit_verified": False,
+        "peer_source_commit_relation": None,
         "peer_observed_at": None,
         "peer_lanes": [],
         "peer_substantive_lane_count": 0,
@@ -679,13 +688,38 @@ class BrainRemoteSync:
                     peer_payload = json.loads(peer_raw.decode("utf-8"))
                     if not isinstance(peer_payload, Mapping):
                         raise ValueError("peer packet payload is not an object")
-                    state.update(_normalize_peer_packet(peer_payload, blob_sha=peer_blob))
+                    normalized_peer = _normalize_peer_packet(peer_payload, blob_sha=peer_blob)
+                    source_commit = normalized_peer["peer_source_commit"]
+                    compare = self._fetch_json(_remote_compare_api(source_commit))
+                    if not isinstance(compare, Mapping):
+                        raise ValueError("peer source-commit comparison is not an object")
+                    relation = str(compare.get("status") or "").strip().lower()
+                    if relation not in {"ahead", "identical"}:
+                        raise ValueError(
+                            "peer source commit is not an ancestor of Icarus-engine/main"
+                        )
+                    base_commit = compare.get("base_commit")
+                    if not isinstance(base_commit, Mapping) or (
+                        str(base_commit.get("sha") or "").lower() != source_commit
+                    ):
+                        raise ValueError("peer source-commit comparison base mismatch")
+                    merge_base = compare.get("merge_base_commit")
+                    if relation == "ahead" and (
+                        not isinstance(merge_base, Mapping)
+                        or str(merge_base.get("sha") or "").lower() != source_commit
+                    ):
+                        raise ValueError("peer source commit is not the mainline merge base")
+                    normalized_peer["peer_source_commit_verified"] = True
+                    normalized_peer["peer_source_commit_relation"] = relation.upper()
+                    state.update(normalized_peer)
                 except Exception as ex:
                     state.update({
                         "peer_packet_status": "degraded",
                         "peer_packet_blob_sha": None,
                         "peer_packet_id": None,
                         "peer_source_commit": None,
+                        "peer_source_commit_verified": False,
+                        "peer_source_commit_relation": None,
                         "peer_observed_at": None,
                         "peer_lanes": [],
                         "peer_substantive_lane_count": 0,
