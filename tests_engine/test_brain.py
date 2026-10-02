@@ -311,3 +311,18 @@ def test_brain_registers_ascendancy_contribution_lab(tmp_path):
     assert surfaced["ascendancy-contribution"]["status"] == "REGISTERED"
     assert out["authority"]["execution_authorized"] is False
     assert out["authority"]["production_decision_authorized"] is False
+
+
+def test_brain_registers_ascendancy_evaluator_cascade(tmp_path):
+    out = brain_snapshot(tmp_path)
+    rows = {x["id"]: x for x in SUBSYSTEMS}
+    assert "ascendancy-evaluator" in rows
+    assert rows["ascendancy-evaluator"]["owner"] == "daedalus"
+    job = rows["ascendancy-evaluator"]["job"].lower()
+    assert "multi-fidelity" in job
+    assert "holdout" in job
+    assert "resource" in job
+    surfaced = {x["id"]: x for x in out["architecture"]["subsystems"]}
+    assert surfaced["ascendancy-evaluator"]["status"] == "REGISTERED"
+    assert out["authority"]["execution_authorized"] is False
+    assert out["authority"]["production_decision_authorized"] is False
