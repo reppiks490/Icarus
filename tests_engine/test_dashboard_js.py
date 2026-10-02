@@ -597,3 +597,10 @@ def test_learning_ui_names_runtime_and_historical_provenance_classes():
     source = (REPO / "icarus_engine" / "learning-ui.js").read_text(encoding="utf-8")
     assert "RUNTIME_CLOSURE_CONFIG" in source
     assert "HISTORICAL_ARTIFACT_CONFIG" in source
+
+
+
+def test_learning_ui_surfaces_historical_session_provenance():
+    source = (REPO / "icarus_engine" / "learning-ui.js").read_text(encoding="utf-8")
+    assert "r.session_mode" in source
+    assert "Session" in source
