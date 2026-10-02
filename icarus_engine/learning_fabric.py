@@ -1131,17 +1131,177 @@ class LearningFabric:
             })
         return out
 
+    def historical_artifact_configuration_summary(self) -> list[dict[str, Any]]:
+        """Historical realized P&L grouped by manifest-linked artifact identity.
+
+        This is deliberately separate from closure-time runtime strategy
+        fingerprints: manifest linkage proves which report artifact describes
+        the trade list, not the complete live strategy input state.
+        """
+        rows = self._conn.execute(
+            "SELECT experience_id,source,asset,direction,entry_at,exit_at,exit_ts,pnl,metadata_json "
+            "FROM experiences ORDER BY exit_ts,experience_id"
+        ).fetchall()
+        dataset_context: dict[str, dict[str, Any]] = {}
+        catalog = self._intake_manifest_catalog()
+        groups: dict[tuple[str, str, str], list[tuple[sqlite3.Row, dict[str, Any]]]] = {}
+        for row in rows:
+            try:
+                meta = json.loads(row["metadata_json"])
+            except (TypeError, json.JSONDecodeError):
+                continue
+            if not isinstance(meta, dict):
+                continue
+            effective = dict(meta)
+            fingerprint = str(effective.get("artifact_configuration_fingerprint") or "").lower()
+            if not (
+                len(fingerprint) == 64
+                and all(ch in "0123456789abcdef" for ch in fingerprint)
+                and effective.get("provenance_quality") == "MANIFEST_UNIQUE_STRATEGY_REPORT_LINK"
+            ):
+                dataset_id = str(effective.get("dataset_id") or "")
+                if dataset_id:
+                    if dataset_id not in dataset_context:
+                        try:
+                            dataset_context[dataset_id] = self._artifact_configuration_context(
+                                self.dataset(dataset_id), catalog=catalog
+                            )
+                        except ValueError:
+                            dataset_context[dataset_id] = {}
+                    effective.update(dataset_context[dataset_id])
+                    fingerprint = str(effective.get("artifact_configuration_fingerprint") or "").lower()
+            if not (
+                len(fingerprint) == 64
+                and all(ch in "0123456789abcdef" for ch in fingerprint)
+                and effective.get("provenance_quality") == "MANIFEST_UNIQUE_STRATEGY_REPORT_LINK"
+            ):
+                continue
+            groups.setdefault((row["source"], row["asset"], fingerprint), []).append((row, effective))
+
+        out: list[dict[str, Any]] = []
+        for (source, asset, fingerprint), group in sorted(groups.items()):
+            pnls = [float(row["pnl"]) for row, _ in group]
+            wins = [value for value in pnls if value > 0]
+            losses = [value for value in pnls if value < 0]
+            gross_profit = sum(wins)
+            gross_loss = sum(losses)
+            cumulative = 0.0
+            peak = 0.0
+            max_drawdown = 0.0
+            for value in pnls:
+                cumulative += value
+                peak = max(peak, cumulative)
+                max_drawdown = max(max_drawdown, peak - cumulative)
+            long_count = sum(1 for row, _ in group if row["direction"] == "long")
+            short_count = sum(1 for row, _ in group if row["direction"] == "short")
+            direction = "long" if long_count and not short_count else ("short" if short_count and not long_count else "mixed")
+            first_meta = group[0][1]
+            average_win = sum(wins) / len(wins) if wins else None
+            average_loss = sum(losses) / len(losses) if losses else None
+            out.append({
+                "source": source,
+                "asset": asset,
+                "direction": direction,
+                "long_count": long_count,
+                "short_count": short_count,
+                "artifact_configuration_fingerprint": fingerprint,
+                "provenance_quality": first_meta.get("provenance_quality"),
+                "strategy_report_sha256": first_meta.get("strategy_report_sha256"),
+                "strategy_report_filename": first_meta.get("strategy_report_filename"),
+                "timeframe": first_meta.get("timeframe"),
+                "chart_type": first_meta.get("chart_type"),
+                "execution_assumptions": first_meta.get("execution_assumptions"),
+                "linkage_rule": first_meta.get("linkage_rule"),
+                "count": len(pnls),
+                "wins": len(wins),
+                "losses": len(losses),
+                "breakeven": len(pnls) - len(wins) - len(losses),
+                "win_rate": len(wins) / len(pnls) if pnls else None,
+                "net_pnl": sum(pnls),
+                "average_pnl": sum(pnls) / len(pnls) if pnls else None,
+                "average_win": average_win,
+                "average_loss": average_loss,
+                "gross_profit": gross_profit,
+                "gross_loss": gross_loss,
+                "profit_factor": gross_profit / abs(gross_loss) if gross_loss < 0 else None,
+                "payoff_ratio": (
+                    average_win / abs(average_loss)
+                    if average_win is not None and average_loss is not None and average_loss < 0
+                    else None
+                ),
+                "max_cumulative_drawdown": max_drawdown,
+                "first_entry_at": min(row["entry_at"] for row, _ in group),
+                "last_exit_at": max(row["exit_at"] for row, _ in group),
+                "status": "MEASURED" if len(pnls) >= 30 else "EARLY",
+                **_authority(),
+            })
+        return out
+
+    def _experience_scope_counts(self) -> dict[str, int]:
+        rows = self._conn.execute(
+            "SELECT metadata_json FROM experiences ORDER BY experience_id"
+        ).fetchall()
+        closure = artifact = unscoped = 0
+        catalog = self._intake_manifest_catalog()
+        dataset_context: dict[str, dict[str, Any]] = {}
+        for row in rows:
+            try:
+                meta = json.loads(row["metadata_json"])
+            except (TypeError, json.JSONDecodeError):
+                meta = {}
+            if not isinstance(meta, dict):
+                meta = {}
+            strategy_fp = str(meta.get("strategy_fingerprint") or "").lower()
+            if (
+                len(strategy_fp) == 64
+                and all(ch in "0123456789abcdef" for ch in strategy_fp)
+                and meta.get("provenance_quality") == "CLOSURE_TIME_CONFIG"
+            ):
+                closure += 1
+                continue
+            effective = dict(meta)
+            artifact_fp = str(effective.get("artifact_configuration_fingerprint") or "").lower()
+            if not (
+                len(artifact_fp) == 64
+                and all(ch in "0123456789abcdef" for ch in artifact_fp)
+                and effective.get("provenance_quality") == "MANIFEST_UNIQUE_STRATEGY_REPORT_LINK"
+            ):
+                dataset_id = str(effective.get("dataset_id") or "")
+                if dataset_id:
+                    if dataset_id not in dataset_context:
+                        try:
+                            dataset_context[dataset_id] = self._artifact_configuration_context(
+                                self.dataset(dataset_id), catalog=catalog
+                            )
+                        except ValueError:
+                            dataset_context[dataset_id] = {}
+                    effective.update(dataset_context[dataset_id])
+                    artifact_fp = str(effective.get("artifact_configuration_fingerprint") or "").lower()
+            if (
+                len(artifact_fp) == 64
+                and all(ch in "0123456789abcdef" for ch in artifact_fp)
+                and effective.get("provenance_quality") == "MANIFEST_UNIQUE_STRATEGY_REPORT_LINK"
+            ):
+                artifact += 1
+            else:
+                unscoped += 1
+        return {"closure": closure, "artifact": artifact, "unscoped": unscoped}
+
     def experience_state(self) -> dict[str, Any]:
         count = int(self._conn.execute("SELECT COUNT(*) FROM experiences").fetchone()[0])
         by_configuration = self.experience_configuration_summary()
-        scoped_count = sum(int(row.get("count") or 0) for row in by_configuration)
+        by_artifact_configuration = self.historical_artifact_configuration_summary()
+        scopes = self._experience_scope_counts()
         return {
-            "schema_version": "icarus-learning-experience-state-v2",
+            "schema_version": "icarus-learning-experience-state-v3",
             "count": count,
             "summary": self.experience_summary(),
             "by_configuration": by_configuration,
-            "unscoped_count": max(0, count - scoped_count),
-            "rule": "Realized trade experience is descriptive outcome memory; configuration scorecards require closure-time provenance and never authorize production or execution.",
+            "by_artifact_configuration": by_artifact_configuration,
+            "closure_scoped_count": scopes["closure"],
+            "artifact_scoped_count": scopes["artifact"],
+            "unscoped_count": scopes["unscoped"],
+            "rule": "Realized trade experience is descriptive outcome memory. Closure-time runtime configuration and manifest-linked historical artifact configuration are separate provenance classes; neither authorizes production or execution.",
             **_authority(),
         }
 
@@ -1642,9 +1802,11 @@ class LearningFabric:
             return f"{int(match.group(1))}h"
         return raw.replace(" ", "_")
 
-    def _intake_manifest_catalog(self) -> tuple[dict[str, dict[str, str]], dict[str, dict[str, str]]]:
+    def _intake_manifest_catalog(self) -> tuple[dict[str, dict[str, str]], dict[str, dict[str, str]], list[dict[str, str]]]:
         by_hash: dict[str, dict[str, str]] = {}
         by_name: dict[str, dict[str, str]] = {}
+        rows: list[dict[str, str]] = []
+        seen_rows: set[tuple[str, str, str]] = set()
         candidates: set[Path] = set()
         for rel in self._config["history_roots"]:
             root = (self.base_dir / rel).resolve()
@@ -1664,6 +1826,14 @@ class LearningFabric:
                             continue
                         clean = {str(k): str(v or "").strip() for k, v in row.items()}
                         sha = clean.get("sha256", "").lower()
+                        row_key = (
+                            sha,
+                            clean.get("canonical_filename", ""),
+                            clean.get("artifact_class", ""),
+                        )
+                        if row_key not in seen_rows:
+                            seen_rows.add(row_key)
+                            rows.append(clean)
                         if len(sha) == 64:
                             by_hash[sha] = clean
                         names = [clean.get("canonical_filename", "")]
@@ -1673,7 +1843,132 @@ class LearningFabric:
                                 by_name[name] = clean
             except (OSError, UnicodeDecodeError, csv.Error):
                 continue
-        return by_hash, by_name
+        return by_hash, by_name, rows
+
+    @staticmethod
+    def _manifest_integer(value: Any) -> int | None:
+        raw = str(value or "").strip()
+        if not raw:
+            return None
+        try:
+            number = float(raw)
+        except (TypeError, ValueError):
+            return None
+        if not math.isfinite(number) or number < 0 or abs(number - round(number)) > 1e-9:
+            return None
+        return int(round(number))
+
+    def _manifest_strategy_report_link(
+        self,
+        trade_row: Mapping[str, Any],
+        manifest_rows: Sequence[Mapping[str, Any]],
+    ) -> dict[str, Any]:
+        rule = "UNIQUE_SYMBOL_ROWS_LAST_TRADE"
+        symbol = self._manifest_symbol(trade_row.get("symbol"))
+        row_count = self._manifest_integer(trade_row.get("rows"))
+        last_trade = self._manifest_integer(trade_row.get("last_trade_number"))
+        base = {
+            "status": "MISSING",
+            "candidate_count": 0,
+            "linkage_rule": rule,
+        }
+        if str(trade_row.get("artifact_class") or "").strip().lower() != "trade_list":
+            return {**base, "status": "NOT_TRADE_LIST"}
+        if not symbol or symbol == "UNKNOWN" or row_count is None or last_trade is None:
+            return {**base, "status": "INSUFFICIENT_KEYS"}
+
+        candidates: list[dict[str, str]] = []
+        seen: set[tuple[str, str]] = set()
+        for raw in manifest_rows:
+            row = {str(k): str(v or "").strip() for k, v in dict(raw).items()}
+            if row.get("artifact_class", "").lower() != "strategy_report_xlsx":
+                continue
+            if self._manifest_symbol(row.get("symbol")) != symbol:
+                continue
+            if self._manifest_integer(row.get("rows")) != row_count:
+                continue
+            if self._manifest_integer(row.get("last_trade_number")) != last_trade:
+                continue
+            key = (row.get("sha256", "").lower(), row.get("canonical_filename", ""))
+            if key in seen:
+                continue
+            seen.add(key)
+            candidates.append(row)
+
+        if len(candidates) != 1:
+            return {
+                **base,
+                "status": "AMBIGUOUS" if len(candidates) > 1 else "MISSING",
+                "candidate_count": len(candidates),
+            }
+        report = candidates[0]
+        return {
+            **base,
+            "status": "UNIQUE",
+            "candidate_count": 1,
+            "report": report,
+        }
+
+    def _artifact_configuration_context(
+        self,
+        dataset: Mapping[str, Any],
+        *,
+        catalog: tuple[dict[str, dict[str, str]], dict[str, dict[str, str]], list[dict[str, str]]] | None = None,
+    ) -> dict[str, Any]:
+        by_hash, by_name, manifest_rows = catalog or self._intake_manifest_catalog()
+        manifest = dataset.get("manifest") if isinstance(dataset.get("manifest"), Mapping) else {}
+        intake = manifest.get("intake") if isinstance(manifest, Mapping) else None
+        trade_row = dict(intake) if isinstance(intake, Mapping) else {}
+        if not trade_row:
+            trade_row = dict(by_hash.get(str(dataset.get("raw_sha256") or "").lower()) or {})
+        if not trade_row:
+            path_name = Path(str(dataset.get("path") or "")).name
+            trade_row = dict(by_name.get(path_name) or {})
+        link = trade_row.get("strategy_report_link") if isinstance(trade_row, Mapping) else None
+        if not isinstance(link, Mapping):
+            link = self._manifest_strategy_report_link(trade_row, manifest_rows)
+        status = str(link.get("status") or "MISSING")
+        candidate_count = int(link.get("candidate_count") or 0)
+        base = {
+            "manifest_linkage_status": status,
+            "manifest_linkage_candidates": candidate_count,
+        }
+        if status != "UNIQUE" or not isinstance(link.get("report"), Mapping):
+            return base
+
+        report = {str(k): str(v or "").strip() for k, v in dict(link["report"]).items()}
+        report_sha = report.get("sha256", "").lower()
+        if len(report_sha) != 64 or any(ch not in "0123456789abcdef" for ch in report_sha):
+            return {**base, "manifest_linkage_status": "INVALID_REPORT_SHA"}
+        timeframe = self._manifest_timeframe(report.get("timeframe"))
+        chart_type = report.get("chart_type") or None
+        fingerprint_payload = {
+            "trade_list_sha256": str(dataset.get("raw_sha256") or "").lower(),
+            "strategy_report_sha256": report_sha,
+            "asset": str(dataset.get("asset") or "").upper(),
+            "timeframe": timeframe,
+            "chart_type": chart_type,
+            "rows": self._manifest_integer(report.get("rows")),
+            "last_trade_number": self._manifest_integer(report.get("last_trade_number")),
+            "notes": report.get("notes") or "",
+        }
+        fingerprint = hashlib.sha256(
+            _json(fingerprint_payload, "historical artifact configuration").encode("utf-8")
+        ).hexdigest()
+        return {
+            **base,
+            "manifest_linkage_status": "UNIQUE",
+            "artifact_configuration_fingerprint": fingerprint,
+            "provenance_quality": "MANIFEST_UNIQUE_STRATEGY_REPORT_LINK",
+            "strategy_report_sha256": report_sha,
+            "strategy_report_filename": report.get("canonical_filename") or None,
+            "timeframe": timeframe,
+            "chart_type": chart_type,
+            "execution_assumptions": report.get("notes") or None,
+            "linkage_rule": str(link.get("linkage_rule") or "UNIQUE_SYMBOL_ROWS_LAST_TRADE"),
+            "report_net_profit_usd": report.get("net_profit_usd") or None,
+            "report_max_drawdown_intrabar_usd": report.get("max_drawdown_intrabar_usd") or None,
+        }
 
     def register_dataset(
         self,
@@ -1779,7 +2074,7 @@ class LearningFabric:
         errors = {}
         roots = []
         dataset_ids: list[str] = []
-        by_hash, by_name = self._intake_manifest_catalog()
+        by_hash, by_name, manifest_rows = self._intake_manifest_catalog()
         for rel in self._config["history_roots"]:
             root = (self.base_dir / rel).resolve()
             try:
@@ -1801,6 +2096,10 @@ class LearningFabric:
                     if intake:
                         intake_payload = dict(intake)
                         intake_payload["manifest_sha256"] = str(intake.get("sha256") or raw_sha).lower()
+                        if str(intake.get("artifact_class") or "").strip().lower() == "trade_list":
+                            intake_payload["strategy_report_link"] = self._manifest_strategy_report_link(
+                                intake, manifest_rows
+                            )
                         asset = self._manifest_symbol(intake.get("symbol"))
                         chart = self._manifest_timeframe(intake.get("timeframe"))
                     result = self.register_dataset(path, asset=asset, chart_type=chart, intake=intake_payload)
@@ -1839,6 +2138,7 @@ class LearningFabric:
 
         from .parity import read_tv_trades
         trades = read_tv_trades(str(dataset["path"]))
+        artifact_context = self._artifact_configuration_context(dataset)
         imported = 0
         complete = 0
         errors: dict[str, str] = {}
@@ -1875,6 +2175,7 @@ class LearningFabric:
                         "exit_signals": [piece.get("sig") for piece in pieces],
                         "time_quality": "UNVERIFIED_TIMEZONE",
                         "time_interpretation": "TradingView export parsed with parity UTC compatibility; do not infer session/regime until timezone is independently bound.",
+                        **artifact_context,
                     },
                 })
                 complete += 1
