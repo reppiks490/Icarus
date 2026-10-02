@@ -594,6 +594,6 @@ def test_learning_dashboard_exposes_overlap_aware_scorecard_counts():
 
 
 def test_learning_ui_names_runtime_and_historical_provenance_classes():
-    source = (ROOT / "icarus_engine" / "learning-ui.js").read_text(encoding="utf-8")
+    source = (REPO / "icarus_engine" / "learning-ui.js").read_text(encoding="utf-8")
     assert "RUNTIME_CLOSURE_CONFIG" in source
     assert "HISTORICAL_ARTIFACT_CONFIG" in source
