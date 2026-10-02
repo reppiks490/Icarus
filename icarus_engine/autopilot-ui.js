@@ -1,5 +1,5 @@
 /* ICARUS Tactical Autopilot — autonomous shadow research UI. */
-let autopilotLoading=false, autopilotLast=null, autopilotTimer=null;
+let autopilotLoading=false, autopilotPendingLoad=false, autopilotMutationBusy=false, autopilotLast=null, autopilotTimer=null;
 
 function apFmt(v,d=3){return(v==null||!Number.isFinite(Number(v)))?'—':Number(v).toLocaleString(undefined,{maximumFractionDigits:d});}
 function apBadge(v){const s=String(v||'unknown').toLowerCase(),c=(s==='complete'||s==='running'||s==='backtest')?'b':s==='error'?'r':'w';return '<span class="chip '+c+'">'+esc(String(v||'unknown').toUpperCase())+'</span>';}
@@ -36,7 +36,9 @@ function apMetricTiles(m){m=m||{};return[
  ['score dispersion',apFmt(m.score_dispersion,5)],['robust windows',m.robustness_windows??'—']
 ].map(x=>'<div class="tile"><div class="k">'+esc(x[0])+'</div><div class="v">'+esc(String(x[1]))+'</div></div>').join('');}
 async function loadAutopilot(){
-  if(autopilotLoading||view!=='autopilot')return;autopilotLoading=true;
+  if(view!=='autopilot')return;
+  if(autopilotLoading){autopilotPendingLoad=true;return;}
+  autopilotLoading=true;autopilotPendingLoad=false;
   try{
     const tok=localStorage.getItem('icarus-engine-token')||'';
     const r=await fetch('/api/autopilot',{cache:'no-store',headers:{Authorization:'Bearer '+tok}});
@@ -79,16 +81,30 @@ async function loadAutopilot(){
     $('#apLeaderboard').innerHTML=(d.leaderboard||[]).map((x,i)=>{const m=x.metrics||{};return '<tr><td>'+(i+1)+'</td><td><b>'+esc(x.asset)+'</b></td><td class="tnum '+(x.champion?'pos':'')+'">'+apFmt(m.score,5)+'</td><td class="tnum">'+(m.pnl==null?'—':fmt$(m.pnl,0))+'</td><td class="tnum">'+(m.max_drawdown==null?'—':fmt$(m.max_drawdown,0))+'</td><td>'+apFmt(m.return_to_drawdown,3)+'</td><td>'+(m.win_rate==null?'—':(100*m.win_rate).toFixed(1)+'%')+'</td><td>'+apFmt(m.profit_factor,2)+'</td><td>'+(m.trades??'—')+'</td><td>'+apDelta(x.delta)+'</td></tr>';}).join('')||'<tr><td colspan="10" class="empty">No completed trials.</td></tr>';
     $('#apHistory').innerHTML=(d.history||[]).slice().reverse().map(x=>'<tr><td class="tnum">'+(x.tested_at?new Date(x.tested_at*1000).toLocaleTimeString():'—')+'</td><td><b>'+esc(x.asset)+'</b></td><td>'+(x.champion?'<span class="chip b">NEW CHAMPION</span>':'<span class="chip">tested</span>')+'</td><td class="tnum">'+apFmt(x.metrics&&x.metrics.score,5)+'</td><td>'+apDelta(x.delta)+'</td><td>'+esc(x.chart_type||'engine')+'</td><td>'+esc(x.session||'engine')+'</td><td><code>'+esc(x.id||'')+'</code></td></tr>').join('')||'<tr><td colspan="8" class="empty">No autonomous trials yet.</td></tr>';
     if(d.last_error)$('#apStatus').innerHTML+=' · <span class="neg">'+esc(d.last_error.detail||d.last_error.type||'error')+'</span>';
-  }catch(e){if($('#apStatus'))$('#apStatus').innerHTML='<span class="neg">'+esc(e.message||String(e))+'</span>';}finally{autopilotLoading=false;}
+  }catch(e){if($('#apStatus'))$('#apStatus').innerHTML='<span class="neg">'+esc(e.message||String(e))+'</span>';}finally{
+    autopilotLoading=false;
+    if(autopilotPendingLoad&&view==='autopilot'){autopilotPendingLoad=false;setTimeout(loadAutopilot,0);}
+  }
+}
+async function runAutopilotMutation(control,path,body){
+  if(autopilotMutationBusy){if(typeof toast==='function')toast('Autopilot control already running',true);return;}
+  autopilotMutationBusy=true;
+  if(control)control.disabled=true;
+  try{await admin(path,body||{});}
+  finally{
+    autopilotMutationBusy=false;
+    if(control&&control.isConnected)control.disabled=false;
+    loadAutopilot();
+  }
 }
 function wireAutopilot(){
   clearInterval(autopilotTimer);
   $('#apRefresh')&&$('#apRefresh').addEventListener('click',loadAutopilot);
-  $('#apStart')&&$('#apStart').addEventListener('click',async()=>{await admin('/admin/autopilot/start',{});loadAutopilot();});
-  $('#apStop')&&$('#apStop').addEventListener('click',async()=>{await admin('/admin/autopilot/stop',{});loadAutopilot();});
-  $('#apStep')&&$('#apStep').addEventListener('click',async()=>{await admin('/admin/autopilot/step',{},true);loadAutopilot();});
-  $('#apCadence')&&$('#apCadence').addEventListener('change',async e=>{await admin('/admin/autopilot/config',{cadence_seconds:Number(e.target.value)},true);loadAutopilot();});
-  $('#apWindows')&&$('#apWindows').addEventListener('change',async e=>{await admin('/admin/autopilot/config',{robustness_windows:Number(e.target.value)},true);loadAutopilot();});
-  $('#apAsset')&&$('#apAsset').addEventListener('change',async e=>{await admin('/admin/autopilot/config',{assets:e.target.value?[e.target.value]:[]},true);loadAutopilot();});
+  $('#apStart')&&$('#apStart').addEventListener('click',e=>runAutopilotMutation(e.currentTarget,'/admin/autopilot/start',{}));
+  $('#apStop')&&$('#apStop').addEventListener('click',e=>runAutopilotMutation(e.currentTarget,'/admin/autopilot/stop',{}));
+  $('#apStep')&&$('#apStep').addEventListener('click',e=>runAutopilotMutation(e.currentTarget,'/admin/autopilot/step',{}));
+  $('#apCadence')&&$('#apCadence').addEventListener('change',e=>runAutopilotMutation(e.currentTarget,'/admin/autopilot/config',{cadence_seconds:Number(e.target.value)}));
+  $('#apWindows')&&$('#apWindows').addEventListener('change',e=>runAutopilotMutation(e.currentTarget,'/admin/autopilot/config',{robustness_windows:Number(e.target.value)}));
+  $('#apAsset')&&$('#apAsset').addEventListener('change',e=>runAutopilotMutation(e.currentTarget,'/admin/autopilot/config',{assets:e.target.value?[e.target.value]:[]}));
   loadAutopilot();autopilotTimer=setInterval(loadAutopilot,1200);
 }
