@@ -245,3 +245,32 @@ def test_brain_registers_ascendancy_capability_orchestrator(tmp_path):
     assert surfaced["capability-orchestrator"]["status"] == "REGISTERED"
     assert out["authority"]["execution_authorized"] is False
     assert out["authority"]["production_decision_authorized"] is False
+
+
+def test_brain_registers_icarus_engine_federation(tmp_path):
+    out = brain_snapshot(tmp_path)
+    rows = {x["id"]: x for x in SUBSYSTEMS}
+    assert "icarus-engine-federation" in rows
+    assert rows["icarus-engine-federation"]["owner"] == "omega"
+    job = rows["icarus-engine-federation"]["job"].lower()
+    assert "foreign" in job
+    assert "research" in job
+    assert "authority" in job
+    surfaced = {x["id"]: x for x in out["architecture"]["subsystems"]}
+    assert surfaced["icarus-engine-federation"]["status"] == "REGISTERED"
+    assert out["engine_federation_sync"]["status"] == "not_configured"
+    assert out["engine_federation_sync"]["execution_authorized"] is False
+
+
+def test_brain_surfaces_measured_icarus_engine_federation_state(tmp_path):
+    state = {
+        "status": "green",
+        "repository": "reppiks490/Icarus-engine",
+        "accepted_event_count": 17,
+        "latest_event_id": "flow-17",
+        "last_success_at": "2026-10-02T19:40:00Z",
+        "execution_authorized": False,
+        "production_decision_authorized": False,
+    }
+    out = brain_snapshot(tmp_path, engine_federation_sync=state)
+    assert out["engine_federation_sync"] == state
