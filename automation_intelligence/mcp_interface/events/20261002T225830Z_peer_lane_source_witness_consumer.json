@@ -1,0 +1,25 @@
+{
+  "schema": "icarus-mcp-event-v1",
+  "event_id": "peer-lane-source-witness-consumer-20261002",
+  "at_utc": "2026-10-02T22:58:30Z",
+  "category": "INTEGRATION",
+  "status": "IMPLEMENTED",
+  "severity": "INFO",
+  "summary": "Verify Icarus-engine peer lane state from exact heartbeat/finalization Git blobs at the packet source revision and surface source-proof status in Adaptive Brain.",
+  "surface": "ICARUS Adaptive Brain cross-repository federation",
+  "source": "CHATGPT_MCP",
+  "paths": [
+    "icarus_engine/brain_sync.py",
+    "icarus_engine/brain-ui.js",
+    "tests_engine/test_brain_sync.py",
+    "tests_engine/test_dashboard_js.py",
+    ".github/workflows/live-engine-federation-gate.yml",
+    ".github/workflows/live-engine-historical-context-gate.yml"
+  ],
+  "evidence": [
+    "packet-source heartbeat/finalization Git blob verification",
+    "independent lane-state reconstruction",
+    "fail-closed source-state mismatch tests"
+  ],
+  "execution_authorized": false
+}
