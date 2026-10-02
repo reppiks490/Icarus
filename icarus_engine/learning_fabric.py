@@ -389,6 +389,22 @@ class LearningFabric:
                 CREATE INDEX IF NOT EXISTS idx_learning_experience_scope
                     ON experiences(source, asset, exit_ts);
 
+                CREATE TABLE IF NOT EXISTS native_empirical_events (
+                    event_id TEXT PRIMARY KEY,
+                    domain TEXT NOT NULL,
+                    native_id TEXT NOT NULL,
+                    observed_at TEXT NOT NULL,
+                    asset TEXT NOT NULL,
+                    source_commit TEXT NOT NULL,
+                    eligible_for_inference INTEGER NOT NULL CHECK(eligible_for_inference IN (0,1)),
+                    semantic_json TEXT NOT NULL,
+                    provenance_json TEXT NOT NULL,
+                    recorded_at TEXT NOT NULL,
+                    UNIQUE(domain, native_id)
+                );
+                CREATE INDEX IF NOT EXISTS idx_learning_native_empirical_domain
+                    ON native_empirical_events(domain, observed_at, native_id);
+
                 CREATE TABLE IF NOT EXISTS cycles (
                     cycle_id TEXT PRIMARY KEY,
                     started_at TEXT NOT NULL,
