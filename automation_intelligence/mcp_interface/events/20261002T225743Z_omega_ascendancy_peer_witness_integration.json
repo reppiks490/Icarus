@@ -1,0 +1,43 @@
+{
+  "schema": "icarus-mcp-event-v1",
+  "event_id": "omega-20261002T225743Z-ascendancy-peer-witness-integration",
+  "at_utc": "2026-10-02T22:57:43Z",
+  "category": "INTEGRATION",
+  "status": "VERIFIED",
+  "severity": "INFO",
+  "summary": "OMEGA reconciles research-only ASCENDANCY architecture search with revision-bound per-lane peer source witnesses: architecture novelty may generate research hypotheses, but cross-repository lane state must remain exact-source-bound and cannot become substantive evidence or execution authority.",
+  "surface": "OMEGA Fusion Core / ICARUS fabric",
+  "source": "OMEGA_AUTOMATION",
+  "paths": [
+    "icarus_engine/ascendancy/genome.py",
+    "icarus_engine/ascendancy/archive.py",
+    "icarus_engine/ascendancy/frontier.py",
+    "icarus_engine/ascendancy/unknowns.py",
+    "icarus_engine/ascendancy/invention.py",
+    "icarus_engine/interrepo_bridge.py",
+    "tools/export_peer_intelligence.py"
+  ],
+  "evidence": [
+    "Icarus@f548d2d91d6b4af7e0b1bfb9bf363c7ab4bb29a7",
+    "Icarus-engine@7393352ce2ad89a4e6dadaab186b52ec53575a53",
+    "latest substantive Macro remains Icarus@b6995130df5059619eff2c5b48ad454101aa328d",
+    "latest substantive AION remains Icarus@a67b6f4927276afa078382229f9596885058adc6"
+  ],
+  "execution_authorized": false,
+  "athena": {
+    "status": "ACTIONABLE",
+    "finding": "Treat ASCENDANCY-generated hypotheses as research candidates only; uncertainty cannot fall from novelty alone, and peer lane state must pass exact source-blob witness verification."
+  },
+  "janus": {
+    "status": "ACTIONABLE",
+    "finding": "Track architecture genome/evaluation-contract identity separately from peer packet source_commit and per-lane heartbeat/finalization blob witnesses; neither substitutes for substantive evidence."
+  },
+  "infrastructure": {
+    "status": "IMPROVED_WITH_SPECIALIST_GAP",
+    "finding": "Icarus-engine now binds local peer lane heartbeat/finalization state to exact Git blob witnesses and verifies them against source revision, while no newer substantive Flow/DAEDALUS finding was established."
+  },
+  "helios_prime": {
+    "status": "ACTIONABLE",
+    "finding": "Integrate ASCENDANCY's open-ended research frontier with the federated evidence fabric only through provenance-bound, authority-limited adapters; preserve zero execution/production authority."
+  }
+}
