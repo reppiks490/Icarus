@@ -1218,7 +1218,8 @@ def test_pantheon_is_visible_in_trader_interface():
     assert "Resurrection pressure" in ui
     assert "Proof gap" in ui
     assert "Value of waiting" in ui
-    assert "Topology pressure" in ui\n    assert "Self-failure pressure" in ui
+    assert "Topology pressure" in ui
+    assert "Self-failure pressure" in ui
     assert "geometry " in ui
     assert "certificate " in ui
     assert "VERITAS right-for-right-reasons audit" in ui
