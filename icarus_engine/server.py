@@ -237,7 +237,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     ascendancy_federated_intake_sync = FederatedResearchIntakeSync(
         port.base_dir,
         intake=ascendancy_federated_intake,
-        provider=brain_remote_sync.status,
+        provider=lambda: brain_remote_sync.status(),
     )
     mcp_control = MCPControlPlane(port.base_dir)
     chronofold = ChronofoldEngine(port, possibility=possibility)
@@ -269,7 +269,12 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     )
 
     def _ascendancy_sync_federated_intake() -> Dict[str, Any]:
-        return ascendancy_federated_intake_sync.sync_once()
+        state = ascendancy_federated_intake_sync.sync_once()
+        if str(state.get("status") or "").lower() != "green":
+            raise ValueError(
+                str(state.get("last_error") or "ASCENDANCY federated intake is degraded")
+            )
+        return state
 
     def _qualification_sync(candidate_id: str, source_repo: str, source_commit: str) -> dict[str, Any]:
         status = qualification_receipts.candidate_status(candidate_id, source_repo, source_commit)
