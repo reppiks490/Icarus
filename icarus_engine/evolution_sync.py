@@ -29,6 +29,13 @@ REMOTE_ROOT = "automation_intelligence/mcp_interface/events"
 REMOTE_API = f"https://api.github.com/repos/{REMOTE_REPOSITORY}/contents/{REMOTE_ROOT}?ref={REMOTE_REF}"
 
 SCHEMA_VERSION = "icarus-interface-event-v1"
+# Other receipt families intentionally share REMOTE_ROOT. They are not owned by
+# EvolutionRemoteSync, but they are known repository contracts and should be
+# skipped without degrading this interface-specific feed.
+_IGNORED_SCHEMA_VERSIONS = {
+    "icarus-mcp-event-v1",
+    "icarus-apex-integration-receipt-v1",
+}
 _ALLOWED_CATEGORIES = {"REPAIR", "AUDIT", "EVOLUTION", "INTEGRATION", "FINDING"}
 _ALLOWED_SEVERITIES = {"info", "success", "warn", "error"}
 _ALLOWED_STATUSES = {
@@ -344,15 +351,28 @@ class EvolutionRemoteSync:
                         raise ValueError("event payload is not an object")
                     # This repository directory intentionally carries several
                     # event families. The Evolution sync owns only
-                    # icarus-interface-event-v1. A valid foreign-schema JSON
-                    # receipt is therefore ignored, not treated as corruption.
-                    if payload.get("schema_version") != SCHEMA_VERSION:
+                    # icarus-interface-event-v1. Known foreign receipt schemas
+                    # are ignored, while missing/unknown declarations still
+                    # fail closed as contract errors.
+                    declared_schema = payload.get("schema_version")
+                    if declared_schema is None:
+                        declared_schema = payload.get("schema")
+                    if declared_schema == SCHEMA_VERSION:
+                        event = _normalize_event(
+                            payload,
+                            remote_path=path,
+                            blob_sha=blob_sha,
+                        )
+                    elif declared_schema in _IGNORED_SCHEMA_VERSIONS:
                         processed.add(blob_sha)
                         state["ignored_total"] = int(
                             state.get("ignored_total", 0)
                         ) + 1
                         continue
-                    event = _normalize_event(payload, remote_path=path, blob_sha=blob_sha)
+                    else:
+                        raise ValueError(
+                            "unsupported MCP event schema declaration"
+                        )
 
                     append_system_event(
                         self.base_dir,
