@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 import pytest
 
@@ -6,6 +7,7 @@ from icarus_engine.evolution_sync import (
     EvolutionRemoteSync,
     REMOTE_ROOT,
     _git_blob_sha,
+    normalize_interface_event,
 )
 from icarus_engine.system_audit import load_repository_audit
 from icarus_engine.brain import brain_snapshot
@@ -156,6 +158,32 @@ def test_psi_is_a_supported_mcp_subsystem(tmp_path):
     assert state["status"] == "green"
     assert state["ingested_total"] == 1
     assert set(state["subsystems"]) >= {"psi", "parallax"}
+
+
+def test_committed_interface_receipts_match_current_ingestion_contract():
+    root = (
+        Path(__file__).resolve().parents[1]
+        / "automation_intelligence"
+        / "mcp_interface"
+        / "events"
+    )
+    checked = 0
+
+    for path in sorted(root.glob("*.json")):
+        raw = path.read_bytes()
+        payload = json.loads(raw.decode("utf-8"))
+        if payload.get("schema_version") != "icarus-interface-event-v1":
+            continue
+        normalized = normalize_interface_event(
+            payload,
+            source_path=f"{REMOTE_ROOT}/{path.name}",
+            blob_sha=_git_blob_sha(raw),
+        )
+        assert normalized["execution_authorized"] is False
+        assert normalized["production_decision_authorized"] is False
+        checked += 1
+
+    assert checked > 0
 
 
 def test_repository_native_interface_vocabulary_is_accepted(tmp_path):
