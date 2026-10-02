@@ -104,6 +104,187 @@ def _consumer_contract(**overrides):
     return payload
 
 
+def _historical_context_contract():
+    return {
+        "mode": "RESEARCH_CONTEXT_ONLY",
+        "direct_candidate_evidence": False,
+        "automatic_candidate_creation": False,
+        "automatic_model_promotion": False,
+        "execution_authorized": False,
+        "production_decision_authorized": False,
+        "sources": [
+            {
+                "id": "robustness_guardian",
+                "path": "automation_intelligence/agent_fabric/robustness_guardian/latest.json",
+                "evidence_status": "HISTORICAL_RESEARCH_EVIDENCE",
+                "research_context_eligible": True,
+                "candidate_evidence_eligible": False,
+                "collection_only": False,
+                "summary_fields": [
+                    "RUN_CORE.findings",
+                    "RUN_CORE.built_changes",
+                    "RUN_CORE.unresolved_risks",
+                    "RUN_CORE.NEXT",
+                    "RUN_CORE.test_state",
+                    "RUN_CORE.base_main_sha",
+                    "RUN_CORE.final_main_sha",
+                    "RUN_CORE_SHA256",
+                    "history_blob_sha",
+                ],
+                "execution_authorized": False,
+            },
+            {
+                "id": "alpha_synthesis",
+                "path": "automation_intelligence/agent_fabric/alpha_synthesis/latest.json",
+                "evidence_status": "HISTORICAL_RESEARCH_EVIDENCE",
+                "research_context_eligible": True,
+                "candidate_evidence_eligible": False,
+                "collection_only": False,
+                "summary_fields": [
+                    "RUN_CORE.evidence_dataset_identity",
+                    "RUN_CORE.findings",
+                    "RUN_CORE.built_changes",
+                    "RUN_CORE.unresolved_risks",
+                    "RUN_CORE.NEXT",
+                    "RUN_CORE_SHA256",
+                    "history_blob_sha",
+                    "ledger_blob_sha",
+                ],
+                "execution_authorized": False,
+            },
+            {
+                "id": "apex_council",
+                "path": "automation_intelligence/agent_fabric/apex_council/latest.json",
+                "evidence_status": "HISTORICAL_RESEARCH_EVIDENCE",
+                "research_context_eligible": True,
+                "candidate_evidence_eligible": False,
+                "collection_only": False,
+                "summary_fields": [
+                    "RUN_CORE.specialist_states_consumed",
+                    "RUN_CORE.evidence_contract",
+                    "RUN_CORE.decision_contract",
+                    "RUN_CORE.disagreements_collisions",
+                    "RUN_CORE.built_changes",
+                    "RUN_CORE.NEXT",
+                    "RUN_CORE.base_main_sha",
+                    "RUN_CORE.final_main_sha",
+                    "RUN_CORE_SHA256",
+                    "history_blob_sha",
+                    "ledger_blob_sha",
+                ],
+                "execution_authorized": False,
+            },
+            {
+                "id": "flow_microstructure",
+                "path": "automation_intelligence/flow/latest.json",
+                "evidence_status": "HISTORICAL_COLLECTION_EVIDENCE",
+                "research_context_eligible": True,
+                "candidate_evidence_eligible": False,
+                "collection_only": True,
+                "summary_fields": [
+                    "NET_NEW_DELTA",
+                    "observations",
+                    "PROVIDER_CONFLICTS",
+                    "DATA_GAPS",
+                    "source_provenance",
+                    "quality_notes",
+                    "history_blob_sha",
+                ],
+                "execution_authorized": False,
+            },
+        ],
+        "truth_contract": {
+            "foreign_repository_state_is_context_not_native_truth": True,
+            "historical_context_never_bypasses_foundry": True,
+            "historical_context_never_bypasses_evaluator": True,
+            "historical_context_never_grants_shadow_qualification": True,
+            "historical_context_never_grants_execution_authority": True,
+        },
+    }
+
+
+def _historical_docs():
+    return {
+        "robustness_guardian": {
+            "schema_version": "agent-fabric-persistence-v3",
+            "agent": "robustness_guardian",
+            "RUN_ID": "robustness-guardian-20260929T180500Z",
+            "RUN_STATUS": "RUN_PERSISTED",
+            "RUN_CORE": {
+                "execution_authorized": False,
+                "base_main_sha": "1" * 40,
+                "final_main_sha": "2" * 40,
+                "findings": [
+                    "Protected holdout lineage is incomplete.",
+                    "Replay determinism remains intact.",
+                ],
+                "built_changes": ["No behavioral code change."],
+                "unresolved_risks": ["Dataset identity still needs exact binding."],
+                "NEXT": "Bind immutable dataset and holdout identities.",
+                "test_state": {"status": "green"},
+            },
+            "RUN_CORE_SHA256": "3" * 64,
+            "history_blob_sha": "4" * 40,
+            "execution_authorized": False,
+            "private_raw_payload": {"must_not_cross": True},
+        },
+        "alpha_synthesis": {
+            "schema_version": "agent-fabric-persistence-v3",
+            "agent": "alpha_synthesis",
+            "RUN_ID": "alpha-synthesis-20260929T181500Z",
+            "RUN_STATUS": "RUN_PERSISTED",
+            "RUN_CORE": {
+                "execution_authorized": False,
+                "evidence_dataset_identity": {"dataset": "fixture"},
+                "findings": ["Execution economics remain binding."],
+                "built_changes": ["No production mutation."],
+                "unresolved_risks": ["Cost model drift."],
+                "NEXT": "Revalidate under new cost strata.",
+            },
+            "RUN_CORE_SHA256": "5" * 64,
+            "history_blob_sha": "6" * 40,
+            "ledger_blob_sha": "7" * 40,
+            "execution_authorized": False,
+        },
+        "apex_council": {
+            "schema_version": "agent-fabric-persistence-v3",
+            "agent": "apex_council",
+            "RUN_ID": "apex-council-20260929T182500Z",
+            "RUN_STATUS": "RUN_PERSISTED",
+            "RUN_CORE": {
+                "execution_authorized": False,
+                "specialist_states_consumed": ["flow", "aion", "daedalus"],
+                "evidence_contract": {"mode": "research"},
+                "decision_contract": {"authority": "none"},
+                "disagreements_collisions": ["Flow and macro disagree on regime timing."],
+                "built_changes": ["Preserved disagreement."],
+                "NEXT": "Resolve with causal-time evidence.",
+                "base_main_sha": "8" * 40,
+                "final_main_sha": "9" * 40,
+            },
+            "RUN_CORE_SHA256": "a" * 64,
+            "history_blob_sha": "b" * 40,
+            "ledger_blob_sha": "c" * 40,
+            "execution_authorized": False,
+        },
+        "flow_microstructure": {
+            "engine": "flow",
+            "schema_version": "microstructure-collection-v4",
+            "RUN_ID": "flow-20260929T173500Z",
+            "RUN_STATUS": "RUN_PERSISTED",
+            "COLLECTION_ONLY": True,
+            "execution_authorized": False,
+            "NET_NEW_DELTA": {"btc": "fresh funding evidence"},
+            "observations": {"BTC": {"funding_percent": 0.003}},
+            "PROVIDER_CONFLICTS": [],
+            "DATA_GAPS": ["No direct NQ depth."],
+            "source_provenance": [{"source": "venue"}],
+            "quality_notes": ["fixture"],
+            "history_blob_sha": "d" * 40,
+        },
+    }
+
+
 def _producer_contract():
     return {
         "schema_version": "icarus-mcp-interface-contract-v1",
@@ -237,6 +418,7 @@ def _fixture(
     peer_compare_status="ahead",
     peer_now_offset_seconds=60,
     allow_legacy_event=False,
+    historical_docs=None,
 ):
     event_raw = (json.dumps(payload, sort_keys=True) + "\n").encode()
     event_sha = _git_blob_sha(event_raw)
@@ -251,6 +433,7 @@ def _fixture(
     }]
 
     consumer_doc = consumer or _consumer_contract()
+    historical_docs = historical_docs or {}
     if allow_legacy_event:
         consumer_doc = json.loads(json.dumps(consumer_doc))
         consumer_doc["event_validation"]["legacy_relaxed_blob_shas"] = [event_sha]
@@ -269,6 +452,27 @@ def _fixture(
     consumer_url = "https://api.github.test/consumer-contract"
     producer_url = "https://api.github.test/producer-contract"
     peer_url = "https://api.github.test/peer-packet"
+
+    historical_meta = {}
+    historical_raw = {}
+    for source_id, document in historical_docs.items():
+        raw = (json.dumps(document, sort_keys=True) + "\n").encode()
+        url = f"https://api.github.test/historical/{source_id}"
+        historical_path = next(
+            row["path"]
+            for row in consumer_doc.get("historical_context", {}).get("sources", [])
+            if row["id"] == source_id
+        )
+        api = (
+            "https://api.github.com/repos/reppiks490/Icarus-engine/contents/"
+            f"{historical_path}?ref=main"
+        )
+        historical_raw[url] = raw
+        historical_meta[api] = {
+            "type": "file",
+            "sha": _git_blob_sha(raw),
+            "url": url,
+        }
 
     def fetch_json(requested):
         if requested == _REMOTE_CONSUMER_CONTRACT_API:
@@ -295,6 +499,8 @@ def _fixture(
             if status == "diverged":
                 response["merge_base_commit"] = {"sha": "a" * 40}
             return response
+        if requested in historical_meta:
+            return historical_meta[requested]
         return listing
 
     def fetch_bytes(requested):
@@ -306,6 +512,8 @@ def _fixture(
             return producer_raw
         if requested == peer_url:
             return peer_raw
+        if requested in historical_raw:
+            return historical_raw[requested]
         return b""
 
     return {
@@ -673,3 +881,125 @@ def test_remote_sync_rejects_peer_freshness_contract_drift_before_event_ingest(t
     assert status["status"] == "degraded"
     assert status["ingested_total"] == 0
     assert "peer packet max age mismatch" in status["last_error"]
+
+
+def test_remote_sync_ingests_declared_historical_context_without_candidate_authority(tmp_path):
+    consumer = _consumer_contract(historical_context=_historical_context_contract())
+    fixture = _fixture(
+        _remote_event(),
+        consumer=consumer,
+        historical_docs=_historical_docs(),
+    )
+    sync = BrainRemoteSync(
+        tmp_path,
+        interval_seconds=60,
+        fetch_json=fixture["fetch_json"],
+        fetch_bytes=fixture["fetch_bytes"],
+        now_utc=fixture["now_utc"],
+    )
+    status = sync.sync_once()
+
+    assert status["status"] == "green", status.get("last_error")
+    assert status["historical_context_status"] == "green"
+    assert status["historical_context_source_count"] == 4
+    assert status["historical_context_ingested_total"] == 4
+    assert status["historical_candidate_evidence_count"] == 0
+    assert status["truth_contract"]["historical_context_mode"] == "RESEARCH_CONTEXT_ONLY"
+    assert status["truth_contract"]["historical_context_never_bypasses_foundry"] is True
+    assert status["truth_contract"]["historical_context_never_bypasses_evaluator"] is True
+    assert status["truth_contract"]["historical_context_never_grants_shadow_qualification"] is True
+
+    rows = {row["id"]: row for row in status["historical_context_sources"]}
+    assert set(rows) == {
+        "robustness_guardian", "alpha_synthesis", "apex_council", "flow_microstructure"
+    }
+    assert all(row["candidate_evidence_eligible"] is False for row in rows.values())
+    assert all(row["foreign_evidence_only"] is True for row in rows.values())
+    assert all(row["requires_foundry_and_evaluator"] is True for row in rows.values())
+    assert rows["flow_microstructure"]["evidence_status"] == "HISTORICAL_COLLECTION_EVIDENCE"
+    assert rows["robustness_guardian"]["summary"]["RUN_CORE.findings"] == [
+        "Protected holdout lineage is incomplete.",
+        "Replay determinism remains intact.",
+    ]
+    assert "private_raw_payload" not in json.dumps(rows["robustness_guardian"])
+
+    snap = brain_snapshot(tmp_path, remote_sync=status)
+    assert snap["remote_sync"]["historical_context_status"] == "green"
+    assert snap["remote_sync"]["historical_candidate_evidence_count"] == 0
+
+    # Historical context is durable Brain evidence, but not a candidate.
+    events = snap["events"]
+    historical_events = [
+        row for row in events
+        if (row.get("details") or {}).get("foreign_historical_context") is True
+    ]
+    assert len(historical_events) == 4
+    assert all((row.get("details") or {}).get("candidate_evidence_eligible") is False for row in historical_events)
+    assert snap["candidates"] == []
+
+    again = sync.sync_once()
+    assert again["historical_context_ingested_total"] == 4
+    snap2 = brain_snapshot(tmp_path, remote_sync=again)
+    historical_events2 = [
+        row for row in snap2["events"]
+        if (row.get("details") or {}).get("foreign_historical_context") is True
+    ]
+    assert len(historical_events2) == 4
+
+
+def test_remote_sync_rejects_historical_context_authority_escalation(tmp_path):
+    historical = _historical_context_contract()
+    historical["direct_candidate_evidence"] = True
+    consumer = _consumer_contract(historical_context=historical)
+    fixture = _fixture(_remote_event(), consumer=consumer)
+    sync = BrainRemoteSync(
+        tmp_path,
+        interval_seconds=60,
+        fetch_json=fixture["fetch_json"],
+        fetch_bytes=fixture["fetch_bytes"],
+    )
+    status = sync.sync_once()
+    assert status["status"] == "degraded"
+    assert "historical context attempts authority escalation" in status["last_error"]
+    assert status["ingested_total"] == 0
+
+
+def test_remote_sync_rejects_historical_source_not_in_bounded_allowlist(tmp_path):
+    historical = _historical_context_contract()
+    historical["sources"][0]["summary_fields"].append("private_raw_payload")
+    consumer = _consumer_contract(historical_context=historical)
+    fixture = _fixture(_remote_event(), consumer=consumer)
+    sync = BrainRemoteSync(
+        tmp_path,
+        interval_seconds=60,
+        fetch_json=fixture["fetch_json"],
+        fetch_bytes=fixture["fetch_bytes"],
+    )
+    status = sync.sync_once()
+    assert status["status"] == "degraded"
+    assert "historical context field allowlist mismatch" in status["last_error"]
+
+
+def test_remote_sync_degrades_if_declared_historical_blob_is_substituted(tmp_path):
+    consumer = _consumer_contract(historical_context=_historical_context_contract())
+    docs = _historical_docs()
+    fixture = _fixture(_remote_event(), consumer=consumer, historical_docs=docs)
+
+    original_fetch_json = fixture["fetch_json"]
+    def fetch_json(url):
+        meta = original_fetch_json(url)
+        if "robustness_guardian/latest.json" in url and isinstance(meta, dict):
+            meta = dict(meta)
+            meta["sha"] = "f" * 40
+        return meta
+
+    sync = BrainRemoteSync(
+        tmp_path,
+        interval_seconds=60,
+        fetch_json=fetch_json,
+        fetch_bytes=fixture["fetch_bytes"],
+    )
+    status = sync.sync_once()
+    assert status["status"] == "degraded"
+    assert status["historical_context_status"] == "degraded"
+    assert "historical context Git blob SHA mismatch" in status["last_error"]

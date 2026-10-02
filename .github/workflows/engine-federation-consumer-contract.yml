@@ -1,0 +1,44 @@
+name: engine-federation-consumer-contract
+
+on:
+  push:
+    branches:
+      - feat/historical-engine-context-consumer-current-main
+    paths:
+      - "icarus_engine/brain_sync.py"
+      - "icarus_engine/brain-ui.js"
+      - "tests_engine/test_brain_sync.py"
+      - "tests_engine/test_dashboard_js.py"
+      - ".github/workflows/engine-federation-consumer-contract.yml"
+  pull_request:
+    paths:
+      - "icarus_engine/brain_sync.py"
+      - "icarus_engine/brain-ui.js"
+      - "tests_engine/test_brain_sync.py"
+      - "tests_engine/test_dashboard_js.py"
+      - ".github/workflows/engine-federation-consumer-contract.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: engine-federation-consumer-contract-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  consumer-contract:
+    name: Validate Icarus-engine historical-context consumer
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install ICARUS test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev,bridge,databento]"
+      - name: Run federation consumer tests
+        run: |
+          python -m pytest             tests_engine/test_brain_sync.py             tests_engine/test_dashboard_js.py -q

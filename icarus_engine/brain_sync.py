@@ -37,6 +37,76 @@ _REMOTE_PEER_PACKET_API = (
     f"https://api.github.com/repos/{REMOTE_REPOSITORY}/contents/{REMOTE_PEER_PACKET}?ref={REMOTE_REF}"
 )
 
+_HISTORICAL_CONTEXT_EXPECTED = {
+    "robustness_guardian": {
+        "path": "automation_intelligence/agent_fabric/robustness_guardian/latest.json",
+        "evidence_status": "HISTORICAL_RESEARCH_EVIDENCE",
+        "collection_only": False,
+        "subject": "aegis",
+        "summary_fields": [
+            "RUN_CORE.findings",
+            "RUN_CORE.built_changes",
+            "RUN_CORE.unresolved_risks",
+            "RUN_CORE.NEXT",
+            "RUN_CORE.test_state",
+            "RUN_CORE.base_main_sha",
+            "RUN_CORE.final_main_sha",
+            "RUN_CORE_SHA256",
+            "history_blob_sha",
+        ],
+    },
+    "alpha_synthesis": {
+        "path": "automation_intelligence/agent_fabric/alpha_synthesis/latest.json",
+        "evidence_status": "HISTORICAL_RESEARCH_EVIDENCE",
+        "collection_only": False,
+        "subject": "aion",
+        "summary_fields": [
+            "RUN_CORE.evidence_dataset_identity",
+            "RUN_CORE.findings",
+            "RUN_CORE.built_changes",
+            "RUN_CORE.unresolved_risks",
+            "RUN_CORE.NEXT",
+            "RUN_CORE_SHA256",
+            "history_blob_sha",
+            "ledger_blob_sha",
+        ],
+    },
+    "apex_council": {
+        "path": "automation_intelligence/agent_fabric/apex_council/latest.json",
+        "evidence_status": "HISTORICAL_RESEARCH_EVIDENCE",
+        "collection_only": False,
+        "subject": "apex-omega",
+        "summary_fields": [
+            "RUN_CORE.specialist_states_consumed",
+            "RUN_CORE.evidence_contract",
+            "RUN_CORE.decision_contract",
+            "RUN_CORE.disagreements_collisions",
+            "RUN_CORE.built_changes",
+            "RUN_CORE.NEXT",
+            "RUN_CORE.base_main_sha",
+            "RUN_CORE.final_main_sha",
+            "RUN_CORE_SHA256",
+            "history_blob_sha",
+            "ledger_blob_sha",
+        ],
+    },
+    "flow_microstructure": {
+        "path": "automation_intelligence/flow/latest.json",
+        "evidence_status": "HISTORICAL_COLLECTION_EVIDENCE",
+        "collection_only": True,
+        "subject": "data",
+        "summary_fields": [
+            "NET_NEW_DELTA",
+            "observations",
+            "PROVIDER_CONFLICTS",
+            "DATA_GAPS",
+            "source_provenance",
+            "quality_notes",
+            "history_blob_sha",
+        ],
+    },
+}
+
 SOURCE_TO_AGENT = {
     "OMEGA_AUTOMATION": "omega",
     "MACRO_AUTOMATION": "macro",
@@ -75,6 +145,16 @@ def _git_blob_sha(data: bytes) -> str:
 
 def _is_sha(value: Any) -> bool:
     return isinstance(value, str) and len(value) == 40 and all(c in "0123456789abcdef" for c in value.lower())
+
+
+def _remote_contents_api(path: str) -> str:
+    remote_path = str(path or "").strip().lstrip("/")
+    if not remote_path or ".." in remote_path.split("/"):
+        raise ValueError("historical context path is invalid")
+    return (
+        f"https://api.github.com/repos/{REMOTE_REPOSITORY}/contents/"
+        f"{remote_path}?ref={REMOTE_REF}"
+    )
 
 
 def _remote_compare_api(source_commit: str) -> str:
@@ -117,6 +197,12 @@ def _default_state(interval_seconds: int) -> dict[str, Any]:
         "peer_lanes": [],
         "peer_substantive_lane_count": 0,
         "peer_durability_only_lane_count": 0,
+        "historical_context_status": "not_started",
+        "historical_context_source_count": 0,
+        "historical_context_ingested_total": 0,
+        "historical_context_sources": [],
+        "historical_candidate_evidence_count": 0,
+        "processed_historical_blob_shas": [],
         "consumer_contract_blob_sha": None,
         "producer_contract_blob_sha": None,
         "truth_contract": {
@@ -133,6 +219,11 @@ def _default_state(interval_seconds: int) -> dict[str, Any]:
             "legacy_exception_count": 0,
             "peer_packet_schema": None,
             "peer_packet_authority": "OBSERVE",
+            "historical_context_mode": "UNDECLARED",
+            "historical_context_never_bypasses_foundry": True,
+            "historical_context_never_bypasses_evaluator": True,
+            "historical_context_never_grants_shadow_qualification": True,
+            "historical_context_never_grants_execution_authority": True,
         },
         "execution_authorized": False,
         "production_decision_authorized": False,
@@ -247,6 +338,197 @@ def _normalize_status(value: Any) -> str:
     return status if status in allowed else "observed"
 
 
+def _normalize_historical_context_contract(
+    consumer: Mapping[str, Any],
+) -> list[dict[str, Any]]:
+    raw = consumer.get("historical_context")
+    if raw is None:
+        return []
+    if not isinstance(raw, Mapping):
+        raise ValueError("Icarus-engine historical context contract must be an object")
+    if raw.get("mode") != "RESEARCH_CONTEXT_ONLY":
+        raise ValueError("Icarus-engine historical context mode must remain research-only")
+    for key in (
+        "direct_candidate_evidence",
+        "automatic_candidate_creation",
+        "automatic_model_promotion",
+        "execution_authorized",
+        "production_decision_authorized",
+    ):
+        if raw.get(key) is not False:
+            raise ValueError(
+                f"Icarus-engine historical context attempts authority escalation: {key}"
+            )
+
+    truth = raw.get("truth_contract")
+    if not isinstance(truth, Mapping):
+        raise ValueError("Icarus-engine historical context truth contract is missing")
+    for key in (
+        "foreign_repository_state_is_context_not_native_truth",
+        "historical_context_never_bypasses_foundry",
+        "historical_context_never_bypasses_evaluator",
+        "historical_context_never_grants_shadow_qualification",
+        "historical_context_never_grants_execution_authority",
+    ):
+        if truth.get(key) is not True:
+            raise ValueError(
+                f"Icarus-engine historical context truth invariant failed: {key}"
+            )
+
+    sources = raw.get("sources")
+    if not isinstance(sources, list):
+        raise ValueError("Icarus-engine historical context sources must be an array")
+    if len(sources) != len(_HISTORICAL_CONTEXT_EXPECTED):
+        raise ValueError("Icarus-engine historical context source set mismatch")
+
+    normalized: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for source in sources:
+        if not isinstance(source, Mapping):
+            raise ValueError("Icarus-engine historical context source must be an object")
+        source_id = str(source.get("id") or "").strip()
+        if source_id in seen or source_id not in _HISTORICAL_CONTEXT_EXPECTED:
+            raise ValueError("Icarus-engine historical context source identity mismatch")
+        seen.add(source_id)
+        expected = _HISTORICAL_CONTEXT_EXPECTED[source_id]
+        if source.get("path") != expected["path"]:
+            raise ValueError(
+                f"Icarus-engine historical context path mismatch: {source_id}"
+            )
+        if source.get("evidence_status") != expected["evidence_status"]:
+            raise ValueError(
+                f"Icarus-engine historical context evidence status mismatch: {source_id}"
+            )
+        if source.get("research_context_eligible") is not True:
+            raise ValueError(
+                f"Icarus-engine historical context must remain research-context eligible: {source_id}"
+            )
+        if source.get("candidate_evidence_eligible") is not False:
+            raise ValueError(
+                f"Icarus-engine historical context cannot become candidate evidence: {source_id}"
+            )
+        if source.get("collection_only") is not expected["collection_only"]:
+            raise ValueError(
+                f"Icarus-engine historical context collection semantics mismatch: {source_id}"
+            )
+        if source.get("execution_authorized") is not False:
+            raise ValueError(
+                f"Icarus-engine historical context attempts execution authority: {source_id}"
+            )
+        fields = source.get("summary_fields")
+        if not isinstance(fields, list) or fields != expected["summary_fields"]:
+            raise ValueError(
+                f"Icarus-engine historical context field allowlist mismatch: {source_id}"
+            )
+        normalized.append({
+            "id": source_id,
+            "path": expected["path"],
+            "evidence_status": expected["evidence_status"],
+            "collection_only": expected["collection_only"],
+            "subject": expected["subject"],
+            "summary_fields": list(expected["summary_fields"]),
+            "research_context_eligible": True,
+            "candidate_evidence_eligible": False,
+            "execution_authorized": False,
+        })
+    return sorted(normalized, key=lambda row: row["id"])
+
+
+def _get_dotted(payload: Mapping[str, Any], path: str) -> Any:
+    current: Any = payload
+    for part in str(path).split("."):
+        if not isinstance(current, Mapping) or part not in current:
+            return None
+        current = current[part]
+    return current
+
+
+def _normalize_historical_document(
+    source: Mapping[str, Any],
+    payload: Mapping[str, Any],
+    *,
+    blob_sha: str,
+) -> dict[str, Any]:
+    if payload.get("execution_authorized") is not False:
+        raise ValueError(
+            f"historical context {source['id']} must preserve execution_authorized=false"
+        )
+    run_core = payload.get("RUN_CORE")
+    if isinstance(run_core, Mapping) and run_core.get("execution_authorized") not in (None, False):
+        raise ValueError(
+            f"historical context {source['id']} RUN_CORE attempts execution authority"
+        )
+    if source.get("collection_only") is True and payload.get("COLLECTION_ONLY") is not True:
+        raise ValueError(
+            f"historical context {source['id']} must preserve collection-only semantics"
+        )
+    sha = str(blob_sha or "").lower()
+    if not _is_sha(sha):
+        raise ValueError("historical context Git blob identity is invalid")
+
+    summary: dict[str, Any] = {}
+    for field in source.get("summary_fields") or []:
+        value = _get_dotted(payload, field)
+        if value is not None:
+            summary[str(field)] = value
+    try:
+        encoded = json.dumps(
+            summary,
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        )
+    except (TypeError, ValueError) as ex:
+        raise ValueError(
+            f"historical context {source['id']} summary is not finite JSON"
+        ) from ex
+    if len(encoded.encode("utf-8")) > 65536:
+        raise ValueError(
+            f"historical context {source['id']} summary exceeds bounded payload size"
+        )
+
+    return {
+        "id": source["id"],
+        "path": source["path"],
+        "remote_blob_sha": sha,
+        "run_id": payload.get("RUN_ID") or payload.get("run_id"),
+        "run_status": payload.get("RUN_STATUS") or payload.get("status"),
+        "evidence_status": source["evidence_status"],
+        "collection_only": source["collection_only"],
+        "research_context_eligible": True,
+        "candidate_evidence_eligible": False,
+        "foreign_evidence_only": True,
+        "requires_foundry_and_evaluator": True,
+        "summary": summary,
+        "subject": source["subject"],
+        "execution_authorized": False,
+        "production_decision_authorized": False,
+    }
+
+
+def _historical_event_summary(row: Mapping[str, Any]) -> str:
+    summary = row.get("summary")
+    if not isinstance(summary, Mapping):
+        return f"{row.get('id', 'peer')} historical research context observed."
+    priority = (
+        "RUN_CORE.findings",
+        "RUN_CORE.disagreements_collisions",
+        "NET_NEW_DELTA",
+        "RUN_CORE.NEXT",
+        "DATA_GAPS",
+    )
+    for key in priority:
+        value = summary.get(key)
+        if value in (None, "", [], {}):
+            continue
+        if isinstance(value, str):
+            text = value
+        else:
+            text = json.dumps(value, sort_keys=True, allow_nan=False)
+        return f"{row.get('id')}: {text}"[:2200]
+    return f"{row.get('id', 'peer')} historical research context observed."[:2200]
+
+
 def _normalize_federation_contract(
     consumer: Mapping[str, Any],
     producer: Mapping[str, Any],
@@ -339,6 +621,8 @@ def _normalize_federation_contract(
     if peer_packet.get("max_future_skew_seconds") != 300:
         raise ValueError("Icarus-engine Brain federation peer packet future-skew bound mismatch")
 
+    historical_sources = _normalize_historical_context_contract(consumer)
+
     event_validation = consumer.get("event_validation")
     if not isinstance(event_validation, Mapping):
         raise ValueError("Icarus-engine Brain federation event validation policy is missing")
@@ -401,6 +685,14 @@ def _normalize_federation_contract(
             "peer_packet_freshness_required": True,
             "peer_packet_max_age_seconds": 1800,
             "peer_packet_max_future_skew_seconds": 300,
+            "historical_context_mode": (
+                "RESEARCH_CONTEXT_ONLY" if historical_sources else "UNDECLARED"
+            ),
+            "historical_context_source_count": len(historical_sources),
+            "historical_context_never_bypasses_foundry": True,
+            "historical_context_never_bypasses_evaluator": True,
+            "historical_context_never_grants_shadow_qualification": True,
+            "historical_context_never_grants_execution_authority": True,
         },
         "execution_authorized": False,
         "production_decision_authorized": False,
@@ -614,6 +906,7 @@ class BrainRemoteSync:
     def status(self) -> dict[str, Any]:
         state = _read_state(self.base_dir, self.interval_seconds)
         state.pop("processed_blob_shas", None)
+        state.pop("processed_historical_blob_shas", None)
         return state
 
     def _record_subsystems(
@@ -647,6 +940,105 @@ class BrainRemoteSync:
             )
             count += 1
         return count
+
+    def _sync_historical_context(
+        self,
+        state: dict[str, Any],
+        consumer_contract: Mapping[str, Any],
+    ) -> list[str]:
+        sources = _normalize_historical_context_contract(consumer_contract)
+        if not sources:
+            state["historical_context_status"] = "not_declared"
+            state["historical_context_source_count"] = 0
+            state["historical_context_sources"] = []
+            state["historical_candidate_evidence_count"] = 0
+            return []
+
+        processed = {
+            str(x).lower()
+            for x in state.get("processed_historical_blob_shas", [])
+            if _is_sha(x)
+        }
+        errors: list[str] = []
+        rows: list[dict[str, Any]] = []
+        for source in sources:
+            try:
+                meta = self._fetch_json(_remote_contents_api(source["path"]))
+                if not isinstance(meta, Mapping) or meta.get("type") != "file":
+                    raise ValueError("historical context GitHub metadata is not a file")
+                blob_sha = str(meta.get("sha") or "").lower()
+                raw_url = str(meta.get("url") or "")
+                if not _is_sha(blob_sha) or not raw_url:
+                    raise ValueError("historical context has invalid GitHub blob metadata")
+                raw = self._fetch_bytes(raw_url)
+                if _git_blob_sha(raw) != blob_sha:
+                    raise ValueError("historical context Git blob SHA mismatch")
+                payload = json.loads(raw.decode("utf-8"))
+                if not isinstance(payload, Mapping):
+                    raise ValueError("historical context payload is not an object")
+                row = _normalize_historical_document(
+                    source,
+                    payload,
+                    blob_sha=blob_sha,
+                )
+                rows.append(row)
+
+                if blob_sha not in processed:
+                    evidence = [
+                        f"remote_repository:{REMOTE_REPOSITORY}",
+                        f"remote_ref:{REMOTE_REF}",
+                        f"remote_path:{source['path']}",
+                        f"git_blob_sha:{blob_sha}",
+                        f"evidence_status:{source['evidence_status']}",
+                        f"consumer_contract_blob:{state.get('consumer_contract_blob_sha')}",
+                        f"producer_contract_blob:{state.get('producer_contract_blob_sha')}",
+                    ]
+                    record_brain_event(
+                        self.base_dir,
+                        {
+                            "kind": "subsystem",
+                            "subject": source["subject"],
+                            "summary": _historical_event_summary(row),
+                            "status": "observed",
+                            "evidence": evidence,
+                            "details": {
+                                "foreign_historical_context": True,
+                                "historical_context_source": source["id"],
+                                "historical_context_path": source["path"],
+                                "historical_context_blob_sha": blob_sha,
+                                "evidence_status": source["evidence_status"],
+                                "collection_only": source["collection_only"],
+                                "research_context_eligible": True,
+                                "candidate_evidence_eligible": False,
+                                "requires_foundry_and_evaluator": True,
+                                "foreign_evidence_only": True,
+                                "summary": row["summary"],
+                                "execution_authorized": False,
+                                "production_decision_authorized": False,
+                            },
+                        },
+                    )
+                    processed.add(blob_sha)
+                    state["historical_context_ingested_total"] = int(
+                        state.get("historical_context_ingested_total", 0)
+                    ) + 1
+            except Exception as ex:
+                errors.append(
+                    f"historical context {source.get('id')}: "
+                    f"{type(ex).__name__}: {ex}"
+                )
+
+        rows.sort(key=lambda row: row["id"])
+        state["processed_historical_blob_shas"] = sorted(processed)[-1000:]
+        state["historical_context_sources"] = rows
+        state["historical_context_source_count"] = len(rows)
+        state["historical_candidate_evidence_count"] = sum(
+            1 for row in rows if row.get("candidate_evidence_eligible") is True
+        )
+        state["historical_context_status"] = (
+            "green" if len(rows) == len(sources) and not errors else "degraded"
+        )
+        return errors
 
     def sync_once(self) -> dict[str, Any]:
         with self._lock:
@@ -686,6 +1078,11 @@ class BrainRemoteSync:
                         contract_docs["producer"],
                         contract_blobs,
                     )
+                )
+
+                historical_errors = self._sync_historical_context(
+                    state,
+                    contract_docs["consumer"],
                 )
 
                 peer_error = None
@@ -887,6 +1284,7 @@ class BrainRemoteSync:
                     errors.append(f"{path}: {type(ex).__name__}: {ex}")
                     state["rejected_total"] = int(state.get("rejected_total", 0)) + 1
 
+            errors.extend(historical_errors)
             if peer_error:
                 errors.append(f"peer packet: {peer_error}")
             state["processed_blob_shas"] = sorted(processed)[-5000:]

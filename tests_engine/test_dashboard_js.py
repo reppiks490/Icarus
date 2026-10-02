@@ -643,3 +643,17 @@ def test_learning_ui_exposes_semantic_trade_twin_proof():
     assert "Semantic trade proof" in source
     assert "SEMANTIC_TRADE_SIGNATURE_V1" in source
 
+
+
+def test_adaptive_brain_surfaces_historical_engine_context():
+    ui = (REPO / "icarus_engine/brain-ui.js").read_text(encoding="utf-8")
+
+    assert "historical_context_sources" in ui
+    assert "Historical peer research context" in ui
+    assert "HISTORICAL_RESEARCH_EVIDENCE" in ui
+    assert "HISTORICAL_COLLECTION_EVIDENCE" in ui
+    assert "candidate evidence=false" in ui.lower()
+    assert "Foundry + Evaluator required" in ui
+    assert "historical_context_ingested_total" in ui
+    assert "historical_candidate_evidence_count" in ui
+    assert "historical_context_status" in ui

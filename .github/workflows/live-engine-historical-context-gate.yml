@@ -1,0 +1,231 @@
+name: live-engine-historical-context-gate
+
+on:
+  push:
+    branches:
+      - feat/historical-engine-context-consumer-current-main
+    paths:
+      - "icarus_engine/brain_sync.py"
+      - "icarus_engine/brain-ui.js"
+      - "tests_engine/test_brain_sync.py"
+      - ".github/workflows/live-engine-historical-context-gate.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-engine-historical-context-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  historical-handshake:
+    name: Live Icarus-engine historical-context handshake
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout canonical Icarus branch
+        uses: actions/checkout@v4
+        with:
+          path: icarus
+
+      - name: Checkout current Icarus-engine main
+        uses: actions/checkout@v4
+        with:
+          repository: reppiks490/Icarus-engine
+          ref: main
+          path: peer-engine
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install ICARUS
+        working-directory: icarus
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev,bridge,databento]"
+
+      - name: Run live bilateral historical-context ingest
+        working-directory: icarus
+        shell: bash
+        run: |
+          export ICARUS_SHA="$(git rev-parse HEAD)"
+          export ENGINE_SHA="$(git -C ../peer-engine rev-parse HEAD)"
+          python - <<'PY'
+          import json
+          import os
+          import subprocess
+          import tempfile
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          from icarus_engine.brain import brain_snapshot
+          from icarus_engine.brain_sync import (
+              BrainRemoteSync,
+              REMOTE_REPOSITORY,
+              REMOTE_REF,
+              REMOTE_ROOT,
+              REMOTE_CONSUMER_CONTRACT,
+              REMOTE_PRODUCER_CONTRACT,
+              REMOTE_PEER_PACKET,
+              _REMOTE_API,
+              _REMOTE_CONSUMER_CONTRACT_API,
+              _REMOTE_PRODUCER_CONTRACT_API,
+              _REMOTE_PEER_PACKET_API,
+              _git_blob_sha,
+              _remote_compare_api,
+          )
+
+          peer = Path("../peer-engine").resolve()
+          virtual = {}
+
+          def meta_for(path: Path, label: str):
+              raw = path.read_bytes()
+              url = "memory://" + label
+              virtual[url] = raw
+              return {
+                  "type": "file",
+                  "name": path.name,
+                  "path": str(path.relative_to(peer)).replace("\\", "/"),
+                  "sha": _git_blob_sha(raw),
+                  "url": url,
+              }
+
+          consumer_path = peer / REMOTE_CONSUMER_CONTRACT
+          producer_path = peer / REMOTE_PRODUCER_CONTRACT
+          packet_path = peer / REMOTE_PEER_PACKET
+          consumer_meta = meta_for(consumer_path, "consumer")
+          producer_meta = meta_for(producer_path, "producer")
+          packet_meta = meta_for(packet_path, "peer-packet")
+
+          consumer = json.loads(consumer_path.read_text(encoding="utf-8"))
+          peer_packet = json.loads(packet_path.read_text(encoding="utf-8"))
+          source_commit = peer_packet["source_commit"]
+
+          ancestry = subprocess.run(
+              ["git", "-C", str(peer), "merge-base", "--is-ancestor", source_commit, "main"],
+              check=False,
+          )
+          assert ancestry.returncode == 0, "peer packet source_commit is not an ancestor of live Icarus-engine/main"
+          relation = "identical" if source_commit == os.environ["ENGINE_SHA"] else "ahead"
+
+          historical_meta = {}
+          for source in consumer["historical_context"]["sources"]:
+              path = peer / source["path"]
+              assert path.is_file(), f"declared historical source missing: {source['path']}"
+              api = (
+                  f"https://api.github.com/repos/{REMOTE_REPOSITORY}/contents/"
+                  f"{source['path']}?ref={REMOTE_REF}"
+              )
+              historical_meta[api] = meta_for(path, "historical/" + source["id"])
+
+          listing = []
+          event_root = peer / REMOTE_ROOT
+          for path in sorted(event_root.glob("*.json")):
+              listing.append(meta_for(path, "event/" + path.name))
+
+          def fetch_json(url):
+              if url == _REMOTE_CONSUMER_CONTRACT_API:
+                  return consumer_meta
+              if url == _REMOTE_PRODUCER_CONTRACT_API:
+                  return producer_meta
+              if url == _REMOTE_PEER_PACKET_API:
+                  return packet_meta
+              if url == _remote_compare_api(source_commit):
+                  return {
+                      "status": relation,
+                      "base_commit": {"sha": source_commit},
+                      "merge_base_commit": {"sha": source_commit},
+                  }
+              if url == _REMOTE_API:
+                  return listing
+              if url in historical_meta:
+                  return historical_meta[url]
+              raise AssertionError("unexpected federation URL: " + url)
+
+          def fetch_bytes(url):
+              return virtual[url]
+
+          with tempfile.TemporaryDirectory() as tmp:
+              sync = BrainRemoteSync(
+                  tmp,
+                  interval_seconds=30,
+                  fetch_json=fetch_json,
+                  fetch_bytes=fetch_bytes,
+                  now_utc=lambda: datetime.now(timezone.utc),
+              )
+              state = sync.sync_once()
+              snap = brain_snapshot(tmp, remote_sync=state)
+
+          assert state["status"] == "green", state.get("last_error")
+          assert state["historical_context_status"] == "green"
+          expected_sources = consumer["historical_context"]["sources"]
+          assert state["historical_context_source_count"] == len(expected_sources)
+          assert state["historical_candidate_evidence_count"] == 0
+          assert all(
+              row["candidate_evidence_eligible"] is False
+              for row in state["historical_context_sources"]
+          )
+          assert all(
+              row["foreign_evidence_only"] is True
+              for row in state["historical_context_sources"]
+          )
+          assert all(
+              row["requires_foundry_and_evaluator"] is True
+              for row in state["historical_context_sources"]
+          )
+          assert state["truth_contract"]["historical_context_mode"] == "RESEARCH_CONTEXT_ONLY"
+          assert state["truth_contract"]["historical_context_never_bypasses_foundry"] is True
+          assert state["truth_contract"]["historical_context_never_bypasses_evaluator"] is True
+          assert state["execution_authorized"] is False
+          assert state["production_decision_authorized"] is False
+          assert snap["candidates"] == []
+
+          historical_events = [
+              row for row in snap["events"]
+              if (row.get("details") or {}).get("foreign_historical_context") is True
+          ]
+          assert len(historical_events) == len(expected_sources)
+          assert all(
+              (row.get("details") or {}).get("candidate_evidence_eligible") is False
+              for row in historical_events
+          )
+
+          report = {
+              "schema_version": "icarus-live-historical-context-receipt-v1",
+              "icarus_commit": os.environ["ICARUS_SHA"],
+              "icarus_engine_commit": os.environ["ENGINE_SHA"],
+              "peer_packet_source_commit": source_commit,
+              "peer_packet_relation": relation.upper(),
+              "peer_packet_fresh": state["peer_packet_fresh"],
+              "historical_context_status": state["historical_context_status"],
+              "historical_context_source_count": state["historical_context_source_count"],
+              "historical_context_ingested_total": state["historical_context_ingested_total"],
+              "historical_candidate_evidence_count": state["historical_candidate_evidence_count"],
+              "historical_sources": [
+                  {
+                      "id": row["id"],
+                      "evidence_status": row["evidence_status"],
+                      "remote_blob_sha": row["remote_blob_sha"],
+                      "candidate_evidence_eligible": row["candidate_evidence_eligible"],
+                  }
+                  for row in state["historical_context_sources"]
+              ],
+              "execution_authorized": False,
+              "production_decision_authorized": False,
+          }
+          Path("../live-engine-historical-context-receipt.json").write_text(
+              json.dumps(report, sort_keys=True, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          print(json.dumps(report, sort_keys=True))
+          PY
+
+      - name: Preserve live historical-context receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-engine-historical-context-receipt
+          path: live-engine-historical-context-receipt.json
+          if-no-files-found: error
+          retention-days: 14
