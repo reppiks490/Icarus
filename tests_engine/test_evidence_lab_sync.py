@@ -14,6 +14,28 @@ from icarus_engine.evidence_lab_sync import (
 def _docs(*, current_run="advanced-csv-20261002T151500Z", latest_run="advanced-csv-20260929T191500Z"):
     scheduler = "6abaef9d5c28819190d98a5af7f308b8"
     return {
+        "icarus_consumer_contract.json": {
+            "schema_version": "icarus-csv-evidence-federation-v1",
+            "producer_repository": "reppiks490/icarus-csv-evidence-lab",
+            "producer_ref": "main",
+            "consumer_repository": "reppiks490/Icarus",
+            "lane": "advanced_csv",
+            "files": {
+                "heartbeat": "automation_intelligence/advanced_csv/heartbeat.json",
+                "evidence_state": "automation_intelligence/advanced_csv/evidence_state.json",
+                "latest": "automation_intelligence/advanced_csv/latest.json",
+                "finalization_state": "automation_intelligence/advanced_csv/finalization_state.json",
+            },
+            "semantics": {
+                "run_persisted": "DURABILITY_RECEIPT_ONLY",
+                "substantive_evidence_authority": "evidence_state.EVIDENCE_STATUS",
+                "raw_owner_data_transfer": False,
+                "automatic_model_promotion": False,
+                "automatic_execution_authority": False,
+            },
+            "execution_authorized": False,
+            "production_decision_authorized": False,
+        },
         "evidence_state.json": {
             "schema_version": "scheduler-evidence-v5.6-ready",
             "lane": "advanced_csv",
@@ -54,6 +76,8 @@ def test_evidence_lab_normalization_keeps_durability_separate_from_evidence():
     assert out["evidence_pointer_matches_heartbeat"] is None
     assert out["truth_contract"]["run_persisted_is_substantive_evidence"] is False
     assert out["truth_contract"]["automatic_model_promotion"] is False
+    assert out["truth_contract"]["federation_schema"] == "icarus-csv-evidence-federation-v1"
+    assert out["truth_contract"]["automatic_execution_authority"] is False
     assert out["execution_authorized"] is False
 
 
