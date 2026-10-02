@@ -404,3 +404,12 @@ def test_learning_dashboard_surfaces_shadow_recalibration():
     assert "shadow_calibration" in ui
     assert "calibrated_validation_brier" in ui
     assert "automatic probability rewrite: off" in ui.lower()
+
+
+def test_learning_dashboard_exposes_scorecard_label_and_revision_scope():
+    ui = (REPO / "icarus_engine/learning-ui.js").read_text(encoding="utf-8")
+    assert "Prediction label" in ui
+    assert "Revision" in ui
+    assert "producer × asset × regime × horizon × label × revision" in ui
+    assert "prediction_label" in ui
+    assert "source_commit" in ui
