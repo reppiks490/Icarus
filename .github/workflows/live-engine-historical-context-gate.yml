@@ -150,6 +150,36 @@ jobs:
                   "url": url,
               }
 
+          source_contract_meta = {}
+          for contract_id, contract_path in peer_packet.get("source_contracts", {}).items():
+              claimed_blob = peer_packet.get("source_contract_blobs", {}).get(contract_id)
+              raw = subprocess.check_output(
+                  [
+                      "git",
+                      "-C",
+                      str(peer),
+                      "show",
+                      f"{peer_packet['source_commit']}:{contract_path}",
+                  ]
+              )
+              assert _git_blob_sha(raw) == claimed_blob, (
+                  "source contract witness mismatch: " + str(contract_id)
+              )
+              url = "memory://source-contract/" + str(contract_id)
+              virtual[url] = raw
+              source_contract_meta[
+                  _remote_contents_api(
+                      contract_path,
+                      ref=peer_packet["source_commit"],
+                  )
+              ] = {
+                  "type": "file",
+                  "name": Path(contract_path).name,
+                  "path": contract_path,
+                  "sha": claimed_blob,
+                  "url": url,
+              }
+
           lane_source_meta = {}
           for lane in peer_packet.get("lanes", []):
               if lane.get("worker_repository") != "reppiks490/Icarus-engine":
@@ -220,6 +250,8 @@ jobs:
                   return packet_historical_meta[url]
               if url in lane_source_meta:
                   return lane_source_meta[url]
+              if url in source_contract_meta:
+                  return source_contract_meta[url]
               raise AssertionError("unexpected federation URL: " + url)
 
           def fetch_bytes(url):
@@ -275,6 +307,8 @@ jobs:
               lane for lane in state["peer_lanes"]
               if lane["worker_repository"] == "reppiks490/Icarus-engine"
           ]
+          assert state["peer_source_contract_witness_status"] == "green"
+          assert state["peer_source_contract_witness_count"] == 3
           assert state["peer_lane_witness_verified_count"] == len(local_lanes)
           assert all(lane["source_witness_verified"] is True for lane in local_lanes)
           assert state["execution_authorized"] is False
@@ -300,6 +334,8 @@ jobs:
               "peer_packet_fresh": state["peer_packet_fresh"],
               "peer_lane_witness_verified_count": state["peer_lane_witness_verified_count"],
               "peer_lane_witness_unavailable_count": state["peer_lane_witness_unavailable_count"],
+              "peer_source_contract_witness_status": state["peer_source_contract_witness_status"],
+              "peer_source_contract_witness_count": state["peer_source_contract_witness_count"],
               "historical_context_status": state["historical_context_status"],
               "historical_context_source_count": state["historical_context_source_count"],
               "historical_context_ingested_total": state["historical_context_ingested_total"],
