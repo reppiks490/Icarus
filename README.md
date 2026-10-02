@@ -105,6 +105,16 @@ proves and authorizes runtime integration. Current handoff state preserves
 `execution_authorized=false`.
 
 
+## Continuous learning fabric
+
+ICARUS continuously joins historical replay, matured forecasts, source-quality evidence, and realized trade outcomes into a durable research-only learning ledger. It includes chronological shadow calibration, exact-revision/label scoping, overlap purging, refresh batching, calibrator drift retirement, and closure-time strategy provenance for realized P&L.
+
+Architecture, data lanes, calibration safeguards, APIs/MCP/UI, and authority boundaries: [docs/icarus/CONTINUOUS_LEARNING.md](docs/icarus/CONTINUOUS_LEARNING.md).
+
+The learning plane does not authorize execution or automatic production promotion.
+
+
+
 ## APEX Ω world-intelligence layer
 
 APEX Ω is the research/shadow world-dynamics layer that federates ICARUS evidence, participant/force reconstruction, causal/cascade hypotheses, economic world state, unknown-force analysis, model health, and independent conscience checks. It is explicitly non-executing and preserves `execution_authorized=false` and `production_decision_authorized=false`.

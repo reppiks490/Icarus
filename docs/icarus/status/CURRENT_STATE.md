@@ -1,50 +1,92 @@
-# ICARUS Current State — 2026-09-24
+# ICARUS Current State — 2026-10-02
 
-## Pinned repository
-`reppiks490/Icarus/main@007e70189945b8e112904cf92b2b1a12e43792d6`
+**Snapshot verified against:** `main@e84385f287ce0d6e1ea6faddc4aef882c739629c`  
+**Review when:** main changes the learning, qualification, runtime journal, or execution-authority contracts.
 
-## Pipeline
-- `PIPELINE_POLICY_VERSION=icarus-control-v1`
-- `NEXT_EXPECTED_STAGE=ARCHITECTURE_EXTRACTION_FORGE`
+## Authority boundary
+
 - `execution_authorized=false`
+- `production_decision_authorized=false`
+- automatic production promotion from the learning plane: **off**
 
-## S3 summary
-No researched edge has independently satisfied the complete requirements for
-`EMPIRICALLY_SUPPORTED` promotion.
+Research and shadow systems may learn, calibrate, rank evidence, and retire
+degraded models. They do not independently authorize orders.
 
-Current global blockers:
-- multiple-testing universe remains uncontrolled;
-- several hypotheses remain data-blocked or proxy-only;
-- many current confluence channels have high redundancy risk;
-- some research paths lack behavior-neutral ablation seams;
-- genuine predictive lead/lag still requires synchronized point-in-time datasets.
+## Continuous learning
 
-## Highest-value verified repo findings
-1. `icarus_engine/strategy/pulse.py` "XGBoost5" is a hand-built derived composite,
-   not a trained XGBoost model.
-2. `icarus_engine/trainers/xgb_slot.py` still raises `NotImplementedError`.
-3. Active trainer path is the logistic baseline in `trainers/run.py`.
-4. Current trainer feature set excludes optional DXY/VIX/TNX fields from active
-   `FEATURE_KEYS`.
-5. Correlation tooling correctly labels itself association-only, but must not be
-   promoted into causal/directional authority.
-6. Event/calendar research has temporal and redundancy defects documented in the audit.
-7. Futures runtime policy is continuous-only across registered futures assets; month-coded expiry/roll logic is not part of the active engine. Continuous/front symbols remain unsuitable by themselves for true term-structure research, which requires explicit maturity data in the research layer.
+The Continuous Learning Fabric is installed and starts as a research background
+service from its persisted/default configuration.
 
-## Current S4 work
-A research-only point-in-time `CurveSnapshot` architecture has been specified for
-explicit futures maturities, provenance-preserving spot/rate alignment, deterministic
-replay, estimator isolation, falsification, and fail-closed promotion.
+Current capabilities include:
 
-## Not implemented
-The curve research subsystem described in the S4 spec/plan has **not** been implemented
-or tested in the repository by this loop. The documents are architecture and implementation
-contracts, not completion evidence.
+- durable prediction/outcome ledger
+- maturity enforcement and immutable outcomes
+- historical CSV cataloging by hash
+- manifest-aware data provenance
+- protected OHLC replay/training
+- TradingView trade-list experience import
+- native SIBYL / Ψ / Performance Proof / Source Reliability / Commissioning harvest
+- APEX empirical credibility feedback
+- closure-time strategy provenance for realized live-sim trades
+- configuration-specific P&L/expectancy/drawdown scorecards
+- chronological isotonic shadow recalibration
+- predicted-label and exact-source-revision isolation
+- overlapping-window purge before calibration and drift measurement
+- stable refresh batching
+- OOS calibrator drift retirement
+
+Canonical architecture: [../CONTINUOUS_LEARNING.md](../CONTINUOUS_LEARNING.md).
+
+## Historical data
+
+Runtime historical data is intentionally not stored in Git. The learner scans:
+
+- `history/`
+- `history/drop/`
+- `research/imports/`
+
+This allows previously exported multi-year CSVs to continue contributing to
+replay and realized-experience analysis when those files are present locally.
+
+## Empirical research status
+
+A result is not promoted merely because it exists or because a backtest is
+profitable. Current research doctrine remains:
+
+`observation != estimator != predictive relationship != incremental alpha != executable edge`
+
+Important remaining research risks include:
+
+- multiple-testing and selection bias
+- nonstationarity/regime change
+- provider/source degradation
+- temporal leakage
+- evidence redundancy
+- proxy-only data paths
+- insufficient independent OOS samples
+
+Overlap-aware calibration and drift retirement reduce two forms of false
+confidence; they do not eliminate these broader risks.
+
+## Runtime integration
+
+The learning plane is wired through:
+
+- `ResearchWorkspace` lifecycle
+- engine HTTP API/admin routes
+- MCP research tools
+- Learning Fabric dashboard panel
+- APEX credibility feedback
+- persistent SQLite/WAL research state
+
+The service is non-blocking at engine startup.
 
 ## Resume instruction
-After all loop handoffs are uploaded to this integration branch:
-1. reconcile duplicate/conflicting claims;
-2. freeze the combined S3 registry;
-3. preserve all failed attempts in the attempt ledger;
-4. review S4 architectural dependencies;
-5. continue the same research loop without resetting trial counts or maturity.
+
+1. Preserve exact source/data/code provenance for all new forecasts and outcomes.
+2. Prefer independent non-overlapping samples over raw observation count.
+3. Keep historical and live outcomes in the same evidence ledger but preserve
+   their source/configuration scopes.
+4. Retire or withhold degraded calibrators instead of forcing consensus.
+5. Keep execution and production authority separate from research confidence.
+6. Re-verify this page whenever learning or authority contracts change.
