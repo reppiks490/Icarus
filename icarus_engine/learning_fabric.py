@@ -186,6 +186,7 @@ class LearningFabric:
                     horizon_seconds INTEGER NOT NULL,
                     target TEXT NOT NULL,
                     prediction_label TEXT NOT NULL DEFAULT '',
+                    source_commit TEXT NOT NULL DEFAULT '',
                     status TEXT NOT NULL,
                     train_count INTEGER NOT NULL,
                     validation_count INTEGER NOT NULL,
@@ -317,10 +318,22 @@ class LearningFabric:
                     "ALTER TABLE calibration_models "
                     "ADD COLUMN prediction_label TEXT NOT NULL DEFAULT ''"
                 )
+            if "source_commit" not in calibration_columns:
+                self._conn.execute(
+                    "ALTER TABLE calibration_models "
+                    "ADD COLUMN source_commit TEXT NOT NULL DEFAULT ''"
+                )
             self._conn.execute(
                 """CREATE INDEX IF NOT EXISTS idx_learning_calibrator_label_scope
                    ON calibration_models(
                      producer,asset,regime,horizon_seconds,target,prediction_label,training_cutoff
+                   )"""
+            )
+            self._conn.execute(
+                """CREATE INDEX IF NOT EXISTS idx_learning_calibrator_revision_scope
+                   ON calibration_models(
+                     producer,asset,regime,horizon_seconds,target,prediction_label,
+                     source_commit,training_cutoff
                    )"""
             )
 
