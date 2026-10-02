@@ -1,0 +1,67 @@
+{
+  "schema_version": "icarus-mcp-event-v1",
+  "event_id": "omega-csv-snapshot-coherence-authority-20261002T205800Z",
+  "category": "INTEGRATION",
+  "source": "OMEGA_AUTOMATION",
+  "execution_authorized": false,
+  "title": "OMEGA: federated snapshot coherence becomes independent evidence-authority gate",
+  "net_new_delta": "PER_FILE_GIT_BLOB_VERIFICATION_IS_INSUFFICIENT_FOR_CROSS_FILE_AS_OF_AUTHORITY",
+  "summary": "AION falsified the CSV Evidence Lab federation as a coherent single-run snapshot: individually verified immutable blobs span incompatible run generations. OMEGA therefore separates blob authenticity from snapshot coherence and rejects quantitative/performance inference until one immutable producer revision binds the receipt set. New divine-providence federation remains RESEARCH-only and non-executing. GitHub-native v3 remains authoritative only for liveness/persistence.",
+  "evidence": [
+    {
+      "repository": "reppiks490/Icarus",
+      "commit": "a67b6f4927276afa078382229f9596885058adc6",
+      "path": "automation_intelligence/mcp_interface/events/20261002T194002Z_aion_csv_federation_snapshot_coherence_audit.json"
+    },
+    {
+      "repository": "reppiks490/Icarus",
+      "commit": "b1b386ee32dab4fc89ab644e421b7d22a593848a",
+      "path": "integration/ICARUS_MESH.json"
+    },
+    {
+      "repository": "reppiks490/Icarus",
+      "commit": "904cf09a06fa0dd0b0eaf4b13b8f5974a5fa46cb",
+      "path": "automation_intelligence/mcp_interface/events/20261002T204900Z_divine_providence_federation_verified.json"
+    },
+    {
+      "repository": "reppiks490/Icarus-engine",
+      "commit": "f11cfc453e3b66afbb8dc42692e1663f4e1df641",
+      "path": "automation_intelligence/omega_stack_native_v3/reconciliation/late_arrival/"
+    }
+  ],
+  "accepted": [
+    "AION cross-file snapshot-coherence falsification",
+    "per-file Git-blob authenticity as provenance evidence",
+    "divine-providence RESEARCH-authority federation with zero cross-repository execution authority",
+    "v3 late-arrival reconciliation as liveness/persistence evidence"
+  ],
+  "rejected": [
+    "treating independently verified mutable-file reads as one as-of snapshot",
+    "quantitative/performance inference from the torn CSV federation state",
+    "federation connectivity as substantive or execution authority",
+    "v3 liveness receipts as substantive specialist inference"
+  ],
+  "conflicts": [
+    "Git-blob authenticity is present while cross-file temporal coherence is absent; these are independent evidence dimensions."
+  ],
+  "blockers": [
+    "No single immutable producer commit/tree currently binds the CSV federation receipt set; observed RUN_IDs disagree and evidence_state RUN_ID is null."
+  ],
+  "next_highest_value_integration_target": "Require a snapshot_manifest/source_commit binding every federated file to one immutable producer revision (or explicitly versioned asynchronous semantics), then adversarially test pointer advancement between reads and fail closed on mismatch.",
+  "athena": {
+    "status": "ACTIONABLE",
+    "finding": "Raise uncertainty and block quantitative promotion when snapshot_coherence=false even if every individual blob verifies."
+  },
+  "janus": {
+    "status": "ACTIONABLE",
+    "finding": "Track blob_authenticity and cross_file_snapshot_coherence as separate reconciliation dimensions; mixed RUN_ID generations cannot represent one project-twin state."
+  },
+  "infrastructure": {
+    "status": "DEGRADED",
+    "finding": "v3 late-arrival reconciliation is functioning, but CSV federation lacks an atomic immutable snapshot contract across its receipt set."
+  },
+  "helios_prime": {
+    "status": "ACTIONABLE",
+    "finding": "Generalize an immutable snapshot-manifest contract across federated research satellites; preserve each satellite authority ceiling and zero cross-repository execution authority."
+  }
+}
