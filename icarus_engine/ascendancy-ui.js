@@ -575,6 +575,56 @@
     '</section>';
   }
 
+  function renderFederatedSeeds(seeds) {
+    if (!seeds) {
+      return '<section class="card" style="margin-top:12px"><h3>FEDERATED RESEARCH SEEDS</h3><div class="empty">UNAVAILABLE — federated research-seed state did not load.</div></section>';
+    }
+    const rows = Array.isArray(seeds.seeds) ? seeds.seeds : [];
+    const blocked = Array.isArray(seeds.blocked_sources) ? seeds.blocked_sources : [];
+    const seedRows = rows.map(row =>
+      '<tr>' +
+        '<td><code title="' + h(row.seed_id || '') + '">' + h(short(row.seed_id || 'UNAVAILABLE')) + '</code></td>' +
+        '<td><b>' + h(row.source_id || 'UNAVAILABLE') + '</b><div class="small muted">' + h(row.research_focus || 'UNAVAILABLE') + '</div></td>' +
+        '<td><code title="' + h(row.source_commit || '') + '">' + h(short(row.source_commit || 'UNAVAILABLE')) + '</code><div class="small muted">blob ' + h(short(row.source_artifact_blob_sha || 'UNAVAILABLE')) + '</div></td>' +
+        '<td class="small">' + h(row.research_prompt || 'UNAVAILABLE') + '</td>' +
+        '<td class="small"><b>RESEARCH_SEED_ONLY</b><br>candidate evidence=false<br>automatic candidate=false<br>Foundry + Evaluator required</td>' +
+      '</tr>'
+    ).join('');
+    const blockedRows = blocked.map(row =>
+      '<tr>' +
+        '<td><b>' + h(row.source_id || 'UNAVAILABLE') + '</b></td>' +
+        '<td class="' + statusClass(row.reason) + '"><b>' + h(row.reason || 'UNAVAILABLE') + '</b></td>' +
+        '<td class="small">' + h(row.current_main_relation || 'UNAVAILABLE') + '</td>' +
+        '<td class="small">candidate evidence=false · automatic candidate=false</td>' +
+      '</tr>'
+    ).join('');
+    const truth = seeds.truth_contract || {};
+    return '<section class="card" style="margin-top:12px">' +
+      '<h3>FEDERATED RESEARCH SEEDS</h3>' +
+      '<div class="small muted">Turns exact-commit, exact-blob Icarus-engine historical context into deterministic research questions. A seed is not a candidate and cannot bypass Foundry + Evaluator.</div>' +
+      '<div class="tiles" style="margin-top:10px">' +
+        '<div class="tile"><div class="k">STATUS</div><div class="v ' + statusClass(seeds.status) + '">' + h(String(seeds.status || 'UNMEASURED').toUpperCase()) + '</div></div>' +
+        '<div class="tile"><div class="k">READY SEEDS</div><div class="v tnum">' + h(count(seeds.ready_seed_count)) + '</div></div>' +
+        '<div class="tile"><div class="k">BLOCKED SOURCES</div><div class="v tnum">' + h(count(seeds.blocked_source_count)) + '</div><div class="small muted">PROVENANCE_REFRESH_REQUIRED blocks live-source drift</div></div>' +
+        '<div class="tile"><div class="k">SOURCE COMMIT</div><div class="v tnum">' + h(short(seeds.source_commit || 'UNAVAILABLE')) + '</div><div class="small muted">' + h(seeds.source_repository || 'reppiks490/Icarus-engine') + '</div></div>' +
+        '<div class="tile"><div class="k">AUTHORITY</div><div class="v">RESEARCH SEED ONLY</div><div class="small muted">candidate evidence=false · automatic candidate=false · execution=false</div></div>' +
+      '</div>' +
+      '<div class="small muted" style="margin:10px 0">' +
+        'research_seed_is_not_candidate=' + h(truth.research_seed_is_not_candidate === true ? 'true' : 'UNAVAILABLE') +
+        ' · candidate_foundry_required=' + h(truth.candidate_foundry_required === true ? 'true' : 'UNAVAILABLE') +
+        ' · evaluator_required=' + h(truth.evaluator_required === true ? 'true' : 'UNAVAILABLE') +
+        ' · independent_evidence_required=' + h(truth.independent_evidence_required === true ? 'true' : 'UNAVAILABLE') +
+      '</div>' +
+      '<div class="scroll" style="max-height:48vh"><table><thead><tr><th>Seed</th><th>Source / focus</th><th>Exact provenance</th><th>Research prompt</th><th>Admission boundary</th></tr></thead><tbody>' +
+        (seedRows || '<tr><td colspan="5" class="empty">No provenance-ready federated research seeds.</td></tr>') +
+      '</tbody></table></div>' +
+      '<h4 style="margin:14px 0 6px">BLOCKED FEDERATED SOURCES</h4>' +
+      '<div class="scroll"><table><thead><tr><th>Source</th><th>Reason</th><th>Relation</th><th>Boundary</th></tr></thead><tbody>' +
+        (blockedRows || '<tr><td colspan="4" class="small muted">No blocked federated sources.</td></tr>') +
+      '</tbody></table></div>' +
+    '</section>';
+  }
+
   function renderEvaluator(evaluator) {
     if (!evaluator) {
       return '<section class="card" style="margin-top:12px"><h3>ASCENDANCY EVALUATOR CASCADE · RESOURCE ECONOMY</h3><div class="empty">UNAVAILABLE — staged evaluator state did not load.</div></section>';
@@ -650,13 +700,13 @@
     '</section>';
   }
 
-  function renderAscendancy(capabilities, genomes, foundry, unknowns, mechanisms, inventions, contributions, evaluator, peers, errors) {
+  function renderAscendancy(capabilities, genomes, foundry, unknowns, mechanisms, inventions, contributions, evaluator, peers, federatedSeeds, errors) {
     const el = document.querySelector('#ascendancyBody');
     if (!el) return;
     const warning = errors.length
       ? '<div class="empty" style="margin-bottom:10px">DEGRADED: ' + h(errors.join(' · ')) + '</div>'
       : '';
-    el.innerHTML = warning + renderCapabilities(capabilities) + renderPeers(peers) + renderUnknowns(unknowns) + renderInventions(inventions) + renderFoundry(foundry) + renderEvaluator(evaluator) + renderContributions(contributions) + renderMechanisms(mechanisms) + renderGenomeLab(genomes);
+    el.innerHTML = warning + renderCapabilities(capabilities) + renderPeers(peers) + renderFederatedSeeds(federatedSeeds) + renderUnknowns(unknowns) + renderInventions(inventions) + renderFoundry(foundry) + renderEvaluator(evaluator) + renderContributions(contributions) + renderMechanisms(mechanisms) + renderGenomeLab(genomes);
   }
 
   async function fetchJson(url, token) {
@@ -685,7 +735,8 @@
         fetchJson('/api/ascendancy/inventions', token),
         fetchJson('/api/ascendancy/contributions', token),
         fetchJson('/api/ascendancy/evaluator', token),
-        fetchJson('/api/brain', token)
+        fetchJson('/api/brain', token),
+        fetchJson('/api/ascendancy/federated-seeds', token)
       ]);
       if (seq !== loadSeq) return;
       const capabilities = settled[0].status === 'fulfilled' ? settled[0].value : null;
@@ -697,10 +748,11 @@
       const contributions = settled[6].status === 'fulfilled' ? settled[6].value : null;
       const evaluator = settled[7].status === 'fulfilled' ? settled[7].value : null;
       const peers = settled[8].status === 'fulfilled' ? settled[8].value : null;
+      const federatedSeeds = settled[9].status === 'fulfilled' ? settled[9].value : null;
       const errors = settled
         .filter(x => x.status === 'rejected')
         .map(x => x.reason && x.reason.message ? x.reason.message : String(x.reason || 'UNAVAILABLE'));
-      renderAscendancy(capabilities, genomes, foundry, unknowns, mechanisms, inventions, contributions, evaluator, peers, errors);
+      renderAscendancy(capabilities, genomes, foundry, unknowns, mechanisms, inventions, contributions, evaluator, peers, federatedSeeds, errors);
     } catch (err) {
       if (seq !== loadSeq) return;
       el.innerHTML = '<div class="empty">ASCENDANCY state UNAVAILABLE: ' + h(err && err.message ? err.message : err) + '</div>';
