@@ -538,3 +538,14 @@ def test_autopilot_operator_actions_are_not_silent():
     assert "admin('/admin/autopilot/config',{cadence_seconds:Number(e.target.value)},true)" not in ui
     assert "admin('/admin/autopilot/config',{robustness_windows:Number(e.target.value)},true)" not in ui
     assert "admin('/admin/autopilot/config',{assets:e.target.value?[e.target.value]:[]},true)" not in ui
+
+
+def test_learning_dashboard_surfaces_manifest_linked_historical_artifact_experience():
+    ui = (REPO / "icarus_engine/learning-ui.js").read_text(encoding="utf-8")
+    assert "HISTORICAL ARTIFACT CONFIGURATION EXPERIENCE" in ui
+    assert "Manifest-linked artifact fingerprint" in ui
+    assert "Strategy report" in ui
+    assert "artifactExperienceRows" in ui
+    assert "by_artifact_configuration" in ui
+    assert "artifact_scoped_count" in ui
+    assert "MANIFEST-LINKED" in ui
