@@ -293,7 +293,7 @@
 
   function renderUnknowns(unknowns) {
     if (!unknowns) {
-      return '<section class="card" style="margin-top:12px"><h3>UNKNOWN UNKNOWNS</h3><div class="empty">UNAVAILABLE — unexplained-phenomenon state did not load.</div></section>';
+      return '<section class="card" style="margin-top:12px"><h3>ASCENDANCY UNKNOWN-UNKNOWN LAB</h3><div class="empty">UNAVAILABLE — unexplained-phenomenon state did not load.</div></section>';
     }
     const phenomena = Array.isArray(unknowns.phenomena) ? unknowns.phenomena : [];
     const rows = phenomena.map(row => {
@@ -316,7 +316,7 @@
 
     const contracts = unknowns.contracts || {};
     return '<section class="card" style="margin-top:12px">' +
-      '<h3>UNKNOWN UNKNOWNS</h3>' +
+      '<h3>ASCENDANCY UNKNOWN-UNKNOWN LAB</h3>' +
       '<div class="small muted">Cross-engine residual replication and ontology-gap escalation. This does not duplicate NULLSPACE, EX NIHILO, APEX unknown-force, or reality-gap diagnostics; it persists and tests whether their unexplained failures recur independently.</div>' +
       '<div class="tiles" style="margin-top:10px">' +
         '<div class="tile"><div class="k">EVENTS</div><div class="v tnum">' + h(count(unknowns.event_count)) + '</div></div>' +
