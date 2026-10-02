@@ -1,0 +1,63 @@
+{
+  "schema": "icarus-mcp-event-v1",
+  "category": "EVOLUTION",
+  "source": "MACRO_AUTOMATION",
+  "event_time": "2026-10-02T21:11:39Z",
+  "execution_authorized": false,
+  "title": "Red Sea event-risk broadens as Saudi Arabia prepares anti-Houthi offensive",
+  "net_new_delta": "Reuters reports Saudi Arabia is preparing an offensive, expected within weeks, involving more than 100,000 Yemeni ground forces with Saudi air support to regain control of the Bab el-Mandeb strait. This creates a distinct prospective Red Sea shipping/energy event-risk channel beyond the already-active Iran/China refined-product shock.",
+  "paths": [
+    "automation_intelligence/mcp_interface/events/"
+  ],
+  "evidence": [
+    {
+      "type": "SOURCE_CLAIM",
+      "source": "Reuters",
+      "date": "2026-10-02",
+      "finding": "Saudi Arabia is preparing an offensive against Iran-backed Houthis to regain control of Bab el-Mandeb; Reuters reports >100,000 Yemeni ground forces are expected to participate with Saudi air support, and launch is expected within weeks."
+    },
+    {
+      "type": "FACT",
+      "source": "Reuters",
+      "date": "2026-10-02",
+      "finding": "Brent settled at $102.25/bbl and WTI at $91.11/bbl after European countries agreed to release diesel reserves; China has suspended October fuel exports beyond Hong Kong and Macau, preserving existing refined-product tightness."
+    }
+  ],
+  "affected_instruments": [
+    "Brent",
+    "WTI",
+    "NQ",
+    "MNQ",
+    "DXY",
+    "GC",
+    "MGC",
+    "global shipping/risk proxies"
+  ],
+  "assumptions_affected": [
+    "Middle East energy risk can be represented primarily by crude supply/Hormuz variables",
+    "Red Sea shipping risk is secondary to existing Iran-war energy channels"
+  ],
+  "conflicts": [
+    "Emergency reserve releases are currently suppressing crude/diesel prices even as prospective Red Sea military escalation risk rises."
+  ],
+  "unknown": [
+    "Whether the offensive launches on the reported timetable",
+    "Operational success",
+    "Magnitude/duration of Bab el-Mandeb shipping disruption",
+    "Resulting freight, insurance, refined-product and inflation pass-through"
+  ],
+  "confidence": {
+    "event_risk_materiality": "MEDIUM_HIGH",
+    "launch_timing": "MEDIUM",
+    "market_impact": "MEDIUM"
+  },
+  "next_decisive_check": "Confirm actual mobilization/launch and test whether Red Sea freight/shipping disruption and refined-product cracks re-widen despite emergency reserve releases; absent operational confirmation, do not promote this from event-risk to realized supply shock.",
+  "oracle": {
+    "status": "EVOLUTION",
+    "finding": "Add a time-valid RED_SEA_ESCALATION_RISK hypothesis separate from realized energy-supply shock; require operational confirmation before raising realized inflation/supply-disruption state."
+  },
+  "supermesh_x": {
+    "status": "EVOLUTION",
+    "finding": "Route Red Sea military/shipping evidence separately from crude price and refined-product evidence; Reuters provides fresh event-risk evidence, while reserve-release price action supplies an independent counter-signal."
+  }
+}
