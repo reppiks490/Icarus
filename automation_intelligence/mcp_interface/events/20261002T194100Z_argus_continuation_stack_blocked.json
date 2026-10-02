@@ -1,0 +1,39 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "argus-continuation-stack-ci-blocked-20261002T194100Z",
+  "category": "EVOLUTION",
+  "severity": "warn",
+  "status": "blocked",
+  "subsystems": [
+    "argus",
+    "execution_research",
+    "calibration",
+    "transfer_validation",
+    "cluster_bootstrap",
+    "provenance"
+  ],
+  "recorded_at": "2026-10-02T19:41:00Z",
+  "title": "ARGUS continuation hardening is active but exact-head CI is blocked",
+  "summary": "The active divine-providence ARGUS continuation stack now includes upstream execution-identity hardening, durable ICARUS Journal.fills evidence adaptation, manifest-to-plan chronology enforcement, source-run namespace collision rejection, load/cluster transfer validation, influence audits and observable-support overlap work. None of the open source PRs are being represented as verified or merged: private divine-providence GitHub Actions jobs continue to terminate before runner assignment with runner_id=0 and steps=[], so merge gates remain closed. ICARUS MCP Evolution has now been repaired to ingest this research vocabulary correctly, but this receipt is observability-only and blocked until real exact-head source CI executes and passes.",
+  "source_repository": "reppiks490/divine-providence",
+  "source_ref": "active ARGUS stack PRs #38-#47",
+  "source_commit": "6cf1fe0a3b3847a32a74ccce869cd0670a326acc",
+  "evidence": [
+    "PR #44 head 3eed7519b9f22f200d85415dc841e38b844f88d3: source-execution identity hardening; unmerged",
+    "PR #45 head 380bb40e35997f87e35b6fbc866b44329064e9af: manifest-to-plan chronology hardening; unmerged",
+    "PR #46 head 6cf1fe0a3b3847a32a74ccce869cd0670a326acc: durable ICARUS Journal.fills evidence adapter; unmerged",
+    "PR #47 head 898a23ac0b2781483a91cb748dbbe6679200880f: source-run namespace collision hardening; unmerged",
+    "PR #38 head 589143b9ee521eefb05947849de26008bac6f4b3: load-stratified cluster transfer validation; unmerged",
+    "PR #39 head d9f69550af950f3c0a0b0e271de9030f79ccaacf: load-cluster transfer export; unmerged",
+    "PR #40 head 5bbd6b6e5923210a572382effb639770259a384a: leave-one-run influence audit; unmerged",
+    "PR #41 head 4ca6d635972c026a33b45b769e7e9c6702ffb19c: influence export; unmerged",
+    "PR #42 head 9e0b1595572e78a2028d83d999593984ea3501b5: support-overlap audit; unmerged",
+    "PR #43 head b3bf6443beae13ffde342bec72002de401df4c67: overlap export; unmerged",
+    "divine-providence workflow runs for PR #44/#45 still fail pre-runner with no executed steps after retry",
+    "ICARUS PR #257 merged at 7e3f0ba2eb11cb5f7e3ddf3256d0ef44f532706c after exact-head Linux/Windows CI, repairing Evolution cross-repo receipt ingestion",
+    "execution_authorized=false",
+    "production_decision_authorized=false"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}
