@@ -10,6 +10,7 @@ from icarus_engine.brain_sync import (
     _REMOTE_PRODUCER_CONTRACT_API,
     _REMOTE_PEER_PACKET_API,
     _git_blob_sha,
+    _remote_compare_api,
 )
 
 
@@ -228,6 +229,7 @@ def _fixture(
     corrupt_consumer_blob=False,
     corrupt_peer_blob=False,
     peer=None,
+    peer_compare_status="ahead",
     allow_legacy_event=False,
 ):
     event_raw = (json.dumps(payload, sort_keys=True) + "\n").encode()
@@ -273,6 +275,16 @@ def _fixture(
                 "sha": "f" * 40 if corrupt_peer_blob else peer_sha,
                 "url": peer_url,
             }
+        if requested == _remote_compare_api(peer_doc["source_commit"]):
+            status = str(peer_compare_status).lower()
+            response = {
+                "status": status,
+                "base_commit": {"sha": peer_doc["source_commit"]},
+                "merge_base_commit": {"sha": peer_doc["source_commit"]},
+            }
+            if status == "diverged":
+                response["merge_base_commit"] = {"sha": "a" * 40}
+            return response
         return listing
 
     def fetch_bytes(requested):
@@ -322,6 +334,8 @@ def test_remote_sync_ingests_custom_agent_and_owned_subsystem_events(tmp_path):
     assert status["peer_packet_status"] == "green"
     assert status["peer_packet_blob_sha"] == fixture["peer_sha"]
     assert status["peer_source_commit"] == "c" * 40
+    assert status["peer_source_commit_verified"] is True
+    assert status["peer_source_commit_relation"] == "AHEAD"
     assert status["peer_substantive_lane_count"] == 1
     assert status["peer_durability_only_lane_count"] == 1
     assert len(status["peer_lanes"]) == 3
@@ -560,3 +574,20 @@ def test_remote_sync_rejects_invented_foreign_sibling_lane_state(tmp_path):
     assert status["peer_packet_status"] == "degraded"
     assert status["peer_lanes"] == []
     assert "invents state for a foreign sibling repository" in status["last_error"]
+
+def test_remote_sync_rejects_peer_packet_whose_source_commit_is_not_on_main(tmp_path):
+    fixture = _fixture(_remote_event(), peer_compare_status="diverged")
+    sync = BrainRemoteSync(
+        tmp_path,
+        interval_seconds=60,
+        fetch_json=fixture["fetch_json"],
+        fetch_bytes=fixture["fetch_bytes"],
+    )
+    status = sync.sync_once()
+    assert status["status"] == "degraded"
+    assert status["peer_packet_status"] == "degraded"
+    assert status["peer_source_commit"] is None
+    assert status["peer_source_commit_verified"] is False
+    assert status["peer_source_commit_relation"] is None
+    assert status["ingested_total"] == 1
+    assert "not an ancestor of Icarus-engine/main" in status["last_error"]
