@@ -71,7 +71,7 @@ def test_pantheon_runs_independent_faculties_and_never_grants_execution(tmp_path
     obs = kernel.record_observation(_payload())
     analysis = obs["analysis"]
     assert set(analysis["faculties"]) == {
-        "nullspace", "godel", "ananke", "nemesis", "ex_nihilo", "mint", "echo", "veritas", "lethe", "axiom", "archon", "socrates"
+        "nullspace", "godel", "ananke", "nemesis", "ex_nihilo", "mint", "echo", "veritas", "lethe", "atlas", "axiom", "archon", "socrates"
     }
     assert analysis["faculties"]["nullspace"]["routing_state"] == "absorbed"
     assert analysis["faculties"]["nullspace"]["debt_state"] == "absorbed"
@@ -855,6 +855,68 @@ def test_lethe_rejects_duplicate_memory_identity(tmp_path):
         PantheonKernel(tmp_path).record_observation(payload)
 
 
+def _atlas_anchors():
+    return [
+        {
+            "anchor_id": "trend-up-core",
+            "regime": "trend_up",
+            "vector": [0.0, 0.0],
+            "radius": 1.0,
+            "stability": 0.9,
+        },
+        {
+            "anchor_id": "trend-down-core",
+            "regime": "trend_down",
+            "vector": [3.0, 3.0],
+            "radius": 1.0,
+            "stability": 0.8,
+        },
+    ]
+
+
+def test_atlas_maps_basin_boundary_and_out_of_manifold_states(tmp_path):
+    basin = _payload(observation_id="pan-atlas-basin")
+    basin["signals"] = dict(basin["signals"])
+    basin["signals"]["state_embedding"] = [0.1, 0.0]
+    basin["signals"]["manifold_anchors"] = _atlas_anchors()
+    basin_state = PantheonKernel(tmp_path / "basin").record_observation(basin)["analysis"]["faculties"]["atlas"]
+    assert basin_state["geometry_state"] == "basin"
+    assert basin_state["out_of_manifold"] is False
+    assert basin_state["current_basin"]["regime"] == "trend_up"
+    assert basin_state["boundary_pressure"] < 0.20
+    assert basin_state["authority"]["execution_authorized"] is False
+
+    boundary = _payload(observation_id="pan-atlas-boundary")
+    boundary["signals"] = dict(boundary["signals"])
+    boundary["signals"]["state_embedding"] = [0.0, 0.0]
+    boundary["signals"]["manifold_anchors"] = [
+        {"anchor_id": "left", "regime": "left_regime", "vector": [-1.0, 0.0], "radius": 1.0, "stability": 0.8},
+        {"anchor_id": "right", "regime": "right_regime", "vector": [1.0, 0.0], "radius": 1.0, "stability": 0.8},
+    ]
+    boundary_state = PantheonKernel(tmp_path / "boundary").record_observation(boundary)["analysis"]["faculties"]["atlas"]
+    assert boundary_state["geometry_state"] == "boundary"
+    assert boundary_state["boundary_pressure"] == pytest.approx(1.0)
+    assert boundary_state["transition_corridor"] is not None
+
+    outside = _payload(observation_id="pan-atlas-out")
+    outside["signals"] = dict(outside["signals"])
+    outside["signals"]["state_embedding"] = [10.0, 10.0]
+    outside["signals"]["manifold_anchors"] = _atlas_anchors()
+    outside_state = PantheonKernel(tmp_path / "outside").record_observation(outside)["analysis"]["faculties"]["atlas"]
+    assert outside_state["geometry_state"] == "out_of_manifold"
+    assert outside_state["out_of_manifold"] is True
+    assert outside_state["topological_novelty"] == pytest.approx(1.0)
+
+
+def test_atlas_fails_closed_on_dimension_mismatch(tmp_path):
+    payload = _payload(observation_id="pan-atlas-dimension")
+    payload["signals"] = dict(payload["signals"])
+    payload["signals"]["state_embedding"] = [0.1, 0.2, 0.3]
+    payload["signals"]["manifold_anchors"] = _atlas_anchors()
+    with pytest.raises(ValueError, match="dimension must match"):
+        PantheonKernel(tmp_path).record_observation(payload)
+
+
 def _axiom_ready_payload(observation_id="pan-axiom-ready"):
     payload = _payload(observation_id=observation_id)
     payload["signals"] = dict(payload["signals"])
@@ -911,6 +973,19 @@ def test_axiom_rejects_shared_ancestry_even_when_engines_agree(tmp_path):
     assert "evidence_independence" in state["failed_gates"]
     assert state["research_ready"] is False
     assert state["authority"]["execution_authorized"] is False
+
+
+def test_axiom_rejects_out_of_manifold_dependency(tmp_path):
+    payload = _axiom_ready_payload("pan-axiom-atlas-block")
+    payload["signals"]["state_embedding"] = [10.0, 10.0]
+    payload["signals"]["manifold_anchors"] = _atlas_anchors()
+    obs = PantheonKernel(tmp_path).record_observation(payload)
+    axiom_state = obs["analysis"]["faculties"]["axiom"]
+    atlas_state = obs["analysis"]["faculties"]["atlas"]
+    assert atlas_state["out_of_manifold"] is True
+    assert axiom_state["certificate_state"] == "rejected"
+    assert "manifold_membership" in axiom_state["failed_gates"]
+    assert axiom_state["research_ready"] is False
 
 
 def test_axiom_remains_incomplete_when_mechanism_and_lineage_are_unproven(tmp_path):
@@ -1013,6 +1088,8 @@ def test_pantheon_is_visible_in_trader_interface():
     assert "Memory staleness" in ui
     assert "Resurrection pressure" in ui
     assert "Proof gap" in ui
+    assert "Topology pressure" in ui
+    assert "geometry " in ui
     assert "certificate " in ui
     assert "VERITAS right-for-right-reasons audit" in ui
     assert "APEX lineage" in ui
@@ -1024,7 +1101,7 @@ def test_pantheon_is_visible_in_trader_interface():
     assert '"pantheon": pantheon.snapshot' in server
     assert "resolve_engine_evidence_lineage" in server
     assert '"apex_lineage"' in server
-    for subsystem in ("PANTHEON", "NEMESIS Ω", "GÖDEL Ω", "SOCRATES", "ANANKĒ", "EX NIHILO", "MINT Ω", "NULLSPACE Ω", "ECHO Ω", "VERITAS Ω", "LETHE Ω", "AXIOM Ω", "ARCHON Ω", "AETHER Ω"):
+    for subsystem in ("PANTHEON", "NEMESIS Ω", "GÖDEL Ω", "SOCRATES", "ANANKĒ", "EX NIHILO", "MINT Ω", "NULLSPACE Ω", "ECHO Ω", "VERITAS Ω", "LETHE Ω", "ATLAS Ω", "AXIOM Ω", "ARCHON Ω", "AETHER Ω"):
         assert subsystem in brain
 
 

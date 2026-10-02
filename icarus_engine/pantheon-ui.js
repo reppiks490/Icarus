@@ -49,6 +49,7 @@
       else if(kv[0]==='echo') key=(row.lineage_verified===false?'lineage UNVERIFIED · ':'')+'echo risk '+pct(row.echo_risk)+' · independent support '+pct(row.effective_independent_support)+(row.consensus_illusion_candidate?' · ILLUSION CANDIDATE':'');
       else if(kv[0]==='veritas') key=row.status==='active'?('certificate '+h(row.mechanism_id||'')+' · '+h(row.direction||'unknown')+' · reconciliation PENDING'):'no mechanism certificate';
       else if(kv[0]==='lethe') key='trust '+pct(row.effective_memory_trust)+' · stale '+pct(row.stale_memory_pressure)+' · resurrect '+pct(row.resurrection_pressure);
+      else if(kv[0]==='atlas') key='geometry '+h(row.geometry_state||'')+' · boundary '+pct(row.boundary_pressure)+' · novelty '+pct(row.topological_novelty)+(row.current_basin?(' · basin '+h(row.current_basin.regime||'')):'');
       else if(kv[0]==='axiom') key='certificate '+h(row.certificate_state||'')+' · complete '+pct(row.proof_completeness)+' · blockers '+h([].concat(row.failed_gates||[],row.unproven_gates||[]).join(', ')||'none');
       else if(kv[0]==='archon') key='conflict '+pct(row.contradiction)+' · echo '+pct(row.echo_risk);
       else if(kv[0]==='socrates') key='priority '+pct(row.question_priority)+' · '+h((row.question_queue||[]).length)+' questions · '+h((row.hypothesis_queue||[]).length)+' hypotheses';
@@ -94,6 +95,7 @@
         '<div class="pan-field"><div class="k">Memory staleness</div><b>'+pct(field.stale_memory_pressure)+'</b></div>'+
         '<div class="pan-field"><div class="k">Resurrection pressure</div><b>'+pct(field.resurrection_pressure)+'</b></div>'+
         '<div class="pan-field"><div class="k">Proof gap</div><b>'+pct(field.proof_gap)+'</b></div>'+
+        '<div class="pan-field"><div class="k">Topology pressure</div><b>'+pct(field.topology_pressure)+'</b></div>'+
         '<div class="pan-field"><div class="k">APEX lineage</div><b>'+h(apexLineage.status||'UNAVAILABLE')+'</b><div class="small muted">'+h(apexLineage.lineage_owner||'no verified root map')+'</div></div>'+
         '<div class="pan-field"><div class="k">Risk</div><b>'+pct(field.risk)+'</b></div>'+
       '</div>'+

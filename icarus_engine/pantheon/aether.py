@@ -68,6 +68,11 @@ class AetherSwarm:
         stale_memory = unit(faculties.get("lethe", {}).get("stale_memory_pressure"), "lethe.stale_memory_pressure")
         resurrection = unit(faculties.get("lethe", {}).get("resurrection_pressure"), "lethe.resurrection_pressure")
         proof_gap = unit(faculties.get("axiom", {}).get("proof_gap"), "axiom.proof_gap")
+        atlas_state = faculties.get("atlas", {})
+        topology_pressure = max(
+            unit(atlas_state.get("topological_novelty"), "atlas.topological_novelty"),
+            unit(atlas_state.get("boundary_pressure"), "atlas.boundary_pressure"),
+        )
         risk = unit(signals.get("risk"), "risk")
         data_quality = unit(signals.get("data_quality"), "data_quality", 0.5)
         raw_energy = (
@@ -77,7 +82,7 @@ class AetherSwarm:
             + 0.20 * causal
             + 0.17 * uncertainty
         )
-        raw_energy = min(1.0, raw_energy + 0.12 * echo_risk + 0.08 * stale_memory + 0.06 * resurrection + 0.08 * proof_gap)
+        raw_energy = min(1.0, raw_energy + 0.12 * echo_risk + 0.08 * stale_memory + 0.06 * resurrection + 0.08 * proof_gap + 0.08 * topology_pressure)
         energy = max(0.0, min(1.0, raw_energy * (1.0 - 0.45 * risk) * (0.50 + 0.50 * data_quality)))
         active = energy >= self.threshold and data_quality >= 0.35
         agents = []
@@ -93,6 +98,10 @@ class AetherSwarm:
                 priorities.append("historical_analogue")
             if stale_memory >= 0.35:
                 priorities.append("edge_half_life")
+            if topology_pressure >= 0.60:
+                priorities.append("ontology_scout")
+            if atlas_state.get("geometry_state") == "boundary":
+                priorities.append("historical_analogue")
             for priority in reversed(priorities):
                 if priority in optional_roles:
                     optional_roles.remove(priority)
@@ -137,6 +146,7 @@ class AetherSwarm:
                 "stale_memory_pressure": stale_memory,
                 "resurrection_pressure": resurrection,
                 "proof_gap": proof_gap,
+                "topology_pressure": topology_pressure,
                 "risk": risk,
                 "data_quality": data_quality,
                 "energy": energy,
@@ -156,6 +166,7 @@ class AetherSwarm:
                 "stale_memory_requires_revalidation": True,
                 "dormant_memory_never_auto_resurrects": True,
                 "axiom_proof_gaps_drive_research_not_execution": True,
+                "atlas_boundaries_drive_research_not_execution": True,
             },
             "truth_contract": {
                 "agents_are_ephemeral_research_workers": True,

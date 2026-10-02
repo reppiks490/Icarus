@@ -28,6 +28,7 @@ FACULTIES = (
     "echo",
     "veritas",
     "lethe",
+    "atlas",
     "axiom",
     "archon",
     "aether",
