@@ -60,6 +60,13 @@
     const qualificationRows = qualification.candidates || [];
     const peerLanes = sync.peer_lanes || [];
     const peerLaneRows = peerLanes.map(l => `<tr><td><b>${h(l.title||l.name||"")}</b><div class="small muted">${h(l.name||"")}</div></td><td><span class="chip ${statusClass(l.evidence_status)}">${h(l.evidence_status||"UNKNOWN")}</span></td><td>${h(l.run_id||"—")}</td><td>${l.worker_execution_observed===true?"OBSERVED":l.worker_execution_observed===false?"NOT OBSERVED":"UNMEASURED"}</td><td class="${l.substantive_research_evidence?"brain-good":"muted"}">${l.substantive_research_evidence?"YES":"NO"}</td></tr>`).join("");
+    const peerHistorical = sync.peer_historical_artifacts || [];
+    const peerHistoricalRows = peerHistorical.map(a => {
+      const summary = a.summary || {};
+      const findings = Array.isArray(summary.findings) ? summary.findings.slice(0,2).join(" · ") : "";
+      const lineage = a.lineage || {};
+      return `<tr><td><b>${h(a.lane||"")}</b><div class="small muted">${h(a.artifact_kind||"")}</div></td><td><span class="chip">${h(a.evidence_status||"UNKNOWN")}</span><div class="small muted">${a.collection_only?"COLLECTION CONTEXT":"RESEARCH CONTEXT"}</div></td><td>${h(a.run_id||"—")}</td><td class="small">${h(String(lineage.history_blob_sha||"").slice(0,12)||"—")}</td><td class="small muted">${h(findings||"no bounded finding summary")}</td><td class="brain-good">CONTEXT ONLY</td></tr>`;
+    }).join("");
 
     const agentHtml = agents.map(a => `<div class="brain-agent ${statusClass(a.status)}"><div style="display:flex;justify-content:space-between;gap:8px"><b>${h(a.title)}</b><span class="chip">${h(a.status)}</span></div><div class="small muted" style="margin-top:5px">${h(a.job)}</div><div class="small" style="margin-top:7px"><b>Owns:</b> ${(a.owns||[]).map(x=>h(x)).join(' · ')}</div><div class="small muted" style="margin-top:5px">${h(a.detail||'')}</div></div>`).join('');
 
@@ -117,6 +124,7 @@
             <div class="tile"><div class="k">Peer lane packet</div><div class="v ${statusClass(sync.peer_packet_status)}">${h(String(sync.peer_packet_status||'not started').toUpperCase())}</div><div class="small muted">${h(sync.peer_source_commit?String(sync.peer_source_commit).slice(0,12):'no verified source commit')} · source ${sync.peer_source_commit_verified?'VERIFIED '+h(sync.peer_source_commit_relation||''):'UNVERIFIED'} · ${h(agentContract.peer_packet_authority||'OBSERVE')}</div></div>
             <div class="tile"><div class="k">Peer freshness</div><div class="v ${sync.peer_packet_fresh?'brain-good':'brain-warn'}">${sync.peer_packet_fresh?'FRESH':'UNVERIFIED'}</div><div class="small muted">age ${sync.peer_packet_age_seconds==null?'—':h(String(sync.peer_packet_age_seconds))+'s'} · max ${num(agentContract.peer_packet_max_age_seconds)}s · future skew ${num(agentContract.peer_packet_max_future_skew_seconds)}s</div></div>
             <div class="tile"><div class="k">Peer substantive lanes</div><div class="v tnum">${num(sync.peer_substantive_lane_count)} / ${num(peerLanes.length)}</div><div class="small muted">durability-only ${num(sync.peer_durability_only_lane_count)} · foreign evidence only</div></div>
+            <div class="tile"><div class="k">Peer historical context</div><div class="v tnum">${num(sync.peer_historical_context_count)} + ${num(sync.peer_historical_collection_count)}</div><div class="small muted">${h(agentContract.peer_historical_context_mode||'UNVERIFIED')} · candidate evidence ${agentContract.peer_historical_context_candidate_evidence===false?'DENIED':'UNVERIFIED'} · execution ${agentContract.peer_historical_context_execution_authorized===false?'DENIED':'UNVERIFIED'}</div></div>
             <div class="tile"><div class="k">Remote agent events</div><div class="v tnum">${num(sync.ingested_total)}</div><div class="small muted">poll ${num(sync.interval_seconds)}s · rejected ${num(sync.rejected_total)}</div></div>
             <div class="tile"><div class="k">CSV Evidence Lab</div><div class="v ${statusClass(evidenceLab.status)}">${h(String(evidenceLab.status||"not configured").toUpperCase())}</div><div class="small muted">${h(evidenceLab.current_run_id||"no run observed")} · ${h(evidenceLab.evidence_status||"evidence unknown")}</div></div>
             <div class="tile"><div class="k">CSV pointer coherence</div><div class="v ${evidenceLab.latest_pointer_matches_heartbeat===false?"brain-warn":"brain-good"}">${evidenceLab.latest_pointer_matches_heartbeat===false?"LAGGING":"COHERENT/UNSET"}</div><div class="small muted">RUN_PERSISTED is durability only · evidence authority stays EVIDENCE_STATUS</div></div>
@@ -134,6 +142,10 @@
         <h3 class="small" style="margin:16px 0 8px">Federated Icarus-engine lane state</h3>
         <div class="small muted" style="margin-bottom:7px">Revision-bound foreign evidence from the live peer packet. DURABILITY_ONLY never counts as substantive research evidence, and sibling-repository state is not inferred.</div>
         <div class="scroll" style="max-height:300px"><table><thead><tr><th>Lane</th><th>Evidence status</th><th>Run</th><th>Worker execution</th><th>Substantive evidence</th></tr></thead><tbody>${peerLaneRows || '<tr><td colspan=5 class="empty">No verified Icarus-engine peer packet is currently available.</td></tr>'}</tbody></table></div>
+
+        <h3 class="small" style="margin:16px 0 8px">Federated historical research context</h3>
+        <div class="small muted" style="margin-bottom:7px">Immutable historical artifacts are foreign context only. They cannot create candidates, bypass Foundry/Evaluator, grant shadow qualification, rewrite production decisions, or authorize execution.</div>
+        <div class="scroll" style="max-height:320px"><table><thead><tr><th>Lane</th><th>Evidence status</th><th>Run</th><th>History blob</th><th>Bounded summary</th><th>Authority</th></tr></thead><tbody>${peerHistoricalRows || '<tr><td colspan=6 class="empty">No verified historical peer context is currently available.</td></tr>'}</tbody></table></div>
 
         <h3 class="small" style="margin:16px 0 8px">Subsystem fabric · ${subs.length} registered</h3>
         <div class="brain-grid">${subHtml}</div>
