@@ -88,6 +88,31 @@ def _candidate(**overrides):
     return body
 
 
+def _unknown_event(**overrides):
+    body = {
+        "source_engine": "apex-omega",
+        "source_kind": "native",
+        "source_repo": "reppiks490/Icarus",
+        "source_commit": "e" * 40,
+        "asset": "NQ",
+        "horizon_seconds": 300,
+        "observed_at": "2026-10-02T06:00:00Z",
+        "received_at": "2026-10-02T06:00:01Z",
+        "episode_id": "ep-http-001",
+        "regime": "RTH_HIGH_VOL",
+        "residual_family": "synchronized_reversal_underprediction",
+        "residual_magnitude": 0.82,
+        "evidence_class": "derived",
+        "evidence_ids": ["evidence:http:unknown:1"],
+        "failed_systems": ["chronofold", "psi", "apex-omega"],
+        "phenomenon_descriptors": {"session": "RTH", "volatility_band": "HIGH"},
+        "context": {"reality_gap_state": "DEGRADED", "nullspace_route": "unresolved"},
+        "cause": None,
+    }
+    body.update(overrides)
+    return body
+
+
 @pytest.fixture
 def ascendancy_genome_http(tmp_path):
     port = Portfolio(Journal(":memory:"), str(tmp_path))
@@ -277,3 +302,69 @@ def test_invalid_foundry_candidate_fails_before_mutation(ascendancy_genome_http)
     assert code == 400
     assert "falsifier" in body["detail"].lower()
     assert srv.ascendancy_foundry.snapshot()["candidate_count"] == before
+
+
+def test_unknown_unknown_api_is_authenticated_and_research_only(ascendancy_genome_http):
+    port, srv, request = ascendancy_genome_http
+    paused_before = port.paused
+    runners_before = list(port.runners)
+
+    code, body = request("GET", "/api/ascendancy/unknowns", auth=False)
+    assert code == 401
+    assert "admin token" in body["detail"]
+
+    code, saved = request("POST", "/admin/ascendancy/unknown-event", body=_unknown_event())
+    assert code == 200, saved
+    signature = saved["event"]["phenomenon_signature"]
+    assert saved["trading_state_unchanged"] is True
+    assert saved["event"]["cause"] is None
+
+    code, snapshot = request("GET", "/api/ascendancy/unknowns")
+    assert code == 200
+    assert snapshot["phenomenon_count"] == 1
+    assert snapshot["phenomena"][0]["cause"] is None
+    assert snapshot["phenomena"][0]["status"] == "EARLY"
+
+    code, explained = request("POST", "/admin/ascendancy/unknown-explanation", body={
+        "phenomenon_signature": signature,
+        "explanation": "A volatility scaling artifact explains the residual.",
+        "status": "FAILED",
+        "evidence": ["ablation:http:volatility"],
+        "source_repo": "reppiks490/Icarus",
+        "source_commit": "f" * 40,
+    })
+    assert code == 200, explained
+    assert explained["trading_state_unchanged"] is True
+
+    candidate_id = "a" * 64
+    code, linked = request("POST", "/admin/ascendancy/unknown-link-candidate", body={
+        "phenomenon_signature": signature,
+        "candidate_id": candidate_id,
+        "rationale": "candidate generated from unexplained residual",
+    })
+    assert code == 200, linked
+    assert linked["candidate_id"] == candidate_id
+    assert linked["trading_state_unchanged"] is True
+
+    code, snapshot = request("GET", "/api/ascendancy/unknowns")
+    assert code == 200
+    phenomenon = snapshot["phenomena"][0]
+    assert phenomenon["failed_explanations"] == [
+        "A volatility scaling artifact explains the residual."
+    ]
+    assert phenomenon["candidate_ids"] == [candidate_id]
+    assert phenomenon["cause"] is None
+
+    assert port.paused is paused_before
+    assert list(port.runners) == runners_before
+    assert srv.ascendancy_unknowns.snapshot()["event_count"] == 1
+
+
+def test_unknown_event_with_assigned_cause_fails_before_mutation(ascendancy_genome_http):
+    _, srv, request = ascendancy_genome_http
+    before = srv.ascendancy_unknowns.snapshot()["event_count"]
+    invalid = _unknown_event(cause="invented hidden force")
+    code, body = request("POST", "/admin/ascendancy/unknown-event", body=invalid)
+    assert code == 400
+    assert "cause must remain null" in body["detail"]
+    assert srv.ascendancy_unknowns.snapshot()["event_count"] == before
