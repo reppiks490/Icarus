@@ -2282,9 +2282,15 @@ class LearningFabric:
                 **_authority(),
             }
 
+        artifact_context = self._artifact_configuration_context(dataset)
+        owner = self._completed_equivalent_trade_experience(
+            dataset, artifact_context.get("strategy_report_sha256")
+        )
+        if owner is not None:
+            return self._deduplicated_trade_experience(dataset, owner)
+
         from .parity import read_tv_trades
         trades = read_tv_trades(str(dataset["path"]))
-        artifact_context = self._artifact_configuration_context(dataset)
         imported = 0
         complete = 0
         errors: dict[str, str] = {}
@@ -2332,18 +2338,148 @@ class LearningFabric:
         report = {
             "status": "imported" if not errors else "partial",
             "artifact_class": "trade_list",
+            "source": "historical_trade_list",
             "experience_count": complete,
             "new_experiences": imported,
+            "deduplicated_by_strategy_report": False,
+            "strategy_report_sha256": artifact_context.get("strategy_report_sha256"),
             "time_quality": "UNVERIFIED_TIMEZONE",
             "errors": errors,
             **_authority(),
         }
-        run_id = "train-" + hashlib.sha256(f"{dataset_id}|{slot}".encode()).hexdigest()
-        with self._lock, self._conn:
-            self._conn.execute(
-                "INSERT OR IGNORE INTO training_runs(run_id,dataset_id,slot,report_json,status,created_at) VALUES(?,?,?,?,?,?)",
-                (run_id, dataset_id, slot, _json(report, "trade experience report"), report["status"], _utc_now()),
-            )
+        run_id, report = self._persist_trade_experience_report(dataset_id, report)
+        return {
+            "dataset_id": dataset_id,
+            "status": "complete" if not errors else "partial",
+            "runs": [{"run_id": run_id, "slot": slot, "idempotent": False, "report": report}],
+            **_authority(),
+        }
+
+    def _import_strategy_report_xlsx_dataset(self, dataset: Mapping[str, Any]) -> dict[str, Any]:
+        dataset_id = str(dataset["dataset_id"])
+        slot = "trade_experience"
+        existing = self._conn.execute(
+            "SELECT * FROM training_runs WHERE dataset_id=? AND slot=?",
+            (dataset_id, slot),
+        ).fetchone()
+        if existing is not None:
+            report = json.loads(existing["report_json"])
+            outer_status = "skipped" if report.get("status") == "unavailable_trade_sheet" else "complete"
+            return {
+                "dataset_id": dataset_id,
+                "status": outer_status,
+                "runs": [{"run_id": existing["run_id"], "slot": slot, "idempotent": True, "report": report}],
+                **_authority(),
+            }
+
+        artifact_context = self._direct_strategy_report_context(dataset)
+        report_sha = artifact_context["strategy_report_sha256"]
+        owner = self._completed_equivalent_trade_experience(dataset, report_sha)
+        if owner is not None:
+            return self._deduplicated_trade_experience(dataset, owner)
+
+        from .parity import read_tv_trades_xlsx
+        try:
+            trades = read_tv_trades_xlsx(str(dataset["path"]))
+        except (ValueError, OSError, KeyError) as ex:
+            report = {
+                "status": "unavailable_trade_sheet",
+                "artifact_class": "strategy_report_xlsx",
+                "source": "historical_strategy_report_xlsx",
+                "experience_count": 0,
+                "new_experiences": 0,
+                "deduplicated_by_strategy_report": False,
+                "strategy_report_sha256": report_sha,
+                "time_quality": "UNVERIFIED_TIMEZONE",
+                "errors": {"workbook": f"{type(ex).__name__}: {ex}"[:500]},
+                **_authority(),
+            }
+            run_id, report = self._persist_trade_experience_report(dataset_id, report)
+            return {
+                "dataset_id": dataset_id,
+                "status": "skipped",
+                "reason": "strategy report does not expose a unique TradingView trade table",
+                "runs": [{"run_id": run_id, "slot": slot, "idempotent": False, "report": report}],
+                **_authority(),
+            }
+        if not trades:
+            report = {
+                "status": "unavailable_trade_sheet",
+                "artifact_class": "strategy_report_xlsx",
+                "source": "historical_strategy_report_xlsx",
+                "experience_count": 0,
+                "new_experiences": 0,
+                "deduplicated_by_strategy_report": False,
+                "strategy_report_sha256": report_sha,
+                "time_quality": "UNVERIFIED_TIMEZONE",
+                "errors": {"workbook": "TradingView trade table contains no complete entries"},
+                **_authority(),
+            }
+            run_id, report = self._persist_trade_experience_report(dataset_id, report)
+            return {
+                "dataset_id": dataset_id,
+                "status": "skipped",
+                "runs": [{"run_id": run_id, "slot": slot, "idempotent": False, "report": report}],
+                **_authority(),
+            }
+
+        imported = 0
+        complete = 0
+        errors: dict[str, str] = {}
+        for trade in trades:
+            pieces = list(trade.get("pieces") or [])
+            if not pieces or any(piece.get("ts") is None for piece in pieces):
+                continue
+            record_key = f"{dataset_id}:{trade.get('no')}:{trade.get('entry_ts')}:{trade.get('dir')}:{trade.get('entry_px')}"
+            try:
+                qty = float(trade.get("qty") or 0.0)
+                exit_qty = sum(float(piece.get("qty") or 0.0) for piece in pieces)
+                if qty <= 0 or exit_qty <= 0:
+                    raise ValueError("trade quantity must be positive")
+                exit_price = sum(float(piece["px"]) * float(piece.get("qty") or 0.0) for piece in pieces) / exit_qty
+                pnl = sum(float(piece.get("pnl") or 0.0) for piece in pieces)
+                entry_ts = int(trade["entry_ts"])
+                exit_ts = max(int(piece["ts"]) for piece in pieces)
+                result = self.record_experience({
+                    "source": "historical_strategy_report_xlsx",
+                    "source_record_id": record_key,
+                    "asset": dataset["asset"],
+                    "direction": "long" if int(trade["dir"]) > 0 else "short",
+                    "entry_at": _iso(datetime.fromtimestamp(entry_ts, tz=timezone.utc)),
+                    "exit_at": _iso(datetime.fromtimestamp(exit_ts, tz=timezone.utc)),
+                    "qty": qty,
+                    "entry_price": float(trade["entry_px"]),
+                    "exit_price": exit_price,
+                    "pnl": pnl,
+                    "metadata": {
+                        "dataset_id": dataset_id,
+                        "dataset_sha256": dataset["raw_sha256"],
+                        "trade_number": trade.get("no"),
+                        "entry_signal": trade.get("entry_sig"),
+                        "exit_signals": [piece.get("sig") for piece in pieces],
+                        "time_quality": "UNVERIFIED_TIMEZONE",
+                        "time_interpretation": "TradingView XLSX export parsed with UTC compatibility; do not infer session/regime until timezone is independently bound.",
+                        **artifact_context,
+                    },
+                })
+                complete += 1
+                imported += int(not result["idempotent"])
+            except Exception as ex:
+                errors[record_key] = f"{type(ex).__name__}: {ex}"[:500]
+
+        report = {
+            "status": "imported" if not errors else "partial",
+            "artifact_class": "strategy_report_xlsx",
+            "source": "historical_strategy_report_xlsx",
+            "experience_count": complete,
+            "new_experiences": imported,
+            "deduplicated_by_strategy_report": False,
+            "strategy_report_sha256": report_sha,
+            "time_quality": "UNVERIFIED_TIMEZONE",
+            "errors": errors,
+            **_authority(),
+        }
+        run_id, report = self._persist_trade_experience_report(dataset_id, report)
         return {
             "dataset_id": dataset_id,
             "status": "complete" if not errors else "partial",
