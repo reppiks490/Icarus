@@ -179,11 +179,30 @@ jobs:
           )
           assert truth["peer_packet_schema"] == "icarus-peer-intelligence-packet-v1"
           assert truth["peer_packet_authority"] == "OBSERVE"
+          assert truth["peer_historical_context_mode"] == "RESEARCH_CONTEXT_ONLY"
+          assert truth["peer_historical_context_source_count"] >= 1
+          assert truth["peer_historical_context_candidate_evidence"] is False
+          assert truth["peer_historical_context_execution_authorized"] is False
           assert all(lane["execution_authorized"] is False for lane in state["peer_lanes"])
           assert all(
               lane["evidence_status"] != "DURABILITY_ONLY"
               or lane["substantive_research_evidence"] is False
               for lane in state["peer_lanes"]
+          )
+          assert state["peer_historical_artifacts"], state
+          assert (
+              state["peer_historical_context_count"]
+              + state["peer_historical_collection_count"]
+              == len(state["peer_historical_artifacts"])
+          )
+          assert all(
+              artifact["artifact_kind"] == "HISTORICAL_LATEST"
+              and artifact["research_context_eligible"] is True
+              and artifact["candidate_evidence_eligible"] is False
+              and artifact["execution_authorized"] is False
+              and len(artifact["artifact_id"]) == 64
+              and len(artifact["lineage"]["history_blob_sha"]) == 40
+              for artifact in state["peer_historical_artifacts"]
           )
 
           report = {
@@ -209,6 +228,13 @@ jobs:
               "peer_lane_count": len(state["peer_lanes"]),
               "peer_substantive_lane_count": state["peer_substantive_lane_count"],
               "peer_durability_only_lane_count": state["peer_durability_only_lane_count"],
+              "peer_historical_context_mode": truth["peer_historical_context_mode"],
+              "peer_historical_context_source_count": truth["peer_historical_context_source_count"],
+              "peer_historical_context_count": state["peer_historical_context_count"],
+              "peer_historical_collection_count": state["peer_historical_collection_count"],
+              "peer_historical_artifact_ids": [
+                  artifact["artifact_id"] for artifact in state["peer_historical_artifacts"]
+              ],
               "strict_event_contract": truth["strict_event_contract"],
               "event_records": truth["event_records"],
               "execution_authorized": False,
