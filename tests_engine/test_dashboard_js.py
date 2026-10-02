@@ -137,6 +137,7 @@ def test_dashboard_surfaces_adaptive_brain_fabric():
     assert "agentContract.event_records" in ui
     assert "STRICT EVENT ENVELOPE" in ui
     assert "Peer lane packet" in ui
+    assert "PERSISTED_WORKER_EVIDENCE" in ui
     assert "Peer substantive lanes" in ui
     assert "Federated Icarus-engine lane state" in ui
     assert "DURABILITY_ONLY never counts as substantive research evidence" in ui
