@@ -2543,3 +2543,40 @@ def test_manifest_missing_session_keeps_rth_eth_linkage_ambiguous(tmp_path):
     metadata = json.loads(row["metadata_json"])
     assert metadata["manifest_linkage_status"] == "AMBIGUOUS"
     assert "session_mode" not in metadata or metadata["session_mode"] in (None, "")
+
+
+
+def test_direct_strategy_report_carries_explicit_session_provenance(tmp_path):
+    import hashlib
+    from icarus_engine.learning_fabric import LearningFabric
+
+    report_path = _strategy_report_xlsx(
+        tmp_path / "history" / "drop" / "THE_PULSE_OF_ICARUS_CME_MINI_NQ1!_ETH.xlsx"
+    )
+    report_sha = hashlib.sha256(report_path.read_bytes()).hexdigest()
+    _write_intake_manifest(
+        tmp_path / "history" / "EXPORT_INTAKE_MANIFEST.csv",
+        [{
+            "sha256": report_sha,
+            "canonical_filename": report_path.name,
+            "format": "xlsx",
+            "artifact_class": "strategy_report_xlsx",
+            "symbol": "CME_MINI:NQ1!",
+            "timeframe": "20 minutes",
+            "chart_type": "Candles",
+            "session_mode": "extended trading hours",
+            "rows": 4,
+            "last_trade_number": 2,
+        }],
+    )
+
+    fabric = LearningFabric(tmp_path)
+    dataset_id = fabric.scan_history()["dataset_ids"][0]
+    result = fabric.backfill_dataset(dataset_id)
+    assert result["status"] == "complete"
+
+    card = fabric.experience_state()["by_artifact_configuration"][0]
+    assert card["provenance_class"] == "HISTORICAL_ARTIFACT_CONFIG"
+    assert card["session_mode"] == "eth"
+    assert card["strategy_report_sha256"] == report_sha
+    assert card["linkage_rule"] == "DIRECT_STRATEGY_REPORT_XLSX_TRADE_SHEET"
