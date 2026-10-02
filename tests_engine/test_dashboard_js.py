@@ -700,3 +700,16 @@ def test_ascendancy_dashboard_surfaces_evaluator_cascade():
     assert 'p.path == "/api/ascendancy/evaluator"' in server
     assert 'p.path == "/admin/ascendancy/evaluator-register"' in server
     assert 'p.path == "/admin/ascendancy/evaluator-receipt"' in server
+
+
+def test_ascendancy_dashboard_surfaces_peer_repository_bridge():
+    ui = (REPO / "icarus_engine/ascendancy-ui.js").read_text(encoding="utf-8")
+    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
+
+    assert "/api/ascendancy/peers" in ui
+    assert "PEER REPOSITORY BRIDGE" in ui
+    assert "CANDIDATE-ELIGIBLE LANES" in ui
+    assert "DURABILITY-ONLY LANES" in ui
+    assert "foreign evidence" in ui.lower()
+    assert 'p.path == "/api/ascendancy/peers"' in server
+    assert 'p.path == "/admin/ascendancy/peer-packet"' in server
