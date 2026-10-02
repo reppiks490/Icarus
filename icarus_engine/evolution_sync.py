@@ -510,9 +510,10 @@ class EvolutionRemoteSync:
             )
             state["events"] = ordered
             state["subsystems"] = subsystems
-            state["last_success_at"] = _utc_now()
             state["last_error"] = " | ".join(errors[-10:])[:3000] if errors else None
             state["status"] = "degraded" if errors else "green"
+            if not errors:
+                state["last_success_at"] = _utc_now()
             _write_state(self.base_dir, state)
             return self.status()
 
