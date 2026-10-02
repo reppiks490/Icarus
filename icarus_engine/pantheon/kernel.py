@@ -303,6 +303,8 @@ class PantheonKernel:
                     asset=normalized["asset"],
                     horizon_ms=normalized["horizon_ms"],
                     source_commit=normalized["source_commit"],
+                    origin_observation_id=observation_id,
+                    evidence_refs=normalized["evidence"],
                     faculties=faculties,
                     aether=aether,
                 )
@@ -312,6 +314,7 @@ class PantheonKernel:
                 "heuristics_are_not_calibrated_probabilities": True,
                 "engine_disagreement_is_preserved": True,
                 "shared_evidence_is_not_counted_as_independent_confirmation": True,
+                "sibyl_exports_require_origin_evidence": True,
                 "directional_success_without_mechanism_fidelity_is_not_reinforced": True,
                 "stale_research_memory_is_decayed_not_treated_as_timeless": True,
                 "dormant_memory_requires_fresh_mechanism_revalidation": True,
