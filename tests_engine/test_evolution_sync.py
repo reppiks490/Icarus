@@ -113,9 +113,10 @@ def test_invalid_or_authority_escalating_event_is_rejected(tmp_path, change):
     assert state["execution_authorized"] is False
 
 
-def test_foreign_schema_receipt_is_ignored_not_rejected(tmp_path):
+@pytest.mark.parametrize("schema_field", ["schema_version", "schema"])
+def test_foreign_schema_receipt_is_ignored_not_rejected(tmp_path, schema_field):
     payload = {
-        "schema_version": "icarus-mcp-event-v1",
+        schema_field: "icarus-mcp-event-v1",
         "event_id": "foreign-family-fixture",
         "category": "EVOLUTION",
         "execution_authorized": False,
@@ -149,6 +150,39 @@ def test_foreign_schema_receipt_is_ignored_not_rejected(tmp_path):
     assert first["events"] == []
     assert second["ignored_total"] == 1
     assert second["rejected_total"] == 0
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {},
+        {"schema_version": "wrong"},
+        {"schema": "wrong"},
+    ],
+)
+def test_missing_or_unknown_schema_is_rejected(tmp_path, payload):
+    raw = (json.dumps(payload, sort_keys=True) + "\n").encode()
+    sha = _git_blob_sha(raw)
+    listing = [{
+        "type": "file",
+        "name": "unknown.json",
+        "path": REMOTE_ROOT + "/unknown.json",
+        "sha": sha,
+        "url": "fixture://unknown",
+    }]
+    sync = EvolutionRemoteSync(
+        tmp_path,
+        interval_seconds=30,
+        fetch_json=lambda _url: listing,
+        fetch_bytes=lambda _url: raw,
+        enabled=True,
+    )
+    state = sync.sync_once()
+
+    assert state["status"] == "degraded"
+    assert state["ignored_total"] == 0
+    assert state["rejected_total"] == 1
+    assert state["ingested_total"] == 0
 
 
 def test_blob_sha_mismatch_is_rejected(tmp_path):
