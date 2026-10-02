@@ -33,8 +33,13 @@
     {
       "id": "icarus-engine",
       "repository": "reppiks490/Icarus-engine",
-      "role": "candidate-satellite",
-      "status": "candidate"
+      "role": "active-research-satellite",
+      "status": "active",
+      "authority_ceiling": "RESEARCH",
+      "consumer_contract": "automation_intelligence/mcp_interface/icarus_consumer_contract.json",
+      "producer_contract": "automation_intelligence/mcp_interface/contract.json",
+      "consumer_surface": "Adaptive Brain remote sync",
+      "cross_repository_execution_authorized": false
     },
     {
       "id": "icarus-owner-actions",
@@ -51,8 +56,13 @@
     {
       "id": "icarus-csv-evidence-lab",
       "repository": "reppiks490/icarus-csv-evidence-lab",
-      "role": "candidate-satellite",
-      "status": "candidate"
+      "role": "active-research-satellite",
+      "status": "active",
+      "authority_ceiling": "OBSERVE",
+      "consumer_contract": "automation_intelligence/advanced_csv/icarus_consumer_contract.json",
+      "consumer_surface": "CSV Evidence Lab remote sync",
+      "substantive_evidence_authority": "evidence_state.EVIDENCE_STATUS",
+      "cross_repository_execution_authorized": false
     }
   ],
   "lanes": [
