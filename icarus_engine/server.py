@@ -73,7 +73,7 @@ from .system_audit import (
     upsert_loop_status,
 )
 from .integrity import integrity_snapshot, record_integrity_event
-from .brain import REQUIRED_CANDIDATE_GATES, brain_snapshot, record_brain_event
+from .brain import REQUIRED_CANDIDATE_GATES, SUBSYSTEMS, brain_snapshot, record_brain_event
 from .brain_sync import BrainRemoteSync
 from .research_brain_sync import BrainResearchSync
 from .evolution_sync import EvolutionRemoteSync
