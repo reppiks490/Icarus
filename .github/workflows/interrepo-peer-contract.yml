@@ -107,6 +107,16 @@ jobs:
               if lane["evidence_status"] == "DURABILITY_ONLY":
                   assert lane["candidate_evidence_eligible"] is False
 
+          historical = source.get("historical_artifacts") or []
+          assert historical, "live Icarus-engine packet must preserve historical research context"
+          assert source["historical_artifact_count"] == len(historical)
+          assert source["historical_research_context_count"] >= 1
+          assert source["historical_candidate_evidence_count"] == 0
+          assert all(row["candidate_evidence_eligible"] is False for row in historical)
+          assert all(row["foreign_evidence_only"] is True for row in historical)
+          assert all(row["requires_foundry_and_evaluator"] is True for row in historical)
+          assert snapshot["truth_contract"]["historical_context_never_bypasses_foundry_or_evaluator"] is True
+
           print(
               "peer handshake OK",
               source["source_repository"],
@@ -117,6 +127,8 @@ jobs:
               source["candidate_evidence_eligible_lanes"],
               "durability_only=",
               source["durability_only_lanes"],
+              "historical_context=",
+              source["historical_research_lanes"],
           )
           PY
 
