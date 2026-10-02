@@ -2696,7 +2696,20 @@ class LearningFabric:
             errors["backfill"] = f"{type(ex).__name__}: {ex}"[:500]
         summary["scorecards"] = self.scorecards()
         try:
-            summary["shadow_calibration"] = self.rebuild_shadow_calibrators()
+            summary["calibration_drift"] = self.evaluate_shadow_calibrator_drift(
+                min_samples=8,
+                recent_window=20,
+                degradation_margin=0.02,
+            )
+        except Exception as ex:
+            errors["calibration_drift"] = f"{type(ex).__name__}: {ex}"[:500]
+            summary["calibration_drift"] = {
+                "status": "degraded", "error": errors["calibration_drift"], **_authority()
+            }
+        try:
+            summary["shadow_calibration"] = self.rebuild_shadow_calibrators(
+                refresh_samples=12
+            )
         except Exception as ex:
             errors["shadow_calibration"] = f"{type(ex).__name__}: {ex}"[:500]
             summary["shadow_calibration"] = {
@@ -2774,6 +2787,7 @@ class LearningFabric:
             "coverage": {
                 "historical_trainers": "protected_replay",
                 "shadow_recalibration": "chronological_holdout_validated_research_only",
+                "calibration_drift": "oos_recent_window_retirement_with_batched_refresh",
                 "historical_trade_lists": "immutable_realized_experience",
                 "runtime_trade_outcomes": "fully_closed_live_sim_experience",
                 "sibyl": "native_prediction_outcome",
