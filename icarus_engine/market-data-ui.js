@@ -1,7 +1,7 @@
 /* ICARUS authentic market-data console.
    Read-only except the explicit MBO snapshot button. It consumes the same engine
    endpoints exposed through MCP; it never fabricates ticks, depth, or execution state. */
-let marketDataLoading=false;
+let marketDataLoading=false, marketDataPendingLoad=false;
 const marketDataState={asset:'',schema:'mbp-10',snapshot:null,snapshotError:''};
 
 function marketDataHtml(assets){
@@ -211,11 +211,14 @@ function marketDataRenderSnapshot(){
 }
 
 async function loadMarketData(){
-  if(marketDataLoading||view!=='market-data') return;
+  if(view!=='market-data') return;
+  if(marketDataLoading){marketDataPendingLoad=true;return;}
   const assets=(typeof last!=='undefined'&&last&&Array.isArray(last.assets))?last.assets:[];
   if(!marketDataState.asset&&assets.length) marketDataState.asset=String(assets[0].symbol||'').toUpperCase();
   if(!marketDataState.asset) return;
+  const requestAsset=marketDataState.asset, requestSchema=marketDataState.schema;
   marketDataLoading=true;
+  marketDataPendingLoad=false;
   const busy=document.querySelector('#mdBusy');
   if(busy) busy.textContent='loading…';
   try{
@@ -226,26 +229,32 @@ async function loadMarketData(){
       marketDataFetch(base+'/depth?schema='+encodeURIComponent(marketDataState.schema)+'&limit=200'),
       marketDataFetch('/healthz')
     ]);
+    if(requestAsset!==marketDataState.asset||requestSchema!==marketDataState.schema){marketDataPendingLoad=true;return;}
     if(view==='market-data') marketDataRender(results[0],results[1],results[2],results[3]);
   }finally{
     marketDataLoading=false;
     const b=document.querySelector('#mdBusy');
     if(b) b.textContent='';
+    if(marketDataPendingLoad&&view==='market-data'){marketDataPendingLoad=false;setTimeout(loadMarketData,0);}
   }
 }
 
 async function marketDataSnapshot(){
   const btn=document.querySelector('#mdSnapshot');
+  const requestAsset=marketDataState.asset;
   if(btn) btn.disabled=true;
   marketDataState.snapshotError='';
   try{
-    marketDataState.snapshot=await marketDataAdminPost('/admin/market-data/mbo-snapshot',{asset:marketDataState.asset,timeout:5.0});
+    const snapshot=await marketDataAdminPost('/admin/market-data/mbo-snapshot',{asset:requestAsset,timeout:5.0});
+    if(requestAsset!==marketDataState.asset) return;
+    marketDataState.snapshot=snapshot;
   }catch(e){
+    if(requestAsset!==marketDataState.asset) return;
     marketDataState.snapshot=null;
     marketDataState.snapshotError='MBO snapshot failed: '+String(e&&e.message||e)+'. If authentication is missing, set the engine token with the Token button.';
   }finally{
-    if(btn) btn.disabled=false;
-    marketDataRenderSnapshot();
+    if(btn&&btn.isConnected) btn.disabled=false;
+    if(requestAsset===marketDataState.asset) marketDataRenderSnapshot();
   }
 }
 
