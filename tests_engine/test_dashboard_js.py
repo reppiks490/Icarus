@@ -634,3 +634,19 @@ def test_ascendancy_dashboard_surfaces_unknown_unknown_lab():
     assert 'p.path == "/admin/ascendancy/unknown-event"' in server
     assert 'p.path == "/admin/ascendancy/unknown-explanation"' in server
     assert 'p.path == "/admin/ascendancy/unknown-link-candidate"' in server
+
+
+def test_ascendancy_dashboard_surfaces_mechanism_laboratory():
+    ui = (REPO / "icarus_engine/ascendancy-ui.js").read_text(encoding="utf-8")
+    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
+    assert "/api/ascendancy/mechanisms" in ui
+    assert "MECHANISM LABORATORY" in ui
+    assert "DIRECT_CONTRIBUTOR" in ui
+    assert "INTERACTION_DEPENDENT" in ui
+    assert "HARMFUL_LOOKING" in ui
+    assert "UNRESOLVED" in ui
+    assert "mechanism_attribution_is_not_causal_proof" in ui
+    assert "contracts_and_contexts_are_never_pooled" in ui
+    assert "causal_proof=false" in ui
+    assert 'p.path == "/api/ascendancy/mechanisms"' in server
+    assert 'p.path == "/admin/ascendancy/mechanism-experiment"' in server
