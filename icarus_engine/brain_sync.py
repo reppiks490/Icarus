@@ -411,6 +411,35 @@ def _normalize_peer_packet(
         if packet.get(key) is not False:
             raise ValueError(f"Icarus-engine peer packet attempts authority escalation: {key}")
 
+    source_contracts = packet.get("source_contracts")
+    expected_contracts = {
+        "control_plane": "automation_intelligence/restored_five_native/control_plane.json",
+        "agent_fabric": "automation_intelligence/agent_fabric/manifest.json",
+        "mcp_interface": "automation_intelligence/mcp_interface/contract.json",
+    }
+    if not isinstance(source_contracts, Mapping) or dict(source_contracts) != expected_contracts:
+        raise ValueError("Icarus-engine peer packet source contracts mismatch")
+
+    control_plane = packet.get("control_plane")
+    if not isinstance(control_plane, Mapping):
+        raise ValueError("Icarus-engine peer packet control plane is missing")
+    if control_plane.get("schema_version") != "restored-five-native-control-v1":
+        raise ValueError("Icarus-engine peer packet control-plane schema mismatch")
+    if control_plane.get("control_plane_id") != "restored-five-native-liveness-v1":
+        raise ValueError("Icarus-engine peer packet control-plane identity mismatch")
+    if control_plane.get("timezone") != "America/Chicago":
+        raise ValueError("Icarus-engine peer packet control-plane timezone mismatch")
+
+    mcp_interface = packet.get("mcp_interface")
+    if not isinstance(mcp_interface, Mapping):
+        raise ValueError("Icarus-engine peer packet MCP interface is missing")
+    if mcp_interface.get("schema_version") != "icarus-mcp-interface-contract-v1":
+        raise ValueError("Icarus-engine peer packet MCP interface schema mismatch")
+    if mcp_interface.get("event_root") != REMOTE_ROOT:
+        raise ValueError("Icarus-engine peer packet MCP event root mismatch")
+    if mcp_interface.get("trading_execution_authorized") is not False:
+        raise ValueError("Icarus-engine peer packet MCP interface attempts trading authority")
+
     truth = packet.get("truth_contract")
     if not isinstance(truth, Mapping):
         raise ValueError("Icarus-engine peer packet truth contract is missing")
@@ -464,6 +493,13 @@ def _normalize_peer_packet(
         status = str(raw.get("evidence_status") or "").strip().upper()
         if status not in allowed_status:
             raise ValueError(f"Icarus-engine peer lane {name} has unsupported evidence status")
+        worker_repository = str(raw.get("worker_repository") or "").strip()
+        if not worker_repository:
+            raise ValueError(f"Icarus-engine peer lane {name} worker repository is missing")
+        if worker_repository != REMOTE_REPOSITORY and status != "REMOTE_PEER_UNREAD":
+            raise ValueError(
+                f"Icarus-engine peer lane {name} invents state for a foreign sibling repository"
+            )
         if raw.get("execution_authorized") is not False:
             raise ValueError(f"Icarus-engine peer lane {name} attempts execution authority")
         substantive = raw.get("substantive_research_evidence")
@@ -486,7 +522,7 @@ def _normalize_peer_packet(
             "scheduler_id": raw.get("scheduler_id"),
             "run_id": raw.get("run_id"),
             "run_status": raw.get("run_status"),
-            "worker_repository": raw.get("worker_repository"),
+            "worker_repository": worker_repository,
             "evidence_status": status,
             "worker_execution_observed": raw.get("worker_execution_observed"),
             "substantive_research_evidence": substantive,
