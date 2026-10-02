@@ -1152,3 +1152,149 @@ def test_shadow_calibration_state_is_research_only_and_scope_specific(tmp_path):
     assert state["authority"]["automatic_probability_rewrite"] is False
     assert state["execution_authorized"] is False
     assert state["production_decision_authorized"] is False
+
+
+def _label_calibration_case(fabric, *, start, label, actual_pattern, n=32):
+    for i in range(n):
+        p = [0.4, 0.7][i % 2]
+        emitted = start + timedelta(minutes=i * 5 + (0 if label == "up" else 1))
+        probs = {label: p, ("down" if label == "up" else "up"): 1.0 - p}
+        pred = fabric.record_prediction({
+            "producer": "label-test",
+            "asset": "NQ",
+            "target": "class",
+            "prediction": label,
+            "probabilities": probs,
+            "reference_value": 100.0,
+            "emitted_at": _iso(emitted),
+            "horizon_seconds": 60,
+            "regime": "trend",
+            "evidence_ids": [f"label:{label}:{i}"],
+            "source_commit": "b" * 40,
+        })["prediction"]
+        success = bool(actual_pattern(i, p))
+        actual = label if success else ("down" if label == "up" else "up")
+        fabric.record_outcome({
+            "prediction_id": pred["prediction_id"],
+            "observed_at": pred["resolves_at"],
+            "actual_value": actual,
+            "evidence": [f"truth:{label}:{i}"],
+        })
+
+
+def test_shadow_calibration_is_conditioned_on_predicted_label(tmp_path):
+    from icarus_engine.learning_fabric import LearningFabric
+
+    fabric = LearningFabric(tmp_path)
+    start = datetime(2026, 1, 1, tzinfo=timezone.utc)
+
+    # UP is reliable; DOWN is systematically unreliable. Pooling these labels
+    # would erase the asymmetry and produce a scientifically invalid calibrator.
+    _label_calibration_case(fabric, start=start, label="up", actual_pattern=lambda i, p: True)
+    _label_calibration_case(fabric, start=start + timedelta(days=1), label="down", actual_pattern=lambda i, p: False)
+
+    rebuilt = fabric.rebuild_shadow_calibrators(min_samples=30)
+    models = {(m["prediction_label"], m["status"]): m for m in rebuilt["models"]}
+    assert any(label == "up" for label, _ in models)
+    assert any(label == "down" for label, _ in models)
+
+    state = fabric.shadow_calibration_state()
+    labels = {m["prediction_label"] for m in state["models"]}
+    assert labels == {"up", "down"}
+
+
+def test_shadow_assignment_uses_only_matching_prediction_label(tmp_path):
+    from icarus_engine.learning_fabric import LearningFabric
+
+    fabric = LearningFabric(tmp_path)
+    start = datetime(2026, 1, 1, tzinfo=timezone.utc)
+
+    # Give UP and DOWN opposite empirical maps.
+    _label_calibration_case(
+        fabric, start=start, label="up",
+        actual_pattern=lambda i, p: (p >= 0.7),
+    )
+    _label_calibration_case(
+        fabric, start=start + timedelta(days=1), label="down",
+        actual_pattern=lambda i, p: (p < 0.7),
+    )
+    rebuilt = fabric.rebuild_shadow_calibrators(min_samples=30)
+    assert rebuilt["validated"] >= 1
+
+    future = start + timedelta(days=3)
+    up = fabric.record_prediction({
+        "producer": "label-test",
+        "asset": "NQ",
+        "target": "class",
+        "prediction": "up",
+        "probabilities": {"up": 0.7, "down": 0.3},
+        "reference_value": 100.0,
+        "emitted_at": _iso(future),
+        "horizon_seconds": 60,
+        "regime": "trend",
+        "evidence_ids": ["future:up"],
+        "source_commit": "b" * 40,
+    })["prediction"]
+    down = fabric.record_prediction({
+        "producer": "label-test",
+        "asset": "NQ",
+        "target": "class",
+        "prediction": "down",
+        "probabilities": {"up": 0.3, "down": 0.7},
+        "reference_value": 100.0,
+        "emitted_at": _iso(future + timedelta(minutes=1)),
+        "horizon_seconds": 60,
+        "regime": "trend",
+        "evidence_ids": ["future:down"],
+        "source_commit": "b" * 40,
+    })["prediction"]
+
+    up_shadow = fabric.shadow_calibration(up["prediction_id"])
+    down_shadow = fabric.shadow_calibration(down["prediction_id"])
+    assert up_shadow is not None
+    assert down_shadow is not None
+    assert up_shadow["prediction_label"] == "up"
+    assert down_shadow["prediction_label"] == "down"
+    assert up_shadow["calibrator_id"] != down_shadow["calibrator_id"]
+
+
+def test_existing_calibration_schema_migrates_prediction_label_fail_closed(tmp_path):
+    import sqlite3
+    from icarus_engine.learning_fabric import LearningFabric
+
+    research = tmp_path / "research"
+    research.mkdir(parents=True)
+    db = research / "learning.sqlite3"
+    con = sqlite3.connect(db)
+    con.executescript("""
+        CREATE TABLE calibration_models (
+            calibrator_id TEXT PRIMARY KEY,
+            producer TEXT NOT NULL,
+            asset TEXT NOT NULL,
+            regime TEXT NOT NULL,
+            horizon_seconds INTEGER NOT NULL,
+            target TEXT NOT NULL,
+            status TEXT NOT NULL,
+            train_count INTEGER NOT NULL,
+            validation_count INTEGER NOT NULL,
+            fit_cutoff TEXT NOT NULL,
+            training_cutoff TEXT NOT NULL,
+            model_json TEXT NOT NULL,
+            raw_validation_brier REAL NOT NULL,
+            calibrated_validation_brier REAL NOT NULL,
+            source_hash TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            UNIQUE(producer,asset,regime,horizon_seconds,target,source_hash)
+        );
+    """)
+    con.commit()
+    con.close()
+
+    fabric = LearningFabric(tmp_path)
+    cols = {
+        row["name"] for row in fabric._conn.execute("PRAGMA table_info(calibration_models)").fetchall()
+    }
+    assert "prediction_label" in cols
+    state = fabric.shadow_calibration_state()
+    assert state["execution_authorized"] is False
+    assert state["authority"]["automatic_probability_rewrite"] is False
