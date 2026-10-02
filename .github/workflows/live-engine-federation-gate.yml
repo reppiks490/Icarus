@@ -127,6 +127,50 @@ jobs:
                   "url": url,
               }
 
+          lane_source_meta = {}
+          for lane in peer_packet_doc.get("lanes", []):
+              if lane.get("worker_repository") != "reppiks490/Icarus-engine":
+                  continue
+              for kind in ("heartbeat", "finalization"):
+                  source_path = lane.get(kind + "_path")
+                  source_blob = lane.get(kind + "_blob_sha")
+                  if source_blob is None:
+                      continue
+                  raw = subprocess.check_output(
+                      [
+                          "git",
+                          "-C",
+                          str(peer),
+                          "show",
+                          f"{peer_packet_doc['source_commit']}:{source_path}",
+                      ]
+                  )
+                  assert _git_blob_sha(raw) == source_blob, (
+                      "lane source witness mismatch: "
+                      + str(lane.get("name"))
+                      + ":"
+                      + kind
+                  )
+                  url = (
+                      "memory://lane-source/"
+                      + str(lane.get("name"))
+                      + "/"
+                      + kind
+                  )
+                  virtual[url] = raw
+                  lane_source_meta[
+                      _remote_contents_api(
+                          source_path,
+                          ref=peer_packet_doc["source_commit"],
+                      )
+                  ] = {
+                      "type": "file",
+                      "name": Path(source_path).name,
+                      "path": source_path,
+                      "sha": source_blob,
+                      "url": url,
+                  }
+
           listing = []
           for path in sorted(event_dir.glob("*.json")):
               item = meta_for(path, "event/" + path.name)
@@ -169,6 +213,8 @@ jobs:
                   return historical_meta[url]
               if url in packet_historical_meta:
                   return packet_historical_meta[url]
+              if url in lane_source_meta:
+                  return lane_source_meta[url]
               raise AssertionError("unexpected federation URL: " + url)
 
           def fetch_bytes(url):
@@ -223,6 +269,16 @@ jobs:
           assert truth["peer_packet_schema"] == "icarus-peer-intelligence-packet-v1"
           assert truth["peer_packet_authority"] == "OBSERVE"
           assert all(lane["execution_authorized"] is False for lane in state["peer_lanes"])
+          local_lanes = [
+              lane for lane in state["peer_lanes"]
+              if lane["worker_repository"] == "reppiks490/Icarus-engine"
+          ]
+          assert state["peer_lane_witness_verified_count"] == len(local_lanes)
+          assert all(lane["source_witness_verified"] is True for lane in local_lanes)
+          assert all(
+              lane["source_witness_status"] == "VERIFIED_AT_PACKET_SOURCE"
+              for lane in local_lanes
+          )
           assert all(
               lane["evidence_status"] != "DURABILITY_ONLY"
               or lane["substantive_research_evidence"] is False
