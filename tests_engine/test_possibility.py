@@ -602,6 +602,30 @@ def test_runner_bar_history_warms_leader_graph_on_first_snapshot():
     assert out["data_health"]["history"]["timestamp_aligned_leaders"] is True
 
 
+def test_default_runner_warm_budget_retains_900_completed_bars():
+    port = ReplayPort()
+    peer_returns = [
+        0.00011, -0.00007, 0.00016, -0.00004, 0.00009,
+        -0.00013, 0.00018, -0.00002, 0.00006, -0.00010,
+    ] * 93
+    target_returns = [0.00001] + peer_returns[:-1]
+    now = int(time.time())
+    step = 60
+    last_start = (now // step) * step - 2 * step
+    base = last_start - len(peer_returns) * step
+    port.runners["NQ"].bars = _bars_from_returns(base, 20000.0, target_returns, step)
+    port.runners["ES"].bars = _bars_from_returns(base, 6800.0, peer_returns, step)
+
+    engine = PossibilityEngine(port, scenarios=96)
+    out = engine.snapshot("NQ")
+
+    assert engine.status()["configured_history"] == 900
+    assert out["data_health"]["market_history_observations"] == 900
+    assert len(engine._history["NQ"]) == 900
+    assert len(engine._history["ES"]) == 900
+    assert out["causal_leadership"]["alignment_mode"] == "exact_bar_timestamp"
+
+
 def test_runner_bar_history_is_independent_of_snapshot_poll_frequency():
     engine = PossibilityEngine(ReplayPort(), scenarios=96)
     first = engine.snapshot("NQ")
