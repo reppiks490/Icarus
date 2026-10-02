@@ -848,7 +848,8 @@ def test_evolution_ui_separates_current_invalid_from_historical_rejects():
     assert "Current invalid receipts" in ui
     assert "current_rejected_count" in ui
     assert "Rejected versions total" in ui
-    assert "unique receipt versions ever rejected" in ui
+    assert "unique versions since dedupe accounting" in ui
+    assert "legacy attempts" in ui
     assert "counted only once" in ui
 
 
