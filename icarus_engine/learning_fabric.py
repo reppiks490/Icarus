@@ -1279,6 +1279,137 @@ class LearningFabric:
             **_authority(),
         }
 
+    def evaluate_shadow_calibrator_drift(
+        self,
+        *,
+        min_samples: int = 8,
+        recent_window: int = 20,
+        degradation_margin: float = 0.02,
+    ) -> dict[str, Any]:
+        """Retire latest validated calibrator revisions when later OOS evidence degrades.
+
+        Only settled shadow assignments made after model validation are eligible.
+        Retirement affects future shadow assignment only; raw predictions, outcomes,
+        execution authority, and production policy remain untouched.
+        """
+        if isinstance(min_samples, bool) or not isinstance(min_samples, int) or not 4 <= min_samples <= 10000:
+            raise ValueError("min_samples must be an integer in [4,10000]")
+        if isinstance(recent_window, bool) or not isinstance(recent_window, int) or not min_samples <= recent_window <= 10000:
+            raise ValueError("recent_window must be an integer >= min_samples and <=10000")
+        margin = _finite(degradation_margin, "degradation_margin")
+        if not 0.0 <= margin <= 1.0:
+            raise ValueError("degradation_margin must be in [0,1]")
+
+        models = self._conn.execute(
+            """SELECT m.* FROM calibration_models m
+               WHERE m.status='SHADOW_VALIDATED'
+                 AND NOT EXISTS (
+                   SELECT 1 FROM calibration_models newer
+                   WHERE newer.producer=m.producer AND newer.asset=m.asset
+                     AND newer.regime=m.regime
+                     AND newer.horizon_seconds=m.horizon_seconds
+                     AND newer.target=m.target
+                     AND newer.prediction_label=m.prediction_label
+                     AND newer.source_commit=m.source_commit
+                     AND (newer.training_cutoff>m.training_cutoff OR
+                          (newer.training_cutoff=m.training_cutoff
+                           AND newer.created_at>m.created_at))
+                 )
+               ORDER BY m.producer,m.asset,m.regime,m.horizon_seconds,
+                        m.target,m.prediction_label,m.source_commit"""
+        ).fetchall()
+
+        evaluated = []
+        retired = 0
+        for model in models:
+            rows = self._conn.execute(
+                """SELECT prediction_id,raw_brier,calibrated_brier,settled_at
+                   FROM shadow_calibrations
+                   WHERE calibrator_id=? AND status='SETTLED'
+                     AND raw_brier IS NOT NULL AND calibrated_brier IS NOT NULL
+                   ORDER BY settled_at DESC,prediction_id DESC LIMIT ?""",
+                (model["calibrator_id"], recent_window),
+            ).fetchall()
+            n = len(rows)
+            if n < min_samples:
+                evaluated.append({
+                    "calibrator_id": model["calibrator_id"],
+                    "action": "INSUFFICIENT_OOS",
+                    "sample_count": n,
+                    "required_samples": min_samples,
+                    **_authority(),
+                })
+                continue
+
+            raw_brier = sum(float(row["raw_brier"]) for row in rows) / n
+            calibrated_brier = sum(float(row["calibrated_brier"]) for row in rows) / n
+            degradation = calibrated_brier - raw_brier
+            action = "KEEP_VALIDATED"
+            reason = (
+                f"out-of-sample calibrated Brier={calibrated_brier:.6f}, "
+                f"raw Brier={raw_brier:.6f}, degradation={degradation:.6f} "
+                f"over {n} recent settled shadow forecasts"
+            )
+            if degradation > margin:
+                action = "DRIFT_RETIRED"
+                retired_at = _utc_now()
+                retirement_reason = reason + f"; exceeded retirement margin {margin:.6f}"
+                event_payload = {
+                    "calibrator_id": model["calibrator_id"],
+                    "evaluated_at": retired_at,
+                    "sample_count": n,
+                    "raw_brier": raw_brier,
+                    "calibrated_brier": calibrated_brier,
+                    "degradation": degradation,
+                    "degradation_margin": margin,
+                    "action": action,
+                    "reason": retirement_reason,
+                }
+                event_id = "drift-" + _sha(event_payload)
+                with self._lock, self._conn:
+                    cur = self._conn.execute(
+                        """UPDATE calibration_models
+                           SET status='DRIFT_RETIRED',retired_at=?,retirement_reason=?
+                           WHERE calibrator_id=? AND status='SHADOW_VALIDATED'""",
+                        (retired_at, retirement_reason, model["calibrator_id"]),
+                    )
+                    if cur.rowcount:
+                        self._conn.execute(
+                            """INSERT OR IGNORE INTO calibration_drift_events(
+                               event_id,calibrator_id,evaluated_at,sample_count,
+                               raw_brier,calibrated_brier,degradation,
+                               degradation_margin,action,reason)
+                               VALUES(?,?,?,?,?,?,?,?,?,?)""",
+                            (
+                                event_id, model["calibrator_id"], retired_at, n,
+                                raw_brier, calibrated_brier, degradation,
+                                margin, action, retirement_reason,
+                            ),
+                        )
+                        retired += 1
+            evaluated.append({
+                "calibrator_id": model["calibrator_id"],
+                "action": action,
+                "sample_count": n,
+                "raw_brier": raw_brier,
+                "calibrated_brier": calibrated_brier,
+                "degradation": degradation,
+                "degradation_margin": margin,
+                "reason": reason,
+                **_authority(),
+            })
+
+        return {
+            "status": "ok",
+            "evaluated": len(evaluated),
+            "retired": retired,
+            "min_samples": min_samples,
+            "recent_window": recent_window,
+            "degradation_margin": margin,
+            "models": evaluated,
+            **_authority(),
+        }
+
     def shadow_calibration_state(self) -> dict[str, Any]:
         rows = self._conn.execute(
             """SELECT m.* FROM calibration_models m
@@ -1311,6 +1442,8 @@ class LearningFabric:
                 "raw_validation_brier": float(row["raw_validation_brier"]),
                 "calibrated_validation_brier": float(row["calibrated_validation_brier"]),
                 "source_hash": row["source_hash"],
+                "retired_at": row["retired_at"],
+                "retirement_reason": row["retirement_reason"],
                 **_authority(),
             }
             for row in rows
@@ -1327,6 +1460,7 @@ class LearningFabric:
             "model_count": len(models),
             "validated_model_count": sum(1 for row in models if row["status"] == "SHADOW_VALIDATED"),
             "rejected_model_count": sum(1 for row in models if row["status"] == "SHADOW_REJECTED"),
+            "drift_retired_model_count": sum(1 for row in models if row["status"] == "DRIFT_RETIRED"),
             "models": models,
             "assessments": {
                 "pending": pending,
