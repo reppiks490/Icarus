@@ -1,0 +1,43 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "argus-cluster-transfer-export-verified-20261002T012200Z",
+  "category": "EVOLUTION",
+  "severity": "success",
+  "status": "verified",
+  "subsystems": [
+    "argus",
+    "execution_research",
+    "calibration",
+    "cluster_bootstrap",
+    "transfer_validation",
+    "provenance"
+  ],
+  "recorded_at": "2026-10-02T01:22:00Z",
+  "title": "ARGUS source-run cluster transfer research export verified",
+  "summary": "ARGUS now has a receipt-time research export for registered source-run cluster transfer audits. The export recomputes the registered cluster analysis and preserves study/cohort/plan identity, the fixed source_run_id cluster field, exact model and source revisions, metrics, tolerances, eligible cluster counts, eligible observation counts and paper-minus-broker cluster intervals. It explicitly does not claim formal equivalence, a small-sample cluster guarantee, multiplicity adjustment, familywise coverage or causality, and it does not promote paper evidence or authorize broker substitution. No ATHENA happy-path driver is fabricated while genuine broker-confirmed fixture lineage is unavailable.",
+  "source_repository": "reppiks490/divine-providence",
+  "source_ref": "main",
+  "source_commit": "164df52cae105f29308e86348b191557aab1db5b",
+  "evidence": [
+    "divine-providence PR #37 merged at 164df52cae105f29308e86348b191557aab1db5b",
+    "exact-head subsystem-evolution workflow run 36949905311 completed success",
+    "Linux and Windows ARGUS/ATHENA/AION causal subsystem jobs passed",
+    "intelligence-fabric and hub tests passed",
+    "full twelve-system validation passed",
+    "registered source-run cluster transfer analysis is recomputed before export",
+    "publication cannot precede cohort lock and ingestion cannot precede publication",
+    "formal_equivalence_test=false",
+    "small_sample_cluster_guarantee=false",
+    "multiplicity_adjusted=false",
+    "familywise_coverage=false",
+    "causal_effect_estimate=false",
+    "paper_evidence_promoted=false",
+    "broker_substitution_authorized=false",
+    "ATHENA hub integration remains intentionally unregistered until genuine broker-confirmed evidence with valid lineage exists",
+    "execution_authorized=false",
+    "production_authorized=false",
+    "production_decision_authorized=false"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}
