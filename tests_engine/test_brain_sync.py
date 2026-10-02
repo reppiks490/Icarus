@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timedelta, timezone
 
 from icarus_engine.brain import brain_snapshot
 from icarus_engine.brain_sync import (
@@ -81,7 +82,11 @@ def _consumer_contract(**overrides):
                 "automatic_model_promotion": False,
                 "production_decision_authorized": False,
                 "automatic_execution_authority": False,
+                "stale_packet_is_current_state": False,
             },
+            "freshness_required": True,
+            "max_age_seconds": 1800,
+            "max_future_skew_seconds": 300,
         },
         "event_validation": {
             "required_fields_source": "automation_intelligence/mcp_interface/contract.json#required_fields",
@@ -230,6 +235,7 @@ def _fixture(
     corrupt_peer_blob=False,
     peer=None,
     peer_compare_status="ahead",
+    peer_now_offset_seconds=60,
     allow_legacy_event=False,
 ):
     event_raw = (json.dumps(payload, sort_keys=True) + "\n").encode()
@@ -250,6 +256,10 @@ def _fixture(
         consumer_doc["event_validation"]["legacy_relaxed_blob_shas"] = [event_sha]
     producer_doc = _producer_contract()
     peer_doc = peer or _peer_packet()
+    peer_observed = datetime.fromisoformat(
+        str(peer_doc["observed_at"]).replace("Z", "+00:00")
+    )
+    peer_now = peer_observed + timedelta(seconds=peer_now_offset_seconds)
     consumer_raw = (json.dumps(consumer_doc, sort_keys=True) + "\n").encode()
     producer_raw = (json.dumps(producer_doc, sort_keys=True) + "\n").encode()
     peer_raw = (json.dumps(peer_doc, sort_keys=True) + "\n").encode()
@@ -309,6 +319,7 @@ def _fixture(
         "peer_sha": peer_sha,
         "fetch_json": fetch_json,
         "fetch_bytes": fetch_bytes,
+        "now_utc": lambda: peer_now,
     }
 
 
@@ -320,6 +331,7 @@ def test_remote_sync_ingests_custom_agent_and_owned_subsystem_events(tmp_path):
         interval_seconds=60,
         fetch_json=fixture["fetch_json"],
         fetch_bytes=fixture["fetch_bytes"],
+        now_utc=fixture["now_utc"],
     )
     status = sync.sync_once()
     assert status["status"] == "green"
@@ -336,6 +348,11 @@ def test_remote_sync_ingests_custom_agent_and_owned_subsystem_events(tmp_path):
     assert status["peer_source_commit"] == "c" * 40
     assert status["peer_source_commit_verified"] is True
     assert status["peer_source_commit_relation"] == "AHEAD"
+    assert status["peer_packet_fresh"] is True
+    assert status["peer_packet_age_seconds"] == 60.0
+    assert status["truth_contract"]["peer_packet_freshness_required"] is True
+    assert status["truth_contract"]["peer_packet_max_age_seconds"] == 1800
+    assert status["truth_contract"]["peer_packet_max_future_skew_seconds"] == 300
     assert status["peer_substantive_lane_count"] == 1
     assert status["peer_durability_only_lane_count"] == 1
     assert len(status["peer_lanes"]) == 3
@@ -361,6 +378,7 @@ def test_remote_sync_rejects_authority_escalation(tmp_path):
         interval_seconds=60,
         fetch_json=fixture["fetch_json"],
         fetch_bytes=fixture["fetch_bytes"],
+        now_utc=fixture["now_utc"],
     )
     status = sync.sync_once()
     assert status["status"] == "degraded"
@@ -376,6 +394,7 @@ def test_remote_sync_detects_event_blob_substitution(tmp_path):
         interval_seconds=60,
         fetch_json=fixture["fetch_json"],
         fetch_bytes=fixture["fetch_bytes"],
+        now_utc=fixture["now_utc"],
     )
     status = sync.sync_once()
     assert status["status"] == "degraded"
@@ -391,6 +410,7 @@ def test_remote_sync_rejects_invalid_custom_agent_schema(tmp_path):
         interval_seconds=60,
         fetch_json=fixture["fetch_json"],
         fetch_bytes=fixture["fetch_bytes"],
+        now_utc=fixture["now_utc"],
     )
     status = sync.sync_once()
     assert status["status"] == "degraded"
@@ -412,6 +432,7 @@ def test_remote_sync_fails_closed_when_consumer_contract_escalates_authority(tmp
         interval_seconds=60,
         fetch_json=fixture["fetch_json"],
         fetch_bytes=fixture["fetch_bytes"],
+        now_utc=fixture["now_utc"],
     )
     status = sync.sync_once()
     assert status["status"] == "degraded"
@@ -427,6 +448,7 @@ def test_remote_sync_fails_closed_on_consumer_contract_blob_substitution(tmp_pat
         interval_seconds=60,
         fetch_json=fixture["fetch_json"],
         fetch_bytes=fixture["fetch_bytes"],
+        now_utc=fixture["now_utc"],
     )
     status = sync.sync_once()
     assert status["status"] == "degraded"
@@ -443,6 +465,7 @@ def test_remote_sync_rejects_new_event_missing_required_producer_envelope(tmp_pa
         interval_seconds=60,
         fetch_json=fixture["fetch_json"],
         fetch_bytes=fixture["fetch_bytes"],
+        now_utc=fixture["now_utc"],
     )
     status = sync.sync_once()
     assert status["status"] == "degraded"
@@ -461,6 +484,7 @@ def test_remote_sync_allows_only_exact_legacy_blob_exception(tmp_path):
         interval_seconds=60,
         fetch_json=fixture["fetch_json"],
         fetch_bytes=fixture["fetch_bytes"],
+        now_utc=fixture["now_utc"],
     )
     status = sync.sync_once()
     assert status["status"] == "green"
@@ -481,6 +505,7 @@ def test_remote_sync_rejects_peer_packet_blob_substitution_without_blocking_even
         interval_seconds=60,
         fetch_json=fixture["fetch_json"],
         fetch_bytes=fixture["fetch_bytes"],
+        now_utc=fixture["now_utc"],
     )
     status = sync.sync_once()
     assert status["status"] == "degraded"
@@ -498,6 +523,7 @@ def test_remote_sync_rejects_peer_packet_authority_escalation(tmp_path):
         interval_seconds=60,
         fetch_json=fixture["fetch_json"],
         fetch_bytes=fixture["fetch_bytes"],
+        now_utc=fixture["now_utc"],
     )
     status = sync.sync_once()
     assert status["status"] == "degraded"
@@ -521,6 +547,7 @@ def test_remote_sync_rejects_peer_lane_that_conflates_durability_with_substantiv
         interval_seconds=60,
         fetch_json=fixture["fetch_json"],
         fetch_bytes=fixture["fetch_bytes"],
+        now_utc=fixture["now_utc"],
     )
     status = sync.sync_once()
     assert status["status"] == "degraded"
@@ -547,6 +574,7 @@ def test_remote_sync_rejects_peer_packet_source_contract_substitution(tmp_path):
         interval_seconds=60,
         fetch_json=fixture["fetch_json"],
         fetch_bytes=fixture["fetch_bytes"],
+        now_utc=fixture["now_utc"],
     )
     status = sync.sync_once()
     assert status["status"] == "degraded"
@@ -568,6 +596,7 @@ def test_remote_sync_rejects_invented_foreign_sibling_lane_state(tmp_path):
         interval_seconds=60,
         fetch_json=fixture["fetch_json"],
         fetch_bytes=fixture["fetch_bytes"],
+        now_utc=fixture["now_utc"],
     )
     status = sync.sync_once()
     assert status["status"] == "degraded"
@@ -582,6 +611,7 @@ def test_remote_sync_rejects_peer_packet_whose_source_commit_is_not_on_main(tmp_
         interval_seconds=60,
         fetch_json=fixture["fetch_json"],
         fetch_bytes=fixture["fetch_bytes"],
+        now_utc=fixture["now_utc"],
     )
     status = sync.sync_once()
     assert status["status"] == "degraded"
@@ -591,3 +621,55 @@ def test_remote_sync_rejects_peer_packet_whose_source_commit_is_not_on_main(tmp_
     assert status["peer_source_commit_relation"] is None
     assert status["ingested_total"] == 1
     assert "not an ancestor of Icarus-engine/main" in status["last_error"]
+
+def test_remote_sync_rejects_stale_peer_packet_but_keeps_event_ingest_independent(tmp_path):
+    fixture = _fixture(_remote_event(), peer_now_offset_seconds=1801)
+    sync = BrainRemoteSync(
+        tmp_path,
+        interval_seconds=60,
+        fetch_json=fixture["fetch_json"],
+        fetch_bytes=fixture["fetch_bytes"],
+        now_utc=fixture["now_utc"],
+    )
+    status = sync.sync_once()
+    assert status["status"] == "degraded"
+    assert status["peer_packet_status"] == "degraded"
+    assert status["peer_packet_fresh"] is False
+    assert status["peer_packet_age_seconds"] is None
+    assert status["ingested_total"] == 1
+    assert "peer packet is stale" in status["last_error"]
+
+
+def test_remote_sync_rejects_peer_packet_beyond_future_clock_skew(tmp_path):
+    fixture = _fixture(_remote_event(), peer_now_offset_seconds=-301)
+    sync = BrainRemoteSync(
+        tmp_path,
+        interval_seconds=60,
+        fetch_json=fixture["fetch_json"],
+        fetch_bytes=fixture["fetch_bytes"],
+        now_utc=fixture["now_utc"],
+    )
+    status = sync.sync_once()
+    assert status["status"] == "degraded"
+    assert status["peer_packet_status"] == "degraded"
+    assert status["peer_packet_fresh"] is False
+    assert status["ingested_total"] == 1
+    assert "future clock skew" in status["last_error"]
+
+
+def test_remote_sync_rejects_peer_freshness_contract_drift_before_event_ingest(tmp_path):
+    consumer = _consumer_contract()
+    consumer["peer_packet"] = json.loads(json.dumps(consumer["peer_packet"]))
+    consumer["peer_packet"]["max_age_seconds"] = 999999
+    fixture = _fixture(_remote_event(), consumer=consumer)
+    sync = BrainRemoteSync(
+        tmp_path,
+        interval_seconds=60,
+        fetch_json=fixture["fetch_json"],
+        fetch_bytes=fixture["fetch_bytes"],
+        now_utc=fixture["now_utc"],
+    )
+    status = sync.sync_once()
+    assert status["status"] == "degraded"
+    assert status["ingested_total"] == 0
+    assert "peer packet max age mismatch" in status["last_error"]
