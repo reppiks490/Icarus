@@ -41,6 +41,7 @@ jobs:
           repository: reppiks490/Icarus-engine
           ref: main
           path: peer-engine
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
@@ -55,6 +56,7 @@ jobs:
           python - <<'PY'
           import json
           import os
+          import subprocess
           import tempfile
           from pathlib import Path
 
@@ -135,6 +137,18 @@ jobs:
           assert state["peer_packet_blob_sha"] == peer_packet_meta["sha"]
           assert state["peer_source_commit"]
           assert state["peer_packet_id"]
+          subprocess.run(
+              [
+                  "git",
+                  "-C",
+                  "../peer-engine",
+                  "merge-base",
+                  "--is-ancestor",
+                  state["peer_source_commit"],
+                  os.environ["ENGINE_SHA"],
+              ],
+              check=True,
+          )
           assert truth["peer_packet_schema"] == "icarus-peer-intelligence-packet-v1"
           assert truth["peer_packet_authority"] == "OBSERVE"
           assert all(lane["execution_authorized"] is False for lane in state["peer_lanes"])
@@ -157,6 +171,7 @@ jobs:
               "peer_packet_id": state["peer_packet_id"],
               "peer_packet_blob_sha": state["peer_packet_blob_sha"],
               "peer_source_commit": state["peer_source_commit"],
+              "peer_source_commit_ancestor_of_engine_head": True,
               "peer_lane_count": len(state["peer_lanes"]),
               "peer_substantive_lane_count": state["peer_substantive_lane_count"],
               "peer_durability_only_lane_count": state["peer_durability_only_lane_count"],
