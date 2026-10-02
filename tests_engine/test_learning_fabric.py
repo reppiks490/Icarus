@@ -1595,3 +1595,107 @@ def test_refresh_batch_holds_calibrator_stable_for_oos_measurement(tmp_path):
     assert held["awaiting_refresh"] == 1
     state = fabric.shadow_calibration_state()
     assert state["models"][0]["calibrator_id"] == first_id
+
+
+def _overlapping_calibration_case(fabric, *, start, n, spacing_seconds, horizon_seconds=60):
+    for i in range(n):
+        p = 0.4 if i % 2 == 0 else 0.7
+        emitted = start + timedelta(seconds=i * spacing_seconds)
+        pred = fabric.record_prediction({
+            "producer": "overlap-test",
+            "asset": "NQ",
+            "target": "event",
+            "prediction": True,
+            "probability": p,
+            "emitted_at": _iso(emitted),
+            "horizon_seconds": horizon_seconds,
+            "regime": "trend",
+            "evidence_ids": [f"overlap:{i}"],
+            "source_commit": "c" * 40,
+        })["prediction"]
+        fabric.record_outcome({
+            "prediction_id": pred["prediction_id"],
+            "observed_at": pred["resolves_at"],
+            "actual_value": p >= 0.7,
+            "evidence": [f"overlap-truth:{i}"],
+        })
+
+
+def test_shadow_calibration_purges_overlapping_forecast_windows(tmp_path):
+    from icarus_engine.learning_fabric import LearningFabric
+
+    fabric = LearningFabric(tmp_path)
+    start = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    _overlapping_calibration_case(
+        fabric, start=start, n=60, spacing_seconds=30, horizon_seconds=60
+    )
+
+    rebuilt = fabric.rebuild_shadow_calibrators(min_samples=30)
+    assert rebuilt["validated"] == 1
+    model = rebuilt["models"][0]
+    assert model["raw_sample_count"] == 60
+    assert model["effective_sample_count"] == 30
+    assert model["overlap_purged"] == 30
+    assert model["train_count"] == 24
+    assert model["validation_count"] == 6
+    assert rebuilt["overlap_purged_total"] == 30
+
+
+def test_overlap_purge_blocks_pseudoreplicated_minimum_sample_gate(tmp_path):
+    from icarus_engine.learning_fabric import LearningFabric
+
+    fabric = LearningFabric(tmp_path)
+    start = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    _overlapping_calibration_case(
+        fabric, start=start, n=40, spacing_seconds=10, horizon_seconds=60
+    )
+
+    rebuilt = fabric.rebuild_shadow_calibrators(min_samples=30)
+    assert rebuilt["built"] == 0
+    assert rebuilt["overlap_purged_total"] >= 30
+    reason = next(iter(rebuilt["skipped"].values()))
+    assert "effective non-overlapping" in reason.lower()
+
+
+def test_drift_retirement_requires_non_overlapping_oos_evidence(tmp_path):
+    from icarus_engine.learning_fabric import LearningFabric
+
+    fabric = LearningFabric(tmp_path)
+    start = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    _settled_calibration_case(fabric, start=start, n=40)
+    model = fabric.rebuild_shadow_calibrators(min_samples=30)["models"][0]
+    cutoff = datetime.fromisoformat(model["training_cutoff"].replace("Z", "+00:00"))
+
+    # Eight bad forecasts, but all lie inside only two independent 60-second
+    # target windows. They must not be allowed to retire a calibrator as if n=8.
+    for i in range(8):
+        pred = fabric.record_prediction({
+            "producer": "cal-test",
+            "asset": "NQ",
+            "target": "event",
+            "prediction": True,
+            "probability": 0.6,
+            "emitted_at": _iso(cutoff + timedelta(minutes=1, seconds=i * 10)),
+            "horizon_seconds": 60,
+            "regime": "trend",
+            "evidence_ids": [f"oos-overlap:{i}"],
+            "source_commit": "a" * 40,
+        })["prediction"]
+        assert fabric.shadow_calibration(pred["prediction_id"]) is not None
+        fabric.record_outcome({
+            "prediction_id": pred["prediction_id"],
+            "observed_at": pred["resolves_at"],
+            "actual_value": False,
+            "evidence": [f"oos-overlap-truth:{i}"],
+        })
+
+    drift = fabric.evaluate_shadow_calibrator_drift(
+        min_samples=8, recent_window=8, degradation_margin=0.05
+    )
+    assert drift["retired"] == 0
+    row = next(x for x in drift["models"] if x["calibrator_id"] == model["calibrator_id"])
+    assert row["action"] == "INSUFFICIENT_OOS"
+    assert row["raw_sample_count"] == 8
+    assert row["effective_sample_count"] == 2
+    assert row["overlap_purged"] == 6
+    assert fabric.shadow_calibration_state()["drift_retired_model_count"] == 0
