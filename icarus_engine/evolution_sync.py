@@ -145,14 +145,21 @@ def _read_state(base_dir: str | os.PathLike[str], interval_seconds: int) -> dict
         return state
     state.update(raw)
 
+    raw_current_rejected = raw.get("rejected_blob_shas")
+    if not isinstance(raw_current_rejected, list):
+        raw_current_rejected = []
+    raw_rejected_history = raw.get("rejected_history_blob_shas")
+    if not isinstance(raw_rejected_history, list):
+        raw_rejected_history = []
+
     current_rejected = {
         str(x).lower()
-        for x in raw.get("rejected_blob_shas", [])
+        for x in raw_current_rejected
         if _is_sha(str(x).lower())
     }
     rejected_history = {
         str(x).lower()
-        for x in raw.get("rejected_history_blob_shas", [])
+        for x in raw_rejected_history
         if _is_sha(str(x).lower())
     }
     # Migration safety: any blob currently known rejected is historical too.
