@@ -1092,25 +1092,28 @@ class LearningFabric:
             raise ValueError("min_samples must be an integer in [20,100000]")
         rows = self._conn.execute(
             """SELECT p.prediction_id,p.producer,p.asset,p.regime,p.horizon_seconds,p.target,
-                      p.probability,o.success,o.observed_at,o.observed_ts
+                      p.prediction_json,p.probability,o.success,o.observed_at,o.observed_ts
                FROM predictions p JOIN outcomes o ON o.prediction_id=p.prediction_id
                WHERE o.success IS NOT NULL AND p.target IN ('direction','class','event')
                ORDER BY p.producer,p.asset,p.regime,p.horizon_seconds,p.target,
                         o.observed_ts,p.prediction_id"""
         ).fetchall()
-        groups: dict[tuple[str, str, str, int, str], list[sqlite3.Row]] = {}
+        groups: dict[tuple[str, str, str, int, str, str], list[sqlite3.Row]] = {}
         for row in rows:
+            prediction_label = self._calibration_prediction_label(
+                json.loads(row["prediction_json"])
+            )
             key = (
                 row["producer"], row["asset"], row["regime"],
-                int(row["horizon_seconds"]), row["target"],
+                int(row["horizon_seconds"]), row["target"], prediction_label,
             )
             groups.setdefault(key, []).append(row)
 
         built: list[dict[str, Any]] = []
         skipped: dict[str, str] = {}
         for key, group in sorted(groups.items()):
-            producer, asset, regime, horizon, target = key
-            scope = f"{producer}:{asset}:{regime}:{horizon}:{target}"
+            producer, asset, regime, horizon, target, prediction_label = key
+            scope = f"{producer}:{asset}:{regime}:{horizon}:{target}:{prediction_label}"
             n = len(group)
             if n < min_samples:
                 skipped[scope] = f"need {min_samples} settled samples; have {n}"
@@ -1165,15 +1168,16 @@ class LearningFabric:
             with self._lock, self._conn:
                 self._conn.execute(
                     """INSERT OR IGNORE INTO calibration_models(
-                       calibrator_id,producer,asset,regime,horizon_seconds,target,status,
+                       calibrator_id,producer,asset,regime,horizon_seconds,target,prediction_label,status,
                        train_count,validation_count,fit_cutoff,training_cutoff,model_json,
                        raw_validation_brier,calibrated_validation_brier,source_hash,created_at)
-                       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                     (
-                        calibrator_id, producer, asset, regime, horizon, target, status,
-                        train_count, validation_count, fit_cutoff, training_cutoff,
-                        _json(model, "isotonic model"), raw_validation_brier,
-                        calibrated_validation_brier, source_hash, created_at,
+                        calibrator_id, producer, asset, regime, horizon, target,
+                        prediction_label, status, train_count, validation_count,
+                        fit_cutoff, training_cutoff, _json(model, "isotonic model"),
+                        raw_validation_brier, calibrated_validation_brier,
+                        source_hash, created_at,
                     ),
                 )
             built.append({
@@ -1183,6 +1187,7 @@ class LearningFabric:
                 "regime": regime,
                 "horizon_seconds": horizon,
                 "target": target,
+                "prediction_label": prediction_label,
                 "status": status,
                 "train_count": train_count,
                 "validation_count": validation_count,
@@ -1210,11 +1215,11 @@ class LearningFabric:
                  SELECT 1 FROM calibration_models newer
                  WHERE newer.producer=m.producer AND newer.asset=m.asset
                    AND newer.regime=m.regime AND newer.horizon_seconds=m.horizon_seconds
-                   AND newer.target=m.target
+                   AND newer.target=m.target AND newer.prediction_label=m.prediction_label
                    AND (newer.training_cutoff>m.training_cutoff OR
                         (newer.training_cutoff=m.training_cutoff AND newer.created_at>m.created_at))
                )
-               ORDER BY m.producer,m.asset,m.regime,m.horizon_seconds,m.target"""
+               ORDER BY m.producer,m.asset,m.regime,m.horizon_seconds,m.target,m.prediction_label"""
         ).fetchall()
         models = [
             {
@@ -1224,6 +1229,7 @@ class LearningFabric:
                 "regime": row["regime"],
                 "horizon_seconds": int(row["horizon_seconds"]),
                 "target": row["target"],
+                "prediction_label": row["prediction_label"],
                 "status": row["status"],
                 "train_count": int(row["train_count"]),
                 "validation_count": int(row["validation_count"]),
