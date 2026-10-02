@@ -125,6 +125,177 @@ def godel(signals: Mapping[str, Any]) -> dict[str, Any]:
         "semantics": "relative world indistinguishability heuristic; not calibrated posterior probability",
     }
 
+def kairos(
+    signals: Mapping[str, Any],
+    godel_state: Mapping[str, Any],
+    nemesis_state: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Price the research value of acquiring another observation before edge decays.
+
+    KAIROS never chooses a trade. It ranks information-acquisition candidates by
+    expected ambiguity reduction versus delay, acquisition and execution-friction
+    costs, exposing when more information is plausibly worth buying with time.
+    """
+    out = _base("KAIROS")
+    raw = signals.get("information_actions")
+    if raw is None:
+        return {
+            **out,
+            "status": "abstain",
+            "reason": "information_actions required",
+            "candidates": [],
+            "frontier": [],
+            "best_candidate": None,
+            "positive_candidate_count": 0,
+            "research_observation_worth_acquiring": False,
+        }
+    if not isinstance(raw, list) or not 1 <= len(raw) <= 32:
+        raise ValueError("information_actions must contain 1-32 items")
+
+    ambiguity = unit(godel_state.get("ambiguity"), "godel.ambiguity", 1.0)
+    half_life = nemesis_state.get("edge_half_life_seconds")
+    if half_life is not None:
+        half_life = finite(half_life, "nemesis.edge_half_life_seconds")
+        if half_life < 0:
+            raise ValueError("nemesis.edge_half_life_seconds must be non-negative")
+
+    candidates = []
+    seen = set()
+    for i, item in enumerate(raw):
+        if not isinstance(item, Mapping):
+            raise ValueError(f"information_actions[{i}] must be an object")
+        name = item.get("name")
+        if not isinstance(name, str) or not name.strip():
+            raise ValueError(f"information_actions[{i}].name is required")
+        name = name.strip()
+        if len(name) > 120:
+            raise ValueError(f"information_actions[{i}].name exceeds 120 characters")
+        if name in seen:
+            raise ValueError("information_actions names must be unique")
+        seen.add(name)
+
+        delay_ms = item.get("delay_ms")
+        if type(delay_ms) is not int or not 0 <= delay_ms <= 300000:
+            raise ValueError(f"information_actions[{i}].delay_ms must be an integer from 0 to 300000")
+        info_gain = unit(item.get("expected_information_gain"), f"information_actions[{i}].expected_information_gain")
+        sensitivity = unit(item.get("decision_sensitivity"), f"information_actions[{i}].decision_sensitivity")
+        reliability = unit(item.get("observation_reliability"), f"information_actions[{i}].observation_reliability")
+        acquisition_cost = unit(item.get("acquisition_cost", 0.0), f"information_actions[{i}].acquisition_cost")
+        execution_deterioration = unit(
+            item.get("execution_deterioration", 0.0),
+            f"information_actions[{i}].execution_deterioration",
+        )
+
+        explicit_retention = item.get("edge_retention")
+        if explicit_retention is not None:
+            edge_retention = unit(explicit_retention, f"information_actions[{i}].edge_retention")
+            retention_source = "candidate_supplied"
+        elif half_life is not None:
+            if half_life <= 0:
+                edge_retention = 1.0 if delay_ms == 0 else 0.0
+            else:
+                edge_retention = 0.5 ** ((delay_ms / 1000.0) / half_life)
+            retention_source = "nemesis_half_life"
+        else:
+            candidates.append({
+                "name": name,
+                "delay_ms": delay_ms,
+                "status": "unscored",
+                "reason": "edge retention or measured NEMESIS half-life required",
+                "expected_information_gain": info_gain,
+                "decision_sensitivity": sensitivity,
+                "observation_reliability": reliability,
+                "acquisition_cost": acquisition_cost,
+                "execution_deterioration": execution_deterioration,
+                "edge_retention": None,
+                "net_information_value": None,
+            })
+            continue
+
+        information_benefit = ambiguity * info_gain * sensitivity * reliability
+        edge_decay_penalty = (1.0 - edge_retention) * sensitivity
+        total_penalty = edge_decay_penalty + acquisition_cost + execution_deterioration
+        net_value = information_benefit - total_penalty
+        benefit_cost_ratio = (
+            information_benefit / total_penalty if total_penalty > 1e-12
+            else (float("inf") if information_benefit > 0 else 0.0)
+        )
+        candidates.append({
+            "name": name,
+            "delay_ms": delay_ms,
+            "status": "scored",
+            "expected_information_gain": info_gain,
+            "decision_sensitivity": sensitivity,
+            "observation_reliability": reliability,
+            "acquisition_cost": acquisition_cost,
+            "execution_deterioration": execution_deterioration,
+            "edge_retention": edge_retention,
+            "edge_retention_source": retention_source,
+            "information_benefit": information_benefit,
+            "edge_decay_penalty": edge_decay_penalty,
+            "total_penalty": total_penalty,
+            "net_information_value": net_value,
+            "benefit_cost_ratio": benefit_cost_ratio,
+            "delay_fraction_of_half_life": (
+                (delay_ms / 1000.0) / half_life
+                if half_life is not None and half_life > 0 else None
+            ),
+            "positive_value": net_value > 0.0,
+        })
+
+    scored = [row for row in candidates if row.get("status") == "scored"]
+    scored.sort(
+        key=lambda row: (
+            row["net_information_value"],
+            row["information_benefit"],
+            -row["delay_ms"],
+        ),
+        reverse=True,
+    )
+    unscored = [row for row in candidates if row.get("status") != "scored"]
+    candidates = scored + unscored
+    best = scored[0] if scored else None
+    positive = [row for row in scored if row["net_information_value"] > 0.0]
+
+    # Pareto frontier over maximize benefit / minimize penalty. This avoids
+    # pretending the scalar net-value heuristic is the only rational trade-off.
+    frontier = []
+    for row in sorted(scored, key=lambda x: (x["total_penalty"], -x["information_benefit"])):
+        dominated = any(
+            other["information_benefit"] >= row["information_benefit"]
+            and other["total_penalty"] <= row["total_penalty"]
+            and (
+                other["information_benefit"] > row["information_benefit"]
+                or other["total_penalty"] < row["total_penalty"]
+            )
+            for other in scored
+        )
+        if not dominated:
+            frontier.append({
+                "name": row["name"],
+                "information_benefit": row["information_benefit"],
+                "total_penalty": row["total_penalty"],
+                "net_information_value": row["net_information_value"],
+                "delay_ms": row["delay_ms"],
+            })
+
+    best_value = max(0.0, min(1.0, best["net_information_value"])) if best else 0.0
+    return {
+        **out,
+        "ambiguity": ambiguity,
+        "edge_half_life_seconds": half_life,
+        "candidates": candidates,
+        "frontier": frontier,
+        "best_candidate": best,
+        "positive_candidate_count": len(positive),
+        "best_positive_value": best_value,
+        "research_observation_worth_acquiring": bool(best and best["net_information_value"] > 0.0),
+        "information_budget_exhausted": bool(scored and not positive),
+        "unscored_candidate_count": len(unscored),
+        "semantics": "research value-of-information heuristic; ranks observation acquisition only and never instructs a trade, wait, order, or position",
+    }
+
+
 def ananke(signals: Mapping[str, Any]) -> dict[str, Any]:
     out = _base("ANANKE")
     if "transition_cost_up" not in signals or "transition_cost_down" not in signals:
@@ -1107,6 +1278,7 @@ def socrates(states: Mapping[str, Mapping[str, Any]]) -> dict[str, Any]:
     echo_risk = unit(states.get("echo", {}).get("echo_risk"), "echo.echo_risk")
     stale_memory = unit(states.get("lethe", {}).get("stale_memory_pressure"), "lethe.stale_memory_pressure")
     resurrection = unit(states.get("lethe", {}).get("resurrection_pressure"), "lethe.resurrection_pressure")
+    information_value = unit(states.get("kairos", {}).get("best_positive_value"), "kairos.best_positive_value")
     options = [
         (uncertainty, "Which observation most efficiently separates the competing market worlds?"),
         (debt, "Where did the missing reaction route: delay, absorption, diversion, or causal-model failure?"),
@@ -1115,6 +1287,7 @@ def socrates(states: Mapping[str, Mapping[str, Any]]) -> dict[str, Any]:
         (echo_risk, "Which agreeing engines only look independent because they inherit the same upstream evidence?"),
         (stale_memory, "Which current thesis still depends on memory whose evidence has decayed out of its trustworthy lifetime?"),
         (resurrection, "Which dormant mechanism is reappearing under a similar regime and deserves fresh causal revalidation rather than automatic reuse?"),
+        (information_value, "Which next observation reduces consequential ambiguity fast enough to justify its acquisition cost before the edge decays?"),
     ]
     ranked = sorted(options, key=lambda x: x[0], reverse=True)
     hypothesis_templates = [
@@ -1125,6 +1298,7 @@ def socrates(states: Mapping[str, Mapping[str, Any]]) -> dict[str, Any]:
         (echo_risk, "Apparent multi-engine consensus is inflated by shared evidence ancestry.", "Ablate shared lineage sources and require the directional thesis to survive on genuinely independent evidence."),
         (stale_memory, "The current thesis relies on stale knowledge whose relationship may have drifted.", "Revalidate the mechanism on fresh regime-matched evidence or retire its research trust."),
         (resurrection, "A previously stale mechanism may have returned under a structurally similar regime.", "Require fresh mechanism-consistent evidence before restoring research trust and reject automatic resurrection."),
+        (information_value, "A specific observation has positive research value after information gain, delay and friction costs.", "Acquire it in shadow research and reject the hypothesis if realized ambiguity reduction fails to cover measured timing/friction cost."),
     ]
     hypotheses = [
         {"priority": score, "hypothesis": hypothesis, "falsifier": falsifier}
@@ -1155,6 +1329,7 @@ def evaluate_faculties(
     gd = godel(signals)
     ak = ananke(signals)
     nm = nemesis(signals)
+    kr = kairos(signals, gd, nm)
     xn = ex_nihilo(signals, observation_id)
     mt = mint(signals)
     ec = echo(signals)
@@ -1164,6 +1339,7 @@ def evaluate_faculties(
     states = {
         "nullspace": ns,
         "godel": gd,
+        "kairos": kr,
         "ananke": ak,
         "nemesis": nm,
         "ex_nihilo": xn,

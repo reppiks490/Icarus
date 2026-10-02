@@ -67,6 +67,7 @@ class AetherSwarm:
         echo_risk = unit(faculties.get("echo", {}).get("echo_risk"), "echo.echo_risk")
         stale_memory = unit(faculties.get("lethe", {}).get("stale_memory_pressure"), "lethe.stale_memory_pressure")
         resurrection = unit(faculties.get("lethe", {}).get("resurrection_pressure"), "lethe.resurrection_pressure")
+        information_value = unit(faculties.get("kairos", {}).get("best_positive_value"), "kairos.best_positive_value")
         risk = unit(signals.get("risk"), "risk")
         data_quality = unit(signals.get("data_quality"), "data_quality", 0.5)
         raw_energy = (
@@ -76,7 +77,7 @@ class AetherSwarm:
             + 0.20 * causal
             + 0.17 * uncertainty
         )
-        raw_energy = min(1.0, raw_energy + 0.12 * echo_risk + 0.08 * stale_memory + 0.06 * resurrection)
+        raw_energy = min(1.0, raw_energy + 0.12 * echo_risk + 0.08 * stale_memory + 0.06 * resurrection + 0.08 * information_value)
         energy = max(0.0, min(1.0, raw_energy * (1.0 - 0.45 * risk) * (0.50 + 0.50 * data_quality)))
         active = energy >= self.threshold and data_quality >= 0.35
         agents = []
@@ -92,6 +93,8 @@ class AetherSwarm:
                 priorities.append("historical_analogue")
             if stale_memory >= 0.35:
                 priorities.append("edge_half_life")
+            if information_value >= 0.10:
+                priorities.append("information_gain")
             for priority in reversed(priorities):
                 if priority in optional_roles:
                     optional_roles.remove(priority)
@@ -135,6 +138,7 @@ class AetherSwarm:
                 "echo_risk": echo_risk,
                 "stale_memory_pressure": stale_memory,
                 "resurrection_pressure": resurrection,
+                "information_value": information_value,
                 "risk": risk,
                 "data_quality": data_quality,
                 "energy": energy,
@@ -153,6 +157,7 @@ class AetherSwarm:
                 "shared_evidence_consensus_is_discounted": True,
                 "stale_memory_requires_revalidation": True,
                 "dormant_memory_never_auto_resurrects": True,
+                "information_value_never_authorizes_trade_timing": True,
             },
             "truth_contract": {
                 "agents_are_ephemeral_research_workers": True,
