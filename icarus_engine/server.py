@@ -294,6 +294,19 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             for row in SUBSYSTEMS
             if isinstance(row, dict) and str(row.get("id") or "").strip()
         }
+        # The Adaptive Brain registry is intentionally not the complete
+        # runtime-service registry. Keep server-native research engines explicit
+        # so a genome can compose them without falsely treating them as foreign.
+        available.update({
+            "chronofold",
+            "commissioning",
+            "research",
+            "autopilot",
+            "performance-proof",
+            "source-reliability",
+            "latency-telemetry",
+            "mcp-control",
+        })
         compiled = compile_genome(
             normalized,
             available_native_subsystems=available,
