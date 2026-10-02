@@ -108,6 +108,7 @@ from .ascendancy.mechanisms import MechanismLab
 from .ascendancy.invention import InventionLab, to_foundry_candidate
 from .ascendancy.contribution import ContributionLab
 from .ascendancy.evaluator import EvaluatorCascade
+from .ascendancy.federated_intake import FederatedResearchIntake
 
 
 def _no_json_constants(name: str):
@@ -232,6 +233,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     ascendancy_inventions = InventionLab(port.base_dir)
     ascendancy_contribution = ContributionLab(port.base_dir)
     ascendancy_evaluator = EvaluatorCascade(port.base_dir)
+    ascendancy_federated_intake = FederatedResearchIntake(port.base_dir)
     mcp_control = MCPControlPlane(port.base_dir)
     chronofold = ChronofoldEngine(port, possibility=possibility)
     commissioning = CommissioningEngine(port.base_dir, port, chronofold)
@@ -260,6 +262,9 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
         performance_proof=performance_proof,
         source_reliability=source_reliability,
     )
+
+    def _ascendancy_sync_federated_intake() -> Dict[str, Any]:
+        return ascendancy_federated_intake.ingest(brain_remote_sync.status())
 
     def _qualification_sync(candidate_id: str, source_repo: str, source_commit: str) -> dict[str, Any]:
         status = qualification_receipts.candidate_status(candidate_id, source_repo, source_commit)
@@ -610,6 +615,13 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 results[name] = syncer.sync_once()
             except Exception as ex:
                 errors[name] = f"{type(ex).__name__}: {ex}"[:800]
+        if not errors:
+            try:
+                results["ascendancy_federated_intake"] = _ascendancy_research_mutation(
+                    _ascendancy_sync_federated_intake
+                )
+            except Exception as ex:
+                errors["ascendancy_federated_intake"] = f"{type(ex).__name__}: {ex}"[:800]
         if errors:
             raise RuntimeError(
                 f"sync_all partial failure; completed={sorted(results)} errors={errors}"
@@ -910,6 +922,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
 
                 ControlAction("sync.loop_intelligence", "Sync loop intelligence", "Intelligence", "Refresh verified automation-loop receipts now.", lambda _: loop_intelligence_sync.sync_once()),
                 ControlAction("sync.brain_remote", "Sync Adaptive Brain remote evidence", "Intelligence", "Pull the latest verified Adaptive Brain repository evidence.", lambda _: brain_remote_sync.sync_once()),
+                ControlAction("sync.ascendancy_federated_intake", "Sync ASCENDANCY federated intake", "Intelligence", "Project verified Icarus-engine historical context into research prompts without creating candidates.", lambda _: _ascendancy_research_mutation(_ascendancy_sync_federated_intake)),
                 ControlAction("sync.brain_research", "Sync research into Adaptive Brain", "Intelligence", "Refresh research-to-brain evidence now.", lambda _: brain_research_sync.sync_once()),
                 ControlAction("sync.evolution", "Sync MCP evolution evidence", "Intelligence", "Refresh repository-native MCP repair/audit/evolution evidence.", lambda _: evolution_remote_sync.sync_once()),
                 ControlAction("sync.evidence_lab", "Sync CSV Evidence Lab", "Intelligence", "Refresh verified Advanced CSV durability/evidence receipts from the active CSV Evidence Lab repository.", lambda _: evidence_lab_sync.sync_once()),
@@ -1152,6 +1165,16 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     return self._json(400, {"detail": str(ex)})
                 except Exception as ex:
                     port.journal.log("WARN", f"ASCENDANCY evaluator snapshot: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/api/ascendancy/federated-intake":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                try:
+                    return self._json(200, ascendancy_federated_intake.snapshot())
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("WARN", f"ASCENDANCY federated intake snapshot: {type(ex).__name__}: {ex}")
                     return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
             if p.path == "/api/golive":
                 return self._json(200, golive_report(port))
@@ -1638,6 +1661,16 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                         500,
                         {"detail": f"{type(ex).__name__}: {ex}"},
                     )
+            if p.path == "/admin/ascendancy/federated-intake-sync":
+                try:
+                    return self._json(200, _ascendancy_research_mutation(
+                        _ascendancy_sync_federated_intake
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("ERROR", f"ASCENDANCY federated intake sync: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
             if p.path == "/admin/ascendancy/genome":
                 try:
                     return self._json(200, _ascendancy_research_mutation(
@@ -2460,6 +2493,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     srv.ascendancy_inventions = ascendancy_inventions
     srv.ascendancy_contribution = ascendancy_contribution
     srv.ascendancy_evaluator = ascendancy_evaluator
+    srv.ascendancy_federated_intake = ascendancy_federated_intake
     srv.learning = learning
     srv.chronofold = chronofold
     srv.commissioning = commissioning
