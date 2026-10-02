@@ -78,6 +78,7 @@ from .brain_sync import BrainRemoteSync
 from .research_brain_sync import BrainResearchSync
 from .evolution_sync import EvolutionRemoteSync
 from .evidence_lab_sync import EvidenceLabRemoteSync
+from .engine_federation_sync import EngineFederationRemoteSync
 from .code_provenance import local_code_provenance
 from .parallax import ParallaxStore
 from .dreamstate import DreamstateLab
@@ -203,6 +204,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     brain_research_sync = BrainResearchSync(port.base_dir)
     evolution_remote_sync = EvolutionRemoteSync(port.base_dir)
     evidence_lab_sync = EvidenceLabRemoteSync(port.base_dir)
+    engine_federation_sync = EngineFederationRemoteSync(port.base_dir)
     possibility = PossibilityEngine(port)
     performance_proof = PerformanceProofStore(port.base_dir)
     latency_telemetry = LatencyTelemetry()
@@ -425,6 +427,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             "brain_research": brain_research_sync,
             "evolution": evolution_remote_sync,
             "evidence_lab": evidence_lab_sync,
+            "engine_federation": engine_federation_sync,
         }
 
     def _sync_all(_payload):
@@ -696,6 +699,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             "brain_remote_sync": brain_remote_sync.status,
             "brain_research_sync": brain_research_sync.status,
             "evolution_sync": evolution_remote_sync.status,
+            "engine_federation_sync": engine_federation_sync.status,
             "autopilot": autopilot.status,
             "parallax": parallax.status,
             "dreamstate": dreamstate.status,
@@ -738,6 +742,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 ControlAction("sync.brain_research", "Sync research into Adaptive Brain", "Intelligence", "Refresh research-to-brain evidence now.", lambda _: brain_research_sync.sync_once()),
                 ControlAction("sync.evolution", "Sync MCP evolution evidence", "Intelligence", "Refresh repository-native MCP repair/audit/evolution evidence.", lambda _: evolution_remote_sync.sync_once()),
                 ControlAction("sync.evidence_lab", "Sync CSV Evidence Lab", "Intelligence", "Refresh verified Advanced CSV durability/evidence receipts from the active CSV Evidence Lab repository.", lambda _: evidence_lab_sync.sync_once()),
+                ControlAction("sync.engine_federation", "Sync Icarus-engine federation", "Intelligence", "Refresh verified research-only MCP event evidence from Icarus-engine.", lambda _: engine_federation_sync.sync_once()),
                 ControlAction("sync.all", "Sync all intelligence planes", "Intelligence", "Run all registered intelligence synchronizers once.", _sync_all),
                 ControlAction("sync.start_all", "Start all intelligence sync loops", "Intelligence", "Start all registered background intelligence synchronizers.", _start_all_syncs),
                 ControlAction("sync.stop_all", "Stop all intelligence sync loops", "Intelligence", "Stop all registered background intelligence synchronizers.", _stop_all_syncs, danger=True, confirmation="STOP ALL INTELLIGENCE SYNCS"),
@@ -928,6 +933,10 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
                 return self._json(200, evidence_lab_sync.status())
+            if p.path == "/api/engine-federation":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                return self._json(200, engine_federation_sync.status())
             if p.path == "/api/engine-control":
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
@@ -1120,6 +1129,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     remote_sync=brain_remote_sync.status(),
                     research_sync=brain_research_sync.status(),
                     evidence_lab_sync=evidence_lab_sync.status(),
+                    engine_federation_sync=engine_federation_sync.status(),
                     proof_status=performance_proof.snapshot(),
                     latency_status=latency_telemetry.snapshot(),
                     source_reliability=source_reliability.snapshot(),
@@ -1927,6 +1937,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 brain_research_sync.start()
                 evolution_remote_sync.start()
                 evidence_lab_sync.start()
+                engine_federation_sync.start()
                 commissioning.start_background()
             try:
                 return super().serve_forever(poll_interval)
@@ -1934,6 +1945,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 if background:
                     autopilot.close()
                     evidence_lab_sync.close()
+                    engine_federation_sync.close()
                     evolution_remote_sync.close()
                     brain_research_sync.close()
                     brain_remote_sync.close()
@@ -1944,6 +1956,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
         def server_close(self):
             autopilot.close()
             evidence_lab_sync.close()
+            engine_federation_sync.close()
             evolution_remote_sync.close()
             brain_research_sync.close()
             brain_remote_sync.close()
@@ -1959,6 +1972,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     srv.brain_research_sync = brain_research_sync
     srv.evolution_remote_sync = evolution_remote_sync
     srv.evidence_lab_sync = evidence_lab_sync
+    srv.engine_federation_sync = engine_federation_sync
     srv.possibility = possibility
     srv.performance_proof = performance_proof
     srv.latency_telemetry = latency_telemetry
