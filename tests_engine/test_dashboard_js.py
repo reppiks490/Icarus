@@ -520,6 +520,14 @@ def test_command_palette_and_scheduler_mutations_are_single_flight():
     assert "configure({enabled:true},$('#sourceWatchEnable'))" in sources
 
 
+def test_dashboard_catalogs_recover_after_transient_startup_failures():
+    dashboard = (REPO / "icarus_engine/dashboard.html").read_text(encoding="utf-8")
+    assert "async function refreshUiCatalogs()" in dashboard
+    assert "Promise.allSettled([get('/api/presets'), get('/api/commands'), get('/api/assets')])" in dashboard
+    assert "if (!COMMANDS.length || !REGISTRY.length) refreshUiCatalogs();" in dashboard
+    assert "catalogRefreshBusy" in dashboard
+
+
 def test_autopilot_operator_actions_are_not_silent():
     ui = (REPO / "icarus_engine/autopilot-ui.js").read_text(encoding="utf-8")
     assert "admin('/admin/autopilot/step',{},true)" not in ui
