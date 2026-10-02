@@ -1,0 +1,129 @@
+name: interrepo-peer-contract
+
+on:
+  push:
+    branches:
+      - feat/ascendancy-current-main
+    paths:
+      - "icarus_engine/ascendancy/**"
+      - "icarus_engine/server.py"
+      - "icarus_engine/ascendancy-ui.js"
+      - "icarus_engine/brain.py"
+      - "tests_engine/test_ascendancy_peer_bridge.py"
+      - ".github/workflows/interrepo-peer-contract.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: interrepo-peer-contract-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  peer-handshake:
+    name: Icarus ↔ Icarus-engine live contract
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout ASCENDANCY repository
+        uses: actions/checkout@v4
+        with:
+          path: icarus
+
+      - name: Checkout live Icarus-engine main
+        uses: actions/checkout@v4
+        with:
+          repository: reppiks490/Icarus-engine
+          ref: main
+          path: peer-engine
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Export current Icarus-engine peer packet
+        working-directory: peer-engine
+        shell: bash
+        run: |
+          export ENGINE_SHA="$(git rev-parse HEAD)"
+          export OBSERVED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          from icarus_engine.interrepo_bridge import build_peer_packet
+
+          packet = build_peer_packet(
+              Path("."),
+              source_commit=os.environ["ENGINE_SHA"],
+              observed_at=os.environ["OBSERVED_AT"],
+          )
+          Path("../peer-packet.json").write_text(
+              json.dumps(packet, sort_keys=True, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          print(
+              "exported",
+              packet["source_repository"],
+              packet["source_commit"],
+              packet["packet_id"],
+              "lanes=",
+              len(packet["lanes"]),
+          )
+          PY
+
+      - name: Ingest packet through ASCENDANCY peer bridge
+        working-directory: icarus
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          import tempfile
+          from pathlib import Path
+          from icarus_engine.ascendancy.peer_bridge import PeerRepositoryBridge
+
+          packet = json.loads(Path("../peer-packet.json").read_text(encoding="utf-8"))
+          with tempfile.TemporaryDirectory() as tmp:
+              bridge = PeerRepositoryBridge(tmp)
+              receipt = bridge.ingest(packet)
+              snapshot = bridge.snapshot()
+
+          assert receipt["execution_authorized"] is False
+          assert receipt["production_decision_authorized"] is False
+          assert snapshot["packet_count"] == 1
+          assert snapshot["source_count"] == 1
+          source = snapshot["latest_by_source"][0]
+          assert source["source_repository"] == "reppiks490/Icarus-engine"
+          assert source["source_commit"] == packet["source_commit"]
+          assert source["foreign_evidence_only"] is True
+          assert snapshot["truth_contract"]["durability_only_never_enters_candidate_evidence"] is True
+
+          eligible = set(source["candidate_evidence_eligible_lanes"])
+          for lane in source["lanes"]:
+              if lane["name"] in eligible:
+                  assert lane["evidence_status"] == "PERSISTED_WORKER_EVIDENCE"
+                  assert lane["worker_execution_observed"] is True
+                  assert lane["substantive_research_evidence"] is True
+              if lane["evidence_status"] == "DURABILITY_ONLY":
+                  assert lane["candidate_evidence_eligible"] is False
+
+          print(
+              "peer handshake OK",
+              source["source_repository"],
+              source["source_commit"],
+              "packet=",
+              source["packet_id"],
+              "candidate_eligible=",
+              source["candidate_evidence_eligible_lanes"],
+              "durability_only=",
+              source["durability_only_lanes"],
+          )
+          PY
+
+      - name: Preserve peer packet as CI evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: icarus-engine-peer-packet
+          path: peer-packet.json
+          if-no-files-found: error
+          retention-days: 14
