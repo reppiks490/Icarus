@@ -448,13 +448,81 @@
     '</section>';
   }
 
-  function renderAscendancy(capabilities, genomes, foundry, unknowns, mechanisms, inventions, errors) {
+  function renderContributions(contributions) {
+    if (!contributions) {
+      return '<section class="card" style="margin-top:12px"><h3>INFORMATION CONTRIBUTION MATRIX</h3><div class="empty">UNAVAILABLE — conditional contribution state did not load.</div></section>';
+    }
+    const groups = Array.isArray(contributions.groups) ? contributions.groups : [];
+    const counts = {
+      SUPPORTED_INCREMENTAL: 0,
+      SUPPORTED_HARMFUL_OR_REDUNDANT: 0,
+      UNRESOLVED: 0,
+      INSUFFICIENT_EVIDENCE: 0
+    };
+    groups.forEach(row => {
+      const key = String(row.classification || 'UNRESOLVED');
+      counts[key] = (counts[key] || 0) + 1;
+    });
+    const rows = groups.map(row => {
+      const ci = row.ci95_low == null || row.ci95_high == null
+        ? 'UNMEASURED'
+        : '[' + Number(row.ci95_low).toFixed(6) + ', ' + Number(row.ci95_high).toFixed(6) + ']';
+      const mean = row.mean_information_gain_nats == null
+        ? 'UNMEASURED'
+        : Number(row.mean_information_gain_nats).toFixed(6);
+      const bits = row.bits_per_observation == null
+        ? 'UNMEASURED'
+        : Number(row.bits_per_observation).toFixed(6);
+      const positive = row.positive_fraction == null
+        ? 'UNMEASURED'
+        : Number(row.positive_fraction).toFixed(3);
+      return '<tr>' +
+        '<td><code title="' + h(row.contributor_id || '') + '">' + h(short(row.contributor_id || 'UNAVAILABLE')) + '</code><div class="small muted">' + h(row.contributor_kind || 'UNAVAILABLE') + '</div></td>' +
+        '<td class="' + statusClass(row.classification) + '"><b>' + h(row.classification || 'UNRESOLVED') + '</b></td>' +
+        '<td class="small">' + h((row.conditioning_set || []).join(' · ') || 'UNAVAILABLE') + '</td>' +
+        '<td class="small">' + h(row.target_key || 'UNAVAILABLE') + ' · ' + h(count(row.horizon_seconds)) + 's · ' + h(row.target_kind || 'UNAVAILABLE') + '</td>' +
+        '<td class="small">' + h(json(row.context || {})) + '</td>' +
+        '<td class="tnum">' + h(count(row.n)) + '</td>' +
+        '<td class="tnum">' + h(mean) + '</td>' +
+        '<td class="tnum">' + h(bits) + '</td>' +
+        '<td class="small">' + h(ci) + '</td>' +
+        '<td class="tnum">' + h(positive) + '</td>' +
+        '<td class="small">' + h(row.estimator || 'paired_predictive_log_score_gain') + '<br><span class="muted">exact_conditional_mutual_information=false · causal_proof=false</span></td>' +
+      '</tr>';
+    }).join('');
+    const truth = contributions.truth_contract || {};
+    return '<section class="card" style="margin-top:12px">' +
+      '<h3>INFORMATION CONTRIBUTION MATRIX</h3>' +
+      '<div class="small muted">Measures whether a contributor improves paired predictive log score after conditioning on an explicit ICARUS baseline. Structural novelty and standalone performance do not count as incremental information.</div>' +
+      '<div class="tiles" style="margin-top:10px">' +
+        '<div class="tile"><div class="k">OBSERVATIONS</div><div class="v tnum">' + h(count(contributions.observation_count)) + '</div></div>' +
+        '<div class="tile"><div class="k">COMPARISON GROUPS</div><div class="v tnum">' + h(count(contributions.group_count)) + '</div></div>' +
+        '<div class="tile"><div class="k">SUPPORTED INCREMENTAL</div><div class="v tnum">' + h(count(counts.SUPPORTED_INCREMENTAL)) + '</div></div>' +
+        '<div class="tile"><div class="k">HARMFUL / REDUNDANT</div><div class="v tnum">' + h(count(counts.SUPPORTED_HARMFUL_OR_REDUNDANT)) + '</div></div>' +
+        '<div class="tile"><div class="k">UNRESOLVED / INSUFFICIENT</div><div class="v tnum">' + h(count((counts.UNRESOLVED || 0) + (counts.INSUFFICIENT_EVIDENCE || 0))) + '</div></div>' +
+        '<div class="tile"><div class="k">AUTHORITY</div><div class="v">RESEARCH ONLY</div><div class="small muted">execution_authorized=false · production_decision_authorized=false</div></div>' +
+      '</div>' +
+      '<div class="small muted" style="margin:10px 0">' +
+        'estimator=' + h(truth.estimator || 'paired_predictive_log_score_gain') +
+        ' · exact_conditional_mutual_information=' + h(truth.exact_conditional_mutual_information === false ? 'false' : 'UNAVAILABLE') +
+        ' · standalone_performance_is_not_incremental_information=' + h(truth.standalone_performance_is_not_incremental_information === true ? 'true' : 'UNAVAILABLE') +
+        ' · contracts_contexts_horizons_and_conditioning_sets_are_never_pooled=' + h(truth.contracts_contexts_horizons_and_conditioning_sets_are_never_pooled === true ? 'true' : 'UNAVAILABLE') +
+      '</div>' +
+      '<div class="scroll" style="max-height:58vh"><table><thead><tr>' +
+        '<th>Contributor</th><th>Classification</th><th>CONDITIONING SET</th><th>Target / horizon</th><th>Context</th><th>N</th><th>MEAN GAIN (NATS)</th><th>BITS / OBS</th><th>CI95</th><th>Positive fraction</th><th>Estimator / truth</th>' +
+      '</tr></thead><tbody>' +
+        (rows || '<tr><td colspan="11" class="empty">UNMEASURED — no paired conditional-contribution observations recorded.</td></tr>') +
+      '</tbody></table></div>' +
+    '</section>';
+  }
+
+  function renderAscendancy(capabilities, genomes, foundry, unknowns, mechanisms, inventions, contributions, errors) {
     const el = document.querySelector('#ascendancyBody');
     if (!el) return;
     const warning = errors.length
       ? '<div class="empty" style="margin-bottom:10px">DEGRADED: ' + h(errors.join(' · ')) + '</div>'
       : '';
-    el.innerHTML = warning + renderCapabilities(capabilities) + renderUnknowns(unknowns) + renderInventions(inventions) + renderFoundry(foundry) + renderMechanisms(mechanisms) + renderGenomeLab(genomes);
+    el.innerHTML = warning + renderCapabilities(capabilities) + renderUnknowns(unknowns) + renderInventions(inventions) + renderFoundry(foundry) + renderContributions(contributions) + renderMechanisms(mechanisms) + renderGenomeLab(genomes);
   }
 
   async function fetchJson(url, token) {
@@ -480,7 +548,8 @@
         fetchJson('/api/ascendancy/candidates', token),
         fetchJson('/api/ascendancy/unknowns', token),
         fetchJson('/api/ascendancy/mechanisms', token),
-        fetchJson('/api/ascendancy/inventions', token)
+        fetchJson('/api/ascendancy/inventions', token),
+        fetchJson('/api/ascendancy/contributions', token)
       ]);
       if (seq !== loadSeq) return;
       const capabilities = settled[0].status === 'fulfilled' ? settled[0].value : null;
@@ -489,10 +558,11 @@
       const unknowns = settled[3].status === 'fulfilled' ? settled[3].value : null;
       const mechanisms = settled[4].status === 'fulfilled' ? settled[4].value : null;
       const inventions = settled[5].status === 'fulfilled' ? settled[5].value : null;
+      const contributions = settled[6].status === 'fulfilled' ? settled[6].value : null;
       const errors = settled
         .filter(x => x.status === 'rejected')
         .map(x => x.reason && x.reason.message ? x.reason.message : String(x.reason || 'UNAVAILABLE'));
-      renderAscendancy(capabilities, genomes, foundry, unknowns, mechanisms, inventions, errors);
+      renderAscendancy(capabilities, genomes, foundry, unknowns, mechanisms, inventions, contributions, errors);
     } catch (err) {
       if (seq !== loadSeq) return;
       el.innerHTML = '<div class="empty">ASCENDANCY state UNAVAILABLE: ' + h(err && err.message ? err.message : err) + '</div>';
