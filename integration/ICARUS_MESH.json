@@ -5,8 +5,8 @@
   "canonical_default_branch": "main",
   "generated_from": {
     "producer": "ChatGPT",
-    "purpose": "architecture-and-integration-consolidation",
-    "date": "2026-09-24"
+    "purpose": "cross-repo-federation",
+    "date": "2026-10-02"
   },
   "policy": {
     "default_trust": "none",
@@ -33,8 +33,13 @@
     {
       "id": "icarus-engine",
       "repository": "reppiks490/Icarus-engine",
-      "role": "candidate-satellite",
-      "status": "candidate"
+      "role": "active-research-satellite",
+      "status": "active",
+      "authority_ceiling": "RESEARCH",
+      "handoff_manifest": "integration/manifests/ICARUS_ENGINE_HANDOFF.json",
+      "producer_revision": "e7a6cba065830189b8cd155e857ab581c87da45d",
+      "accepted_against_revision": "2e047d2645a8cbc2ca9f42731d5e4d65b05eee47",
+      "cross_repository_execution_authorized": false
     },
     {
       "id": "icarus-owner-actions",
