@@ -104,6 +104,7 @@ from .ascendancy.foundry import CandidateFoundry
 from .ascendancy.unknowns import UnknownUnknownLab
 from .ascendancy.mechanisms import MechanismLab
 from .ascendancy.invention import InventionLab, to_foundry_candidate
+from .ascendancy.contribution import ContributionLab
 
 
 def _no_json_constants(name: str):
@@ -224,6 +225,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     ascendancy_unknowns = UnknownUnknownLab(port.base_dir)
     ascendancy_mechanisms = MechanismLab(port.base_dir)
     ascendancy_inventions = InventionLab(port.base_dir)
+    ascendancy_contribution = ContributionLab(port.base_dir)
     mcp_control = MCPControlPlane(port.base_dir)
     chronofold = ChronofoldEngine(port, possibility=possibility)
     commissioning = CommissioningEngine(port.base_dir, port, chronofold)
@@ -351,6 +353,34 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
         if str(body.get("source_commit") or "") != str(candidate.get("source_commit") or ""):
             raise ValueError("mechanism experiment source_commit does not match candidate")
         return ascendancy_mechanisms.record(body)
+
+    def _ascendancy_record_contribution(body: Dict[str, Any]) -> Dict[str, Any]:
+        contributor_kind = str(body.get("contributor_kind") or "").strip().lower()
+        contributor_id = str(body.get("contributor_id") or "").strip()
+        if contributor_kind == "candidate":
+            foundry = ascendancy_foundry.snapshot()
+            candidate = next(
+                (
+                    row for row in foundry.get("candidates", [])
+                    if isinstance(row, dict)
+                    and str(row.get("candidate_id") or "") == contributor_id
+                ),
+                None,
+            )
+            if candidate is None:
+                raise ValueError("unknown candidate_id in ASCENDANCY Candidate Foundry")
+            expected_contract = str(
+                (candidate.get("evaluation_contract") or {}).get("contract_hash") or ""
+            )
+            if str(body.get("evaluation_contract_hash") or "") != expected_contract:
+                raise ValueError(
+                    "contribution observation evaluation contract does not match candidate"
+                )
+            if str(body.get("source_repo") or "") != str(candidate.get("source_repo") or ""):
+                raise ValueError("contribution observation source_repo does not match candidate")
+            if str(body.get("source_commit") or "") != str(candidate.get("source_commit") or ""):
+                raise ValueError("contribution observation source_commit does not match candidate")
+        return ascendancy_contribution.record(body)
 
     def _ascendancy_invention_to_candidate(body: Dict[str, Any]) -> Dict[str, Any]:
         blueprint_id = str(body.get("blueprint_id") or "").strip()
@@ -1054,6 +1084,16 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 except Exception as ex:
                     port.journal.log("WARN", f"ASCENDANCY invention snapshot: {type(ex).__name__}: {ex}")
                     return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/api/ascendancy/contributions":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                try:
+                    return self._json(200, ascendancy_contribution.snapshot())
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("WARN", f"ASCENDANCY contribution snapshot: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
             if p.path == "/api/golive":
                 return self._json(200, golive_report(port))
             if p.path == "/api/agent":
@@ -1572,6 +1612,16 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     return self._json(400, {"detail": str(ex)})
                 except Exception as ex:
                     port.journal.log("ERROR", f"ASCENDANCY mechanism experiment: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/admin/ascendancy/contribution-observation":
+                try:
+                    return self._json(200, _ascendancy_research_mutation(
+                        lambda: _ascendancy_record_contribution(body)
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("ERROR", f"ASCENDANCY contribution observation: {type(ex).__name__}: {ex}")
                     return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
             if p.path == "/admin/ascendancy/invention-generate":
                 try:
@@ -2207,6 +2257,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     srv.ascendancy_unknowns = ascendancy_unknowns
     srv.ascendancy_mechanisms = ascendancy_mechanisms
     srv.ascendancy_inventions = ascendancy_inventions
+    srv.ascendancy_contribution = ascendancy_contribution
     srv.learning = learning
     srv.chronofold = chronofold
     srv.commissioning = commissioning
