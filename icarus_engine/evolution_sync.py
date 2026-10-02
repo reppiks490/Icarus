@@ -145,6 +145,29 @@ def _read_state(base_dir: str | os.PathLike[str], interval_seconds: int) -> dict
         return state
     state.update(raw)
 
+    for counter in ("ingested_total", "ignored_total", "rejected_total"):
+        value = raw.get(counter, state[counter])
+        if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+            state[counter] = 0
+        else:
+            state[counter] = value
+
+    raw_processed = raw.get("processed_blob_shas")
+    if not isinstance(raw_processed, list):
+        raw_processed = []
+    state["processed_blob_shas"] = sorted({
+        str(x).lower()
+        for x in raw_processed
+        if _is_sha(str(x).lower())
+    })[-5000:]
+
+    raw_events = raw.get("events")
+    if not isinstance(raw_events, list):
+        state["events"] = []
+    raw_subsystems = raw.get("subsystems")
+    if not isinstance(raw_subsystems, Mapping):
+        state["subsystems"] = {}
+
     raw_current_rejected = raw.get("rejected_blob_shas")
     if not isinstance(raw_current_rejected, list):
         raw_current_rejected = []
@@ -165,6 +188,10 @@ def _read_state(base_dir: str | os.PathLike[str], interval_seconds: int) -> dict
     # Migration safety: any blob currently known rejected is historical too.
     rejected_history.update(current_rejected)
     state["rejected_history_blob_shas"] = sorted(rejected_history)[-5000:]
+    state["rejected_total"] = max(
+        state["rejected_total"],
+        len(state["rejected_history_blob_shas"]),
+    )
 
     if raw.get("validator_revision") != VALIDATOR_REVISION:
         state["rejected_blob_shas"] = []
