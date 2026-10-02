@@ -1183,7 +1183,7 @@ class LearningFabric:
             if not (
                 len(fingerprint) == 64
                 and all(ch in "0123456789abcdef" for ch in fingerprint)
-                and effective.get("provenance_quality") == "MANIFEST_UNIQUE_STRATEGY_REPORT_LINK"
+                and effective.get("provenance_quality") in _ARTIFACT_PROVENANCE_QUALITIES
             ):
                 continue
             groups.setdefault((row["source"], row["asset"], fingerprint), []).append((row, effective))
