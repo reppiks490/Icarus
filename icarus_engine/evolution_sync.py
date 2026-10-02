@@ -485,6 +485,7 @@ class EvolutionRemoteSync:
                         f"source_ref:{event['source_ref']}",
                         *event["evidence"],
                     ][:32]
+                    projected_subsystems: dict[str, dict[str, Any]] = {}
                     for subsystem in event["subsystems"]:
                         record_brain_event(
                             self.base_dir,
@@ -506,7 +507,7 @@ class EvolutionRemoteSync:
                                 },
                             },
                         )
-                        subsystems[subsystem] = {
+                        projected_subsystems[subsystem] = {
                             "status": event["status"],
                             "severity": event["severity"],
                             "title": event["title"],
@@ -523,6 +524,7 @@ class EvolutionRemoteSync:
                     )
                     continue
 
+                subsystems.update(projected_subsystems)
                 events_by_id[event["event_id"]] = event
                 processed.add(blob_sha)
                 state["ingested_total"] = int(
