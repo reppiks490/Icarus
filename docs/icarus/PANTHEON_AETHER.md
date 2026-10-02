@@ -681,6 +681,41 @@ attention and prioritizes ontology/historical specialists. None of those paths
 grant execution authority.
 
 
+## KAIROS Ω — declared information-acquisition frontier
+
+KAIROS preserves the complementary timing mechanism that predates APORIA.
+Where APORIA starts from GÖDEL's internally ranked discriminating observations
+and prices whether one is worth **waiting** for using MINT opportunity value,
+KAIROS starts from an explicitly declared menu of research observation actions
+and asks which action has the strongest ambiguity-reduction benefit after
+reliability, decision sensitivity, edge decay, acquisition cost, and execution
+deterioration are all charged.
+
+Each `information_actions` candidate declares a name, delay, expected
+information gain, decision sensitivity, observation reliability, and optional
+acquisition/execution-friction costs. Edge retention may be supplied explicitly
+for the research action or derived from NEMESIS' measured edge half-life.
+KAIROS returns:
+
+- every scored and unscored information action;
+- information benefit, edge-decay penalty, total penalty, and net value;
+- benefit/cost ratio and delay as a fraction of edge half-life;
+- positive-value candidates;
+- a non-dominated Pareto frontier over maximize-information / minimize-cost;
+- the highest-value declared action; and
+- an explicit "budget exhausted" state when no scored action remains positive.
+
+This frontier is intentionally not substituted for APORIA's AXIOM timing gate:
+KAIROS prioritizes **which declared research action to investigate**, while
+APORIA determines whether a GÖDEL/MINT observation should block research
+readiness pending reassessment. AETHER may prioritize its blind
+`information_gain` researcher from either signal, and SOCRATES can turn the
+KAIROS frontier into a falsifiable information-acquisition experiment.
+
+KAIROS never instructs a trade, wait, order, size, or position and never grants
+production or execution authority.
+
+
 ## APORIA — active perception and value of waiting
 
 **APORIA Ω** turns GÖDEL's uncertainty into an economic timing experiment.

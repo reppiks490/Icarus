@@ -71,7 +71,7 @@ def test_pantheon_runs_independent_faculties_and_never_grants_execution(tmp_path
     obs = kernel.record_observation(_payload())
     analysis = obs["analysis"]
     assert set(analysis["faculties"]) == {
-        "nullspace", "godel", "ananke", "nemesis", "ex_nihilo", "mint", "echo", "veritas", "lethe", "atlas", "aporia", "axiom", "autognosis", "archon", "socrates"
+        "nullspace", "godel", "kairos", "ananke", "nemesis", "ex_nihilo", "mint", "echo", "veritas", "lethe", "atlas", "aporia", "axiom", "autognosis", "archon", "socrates"
     }
     assert analysis["faculties"]["nullspace"]["routing_state"] == "absorbed"
     assert analysis["faculties"]["nullspace"]["debt_state"] == "absorbed"
@@ -989,6 +989,131 @@ def _axiom_ready_payload(observation_id="pan-axiom-ready"):
     return payload
 
 
+
+def test_kairos_ranks_declared_information_actions_and_preserves_pareto_frontier(tmp_path):
+    payload = _payload(observation_id="pan-kairos-frontier")
+    payload["signals"] = dict(payload["signals"])
+    payload["signals"]["edge_half_life_seconds"] = 2.0
+    payload["signals"]["information_actions"] = [
+        {
+            "name": "fast_basis",
+            "delay_ms": 100,
+            "expected_information_gain": 0.90,
+            "decision_sensitivity": 0.80,
+            "observation_reliability": 0.95,
+            "acquisition_cost": 0.02,
+            "execution_deterioration": 0.01,
+        },
+        {
+            "name": "slow_depth",
+            "delay_ms": 2000,
+            "expected_information_gain": 1.0,
+            "decision_sensitivity": 0.80,
+            "observation_reliability": 0.90,
+            "acquisition_cost": 0.02,
+            "execution_deterioration": 0.02,
+        },
+        {
+            "name": "cheap_confirm",
+            "delay_ms": 50,
+            "expected_information_gain": 0.40,
+            "decision_sensitivity": 0.50,
+            "observation_reliability": 0.95,
+            "acquisition_cost": 0.01,
+            "execution_deterioration": 0.0,
+        },
+    ]
+
+    obs = PantheonKernel(
+        tmp_path,
+        swarm=AetherSwarm(threshold=0.0, max_agents=8),
+    ).record_observation(payload)
+    state = obs["analysis"]["faculties"]["kairos"]
+    swarm = obs["analysis"]["aether"]
+
+    assert state["status"] == "active"
+    assert state["best_candidate"]["name"] == "fast_basis"
+    assert state["best_candidate"]["net_information_value"] > 0
+    assert state["best_candidate"]["edge_retention_source"] == "nemesis_half_life"
+    assert state["positive_candidate_count"] >= 2
+    assert state["research_observation_worth_acquiring"] is True
+    assert state["best_positive_value"] > 0
+    assert {row["name"] for row in state["frontier"]} <= {
+        "fast_basis", "slow_depth", "cheap_confirm"
+    }
+    assert state["frontier"]
+    assert swarm["field"]["information_acquisition_value"] == pytest.approx(
+        state["best_positive_value"]
+    )
+    assert swarm["field"]["information_acquisition_candidate"] == "fast_basis"
+    assert "information_gain" in {agent["role"] for agent in swarm["agents"]}
+    assert state["authority"]["execution_authorized"] is False
+    assert state["authority"]["production_decision_authorized"] is False
+
+
+def test_kairos_can_use_explicit_edge_retention_when_half_life_is_unmeasured(tmp_path):
+    payload = _payload(observation_id="pan-kairos-explicit-retention")
+    payload["signals"] = dict(payload["signals"])
+    payload["signals"]["information_actions"] = [
+        {
+            "name": "latency_probe",
+            "delay_ms": 250,
+            "expected_information_gain": 0.80,
+            "decision_sensitivity": 0.70,
+            "observation_reliability": 0.90,
+            "edge_retention": 0.92,
+            "acquisition_cost": 0.01,
+            "execution_deterioration": 0.01,
+        }
+    ]
+    state = PantheonKernel(tmp_path).record_observation(payload)["analysis"]["faculties"]["kairos"]
+    assert state["status"] == "active"
+    assert state["best_candidate"]["name"] == "latency_probe"
+    assert state["best_candidate"]["edge_retention_source"] == "candidate_supplied"
+    assert state["unscored_candidate_count"] == 0
+    assert state["research_observation_worth_acquiring"] is True
+
+
+def test_kairos_fails_closed_on_duplicate_or_invalid_information_actions(tmp_path):
+    duplicate = _payload(observation_id="pan-kairos-duplicate")
+    duplicate["signals"] = dict(duplicate["signals"])
+    duplicate["signals"]["information_actions"] = [
+        {
+            "name": "same",
+            "delay_ms": 10,
+            "expected_information_gain": 0.5,
+            "decision_sensitivity": 0.5,
+            "observation_reliability": 0.5,
+            "edge_retention": 0.9,
+        },
+        {
+            "name": "same",
+            "delay_ms": 20,
+            "expected_information_gain": 0.6,
+            "decision_sensitivity": 0.5,
+            "observation_reliability": 0.5,
+            "edge_retention": 0.9,
+        },
+    ]
+    with pytest.raises(ValueError, match="information_actions names must be unique"):
+        PantheonKernel(tmp_path / "duplicate").record_observation(duplicate)
+
+    invalid = _payload(observation_id="pan-kairos-invalid")
+    invalid["signals"] = dict(invalid["signals"])
+    invalid["signals"]["information_actions"] = [
+        {
+            "name": "bad-delay",
+            "delay_ms": -1,
+            "expected_information_gain": 0.5,
+            "decision_sensitivity": 0.5,
+            "observation_reliability": 0.5,
+            "edge_retention": 0.9,
+        }
+    ]
+    with pytest.raises(ValueError, match="delay_ms must be an integer from 0 to 300000"):
+        PantheonKernel(tmp_path / "invalid").record_observation(invalid)
+
+
 def test_aporia_prices_value_of_waiting_before_edge_decay(tmp_path):
     payload = _payload(observation_id="pan-aporia-wait")
     payload["signals"] = dict(payload["signals"])
@@ -1219,6 +1344,7 @@ def test_pantheon_is_visible_in_trader_interface():
     assert "Resurrection pressure" in ui
     assert "Proof gap" in ui
     assert "Value of waiting" in ui
+    assert "Information frontier" in ui
     assert "Topology pressure" in ui
     assert "Self-failure pressure" in ui
     assert "geometry " in ui
@@ -1233,7 +1359,7 @@ def test_pantheon_is_visible_in_trader_interface():
     assert '"pantheon": pantheon.snapshot' in server
     assert "resolve_engine_evidence_lineage" in server
     assert '"apex_lineage"' in server
-    for subsystem in ("PANTHEON", "NEMESIS Ω", "GÖDEL Ω", "SOCRATES", "ANANKĒ", "EX NIHILO", "MINT Ω", "NULLSPACE Ω", "ECHO Ω", "VERITAS Ω", "LETHE Ω", "ATLAS Ω", "APORIA Ω", "AXIOM Ω", "AUTOGNOSIS Ω", "ARCHON Ω", "AETHER Ω"):
+    for subsystem in ("PANTHEON", "NEMESIS Ω", "GÖDEL Ω", "KAIROS Ω", "SOCRATES", "ANANKĒ", "EX NIHILO", "MINT Ω", "NULLSPACE Ω", "ECHO Ω", "VERITAS Ω", "LETHE Ω", "ATLAS Ω", "APORIA Ω", "AXIOM Ω", "AUTOGNOSIS Ω", "ARCHON Ω", "AETHER Ω"):
         assert subsystem in brain
 
 

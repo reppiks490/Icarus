@@ -71,7 +71,16 @@ class AetherSwarm:
         resurrection = unit(faculties.get("lethe", {}).get("resurrection_pressure"), "lethe.resurrection_pressure")
         proof_gap = unit(faculties.get("axiom", {}).get("proof_gap"), "axiom.proof_gap")
         aporia_state = faculties.get("aporia", {})
-        information_value = unit(aporia_state.get("information_value_pressure"), "aporia.information_value_pressure")
+        aporia_information_value = unit(
+            aporia_state.get("information_value_pressure"),
+            "aporia.information_value_pressure",
+        )
+        kairos_state = faculties.get("kairos", {})
+        kairos_information_value = unit(
+            kairos_state.get("best_positive_value"),
+            "kairos.best_positive_value",
+        )
+        information_value = max(aporia_information_value, kairos_information_value)
         atlas_state = faculties.get("atlas", {})
         topology_pressure = max(
             unit(atlas_state.get("topological_novelty"), "atlas.topological_novelty"),
@@ -160,6 +169,12 @@ class AetherSwarm:
                 "proof_gap": proof_gap,
                 "information_value_pressure": information_value,
                 "value_of_waiting_action": aporia_state.get("action", "unavailable"),
+                "information_acquisition_value": kairos_information_value,
+                "information_acquisition_candidate": (
+                    kairos_state.get("best_candidate", {}).get("name")
+                    if isinstance(kairos_state.get("best_candidate"), Mapping)
+                    else None
+                ),
                 "topology_pressure": topology_pressure,
                 "self_failure_pressure": self_failure_pressure,
                 "self_model_posture": faculties.get("autognosis", {}).get("research_posture", "unavailable"),
@@ -184,6 +199,7 @@ class AetherSwarm:
                 "axiom_proof_gaps_drive_research_not_execution": True,
                 "atlas_boundaries_drive_research_not_execution": True,
                 "positive_value_information_prioritizes_research_not_execution": True,
+                "declared_information_frontier_prioritizes_research_not_execution": True,
                 "self_failure_pressure_drives_audit_not_execution": True,
             },
             "truth_contract": {

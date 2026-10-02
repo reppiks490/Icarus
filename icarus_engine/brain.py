@@ -77,6 +77,7 @@ SUBSYSTEMS = (
     {"id": "pantheon", "title": "PANTHEON", "owner": "aion", "job": "Independent research-faculty fabric that preserves disagreement, provenance, bounded authority, and falsifiable claims across advanced market-intelligence faculties."},
     {"id": "nemesis", "title": "NEMESIS Ω", "owner": "pantheon", "job": "Adversarial fragility, minimum-failure-distance, sensitivity, edge half-life, subsystem-ablation survival, and edge-survival diagnostics."},
     {"id": "godel", "title": "GÖDEL Ω", "owner": "pantheon", "job": "Epistemic identifiability and indistinguishable-world diagnostics; expose what available evidence cannot resolve."},
+    {"id": "kairos", "title": "KAIROS Ω", "owner": "pantheon", "job": "Declared information-acquisition frontier: rank candidate observations by ambiguity reduction, reliability, decision sensitivity, delay, edge retention, acquisition cost, and execution deterioration without trading authority."},
     {"id": "socrates", "title": "SOCRATES", "owner": "pantheon", "job": "Autonomous research-question and falsifiable-hypothesis selection driven by uncertainty, causal debt, novelty, and disagreement."},
     {"id": "ananke", "title": "ANANKĒ", "owner": "pantheon", "job": "Structural transition-cost, reachable-space, cross-world constraint intersection, and causal-event-horizon diagnostics."},
     {"id": "ex-nihilo", "title": "EX NIHILO", "owner": "pantheon", "job": "Ontology-surprise and representation-failure detection that proposes and retires falsifiable market phenomena through observed research outcomes."},
