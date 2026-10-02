@@ -216,3 +216,17 @@ def test_brain_registers_continuous_learning_fabric(tmp_path):
     assert "historical replay" in rows["learning-fabric"]["job"].lower()
     assert out["authority"]["execution_authorized"] is False
     assert out["authority"]["production_decision_authorized"] is False
+
+
+def test_brain_registers_pantheon_lethe_research_subsystem(tmp_path):
+    out = brain_snapshot(tmp_path)
+    rows = {x["id"]: x for x in SUBSYSTEMS}
+    assert "lethe" in rows
+    assert rows["lethe"]["title"] == "LETHE Ω"
+    assert rows["lethe"]["owner"] == "pantheon"
+    assert "memory" in rows["lethe"]["job"].lower()
+    assert "resurrection" in rows["lethe"]["job"].lower()
+    surfaced = {x["id"]: x for x in out["architecture"]["subsystems"]}
+    assert surfaced["lethe"]["status"] == "REGISTERED"
+    assert out["authority"]["execution_authorized"] is False
+    assert out["authority"]["production_decision_authorized"] is False

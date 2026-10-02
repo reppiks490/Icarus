@@ -531,3 +531,32 @@ signal fields. It must also carry at least one immutable evidence reference in
 the PANTHEON observation ledger. The source evidence list is copied into the
 VERITAS reconciliation payload, preserving the proof path used to score
 mechanism fidelity. Empty-evidence endpoint snapshots fail closed.
+
+
+## LETHE Ω — adaptive memory decay and regime resurrection
+
+PANTHEON now treats *forgetting* as a first-class research operation. Financial
+relationships are non-stationary, so a once-valid edge is not allowed to retain
+full research trust forever merely because it was profitable in an older regime.
+
+LETHE accepts bounded `knowledge_memory` records with immutable identity,
+learning time, confidence and a declared half-life. It computes exponential
+temporal retention from the observation's causal clock. Raw evidence is never
+deleted or rewritten; only the current *research trust surface* decays.
+
+Dormant memory can become a **resurrection candidate**, but never because the
+calendar or price pattern looks familiar by itself. Resurrection support
+requires the conjunction of current-regime similarity, fresh revalidation,
+mechanism fidelity, and revalidation freshness. Revalidation timestamps must
+fall between original learning time and the current observation. A stale memory
+without that evidence remains stale and may be marked a retirement candidate.
+
+SOCRATES turns high staleness or resurrection pressure into falsifiable research
+questions. AETHER increases research attention modestly and prioritizes
+`historical_analogue` and `edge_half_life` specialists when appropriate.
+No LETHE score authorizes orders, sizing, broker actions, model promotion, or
+automatic strategy resurrection.
+
+The design is adjacent to continual-learning and concept-drift research, but its
+ICARUS role is narrower: revival is bound to fresh mechanism evidence while the
+immutable historical evidence remains intact.
