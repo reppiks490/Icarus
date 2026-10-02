@@ -177,7 +177,7 @@ const TZ = (() => { try { return new Intl.DateTimeFormat([], {timeZoneName:'shor
 const dtz = t => t ? dtm(t) + ' ' + TZ : '—';
 const age = s => s==null ? 'never' : s<60 ? `${Math.round(s)}s` : s<3600 ? `${Math.round(s/60)}m` : `${(s/3600).toFixed(1)}h`;
 const tip = $('#tip'); const showTip = (h,x,y) => { tip.innerHTML=h; tip.style.display='block'; tip.style.left=(x+14)+'px'; tip.style.top=(y+14)+'px'; }; const hideTip = () => tip.style.display='none';
-let last = null, charts = {}, seenFills = new Set(), first = true, tradesCache = {}, tradeErrors = {}, META = null, PRESETS = [], COMMANDS = [], REGISTRY = [];
+let last = null, charts = {}, seenFills = new Set(), first = true, tradesCache = {}, tradeErrors = {}, META = null, PRESETS = [], COMMANDS = [], REGISTRY = [], catalogRefreshBusy = false;
 const params = new URLSearchParams(location.search);
 const solo = !!params.get('asset');
 let view = solo ? 'asset:' + params.get('asset').toUpperCase() : (location.hash.slice(1) || 'overview');
@@ -1100,9 +1100,48 @@ async function refreshTrades(only) {
     }
   }
 }
-(async () => { [PRESETS, COMMANDS, REGISTRY] = await Promise.all([fetch('/api/presets').then(r=>r.json()).catch(()=>[]), fetch('/api/commands').then(r=>r.json()).catch(()=>[]), fetch('/api/assets').then(r=>r.json()).then(j=>j.registry).catch(()=>[])]);
-  await refreshAudit(); await refresh(); await refreshGolive(); await refreshAgent(); await refreshCharts(); await refreshTrades(); if (last) render(last); })();
+async function refreshUiCatalogs() {
+  if (catalogRefreshBusy) return;
+  catalogRefreshBusy = true;
+  const get = async path => {
+    const response = await fetch(path, {cache:'no-store'});
+    const data = await response.json().catch(()=>null);
+    if (!response.ok) throw new Error((data&&data.detail)||(data&&data.error)||('HTTP '+response.status));
+    return data;
+  };
+  try {
+    const results = await Promise.allSettled([get('/api/presets'), get('/api/commands'), get('/api/assets')]);
+    let changed = false;
+    if (results[0].status === 'fulfilled' && Array.isArray(results[0].value)) {
+      const next = results[0].value;
+      changed = changed || JSON.stringify(next) !== JSON.stringify(PRESETS);
+      PRESETS = next;
+    }
+    if (results[1].status === 'fulfilled' && Array.isArray(results[1].value)) {
+      const next = results[1].value;
+      changed = changed || JSON.stringify(next) !== JSON.stringify(COMMANDS);
+      COMMANDS = next;
+    }
+    if (results[2].status === 'fulfilled' && Array.isArray(results[2].value?.registry)) {
+      const next = results[2].value.registry;
+      changed = changed || JSON.stringify(next) !== JSON.stringify(REGISTRY);
+      REGISTRY = next;
+    }
+    if (changed && last && ['commands','inputs','backtest'].includes(view)) {
+      lastView = null;
+      render(last);
+    }
+    return results;
+  } finally {
+    catalogRefreshBusy = false;
+  }
+}
+(async () => {
+  await refreshUiCatalogs();
+  await refreshAudit(); await refresh(); await refreshGolive(); await refreshAgent(); await refreshCharts(); await refreshTrades(); if (last) render(last);
+})();
 setInterval(refresh, 3000); setInterval(refreshGolive, 8000); setInterval(refreshCharts, 8000); setInterval(refreshAudit, 20000); setInterval(()=>refreshTrades(), 20000);
+setInterval(()=>{ if (!COMMANDS.length || !REGISTRY.length) refreshUiCatalogs(); }, 10000);
 window.addEventListener('resize', () => { if (last) { lastView = null; render(last); } });
 setInterval(() => { const el = $('#clock'); if (el) el.textContent = `${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'})} ${TZ} · ${etClock()} ET`; }, 1000);
 window.addEventListener('hashchange', () => { if (!solo) { const v = location.hash.slice(1) || 'overview'; if (v !== view) { view = v; lastView = null; if (last) render(last); } } });
