@@ -151,8 +151,19 @@ def kairos(
         }
     if not isinstance(raw, list) or not 1 <= len(raw) <= 32:
         raise ValueError("information_actions must contain 1-32 items")
+    if godel_state.get("status") != "active" or "ambiguity" not in godel_state:
+        return {
+            **out,
+            "status": "abstain",
+            "reason": "active GODEL ambiguity state required",
+            "candidates": [],
+            "frontier": [],
+            "best_candidate": None,
+            "positive_candidate_count": 0,
+            "research_observation_worth_acquiring": False,
+        }
 
-    ambiguity = unit(godel_state.get("ambiguity"), "godel.ambiguity", 1.0)
+    ambiguity = unit(godel_state.get("ambiguity"), "godel.ambiguity")
     half_life = nemesis_state.get("edge_half_life_seconds")
     if half_life is not None:
         half_life = finite(half_life, "nemesis.edge_half_life_seconds")
@@ -177,6 +188,9 @@ def kairos(
         delay_ms = item.get("delay_ms")
         if type(delay_ms) is not int or not 0 <= delay_ms <= 300000:
             raise ValueError(f"information_actions[{i}].delay_ms must be an integer from 0 to 300000")
+        for required_field in ("expected_information_gain", "decision_sensitivity", "observation_reliability"):
+            if required_field not in item:
+                raise ValueError(f"information_actions[{i}].{required_field} is required")
         info_gain = unit(item.get("expected_information_gain"), f"information_actions[{i}].expected_information_gain")
         sensitivity = unit(item.get("decision_sensitivity"), f"information_actions[{i}].decision_sensitivity")
         reliability = unit(item.get("observation_reliability"), f"information_actions[{i}].observation_reliability")
@@ -218,7 +232,7 @@ def kairos(
         net_value = information_benefit - total_penalty
         benefit_cost_ratio = (
             information_benefit / total_penalty if total_penalty > 1e-12
-            else (float("inf") if information_benefit > 0 else 0.0)
+            else None
         )
         candidates.append({
             "name": name,
