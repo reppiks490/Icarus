@@ -12,6 +12,7 @@ from icarus_engine.brain_sync import (
     _REMOTE_PEER_PACKET_API,
     _git_blob_sha,
     _remote_compare_api,
+    _remote_contents_api,
 )
 
 
@@ -107,6 +108,8 @@ def _consumer_contract(**overrides):
 def _historical_context_contract():
     return {
         "mode": "RESEARCH_CONTEXT_ONLY",
+        "source_artifact_blob_required": True,
+        "artifact_id_sha256_required": True,
         "direct_candidate_evidence": False,
         "automatic_candidate_creation": False,
         "automatic_model_promotion": False,
@@ -308,6 +311,50 @@ def _producer_contract():
     }
 
 
+def _historical_packet_artifacts(documents=None):
+    documents = documents or _historical_docs()
+    contract = _historical_context_contract()
+    sources = {row["id"]: row for row in contract["sources"]}
+    artifacts = []
+    for source_id in sorted(sources):
+        source = sources[source_id]
+        document = documents[source_id]
+        raw = (json.dumps(document, sort_keys=True) + "\n").encode()
+        run_id = document.get("RUN_ID") or document.get("run_id")
+        run_status = document.get("RUN_STATUS") or document.get("status")
+        artifact = {
+            "lane": source_id,
+            "artifact_kind": "HISTORICAL_LATEST",
+            "path": source["path"],
+            "source_artifact_blob_sha": _git_blob_sha(raw),
+            "run_id": run_id,
+            "run_status": run_status,
+            "evidence_status": source["evidence_status"],
+            "research_context_eligible": True,
+            "candidate_evidence_eligible": False,
+            "summary": {"fixture": source_id},
+            "lineage": {
+                "base_main_sha": None,
+                "final_main_sha": None,
+                "run_core_sha256": None,
+                "history_blob_sha": document.get("history_blob_sha") or "1" * 40,
+                "ledger_blob_sha": document.get("ledger_blob_sha"),
+                "history_mode": "fixture",
+            },
+            "execution_authorized": False,
+        }
+        artifact["artifact_id"] = __import__("hashlib").sha256(
+            json.dumps(
+                artifact,
+                sort_keys=True,
+                separators=(",", ":"),
+                allow_nan=False,
+            ).encode()
+        ).hexdigest()
+        artifacts.append(artifact)
+    return artifacts
+
+
 def _peer_packet(**overrides):
     packet = {
         "schema_version": "icarus-peer-intelligence-packet-v1",
@@ -379,6 +426,7 @@ def _peer_packet(**overrides):
                 "execution_authorized": False,
             },
         ],
+        "historical_artifacts": _historical_packet_artifacts(),
         "mcp_interface": {
             "schema_version": "icarus-mcp-interface-contract-v1",
             "event_root": "automation_intelligence/mcp_interface/events",
@@ -393,6 +441,7 @@ def _peer_packet(**overrides):
             "remote_sibling_state_is_never_inferred": True,
             "exact_source_commit_required": True,
             "execution_authority_never_transfers_between_repositories": True,
+            "historical_context_never_bypasses_foundry_or_evaluator": True,
         },
         "execution_authorized": False,
         "production_decision_authorized": False,
@@ -419,6 +468,7 @@ def _fixture(
     peer_now_offset_seconds=60,
     allow_legacy_event=False,
     historical_docs=None,
+    packet_historical_docs=None,
 ):
     event_raw = (json.dumps(payload, sort_keys=True) + "\n").encode()
     event_sha = _git_blob_sha(event_raw)
@@ -434,11 +484,14 @@ def _fixture(
 
     consumer_doc = consumer or _consumer_contract()
     historical_docs = historical_docs or {}
+    packet_historical_docs = packet_historical_docs or _historical_docs()
     if allow_legacy_event:
         consumer_doc = json.loads(json.dumps(consumer_doc))
         consumer_doc["event_validation"]["legacy_relaxed_blob_shas"] = [event_sha]
     producer_doc = _producer_contract()
-    peer_doc = peer or _peer_packet()
+    peer_doc = peer or _peer_packet(
+        historical_artifacts=_historical_packet_artifacts(packet_historical_docs)
+    )
     peer_observed = datetime.fromisoformat(
         str(peer_doc["observed_at"]).replace("Z", "+00:00")
     )
@@ -474,6 +527,27 @@ def _fixture(
             "url": url,
         }
 
+    packet_historical_meta = {}
+    packet_historical_raw = {}
+    for source_id, document in packet_historical_docs.items():
+        raw = (json.dumps(document, sort_keys=True) + "\n").encode()
+        url = f"https://api.github.test/packet-historical/{source_id}"
+        historical_path = next(
+            row["path"]
+            for row in _historical_context_contract()["sources"]
+            if row["id"] == source_id
+        )
+        api = _remote_contents_api(
+            historical_path,
+            ref=peer_doc["source_commit"],
+        )
+        packet_historical_raw[url] = raw
+        packet_historical_meta[api] = {
+            "type": "file",
+            "sha": _git_blob_sha(raw),
+            "url": url,
+        }
+
     def fetch_json(requested):
         if requested == _REMOTE_CONSUMER_CONTRACT_API:
             return {
@@ -501,6 +575,8 @@ def _fixture(
             return response
         if requested in historical_meta:
             return historical_meta[requested]
+        if requested in packet_historical_meta:
+            return packet_historical_meta[requested]
         return listing
 
     def fetch_bytes(requested):
@@ -514,6 +590,8 @@ def _fixture(
             return peer_raw
         if requested in historical_raw:
             return historical_raw[requested]
+        if requested in packet_historical_raw:
+            return packet_historical_raw[requested]
         return b""
 
     return {
@@ -564,6 +642,15 @@ def test_remote_sync_ingests_custom_agent_and_owned_subsystem_events(tmp_path):
     assert status["peer_substantive_lane_count"] == 1
     assert status["peer_durability_only_lane_count"] == 1
     assert len(status["peer_lanes"]) == 3
+    assert status["historical_packet_witness_status"] == "green"
+    assert status["historical_packet_witness_count"] == 4
+    assert all(
+        row["source_artifact_blob_verified"] is True
+        and row["candidate_evidence_eligible"] is False
+        and row["execution_authorized"] is False
+        for row in status["historical_packet_witnesses"]
+    )
+    assert status["truth_contract"]["historical_source_artifact_blob_required"] is False
     assert status["execution_authorized"] is False
 
     snap = brain_snapshot(tmp_path, remote_sync=status)
@@ -908,6 +995,12 @@ def test_remote_sync_ingests_declared_historical_context_without_candidate_autho
     assert status["truth_contract"]["historical_context_never_bypasses_foundry"] is True
     assert status["truth_contract"]["historical_context_never_bypasses_evaluator"] is True
     assert status["truth_contract"]["historical_context_never_grants_shadow_qualification"] is True
+    assert status["truth_contract"]["historical_source_artifact_blob_required"] is True
+    assert status["truth_contract"]["historical_artifact_id_sha256_required"] is True
+    assert status["historical_packet_witness_status"] == "green"
+    assert status["historical_packet_witness_count"] == 4
+    assert status["historical_packet_same_as_live_count"] == 4
+    assert status["historical_packet_live_advanced_count"] == 0
 
     rows = {row["id"]: row for row in status["historical_context_sources"]}
     assert set(rows) == {
@@ -1003,3 +1096,100 @@ def test_remote_sync_degrades_if_declared_historical_blob_is_substituted(tmp_pat
     assert status["status"] == "degraded"
     assert status["historical_context_status"] == "degraded"
     assert "historical context Git blob SHA mismatch" in status["last_error"]
+
+def test_remote_sync_rejects_packet_historical_artifact_id_substitution(tmp_path):
+    packet = _peer_packet()
+    packet["historical_artifacts"][0]["artifact_id"] = "0" * 64
+    _rehash_peer_packet(packet)
+    fixture = _fixture(_remote_event(), peer=packet)
+    sync = BrainRemoteSync(
+        tmp_path,
+        interval_seconds=60,
+        fetch_json=fixture["fetch_json"],
+        fetch_bytes=fixture["fetch_bytes"],
+        now_utc=fixture["now_utc"],
+    )
+    status = sync.sync_once()
+    assert status["status"] == "degraded"
+    assert status["historical_packet_witness_status"] == "degraded"
+    assert status["ingested_total"] == 1
+    assert "historical artifact ID mismatch" in status["last_error"]
+
+
+def test_remote_sync_rejects_packet_historical_source_blob_substitution(tmp_path):
+    packet = _peer_packet()
+    artifact = packet["historical_artifacts"][0]
+    artifact["source_artifact_blob_sha"] = "0" * 40
+    unsigned = dict(artifact)
+    unsigned.pop("artifact_id", None)
+    artifact["artifact_id"] = __import__("hashlib").sha256(
+        json.dumps(unsigned, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
+    ).hexdigest()
+    _rehash_peer_packet(packet)
+    fixture = _fixture(_remote_event(), peer=packet)
+    sync = BrainRemoteSync(
+        tmp_path,
+        interval_seconds=60,
+        fetch_json=fixture["fetch_json"],
+        fetch_bytes=fixture["fetch_bytes"],
+        now_utc=fixture["now_utc"],
+    )
+    status = sync.sync_once()
+    assert status["status"] == "degraded"
+    assert status["historical_packet_witness_status"] == "degraded"
+    assert status["historical_packet_witness_count"] == 0
+    assert status["ingested_total"] == 1
+    assert "historical packet witness source blob mismatch" in status["last_error"]
+
+
+def test_remote_sync_allows_live_historical_source_to_advance_after_packet_source(tmp_path):
+    consumer = _consumer_contract(historical_context=_historical_context_contract())
+    packet_docs = _historical_docs()
+    live_docs = json.loads(json.dumps(packet_docs))
+    live_docs["robustness_guardian"]["RUN_CORE"]["findings"].append(
+        "new current-main observation after packet export"
+    )
+    fixture = _fixture(
+        _remote_event(),
+        consumer=consumer,
+        historical_docs=live_docs,
+        packet_historical_docs=packet_docs,
+    )
+    sync = BrainRemoteSync(
+        tmp_path,
+        interval_seconds=60,
+        fetch_json=fixture["fetch_json"],
+        fetch_bytes=fixture["fetch_bytes"],
+        now_utc=fixture["now_utc"],
+    )
+    status = sync.sync_once()
+    assert status["status"] == "green", status.get("last_error")
+    assert status["historical_context_status"] == "green"
+    assert status["historical_packet_witness_status"] == "green"
+    assert status["historical_packet_live_advanced_count"] == 1
+    assert status["historical_packet_same_as_live_count"] == 3
+    witness = next(
+        row for row in status["historical_packet_witnesses"]
+        if row["id"] == "robustness_guardian"
+    )
+    assert witness["current_main_relation"] == "LIVE_SOURCE_ADVANCED"
+    assert witness["source_artifact_blob_verified"] is True
+    assert witness["current_main_blob_sha"] != witness["source_artifact_blob_sha"]
+
+
+def test_remote_sync_rejects_historical_contract_without_blob_and_artifact_id_requirements(tmp_path):
+    historical = _historical_context_contract()
+    historical["source_artifact_blob_required"] = False
+    consumer = _consumer_contract(historical_context=historical)
+    fixture = _fixture(_remote_event(), consumer=consumer)
+    sync = BrainRemoteSync(
+        tmp_path,
+        interval_seconds=60,
+        fetch_json=fixture["fetch_json"],
+        fetch_bytes=fixture["fetch_bytes"],
+        now_utc=fixture["now_utc"],
+    )
+    status = sync.sync_once()
+    assert status["status"] == "degraded"
+    assert status["ingested_total"] == 0
+    assert "must require exact source artifact blobs" in status["last_error"]

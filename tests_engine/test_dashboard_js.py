@@ -657,6 +657,10 @@ def test_adaptive_brain_surfaces_historical_engine_context():
     assert "historical_context_ingested_total" in ui
     assert "historical_candidate_evidence_count" in ui
     assert "historical_context_status" in ui
+    assert "historical_packet_witness_status" in ui
+    assert "Packet-bound source proof" in ui
+    assert "PACKET SOURCE VERIFIED" in ui
+    assert "Historical packet provenance" in ui
 
 
 def test_rebased_ascendancy_dashboard_keeps_full_research_operating_surface():

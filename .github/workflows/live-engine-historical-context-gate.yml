@@ -4,6 +4,14 @@ on:
   push:
     branches:
       - feat/historical-engine-context-consumer-current-main
+      - chatgpt/historical-packet-provenance-witness-20261002
+    paths:
+      - "icarus_engine/brain_sync.py"
+      - "icarus_engine/brain-ui.js"
+      - "tests_engine/test_brain_sync.py"
+      - ".github/workflows/live-engine-historical-context-gate.yml"
+  pull_request:
+    branches: [main]
     paths:
       - "icarus_engine/brain_sync.py"
       - "icarus_engine/brain-ui.js"
@@ -75,6 +83,7 @@ jobs:
               _REMOTE_PEER_PACKET_API,
               _git_blob_sha,
               _remote_compare_api,
+              _remote_contents_api,
           )
 
           peer = Path("../peer-engine").resolve()
@@ -114,11 +123,32 @@ jobs:
           for source in consumer["historical_context"]["sources"]:
               path = peer / source["path"]
               assert path.is_file(), f"declared historical source missing: {source['path']}"
-              api = (
-                  f"https://api.github.com/repos/{REMOTE_REPOSITORY}/contents/"
-                  f"{source['path']}?ref={REMOTE_REF}"
-              )
+              api = _remote_contents_api(source["path"])
               historical_meta[api] = meta_for(path, "historical/" + source["id"])
+
+          packet_historical_meta = {}
+          for artifact in peer_packet.get("historical_artifacts", []):
+              artifact_path = artifact["path"]
+              raw = subprocess.check_output(
+                  [
+                      "git",
+                      "-C",
+                      str(peer),
+                      "show",
+                      f"{source_commit}:{artifact_path}",
+                  ]
+              )
+              url = "memory://packet-historical/" + artifact["lane"]
+              virtual[url] = raw
+              packet_historical_meta[
+                  _remote_contents_api(artifact_path, ref=source_commit)
+              ] = {
+                  "type": "file",
+                  "name": Path(artifact_path).name,
+                  "path": artifact_path,
+                  "sha": _git_blob_sha(raw),
+                  "url": url,
+              }
 
           listing = []
           event_root = peer / REMOTE_ROOT
@@ -142,6 +172,8 @@ jobs:
                   return listing
               if url in historical_meta:
                   return historical_meta[url]
+              if url in packet_historical_meta:
+                  return packet_historical_meta[url]
               raise AssertionError("unexpected federation URL: " + url)
 
           def fetch_bytes(url):
@@ -160,8 +192,21 @@ jobs:
 
           assert state["status"] == "green", state.get("last_error")
           assert state["historical_context_status"] == "green"
+          assert state["historical_packet_witness_status"] == "green"
           expected_sources = consumer["historical_context"]["sources"]
           assert state["historical_context_source_count"] == len(expected_sources)
+          assert state["historical_packet_witness_count"] == len(expected_sources)
+          assert all(
+              row["source_artifact_blob_verified"] is True
+              and row["candidate_evidence_eligible"] is False
+              and row["execution_authorized"] is False
+              for row in state["historical_packet_witnesses"]
+          )
+          assert (
+              state["historical_packet_same_as_live_count"]
+              + state["historical_packet_live_advanced_count"]
+              <= len(expected_sources)
+          )
           assert state["historical_candidate_evidence_count"] == 0
           assert all(
               row["candidate_evidence_eligible"] is False
@@ -178,6 +223,8 @@ jobs:
           assert state["truth_contract"]["historical_context_mode"] == "RESEARCH_CONTEXT_ONLY"
           assert state["truth_contract"]["historical_context_never_bypasses_foundry"] is True
           assert state["truth_contract"]["historical_context_never_bypasses_evaluator"] is True
+          assert state["truth_contract"]["historical_source_artifact_blob_required"] is True
+          assert state["truth_contract"]["historical_artifact_id_sha256_required"] is True
           assert state["execution_authorized"] is False
           assert state["production_decision_authorized"] is False
           assert snap["candidates"] == []
@@ -203,6 +250,21 @@ jobs:
               "historical_context_source_count": state["historical_context_source_count"],
               "historical_context_ingested_total": state["historical_context_ingested_total"],
               "historical_candidate_evidence_count": state["historical_candidate_evidence_count"],
+              "historical_packet_witness_status": state["historical_packet_witness_status"],
+              "historical_packet_witness_count": state["historical_packet_witness_count"],
+              "historical_packet_same_as_live_count": state["historical_packet_same_as_live_count"],
+              "historical_packet_live_advanced_count": state["historical_packet_live_advanced_count"],
+              "historical_packet_witnesses": [
+                  {
+                      "id": row["id"],
+                      "artifact_id": row["artifact_id"],
+                      "source_artifact_blob_sha": row["source_artifact_blob_sha"],
+                      "source_artifact_blob_verified": row["source_artifact_blob_verified"],
+                      "current_main_blob_sha": row["current_main_blob_sha"],
+                      "current_main_relation": row["current_main_relation"],
+                  }
+                  for row in state["historical_packet_witnesses"]
+              ],
               "historical_sources": [
                   {
                       "id": row["id"],
