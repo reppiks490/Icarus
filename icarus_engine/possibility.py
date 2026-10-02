@@ -32,7 +32,7 @@ from .psi_evidence import PsiEvidenceLedger
 
 SCHEMA_VERSION = "icarus-possibility-v1"
 DEFAULT_SCENARIOS = 768
-DEFAULT_HISTORY = 720
+DEFAULT_HISTORY = 900
 
 _EXTERNAL_KEYS = (
     "gamma_pressure",
