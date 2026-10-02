@@ -7,9 +7,10 @@ missing.  Disagreement is preserved instead of averaged away.
 from __future__ import annotations
 
 import math
+from datetime import datetime
 from typing import Any, Mapping
 
-from .contracts import authority_block, digest, finite, signed_unit, unit
+from .contracts import authority_block, digest, finite, iso_aware, signed_unit, unit
 
 def _base(name: str, status: str = "active") -> dict[str, Any]:
     return {
@@ -841,6 +842,159 @@ def score_veritas_reconciliation(
     }
 
 
+def lethe(signals: Mapping[str, Any], observed_at: str | None = None) -> dict[str, Any]:
+    """Decay stale research memory while allowing evidence-gated regime resurrection.
+
+    LETHE never deletes immutable evidence. It computes a time-aware trust surface
+    over caller-supplied research memories so stale relationships are not treated as
+    timeless facts and old mechanisms can only re-enter research attention after
+    fresh, mechanism-consistent revalidation.
+    """
+    out = _base("LETHE")
+    raw = signals.get("knowledge_memory")
+    if raw is None:
+        return {
+            **out,
+            "status": "abstain",
+            "reason": "knowledge_memory required",
+            "memory_items": [],
+            "stale_memory_pressure": 0.0,
+            "effective_memory_trust": 0.0,
+            "resurrection_pressure": 0.0,
+            "resurrection_candidates": [],
+            "retirement_candidates": [],
+        }
+    if not isinstance(raw, list) or not 1 <= len(raw) <= 64:
+        raise ValueError("knowledge_memory must contain 1-64 items")
+    if observed_at is None:
+        return {
+            **out,
+            "status": "abstain",
+            "reason": "observation time required for causal memory decay",
+            "memory_items": [],
+            "stale_memory_pressure": 0.0,
+            "effective_memory_trust": 0.0,
+            "resurrection_pressure": 0.0,
+            "resurrection_candidates": [],
+            "retirement_candidates": [],
+        }
+
+    observation_text = iso_aware(observed_at, "observed_at")
+    observation_time = datetime.fromisoformat(observation_text.replace("Z", "+00:00"))
+    rows = []
+    seen = set()
+    total_base = 0.0
+    total_effective = 0.0
+    total_temporal_loss = 0.0
+    total_resurrection = 0.0
+    resurrection_candidates = []
+    retirement_candidates = []
+
+    for i, item in enumerate(raw):
+        if not isinstance(item, Mapping):
+            raise ValueError(f"knowledge_memory[{i}] must be an object")
+        memory_id = item.get("memory_id")
+        if not isinstance(memory_id, str) or not memory_id.strip():
+            raise ValueError(f"knowledge_memory[{i}].memory_id is required")
+        memory_id = memory_id.strip()
+        if len(memory_id) > 120:
+            raise ValueError(f"knowledge_memory[{i}].memory_id exceeds 120 characters")
+        if memory_id in seen:
+            raise ValueError("knowledge_memory memory_id values must be unique")
+        seen.add(memory_id)
+
+        if "base_confidence" not in item:
+            raise ValueError(f"knowledge_memory[{i}].base_confidence is required")
+        base_confidence = unit(item["base_confidence"], f"knowledge_memory[{i}].base_confidence")
+        learned_at = iso_aware(item.get("learned_at"), f"knowledge_memory[{i}].learned_at")
+        learned_time = datetime.fromisoformat(learned_at.replace("Z", "+00:00"))
+        if learned_time > observation_time:
+            raise ValueError(f"knowledge_memory[{i}].learned_at cannot exceed observation time")
+
+        half_life = finite(item.get("half_life_seconds"), f"knowledge_memory[{i}].half_life_seconds")
+        if half_life <= 0:
+            raise ValueError(f"knowledge_memory[{i}].half_life_seconds must be positive")
+        regime_similarity = unit(item.get("regime_similarity"), f"knowledge_memory[{i}].regime_similarity")
+        mechanism_fidelity = unit(item.get("mechanism_fidelity"), f"knowledge_memory[{i}].mechanism_fidelity")
+        revalidation_strength = unit(item.get("revalidation_strength"), f"knowledge_memory[{i}].revalidation_strength")
+
+        age_seconds = max(0.0, (observation_time - learned_time).total_seconds())
+        temporal_retention = 0.5 ** (age_seconds / half_life)
+
+        revalidated_at = None
+        revalidation_freshness = 0.0
+        if revalidation_strength > 0.0:
+            if not item.get("revalidated_at"):
+                raise ValueError(f"knowledge_memory[{i}].revalidated_at is required when revalidation_strength is positive")
+            revalidated_at = iso_aware(item.get("revalidated_at"), f"knowledge_memory[{i}].revalidated_at")
+            revalidated_time = datetime.fromisoformat(revalidated_at.replace("Z", "+00:00"))
+            if revalidated_time < learned_time:
+                raise ValueError(f"knowledge_memory[{i}].revalidated_at cannot precede learned_at")
+            if revalidated_time > observation_time:
+                raise ValueError(f"knowledge_memory[{i}].revalidated_at cannot exceed observation time")
+            revalidation_age = max(0.0, (observation_time - revalidated_time).total_seconds())
+            revalidation_freshness = 0.5 ** (revalidation_age / half_life)
+
+        resurrection_support = (
+            regime_similarity
+            * mechanism_fidelity
+            * revalidation_strength
+            * revalidation_freshness
+        )
+        effective_retention = max(temporal_retention, resurrection_support)
+        effective_confidence = base_confidence * effective_retention
+        stale = temporal_retention < 0.35
+        resurrection_candidate = temporal_retention < 0.25 and resurrection_support >= 0.35
+        retirement_candidate = effective_confidence < 0.15 and resurrection_support < 0.20
+
+        if resurrection_candidate:
+            resurrection_candidates.append(memory_id)
+        if retirement_candidate:
+            retirement_candidates.append(memory_id)
+
+        total_base += base_confidence
+        total_effective += effective_confidence
+        total_temporal_loss += base_confidence * (1.0 - temporal_retention)
+        total_resurrection += base_confidence * max(0.0, resurrection_support - temporal_retention)
+        rows.append({
+            "memory_id": memory_id,
+            "learned_at": learned_at,
+            "age_seconds": age_seconds,
+            "half_life_seconds": half_life,
+            "base_confidence": base_confidence,
+            "temporal_retention": temporal_retention,
+            "regime_similarity": regime_similarity,
+            "mechanism_fidelity": mechanism_fidelity,
+            "revalidation_strength": revalidation_strength,
+            "revalidated_at": revalidated_at,
+            "revalidation_freshness": revalidation_freshness,
+            "resurrection_support": resurrection_support,
+            "effective_retention": effective_retention,
+            "effective_confidence": effective_confidence,
+            "stale": stale,
+            "resurrection_candidate": resurrection_candidate,
+            "retirement_candidate": retirement_candidate,
+        })
+
+    denom = total_base if total_base > 1e-12 else 1.0
+    stale_pressure = max(0.0, min(1.0, total_temporal_loss / denom))
+    effective_trust = max(0.0, min(1.0, total_effective / denom))
+    resurrection_pressure = max(0.0, min(1.0, total_resurrection / denom))
+    rows.sort(key=lambda row: (row["effective_confidence"], row["memory_id"]), reverse=True)
+    return {
+        **out,
+        "memory_count": len(rows),
+        "memory_items": rows,
+        "stale_memory_pressure": stale_pressure,
+        "effective_memory_trust": effective_trust,
+        "resurrection_pressure": resurrection_pressure,
+        "stale_memory_count": sum(1 for row in rows if row["stale"]),
+        "resurrection_candidates": sorted(resurrection_candidates),
+        "retirement_candidates": sorted(retirement_candidates),
+        "semantics": "time-decayed research-memory trust with evidence-gated regime resurrection; raw evidence is never deleted and this faculty never authorizes execution",
+    }
+
+
 def archon(
     signals: Mapping[str, Any],
     godel_state: Mapping[str, Any],
@@ -911,12 +1065,16 @@ def socrates(states: Mapping[str, Mapping[str, Any]]) -> dict[str, Any]:
     novelty = unit(states.get("ex_nihilo", {}).get("ontology_surprise"), "ex_nihilo.ontology_surprise")
     contradiction = unit(states.get("archon", {}).get("contradiction"), "archon.contradiction")
     echo_risk = unit(states.get("echo", {}).get("echo_risk"), "echo.echo_risk")
+    stale_memory = unit(states.get("lethe", {}).get("stale_memory_pressure"), "lethe.stale_memory_pressure")
+    resurrection = unit(states.get("lethe", {}).get("resurrection_pressure"), "lethe.resurrection_pressure")
     options = [
         (uncertainty, "Which observation most efficiently separates the competing market worlds?"),
         (debt, "Where did the missing reaction route: delay, absorption, diversion, or causal-model failure?"),
         (novelty, "Does the current residual require a new concept, or can an existing concept explain it out of sample?"),
         (contradiction, "Which engine disagreement is mechanism-specific rather than mere noise or horizon mismatch?"),
         (echo_risk, "Which agreeing engines only look independent because they inherit the same upstream evidence?"),
+        (stale_memory, "Which current thesis still depends on memory whose evidence has decayed out of its trustworthy lifetime?"),
+        (resurrection, "Which dormant mechanism is reappearing under a similar regime and deserves fresh causal revalidation rather than automatic reuse?"),
     ]
     ranked = sorted(options, key=lambda x: x[0], reverse=True)
     hypothesis_templates = [
@@ -925,6 +1083,8 @@ def socrates(states: Mapping[str, Mapping[str, Any]]) -> dict[str, Any]:
         (novelty, "Current residual structure is not represented by the existing ontology.", "Run EX NIHILO ablation/OOS tests before admitting a new concept."),
         (contradiction, "Engine disagreement reflects a mechanism or horizon mismatch rather than noise.", "Partition ARCHON conflict by horizon/mechanism and test each branch independently."),
         (echo_risk, "Apparent multi-engine consensus is inflated by shared evidence ancestry.", "Ablate shared lineage sources and require the directional thesis to survive on genuinely independent evidence."),
+        (stale_memory, "The current thesis relies on stale knowledge whose relationship may have drifted.", "Revalidate the mechanism on fresh regime-matched evidence or retire its research trust."),
+        (resurrection, "A previously stale mechanism may have returned under a structurally similar regime.", "Require fresh mechanism-consistent evidence before restoring research trust and reject automatic resurrection."),
     ]
     hypotheses = [
         {"priority": score, "hypothesis": hypothesis, "falsifier": falsifier}
@@ -945,7 +1105,11 @@ def socrates(states: Mapping[str, Mapping[str, Any]]) -> dict[str, Any]:
         "semantics": "question generator only; experiments must pass independent validation before affecting production",
     }
 
-def evaluate_faculties(signals: Mapping[str, Any], observation_id: str) -> dict[str, Any]:
+def evaluate_faculties(
+    signals: Mapping[str, Any],
+    observation_id: str,
+    observed_at: str | None = None,
+) -> dict[str, Any]:
     ns = nullspace(signals)
     gd = godel(signals)
     ak = ananke(signals)
@@ -954,6 +1118,7 @@ def evaluate_faculties(signals: Mapping[str, Any], observation_id: str) -> dict[
     mt = mint(signals)
     ec = echo(signals)
     vt = veritas(signals, observation_id)
+    lt = lethe(signals, observed_at)
     ar = archon(signals, gd, ec)
     states = {
         "nullspace": ns,
@@ -964,6 +1129,7 @@ def evaluate_faculties(signals: Mapping[str, Any], observation_id: str) -> dict[
         "mint": mt,
         "echo": ec,
         "veritas": vt,
+        "lethe": lt,
         "archon": ar,
     }
     states["socrates"] = socrates(states)
