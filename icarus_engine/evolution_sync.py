@@ -20,7 +20,7 @@ from tempfile import NamedTemporaryFile
 from typing import Any, Callable, Mapping
 from urllib.request import Request, urlopen
 
-from .brain import record_brain_event
+from .brain import SUBSYSTEMS as BRAIN_SUBSYSTEMS, record_brain_event
 from .system_audit import append_system_event
 
 REMOTE_REPOSITORY = "reppiks490/Icarus"
@@ -44,18 +44,27 @@ _ALLOWED_STATUSES = {
 }
 # Interface receipts are repository-native contracts shared by ICARUS and the
 # subsystem repos that publish into automation_intelligence/mcp_interface/events.
-# Values are stored in normalized form because _normalize_event converts
-# underscores to hyphens before validating.
-_ALLOWED_SUBSYSTEMS = {
-    "aegis", "aether", "aion", "ananke", "archon", "argus", "ascension",
-    "athena", "calibration", "cluster-bootstrap", "daedalus", "data",
-    "dreamstate", "execution-research", "ex-nihilo", "godel",
-    "infrastructure", "janus", "liquidity-load", "mint", "ml", "nemesis",
-    "nexus", "nullspace", "oracle", "order-blocks", "pantheon", "parallax",
-    "prometheus", "prospective-validation", "provenance", "psi",
-    "research-validation", "sibyl", "socrates", "supermesh-x",
-    "tail-validation", "transfer-validation", "ui", "uncertainty",
+# Reuse the Adaptive Brain's canonical subsystem registry instead of maintaining
+# a second stale copy here. Research-facet tags are allowed separately because
+# they describe evidence dimensions rather than standalone Brain subsystems.
+_REGISTERED_SUBSYSTEMS = {
+    str(row["id"]).strip().lower().replace("_", "-")
+    for row in BRAIN_SUBSYSTEMS
 }
+_RESEARCH_FACET_SUBSYSTEMS = {
+    "calibration",
+    "cluster-bootstrap",
+    "execution-research",
+    "liquidity-load",
+    "order-blocks",
+    "prospective-validation",
+    "research-validation",
+    "tail-validation",
+    "transfer-validation",
+    "ui",
+    "uncertainty",
+}
+_ALLOWED_SUBSYSTEMS = _REGISTERED_SUBSYSTEMS | _RESEARCH_FACET_SUBSYSTEMS
 
 
 def _utc_now() -> str:
