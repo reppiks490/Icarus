@@ -354,6 +354,11 @@ def test_dashboard_surfaces_continuous_learning_fabric():
     assert "/api/learning" in ui
     assert "DATASET COVERAGE" in ui
     assert "EMPIRICAL SCORECARDS" in ui
+    assert "NATIVE EMPIRICAL FEDERATION" in ui
+    assert "NATIVE EMPIRICAL EVENTS" in ui
+    assert "PARALLAX UTILITY Δ" in ui
+    assert "PANTHEON FITNESS" in ui
+    assert "probability coercion OFF" in ui
     assert "TRAINING REPLAY" in ui
     assert "LIVE MATURITY" in ui
     assert "REALIZED EXPERIENCE" in ui
