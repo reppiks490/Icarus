@@ -1274,7 +1274,7 @@ class LearningFabric:
             if not (
                 len(artifact_fp) == 64
                 and all(ch in "0123456789abcdef" for ch in artifact_fp)
-                and effective.get("provenance_quality") == "MANIFEST_UNIQUE_STRATEGY_REPORT_LINK"
+                and effective.get("provenance_quality") in _ARTIFACT_PROVENANCE_QUALITIES
             ):
                 dataset_id = str(effective.get("dataset_id") or "")
                 if dataset_id:
@@ -1290,7 +1290,7 @@ class LearningFabric:
             if (
                 len(artifact_fp) == 64
                 and all(ch in "0123456789abcdef" for ch in artifact_fp)
-                and effective.get("provenance_quality") == "MANIFEST_UNIQUE_STRATEGY_REPORT_LINK"
+                and effective.get("provenance_quality") in _ARTIFACT_PROVENANCE_QUALITIES
             ):
                 artifact += 1
             else:
