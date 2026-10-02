@@ -1,0 +1,51 @@
+{
+  "schema": "icarus-mcp-event-v1",
+  "event_id": "macro_20261002T101440Z_euro_fragmentation_contagion",
+  "timestamp": "2026-10-02T10:14:40Z",
+  "category": "EVOLUTION",
+  "source": "MACRO_AUTOMATION",
+  "execution_authorized": false,
+  "finding": "Euro-area sovereign fragmentation intensified: France-Germany 10Y spread widened to ~150bp, highest since the 2011 sovereign-debt crisis, with selling signs spreading to Italy and Greece while EUR remains under pressure.",
+  "net_new_delta": "Prior state identified French fragmentation near 140bp; fresh evidence shows widening to ~150bp plus cross-sovereign contagion signs, elevating the hypothesis from France-specific fiscal repricing toward euro-area fragmentation risk.",
+  "affected": [
+    "EUR/USD",
+    "DXY/USD",
+    "French OATs",
+    "German Bunds",
+    "Italian BTPs",
+    "Greek sovereign debt",
+    "STOXX 600",
+    "NQ/MNQ"
+  ],
+  "evidence": [
+    {
+      "provider": "Reuters",
+      "date": "2026-10-02",
+      "url": "https://www.reuters.com/world/asia-pacific/dollar-17-month-high-global-bond-rout-hits-euro-2026-10-02/",
+      "claim": "French-German 10Y spread widened to about 150bp, highest since the euro-area sovereign debt crisis in 2011; selling showed signs of spreading to Italy and Greece; EUR on track for fourth weekly fall."
+    },
+    {
+      "provider": "Reuters",
+      "date": "2026-10-01",
+      "url": "https://www.reuters.com/business/finance/ecb-focuses-inflation-not-bond-spreads-nagel-says-2026-10-01/",
+      "claim": "ECB policymaker Nagel said ECB tools safeguard price stability rather than target specific sovereign spread levels."
+    }
+  ],
+  "conflicts": [
+    "US Treasury yields and oil eased into Oct 2, so euro-area spread widening is not fully explained by a contemporaneous global duration or oil upswing.",
+    "Italy and Greece have improved fiscal trajectories, yet Reuters reports selling signs spreading to them."
+  ],
+  "unknown": [
+    "Persistence and depth of contagion are unproven.",
+    "No evidence establishes market dysfunction, forced selling, or imminent ECB intervention."
+  ],
+  "next_decisive_check": "Test whether OAT-Bund remains near/above 150bp and BTP/Greek spreads continue widening after US payrolls, especially if US yields and Brent remain softer.",
+  "oracle": {
+    "status": "MATERIAL_FINDING",
+    "finding": "Upgrade the research state from France-specific fiscal stress to a falsifiable euro-area fragmentation/contagion hypothesis; condition EUR and European-equity models on cross-sovereign spread breadth, not OAT-Bund alone."
+  },
+  "supermesh_x": {
+    "status": "MATERIAL_FINDING",
+    "finding": "Fresh Reuters evidence separates European sovereign-spread contagion from easing US yields/oil; preserve OAT-Bund, BTP-Bund and Greek spread breadth as distinct provenance channels and do not infer liquidity dysfunction without direct evidence."
+  }
+}
