@@ -3682,8 +3682,9 @@ class LearningFabric:
         errors: dict[str, str] = {}
         con = None
         try:
-            con = sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=15.0)
+            con = sqlite3.connect(str(db), timeout=15.0)
             con.row_factory = sqlite3.Row
+            con.execute("PRAGMA query_only=ON")
             rows = con.execute(
                 """SELECT
                        d.decision_id,
@@ -3871,8 +3872,9 @@ class LearningFabric:
         errors: dict[str, str] = {}
         con = None
         try:
-            con = sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=15.0)
+            con = sqlite3.connect(str(db), timeout=15.0)
             con.row_factory = sqlite3.Row
+            con.execute("PRAGMA query_only=ON")
             rows = con.execute(
                 """SELECT
                        co.outcome_id,
