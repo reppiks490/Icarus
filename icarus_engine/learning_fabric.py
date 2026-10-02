@@ -2228,6 +2228,7 @@ class LearningFabric:
         roots = []
         dataset_ids: list[str] = []
         by_hash, by_name, manifest_rows = self._intake_manifest_catalog()
+        seen_paths: set[Path] = set()
         for rel in self._config["history_roots"]:
             root = (self.base_dir / rel).resolve()
             try:
@@ -2242,6 +2243,11 @@ class LearningFabric:
             for path in sorted(candidates):
                 if not path.is_file() or path.name == "EXPORT_INTAKE_MANIFEST.csv":
                     continue
+                resolved = path.resolve()
+                if resolved in seen_paths:
+                    continue
+                seen_paths.add(resolved)
+                path = resolved
                 seen += 1
                 try:
                     raw_sha = hashlib.sha256(path.read_bytes()).hexdigest()
