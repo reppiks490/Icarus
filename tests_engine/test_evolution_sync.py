@@ -600,7 +600,7 @@ def test_event_id_binding_survives_display_history_truncation(tmp_path):
     )
 
 
-def test_blob_sha_mismatch_is_rejected(tmp_path):
+def test_blob_sha_mismatch_is_retryable_integrity_failure(tmp_path):
     payload = event_payload()
     raw = (json.dumps(payload, sort_keys=True) + "\n").encode()
     listing = [{
@@ -610,17 +610,32 @@ def test_blob_sha_mismatch_is_rejected(tmp_path):
         "sha": "b" * 40,
         "url": "fixture://event",
     }]
+    fetches = {"bytes": 0}
+
+    def fetch_bytes(_url):
+        fetches["bytes"] += 1
+        return raw
+
     sync = EvolutionRemoteSync(
         tmp_path,
         interval_seconds=30,
         fetch_json=lambda _url: listing,
-        fetch_bytes=lambda _url: raw,
+        fetch_bytes=fetch_bytes,
         enabled=True,
     )
-    state = sync.sync_once()
-    assert state["status"] == "degraded"
-    assert state["rejected_total"] == 1
-    assert state["ingested_total"] == 0
+    first = sync.sync_once()
+    second = sync.sync_once()
+
+    assert first["status"] == "degraded"
+    assert first["rejected_total"] == 0
+    assert first["current_rejected_count"] == 0
+    assert first["ingested_total"] == 0
+    assert "Git blob SHA mismatch" in first["last_error"]
+
+    assert second["status"] == "degraded"
+    assert second["rejected_total"] == 0
+    assert second["current_rejected_count"] == 0
+    assert fetches["bytes"] == 2
 
 
 def test_disabled_sync_never_fetches_network(tmp_path):
