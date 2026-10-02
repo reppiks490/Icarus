@@ -1,0 +1,55 @@
+{
+  "schema_version": "icarus-mcp-event-v1",
+  "event_id": "20261002T150040Z_omega_kairos_freshness_integration",
+  "category": "INTEGRATION",
+  "source": "OMEGA_AUTOMATION",
+  "created_at_utc": "2026-10-02T15:00:40Z",
+  "execution_authorized": false,
+  "summary": "KAIROS adds a declared value-of-information frontier complementary to APORIA; current control-plane evidence simultaneously shows Flow watchdog fallback and DAEDALUS recovery pending, so information-acquisition ranking must remain gated by substantive specialist freshness.",
+  "paths": [
+    "icarus_engine/pantheon.py",
+    "icarus_engine/aether.py",
+    "icarus_engine/pantheon-ui.js",
+    "docs/icarus/PANTHEON_AETHER.md",
+    "automation_intelligence/omega_stack_native_v3/reconciliation/backlog/daedalus/20261002T144800Z.json",
+    "automation_intelligence/flow/watchdog_incidents.jsonl"
+  ],
+  "evidence": [
+    "reppiks490/Icarus@3913bdf61c47f3078c867c1587a9f1029a2fc340",
+    "reppiks490/Icarus-engine@cacc8480476aa7f4614b99cf3c176e3521be0343",
+    "reppiks490/Icarus-engine@570a5164fa38056dfd58c4b1836e095f2778f426"
+  ],
+  "net_new_delta": "DECLARED_INFORMATION_ACQUISITION_FRONTIER_NOW_COMPLEMENTS_APORIA_WHILE_SPECIALIST_FRESHNESS_FAILS_CLOSED",
+  "accepted": [
+    "KAIROS ranks declared research observations by ambiguity reduction, reliability, decision sensitivity, edge retention, acquisition cost, and execution deterioration.",
+    "KAIROS remains complementary to APORIA and research-only.",
+    "GitHub-native v3 watchdog/reconciliation remains authoritative liveness/persistence evidence."
+  ],
+  "rejected": [
+    "Treating KAIROS ranking as trading/wait/order authority.",
+    "Treating watchdog fallback persistence as substantive Flow evidence.",
+    "Treating DAEDALUS RECOVERY_PENDING_AI as completed specialist inference."
+  ],
+  "blockers": [
+    "Flow 14:35Z canonical worker receipt was missed and watchdog fallback persisted instead.",
+    "DAEDALUS 14:48Z GitHub-native AI receipt is missing with RECOVERY_PENDING_AI.",
+    "No verified net-new substantive Macro/AION/DAEDALUS market finding was established in this cycle."
+  ],
+  "next_highest_value_integration_target": "Feed KAIROS best positive-value observation and APORIA wait-state into ATHENA/JANUS as complementary research-routing inputs, but hard-gate promotion on substantive specialist freshness and immutable evidence provenance.",
+  "athena": {
+    "status": "ACTIONABLE",
+    "finding": "Use KAIROS/APORIA to prioritize uncertainty-reducing observations, while missing substantive specialist freshness raises uncertainty and blocks promotion."
+  },
+  "janus": {
+    "status": "ACTIONABLE",
+    "finding": "Track declared acquisition frontier, wait-state, evidence provenance, and substantive freshness as separate dependency dimensions."
+  },
+  "infrastructure": {
+    "status": "DEGRADED",
+    "finding": "GitHub-native v3 reconciliation is functioning, but Flow required watchdog fallback and DAEDALUS is RECOVERY_PENDING_AI."
+  },
+  "helios_prime": {
+    "status": "ACTIONABLE",
+    "finding": "Integrate KAIROS and APORIA as complementary research-selection/timing mechanisms without allowing either to substitute for specialist evidence."
+  }
+}
