@@ -1,0 +1,60 @@
+{
+  "schema_version": "icarus-mcp-event-v1",
+  "event_id": "omega-integration-20261002T030102Z-overlap-aware-calibration",
+  "category": "INTEGRATION",
+  "severity": "material",
+  "status": "qualified",
+  "source": "OMEGA_AUTOMATION",
+  "recorded_at": "2026-10-02T03:01:02Z",
+  "execution_authorized": false,
+  "production_decision_authorized": false,
+  "net_new_delta": "SHADOW_CALIBRATION_NOW_COUNTS_INDEPENDENT_WINDOWS_AND_RETIRES_ON_INDEPENDENT_OOS_DRIFT",
+  "finding": "Current main hardens the Learning Fabric so overlapping forecast windows are purged before calibration fitting, effective calibration sample counts are persisted, out-of-sample drift retirement requires independent windows, and calibration remains isolated by predicted label and exact Git revision. This closes an evidence-inflation path where correlated overlapping forecasts could masquerade as larger effective sample size or stronger drift evidence.",
+  "accepted_findings": [
+    "Overlap-aware calibration fitting and independent-window OOS drift retirement are verified on current main.",
+    "Exact Git-revision and predicted-label conditioning prevent calibration evidence from silently crossing incompatible model revisions or outcome classes.",
+    "The freshest substantive specialist evidence established remains Flow's BTC-focused 21:29Z audit and Macro's duration/EUR-FX evolution; no newer substantive AION or DAEDALUS receipt was established."
+  ],
+  "rejected_findings": [
+    "Raw forecast count is not effective independent sample size when forecast windows overlap.",
+    "A healthy or well-calibrated shadow learner does not validate the underlying market hypothesis or authorize production/execution.",
+    "Calibration evidence from one label or code revision must not be generalized to another without separately qualified evidence."
+  ],
+  "conflicts": [
+    "Learning/evidence-governance infrastructure remains materially fresher than AION/DAEDALUS substantive specialist evidence.",
+    "Improved calibration quality cannot substitute for missing cross-lane market evidence or unresolved source/provider disagreements."
+  ],
+  "blockers": [
+    "AION has no newer substantive receipt established beyond its older research handoff; no substantive DAEDALUS commit/event was established in the inspected repository evidence.",
+    "Flow remains materially fresher than the other specialist lanes and does not by itself establish a cross-market regime.",
+    "Any calibration cohort lacking sufficient independent non-overlapping OOS windows must remain unqualified or retired rather than gaining confidence from correlated sample volume."
+  ],
+  "next_highest_value_integration_target": "Expose effective independent calibration N, overlap-purge state, exact-revision/label scope, and independent-OOS drift retirement to ATHENA uncertainty and JANUS reconciliation as model-quality evidence only; require specialist evidence separately and leave GitHub-native v3 authoritative for liveness/persistence.",
+  "paths": [
+    "automation_intelligence/mcp_interface/events/20261001T212913353Z_flow_velocity_audit.json",
+    "automation_intelligence/mcp_interface/events/20261001T130854Z_macro_duration_euro_fx_evolution.json",
+    "automation_intelligence/mcp_interface/events/20261002T000404Z_omega_transfer_evidence_firewall_integration.json"
+  ],
+  "evidence": [
+    "Current main commit 02511fdcaf294d417443a08dabdccf5adc5c8175 merges verified overlap-aware calibration fitting and drift retirement.",
+    "Commits fd25423d50624ea2d8c0a9ccbcc6d8bba7b82e0b, 6d4f8a41d868ee6cdc78dcb64d137e2a308b58ef, and d7176b1436f6a94f4d05a37e9747ef5f609f8daf respectively persist effective calibration sample counts, purge overlapping windows before fit, and require independent OOS windows for drift retirement.",
+    "Commit a7dac19b5cfb1d85d5350049296525e00e3b94db isolates shadow calibration by exact code revision; commit 0202795f2a21971fba985e2e734759c055cd802c conditions calibration on predicted label.",
+    "Repository commit search establishes Flow audit a5289d262d2f6e794968715766e199830ced9201 and Macro audit ca3aac0b4cec28efd0f93719e9222b4d696e72de as the newest substantive specialist commits found; no newer substantive AION or DAEDALUS commit was established."
+  ],
+  "athena": {
+    "status": "ACTIONABLE",
+    "finding": "Use effective independent calibration N and independent-OOS drift state to modulate model uncertainty; overlapping raw forecast volume must not raise confidence."
+  },
+  "janus": {
+    "status": "ACTIONABLE",
+    "finding": "Reconcile calibration by exact Git revision, predicted label, overlap-purge state, effective independent N, and retirement state as distinct dependencies."
+  },
+  "infrastructure": {
+    "status": "VERIFIED_WITH_SPECIALIST_FRESHNESS_GAPS",
+    "finding": "Current main contains verified overlap-aware shadow-calibration and drift-retirement controls, while substantive AION/DAEDALUS freshness remains deficient."
+  },
+  "helios_prime": {
+    "status": "ACTIONABLE",
+    "finding": "Integrate specialist evidence -> revision/label-scoped non-overlapping calibration -> independent-OOS drift state -> ATHENA/JANUS research state without allowing model-quality evidence to substitute for market evidence."
+  }
+}
