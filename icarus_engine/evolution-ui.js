@@ -49,6 +49,7 @@
         '<div class="tile"><div class="k">Events ingested</div><div class="v tnum">'+h(state.ingested_total ?? 0)+'</div></div>' +
         '<div class="tile"><div class="k">Subsystems surfaced</div><div class="v tnum">'+h(Object.keys(subsystems).length)+'</div></div>' +
         '<div class="tile"><div class="k">Rejected receipts</div><div class="v tnum '+((state.rejected_total||0)>0?'neg':'pos')+'">'+h(state.rejected_total ?? 0)+'</div></div>' +
+        '<div class="tile"><div class="k">Other receipt families</div><div class="v tnum">'+h(state.ignored_total ?? 0)+'</div><div class="small muted">valid non-interface schemas ignored by this feed</div></div>' +
         '<div class="tile"><div class="k">Last successful ingest</div><div class="v small">'+h(state.last_success_at||'awaiting first ingest')+'</div></div>' +
         '<div class="tile"><div class="k">Authority</div><div class="v">READ ONLY</div><div class="small muted">no production decision or execution authority</div></div>' +
       '</div>' +
@@ -57,7 +58,7 @@
       '<div class="evo-grid">'+(subRows || '<div class="empty">No subsystem MCP receipts have been ingested yet.</div>')+'</div>' +
       '<h3 class="small" style="margin:16px 0 8px">Important MCP activity</h3>' +
       '<div class="scroll" style="max-height:560px"><table><thead><tr><th>Time</th><th>Kind</th><th>Subsystems</th><th>Event</th><th>Source</th></tr></thead><tbody>'+(eventRows || '<tr><td colspan="5" class="empty">No repository-native MCP events yet.</td></tr>')+'</tbody></table></div>' +
-      '<div class="small muted" style="margin-top:12px">This panel is observability only. A repair, audit, model evolution, provenance change, or subsystem finding appearing here does not grant a trade signal, production promotion, or broker permission.</div>';
+      '<div class="small muted" style="margin-top:12px">This panel is observability only. Foreign receipt schemas in the shared repository directory are counted as ignored, not rejected. A repair, audit, model evolution, provenance change, or subsystem finding appearing here does not grant a trade signal, production promotion, or broker permission.</div>';
   }
 
   async function loadEvolution() {
