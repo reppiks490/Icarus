@@ -8,7 +8,14 @@ on:
       - "icarus_engine/brain_sync.py"
       - "tests_engine/test_brain_sync.py"
       - ".github/workflows/live-engine-federation-gate.yml"
+  pull_request:
+    paths:
+      - "icarus_engine/brain_sync.py"
+      - "tests_engine/test_brain_sync.py"
+      - ".github/workflows/live-engine-federation-gate.yml"
   workflow_dispatch:
+  schedule:
+    - cron: "17 */6 * * *"
 
 permissions:
   contents: read
