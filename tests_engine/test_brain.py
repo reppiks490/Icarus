@@ -39,7 +39,7 @@ def test_brain_registers_five_custom_agents_and_twelve_plus_subsystems(tmp_path)
     assert len(AGENTS) == 5
     assert len(SUBSYSTEMS) >= 12
     assert out["architecture"]["agent_count"] == 5
-    assert {"parallax", "provenance", "ml", "data", "csv-evidence-lab"} <= {x["id"] for x in out["architecture"]["subsystems"]}
+    assert {"parallax", "provenance", "ml", "data"} <= {x["id"] for x in out["architecture"]["subsystems"]}
     assert out["architecture"]["subsystem_count"] >= 12
     assert out["authority"]["production_decision_authorized"] is False
     assert out["authority"]["execution_authorized"] is False
@@ -47,8 +47,6 @@ def test_brain_registers_five_custom_agents_and_twelve_plus_subsystems(tmp_path)
     assert out["truth_contract"]["omnipotence_claim"] is False
     assert out["remote_sync"]["status"] == "not_configured"
     assert out["research_sync"]["status"] == "not_configured"
-    assert out["evidence_lab_sync"]["status"] == "not_configured"
-    assert out["evidence_lab_sync"]["execution_authorized"] is False
     assert out["performance_proof"]["metrics"]["success_rate"] is None
     assert out["latency_telemetry"]["hot_path"] is None
     assert out["evidence_tournaments"] == []
@@ -245,3 +243,99 @@ def test_brain_registers_ascendancy_capability_orchestrator(tmp_path):
     assert surfaced["capability-orchestrator"]["status"] == "REGISTERED"
     assert out["authority"]["execution_authorized"] is False
     assert out["authority"]["production_decision_authorized"] is False
+
+
+def test_brain_registers_ascendancy_candidate_foundry(tmp_path):
+    out = brain_snapshot(tmp_path)
+    rows = {x["id"]: x for x in SUBSYSTEMS}
+    assert "ascendancy-foundry" in rows
+    assert rows["ascendancy-foundry"]["owner"] == "omega"
+    assert "candidate" in rows["ascendancy-foundry"]["job"].lower()
+    assert "falsif" in rows["ascendancy-foundry"]["job"].lower()
+    surfaced = {x["id"]: x for x in out["architecture"]["subsystems"]}
+    assert surfaced["ascendancy-foundry"]["status"] == "REGISTERED"
+    assert out["authority"]["execution_authorized"] is False
+    assert out["authority"]["production_decision_authorized"] is False
+
+
+def test_brain_registers_ascendancy_unknown_unknown_lab(tmp_path):
+    out = brain_snapshot(tmp_path)
+    rows = {x["id"]: x for x in SUBSYSTEMS}
+    assert "ascendancy-unknowns" in rows
+    assert rows["ascendancy-unknowns"]["owner"] == "omega"
+    assert "unknown" in rows["ascendancy-unknowns"]["job"].lower()
+    assert "residual" in rows["ascendancy-unknowns"]["job"].lower()
+    surfaced = {x["id"]: x for x in out["architecture"]["subsystems"]}
+    assert surfaced["ascendancy-unknowns"]["status"] == "REGISTERED"
+    assert out["authority"]["execution_authorized"] is False
+    assert out["authority"]["production_decision_authorized"] is False
+
+
+def test_brain_registers_ascendancy_mechanism_lab(tmp_path):
+    out = brain_snapshot(tmp_path)
+    rows = {x["id"]: x for x in SUBSYSTEMS}
+    assert "ascendancy-mechanisms" in rows
+    assert rows["ascendancy-mechanisms"]["owner"] == "daedalus"
+    assert "ablation" in rows["ascendancy-mechanisms"]["job"].lower()
+    assert "interaction" in rows["ascendancy-mechanisms"]["job"].lower()
+    assert "causal" in rows["ascendancy-mechanisms"]["job"].lower()
+    surfaced = {x["id"]: x for x in out["architecture"]["subsystems"]}
+    assert surfaced["ascendancy-mechanisms"]["status"] == "REGISTERED"
+    assert out["authority"]["execution_authorized"] is False
+    assert out["authority"]["production_decision_authorized"] is False
+
+
+def test_brain_registers_ascendancy_invention_engine(tmp_path):
+    out = brain_snapshot(tmp_path)
+    rows = {x["id"]: x for x in SUBSYSTEMS}
+    assert "ascendancy-invention" in rows
+    assert rows["ascendancy-invention"]["owner"] == "aion"
+    assert "typed" in rows["ascendancy-invention"]["job"].lower()
+    assert "falsifier" in rows["ascendancy-invention"]["job"].lower()
+    assert "untested" in rows["ascendancy-invention"]["job"].lower()
+    surfaced = {x["id"]: x for x in out["architecture"]["subsystems"]}
+    assert surfaced["ascendancy-invention"]["status"] == "REGISTERED"
+    assert out["authority"]["execution_authorized"] is False
+    assert out["authority"]["production_decision_authorized"] is False
+
+
+def test_brain_registers_ascendancy_contribution_lab(tmp_path):
+    out = brain_snapshot(tmp_path)
+    rows = {x["id"]: x for x in SUBSYSTEMS}
+    assert "ascendancy-contribution" in rows
+    assert rows["ascendancy-contribution"]["owner"] == "daedalus"
+    assert "incremental" in rows["ascendancy-contribution"]["job"].lower()
+    assert "conditional" in rows["ascendancy-contribution"]["job"].lower()
+    assert "causal" in rows["ascendancy-contribution"]["job"].lower()
+    surfaced = {x["id"]: x for x in out["architecture"]["subsystems"]}
+    assert surfaced["ascendancy-contribution"]["status"] == "REGISTERED"
+    assert out["authority"]["execution_authorized"] is False
+    assert out["authority"]["production_decision_authorized"] is False
+
+
+def test_brain_registers_ascendancy_evaluator_cascade(tmp_path):
+    out = brain_snapshot(tmp_path)
+    rows = {x["id"]: x for x in SUBSYSTEMS}
+    assert "ascendancy-evaluator" in rows
+    assert rows["ascendancy-evaluator"]["owner"] == "daedalus"
+    job = rows["ascendancy-evaluator"]["job"].lower()
+    assert "multi-fidelity" in job
+    assert "holdout" in job
+    assert "resource" in job
+    surfaced = {x["id"]: x for x in out["architecture"]["subsystems"]}
+    assert surfaced["ascendancy-evaluator"]["status"] == "REGISTERED"
+    assert out["authority"]["execution_authorized"] is False
+    assert out["authority"]["production_decision_authorized"] is False
+
+
+def test_brain_registers_ascendancy_peer_bridge(tmp_path):
+    out = brain_snapshot(tmp_path)
+    rows = {x["id"]: x for x in SUBSYSTEMS}
+    assert "ascendancy-peer-bridge" in rows
+    assert rows["ascendancy-peer-bridge"]["owner"] == "omega"
+    job = rows["ascendancy-peer-bridge"]["job"].lower()
+    assert "foreign" in job
+    assert "provenance" in job
+    assert "authority" in job
+    surfaced = {x["id"]: x for x in out["architecture"]["subsystems"]}
+    assert surfaced["ascendancy-peer-bridge"]["status"] == "REGISTERED"
