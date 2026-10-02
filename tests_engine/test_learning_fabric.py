@@ -2575,3 +2575,38 @@ def test_scorecard_calibration_diagnostics_use_only_effective_non_overlapping_ro
     assert card["settled"] < card["raw_settled"]
     assert card["diagnostic_sample_count"] == card["settled"]
     assert card["adaptive_calibration_bins"] <= min(10, card["settled"])
+
+
+
+def test_adaptive_calibration_bins_never_split_identical_probability_ties(tmp_path):
+    from icarus_engine.learning_fabric import LearningFabric
+
+    fabric = LearningFabric(tmp_path)
+    base = datetime(2026, 10, 2, 16, 0, tzinfo=timezone.utc)
+    cases = [
+        (0.5, 99.0),
+        (0.5, 99.0),
+        (0.5, 101.0),
+        (0.5, 101.0),
+        (0.9, 101.0),
+        (0.9, 101.0),
+    ]
+    for i, (probability, actual) in enumerate(cases):
+        pred = fabric.record_prediction(_prediction(
+            producer="tie-aware-calibration",
+            regime="trend",
+            horizon=300,
+            probability=probability,
+            direction="up",
+            emitted=base + timedelta(minutes=i * 10),
+        ))["prediction"]
+        fabric.record_outcome({
+            "prediction_id": pred["prediction_id"],
+            "observed_at": pred["resolves_at"],
+            "actual_value": actual,
+            "evidence": [f"tie-aware:{i}"],
+        })
+
+    card = next(x for x in fabric.scorecards() if x["producer"] == "tie-aware-calibration")
+    assert card["adaptive_calibration_bins"] == 2
+    assert card["expected_calibration_error"] == pytest.approx(1.0 / 30.0)
