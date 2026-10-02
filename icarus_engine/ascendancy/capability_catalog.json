@@ -15,7 +15,12 @@
         "broker_execution",
         "market_truth"
       ],
-      "authority": "repository"
+      "authority": "repository",
+      "invocation_surface": "chatgpt_connected_tool",
+      "runtime_access": "EXTERNAL_ORCHESTRATOR_REQUIRED",
+      "cost_class": "UNMEASURED",
+      "when_to_use": "Use for repository inspection, branches, commits, pull requests, CI evidence and controlled code changes.",
+      "route_priority": 10
     },
     {
       "id": "superpowers",
@@ -30,7 +35,12 @@
         "market_data",
         "broker_execution"
       ],
-      "authority": "methodology"
+      "authority": "methodology",
+      "invocation_surface": "installed_skill",
+      "runtime_access": "LOCAL_SKILL_CONTRACT",
+      "cost_class": "UNMEASURED",
+      "when_to_use": "Use for TDD, systematic debugging, implementation planning, code review and verification discipline.",
+      "route_priority": 10
     },
     {
       "id": "akinator",
@@ -45,7 +55,12 @@
         "market_data",
         "broker_execution"
       ],
-      "authority": "methodology"
+      "authority": "methodology",
+      "invocation_surface": "installed_skill",
+      "runtime_access": "LOCAL_SKILL_CONTRACT",
+      "cost_class": "UNMEASURED",
+      "when_to_use": "Use for repository-wide architecture memory, knowledge deltas, documentation, rules and drift governance.",
+      "route_priority": 20
     },
     {
       "id": "astral-orchestrator",
@@ -58,7 +73,12 @@
         "market_data",
         "broker_execution"
       ],
-      "authority": "research"
+      "authority": "research",
+      "invocation_surface": "installed_skill",
+      "runtime_access": "LOCAL_SKILL_CONTRACT",
+      "cost_class": "UNMEASURED",
+      "when_to_use": "Use when a research problem benefits from bounded multi-model reasoning routes.",
+      "route_priority": 20
     },
     {
       "id": "adaptive-codex-orchestrator",
@@ -71,7 +91,12 @@
         "market_data",
         "broker_execution"
       ],
-      "authority": "research"
+      "authority": "research",
+      "invocation_surface": "installed_skill",
+      "runtime_access": "LOCAL_SKILL_CONTRACT",
+      "cost_class": "UNMEASURED",
+      "when_to_use": "Use when software/research tasks need adaptive model or effort routing.",
+      "route_priority": 30
     },
     {
       "id": "baton-pass",
@@ -85,7 +110,12 @@
         "market_data",
         "broker_execution"
       ],
-      "authority": "workflow"
+      "authority": "workflow",
+      "invocation_surface": "installed_skill",
+      "runtime_access": "LOCAL_SKILL_CONTRACT",
+      "cost_class": "UNMEASURED",
+      "when_to_use": "Use when work must transfer across agents, sessions or ownership boundaries without losing verified state.",
+      "route_priority": 20
     },
     {
       "id": "agent-reach",
@@ -100,7 +130,12 @@
         "private_access_bypass",
         "broker_execution"
       ],
-      "authority": "research"
+      "authority": "research",
+      "invocation_surface": "installed_skill",
+      "runtime_access": "LOCAL_SKILL_CONTRACT",
+      "cost_class": "UNMEASURED",
+      "when_to_use": "Use to discover public web, GitHub, social, video and discussion evidence.",
+      "route_priority": 40
     },
     {
       "id": "firecrawl",
@@ -115,7 +150,12 @@
         "private_access_bypass",
         "broker_execution"
       ],
-      "authority": "research"
+      "authority": "research",
+      "invocation_surface": "chatgpt_connected_tool",
+      "runtime_access": "EXTERNAL_ORCHESTRATOR_REQUIRED",
+      "cost_class": "UNMEASURED",
+      "when_to_use": "Use for public web/developer/research search and extraction when source text or structured evidence is needed.",
+      "route_priority": 20
     },
     {
       "id": "parallel-search",
@@ -128,7 +168,12 @@
         "private_access_bypass",
         "broker_execution"
       ],
-      "authority": "research"
+      "authority": "research",
+      "invocation_surface": "chatgpt_connected_tool",
+      "runtime_access": "EXTERNAL_ORCHESTRATOR_REQUIRED",
+      "cost_class": "UNMEASURED",
+      "when_to_use": "Use for independent public-web discovery and cross-checking a primary search path.",
+      "route_priority": 30
     },
     {
       "id": "scite",
@@ -142,7 +187,12 @@
         "market_truth",
         "broker_execution"
       ],
-      "authority": "research"
+      "authority": "research",
+      "invocation_surface": "chatgpt_connected_tool",
+      "runtime_access": "EXTERNAL_ORCHESTRATOR_REQUIRED",
+      "cost_class": "SUBSCRIPTION_REQUIRED",
+      "when_to_use": "Use for scientific-literature search and citation context when subscription access is available.",
+      "route_priority": 10
     },
     {
       "id": "transcriptor",
@@ -157,7 +207,12 @@
         "private_media_access",
         "broker_execution"
       ],
-      "authority": "research"
+      "authority": "research",
+      "invocation_surface": "chatgpt_connected_tool",
+      "runtime_access": "EXTERNAL_ORCHESTRATOR_REQUIRED",
+      "cost_class": "UNMEASURED",
+      "when_to_use": "Use for supported public video metadata, transcripts, subtitles and frame evidence.",
+      "route_priority": 20
     },
     {
       "id": "figma",
@@ -171,7 +226,12 @@
         "market_truth",
         "broker_execution"
       ],
-      "authority": "design"
+      "authority": "design",
+      "invocation_surface": "chatgpt_connected_tool",
+      "runtime_access": "EXTERNAL_ORCHESTRATOR_REQUIRED",
+      "cost_class": "UNMEASURED",
+      "when_to_use": "Use for architecture diagrams and dashboard/product design work.",
+      "route_priority": 20
     },
     {
       "id": "prompt-perfect",
@@ -184,7 +244,12 @@
         "market_truth",
         "broker_execution"
       ],
-      "authority": "research"
+      "authority": "research",
+      "invocation_surface": "chatgpt_connected_tool",
+      "runtime_access": "EXTERNAL_ORCHESTRATOR_REQUIRED",
+      "cost_class": "UNMEASURED",
+      "when_to_use": "Use to harden research-agent prompts and reduce ambiguity before repeated autonomous use.",
+      "route_priority": 30
     },
     {
       "id": "massive",
@@ -201,7 +266,12 @@
         "unobserved_depth",
         "unobserved_open_interest"
       ],
-      "authority": "data"
+      "authority": "data",
+      "invocation_surface": "chatgpt_connected_tool",
+      "runtime_access": "EXTERNAL_ORCHESTRATOR_REQUIRED",
+      "cost_class": "UNMEASURED",
+      "when_to_use": "Use when authenticated futures trades, quotes, snapshots, contracts or market-status data are required.",
+      "route_priority": 10
     },
     {
       "id": "twelve-data",
@@ -218,7 +288,12 @@
         "broker_execution",
         "unobserved_depth"
       ],
-      "authority": "data"
+      "authority": "data",
+      "invocation_surface": "chatgpt_connected_tool",
+      "runtime_access": "EXTERNAL_ORCHESTRATOR_REQUIRED",
+      "cost_class": "UNMEASURED",
+      "when_to_use": "Use for authenticated market time series, quotes, market state, fundamentals or news supported by its endpoints.",
+      "route_priority": 20
     },
     {
       "id": "fmp",
@@ -235,7 +310,12 @@
         "broker_execution",
         "unobserved_depth"
       ],
-      "authority": "data"
+      "authority": "data",
+      "invocation_surface": "chatgpt_connected_tool",
+      "runtime_access": "EXTERNAL_ORCHESTRATOR_REQUIRED",
+      "cost_class": "UNMEASURED",
+      "when_to_use": "Use for market/fundamental/economic/filing context and commodity or futures symbol discovery.",
+      "route_priority": 30
     },
     {
       "id": "bybit",
@@ -252,7 +332,12 @@
         "account_access",
         "broker_execution"
       ],
-      "authority": "data"
+      "authority": "data",
+      "invocation_surface": "chatgpt_connected_tool",
+      "runtime_access": "EXTERNAL_ORCHESTRATOR_REQUIRED",
+      "cost_class": "UNMEASURED",
+      "when_to_use": "Use for public crypto market structure such as price, klines, order book, funding and instrument specifications.",
+      "route_priority": 10
     },
     {
       "id": "blockscout",
@@ -269,7 +354,12 @@
         "exchange_orderbook",
         "broker_execution"
       ],
-      "authority": "data"
+      "authority": "data",
+      "invocation_surface": "chatgpt_connected_tool",
+      "runtime_access": "EXTERNAL_ORCHESTRATOR_REQUIRED",
+      "cost_class": "UNMEASURED",
+      "when_to_use": "Use for on-chain transactions, transfers, contracts, wallets and chain metadata; never as exchange order flow.",
+      "route_priority": 10
     },
     {
       "id": "bigdata",
@@ -286,7 +376,12 @@
         "broker_execution",
         "unobserved_market_microstructure"
       ],
-      "authority": "research"
+      "authority": "research",
+      "invocation_surface": "chatgpt_connected_tool",
+      "runtime_access": "EXTERNAL_ORCHESTRATOR_REQUIRED",
+      "cost_class": "UNMEASURED",
+      "when_to_use": "Use for filings, transcripts, premium news, economics, fundamentals and expert/interview research.",
+      "route_priority": 20
     },
     {
       "id": "the-fly",
@@ -301,7 +396,12 @@
         "broker_execution",
         "unobserved_market_microstructure"
       ],
-      "authority": "research"
+      "authority": "research",
+      "invocation_surface": "chatgpt_connected_tool",
+      "runtime_access": "EXTERNAL_ORCHESTRATOR_REQUIRED",
+      "cost_class": "UNMEASURED",
+      "when_to_use": "Use for market-intelligence news, symbols, earnings and catalyst discovery.",
+      "route_priority": 30
     },
     {
       "id": "zacks",
@@ -317,7 +417,12 @@
         "broker_execution",
         "unobserved_market_microstructure"
       ],
-      "authority": "research"
+      "authority": "research",
+      "invocation_surface": "chatgpt_connected_tool",
+      "runtime_access": "EXTERNAL_ORCHESTRATOR_REQUIRED",
+      "cost_class": "UNMEASURED",
+      "when_to_use": "Use for fundamentals, estimates, research, news and comparable-company context.",
+      "route_priority": 40
     },
     {
       "id": "us-gold-bureau",
@@ -329,7 +434,12 @@
         "broker_execution",
         "futures_order_flow"
       ],
-      "authority": "data"
+      "authority": "data",
+      "invocation_surface": "chatgpt_connected_tool",
+      "runtime_access": "EXTERNAL_ORCHESTRATOR_REQUIRED",
+      "cost_class": "UNMEASURED",
+      "when_to_use": "Use for metals spot observations only when the connector network policy permits access.",
+      "route_priority": 30
     },
     {
       "id": "stackerscan",
@@ -343,7 +453,12 @@
         "broker_execution",
         "futures_order_flow"
       ],
-      "authority": "data"
+      "authority": "data",
+      "invocation_surface": "chatgpt_connected_tool",
+      "runtime_access": "EXTERNAL_ORCHESTRATOR_REQUIRED",
+      "cost_class": "UNMEASURED",
+      "when_to_use": "Use for supported metals spot prices, history and observed premium data.",
+      "route_priority": 20
     }
   ]
 }
