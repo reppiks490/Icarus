@@ -1,0 +1,42 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "argus-load-transfer-export-verified-20261002T011200Z",
+  "category": "EVOLUTION",
+  "severity": "success",
+  "status": "verified",
+  "subsystems": [
+    "argus",
+    "execution_research",
+    "calibration",
+    "liquidity_load",
+    "transfer_validation",
+    "provenance"
+  ],
+  "recorded_at": "2026-10-02T01:12:00Z",
+  "title": "ARGUS liquidity-load transfer research export verified",
+  "summary": "ARGUS now has a receipt-time research export for registered load-stratified paper-to-broker calibration audits. The export recomputes the registered analysis and preserves the study/cohort/load-plan identities, exact model and source revisions, exhaustive load bands, metrics, tolerances, sample sizes and paper-minus-broker intervals. It explicitly does not promote paper evidence, authorize broker substitution, claim formal equivalence, multiplicity adjustment, familywise coverage or causal effect. No ATHENA happy-path driver is fabricated while genuine broker-confirmed fixture lineage is unavailable.",
+  "source_repository": "reppiks490/divine-providence",
+  "source_ref": "main",
+  "source_commit": "f19f64eabaec035e88d86784800714fe5d5ac6d0",
+  "evidence": [
+    "divine-providence PR #35 merged at f19f64eabaec035e88d86784800714fe5d5ac6d0",
+    "exact-head subsystem-evolution workflow run 36949077188 completed success",
+    "Linux and Windows ARGUS/ATHENA/AION causal subsystem jobs passed",
+    "intelligence-fabric and hub tests passed",
+    "full twelve-system validation passed",
+    "registered load-stratified transfer analysis is recomputed before export",
+    "publication cannot precede cohort lock and ingestion cannot precede publication",
+    "formal_equivalence_test=false",
+    "multiplicity_adjusted=false",
+    "familywise_coverage=false",
+    "causal_effect_estimate=false",
+    "paper_evidence_promoted=false",
+    "broker_substitution_authorized=false",
+    "ATHENA hub integration remains intentionally unregistered until genuine broker-confirmed evidence with valid lineage exists",
+    "execution_authorized=false",
+    "production_authorized=false",
+    "production_decision_authorized=false"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}
