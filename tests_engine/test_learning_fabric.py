@@ -1708,7 +1708,7 @@ def _write_intake_manifest(path: Path, rows: list[dict[str, object]]) -> Path:
     header = [
         "index","sha256","canonical_filename","duplicate_copies",
         "all_observed_filenames","bytes","format","artifact_class","symbol",
-        "timeframe","chart_type","rows","first_or_trading_range",
+        "timeframe","chart_type","session_mode","rows","first_or_trading_range",
         "last_or_backtesting_range","last_trade_number","net_profit_usd",
         "max_drawdown_intrabar_usd","notes",
     ]
@@ -2416,3 +2416,91 @@ def test_experience_state_reports_provenance_classes_without_cross_promotion(tmp
     assert state["closure_scoped_count"] == 1
     assert state["artifact_scoped_count"] == 1
     assert state["unscoped_count"] == 1
+
+
+
+def test_manifest_explicit_session_mode_is_bound_to_historical_artifact_provenance(tmp_path):
+    import hashlib
+    from icarus_engine.learning_fabric import LearningFabric
+
+    trade_path = _trade_list(
+        tmp_path / "history" / "drop" / "THE_PULSE_NQ_RTH.csv"
+    )
+    trade_sha = hashlib.sha256(trade_path.read_bytes()).hexdigest()
+    report_sha = "9" * 64
+    _write_intake_manifest(
+        tmp_path / "history" / "EXPORT_INTAKE_MANIFEST.csv",
+        [
+            {
+                "sha256": trade_sha,
+                "canonical_filename": trade_path.name,
+                "format": "csv",
+                "artifact_class": "trade_list",
+                "symbol": "CME_MINI:NQ1!",
+                "rows": 4,
+                "last_trade_number": 2,
+            },
+            {
+                "sha256": report_sha,
+                "canonical_filename": "NQ_RTH_REPORT.xlsx",
+                "format": "xlsx",
+                "artifact_class": "strategy_report_xlsx",
+                "symbol": "CME_MINI:NQ1!",
+                "timeframe": "20 minutes",
+                "chart_type": "Candles",
+                "session_mode": "RTH",
+                "rows": 4,
+                "last_trade_number": 2,
+            },
+        ],
+    )
+
+    fabric = LearningFabric(tmp_path)
+    scan = fabric.scan_history()
+    dataset = fabric.dataset(scan["dataset_ids"][0])
+    fabric.backfill_dataset(dataset["dataset_id"])
+
+    card = fabric.experience_state()["by_artifact_configuration"][0]
+    assert card["session_mode"] == "rth"
+
+    rows = fabric._conn.execute(
+        "SELECT metadata_json FROM experiences ORDER BY experience_id"
+    ).fetchall()
+    assert rows
+    for row in rows:
+        metadata = json.loads(row["metadata_json"])
+        assert metadata["session_mode"] == "rth"
+        assert metadata["provenance_class"] == "HISTORICAL_ARTIFACT_CONFIG"
+
+
+def test_historical_artifact_session_mode_is_never_inferred_when_manifest_omits_it(tmp_path):
+    import hashlib
+    from icarus_engine.learning_fabric import LearningFabric
+
+    report = _strategy_report_xlsx(
+        tmp_path / "history" / "drop" / "THE_PULSE_NQ_UNKNOWN_SESSION.xlsx"
+    )
+    report_sha = hashlib.sha256(report.read_bytes()).hexdigest()
+    _write_intake_manifest(
+        tmp_path / "history" / "EXPORT_INTAKE_MANIFEST.csv",
+        [{
+            "sha256": report_sha,
+            "canonical_filename": report.name,
+            "format": "xlsx",
+            "artifact_class": "strategy_report_xlsx",
+            "symbol": "CME_MINI:NQ1!",
+            "timeframe": "20 minutes",
+            "chart_type": "Heikin Ashi",
+            "rows": 4,
+            "last_trade_number": 2,
+        }],
+    )
+
+    fabric = LearningFabric(tmp_path)
+    scan = fabric.scan_history()
+    dataset = fabric.dataset(scan["dataset_ids"][0])
+    fabric.backfill_dataset(dataset["dataset_id"])
+
+    card = fabric.experience_state()["by_artifact_configuration"][0]
+    assert card["session_mode"] is None
+    assert card["provenance_class"] == "HISTORICAL_ARTIFACT_CONFIG"
