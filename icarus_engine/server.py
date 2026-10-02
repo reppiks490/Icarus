@@ -108,6 +108,7 @@ from .ascendancy.mechanisms import MechanismLab
 from .ascendancy.invention import InventionLab, to_foundry_candidate
 from .ascendancy.contribution import ContributionLab
 from .ascendancy.evaluator import EvaluatorCascade
+from .ascendancy.federated_seeds import build_federated_research_seeds
 
 
 def _no_json_constants(name: str):
@@ -1152,6 +1153,19 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     return self._json(400, {"detail": str(ex)})
                 except Exception as ex:
                     port.journal.log("WARN", f"ASCENDANCY evaluator snapshot: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/api/ascendancy/federated-seeds":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                try:
+                    return self._json(
+                        200,
+                        build_federated_research_seeds(brain_remote_sync.status()),
+                    )
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("WARN", f"ASCENDANCY federated seed snapshot: {type(ex).__name__}: {ex}")
                     return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
             if p.path == "/api/golive":
                 return self._json(200, golive_report(port))
