@@ -1,0 +1,55 @@
+{
+  "schema": "icarus-mcp-event-v1",
+  "event_id": "macro_20261002T111513Z_japan_inflation_reacceleration",
+  "timestamp": "2026-10-02T11:15:13Z",
+  "category": "EVOLUTION",
+  "source": "MACRO_AUTOMATION",
+  "execution_authorized": false,
+  "finding": "Tokyo core CPI accelerated to 2.7% y/y in September versus 1.8% in August and a 2.4% consensus, while the index excluding fresh food and fuel reached 3.0%, materially strengthening evidence of renewed Japanese inflation pressure after the BOJ's September hike.",
+  "net_new_delta": "The prior ICARUS state centered on US duration and euro-area fragmentation. Fresh Tokyo inflation data add a distinct Japan normalization channel: inflation re-accelerated sharply above target/consensus and the yen strengthened, raising the probability that Japanese rates/FX can become an independent global-duration transmission factor rather than merely a recipient of the US bond shock.",
+  "affected": [
+    "JPY crosses",
+    "Japanese government bonds",
+    "DXY/USD",
+    "U.S. 10Y/30Y",
+    "NQ/MNQ",
+    "GC/MGC"
+  ],
+  "evidence": [
+    {
+      "provider": "Reuters",
+      "date": "2026-10-02",
+      "url": "https://www.reuters.com/world/asia-pacific/tokyo-core-inflation-jumps-september-bolsters-case-more-boj-hikes-2026-10-01/",
+      "claim": "Tokyo core CPI rose 2.7% y/y in September, fastest in 10 months, versus 2.4% forecast; the index excluding fresh food and fuel rose 3.0%, strengthening the case for further BOJ hikes."
+    },
+    {
+      "provider": "Reuters",
+      "date": "2026-10-02",
+      "url": "https://www.reuters.com/world/asia-pacific/japan-does-not-need-excessively-loose-monetary-policy-economy-minister-says-2026-10-02/",
+      "claim": "Japan's economy minister said Japan has emerged from deflation and does not require excessively loose monetary policy, while declining to prescribe the BOJ's next rate decision."
+    },
+    {
+      "provider": "Reuters",
+      "date": "2026-10-02",
+      "url": "https://www.reuters.com/world/china/global-markets-wrapup-1-2026-10-02/",
+      "claim": "The yen strengthened after Tokyo inflation data supported expectations for further BOJ tightening while Japanese yields remained part of the broader multi-decade-high global yield environment."
+    }
+  ],
+  "conflicts": [
+    "The BOJ Tankan showed mixed business sentiment and stable funding conditions, reducing pressure for an immediate additional hike even as Tokyo inflation re-accelerated.",
+    "Tokyo CPI is a leading regional indicator, not the nationwide CPI release, so national persistence is not yet established."
+  ],
+  "unknown": [
+    "Whether September Tokyo inflation will be confirmed by nationwide CPI and persist beyond subsidy/base effects.",
+    "The magnitude of any JPY/JGB spillover into US Treasury term premium or NQ/MNQ is not established."
+  ],
+  "next_decisive_check": "Confirm the signal against nationwide Japanese CPI and BOJ rate-path pricing; test whether JPY strength and JGB yield pressure persist independently of US payroll-driven Treasury moves.",
+  "oracle": {
+    "status": "MATERIAL_FINDING",
+    "finding": "Add a Japan inflation-normalization state: Tokyo core CPI's jump to 2.7% with ex-food-and-fuel inflation at 3.0% warrants testing JPY/JGB sensitivity as an independent conditioning factor for global duration and NQ/MNQ rather than assuming US-rate dominance."
+  },
+  "supermesh_x": {
+    "status": "MATERIAL_FINDING",
+    "finding": "Reuters provided mutually consistent macro, policy-commentary and cross-asset confirmation for Japan while also surfacing a Tankan counter-signal; preserve Tokyo CPI, nationwide CPI, BOJ path, JPY and JGB evidence as separate provenance channels and do not infer a BOJ hike before direct policy evidence."
+  }
+}
