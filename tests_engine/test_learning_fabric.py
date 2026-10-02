@@ -1708,7 +1708,7 @@ def _write_intake_manifest(path: Path, rows: list[dict[str, object]]) -> Path:
     header = [
         "index","sha256","canonical_filename","duplicate_copies",
         "all_observed_filenames","bytes","format","artifact_class","symbol",
-        "timeframe","chart_type","rows","first_or_trading_range",
+        "timeframe","chart_type","session_mode","rows","first_or_trading_range",
         "last_or_backtesting_range","last_trade_number","net_profit_usd",
         "max_drawdown_intrabar_usd","notes",
     ]
@@ -2416,3 +2416,130 @@ def test_experience_state_reports_provenance_classes_without_cross_promotion(tmp
     assert state["closure_scoped_count"] == 1
     assert state["artifact_scoped_count"] == 1
     assert state["unscoped_count"] == 1
+
+
+
+def test_manifest_session_mode_disambiguates_rth_eth_without_cross_promotion(tmp_path):
+    import hashlib
+    from icarus_engine.learning_fabric import LearningFabric
+
+    trade_path = _trade_list(
+        tmp_path / "history" / "drop" / "THE_PULSE_OF_ICARUS_CME_MINI_NQ1!_RTH.csv"
+    )
+    trade_sha = hashlib.sha256(trade_path.read_bytes()).hexdigest()
+    rth_sha = "4" * 64
+    eth_sha = "5" * 64
+    _write_intake_manifest(
+        tmp_path / "history" / "EXPORT_INTAKE_MANIFEST.csv",
+        [
+            {
+                "sha256": trade_sha,
+                "canonical_filename": trade_path.name,
+                "format": "csv",
+                "artifact_class": "trade_list",
+                "symbol": "CME_MINI:NQ1!",
+                "session_mode": "RTH",
+                "rows": 4,
+                "last_trade_number": 2,
+            },
+            {
+                "sha256": rth_sha,
+                "canonical_filename": "THE_PULSE_RTH.xlsx",
+                "format": "xlsx",
+                "artifact_class": "strategy_report_xlsx",
+                "symbol": "CME_MINI:NQ1!",
+                "timeframe": "20 minutes",
+                "chart_type": "Heikin Ashi",
+                "session_mode": "regular trading hours",
+                "rows": 4,
+                "last_trade_number": 2,
+            },
+            {
+                "sha256": eth_sha,
+                "canonical_filename": "THE_PULSE_ETH.xlsx",
+                "format": "xlsx",
+                "artifact_class": "strategy_report_xlsx",
+                "symbol": "CME_MINI:NQ1!",
+                "timeframe": "20 minutes",
+                "chart_type": "Heikin Ashi",
+                "session_mode": "ETH",
+                "rows": 4,
+                "last_trade_number": 2,
+            },
+        ],
+    )
+
+    fabric = LearningFabric(tmp_path)
+    dataset_id = fabric.scan_history()["dataset_ids"][0]
+    result = fabric.backfill_dataset(dataset_id)
+    assert result["status"] == "complete"
+
+    state = fabric.experience_state()
+    assert state["by_configuration"] == []
+    assert state["artifact_scoped_count"] == 2
+    assert state["unscoped_count"] == 0
+    assert len(state["by_artifact_configuration"]) == 1
+    card = state["by_artifact_configuration"][0]
+    assert card["session_mode"] == "rth"
+    assert card["strategy_report_sha256"] == rth_sha
+    assert card["linkage_rule"] == "UNIQUE_SYMBOL_ROWS_LAST_TRADE_SESSION_MODE"
+    assert card["provenance_class"] == "HISTORICAL_ARTIFACT_CONFIG"
+
+
+def test_manifest_missing_session_keeps_rth_eth_linkage_ambiguous(tmp_path):
+    import hashlib
+    from icarus_engine.learning_fabric import LearningFabric
+
+    trade_path = _trade_list(
+        tmp_path / "history" / "drop" / "THE_PULSE_OF_ICARUS_CME_MINI_NQ1!_UNKNOWN_SESSION.csv"
+    )
+    trade_sha = hashlib.sha256(trade_path.read_bytes()).hexdigest()
+    _write_intake_manifest(
+        tmp_path / "history" / "EXPORT_INTAKE_MANIFEST.csv",
+        [
+            {
+                "sha256": trade_sha,
+                "canonical_filename": trade_path.name,
+                "format": "csv",
+                "artifact_class": "trade_list",
+                "symbol": "CME_MINI:NQ1!",
+                "rows": 4,
+                "last_trade_number": 2,
+            },
+            {
+                "sha256": "6" * 64,
+                "canonical_filename": "candidate-rth.xlsx",
+                "format": "xlsx",
+                "artifact_class": "strategy_report_xlsx",
+                "symbol": "CME_MINI:NQ1!",
+                "session_mode": "RTH",
+                "rows": 4,
+                "last_trade_number": 2,
+            },
+            {
+                "sha256": "7" * 64,
+                "canonical_filename": "candidate-eth.xlsx",
+                "format": "xlsx",
+                "artifact_class": "strategy_report_xlsx",
+                "symbol": "CME_MINI:NQ1!",
+                "session_mode": "ETH",
+                "rows": 4,
+                "last_trade_number": 2,
+            },
+        ],
+    )
+
+    fabric = LearningFabric(tmp_path)
+    dataset_id = fabric.scan_history()["dataset_ids"][0]
+    fabric.backfill_dataset(dataset_id)
+    state = fabric.experience_state()
+
+    assert state["by_artifact_configuration"] == []
+    assert state["artifact_scoped_count"] == 0
+    assert state["unscoped_count"] == 2
+    row = fabric._conn.execute(
+        "SELECT metadata_json FROM experiences ORDER BY experience_id LIMIT 1"
+    ).fetchone()
+    metadata = json.loads(row["metadata_json"])
+    assert metadata["manifest_linkage_status"] == "AMBIGUOUS"
+    assert "session_mode" not in metadata or metadata["session_mode"] in (None, "")
