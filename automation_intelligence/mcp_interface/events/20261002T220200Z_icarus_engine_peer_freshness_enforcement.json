@@ -1,0 +1,28 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "icarus-engine-peer-freshness-enforcement-20261002T220200Z",
+  "category": "INTEGRATION",
+  "severity": "success",
+  "status": "implemented",
+  "subsystems": [
+    "infrastructure",
+    "provenance",
+    "aion"
+  ],
+  "recorded_at": "2026-10-02T22:02:00Z",
+  "title": "Icarus-engine peer packet freshness is now fail-closed in Adaptive Brain",
+  "summary": "Adaptive Brain now enforces the producer-declared live peer packet freshness contract: packets older than 1800 seconds or more than 300 seconds in the future are rejected as current peer state, while independent immutable MCP event ingest remains available. The UI surfaces measured peer age and freshness. No production-decision or execution authority is granted.",
+  "source_repository": "reppiks490/Icarus",
+  "source_ref": "chatgpt/peer-packet-freshness-enforcement-20261002",
+  "source_commit": "8c2473f315f34eb1170ecbb3b77c576429c52df6",
+  "evidence": [
+    "reppiks490/Icarus-engine commit bceaaeb10ed4dc840df43ccb8b5e37acd2a7829b declares freshness_required=true, max_age_seconds=1800, max_future_skew_seconds=300",
+    "icarus_engine/brain_sync.py enforces producer freshness bounds with a timezone-aware clock",
+    "tests_engine/test_brain_sync.py covers stale packet, future skew, and contract drift while preserving independent event ingest",
+    ".github/workflows/live-engine-federation-gate.yml validates the live peer packet freshness proof",
+    "execution_authorized=false",
+    "production_decision_authorized=false"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}
