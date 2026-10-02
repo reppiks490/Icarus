@@ -27,6 +27,7 @@ from .trainers.run import train_file, train_xgb_file
 
 _SCHEMA = "icarus-learning-fabric-v1"
 _ARTIFACT_PROVENANCE_QUALITIES = frozenset({"MANIFEST_UNIQUE_STRATEGY_REPORT_LINK", "DIRECT_STRATEGY_REPORT_XLSX_TRADE_SHEET"})
+_MANIFEST_LINKAGE_VERSION = 2
 _RUNTIME_PROVENANCE_CLASS = "RUNTIME_CLOSURE_CONFIG"
 _HISTORICAL_PROVENANCE_CLASS = "HISTORICAL_ARTIFACT_CONFIG"
 _UNSCOPED_PROVENANCE_CLASS = "UNSCOPED"
@@ -2046,14 +2047,26 @@ class LearningFabric:
         trade_row: Mapping[str, Any],
         manifest_rows: Sequence[Mapping[str, Any]],
     ) -> dict[str, Any]:
-        rule = "UNIQUE_SYMBOL_ROWS_LAST_TRADE"
         symbol = self._manifest_symbol(trade_row.get("symbol"))
         row_count = self._manifest_integer(trade_row.get("rows"))
         last_trade = self._manifest_integer(trade_row.get("last_trade_number"))
+        session_mode = self._manifest_session_mode(
+            trade_row.get("session_mode")
+            or trade_row.get("session")
+            or trade_row.get("trading_session")
+        )
+        linkage_keys = ["symbol", "rows", "last_trade_number"]
+        rule_parts = ["SYMBOL", "ROWS", "LAST_TRADE"]
+        if session_mode is not None:
+            linkage_keys.append("session_mode")
+            rule_parts.append("SESSION_MODE")
+        rule = "UNIQUE_" + "_".join(rule_parts)
         base = {
             "status": "MISSING",
             "candidate_count": 0,
+            "linkage_version": _MANIFEST_LINKAGE_VERSION,
             "linkage_rule": rule,
+            "linkage_keys": linkage_keys,
         }
         if str(trade_row.get("artifact_class") or "").strip().lower() != "trade_list":
             return {**base, "status": "NOT_TRADE_LIST"}
@@ -2072,6 +2085,14 @@ class LearningFabric:
                 continue
             if self._manifest_integer(row.get("last_trade_number")) != last_trade:
                 continue
+            if session_mode is not None:
+                candidate_session = self._manifest_session_mode(
+                    row.get("session_mode")
+                    or row.get("session")
+                    or row.get("trading_session")
+                )
+                if candidate_session != session_mode:
+                    continue
             key = (row.get("sha256", "").lower(), row.get("canonical_filename", ""))
             if key in seen:
                 continue
@@ -2101,20 +2122,35 @@ class LearningFabric:
         by_hash, by_name, manifest_rows = catalog or self._intake_manifest_catalog()
         manifest = dataset.get("manifest") if isinstance(dataset.get("manifest"), Mapping) else {}
         intake = manifest.get("intake") if isinstance(manifest, Mapping) else None
-        trade_row = dict(intake) if isinstance(intake, Mapping) else {}
-        if not trade_row:
-            trade_row = dict(by_hash.get(str(dataset.get("raw_sha256") or "").lower()) or {})
-        if not trade_row:
-            path_name = Path(str(dataset.get("path") or "")).name
-            trade_row = dict(by_name.get(path_name) or {})
-        link = trade_row.get("strategy_report_link") if isinstance(trade_row, Mapping) else None
-        if not isinstance(link, Mapping):
+        stored_trade_row = dict(intake) if isinstance(intake, Mapping) else {}
+        raw_sha = str(dataset.get("raw_sha256") or "").lower()
+        path_name = Path(str(dataset.get("path") or "")).name
+        current_trade_row = dict(by_hash.get(raw_sha) or by_name.get(path_name) or {})
+        trade_row = {**stored_trade_row, **current_trade_row}
+
+        # The manifest is the current provenance authority. Recompute whenever it
+        # is available so added/removed report candidates or newly supplied
+        # session metadata cannot leave a stale cached unique/ambiguous receipt.
+        cached_link = stored_trade_row.get("strategy_report_link") if stored_trade_row else None
+        if manifest_rows:
             link = self._manifest_strategy_report_link(trade_row, manifest_rows)
+        elif isinstance(cached_link, Mapping):
+            link = dict(cached_link)
+        else:
+            link = self._manifest_strategy_report_link(trade_row, manifest_rows)
+
         status = str(link.get("status") or "MISSING")
         candidate_count = int(link.get("candidate_count") or 0)
+        try:
+            linkage_version = int(link.get("linkage_version") or 0)
+        except (TypeError, ValueError):
+            linkage_version = 0
         base = {
             "manifest_linkage_status": status,
             "manifest_linkage_candidates": candidate_count,
+            "manifest_linkage_version": linkage_version,
+            "linkage_rule": str(link.get("linkage_rule") or "UNAVAILABLE"),
+            "linkage_keys": list(link.get("linkage_keys") or []),
         }
         if status != "UNIQUE" or not isinstance(link.get("report"), Mapping):
             return base
@@ -2155,7 +2191,6 @@ class LearningFabric:
             "chart_type": chart_type,
             "session_mode": session_mode,
             "execution_assumptions": report.get("notes") or None,
-            "linkage_rule": str(link.get("linkage_rule") or "UNIQUE_SYMBOL_ROWS_LAST_TRADE"),
             "report_net_profit_usd": report.get("net_profit_usd") or None,
             "report_max_drawdown_intrabar_usd": report.get("max_drawdown_intrabar_usd") or None,
         }
