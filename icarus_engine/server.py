@@ -100,6 +100,7 @@ from .ascendancy.capabilities import capability_snapshot
 from .ascendancy.archive import GenomeArchive
 from .ascendancy.frontier import build_frontier
 from .ascendancy.genome import compile_genome, normalize_genome
+from .ascendancy.foundry import CandidateFoundry
 
 
 def _no_json_constants(name: str):
@@ -216,6 +217,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     parallax = ParallaxStore(port.base_dir)
     dreamstate = DreamstateLab(port.base_dir, parallax=parallax)
     ascendancy_archive = GenomeArchive(port.base_dir)
+    ascendancy_foundry = CandidateFoundry(port.base_dir)
     mcp_control = MCPControlPlane(port.base_dir)
     chronofold = ChronofoldEngine(port, possibility=possibility)
     commissioning = CommissioningEngine(port.base_dir, port, chronofold)
@@ -966,6 +968,16 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 except Exception as ex:
                     port.journal.log("WARN", f"ASCENDANCY genome snapshot: {type(ex).__name__}: {ex}")
                     return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/api/ascendancy/candidates":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                try:
+                    return self._json(200, ascendancy_foundry.snapshot())
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("WARN", f"ASCENDANCY foundry snapshot: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
             if p.path == "/api/golive":
                 return self._json(200, golive_report(port))
             if p.path == "/api/agent":
@@ -1394,6 +1406,52 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     return self._json(400, {"detail": str(ex)})
                 except Exception as ex:
                     port.journal.log("ERROR", f"ASCENDANCY genome retire: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/admin/ascendancy/candidate":
+                try:
+                    return self._json(200, _ascendancy_research_mutation(
+                        lambda: ascendancy_foundry.register(body)
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("ERROR", f"ASCENDANCY candidate register: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/admin/ascendancy/candidate-stage":
+                try:
+                    return self._json(200, _ascendancy_research_mutation(
+                        lambda: ascendancy_foundry.advance(
+                            body.get("candidate_id"), body.get("stage"), body.get("reason")
+                        )
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("ERROR", f"ASCENDANCY candidate stage: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/admin/ascendancy/candidate-reject":
+                try:
+                    return self._json(200, _ascendancy_research_mutation(
+                        lambda: ascendancy_foundry.reject(
+                            body.get("candidate_id"), body.get("reason")
+                        )
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("ERROR", f"ASCENDANCY candidate reject: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/admin/ascendancy/candidate-retire":
+                try:
+                    return self._json(200, _ascendancy_research_mutation(
+                        lambda: ascendancy_foundry.retire(
+                            body.get("candidate_id"), body.get("reason")
+                        )
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("ERROR", f"ASCENDANCY candidate retire: {type(ex).__name__}: {ex}")
                     return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
             if p.path == "/admin/learning/config":
                 try:
@@ -2005,6 +2063,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     srv.sibyl = sibyl
     srv.apex = apex
     srv.ascendancy_archive = ascendancy_archive
+    srv.ascendancy_foundry = ascendancy_foundry
     srv.learning = learning
     srv.chronofold = chronofold
     srv.commissioning = commissioning
