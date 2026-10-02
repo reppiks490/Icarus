@@ -1,0 +1,29 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "peer-historical-context-federation-20261002",
+  "category": "INTEGRATION",
+  "severity": "INFO",
+  "status": "IMPLEMENTED_PENDING_CI",
+  "subsystems": [
+    "aion",
+    "provenance",
+    "infrastructure"
+  ],
+  "recorded_at": "2026-10-02T22:10:00Z",
+  "title": "Validate Icarus-engine historical context as non-promotable foreign research evidence",
+  "summary": "Adaptive Brain now validates revision-bound historical peer artifacts against the producer contract, verifies immutable artifact/history identities, exposes them as context-only evidence, and fails closed on candidate-promotion or execution-authority escalation.",
+  "source_repository": "reppiks490/Icarus",
+  "source_ref": "chatgpt/peer-historical-context-20261002",
+  "source_commit": "e38c8fae8788c2e011a8c39716893d4e28ee2a9c",
+  "evidence": [
+    "icarus_engine/brain_sync.py",
+    "icarus_engine/brain-ui.js",
+    "tests_engine/test_brain_sync.py",
+    "tests_engine/test_dashboard_js.py",
+    ".github/workflows/live-engine-federation-gate.yml",
+    "peer contract: reppiks490/Icarus-engine/automation_intelligence/mcp_interface/icarus_consumer_contract.json",
+    "peer packet: reppiks490/Icarus-engine/automation_intelligence/interrepo/latest.json"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}
