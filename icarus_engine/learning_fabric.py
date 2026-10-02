@@ -26,12 +26,18 @@ from .trainers.run import train_file, train_xgb_file
 
 
 _SCHEMA = "icarus-learning-fabric-v1"
-_ARTIFACT_PROVENANCE_QUALITIES = frozenset({"MANIFEST_UNIQUE_STRATEGY_REPORT_LINK", "DIRECT_STRATEGY_REPORT_XLSX_TRADE_SHEET"})
+_SEMANTIC_TRADE_TWIN_QUALITY = "SEMANTIC_TRADE_TWIN_STRATEGY_REPORT_LINK"
+_DIRECT_STRATEGY_REPORT_QUALITY = "DIRECT_STRATEGY_REPORT_XLSX_TRADE_SHEET"
+_ARTIFACT_PROVENANCE_QUALITIES = frozenset({_SEMANTIC_TRADE_TWIN_QUALITY, _DIRECT_STRATEGY_REPORT_QUALITY})
 _RUNTIME_PROVENANCE_CLASS = "RUNTIME_CLOSURE_CONFIG"
 _HISTORICAL_PROVENANCE_CLASS = "HISTORICAL_ARTIFACT_CONFIG"
 _UNSCOPED_PROVENANCE_CLASS = "UNSCOPED"
 _RUNTIME_PROVENANCE_SOURCES = frozenset({"runtime_live_sim"})
 _HISTORICAL_PROVENANCE_SOURCES = frozenset({"historical_trade_list", "historical_strategy_report_xlsx"})
+_HISTORICAL_PROVENANCE_SOURCE_BY_QUALITY = {
+    _SEMANTIC_TRADE_TWIN_QUALITY: "historical_trade_list",
+    _DIRECT_STRATEGY_REPORT_QUALITY: "historical_strategy_report_xlsx",
+}
 _KNOWN_PROVENANCE_CLASSES = frozenset({
     _RUNTIME_PROVENANCE_CLASS,
     _HISTORICAL_PROVENANCE_CLASS,
@@ -158,10 +164,11 @@ def _experience_provenance_class(
         else:
             derived = _RUNTIME_PROVENANCE_CLASS
     elif quality in _ARTIFACT_PROVENANCE_QUALITIES:
-        if source_name not in _HISTORICAL_PROVENANCE_SOURCES:
+        expected_source = _HISTORICAL_PROVENANCE_SOURCE_BY_QUALITY.get(quality)
+        if source_name not in _HISTORICAL_PROVENANCE_SOURCES or source_name != expected_source:
             if strict:
                 raise ValueError(
-                    "historical artifact provenance requires an approved historical source"
+                    "historical artifact provenance requires the source bound to its proof quality"
                 )
             derived = _UNSCOPED_PROVENANCE_CLASS
         elif not _is_sha256(metadata.get("artifact_configuration_fingerprint")):
@@ -174,6 +181,15 @@ def _experience_provenance_class(
             if strict:
                 raise ValueError(
                     "historical artifact provenance requires an exact strategy report SHA-256"
+                )
+            derived = _UNSCOPED_PROVENANCE_CLASS
+        elif (
+            quality == _SEMANTIC_TRADE_TWIN_QUALITY
+            and not _is_sha256(metadata.get("semantic_trade_signature_sha256"))
+        ):
+            if strict:
+                raise ValueError(
+                    "historical trade-list provenance requires a semantic trade-twin signature"
                 )
             derived = _UNSCOPED_PROVENANCE_CLASS
         else:
@@ -1274,6 +1290,13 @@ class LearningFabric:
                             )
                         except ValueError:
                             dataset_context[dataset_id] = {}
+                    for stale_key in (
+                        "artifact_configuration_fingerprint",
+                        "provenance_class",
+                        "provenance_quality",
+                        "semantic_trade_signature_sha256",
+                    ):
+                        effective.pop(stale_key, None)
                     effective.update(dataset_context[dataset_id])
                     fingerprint = str(effective.get("artifact_configuration_fingerprint") or "").lower()
             provenance_class = _experience_provenance_class(
@@ -1319,6 +1342,7 @@ class LearningFabric:
                 "provenance_quality": first_meta.get("provenance_quality"),
                 "strategy_report_sha256": first_meta.get("strategy_report_sha256"),
                 "strategy_report_filename": first_meta.get("strategy_report_filename"),
+                "semantic_trade_signature_sha256": first_meta.get("semantic_trade_signature_sha256"),
                 "timeframe": first_meta.get("timeframe"),
                 "chart_type": first_meta.get("chart_type"),
                 "execution_assumptions": first_meta.get("execution_assumptions"),
@@ -1348,7 +1372,7 @@ class LearningFabric:
             })
         return out
 
-    def _experience_scope_counts(self) -> dict[str, int]:
+    def _experience_scope_counts(self) -> dict[str, Any]:
         rows = self._conn.execute(
             "SELECT source,metadata_json FROM experiences ORDER BY experience_id"
         ).fetchall()
@@ -1388,6 +1412,13 @@ class LearningFabric:
                             )
                         except ValueError:
                             dataset_context[dataset_id] = {}
+                    for stale_key in (
+                        "artifact_configuration_fingerprint",
+                        "provenance_class",
+                        "provenance_quality",
+                        "semantic_trade_signature_sha256",
+                    ):
+                        effective.pop(stale_key, None)
                     effective.update(dataset_context[dataset_id])
                     artifact_fp = str(effective.get("artifact_configuration_fingerprint") or "").lower()
             if (
@@ -2076,6 +2107,116 @@ class LearningFabric:
             "report": report,
         }
 
+    def _dataset_by_raw_sha(self, raw_sha: Any) -> dict[str, Any] | None:
+        sha = str(raw_sha or "").strip().lower()
+        if not _is_sha256(sha):
+            return None
+        row = self._conn.execute(
+            "SELECT dataset_id FROM datasets WHERE raw_sha256=?",
+            (sha,),
+        ).fetchone()
+        if row is None:
+            return None
+        return self.dataset(row["dataset_id"])
+
+    def _historical_trade_signature(self, dataset: Mapping[str, Any]) -> str | None:
+        """Hash normalized realized trades so CSV/XLSX equivalence is semantic.
+
+        Manifest row counts and trade numbers are discovery hints only. They
+        never establish cross-format equivalence by themselves.
+        """
+        artifact_class = str(dataset.get("artifact_class") or "").strip().lower()
+        path = str(dataset.get("path") or "")
+        try:
+            from .parity import read_tv_trades, read_tv_trades_xlsx
+            if artifact_class == "trade_list":
+                trades = read_tv_trades(path)
+            elif artifact_class == "strategy_report_xlsx":
+                trades = read_tv_trades_xlsx(path)
+            else:
+                return None
+        except (ValueError, OSError, KeyError, TypeError):
+            return None
+
+        normalized: list[dict[str, Any]] = []
+        try:
+            for trade in trades:
+                pieces = list(trade.get("pieces") or [])
+                if (
+                    trade.get("entry_ts") is None
+                    or not pieces
+                    or any(piece.get("ts") is None for piece in pieces)
+                ):
+                    continue
+                normalized_pieces = []
+                for piece in pieces:
+                    normalized_pieces.append({
+                        "ts": int(piece["ts"]),
+                        "px": round(_finite(piece.get("px"), "historical exit price"), 10),
+                        "qty": round(_finite(piece.get("qty"), "historical exit quantity"), 10),
+                        "pnl": round(_finite(piece.get("pnl"), "historical exit pnl"), 10),
+                        "signal": str(piece.get("sig") or ""),
+                    })
+                normalized_pieces.sort(
+                    key=lambda row: (
+                        row["ts"], row["px"], row["qty"], row["pnl"], row["signal"]
+                    )
+                )
+                normalized.append({
+                    "trade_number": str(trade.get("no") or ""),
+                    "direction": int(trade.get("dir") or 0),
+                    "entry_ts": int(trade["entry_ts"]),
+                    "entry_px": round(_finite(trade.get("entry_px"), "historical entry price"), 10),
+                    "entry_qty": round(_finite(trade.get("qty"), "historical entry quantity"), 10),
+                    "entry_signal": str(trade.get("entry_sig") or ""),
+                    "pieces": normalized_pieces,
+                })
+        except (TypeError, ValueError, OverflowError):
+            return None
+        if not normalized:
+            return None
+        normalized.sort(
+            key=lambda row: (
+                row["entry_ts"], row["direction"], row["entry_px"], row["trade_number"]
+            )
+        )
+        payload = {
+            "schema_version": "icarus-historical-trade-signature-v1",
+            "asset": str(dataset.get("asset") or "").upper(),
+            "trade_count": len(normalized),
+            "trades": normalized,
+        }
+        return hashlib.sha256(
+            _json(payload, "historical trade signature").encode("utf-8")
+        ).hexdigest()
+
+    def _historical_artifact_fingerprint(
+        self,
+        *,
+        report_sha: str,
+        asset: str,
+        timeframe: str | None,
+        chart_type: str | None,
+        rows: int | None,
+        last_trade_number: int | None,
+        notes: str,
+        semantic_trade_signature_sha256: str | None,
+    ) -> str:
+        payload = {
+            "schema_version": "icarus-historical-artifact-configuration-v2",
+            "strategy_report_sha256": report_sha,
+            "asset": asset,
+            "timeframe": timeframe,
+            "chart_type": chart_type,
+            "rows": rows,
+            "last_trade_number": last_trade_number,
+            "notes": notes,
+            "semantic_trade_signature_sha256": semantic_trade_signature_sha256,
+        }
+        return hashlib.sha256(
+            _json(payload, "historical artifact configuration").encode("utf-8")
+        ).hexdigest()
+
     def _artifact_configuration_context(
         self,
         dataset: Mapping[str, Any],
@@ -2109,33 +2250,71 @@ class LearningFabric:
             return {**base, "manifest_linkage_status": "INVALID_REPORT_SHA"}
         timeframe = self._manifest_timeframe(report.get("timeframe"))
         chart_type = report.get("chart_type") or None
-        fingerprint_payload = {
-            "trade_list_sha256": str(dataset.get("raw_sha256") or "").lower(),
-            "strategy_report_sha256": report_sha,
-            "asset": str(dataset.get("asset") or "").upper(),
-            "timeframe": timeframe,
-            "chart_type": chart_type,
-            "rows": self._manifest_integer(report.get("rows")),
-            "last_trade_number": self._manifest_integer(report.get("last_trade_number")),
-            "notes": report.get("notes") or "",
-        }
-        fingerprint = hashlib.sha256(
-            _json(fingerprint_payload, "historical artifact configuration").encode("utf-8")
-        ).hexdigest()
-        return {
+        candidate = {
             **base,
-            "manifest_linkage_status": "UNIQUE",
-            "artifact_configuration_fingerprint": fingerprint,
-            "provenance_class": _HISTORICAL_PROVENANCE_CLASS,
-            "provenance_quality": "MANIFEST_UNIQUE_STRATEGY_REPORT_LINK",
             "strategy_report_sha256": report_sha,
             "strategy_report_filename": report.get("canonical_filename") or None,
             "timeframe": timeframe,
             "chart_type": chart_type,
             "execution_assumptions": report.get("notes") or None,
-            "linkage_rule": str(link.get("linkage_rule") or "UNIQUE_SYMBOL_ROWS_LAST_TRADE"),
+            "manifest_candidate_rule": str(
+                link.get("linkage_rule") or "UNIQUE_SYMBOL_ROWS_LAST_TRADE"
+            ),
             "report_net_profit_usd": report.get("net_profit_usd") or None,
             "report_max_drawdown_intrabar_usd": report.get("max_drawdown_intrabar_usd") or None,
+        }
+
+        report_dataset = self._dataset_by_raw_sha(report_sha)
+        if (
+            report_dataset is None
+            or report_dataset.get("artifact_class") != "strategy_report_xlsx"
+        ):
+            return {
+                **candidate,
+                "manifest_linkage_status": "REPORT_ARTIFACT_UNAVAILABLE",
+                "provenance_class": _UNSCOPED_PROVENANCE_CLASS,
+                "provenance_quality": "MANIFEST_CANDIDATE_ONLY",
+            }
+
+        trade_signature = self._historical_trade_signature(dataset)
+        report_signature = self._historical_trade_signature(report_dataset)
+        if trade_signature is None or report_signature is None:
+            return {
+                **candidate,
+                "manifest_linkage_status": "SEMANTIC_PROOF_UNAVAILABLE",
+                "provenance_class": _UNSCOPED_PROVENANCE_CLASS,
+                "provenance_quality": "SEMANTIC_TRADE_TWIN_UNVERIFIED",
+                "trade_list_signature_sha256": trade_signature,
+                "strategy_report_signature_sha256": report_signature,
+            }
+        if trade_signature != report_signature:
+            return {
+                **candidate,
+                "manifest_linkage_status": "SEMANTIC_MISMATCH",
+                "provenance_class": _UNSCOPED_PROVENANCE_CLASS,
+                "provenance_quality": "SEMANTIC_TRADE_TWIN_MISMATCH",
+                "trade_list_signature_sha256": trade_signature,
+                "strategy_report_signature_sha256": report_signature,
+            }
+
+        fingerprint = self._historical_artifact_fingerprint(
+            report_sha=report_sha,
+            asset=str(dataset.get("asset") or "").upper(),
+            timeframe=timeframe,
+            chart_type=chart_type,
+            rows=self._manifest_integer(report.get("rows")),
+            last_trade_number=self._manifest_integer(report.get("last_trade_number")),
+            notes=report.get("notes") or "",
+            semantic_trade_signature_sha256=trade_signature,
+        )
+        return {
+            **candidate,
+            "manifest_linkage_status": "SEMANTIC_MATCH",
+            "artifact_configuration_fingerprint": fingerprint,
+            "provenance_class": _HISTORICAL_PROVENANCE_CLASS,
+            "provenance_quality": _SEMANTIC_TRADE_TWIN_QUALITY,
+            "semantic_trade_signature_sha256": trade_signature,
+            "linkage_rule": "SEMANTIC_TRADE_SIGNATURE_V1",
         }
 
     def _direct_strategy_report_context(self, dataset: Mapping[str, Any]) -> dict[str, Any]:
@@ -2147,24 +2326,23 @@ class LearningFabric:
             raise ValueError("strategy report dataset requires a valid SHA-256")
         timeframe = self._manifest_timeframe(row.get("timeframe")) or str(dataset.get("chart_type") or "")
         chart_type = str(row.get("chart_type") or "").strip() or None
-        payload = {
-            "strategy_report_sha256": report_sha,
-            "asset": str(dataset.get("asset") or "").upper(),
-            "timeframe": timeframe,
-            "chart_type": chart_type,
-            "rows": self._manifest_integer(row.get("rows")),
-            "last_trade_number": self._manifest_integer(row.get("last_trade_number")),
-            "notes": str(row.get("notes") or ""),
-        }
-        fingerprint = hashlib.sha256(
-            _json(payload, "direct historical artifact configuration").encode("utf-8")
-        ).hexdigest()
-        return {
+        semantic_signature = self._historical_trade_signature(dataset)
+        fingerprint = self._historical_artifact_fingerprint(
+            report_sha=report_sha,
+            asset=str(dataset.get("asset") or "").upper(),
+            timeframe=timeframe,
+            chart_type=chart_type,
+            rows=self._manifest_integer(row.get("rows")),
+            last_trade_number=self._manifest_integer(row.get("last_trade_number")),
+            notes=str(row.get("notes") or ""),
+            semantic_trade_signature_sha256=semantic_signature,
+        )
+        context = {
             "manifest_linkage_status": "DIRECT_REPORT",
             "manifest_linkage_candidates": 1,
             "artifact_configuration_fingerprint": fingerprint,
             "provenance_class": _HISTORICAL_PROVENANCE_CLASS,
-            "provenance_quality": "DIRECT_STRATEGY_REPORT_XLSX_TRADE_SHEET",
+            "provenance_quality": _DIRECT_STRATEGY_REPORT_QUALITY,
             "strategy_report_sha256": report_sha,
             "strategy_report_filename": Path(str(dataset.get("path") or "")).name or None,
             "timeframe": timeframe,
@@ -2174,6 +2352,9 @@ class LearningFabric:
             "report_net_profit_usd": row.get("net_profit_usd") or None,
             "report_max_drawdown_intrabar_usd": row.get("max_drawdown_intrabar_usd") or None,
         }
+        if semantic_signature is not None:
+            context["semantic_trade_signature_sha256"] = semantic_signature
+        return context
 
     def _completed_equivalent_trade_experience(
         self,
@@ -2183,6 +2364,9 @@ class LearningFabric:
         if not report_sha:
             return None
         report_sha = str(report_sha).lower()
+        current_signature = self._historical_trade_signature(dataset)
+        if current_signature is None:
+            return None
         catalog = self._intake_manifest_catalog()
         rows = self._conn.execute(
             """SELECT d.dataset_id,d.artifact_class,t.report_json
@@ -2209,12 +2393,18 @@ class LearningFabric:
                 ).lower()
             else:
                 continue
-            if candidate_sha == report_sha:
-                return {
-                    "dataset_id": candidate["dataset_id"],
-                    "artifact_class": candidate["artifact_class"],
-                    "report_sha256": report_sha,
-                }
+            if candidate_sha != report_sha:
+                continue
+            candidate_signature = self._historical_trade_signature(candidate)
+            if candidate_signature != current_signature:
+                continue
+            return {
+                "dataset_id": candidate["dataset_id"],
+                "artifact_class": candidate["artifact_class"],
+                "report_sha256": report_sha,
+                "trade_signature_sha256": current_signature,
+                "equivalence_proof": "SEMANTIC_TRADE_SIGNATURE_V1",
+            }
         return None
 
     def _persist_trade_experience_report(
@@ -2258,6 +2448,8 @@ class LearningFabric:
             "deduplicated_by_strategy_report": True,
             "equivalent_dataset_id": owner.get("dataset_id"),
             "strategy_report_sha256": owner.get("report_sha256"),
+            "equivalence_proof": owner.get("equivalence_proof"),
+            "trade_signature_sha256": owner.get("trade_signature_sha256"),
             "errors": {},
             **_authority(),
         }
@@ -2517,6 +2709,9 @@ class LearningFabric:
             "new_experiences": imported,
             "deduplicated_by_strategy_report": False,
             "strategy_report_sha256": artifact_context.get("strategy_report_sha256"),
+            "provenance_quality": artifact_context.get("provenance_quality"),
+            "semantic_trade_signature_sha256": artifact_context.get("semantic_trade_signature_sha256"),
+            "manifest_linkage_status": artifact_context.get("manifest_linkage_status"),
             "time_quality": "UNVERIFIED_TIMEZONE",
             "errors": errors,
             **_authority(),
@@ -2649,6 +2844,8 @@ class LearningFabric:
             "new_experiences": imported,
             "deduplicated_by_strategy_report": False,
             "strategy_report_sha256": report_sha,
+            "provenance_quality": artifact_context.get("provenance_quality"),
+            "semantic_trade_signature_sha256": artifact_context.get("semantic_trade_signature_sha256"),
             "time_quality": "UNVERIFIED_TIMEZONE",
             "errors": errors,
             **_authority(),
