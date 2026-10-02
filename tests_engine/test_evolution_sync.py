@@ -7,6 +7,7 @@ import icarus_engine.evolution_sync as evolution_sync_module
 from icarus_engine.evolution_sync import (
     EvolutionRemoteSync,
     REMOTE_ROOT,
+    VALIDATOR_REVISION,
     _IGNORED_SCHEMA_VERSIONS,
     _git_blob_sha,
     normalize_interface_event,
@@ -71,6 +72,8 @@ def test_verified_event_reaches_evolution_system_and_brain_surfaces(tmp_path):
     assert "event_id_bindings" not in state
     assert "rejected_blob_shas" not in state
     assert "rejected_blob_errors" not in state
+    assert "rejected_history_blob_shas" not in state
+    assert state["validator_revision"] == VALIDATOR_REVISION
     assert state["events"][0]["event_id"] == "fixture-evolution-1"
     assert set(state["subsystems"]) >= {"argus", "athena", "parallax"}
 
@@ -404,6 +407,54 @@ def test_partial_brain_projection_does_not_publish_partial_subsystem_state(
     assert second["ingested_total"] == 1
     assert set(second["subsystems"]) >= {"argus", "athena", "parallax"}
     assert attempts["brain"] == 5
+
+
+def test_validator_revision_change_retries_known_bad_blob_without_double_count(
+    tmp_path,
+):
+    payload = {"schema_version": "wrong"}
+    raw = (json.dumps(payload, sort_keys=True) + "\n").encode()
+    sha = _git_blob_sha(raw)
+    listing = [{
+        "type": "file",
+        "name": "validator-retry.json",
+        "path": REMOTE_ROOT + "/validator-retry.json",
+        "sha": sha,
+        "url": "fixture://validator-retry",
+    }]
+    fetches = {"bytes": 0}
+
+    def fetch_bytes(_url):
+        fetches["bytes"] += 1
+        return raw
+
+    sync = EvolutionRemoteSync(
+        tmp_path,
+        interval_seconds=30,
+        fetch_json=lambda _url: listing,
+        fetch_bytes=fetch_bytes,
+        enabled=True,
+    )
+    first = sync.sync_once()
+    assert first["rejected_total"] == 1
+    assert first["current_rejected_count"] == 1
+    assert fetches["bytes"] == 1
+
+    state_path = tmp_path / "audit" / "mcp_evolution_sync.json"
+    persisted = json.loads(state_path.read_text(encoding="utf-8"))
+    persisted["validator_revision"] = "legacy-validator"
+    state_path.write_text(
+        json.dumps(persisted, sort_keys=True, indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+    retried = sync.sync_once()
+
+    assert retried["status"] == "degraded"
+    assert retried["validator_revision"] == VALIDATOR_REVISION
+    assert retried["rejected_total"] == 1
+    assert retried["current_rejected_count"] == 1
+    assert fetches["bytes"] == 2
 
 
 def test_event_id_cannot_be_rebound_to_different_git_blob(tmp_path):
