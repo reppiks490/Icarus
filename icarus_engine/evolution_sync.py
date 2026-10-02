@@ -32,13 +32,22 @@ SCHEMA_VERSION = "icarus-interface-event-v1"
 _ALLOWED_CATEGORIES = {"REPAIR", "AUDIT", "EVOLUTION", "INTEGRATION", "FINDING"}
 _ALLOWED_SEVERITIES = {"info", "success", "warn", "error"}
 _ALLOWED_STATUSES = {
-    "observed", "active", "verified", "qualified", "rejected",
+    "observed", "active", "staged", "verified", "qualified", "rejected",
     "blocked", "degraded", "retired", "unverified",
 }
+# Interface receipts are repository-native contracts shared by ICARUS and the
+# subsystem repos that publish into automation_intelligence/mcp_interface/events.
+# Values are stored in normalized form because _normalize_event converts
+# underscores to hyphens before validating.
 _ALLOWED_SUBSYSTEMS = {
-    "aegis", "aion", "argus", "ascension", "athena", "daedalus",
-    "infrastructure", "janus", "nexus", "oracle", "parallax",
-    "prometheus", "provenance", "supermesh-x", "ml", "data", "dreamstate", "psi",
+    "aegis", "aether", "aion", "ananke", "archon", "argus", "ascension",
+    "athena", "calibration", "cluster-bootstrap", "daedalus", "data",
+    "dreamstate", "execution-research", "ex-nihilo", "godel",
+    "infrastructure", "janus", "liquidity-load", "mint", "ml", "nemesis",
+    "nexus", "nullspace", "oracle", "order-blocks", "pantheon", "parallax",
+    "prometheus", "prospective-validation", "provenance", "psi",
+    "research-validation", "sibyl", "socrates", "supermesh-x",
+    "tail-validation", "transfer-validation", "ui", "uncertainty",
 }
 
 
