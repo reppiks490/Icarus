@@ -73,7 +73,7 @@ from .system_audit import (
     upsert_loop_status,
 )
 from .integrity import integrity_snapshot, record_integrity_event
-from .brain import REQUIRED_CANDIDATE_GATES, brain_snapshot, record_brain_event
+from .brain import REQUIRED_CANDIDATE_GATES, SUBSYSTEMS, brain_snapshot, record_brain_event
 from .brain_sync import BrainRemoteSync
 from .research_brain_sync import BrainResearchSync
 from .evolution_sync import EvolutionRemoteSync
@@ -99,6 +99,15 @@ from .pantheon import PantheonKernel, subsystem_context
 from .sibyl import SibylEngine
 from .apex import ApexKernel
 from .ascendancy.capabilities import capability_snapshot
+from .ascendancy.archive import GenomeArchive
+from .ascendancy.frontier import build_frontier
+from .ascendancy.genome import compile_genome, normalize_genome
+from .ascendancy.foundry import CandidateFoundry
+from .ascendancy.unknowns import UnknownUnknownLab
+from .ascendancy.mechanisms import MechanismLab
+from .ascendancy.invention import InventionLab, to_foundry_candidate
+from .ascendancy.contribution import ContributionLab
+from .ascendancy.evaluator import EvaluatorCascade
 
 
 def _no_json_constants(name: str):
@@ -216,6 +225,13 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     autopilot = TacticalAutopilot(port)
     parallax = ParallaxStore(port.base_dir)
     dreamstate = DreamstateLab(port.base_dir, parallax=parallax)
+    ascendancy_archive = GenomeArchive(port.base_dir)
+    ascendancy_foundry = CandidateFoundry(port.base_dir)
+    ascendancy_unknowns = UnknownUnknownLab(port.base_dir)
+    ascendancy_mechanisms = MechanismLab(port.base_dir)
+    ascendancy_inventions = InventionLab(port.base_dir)
+    ascendancy_contribution = ContributionLab(port.base_dir)
+    ascendancy_evaluator = EvaluatorCascade(port.base_dir)
     mcp_control = MCPControlPlane(port.base_dir)
     chronofold = ChronofoldEngine(port, possibility=possibility)
     commissioning = CommissioningEngine(port.base_dir, port, chronofold)
@@ -270,6 +286,165 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             "execution_authorized": False,
             "production_decision_authorized": False,
         }
+
+    def _ascendancy_snapshot() -> Dict[str, Any]:
+        archive = ascendancy_archive.snapshot()
+        return {
+            "archive": archive,
+            "frontier": build_frontier(archive),
+            "execution_authorized": False,
+            "production_decision_authorized": False,
+        }
+
+    def _ascendancy_trading_control_fingerprint():
+        # Deliberately excludes prices/P&L/warmup counters because those may
+        # evolve concurrently. This boundary watches state ASCENDANCY must
+        # never mutate: global pause intent, runner membership/order, and
+        # per-runner entry-pause controls.
+        return (
+            bool(port.paused),
+            tuple(port.order),
+            tuple(
+                (
+                    str(getattr(r, "symbol", "")),
+                    bool(getattr(r, "paused", False)),
+                )
+                for r in port.runner_list()
+            ),
+        )
+
+    def _ascendancy_research_mutation(call):
+        before = _ascendancy_trading_control_fingerprint()
+        result = call()
+        after = _ascendancy_trading_control_fingerprint()
+        if after != before:
+            raise RuntimeError(
+                "ASCENDANCY research boundary changed trading-control state; refusing success"
+            )
+        out = dict(result) if isinstance(result, dict) else {"result": result}
+        out["trading_state_unchanged"] = True
+        out["execution_authorized"] = False
+        out["production_decision_authorized"] = False
+        return out
+
+    def _ascendancy_register_genome(body: Dict[str, Any]) -> Dict[str, Any]:
+        # Compile first. Invalid/unknown topology must not leave a persisted
+        # genome behind.
+        normalized = normalize_genome(body)
+        available = {
+            str(row.get("id") or "").strip()
+            for row in SUBSYSTEMS
+            if isinstance(row, dict) and str(row.get("id") or "").strip()
+        }
+        # The Adaptive Brain registry is intentionally not the complete
+        # runtime-service registry. Keep server-native research engines explicit
+        # so a genome can compose them without falsely treating them as foreign.
+        available.update({
+            "chronofold",
+            "commissioning",
+            "research",
+            "autopilot",
+            "performance-proof",
+            "source-reliability",
+            "latency-telemetry",
+            "mcp-control",
+        })
+        compiled = compile_genome(
+            normalized,
+            available_native_subsystems=available,
+        )
+        registered = ascendancy_archive.register(normalized)
+        compile_receipt = ascendancy_archive.record_compile(compiled)
+        return {
+            "genome": registered["genome"],
+            "compile_receipt": compile_receipt["compile_receipt"],
+            "idempotent": bool(registered["idempotent"] and compile_receipt["idempotent"]),
+            "execution_authorized": False,
+            "production_decision_authorized": False,
+        }
+
+    def _ascendancy_record_mechanism(body: Dict[str, Any]) -> Dict[str, Any]:
+        candidate_id = str(body.get("candidate_id") or "").strip()
+        foundry = ascendancy_foundry.snapshot()
+        candidate = next(
+            (
+                row for row in foundry.get("candidates", [])
+                if isinstance(row, dict) and str(row.get("candidate_id") or "") == candidate_id
+            ),
+            None,
+        )
+        if candidate is None:
+            raise ValueError("unknown candidate_id in ASCENDANCY Candidate Foundry")
+        expected_contract = str(
+            (candidate.get("evaluation_contract") or {}).get("contract_hash") or ""
+        )
+        if str(body.get("evaluation_contract_hash") or "") != expected_contract:
+            raise ValueError("mechanism experiment evaluation contract does not match candidate")
+        if str(body.get("source_repo") or "") != str(candidate.get("source_repo") or ""):
+            raise ValueError("mechanism experiment source_repo does not match candidate")
+        if str(body.get("source_commit") or "") != str(candidate.get("source_commit") or ""):
+            raise ValueError("mechanism experiment source_commit does not match candidate")
+        return ascendancy_mechanisms.record(body)
+
+    def _ascendancy_record_contribution(body: Dict[str, Any]) -> Dict[str, Any]:
+        contributor_kind = str(body.get("contributor_kind") or "").strip().lower()
+        contributor_id = str(body.get("contributor_id") or "").strip()
+        if contributor_kind == "candidate":
+            foundry = ascendancy_foundry.snapshot()
+            candidate = next(
+                (
+                    row for row in foundry.get("candidates", [])
+                    if isinstance(row, dict)
+                    and str(row.get("candidate_id") or "") == contributor_id
+                ),
+                None,
+            )
+            if candidate is None:
+                raise ValueError("unknown candidate_id in ASCENDANCY Candidate Foundry")
+            expected_contract = str(
+                (candidate.get("evaluation_contract") or {}).get("contract_hash") or ""
+            )
+            if str(body.get("evaluation_contract_hash") or "") != expected_contract:
+                raise ValueError(
+                    "contribution observation evaluation contract does not match candidate"
+                )
+            if str(body.get("source_repo") or "") != str(candidate.get("source_repo") or ""):
+                raise ValueError("contribution observation source_repo does not match candidate")
+            if str(body.get("source_commit") or "") != str(candidate.get("source_commit") or ""):
+                raise ValueError("contribution observation source_commit does not match candidate")
+        return ascendancy_contribution.record(body)
+
+    def _ascendancy_register_evaluator_candidate(body: Dict[str, Any]) -> Dict[str, Any]:
+        candidate_id = str(body.get("candidate_id") or "").strip()
+        foundry = ascendancy_foundry.snapshot()
+        candidate = next(
+            (
+                row for row in foundry.get("candidates", [])
+                if isinstance(row, dict)
+                and str(row.get("candidate_id") or "") == candidate_id
+            ),
+            None,
+        )
+        if candidate is None:
+            raise ValueError("unknown candidate_id in ASCENDANCY Candidate Foundry")
+        return ascendancy_evaluator.register_candidate(candidate)
+
+    def _ascendancy_invention_to_candidate(body: Dict[str, Any]) -> Dict[str, Any]:
+        blueprint_id = str(body.get("blueprint_id") or "").strip()
+        if not blueprint_id:
+            raise ValueError("blueprint_id is required")
+        invention_state = ascendancy_inventions.snapshot()
+        blueprint = next(
+            (
+                row for row in invention_state.get("blueprints", [])
+                if isinstance(row, dict) and str(row.get("blueprint_id") or "") == blueprint_id
+            ),
+            None,
+        )
+        if blueprint is None:
+            raise ValueError("unknown invention blueprint_id")
+        payload = to_foundry_candidate(blueprint)
+        return ascendancy_foundry.register(payload)
 
     def _control_runner(target: str):
         try:
@@ -908,6 +1083,76 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
                 return self._json(200, capability_snapshot())
+            if p.path == "/api/ascendancy/genomes":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                try:
+                    return self._json(200, _ascendancy_snapshot())
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("WARN", f"ASCENDANCY genome snapshot: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/api/ascendancy/candidates":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                try:
+                    return self._json(200, ascendancy_foundry.snapshot())
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("WARN", f"ASCENDANCY foundry snapshot: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/api/ascendancy/unknowns":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                try:
+                    return self._json(200, ascendancy_unknowns.snapshot())
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("WARN", f"ASCENDANCY unknown snapshot: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/api/ascendancy/mechanisms":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                try:
+                    return self._json(200, ascendancy_mechanisms.snapshot())
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("WARN", f"ASCENDANCY mechanism snapshot: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/api/ascendancy/inventions":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                try:
+                    return self._json(200, ascendancy_inventions.snapshot())
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("WARN", f"ASCENDANCY invention snapshot: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/api/ascendancy/contributions":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                try:
+                    return self._json(200, ascendancy_contribution.snapshot())
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("WARN", f"ASCENDANCY contribution snapshot: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/api/ascendancy/evaluator":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                try:
+                    return self._json(200, ascendancy_evaluator.snapshot())
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("WARN", f"ASCENDANCY evaluator snapshot: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
             if p.path == "/api/golive":
                 return self._json(200, golive_report(port))
             if p.path == "/api/agent":
@@ -1320,11 +1565,251 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._json(413, {"detail": "body too large"})
             raw = self.rfile.read(n) if n else b""
             try:
-                body = strict_json(raw) if p.path.startswith(("/admin/research/", "/admin/integrity/", "/admin/parallax/", "/admin/dreamstate/", "/admin/possibility/", "/admin/autopilot/", "/admin/engine-control", "/admin/pantheon/", "/admin/sibyl/", "/admin/apex/", "/admin/learning/", "/admin/qualification-receipts/")) else (json.loads(raw, parse_constant=_no_json_constants) if raw else {})
+                body = strict_json(raw) if p.path.startswith(("/admin/research/", "/admin/integrity/", "/admin/parallax/", "/admin/dreamstate/", "/admin/possibility/", "/admin/autopilot/", "/admin/engine-control", "/admin/pantheon/", "/admin/sibyl/", "/admin/apex/", "/admin/learning/", "/admin/qualification-receipts/", "/admin/ascendancy/")) else (json.loads(raw, parse_constant=_no_json_constants) if raw else {})
             except ValueError as ex:
                 return self._json(400, {"detail": f"bad JSON body: {ex}"})
             if not isinstance(body, dict):
                 return self._json(400, {"detail": "JSON body must be an object"})
+            if p.path == "/admin/learning/config":
+                try:
+                    return self._json(200, research.configure_learning(body))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+            if p.path == "/admin/learning/tick":
+                try:
+                    return self._json(200, learning.run_cycle())
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+            if p.path == "/admin/learning/prediction":
+                try:
+                    return self._json(200, learning.record_prediction(body))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+            if p.path == "/admin/learning/outcome":
+                try:
+                    return self._json(200, learning.record_outcome(body))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+            if p.path == "/admin/learning/scan":
+                try:
+                    return self._json(200, learning.scan_history())
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+            if p.path == "/admin/learning/backfill":
+                try:
+                    dataset_id = body.get("dataset_id")
+                    slots = body.get("slots")
+                    if slots is not None and not isinstance(slots, list):
+                        raise ValueError("slots must be a list")
+                    return self._json(200, learning.backfill_dataset(dataset_id, slots=slots))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+            if p.path == "/admin/apex/evidence":
+                try:
+                    return self._json(200, apex.ingest_evidence(body, enforce_local_receipt=True))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+            if p.path == "/admin/apex/outcome":
+                try:
+                    return self._json(200, apex.record_outcome(body))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+            if p.path == "/admin/apex/model-observation":
+                try:
+                    return self._json(200, apex.record_model_observation(body))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+            if p.path == "/admin/apex/experiment":
+                try:
+                    return self._json(200, apex.propose_experiment(body))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+            if p.path == "/admin/engine-control":
+                try:
+                    return self._json(200, control.run(body))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log(
+                        "ERROR",
+                        f"Engine Control request failed: {type(ex).__name__}: {ex}",
+                    )
+                    return self._json(
+                        500,
+                        {"detail": f"{type(ex).__name__}: {ex}"},
+                    )
+            if p.path == "/admin/ascendancy/genome":
+                try:
+                    return self._json(200, _ascendancy_research_mutation(
+                        lambda: _ascendancy_register_genome(body)
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("ERROR", f"ASCENDANCY genome register: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/admin/ascendancy/genome-evaluation":
+                try:
+                    return self._json(200, _ascendancy_research_mutation(
+                        lambda: ascendancy_archive.record_evaluation(body)
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("ERROR", f"ASCENDANCY genome evaluation: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/admin/ascendancy/genome-retire":
+                try:
+                    return self._json(200, _ascendancy_research_mutation(
+                        lambda: ascendancy_archive.retire(
+                            body.get("genome_id"), body.get("reason")
+                        )
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("ERROR", f"ASCENDANCY genome retire: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/admin/ascendancy/candidate":
+                try:
+                    return self._json(200, _ascendancy_research_mutation(
+                        lambda: ascendancy_foundry.register(body)
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("ERROR", f"ASCENDANCY candidate register: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/admin/ascendancy/candidate-stage":
+                try:
+                    return self._json(200, _ascendancy_research_mutation(
+                        lambda: ascendancy_foundry.advance(
+                            body.get("candidate_id"), body.get("stage"), body.get("reason")
+                        )
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("ERROR", f"ASCENDANCY candidate stage: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/admin/ascendancy/candidate-reject":
+                try:
+                    return self._json(200, _ascendancy_research_mutation(
+                        lambda: ascendancy_foundry.reject(
+                            body.get("candidate_id"), body.get("reason")
+                        )
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("ERROR", f"ASCENDANCY candidate reject: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/admin/ascendancy/candidate-retire":
+                try:
+                    return self._json(200, _ascendancy_research_mutation(
+                        lambda: ascendancy_foundry.retire(
+                            body.get("candidate_id"), body.get("reason")
+                        )
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("ERROR", f"ASCENDANCY candidate retire: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/admin/ascendancy/unknown-event":
+                try:
+                    return self._json(200, _ascendancy_research_mutation(
+                        lambda: ascendancy_unknowns.record_event(body)
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("ERROR", f"ASCENDANCY unknown event: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/admin/ascendancy/unknown-explanation":
+                try:
+                    return self._json(200, _ascendancy_research_mutation(
+                        lambda: ascendancy_unknowns.record_explanation_test(body)
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("ERROR", f"ASCENDANCY unknown explanation: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/admin/ascendancy/unknown-link-candidate":
+                try:
+                    return self._json(200, _ascendancy_research_mutation(
+                        lambda: ascendancy_unknowns.link_candidate(
+                            body.get("phenomenon_signature"),
+                            body.get("candidate_id"),
+                            body.get("rationale"),
+                        )
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("ERROR", f"ASCENDANCY unknown candidate link: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/admin/ascendancy/mechanism-experiment":
+                try:
+                    return self._json(200, _ascendancy_research_mutation(
+                        lambda: _ascendancy_record_mechanism(body)
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("ERROR", f"ASCENDANCY mechanism experiment: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/admin/ascendancy/contribution-observation":
+                try:
+                    return self._json(200, _ascendancy_research_mutation(
+                        lambda: _ascendancy_record_contribution(body)
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("ERROR", f"ASCENDANCY contribution observation: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/admin/ascendancy/evaluator-register":
+                try:
+                    return self._json(200, _ascendancy_research_mutation(
+                        lambda: _ascendancy_register_evaluator_candidate(body)
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("ERROR", f"ASCENDANCY evaluator register: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/admin/ascendancy/evaluator-receipt":
+                try:
+                    return self._json(200, _ascendancy_research_mutation(
+                        lambda: ascendancy_evaluator.record(body)
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("ERROR", f"ASCENDANCY evaluator receipt: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/admin/ascendancy/invention-generate":
+                try:
+                    return self._json(200, _ascendancy_research_mutation(
+                        lambda: ascendancy_inventions.generate(body)
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("ERROR", f"ASCENDANCY invention generate: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/admin/ascendancy/invention-to-candidate":
+                try:
+                    return self._json(200, _ascendancy_research_mutation(
+                        lambda: _ascendancy_invention_to_candidate(body)
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("ERROR", f"ASCENDANCY invention handoff: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
             if p.path == "/admin/learning/config":
                 try:
                     return self._json(200, research.configure_learning(body))
@@ -1968,6 +2453,13 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     srv.pantheon = pantheon
     srv.sibyl = sibyl
     srv.apex = apex
+    srv.ascendancy_archive = ascendancy_archive
+    srv.ascendancy_foundry = ascendancy_foundry
+    srv.ascendancy_unknowns = ascendancy_unknowns
+    srv.ascendancy_mechanisms = ascendancy_mechanisms
+    srv.ascendancy_inventions = ascendancy_inventions
+    srv.ascendancy_contribution = ascendancy_contribution
+    srv.ascendancy_evaluator = ascendancy_evaluator
     srv.learning = learning
     srv.chronofold = chronofold
     srv.commissioning = commissioning
