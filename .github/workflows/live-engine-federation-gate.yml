@@ -1,0 +1,155 @@
+name: live-engine-federation-gate
+
+on:
+  push:
+    branches:
+      - main
+      - feat/live-engine-federation-gate-20261002-v2
+    paths:
+      - "icarus_engine/brain_sync.py"
+      - "tests_engine/test_brain_sync.py"
+      - ".github/workflows/live-engine-federation-gate.yml"
+  pull_request:
+    paths:
+      - "icarus_engine/brain_sync.py"
+      - "tests_engine/test_brain_sync.py"
+      - ".github/workflows/live-engine-federation-gate.yml"
+  workflow_dispatch:
+  schedule:
+    - cron: "17 */6 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-engine-federation-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  bilateral-federation:
+    name: Validate live bilateral Adaptive Brain federation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout canonical Icarus
+        uses: actions/checkout@v4
+        with:
+          path: icarus
+
+      - name: Checkout live Icarus-engine main
+        uses: actions/checkout@v4
+        with:
+          repository: reppiks490/Icarus-engine
+          ref: main
+          path: peer-engine
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run canonical BrainRemoteSync against live peer corpus
+        working-directory: icarus
+        shell: bash
+        run: |
+          export ICARUS_SHA="$(git rev-parse HEAD)"
+          export ENGINE_SHA="$(git -C ../peer-engine rev-parse HEAD)"
+          python - <<'PY'
+          import json
+          import os
+          import tempfile
+          from pathlib import Path
+
+          from icarus_engine.brain_sync import (
+              BrainRemoteSync,
+              _REMOTE_API,
+              _REMOTE_CONSUMER_CONTRACT_API,
+              _REMOTE_PRODUCER_CONTRACT_API,
+              _git_blob_sha,
+          )
+
+          peer = Path("../peer-engine")
+          mcp = peer / "automation_intelligence" / "mcp_interface"
+          event_dir = mcp / "events"
+          virtual = {}
+
+          def meta_for(path, label):
+              raw = path.read_bytes()
+              url = "memory://" + label
+              virtual[url] = raw
+              return {"type": "file", "sha": _git_blob_sha(raw), "url": url}
+
+          consumer_meta = meta_for(mcp / "icarus_consumer_contract.json", "consumer")
+          producer_meta = meta_for(mcp / "contract.json", "producer")
+
+          listing = []
+          for path in sorted(event_dir.glob("*.json")):
+              item = meta_for(path, "event/" + path.name)
+              item.update({
+                  "name": path.name,
+                  "path": "automation_intelligence/mcp_interface/events/" + path.name,
+              })
+              listing.append(item)
+
+          def fetch_json(url):
+              if url == _REMOTE_CONSUMER_CONTRACT_API:
+                  return consumer_meta
+              if url == _REMOTE_PRODUCER_CONTRACT_API:
+                  return producer_meta
+              if url == _REMOTE_API:
+                  return listing
+              raise AssertionError("unexpected federation URL: " + url)
+
+          def fetch_bytes(url):
+              return virtual[url]
+
+          with tempfile.TemporaryDirectory() as tmp:
+              sync = BrainRemoteSync(
+                  tmp,
+                  interval_seconds=30,
+                  fetch_json=fetch_json,
+                  fetch_bytes=fetch_bytes,
+              )
+              state = sync.sync_once()
+
+          assert state["status"] == "green", state
+          truth = state["truth_contract"]
+          assert truth["federation_schema"] == "icarus-engine-brain-federation-v1"
+          assert truth["strict_event_contract"] is True
+          assert truth["event_records"] == "RESEARCH_OBSERVABILITY_ONLY"
+          assert truth["durability_receipts_are_substantive_evidence"] is False
+          assert truth["raw_owner_data_transfer"] is False
+          assert truth["automatic_model_promotion"] is False
+          assert truth["production_decision_authorized"] is False
+          assert truth["automatic_execution_authority"] is False
+          assert state["execution_authorized"] is False
+          assert state["production_decision_authorized"] is False
+          assert state["consumer_contract_blob_sha"] == consumer_meta["sha"]
+          assert state["producer_contract_blob_sha"] == producer_meta["sha"]
+
+          report = {
+              "schema_version": "icarus-live-bilateral-federation-receipt-v1",
+              "icarus_commit": os.environ["ICARUS_SHA"],
+              "icarus_engine_commit": os.environ["ENGINE_SHA"],
+              "peer_event_file_count": len(listing),
+              "ingested_total": state["ingested_total"],
+              "rejected_total": state["rejected_total"],
+              "legacy_exception_count": truth["legacy_exception_count"],
+              "federation_schema": truth["federation_schema"],
+              "strict_event_contract": truth["strict_event_contract"],
+              "event_records": truth["event_records"],
+              "execution_authorized": False,
+              "production_decision_authorized": False,
+          }
+          Path("../live-engine-federation-receipt.json").write_text(
+              json.dumps(report, sort_keys=True, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          print(json.dumps(report, sort_keys=True))
+          PY
+
+      - name: Preserve bilateral federation receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-engine-federation-receipt
+          path: live-engine-federation-receipt.json
+          if-no-files-found: error
+          retention-days: 14
