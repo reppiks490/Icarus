@@ -1599,7 +1599,9 @@ def test_refresh_batch_holds_calibrator_stable_for_oos_measurement(tmp_path):
 
 def _overlapping_calibration_case(fabric, *, start, n, spacing_seconds, horizon_seconds=60):
     for i in range(n):
-        p = 0.4 if i % 2 == 0 else 0.7
+        # Pair probabilities so a 50% overlap purge still preserves both
+        # confidence levels instead of aliasing onto only one phase.
+        p = 0.4 if (i // 2) % 2 == 0 else 0.7
         emitted = start + timedelta(seconds=i * spacing_seconds)
         pred = fabric.record_prediction({
             "producer": "overlap-test",
