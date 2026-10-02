@@ -685,6 +685,14 @@ def _normalize_federation_contract(
             "peer_packet_freshness_required": True,
             "peer_packet_max_age_seconds": 1800,
             "peer_packet_max_future_skew_seconds": 300,
+            "historical_context_mode": (
+                "RESEARCH_CONTEXT_ONLY" if historical_sources else "UNDECLARED"
+            ),
+            "historical_context_source_count": len(historical_sources),
+            "historical_context_never_bypasses_foundry": True,
+            "historical_context_never_bypasses_evaluator": True,
+            "historical_context_never_grants_shadow_qualification": True,
+            "historical_context_never_grants_execution_authority": True,
         },
         "execution_authorized": False,
         "production_decision_authorized": False,
