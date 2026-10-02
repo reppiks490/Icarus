@@ -713,3 +713,17 @@ def test_ascendancy_dashboard_surfaces_peer_repository_bridge():
     assert "foreign evidence" in ui.lower()
     assert 'p.path == "/api/ascendancy/peers"' in server
     assert 'p.path == "/admin/ascendancy/peer-packet"' in server
+
+
+def test_ascendancy_peer_dashboard_surfaces_historical_research_context():
+    ui = (REPO / "icarus_engine/ascendancy-ui.js").read_text(encoding="utf-8")
+
+    assert "HISTORICAL RESEARCH CONTEXT" in ui
+    assert "historical_artifact_count" in ui
+    assert "historical_research_context_count" in ui
+    assert "historical_candidate_evidence_count" in ui
+    assert "historical_research_lanes" in ui
+    assert "requires_foundry_and_evaluator" in ui
+    assert "HISTORICAL_RESEARCH_EVIDENCE" in ui
+    assert "HISTORICAL_COLLECTION_EVIDENCE" in ui
+    assert "candidate evidence=false" in ui.lower()
