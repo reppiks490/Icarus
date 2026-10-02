@@ -170,6 +170,9 @@ def _read_state(base_dir: str | os.PathLike[str], interval_seconds: int) -> dict
         state["rejected_blob_shas"] = []
         state["rejected_blob_errors"] = {}
         state["current_rejected_count"] = 0
+    else:
+        state["rejected_blob_shas"] = sorted(current_rejected)[-5000:]
+        state["current_rejected_count"] = len(state["rejected_blob_shas"])
     state["validator_revision"] = VALIDATOR_REVISION
 
     state["interval_seconds"] = interval_seconds
