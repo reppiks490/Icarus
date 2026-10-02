@@ -32,4 +32,4 @@ def test_cross_repo_handoff_fails_closed_on_revision_drift_contract():
     assert len(handoff["producer_revision"]) == 40
     assert len(handoff["target_revision"]) == 40
     assert any("revision drift" in item.lower() for item in handoff["limitations"])
-    assert any("does not" in claim.lower() and "execution" in claim.lower() for claim in handoff["claims"])
+    assert any("execution" in claim.lower() and claim.lower().startswith("no ") for claim in handoff["claims"])
