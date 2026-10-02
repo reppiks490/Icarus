@@ -693,3 +693,19 @@ def test_rebased_ascendancy_dashboard_uses_canonical_federation_and_full_researc
     assert "MECHANISM LABORATORY" in ui
     assert "INVENTION ENGINE" in ui
     assert "UNKNOWN-UNKNOWN" in ui
+
+
+def test_ascendancy_dashboard_surfaces_federated_research_seeds():
+    ui = (REPO / "icarus_engine/ascendancy-ui.js").read_text(encoding="utf-8")
+    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
+
+    assert "/api/ascendancy/federated-seeds" in ui
+    assert "/api/ascendancy/federated-seeds" in server
+    assert "FEDERATED RESEARCH SEEDS" in ui
+    assert "RESEARCH_SEED_ONLY" in ui
+    assert "PROVENANCE_REFRESH_REQUIRED" in ui
+    assert "candidate evidence=false" in ui.lower()
+    assert "automatic candidate=false" in ui.lower()
+    assert "Foundry + Evaluator" in ui
+    assert "/admin/ascendancy/federated-seed" not in server
+    assert "/admin/ascendancy/federated-seed" not in ui
