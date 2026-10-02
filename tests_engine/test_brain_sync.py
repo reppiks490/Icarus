@@ -8,6 +8,7 @@ from icarus_engine.brain_sync import (
     REMOTE_ROOT,
     _REMOTE_CONSUMER_CONTRACT_API,
     _REMOTE_PRODUCER_CONTRACT_API,
+    _REMOTE_PEER_PACKET_API,
     _git_blob_sha,
 )
 
@@ -65,6 +66,22 @@ def _consumer_contract(**overrides):
             "production_decision_authorized": False,
             "automatic_execution_authority": False,
         },
+        "peer_packet": {
+            "path": "automation_intelligence/interrepo/latest.json",
+            "schema_version": "icarus-peer-intelligence-packet-v1",
+            "authority": "OBSERVE",
+            "source_commit_required": True,
+            "git_blob_verification_required": True,
+            "required_for_event_ingest": False,
+            "semantics": {
+                "lane_state_is_foreign_evidence": True,
+                "durability_only_is_not_substantive_research_evidence": True,
+                "remote_sibling_state_is_never_inferred": True,
+                "automatic_model_promotion": False,
+                "production_decision_authorized": False,
+                "automatic_execution_authority": False,
+            },
+        },
         "event_validation": {
             "required_fields_source": "automation_intelligence/mcp_interface/contract.json#required_fields",
             "strict_v1_required_fields": True,
@@ -104,12 +121,113 @@ def _producer_contract():
     }
 
 
+def _peer_packet(**overrides):
+    packet = {
+        "schema_version": "icarus-peer-intelligence-packet-v1",
+        "source_repository": "reppiks490/Icarus-engine",
+        "source_commit": "c" * 40,
+        "observed_at": "2026-10-02T20:43:00Z",
+        "source_contracts": {
+            "control_plane": "automation_intelligence/restored_five_native/control_plane.json",
+            "agent_fabric": "automation_intelligence/agent_fabric/manifest.json",
+            "mcp_interface": "automation_intelligence/mcp_interface/contract.json",
+        },
+        "control_plane": {
+            "schema_version": "restored-five-native-control-v1",
+            "control_plane_id": "restored-five-native-liveness-v1",
+            "timezone": "America/Chicago",
+            "grace_minutes": 8,
+            "catchup_horizon_minutes": 180,
+        },
+        "lanes": [
+            {
+                "name": "robustness_guardian",
+                "title": "Robustness Guardian Evolution",
+                "minute": 5,
+                "scheduler_id": "rg-1",
+                "run_prefix": "robustness-guardian",
+                "worker_repository": "reppiks490/Icarus-engine",
+                "worker_root": "automation_intelligence/agent_fabric/robustness_guardian",
+                "run_id": "robustness-guardian-20261002T200500Z",
+                "run_status": "RUN_PERSISTED",
+                "finalization_commit_sha": "d" * 40,
+                "completion_semantics": "DURABILITY_RECEIPT_ONLY",
+                "worker_execution_observed": False,
+                "evidence_status": "DURABILITY_ONLY",
+                "substantive_research_evidence": False,
+                "execution_authorized": False,
+            },
+            {
+                "name": "flow_microstructure",
+                "title": "Microstructure Sensor Grid",
+                "minute": 35,
+                "scheduler_id": "flow-1",
+                "run_prefix": "flow",
+                "worker_repository": "reppiks490/Icarus-engine",
+                "worker_root": "automation_intelligence/flow",
+                "run_id": "flow-20261002T203500Z",
+                "run_status": "RUN_PERSISTED",
+                "finalization_commit_sha": "e" * 40,
+                "completion_semantics": "WORKER_EVIDENCE",
+                "worker_execution_observed": True,
+                "evidence_status": "PERSISTED_WORKER_EVIDENCE",
+                "substantive_research_evidence": True,
+                "execution_authorized": False,
+            },
+            {
+                "name": "advanced_csv",
+                "title": "Advanced CSV Data Collector",
+                "minute": 15,
+                "scheduler_id": "csv-1",
+                "run_prefix": "advanced-csv",
+                "worker_repository": "reppiks490/icarus-csv-evidence-lab",
+                "worker_root": "automation_intelligence/advanced_csv",
+                "run_id": None,
+                "run_status": None,
+                "finalization_commit_sha": None,
+                "completion_semantics": None,
+                "worker_execution_observed": None,
+                "evidence_status": "REMOTE_PEER_UNREAD",
+                "substantive_research_evidence": False,
+                "execution_authorized": False,
+            },
+        ],
+        "mcp_interface": {
+            "schema_version": "icarus-mcp-interface-contract-v1",
+            "event_root": "automation_intelligence/mcp_interface/events",
+            "ui_api": "/api/mcp/control",
+            "ui_tab": "MCP / Automation",
+            "source_of_truth": "LOCAL_REPOSITORY_SNAPSHOT",
+            "trading_execution_authorized": False,
+        },
+        "truth_contract": {
+            "foreign_repository_state_is_evidence_not_native_truth": True,
+            "durability_receipt_is_not_substantive_worker_evidence": True,
+            "remote_sibling_state_is_never_inferred": True,
+            "exact_source_commit_required": True,
+            "execution_authority_never_transfers_between_repositories": True,
+        },
+        "execution_authorized": False,
+        "production_decision_authorized": False,
+        "peer_write_authorized": False,
+    }
+    packet.update(overrides)
+    unsigned = dict(packet)
+    unsigned.pop("packet_id", None)
+    packet["packet_id"] = __import__("hashlib").sha256(
+        json.dumps(unsigned, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
+    ).hexdigest()
+    return packet
+
+
 def _fixture(
     payload,
     *,
     consumer=None,
     corrupt_event_blob=False,
     corrupt_consumer_blob=False,
+    corrupt_peer_blob=False,
+    peer=None,
     allow_legacy_event=False,
 ):
     event_raw = (json.dumps(payload, sort_keys=True) + "\n").encode()
@@ -129,12 +247,16 @@ def _fixture(
         consumer_doc = json.loads(json.dumps(consumer_doc))
         consumer_doc["event_validation"]["legacy_relaxed_blob_shas"] = [event_sha]
     producer_doc = _producer_contract()
+    peer_doc = peer or _peer_packet()
     consumer_raw = (json.dumps(consumer_doc, sort_keys=True) + "\n").encode()
     producer_raw = (json.dumps(producer_doc, sort_keys=True) + "\n").encode()
+    peer_raw = (json.dumps(peer_doc, sort_keys=True) + "\n").encode()
     consumer_sha = _git_blob_sha(consumer_raw)
     producer_sha = _git_blob_sha(producer_raw)
+    peer_sha = _git_blob_sha(peer_raw)
     consumer_url = "https://api.github.test/consumer-contract"
     producer_url = "https://api.github.test/producer-contract"
+    peer_url = "https://api.github.test/peer-packet"
 
     def fetch_json(requested):
         if requested == _REMOTE_CONSUMER_CONTRACT_API:
@@ -145,6 +267,12 @@ def _fixture(
             }
         if requested == _REMOTE_PRODUCER_CONTRACT_API:
             return {"type": "file", "sha": producer_sha, "url": producer_url}
+        if requested == _REMOTE_PEER_PACKET_API:
+            return {
+                "type": "file",
+                "sha": "f" * 40 if corrupt_peer_blob else peer_sha,
+                "url": peer_url,
+            }
         return listing
 
     def fetch_bytes(requested):
@@ -154,6 +282,8 @@ def _fixture(
             return consumer_raw
         if requested == producer_url:
             return producer_raw
+        if requested == peer_url:
+            return peer_raw
         return b""
 
     return {
@@ -164,6 +294,7 @@ def _fixture(
         "listing": listing,
         "consumer_sha": consumer_sha,
         "producer_sha": producer_sha,
+        "peer_sha": peer_sha,
         "fetch_json": fetch_json,
         "fetch_bytes": fetch_bytes,
     }
@@ -187,6 +318,13 @@ def test_remote_sync_ingests_custom_agent_and_owned_subsystem_events(tmp_path):
     assert status["truth_contract"]["federation_schema"] == "icarus-engine-brain-federation-v1"
     assert status["truth_contract"]["event_records"] == "RESEARCH_OBSERVABILITY_ONLY"
     assert status["truth_contract"]["automatic_execution_authority"] is False
+    assert status["truth_contract"]["peer_packet_schema"] == "icarus-peer-intelligence-packet-v1"
+    assert status["peer_packet_status"] == "green"
+    assert status["peer_packet_blob_sha"] == fixture["peer_sha"]
+    assert status["peer_source_commit"] == "c" * 40
+    assert status["peer_substantive_lane_count"] == 1
+    assert status["peer_durability_only_lane_count"] == 1
+    assert len(status["peer_lanes"]) == 3
     assert status["execution_authorized"] is False
 
     snap = brain_snapshot(tmp_path, remote_sync=status)
@@ -322,3 +460,103 @@ def test_remote_sync_allows_only_exact_legacy_blob_exception(tmp_path):
         for event in events
     )
 
+def test_remote_sync_rejects_peer_packet_blob_substitution_without_blocking_event_validation(tmp_path):
+    fixture = _fixture(_remote_event(), corrupt_peer_blob=True)
+    sync = BrainRemoteSync(
+        tmp_path,
+        interval_seconds=60,
+        fetch_json=fixture["fetch_json"],
+        fetch_bytes=fixture["fetch_bytes"],
+    )
+    status = sync.sync_once()
+    assert status["status"] == "degraded"
+    assert status["peer_packet_status"] == "degraded"
+    assert status["peer_lanes"] == []
+    assert status["ingested_total"] == 1
+    assert "peer packet Git blob SHA mismatch" in status["last_error"]
+
+
+def test_remote_sync_rejects_peer_packet_authority_escalation(tmp_path):
+    packet = _peer_packet(execution_authorized=True)
+    fixture = _fixture(_remote_event(), peer=packet)
+    sync = BrainRemoteSync(
+        tmp_path,
+        interval_seconds=60,
+        fetch_json=fixture["fetch_json"],
+        fetch_bytes=fixture["fetch_bytes"],
+    )
+    status = sync.sync_once()
+    assert status["status"] == "degraded"
+    assert status["peer_packet_status"] == "degraded"
+    assert status["peer_lanes"] == []
+    assert status["ingested_total"] == 1
+    assert "peer packet attempts authority escalation" in status["last_error"]
+
+
+def test_remote_sync_rejects_peer_lane_that_conflates_durability_with_substantive_evidence(tmp_path):
+    packet = _peer_packet()
+    packet["lanes"][0]["substantive_research_evidence"] = True
+    unsigned = dict(packet)
+    unsigned.pop("packet_id", None)
+    packet["packet_id"] = __import__("hashlib").sha256(
+        json.dumps(unsigned, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
+    ).hexdigest()
+    fixture = _fixture(_remote_event(), peer=packet)
+    sync = BrainRemoteSync(
+        tmp_path,
+        interval_seconds=60,
+        fetch_json=fixture["fetch_json"],
+        fetch_bytes=fixture["fetch_bytes"],
+    )
+    status = sync.sync_once()
+    assert status["status"] == "degraded"
+    assert status["peer_packet_status"] == "degraded"
+    assert status["peer_substantive_lane_count"] == 0
+    assert "claims substantive evidence without observed worker evidence" in status["last_error"]
+
+def _rehash_peer_packet(packet):
+    unsigned = dict(packet)
+    unsigned.pop("packet_id", None)
+    packet["packet_id"] = __import__("hashlib").sha256(
+        json.dumps(unsigned, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
+    ).hexdigest()
+    return packet
+
+
+def test_remote_sync_rejects_peer_packet_source_contract_substitution(tmp_path):
+    packet = _peer_packet()
+    packet["source_contracts"]["control_plane"] = "automation_intelligence/fake-control.json"
+    _rehash_peer_packet(packet)
+    fixture = _fixture(_remote_event(), peer=packet)
+    sync = BrainRemoteSync(
+        tmp_path,
+        interval_seconds=60,
+        fetch_json=fixture["fetch_json"],
+        fetch_bytes=fixture["fetch_bytes"],
+    )
+    status = sync.sync_once()
+    assert status["status"] == "degraded"
+    assert status["peer_packet_status"] == "degraded"
+    assert status["peer_lanes"] == []
+    assert "source contracts mismatch" in status["last_error"]
+
+
+def test_remote_sync_rejects_invented_foreign_sibling_lane_state(tmp_path):
+    packet = _peer_packet()
+    csv_lane = next(row for row in packet["lanes"] if row["name"] == "advanced_csv")
+    csv_lane["evidence_status"] = "PERSISTED_WORKER_EVIDENCE"
+    csv_lane["worker_execution_observed"] = True
+    csv_lane["substantive_research_evidence"] = True
+    _rehash_peer_packet(packet)
+    fixture = _fixture(_remote_event(), peer=packet)
+    sync = BrainRemoteSync(
+        tmp_path,
+        interval_seconds=60,
+        fetch_json=fixture["fetch_json"],
+        fetch_bytes=fixture["fetch_bytes"],
+    )
+    status = sync.sync_once()
+    assert status["status"] == "degraded"
+    assert status["peer_packet_status"] == "degraded"
+    assert status["peer_lanes"] == []
+    assert "invents state for a foreign sibling repository" in status["last_error"]

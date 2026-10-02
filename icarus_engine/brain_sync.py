@@ -25,12 +25,16 @@ REMOTE_REF = "main"
 REMOTE_ROOT = "automation_intelligence/mcp_interface/events"
 REMOTE_CONSUMER_CONTRACT = "automation_intelligence/mcp_interface/icarus_consumer_contract.json"
 REMOTE_PRODUCER_CONTRACT = "automation_intelligence/mcp_interface/contract.json"
+REMOTE_PEER_PACKET = "automation_intelligence/interrepo/latest.json"
 _REMOTE_API = f"https://api.github.com/repos/{REMOTE_REPOSITORY}/contents/{REMOTE_ROOT}?ref={REMOTE_REF}"
 _REMOTE_CONSUMER_CONTRACT_API = (
     f"https://api.github.com/repos/{REMOTE_REPOSITORY}/contents/{REMOTE_CONSUMER_CONTRACT}?ref={REMOTE_REF}"
 )
 _REMOTE_PRODUCER_CONTRACT_API = (
     f"https://api.github.com/repos/{REMOTE_REPOSITORY}/contents/{REMOTE_PRODUCER_CONTRACT}?ref={REMOTE_REF}"
+)
+_REMOTE_PEER_PACKET_API = (
+    f"https://api.github.com/repos/{REMOTE_REPOSITORY}/contents/{REMOTE_PEER_PACKET}?ref={REMOTE_REF}"
 )
 
 SOURCE_TO_AGENT = {
@@ -94,6 +98,14 @@ def _default_state(interval_seconds: int) -> dict[str, Any]:
         "rejected_total": 0,
         "last_ingested": [],
         "processed_blob_shas": [],
+        "peer_packet_status": "not_started",
+        "peer_packet_blob_sha": None,
+        "peer_packet_id": None,
+        "peer_source_commit": None,
+        "peer_observed_at": None,
+        "peer_lanes": [],
+        "peer_substantive_lane_count": 0,
+        "peer_durability_only_lane_count": 0,
         "consumer_contract_blob_sha": None,
         "producer_contract_blob_sha": None,
         "truth_contract": {
@@ -108,6 +120,8 @@ def _default_state(interval_seconds: int) -> dict[str, Any]:
             "automatic_execution_authority": False,
             "strict_event_contract": False,
             "legacy_exception_count": 0,
+            "peer_packet_schema": None,
+            "peer_packet_authority": "OBSERVE",
         },
         "execution_authorized": False,
         "production_decision_authorized": False,
@@ -273,6 +287,39 @@ def _normalize_federation_contract(
         if semantics.get(key) is not False:
             raise ValueError(f"Icarus-engine Brain federation attempts authority escalation: {key}")
 
+    peer_packet = consumer.get("peer_packet")
+    if not isinstance(peer_packet, Mapping):
+        raise ValueError("Icarus-engine Brain federation peer packet contract is missing")
+    if peer_packet.get("path") != REMOTE_PEER_PACKET:
+        raise ValueError("Icarus-engine Brain federation peer packet path mismatch")
+    if peer_packet.get("schema_version") != "icarus-peer-intelligence-packet-v1":
+        raise ValueError("Icarus-engine Brain federation peer packet schema mismatch")
+    if peer_packet.get("authority") != "OBSERVE":
+        raise ValueError("Icarus-engine Brain federation peer packet authority must remain OBSERVE")
+    if peer_packet.get("source_commit_required") is not True:
+        raise ValueError("Icarus-engine Brain federation peer packet must require source commit")
+    if peer_packet.get("git_blob_verification_required") is not True:
+        raise ValueError("Icarus-engine Brain federation peer packet must require Git blob verification")
+    if peer_packet.get("required_for_event_ingest") is not False:
+        raise ValueError("peer packet must not become an authority gate for independent event ingest")
+    peer_semantics = peer_packet.get("semantics")
+    if not isinstance(peer_semantics, Mapping):
+        raise ValueError("Icarus-engine Brain federation peer packet semantics are missing")
+    for key in (
+        "lane_state_is_foreign_evidence",
+        "durability_only_is_not_substantive_research_evidence",
+        "remote_sibling_state_is_never_inferred",
+    ):
+        if peer_semantics.get(key) is not True:
+            raise ValueError(f"Icarus-engine Brain federation peer packet truth rule missing: {key}")
+    for key in (
+        "automatic_model_promotion",
+        "production_decision_authorized",
+        "automatic_execution_authority",
+    ):
+        if peer_semantics.get(key) is not False:
+            raise ValueError(f"Icarus-engine Brain federation peer packet attempts authority escalation: {key}")
+
     event_validation = consumer.get("event_validation")
     if not isinstance(event_validation, Mapping):
         raise ValueError("Icarus-engine Brain federation event validation policy is missing")
@@ -330,9 +377,174 @@ def _normalize_federation_contract(
             "automatic_execution_authority": False,
             "strict_event_contract": True,
             "legacy_exception_count": len(legacy_blobs),
+            "peer_packet_schema": peer_packet.get("schema_version"),
+            "peer_packet_authority": peer_packet.get("authority"),
         },
         "execution_authorized": False,
         "production_decision_authorized": False,
+    }
+
+
+def _normalize_peer_packet(
+    packet: Mapping[str, Any],
+    *,
+    blob_sha: str,
+) -> dict[str, Any]:
+    if packet.get("schema_version") != "icarus-peer-intelligence-packet-v1":
+        raise ValueError("unsupported Icarus-engine peer packet schema")
+    if packet.get("source_repository") != REMOTE_REPOSITORY:
+        raise ValueError("Icarus-engine peer packet repository identity mismatch")
+    source_commit = str(packet.get("source_commit") or "").lower()
+    if not _is_sha(source_commit):
+        raise ValueError("Icarus-engine peer packet source_commit is invalid")
+    observed_at = packet.get("observed_at")
+    if not isinstance(observed_at, str) or not observed_at.strip():
+        raise ValueError("Icarus-engine peer packet observed_at is missing")
+    try:
+        parsed = datetime.fromisoformat(observed_at.replace("Z", "+00:00"))
+    except ValueError as ex:
+        raise ValueError("Icarus-engine peer packet observed_at is invalid") from ex
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        raise ValueError("Icarus-engine peer packet observed_at must be timezone-aware")
+
+    for key in ("execution_authorized", "production_decision_authorized", "peer_write_authorized"):
+        if packet.get(key) is not False:
+            raise ValueError(f"Icarus-engine peer packet attempts authority escalation: {key}")
+
+    source_contracts = packet.get("source_contracts")
+    expected_contracts = {
+        "control_plane": "automation_intelligence/restored_five_native/control_plane.json",
+        "agent_fabric": "automation_intelligence/agent_fabric/manifest.json",
+        "mcp_interface": "automation_intelligence/mcp_interface/contract.json",
+    }
+    if not isinstance(source_contracts, Mapping) or dict(source_contracts) != expected_contracts:
+        raise ValueError("Icarus-engine peer packet source contracts mismatch")
+
+    control_plane = packet.get("control_plane")
+    if not isinstance(control_plane, Mapping):
+        raise ValueError("Icarus-engine peer packet control plane is missing")
+    if control_plane.get("schema_version") != "restored-five-native-control-v1":
+        raise ValueError("Icarus-engine peer packet control-plane schema mismatch")
+    if control_plane.get("control_plane_id") != "restored-five-native-liveness-v1":
+        raise ValueError("Icarus-engine peer packet control-plane identity mismatch")
+    if control_plane.get("timezone") != "America/Chicago":
+        raise ValueError("Icarus-engine peer packet control-plane timezone mismatch")
+
+    mcp_interface = packet.get("mcp_interface")
+    if not isinstance(mcp_interface, Mapping):
+        raise ValueError("Icarus-engine peer packet MCP interface is missing")
+    if mcp_interface.get("schema_version") != "icarus-mcp-interface-contract-v1":
+        raise ValueError("Icarus-engine peer packet MCP interface schema mismatch")
+    if mcp_interface.get("event_root") != REMOTE_ROOT:
+        raise ValueError("Icarus-engine peer packet MCP event root mismatch")
+    if mcp_interface.get("trading_execution_authorized") is not False:
+        raise ValueError("Icarus-engine peer packet MCP interface attempts trading authority")
+
+    truth = packet.get("truth_contract")
+    if not isinstance(truth, Mapping):
+        raise ValueError("Icarus-engine peer packet truth contract is missing")
+    for key in (
+        "foreign_repository_state_is_evidence_not_native_truth",
+        "durability_receipt_is_not_substantive_worker_evidence",
+        "remote_sibling_state_is_never_inferred",
+        "exact_source_commit_required",
+        "execution_authority_never_transfers_between_repositories",
+    ):
+        if truth.get(key) is not True:
+            raise ValueError(f"Icarus-engine peer packet truth invariant failed: {key}")
+
+    claimed_id = str(packet.get("packet_id") or "").lower()
+    if len(claimed_id) != 64 or any(ch not in "0123456789abcdef" for ch in claimed_id):
+        raise ValueError("Icarus-engine peer packet_id is invalid")
+    unsigned = dict(packet)
+    unsigned.pop("packet_id", None)
+    computed_id = hashlib.sha256(
+        json.dumps(
+            unsigned,
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        ).encode("utf-8")
+    ).hexdigest()
+    if claimed_id != computed_id:
+        raise ValueError("Icarus-engine peer packet_id mismatch")
+
+    lanes_raw = packet.get("lanes")
+    if not isinstance(lanes_raw, list):
+        raise ValueError("Icarus-engine peer packet lanes must be an array")
+    allowed_status = {
+        "UNMEASURED",
+        "REMOTE_PEER_UNREAD",
+        "UNAVAILABLE",
+        "DURABILITY_ONLY",
+        "PERSISTED_WORKER_EVIDENCE",
+        "PERSISTED_UNCLASSIFIED",
+        "INCOMPLETE_OR_UNVERIFIED",
+    }
+    lanes: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for index, raw in enumerate(lanes_raw):
+        if not isinstance(raw, Mapping):
+            raise ValueError(f"Icarus-engine peer lane {index} is not an object")
+        name = str(raw.get("name") or "").strip()
+        if not name or name in seen:
+            raise ValueError("Icarus-engine peer lane names must be non-empty and unique")
+        seen.add(name)
+        status = str(raw.get("evidence_status") or "").strip().upper()
+        if status not in allowed_status:
+            raise ValueError(f"Icarus-engine peer lane {name} has unsupported evidence status")
+        worker_repository = str(raw.get("worker_repository") or "").strip()
+        if not worker_repository:
+            raise ValueError(f"Icarus-engine peer lane {name} worker repository is missing")
+        if worker_repository != REMOTE_REPOSITORY and status != "REMOTE_PEER_UNREAD":
+            raise ValueError(
+                f"Icarus-engine peer lane {name} invents state for a foreign sibling repository"
+            )
+        if raw.get("execution_authorized") is not False:
+            raise ValueError(f"Icarus-engine peer lane {name} attempts execution authority")
+        substantive = raw.get("substantive_research_evidence")
+        if type(substantive) is not bool:
+            raise ValueError(f"Icarus-engine peer lane {name} substantive flag must be Boolean")
+        if substantive and (
+            status != "PERSISTED_WORKER_EVIDENCE"
+            or raw.get("worker_execution_observed") is not True
+        ):
+            raise ValueError(
+                f"Icarus-engine peer lane {name} claims substantive evidence without observed worker evidence"
+            )
+        if status in {"DURABILITY_ONLY", "REMOTE_PEER_UNREAD", "UNAVAILABLE"} and substantive:
+            raise ValueError(
+                f"Icarus-engine peer lane {name} conflates durability/unavailable state with substantive evidence"
+            )
+        lanes.append({
+            "name": name,
+            "title": raw.get("title"),
+            "scheduler_id": raw.get("scheduler_id"),
+            "run_id": raw.get("run_id"),
+            "run_status": raw.get("run_status"),
+            "worker_repository": worker_repository,
+            "evidence_status": status,
+            "worker_execution_observed": raw.get("worker_execution_observed"),
+            "substantive_research_evidence": substantive,
+            "execution_authorized": False,
+        })
+
+    peer_blob = str(blob_sha or "").lower()
+    if not _is_sha(peer_blob):
+        raise ValueError("Icarus-engine peer packet Git blob identity is invalid")
+    return {
+        "peer_packet_status": "green",
+        "peer_packet_blob_sha": peer_blob,
+        "peer_packet_id": claimed_id,
+        "peer_source_commit": source_commit,
+        "peer_observed_at": parsed.astimezone(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "peer_lanes": lanes,
+        "peer_substantive_lane_count": sum(
+            1 for lane in lanes if lane["substantive_research_evidence"]
+        ),
+        "peer_durability_only_lane_count": sum(
+            1 for lane in lanes if lane["evidence_status"] == "DURABILITY_ONLY"
+        ),
     }
 
 
@@ -452,6 +664,35 @@ class BrainRemoteSync:
                     )
                 )
 
+                peer_error = None
+                try:
+                    peer_meta = self._fetch_json(_REMOTE_PEER_PACKET_API)
+                    if not isinstance(peer_meta, Mapping):
+                        raise ValueError("peer packet metadata is not an object")
+                    peer_blob = str(peer_meta.get("sha") or "").lower()
+                    peer_url = str(peer_meta.get("url") or "")
+                    if not _is_sha(peer_blob) or not peer_url:
+                        raise ValueError("peer packet has invalid GitHub blob metadata")
+                    peer_raw = self._fetch_bytes(peer_url)
+                    if _git_blob_sha(peer_raw) != peer_blob:
+                        raise ValueError("peer packet Git blob SHA mismatch")
+                    peer_payload = json.loads(peer_raw.decode("utf-8"))
+                    if not isinstance(peer_payload, Mapping):
+                        raise ValueError("peer packet payload is not an object")
+                    state.update(_normalize_peer_packet(peer_payload, blob_sha=peer_blob))
+                except Exception as ex:
+                    state.update({
+                        "peer_packet_status": "degraded",
+                        "peer_packet_blob_sha": None,
+                        "peer_packet_id": None,
+                        "peer_source_commit": None,
+                        "peer_observed_at": None,
+                        "peer_lanes": [],
+                        "peer_substantive_lane_count": 0,
+                        "peer_durability_only_lane_count": 0,
+                    })
+                    peer_error = f"{type(ex).__name__}: {ex}"[:1000]
+
                 listing = self._fetch_json(_REMOTE_API)
                 if not isinstance(listing, list):
                     raise ValueError("GitHub event directory response is not a list")
@@ -565,6 +806,8 @@ class BrainRemoteSync:
                     errors.append(f"{path}: {type(ex).__name__}: {ex}")
                     state["rejected_total"] = int(state.get("rejected_total", 0)) + 1
 
+            if peer_error:
+                errors.append(f"peer packet: {peer_error}")
             state["processed_blob_shas"] = sorted(processed)[-5000:]
             state["last_ingested"] = ingested_paths[-20:]
             state["last_success_at"] = _utc_now()
