@@ -1889,3 +1889,205 @@ def test_manifest_report_linkage_never_promotes_to_runtime_strategy_configuratio
     assert state["artifact_scoped_count"] == 1
     assert len(state["by_artifact_configuration"]) == 1
     assert state["by_artifact_configuration"][0]["artifact_configuration_fingerprint"] == "f" * 64
+
+
+def _strategy_report_xlsx(path: Path, *, include_trade_sheet: bool = True) -> Path:
+    from openpyxl import Workbook
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    wb = Workbook()
+    overview = wb.active
+    overview.title = "Overview"
+    overview.append(["THE PULSE OF ICARUS", "Strategy report"])
+    overview.append(["Net profit", 12345.0])
+
+    if include_trade_sheet:
+        ws = wb.create_sheet("List of trades")
+        ws.append(["TradingView Strategy Tester export"])
+        ws.append([
+            "Trade number", "Type", "Date and time", "Signal",
+            "Price USD", "Size (qty)", "Net PnL USD",
+        ])
+        ws.append([1, "Exit long", datetime(2024, 6, 3, 11, 0), "L_TP", 101.0, 1, 50.0])
+        ws.append([1, "Entry long", datetime(2024, 6, 3, 10, 20), "Long", 100.0, 1, 50.0])
+        ws.append([2, "Exit short", datetime(2024, 6, 3, 12, 20), "S_SL", 103.0, 1, -75.0])
+        ws.append([2, "Entry short", datetime(2024, 6, 3, 11, 40), "Short", 102.0, 1, -75.0])
+    wb.save(path)
+    return path
+
+
+def test_read_tv_trades_xlsx_detects_trade_sheet_and_native_datetimes(tmp_path):
+    from icarus_engine.parity import read_tv_trades_xlsx
+
+    path = _strategy_report_xlsx(tmp_path / "report.xlsx")
+    trades = read_tv_trades_xlsx(str(path))
+    assert len(trades) == 2
+    assert trades[0]["dir"] == 1
+    assert trades[0]["entry_px"] == pytest.approx(100.0)
+    assert trades[0]["qty"] == pytest.approx(1.0)
+    assert trades[0]["pieces"][0]["px"] == pytest.approx(101.0)
+    assert trades[0]["pieces"][0]["pnl"] == pytest.approx(50.0)
+    assert datetime.fromtimestamp(trades[0]["entry_ts"], tz=timezone.utc) == datetime(
+        2024, 6, 3, 10, 20, tzinfo=timezone.utc
+    )
+    assert trades[1]["dir"] == -1
+
+
+def test_unmatched_strategy_report_xlsx_becomes_realized_experience(tmp_path):
+    import hashlib
+    from icarus_engine.learning_fabric import LearningFabric
+
+    report = _strategy_report_xlsx(
+        tmp_path / "history" / "drop" / "THE_PULSE_OF_ICARUS_CME_MINI_NQ1!_2019_2026.xlsx"
+    )
+    report_sha = hashlib.sha256(report.read_bytes()).hexdigest()
+    _write_intake_manifest(
+        tmp_path / "history" / "EXPORT_INTAKE_MANIFEST.csv",
+        [{
+            "sha256": report_sha,
+            "canonical_filename": report.name,
+            "format": "xlsx",
+            "artifact_class": "strategy_report_xlsx",
+            "symbol": "CME_MINI:NQ1!",
+            "timeframe": "20 minutes",
+            "chart_type": "Heikin Ashi",
+            "rows": 4,
+            "last_trade_number": 2,
+            "net_profit_usd": "12345.0",
+            "max_drawdown_intrabar_usd": "500.0",
+            "notes": "commission=2; slippage=0 ticks; execution=On bar close; order_delay=One tick",
+        }],
+    )
+
+    fabric = LearningFabric(tmp_path)
+    scan = fabric.scan_history()
+    assert scan["files_seen"] == 1
+    dataset = fabric.dataset(scan["dataset_ids"][0])
+    assert dataset["artifact_class"] == "strategy_report_xlsx"
+    assert dataset["asset"] == "NQ"
+    assert dataset["chart_type"] == "20m"
+    assert dataset["rows"] == 4
+
+    result = fabric.backfill_dataset(dataset["dataset_id"])
+    assert result["status"] == "complete"
+    report_run = result["runs"][0]["report"]
+    assert report_run["status"] == "imported"
+    assert report_run["experience_count"] == 2
+    assert report_run["source"] == "historical_strategy_report_xlsx"
+    assert report_run["execution_authorized"] is False
+
+    state = fabric.experience_state()
+    assert state["count"] == 2
+    assert state["by_configuration"] == []
+    assert state["artifact_scoped_count"] == 2
+    assert len(state["by_artifact_configuration"]) == 1
+    card = state["by_artifact_configuration"][0]
+    assert card["strategy_report_sha256"] == report_sha
+    assert card["strategy_report_filename"] == report.name
+    assert card["timeframe"] == "20m"
+    assert card["chart_type"] == "Heikin Ashi"
+    assert card["provenance_quality"] == "DIRECT_STRATEGY_REPORT_XLSX_TRADE_SHEET"
+
+    rows = fabric._conn.execute(
+        "SELECT source,metadata_json FROM experiences ORDER BY experience_id"
+    ).fetchall()
+    assert {row["source"] for row in rows} == {"historical_strategy_report_xlsx"}
+    for row in rows:
+        meta = json.loads(row["metadata_json"])
+        assert meta["strategy_report_sha256"] == report_sha
+        assert meta["provenance_quality"] == "DIRECT_STRATEGY_REPORT_XLSX_TRADE_SHEET"
+        assert len(meta["artifact_configuration_fingerprint"]) == 64
+        assert "strategy_fingerprint" not in meta
+
+
+@pytest.mark.parametrize("first_class", ["strategy_report_xlsx", "trade_list"])
+def test_csv_xlsx_twins_never_double_count_realized_experience(tmp_path, first_class):
+    import hashlib
+    from icarus_engine.learning_fabric import LearningFabric
+
+    report = _strategy_report_xlsx(
+        tmp_path / "history" / "drop" / "THE_PULSE_OF_ICARUS_CME_MINI_NQ1!_2026.xlsx"
+    )
+    trade = _trade_list(
+        tmp_path / "history" / "drop" / "THE_PULSE_OF_ICARUS_CME_MINI_NQ1!_2026.csv"
+    )
+    report_sha = hashlib.sha256(report.read_bytes()).hexdigest()
+    trade_sha = hashlib.sha256(trade.read_bytes()).hexdigest()
+    _write_intake_manifest(
+        tmp_path / "history" / "EXPORT_INTAKE_MANIFEST.csv",
+        [
+            {
+                "sha256": trade_sha,
+                "canonical_filename": trade.name,
+                "format": "csv",
+                "artifact_class": "trade_list",
+                "symbol": "CME_MINI:NQ1!",
+                "rows": 4,
+                "last_trade_number": 2,
+            },
+            {
+                "sha256": report_sha,
+                "canonical_filename": report.name,
+                "format": "xlsx",
+                "artifact_class": "strategy_report_xlsx",
+                "symbol": "CME_MINI:NQ1!",
+                "timeframe": "20 minutes",
+                "chart_type": "Heikin Ashi",
+                "rows": 4,
+                "last_trade_number": 2,
+                "notes": "commission=2; slippage=0 ticks; execution=On bar close",
+            },
+        ],
+    )
+
+    fabric = LearningFabric(tmp_path)
+    scan = fabric.scan_history()
+    datasets = [fabric.dataset(did) for did in scan["dataset_ids"]]
+    by_class = {row["artifact_class"]: row for row in datasets}
+    assert set(by_class) == {"trade_list", "strategy_report_xlsx"}
+
+    second_class = "trade_list" if first_class == "strategy_report_xlsx" else "strategy_report_xlsx"
+    first = fabric.backfill_dataset(by_class[first_class]["dataset_id"])
+    assert first["runs"][0]["report"]["experience_count"] == 2
+    assert fabric.experience_state()["count"] == 2
+
+    second = fabric.backfill_dataset(by_class[second_class]["dataset_id"])
+    assert second["runs"][0]["report"]["deduplicated_by_strategy_report"] is True
+    assert second["runs"][0]["report"]["experience_count"] == 0
+    assert fabric.experience_state()["count"] == 2
+
+
+def test_strategy_report_xlsx_without_trade_table_fails_closed(tmp_path):
+    import hashlib
+    from icarus_engine.learning_fabric import LearningFabric
+
+    report = _strategy_report_xlsx(
+        tmp_path / "history" / "drop" / "NO_TRADES.xlsx",
+        include_trade_sheet=False,
+    )
+    report_sha = hashlib.sha256(report.read_bytes()).hexdigest()
+    _write_intake_manifest(
+        tmp_path / "history" / "EXPORT_INTAKE_MANIFEST.csv",
+        [{
+            "sha256": report_sha,
+            "canonical_filename": report.name,
+            "format": "xlsx",
+            "artifact_class": "strategy_report_xlsx",
+            "symbol": "CME_MINI:NQ1!",
+            "timeframe": "20 minutes",
+            "chart_type": "Candles",
+            "rows": 0,
+            "last_trade_number": 0,
+        }],
+    )
+
+    fabric = LearningFabric(tmp_path)
+    scan = fabric.scan_history()
+    dataset = fabric.dataset(scan["dataset_ids"][0])
+    result = fabric.backfill_dataset(dataset["dataset_id"])
+    assert result["status"] == "skipped"
+    report_run = result["runs"][0]["report"]
+    assert report_run["status"] == "unavailable_trade_sheet"
+    assert report_run["experience_count"] == 0
+    assert report_run["execution_authorized"] is False
+    assert fabric.experience_state()["count"] == 0
