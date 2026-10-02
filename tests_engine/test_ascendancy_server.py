@@ -368,3 +368,59 @@ def test_unknown_event_with_assigned_cause_fails_before_mutation(ascendancy_geno
     assert code == 400
     assert "cause must remain null" in body["detail"]
     assert srv.ascendancy_unknowns.snapshot()["event_count"] == before
+
+
+def test_mechanism_lab_api_is_authenticated_candidate_bound_and_research_only(ascendancy_genome_http):
+    port, srv, request = ascendancy_genome_http
+    paused_before = port.paused
+    runners_before = list(port.runners)
+
+    code, body = request("GET", "/api/ascendancy/mechanisms", auth=False)
+    assert code == 401
+    assert "admin token" in body["detail"]
+
+    unbound = {
+        "candidate_id": "a" * 64,
+        "source_repo": "reppiks490/Icarus",
+        "source_commit": "c" * 40,
+        "evaluation_contract_hash": "b" * 64,
+        "mechanism_key": "time_price_phase",
+        "experiment_kind": "ablation",
+        "target_metric": "incremental_information",
+        "direction": "max",
+        "baseline_value": 0.20,
+        "perturbed_value": 0.10,
+        "context": {"asset": "NQ", "regime": "RTH_HIGH_VOL"},
+        "episode_id": "http-unbound",
+        "related_mechanisms": [],
+        "evidence": ["paired-replay:http"],
+        "observed_at": "2026-10-02T06:30:00Z",
+    }
+    code, body = request("POST", "/admin/ascendancy/mechanism-experiment", body=unbound)
+    assert code == 400
+    assert "unknown candidate" in body["detail"].lower()
+
+    code, registered = request("POST", "/admin/ascendancy/candidate", body=_candidate())
+    assert code == 200, registered
+    candidate = registered["candidate"]
+
+    experiment = dict(unbound)
+    experiment["candidate_id"] = candidate["candidate_id"]
+    experiment["evaluation_contract_hash"] = candidate["evaluation_contract"]["contract_hash"]
+    experiment["episode_id"] = "http-bound"
+    code, saved = request("POST", "/admin/ascendancy/mechanism-experiment", body=experiment)
+    assert code == 200, saved
+    assert saved["trading_state_unchanged"] is True
+    assert saved["experiment"]["causal_proof"] is False
+    assert saved["execution_authorized"] is False
+    assert saved["production_decision_authorized"] is False
+
+    code, snapshot = request("GET", "/api/ascendancy/mechanisms")
+    assert code == 200
+    assert snapshot["experiment_count"] == 1
+    assert snapshot["mechanisms"][0]["classification"] == "UNRESOLVED"
+    assert snapshot["truth_contract"]["mechanism_attribution_is_not_causal_proof"] is True
+
+    assert port.paused is paused_before
+    assert list(port.runners) == runners_before
+    assert srv.ascendancy_mechanisms.snapshot()["experiment_count"] == 1
