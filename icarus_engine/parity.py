@@ -23,22 +23,123 @@ from typing import Any, Dict, List
 from .runtime import AssetRunner
 
 
-def _num(s: str) -> float:
-    s = (s or "").replace(",", "").replace("$", "").replace("%", "").strip()
+def _text_value(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, datetime):
+        dt = value
+        if dt.tzinfo is not None:
+            dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+        return dt.strftime("%Y-%m-%d %H:%M:%S")
+    return str(value).strip()
+
+
+def _num(value: Any) -> float:
+    if isinstance(value, bool):
+        return float("nan")
+    if isinstance(value, (int, float)):
+        return float(value)
+    s = _text_value(value).replace(",", "").replace("$", "").replace("%", "").strip()
     try:
         return float(s)
     except ValueError:
         return float("nan")
 
 
-def _parse_dt(s: str) -> int:
-    s = s.strip()
+def _parse_dt(value: Any) -> int:
+    if isinstance(value, datetime):
+        dt = value
+        if dt.tzinfo is None or dt.utcoffset() is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        else:
+            dt = dt.astimezone(timezone.utc)
+        return int(dt.timestamp())
+    s = _text_value(value)
     for fmt in ("%Y-%m-%d %H:%M", "%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M:%SZ", "%m/%d/%Y %H:%M", "%d.%m.%Y %H:%M"):
         try:
             return int(datetime.strptime(s, fmt).replace(tzinfo=timezone.utc).timestamp())
         except ValueError:
             pass
     raise ValueError(f"unrecognised date: {s!r}")
+
+
+def _trade_columns(keys: List[str]) -> Dict[str, str]:
+    lookup = {str(k).strip().lower(): str(k) for k in keys if str(k or "").strip()}
+
+    def col(*names: str) -> str:
+        for name in names:
+            for lowered, original in lookup.items():
+                if name in lowered:
+                    return original
+        raise KeyError(names)
+
+    return {
+        "no": col("trade #", "trade number", "trade"),
+        "type": col("type"),
+        "dt": col("date"),
+        "signal": col("signal"),
+        "price": col("price"),
+        "qty": col("position size", "size (qty)", "contracts", "qty"),
+        "pnl": col("net p&l usd", "net pnl usd", "net pnl", "profit usd", "profit", "p&l"),
+    }
+
+
+def _read_tv_trade_rows(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    if not rows:
+        return []
+    columns = _trade_columns(list(rows[0].keys()))
+    by_no: Dict[str, Dict[str, Any]] = {}
+    for row in rows:
+        no = _text_value(row.get(columns["no"]))
+        typ = _text_value(row.get(columns["type"])).lower()
+        if not no or not typ:
+            continue
+        trade = by_no.setdefault(no, {"no": no, "dir": 0, "pieces": []})
+        if typ.startswith("entry"):
+            trade["dir"] = 1 if "long" in typ else -1
+            trade["entry_ts"] = _parse_dt(row.get(columns["dt"]))
+            trade["entry_px"] = _num(row.get(columns["price"]))
+            trade["entry_sig"] = _text_value(row.get(columns["signal"]))
+            trade["qty"] = _num(row.get(columns["qty"]))
+        elif typ.startswith("exit"):
+            dt_text = _text_value(row.get(columns["dt"])).lower()
+            sig = _text_value(row.get(columns["signal"]))
+            if dt_text == "open" or sig.lower() == "open":
+                trade["pieces"].append({
+                    "ts": None,
+                    "px": float("nan"),
+                    "sig": "OPEN",
+                    "qty": _num(row.get(columns["qty"])),
+                    "pnl": _num(row.get(columns["pnl"])),
+                })
+                continue
+            trade["pieces"].append({
+                "ts": _parse_dt(row.get(columns["dt"])),
+                "px": _num(row.get(columns["price"])),
+                "sig": sig,
+                "qty": _num(row.get(columns["qty"])),
+                "pnl": _num(row.get(columns["pnl"])),
+            })
+
+    grouped: Dict[tuple, Dict[str, Any]] = {}
+    for trade in by_no.values():
+        if not trade.get("entry_ts"):
+            continue
+        key = (trade["entry_ts"], trade["dir"], round(trade["entry_px"], 4))
+        group = grouped.setdefault(key, {
+            "no": trade["no"],
+            "dir": trade["dir"],
+            "entry_ts": trade["entry_ts"],
+            "entry_px": trade["entry_px"],
+            "entry_sig": trade["entry_sig"],
+            "qty": 0.0,
+            "pieces": [],
+        })
+        group["qty"] += trade["qty"]
+        group["pieces"].extend(trade["pieces"])
+    out = list(grouped.values())
+    out.sort(key=lambda trade: trade["entry_ts"])
+    return out
 
 
 def read_tv_trades(path: str) -> List[Dict[str, Any]]:
@@ -49,42 +150,50 @@ def read_tv_trades(path: str) -> List[Dict[str, Any]]:
 def read_tv_trades_text(text: str) -> List[Dict[str, Any]]:
     import io as _io
     rows = list(csv.DictReader(_io.StringIO(text.lstrip("﻿"))))
-    if not rows:
-        return []
-    keys = {k.lower(): k for k in rows[0].keys()}
+    return _read_tv_trade_rows(rows)
 
-    def col(*names: str) -> str:
-        for n in names:
-            for lk, k in keys.items():
-                if n in lk:
-                    return k
-        raise KeyError(names)
-    c_no, c_type, c_dt, c_sig = col("trade #", "trade number", "trade"), col("type"), col("date"), col("signal")
-    c_px = col("price"); c_qty = col("position size", "size (qty)", "contracts", "qty"); c_pnl = col("net p&l usd", "net pnl usd", "net pnl", "profit usd", "profit", "p&l")
-    # TradingView numbers every partial exit as its own "trade" (TP1 and TP2 of one entry are
-    # trade #2 and #3). Regroup by (entry time, direction, entry price) so one entry = one trade.
-    by_no: Dict[str, Dict[str, Any]] = {}
-    for r in rows:
-        no = r[c_no].strip(); typ = r[c_type].strip().lower()
-        t = by_no.setdefault(no, {"no": no, "dir": 0, "pieces": []})
-        if typ.startswith("entry"):
-            t["dir"] = 1 if "long" in typ else -1
-            t["entry_ts"] = _parse_dt(r[c_dt]); t["entry_px"] = _num(r[c_px]); t["entry_sig"] = r[c_sig].strip(); t["qty"] = _num(r[c_qty])
-        elif typ.startswith("exit"):
-            if r[c_dt].strip().lower() == "open" or r[c_sig].strip().lower() == "open":     # still-open piece at export time
-                t["pieces"].append({"ts": None, "px": float("nan"), "sig": "OPEN", "qty": _num(r[c_qty]), "pnl": _num(r[c_pnl])})
-                continue
-            t["pieces"].append({"ts": _parse_dt(r[c_dt]), "px": _num(r[c_px]), "sig": r[c_sig].strip(), "qty": _num(r[c_qty]), "pnl": _num(r[c_pnl])})
-    trades: Dict[tuple, Dict[str, Any]] = {}
-    for t in by_no.values():
-        if not t.get("entry_ts"):
-            continue
-        k = (t["entry_ts"], t["dir"], round(t["entry_px"], 4))
-        g = trades.setdefault(k, {"no": t["no"], "dir": t["dir"], "entry_ts": t["entry_ts"], "entry_px": t["entry_px"], "entry_sig": t["entry_sig"], "qty": 0.0, "pieces": []})
-        g["qty"] += t["qty"]; g["pieces"].extend(t["pieces"])
-    out = list(trades.values())
-    out.sort(key=lambda t: t["entry_ts"])
-    return out
+
+def read_tv_trades_xlsx(path: str) -> List[Dict[str, Any]]:
+    """Read a TradingView Strategy Tester trade table from an XLSX workbook.
+
+    The sheet name and header row are discovered from required TradingView
+    columns. Exactly one trade table must be present; ambiguity fails closed.
+    """
+    from openpyxl import load_workbook
+
+    workbook = load_workbook(path, read_only=True, data_only=True)
+    candidates: List[List[Dict[str, Any]]] = []
+    try:
+        for worksheet in workbook.worksheets:
+            matrix = [list(row) for row in worksheet.iter_rows(values_only=True)]
+            for index, values in enumerate(matrix[:100]):
+                headers = [_text_value(value) for value in values]
+                if not any(headers):
+                    continue
+                try:
+                    _trade_columns(headers)
+                except KeyError:
+                    continue
+                rows: List[Dict[str, Any]] = []
+                for raw in matrix[index + 1:]:
+                    if not any(value not in (None, "") for value in raw):
+                        continue
+                    record = {
+                        header: (raw[pos] if pos < len(raw) else None)
+                        for pos, header in enumerate(headers)
+                        if header
+                    }
+                    rows.append(record)
+                candidates.append(rows)
+                break
+    finally:
+        workbook.close()
+
+    if not candidates:
+        raise ValueError("no TradingView trade table found in XLSX workbook")
+    if len(candidates) != 1:
+        raise ValueError("multiple TradingView trade tables found in XLSX workbook")
+    return _read_tv_trade_rows(candidates[0])
 
 
 def engine_trades(r: AssetRunner) -> List[Dict[str, Any]]:
