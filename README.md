@@ -107,7 +107,7 @@ proves and authorizes runtime integration. Current handoff state preserves
 
 ## Continuous learning fabric
 
-ICARUS continuously joins historical replay, matured forecasts, source-quality evidence, and realized trade outcomes into a durable research-only learning ledger. It includes chronological shadow calibration, exact-revision/label scoping, overlap purging, refresh batching, calibrator drift retirement, and closure-time strategy provenance for realized P&L.
+ICARUS continuously joins historical replay, matured forecasts, source-quality evidence, and realized trade outcomes into a durable research-only learning ledger. It includes chronological shadow calibration, exact-revision/label scoping, overlap purging, refresh batching, calibrator drift retirement, and source-bound realized-P&L provenance. Runtime closure evidence is classified as `RUNTIME_CLOSURE_CONFIG`; verified historical report linkage is `HISTORICAL_ARTIFACT_CONFIG`; everything else remains `UNSCOPED`. Historical artifacts can never satisfy runtime-closure proof.
 
 Architecture, data lanes, calibration safeguards, APIs/MCP/UI, and authority boundaries: [docs/icarus/CONTINUOUS_LEARNING.md](docs/icarus/CONTINUOUS_LEARNING.md).
 
