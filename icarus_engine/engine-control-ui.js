@@ -1,5 +1,5 @@
 /* ICARUS Engine Control — authenticated registered application controls. */
-let engineControlLoading=false, engineControlLast=null;
+let engineControlLoading=false, engineControlPendingLoad=false, engineControlLast=null, engineControlRunning=new Set();
 
 function ecChip(value){
   const s=String(value??'unknown'), u=s.toUpperCase();
@@ -147,8 +147,10 @@ function engineControlRender(data){
 }
 
 async function loadEngineControl(){
-  if(engineControlLoading||view!=='engine-control') return;
+  if(view!=='engine-control') return;
+  if(engineControlLoading){engineControlPendingLoad=true;return;}
   engineControlLoading=true;
+  engineControlPendingLoad=false;
   try{
     const token=localStorage.getItem('icarus-engine-token')||'';
     const r=await fetch('/api/engine-control',{cache:'no-store',headers:{'Authorization':'Bearer '+token}});
@@ -158,7 +160,10 @@ async function loadEngineControl(){
   }catch(e){
     const el=document.querySelector('#ecStatus');
     if(el) el.textContent='Engine Control unavailable: '+e.message;
-  }finally{engineControlLoading=false;}
+  }finally{
+    engineControlLoading=false;
+    if(engineControlPendingLoad&&view==='engine-control'){engineControlPendingLoad=false;setTimeout(loadEngineControl,0);}
+  }
 }
 
 async function ecRun(actionId){
@@ -179,16 +184,25 @@ async function ecRun(actionId){
     if(supplied!==action.confirmation) return toast('confirmation did not match',true);
     body.confirm=supplied;
   }
-  const result=await admin('/admin/engine-control',body,false);
-  if(result){
-    const out=document.querySelector('#ecLastResult');
-    if(out) out.textContent=JSON.stringify(result,null,2);
-    if(result.audit_recorded===false){
-      toast(action.title+': state changed but final audit receipt failed — '+(result.audit_error||'unknown audit error'),true);
+  if(engineControlRunning.has(actionId)) return toast(action.title+': action already running',true);
+  const runButton=document.querySelector('[data-ec-run="'+CSS.escape(actionId)+'"]');
+  engineControlRunning.add(actionId);
+  if(runButton) runButton.disabled=true;
+  try{
+    const result=await admin('/admin/engine-control',body,false);
+    if(result){
+      const out=document.querySelector('#ecLastResult');
+      if(out) out.textContent=JSON.stringify(result,null,2);
+      if(result.audit_recorded===false){
+        toast(action.title+': state changed but final audit receipt failed — '+(result.audit_error||'unknown audit error'),true);
+      }
+      await loadEngineControl();
+      if(typeof refresh==='function') refresh();
+      if(typeof refreshAudit==='function') refreshAudit();
     }
-    await loadEngineControl();
-    if(typeof refresh==='function') refresh();
-    if(typeof refreshAudit==='function') refreshAudit();
+  }finally{
+    engineControlRunning.delete(actionId);
+    if(runButton&&runButton.isConnected) runButton.disabled=false;
   }
 }
 
