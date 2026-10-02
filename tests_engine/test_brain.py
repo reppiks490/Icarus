@@ -269,3 +269,17 @@ def test_brain_registers_ascendancy_unknown_unknown_lab(tmp_path):
     assert surfaced["ascendancy-unknowns"]["status"] == "REGISTERED"
     assert out["authority"]["execution_authorized"] is False
     assert out["authority"]["production_decision_authorized"] is False
+
+
+def test_brain_registers_ascendancy_mechanism_lab(tmp_path):
+    out = brain_snapshot(tmp_path)
+    rows = {x["id"]: x for x in SUBSYSTEMS}
+    assert "ascendancy-mechanisms" in rows
+    assert rows["ascendancy-mechanisms"]["owner"] == "daedalus"
+    assert "ablation" in rows["ascendancy-mechanisms"]["job"].lower()
+    assert "interaction" in rows["ascendancy-mechanisms"]["job"].lower()
+    assert "causal" in rows["ascendancy-mechanisms"]["job"].lower()
+    surfaced = {x["id"]: x for x in out["architecture"]["subsystems"]}
+    assert surfaced["ascendancy-mechanisms"]["status"] == "REGISTERED"
+    assert out["authority"]["execution_authorized"] is False
+    assert out["authority"]["production_decision_authorized"] is False
