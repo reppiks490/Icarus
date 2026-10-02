@@ -151,6 +151,9 @@ def test_dashboard_surfaces_repository_native_mcp_evolution_panel():
     assert "/api/evolution" in ui
     assert "Subsystem evolution state" in ui
     assert "Important MCP activity" in ui
+    assert "Other receipt families" in ui
+    assert "ignored_total" in ui
+    assert "Foreign receipt schemas" in ui
     assert "execution_authorized=false" in ui
     assert 'p.path == "/api/evolution"' in server
     assert "EvolutionRemoteSync" in server
