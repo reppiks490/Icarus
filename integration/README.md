@@ -36,3 +36,9 @@ The mesh lists discovered adjacent repositories as `candidate`. Candidate status
 ## Future reducer
 
 A later implementation can add a deterministic reducer that validates these manifests and writes a compact accepted-state index. That reducer should be the only automated path from handoff artifacts into canonical control state.
+
+## Active cross-repository federation
+
+`reppiks490/Icarus-engine` is now an active **research-only satellite** of the canonical repository. Its accepted baseline is pinned in `integration/manifests/ICARUS_ENGINE_HANDOFF.json` and in `ICARUS_MESH.json`.
+
+The boundary remains fail-closed: revision drift requires a new handoff, research/automation receipts do not become trade commands, and the satellite's authority ceiling is `RESEARCH`.
