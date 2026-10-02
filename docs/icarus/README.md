@@ -4,17 +4,23 @@ This subtree is the durable home for loop-generated research, audits, architectu
 decisions, and handoffs that are too large to keep as root-level one-off notes.
 
 ## Current state
-The active research program has moved from broad S3 edge discovery toward
-S4 architecture extraction. No new edge has been promoted to production or execution.
+ICARUS now has a persistent research-only Continuous Learning Fabric in addition
+to the existing empirical qualification and architecture research planes.
 
 ### Canonical status
 - Pipeline policy: `icarus-control-v1`
 - Schema: `icarus-pipeline-v1`
-- Pinned implementation: `reppiks490/Icarus@007e70189945b8e112904cf92b2b1a12e43792d6`
-- Multiple-testing status: `UNCONTROLLED`
+- Continuous learning: **installed and background-capable**
+- Historical replay: **installed; runtime data remains outside Git**
+- Shadow recalibration: **chronological, label/revision scoped, overlap-aware**
+- Calibrator drift retirement: **installed**
+- Realized trade experience: **closure-time configuration scoped when provenance is available**
 - Execution authorization: `false`
-- Current architecture focus: point-in-time futures curve research
-- Production strategy behavior changed by this corpus: **no**
+- Production decision authorization: `false`
+- Last knowledge verification: 2026-10-02 against `main@e84385f287ce0d6e1ea6faddc4aef882c739629c`
+
+Review this status when the learning fabric, qualification gates, or execution
+authority contracts change.
 
 ## Artifact map
 - `status/` — current pipeline and resume state.
@@ -27,6 +33,7 @@ S4 architecture extraction. No new edge has been promoted to production or execu
 - `../superpowers/plans/` — implementation plans derived from approved specs.
 - `ASCENDANCY_CAPABILITY_ORCHESTRATOR.md` — capability/evidence contracts, point-in-time provider audit, truth boundaries and dashboard surface.
 - `UNIFIED_INTELLIGENCE_SPINE.md` — source-preserving composition and structural-redundancy contracts.
+- [`CONTINUOUS_LEARNING.md`](CONTINUOUS_LEARNING.md) — durable replay, prediction/outcome maturation, shadow calibration, drift retirement, and realized-experience architecture.
 
 ## Core doctrine
 ```
