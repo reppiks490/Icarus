@@ -582,3 +582,83 @@ def test_contribution_api_is_candidate_bound_and_research_only(ascendancy_genome
     assert port.paused is paused_before
     assert list(port.runners) == runners_before
     assert srv.ascendancy_contribution.snapshot()["observation_count"] == 1
+
+
+def test_evaluator_cascade_api_is_foundry_bound_and_research_only(ascendancy_genome_http):
+    port, srv, request = ascendancy_genome_http
+    paused_before = port.paused
+    runners_before = list(port.runners)
+
+    code, body = request("GET", "/api/ascendancy/evaluator", auth=False)
+    assert code == 401
+    assert "admin token" in body["detail"]
+
+    code, body = request(
+        "POST",
+        "/admin/ascendancy/evaluator-register",
+        body={"candidate_id": "a" * 64},
+    )
+    assert code == 400
+    assert "unknown candidate" in body["detail"].lower()
+
+    code, registered = request("POST", "/admin/ascendancy/candidate", body=_candidate())
+    assert code == 200, registered
+    candidate = registered["candidate"]
+
+    code, enrolled = request(
+        "POST",
+        "/admin/ascendancy/evaluator-register",
+        body={"candidate_id": candidate["candidate_id"]},
+    )
+    assert code == 200, enrolled
+    assert enrolled["candidate"]["state"] == "EVALUATING"
+    assert enrolled["candidate"]["next_stage"] == "CONTRACT_VALIDATION"
+    assert enrolled["trading_state_unchanged"] is True
+    assert enrolled["execution_authorized"] is False
+    assert enrolled["production_decision_authorized"] is False
+
+    receipt = {
+        "candidate_id": candidate["candidate_id"],
+        "evaluation_contract_hash": candidate["evaluation_contract"]["contract_hash"],
+        "source_repo": candidate["source_repo"],
+        "source_commit": candidate["source_commit"],
+        "stage": "CONTRACT_VALIDATION",
+        "outcome": "PASS",
+        "metrics": {"schema_ok": 1.0},
+        "evidence": ["contract:http:fixture"],
+        "resource_usage": {
+            "evaluations": 1,
+            "wall_seconds": 1.0,
+            "cost_units": 0.1,
+        },
+        "observed_at": "2026-10-02T08:30:00Z",
+    }
+    code, evaluated = request(
+        "POST", "/admin/ascendancy/evaluator-receipt", body=receipt
+    )
+    assert code == 200, evaluated
+    assert evaluated["candidate"]["next_stage"] == "SMOKE_NULLS"
+    assert evaluated["trading_state_unchanged"] is True
+
+    code, snapshot = request("GET", "/api/ascendancy/evaluator")
+    assert code == 200
+    assert snapshot["candidate_count"] == 1
+    assert snapshot["receipt_count"] == 1
+    assert snapshot["stage_catalog"][0]["id"] == "CONTRACT_VALIDATION"
+    assert snapshot["truth_contract"]["cascade_cannot_mint_qualification"] is True
+    assert snapshot["qualified_shadow"] is False
+
+    spoofed = dict(receipt)
+    spoofed["stage"] = "SMOKE_NULLS"
+    spoofed["source_commit"] = "f" * 40
+    spoofed["observed_at"] = "2026-10-02T08:31:00Z"
+    spoofed["evidence"] = ["spoofed"]
+    code, body = request(
+        "POST", "/admin/ascendancy/evaluator-receipt", body=spoofed
+    )
+    assert code == 400
+    assert "source_commit" in body["detail"]
+
+    assert port.paused is paused_before
+    assert list(port.runners) == runners_before
+    assert srv.ascendancy_evaluator.snapshot()["receipt_count"] == 1
