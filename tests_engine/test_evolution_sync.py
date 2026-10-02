@@ -86,6 +86,76 @@ def test_verified_event_reaches_evolution_system_and_brain_surfaces(tmp_path):
     assert {"argus", "athena", "parallax"} <= subjects
 
 
+def test_backfilled_older_receipt_cannot_regress_latest_subsystem_state(tmp_path):
+    newer = event_payload(
+        event_id="newer-argus-state",
+        subsystems=["argus"],
+        status="verified",
+        title="Newer ARGUS state",
+        summary="Newer state must remain authoritative in the Evolution view.",
+        recorded_at="2026-10-01T05:00:00Z",
+    )
+    # Raw text looks later than 05:00Z but represents 04:30Z.
+    older = event_payload(
+        event_id="older-argus-backfill",
+        subsystems=["argus"],
+        status="blocked",
+        title="Older ARGUS backfill",
+        summary="Historical backfill must not regress current subsystem state.",
+        recorded_at="2026-10-01T06:30:00+02:00",
+    )
+    raws = {
+        "fixture://newer": (
+            json.dumps(newer, sort_keys=True) + "\n"
+        ).encode(),
+        "fixture://older": (
+            json.dumps(older, sort_keys=True) + "\n"
+        ).encode(),
+    }
+    stage = {"include_old": False}
+
+    def listing(_url):
+        rows = [{
+            "type": "file",
+            "name": "20261001T050000Z_newer.json",
+            "path": REMOTE_ROOT + "/20261001T050000Z_newer.json",
+            "sha": _git_blob_sha(raws["fixture://newer"]),
+            "url": "fixture://newer",
+        }]
+        if stage["include_old"]:
+            rows.append({
+                "type": "file",
+                "name": "zz_historical_backfill.json",
+                "path": REMOTE_ROOT + "/zz_historical_backfill.json",
+                "sha": _git_blob_sha(raws["fixture://older"]),
+                "url": "fixture://older",
+            })
+        return rows
+
+    sync = EvolutionRemoteSync(
+        tmp_path,
+        interval_seconds=30,
+        fetch_json=listing,
+        fetch_bytes=lambda url: raws[url],
+        enabled=True,
+    )
+
+    first = sync.sync_once()
+    assert first["status"] == "green"
+    assert first["subsystems"]["argus"]["event_id"] == "newer-argus-state"
+
+    stage["include_old"] = True
+    second = sync.sync_once()
+
+    assert second["status"] == "green"
+    assert second["ingested_total"] == 2
+    assert second["subsystems"]["argus"]["event_id"] == "newer-argus-state"
+    assert [row["event_id"] for row in second["events"][:2]] == [
+        "newer-argus-state",
+        "older-argus-backfill",
+    ]
+
+
 def test_sync_is_idempotent_by_verified_git_blob(tmp_path):
     sync = make_sync(tmp_path, event_payload())
     first = sync.sync_once()
@@ -453,6 +523,45 @@ def test_malformed_legacy_rejection_state_is_normalized(tmp_path):
     assert state["validator_revision"] == VALIDATOR_REVISION
 
 
+def test_legacy_attempt_counter_is_not_mislabeled_as_unique_versions(tmp_path):
+    state_path = tmp_path / "audit" / "mcp_evolution_sync.json"
+    state_path.parent.mkdir(parents=True)
+    state_path.write_text(
+        json.dumps(
+            {
+                "execution_authorized": False,
+                "production_decision_authorized": False,
+                # Legacy state counted rejection polling attempts.
+                "rejected_total": 27,
+                "processed_blob_shas": [],
+                "events": [],
+                "subsystems": {},
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    sync = EvolutionRemoteSync(
+        tmp_path,
+        interval_seconds=30,
+        fetch_json=lambda _url: [],
+        fetch_bytes=lambda _url: b"",
+        enabled=True,
+    )
+    state = sync.sync_once()
+
+    assert state["status"] == "green"
+    assert state["rejected_total"] == 0
+    assert state["current_rejected_count"] == 0
+    assert state["legacy_rejection_attempt_total"] == 27
+
+    persisted = json.loads(state_path.read_text(encoding="utf-8"))
+    assert persisted["rejected_total"] == 0
+    assert persisted["legacy_rejection_attempt_total"] == 27
+    assert persisted["rejected_history_blob_shas"] == []
+
+
 def test_validator_revision_change_retries_known_bad_blob_without_double_count(
     tmp_path,
 ):
@@ -739,7 +848,8 @@ def test_evolution_ui_separates_current_invalid_from_historical_rejects():
     assert "Current invalid receipts" in ui
     assert "current_rejected_count" in ui
     assert "Rejected versions total" in ui
-    assert "unique receipt versions ever rejected" in ui
+    assert "unique versions since dedupe accounting" in ui
+    assert "legacy attempts" in ui
     assert "counted only once" in ui
 
 
