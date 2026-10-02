@@ -76,6 +76,12 @@ def _consumer_contract(**overrides):
             "source_commit_required": True,
             "git_blob_verification_required": True,
             "required_for_event_ingest": False,
+            "source_contract_blob_witnesses_required": True,
+            "source_contract_blob_witness_keys": [
+                "control_plane",
+                "agent_fabric",
+                "mcp_interface",
+            ],
             "lane_source_witnesses_required": True,
             "lane_source_witness_fields": [
                 "heartbeat_path",
@@ -92,6 +98,7 @@ def _consumer_contract(**overrides):
                 "automatic_execution_authority": False,
                 "stale_packet_is_current_state": False,
                 "lane_state_source_blobs_are_revision_bound": True,
+                "source_contract_blobs_are_revision_bound": True,
             },
             "freshness_required": True,
             "max_age_seconds": 1800,
@@ -400,6 +407,33 @@ def _fixture_blob(document):
     return _git_blob_sha(raw)
 
 
+def _source_contract_docs():
+    return {
+        "control_plane": {
+            "schema_version": "restored-five-native-control-v1",
+            "control_plane_id": "restored-five-native-liveness-v1",
+            "repository": "reppiks490/Icarus-engine",
+            "timezone": "America/Chicago",
+            "grace_minutes": 8,
+            "catchup_horizon_minutes": 180,
+            "execution_authorized": False,
+        },
+        "agent_fabric": {
+            "schema_version": "agent-fabric-manifest-v1",
+            "execution_authorized": False,
+        },
+        "mcp_interface": _producer_contract(),
+    }
+
+
+def _source_contract_blobs(documents=None):
+    documents = documents or _source_contract_docs()
+    return {
+        key: _fixture_blob(documents[key])
+        for key in ("control_plane", "agent_fabric", "mcp_interface")
+    }
+
+
 def _peer_packet(**overrides):
     packet = {
         "schema_version": "icarus-peer-intelligence-packet-v1",
@@ -411,6 +445,7 @@ def _peer_packet(**overrides):
             "agent_fabric": "automation_intelligence/agent_fabric/manifest.json",
             "mcp_interface": "automation_intelligence/mcp_interface/contract.json",
         },
+        "source_contract_blobs": _source_contract_blobs(),
         "control_plane": {
             "schema_version": "restored-five-native-control-v1",
             "control_plane_id": "restored-five-native-liveness-v1",
@@ -539,6 +574,7 @@ def _fixture(
     historical_docs=None,
     packet_historical_docs=None,
     lane_source_docs=None,
+    source_contract_docs=None,
 ):
     event_raw = (json.dumps(payload, sort_keys=True) + "\n").encode()
     event_sha = _git_blob_sha(event_raw)
@@ -556,12 +592,14 @@ def _fixture(
     historical_docs = historical_docs or {}
     packet_historical_docs = packet_historical_docs or _historical_docs()
     lane_source_docs = lane_source_docs or _lane_source_docs()
+    source_contract_docs = source_contract_docs or _source_contract_docs()
     if allow_legacy_event:
         consumer_doc = json.loads(json.dumps(consumer_doc))
         consumer_doc["event_validation"]["legacy_relaxed_blob_shas"] = [event_sha]
     producer_doc = _producer_contract()
     peer_doc = peer or _peer_packet(
-        historical_artifacts=_historical_packet_artifacts(packet_historical_docs)
+        historical_artifacts=_historical_packet_artifacts(packet_historical_docs),
+        source_contract_blobs=_source_contract_blobs(source_contract_docs),
     )
     peer_observed = datetime.fromisoformat(
         str(peer_doc["observed_at"]).replace("Z", "+00:00")
@@ -632,6 +670,27 @@ def _fixture(
             "url": url,
         }
 
+    source_contract_meta = {}
+    source_contract_raw = {}
+    source_contract_paths = {
+        "control_plane": "automation_intelligence/restored_five_native/control_plane.json",
+        "agent_fabric": "automation_intelligence/agent_fabric/manifest.json",
+        "mcp_interface": "automation_intelligence/mcp_interface/contract.json",
+    }
+    for contract_id, document in source_contract_docs.items():
+        raw = (json.dumps(document, sort_keys=True) + "\n").encode()
+        url = f"https://api.github.test/source-contract/{contract_id}"
+        api = _remote_contents_api(
+            source_contract_paths[contract_id],
+            ref=peer_doc["source_commit"],
+        )
+        source_contract_raw[url] = raw
+        source_contract_meta[api] = {
+            "type": "file",
+            "sha": _git_blob_sha(raw),
+            "url": url,
+        }
+
     def fetch_json(requested):
         if requested == _REMOTE_CONSUMER_CONTRACT_API:
             return {
@@ -663,6 +722,8 @@ def _fixture(
             return packet_historical_meta[requested]
         if requested in lane_source_meta:
             return lane_source_meta[requested]
+        if requested in source_contract_meta:
+            return source_contract_meta[requested]
         return listing
 
     def fetch_bytes(requested):
@@ -680,6 +741,8 @@ def _fixture(
             return packet_historical_raw[requested]
         if requested in lane_source_raw:
             return lane_source_raw[requested]
+        if requested in source_contract_raw:
+            return source_contract_raw[requested]
         return b""
 
     return {
@@ -731,6 +794,16 @@ def test_remote_sync_ingests_custom_agent_and_owned_subsystem_events(tmp_path):
     assert status["peer_durability_only_lane_count"] == 1
     assert status["peer_lane_witness_verified_count"] == 2
     assert status["peer_lane_witness_unavailable_count"] == 0
+    assert status["peer_source_contract_witness_status"] == "green"
+    assert status["peer_source_contract_witness_count"] == 3
+    assert all(
+        row["verified"] is True
+        for row in status["peer_source_contract_witnesses"]
+    )
+    assert (
+        status["truth_contract"]["peer_source_contract_blob_witnesses_required"]
+        is True
+    )
     assert status["truth_contract"]["peer_lane_source_witnesses_required"] is True
     assert len(status["peer_lanes"]) == 3
     local_lanes = [
@@ -1352,3 +1425,40 @@ def test_remote_sync_requires_lane_source_witness_contract(tmp_path):
     assert status["status"] == "degraded"
     assert status["ingested_total"] == 0
     assert "peer lane source witnesses must be required" in status["last_error"]
+
+def test_remote_sync_rejects_peer_source_contract_blob_substitution(tmp_path):
+    packet = _peer_packet()
+    packet["source_contract_blobs"]["agent_fabric"] = "0" * 40
+    _rehash_peer_packet(packet)
+    fixture = _fixture(_remote_event(), peer=packet)
+    sync = BrainRemoteSync(
+        tmp_path,
+        interval_seconds=60,
+        fetch_json=fixture["fetch_json"],
+        fetch_bytes=fixture["fetch_bytes"],
+        now_utc=fixture["now_utc"],
+    )
+    status = sync.sync_once()
+    assert status["status"] == "degraded"
+    assert status["ingested_total"] == 1
+    assert status["peer_source_contract_witness_status"] == "degraded"
+    assert "peer source contract blob mismatch: agent_fabric" in status["last_error"]
+
+
+def test_remote_sync_requires_source_contract_blob_witness_contract(tmp_path):
+    consumer = _consumer_contract()
+    peer_contract = dict(consumer["peer_packet"])
+    peer_contract["source_contract_blob_witnesses_required"] = False
+    consumer["peer_packet"] = peer_contract
+    fixture = _fixture(_remote_event(), consumer=consumer)
+    sync = BrainRemoteSync(
+        tmp_path,
+        interval_seconds=60,
+        fetch_json=fixture["fetch_json"],
+        fetch_bytes=fixture["fetch_bytes"],
+        now_utc=fixture["now_utc"],
+    )
+    status = sync.sync_once()
+    assert status["status"] == "degraded"
+    assert status["ingested_total"] == 0
+    assert "source contract blob witnesses must be required" in status["last_error"]
