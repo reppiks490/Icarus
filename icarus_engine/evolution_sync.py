@@ -350,6 +350,19 @@ def _brain_status(status: str) -> str:
     return status if status in _BRAIN_COMPATIBLE_STATUSES else "observed"
 
 
+def _event_time_key(value: Any, event_id: Any = "") -> tuple[datetime, str]:
+    """Order receipt state by actual instant, not filename or raw offset text."""
+
+    try:
+        dt = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        if dt.tzinfo is None or dt.utcoffset() is None:
+            raise ValueError("timezone required")
+        dt = dt.astimezone(timezone.utc)
+    except (TypeError, ValueError):
+        dt = datetime.min.replace(tzinfo=timezone.utc)
+    return dt, str(event_id or "")
+
+
 class EvolutionRemoteSync:
     """Poll immutable repository receipts into the local trader observability plane."""
 
@@ -650,7 +663,20 @@ class EvolutionRemoteSync:
                     )
                     continue
 
-                subsystems.update(projected_subsystems)
+                for subsystem, candidate in projected_subsystems.items():
+                    prior = subsystems.get(subsystem)
+                    if (
+                        not isinstance(prior, Mapping)
+                        or _event_time_key(
+                            candidate.get("recorded_at"),
+                            candidate.get("event_id"),
+                        )
+                        >= _event_time_key(
+                            prior.get("recorded_at"),
+                            prior.get("event_id"),
+                        )
+                    ):
+                        subsystems[subsystem] = candidate
                 events_by_id[event["event_id"]] = event
                 event_id_bindings[event["event_id"]] = blob_sha
                 processed.add(blob_sha)
@@ -660,7 +686,10 @@ class EvolutionRemoteSync:
 
             ordered = sorted(
                 events_by_id.values(),
-                key=lambda x: (str(x.get("recorded_at") or ""), str(x.get("event_id") or "")),
+                key=lambda x: _event_time_key(
+                    x.get("recorded_at"),
+                    x.get("event_id"),
+                ),
                 reverse=True,
             )[:200]
             state["processed_blob_shas"] = sorted(processed)[-5000:]
