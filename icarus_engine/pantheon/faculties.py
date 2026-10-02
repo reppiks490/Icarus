@@ -2169,6 +2169,10 @@ def socrates(states: Mapping[str, Mapping[str, Any]]) -> dict[str, Any]:
     resurrection = unit(states.get("lethe", {}).get("resurrection_pressure"), "lethe.resurrection_pressure")
     proof_gap = unit(states.get("axiom", {}).get("proof_gap"), "axiom.proof_gap")
     information_value = unit(states.get("aporia", {}).get("information_value_pressure"), "aporia.information_value_pressure")
+    declared_information_value = unit(
+        states.get("kairos", {}).get("best_positive_value"),
+        "kairos.best_positive_value",
+    )
     atlas_state = states.get("atlas", {})
     topology_pressure = max(
         unit(atlas_state.get("topological_novelty"), "atlas.topological_novelty"),
@@ -2188,6 +2192,7 @@ def socrates(states: Mapping[str, Mapping[str, Any]]) -> dict[str, Any]:
         (resurrection, "Which dormant mechanism is reappearing under a similar regime and deserves fresh causal revalidation rather than automatic reuse?"),
         (proof_gap, "Which missing proof axis prevents the current thesis from becoming a complete research certificate?"),
         (information_value, "Which unresolved observation is worth waiting for before the current edge decays away?"),
+        (declared_information_value, "Which declared information-acquisition action lies on the best benefit/cost frontier before edge retention deteriorates?"),
         (topology_pressure, "Is the current market state approaching a learned-regime boundary or leaving the known manifold entirely?"),
         (self_failure_pressure, "Is the market genuinely difficult right now, or is ICARUS itself entering a known internal failure state?"),
     ]
@@ -2202,6 +2207,7 @@ def socrates(states: Mapping[str, Mapping[str, Any]]) -> dict[str, Any]:
         (resurrection, "A previously stale mechanism may have returned under a structurally similar regime.", "Require fresh mechanism-consistent evidence before restoring research trust and reject automatic resurrection."),
         (proof_gap, "The current thesis has unresolved non-substitutable proof axes.", "Target the AXIOM failed/unproven gates independently and refuse confidence substitution."),
         (information_value, "A specific discriminating observation is worth its delay cost before the current edge decays.", "Acquire the APORIA-ranked observation, then reject the timing thesis if ambiguity fails to fall enough to justify the wait."),
+        (declared_information_value, "A declared observation action has positive ambiguity-reduction value after reliability, timing, acquisition and execution-friction costs.", "Run the KAIROS-ranked action only as shadow research and reject it if realized information gain fails to cover its measured total penalty."),
         (topology_pressure, "Current latent geometry is near a regime boundary or outside the learned manifold.", "Require a nearby-manifold explanation or independent evidence that the state is a genuinely new basin."),
         (self_failure_pressure, "The inference stack itself is degraded enough to contaminate otherwise plausible market conclusions.", "Re-run the thesis after the dominant AUTOGNOSIS failure mode is removed or independently repaired and require the thesis to survive."),
     ]
@@ -2234,6 +2240,7 @@ def evaluate_faculties(
     gd = godel(signals)
     ak = ananke(signals)
     nm = nemesis(signals)
+    kr = kairos(signals, gd, nm)
     xn = ex_nihilo(signals, observation_id)
     mt = mint(signals)
     ec = echo(signals)
@@ -2245,6 +2252,7 @@ def evaluate_faculties(
     states = {
         "nullspace": ns,
         "godel": gd,
+        "kairos": kr,
         "ananke": ak,
         "nemesis": nm,
         "ex_nihilo": xn,
