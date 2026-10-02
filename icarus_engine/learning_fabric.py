@@ -3364,11 +3364,11 @@ class LearningFabric:
                 model_id = (
                     "learning:{producer}:{asset}:{regime}:{horizon_seconds}:{target}:"
                     "{prediction_label}:{source_commit}"
-                ).format(
-                    **card,
-                    prediction_label=prediction_label,
-                    source_commit=source_commit,
-                )
+                ).format(**{
+                    **dict(card),
+                    "prediction_label": prediction_label,
+                    "source_commit": source_commit,
+                })
                 apex.store.record_model_credibility({
                     "model_id": model_id,
                     "as_of": as_of,
