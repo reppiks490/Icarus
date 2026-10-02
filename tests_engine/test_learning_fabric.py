@@ -2518,3 +2518,59 @@ def test_historical_artifact_session_mode_is_never_inferred_when_manifest_omits_
         json.dumps(legacy_payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
     ).hexdigest()
     assert card["artifact_configuration_fingerprint"] == expected_legacy_fingerprint
+
+
+
+def test_scorecards_expose_adaptive_calibration_and_proper_score_diagnostics(tmp_path):
+    from icarus_engine.learning_fabric import LearningFabric
+
+    fabric = LearningFabric(tmp_path)
+    base = datetime(2026, 10, 2, 14, 0, tzinfo=timezone.utc)
+    cases = [
+        (0.2, 99.0),
+        (0.2, 99.0),
+        (0.8, 101.0),
+        (0.8, 101.0),
+    ]
+    for i, (probability, actual) in enumerate(cases):
+        pred = fabric.record_prediction(_prediction(
+            producer="proper-score-test",
+            regime="trend",
+            horizon=300,
+            probability=probability,
+            direction="up",
+            emitted=base + timedelta(minutes=i * 10),
+        ))["prediction"]
+        fabric.record_outcome({
+            "prediction_id": pred["prediction_id"],
+            "observed_at": pred["resolves_at"],
+            "actual_value": actual,
+            "evidence": [f"proper-score:{i}"],
+        })
+
+    card = next(x for x in fabric.scorecards() if x["producer"] == "proper-score-test")
+    assert card["settled"] == 4
+    assert card["hit_rate"] == pytest.approx(0.5)
+    assert card["mean_confidence"] == pytest.approx(0.5)
+    assert card["calibration_gap"] == pytest.approx(0.0)
+    assert card["adaptive_calibration_bins"] == 2
+    assert card["expected_calibration_error"] == pytest.approx(0.2)
+    assert card["maximum_calibration_error"] == pytest.approx(0.2)
+    assert card["mean_log_loss"] == pytest.approx(-math.log(0.8))
+    assert card["climatology_brier"] == pytest.approx(0.25)
+    assert card["brier_skill_score"] == pytest.approx(0.84)
+
+
+def test_scorecard_calibration_diagnostics_use_only_effective_non_overlapping_rows(tmp_path):
+    from icarus_engine.learning_fabric import LearningFabric
+
+    fabric = LearningFabric(tmp_path)
+    start = datetime(2026, 10, 2, 14, 0, tzinfo=timezone.utc)
+    _overlapping_calibration_case(
+        fabric, start=start, n=20, spacing_seconds=10, horizon_seconds=60
+    )
+
+    card = next(x for x in fabric.scorecards() if x["producer"] == "overlap-test")
+    assert card["settled"] < card["raw_settled"]
+    assert card["diagnostic_sample_count"] == card["settled"]
+    assert card["adaptive_calibration_bins"] <= min(10, card["settled"])
