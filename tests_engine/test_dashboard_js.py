@@ -146,6 +146,9 @@ def test_dashboard_surfaces_adaptive_brain_fabric():
     assert "Federated Icarus-engine lane state" in ui
     assert "DURABILITY_ONLY never counts as substantive research evidence" in ui
     assert "CSV Evidence Lab" in ui
+    assert "CSV durability closure" in ui
+    assert "finalization_pointer_matches_heartbeat" in ui
+    assert "compatibility_pointer_lag" in ui
     assert "/api/evidence-lab" in server
     assert "sync.evidence_lab" in server
     assert "/admin/performance-proof/forecast" in server
