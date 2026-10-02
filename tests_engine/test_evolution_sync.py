@@ -409,6 +409,40 @@ def test_partial_brain_projection_does_not_publish_partial_subsystem_state(
     assert attempts["brain"] == 5
 
 
+def test_malformed_legacy_rejection_state_is_normalized(tmp_path):
+    state_path = tmp_path / "audit" / "mcp_evolution_sync.json"
+    state_path.parent.mkdir(parents=True)
+    state_path.write_text(
+        json.dumps(
+            {
+                "execution_authorized": False,
+                "production_decision_authorized": False,
+                "validator_revision": VALIDATOR_REVISION,
+                "rejected_blob_shas": None,
+                "rejected_history_blob_shas": "not-a-list",
+                "rejected_blob_errors": [],
+                "event_id_bindings": [],
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    sync = EvolutionRemoteSync(
+        tmp_path,
+        interval_seconds=30,
+        fetch_json=lambda _url: [],
+        fetch_bytes=lambda _url: b"",
+        enabled=True,
+    )
+    state = sync.sync_once()
+
+    assert state["status"] == "green"
+    assert state["current_rejected_count"] == 0
+    assert state["rejected_total"] == 0
+    assert state["validator_revision"] == VALIDATOR_REVISION
+
+
 def test_validator_revision_change_retries_known_bad_blob_without_double_count(
     tmp_path,
 ):
