@@ -298,6 +298,8 @@ jobs:
               "peer_packet_source_commit": source_commit,
               "peer_packet_relation": relation.upper(),
               "peer_packet_fresh": state["peer_packet_fresh"],
+              "peer_lane_witness_verified_count": state["peer_lane_witness_verified_count"],
+              "peer_lane_witness_unavailable_count": state["peer_lane_witness_unavailable_count"],
               "historical_context_status": state["historical_context_status"],
               "historical_context_source_count": state["historical_context_source_count"],
               "historical_context_ingested_total": state["historical_context_ingested_total"],
