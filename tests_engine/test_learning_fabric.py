@@ -1304,3 +1304,151 @@ def test_existing_calibration_schema_migrates_prediction_label_fail_closed(tmp_p
     state = fabric.shadow_calibration_state()
     assert state["execution_authorized"] is False
     assert state["authority"]["automatic_probability_rewrite"] is False
+
+
+def _revision_calibration_case(fabric, *, start, source_commit, actual_pattern, n=32):
+    for i in range(n):
+        p = [0.4, 0.7][i % 2]
+        emitted = start + timedelta(minutes=i * 5)
+        pred = fabric.record_prediction({
+            "producer": "revision-test",
+            "asset": "NQ",
+            "target": "class",
+            "prediction": "up",
+            "probabilities": {"up": p, "down": 1.0 - p},
+            "reference_value": 100.0,
+            "emitted_at": _iso(emitted),
+            "horizon_seconds": 60,
+            "regime": "trend",
+            "evidence_ids": [f"revision:{source_commit[:8]}:{i}"],
+            "source_commit": source_commit,
+        })["prediction"]
+        success = bool(actual_pattern(i, p))
+        fabric.record_outcome({
+            "prediction_id": pred["prediction_id"],
+            "observed_at": pred["resolves_at"],
+            "actual_value": "up" if success else "down",
+            "evidence": [f"truth:{source_commit[:8]}:{i}"],
+        })
+
+
+def test_shadow_calibration_is_conditioned_on_exact_source_commit(tmp_path):
+    from icarus_engine.learning_fabric import LearningFabric
+
+    fabric = LearningFabric(tmp_path)
+    start = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    old_sha = "a" * 40
+    new_sha = "b" * 40
+
+    _revision_calibration_case(
+        fabric, start=start, source_commit=old_sha,
+        actual_pattern=lambda i, p: (p >= 0.7),
+    )
+    _revision_calibration_case(
+        fabric, start=start + timedelta(days=1), source_commit=new_sha,
+        actual_pattern=lambda i, p: (p < 0.7),
+    )
+
+    rebuilt = fabric.rebuild_shadow_calibrators(min_samples=30)
+    models = [m for m in rebuilt["models"] if m["producer"] == "revision-test"]
+    assert {m["source_commit"] for m in models} == {old_sha, new_sha}
+    assert all(m["prediction_label"] == "up" for m in models)
+
+
+def test_shadow_assignment_never_crosses_code_revision(tmp_path):
+    from icarus_engine.learning_fabric import LearningFabric
+
+    fabric = LearningFabric(tmp_path)
+    start = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    old_sha = "a" * 40
+    new_sha = "b" * 40
+
+    _revision_calibration_case(
+        fabric, start=start, source_commit=old_sha,
+        actual_pattern=lambda i, p: (p >= 0.7),
+    )
+    _revision_calibration_case(
+        fabric, start=start + timedelta(days=1), source_commit=new_sha,
+        actual_pattern=lambda i, p: (p < 0.7),
+    )
+    fabric.rebuild_shadow_calibrators(min_samples=30)
+
+    future = start + timedelta(days=3)
+    old_pred = fabric.record_prediction({
+        "producer": "revision-test",
+        "asset": "NQ",
+        "target": "class",
+        "prediction": "up",
+        "probabilities": {"up": 0.7, "down": 0.3},
+        "reference_value": 100.0,
+        "emitted_at": _iso(future),
+        "horizon_seconds": 60,
+        "regime": "trend",
+        "evidence_ids": ["future:old"],
+        "source_commit": old_sha,
+    })["prediction"]
+    new_pred = fabric.record_prediction({
+        "producer": "revision-test",
+        "asset": "NQ",
+        "target": "class",
+        "prediction": "up",
+        "probabilities": {"up": 0.7, "down": 0.3},
+        "reference_value": 100.0,
+        "emitted_at": _iso(future + timedelta(minutes=1)),
+        "horizon_seconds": 60,
+        "regime": "trend",
+        "evidence_ids": ["future:new"],
+        "source_commit": new_sha,
+    })["prediction"]
+
+    old_shadow = fabric.shadow_calibration(old_pred["prediction_id"])
+    new_shadow = fabric.shadow_calibration(new_pred["prediction_id"])
+    assert old_shadow is not None
+    assert new_shadow is not None
+    assert old_shadow["source_commit"] == old_sha
+    assert new_shadow["source_commit"] == new_sha
+    assert old_shadow["calibrator_id"] != new_shadow["calibrator_id"]
+    assert old_shadow["calibrated_probability"] != pytest.approx(new_shadow["calibrated_probability"])
+
+
+def test_legacy_unversioned_calibrator_schema_migrates_fail_closed(tmp_path):
+    import sqlite3
+    from icarus_engine.learning_fabric import LearningFabric
+
+    research = tmp_path / "research"
+    research.mkdir(parents=True)
+    db = research / "learning.sqlite3"
+    con = sqlite3.connect(db)
+    con.executescript("""
+        CREATE TABLE calibration_models (
+            calibrator_id TEXT PRIMARY KEY,
+            producer TEXT NOT NULL,
+            asset TEXT NOT NULL,
+            regime TEXT NOT NULL,
+            horizon_seconds INTEGER NOT NULL,
+            target TEXT NOT NULL,
+            prediction_label TEXT NOT NULL DEFAULT '',
+            status TEXT NOT NULL,
+            train_count INTEGER NOT NULL,
+            validation_count INTEGER NOT NULL,
+            fit_cutoff TEXT NOT NULL,
+            training_cutoff TEXT NOT NULL,
+            model_json TEXT NOT NULL,
+            raw_validation_brier REAL NOT NULL,
+            calibrated_validation_brier REAL NOT NULL,
+            source_hash TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            UNIQUE(producer,asset,regime,horizon_seconds,target,source_hash)
+        );
+    """)
+    con.commit()
+    con.close()
+
+    fabric = LearningFabric(tmp_path)
+    cols = {
+        row["name"] for row in fabric._conn.execute("PRAGMA table_info(calibration_models)").fetchall()
+    }
+    assert "source_commit" in cols
+    assert fabric._conn.execute(
+        "SELECT COUNT(*) FROM calibration_models WHERE source_commit<>''"
+    ).fetchone()[0] == 0
