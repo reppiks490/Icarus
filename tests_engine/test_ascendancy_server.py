@@ -506,3 +506,79 @@ def test_invention_api_generates_blueprints_and_feeds_foundry_research_only(asce
     assert list(port.runners) == runners_before
     assert srv.ascendancy_inventions.snapshot()["blueprint_count"] > 0
     assert srv.ascendancy_foundry.snapshot()["candidate_count"] == 1
+
+
+def test_contribution_api_is_candidate_bound_and_research_only(ascendancy_genome_http):
+    port, srv, request = ascendancy_genome_http
+    paused_before = port.paused
+    runners_before = list(port.runners)
+
+    code, body = request("GET", "/api/ascendancy/contributions", auth=False)
+    assert code == 401
+    assert "admin token" in body["detail"]
+
+    unbound = {
+        "contributor_id": "a" * 64,
+        "contributor_kind": "candidate",
+        "source_repo": "reppiks490/Icarus",
+        "source_commit": "d" * 40,
+        "evaluation_contract_hash": "b" * 64,
+        "conditioning_set": ["apex-omega", "chronofold", "psi"],
+        "baseline_model_id": "icarus-without-candidate",
+        "augmented_model_id": "icarus-plus-candidate",
+        "target_kind": "binary",
+        "target_key": "reversal_within_horizon",
+        "horizon_seconds": 300,
+        "baseline_prediction": {"probability": 0.55},
+        "augmented_prediction": {"probability": 0.75},
+        "observed_outcome": 1,
+        "context": {"asset": "NQ", "regime": "RTH_HIGH_VOL"},
+        "episode_id": "http-contribution-unbound",
+        "evidence": ["paired-oos:http"],
+        "observed_at": "2026-10-02T07:30:00Z",
+    }
+    code, body = request(
+        "POST", "/admin/ascendancy/contribution-observation", body=unbound
+    )
+    assert code == 400
+    assert "unknown candidate" in body["detail"].lower()
+
+    code, registered = request("POST", "/admin/ascendancy/candidate", body=_candidate())
+    assert code == 200, registered
+    candidate = registered["candidate"]
+
+    observation = dict(unbound)
+    observation["contributor_id"] = candidate["candidate_id"]
+    observation["source_repo"] = candidate["source_repo"]
+    observation["source_commit"] = candidate["source_commit"]
+    observation["evaluation_contract_hash"] = candidate["evaluation_contract"]["contract_hash"]
+    observation["episode_id"] = "http-contribution-bound"
+
+    code, saved = request(
+        "POST", "/admin/ascendancy/contribution-observation", body=observation
+    )
+    assert code == 200, saved
+    assert saved["trading_state_unchanged"] is True
+    assert saved["observation"]["information_gain_nats"] > 0
+    assert saved["observation"]["exact_conditional_mutual_information"] is False
+    assert saved["execution_authorized"] is False
+    assert saved["production_decision_authorized"] is False
+
+    code, snapshot = request("GET", "/api/ascendancy/contributions")
+    assert code == 200
+    assert snapshot["observation_count"] == 1
+    assert snapshot["groups"][0]["classification"] == "INSUFFICIENT_EVIDENCE"
+    assert snapshot["truth_contract"]["standalone_performance_is_not_incremental_information"] is True
+
+    bad = dict(observation)
+    bad["episode_id"] = "http-contribution-wrong-contract"
+    bad["evaluation_contract_hash"] = "f" * 64
+    code, body = request(
+        "POST", "/admin/ascendancy/contribution-observation", body=bad
+    )
+    assert code == 400
+    assert "evaluation contract" in body["detail"].lower()
+
+    assert port.paused is paused_before
+    assert list(port.runners) == runners_before
+    assert srv.ascendancy_contribution.snapshot()["observation_count"] == 1
