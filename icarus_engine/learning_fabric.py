@@ -1321,6 +1321,7 @@ class LearningFabric:
                 "strategy_report_filename": first_meta.get("strategy_report_filename"),
                 "timeframe": first_meta.get("timeframe"),
                 "chart_type": first_meta.get("chart_type"),
+                "session_mode": first_meta.get("session_mode"),
                 "execution_assumptions": first_meta.get("execution_assumptions"),
                 "linkage_rule": first_meta.get("linkage_rule"),
                 "count": len(pnls),
@@ -1969,6 +1970,21 @@ class LearningFabric:
             return f"{int(match.group(1))}h"
         return raw.replace(" ", "_")
 
+    @staticmethod
+    def _manifest_session_mode(value: Any) -> str | None:
+        """Normalize only explicitly declared historical session identity."""
+        raw = str(value or "").strip().lower().replace("-", " ").replace("_", " ")
+        if not raw:
+            return None
+        compact = " ".join(raw.split())
+        if compact in {"rth", "regular", "regular hours", "regular trading hours"}:
+            return "rth"
+        if compact in {"eth", "extended", "extended hours", "extended trading hours"}:
+            return "eth"
+        if compact in {"all", "all hours", "full", "full session", "24h", "24 hours"}:
+            return "all"
+        return None
+
     def _intake_manifest_catalog(self) -> tuple[dict[str, dict[str, str]], dict[str, dict[str, str]], list[dict[str, str]]]:
         by_hash: dict[str, dict[str, str]] = {}
         by_name: dict[str, dict[str, str]] = {}
@@ -2109,12 +2125,16 @@ class LearningFabric:
             return {**base, "manifest_linkage_status": "INVALID_REPORT_SHA"}
         timeframe = self._manifest_timeframe(report.get("timeframe"))
         chart_type = report.get("chart_type") or None
+        session_mode = self._manifest_session_mode(
+            report.get("session_mode") or report.get("session") or report.get("trading_session")
+        )
         fingerprint_payload = {
             "trade_list_sha256": str(dataset.get("raw_sha256") or "").lower(),
             "strategy_report_sha256": report_sha,
             "asset": str(dataset.get("asset") or "").upper(),
             "timeframe": timeframe,
             "chart_type": chart_type,
+            "session_mode": session_mode,
             "rows": self._manifest_integer(report.get("rows")),
             "last_trade_number": self._manifest_integer(report.get("last_trade_number")),
             "notes": report.get("notes") or "",
@@ -2132,6 +2152,7 @@ class LearningFabric:
             "strategy_report_filename": report.get("canonical_filename") or None,
             "timeframe": timeframe,
             "chart_type": chart_type,
+            "session_mode": session_mode,
             "execution_assumptions": report.get("notes") or None,
             "linkage_rule": str(link.get("linkage_rule") or "UNIQUE_SYMBOL_ROWS_LAST_TRADE"),
             "report_net_profit_usd": report.get("net_profit_usd") or None,
@@ -2147,11 +2168,15 @@ class LearningFabric:
             raise ValueError("strategy report dataset requires a valid SHA-256")
         timeframe = self._manifest_timeframe(row.get("timeframe")) or str(dataset.get("chart_type") or "")
         chart_type = str(row.get("chart_type") or "").strip() or None
+        session_mode = self._manifest_session_mode(
+            row.get("session_mode") or row.get("session") or row.get("trading_session")
+        )
         payload = {
             "strategy_report_sha256": report_sha,
             "asset": str(dataset.get("asset") or "").upper(),
             "timeframe": timeframe,
             "chart_type": chart_type,
+            "session_mode": session_mode,
             "rows": self._manifest_integer(row.get("rows")),
             "last_trade_number": self._manifest_integer(row.get("last_trade_number")),
             "notes": str(row.get("notes") or ""),
@@ -2169,6 +2194,7 @@ class LearningFabric:
             "strategy_report_filename": Path(str(dataset.get("path") or "")).name or None,
             "timeframe": timeframe,
             "chart_type": chart_type,
+            "session_mode": session_mode,
             "execution_assumptions": row.get("notes") or None,
             "linkage_rule": "DIRECT_STRATEGY_REPORT_XLSX_TRADE_SHEET",
             "report_net_profit_usd": row.get("net_profit_usd") or None,
