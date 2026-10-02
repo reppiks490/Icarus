@@ -71,7 +71,7 @@ def test_pantheon_runs_independent_faculties_and_never_grants_execution(tmp_path
     obs = kernel.record_observation(_payload())
     analysis = obs["analysis"]
     assert set(analysis["faculties"]) == {
-        "nullspace", "godel", "ananke", "nemesis", "ex_nihilo", "mint", "echo", "veritas", "lethe", "atlas", "aporia", "axiom", "archon", "socrates"
+        "nullspace", "godel", "ananke", "nemesis", "ex_nihilo", "mint", "echo", "veritas", "lethe", "atlas", "aporia", "axiom", "autognosis", "archon", "socrates"
     }
     assert analysis["faculties"]["nullspace"]["routing_state"] == "absorbed"
     assert analysis["faculties"]["nullspace"]["debt_state"] == "absorbed"
@@ -98,6 +98,56 @@ def test_pantheon_runs_independent_faculties_and_never_grants_execution(tmp_path
     assert analysis["authority"]["execution_authorized"] is False
     assert analysis["authority"]["production_decision_authorized"] is False
     assert all(not lease["execution_authorized"] for lease in analysis["faculties"]["archon"]["leases"])
+
+
+def test_autognosis_models_internal_failure_state_without_capital_authority(tmp_path):
+    payload = _payload(observation_id="pan-autognosis-degraded")
+    payload["signals"] = dict(payload["signals"])
+    payload["signals"].update({
+        "calibration_error": 0.92,
+        "latency_stress": 0.88,
+        "execution_health": 0.18,
+        "data_quality": 0.45,
+        "engine_evidence_lineage": {
+            "oracle": ["databento:nq:mbp10"],
+            "nullspace": ["databento:nq:mbp10"],
+            "ananke": ["databento:nq:mbp10"],
+        },
+    })
+    obs = PantheonKernel(tmp_path, swarm=AetherSwarm(threshold=0.0, max_agents=12)).record_observation(payload)
+    state = obs["analysis"]["faculties"]["autognosis"]
+    swarm = obs["analysis"]["aether"]
+
+    assert state["status"] == "active"
+    assert 0.0 <= state["self_failure_pressure"] <= 1.0
+    assert state["self_failure_pressure"] >= 0.45
+    assert state["self_trust_surface"] == pytest.approx(1.0 - state["self_failure_pressure"])
+    assert state["evidence_coverage"] >= 0.25
+    assert state["dominant_failure_mode"] is not None
+    assert state["research_posture"] in {"investigate", "intensive_audit"}
+    assert state["self_state_signature"].startswith("self-")
+    assert state["execution_authorized"] is False
+    assert state["production_decision_authorized"] is False
+    assert swarm["field"]["self_failure_pressure"] == pytest.approx(state["self_failure_pressure"])
+    assert "self_model_auditor" in {agent["role"] for agent in swarm["agents"]}
+    assert swarm["authority"]["execution_authorized"] is False
+
+
+def test_autognosis_abstains_when_internal_state_evidence_is_too_sparse():
+    from icarus_engine.pantheon.faculties import autognosis
+
+    state = autognosis({}, {})
+    assert state["status"] == "abstain"
+    assert state["research_posture"] == "unavailable"
+    assert state["self_state_signature"] is None
+    assert state["self_failure_pressure"] == 0.0
+
+
+def test_autognosis_rejects_malformed_explicit_self_state_inputs(tmp_path):
+    payload = _payload(observation_id="pan-autognosis-invalid")
+    payload["signals"] = dict(payload["signals"], calibration_error=1.5)
+    with pytest.raises(ValueError, match="calibration_error must be between 0 and 1"):
+        PantheonKernel(tmp_path).record_observation(payload)
 
 
 def test_echo_detects_consensus_illusion_and_archon_discounts_shared_evidence(tmp_path):
@@ -1169,6 +1219,7 @@ def test_pantheon_is_visible_in_trader_interface():
     assert "Proof gap" in ui
     assert "Value of waiting" in ui
     assert "Topology pressure" in ui
+    assert "Self-failure pressure" in ui
     assert "geometry " in ui
     assert "certificate " in ui
     assert "VERITAS right-for-right-reasons audit" in ui
@@ -1181,7 +1232,7 @@ def test_pantheon_is_visible_in_trader_interface():
     assert '"pantheon": pantheon.snapshot' in server
     assert "resolve_engine_evidence_lineage" in server
     assert '"apex_lineage"' in server
-    for subsystem in ("PANTHEON", "NEMESIS Ω", "GÖDEL Ω", "SOCRATES", "ANANKĒ", "EX NIHILO", "MINT Ω", "NULLSPACE Ω", "ECHO Ω", "VERITAS Ω", "LETHE Ω", "ATLAS Ω", "APORIA Ω", "AXIOM Ω", "ARCHON Ω", "AETHER Ω"):
+    for subsystem in ("PANTHEON", "NEMESIS Ω", "GÖDEL Ω", "SOCRATES", "ANANKĒ", "EX NIHILO", "MINT Ω", "NULLSPACE Ω", "ECHO Ω", "VERITAS Ω", "LETHE Ω", "ATLAS Ω", "APORIA Ω", "AXIOM Ω", "AUTOGNOSIS Ω", "ARCHON Ω", "AETHER Ω"):
         assert subsystem in brain
 
 

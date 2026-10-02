@@ -1119,6 +1119,7 @@ class PantheonKernel:
             "ATLAS": {"mode": "pantheon faculty; latent-state manifold and boundary geometry"},
             "APORIA": {"mode": "pantheon faculty; active-perception value-of-waiting and latency economics"},
             "AXIOM": {"mode": "pantheon faculty; proof-carrying non-substitutable research-thesis certificate"},
+            "AUTOGNOSIS": {"mode": "pantheon faculty; internal self-failure state model"},
             "ARCHON": {"mode": "pantheon faculty"},
             "AETHER": {"mode": "ephemeral swarm ecology"},
         }
@@ -1141,6 +1142,7 @@ class PantheonKernel:
                 "research_memory_decay_never_mutates_raw_evidence": True,
                 "research_memory_resurrection_requires_observation_bound_evidence": True,
                 "positive_value_information_can_pause_research_readiness_but_never_authorize_execution": True,
+                "self_failure_model_is_diagnostic_and_never_self_authorizes": True,
                 "risk_kernel_remains_external_hard_gate": True,
                 "aether_evolution_requires_observed_claim_outcomes": True,
                 "cognitive_genesis_never_auto_creates_production_code": True,

@@ -1674,6 +1674,206 @@ def axiom(
     }
 
 
+def autognosis(
+    signals: Mapping[str, Any],
+    states: Mapping[str, Mapping[str, Any]],
+) -> dict[str, Any]:
+    """Model ICARUS' own internal research fragility.
+
+    AUTOGNOSIS does not forecast the market. It estimates when the current
+    inference stack is operating under conditions historically associated with
+    self-uncertainty: ambiguity, duplicated evidence, stale memory, proof gaps,
+    latent-state novelty, unresolved information value, calibration error,
+    latency stress and degraded execution health.
+    """
+    out = _base("AUTOGNOSIS")
+    factors: list[dict[str, Any]] = []
+
+    def add_factor(name: str, severity: float, weight: float, source: str, reason: str) -> None:
+        normalized = unit(severity, f"autognosis.{name}")
+        factors.append({
+            "factor": name,
+            "severity": normalized,
+            "weight": weight,
+            "source": source,
+            "reason": reason,
+        })
+
+    godel_state = states.get("godel", {})
+    if godel_state.get("status") == "active":
+        add_factor(
+            "epistemic_ambiguity",
+            unit(godel_state.get("ambiguity"), "godel.ambiguity"),
+            0.15,
+            "GODEL",
+            "multiple latent worlds remain observationally compatible",
+        )
+
+    echo_state = states.get("echo", {})
+    if echo_state.get("status") == "active":
+        add_factor(
+            "consensus_echo",
+            unit(echo_state.get("echo_risk"), "echo.echo_risk"),
+            0.10,
+            "ECHO",
+            "apparent agreement may be duplicated upstream evidence",
+        )
+
+    atlas_state = states.get("atlas", {})
+    if atlas_state.get("status") == "active":
+        topology_pressure = max(
+            unit(atlas_state.get("topological_novelty"), "atlas.topological_novelty"),
+            unit(atlas_state.get("boundary_pressure"), "atlas.boundary_pressure"),
+        )
+        add_factor(
+            "topology_pressure",
+            topology_pressure,
+            0.10,
+            "ATLAS",
+            "current latent state is near a learned boundary or outside familiar geometry",
+        )
+
+    lethe_state = states.get("lethe", {})
+    if lethe_state.get("status") == "active":
+        add_factor(
+            "stale_memory_pressure",
+            unit(lethe_state.get("stale_memory_pressure"), "lethe.stale_memory_pressure"),
+            0.10,
+            "LETHE",
+            "current reasoning depends on decayed research memory",
+        )
+
+    axiom_state = states.get("axiom", {})
+    if axiom_state.get("status") == "active":
+        add_factor(
+            "proof_gap",
+            unit(axiom_state.get("proof_gap"), "axiom.proof_gap"),
+            0.15,
+            "AXIOM",
+            "non-substitutable proof axes remain failed or unproven",
+        )
+
+    archon_state = states.get("archon", {})
+    if archon_state.get("status") == "active":
+        add_factor(
+            "engine_contradiction",
+            unit(archon_state.get("contradiction"), "archon.contradiction"),
+            0.10,
+            "ARCHON",
+            "internal engines materially disagree",
+        )
+
+    aporia_state = states.get("aporia", {})
+    if aporia_state.get("status") == "active":
+        information_value = unit(
+            aporia_state.get("information_value_pressure"),
+            "aporia.information_value_pressure",
+        )
+        if bool(aporia_state.get("timing_blocking")):
+            information_value = max(information_value, 0.75)
+        add_factor(
+            "unresolved_information_value",
+            information_value,
+            0.08,
+            "APORIA",
+            "a discriminating observation may be worth waiting for before inference hardens",
+        )
+
+    if "data_quality" in signals:
+        add_factor(
+            "data_quality_gap",
+            1.0 - unit(signals.get("data_quality"), "data_quality"),
+            0.08,
+            "INPUT",
+            "input evidence quality is degraded",
+        )
+    if "calibration_error" in signals:
+        add_factor(
+            "calibration_error",
+            unit(signals.get("calibration_error"), "calibration_error"),
+            0.06,
+            "LEARNING",
+            "recent probability calibration error is elevated",
+        )
+    if "latency_stress" in signals:
+        add_factor(
+            "latency_stress",
+            unit(signals.get("latency_stress"), "latency_stress"),
+            0.04,
+            "RUNTIME",
+            "decision latency is consuming the usable edge horizon",
+        )
+    if "execution_health" in signals:
+        add_factor(
+            "execution_health_gap",
+            1.0 - unit(signals.get("execution_health"), "execution_health"),
+            0.04,
+            "EXECUTION",
+            "execution infrastructure health is degraded",
+        )
+
+    factor_coverage = sum(float(row["weight"]) for row in factors)
+    if len(factors) < 3 or factor_coverage < 0.25:
+        return {
+            **out,
+            "status": "abstain",
+            "reason": "insufficient independent self-state evidence",
+            "self_failure_pressure": 0.0,
+            "self_trust_surface": 0.0,
+            "evidence_coverage": factor_coverage,
+            "dominant_failure_mode": None,
+            "research_posture": "unavailable",
+            "failure_mode_vector": factors,
+            "self_state_signature": None,
+        }
+
+    weighted = sum(float(row["severity"]) * float(row["weight"]) for row in factors)
+    pressure = max(0.0, min(1.0, weighted / factor_coverage))
+    trust = 1.0 - pressure
+    for row in factors:
+        row["normalized_weight"] = float(row["weight"]) / factor_coverage
+        row["pressure_contribution"] = (
+            float(row["severity"]) * float(row["weight"]) / factor_coverage
+        )
+    factors.sort(
+        key=lambda row: (
+            row["pressure_contribution"],
+            row["severity"],
+            row["factor"],
+        ),
+        reverse=True,
+    )
+    dominant = factors[0]["factor"] if factors else None
+    if pressure >= 0.65:
+        posture = "intensive_audit"
+    elif pressure >= 0.45:
+        posture = "investigate"
+    elif pressure >= 0.25:
+        posture = "watch"
+    else:
+        posture = "nominal"
+
+    quantized = [
+        f"{row['factor']}:{int(round(float(row['severity']) * 9.0))}"
+        for row in sorted(factors, key=lambda item: item["factor"])
+    ]
+    signature = "self-" + digest(posture, *quantized)[:20]
+    return {
+        **out,
+        "self_failure_pressure": pressure,
+        "self_trust_surface": trust,
+        "evidence_coverage": min(1.0, factor_coverage),
+        "unknown_evidence_weight": max(0.0, 1.0 - factor_coverage),
+        "dominant_failure_mode": dominant,
+        "research_posture": posture,
+        "failure_mode_vector": factors,
+        "self_state_signature": signature,
+        "execution_authorized": False,
+        "production_decision_authorized": False,
+        "semantics": "self-reliability diagnostic over internal research state; it is not a calibrated probability and cannot authorize or size trades",
+    }
+
+
 def archon(
     signals: Mapping[str, Any],
     godel_state: Mapping[str, Any],
@@ -1753,6 +1953,10 @@ def socrates(states: Mapping[str, Mapping[str, Any]]) -> dict[str, Any]:
         unit(atlas_state.get("topological_novelty"), "atlas.topological_novelty"),
         unit(atlas_state.get("boundary_pressure"), "atlas.boundary_pressure"),
     )
+    self_failure_pressure = unit(
+        states.get("autognosis", {}).get("self_failure_pressure"),
+        "autognosis.self_failure_pressure",
+    )
     options = [
         (uncertainty, "Which observation most efficiently separates the competing market worlds?"),
         (debt, "Where did the missing reaction route: delay, absorption, diversion, or causal-model failure?"),
@@ -1764,6 +1968,7 @@ def socrates(states: Mapping[str, Mapping[str, Any]]) -> dict[str, Any]:
         (proof_gap, "Which missing proof axis prevents the current thesis from becoming a complete research certificate?"),
         (information_value, "Which unresolved observation is worth waiting for before the current edge decays away?"),
         (topology_pressure, "Is the current market state approaching a learned-regime boundary or leaving the known manifold entirely?"),
+        (self_failure_pressure, "Is the market genuinely difficult right now, or is ICARUS itself entering a known internal failure state?"),
     ]
     ranked = sorted(options, key=lambda x: x[0], reverse=True)
     hypothesis_templates = [
@@ -1777,6 +1982,7 @@ def socrates(states: Mapping[str, Mapping[str, Any]]) -> dict[str, Any]:
         (proof_gap, "The current thesis has unresolved non-substitutable proof axes.", "Target the AXIOM failed/unproven gates independently and refuse confidence substitution."),
         (information_value, "A specific discriminating observation is worth its delay cost before the current edge decays.", "Acquire the APORIA-ranked observation, then reject the timing thesis if ambiguity fails to fall enough to justify the wait."),
         (topology_pressure, "Current latent geometry is near a regime boundary or outside the learned manifold.", "Require a nearby-manifold explanation or independent evidence that the state is a genuinely new basin."),
+        (self_failure_pressure, "The inference stack itself is degraded enough to contaminate otherwise plausible market conclusions.", "Re-run the thesis after the dominant AUTOGNOSIS failure mode is removed or independently repaired and require the thesis to survive."),
     ]
     hypotheses = [
         {"priority": score, "hypothesis": hypothesis, "falsifier": falsifier}
@@ -1830,5 +2036,6 @@ def evaluate_faculties(
         "archon": ar,
     }
     states["axiom"] = axiom(signals, states, observation_id, evidence_refs)
+    states["autognosis"] = autognosis(signals, states)
     states["socrates"] = socrates(states)
     return states
