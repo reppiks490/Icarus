@@ -3,7 +3,8 @@ name: live-engine-federation-gate
 on:
   push:
     branches:
-      - feat/live-engine-federation-gate-20261002
+      - main
+      - feat/live-engine-federation-gate-20261002-v2
     paths:
       - "icarus_engine/brain_sync.py"
       - "tests_engine/test_brain_sync.py"
