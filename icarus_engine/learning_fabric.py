@@ -3567,6 +3567,546 @@ class LearningFabric:
         except Exception as ex:
             return {"status": "degraded", "error": f"{type(ex).__name__}: {ex}"[:500]}
 
+
+    def _record_native_empirical_event(
+        self,
+        *,
+        domain: str,
+        native_id: str,
+        observed_at: str,
+        asset: str,
+        source_commit: str,
+        eligible_for_inference: bool,
+        semantic: Mapping[str, Any],
+        provenance: Mapping[str, Any],
+    ) -> bool:
+        """Persist one immutable native-domain empirical event.
+
+        Native utility/fitness semantics are intentionally kept separate from
+        probability-calibration rows. A PARALLAX utility delta never becomes a
+        probability and a PANTHEON fitness utility never becomes a Brier input.
+        """
+        domain_name = _text(domain, "native empirical domain", 32).lower()
+        if domain_name not in {"parallax", "pantheon"}:
+            raise ValueError("unsupported native empirical domain")
+        native_key = _text(native_id, "native empirical id", 160)
+        observed = _iso(_parse_time(observed_at, "native empirical observed_at"))
+        asset_name = _text(asset, "native empirical asset", 32).upper()
+        commit = _git_sha(source_commit)
+        if type(eligible_for_inference) is not bool:
+            raise ValueError("eligible_for_inference must be Boolean")
+        semantic_obj = dict(semantic)
+        provenance_obj = dict(provenance)
+        semantic_json = _json(semantic_obj, "native empirical semantic")
+        provenance_json = _json(provenance_obj, "native empirical provenance")
+        event_id = "ne-" + _sha({
+            "domain": domain_name,
+            "native_id": native_key,
+            "semantic": semantic_obj,
+            "provenance": provenance_obj,
+        })[:28]
+
+        with self._lock, self._conn:
+            prior = self._conn.execute(
+                "SELECT * FROM native_empirical_events WHERE domain=? AND native_id=?",
+                (domain_name, native_key),
+            ).fetchone()
+            if prior is not None:
+                if (
+                    prior["observed_at"] != observed
+                    or prior["asset"] != asset_name
+                    or prior["source_commit"] != commit
+                    or bool(prior["eligible_for_inference"]) != eligible_for_inference
+                    or prior["semantic_json"] != semantic_json
+                    or prior["provenance_json"] != provenance_json
+                ):
+                    raise ValueError(
+                        "native empirical event is immutable and conflicts with stored semantics"
+                    )
+                return False
+            self._conn.execute(
+                """INSERT INTO native_empirical_events(
+                    event_id,domain,native_id,observed_at,asset,source_commit,
+                    eligible_for_inference,semantic_json,provenance_json,recorded_at
+                ) VALUES(?,?,?,?,?,?,?,?,?,?)""",
+                (
+                    event_id,
+                    domain_name,
+                    native_key,
+                    observed,
+                    asset_name,
+                    commit,
+                    int(eligible_for_inference),
+                    semantic_json,
+                    provenance_json,
+                    _utc_now(),
+                ),
+            )
+        return True
+
+    @staticmethod
+    def _native_json(raw: Any, *, default: Any) -> Any:
+        if not isinstance(raw, str):
+            return default
+        try:
+            value = json.loads(raw)
+        except (TypeError, ValueError):
+            return default
+        return value
+
+    @staticmethod
+    def _parallax_contract_complete(contract: Mapping[str, Any]) -> bool:
+        return (
+            bool(str(contract.get("utility_metric") or "").strip())
+            and str(contract.get("utility_metric") or "").strip().lower() != "unspecified"
+            and type(contract.get("evaluation_horizon_bars")) is int
+            and int(contract.get("evaluation_horizon_bars") or 0) > 0
+            and bool(str(contract.get("dataset_id") or "").strip())
+            and bool(str(contract.get("cost_model_id") or "").strip())
+            and bool(str(contract.get("clock_id") or "").strip())
+        )
+
+    def _harvest_parallax_empirical(self) -> dict[str, Any]:
+        db = self.root / "parallax.sqlite3"
+        if not db.exists():
+            return {
+                "status": "unavailable",
+                "imported": 0,
+                "eligible_for_inference": 0,
+                "source": "research/parallax.sqlite3",
+                **_authority(),
+            }
+        imported = 0
+        eligible_imported = 0
+        scanned = 0
+        errors: dict[str, str] = {}
+        con = None
+        try:
+            con = sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=15.0)
+            con.row_factory = sqlite3.Row
+            rows = con.execute(
+                """SELECT
+                       d.decision_id,
+                       d.observed_at AS decision_observed_at,
+                       d.asset,
+                       d.action,
+                       d.regime,
+                       d.source_commit,
+                       d.context_json,
+                       d.contract_json,
+                       d.strata_json,
+                       a.branch_id AS actual_branch_id,
+                       a.utility AS actual_utility,
+                       a.evidence_json AS actual_evidence_json,
+                       a.observed_at AS actual_observed_at,
+                       a.status AS actual_status,
+                       b.branch_id AS branch_id,
+                       b.kind AS branch_kind,
+                       b.label AS branch_label,
+                       b.params_json AS branch_params_json,
+                       b.utility AS branch_utility,
+                       b.metrics_json AS branch_metrics_json,
+                       b.evidence_json AS branch_evidence_json,
+                       b.observed_at AS branch_observed_at,
+                       b.status AS branch_status
+                   FROM decisions d
+                   JOIN branches a
+                     ON a.decision_id=d.decision_id AND a.kind='actual'
+                   JOIN branches b
+                     ON b.decision_id=d.decision_id AND b.kind<>'actual'
+                   WHERE b.status='observed'
+                   ORDER BY COALESCE(b.observed_at,d.observed_at),b.branch_id"""
+            ).fetchall()
+            for row in rows:
+                scanned += 1
+                native_id = str(row["branch_id"] or "")
+                try:
+                    contract = self._native_json(row["contract_json"], default={})
+                    if not isinstance(contract, Mapping):
+                        contract = {}
+                    context = self._native_json(row["context_json"], default={})
+                    if not isinstance(context, Mapping):
+                        context = {}
+                    strata = self._native_json(row["strata_json"], default={})
+                    if not isinstance(strata, Mapping):
+                        strata = {}
+                    params = self._native_json(row["branch_params_json"], default={})
+                    if not isinstance(params, Mapping):
+                        params = {}
+                    metrics = self._native_json(row["branch_metrics_json"], default={})
+                    if not isinstance(metrics, Mapping):
+                        metrics = {}
+                    actual_evidence = self._native_json(
+                        row["actual_evidence_json"], default=[]
+                    )
+                    if not isinstance(actual_evidence, list):
+                        actual_evidence = []
+                    actual_evidence = [
+                        str(item) for item in actual_evidence
+                        if isinstance(item, str) and item.strip()
+                    ]
+                    branch_evidence = self._native_json(
+                        row["branch_evidence_json"], default=[]
+                    )
+                    if not isinstance(branch_evidence, list):
+                        branch_evidence = []
+                    branch_evidence = [
+                        str(item) for item in branch_evidence
+                        if isinstance(item, str) and item.strip()
+                    ]
+                    actual_utility = (
+                        None if row["actual_utility"] is None
+                        else _finite(row["actual_utility"], "parallax actual utility")
+                    )
+                    branch_utility = (
+                        None if row["branch_utility"] is None
+                        else _finite(row["branch_utility"], "parallax branch utility")
+                    )
+                    contract_complete = self._parallax_contract_complete(contract)
+                    actual_complete = (
+                        str(row["actual_status"] or "") == "observed"
+                        and actual_utility is not None
+                        and bool(actual_evidence)
+                    )
+                    branch_complete = (
+                        str(row["branch_status"] or "") == "observed"
+                        and branch_utility is not None
+                        and bool(branch_evidence)
+                    )
+                    eligible = bool(
+                        contract_complete and actual_complete and branch_complete
+                    )
+                    utility_delta = (
+                        branch_utility - actual_utility
+                        if actual_utility is not None and branch_utility is not None
+                        else None
+                    )
+                    observed_at = (
+                        row["branch_observed_at"]
+                        or row["actual_observed_at"]
+                        or row["decision_observed_at"]
+                    )
+                    semantic = {
+                        "decision_id": row["decision_id"],
+                        "action": row["action"],
+                        "regime": row["regime"],
+                        "branch_kind": row["branch_kind"],
+                        "branch_label": row["branch_label"],
+                        "branch_params": dict(params),
+                        "branch_metrics": dict(metrics),
+                        "actual_utility": actual_utility,
+                        "branch_utility": branch_utility,
+                        "utility_delta": utility_delta,
+                        "utility_metric": contract.get("utility_metric"),
+                        "comparison_contract": dict(contract),
+                        "comparison_contract_complete": contract_complete,
+                        "actual_evidence": actual_evidence,
+                        "branch_evidence": branch_evidence,
+                        "actual_evidence_complete": bool(actual_evidence),
+                        "branch_evidence_complete": bool(branch_evidence),
+                        "context": dict(context),
+                        "strata": dict(strata),
+                    }
+                    did_insert = self._record_native_empirical_event(
+                        domain="parallax",
+                        native_id=native_id,
+                        observed_at=str(observed_at),
+                        asset=str(row["asset"]),
+                        source_commit=str(row["source_commit"]),
+                        eligible_for_inference=eligible,
+                        semantic=semantic,
+                        provenance={
+                            "source_db": "research/parallax.sqlite3",
+                            "decision_id": row["decision_id"],
+                            "actual_branch_id": row["actual_branch_id"],
+                            "branch_id": row["branch_id"],
+                            "native_semantics": "paired_counterfactual_utility",
+                            "immutable_source": True,
+                        },
+                    )
+                    imported += int(did_insert)
+                    eligible_imported += int(did_insert and eligible)
+                except Exception as ex:
+                    errors[native_id or f"row:{scanned}"] = (
+                        f"{type(ex).__name__}: {ex}"[:500]
+                    )
+        except Exception as ex:
+            return {
+                "status": "degraded",
+                "imported": imported,
+                "eligible_for_inference": eligible_imported,
+                "scanned": scanned,
+                "source": "research/parallax.sqlite3",
+                "error": f"{type(ex).__name__}: {ex}"[:500],
+                "errors": errors,
+                **_authority(),
+            }
+        finally:
+            if con is not None:
+                con.close()
+        return {
+            "status": "ok" if not errors else "partial",
+            "imported": imported,
+            "eligible_for_inference": eligible_imported,
+            "scanned": scanned,
+            "source": "research/parallax.sqlite3",
+            "errors": errors,
+            "rule": "PARALLAX paired utility deltas retain native utility semantics and are never coerced into probabilities.",
+            **_authority(),
+        }
+
+    def _harvest_pantheon_empirical(self) -> dict[str, Any]:
+        db = self.root / "pantheon.sqlite3"
+        if not db.exists():
+            return {
+                "status": "unavailable",
+                "imported": 0,
+                "eligible_for_inference": 0,
+                "source": "research/pantheon.sqlite3",
+                **_authority(),
+            }
+        imported = 0
+        eligible_imported = 0
+        scanned = 0
+        errors: dict[str, str] = {}
+        con = None
+        try:
+            con = sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=15.0)
+            con.row_factory = sqlite3.Row
+            rows = con.execute(
+                """SELECT
+                       co.outcome_id,
+                       co.claim_id,
+                       co.observed_at,
+                       co.source_observation_id,
+                       co.utility,
+                       co.fitness_utility,
+                       co.confidence,
+                       co.evidence_json,
+                       c.kind AS claim_kind,
+                       c.stage AS claim_stage,
+                       c.payload_json AS claim_payload_json,
+                       o.observation_id,
+                       o.asset,
+                       o.source_commit
+                   FROM claim_outcomes co
+                   JOIN claims c ON c.claim_id=co.claim_id
+                   JOIN observations o ON o.observation_id=c.observation_id
+                   ORDER BY co.observed_at,co.outcome_id"""
+            ).fetchall()
+            for row in rows:
+                scanned += 1
+                native_id = str(row["outcome_id"] or "")
+                try:
+                    utility = _finite(row["utility"], "pantheon utility")
+                    fitness_utility = _finite(
+                        row["fitness_utility"], "pantheon fitness utility"
+                    )
+                    confidence = _probability(
+                        row["confidence"], "pantheon confidence"
+                    )
+                    evidence = self._native_json(row["evidence_json"], default=[])
+                    if not isinstance(evidence, list):
+                        evidence = []
+                    evidence = [
+                        str(item) for item in evidence
+                        if isinstance(item, str) and item.strip()
+                    ]
+                    claim_payload = self._native_json(
+                        row["claim_payload_json"], default={}
+                    )
+                    if not isinstance(claim_payload, Mapping):
+                        claim_payload = {}
+                    eligible = bool(confidence > 0.0 and evidence)
+                    did_insert = self._record_native_empirical_event(
+                        domain="pantheon",
+                        native_id=native_id,
+                        observed_at=str(row["observed_at"]),
+                        asset=str(row["asset"]),
+                        source_commit=str(row["source_commit"]),
+                        eligible_for_inference=eligible,
+                        semantic={
+                            "claim_id": row["claim_id"],
+                            "claim_kind": row["claim_kind"],
+                            "claim_stage": row["claim_stage"],
+                            "claim_payload": dict(claim_payload),
+                            "observation_id": row["observation_id"],
+                            "source_observation_id": row["source_observation_id"],
+                            "utility": utility,
+                            "fitness_utility": fitness_utility,
+                            "confidence": confidence,
+                            "evidence": evidence,
+                            "positive_fitness_quarantined": bool(
+                                utility > 0.0 and fitness_utility <= 0.0
+                            ),
+                        },
+                        provenance={
+                            "source_db": "research/pantheon.sqlite3",
+                            "outcome_id": row["outcome_id"],
+                            "claim_id": row["claim_id"],
+                            "observation_id": row["observation_id"],
+                            "native_semantics": "claim_outcome_fitness",
+                            "immutable_source": True,
+                        },
+                    )
+                    imported += int(did_insert)
+                    eligible_imported += int(did_insert and eligible)
+                except Exception as ex:
+                    errors[native_id or f"row:{scanned}"] = (
+                        f"{type(ex).__name__}: {ex}"[:500]
+                    )
+        except Exception as ex:
+            return {
+                "status": "degraded",
+                "imported": imported,
+                "eligible_for_inference": eligible_imported,
+                "scanned": scanned,
+                "source": "research/pantheon.sqlite3",
+                "error": f"{type(ex).__name__}: {ex}"[:500],
+                "errors": errors,
+                **_authority(),
+            }
+        finally:
+            if con is not None:
+                con.close()
+        return {
+            "status": "ok" if not errors else "partial",
+            "imported": imported,
+            "eligible_for_inference": eligible_imported,
+            "scanned": scanned,
+            "source": "research/pantheon.sqlite3",
+            "errors": errors,
+            "rule": "PANTHEON utility and confidence-weighted fitness remain separate from probability calibration.",
+            **_authority(),
+        }
+
+    def native_empirical_events(
+        self,
+        *,
+        domain: str | None = None,
+        limit: int = 1000,
+    ) -> list[dict[str, Any]]:
+        if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 10000:
+            raise ValueError("limit must be an integer from 1 to 10000")
+        params: list[Any] = []
+        where = ""
+        if domain is not None:
+            domain_name = _text(domain, "native empirical domain", 32).lower()
+            if domain_name not in {"parallax", "pantheon"}:
+                raise ValueError("unsupported native empirical domain")
+            where = "WHERE domain=?"
+            params.append(domain_name)
+        params.append(limit)
+        rows = self._conn.execute(
+            f"""SELECT * FROM native_empirical_events
+                {where}
+                ORDER BY observed_at,native_id
+                LIMIT ?""",
+            tuple(params),
+        ).fetchall()
+        return [
+            {
+                "event_id": row["event_id"],
+                "domain": row["domain"],
+                "native_id": row["native_id"],
+                "observed_at": row["observed_at"],
+                "asset": row["asset"],
+                "source_commit": row["source_commit"],
+                "eligible_for_inference": bool(row["eligible_for_inference"]),
+                "semantic": json.loads(row["semantic_json"]),
+                "provenance": json.loads(row["provenance_json"]),
+                "recorded_at": row["recorded_at"],
+                **_authority(),
+            }
+            for row in rows
+        ]
+
+    def native_empirical_state(self) -> dict[str, Any]:
+        events = self.native_empirical_events(limit=10000)
+        domains: dict[str, dict[str, Any]] = {}
+        parallax = [row for row in events if row["domain"] == "parallax"]
+        if parallax:
+            eligible = [row for row in parallax if row["eligible_for_inference"]]
+            deltas = [
+                float(row["semantic"]["utility_delta"])
+                for row in eligible
+                if type(row["semantic"].get("utility_delta")) in (int, float)
+                and math.isfinite(float(row["semantic"]["utility_delta"]))
+            ]
+            domains["parallax"] = {
+                "event_count": len(parallax),
+                "eligible_event_count": len(eligible),
+                "mean_utility_delta": (
+                    sum(deltas) / len(deltas) if deltas else None
+                ),
+                "positive_delta_fraction": (
+                    sum(1 for value in deltas if value > 0.0) / len(deltas)
+                    if deltas else None
+                ),
+                "nonpositive_delta_count": sum(
+                    1 for value in deltas if value <= 0.0
+                ),
+                "semantic_type": "paired_counterfactual_utility",
+            }
+
+        pantheon = [row for row in events if row["domain"] == "pantheon"]
+        if pantheon:
+            utilities = [
+                float(row["semantic"]["utility"])
+                for row in pantheon
+                if type(row["semantic"].get("utility")) in (int, float)
+                and math.isfinite(float(row["semantic"]["utility"]))
+            ]
+            weighted = [
+                (
+                    float(row["semantic"]["fitness_utility"]),
+                    float(row["semantic"]["confidence"]),
+                )
+                for row in pantheon
+                if type(row["semantic"].get("fitness_utility")) in (int, float)
+                and type(row["semantic"].get("confidence")) in (int, float)
+                and math.isfinite(float(row["semantic"]["fitness_utility"]))
+                and math.isfinite(float(row["semantic"]["confidence"]))
+                and float(row["semantic"]["confidence"]) > 0.0
+            ]
+            weight = sum(confidence for _, confidence in weighted)
+            domains["pantheon"] = {
+                "event_count": len(pantheon),
+                "eligible_event_count": sum(
+                    1 for row in pantheon if row["eligible_for_inference"]
+                ),
+                "mean_utility": (
+                    sum(utilities) / len(utilities) if utilities else None
+                ),
+                "confidence_weighted_fitness": (
+                    sum(value * confidence for value, confidence in weighted) / weight
+                    if weight > 0.0 else None
+                ),
+                "quarantined_positive_count": sum(
+                    1
+                    for row in pantheon
+                    if bool(row["semantic"].get("positive_fitness_quarantined"))
+                ),
+                "semantic_type": "claim_outcome_fitness",
+            }
+
+        return {
+            "schema_version": "icarus-native-empirical-state-v1",
+            "event_count": len(events),
+            "eligible_event_count": sum(
+                1 for row in events if row["eligible_for_inference"]
+            ),
+            "domains": domains,
+            "authority": {
+                "research_only": True,
+                "domain_semantics_preserved": True,
+                "probability_coercion": False,
+                "automatic_production_promotion": False,
+                "automatic_execution": False,
+            },
+            **_authority(),
+        }
+
     def harvest_native(self) -> dict[str, Any]:
         out = {"sibyl": self._harvest_sibyl()}
         out["possibility"] = self._harvest_possibility_calibration()
