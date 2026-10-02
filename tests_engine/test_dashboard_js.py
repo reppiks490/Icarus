@@ -682,3 +682,21 @@ def test_ascendancy_dashboard_surfaces_information_contribution_matrix():
     assert "standalone_performance_is_not_incremental_information" in ui
     assert 'p.path == "/api/ascendancy/contributions"' in server
     assert 'p.path == "/admin/ascendancy/contribution-observation"' in server
+
+
+def test_ascendancy_dashboard_surfaces_evaluator_cascade():
+    ui = (REPO / "icarus_engine/ascendancy-ui.js").read_text(encoding="utf-8")
+    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
+
+    assert "/api/ascendancy/evaluator" in ui
+    assert "EVALUATOR CASCADE" in ui
+    assert "RESOURCE ECONOMY" in ui
+    assert "NEXT STAGE" in ui
+    assert "PROTECTED HOLDOUT" in ui
+    assert "HOLDOUT EXPOSURES" in ui
+    assert "QUALIFICATION_PREFLIGHT" in ui
+    assert "cascade_cannot_mint_qualification" in ui
+    assert "research_priority_is_expected_information_gain_per_cost" in ui
+    assert 'p.path == "/api/ascendancy/evaluator"' in server
+    assert 'p.path == "/admin/ascendancy/evaluator-register"' in server
+    assert 'p.path == "/admin/ascendancy/evaluator-receipt"' in server
