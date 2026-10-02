@@ -518,10 +518,19 @@ class LearningFabric:
                    WHERE t.dataset_id=d.dataset_id AND t.slot='trade_experience'
                )"""
         ).fetchone()[0])
+        unimported_strategy_reports_xlsx = int(self._conn.execute(
+            """SELECT COUNT(*) FROM datasets d
+               WHERE d.artifact_class='strategy_report_xlsx'
+               AND NOT EXISTS (
+                   SELECT 1 FROM training_runs t
+                   WHERE t.dataset_id=d.dataset_id AND t.slot='trade_experience'
+               )"""
+        ).fetchone()[0])
         return {
             "pending_predictions": pending_predictions,
             "untrained_ohlc_datasets": untrained_ohlc,
             "unimported_trade_lists": unimported_trade_lists,
+            "unimported_strategy_reports_xlsx": unimported_strategy_reports_xlsx,
         }
 
     def health(self) -> dict[str, Any]:
@@ -2491,8 +2500,16 @@ class LearningFabric:
         dataset = self.dataset(dataset_id)
         if dataset["artifact_class"] == "trade_list":
             return self._import_trade_list_dataset(dataset)
+        if dataset["artifact_class"] == "strategy_report_xlsx":
+            return self._import_strategy_report_xlsx_dataset(dataset)
         if dataset["artifact_class"] != "ohlc":
-            return {"dataset_id": dataset_id, "status": "skipped", "reason": "dataset is neither OHLC nor trade-list experience", "runs": [], **_authority()}
+            return {
+                "dataset_id": dataset_id,
+                "status": "skipped",
+                "reason": "dataset is neither OHLC nor supported historical trade experience",
+                "runs": [],
+                **_authority(),
+            }
         requested = list(slots if slots is not None else self._config["auto_train_slots"])
         runs = []
         for raw_slot in requested:
@@ -3256,12 +3273,15 @@ class LearningFabric:
             return []
         rows = self._conn.execute(
             """SELECT d.dataset_id FROM datasets d
-               WHERE d.artifact_class='trade_list'
+               WHERE d.artifact_class IN ('trade_list','strategy_report_xlsx')
                AND NOT EXISTS (
                    SELECT 1 FROM training_runs t
                    WHERE t.dataset_id=d.dataset_id AND t.slot='trade_experience'
                )
-               ORDER BY d.discovered_at,d.dataset_id LIMIT ?""",
+               ORDER BY
+                   CASE d.artifact_class WHEN 'trade_list' THEN 0 ELSE 1 END,
+                   d.discovered_at,d.dataset_id
+               LIMIT ?""",
             (limit,),
         ).fetchall()
         return [row["dataset_id"] for row in rows]
@@ -3450,6 +3470,7 @@ class LearningFabric:
                 "shadow_recalibration": "chronological_holdout_validated_research_only",
                 "calibration_drift": "oos_recent_window_retirement_with_batched_refresh",
                 "historical_trade_lists": "immutable_realized_experience",
+                "historical_strategy_reports_xlsx": "direct_trade_sheet_realized_experience_with_cross_format_deduplication",
                 "runtime_trade_outcomes": "fully_closed_live_sim_experience",
                 "sibyl": "native_prediction_outcome",
                 "performance_proof": "native_immutable_forecast_outcome",
