@@ -575,6 +575,44 @@
     '</section>';
   }
 
+  function renderFederatedIntake(intake) {
+    if (!intake) {
+      return '<section class="card" style="margin-top:12px"><h3>FEDERATED RESEARCH INTAKE</h3><div class="empty">UNAVAILABLE — federated intake state did not load.</div></section>';
+    }
+    const rows = Array.isArray(intake.proposals) ? intake.proposals : [];
+    const kinds = intake.proposal_kind_counts || {};
+    const body = rows.map(row =>
+      '<tr>' +
+        '<td><code title="' + h(row.proposal_id || '') + '">' + h(short(row.proposal_id || 'UNAVAILABLE')) + '</code></td>' +
+        '<td><b>' + h(row.proposal_kind || 'UNAVAILABLE') + '</b><div class="small muted">' + h(row.source_id || 'UNAVAILABLE') + '</div></td>' +
+        '<td class="small"><code>' + h(short(row.source_commit || 'UNAVAILABLE')) + '</code><br>blob <code>' + h(short(row.source_blob_sha || 'UNAVAILABLE')) + '</code></td>' +
+        '<td class="small">' + h(row.research_question || 'UNAVAILABLE') + '</td>' +
+        '<td class="small">' + h(row.claim_status || 'UNAVAILABLE') + '<br>' + h(row.source_evidence_status || 'UNAVAILABLE') + '</td>' +
+        '<td class="small"><b>' + h(row.admission_state || 'RESEARCH_PROMPT_ONLY') + '</b><br>candidate evidence=false<br>automatic candidate creation=false<br>requires Foundry + Evaluator=true</td>' +
+      '</tr>'
+    ).join('');
+    const kindText = Object.keys(kinds).sort().map(key => key + '=' + kinds[key]).join(' · ');
+
+    return '<section class="card" style="margin-top:12px">' +
+      '<h3>FEDERATED RESEARCH INTAKE</h3>' +
+      '<div class="small muted">Verified Icarus-engine historical context becomes bounded replication targets and research questions. It does not become local truth, candidate evidence, or a Foundry candidate.</div>' +
+      '<div class="tiles" style="margin-top:10px">' +
+        '<div class="tile"><div class="k">RESEARCH PROMPTS</div><div class="v tnum">' + h(count(intake.proposal_count)) + '</div></div>' +
+        '<div class="tile"><div class="k">PEER SOURCES</div><div class="v tnum">' + h(count(intake.source_repository_count)) + '</div></div>' +
+        '<div class="tile"><div class="k">SOURCE REVISIONS</div><div class="v tnum">' + h(count((intake.source_commits || []).length)) + '</div></div>' +
+        '<div class="tile"><div class="k">CANDIDATE EVIDENCE</div><div class="v tnum">' + h(count(intake.candidate_evidence_count)) + '</div><div class="small muted">must remain 0</div></div>' +
+        '<div class="tile"><div class="k">ADMISSION</div><div class="v">RESEARCH_PROMPT_ONLY</div><div class="small muted">automatic candidate creation=false · automatic model promotion=false</div></div>' +
+        '<div class="tile"><div class="k">AUTHORITY</div><div class="v">RESEARCH ONLY</div><div class="small muted">execution_authorized=false · production_decision_authorized=false</div></div>' +
+      '</div>' +
+      '<div class="small muted" style="margin:10px 0">' + h(kindText || 'No federated research prompts yet.') + '</div>' +
+      '<div class="scroll" style="max-height:54vh"><table><thead><tr>' +
+        '<th>Prompt</th><th>Investigation</th><th>Exact peer provenance</th><th>Research question</th><th>Claim status</th><th>Admission boundary</th>' +
+      '</tr></thead><tbody>' +
+        (body || '<tr><td colspan="6" class="empty">UNMEASURED — run ASCENDANCY federated intake after canonical peer synchronization.</td></tr>') +
+      '</tbody></table></div>' +
+    '</section>';
+  }
+
   function renderEvaluator(evaluator) {
     if (!evaluator) {
       return '<section class="card" style="margin-top:12px"><h3>ASCENDANCY EVALUATOR CASCADE · RESOURCE ECONOMY</h3><div class="empty">UNAVAILABLE — staged evaluator state did not load.</div></section>';
@@ -650,13 +688,13 @@
     '</section>';
   }
 
-  function renderAscendancy(capabilities, genomes, foundry, unknowns, mechanisms, inventions, contributions, evaluator, peers, errors) {
+  function renderAscendancy(capabilities, genomes, foundry, unknowns, mechanisms, inventions, contributions, evaluator, peers, intake, errors) {
     const el = document.querySelector('#ascendancyBody');
     if (!el) return;
     const warning = errors.length
       ? '<div class="empty" style="margin-bottom:10px">DEGRADED: ' + h(errors.join(' · ')) + '</div>'
       : '';
-    el.innerHTML = warning + renderCapabilities(capabilities) + renderPeers(peers) + renderUnknowns(unknowns) + renderInventions(inventions) + renderFoundry(foundry) + renderEvaluator(evaluator) + renderContributions(contributions) + renderMechanisms(mechanisms) + renderGenomeLab(genomes);
+    el.innerHTML = warning + renderCapabilities(capabilities) + renderPeers(peers) + renderFederatedIntake(intake) + renderUnknowns(unknowns) + renderInventions(inventions) + renderFoundry(foundry) + renderEvaluator(evaluator) + renderContributions(contributions) + renderMechanisms(mechanisms) + renderGenomeLab(genomes);
   }
 
   async function fetchJson(url, token) {
@@ -685,7 +723,8 @@
         fetchJson('/api/ascendancy/inventions', token),
         fetchJson('/api/ascendancy/contributions', token),
         fetchJson('/api/ascendancy/evaluator', token),
-        fetchJson('/api/brain', token)
+        fetchJson('/api/brain', token),
+        fetchJson('/api/ascendancy/federated-intake', token)
       ]);
       if (seq !== loadSeq) return;
       const capabilities = settled[0].status === 'fulfilled' ? settled[0].value : null;
@@ -697,10 +736,11 @@
       const contributions = settled[6].status === 'fulfilled' ? settled[6].value : null;
       const evaluator = settled[7].status === 'fulfilled' ? settled[7].value : null;
       const peers = settled[8].status === 'fulfilled' ? settled[8].value : null;
+      const intake = settled[9].status === 'fulfilled' ? settled[9].value : null;
       const errors = settled
         .filter(x => x.status === 'rejected')
         .map(x => x.reason && x.reason.message ? x.reason.message : String(x.reason || 'UNAVAILABLE'));
-      renderAscendancy(capabilities, genomes, foundry, unknowns, mechanisms, inventions, contributions, evaluator, peers, errors);
+      renderAscendancy(capabilities, genomes, foundry, unknowns, mechanisms, inventions, contributions, evaluator, peers, intake, errors);
     } catch (err) {
       if (seq !== loadSeq) return;
       el.innerHTML = '<div class="empty">ASCENDANCY state UNAVAILABLE: ' + h(err && err.message ? err.message : err) + '</div>';
