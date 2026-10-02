@@ -174,6 +174,8 @@ Realized experience has three explicit, source-bound provenance classes:
 
 The class is derived from source plus evidence on write; a caller-supplied label cannot promote one source class into another. Legacy persisted rows are classified fail-closed when read, without rewriting their immutable original semantic payload. **Never use `HISTORICAL_ARTIFACT_CONFIG` as proof of `RUNTIME_CLOSURE_CONFIG`.** A future source or provenance mechanism must be explicitly admitted into the taxonomy rather than inheriting authority by naming convention.
 
+Historical session provenance follows the same rule. The intake manifest may explicitly declare `session_mode` as RTH/regular-trading-hours or ETH/extended-trading-hours. That explicit value is normalized to `rth` or `eth`, included in the artifact fingerprint, shown in the Learning Fabric UI, and used as an additional strategy-report linkage key when the trade-list row supplies it. If the trade-list manifest does not declare a recognized session, RTH/ETH is **not inferred** from filenames, dates, chart cadence, or a candidate report; competing RTH/ETH reports therefore remain ambiguous and fail closed.
+
 Configuration experience includes:
 
 - count / win rate
