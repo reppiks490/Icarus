@@ -534,6 +534,71 @@ class PantheonKernel:
         if directional:
             disagreement = 1.0 - (max(counts.values()) / len(directional))
         confidence_values = [float(row["claim"].get("confidence", 0.0)) for row in claims]
+
+        # A blind first pass is not necessarily an independent first pass. After
+        # every spawned agent has committed, measure whether their evidence
+        # references collapse onto the same ancestry. Keep this hidden until the
+        # blind barrier clears so partial overlap metrics cannot leak peer evidence.
+        claim_independence: dict[str, float] = {}
+        evidence_pairs: list[dict[str, Any]] = []
+        effective_claim_independence = None
+        claim_evidence_echo_risk = None
+        claim_consensus_illusion_candidate = False
+        if all_spawned_complete and claims:
+            evidence_sets: dict[str, set[str]] = {}
+            confidence_by_agent: dict[str, float] = {}
+            for row in claims:
+                claim_body = row.get("claim", {})
+                raw_evidence = claim_body.get("evidence", []) if isinstance(claim_body, Mapping) else []
+                tokens = {
+                    str(item).strip().lower()
+                    for item in raw_evidence
+                    if isinstance(item, str) and str(item).strip()
+                }
+                agent_id = str(row["agent_id"])
+                evidence_sets[agent_id] = tokens
+                confidence_by_agent[agent_id] = float(claim_body.get("confidence", 0.0)) if isinstance(claim_body, Mapping) else 0.0
+
+            overlap_mass = {agent_id: 0.0 for agent_id in evidence_sets}
+            agent_ids = sorted(evidence_sets)
+            for i, left_id in enumerate(agent_ids):
+                for right_id in agent_ids[i + 1:]:
+                    left = evidence_sets[left_id]
+                    right = evidence_sets[right_id]
+                    union = left | right
+                    overlap = (len(left & right) / len(union)) if union else 1.0
+                    overlap_mass[left_id] += overlap
+                    overlap_mass[right_id] += overlap
+                    if overlap > 0.0:
+                        evidence_pairs.append({
+                            "left_agent_id": left_id,
+                            "right_agent_id": right_id,
+                            "overlap": overlap,
+                            "shared_evidence_count": len(left & right),
+                        })
+
+            for agent_id in agent_ids:
+                claim_independence[agent_id] = 1.0 / (1.0 + overlap_mass[agent_id])
+
+            weighted_numerator = sum(
+                confidence_by_agent[agent_id] * claim_independence[agent_id]
+                for agent_id in agent_ids
+            )
+            weighted_denominator = sum(confidence_by_agent.values())
+            if weighted_denominator > 0.0:
+                effective_claim_independence = weighted_numerator / weighted_denominator
+            else:
+                effective_claim_independence = sum(claim_independence.values()) / len(claim_independence)
+            effective_claim_independence = max(0.0, min(1.0, effective_claim_independence))
+            claim_evidence_echo_risk = 1.0 - effective_claim_independence
+
+            directional_agreement = (1.0 - disagreement) if disagreement is not None else 0.0
+            claim_consensus_illusion_candidate = (
+                len(directional) >= 2
+                and directional_agreement >= 0.67
+                and claim_evidence_echo_risk >= 0.35
+            )
+
         return claims, {
             "ready_for_deliberation": all_spawned_complete,
             "mandatory_roles": sorted(mandatory),
@@ -549,6 +614,12 @@ class PantheonKernel:
             "blind_first_pass_complete": all_spawned_complete,
             "peer_conclusions_hidden_during_first_pass": True,
             "claim_bodies_visible": all_spawned_complete,
+            "claim_evidence_echo_visible": all_spawned_complete,
+            "claim_evidence_independence": claim_independence if all_spawned_complete else {},
+            "effective_claim_evidence_independence": effective_claim_independence,
+            "claim_evidence_echo_risk": claim_evidence_echo_risk,
+            "claim_consensus_illusion_candidate": claim_consensus_illusion_candidate,
+            "duplicated_claim_evidence_pairs": evidence_pairs if all_spawned_complete else [],
             "consensus_forced": False,
             "execution_authorized": False,
             "production_decision_authorized": False,
