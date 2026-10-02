@@ -311,6 +311,14 @@ def test_repository_native_interface_vocabulary_is_accepted(tmp_path):
     assert state["status"] == "green"
     assert state["ingested_total"] == 1
     assert state["rejected_total"] == 0
+    brain = brain_snapshot(tmp_path)
+    staged_brain_events = [
+        row for row in brain["events"]
+        if row["kind"] == "subsystem"
+    ]
+    assert staged_brain_events
+    assert {row["status"] for row in staged_brain_events} == {"observed"}
+
     assert {
         "pantheon",
         "aether",
