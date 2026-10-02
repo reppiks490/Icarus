@@ -516,13 +516,88 @@
     '</section>';
   }
 
-  function renderAscendancy(capabilities, genomes, foundry, unknowns, mechanisms, inventions, contributions, errors) {
+  function renderEvaluator(evaluator) {
+    if (!evaluator) {
+      return '<section class="card" style="margin-top:12px"><h3>EVALUATOR CASCADE · RESOURCE ECONOMY</h3><div class="empty">UNAVAILABLE — staged evaluator state did not load.</div></section>';
+    }
+    const candidates = Array.isArray(evaluator.candidates) ? evaluator.candidates : [];
+    const stages = Array.isArray(evaluator.stage_catalog) ? evaluator.stage_catalog : [];
+    const exposures = Array.isArray(evaluator.holdout_exposures) ? evaluator.holdout_exposures : [];
+    const stateCounts = evaluator.state_counts || {};
+    const truth = evaluator.truth_contract || {};
+
+    const candidateRows = candidates.map(row => {
+      const used = row.resource_used || {};
+      const remaining = row.resource_remaining || {};
+      return '<tr>' +
+        '<td><code title="' + h(row.candidate_id || '') + '">' + h(short(row.candidate_id || 'UNAVAILABLE')) + '</code></td>' +
+        '<td class="' + statusClass(row.state) + '"><b>' + h(row.state || 'UNAVAILABLE') + '</b></td>' +
+        '<td><b>' + h(row.next_stage || 'COMPLETE / HALTED') + '</b></td>' +
+        '<td class="tnum">' + h(count(row.completed_stage_count)) + ' / ' + h(count(stages.length)) + '</td>' +
+        '<td class="small">eval=' + h(count(used.evaluations)) + ' · wall=' + h(count(used.wall_seconds)) + 's · cost=' + h(count(used.cost_units)) + '</td>' +
+        '<td class="small">eval=' + h(count(remaining.evaluations)) + ' · wall=' + h(count(remaining.wall_seconds)) + 's · cost=' + h(count(remaining.cost_units)) + '</td>' +
+        '<td class="small">qualified_shadow=false · execution_authorized=false</td>' +
+      '</tr>';
+    }).join('');
+
+    const stageRows = stages.map(row =>
+      '<tr>' +
+        '<td class="tnum">' + h(count(row.stage_index)) + '</td>' +
+        '<td><b>' + h(row.id || 'UNAVAILABLE') + '</b></td>' +
+        '<td>' + h(row.fidelity || 'UNAVAILABLE') + '</td>' +
+        '<td class="small">' + h(row.purpose || 'UNAVAILABLE') + '</td>' +
+        '<td class="small">grants_qualification=' + h(row.grants_qualification === false ? 'false' : 'UNAVAILABLE') + '</td>' +
+      '</tr>'
+    ).join('');
+
+    const exposureRows = exposures.map(row =>
+      '<tr>' +
+        '<td><b>' + h(row.holdout_id || 'UNAVAILABLE') + '</b></td>' +
+        '<td><code>' + h(short(row.evaluation_contract_hash || 'UNAVAILABLE')) + '</code></td>' +
+        '<td><code>' + h(short(row.candidate_id || 'UNAVAILABLE')) + '</code></td>' +
+        '<td class="small">' + h(row.observed_at || 'UNAVAILABLE') + '</td>' +
+      '</tr>'
+    ).join('');
+
+    return '<section class="card" style="margin-top:12px">' +
+      '<h3>EVALUATOR CASCADE · RESOURCE ECONOMY</h3>' +
+      '<div class="small muted">Multi-fidelity elimination spends cheap evidence first, escalates only survivors, locks protected-holdout generations after exposure, and ends at QUALIFICATION_PREFLIGHT without self-qualification.</div>' +
+      '<div class="tiles" style="margin-top:10px">' +
+        '<div class="tile"><div class="k">ENROLLED</div><div class="v tnum">' + h(count(evaluator.candidate_count)) + '</div></div>' +
+        '<div class="tile"><div class="k">EVALUATING</div><div class="v tnum">' + h(count(stateCounts.EVALUATING)) + '</div></div>' +
+        '<div class="tile"><div class="k">HALTED FAILED</div><div class="v tnum">' + h(count(stateCounts.HALTED_FAILED)) + '</div></div>' +
+        '<div class="tile"><div class="k">READY FOR QUALIFICATION</div><div class="v tnum">' + h(count(stateCounts.READY_FOR_PROTECTED_QUALIFICATION)) + '</div></div>' +
+        '<div class="tile"><div class="k">PROTECTED HOLDOUT EXPOSURES</div><div class="v tnum">' + h(count(evaluator.holdout_exposure_count)) + '</div></div>' +
+        '<div class="tile"><div class="k">AUTHORITY</div><div class="v">RESEARCH ONLY</div><div class="small muted">qualified_shadow=false · production_decision_authorized=false</div></div>' +
+      '</div>' +
+      '<div class="small muted" style="margin:10px 0">' +
+        'cascade_cannot_mint_qualification=' + h(truth.cascade_cannot_mint_qualification === true ? 'true' : 'UNAVAILABLE') +
+        ' · protected_holdout_exposure_is_consumable=' + h(truth.protected_holdout_exposure_is_consumable === true ? 'true' : 'UNAVAILABLE') +
+        ' · research_priority_is_expected_information_gain_per_cost=' + h(truth.research_priority_is_expected_information_gain_per_cost === true ? 'true' : 'UNAVAILABLE') +
+        ' · resource_budget_checked_before_receipt_commit=' + h(truth.resource_budget_checked_before_receipt_commit === true ? 'true' : 'UNAVAILABLE') +
+      '</div>' +
+      '<h3 style="margin-top:14px">CANDIDATE CASCADE STATE</h3>' +
+      '<div class="scroll"><table><thead><tr><th>Candidate</th><th>State</th><th>NEXT STAGE</th><th>Stages passed</th><th>RESOURCE USED</th><th>RESOURCE REMAINING</th><th>Authority</th></tr></thead><tbody>' +
+        (candidateRows || '<tr><td colspan="7" class="empty">UNMEASURED — no candidates enrolled in evaluator cascade.</td></tr>') +
+      '</tbody></table></div>' +
+      '<h3 style="margin-top:14px">MULTI-FIDELITY STAGE CATALOG</h3>' +
+      '<div class="scroll"><table><thead><tr><th>#</th><th>Stage</th><th>Fidelity</th><th>Purpose</th><th>Qualification authority</th></tr></thead><tbody>' +
+        (stageRows || '<tr><td colspan="5" class="empty">UNAVAILABLE — evaluator stage catalog missing.</td></tr>') +
+      '</tbody></table></div>' +
+      '<h3 style="margin-top:14px">HOLDOUT EXPOSURES</h3>' +
+      '<div class="scroll"><table><thead><tr><th>PROTECTED HOLDOUT</th><th>Evaluator contract</th><th>Candidate</th><th>Observed</th></tr></thead><tbody>' +
+        (exposureRows || '<tr><td colspan="4" class="small muted">No protected holdout generation has been exposed.</td></tr>') +
+      '</tbody></table></div>' +
+    '</section>';
+  }
+
+  function renderAscendancy(capabilities, genomes, foundry, unknowns, mechanisms, inventions, contributions, evaluator, errors) {
     const el = document.querySelector('#ascendancyBody');
     if (!el) return;
     const warning = errors.length
       ? '<div class="empty" style="margin-bottom:10px">DEGRADED: ' + h(errors.join(' · ')) + '</div>'
       : '';
-    el.innerHTML = warning + renderCapabilities(capabilities) + renderUnknowns(unknowns) + renderInventions(inventions) + renderFoundry(foundry) + renderContributions(contributions) + renderMechanisms(mechanisms) + renderGenomeLab(genomes);
+    el.innerHTML = warning + renderCapabilities(capabilities) + renderUnknowns(unknowns) + renderInventions(inventions) + renderFoundry(foundry) + renderEvaluator(evaluator) + renderContributions(contributions) + renderMechanisms(mechanisms) + renderGenomeLab(genomes);
   }
 
   async function fetchJson(url, token) {
@@ -549,7 +624,8 @@
         fetchJson('/api/ascendancy/unknowns', token),
         fetchJson('/api/ascendancy/mechanisms', token),
         fetchJson('/api/ascendancy/inventions', token),
-        fetchJson('/api/ascendancy/contributions', token)
+        fetchJson('/api/ascendancy/contributions', token),
+        fetchJson('/api/ascendancy/evaluator', token)
       ]);
       if (seq !== loadSeq) return;
       const capabilities = settled[0].status === 'fulfilled' ? settled[0].value : null;
@@ -559,10 +635,11 @@
       const mechanisms = settled[4].status === 'fulfilled' ? settled[4].value : null;
       const inventions = settled[5].status === 'fulfilled' ? settled[5].value : null;
       const contributions = settled[6].status === 'fulfilled' ? settled[6].value : null;
+      const evaluator = settled[7].status === 'fulfilled' ? settled[7].value : null;
       const errors = settled
         .filter(x => x.status === 'rejected')
         .map(x => x.reason && x.reason.message ? x.reason.message : String(x.reason || 'UNAVAILABLE'));
-      renderAscendancy(capabilities, genomes, foundry, unknowns, mechanisms, inventions, contributions, errors);
+      renderAscendancy(capabilities, genomes, foundry, unknowns, mechanisms, inventions, contributions, evaluator, errors);
     } catch (err) {
       if (seq !== loadSeq) return;
       el.innerHTML = '<div class="empty">ASCENDANCY state UNAVAILABLE: ' + h(err && err.message ? err.message : err) + '</div>';
