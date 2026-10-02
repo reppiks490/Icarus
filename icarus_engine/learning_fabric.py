@@ -188,6 +188,9 @@ class LearningFabric:
                     prediction_label TEXT NOT NULL DEFAULT '',
                     source_commit TEXT NOT NULL DEFAULT '',
                     status TEXT NOT NULL,
+                    raw_sample_count INTEGER NOT NULL DEFAULT 0,
+                    effective_sample_count INTEGER NOT NULL DEFAULT 0,
+                    overlap_purged INTEGER NOT NULL DEFAULT 0,
                     train_count INTEGER NOT NULL,
                     validation_count INTEGER NOT NULL,
                     fit_cutoff TEXT NOT NULL,
@@ -347,6 +350,21 @@ class LearningFabric:
             if "retirement_reason" not in calibration_columns:
                 self._conn.execute(
                     "ALTER TABLE calibration_models ADD COLUMN retirement_reason TEXT"
+                )
+            if "raw_sample_count" not in calibration_columns:
+                self._conn.execute(
+                    "ALTER TABLE calibration_models "
+                    "ADD COLUMN raw_sample_count INTEGER NOT NULL DEFAULT 0"
+                )
+            if "effective_sample_count" not in calibration_columns:
+                self._conn.execute(
+                    "ALTER TABLE calibration_models "
+                    "ADD COLUMN effective_sample_count INTEGER NOT NULL DEFAULT 0"
+                )
+            if "overlap_purged" not in calibration_columns:
+                self._conn.execute(
+                    "ALTER TABLE calibration_models "
+                    "ADD COLUMN overlap_purged INTEGER NOT NULL DEFAULT 0"
                 )
             self._conn.execute(
                 """CREATE INDEX IF NOT EXISTS idx_learning_calibrator_label_scope
@@ -1126,6 +1144,26 @@ class LearningFabric:
             "rule": "Realized trade experience is descriptive outcome memory; configuration scorecards require closure-time provenance and never authorize production or execution.",
             **_authority(),
         }
+
+    @staticmethod
+    def _purge_overlapping_prediction_rows(rows: Sequence[sqlite3.Row]) -> list[sqlite3.Row]:
+        """Greedily retain forecast intervals that do not overlap in event time."""
+        ordered = sorted(
+            rows,
+            key=lambda row: (float(row["emitted_ts"]), str(row["prediction_id"])),
+        )
+        kept: list[sqlite3.Row] = []
+        last_resolves = -math.inf
+        for row in ordered:
+            emitted = float(row["emitted_ts"])
+            resolves = float(row["resolves_ts"])
+            if not math.isfinite(emitted) or not math.isfinite(resolves) or resolves <= emitted:
+                continue
+            if emitted + 1e-9 < last_resolves:
+                continue
+            kept.append(row)
+            last_resolves = resolves
+        return kept
 
     def rebuild_shadow_calibrators(
         self, *, min_samples: int = 30, refresh_samples: int = 1
