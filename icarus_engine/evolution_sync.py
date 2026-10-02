@@ -110,6 +110,7 @@ def _default_state(interval_seconds: int) -> dict[str, Any]:
         "processed_blob_shas": [],
         "rejected_blob_shas": [],
         "rejected_blob_errors": {},
+        "event_id_bindings": {},
         "events": [],
         "subsystems": {},
         "execution_authorized": False,
@@ -306,6 +307,7 @@ class EvolutionRemoteSync:
         state.pop("processed_blob_shas", None)
         state.pop("rejected_blob_shas", None)
         state.pop("rejected_blob_errors", None)
+        state.pop("event_id_bindings", None)
         return state
 
     def sync_once(self) -> dict[str, Any]:
@@ -353,6 +355,24 @@ class EvolutionRemoteSync:
                 for x in state.get("events", [])
                 if isinstance(x, dict) and x.get("event_id")
             }
+            raw_bindings = state.get("event_id_bindings")
+            if not isinstance(raw_bindings, Mapping):
+                raw_bindings = {}
+            event_id_bindings = {
+                str(event_id): str(bound_sha).lower()
+                for event_id, bound_sha in raw_bindings.items()
+                if str(event_id).strip()
+                and _is_sha(str(bound_sha).lower())
+            }
+            # Backfill bindings from visible legacy state during rollout.
+            for event_id, prior in events_by_id.items():
+                prior_sha = (
+                    str(prior.get("remote_blob_sha") or "").lower()
+                    if isinstance(prior, Mapping)
+                    else ""
+                )
+                if _is_sha(prior_sha):
+                    event_id_bindings.setdefault(event_id, prior_sha)
             subsystems = dict(state.get("subsystems") or {})
             errors: list[str] = []
 
@@ -429,11 +449,10 @@ class EvolutionRemoteSync:
                             remote_path=path,
                             blob_sha=blob_sha,
                         )
-                        prior_event = events_by_id.get(event["event_id"])
-                        if (
-                            isinstance(prior_event, Mapping)
-                            and prior_event.get("remote_blob_sha") != blob_sha
-                        ):
+                        bound_sha = event_id_bindings.get(
+                            event["event_id"]
+                        )
+                        if bound_sha is not None and bound_sha != blob_sha:
                             raise ValueError(
                                 "event_id is already bound to a different "
                                 "immutable Git blob"
@@ -535,6 +554,7 @@ class EvolutionRemoteSync:
 
                 subsystems.update(projected_subsystems)
                 events_by_id[event["event_id"]] = event
+                event_id_bindings[event["event_id"]] = blob_sha
                 processed.add(blob_sha)
                 state["ingested_total"] = int(
                     state.get("ingested_total", 0)
@@ -555,6 +575,7 @@ class EvolutionRemoteSync:
             state["current_rejected_count"] = len(
                 state["rejected_blob_shas"]
             )
+            state["event_id_bindings"] = event_id_bindings
             state["events"] = ordered
             state["subsystems"] = subsystems
             state["last_error"] = " | ".join(errors[-10:])[:3000] if errors else None
