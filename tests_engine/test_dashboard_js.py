@@ -661,3 +661,35 @@ def test_adaptive_brain_surfaces_historical_engine_context():
     assert "PACKET SOURCE VERIFIED" in ui
     assert "Packet-bound source proof" in ui
     assert "historical_packet_witness_status" in ui
+
+
+def test_rebased_ascendancy_dashboard_uses_canonical_federation_and_full_research_stack():
+    ui = (REPO / "icarus_engine/ascendancy-ui.js").read_text(encoding="utf-8")
+    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
+
+    for route in (
+        "/api/ascendancy/capabilities",
+        "/api/ascendancy/genomes",
+        "/api/ascendancy/candidates",
+        "/api/ascendancy/unknowns",
+        "/api/ascendancy/mechanisms",
+        "/api/ascendancy/inventions",
+        "/api/ascendancy/contributions",
+        "/api/ascendancy/evaluator",
+    ):
+        assert route in ui
+        assert route in server
+
+    assert "fetchJson('/api/brain', token)" in ui
+    assert "/api/ascendancy/peers" not in ui
+    assert "/api/ascendancy/peers" not in server
+    assert "FEDERATED ICARUS-ENGINE CONTEXT" in ui
+    assert "HISTORICAL RESEARCH CONTEXT" in ui
+    assert "candidate evidence=false" in ui.lower()
+    assert "historical_context_never_bypasses_foundry" in ui
+    assert "historical_context_never_bypasses_evaluator" in ui
+    assert "ASCENDANCY EVALUATOR" in ui
+    assert "INFORMATION CONTRIBUTION MATRIX" in ui
+    assert "MECHANISM LABORATORY" in ui
+    assert "INVENTION ENGINE" in ui
+    assert "UNKNOWN-UNKNOWN" in ui
