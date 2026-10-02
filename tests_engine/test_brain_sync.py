@@ -895,10 +895,11 @@ def test_remote_sync_ingests_declared_historical_context_without_candidate_autho
         interval_seconds=60,
         fetch_json=fixture["fetch_json"],
         fetch_bytes=fixture["fetch_bytes"],
+        now_utc=fixture["now_utc"],
     )
     status = sync.sync_once()
 
-    assert status["status"] == "green"
+    assert status["status"] == "green", status.get("last_error")
     assert status["historical_context_status"] == "green"
     assert status["historical_context_source_count"] == 4
     assert status["historical_context_ingested_total"] == 4
