@@ -1174,7 +1174,8 @@ class LearningFabric:
             raise ValueError("refresh_samples must be an integer in [1,100000]")
         rows = self._conn.execute(
             """SELECT p.prediction_id,p.producer,p.asset,p.regime,p.horizon_seconds,p.target,
-                      p.prediction_json,p.source_commit,p.probability,o.success,o.observed_at,o.observed_ts
+                      p.prediction_json,p.source_commit,p.probability,p.emitted_ts,p.resolves_ts,
+                      o.success,o.observed_at,o.observed_ts
                FROM predictions p JOIN outcomes o ON o.prediction_id=p.prediction_id
                WHERE o.success IS NOT NULL AND p.target IN ('direction','class','event')
                ORDER BY p.producer,p.asset,p.regime,p.horizon_seconds,p.target,
@@ -1195,15 +1196,29 @@ class LearningFabric:
         built: list[dict[str, Any]] = []
         skipped: dict[str, str] = {}
         awaiting_refresh = 0
+        overlap_purged_total = 0
         for key, group in sorted(groups.items()):
             producer, asset, regime, horizon, target, prediction_label, source_commit = key
             scope = (
                 f"{producer}:{asset}:{regime}:{horizon}:{target}:"
                 f"{prediction_label}:{source_commit}"
             )
-            n = len(group)
+            raw_sample_count = len(group)
+            effective_group = self._purge_overlapping_prediction_rows(group)
+            effective_group = sorted(
+                effective_group,
+                key=lambda row: (float(row["observed_ts"]), str(row["prediction_id"])),
+            )
+            effective_sample_count = len(effective_group)
+            overlap_purged = raw_sample_count - effective_sample_count
+            overlap_purged_total += overlap_purged
+            n = effective_sample_count
             if n < min_samples:
-                skipped[scope] = f"need {min_samples} settled samples; have {n}"
+                skipped[scope] = (
+                    f"need {min_samples} effective non-overlapping settled samples; "
+                    f"have {n} from {raw_sample_count} raw forecasts "
+                    f"({overlap_purged} overlapping forecasts purged)"
+                )
                 continue
             if refresh_samples > 1:
                 latest = self._conn.execute(
@@ -1216,7 +1231,9 @@ class LearningFabric:
                 ).fetchone()
                 if latest is not None:
                     cutoff_ts = _parse_time(latest["training_cutoff"], "training_cutoff").timestamp()
-                    new_settled = sum(1 for row in group if float(row["observed_ts"]) > cutoff_ts)
+                    new_settled = sum(
+                        1 for row in effective_group if float(row["observed_ts"]) > cutoff_ts
+                    )
                     if new_settled < refresh_samples:
                         awaiting_refresh += 1
                         skipped[scope] = (
@@ -1229,8 +1246,8 @@ class LearningFabric:
             if train_count < 20:
                 skipped[scope] = "chronological training partition is too small"
                 continue
-            train = group[:train_count]
-            validation = group[train_count:]
+            train = effective_group[:train_count]
+            validation = effective_group[train_count:]
             train_ps = [float(r["probability"]) for r in train]
             train_ys = [int(r["success"]) for r in train]
             if len(set(round(p, 12) for p in train_ps)) < 2:
@@ -1260,7 +1277,7 @@ class LearningFabric:
                     "success": int(r["success"]),
                     "observed_at": r["observed_at"],
                 }
-                for r in group
+                for r in effective_group
             ]
             source_hash = hashlib.sha256(
                 _json(source_payload, "calibration source").encode("utf-8")
@@ -1275,13 +1292,15 @@ class LearningFabric:
                 self._conn.execute(
                     """INSERT OR IGNORE INTO calibration_models(
                        calibrator_id,producer,asset,regime,horizon_seconds,target,
-                       prediction_label,source_commit,status,train_count,validation_count,
+                       prediction_label,source_commit,status,raw_sample_count,
+                       effective_sample_count,overlap_purged,train_count,validation_count,
                        fit_cutoff,training_cutoff,model_json,raw_validation_brier,
                        calibrated_validation_brier,source_hash,created_at)
-                       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                     (
                         calibrator_id, producer, asset, regime, horizon, target,
-                        prediction_label, source_commit, status, train_count, validation_count,
+                        prediction_label, source_commit, status, raw_sample_count,
+                        effective_sample_count, overlap_purged, train_count, validation_count,
                         fit_cutoff, training_cutoff, _json(model, "isotonic model"),
                         raw_validation_brier, calibrated_validation_brier,
                         source_hash, created_at,
@@ -1297,6 +1316,9 @@ class LearningFabric:
                 "prediction_label": prediction_label,
                 "source_commit": source_commit,
                 "status": status,
+                "raw_sample_count": raw_sample_count,
+                "effective_sample_count": effective_sample_count,
+                "overlap_purged": overlap_purged,
                 "train_count": train_count,
                 "validation_count": validation_count,
                 "fit_cutoff": fit_cutoff,
@@ -1314,6 +1336,7 @@ class LearningFabric:
             "models": built,
             "skipped": skipped,
             "awaiting_refresh": awaiting_refresh,
+            "overlap_purged_total": overlap_purged_total,
             **_authority(),
         }
 
@@ -1473,6 +1496,9 @@ class LearningFabric:
                 "prediction_label": row["prediction_label"],
                 "source_commit": row["source_commit"],
                 "status": row["status"],
+                "raw_sample_count": int(row["raw_sample_count"]),
+                "effective_sample_count": int(row["effective_sample_count"]),
+                "overlap_purged": int(row["overlap_purged"]),
                 "train_count": int(row["train_count"]),
                 "validation_count": int(row["validation_count"]),
                 "fit_cutoff": row["fit_cutoff"],
