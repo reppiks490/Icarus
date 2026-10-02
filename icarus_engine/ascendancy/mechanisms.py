@@ -260,6 +260,7 @@ class MechanismLab:
                     context_hash TEXT NOT NULL,
                     episode_id TEXT NOT NULL,
                     effect REAL NOT NULL,
+                    observed_at TEXT,
                     semantic_json TEXT NOT NULL,
                     recorded_at TEXT NOT NULL
                 );
@@ -279,6 +280,16 @@ class MechanismLab:
                         episode_id
                     );
                 """
+            )
+            columns = {
+                str(row["name"])
+                for row in con.execute("PRAGMA table_info(experiments)").fetchall()
+            }
+            if "observed_at" not in columns:
+                con.execute("ALTER TABLE experiments ADD COLUMN observed_at TEXT")
+            con.execute(
+                "UPDATE experiments SET observed_at=recorded_at "
+                "WHERE observed_at IS NULL OR observed_at=''"
             )
 
     def close(self) -> None:
@@ -335,8 +346,8 @@ class MechanismLab:
                     experiment_id,candidate_id,source_repo,source_commit,
                     evaluation_contract_hash,mechanism_key,experiment_kind,
                     target_metric,direction,context_hash,episode_id,effect,
-                    semantic_json,recorded_at
-                ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    observed_at,semantic_json,recorded_at
+                ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (
                     row["experiment_id"],
                     row["candidate_id"],
@@ -350,6 +361,7 @@ class MechanismLab:
                     row["context_hash"],
                     row["episode_id"],
                     row["effect"],
+                    row["observed_at"],
                     raw,
                     now,
                 ),
