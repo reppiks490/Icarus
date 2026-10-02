@@ -118,6 +118,13 @@ def test_apex_resolves_engine_evidence_ids_to_shared_root_lineage(tmp_path):
     assert out["engine_evidence_lineage"]["oracle"] == out["engine_evidence_lineage"]["athena"]
     assert len(out["engine_evidence_lineage"]["oracle"]) == 1
     assert out["engine_support"]["oracle"]["integrity_ok"] is True
+    assert out["engine_support"]["oracle"]["independence_ratio"] == 1.0
+    assert out["engine_support"]["oracle"]["visible_evidence_count"] == 1
+    assert out["engine_support"]["oracle"]["mean_quality"] == 0.9
+    assert out["engine_support"]["oracle"]["mean_confidence"] == 0.9
+    assert out["global_support"]["nominal_support"] == 2
+    assert out["global_support"]["effective_independent_families"] == 1
+    assert out["global_support"]["independence_ratio"] == 0.5
     assert out["execution_authorized"] is False
     assert out["production_decision_authorized"] is False
 
