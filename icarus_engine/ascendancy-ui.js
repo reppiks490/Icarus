@@ -291,13 +291,62 @@
     '</section>';
   }
 
-  function renderAscendancy(capabilities, genomes, foundry, errors) {
+  function renderUnknowns(unknowns) {
+    if (!unknowns) {
+      return '<section class="card" style="margin-top:12px"><h3>UNKNOWN UNKNOWNS</h3><div class="empty">UNAVAILABLE — unexplained-phenomenon state did not load.</div></section>';
+    }
+    const phenomena = Array.isArray(unknowns.phenomena) ? unknowns.phenomena : [];
+    const rows = phenomena.map(row => {
+      const cause = row.cause == null ? 'UNEXPLAINED' : String(row.cause);
+      return '<tr>' +
+        '<td><code title="' + h(row.phenomenon_signature || '') + '">' + h(row.phenomenon_id || short(row.phenomenon_signature || 'UNAVAILABLE')) + '</code></td>' +
+        '<td class="' + statusClass(row.status) + '"><b>' + h(row.status || 'UNAVAILABLE') + '</b></td>' +
+        '<td class="small"><b>' + h(row.structured_vs_noise_status || 'UNMEASURED') + '</b></td>' +
+        '<td class="small">' + h(count(row.independent_episode_count)) + ' / ' + h(count(row.independent_episode_threshold)) + '</td>' +
+        '<td class="small">' + h((row.source_engines || []).join(' · ') || 'UNAVAILABLE') + '</td>' +
+        '<td class="small">' + h((row.failed_systems || []).join(' · ') || 'UNAVAILABLE') + '</td>' +
+        '<td class="small">' + h((row.assets || []).join(' · ') || 'UNAVAILABLE') + '</td>' +
+        '<td class="small">' + h((row.regimes || []).join(' · ') || 'UNAVAILABLE') + '</td>' +
+        '<td class="small">' + h(cause) + '</td>' +
+        '<td class="small">' + h((row.failed_explanations || []).join(' · ') || 'NONE RECORDED') + '</td>' +
+        '<td class="small">' + h((row.candidate_ids || []).map(short).join(' · ') || 'NONE') + '</td>' +
+        '<td class="small">' + h(row.next_stage || 'UNAVAILABLE') + '</td>' +
+      '</tr>';
+    }).join('');
+
+    const contracts = unknowns.contracts || {};
+    return '<section class="card" style="margin-top:12px">' +
+      '<h3>UNKNOWN UNKNOWNS</h3>' +
+      '<div class="small muted">Cross-engine residual replication and ontology-gap escalation. This does not duplicate NULLSPACE, EX NIHILO, APEX unknown-force, or reality-gap diagnostics; it persists and tests whether their unexplained failures recur independently.</div>' +
+      '<div class="tiles" style="margin-top:10px">' +
+        '<div class="tile"><div class="k">EVENTS</div><div class="v tnum">' + h(count(unknowns.event_count)) + '</div></div>' +
+        '<div class="tile"><div class="k">PHENOMENA</div><div class="v tnum">' + h(count(unknowns.phenomenon_count)) + '</div></div>' +
+        '<div class="tile"><div class="k">REPLICATED</div><div class="v tnum">' + h(count(unknowns.replicated_count)) + '</div></div>' +
+        '<div class="tile"><div class="k">STRUCTURED CANDIDATES</div><div class="v tnum">' + h(count(unknowns.structured_candidate_count)) + '</div></div>' +
+        '<div class="tile"><div class="k">UNMEASURED</div><div class="v tnum">' + h(count(unknowns.unmeasured_count)) + '</div></div>' +
+        '<div class="tile"><div class="k">CAUSE POLICY</div><div class="v">UNEXPLAINED</div><div class="small muted">cause=None until separate validation</div></div>' +
+      '</div>' +
+      '<div class="small muted" style="margin:10px 0">' +
+        'cause_remains_null_until_separate_validation=' + h(contracts.cause_remains_null_until_separate_validation === true ? 'true' : 'UNAVAILABLE') +
+        ' · independent_episodes_required_for_replication=' + h(contracts.independent_episodes_required_for_replication === true ? 'true' : 'UNAVAILABLE') +
+        ' · unavailable_evidence_cannot_confirm=' + h(contracts.unavailable_evidence_cannot_confirm === true ? 'true' : 'UNAVAILABLE') +
+      '</div>' +
+      '<div class="scroll" style="max-height:58vh"><table><thead><tr>' +
+        '<th>Phenomenon</th><th>Status</th><th>STRUCTURED VS NOISE</th><th>INDEPENDENT EPISODES</th><th>Source engines</th><th>FAILED SYSTEMS</th><th>Assets</th><th>Regimes</th><th>Cause</th><th>FAILED EXPLANATIONS</th><th>CANDIDATE LINKS</th><th>Next stage</th>' +
+      '</tr></thead><tbody>' +
+        (rows || '<tr><td colspan="12" class="empty">UNAVAILABLE — no unexplained phenomena have been recorded.</td></tr>') +
+      '</tbody></table></div>' +
+      '<div class="small muted" style="margin-top:10px">EARLY → STRUCTURED_CANDIDATE → REPLICATED is based on independent episodes, not repeated messages from the same episode. A linked candidate is still only research.</div>' +
+    '</section>';
+  }
+
+  function renderAscendancy(capabilities, genomes, foundry, unknowns, errors) {
     const el = document.querySelector('#ascendancyBody');
     if (!el) return;
     const warning = errors.length
       ? '<div class="empty" style="margin-bottom:10px">DEGRADED: ' + h(errors.join(' · ')) + '</div>'
       : '';
-    el.innerHTML = warning + renderCapabilities(capabilities) + renderFoundry(foundry) + renderGenomeLab(genomes);
+    el.innerHTML = warning + renderCapabilities(capabilities) + renderUnknowns(unknowns) + renderFoundry(foundry) + renderGenomeLab(genomes);
   }
 
   async function fetchJson(url, token) {
@@ -320,16 +369,18 @@
       const settled = await Promise.allSettled([
         fetchJson('/api/ascendancy/capabilities', token),
         fetchJson('/api/ascendancy/genomes', token),
-        fetchJson('/api/ascendancy/candidates', token)
+        fetchJson('/api/ascendancy/candidates', token),
+        fetchJson('/api/ascendancy/unknowns', token)
       ]);
       if (seq !== loadSeq) return;
       const capabilities = settled[0].status === 'fulfilled' ? settled[0].value : null;
       const genomes = settled[1].status === 'fulfilled' ? settled[1].value : null;
       const foundry = settled[2].status === 'fulfilled' ? settled[2].value : null;
+      const unknowns = settled[3].status === 'fulfilled' ? settled[3].value : null;
       const errors = settled
         .filter(x => x.status === 'rejected')
         .map(x => x.reason && x.reason.message ? x.reason.message : String(x.reason || 'UNAVAILABLE'));
-      renderAscendancy(capabilities, genomes, foundry, errors);
+      renderAscendancy(capabilities, genomes, foundry, unknowns, errors);
     } catch (err) {
       if (seq !== loadSeq) return;
       el.innerHTML = '<div class="empty">ASCENDANCY state UNAVAILABLE: ' + h(err && err.message ? err.message : err) + '</div>';
