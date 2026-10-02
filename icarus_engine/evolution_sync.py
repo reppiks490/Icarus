@@ -29,6 +29,10 @@ REMOTE_ROOT = "automation_intelligence/mcp_interface/events"
 REMOTE_API = f"https://api.github.com/repos/{REMOTE_REPOSITORY}/contents/{REMOTE_ROOT}?ref={REMOTE_REF}"
 
 SCHEMA_VERSION = "icarus-interface-event-v1"
+# Bump whenever deterministic interface validation semantics change. Persisted
+# rejected blobs are retried under a new validator revision while historical
+# rejection identity remains deduplicated by Git blob SHA.
+VALIDATOR_REVISION = "icarus-interface-validator-v2"
 # Other receipt families intentionally share REMOTE_ROOT. They are not owned by
 # EvolutionRemoteSync, but they are known repository contracts and should be
 # skipped without degrading this interface-specific feed.
@@ -94,6 +98,7 @@ def _state_path(base_dir: str | os.PathLike[str]) -> Path:
 def _default_state(interval_seconds: int) -> dict[str, Any]:
     return {
         "schema_version": "icarus-mcp-evolution-sync-v1",
+        "validator_revision": VALIDATOR_REVISION,
         "enabled": True,
         "repository": REMOTE_REPOSITORY,
         "ref": REMOTE_REF,
@@ -110,6 +115,7 @@ def _default_state(interval_seconds: int) -> dict[str, Any]:
         "processed_blob_shas": [],
         "rejected_blob_shas": [],
         "rejected_blob_errors": {},
+        "rejected_history_blob_shas": [],
         "event_id_bindings": {},
         "events": [],
         "subsystems": {},
@@ -138,6 +144,27 @@ def _read_state(base_dir: str | os.PathLike[str], interval_seconds: int) -> dict
         state["last_error"] = "local MCP evolution sync state failed authority validation"
         return state
     state.update(raw)
+
+    current_rejected = {
+        str(x).lower()
+        for x in raw.get("rejected_blob_shas", [])
+        if _is_sha(str(x).lower())
+    }
+    rejected_history = {
+        str(x).lower()
+        for x in raw.get("rejected_history_blob_shas", [])
+        if _is_sha(str(x).lower())
+    }
+    # Migration safety: any blob currently known rejected is historical too.
+    rejected_history.update(current_rejected)
+    state["rejected_history_blob_shas"] = sorted(rejected_history)[-5000:]
+
+    if raw.get("validator_revision") != VALIDATOR_REVISION:
+        state["rejected_blob_shas"] = []
+        state["rejected_blob_errors"] = {}
+        state["current_rejected_count"] = 0
+    state["validator_revision"] = VALIDATOR_REVISION
+
     state["interval_seconds"] = interval_seconds
     state["execution_authorized"] = False
     state["production_decision_authorized"] = False
@@ -307,6 +334,7 @@ class EvolutionRemoteSync:
         state.pop("processed_blob_shas", None)
         state.pop("rejected_blob_shas", None)
         state.pop("rejected_blob_errors", None)
+        state.pop("rejected_history_blob_shas", None)
         state.pop("event_id_bindings", None)
         return state
 
@@ -340,6 +368,11 @@ class EvolutionRemoteSync:
             rejected = {
                 str(x).lower()
                 for x in state.get("rejected_blob_shas", [])
+                if _is_sha(x)
+            }
+            rejected_history = {
+                str(x).lower()
+                for x in state.get("rejected_history_blob_shas", [])
                 if _is_sha(x)
             }
             raw_rejected_errors = state.get("rejected_blob_errors")
@@ -477,9 +510,11 @@ class EvolutionRemoteSync:
                     errors.append(message)
                     rejected.add(blob_sha)
                     rejected_errors[blob_sha] = message
-                    state["rejected_total"] = int(
-                        state.get("rejected_total", 0)
-                    ) + 1
+                    if blob_sha not in rejected_history:
+                        rejected_history.add(blob_sha)
+                        state["rejected_total"] = int(
+                            state.get("rejected_total", 0)
+                        ) + 1
                     continue
                 except Exception as ex:
                     errors.append(
@@ -572,6 +607,9 @@ class EvolutionRemoteSync:
                 for sha in state["rejected_blob_shas"]
                 if sha in rejected_errors
             }
+            state["rejected_history_blob_shas"] = sorted(
+                rejected_history
+            )[-5000:]
             state["current_rejected_count"] = len(
                 state["rejected_blob_shas"]
             )
