@@ -52,8 +52,8 @@
       "detail": "Authenticated design connection responded and architecture diagram generation succeeded."
     },
     "prompt-perfect": {
-      "status": "AVAILABLE_UNPROBED",
-      "detail": "Installed and contract-visible; not treated as a market-data source."
+      "status": "VERIFIED",
+      "detail": "Prompt rewrite endpoint responded for the ASCENDANCY research-agent contract."
     },
     "massive": {
       "status": "VERIFIED",
