@@ -1,0 +1,99 @@
+{
+  "schema_version": "icarus-ascendancy-capability-audit-v1",
+  "observed_at": "2026-10-02T02:21:00Z",
+  "rule": "Point-in-time external capability probe. This is not a permanent live-health claim.",
+  "providers": {
+    "github": {
+      "status": "VERIFIED",
+      "detail": "Repository read/write permissions and workflow inspection verified."
+    },
+    "superpowers": {
+      "status": "VERIFIED",
+      "detail": "Installed skills loaded for TDD, planning, execution, review, and verification."
+    },
+    "akinator": {
+      "status": "VERIFIED",
+      "detail": "Installed repository-governance skill loaded."
+    },
+    "astral-orchestrator": {
+      "status": "VERIFIED_SKILL",
+      "detail": "Installed orchestration skill contract loaded; worker dispatch availability remains runtime-dependent."
+    },
+    "adaptive-codex-orchestrator": {
+      "status": "VERIFIED_SKILL",
+      "detail": "Installed adaptive orchestration skill contract loaded; worker dispatch availability remains runtime-dependent."
+    },
+    "baton-pass": {
+      "status": "VERIFIED_SKILL",
+      "detail": "Installed continuity/handoff skill contract loaded."
+    },
+    "agent-reach": {
+      "status": "VERIFIED_SKILL",
+      "detail": "Installed public-research routing skill loaded; native connected tools used for this audit."
+    },
+    "firecrawl": {
+      "status": "VERIFIED",
+      "detail": "Research search endpoint responded."
+    },
+    "parallel-search": {
+      "status": "VERIFIED",
+      "detail": "Web search endpoint responded."
+    },
+    "scite": {
+      "status": "BLOCKED_SUBSCRIPTION",
+      "detail": "MCP access requires a paid plan or active trial."
+    },
+    "transcriptor": {
+      "status": "VERIFIED",
+      "detail": "Public video metadata retrieval responded."
+    },
+    "figma": {
+      "status": "VERIFIED",
+      "detail": "Authenticated design connection responded and architecture diagram generation succeeded."
+    },
+    "prompt-perfect": {
+      "status": "VERIFIED",
+      "detail": "Prompt rewrite endpoint responded for the ASCENDANCY research-agent contract."
+    },
+    "massive": {
+      "status": "VERIFIED",
+      "detail": "Futures endpoint discovery returned trades, quotes, snapshots, contracts, and market status."
+    },
+    "twelve-data": {
+      "status": "VERIFIED",
+      "detail": "Connection authentication verified."
+    },
+    "fmp": {
+      "status": "VERIFIED",
+      "detail": "Commodity/futures symbol discovery responded."
+    },
+    "bybit": {
+      "status": "VERIFIED",
+      "detail": "Public BTCUSDT instrument-spec endpoint responded."
+    },
+    "blockscout": {
+      "status": "VERIFIED",
+      "detail": "Session initialized and supported chain metadata returned."
+    },
+    "bigdata": {
+      "status": "VERIFIED",
+      "detail": "Financial-content access catalog responded."
+    },
+    "the-fly": {
+      "status": "VERIFIED",
+      "detail": "Symbol discovery endpoint responded."
+    },
+    "zacks": {
+      "status": "VERIFIED",
+      "detail": "Company fundamentals snapshot responded."
+    },
+    "us-gold-bureau": {
+      "status": "BLOCKED_NETWORK_POLICY",
+      "detail": "Connector rejected this environment under its IP allowlist policy."
+    },
+    "stackerscan": {
+      "status": "VERIFIED",
+      "detail": "Supported currency discovery responded."
+    }
+  }
+}
