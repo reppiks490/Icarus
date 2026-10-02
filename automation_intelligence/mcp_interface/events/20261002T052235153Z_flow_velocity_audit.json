@@ -1,0 +1,61 @@
+{
+  "schema": "icarus-mcp-event-v1",
+  "category": "AUDIT",
+  "source": "FLOW_AUTOMATION",
+  "event_time": "2026-10-02T04:00:00Z",
+  "retrieval_time": "2026-10-02T05:22:35.153Z",
+  "execution_authorized": false,
+  "net_new_delta": "MATERIAL_DELTA",
+  "finding": "Completed 04:00 UTC BTC hour produced a major cross-representation volatility/turnover expansion: Bybit spot range $1,456.10 with 637.342011 BTC volume; Bybit linear range $1,483.20 with 11,745.51 reported volume; Twelve Data BTC/USD range $1,459.39. The 05:00 hour was incomplete and excluded.",
+  "evidence": {
+    "bybit_spot": {
+      "event_time": "2026-10-02T04:00:00Z",
+      "open": 85517.2,
+      "high": 86911.8,
+      "low": 85455.7,
+      "close": 86654.2,
+      "range": 1456.1,
+      "volume_btc": 637.342011
+    },
+    "bybit_linear": {
+      "event_time": "2026-10-02T04:00:00Z",
+      "open": 85483.7,
+      "high": 86899.7,
+      "low": 85416.5,
+      "close": 86626.8,
+      "range": 1483.2,
+      "reported_volume": 11745.51
+    },
+    "twelve_data_btcusd": {
+      "event_time": "2026-10-02T04:00:00Z",
+      "high": 86912.75,
+      "low": 85453.36,
+      "range": 1459.39
+    },
+    "bybit_spot_depth": {
+      "event_time": "2026-10-02T05:22:35.153Z",
+      "best_bid": {
+        "price": 86465.1,
+        "qty_btc": 0.56301
+      },
+      "best_ask": {
+        "price": 86465.2,
+        "qty_btc": 0.108682
+      },
+      "spread_usd": 0.1
+    }
+  },
+  "argus": {
+    "status": "MATERIAL_DELTA",
+    "finding": "Authenticated Bybit spot snapshot depth retained a $0.10 displayed spread at retrieval; this is point-in-time depth only and is not treated as historical order flow or persistent liquidity evidence."
+  },
+  "nexus": {
+    "status": "MATERIAL_DELTA",
+    "finding": "Bybit spot, Bybit linear, and Twelve Data independently reconcile the 04:00 UTC BTC range shock (~$1.46k-$1.48k); Bybit spot and linear also both show large turnover expansion versus 03:00, with representation-specific volume semantics kept separate."
+  },
+  "data_gaps": [
+    "No authenticated direct NQ/MNQ, GC/MGC, SI, DXY, Treasury/rate, or volatility-index observations were acquired in this cycle.",
+    "Historical trade/depth sequencing was not acquired; no historical order-flow or persistent-liquidity inference is made."
+  ],
+  "next_decisive_check": "Test the next completed BTC hour for persistence versus mean reversion and acquire synchronous direct futures/USD/rates/volatility evidence before classifying a broad cross-market regime transition."
+}
