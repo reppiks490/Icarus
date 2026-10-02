@@ -3312,6 +3312,105 @@ class LearningFabric:
                 "error": f"{type(ex).__name__}: {ex}"[:500],
             }
 
+    def _psi_completed_target_bar(
+        self,
+        symbol: str,
+        metadata: Mapping[str, Any],
+    ) -> dict[str, Any] | None:
+        """Return the exact completed runner bar bound by a Psi forecast.
+
+        Runtime chart bars are closed-bar records. The overlay real_c is
+        required so transformed chart closes never become calibration outcomes.
+        """
+        if self.port is None:
+            return None
+        raw_open = metadata.get("target_bar_open_ts")
+        raw_close = metadata.get("target_bar_close_ts")
+        raw_minutes = metadata.get("chart_minutes")
+        numeric = lambda value: (
+            not isinstance(value, bool) and isinstance(value, (int, float))
+        )
+        if not numeric(raw_open) or not numeric(raw_close) or not numeric(raw_minutes):
+            return None
+        target_open = int(raw_open)
+        target_close = int(raw_close)
+        chart_minutes = int(raw_minutes)
+        if target_open <= 0 or target_close <= target_open or chart_minutes <= 0:
+            return None
+
+        runner = None
+        runners = getattr(self.port, "runners", None)
+        if isinstance(runners, Mapping):
+            runner = runners.get(symbol)
+        if runner is None and hasattr(self.port, "runner_list"):
+            try:
+                for candidate in list(self.port.runner_list()):
+                    if str(getattr(candidate, "symbol", "") or "").strip().upper() == symbol:
+                        runner = candidate
+                        break
+            except Exception:
+                return None
+        if runner is None:
+            return None
+
+        runner_minutes = getattr(runner, "chart_minutes", None)
+        if not numeric(runner_minutes) or int(runner_minutes) != chart_minutes:
+            return None
+        cal = getattr(runner, "cal", None)
+        if cal is not None and callable(getattr(cal, "bucket_end", None)):
+            try:
+                if int(cal.bucket_end(target_open, chart_minutes)) != target_close:
+                    return None
+            except Exception:
+                return None
+
+        try:
+            lock = getattr(runner, "lock", None)
+            if lock is not None:
+                with lock:
+                    bars = list(getattr(runner, "bars", ()) or ())
+                    overlays = list(getattr(runner, "overlays", ()) or ())
+            else:
+                bars = list(getattr(runner, "bars", ()) or ())
+                overlays = list(getattr(runner, "overlays", ()) or ())
+        except Exception:
+            return None
+
+        bar_present = any(
+            numeric(bar.get("ts") if isinstance(bar, Mapping) else getattr(bar, "ts", None))
+            and int(bar.get("ts") if isinstance(bar, Mapping) else getattr(bar, "ts", None)) == target_open
+            for bar in bars
+        )
+        if not bar_present:
+            return None
+
+        realized = None
+        for overlay in overlays:
+            if not isinstance(overlay, Mapping):
+                continue
+            raw_ts = overlay.get("ts")
+            raw_real = overlay.get("real_c")
+            if (
+                numeric(raw_ts)
+                and int(raw_ts) == target_open
+                and numeric(raw_real)
+                and math.isfinite(float(raw_real))
+                and float(raw_real) > 0
+            ):
+                realized = float(raw_real)
+                break
+        if realized is None:
+            return None
+
+        return {
+            "realized_price": realized,
+            "price_basis": "runner_real_completed_bar_close",
+            "event_time_quality": "OBSERVED_COMPLETED_BAR",
+            "target_bar_open_ts": target_open,
+            "target_bar_close_ts": target_close,
+            "outcome_event_at": _iso(datetime.fromtimestamp(target_close, tz=timezone.utc)),
+        }
+
     def _harvest_possibility_calibration(self) -> dict[str, Any]:
         """Calibrate Psi scenario shares against non-overlapping matured endpoints.
 
@@ -3337,6 +3436,7 @@ class LearningFabric:
         # at or after maturity. Class labels are reconstructed from the immutable
         # threshold recorded with the forecast.
         outcomes_imported = 0
+        maturity_withheld = 0
         settlement_errors: dict[str, str] = {}
         prices: dict[str, float] = {}
         if self.port is not None:
@@ -3353,7 +3453,7 @@ class LearningFabric:
                 settlement_errors["portfolio"] = f"{type(ex).__name__}: {ex}"[:500]
 
         matured = self._conn.execute(
-            """SELECT prediction_id,asset,reference_value,metadata_json
+            """SELECT prediction_id,asset,reference_value,resolves_ts,metadata_json
                FROM predictions
                WHERE producer='psi-scenario-v1' AND target='class' AND resolves_ts<=?
                AND prediction_id NOT IN (SELECT prediction_id FROM outcomes)
@@ -3363,24 +3463,61 @@ class LearningFabric:
         for row in matured:
             pid = row["prediction_id"]
             symbol = str(row["asset"] or "").upper()
-            px = prices.get(symbol)
-            if px is None:
-                settlement_errors[pid] = "observed portfolio price unavailable at maturity"
-                continue
             try:
                 reference = float(row["reference_value"])
                 meta = json.loads(row["metadata_json"])
                 threshold = float(meta.get("classification_threshold_return"))
+                exact_event_time = (
+                    meta.get("maturity_semantics") == "SIX_FULL_FUTURE_CHART_BARS"
+                    and meta.get("target_bar_open_ts") is not None
+                    and meta.get("target_bar_close_ts") is not None
+                )
+                endpoint = self._psi_completed_target_bar(symbol, meta) if exact_event_time else None
+                if exact_event_time and endpoint is None:
+                    maturity_withheld += 1
+                    continue
+
+                if endpoint is not None:
+                    px = float(endpoint["realized_price"])
+                    evidence = [
+                        f"psi-runner-real-close:{symbol}:{endpoint['target_bar_open_ts']}:{endpoint['target_bar_close_ts']}"
+                    ]
+                    settlement_meta = {
+                        "settled_by": "psi_exact_completed_target_bar",
+                        **endpoint,
+                        "retrieved_at": now_text,
+                        "maturity_lag_seconds": max(
+                            0.0,
+                            now_ts - float(endpoint["target_bar_close_ts"]),
+                        ),
+                    }
+                else:
+                    px = prices.get(symbol)
+                    if px is None:
+                        settlement_errors[pid] = "observed portfolio price unavailable at maturity"
+                        continue
+                    evidence = [f"psi-observed-price:{symbol}:{now_text}"]
+                    settlement_meta = {
+                        "settled_by": "psi_observed_endpoint",
+                        "realized_price": px,
+                        "price_basis": "portfolio_poll_fallback",
+                        "event_time_quality": "LEGACY_POLL_TIME",
+                        "retrieved_at": now_text,
+                        "maturity_lag_seconds": max(
+                            0.0,
+                            now_ts - float(row["resolves_ts"]),
+                        ),
+                    }
+
                 realized_return = (px / reference) - 1.0
                 actual = "up" if realized_return > threshold else "down" if realized_return < -threshold else "flat"
                 result = self.record_outcome({
                     "prediction_id": pid,
                     "observed_at": now_text,
                     "actual_value": actual,
-                    "evidence": [f"psi-observed-price:{symbol}:{now_text}"],
+                    "evidence": evidence,
                     "metadata": {
-                        "settled_by": "psi_observed_endpoint",
-                        "realized_price": px,
+                        **settlement_meta,
                         "realized_return": realized_return,
                         "classification_threshold_return": threshold,
                         "input_semantics": "UNCALIBRATED_SCENARIO_SHARE",
