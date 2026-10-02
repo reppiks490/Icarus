@@ -106,6 +106,8 @@ def _default_state(interval_seconds: int) -> dict[str, Any]:
             "automatic_model_promotion": False,
             "production_decision_authorized": False,
             "automatic_execution_authority": False,
+            "strict_event_contract": False,
+            "legacy_exception_count": 0,
         },
         "execution_authorized": False,
         "production_decision_authorized": False,
@@ -271,6 +273,24 @@ def _normalize_federation_contract(
         if semantics.get(key) is not False:
             raise ValueError(f"Icarus-engine Brain federation attempts authority escalation: {key}")
 
+    event_validation = consumer.get("event_validation")
+    if not isinstance(event_validation, Mapping):
+        raise ValueError("Icarus-engine Brain federation event validation policy is missing")
+    if event_validation.get("required_fields_source") != (
+        "automation_intelligence/mcp_interface/contract.json#required_fields"
+    ):
+        raise ValueError("Icarus-engine Brain federation required-fields source mismatch")
+    if event_validation.get("strict_v1_required_fields") is not True:
+        raise ValueError("Icarus-engine Brain federation must strictly enforce v1 required fields")
+    legacy_blobs = event_validation.get("legacy_relaxed_blob_shas")
+    if not isinstance(legacy_blobs, list) or any(not _is_sha(value) for value in legacy_blobs):
+        raise ValueError("Icarus-engine Brain federation legacy blob allowlist is invalid")
+    if len(set(str(value).lower() for value in legacy_blobs)) != len(legacy_blobs):
+        raise ValueError("Icarus-engine Brain federation legacy blob allowlist contains duplicates")
+    legacy_rule = str(event_validation.get("legacy_rule") or "")
+    if "No future blob inherits this exception" not in legacy_rule:
+        raise ValueError("Icarus-engine Brain federation legacy exception rule is not fail-closed")
+
     if producer.get("schema_version") != "icarus-mcp-interface-contract-v1":
         raise ValueError("unsupported producer MCP interface contract")
     if producer.get("event_root") != REMOTE_ROOT:
@@ -280,6 +300,13 @@ def _normalize_federation_contract(
     producer_categories = producer.get("required_categories")
     if not isinstance(producer_categories, list) or set(producer_categories) != expected_categories:
         raise ValueError("producer MCP categories disagree with federation contract")
+    required_fields = producer.get("required_fields")
+    expected_required_fields = {
+        "event_id", "at_utc", "category", "status", "severity", "summary",
+        "surface", "source", "paths", "evidence", "execution_authorized",
+    }
+    if not isinstance(required_fields, list) or set(required_fields) != expected_required_fields:
+        raise ValueError("producer MCP required event envelope disagrees with federation contract")
     if producer.get("trading_execution_authorized") is not False:
         raise ValueError("producer MCP contract attempts trading authority escalation")
 
@@ -301,6 +328,8 @@ def _normalize_federation_contract(
             "automatic_model_promotion": False,
             "production_decision_authorized": False,
             "automatic_execution_authority": False,
+            "strict_event_contract": True,
+            "legacy_exception_count": len(legacy_blobs),
         },
         "execution_authorized": False,
         "production_decision_authorized": False,
@@ -485,8 +514,38 @@ class BrainRemoteSync:
                     if category not in {"REPAIR", "AUDIT", "EVOLUTION", "INTEGRATION"}:
                         raise ValueError("unsupported custom-agent event category")
 
+                    required_fields = contract_docs["producer"].get("required_fields") or []
+                    missing_fields = [
+                        field for field in required_fields
+                        if field not in payload
+                    ]
+                    legacy_blobs = {
+                        str(value).lower()
+                        for value in (
+                            (contract_docs["consumer"].get("event_validation") or {})
+                            .get("legacy_relaxed_blob_shas", [])
+                        )
+                    }
+                    legacy_exception = bool(missing_fields and blob_sha in legacy_blobs)
+                    if missing_fields and not legacy_exception:
+                        raise ValueError(
+                            "custom-agent event missing required producer fields: "
+                            + ", ".join(sorted(missing_fields))
+                        )
+
                     evidence = _compact_evidence(payload, path, blob_sha)
+                    evidence.extend([
+                        f"consumer_contract_blob:{state.get('consumer_contract_blob_sha')}",
+                        f"producer_contract_blob:{state.get('producer_contract_blob_sha')}",
+                    ])
+                    evidence = evidence[:32]
                     details = _event_details(payload, path, blob_sha)
+                    details["federation_event_validation"] = (
+                        "LEGACY_EXACT_BLOB_EXCEPTION"
+                        if legacy_exception
+                        else "STRICT_V1_REQUIRED_FIELDS"
+                    )
+                    details["federation_missing_required_fields"] = missing_fields
                     record_brain_event(
                         self.base_dir,
                         {
