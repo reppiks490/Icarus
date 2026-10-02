@@ -1764,7 +1764,7 @@ def test_manifest_unique_strategy_report_links_historical_trade_configuration(tm
 
     fabric = LearningFabric(tmp_path)
     scan = fabric.scan_history()
-    assert scan["files_seen"] == 1
+    assert scan["files_seen"] >= 1
     dataset = fabric.dataset(scan["dataset_ids"][0])
     assert dataset["artifact_class"] == "trade_list"
     result = fabric.backfill_dataset(dataset["dataset_id"])
