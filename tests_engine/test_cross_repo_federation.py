@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from icarus_engine import brain_sync, evidence_lab_sync
+from icarus_engine import brain_sync, evidence_lab_sync, evolution_sync
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -27,6 +27,23 @@ def test_icarus_engine_mesh_binding_matches_live_brain_federation_contract():
     assert node["consumer_contract"] == brain_sync.REMOTE_CONSUMER_CONTRACT
     assert node["producer_contract"] == brain_sync.REMOTE_PRODUCER_CONTRACT
     assert node["consumer_surface"] == "Adaptive Brain remote sync"
+    assert node["cross_repository_execution_authorized"] is False
+
+
+def test_divine_providence_mesh_binding_matches_evolution_receipt_ingress():
+    node = _node("divine-providence")
+
+    assert node["repository"] == "reppiks490/divine-providence"
+    assert node["status"] == "active"
+    assert node["role"] == "active-research-satellite"
+    assert node["authority_ceiling"] == "RESEARCH"
+    assert node["ingress_mode"] == "immutable-receipt-mirror"
+    assert node["ingress_repository"] == evolution_sync.REMOTE_REPOSITORY
+    assert node["ingress_path"] == evolution_sync.REMOTE_ROOT
+    assert node["receipt_schema"] == evolution_sync.SCHEMA_VERSION
+    assert node["consumer_surface"] == (
+        "MCP Evolution and Adaptive Brain observability"
+    )
     assert node["cross_repository_execution_authorized"] is False
 
 
@@ -54,6 +71,7 @@ def test_all_active_external_mesh_nodes_are_non_executing():
 
     assert {row["id"] for row in active_external} >= {
         "icarus-engine",
+        "divine-providence",
         "icarus-csv-evidence-lab",
     }
     assert all(
