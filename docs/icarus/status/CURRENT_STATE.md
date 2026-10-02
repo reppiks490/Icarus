@@ -25,6 +25,8 @@ Current capabilities include:
 - manifest-aware data provenance
 - protected OHLC replay/training
 - TradingView trade-list experience import
+- fail-closed manifest linkage from trade lists to unique strategy-report artifacts
+- separate historical artifact-configuration P&L scorecards (never runtime strategy fingerprints)
 - native SIBYL / Ψ / Performance Proof / Source Reliability / Commissioning harvest
 - APEX empirical credibility feedback
 - closure-time strategy provenance for realized live-sim trades
@@ -47,6 +49,11 @@ Runtime historical data is intentionally not stored in Git. The learner scans:
 
 This allows previously exported multi-year CSVs to continue contributing to
 replay and realized-experience analysis when those files are present locally.
+Where the intake manifest uniquely pairs a trade-list CSV with a
+`strategy_report_xlsx` artifact, the historical trades also inherit the
+report-declared chart type, timeframe, and execution assumptions under a
+separate manifest-linked artifact fingerprint. Ambiguous pairings remain
+unscoped.
 
 ## Empirical research status
 
@@ -86,7 +93,8 @@ The service is non-blocking at engine startup.
 1. Preserve exact source/data/code provenance for all new forecasts and outcomes.
 2. Prefer independent non-overlapping samples over raw observation count.
 3. Keep historical and live outcomes in the same evidence ledger but preserve
-   their source/configuration scopes.
+   their source/configuration scopes; never treat a manifest-linked artifact
+   fingerprint as a closure-time runtime strategy fingerprint.
 4. Retire or withhold degraded calibrators instead of forcing consensus.
 5. Keep execution and production authority separate from research confidence.
 6. Re-verify this page whenever learning or authority contracts change.
