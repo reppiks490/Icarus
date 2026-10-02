@@ -197,6 +197,8 @@ class LearningFabric:
                     calibrated_validation_brier REAL NOT NULL,
                     source_hash TEXT NOT NULL,
                     created_at TEXT NOT NULL,
+                    retired_at TEXT,
+                    retirement_reason TEXT,
                     UNIQUE(producer,asset,regime,horizon_seconds,target,source_hash)
                 );
                 CREATE INDEX IF NOT EXISTS idx_learning_calibrator_scope
@@ -216,6 +218,21 @@ class LearningFabric:
                 );
                 CREATE INDEX IF NOT EXISTS idx_learning_shadow_calibrator
                     ON shadow_calibrations(calibrator_id,status);
+
+                CREATE TABLE IF NOT EXISTS calibration_drift_events (
+                    event_id TEXT PRIMARY KEY,
+                    calibrator_id TEXT NOT NULL REFERENCES calibration_models(calibrator_id),
+                    evaluated_at TEXT NOT NULL,
+                    sample_count INTEGER NOT NULL,
+                    raw_brier REAL NOT NULL,
+                    calibrated_brier REAL NOT NULL,
+                    degradation REAL NOT NULL,
+                    degradation_margin REAL NOT NULL,
+                    action TEXT NOT NULL,
+                    reason TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_learning_calibration_drift
+                    ON calibration_drift_events(calibrator_id,evaluated_at);
 
                 CREATE TABLE IF NOT EXISTS datasets (
                     dataset_id TEXT PRIMARY KEY,
@@ -322,6 +339,14 @@ class LearningFabric:
                 self._conn.execute(
                     "ALTER TABLE calibration_models "
                     "ADD COLUMN source_commit TEXT NOT NULL DEFAULT ''"
+                )
+            if "retired_at" not in calibration_columns:
+                self._conn.execute(
+                    "ALTER TABLE calibration_models ADD COLUMN retired_at TEXT"
+                )
+            if "retirement_reason" not in calibration_columns:
+                self._conn.execute(
+                    "ALTER TABLE calibration_models ADD COLUMN retirement_reason TEXT"
                 )
             self._conn.execute(
                 """CREATE INDEX IF NOT EXISTS idx_learning_calibrator_label_scope
@@ -1102,9 +1127,13 @@ class LearningFabric:
             **_authority(),
         }
 
-    def rebuild_shadow_calibrators(self, *, min_samples: int = 30) -> dict[str, Any]:
+    def rebuild_shadow_calibrators(
+        self, *, min_samples: int = 30, refresh_samples: int = 1
+    ) -> dict[str, Any]:
         if isinstance(min_samples, bool) or not isinstance(min_samples, int) or not 20 <= min_samples <= 100000:
             raise ValueError("min_samples must be an integer in [20,100000]")
+        if isinstance(refresh_samples, bool) or not isinstance(refresh_samples, int) or not 1 <= refresh_samples <= 100000:
+            raise ValueError("refresh_samples must be an integer in [1,100000]")
         rows = self._conn.execute(
             """SELECT p.prediction_id,p.producer,p.asset,p.regime,p.horizon_seconds,p.target,
                       p.prediction_json,p.source_commit,p.probability,o.success,o.observed_at,o.observed_ts
@@ -1127,6 +1156,7 @@ class LearningFabric:
 
         built: list[dict[str, Any]] = []
         skipped: dict[str, str] = {}
+        awaiting_refresh = 0
         for key, group in sorted(groups.items()):
             producer, asset, regime, horizon, target, prediction_label, source_commit = key
             scope = (
@@ -1137,6 +1167,25 @@ class LearningFabric:
             if n < min_samples:
                 skipped[scope] = f"need {min_samples} settled samples; have {n}"
                 continue
+            if refresh_samples > 1:
+                latest = self._conn.execute(
+                    """SELECT * FROM calibration_models
+                       WHERE producer=? AND asset=? AND regime=? AND horizon_seconds=?
+                         AND target=? AND prediction_label=? AND source_commit=?
+                       ORDER BY training_cutoff DESC, created_at DESC, calibrator_id DESC
+                       LIMIT 1""",
+                    (producer, asset, regime, horizon, target, prediction_label, source_commit),
+                ).fetchone()
+                if latest is not None:
+                    cutoff_ts = _parse_time(latest["training_cutoff"], "training_cutoff").timestamp()
+                    new_settled = sum(1 for row in group if float(row["observed_ts"]) > cutoff_ts)
+                    if new_settled < refresh_samples:
+                        awaiting_refresh += 1
+                        skipped[scope] = (
+                            f"awaiting refresh batch: need {refresh_samples} new settled samples; "
+                            f"have {new_settled}"
+                        )
+                        continue
             validation_count = max(6, int(math.ceil(n * 0.20)))
             train_count = n - validation_count
             if train_count < 20:
@@ -1226,6 +1275,138 @@ class LearningFabric:
             "rejected": sum(1 for row in built if row["status"] == "SHADOW_REJECTED"),
             "models": built,
             "skipped": skipped,
+            "awaiting_refresh": awaiting_refresh,
+            **_authority(),
+        }
+
+    def evaluate_shadow_calibrator_drift(
+        self,
+        *,
+        min_samples: int = 8,
+        recent_window: int = 20,
+        degradation_margin: float = 0.02,
+    ) -> dict[str, Any]:
+        """Retire latest validated calibrator revisions when later OOS evidence degrades.
+
+        Only settled shadow assignments made after model validation are eligible.
+        Retirement affects future shadow assignment only; raw predictions, outcomes,
+        execution authority, and production policy remain untouched.
+        """
+        if isinstance(min_samples, bool) or not isinstance(min_samples, int) or not 4 <= min_samples <= 10000:
+            raise ValueError("min_samples must be an integer in [4,10000]")
+        if isinstance(recent_window, bool) or not isinstance(recent_window, int) or not min_samples <= recent_window <= 10000:
+            raise ValueError("recent_window must be an integer >= min_samples and <=10000")
+        margin = _finite(degradation_margin, "degradation_margin")
+        if not 0.0 <= margin <= 1.0:
+            raise ValueError("degradation_margin must be in [0,1]")
+
+        models = self._conn.execute(
+            """SELECT m.* FROM calibration_models m
+               WHERE m.status='SHADOW_VALIDATED'
+                 AND NOT EXISTS (
+                   SELECT 1 FROM calibration_models newer
+                   WHERE newer.producer=m.producer AND newer.asset=m.asset
+                     AND newer.regime=m.regime
+                     AND newer.horizon_seconds=m.horizon_seconds
+                     AND newer.target=m.target
+                     AND newer.prediction_label=m.prediction_label
+                     AND newer.source_commit=m.source_commit
+                     AND (newer.training_cutoff>m.training_cutoff OR
+                          (newer.training_cutoff=m.training_cutoff
+                           AND newer.created_at>m.created_at))
+                 )
+               ORDER BY m.producer,m.asset,m.regime,m.horizon_seconds,
+                        m.target,m.prediction_label,m.source_commit"""
+        ).fetchall()
+
+        evaluated = []
+        retired = 0
+        for model in models:
+            rows = self._conn.execute(
+                """SELECT prediction_id,raw_brier,calibrated_brier,settled_at
+                   FROM shadow_calibrations
+                   WHERE calibrator_id=? AND status='SETTLED'
+                     AND raw_brier IS NOT NULL AND calibrated_brier IS NOT NULL
+                   ORDER BY settled_at DESC,prediction_id DESC LIMIT ?""",
+                (model["calibrator_id"], recent_window),
+            ).fetchall()
+            n = len(rows)
+            if n < min_samples:
+                evaluated.append({
+                    "calibrator_id": model["calibrator_id"],
+                    "action": "INSUFFICIENT_OOS",
+                    "sample_count": n,
+                    "required_samples": min_samples,
+                    **_authority(),
+                })
+                continue
+
+            raw_brier = sum(float(row["raw_brier"]) for row in rows) / n
+            calibrated_brier = sum(float(row["calibrated_brier"]) for row in rows) / n
+            degradation = calibrated_brier - raw_brier
+            action = "KEEP_VALIDATED"
+            reason = (
+                f"out-of-sample calibrated Brier={calibrated_brier:.6f}, "
+                f"raw Brier={raw_brier:.6f}, degradation={degradation:.6f} "
+                f"over {n} recent settled shadow forecasts"
+            )
+            if degradation > margin:
+                action = "DRIFT_RETIRED"
+                retired_at = _utc_now()
+                retirement_reason = reason + f"; exceeded retirement margin {margin:.6f}"
+                event_payload = {
+                    "calibrator_id": model["calibrator_id"],
+                    "evaluated_at": retired_at,
+                    "sample_count": n,
+                    "raw_brier": raw_brier,
+                    "calibrated_brier": calibrated_brier,
+                    "degradation": degradation,
+                    "degradation_margin": margin,
+                    "action": action,
+                    "reason": retirement_reason,
+                }
+                event_id = "drift-" + _sha(event_payload)
+                with self._lock, self._conn:
+                    cur = self._conn.execute(
+                        """UPDATE calibration_models
+                           SET status='DRIFT_RETIRED',retired_at=?,retirement_reason=?
+                           WHERE calibrator_id=? AND status='SHADOW_VALIDATED'""",
+                        (retired_at, retirement_reason, model["calibrator_id"]),
+                    )
+                    if cur.rowcount:
+                        self._conn.execute(
+                            """INSERT OR IGNORE INTO calibration_drift_events(
+                               event_id,calibrator_id,evaluated_at,sample_count,
+                               raw_brier,calibrated_brier,degradation,
+                               degradation_margin,action,reason)
+                               VALUES(?,?,?,?,?,?,?,?,?,?)""",
+                            (
+                                event_id, model["calibrator_id"], retired_at, n,
+                                raw_brier, calibrated_brier, degradation,
+                                margin, action, retirement_reason,
+                            ),
+                        )
+                        retired += 1
+            evaluated.append({
+                "calibrator_id": model["calibrator_id"],
+                "action": action,
+                "sample_count": n,
+                "raw_brier": raw_brier,
+                "calibrated_brier": calibrated_brier,
+                "degradation": degradation,
+                "degradation_margin": margin,
+                "reason": reason,
+                **_authority(),
+            })
+
+        return {
+            "status": "ok",
+            "evaluated": len(evaluated),
+            "retired": retired,
+            "min_samples": min_samples,
+            "recent_window": recent_window,
+            "degradation_margin": margin,
+            "models": evaluated,
             **_authority(),
         }
 
@@ -1261,6 +1442,8 @@ class LearningFabric:
                 "raw_validation_brier": float(row["raw_validation_brier"]),
                 "calibrated_validation_brier": float(row["calibrated_validation_brier"]),
                 "source_hash": row["source_hash"],
+                "retired_at": row["retired_at"],
+                "retirement_reason": row["retirement_reason"],
                 **_authority(),
             }
             for row in rows
@@ -1277,6 +1460,7 @@ class LearningFabric:
             "model_count": len(models),
             "validated_model_count": sum(1 for row in models if row["status"] == "SHADOW_VALIDATED"),
             "rejected_model_count": sum(1 for row in models if row["status"] == "SHADOW_REJECTED"),
+            "drift_retired_model_count": sum(1 for row in models if row["status"] == "DRIFT_RETIRED"),
             "models": models,
             "assessments": {
                 "pending": pending,
@@ -2512,7 +2696,20 @@ class LearningFabric:
             errors["backfill"] = f"{type(ex).__name__}: {ex}"[:500]
         summary["scorecards"] = self.scorecards()
         try:
-            summary["shadow_calibration"] = self.rebuild_shadow_calibrators()
+            summary["calibration_drift"] = self.evaluate_shadow_calibrator_drift(
+                min_samples=8,
+                recent_window=20,
+                degradation_margin=0.02,
+            )
+        except Exception as ex:
+            errors["calibration_drift"] = f"{type(ex).__name__}: {ex}"[:500]
+            summary["calibration_drift"] = {
+                "status": "degraded", "error": errors["calibration_drift"], **_authority()
+            }
+        try:
+            summary["shadow_calibration"] = self.rebuild_shadow_calibrators(
+                refresh_samples=12
+            )
         except Exception as ex:
             errors["shadow_calibration"] = f"{type(ex).__name__}: {ex}"[:500]
             summary["shadow_calibration"] = {
@@ -2590,6 +2787,7 @@ class LearningFabric:
             "coverage": {
                 "historical_trainers": "protected_replay",
                 "shadow_recalibration": "chronological_holdout_validated_research_only",
+                "calibration_drift": "oos_recent_window_retirement_with_batched_refresh",
                 "historical_trade_lists": "immutable_realized_experience",
                 "runtime_trade_outcomes": "fully_closed_live_sim_experience",
                 "sibyl": "native_prediction_outcome",
