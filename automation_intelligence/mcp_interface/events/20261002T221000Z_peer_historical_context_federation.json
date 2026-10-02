@@ -3,7 +3,7 @@
   "event_id": "peer-historical-context-federation-20261002",
   "category": "INTEGRATION",
   "severity": "INFO",
-  "status": "IMPLEMENTED_PENDING_CI",
+  "status": "staged",
   "subsystems": [
     "aion",
     "provenance",
