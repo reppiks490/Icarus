@@ -42,6 +42,62 @@ def _genome(*, subsystem="chronofold"):
     }
 
 
+def _federated_seed_state():
+    return {
+        "status": "green",
+        "repository": "reppiks490/Icarus-engine",
+        "ref": "main",
+        "peer_packet_status": "green",
+        "peer_packet_fresh": True,
+        "peer_source_commit": "a" * 40,
+        "peer_source_commit_verified": True,
+        "peer_source_commit_relation": "AHEAD",
+        "historical_context_status": "green",
+        "historical_packet_witness_status": "green",
+        "historical_candidate_evidence_count": 0,
+        "historical_context_sources": [{
+            "id": "robustness_guardian",
+            "path": "automation_intelligence/agent_fabric/robustness_guardian/latest.json",
+            "remote_blob_sha": "b" * 40,
+            "run_id": "robustness-guardian-20261002T180500Z",
+            "run_status": "RUN_PERSISTED",
+            "evidence_status": "HISTORICAL_RESEARCH_EVIDENCE",
+            "collection_only": False,
+            "research_context_eligible": True,
+            "candidate_evidence_eligible": False,
+            "foreign_evidence_only": True,
+            "requires_foundry_and_evaluator": True,
+            "summary": {
+                "RUN_CORE.findings": ["Protected holdout lineage is incomplete."],
+                "RUN_CORE.NEXT": "Bind immutable dataset and holdout identities.",
+            },
+            "execution_authorized": False,
+            "production_decision_authorized": False,
+        }],
+        "historical_packet_witnesses": [{
+            "id": "robustness_guardian",
+            "artifact_id": "c" * 64,
+            "path": "automation_intelligence/agent_fabric/robustness_guardian/latest.json",
+            "source_artifact_blob_sha": "b" * 40,
+            "source_artifact_blob_verified": True,
+            "current_main_blob_sha": "b" * 40,
+            "current_main_relation": "SAME_AS_PACKET_SOURCE",
+            "run_id": "robustness-guardian-20261002T180500Z",
+            "run_status": "RUN_PERSISTED",
+        }],
+        "truth_contract": {
+            "historical_context_never_bypasses_foundry": True,
+            "historical_context_never_bypasses_evaluator": True,
+            "historical_context_never_grants_shadow_qualification": True,
+            "historical_context_never_grants_execution_authority": True,
+            "historical_source_artifact_blob_required": True,
+            "historical_artifact_id_sha256_required": True,
+        },
+        "execution_authorized": False,
+        "production_decision_authorized": False,
+    }
+
+
 def _candidate(**overrides):
     body = {
         "origin": "generated_math",
@@ -662,3 +718,32 @@ def test_evaluator_cascade_api_is_foundry_bound_and_research_only(ascendancy_gen
     assert port.paused is paused_before
     assert list(port.runners) == runners_before
     assert srv.ascendancy_evaluator.snapshot()["receipt_count"] == 1
+
+
+def test_federated_research_seed_api_is_read_only_and_provenance_bound(ascendancy_genome_http):
+    port, srv, request = ascendancy_genome_http
+    srv.brain_remote_sync.status = _federated_seed_state
+
+    code, body = request("GET", "/api/ascendancy/federated-seeds", auth=False)
+    assert code == 401
+    assert "admin token" in body["detail"]
+
+    code, body = request("GET", "/api/ascendancy/federated-seeds")
+    assert code == 200, body
+    assert body["status"] == "READY"
+    assert body["ready_seed_count"] == 1
+    seed = body["seeds"][0]
+    assert seed["source_commit"] == "a" * 40
+    assert seed["source_artifact_blob_sha"] == "b" * 40
+    assert seed["candidate_id"] is None
+    assert seed["candidate_evidence_eligible"] is False
+    assert seed["automatic_candidate_creation"] is False
+    assert seed["execution_authorized"] is False
+    assert body["production_decision_authorized"] is False
+
+    code, body = request(
+        "POST",
+        "/admin/ascendancy/federated-seed",
+        body={"seed_id": seed["seed_id"]},
+    )
+    assert code == 404
