@@ -326,3 +326,16 @@ def test_brain_registers_ascendancy_evaluator_cascade(tmp_path):
     assert surfaced["ascendancy-evaluator"]["status"] == "REGISTERED"
     assert out["authority"]["execution_authorized"] is False
     assert out["authority"]["production_decision_authorized"] is False
+
+
+def test_brain_registers_ascendancy_peer_bridge(tmp_path):
+    out = brain_snapshot(tmp_path)
+    rows = {x["id"]: x for x in SUBSYSTEMS}
+    assert "ascendancy-peer-bridge" in rows
+    assert rows["ascendancy-peer-bridge"]["owner"] == "omega"
+    job = rows["ascendancy-peer-bridge"]["job"].lower()
+    assert "foreign" in job
+    assert "provenance" in job
+    assert "authority" in job
+    surfaced = {x["id"]: x for x in out["architecture"]["subsystems"]}
+    assert surfaced["ascendancy-peer-bridge"]["status"] == "REGISTERED"
