@@ -1188,10 +1188,16 @@ def test_shadow_calibration_is_conditioned_on_predicted_label(tmp_path):
     fabric = LearningFabric(tmp_path)
     start = datetime(2026, 1, 1, tzinfo=timezone.utc)
 
-    # UP is reliable; DOWN is systematically unreliable. Pooling these labels
-    # would erase the asymmetry and produce a scientifically invalid calibrator.
-    _label_calibration_case(fabric, start=start, label="up", actual_pattern=lambda i, p: True)
-    _label_calibration_case(fabric, start=start + timedelta(days=1), label="down", actual_pattern=lambda i, p: False)
+    # UP and DOWN have opposite probability→success relationships. Pooling these
+    # labels would erase the asymmetry and produce a scientifically invalid map.
+    _label_calibration_case(
+        fabric, start=start, label="up",
+        actual_pattern=lambda i, p: (p >= 0.7),
+    )
+    _label_calibration_case(
+        fabric, start=start + timedelta(days=1), label="down",
+        actual_pattern=lambda i, p: (p < 0.7),
+    )
 
     rebuilt = fabric.rebuild_shadow_calibrators(min_samples=30)
     models = {(m["prediction_label"], m["status"]): m for m in rebuilt["models"]}
