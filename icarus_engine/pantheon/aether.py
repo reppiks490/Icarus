@@ -68,6 +68,8 @@ class AetherSwarm:
         stale_memory = unit(faculties.get("lethe", {}).get("stale_memory_pressure"), "lethe.stale_memory_pressure")
         resurrection = unit(faculties.get("lethe", {}).get("resurrection_pressure"), "lethe.resurrection_pressure")
         proof_gap = unit(faculties.get("axiom", {}).get("proof_gap"), "axiom.proof_gap")
+        aporia_state = faculties.get("aporia", {})
+        information_value = unit(aporia_state.get("information_value_pressure"), "aporia.information_value_pressure")
         atlas_state = faculties.get("atlas", {})
         topology_pressure = max(
             unit(atlas_state.get("topological_novelty"), "atlas.topological_novelty"),
@@ -82,7 +84,7 @@ class AetherSwarm:
             + 0.20 * causal
             + 0.17 * uncertainty
         )
-        raw_energy = min(1.0, raw_energy + 0.12 * echo_risk + 0.08 * stale_memory + 0.06 * resurrection + 0.08 * proof_gap + 0.08 * topology_pressure)
+        raw_energy = min(1.0, raw_energy + 0.12 * echo_risk + 0.08 * stale_memory + 0.06 * resurrection + 0.08 * proof_gap + 0.08 * topology_pressure + 0.08 * information_value)
         energy = max(0.0, min(1.0, raw_energy * (1.0 - 0.45 * risk) * (0.50 + 0.50 * data_quality)))
         active = energy >= self.threshold and data_quality >= 0.35
         agents = []
@@ -98,6 +100,8 @@ class AetherSwarm:
                 priorities.append("historical_analogue")
             if stale_memory >= 0.35:
                 priorities.append("edge_half_life")
+            if information_value >= 0.10 or bool(aporia_state.get("timing_blocking")):
+                priorities.append("information_gain")
             if topology_pressure >= 0.60:
                 priorities.append("ontology_scout")
             if atlas_state.get("geometry_state") == "boundary":
@@ -146,6 +150,8 @@ class AetherSwarm:
                 "stale_memory_pressure": stale_memory,
                 "resurrection_pressure": resurrection,
                 "proof_gap": proof_gap,
+                "information_value_pressure": information_value,
+                "value_of_waiting_action": aporia_state.get("action", "unavailable"),
                 "topology_pressure": topology_pressure,
                 "risk": risk,
                 "data_quality": data_quality,
@@ -167,6 +173,7 @@ class AetherSwarm:
                 "dormant_memory_never_auto_resurrects": True,
                 "axiom_proof_gaps_drive_research_not_execution": True,
                 "atlas_boundaries_drive_research_not_execution": True,
+                "positive_value_information_prioritizes_research_not_execution": True,
             },
             "truth_contract": {
                 "agents_are_ephemeral_research_workers": True,

@@ -29,6 +29,7 @@ FACULTIES = (
     "veritas",
     "lethe",
     "atlas",
+    "aporia",
     "axiom",
     "archon",
     "aether",

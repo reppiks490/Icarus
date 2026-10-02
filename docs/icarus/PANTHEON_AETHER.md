@@ -645,3 +645,33 @@ high boundary pressure leaves basin separation unproven. SOCRATES can target
 the topological uncertainty directly, while AETHER increases bounded research
 attention and prioritizes ontology/historical specialists. None of those paths
 grant execution authority.
+
+
+## APORIA — active perception and value of waiting
+
+**APORIA Ω** turns GÖDEL's uncertainty into an economic timing experiment.
+Instead of asking only *what observation would distinguish the competing
+worlds?*, APORIA asks whether that observation can arrive **before the current
+edge decays enough to make waiting irrational**.
+
+APORIA consumes GÖDEL's ranked discriminating observations, NEMESIS edge
+half-life, MINT's cost-stressed opportunity value, explicit per-observation
+latencies, and optional acquisition costs. For each candidate it computes a
+declared-latency edge-retention factor, ambiguity-weighted information-gain
+proxy, clarity value, opportunity loss while waiting, acquisition cost, and
+net information value. It also derives a latency budget from the maximum
+declared acceptable edge loss.
+
+A positive, in-budget result yields `observe_then_reassess`. This is **not**
+an order instruction. It temporarily leaves AXIOM's `information_timing`
+proof axis unproven until the high-value observation arrives and the research
+thesis is reassessed. If the information arrives too late or costs more than
+the clarity it can add, APORIA says so explicitly rather than pretending that
+more data is always better.
+
+AETHER surfaces APORIA's information-value pressure and prioritizes the
+existing blind `information_gain` researcher when the value of another
+observation is material. SOCRATES converts the same state into a falsifiable
+question about whether the expected ambiguity reduction actually justified the
+delay. APORIA has no capital, sizing, broker, or production-decision authority;
+all values are research diagnostics rather than calibrated profit guarantees.

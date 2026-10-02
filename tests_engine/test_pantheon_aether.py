@@ -71,7 +71,7 @@ def test_pantheon_runs_independent_faculties_and_never_grants_execution(tmp_path
     obs = kernel.record_observation(_payload())
     analysis = obs["analysis"]
     assert set(analysis["faculties"]) == {
-        "nullspace", "godel", "ananke", "nemesis", "ex_nihilo", "mint", "echo", "veritas", "lethe", "atlas", "axiom", "archon", "socrates"
+        "nullspace", "godel", "ananke", "nemesis", "ex_nihilo", "mint", "echo", "veritas", "lethe", "atlas", "aporia", "axiom", "archon", "socrates"
     }
     assert analysis["faculties"]["nullspace"]["routing_state"] == "absorbed"
     assert analysis["faculties"]["nullspace"]["debt_state"] == "absorbed"
@@ -939,6 +939,86 @@ def _axiom_ready_payload(observation_id="pan-axiom-ready"):
     return payload
 
 
+def test_aporia_prices_value_of_waiting_before_edge_decay(tmp_path):
+    payload = _payload(observation_id="pan-aporia-wait")
+    payload["signals"] = dict(payload["signals"])
+    payload["signals"]["edge_half_life_seconds"] = 2.0
+    payload["signals"]["diagnostic_latency_ms"] = {
+        "nq_qqq_basis": 100.0,
+        "queue_replenishment": 800.0,
+    }
+    payload["signals"]["diagnostic_acquisition_costs"] = {
+        "nq_qqq_basis": 5.0,
+        "queue_replenishment": 5.0,
+    }
+    obs = PantheonKernel(tmp_path, swarm=AetherSwarm(threshold=0.0, max_agents=8)).record_observation(payload)
+    state = obs["analysis"]["faculties"]["aporia"]
+    swarm = obs["analysis"]["aether"]
+
+    assert state["status"] == "active"
+    assert state["action"] == "observe_then_reassess"
+    assert state["timing_blocking"] is True
+    assert state["best_observation"]["observation"] == "nq_qqq_basis"
+    assert state["best_observation"]["net_information_value"] > 0
+    assert state["best_observation"]["within_latency_budget"] is True
+    assert 0 < state["information_value_pressure"] <= 1
+    assert state["latency_budget_ms"] > 100
+    assert swarm["field"]["information_value_pressure"] == pytest.approx(state["information_value_pressure"])
+    assert "information_gain" in {agent["role"] for agent in swarm["agents"]}
+    assert state["authority"]["execution_authorized"] is False
+
+
+def test_aporia_refuses_to_wait_when_information_arrives_after_edge_is_gone(tmp_path):
+    payload = _payload(observation_id="pan-aporia-too-late")
+    payload["signals"] = dict(payload["signals"])
+    payload["signals"]["edge_half_life_seconds"] = 0.05
+    payload["signals"]["diagnostic_latency_ms"] = {
+        "nq_qqq_basis": 1000.0,
+        "queue_replenishment": 1200.0,
+    }
+    state = PantheonKernel(tmp_path).record_observation(payload)["analysis"]["faculties"]["aporia"]
+    assert state["status"] == "active"
+    assert state["timing_blocking"] is False
+    assert state["best_observation"]["edge_retention"] < 0.001
+    assert state["best_observation"]["net_information_value"] < 0
+    assert state["action"] == "information_not_worth_delay"
+    assert state["information_value_pressure"] == pytest.approx(0.0)
+
+
+def test_aporia_fails_closed_on_invalid_observation_economics(tmp_path):
+    bad_latency = _payload(observation_id="pan-aporia-bad-latency")
+    bad_latency["signals"] = dict(bad_latency["signals"])
+    bad_latency["signals"]["edge_half_life_seconds"] = 2.0
+    bad_latency["signals"]["diagnostic_latency_ms"] = {"nq_qqq_basis": -1.0}
+    with pytest.raises(ValueError, match="diagnostic_latency_ms.nq_qqq_basis must be non-negative"):
+        PantheonKernel(tmp_path / "latency").record_observation(bad_latency)
+
+    bad_cost = _payload(observation_id="pan-aporia-bad-cost")
+    bad_cost["signals"] = dict(bad_cost["signals"])
+    bad_cost["signals"]["edge_half_life_seconds"] = 2.0
+    bad_cost["signals"]["diagnostic_latency_ms"] = {"nq_qqq_basis": 50.0}
+    bad_cost["signals"]["diagnostic_acquisition_costs"] = {"nq_qqq_basis": -0.01}
+    with pytest.raises(ValueError, match="diagnostic_acquisition_costs.nq_qqq_basis must be non-negative"):
+        PantheonKernel(tmp_path / "cost").record_observation(bad_cost)
+
+
+def test_aporia_blocks_axiom_research_ready_until_positive_value_observation_is_resolved(tmp_path):
+    payload = _axiom_ready_payload("pan-aporia-axiom")
+    payload["signals"]["world_scores"] = {"accumulation": 0.85, "distribution": 0.15}
+    payload["signals"]["diagnostic_values"] = {"queue_replenishment": 0.95}
+    payload["signals"]["edge_half_life_seconds"] = 5.0
+    payload["signals"]["diagnostic_latency_ms"] = {"queue_replenishment": 100.0}
+    payload["signals"]["diagnostic_acquisition_costs"] = {"queue_replenishment": 1.0}
+    obs = PantheonKernel(tmp_path).record_observation(payload)
+    aporia_state = obs["analysis"]["faculties"]["aporia"]
+    axiom_state = obs["analysis"]["faculties"]["axiom"]
+    assert aporia_state["action"] == "observe_then_reassess"
+    assert aporia_state["timing_blocking"] is True
+    assert axiom_state["certificate_state"] == "incomplete"
+    assert "information_timing" in axiom_state["unproven_gates"]
+    assert axiom_state["research_ready"] is False
+
+
 def test_axiom_builds_research_ready_non_substitutable_certificate(tmp_path):
     obs = PantheonKernel(tmp_path).record_observation(_axiom_ready_payload())
     state = obs["analysis"]["faculties"]["axiom"]
@@ -1087,6 +1167,7 @@ def test_pantheon_is_visible_in_trader_interface():
     assert "Memory staleness" in ui
     assert "Resurrection pressure" in ui
     assert "Proof gap" in ui
+    assert "Value of waiting" in ui
     assert "Topology pressure" in ui
     assert "geometry " in ui
     assert "certificate " in ui
@@ -1100,7 +1181,7 @@ def test_pantheon_is_visible_in_trader_interface():
     assert '"pantheon": pantheon.snapshot' in server
     assert "resolve_engine_evidence_lineage" in server
     assert '"apex_lineage"' in server
-    for subsystem in ("PANTHEON", "NEMESIS Ω", "GÖDEL Ω", "SOCRATES", "ANANKĒ", "EX NIHILO", "MINT Ω", "NULLSPACE Ω", "ECHO Ω", "VERITAS Ω", "LETHE Ω", "ATLAS Ω", "AXIOM Ω", "ARCHON Ω", "AETHER Ω"):
+    for subsystem in ("PANTHEON", "NEMESIS Ω", "GÖDEL Ω", "SOCRATES", "ANANKĒ", "EX NIHILO", "MINT Ω", "NULLSPACE Ω", "ECHO Ω", "VERITAS Ω", "LETHE Ω", "ATLAS Ω", "APORIA Ω", "AXIOM Ω", "ARCHON Ω", "AETHER Ω"):
         assert subsystem in brain
 
 
