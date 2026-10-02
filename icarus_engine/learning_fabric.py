@@ -185,6 +185,7 @@ class LearningFabric:
                     regime TEXT NOT NULL,
                     horizon_seconds INTEGER NOT NULL,
                     target TEXT NOT NULL,
+                    prediction_label TEXT NOT NULL DEFAULT '',
                     status TEXT NOT NULL,
                     train_count INTEGER NOT NULL,
                     validation_count INTEGER NOT NULL,
@@ -306,6 +307,21 @@ class LearningFabric:
                     last_error,updated_at
                 ) VALUES('learning',0,0,0,0,0,0,0,NULL,NULL,NULL,NULL,NULL,NULL,'1970-01-01T00:00:00Z');
                 """
+            )
+            calibration_columns = {
+                row["name"]
+                for row in self._conn.execute("PRAGMA table_info(calibration_models)").fetchall()
+            }
+            if "prediction_label" not in calibration_columns:
+                self._conn.execute(
+                    "ALTER TABLE calibration_models "
+                    "ADD COLUMN prediction_label TEXT NOT NULL DEFAULT ''"
+                )
+            self._conn.execute(
+                """CREATE INDEX IF NOT EXISTS idx_learning_calibrator_label_scope
+                   ON calibration_models(
+                     producer,asset,regime,horizon_seconds,target,prediction_label,training_cutoff
+                   )"""
             )
 
     def _load_config(self) -> dict[str, Any]:
