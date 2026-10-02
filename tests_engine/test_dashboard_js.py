@@ -144,6 +144,8 @@ def test_dashboard_surfaces_adaptive_brain_fabric():
     assert "PERSISTED_WORKER_EVIDENCE" in ui
     assert "Peer substantive lanes" in ui
     assert "Peer lane provenance" in ui
+    assert "Peer source contracts" in ui
+    assert "peer_source_contract_witness_status" in ui
     assert "Source proof" in ui
     assert "source_witness_status" in ui
     assert "Federated Icarus-engine lane state" in ui
