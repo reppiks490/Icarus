@@ -837,6 +837,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._send(200, (html_path.parent / "autopilot-ui.js").read_bytes(), "text/javascript")
             if p.path == "/brain-ui.js":
                 return self._send(200, (html_path.parent / "brain-ui.js").read_bytes(), "text/javascript")
+            if p.path == "/ascendancy-ui.js":
+                return self._send(200, (html_path.parent / "ascendancy-ui.js").read_bytes(), "text/javascript")
             if p.path == "/evolution-ui.js":
                 return self._send(200, (html_path.parent / "evolution-ui.js").read_bytes(), "text/javascript")
             if p.path == "/parallax-ui.js":
