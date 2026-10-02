@@ -657,3 +657,54 @@ def test_adaptive_brain_surfaces_historical_engine_context():
     assert "historical_context_ingested_total" in ui
     assert "historical_candidate_evidence_count" in ui
     assert "historical_context_status" in ui
+
+
+def test_rebased_ascendancy_dashboard_keeps_full_research_operating_surface():
+    ui = (REPO / "icarus_engine/ascendancy-ui.js").read_text(encoding="utf-8")
+    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
+    brain = (REPO / "icarus_engine/brain.py").read_text(encoding="utf-8")
+
+    for label in (
+        "ARCHITECTURE GENOME",
+        "EDGE FOUNDRY",
+        "UNKNOWN UNKNOWNS",
+        "INVENTION ENGINE",
+        "EVALUATOR CASCADE",
+        "INFORMATION CONTRIBUTION MATRIX",
+        "MECHANISM LABORATORY",
+        "CANONICAL ICARUS-ENGINE FEDERATION",
+        "HISTORICAL RESEARCH CONTEXT",
+    ):
+        assert label in ui
+
+    for route in (
+        "/api/ascendancy/genomes",
+        "/api/ascendancy/candidates",
+        "/api/ascendancy/unknowns",
+        "/api/ascendancy/mechanisms",
+        "/api/ascendancy/inventions",
+        "/api/ascendancy/contributions",
+        "/api/ascendancy/evaluator",
+        "/api/ascendancy/federation",
+    ):
+        assert route in ui
+        assert f'p.path == "{route}"' in server
+
+    assert "/api/ascendancy/peers" not in ui
+    assert "PeerRepositoryBridge" not in server
+    assert "brain_remote_sync.status()" in server
+    assert "candidate evidence=false" in ui.lower()
+    assert "historical_context_never_bypasses_foundry" in ui
+    assert "historical_context_never_bypasses_evaluator" in ui
+
+    for subsystem in (
+        "ascendancy-genome",
+        "ascendancy-foundry",
+        "ascendancy-unknowns",
+        "ascendancy-mechanisms",
+        "ascendancy-invention",
+        "ascendancy-contribution",
+        "ascendancy-evaluator",
+        "ascendancy-federation",
+    ):
+        assert f'"id": "{subsystem}"' in brain
