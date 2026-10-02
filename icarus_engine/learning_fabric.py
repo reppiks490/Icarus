@@ -185,6 +185,7 @@ class LearningFabric:
                     regime TEXT NOT NULL,
                     horizon_seconds INTEGER NOT NULL,
                     target TEXT NOT NULL,
+                    prediction_label TEXT NOT NULL DEFAULT '',
                     status TEXT NOT NULL,
                     train_count INTEGER NOT NULL,
                     validation_count INTEGER NOT NULL,
@@ -306,6 +307,21 @@ class LearningFabric:
                     last_error,updated_at
                 ) VALUES('learning',0,0,0,0,0,0,0,NULL,NULL,NULL,NULL,NULL,NULL,'1970-01-01T00:00:00Z');
                 """
+            )
+            calibration_columns = {
+                row["name"]
+                for row in self._conn.execute("PRAGMA table_info(calibration_models)").fetchall()
+            }
+            if "prediction_label" not in calibration_columns:
+                self._conn.execute(
+                    "ALTER TABLE calibration_models "
+                    "ADD COLUMN prediction_label TEXT NOT NULL DEFAULT ''"
+                )
+            self._conn.execute(
+                """CREATE INDEX IF NOT EXISTS idx_learning_calibrator_label_scope
+                   ON calibration_models(
+                     producer,asset,regime,horizon_seconds,target,prediction_label,training_cutoff
+                   )"""
             )
 
     def _load_config(self) -> dict[str, Any]:
@@ -634,18 +650,27 @@ class LearningFabric:
         self._attach_shadow_calibration(pred)
         return {"ok": True, "idempotent": idempotent, "prediction": pred, **_authority()}
 
+    @staticmethod
+    def _calibration_prediction_label(prediction: Any) -> str:
+        if type(prediction) is bool:
+            return "true" if prediction else "false"
+        value = str(prediction or "").strip().lower()
+        return _text(value, "prediction_label", 64)
+
     def _attach_shadow_calibration(self, pred: Mapping[str, Any]) -> None:
         if pred.get("target") not in {"direction", "class", "event"}:
             return
         emitted_at = str(pred.get("emitted_at") or "")
+        prediction_label = self._calibration_prediction_label(pred.get("prediction"))
         row = self._conn.execute(
             """SELECT * FROM calibration_models
                WHERE producer=? AND asset=? AND regime=? AND horizon_seconds=? AND target=?
-               AND training_cutoff<?
+               AND prediction_label=? AND training_cutoff<?
                ORDER BY training_cutoff DESC, created_at DESC, calibrator_id DESC LIMIT 1""",
             (
                 pred.get("producer"), pred.get("asset"), pred.get("regime"),
-                int(pred.get("horizon_seconds") or 0), pred.get("target"), emitted_at,
+                int(pred.get("horizon_seconds") or 0), pred.get("target"),
+                prediction_label, emitted_at,
             ),
         ).fetchone()
         if row is None or row["status"] != "SHADOW_VALIDATED":
@@ -688,7 +713,7 @@ class LearningFabric:
         pid = _text(prediction_id, "prediction_id", 96)
         row = self._conn.execute(
             """SELECT s.*,m.producer,m.asset,m.regime,m.horizon_seconds,m.target,
-                      m.training_cutoff,m.status AS calibrator_status
+                      m.prediction_label,m.training_cutoff,m.status AS calibrator_status
                FROM shadow_calibrations s
                JOIN calibration_models m ON m.calibrator_id=s.calibrator_id
                WHERE s.prediction_id=?""",
@@ -704,6 +729,7 @@ class LearningFabric:
             "regime": row["regime"],
             "horizon_seconds": int(row["horizon_seconds"]),
             "target": row["target"],
+            "prediction_label": row["prediction_label"],
             "training_cutoff": row["training_cutoff"],
             "calibrator_status": row["calibrator_status"],
             "raw_probability": float(row["raw_probability"]),
@@ -1066,25 +1092,28 @@ class LearningFabric:
             raise ValueError("min_samples must be an integer in [20,100000]")
         rows = self._conn.execute(
             """SELECT p.prediction_id,p.producer,p.asset,p.regime,p.horizon_seconds,p.target,
-                      p.probability,o.success,o.observed_at,o.observed_ts
+                      p.prediction_json,p.probability,o.success,o.observed_at,o.observed_ts
                FROM predictions p JOIN outcomes o ON o.prediction_id=p.prediction_id
                WHERE o.success IS NOT NULL AND p.target IN ('direction','class','event')
                ORDER BY p.producer,p.asset,p.regime,p.horizon_seconds,p.target,
                         o.observed_ts,p.prediction_id"""
         ).fetchall()
-        groups: dict[tuple[str, str, str, int, str], list[sqlite3.Row]] = {}
+        groups: dict[tuple[str, str, str, int, str, str], list[sqlite3.Row]] = {}
         for row in rows:
+            prediction_label = self._calibration_prediction_label(
+                json.loads(row["prediction_json"])
+            )
             key = (
                 row["producer"], row["asset"], row["regime"],
-                int(row["horizon_seconds"]), row["target"],
+                int(row["horizon_seconds"]), row["target"], prediction_label,
             )
             groups.setdefault(key, []).append(row)
 
         built: list[dict[str, Any]] = []
         skipped: dict[str, str] = {}
         for key, group in sorted(groups.items()):
-            producer, asset, regime, horizon, target = key
-            scope = f"{producer}:{asset}:{regime}:{horizon}:{target}"
+            producer, asset, regime, horizon, target, prediction_label = key
+            scope = f"{producer}:{asset}:{regime}:{horizon}:{target}:{prediction_label}"
             n = len(group)
             if n < min_samples:
                 skipped[scope] = f"need {min_samples} settled samples; have {n}"
@@ -1139,15 +1168,16 @@ class LearningFabric:
             with self._lock, self._conn:
                 self._conn.execute(
                     """INSERT OR IGNORE INTO calibration_models(
-                       calibrator_id,producer,asset,regime,horizon_seconds,target,status,
+                       calibrator_id,producer,asset,regime,horizon_seconds,target,prediction_label,status,
                        train_count,validation_count,fit_cutoff,training_cutoff,model_json,
                        raw_validation_brier,calibrated_validation_brier,source_hash,created_at)
-                       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                     (
-                        calibrator_id, producer, asset, regime, horizon, target, status,
-                        train_count, validation_count, fit_cutoff, training_cutoff,
-                        _json(model, "isotonic model"), raw_validation_brier,
-                        calibrated_validation_brier, source_hash, created_at,
+                        calibrator_id, producer, asset, regime, horizon, target,
+                        prediction_label, status, train_count, validation_count,
+                        fit_cutoff, training_cutoff, _json(model, "isotonic model"),
+                        raw_validation_brier, calibrated_validation_brier,
+                        source_hash, created_at,
                     ),
                 )
             built.append({
@@ -1157,6 +1187,7 @@ class LearningFabric:
                 "regime": regime,
                 "horizon_seconds": horizon,
                 "target": target,
+                "prediction_label": prediction_label,
                 "status": status,
                 "train_count": train_count,
                 "validation_count": validation_count,
@@ -1184,11 +1215,11 @@ class LearningFabric:
                  SELECT 1 FROM calibration_models newer
                  WHERE newer.producer=m.producer AND newer.asset=m.asset
                    AND newer.regime=m.regime AND newer.horizon_seconds=m.horizon_seconds
-                   AND newer.target=m.target
+                   AND newer.target=m.target AND newer.prediction_label=m.prediction_label
                    AND (newer.training_cutoff>m.training_cutoff OR
                         (newer.training_cutoff=m.training_cutoff AND newer.created_at>m.created_at))
                )
-               ORDER BY m.producer,m.asset,m.regime,m.horizon_seconds,m.target"""
+               ORDER BY m.producer,m.asset,m.regime,m.horizon_seconds,m.target,m.prediction_label"""
         ).fetchall()
         models = [
             {
@@ -1198,6 +1229,7 @@ class LearningFabric:
                 "regime": row["regime"],
                 "horizon_seconds": int(row["horizon_seconds"]),
                 "target": row["target"],
+                "prediction_label": row["prediction_label"],
                 "status": row["status"],
                 "train_count": int(row["train_count"]),
                 "validation_count": int(row["validation_count"]),
