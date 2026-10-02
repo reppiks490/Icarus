@@ -1722,7 +1722,7 @@ def _write_intake_manifest(path: Path, rows: list[dict[str, object]]) -> Path:
     return path
 
 
-def test_manifest_unique_strategy_report_links_historical_trade_configuration(tmp_path):
+def test_manifest_metadata_without_report_artifact_stays_unscoped(tmp_path):
     import hashlib
     from icarus_engine.learning_fabric import LearningFabric
 
@@ -1743,12 +1743,10 @@ def test_manifest_unique_strategy_report_links_historical_trade_configuration(tm
                 "symbol": "CME_MINI:NQ1!",
                 "rows": 4,
                 "last_trade_number": 2,
-                "first_or_trading_range": "2024-06-03 10:20",
-                "last_or_backtesting_range": "2024-06-03 12:20",
             },
             {
                 "sha256": report_sha,
-                "canonical_filename": "THE_PULSE_OF_ICARUS_CME_MINI_NQ1!_2026-09-30.xlsx",
+                "canonical_filename": "missing-report.xlsx",
                 "format": "xlsx",
                 "artifact_class": "strategy_report_xlsx",
                 "symbol": "CME_MINI:NQ1!",
@@ -1756,49 +1754,35 @@ def test_manifest_unique_strategy_report_links_historical_trade_configuration(tm
                 "chart_type": "Heikin Ashi",
                 "rows": 4,
                 "last_trade_number": 2,
-                "net_profit_usd": "700427.0",
-                "max_drawdown_intrabar_usd": "165324.0",
-                "notes": "commission=2; slippage=0 ticks; execution=On bar close; order_delay=One tick",
             },
         ],
     )
 
     fabric = LearningFabric(tmp_path)
     scan = fabric.scan_history()
-    assert scan["files_seen"] >= 1
-    dataset = fabric.dataset(scan["dataset_ids"][0])
-    assert dataset["artifact_class"] == "trade_list"
+    dataset = next(
+        fabric.dataset(did)
+        for did in scan["dataset_ids"]
+        if fabric.dataset(did)["artifact_class"] == "trade_list"
+    )
     result = fabric.backfill_dataset(dataset["dataset_id"])
     assert result["status"] == "complete"
 
     state = fabric.experience_state()
     assert state["by_configuration"] == []
-    assert state["artifact_scoped_count"] == 2
-    assert state["unscoped_count"] == 0
-    assert len(state["by_artifact_configuration"]) == 1
-    card = state["by_artifact_configuration"][0]
-    assert card["asset"] == "NQ"
-    assert card["count"] == 2
-    assert card["timeframe"] == "20m"
-    assert card["chart_type"] == "Heikin Ashi"
-    assert card["strategy_report_sha256"] == report_sha
-    assert card["strategy_report_filename"].endswith(".xlsx")
-    assert card["linkage_rule"] == "UNIQUE_SYMBOL_ROWS_LAST_TRADE"
-    assert len(card["artifact_configuration_fingerprint"]) == 64
-    assert card["provenance_quality"] == "MANIFEST_UNIQUE_STRATEGY_REPORT_LINK"
-    assert card["execution_authorized"] is False
-    assert card["production_decision_authorized"] is False
+    assert state["artifact_scoped_count"] == 0
+    assert state["unscoped_count"] == 2
+    assert state["by_artifact_configuration"] == []
 
     rows = fabric._conn.execute(
         "SELECT metadata_json FROM experiences ORDER BY experience_id"
     ).fetchall()
     for row in rows:
         meta = json.loads(row["metadata_json"])
-        assert meta["artifact_configuration_fingerprint"] == card["artifact_configuration_fingerprint"]
-        assert meta["provenance_quality"] == "MANIFEST_UNIQUE_STRATEGY_REPORT_LINK"
+        assert meta["provenance_class"] == "UNSCOPED"
+        assert meta["manifest_linkage_status"] == "REPORT_ARTIFACT_UNAVAILABLE"
         assert meta["strategy_report_sha256"] == report_sha
-        assert "strategy_fingerprint" not in meta
-
+        assert "artifact_configuration_fingerprint" not in meta
 
 def test_manifest_ambiguous_strategy_report_linkage_fails_closed(tmp_path):
     import hashlib
@@ -1860,7 +1844,7 @@ def test_manifest_ambiguous_strategy_report_linkage_fails_closed(tmp_path):
     assert meta["manifest_linkage_candidates"] == 2
 
 
-def test_manifest_report_linkage_never_promotes_to_runtime_strategy_configuration(tmp_path):
+def test_semantic_report_linkage_never_promotes_to_runtime_strategy_configuration(tmp_path):
     from icarus_engine.learning_fabric import LearningFabric
 
     fabric = LearningFabric(tmp_path)
@@ -1877,12 +1861,13 @@ def test_manifest_report_linkage_never_promotes_to_runtime_strategy_configuratio
         "pnl": 50.0,
         "metadata": {
             "artifact_configuration_fingerprint": "f" * 64,
-            "provenance_quality": "MANIFEST_UNIQUE_STRATEGY_REPORT_LINK",
+            "provenance_quality": "SEMANTIC_TRADE_TWIN_STRATEGY_REPORT_LINK",
+            "semantic_trade_signature_sha256": "d" * 64,
             "timeframe": "20m",
             "chart_type": "Heikin Ashi",
             "strategy_report_sha256": "e" * 64,
             "strategy_report_filename": "report.xlsx",
-            "linkage_rule": "UNIQUE_SYMBOL_ROWS_LAST_TRADE",
+            "linkage_rule": "SEMANTIC_TRADE_SIGNATURE_V1",
         },
     })
     state = fabric.experience_state()
@@ -2295,7 +2280,8 @@ def test_experience_provenance_class_is_explicit_and_source_bound(tmp_path):
         "pnl": 200.0,
         "metadata": {
             "artifact_configuration_fingerprint": "b" * 64,
-            "provenance_quality": "MANIFEST_UNIQUE_STRATEGY_REPORT_LINK",
+            "provenance_quality": "SEMANTIC_TRADE_TWIN_STRATEGY_REPORT_LINK",
+            "semantic_trade_signature_sha256": "4" * 64,
             "strategy_report_sha256": "c" * 64,
         },
     })
@@ -2348,7 +2334,8 @@ def test_experience_provenance_class_is_explicit_and_source_bound(tmp_path):
             "pnl": 100.0,
             "metadata": {
                 "artifact_configuration_fingerprint": "e" * 64,
-                "provenance_quality": "MANIFEST_UNIQUE_STRATEGY_REPORT_LINK",
+                "provenance_quality": "SEMANTIC_TRADE_TWIN_STRATEGY_REPORT_LINK",
+                "semantic_trade_signature_sha256": "0" * 64,
                 "strategy_report_sha256": "f" * 64,
             },
         })
@@ -2420,6 +2407,7 @@ def test_experience_state_reports_provenance_classes_without_cross_promotion(tmp
 
 
 
+
 def test_manifest_explicit_session_mode_is_bound_to_historical_artifact_provenance(tmp_path):
     import hashlib
     from icarus_engine.learning_fabric import LearningFabric
@@ -2427,8 +2415,11 @@ def test_manifest_explicit_session_mode_is_bound_to_historical_artifact_provenan
     trade_path = _trade_list(
         tmp_path / "history" / "drop" / "THE_PULSE_NQ_RTH.csv"
     )
+    report_path = _strategy_report_xlsx(
+        tmp_path / "history" / "drop" / "NQ_RTH_REPORT.xlsx"
+    )
     trade_sha = hashlib.sha256(trade_path.read_bytes()).hexdigest()
-    report_sha = "9" * 64
+    report_sha = hashlib.sha256(report_path.read_bytes()).hexdigest()
     _write_intake_manifest(
         tmp_path / "history" / "EXPORT_INTAKE_MANIFEST.csv",
         [
@@ -2443,7 +2434,7 @@ def test_manifest_explicit_session_mode_is_bound_to_historical_artifact_provenan
             },
             {
                 "sha256": report_sha,
-                "canonical_filename": "NQ_RTH_REPORT.xlsx",
+                "canonical_filename": report_path.name,
                 "format": "xlsx",
                 "artifact_class": "strategy_report_xlsx",
                 "symbol": "CME_MINI:NQ1!",
@@ -2458,11 +2449,18 @@ def test_manifest_explicit_session_mode_is_bound_to_historical_artifact_provenan
 
     fabric = LearningFabric(tmp_path)
     scan = fabric.scan_history()
-    dataset = fabric.dataset(scan["dataset_ids"][0])
+    dataset = next(
+        fabric.dataset(did)
+        for did in scan["dataset_ids"]
+        if fabric.dataset(did)["artifact_class"] == "trade_list"
+    )
     fabric.backfill_dataset(dataset["dataset_id"])
 
     card = fabric.experience_state()["by_artifact_configuration"][0]
     assert card["session_mode"] == "rth"
+    assert card["strategy_report_sha256"] == report_sha
+    assert card["linkage_rule"] == "SEMANTIC_TRADE_SIGNATURE_V1"
+    assert len(card["semantic_trade_signature_sha256"]) == 64
 
     rows = fabric._conn.execute(
         "SELECT metadata_json FROM experiences ORDER BY experience_id"
@@ -2472,7 +2470,8 @@ def test_manifest_explicit_session_mode_is_bound_to_historical_artifact_provenan
         metadata = json.loads(row["metadata_json"])
         assert metadata["session_mode"] == "rth"
         assert metadata["provenance_class"] == "HISTORICAL_ARTIFACT_CONFIG"
-
+        assert metadata["provenance_quality"] == "SEMANTIC_TRADE_TWIN_STRATEGY_REPORT_LINK"
+        assert len(metadata["semantic_trade_signature_sha256"]) == 64
 
 def test_historical_artifact_session_mode_is_never_inferred_when_manifest_omits_it(tmp_path):
     import hashlib
@@ -2522,6 +2521,7 @@ def test_historical_artifact_session_mode_is_never_inferred_when_manifest_omits_
 
 
 
+
 def test_manifest_trade_session_disambiguates_rth_eth_report_candidates(tmp_path):
     import hashlib
     from icarus_engine.learning_fabric import LearningFabric
@@ -2529,7 +2529,11 @@ def test_manifest_trade_session_disambiguates_rth_eth_report_candidates(tmp_path
     trade_path = _trade_list(
         tmp_path / "history" / "drop" / "THE_PULSE_NQ_EXPLICIT_RTH.csv"
     )
+    rth_path = _strategy_report_xlsx(
+        tmp_path / "history" / "drop" / "candidate-rth.xlsx"
+    )
     trade_sha = hashlib.sha256(trade_path.read_bytes()).hexdigest()
+    rth_sha = hashlib.sha256(rth_path.read_bytes()).hexdigest()
     _write_intake_manifest(
         tmp_path / "history" / "EXPORT_INTAKE_MANIFEST.csv",
         [
@@ -2544,8 +2548,8 @@ def test_manifest_trade_session_disambiguates_rth_eth_report_candidates(tmp_path
                 "last_trade_number": 2,
             },
             {
-                "sha256": "4" * 64,
-                "canonical_filename": "candidate-rth.xlsx",
+                "sha256": rth_sha,
+                "canonical_filename": rth_path.name,
                 "format": "xlsx",
                 "artifact_class": "strategy_report_xlsx",
                 "symbol": "CME_MINI:NQ1!",
@@ -2567,7 +2571,11 @@ def test_manifest_trade_session_disambiguates_rth_eth_report_candidates(tmp_path
     )
 
     fabric = LearningFabric(tmp_path)
-    dataset_id = fabric.scan_history()["dataset_ids"][0]
+    scan = fabric.scan_history()
+    dataset_id = next(
+        did for did in scan["dataset_ids"]
+        if fabric.dataset(did)["artifact_class"] == "trade_list"
+    )
     result = fabric.backfill_dataset(dataset_id)
     assert result["status"] == "complete"
 
@@ -2576,9 +2584,8 @@ def test_manifest_trade_session_disambiguates_rth_eth_report_candidates(tmp_path
     assert state["unscoped_count"] == 0
     card = state["by_artifact_configuration"][0]
     assert card["session_mode"] == "rth"
-    assert card["strategy_report_sha256"] == "4" * 64
-    assert card["linkage_rule"] == "UNIQUE_SYMBOL_ROWS_LAST_TRADE_SESSION_MODE"
-
+    assert card["strategy_report_sha256"] == rth_sha
+    assert card["linkage_rule"] == "SEMANTIC_TRADE_SIGNATURE_V1"
 
 def test_manifest_missing_trade_session_does_not_guess_between_rth_eth_reports(tmp_path):
     import hashlib
@@ -2639,6 +2646,7 @@ def test_manifest_missing_trade_session_does_not_guess_between_rth_eth_reports(t
     assert metadata.get("session_mode") is None
 
 
+
 def test_existing_dataset_reconciles_new_manifest_session_and_legacy_cached_link(tmp_path):
     import hashlib
     from icarus_engine.learning_fabric import LearningFabric
@@ -2646,7 +2654,11 @@ def test_existing_dataset_reconciles_new_manifest_session_and_legacy_cached_link
     trade_path = _trade_list(
         tmp_path / "history" / "drop" / "THE_PULSE_NQ_LEGACY_CATALOG.csv"
     )
+    rth_path = _strategy_report_xlsx(
+        tmp_path / "history" / "drop" / "legacy-rth.xlsx"
+    )
     trade_sha = hashlib.sha256(trade_path.read_bytes()).hexdigest()
+    rth_sha = hashlib.sha256(rth_path.read_bytes()).hexdigest()
 
     fabric = LearningFabric(tmp_path)
     dataset = fabric.register_dataset(
@@ -2683,8 +2695,8 @@ def test_existing_dataset_reconciles_new_manifest_session_and_legacy_cached_link
                 "last_trade_number": 2,
             },
             {
-                "sha256": "8" * 64,
-                "canonical_filename": "legacy-rth.xlsx",
+                "sha256": rth_sha,
+                "canonical_filename": rth_path.name,
                 "format": "xlsx",
                 "artifact_class": "strategy_report_xlsx",
                 "symbol": "CME_MINI:NQ1!",
@@ -2704,6 +2716,7 @@ def test_existing_dataset_reconciles_new_manifest_session_and_legacy_cached_link
             },
         ],
     )
+    fabric.scan_history()  # Catalog the selected report bytes before semantic proof.
 
     result = fabric.backfill_dataset(dataset["dataset_id"])
     assert result["status"] == "complete"
@@ -2712,9 +2725,8 @@ def test_existing_dataset_reconciles_new_manifest_session_and_legacy_cached_link
     assert state["unscoped_count"] == 0
     card = state["by_artifact_configuration"][0]
     assert card["session_mode"] == "rth"
-    assert card["strategy_report_sha256"] == "8" * 64
-    assert card["linkage_rule"] == "UNIQUE_SYMBOL_ROWS_LAST_TRADE_SESSION_MODE"
-
+    assert card["strategy_report_sha256"] == rth_sha
+    assert card["linkage_rule"] == "SEMANTIC_TRADE_SIGNATURE_V1"
 
 
 def test_already_imported_ambiguous_history_self_heals_when_manifest_adds_session(tmp_path):
@@ -2724,12 +2736,16 @@ def test_already_imported_ambiguous_history_self_heals_when_manifest_adds_sessio
     trade_path = _trade_list(
         tmp_path / "history" / "drop" / "THE_PULSE_NQ_IMPORTED_BEFORE_SESSION.csv"
     )
+    rth_path = _strategy_report_xlsx(
+        tmp_path / "history" / "drop" / "imported-rth.xlsx"
+    )
     trade_sha = hashlib.sha256(trade_path.read_bytes()).hexdigest()
+    rth_sha = hashlib.sha256(rth_path.read_bytes()).hexdigest()
     manifest_path = tmp_path / "history" / "EXPORT_INTAKE_MANIFEST.csv"
     candidates = [
         {
-            "sha256": "a" * 64,
-            "canonical_filename": "imported-rth.xlsx",
+            "sha256": rth_sha,
+            "canonical_filename": rth_path.name,
             "format": "xlsx",
             "artifact_class": "strategy_report_xlsx",
             "symbol": "CME_MINI:NQ1!",
@@ -2760,7 +2776,11 @@ def test_already_imported_ambiguous_history_self_heals_when_manifest_adds_sessio
     _write_intake_manifest(manifest_path, [trade_row, *candidates])
 
     fabric = LearningFabric(tmp_path)
-    dataset_id = fabric.scan_history()["dataset_ids"][0]
+    scan = fabric.scan_history()
+    dataset_id = next(
+        did for did in scan["dataset_ids"]
+        if fabric.dataset(did)["artifact_class"] == "trade_list"
+    )
     fabric.backfill_dataset(dataset_id)
 
     before = fabric.experience_state()
@@ -2791,7 +2811,9 @@ def test_already_imported_ambiguous_history_self_heals_when_manifest_adds_sessio
     assert len(after["by_artifact_configuration"]) == 1
     card = after["by_artifact_configuration"][0]
     assert card["session_mode"] == "rth"
-    assert card["strategy_report_sha256"] == "a" * 64
+    assert card["strategy_report_sha256"] == rth_sha
+    assert card["linkage_rule"] == "SEMANTIC_TRADE_SIGNATURE_V1"
+    assert len(card["semantic_trade_signature_sha256"]) == 64
 
     persisted_after = [
         json.loads(row["semantic_json"])
@@ -2802,7 +2824,6 @@ def test_already_imported_ambiguous_history_self_heals_when_manifest_adds_sessio
     assert persisted_after == persisted_before
 
 
-
 def test_manifest_explicit_timeframe_disambiguates_report_candidates(tmp_path):
     import hashlib
     from icarus_engine.learning_fabric import LearningFabric
@@ -2810,7 +2831,11 @@ def test_manifest_explicit_timeframe_disambiguates_report_candidates(tmp_path):
     trade_path = _trade_list(
         tmp_path / "history" / "drop" / "THE_PULSE_NQ_20M_EXPLICIT.csv"
     )
+    match_path = _strategy_report_xlsx(
+        tmp_path / "history" / "drop" / "candidate-20m.xlsx"
+    )
     trade_sha = hashlib.sha256(trade_path.read_bytes()).hexdigest()
+    match_sha = hashlib.sha256(match_path.read_bytes()).hexdigest()
     _write_intake_manifest(
         tmp_path / "history" / "EXPORT_INTAKE_MANIFEST.csv",
         [
@@ -2826,8 +2851,8 @@ def test_manifest_explicit_timeframe_disambiguates_report_candidates(tmp_path):
                 "last_trade_number": 2,
             },
             {
-                "sha256": "c" * 64,
-                "canonical_filename": "candidate-20m.xlsx",
+                "sha256": match_sha,
+                "canonical_filename": match_path.name,
                 "format": "xlsx",
                 "artifact_class": "strategy_report_xlsx",
                 "symbol": "CME_MINI:NQ1!",
@@ -2851,7 +2876,11 @@ def test_manifest_explicit_timeframe_disambiguates_report_candidates(tmp_path):
     )
 
     fabric = LearningFabric(tmp_path)
-    dataset_id = fabric.scan_history()["dataset_ids"][0]
+    scan = fabric.scan_history()
+    dataset_id = next(
+        did for did in scan["dataset_ids"]
+        if fabric.dataset(did)["artifact_class"] == "trade_list"
+    )
     fabric.backfill_dataset(dataset_id)
     state = fabric.experience_state()
 
@@ -2859,8 +2888,8 @@ def test_manifest_explicit_timeframe_disambiguates_report_candidates(tmp_path):
     assert state["unscoped_count"] == 0
     card = state["by_artifact_configuration"][0]
     assert card["timeframe"] == "20m"
-    assert card["strategy_report_sha256"] == "c" * 64
-    assert card["linkage_rule"] == "UNIQUE_SYMBOL_ROWS_LAST_TRADE_TIMEFRAME_SESSION_MODE"
+    assert card["strategy_report_sha256"] == match_sha
+    assert card["linkage_rule"] == "SEMANTIC_TRADE_SIGNATURE_V1"
 
 
 @pytest.mark.parametrize(
@@ -2879,8 +2908,11 @@ def test_manifest_explicit_chart_representation_disambiguates_reports(
     trade_path = _trade_list(
         tmp_path / "history" / "drop" / ("THE_PULSE_NQ_" + trade_chart.split()[0] + ".csv")
     )
+    match_path = _strategy_report_xlsx(
+        tmp_path / "history" / "drop" / "candidate-match.xlsx"
+    )
     trade_sha = hashlib.sha256(trade_path.read_bytes()).hexdigest()
-    match_sha = "e" * 64
+    match_sha = hashlib.sha256(match_path.read_bytes()).hexdigest()
     other_sha = "f" * 64
     other_chart = "Candles" if "Heikin" in trade_chart else "Heikin Ashi"
     _write_intake_manifest(
@@ -2900,7 +2932,7 @@ def test_manifest_explicit_chart_representation_disambiguates_reports(
             },
             {
                 "sha256": match_sha,
-                "canonical_filename": "candidate-match.xlsx",
+                "canonical_filename": match_path.name,
                 "format": "xlsx",
                 "artifact_class": "strategy_report_xlsx",
                 "symbol": "CME_MINI:NQ1!",
@@ -2926,7 +2958,11 @@ def test_manifest_explicit_chart_representation_disambiguates_reports(
     )
 
     fabric = LearningFabric(tmp_path)
-    dataset_id = fabric.scan_history()["dataset_ids"][0]
+    scan = fabric.scan_history()
+    dataset_id = next(
+        did for did in scan["dataset_ids"]
+        if fabric.dataset(did)["artifact_class"] == "trade_list"
+    )
     fabric.backfill_dataset(dataset_id)
     state = fabric.experience_state()
 
@@ -2934,10 +2970,7 @@ def test_manifest_explicit_chart_representation_disambiguates_reports(
     assert state["unscoped_count"] == 0
     card = state["by_artifact_configuration"][0]
     assert card["strategy_report_sha256"] == match_sha
-    assert card["linkage_rule"] == (
-        "UNIQUE_SYMBOL_ROWS_LAST_TRADE_TIMEFRAME_CHART_TYPE_SESSION_MODE"
-    )
-
+    assert card["linkage_rule"] == "SEMANTIC_TRADE_SIGNATURE_V1"
 
 def test_manifest_missing_trade_chart_and_timeframe_does_not_guess(tmp_path):
     import hashlib
@@ -3140,4 +3173,137 @@ def test_adaptive_calibration_bins_never_split_identical_probability_ties(tmp_pa
     card = next(x for x in fabric.scorecards() if x["producer"] == "tie-aware-calibration")
     assert card["adaptive_calibration_bins"] == 2
     assert card["expected_calibration_error"] == pytest.approx(1.0 / 30.0)
+
+
+def test_semantic_trade_twin_promotes_csv_to_historical_artifact_configuration(tmp_path):
+    import hashlib
+    from icarus_engine.learning_fabric import LearningFabric
+
+    trade_path = _trade_list(
+        tmp_path / "history" / "drop" / "THE_PULSE_OF_ICARUS_CME_MINI_NQ1!_2026.csv"
+    )
+    report_path = _strategy_report_xlsx(
+        tmp_path / "history" / "drop" / "THE_PULSE_OF_ICARUS_CME_MINI_NQ1!_2026.xlsx"
+    )
+    trade_sha = hashlib.sha256(trade_path.read_bytes()).hexdigest()
+    report_sha = hashlib.sha256(report_path.read_bytes()).hexdigest()
+    _write_intake_manifest(
+        tmp_path / "history" / "EXPORT_INTAKE_MANIFEST.csv",
+        [
+            {
+                "sha256": trade_sha,
+                "canonical_filename": trade_path.name,
+                "format": "csv",
+                "artifact_class": "trade_list",
+                "symbol": "CME_MINI:NQ1!",
+                "rows": 4,
+                "last_trade_number": 2,
+            },
+            {
+                "sha256": report_sha,
+                "canonical_filename": report_path.name,
+                "format": "xlsx",
+                "artifact_class": "strategy_report_xlsx",
+                "symbol": "CME_MINI:NQ1!",
+                "timeframe": "20 minutes",
+                "chart_type": "Heikin Ashi",
+                "rows": 4,
+                "last_trade_number": 2,
+                "notes": "commission=2; slippage=0 ticks; execution=On bar close",
+            },
+        ],
+    )
+
+    fabric = LearningFabric(tmp_path)
+    scan = fabric.scan_history()
+    datasets = [fabric.dataset(did) for did in scan["dataset_ids"]]
+    trade_dataset = next(row for row in datasets if row["artifact_class"] == "trade_list")
+    report_dataset = next(row for row in datasets if row["artifact_class"] == "strategy_report_xlsx")
+
+    first = fabric.backfill_dataset(trade_dataset["dataset_id"])
+    assert first["status"] == "complete"
+    assert first["runs"][0]["report"]["experience_count"] == 2
+
+    state = fabric.experience_state()
+    assert state["artifact_scoped_count"] == 2
+    assert state["unscoped_count"] == 0
+    card = state["by_artifact_configuration"][0]
+    assert card["provenance_class"] == "HISTORICAL_ARTIFACT_CONFIG"
+    assert card["provenance_quality"] == "SEMANTIC_TRADE_TWIN_STRATEGY_REPORT_LINK"
+    assert card["strategy_report_sha256"] == report_sha
+    assert card["linkage_rule"] == "SEMANTIC_TRADE_SIGNATURE_V1"
+    assert len(card["semantic_trade_signature_sha256"]) == 64
+
+    second = fabric.backfill_dataset(report_dataset["dataset_id"])
+    dedupe = second["runs"][0]["report"]
+    assert dedupe["deduplicated_by_strategy_report"] is True
+    assert dedupe["equivalence_proof"] == "SEMANTIC_TRADE_SIGNATURE_V1"
+    assert dedupe["trade_signature_sha256"] == card["semantic_trade_signature_sha256"]
+    assert fabric.experience_state()["count"] == 2
+
+
+def test_semantic_trade_twin_mismatch_fails_closed_and_does_not_dedupe(tmp_path):
+    import hashlib
+    from openpyxl import load_workbook
+    from icarus_engine.learning_fabric import LearningFabric
+
+    trade_path = _trade_list(tmp_path / "history" / "drop" / "THE_PULSE_NQ.csv")
+    report_path = _strategy_report_xlsx(tmp_path / "history" / "drop" / "THE_PULSE_NQ.xlsx")
+    wb = load_workbook(report_path)
+    ws = wb["List of trades"]
+    ws["E3"] = 109.0
+    wb.save(report_path)
+
+    trade_sha = hashlib.sha256(trade_path.read_bytes()).hexdigest()
+    report_sha = hashlib.sha256(report_path.read_bytes()).hexdigest()
+    _write_intake_manifest(
+        tmp_path / "history" / "EXPORT_INTAKE_MANIFEST.csv",
+        [
+            {
+                "sha256": trade_sha,
+                "canonical_filename": trade_path.name,
+                "format": "csv",
+                "artifact_class": "trade_list",
+                "symbol": "CME_MINI:NQ1!",
+                "rows": 4,
+                "last_trade_number": 2,
+            },
+            {
+                "sha256": report_sha,
+                "canonical_filename": report_path.name,
+                "format": "xlsx",
+                "artifact_class": "strategy_report_xlsx",
+                "symbol": "CME_MINI:NQ1!",
+                "timeframe": "20 minutes",
+                "chart_type": "Candles",
+                "rows": 4,
+                "last_trade_number": 2,
+            },
+        ],
+    )
+
+    fabric = LearningFabric(tmp_path)
+    scan = fabric.scan_history()
+    datasets = [fabric.dataset(did) for did in scan["dataset_ids"]]
+    trade_dataset = next(row for row in datasets if row["artifact_class"] == "trade_list")
+    report_dataset = next(row for row in datasets if row["artifact_class"] == "strategy_report_xlsx")
+
+    first = fabric.backfill_dataset(trade_dataset["dataset_id"])
+    assert first["status"] == "complete"
+    state = fabric.experience_state()
+    assert state["artifact_scoped_count"] == 0
+    assert state["unscoped_count"] == 2
+    meta = json.loads(
+        fabric._conn.execute(
+            "SELECT metadata_json FROM experiences ORDER BY experience_id LIMIT 1"
+        ).fetchone()["metadata_json"]
+    )
+    assert meta["provenance_class"] == "UNSCOPED"
+    assert meta["manifest_linkage_status"] == "SEMANTIC_MISMATCH"
+
+    second = fabric.backfill_dataset(report_dataset["dataset_id"])
+    report = second["runs"][0]["report"]
+    assert report["deduplicated_by_strategy_report"] is False
+    assert report["experience_count"] == 2
+    assert fabric.experience_state()["count"] == 4
 
