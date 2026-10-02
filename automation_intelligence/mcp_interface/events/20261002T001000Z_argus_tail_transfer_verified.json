@@ -1,0 +1,38 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "argus-tail-transfer-verified-20261002T001000Z",
+  "category": "EVOLUTION",
+  "severity": "success",
+  "status": "verified",
+  "subsystems": [
+    "argus",
+    "execution_research",
+    "calibration",
+    "tail_validation",
+    "transfer_validation",
+    "provenance"
+  ],
+  "recorded_at": "2026-10-02T00:10:00Z",
+  "title": "ARGUS paper-to-broker execution-tail transfer audit verified",
+  "summary": "ARGUS now prospectively audits paper-emulator versus broker-confirmed execution-calibration tails instead of relying only on mean error. The content-addressed plan predeclares the exact tail metric, quantiles, per-quantile tolerances, confidence alpha, deterministic seed, bootstrap count and minimum realized-slippage observations before the cohort begins. Each quantile reports paper-minus-broker with an independent two-sample bootstrap interval, while zero-fill rows never become invented slippage data.",
+  "source_repository": "reppiks490/divine-providence",
+  "source_ref": "main",
+  "source_commit": "c9c5b8896a4a8f94d2c9e944f2f4a5c7d1c97b35",
+  "evidence": [
+    "divine-providence PR #32 merged at c9c5b8896a4a8f94d2c9e944f2f4a5c7d1c97b35",
+    "exact-head subsystem-evolution workflow run 36943786815 completed success",
+    "Linux and Windows ARGUS/ATHENA/AION causal subsystem jobs passed",
+    "intelligence-fabric and hub tests passed",
+    "full twelve-system validation passed",
+    "tail plan must be registered at or before cohort_start_ns",
+    "slippage_error_ticks and absolute_slippage_error_ticks are supported",
+    "broker-confirmed and ICARUS paper-emulator tails remain separate",
+    "zero-fill rows are excluded rather than assigned synthetic slippage",
+    "within_tolerance requires the entire quantile interval to fit inside the predeclared +/- tolerance",
+    "formal equivalence, familywise inference, profitability and broker substitution are not implied",
+    "execution_authorized=false",
+    "production_decision_authorized=false"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}
