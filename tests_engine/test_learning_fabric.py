@@ -2580,3 +2580,81 @@ def test_direct_strategy_report_carries_explicit_session_provenance(tmp_path):
     assert card["session_mode"] == "eth"
     assert card["strategy_report_sha256"] == report_sha
     assert card["linkage_rule"] == "DIRECT_STRATEGY_REPORT_XLSX_TRADE_SHEET"
+
+
+
+def test_existing_dataset_reconciles_new_manifest_session_and_stale_cached_link(tmp_path):
+    import hashlib
+    from icarus_engine.learning_fabric import LearningFabric
+
+    trade_path = _trade_list(
+        tmp_path / "history" / "drop" / "THE_PULSE_OF_ICARUS_CME_MINI_NQ1!_LEGACY.csv"
+    )
+    trade_sha = hashlib.sha256(trade_path.read_bytes()).hexdigest()
+
+    fabric = LearningFabric(tmp_path)
+    dataset = fabric.register_dataset(
+        trade_path,
+        asset="NQ",
+        chart_type="20m",
+        intake={
+            "sha256": trade_sha,
+            "canonical_filename": trade_path.name,
+            "format": "csv",
+            "artifact_class": "trade_list",
+            "symbol": "CME_MINI:NQ1!",
+            "rows": "4",
+            "last_trade_number": "2",
+            "strategy_report_link": {
+                "status": "AMBIGUOUS",
+                "candidate_count": 2,
+                "linkage_rule": "UNIQUE_SYMBOL_ROWS_LAST_TRADE",
+            },
+        },
+    )["dataset"]
+
+    _write_intake_manifest(
+        tmp_path / "history" / "EXPORT_INTAKE_MANIFEST.csv",
+        [
+            {
+                "sha256": trade_sha,
+                "canonical_filename": trade_path.name,
+                "format": "csv",
+                "artifact_class": "trade_list",
+                "symbol": "CME_MINI:NQ1!",
+                "session_mode": "RTH",
+                "rows": 4,
+                "last_trade_number": 2,
+            },
+            {
+                "sha256": "8" * 64,
+                "canonical_filename": "legacy-rth.xlsx",
+                "format": "xlsx",
+                "artifact_class": "strategy_report_xlsx",
+                "symbol": "CME_MINI:NQ1!",
+                "session_mode": "RTH",
+                "rows": 4,
+                "last_trade_number": 2,
+            },
+            {
+                "sha256": "9" * 64,
+                "canonical_filename": "legacy-eth.xlsx",
+                "format": "xlsx",
+                "artifact_class": "strategy_report_xlsx",
+                "symbol": "CME_MINI:NQ1!",
+                "session_mode": "ETH",
+                "rows": 4,
+                "last_trade_number": 2,
+            },
+        ],
+    )
+
+    result = fabric.backfill_dataset(dataset["dataset_id"])
+    assert result["status"] == "complete"
+    state = fabric.experience_state()
+    assert state["artifact_scoped_count"] == 2
+    assert state["unscoped_count"] == 0
+    card = state["by_artifact_configuration"][0]
+    assert card["session_mode"] == "rth"
+    assert card["strategy_report_sha256"] == "8" * 64
+    assert card["linkage_rule"] == "UNIQUE_SYMBOL_ROWS_LAST_TRADE_SESSION_MODE"
