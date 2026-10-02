@@ -397,13 +397,64 @@
     '</section>';
   }
 
-  function renderAscendancy(capabilities, genomes, foundry, unknowns, mechanisms, errors) {
+  function renderInventions(inventions) {
+    if (!inventions) {
+      return '<section class="card" style="margin-top:12px"><h3>INVENTION ENGINE</h3><div class="empty">UNAVAILABLE — invention state did not load.</div></section>';
+    }
+    const blueprints = Array.isArray(inventions.blueprints) ? inventions.blueprints : [];
+    const truth = inventions.truth_contract || {};
+    const rows = blueprints.map(row => {
+      const families = Array.isArray(row.primitive_families) ? row.primitive_families : [];
+      const primitives = Array.isArray(row.primitive_ids) ? row.primitive_ids : [];
+      const falsifiers = Array.isArray(row.falsifiers) ? row.falsifiers : [];
+      return '<tr>' +
+        '<td><code title="' + h(row.blueprint_id || '') + '">' + h(short(row.blueprint_id || 'UNAVAILABLE')) + '</code></td>' +
+        '<td class="w"><b>' + h(row.status || 'UNTESTED_HYPOTHESIS') + '</b></td>' +
+        '<td>' + h(row.target_role || 'UNAVAILABLE') + '</td>' +
+        '<td class="small">' + h(primitives.join(' → ') || 'UNAVAILABLE') + '</td>' +
+        '<td class="small">' + h(families.join(' · ') || 'UNAVAILABLE') + '</td>' +
+        '<td class="small">depth=' + h(count(row.depth)) + ' · cost=' + h(count(row.estimated_cost_units)) + '</td>' +
+        '<td class="small">' + h(row.hypothesis || 'UNAVAILABLE') + '</td>' +
+        '<td class="small">' + h(falsifiers.join(' · ') || 'UNAVAILABLE') + '</td>' +
+        '<td class="small">edge_claim_established=false</td>' +
+      '</tr>';
+    }).join('');
+
+    const familyCounts = inventions.family_counts || {};
+    const familySummary = Object.keys(familyCounts).sort().map(k => k + '=' + familyCounts[k]).join(' · ');
+    return '<section class="card" style="margin-top:12px">' +
+      '<h3>INVENTION ENGINE</h3>' +
+      '<div class="small muted">Bounded typed mathematical search creates reproducible hypotheses; it does not execute arbitrary generated code and it does not establish edge.</div>' +
+      '<div class="tiles" style="margin-top:10px">' +
+        '<div class="tile"><div class="k">BLUEPRINTS</div><div class="v tnum">' + h(count(inventions.blueprint_count)) + '</div></div>' +
+        '<div class="tile"><div class="k">PRIMITIVES</div><div class="v tnum">' + h(count((inventions.primitive_catalog || []).length)) + '</div></div>' +
+        '<div class="tile"><div class="k">STATUS</div><div class="v">UNTESTED_HYPOTHESIS</div></div>' +
+        '<div class="tile"><div class="k">EDGE CLAIM</div><div class="v">FALSE</div><div class="small muted">edge_claim_established=false</div></div>' +
+        '<div class="tile"><div class="k">CODE EXECUTION</div><div class="v">DISABLED</div><div class="small muted">arbitrary_source_code_execution=false</div></div>' +
+        '<div class="tile"><div class="k">AUTHORITY</div><div class="v">RESEARCH ONLY</div><div class="small muted">execution_authorized=false · production_decision_authorized=false</div></div>' +
+      '</div>' +
+      '<div class="small muted" style="margin:10px 0">' +
+        'generated_blueprint_is_not_validated_edge=' + h(truth.generated_blueprint_is_not_validated_edge === true ? 'true' : 'UNAVAILABLE') +
+        ' · unavailable_observations_cannot_seed_transformations=' + h(truth.unavailable_observations_cannot_seed_transformations === true ? 'true' : 'UNAVAILABLE') +
+        ' · search_is_bounded_by_depth_candidate_count_and_cost=' + h(truth.search_is_bounded_by_depth_candidate_count_and_cost === true ? 'true' : 'UNAVAILABLE') +
+        ' · arbitrary_source_code_execution=false' +
+      '</div>' +
+      '<div class="small muted">primitive_families: ' + h(familySummary || 'UNMEASURED') + '</div>' +
+      '<div class="scroll" style="max-height:58vh;margin-top:10px"><table><thead><tr>' +
+        '<th>Blueprint</th><th>Status</th><th>Target role</th><th>Primitive chain</th><th>primitive_families</th><th>Depth / cost</th><th>Hypothesis</th><th>Falsifiers</th><th>Edge</th>' +
+      '</tr></thead><tbody>' +
+        (rows || '<tr><td colspan="9" class="empty">UNMEASURED — no invention blueprints generated.</td></tr>') +
+      '</tbody></table></div>' +
+    '</section>';
+  }
+
+  function renderAscendancy(capabilities, genomes, foundry, unknowns, mechanisms, inventions, errors) {
     const el = document.querySelector('#ascendancyBody');
     if (!el) return;
     const warning = errors.length
       ? '<div class="empty" style="margin-bottom:10px">DEGRADED: ' + h(errors.join(' · ')) + '</div>'
       : '';
-    el.innerHTML = warning + renderCapabilities(capabilities) + renderUnknowns(unknowns) + renderFoundry(foundry) + renderMechanisms(mechanisms) + renderGenomeLab(genomes);
+    el.innerHTML = warning + renderCapabilities(capabilities) + renderUnknowns(unknowns) + renderInventions(inventions) + renderFoundry(foundry) + renderMechanisms(mechanisms) + renderGenomeLab(genomes);
   }
 
   async function fetchJson(url, token) {
@@ -428,7 +479,8 @@
         fetchJson('/api/ascendancy/genomes', token),
         fetchJson('/api/ascendancy/candidates', token),
         fetchJson('/api/ascendancy/unknowns', token),
-        fetchJson('/api/ascendancy/mechanisms', token)
+        fetchJson('/api/ascendancy/mechanisms', token),
+        fetchJson('/api/ascendancy/inventions', token)
       ]);
       if (seq !== loadSeq) return;
       const capabilities = settled[0].status === 'fulfilled' ? settled[0].value : null;
@@ -436,10 +488,11 @@
       const foundry = settled[2].status === 'fulfilled' ? settled[2].value : null;
       const unknowns = settled[3].status === 'fulfilled' ? settled[3].value : null;
       const mechanisms = settled[4].status === 'fulfilled' ? settled[4].value : null;
+      const inventions = settled[5].status === 'fulfilled' ? settled[5].value : null;
       const errors = settled
         .filter(x => x.status === 'rejected')
         .map(x => x.reason && x.reason.message ? x.reason.message : String(x.reason || 'UNAVAILABLE'));
-      renderAscendancy(capabilities, genomes, foundry, unknowns, mechanisms, errors);
+      renderAscendancy(capabilities, genomes, foundry, unknowns, mechanisms, inventions, errors);
     } catch (err) {
       if (seq !== loadSeq) return;
       el.innerHTML = '<div class="empty">ASCENDANCY state UNAVAILABLE: ' + h(err && err.message ? err.message : err) + '</div>';
