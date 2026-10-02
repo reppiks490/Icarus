@@ -102,6 +102,7 @@ from .ascendancy.frontier import build_frontier
 from .ascendancy.genome import compile_genome, normalize_genome
 from .ascendancy.foundry import CandidateFoundry
 from .ascendancy.unknowns import UnknownUnknownLab
+from .ascendancy.mechanisms import MechanismLab
 
 
 def _no_json_constants(name: str):
@@ -220,6 +221,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     ascendancy_archive = GenomeArchive(port.base_dir)
     ascendancy_foundry = CandidateFoundry(port.base_dir)
     ascendancy_unknowns = UnknownUnknownLab(port.base_dir)
+    ascendancy_mechanisms = MechanismLab(port.base_dir)
     mcp_control = MCPControlPlane(port.base_dir)
     chronofold = ChronofoldEngine(port, possibility=possibility)
     commissioning = CommissioningEngine(port.base_dir, port, chronofold)
@@ -324,6 +326,29 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             "execution_authorized": False,
             "production_decision_authorized": False,
         }
+
+    def _ascendancy_record_mechanism(body: Dict[str, Any]) -> Dict[str, Any]:
+        candidate_id = str(body.get("candidate_id") or "").strip()
+        foundry = ascendancy_foundry.snapshot()
+        candidate = next(
+            (
+                row for row in foundry.get("candidates", [])
+                if isinstance(row, dict) and str(row.get("candidate_id") or "") == candidate_id
+            ),
+            None,
+        )
+        if candidate is None:
+            raise ValueError("unknown candidate_id in ASCENDANCY Candidate Foundry")
+        expected_contract = str(
+            (candidate.get("evaluation_contract") or {}).get("contract_hash") or ""
+        )
+        if str(body.get("evaluation_contract_hash") or "") != expected_contract:
+            raise ValueError("mechanism experiment evaluation contract does not match candidate")
+        if str(body.get("source_repo") or "") != str(candidate.get("source_repo") or ""):
+            raise ValueError("mechanism experiment source_repo does not match candidate")
+        if str(body.get("source_commit") or "") != str(candidate.get("source_commit") or ""):
+            raise ValueError("mechanism experiment source_commit does not match candidate")
+        return ascendancy_mechanisms.record(body)
 
     def _control_runner(target: str):
         try:
@@ -990,6 +1015,16 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 except Exception as ex:
                     port.journal.log("WARN", f"ASCENDANCY unknown snapshot: {type(ex).__name__}: {ex}")
                     return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/api/ascendancy/mechanisms":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                try:
+                    return self._json(200, ascendancy_mechanisms.snapshot())
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("WARN", f"ASCENDANCY mechanism snapshot: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
             if p.path == "/api/golive":
                 return self._json(200, golive_report(port))
             if p.path == "/api/agent":
@@ -1498,6 +1533,16 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     return self._json(400, {"detail": str(ex)})
                 except Exception as ex:
                     port.journal.log("ERROR", f"ASCENDANCY unknown candidate link: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/admin/ascendancy/mechanism-experiment":
+                try:
+                    return self._json(200, _ascendancy_research_mutation(
+                        lambda: _ascendancy_record_mechanism(body)
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("ERROR", f"ASCENDANCY mechanism experiment: {type(ex).__name__}: {ex}")
                     return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
             if p.path == "/admin/learning/config":
                 try:
@@ -2111,6 +2156,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     srv.ascendancy_archive = ascendancy_archive
     srv.ascendancy_foundry = ascendancy_foundry
     srv.ascendancy_unknowns = ascendancy_unknowns
+    srv.ascendancy_mechanisms = ascendancy_mechanisms
     srv.learning = learning
     srv.chronofold = chronofold
     srv.commissioning = commissioning
