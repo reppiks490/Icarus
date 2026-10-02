@@ -27,6 +27,16 @@ from .trainers.run import train_file, train_xgb_file
 
 _SCHEMA = "icarus-learning-fabric-v1"
 _ARTIFACT_PROVENANCE_QUALITIES = frozenset({"MANIFEST_UNIQUE_STRATEGY_REPORT_LINK", "DIRECT_STRATEGY_REPORT_XLSX_TRADE_SHEET"})
+_RUNTIME_PROVENANCE_CLASS = "RUNTIME_CLOSURE_CONFIG"
+_HISTORICAL_PROVENANCE_CLASS = "HISTORICAL_ARTIFACT_CONFIG"
+_UNSCOPED_PROVENANCE_CLASS = "UNSCOPED"
+_RUNTIME_PROVENANCE_SOURCES = frozenset({"runtime_live_sim"})
+_HISTORICAL_PROVENANCE_SOURCES = frozenset({"historical_trade_list", "historical_strategy_report_xlsx"})
+_KNOWN_PROVENANCE_CLASSES = frozenset({
+    _RUNTIME_PROVENANCE_CLASS,
+    _HISTORICAL_PROVENANCE_CLASS,
+    _UNSCOPED_PROVENANCE_CLASS,
+})
 _DEFAULT_CONFIG = {
     "enabled": True,
     "cycle_seconds": 60,
@@ -110,6 +120,75 @@ def _authority() -> dict[str, bool]:
         "execution_authorized": False,
         "production_decision_authorized": False,
     }
+
+
+def _is_sha256(value: Any) -> bool:
+    raw = str(value or "").lower()
+    return len(raw) == 64 and all(ch in "0123456789abcdef" for ch in raw)
+
+
+def _experience_provenance_class(
+    source: str,
+    metadata: Mapping[str, Any],
+    *,
+    strict: bool = False,
+) -> str:
+    """Derive a fail-closed provenance class from source-bound evidence.
+
+    A caller cannot promote historical artifact evidence into runtime closure
+    proof (or the inverse) by merely writing a provenance label into metadata.
+    """
+    source_name = str(source or "").strip().lower()
+    quality = str(metadata.get("provenance_quality") or "").strip()
+    requested = str(metadata.get("provenance_class") or "").strip().upper()
+
+    if quality == "CLOSURE_TIME_CONFIG":
+        if source_name not in _RUNTIME_PROVENANCE_SOURCES:
+            if strict:
+                raise ValueError(
+                    "runtime closure provenance requires an approved runtime source"
+                )
+            derived = _UNSCOPED_PROVENANCE_CLASS
+        elif not _is_sha256(metadata.get("strategy_fingerprint")):
+            if strict:
+                raise ValueError(
+                    "runtime closure provenance requires an exact strategy fingerprint"
+                )
+            derived = _UNSCOPED_PROVENANCE_CLASS
+        else:
+            derived = _RUNTIME_PROVENANCE_CLASS
+    elif quality in _ARTIFACT_PROVENANCE_QUALITIES:
+        if source_name not in _HISTORICAL_PROVENANCE_SOURCES:
+            if strict:
+                raise ValueError(
+                    "historical artifact provenance requires an approved historical source"
+                )
+            derived = _UNSCOPED_PROVENANCE_CLASS
+        elif not _is_sha256(metadata.get("artifact_configuration_fingerprint")):
+            if strict:
+                raise ValueError(
+                    "historical artifact provenance requires an exact artifact configuration fingerprint"
+                )
+            derived = _UNSCOPED_PROVENANCE_CLASS
+        elif not _is_sha256(metadata.get("strategy_report_sha256")):
+            if strict:
+                raise ValueError(
+                    "historical artifact provenance requires an exact strategy report SHA-256"
+                )
+            derived = _UNSCOPED_PROVENANCE_CLASS
+        else:
+            derived = _HISTORICAL_PROVENANCE_CLASS
+    else:
+        derived = _UNSCOPED_PROVENANCE_CLASS
+
+    if requested:
+        if requested not in _KNOWN_PROVENANCE_CLASSES or requested != derived:
+            if strict:
+                raise ValueError(
+                    "provenance_class does not match source-bound provenance evidence"
+                )
+            return _UNSCOPED_PROVENANCE_CLASS
+    return derived
 
 
 class LearningFabric:
@@ -968,6 +1047,10 @@ class LearningFabric:
         metadata = body.get("metadata", {})
         if not isinstance(metadata, Mapping):
             raise ValueError("metadata must be an object")
+        metadata_clean = dict(metadata)
+        metadata_clean["provenance_class"] = _experience_provenance_class(
+            source, metadata_clean, strict=True
+        )
         semantic = {
             "schema_version": "icarus-learning-experience-v1",
             "source": source,
@@ -981,7 +1064,7 @@ class LearningFabric:
             "exit_price": exit_price,
             "pnl": pnl,
             "profitable": pnl > 0.0,
-            "metadata": dict(metadata),
+            "metadata": metadata_clean,
             **_authority(),
         }
         raw = _json(semantic, "experience")
@@ -993,10 +1076,18 @@ class LearningFabric:
             ).fetchone()
             if prior is not None:
                 existing = json.loads(prior["semantic_json"])
-                if existing == semantic:
+                comparable = dict(existing)
+                existing_metadata = existing.get("metadata")
+                if isinstance(existing_metadata, Mapping):
+                    existing_metadata = dict(existing_metadata)
+                    existing_metadata["provenance_class"] = _experience_provenance_class(
+                        source, existing_metadata, strict=False
+                    )
+                    comparable["metadata"] = existing_metadata
+                if comparable == semantic:
                     return {
                         "ok": True, "idempotent": True,
-                        "experience": {**existing, "experience_id": prior["experience_id"]},
+                        "experience": {**comparable, "experience_id": prior["experience_id"]},
                         **_authority(),
                     }
                 raise ValueError("experience is immutable for source/source_record_id")
@@ -1009,7 +1100,7 @@ class LearningFabric:
                     experience_id, source, source_record_id, asset, direction,
                     semantic["entry_at"], entry.timestamp(), semantic["exit_at"], exit_at.timestamp(),
                     qty, entry_price, exit_price, pnl, int(pnl > 0.0),
-                    _json(dict(metadata), "experience metadata"), raw, _utc_now(),
+                    _json(metadata_clean, "experience metadata"), raw, _utc_now(),
                 ),
             )
         return {
@@ -1074,9 +1165,13 @@ class LearningFabric:
                 continue
             if not isinstance(meta, dict):
                 continue
+            provenance_class = _experience_provenance_class(
+                row["source"], meta, strict=False
+            )
             fingerprint = str(meta.get("strategy_fingerprint") or "").lower()
             if (
-                len(fingerprint) != 64
+                provenance_class != _RUNTIME_PROVENANCE_CLASS
+                or len(fingerprint) != 64
                 or any(ch not in "0123456789abcdef" for ch in fingerprint)
                 or meta.get("provenance_quality") != "CLOSURE_TIME_CONFIG"
             ):
@@ -1112,6 +1207,7 @@ class LearningFabric:
                 "asset": asset,
                 "direction": direction,
                 "strategy_fingerprint": fingerprint,
+                "provenance_class": _RUNTIME_PROVENANCE_CLASS,
                 "inputs_hash": first_meta.get("inputs_hash"),
                 "chart_type": first_meta.get("chart_type"),
                 "timeframe": first_meta.get("timeframe"),
@@ -1180,8 +1276,12 @@ class LearningFabric:
                             dataset_context[dataset_id] = {}
                     effective.update(dataset_context[dataset_id])
                     fingerprint = str(effective.get("artifact_configuration_fingerprint") or "").lower()
+            provenance_class = _experience_provenance_class(
+                row["source"], effective, strict=False
+            )
             if not (
-                len(fingerprint) == 64
+                provenance_class == _HISTORICAL_PROVENANCE_CLASS
+                and len(fingerprint) == 64
                 and all(ch in "0123456789abcdef" for ch in fingerprint)
                 and effective.get("provenance_quality") in _ARTIFACT_PROVENANCE_QUALITIES
             ):
@@ -1215,6 +1315,7 @@ class LearningFabric:
                 "long_count": long_count,
                 "short_count": short_count,
                 "artifact_configuration_fingerprint": fingerprint,
+                "provenance_class": _HISTORICAL_PROVENANCE_CLASS,
                 "provenance_quality": first_meta.get("provenance_quality"),
                 "strategy_report_sha256": first_meta.get("strategy_report_sha256"),
                 "strategy_report_filename": first_meta.get("strategy_report_filename"),
@@ -1249,7 +1350,7 @@ class LearningFabric:
 
     def _experience_scope_counts(self) -> dict[str, int]:
         rows = self._conn.execute(
-            "SELECT metadata_json FROM experiences ORDER BY experience_id"
+            "SELECT source,metadata_json FROM experiences ORDER BY experience_id"
         ).fetchall()
         closure = artifact = unscoped = 0
         catalog = self._intake_manifest_catalog()
@@ -1263,7 +1364,9 @@ class LearningFabric:
                 meta = {}
             strategy_fp = str(meta.get("strategy_fingerprint") or "").lower()
             if (
-                len(strategy_fp) == 64
+                _experience_provenance_class(row["source"], meta, strict=False)
+                == _RUNTIME_PROVENANCE_CLASS
+                and len(strategy_fp) == 64
                 and all(ch in "0123456789abcdef" for ch in strategy_fp)
                 and meta.get("provenance_quality") == "CLOSURE_TIME_CONFIG"
             ):
@@ -1288,14 +1391,25 @@ class LearningFabric:
                     effective.update(dataset_context[dataset_id])
                     artifact_fp = str(effective.get("artifact_configuration_fingerprint") or "").lower()
             if (
-                len(artifact_fp) == 64
+                _experience_provenance_class(row["source"], effective, strict=False)
+                == _HISTORICAL_PROVENANCE_CLASS
+                and len(artifact_fp) == 64
                 and all(ch in "0123456789abcdef" for ch in artifact_fp)
                 and effective.get("provenance_quality") in _ARTIFACT_PROVENANCE_QUALITIES
             ):
                 artifact += 1
             else:
                 unscoped += 1
-        return {"closure": closure, "artifact": artifact, "unscoped": unscoped}
+        return {
+            "closure": closure,
+            "artifact": artifact,
+            "unscoped": unscoped,
+            "provenance_class_counts": {
+                _RUNTIME_PROVENANCE_CLASS: closure,
+                _HISTORICAL_PROVENANCE_CLASS: artifact,
+                _UNSCOPED_PROVENANCE_CLASS: unscoped,
+            },
+        }
 
     def experience_state(self) -> dict[str, Any]:
         count = int(self._conn.execute("SELECT COUNT(*) FROM experiences").fetchone()[0])
@@ -1303,7 +1417,7 @@ class LearningFabric:
         by_artifact_configuration = self.historical_artifact_configuration_summary()
         scopes = self._experience_scope_counts()
         return {
-            "schema_version": "icarus-learning-experience-state-v3",
+            "schema_version": "icarus-learning-experience-state-v4",
             "count": count,
             "summary": self.experience_summary(),
             "by_configuration": by_configuration,
@@ -1311,7 +1425,8 @@ class LearningFabric:
             "closure_scoped_count": scopes["closure"],
             "artifact_scoped_count": scopes["artifact"],
             "unscoped_count": scopes["unscoped"],
-            "rule": "Realized trade experience is descriptive outcome memory. Closure-time runtime configuration and manifest-linked historical artifact configuration are separate provenance classes; neither authorizes production or execution.",
+            "provenance_class_counts": scopes["provenance_class_counts"],
+            "rule": "Realized trade experience is descriptive outcome memory. RUNTIME_CLOSURE_CONFIG is source-bound to exact runtime closure evidence; HISTORICAL_ARTIFACT_CONFIG is source-bound to historical report linkage; UNSCOPED remains visible but cannot satisfy either proof class. No class authorizes production or execution.",
             **_authority(),
         }
 
@@ -2011,6 +2126,7 @@ class LearningFabric:
             **base,
             "manifest_linkage_status": "UNIQUE",
             "artifact_configuration_fingerprint": fingerprint,
+            "provenance_class": _HISTORICAL_PROVENANCE_CLASS,
             "provenance_quality": "MANIFEST_UNIQUE_STRATEGY_REPORT_LINK",
             "strategy_report_sha256": report_sha,
             "strategy_report_filename": report.get("canonical_filename") or None,
@@ -2047,6 +2163,7 @@ class LearningFabric:
             "manifest_linkage_status": "DIRECT_REPORT",
             "manifest_linkage_candidates": 1,
             "artifact_configuration_fingerprint": fingerprint,
+            "provenance_class": _HISTORICAL_PROVENANCE_CLASS,
             "provenance_quality": "DIRECT_STRATEGY_REPORT_XLSX_TRADE_SHEET",
             "strategy_report_sha256": report_sha,
             "strategy_report_filename": Path(str(dataset.get("path") or "")).name or None,
@@ -3157,6 +3274,7 @@ class LearningFabric:
                 context = {
                     **context,
                     "strategy_fingerprint": fingerprint,
+                    "provenance_class": _RUNTIME_PROVENANCE_CLASS,
                     "provenance_quality": "CLOSURE_TIME_CONFIG",
                     "runtime_run_id": run_id,
                     "entry_id": entry_id,

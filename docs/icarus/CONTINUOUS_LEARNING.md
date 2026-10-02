@@ -166,6 +166,14 @@ Fully closed runtime trades are harvested from the durable journal, not just vol
 
 At trade closure, the runtime records a strategy provenance receipt containing the exact configuration context and a deterministic strategy fingerprint. Configuration-scoped experience can therefore separate P&L for materially different setups instead of pooling them under a generic asset label.
 
+Realized experience has three explicit, source-bound provenance classes:
+
+- `RUNTIME_CLOSURE_CONFIG` — only `runtime_live_sim` records with `CLOSURE_TIME_CONFIG` quality and an exact 64-hex strategy fingerprint. This is the only class that may appear in exact runtime-configuration scorecards.
+- `HISTORICAL_ARTIFACT_CONFIG` — only historical trade-list or Strategy Tester XLSX records with a verified manifest/direct strategy-report link, an exact artifact-configuration fingerprint, and the report SHA-256. This class describes historical artifact identity; it is not runtime state.
+- `UNSCOPED` — all other realized experience, including ambiguous historical linkage and runtime-memory fallback that lacks a durable closure receipt.
+
+The class is derived from source plus evidence on write; a caller-supplied label cannot promote one source class into another. Legacy persisted rows are classified fail-closed when read, without rewriting their immutable original semantic payload. **Never use `HISTORICAL_ARTIFACT_CONFIG` as proof of `RUNTIME_CLOSURE_CONFIG`.** A future source or provenance mechanism must be explicitly admitted into the taxonomy rather than inheriting authority by naming convention.
+
 Configuration experience includes:
 
 - count / win rate
@@ -175,7 +183,9 @@ Configuration experience includes:
 - profit factor
 - max cumulative drawdown
 
-Legacy/unscoped experience remains visible but is excluded from exact-configuration scorecards.
+Legacy/unscoped experience remains visible but is excluded from exact-configuration scorecards. These classes remain descriptive research provenance only: they do not change `execution_authorized=false`, do not authorize automatic production promotion, and do not alter historical outcomes.
+
+**Staleness trigger:** revisit this section whenever a new realized-experience source, strategy-receipt format, or historical linkage mechanism is added; the source-bound class allowlists and fail-closed tests must change together.
 
 ## API, MCP, and UI surfaces
 

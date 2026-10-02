@@ -81,8 +81,8 @@
       const shortFp = fp === 'UNAVAILABLE' ? fp : fp.slice(0, 12) + '…';
       const chart = [r.chart_type || 'UNAVAILABLE', r.timeframe || 'UNAVAILABLE'].join(' / ');
       const execution = [r.fill_on || 'UNAVAILABLE', r.security_source || 'UNAVAILABLE'].join(' / ');
-      return '<tr><td title="' + h(fp) + '"><b>' + h(shortFp) + '</b></td><td>' + h(r.asset) +
-        '</td><td>' + h(r.direction) + '</td><td>' + h(r.session_mode || 'UNAVAILABLE') +
+      return '<tr><td title="' + h(fp) + '"><b>' + h(shortFp) + '</b></td><td>' + h(r.provenance_class || 'UNAVAILABLE') +
+        '</td><td>' + h(r.asset) + '</td><td>' + h(r.direction) + '</td><td>' + h(r.session_mode || 'UNAVAILABLE') +
         '</td><td>' + h(chart) + '</td><td>' + h(execution) +
         '</td><td>' + h(r.preset || 'UNAVAILABLE') + '</td><td>' + chip(r.status) +
         '</td><td class="tnum">' + val(r.count,0) + '</td><td class="tnum">' + pct(r.win_rate) +
@@ -95,8 +95,8 @@
       const fp = String(r.artifact_configuration_fingerprint || 'UNAVAILABLE');
       const shortFp = fp === 'UNAVAILABLE' ? fp : fp.slice(0, 12) + '…';
       const chart = [r.chart_type || 'UNAVAILABLE', r.timeframe || 'UNAVAILABLE'].join(' / ');
-      return '<tr><td title="' + h(fp) + '"><b>' + h(shortFp) + '</b></td><td>' + h(r.asset) +
-        '</td><td>' + h(r.direction) + '</td><td>' + h(chart) +
+      return '<tr><td title="' + h(fp) + '"><b>' + h(shortFp) + '</b></td><td>' + h(r.provenance_class || 'UNAVAILABLE') +
+        '</td><td>' + h(r.asset) + '</td><td>' + h(r.direction) + '</td><td>' + h(chart) +
         '</td><td class="small">' + h(r.strategy_report_filename || 'UNAVAILABLE') +
         '</td><td class="small" title="' + h(r.strategy_report_sha256 || '') + '">' +
         h((r.strategy_report_sha256 || 'UNAVAILABLE').slice(0, 12) + (r.strategy_report_sha256 ? '…' : '')) +
@@ -166,7 +166,9 @@
     const by_configuration = experience.by_configuration || [];
     const by_artifact_configuration = experience.by_artifact_configuration || [];
     const artifact_scoped_count = experience.artifact_scoped_count == null ? 0 : experience.artifact_scoped_count;
+    const closure_scoped_count = experience.closure_scoped_count == null ? 0 : experience.closure_scoped_count;
     const unscoped_count = experience.unscoped_count == null ? 0 : experience.unscoped_count;
+    const provenance_counts = experience.provenance_class_counts || {};
     const health = state.health || {};
     const datasets = (data || {}).datasets || [];
     const runs = (data || {}).training_runs || [];
@@ -180,7 +182,8 @@
         '<div class="tile"><div class="k">TRAINING REPLAY</div><div class="v">' + val(training.run_count,0) + '</div><div class="small muted">purged walk-forward / protected holdout trainers</div></div>' +
         '<div class="tile"><div class="k">LIVE MATURITY</div><div class="v">' + val(preds.settled,0) + ' / ' + val(preds.count,0) + '</div><div class="small muted">' + val(preds.pending,0) + ' pending forecasts</div></div>' +
         '<div class="tile"><div class="k">REALIZED EXPERIENCE</div><div class="v">' + val(experience.count,0) + '</div><div class="small muted">runtime_live_sim + historical_trade_list · outcome memory, not forecast accuracy</div></div>' +
-        '<div class="tile"><div class="k">MANIFEST-LINKED HISTORY</div><div class="v">' + val(artifact_scoped_count,0) + '</div><div class="small muted">artifact-scoped trades · unscoped ' + val(unscoped_count,0) + ' · never promoted to runtime configuration</div></div>' +
+        '<div class="tile"><div class="k">MANIFEST-LINKED HISTORY</div><div class="v">' + val(artifact_scoped_count,0) + '</div><div class="small muted">HISTORICAL_ARTIFACT_CONFIG · unscoped ' + val(unscoped_count,0) + ' · never promoted to runtime configuration</div></div>' +
+        '<div class="tile"><div class="k">PROVENANCE ISOLATION</div><div class="v">' + val(closure_scoped_count,0) + ' / ' + val(artifact_scoped_count,0) + '</div><div class="small muted">RUNTIME_CLOSURE_CONFIG / HISTORICAL_ARTIFACT_CONFIG · UNSCOPED ' + val(provenance_counts.UNSCOPED == null ? unscoped_count : provenance_counts.UNSCOPED,0) + '</div></div>' +
         '<div class="tile"><div class="k">EMPIRICAL SCORECARDS</div><div class="v">' + val((state.scorecards || []).length,0) + '</div><div class="small muted">producer × asset × regime × horizon × label × revision</div></div>' +
         '<div class="tile"><div class="k">SHADOW RECALIBRATION</div><div class="v">' + val(shadow_calibration.validated_model_count,0) + ' / ' + val(shadow_calibration.model_count,0) + '</div><div class="small muted">VALIDATED MODELS ' + val(shadow_calibration.validated_model_count,0) + ' · REJECTED MODELS ' + val(shadow_calibration.rejected_model_count,0) + ' · automatic probability rewrite: off</div></div>' +
         '<div class="tile"><div class="k">Ψ SCENARIO CALIBRATION</div><div class="v">' + chip(psi.status || 'UNAVAILABLE') + '</div><div class="small muted">captured ' + val(psi.forecasts_imported,0) + ' · matured ' + val(psi.outcomes_imported,0) + ' · overlap withheld ' + val(psi.overlap_withheld,0) + ' · RAW SHARES UNCALIBRATED · producer psi-scenario-v1</div></div>' +
@@ -196,12 +199,12 @@
       table(['Producer','Asset','Regime','Horizon s','Target','Prediction label','Source revision','State','Train','Holdout','Holdout raw Brier','Holdout calibrated Brier','Brier improvement','Evidence cutoff'], shadowCalibrationRows(shadow_models), 'UNMEASURED — no holdout-validated shadow calibrators yet.') +
       '<h3 class="small" style="margin:16px 0 8px">REALIZED EXPERIENCE · P&L MEMORY</h3>' +
       table(['Source','Asset','Direction','State','Count','Win rate','Net P&L','Avg P&L','PROFIT FACTOR'], experienceRows(experience.summary), 'UNMEASURED — no fully closed realized trade experience yet.') +
-      '<h3 class="small" style="margin:16px 0 8px">STRATEGY CONFIGURATION EXPERIENCE · CLOSURE-TIME PROVENANCE</h3>' +
-      '<div class="small muted" style="margin-bottom:8px">Only trades carrying an exact closure-time configuration receipt appear here. Unscoped realized experience: ' + val(unscoped_count,0) + '.</div>' +
-      table(['Strategy fingerprint','Asset','Side','Session','Chart / TF','Fill / Security','Preset','State','Count','Win rate','Net P&L','Avg P&L','PAYOFF RATIO','MAX DRAWDOWN'], configurationExperienceRows(by_configuration), 'UNMEASURED — no closure-scoped strategy experience yet.') +
-      '<h3 class="small" style="margin:16px 0 8px">HISTORICAL ARTIFACT CONFIGURATION EXPERIENCE · MANIFEST-LINKED</h3>' +
-      '<div class="small muted" style="margin-bottom:8px">Manifest-linked artifact fingerprint proves a unique trade-list ↔ strategy-report pairing by symbol, row count, and last trade number. It does not claim the complete runtime input fingerprint. Artifact-scoped trades: ' + val(artifact_scoped_count,0) + '.</div>' +
-      table(['Manifest-linked artifact fingerprint','Asset','Side','Chart / TF','Strategy report','Report SHA','State','Count','Win rate','Net P&L','Avg P&L','PROFIT FACTOR','PAYOFF RATIO','MAX DRAWDOWN'], artifactExperienceRows(by_artifact_configuration), 'UNMEASURED — no uniquely manifest-linked historical artifact experience yet.') +
+      '<h3 class="small" style="margin:16px 0 8px">STRATEGY CONFIGURATION EXPERIENCE · CLOSURE-TIME PROVENANCE · RUNTIME_CLOSURE_CONFIG</h3>' +
+      '<div class="small muted" style="margin-bottom:8px">Only runtime_live_sim trades carrying an exact closure-time configuration receipt and source-bound RUNTIME_CLOSURE_CONFIG appear here. Historical evidence cannot enter this class. Unscoped realized experience: ' + val(unscoped_count,0) + '.</div>' +
+      table(['Strategy fingerprint','Provenance class','Asset','Side','Session','Chart / TF','Fill / Security','Preset','State','Count','Win rate','Net P&L','Avg P&L','PAYOFF RATIO','MAX DRAWDOWN'], configurationExperienceRows(by_configuration), 'UNMEASURED — no closure-scoped strategy experience yet.') +
+      '<h3 class="small" style="margin:16px 0 8px">HISTORICAL ARTIFACT CONFIGURATION EXPERIENCE · HISTORICAL_ARTIFACT_CONFIG</h3>' +
+      '<div class="small muted" style="margin-bottom:8px">Manifest/direct strategy-report evidence is source-bound to HISTORICAL_ARTIFACT_CONFIG. It proves historical artifact identity, not live runtime state, and cannot satisfy RUNTIME_CLOSURE_CONFIG. Artifact-scoped trades: ' + val(artifact_scoped_count,0) + '.</div>' +
+      table(['Manifest-linked artifact fingerprint','Provenance class','Asset','Side','Chart / TF','Strategy report','Report SHA','State','Count','Win rate','Net P&L','Avg P&L','PROFIT FACTOR','PAYOFF RATIO','MAX DRAWDOWN'], artifactExperienceRows(by_artifact_configuration), 'UNMEASURED — no uniquely manifest-linked historical artifact experience yet.') +
       '<h3 class="small" style="margin:16px 0 8px">DATASET COVERAGE · TRAINING REPLAY</h3>' +
       table(['Asset','Cadence','Class','Rows','Coverage','Representation','Replay status','Action'], datasetRows(datasets,runs), 'UNAVAILABLE — no local historical datasets catalogued yet.') +
       '<h3 class="small" style="margin:16px 0 8px">LEARNING BACKLOG</h3>' +
