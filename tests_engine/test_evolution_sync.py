@@ -1,14 +1,17 @@
 import json
+from pathlib import Path
 
 import pytest
 
 from icarus_engine.evolution_sync import (
     EvolutionRemoteSync,
     REMOTE_ROOT,
+    _IGNORED_SCHEMA_VERSIONS,
     _git_blob_sha,
+    normalize_interface_event,
 )
 from icarus_engine.system_audit import load_repository_audit
-from icarus_engine.brain import brain_snapshot
+from icarus_engine.brain import SUBSYSTEMS, brain_snapshot
 
 
 def event_payload(**overrides):
@@ -111,6 +114,78 @@ def test_invalid_or_authority_escalating_event_is_rejected(tmp_path, change):
     assert state["execution_authorized"] is False
 
 
+@pytest.mark.parametrize("schema_field", ["schema_version", "schema"])
+def test_foreign_schema_receipt_is_ignored_not_rejected(tmp_path, schema_field):
+    payload = {
+        schema_field: "icarus-mcp-event-v1",
+        "event_id": "foreign-family-fixture",
+        "category": "EVOLUTION",
+        "execution_authorized": False,
+        "production_decision_authorized": False,
+    }
+    raw = (json.dumps(payload, sort_keys=True) + "\n").encode()
+    sha = _git_blob_sha(raw)
+    path = REMOTE_ROOT + "/foreign.json"
+    listing = [{
+        "type": "file",
+        "name": "foreign.json",
+        "path": path,
+        "sha": sha,
+        "url": "fixture://foreign",
+    }]
+    sync = EvolutionRemoteSync(
+        tmp_path,
+        interval_seconds=30,
+        fetch_json=lambda _url: listing,
+        fetch_bytes=lambda url: raw if url == "fixture://foreign" else b"",
+        enabled=True,
+    )
+
+    first = sync.sync_once()
+    second = sync.sync_once()
+
+    assert first["status"] == "green"
+    assert first["ignored_total"] == 1
+    assert first["rejected_total"] == 0
+    assert first["ingested_total"] == 0
+    assert first["events"] == []
+    assert second["ignored_total"] == 1
+    assert second["rejected_total"] == 0
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {},
+        {"schema_version": "wrong"},
+        {"schema": "wrong"},
+    ],
+)
+def test_missing_or_unknown_schema_is_rejected(tmp_path, payload):
+    raw = (json.dumps(payload, sort_keys=True) + "\n").encode()
+    sha = _git_blob_sha(raw)
+    listing = [{
+        "type": "file",
+        "name": "unknown.json",
+        "path": REMOTE_ROOT + "/unknown.json",
+        "sha": sha,
+        "url": "fixture://unknown",
+    }]
+    sync = EvolutionRemoteSync(
+        tmp_path,
+        interval_seconds=30,
+        fetch_json=lambda _url: listing,
+        fetch_bytes=lambda _url: raw,
+        enabled=True,
+    )
+    state = sync.sync_once()
+
+    assert state["status"] == "degraded"
+    assert state["ignored_total"] == 0
+    assert state["rejected_total"] == 1
+    assert state["ingested_total"] == 0
+
+
 def test_blob_sha_mismatch_is_rejected(tmp_path):
     payload = event_payload()
     raw = (json.dumps(payload, sort_keys=True) + "\n").encode()
@@ -156,3 +231,134 @@ def test_psi_is_a_supported_mcp_subsystem(tmp_path):
     assert state["status"] == "green"
     assert state["ingested_total"] == 1
     assert set(state["subsystems"]) >= {"psi", "parallax"}
+
+
+def test_every_registered_brain_subsystem_is_evolution_ingestible(tmp_path):
+    subsystem_ids = [row["id"] for row in SUBSYSTEMS]
+    sync = make_sync(
+        tmp_path,
+        event_payload(
+            subsystems=subsystem_ids,
+            title="Brain registry compatibility fixture",
+        ),
+    )
+    state = sync.sync_once()
+
+    assert state["status"] == "green"
+    assert state["rejected_total"] == 0
+    assert {
+        subsystem_id.replace("_", "-")
+        for subsystem_id in subsystem_ids
+    } <= set(state["subsystems"])
+
+
+def test_committed_interface_receipts_match_current_ingestion_contract():
+    root = (
+        Path(__file__).resolve().parents[1]
+        / "automation_intelligence"
+        / "mcp_interface"
+        / "events"
+    )
+    checked = 0
+    foreign = 0
+
+    for path in sorted(root.glob("*.json")):
+        raw = path.read_bytes()
+        payload = json.loads(raw.decode("utf-8"))
+        declared_schema = payload.get("schema_version")
+        if declared_schema is None:
+            declared_schema = payload.get("schema")
+        if declared_schema != "icarus-interface-event-v1":
+            assert declared_schema in _IGNORED_SCHEMA_VERSIONS, (
+                f"{path.name} introduces an unregistered shared-directory "
+                f"schema: {declared_schema!r}"
+            )
+            foreign += 1
+            continue
+        normalized = normalize_interface_event(
+            payload,
+            source_path=f"{REMOTE_ROOT}/{path.name}",
+            blob_sha=_git_blob_sha(raw),
+        )
+        assert normalized["execution_authorized"] is False
+        assert normalized["production_decision_authorized"] is False
+        checked += 1
+
+    assert checked > 0
+    # The directory is intentionally shared with macro/audit/integration
+    # receipt families; runtime sync must ignore those rather than degrade.
+    assert foreign > 0
+
+
+def test_repository_native_interface_vocabulary_is_accepted(tmp_path):
+    # These names already exist in committed icarus-interface-event-v1 receipts.
+    # Underscore payload spelling is normalized to the dashboard's hyphen form.
+    raw_names = [
+        "pantheon",
+        "aether",
+        "nemesis",
+        "godel",
+        "socrates",
+        "ananke",
+        "ex_nihilo",
+        "mint",
+        "nullspace",
+        "archon",
+        "ui",
+        "sibyl",
+        "execution_research",
+        "order_blocks",
+        "research_validation",
+        "uncertainty",
+        "calibration",
+        "prospective_validation",
+        "transfer_validation",
+        "tail_validation",
+        "liquidity_load",
+        "cluster_bootstrap",
+    ]
+    sync = make_sync(
+        tmp_path,
+        event_payload(
+            subsystems=raw_names,
+            status="staged",
+            title="Repository-native vocabulary fixture",
+        ),
+    )
+    state = sync.sync_once()
+
+    assert state["status"] == "green"
+    assert state["ingested_total"] == 1
+    assert state["rejected_total"] == 0
+    brain = brain_snapshot(tmp_path)
+    staged_brain_events = [
+        row for row in brain["events"]
+        if row["kind"] == "subsystem"
+    ]
+    assert staged_brain_events
+    assert {row["status"] for row in staged_brain_events} == {"observed"}
+
+    assert {
+        "pantheon",
+        "aether",
+        "nemesis",
+        "godel",
+        "socrates",
+        "ananke",
+        "ex-nihilo",
+        "mint",
+        "nullspace",
+        "archon",
+        "ui",
+        "sibyl",
+        "execution-research",
+        "order-blocks",
+        "research-validation",
+        "uncertainty",
+        "calibration",
+        "prospective-validation",
+        "transfer-validation",
+        "tail-validation",
+        "liquidity-load",
+        "cluster-bootstrap",
+    } <= set(state["subsystems"])
