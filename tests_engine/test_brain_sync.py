@@ -513,3 +513,50 @@ def test_remote_sync_rejects_peer_lane_that_conflates_durability_with_substantiv
     assert status["peer_packet_status"] == "degraded"
     assert status["peer_substantive_lane_count"] == 0
     assert "claims substantive evidence without observed worker evidence" in status["last_error"]
+
+def _rehash_peer_packet(packet):
+    unsigned = dict(packet)
+    unsigned.pop("packet_id", None)
+    packet["packet_id"] = __import__("hashlib").sha256(
+        json.dumps(unsigned, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
+    ).hexdigest()
+    return packet
+
+
+def test_remote_sync_rejects_peer_packet_source_contract_substitution(tmp_path):
+    packet = _peer_packet()
+    packet["source_contracts"]["control_plane"] = "automation_intelligence/fake-control.json"
+    _rehash_peer_packet(packet)
+    fixture = _fixture(_remote_event(), peer=packet)
+    sync = BrainRemoteSync(
+        tmp_path,
+        interval_seconds=60,
+        fetch_json=fixture["fetch_json"],
+        fetch_bytes=fixture["fetch_bytes"],
+    )
+    status = sync.sync_once()
+    assert status["status"] == "degraded"
+    assert status["peer_packet_status"] == "degraded"
+    assert status["peer_lanes"] == []
+    assert "source contracts mismatch" in status["last_error"]
+
+
+def test_remote_sync_rejects_invented_foreign_sibling_lane_state(tmp_path):
+    packet = _peer_packet()
+    csv_lane = next(row for row in packet["lanes"] if row["name"] == "advanced_csv")
+    csv_lane["evidence_status"] = "PERSISTED_WORKER_EVIDENCE"
+    csv_lane["worker_execution_observed"] = True
+    csv_lane["substantive_research_evidence"] = True
+    _rehash_peer_packet(packet)
+    fixture = _fixture(_remote_event(), peer=packet)
+    sync = BrainRemoteSync(
+        tmp_path,
+        interval_seconds=60,
+        fetch_json=fixture["fetch_json"],
+        fetch_bytes=fixture["fetch_bytes"],
+    )
+    status = sync.sync_once()
+    assert status["status"] == "degraded"
+    assert status["peer_packet_status"] == "degraded"
+    assert status["peer_lanes"] == []
+    assert "invents state for a foreign sibling repository" in status["last_error"]
