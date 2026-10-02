@@ -627,8 +627,13 @@ After the full blind barrier clears, PANTHEON normalizes each committed claim's
 evidence references, measures pairwise Jaccard overlap, builds a per-agent
 redundancy mass, and converts that mass into an evidence-independence factor.
 The confidence-weighted effective independence of the completed swarm becomes a
-`claim_evidence_echo_risk`. If directional agreement is high while evidence
-independence is low, PANTHEON marks a `claim_consensus_illusion_candidate`.
+`claim_evidence_echo_risk`. PANTHEON also reports an effective independent
+agent count: four nominal agents whose evidence is completely duplicated count
+as roughly one independent witness rather than four. Directional support is
+recomputed with both confidence and evidence independence, preserving the raw
+claims while exposing how much support survives de-duplication. If directional
+agreement is high while evidence independence is low, PANTHEON marks a
+`claim_consensus_illusion_candidate`.
 
 These metrics are intentionally hidden until every spawned agent has committed,
 so partial overlap cannot leak peer evidence during the blind round. They are

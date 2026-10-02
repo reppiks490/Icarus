@@ -542,6 +542,8 @@ class PantheonKernel:
         claim_independence: dict[str, float] = {}
         evidence_pairs: list[dict[str, Any]] = []
         effective_claim_independence = None
+        effective_independent_agent_count = None
+        independence_adjusted_direction_support: dict[str, float] = {}
         claim_evidence_echo_risk = None
         claim_consensus_illusion_candidate = False
         if all_spawned_complete and claims:
@@ -590,6 +592,24 @@ class PantheonKernel:
             else:
                 effective_claim_independence = sum(claim_independence.values()) / len(claim_independence)
             effective_claim_independence = max(0.0, min(1.0, effective_claim_independence))
+            effective_independent_agent_count = sum(claim_independence.values())
+            support = {"long": 0.0, "short": 0.0, "flat": 0.0, "unknown": 0.0}
+            for row in claims:
+                claim_body = row.get("claim", {})
+                direction = claim_body.get("direction", "unknown") if isinstance(claim_body, Mapping) else "unknown"
+                if direction not in support:
+                    direction = "unknown"
+                agent_id = str(row["agent_id"])
+                support[direction] += (
+                    confidence_by_agent.get(agent_id, 0.0)
+                    * claim_independence.get(agent_id, 0.0)
+                )
+            support_total = sum(support.values())
+            independence_adjusted_direction_support = (
+                {key: value / support_total for key, value in support.items()}
+                if support_total > 0.0
+                else support
+            )
             claim_evidence_echo_risk = 1.0 - effective_claim_independence
 
             directional_agreement = (1.0 - disagreement) if disagreement is not None else 0.0
@@ -617,6 +637,8 @@ class PantheonKernel:
             "claim_evidence_echo_visible": all_spawned_complete,
             "claim_evidence_independence": claim_independence if all_spawned_complete else {},
             "effective_claim_evidence_independence": effective_claim_independence,
+            "effective_independent_agent_count": effective_independent_agent_count,
+            "independence_adjusted_direction_support": independence_adjusted_direction_support if all_spawned_complete else {},
             "claim_evidence_echo_risk": claim_evidence_echo_risk,
             "claim_consensus_illusion_candidate": claim_consensus_illusion_candidate,
             "duplicated_claim_evidence_pairs": evidence_pairs if all_spawned_complete else [],

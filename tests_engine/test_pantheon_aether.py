@@ -1281,6 +1281,8 @@ def test_aether_claim_evidence_echo_detects_shared_ancestry_after_blind_round(tm
     assert d["claim_evidence_echo_visible"] is True
     assert d["effective_claim_evidence_independence"] == pytest.approx(0.25)
     assert d["claim_evidence_echo_risk"] == pytest.approx(0.75)
+    assert d["effective_independent_agent_count"] == pytest.approx(1.0)
+    assert d["independence_adjusted_direction_support"]["long"] == pytest.approx(1.0)
     assert d["claim_consensus_illusion_candidate"] is True
     assert len(d["duplicated_claim_evidence_pairs"]) == 6
     assert all(value == pytest.approx(0.25) for value in d["claim_evidence_independence"].values())
@@ -1308,6 +1310,8 @@ def test_aether_claim_evidence_echo_preserves_independent_blind_evidence(tmp_pat
     d = state["deliberation"]
     assert d["effective_claim_evidence_independence"] == pytest.approx(1.0)
     assert d["claim_evidence_echo_risk"] == pytest.approx(0.0)
+    assert d["effective_independent_agent_count"] == pytest.approx(4.0)
+    assert d["independence_adjusted_direction_support"]["long"] == pytest.approx(1.0)
     assert d["claim_consensus_illusion_candidate"] is False
     assert d["duplicated_claim_evidence_pairs"] == []
 
@@ -1332,6 +1336,8 @@ def test_aether_claim_evidence_echo_stays_hidden_until_every_agent_commits(tmp_p
     assert d["claim_evidence_echo_visible"] is False
     assert d["effective_claim_evidence_independence"] is None
     assert d["claim_evidence_echo_risk"] is None
+    assert d["effective_independent_agent_count"] is None
+    assert d["independence_adjusted_direction_support"] == {}
     assert d["duplicated_claim_evidence_pairs"] == []
 
 
