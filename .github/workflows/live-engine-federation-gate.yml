@@ -159,6 +159,11 @@ jobs:
           assert state["peer_source_commit"]
           assert state["peer_source_commit_verified"] is True
           assert state["peer_source_commit_relation"] in {"AHEAD", "IDENTICAL"}
+          assert state["peer_packet_fresh"] is True, state
+          assert state["peer_packet_age_seconds"] <= truth["peer_packet_max_age_seconds"]
+          assert truth["peer_packet_freshness_required"] is True
+          assert truth["peer_packet_max_age_seconds"] == 1800
+          assert truth["peer_packet_max_future_skew_seconds"] == 300
           assert state["peer_packet_id"]
           subprocess.run(
               [
@@ -197,6 +202,10 @@ jobs:
               "peer_source_commit_verified": state["peer_source_commit_verified"],
               "peer_source_commit_relation": state["peer_source_commit_relation"],
               "peer_source_commit_ancestor_of_engine_head": True,
+              "peer_packet_fresh": state["peer_packet_fresh"],
+              "peer_packet_age_seconds": state["peer_packet_age_seconds"],
+              "peer_packet_max_age_seconds": truth["peer_packet_max_age_seconds"],
+              "peer_packet_max_future_skew_seconds": truth["peer_packet_max_future_skew_seconds"],
               "peer_lane_count": len(state["peer_lanes"]),
               "peer_substantive_lane_count": state["peer_substantive_lane_count"],
               "peer_durability_only_lane_count": state["peer_durability_only_lane_count"],
