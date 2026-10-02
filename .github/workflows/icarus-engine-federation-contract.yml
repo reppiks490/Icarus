@@ -1,0 +1,118 @@
+name: icarus-engine-federation-contract
+
+on:
+  push:
+    branches:
+      - feat/engine-brain-federation-consumer-20261002
+    paths:
+      - "icarus_engine/engine_federation_sync.py"
+      - "icarus_engine/brain.py"
+      - "icarus_engine/brain-ui.js"
+      - "icarus_engine/server.py"
+      - "tests_engine/test_engine_federation_sync.py"
+      - ".github/workflows/icarus-engine-federation-contract.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: icarus-engine-federation-contract-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  live-corpus:
+    name: Validate live Icarus-engine event federation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout canonical Icarus
+        uses: actions/checkout@v4
+        with:
+          path: icarus
+
+      - name: Checkout current Icarus-engine main
+        uses: actions/checkout@v4
+        with:
+          repository: reppiks490/Icarus-engine
+          ref: main
+          path: peer-engine
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Validate producer contract and accepted event corpus
+        working-directory: icarus
+        shell: bash
+        run: |
+          export ICARUS_SHA="$(git rev-parse HEAD)"
+          export ENGINE_SHA="$(git -C ../peer-engine rev-parse HEAD)"
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          from icarus_engine.engine_federation_sync import (
+              _git_blob_sha,
+              _normalize_contracts,
+              _normalize_event,
+          )
+
+          engine = Path("../peer-engine")
+          root = engine / "automation_intelligence" / "mcp_interface"
+          producer = json.loads((root / "contract.json").read_text(encoding="utf-8"))
+          consumer = json.loads((root / "icarus_consumer_contract.json").read_text(encoding="utf-8"))
+          contracts = _normalize_contracts(producer, consumer)
+
+          accepted = []
+          legacy = []
+          ignored = []
+          accepted_sources = set(contracts["accepted_sources"])
+          for path in sorted((root / "events").glob("*.json")):
+              raw = path.read_bytes()
+              event = json.loads(raw)
+              source = str(event.get("source") or "").strip().upper()
+              if source not in accepted_sources:
+                  ignored.append(path.name)
+                  continue
+              blob = _git_blob_sha(raw)
+              row = _normalize_event(event, blob, contracts)
+              accepted.append(row)
+              if row["legacy_relaxed"]:
+                  legacy.append(blob)
+
+          assert all(row["execution_authorized"] is False for row in accepted)
+          assert all(row["production_decision_authorized"] is False for row in accepted)
+          assert all(row["foreign_evidence_only"] is True for row in accepted)
+          assert set(legacy).issubset(set(contracts["legacy_relaxed_blob_shas"]))
+
+          report = {
+              "schema_version": "icarus-live-engine-federation-contract-v1",
+              "icarus_commit": os.environ["ICARUS_SHA"],
+              "icarus_engine_commit": os.environ["ENGINE_SHA"],
+              "producer_repository": contracts["producer_repository"],
+              "consumer_repository": contracts["consumer_repository"],
+              "event_schema": contracts["event_schema"],
+              "accepted_event_count": len(accepted),
+              "ignored_event_count": len(ignored),
+              "legacy_relaxed_count": len(legacy),
+              "accepted_sources": contracts["accepted_sources"],
+              "accepted_categories": contracts["accepted_categories"],
+              "truth_contract": contracts["truth_contract"],
+              "execution_authorized": False,
+              "production_decision_authorized": False,
+          }
+          Path("../engine-federation-contract-report.json").write_text(
+              json.dumps(report, sort_keys=True, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          print(json.dumps(report, sort_keys=True))
+          PY
+
+      - name: Preserve federation contract receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: icarus-engine-federation-contract
+          path: engine-federation-contract-report.json
+          if-no-files-found: error
+          retention-days: 14
