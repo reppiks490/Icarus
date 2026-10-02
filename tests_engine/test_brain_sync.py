@@ -823,7 +823,7 @@ def test_remote_sync_rejects_historical_context_candidate_evidence_promotion(tmp
         interval_seconds=60,
         fetch_json=fixture["fetch_json"],
         fetch_bytes=fixture["fetch_bytes"],
-        now_utc=fixture["peer_now_utc"],
+        now_utc=fixture["now_utc"],
     )
     status = sync.sync_once()
     assert status["status"] == "degraded"
@@ -846,7 +846,7 @@ def test_remote_sync_rejects_undeclared_historical_artifact_path(tmp_path):
         interval_seconds=60,
         fetch_json=fixture["fetch_json"],
         fetch_bytes=fixture["fetch_bytes"],
-        now_utc=fixture["peer_now_utc"],
+        now_utc=fixture["now_utc"],
     )
     status = sync.sync_once()
     assert status["status"] == "degraded"
@@ -865,7 +865,7 @@ def test_remote_sync_rejects_historical_artifact_hash_substitution(tmp_path):
         interval_seconds=60,
         fetch_json=fixture["fetch_json"],
         fetch_bytes=fixture["fetch_bytes"],
-        now_utc=fixture["peer_now_utc"],
+        now_utc=fixture["now_utc"],
     )
     status = sync.sync_once()
     assert status["status"] == "degraded"
@@ -882,7 +882,7 @@ def test_remote_sync_rejects_historical_contract_authority_escalation(tmp_path):
         interval_seconds=60,
         fetch_json=fixture["fetch_json"],
         fetch_bytes=fixture["fetch_bytes"],
-        now_utc=fixture["peer_now_utc"],
+        now_utc=fixture["now_utc"],
     )
     status = sync.sync_once()
     assert status["status"] == "degraded"
