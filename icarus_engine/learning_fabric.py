@@ -1763,15 +1763,26 @@ class LearningFabric:
             prediction_label,
             source_commit,
         ), group in sorted(groups.items()):
-            settled = len(group)
-            classified = [r for r in group if r["success"] is not None]
+            raw_settled = len(group)
+            effective_group = self._purge_overlapping_prediction_rows(group)
+            settled = len(effective_group)
+            overlap_purged = raw_settled - settled
+            classified = [r for r in effective_group if r["success"] is not None]
             successes = sum(int(r["success"]) for r in classified)
             hit_rate = successes / len(classified) if classified else None
-            briers = [float(r["brier"]) for r in group if r["brier"] is not None]
+            briers = [float(r["brier"]) for r in effective_group if r["brier"] is not None]
             mean_brier = sum(briers) / len(briers) if briers else None
-            mean_confidence = sum(float(r["probability"]) for r in group) / settled
-            calibration_gap = None if hit_rate is None else abs(mean_confidence - hit_rate)
-            errors = [float(r["absolute_error"]) for r in group if r["absolute_error"] is not None]
+            mean_confidence = (
+                sum(float(r["probability"]) for r in effective_group) / settled
+                if settled
+                else None
+            )
+            calibration_gap = (
+                None
+                if hit_rate is None or mean_confidence is None
+                else abs(mean_confidence - hit_rate)
+            )
+            errors = [float(r["absolute_error"]) for r in effective_group if r["absolute_error"] is not None]
             interval = wilson_interval(successes, len(classified)) if classified else (None, None)
             cards.append({
                 "producer": producer,
@@ -1781,7 +1792,9 @@ class LearningFabric:
                 "target": target,
                 "prediction_label": prediction_label,
                 "source_commit": source_commit,
+                "raw_settled": raw_settled,
                 "settled": settled,
+                "overlap_purged": overlap_purged,
                 "successes": successes,
                 "hit_rate": hit_rate,
                 "wilson_95": list(interval) if classified else None,
@@ -3375,6 +3388,8 @@ class LearningFabric:
                     "score": score,
                     "status": card.get("status") or "UNMEASURED",
                     "sample_count": card.get("settled"),
+                    "raw_sample_count": card.get("raw_settled"),
+                    "overlap_purged": card.get("overlap_purged"),
                     "hit_rate": hit,
                     "mean_brier": brier,
                     "calibration_gap": gap,
