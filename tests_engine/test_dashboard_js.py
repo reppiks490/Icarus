@@ -650,3 +650,19 @@ def test_ascendancy_dashboard_surfaces_mechanism_laboratory():
     assert "causal_proof=false" in ui
     assert 'p.path == "/api/ascendancy/mechanisms"' in server
     assert 'p.path == "/admin/ascendancy/mechanism-experiment"' in server
+
+
+def test_ascendancy_dashboard_surfaces_invention_engine():
+    ui = (REPO / "icarus_engine/ascendancy-ui.js").read_text(encoding="utf-8")
+    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
+    assert "/api/ascendancy/inventions" in ui
+    assert "INVENTION ENGINE" in ui
+    assert "UNTESTED_HYPOTHESIS" in ui
+    assert "generated_blueprint_is_not_validated_edge" in ui
+    assert "unavailable_observations_cannot_seed_transformations" in ui
+    assert "arbitrary_source_code_execution=false" in ui
+    assert "primitive_families" in ui
+    assert "edge_claim_established=false" in ui
+    assert 'p.path == "/api/ascendancy/inventions"' in server
+    assert 'p.path == "/admin/ascendancy/invention-generate"' in server
+    assert 'p.path == "/admin/ascendancy/invention-to-candidate"' in server
