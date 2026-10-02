@@ -1,0 +1,349 @@
+{
+  "schema_version": "icarus-ascendancy-capability-catalog-v1",
+  "providers": [
+    {
+      "id": "github",
+      "category": "engineering",
+      "claims_allowed": [
+        "repository_read",
+        "repository_write",
+        "branching",
+        "pull_requests",
+        "ci_observation"
+      ],
+      "claims_forbidden": [
+        "broker_execution",
+        "market_truth"
+      ],
+      "authority": "repository"
+    },
+    {
+      "id": "superpowers",
+      "category": "engineering_method",
+      "claims_allowed": [
+        "tdd_workflow",
+        "debugging_workflow",
+        "code_review_workflow",
+        "verification_workflow"
+      ],
+      "claims_forbidden": [
+        "market_data",
+        "broker_execution"
+      ],
+      "authority": "methodology"
+    },
+    {
+      "id": "akinator",
+      "category": "repository_governance",
+      "claims_allowed": [
+        "repo_audit",
+        "knowledge_delta",
+        "documentation_governance",
+        "drift_checks"
+      ],
+      "claims_forbidden": [
+        "market_data",
+        "broker_execution"
+      ],
+      "authority": "methodology"
+    },
+    {
+      "id": "astral-orchestrator",
+      "category": "agent_orchestration",
+      "claims_allowed": [
+        "multi_model_routing",
+        "bounded_worker_orchestration"
+      ],
+      "claims_forbidden": [
+        "market_data",
+        "broker_execution"
+      ],
+      "authority": "research"
+    },
+    {
+      "id": "adaptive-codex-orchestrator",
+      "category": "agent_orchestration",
+      "claims_allowed": [
+        "adaptive_task_routing",
+        "bounded_worker_orchestration"
+      ],
+      "claims_forbidden": [
+        "market_data",
+        "broker_execution"
+      ],
+      "authority": "research"
+    },
+    {
+      "id": "baton-pass",
+      "category": "continuity",
+      "claims_allowed": [
+        "handoff_state",
+        "ownership_state",
+        "verification_handoff"
+      ],
+      "claims_forbidden": [
+        "market_data",
+        "broker_execution"
+      ],
+      "authority": "workflow"
+    },
+    {
+      "id": "agent-reach",
+      "category": "public_research",
+      "claims_allowed": [
+        "web_research",
+        "github_research",
+        "social_research",
+        "video_research"
+      ],
+      "claims_forbidden": [
+        "private_access_bypass",
+        "broker_execution"
+      ],
+      "authority": "research"
+    },
+    {
+      "id": "firecrawl",
+      "category": "public_research",
+      "claims_allowed": [
+        "web_search",
+        "page_read",
+        "developer_research",
+        "paper_research"
+      ],
+      "claims_forbidden": [
+        "private_access_bypass",
+        "broker_execution"
+      ],
+      "authority": "research"
+    },
+    {
+      "id": "parallel-search",
+      "category": "public_research",
+      "claims_allowed": [
+        "web_search",
+        "web_fetch"
+      ],
+      "claims_forbidden": [
+        "private_access_bypass",
+        "broker_execution"
+      ],
+      "authority": "research"
+    },
+    {
+      "id": "scite",
+      "category": "scientific_research",
+      "claims_allowed": [
+        "literature_search",
+        "citation_context",
+        "paper_fulltext"
+      ],
+      "claims_forbidden": [
+        "market_truth",
+        "broker_execution"
+      ],
+      "authority": "research"
+    },
+    {
+      "id": "transcriptor",
+      "category": "media_research",
+      "claims_allowed": [
+        "video_metadata",
+        "transcripts",
+        "subtitles",
+        "video_frames"
+      ],
+      "claims_forbidden": [
+        "private_media_access",
+        "broker_execution"
+      ],
+      "authority": "research"
+    },
+    {
+      "id": "figma",
+      "category": "design",
+      "claims_allowed": [
+        "dashboard_design",
+        "diagram_generation",
+        "design_context"
+      ],
+      "claims_forbidden": [
+        "market_truth",
+        "broker_execution"
+      ],
+      "authority": "design"
+    },
+    {
+      "id": "prompt-perfect",
+      "category": "prompt_governance",
+      "claims_allowed": [
+        "prompt_rewrite",
+        "prompt_evaluation_support"
+      ],
+      "claims_forbidden": [
+        "market_truth",
+        "broker_execution"
+      ],
+      "authority": "research"
+    },
+    {
+      "id": "massive",
+      "category": "market_data",
+      "claims_allowed": [
+        "futures_trades",
+        "futures_quotes",
+        "futures_snapshots",
+        "futures_contracts",
+        "market_status"
+      ],
+      "claims_forbidden": [
+        "broker_execution",
+        "unobserved_depth",
+        "unobserved_open_interest"
+      ],
+      "authority": "data"
+    },
+    {
+      "id": "twelve-data",
+      "category": "market_data",
+      "claims_allowed": [
+        "quotes",
+        "prices",
+        "time_series",
+        "market_state",
+        "fundamentals",
+        "news"
+      ],
+      "claims_forbidden": [
+        "broker_execution",
+        "unobserved_depth"
+      ],
+      "authority": "data"
+    },
+    {
+      "id": "fmp",
+      "category": "market_and_fundamental_data",
+      "claims_allowed": [
+        "commodity_data",
+        "futures_symbols",
+        "economics",
+        "filings",
+        "fundamentals",
+        "quotes"
+      ],
+      "claims_forbidden": [
+        "broker_execution",
+        "unobserved_depth"
+      ],
+      "authority": "data"
+    },
+    {
+      "id": "bybit",
+      "category": "crypto_market_data",
+      "claims_allowed": [
+        "crypto_price",
+        "crypto_klines",
+        "crypto_orderbook",
+        "crypto_funding",
+        "instrument_specs"
+      ],
+      "claims_forbidden": [
+        "place_orders",
+        "account_access",
+        "broker_execution"
+      ],
+      "authority": "data"
+    },
+    {
+      "id": "blockscout",
+      "category": "onchain_data",
+      "claims_allowed": [
+        "onchain_transactions",
+        "token_transfers",
+        "contract_reads",
+        "wallet_state",
+        "chain_metadata"
+      ],
+      "claims_forbidden": [
+        "exchange_order_flow",
+        "exchange_orderbook",
+        "broker_execution"
+      ],
+      "authority": "data"
+    },
+    {
+      "id": "bigdata",
+      "category": "financial_research",
+      "claims_allowed": [
+        "filings",
+        "earnings_transcripts",
+        "premium_news",
+        "economic_calendar",
+        "fundamentals",
+        "expert_interviews"
+      ],
+      "claims_forbidden": [
+        "broker_execution",
+        "unobserved_market_microstructure"
+      ],
+      "authority": "research"
+    },
+    {
+      "id": "the-fly",
+      "category": "market_intelligence",
+      "claims_allowed": [
+        "symbol_discovery",
+        "financial_news",
+        "earnings_analysis",
+        "catalysts"
+      ],
+      "claims_forbidden": [
+        "broker_execution",
+        "unobserved_market_microstructure"
+      ],
+      "authority": "research"
+    },
+    {
+      "id": "zacks",
+      "category": "financial_research",
+      "claims_allowed": [
+        "fundamentals",
+        "estimates",
+        "research",
+        "news",
+        "comparables"
+      ],
+      "claims_forbidden": [
+        "broker_execution",
+        "unobserved_market_microstructure"
+      ],
+      "authority": "research"
+    },
+    {
+      "id": "us-gold-bureau",
+      "category": "metals_data",
+      "claims_allowed": [
+        "metal_spot_prices"
+      ],
+      "claims_forbidden": [
+        "broker_execution",
+        "futures_order_flow"
+      ],
+      "authority": "data"
+    },
+    {
+      "id": "stackerscan",
+      "category": "metals_data",
+      "claims_allowed": [
+        "metal_spot_prices",
+        "price_history",
+        "observed_premiums"
+      ],
+      "claims_forbidden": [
+        "broker_execution",
+        "futures_order_flow"
+      ],
+      "authority": "data"
+    }
+  ]
+}
