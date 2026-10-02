@@ -342,6 +342,16 @@ class EvolutionRemoteSync:
                     payload = json.loads(raw.decode("utf-8"))
                     if not isinstance(payload, Mapping):
                         raise ValueError("event payload is not an object")
+                    # This repository directory intentionally carries several
+                    # event families. The Evolution sync owns only
+                    # icarus-interface-event-v1. A valid foreign-schema JSON
+                    # receipt is therefore ignored, not treated as corruption.
+                    if payload.get("schema_version") != SCHEMA_VERSION:
+                        processed.add(blob_sha)
+                        state["ignored_total"] = int(
+                            state.get("ignored_total", 0)
+                        ) + 1
+                        continue
                     event = _normalize_event(payload, remote_path=path, blob_sha=blob_sha)
 
                     append_system_event(
