@@ -27,7 +27,7 @@ from .trainers.run import train_file, train_xgb_file
 
 _SCHEMA = "icarus-learning-fabric-v1"
 _ARTIFACT_PROVENANCE_QUALITIES = frozenset({"MANIFEST_UNIQUE_STRATEGY_REPORT_LINK", "DIRECT_STRATEGY_REPORT_XLSX_TRADE_SHEET"})
-_MANIFEST_LINKAGE_VERSION = 2
+_MANIFEST_LINKAGE_VERSION = 3
 _RUNTIME_PROVENANCE_CLASS = "RUNTIME_CLOSURE_CONFIG"
 _HISTORICAL_PROVENANCE_CLASS = "HISTORICAL_ARTIFACT_CONFIG"
 _UNSCOPED_PROVENANCE_CLASS = "UNSCOPED"
@@ -1986,6 +1986,24 @@ class LearningFabric:
             return "all"
         return None
 
+    @staticmethod
+    def _manifest_chart_type(value: Any) -> str | None:
+        """Normalize only recognized explicit chart-representation labels."""
+        raw = str(value or "").strip().lower().replace("-", " ").replace("_", " ")
+        compact = " ".join(raw.split())
+        if not compact:
+            return None
+        if "heikin" in compact and "ashi" in compact:
+            return "heikin_ashi"
+        if "renko" in compact:
+            return "renko"
+        if (
+            "candle" in compact
+            or compact in {"standard", "regular", "ohlc", "bars", "bar"}
+        ):
+            return "candles"
+        return None
+
     def _intake_manifest_catalog(self) -> tuple[dict[str, dict[str, str]], dict[str, dict[str, str]], list[dict[str, str]]]:
         by_hash: dict[str, dict[str, str]] = {}
         by_name: dict[str, dict[str, str]] = {}
@@ -2050,6 +2068,8 @@ class LearningFabric:
         symbol = self._manifest_symbol(trade_row.get("symbol"))
         row_count = self._manifest_integer(trade_row.get("rows"))
         last_trade = self._manifest_integer(trade_row.get("last_trade_number"))
+        timeframe = self._manifest_timeframe(trade_row.get("timeframe"))
+        chart_type = self._manifest_chart_type(trade_row.get("chart_type"))
         session_mode = self._manifest_session_mode(
             trade_row.get("session_mode")
             or trade_row.get("session")
@@ -2057,6 +2077,12 @@ class LearningFabric:
         )
         linkage_keys = ["symbol", "rows", "last_trade_number"]
         rule_parts = ["SYMBOL", "ROWS", "LAST_TRADE"]
+        if timeframe is not None:
+            linkage_keys.append("timeframe")
+            rule_parts.append("TIMEFRAME")
+        if chart_type is not None:
+            linkage_keys.append("chart_type")
+            rule_parts.append("CHART_TYPE")
         if session_mode is not None:
             linkage_keys.append("session_mode")
             rule_parts.append("SESSION_MODE")
@@ -2084,6 +2110,10 @@ class LearningFabric:
             if self._manifest_integer(row.get("rows")) != row_count:
                 continue
             if self._manifest_integer(row.get("last_trade_number")) != last_trade:
+                continue
+            if timeframe is not None and self._manifest_timeframe(row.get("timeframe")) != timeframe:
+                continue
+            if chart_type is not None and self._manifest_chart_type(row.get("chart_type")) != chart_type:
                 continue
             if session_mode is not None:
                 candidate_session = self._manifest_session_mode(
