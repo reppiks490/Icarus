@@ -229,13 +229,75 @@
     '</section>';
   }
 
-  function renderAscendancy(capabilities, genomes, errors) {
+  function renderFoundry(foundry) {
+    if (!foundry) {
+      return '<section class="card" style="margin-top:12px"><h3>EDGE FOUNDRY</h3><div class="empty">UNAVAILABLE — candidate foundry state did not load.</div></section>';
+    }
+    const candidates = Array.isArray(foundry.candidates) ? foundry.candidates : [];
+    const stages = foundry.stage_counts || {};
+    const rows = candidates.map(row => {
+      const observations = (row.required_observations || []).map(o =>
+        String(o.name || 'UNAVAILABLE') + ':' + String(o.evidence_class || 'UNAVAILABLE') +
+        (o.usable_for_confirmation === false ? ':NO_CONFIRMATION' : '')
+      );
+      const parents = Array.isArray(row.parent_candidate_ids) ? row.parent_candidate_ids : [];
+      const budget = row.resource_budget || {};
+      return '<tr>' +
+        '<td><code title="' + h(row.candidate_id || '') + '">' + h(short(row.candidate_id || 'UNAVAILABLE')) + '</code></td>' +
+        '<td class="' + statusClass(row.stage) + '"><b>' + h(row.stage || 'UNAVAILABLE') + '</b></td>' +
+        '<td>' + h(row.origin || 'UNAVAILABLE') + '</td>' +
+        '<td class="small">' + h(row.hypothesis || 'UNAVAILABLE') + '</td>' +
+        '<td class="small">' + h(json(row.mechanism)) + '</td>' +
+        '<td class="small">' + h(json(row.expected_advantage)) + '</td>' +
+        '<td class="small">' + h(observations.join(' · ') || 'UNAVAILABLE') + '</td>' +
+        '<td class="small">' + h((row.falsifiers || []).join(' · ') || 'UNAVAILABLE') + '</td>' +
+        '<td class="small">' + h(parents.map(short).join(' · ') || 'ROOT') + '</td>' +
+        '<td class="small">eval=' + h(count(budget.max_evaluations)) + ' · wall=' + h(count(budget.max_wall_seconds)) + 's · cost=' + h(count(budget.max_cost_units)) + '</td>' +
+      '</tr>';
+    }).join('');
+
+    const lineage = (foundry.lineage || []).map(edge =>
+      '<tr><td><code>' + h(short(edge.parent_candidate_id || 'UNAVAILABLE')) + '</code></td>' +
+      '<td>→</td><td><code>' + h(short(edge.child_candidate_id || 'UNAVAILABLE')) + '</code></td></tr>'
+    ).join('');
+
+    const contracts = foundry.contracts || {};
+    return '<section class="card" style="margin-top:12px">' +
+      '<h3>EDGE FOUNDRY</h3>' +
+      '<div class="small muted">Falsifiable candidate intake across native failures, foreign lenses, public research, generated mathematics and architecture mutations. Candidate creation is not qualification.</div>' +
+      '<div class="tiles" style="margin-top:10px">' +
+        '<div class="tile"><div class="k">CANDIDATES</div><div class="v tnum">' + h(count(foundry.candidate_count)) + '</div></div>' +
+        '<div class="tile"><div class="k">PROPOSED</div><div class="v tnum">' + h(count(stages.PROPOSED)) + '</div></div>' +
+        '<div class="tile"><div class="k">TESTING</div><div class="v tnum">' + h(count(stages.TESTING)) + '</div></div>' +
+        '<div class="tile"><div class="k">VALIDATED RESEARCH</div><div class="v tnum">' + h(count(stages.VALIDATED_RESEARCH)) + '</div></div>' +
+        '<div class="tile"><div class="k">REJECTED / RETIRED</div><div class="v tnum">' + h((stages.REJECTED || 0) + (stages.RETIRED || 0)) + '</div></div>' +
+        '<div class="tile"><div class="k">AUTHORITY</div><div class="v">RESEARCH ONLY</div><div class="small muted">execution_authorized=false · production_decision_authorized=false</div></div>' +
+      '</div>' +
+      '<div class="small muted" style="margin:10px 0">qualified_shadow_reserved_for_protected_qualification=' +
+        h(contracts.qualified_shadow_reserved_for_protected_qualification === true ? 'true' : 'UNAVAILABLE') +
+        ' · unavailable_observations_cannot_confirm=' +
+        h(contracts.unavailable_observations_cannot_confirm === true ? 'true' : 'UNAVAILABLE') +
+      '</div>' +
+      '<div class="scroll" style="max-height:58vh"><table><thead><tr>' +
+        '<th>Candidate</th><th>Stage</th><th>ORIGIN</th><th>HYPOTHESIS</th><th>MECHANISM</th><th>EXPECTED ADVANTAGE</th><th>REQUIRED OBSERVATIONS</th><th>FALSIFIERS</th><th>PARENT CANDIDATES</th><th>RESOURCE BUDGET</th>' +
+      '</tr></thead><tbody>' +
+        (rows || '<tr><td colspan="10" class="empty">UNAVAILABLE — no candidates have entered the Foundry.</td></tr>') +
+      '</tbody></table></div>' +
+      '<h3 style="margin-top:16px">CANDIDATE LINEAGE</h3>' +
+      '<div class="scroll"><table><thead><tr><th>Parent</th><th></th><th>Child</th></tr></thead><tbody>' +
+        (lineage || '<tr><td colspan="3" class="empty">UNAVAILABLE — no candidate parent/child edges recorded.</td></tr>') +
+      '</tbody></table></div>' +
+      '<div class="small muted" style="margin-top:10px">PROPOSED → INCUBATING → TESTING → VALIDATED_RESEARCH. The Foundry cannot mint QUALIFIED_SHADOW; protected qualification remains independent.</div>' +
+    '</section>';
+  }
+
+  function renderAscendancy(capabilities, genomes, foundry, errors) {
     const el = document.querySelector('#ascendancyBody');
     if (!el) return;
     const warning = errors.length
       ? '<div class="empty" style="margin-bottom:10px">DEGRADED: ' + h(errors.join(' · ')) + '</div>'
       : '';
-    el.innerHTML = warning + renderCapabilities(capabilities) + renderGenomeLab(genomes);
+    el.innerHTML = warning + renderCapabilities(capabilities) + renderFoundry(foundry) + renderGenomeLab(genomes);
   }
 
   async function fetchJson(url, token) {
@@ -257,15 +319,17 @@
       const token = localStorage.getItem('icarus-engine-token') || 'icarus';
       const settled = await Promise.allSettled([
         fetchJson('/api/ascendancy/capabilities', token),
-        fetchJson('/api/ascendancy/genomes', token)
+        fetchJson('/api/ascendancy/genomes', token),
+        fetchJson('/api/ascendancy/candidates', token)
       ]);
       if (seq !== loadSeq) return;
       const capabilities = settled[0].status === 'fulfilled' ? settled[0].value : null;
       const genomes = settled[1].status === 'fulfilled' ? settled[1].value : null;
+      const foundry = settled[2].status === 'fulfilled' ? settled[2].value : null;
       const errors = settled
         .filter(x => x.status === 'rejected')
         .map(x => x.reason && x.reason.message ? x.reason.message : String(x.reason || 'UNAVAILABLE'));
-      renderAscendancy(capabilities, genomes, errors);
+      renderAscendancy(capabilities, genomes, foundry, errors);
     } catch (err) {
       if (seq !== loadSeq) return;
       el.innerHTML = '<div class="empty">ASCENDANCY state UNAVAILABLE: ' + h(err && err.message ? err.message : err) + '</div>';
