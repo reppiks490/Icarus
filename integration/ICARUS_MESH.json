@@ -5,8 +5,8 @@
   "canonical_default_branch": "main",
   "generated_from": {
     "producer": "ChatGPT",
-    "purpose": "cross-repo-federation",
-    "date": "2026-10-02"
+    "purpose": "architecture-and-integration-consolidation",
+    "date": "2026-09-24"
   },
   "policy": {
     "default_trust": "none",
