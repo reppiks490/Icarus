@@ -13,6 +13,7 @@ def test_ascendancy_rebased_organs_are_registered_without_duplicate_peer_bridge(
         "ascendancy-invention": "aion",
         "ascendancy-contribution": "daedalus",
         "ascendancy-evaluator": "daedalus",
+        "ascendancy-federated-seeds": "omega",
     }
     for subsystem_id, owner in expected.items():
         assert rows[subsystem_id]["owner"] == owner
