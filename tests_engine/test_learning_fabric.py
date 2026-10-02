@@ -2504,3 +2504,17 @@ def test_historical_artifact_session_mode_is_never_inferred_when_manifest_omits_
     card = fabric.experience_state()["by_artifact_configuration"][0]
     assert card["session_mode"] is None
     assert card["provenance_class"] == "HISTORICAL_ARTIFACT_CONFIG"
+
+    legacy_payload = {
+        "strategy_report_sha256": report_sha,
+        "asset": "NQ",
+        "timeframe": "20m",
+        "chart_type": "Heikin Ashi",
+        "rows": 4,
+        "last_trade_number": 2,
+        "notes": "",
+    }
+    expected_legacy_fingerprint = hashlib.sha256(
+        json.dumps(legacy_payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    assert card["artifact_configuration_fingerprint"] == expected_legacy_fingerprint
