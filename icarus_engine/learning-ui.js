@@ -96,7 +96,8 @@
       const shortFp = fp === 'UNAVAILABLE' ? fp : fp.slice(0, 12) + '…';
       const chart = [r.chart_type || 'UNAVAILABLE', r.timeframe || 'UNAVAILABLE'].join(' / ');
       return '<tr><td title="' + h(fp) + '"><b>' + h(shortFp) + '</b></td><td>' + h(r.provenance_class || 'UNAVAILABLE') +
-        '</td><td>' + h(r.asset) + '</td><td>' + h(r.direction) + '</td><td>' + h(chart) +
+        '</td><td>' + h(r.asset) + '</td><td>' + h(r.direction) + '</td><td>' + h(r.session_mode || 'UNAVAILABLE') +
+        '</td><td>' + h(chart) +
         '</td><td class="small">' + h(r.strategy_report_filename || 'UNAVAILABLE') +
         '</td><td class="small" title="' + h(r.strategy_report_sha256 || '') + '">' +
         h((r.strategy_report_sha256 || 'UNAVAILABLE').slice(0, 12) + (r.strategy_report_sha256 ? '…' : '')) +
@@ -203,8 +204,8 @@
       '<div class="small muted" style="margin-bottom:8px">Only runtime_live_sim trades carrying an exact closure-time configuration receipt and source-bound RUNTIME_CLOSURE_CONFIG appear here. Historical evidence cannot enter this class. Unscoped realized experience: ' + val(unscoped_count,0) + '.</div>' +
       table(['Strategy fingerprint','Provenance class','Asset','Side','Session','Chart / TF','Fill / Security','Preset','State','Count','Win rate','Net P&L','Avg P&L','PAYOFF RATIO','MAX DRAWDOWN'], configurationExperienceRows(by_configuration), 'UNMEASURED — no closure-scoped strategy experience yet.') +
       '<h3 class="small" style="margin:16px 0 8px">HISTORICAL ARTIFACT CONFIGURATION EXPERIENCE · HISTORICAL_ARTIFACT_CONFIG</h3>' +
-      '<div class="small muted" style="margin-bottom:8px">Manifest/direct strategy-report evidence is source-bound to HISTORICAL_ARTIFACT_CONFIG. It proves historical artifact identity, not live runtime state, and cannot satisfy RUNTIME_CLOSURE_CONFIG. Artifact-scoped trades: ' + val(artifact_scoped_count,0) + '.</div>' +
-      table(['Manifest-linked artifact fingerprint','Provenance class','Asset','Side','Chart / TF','Strategy report','Report SHA','State','Count','Win rate','Net P&L','Avg P&L','PROFIT FACTOR','PAYOFF RATIO','MAX DRAWDOWN'], artifactExperienceRows(by_artifact_configuration), 'UNMEASURED — no uniquely manifest-linked historical artifact experience yet.') +
+      '<div class="small muted" style="margin-bottom:8px">Manifest/direct strategy-report evidence is source-bound to HISTORICAL_ARTIFACT_CONFIG. Explicit RTH/ETH manifest session evidence is preserved and can disambiguate otherwise identical reports; missing session evidence remains UNAVAILABLE and is never inferred. Artifact-scoped trades: ' + val(artifact_scoped_count,0) + '.</div>' +
+      table(['Manifest-linked artifact fingerprint','Provenance class','Asset','Side','Session','Chart / TF','Strategy report','Report SHA','State','Count','Win rate','Net P&L','Avg P&L','PROFIT FACTOR','PAYOFF RATIO','MAX DRAWDOWN'], artifactExperienceRows(by_artifact_configuration), 'UNMEASURED — no uniquely manifest-linked historical artifact experience yet.') +
       '<h3 class="small" style="margin:16px 0 8px">DATASET COVERAGE · TRAINING REPLAY</h3>' +
       table(['Asset','Cadence','Class','Rows','Coverage','Representation','Replay status','Action'], datasetRows(datasets,runs), 'UNAVAILABLE — no local historical datasets catalogued yet.') +
       '<h3 class="small" style="margin:16px 0 8px">LEARNING BACKLOG</h3>' +
