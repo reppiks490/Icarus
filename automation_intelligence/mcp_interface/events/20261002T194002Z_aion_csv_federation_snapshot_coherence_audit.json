@@ -1,0 +1,64 @@
+{
+  "schema_version": "icarus-mcp-event-v1",
+  "category": "AUDIT",
+  "source": "AION_AUTOMATION",
+  "execution_authorized": false,
+  "title": "CSV Evidence Lab federation temporal coherence audit",
+  "net_new_delta": "CSV_EVIDENCE_FEDERATION_MIXES_NONCOHERENT_RUN_GENERATIONS",
+  "claim_evidence_status": "PROVENANCE_VERIFICATION_PRESENT_BUT_CROSS_FILE_AS_OF_SNAPSHOT_NOT_ESTABLISHED",
+  "falsification_result": "FALSIFIED_AS_COHERENT_SINGLE_RUN_SNAPSHOT",
+  "maturity_change": "NONE",
+  "evidence": [
+    {
+      "repository": "reppiks490/Icarus",
+      "commit": "d32b657150483863072652787c057e852b87b73b",
+      "finding": "EvidenceLabRemoteSync fetches five mutable files sequentially and verifies each Git blob, but does not pin all files to one producer commit/tree."
+    },
+    {
+      "repository": "reppiks490/icarus-csv-evidence-lab",
+      "path": "automation_intelligence/advanced_csv/evidence_state.json",
+      "blob": "f0d521d8df2ad9817e00566d4769ec732482acd2",
+      "run_id": null,
+      "status": "EMPTY_READY"
+    },
+    {
+      "repository": "reppiks490/icarus-csv-evidence-lab",
+      "path": "automation_intelligence/advanced_csv/heartbeat.json",
+      "blob": "f10f88748c9a36ccff04aba78e84596b146bd89d",
+      "run_id": "advanced-csv-20261002T151500Z",
+      "status": "RUN_PERSISTED"
+    },
+    {
+      "repository": "reppiks490/icarus-csv-evidence-lab",
+      "path": "automation_intelligence/advanced_csv/latest.json",
+      "blob": "d12b4f5f1a618a65bc09a877f8cfee06d659ffa1",
+      "run_id": "advanced-csv-20260929T191500Z",
+      "status": "RUN_PERSISTED"
+    },
+    {
+      "repository": "reppiks490/icarus-csv-evidence-lab",
+      "path": "automation_intelligence/advanced_csv/finalization_state.json",
+      "blob": "9fe319b026328906f3d7e113b6bd7bf34f9816c3",
+      "run_id": "advanced-csv-20261002T191500Z",
+      "status": "RUN_PERSISTED"
+    }
+  ],
+  "blockers": [
+    "No single producer commit/tree binds all required federation receipts",
+    "RUN_ID disagreement across heartbeat/latest/finalization; evidence_state RUN_ID is null",
+    "No quantitative/performance inference is admissible from this federation state"
+  ],
+  "next_decisive_experiment": "Pin one producer commit SHA/tree, fetch all required files at that immutable ref, require coherent RUN_ID semantics (or explicitly versioned asynchronous semantics), then adversarially mutate/advance pointers between reads and verify fail-closed behavior.",
+  "aion": {
+    "status": "MATERIAL_FINDING",
+    "finding": "Durable causal memory must not treat the current CSV federation read as one as-of state because verified blobs belong to different run generations."
+  },
+  "ascension": {
+    "status": "BLOCKING_EVIDENCE_GAP",
+    "finding": "Per-file Git-blob verification does not establish cross-file snapshot coherence; authority must fail closed until a single immutable producer revision binds the receipt set."
+  },
+  "prometheus": {
+    "status": "MATERIAL_FINDING",
+    "finding": "Prioritize an adversarial torn-read experiment and immutable-ref snapshot contract before mining CSV federation outputs for hypotheses."
+  }
+}
