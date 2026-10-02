@@ -429,6 +429,15 @@ class EvolutionRemoteSync:
                             remote_path=path,
                             blob_sha=blob_sha,
                         )
+                        prior_event = events_by_id.get(event["event_id"])
+                        if (
+                            isinstance(prior_event, Mapping)
+                            and prior_event.get("remote_blob_sha") != blob_sha
+                        ):
+                            raise ValueError(
+                                "event_id is already bound to a different "
+                                "immutable Git blob"
+                            )
                     elif declared_schema in _IGNORED_SCHEMA_VERSIONS:
                         processed.add(blob_sha)
                         state["ignored_total"] = int(
