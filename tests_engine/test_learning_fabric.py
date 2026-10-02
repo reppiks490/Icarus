@@ -1701,3 +1701,191 @@ def test_drift_retirement_requires_non_overlapping_oos_evidence(tmp_path):
     assert row["effective_sample_count"] == 2
     assert row["overlap_purged"] == 6
     assert fabric.shadow_calibration_state()["drift_retired_model_count"] == 0
+
+
+def _write_intake_manifest(path: Path, rows: list[dict[str, object]]) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    header = [
+        "index","sha256","canonical_filename","duplicate_copies",
+        "all_observed_filenames","bytes","format","artifact_class","symbol",
+        "timeframe","chart_type","rows","first_or_trading_range",
+        "last_or_backtesting_range","last_trade_number","net_profit_usd",
+        "max_drawdown_intrabar_usd","notes",
+    ]
+    import csv
+    with path.open("w", encoding="utf-8", newline="") as fh:
+        writer = csv.DictWriter(fh, fieldnames=header)
+        writer.writeheader()
+        for i, row in enumerate(rows):
+            writer.writerow({**{key: "" for key in header}, "index": i, **row})
+    return path
+
+
+def test_manifest_unique_strategy_report_links_historical_trade_configuration(tmp_path):
+    import hashlib
+    from icarus_engine.learning_fabric import LearningFabric
+
+    trade_path = _trade_list(
+        tmp_path / "history" / "drop" / "THE_PULSE_OF_ICARUS_CME_MINI_NQ1!_2026-09-30.csv"
+    )
+    trade_sha = hashlib.sha256(trade_path.read_bytes()).hexdigest()
+    report_sha = "d" * 64
+    _write_intake_manifest(
+        tmp_path / "history" / "EXPORT_INTAKE_MANIFEST.csv",
+        [
+            {
+                "sha256": trade_sha,
+                "canonical_filename": trade_path.name,
+                "all_observed_filenames": trade_path.name,
+                "format": "csv",
+                "artifact_class": "trade_list",
+                "symbol": "CME_MINI:NQ1!",
+                "rows": 4,
+                "last_trade_number": 2,
+                "first_or_trading_range": "2024-06-03 10:20",
+                "last_or_backtesting_range": "2024-06-03 12:20",
+            },
+            {
+                "sha256": report_sha,
+                "canonical_filename": "THE_PULSE_OF_ICARUS_CME_MINI_NQ1!_2026-09-30.xlsx",
+                "format": "xlsx",
+                "artifact_class": "strategy_report_xlsx",
+                "symbol": "CME_MINI:NQ1!",
+                "timeframe": "20 minutes",
+                "chart_type": "Heikin Ashi",
+                "rows": 4,
+                "last_trade_number": 2,
+                "net_profit_usd": "700427.0",
+                "max_drawdown_intrabar_usd": "165324.0",
+                "notes": "commission=2; slippage=0 ticks; execution=On bar close; order_delay=One tick",
+            },
+        ],
+    )
+
+    fabric = LearningFabric(tmp_path)
+    scan = fabric.scan_history()
+    assert scan["files_seen"] == 1
+    dataset = fabric.dataset(scan["dataset_ids"][0])
+    assert dataset["artifact_class"] == "trade_list"
+    result = fabric.backfill_dataset(dataset["dataset_id"])
+    assert result["status"] == "complete"
+
+    state = fabric.experience_state()
+    assert state["by_configuration"] == []
+    assert state["artifact_scoped_count"] == 2
+    assert state["unscoped_count"] == 0
+    assert len(state["by_artifact_configuration"]) == 1
+    card = state["by_artifact_configuration"][0]
+    assert card["asset"] == "NQ"
+    assert card["count"] == 2
+    assert card["timeframe"] == "20m"
+    assert card["chart_type"] == "Heikin Ashi"
+    assert card["strategy_report_sha256"] == report_sha
+    assert card["strategy_report_filename"].endswith(".xlsx")
+    assert card["linkage_rule"] == "UNIQUE_SYMBOL_ROWS_LAST_TRADE"
+    assert len(card["artifact_configuration_fingerprint"]) == 64
+    assert card["provenance_quality"] == "MANIFEST_UNIQUE_STRATEGY_REPORT_LINK"
+    assert card["execution_authorized"] is False
+    assert card["production_decision_authorized"] is False
+
+    rows = fabric._conn.execute(
+        "SELECT metadata_json FROM experiences ORDER BY experience_id"
+    ).fetchall()
+    for row in rows:
+        meta = json.loads(row["metadata_json"])
+        assert meta["artifact_configuration_fingerprint"] == card["artifact_configuration_fingerprint"]
+        assert meta["provenance_quality"] == "MANIFEST_UNIQUE_STRATEGY_REPORT_LINK"
+        assert meta["strategy_report_sha256"] == report_sha
+        assert "strategy_fingerprint" not in meta
+
+
+def test_manifest_ambiguous_strategy_report_linkage_fails_closed(tmp_path):
+    import hashlib
+    from icarus_engine.learning_fabric import LearningFabric
+
+    trade_path = _trade_list(tmp_path / "history" / "drop" / "THE_PULSE_NQ.csv")
+    trade_sha = hashlib.sha256(trade_path.read_bytes()).hexdigest()
+    common = {
+        "format": "xlsx",
+        "artifact_class": "strategy_report_xlsx",
+        "symbol": "CME_MINI:NQ1!",
+        "timeframe": "20 minutes",
+        "rows": 4,
+        "last_trade_number": 2,
+    }
+    _write_intake_manifest(
+        tmp_path / "history" / "EXPORT_INTAKE_MANIFEST.csv",
+        [
+            {
+                "sha256": trade_sha,
+                "canonical_filename": trade_path.name,
+                "format": "csv",
+                "artifact_class": "trade_list",
+                "symbol": "CME_MINI:NQ1!",
+                "rows": 4,
+                "last_trade_number": 2,
+            },
+            {
+                **common,
+                "sha256": "a" * 64,
+                "canonical_filename": "candidate-a.xlsx",
+                "chart_type": "Candles",
+            },
+            {
+                **common,
+                "sha256": "b" * 64,
+                "canonical_filename": "candidate-b.xlsx",
+                "chart_type": "Heikin Ashi",
+            },
+        ],
+    )
+
+    fabric = LearningFabric(tmp_path)
+    scan = fabric.scan_history()
+    dataset = fabric.dataset(scan["dataset_ids"][0])
+    fabric.backfill_dataset(dataset["dataset_id"])
+
+    state = fabric.experience_state()
+    assert state["by_configuration"] == []
+    assert state["by_artifact_configuration"] == []
+    assert state["artifact_scoped_count"] == 0
+    assert state["unscoped_count"] == 2
+    row = fabric._conn.execute(
+        "SELECT metadata_json FROM experiences ORDER BY experience_id LIMIT 1"
+    ).fetchone()
+    meta = json.loads(row["metadata_json"])
+    assert "artifact_configuration_fingerprint" not in meta
+    assert meta["manifest_linkage_status"] == "AMBIGUOUS"
+    assert meta["manifest_linkage_candidates"] == 2
+
+
+def test_manifest_report_linkage_never_promotes_to_runtime_strategy_configuration(tmp_path):
+    from icarus_engine.learning_fabric import LearningFabric
+
+    fabric = LearningFabric(tmp_path)
+    fabric.record_experience({
+        "source": "historical_trade_list",
+        "source_record_id": "manifest-linked",
+        "asset": "NQ",
+        "direction": "long",
+        "entry_at": "2024-06-03T10:20:00Z",
+        "exit_at": "2024-06-03T11:00:00Z",
+        "qty": 1,
+        "entry_price": 100.0,
+        "exit_price": 101.0,
+        "pnl": 50.0,
+        "metadata": {
+            "artifact_configuration_fingerprint": "f" * 64,
+            "provenance_quality": "MANIFEST_UNIQUE_STRATEGY_REPORT_LINK",
+            "timeframe": "20m",
+            "chart_type": "Heikin Ashi",
+            "strategy_report_sha256": "e" * 64,
+            "strategy_report_filename": "report.xlsx",
+            "linkage_rule": "UNIQUE_SYMBOL_ROWS_LAST_TRADE",
+        },
+    })
+    state = fabric.experience_state()
+    assert state["by_configuration"] == []
+    assert state["artifact_scoped_count"] == 1
+    assert len(state["by_artifact_configuration"]) == 1
+    assert state["by_artifact_configuration"][0]["artifact_configuration_fingerprint"] == "f" * 64
