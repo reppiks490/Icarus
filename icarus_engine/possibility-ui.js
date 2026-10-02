@@ -2,6 +2,7 @@
 (() => {
   let timer = null;
   let loading = false;
+  let pendingLoad = false;
   let selected = '';
   let assetNames = [];
   const evidenceFeatures = [
@@ -231,10 +232,12 @@
   }
 
   async function loadPossibility() {
-    if (loading) return;
+    if (loading) { pendingLoad = true; return; }
     const panel = document.querySelector('#possibilityPanel');
     if (!panel) return;
+    const requestAsset = selected;
     loading = true;
+    pendingLoad = false;
     try {
       const token = localStorage.getItem('icarus-engine-token') || 'icarus';
       const query = selected ? '?asset='+encodeURIComponent(selected) : '';
@@ -250,11 +253,13 @@
         ledger = await ledgerResponse.json();
         if (!ledgerResponse.ok) ledger = {error:ledger.detail || ledger.error || ('HTTP '+ledgerResponse.status)};
       } catch (e) { ledger = {error:String(e && e.message ? e.message : e)}; }
+      if (requestAsset !== selected) { pendingLoad = true; return; }
       renderPossibility(data, ledger);
     } catch (err) {
-      panel.innerHTML = '<h2>ICARUS Ψ · LATENT PRESSURE</h2><div class="empty">possibility engine unavailable: '+h(err.message||err)+'</div>';
+      if (requestAsset === selected) panel.innerHTML = '<h2>ICARUS Ψ · LATENT PRESSURE</h2><div class="empty">possibility engine unavailable: '+h(err.message||err)+'</div>';
     } finally {
       loading = false;
+      if (pendingLoad && (location.hash || '#overview').slice(1) === 'possibility') { pendingLoad = false; setTimeout(loadPossibility, 0); }
     }
   }
 

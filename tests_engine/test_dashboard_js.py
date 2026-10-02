@@ -404,3 +404,137 @@ def test_learning_dashboard_surfaces_shadow_recalibration():
     assert "shadow_calibration" in ui
     assert "calibrated_validation_brier" in ui
     assert "automatic probability rewrite: off" in ui.lower()
+
+
+def test_every_advertised_dashboard_command_has_a_ui_dispatch_case():
+    dashboard = (REPO / "icarus_engine/dashboard.html").read_text(encoding="utf-8")
+    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
+    command_block = re.search(r"COMMANDS\s*=\s*\[(.*?)\]\s*\n\s*def serve", server, flags=re.DOTALL)
+    assert command_block, "server COMMANDS registry was not found"
+    advertised = set(re.findall(r'"id": "([^"]+)"', command_block.group(1)))
+    dispatcher = re.search(
+        r"async function runCommand\(id, asset\)\s*\{(.*?)\n\}\n/\* palette \*/",
+        dashboard,
+        flags=re.DOTALL,
+    )
+    assert dispatcher, "dashboard runCommand dispatcher was not found"
+    handled = set(re.findall(r"case '([^']+)'", dispatcher.group(1)))
+    assert advertised <= handled, "dashboard has dead advertised commands: " + ", ".join(sorted(advertised - handled))
+
+
+def test_dashboard_control_failures_are_visible_and_backtest_polling_is_navigation_safe():
+    dashboard = (REPO / "icarus_engine/dashboard.html").read_text(encoding="utf-8")
+    assert "request failed: " in dashboard
+    assert "async function copyText" in dashboard
+    assert "copy failed: " in dashboard
+    assert "inputs unavailable: " in dashboard
+    assert "backtest start failed: " in dashboard
+    assert "backtest status failed: " in dashboard
+    assert "compare failed: " in dashboard
+    assert "if (view === 'backtest' && $('#btOut')) renderBacktest();" in dashboard
+    assert "case 'backtest': BT.asset = A || BT.asset; setView('backtest'); return;" in dashboard
+    assert '<a class="sm" style="margin-left:auto" href="/api/backtest/' not in dashboard
+    assert "trade history unavailable:" in dashboard
+    assert "Go-live integrity unavailable:" in dashboard
+    assert "Field Agent unavailable:" in dashboard
+    assert "} catch (e) {}" not in dashboard
+
+
+def test_command_scope_renderer_does_not_offer_all_assets_to_asset_only_actions():
+    dashboard = (REPO / "icarus_engine/dashboard.html").read_text(encoding="utf-8")
+    assert "const scopeOptions = c => (String(c.scope||'').includes('all')" in dashboard
+    assert "scopeOptions(c)" in dashboard
+    assert 'const opts = `<option value="*">all assets</option>`' not in dashboard
+
+
+def test_interactive_panels_preserve_latest_user_selection_during_refresh():
+    dashboard = (REPO / "icarus_engine/dashboard.html").read_text(encoding="utf-8")
+    research = (REPO / "icarus_engine/research-ui.js").read_text(encoding="utf-8")
+    market = (REPO / "icarus_engine/market-data-ui.js").read_text(encoding="utf-8")
+    psi = (REPO / "icarus_engine/possibility-ui.js").read_text(encoding="utf-8")
+    chronofold = (REPO / "icarus_engine/chronofold-ui.js").read_text(encoding="utf-8")
+    commissioning = (REPO / "icarus_engine/commissioning-ui.js").read_text(encoding="utf-8")
+    sibyl = (REPO / "icarus_engine/sibyl-ui.js").read_text(encoding="utf-8")
+    apex = (REPO / "icarus_engine/apex-ui.js").read_text(encoding="utf-8")
+
+    assert "inputsLoadSeq" in dashboard
+    assert "seq !== inputsLoadSeq" in dashboard
+    assert "researchPendingLoad" in research
+    assert "marketDataPendingLoad" in market
+    assert "requestAsset!==marketDataState.asset" in market
+    assert "pendingLoad = true" in psi
+    assert "requestAsset !== selected" in psi
+    assert "pendingLoad=true" in chronofold
+    assert "requestAsset!==selected" in chronofold
+    assert "pendingLoad=true" in commissioning
+    assert "requestAsset!==selected" in commissioning
+    assert "loadSeq" in sibyl and "seq !== loadSeq" in sibyl
+    assert "loadSeq" in apex and "seq !== loadSeq" in apex
+
+
+def test_financial_data_refreshes_are_latest_request_wins():
+    ui = (REPO / "icarus_engine/sources-ui.js").read_text(encoding="utf-8")
+    assert "sourcesPendingLoad" in ui
+    assert "sourceRecordsSeq" in ui
+    assert "seq!==sourceRecordsSeq" in ui
+    assert "$('#sourceFilterAsset').value!==asset" in ui
+
+
+def test_stateful_controls_are_single_flight_and_refresh_after_actions():
+    dashboard = (REPO / "icarus_engine/dashboard.html").read_text(encoding="utf-8")
+    control = (REPO / "icarus_engine/engine-control-ui.js").read_text(encoding="utf-8")
+    autopilot = (REPO / "icarus_engine/autopilot-ui.js").read_text(encoding="utf-8")
+    learning = (REPO / "icarus_engine/learning-ui.js").read_text(encoding="utf-8")
+    market = (REPO / "icarus_engine/market-data-ui.js").read_text(encoding="utf-8")
+
+    assert "async function withBusyButton" in dashboard
+    assert "withBusyButton(b, () => runCommand" in dashboard
+    assert "engineControlPendingLoad" in control
+    assert "engineControlRunning=new Set()" in control
+    assert "action already running" in control
+    assert "autopilotPendingLoad" in autopilot
+    assert "autopilotMutationBusy" in autopilot
+    assert "runAutopilotMutation" in autopilot
+    assert "Autopilot control already running" in autopilot
+    assert "mutationBusy" in learning
+    assert "Learning action already running" in learning
+    assert "let loadSeq = 0;" in learning
+    assert "seq !== loadSeq" in learning
+    assert "const requestAsset=marketDataState.asset;" in market
+    assert "requestAsset!==marketDataState.asset" in market
+
+
+def test_command_palette_and_scheduler_mutations_are_single_flight():
+    dashboard = (REPO / "icarus_engine/dashboard.html").read_text(encoding="utf-8")
+    research = (REPO / "icarus_engine/research-ui.js").read_text(encoding="utf-8")
+    sources = (REPO / "icarus_engine/sources-ui.js").read_text(encoding="utf-8")
+
+    assert "const commandInflight = new Set();" in dashboard
+    assert "async function adminCommand" in dashboard
+    assert "command already running:" in dashboard
+    assert "researchOperation($('#rsCancel'),'cancel'" in research
+    assert "researchOperation($('#rsAnalysisCancel'),'analysis/cancel'" in research
+    assert "configure(JSON.parse($('#rsAdaptationConfig').value),$('#rsSaveAdaptation'))" in research
+    assert "configure({enabled:true},$('#rsEnableAdaptation'))" in research
+    assert "configure(JSON.parse($('#sourceWatchConfig').value),$('#sourceWatchSave'))" in sources
+    assert "configure({enabled:true},$('#sourceWatchEnable'))" in sources
+
+
+def test_dashboard_catalogs_recover_after_transient_startup_failures():
+    dashboard = (REPO / "icarus_engine/dashboard.html").read_text(encoding="utf-8")
+    assert "async function refreshUiCatalogs()" in dashboard
+    assert "Promise.allSettled([get('/api/presets'), get('/api/commands'), get('/api/assets')])" in dashboard
+    assert "const CATALOG_READY = {presets:false, commands:false, registry:false};" in dashboard
+    assert "CATALOG_READY.presets = true;" in dashboard
+    assert "CATALOG_READY.commands = true;" in dashboard
+    assert "CATALOG_READY.registry = true;" in dashboard
+    assert "if (!CATALOG_READY.presets || !CATALOG_READY.commands || !CATALOG_READY.registry) refreshUiCatalogs();" in dashboard
+    assert "catalogRefreshBusy" in dashboard
+
+
+def test_autopilot_operator_actions_are_not_silent():
+    ui = (REPO / "icarus_engine/autopilot-ui.js").read_text(encoding="utf-8")
+    assert "admin('/admin/autopilot/step',{},true)" not in ui
+    assert "admin('/admin/autopilot/config',{cadence_seconds:Number(e.target.value)},true)" not in ui
+    assert "admin('/admin/autopilot/config',{robustness_windows:Number(e.target.value)},true)" not in ui
+    assert "admin('/admin/autopilot/config',{assets:e.target.value?[e.target.value]:[]},true)" not in ui

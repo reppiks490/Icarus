@@ -1,5 +1,5 @@
 /* Local research controls. External/model text is escaped; model calls require an action. */
-let researchLoading = false, researchJob = null, researchWorkflow = null;
+let researchLoading = false, researchPendingLoad = false, researchJob = null, researchWorkflow = null;
 let researchEvidence = new Set(), researchQualified = false, researchAdaptationLoaded = false;
 const researchRoles = ['source-auditor','regime-analyst','risk-auditor','openai-review','anthropic-review'];
 function researchHtml(assets) {
@@ -64,8 +64,10 @@ function researchStages(workflow) {
   return researchRoles.map(role=>{const stage=stages.find(s=>s.stage===role);return `<div class="tile"><div class="k">${esc(role)}</div><div class="v" style="font-size:14px">${esc(stage?.status||'waiting')}</div><div class="small muted">${esc(stage?.model||'')}</div>${stage?.result?.decision?`<p>${esc(stage.result.decision)}</p>`:''}${stage?.error?`<p class="neg">${esc(stage.error)}</p>`:''}</div>`;}).join('');
 }
 async function loadResearch() {
-  if (researchLoading || view!=='research') return;
+  if (view!=='research') return;
+  if (researchLoading) { researchPendingLoad=true; return; }
   researchLoading=true;
+  researchPendingLoad=false;
   try {
     const data=await researchGet('/api/research');
     if(view!=='research') return;
@@ -113,7 +115,10 @@ async function loadResearch() {
     } else {$('#rsStages').innerHTML=researchStages(null);$('#rsAnalysisCancel').disabled=true;}
     await loadResearchAdaptation();
   } catch(e) {const el=$('#researchStatus');if(el) el.textContent='Research unavailable: '+e.message;}
-  finally {researchLoading=false;}
+  finally {
+    researchLoading=false;
+    if(researchPendingLoad&&view==='research'){researchPendingLoad=false;setTimeout(loadResearch,0);}
+  }
 }
 async function loadResearchAdaptation() {
   try {
@@ -156,7 +161,7 @@ function wireResearch() {
       if(answer) {researchJob=answer.job;await loadResearch();}
     } catch(e) {toast(e.message,true);} finally {button.disabled=false;}
   };
-  $('#rsCancel').onclick=async()=>{if(researchJob) {await admin('/admin/research/cancel',{job:researchJob});await loadResearch();}};
+  $('#rsCancel').onclick=()=>{if(researchJob) researchOperation($('#rsCancel'),'cancel',{job:researchJob});};
   $('#rsAnalyse').onclick=async()=>{
     const button=$('#rsAnalyse');button.disabled=true;
     try {
@@ -166,15 +171,18 @@ function wireResearch() {
       if(answer) {researchWorkflow=answer.id;await loadResearch();}
     } catch(e) {toast(e.message,true);} finally {researchUpdateGate();}
   };
-  $('#rsAnalysisCancel').onclick=async()=>{if(researchWorkflow) {await admin('/admin/research/analysis/cancel',{id:researchWorkflow});await loadResearch();}};
+  $('#rsAnalysisCancel').onclick=()=>{if(researchWorkflow) researchOperation($('#rsAnalysisCancel'),'analysis/cancel',{id:researchWorkflow});};
   $('#rsRollback').onclick=()=>researchOperation($('#rsRollback'),'rollback',{asset:$('#rsAsset').value,operation_id:researchId()});
   $('#rsRecover').onclick=()=>researchOperation($('#rsRecover'),'recover',{asset:$('#rsAsset').value});
-  const configure=async(config)=>{
+  const configure=async(config,button)=>{
+    if(button&&button.disabled)return;
+    if(button)button.disabled=true;
     try {const result=await admin('/admin/research/adaptation',config);if(result) {researchAdaptationLoaded=false;await loadResearchAdaptation();}}
     catch(e) {toast(e.message,true);}
+    finally{if(button&&button.isConnected)button.disabled=false;}
   };
-  $('#rsSaveAdaptation').onclick=()=>{try {configure(JSON.parse($('#rsAdaptationConfig').value));}catch(e){toast(e.message,true);}};
-  $('#rsEnableAdaptation').onclick=()=>configure({enabled:true});
-  $('#rsDisableAdaptation').onclick=()=>configure({enabled:false});
+  $('#rsSaveAdaptation').onclick=()=>{try {configure(JSON.parse($('#rsAdaptationConfig').value),$('#rsSaveAdaptation'));}catch(e){toast(e.message,true);}};
+  $('#rsEnableAdaptation').onclick=()=>configure({enabled:true},$('#rsEnableAdaptation'));
+  $('#rsDisableAdaptation').onclick=()=>configure({enabled:false},$('#rsDisableAdaptation'));
   loadResearch();
 }
