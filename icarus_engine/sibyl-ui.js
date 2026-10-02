@@ -2,6 +2,7 @@
   'use strict';
 
   let timer = null;
+  let loadSeq = 0;
   let selectedAsset = '';
 
   function h(v) {
@@ -232,6 +233,7 @@
   }
 
   async function loadSibyl() {
+    var seq = ++loadSeq;
     var el = document.querySelector('#sibylPanel');
     if (!el) return;
     try {
@@ -242,8 +244,10 @@
       var r = await fetch('/api/sibyl' + qs, {cache:'no-store', headers:{'Authorization':'Bearer ' + tok}});
       var d = await r.json();
       if (!r.ok) throw new Error(d.detail || ('SIBYL HTTP ' + r.status));
+      if (seq !== loadSeq) return;
       render(d);
     } catch (err) {
+      if (seq !== loadSeq) return;
       el.innerHTML = '<h2>SIBYL Ω</h2><div class="empty">future-lightcone state unavailable: ' + h(err.message || err) + '</div>';
     }
   }
