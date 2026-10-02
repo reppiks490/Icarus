@@ -1296,14 +1296,27 @@ class LearningFabric:
         rows = self._conn.execute(
             """SELECT p.*,o.success,o.brier,o.absolute_error
                FROM predictions p JOIN outcomes o ON o.prediction_id=p.prediction_id
-               ORDER BY p.producer,p.asset,p.regime,p.horizon_seconds,p.target"""
+               ORDER BY p.producer,p.asset,p.regime,p.horizon_seconds,p.target,
+                        p.source_commit,p.prediction_id"""
         ).fetchall()
-        groups: dict[tuple[str, str, str, int, str], list[sqlite3.Row]] = {}
+        groups: dict[tuple[str, str, str, int, str, str, str], list[sqlite3.Row]] = {}
         for row in rows:
-            key = (row["producer"], row["asset"], row["regime"], int(row["horizon_seconds"]), row["target"])
+            target = str(row["target"])
+            prediction_label = (
+                "__numeric__"
+                if target == "numeric"
+                else self._calibration_prediction_label(json.loads(row["prediction_json"]))
+            )
+            source_commit = _git_sha(row["source_commit"])
+            key = (
+                row["producer"], row["asset"], row["regime"],
+                int(row["horizon_seconds"]), target, prediction_label, source_commit,
+            )
             groups.setdefault(key, []).append(row)
         cards = []
-        for (producer, asset, regime, horizon, target), group in sorted(groups.items()):
+        for (
+            producer, asset, regime, horizon, target, prediction_label, source_commit
+        ), group in sorted(groups.items()):
             settled = len(group)
             classified = [r for r in group if r["success"] is not None]
             successes = sum(int(r["success"]) for r in classified)
@@ -1320,6 +1333,8 @@ class LearningFabric:
                 "regime": regime,
                 "horizon_seconds": horizon,
                 "target": target,
+                "prediction_label": prediction_label,
+                "source_commit": source_commit,
                 "settled": settled,
                 "successes": successes,
                 "hit_rate": hit_rate,
@@ -2459,7 +2474,10 @@ class LearningFabric:
                     score = max(0.0, min(1.0, float(hit)))
                 else:
                     continue
-                model_id = "learning:{producer}:{asset}:{regime}:{horizon_seconds}:{target}".format(**card)
+                model_id = (
+                    "learning:{producer}:{asset}:{regime}:{horizon_seconds}:{target}:"
+                    "{prediction_label}:{source_commit}"
+                ).format(**card)
                 apex.store.record_model_credibility({
                     "model_id": model_id,
                     "as_of": as_of,
@@ -2469,12 +2487,18 @@ class LearningFabric:
                     "hit_rate": hit,
                     "mean_brier": brier,
                     "calibration_gap": gap,
+                    "prediction_label": card.get("prediction_label"),
+                    "source_commit": card.get("source_commit"),
                     "source": "continuous-learning-fabric",
                     **_authority(),
                 })
                 published += 1
             except Exception as ex:
-                errors[str(card.get("producer") or "unknown")] = f"{type(ex).__name__}: {ex}"[:500]
+                scope = ":".join(
+                    str(card.get(k) or "unknown")
+                    for k in ("producer", "asset", "regime", "horizon_seconds", "target", "prediction_label", "source_commit")
+                )
+                errors[scope] = f"{type(ex).__name__}: {ex}"[:500]
         return {"status": "ok" if not errors else "partial", "published": published, "errors": errors}
 
     def tick(self) -> dict[str, Any]:
