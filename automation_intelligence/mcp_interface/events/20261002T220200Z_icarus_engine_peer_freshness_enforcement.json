@@ -3,7 +3,7 @@
   "event_id": "icarus-engine-peer-freshness-enforcement-20261002T220200Z",
   "category": "INTEGRATION",
   "severity": "success",
-  "status": "implemented",
+  "status": "verified",
   "subsystems": [
     "infrastructure",
     "provenance",
@@ -21,7 +21,8 @@
     "tests_engine/test_brain_sync.py covers stale packet, future skew, and contract drift while preserving independent event ingest",
     ".github/workflows/live-engine-federation-gate.yml validates the live peer packet freshness proof",
     "execution_authorized=false",
-    "production_decision_authorized=false"
+    "production_decision_authorized=false",
+    "exact-head live-engine-federation-gate run 37070372062 passed"
   ],
   "execution_authorized": false,
   "production_decision_authorized": false
