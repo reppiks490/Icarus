@@ -418,6 +418,12 @@ def test_malformed_legacy_rejection_state_is_normalized(tmp_path):
                 "execution_authorized": False,
                 "production_decision_authorized": False,
                 "validator_revision": VALIDATOR_REVISION,
+                "ingested_total": "bad",
+                "ignored_total": None,
+                "rejected_total": -7,
+                "processed_blob_shas": None,
+                "events": {"not": "a list"},
+                "subsystems": ["not", "a", "mapping"],
                 "rejected_blob_shas": None,
                 "rejected_history_blob_shas": "not-a-list",
                 "rejected_blob_errors": [],
@@ -439,7 +445,11 @@ def test_malformed_legacy_rejection_state_is_normalized(tmp_path):
 
     assert state["status"] == "green"
     assert state["current_rejected_count"] == 0
+    assert state["ingested_total"] == 0
+    assert state["ignored_total"] == 0
     assert state["rejected_total"] == 0
+    assert state["events"] == []
+    assert state["subsystems"] == {}
     assert state["validator_revision"] == VALIDATOR_REVISION
 
 
