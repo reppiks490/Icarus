@@ -1473,14 +1473,37 @@ class LearningFabric:
         ) / n
 
         ordered = sorted(pairs, key=lambda item: (item[0], item[2]))
-        bin_target = min(10, max(1, int(math.ceil(math.sqrt(n)))))
-        gaps: list[tuple[int, float]] = []
-        for index in range(bin_target):
-            start = (index * n) // bin_target
-            end = ((index + 1) * n) // bin_target
-            chunk = ordered[start:end]
-            if not chunk:
+        probability_groups: list[list[tuple[float, int, str]]] = []
+        for pair in ordered:
+            if not probability_groups or pair[0] != probability_groups[-1][0][0]:
+                probability_groups.append([pair])
+            else:
+                probability_groups[-1].append(pair)
+
+        bin_target = min(
+            10,
+            max(1, int(math.ceil(math.sqrt(n)))),
+            len(probability_groups),
+        )
+        chunks: list[list[tuple[float, int, str]]] = []
+        current: list[tuple[float, int, str]] = []
+        processed = 0
+        for group_index, group in enumerate(probability_groups):
+            current.extend(group)
+            processed += len(group)
+            if len(chunks) >= bin_target - 1:
                 continue
+            remaining_groups = len(probability_groups) - group_index - 1
+            remaining_bins = bin_target - len(chunks) - 1
+            target_end = ((len(chunks) + 1) * n) / bin_target
+            if processed >= target_end and remaining_groups >= remaining_bins:
+                chunks.append(current)
+                current = []
+        if current:
+            chunks.append(current)
+
+        gaps: list[tuple[int, float]] = []
+        for chunk in chunks:
             mean_p = sum(p for p, _, _ in chunk) / len(chunk)
             mean_y = sum(y for _, y, _ in chunk) / len(chunk)
             gaps.append((len(chunk), abs(mean_p - mean_y)))
