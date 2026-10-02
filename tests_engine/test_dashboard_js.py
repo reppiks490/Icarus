@@ -404,3 +404,45 @@ def test_learning_dashboard_surfaces_shadow_recalibration():
     assert "shadow_calibration" in ui
     assert "calibrated_validation_brier" in ui
     assert "automatic probability rewrite: off" in ui.lower()
+
+
+def test_every_advertised_dashboard_command_has_a_ui_dispatch_case():
+    dashboard = (REPO / "icarus_engine/dashboard.html").read_text(encoding="utf-8")
+    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
+    command_block = re.search(r"COMMANDS = \\[(.*?)\\]\\n\\n", server, flags=re.DOTALL)
+    assert command_block, "server COMMANDS registry was not found"
+    advertised = set(re.findall(r'"id": "([^"]+)"', command_block.group(1)))
+    dispatcher = re.search(
+        r"async function runCommand\\(id, asset\\) \\{(.*?)\\n\\}\\n/\\* palette \\*/",
+        dashboard,
+        flags=re.DOTALL,
+    )
+    assert dispatcher, "dashboard runCommand dispatcher was not found"
+    handled = set(re.findall(r"case '([^']+)'", dispatcher.group(1)))
+    assert advertised <= handled, "dashboard has dead advertised commands: " + ", ".join(sorted(advertised - handled))
+
+
+def test_dashboard_control_failures_are_visible_and_backtest_polling_is_navigation_safe():
+    dashboard = (REPO / "icarus_engine/dashboard.html").read_text(encoding="utf-8")
+    assert "request failed: " in dashboard
+    assert "async function copyText" in dashboard
+    assert "copy failed: " in dashboard
+    assert "inputs unavailable: " in dashboard
+    assert "backtest start failed: " in dashboard
+    assert "backtest status failed: " in dashboard
+    assert "compare failed: " in dashboard
+    assert "if (view === 'backtest' && $('#btOut')) renderBacktest();" in dashboard
+    assert "case 'backtest': BT.asset = A || BT.asset; setView('backtest'); return;" in dashboard
+    assert '<a class="sm" style="margin-left:auto" href="/api/backtest/' not in dashboard
+    assert "trade history unavailable:" in dashboard
+    assert "Go-live integrity unavailable:" in dashboard
+    assert "Field Agent unavailable:" in dashboard
+    assert "} catch (e) {}" not in dashboard
+
+
+def test_autopilot_operator_actions_are_not_silent():
+    ui = (REPO / "icarus_engine/autopilot-ui.js").read_text(encoding="utf-8")
+    assert "admin('/admin/autopilot/step',{},true)" not in ui
+    assert "admin('/admin/autopilot/config',{cadence_seconds:Number(e.target.value)},true)" not in ui
+    assert "admin('/admin/autopilot/config',{robustness_windows:Number(e.target.value)},true)" not in ui
+    assert "admin('/admin/autopilot/config',{assets:e.target.value?[e.target.value]:[]},true)" not in ui
