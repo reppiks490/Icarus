@@ -243,3 +243,16 @@ def test_brain_registers_ascendancy_capability_orchestrator(tmp_path):
     assert surfaced["capability-orchestrator"]["status"] == "REGISTERED"
     assert out["authority"]["execution_authorized"] is False
     assert out["authority"]["production_decision_authorized"] is False
+
+
+def test_brain_registers_ascendancy_candidate_foundry(tmp_path):
+    out = brain_snapshot(tmp_path)
+    rows = {x["id"]: x for x in SUBSYSTEMS}
+    assert "ascendancy-foundry" in rows
+    assert rows["ascendancy-foundry"]["owner"] == "omega"
+    assert "candidate" in rows["ascendancy-foundry"]["job"].lower()
+    assert "falsif" in rows["ascendancy-foundry"]["job"].lower()
+    surfaced = {x["id"]: x for x in out["architecture"]["subsystems"]}
+    assert surfaced["ascendancy-foundry"]["status"] == "REGISTERED"
+    assert out["authority"]["execution_authorized"] is False
+    assert out["authority"]["production_decision_authorized"] is False
