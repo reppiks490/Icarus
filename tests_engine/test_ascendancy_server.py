@@ -775,3 +775,30 @@ def test_peer_repository_api_ingests_foreign_evidence_without_authority_transfer
     assert port.paused is paused_before
     assert list(port.runners) == runners_before
     assert srv.ascendancy_peers.snapshot()["packet_count"] == 1
+
+
+def test_ascendancy_runtime_preserves_existing_evidence_and_qualification_planes(ascendancy_genome_http):
+    _, srv, request = ascendancy_genome_http
+
+    # ASCENDANCY is additive. Its server integration must not displace the
+    # existing CSV Evidence Lab or protected qualification ledger.
+    assert hasattr(srv, "evidence_lab_sync")
+    assert hasattr(srv, "qualification_receipts")
+    assert hasattr(srv, "ascendancy_foundry")
+    assert hasattr(srv, "ascendancy_evaluator")
+    assert hasattr(srv, "ascendancy_peers")
+
+    code, evidence = request("GET", "/api/evidence-lab")
+    assert code == 200
+    assert evidence["execution_authorized"] is False
+    assert evidence["production_decision_authorized"] is False
+
+    code, qualification = request("GET", "/api/qualification-receipts")
+    assert code == 200
+    assert qualification["execution_authorized"] is False
+    assert qualification["production_decision_authorized"] is False
+
+    code, peers = request("GET", "/api/ascendancy/peers")
+    assert code == 200
+    assert peers["execution_authorized"] is False
+    assert peers["production_decision_authorized"] is False
