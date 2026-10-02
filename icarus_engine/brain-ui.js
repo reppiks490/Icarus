@@ -7,7 +7,7 @@
 
   function statusClass(value) {
     const s = String(value || '').toUpperCase();
-    if (s.includes('VERIFIED') || s.includes('ACTIVE') || s.includes('RUN_PERSISTED') || s === 'QUALIFIED') return 'brain-good';
+    if (s.includes('VERIFIED') || s.includes('ACTIVE') || s.includes('RUN_PERSISTED') || s === 'QUALIFIED' || s === 'GREEN' || s === 'PERSISTED_WORKER_EVIDENCE') return 'brain-good';
     if (s.includes('BLOCK') || s.includes('REJECT') || s.includes('FAIL') || s.includes('ERROR')) return 'brain-bad';
     return 'brain-warn';
   }
