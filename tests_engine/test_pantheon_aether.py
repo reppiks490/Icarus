@@ -71,7 +71,7 @@ def test_pantheon_runs_independent_faculties_and_never_grants_execution(tmp_path
     obs = kernel.record_observation(_payload())
     analysis = obs["analysis"]
     assert set(analysis["faculties"]) == {
-        "nullspace", "godel", "ananke", "nemesis", "ex_nihilo", "mint", "echo", "veritas", "archon", "socrates"
+        "nullspace", "godel", "ananke", "nemesis", "ex_nihilo", "mint", "echo", "veritas", "lethe", "archon", "socrates"
     }
     assert analysis["faculties"]["nullspace"]["routing_state"] == "absorbed"
     assert analysis["faculties"]["nullspace"]["debt_state"] == "absorbed"
@@ -702,6 +702,111 @@ def test_veritas_certificate_fails_closed_on_malformed_signatures(tmp_path):
         PantheonKernel(tmp_path).record_observation(payload)
 
 
+def test_lethe_decays_stale_memory_and_requires_fresh_causal_revalidation(tmp_path):
+    payload = _payload(observation_id="pan-lethe-resurrection", observed_at="2026-10-01T06:00:00Z")
+    payload["signals"] = dict(payload["signals"])
+    payload["signals"]["knowledge_memory"] = [
+        {
+            "memory_id": "stale-but-revalidated",
+            "base_confidence": 0.90,
+            "learned_at": "2026-09-30T06:00:00Z",
+            "half_life_seconds": 3600.0,
+            "regime_similarity": 0.95,
+            "mechanism_fidelity": 0.90,
+            "revalidation_strength": 0.80,
+            "revalidated_at": "2026-10-01T06:00:00Z",
+        },
+        {
+            "memory_id": "stale-unvalidated",
+            "base_confidence": 0.80,
+            "learned_at": "2026-09-30T06:00:00Z",
+            "half_life_seconds": 3600.0,
+            "regime_similarity": 0.90,
+            "mechanism_fidelity": 0.90,
+            "revalidation_strength": 0.0,
+        },
+    ]
+    kernel = PantheonKernel(tmp_path, swarm=AetherSwarm(threshold=0.0, max_agents=6))
+    obs = kernel.record_observation(payload)
+    state = obs["analysis"]["faculties"]["lethe"]
+    swarm = obs["analysis"]["aether"]
+
+    assert state["status"] == "active"
+    assert state["stale_memory_count"] == 2
+    assert state["stale_memory_pressure"] > 0.99
+    assert "stale-but-revalidated" in state["resurrection_candidates"]
+    assert "stale-unvalidated" in state["retirement_candidates"]
+    revived = next(row for row in state["memory_items"] if row["memory_id"] == "stale-but-revalidated")
+    dead = next(row for row in state["memory_items"] if row["memory_id"] == "stale-unvalidated")
+    assert revived["resurrection_support"] == pytest.approx(0.95 * 0.90 * 0.80)
+    assert revived["effective_confidence"] > 0.55
+    assert dead["effective_confidence"] < 0.01
+    roles = [row["role"] for row in swarm["agents"]]
+    assert roles[4:6] == ["historical_analogue", "edge_half_life"]
+    assert swarm["field"]["stale_memory_pressure"] > 0.99
+    assert swarm["field"]["resurrection_pressure"] > 0.20
+    assert state["authority"]["execution_authorized"] is False
+
+
+def test_lethe_keeps_recent_memory_without_false_resurrection(tmp_path):
+    payload = _payload(observation_id="pan-lethe-recent", observed_at="2026-10-01T06:00:00Z")
+    payload["signals"] = dict(payload["signals"])
+    payload["signals"]["knowledge_memory"] = [{
+        "memory_id": "recent",
+        "base_confidence": 0.80,
+        "learned_at": "2026-10-01T05:59:30Z",
+        "half_life_seconds": 3600.0,
+        "regime_similarity": 0.90,
+        "mechanism_fidelity": 0.90,
+        "revalidation_strength": 0.0,
+    }]
+    state = PantheonKernel(tmp_path).record_observation(payload)["analysis"]["faculties"]["lethe"]
+    assert state["effective_memory_trust"] > 0.99
+    assert state["stale_memory_pressure"] < 0.01
+    assert state["resurrection_pressure"] == pytest.approx(0.0)
+    assert state["resurrection_candidates"] == []
+    assert state["retirement_candidates"] == []
+
+
+@pytest.mark.parametrize(
+    "mutator,match",
+    [
+        (lambda item: item.update(half_life_seconds=0), "half_life_seconds must be positive"),
+        (lambda item: item.update(learned_at="2026-10-01T06:00:01Z"), "learned_at cannot exceed observation time"),
+        (lambda item: item.update(revalidation_strength=0.5), "revalidated_at is required"),
+        (lambda item: item.update(revalidation_strength=0.5, revalidated_at="2026-09-30T05:00:00Z"), "revalidated_at cannot precede learned_at"),
+    ],
+)
+def test_lethe_fails_closed_on_noncausal_or_invalid_memory(tmp_path, mutator, match):
+    payload = _payload(observation_id="pan-lethe-invalid", observed_at="2026-10-01T06:00:00Z")
+    item = {
+        "memory_id": "m1",
+        "base_confidence": 0.8,
+        "learned_at": "2026-09-30T06:00:00Z",
+        "half_life_seconds": 3600.0,
+        "regime_similarity": 0.5,
+        "mechanism_fidelity": 0.5,
+        "revalidation_strength": 0.0,
+    }
+    mutator(item)
+    payload["signals"] = dict(payload["signals"], knowledge_memory=[item])
+    with pytest.raises(ValueError, match=match):
+        PantheonKernel(tmp_path).record_observation(payload)
+
+
+def test_lethe_rejects_duplicate_memory_identity(tmp_path):
+    payload = _payload(observation_id="pan-lethe-dup", observed_at="2026-10-01T06:00:00Z")
+    item = {
+        "memory_id": "dup",
+        "base_confidence": 0.8,
+        "learned_at": "2026-09-30T06:00:00Z",
+        "half_life_seconds": 3600.0,
+    }
+    payload["signals"] = dict(payload["signals"], knowledge_memory=[item, dict(item)])
+    with pytest.raises(ValueError, match="memory_id values must be unique"):
+        PantheonKernel(tmp_path).record_observation(payload)
+
+
 def test_aether_spawns_bounded_ephemeral_agents_with_zero_capital_authority(tmp_path):
     kernel = PantheonKernel(tmp_path, swarm=AetherSwarm(threshold=0.25, max_agents=7))
     obs = kernel.record_observation(_payload())
@@ -787,6 +892,8 @@ def test_pantheon_is_visible_in_trader_interface():
     assert "AETHER alpha food web" in ui
     assert "Cognitive genesis" in ui
     assert "Echo risk" in ui
+    assert "Memory staleness" in ui
+    assert "Resurrection pressure" in ui
     assert "VERITAS right-for-right-reasons audit" in ui
     assert "APEX lineage" in ui
     assert "SIBYL structural evidence bridge" in ui

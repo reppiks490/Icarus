@@ -27,6 +27,7 @@ FACULTIES = (
     "nullspace",
     "echo",
     "veritas",
+    "lethe",
     "archon",
     "aether",
 )
