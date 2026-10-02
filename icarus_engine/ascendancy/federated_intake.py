@@ -20,7 +20,8 @@ import sqlite3
 import threading
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Iterable, Mapping
+from tempfile import NamedTemporaryFile
+from typing import Any, Callable, Iterable, Mapping
 
 SCHEMA_VERSION = "icarus-ascendancy-federated-research-prompt-v1"
 LEDGER_SCHEMA_VERSION = "icarus-ascendancy-federated-research-intake-v1"
@@ -438,3 +439,207 @@ class FederatedResearchIntake:
             "execution_authorized": False,
             "production_decision_authorized": False,
         }
+
+
+
+SYNC_SCHEMA_VERSION = "icarus-ascendancy-federated-intake-sync-v1"
+
+
+def _sync_state_path(base_dir: str | os.PathLike[str]) -> Path:
+    return Path(base_dir) / "research" / "ascendancy_federated_intake_sync.json"
+
+
+def _default_sync_state(interval_seconds: int) -> dict[str, Any]:
+    return {
+        "schema_version": SYNC_SCHEMA_VERSION,
+        "status": "not_started",
+        "interval_seconds": interval_seconds,
+        "last_attempt_at": None,
+        "last_success_at": None,
+        "last_error": None,
+        "last_peer_packet_id": None,
+        "last_peer_source_commit": None,
+        "new_proposal_count": 0,
+        "proposal_count": 0,
+        "candidate_evidence_count": 0,
+        "automatic_candidate_creation": False,
+        "automatic_model_promotion": False,
+        "running": False,
+        "execution_authorized": False,
+        "production_decision_authorized": False,
+    }
+
+
+def _read_sync_state(
+    base_dir: str | os.PathLike[str],
+    interval_seconds: int,
+) -> dict[str, Any]:
+    state = _default_sync_state(interval_seconds)
+    path = _sync_state_path(base_dir)
+    if not path.is_file():
+        return state
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        state["status"] = "degraded"
+        state["last_error"] = "local federated intake sync state is unreadable"
+        return state
+    if not isinstance(raw, dict):
+        state["status"] = "degraded"
+        state["last_error"] = "local federated intake sync state is not an object"
+        return state
+    if (
+        raw.get("execution_authorized") is not False
+        or raw.get("production_decision_authorized") is not False
+        or raw.get("automatic_candidate_creation") is not False
+    ):
+        state["status"] = "degraded"
+        state["last_error"] = "local federated intake sync state failed authority validation"
+        return state
+    state.update(raw)
+    state["interval_seconds"] = interval_seconds
+    state["execution_authorized"] = False
+    state["production_decision_authorized"] = False
+    state["automatic_candidate_creation"] = False
+    state["automatic_model_promotion"] = False
+    return state
+
+
+def _write_sync_state(
+    base_dir: str | os.PathLike[str],
+    state: Mapping[str, Any],
+) -> None:
+    path = _sync_state_path(base_dir)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = dict(state)
+    payload["execution_authorized"] = False
+    payload["production_decision_authorized"] = False
+    payload["automatic_candidate_creation"] = False
+    payload["automatic_model_promotion"] = False
+    payload["running"] = False
+    raw = json.dumps(payload, sort_keys=True, indent=2, allow_nan=False) + "\n"
+    with NamedTemporaryFile(
+        "w",
+        encoding="utf-8",
+        dir=path.parent,
+        prefix=".federated-intake-sync-",
+        delete=False,
+    ) as fh:
+        tmp = Path(fh.name)
+        fh.write(raw)
+        fh.flush()
+        os.fsync(fh.fileno())
+    os.replace(tmp, path)
+
+
+class FederatedResearchIntakeSync:
+    """Autonomous local projection of canonical federation state into prompts.
+
+    The provider is expected to be BrainRemoteSync.status (or an equivalent
+    already-verified local snapshot).  This worker performs no remote fetches,
+    creates no candidates, and grants no trading authority.
+    """
+
+    def __init__(
+        self,
+        base_dir: str | os.PathLike[str],
+        *,
+        intake: FederatedResearchIntake,
+        provider: Callable[[], Mapping[str, Any]],
+        interval_seconds: int = 60,
+    ):
+        self.base_dir = Path(base_dir)
+        self.intake = intake
+        self.provider = provider
+        self.interval_seconds = max(30, min(3600, int(interval_seconds)))
+        self._stop = threading.Event()
+        self._thread: threading.Thread | None = None
+        self._lock = threading.Lock()
+
+    def status(self) -> dict[str, Any]:
+        state = _read_sync_state(self.base_dir, self.interval_seconds)
+        state["running"] = bool(self._thread and self._thread.is_alive())
+        state["execution_authorized"] = False
+        state["production_decision_authorized"] = False
+        state["automatic_candidate_creation"] = False
+        state["automatic_model_promotion"] = False
+        return state
+
+    def sync_once(self) -> dict[str, Any]:
+        with self._lock:
+            prior = _read_sync_state(self.base_dir, self.interval_seconds)
+            state = dict(prior)
+            state["last_attempt_at"] = _utc_now()
+            state["status"] = "syncing"
+            state["last_error"] = None
+            try:
+                snapshot = self.provider()
+                if not isinstance(snapshot, Mapping):
+                    raise ValueError("canonical federation provider did not return an object")
+                receipt = self.intake.ingest(snapshot)
+                ledger = self.intake.snapshot()
+                state.update(
+                    {
+                        "status": "green",
+                        "last_success_at": _utc_now(),
+                        "last_error": None,
+                        "last_peer_packet_id": snapshot.get("peer_packet_id"),
+                        "last_peer_source_commit": snapshot.get("peer_source_commit"),
+                        "new_proposal_count": int(receipt.get("new_proposal_count") or 0),
+                        "proposal_count": int(ledger.get("proposal_count") or 0),
+                        "candidate_evidence_count": int(
+                            ledger.get("candidate_evidence_count") or 0
+                        ),
+                        "automatic_candidate_creation": False,
+                        "automatic_model_promotion": False,
+                        "execution_authorized": False,
+                        "production_decision_authorized": False,
+                    }
+                )
+            except Exception as ex:
+                ledger = self.intake.snapshot()
+                state["status"] = "degraded"
+                state["last_error"] = f"{type(ex).__name__}: {ex}"[:1600]
+                state["new_proposal_count"] = 0
+                state["proposal_count"] = int(ledger.get("proposal_count") or 0)
+                state["candidate_evidence_count"] = int(
+                    ledger.get("candidate_evidence_count") or 0
+                )
+                state["execution_authorized"] = False
+                state["production_decision_authorized"] = False
+                state["automatic_candidate_creation"] = False
+                state["automatic_model_promotion"] = False
+
+            _write_sync_state(self.base_dir, state)
+            return self.status()
+
+    def _run(self) -> None:
+        while not self._stop.is_set():
+            try:
+                self.sync_once()
+            except Exception:
+                # sync_once itself persists a degraded truth state.  This guard
+                # prevents an unexpected persistence failure from killing the
+                # background lifecycle.
+                pass
+            self._stop.wait(self.interval_seconds)
+
+    def start(self) -> None:
+        if self._thread and self._thread.is_alive():
+            return
+        self._stop.clear()
+        self._thread = threading.Thread(
+            target=self._run,
+            name="ascendancy-federated-intake-sync",
+            daemon=True,
+        )
+        self._thread.start()
+
+    def close(self) -> None:
+        self._stop.set()
+        if (
+            self._thread
+            and self._thread.is_alive()
+            and self._thread is not threading.current_thread()
+        ):
+            self._thread.join(timeout=2.0)
