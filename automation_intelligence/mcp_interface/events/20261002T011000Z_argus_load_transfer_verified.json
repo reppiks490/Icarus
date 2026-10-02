@@ -1,0 +1,38 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "argus-load-transfer-verified-20261002T011000Z",
+  "category": "EVOLUTION",
+  "severity": "success",
+  "status": "verified",
+  "subsystems": [
+    "argus",
+    "execution_research",
+    "calibration",
+    "liquidity_load",
+    "transfer_validation",
+    "provenance"
+  ],
+  "recorded_at": "2026-10-02T01:10:00Z",
+  "title": "ARGUS liquidity-load paper-to-broker transfer audit verified",
+  "summary": "ARGUS now prospectively audits paper-emulator versus broker-confirmed impact calibration separately across exhaustive requested-size / visible-depth bands. The content-addressed plan predeclares the load partition, exact metrics, per-band tolerances, confidence alpha, deterministic seed, bootstrap count and minimum observations before the cohort begins. This allows low-load execution to remain compatible while a high-load regime can fail rather than being hidden by an aggregate average.",
+  "source_repository": "reppiks490/divine-providence",
+  "source_ref": "main",
+  "source_commit": "bb988d00f4b24a56b67f5f88a652f209b8871f53",
+  "evidence": [
+    "divine-providence PR #34 merged at bb988d00f4b24a56b67f5f88a652f209b8871f53",
+    "exact-head subsystem-evolution workflow run 36948780384 completed success",
+    "Linux and Windows ARGUS/ATHENA/AION causal subsystem jobs passed",
+    "intelligence-fabric and hub tests passed",
+    "full twelve-system validation passed",
+    "load bands begin at 0.0, are contiguous, non-overlapping and end with an open final band",
+    "requested_to_visible_ratio determines load-band membership",
+    "broker-confirmed and ICARUS paper-emulator observations are independently resampled within the same band",
+    "zero-fill rows remain usable for fill-fraction analysis but never become invented slippage observations",
+    "within_tolerance requires the full interval to remain inside the predeclared band/metric tolerance",
+    "formal equivalence, familywise inference, profitability and broker substitution are not implied",
+    "execution_authorized=false",
+    "production_decision_authorized=false"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}
