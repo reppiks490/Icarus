@@ -411,3 +411,123 @@ consensus. The server-owned APEX ancestry bridge can restore non-zero
 independence only by supplying verified roots. This is intentionally
 conservative and affects research attention only; it does not grant or modify
 execution authority.
+
+
+## VERITAS Ω — right-for-right-reasons auditor
+
+VERITAS prevents ICARUS from rewarding itself merely because a directional
+outcome happened to be correct. Before the future is known, an observation may
+carry a `mechanism_certificate` containing a named causal thesis, predicted
+direction, explicit confidence, a fidelity threshold, falsifiable intermediate
+signatures, and invalidators. Because the certificate is embedded in the
+immutable PANTHEON observation, it cannot be rewritten after the market moves.
+
+After the observation horizon matures, a separate immutable VERITAS
+reconciliation identifies a later immutable PANTHEON source observation plus
+confidence and evidence. VERITAS derives both the realized direction
+(`veritas_realized_direction`) and the realized mechanism-signature values
+from that source observation instead of accepting caller-injected outcomes. VERITAS computes weighted mechanism fidelity and
+classifies the result as:
+
+- `right_for_right_reasons`
+- `right_for_wrong_reasons`
+- `mechanism_without_endpoint`
+- `wrong_for_wrong_reasons`
+- `mechanism_only` when the endpoint is unresolved
+
+A directionally correct result with poor mechanism fidelity is placed in
+`lucky_outcome_quarantine` and receives no reinforcement eligibility. A
+right-for-right-reasons result receives diagnostic learning credit, but that
+credit is research metadata only: it cannot authorize orders, sizing, broker
+actions, or automatic production promotion.
+
+This matters because profitable outcomes can otherwise poison a self-learning
+system by reinforcing explanations that were causally false. VERITAS turns
+"made money" and "understood why" into two separate questions.
+
+
+### VERITAS surfaces
+
+VERITAS reconciliation is available through the authenticated engine route
+`POST /admin/pantheon/veritas`, an MCP research tool, the PANTHEON API state,
+the Adaptive Brain registry, and the PANTHEON trader panel. These surfaces all
+preserve the same authority boundary: mechanism fidelity can affect research
+interpretation, but cannot authorize trading or automatic production learning.
+
+
+#### Source-observation binding
+
+A VERITAS reconciliation cannot manufacture its own path evidence. Its
+`source_observation_id` must point to a distinct later PANTHEON observation for
+the same asset, the reconciliation timestamp must equal that source
+observation's timestamp, and the certificate horizon must already have matured.
+Realized direction and signature values are read from the immutable source
+observation's signals. Fidelity thresholds below 0.50 are rejected so a trivial threshold
+cannot turn a zero-fidelity lucky outcome into "right for right reasons."
+
+
+### VERITAS fitness quarantine
+
+VERITAS now reaches the actual AETHER research-fitness loop for MINT
+monetization candidates. When a candidate's originating observation contains an
+active VERITAS certificate, a positive claim outcome cannot be recorded before
+that certificate is reconciled. If the outcome was profitable but VERITAS
+classifies it as anything other than `right_for_right_reasons`, the raw
+outcome remains visible but its `fitness_utility` is zero, so it cannot
+increase species fitness, trigger positive speciation, or teach the ecology that
+a causally false explanation was good.
+
+Negative outcomes are never hidden by this gate: losses continue to count
+against research fitness even if VERITAS has not reconciled yet. Existing
+pre-VERITAS databases are migrated by backfilling `fitness_utility=utility`
+for historical rows, preserving prior recorded evidence.
+
+
+### VERITAS positive-fitness source binding
+
+Positive VERITAS-gated MINT fitness is additionally bound to the same immutable
+source observation used by the VERITAS reconciliation. A later unrelated
+observation cannot reuse an earlier right-for-right-reasons result to launder a
+new positive outcome into AETHER fitness. Negative outcomes remain countable
+without this positive-credit proof chain.
+
+
+### Claim-outcome source provenance
+
+Each claim-outcome row now persists the exact `source_observation_id` used for
+its evidence. The source identifier is part of the outcome's immutable semantic
+identity and duplicate check, so a recorded result cannot later be silently
+rebound to a different observation at the same timestamp. Legacy rows retain a
+null source identifier; all newly source-bound VERITAS fitness evidence carries
+the durable observation link.
+
+
+### Machine-checkable invalidators
+
+VERITAS certificates can now include structured `invalidating_signatures` in
+addition to human-readable invalidator notes. They use the same predicate
+operators as expected signatures. If any invalidating predicate is observed,
+the mechanism cannot pass even when its weighted expected-signature fidelity is
+otherwise high. This prevents a superficially matching path from receiving
+right-for-right-reasons credit after an explicitly predeclared falsifier
+actually occurred.
+
+
+### VERITAS confidence gate
+
+A mechanism can reconcile cleanly while the realized evidence itself is too
+weak to justify positive learning credit. Each certificate therefore freezes a
+`min_reconciliation_confidence` (default 0.65, never below 0.50).
+`right_for_right_reasons` remains the descriptive classification when the
+path matches, but `reinforcement_eligible` stays false unless the reconciliation
+confidence also clears that predeclared gate. This prevents a zero- or
+low-confidence observation from unlocking full positive AETHER fitness.
+
+
+### VERITAS source-evidence floor
+
+A later source observation is not accepted merely because it contains the right
+signal fields. It must also carry at least one immutable evidence reference in
+the PANTHEON observation ledger. The source evidence list is copied into the
+VERITAS reconciliation payload, preserving the proof path used to score
+mechanism fidelity. Empty-evidence endpoint snapshots fail closed.

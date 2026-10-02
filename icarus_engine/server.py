@@ -1463,6 +1463,11 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     return self._json(200, sibyl.scenario(body, market_status=market_state))
                 except (ValueError, TypeError) as ex:
                     return self._json(400, {"detail": str(ex)})
+            if p.path == "/admin/pantheon/veritas":
+                try:
+                    return self._json(200, pantheon.record_veritas_reconciliation(body))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
             if p.path == "/admin/pantheon/claim":
                 try:
                     return self._json(200, pantheon.record_agent_claim(body))
