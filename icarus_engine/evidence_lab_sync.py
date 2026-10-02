@@ -23,7 +23,7 @@ REMOTE_REPOSITORY = "reppiks490/icarus-csv-evidence-lab"
 REMOTE_REF = "main"
 REMOTE_ROOT = "automation_intelligence/advanced_csv"
 _REMOTE_API = f"https://api.github.com/repos/{REMOTE_REPOSITORY}/contents/{REMOTE_ROOT}?ref={REMOTE_REF}"
-_REQUIRED_FILES = ("evidence_state.json", "heartbeat.json", "latest.json", "finalization_state.json")
+_REQUIRED_FILES = ("icarus_consumer_contract.json", "evidence_state.json", "heartbeat.json", "latest.json", "finalization_state.json")
 
 
 def _utc_now() -> str:
@@ -66,10 +66,12 @@ def _default_state(interval_seconds: int) -> dict[str, Any]:
         "evidence_pointer_matches_heartbeat": None,
         "remote_blobs": {},
         "truth_contract": {
+            "federation_schema": contract.get("schema_version"),
             "run_persisted_is_substantive_evidence": False,
-            "evidence_authority": "evidence_state.EVIDENCE_STATUS",
+            "evidence_authority": semantics.get("substantive_evidence_authority"),
             "raw_owner_data_imported": False,
             "automatic_model_promotion": False,
+            "automatic_execution_authority": False,
         },
         "execution_authorized": False,
         "production_decision_authorized": False,
@@ -114,6 +116,7 @@ def _write_state(base_dir: str | os.PathLike[str], state: Mapping[str, Any]) -> 
 
 
 def _normalize_snapshot(documents: Mapping[str, Mapping[str, Any]], blobs: Mapping[str, str]) -> dict[str, Any]:
+    contract = documents["icarus_consumer_contract.json"]
     evidence = documents["evidence_state.json"]
     heartbeat = documents["heartbeat.json"]
     latest = documents["latest.json"]
@@ -122,6 +125,30 @@ def _normalize_snapshot(documents: Mapping[str, Mapping[str, Any]], blobs: Mappi
     for name, payload in documents.items():
         if payload.get("execution_authorized") is not False:
             raise ValueError(f"{name} does not explicitly preserve execution_authorized=false")
+
+    if contract.get("schema_version") != "icarus-csv-evidence-federation-v1":
+        raise ValueError("unsupported CSV Evidence Lab federation contract")
+    if contract.get("producer_repository") != REMOTE_REPOSITORY or contract.get("producer_ref") != REMOTE_REF:
+        raise ValueError("CSV Evidence Lab federation producer identity mismatch")
+    if contract.get("consumer_repository") != "reppiks490/Icarus" or contract.get("lane") != "advanced_csv":
+        raise ValueError("CSV Evidence Lab federation consumer/lane mismatch")
+    semantics = contract.get("semantics")
+    if not isinstance(semantics, Mapping):
+        raise ValueError("CSV Evidence Lab federation semantics are missing")
+    if semantics.get("run_persisted") != "DURABILITY_RECEIPT_ONLY":
+        raise ValueError("CSV Evidence Lab federation changed RUN_PERSISTED semantics")
+    if semantics.get("substantive_evidence_authority") != "evidence_state.EVIDENCE_STATUS":
+        raise ValueError("CSV Evidence Lab federation changed evidence authority")
+    if any(semantics.get(key) is not False for key in ("raw_owner_data_transfer", "automatic_model_promotion", "automatic_execution_authority")):
+        raise ValueError("CSV Evidence Lab federation contract attempts authority/data escalation")
+    expected_files = {
+        "heartbeat": f"{REMOTE_ROOT}/heartbeat.json",
+        "evidence_state": f"{REMOTE_ROOT}/evidence_state.json",
+        "latest": f"{REMOTE_ROOT}/latest.json",
+        "finalization_state": f"{REMOTE_ROOT}/finalization_state.json",
+    }
+    if contract.get("files") != expected_files:
+        raise ValueError("CSV Evidence Lab federation file contract mismatch")
 
     scheduler_ids = {
         str(payload.get("scheduler_id") or "").strip()
@@ -269,6 +296,7 @@ class EvidenceLabRemoteSync:
                             "status": "active" if normalized.get("run_status") == "RUN_PERSISTED" else "observed",
                             "evidence": [
                                 f"remote_repository:{REMOTE_REPOSITORY}",
+                                f"federation_contract_blob:{blobs['icarus_consumer_contract.json']}",
                                 f"heartbeat_blob:{blobs['heartbeat.json']}",
                                 f"evidence_state_blob:{blobs['evidence_state.json']}",
                                 f"latest_blob:{blobs['latest.json']}",
