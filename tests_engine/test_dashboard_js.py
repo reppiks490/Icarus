@@ -666,3 +666,19 @@ def test_ascendancy_dashboard_surfaces_invention_engine():
     assert 'p.path == "/api/ascendancy/inventions"' in server
     assert 'p.path == "/admin/ascendancy/invention-generate"' in server
     assert 'p.path == "/admin/ascendancy/invention-to-candidate"' in server
+
+
+def test_ascendancy_dashboard_surfaces_information_contribution_matrix():
+    ui = (REPO / "icarus_engine/ascendancy-ui.js").read_text(encoding="utf-8")
+    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
+
+    assert "/api/ascendancy/contributions" in ui
+    assert "INFORMATION CONTRIBUTION MATRIX" in ui
+    assert "CONDITIONING SET" in ui
+    assert "MEAN GAIN (NATS)" in ui
+    assert "BITS / OBS" in ui
+    assert "paired_predictive_log_score_gain" in ui
+    assert "exact_conditional_mutual_information" in ui
+    assert "standalone_performance_is_not_incremental_information" in ui
+    assert 'p.path == "/api/ascendancy/contributions"' in server
+    assert 'p.path == "/admin/ascendancy/contribution-observation"' in server
