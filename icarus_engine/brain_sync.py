@@ -147,13 +147,16 @@ def _is_sha(value: Any) -> bool:
     return isinstance(value, str) and len(value) == 40 and all(c in "0123456789abcdef" for c in value.lower())
 
 
-def _remote_contents_api(path: str) -> str:
+def _remote_contents_api(path: str, ref: str = REMOTE_REF) -> str:
     remote_path = str(path or "").strip().lstrip("/")
+    revision = str(ref or "").strip()
     if not remote_path or ".." in remote_path.split("/"):
         raise ValueError("historical context path is invalid")
+    if revision != REMOTE_REF and not _is_sha(revision.lower()):
+        raise ValueError("historical context revision must be main or an exact Git SHA")
     return (
         f"https://api.github.com/repos/{REMOTE_REPOSITORY}/contents/"
-        f"{remote_path}?ref={REMOTE_REF}"
+        f"{remote_path}?ref={revision}"
     )
 
 
@@ -202,6 +205,11 @@ def _default_state(interval_seconds: int) -> dict[str, Any]:
         "historical_context_ingested_total": 0,
         "historical_context_sources": [],
         "historical_candidate_evidence_count": 0,
+        "historical_packet_witness_status": "not_started",
+        "historical_packet_witness_count": 0,
+        "historical_packet_witnesses": [],
+        "historical_packet_same_as_live_count": 0,
+        "historical_packet_live_advanced_count": 0,
         "processed_historical_blob_shas": [],
         "consumer_contract_blob_sha": None,
         "producer_contract_blob_sha": None,
@@ -224,6 +232,8 @@ def _default_state(interval_seconds: int) -> dict[str, Any]:
             "historical_context_never_bypasses_evaluator": True,
             "historical_context_never_grants_shadow_qualification": True,
             "historical_context_never_grants_execution_authority": True,
+            "historical_source_artifact_blob_required": bool(historical_sources),
+            "historical_artifact_id_sha256_required": bool(historical_sources),
         },
         "execution_authorized": False,
         "production_decision_authorized": False,
@@ -348,6 +358,10 @@ def _normalize_historical_context_contract(
         raise ValueError("Icarus-engine historical context contract must be an object")
     if raw.get("mode") != "RESEARCH_CONTEXT_ONLY":
         raise ValueError("Icarus-engine historical context mode must remain research-only")
+    if raw.get("source_artifact_blob_required") is not True:
+        raise ValueError("Icarus-engine historical context must require exact source artifact blobs")
+    if raw.get("artifact_id_sha256_required") is not True:
+        raise ValueError("Icarus-engine historical context must require SHA-256 artifact IDs")
     for key in (
         "direct_candidate_evidence",
         "automatic_candidate_creation",
@@ -763,6 +777,7 @@ def _normalize_peer_packet(
         "remote_sibling_state_is_never_inferred",
         "exact_source_commit_required",
         "execution_authority_never_transfers_between_repositories",
+        "historical_context_never_bypasses_foundry_or_evaluator",
     ):
         if truth.get(key) is not True:
             raise ValueError(f"Icarus-engine peer packet truth invariant failed: {key}")
@@ -843,6 +858,85 @@ def _normalize_peer_packet(
             "execution_authorized": False,
         })
 
+    historical_artifacts_raw = packet.get("historical_artifacts")
+    historical_witnesses: list[dict[str, Any]] = []
+    if historical_artifacts_raw is not None:
+        if not isinstance(historical_artifacts_raw, list):
+            raise ValueError("Icarus-engine peer historical_artifacts must be an array")
+        expected_ids = set(_HISTORICAL_CONTEXT_EXPECTED)
+        seen_ids: set[str] = set()
+        seen_artifact_ids: set[str] = set()
+        for index, raw in enumerate(historical_artifacts_raw):
+            if not isinstance(raw, Mapping):
+                raise ValueError(f"Icarus-engine peer historical artifact {index} is not an object")
+            source_id = str(raw.get("lane") or "").strip()
+            if source_id not in expected_ids or source_id in seen_ids:
+                raise ValueError("Icarus-engine peer historical artifact source identity mismatch")
+            seen_ids.add(source_id)
+            expected = _HISTORICAL_CONTEXT_EXPECTED[source_id]
+            if raw.get("artifact_kind") != "HISTORICAL_LATEST":
+                raise ValueError(f"Icarus-engine peer historical artifact kind mismatch: {source_id}")
+            if raw.get("path") != expected["path"]:
+                raise ValueError(f"Icarus-engine peer historical artifact path mismatch: {source_id}")
+            if raw.get("evidence_status") != expected["evidence_status"]:
+                raise ValueError(f"Icarus-engine peer historical artifact evidence mismatch: {source_id}")
+            if raw.get("research_context_eligible") is not True:
+                raise ValueError(f"Icarus-engine peer historical artifact is not research context: {source_id}")
+            if raw.get("candidate_evidence_eligible") is not False:
+                raise ValueError(f"Icarus-engine peer historical artifact attempts candidate evidence: {source_id}")
+            if raw.get("execution_authorized") is not False:
+                raise ValueError(f"Icarus-engine peer historical artifact attempts execution authority: {source_id}")
+            if raw.get("run_status") != "RUN_PERSISTED":
+                raise ValueError(f"Icarus-engine peer historical artifact is not persisted: {source_id}")
+
+            source_blob = str(raw.get("source_artifact_blob_sha") or "").lower()
+            if not _is_sha(source_blob):
+                raise ValueError(f"Icarus-engine peer historical artifact source blob is invalid: {source_id}")
+
+            artifact_id = str(raw.get("artifact_id") or "").lower()
+            if (
+                len(artifact_id) != 64
+                or any(ch not in "0123456789abcdef" for ch in artifact_id)
+                or artifact_id in seen_artifact_ids
+            ):
+                raise ValueError(f"Icarus-engine peer historical artifact ID is invalid: {source_id}")
+            seen_artifact_ids.add(artifact_id)
+            unsigned_artifact = dict(raw)
+            unsigned_artifact.pop("artifact_id", None)
+            computed_artifact_id = hashlib.sha256(
+                json.dumps(
+                    unsigned_artifact,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                    allow_nan=False,
+                ).encode("utf-8")
+            ).hexdigest()
+            if artifact_id != computed_artifact_id:
+                raise ValueError(f"Icarus-engine peer historical artifact ID mismatch: {source_id}")
+
+            run_id = str(raw.get("run_id") or "").strip()
+            if not run_id:
+                raise ValueError(f"Icarus-engine peer historical artifact run_id is missing: {source_id}")
+            historical_witnesses.append({
+                "id": source_id,
+                "path": expected["path"],
+                "artifact_id": artifact_id,
+                "source_artifact_blob_sha": source_blob,
+                "source_artifact_blob_verified": False,
+                "packet_source_commit": source_commit,
+                "run_id": run_id,
+                "run_status": "RUN_PERSISTED",
+                "evidence_status": expected["evidence_status"],
+                "collection_only": expected["collection_only"],
+                "candidate_evidence_eligible": False,
+                "execution_authorized": False,
+                "production_decision_authorized": False,
+                "current_main_blob_sha": None,
+                "current_main_relation": "UNMEASURED",
+            })
+        if seen_ids != expected_ids:
+            raise ValueError("Icarus-engine peer historical artifact set mismatch")
+
     peer_blob = str(blob_sha or "").lower()
     if not _is_sha(peer_blob):
         raise ValueError("Icarus-engine peer packet Git blob identity is invalid")
@@ -859,6 +953,13 @@ def _normalize_peer_packet(
         "peer_durability_only_lane_count": sum(
             1 for lane in lanes if lane["evidence_status"] == "DURABILITY_ONLY"
         ),
+        "historical_packet_witnesses": historical_witnesses,
+        "historical_packet_witness_count": len(historical_witnesses),
+        "historical_packet_witness_status": (
+            "unverified" if historical_witnesses else "not_declared"
+        ),
+        "historical_packet_same_as_live_count": 0,
+        "historical_packet_live_advanced_count": 0,
     }
 
 
@@ -1124,6 +1225,88 @@ class BrainRemoteSync:
                     normalized_peer["peer_source_commit_verified"] = True
                     normalized_peer["peer_source_commit_relation"] = relation.upper()
 
+                    live_rows = {
+                        str(row.get("id") or ""): row
+                        for row in state.get("historical_context_sources", [])
+                        if isinstance(row, Mapping)
+                    }
+                    verified_witnesses = 0
+                    same_as_live = 0
+                    live_advanced = 0
+                    for witness in normalized_peer.get("historical_packet_witnesses", []):
+                        source_meta = self._fetch_json(
+                            _remote_contents_api(
+                                witness["path"],
+                                ref=source_commit,
+                            )
+                        )
+                        if not isinstance(source_meta, Mapping) or source_meta.get("type") != "file":
+                            raise ValueError(
+                                f"historical packet witness metadata is not a file: {witness['id']}"
+                            )
+                        source_blob = str(source_meta.get("sha") or "").lower()
+                        source_url = str(source_meta.get("url") or "")
+                        if not _is_sha(source_blob) or not source_url:
+                            raise ValueError(
+                                f"historical packet witness has invalid blob metadata: {witness['id']}"
+                            )
+                        if source_blob != witness["source_artifact_blob_sha"]:
+                            raise ValueError(
+                                f"historical packet witness source blob mismatch: {witness['id']}"
+                            )
+                        source_raw = self._fetch_bytes(source_url)
+                        if _git_blob_sha(source_raw) != source_blob:
+                            raise ValueError(
+                                f"historical packet witness Git blob SHA mismatch: {witness['id']}"
+                            )
+                        source_payload = json.loads(source_raw.decode("utf-8"))
+                        if not isinstance(source_payload, Mapping):
+                            raise ValueError(
+                                f"historical packet witness source is not an object: {witness['id']}"
+                            )
+                        if source_payload.get("execution_authorized") is not False:
+                            raise ValueError(
+                                f"historical packet witness source attempts execution authority: {witness['id']}"
+                            )
+                        source_run_id = source_payload.get("RUN_ID") or source_payload.get("run_id")
+                        source_run_status = (
+                            source_payload.get("RUN_STATUS") or source_payload.get("status")
+                        )
+                        if str(source_run_id or "") != witness["run_id"]:
+                            raise ValueError(
+                                f"historical packet witness run_id mismatch: {witness['id']}"
+                            )
+                        if str(source_run_status or "").upper() != witness["run_status"]:
+                            raise ValueError(
+                                f"historical packet witness run status mismatch: {witness['id']}"
+                            )
+
+                        witness["source_artifact_blob_verified"] = True
+                        live_row = live_rows.get(witness["id"])
+                        live_blob = (
+                            str(live_row.get("remote_blob_sha") or "").lower()
+                            if isinstance(live_row, Mapping)
+                            else ""
+                        )
+                        witness["current_main_blob_sha"] = live_blob or None
+                        if live_blob == source_blob:
+                            witness["current_main_relation"] = "SAME_AS_PACKET_SOURCE"
+                            same_as_live += 1
+                        elif _is_sha(live_blob):
+                            witness["current_main_relation"] = "LIVE_SOURCE_ADVANCED"
+                            live_advanced += 1
+                        else:
+                            witness["current_main_relation"] = "CURRENT_MAIN_CONTEXT_UNAVAILABLE"
+                        verified_witnesses += 1
+
+                    if normalized_peer.get("historical_packet_witnesses"):
+                        if verified_witnesses != len(normalized_peer["historical_packet_witnesses"]):
+                            raise ValueError("historical packet witness verification is incomplete")
+                        normalized_peer["historical_packet_witness_status"] = "green"
+                    normalized_peer["historical_packet_witness_count"] = verified_witnesses
+                    normalized_peer["historical_packet_same_as_live_count"] = same_as_live
+                    normalized_peer["historical_packet_live_advanced_count"] = live_advanced
+
                     now = self._now_utc()
                     if not isinstance(now, datetime) or now.tzinfo is None or now.utcoffset() is None:
                         raise ValueError("peer packet freshness clock must be timezone-aware")
@@ -1168,6 +1351,11 @@ class BrainRemoteSync:
                         "peer_lanes": [],
                         "peer_substantive_lane_count": 0,
                         "peer_durability_only_lane_count": 0,
+                        "historical_packet_witness_status": "degraded",
+                        "historical_packet_witness_count": 0,
+                        "historical_packet_witnesses": [],
+                        "historical_packet_same_as_live_count": 0,
+                        "historical_packet_live_advanced_count": 0,
                     })
                     peer_error = f"{type(ex).__name__}: {ex}"[:1000]
 
