@@ -4113,6 +4113,8 @@ class LearningFabric:
         out["performance_proof"] = self._harvest_performance_proof()
         out["source_reliability"] = self._harvest_source_reliability()
         out["commissioning"] = self._harvest_commissioning_metrics()
+        out["parallax_empirical"] = self._harvest_parallax_empirical()
+        out["pantheon_empirical"] = self._harvest_pantheon_empirical()
         for name in ("parallax", "dreamstate", "pantheon"):
             metric = self._harvest_snapshot_metric(name)
             if metric.get("status") == "ok":
@@ -4570,6 +4572,7 @@ class LearningFabric:
             "experiences": self.experience_state(),
             "scorecards": self.scorecards(),
             "shadow_calibration": self.shadow_calibration_state(),
+            "native_empirical": self.native_empirical_state(),
             "coverage": {
                 "historical_trainers": "protected_replay",
                 "shadow_recalibration": "chronological_holdout_validated_research_only",
@@ -4581,9 +4584,9 @@ class LearningFabric:
                 "performance_proof": "native_immutable_forecast_outcome",
                 "source_reliability": "native_observed_quality_context",
                 "commissioning_chronofold": "native_metrics_and_existing_outcomes",
-                "parallax": "native_regret_metrics",
+                "parallax": "native_metric_plus_immutable_utility_pairs",
                 "dreamstate": "native_candidate_lifecycle",
-                "pantheon": "native_research_metrics",
+                "pantheon": "native_metric_plus_immutable_claim_outcomes",
                 "apex": "empirical_credibility_feedback",
                 "possibility": "native_non_overlapping_scenario_calibration",
                 "chronofold": "calibrated_via_commissioning",
