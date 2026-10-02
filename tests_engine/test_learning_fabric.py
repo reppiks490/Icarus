@@ -2255,3 +2255,164 @@ def test_apex_credibility_uses_effective_non_overlapping_sample_count(tmp_path):
     assert row["status"] == "EARLY"
     assert row["execution_authorized"] is False
     assert row["production_decision_authorized"] is False
+
+
+
+def test_experience_provenance_class_is_explicit_and_source_bound(tmp_path):
+    from icarus_engine.learning_fabric import LearningFabric
+
+    fabric = LearningFabric(tmp_path)
+
+    runtime = fabric.record_experience({
+        "source": "runtime_live_sim",
+        "source_record_id": "runtime-scoped",
+        "asset": "NQ",
+        "direction": "long",
+        "entry_at": "2026-10-01T14:00:00Z",
+        "exit_at": "2026-10-01T14:20:00Z",
+        "qty": 1,
+        "entry_price": 25000.0,
+        "exit_price": 25010.0,
+        "pnl": 200.0,
+        "metadata": {
+            "strategy_fingerprint": "a" * 64,
+            "provenance_quality": "CLOSURE_TIME_CONFIG",
+        },
+    })
+    assert runtime["experience"]["metadata"]["provenance_class"] == "RUNTIME_CLOSURE_CONFIG"
+
+    historical = fabric.record_experience({
+        "source": "historical_trade_list",
+        "source_record_id": "historical-scoped",
+        "asset": "NQ",
+        "direction": "short",
+        "entry_at": "2024-06-03T10:00:00Z",
+        "exit_at": "2024-06-03T10:20:00Z",
+        "qty": 1,
+        "entry_price": 18000.0,
+        "exit_price": 17990.0,
+        "pnl": 200.0,
+        "metadata": {
+            "artifact_configuration_fingerprint": "b" * 64,
+            "provenance_quality": "MANIFEST_UNIQUE_STRATEGY_REPORT_LINK",
+            "strategy_report_sha256": "c" * 64,
+        },
+    })
+    assert historical["experience"]["metadata"]["provenance_class"] == "HISTORICAL_ARTIFACT_CONFIG"
+
+    unscoped = fabric.record_experience({
+        "source": "manual_research",
+        "source_record_id": "unscoped",
+        "asset": "NQ",
+        "direction": "long",
+        "entry_at": "2026-10-01T15:00:00Z",
+        "exit_at": "2026-10-01T15:20:00Z",
+        "qty": 1,
+        "entry_price": 25000.0,
+        "exit_price": 25001.0,
+        "pnl": 20.0,
+        "metadata": {},
+    })
+    assert unscoped["experience"]["metadata"]["provenance_class"] == "UNSCOPED"
+
+    with pytest.raises(ValueError, match="runtime closure provenance"):
+        fabric.record_experience({
+            "source": "historical_trade_list",
+            "source_record_id": "forged-runtime",
+            "asset": "NQ",
+            "direction": "long",
+            "entry_at": "2024-06-03T11:00:00Z",
+            "exit_at": "2024-06-03T11:20:00Z",
+            "qty": 1,
+            "entry_price": 18000.0,
+            "exit_price": 18010.0,
+            "pnl": 200.0,
+            "metadata": {
+                "strategy_fingerprint": "d" * 64,
+                "provenance_quality": "CLOSURE_TIME_CONFIG",
+            },
+        })
+
+    with pytest.raises(ValueError, match="historical artifact provenance"):
+        fabric.record_experience({
+            "source": "runtime_live_sim",
+            "source_record_id": "forged-history",
+            "asset": "NQ",
+            "direction": "long",
+            "entry_at": "2026-10-01T16:00:00Z",
+            "exit_at": "2026-10-01T16:20:00Z",
+            "qty": 1,
+            "entry_price": 25000.0,
+            "exit_price": 25005.0,
+            "pnl": 100.0,
+            "metadata": {
+                "artifact_configuration_fingerprint": "e" * 64,
+                "provenance_quality": "MANIFEST_UNIQUE_STRATEGY_REPORT_LINK",
+                "strategy_report_sha256": "f" * 64,
+            },
+        })
+
+
+def test_experience_state_reports_provenance_classes_without_cross_promotion(tmp_path):
+    from icarus_engine.learning_fabric import LearningFabric
+
+    fabric = LearningFabric(tmp_path)
+    fabric.record_experience({
+        "source": "runtime_live_sim",
+        "source_record_id": "runtime",
+        "asset": "NQ",
+        "direction": "long",
+        "entry_at": "2026-10-01T14:00:00Z",
+        "exit_at": "2026-10-01T14:20:00Z",
+        "qty": 1,
+        "entry_price": 25000.0,
+        "exit_price": 25010.0,
+        "pnl": 200.0,
+        "metadata": {
+            "strategy_fingerprint": "1" * 64,
+            "provenance_quality": "CLOSURE_TIME_CONFIG",
+        },
+    })
+    fabric.record_experience({
+        "source": "historical_strategy_report_xlsx",
+        "source_record_id": "history",
+        "asset": "NQ",
+        "direction": "short",
+        "entry_at": "2024-06-03T10:00:00Z",
+        "exit_at": "2024-06-03T10:20:00Z",
+        "qty": 1,
+        "entry_price": 18000.0,
+        "exit_price": 17990.0,
+        "pnl": 200.0,
+        "metadata": {
+            "artifact_configuration_fingerprint": "2" * 64,
+            "provenance_quality": "DIRECT_STRATEGY_REPORT_XLSX_TRADE_SHEET",
+            "strategy_report_sha256": "3" * 64,
+        },
+    })
+    fabric.record_experience({
+        "source": "manual_research",
+        "source_record_id": "plain",
+        "asset": "NQ",
+        "direction": "long",
+        "entry_at": "2026-10-01T17:00:00Z",
+        "exit_at": "2026-10-01T17:20:00Z",
+        "qty": 1,
+        "entry_price": 25000.0,
+        "exit_price": 25001.0,
+        "pnl": 20.0,
+        "metadata": {},
+    })
+
+    state = fabric.experience_state()
+    assert state["schema_version"] == "icarus-learning-experience-state-v4"
+    assert state["provenance_class_counts"] == {
+        "RUNTIME_CLOSURE_CONFIG": 1,
+        "HISTORICAL_ARTIFACT_CONFIG": 1,
+        "UNSCOPED": 1,
+    }
+    assert state["by_configuration"][0]["provenance_class"] == "RUNTIME_CLOSURE_CONFIG"
+    assert state["by_artifact_configuration"][0]["provenance_class"] == "HISTORICAL_ARTIFACT_CONFIG"
+    assert state["closure_scoped_count"] == 1
+    assert state["artifact_scoped_count"] == 1
+    assert state["unscoped_count"] == 1
