@@ -11,7 +11,7 @@ from icarus_engine.evolution_sync import (
     normalize_interface_event,
 )
 from icarus_engine.system_audit import load_repository_audit
-from icarus_engine.brain import brain_snapshot
+from icarus_engine.brain import SUBSYSTEMS, brain_snapshot
 
 
 def event_payload(**overrides):
@@ -231,6 +231,25 @@ def test_psi_is_a_supported_mcp_subsystem(tmp_path):
     assert state["status"] == "green"
     assert state["ingested_total"] == 1
     assert set(state["subsystems"]) >= {"psi", "parallax"}
+
+
+def test_every_registered_brain_subsystem_is_evolution_ingestible(tmp_path):
+    subsystem_ids = [row["id"] for row in SUBSYSTEMS]
+    sync = make_sync(
+        tmp_path,
+        event_payload(
+            subsystems=subsystem_ids,
+            title="Brain registry compatibility fixture",
+        ),
+    )
+    state = sync.sync_once()
+
+    assert state["status"] == "green"
+    assert state["rejected_total"] == 0
+    assert {
+        subsystem_id.replace("_", "-")
+        for subsystem_id in subsystem_ids
+    } <= set(state["subsystems"])
 
 
 def test_committed_interface_receipts_match_current_ingestion_contract():
