@@ -1,0 +1,38 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "argus-transfer-research-export-verified-20261002T000000Z",
+  "category": "EVOLUTION",
+  "severity": "success",
+  "status": "verified",
+  "subsystems": [
+    "argus",
+    "execution_research",
+    "calibration",
+    "transfer_validation",
+    "provenance"
+  ],
+  "recorded_at": "2026-10-02T00:00:00Z",
+  "title": "ARGUS transfer-audit research export contract verified",
+  "summary": "ARGUS now has a receipt-time research export contract for registered paper-to-broker transfer audits. The export recomputes the registered transfer analysis, preserves manifest/cohort/transfer-plan identities, exact model and execution-source revisions, tolerances, evidence-specific sample sizes and paper-minus-broker intervals, and explicitly refuses to promote paper evidence or authorize broker substitution. No ATHENA happy-path driver is fabricated while the deterministic hub lacks genuine broker-confirmed execution evidence.",
+  "source_repository": "reppiks490/divine-providence",
+  "source_ref": "main",
+  "source_commit": "885ce4270cfa231827e21b131828304ba2882e5a",
+  "evidence": [
+    "divine-providence PR #31 merged at 885ce4270cfa231827e21b131828304ba2882e5a",
+    "exact-head subsystem-evolution workflow run 36943100559 completed success",
+    "Linux and Windows ARGUS/ATHENA/AION causal subsystem jobs passed",
+    "intelligence-fabric and hub tests passed",
+    "full twelve-system validation passed",
+    "registered transfer analysis is recomputed before export",
+    "publication cannot precede cohort lock and ingestion cannot precede publication",
+    "formal_equivalence_test=false",
+    "paper_evidence_promoted=false",
+    "broker_substitution_authorized=false",
+    "ATHENA hub integration remains intentionally unregistered until genuine broker-confirmed evidence with valid lineage exists",
+    "execution_authorized=false",
+    "production_authorized=false",
+    "production_decision_authorized=false"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}
