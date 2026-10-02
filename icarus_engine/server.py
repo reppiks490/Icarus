@@ -108,7 +108,7 @@ from .ascendancy.mechanisms import MechanismLab
 from .ascendancy.invention import InventionLab, to_foundry_candidate
 from .ascendancy.contribution import ContributionLab
 from .ascendancy.evaluator import EvaluatorCascade
-from .ascendancy.federated_intake import FederatedResearchIntake
+from .ascendancy.federated_intake import FederatedResearchIntake, FederatedResearchIntakeSync
 
 
 def _no_json_constants(name: str):
@@ -234,6 +234,11 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     ascendancy_contribution = ContributionLab(port.base_dir)
     ascendancy_evaluator = EvaluatorCascade(port.base_dir)
     ascendancy_federated_intake = FederatedResearchIntake(port.base_dir)
+    ascendancy_federated_intake_sync = FederatedResearchIntakeSync(
+        port.base_dir,
+        intake=ascendancy_federated_intake,
+        provider=brain_remote_sync.status,
+    )
     mcp_control = MCPControlPlane(port.base_dir)
     chronofold = ChronofoldEngine(port, possibility=possibility)
     commissioning = CommissioningEngine(port.base_dir, port, chronofold)
@@ -264,7 +269,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     )
 
     def _ascendancy_sync_federated_intake() -> Dict[str, Any]:
-        return ascendancy_federated_intake.ingest(brain_remote_sync.status())
+        return ascendancy_federated_intake_sync.sync_once()
 
     def _qualification_sync(candidate_id: str, source_repo: str, source_commit: str) -> dict[str, Any]:
         status = qualification_receipts.candidate_status(candidate_id, source_repo, source_commit)
@@ -602,6 +607,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
         return {
             "loop_intelligence": loop_intelligence_sync,
             "brain_remote": brain_remote_sync,
+            "ascendancy_federated_intake": ascendancy_federated_intake_sync,
             "brain_research": brain_research_sync,
             "evolution": evolution_remote_sync,
             "evidence_lab": evidence_lab_sync,
@@ -615,13 +621,6 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 results[name] = syncer.sync_once()
             except Exception as ex:
                 errors[name] = f"{type(ex).__name__}: {ex}"[:800]
-        if not errors:
-            try:
-                results["ascendancy_federated_intake"] = _ascendancy_research_mutation(
-                    _ascendancy_sync_federated_intake
-                )
-            except Exception as ex:
-                errors["ascendancy_federated_intake"] = f"{type(ex).__name__}: {ex}"[:800]
         if errors:
             raise RuntimeError(
                 f"sync_all partial failure; completed={sorted(results)} errors={errors}"
@@ -1170,7 +1169,9 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
                 try:
-                    return self._json(200, ascendancy_federated_intake.snapshot())
+                    snapshot = ascendancy_federated_intake.snapshot()
+                    snapshot["sync"] = ascendancy_federated_intake_sync.status()
+                    return self._json(200, snapshot)
                 except (ValueError, TypeError) as ex:
                     return self._json(400, {"detail": str(ex)})
                 except Exception as ex:
@@ -2442,6 +2443,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 autopilot.start_background()
                 loop_intelligence_sync.start()
                 brain_remote_sync.start()
+                ascendancy_federated_intake_sync.start()
                 brain_research_sync.start()
                 evolution_remote_sync.start()
                 evidence_lab_sync.start()
@@ -2454,6 +2456,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     evidence_lab_sync.close()
                     evolution_remote_sync.close()
                     brain_research_sync.close()
+                    ascendancy_federated_intake_sync.close()
                     brain_remote_sync.close()
                     loop_intelligence_sync.close()
                     commissioning.close()
@@ -2494,6 +2497,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     srv.ascendancy_contribution = ascendancy_contribution
     srv.ascendancy_evaluator = ascendancy_evaluator
     srv.ascendancy_federated_intake = ascendancy_federated_intake
+    srv.ascendancy_federated_intake_sync = ascendancy_federated_intake_sync
     srv.learning = learning
     srv.chronofold = chronofold
     srv.commissioning = commissioning
