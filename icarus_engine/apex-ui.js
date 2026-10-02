@@ -2,6 +2,7 @@
   'use strict';
 
   let timer = null;
+  let loadSeq = 0;
   let selectedAsset = 'NQ';
 
   function h(v) {
@@ -157,6 +158,7 @@
   }
 
   async function loadApex() {
+    const seq = ++loadSeq;
     const el = document.querySelector('#apexPanel');
     if (!el) return;
     try {
@@ -167,8 +169,10 @@
       const response = await fetch('/api/apex' + qs, {cache:'no-store', headers:{'Authorization':'Bearer ' + token}});
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail || ('APEX HTTP ' + response.status));
+      if (seq !== loadSeq) return;
       render(data);
     } catch (err) {
+      if (seq !== loadSeq) return;
       el.innerHTML = '<div class="empty">APEX Ω state UNAVAILABLE: ' + h(err && err.message ? err.message : err) + '</div>';
     }
   }
