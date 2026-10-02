@@ -614,3 +614,23 @@ def test_ascendancy_dashboard_surfaces_candidate_foundry():
     assert 'p.path == "/admin/ascendancy/candidate"' in server
     assert 'p.path == "/admin/ascendancy/candidate-stage"' in server
     assert 'p.path == "/admin/ascendancy/candidate-reject"' in server
+
+
+def test_ascendancy_dashboard_surfaces_unknown_unknown_lab():
+    ui = (REPO / "icarus_engine/ascendancy-ui.js").read_text(encoding="utf-8")
+    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
+
+    assert "/api/ascendancy/unknowns" in ui
+    assert "UNKNOWN UNKNOWNS" in ui
+    assert "STRUCTURED VS NOISE" in ui
+    assert "INDEPENDENT EPISODES" in ui
+    assert "FAILED SYSTEMS" in ui
+    assert "FAILED EXPLANATIONS" in ui
+    assert "CANDIDATE LINKS" in ui
+    assert "UNEXPLAINED" in ui
+    assert "REPLICATED" in ui
+    assert "cause_remains_null_until_separate_validation" in ui
+    assert 'p.path == "/api/ascendancy/unknowns"' in server
+    assert 'p.path == "/admin/ascendancy/unknown-event"' in server
+    assert 'p.path == "/admin/ascendancy/unknown-explanation"' in server
+    assert 'p.path == "/admin/ascendancy/unknown-link-candidate"' in server
