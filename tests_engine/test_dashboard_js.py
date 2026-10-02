@@ -138,6 +138,9 @@ def test_dashboard_surfaces_adaptive_brain_fabric():
     assert "STRICT EVENT ENVELOPE" in ui
     assert "Peer lane packet" in ui
     assert "source ${sync.peer_source_commit_verified?'VERIFIED '+" in ui
+    assert "Peer freshness" in ui
+    assert "sync.peer_packet_fresh" in ui
+    assert "agentContract.peer_packet_max_age_seconds" in ui
     assert "PERSISTED_WORKER_EVIDENCE" in ui
     assert "Peer substantive lanes" in ui
     assert "Federated Icarus-engine lane state" in ui

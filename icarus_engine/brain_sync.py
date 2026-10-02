@@ -112,6 +112,8 @@ def _default_state(interval_seconds: int) -> dict[str, Any]:
         "peer_source_commit_verified": False,
         "peer_source_commit_relation": None,
         "peer_observed_at": None,
+        "peer_packet_fresh": False,
+        "peer_packet_age_seconds": None,
         "peer_lanes": [],
         "peer_substantive_lane_count": 0,
         "peer_durability_only_lane_count": 0,
@@ -328,6 +330,14 @@ def _normalize_federation_contract(
     ):
         if peer_semantics.get(key) is not False:
             raise ValueError(f"Icarus-engine Brain federation peer packet attempts authority escalation: {key}")
+    if peer_semantics.get("stale_packet_is_current_state") is not False:
+        raise ValueError("Icarus-engine Brain federation stale packet semantics must fail closed")
+    if peer_packet.get("freshness_required") is not True:
+        raise ValueError("Icarus-engine Brain federation peer packet freshness must be required")
+    if peer_packet.get("max_age_seconds") != 1800:
+        raise ValueError("Icarus-engine Brain federation peer packet max age mismatch")
+    if peer_packet.get("max_future_skew_seconds") != 300:
+        raise ValueError("Icarus-engine Brain federation peer packet future-skew bound mismatch")
 
     event_validation = consumer.get("event_validation")
     if not isinstance(event_validation, Mapping):
@@ -388,6 +398,9 @@ def _normalize_federation_contract(
             "legacy_exception_count": len(legacy_blobs),
             "peer_packet_schema": peer_packet.get("schema_version"),
             "peer_packet_authority": peer_packet.get("authority"),
+            "peer_packet_freshness_required": True,
+            "peer_packet_max_age_seconds": 1800,
+            "peer_packet_max_future_skew_seconds": 300,
         },
         "execution_authorized": False,
         "production_decision_authorized": False,
@@ -567,6 +580,7 @@ class BrainRemoteSync:
         interval_seconds: int | None = None,
         fetch_json: Callable[[str], Any] | None = None,
         fetch_bytes: Callable[[str], bytes] | None = None,
+        now_utc: Callable[[], datetime] | None = None,
     ):
         self.base_dir = Path(base_dir)
         token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN") or ""
@@ -575,6 +589,7 @@ class BrainRemoteSync:
         self._token = token
         self._fetch_json = fetch_json or self._default_fetch_json
         self._fetch_bytes = fetch_bytes or self._default_fetch_bytes
+        self._now_utc = now_utc or (lambda: datetime.now(timezone.utc))
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self._lock = threading.Lock()
@@ -711,6 +726,36 @@ class BrainRemoteSync:
                         raise ValueError("peer source commit is not the mainline merge base")
                     normalized_peer["peer_source_commit_verified"] = True
                     normalized_peer["peer_source_commit_relation"] = relation.upper()
+
+                    now = self._now_utc()
+                    if not isinstance(now, datetime) or now.tzinfo is None or now.utcoffset() is None:
+                        raise ValueError("peer packet freshness clock must be timezone-aware")
+                    observed = datetime.fromisoformat(
+                        normalized_peer["peer_observed_at"].replace("Z", "+00:00")
+                    )
+                    age_seconds = (
+                        now.astimezone(timezone.utc) - observed.astimezone(timezone.utc)
+                    ).total_seconds()
+                    max_age = int(
+                        (contract_docs["consumer"].get("peer_packet") or {}).get(
+                            "max_age_seconds", -1
+                        )
+                    )
+                    max_future_skew = int(
+                        (contract_docs["consumer"].get("peer_packet") or {}).get(
+                            "max_future_skew_seconds", -1
+                        )
+                    )
+                    if age_seconds > max_age:
+                        raise ValueError(
+                            f"peer packet is stale: age {age_seconds:.3f}s exceeds {max_age}s"
+                        )
+                    if age_seconds < -max_future_skew:
+                        raise ValueError(
+                            "peer packet observed_at exceeds allowed future clock skew"
+                        )
+                    normalized_peer["peer_packet_fresh"] = True
+                    normalized_peer["peer_packet_age_seconds"] = round(age_seconds, 3)
                     state.update(normalized_peer)
                 except Exception as ex:
                     state.update({
@@ -721,6 +766,8 @@ class BrainRemoteSync:
                         "peer_source_commit_verified": False,
                         "peer_source_commit_relation": None,
                         "peer_observed_at": None,
+                        "peer_packet_fresh": False,
+                        "peer_packet_age_seconds": None,
                         "peer_lanes": [],
                         "peer_substantive_lane_count": 0,
                         "peer_durability_only_lane_count": 0,
