@@ -77,7 +77,6 @@ SUBSYSTEMS = (
     {"id": "pantheon", "title": "PANTHEON", "owner": "aion", "job": "Independent research-faculty fabric that preserves disagreement, provenance, bounded authority, and falsifiable claims across advanced market-intelligence faculties."},
     {"id": "nemesis", "title": "NEMESIS Ω", "owner": "pantheon", "job": "Adversarial fragility, minimum-failure-distance, sensitivity, edge half-life, subsystem-ablation survival, and edge-survival diagnostics."},
     {"id": "godel", "title": "GÖDEL Ω", "owner": "pantheon", "job": "Epistemic identifiability and indistinguishable-world diagnostics; expose what available evidence cannot resolve."},
-    {"id": "kairos", "title": "KAIROS Ω", "owner": "pantheon", "job": "Declared information-acquisition frontier: rank candidate observations by ambiguity reduction, reliability, decision sensitivity, delay, edge retention, acquisition cost, and execution deterioration without trading authority."},
     {"id": "socrates", "title": "SOCRATES", "owner": "pantheon", "job": "Autonomous research-question and falsifiable-hypothesis selection driven by uncertainty, causal debt, novelty, and disagreement."},
     {"id": "ananke", "title": "ANANKĒ", "owner": "pantheon", "job": "Structural transition-cost, reachable-space, cross-world constraint intersection, and causal-event-horizon diagnostics."},
     {"id": "ex-nihilo", "title": "EX NIHILO", "owner": "pantheon", "job": "Ontology-surprise and representation-failure detection that proposes and retires falsifiable market phenomena through observed research outcomes."},
@@ -87,9 +86,7 @@ SUBSYSTEMS = (
     {"id": "veritas", "title": "VERITAS Ω", "owner": "pantheon", "job": "Right-for-right-reasons auditing: freeze falsifiable mechanism certificates before outcomes and quarantine lucky directional success when predicted causal signatures fail."},
     {"id": "lethe", "title": "LETHE Ω", "owner": "pantheon", "job": "Adaptive research-memory decay, stale-knowledge quarantine, and evidence-gated regime resurrection without deleting immutable evidence or granting trading authority."},
     {"id": "atlas", "title": "ATLAS Ω", "owner": "pantheon", "job": "Latent market-state geometry: map current embeddings into learned basins, regime boundaries, transition corridors, metastability and out-of-manifold states without claiming transition probabilities."},
-    {"id": "aporia", "title": "APORIA Ω", "owner": "pantheon", "job": "Active-perception and value-of-waiting research: rank ambiguity-reducing observations against edge half-life, acquisition cost, and opportunity decay before reassessment."},
     {"id": "axiom", "title": "AXIOM Ω", "owner": "pantheon", "job": "Proof-carrying research-thesis certification across non-substitutable epistemic, robustness, evidence-lineage, economic, mechanism, structural, memory, and provenance axes; never trade authority."},
-    {"id": "autognosis", "title": "AUTOGNOSIS Ω", "owner": "pantheon", "job": "Metacognitive self-failure diagnostics: quantify internal research fragility, evidence coverage, dominant failure mode, and trust posture without forecasting markets or granting trading authority."},
     {"id": "archon", "title": "ARCHON Ω", "owner": "pantheon", "job": "Temporary revocable research-attention arbitration that preserves disagreement and never grants trading authority."},
     {"id": "aether", "title": "AETHER Ω", "owner": "pantheon", "job": "Bounded ephemeral research-swarm ecology with blind independent roles, claim fitness, speciation/extinction, food-web interactions, zero capital authority, and durable lineage."},
     {"id": "sibyl", "title": "SIBYL Ω", "owner": "aion", "job": "Causal as-of future-lightcone synthesis: time-valid independent evidence domains, reachable-state basins, entropy/convergence, temporal collapse/fracture, counterfactuals, attractors/invalidations, and observed calibration with no deterministic-foresight claim."},
@@ -97,10 +94,16 @@ SUBSYSTEMS = (
     {"id": "learning-fabric", "title": "LEARNING FABRIC Ω", "owner": "aion", "job": "Continuous matured-outcome settlement, historical replay, empirical calibration/drift measurement, and credibility feedback with research-only authority."},
     {"id": "unified-intelligence", "title": "UNIFIED INTELLIGENCE SPINE", "owner": "omega", "job": "Research-only composition boundary that preserves source identity, evidence ancestry and disagreement while measuring structural redundancy without treating novelty as predictive edge."},
     {"id": "capability-orchestrator", "title": "ASCENDANCY CAPABILITY ORCHESTRATOR", "owner": "omega", "job": "Govern connected research, engineering, design, market-data and scientific capability contracts through explicit evidence rules, availability states, claim prohibitions, provenance and fail-closed authority boundaries."},
+    {"id": "ascendancy-foundry", "title": "ASCENDANCY EDGE FOUNDRY", "owner": "omega", "job": "Durable falsifiable candidate intake across native failures, foreign lenses, public research, generated mathematics and architecture mutations; preserves provenance, required observations, resource budgets and lineage without qualification or trading authority."},
+    {"id": "ascendancy-unknowns", "title": "ASCENDANCY UNKNOWN-UNKNOWN LAB", "owner": "omega", "job": "Cross-engine unexplained-residual memory that requires independent-episode replication, preserves failed explanations, keeps cause unknown until separately validated, and escalates replicated phenomena into falsifiable research."},
+    {"id": "ascendancy-mechanisms", "title": "ASCENDANCY MECHANISM LAB", "owner": "daedalus", "job": "Paired ablation and interaction experiments isolate direct-looking, interaction-dependent, harmful, or unresolved candidate mechanisms while preserving evaluator/context isolation and explicitly withholding causal proof and trading authority."},
+    {"id": "ascendancy-invention", "title": "ASCENDANCY INVENTION ENGINE", "owner": "aion", "job": "Bounded typed mathematical composition generates reproducible untested hypotheses with predeclared falsifiers, exact provenance, resource limits, and protected-evaluation contracts; generated ideas carry no edge claim or trading authority."},
+    {"id": "ascendancy-contribution", "title": "ASCENDANCY INFORMATION CONTRIBUTION LAB", "owner": "daedalus", "job": "Conditional incremental predictive-information measurement using paired proper-score gains under immutable evaluator, context, horizon, and conditioning-set contracts; standalone performance is not treated as incremental information or causal proof."},
+    {"id": "ascendancy-evaluator", "title": "ASCENDANCY EVALUATOR CASCADE", "owner": "daedalus", "job": "Multi-fidelity research evaluation escalates candidates from cheap contract/null screens through replay, ablation, OOS, protected holdout, conditional contribution and robustness under cumulative resource budgets; it halts failures and cannot mint qualification."},
+    {"id": "ascendancy-peer-bridge", "title": "ASCENDANCY PEER REPOSITORY BRIDGE", "owner": "omega", "job": "Import provenance-bound foreign ICARUS repository state as append-only research evidence while separating substantive worker evidence from durability receipts and preventing repository authority transfer."},
     {"id": "provenance", "title": "PROVENANCE", "owner": "daedalus", "job": "Exact code/data/artifact lineage, commit binding, receipt integrity, and proof-chain validation."},
     {"id": "ml", "title": "ML", "owner": "aion", "job": "Research-only model lifecycle, training evidence, calibration, drift/OOD state, reproducibility, and candidate packaging."},
     {"id": "data", "title": "DATA", "owner": "flow", "job": "Raw-source identity, availability-time truth, representation quality, freshness, and replay-safe market evidence."},
-    {"id": "csv-evidence-lab", "title": "CSV EVIDENCE LAB Ω", "owner": "flow", "job": "Independent repository-native CSV structural/provenance evidence mirror; keep durability receipts separate from substantive evidence and never auto-promote data or models."},
 )
 
 LATENCY_TIERS = (
@@ -588,49 +591,14 @@ def brain_snapshot(
     integrity: Mapping[str, Any] | None = None,
     remote_sync: Mapping[str, Any] | None = None,
     research_sync: Mapping[str, Any] | None = None,
-    evidence_lab_sync: Mapping[str, Any] | None = None,
     proof_status: Mapping[str, Any] | None = None,
     latency_status: Mapping[str, Any] | None = None,
     source_reliability: Mapping[str, Any] | None = None,
-    qualification_receipts: Mapping[str, Any] | None = None,
     limit: int = 1000,
 ) -> dict[str, Any]:
     """Build the operator brain state from measured local evidence only."""
     events, journal_errors = _read_events(base_dir, max(1, min(5000, int(limit))))
     candidates = _latest_candidates(events)
-    qualification = dict(qualification_receipts) if isinstance(qualification_receipts, Mapping) else {
-        "required_gates": list(REQUIRED_CANDIDATE_GATES),
-        "candidate_revision_count": 0,
-        "qualification_ready_count": 0,
-        "candidates": [],
-        "execution_authorized": False,
-        "production_decision_authorized": False,
-    }
-    qualification_rows = qualification.get("candidates") if isinstance(qualification.get("candidates"), list) else []
-    qualification_by_revision = {}
-    for row in qualification_rows:
-        if not isinstance(row, Mapping):
-            continue
-        key = (
-            str(row.get("candidate_id") or ""),
-            str(row.get("candidate_source_repo") or ""),
-            str(row.get("candidate_source_commit") or ""),
-        )
-        qualification_by_revision[key] = dict(row)
-    for candidate in candidates:
-        key = (
-            str(candidate.get("candidate_id") or ""),
-            str(candidate.get("source_repo") or ""),
-            str(candidate.get("source_commit") or ""),
-        )
-        candidate["qualification_receipts"] = qualification_by_revision.get(key, {
-            "receipt_count": 0,
-            "qualification_ready": False,
-            "recommended_stage": "validated",
-            "blockers": ["no exact qualification receipt state recorded"],
-            "execution_authorized": False,
-            "production_decision_authorized": False,
-        })
     regimes = _market_regimes(market_status)
 
     routes = []
@@ -775,18 +743,10 @@ def brain_snapshot(
             "execution_authorized": False,
             "production_decision_authorized": False,
         },
-        "evidence_lab_sync": dict(evidence_lab_sync) if isinstance(evidence_lab_sync, Mapping) else {
-            "enabled": False,
-            "status": "not_configured",
-            "repository": "reppiks490/icarus-csv-evidence-lab",
-            "execution_authorized": False,
-            "production_decision_authorized": False,
-        },
         "performance_proof": proof,
         "evidence_graph": evidence_graph,
         "latency_telemetry": latency,
         "source_reliability": reliability,
-        "qualification_receipts": qualification,
         "evidence_tournaments": tournaments,
         "learning": {
             "brain_events_total": len(events),
@@ -801,8 +761,6 @@ def brain_snapshot(
             "research_status_present": isinstance(research_status, Mapping),
             "incubator_proposals": incubator["proposal_count"],
             "incubator_review_required": incubator["review_required"],
-            "qualification_ready_revisions": int(qualification.get("qualification_ready_count") or 0),
-            "qualification_candidate_revisions": int(qualification.get("candidate_revision_count") or 0),
             "journal_errors": journal_errors,
         },
         "candidate_gate": {
