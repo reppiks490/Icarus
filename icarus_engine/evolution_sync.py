@@ -233,8 +233,18 @@ def normalize_interface_event(
     return _normalize_event(payload, remote_path=source_path, blob_sha=blob_sha)
 
 
+_BRAIN_COMPATIBLE_STATUSES = {
+    "observed", "active", "verified", "qualified", "rejected",
+    "blocked", "degraded", "retired", "unverified",
+}
+
+
 def _brain_status(status: str) -> str:
-    return status if status in _ALLOWED_STATUSES else "observed"
+    # Interface lifecycle is slightly richer than Adaptive Brain lifecycle.
+    # Preserve the interface event's own status in the Evolution feed, but map
+    # interface-only states (currently "staged") to a non-escalating brain
+    # observation rather than causing ingestion failure.
+    return status if status in _BRAIN_COMPATIBLE_STATUSES else "observed"
 
 
 class EvolutionRemoteSync:
