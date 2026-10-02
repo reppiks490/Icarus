@@ -406,6 +406,8 @@ def test_mechanism_lab_api_is_authenticated_candidate_bound_and_research_only(as
 
     experiment = dict(unbound)
     experiment["candidate_id"] = candidate["candidate_id"]
+    experiment["source_repo"] = candidate["source_repo"]
+    experiment["source_commit"] = candidate["source_commit"]
     experiment["evaluation_contract_hash"] = candidate["evaluation_contract"]["contract_hash"]
     experiment["episode_id"] = "http-bound"
     code, saved = request("POST", "/admin/ascendancy/mechanism-experiment", body=experiment)
