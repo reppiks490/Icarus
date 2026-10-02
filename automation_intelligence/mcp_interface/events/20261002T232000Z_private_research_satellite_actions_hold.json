@@ -1,0 +1,31 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "private-research-satellite-actions-allocation-blocked-20261002T232000Z",
+  "category": "AUDIT",
+  "severity": "warn",
+  "status": "blocked",
+  "subsystems": [
+    "infrastructure",
+    "provenance",
+    "argus",
+    "csv-evidence-lab",
+    "ui"
+  ],
+  "recorded_at": "2026-10-02T23:20:00Z",
+  "title": "Private research satellites remain blocked before Actions runner allocation",
+  "summary": "Two independent private research repositories currently show the same GitHub Actions failure mode: jobs are created and immediately fail without any runner assignment or executed steps. divine-providence exact-head ARGUS/federation runs and icarus-csv-evidence-lab watchdog CI both exhibit steps=[] while the public canonical ICARUS repository continues to receive normal GitHub-hosted Linux/Windows runners. This is infrastructure evidence, not a code-test verdict; affected private-repository merge gates remain closed until real runners execute the required tests.",
+  "source_repository": "reppiks490/Icarus",
+  "source_ref": "main",
+  "source_commit": "87f738a932499b821bdb1d97d6140ec60b88b3c0",
+  "evidence": [
+    "reppiks490/divine-providence PR #44 head 9150646e058a97e8212d50a3f37aaf4ea6eb9bfe run 37056448239: all required jobs completed failure with steps=[] and no runner assignment",
+    "reppiks490/divine-providence PR #48 head 55827d6721aca6317c1f94c93e99a8c0968ceac2 run 37063897928: all eight required jobs completed failure with steps=[] and no runner assignment",
+    "reppiks490/icarus-csv-evidence-lab PR #3 head 4676998db9803257b5e01cc0a51b5327ff268bbc run 37075786278: watchdog-tests completed failure with steps=[] and no runner assignment",
+    "reppiks490/Icarus is public and continues to allocate hosted Linux/Windows runners normally; therefore the evidence isolates the observed failure pattern to private-repository Actions paths rather than a universal GitHub Actions outage",
+    "exact account/billing/quota/permission cause is not asserted because current repository tooling does not expose sufficient administrative evidence",
+    "execution_authorized=false",
+    "production_decision_authorized=false"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}
