@@ -2134,11 +2134,12 @@ class LearningFabric:
             "asset": str(dataset.get("asset") or "").upper(),
             "timeframe": timeframe,
             "chart_type": chart_type,
-            "session_mode": session_mode,
             "rows": self._manifest_integer(report.get("rows")),
             "last_trade_number": self._manifest_integer(report.get("last_trade_number")),
             "notes": report.get("notes") or "",
         }
+        if session_mode is not None:
+            fingerprint_payload["session_mode"] = session_mode
         fingerprint = hashlib.sha256(
             _json(fingerprint_payload, "historical artifact configuration").encode("utf-8")
         ).hexdigest()
@@ -2176,11 +2177,12 @@ class LearningFabric:
             "asset": str(dataset.get("asset") or "").upper(),
             "timeframe": timeframe,
             "chart_type": chart_type,
-            "session_mode": session_mode,
             "rows": self._manifest_integer(row.get("rows")),
             "last_trade_number": self._manifest_integer(row.get("last_trade_number")),
             "notes": str(row.get("notes") or ""),
         }
+        if session_mode is not None:
+            payload["session_mode"] = session_mode
         fingerprint = hashlib.sha256(
             _json(payload, "direct historical artifact configuration").encode("utf-8")
         ).hexdigest()
