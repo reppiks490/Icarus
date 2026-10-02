@@ -1,0 +1,41 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "argus-tail-transfer-export-verified-20261002T001200Z",
+  "category": "EVOLUTION",
+  "severity": "success",
+  "status": "verified",
+  "subsystems": [
+    "argus",
+    "execution_research",
+    "calibration",
+    "tail_validation",
+    "transfer_validation",
+    "provenance"
+  ],
+  "recorded_at": "2026-10-02T00:12:00Z",
+  "title": "ARGUS execution-tail transfer research export verified",
+  "summary": "ARGUS now has a receipt-time research export for registered paper-to-broker tail audits. The export recomputes the registered tail analysis and preserves the study/cohort/tail-plan identities, exact model and source revisions, metric, quantiles, tolerances, sample sizes and paper-minus-broker tail intervals. It explicitly states that the result is not a formal equivalence test, is not multiplicity adjusted or familywise coverage, does not promote paper evidence, and does not authorize broker substitution. No ATHENA happy-path driver is fabricated while genuine broker-confirmed fixture lineage is unavailable.",
+  "source_repository": "reppiks490/divine-providence",
+  "source_ref": "main",
+  "source_commit": "0d68af233f18cac93e7cd8d873735c85d1ad45b3",
+  "evidence": [
+    "divine-providence PR #33 merged at 0d68af233f18cac93e7cd8d873735c85d1ad45b3",
+    "exact-head subsystem-evolution workflow run 36944145563 completed success",
+    "Linux and Windows ARGUS/ATHENA/AION causal subsystem jobs passed",
+    "intelligence-fabric and hub tests passed",
+    "full twelve-system validation passed",
+    "registered tail-transfer analysis is recomputed before export",
+    "publication cannot precede cohort lock and ingestion cannot precede publication",
+    "formal_equivalence_test=false",
+    "multiplicity_adjusted=false",
+    "familywise_coverage=false",
+    "paper_evidence_promoted=false",
+    "broker_substitution_authorized=false",
+    "ATHENA hub integration remains intentionally unregistered until genuine broker-confirmed evidence with valid lineage exists",
+    "execution_authorized=false",
+    "production_authorized=false",
+    "production_decision_authorized=false"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}
