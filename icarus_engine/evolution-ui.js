@@ -49,7 +49,7 @@
         '<div class="tile"><div class="k">Events ingested</div><div class="v tnum">'+h(state.ingested_total ?? 0)+'</div></div>' +
         '<div class="tile"><div class="k">Subsystems surfaced</div><div class="v tnum">'+h(Object.keys(subsystems).length)+'</div></div>' +
         '<div class="tile"><div class="k">Current invalid receipts</div><div class="v tnum '+((state.current_rejected_count||0)>0?'neg':'pos')+'">'+h(state.current_rejected_count ?? 0)+'</div><div class="small muted">present rejected Git blob versions</div></div>' +
-        '<div class="tile"><div class="k">Rejected versions total</div><div class="v tnum">'+h(state.rejected_total ?? 0)+'</div><div class="small muted">unique receipt versions ever rejected</div></div>' +
+        '<div class="tile"><div class="k">Rejected versions total</div><div class="v tnum">'+h(state.rejected_total ?? 0)+'</div><div class="small muted">unique versions since dedupe accounting'+((state.legacy_rejection_attempt_total||0)>0?' · legacy attempts '+h(state.legacy_rejection_attempt_total)+' not treated as unique':'')+'</div></div>' +
         '<div class="tile"><div class="k">Other receipt families</div><div class="v tnum">'+h(state.ignored_total ?? 0)+'</div><div class="small muted">valid non-interface schemas ignored by this feed</div></div>' +
         '<div class="tile"><div class="k">Last successful ingest</div><div class="v small">'+h(state.last_success_at||'awaiting first ingest')+'</div></div>' +
         '<div class="tile"><div class="k">Authority</div><div class="v">READ ONLY</div><div class="small muted">no production decision or execution authority</div></div>' +
