@@ -577,7 +577,7 @@
 
   function renderEvaluator(evaluator) {
     if (!evaluator) {
-      return '<section class="card" style="margin-top:12px"><h3>EVALUATOR CASCADE · RESOURCE ECONOMY</h3><div class="empty">UNAVAILABLE — staged evaluator state did not load.</div></section>';
+      return '<section class="card" style="margin-top:12px"><h3>ASCENDANCY EVALUATOR CASCADE · RESOURCE ECONOMY</h3><div class="empty">UNAVAILABLE — staged evaluator state did not load.</div></section>';
     }
     const candidates = Array.isArray(evaluator.candidates) ? evaluator.candidates : [];
     const stages = Array.isArray(evaluator.stage_catalog) ? evaluator.stage_catalog : [];
@@ -619,7 +619,7 @@
     ).join('');
 
     return '<section class="card" style="margin-top:12px">' +
-      '<h3>EVALUATOR CASCADE · RESOURCE ECONOMY</h3>' +
+      '<h3>ASCENDANCY EVALUATOR CASCADE · RESOURCE ECONOMY</h3>' +
       '<div class="small muted">Multi-fidelity elimination spends cheap evidence first, escalates only survivors, locks protected-holdout generations after exposure, and ends at QUALIFICATION_PREFLIGHT without self-qualification.</div>' +
       '<div class="tiles" style="margin-top:10px">' +
         '<div class="tile"><div class="k">ENROLLED</div><div class="v tnum">' + h(count(evaluator.candidate_count)) + '</div></div>' +
