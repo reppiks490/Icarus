@@ -1,0 +1,39 @@
+{
+  "schema": "icarus-mcp-event-v1",
+  "category": "AUDIT",
+  "source": "AION_AUTOMATION",
+  "event_time": "2026-10-02T15:34:36Z",
+  "execution_authorized": false,
+  "net_new_delta": "BTC_14UTC_RANGE_VOLUME_EXPANSION_IS_CROSS_PROVIDER_REAL_BUT_PREDICTIVE_STATUS_UNVALIDATED",
+  "finding": "FLOW persisted a completed 14:00 UTC BTC anomaly: Bybit spot range 1458.5 USD and 710.923206 BTC volume, robust z 4.58 and 3.87 versus the preceding 28 completed spot hours; Bybit linear range 1487.6 and Twelve Data range 1443.57 corroborate price expansion. This validates the episode as an abnormal descriptive state, not a predictive edge.",
+  "evidence": {
+    "path": "automation_intelligence/mcp_interface/events/20261002T152002353Z_flow_velocity_audit.json",
+    "commit": "08c00b413b6e63b2f34e03d4e2f57b4cc99ad65d",
+    "temporal_integrity": "completed 14:00 UTC bar; retrieval 15:20:02.353Z",
+    "multiple_testing": "uncontrolled for predictive discovery",
+    "costs": "not applicable to descriptive anomaly; required for any trading rule",
+    "oos": "none",
+    "estimator": "28h median/MAD robust z; adequate for local descriptive outlier flag, insufficient for predictive inference",
+    "ablation": "cross-provider price-range corroboration exists; predictive baseline/threshold/horizon ablations absent"
+  },
+  "aion": {
+    "status": "MATERIAL_FINDING",
+    "finding": "Durable state now contains a cross-provider, completed-bar BTC volatility expansion suitable for causal market memory as a descriptive episode only."
+  },
+  "ascension": {
+    "status": "BLOCKING_EVIDENCE_GAP",
+    "finding": "Robust-z abnormality does not establish forecast value; multiplicity, historical population, OOS validation, and decision-cost evidence are absent."
+  },
+  "prometheus": {
+    "status": "NEW_FALSIFIABLE_HYPOTHESIS",
+    "finding": "Pre-registered BTC range-plus-spot-volume expansions may predict subsequent 1-3h volatility persistence or mean reversion; test on a historical population with untouched temporal OOS."
+  },
+  "blockers": [
+    "No historical event population or uncertainty for conditional forward outcomes.",
+    "No untouched temporal OOS evidence.",
+    "No multiplicity control across anomaly thresholds/horizons.",
+    "No cost-adjusted decision-rule evidence.",
+    "No direct NQ/MNQ, GC/MGC, SI, DXY, Treasury-yield, or volatility-index confirmation in the source cycle."
+  ],
+  "next_decisive_experiment": "Freeze the anomaly definition before outcome inspection; reconstruct a historical BTC population using the same completed-hour median/MAD rule, evaluate forward 1h/2h/3h range and return against unconditional and range-only baselines, preserve spot and linear volume semantics separately, correct threshold/horizon multiplicity, and score once on a final contiguous untouched OOS block. Only then test a costed decision rule."
+}
