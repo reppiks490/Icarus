@@ -613,3 +613,35 @@ is never an order approval. It retains `execution_authorized=false` and
 `production_decision_authorized=false`, and explicitly records that the hard
 Risk Kernel, execution-quality checks, and broker preflight remain external
 requirements.
+
+
+## ATLAS Ω — latent market-state geometry
+
+ATLAS replaces the assumption that market regimes are clean labels with a
+geometric view of state. The caller supplies a bounded latent
+`state_embedding` plus versioned research `manifold_anchors`. Each anchor
+declares an ID, regime, vector, positive radius, and stability.
+
+ATLAS computes dimension-normalized distance to every anchor, then reports:
+
+- the current basin and basin depth;
+- out-of-manifold state;
+- topological novelty;
+- competing-regime boundary pressure;
+- regime separation;
+- local metastability;
+- a transition corridor when two regime basins become geometrically close; and
+- the nearest research anchors for auditability.
+
+This makes it possible to distinguish “inside a familiar regime” from “near a
+regime boundary” and “outside the learned manifold” without pretending that a
+discrete regime classifier has already solved the problem. Distances and
+boundary scores are geometry diagnostics, **not calibrated transition
+probabilities**.
+
+ATLAS also participates in AXIOM only when a manifold dependency was actually
+declared. Out-of-manifold state fails the manifold-membership proof axis; very
+high boundary pressure leaves basin separation unproven. SOCRATES can target
+the topological uncertainty directly, while AETHER increases bounded research
+attention and prioritizes ontology/historical specialists. None of those paths
+grant execution authority.
