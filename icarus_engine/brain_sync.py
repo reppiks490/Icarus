@@ -23,7 +23,15 @@ from .brain import record_brain_event
 REMOTE_REPOSITORY = "reppiks490/Icarus-engine"
 REMOTE_REF = "main"
 REMOTE_ROOT = "automation_intelligence/mcp_interface/events"
+REMOTE_CONSUMER_CONTRACT = "automation_intelligence/mcp_interface/icarus_consumer_contract.json"
+REMOTE_PRODUCER_CONTRACT = "automation_intelligence/mcp_interface/contract.json"
 _REMOTE_API = f"https://api.github.com/repos/{REMOTE_REPOSITORY}/contents/{REMOTE_ROOT}?ref={REMOTE_REF}"
+_REMOTE_CONSUMER_CONTRACT_API = (
+    f"https://api.github.com/repos/{REMOTE_REPOSITORY}/contents/{REMOTE_CONSUMER_CONTRACT}?ref={REMOTE_REF}"
+)
+_REMOTE_PRODUCER_CONTRACT_API = (
+    f"https://api.github.com/repos/{REMOTE_REPOSITORY}/contents/{REMOTE_PRODUCER_CONTRACT}?ref={REMOTE_REF}"
+)
 
 SOURCE_TO_AGENT = {
     "OMEGA_AUTOMATION": "omega",
@@ -86,6 +94,19 @@ def _default_state(interval_seconds: int) -> dict[str, Any]:
         "rejected_total": 0,
         "last_ingested": [],
         "processed_blob_shas": [],
+        "consumer_contract_blob_sha": None,
+        "producer_contract_blob_sha": None,
+        "truth_contract": {
+            "federation_schema": None,
+            "producer_contract_schema": None,
+            "event_records": "RESEARCH_OBSERVABILITY_ONLY",
+            "durability_receipts_are_substantive_evidence": False,
+            "remote_status_is_production_decision": False,
+            "raw_owner_data_transfer": False,
+            "automatic_model_promotion": False,
+            "production_decision_authorized": False,
+            "automatic_execution_authority": False,
+        },
         "execution_authorized": False,
         "production_decision_authorized": False,
     }
@@ -199,6 +220,93 @@ def _normalize_status(value: Any) -> str:
     return status if status in allowed else "observed"
 
 
+def _normalize_federation_contract(
+    consumer: Mapping[str, Any],
+    producer: Mapping[str, Any],
+    blobs: Mapping[str, str],
+) -> dict[str, Any]:
+    """Validate the producer/consumer handshake before any remote event is trusted."""
+    if consumer.get("execution_authorized") is not False:
+        raise ValueError("consumer contract must preserve execution_authorized=false")
+    if consumer.get("production_decision_authorized") is not False:
+        raise ValueError("consumer contract must preserve production_decision_authorized=false")
+    if consumer.get("schema_version") != "icarus-engine-brain-federation-v1":
+        raise ValueError("unsupported Icarus-engine Brain federation contract")
+    if (
+        consumer.get("producer_repository") != REMOTE_REPOSITORY
+        or consumer.get("producer_ref") != REMOTE_REF
+        or consumer.get("consumer_repository") != "reppiks490/Icarus"
+    ):
+        raise ValueError("Icarus-engine Brain federation identity mismatch")
+    if consumer.get("event_root") != REMOTE_ROOT:
+        raise ValueError("Icarus-engine Brain federation event root mismatch")
+    if consumer.get("event_schema") != "icarus-mcp-event-v1":
+        raise ValueError("Icarus-engine Brain federation event schema mismatch")
+    if consumer.get("producer_contract") != REMOTE_PRODUCER_CONTRACT:
+        raise ValueError("Icarus-engine Brain federation producer contract path mismatch")
+    if consumer.get("producer_contract_schema") != "icarus-mcp-interface-contract-v1":
+        raise ValueError("Icarus-engine Brain federation producer contract schema mismatch")
+
+    sources = consumer.get("accepted_sources")
+    if not isinstance(sources, list) or set(sources) != set(SOURCE_TO_AGENT):
+        raise ValueError("Icarus-engine Brain federation source allowlist mismatch")
+    categories = consumer.get("accepted_categories")
+    expected_categories = {"REPAIR", "AUDIT", "EVOLUTION", "INTEGRATION"}
+    if not isinstance(categories, list) or set(categories) != expected_categories:
+        raise ValueError("Icarus-engine Brain federation category allowlist mismatch")
+
+    semantics = consumer.get("semantics")
+    if not isinstance(semantics, Mapping):
+        raise ValueError("Icarus-engine Brain federation semantics are missing")
+    if semantics.get("event_records") != "RESEARCH_OBSERVABILITY_ONLY":
+        raise ValueError("Icarus-engine Brain federation changed event authority")
+    for key in (
+        "durability_receipts_are_substantive_evidence",
+        "remote_status_is_production_decision",
+        "raw_owner_data_transfer",
+        "automatic_model_promotion",
+        "production_decision_authorized",
+        "automatic_execution_authority",
+    ):
+        if semantics.get(key) is not False:
+            raise ValueError(f"Icarus-engine Brain federation attempts authority escalation: {key}")
+
+    if producer.get("schema_version") != "icarus-mcp-interface-contract-v1":
+        raise ValueError("unsupported producer MCP interface contract")
+    if producer.get("event_root") != REMOTE_ROOT:
+        raise ValueError("producer MCP event root disagrees with federation contract")
+    if producer.get("event_schema") != consumer.get("event_schema"):
+        raise ValueError("producer MCP event schema disagrees with federation contract")
+    producer_categories = producer.get("required_categories")
+    if not isinstance(producer_categories, list) or set(producer_categories) != expected_categories:
+        raise ValueError("producer MCP categories disagree with federation contract")
+    if producer.get("trading_execution_authorized") is not False:
+        raise ValueError("producer MCP contract attempts trading authority escalation")
+
+    consumer_blob = str(blobs.get("consumer") or "").lower()
+    producer_blob = str(blobs.get("producer") or "").lower()
+    if not _is_sha(consumer_blob) or not _is_sha(producer_blob):
+        raise ValueError("federation contract Git blob identity is invalid")
+
+    return {
+        "consumer_contract_blob_sha": consumer_blob,
+        "producer_contract_blob_sha": producer_blob,
+        "truth_contract": {
+            "federation_schema": consumer.get("schema_version"),
+            "producer_contract_schema": producer.get("schema_version"),
+            "event_records": semantics.get("event_records"),
+            "durability_receipts_are_substantive_evidence": False,
+            "remote_status_is_production_decision": False,
+            "raw_owner_data_transfer": False,
+            "automatic_model_promotion": False,
+            "production_decision_authorized": False,
+            "automatic_execution_authority": False,
+        },
+        "execution_authorized": False,
+        "production_decision_authorized": False,
+    }
+
+
 class BrainRemoteSync:
     """Poll repository-native custom-agent events into the local brain journal."""
 
@@ -285,6 +393,36 @@ class BrainRemoteSync:
             ingested_paths: list[str] = []
 
             try:
+                contract_docs: dict[str, Mapping[str, Any]] = {}
+                contract_blobs: dict[str, str] = {}
+                for label, api_url in (
+                    ("consumer", _REMOTE_CONSUMER_CONTRACT_API),
+                    ("producer", _REMOTE_PRODUCER_CONTRACT_API),
+                ):
+                    meta = self._fetch_json(api_url)
+                    if not isinstance(meta, Mapping):
+                        raise ValueError(f"{label} federation contract metadata is not an object")
+                    blob_sha = str(meta.get("sha") or "").lower()
+                    raw_url = str(meta.get("url") or "")
+                    if not _is_sha(blob_sha) or not raw_url:
+                        raise ValueError(f"{label} federation contract has invalid GitHub blob metadata")
+                    raw = self._fetch_bytes(raw_url)
+                    if _git_blob_sha(raw) != blob_sha:
+                        raise ValueError(f"{label} federation contract Git blob SHA mismatch")
+                    payload = json.loads(raw.decode("utf-8"))
+                    if not isinstance(payload, Mapping):
+                        raise ValueError(f"{label} federation contract payload is not an object")
+                    contract_docs[label] = payload
+                    contract_blobs[label] = blob_sha
+
+                state.update(
+                    _normalize_federation_contract(
+                        contract_docs["consumer"],
+                        contract_docs["producer"],
+                        contract_blobs,
+                    )
+                )
+
                 listing = self._fetch_json(_REMOTE_API)
                 if not isinstance(listing, list):
                     raise ValueError("GitHub event directory response is not a list")
