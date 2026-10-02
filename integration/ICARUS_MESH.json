@@ -42,6 +42,19 @@
       "cross_repository_execution_authorized": false
     },
     {
+      "id": "divine-providence",
+      "repository": "reppiks490/divine-providence",
+      "role": "active-research-satellite",
+      "status": "active",
+      "authority_ceiling": "RESEARCH",
+      "ingress_mode": "immutable-receipt-mirror",
+      "ingress_repository": "reppiks490/Icarus",
+      "ingress_path": "automation_intelligence/mcp_interface/events",
+      "receipt_schema": "icarus-interface-event-v1",
+      "consumer_surface": "MCP Evolution and Adaptive Brain observability",
+      "cross_repository_execution_authorized": false
+    },
+    {
       "id": "icarus-owner-actions",
       "repository": "reppiks490/icarus-owner-actions",
       "role": "candidate-satellite",
