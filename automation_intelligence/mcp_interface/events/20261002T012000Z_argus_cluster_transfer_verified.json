@@ -1,0 +1,39 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "argus-cluster-transfer-verified-20261002T012000Z",
+  "category": "EVOLUTION",
+  "severity": "success",
+  "status": "verified",
+  "subsystems": [
+    "argus",
+    "execution_research",
+    "calibration",
+    "cluster_bootstrap",
+    "transfer_validation",
+    "provenance"
+  ],
+  "recorded_at": "2026-10-02T01:20:00Z",
+  "title": "ARGUS source-run cluster paper-to-broker transfer audit verified",
+  "summary": "ARGUS now prospectively validates paper-emulator versus broker-confirmed impact calibration with complete source_run_id clusters as bootstrap units. This prevents many fills from one session or run from masquerading as many independent experimental units. Metric-eligible rows are grouped inside their execution-evidence class, full clusters are independently resampled, and the plan predeclares cluster/observation minimums, metrics, tolerances, alpha, seed and replicate count before the cohort begins.",
+  "source_repository": "reppiks490/divine-providence",
+  "source_ref": "main",
+  "source_commit": "a71289bc57ea30a28e8167c3a7436144b81e18e8",
+  "evidence": [
+    "divine-providence PR #36 merged at a71289bc57ea30a28e8167c3a7436144b81e18e8",
+    "exact-head subsystem-evolution workflow run 36949614712 completed success",
+    "Linux and Windows ARGUS/ATHENA/AION causal subsystem jobs passed",
+    "intelligence-fabric and hub tests passed",
+    "full twelve-system validation passed",
+    "cluster field is fixed to source_run_id",
+    "minimum eligible clusters and observations are predeclared per evidence kind",
+    "complete eligible clusters are resampled rather than individual fills",
+    "one-run pseudoreplication fails closed even when many fills exist",
+    "zero-fill-only clusters never become invented slippage clusters",
+    "broker-confirmed and ICARUS paper-emulator evidence remain separate",
+    "formal equivalence, small-sample cluster guarantees, familywise inference, causality, profitability and broker substitution are not implied",
+    "execution_authorized=false",
+    "production_decision_authorized=false"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}
