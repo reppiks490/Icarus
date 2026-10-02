@@ -58,3 +58,8 @@ conditional on the rest of ICARUS?
 ```
 
 If not, the source stays redundant or is retired. If yes, the surviving semantic contribution can advance through the existing protected gate stack.
+
+
+## Capability orchestration
+
+The Unified Intelligence Spine consumes only capability outputs that satisfy the contracts in `ASCENDANCY_CAPABILITY_ORCHESTRATOR.md`. Capability availability, evidence authority, and market semantics are resolved before a claim enters the spine. A connected tool is therefore not an independent vote merely because it exists, and a blocked provider remains explicitly unavailable rather than contributing a neutral value.
