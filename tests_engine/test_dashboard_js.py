@@ -602,5 +602,8 @@ def test_learning_ui_names_runtime_and_historical_provenance_classes():
 
 def test_learning_ui_surfaces_historical_session_provenance():
     source = (REPO / "icarus_engine" / "learning-ui.js").read_text(encoding="utf-8")
-    assert "r.session_mode" in source
-    assert "Session" in source
+    artifact_rows = source.split("function artifactExperienceRows", 1)[1].split(
+        "function shadowCalibrationRows", 1
+    )[0]
+    assert "r.session_mode" in artifact_rows
+    assert "['Manifest-linked artifact fingerprint','Provenance class','Asset','Side','Session'" in source
