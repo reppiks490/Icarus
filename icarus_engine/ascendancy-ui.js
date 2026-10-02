@@ -535,6 +535,51 @@
         '<td class="small">foreign evidence only · authority transfer=false</td>' +
       '</tr>';
     }).join('');
+
+    const historical = [];
+    sources.forEach(source => {
+      (Array.isArray(source.historical_artifacts) ? source.historical_artifacts : []).forEach(artifact => {
+        historical.push({
+          source_repository: source.source_repository,
+          source_commit: source.source_commit,
+          ...artifact
+        });
+      });
+    });
+    const historicalRows = historical.map(row => {
+      const summary = row.summary || {};
+      const findings = Array.isArray(summary.findings) ? summary.findings : [];
+      const gaps = Array.isArray(summary.data_gaps) ? summary.data_gaps : [];
+      const observationKeys = Array.isArray(summary.observation_keys) ? summary.observation_keys : [];
+      const next = summary.next ? String(summary.next) : '';
+      const evidenceClass = String(row.evidence_status || 'HISTORICAL_UNVERIFIED');
+      return '<tr>' +
+        '<td><b>' + h(row.lane || 'UNAVAILABLE') + '</b><div class="small muted">' + h(row.source_repository || 'UNAVAILABLE') + '</div></td>' +
+        '<td><span class="chip ' + statusClass(evidenceClass) + '">' + h(evidenceClass) + '</span><div class="small muted">' + h(row.artifact_kind || 'UNAVAILABLE') + '</div></td>' +
+        '<td><code title="' + h(row.artifact_id || '') + '">' + h(short(row.artifact_id || 'UNAVAILABLE')) + '</code><div class="small muted">source ' + h(short(row.source_commit || 'UNAVAILABLE')) + '</div></td>' +
+        '<td class="small">' + h(row.run_id || 'UNAVAILABLE') + '<br>' + h(row.run_status || 'UNAVAILABLE') + '</td>' +
+        '<td class="small">' +
+          (findings.length ? '<b>findings:</b> ' + h(findings.join(' · ')) + '<br>' : '') +
+          (observationKeys.length ? '<b>observations:</b> ' + h(observationKeys.join(' · ')) + '<br>' : '') +
+          (gaps.length ? '<b>gaps:</b> ' + h(gaps.join(' · ')) + '<br>' : '') +
+          (next ? '<b>next:</b> ' + h(next) : '') +
+          (!findings.length && !observationKeys.length && !gaps.length && !next ? 'NO SUMMARY CLAIMS' : '') +
+        '</td>' +
+        '<td class="small">research context=' + h(row.research_context_eligible === true ? 'true' : 'false') +
+          '<br>candidate evidence=false' +
+          '<br>requires_foundry_and_evaluator=' + h(row.requires_foundry_and_evaluator === true ? 'true' : 'false') +
+          '<br>foreign_evidence_only=' + h(row.foreign_evidence_only === true ? 'true' : 'false') +
+        '</td>' +
+      '</tr>';
+    }).join('');
+
+    const historicalArtifactCount = sources.reduce((n,row)=>n + Number(row.historical_artifact_count || 0), 0);
+    const historicalContextCount = sources.reduce((n,row)=>n + Number(row.historical_research_context_count || 0), 0);
+    const historicalCandidateCount = sources.reduce((n,row)=>n + Number(row.historical_candidate_evidence_count || 0), 0);
+    const historicalResearchLanes = Array.from(new Set(
+      sources.flatMap(row => Array.isArray(row.historical_research_lanes) ? row.historical_research_lanes : [])
+    )).sort();
+
     const truth = peers.truth_contract || {};
     return '<section class="card" style="margin-top:12px">' +
       '<h3>PEER REPOSITORY BRIDGE</h3>' +
@@ -544,17 +589,27 @@
         '<div class="tile"><div class="k">PACKETS</div><div class="v tnum">' + h(count(peers.packet_count)) + '</div></div>' +
         '<div class="tile"><div class="k">CANDIDATE-ELIGIBLE LANES</div><div class="v tnum">' + h(count(sources.reduce((n,row)=>n + ((row.candidate_evidence_eligible_lanes || []).length),0))) + '</div></div>' +
         '<div class="tile"><div class="k">DURABILITY-ONLY LANES</div><div class="v tnum">' + h(count(sources.reduce((n,row)=>n + ((row.durability_only_lanes || []).length),0))) + '</div></div>' +
+        '<div class="tile"><div class="k">HISTORICAL CONTEXT</div><div class="v tnum">' + h(count(historicalContextCount)) + '</div><div class="small muted">' + h(historicalResearchLanes.join(' · ') || 'none') + '</div></div>' +
+        '<div class="tile"><div class="k">HISTORICAL ARTIFACTS</div><div class="v tnum">' + h(count(historicalArtifactCount)) + '</div><div class="small muted">candidate evidence ' + h(count(historicalCandidateCount)) + '</div></div>' +
         '<div class="tile"><div class="k">AUTHORITY</div><div class="v">FOREIGN EVIDENCE ONLY</div><div class="small muted">execution_authorized=false · production_decision_authorized=false</div></div>' +
       '</div>' +
       '<div class="small muted" style="margin:10px 0">' +
         'durability_only_never_enters_candidate_evidence=' + h(truth.durability_only_never_enters_candidate_evidence === true ? 'true' : 'UNAVAILABLE') +
         ' · substantive_worker_evidence_still_requires_normal_foundry_and_evaluator_gates=' + h(truth.substantive_worker_evidence_still_requires_normal_foundry_and_evaluator_gates === true ? 'true' : 'UNAVAILABLE') +
+        ' · historical_context_never_bypasses_foundry_or_evaluator=' + h(truth.historical_context_never_bypasses_foundry_or_evaluator === true ? 'true' : 'UNAVAILABLE') +
         ' · peer_repository_authority_never_transfers=' + h(truth.peer_repository_authority_never_transfers === true ? 'true' : 'UNAVAILABLE') +
       '</div>' +
       '<div class="scroll"><table><thead><tr>' +
         '<th>Peer repository</th><th>Source commit</th><th>Observed</th><th>Lanes</th><th>Substantive</th><th>CANDIDATE-ELIGIBLE LANES</th><th>DURABILITY-ONLY LANES</th><th>Truth boundary</th>' +
       '</tr></thead><tbody>' +
         (rows || '<tr><td colspan="8" class="empty">UNMEASURED — no peer repository packet has been ingested.</td></tr>') +
+      '</tbody></table></div>' +
+      '<h4 style="margin:14px 0 8px">HISTORICAL RESEARCH CONTEXT</h4>' +
+      '<div class="small muted" style="margin-bottom:8px">HISTORICAL_RESEARCH_EVIDENCE and HISTORICAL_COLLECTION_EVIDENCE remain context only. candidate evidence=false until a new hypothesis independently traverses Candidate Foundry and the Evaluator Cascade.</div>' +
+      '<div class="scroll" style="max-height:46vh"><table><thead><tr>' +
+        '<th>Lane</th><th>Evidence status</th><th>Artifact / source</th><th>Run</th><th>Preserved research context</th><th>Admission boundary</th>' +
+      '</tr></thead><tbody>' +
+        (historicalRows || '<tr><td colspan="6" class="empty">UNMEASURED — no historical peer research artifacts ingested.</td></tr>') +
       '</tbody></table></div>' +
     '</section>';
   }
