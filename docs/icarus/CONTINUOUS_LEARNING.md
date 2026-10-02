@@ -97,13 +97,21 @@ The learner currently federates real empirical information from these ICARUS sub
 - **Performance Proof** — immutable forecast/outcome pairs, incrementally harvested with a durable cursor
 - **Source Reliability** — observed source/stream reliability context
 - **Chronofold Commissioning** — settled prediction metrics and promotion-gate state
-- **PARALLAX** — decision/outcome/regret summary metrics
+- **PARALLAX** — decision/outcome/regret summary metrics plus immutable observed actual-vs-counterfactual utility pairs
 - **DREAMSTATE** — stage/family research state
-- **PANTHEON/AETHER** — claim/ecology state
+- **PANTHEON/AETHER** — claim/ecology state plus immutable observed claim utility / confidence-weighted fitness outcomes
 - **APEX Ω** — receives empirical model-credibility feedback
 - **runtime trade journal** — fully closed live-sim trade experience
 
-A source without a defensible forecast/outcome contract is not silently converted into one.
+PARALLAX and PANTHEON now also feed a **native empirical federation** ledger. This ledger deliberately preserves each subsystem's native meaning instead of forcing every empirical result into a probability-calibration schema:
+
+- PARALLAX records the observed actual utility, observed alternate-branch utility, utility delta, complete comparison contract, and evidence completeness. An event becomes inference-eligible only when both branches are observed with evidence and the comparison contract is complete.
+- PANTHEON records observed claim utility separately from fitness utility and confidence, including positive outcomes quarantined by right-for-right-reasons gates.
+- both domains are keyed by immutable native IDs and exact source revision, so repeated harvests and process restarts are idempotent;
+- the federation never creates synthetic probabilities, Brier scores, or calibration claims from utility/fitness values;
+- all rows remain research-only with `production_decision_authorized=false` and `execution_authorized=false`.
+
+A source without a defensible forecast/outcome or native empirical contract is not silently converted into one.
 
 ## Ψ empirical calibration
 
