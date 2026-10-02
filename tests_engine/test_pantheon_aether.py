@@ -71,7 +71,7 @@ def test_pantheon_runs_independent_faculties_and_never_grants_execution(tmp_path
     obs = kernel.record_observation(_payload())
     analysis = obs["analysis"]
     assert set(analysis["faculties"]) == {
-        "nullspace", "godel", "ananke", "nemesis", "ex_nihilo", "mint", "echo", "veritas", "lethe", "archon", "socrates"
+        "nullspace", "godel", "ananke", "nemesis", "ex_nihilo", "mint", "echo", "veritas", "lethe", "axiom", "archon", "socrates"
     }
     assert analysis["faculties"]["nullspace"]["routing_state"] == "absorbed"
     assert analysis["faculties"]["nullspace"]["debt_state"] == "absorbed"
@@ -855,6 +855,75 @@ def test_lethe_rejects_duplicate_memory_identity(tmp_path):
         PantheonKernel(tmp_path).record_observation(payload)
 
 
+def _axiom_ready_payload(observation_id="pan-axiom-ready"):
+    payload = _payload(observation_id=observation_id)
+    payload["signals"] = dict(payload["signals"])
+    payload["signals"]["world_scores"] = {"accumulation": 0.99, "distribution": 0.01}
+    payload["signals"]["engine_evidence_lineage"] = {
+        "oracle": ["orderbook:nq"],
+        "nullspace": ["cross-asset:qqq"],
+        "ananke": ["structure:nq"],
+    }
+    payload["signals"]["mechanism_certificate"] = {
+        "mechanism_id": "nq-structural-up",
+        "thesis": "Low-cost upward reachability is supported by independent current evidence.",
+        "direction": "long",
+        "confidence": 0.80,
+        "expected_signatures": [
+            {"key": "queue_replenishment", "operator": "positive", "weight": 1.0},
+        ],
+        "invalidators": ["downward structural cost collapses below upward cost"],
+    }
+    return payload
+
+
+def test_axiom_builds_research_ready_non_substitutable_certificate(tmp_path):
+    obs = PantheonKernel(tmp_path).record_observation(_axiom_ready_payload())
+    state = obs["analysis"]["faculties"]["axiom"]
+    assert state["status"] == "active"
+    assert state["certificate_state"] == "research_ready"
+    assert state["research_ready"] is True
+    assert state["proof_completeness"] == pytest.approx(1.0)
+    assert state["proof_gap"] == pytest.approx(0.0)
+    assert state["failed_gates"] == []
+    assert state["unproven_gates"] == []
+    assert state["evidence_count"] >= 1
+    assert state["evidence_fingerprint"]
+    assert state["proof_axes_are_non_substitutable"] is True
+    assert state["authority"]["execution_authorized"] is False
+    assert state["authority"]["production_decision_authorized"] is False
+    assert set(state["external_gates_still_required"]) == {
+        "hard_risk_kernel", "execution_quality", "broker_preflight"
+    }
+
+
+def test_axiom_rejects_shared_ancestry_even_when_engines_agree(tmp_path):
+    payload = _axiom_ready_payload("pan-axiom-echo-block")
+    payload["signals"]["engine_scores"] = {"oracle": 0.90, "nullspace": 0.85, "ananke": 0.80}
+    payload["signals"]["engine_evidence_lineage"] = {
+        "oracle": ["same:upstream"],
+        "nullspace": ["same:upstream"],
+        "ananke": ["same:upstream"],
+    }
+    obs = PantheonKernel(tmp_path).record_observation(payload)
+    state = obs["analysis"]["faculties"]["axiom"]
+    assert state["certificate_state"] == "rejected"
+    assert "evidence_independence" in state["failed_gates"]
+    assert state["research_ready"] is False
+    assert state["authority"]["execution_authorized"] is False
+
+
+def test_axiom_remains_incomplete_when_mechanism_and_lineage_are_unproven(tmp_path):
+    obs = PantheonKernel(tmp_path).record_observation(
+        _payload(observation_id="pan-axiom-incomplete")
+    )
+    state = obs["analysis"]["faculties"]["axiom"]
+    assert state["research_ready"] is False
+    assert "mechanism_certificate" in state["unproven_gates"]
+    assert "evidence_independence" in state["unproven_gates"]
+    assert state["proof_gap"] > 0
+
+
 def test_aether_spawns_bounded_ephemeral_agents_with_zero_capital_authority(tmp_path):
     kernel = PantheonKernel(tmp_path, swarm=AetherSwarm(threshold=0.25, max_agents=7))
     obs = kernel.record_observation(_payload())
@@ -942,6 +1011,8 @@ def test_pantheon_is_visible_in_trader_interface():
     assert "Echo risk" in ui
     assert "Memory staleness" in ui
     assert "Resurrection pressure" in ui
+    assert "Proof gap" in ui
+    assert "certificate " in ui
     assert "VERITAS right-for-right-reasons audit" in ui
     assert "APEX lineage" in ui
     assert "SIBYL structural evidence bridge" in ui
@@ -952,7 +1023,7 @@ def test_pantheon_is_visible_in_trader_interface():
     assert '"pantheon": pantheon.snapshot' in server
     assert "resolve_engine_evidence_lineage" in server
     assert '"apex_lineage"' in server
-    for subsystem in ("PANTHEON", "NEMESIS Ω", "GÖDEL Ω", "SOCRATES", "ANANKĒ", "EX NIHILO", "MINT Ω", "NULLSPACE Ω", "ECHO Ω", "VERITAS Ω", "ARCHON Ω", "AETHER Ω"):
+    for subsystem in ("PANTHEON", "NEMESIS Ω", "GÖDEL Ω", "SOCRATES", "ANANKĒ", "EX NIHILO", "MINT Ω", "NULLSPACE Ω", "ECHO Ω", "VERITAS Ω", "LETHE Ω", "AXIOM Ω", "ARCHON Ω", "AETHER Ω"):
         assert subsystem in brain
 
 

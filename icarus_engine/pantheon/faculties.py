@@ -1035,6 +1035,257 @@ def lethe(
     }
 
 
+def axiom(
+    signals: Mapping[str, Any],
+    states: Mapping[str, Mapping[str, Any]],
+    observation_id: str,
+    evidence_refs: list[str] | None = None,
+) -> dict[str, Any]:
+    """Build a proof-carrying research-thesis certificate.
+
+    AXIOM refuses to let strength on one proof axis substitute for missing proof
+    on another.  It never grants execution or production authority.
+    """
+    out = _base("AXIOM")
+    evidence: list[str] = []
+    seen = set()
+    for i, ref in enumerate(evidence_refs or []):
+        if not isinstance(ref, str) or not ref.strip():
+            raise ValueError(f"AXIOM evidence_refs[{i}] must be a non-empty string")
+        value = ref.strip()
+        if len(value) > 700:
+            raise ValueError(f"AXIOM evidence_refs[{i}] exceeds 700 characters")
+        if value not in seen:
+            seen.add(value)
+            evidence.append(value)
+    evidence.sort()
+
+    gates: list[dict[str, Any]] = []
+
+    def add_gate(
+        name: str,
+        state: str,
+        *,
+        source: str,
+        value: Any = None,
+        threshold: Any = None,
+        reason: str | None = None,
+    ) -> None:
+        if state not in {"pass", "fail", "unproven", "not_applicable"}:
+            raise ValueError(f"AXIOM gate {name} has invalid state")
+        row = {
+            "gate": name,
+            "state": state,
+            "source": source,
+            "value": value,
+            "threshold": threshold,
+        }
+        if reason:
+            row["reason"] = reason
+        gates.append(row)
+
+    data_quality = unit(signals.get("data_quality"), "data_quality", 0.0)
+    add_gate(
+        "data_quality",
+        "pass" if data_quality >= 0.70 else "fail",
+        value=data_quality,
+        threshold=0.70,
+        source="signals.data_quality",
+    )
+
+    godel_state = states.get("godel", {})
+    if godel_state.get("status") != "active":
+        add_gate("identifiability", "unproven", source="GODEL", reason="distinguishability unavailable")
+    else:
+        ident = unit(godel_state.get("identifiability"), "godel.identifiability")
+        add_gate(
+            "identifiability",
+            "pass" if ident >= 0.25 else "fail",
+            value=ident,
+            threshold=0.25,
+            source="GODEL",
+        )
+
+    nemesis_state = states.get("nemesis", {})
+    if nemesis_state.get("status") != "active":
+        add_gate("adversarial_robustness", "unproven", source="NEMESIS", reason="robustness evidence unavailable")
+    else:
+        survival = unit(nemesis_state.get("survival_score"), "nemesis.survival_score")
+        add_gate(
+            "adversarial_robustness",
+            "pass" if survival >= 0.60 else "fail",
+            value=survival,
+            threshold=0.60,
+            source="NEMESIS",
+        )
+
+    echo_state = states.get("echo", {})
+    if echo_state.get("status") != "active" or not bool(echo_state.get("lineage_verified")):
+        add_gate(
+            "evidence_independence",
+            "unproven",
+            value=echo_state.get("effective_independence_factor"),
+            threshold=0.50,
+            source="ECHO",
+            reason="evidence ancestry not fully verified",
+        )
+    else:
+        independence = unit(
+            echo_state.get("effective_independence_factor"),
+            "echo.effective_independence_factor",
+        )
+        add_gate(
+            "evidence_independence",
+            "pass" if independence >= 0.50 else "fail",
+            value=independence,
+            threshold=0.50,
+            source="ECHO",
+        )
+
+    mint_state = states.get("mint", {})
+    best = mint_state.get("best_candidate")
+    if mint_state.get("status") != "active" or not isinstance(best, Mapping):
+        add_gate("stress_economics", "unproven", source="MINT", reason="cost-stressed expression unavailable")
+    else:
+        stress_net = finite(best.get("stress_expected_net", 0.0), "mint.best_candidate.stress_expected_net")
+        robust_positive = bool(best.get("robust_positive"))
+        add_gate(
+            "stress_economics",
+            "pass" if robust_positive and stress_net > 0 else "fail",
+            value=stress_net,
+            threshold="> 0 after stressed costs",
+            source="MINT",
+        )
+
+    veritas_state = states.get("veritas", {})
+    if veritas_state.get("status") != "active":
+        mechanism_direction = "unknown"
+        add_gate("mechanism_certificate", "unproven", source="VERITAS", reason="falsifiable mechanism unavailable")
+    else:
+        mechanism_direction = str(veritas_state.get("direction") or "unknown").lower()
+        mechanism_confidence = unit(veritas_state.get("confidence"), "veritas.confidence")
+        add_gate(
+            "mechanism_certificate",
+            "pass" if mechanism_confidence >= 0.50 else "fail",
+            value=mechanism_confidence,
+            threshold=0.50,
+            source="VERITAS",
+        )
+
+    ananke_state = states.get("ananke", {})
+    least_cost = str(ananke_state.get("least_cost_direction") or "")
+    expected_structural = {"long": "up", "short": "down"}.get(mechanism_direction)
+    if ananke_state.get("status") != "active":
+        add_gate("structural_alignment", "unproven", source="ANANKE", reason="reachability unavailable")
+    elif expected_structural is None:
+        add_gate(
+            "structural_alignment",
+            "unproven",
+            value=least_cost or None,
+            source="ANANKE+VERITAS",
+            reason="directional mechanism required",
+        )
+    elif least_cost == "symmetric":
+        add_gate(
+            "structural_alignment",
+            "unproven",
+            value=least_cost,
+            threshold=expected_structural,
+            source="ANANKE+VERITAS",
+            reason="reachable structure is directionally symmetric",
+        )
+    else:
+        add_gate(
+            "structural_alignment",
+            "pass" if least_cost == expected_structural else "fail",
+            value=least_cost,
+            threshold=expected_structural,
+            source="ANANKE+VERITAS",
+        )
+
+    lethe_state = states.get("lethe", {})
+    if "knowledge_memory" not in signals:
+        add_gate(
+            "memory_freshness",
+            "not_applicable",
+            source="LETHE",
+            reason="no historical memory dependency declared",
+        )
+    elif lethe_state.get("status") != "active":
+        add_gate(
+            "memory_freshness",
+            "unproven",
+            source="LETHE",
+            reason="memory dependency declared but LETHE could not evaluate it",
+        )
+    else:
+        memory_trust = unit(lethe_state.get("effective_memory_trust"), "lethe.effective_memory_trust")
+        stale_pressure = unit(lethe_state.get("stale_memory_pressure"), "lethe.stale_memory_pressure")
+        add_gate(
+            "memory_freshness",
+            "pass" if memory_trust >= 0.50 and stale_pressure <= 0.50 else "fail",
+            value={"effective_trust": memory_trust, "stale_pressure": stale_pressure},
+            threshold={"effective_trust_min": 0.50, "stale_pressure_max": 0.50},
+            source="LETHE",
+        )
+
+    add_gate(
+        "observation_evidence",
+        "pass" if evidence else "unproven",
+        value=len(evidence),
+        threshold=">= 1 immutable evidence ref",
+        source="PANTHEON observation",
+        reason=None if evidence else "no observation evidence refs supplied",
+    )
+
+    applicable = [row for row in gates if row["state"] != "not_applicable"]
+    passed = [row["gate"] for row in applicable if row["state"] == "pass"]
+    failed = [row["gate"] for row in applicable if row["state"] == "fail"]
+    unproven = [row["gate"] for row in applicable if row["state"] == "unproven"]
+    completeness = len(passed) / len(applicable) if applicable else 0.0
+    proof_gap = 1.0 - completeness
+    certificate_state = "rejected" if failed else "incomplete" if unproven else "research_ready"
+
+    gate_fingerprint = "|".join(
+        f"{row['gate']}:{row['state']}:{row.get('value')}" for row in gates
+    )
+    evidence_fingerprint = digest(*evidence) if evidence else None
+    certificate_id = "axi-" + digest(
+        observation_id,
+        gate_fingerprint,
+        evidence_fingerprint or "no-evidence",
+    )[:24]
+    measured = [
+        (row["gate"], float(row["value"]))
+        for row in applicable
+        if type(row.get("value")) in (int, float)
+    ]
+    weakest = min(measured, key=lambda item: item[1])[0] if measured else None
+
+    return {
+        **out,
+        "certificate_id": certificate_id,
+        "certificate_state": certificate_state,
+        "research_ready": certificate_state == "research_ready",
+        "proof_completeness": completeness,
+        "proof_gap": proof_gap,
+        "passed_gates": passed,
+        "failed_gates": failed,
+        "unproven_gates": unproven,
+        "weakest_measured_axis": weakest,
+        "proof_vector": gates,
+        "evidence_count": len(evidence),
+        "evidence_fingerprint": evidence_fingerprint,
+        "external_gates_still_required": [
+            "hard_risk_kernel",
+            "execution_quality",
+            "broker_preflight",
+        ],
+        "proof_axes_are_non_substitutable": True,
+        "semantics": "machine-checkable research-thesis certificate; research_ready is not trade authorization, future-profit proof, or production promotion",
+    }
+
+
 def archon(
     signals: Mapping[str, Any],
     godel_state: Mapping[str, Any],
@@ -1107,6 +1358,7 @@ def socrates(states: Mapping[str, Mapping[str, Any]]) -> dict[str, Any]:
     echo_risk = unit(states.get("echo", {}).get("echo_risk"), "echo.echo_risk")
     stale_memory = unit(states.get("lethe", {}).get("stale_memory_pressure"), "lethe.stale_memory_pressure")
     resurrection = unit(states.get("lethe", {}).get("resurrection_pressure"), "lethe.resurrection_pressure")
+    proof_gap = unit(states.get("axiom", {}).get("proof_gap"), "axiom.proof_gap")
     options = [
         (uncertainty, "Which observation most efficiently separates the competing market worlds?"),
         (debt, "Where did the missing reaction route: delay, absorption, diversion, or causal-model failure?"),
@@ -1115,6 +1367,7 @@ def socrates(states: Mapping[str, Mapping[str, Any]]) -> dict[str, Any]:
         (echo_risk, "Which agreeing engines only look independent because they inherit the same upstream evidence?"),
         (stale_memory, "Which current thesis still depends on memory whose evidence has decayed out of its trustworthy lifetime?"),
         (resurrection, "Which dormant mechanism is reappearing under a similar regime and deserves fresh causal revalidation rather than automatic reuse?"),
+        (proof_gap, "Which missing proof axis prevents the current thesis from becoming a complete research certificate?"),
     ]
     ranked = sorted(options, key=lambda x: x[0], reverse=True)
     hypothesis_templates = [
@@ -1125,6 +1378,7 @@ def socrates(states: Mapping[str, Mapping[str, Any]]) -> dict[str, Any]:
         (echo_risk, "Apparent multi-engine consensus is inflated by shared evidence ancestry.", "Ablate shared lineage sources and require the directional thesis to survive on genuinely independent evidence."),
         (stale_memory, "The current thesis relies on stale knowledge whose relationship may have drifted.", "Revalidate the mechanism on fresh regime-matched evidence or retire its research trust."),
         (resurrection, "A previously stale mechanism may have returned under a structurally similar regime.", "Require fresh mechanism-consistent evidence before restoring research trust and reject automatic resurrection."),
+        (proof_gap, "The current thesis has unresolved non-substitutable proof axes.", "Target the AXIOM failed/unproven gates independently and refuse confidence substitution."),
     ]
     hypotheses = [
         {"priority": score, "hypothesis": hypothesis, "falsifier": falsifier}
@@ -1173,5 +1427,6 @@ def evaluate_faculties(
         "lethe": lt,
         "archon": ar,
     }
+    states["axiom"] = axiom(signals, states, observation_id, evidence_refs)
     states["socrates"] = socrates(states)
     return states

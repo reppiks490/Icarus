@@ -577,3 +577,39 @@ restore research trust. Qualification requires observation-bound evidence plus
 at least 0.50 mechanism fidelity and 0.50 revalidation strength. Weak or
 unproven mechanism evidence therefore cannot revive a stale memory even when
 the current regime looks nearly identical.
+
+
+## AXIOM Ω — proof-carrying research-thesis certificate
+
+AXIOM exists to prevent a category error that can make an ensemble look much
+stronger than its evidence: strength on one dimension cannot substitute for
+missing proof on another. Robustness cannot repair ambiguity, independent
+evidence cannot repair bad economics, and a profitable expression cannot repair
+a missing causal mechanism.
+
+For each PANTHEON observation, AXIOM builds a deterministic research certificate
+across non-substitutable axes:
+
+- current data quality;
+- GÖDEL identifiability;
+- NEMESIS adversarial survival;
+- ECHO evidence independence;
+- MINT stressed economics;
+- VERITAS mechanism specification;
+- ANANKĒ directional structural alignment;
+- LETHE memory freshness when historical memory is actually used; and
+- immutable observation-evidence presence.
+
+Each gate is marked `pass`, `fail`, `unproven`, or `not_applicable`.
+The certificate becomes `research_ready` only when every applicable axis
+passes. A failed axis rejects the research certificate; missing proof leaves it
+incomplete. AXIOM exposes exact blockers, an evidence fingerprint,
+`proof_completeness`, and `proof_gap`. SOCRATES can ask specifically which
+proof axis is missing, while AETHER can spend research energy closing the gap
+rather than treating the gap as confidence.
+
+A research-ready AXIOM certificate is **not** proof of future profitability and
+is never an order approval. It retains `execution_authorized=false` and
+`production_decision_authorized=false`, and explicitly records that the hard
+Risk Kernel, execution-quality checks, and broker preflight remain external
+requirements.
