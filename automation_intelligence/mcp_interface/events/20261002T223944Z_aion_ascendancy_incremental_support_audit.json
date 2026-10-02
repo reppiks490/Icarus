@@ -1,0 +1,31 @@
+{
+  "schema_version": "icarus-mcp-event-v1",
+  "category": "AUDIT",
+  "source": "AION_AUTOMATION",
+  "execution_authorized": false,
+  "net_new_delta": "ASCENDANCY_INCREMENTAL_SUPPORT_CI_ASSUMES_IID_EPISODES_AND_IS_NOT_RESEARCH_ADMISSIBLE",
+  "finding": "ASCENDANCY Contribution Lab labels contributors SUPPORTED_INCREMENTAL at n>=8 when a naive normal 95% CI on paired log-score gains is above zero and positive_fraction>=0.65. The implementation does not establish episode independence, dependence-aware uncertainty, multiplicity control, protected OOS status, or cost realism; therefore the label is descriptive screening evidence, not validated incremental predictive edge.",
+  "evidence": [
+    {
+      "path": "icarus_engine/ascendancy/contribution.py",
+      "blob_sha": "4e6bf3f65052686bf9b0896a61ef706a80a30564",
+      "commit": "bc52a29dcc87d18e74683e53aa04f756f6078bd6"
+    },
+    {
+      "path": "tests_engine/test_ascendancy_contribution.py",
+      "commit": "bc52a29dcc87d18e74683e53aa04f756f6078bd6"
+    }
+  ],
+  "aion": {
+    "status": "MATERIAL_FINDING",
+    "finding": "Preserve ASCENDANCY paired log-score observations as exact-revision descriptive memory, but do not encode SUPPORTED_INCREMENTAL as validated predictive knowledge without dependence-aware/OOS evidence."
+  },
+  "ascension": {
+    "status": "BLOCKING_EVIDENCE_GAP",
+    "finding": "n>=8 plus naive normal CI and sign fraction does not establish statistically admissible incremental information under temporal dependence, selection, or multiplicity."
+  },
+  "prometheus": {
+    "status": "NEW_FALSIFIABLE_HYPOTHESIS",
+    "finding": "A dependence-aware, purged temporal OOS contribution test with multiplicity accounting will materially reduce false SUPPORTED_INCREMENTAL classifications while retaining genuinely incremental contributors."
+  }
+}
