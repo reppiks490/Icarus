@@ -1321,6 +1321,7 @@ class LearningFabric:
                 "strategy_report_filename": first_meta.get("strategy_report_filename"),
                 "timeframe": first_meta.get("timeframe"),
                 "chart_type": first_meta.get("chart_type"),
+                "session_mode": first_meta.get("session_mode"),
                 "execution_assumptions": first_meta.get("execution_assumptions"),
                 "linkage_rule": first_meta.get("linkage_rule"),
                 "count": len(pnls),
@@ -1969,6 +1970,29 @@ class LearningFabric:
             return f"{int(match.group(1))}h"
         return raw.replace(" ", "_")
 
+    @staticmethod
+    def _manifest_session_mode(value: Any) -> str | None:
+        """Normalize only explicit RTH/ETH manifest evidence; never infer it."""
+        raw = str(value or "").strip().lower().replace("_", " ").replace("-", " ")
+        raw = " ".join(raw.split())
+        if not raw:
+            return None
+        aliases = {
+            "rth": "rth",
+            "rth session": "rth",
+            "regular": "rth",
+            "regular hours": "rth",
+            "regular session": "rth",
+            "regular trading hours": "rth",
+            "eth": "eth",
+            "eth session": "eth",
+            "extended": "eth",
+            "extended hours": "eth",
+            "extended session": "eth",
+            "extended trading hours": "eth",
+        }
+        return aliases.get(raw)
+
     def _intake_manifest_catalog(self) -> tuple[dict[str, dict[str, str]], dict[str, dict[str, str]], list[dict[str, str]]]:
         by_hash: dict[str, dict[str, str]] = {}
         by_name: dict[str, dict[str, str]] = {}
@@ -2030,14 +2054,19 @@ class LearningFabric:
         trade_row: Mapping[str, Any],
         manifest_rows: Sequence[Mapping[str, Any]],
     ) -> dict[str, Any]:
-        rule = "UNIQUE_SYMBOL_ROWS_LAST_TRADE"
         symbol = self._manifest_symbol(trade_row.get("symbol"))
         row_count = self._manifest_integer(trade_row.get("rows"))
         last_trade = self._manifest_integer(trade_row.get("last_trade_number"))
+        session_mode = self._manifest_session_mode(trade_row.get("session_mode"))
+        linkage_keys = ["symbol", "rows", "last_trade_number"]
+        if session_mode is not None:
+            linkage_keys.append("session_mode")
+        rule = "UNIQUE_" + "_".join(key.upper() for key in linkage_keys)
         base = {
             "status": "MISSING",
             "candidate_count": 0,
             "linkage_rule": rule,
+            "linkage_keys": linkage_keys,
         }
         if str(trade_row.get("artifact_class") or "").strip().lower() != "trade_list":
             return {**base, "status": "NOT_TRADE_LIST"}
@@ -2055,6 +2084,11 @@ class LearningFabric:
             if self._manifest_integer(row.get("rows")) != row_count:
                 continue
             if self._manifest_integer(row.get("last_trade_number")) != last_trade:
+                continue
+            if (
+                session_mode is not None
+                and self._manifest_session_mode(row.get("session_mode")) != session_mode
+            ):
                 continue
             key = (row.get("sha256", "").lower(), row.get("canonical_filename", ""))
             if key in seen:
@@ -2109,12 +2143,14 @@ class LearningFabric:
             return {**base, "manifest_linkage_status": "INVALID_REPORT_SHA"}
         timeframe = self._manifest_timeframe(report.get("timeframe"))
         chart_type = report.get("chart_type") or None
+        session_mode = self._manifest_session_mode(report.get("session_mode"))
         fingerprint_payload = {
             "trade_list_sha256": str(dataset.get("raw_sha256") or "").lower(),
             "strategy_report_sha256": report_sha,
             "asset": str(dataset.get("asset") or "").upper(),
             "timeframe": timeframe,
             "chart_type": chart_type,
+            "session_mode": session_mode,
             "rows": self._manifest_integer(report.get("rows")),
             "last_trade_number": self._manifest_integer(report.get("last_trade_number")),
             "notes": report.get("notes") or "",
@@ -2132,8 +2168,10 @@ class LearningFabric:
             "strategy_report_filename": report.get("canonical_filename") or None,
             "timeframe": timeframe,
             "chart_type": chart_type,
+            "session_mode": session_mode,
             "execution_assumptions": report.get("notes") or None,
             "linkage_rule": str(link.get("linkage_rule") or "UNIQUE_SYMBOL_ROWS_LAST_TRADE"),
+            "linkage_keys": list(link.get("linkage_keys") or ["symbol", "rows", "last_trade_number"]),
             "report_net_profit_usd": report.get("net_profit_usd") or None,
             "report_max_drawdown_intrabar_usd": report.get("max_drawdown_intrabar_usd") or None,
         }
@@ -2147,11 +2185,13 @@ class LearningFabric:
             raise ValueError("strategy report dataset requires a valid SHA-256")
         timeframe = self._manifest_timeframe(row.get("timeframe")) or str(dataset.get("chart_type") or "")
         chart_type = str(row.get("chart_type") or "").strip() or None
+        session_mode = self._manifest_session_mode(row.get("session_mode"))
         payload = {
             "strategy_report_sha256": report_sha,
             "asset": str(dataset.get("asset") or "").upper(),
             "timeframe": timeframe,
             "chart_type": chart_type,
+            "session_mode": session_mode,
             "rows": self._manifest_integer(row.get("rows")),
             "last_trade_number": self._manifest_integer(row.get("last_trade_number")),
             "notes": str(row.get("notes") or ""),
@@ -2169,8 +2209,10 @@ class LearningFabric:
             "strategy_report_filename": Path(str(dataset.get("path") or "")).name or None,
             "timeframe": timeframe,
             "chart_type": chart_type,
+            "session_mode": session_mode,
             "execution_assumptions": row.get("notes") or None,
             "linkage_rule": "DIRECT_STRATEGY_REPORT_XLSX_TRADE_SHEET",
+            "linkage_keys": ["strategy_report_sha256"],
             "report_net_profit_usd": row.get("net_profit_usd") or None,
             "report_max_drawdown_intrabar_usd": row.get("max_drawdown_intrabar_usd") or None,
         }
