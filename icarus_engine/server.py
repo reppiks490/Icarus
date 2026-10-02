@@ -77,10 +77,11 @@ from .system_audit import (
     upsert_loop_status,
 )
 from .integrity import integrity_snapshot, record_integrity_event
-from .brain import SUBSYSTEMS, brain_snapshot, record_brain_event
+from .brain import REQUIRED_CANDIDATE_GATES, SUBSYSTEMS, brain_snapshot, record_brain_event
 from .brain_sync import BrainRemoteSync
 from .research_brain_sync import BrainResearchSync
 from .evolution_sync import EvolutionRemoteSync
+from .evidence_lab_sync import EvidenceLabRemoteSync
 from .code_provenance import local_code_provenance
 from .parallax import ParallaxStore
 from .dreamstate import DreamstateLab
@@ -88,6 +89,11 @@ from .possibility import PossibilityEngine
 from .performance_proof import PerformanceProofStore
 from .latency_telemetry import LatencyTelemetry
 from .source_reliability import SourceReliabilityStore
+from .qualification_receipts import (
+    QualificationReceiptStore,
+    build_shadow_promotion_event,
+    build_shadow_revocation_event,
+)
 from .autopilot import TacticalAutopilot
 from .engine_control import ControlAction, EngineControlPlane
 from .mcp_control import MCPControlPlane
@@ -210,10 +216,12 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     brain_remote_sync = BrainRemoteSync(port.base_dir)
     brain_research_sync = BrainResearchSync(port.base_dir)
     evolution_remote_sync = EvolutionRemoteSync(port.base_dir)
+    evidence_lab_sync = EvidenceLabRemoteSync(port.base_dir)
     possibility = PossibilityEngine(port)
     performance_proof = PerformanceProofStore(port.base_dir)
     latency_telemetry = LatencyTelemetry()
     source_reliability = SourceReliabilityStore(port.base_dir)
+    qualification_receipts = QualificationReceiptStore(port.base_dir, REQUIRED_CANDIDATE_GATES)
     # Bind one collector to the existing live runners; Portfolio.make_runner
     # propagates the same sink to assets added later.
     port.latency_telemetry = latency_telemetry
@@ -258,6 +266,32 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
         performance_proof=performance_proof,
         source_reliability=source_reliability,
     )
+
+    def _qualification_sync(candidate_id: str, source_repo: str, source_commit: str) -> dict[str, Any]:
+        status = qualification_receipts.candidate_status(candidate_id, source_repo, source_commit)
+        snapshot = brain_snapshot(port.base_dir)
+        candidate = next(
+            (
+                row for row in snapshot.get("candidates", [])
+                if row.get("candidate_id") == candidate_id
+                and row.get("source_repo") == source_repo
+                and row.get("source_commit") == source_commit
+            ),
+            None,
+        )
+        transition = None
+        if candidate is not None:
+            if status.get("qualification_ready") is True and candidate.get("stage") in {"validated", "qualified_shadow"}:
+                transition = record_brain_event(port.base_dir, build_shadow_promotion_event(candidate, status))
+            elif status.get("qualification_ready") is not True and candidate.get("stage") == "qualified_shadow":
+                transition = record_brain_event(port.base_dir, build_shadow_revocation_event(candidate, status))
+        return {
+            "qualification": status,
+            "candidate_found": candidate is not None,
+            "transition": transition,
+            "execution_authorized": False,
+            "production_decision_authorized": False,
+        }
 
     def _ascendancy_snapshot() -> Dict[str, Any]:
         archive = ascendancy_archive.snapshot()
@@ -571,6 +605,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             "brain_remote": brain_remote_sync,
             "brain_research": brain_research_sync,
             "evolution": evolution_remote_sync,
+            "evidence_lab": evidence_lab_sync,
         }
 
     def _sync_all(_payload):
@@ -883,6 +918,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 ControlAction("sync.brain_remote", "Sync Adaptive Brain remote evidence", "Intelligence", "Pull the latest verified Adaptive Brain repository evidence.", lambda _: brain_remote_sync.sync_once()),
                 ControlAction("sync.brain_research", "Sync research into Adaptive Brain", "Intelligence", "Refresh research-to-brain evidence now.", lambda _: brain_research_sync.sync_once()),
                 ControlAction("sync.evolution", "Sync MCP evolution evidence", "Intelligence", "Refresh repository-native MCP repair/audit/evolution evidence.", lambda _: evolution_remote_sync.sync_once()),
+                ControlAction("sync.evidence_lab", "Sync CSV Evidence Lab", "Intelligence", "Refresh verified Advanced CSV durability/evidence receipts from the active CSV Evidence Lab repository.", lambda _: evidence_lab_sync.sync_once()),
                 ControlAction("sync.all", "Sync all intelligence planes", "Intelligence", "Run all registered intelligence synchronizers once.", _sync_all),
                 ControlAction("sync.start_all", "Start all intelligence sync loops", "Intelligence", "Start all registered background intelligence synchronizers.", _start_all_syncs),
                 ControlAction("sync.stop_all", "Stop all intelligence sync loops", "Intelligence", "Stop all registered background intelligence synchronizers.", _stop_all_syncs, danger=True, confirmation="STOP ALL INTELLIGENCE SYNCS"),
@@ -1149,6 +1185,10 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
                 return self._json(200, evolution_remote_sync.status())
+            if p.path == "/api/evidence-lab":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                return self._json(200, evidence_lab_sync.status())
             if p.path == "/api/engine-control":
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
@@ -1299,6 +1339,16 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
                 return self._json(200, performance_proof.snapshot())
+            if p.path == "/api/performance-proof/pending":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                try:
+                    return self._json(200, performance_proof.pending_settlements(
+                        as_of=q.get("as_of", [None])[0],
+                        limit=int(q.get("limit", ["100"])[0]),
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
             if p.path == "/api/latency":
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
@@ -1307,6 +1357,10 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
                 return self._json(200, source_reliability.snapshot())
+            if p.path == "/api/qualification-receipts":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                return self._json(200, qualification_receipts.snapshot())
             if p.path == "/api/brain":
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
@@ -1326,9 +1380,11 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     integrity=integrity_snapshot(port.base_dir),
                     remote_sync=brain_remote_sync.status(),
                     research_sync=brain_research_sync.status(),
+                    evidence_lab_sync=evidence_lab_sync.status(),
                     proof_status=performance_proof.snapshot(),
                     latency_status=latency_telemetry.snapshot(),
                     source_reliability=source_reliability.snapshot(),
+                    qualification_receipts=qualification_receipts.snapshot(),
                 ))
             if p.path == "/api/input-meta":
                 return self._json(200, meta)
@@ -1525,7 +1581,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._json(413, {"detail": "body too large"})
             raw = self.rfile.read(n) if n else b""
             try:
-                body = strict_json(raw) if p.path.startswith(("/admin/research/", "/admin/integrity/", "/admin/parallax/", "/admin/dreamstate/", "/admin/possibility/", "/admin/autopilot/", "/admin/engine-control", "/admin/pantheon/", "/admin/sibyl/", "/admin/apex/", "/admin/learning/", "/admin/ascendancy/")) else (json.loads(raw, parse_constant=_no_json_constants) if raw else {})
+                body = strict_json(raw) if p.path.startswith(("/admin/research/", "/admin/integrity/", "/admin/parallax/", "/admin/dreamstate/", "/admin/possibility/", "/admin/autopilot/", "/admin/engine-control", "/admin/pantheon/", "/admin/sibyl/", "/admin/apex/", "/admin/learning/", "/admin/qualification-receipts/", "/admin/ascendancy/")) else (json.loads(raw, parse_constant=_no_json_constants) if raw else {})
             except ValueError as ex:
                 return self._json(400, {"detail": f"bad JSON body: {ex}"})
             if not isinstance(body, dict):
@@ -1806,6 +1862,35 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             if p.path == "/admin/brain/event":
                 try:
                     return self._json(200, record_brain_event(port.base_dir, body))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+            if p.path == "/admin/qualification-receipts/record":
+                try:
+                    result = qualification_receipts.record(body)
+                    sync = _qualification_sync(
+                        str(body.get("candidate_id") or ""),
+                        str(body.get("candidate_source_repo") or ""),
+                        str(body.get("candidate_source_commit") or ""),
+                    )
+                    return self._json(200, {"ok": True, "receipt": result, **sync})
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+            if p.path == "/admin/qualification-receipts/sync":
+                try:
+                    allowed = {"candidate_id", "candidate_source_repo", "candidate_source_commit"}
+                    if set(body) != allowed:
+                        raise ValueError("qualification sync requires exactly candidate_id, candidate_source_repo, candidate_source_commit")
+                    result = _qualification_sync(
+                        str(body["candidate_id"]),
+                        str(body["candidate_source_repo"]),
+                        str(body["candidate_source_commit"]),
+                    )
+                    if result["candidate_found"] is not True:
+                        return self._json(404, {
+                            "detail": "candidate revision is not present in the Adaptive Brain journal",
+                            **result,
+                        })
+                    return self._json(200, {"ok": True, **result})
                 except (ValueError, TypeError) as ex:
                     return self._json(400, {"detail": str(ex)})
             if p.path == "/admin/source-reliability/observation":
@@ -2284,12 +2369,14 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 brain_remote_sync.start()
                 brain_research_sync.start()
                 evolution_remote_sync.start()
+                evidence_lab_sync.start()
                 commissioning.start_background()
             try:
                 return super().serve_forever(poll_interval)
             finally:
                 if background:
                     autopilot.close()
+                    evidence_lab_sync.close()
                     evolution_remote_sync.close()
                     brain_research_sync.close()
                     brain_remote_sync.close()
@@ -2299,6 +2386,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
 
         def server_close(self):
             autopilot.close()
+            evidence_lab_sync.close()
             evolution_remote_sync.close()
             brain_research_sync.close()
             brain_remote_sync.close()
@@ -2313,10 +2401,12 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     srv.brain_remote_sync = brain_remote_sync
     srv.brain_research_sync = brain_research_sync
     srv.evolution_remote_sync = evolution_remote_sync
+    srv.evidence_lab_sync = evidence_lab_sync
     srv.possibility = possibility
     srv.performance_proof = performance_proof
     srv.latency_telemetry = latency_telemetry
     srv.source_reliability = source_reliability
+    srv.qualification_receipts = qualification_receipts
     srv.autopilot = autopilot
     srv.pantheon = pantheon
     srv.sibyl = sibyl
