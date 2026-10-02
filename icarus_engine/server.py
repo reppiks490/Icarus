@@ -20,6 +20,7 @@
   GET  /api/possibility/evidence  durable Psi external-evidence ledger and causal as-of selection
   GET  /api/chronofold            ICARUS Xi causal spacetime, multiverse, geometry, GNC and uncertainty
   GET  /api/commissioning         append-only Chronofold prediction ledger, calibration, ablation and promotion gate
+  GET  /api/ascendancy/genomes     architecture-genome archive, lineage and contract-scoped quality-diversity frontier
   POST /admin/pause | /admin/resume        {"asset": "NQ"} or all          (Bearer token)
   POST /admin/flatten                      {"confirm": true, "asset"?: "NQ"}
   POST /admin/inputs                       {"asset": "NQ"|"*", "values": {...}, "chart": {...}, "persist": true}  → re-warm
@@ -36,6 +37,9 @@
   POST /admin/parallax/decision/current      atomically capture current Psi vote and PARALLAX decision
   POST /admin/rewarm                       {"asset": "NQ"}
   POST /admin/engine-control               typed registered operator command with audit receipt
+  POST /admin/ascendancy/genome             validate, compile and register one research-only architecture genome
+  POST /admin/ascendancy/genome-evaluation  append one immutable contract-bound genome evaluation
+  POST /admin/ascendancy/genome-retire      retire one genome without deleting lineage/evidence
 """
 from __future__ import annotations
 
@@ -73,7 +77,7 @@ from .system_audit import (
     upsert_loop_status,
 )
 from .integrity import integrity_snapshot, record_integrity_event
-from .brain import brain_snapshot, record_brain_event
+from .brain import SUBSYSTEMS, brain_snapshot, record_brain_event
 from .brain_sync import BrainRemoteSync
 from .research_brain_sync import BrainResearchSync
 from .evolution_sync import EvolutionRemoteSync
@@ -93,6 +97,9 @@ from .pantheon import PantheonKernel, subsystem_context
 from .sibyl import SibylEngine
 from .apex import ApexKernel
 from .ascendancy.capabilities import capability_snapshot
+from .ascendancy.archive import GenomeArchive
+from .ascendancy.frontier import build_frontier
+from .ascendancy.genome import compile_genome, normalize_genome
 
 
 def _no_json_constants(name: str):
@@ -208,6 +215,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     autopilot = TacticalAutopilot(port)
     parallax = ParallaxStore(port.base_dir)
     dreamstate = DreamstateLab(port.base_dir, parallax=parallax)
+    ascendancy_archive = GenomeArchive(port.base_dir)
     mcp_control = MCPControlPlane(port.base_dir)
     chronofold = ChronofoldEngine(port, possibility=possibility)
     commissioning = CommissioningEngine(port.base_dir, port, chronofold)
@@ -236,6 +244,69 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
         performance_proof=performance_proof,
         source_reliability=source_reliability,
     )
+
+    def _ascendancy_snapshot() -> Dict[str, Any]:
+        archive = ascendancy_archive.snapshot()
+        return {
+            "archive": archive,
+            "frontier": build_frontier(archive),
+            "execution_authorized": False,
+            "production_decision_authorized": False,
+        }
+
+    def _ascendancy_trading_control_fingerprint():
+        # Deliberately excludes prices/P&L/warmup counters because those may
+        # evolve concurrently. This boundary watches state ASCENDANCY must
+        # never mutate: global pause intent, runner membership/order, and
+        # per-runner entry-pause controls.
+        return (
+            bool(port.paused),
+            tuple(port.order),
+            tuple(
+                (
+                    str(getattr(r, "symbol", "")),
+                    bool(getattr(r, "paused", False)),
+                )
+                for r in port.runner_list()
+            ),
+        )
+
+    def _ascendancy_research_mutation(call):
+        before = _ascendancy_trading_control_fingerprint()
+        result = call()
+        after = _ascendancy_trading_control_fingerprint()
+        if after != before:
+            raise RuntimeError(
+                "ASCENDANCY research boundary changed trading-control state; refusing success"
+            )
+        out = dict(result) if isinstance(result, dict) else {"result": result}
+        out["trading_state_unchanged"] = True
+        out["execution_authorized"] = False
+        out["production_decision_authorized"] = False
+        return out
+
+    def _ascendancy_register_genome(body: Dict[str, Any]) -> Dict[str, Any]:
+        # Compile first. Invalid/unknown topology must not leave a persisted
+        # genome behind.
+        normalized = normalize_genome(body)
+        available = {
+            str(row.get("id") or "").strip()
+            for row in SUBSYSTEMS
+            if isinstance(row, dict) and str(row.get("id") or "").strip()
+        }
+        compiled = compile_genome(
+            normalized,
+            available_native_subsystems=available,
+        )
+        registered = ascendancy_archive.register(normalized)
+        compile_receipt = ascendancy_archive.record_compile(compiled)
+        return {
+            "genome": registered["genome"],
+            "compile_receipt": compile_receipt["compile_receipt"],
+            "idempotent": bool(registered["idempotent"] and compile_receipt["idempotent"]),
+            "execution_authorized": False,
+            "production_decision_authorized": False,
+        }
 
     def _control_runner(target: str):
         try:
@@ -872,6 +943,16 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
                 return self._json(200, capability_snapshot())
+            if p.path == "/api/ascendancy/genomes":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                try:
+                    return self._json(200, _ascendancy_snapshot())
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("WARN", f"ASCENDANCY genome snapshot: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
             if p.path == "/api/golive":
                 return self._json(200, golive_report(port))
             if p.path == "/api/agent":
@@ -1264,11 +1345,43 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._json(413, {"detail": "body too large"})
             raw = self.rfile.read(n) if n else b""
             try:
-                body = strict_json(raw) if p.path.startswith(("/admin/research/", "/admin/integrity/", "/admin/parallax/", "/admin/dreamstate/", "/admin/possibility/", "/admin/autopilot/", "/admin/engine-control", "/admin/pantheon/", "/admin/sibyl/", "/admin/apex/", "/admin/learning/")) else (json.loads(raw, parse_constant=_no_json_constants) if raw else {})
+                body = strict_json(raw) if p.path.startswith(("/admin/research/", "/admin/integrity/", "/admin/parallax/", "/admin/dreamstate/", "/admin/possibility/", "/admin/autopilot/", "/admin/engine-control", "/admin/pantheon/", "/admin/sibyl/", "/admin/apex/", "/admin/learning/", "/admin/ascendancy/")) else (json.loads(raw, parse_constant=_no_json_constants) if raw else {})
             except ValueError as ex:
                 return self._json(400, {"detail": f"bad JSON body: {ex}"})
             if not isinstance(body, dict):
                 return self._json(400, {"detail": "JSON body must be an object"})
+            if p.path == "/admin/ascendancy/genome":
+                try:
+                    return self._json(200, _ascendancy_research_mutation(
+                        lambda: _ascendancy_register_genome(body)
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("ERROR", f"ASCENDANCY genome register: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/admin/ascendancy/genome-evaluation":
+                try:
+                    return self._json(200, _ascendancy_research_mutation(
+                        lambda: ascendancy_archive.record_evaluation(body)
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("ERROR", f"ASCENDANCY genome evaluation: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/admin/ascendancy/genome-retire":
+                try:
+                    return self._json(200, _ascendancy_research_mutation(
+                        lambda: ascendancy_archive.retire(
+                            body.get("genome_id"), body.get("reason")
+                        )
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("ERROR", f"ASCENDANCY genome retire: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
             if p.path == "/admin/learning/config":
                 try:
                     return self._json(200, research.configure_learning(body))
@@ -1878,6 +1991,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     srv.pantheon = pantheon
     srv.sibyl = sibyl
     srv.apex = apex
+    srv.ascendancy_archive = ascendancy_archive
     srv.learning = learning
     srv.chronofold = chronofold
     srv.commissioning = commissioning
