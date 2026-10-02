@@ -77,6 +77,7 @@ from .brain import REQUIRED_CANDIDATE_GATES, brain_snapshot, record_brain_event
 from .brain_sync import BrainRemoteSync
 from .research_brain_sync import BrainResearchSync
 from .evolution_sync import EvolutionRemoteSync
+from .evidence_lab_sync import EvidenceLabRemoteSync
 from .code_provenance import local_code_provenance
 from .parallax import ParallaxStore
 from .dreamstate import DreamstateLab
@@ -201,6 +202,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     brain_remote_sync = BrainRemoteSync(port.base_dir)
     brain_research_sync = BrainResearchSync(port.base_dir)
     evolution_remote_sync = EvolutionRemoteSync(port.base_dir)
+    evidence_lab_sync = EvidenceLabRemoteSync(port.base_dir)
     possibility = PossibilityEngine(port)
     performance_proof = PerformanceProofStore(port.base_dir)
     latency_telemetry = LatencyTelemetry()
@@ -422,6 +424,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             "brain_remote": brain_remote_sync,
             "brain_research": brain_research_sync,
             "evolution": evolution_remote_sync,
+            "evidence_lab": evidence_lab_sync,
         }
 
     def _sync_all(_payload):
@@ -734,6 +737,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 ControlAction("sync.brain_remote", "Sync Adaptive Brain remote evidence", "Intelligence", "Pull the latest verified Adaptive Brain repository evidence.", lambda _: brain_remote_sync.sync_once()),
                 ControlAction("sync.brain_research", "Sync research into Adaptive Brain", "Intelligence", "Refresh research-to-brain evidence now.", lambda _: brain_research_sync.sync_once()),
                 ControlAction("sync.evolution", "Sync MCP evolution evidence", "Intelligence", "Refresh repository-native MCP repair/audit/evolution evidence.", lambda _: evolution_remote_sync.sync_once()),
+                ControlAction("sync.evidence_lab", "Sync CSV Evidence Lab", "Intelligence", "Refresh verified Advanced CSV durability/evidence receipts from the active CSV Evidence Lab repository.", lambda _: evidence_lab_sync.sync_once()),
                 ControlAction("sync.all", "Sync all intelligence planes", "Intelligence", "Run all registered intelligence synchronizers once.", _sync_all),
                 ControlAction("sync.start_all", "Start all intelligence sync loops", "Intelligence", "Start all registered background intelligence synchronizers.", _start_all_syncs),
                 ControlAction("sync.stop_all", "Stop all intelligence sync loops", "Intelligence", "Stop all registered background intelligence synchronizers.", _stop_all_syncs, danger=True, confirmation="STOP ALL INTELLIGENCE SYNCS"),
@@ -920,6 +924,10 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
                 return self._json(200, evolution_remote_sync.status())
+            if p.path == "/api/evidence-lab":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                return self._json(200, evidence_lab_sync.status())
             if p.path == "/api/engine-control":
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
@@ -1111,6 +1119,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     integrity=integrity_snapshot(port.base_dir),
                     remote_sync=brain_remote_sync.status(),
                     research_sync=brain_research_sync.status(),
+                    evidence_lab_sync=evidence_lab_sync.status(),
                     proof_status=performance_proof.snapshot(),
                     latency_status=latency_telemetry.snapshot(),
                     source_reliability=source_reliability.snapshot(),
@@ -1917,12 +1926,14 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 brain_remote_sync.start()
                 brain_research_sync.start()
                 evolution_remote_sync.start()
+                evidence_lab_sync.start()
                 commissioning.start_background()
             try:
                 return super().serve_forever(poll_interval)
             finally:
                 if background:
                     autopilot.close()
+                    evidence_lab_sync.close()
                     evolution_remote_sync.close()
                     brain_research_sync.close()
                     brain_remote_sync.close()
@@ -1932,6 +1943,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
 
         def server_close(self):
             autopilot.close()
+            evidence_lab_sync.close()
             evolution_remote_sync.close()
             brain_research_sync.close()
             brain_remote_sync.close()
@@ -1946,6 +1958,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     srv.brain_remote_sync = brain_remote_sync
     srv.brain_research_sync = brain_research_sync
     srv.evolution_remote_sync = evolution_remote_sync
+    srv.evidence_lab_sync = evidence_lab_sync
     srv.possibility = possibility
     srv.performance_proof = performance_proof
     srv.latency_telemetry = latency_telemetry

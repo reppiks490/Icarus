@@ -100,6 +100,7 @@ SUBSYSTEMS = (
     {"id": "provenance", "title": "PROVENANCE", "owner": "daedalus", "job": "Exact code/data/artifact lineage, commit binding, receipt integrity, and proof-chain validation."},
     {"id": "ml", "title": "ML", "owner": "aion", "job": "Research-only model lifecycle, training evidence, calibration, drift/OOD state, reproducibility, and candidate packaging."},
     {"id": "data", "title": "DATA", "owner": "flow", "job": "Raw-source identity, availability-time truth, representation quality, freshness, and replay-safe market evidence."},
+    {"id": "csv-evidence-lab", "title": "CSV EVIDENCE LAB Ω", "owner": "flow", "job": "Independent repository-native CSV structural/provenance evidence mirror; keep durability receipts separate from substantive evidence and never auto-promote data or models."},
 )
 
 LATENCY_TIERS = (
@@ -587,6 +588,7 @@ def brain_snapshot(
     integrity: Mapping[str, Any] | None = None,
     remote_sync: Mapping[str, Any] | None = None,
     research_sync: Mapping[str, Any] | None = None,
+    evidence_lab_sync: Mapping[str, Any] | None = None,
     proof_status: Mapping[str, Any] | None = None,
     latency_status: Mapping[str, Any] | None = None,
     source_reliability: Mapping[str, Any] | None = None,
@@ -770,6 +772,13 @@ def brain_snapshot(
         "research_sync": dict(research_sync) if isinstance(research_sync, Mapping) else {
             "enabled": False,
             "status": "not_configured",
+            "execution_authorized": False,
+            "production_decision_authorized": False,
+        },
+        "evidence_lab_sync": dict(evidence_lab_sync) if isinstance(evidence_lab_sync, Mapping) else {
+            "enabled": False,
+            "status": "not_configured",
+            "repository": "reppiks490/icarus-csv-evidence-lab",
             "execution_authorized": False,
             "production_decision_authorized": False,
         },
