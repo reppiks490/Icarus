@@ -516,6 +516,49 @@
     '</section>';
   }
 
+  function renderPeers(peers) {
+    if (!peers) {
+      return '<section class="card" style="margin-top:12px"><h3>PEER REPOSITORY BRIDGE</h3><div class="empty">UNAVAILABLE — peer repository state did not load.</div></section>';
+    }
+    const sources = Array.isArray(peers.latest_by_source) ? peers.latest_by_source : [];
+    const rows = sources.map(row => {
+      const eligible = Array.isArray(row.candidate_evidence_eligible_lanes) ? row.candidate_evidence_eligible_lanes : [];
+      const durability = Array.isArray(row.durability_only_lanes) ? row.durability_only_lanes : [];
+      return '<tr>' +
+        '<td><b>' + h(row.source_repository || 'UNAVAILABLE') + '</b></td>' +
+        '<td><code title="' + h(row.source_commit || '') + '">' + h(short(row.source_commit || 'UNAVAILABLE')) + '</code></td>' +
+        '<td class="small">' + h(row.observed_at || 'UNAVAILABLE') + '</td>' +
+        '<td class="tnum">' + h(count(row.lane_count)) + '</td>' +
+        '<td class="tnum">' + h(count(row.substantive_lane_count)) + '</td>' +
+        '<td class="small">' + h(eligible.join(' · ') || 'NONE') + '</td>' +
+        '<td class="small">' + h(durability.join(' · ') || 'NONE') + '</td>' +
+        '<td class="small">foreign evidence only · authority transfer=false</td>' +
+      '</tr>';
+    }).join('');
+    const truth = peers.truth_contract || {};
+    return '<section class="card" style="margin-top:12px">' +
+      '<h3>PEER REPOSITORY BRIDGE</h3>' +
+      '<div class="small muted">Cross-repository ICARUS evidence exchange with exact source-commit provenance. Foreign repository state remains foreign evidence; watchdog durability receipts never become alpha evidence.</div>' +
+      '<div class="tiles" style="margin-top:10px">' +
+        '<div class="tile"><div class="k">PEER SOURCES</div><div class="v tnum">' + h(count(peers.source_count)) + '</div></div>' +
+        '<div class="tile"><div class="k">PACKETS</div><div class="v tnum">' + h(count(peers.packet_count)) + '</div></div>' +
+        '<div class="tile"><div class="k">CANDIDATE-ELIGIBLE LANES</div><div class="v tnum">' + h(count(sources.reduce((n,row)=>n + ((row.candidate_evidence_eligible_lanes || []).length),0))) + '</div></div>' +
+        '<div class="tile"><div class="k">DURABILITY-ONLY LANES</div><div class="v tnum">' + h(count(sources.reduce((n,row)=>n + ((row.durability_only_lanes || []).length),0))) + '</div></div>' +
+        '<div class="tile"><div class="k">AUTHORITY</div><div class="v">FOREIGN EVIDENCE ONLY</div><div class="small muted">execution_authorized=false · production_decision_authorized=false</div></div>' +
+      '</div>' +
+      '<div class="small muted" style="margin:10px 0">' +
+        'durability_only_never_enters_candidate_evidence=' + h(truth.durability_only_never_enters_candidate_evidence === true ? 'true' : 'UNAVAILABLE') +
+        ' · substantive_worker_evidence_still_requires_normal_foundry_and_evaluator_gates=' + h(truth.substantive_worker_evidence_still_requires_normal_foundry_and_evaluator_gates === true ? 'true' : 'UNAVAILABLE') +
+        ' · peer_repository_authority_never_transfers=' + h(truth.peer_repository_authority_never_transfers === true ? 'true' : 'UNAVAILABLE') +
+      '</div>' +
+      '<div class="scroll"><table><thead><tr>' +
+        '<th>Peer repository</th><th>Source commit</th><th>Observed</th><th>Lanes</th><th>Substantive</th><th>CANDIDATE-ELIGIBLE LANES</th><th>DURABILITY-ONLY LANES</th><th>Truth boundary</th>' +
+      '</tr></thead><tbody>' +
+        (rows || '<tr><td colspan="8" class="empty">UNMEASURED — no peer repository packet has been ingested.</td></tr>') +
+      '</tbody></table></div>' +
+    '</section>';
+  }
+
   function renderEvaluator(evaluator) {
     if (!evaluator) {
       return '<section class="card" style="margin-top:12px"><h3>EVALUATOR CASCADE · RESOURCE ECONOMY</h3><div class="empty">UNAVAILABLE — staged evaluator state did not load.</div></section>';
@@ -591,13 +634,13 @@
     '</section>';
   }
 
-  function renderAscendancy(capabilities, genomes, foundry, unknowns, mechanisms, inventions, contributions, evaluator, errors) {
+  function renderAscendancy(capabilities, genomes, foundry, unknowns, mechanisms, inventions, contributions, evaluator, peers, errors) {
     const el = document.querySelector('#ascendancyBody');
     if (!el) return;
     const warning = errors.length
       ? '<div class="empty" style="margin-bottom:10px">DEGRADED: ' + h(errors.join(' · ')) + '</div>'
       : '';
-    el.innerHTML = warning + renderCapabilities(capabilities) + renderUnknowns(unknowns) + renderInventions(inventions) + renderFoundry(foundry) + renderEvaluator(evaluator) + renderContributions(contributions) + renderMechanisms(mechanisms) + renderGenomeLab(genomes);
+    el.innerHTML = warning + renderCapabilities(capabilities) + renderPeers(peers) + renderUnknowns(unknowns) + renderInventions(inventions) + renderFoundry(foundry) + renderEvaluator(evaluator) + renderContributions(contributions) + renderMechanisms(mechanisms) + renderGenomeLab(genomes);
   }
 
   async function fetchJson(url, token) {
@@ -625,7 +668,8 @@
         fetchJson('/api/ascendancy/mechanisms', token),
         fetchJson('/api/ascendancy/inventions', token),
         fetchJson('/api/ascendancy/contributions', token),
-        fetchJson('/api/ascendancy/evaluator', token)
+        fetchJson('/api/ascendancy/evaluator', token),
+        fetchJson('/api/ascendancy/peers', token)
       ]);
       if (seq !== loadSeq) return;
       const capabilities = settled[0].status === 'fulfilled' ? settled[0].value : null;
@@ -636,10 +680,11 @@
       const inventions = settled[5].status === 'fulfilled' ? settled[5].value : null;
       const contributions = settled[6].status === 'fulfilled' ? settled[6].value : null;
       const evaluator = settled[7].status === 'fulfilled' ? settled[7].value : null;
+      const peers = settled[8].status === 'fulfilled' ? settled[8].value : null;
       const errors = settled
         .filter(x => x.status === 'rejected')
         .map(x => x.reason && x.reason.message ? x.reason.message : String(x.reason || 'UNAVAILABLE'));
-      renderAscendancy(capabilities, genomes, foundry, unknowns, mechanisms, inventions, contributions, evaluator, errors);
+      renderAscendancy(capabilities, genomes, foundry, unknowns, mechanisms, inventions, contributions, evaluator, peers, errors);
     } catch (err) {
       if (seq !== loadSeq) return;
       el.innerHTML = '<div class="empty">ASCENDANCY state UNAVAILABLE: ' + h(err && err.message ? err.message : err) + '</div>';
