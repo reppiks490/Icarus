@@ -77,3 +77,35 @@ Blocked capabilities remain visible so the operator can distinguish “not obser
 The Capability Orchestrator may route research and data requests according to declared contracts. It does not grant broker permissions, production strategy mutation, live position control, or permission to convert inferred/unavailable data into observations.
 
 Any later capability-routing engine must preserve this fail-closed contract.
+
+## Open-ended research organism
+
+ASCENDANCY now extends beyond capability discovery into a research-only hypothesis organism. The capability plane remains the truth boundary for what external/internal evidence can mean; the components below consume only provenance-bound inputs and do not acquire trading authority.
+
+- **Architecture Genome Archive + Frontier** preserves immutable architecture identities, parentage, compile receipts, evaluation contracts, and a contract-scoped quality-diversity frontier.
+- **Candidate Foundry** accepts falsifiable candidates from native failures, foreign lenses, public research, generated mathematics, and architecture mutations. It cannot grant `QUALIFIED_SHADOW`.
+- **Unknown-Unknown Lab** stores replicated unexplained residuals and failed explanations without assigning a cause prematurely.
+- **Mechanism Lab** runs paired ablation/interaction experiments and distinguishes direct-looking, interaction-dependent, harmful, and unresolved effects without converting association into causal proof.
+- **Invention Engine** composes bounded typed mathematical primitives into reproducible hypotheses with explicit falsifiers and resource budgets. Generated hypotheses begin with zero edge claim.
+- **Information Contribution Lab** measures conditional incremental information under immutable context, horizon, evaluator, and conditioning-set contracts; standalone performance is not accepted as incremental contribution.
+- **Evaluator Cascade** escalates only surviving candidates through cheap contract/null checks, replay, ablation, out-of-sample testing, protected holdout, conditional contribution, and robustness. Final success is `READY_FOR_PROTECTED_QUALIFICATION`, never qualification itself.
+- **Peer Repository Bridge** ingests revision-bound sibling ICARUS state as foreign research evidence. Repository authority never transfers.
+
+## Historical peer context
+
+The live `Icarus-engine` federation now carries preserved historical research context separately from current scheduler liveness. The peer bridge verifies immutable artifact identity, source revision, evidence class, and research-only authority before storing it.
+
+Historical artifacts may be labeled `HISTORICAL_RESEARCH_EVIDENCE` or `HISTORICAL_COLLECTION_EVIDENCE`, but they always remain:
+
+- `candidate_evidence_eligible=false`
+- `foreign_evidence_only=true`
+- `requires_foundry_and_evaluator=true`
+- `execution_authorized=false`
+- `production_decision_authorized=false`
+
+The live cross-repository contract test additionally requires historical context to survive an actual `Icarus-engine/main` export/import cycle. A durability receipt can prove persistence, not alpha; a historical finding can seed a new falsifiable candidate, but cannot bypass Candidate Foundry, the Evaluator Cascade, protected qualification, or native execution controls.
+
+## Operator surfaces
+
+The authenticated ASCENDANCY dashboard now presents capability truth, genomes/frontier, Candidate Foundry, unknown-unknowns, mechanisms, inventions, conditional contribution, evaluator state, peer repositories, and preserved historical research context in one control plane. Missing values remain explicit; foreign evidence remains labeled; the UI does not convert unavailable or durability-only state into a signal.
+
