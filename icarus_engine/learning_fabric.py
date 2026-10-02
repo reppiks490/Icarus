@@ -1971,6 +1971,136 @@ class LearningFabric:
             "report_max_drawdown_intrabar_usd": report.get("max_drawdown_intrabar_usd") or None,
         }
 
+    def _direct_strategy_report_context(self, dataset: Mapping[str, Any]) -> dict[str, Any]:
+        manifest = dataset.get("manifest") if isinstance(dataset.get("manifest"), Mapping) else {}
+        intake = manifest.get("intake") if isinstance(manifest, Mapping) else None
+        row = dict(intake) if isinstance(intake, Mapping) else {}
+        report_sha = str(dataset.get("raw_sha256") or "").lower()
+        if len(report_sha) != 64 or any(ch not in "0123456789abcdef" for ch in report_sha):
+            raise ValueError("strategy report dataset requires a valid SHA-256")
+        timeframe = self._manifest_timeframe(row.get("timeframe")) or str(dataset.get("chart_type") or "")
+        chart_type = str(row.get("chart_type") or "").strip() or None
+        payload = {
+            "strategy_report_sha256": report_sha,
+            "asset": str(dataset.get("asset") or "").upper(),
+            "timeframe": timeframe,
+            "chart_type": chart_type,
+            "rows": self._manifest_integer(row.get("rows")),
+            "last_trade_number": self._manifest_integer(row.get("last_trade_number")),
+            "notes": str(row.get("notes") or ""),
+        }
+        fingerprint = hashlib.sha256(
+            _json(payload, "direct historical artifact configuration").encode("utf-8")
+        ).hexdigest()
+        return {
+            "manifest_linkage_status": "DIRECT_REPORT",
+            "manifest_linkage_candidates": 1,
+            "artifact_configuration_fingerprint": fingerprint,
+            "provenance_quality": "DIRECT_STRATEGY_REPORT_XLSX_TRADE_SHEET",
+            "strategy_report_sha256": report_sha,
+            "strategy_report_filename": Path(str(dataset.get("path") or "")).name or None,
+            "timeframe": timeframe,
+            "chart_type": chart_type,
+            "execution_assumptions": row.get("notes") or None,
+            "linkage_rule": "DIRECT_STRATEGY_REPORT_XLSX_TRADE_SHEET",
+            "report_net_profit_usd": row.get("net_profit_usd") or None,
+            "report_max_drawdown_intrabar_usd": row.get("max_drawdown_intrabar_usd") or None,
+        }
+
+    def _completed_equivalent_trade_experience(
+        self,
+        dataset: Mapping[str, Any],
+        report_sha: str | None,
+    ) -> dict[str, Any] | None:
+        if not report_sha:
+            return None
+        report_sha = str(report_sha).lower()
+        catalog = self._intake_manifest_catalog()
+        rows = self._conn.execute(
+            """SELECT d.dataset_id,d.artifact_class,t.report_json
+               FROM datasets d JOIN training_runs t ON t.dataset_id=d.dataset_id
+               WHERE d.dataset_id<>? AND t.slot='trade_experience'
+               ORDER BY t.created_at,t.run_id""",
+            (str(dataset["dataset_id"]),),
+        ).fetchall()
+        for row in rows:
+            try:
+                run_report = json.loads(row["report_json"])
+            except (TypeError, json.JSONDecodeError):
+                continue
+            if int(run_report.get("experience_count") or 0) <= 0:
+                continue
+            candidate = self.dataset(row["dataset_id"])
+            if candidate["artifact_class"] == "strategy_report_xlsx":
+                candidate_sha = str(candidate.get("raw_sha256") or "").lower()
+            elif candidate["artifact_class"] == "trade_list":
+                candidate_sha = str(
+                    self._artifact_configuration_context(candidate, catalog=catalog).get(
+                        "strategy_report_sha256"
+                    ) or ""
+                ).lower()
+            else:
+                continue
+            if candidate_sha == report_sha:
+                return {
+                    "dataset_id": candidate["dataset_id"],
+                    "artifact_class": candidate["artifact_class"],
+                    "report_sha256": report_sha,
+                }
+        return None
+
+    def _persist_trade_experience_report(
+        self,
+        dataset_id: str,
+        report: Mapping[str, Any],
+    ) -> tuple[str, dict[str, Any]]:
+        slot = "trade_experience"
+        payload = dict(report)
+        run_id = "train-" + hashlib.sha256(f"{dataset_id}|{slot}".encode()).hexdigest()
+        with self._lock, self._conn:
+            self._conn.execute(
+                "INSERT OR IGNORE INTO training_runs(run_id,dataset_id,slot,report_json,status,created_at) VALUES(?,?,?,?,?,?)",
+                (
+                    run_id,
+                    dataset_id,
+                    slot,
+                    _json(payload, "trade experience report"),
+                    str(payload.get("status") or "unknown"),
+                    _utc_now(),
+                ),
+            )
+        return run_id, payload
+
+    def _deduplicated_trade_experience(
+        self,
+        dataset: Mapping[str, Any],
+        owner: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        dataset_id = str(dataset["dataset_id"])
+        report = {
+            "status": "deduplicated_equivalent",
+            "artifact_class": dataset["artifact_class"],
+            "source": (
+                "historical_strategy_report_xlsx"
+                if dataset["artifact_class"] == "strategy_report_xlsx"
+                else "historical_trade_list"
+            ),
+            "experience_count": 0,
+            "new_experiences": 0,
+            "deduplicated_by_strategy_report": True,
+            "equivalent_dataset_id": owner.get("dataset_id"),
+            "strategy_report_sha256": owner.get("report_sha256"),
+            "errors": {},
+            **_authority(),
+        }
+        run_id, report = self._persist_trade_experience_report(dataset_id, report)
+        return {
+            "dataset_id": dataset_id,
+            "status": "complete",
+            "runs": [{"run_id": run_id, "slot": "trade_experience", "idempotent": False, "report": report}],
+            **_authority(),
+        }
+
     def register_dataset(
         self,
         path: str | os.PathLike[str],
