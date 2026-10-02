@@ -1,0 +1,56 @@
+{
+  "schema": "icarus-mcp-event-v1",
+  "category": "AUDIT",
+  "source": "FLOW_AUTOMATION",
+  "event_time": "2026-10-02T06:00:00Z",
+  "retrieval_time": "2026-10-02T07:28:46.353Z",
+  "execution_authorized": false,
+  "net_new_delta": "MATERIAL_DELTA",
+  "finding": "BTC/USD completed 06:00 UTC hour normalized sharply after the 04:00 shock and 05:00 residual elevation: Bybit spot range $221.20 and volume 213.532977 BTC; Bybit linear range $236.00 and reported volume 2250.654; Twelve Data BTC/USD range $223.30. Robust spot baselines over the prior 28 completed hours: range median $393.35, MAD $133.85, robust z -0.87; volume median 243.322 BTC, MAD 91.111, robust z -0.22. Evidence supports normalization rather than persistent high-volatility expansion.",
+  "evidence": {
+    "bybit_spot": {
+      "event_time": "2026-10-02T06:00:00Z",
+      "high": 86103.4,
+      "low": 85882.2,
+      "range": 221.2,
+      "volume_btc": 213.532977
+    },
+    "bybit_linear": {
+      "event_time": "2026-10-02T06:00:00Z",
+      "high": 86090.1,
+      "low": 85854.1,
+      "range": 236,
+      "reported_volume": 2250.654
+    },
+    "twelve_data_btcusd": {
+      "event_time": "2026-10-02T06:00:00Z",
+      "high": 86098.62,
+      "low": 85875.32,
+      "range": 223.3
+    },
+    "bybit_spot_depth": {
+      "retrieval_time": "2026-10-02T07:28:46.353Z",
+      "best_bid": 85955.6,
+      "bid_qty_btc": 0.208201,
+      "best_ask": 85955.7,
+      "ask_qty_btc": 0.36192,
+      "spread": 0.1
+    }
+  },
+  "data_gaps": [
+    "No authenticated direct NQ/MNQ, GC/MGC, SI, DXY, Treasury/rate, or volatility-index observation acquired this cycle.",
+    "Historical trade/depth sequencing unavailable; no historical order-flow or persistent-liquidity inference.",
+    "FMP quote endpoint unavailable on connected subscription tier."
+  ],
+  "argus": {
+    "status": "MATERIAL_DELTA",
+    "finding": "Authenticated Bybit spot snapshot retained exact execution semantics: $85,955.6 bid x 0.208201 BTC / $85,955.7 ask x 0.361920 BTC, $0.10 displayed spread at retrieval; no historical liquidity/order-flow inference."
+  },
+  "nexus": {
+    "status": "MATERIAL_DELTA",
+    "finding": "Bybit spot, Bybit linear, and Twelve Data independently reconcile on 06:00 UTC normalization (ranges $221.20/$236.00/$223.30); spot robust range z=-0.87 and volume z=-0.22 versus prior 28 completed hours, returning inside baseline rather than sustaining the shock."
+  },
+  "paths": [
+    "automation_intelligence/mcp_interface/events/20261002T072846353Z_flow_velocity_audit.json"
+  ]
+}
