@@ -2280,7 +2280,8 @@ def test_experience_provenance_class_is_explicit_and_source_bound(tmp_path):
         "pnl": 200.0,
         "metadata": {
             "artifact_configuration_fingerprint": "b" * 64,
-            "provenance_quality": "MANIFEST_UNIQUE_STRATEGY_REPORT_LINK",
+            "provenance_quality": "SEMANTIC_TRADE_TWIN_STRATEGY_REPORT_LINK",
+            "semantic_trade_signature_sha256": "4" * 64,
             "strategy_report_sha256": "c" * 64,
         },
     })
@@ -2333,7 +2334,8 @@ def test_experience_provenance_class_is_explicit_and_source_bound(tmp_path):
             "pnl": 100.0,
             "metadata": {
                 "artifact_configuration_fingerprint": "e" * 64,
-                "provenance_quality": "MANIFEST_UNIQUE_STRATEGY_REPORT_LINK",
+                "provenance_quality": "SEMANTIC_TRADE_TWIN_STRATEGY_REPORT_LINK",
+                "semantic_trade_signature_sha256": "0" * 64,
                 "strategy_report_sha256": "f" * 64,
             },
         })
