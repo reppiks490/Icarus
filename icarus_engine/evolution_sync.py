@@ -106,7 +106,10 @@ def _default_state(interval_seconds: int) -> dict[str, Any]:
         "ingested_total": 0,
         "ignored_total": 0,
         "rejected_total": 0,
+        "current_rejected_count": 0,
         "processed_blob_shas": [],
+        "rejected_blob_shas": [],
+        "rejected_blob_errors": {},
         "events": [],
         "subsystems": {},
         "execution_authorized": False,
@@ -301,6 +304,8 @@ class EvolutionRemoteSync:
     def status(self) -> dict[str, Any]:
         state = _read_state(self.base_dir, self.interval_seconds)
         state.pop("processed_blob_shas", None)
+        state.pop("rejected_blob_shas", None)
+        state.pop("rejected_blob_errors", None)
         return state
 
     def sync_once(self) -> dict[str, Any]:
@@ -330,6 +335,18 @@ class EvolutionRemoteSync:
                 for x in state.get("processed_blob_shas", [])
                 if _is_sha(x)
             }
+            rejected = {
+                str(x).lower()
+                for x in state.get("rejected_blob_shas", [])
+                if _is_sha(x)
+            }
+            rejected_errors = {
+                str(sha).lower(): str(message)
+                for sha, message in dict(
+                    state.get("rejected_blob_errors") or {}
+                ).items()
+                if _is_sha(str(sha).lower())
+            }
             events_by_id = {
                 str(x.get("event_id")): x
                 for x in state.get("events", [])
@@ -355,9 +372,24 @@ class EvolutionRemoteSync:
                 ):
                     entries.append((name, path, sha, str(item.get("url") or "")))
             entries.sort(key=lambda x: x[0])
+            current_blob_shas = {entry[2] for entry in entries}
+            rejected.intersection_update(current_blob_shas)
+            rejected_errors = {
+                sha: message
+                for sha, message in rejected_errors.items()
+                if sha in rejected
+            }
 
             for _name, path, blob_sha, url in entries:
                 if blob_sha in processed:
+                    continue
+                if blob_sha in rejected:
+                    errors.append(
+                        rejected_errors.get(
+                            blob_sha,
+                            f"{path}: previously rejected receipt version",
+                        )
+                    )
                     continue
                 try:
                     if not url:
@@ -452,8 +484,13 @@ class EvolutionRemoteSync:
                     processed.add(blob_sha)
                     state["ingested_total"] = int(state.get("ingested_total", 0)) + 1
                 except Exception as ex:
-                    errors.append(f"{path}: {type(ex).__name__}: {ex}")
-                    state["rejected_total"] = int(state.get("rejected_total", 0)) + 1
+                    message = f"{path}: {type(ex).__name__}: {ex}"
+                    errors.append(message)
+                    rejected.add(blob_sha)
+                    rejected_errors[blob_sha] = message
+                    state["rejected_total"] = int(
+                        state.get("rejected_total", 0)
+                    ) + 1
 
             ordered = sorted(
                 events_by_id.values(),
@@ -461,6 +498,15 @@ class EvolutionRemoteSync:
                 reverse=True,
             )[:200]
             state["processed_blob_shas"] = sorted(processed)[-5000:]
+            state["rejected_blob_shas"] = sorted(rejected)[-5000:]
+            state["rejected_blob_errors"] = {
+                sha: rejected_errors[sha]
+                for sha in state["rejected_blob_shas"]
+                if sha in rejected_errors
+            }
+            state["current_rejected_count"] = len(
+                state["rejected_blob_shas"]
+            )
             state["events"] = ordered
             state["subsystems"] = subsystems
             state["last_success_at"] = _utc_now()
