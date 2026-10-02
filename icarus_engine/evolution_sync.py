@@ -111,6 +111,7 @@ def _default_state(interval_seconds: int) -> dict[str, Any]:
         "ingested_total": 0,
         "ignored_total": 0,
         "rejected_total": 0,
+        "legacy_rejection_attempt_total": 0,
         "current_rejected_count": 0,
         "processed_blob_shas": [],
         "rejected_blob_shas": [],
@@ -152,6 +153,15 @@ def _read_state(base_dir: str | os.PathLike[str], interval_seconds: int) -> dict
         else:
             state[counter] = value
 
+    legacy_attempts = raw.get("legacy_rejection_attempt_total", 0)
+    if (
+        isinstance(legacy_attempts, bool)
+        or not isinstance(legacy_attempts, int)
+        or legacy_attempts < 0
+    ):
+        legacy_attempts = 0
+    state["legacy_rejection_attempt_total"] = legacy_attempts
+
     raw_processed = raw.get("processed_blob_shas")
     if not isinstance(raw_processed, list):
         raw_processed = []
@@ -171,6 +181,10 @@ def _read_state(base_dir: str | os.PathLike[str], interval_seconds: int) -> dict
     raw_current_rejected = raw.get("rejected_blob_shas")
     if not isinstance(raw_current_rejected, list):
         raw_current_rejected = []
+    history_field_present = isinstance(
+        raw.get("rejected_history_blob_shas"),
+        list,
+    )
     raw_rejected_history = raw.get("rejected_history_blob_shas")
     if not isinstance(raw_rejected_history, list):
         raw_rejected_history = []
@@ -188,10 +202,22 @@ def _read_state(base_dir: str | os.PathLike[str], interval_seconds: int) -> dict
     # Migration safety: any blob currently known rejected is historical too.
     rejected_history.update(current_rejected)
     state["rejected_history_blob_shas"] = sorted(rejected_history)[-5000:]
-    state["rejected_total"] = max(
-        state["rejected_total"],
-        len(state["rejected_history_blob_shas"]),
-    )
+    if history_field_present:
+        state["rejected_total"] = max(
+            state["rejected_total"],
+            len(state["rejected_history_blob_shas"]),
+        )
+    else:
+        # Pre-v2 rejected_total counted polling attempts, not immutable blob
+        # versions. Preserve that legacy diagnostic separately rather than
+        # mislabeling it as a unique-version count forever.
+        state["legacy_rejection_attempt_total"] = max(
+            state["legacy_rejection_attempt_total"],
+            state["rejected_total"],
+        )
+        state["rejected_total"] = len(
+            state["rejected_history_blob_shas"]
+        )
 
     if raw.get("validator_revision") != VALIDATOR_REVISION:
         state["rejected_blob_shas"] = []
