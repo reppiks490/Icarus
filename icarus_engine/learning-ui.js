@@ -58,8 +58,12 @@
       return '<tr><td><b>' + h(r.producer) + '</b></td><td>' + h(r.asset) + '</td><td>' + h(r.regime) +
         '</td><td class="tnum">' + val(r.horizon_seconds, 0) + '</td><td>' + h(r.target) +
         '</td><td>' + h(r.prediction_label || 'UNAVAILABLE') +
-        '</td><td class="small" title="' + h(revision) + '">' + h(shortRevision) + '</td><td>' + chip(r.status) +
-        '</td><td class="tnum">' + val(r.settled, 0) + '</td><td class="tnum">' + pct(r.hit_rate) +
+        '</td><td class="small" title="' + h(revision) + '">' + h(shortRevision) +
+        '</td><td class="tnum">' + val(r.settled, 0) +
+        '</td><td class="tnum">' + val(r.raw_settled, r.settled || 0) +
+        '</td><td class="tnum">' + val(r.overlap_purged, 0) +
+        '</td><td>' + chip(r.status) +
+        '</td><td class="tnum">' + pct(r.hit_rate) +
         '</td><td class="tnum">' + val(r.mean_brier) + '</td><td class="tnum">' + pct(r.calibration_gap) + '</td></tr>';
     });
   }
@@ -185,7 +189,8 @@
         '<div class="tile"><div class="k">AUTHORITY</div><div class="v">RESEARCH ONLY</div><div class="small muted">AUTOMATIC PRODUCTION PROMOTION: OFF · execution_authorized=false</div></div>' +
       '</div>' +
       '<h3 class="small" style="margin:16px 0 8px">EMPIRICAL SCORECARDS · LABEL-SCOPED · REVISION-SCOPED</h3>' +
-      table(['Producer','Asset','Regime','Horizon s','Target','Prediction label','Source revision','State','Settled','Hit rate','Mean Brier','Calibration gap'], scoreRows(state.scorecards), 'UNMEASURED — no matured outcomes yet.') +
+      '<div class="small muted" style="margin-bottom:8px">Credibility metrics, Wilson intervals, and MEASURED/EARLY state use effective non-overlapping outcomes. Raw settled and overlap-purged counts remain visible for audit.</div>' +
+      table(['Producer','Asset','Regime','Horizon s','Target','Prediction label','Source revision','Effective settled','Raw settled','Overlap purged','State','Hit rate','Mean Brier','Calibration gap'], scoreRows(state.scorecards), 'UNMEASURED — no matured outcomes yet.') +
       '<h3 class="small" style="margin:16px 0 8px">SHADOW RECALIBRATION · LABEL-SCOPED · REVISION-SCOPED · RAW VS CALIBRATED BRIER</h3>' +
       '<div class="small muted" style="margin-bottom:8px">Chronological 80/20 holdout only. Holdout raw Brier and Holdout calibrated Brier determine whether a map is SHADOW_VALIDATED. Settled shadow assessments: ' + val(shadow_assessments.settled,0) + ' · pending ' + val(shadow_assessments.pending,0) + ' · live raw Brier ' + val(shadow_assessments.mean_raw_brier,6) + ' · live calibrated Brier ' + val(shadow_assessments.mean_calibrated_brier,6) + '. Automatic probability rewrite: OFF.</div>' +
       table(['Producer','Asset','Regime','Horizon s','Target','Prediction label','Source revision','State','Train','Holdout','Holdout raw Brier','Holdout calibrated Brier','Brier improvement','Evidence cutoff'], shadowCalibrationRows(shadow_models), 'UNMEASURED — no holdout-validated shadow calibrators yet.') +
