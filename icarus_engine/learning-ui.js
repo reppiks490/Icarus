@@ -53,8 +53,12 @@
   }
   function scoreRows(cards) {
     return (cards || []).map(function (r) {
+      const revision = String(r.source_commit || 'UNAVAILABLE');
+      const shortRevision = revision === 'UNAVAILABLE' ? revision : revision.slice(0, 12) + '…';
       return '<tr><td><b>' + h(r.producer) + '</b></td><td>' + h(r.asset) + '</td><td>' + h(r.regime) +
-        '</td><td class="tnum">' + val(r.horizon_seconds, 0) + '</td><td>' + h(r.target) + '</td><td>' + chip(r.status) +
+        '</td><td class="tnum">' + val(r.horizon_seconds, 0) + '</td><td>' + h(r.target) +
+        '</td><td>' + h(r.prediction_label || 'UNAVAILABLE') +
+        '</td><td class="small" title="' + h(revision) + '">' + h(shortRevision) + '</td><td>' + chip(r.status) +
         '</td><td class="tnum">' + val(r.settled, 0) + '</td><td class="tnum">' + pct(r.hit_rate) +
         '</td><td class="tnum">' + val(r.mean_brier) + '</td><td class="tnum">' + pct(r.calibration_gap) + '</td></tr>';
     });
@@ -102,9 +106,12 @@
     return (rows || []).map(function (r) {
       const delta = (r.raw_validation_brier == null || r.calibrated_validation_brier == null)
         ? null : Number(r.raw_validation_brier) - Number(r.calibrated_validation_brier);
+      const revision = String(r.source_commit || 'UNAVAILABLE');
+      const shortRevision = revision === 'UNAVAILABLE' ? revision : revision.slice(0, 12) + '…';
       return '<tr><td><b>' + h(r.producer) + '</b></td><td>' + h(r.asset) +
         '</td><td>' + h(r.regime) + '</td><td class="tnum">' + val(r.horizon_seconds,0) +
-        '</td><td>' + h(r.target) + '</td><td>' + chip(r.status) +
+        '</td><td>' + h(r.target) + '</td><td>' + h(r.prediction_label || 'UNAVAILABLE') +
+        '</td><td class="small" title="' + h(revision) + '">' + h(shortRevision) + '</td><td>' + chip(r.status) +
         '</td><td class="tnum">' + val(r.train_count,0) + '</td><td class="tnum">' + val(r.validation_count,0) +
         '</td><td class="tnum">' + val(r.raw_validation_brier,6) +
         '</td><td class="tnum">' + val(r.calibrated_validation_brier,6) +
@@ -170,18 +177,18 @@
         '<div class="tile"><div class="k">LIVE MATURITY</div><div class="v">' + val(preds.settled,0) + ' / ' + val(preds.count,0) + '</div><div class="small muted">' + val(preds.pending,0) + ' pending forecasts</div></div>' +
         '<div class="tile"><div class="k">REALIZED EXPERIENCE</div><div class="v">' + val(experience.count,0) + '</div><div class="small muted">runtime_live_sim + historical_trade_list · outcome memory, not forecast accuracy</div></div>' +
         '<div class="tile"><div class="k">MANIFEST-LINKED HISTORY</div><div class="v">' + val(artifact_scoped_count,0) + '</div><div class="small muted">artifact-scoped trades · unscoped ' + val(unscoped_count,0) + ' · never promoted to runtime configuration</div></div>' +
-        '<div class="tile"><div class="k">EMPIRICAL SCORECARDS</div><div class="v">' + val((state.scorecards || []).length,0) + '</div><div class="small muted">producer × asset × regime × horizon</div></div>' +
+        '<div class="tile"><div class="k">EMPIRICAL SCORECARDS</div><div class="v">' + val((state.scorecards || []).length,0) + '</div><div class="small muted">producer × asset × regime × horizon × label × revision</div></div>' +
         '<div class="tile"><div class="k">SHADOW RECALIBRATION</div><div class="v">' + val(shadow_calibration.validated_model_count,0) + ' / ' + val(shadow_calibration.model_count,0) + '</div><div class="small muted">VALIDATED MODELS ' + val(shadow_calibration.validated_model_count,0) + ' · REJECTED MODELS ' + val(shadow_calibration.rejected_model_count,0) + ' · automatic probability rewrite: off</div></div>' +
         '<div class="tile"><div class="k">Ψ SCENARIO CALIBRATION</div><div class="v">' + chip(psi.status || 'UNAVAILABLE') + '</div><div class="small muted">captured ' + val(psi.forecasts_imported,0) + ' · matured ' + val(psi.outcomes_imported,0) + ' · overlap withheld ' + val(psi.overlap_withheld,0) + ' · RAW SHARES UNCALIBRATED · producer psi-scenario-v1</div></div>' +
         '<div class="tile"><div class="k">HISTORY SCAN</div><div class="v">' + (state.background && state.background.last_history_scan_epoch ? new Date(state.background.last_history_scan_epoch*1000).toLocaleString() : 'UNAVAILABLE') + '</div><div class="small muted">history/, history/drop/, research/imports/</div></div>' +
         '<div class="tile"><div class="k">LAST CYCLE</div><div class="v">' + chip(latest.status || 'UNAVAILABLE') + '</div><div class="small muted">' + val((state.cycles || {}).count,0) + ' durable cycles</div></div>' +
         '<div class="tile"><div class="k">AUTHORITY</div><div class="v">RESEARCH ONLY</div><div class="small muted">AUTOMATIC PRODUCTION PROMOTION: OFF · execution_authorized=false</div></div>' +
       '</div>' +
-      '<h3 class="small" style="margin:16px 0 8px">EMPIRICAL SCORECARDS</h3>' +
-      table(['Producer','Asset','Regime','Horizon s','Target','State','Settled','Hit rate','Mean Brier','Calibration gap'], scoreRows(state.scorecards), 'UNMEASURED — no matured outcomes yet.') +
-      '<h3 class="small" style="margin:16px 0 8px">SHADOW RECALIBRATION · RAW VS CALIBRATED BRIER</h3>' +
+      '<h3 class="small" style="margin:16px 0 8px">EMPIRICAL SCORECARDS · LABEL-SCOPED · REVISION-SCOPED</h3>' +
+      table(['Producer','Asset','Regime','Horizon s','Target','Prediction label','Source revision','State','Settled','Hit rate','Mean Brier','Calibration gap'], scoreRows(state.scorecards), 'UNMEASURED — no matured outcomes yet.') +
+      '<h3 class="small" style="margin:16px 0 8px">SHADOW RECALIBRATION · LABEL-SCOPED · REVISION-SCOPED · RAW VS CALIBRATED BRIER</h3>' +
       '<div class="small muted" style="margin-bottom:8px">Chronological 80/20 holdout only. Holdout raw Brier and Holdout calibrated Brier determine whether a map is SHADOW_VALIDATED. Settled shadow assessments: ' + val(shadow_assessments.settled,0) + ' · pending ' + val(shadow_assessments.pending,0) + ' · live raw Brier ' + val(shadow_assessments.mean_raw_brier,6) + ' · live calibrated Brier ' + val(shadow_assessments.mean_calibrated_brier,6) + '. Automatic probability rewrite: OFF.</div>' +
-      table(['Producer','Asset','Regime','Horizon s','Target','State','Train','Holdout','Holdout raw Brier','Holdout calibrated Brier','Brier improvement','Evidence cutoff'], shadowCalibrationRows(shadow_models), 'UNMEASURED — no holdout-validated shadow calibrators yet.') +
+      table(['Producer','Asset','Regime','Horizon s','Target','Prediction label','Source revision','State','Train','Holdout','Holdout raw Brier','Holdout calibrated Brier','Brier improvement','Evidence cutoff'], shadowCalibrationRows(shadow_models), 'UNMEASURED — no holdout-validated shadow calibrators yet.') +
       '<h3 class="small" style="margin:16px 0 8px">REALIZED EXPERIENCE · P&L MEMORY</h3>' +
       table(['Source','Asset','Direction','State','Count','Win rate','Net P&L','Avg P&L','PROFIT FACTOR'], experienceRows(experience.summary), 'UNMEASURED — no fully closed realized trade experience yet.') +
       '<h3 class="small" style="margin:16px 0 8px">STRATEGY CONFIGURATION EXPERIENCE · CLOSURE-TIME PROVENANCE</h3>' +

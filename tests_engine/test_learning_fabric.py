@@ -2091,3 +2091,110 @@ def test_strategy_report_xlsx_without_trade_table_fails_closed(tmp_path):
     assert report_run["experience_count"] == 0
     assert report_run["execution_authorized"] is False
     assert fabric.experience_state()["count"] == 0
+
+
+def test_scorecards_are_label_and_revision_scoped(tmp_path):
+    from icarus_engine.learning_fabric import LearningFabric
+
+    fabric = LearningFabric(tmp_path)
+    base = datetime(2026, 10, 1, 14, 0, tzinfo=timezone.utc)
+    cases = [
+        ("up", "a" * 40, 0.8, 102.0),
+        ("up", "b" * 40, 0.8, 99.0),
+        ("down", "a" * 40, 0.7, 98.0),
+        ("down", "b" * 40, 0.7, 101.0),
+    ]
+    for i, (label, commit, probability, actual) in enumerate(cases):
+        body = _prediction(
+            producer="scope-test",
+            regime="trend",
+            horizon=300,
+            probability=probability,
+            direction=label,
+            emitted=base + timedelta(minutes=i * 10),
+        )
+        body["source_commit"] = commit
+        pred = fabric.record_prediction(body)["prediction"]
+        fabric.record_outcome({
+            "prediction_id": pred["prediction_id"],
+            "observed_at": pred["resolves_at"],
+            "actual_value": actual,
+            "evidence": [f"scope-truth:{i}"],
+        })
+
+    cards = [x for x in fabric.scorecards() if x["producer"] == "scope-test"]
+    assert len(cards) == 4
+    scopes = {
+        (card["prediction_label"], card["source_commit"])
+        for card in cards
+    }
+    assert scopes == {
+        ("up", "a" * 40),
+        ("up", "b" * 40),
+        ("down", "a" * 40),
+        ("down", "b" * 40),
+    }
+    by_scope = {
+        (card["prediction_label"], card["source_commit"]): card
+        for card in cards
+    }
+    assert by_scope[("up", "a" * 40)]["hit_rate"] == pytest.approx(1.0)
+    assert by_scope[("up", "b" * 40)]["hit_rate"] == pytest.approx(0.0)
+    assert by_scope[("down", "a" * 40)]["hit_rate"] == pytest.approx(1.0)
+    assert by_scope[("down", "b" * 40)]["hit_rate"] == pytest.approx(0.0)
+
+
+def test_apex_credibility_ids_are_label_and_revision_scoped(tmp_path):
+    from icarus_engine.learning_fabric import LearningFabric
+
+    class Store:
+        def __init__(self):
+            self.rows = []
+        def record_model_credibility(self, row):
+            self.rows.append(dict(row))
+            return {"ok": True}
+
+    class Apex:
+        def __init__(self):
+            self.store = Store()
+
+    fabric = LearningFabric(tmp_path)
+    apex = Apex()
+    fabric.bind_native(apex=apex)
+    base = datetime(2026, 10, 1, 14, 0, tzinfo=timezone.utc)
+
+    for i, (label, commit, actual) in enumerate([
+        ("up", "a" * 40, 102.0),
+        ("up", "b" * 40, 99.0),
+        ("down", "a" * 40, 98.0),
+    ]):
+        body = _prediction(
+            producer="apex-scope",
+            regime="trend",
+            horizon=300,
+            probability=0.75,
+            direction=label,
+            emitted=base + timedelta(minutes=i * 10),
+        )
+        body["source_commit"] = commit
+        pred = fabric.record_prediction(body)["prediction"]
+        fabric.record_outcome({
+            "prediction_id": pred["prediction_id"],
+            "observed_at": pred["resolves_at"],
+            "actual_value": actual,
+            "evidence": [f"apex-scope:{i}"],
+        })
+
+    result = fabric._publish_apex_credibility(fabric.scorecards())
+    assert result["published"] == 3
+    ids = {row["model_id"] for row in apex.store.rows}
+    assert len(ids) == 3
+    assert any(":up:" + ("a" * 40) in model_id for model_id in ids)
+    assert any(":up:" + ("b" * 40) in model_id for model_id in ids)
+    assert any(":down:" + ("a" * 40) in model_id for model_id in ids)
+
+    for row in apex.store.rows:
+        assert row["prediction_label"] in {"up", "down"}
+        assert row["source_commit"] in {"a" * 40, "b" * 40}
+        assert row["execution_authorized"] is False
+        assert row["production_decision_authorized"] is False
