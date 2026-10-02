@@ -1725,17 +1725,44 @@ class LearningFabric:
         }
 
     def scorecards(self) -> list[dict[str, Any]]:
+        """Empirical scorecards scoped to one exact forecast identity.
+
+        Credibility must not cross predicted labels or code revisions.  Those
+        dimensions are already isolated in shadow calibration and must remain
+        isolated here before results are published into APEX.
+        """
         rows = self._conn.execute(
             """SELECT p.*,o.success,o.brier,o.absolute_error
                FROM predictions p JOIN outcomes o ON o.prediction_id=p.prediction_id
-               ORDER BY p.producer,p.asset,p.regime,p.horizon_seconds,p.target"""
+               ORDER BY p.producer,p.asset,p.regime,p.horizon_seconds,p.target,
+                        p.source_commit,p.prediction_id"""
         ).fetchall()
-        groups: dict[tuple[str, str, str, int, str], list[sqlite3.Row]] = {}
+        groups: dict[tuple[str, str, str, int, str, str, str], list[sqlite3.Row]] = {}
         for row in rows:
-            key = (row["producer"], row["asset"], row["regime"], int(row["horizon_seconds"]), row["target"])
+            prediction_label = self._calibration_prediction_label(
+                json.loads(row["prediction_json"])
+            )
+            source_commit = _git_sha(row["source_commit"])
+            key = (
+                row["producer"],
+                row["asset"],
+                row["regime"],
+                int(row["horizon_seconds"]),
+                row["target"],
+                prediction_label,
+                source_commit,
+            )
             groups.setdefault(key, []).append(row)
         cards = []
-        for (producer, asset, regime, horizon, target), group in sorted(groups.items()):
+        for (
+            producer,
+            asset,
+            regime,
+            horizon,
+            target,
+            prediction_label,
+            source_commit,
+        ), group in sorted(groups.items()):
             settled = len(group)
             classified = [r for r in group if r["success"] is not None]
             successes = sum(int(r["success"]) for r in classified)
@@ -1752,6 +1779,8 @@ class LearningFabric:
                 "regime": regime,
                 "horizon_seconds": horizon,
                 "target": target,
+                "prediction_label": prediction_label,
+                "source_commit": source_commit,
                 "settled": settled,
                 "successes": successes,
                 "hit_rate": hit_rate,
@@ -3330,7 +3359,16 @@ class LearningFabric:
                     score = max(0.0, min(1.0, float(hit)))
                 else:
                     continue
-                model_id = "learning:{producer}:{asset}:{regime}:{horizon_seconds}:{target}".format(**card)
+                prediction_label = _text(card.get("prediction_label"), "prediction_label", 64)
+                source_commit = _git_sha(card.get("source_commit"))
+                model_id = (
+                    "learning:{producer}:{asset}:{regime}:{horizon_seconds}:{target}:"
+                    "{prediction_label}:{source_commit}"
+                ).format(
+                    **card,
+                    prediction_label=prediction_label,
+                    source_commit=source_commit,
+                )
                 apex.store.record_model_credibility({
                     "model_id": model_id,
                     "as_of": as_of,
@@ -3340,6 +3378,8 @@ class LearningFabric:
                     "hit_rate": hit,
                     "mean_brier": brier,
                     "calibration_gap": gap,
+                    "prediction_label": prediction_label,
+                    "source_commit": source_commit,
                     "source": "continuous-learning-fabric",
                     **_authority(),
                 })
