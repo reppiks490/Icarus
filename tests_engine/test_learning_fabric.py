@@ -1981,7 +1981,7 @@ def test_manifest_ambiguous_strategy_report_linkage_fails_closed(tmp_path):
     assert meta["manifest_linkage_candidates"] == 2
 
 
-def test_manifest_report_linkage_never_promotes_to_runtime_strategy_configuration(tmp_path):
+def test_semantic_report_linkage_never_promotes_to_runtime_strategy_configuration(tmp_path):
     from icarus_engine.learning_fabric import LearningFabric
 
     fabric = LearningFabric(tmp_path)
@@ -1998,12 +1998,13 @@ def test_manifest_report_linkage_never_promotes_to_runtime_strategy_configuratio
         "pnl": 50.0,
         "metadata": {
             "artifact_configuration_fingerprint": "f" * 64,
-            "provenance_quality": "MANIFEST_UNIQUE_STRATEGY_REPORT_LINK",
+            "provenance_quality": "SEMANTIC_TRADE_TWIN_STRATEGY_REPORT_LINK",
+            "semantic_trade_signature_sha256": "d" * 64,
             "timeframe": "20m",
             "chart_type": "Heikin Ashi",
             "strategy_report_sha256": "e" * 64,
             "strategy_report_filename": "report.xlsx",
-            "linkage_rule": "UNIQUE_SYMBOL_ROWS_LAST_TRADE",
+            "linkage_rule": "SEMANTIC_TRADE_SIGNATURE_V1",
         },
     })
     state = fabric.experience_state()
@@ -2416,7 +2417,8 @@ def test_experience_provenance_class_is_explicit_and_source_bound(tmp_path):
         "pnl": 200.0,
         "metadata": {
             "artifact_configuration_fingerprint": "b" * 64,
-            "provenance_quality": "MANIFEST_UNIQUE_STRATEGY_REPORT_LINK",
+            "provenance_quality": "SEMANTIC_TRADE_TWIN_STRATEGY_REPORT_LINK",
+            "semantic_trade_signature_sha256": "4" * 64,
             "strategy_report_sha256": "c" * 64,
         },
     })
@@ -2469,7 +2471,8 @@ def test_experience_provenance_class_is_explicit_and_source_bound(tmp_path):
             "pnl": 100.0,
             "metadata": {
                 "artifact_configuration_fingerprint": "e" * 64,
-                "provenance_quality": "MANIFEST_UNIQUE_STRATEGY_REPORT_LINK",
+                "provenance_quality": "SEMANTIC_TRADE_TWIN_STRATEGY_REPORT_LINK",
+                "semantic_trade_signature_sha256": "0" * 64,
                 "strategy_report_sha256": "f" * 64,
             },
         })
