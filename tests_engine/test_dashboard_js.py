@@ -149,6 +149,9 @@ def test_dashboard_surfaces_adaptive_brain_fabric():
     assert "Federated historical research context" in ui
     assert "They cannot create candidates, bypass Foundry/Evaluator" in ui
     assert "peer_historical_context_candidate_evidence" in ui
+    assert "source_artifact_blob_verified" in ui
+    assert "source blobs" in ui
+    assert "Source latest blob" in ui
     assert "CSV Evidence Lab" in ui
     assert "/api/evidence-lab" in server
     assert "sync.evidence_lab" in server
