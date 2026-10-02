@@ -1,0 +1,68 @@
+{
+  "schema": "icarus-mcp-event-v1",
+  "category": "EVOLUTION",
+  "source": "MACRO_AUTOMATION",
+  "execution_authorized": false,
+  "event_time": "2026-10-02T23:09:12Z",
+  "title": "Red Sea risk advances from prospective offensive to confirmed kinetic escalation",
+  "net_new_delta": "Relative to durable event 20261002T211139Z_macro_red_sea_escalation_risk.json, Yemen's internationally recognized government reports 20 airstrikes on Houthi targets in Taiz within three hours. This confirms a kinetic escalation but does not establish Bab el-Mandeb closure or realized energy supply disruption.",
+  "fact": [
+    "Yemen's internationally recognized government reported 20 airstrikes on Houthi personnel, movements, vehicles and military equipment in Taiz province within three hours.",
+    "Brent settled October 2 at $102.25/bbl and WTI at $91.11 after Europe agreed emergency diesel/crude stock releases; market pricing does not confirm a new realized supply shock."
+  ],
+  "source_claim": [
+    "Reuters characterizes the Taiz strikes as a significant escalation after the relative lull associated with the 2022 truce.",
+    "Reuters reports Saudi Arabia is preparing a larger Saudi-backed operation intended to regain control around Bab el-Mandeb, expected within weeks."
+  ],
+  "model_inference": "Promote RED_SEA_ESCALATION_RISK from PROSPECTIVE to CONFIRMED_KINETIC_ESCALATION, while retaining REALIZED_ENERGY_SUPPLY_DISRUPTION as unconfirmed.",
+  "unknown": [
+    "Whether fighting reaches Bab el-Mandeb/coastal infrastructure.",
+    "Whether maritime traffic, freight, insurance or physical petroleum flows are measurably impaired.",
+    "Whether the broader Saudi-backed offensive launches and persists."
+  ],
+  "conflicts": "Military escalation is becoming more concrete while emergency stock releases and current crude settlements do not confirm a fresh physical supply shock.",
+  "affected": [
+    "Brent",
+    "WTI",
+    "refined products",
+    "Red Sea shipping proxies",
+    "GC/MGC",
+    "DXY",
+    "NQ/MNQ"
+  ],
+  "confidence": {
+    "kinetic_escalation": "HIGH",
+    "realized_supply_disruption": "UNCONFIRMED",
+    "market_transmission": "MEDIUM"
+  },
+  "next_decisive_check": "Require operational evidence connecting fighting to Bab el-Mandeb/coastal infrastructure plus measurable maritime/freight/refined-product deterioration despite emergency stock releases.",
+  "prior_state_path": "automation_intelligence/mcp_interface/events/20261002T211139Z_macro_red_sea_escalation_risk.json",
+  "evidence": [
+    {
+      "publisher": "Reuters",
+      "date": "2026-10-02",
+      "topic": "Yemen 20 Taiz strikes",
+      "url": "https://www.reuters.com/world/middle-east/yemen-carried-out-20-strikes-houthi-targets-taiz-province-spokesperson-says-2026-10-02/"
+    },
+    {
+      "publisher": "Reuters",
+      "date": "2026-10-02",
+      "topic": "Saudi planned Bab el-Mandeb offensive",
+      "url": "https://www.reuters.com/world/asia-pacific/saudis-plan-assault-houthis-break-red-sea-chokehold-2026-10-02/"
+    },
+    {
+      "publisher": "Reuters",
+      "date": "2026-10-02",
+      "topic": "Oil settlement and emergency stock releases",
+      "url": "https://www.reuters.com/business/energy/oil-rises-slightly-market-weighs-mixed-supply-signals-2026-10-02/"
+    }
+  ],
+  "oracle": {
+    "status": "MATERIAL_UPDATE",
+    "finding": "Confirmed Taiz airstrikes justify upgrading Red Sea risk from prospective to kinetic escalation, but not to realized energy-supply disruption."
+  },
+  "supermesh_x": {
+    "status": "MATERIAL_UPDATE",
+    "finding": "Fresh Reuters military evidence and energy-market evidence remain causally distinct: escalation is confirmed while crude pricing/emergency releases do not verify maritime or physical supply impairment."
+  }
+}
