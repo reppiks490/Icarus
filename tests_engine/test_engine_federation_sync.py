@@ -158,10 +158,10 @@ def test_remote_sync_verifies_git_blobs_and_records_brain_evidence(tmp_path):
     }]
 
     def fetch_json(url):
-        if url.endswith("contract.json?ref=main"):
-            return producer_meta
         if url.endswith("icarus_consumer_contract.json?ref=main"):
             return consumer_meta
+        if url.endswith("/contract.json?ref=main"):
+            return producer_meta
         if "/events?ref=main" in url:
             return events_listing
         raise AssertionError(url)
