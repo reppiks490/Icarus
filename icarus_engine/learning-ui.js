@@ -2,6 +2,8 @@
   'use strict';
 
   let timer = null;
+  let mutationBusy = false;
+  let loadSeq = 0;
   let lastState = null;
   let lastDatasets = null;
 
@@ -176,19 +178,32 @@
       '<div class="small muted" style="margin-top:12px">The learner does not treat repeated model agreement as new evidence. Credibility moves only from matured observed outcomes or protected historical replay. Missing metrics remain UNAVAILABLE/UNMEASURED.</div>';
   }
   async function loadLearning() {
+    const seq = ++loadSeq;
     const panel = document.querySelector('#learningPanel');
     if (!panel) return;
     try {
       const triple = await Promise.all([getJson('/api/learning'), getJson('/api/learning/datasets'), getJson('/api/learning/health')]);
+      if (seq !== loadSeq) return;
       lastState = triple[0]; lastState.health = triple[2]; lastDatasets = triple[1]; render(lastState, lastDatasets);
     } catch (err) {
+      if (seq !== loadSeq) return;
       panel.innerHTML = '<div class="empty">Learning Fabric UNAVAILABLE: ' + h(err && err.message ? err.message : err) + '</div>';
     }
   }
-  async function action(fn) {
+  async function action(fn, button) {
     const panel = document.querySelector('#learningPanel');
+    if (mutationBusy) {
+      if (typeof toast === 'function') toast('Learning action already running', true);
+      return;
+    }
+    mutationBusy = true;
+    if (button) button.disabled = true;
     try { await fn(); await loadLearning(); }
     catch (err) { if (panel) panel.insertAdjacentHTML('afterbegin','<div class="empty">' + h(err && err.message ? err.message : err) + '</div>'); }
+    finally {
+      mutationBusy = false;
+      if (button && button.isConnected) button.disabled = false;
+    }
   }
   function wireLearning() {
     const refresh = document.querySelector('#learningRefresh');
@@ -197,14 +212,14 @@
     const toggle = document.querySelector('#learningToggle');
     const panel = document.querySelector('#learningPanel');
     if (refresh) refresh.addEventListener('click', loadLearning);
-    if (tick) tick.addEventListener('click', function () { action(function () { return postJson('/admin/learning/tick', {}); }); });
-    if (scan) scan.addEventListener('click', function () { action(function () { return postJson('/admin/learning/scan', {}); }); });
-    if (toggle) toggle.addEventListener('click', function () { action(function () { return postJson('/admin/learning/config', {enabled: !(lastState && lastState.config && lastState.config.enabled)}); }); });
+    if (tick) tick.addEventListener('click', function () { action(function () { return postJson('/admin/learning/tick', {}); }, tick); });
+    if (scan) scan.addEventListener('click', function () { action(function () { return postJson('/admin/learning/scan', {}); }, scan); });
+    if (toggle) toggle.addEventListener('click', function () { action(function () { return postJson('/admin/learning/config', {enabled: !(lastState && lastState.config && lastState.config.enabled)}); }, toggle); });
     if (panel) panel.addEventListener('click', function (ev) {
       const button = ev.target.closest('[data-learn-backfill]');
       if (!button) return;
       const datasetId = button.getAttribute('data-learn-backfill');
-      action(function () { return postJson('/admin/learning/backfill', {dataset_id:datasetId, slots:['logit']}); });
+      action(function () { return postJson('/admin/learning/backfill', {dataset_id:datasetId, slots:['logit']}); }, button);
     });
     loadLearning();
     if (timer) clearInterval(timer);

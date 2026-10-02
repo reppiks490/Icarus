@@ -1,5 +1,5 @@
 /* Public-source observations. Collection only runs after a button click. */
-let sourcesLoading = false, sourceWatchLoaded = false, sourcesLatest = {};
+let sourcesLoading = false, sourcesPendingLoad = false, sourceRecordsSeq = 0, sourceWatchLoaded = false, sourcesLatest = {};
 const sourceNames = {cftc:'CFTC commitments of traders',bls:'BLS CPI',
   'federal-reserve':'Federal Reserve releases',bea:'BEA releases',sec:'SEC company filings',coinbase:'Coinbase BTC-USD trades',
   'yahoo-dxy':'DXY / asset return correlations'};
@@ -49,8 +49,10 @@ function sourceFootprint(bar) {
     ${levels.length?`<div class="scroll"><table><thead><tr><th>Price</th><th>Buy</th><th>Sell</th><th>Unknown</th></tr></thead><tbody>${levels.map(([price,v])=>`<tr><td>${esc((Number(price)/100).toFixed(2))}</td><td>${esc(sourceQuantity(v.buy||0))}</td><td>${esc(sourceQuantity(v.sell||0))}</td><td>${esc(sourceQuantity(v.unknown||0))}</td></tr>`).join('')}</tbody></table></div>`:''}</div>`;
 }
 async function loadSources() {
-  if(sourcesLoading||view!=='sources') return;
+  if(view!=='sources') return;
+  if(sourcesLoading){sourcesPendingLoad=true;return;}
   sourcesLoading=true;
+  sourcesPendingLoad=false;
   try {
     const status=await researchGet('/api/research/sources');
     if(view!=='sources') return;
@@ -65,17 +67,21 @@ async function loadSources() {
     await loadSourceRecords();
     await loadSourceWatch();
   } catch(e) {if($('#sourcesStatus')) $('#sourcesStatus').textContent='Financial data unavailable: '+e.message;}
-  finally {sourcesLoading=false;}
+  finally {
+    sourcesLoading=false;
+    if(sourcesPendingLoad&&view==='sources'){sourcesPendingLoad=false;setTimeout(loadSources,0);}
+  }
 }
 async function loadSourceRecords() {
   if(view!=='sources') return;
+  const seq=++sourceRecordsSeq;
   const kind=$('#sourceKind').value,asset=$('#sourceFilterAsset').value,cik=$('#sourceCik').value.trim();
   const query=new URLSearchParams({kind,limit:'100'});
   if(asset&&kind!=='trades') query.set('asset',asset);
   if(kind==='companies'&&cik) query.set('cik',cik);
   try {
     const data=await researchGet('/api/research/records?'+query);
-    if(view!=='sources'||$('#sourceKind').value!==kind) return;
+    if(seq!==sourceRecordsSeq||view!=='sources'||$('#sourceKind').value!==kind||$('#sourceFilterAsset').value!==asset) return;
     const rows=kind==='asset'?(data.records||[]).filter(r=>r.kind!=='company'):(data.records||[]);
     $('#sourceRecords').innerHTML=rows.map(r=>kind==='trades'?`<div class="tile" style="margin-bottom:6px">Trade ${esc(r.event?.sequence)} · ${esc(r.trade?.time)} · ${esc(r.trade?.price)} · ${esc(r.trade?.size)} · aggressor ${esc(r.event?.aggressor||'unknown')} · ${sourceLink(r.source_url,'Coinbase receipt')}</div>`:sourceRecord(r)).join('')||'<p class="empty">No saved records match this filter.</p>';
     if(kind==='trades') {
@@ -83,7 +89,7 @@ async function loadSourceRecords() {
       $('#sourceStream').innerHTML=stream?`<p class="small">${esc(stream.instrument)} · ${esc(stream.seconds)}s buckets · ${stream.sequence_continuity_checked===true?'saved batches checked for continuity':'continuity unknown'} · latest collection ${esc(sourcesLatest.coinbase?.status||'unknown')} · ${esc(sourcesLatest.coinbase?.error||'')} · active bucket ${stream.active_bucket_is_partial?'partial':'none'} · last receipt ${stream.last_success_received_ns?esc(new Date(stream.last_success_received_ns/1e6).toISOString()):'unknown'}</p>
         ${(stream.completed_bars||[]).slice(-10).reverse().map(sourceFootprint).join('')}${stream.active_bucket?sourceFootprint({...stream.active_bucket,active:true}):''}`:'<p class="empty">No Coinbase trade stream collected.</p>';
     } else $('#sourceStream').textContent='Select BTC trades to inspect completed seconds and the partial active bucket.';
-  } catch(e) {if($('#sourceRecords')) $('#sourceRecords').textContent='Records unavailable: '+e.message;}
+  } catch(e) {if(seq===sourceRecordsSeq&&$('#sourceRecords')) $('#sourceRecords').textContent='Records unavailable: '+e.message;}
 }
 async function collectSource(button) {
   const source=button.dataset.collect,options={};
@@ -108,13 +114,16 @@ function wireSources() {
   $('#sourceKind').onchange=loadSourceRecords;
   $('#sourceFilterAsset').onchange=loadSourceRecords;
   $('#sourceRefresh').onclick=loadSources;
-  const configure=async(partial)=>{
+  const configure=async(partial,button)=>{
+    if(button&&button.disabled)return;
+    if(button)button.disabled=true;
     try {const result=await admin('/admin/research/source-watch',partial);if(result&&view==='sources'){sourceWatchLoaded=false;await loadSourceWatch();}}
     catch(e){toast(e.message,true);}
+    finally{if(button&&button.isConnected)button.disabled=false;}
   };
-  $('#sourceWatchSave').onclick=()=>{try{configure(JSON.parse($('#sourceWatchConfig').value));}catch(e){toast(e.message,true);}};
-  $('#sourceWatchEnable').onclick=()=>configure({enabled:true});
-  $('#sourceWatchDisable').onclick=()=>configure({enabled:false});
+  $('#sourceWatchSave').onclick=()=>{try{configure(JSON.parse($('#sourceWatchConfig').value),$('#sourceWatchSave'));}catch(e){toast(e.message,true);}};
+  $('#sourceWatchEnable').onclick=()=>configure({enabled:true},$('#sourceWatchEnable'));
+  $('#sourceWatchDisable').onclick=()=>configure({enabled:false},$('#sourceWatchDisable'));
   loadSources();
 }
 

@@ -1,6 +1,6 @@
 (function(){
   'use strict';
-  let loading=false, timer=null, selected='', assetsCache=[];
+  let loading=false, pendingLoad=false, timer=null, selected='', assetsCache=[];
   const h=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const n=(v,d=3)=>v==null||!Number.isFinite(Number(v))?'—':Number(v).toFixed(d);
   const pct=v=>v==null||!Number.isFinite(Number(v))?'—':(Number(v)*100).toFixed(1)+'%';
@@ -57,10 +57,24 @@
   }
 
   async function loadChronofold(){
-    if(loading)return; const panel=document.querySelector('#chronofoldPanel'); if(!panel)return; loading=true;
-    try{ const token=localStorage.getItem('icarus-engine-token')||'icarus'; const q=selected?'?asset='+encodeURIComponent(selected):''; const r=await fetch('/api/chronofold'+q,{cache:'no-store',headers:{'Authorization':'Bearer '+token}}); const d=await r.json(); if(!r.ok)throw new Error(d.detail||d.error||('HTTP '+r.status)); renderChronofold(d); }
-    catch(err){ panel.innerHTML='<h2>ICARUS Ξ · CHRONOFOLD</h2><div class="empty">Chronofold unavailable: '+h(err.message||err)+'</div>'; }
-    finally{loading=false;}
+    const panel=document.querySelector('#chronofoldPanel'); if(!panel)return;
+    if(loading){pendingLoad=true;return;}
+    const requestAsset=selected;
+    loading=true; pendingLoad=false;
+    try{
+      const token=localStorage.getItem('icarus-engine-token')||'icarus';
+      const q=requestAsset?'?asset='+encodeURIComponent(requestAsset):'';
+      const r=await fetch('/api/chronofold'+q,{cache:'no-store',headers:{'Authorization':'Bearer '+token}});
+      const d=await r.json();
+      if(!r.ok)throw new Error(d.detail||d.error||('HTTP '+r.status));
+      if(requestAsset!==selected){pendingLoad=true;return;}
+      renderChronofold(d);
+    }
+    catch(err){ if(requestAsset===selected) panel.innerHTML='<h2>ICARUS Ξ · CHRONOFOLD</h2><div class="empty">Chronofold unavailable: '+h(err.message||err)+'</div>'; }
+    finally{
+      loading=false;
+      if(pendingLoad&&(location.hash||'#overview').slice(1)==='chronofold'){pendingLoad=false;setTimeout(loadChronofold,0);}
+    }
   }
   function wireChronofold(){ const sel=document.querySelector('#cfAsset'); if(sel){selected=sel.value||selected;sel.onchange=()=>{selected=sel.value;loadChronofold();};} const btn=document.querySelector('#cfRefresh');if(btn)btn.onclick=loadChronofold;loadChronofold();if(timer)clearInterval(timer);timer=setInterval(()=>{if((location.hash||'#overview').slice(1)==='chronofold')loadChronofold();},2500);}
   window.chronofoldHtml=chronofoldHtml; window.wireChronofold=wireChronofold; window.loadChronofold=loadChronofold;
