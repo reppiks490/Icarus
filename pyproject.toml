@@ -13,7 +13,7 @@ authors = [
   {name = "Astra"},
   {name = "Grok (xAI)"},
 ]
-dependencies = ["tzdata"]
+dependencies = ["tzdata", "openpyxl>=3.1,<4"]
 
 [project.optional-dependencies]
 bridge = ["fastapi", "uvicorn", "httpx", "mcp>=2,<3", "python-dotenv>=1,<2"]

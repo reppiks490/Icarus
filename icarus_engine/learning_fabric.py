@@ -26,6 +26,7 @@ from .trainers.run import train_file, train_xgb_file
 
 
 _SCHEMA = "icarus-learning-fabric-v1"
+_ARTIFACT_PROVENANCE_QUALITIES = frozenset({"MANIFEST_UNIQUE_STRATEGY_REPORT_LINK", "DIRECT_STRATEGY_REPORT_XLSX_TRADE_SHEET"})
 _DEFAULT_CONFIG = {
     "enabled": True,
     "cycle_seconds": 60,
@@ -517,10 +518,19 @@ class LearningFabric:
                    WHERE t.dataset_id=d.dataset_id AND t.slot='trade_experience'
                )"""
         ).fetchone()[0])
+        unimported_strategy_reports_xlsx = int(self._conn.execute(
+            """SELECT COUNT(*) FROM datasets d
+               WHERE d.artifact_class='strategy_report_xlsx'
+               AND NOT EXISTS (
+                   SELECT 1 FROM training_runs t
+                   WHERE t.dataset_id=d.dataset_id AND t.slot='trade_experience'
+               )"""
+        ).fetchone()[0])
         return {
             "pending_predictions": pending_predictions,
             "untrained_ohlc_datasets": untrained_ohlc,
             "unimported_trade_lists": unimported_trade_lists,
+            "unimported_strategy_reports_xlsx": unimported_strategy_reports_xlsx,
         }
 
     def health(self) -> dict[str, Any]:
@@ -1157,7 +1167,7 @@ class LearningFabric:
             if not (
                 len(fingerprint) == 64
                 and all(ch in "0123456789abcdef" for ch in fingerprint)
-                and effective.get("provenance_quality") == "MANIFEST_UNIQUE_STRATEGY_REPORT_LINK"
+                and effective.get("provenance_quality") in _ARTIFACT_PROVENANCE_QUALITIES
             ):
                 dataset_id = str(effective.get("dataset_id") or "")
                 if dataset_id:
@@ -1173,7 +1183,7 @@ class LearningFabric:
             if not (
                 len(fingerprint) == 64
                 and all(ch in "0123456789abcdef" for ch in fingerprint)
-                and effective.get("provenance_quality") == "MANIFEST_UNIQUE_STRATEGY_REPORT_LINK"
+                and effective.get("provenance_quality") in _ARTIFACT_PROVENANCE_QUALITIES
             ):
                 continue
             groups.setdefault((row["source"], row["asset"], fingerprint), []).append((row, effective))
@@ -1264,7 +1274,7 @@ class LearningFabric:
             if not (
                 len(artifact_fp) == 64
                 and all(ch in "0123456789abcdef" for ch in artifact_fp)
-                and effective.get("provenance_quality") == "MANIFEST_UNIQUE_STRATEGY_REPORT_LINK"
+                and effective.get("provenance_quality") in _ARTIFACT_PROVENANCE_QUALITIES
             ):
                 dataset_id = str(effective.get("dataset_id") or "")
                 if dataset_id:
@@ -1280,7 +1290,7 @@ class LearningFabric:
             if (
                 len(artifact_fp) == 64
                 and all(ch in "0123456789abcdef" for ch in artifact_fp)
-                and effective.get("provenance_quality") == "MANIFEST_UNIQUE_STRATEGY_REPORT_LINK"
+                and effective.get("provenance_quality") in _ARTIFACT_PROVENANCE_QUALITIES
             ):
                 artifact += 1
             else:
@@ -1970,6 +1980,136 @@ class LearningFabric:
             "report_max_drawdown_intrabar_usd": report.get("max_drawdown_intrabar_usd") or None,
         }
 
+    def _direct_strategy_report_context(self, dataset: Mapping[str, Any]) -> dict[str, Any]:
+        manifest = dataset.get("manifest") if isinstance(dataset.get("manifest"), Mapping) else {}
+        intake = manifest.get("intake") if isinstance(manifest, Mapping) else None
+        row = dict(intake) if isinstance(intake, Mapping) else {}
+        report_sha = str(dataset.get("raw_sha256") or "").lower()
+        if len(report_sha) != 64 or any(ch not in "0123456789abcdef" for ch in report_sha):
+            raise ValueError("strategy report dataset requires a valid SHA-256")
+        timeframe = self._manifest_timeframe(row.get("timeframe")) or str(dataset.get("chart_type") or "")
+        chart_type = str(row.get("chart_type") or "").strip() or None
+        payload = {
+            "strategy_report_sha256": report_sha,
+            "asset": str(dataset.get("asset") or "").upper(),
+            "timeframe": timeframe,
+            "chart_type": chart_type,
+            "rows": self._manifest_integer(row.get("rows")),
+            "last_trade_number": self._manifest_integer(row.get("last_trade_number")),
+            "notes": str(row.get("notes") or ""),
+        }
+        fingerprint = hashlib.sha256(
+            _json(payload, "direct historical artifact configuration").encode("utf-8")
+        ).hexdigest()
+        return {
+            "manifest_linkage_status": "DIRECT_REPORT",
+            "manifest_linkage_candidates": 1,
+            "artifact_configuration_fingerprint": fingerprint,
+            "provenance_quality": "DIRECT_STRATEGY_REPORT_XLSX_TRADE_SHEET",
+            "strategy_report_sha256": report_sha,
+            "strategy_report_filename": Path(str(dataset.get("path") or "")).name or None,
+            "timeframe": timeframe,
+            "chart_type": chart_type,
+            "execution_assumptions": row.get("notes") or None,
+            "linkage_rule": "DIRECT_STRATEGY_REPORT_XLSX_TRADE_SHEET",
+            "report_net_profit_usd": row.get("net_profit_usd") or None,
+            "report_max_drawdown_intrabar_usd": row.get("max_drawdown_intrabar_usd") or None,
+        }
+
+    def _completed_equivalent_trade_experience(
+        self,
+        dataset: Mapping[str, Any],
+        report_sha: str | None,
+    ) -> dict[str, Any] | None:
+        if not report_sha:
+            return None
+        report_sha = str(report_sha).lower()
+        catalog = self._intake_manifest_catalog()
+        rows = self._conn.execute(
+            """SELECT d.dataset_id,d.artifact_class,t.report_json
+               FROM datasets d JOIN training_runs t ON t.dataset_id=d.dataset_id
+               WHERE d.dataset_id<>? AND t.slot='trade_experience'
+               ORDER BY t.created_at,t.run_id""",
+            (str(dataset["dataset_id"]),),
+        ).fetchall()
+        for row in rows:
+            try:
+                run_report = json.loads(row["report_json"])
+            except (TypeError, json.JSONDecodeError):
+                continue
+            if int(run_report.get("experience_count") or 0) <= 0:
+                continue
+            candidate = self.dataset(row["dataset_id"])
+            if candidate["artifact_class"] == "strategy_report_xlsx":
+                candidate_sha = str(candidate.get("raw_sha256") or "").lower()
+            elif candidate["artifact_class"] == "trade_list":
+                candidate_sha = str(
+                    self._artifact_configuration_context(candidate, catalog=catalog).get(
+                        "strategy_report_sha256"
+                    ) or ""
+                ).lower()
+            else:
+                continue
+            if candidate_sha == report_sha:
+                return {
+                    "dataset_id": candidate["dataset_id"],
+                    "artifact_class": candidate["artifact_class"],
+                    "report_sha256": report_sha,
+                }
+        return None
+
+    def _persist_trade_experience_report(
+        self,
+        dataset_id: str,
+        report: Mapping[str, Any],
+    ) -> tuple[str, dict[str, Any]]:
+        slot = "trade_experience"
+        payload = dict(report)
+        run_id = "train-" + hashlib.sha256(f"{dataset_id}|{slot}".encode()).hexdigest()
+        with self._lock, self._conn:
+            self._conn.execute(
+                "INSERT OR IGNORE INTO training_runs(run_id,dataset_id,slot,report_json,status,created_at) VALUES(?,?,?,?,?,?)",
+                (
+                    run_id,
+                    dataset_id,
+                    slot,
+                    _json(payload, "trade experience report"),
+                    str(payload.get("status") or "unknown"),
+                    _utc_now(),
+                ),
+            )
+        return run_id, payload
+
+    def _deduplicated_trade_experience(
+        self,
+        dataset: Mapping[str, Any],
+        owner: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        dataset_id = str(dataset["dataset_id"])
+        report = {
+            "status": "deduplicated_equivalent",
+            "artifact_class": dataset["artifact_class"],
+            "source": (
+                "historical_strategy_report_xlsx"
+                if dataset["artifact_class"] == "strategy_report_xlsx"
+                else "historical_trade_list"
+            ),
+            "experience_count": 0,
+            "new_experiences": 0,
+            "deduplicated_by_strategy_report": True,
+            "equivalent_dataset_id": owner.get("dataset_id"),
+            "strategy_report_sha256": owner.get("report_sha256"),
+            "errors": {},
+            **_authority(),
+        }
+        run_id, report = self._persist_trade_experience_report(dataset_id, report)
+        return {
+            "dataset_id": dataset_id,
+            "status": "complete",
+            "runs": [{"run_id": run_id, "slot": "trade_experience", "idempotent": False, "report": report}],
+            **_authority(),
+        }
+
     def register_dataset(
         self,
         path: str | os.PathLike[str],
@@ -1984,33 +2124,46 @@ class LearningFabric:
             raise ValueError(f"dataset not found: {source}")
         raw = source.read_bytes()
         raw_sha = hashlib.sha256(raw).hexdigest()
+        intake_clean = dict(intake or {})
+        if intake_clean:
+            _json(intake_clean, "intake manifest")
+
         artifact_class = "csv"
         manifest: dict[str, Any]
         rows = 0
         first = last = None
         canonical = None
-        try:
-            bars, manifest = inspect_ohlc(source)
-            artifact_class = "ohlc"
-            rows = int(manifest["rows_total"])
-            first = manifest.get("first_ts")
-            last = manifest.get("last_ts")
-            canonical = manifest.get("canonical_rows_sha256")
-        except (ValueError, OSError, UnicodeDecodeError):
+        suffix = source.suffix.lower()
+        if suffix == ".xlsx":
+            hinted_class = str(intake_clean.get("artifact_class") or "").strip().lower()
+            artifact_class = "strategy_report_xlsx" if hinted_class == "strategy_report_xlsx" else "xlsx"
+            rows = self._manifest_integer(intake_clean.get("rows")) or 0
+            manifest = {
+                "raw_sha256": raw_sha,
+                "rows_total": rows,
+                "status": "catalogued_from_intake" if intake_clean else "catalogued_xlsx",
+            }
+        else:
             try:
-                with source.open("r", encoding="utf-8-sig", newline="") as fh:
-                    reader = csv.reader(fh)
-                    header = next(reader, [])
-                    rows = sum(1 for _ in reader)
-                lowered = {str(x).strip().lower() for x in header}
-                artifact_class = "trade_list" if {"trade number", "type", "date and time"} <= lowered else "csv"
-                manifest = {"raw_sha256": raw_sha, "rows_total": rows, "header": header, "status": "catalogued"}
-            except (OSError, UnicodeDecodeError, csv.Error) as ex:
-                raise ValueError(f"dataset cannot be catalogued: {ex}") from ex
+                bars, manifest = inspect_ohlc(source)
+                artifact_class = "ohlc"
+                rows = int(manifest["rows_total"])
+                first = manifest.get("first_ts")
+                last = manifest.get("last_ts")
+                canonical = manifest.get("canonical_rows_sha256")
+            except (ValueError, OSError, UnicodeDecodeError):
+                try:
+                    with source.open("r", encoding="utf-8-sig", newline="") as fh:
+                        reader = csv.reader(fh)
+                        header = next(reader, [])
+                        rows = sum(1 for _ in reader)
+                    lowered = {str(x).strip().lower() for x in header}
+                    artifact_class = "trade_list" if {"trade number", "type", "date and time"} <= lowered else "csv"
+                    manifest = {"raw_sha256": raw_sha, "rows_total": rows, "header": header, "status": "catalogued"}
+                except (OSError, UnicodeDecodeError, csv.Error) as ex:
+                    raise ValueError(f"dataset cannot be catalogued: {ex}") from ex
 
-        intake_clean = dict(intake or {})
         if intake_clean:
-            _json(intake_clean, "intake manifest")
             manifest["intake"] = intake_clean
         symbol = _text(
             asset or (self._manifest_symbol(intake_clean.get("symbol")) if intake_clean.get("symbol") else self._infer_asset(source)),
@@ -2075,6 +2228,7 @@ class LearningFabric:
         roots = []
         dataset_ids: list[str] = []
         by_hash, by_name, manifest_rows = self._intake_manifest_catalog()
+        seen_paths: set[Path] = set()
         for rel in self._config["history_roots"]:
             root = (self.base_dir / rel).resolve()
             try:
@@ -2084,9 +2238,16 @@ class LearningFabric:
             roots.append(str(root))
             if not root.exists():
                 continue
-            for path in sorted(root.rglob("*.csv")):
+            candidates = set(root.rglob("*.csv"))
+            candidates.update(root.rglob("*.xlsx"))
+            for path in sorted(candidates):
                 if not path.is_file() or path.name == "EXPORT_INTAKE_MANIFEST.csv":
                     continue
+                resolved = path.resolve()
+                if resolved in seen_paths:
+                    continue
+                seen_paths.add(resolved)
+                path = resolved
                 seen += 1
                 try:
                     raw_sha = hashlib.sha256(path.read_bytes()).hexdigest()
@@ -2136,9 +2297,15 @@ class LearningFabric:
                 **_authority(),
             }
 
+        artifact_context = self._artifact_configuration_context(dataset)
+        owner = self._completed_equivalent_trade_experience(
+            dataset, artifact_context.get("strategy_report_sha256")
+        )
+        if owner is not None:
+            return self._deduplicated_trade_experience(dataset, owner)
+
         from .parity import read_tv_trades
         trades = read_tv_trades(str(dataset["path"]))
-        artifact_context = self._artifact_configuration_context(dataset)
         imported = 0
         complete = 0
         errors: dict[str, str] = {}
@@ -2186,18 +2353,148 @@ class LearningFabric:
         report = {
             "status": "imported" if not errors else "partial",
             "artifact_class": "trade_list",
+            "source": "historical_trade_list",
             "experience_count": complete,
             "new_experiences": imported,
+            "deduplicated_by_strategy_report": False,
+            "strategy_report_sha256": artifact_context.get("strategy_report_sha256"),
             "time_quality": "UNVERIFIED_TIMEZONE",
             "errors": errors,
             **_authority(),
         }
-        run_id = "train-" + hashlib.sha256(f"{dataset_id}|{slot}".encode()).hexdigest()
-        with self._lock, self._conn:
-            self._conn.execute(
-                "INSERT OR IGNORE INTO training_runs(run_id,dataset_id,slot,report_json,status,created_at) VALUES(?,?,?,?,?,?)",
-                (run_id, dataset_id, slot, _json(report, "trade experience report"), report["status"], _utc_now()),
-            )
+        run_id, report = self._persist_trade_experience_report(dataset_id, report)
+        return {
+            "dataset_id": dataset_id,
+            "status": "complete" if not errors else "partial",
+            "runs": [{"run_id": run_id, "slot": slot, "idempotent": False, "report": report}],
+            **_authority(),
+        }
+
+    def _import_strategy_report_xlsx_dataset(self, dataset: Mapping[str, Any]) -> dict[str, Any]:
+        dataset_id = str(dataset["dataset_id"])
+        slot = "trade_experience"
+        existing = self._conn.execute(
+            "SELECT * FROM training_runs WHERE dataset_id=? AND slot=?",
+            (dataset_id, slot),
+        ).fetchone()
+        if existing is not None:
+            report = json.loads(existing["report_json"])
+            outer_status = "skipped" if report.get("status") == "unavailable_trade_sheet" else "complete"
+            return {
+                "dataset_id": dataset_id,
+                "status": outer_status,
+                "runs": [{"run_id": existing["run_id"], "slot": slot, "idempotent": True, "report": report}],
+                **_authority(),
+            }
+
+        artifact_context = self._direct_strategy_report_context(dataset)
+        report_sha = artifact_context["strategy_report_sha256"]
+        owner = self._completed_equivalent_trade_experience(dataset, report_sha)
+        if owner is not None:
+            return self._deduplicated_trade_experience(dataset, owner)
+
+        from .parity import read_tv_trades_xlsx
+        try:
+            trades = read_tv_trades_xlsx(str(dataset["path"]))
+        except (ValueError, OSError, KeyError) as ex:
+            report = {
+                "status": "unavailable_trade_sheet",
+                "artifact_class": "strategy_report_xlsx",
+                "source": "historical_strategy_report_xlsx",
+                "experience_count": 0,
+                "new_experiences": 0,
+                "deduplicated_by_strategy_report": False,
+                "strategy_report_sha256": report_sha,
+                "time_quality": "UNVERIFIED_TIMEZONE",
+                "errors": {"workbook": f"{type(ex).__name__}: {ex}"[:500]},
+                **_authority(),
+            }
+            run_id, report = self._persist_trade_experience_report(dataset_id, report)
+            return {
+                "dataset_id": dataset_id,
+                "status": "skipped",
+                "reason": "strategy report does not expose a unique TradingView trade table",
+                "runs": [{"run_id": run_id, "slot": slot, "idempotent": False, "report": report}],
+                **_authority(),
+            }
+        if not trades:
+            report = {
+                "status": "unavailable_trade_sheet",
+                "artifact_class": "strategy_report_xlsx",
+                "source": "historical_strategy_report_xlsx",
+                "experience_count": 0,
+                "new_experiences": 0,
+                "deduplicated_by_strategy_report": False,
+                "strategy_report_sha256": report_sha,
+                "time_quality": "UNVERIFIED_TIMEZONE",
+                "errors": {"workbook": "TradingView trade table contains no complete entries"},
+                **_authority(),
+            }
+            run_id, report = self._persist_trade_experience_report(dataset_id, report)
+            return {
+                "dataset_id": dataset_id,
+                "status": "skipped",
+                "runs": [{"run_id": run_id, "slot": slot, "idempotent": False, "report": report}],
+                **_authority(),
+            }
+
+        imported = 0
+        complete = 0
+        errors: dict[str, str] = {}
+        for trade in trades:
+            pieces = list(trade.get("pieces") or [])
+            if not pieces or any(piece.get("ts") is None for piece in pieces):
+                continue
+            record_key = f"{dataset_id}:{trade.get('no')}:{trade.get('entry_ts')}:{trade.get('dir')}:{trade.get('entry_px')}"
+            try:
+                qty = float(trade.get("qty") or 0.0)
+                exit_qty = sum(float(piece.get("qty") or 0.0) for piece in pieces)
+                if qty <= 0 or exit_qty <= 0:
+                    raise ValueError("trade quantity must be positive")
+                exit_price = sum(float(piece["px"]) * float(piece.get("qty") or 0.0) for piece in pieces) / exit_qty
+                pnl = sum(float(piece.get("pnl") or 0.0) for piece in pieces)
+                entry_ts = int(trade["entry_ts"])
+                exit_ts = max(int(piece["ts"]) for piece in pieces)
+                result = self.record_experience({
+                    "source": "historical_strategy_report_xlsx",
+                    "source_record_id": record_key,
+                    "asset": dataset["asset"],
+                    "direction": "long" if int(trade["dir"]) > 0 else "short",
+                    "entry_at": _iso(datetime.fromtimestamp(entry_ts, tz=timezone.utc)),
+                    "exit_at": _iso(datetime.fromtimestamp(exit_ts, tz=timezone.utc)),
+                    "qty": qty,
+                    "entry_price": float(trade["entry_px"]),
+                    "exit_price": exit_price,
+                    "pnl": pnl,
+                    "metadata": {
+                        "dataset_id": dataset_id,
+                        "dataset_sha256": dataset["raw_sha256"],
+                        "trade_number": trade.get("no"),
+                        "entry_signal": trade.get("entry_sig"),
+                        "exit_signals": [piece.get("sig") for piece in pieces],
+                        "time_quality": "UNVERIFIED_TIMEZONE",
+                        "time_interpretation": "TradingView XLSX export parsed with UTC compatibility; do not infer session/regime until timezone is independently bound.",
+                        **artifact_context,
+                    },
+                })
+                complete += 1
+                imported += int(not result["idempotent"])
+            except Exception as ex:
+                errors[record_key] = f"{type(ex).__name__}: {ex}"[:500]
+
+        report = {
+            "status": "imported" if not errors else "partial",
+            "artifact_class": "strategy_report_xlsx",
+            "source": "historical_strategy_report_xlsx",
+            "experience_count": complete,
+            "new_experiences": imported,
+            "deduplicated_by_strategy_report": False,
+            "strategy_report_sha256": report_sha,
+            "time_quality": "UNVERIFIED_TIMEZONE",
+            "errors": errors,
+            **_authority(),
+        }
+        run_id, report = self._persist_trade_experience_report(dataset_id, report)
         return {
             "dataset_id": dataset_id,
             "status": "complete" if not errors else "partial",
@@ -2209,8 +2506,16 @@ class LearningFabric:
         dataset = self.dataset(dataset_id)
         if dataset["artifact_class"] == "trade_list":
             return self._import_trade_list_dataset(dataset)
+        if dataset["artifact_class"] == "strategy_report_xlsx":
+            return self._import_strategy_report_xlsx_dataset(dataset)
         if dataset["artifact_class"] != "ohlc":
-            return {"dataset_id": dataset_id, "status": "skipped", "reason": "dataset is neither OHLC nor trade-list experience", "runs": [], **_authority()}
+            return {
+                "dataset_id": dataset_id,
+                "status": "skipped",
+                "reason": "dataset is neither OHLC nor supported historical trade experience",
+                "runs": [],
+                **_authority(),
+            }
         requested = list(slots if slots is not None else self._config["auto_train_slots"])
         runs = []
         for raw_slot in requested:
@@ -2974,12 +3279,15 @@ class LearningFabric:
             return []
         rows = self._conn.execute(
             """SELECT d.dataset_id FROM datasets d
-               WHERE d.artifact_class='trade_list'
+               WHERE d.artifact_class IN ('trade_list','strategy_report_xlsx')
                AND NOT EXISTS (
                    SELECT 1 FROM training_runs t
                    WHERE t.dataset_id=d.dataset_id AND t.slot='trade_experience'
                )
-               ORDER BY d.discovered_at,d.dataset_id LIMIT ?""",
+               ORDER BY
+                   CASE d.artifact_class WHEN 'trade_list' THEN 0 ELSE 1 END,
+                   d.discovered_at,d.dataset_id
+               LIMIT ?""",
             (limit,),
         ).fetchall()
         return [row["dataset_id"] for row in rows]
@@ -3168,6 +3476,7 @@ class LearningFabric:
                 "shadow_recalibration": "chronological_holdout_validated_research_only",
                 "calibration_drift": "oos_recent_window_retirement_with_batched_refresh",
                 "historical_trade_lists": "immutable_realized_experience",
+                "historical_strategy_reports_xlsx": "direct_trade_sheet_realized_experience_with_cross_format_deduplication",
                 "runtime_trade_outcomes": "fully_closed_live_sim_experience",
                 "sibyl": "native_prediction_outcome",
                 "performance_proof": "native_immutable_forecast_outcome",
