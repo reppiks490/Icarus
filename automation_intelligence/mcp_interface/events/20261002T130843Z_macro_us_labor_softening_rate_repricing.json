@@ -1,0 +1,50 @@
+{
+  "schema": "icarus-mcp-event-v1",
+  "event_id": "macro_20261002T130843Z_us_labor_softening_rate_repricing",
+  "timestamp": "2026-10-02T13:08:43Z",
+  "category": "EVOLUTION",
+  "source": "MACRO_AUTOMATION",
+  "execution_authorized": false,
+  "finding": "September U.S. payroll growth slowed to 29,000 versus 90,000 expected, August was revised down to 133,000 from 162,000, and unemployment rose to 4.2% from 4.1%; the release drove a sharp Treasury rally, lower USD, higher gold and a collapse in October Fed-hike pricing.",
+  "net_new_delta": "The payroll release materially changes the prior ICARUS state by supplying the first decisive post-duration-shock macro falsifier: labor momentum is softer than expected and the market immediately unwound part of the near-term tightening/rates shock. This does not establish recession because seasonal-calendar distortion and historically low claims conflict with the weak headline, but it materially strengthens the separation between near-term Fed-path repricing and persistent long-end fiscal/inflation risk.",
+  "affected": [
+    "NQ/MNQ",
+    "U.S. 2Y/10Y/30Y",
+    "DXY/USD",
+    "GC/MGC",
+    "broad U.S. equity indices"
+  ],
+  "evidence": [
+    {
+      "provider": "Reuters",
+      "date": "2026-10-02",
+      "url": "https://www.reuters.com/business/us-job-growth-slows-sharply-september-unemployment-rate-rises-42-2026-10-02/",
+      "claim": "September nonfarm payrolls rose 29,000 versus 90,000 expected; August was revised to 133,000 from 162,000; unemployment rose to 4.2%. Reuters notes a late Labor Day and seasonal-adjustment effects may have depressed the payroll print, while initial claims remain near 57-year lows."
+    },
+    {
+      "provider": "Reuters",
+      "date": "2026-10-02",
+      "url": "https://www.reuters.com/business/view-soft-september-jobs-report-sends-markets-higher-2026-10-02/",
+      "claim": "After payrolls, the 2-year Treasury yield fell 7 bp to 4.716%, 10-year fell 6 bp to 5.176%, 30-year fell 4 bp to 5.569%, October hike odds fell as low as 12%, DXY fell 0.2% to 101.79, gold rose 1% to $4,219, and S&P/Nasdaq futures rose about 0.9%/1.0%."
+    }
+  ],
+  "conflicts": [
+    "The 29,000 payroll headline is materially weak, but Reuters reports no broad rise in layoffs and initial jobless claims remain near 57-year lows.",
+    "Seasonal adjustment around a late Labor Day may have depressed September payrolls and contributed to the August revision, limiting confidence that the print marks a durable labor-regime break.",
+    "Long-end yields remain historically elevated despite the post-payroll rally, so softer labor data have not erased the structural duration/fiscal/inflation regime."
+  ],
+  "unknown": [
+    "Whether payroll weakness persists after seasonal/calendar effects wash out.",
+    "Whether softer labor momentum will dominate energy-driven inflation and fiscal term-premium pressure in the long end.",
+    "Whether the immediate equity rally persists once markets separate lower policy-rate risk from weaker growth implications."
+  ],
+  "next_decisive_check": "Test persistence through the next claims, payroll revisions and inflation releases: the labor-softening/Fed-pause hypothesis strengthens if employment breadth remains weak and 2Y yields stay compressed, while a renewed 10Y/30Y rise despite stable 2Y would further confirm a policy-path versus long-duration decoupling.",
+  "oracle": {
+    "status": "MATERIAL_FINDING",
+    "finding": "Promote U.S. labor-softening/Fed-pause risk as a distinct falsifiable state: payrolls undershot sharply and unemployment rose, producing immediate 2Y/10Y yield compression and lower hike odds, but retain a calendar-distortion caveat and do not label recession."
+  },
+  "supermesh_x": {
+    "status": "MATERIAL_FINDING",
+    "finding": "Reuters supplied internally consistent macro and cross-asset reaction evidence while also exposing the key seasonal/claims conflict; preserve payroll headline, revisions, claims, curve response, USD, gold and equity response as separate provenance channels rather than collapsing them into a generic dovish shock."
+  }
+}
