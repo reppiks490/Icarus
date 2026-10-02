@@ -42,6 +42,52 @@ def _genome(*, subsystem="chronofold"):
     }
 
 
+def _candidate(**overrides):
+    body = {
+        "origin": "generated_math",
+        "source_repo": "reppiks490/Icarus",
+        "source_commit": "d" * 40,
+        "title": "Residual phase candidate",
+        "hypothesis": "A residual-conditioned phase representation adds protected information.",
+        "mechanism": {
+            "type": "representation_mutation",
+            "inputs": ["price", "information_time"],
+            "transform": "residual_phase",
+            "outputs": ["phase_state"],
+        },
+        "expected_advantage": {
+            "target": "incremental_information",
+            "direction": "increase",
+            "scope": "NQ:RTH",
+        },
+        "required_observations": [
+            {"name": "price", "evidence_class": "observed"},
+            {"name": "information_time", "evidence_class": "derived"},
+        ],
+        "falsifiers": [
+            "protected OOS incremental information is nonpositive",
+        ],
+        "parent_candidate_ids": [],
+        "parent_genome_ids": [],
+        "evaluation_contract": {
+            "objectives": [
+                {"name": "incremental_information", "direction": "max"},
+                {"name": "instability", "direction": "min"},
+            ],
+            "descriptor_keys": ["regime", "complexity_band"],
+            "protected_holdout_required": True,
+        },
+        "resource_budget": {
+            "max_evaluations": 32,
+            "max_wall_seconds": 900,
+            "max_cost_units": 10.0,
+        },
+        "metadata": {"fixture": True},
+    }
+    body.update(overrides)
+    return body
+
+
 @pytest.fixture
 def ascendancy_genome_http(tmp_path):
     port = Portfolio(Journal(":memory:"), str(tmp_path))
@@ -164,3 +210,70 @@ def test_ascendancy_bad_json_is_strict_and_unauthenticated_body_is_not_parsed(as
     assert code == 401
     assert "bad admin token" in body["detail"]
     assert srv.ascendancy_archive.snapshot()["genome_count"] == before
+
+
+def test_candidate_foundry_api_is_authenticated_and_research_only(ascendancy_genome_http):
+    port, srv, request = ascendancy_genome_http
+    paused_before = port.paused
+    runners_before = list(port.runners)
+
+    code, body = request("GET", "/api/ascendancy/candidates", auth=False)
+    assert code == 401
+    assert "admin token" in body["detail"]
+
+    code, body = request("POST", "/admin/ascendancy/candidate", body=_candidate(), auth=False)
+    assert code == 401
+    assert "admin token" in body["detail"]
+
+    code, registered = request("POST", "/admin/ascendancy/candidate", body=_candidate())
+    assert code == 200, registered
+    candidate = registered["candidate"]
+    assert candidate["stage"] == "PROPOSED"
+    assert registered["trading_state_unchanged"] is True
+    assert registered["execution_authorized"] is False
+    assert registered["production_decision_authorized"] is False
+
+    code, snapshot = request("GET", "/api/ascendancy/candidates")
+    assert code == 200
+    assert snapshot["candidate_count"] == 1
+    assert snapshot["candidates"][0]["candidate_id"] == candidate["candidate_id"]
+    assert snapshot["contracts"]["qualified_shadow_reserved_for_protected_qualification"] is True
+
+    code, advanced = request("POST", "/admin/ascendancy/candidate-stage", body={
+        "candidate_id": candidate["candidate_id"],
+        "stage": "INCUBATING",
+        "reason": "mechanism review passed",
+    })
+    assert code == 200, advanced
+    assert advanced["stage"] == "INCUBATING"
+    assert advanced["trading_state_unchanged"] is True
+
+    code, blocked = request("POST", "/admin/ascendancy/candidate-stage", body={
+        "candidate_id": candidate["candidate_id"],
+        "stage": "QUALIFIED_SHADOW",
+        "reason": "must not be allowed by foundry",
+    })
+    assert code == 400
+    assert "terminal" in blocked["detail"].lower()
+
+    code, rejected = request("POST", "/admin/ascendancy/candidate-reject", body={
+        "candidate_id": candidate["candidate_id"],
+        "reason": "falsifier triggered",
+    })
+    assert code == 200, rejected
+    assert rejected["stage"] == "REJECTED"
+    assert rejected["trading_state_unchanged"] is True
+
+    assert port.paused is paused_before
+    assert list(port.runners) == runners_before
+    assert srv.ascendancy_foundry.snapshot()["candidate_count"] == 1
+
+
+def test_invalid_foundry_candidate_fails_before_mutation(ascendancy_genome_http):
+    _, srv, request = ascendancy_genome_http
+    before = srv.ascendancy_foundry.snapshot()["candidate_count"]
+    invalid = _candidate(falsifiers=[])
+    code, body = request("POST", "/admin/ascendancy/candidate", body=invalid)
+    assert code == 400
+    assert "falsifier" in body["detail"].lower()
+    assert srv.ascendancy_foundry.snapshot()["candidate_count"] == before
