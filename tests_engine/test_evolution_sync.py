@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 
+import icarus_engine.evolution_sync as evolution_sync_module
 from icarus_engine.evolution_sync import (
     EvolutionRemoteSync,
     REMOTE_ROOT,
@@ -254,6 +255,100 @@ def test_rejected_receipt_recovers_when_git_blob_is_replaced(tmp_path):
     assert recovered["last_success_at"] is not None
     assert recovered["events"][0]["event_id"] == "replacement-valid-event"
     assert fetches["bytes"] == 2
+
+
+def test_transient_fetch_failure_retries_without_rejecting_receipt(tmp_path):
+    payload = event_payload(event_id="retry-after-fetch")
+    raw = (json.dumps(payload, sort_keys=True) + "\n").encode()
+    sha = _git_blob_sha(raw)
+    listing = [{
+        "type": "file",
+        "name": "retry.json",
+        "path": REMOTE_ROOT + "/retry.json",
+        "sha": sha,
+        "url": "fixture://retry",
+    }]
+    attempts = {"bytes": 0}
+
+    def fetch_bytes(_url):
+        attempts["bytes"] += 1
+        if attempts["bytes"] == 1:
+            raise OSError("temporary fetch failure")
+        return raw
+
+    sync = EvolutionRemoteSync(
+        tmp_path,
+        interval_seconds=30,
+        fetch_json=lambda _url: listing,
+        fetch_bytes=fetch_bytes,
+        enabled=True,
+    )
+
+    first = sync.sync_once()
+    second = sync.sync_once()
+
+    assert first["status"] == "degraded"
+    assert first["rejected_total"] == 0
+    assert first["current_rejected_count"] == 0
+    assert first["ingested_total"] == 0
+    assert first["last_success_at"] is None
+
+    assert second["status"] == "green"
+    assert second["rejected_total"] == 0
+    assert second["current_rejected_count"] == 0
+    assert second["ingested_total"] == 1
+    assert attempts["bytes"] == 2
+
+
+def test_transient_local_projection_failure_retries_valid_receipt(
+    tmp_path,
+    monkeypatch,
+):
+    payload = event_payload(event_id="retry-after-projection")
+    raw = (json.dumps(payload, sort_keys=True) + "\n").encode()
+    sha = _git_blob_sha(raw)
+    listing = [{
+        "type": "file",
+        "name": "projection.json",
+        "path": REMOTE_ROOT + "/projection.json",
+        "sha": sha,
+        "url": "fixture://projection",
+    }]
+    real_append = evolution_sync_module.append_system_event
+    attempts = {"append": 0}
+
+    def flaky_append(*args, **kwargs):
+        attempts["append"] += 1
+        if attempts["append"] == 1:
+            raise OSError("temporary local journal failure")
+        return real_append(*args, **kwargs)
+
+    monkeypatch.setattr(
+        evolution_sync_module,
+        "append_system_event",
+        flaky_append,
+    )
+    sync = EvolutionRemoteSync(
+        tmp_path,
+        interval_seconds=30,
+        fetch_json=lambda _url: listing,
+        fetch_bytes=lambda _url: raw,
+        enabled=True,
+    )
+
+    first = sync.sync_once()
+    second = sync.sync_once()
+
+    assert first["status"] == "degraded"
+    assert first["rejected_total"] == 0
+    assert first["current_rejected_count"] == 0
+    assert first["ingested_total"] == 0
+
+    assert second["status"] == "green"
+    assert second["rejected_total"] == 0
+    assert second["current_rejected_count"] == 0
+    assert second["ingested_total"] == 1
+    assert attempts["append"] == 2
 
 
 def test_blob_sha_mismatch_is_rejected(tmp_path):
