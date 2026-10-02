@@ -20,6 +20,7 @@
   GET  /api/possibility/evidence  durable Psi external-evidence ledger and causal as-of selection
   GET  /api/chronofold            ICARUS Xi causal spacetime, multiverse, geometry, GNC and uncertainty
   GET  /api/commissioning         append-only Chronofold prediction ledger, calibration, ablation and promotion gate
+  GET  /api/ascendancy/genomes     architecture-genome archive, lineage and contract-scoped quality-diversity frontier
   POST /admin/pause | /admin/resume        {"asset": "NQ"} or all          (Bearer token)
   POST /admin/flatten                      {"confirm": true, "asset"?: "NQ"}
   POST /admin/inputs                       {"asset": "NQ"|"*", "values": {...}, "chart": {...}, "persist": true}  → re-warm
@@ -36,6 +37,9 @@
   POST /admin/parallax/decision/current      atomically capture current Psi vote and PARALLAX decision
   POST /admin/rewarm                       {"asset": "NQ"}
   POST /admin/engine-control               typed registered operator command with audit receipt
+  POST /admin/ascendancy/genome             validate, compile and register one research-only architecture genome
+  POST /admin/ascendancy/genome-evaluation  append one immutable contract-bound genome evaluation
+  POST /admin/ascendancy/genome-retire      retire one genome without deleting lineage/evidence
 """
 from __future__ import annotations
 
@@ -73,11 +77,10 @@ from .system_audit import (
     upsert_loop_status,
 )
 from .integrity import integrity_snapshot, record_integrity_event
-from .brain import REQUIRED_CANDIDATE_GATES, brain_snapshot, record_brain_event
+from .brain import SUBSYSTEMS, brain_snapshot, record_brain_event
 from .brain_sync import BrainRemoteSync
 from .research_brain_sync import BrainResearchSync
 from .evolution_sync import EvolutionRemoteSync
-from .evidence_lab_sync import EvidenceLabRemoteSync
 from .code_provenance import local_code_provenance
 from .parallax import ParallaxStore
 from .dreamstate import DreamstateLab
@@ -85,11 +88,6 @@ from .possibility import PossibilityEngine
 from .performance_proof import PerformanceProofStore
 from .latency_telemetry import LatencyTelemetry
 from .source_reliability import SourceReliabilityStore
-from .qualification_receipts import (
-    QualificationReceiptStore,
-    build_shadow_promotion_event,
-    build_shadow_revocation_event,
-)
 from .autopilot import TacticalAutopilot
 from .engine_control import ControlAction, EngineControlPlane
 from .mcp_control import MCPControlPlane
@@ -99,6 +97,16 @@ from .pantheon import PantheonKernel, subsystem_context
 from .sibyl import SibylEngine
 from .apex import ApexKernel
 from .ascendancy.capabilities import capability_snapshot
+from .ascendancy.archive import GenomeArchive
+from .ascendancy.frontier import build_frontier
+from .ascendancy.genome import compile_genome, normalize_genome
+from .ascendancy.foundry import CandidateFoundry
+from .ascendancy.unknowns import UnknownUnknownLab
+from .ascendancy.mechanisms import MechanismLab
+from .ascendancy.invention import InventionLab, to_foundry_candidate
+from .ascendancy.contribution import ContributionLab
+from .ascendancy.evaluator import EvaluatorCascade
+from .ascendancy.peer_bridge import PeerRepositoryBridge
 
 
 def _no_json_constants(name: str):
@@ -202,12 +210,10 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     brain_remote_sync = BrainRemoteSync(port.base_dir)
     brain_research_sync = BrainResearchSync(port.base_dir)
     evolution_remote_sync = EvolutionRemoteSync(port.base_dir)
-    evidence_lab_sync = EvidenceLabRemoteSync(port.base_dir)
     possibility = PossibilityEngine(port)
     performance_proof = PerformanceProofStore(port.base_dir)
     latency_telemetry = LatencyTelemetry()
     source_reliability = SourceReliabilityStore(port.base_dir)
-    qualification_receipts = QualificationReceiptStore(port.base_dir, REQUIRED_CANDIDATE_GATES)
     # Bind one collector to the existing live runners; Portfolio.make_runner
     # propagates the same sink to assets added later.
     port.latency_telemetry = latency_telemetry
@@ -216,6 +222,14 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     autopilot = TacticalAutopilot(port)
     parallax = ParallaxStore(port.base_dir)
     dreamstate = DreamstateLab(port.base_dir, parallax=parallax)
+    ascendancy_archive = GenomeArchive(port.base_dir)
+    ascendancy_foundry = CandidateFoundry(port.base_dir)
+    ascendancy_unknowns = UnknownUnknownLab(port.base_dir)
+    ascendancy_mechanisms = MechanismLab(port.base_dir)
+    ascendancy_inventions = InventionLab(port.base_dir)
+    ascendancy_contribution = ContributionLab(port.base_dir)
+    ascendancy_evaluator = EvaluatorCascade(port.base_dir)
+    ascendancy_peers = PeerRepositoryBridge(port.base_dir)
     mcp_control = MCPControlPlane(port.base_dir)
     chronofold = ChronofoldEngine(port, possibility=possibility)
     commissioning = CommissioningEngine(port.base_dir, port, chronofold)
@@ -245,31 +259,164 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
         source_reliability=source_reliability,
     )
 
-    def _qualification_sync(candidate_id: str, source_repo: str, source_commit: str) -> dict[str, Any]:
-        status = qualification_receipts.candidate_status(candidate_id, source_repo, source_commit)
-        snapshot = brain_snapshot(port.base_dir)
-        candidate = next(
-            (
-                row for row in snapshot.get("candidates", [])
-                if row.get("candidate_id") == candidate_id
-                and row.get("source_repo") == source_repo
-                and row.get("source_commit") == source_commit
-            ),
-            None,
-        )
-        transition = None
-        if candidate is not None:
-            if status.get("qualification_ready") is True and candidate.get("stage") in {"validated", "qualified_shadow"}:
-                transition = record_brain_event(port.base_dir, build_shadow_promotion_event(candidate, status))
-            elif status.get("qualification_ready") is not True and candidate.get("stage") == "qualified_shadow":
-                transition = record_brain_event(port.base_dir, build_shadow_revocation_event(candidate, status))
+    def _ascendancy_snapshot() -> Dict[str, Any]:
+        archive = ascendancy_archive.snapshot()
         return {
-            "qualification": status,
-            "candidate_found": candidate is not None,
-            "transition": transition,
+            "archive": archive,
+            "frontier": build_frontier(archive),
             "execution_authorized": False,
             "production_decision_authorized": False,
         }
+
+    def _ascendancy_trading_control_fingerprint():
+        # Deliberately excludes prices/P&L/warmup counters because those may
+        # evolve concurrently. This boundary watches state ASCENDANCY must
+        # never mutate: global pause intent, runner membership/order, and
+        # per-runner entry-pause controls.
+        return (
+            bool(port.paused),
+            tuple(port.order),
+            tuple(
+                (
+                    str(getattr(r, "symbol", "")),
+                    bool(getattr(r, "paused", False)),
+                )
+                for r in port.runner_list()
+            ),
+        )
+
+    def _ascendancy_research_mutation(call):
+        before = _ascendancy_trading_control_fingerprint()
+        result = call()
+        after = _ascendancy_trading_control_fingerprint()
+        if after != before:
+            raise RuntimeError(
+                "ASCENDANCY research boundary changed trading-control state; refusing success"
+            )
+        out = dict(result) if isinstance(result, dict) else {"result": result}
+        out["trading_state_unchanged"] = True
+        out["execution_authorized"] = False
+        out["production_decision_authorized"] = False
+        return out
+
+    def _ascendancy_register_genome(body: Dict[str, Any]) -> Dict[str, Any]:
+        # Compile first. Invalid/unknown topology must not leave a persisted
+        # genome behind.
+        normalized = normalize_genome(body)
+        available = {
+            str(row.get("id") or "").strip()
+            for row in SUBSYSTEMS
+            if isinstance(row, dict) and str(row.get("id") or "").strip()
+        }
+        # The Adaptive Brain registry is intentionally not the complete
+        # runtime-service registry. Keep server-native research engines explicit
+        # so a genome can compose them without falsely treating them as foreign.
+        available.update({
+            "chronofold",
+            "commissioning",
+            "research",
+            "autopilot",
+            "performance-proof",
+            "source-reliability",
+            "latency-telemetry",
+            "mcp-control",
+        })
+        compiled = compile_genome(
+            normalized,
+            available_native_subsystems=available,
+        )
+        registered = ascendancy_archive.register(normalized)
+        compile_receipt = ascendancy_archive.record_compile(compiled)
+        return {
+            "genome": registered["genome"],
+            "compile_receipt": compile_receipt["compile_receipt"],
+            "idempotent": bool(registered["idempotent"] and compile_receipt["idempotent"]),
+            "execution_authorized": False,
+            "production_decision_authorized": False,
+        }
+
+    def _ascendancy_record_mechanism(body: Dict[str, Any]) -> Dict[str, Any]:
+        candidate_id = str(body.get("candidate_id") or "").strip()
+        foundry = ascendancy_foundry.snapshot()
+        candidate = next(
+            (
+                row for row in foundry.get("candidates", [])
+                if isinstance(row, dict) and str(row.get("candidate_id") or "") == candidate_id
+            ),
+            None,
+        )
+        if candidate is None:
+            raise ValueError("unknown candidate_id in ASCENDANCY Candidate Foundry")
+        expected_contract = str(
+            (candidate.get("evaluation_contract") or {}).get("contract_hash") or ""
+        )
+        if str(body.get("evaluation_contract_hash") or "") != expected_contract:
+            raise ValueError("mechanism experiment evaluation contract does not match candidate")
+        if str(body.get("source_repo") or "") != str(candidate.get("source_repo") or ""):
+            raise ValueError("mechanism experiment source_repo does not match candidate")
+        if str(body.get("source_commit") or "") != str(candidate.get("source_commit") or ""):
+            raise ValueError("mechanism experiment source_commit does not match candidate")
+        return ascendancy_mechanisms.record(body)
+
+    def _ascendancy_record_contribution(body: Dict[str, Any]) -> Dict[str, Any]:
+        contributor_kind = str(body.get("contributor_kind") or "").strip().lower()
+        contributor_id = str(body.get("contributor_id") or "").strip()
+        if contributor_kind == "candidate":
+            foundry = ascendancy_foundry.snapshot()
+            candidate = next(
+                (
+                    row for row in foundry.get("candidates", [])
+                    if isinstance(row, dict)
+                    and str(row.get("candidate_id") or "") == contributor_id
+                ),
+                None,
+            )
+            if candidate is None:
+                raise ValueError("unknown candidate_id in ASCENDANCY Candidate Foundry")
+            expected_contract = str(
+                (candidate.get("evaluation_contract") or {}).get("contract_hash") or ""
+            )
+            if str(body.get("evaluation_contract_hash") or "") != expected_contract:
+                raise ValueError(
+                    "contribution observation evaluation contract does not match candidate"
+                )
+            if str(body.get("source_repo") or "") != str(candidate.get("source_repo") or ""):
+                raise ValueError("contribution observation source_repo does not match candidate")
+            if str(body.get("source_commit") or "") != str(candidate.get("source_commit") or ""):
+                raise ValueError("contribution observation source_commit does not match candidate")
+        return ascendancy_contribution.record(body)
+
+    def _ascendancy_register_evaluator_candidate(body: Dict[str, Any]) -> Dict[str, Any]:
+        candidate_id = str(body.get("candidate_id") or "").strip()
+        foundry = ascendancy_foundry.snapshot()
+        candidate = next(
+            (
+                row for row in foundry.get("candidates", [])
+                if isinstance(row, dict)
+                and str(row.get("candidate_id") or "") == candidate_id
+            ),
+            None,
+        )
+        if candidate is None:
+            raise ValueError("unknown candidate_id in ASCENDANCY Candidate Foundry")
+        return ascendancy_evaluator.register_candidate(candidate)
+
+    def _ascendancy_invention_to_candidate(body: Dict[str, Any]) -> Dict[str, Any]:
+        blueprint_id = str(body.get("blueprint_id") or "").strip()
+        if not blueprint_id:
+            raise ValueError("blueprint_id is required")
+        invention_state = ascendancy_inventions.snapshot()
+        blueprint = next(
+            (
+                row for row in invention_state.get("blueprints", [])
+                if isinstance(row, dict) and str(row.get("blueprint_id") or "") == blueprint_id
+            ),
+            None,
+        )
+        if blueprint is None:
+            raise ValueError("unknown invention blueprint_id")
+        payload = to_foundry_candidate(blueprint)
+        return ascendancy_foundry.register(payload)
 
     def _control_runner(target: str):
         try:
@@ -424,7 +571,6 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             "brain_remote": brain_remote_sync,
             "brain_research": brain_research_sync,
             "evolution": evolution_remote_sync,
-            "evidence_lab": evidence_lab_sync,
         }
 
     def _sync_all(_payload):
@@ -737,7 +883,6 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 ControlAction("sync.brain_remote", "Sync Adaptive Brain remote evidence", "Intelligence", "Pull the latest verified Adaptive Brain repository evidence.", lambda _: brain_remote_sync.sync_once()),
                 ControlAction("sync.brain_research", "Sync research into Adaptive Brain", "Intelligence", "Refresh research-to-brain evidence now.", lambda _: brain_research_sync.sync_once()),
                 ControlAction("sync.evolution", "Sync MCP evolution evidence", "Intelligence", "Refresh repository-native MCP repair/audit/evolution evidence.", lambda _: evolution_remote_sync.sync_once()),
-                ControlAction("sync.evidence_lab", "Sync CSV Evidence Lab", "Intelligence", "Refresh verified Advanced CSV durability/evidence receipts from the active CSV Evidence Lab repository.", lambda _: evidence_lab_sync.sync_once()),
                 ControlAction("sync.all", "Sync all intelligence planes", "Intelligence", "Run all registered intelligence synchronizers once.", _sync_all),
                 ControlAction("sync.start_all", "Start all intelligence sync loops", "Intelligence", "Start all registered background intelligence synchronizers.", _start_all_syncs),
                 ControlAction("sync.stop_all", "Stop all intelligence sync loops", "Intelligence", "Stop all registered background intelligence synchronizers.", _stop_all_syncs, danger=True, confirmation="STOP ALL INTELLIGENCE SYNCS"),
@@ -908,6 +1053,86 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
                 return self._json(200, capability_snapshot())
+            if p.path == "/api/ascendancy/genomes":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                try:
+                    return self._json(200, _ascendancy_snapshot())
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("WARN", f"ASCENDANCY genome snapshot: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/api/ascendancy/candidates":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                try:
+                    return self._json(200, ascendancy_foundry.snapshot())
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("WARN", f"ASCENDANCY foundry snapshot: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/api/ascendancy/unknowns":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                try:
+                    return self._json(200, ascendancy_unknowns.snapshot())
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("WARN", f"ASCENDANCY unknown snapshot: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/api/ascendancy/mechanisms":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                try:
+                    return self._json(200, ascendancy_mechanisms.snapshot())
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("WARN", f"ASCENDANCY mechanism snapshot: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/api/ascendancy/inventions":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                try:
+                    return self._json(200, ascendancy_inventions.snapshot())
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("WARN", f"ASCENDANCY invention snapshot: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/api/ascendancy/contributions":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                try:
+                    return self._json(200, ascendancy_contribution.snapshot())
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("WARN", f"ASCENDANCY contribution snapshot: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/api/ascendancy/evaluator":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                try:
+                    return self._json(200, ascendancy_evaluator.snapshot())
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("WARN", f"ASCENDANCY evaluator snapshot: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/api/ascendancy/peers":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                try:
+                    return self._json(200, ascendancy_peers.snapshot())
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("WARN", f"ASCENDANCY peer repository snapshot: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
             if p.path == "/api/golive":
                 return self._json(200, golive_report(port))
             if p.path == "/api/agent":
@@ -924,10 +1149,6 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
                 return self._json(200, evolution_remote_sync.status())
-            if p.path == "/api/evidence-lab":
-                if not self._auth():
-                    return self._json(401, {"detail": "bad admin token"})
-                return self._json(200, evidence_lab_sync.status())
             if p.path == "/api/engine-control":
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
@@ -1078,16 +1299,6 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
                 return self._json(200, performance_proof.snapshot())
-            if p.path == "/api/performance-proof/pending":
-                if not self._auth():
-                    return self._json(401, {"detail": "bad admin token"})
-                try:
-                    return self._json(200, performance_proof.pending_settlements(
-                        as_of=q.get("as_of", [None])[0],
-                        limit=int(q.get("limit", ["100"])[0]),
-                    ))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
             if p.path == "/api/latency":
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
@@ -1096,10 +1307,6 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
                 return self._json(200, source_reliability.snapshot())
-            if p.path == "/api/qualification-receipts":
-                if not self._auth():
-                    return self._json(401, {"detail": "bad admin token"})
-                return self._json(200, qualification_receipts.snapshot())
             if p.path == "/api/brain":
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
@@ -1119,11 +1326,9 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     integrity=integrity_snapshot(port.base_dir),
                     remote_sync=brain_remote_sync.status(),
                     research_sync=brain_research_sync.status(),
-                    evidence_lab_sync=evidence_lab_sync.status(),
                     proof_status=performance_proof.snapshot(),
                     latency_status=latency_telemetry.snapshot(),
                     source_reliability=source_reliability.snapshot(),
-                    qualification_receipts=qualification_receipts.snapshot(),
                 ))
             if p.path == "/api/input-meta":
                 return self._json(200, meta)
@@ -1320,11 +1525,193 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._json(413, {"detail": "body too large"})
             raw = self.rfile.read(n) if n else b""
             try:
-                body = strict_json(raw) if p.path.startswith(("/admin/research/", "/admin/integrity/", "/admin/parallax/", "/admin/dreamstate/", "/admin/possibility/", "/admin/autopilot/", "/admin/engine-control", "/admin/pantheon/", "/admin/sibyl/", "/admin/apex/", "/admin/learning/", "/admin/qualification-receipts/")) else (json.loads(raw, parse_constant=_no_json_constants) if raw else {})
+                body = strict_json(raw) if p.path.startswith(("/admin/research/", "/admin/integrity/", "/admin/parallax/", "/admin/dreamstate/", "/admin/possibility/", "/admin/autopilot/", "/admin/engine-control", "/admin/pantheon/", "/admin/sibyl/", "/admin/apex/", "/admin/learning/", "/admin/ascendancy/")) else (json.loads(raw, parse_constant=_no_json_constants) if raw else {})
             except ValueError as ex:
                 return self._json(400, {"detail": f"bad JSON body: {ex}"})
             if not isinstance(body, dict):
                 return self._json(400, {"detail": "JSON body must be an object"})
+            if p.path == "/admin/ascendancy/genome":
+                try:
+                    return self._json(200, _ascendancy_research_mutation(
+                        lambda: _ascendancy_register_genome(body)
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("ERROR", f"ASCENDANCY genome register: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/admin/ascendancy/genome-evaluation":
+                try:
+                    return self._json(200, _ascendancy_research_mutation(
+                        lambda: ascendancy_archive.record_evaluation(body)
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("ERROR", f"ASCENDANCY genome evaluation: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/admin/ascendancy/genome-retire":
+                try:
+                    return self._json(200, _ascendancy_research_mutation(
+                        lambda: ascendancy_archive.retire(
+                            body.get("genome_id"), body.get("reason")
+                        )
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("ERROR", f"ASCENDANCY genome retire: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/admin/ascendancy/candidate":
+                try:
+                    return self._json(200, _ascendancy_research_mutation(
+                        lambda: ascendancy_foundry.register(body)
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("ERROR", f"ASCENDANCY candidate register: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/admin/ascendancy/candidate-stage":
+                try:
+                    return self._json(200, _ascendancy_research_mutation(
+                        lambda: ascendancy_foundry.advance(
+                            body.get("candidate_id"), body.get("stage"), body.get("reason")
+                        )
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("ERROR", f"ASCENDANCY candidate stage: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/admin/ascendancy/candidate-reject":
+                try:
+                    return self._json(200, _ascendancy_research_mutation(
+                        lambda: ascendancy_foundry.reject(
+                            body.get("candidate_id"), body.get("reason")
+                        )
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("ERROR", f"ASCENDANCY candidate reject: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/admin/ascendancy/candidate-retire":
+                try:
+                    return self._json(200, _ascendancy_research_mutation(
+                        lambda: ascendancy_foundry.retire(
+                            body.get("candidate_id"), body.get("reason")
+                        )
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("ERROR", f"ASCENDANCY candidate retire: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/admin/ascendancy/unknown-event":
+                try:
+                    return self._json(200, _ascendancy_research_mutation(
+                        lambda: ascendancy_unknowns.record_event(body)
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("ERROR", f"ASCENDANCY unknown event: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/admin/ascendancy/unknown-explanation":
+                try:
+                    return self._json(200, _ascendancy_research_mutation(
+                        lambda: ascendancy_unknowns.record_explanation_test(body)
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("ERROR", f"ASCENDANCY unknown explanation: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/admin/ascendancy/unknown-link-candidate":
+                try:
+                    return self._json(200, _ascendancy_research_mutation(
+                        lambda: ascendancy_unknowns.link_candidate(
+                            body.get("phenomenon_signature"),
+                            body.get("candidate_id"),
+                            body.get("rationale"),
+                        )
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("ERROR", f"ASCENDANCY unknown candidate link: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/admin/ascendancy/mechanism-experiment":
+                try:
+                    return self._json(200, _ascendancy_research_mutation(
+                        lambda: _ascendancy_record_mechanism(body)
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("ERROR", f"ASCENDANCY mechanism experiment: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/admin/ascendancy/contribution-observation":
+                try:
+                    return self._json(200, _ascendancy_research_mutation(
+                        lambda: _ascendancy_record_contribution(body)
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("ERROR", f"ASCENDANCY contribution observation: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/admin/ascendancy/peer-packet":
+                try:
+                    return self._json(200, _ascendancy_research_mutation(
+                        lambda: ascendancy_peers.ingest(body)
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("ERROR", f"ASCENDANCY peer packet: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/admin/ascendancy/evaluator-register":
+                try:
+                    return self._json(200, _ascendancy_research_mutation(
+                        lambda: _ascendancy_register_evaluator_candidate(body)
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("ERROR", f"ASCENDANCY evaluator register: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/admin/ascendancy/evaluator-receipt":
+                try:
+                    return self._json(200, _ascendancy_research_mutation(
+                        lambda: ascendancy_evaluator.record(body)
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("ERROR", f"ASCENDANCY evaluator receipt: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/admin/ascendancy/invention-generate":
+                try:
+                    return self._json(200, _ascendancy_research_mutation(
+                        lambda: ascendancy_inventions.generate(body)
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("ERROR", f"ASCENDANCY invention generate: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/admin/ascendancy/invention-to-candidate":
+                try:
+                    return self._json(200, _ascendancy_research_mutation(
+                        lambda: _ascendancy_invention_to_candidate(body)
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("ERROR", f"ASCENDANCY invention handoff: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
             if p.path == "/admin/learning/config":
                 try:
                     return self._json(200, research.configure_learning(body))
@@ -1419,35 +1806,6 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             if p.path == "/admin/brain/event":
                 try:
                     return self._json(200, record_brain_event(port.base_dir, body))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-            if p.path == "/admin/qualification-receipts/record":
-                try:
-                    result = qualification_receipts.record(body)
-                    sync = _qualification_sync(
-                        str(body.get("candidate_id") or ""),
-                        str(body.get("candidate_source_repo") or ""),
-                        str(body.get("candidate_source_commit") or ""),
-                    )
-                    return self._json(200, {"ok": True, "receipt": result, **sync})
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-            if p.path == "/admin/qualification-receipts/sync":
-                try:
-                    allowed = {"candidate_id", "candidate_source_repo", "candidate_source_commit"}
-                    if set(body) != allowed:
-                        raise ValueError("qualification sync requires exactly candidate_id, candidate_source_repo, candidate_source_commit")
-                    result = _qualification_sync(
-                        str(body["candidate_id"]),
-                        str(body["candidate_source_repo"]),
-                        str(body["candidate_source_commit"]),
-                    )
-                    if result["candidate_found"] is not True:
-                        return self._json(404, {
-                            "detail": "candidate revision is not present in the Adaptive Brain journal",
-                            **result,
-                        })
-                    return self._json(200, {"ok": True, **result})
                 except (ValueError, TypeError) as ex:
                     return self._json(400, {"detail": str(ex)})
             if p.path == "/admin/source-reliability/observation":
@@ -1926,14 +2284,12 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 brain_remote_sync.start()
                 brain_research_sync.start()
                 evolution_remote_sync.start()
-                evidence_lab_sync.start()
                 commissioning.start_background()
             try:
                 return super().serve_forever(poll_interval)
             finally:
                 if background:
                     autopilot.close()
-                    evidence_lab_sync.close()
                     evolution_remote_sync.close()
                     brain_research_sync.close()
                     brain_remote_sync.close()
@@ -1943,7 +2299,6 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
 
         def server_close(self):
             autopilot.close()
-            evidence_lab_sync.close()
             evolution_remote_sync.close()
             brain_research_sync.close()
             brain_remote_sync.close()
@@ -1958,16 +2313,22 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     srv.brain_remote_sync = brain_remote_sync
     srv.brain_research_sync = brain_research_sync
     srv.evolution_remote_sync = evolution_remote_sync
-    srv.evidence_lab_sync = evidence_lab_sync
     srv.possibility = possibility
     srv.performance_proof = performance_proof
     srv.latency_telemetry = latency_telemetry
     srv.source_reliability = source_reliability
-    srv.qualification_receipts = qualification_receipts
     srv.autopilot = autopilot
     srv.pantheon = pantheon
     srv.sibyl = sibyl
     srv.apex = apex
+    srv.ascendancy_archive = ascendancy_archive
+    srv.ascendancy_foundry = ascendancy_foundry
+    srv.ascendancy_unknowns = ascendancy_unknowns
+    srv.ascendancy_mechanisms = ascendancy_mechanisms
+    srv.ascendancy_inventions = ascendancy_inventions
+    srv.ascendancy_contribution = ascendancy_contribution
+    srv.ascendancy_evaluator = ascendancy_evaluator
+    srv.ascendancy_peers = ascendancy_peers
     srv.learning = learning
     srv.chronofold = chronofold
     srv.commissioning = commissioning
