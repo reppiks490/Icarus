@@ -403,6 +403,58 @@ def test_partial_brain_projection_does_not_publish_partial_subsystem_state(
     assert attempts["brain"] == 5
 
 
+def test_event_id_cannot_be_rebound_to_different_git_blob(tmp_path):
+    current = {
+        "payload": event_payload(
+            event_id="immutable-event-id",
+            summary="original immutable receipt",
+        )
+    }
+
+    def raw():
+        return (
+            json.dumps(current["payload"], sort_keys=True) + "\n"
+        ).encode()
+
+    def listing(_url):
+        payload = raw()
+        return [{
+            "type": "file",
+            "name": "immutable.json",
+            "path": REMOTE_ROOT + "/immutable.json",
+            "sha": _git_blob_sha(payload),
+            "url": "fixture://immutable",
+        }]
+
+    sync = EvolutionRemoteSync(
+        tmp_path,
+        interval_seconds=30,
+        fetch_json=listing,
+        fetch_bytes=lambda _url: raw(),
+        enabled=True,
+    )
+
+    first = sync.sync_once()
+    assert first["status"] == "green"
+    assert first["ingested_total"] == 1
+    assert first["events"][0]["summary"] == "original immutable receipt"
+
+    current["payload"] = event_payload(
+        event_id="immutable-event-id",
+        summary="mutated receipt under reused event id",
+    )
+    collision = sync.sync_once()
+
+    assert collision["status"] == "degraded"
+    assert collision["ingested_total"] == 1
+    assert collision["rejected_total"] == 1
+    assert collision["current_rejected_count"] == 1
+    assert collision["events"][0]["summary"] == "original immutable receipt"
+    assert "already bound to a different immutable Git blob" in (
+        collision["last_error"]
+    )
+
+
 def test_blob_sha_mismatch_is_rejected(tmp_path):
     payload = event_payload()
     raw = (json.dumps(payload, sort_keys=True) + "\n").encode()
