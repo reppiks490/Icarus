@@ -145,6 +145,10 @@ def test_dashboard_surfaces_adaptive_brain_fabric():
     assert "Peer substantive lanes" in ui
     assert "Federated Icarus-engine lane state" in ui
     assert "DURABILITY_ONLY never counts as substantive research evidence" in ui
+    assert "Peer historical context" in ui
+    assert "Federated historical research context" in ui
+    assert "They cannot create candidates, bypass Foundry/Evaluator" in ui
+    assert "peer_historical_context_candidate_evidence" in ui
     assert "CSV Evidence Lab" in ui
     assert "/api/evidence-lab" in server
     assert "sync.evidence_lab" in server
