@@ -1,0 +1,55 @@
+{
+  "schema": "icarus-mcp-event-v1",
+  "event_id": "omega_20261002T140018Z_labor_curve_receipt_authority_integration",
+  "timestamp": "2026-10-02T14:00:18Z",
+  "category": "INTEGRATION",
+  "source": "OMEGA_AUTOMATION",
+  "execution_authorized": false,
+  "finding": "Fresh Macro payroll evidence establishes a near-term Fed-path easing impulse while long-end duration risk remains unresolved; simultaneously, candidate qualification on current main now refuses self-declared validation and requires immutable exact-revision gate receipts.",
+  "net_new_delta": "US_LABOR_SOFTENING_SPLITS_FRONT_END_POLICY_REPRICING_FROM_LONG_END_DURATION_RISK_WHILE_CANDIDATE_PROMOTION_BECOMES_RECEIPT_ONLY",
+  "accepted": [
+    "September payrolls +29k versus +90k expected, August revised to +133k from +162k, unemployment 4.2%; immediate 2Y/10Y yield compression, lower DXY, higher gold/equity futures and sharply lower October hike odds are material Macro evidence.",
+    "Candidate qualification now derives gate authority only from immutable exact-revision receipts; candidate-declared validation is informational and cannot qualify shadow readiness.",
+    "GitHub-native v3 late-arrival reconciliation and deterministic receipts are valid persistence/liveness evidence only."
+  ],
+  "rejected": [
+    "Do not label recession from one payroll print given seasonal-calendar distortion and historically low claims.",
+    "Do not infer that front-end dovish repricing eliminates long-end fiscal/inflation term-premium risk.",
+    "Do not treat deterministic_liveness/model=none receipts as substantive Macro, Flow, AION, or DAEDALUS inference.",
+    "Do not allow self-declared candidate validation to substitute for exact-revision proof receipts."
+  ],
+  "conflicts": [
+    "Weak payrolls and higher unemployment conflict with low claims/no broad layoff signal, so labor-regime persistence is unresolved.",
+    "Treasury rally lowered 2Y/10Y yields immediately, but long-end yields remain historically elevated; policy-path easing and structural duration risk can coexist.",
+    "Substantive Macro MCP evidence is fresher than scheduled specialist inference receipts; liveness and analytical freshness remain separate."
+  ],
+  "blockers": [
+    "No newer substantive Flow event after the 06:00 UTC BTC normalization audit was established.",
+    "Newest inspected DAEDALUS v3 receipt is deterministic_liveness/model=none with SUBSTANTIVE_AI_INFERENCE_NOT_EXECUTED; no fresh substantive AION/DAEDALUS finding was established.",
+    "Payroll persistence requires claims, revisions and subsequent inflation/labor evidence; curve decoupling requires follow-through in 2Y versus 10Y/30Y."
+  ],
+  "next_highest_value_integration_target": "Route a two-axis duration state into ATHENA/JANUS: near-term policy-path pressure keyed to labor/2Y persistence, and structural term-premium pressure keyed to 10Y/30Y persistence. Keep specialist substantive freshness and receipt-only candidate qualification as independent fail-closed dependencies.",
+  "paths_evidence": [
+    "automation_intelligence/mcp_interface/events/20261002T130843Z_macro_us_labor_softening_rate_repricing.json",
+    "automation_intelligence/mcp_interface/events/20261002T072846353Z_flow_velocity_audit.json",
+    "Icarus commit 9c017724f496b72c5e4e5e3cf88af1a8b8b999c0",
+    "Icarus-engine commit bc89eb47491ced341fbb866bd1510beb728950bc",
+    "Icarus-engine commit 49a2f4d70f3a4dd4b18c3a70fea8be5bc518ffd0"
+  ],
+  "athena": {
+    "status": "ACTIONABLE",
+    "finding": "Separate labor-driven front-end easing from unresolved long-end duration risk; penalize missing substantive specialist freshness and accept candidate qualification only when immutable exact-revision gate receipts exist."
+  },
+  "janus": {
+    "status": "ACTIONABLE",
+    "finding": "Track labor state, 2Y policy-path response, 10Y/30Y term-premium response, substantive-specialist freshness, and candidate gate-receipt state as non-substitutable dependencies."
+  },
+  "infrastructure": {
+    "status": "DEGRADED",
+    "finding": "GitHub-native v3 late-arrival reconciliation is functioning, but newest inspected DAEDALUS receipt is deterministic liveness without substantive inference; persistence health must not promote analytical freshness."
+  },
+  "helios_prime": {
+    "status": "ACTIONABLE",
+    "finding": "Highest-value bridge is payroll/claims/revisions -> 2Y policy path versus 10Y/30Y term premium -> DXY/GC/NQ, with receipt-only qualification preventing unproven model promotion."
+  }
+}
