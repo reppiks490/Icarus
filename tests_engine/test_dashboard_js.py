@@ -558,3 +558,14 @@ def test_dashboard_surfaces_ascendancy_capability_orchestrator():
     assert "claims_forbidden" in ui
     assert "execution_authorized=false" in ui
     assert "production_decision_authorized=false" in ui
+
+
+def test_learning_dashboard_surfaces_manifest_linked_historical_artifact_experience():
+    ui = (REPO / "icarus_engine/learning-ui.js").read_text(encoding="utf-8")
+    assert "HISTORICAL ARTIFACT CONFIGURATION EXPERIENCE" in ui
+    assert "Manifest-linked artifact fingerprint" in ui
+    assert "Strategy report" in ui
+    assert "artifactExperienceRows" in ui
+    assert "by_artifact_configuration" in ui
+    assert "artifact_scoped_count" in ui
+    assert "MANIFEST-LINKED" in ui
