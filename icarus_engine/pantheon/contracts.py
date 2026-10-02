@@ -31,6 +31,7 @@ FACULTIES = (
     "atlas",
     "aporia",
     "axiom",
+    "autognosis",
     "archon",
     "aether",
 )

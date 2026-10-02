@@ -25,6 +25,7 @@ _OPTIONAL_ROLES = (
     "information_gain",
     "ontology_scout",
     "redundancy_hunter",
+    "self_model_auditor",
 )
 _ROLE_PARTITIONS = {
     "falsifier": "adversarial",
@@ -39,6 +40,7 @@ _ROLE_PARTITIONS = {
     "information_gain": "epistemic",
     "ontology_scout": "novelty",
     "redundancy_hunter": "ablation",
+    "self_model_auditor": "metacognition",
 }
 
 class AetherSwarm:
@@ -75,6 +77,10 @@ class AetherSwarm:
             unit(atlas_state.get("topological_novelty"), "atlas.topological_novelty"),
             unit(atlas_state.get("boundary_pressure"), "atlas.boundary_pressure"),
         )
+        self_failure_pressure = unit(
+            faculties.get("autognosis", {}).get("self_failure_pressure"),
+            "autognosis.self_failure_pressure",
+        )
         risk = unit(signals.get("risk"), "risk")
         data_quality = unit(signals.get("data_quality"), "data_quality", 0.5)
         raw_energy = (
@@ -84,7 +90,7 @@ class AetherSwarm:
             + 0.20 * causal
             + 0.17 * uncertainty
         )
-        raw_energy = min(1.0, raw_energy + 0.12 * echo_risk + 0.08 * stale_memory + 0.06 * resurrection + 0.08 * proof_gap + 0.08 * topology_pressure + 0.08 * information_value)
+        raw_energy = min(1.0, raw_energy + 0.12 * echo_risk + 0.08 * stale_memory + 0.06 * resurrection + 0.08 * proof_gap + 0.08 * topology_pressure + 0.08 * information_value + 0.10 * self_failure_pressure)
         energy = max(0.0, min(1.0, raw_energy * (1.0 - 0.45 * risk) * (0.50 + 0.50 * data_quality)))
         active = energy >= self.threshold and data_quality >= 0.35
         agents = []
@@ -104,6 +110,8 @@ class AetherSwarm:
                 priorities.append("information_gain")
             if topology_pressure >= 0.60:
                 priorities.append("ontology_scout")
+            if self_failure_pressure >= 0.35:
+                priorities.append("self_model_auditor")
             if atlas_state.get("geometry_state") == "boundary":
                 priorities.append("historical_analogue")
             for priority in reversed(priorities):
@@ -153,6 +161,8 @@ class AetherSwarm:
                 "information_value_pressure": information_value,
                 "value_of_waiting_action": aporia_state.get("action", "unavailable"),
                 "topology_pressure": topology_pressure,
+                "self_failure_pressure": self_failure_pressure,
+                "self_model_posture": faculties.get("autognosis", {}).get("research_posture", "unavailable"),
                 "risk": risk,
                 "data_quality": data_quality,
                 "energy": energy,
@@ -174,6 +184,7 @@ class AetherSwarm:
                 "axiom_proof_gaps_drive_research_not_execution": True,
                 "atlas_boundaries_drive_research_not_execution": True,
                 "positive_value_information_prioritizes_research_not_execution": True,
+                "self_failure_pressure_drives_audit_not_execution": True,
             },
             "truth_contract": {
                 "agents_are_ephemeral_research_workers": True,

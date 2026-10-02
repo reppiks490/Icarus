@@ -52,6 +52,7 @@
       else if(kv[0]==='atlas') key='geometry '+h(row.geometry_state||'')+' · boundary '+pct(row.boundary_pressure)+' · novelty '+pct(row.topological_novelty)+(row.current_basin?(' · basin '+h(row.current_basin.regime||'')):'');
       else if(kv[0]==='aporia') key='wait '+h(row.action||'unavailable')+' · value '+pct(row.information_value_pressure)+(row.best_observation?(' · '+h(row.best_observation.observation)+' '+num(row.best_observation.net_information_value,2)):'');
       else if(kv[0]==='axiom') key='certificate '+h(row.certificate_state||'')+' · complete '+pct(row.proof_completeness)+' · blockers '+h([].concat(row.failed_gates||[],row.unproven_gates||[]).join(', ')||'none');
+      else if(kv[0]==='autognosis') key='self-failure '+pct(row.self_failure_pressure)+' · trust '+pct(row.self_trust_surface)+' · '+h(row.research_posture||'unavailable')+(row.dominant_failure_mode?(' · '+h(row.dominant_failure_mode)):'');
       else if(kv[0]==='archon') key='conflict '+pct(row.contradiction)+' · echo '+pct(row.echo_risk);
       else if(kv[0]==='socrates') key='priority '+pct(row.question_priority)+' · '+h((row.question_queue||[]).length)+' questions · '+h((row.hypothesis_queue||[]).length)+' hypotheses';
       else if(kv[0]==='mint') key=row.best_candidate?('best '+h(row.best_candidate.name)+' · stress net '+num(row.best_candidate.stress_expected_net,2)):'no positive candidate';
@@ -98,6 +99,7 @@
         '<div class="pan-field"><div class="k">Proof gap</div><b>'+pct(field.proof_gap)+'</b></div>'+
         '<div class="pan-field"><div class="k">Value of waiting</div><b>'+pct(field.information_value_pressure)+'</b><div class="small muted">'+h(field.value_of_waiting_action||'unavailable')+'</div></div>'+
         '<div class="pan-field"><div class="k">Topology pressure</div><b>'+pct(field.topology_pressure)+'</b></div>'+
+        '<div class="pan-field"><div class="k">Self-failure pressure</div><b>'+pct(field.self_failure_pressure)+'</b><div class="small muted">'+h(field.self_model_posture||'unavailable')+'</div></div>'+
         '<div class="pan-field"><div class="k">APEX lineage</div><b>'+h(apexLineage.status||'UNAVAILABLE')+'</b><div class="small muted">'+h(apexLineage.lineage_owner||'no verified root map')+'</div></div>'+
         '<div class="pan-field"><div class="k">Risk</div><b>'+pct(field.risk)+'</b></div>'+
       '</div>'+

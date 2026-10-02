@@ -675,3 +675,30 @@ observation is material. SOCRATES converts the same state into a falsifiable
 question about whether the expected ambiguity reduction actually justified the
 delay. APORIA has no capital, sizing, broker, or production-decision authority;
 all values are research diagnostics rather than calibrated profit guarantees.
+
+
+## AUTOGNOSIS — internal self-failure model
+
+AUTOGNOSIS asks a different question from every market-facing engine: **is the
+market difficult, or is ICARUS itself entering a state in which its own
+inference stack should be trusted less?**
+
+It builds a bounded self-state vector from already independent diagnostics:
+GÖDEL ambiguity, ECHO ancestry duplication, ATLAS topology pressure, LETHE
+staleness, AXIOM proof gaps, ARCHON contradiction, APORIA information value,
+plus explicitly supplied data-quality, calibration-error, latency-stress and
+execution-health observations when available. Missing optional evidence is not
+treated as healthy; the faculty normalizes over observed factor weight and
+abstains when self-state coverage is too sparse.
+
+The output is a diagnostic `self_failure_pressure`, complementary
+`self_trust_surface`, factor coverage, dominant internal failure mode,
+research posture, and a quantized `self_state_signature` that can be compared
+across future observed outcomes. These values are **not calibrated
+probabilities**.
+
+When self-failure pressure rises, SOCRATES asks whether the thesis survives
+after the dominant internal defect is removed, while AETHER can prioritize a
+`self_model_auditor` research partition. AUTOGNOSIS cannot place orders,
+change sizing, bypass the hard Risk Kernel, or grant itself production
+authority.
