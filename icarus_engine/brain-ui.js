@@ -43,7 +43,7 @@
   function renderBrain(b) {
     const el = document.querySelector('#brainPanel');
     if (!el) return;
-    const auth = b.authority || {}, learn = b.learning || {}, truth = b.truth_contract || {}, sync = b.remote_sync || {}, inc = b.incubator || {}, researchSync = b.research_sync || {}, evidenceLab = b.evidence_lab_sync || {}, proof = b.performance_proof || {}, latency = b.latency_telemetry || {}, graph = b.evidence_graph || {}, reliability = b.source_reliability || {}, qualification = b.qualification_receipts || {};
+    const auth = b.authority || {}, learn = b.learning || {}, truth = b.truth_contract || {}, sync = b.remote_sync || {}, agentContract = sync.truth_contract || {}, inc = b.incubator || {}, researchSync = b.research_sync || {}, evidenceLab = b.evidence_lab_sync || {}, proof = b.performance_proof || {}, latency = b.latency_telemetry || {}, graph = b.evidence_graph || {}, reliability = b.source_reliability || {}, qualification = b.qualification_receipts || {};
     const agents = ((b.architecture || {}).agents || []);
     const subs = ((b.architecture || {}).subsystems || []);
     const lanes = ((b.architecture || {}).latency_tiers || []);
@@ -111,6 +111,7 @@
             <div class="tile"><div class="k">Qualification-ready revisions</div><div class="v">${num(qualification.qualification_ready_count)} / ${num(qualification.candidate_revision_count)}</div><div class="small muted">immutable gate-receipt state · shadow only</div></div>
             <div class="tile"><div class="k">Router</div><div class="v">${h(auth.candidate_router||'—')}</div></div>
             <div class="tile"><div class="k">Agent repo sync</div><div class="v ${statusClass(sync.status)}">${h(String(sync.status||'not configured').toUpperCase())}</div><div class="small muted">${h(sync.last_success_at?'last '+sync.last_success_at:'awaiting first verified ingest')}</div></div>
+            <div class="tile"><div class="k">Agent federation contract</div><div class="v ${agentContract.federation_schema?'brain-good':'brain-warn'}">${h(agentContract.federation_schema||'UNVERIFIED')}</div><div class="small muted">${h(agentContract.event_records||'fail-closed')} · ${agentContract.strict_event_contract?'STRICT EVENT ENVELOPE':'EVENT CONTRACT UNVERIFIED'} · legacy exceptions ${num(agentContract.legacy_exception_count)} · execution ${agentContract.automatic_execution_authority===false?'DENIED':'UNVERIFIED'}</div></div>
             <div class="tile"><div class="k">Remote agent events</div><div class="v tnum">${num(sync.ingested_total)}</div><div class="small muted">poll ${num(sync.interval_seconds)}s · rejected ${num(sync.rejected_total)}</div></div>
             <div class="tile"><div class="k">CSV Evidence Lab</div><div class="v ${statusClass(evidenceLab.status)}">${h(String(evidenceLab.status||"not configured").toUpperCase())}</div><div class="small muted">${h(evidenceLab.current_run_id||"no run observed")} · ${h(evidenceLab.evidence_status||"evidence unknown")}</div></div>
             <div class="tile"><div class="k">CSV pointer coherence</div><div class="v ${evidenceLab.latest_pointer_matches_heartbeat===false?"brain-warn":"brain-good"}">${evidenceLab.latest_pointer_matches_heartbeat===false?"LAGGING":"COHERENT/UNSET"}</div><div class="small muted">RUN_PERSISTED is durability only · evidence authority stays EVIDENCE_STATUS</div></div>
