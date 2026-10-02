@@ -31,6 +31,8 @@ authority contracts change.
 - `handoffs/` — current loop state and future loop intake.
 - `../superpowers/specs/` — approved architecture specifications.
 - `../superpowers/plans/` — implementation plans derived from approved specs.
+- `ASCENDANCY_CAPABILITY_ORCHESTRATOR.md` — capability/evidence contracts, point-in-time provider audit, truth boundaries and dashboard surface.
+- `UNIFIED_INTELLIGENCE_SPINE.md` — source-preserving composition and structural-redundancy contracts.
 - [`CONTINUOUS_LEARNING.md`](CONTINUOUS_LEARNING.md) — durable replay, prediction/outcome maturation, shadow calibration, drift retirement, and realized-experience architecture.
 
 ## Core doctrine

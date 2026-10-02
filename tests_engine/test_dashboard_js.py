@@ -28,6 +28,7 @@ NODE = shutil.which("node")
         "icarus_engine/pantheon-ui.js",
         "icarus_engine/sibyl-ui.js",
         "icarus_engine/apex-ui.js",
+        "icarus_engine/ascendancy-ui.js",
         "icarus_engine/learning-ui.js",
         "icarus_engine/chronofold-ui.js",
         "icarus_engine/commissioning-ui.js",
@@ -538,3 +539,22 @@ def test_autopilot_operator_actions_are_not_silent():
     assert "admin('/admin/autopilot/config',{cadence_seconds:Number(e.target.value)},true)" not in ui
     assert "admin('/admin/autopilot/config',{robustness_windows:Number(e.target.value)},true)" not in ui
     assert "admin('/admin/autopilot/config',{assets:e.target.value?[e.target.value]:[]},true)" not in ui
+
+
+def test_dashboard_surfaces_ascendancy_capability_orchestrator():
+    dashboard = (REPO / "icarus_engine/dashboard.html").read_text(encoding="utf-8")
+    ui = (REPO / "icarus_engine/ascendancy-ui.js").read_text(encoding="utf-8")
+    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
+    assert '<script src="/ascendancy-ui.js"></script>' in dashboard
+    assert 'data-v="ascendancy">ASCENDANCY</span>' in dashboard
+    assert "view === 'ascendancy'" in dashboard
+    assert "wireAscendancy()" in dashboard
+    assert 'p.path == "/ascendancy-ui.js"' in server
+    assert "/api/ascendancy/capabilities" in ui
+    assert "Capability Orchestrator" in ui
+    assert "BLOCKED_SUBSCRIPTION" in ui
+    assert "BLOCKED_NETWORK_POLICY" in ui
+    assert "claims_allowed" in ui
+    assert "claims_forbidden" in ui
+    assert "execution_authorized=false" in ui
+    assert "production_decision_authorized=false" in ui
