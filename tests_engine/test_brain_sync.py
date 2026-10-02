@@ -418,6 +418,7 @@ def _fixture(
     peer_compare_status="ahead",
     peer_now_offset_seconds=60,
     allow_legacy_event=False,
+    historical_docs=None,
 ):
     event_raw = (json.dumps(payload, sort_keys=True) + "\n").encode()
     event_sha = _git_blob_sha(event_raw)
@@ -457,12 +458,15 @@ def _fixture(
     for source_id, document in historical_docs.items():
         raw = (json.dumps(document, sort_keys=True) + "\n").encode()
         url = f"https://api.github.test/historical/{source_id}"
-        path = next(
+        historical_path = next(
             row["path"]
             for row in consumer_doc.get("historical_context", {}).get("sources", [])
             if row["id"] == source_id
         )
-        api = f"https://api.github.com/repos/reppiks490/Icarus-engine/contents/{path}?ref=main"
+        api = (
+            "https://api.github.com/repos/reppiks490/Icarus-engine/contents/"
+            f"{historical_path}?ref=main"
+        )
         historical_raw[url] = raw
         historical_meta[api] = {
             "type": "file",
