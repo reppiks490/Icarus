@@ -101,6 +101,7 @@ SUBSYSTEMS = (
     {"id": "ml", "title": "ML", "owner": "aion", "job": "Research-only model lifecycle, training evidence, calibration, drift/OOD state, reproducibility, and candidate packaging."},
     {"id": "data", "title": "DATA", "owner": "flow", "job": "Raw-source identity, availability-time truth, representation quality, freshness, and replay-safe market evidence."},
     {"id": "csv-evidence-lab", "title": "CSV EVIDENCE LAB Ω", "owner": "flow", "job": "Independent repository-native CSV structural/provenance evidence mirror; keep durability receipts separate from substantive evidence and never auto-promote data or models."},
+    {"id": "icarus-engine-federation", "title": "ICARUS-ENGINE FEDERATION Ω", "owner": "omega", "job": "Ingest provenance-verified foreign Icarus-engine automation events as research observability only, preserve evidence/authority boundaries, and never transfer execution or production authority."},
 )
 
 LATENCY_TIERS = (
@@ -589,6 +590,7 @@ def brain_snapshot(
     remote_sync: Mapping[str, Any] | None = None,
     research_sync: Mapping[str, Any] | None = None,
     evidence_lab_sync: Mapping[str, Any] | None = None,
+    engine_federation_sync: Mapping[str, Any] | None = None,
     proof_status: Mapping[str, Any] | None = None,
     latency_status: Mapping[str, Any] | None = None,
     source_reliability: Mapping[str, Any] | None = None,
@@ -779,6 +781,13 @@ def brain_snapshot(
             "enabled": False,
             "status": "not_configured",
             "repository": "reppiks490/icarus-csv-evidence-lab",
+            "execution_authorized": False,
+            "production_decision_authorized": False,
+        },
+        "engine_federation_sync": dict(engine_federation_sync) if isinstance(engine_federation_sync, Mapping) else {
+            "enabled": False,
+            "status": "not_configured",
+            "repository": "reppiks490/Icarus-engine",
             "execution_authorized": False,
             "production_decision_authorized": False,
         },
