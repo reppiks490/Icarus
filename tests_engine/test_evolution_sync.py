@@ -171,19 +171,87 @@ def test_missing_or_unknown_schema_is_rejected(tmp_path, payload):
         "sha": sha,
         "url": "fixture://unknown",
     }]
+    fetches = {"bytes": 0}
+
+    def fetch_bytes(_url):
+        fetches["bytes"] += 1
+        return raw
+
     sync = EvolutionRemoteSync(
         tmp_path,
         interval_seconds=30,
         fetch_json=lambda _url: listing,
-        fetch_bytes=lambda _url: raw,
+        fetch_bytes=fetch_bytes,
         enabled=True,
     )
-    state = sync.sync_once()
+    first = sync.sync_once()
+    second = sync.sync_once()
 
-    assert state["status"] == "degraded"
-    assert state["ignored_total"] == 0
-    assert state["rejected_total"] == 1
-    assert state["ingested_total"] == 0
+    assert first["status"] == "degraded"
+    assert first["ignored_total"] == 0
+    assert first["rejected_total"] == 1
+    assert first["current_rejected_count"] == 1
+    assert first["ingested_total"] == 0
+
+    # The same immutable bad Git blob remains a current error, but repeated
+    # polls do not inflate the historical rejection counter or refetch it.
+    assert second["status"] == "degraded"
+    assert second["rejected_total"] == 1
+    assert second["current_rejected_count"] == 1
+    assert fetches["bytes"] == 1
+
+
+def test_rejected_receipt_recovers_when_git_blob_is_replaced(tmp_path):
+    current = {"payload": {"schema_version": "wrong"}}
+    fetches = {"bytes": 0}
+
+    def raw():
+        return (
+            json.dumps(current["payload"], sort_keys=True) + "\n"
+        ).encode()
+
+    def listing(_url):
+        payload = raw()
+        return [{
+            "type": "file",
+            "name": "replaceable.json",
+            "path": REMOTE_ROOT + "/replaceable.json",
+            "sha": _git_blob_sha(payload),
+            "url": "fixture://replaceable",
+        }]
+
+    def fetch_bytes(_url):
+        fetches["bytes"] += 1
+        return raw()
+
+    sync = EvolutionRemoteSync(
+        tmp_path,
+        interval_seconds=30,
+        fetch_json=listing,
+        fetch_bytes=fetch_bytes,
+        enabled=True,
+    )
+
+    first = sync.sync_once()
+    again = sync.sync_once()
+    assert first["status"] == "degraded"
+    assert first["rejected_total"] == 1
+    assert again["rejected_total"] == 1
+    assert again["current_rejected_count"] == 1
+    assert fetches["bytes"] == 1
+
+    current["payload"] = event_payload(
+        event_id="replacement-valid-event",
+        title="Replacement valid event",
+    )
+    recovered = sync.sync_once()
+
+    assert recovered["status"] == "green"
+    assert recovered["rejected_total"] == 1
+    assert recovered["current_rejected_count"] == 0
+    assert recovered["ingested_total"] == 1
+    assert recovered["events"][0]["event_id"] == "replacement-valid-event"
+    assert fetches["bytes"] == 2
 
 
 def test_blob_sha_mismatch_is_rejected(tmp_path):
@@ -288,6 +356,20 @@ def test_committed_interface_receipts_match_current_ingestion_contract():
     # The directory is intentionally shared with macro/audit/integration
     # receipt families; runtime sync must ignore those rather than degrade.
     assert foreign > 0
+
+
+def test_evolution_ui_separates_current_invalid_from_historical_rejects():
+    ui = (
+        Path(__file__).resolve().parents[1]
+        / "icarus_engine"
+        / "evolution-ui.js"
+    ).read_text(encoding="utf-8")
+
+    assert "Current invalid receipts" in ui
+    assert "current_rejected_count" in ui
+    assert "Rejected versions total" in ui
+    assert "unique receipt versions ever rejected" in ui
+    assert "counted only once" in ui
 
 
 def test_repository_native_interface_vocabulary_is_accepted(tmp_path):
