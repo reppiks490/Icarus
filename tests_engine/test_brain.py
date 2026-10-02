@@ -39,7 +39,7 @@ def test_brain_registers_five_custom_agents_and_twelve_plus_subsystems(tmp_path)
     assert len(AGENTS) == 5
     assert len(SUBSYSTEMS) >= 12
     assert out["architecture"]["agent_count"] == 5
-    assert {"parallax", "provenance", "ml", "data"} <= {x["id"] for x in out["architecture"]["subsystems"]}
+    assert {"parallax", "provenance", "ml", "data", "csv-evidence-lab"} <= {x["id"] for x in out["architecture"]["subsystems"]}
     assert out["architecture"]["subsystem_count"] >= 12
     assert out["authority"]["production_decision_authorized"] is False
     assert out["authority"]["execution_authorized"] is False
@@ -47,6 +47,8 @@ def test_brain_registers_five_custom_agents_and_twelve_plus_subsystems(tmp_path)
     assert out["truth_contract"]["omnipotence_claim"] is False
     assert out["remote_sync"]["status"] == "not_configured"
     assert out["research_sync"]["status"] == "not_configured"
+    assert out["evidence_lab_sync"]["status"] == "not_configured"
+    assert out["evidence_lab_sync"]["execution_authorized"] is False
     assert out["performance_proof"]["metrics"]["success_rate"] is None
     assert out["latency_telemetry"]["hot_path"] is None
     assert out["evidence_tournaments"] == []
