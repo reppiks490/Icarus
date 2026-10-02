@@ -230,3 +230,16 @@ def test_brain_registers_pantheon_lethe_research_subsystem(tmp_path):
     assert surfaced["lethe"]["status"] == "REGISTERED"
     assert out["authority"]["execution_authorized"] is False
     assert out["authority"]["production_decision_authorized"] is False
+
+
+def test_brain_registers_ascendancy_capability_orchestrator(tmp_path):
+    out = brain_snapshot(tmp_path)
+    rows = {x["id"]: x for x in SUBSYSTEMS}
+    assert "capability-orchestrator" in rows
+    assert rows["capability-orchestrator"]["owner"] == "omega"
+    assert "capability" in rows["capability-orchestrator"]["job"].lower()
+    assert "evidence" in rows["capability-orchestrator"]["job"].lower()
+    surfaced = {x["id"]: x for x in out["architecture"]["subsystems"]}
+    assert surfaced["capability-orchestrator"]["status"] == "REGISTERED"
+    assert out["authority"]["execution_authorized"] is False
+    assert out["authority"]["production_decision_authorized"] is False
