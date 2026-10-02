@@ -143,6 +143,9 @@ def test_dashboard_surfaces_adaptive_brain_fabric():
     assert "agentContract.peer_packet_max_age_seconds" in ui
     assert "PERSISTED_WORKER_EVIDENCE" in ui
     assert "Peer substantive lanes" in ui
+    assert "Peer lane provenance" in ui
+    assert "Source proof" in ui
+    assert "source_witness_status" in ui
     assert "Federated Icarus-engine lane state" in ui
     assert "DURABILITY_ONLY never counts as substantive research evidence" in ui
     assert "CSV Evidence Lab" in ui

@@ -76,6 +76,13 @@ def _consumer_contract(**overrides):
             "source_commit_required": True,
             "git_blob_verification_required": True,
             "required_for_event_ingest": False,
+            "lane_source_witnesses_required": True,
+            "lane_source_witness_fields": [
+                "heartbeat_path",
+                "heartbeat_blob_sha",
+                "finalization_path",
+                "finalization_blob_sha",
+            ],
             "semantics": {
                 "lane_state_is_foreign_evidence": True,
                 "durability_only_is_not_substantive_research_evidence": True,
@@ -84,6 +91,7 @@ def _consumer_contract(**overrides):
                 "production_decision_authorized": False,
                 "automatic_execution_authority": False,
                 "stale_packet_is_current_state": False,
+                "lane_state_source_blobs_are_revision_bound": True,
             },
             "freshness_required": True,
             "max_age_seconds": 1800,
@@ -355,6 +363,43 @@ def _historical_packet_artifacts(documents=None):
     return artifacts
 
 
+def _lane_source_docs():
+    return {
+        "automation_intelligence/agent_fabric/robustness_guardian/heartbeat.json": {
+            "RUN_ID": "robustness-guardian-20261002T200500Z",
+            "RUN_STATUS": "RUN_PERSISTED",
+            "finalization_commit_sha": "d" * 40,
+            "execution_authorized": False,
+        },
+        "automation_intelligence/agent_fabric/robustness_guardian/finalization_state.json": {
+            "RUN_ID": "robustness-guardian-20261002T200500Z",
+            "RUN_STATUS": "RUN_PERSISTED",
+            "completion_semantics": "DURABILITY_RECEIPT_ONLY",
+            "receipt_origin": "github_watchdog_stabilization_fallback",
+            "worker_execution_observed": False,
+            "execution_authorized": False,
+        },
+        "automation_intelligence/flow/heartbeat.json": {
+            "RUN_ID": "flow-20261002T203500Z",
+            "RUN_STATUS": "RUN_PERSISTED",
+            "finalization_commit_sha": "e" * 40,
+            "execution_authorized": False,
+        },
+        "automation_intelligence/flow/finalization_state.json": {
+            "RUN_ID": "flow-20261002T203500Z",
+            "RUN_STATUS": "RUN_PERSISTED",
+            "completion_semantics": "WORKER_EVIDENCE",
+            "worker_execution_observed": True,
+            "execution_authorized": False,
+        },
+    }
+
+
+def _fixture_blob(document):
+    raw = (json.dumps(document, sort_keys=True) + "\n").encode()
+    return _git_blob_sha(raw)
+
+
 def _peer_packet(**overrides):
     packet = {
         "schema_version": "icarus-peer-intelligence-packet-v1",
@@ -382,6 +427,18 @@ def _peer_packet(**overrides):
                 "run_prefix": "robustness-guardian",
                 "worker_repository": "reppiks490/Icarus-engine",
                 "worker_root": "automation_intelligence/agent_fabric/robustness_guardian",
+                "heartbeat_path": "automation_intelligence/agent_fabric/robustness_guardian/heartbeat.json",
+                "heartbeat_blob_sha": _fixture_blob(
+                    _lane_source_docs()[
+                        "automation_intelligence/agent_fabric/robustness_guardian/heartbeat.json"
+                    ]
+                ),
+                "finalization_path": "automation_intelligence/agent_fabric/robustness_guardian/finalization_state.json",
+                "finalization_blob_sha": _fixture_blob(
+                    _lane_source_docs()[
+                        "automation_intelligence/agent_fabric/robustness_guardian/finalization_state.json"
+                    ]
+                ),
                 "run_id": "robustness-guardian-20261002T200500Z",
                 "run_status": "RUN_PERSISTED",
                 "finalization_commit_sha": "d" * 40,
@@ -399,6 +456,14 @@ def _peer_packet(**overrides):
                 "run_prefix": "flow",
                 "worker_repository": "reppiks490/Icarus-engine",
                 "worker_root": "automation_intelligence/flow",
+                "heartbeat_path": "automation_intelligence/flow/heartbeat.json",
+                "heartbeat_blob_sha": _fixture_blob(
+                    _lane_source_docs()["automation_intelligence/flow/heartbeat.json"]
+                ),
+                "finalization_path": "automation_intelligence/flow/finalization_state.json",
+                "finalization_blob_sha": _fixture_blob(
+                    _lane_source_docs()["automation_intelligence/flow/finalization_state.json"]
+                ),
                 "run_id": "flow-20261002T203500Z",
                 "run_status": "RUN_PERSISTED",
                 "finalization_commit_sha": "e" * 40,
@@ -416,6 +481,10 @@ def _peer_packet(**overrides):
                 "run_prefix": "advanced-csv",
                 "worker_repository": "reppiks490/icarus-csv-evidence-lab",
                 "worker_root": "automation_intelligence/advanced_csv",
+                "heartbeat_path": None,
+                "heartbeat_blob_sha": None,
+                "finalization_path": None,
+                "finalization_blob_sha": None,
                 "run_id": None,
                 "run_status": None,
                 "finalization_commit_sha": None,
@@ -469,6 +538,7 @@ def _fixture(
     allow_legacy_event=False,
     historical_docs=None,
     packet_historical_docs=None,
+    lane_source_docs=None,
 ):
     event_raw = (json.dumps(payload, sort_keys=True) + "\n").encode()
     event_sha = _git_blob_sha(event_raw)
@@ -485,6 +555,7 @@ def _fixture(
     consumer_doc = consumer or _consumer_contract()
     historical_docs = historical_docs or {}
     packet_historical_docs = packet_historical_docs or _historical_docs()
+    lane_source_docs = lane_source_docs or _lane_source_docs()
     if allow_legacy_event:
         consumer_doc = json.loads(json.dumps(consumer_doc))
         consumer_doc["event_validation"]["legacy_relaxed_blob_shas"] = [event_sha]
@@ -548,6 +619,19 @@ def _fixture(
             "url": url,
         }
 
+    lane_source_meta = {}
+    lane_source_raw = {}
+    for lane_path, document in lane_source_docs.items():
+        raw = (json.dumps(document, sort_keys=True) + "\n").encode()
+        url = "https://api.github.test/lane-source/" + lane_path.replace("/", "_")
+        api = _remote_contents_api(lane_path, ref=peer_doc["source_commit"])
+        lane_source_raw[url] = raw
+        lane_source_meta[api] = {
+            "type": "file",
+            "sha": _git_blob_sha(raw),
+            "url": url,
+        }
+
     def fetch_json(requested):
         if requested == _REMOTE_CONSUMER_CONTRACT_API:
             return {
@@ -577,6 +661,8 @@ def _fixture(
             return historical_meta[requested]
         if requested in packet_historical_meta:
             return packet_historical_meta[requested]
+        if requested in lane_source_meta:
+            return lane_source_meta[requested]
         return listing
 
     def fetch_bytes(requested):
@@ -592,6 +678,8 @@ def _fixture(
             return historical_raw[requested]
         if requested in packet_historical_raw:
             return packet_historical_raw[requested]
+        if requested in lane_source_raw:
+            return lane_source_raw[requested]
         return b""
 
     return {
@@ -641,7 +729,23 @@ def test_remote_sync_ingests_custom_agent_and_owned_subsystem_events(tmp_path):
     assert status["truth_contract"]["peer_packet_max_future_skew_seconds"] == 300
     assert status["peer_substantive_lane_count"] == 1
     assert status["peer_durability_only_lane_count"] == 1
+    assert status["peer_lane_witness_verified_count"] == 2
+    assert status["peer_lane_witness_unavailable_count"] == 0
+    assert status["truth_contract"]["peer_lane_source_witnesses_required"] is True
     assert len(status["peer_lanes"]) == 3
+    local_lanes = [
+        row for row in status["peer_lanes"]
+        if row["worker_repository"] == "reppiks490/Icarus-engine"
+    ]
+    assert all(row["source_witness_verified"] is True for row in local_lanes)
+    assert all(
+        row["source_witness_status"] == "VERIFIED_AT_PACKET_SOURCE"
+        for row in local_lanes
+    )
+    remote_lane = next(
+        row for row in status["peer_lanes"] if row["name"] == "advanced_csv"
+    )
+    assert remote_lane["source_witness_status"] == "REMOTE_PEER_UNREAD"
     assert status["historical_packet_witness_status"] == "green"
     assert status["historical_packet_witness_count"] == 4
     assert all(
@@ -1193,3 +1297,58 @@ def test_remote_sync_rejects_historical_contract_without_blob_and_artifact_id_re
     assert status["status"] == "degraded"
     assert status["ingested_total"] == 0
     assert "must require exact source artifact blobs" in status["last_error"]
+
+def test_remote_sync_rejects_peer_lane_source_blob_substitution(tmp_path):
+    packet = _peer_packet()
+    packet["lanes"][0]["heartbeat_blob_sha"] = "0" * 40
+    _rehash_peer_packet(packet)
+    fixture = _fixture(_remote_event(), peer=packet)
+    sync = BrainRemoteSync(
+        tmp_path,
+        interval_seconds=60,
+        fetch_json=fixture["fetch_json"],
+        fetch_bytes=fixture["fetch_bytes"],
+        now_utc=fixture["now_utc"],
+    )
+    status = sync.sync_once()
+    assert status["status"] == "degraded"
+    assert status["ingested_total"] == 1
+    assert status["peer_lane_witness_verified_count"] == 0
+    assert "peer lane source blob mismatch" in status["last_error"]
+
+
+def test_remote_sync_rejects_peer_lane_state_that_disagrees_with_source_blobs(tmp_path):
+    packet = _peer_packet()
+    packet["lanes"][1]["run_id"] = "forged-flow-run"
+    _rehash_peer_packet(packet)
+    fixture = _fixture(_remote_event(), peer=packet)
+    sync = BrainRemoteSync(
+        tmp_path,
+        interval_seconds=60,
+        fetch_json=fixture["fetch_json"],
+        fetch_bytes=fixture["fetch_bytes"],
+        now_utc=fixture["now_utc"],
+    )
+    status = sync.sync_once()
+    assert status["status"] == "degraded"
+    assert status["ingested_total"] == 1
+    assert "peer lane source state mismatch: flow_microstructure:run_id" in status["last_error"]
+
+
+def test_remote_sync_requires_lane_source_witness_contract(tmp_path):
+    consumer = _consumer_contract()
+    peer_contract = dict(consumer["peer_packet"])
+    peer_contract["lane_source_witnesses_required"] = False
+    consumer["peer_packet"] = peer_contract
+    fixture = _fixture(_remote_event(), consumer=consumer)
+    sync = BrainRemoteSync(
+        tmp_path,
+        interval_seconds=60,
+        fetch_json=fixture["fetch_json"],
+        fetch_bytes=fixture["fetch_bytes"],
+        now_utc=fixture["now_utc"],
+    )
+    status = sync.sync_once()
+    assert status["status"] == "degraded"
+    assert status["ingested_total"] == 0
+    assert "peer lane source witnesses must be required" in status["last_error"]

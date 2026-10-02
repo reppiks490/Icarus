@@ -200,6 +200,8 @@ def _default_state(interval_seconds: int) -> dict[str, Any]:
         "peer_lanes": [],
         "peer_substantive_lane_count": 0,
         "peer_durability_only_lane_count": 0,
+        "peer_lane_witness_verified_count": 0,
+        "peer_lane_witness_unavailable_count": 0,
         "historical_context_status": "not_started",
         "historical_context_source_count": 0,
         "historical_context_ingested_total": 0,
@@ -227,6 +229,8 @@ def _default_state(interval_seconds: int) -> dict[str, Any]:
             "legacy_exception_count": 0,
             "peer_packet_schema": None,
             "peer_packet_authority": "OBSERVE",
+            "peer_lane_source_witnesses_required": False,
+            "peer_lane_source_witness_fields": [],
             "historical_context_mode": "UNDECLARED",
             "historical_context_never_bypasses_foundry": True,
             "historical_context_never_bypasses_evaluator": True,
@@ -635,6 +639,19 @@ def _normalize_federation_contract(
     if peer_packet.get("max_future_skew_seconds") != 300:
         raise ValueError("Icarus-engine Brain federation peer packet future-skew bound mismatch")
 
+    if peer_packet.get("lane_source_witnesses_required") is not True:
+        raise ValueError("Icarus-engine Brain federation peer lane source witnesses must be required")
+    expected_lane_witness_fields = [
+        "heartbeat_path",
+        "heartbeat_blob_sha",
+        "finalization_path",
+        "finalization_blob_sha",
+    ]
+    if peer_packet.get("lane_source_witness_fields") != expected_lane_witness_fields:
+        raise ValueError("Icarus-engine Brain federation peer lane witness field contract mismatch")
+    if peer_semantics.get("lane_state_source_blobs_are_revision_bound") is not True:
+        raise ValueError("Icarus-engine Brain federation lane source blobs must be revision-bound")
+
     historical_sources = _normalize_historical_context_contract(consumer)
 
     event_validation = consumer.get("event_validation")
@@ -699,6 +716,8 @@ def _normalize_federation_contract(
             "peer_packet_freshness_required": True,
             "peer_packet_max_age_seconds": 1800,
             "peer_packet_max_future_skew_seconds": 300,
+            "peer_lane_source_witnesses_required": True,
+            "peer_lane_source_witness_fields": expected_lane_witness_fields,
             "historical_context_mode": (
                 "RESEARCH_CONTEXT_ONLY" if historical_sources else "UNDECLARED"
             ),
@@ -847,6 +866,57 @@ def _normalize_peer_packet(
             raise ValueError(
                 f"Icarus-engine peer lane {name} conflates durability/unavailable state with substantive evidence"
             )
+
+        heartbeat_path = raw.get("heartbeat_path")
+        heartbeat_blob = raw.get("heartbeat_blob_sha")
+        finalization_path = raw.get("finalization_path")
+        finalization_blob = raw.get("finalization_blob_sha")
+        lane_witness_values = {
+            "heartbeat_path": heartbeat_path,
+            "heartbeat_blob_sha": heartbeat_blob,
+            "finalization_path": finalization_path,
+            "finalization_blob_sha": finalization_blob,
+        }
+        if worker_repository != REMOTE_REPOSITORY:
+            if any(value is not None for value in lane_witness_values.values()):
+                raise ValueError(
+                    f"Icarus-engine peer lane {name} invents source witnesses for a foreign sibling"
+                )
+        else:
+            for path_key, path_value in (
+                ("heartbeat_path", heartbeat_path),
+                ("finalization_path", finalization_path),
+            ):
+                if not isinstance(path_value, str) or not path_value.strip():
+                    raise ValueError(
+                        f"Icarus-engine peer lane {name} {path_key} is missing"
+                    )
+                if ".." in path_value.strip().split("/"):
+                    raise ValueError(
+                        f"Icarus-engine peer lane {name} {path_key} is invalid"
+                    )
+            for blob_key, blob_value in (
+                ("heartbeat_blob_sha", heartbeat_blob),
+                ("finalization_blob_sha", finalization_blob),
+            ):
+                if blob_value is not None and not _is_sha(str(blob_value).lower()):
+                    raise ValueError(
+                        f"Icarus-engine peer lane {name} {blob_key} is invalid"
+                    )
+            if status not in {"UNAVAILABLE", "UNMEASURED"} and (
+                heartbeat_blob is None and finalization_blob is None
+            ):
+                raise ValueError(
+                    f"Icarus-engine peer lane {name} lacks source blob witnesses"
+                )
+
+        finalization_commit_sha = raw.get("finalization_commit_sha")
+        if finalization_commit_sha is not None and not _is_sha(
+            str(finalization_commit_sha).lower()
+        ):
+            raise ValueError(
+                f"Icarus-engine peer lane {name} finalization commit SHA is invalid"
+            )
         lanes.append({
             "name": name,
             "title": raw.get("title"),
@@ -854,9 +924,31 @@ def _normalize_peer_packet(
             "run_id": raw.get("run_id"),
             "run_status": raw.get("run_status"),
             "worker_repository": worker_repository,
+            "worker_root": raw.get("worker_root"),
+            "heartbeat_path": heartbeat_path,
+            "heartbeat_blob_sha": (
+                str(heartbeat_blob).lower() if heartbeat_blob is not None else None
+            ),
+            "finalization_path": finalization_path,
+            "finalization_blob_sha": (
+                str(finalization_blob).lower() if finalization_blob is not None else None
+            ),
+            "finalization_commit_sha": (
+                str(finalization_commit_sha).lower()
+                if finalization_commit_sha is not None
+                else None
+            ),
+            "completion_semantics": raw.get("completion_semantics"),
             "evidence_status": status,
             "worker_execution_observed": raw.get("worker_execution_observed"),
             "substantive_research_evidence": substantive,
+            "source_witness_verified": False,
+            "source_witness_status": (
+                "REMOTE_PEER_UNREAD"
+                if worker_repository != REMOTE_REPOSITORY
+                else "UNVERIFIED"
+            ),
+            "source_witness_blob_count": 0,
             "execution_authorized": False,
         })
 
@@ -1226,6 +1318,144 @@ class BrainRemoteSync:
                     normalized_peer["peer_source_commit_verified"] = True
                     normalized_peer["peer_source_commit_relation"] = relation.upper()
 
+                    verified_lane_witnesses = 0
+                    unavailable_lane_witnesses = 0
+                    for lane in normalized_peer.get("peer_lanes", []):
+                        if lane.get("worker_repository") != REMOTE_REPOSITORY:
+                            continue
+
+                        source_docs: dict[str, Mapping[str, Any]] = {}
+                        blob_count = 0
+                        for kind in ("heartbeat", "finalization"):
+                            path = lane.get(f"{kind}_path")
+                            claimed_blob = lane.get(f"{kind}_blob_sha")
+                            if claimed_blob is None:
+                                continue
+                            source_meta = self._fetch_json(
+                                _remote_contents_api(str(path), ref=source_commit)
+                            )
+                            if (
+                                not isinstance(source_meta, Mapping)
+                                or source_meta.get("type") != "file"
+                            ):
+                                raise ValueError(
+                                    f"peer lane source metadata is not a file: {lane['name']}:{kind}"
+                                )
+                            source_blob = str(source_meta.get("sha") or "").lower()
+                            source_url = str(source_meta.get("url") or "")
+                            if source_blob != claimed_blob or not source_url:
+                                raise ValueError(
+                                    f"peer lane source blob mismatch: {lane['name']}:{kind}"
+                                )
+                            source_raw = self._fetch_bytes(source_url)
+                            if _git_blob_sha(source_raw) != claimed_blob:
+                                raise ValueError(
+                                    f"peer lane source Git blob SHA mismatch: {lane['name']}:{kind}"
+                                )
+                            source_payload = json.loads(source_raw.decode("utf-8"))
+                            if not isinstance(source_payload, Mapping):
+                                raise ValueError(
+                                    f"peer lane source is not an object: {lane['name']}:{kind}"
+                                )
+                            if source_payload.get("execution_authorized") is True:
+                                raise ValueError(
+                                    f"peer lane source attempts execution authority: {lane['name']}:{kind}"
+                                )
+                            source_docs[kind] = source_payload
+                            blob_count += 1
+
+                        heartbeat = source_docs.get("heartbeat")
+                        finalization = source_docs.get("finalization")
+                        if blob_count == 0:
+                            if lane.get("evidence_status") != "UNAVAILABLE":
+                                raise ValueError(
+                                    f"peer lane source witness verification is empty: {lane['name']}"
+                                )
+                            lane["source_witness_status"] = "SOURCE_ABSENCE_UNVERIFIED"
+                            unavailable_lane_witnesses += 1
+                            continue
+
+                        run_id = None
+                        run_status = None
+                        finalization_commit_sha = None
+                        if heartbeat is not None:
+                            run_id = heartbeat.get("RUN_ID") or heartbeat.get("run_id")
+                            run_status = heartbeat.get("RUN_STATUS") or heartbeat.get("status")
+                            finalization_commit_sha = heartbeat.get("finalization_commit_sha")
+                        completion_semantics = None
+                        observed = None
+                        receipt_origin = ""
+                        if finalization is not None:
+                            run_id = (
+                                run_id
+                                or finalization.get("RUN_ID")
+                                or finalization.get("run_id")
+                            )
+                            run_status = (
+                                run_status
+                                or finalization.get("RUN_STATUS")
+                                or finalization.get("status")
+                            )
+                            completion_semantics = finalization.get("completion_semantics")
+                            observed_raw = finalization.get("worker_execution_observed")
+                            observed = observed_raw if isinstance(observed_raw, bool) else None
+                            receipt_origin = str(
+                                finalization.get("receipt_origin") or ""
+                            ).lower()
+
+                        durability_only = (
+                            str(completion_semantics or "").upper()
+                            == "DURABILITY_RECEIPT_ONLY"
+                            or observed is False
+                            or "watchdog" in receipt_origin
+                        )
+                        if heartbeat is None and finalization is None:
+                            expected_status = "UNAVAILABLE"
+                            expected_substantive = False
+                        elif durability_only:
+                            expected_status = "DURABILITY_ONLY"
+                            expected_substantive = False
+                        elif str(run_status or "").upper() == "RUN_PERSISTED":
+                            if observed is True:
+                                expected_status = "PERSISTED_WORKER_EVIDENCE"
+                                expected_substantive = True
+                            else:
+                                expected_status = "PERSISTED_UNCLASSIFIED"
+                                expected_substantive = False
+                        else:
+                            expected_status = "INCOMPLETE_OR_UNVERIFIED"
+                            expected_substantive = False
+
+                        comparisons = {
+                            "run_id": run_id,
+                            "run_status": run_status,
+                            "finalization_commit_sha": finalization_commit_sha,
+                            "completion_semantics": completion_semantics,
+                            "worker_execution_observed": observed,
+                            "evidence_status": expected_status,
+                            "substantive_research_evidence": expected_substantive,
+                        }
+                        for key, expected in comparisons.items():
+                            actual = lane.get(key)
+                            if key == "finalization_commit_sha" and expected is not None:
+                                expected = str(expected).lower()
+                            if actual != expected:
+                                raise ValueError(
+                                    f"peer lane source state mismatch: {lane['name']}:{key}"
+                                )
+
+                        lane["source_witness_verified"] = True
+                        lane["source_witness_status"] = "VERIFIED_AT_PACKET_SOURCE"
+                        lane["source_witness_blob_count"] = blob_count
+                        verified_lane_witnesses += 1
+
+                    normalized_peer["peer_lane_witness_verified_count"] = (
+                        verified_lane_witnesses
+                    )
+                    normalized_peer["peer_lane_witness_unavailable_count"] = (
+                        unavailable_lane_witnesses
+                    )
+
                     live_rows = {
                         str(row.get("id") or ""): row
                         for row in state.get("historical_context_sources", [])
@@ -1352,6 +1582,8 @@ class BrainRemoteSync:
                         "peer_lanes": [],
                         "peer_substantive_lane_count": 0,
                         "peer_durability_only_lane_count": 0,
+                        "peer_lane_witness_verified_count": 0,
+                        "peer_lane_witness_unavailable_count": 0,
                         "historical_packet_witness_status": "degraded",
                         "historical_packet_witness_count": 0,
                         "historical_packet_witnesses": [],
