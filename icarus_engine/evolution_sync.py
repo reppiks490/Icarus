@@ -392,12 +392,26 @@ class EvolutionRemoteSync:
                         )
                     )
                     continue
+
+                # Transport/integrity failures are retryable. They do not prove
+                # the immutable receipt content is invalid and must never make
+                # a blob permanently rejected.
                 try:
                     if not url:
                         raise ValueError("missing GitHub contents URL")
                     raw = self._fetch_bytes(url)
                     if _git_blob_sha(raw) != blob_sha:
                         raise ValueError("Git blob SHA mismatch")
+                except Exception as ex:
+                    errors.append(
+                        f"{path}: fetch/integrity {type(ex).__name__}: {ex}"
+                    )
+                    continue
+
+                # Once Git content identity is proven, deterministic decoding or
+                # contract failures belong to this immutable blob version and
+                # can be deduplicated safely across later polls.
+                try:
                     payload = json.loads(raw.decode("utf-8"))
                     if not isinstance(payload, Mapping):
                         raise ValueError("event payload is not an object")
@@ -425,7 +439,30 @@ class EvolutionRemoteSync:
                         raise ValueError(
                             "unsupported MCP event schema declaration"
                         )
+                except (
+                    UnicodeDecodeError,
+                    json.JSONDecodeError,
+                    TypeError,
+                    ValueError,
+                ) as ex:
+                    message = f"{path}: {type(ex).__name__}: {ex}"
+                    errors.append(message)
+                    rejected.add(blob_sha)
+                    rejected_errors[blob_sha] = message
+                    state["rejected_total"] = int(
+                        state.get("rejected_total", 0)
+                    ) + 1
+                    continue
+                except Exception as ex:
+                    errors.append(
+                        f"{path}: validation {type(ex).__name__}: {ex}"
+                    )
+                    continue
 
+                # Local projection is also retryable. A disk/journal failure
+                # must not convert otherwise valid source bytes into a
+                # permanently rejected receipt version.
+                try:
                     append_system_event(
                         self.base_dir,
                         {
@@ -480,18 +517,17 @@ class EvolutionRemoteSync:
                             "source_commit": event["source_commit"],
                             "event_id": event["event_id"],
                         }
-
-                    events_by_id[event["event_id"]] = event
-                    processed.add(blob_sha)
-                    state["ingested_total"] = int(state.get("ingested_total", 0)) + 1
                 except Exception as ex:
-                    message = f"{path}: {type(ex).__name__}: {ex}"
-                    errors.append(message)
-                    rejected.add(blob_sha)
-                    rejected_errors[blob_sha] = message
-                    state["rejected_total"] = int(
-                        state.get("rejected_total", 0)
-                    ) + 1
+                    errors.append(
+                        f"{path}: projection {type(ex).__name__}: {ex}"
+                    )
+                    continue
+
+                events_by_id[event["event_id"]] = event
+                processed.add(blob_sha)
+                state["ingested_total"] = int(
+                    state.get("ingested_total", 0)
+                ) + 1
 
             ordered = sorted(
                 events_by_id.values(),
