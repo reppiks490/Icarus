@@ -15,8 +15,15 @@ from icarus_engine.brain_sync import (
 def _remote_event(**overrides):
     payload = {
         "schema": "icarus-mcp-event-v1",
+        "event_id": "flow-test",
+        "at_utc": "2026-10-01T04:23:01Z",
         "category": "AUDIT",
+        "status": "OBSERVED",
+        "severity": "INFO",
+        "summary": "Authenticated flow delta.",
+        "surface": "Adaptive Brain federation fixture",
         "source": "FLOW_AUTOMATION",
+        "paths": ["automation_intelligence/mcp_interface/events/flow-test.json"],
         "execution_authorized": False,
         "retrieval_time_utc": "2026-10-01T04:23:01Z",
         "net_new_delta": "Authenticated flow delta.",
@@ -58,6 +65,15 @@ def _consumer_contract(**overrides):
             "production_decision_authorized": False,
             "automatic_execution_authority": False,
         },
+        "event_validation": {
+            "required_fields_source": "automation_intelligence/mcp_interface/contract.json#required_fields",
+            "strict_v1_required_fields": True,
+            "legacy_relaxed_blob_shas": [],
+            "legacy_rule": (
+                "Only these exact immutable Git blobs may omit producer-required envelope fields. "
+                "No future blob inherits this exception."
+            ),
+        },
         "execution_authorized": False,
         "production_decision_authorized": False,
     }
@@ -71,11 +87,31 @@ def _producer_contract():
         "event_root": "automation_intelligence/mcp_interface/events",
         "event_schema": "icarus-mcp-event-v1",
         "required_categories": ["REPAIR", "AUDIT", "EVOLUTION", "INTEGRATION"],
+        "required_fields": [
+            "event_id",
+            "at_utc",
+            "category",
+            "status",
+            "severity",
+            "summary",
+            "surface",
+            "source",
+            "paths",
+            "evidence",
+            "execution_authorized",
+        ],
         "trading_execution_authorized": False,
     }
 
 
-def _fixture(payload, *, consumer=None, corrupt_event_blob=False, corrupt_consumer_blob=False):
+def _fixture(
+    payload,
+    *,
+    consumer=None,
+    corrupt_event_blob=False,
+    corrupt_consumer_blob=False,
+    allow_legacy_event=False,
+):
     event_raw = (json.dumps(payload, sort_keys=True) + "\n").encode()
     event_sha = _git_blob_sha(event_raw)
     path = f"{REMOTE_ROOT}/flow-test.json"
@@ -89,6 +125,9 @@ def _fixture(payload, *, consumer=None, corrupt_event_blob=False, corrupt_consum
     }]
 
     consumer_doc = consumer or _consumer_contract()
+    if allow_legacy_event:
+        consumer_doc = json.loads(json.dumps(consumer_doc))
+        consumer_doc["event_validation"]["legacy_relaxed_blob_shas"] = [event_sha]
     producer_doc = _producer_contract()
     consumer_raw = (json.dumps(consumer_doc, sort_keys=True) + "\n").encode()
     producer_raw = (json.dumps(producer_doc, sort_keys=True) + "\n").encode()
@@ -242,3 +281,44 @@ def test_remote_sync_fails_closed_on_consumer_contract_blob_substitution(tmp_pat
     assert status["ingested_total"] == 0
     assert "consumer federation contract Git blob SHA mismatch" in status["last_error"]
     assert brain_snapshot(tmp_path)["events"] == []
+
+def test_remote_sync_rejects_new_event_missing_required_producer_envelope(tmp_path):
+    payload = _remote_event()
+    del payload["severity"]
+    fixture = _fixture(payload)
+    sync = BrainRemoteSync(
+        tmp_path,
+        interval_seconds=60,
+        fetch_json=fixture["fetch_json"],
+        fetch_bytes=fixture["fetch_bytes"],
+    )
+    status = sync.sync_once()
+    assert status["status"] == "degraded"
+    assert status["rejected_total"] == 1
+    assert "missing required producer fields: severity" in status["last_error"]
+    assert brain_snapshot(tmp_path)["events"] == []
+
+
+def test_remote_sync_allows_only_exact_legacy_blob_exception(tmp_path):
+    payload = _remote_event()
+    for field in ("event_id", "at_utc", "status", "severity", "summary", "surface", "paths"):
+        del payload[field]
+    fixture = _fixture(payload, allow_legacy_event=True)
+    sync = BrainRemoteSync(
+        tmp_path,
+        interval_seconds=60,
+        fetch_json=fixture["fetch_json"],
+        fetch_bytes=fixture["fetch_bytes"],
+    )
+    status = sync.sync_once()
+    assert status["status"] == "green"
+    assert status["ingested_total"] == 1
+    assert status["truth_contract"]["strict_event_contract"] is True
+    assert status["truth_contract"]["legacy_exception_count"] == 1
+    events = brain_snapshot(tmp_path)["events"]
+    assert any(
+        event.get("details", {}).get("federation_event_validation")
+        == "LEGACY_EXACT_BLOB_EXCEPTION"
+        for event in events
+    )
+
