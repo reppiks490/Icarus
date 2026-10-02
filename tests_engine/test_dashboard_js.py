@@ -558,3 +558,35 @@ def test_dashboard_surfaces_ascendancy_capability_orchestrator():
     assert "claims_forbidden" in ui
     assert "execution_authorized=false" in ui
     assert "production_decision_authorized=false" in ui
+
+
+def test_ascendancy_dashboard_surfaces_open_ended_genome_lab():
+    ui = (REPO / "icarus_engine/ascendancy-ui.js").read_text(encoding="utf-8")
+    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
+
+    assert "/api/ascendancy/genomes" in ui
+    assert "ARCHITECTURE GENOME" in ui
+    assert "SEARCH FRONTIER" in ui
+    assert "EVOLUTION LINEAGE" in ui
+    assert "DIVERSITY / NICHES" in ui
+    assert "COMPILE RECEIPTS" in ui
+    assert "COMPILE BLOCKERS" in ui
+    assert "EVALUATOR CONTRACT" in ui
+    assert "RESOURCE BUDGET" in ui
+    assert "PARENT / CHILD ANCESTRY" in ui
+    assert "CURRENT FRONTIER" in ui
+    assert "STEPPING STONES" in ui
+    assert "RETIRED" in ui
+    assert "REJECTED" in ui
+    assert "UNMEASURED" in ui
+    assert "UNAVAILABLE" in ui
+    assert "latest_evaluation_per_genome_per_contract" in ui
+    assert "novelty_score" in ui
+    assert "execution_authorized=false" in ui
+    assert "production_decision_authorized=false" in ui
+    assert "let loadSeq = 0;" in ui
+    assert "seq !== loadSeq" in ui
+    assert 'p.path == "/api/ascendancy/genomes"' in server
+    assert 'p.path == "/admin/ascendancy/genome"' in server
+    assert 'p.path == "/admin/ascendancy/genome-evaluation"' in server
+    assert 'p.path == "/admin/ascendancy/genome-retire"' in server
