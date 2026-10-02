@@ -88,6 +88,63 @@ def _consumer_contract(**overrides):
             "max_age_seconds": 1800,
             "max_future_skew_seconds": 300,
         },
+        "historical_context": {
+            "mode": "RESEARCH_CONTEXT_ONLY",
+            "direct_candidate_evidence": False,
+            "automatic_candidate_creation": False,
+            "automatic_model_promotion": False,
+            "execution_authorized": False,
+            "production_decision_authorized": False,
+            "sources": [
+                {
+                    "id": "robustness_guardian",
+                    "path": "automation_intelligence/agent_fabric/robustness_guardian/latest.json",
+                    "evidence_status": "HISTORICAL_RESEARCH_EVIDENCE",
+                    "research_context_eligible": True,
+                    "candidate_evidence_eligible": False,
+                    "collection_only": False,
+                    "summary_fields": ["RUN_CORE.findings"],
+                    "execution_authorized": False,
+                },
+                {
+                    "id": "alpha_synthesis",
+                    "path": "automation_intelligence/agent_fabric/alpha_synthesis/latest.json",
+                    "evidence_status": "HISTORICAL_RESEARCH_EVIDENCE",
+                    "research_context_eligible": True,
+                    "candidate_evidence_eligible": False,
+                    "collection_only": False,
+                    "summary_fields": ["RUN_CORE.findings"],
+                    "execution_authorized": False,
+                },
+                {
+                    "id": "apex_council",
+                    "path": "automation_intelligence/agent_fabric/apex_council/latest.json",
+                    "evidence_status": "HISTORICAL_RESEARCH_EVIDENCE",
+                    "research_context_eligible": True,
+                    "candidate_evidence_eligible": False,
+                    "collection_only": False,
+                    "summary_fields": ["RUN_CORE.findings"],
+                    "execution_authorized": False,
+                },
+                {
+                    "id": "flow_microstructure",
+                    "path": "automation_intelligence/flow/latest.json",
+                    "evidence_status": "HISTORICAL_COLLECTION_EVIDENCE",
+                    "research_context_eligible": True,
+                    "candidate_evidence_eligible": False,
+                    "collection_only": True,
+                    "summary_fields": ["NET_NEW_DELTA", "observations"],
+                    "execution_authorized": False,
+                },
+            ],
+            "truth_contract": {
+                "foreign_repository_state_is_context_not_native_truth": True,
+                "historical_context_never_bypasses_foundry": True,
+                "historical_context_never_bypasses_evaluator": True,
+                "historical_context_never_grants_shadow_qualification": True,
+                "historical_context_never_grants_execution_authority": True,
+            },
+        },
         "event_validation": {
             "required_fields_source": "automation_intelligence/mcp_interface/contract.json#required_fields",
             "strict_v1_required_fields": True,
@@ -125,6 +182,49 @@ def _producer_contract():
         ],
         "trading_execution_authorized": False,
     }
+
+
+def _historical_artifact(
+    lane,
+    *,
+    path,
+    evidence_status,
+    collection_only=False,
+    candidate_evidence_eligible=False,
+    execution_authorized=False,
+):
+    artifact = {
+        "lane": lane,
+        "artifact_kind": "HISTORICAL_LATEST",
+        "path": path,
+        "run_id": f"{lane}-20260929T180500Z",
+        "run_status": "RUN_PERSISTED",
+        "evidence_status": evidence_status,
+        "research_context_eligible": True,
+        "candidate_evidence_eligible": candidate_evidence_eligible,
+        "summary": {
+            "built_changes": [],
+            "data_gaps": ["fixture gap"] if collection_only else [],
+            "findings": ["bounded historical context"],
+            "next": "revalidate through foundry/evaluator",
+            "net_new_delta_keys": ["btc"] if collection_only else [],
+            "observation_keys": ["BTC_FIXTURE"] if collection_only else [],
+            "source_provenance_count": 1 if collection_only else 0,
+        },
+        "lineage": {
+            "base_main_sha": None if collection_only else "1" * 40,
+            "final_main_sha": None if collection_only else "2" * 40,
+            "run_core_sha256": None if collection_only else "3" * 64,
+            "history_blob_sha": "4" * 40,
+            "ledger_blob_sha": None,
+            "history_mode": "primary_immutable" if collection_only else "primary_immutable_file",
+        },
+        "execution_authorized": execution_authorized,
+    }
+    artifact["artifact_id"] = __import__("hashlib").sha256(
+        json.dumps(artifact, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
+    ).hexdigest()
+    return artifact
 
 
 def _peer_packet(**overrides):
@@ -198,6 +298,19 @@ def _peer_packet(**overrides):
                 "execution_authorized": False,
             },
         ],
+        "historical_artifacts": [
+            _historical_artifact(
+                "robustness_guardian",
+                path="automation_intelligence/agent_fabric/robustness_guardian/latest.json",
+                evidence_status="HISTORICAL_RESEARCH_EVIDENCE",
+            ),
+            _historical_artifact(
+                "flow_microstructure",
+                path="automation_intelligence/flow/latest.json",
+                evidence_status="HISTORICAL_COLLECTION_EVIDENCE",
+                collection_only=True,
+            ),
+        ],
         "mcp_interface": {
             "schema_version": "icarus-mcp-interface-contract-v1",
             "event_root": "automation_intelligence/mcp_interface/events",
@@ -212,6 +325,7 @@ def _peer_packet(**overrides):
             "remote_sibling_state_is_never_inferred": True,
             "exact_source_commit_required": True,
             "execution_authority_never_transfers_between_repositories": True,
+            "historical_context_never_bypasses_foundry_or_evaluator": True,
         },
         "execution_authorized": False,
         "production_decision_authorized": False,
@@ -356,6 +470,17 @@ def test_remote_sync_ingests_custom_agent_and_owned_subsystem_events(tmp_path):
     assert status["peer_substantive_lane_count"] == 1
     assert status["peer_durability_only_lane_count"] == 1
     assert len(status["peer_lanes"]) == 3
+    assert status["truth_contract"]["peer_historical_context_mode"] == "RESEARCH_CONTEXT_ONLY"
+    assert status["truth_contract"]["peer_historical_context_source_count"] == 4
+    assert status["truth_contract"]["peer_historical_context_candidate_evidence"] is False
+    assert status["peer_historical_context_count"] == 1
+    assert status["peer_historical_collection_count"] == 1
+    assert len(status["peer_historical_artifacts"]) == 2
+    assert all(
+        artifact["candidate_evidence_eligible"] is False
+        and artifact["execution_authorized"] is False
+        for artifact in status["peer_historical_artifacts"]
+    )
     assert status["execution_authorized"] is False
 
     snap = brain_snapshot(tmp_path, remote_sync=status)
@@ -673,3 +798,93 @@ def test_remote_sync_rejects_peer_freshness_contract_drift_before_event_ingest(t
     assert status["status"] == "degraded"
     assert status["ingested_total"] == 0
     assert "peer packet max age mismatch" in status["last_error"]
+
+def _rehash_peer_packet(packet):
+    unsigned = dict(packet)
+    unsigned.pop("packet_id", None)
+    packet["packet_id"] = __import__("hashlib").sha256(
+        json.dumps(unsigned, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
+    ).hexdigest()
+    return packet
+
+
+def test_remote_sync_rejects_historical_context_candidate_evidence_promotion(tmp_path):
+    packet = _peer_packet()
+    packet["historical_artifacts"][0] = _historical_artifact(
+        "robustness_guardian",
+        path="automation_intelligence/agent_fabric/robustness_guardian/latest.json",
+        evidence_status="HISTORICAL_RESEARCH_EVIDENCE",
+        candidate_evidence_eligible=True,
+    )
+    _rehash_peer_packet(packet)
+    fixture = _fixture(_remote_event(), peer=packet)
+    sync = BrainRemoteSync(
+        tmp_path,
+        interval_seconds=60,
+        fetch_json=fixture["fetch_json"],
+        fetch_bytes=fixture["fetch_bytes"],
+        now_utc=fixture["peer_now_utc"],
+    )
+    status = sync.sync_once()
+    assert status["status"] == "degraded"
+    assert status["peer_historical_artifacts"] == []
+    assert status["ingested_total"] == 1
+    assert "attempts candidate-evidence promotion" in status["last_error"]
+
+
+def test_remote_sync_rejects_undeclared_historical_artifact_path(tmp_path):
+    packet = _peer_packet()
+    packet["historical_artifacts"][0] = _historical_artifact(
+        "robustness_guardian",
+        path="automation_intelligence/agent_fabric/robustness_guardian/other.json",
+        evidence_status="HISTORICAL_RESEARCH_EVIDENCE",
+    )
+    _rehash_peer_packet(packet)
+    fixture = _fixture(_remote_event(), peer=packet)
+    sync = BrainRemoteSync(
+        tmp_path,
+        interval_seconds=60,
+        fetch_json=fixture["fetch_json"],
+        fetch_bytes=fixture["fetch_bytes"],
+        now_utc=fixture["peer_now_utc"],
+    )
+    status = sync.sync_once()
+    assert status["status"] == "degraded"
+    assert status["peer_historical_artifacts"] == []
+    assert status["ingested_total"] == 1
+    assert "path mismatch" in status["last_error"]
+
+
+def test_remote_sync_rejects_historical_artifact_hash_substitution(tmp_path):
+    packet = _peer_packet()
+    packet["historical_artifacts"][0]["summary"]["findings"] = ["tampered after artifact hash"]
+    _rehash_peer_packet(packet)
+    fixture = _fixture(_remote_event(), peer=packet)
+    sync = BrainRemoteSync(
+        tmp_path,
+        interval_seconds=60,
+        fetch_json=fixture["fetch_json"],
+        fetch_bytes=fixture["fetch_bytes"],
+        now_utc=fixture["peer_now_utc"],
+    )
+    status = sync.sync_once()
+    assert status["status"] == "degraded"
+    assert status["peer_historical_artifacts"] == []
+    assert "artifact_id mismatch" in status["last_error"]
+
+
+def test_remote_sync_rejects_historical_contract_authority_escalation(tmp_path):
+    consumer = _consumer_contract()
+    consumer["historical_context"]["automatic_candidate_creation"] = True
+    fixture = _fixture(_remote_event(), consumer=consumer)
+    sync = BrainRemoteSync(
+        tmp_path,
+        interval_seconds=60,
+        fetch_json=fixture["fetch_json"],
+        fetch_bytes=fixture["fetch_bytes"],
+        now_utc=fixture["peer_now_utc"],
+    )
+    status = sync.sync_once()
+    assert status["status"] == "degraded"
+    assert status["ingested_total"] == 0
+    assert "historical context attempts authority escalation" in status["last_error"]
