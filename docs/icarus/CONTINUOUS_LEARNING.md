@@ -144,6 +144,9 @@ Overlapping forecast windows are purged before calibration fitting and drift eva
 
 This prevents many correlated forecasts over the same target interval from masquerading as independent evidence.
 
+### Proper-score diagnostics
+
+Exact label/revision scorecards compute reliability diagnostics only from the effective non-overlapping classified sample: adaptive equal-count Expected Calibration Error (ECE), maximum calibration error, mean logarithmic loss, climatology Brier score, and Brier skill score. The adaptive bin count is `ceil(sqrt(n))`, capped at 10, so small samples remain auditable without pretending sparse fixed bins are precise. These metrics are diagnostic evidence only; they do not rewrite forecast probabilities or authorize execution. A zero mean calibration gap is therefore not treated as proof of calibration when confidence errors cancel across probability levels.
 ### Refresh batching
 
 A validated calibrator is held stable until a minimum new settled-sample batch accumulates. This creates a genuine out-of-sample period instead of refitting after every outcome.
