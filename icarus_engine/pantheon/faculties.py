@@ -842,7 +842,11 @@ def score_veritas_reconciliation(
     }
 
 
-def lethe(signals: Mapping[str, Any], observed_at: str | None = None) -> dict[str, Any]:
+def lethe(
+    signals: Mapping[str, Any],
+    observed_at: str | None = None,
+    evidence_refs: list[str] | None = None,
+) -> dict[str, Any]:
     """Decay stale research memory while allowing evidence-gated regime resurrection.
 
     LETHE never deletes immutable evidence. It computes a time-aware trust surface
@@ -881,6 +885,7 @@ def lethe(signals: Mapping[str, Any], observed_at: str | None = None) -> dict[st
 
     observation_text = iso_aware(observed_at, "observed_at")
     observation_time = datetime.fromisoformat(observation_text.replace("Z", "+00:00"))
+    observation_evidence = set(evidence_refs or [])
     rows = []
     seen = set()
     total_base = 0.0
@@ -923,6 +928,7 @@ def lethe(signals: Mapping[str, Any], observed_at: str | None = None) -> dict[st
 
         revalidated_at = None
         revalidation_freshness = 0.0
+        revalidation_evidence: list[str] = []
         if revalidation_strength > 0.0:
             if not item.get("revalidated_at"):
                 raise ValueError(f"knowledge_memory[{i}].revalidated_at is required when revalidation_strength is positive")
@@ -932,6 +938,20 @@ def lethe(signals: Mapping[str, Any], observed_at: str | None = None) -> dict[st
                 raise ValueError(f"knowledge_memory[{i}].revalidated_at cannot precede learned_at")
             if revalidated_time > observation_time:
                 raise ValueError(f"knowledge_memory[{i}].revalidated_at cannot exceed observation time")
+            raw_evidence = item.get("revalidation_evidence")
+            if not isinstance(raw_evidence, list) or not 1 <= len(raw_evidence) <= 16:
+                raise ValueError(f"knowledge_memory[{i}].revalidation_evidence must contain 1-16 items")
+            for j, ref in enumerate(raw_evidence):
+                if not isinstance(ref, str) or not ref.strip():
+                    raise ValueError(f"knowledge_memory[{i}].revalidation_evidence[{j}] must be a non-empty string")
+                normalized_ref = ref.strip()
+                if len(normalized_ref) > 700:
+                    raise ValueError(f"knowledge_memory[{i}].revalidation_evidence[{j}] exceeds 700 characters")
+                if normalized_ref not in observation_evidence:
+                    raise ValueError(f"knowledge_memory[{i}].revalidation_evidence must reference current observation evidence")
+                revalidation_evidence.append(normalized_ref)
+            if len(set(revalidation_evidence)) != len(revalidation_evidence):
+                raise ValueError(f"knowledge_memory[{i}].revalidation_evidence must be unique")
             revalidation_age = max(0.0, (observation_time - revalidated_time).total_seconds())
             revalidation_freshness = 0.5 ** (revalidation_age / half_life)
 
@@ -941,11 +961,28 @@ def lethe(signals: Mapping[str, Any], observed_at: str | None = None) -> dict[st
             * revalidation_strength
             * revalidation_freshness
         )
-        effective_retention = max(temporal_retention, resurrection_support)
+        qualified_resurrection_support = (
+            resurrection_support
+            if (
+                revalidation_evidence
+                and mechanism_fidelity >= 0.50
+                and revalidation_strength >= 0.50
+            )
+            else 0.0
+        )
+        effective_retention = max(temporal_retention, qualified_resurrection_support)
         effective_confidence = base_confidence * effective_retention
         stale = temporal_retention < 0.35
-        resurrection_candidate = temporal_retention < 0.25 and resurrection_support >= 0.35
-        retirement_candidate = effective_confidence < 0.15 and resurrection_support < 0.20
+        resurrection_candidate = (
+            base_confidence > 0.0
+            and temporal_retention < 0.25
+            and qualified_resurrection_support >= 0.35
+        )
+        retirement_candidate = (
+            base_confidence > 0.0
+            and effective_confidence < 0.15
+            and qualified_resurrection_support < 0.20
+        )
 
         if resurrection_candidate:
             resurrection_candidates.append(memory_id)
@@ -955,7 +992,7 @@ def lethe(signals: Mapping[str, Any], observed_at: str | None = None) -> dict[st
         total_base += base_confidence
         total_effective += effective_confidence
         total_temporal_loss += base_confidence * (1.0 - temporal_retention)
-        total_resurrection += base_confidence * max(0.0, resurrection_support - temporal_retention)
+        total_resurrection += base_confidence * max(0.0, qualified_resurrection_support - temporal_retention)
         rows.append({
             "memory_id": memory_id,
             "learned_at": learned_at,
@@ -968,7 +1005,9 @@ def lethe(signals: Mapping[str, Any], observed_at: str | None = None) -> dict[st
             "revalidation_strength": revalidation_strength,
             "revalidated_at": revalidated_at,
             "revalidation_freshness": revalidation_freshness,
+            "revalidation_evidence": revalidation_evidence,
             "resurrection_support": resurrection_support,
+            "qualified_resurrection_support": qualified_resurrection_support,
             "effective_retention": effective_retention,
             "effective_confidence": effective_confidence,
             "stale": stale,
@@ -991,7 +1030,8 @@ def lethe(signals: Mapping[str, Any], observed_at: str | None = None) -> dict[st
         "stale_memory_count": sum(1 for row in rows if row["stale"]),
         "resurrection_candidates": sorted(resurrection_candidates),
         "retirement_candidates": sorted(retirement_candidates),
-        "semantics": "time-decayed research-memory trust with evidence-gated regime resurrection; raw evidence is never deleted and this faculty never authorizes execution",
+        "resurrection_evidence_bound_to_observation": True,
+        "semantics": "time-decayed research-memory trust with observation-bound evidence-gated regime resurrection; raw evidence is never deleted and this faculty never authorizes execution",
     }
 
 
@@ -1109,6 +1149,7 @@ def evaluate_faculties(
     signals: Mapping[str, Any],
     observation_id: str,
     observed_at: str | None = None,
+    evidence_refs: list[str] | None = None,
 ) -> dict[str, Any]:
     ns = nullspace(signals)
     gd = godel(signals)
@@ -1118,7 +1159,7 @@ def evaluate_faculties(
     mt = mint(signals)
     ec = echo(signals)
     vt = veritas(signals, observation_id)
-    lt = lethe(signals, observed_at)
+    lt = lethe(signals, observed_at, evidence_refs)
     ar = archon(signals, gd, ec)
     states = {
         "nullspace": ns,

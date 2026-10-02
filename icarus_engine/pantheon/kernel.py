@@ -284,6 +284,7 @@ class PantheonKernel:
             normalized["signals"],
             observation_id,
             normalized["observed_at"],
+            normalized["evidence"],
         )
         aether = self.swarm.evaluate(
             observation_id,
@@ -314,6 +315,7 @@ class PantheonKernel:
                 "directional_success_without_mechanism_fidelity_is_not_reinforced": True,
                 "stale_research_memory_is_decayed_not_treated_as_timeless": True,
                 "dormant_memory_requires_fresh_mechanism_revalidation": True,
+                "memory_resurrection_evidence_is_bound_to_observation_identity": True,
                 "missing_inputs_produce_abstention": True,
                 "new_concepts_begin_as_hypotheses": True,
                 "execution_requires_separate_hard_risk_kernel": True,
@@ -1131,6 +1133,7 @@ class PantheonKernel:
                 "oracle_parallax_dreamstate_ownership_preserved": True,
                 "psi_identity_distinct_from_oracle": True,
                 "research_memory_decay_never_mutates_raw_evidence": True,
+                "research_memory_resurrection_requires_observation_bound_evidence": True,
                 "risk_kernel_remains_external_hard_gate": True,
                 "aether_evolution_requires_observed_claim_outcomes": True,
                 "cognitive_genesis_never_auto_creates_production_code": True,

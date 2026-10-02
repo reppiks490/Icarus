@@ -560,3 +560,20 @@ automatic strategy resurrection.
 The design is adjacent to continual-learning and concept-drift research, but its
 ICARUS role is narrower: revival is bound to fresh mechanism evidence while the
 immutable historical evidence remains intact.
+
+
+### Observation-bound resurrection evidence
+
+LETHE resurrection is now provenance-bound to the immutable PANTHEON
+observation. Any positive revalidation strength must carry 1–16
+`revalidation_evidence` references, and every reference must already exist in
+that observation's explicit evidence list. The same evidence list is part of the
+observation identity, so a caller cannot silently swap resurrection evidence
+after the fact.
+
+Temporal similarity alone is not enough. LETHE computes a raw resurrection
+support value for diagnosis, but only a **qualified resurrection support** may
+restore research trust. Qualification requires observation-bound evidence plus
+at least 0.50 mechanism fidelity and 0.50 revalidation strength. Weak or
+unproven mechanism evidence therefore cannot revive a stale memory even when
+the current regime looks nearly identical.

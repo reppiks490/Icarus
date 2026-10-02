@@ -715,6 +715,7 @@ def test_lethe_decays_stale_memory_and_requires_fresh_causal_revalidation(tmp_pa
             "mechanism_fidelity": 0.90,
             "revalidation_strength": 0.80,
             "revalidated_at": "2026-10-01T06:00:00Z",
+            "revalidation_evidence": ["fixture:synthetic-shadow"],
         },
         {
             "memory_id": "stale-unvalidated",
@@ -739,6 +740,8 @@ def test_lethe_decays_stale_memory_and_requires_fresh_causal_revalidation(tmp_pa
     revived = next(row for row in state["memory_items"] if row["memory_id"] == "stale-but-revalidated")
     dead = next(row for row in state["memory_items"] if row["memory_id"] == "stale-unvalidated")
     assert revived["resurrection_support"] == pytest.approx(0.95 * 0.90 * 0.80)
+    assert revived["qualified_resurrection_support"] == pytest.approx(0.95 * 0.90 * 0.80)
+    assert revived["revalidation_evidence"] == ["fixture:synthetic-shadow"]
     assert revived["effective_confidence"] > 0.55
     assert dead["effective_confidence"] < 0.01
     roles = [row["role"] for row in swarm["agents"]]
@@ -792,6 +795,51 @@ def test_lethe_fails_closed_on_noncausal_or_invalid_memory(tmp_path, mutator, ma
     payload["signals"] = dict(payload["signals"], knowledge_memory=[item])
     with pytest.raises(ValueError, match=match):
         PantheonKernel(tmp_path).record_observation(payload)
+
+
+def test_lethe_resurrection_requires_observation_bound_evidence(tmp_path):
+    payload = _payload(observation_id="pan-lethe-evidence", observed_at="2026-10-01T06:00:00Z")
+    base = {
+        "memory_id": "m-evidence",
+        "base_confidence": 0.9,
+        "learned_at": "2026-09-30T06:00:00Z",
+        "half_life_seconds": 3600.0,
+        "regime_similarity": 0.95,
+        "mechanism_fidelity": 0.90,
+        "revalidation_strength": 0.80,
+        "revalidated_at": "2026-10-01T06:00:00Z",
+    }
+
+    payload["signals"] = dict(payload["signals"], knowledge_memory=[dict(base)])
+    with pytest.raises(ValueError, match="revalidation_evidence must contain 1-16"):
+        PantheonKernel(tmp_path / "missing").record_observation(payload)
+
+    unbound = dict(base, revalidation_evidence=["unbound:evidence"])
+    payload["signals"] = dict(payload["signals"], knowledge_memory=[unbound])
+    with pytest.raises(ValueError, match="must reference current observation evidence"):
+        PantheonKernel(tmp_path / "unbound").record_observation(payload)
+
+
+def test_lethe_weak_mechanism_fidelity_cannot_restore_stale_trust(tmp_path):
+    payload = _payload(observation_id="pan-lethe-weak-mechanism", observed_at="2026-10-01T06:00:00Z")
+    payload["signals"] = dict(payload["signals"], knowledge_memory=[{
+        "memory_id": "weak-mechanism",
+        "base_confidence": 0.9,
+        "learned_at": "2026-09-30T06:00:00Z",
+        "half_life_seconds": 3600.0,
+        "regime_similarity": 1.0,
+        "mechanism_fidelity": 0.40,
+        "revalidation_strength": 1.0,
+        "revalidated_at": "2026-10-01T06:00:00Z",
+        "revalidation_evidence": ["fixture:synthetic-shadow"],
+    }])
+    state = PantheonKernel(tmp_path).record_observation(payload)["analysis"]["faculties"]["lethe"]
+    item = state["memory_items"][0]
+    assert item["resurrection_support"] == pytest.approx(0.40)
+    assert item["qualified_resurrection_support"] == pytest.approx(0.0)
+    assert item["resurrection_candidate"] is False
+    assert state["resurrection_pressure"] == pytest.approx(0.0)
+    assert item["effective_confidence"] < 0.01
 
 
 def test_lethe_rejects_duplicate_memory_identity(tmp_path):
