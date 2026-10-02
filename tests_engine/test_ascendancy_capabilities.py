@@ -7,7 +7,7 @@ import urllib.request
 
 import pytest
 
-from icarus_engine.ascendancy.capabilities import capability_contract, capability_snapshot
+from icarus_engine.ascendancy.capabilities import capability_contract, capability_snapshot, route_capabilities
 from icarus_engine.runtime import Journal, Portfolio
 from icarus_engine.server import serve
 
@@ -96,3 +96,36 @@ def test_ascendancy_capability_api_is_authenticated_and_truthful(ascendancy_http
     assert body["blocked_count"] >= 2
     assert body["execution_authorized"] is False
     assert body["production_decision_authorized"] is False
+
+
+def test_capability_router_fails_closed_and_exposes_invocation_limits():
+    futures = route_capabilities(["futures_trades"])
+    assert futures["status"] == "ROUTABLE"
+    assert futures["selected"][0]["id"] == "massive"
+    assert futures["execution_authorized"] is False
+    assert futures["production_decision_authorized"] is False
+
+    literature = route_capabilities(["literature_search"])
+    assert literature["status"] == "BLOCKED_NO_AVAILABLE_PROVIDER"
+    assert literature["selected"] == []
+    assert {row["id"] for row in literature["blocked"]} == {"scite"}
+
+    web = route_capabilities(["web_search"])
+    web_ids = {row["id"] for row in web["selected"]}
+    assert {"firecrawl", "parallel-search"} <= web_ids
+
+    for row in capability_snapshot()["providers"]:
+        assert row["invocation_surface"]
+        assert row["runtime_access"] in {"EXTERNAL_ORCHESTRATOR_REQUIRED", "LOCAL_SKILL_CONTRACT"}
+        assert row["cost_class"]
+        assert row["when_to_use"]
+
+
+def test_ascendancy_json_resources_are_packaged():
+    import tomllib
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    config = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
+    package_data = config["tool"]["setuptools"]["package-data"]
+    assert "*.json" in package_data["icarus_engine.ascendancy"]
