@@ -30,6 +30,12 @@ _ALLOWED_EVIDENCE = {
     "INCOMPLETE_OR_UNVERIFIED",
     "UNMEASURED",
 }
+_ALLOWED_HISTORICAL_EVIDENCE = {
+    "HISTORICAL_RESEARCH_EVIDENCE",
+    "HISTORICAL_COLLECTION_EVIDENCE",
+    "HISTORICAL_STATE_ONLY",
+    "HISTORICAL_UNVERIFIED",
+}
 _LOCK = threading.RLock()
 
 
@@ -136,6 +142,82 @@ def _normalize_lane(value: Any) -> dict[str, Any]:
     }
 
 
+def _optional_sha(value: Any, name: str, size: int) -> str | None:
+    if value in (None, ""):
+        return None
+    return _sha(value, name, size)
+
+
+def _normalize_historical_artifact(value: Any) -> dict[str, Any]:
+    if not isinstance(value, Mapping):
+        raise ValueError("historical peer artifact must be an object")
+    _assert_research_only(value, "historical peer artifact")
+
+    if value.get("candidate_evidence_eligible") is not False:
+        raise ValueError(
+            "historical peer artifact candidate_evidence_eligible must remain false"
+        )
+    status = _text(
+        value.get("evidence_status"), "historical evidence_status", 64
+    ).upper()
+    if status not in _ALLOWED_HISTORICAL_EVIDENCE:
+        raise ValueError(f"unsupported historical evidence_status: {status}")
+
+    research_eligible = value.get("research_context_eligible")
+    if not isinstance(research_eligible, bool):
+        raise ValueError("research_context_eligible must be boolean")
+    expected_research = status in {
+        "HISTORICAL_RESEARCH_EVIDENCE",
+        "HISTORICAL_COLLECTION_EVIDENCE",
+    }
+    if research_eligible is not expected_research:
+        raise ValueError(
+            "research_context_eligible conflicts with historical evidence_status"
+        )
+
+    artifact_kind = _text(value.get("artifact_kind"), "artifact_kind", 80).upper()
+    if artifact_kind != "HISTORICAL_LATEST":
+        raise ValueError("unsupported historical artifact_kind")
+
+    summary = value.get("summary")
+    if not isinstance(summary, Mapping):
+        raise ValueError("historical artifact summary must be an object")
+    summary = dict(summary)
+    _canonical(summary)
+
+    lineage_value = value.get("lineage")
+    if not isinstance(lineage_value, Mapping):
+        raise ValueError("historical artifact lineage must be an object")
+    lineage = dict(lineage_value)
+    for key in ("base_main_sha", "final_main_sha", "history_blob_sha", "ledger_blob_sha"):
+        lineage[key] = _optional_sha(lineage.get(key), key, 40)
+    lineage["run_core_sha256"] = _optional_sha(
+        lineage.get("run_core_sha256"), "run_core_sha256", 64
+    )
+
+    artifact_id = _sha(value.get("artifact_id"), "artifact_id", 64)
+    unsigned = {k: v for k, v in value.items() if k != "artifact_id"}
+    if artifact_id != _hash(unsigned):
+        raise ValueError("artifact_id integrity mismatch")
+
+    return {
+        "artifact_id": artifact_id,
+        "lane": _text(value.get("lane"), "historical lane", 160),
+        "artifact_kind": artifact_kind,
+        "path": _text(value.get("path"), "historical artifact path", 500),
+        "run_id": value.get("run_id"),
+        "run_status": value.get("run_status"),
+        "evidence_status": status,
+        "research_context_eligible": research_eligible,
+        "candidate_evidence_eligible": False,
+        "summary": summary,
+        "lineage": lineage,
+        "foreign_evidence_only": True,
+        "requires_foundry_and_evaluator": True,
+        "execution_authorized": False,
+    }
+
+
 def normalize_peer_packet(body: Mapping[str, Any]) -> dict[str, Any]:
     """Validate one packet emitted by a peer ICARUS repository."""
     if not isinstance(body, Mapping):
@@ -175,6 +257,22 @@ def normalize_peer_packet(body: Mapping[str, Any]) -> dict[str, Any]:
         raise ValueError("duplicate peer lane name")
     lanes.sort(key=lambda row: row["name"])
 
+    raw_historical = body.get("historical_artifacts") or []
+    if (
+        not isinstance(raw_historical, Sequence)
+        or isinstance(raw_historical, (str, bytes))
+    ):
+        raise ValueError("historical_artifacts must be a list")
+    historical_artifacts = [
+        _normalize_historical_artifact(x) for x in raw_historical
+    ]
+    artifact_ids = [x["artifact_id"] for x in historical_artifacts]
+    if len(artifact_ids) != len(set(artifact_ids)):
+        raise ValueError("duplicate historical artifact_id")
+    historical_artifacts.sort(
+        key=lambda row: (row["lane"], str(row.get("run_id") or ""), row["artifact_id"])
+    )
+
     mcp = body.get("mcp_interface")
     if not isinstance(mcp, Mapping):
         raise ValueError("mcp_interface must be an object")
@@ -195,6 +293,12 @@ def normalize_peer_packet(body: Mapping[str, Any]) -> dict[str, Any]:
     for key in required_truths:
         if truth.get(key) is not True:
             raise ValueError(f"peer truth contract must affirm {key}")
+    if historical_artifacts and truth.get(
+        "historical_context_never_bypasses_foundry_or_evaluator"
+    ) is not True:
+        raise ValueError(
+            "peer truth contract must affirm historical_context_never_bypasses_foundry_or_evaluator"
+        )
 
     normalized = {
         "schema_version": SCHEMA_VERSION,
@@ -205,6 +309,7 @@ def normalize_peer_packet(body: Mapping[str, Any]) -> dict[str, Any]:
         "source_contracts": contracts,
         "control_plane": control,
         "lanes": lanes,
+        "historical_artifacts": historical_artifacts,
         "mcp_interface": mcp,
         "truth_contract": dict(truth),
         "execution_authorized": False,
@@ -317,6 +422,22 @@ class PeerRepositoryBridge:
             for x in lanes
             if isinstance(x, Mapping) and x.get("evidence_status") == "DURABILITY_ONLY"
         )
+        historical = [
+            dict(x)
+            for x in (packet.get("historical_artifacts") or [])
+            if isinstance(x, Mapping)
+        ]
+        historical_context = [
+            x for x in historical if x.get("research_context_eligible") is True
+        ]
+        historical_candidate = [
+            x for x in historical if x.get("candidate_evidence_eligible") is True
+        ]
+        historical_lanes = sorted({
+            str(x.get("lane") or "")
+            for x in historical_context
+            if str(x.get("lane") or "")
+        })
         return {
             **dict(packet),
             "lane_count": len(lanes),
@@ -324,6 +445,11 @@ class PeerRepositoryBridge:
             "durability_only_lane_count": len(durability),
             "candidate_evidence_eligible_lanes": eligible,
             "durability_only_lanes": durability,
+            "historical_artifact_count": len(historical),
+            "historical_research_context_count": len(historical_context),
+            "historical_candidate_evidence_count": len(historical_candidate),
+            "historical_research_lanes": historical_lanes,
+            "historical_artifacts": historical,
             "foreign_evidence_only": True,
         }
 
@@ -360,6 +486,8 @@ class PeerRepositoryBridge:
                 "peer_state_is_foreign_evidence_only": True,
                 "durability_only_never_enters_candidate_evidence": True,
                 "substantive_worker_evidence_still_requires_normal_foundry_and_evaluator_gates": True,
+                "historical_context_never_bypasses_foundry_or_evaluator": True,
+                "historical_artifacts_never_become_candidate_evidence_directly": True,
                 "peer_repository_authority_never_transfers": True,
                 "historical_packets_are_append_only": True,
             },
