@@ -589,11 +589,45 @@ def brain_snapshot(
     proof_status: Mapping[str, Any] | None = None,
     latency_status: Mapping[str, Any] | None = None,
     source_reliability: Mapping[str, Any] | None = None,
+    qualification_receipts: Mapping[str, Any] | None = None,
     limit: int = 1000,
 ) -> dict[str, Any]:
     """Build the operator brain state from measured local evidence only."""
     events, journal_errors = _read_events(base_dir, max(1, min(5000, int(limit))))
     candidates = _latest_candidates(events)
+    qualification = dict(qualification_receipts) if isinstance(qualification_receipts, Mapping) else {
+        "required_gates": list(REQUIRED_CANDIDATE_GATES),
+        "candidate_revision_count": 0,
+        "qualification_ready_count": 0,
+        "candidates": [],
+        "execution_authorized": False,
+        "production_decision_authorized": False,
+    }
+    qualification_rows = qualification.get("candidates") if isinstance(qualification.get("candidates"), list) else []
+    qualification_by_revision = {}
+    for row in qualification_rows:
+        if not isinstance(row, Mapping):
+            continue
+        key = (
+            str(row.get("candidate_id") or ""),
+            str(row.get("candidate_source_repo") or ""),
+            str(row.get("candidate_source_commit") or ""),
+        )
+        qualification_by_revision[key] = dict(row)
+    for candidate in candidates:
+        key = (
+            str(candidate.get("candidate_id") or ""),
+            str(candidate.get("source_repo") or ""),
+            str(candidate.get("source_commit") or ""),
+        )
+        candidate["qualification_receipts"] = qualification_by_revision.get(key, {
+            "receipt_count": 0,
+            "qualification_ready": False,
+            "recommended_stage": "validated",
+            "blockers": ["no exact qualification receipt state recorded"],
+            "execution_authorized": False,
+            "production_decision_authorized": False,
+        })
     regimes = _market_regimes(market_status)
 
     routes = []
@@ -742,6 +776,7 @@ def brain_snapshot(
         "evidence_graph": evidence_graph,
         "latency_telemetry": latency,
         "source_reliability": reliability,
+        "qualification_receipts": qualification,
         "evidence_tournaments": tournaments,
         "learning": {
             "brain_events_total": len(events),
@@ -756,6 +791,8 @@ def brain_snapshot(
             "research_status_present": isinstance(research_status, Mapping),
             "incubator_proposals": incubator["proposal_count"],
             "incubator_review_required": incubator["review_required"],
+            "qualification_ready_revisions": int(qualification.get("qualification_ready_count") or 0),
+            "qualification_candidate_revisions": int(qualification.get("candidate_revision_count") or 0),
             "journal_errors": journal_errors,
         },
         "candidate_gate": {
