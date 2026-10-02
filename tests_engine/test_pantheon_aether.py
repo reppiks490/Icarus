@@ -1214,6 +1214,7 @@ def test_pantheon_is_visible_in_trader_interface():
     assert "AETHER alpha food web" in ui
     assert "Cognitive genesis" in ui
     assert "Echo risk" in ui
+    assert "claim-evidence echo" in ui
     assert "Memory staleness" in ui
     assert "Resurrection pressure" in ui
     assert "Proof gap" in ui
@@ -1462,6 +1463,91 @@ def test_aether_claim_protocol_preserves_independence_and_disagreement(tmp_path)
     assert state["deliberation"]["execution_authorized"] is False
     assert state["deliberation"]["production_decision_authorized"] is False
     assert kernel.snapshot()["counts"]["agent_claims"] == 4
+
+
+def test_aether_claim_evidence_echo_detects_shared_ancestry_after_blind_round(tmp_path):
+    kernel = PantheonKernel(tmp_path, swarm=AetherSwarm(threshold=0.0, max_agents=4))
+    observation = kernel.record_observation(_payload(observation_id="pan-claim-echo"))
+    agents = observation["analysis"]["aether"]["agents"]
+
+    state = observation
+    for agent in agents:
+        state = kernel.record_agent_claim({
+            "observation_id": observation["observation_id"],
+            "agent_id": agent["agent_id"],
+            "peer_context_used": False,
+            "claim": {
+                "thesis": f"{agent['role']} bullish thesis",
+                "direction": "long",
+                "confidence": 0.8,
+                "falsifier": "counterexample",
+                "evidence": ["shared:orderbook:nq", "shared:qqq:1m"],
+            },
+        })
+
+    d = state["deliberation"]
+    assert d["blind_first_pass_complete"] is True
+    assert d["claim_evidence_echo_visible"] is True
+    assert d["effective_claim_evidence_independence"] == pytest.approx(0.25)
+    assert d["claim_evidence_echo_risk"] == pytest.approx(0.75)
+    assert d["effective_independent_agent_count"] == pytest.approx(1.0)
+    assert d["independence_adjusted_direction_support"]["long"] == pytest.approx(1.0)
+    assert d["claim_consensus_illusion_candidate"] is True
+    assert len(d["duplicated_claim_evidence_pairs"]) == 6
+    assert all(value == pytest.approx(0.25) for value in d["claim_evidence_independence"].values())
+
+
+def test_aether_claim_evidence_echo_preserves_independent_blind_evidence(tmp_path):
+    kernel = PantheonKernel(tmp_path, swarm=AetherSwarm(threshold=0.0, max_agents=4))
+    observation = kernel.record_observation(_payload(observation_id="pan-claim-independent-evidence"))
+
+    state = observation
+    for i, agent in enumerate(observation["analysis"]["aether"]["agents"]):
+        state = kernel.record_agent_claim({
+            "observation_id": observation["observation_id"],
+            "agent_id": agent["agent_id"],
+            "peer_context_used": False,
+            "claim": {
+                "thesis": f"{agent['role']} thesis",
+                "direction": "long",
+                "confidence": 0.7,
+                "falsifier": "counterexample",
+                "evidence": [f"independent:{i}:{agent['role']}"],
+            },
+        })
+
+    d = state["deliberation"]
+    assert d["effective_claim_evidence_independence"] == pytest.approx(1.0)
+    assert d["claim_evidence_echo_risk"] == pytest.approx(0.0)
+    assert d["effective_independent_agent_count"] == pytest.approx(4.0)
+    assert d["independence_adjusted_direction_support"]["long"] == pytest.approx(1.0)
+    assert d["claim_consensus_illusion_candidate"] is False
+    assert d["duplicated_claim_evidence_pairs"] == []
+
+
+def test_aether_claim_evidence_echo_stays_hidden_until_every_agent_commits(tmp_path):
+    kernel = PantheonKernel(tmp_path, swarm=AetherSwarm(threshold=0.0, max_agents=4))
+    observation = kernel.record_observation(_payload(observation_id="pan-claim-echo-hidden"))
+    agent = observation["analysis"]["aether"]["agents"][0]
+    partial = kernel.record_agent_claim({
+        "observation_id": observation["observation_id"],
+        "agent_id": agent["agent_id"],
+        "peer_context_used": False,
+        "claim": {
+            "thesis": "private first-pass thesis",
+            "direction": "long",
+            "confidence": 0.8,
+            "falsifier": "counterexample",
+            "evidence": ["shared:secret-lineage"],
+        },
+    })
+    d = partial["deliberation"]
+    assert d["claim_evidence_echo_visible"] is False
+    assert d["effective_claim_evidence_independence"] is None
+    assert d["claim_evidence_echo_risk"] is None
+    assert d["effective_independent_agent_count"] is None
+    assert d["independence_adjusted_direction_support"] == {}
+    assert d["duplicated_claim_evidence_pairs"] == []
 
 
 def test_aether_first_pass_claim_is_idempotent_but_immutable(tmp_path):
