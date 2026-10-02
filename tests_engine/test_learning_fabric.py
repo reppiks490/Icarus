@@ -2991,3 +2991,62 @@ def test_manifest_missing_trade_chart_and_timeframe_does_not_guess(tmp_path):
     assert state["artifact_scoped_count"] == 0
     assert state["unscoped_count"] == 2
     assert state["by_artifact_configuration"] == []
+
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("session_mode", "RTH + ETH blended"),
+        ("chart_type", "Range bars"),
+    ],
+)
+def test_manifest_explicit_but_unsupported_linkage_values_fail_closed(tmp_path, field, value):
+    import hashlib
+    from icarus_engine.learning_fabric import LearningFabric
+
+    trade_path = _trade_list(
+        tmp_path / "history" / "drop" / ("THE_PULSE_NQ_UNSUPPORTED_" + field + ".csv")
+    )
+    trade_sha = hashlib.sha256(trade_path.read_bytes()).hexdigest()
+    trade_row = {
+        "sha256": trade_sha,
+        "canonical_filename": trade_path.name,
+        "format": "csv",
+        "artifact_class": "trade_list",
+        "symbol": "CME_MINI:NQ1!",
+        "rows": 4,
+        "last_trade_number": 2,
+        field: value,
+    }
+    report_row = {
+        "sha256": "3" * 64,
+        "canonical_filename": "only-candidate.xlsx",
+        "format": "xlsx",
+        "artifact_class": "strategy_report_xlsx",
+        "symbol": "CME_MINI:NQ1!",
+        "timeframe": "20m",
+        "chart_type": "Candles",
+        "session_mode": "RTH",
+        "rows": 4,
+        "last_trade_number": 2,
+    }
+    _write_intake_manifest(
+        tmp_path / "history" / "EXPORT_INTAKE_MANIFEST.csv",
+        [trade_row, report_row],
+    )
+
+    fabric = LearningFabric(tmp_path)
+    dataset_id = fabric.scan_history()["dataset_ids"][0]
+    fabric.backfill_dataset(dataset_id)
+    state = fabric.experience_state()
+
+    assert state["artifact_scoped_count"] == 0
+    assert state["unscoped_count"] == 2
+    assert state["by_artifact_configuration"] == []
+    row = fabric._conn.execute(
+        "SELECT metadata_json FROM experiences ORDER BY experience_id LIMIT 1"
+    ).fetchone()
+    metadata = json.loads(row["metadata_json"])
+    assert metadata["manifest_linkage_status"] == "UNSUPPORTED_LINKAGE_VALUE"
+    assert field in metadata["linkage_rejected_fields"]

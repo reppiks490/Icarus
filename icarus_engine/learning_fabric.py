@@ -2069,12 +2069,20 @@ class LearningFabric:
         row_count = self._manifest_integer(trade_row.get("rows"))
         last_trade = self._manifest_integer(trade_row.get("last_trade_number"))
         timeframe = self._manifest_timeframe(trade_row.get("timeframe"))
-        chart_type = self._manifest_chart_type(trade_row.get("chart_type"))
-        session_mode = self._manifest_session_mode(
+        raw_chart_type = str(trade_row.get("chart_type") or "").strip()
+        chart_type = self._manifest_chart_type(raw_chart_type)
+        raw_session_mode = str(
             trade_row.get("session_mode")
             or trade_row.get("session")
             or trade_row.get("trading_session")
-        )
+            or ""
+        ).strip()
+        session_mode = self._manifest_session_mode(raw_session_mode)
+        rejected_fields: list[str] = []
+        if raw_chart_type and chart_type is None:
+            rejected_fields.append("chart_type")
+        if raw_session_mode and session_mode is None:
+            rejected_fields.append("session_mode")
         linkage_keys = ["symbol", "rows", "last_trade_number"]
         rule_parts = ["SYMBOL", "ROWS", "LAST_TRADE"]
         if timeframe is not None:
@@ -2093,11 +2101,14 @@ class LearningFabric:
             "linkage_version": _MANIFEST_LINKAGE_VERSION,
             "linkage_rule": rule,
             "linkage_keys": linkage_keys,
+            "linkage_rejected_fields": rejected_fields,
         }
         if str(trade_row.get("artifact_class") or "").strip().lower() != "trade_list":
             return {**base, "status": "NOT_TRADE_LIST"}
         if not symbol or symbol == "UNKNOWN" or row_count is None or last_trade is None:
             return {**base, "status": "INSUFFICIENT_KEYS"}
+        if rejected_fields:
+            return {**base, "status": "UNSUPPORTED_LINKAGE_VALUE"}
 
         candidates: list[dict[str, str]] = []
         seen: set[tuple[str, str]] = set()
@@ -2181,6 +2192,7 @@ class LearningFabric:
             "manifest_linkage_version": linkage_version,
             "linkage_rule": str(link.get("linkage_rule") or "UNAVAILABLE"),
             "linkage_keys": list(link.get("linkage_keys") or []),
+            "linkage_rejected_fields": list(link.get("linkage_rejected_fields") or []),
         }
         if status != "UNIQUE" or not isinstance(link.get("report"), Mapping):
             return base
