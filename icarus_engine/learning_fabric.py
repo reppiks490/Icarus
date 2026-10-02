@@ -650,18 +650,27 @@ class LearningFabric:
         self._attach_shadow_calibration(pred)
         return {"ok": True, "idempotent": idempotent, "prediction": pred, **_authority()}
 
+    @staticmethod
+    def _calibration_prediction_label(prediction: Any) -> str:
+        if type(prediction) is bool:
+            return "true" if prediction else "false"
+        value = str(prediction or "").strip().lower()
+        return _text(value, "prediction_label", 64)
+
     def _attach_shadow_calibration(self, pred: Mapping[str, Any]) -> None:
         if pred.get("target") not in {"direction", "class", "event"}:
             return
         emitted_at = str(pred.get("emitted_at") or "")
+        prediction_label = self._calibration_prediction_label(pred.get("prediction"))
         row = self._conn.execute(
             """SELECT * FROM calibration_models
                WHERE producer=? AND asset=? AND regime=? AND horizon_seconds=? AND target=?
-               AND training_cutoff<?
+               AND prediction_label=? AND training_cutoff<?
                ORDER BY training_cutoff DESC, created_at DESC, calibrator_id DESC LIMIT 1""",
             (
                 pred.get("producer"), pred.get("asset"), pred.get("regime"),
-                int(pred.get("horizon_seconds") or 0), pred.get("target"), emitted_at,
+                int(pred.get("horizon_seconds") or 0), pred.get("target"),
+                prediction_label, emitted_at,
             ),
         ).fetchone()
         if row is None or row["status"] != "SHADOW_VALIDATED":
@@ -704,7 +713,7 @@ class LearningFabric:
         pid = _text(prediction_id, "prediction_id", 96)
         row = self._conn.execute(
             """SELECT s.*,m.producer,m.asset,m.regime,m.horizon_seconds,m.target,
-                      m.training_cutoff,m.status AS calibrator_status
+                      m.prediction_label,m.training_cutoff,m.status AS calibrator_status
                FROM shadow_calibrations s
                JOIN calibration_models m ON m.calibrator_id=s.calibrator_id
                WHERE s.prediction_id=?""",
@@ -720,6 +729,7 @@ class LearningFabric:
             "regime": row["regime"],
             "horizon_seconds": int(row["horizon_seconds"]),
             "target": row["target"],
+            "prediction_label": row["prediction_label"],
             "training_cutoff": row["training_cutoff"],
             "calibrator_status": row["calibrator_status"],
             "raw_probability": float(row["raw_probability"]),
