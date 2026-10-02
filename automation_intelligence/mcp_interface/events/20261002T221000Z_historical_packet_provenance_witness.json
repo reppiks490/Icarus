@@ -1,0 +1,28 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "historical-packet-provenance-witness-20261002",
+  "category": "INTEGRATION",
+  "severity": "info",
+  "status": "staged",
+  "subsystems": [
+    "aion",
+    "provenance",
+    "infrastructure"
+  ],
+  "recorded_at": "2026-10-02T22:10:00Z",
+  "title": "Bind historical peer context to packet-source Git blobs",
+  "summary": "Add a packet-bound provenance witness for historical Icarus-engine context: validate producer artifact IDs, verify exact source latest.json Git blobs at the packet source commit, preserve current-main historical context separately, and distinguish SAME_AS_PACKET_SOURCE from LIVE_SOURCE_ADVANCED without granting candidate or execution authority.",
+  "source_repository": "reppiks490/Icarus",
+  "source_ref": "chatgpt/historical-packet-provenance-witness-mainline-20261002",
+  "source_commit": "08494e8169c4645f85bc25f1c4614818d53068fb",
+  "evidence": [
+    "icarus_engine/brain_sync.py",
+    "icarus_engine/brain-ui.js",
+    "tests_engine/test_brain_sync.py",
+    "tests_engine/test_dashboard_js.py",
+    ".github/workflows/live-engine-historical-context-gate.yml",
+    "producer source-blob contract merged at reppiks490/Icarus-engine@3080d1c97f2d40c39acf3faeb6d0d2e3c1c3cd52"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}

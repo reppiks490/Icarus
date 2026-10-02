@@ -61,7 +61,12 @@
     const peerLanes = sync.peer_lanes || [];
     const peerLaneRows = peerLanes.map(l => `<tr><td><b>${h(l.title||l.name||"")}</b><div class="small muted">${h(l.name||"")}</div></td><td><span class="chip ${statusClass(l.evidence_status)}">${h(l.evidence_status||"UNKNOWN")}</span></td><td>${h(l.run_id||"—")}</td><td>${l.worker_execution_observed===true?"OBSERVED":l.worker_execution_observed===false?"NOT OBSERVED":"UNMEASURED"}</td><td class="${l.substantive_research_evidence?"brain-good":"muted"}">${l.substantive_research_evidence?"YES":"NO"}</td></tr>`).join("");
     const historicalContext = sync.historical_context_sources || [];
+    const historicalWitnesses = sync.historical_packet_witnesses || [];
+    const historicalWitnessById = Object.fromEntries(
+      historicalWitnesses.map(row => [String(row.id || ""), row])
+    );
     const historicalContextRows = historicalContext.map(row => {
+      const witness = historicalWitnessById[String(row.id || "")] || {};
       const summary = row.summary || {};
       const summaryParts = Object.entries(summary).slice(0, 12).map(([key, value]) => {
         const rendered = typeof value === "string" ? value : JSON.stringify(value);
@@ -71,6 +76,7 @@
         '<td><b>' + h(row.id || "unknown") + '</b><div class="small muted">' + h(row.path || "") + '</div></td>' +
         '<td><span class="chip ' + statusClass(row.evidence_status) + '">' + h(row.evidence_status || "UNMEASURED") + '</span></td>' +
         '<td><code title="' + h(row.remote_blob_sha || "") + '">' + h(row.remote_blob_sha ? String(row.remote_blob_sha).slice(0, 12) : "—") + '</code></td>' +
+        '<td><div class="' + (witness.source_artifact_blob_verified ? 'brain-good' : 'brain-warn') + '">' + (witness.source_artifact_blob_verified ? 'PACKET SOURCE VERIFIED' : 'PACKET SOURCE UNVERIFIED') + '</div><code title="' + h(witness.source_artifact_blob_sha || "") + '">' + h(witness.source_artifact_blob_sha ? String(witness.source_artifact_blob_sha).slice(0, 12) : "—") + '</code><div class="small muted">' + h(witness.current_main_relation || "UNMEASURED") + '</div></td>' +
         '<td>' + h(row.run_id || "—") + '<div class="small muted">' + h(row.run_status || "—") + '</div></td>' +
         '<td class="small">' + (summaryParts || '<span class="muted">No bounded summary fields present.</span>') + '</td>' +
         '<td class="small">candidate evidence=false<br><b>Foundry + Evaluator required</b><br>foreign evidence only</td>' +
@@ -136,6 +142,7 @@
             <div class="tile"><div class="k">Remote agent events</div><div class="v tnum">${num(sync.ingested_total)}</div><div class="small muted">poll ${num(sync.interval_seconds)}s · rejected ${num(sync.rejected_total)}</div></div>
             <div class="tile"><div class="k">Historical context</div><div class="v ${statusClass(sync.historical_context_status)}">${h(String(sync.historical_context_status||"not declared").toUpperCase())}</div><div class="small muted">sources ${num(sync.historical_context_source_count)} · ingested ${num(sync.historical_context_ingested_total)}</div></div>
             <div class="tile"><div class="k">Historical candidate evidence</div><div class="v ${Number(sync.historical_candidate_evidence_count||0)===0?"brain-good":"brain-bad"}">${num(sync.historical_candidate_evidence_count)}</div><div class="small muted">must remain 0 · context cannot bypass Foundry/Evaluator</div></div>
+            <div class="tile"><div class="k">Historical packet provenance</div><div class="v ${statusClass(sync.historical_packet_witness_status)}">${h(String(sync.historical_packet_witness_status||"not started").toUpperCase())}</div><div class="small muted">verified ${num(sync.historical_packet_witness_count)} · same as live ${num(sync.historical_packet_same_as_live_count)} · live advanced ${num(sync.historical_packet_live_advanced_count)}</div></div>
             <div class="tile"><div class="k">CSV Evidence Lab</div><div class="v ${statusClass(evidenceLab.status)}">${h(String(evidenceLab.status||"not configured").toUpperCase())}</div><div class="small muted">${h(evidenceLab.current_run_id||"no run observed")} · ${h(evidenceLab.evidence_status||"evidence unknown")}</div></div>
             <div class="tile"><div class="k">CSV pointer coherence</div><div class="v ${evidenceLab.latest_pointer_matches_heartbeat===false?"brain-warn":"brain-good"}">${evidenceLab.latest_pointer_matches_heartbeat===false?"LAGGING":"COHERENT/UNSET"}</div><div class="small muted">RUN_PERSISTED is durability only · evidence authority stays EVIDENCE_STATUS</div></div>
             <div class="tile"><div class="k">Research → Brain</div><div class="v ${statusClass(researchSync.status)}">${h(String(researchSync.status||'not configured').toUpperCase())}</div><div class="small muted">candidates ${num(researchSync.candidates_recorded)} · negatives ${num(researchSync.negative_results_recorded)}</div></div>
@@ -155,7 +162,7 @@
 
         <h3 class="small" style="margin:16px 0 8px">Historical peer research context</h3>
         <div class="small muted" style="margin-bottom:7px">Bounded Git-blob-verified context from Icarus-engine. HISTORICAL_RESEARCH_EVIDENCE and HISTORICAL_COLLECTION_EVIDENCE are research context only; candidate evidence=false and Foundry + Evaluator required before any hypothesis can gain admission.</div>
-        <div class="scroll" style="max-height:360px"><table><thead><tr><th>Source</th><th>Evidence status</th><th>Git blob</th><th>Historical run</th><th>Bounded preserved context</th><th>Admission boundary</th></tr></thead><tbody>${historicalContextRows || '<tr><td colspan=6 class="empty">No verified historical Icarus-engine context has been ingested.</td></tr>'}</tbody></table></div>
+        <div class="scroll" style="max-height:360px"><table><thead><tr><th>Source</th><th>Evidence status</th><th>Live Git blob</th><th>Packet-bound source proof</th><th>Historical run</th><th>Bounded preserved context</th><th>Admission boundary</th></tr></thead><tbody>${historicalContextRows || '<tr><td colspan=7 class="empty">No verified historical Icarus-engine context has been ingested.</td></tr>'}</tbody></table></div>
 
         <h3 class="small" style="margin:16px 0 8px">Subsystem fabric · ${subs.length} registered</h3>
         <div class="brain-grid">${subHtml}</div>
