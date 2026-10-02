@@ -1035,6 +1035,148 @@ def lethe(
     }
 
 
+def atlas(signals: Mapping[str, Any]) -> dict[str, Any]:
+    """Map the current latent state into a caller-supplied research manifold.
+
+    ATLAS is geometric diagnostics only.  Distances, basins and boundaries are
+    not forecast probabilities and never authorize execution.
+    """
+    out = _base("ATLAS")
+    embedding = signals.get("state_embedding")
+    anchors = signals.get("manifold_anchors")
+    if embedding is None and anchors is None:
+        return {
+            **out,
+            "status": "abstain",
+            "reason": "state_embedding and manifold_anchors required",
+            "geometry_state": "unavailable",
+            "out_of_manifold": False,
+            "boundary_pressure": 0.0,
+            "topological_novelty": 0.0,
+        }
+    if not isinstance(embedding, list) or not 2 <= len(embedding) <= 64:
+        raise ValueError("state_embedding must contain 2-64 numeric dimensions")
+    vector = [finite(value, f"state_embedding[{i}]") for i, value in enumerate(embedding)]
+    if not isinstance(anchors, list) or not 2 <= len(anchors) <= 128:
+        raise ValueError("manifold_anchors must contain 2-128 anchors")
+
+    parsed = []
+    seen_ids = set()
+    for i, item in enumerate(anchors):
+        if not isinstance(item, Mapping):
+            raise ValueError(f"manifold_anchors[{i}] must be an object")
+        anchor_id = item.get("anchor_id")
+        if not isinstance(anchor_id, str) or not anchor_id.strip():
+            raise ValueError(f"manifold_anchors[{i}].anchor_id is required")
+        anchor_id = anchor_id.strip()
+        if len(anchor_id) > 96:
+            raise ValueError(f"manifold_anchors[{i}].anchor_id exceeds 96 characters")
+        if anchor_id in seen_ids:
+            raise ValueError("manifold_anchors anchor_id values must be unique")
+        seen_ids.add(anchor_id)
+        regime = item.get("regime")
+        if not isinstance(regime, str) or not regime.strip():
+            raise ValueError(f"manifold_anchors[{i}].regime is required")
+        regime = regime.strip()
+        if len(regime) > 96:
+            raise ValueError(f"manifold_anchors[{i}].regime exceeds 96 characters")
+        raw_vector = item.get("vector")
+        if not isinstance(raw_vector, list) or len(raw_vector) != len(vector):
+            raise ValueError(f"manifold_anchors[{i}].vector dimension must match state_embedding")
+        anchor_vector = [
+            finite(value, f"manifold_anchors[{i}].vector[{j}]")
+            for j, value in enumerate(raw_vector)
+        ]
+        radius = finite(item.get("radius"), f"manifold_anchors[{i}].radius")
+        if radius <= 0:
+            raise ValueError(f"manifold_anchors[{i}].radius must be positive")
+        stability = unit(item.get("stability"), f"manifold_anchors[{i}].stability", 0.5)
+        distance = math.sqrt(
+            sum((left - right) ** 2 for left, right in zip(vector, anchor_vector))
+            / len(vector)
+        )
+        normalized_distance = distance / radius
+        parsed.append({
+            "anchor_id": anchor_id,
+            "regime": regime,
+            "distance": distance,
+            "normalized_distance": normalized_distance,
+            "radius": radius,
+            "stability": stability,
+        })
+
+    parsed.sort(key=lambda row: (row["normalized_distance"], row["anchor_id"]))
+    nearest = parsed[0]
+    regime_best = {}
+    for row in parsed:
+        current = regime_best.get(row["regime"])
+        if current is None or row["normalized_distance"] < current["normalized_distance"]:
+            regime_best[row["regime"]] = row
+    regime_rows = sorted(
+        regime_best.values(),
+        key=lambda row: (row["normalized_distance"], row["regime"]),
+    )
+    second_regime = regime_rows[1] if len(regime_rows) > 1 else None
+
+    if second_regime is None:
+        boundary_pressure = 0.0
+        regime_separation = 1.0
+    else:
+        d1 = nearest["normalized_distance"]
+        d2 = second_regime["normalized_distance"]
+        denom = d1 + d2
+        regime_separation = abs(d2 - d1) / denom if denom > 1e-12 else 0.0
+        boundary_pressure = 1.0 - max(0.0, min(1.0, regime_separation))
+
+    normalized = nearest["normalized_distance"]
+    out_of_manifold = normalized > 1.0
+    basin_depth = max(0.0, 1.0 - normalized)
+    novelty = max(0.0, min(1.0, normalized))
+    metastability = (
+        basin_depth
+        * nearest["stability"]
+        * (1.0 - boundary_pressure)
+    )
+    if out_of_manifold:
+        geometry_state = "out_of_manifold"
+    elif boundary_pressure >= 0.70 and second_regime is not None:
+        geometry_state = "boundary"
+    else:
+        geometry_state = "basin"
+
+    corridor = None
+    if second_regime is not None and boundary_pressure >= 0.50:
+        corridor = {
+            "from_regime": nearest["regime"],
+            "toward_regime": second_regime["regime"],
+            "boundary_pressure": boundary_pressure,
+            "separation": regime_separation,
+        }
+
+    return {
+        **out,
+        "geometry_state": geometry_state,
+        "current_basin": {
+            "anchor_id": nearest["anchor_id"],
+            "regime": nearest["regime"],
+            "normalized_distance": normalized,
+            "basin_depth": basin_depth,
+            "anchor_stability": nearest["stability"],
+        },
+        "out_of_manifold": out_of_manifold,
+        "topological_novelty": novelty,
+        "boundary_pressure": boundary_pressure,
+        "regime_separation": regime_separation,
+        "metastability": metastability,
+        "transition_corridor": corridor,
+        "nearest_anchors": parsed[:8],
+        "embedding_dimensions": len(vector),
+        "anchor_count": len(parsed),
+        "regime_count": len(regime_rows),
+        "semantics": "latent-state geometry diagnostic over declared anchors; distances and boundary scores are not calibrated transition probabilities",
+    }
+
+
 def axiom(
     signals: Mapping[str, Any],
     states: Mapping[str, Mapping[str, Any]],
@@ -1229,6 +1371,59 @@ def axiom(
             source="LETHE",
         )
 
+    atlas_state = states.get("atlas", {})
+    manifold_declared = "state_embedding" in signals or "manifold_anchors" in signals
+    if not manifold_declared:
+        add_gate(
+            "manifold_membership",
+            "not_applicable",
+            source="ATLAS",
+            reason="no latent-state manifold dependency declared",
+        )
+        add_gate(
+            "basin_separation",
+            "not_applicable",
+            source="ATLAS",
+            reason="no latent-state manifold dependency declared",
+        )
+    elif atlas_state.get("status") != "active":
+        add_gate(
+            "manifold_membership",
+            "unproven",
+            source="ATLAS",
+            reason="declared manifold could not be evaluated",
+        )
+        add_gate(
+            "basin_separation",
+            "unproven",
+            source="ATLAS",
+            reason="declared manifold could not be evaluated",
+        )
+    else:
+        normalized_distance = finite(
+            atlas_state.get("current_basin", {}).get("normalized_distance"),
+            "atlas.current_basin.normalized_distance",
+        )
+        boundary_pressure = unit(
+            atlas_state.get("boundary_pressure"),
+            "atlas.boundary_pressure",
+        )
+        add_gate(
+            "manifold_membership",
+            "pass" if not bool(atlas_state.get("out_of_manifold")) else "fail",
+            value=normalized_distance,
+            threshold="<= 1.0 anchor radius",
+            source="ATLAS",
+        )
+        add_gate(
+            "basin_separation",
+            "pass" if boundary_pressure <= 0.75 else "unproven",
+            value=boundary_pressure,
+            threshold="<= 0.75 boundary pressure",
+            source="ATLAS",
+            reason=None if boundary_pressure <= 0.75 else "state lies too near a competing-regime boundary",
+        )
+
     add_gate(
         "observation_evidence",
         "pass" if evidence else "unproven",
@@ -1359,6 +1554,11 @@ def socrates(states: Mapping[str, Mapping[str, Any]]) -> dict[str, Any]:
     stale_memory = unit(states.get("lethe", {}).get("stale_memory_pressure"), "lethe.stale_memory_pressure")
     resurrection = unit(states.get("lethe", {}).get("resurrection_pressure"), "lethe.resurrection_pressure")
     proof_gap = unit(states.get("axiom", {}).get("proof_gap"), "axiom.proof_gap")
+    atlas_state = states.get("atlas", {})
+    topology_pressure = max(
+        unit(atlas_state.get("topological_novelty"), "atlas.topological_novelty"),
+        unit(atlas_state.get("boundary_pressure"), "atlas.boundary_pressure"),
+    )
     options = [
         (uncertainty, "Which observation most efficiently separates the competing market worlds?"),
         (debt, "Where did the missing reaction route: delay, absorption, diversion, or causal-model failure?"),
@@ -1368,6 +1568,7 @@ def socrates(states: Mapping[str, Mapping[str, Any]]) -> dict[str, Any]:
         (stale_memory, "Which current thesis still depends on memory whose evidence has decayed out of its trustworthy lifetime?"),
         (resurrection, "Which dormant mechanism is reappearing under a similar regime and deserves fresh causal revalidation rather than automatic reuse?"),
         (proof_gap, "Which missing proof axis prevents the current thesis from becoming a complete research certificate?"),
+        (topology_pressure, "Is the current market state approaching a learned-regime boundary or leaving the known manifold entirely?"),
     ]
     ranked = sorted(options, key=lambda x: x[0], reverse=True)
     hypothesis_templates = [
@@ -1379,6 +1580,7 @@ def socrates(states: Mapping[str, Mapping[str, Any]]) -> dict[str, Any]:
         (stale_memory, "The current thesis relies on stale knowledge whose relationship may have drifted.", "Revalidate the mechanism on fresh regime-matched evidence or retire its research trust."),
         (resurrection, "A previously stale mechanism may have returned under a structurally similar regime.", "Require fresh mechanism-consistent evidence before restoring research trust and reject automatic resurrection."),
         (proof_gap, "The current thesis has unresolved non-substitutable proof axes.", "Target the AXIOM failed/unproven gates independently and refuse confidence substitution."),
+        (topology_pressure, "Current latent geometry is near a regime boundary or outside the learned manifold.", "Require a nearby-manifold explanation or independent evidence that the state is a genuinely new basin."),
     ]
     hypotheses = [
         {"priority": score, "hypothesis": hypothesis, "falsifier": falsifier}
@@ -1414,6 +1616,7 @@ def evaluate_faculties(
     ec = echo(signals)
     vt = veritas(signals, observation_id)
     lt = lethe(signals, observed_at, evidence_refs)
+    at = atlas(signals)
     ar = archon(signals, gd, ec)
     states = {
         "nullspace": ns,
@@ -1425,6 +1628,7 @@ def evaluate_faculties(
         "echo": ec,
         "veritas": vt,
         "lethe": lt,
+        "atlas": at,
         "archon": ar,
     }
     states["axiom"] = axiom(signals, states, observation_id, evidence_refs)
