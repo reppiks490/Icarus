@@ -156,3 +156,69 @@ def test_psi_is_a_supported_mcp_subsystem(tmp_path):
     assert state["status"] == "green"
     assert state["ingested_total"] == 1
     assert set(state["subsystems"]) >= {"psi", "parallax"}
+
+
+def test_repository_native_interface_vocabulary_is_accepted(tmp_path):
+    # These names already exist in committed icarus-interface-event-v1 receipts.
+    # Underscore payload spelling is normalized to the dashboard's hyphen form.
+    raw_names = [
+        "pantheon",
+        "aether",
+        "nemesis",
+        "godel",
+        "socrates",
+        "ananke",
+        "ex_nihilo",
+        "mint",
+        "nullspace",
+        "archon",
+        "ui",
+        "sibyl",
+        "execution_research",
+        "order_blocks",
+        "research_validation",
+        "uncertainty",
+        "calibration",
+        "prospective_validation",
+        "transfer_validation",
+        "tail_validation",
+        "liquidity_load",
+        "cluster_bootstrap",
+    ]
+    sync = make_sync(
+        tmp_path,
+        event_payload(
+            subsystems=raw_names,
+            status="staged",
+            title="Repository-native vocabulary fixture",
+        ),
+    )
+    state = sync.sync_once()
+
+    assert state["status"] == "green"
+    assert state["ingested_total"] == 1
+    assert state["rejected_total"] == 0
+    assert {
+        "pantheon",
+        "aether",
+        "nemesis",
+        "godel",
+        "socrates",
+        "ananke",
+        "ex-nihilo",
+        "mint",
+        "nullspace",
+        "archon",
+        "ui",
+        "sibyl",
+        "execution-research",
+        "order-blocks",
+        "research-validation",
+        "uncertainty",
+        "calibration",
+        "prospective-validation",
+        "transfer-validation",
+        "tail-validation",
+        "liquidity-load",
+        "cluster-bootstrap",
+    } <= set(state["subsystems"])
