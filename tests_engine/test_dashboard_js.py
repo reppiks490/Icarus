@@ -628,3 +628,20 @@ def test_learning_ui_exposes_semantic_trade_twin_proof():
     assert "Semantic trade proof" in source
     assert "SEMANTIC_TRADE_SIGNATURE_V1" in source
 
+
+
+def test_adaptive_brain_surfaces_icarus_engine_federation():
+    ui = (REPO / "icarus_engine/brain-ui.js").read_text(encoding="utf-8")
+    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
+
+    assert "engine_federation_sync" in ui
+    assert "Icarus-engine federation" in ui
+    assert "RESEARCH OBSERVABILITY ONLY" in ui
+    assert "durability is not substantive evidence" in ui.lower()
+
+    assert "EngineFederationRemoteSync" in server
+    assert 'p.path == "/api/engine-federation"' in server
+    assert 'ControlAction("sync.engine_federation"' in server
+    assert "engine_federation_sync.start()" in server
+    assert "engine_federation_sync.close()" in server
+    assert "engine_federation_sync=engine_federation_sync.status()" in server
