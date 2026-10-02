@@ -37,7 +37,7 @@
       "status": "active",
       "authority_ceiling": "RESEARCH",
       "handoff_manifest": "integration/manifests/ICARUS_ENGINE_HANDOFF.json",
-      "producer_revision": "e7a6cba065830189b8cd155e857ab581c87da45d",
+      "producer_revision": "b7f1df84518540371ecb95bd84d3bba48eb4b542",
       "accepted_against_revision": "2e047d2645a8cbc2ca9f42731d5e4d65b05eee47",
       "cross_repository_execution_authorized": false
     },
