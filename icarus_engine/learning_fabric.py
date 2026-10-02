@@ -26,6 +26,7 @@ from .trainers.run import train_file, train_xgb_file
 
 
 _SCHEMA = "icarus-learning-fabric-v1"
+_ARTIFACT_PROVENANCE_QUALITIES = frozenset({"MANIFEST_UNIQUE_STRATEGY_REPORT_LINK", "DIRECT_STRATEGY_REPORT_XLSX_TRADE_SHEET"})
 _DEFAULT_CONFIG = {
     "enabled": True,
     "cycle_seconds": 60,
@@ -1157,7 +1158,7 @@ class LearningFabric:
             if not (
                 len(fingerprint) == 64
                 and all(ch in "0123456789abcdef" for ch in fingerprint)
-                and effective.get("provenance_quality") == "MANIFEST_UNIQUE_STRATEGY_REPORT_LINK"
+                and effective.get("provenance_quality") in _ARTIFACT_PROVENANCE_QUALITIES
             ):
                 dataset_id = str(effective.get("dataset_id") or "")
                 if dataset_id:
@@ -1984,33 +1985,46 @@ class LearningFabric:
             raise ValueError(f"dataset not found: {source}")
         raw = source.read_bytes()
         raw_sha = hashlib.sha256(raw).hexdigest()
+        intake_clean = dict(intake or {})
+        if intake_clean:
+            _json(intake_clean, "intake manifest")
+
         artifact_class = "csv"
         manifest: dict[str, Any]
         rows = 0
         first = last = None
         canonical = None
-        try:
-            bars, manifest = inspect_ohlc(source)
-            artifact_class = "ohlc"
-            rows = int(manifest["rows_total"])
-            first = manifest.get("first_ts")
-            last = manifest.get("last_ts")
-            canonical = manifest.get("canonical_rows_sha256")
-        except (ValueError, OSError, UnicodeDecodeError):
+        suffix = source.suffix.lower()
+        if suffix == ".xlsx":
+            hinted_class = str(intake_clean.get("artifact_class") or "").strip().lower()
+            artifact_class = "strategy_report_xlsx" if hinted_class == "strategy_report_xlsx" else "xlsx"
+            rows = self._manifest_integer(intake_clean.get("rows")) or 0
+            manifest = {
+                "raw_sha256": raw_sha,
+                "rows_total": rows,
+                "status": "catalogued_from_intake" if intake_clean else "catalogued_xlsx",
+            }
+        else:
             try:
-                with source.open("r", encoding="utf-8-sig", newline="") as fh:
-                    reader = csv.reader(fh)
-                    header = next(reader, [])
-                    rows = sum(1 for _ in reader)
-                lowered = {str(x).strip().lower() for x in header}
-                artifact_class = "trade_list" if {"trade number", "type", "date and time"} <= lowered else "csv"
-                manifest = {"raw_sha256": raw_sha, "rows_total": rows, "header": header, "status": "catalogued"}
-            except (OSError, UnicodeDecodeError, csv.Error) as ex:
-                raise ValueError(f"dataset cannot be catalogued: {ex}") from ex
+                bars, manifest = inspect_ohlc(source)
+                artifact_class = "ohlc"
+                rows = int(manifest["rows_total"])
+                first = manifest.get("first_ts")
+                last = manifest.get("last_ts")
+                canonical = manifest.get("canonical_rows_sha256")
+            except (ValueError, OSError, UnicodeDecodeError):
+                try:
+                    with source.open("r", encoding="utf-8-sig", newline="") as fh:
+                        reader = csv.reader(fh)
+                        header = next(reader, [])
+                        rows = sum(1 for _ in reader)
+                    lowered = {str(x).strip().lower() for x in header}
+                    artifact_class = "trade_list" if {"trade number", "type", "date and time"} <= lowered else "csv"
+                    manifest = {"raw_sha256": raw_sha, "rows_total": rows, "header": header, "status": "catalogued"}
+                except (OSError, UnicodeDecodeError, csv.Error) as ex:
+                    raise ValueError(f"dataset cannot be catalogued: {ex}") from ex
 
-        intake_clean = dict(intake or {})
         if intake_clean:
-            _json(intake_clean, "intake manifest")
             manifest["intake"] = intake_clean
         symbol = _text(
             asset or (self._manifest_symbol(intake_clean.get("symbol")) if intake_clean.get("symbol") else self._infer_asset(source)),
@@ -2084,7 +2098,9 @@ class LearningFabric:
             roots.append(str(root))
             if not root.exists():
                 continue
-            for path in sorted(root.rglob("*.csv")):
+            candidates = set(root.rglob("*.csv"))
+            candidates.update(root.rglob("*.xlsx"))
+            for path in sorted(candidates):
                 if not path.is_file() or path.name == "EXPORT_INTAKE_MANIFEST.csv":
                     continue
                 seen += 1
