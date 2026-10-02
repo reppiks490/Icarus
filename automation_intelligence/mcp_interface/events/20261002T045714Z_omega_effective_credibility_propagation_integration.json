@@ -1,0 +1,60 @@
+{
+  "schema_version": "icarus-mcp-event-v1",
+  "event_id": "omega-integration-20261002T045714Z-effective-credibility-propagation",
+  "category": "INTEGRATION",
+  "severity": "material",
+  "status": "qualified",
+  "source": "OMEGA_AUTOMATION",
+  "recorded_at": "2026-10-02T04:57:14Z",
+  "execution_authorized": false,
+  "production_decision_authorized": false,
+  "net_new_delta": "OVERLAP_AWARE_EFFECTIVE_SAMPLE_COUNTS_NOW_PROPAGATE_INTO_APEX_CREDIBILITY",
+  "finding": "Current main extends overlap purging beyond shadow-calibration fitting into empirical Learning Fabric scorecards and APEX credibility publication. APEX sample_count now uses effective non-overlapping settled outcomes while raw_sample_count and overlap_purged remain separately auditable, preventing correlated forecast density from inflating downstream credibility.",
+  "accepted_findings": [
+    "Event-time overlap purging is applied before empirical scorecard hit-rate, Brier, calibration-gap, error and Wilson-interval computation.",
+    "APEX credibility receives effective sample_count plus raw_sample_count and overlap_purged, preserving auditability without treating raw overlapping volume as independent evidence.",
+    "GitHub-native v3 control-plane receipts at 04:25Z show RUN_PERSISTED durability with execution_authorized=false; the alpha-synthesis receipt itself reports NO_NEW_EVIDENCE_YET and is not treated as substantive market evidence."
+  ],
+  "rejected_findings": [
+    "Raw settled forecast count is not independent effective N when prediction windows overlap.",
+    "Learning/APEX credibility health is not specialist market evidence and cannot validate Macro, Flow, AION or DAEDALUS hypotheses.",
+    "Control-plane liveness/durability receipts do not substitute for substantive specialist findings."
+  ],
+  "conflicts": [
+    "Credibility infrastructure has advanced again while the inspected control-plane alpha-synthesis receipt explicitly reports NO_NEW_EVIDENCE_YET.",
+    "No newly established substantive Macro, Flow, AION or DAEDALUS receipt superseded the specialist state carried by the prior OMEGA event during this cycle."
+  ],
+  "blockers": [
+    "Specialist freshness remains asymmetric; absent new qualified specialist receipts, cross-market inference must not be strengthened from infrastructure changes alone.",
+    "ATHENA/JANUS consumers must distinguish effective independent N from raw sample volume and keep specialist evidence as a separate mandatory dependency."
+  ],
+  "next_highest_value_integration_target": "Make APEX/ATHENA/JANUS consume effective non-overlapping sample_count as the only credibility N while preserving raw_sample_count and overlap_purged for audit, and explicitly prevent model-credibility state from satisfying specialist-evidence gates. Keep GitHub-native v3 authoritative for liveness/persistence.",
+  "paths": [
+    "icarus_engine/learning_fabric.py",
+    "icarus_engine/learning-ui.js",
+    "automation_intelligence/agent_fabric/alpha_synthesis/finalization_state.json",
+    "automation_intelligence/agent_fabric/alpha_synthesis/heartbeat.json",
+    "automation_intelligence/mcp_interface/events/20261002T030102Z_omega_overlap_aware_calibration_integration.json"
+  ],
+  "evidence": [
+    "Icarus main commit 2c45c4dcb3d4e497ec56fd18b9abf6dea125db3f purges overlapping prediction rows before scorecard metrics and publishes effective sample_count to APEX while retaining raw_sample_count and overlap_purged.",
+    "The same merge adds UI visibility for Effective settled, Raw settled and Overlap purged and tests that overlapping 60-second windows reduce effective N.",
+    "Icarus-engine commits bfb6d3536fb1530d7a325b7cf92395871fd48269 and 8cfc6048e76c5e0b154543f2409e1b22d62e13e8 persist the 04:25Z alpha-synthesis durability receipt/heartbeat with execution_authorized=false; the receipt states NO_NEW_EVIDENCE_YET."
+  ],
+  "athena": {
+    "status": "ACTIONABLE",
+    "finding": "Use effective non-overlapping sample_count, not raw settled volume, when credibility informs uncertainty; model credibility must not satisfy missing specialist-evidence gates."
+  },
+  "janus": {
+    "status": "ACTIONABLE",
+    "finding": "Reconcile effective N, raw N, overlap-purged count, label, revision and specialist-evidence state as distinct dependencies."
+  },
+  "infrastructure": {
+    "status": "VERIFIED_WITH_SPECIALIST_FRESHNESS_GAPS",
+    "finding": "Overlap-aware effective sample accounting now propagates through Learning Fabric scorecards into APEX credibility; v3 durability receipts remain separate and non-substantive."
+  },
+  "helios_prime": {
+    "status": "ACTIONABLE",
+    "finding": "Integrate effective-N credibility into the research fabric without allowing correlated sample density or control-plane liveness to masquerade as independent market evidence."
+  }
+}
