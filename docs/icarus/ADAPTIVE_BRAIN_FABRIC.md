@@ -65,6 +65,23 @@ The local research workflow may truthfully establish dataset/baseline provenance
 
 No-candidate, failed, timed-out, cancelled, and interrupted studies are also retained as durable learning so the system does not repeatedly rediscover the same failed research path. A dirty or unknown code revision cannot mint a Brain candidate.
 
+## Performance proof and matured settlement
+
+The Adaptive Brain reads the durable Performance Proof ledger directly from local state. Each research forecast is content-addressed and binds candidate, asset, regime, decision time, maturity, success definition, exact source repository/revision, dataset hash, and evidence hash. Outcomes are immutable, cannot predate maturity, and are never synthesized merely because a forecast has matured.
+
+The proof plane exposes outcome coverage, observed success rate, Brier score, calibration error, deterministic replay evidence, candidate/regime statistics, and empirical shadow-only tournaments. A historical 100% success value is displayed only when the exact scope is coherent, the sample is closed and fully settled, and the minimum sample requirement is met. It is explicitly not a future guarantee or production authorization.
+
+Matured forecasts without observed outcomes remain visible as a settlement backlog through the authenticated server, MCP, and Adaptive Brain UI. The backlog is an evidence obligation, not permission to infer a result.
+
+## Immutable exact-revision qualification
+
+Validated candidates advance to `qualified_shadow` only from immutable gate receipts bound to the exact candidate repository and commit. Candidate-declared validation fields are diagnostic context only and cannot self-certify a gate. A later failing receipt reopens the gate and removes shadow eligibility without rewriting prior evidence.
+
+The receipt state is visible through the authenticated qualification API, MCP tools, and Adaptive Brain. Qualification remains research/shadow-only:
+
+- `production_decision_authorized=false`
+- `execution_authorized=false`
+
 ## Truthful operator metrics
 
 The panel shows measured values only. A missing success rate is rendered as UNMEASURED. Latency targets are labeled targets until instrumentation supplies actual distributions. Learning is evidenced by durable events and before/after validation state, not by an unsupported claim that the model "self-learned."
