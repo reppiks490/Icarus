@@ -232,8 +232,8 @@ def _default_state(interval_seconds: int) -> dict[str, Any]:
             "historical_context_never_bypasses_evaluator": True,
             "historical_context_never_grants_shadow_qualification": True,
             "historical_context_never_grants_execution_authority": True,
-            "historical_source_artifact_blob_required": bool(historical_sources),
-            "historical_artifact_id_sha256_required": bool(historical_sources),
+            "historical_source_artifact_blob_required": False,
+            "historical_artifact_id_sha256_required": False,
         },
         "execution_authorized": False,
         "production_decision_authorized": False,
@@ -707,6 +707,8 @@ def _normalize_federation_contract(
             "historical_context_never_bypasses_evaluator": True,
             "historical_context_never_grants_shadow_qualification": True,
             "historical_context_never_grants_execution_authority": True,
+            "historical_source_artifact_blob_required": bool(historical_sources),
+            "historical_artifact_id_sha256_required": bool(historical_sources),
         },
         "execution_authorized": False,
         "production_decision_authorized": False,
@@ -860,82 +862,81 @@ def _normalize_peer_packet(
 
     historical_artifacts_raw = packet.get("historical_artifacts")
     historical_witnesses: list[dict[str, Any]] = []
-    if historical_artifacts_raw is not None:
-        if not isinstance(historical_artifacts_raw, list):
-            raise ValueError("Icarus-engine peer historical_artifacts must be an array")
-        expected_ids = set(_HISTORICAL_CONTEXT_EXPECTED)
-        seen_ids: set[str] = set()
-        seen_artifact_ids: set[str] = set()
-        for index, raw in enumerate(historical_artifacts_raw):
-            if not isinstance(raw, Mapping):
-                raise ValueError(f"Icarus-engine peer historical artifact {index} is not an object")
-            source_id = str(raw.get("lane") or "").strip()
-            if source_id not in expected_ids or source_id in seen_ids:
-                raise ValueError("Icarus-engine peer historical artifact source identity mismatch")
-            seen_ids.add(source_id)
-            expected = _HISTORICAL_CONTEXT_EXPECTED[source_id]
-            if raw.get("artifact_kind") != "HISTORICAL_LATEST":
-                raise ValueError(f"Icarus-engine peer historical artifact kind mismatch: {source_id}")
-            if raw.get("path") != expected["path"]:
-                raise ValueError(f"Icarus-engine peer historical artifact path mismatch: {source_id}")
-            if raw.get("evidence_status") != expected["evidence_status"]:
-                raise ValueError(f"Icarus-engine peer historical artifact evidence mismatch: {source_id}")
-            if raw.get("research_context_eligible") is not True:
-                raise ValueError(f"Icarus-engine peer historical artifact is not research context: {source_id}")
-            if raw.get("candidate_evidence_eligible") is not False:
-                raise ValueError(f"Icarus-engine peer historical artifact attempts candidate evidence: {source_id}")
-            if raw.get("execution_authorized") is not False:
-                raise ValueError(f"Icarus-engine peer historical artifact attempts execution authority: {source_id}")
-            if raw.get("run_status") != "RUN_PERSISTED":
-                raise ValueError(f"Icarus-engine peer historical artifact is not persisted: {source_id}")
+    if not isinstance(historical_artifacts_raw, list):
+        raise ValueError("Icarus-engine peer historical_artifacts must be an array")
+    expected_ids = set(_HISTORICAL_CONTEXT_EXPECTED)
+    seen_ids: set[str] = set()
+    seen_artifact_ids: set[str] = set()
+    for index, raw in enumerate(historical_artifacts_raw):
+        if not isinstance(raw, Mapping):
+            raise ValueError(f"Icarus-engine peer historical artifact {index} is not an object")
+        source_id = str(raw.get("lane") or "").strip()
+        if source_id not in expected_ids or source_id in seen_ids:
+            raise ValueError("Icarus-engine peer historical artifact source identity mismatch")
+        seen_ids.add(source_id)
+        expected = _HISTORICAL_CONTEXT_EXPECTED[source_id]
+        if raw.get("artifact_kind") != "HISTORICAL_LATEST":
+            raise ValueError(f"Icarus-engine peer historical artifact kind mismatch: {source_id}")
+        if raw.get("path") != expected["path"]:
+            raise ValueError(f"Icarus-engine peer historical artifact path mismatch: {source_id}")
+        if raw.get("evidence_status") != expected["evidence_status"]:
+            raise ValueError(f"Icarus-engine peer historical artifact evidence mismatch: {source_id}")
+        if raw.get("research_context_eligible") is not True:
+            raise ValueError(f"Icarus-engine peer historical artifact is not research context: {source_id}")
+        if raw.get("candidate_evidence_eligible") is not False:
+            raise ValueError(f"Icarus-engine peer historical artifact attempts candidate evidence: {source_id}")
+        if raw.get("execution_authorized") is not False:
+            raise ValueError(f"Icarus-engine peer historical artifact attempts execution authority: {source_id}")
+        if raw.get("run_status") != "RUN_PERSISTED":
+            raise ValueError(f"Icarus-engine peer historical artifact is not persisted: {source_id}")
 
-            source_blob = str(raw.get("source_artifact_blob_sha") or "").lower()
-            if not _is_sha(source_blob):
-                raise ValueError(f"Icarus-engine peer historical artifact source blob is invalid: {source_id}")
+        source_blob = str(raw.get("source_artifact_blob_sha") or "").lower()
+        if not _is_sha(source_blob):
+            raise ValueError(f"Icarus-engine peer historical artifact source blob is invalid: {source_id}")
 
-            artifact_id = str(raw.get("artifact_id") or "").lower()
-            if (
-                len(artifact_id) != 64
-                or any(ch not in "0123456789abcdef" for ch in artifact_id)
-                or artifact_id in seen_artifact_ids
-            ):
-                raise ValueError(f"Icarus-engine peer historical artifact ID is invalid: {source_id}")
-            seen_artifact_ids.add(artifact_id)
-            unsigned_artifact = dict(raw)
-            unsigned_artifact.pop("artifact_id", None)
-            computed_artifact_id = hashlib.sha256(
-                json.dumps(
-                    unsigned_artifact,
-                    sort_keys=True,
-                    separators=(",", ":"),
-                    allow_nan=False,
-                ).encode("utf-8")
-            ).hexdigest()
-            if artifact_id != computed_artifact_id:
-                raise ValueError(f"Icarus-engine peer historical artifact ID mismatch: {source_id}")
+        artifact_id = str(raw.get("artifact_id") or "").lower()
+        if (
+            len(artifact_id) != 64
+            or any(ch not in "0123456789abcdef" for ch in artifact_id)
+            or artifact_id in seen_artifact_ids
+        ):
+            raise ValueError(f"Icarus-engine peer historical artifact ID is invalid: {source_id}")
+        seen_artifact_ids.add(artifact_id)
+        unsigned_artifact = dict(raw)
+        unsigned_artifact.pop("artifact_id", None)
+        computed_artifact_id = hashlib.sha256(
+            json.dumps(
+                unsigned_artifact,
+                sort_keys=True,
+                separators=(",", ":"),
+                allow_nan=False,
+            ).encode("utf-8")
+        ).hexdigest()
+        if artifact_id != computed_artifact_id:
+            raise ValueError(f"Icarus-engine peer historical artifact ID mismatch: {source_id}")
 
-            run_id = str(raw.get("run_id") or "").strip()
-            if not run_id:
-                raise ValueError(f"Icarus-engine peer historical artifact run_id is missing: {source_id}")
-            historical_witnesses.append({
-                "id": source_id,
-                "path": expected["path"],
-                "artifact_id": artifact_id,
-                "source_artifact_blob_sha": source_blob,
-                "source_artifact_blob_verified": False,
-                "packet_source_commit": source_commit,
-                "run_id": run_id,
-                "run_status": "RUN_PERSISTED",
-                "evidence_status": expected["evidence_status"],
-                "collection_only": expected["collection_only"],
-                "candidate_evidence_eligible": False,
-                "execution_authorized": False,
-                "production_decision_authorized": False,
-                "current_main_blob_sha": None,
-                "current_main_relation": "UNMEASURED",
-            })
-        if seen_ids != expected_ids:
-            raise ValueError("Icarus-engine peer historical artifact set mismatch")
+        run_id = str(raw.get("run_id") or "").strip()
+        if not run_id:
+            raise ValueError(f"Icarus-engine peer historical artifact run_id is missing: {source_id}")
+        historical_witnesses.append({
+            "id": source_id,
+            "path": expected["path"],
+            "artifact_id": artifact_id,
+            "source_artifact_blob_sha": source_blob,
+            "source_artifact_blob_verified": False,
+            "packet_source_commit": source_commit,
+            "run_id": run_id,
+            "run_status": "RUN_PERSISTED",
+            "evidence_status": expected["evidence_status"],
+            "collection_only": expected["collection_only"],
+            "candidate_evidence_eligible": False,
+            "execution_authorized": False,
+            "production_decision_authorized": False,
+            "current_main_blob_sha": None,
+            "current_main_relation": "UNMEASURED",
+        })
+    if seen_ids != expected_ids:
+        raise ValueError("Icarus-engine peer historical artifact set mismatch")
 
     peer_blob = str(blob_sha or "").lower()
     if not _is_sha(peer_blob):
