@@ -1,0 +1,73 @@
+{
+  "schema": "icarus-mcp-event-v1",
+  "category": "AUDIT",
+  "source": "FLOW_AUTOMATION",
+  "event_time": "2026-10-02T14:00:00Z",
+  "retrieval_time": "2026-10-02T15:20:02.353Z",
+  "execution_authorized": false,
+  "net_new_delta": "MATERIAL_DELTA",
+  "finding": "BTC/USD completed 14:00 UTC hour produced a second major volatility/turnover expansion: Bybit spot range $1,458.50 and volume 710.923206 BTC; robust z versus preceding 28 completed spot hours approximately +4.58 range and +3.87 volume. Bybit linear range $1,487.60 with reported volume 9,175.272; Twelve Data BTC/USD range $1,443.57 corroborated the price expansion.",
+  "evidence": {
+    "bybit_spot": {
+      "event_time": "2026-10-02T14:00:00Z",
+      "open": 86571.2,
+      "high": 86845.5,
+      "low": 85387,
+      "close": 85680.9,
+      "range": 1458.5,
+      "volume_btc": 710.923206,
+      "baseline_28h": {
+        "range_median": 409.8,
+        "range_mad": 154.4,
+        "range_robust_z": 4.58,
+        "volume_median_btc": 230.205535,
+        "volume_mad_btc": 83.709238,
+        "volume_robust_z": 3.87
+      }
+    },
+    "bybit_linear": {
+      "event_time": "2026-10-02T14:00:00Z",
+      "high": 86812.2,
+      "low": 85324.6,
+      "range": 1487.6,
+      "reported_volume": 9175.272
+    },
+    "twelve_data": {
+      "event_time": "2026-10-02T14:00:00Z",
+      "high": 86838.01,
+      "low": 85394.44,
+      "range": 1443.57
+    },
+    "bybit_spot_depth": {
+      "retrieval_time": "2026-10-02T15:20:02.353Z",
+      "best_bid": 85539.3,
+      "bid_qty_btc": 0.319261,
+      "best_ask": 85539.4,
+      "ask_qty_btc": 0.507727,
+      "spread_usd": 0.1,
+      "semantics": "point-in-time displayed depth only"
+    },
+    "cross_market_proxies": {
+      "retrieval_time": "2026-10-02T15:20:00Z",
+      "QQQ_percent_change": 0.98850052,
+      "SPY_percent_change": 0.56872601,
+      "TLT_percent_change": -0.032169714,
+      "GLD_percent_change": -0.74459444,
+      "UUP_percent_change": -0.20717917,
+      "semantics": "ETF proxies; not direct NQ, Treasury yield, GC, or DXY observations"
+    }
+  },
+  "argus": {
+    "status": "MATERIAL_DELTA",
+    "finding": "Authenticated Bybit spot depth retained as point-in-time displayed liquidity only; $0.10 spread at retrieval. No historical order-flow or persistent-liquidity inference. The completed 14:00 BTC spot candle is independently abnormal in both range and venue-reported spot volume."
+  },
+  "nexus": {
+    "status": "MATERIAL_DELTA",
+    "finding": "Bybit spot, Bybit linear, and Twelve Data reconcile on the 14:00 UTC BTC price-range expansion; spot and linear volume semantics remain separate. Cross-market ETF proxies show QQQ/SPY positive, GLD negative, UUP negative, TLT near flat, so broad direct-futures confirmation remains unavailable."
+  },
+  "data_gaps": [
+    "No authenticated direct NQ/MNQ, GC/MGC, SI, DXY, Treasury-yield, or volatility-index observation in this cycle.",
+    "No historical trade/depth sequencing; no historical order-flow claim."
+  ],
+  "next_decisive_check": "Test whether the next completed BTC hour sustains elevated range/turnover or mean-reverts, and obtain direct futures/USD/rates/volatility observations when available."
+}
