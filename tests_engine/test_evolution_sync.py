@@ -453,6 +453,45 @@ def test_malformed_legacy_rejection_state_is_normalized(tmp_path):
     assert state["validator_revision"] == VALIDATOR_REVISION
 
 
+def test_legacy_attempt_counter_is_not_mislabeled_as_unique_versions(tmp_path):
+    state_path = tmp_path / "audit" / "mcp_evolution_sync.json"
+    state_path.parent.mkdir(parents=True)
+    state_path.write_text(
+        json.dumps(
+            {
+                "execution_authorized": False,
+                "production_decision_authorized": False,
+                # Legacy v1 state had only a polling-attempt counter.
+                "rejected_total": 27,
+                "processed_blob_shas": [],
+                "events": [],
+                "subsystems": {},
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    sync = EvolutionRemoteSync(
+        tmp_path,
+        interval_seconds=30,
+        fetch_json=lambda _url: [],
+        fetch_bytes=lambda _url: b"",
+        enabled=True,
+    )
+    state = sync.sync_once()
+
+    assert state["status"] == "green"
+    assert state["rejected_total"] == 0
+    assert state["current_rejected_count"] == 0
+    assert state["legacy_rejection_attempt_total"] == 27
+
+    persisted = json.loads(state_path.read_text(encoding="utf-8"))
+    assert persisted["rejected_total"] == 0
+    assert persisted["legacy_rejection_attempt_total"] == 27
+    assert persisted["rejected_history_blob_shas"] == []
+
+
 def test_validator_revision_change_retries_known_bad_blob_without_double_count(
     tmp_path,
 ):
