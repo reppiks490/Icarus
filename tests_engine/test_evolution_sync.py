@@ -68,6 +68,9 @@ def test_verified_event_reaches_evolution_system_and_brain_surfaces(tmp_path):
     assert state["rejected_total"] == 0
     assert state["execution_authorized"] is False
     assert state["production_decision_authorized"] is False
+    assert "event_id_bindings" not in state
+    assert "rejected_blob_shas" not in state
+    assert "rejected_blob_errors" not in state
     assert state["events"][0]["event_id"] == "fixture-evolution-1"
     assert set(state["subsystems"]) >= {"argus", "athena", "parallax"}
 
@@ -450,6 +453,63 @@ def test_event_id_cannot_be_rebound_to_different_git_blob(tmp_path):
     assert collision["rejected_total"] == 1
     assert collision["current_rejected_count"] == 1
     assert collision["events"][0]["summary"] == "original immutable receipt"
+    assert "already bound to a different immutable Git blob" in (
+        collision["last_error"]
+    )
+
+
+def test_event_id_binding_survives_display_history_truncation(tmp_path):
+    current = {
+        "payload": event_payload(
+            event_id="long-lived-immutable-event-id",
+            summary="original bound event",
+        )
+    }
+
+    def raw():
+        return (
+            json.dumps(current["payload"], sort_keys=True) + "\n"
+        ).encode()
+
+    def listing(_url):
+        payload = raw()
+        return [{
+            "type": "file",
+            "name": "long-lived.json",
+            "path": REMOTE_ROOT + "/long-lived.json",
+            "sha": _git_blob_sha(payload),
+            "url": "fixture://long-lived",
+        }]
+
+    sync = EvolutionRemoteSync(
+        tmp_path,
+        interval_seconds=30,
+        fetch_json=listing,
+        fetch_bytes=lambda _url: raw(),
+        enabled=True,
+    )
+    first = sync.sync_once()
+    assert first["status"] == "green"
+
+    # Simulate this old event falling out of the bounded UI/history window.
+    state_path = tmp_path / "audit" / "mcp_evolution_sync.json"
+    persisted = json.loads(state_path.read_text(encoding="utf-8"))
+    persisted["events"] = []
+    state_path.write_text(
+        json.dumps(persisted, sort_keys=True, indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+    current["payload"] = event_payload(
+        event_id="long-lived-immutable-event-id",
+        summary="attempted historical rewrite",
+    )
+    collision = sync.sync_once()
+
+    assert collision["status"] == "degraded"
+    assert collision["ingested_total"] == 1
+    assert collision["rejected_total"] == 1
+    assert collision["events"] == []
     assert "already bound to a different immutable Git blob" in (
         collision["last_error"]
     )
