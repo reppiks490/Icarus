@@ -86,9 +86,9 @@ function wireAutopilot(){
   $('#apRefresh')&&$('#apRefresh').addEventListener('click',loadAutopilot);
   $('#apStart')&&$('#apStart').addEventListener('click',async()=>{await admin('/admin/autopilot/start',{});loadAutopilot();});
   $('#apStop')&&$('#apStop').addEventListener('click',async()=>{await admin('/admin/autopilot/stop',{});loadAutopilot();});
-  $('#apStep')&&$('#apStep').addEventListener('click',async()=>{await admin('/admin/autopilot/step',{},true);loadAutopilot();});
-  $('#apCadence')&&$('#apCadence').addEventListener('change',async e=>{await admin('/admin/autopilot/config',{cadence_seconds:Number(e.target.value)},true);loadAutopilot();});
-  $('#apWindows')&&$('#apWindows').addEventListener('change',async e=>{await admin('/admin/autopilot/config',{robustness_windows:Number(e.target.value)},true);loadAutopilot();});
-  $('#apAsset')&&$('#apAsset').addEventListener('change',async e=>{await admin('/admin/autopilot/config',{assets:e.target.value?[e.target.value]:[]},true);loadAutopilot();});
+  $('#apStep')&&$('#apStep').addEventListener('click',async()=>{await admin('/admin/autopilot/step',{});loadAutopilot();});
+  $('#apCadence')&&$('#apCadence').addEventListener('change',async e=>{await admin('/admin/autopilot/config',{cadence_seconds:Number(e.target.value)});loadAutopilot();});
+  $('#apWindows')&&$('#apWindows').addEventListener('change',async e=>{await admin('/admin/autopilot/config',{robustness_windows:Number(e.target.value)});loadAutopilot();});
+  $('#apAsset')&&$('#apAsset').addEventListener('change',async e=>{await admin('/admin/autopilot/config',{assets:e.target.value?[e.target.value]:[]});loadAutopilot();});
   loadAutopilot();autopilotTimer=setInterval(loadAutopilot,1200);
 }
