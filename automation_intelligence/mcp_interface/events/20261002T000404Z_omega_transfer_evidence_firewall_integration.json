@@ -1,0 +1,60 @@
+{
+  "schema_version": "icarus-mcp-event-v1",
+  "event_id": "omega-integration-20261002T000404Z-transfer-evidence-firewall",
+  "category": "INTEGRATION",
+  "severity": "material",
+  "status": "qualified",
+  "source": "OMEGA_AUTOMATION",
+  "recorded_at": "2026-10-02T00:04:04Z",
+  "execution_authorized": false,
+  "production_decision_authorized": false,
+  "net_new_delta": "PAPER_TO_BROKER_TRANSFER_VALIDATION_NOW_HAS_PREDECLARED_NON_PROMOTING_EVIDENCE_FIREWALL",
+  "finding": "Current main adds verified ARGUS paper-to-broker transfer validation that predeclares study identity, exact revisions, metrics, tolerances, confidence alpha, deterministic seed, replicate count and minimum observations before cohort start; keeps ICARUS_PAPER_EMULATOR and BROKER_CONFIRMED evidence separate; requires the full paper-minus-broker interval to fit inside tolerance; and exports receipt-time research results without authorizing broker substitution or evidence promotion.",
+  "accepted_findings": [
+    "ARGUS transfer compatibility can now be evaluated prospectively without pooling paper-emulator and broker-confirmed evidence classes.",
+    "Registered transfer analysis is recomputed before export and preserves exact study/cohort/plan/revision identities and evidence-specific sample sizes.",
+    "Flow 20:00 UTC BTC compression remains the freshest substantive specialist event established in the MCP tree; Macro duration/EUR-FX remains an active research hypothesis."
+  ],
+  "rejected_findings": [
+    "Within-tolerance transfer intervals are not a formal equivalence test.",
+    "Paper-emulator evidence is not broker-confirmed evidence and cannot be promoted or used to authorize broker substitution.",
+    "Verified transfer infrastructure does not confirm Macro, Flow, AION, or DAEDALUS market hypotheses and does not grant execution authority."
+  ],
+  "conflicts": [
+    "Transfer-validation infrastructure is fresher than substantive specialist breadth; no newer substantive AION or DAEDALUS MCP event was established in the inspected current event tree.",
+    "Flow remains BTC-centric with direct synchronous NQ/MNQ, GC/MGC, SI, DXY and volatility evidence absent from its freshest substantive receipt."
+  ],
+  "blockers": [
+    "The deterministic hub lacks genuine broker-confirmed execution evidence with valid lineage, so no ATHENA happy-path transfer driver is registered.",
+    "Formal equivalence and broker substitution remain explicitly unauthorized."
+  ],
+  "next_highest_value_integration_target": "Feed ARGUS transfer-audit state into ATHENA uncertainty and JANUS reconciliation as an evidence-class compatibility signal only after genuine broker-confirmed evidence with valid lineage exists; keep paper and broker evidence separate, preserve prospective registration and exact revisions, and leave GitHub-native v3 as authoritative liveness/persistence.",
+  "paths": [
+    "automation_intelligence/mcp_interface/events/20261001T235600Z_argus_paper_broker_transfer_verified.json",
+    "automation_intelligence/mcp_interface/events/20261002T000000Z_argus_transfer_research_export_verified.json",
+    "automation_intelligence/mcp_interface/events/20261001T212913353Z_flow_velocity_audit.json",
+    "automation_intelligence/mcp_interface/events/20261001T130854Z_macro_duration_euro_fx_evolution.json",
+    "automation_intelligence/mcp_interface/events/20261001T230222Z_omega_psi_calibration_integration.json"
+  ],
+  "evidence": [
+    "GitHub-verified main merge 0cb98a43b364d2afdc81ecdeef20ad4cc3c81f08 surfaces two immutable verified ARGUS transfer-validation receipts after exact-head Linux and Windows ICARUS CI passed.",
+    "ARGUS transfer plan must be created at or before cohort_start_ns and preserves BROKER_CONFIRMED versus ICARUS_PAPER_EMULATOR evidence classes.",
+    "ARGUS research export states formal_equivalence_test=false, paper_evidence_promoted=false, broker_substitution_authorized=false, and ATHENA integration remains unregistered pending genuine broker-confirmed evidence with valid lineage."
+  ],
+  "athena": {
+    "status": "BLOCKED_PENDING_GENUINE_BROKER_EVIDENCE",
+    "finding": "Transfer compatibility is now measurable, but ATHENA must not consume a happy-path transfer result until genuine broker-confirmed evidence with valid lineage exists."
+  },
+  "janus": {
+    "status": "ACTIONABLE",
+    "finding": "Reconcile paper and broker calibration as separate evidence classes tied to exact study/cohort/transfer-plan/revision identities; within-tolerance is not equivalence."
+  },
+  "infrastructure": {
+    "status": "VERIFIED_WITH_EVIDENCE_GAP",
+    "finding": "GitHub-verified main surfaces prospective ARGUS transfer-validation and receipt-time export controls; genuine broker-confirmed hub evidence is still absent."
+  },
+  "helios_prime": {
+    "status": "ACTIONABLE",
+    "finding": "The safe cross-system bridge is registered paper/broker transfer audit -> lineage-qualified broker evidence -> ATHENA/JANUS research state, without evidence promotion or execution authority."
+  }
+}
