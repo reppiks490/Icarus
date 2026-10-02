@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import threading
 import urllib.error
@@ -40,6 +41,82 @@ def _genome(*, subsystem="chronofold"):
             "protected_holdout_required": True,
         },
     }
+
+
+def _peer_packet(**overrides):
+    body = {
+        "schema_version": "icarus-peer-intelligence-packet-v1",
+        "source_repository": "reppiks490/Icarus-engine",
+        "source_commit": "a" * 40,
+        "observed_at": "2026-10-02T15:40:00Z",
+        "source_contracts": {
+            "control_plane": "automation_intelligence/restored_five_native/control_plane.json",
+            "agent_fabric": "automation_intelligence/agent_fabric/manifest.json",
+            "mcp_interface": "automation_intelligence/mcp_interface/contract.json",
+        },
+        "control_plane": {
+            "schema_version": "restored-five-native-control-v1",
+            "control_plane_id": "restored-five-native-liveness-v1",
+        },
+        "lanes": [
+            {
+                "name": "flow_microstructure",
+                "title": "Microstructure Sensor Grid",
+                "minute": 35,
+                "scheduler_id": "flow-1",
+                "run_prefix": "flow",
+                "worker_repository": "reppiks490/Icarus-engine",
+                "worker_root": "automation_intelligence/flow",
+                "run_id": "flow-20261002T153500Z",
+                "run_status": "RUN_PERSISTED",
+                "finalization_commit_sha": "e" * 40,
+                "completion_semantics": "WORKER_RESULT",
+                "worker_execution_observed": True,
+                "evidence_status": "PERSISTED_WORKER_EVIDENCE",
+                "substantive_research_evidence": True,
+                "execution_authorized": False,
+            },
+            {
+                "name": "robustness_guardian",
+                "title": "Robustness Guardian Evolution",
+                "minute": 5,
+                "scheduler_id": "rg-1",
+                "run_prefix": "robustness-guardian",
+                "worker_repository": "reppiks490/Icarus-engine",
+                "worker_root": "automation_intelligence/agent_fabric/robustness_guardian",
+                "run_id": "robustness-guardian-20261002T150500Z",
+                "run_status": "RUN_PERSISTED",
+                "finalization_commit_sha": "d" * 40,
+                "completion_semantics": "DURABILITY_RECEIPT_ONLY",
+                "worker_execution_observed": False,
+                "evidence_status": "DURABILITY_ONLY",
+                "substantive_research_evidence": False,
+                "execution_authorized": False,
+            },
+        ],
+        "mcp_interface": {
+            "schema_version": "icarus-mcp-interface-contract-v1",
+            "event_root": "automation_intelligence/mcp_interface/events",
+            "ui_api": "/api/mcp/control",
+            "trading_execution_authorized": False,
+        },
+        "truth_contract": {
+            "foreign_repository_state_is_evidence_not_native_truth": True,
+            "durability_receipt_is_not_substantive_worker_evidence": True,
+            "remote_sibling_state_is_never_inferred": True,
+            "exact_source_commit_required": True,
+            "execution_authority_never_transfers_between_repositories": True,
+        },
+        "execution_authorized": False,
+        "production_decision_authorized": False,
+        "peer_write_authorized": False,
+    }
+    body.update(overrides)
+    payload = {k: v for k, v in body.items() if k != "packet_id"}
+    body["packet_id"] = hashlib.sha256(
+        json.dumps(payload, sort_keys=True, separators=(",", ":"), allow_nan=False).encode("utf-8")
+    ).hexdigest()
+    return body
 
 
 def _candidate(**overrides):
@@ -662,3 +739,39 @@ def test_evaluator_cascade_api_is_foundry_bound_and_research_only(ascendancy_gen
     assert port.paused is paused_before
     assert list(port.runners) == runners_before
     assert srv.ascendancy_evaluator.snapshot()["receipt_count"] == 1
+
+
+def test_peer_repository_api_ingests_foreign_evidence_without_authority_transfer(ascendancy_genome_http):
+    port, srv, request = ascendancy_genome_http
+    paused_before = port.paused
+    runners_before = list(port.runners)
+
+    code, body = request("GET", "/api/ascendancy/peers", auth=False)
+    assert code == 401
+    assert "admin token" in body["detail"]
+
+    packet = _peer_packet()
+    code, saved = request("POST", "/admin/ascendancy/peer-packet", body=packet)
+    assert code == 200, saved
+    assert saved["trading_state_unchanged"] is True
+    assert saved["packet"]["source_repository"] == "reppiks490/Icarus-engine"
+    assert saved["execution_authorized"] is False
+    assert saved["production_decision_authorized"] is False
+
+    code, snapshot = request("GET", "/api/ascendancy/peers")
+    assert code == 200
+    assert snapshot["packet_count"] == 1
+    assert snapshot["source_count"] == 1
+    source = snapshot["latest_by_source"][0]
+    assert source["candidate_evidence_eligible_lanes"] == ["flow_microstructure"]
+    assert source["durability_only_lanes"] == ["robustness_guardian"]
+    assert snapshot["truth_contract"]["durability_only_never_enters_candidate_evidence"] is True
+
+    self_packet = _peer_packet(source_repository="reppiks490/Icarus")
+    code, body = request("POST", "/admin/ascendancy/peer-packet", body=self_packet)
+    assert code == 400
+    assert "self-source" in body["detail"].lower()
+
+    assert port.paused is paused_before
+    assert list(port.runners) == runners_before
+    assert srv.ascendancy_peers.snapshot()["packet_count"] == 1
