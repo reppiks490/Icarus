@@ -634,3 +634,171 @@ def test_learning_ui_exposes_semantic_trade_twin_proof():
     assert "Semantic trade proof" in source
     assert "SEMANTIC_TRADE_SIGNATURE_V1" in source
 
+
+def test_ascendancy_dashboard_surfaces_open_ended_genome_lab():
+    ui = (REPO / "icarus_engine/ascendancy-ui.js").read_text(encoding="utf-8")
+    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
+
+    assert "/api/ascendancy/genomes" in ui
+    assert "ARCHITECTURE GENOME" in ui
+    assert "SEARCH FRONTIER" in ui
+    assert "EVOLUTION LINEAGE" in ui
+    assert "DIVERSITY / NICHES" in ui
+    assert "COMPILE RECEIPTS" in ui
+    assert "COMPILE BLOCKERS" in ui
+    assert "EVALUATOR CONTRACT" in ui
+    assert "RESOURCE BUDGET" in ui
+    assert "PARENT / CHILD ANCESTRY" in ui
+    assert "CURRENT FRONTIER" in ui
+    assert "STEPPING STONES" in ui
+    assert "RETIRED" in ui
+    assert "REJECTED" in ui
+    assert "UNMEASURED" in ui
+    assert "UNAVAILABLE" in ui
+    assert "latest_evaluation_per_genome_per_contract" in ui
+    assert "novelty_score" in ui
+    assert "execution_authorized=false" in ui
+    assert "production_decision_authorized=false" in ui
+    assert "let loadSeq = 0;" in ui
+    assert "seq !== loadSeq" in ui
+    assert 'p.path == "/api/ascendancy/genomes"' in server
+    assert 'p.path == "/admin/ascendancy/genome"' in server
+    assert 'p.path == "/admin/ascendancy/genome-evaluation"' in server
+    assert 'p.path == "/admin/ascendancy/genome-retire"' in server
+
+
+def test_ascendancy_dashboard_surfaces_candidate_foundry():
+    ui = (REPO / "icarus_engine/ascendancy-ui.js").read_text(encoding="utf-8")
+    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
+
+    assert "/api/ascendancy/candidates" in ui
+    assert "EDGE FOUNDRY" in ui
+    assert "HYPOTHESIS" in ui
+    assert "MECHANISM" in ui
+    assert "EXPECTED ADVANTAGE" in ui
+    assert "REQUIRED OBSERVATIONS" in ui
+    assert "FALSIFIERS" in ui
+    assert "ORIGIN" in ui
+    assert "RESOURCE BUDGET" in ui
+    assert "PARENT CANDIDATES" in ui
+    assert "PROPOSED" in ui
+    assert "REJECTED" in ui
+    assert "UNAVAILABLE" in ui
+    assert "qualified_shadow_reserved_for_protected_qualification" in ui
+    assert 'p.path == "/api/ascendancy/candidates"' in server
+    assert 'p.path == "/admin/ascendancy/candidate"' in server
+    assert 'p.path == "/admin/ascendancy/candidate-stage"' in server
+    assert 'p.path == "/admin/ascendancy/candidate-reject"' in server
+
+
+def test_ascendancy_dashboard_surfaces_unknown_unknown_lab():
+    ui = (REPO / "icarus_engine/ascendancy-ui.js").read_text(encoding="utf-8")
+    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
+
+    assert "/api/ascendancy/unknowns" in ui
+    assert "UNKNOWN UNKNOWNS" in ui
+    assert "STRUCTURED VS NOISE" in ui
+    assert "INDEPENDENT EPISODES" in ui
+    assert "FAILED SYSTEMS" in ui
+    assert "FAILED EXPLANATIONS" in ui
+    assert "CANDIDATE LINKS" in ui
+    assert "UNEXPLAINED" in ui
+    assert "REPLICATED" in ui
+    assert "cause_remains_null_until_separate_validation" in ui
+    assert 'p.path == "/api/ascendancy/unknowns"' in server
+    assert 'p.path == "/admin/ascendancy/unknown-event"' in server
+    assert 'p.path == "/admin/ascendancy/unknown-explanation"' in server
+    assert 'p.path == "/admin/ascendancy/unknown-link-candidate"' in server
+
+
+def test_ascendancy_dashboard_surfaces_mechanism_laboratory():
+    ui = (REPO / "icarus_engine/ascendancy-ui.js").read_text(encoding="utf-8")
+    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
+    assert "/api/ascendancy/mechanisms" in ui
+    assert "MECHANISM LABORATORY" in ui
+    assert "DIRECT_CONTRIBUTOR" in ui
+    assert "INTERACTION_DEPENDENT" in ui
+    assert "HARMFUL_LOOKING" in ui
+    assert "UNRESOLVED" in ui
+    assert "mechanism_attribution_is_not_causal_proof" in ui
+    assert "contracts_and_contexts_are_never_pooled" in ui
+    assert "causal_proof=false" in ui
+    assert 'p.path == "/api/ascendancy/mechanisms"' in server
+    assert 'p.path == "/admin/ascendancy/mechanism-experiment"' in server
+
+
+def test_ascendancy_dashboard_surfaces_invention_engine():
+    ui = (REPO / "icarus_engine/ascendancy-ui.js").read_text(encoding="utf-8")
+    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
+    assert "/api/ascendancy/inventions" in ui
+    assert "INVENTION ENGINE" in ui
+    assert "UNTESTED_HYPOTHESIS" in ui
+    assert "generated_blueprint_is_not_validated_edge" in ui
+    assert "unavailable_observations_cannot_seed_transformations" in ui
+    assert "arbitrary_source_code_execution=false" in ui
+    assert "primitive_families" in ui
+    assert "edge_claim_established=false" in ui
+    assert 'p.path == "/api/ascendancy/inventions"' in server
+    assert 'p.path == "/admin/ascendancy/invention-generate"' in server
+    assert 'p.path == "/admin/ascendancy/invention-to-candidate"' in server
+
+
+def test_ascendancy_dashboard_surfaces_information_contribution_matrix():
+    ui = (REPO / "icarus_engine/ascendancy-ui.js").read_text(encoding="utf-8")
+    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
+
+    assert "/api/ascendancy/contributions" in ui
+    assert "INFORMATION CONTRIBUTION MATRIX" in ui
+    assert "CONDITIONING SET" in ui
+    assert "MEAN GAIN (NATS)" in ui
+    assert "BITS / OBS" in ui
+    assert "paired_predictive_log_score_gain" in ui
+    assert "exact_conditional_mutual_information" in ui
+    assert "standalone_performance_is_not_incremental_information" in ui
+    assert 'p.path == "/api/ascendancy/contributions"' in server
+    assert 'p.path == "/admin/ascendancy/contribution-observation"' in server
+
+
+def test_ascendancy_dashboard_surfaces_evaluator_cascade():
+    ui = (REPO / "icarus_engine/ascendancy-ui.js").read_text(encoding="utf-8")
+    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
+
+    assert "/api/ascendancy/evaluator" in ui
+    assert "EVALUATOR CASCADE" in ui
+    assert "RESOURCE ECONOMY" in ui
+    assert "NEXT STAGE" in ui
+    assert "PROTECTED HOLDOUT" in ui
+    assert "HOLDOUT EXPOSURES" in ui
+    assert "QUALIFICATION_PREFLIGHT" in ui
+    assert "cascade_cannot_mint_qualification" in ui
+    assert "research_priority_is_expected_information_gain_per_cost" in ui
+    assert 'p.path == "/api/ascendancy/evaluator"' in server
+    assert 'p.path == "/admin/ascendancy/evaluator-register"' in server
+    assert 'p.path == "/admin/ascendancy/evaluator-receipt"' in server
+
+
+def test_ascendancy_dashboard_surfaces_peer_repository_bridge():
+    ui = (REPO / "icarus_engine/ascendancy-ui.js").read_text(encoding="utf-8")
+    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
+
+    assert "/api/ascendancy/peers" in ui
+    assert "PEER REPOSITORY BRIDGE" in ui
+    assert "CANDIDATE-ELIGIBLE LANES" in ui
+    assert "DURABILITY-ONLY LANES" in ui
+    assert "foreign evidence" in ui.lower()
+    assert 'p.path == "/api/ascendancy/peers"' in server
+    assert 'p.path == "/admin/ascendancy/peer-packet"' in server
+
+
+def test_ascendancy_peer_dashboard_surfaces_historical_research_context():
+    ui = (REPO / "icarus_engine/ascendancy-ui.js").read_text(encoding="utf-8")
+
+    assert "HISTORICAL RESEARCH CONTEXT" in ui
+    assert "historical_artifact_count" in ui
+    assert "historical_research_context_count" in ui
+    assert "historical_candidate_evidence_count" in ui
+    assert "historical_research_lanes" in ui
+    assert "requires_foundry_and_evaluator" in ui
+    assert "HISTORICAL_RESEARCH_EVIDENCE" in ui
+    assert "HISTORICAL_COLLECTION_EVIDENCE" in ui
+    assert "candidate evidence=false" in ui.lower()
