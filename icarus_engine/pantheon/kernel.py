@@ -316,6 +316,8 @@ class PantheonKernel:
                 "stale_research_memory_is_decayed_not_treated_as_timeless": True,
                 "dormant_memory_requires_fresh_mechanism_revalidation": True,
                 "memory_resurrection_evidence_is_bound_to_observation_identity": True,
+                "research_thesis_proof_axes_are_non_substitutable": True,
+                "research_certificate_never_grants_execution": True,
                 "missing_inputs_produce_abstention": True,
                 "new_concepts_begin_as_hypotheses": True,
                 "execution_requires_separate_hard_risk_kernel": True,
@@ -1113,6 +1115,7 @@ class PantheonKernel:
             "ECHO": {"mode": "pantheon faculty; evidence-ancestry de-duplication"},
             "VERITAS": {"mode": "pantheon faculty; right-for-right-reasons reconciliation"},
             "LETHE": {"mode": "pantheon faculty; adaptive research-memory decay and evidence-gated resurrection"},
+            "AXIOM": {"mode": "pantheon faculty; proof-carrying non-substitutable research-thesis certificate"},
             "ARCHON": {"mode": "pantheon faculty"},
             "AETHER": {"mode": "ephemeral swarm ecology"},
         }
