@@ -20,6 +20,7 @@ FACULTIES = (
     "dreamstate",
     "nemesis",
     "godel",
+    "kairos",
     "socrates",
     "ananke",
     "ex_nihilo",
