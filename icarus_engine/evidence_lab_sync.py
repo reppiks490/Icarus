@@ -55,15 +55,21 @@ def _default_state(interval_seconds: int) -> dict[str, Any]:
         "last_attempt_at": None,
         "last_success_at": None,
         "last_error": None,
+        "last_warning": None,
+        "compatibility_warnings": [],
         "scheduler_id": None,
         "current_run_id": None,
         "run_status": None,
         "evidence_run_id": None,
         "evidence_status": None,
         "latest_run_id": None,
+        "finalization_run_id": None,
         "finalization_status": None,
+        "finalization_pointer_matches_heartbeat": None,
+        "heartbeat_finalization_blob_matches": None,
         "latest_pointer_matches_heartbeat": None,
         "evidence_pointer_matches_heartbeat": None,
+        "compatibility_pointer_lag": None,
         "remote_blobs": {},
         "truth_contract": {
             "federation_schema": None,
@@ -162,12 +168,33 @@ def _normalize_snapshot(documents: Mapping[str, Mapping[str, Any]], blobs: Mappi
     current_run = str(heartbeat.get("RUN_ID") or "").strip() or None
     evidence_run = str(evidence.get("RUN_ID") or "").strip() or None
     latest_run = str(latest.get("RUN_ID") or "").strip() or None
+    finalization_run = str(finalization.get("RUN_ID") or "").strip() or None
     run_status = str(heartbeat.get("RUN_STATUS") or "").strip() or None
     evidence_status = str(evidence.get("EVIDENCE_STATUS") or "").strip() or None
     finalization_status = (
-        str(finalization.get("FINALIZATION_STATUS") or finalization.get("status") or "").strip() or None
+        str(
+            finalization.get("RUN_STATUS")
+            or finalization.get("FINALIZATION_STATUS")
+            or finalization.get("status")
+            or ""
+        ).strip()
+        or None
     )
 
+    finalization_matches = (
+        finalization_run == current_run
+        if finalization_run is not None and current_run is not None
+        else None
+    )
+    heartbeat_finalization_blob = (
+        str(heartbeat.get("finalization_state_blob_sha") or "").strip().lower() or None
+    )
+    observed_finalization_blob = str(blobs.get("finalization_state.json") or "").strip().lower() or None
+    blob_matches = (
+        heartbeat_finalization_blob == observed_finalization_blob
+        if heartbeat_finalization_blob is not None and observed_finalization_blob is not None
+        else None
+    )
     latest_matches = (latest_run == current_run) if (latest_run and current_run) else None
     evidence_matches = (evidence_run == current_run) if (evidence_run and current_run) else None
 
@@ -178,9 +205,13 @@ def _normalize_snapshot(documents: Mapping[str, Mapping[str, Any]], blobs: Mappi
         "evidence_run_id": evidence_run,
         "evidence_status": evidence_status,
         "latest_run_id": latest_run,
+        "finalization_run_id": finalization_run,
         "finalization_status": finalization_status,
+        "finalization_pointer_matches_heartbeat": finalization_matches,
+        "heartbeat_finalization_blob_matches": blob_matches,
         "latest_pointer_matches_heartbeat": latest_matches,
         "evidence_pointer_matches_heartbeat": evidence_matches,
+        "compatibility_pointer_lag": latest_matches is False,
         "remote_blobs": dict(blobs),
         "truth_contract": {
             "federation_schema": contract.get("schema_version"),
@@ -241,6 +272,8 @@ class EvidenceLabRemoteSync:
             state["last_attempt_at"] = _utc_now()
             state["status"] = "syncing"
             state["last_error"] = None
+            state["last_warning"] = None
+            state["compatibility_warnings"] = []
             try:
                 listing = self._fetch_json(_REMOTE_API)
                 if not isinstance(listing, list):
@@ -275,13 +308,31 @@ class EvidenceLabRemoteSync:
                 state.update(normalized)
                 state["last_success_at"] = _utc_now()
 
-                pointer_warnings = []
+                canonical_errors = []
+                if normalized["run_status"] == "RUN_PERSISTED":
+                    if normalized["current_run_id"] is None:
+                        canonical_errors.append("RUN_PERSISTED heartbeat is missing RUN_ID")
+                    if normalized["finalization_run_id"] is None:
+                        canonical_errors.append("RUN_PERSISTED heartbeat has no finalization RUN_ID")
+                    elif normalized["finalization_pointer_matches_heartbeat"] is False:
+                        canonical_errors.append("finalization_state RUN_ID does not match heartbeat RUN_ID")
+                    if normalized["finalization_status"] != "RUN_PERSISTED":
+                        canonical_errors.append("finalization_state is not RUN_PERSISTED")
+                    if normalized["heartbeat_finalization_blob_matches"] is False:
+                        canonical_errors.append("heartbeat finalization blob does not match current finalization_state blob")
+
+                compatibility_warnings = []
                 if normalized["latest_pointer_matches_heartbeat"] is False:
-                    pointer_warnings.append("latest.json does not match heartbeat RUN_ID")
+                    compatibility_warnings.append("latest.json compatibility mirror lags heartbeat RUN_ID")
                 if normalized["evidence_pointer_matches_heartbeat"] is False:
-                    pointer_warnings.append("evidence_state RUN_ID does not match heartbeat RUN_ID")
-                state["status"] = "degraded" if pointer_warnings else "green"
-                state["last_error"] = " | ".join(pointer_warnings) if pointer_warnings else None
+                    compatibility_warnings.append(
+                        "evidence_state references a different run; evidence authority remains independent of durability"
+                    )
+
+                state["compatibility_warnings"] = compatibility_warnings
+                state["last_warning"] = " | ".join(compatibility_warnings) if compatibility_warnings else None
+                state["status"] = "degraded" if canonical_errors else "green"
+                state["last_error"] = " | ".join(canonical_errors) if canonical_errors else None
 
                 current_run = normalized.get("current_run_id")
                 if current_run and current_run != previous_run:
