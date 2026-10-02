@@ -580,3 +580,13 @@ def test_learning_dashboard_exposes_label_and_revision_scoped_credibility():
     assert "r.prediction_label" in ui
     assert "r.source_commit" in ui
     assert "producer × asset × regime × horizon × label × revision" in ui
+
+
+def test_learning_dashboard_exposes_overlap_aware_scorecard_counts():
+    ui = (REPO / "icarus_engine/learning-ui.js").read_text(encoding="utf-8")
+    assert "Effective settled" in ui
+    assert "Raw settled" in ui
+    assert "Overlap purged" in ui
+    assert "r.raw_settled" in ui
+    assert "r.overlap_purged" in ui
+    assert "effective non-overlapping outcomes" in ui
