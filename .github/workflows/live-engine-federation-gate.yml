@@ -67,6 +67,7 @@ jobs:
               _REMOTE_PRODUCER_CONTRACT_API,
               _REMOTE_PEER_PACKET_API,
               _git_blob_sha,
+              _remote_artifact_api,
               _remote_compare_api,
           )
 
@@ -87,6 +88,26 @@ jobs:
           peer_packet_meta = meta_for(peer_packet_path, "peer-packet")
           peer_packet_doc = json.loads(peer_packet_path.read_text(encoding="utf-8"))
           peer_source_compare_url = _remote_compare_api(peer_packet_doc["source_commit"])
+          historical_meta = {}
+          for artifact in peer_packet_doc.get("historical_artifacts", []):
+              artifact_path = artifact["path"]
+              source = peer_packet_doc["source_commit"]
+              raw = subprocess.check_output(
+                  [
+                      "git",
+                      "-C",
+                      "../peer-engine",
+                      "show",
+                      f"{source}:{artifact_path}",
+                  ]
+              )
+              url = "memory://historical/" + artifact["lane"]
+              virtual[url] = raw
+              historical_meta[_remote_artifact_api(artifact_path, source)] = {
+                  "type": "file",
+                  "sha": _git_blob_sha(raw),
+                  "url": url,
+              }
 
           listing = []
           for path in sorted(event_dir.glob("*.json")):
@@ -104,6 +125,8 @@ jobs:
                   return producer_meta
               if url == _REMOTE_PEER_PACKET_API:
                   return peer_packet_meta
+              if url in historical_meta:
+                  return historical_meta[url]
               if url == peer_source_compare_url:
                   source = peer_packet_doc["source_commit"]
                   subprocess.run(
@@ -190,16 +213,23 @@ jobs:
               for lane in state["peer_lanes"]
           )
           assert state["peer_historical_artifacts"], state
+          assert truth["peer_historical_source_blob_required"] is True
+          assert truth["peer_historical_artifact_id_sha256_required"] is True
           assert (
               state["peer_historical_context_count"]
               + state["peer_historical_collection_count"]
               == len(state["peer_historical_artifacts"])
+          )
+          assert state["peer_historical_source_blob_verified_count"] == len(
+              state["peer_historical_artifacts"]
           )
           assert all(
               artifact["artifact_kind"] == "HISTORICAL_LATEST"
               and artifact["research_context_eligible"] is True
               and artifact["candidate_evidence_eligible"] is False
               and artifact["execution_authorized"] is False
+              and artifact["source_artifact_blob_verified"] is True
+              and len(artifact["source_artifact_blob_sha"]) == 40
               and len(artifact["artifact_id"]) == 64
               and len(artifact["lineage"]["history_blob_sha"]) == 40
               for artifact in state["peer_historical_artifacts"]
@@ -232,6 +262,7 @@ jobs:
               "peer_historical_context_source_count": truth["peer_historical_context_source_count"],
               "peer_historical_context_count": state["peer_historical_context_count"],
               "peer_historical_collection_count": state["peer_historical_collection_count"],
+              "peer_historical_source_blob_verified_count": state["peer_historical_source_blob_verified_count"],
               "peer_historical_artifact_ids": [
                   artifact["artifact_id"] for artifact in state["peer_historical_artifacts"]
               ],
