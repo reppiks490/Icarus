@@ -44,8 +44,9 @@ class ApexKernel:
         boundary=as_of or _now();parse_utc(boundary,"as_of")
         evidence=self.store.evidence_as_of(boundary)
         ancestry=EvidenceAncestry()
+        by_id={str(row["evidence_id"]):row for row in evidence}
         for row in evidence: ancestry.add(row)
-        lineage={};support_by_engine={};seen_engines=set()
+        lineage={};support_by_engine={};seen_engines=set();all_ids=[]
         for raw_engine,raw_ids in engine_evidence_ids.items():
             if not isinstance(raw_engine,str) or not raw_engine.strip():
                 raise ValueError("engine_evidence_ids engine names must be non-empty strings")
@@ -81,6 +82,11 @@ class ApexKernel:
                 "apex-root:" + hashlib.sha256(root.encode("utf-8")).hexdigest()[:32]
                 for root in root_ids
             )
+            rows=[by_id[eid] for eid in ids]
+            qualities=[float(row["quality"]) for row in rows if isinstance(row.get("quality"),(int,float)) and not isinstance(row.get("quality"),bool)]
+            confidences=[float(row["confidence"]) for row in rows if isinstance(row.get("confidence"),(int,float)) and not isinstance(row.get("confidence"),bool)]
+            nominal=int(support["nominal_support"])
+            effective=int(support["effective_independent_families"])
             lineage[engine]=root_tokens
             support_by_engine[engine]={
                 "evidence_ids":ids,
@@ -90,14 +96,29 @@ class ApexKernel:
                 "effective_independent_families":support["effective_independent_families"],
                 "overlap_ratio":support["overlap_ratio"],
                 "semantic_duplicate_count":support["semantic_duplicate_count"],
+                "independence_ratio":(effective/nominal) if nominal>0 else 0.0,
+                "visible_evidence_count":len(rows),
+                "mean_quality":(sum(qualities)/len(qualities)) if qualities else None,
+                "mean_confidence":(sum(confidences)/len(confidences)) if confidences else None,
                 "integrity_ok":True,
             }
+            all_ids.extend(ids)
+        global_support=ancestry.effective_support(all_ids)
+        if not global_support.get("integrity_ok"):
+            raise ValueError("APEX global evidence lineage integrity failure")
+        global_nominal=int(global_support.get("nominal_support",0))
+        global_effective=int(global_support.get("effective_independent_families",0))
+        global_support={
+            **global_support,
+            "independence_ratio":(global_effective/global_nominal) if global_nominal>0 else 0.0,
+        }
         return {
             "schema_version":"icarus-apex-engine-lineage-v1",
             "status":"VERIFIED",
             "as_of":boundary,
             "engine_evidence_lineage":lineage,
             "engine_support":support_by_engine,
+            "global_support":global_support,
             "lineage_owner":"APEX_EVIDENCE_ANCESTRY",
             **authority_flags(),
         }
