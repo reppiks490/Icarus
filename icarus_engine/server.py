@@ -92,6 +92,7 @@ from .commissioning import CommissioningEngine
 from .pantheon import PantheonKernel, subsystem_context
 from .sibyl import SibylEngine
 from .apex import ApexKernel
+from .ascendancy.capabilities import capability_snapshot
 
 
 def _no_json_constants(name: str):
@@ -865,6 +866,10 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 except Exception as ex:
                     sys.stderr.write(f"status/public failed: {type(ex).__name__}: {ex}\n")
                     return self._json(500, {"ok": False, "detail": f"{type(ex).__name__}: {ex}", "assets": []})
+            if p.path == "/api/ascendancy/capabilities":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                return self._json(200, capability_snapshot())
             if p.path == "/api/golive":
                 return self._json(200, golive_report(port))
             if p.path == "/api/agent":
