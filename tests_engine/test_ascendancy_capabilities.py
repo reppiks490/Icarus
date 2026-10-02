@@ -26,7 +26,7 @@ def test_blocked_and_unprobed_states_are_truthful():
     rows = {row["id"]: row for row in capability_snapshot()["providers"]}
     assert rows["scite"]["observed_status"] == "BLOCKED_SUBSCRIPTION"
     assert rows["us-gold-bureau"]["observed_status"] == "BLOCKED_NETWORK_POLICY"
-    assert rows["prompt-perfect"]["observed_status"] == "AVAILABLE_UNPROBED"
+    assert rows["prompt-perfect"]["observed_status"] == "VERIFIED"
 
 
 def test_market_and_chain_truth_boundaries_are_explicit():
