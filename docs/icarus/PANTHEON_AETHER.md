@@ -181,6 +181,14 @@ other non-directional faculties cannot inflate SIBYL consensus merely by being
 present. The exported evidence preserves exact observation time and source
 commit and remains research/shadow-only.
 
+Every exported SIBYL candidate is also bound to the exact PANTHEON
+`origin_observation_id` and to at least one immutable
+`origin_evidence_refs` entry. Evidence-free structural diagnostics remain
+visible inside PANTHEON but are not exported downstream. The payload records
+the origin evidence count and an explicit provenance contract, preventing a
+structural research conclusion from being laundered into SIBYL as if it had
+independent source provenance.
+
 ## Durable AETHER ecology
 
 AETHER separates disposable workers from durable evolutionary state. The

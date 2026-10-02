@@ -1511,12 +1511,34 @@ def test_pantheon_exports_only_identified_structural_constraint_evidence_to_siby
     assert row["direction"] > 0
     assert row["confidence"] > 0.10
     assert row["source_commit"] == "a" * 40
+    assert row["payload"]["origin_observation_id"] == "pan-sibyl-identified"
+    assert row["payload"]["origin_evidence_refs"] == ["fixture:synthetic-shadow"]
+    assert row["payload"]["origin_evidence_count"] == 1
+    assert row["payload"]["provenance_contract"]["explicit_origin_evidence_required"] is True
     assert row["payload"]["authority"]["execution_authorized"] is False
 
     ambiguous = kernel.record_observation(
         _payload(observation_id="pan-sibyl-ambiguous", observed_at="2026-10-01T06:00:01Z")
     )
     assert ambiguous["analysis"]["exports"]["sibyl_evidence"] == []
+
+
+def test_pantheon_sibyl_export_requires_explicit_origin_evidence(tmp_path):
+    kernel = PantheonKernel(tmp_path)
+    payload = _payload(
+        observation_id="pan-sibyl-no-origin-evidence",
+        observed_at="2026-10-01T06:00:02Z",
+    )
+    payload["evidence"] = []
+    payload["signals"] = dict(payload["signals"])
+    payload["signals"]["world_scores"] = {"up_constraint": 0.98, "down_constraint": 0.02}
+    payload["signals"]["transition_cost_up"] = 0.10
+    payload["signals"]["transition_cost_down"] = 2.80
+
+    obs = kernel.record_observation(payload)
+    assert obs["analysis"]["faculties"]["ananke"]["status"] != "abstain"
+    assert obs["analysis"]["exports"]["sibyl_evidence"] == []
+    assert obs["analysis"]["truth_contract"]["sibyl_exports_require_origin_evidence"] is True
 
 
 def test_pantheon_extended_constraints_ablation_and_causal_debt_states(tmp_path):
