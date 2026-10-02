@@ -1701,3 +1701,252 @@ def test_drift_retirement_requires_non_overlapping_oos_evidence(tmp_path):
     assert row["effective_sample_count"] == 2
     assert row["overlap_purged"] == 6
     assert fabric.shadow_calibration_state()["drift_retired_model_count"] == 0
+
+
+def _seed_parallax_empirical_db(tmp_path):
+    import sqlite3, json
+    research = tmp_path / "research"
+    research.mkdir(parents=True, exist_ok=True)
+    db = research / "parallax.sqlite3"
+    con = sqlite3.connect(db)
+    con.executescript("""
+        CREATE TABLE decisions (
+            decision_id TEXT PRIMARY KEY,
+            observed_at TEXT NOT NULL,
+            asset TEXT NOT NULL,
+            action TEXT NOT NULL,
+            regime TEXT NOT NULL,
+            source_commit TEXT NOT NULL,
+            context_hash TEXT NOT NULL,
+            context_json TEXT NOT NULL,
+            votes_json TEXT NOT NULL,
+            contract_json TEXT NOT NULL DEFAULT '{}',
+            strata_json TEXT NOT NULL DEFAULT '{}',
+            created_at TEXT NOT NULL
+        );
+        CREATE TABLE branches (
+            branch_id TEXT PRIMARY KEY,
+            decision_id TEXT NOT NULL,
+            kind TEXT NOT NULL,
+            label TEXT NOT NULL,
+            params_json TEXT NOT NULL,
+            utility REAL,
+            metrics_json TEXT,
+            evidence_json TEXT,
+            observed_at TEXT,
+            status TEXT NOT NULL DEFAULT 'pending'
+        );
+    """)
+    contract = {
+        "utility_metric": "r_multiple",
+        "evaluation_horizon_bars": 20,
+        "dataset_id": "dataset:fixture",
+        "cost_model_id": "costs:fixture",
+        "clock_id": "bar-close-v1",
+        "normalization": "risk_normalized",
+    }
+    con.execute(
+        "INSERT INTO decisions VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+        (
+            "px-1","2026-10-01T10:00:00Z","NQ","long","trend","a"*40,
+            "ctxhash",json.dumps({"episode_id":"ep-1"}),json.dumps({"athena":0.7}),
+            json.dumps(contract),json.dumps({"session":"NY"}),"2026-10-01T10:00:00Z",
+        ),
+    )
+    con.execute(
+        "INSERT INTO branches VALUES(?,?,?,?,?,?,?,?,?,?)",
+        ("pxb-actual","px-1","actual","actual",json.dumps({"action":"long"}),0.25,
+         json.dumps({"r_multiple":0.25}),json.dumps(["replay:actual"]),
+         "2026-10-01T10:20:00Z","observed"),
+    )
+    con.execute(
+        "INSERT INTO branches VALUES(?,?,?,?,?,?,?,?,?,?)",
+        ("pxb-delay","px-1","delay","delay_1",json.dumps({"delay_bars":1}),0.75,
+         json.dumps({"r_multiple":0.75}),json.dumps(["replay:delay"]),
+         "2026-10-01T10:20:00Z","observed"),
+    )
+    con.commit()
+    con.close()
+    return db
+
+
+def _seed_pantheon_empirical_db(tmp_path):
+    import sqlite3, json
+    research = tmp_path / "research"
+    research.mkdir(parents=True, exist_ok=True)
+    db = research / "pantheon.sqlite3"
+    con = sqlite3.connect(db)
+    con.executescript("""
+        CREATE TABLE observations (
+            observation_id TEXT PRIMARY KEY,
+            observed_at TEXT NOT NULL,
+            asset TEXT NOT NULL,
+            horizon_ms INTEGER NOT NULL,
+            source_commit TEXT NOT NULL,
+            identity_hash TEXT NOT NULL,
+            payload_json TEXT NOT NULL,
+            analysis_json TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        );
+        CREATE TABLE claims (
+            claim_id TEXT PRIMARY KEY,
+            observation_id TEXT NOT NULL,
+            kind TEXT NOT NULL,
+            stage TEXT NOT NULL,
+            payload_json TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        );
+        CREATE TABLE claim_outcomes (
+            outcome_id TEXT PRIMARY KEY,
+            claim_id TEXT NOT NULL,
+            observed_at TEXT NOT NULL,
+            source_observation_id TEXT,
+            utility REAL NOT NULL,
+            fitness_utility REAL NOT NULL,
+            confidence REAL NOT NULL,
+            evidence_json TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        );
+    """)
+    con.execute(
+        "INSERT INTO observations VALUES(?,?,?,?,?,?,?,?,?)",
+        ("pan-1","2026-10-01T11:00:00Z","NQ",10000,"b"*40,"idhash",
+         json.dumps({"fixture":True}),json.dumps({"faculties":{}}),"2026-10-01T11:00:00Z"),
+    )
+    con.execute(
+        "INSERT INTO claims VALUES(?,?,?,?,?,?)",
+        ("claim-1","pan-1","monetization_candidate","hypothesis",
+         json.dumps({"thesis":"fixture"}),"2026-10-01T11:00:00Z"),
+    )
+    con.execute(
+        "INSERT INTO claim_outcomes VALUES(?,?,?,?,?,?,?,?,?)",
+        ("out-1","claim-1","2026-10-01T11:00:20Z",None,0.8,0.0,0.9,
+         json.dumps(["fixture:observed"]),"2026-10-01T11:00:20Z"),
+    )
+    con.commit()
+    con.close()
+    return db
+
+
+def test_native_empirical_federation_preserves_parallax_utility_semantics(tmp_path):
+    from icarus_engine.learning_fabric import LearningFabric
+
+    _seed_parallax_empirical_db(tmp_path)
+    fabric = LearningFabric(tmp_path)
+    out = fabric.harvest_native()["parallax_empirical"]
+    assert out["status"] == "ok"
+    assert out["imported"] == 1
+    assert out["eligible_for_inference"] == 1
+
+    state = fabric.native_empirical_state()
+    parallax = state["domains"]["parallax"]
+    assert parallax["event_count"] == 1
+    assert parallax["eligible_event_count"] == 1
+    assert parallax["mean_utility_delta"] == pytest.approx(0.5)
+    assert parallax["positive_delta_fraction"] == pytest.approx(1.0)
+    assert "mean_brier" not in parallax
+    assert "probability" not in parallax
+
+    event = fabric.native_empirical_events(domain="parallax")[0]
+    assert event["native_id"] == "pxb-delay"
+    assert event["semantic"]["actual_utility"] == pytest.approx(0.25)
+    assert event["semantic"]["branch_utility"] == pytest.approx(0.75)
+    assert event["semantic"]["utility_delta"] == pytest.approx(0.5)
+    assert event["semantic"]["comparison_contract_complete"] is True
+    assert event["semantic"]["actual_evidence_complete"] is True
+    assert event["semantic"]["branch_evidence_complete"] is True
+    assert event["execution_authorized"] is False
+
+
+def test_native_empirical_federation_preserves_pantheon_fitness_semantics(tmp_path):
+    from icarus_engine.learning_fabric import LearningFabric
+
+    _seed_pantheon_empirical_db(tmp_path)
+    fabric = LearningFabric(tmp_path)
+    out = fabric.harvest_native()["pantheon_empirical"]
+    assert out["status"] == "ok"
+    assert out["imported"] == 1
+
+    state = fabric.native_empirical_state()
+    pantheon = state["domains"]["pantheon"]
+    assert pantheon["event_count"] == 1
+    assert pantheon["mean_utility"] == pytest.approx(0.8)
+    assert pantheon["confidence_weighted_fitness"] == pytest.approx(0.0)
+    assert pantheon["quarantined_positive_count"] == 1
+    assert "mean_brier" not in pantheon
+    assert "probability" not in pantheon
+
+    event = fabric.native_empirical_events(domain="pantheon")[0]
+    assert event["native_id"] == "out-1"
+    assert event["semantic"]["claim_id"] == "claim-1"
+    assert event["semantic"]["claim_kind"] == "monetization_candidate"
+    assert event["semantic"]["utility"] == pytest.approx(0.8)
+    assert event["semantic"]["fitness_utility"] == pytest.approx(0.0)
+    assert event["semantic"]["confidence"] == pytest.approx(0.9)
+    assert event["semantic"]["evidence"] == ["fixture:observed"]
+
+
+def test_native_empirical_harvest_is_incremental_and_restart_safe(tmp_path):
+    import sqlite3, json
+    from icarus_engine.learning_fabric import LearningFabric
+
+    db = _seed_parallax_empirical_db(tmp_path)
+    first = LearningFabric(tmp_path)
+    one = first.harvest_native()["parallax_empirical"]
+    assert one["imported"] == 1
+    again = first.harvest_native()["parallax_empirical"]
+    assert again["imported"] == 0
+    first.stop()
+    first._conn.close()
+
+    con = sqlite3.connect(db)
+    con.execute(
+        "INSERT INTO decisions VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+        ("px-2","2026-10-01T11:00:00Z","NQ","short","trend","a"*40,
+         "ctx2",json.dumps({"episode_id":"ep-2"}),json.dumps({}),
+         json.dumps({
+            "utility_metric":"r_multiple","evaluation_horizon_bars":20,
+            "dataset_id":"dataset:fixture","cost_model_id":"costs:fixture",
+            "clock_id":"bar-close-v1","normalization":"risk_normalized"
+         }),json.dumps({"session":"NY"}),"2026-10-01T11:00:00Z"),
+    )
+    con.execute(
+        "INSERT INTO branches VALUES(?,?,?,?,?,?,?,?,?,?)",
+        ("pxb-actual-2","px-2","actual","actual",json.dumps({"action":"short"}),0.1,
+         json.dumps({}),json.dumps(["a2"]),"2026-10-01T11:20:00Z","observed"),
+    )
+    con.execute(
+        "INSERT INTO branches VALUES(?,?,?,?,?,?,?,?,?,?)",
+        ("pxb-skip-2","px-2","skip","skip",json.dumps({"action":"abstain"}),0.0,
+         json.dumps({}),json.dumps(["s2"]),"2026-10-01T11:20:00Z","observed"),
+    )
+    con.commit()
+    con.close()
+
+    second = LearningFabric(tmp_path)
+    two = second.harvest_native()["parallax_empirical"]
+    assert two["imported"] == 1
+    assert second.native_empirical_state()["domains"]["parallax"]["event_count"] == 2
+
+
+def test_native_empirical_state_is_research_only_and_separate_from_probability_calibration(tmp_path):
+    from icarus_engine.learning_fabric import LearningFabric
+
+    _seed_parallax_empirical_db(tmp_path)
+    _seed_pantheon_empirical_db(tmp_path)
+    fabric = LearningFabric(tmp_path)
+    fabric.harvest_native()
+    state = fabric.native_empirical_state()
+    assert state["schema_version"] == "icarus-native-empirical-state-v1"
+    assert state["event_count"] == 2
+    assert set(state["domains"]) == {"parallax","pantheon"}
+    assert state["authority"]["domain_semantics_preserved"] is True
+    assert state["authority"]["probability_coercion"] is False
+    assert state["authority"]["automatic_production_promotion"] is False
+    assert state["execution_authorized"] is False
+    assert state["production_decision_authorized"] is False
+
+    snap = fabric.snapshot()
+    assert snap["native_empirical"]["event_count"] == 2
+    assert snap["coverage"]["parallax"] == "native_metric_plus_immutable_utility_pairs"
+    assert snap["coverage"]["pantheon"] == "native_metric_plus_immutable_claim_outcomes"
