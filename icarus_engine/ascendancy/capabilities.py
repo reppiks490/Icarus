@@ -70,3 +70,67 @@ def capability_contract(provider_id: str) -> dict[str, Any] | None:
         if str(row.get("id") or "").lower() == target:
             return row
     return None
+
+
+
+def route_capabilities(required_claims: list[str] | tuple[str, ...]) -> dict[str, Any]:
+    """Plan a capability route without invoking providers.
+
+    Matching is intentionally exact.  A related capability is not silently
+    substituted because doing so would change the evidence contract.
+    """
+    if not isinstance(required_claims, (list, tuple)) or not required_claims:
+        raise ValueError("required_claims must be a non-empty list or tuple")
+    required = []
+    for value in required_claims:
+        item = str(value or "").strip()
+        if not item:
+            raise ValueError("required claim cannot be empty")
+        if item not in required:
+            required.append(item)
+
+    matches = []
+    for row in _rows():
+        allowed = {str(x) for x in row.get("claims_allowed", [])}
+        if set(required) <= allowed:
+            matches.append(row)
+
+    def route_key(row: Mapping[str, Any]) -> tuple[int, str]:
+        try:
+            priority = int(row.get("route_priority", 100))
+        except (TypeError, ValueError):
+            priority = 100
+        return priority, str(row.get("id") or "")
+
+    matches.sort(key=route_key)
+    selected = [
+        row for row in matches
+        if str(row.get("observed_status") or "").startswith("VERIFIED")
+    ]
+    blocked = [
+        row for row in matches
+        if str(row.get("observed_status") or "").startswith("BLOCKED")
+    ]
+    unverified = [
+        row for row in matches
+        if row not in selected and row not in blocked
+    ]
+
+    if selected:
+        status = "ROUTABLE"
+    elif blocked:
+        status = "BLOCKED_NO_AVAILABLE_PROVIDER"
+    else:
+        status = "UNAVAILABLE_NO_MATCHING_PROVIDER"
+
+    return {
+        "schema_version": "icarus-ascendancy-capability-route-v1",
+        "required_claims": required,
+        "status": status,
+        "selected": selected,
+        "blocked": blocked,
+        "unverified": unverified,
+        "rule": "Exact evidence-contract match only; routing does not invoke a tool or grant authority.",
+        "execution_authorized": False,
+        "production_decision_authorized": False,
+    }
