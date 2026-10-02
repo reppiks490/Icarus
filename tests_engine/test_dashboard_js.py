@@ -613,3 +613,10 @@ def test_learning_ui_exposes_proper_score_calibration_diagnostics():
     assert "mean_log_loss" in source
     assert "brier_skill_score" in source
 
+
+def test_learning_ui_exposes_semantic_trade_twin_proof():
+    source = (REPO / "icarus_engine" / "learning-ui.js").read_text(encoding="utf-8")
+    assert "semantic_trade_signature_sha256" in source
+    assert "Semantic trade proof" in source
+    assert "SEMANTIC_TRADE_SIGNATURE_V1" in source
+
