@@ -297,3 +297,17 @@ def test_brain_registers_ascendancy_invention_engine(tmp_path):
     assert surfaced["ascendancy-invention"]["status"] == "REGISTERED"
     assert out["authority"]["execution_authorized"] is False
     assert out["authority"]["production_decision_authorized"] is False
+
+
+def test_brain_registers_ascendancy_contribution_lab(tmp_path):
+    out = brain_snapshot(tmp_path)
+    rows = {x["id"]: x for x in SUBSYSTEMS}
+    assert "ascendancy-contribution" in rows
+    assert rows["ascendancy-contribution"]["owner"] == "daedalus"
+    assert "incremental" in rows["ascendancy-contribution"]["job"].lower()
+    assert "conditional" in rows["ascendancy-contribution"]["job"].lower()
+    assert "causal" in rows["ascendancy-contribution"]["job"].lower()
+    surfaced = {x["id"]: x for x in out["architecture"]["subsystems"]}
+    assert surfaced["ascendancy-contribution"]["status"] == "REGISTERED"
+    assert out["authority"]["execution_authorized"] is False
+    assert out["authority"]["production_decision_authorized"] is False
