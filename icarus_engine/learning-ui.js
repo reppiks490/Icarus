@@ -153,6 +153,27 @@
       return '<tr><td><b>' + h(k) + '</b></td><td>' + h(coverage[k]) + '</td></tr>';
     });
   }
+  function nativeEmpiricalRows(nativeState) {
+    const domains = (nativeState || {}).domains || {};
+    const rows = [];
+    const px = domains.parallax;
+    if (px) {
+      rows.push('<tr><td><b>PARALLAX</b></td><td class="tnum">' + val(px.event_count,0) +
+        '</td><td class="tnum">' + val(px.eligible_event_count,0) +
+        '</td><td>paired utility delta</td><td class="tnum">' + val(px.mean_utility_delta,6) +
+        '</td><td class="tnum">' + pct(px.positive_delta_fraction) +
+        '</td><td class="small muted">counterfactual utility semantics preserved · not probability calibration</td></tr>');
+    }
+    const pan = domains.pantheon;
+    if (pan) {
+      rows.push('<tr><td><b>PANTHEON</b></td><td class="tnum">' + val(pan.event_count,0) +
+        '</td><td class="tnum">' + val(pan.eligible_event_count,0) +
+        '</td><td>confidence-weighted fitness</td><td class="tnum">' + val(pan.confidence_weighted_fitness,6) +
+        '</td><td class="tnum">quarantined +' + val(pan.quarantined_positive_count,0) +
+        '</td><td class="small muted">claim utility / fitness semantics preserved · not probability calibration</td></tr>');
+    }
+    return rows;
+  }
   function learningHtml() {
     return '<section class="card c12">' +
       '<div class="row" style="justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">' +
@@ -178,6 +199,10 @@
     const unscoped_count = experience.unscoped_count == null ? 0 : experience.unscoped_count;
     const provenance_counts = experience.provenance_class_counts || {};
     const health = state.health || {};
+    const nativeEmpirical = state.native_empirical || {};
+    const nativeDomains = nativeEmpirical.domains || {};
+    const parallaxEmpirical = nativeDomains.parallax || {};
+    const pantheonEmpirical = nativeDomains.pantheon || {};
     const datasets = (data || {}).datasets || [];
     const runs = (data || {}).training_runs || [];
     const latest = ((state.cycles || {}).latest) || {};
@@ -193,12 +218,18 @@
         '<div class="tile"><div class="k">MANIFEST-LINKED HISTORY</div><div class="v">' + val(artifact_scoped_count,0) + '</div><div class="small muted">HISTORICAL_ARTIFACT_CONFIG · unscoped ' + val(unscoped_count,0) + ' · never promoted to runtime configuration</div></div>' +
         '<div class="tile"><div class="k">PROVENANCE ISOLATION</div><div class="v">' + val(closure_scoped_count,0) + ' / ' + val(artifact_scoped_count,0) + '</div><div class="small muted">RUNTIME_CLOSURE_CONFIG / HISTORICAL_ARTIFACT_CONFIG · UNSCOPED ' + val(provenance_counts.UNSCOPED == null ? unscoped_count : provenance_counts.UNSCOPED,0) + '</div></div>' +
         '<div class="tile"><div class="k">EMPIRICAL SCORECARDS</div><div class="v">' + val((state.scorecards || []).length,0) + '</div><div class="small muted">producer × asset × regime × horizon × label × revision</div></div>' +
+        '<div class="tile"><div class="k">NATIVE EMPIRICAL EVENTS</div><div class="v">' + val(nativeEmpirical.event_count,0) + '</div><div class="small muted">eligible ' + val(nativeEmpirical.eligible_event_count,0) + ' · domain semantics preserved · probability coercion OFF</div></div>' +
+        '<div class="tile"><div class="k">PARALLAX UTILITY Δ</div><div class="v">' + val(parallaxEmpirical.mean_utility_delta,4) + '</div><div class="small muted">positive fraction ' + pct(parallaxEmpirical.positive_delta_fraction) + ' · immutable paired outcomes</div></div>' +
+        '<div class="tile"><div class="k">PANTHEON FITNESS</div><div class="v">' + val(pantheonEmpirical.confidence_weighted_fitness,4) + '</div><div class="small muted">quarantined positive outcomes ' + val(pantheonEmpirical.quarantined_positive_count,0) + ' · right-reasons fitness preserved</div></div>' +
         '<div class="tile"><div class="k">SHADOW RECALIBRATION</div><div class="v">' + val(shadow_calibration.validated_model_count,0) + ' / ' + val(shadow_calibration.model_count,0) + '</div><div class="small muted">VALIDATED MODELS ' + val(shadow_calibration.validated_model_count,0) + ' · REJECTED MODELS ' + val(shadow_calibration.rejected_model_count,0) + ' · automatic probability rewrite: off</div></div>' +
         '<div class="tile"><div class="k">Ψ SCENARIO CALIBRATION</div><div class="v">' + chip(psi.status || 'UNAVAILABLE') + '</div><div class="small muted">captured ' + val(psi.forecasts_imported,0) + ' · matured ' + val(psi.outcomes_imported,0) + ' · overlap withheld ' + val(psi.overlap_withheld,0) + ' · RAW SHARES UNCALIBRATED · producer psi-scenario-v1</div></div>' +
         '<div class="tile"><div class="k">HISTORY SCAN</div><div class="v">' + (state.background && state.background.last_history_scan_epoch ? new Date(state.background.last_history_scan_epoch*1000).toLocaleString() : 'UNAVAILABLE') + '</div><div class="small muted">history/, history/drop/, research/imports/</div></div>' +
         '<div class="tile"><div class="k">LAST CYCLE</div><div class="v">' + chip(latest.status || 'UNAVAILABLE') + '</div><div class="small muted">' + val((state.cycles || {}).count,0) + ' durable cycles</div></div>' +
         '<div class="tile"><div class="k">AUTHORITY</div><div class="v">RESEARCH ONLY</div><div class="small muted">AUTOMATIC PRODUCTION PROMOTION: OFF · execution_authorized=false</div></div>' +
       '</div>' +
+      '<h3 class="small" style="margin:16px 0 8px">NATIVE EMPIRICAL FEDERATION · DOMAIN SEMANTICS PRESERVED</h3>' +
+      '<div class="small muted" style="margin-bottom:8px">PARALLAX counterfactual utility deltas and PANTHEON observed claim fitness enter one immutable research ledger without being relabeled as forecast probabilities. No Brier/calibration metric is synthesized from these native domains; production promotion and execution remain off.</div>' +
+      table(['Domain','Events','Inference-eligible','Native metric','Mean / weighted value','Positive / quarantine','Contract'], nativeEmpiricalRows(nativeEmpirical), 'UNMEASURED — no immutable PARALLAX or PANTHEON native outcomes harvested yet.') +
       '<h3 class="small" style="margin:16px 0 8px">EMPIRICAL SCORECARDS · LABEL-SCOPED · REVISION-SCOPED</h3>' +
       '<div class="small muted" style="margin-bottom:8px">Credibility metrics, Wilson intervals, tie-preserving adaptive reliability bins, log loss, Brier skill, and MEASURED/EARLY state use effective non-overlapping outcomes. Raw settled and overlap-purged counts remain visible for audit. Adaptive ECE can expose confidence-shape error that a single mean calibration gap hides.</div>' +
       table(['Producer','Asset','Regime','Horizon s','Target','Prediction label','Source revision','Effective settled','Raw settled','Overlap purged','State','Hit rate','Mean Brier','Calibration gap','Adaptive ECE','Max cal error','Mean log loss','Brier skill'], scoreRows(state.scorecards), 'UNMEASURED — no matured outcomes yet.') +
