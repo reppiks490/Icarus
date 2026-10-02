@@ -58,6 +58,8 @@
     const reliabilityRows = reliability.sources || [];
     const measuredReliability = reliabilityRows.filter(r => r.measurement_status === "MEASURED").length;
     const qualificationRows = qualification.candidates || [];
+    const peerLanes = sync.peer_lanes || [];
+    const peerLaneRows = peerLanes.map(l => `<tr><td><b>${h(l.title||l.name||"")}</b><div class="small muted">${h(l.name||"")}</div></td><td><span class="chip ${statusClass(l.evidence_status)}">${h(l.evidence_status||"UNKNOWN")}</span></td><td>${h(l.run_id||"—")}</td><td>${l.worker_execution_observed===true?"OBSERVED":l.worker_execution_observed===false?"NOT OBSERVED":"UNMEASURED"}</td><td class="${l.substantive_research_evidence?"brain-good":"muted"}">${l.substantive_research_evidence?"YES":"NO"}</td></tr>`).join("");
 
     const agentHtml = agents.map(a => `<div class="brain-agent ${statusClass(a.status)}"><div style="display:flex;justify-content:space-between;gap:8px"><b>${h(a.title)}</b><span class="chip">${h(a.status)}</span></div><div class="small muted" style="margin-top:5px">${h(a.job)}</div><div class="small" style="margin-top:7px"><b>Owns:</b> ${(a.owns||[]).map(x=>h(x)).join(' · ')}</div><div class="small muted" style="margin-top:5px">${h(a.detail||'')}</div></div>`).join('');
 
@@ -112,6 +114,8 @@
             <div class="tile"><div class="k">Router</div><div class="v">${h(auth.candidate_router||'—')}</div></div>
             <div class="tile"><div class="k">Agent repo sync</div><div class="v ${statusClass(sync.status)}">${h(String(sync.status||'not configured').toUpperCase())}</div><div class="small muted">${h(sync.last_success_at?'last '+sync.last_success_at:'awaiting first verified ingest')}</div></div>
             <div class="tile"><div class="k">Agent federation contract</div><div class="v ${agentContract.federation_schema?'brain-good':'brain-warn'}">${h(agentContract.federation_schema||'UNVERIFIED')}</div><div class="small muted">${h(agentContract.event_records||'fail-closed')} · ${agentContract.strict_event_contract?'STRICT EVENT ENVELOPE':'EVENT CONTRACT UNVERIFIED'} · legacy exceptions ${num(agentContract.legacy_exception_count)} · execution ${agentContract.automatic_execution_authority===false?'DENIED':'UNVERIFIED'}</div></div>
+            <div class="tile"><div class="k">Peer lane packet</div><div class="v ${statusClass(sync.peer_packet_status)}">${h(String(sync.peer_packet_status||'not started').toUpperCase())}</div><div class="small muted">${h(sync.peer_source_commit?String(sync.peer_source_commit).slice(0,12):'no verified source commit')} · ${h(agentContract.peer_packet_authority||'OBSERVE')}</div></div>
+            <div class="tile"><div class="k">Peer substantive lanes</div><div class="v tnum">${num(sync.peer_substantive_lane_count)} / ${num(peerLanes.length)}</div><div class="small muted">durability-only ${num(sync.peer_durability_only_lane_count)} · foreign evidence only</div></div>
             <div class="tile"><div class="k">Remote agent events</div><div class="v tnum">${num(sync.ingested_total)}</div><div class="small muted">poll ${num(sync.interval_seconds)}s · rejected ${num(sync.rejected_total)}</div></div>
             <div class="tile"><div class="k">CSV Evidence Lab</div><div class="v ${statusClass(evidenceLab.status)}">${h(String(evidenceLab.status||"not configured").toUpperCase())}</div><div class="small muted">${h(evidenceLab.current_run_id||"no run observed")} · ${h(evidenceLab.evidence_status||"evidence unknown")}</div></div>
             <div class="tile"><div class="k">CSV pointer coherence</div><div class="v ${evidenceLab.latest_pointer_matches_heartbeat===false?"brain-warn":"brain-good"}">${evidenceLab.latest_pointer_matches_heartbeat===false?"LAGGING":"COHERENT/UNSET"}</div><div class="small muted">RUN_PERSISTED is durability only · evidence authority stays EVIDENCE_STATUS</div></div>
@@ -125,6 +129,10 @@
 
         <h3 class="small" style="margin:16px 0 8px">5 custom agents · distinct vital jobs</h3>
         <div class="brain-orbit">${agentHtml}</div>
+
+        <h3 class="small" style="margin:16px 0 8px">Federated Icarus-engine lane state</h3>
+        <div class="small muted" style="margin-bottom:7px">Revision-bound foreign evidence from the live peer packet. DURABILITY_ONLY never counts as substantive research evidence, and sibling-repository state is not inferred.</div>
+        <div class="scroll" style="max-height:300px"><table><thead><tr><th>Lane</th><th>Evidence status</th><th>Run</th><th>Worker execution</th><th>Substantive evidence</th></tr></thead><tbody>${peerLaneRows || '<tr><td colspan=5 class="empty">No verified Icarus-engine peer packet is currently available.</td></tr>'}</tbody></table></div>
 
         <h3 class="small" style="margin:16px 0 8px">Subsystem fabric · ${subs.length} registered</h3>
         <div class="brain-grid">${subHtml}</div>
