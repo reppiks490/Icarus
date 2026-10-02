@@ -113,6 +113,44 @@ def test_invalid_or_authority_escalating_event_is_rejected(tmp_path, change):
     assert state["execution_authorized"] is False
 
 
+def test_foreign_schema_receipt_is_ignored_not_rejected(tmp_path):
+    payload = {
+        "schema_version": "icarus-mcp-event-v1",
+        "event_id": "foreign-family-fixture",
+        "category": "EVOLUTION",
+        "execution_authorized": False,
+        "production_decision_authorized": False,
+    }
+    raw = (json.dumps(payload, sort_keys=True) + "\n").encode()
+    sha = _git_blob_sha(raw)
+    path = REMOTE_ROOT + "/foreign.json"
+    listing = [{
+        "type": "file",
+        "name": "foreign.json",
+        "path": path,
+        "sha": sha,
+        "url": "fixture://foreign",
+    }]
+    sync = EvolutionRemoteSync(
+        tmp_path,
+        interval_seconds=30,
+        fetch_json=lambda _url: listing,
+        fetch_bytes=lambda url: raw if url == "fixture://foreign" else b"",
+        enabled=True,
+    )
+
+    first = sync.sync_once()
+    second = sync.sync_once()
+
+    assert first["status"] == "green"
+    assert first["ignored_total"] == 1
+    assert first["rejected_total"] == 0
+    assert first["ingested_total"] == 0
+    assert first["events"] == []
+    assert second["ignored_total"] == 1
+    assert second["rejected_total"] == 0
+
+
 def test_blob_sha_mismatch_is_rejected(tmp_path):
     payload = event_payload()
     raw = (json.dumps(payload, sort_keys=True) + "\n").encode()
@@ -168,11 +206,13 @@ def test_committed_interface_receipts_match_current_ingestion_contract():
         / "events"
     )
     checked = 0
+    foreign = 0
 
     for path in sorted(root.glob("*.json")):
         raw = path.read_bytes()
         payload = json.loads(raw.decode("utf-8"))
         if payload.get("schema_version") != "icarus-interface-event-v1":
+            foreign += 1
             continue
         normalized = normalize_interface_event(
             payload,
@@ -184,6 +224,9 @@ def test_committed_interface_receipts_match_current_ingestion_contract():
         checked += 1
 
     assert checked > 0
+    # The directory is intentionally shared with macro/audit/integration
+    # receipt families; runtime sync must ignore those rather than degrade.
+    assert foreign > 0
 
 
 def test_repository_native_interface_vocabulary_is_accepted(tmp_path):
