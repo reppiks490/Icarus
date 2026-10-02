@@ -20,7 +20,7 @@ from tempfile import NamedTemporaryFile
 from typing import Any, Callable, Mapping
 from urllib.request import Request, urlopen
 
-from .brain import record_brain_event
+from .brain import SUBSYSTEMS as BRAIN_SUBSYSTEMS, record_brain_event
 from .system_audit import append_system_event
 
 REMOTE_REPOSITORY = "reppiks490/Icarus"
@@ -29,17 +29,42 @@ REMOTE_ROOT = "automation_intelligence/mcp_interface/events"
 REMOTE_API = f"https://api.github.com/repos/{REMOTE_REPOSITORY}/contents/{REMOTE_ROOT}?ref={REMOTE_REF}"
 
 SCHEMA_VERSION = "icarus-interface-event-v1"
+# Other receipt families intentionally share REMOTE_ROOT. They are not owned by
+# EvolutionRemoteSync, but they are known repository contracts and should be
+# skipped without degrading this interface-specific feed.
+_IGNORED_SCHEMA_VERSIONS = {
+    "icarus-mcp-event-v1",
+    "icarus-apex-integration-receipt-v1",
+}
 _ALLOWED_CATEGORIES = {"REPAIR", "AUDIT", "EVOLUTION", "INTEGRATION", "FINDING"}
 _ALLOWED_SEVERITIES = {"info", "success", "warn", "error"}
 _ALLOWED_STATUSES = {
-    "observed", "active", "verified", "qualified", "rejected",
+    "observed", "active", "staged", "verified", "qualified", "rejected",
     "blocked", "degraded", "retired", "unverified",
 }
-_ALLOWED_SUBSYSTEMS = {
-    "aegis", "aion", "argus", "ascension", "athena", "daedalus",
-    "infrastructure", "janus", "nexus", "oracle", "parallax",
-    "prometheus", "provenance", "supermesh-x", "ml", "data", "dreamstate", "psi",
+# Interface receipts are repository-native contracts shared by ICARUS and the
+# subsystem repos that publish into automation_intelligence/mcp_interface/events.
+# Reuse the Adaptive Brain's canonical subsystem registry instead of maintaining
+# a second stale copy here. Research-facet tags are allowed separately because
+# they describe evidence dimensions rather than standalone Brain subsystems.
+_REGISTERED_SUBSYSTEMS = {
+    str(row["id"]).strip().lower().replace("_", "-")
+    for row in BRAIN_SUBSYSTEMS
 }
+_RESEARCH_FACET_SUBSYSTEMS = {
+    "calibration",
+    "cluster-bootstrap",
+    "execution-research",
+    "liquidity-load",
+    "order-blocks",
+    "prospective-validation",
+    "research-validation",
+    "tail-validation",
+    "transfer-validation",
+    "ui",
+    "uncertainty",
+}
+_ALLOWED_SUBSYSTEMS = _REGISTERED_SUBSYSTEMS | _RESEARCH_FACET_SUBSYSTEMS
 
 
 def _utc_now() -> str:
@@ -217,8 +242,18 @@ def normalize_interface_event(
     return _normalize_event(payload, remote_path=source_path, blob_sha=blob_sha)
 
 
+_BRAIN_COMPATIBLE_STATUSES = {
+    "observed", "active", "verified", "qualified", "rejected",
+    "blocked", "degraded", "retired", "unverified",
+}
+
+
 def _brain_status(status: str) -> str:
-    return status if status in _ALLOWED_STATUSES else "observed"
+    # Interface lifecycle is slightly richer than Adaptive Brain lifecycle.
+    # Preserve the interface event's own status in the Evolution feed, but map
+    # interface-only states (currently "staged") to a non-escalating brain
+    # observation rather than causing ingestion failure.
+    return status if status in _BRAIN_COMPATIBLE_STATUSES else "observed"
 
 
 class EvolutionRemoteSync:
@@ -333,7 +368,30 @@ class EvolutionRemoteSync:
                     payload = json.loads(raw.decode("utf-8"))
                     if not isinstance(payload, Mapping):
                         raise ValueError("event payload is not an object")
-                    event = _normalize_event(payload, remote_path=path, blob_sha=blob_sha)
+                    # This repository directory intentionally carries several
+                    # event families. The Evolution sync owns only
+                    # icarus-interface-event-v1. Known foreign receipt schemas
+                    # are ignored, while missing/unknown declarations still
+                    # fail closed as contract errors.
+                    declared_schema = payload.get("schema_version")
+                    if declared_schema is None:
+                        declared_schema = payload.get("schema")
+                    if declared_schema == SCHEMA_VERSION:
+                        event = _normalize_event(
+                            payload,
+                            remote_path=path,
+                            blob_sha=blob_sha,
+                        )
+                    elif declared_schema in _IGNORED_SCHEMA_VERSIONS:
+                        processed.add(blob_sha)
+                        state["ignored_total"] = int(
+                            state.get("ignored_total", 0)
+                        ) + 1
+                        continue
+                    else:
+                        raise ValueError(
+                            "unsupported MCP event schema declaration"
+                        )
 
                     append_system_event(
                         self.base_dir,
