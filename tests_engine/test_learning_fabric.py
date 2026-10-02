@@ -1452,3 +1452,138 @@ def test_legacy_unversioned_calibrator_schema_migrates_fail_closed(tmp_path):
     assert fabric._conn.execute(
         "SELECT COUNT(*) FROM calibration_models WHERE source_commit<>''"
     ).fetchone()[0] == 0
+
+
+def _scoped_scorecard_prediction(fabric, *, label, source_commit, emitted, success):
+    probs = {label: 0.7, ("down" if label == "up" else "up"): 0.3}
+    pred = fabric.record_prediction({
+        "producer": "scope-test",
+        "asset": "NQ",
+        "target": "class",
+        "prediction": label,
+        "probabilities": probs,
+        "reference_value": 100.0,
+        "emitted_at": _iso(emitted),
+        "horizon_seconds": 300,
+        "regime": "trend",
+        "evidence_ids": [f"scope:{label}:{source_commit[:8]}:{emitted.isoformat()}"],
+        "source_commit": source_commit,
+    })["prediction"]
+    actual = label if success else ("down" if label == "up" else "up")
+    fabric.record_outcome({
+        "prediction_id": pred["prediction_id"],
+        "observed_at": pred["resolves_at"],
+        "actual_value": actual,
+        "evidence": ["scope:truth"],
+    })
+
+
+def test_scorecards_isolate_prediction_label_and_source_revision(tmp_path):
+    from icarus_engine.learning_fabric import LearningFabric
+
+    fabric = LearningFabric(tmp_path)
+    base = datetime(2026, 10, 1, 14, 0, tzinfo=timezone.utc)
+    rev_a = "a" * 40
+    rev_b = "b" * 40
+
+    _scoped_scorecard_prediction(
+        fabric, label="up", source_commit=rev_a, emitted=base, success=True
+    )
+    _scoped_scorecard_prediction(
+        fabric, label="down", source_commit=rev_a,
+        emitted=base + timedelta(minutes=10), success=False
+    )
+    _scoped_scorecard_prediction(
+        fabric, label="up", source_commit=rev_b,
+        emitted=base + timedelta(minutes=20), success=False
+    )
+
+    cards = [x for x in fabric.scorecards() if x["producer"] == "scope-test"]
+    assert len(cards) == 3
+    scopes = {(x["prediction_label"], x["source_commit"]) for x in cards}
+    assert scopes == {("up", rev_a), ("down", rev_a), ("up", rev_b)}
+    assert all(x["settled"] == 1 for x in cards)
+
+
+def test_apex_credibility_publication_uses_full_empirical_scope(tmp_path):
+    from icarus_engine.learning_fabric import LearningFabric
+
+    class Store:
+        def __init__(self):
+            self.rows = []
+        def record_model_credibility(self, row):
+            self.rows.append(dict(row))
+            return {"ok": True}
+
+    class Apex:
+        def __init__(self):
+            self.store = Store()
+
+    fabric = LearningFabric(tmp_path)
+    apex = Apex()
+    fabric.bind_native(apex=apex)
+    base = datetime(2026, 10, 1, 14, 0, tzinfo=timezone.utc)
+    rev_a = "a" * 40
+    rev_b = "b" * 40
+    _scoped_scorecard_prediction(fabric, label="up", source_commit=rev_a, emitted=base, success=True)
+    _scoped_scorecard_prediction(
+        fabric, label="down", source_commit=rev_a,
+        emitted=base + timedelta(minutes=10), success=True
+    )
+    _scoped_scorecard_prediction(
+        fabric, label="up", source_commit=rev_b,
+        emitted=base + timedelta(minutes=20), success=True
+    )
+
+    result = fabric._publish_apex_credibility(fabric.scorecards())
+    assert result["published"] == 3
+    assert len(apex.store.rows) == 3
+    ids = {row["model_id"] for row in apex.store.rows}
+    assert len(ids) == 3
+    assert (
+        f"learning:scope-test:NQ:trend:300:class:up:{rev_a}" in ids
+    )
+    assert (
+        f"learning:scope-test:NQ:trend:300:class:down:{rev_a}" in ids
+    )
+    assert (
+        f"learning:scope-test:NQ:trend:300:class:up:{rev_b}" in ids
+    )
+    assert {(row["prediction_label"], row["source_commit"]) for row in apex.store.rows} == {
+        ("up", rev_a), ("down", rev_a), ("up", rev_b)
+    }
+    assert all(row["execution_authorized"] is False for row in apex.store.rows)
+    assert all(row["production_decision_authorized"] is False for row in apex.store.rows)
+
+
+def test_numeric_scorecards_use_stable_numeric_label_scope(tmp_path):
+    from icarus_engine.learning_fabric import LearningFabric
+
+    fabric = LearningFabric(tmp_path)
+    base = datetime(2026, 10, 1, 14, 0, tzinfo=timezone.utc)
+    for i, predicted in enumerate((101.0, 102.0)):
+        pred = fabric.record_prediction({
+            "producer": "numeric-test",
+            "asset": "NQ",
+            "target": "numeric",
+            "prediction": predicted,
+            "probability": 0.5,
+            "reference_value": 100.0,
+            "emitted_at": _iso(base + timedelta(minutes=i * 5)),
+            "horizon_seconds": 60,
+            "regime": "trend",
+            "evidence_ids": [f"numeric:{i}"],
+            "source_commit": "c" * 40,
+        })["prediction"]
+        fabric.record_outcome({
+            "prediction_id": pred["prediction_id"],
+            "observed_at": pred["resolves_at"],
+            "actual_value": 103.0,
+            "evidence": ["numeric:truth"],
+        })
+
+    cards = [x for x in fabric.scorecards() if x["producer"] == "numeric-test"]
+    assert len(cards) == 1
+    assert cards[0]["prediction_label"] == "__numeric__"
+    assert cards[0]["source_commit"] == "c" * 40
+    assert cards[0]["settled"] == 2
