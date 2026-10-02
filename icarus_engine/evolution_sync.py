@@ -29,6 +29,10 @@ REMOTE_ROOT = "automation_intelligence/mcp_interface/events"
 REMOTE_API = f"https://api.github.com/repos/{REMOTE_REPOSITORY}/contents/{REMOTE_ROOT}?ref={REMOTE_REF}"
 
 SCHEMA_VERSION = "icarus-interface-event-v1"
+# Bump whenever deterministic interface validation semantics change. Persisted
+# rejected blobs are retried under a new validator revision while historical
+# rejection identity remains deduplicated by Git blob SHA.
+VALIDATOR_REVISION = "icarus-interface-validator-v2"
 # Other receipt families intentionally share REMOTE_ROOT. They are not owned by
 # EvolutionRemoteSync, but they are known repository contracts and should be
 # skipped without degrading this interface-specific feed.
@@ -94,6 +98,7 @@ def _state_path(base_dir: str | os.PathLike[str]) -> Path:
 def _default_state(interval_seconds: int) -> dict[str, Any]:
     return {
         "schema_version": "icarus-mcp-evolution-sync-v1",
+        "validator_revision": VALIDATOR_REVISION,
         "enabled": True,
         "repository": REMOTE_REPOSITORY,
         "ref": REMOTE_REF,
@@ -106,7 +111,12 @@ def _default_state(interval_seconds: int) -> dict[str, Any]:
         "ingested_total": 0,
         "ignored_total": 0,
         "rejected_total": 0,
+        "current_rejected_count": 0,
         "processed_blob_shas": [],
+        "rejected_blob_shas": [],
+        "rejected_blob_errors": {},
+        "rejected_history_blob_shas": [],
+        "event_id_bindings": {},
         "events": [],
         "subsystems": {},
         "execution_authorized": False,
@@ -134,6 +144,64 @@ def _read_state(base_dir: str | os.PathLike[str], interval_seconds: int) -> dict
         state["last_error"] = "local MCP evolution sync state failed authority validation"
         return state
     state.update(raw)
+
+    for counter in ("ingested_total", "ignored_total", "rejected_total"):
+        value = raw.get(counter, state[counter])
+        if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+            state[counter] = 0
+        else:
+            state[counter] = value
+
+    raw_processed = raw.get("processed_blob_shas")
+    if not isinstance(raw_processed, list):
+        raw_processed = []
+    state["processed_blob_shas"] = sorted({
+        str(x).lower()
+        for x in raw_processed
+        if _is_sha(str(x).lower())
+    })[-5000:]
+
+    raw_events = raw.get("events")
+    if not isinstance(raw_events, list):
+        state["events"] = []
+    raw_subsystems = raw.get("subsystems")
+    if not isinstance(raw_subsystems, Mapping):
+        state["subsystems"] = {}
+
+    raw_current_rejected = raw.get("rejected_blob_shas")
+    if not isinstance(raw_current_rejected, list):
+        raw_current_rejected = []
+    raw_rejected_history = raw.get("rejected_history_blob_shas")
+    if not isinstance(raw_rejected_history, list):
+        raw_rejected_history = []
+
+    current_rejected = {
+        str(x).lower()
+        for x in raw_current_rejected
+        if _is_sha(str(x).lower())
+    }
+    rejected_history = {
+        str(x).lower()
+        for x in raw_rejected_history
+        if _is_sha(str(x).lower())
+    }
+    # Migration safety: any blob currently known rejected is historical too.
+    rejected_history.update(current_rejected)
+    state["rejected_history_blob_shas"] = sorted(rejected_history)[-5000:]
+    state["rejected_total"] = max(
+        state["rejected_total"],
+        len(state["rejected_history_blob_shas"]),
+    )
+
+    if raw.get("validator_revision") != VALIDATOR_REVISION:
+        state["rejected_blob_shas"] = []
+        state["rejected_blob_errors"] = {}
+        state["current_rejected_count"] = 0
+    else:
+        state["rejected_blob_shas"] = sorted(current_rejected)[-5000:]
+        state["current_rejected_count"] = len(state["rejected_blob_shas"])
+    state["validator_revision"] = VALIDATOR_REVISION
+
     state["interval_seconds"] = interval_seconds
     state["execution_authorized"] = False
     state["production_decision_authorized"] = False
@@ -301,6 +369,10 @@ class EvolutionRemoteSync:
     def status(self) -> dict[str, Any]:
         state = _read_state(self.base_dir, self.interval_seconds)
         state.pop("processed_blob_shas", None)
+        state.pop("rejected_blob_shas", None)
+        state.pop("rejected_blob_errors", None)
+        state.pop("rejected_history_blob_shas", None)
+        state.pop("event_id_bindings", None)
         return state
 
     def sync_once(self) -> dict[str, Any]:
@@ -330,11 +402,47 @@ class EvolutionRemoteSync:
                 for x in state.get("processed_blob_shas", [])
                 if _is_sha(x)
             }
+            rejected = {
+                str(x).lower()
+                for x in state.get("rejected_blob_shas", [])
+                if _is_sha(x)
+            }
+            rejected_history = {
+                str(x).lower()
+                for x in state.get("rejected_history_blob_shas", [])
+                if _is_sha(x)
+            }
+            raw_rejected_errors = state.get("rejected_blob_errors")
+            if not isinstance(raw_rejected_errors, Mapping):
+                raw_rejected_errors = {}
+            rejected_errors = {
+                str(sha).lower(): str(message)
+                for sha, message in raw_rejected_errors.items()
+                if _is_sha(str(sha).lower())
+            }
             events_by_id = {
                 str(x.get("event_id")): x
                 for x in state.get("events", [])
                 if isinstance(x, dict) and x.get("event_id")
             }
+            raw_bindings = state.get("event_id_bindings")
+            if not isinstance(raw_bindings, Mapping):
+                raw_bindings = {}
+            event_id_bindings = {
+                str(event_id): str(bound_sha).lower()
+                for event_id, bound_sha in raw_bindings.items()
+                if str(event_id).strip()
+                and _is_sha(str(bound_sha).lower())
+            }
+            # Backfill bindings from visible legacy state during rollout.
+            for event_id, prior in events_by_id.items():
+                prior_sha = (
+                    str(prior.get("remote_blob_sha") or "").lower()
+                    if isinstance(prior, Mapping)
+                    else ""
+                )
+                if _is_sha(prior_sha):
+                    event_id_bindings.setdefault(event_id, prior_sha)
             subsystems = dict(state.get("subsystems") or {})
             errors: list[str] = []
 
@@ -355,16 +463,45 @@ class EvolutionRemoteSync:
                 ):
                     entries.append((name, path, sha, str(item.get("url") or "")))
             entries.sort(key=lambda x: x[0])
+            current_blob_shas = {entry[2] for entry in entries}
+            rejected.intersection_update(current_blob_shas)
+            rejected_errors = {
+                sha: message
+                for sha, message in rejected_errors.items()
+                if sha in rejected
+            }
 
             for _name, path, blob_sha, url in entries:
                 if blob_sha in processed:
                     continue
+                if blob_sha in rejected:
+                    errors.append(
+                        rejected_errors.get(
+                            blob_sha,
+                            f"{path}: previously rejected receipt version",
+                        )
+                    )
+                    continue
+
+                # Transport/integrity failures are retryable. They do not prove
+                # the immutable receipt content is invalid and must never make
+                # a blob permanently rejected.
                 try:
                     if not url:
                         raise ValueError("missing GitHub contents URL")
                     raw = self._fetch_bytes(url)
                     if _git_blob_sha(raw) != blob_sha:
                         raise ValueError("Git blob SHA mismatch")
+                except Exception as ex:
+                    errors.append(
+                        f"{path}: fetch/integrity {type(ex).__name__}: {ex}"
+                    )
+                    continue
+
+                # Once Git content identity is proven, deterministic decoding or
+                # contract failures belong to this immutable blob version and
+                # can be deduplicated safely across later polls.
+                try:
                     payload = json.loads(raw.decode("utf-8"))
                     if not isinstance(payload, Mapping):
                         raise ValueError("event payload is not an object")
@@ -382,6 +519,14 @@ class EvolutionRemoteSync:
                             remote_path=path,
                             blob_sha=blob_sha,
                         )
+                        bound_sha = event_id_bindings.get(
+                            event["event_id"]
+                        )
+                        if bound_sha is not None and bound_sha != blob_sha:
+                            raise ValueError(
+                                "event_id is already bound to a different "
+                                "immutable Git blob"
+                            )
                     elif declared_schema in _IGNORED_SCHEMA_VERSIONS:
                         processed.add(blob_sha)
                         state["ignored_total"] = int(
@@ -392,7 +537,32 @@ class EvolutionRemoteSync:
                         raise ValueError(
                             "unsupported MCP event schema declaration"
                         )
+                except (
+                    UnicodeDecodeError,
+                    json.JSONDecodeError,
+                    TypeError,
+                    ValueError,
+                ) as ex:
+                    message = f"{path}: {type(ex).__name__}: {ex}"
+                    errors.append(message)
+                    rejected.add(blob_sha)
+                    rejected_errors[blob_sha] = message
+                    if blob_sha not in rejected_history:
+                        rejected_history.add(blob_sha)
+                        state["rejected_total"] = int(
+                            state.get("rejected_total", 0)
+                        ) + 1
+                    continue
+                except Exception as ex:
+                    errors.append(
+                        f"{path}: validation {type(ex).__name__}: {ex}"
+                    )
+                    continue
 
+                # Local projection is also retryable. A disk/journal failure
+                # must not convert otherwise valid source bytes into a
+                # permanently rejected receipt version.
+                try:
                     append_system_event(
                         self.base_dir,
                         {
@@ -415,6 +585,7 @@ class EvolutionRemoteSync:
                         f"source_ref:{event['source_ref']}",
                         *event["evidence"],
                     ][:32]
+                    projected_subsystems: dict[str, dict[str, Any]] = {}
                     for subsystem in event["subsystems"]:
                         record_brain_event(
                             self.base_dir,
@@ -436,7 +607,7 @@ class EvolutionRemoteSync:
                                 },
                             },
                         )
-                        subsystems[subsystem] = {
+                        projected_subsystems[subsystem] = {
                             "status": event["status"],
                             "severity": event["severity"],
                             "title": event["title"],
@@ -447,13 +618,19 @@ class EvolutionRemoteSync:
                             "source_commit": event["source_commit"],
                             "event_id": event["event_id"],
                         }
-
-                    events_by_id[event["event_id"]] = event
-                    processed.add(blob_sha)
-                    state["ingested_total"] = int(state.get("ingested_total", 0)) + 1
                 except Exception as ex:
-                    errors.append(f"{path}: {type(ex).__name__}: {ex}")
-                    state["rejected_total"] = int(state.get("rejected_total", 0)) + 1
+                    errors.append(
+                        f"{path}: projection {type(ex).__name__}: {ex}"
+                    )
+                    continue
+
+                subsystems.update(projected_subsystems)
+                events_by_id[event["event_id"]] = event
+                event_id_bindings[event["event_id"]] = blob_sha
+                processed.add(blob_sha)
+                state["ingested_total"] = int(
+                    state.get("ingested_total", 0)
+                ) + 1
 
             ordered = sorted(
                 events_by_id.values(),
@@ -461,11 +638,25 @@ class EvolutionRemoteSync:
                 reverse=True,
             )[:200]
             state["processed_blob_shas"] = sorted(processed)[-5000:]
+            state["rejected_blob_shas"] = sorted(rejected)[-5000:]
+            state["rejected_blob_errors"] = {
+                sha: rejected_errors[sha]
+                for sha in state["rejected_blob_shas"]
+                if sha in rejected_errors
+            }
+            state["rejected_history_blob_shas"] = sorted(
+                rejected_history
+            )[-5000:]
+            state["current_rejected_count"] = len(
+                state["rejected_blob_shas"]
+            )
+            state["event_id_bindings"] = event_id_bindings
             state["events"] = ordered
             state["subsystems"] = subsystems
-            state["last_success_at"] = _utc_now()
             state["last_error"] = " | ".join(errors[-10:])[:3000] if errors else None
             state["status"] = "degraded" if errors else "green"
+            if not errors:
+                state["last_success_at"] = _utc_now()
             _write_state(self.base_dir, state)
             return self.status()
 
