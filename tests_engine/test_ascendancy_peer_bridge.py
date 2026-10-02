@@ -175,3 +175,126 @@ def test_bridge_surfaces_substantive_and_durability_lanes_separately(tmp_path):
     assert source["candidate_evidence_eligible_lanes"] == ["flow_microstructure"]
     assert source["durability_only_lanes"] == ["robustness_guardian"]
     assert snap["truth_contract"]["durability_only_never_enters_candidate_evidence"] is True
+
+
+def test_peer_bridge_preserves_historical_research_context_without_promoting_it(tmp_path):
+    packet = _packet()
+    packet["historical_artifacts"] = [
+        {
+            "lane": "robustness_guardian",
+            "artifact_kind": "HISTORICAL_LATEST",
+            "path": "automation_intelligence/agent_fabric/robustness_guardian/latest.json",
+            "run_id": "robustness-guardian-20260929T180500Z",
+            "run_status": "RUN_PERSISTED",
+            "evidence_status": "HISTORICAL_RESEARCH_EVIDENCE",
+            "research_context_eligible": True,
+            "candidate_evidence_eligible": False,
+            "summary": {
+                "findings": ["Protected holdout lineage is incomplete."],
+                "built_changes": ["No behavioral code change."],
+                "next": "Bind immutable dataset and holdout identities.",
+                "observation_keys": [],
+                "data_gaps": [],
+                "source_provenance_count": 0,
+                "net_new_delta_keys": [],
+            },
+            "lineage": {
+                "base_main_sha": "1" * 40,
+                "final_main_sha": "2" * 40,
+                "run_core_sha256": "3" * 64,
+                "history_blob_sha": "4" * 40,
+                "ledger_blob_sha": None,
+                "history_mode": "primary_immutable_file",
+            },
+            "execution_authorized": False,
+        },
+        {
+            "lane": "flow_microstructure",
+            "artifact_kind": "HISTORICAL_LATEST",
+            "path": "automation_intelligence/flow/latest.json",
+            "run_id": "flow-20260929T173500Z",
+            "run_status": "RUN_PERSISTED",
+            "evidence_status": "HISTORICAL_COLLECTION_EVIDENCE",
+            "research_context_eligible": True,
+            "candidate_evidence_eligible": False,
+            "summary": {
+                "findings": [],
+                "built_changes": [],
+                "next": None,
+                "observation_keys": ["BTC"],
+                "data_gaps": ["No direct NQ depth."],
+                "source_provenance_count": 1,
+                "net_new_delta_keys": ["btc"],
+            },
+            "lineage": {
+                "base_main_sha": None,
+                "final_main_sha": None,
+                "run_core_sha256": None,
+                "history_blob_sha": "5" * 40,
+                "ledger_blob_sha": None,
+                "history_mode": None,
+            },
+            "execution_authorized": False,
+        },
+    ]
+    for artifact in packet["historical_artifacts"]:
+        artifact["artifact_id"] = _hash({k: v for k, v in artifact.items() if k != "artifact_id"})
+    packet["truth_contract"]["historical_context_never_bypasses_foundry_or_evaluator"] = True
+    packet["packet_id"] = _hash({k: v for k, v in packet.items() if k != "packet_id"})
+
+    bridge = PeerRepositoryBridge(tmp_path)
+    saved = bridge.ingest(packet)
+    assert saved["idempotent"] is False
+
+    source = bridge.snapshot()["latest_by_source"][0]
+    assert source["historical_artifact_count"] == 2
+    assert source["historical_research_context_count"] == 2
+    assert source["historical_candidate_evidence_count"] == 0
+    assert source["historical_research_lanes"] == ["flow_microstructure", "robustness_guardian"]
+    assert all(x["candidate_evidence_eligible"] is False for x in source["historical_artifacts"])
+    assert source["historical_artifacts"][0]["foreign_evidence_only"] is True
+    assert source["historical_artifacts"][0]["requires_foundry_and_evaluator"] is True
+
+
+def test_historical_peer_artifact_cannot_claim_candidate_eligibility_or_execution():
+    packet = _packet()
+    packet["historical_artifacts"] = [{
+        "lane": "robustness_guardian",
+        "artifact_kind": "HISTORICAL_LATEST",
+        "path": "automation_intelligence/agent_fabric/robustness_guardian/latest.json",
+        "run_id": "robustness-guardian-20260929T180500Z",
+        "run_status": "RUN_PERSISTED",
+        "evidence_status": "HISTORICAL_RESEARCH_EVIDENCE",
+        "research_context_eligible": True,
+        "candidate_evidence_eligible": True,
+        "summary": {"findings": ["x"]},
+        "lineage": {},
+        "execution_authorized": False,
+    }]
+    artifact = packet["historical_artifacts"][0]
+    artifact["artifact_id"] = _hash({k: v for k, v in artifact.items() if k != "artifact_id"})
+    packet["truth_contract"]["historical_context_never_bypasses_foundry_or_evaluator"] = True
+    packet["packet_id"] = _hash({k: v for k, v in packet.items() if k != "packet_id"})
+    with pytest.raises(ValueError, match="candidate_evidence_eligible"):
+        normalize_peer_packet(packet)
+
+    packet = _packet()
+    packet["historical_artifacts"] = [{
+        "lane": "robustness_guardian",
+        "artifact_kind": "HISTORICAL_LATEST",
+        "path": "automation_intelligence/agent_fabric/robustness_guardian/latest.json",
+        "run_id": "robustness-guardian-20260929T180500Z",
+        "run_status": "RUN_PERSISTED",
+        "evidence_status": "HISTORICAL_RESEARCH_EVIDENCE",
+        "research_context_eligible": True,
+        "candidate_evidence_eligible": False,
+        "summary": {"findings": ["x"]},
+        "lineage": {},
+        "execution_authorized": True,
+    }]
+    artifact = packet["historical_artifacts"][0]
+    artifact["artifact_id"] = _hash({k: v for k, v in artifact.items() if k != "artifact_id"})
+    packet["truth_contract"]["historical_context_never_bypasses_foundry_or_evaluator"] = True
+    packet["packet_id"] = _hash({k: v for k, v in packet.items() if k != "packet_id"})
+    with pytest.raises(ValueError, match="authority"):
+        normalize_peer_packet(packet)
