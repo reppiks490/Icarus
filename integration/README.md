@@ -31,7 +31,23 @@ A satellite should provide:
 
 ## Current topology status
 
-The mesh lists discovered adjacent repositories as `candidate`. Candidate status means: visible and potentially useful, but not trusted or production-authorized.
+The mesh now distinguishes **active research-only federations** from unvalidated
+candidate satellites.
+
+- `reppiks490/Icarus-engine` is an active `RESEARCH` satellite through the
+  bilateral MCP/Adaptive Brain federation contracts under
+  `automation_intelligence/mcp_interface/`. ICARUS verifies the producer and
+  consumer contracts plus event Git blobs before ingest. Remote automation
+  receipts remain observability/research evidence only.
+- `reppiks490/icarus-csv-evidence-lab` is an active `OBSERVE` satellite
+  through `automation_intelligence/advanced_csv/icarus_consumer_contract.json`.
+  `RUN_PERSISTED` is durability only; substantive evidence authority remains
+  `evidence_state.EVIDENCE_STATUS`. Raw owner market data is not imported by
+  the federation.
+
+All other listed satellites remain candidates until they receive an explicit
+validated contract. No active satellite has cross-repository execution
+authority.
 
 ## Future reducer
 
