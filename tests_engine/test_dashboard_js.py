@@ -590,3 +590,27 @@ def test_ascendancy_dashboard_surfaces_open_ended_genome_lab():
     assert 'p.path == "/admin/ascendancy/genome"' in server
     assert 'p.path == "/admin/ascendancy/genome-evaluation"' in server
     assert 'p.path == "/admin/ascendancy/genome-retire"' in server
+
+
+def test_ascendancy_dashboard_surfaces_candidate_foundry():
+    ui = (REPO / "icarus_engine/ascendancy-ui.js").read_text(encoding="utf-8")
+    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
+
+    assert "/api/ascendancy/candidates" in ui
+    assert "EDGE FOUNDRY" in ui
+    assert "HYPOTHESIS" in ui
+    assert "MECHANISM" in ui
+    assert "EXPECTED ADVANTAGE" in ui
+    assert "REQUIRED OBSERVATIONS" in ui
+    assert "FALSIFIERS" in ui
+    assert "ORIGIN" in ui
+    assert "RESOURCE BUDGET" in ui
+    assert "PARENT CANDIDATES" in ui
+    assert "PROPOSED" in ui
+    assert "REJECTED" in ui
+    assert "UNAVAILABLE" in ui
+    assert "qualified_shadow_reserved_for_protected_qualification" in ui
+    assert 'p.path == "/api/ascendancy/candidates"' in server
+    assert 'p.path == "/admin/ascendancy/candidate"' in server
+    assert 'p.path == "/admin/ascendancy/candidate-stage"' in server
+    assert 'p.path == "/admin/ascendancy/candidate-reject"' in server
