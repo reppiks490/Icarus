@@ -340,11 +340,12 @@ class EvolutionRemoteSync:
                 for x in state.get("rejected_blob_shas", [])
                 if _is_sha(x)
             }
+            raw_rejected_errors = state.get("rejected_blob_errors")
+            if not isinstance(raw_rejected_errors, Mapping):
+                raw_rejected_errors = {}
             rejected_errors = {
                 str(sha).lower(): str(message)
-                for sha, message in dict(
-                    state.get("rejected_blob_errors") or {}
-                ).items()
+                for sha, message in raw_rejected_errors.items()
                 if _is_sha(str(sha).lower())
             }
             events_by_id = {
