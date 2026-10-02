@@ -2198,3 +2198,60 @@ def test_apex_credibility_ids_are_label_and_revision_scoped(tmp_path):
         assert row["source_commit"] in {"a" * 40, "b" * 40}
         assert row["execution_authorized"] is False
         assert row["production_decision_authorized"] is False
+
+
+def test_scorecards_use_non_overlapping_effective_samples(tmp_path):
+    from icarus_engine.learning_fabric import LearningFabric
+
+    fabric = LearningFabric(tmp_path)
+    start = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    _overlapping_calibration_case(
+        fabric, start=start, n=60, spacing_seconds=30, horizon_seconds=60
+    )
+
+    card = next(x for x in fabric.scorecards() if x["producer"] == "overlap-test")
+    assert card["raw_settled"] == 60
+    assert card["settled"] == 30
+    assert card["overlap_purged"] == 30
+    assert card["status"] == "MEASURED"
+    assert card["source_commit"] == "c" * 40
+    assert card["prediction_label"] == "true"
+
+
+def test_apex_credibility_uses_effective_non_overlapping_sample_count(tmp_path):
+    from icarus_engine.learning_fabric import LearningFabric
+
+    class Store:
+        def __init__(self):
+            self.rows = []
+        def record_model_credibility(self, row):
+            self.rows.append(dict(row))
+            return {"ok": True}
+
+    class Apex:
+        def __init__(self):
+            self.store = Store()
+
+    fabric = LearningFabric(tmp_path)
+    apex = Apex()
+    fabric.bind_native(apex=apex)
+    start = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    _overlapping_calibration_case(
+        fabric, start=start, n=40, spacing_seconds=10, horizon_seconds=60
+    )
+
+    card = next(x for x in fabric.scorecards() if x["producer"] == "overlap-test")
+    assert card["raw_settled"] == 40
+    assert card["settled"] < 30
+    assert card["overlap_purged"] == 40 - card["settled"]
+    assert card["status"] == "EARLY"
+
+    result = fabric._publish_apex_credibility([card])
+    assert result["published"] == 1
+    row = apex.store.rows[0]
+    assert row["sample_count"] == card["settled"]
+    assert row["raw_sample_count"] == 40
+    assert row["overlap_purged"] == card["overlap_purged"]
+    assert row["status"] == "EARLY"
+    assert row["execution_authorized"] is False
+    assert row["production_decision_authorized"] is False
