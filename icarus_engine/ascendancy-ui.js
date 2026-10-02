@@ -340,13 +340,70 @@
     '</section>';
   }
 
-  function renderAscendancy(capabilities, genomes, foundry, unknowns, errors) {
+  function renderMechanisms(mechanisms) {
+    if (!mechanisms) {
+      return '<section class="card" style="margin-top:12px"><h3>MECHANISM LABORATORY</h3><div class="empty">UNAVAILABLE — mechanism extraction state did not load.</div></section>';
+    }
+    const rows = Array.isArray(mechanisms.mechanisms) ? mechanisms.mechanisms : [];
+    const counts = {DIRECT_CONTRIBUTOR:0, INTERACTION_DEPENDENT:0, HARMFUL_LOOKING:0, UNRESOLVED:0};
+    rows.forEach(row => {
+      const key = String(row.classification || 'UNRESOLVED');
+      counts[key] = (counts[key] || 0) + 1;
+    });
+    const body = rows.map(row => {
+      const groups = (row.groups || []).map(g => {
+        const ci = g.ci95_low == null || g.ci95_high == null
+          ? 'UNMEASURED'
+          : '[' + Number(g.ci95_low).toFixed(6) + ', ' + Number(g.ci95_high).toFixed(6) + ']';
+        return String(g.experiment_kind || 'UNAVAILABLE') +
+          ' · n=' + count(g.n) +
+          ' · mean=' + (g.mean_effect == null ? 'UNMEASURED' : Number(g.mean_effect).toFixed(6)) +
+          ' · CI95=' + ci +
+          ' · sign=' + (g.sign_agreement == null ? 'UNMEASURED' : Number(g.sign_agreement).toFixed(3)) +
+          ' · contract=' + short(g.evaluation_contract_hash || 'UNAVAILABLE') +
+          ' · context=' + json(g.context || {});
+      }).join(' | ');
+      return '<tr>' +
+        '<td><b>' + h(row.mechanism_key || 'UNAVAILABLE') + '</b></td>' +
+        '<td class="' + statusClass(row.classification) + '"><b>' + h(row.classification || 'UNRESOLVED') + '</b></td>' +
+        '<td><code>' + h(short(row.candidate_id || 'UNAVAILABLE')) + '</code></td>' +
+        '<td class="small">' + h((row.related_mechanisms || []).join(' · ') || 'NONE') + '</td>' +
+        '<td class="small">' + h(groups || 'UNMEASURED') + '</td>' +
+        '<td class="small">causal_proof=false</td>' +
+      '</tr>';
+    }).join('');
+    const truth = mechanisms.truth_contract || {};
+    return '<section class="card" style="margin-top:12px">' +
+      '<h3>MECHANISM LABORATORY</h3>' +
+      '<div class="small muted">Paired ablation and interaction decomposition. Positive contribution is not structural causal proof.</div>' +
+      '<div class="tiles" style="margin-top:10px">' +
+        '<div class="tile"><div class="k">EXPERIMENTS</div><div class="v tnum">' + h(count(mechanisms.experiment_count)) + '</div></div>' +
+        '<div class="tile"><div class="k">DIRECT_CONTRIBUTOR</div><div class="v tnum">' + h(count(counts.DIRECT_CONTRIBUTOR)) + '</div></div>' +
+        '<div class="tile"><div class="k">INTERACTION_DEPENDENT</div><div class="v tnum">' + h(count(counts.INTERACTION_DEPENDENT)) + '</div></div>' +
+        '<div class="tile"><div class="k">HARMFUL_LOOKING</div><div class="v tnum">' + h(count(counts.HARMFUL_LOOKING)) + '</div></div>' +
+        '<div class="tile"><div class="k">UNRESOLVED</div><div class="v tnum">' + h(count(counts.UNRESOLVED)) + '</div></div>' +
+        '<div class="tile"><div class="k">AUTHORITY</div><div class="v">RESEARCH ONLY</div><div class="small muted">execution_authorized=false · production_decision_authorized=false</div></div>' +
+      '</div>' +
+      '<div class="small muted" style="margin:10px 0">' +
+        'mechanism_attribution_is_not_causal_proof=' + h(truth.mechanism_attribution_is_not_causal_proof === true ? 'true' : 'UNAVAILABLE') +
+        ' · contracts_and_contexts_are_never_pooled=' + h(truth.contracts_and_contexts_are_never_pooled === true ? 'true' : 'UNAVAILABLE') +
+        ' · independent_episode_identity_prevents_duplicate_counting=' + h(truth.independent_episode_identity_prevents_duplicate_counting === true ? 'true' : 'UNAVAILABLE') +
+      '</div>' +
+      '<div class="scroll" style="max-height:58vh"><table><thead><tr>' +
+        '<th>Mechanism</th><th>Classification</th><th>Candidate</th><th>Related mechanisms</th><th>Paired evidence groups</th><th>Causal status</th>' +
+      '</tr></thead><tbody>' +
+        (body || '<tr><td colspan="6" class="empty">UNMEASURED — no paired mechanism experiments recorded.</td></tr>') +
+      '</tbody></table></div>' +
+    '</section>';
+  }
+
+  function renderAscendancy(capabilities, genomes, foundry, unknowns, mechanisms, errors) {
     const el = document.querySelector('#ascendancyBody');
     if (!el) return;
     const warning = errors.length
       ? '<div class="empty" style="margin-bottom:10px">DEGRADED: ' + h(errors.join(' · ')) + '</div>'
       : '';
-    el.innerHTML = warning + renderCapabilities(capabilities) + renderUnknowns(unknowns) + renderFoundry(foundry) + renderGenomeLab(genomes);
+    el.innerHTML = warning + renderCapabilities(capabilities) + renderUnknowns(unknowns) + renderFoundry(foundry) + renderMechanisms(mechanisms) + renderGenomeLab(genomes);
   }
 
   async function fetchJson(url, token) {
@@ -370,17 +427,19 @@
         fetchJson('/api/ascendancy/capabilities', token),
         fetchJson('/api/ascendancy/genomes', token),
         fetchJson('/api/ascendancy/candidates', token),
-        fetchJson('/api/ascendancy/unknowns', token)
+        fetchJson('/api/ascendancy/unknowns', token),
+        fetchJson('/api/ascendancy/mechanisms', token)
       ]);
       if (seq !== loadSeq) return;
       const capabilities = settled[0].status === 'fulfilled' ? settled[0].value : null;
       const genomes = settled[1].status === 'fulfilled' ? settled[1].value : null;
       const foundry = settled[2].status === 'fulfilled' ? settled[2].value : null;
       const unknowns = settled[3].status === 'fulfilled' ? settled[3].value : null;
+      const mechanisms = settled[4].status === 'fulfilled' ? settled[4].value : null;
       const errors = settled
         .filter(x => x.status === 'rejected')
         .map(x => x.reason && x.reason.message ? x.reason.message : String(x.reason || 'UNAVAILABLE'));
-      renderAscendancy(capabilities, genomes, foundry, unknowns, errors);
+      renderAscendancy(capabilities, genomes, foundry, unknowns, mechanisms, errors);
     } catch (err) {
       if (seq !== loadSeq) return;
       el.innerHTML = '<div class="empty">ASCENDANCY state UNAVAILABLE: ' + h(err && err.message ? err.message : err) + '</div>';
