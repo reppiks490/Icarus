@@ -134,7 +134,7 @@ def test_dashboard_surfaces_adaptive_brain_fabric():
     assert "/api/performance-proof" in server
     assert "/api/latency" in server
     assert "Agent federation contract" in ui
-    assert "RESEARCH_OBSERVABILITY_ONLY" in ui
+    assert "agentContract.event_records" in ui
     assert "STRICT EVENT ENVELOPE" in ui
     assert "CSV Evidence Lab" in ui
     assert "/api/evidence-lab" in server
