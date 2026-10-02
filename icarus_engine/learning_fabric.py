@@ -1127,9 +1127,13 @@ class LearningFabric:
             **_authority(),
         }
 
-    def rebuild_shadow_calibrators(self, *, min_samples: int = 30) -> dict[str, Any]:
+    def rebuild_shadow_calibrators(
+        self, *, min_samples: int = 30, refresh_samples: int = 1
+    ) -> dict[str, Any]:
         if isinstance(min_samples, bool) or not isinstance(min_samples, int) or not 20 <= min_samples <= 100000:
             raise ValueError("min_samples must be an integer in [20,100000]")
+        if isinstance(refresh_samples, bool) or not isinstance(refresh_samples, int) or not 1 <= refresh_samples <= 100000:
+            raise ValueError("refresh_samples must be an integer in [1,100000]")
         rows = self._conn.execute(
             """SELECT p.prediction_id,p.producer,p.asset,p.regime,p.horizon_seconds,p.target,
                       p.prediction_json,p.source_commit,p.probability,o.success,o.observed_at,o.observed_ts
@@ -1152,6 +1156,7 @@ class LearningFabric:
 
         built: list[dict[str, Any]] = []
         skipped: dict[str, str] = {}
+        awaiting_refresh = 0
         for key, group in sorted(groups.items()):
             producer, asset, regime, horizon, target, prediction_label, source_commit = key
             scope = (
@@ -1162,6 +1167,25 @@ class LearningFabric:
             if n < min_samples:
                 skipped[scope] = f"need {min_samples} settled samples; have {n}"
                 continue
+            if refresh_samples > 1:
+                latest = self._conn.execute(
+                    """SELECT * FROM calibration_models
+                       WHERE producer=? AND asset=? AND regime=? AND horizon_seconds=?
+                         AND target=? AND prediction_label=? AND source_commit=?
+                       ORDER BY training_cutoff DESC, created_at DESC, calibrator_id DESC
+                       LIMIT 1""",
+                    (producer, asset, regime, horizon, target, prediction_label, source_commit),
+                ).fetchone()
+                if latest is not None:
+                    cutoff_ts = _parse_time(latest["training_cutoff"], "training_cutoff").timestamp()
+                    new_settled = sum(1 for row in group if float(row["observed_ts"]) > cutoff_ts)
+                    if new_settled < refresh_samples:
+                        awaiting_refresh += 1
+                        skipped[scope] = (
+                            f"awaiting refresh batch: need {refresh_samples} new settled samples; "
+                            f"have {new_settled}"
+                        )
+                        continue
             validation_count = max(6, int(math.ceil(n * 0.20)))
             train_count = n - validation_count
             if train_count < 20:
@@ -1251,6 +1275,7 @@ class LearningFabric:
             "rejected": sum(1 for row in built if row["status"] == "SHADOW_REJECTED"),
             "models": built,
             "skipped": skipped,
+            "awaiting_refresh": awaiting_refresh,
             **_authority(),
         }
 
