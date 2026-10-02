@@ -569,3 +569,14 @@ def test_learning_dashboard_surfaces_manifest_linked_historical_artifact_experie
     assert "by_artifact_configuration" in ui
     assert "artifact_scoped_count" in ui
     assert "MANIFEST-LINKED" in ui
+
+
+def test_learning_dashboard_exposes_label_and_revision_scoped_credibility():
+    ui = (REPO / "icarus_engine/learning-ui.js").read_text(encoding="utf-8")
+    assert "LABEL-SCOPED" in ui
+    assert "REVISION-SCOPED" in ui
+    assert "Prediction label" in ui
+    assert "Source revision" in ui
+    assert "r.prediction_label" in ui
+    assert "r.source_commit" in ui
+    assert "producer × asset × regime × horizon × label × revision" in ui
