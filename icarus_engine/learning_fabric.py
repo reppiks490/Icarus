@@ -1433,6 +1433,94 @@ class LearningFabric:
         }
 
     @staticmethod
+    def _classification_diagnostics(rows: Sequence[sqlite3.Row]) -> dict[str, Any]:
+        """Proper-score and adaptive reliability diagnostics on effective rows only."""
+        valid = [
+            row for row in rows
+            if row["success"] is not None
+            and math.isfinite(float(row["probability"]))
+            and 0.0 <= float(row["probability"]) <= 1.0
+        ]
+        n = len(valid)
+        if not n:
+            return {
+                "diagnostic_sample_count": 0,
+                "adaptive_calibration_bins": 0,
+                "expected_calibration_error": None,
+                "maximum_calibration_error": None,
+                "mean_log_loss": None,
+                "climatology_brier": None,
+                "brier_skill_score": None,
+            }
+
+        pairs = [
+            (float(row["probability"]), int(row["success"]), str(row["prediction_id"]))
+            for row in valid
+        ]
+        prevalence = sum(y for _, y, _ in pairs) / n
+        brier = sum((p - y) ** 2 for p, y, _ in pairs) / n
+        climatology_brier = sum((prevalence - y) ** 2 for _, y, _ in pairs) / n
+        brier_skill_score = (
+            None
+            if climatology_brier <= 1e-15
+            else 1.0 - (brier / climatology_brier)
+        )
+
+        eps = 1e-12
+        mean_log_loss = -sum(
+            y * math.log(min(1.0 - eps, max(eps, p)))
+            + (1 - y) * math.log(min(1.0 - eps, max(eps, 1.0 - p)))
+            for p, y, _ in pairs
+        ) / n
+
+        ordered = sorted(pairs, key=lambda item: (item[0], item[2]))
+        probability_groups: list[list[tuple[float, int, str]]] = []
+        for pair in ordered:
+            if not probability_groups or pair[0] != probability_groups[-1][0][0]:
+                probability_groups.append([pair])
+            else:
+                probability_groups[-1].append(pair)
+
+        bin_target = min(
+            10,
+            max(1, int(math.ceil(math.sqrt(n)))),
+            len(probability_groups),
+        )
+        chunks: list[list[tuple[float, int, str]]] = []
+        current: list[tuple[float, int, str]] = []
+        processed = 0
+        for group_index, group in enumerate(probability_groups):
+            current.extend(group)
+            processed += len(group)
+            if len(chunks) >= bin_target - 1:
+                continue
+            remaining_groups = len(probability_groups) - group_index - 1
+            remaining_bins = bin_target - len(chunks) - 1
+            target_end = ((len(chunks) + 1) * n) / bin_target
+            if processed >= target_end and remaining_groups >= remaining_bins:
+                chunks.append(current)
+                current = []
+        if current:
+            chunks.append(current)
+
+        gaps: list[tuple[int, float]] = []
+        for chunk in chunks:
+            mean_p = sum(p for p, _, _ in chunk) / len(chunk)
+            mean_y = sum(y for _, y, _ in chunk) / len(chunk)
+            gaps.append((len(chunk), abs(mean_p - mean_y)))
+        expected_calibration_error = sum(size * gap for size, gap in gaps) / n
+        maximum_calibration_error = max((gap for _, gap in gaps), default=None)
+        return {
+            "diagnostic_sample_count": n,
+            "adaptive_calibration_bins": len(gaps),
+            "expected_calibration_error": expected_calibration_error,
+            "maximum_calibration_error": maximum_calibration_error,
+            "mean_log_loss": mean_log_loss,
+            "climatology_brier": climatology_brier,
+            "brier_skill_score": brier_skill_score,
+        }
+
+    @staticmethod
     def _purge_overlapping_prediction_rows(rows: Sequence[sqlite3.Row]) -> list[sqlite3.Row]:
         """Greedily retain forecast intervals that do not overlap in event time."""
         ordered = sorted(
@@ -1901,6 +1989,7 @@ class LearningFabric:
             )
             errors = [float(r["absolute_error"]) for r in effective_group if r["absolute_error"] is not None]
             interval = wilson_interval(successes, len(classified)) if classified else (None, None)
+            diagnostics = self._classification_diagnostics(classified)
             cards.append({
                 "producer": producer,
                 "asset": asset,
@@ -1918,6 +2007,7 @@ class LearningFabric:
                 "mean_confidence": mean_confidence,
                 "mean_brier": mean_brier,
                 "calibration_gap": calibration_gap,
+                **diagnostics,
                 "mean_absolute_error": sum(errors) / len(errors) if errors else None,
                 "status": "MEASURED" if settled >= 30 else "EARLY",
                 **_authority(),
