@@ -197,6 +197,8 @@ class LearningFabric:
                     calibrated_validation_brier REAL NOT NULL,
                     source_hash TEXT NOT NULL,
                     created_at TEXT NOT NULL,
+                    retired_at TEXT,
+                    retirement_reason TEXT,
                     UNIQUE(producer,asset,regime,horizon_seconds,target,source_hash)
                 );
                 CREATE INDEX IF NOT EXISTS idx_learning_calibrator_scope
@@ -216,6 +218,21 @@ class LearningFabric:
                 );
                 CREATE INDEX IF NOT EXISTS idx_learning_shadow_calibrator
                     ON shadow_calibrations(calibrator_id,status);
+
+                CREATE TABLE IF NOT EXISTS calibration_drift_events (
+                    event_id TEXT PRIMARY KEY,
+                    calibrator_id TEXT NOT NULL REFERENCES calibration_models(calibrator_id),
+                    evaluated_at TEXT NOT NULL,
+                    sample_count INTEGER NOT NULL,
+                    raw_brier REAL NOT NULL,
+                    calibrated_brier REAL NOT NULL,
+                    degradation REAL NOT NULL,
+                    degradation_margin REAL NOT NULL,
+                    action TEXT NOT NULL,
+                    reason TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_learning_calibration_drift
+                    ON calibration_drift_events(calibrator_id,evaluated_at);
 
                 CREATE TABLE IF NOT EXISTS datasets (
                     dataset_id TEXT PRIMARY KEY,
@@ -322,6 +339,14 @@ class LearningFabric:
                 self._conn.execute(
                     "ALTER TABLE calibration_models "
                     "ADD COLUMN source_commit TEXT NOT NULL DEFAULT ''"
+                )
+            if "retired_at" not in calibration_columns:
+                self._conn.execute(
+                    "ALTER TABLE calibration_models ADD COLUMN retired_at TEXT"
+                )
+            if "retirement_reason" not in calibration_columns:
+                self._conn.execute(
+                    "ALTER TABLE calibration_models ADD COLUMN retirement_reason TEXT"
                 )
             self._conn.execute(
                 """CREATE INDEX IF NOT EXISTS idx_learning_calibrator_label_scope
