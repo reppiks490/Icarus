@@ -1,0 +1,52 @@
+{
+  "schema": "icarus-mcp-event-v1",
+  "event_id": "macro_20261002T180749Z_post_payroll_duration_decoupling",
+  "timestamp": "2026-10-02T18:07:49Z",
+  "category": "EVOLUTION",
+  "source": "MACRO_AUTOMATION",
+  "execution_authorized": false,
+  "finding": "The initial Treasury rally after the weak September payroll report failed to persist: by U.S. midday the 10-year yield was up 2.18 bp at 5.256% and the 2-year up 3.35 bp at 4.821%, even as October Fed-hike odds remained reduced near 21%. Gold also reversed an earlier >1% gain and fell about 1%, while equities remained higher.",
+  "net_new_delta": "This directly advances the prior ICARUS falsifier. Weak payrolls materially reduced near-term Fed-hike expectations, but Treasury yields reversed their initial decline and moved higher the same session. That intraday failure of policy-path easing to deliver durable duration relief strengthens the existing hypothesis that long-end pricing contains material inflation/fiscal/term-premium forces not captured by near-term Fed-path expectations alone. It is evidence of decoupling, not proof of any single causal component.",
+  "affected": [
+    "NQ/MNQ",
+    "U.S. 2Y/10Y/30Y",
+    "DXY/USD",
+    "GC/MGC",
+    "broad U.S. equity indices",
+    "Brent/WTI"
+  ],
+  "evidence": [
+    {
+      "provider": "Reuters",
+      "date": "2026-10-02",
+      "url": "https://www.reuters.com/world/china/global-markets-wrapup-1-2026-10-02/",
+      "claim": "After initially falling on the 29,000 payroll print, Treasury yields reversed higher; 10Y was up 2.18 bp at 5.256% and 2Y up 3.35 bp at 4.821%. October hike odds were about 21%, Nasdaq was up more than 1%, and spot gold was down about 1.08%."
+    },
+    {
+      "provider": "Reuters",
+      "date": "2026-10-02",
+      "url": "https://www.reuters.com/business/energy/europe-discussing-plan-diesel-stock-releases-after-us-pressure-source-says-2026-10-02/",
+      "claim": "G7 countries agreed to a coordinated 100 million barrel diesel/crude emergency-stock release over four months, frontloading diesel within 20 days; diesel futures fell sharply, adding a contemporaneous energy-inflation relief impulse."
+    }
+  ],
+  "conflicts": [
+    "Near-term Fed-hike odds fell after weak payrolls, yet both 2Y and 10Y Treasury yields reversed early declines and were higher on the day.",
+    "Gold initially gained more than 1% on the weak jobs report but reversed to a loss as yields stayed elevated, showing that the initial dovish cross-asset impulse did not persist.",
+    "Equities remained higher while yields reversed upward, so the session is not a uniform risk-off or growth-scare regime.",
+    "The G7 emergency-stock release is easing oil/diesel prices, creating an inflation-relief impulse that conflicts with still-elevated sovereign yields."
+  ],
+  "unknown": [
+    "Whether the yield reversal persists beyond the payroll session.",
+    "The respective causal weights of inflation risk, fiscal/debt supply, term premium, growth resilience and positioning in the long-end reversal.",
+    "Whether the G7 stock release produces durable energy-price relief or only temporary inventory substitution."
+  ],
+  "next_decisive_check": "Test whether 10Y/30Y yields remain elevated or re-approach recent highs while October Fed-hike probability stays suppressed and energy prices soften. Persistence of that configuration would strengthen policy-path versus structural-duration decoupling; renewed sustained long-end compression would weaken it.",
+  "oracle": {
+    "status": "MATERIAL_FINDING",
+    "finding": "The prior decisive check fired: weak payrolls lowered Fed-hike odds, but Treasury yields reversed their initial rally and moved higher the same session. Upgrade confidence in policy-path versus structural-duration decoupling, without assigning the unexplained long-end component to a single cause."
+  },
+  "supermesh_x": {
+    "status": "MATERIAL_FINDING",
+    "finding": "Fresh Reuters cross-asset evidence separates payroll/Fed-path repricing, Treasury-duration behavior, gold, equities and the G7 energy-stock intervention. The conflicting channels are real and should remain separately provenance-tagged; no order-flow, positioning or liquidity mechanism is inferred."
+  }
+}
