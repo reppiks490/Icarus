@@ -1,0 +1,50 @@
+{
+  "schema": "icarus-mcp-event-v1",
+  "event_id": "omega_20261002T115900Z_japan_duration_freshness_integration",
+  "timestamp": "2026-10-02T11:59:00Z",
+  "category": "INTEGRATION",
+  "source": "OMEGA_AUTOMATION",
+  "execution_authorized": false,
+  "finding": "Fresh Macro evidence adds Japan inflation normalization as an independent candidate global-duration transmission channel while GitHub-native v3 simultaneously records unresolved substantive-receipt gaps across Macro, Flow, AION, DAEDALUS, and OMEGA.",
+  "net_new_delta": "JAPAN_INFLATION_NORMALIZATION_ADDS_A_SECOND_DURATION_AXIS_WHILE_V3_WATCHDOG_PROVES_SPECIALIST_FRESHNESS_MUST_FAIL_CLOSED",
+  "accepted": [
+    "Tokyo core CPI 2.7% y/y versus 1.8% prior and 2.4% consensus, with ex-fresh-food-and-fuel 3.0%, is a material Macro delta warranting JPY/JGB conditioning tests.",
+    "GitHub-native v3 watchdog recovery backlog is authoritative evidence of missing canonical AI receipts, not market evidence."
+  ],
+  "rejected": [
+    "Do not infer a BOJ hike from Tokyo CPI alone.",
+    "Do not promote Japan inflation into a confirmed US-duration/NQ/GC transmission regime without JPY/JGB persistence and independent cross-asset confirmation.",
+    "Do not treat deterministic durability receipts or recovery backlog creation as substantive specialist inference."
+  ],
+  "conflicts": [
+    "Japan inflation reaccelerated while Tankan/funding evidence was mixed, weakening an immediate-policy conclusion.",
+    "The Macro market finding exists in the ICARUS MCP event plane while v3 reports the scheduled Macro 11:12Z AI receipt missing; substantive event evidence and scheduler receipt health are distinct axes."
+  ],
+  "blockers": [
+    "Nationwide Japan CPI and persistent JPY/JGB reaction are not yet established.",
+    "v3 recovery backlog remains RECOVERY_PENDING_AI for recent Macro, Flow, AION, DAEDALUS, and OMEGA slots; specialist freshness cannot be inferred from durability recovery."
+  ],
+  "next_highest_value_integration_target": "Route Japan inflation-normalization as a provisional ATHENA/JANUS conditioning state keyed to JPY/JGB persistence, while making v3 substantive-receipt freshness a separate fail-closed dependency. Test interaction with the existing euro-fragmentation thesis only after synchronous duration/FX/equity evidence arrives.",
+  "paths_evidence": [
+    "automation_intelligence/mcp_interface/events/20261002T111513Z_macro_japan_inflation_reacceleration.json",
+    "Icarus commit 5b86259a3474727612043f05fcbd022fd33a993b",
+    "Icarus-engine commit 6ae893d15eb0f8d75f47f34302056ed35708fbd0",
+    "Icarus-engine commit 52263381b0dc0e3aa1a33d1385f22374019a1d95"
+  ],
+  "athena": {
+    "status": "ACTIONABLE",
+    "finding": "Treat Japan inflation normalization as a provisional uncertainty/routing state; require persistent JPY/JGB confirmation and penalize missing substantive specialist receipts."
+  },
+  "janus": {
+    "status": "ACTIONABLE",
+    "finding": "Reconcile Japan normalization, euro fragmentation, market confirmation, and v3 substantive-receipt freshness as separate non-substitutable dependencies."
+  },
+  "infrastructure": {
+    "status": "DEGRADED",
+    "finding": "GitHub-native v3 is detecting and persisting recovery backlog correctly, but recent Macro, Flow, AION, DAEDALUS and OMEGA slots remain RECOVERY_PENDING_AI; durability is not substantive execution."
+  },
+  "helios_prime": {
+    "status": "ACTIONABLE",
+    "finding": "Highest-value bridge is Japan CPI/BOJ path -> JPY/JGB persistence -> US duration -> NQ/GC, tested independently before interaction with euro-fragmentation evidence."
+  }
+}
