@@ -604,3 +604,12 @@ def test_learning_ui_exposes_historical_artifact_session_provenance():
     source = (REPO / "icarus_engine" / "learning-ui.js").read_text(encoding="utf-8")
     assert "r.session_mode" in source
     assert "Historical session" in source
+
+
+def test_learning_ui_exposes_proper_score_calibration_diagnostics():
+    source = (REPO / "icarus_engine" / "learning-ui.js").read_text(encoding="utf-8")
+    assert "expected_calibration_error" in source
+    assert "maximum_calibration_error" in source
+    assert "mean_log_loss" in source
+    assert "brier_skill_score" in source
+
