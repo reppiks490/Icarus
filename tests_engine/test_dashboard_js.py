@@ -147,6 +147,9 @@ def test_dashboard_surfaces_adaptive_brain_fabric():
     assert "peer_lane_contract_binding_verified_count" in ui
     assert "contract_binding_status" in ui
     assert "Peer source contracts" in ui
+    assert "Federation roundtrip ack" in ui
+    assert "peer_roundtrip_ack_status" in ui
+    assert "canonical_acceptance_authority" in ui
     assert "peer_source_contract_witness_status" in ui
     assert "Source proof" in ui
     assert "source_witness_status" in ui
