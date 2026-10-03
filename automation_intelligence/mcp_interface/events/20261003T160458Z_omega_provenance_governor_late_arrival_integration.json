@@ -1,0 +1,78 @@
+{
+  "schema": "icarus-mcp-event-v1",
+  "category": "INTEGRATION",
+  "source": "OMEGA_AUTOMATION",
+  "event_time": "2026-10-03T16:04:58Z",
+  "event_id": "20261003T160458Z_omega_provenance_governor_late_arrival_integration",
+  "execution_authorized": false,
+  "title": "Historical projection proof and bounded governor converge with late-arrival provenance",
+  "net_new_delta": "ICARUS_NOW_HAS_SOURCE_DERIVED_HISTORICAL_PROJECTION_PROOF_AND_A_BOUNDED_CANONICAL_ASCENDANCY_GOVERNOR_WHILE_V3_PROVES_MULTI_LANE_LATE_ARRIVAL_AND_RESTORED_FIVE_REMAINS_MIXED",
+  "accepted_findings": [
+    "Canonical ICARUS merged historical packet projection verification that reconstructs historical summary, lineage and evidence classification from exact source bytes and fails closed on invalid source semantics.",
+    "Canonical ICARUS merged the bounded ASCENDANCY governor/executor/autopilot/work-order stack with serialized in-process execution and durable latest-observation status; it remains research bookkeeping and cannot mint evaluator/qualification evidence.",
+    "GitHub-native v3 reconciled late liveness receipts after incidents for Macro, Flow, AION, DAEDALUS and OMEGA, proving late-arrival classification is active across the full specialist roster.",
+    "Restored-five exact-slot evidence is mixed: alpha_synthesis 14:25Z is canonical-worker verified; alpha 15:25Z is missing, Flow 14:35Z is mismatched to newer 15:35Z, Apex and Robustness are watchdog-only, Advanced CSV receipt checking is unavailable.",
+    "Canonical federation accepted a fresh peer packet with peer_substantive_lane_count=0; federation remains RESEARCH-only."
+  ],
+  "rejected_findings": [
+    "Historical projection verification is not current freshness, substantive inference, candidate evidence, or execution authority.",
+    "ASCENDANCY dispatch or successful bookkeeping cycles are not scientific experiment completion, evaluator evidence, qualification, or trading authority.",
+    "Late GitHub-native liveness receipts do not prove substantive specialist inference.",
+    "A newer or watchdog receipt cannot be substituted for exact expected-slot native completion."
+  ],
+  "conflicts": [
+    "The research/control architecture materially hardened while substantive peer-lane count remains zero.",
+    "GitHub-native v3 can reconcile late arrivals across all five specialist lanes, while restored-five native-worker truth remains intermittent and exact-slot dependent."
+  ],
+  "blockers": [
+    "Current substantive Macro/Flow/AION/DAEDALUS/OMEGA inference remains unproved in the accepted peer packet.",
+    "Restored-five lacks reliable exact-slot native proof for Alpha 15:25Z, Apex, Flow 14:35Z, Robustness, and Advanced CSV.",
+    "ASCENDANCY still depends on external scientific evidence, protected holdout authority, experiment outcomes and qualification rather than manufacturing them."
+  ],
+  "next_highest_value_integration_target": "Bind exact-slot worker provenance and v3 late-arrival reconciliation into JANUS/INFRASTRUCTURE, then route only Git-blob-verified, source-derived, substantively qualified findings through the new bounded ASCENDANCY work-order/governor path; never let bookkeeping or liveness promote evidence authority.",
+  "paths": [
+    "automation_intelligence/federation/icarus_engine_acceptance.json",
+    "automation_intelligence/omega_stack_native_v3/reconciliation/late_arrival/",
+    "automation_intelligence/restored_five_native/receipts/",
+    "icarus_engine/brain_sync.py",
+    "icarus_engine/ascendancy-ui.js"
+  ],
+  "evidence": [
+    {
+      "repository": "reppiks490/Icarus",
+      "commit": "125d6e4643faed4ca0cf7b3fa3b916f6722c5d9d"
+    },
+    {
+      "repository": "reppiks490/Icarus",
+      "commit": "00ce67618afb7fc379b561e56bdc35d89eb0b96e"
+    },
+    {
+      "repository": "reppiks490/Icarus",
+      "commit": "851887c0e43acb21a4b5e67bcd0e4c82182232ac"
+    },
+    {
+      "repository": "reppiks490/Icarus-engine",
+      "commit": "286bcd82c5d2a33c0f0bf7a616f0f597cb759ce8"
+    },
+    {
+      "repository": "reppiks490/Icarus-engine",
+      "commit": "9c6526623b8eaf3aa6b373c41a0ff7cba6ccb544"
+    }
+  ],
+  "athena": {
+    "status": "ACTIONABLE",
+    "finding": "Treat historical projection proof, governor progress and late-arrival reconciliation as provenance/control confidence only; analytical uncertainty remains high while substantive peer-lane count is zero."
+  },
+  "janus": {
+    "status": "ACTIONABLE",
+    "finding": "Project twin should distinguish exact-slot native completion, late v3 liveness, watchdog substitution, source-derived historical projection proof and substantive evidence authority as separate states."
+  },
+  "infrastructure": {
+    "status": "DEGRADED_WITH_STRONGER_PROVENANCE",
+    "finding": "v3 reconciles late arrivals across all five specialist lanes and canonical provenance guards improved, but restored-five native completion remains intermittent/mixed and Advanced CSV is unverifiable."
+  },
+  "helios_prime": {
+    "status": "ACTIONABLE",
+    "finding": "Use the canonical bounded ASCENDANCY governor/work-order stack as the routing surface for verified integration gaps without duplicating specialist analysis or granting bookkeeping scientific authority."
+  }
+}
