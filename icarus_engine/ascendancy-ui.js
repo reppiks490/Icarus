@@ -650,13 +650,57 @@
     '</section>';
   }
 
-  function renderAscendancy(capabilities, genomes, foundry, unknowns, mechanisms, inventions, contributions, evaluator, peers, errors) {
+  function renderGovernor(governor) {
+    if (!governor) {
+      return '<section class="card" style="margin-top:12px"><h3>AUTONOMOUS EVOLUTION GOVERNOR</h3><div class="empty">UNAVAILABLE — governor state did not load.</div></section>';
+    }
+    const plan = governor.latest_plan || null;
+    const actions = plan && Array.isArray(plan.actions) ? plan.actions : [];
+    const rows = actions.map(row => {
+      return '<tr>' +
+        '<td><b>' + h(row.kind || 'UNAVAILABLE') + '</b><div class="small muted">' + h(short(row.action_id || '')) + '</div></td>' +
+        '<td><code>' + h(short(row.subject_id || 'UNAVAILABLE')) + '</code></td>' +
+        '<td>' + h(String(row.lane || 'UNAVAILABLE').toUpperCase()) + '</td>' +
+        '<td class="small">' + h(row.niche_key || 'UNAVAILABLE') + '</td>' +
+        '<td class="tnum">' + h(row.estimated_cost_units == null ? 'UNMEASURED' : Number(row.estimated_cost_units).toFixed(2)) + '</td>' +
+        '<td class="tnum">' + h(row.priority_score == null ? 'UNMEASURED' : Number(row.priority_score).toFixed(3)) + '</td>' +
+        '<td class="small">' + h(row.priority_basis || 'scheduler_heuristic_not_edge_score') + '</td>' +
+        '<td class="small">' + h(row.reason || 'UNAVAILABLE') + '</td>' +
+      '</tr>';
+    }).join('');
+    const truth = (plan && plan.truth_contract) || governor.truth_contract || {};
+    return '<section class="card" style="margin-top:12px">' +
+      '<h3>AUTONOMOUS EVOLUTION GOVERNOR</h3>' +
+      '<div class="small muted">Closed-loop research scheduler. It allocates bounded research attention across exploitation, EXPLORATION, unknowns, inventions, genome descendants and federated context; it does not grade its own evidence.</div>' +
+      '<div class="tiles" style="margin-top:10px">' +
+        '<div class="tile"><div class="k">CYCLES</div><div class="v tnum">' + h(count(governor.cycle_count)) + '</div></div>' +
+        '<div class="tile"><div class="k">ACTIONS</div><div class="v tnum">' + h(count(plan && plan.action_count)) + '</div></div>' +
+        '<div class="tile"><div class="k">EXPLORATION</div><div class="v tnum">' + h(count(plan && plan.selected_exploration_actions)) + '</div></div>' +
+        '<div class="tile"><div class="k">EXPLOITATION</div><div class="v tnum">' + h(count(plan && plan.selected_exploitation_actions)) + '</div></div>' +
+        '<div class="tile"><div class="k">ESTIMATED COST</div><div class="v tnum">' + h(plan && plan.estimated_cost_units != null ? Number(plan.estimated_cost_units).toFixed(2) : 'UNMEASURED') + '</div><div class="small muted">research cost units</div></div>' +
+        '<div class="tile"><div class="k">AUTHORITY</div><div class="v">SCHEDULER ONLY</div><div class="small muted">can_mint_evaluator_receipts=false · can_mint_qualification=false</div></div>' +
+      '</div>' +
+      '<div class="small muted" style="margin:10px 0">' +
+        'priority_basis=scheduler_heuristic_not_edge_score' +
+        ' · governor_never_fabricates_evaluation_outcomes=' + h(truth.governor_never_fabricates_evaluation_outcomes === true ? 'true' : 'UNAVAILABLE') +
+        ' · diversity_preserved_before_second_pass=' + h(truth.diversity_preserved_before_second_pass === true ? 'true' : 'UNAVAILABLE') +
+        ' · federated_context_is_not_candidate_evidence=' + h(truth.federated_context_is_not_candidate_evidence === true ? 'true' : 'UNAVAILABLE') +
+      '</div>' +
+      '<div class="scroll" style="max-height:52vh"><table><thead><tr>' +
+        '<th>Action</th><th>Subject</th><th>Lane</th><th>Niche</th><th>ESTIMATED COST</th><th>Priority</th><th>Basis</th><th>Reason</th>' +
+      '</tr></thead><tbody>' +
+        (rows || '<tr><td colspan="8" class="empty">UNMEASURED — no autonomous research plan recorded yet.</td></tr>') +
+      '</tbody></table></div>' +
+    '</section>';
+  }
+
+  function renderAscendancy(capabilities, genomes, foundry, unknowns, mechanisms, inventions, contributions, evaluator, governor, peers, errors) {
     const el = document.querySelector('#ascendancyBody');
     if (!el) return;
     const warning = errors.length
       ? '<div class="empty" style="margin-bottom:10px">DEGRADED: ' + h(errors.join(' · ')) + '</div>'
       : '';
-    el.innerHTML = warning + renderCapabilities(capabilities) + renderPeers(peers) + renderUnknowns(unknowns) + renderInventions(inventions) + renderFoundry(foundry) + renderEvaluator(evaluator) + renderContributions(contributions) + renderMechanisms(mechanisms) + renderGenomeLab(genomes);
+    el.innerHTML = warning + renderCapabilities(capabilities) + renderPeers(peers) + renderGovernor(governor) + renderUnknowns(unknowns) + renderInventions(inventions) + renderFoundry(foundry) + renderEvaluator(evaluator) + renderContributions(contributions) + renderMechanisms(mechanisms) + renderGenomeLab(genomes);
   }
 
   async function fetchJson(url, token) {
@@ -685,6 +729,7 @@
         fetchJson('/api/ascendancy/inventions', token),
         fetchJson('/api/ascendancy/contributions', token),
         fetchJson('/api/ascendancy/evaluator', token),
+        fetchJson('/api/ascendancy/governor', token),
         fetchJson('/api/brain', token)
       ]);
       if (seq !== loadSeq) return;
@@ -696,11 +741,12 @@
       const inventions = settled[5].status === 'fulfilled' ? settled[5].value : null;
       const contributions = settled[6].status === 'fulfilled' ? settled[6].value : null;
       const evaluator = settled[7].status === 'fulfilled' ? settled[7].value : null;
-      const peers = settled[8].status === 'fulfilled' ? settled[8].value : null;
+      const governor = settled[8].status === 'fulfilled' ? settled[8].value : null;
+      const peers = settled[9].status === 'fulfilled' ? settled[9].value : null;
       const errors = settled
         .filter(x => x.status === 'rejected')
         .map(x => x.reason && x.reason.message ? x.reason.message : String(x.reason || 'UNAVAILABLE'));
-      renderAscendancy(capabilities, genomes, foundry, unknowns, mechanisms, inventions, contributions, evaluator, peers, errors);
+      renderAscendancy(capabilities, genomes, foundry, unknowns, mechanisms, inventions, contributions, evaluator, governor, peers, errors);
     } catch (err) {
       if (seq !== loadSeq) return;
       el.innerHTML = '<div class="empty">ASCENDANCY state UNAVAILABLE: ' + h(err && err.message ? err.message : err) + '</div>';
