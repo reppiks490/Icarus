@@ -1,0 +1,27 @@
+{
+  "schema": "icarus-mcp-event-v1",
+  "event_id": "peer-source-contract-witness-consumer-20261002",
+  "at_utc": "2026-10-02T23:10:30Z",
+  "category": "INTEGRATION",
+  "status": "IMPLEMENTED",
+  "severity": "INFO",
+  "summary": "Verify peer source contracts at the packet revision, bind each peer lane to the verified control-plane/agent-fabric declarations, and reject projection or lane-attribution drift before accepting peer state.",
+  "surface": "ICARUS Adaptive Brain cross-repository federation",
+  "source": "CHATGPT_MCP",
+  "paths": [
+    "icarus_engine/brain_sync.py",
+    "icarus_engine/brain-ui.js",
+    "tests_engine/test_brain_sync.py",
+    "tests_engine/test_dashboard_js.py",
+    ".github/workflows/live-engine-federation-gate.yml",
+    ".github/workflows/live-engine-historical-context-gate.yml"
+  ],
+  "evidence": [
+    "exact control-plane, agent-fabric, and MCP Git blob verification at packet source_commit",
+    "control-plane and MCP packet projection equality",
+    "lane set/declarative identity binding to control-plane source",
+    "heartbeat/finalization path binding to agent-fabric manifest or declared worker-root fallback",
+    "fail-closed tests for source-contract, scheduler, path, and projection substitution"
+  ],
+  "execution_authorized": false
+}
