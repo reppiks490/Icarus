@@ -6,6 +6,7 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+import zipfile
 from pathlib import Path
 
 from openpyxl import Workbook
@@ -70,6 +71,7 @@ class HistoricalTradeAdmissionTests(unittest.TestCase):
         orphan = trade_rows() + [[9, 'Exit long', '2024-01-02 12:00', 'orphan', 103, 1, 3]]; cases.append(orphan)
         early = trade_rows(); early[0][2] = '2024-01-02 09:00'; cases.append(early)
         duplicate_entry = trade_rows() + [trade_rows()[1]]; cases.append(duplicate_entry)
+        missing_exit = trade_rows() + [[9, 'Entry long', '2024-01-02 12:00', 'entry', 103, 1, 0]]; cases.append(missing_exit)
         for suffix in ['.csv', '.xlsx']:
             for rows in cases:
                 with self.subTest(suffix=suffix, rows=rows), tempfile.TemporaryDirectory() as temp:
@@ -132,11 +134,85 @@ class HistoricalTradeAdmissionTests(unittest.TestCase):
                     finally:
                         fabric._conn.close()
 
+    def test_partial_equivalent_import_cannot_vouch_for_whole_dataset(self):
+        rows = trade_rows() + [[2, 'Exit long', '2024-01-02 13:00', 'close2', 103, 1, 5],
+                               [2, 'Entry long', '2024-01-02 12:00', 'entry2', 102, 1, 5]]
+        for legacy in [False, True]:
+            with self.subTest(legacy=legacy), tempfile.TemporaryDirectory() as temp:
+                base = Path(temp); csv_path = base / 'synthetic.csv'; xlsx_path = base / 'synthetic.xlsx'
+                write_source(csv_path, rows); report_sha = write_source(xlsx_path, rows)
+                fabric = LearningFabric(base)
+                try:
+                    csv_dataset = fabric.register_dataset(csv_path, asset='NQ', chart_type='20m')['dataset']
+                    xlsx_dataset = fabric.register_dataset(xlsx_path, asset='NQ', chart_type='20m', intake={'artifact_class': 'strategy_report_xlsx'})['dataset']
+                    original_record = fabric.record_experience
+                    def fail_second(body):
+                        if body['metadata']['trade_number'] == '2':
+                            raise RuntimeError('synthetic transient receipt failure')
+                        return original_record(body)
+                    fabric.record_experience = fail_second
+                    partial = fabric.backfill_dataset(csv_dataset['dataset_id'])
+                    self.assertEqual(partial['status'], 'partial')
+                    fabric.record_experience = original_record
+                    if legacy:
+                        record = dict(partial['runs'][0]['report']); record.pop('historical_admission_version')
+                        with fabric._conn:
+                            fabric._conn.execute('UPDATE training_runs SET report_json=?', (json.dumps(record),))
+                    # Isolate admission coverage from the separately tested manifest discovery.
+                    fabric._artifact_configuration_context = lambda *args, **kwargs: {'strategy_report_sha256': report_sha}
+                    completed = fabric.backfill_dataset(xlsx_dataset['dataset_id'])
+                    report = completed['runs'][0]['report']
+                    self.assertEqual(completed['status'], 'skipped')
+                    self.assertFalse(report['deduplicated_by_strategy_report'])
+                    self.assertTrue(report['errors'])
+                    self.assertEqual(fabric.experience_state()['count'], 1)
+                    self.assertEqual(fabric.backfill_dataset(xlsx_dataset['dataset_id'])['status'], 'skipped')
+                finally:
+                    fabric._conn.close()
+
     def test_legacy_parity_comparison_keeps_its_default_behavior(self):
         rows = trade_rows(); rows[1][1] = 'Entry garbage'
         with tempfile.TemporaryDirectory() as temp:
             path = Path(temp) / 'synthetic.csv'; write_source(path, rows)
             self.assertEqual(read_tv_trades(str(path))[0]['dir'], -1)
+
+    def test_source_change_after_cataloguing_cannot_reuse_the_old_hash(self):
+        for suffix in ['.csv', '.xlsx']:
+            with self.subTest(suffix=suffix), tempfile.TemporaryDirectory() as temp:
+                base = Path(temp); path = base / ('synthetic' + suffix); write_source(path, trade_rows())
+                fabric = LearningFabric(base)
+                try:
+                    dataset = fabric.register_dataset(path, asset='NQ', chart_type='20m', intake={'artifact_class': 'strategy_report_xlsx'} if suffix == '.xlsx' else None)['dataset']
+                    changed = trade_rows(); changed[0][4] = 102; write_source(path, changed)
+                    self.assertIsNone(fabric._historical_trade_signature(dataset))
+                    result = fabric.backfill_dataset(dataset['dataset_id'])
+                    self.assertEqual(fabric.experience_state()['count'], 0)
+                    self.assertTrue(result['runs'][0]['report']['errors'])
+                finally:
+                    fabric._conn.close()
+
+    def test_malformed_xlsx_leaves_durable_diagnostics(self):
+        for corruption in ['not_zip', 'invalid_xml']:
+            with self.subTest(corruption=corruption), tempfile.TemporaryDirectory() as temp:
+                base = Path(temp); path = base / 'synthetic.xlsx'; write_source(path, trade_rows())
+                if corruption == 'not_zip':
+                    path.write_bytes(b'SYNTHETIC invalid workbook')
+                else:
+                    with zipfile.ZipFile(path) as archive:
+                        members = {name: archive.read(name) for name in archive.namelist()}
+                    members['xl/workbook.xml'] = b'<SYNTHETIC-broken'
+                    with zipfile.ZipFile(path, 'w') as archive:
+                        for name, raw in members.items(): archive.writestr(name, raw)
+                fabric = LearningFabric(base)
+                try:
+                    dataset = fabric.register_dataset(path, asset='NQ', chart_type='20m', intake={'artifact_class': 'strategy_report_xlsx'})['dataset']
+                    self.assertIsNone(fabric._historical_trade_signature(dataset))
+                    result = fabric.backfill_dataset(dataset['dataset_id'])
+                    self.assertEqual(result['status'], 'skipped')
+                    self.assertTrue(result['runs'][0]['report']['errors'])
+                    self.assertEqual(fabric.experience_state()['count'], 0)
+                finally:
+                    fabric._conn.close()
 
     def test_legacy_import_receipts_require_review_without_rewriting_evidence(self):
         with tempfile.TemporaryDirectory() as temp:

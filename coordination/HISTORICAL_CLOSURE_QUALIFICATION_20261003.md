@@ -31,6 +31,12 @@ Explicit OPEN tails are excluded from completed-trade semantics. They do not
 disable equivalence for valid closed trades; an empty completed set provides no
 equivalence proof. Invalid CSV tables now leave a durable diagnostic receipt.
 Cached invalid/partial results retain their original visible status on retry.
+An entry without exits or an explicit OPEN witness is rejected. Parsing uses a
+single byte snapshot checked against the catalogued hash; replaced files and
+malformed XLSX structures leave diagnostics. Whole-dataset deduplication also
+requires an error-free current-version owner receipt and source/stored-record
+coverage equality. A matching partial or legacy owner holds the new import for
+review, without claiming deduplication or creating another copy of its outcomes.
 
 New historical receipts identify admission version 2. Older receipts are surfaced
 as needing requalification, including a Learning dashboard notice. Their durable
@@ -43,6 +49,8 @@ Synthetic CSV/XLSX regressions reproduced 22 failures before the repair. They co
 open-tail twins in both orders, partial/overclosed and negative quantities,
 tiny/large quantity mismatch, direction/orphan/time errors, fractional partial
 exits, grouped entries, legacy receipt preservation and executed UI notice refresh.
+Review fault injection also covers incomplete prior imports, bare entries,
+changed source bytes, invalid ZIPs and malformed workbook XML.
 
 The repaired real set produces 3,438 unique closed experiences in both orders,
 matching independent decimal-based source grouping. Both orders have identical

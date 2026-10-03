@@ -116,6 +116,8 @@ def _validate_historical_trade_rows(rows: List[Dict[str, Any]], columns: Dict[st
     for no, position in positions.items():
         if position['entry'] is None:
             raise ValueError(f'trade {no} has an exit without an entry')
+        if not position['exits']:
+            raise ValueError(f'trade {no} has no exit or explicit OPEN witness')
         direction, entry_timestamp = position['entry']
         for exit_direction, exit_timestamp in position['exits']:
             if exit_direction != direction:
