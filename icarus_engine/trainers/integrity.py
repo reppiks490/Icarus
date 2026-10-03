@@ -2,13 +2,11 @@
 # integrity, and a manifest (raw file hash, canonical row hash, counts) that travels with every artifact.
 # Conflicting duplicates or impossible OHLC block the file; dropped rows are counted, never silent.
 from __future__ import annotations
-import csv, hashlib, io, json, math, re, statistics
-from datetime import datetime
+import csv, hashlib, io, json, math, statistics
 from pathlib import Path
+from ..evidence.timestamps import PARSER_VERSION as TIMESTAMP_PARSER, normalize_timestamp
 
-PARSER = "icarus.trainer.integrity/1"
-_OFFSET = re.compile(r"(Z|[+-]\d{2}:?\d{2})$")
-_TOL = 1e-9
+PARSER = "icarus.trainer.integrity/2"
 
 def _num(v):
     if v is None or v == "":
@@ -20,62 +18,48 @@ def _num(v):
     return x if math.isfinite(x) else None
 
 def canonical_ts(raw):
-    """Epoch seconds, or None. Numbers are epoch seconds (milliseconds above 1e10). Text must carry its own
-    offset: a naive clock time has no knowable zone, so it is never guessed. Unlike the plant's
-    feeds.bars.parse_timestamp this keeps pre-2000 history (long daily exports)."""
-    s = (raw or "").strip().strip('"')
-    if not s:
-        return None
-    n = _num(s)
-    if n is not None:
-        if n <= 0:
-            return None
-        if n > 10_000_000_000:
-            n /= 1000.0
-        return n if n < 4_102_444_800 else None          # before 2100
-    if not _OFFSET.search(s):
-        return None
-    s = re.sub(r"([+-]\d{2})(\d{2})$", r"\1:\2", s)     # Python 3.10's fromisoformat needs +HH:MM
-    try:
-        dt = datetime.fromisoformat(s.replace("Z", "+00:00").replace(" ", "T", 1))
-    except ValueError:
-        return None
-    return float(dt.timestamp()) if dt.tzinfo is not None else None
+    """Shared epoch normalization; trainer wall times require an explicit offset."""
+    record = normalize_timestamp(raw)
+    return record.epoch_seconds if record else None
 
-def _columns(fieldnames):
-    keys = {k.strip(): k for k in fieldnames or []}
+def _columns(fieldnames, ambiguous):
     def col(*names):
-        for n in names:
-            if n in keys:
-                return keys[n]
-            for k in keys:
-                if k.lower() == n.lower():
-                    return keys[k]
-        return None
+        matches = [k for k in fieldnames or [] if k.strip().lower() in {n.lower() for n in names}]
+        if len(matches) > 1:
+            ambiguous.append('/'.join(names))
+        return matches[0] if matches else None
     return col
 
-def inspect_ohlc(path):
+def inspect_ohlc(path, *, raw_bytes=None):
     """(bars, manifest). Bars are sorted, unique by timestamp, in the trainer's dict format."""
     path = Path(path)
-    raw = path.read_bytes()
+    raw = path.read_bytes() if raw_bytes is None else raw_bytes
+    if not isinstance(raw, bytes):
+        raise ValueError("OHLC snapshot must be bytes")
     reader = csv.DictReader(io.StringIO(raw.decode("utf-8-sig"), newline=""))
     rows = list(reader)
     if not rows:
         raise ValueError(f"empty csv {path}")
-    col = _columns(reader.fieldnames)
+    ambiguous = []
+    col = _columns(reader.fieldnames, ambiguous)
     t_k, o_k, h_k, l_k, c_k = col("time", "ts"), col("open"), col("high"), col("low"), col("close")
     v_k, tl_k, ts_k = col("volume", "Volume"), col("TIDE Long"), col("TIDE Short")
     if not t_k or not c_k:
         raise ValueError(f"need time+close in {path}")
 
-    counts = dict.fromkeys(("unparseable_time", "missing_close", "missing_ohlc", "invalid_ohlc",
-                            "out_of_order", "duplicate_exact", "duplicate_conflict"), 0)
-    by_ts, prev = {}, None
+    counts = dict.fromkeys(("unparseable_time", "missing_close", "missing_ohlc", "invalid_ohlc", "invalid_volume",
+                            "out_of_order", "duplicate_exact", "duplicate_conflict", "timestamp_precision_conflict"), 0)
+    by_ts, exact_ts, prev = {}, {}, None
+    conflicts, precision_conflicts = set(), set()
+    units, bases = {}, {}
     for row in rows:
-        t = canonical_ts(row.get(t_k))
-        if t is None:
+        record = normalize_timestamp(row.get(t_k))
+        if record is None:
             counts["unparseable_time"] += 1
             continue
+        t = record.epoch_seconds
+        units[record.detected_unit] = units.get(record.detected_unit, 0) + 1
+        bases[record.timezone_basis] = bases.get(record.timezone_basis, 0) + 1
         c = _num(row.get(c_k))
         if c is None:
             counts["missing_close"] += 1
@@ -83,41 +67,64 @@ def inspect_ohlc(path):
         if prev is not None and t < prev:
             counts["out_of_order"] += 1
         prev = t
-        o = _num(row.get(o_k)) if o_k else c
-        h = _num(row.get(h_k)) if h_k else c
-        lo = _num(row.get(l_k)) if l_k else c
+        o = _num(row.get(o_k)) if o_k else None
+        h = _num(row.get(h_k)) if h_k else None
+        lo = _num(row.get(l_k)) if l_k else None
         if None in (o, h, lo):
             counts["missing_ohlc"] += 1
-        known = [v for v in (o, c) if v is not None]
-        if h is not None and lo is not None and (h < lo - _TOL or any(v > h + _TOL or v < lo - _TOL for v in known)):
+            continue
+        if h < lo or max(o, c) > h or min(o, c) < lo:
             counts["invalid_ohlc"] += 1
+            continue
+        volume = _num(row.get(v_k)) if v_k else None
+        if v_k and row.get(v_k) not in (None, '') and (volume is None or volume < 0):
+            counts["invalid_volume"] += 1
+            continue
         bar = {"ts": t, "open": o, "high": h, "low": lo, "close": c,
-               "volume": _num(row.get(v_k)) if v_k else None,
+               "volume": volume,
                "tide_long": _num(row.get(tl_k)) if tl_k else 0.0,
                "tide_short": _num(row.get(ts_k)) if ts_k else 0.0}
         seen = by_ts.get(t)
         if seen is None:
             by_ts[t] = bar
+            exact_ts[t] = record.epoch_seconds_exact
+        elif exact_ts[t] != record.epoch_seconds_exact:
+            precision_conflicts.add(t)
         elif seen == bar:
             counts["duplicate_exact"] += 1
-        elif not seen.get("_conflict"):
-            seen["_conflict"] = True
-            counts["duplicate_conflict"] += 1
+        else:
+            conflicts.add(t)
 
-    bars = [{k: v for k, v in by_ts[t].items() if k != "_conflict"} for t in sorted(by_ts)]
+    counts["duplicate_conflict"] = len(conflicts)
+    counts["timestamp_precision_conflict"] = len(precision_conflicts)
+    bars = [by_ts[t] for t in sorted(by_ts)]
     # An export's last bar may still have been forming when it was saved; nothing in the file says which.
     counts["trailing_dropped"] = 1 if bars else 0
     bars = bars[:-1]
     steps = [b["ts"] - a["ts"] for a, b in zip(bars, bars[1:])]
     blocked = []
+    if ambiguous:
+        blocked.append("ambiguous OHLC/feature columns: " + ', '.join(ambiguous))
+    if not all((o_k, h_k, l_k)):
+        blocked.append("OHLC requires open/high/low/close columns; missing prices are not inferred")
+    if counts["missing_close"] or counts["missing_ohlc"]:
+        blocked.append("OHLC rows contain missing or nonfinite prices")
     if counts["duplicate_conflict"]:
         blocked.append(f"{counts['duplicate_conflict']} timestamps carry conflicting rows")
     if counts["invalid_ohlc"]:
         blocked.append(f"{counts['invalid_ohlc']} rows have impossible OHLC (high/low do not bound the bar)")
-    # missing_ohlc rows are kept (their open/high/low read as the close downstream) but still flag the file
+    if counts["invalid_volume"]:
+        blocked.append("OHLC rows contain invalid volume")
+    if precision_conflicts:
+        blocked.append("distinct exact timestamps lose precision in float-second trainer rows")
+    if blocked:
+        bars = []
     flagged = counts["unparseable_time"] + counts["missing_close"] + counts["missing_ohlc"] + counts["duplicate_exact"]
     manifest = {
-        "parser": PARSER, "path": str(path), "raw_sha256": hashlib.sha256(raw).hexdigest(),
+        "parser": PARSER, "timestamp_parser": TIMESTAMP_PARSER,
+        "timestamp_unit_counts": units, "timezone_basis_counts": bases,
+        "timestamp_unit_policy": "MAGNITUDE_DETECTED_NOT_PROVIDER_ATTESTED",
+        "path": str(path), "raw_sha256": hashlib.sha256(raw).hexdigest(),
         "rows_total": len(rows), "rows_used": len(bars), **counts,
         "first_ts": bars[0]["ts"] if bars else None, "last_ts": bars[-1]["ts"] if bars else None,
         "median_step": statistics.median(steps) if steps else None,

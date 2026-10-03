@@ -247,6 +247,8 @@
       '<div class="small muted" style="margin-bottom:8px">CSV → strategy-report promotion requires an actual report artifact plus SEMANTIC_TRADE_SIGNATURE_V1 equality; manifest row-count/trade-number matches are candidate discovery only. Direct XLSX evidence remains source-bound to the report itself. Historical session is shown only when explicitly declared; it is never inferred from timestamps or filenames. Semantic trade proof cannot satisfy RUNTIME_CLOSURE_CONFIG. Artifact-scoped trades: ' + val(artifact_scoped_count,0) + '.</div>' +
       table(['Manifest-linked artifact fingerprint','Provenance class','Asset','Side','Chart / TF','Historical session','Strategy report','Report SHA','Semantic trade proof','State','Count','Win rate','Net P&L','Avg P&L','PROFIT FACTOR','PAYOFF RATIO','MAX DRAWDOWN'], artifactExperienceRows(by_artifact_configuration), 'UNMEASURED — no semantically proven historical artifact experience yet.') +
       '<h3 class="small" style="margin:16px 0 8px">DATASET COVERAGE · TRAINING REPLAY</h3>' +
+      (Number(training.needs_requalification_count || 0) > 0 ?
+        '<div class="small" role="status">OHLC training requires requalification: ' + val(training.needs_requalification_count,0) + ' prior receipts. Reports are preserved for review; protected evidence is not replayed automatically.</div>' : '') +
       table(['Asset','Cadence','Class','Rows','Coverage','Representation','Replay status','Action'], datasetRows(datasets,runs), 'UNAVAILABLE — no local historical datasets catalogued yet.') +
       '<h3 class="small" style="margin:16px 0 8px">LEARNING BACKLOG</h3>' +
       table(['BACKLOG','Pending'], backlogRows(health.backlog), 'UNAVAILABLE') +

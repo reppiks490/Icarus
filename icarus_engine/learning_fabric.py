@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import csv
 import hashlib
+import io
 import json
 import math
 import os
@@ -21,7 +22,7 @@ from typing import Any, Mapping, Sequence
 from .champion_challenger import wilson_interval
 from .code_provenance import local_code_provenance
 from .trainers.calibrate import isotonic_fit, isotonic_apply
-from .trainers.integrity import inspect_ohlc
+from .trainers.integrity import PARSER as OHLC_PARSER, inspect_ohlc
 from .trainers.run import train_file, train_xgb_file
 
 
@@ -642,11 +643,10 @@ class LearningFabric:
             ).fetchall()
             for row in rows:
                 did = row["dataset_id"]
-                present = {
-                    x["slot"] for x in self._conn.execute(
-                        "SELECT slot FROM training_runs WHERE dataset_id=?", (did,)
-                    ).fetchall()
-                }
+                records = self._conn.execute("SELECT * FROM training_runs WHERE dataset_id=?", (did,)).fetchall()
+                if any(self._training_run_record(x)["status"] == "needs_requalification" for x in records):
+                    continue  # review-bound work is counted separately, never auto-retrained
+                present = {x["slot"] for x in records}
                 if any(slot not in present for slot in configured_slots):
                     untrained_ohlc += 1
         unimported_trade_lists = int(self._conn.execute(
@@ -668,6 +668,7 @@ class LearningFabric:
         return {
             "pending_predictions": pending_predictions,
             "untrained_ohlc_datasets": untrained_ohlc,
+            "ohlc_requalification_runs": self._ohlc_requalification_count(),
             "unimported_trade_lists": unimported_trade_lists,
             "unimported_strategy_reports_xlsx": unimported_strategy_reports_xlsx,
         }
@@ -2801,7 +2802,7 @@ class LearningFabric:
             }
         else:
             try:
-                bars, manifest = inspect_ohlc(source)
+                bars, manifest = inspect_ohlc(source, raw_bytes=raw)
                 artifact_class = "ohlc"
                 rows = int(manifest["rows_total"])
                 first = manifest.get("first_ts")
@@ -2809,7 +2810,7 @@ class LearningFabric:
                 canonical = manifest.get("canonical_rows_sha256")
             except (ValueError, OSError, UnicodeDecodeError):
                 try:
-                    with source.open("r", encoding="utf-8-sig", newline="") as fh:
+                    with io.StringIO(raw.decode("utf-8-sig"), newline="") as fh:
                         reader = csv.reader(fh)
                         header = next(reader, [])
                         rows = sum(1 for _ in reader)
@@ -2852,8 +2853,28 @@ class LearningFabric:
                 "INSERT OR IGNORE INTO dataset_paths(dataset_id,path,first_seen) VALUES(?,?,?)",
                 (dataset_id, str(source), now),
             )
+        if idempotent and (existing["artifact_class"] == "ohlc" or artifact_class == "ohlc"):
+            self._refresh_parse_metadata(dataset_id, manifest, artifact_class)
         dataset = self.dataset(dataset_id)
         return {"ok": True, "idempotent": idempotent, "dataset": dataset, **_authority()}
+
+    def _refresh_parse_metadata(self, dataset_id, manifest, artifact_class="ohlc"):
+        """Refresh inspection, preserving raw identity, declarations and training receipts."""
+        if dataset_id != "ds-" + manifest["raw_sha256"]:
+            raise ValueError("dataset parse snapshot does not match raw identity")
+        with self._lock, self._conn:
+            row = self._conn.execute("SELECT manifest_json FROM datasets WHERE dataset_id=?", (dataset_id,)).fetchone()
+            previous = json.loads(row["manifest_json"])
+            refreshed = dict(manifest)
+            refreshed.pop("intake", None)  # this refresh changes parsing, never source declarations
+            if "intake" in previous:
+                refreshed["intake"] = previous["intake"]
+            self._conn.execute(
+                """UPDATE datasets SET canonical_rows_sha256=?,artifact_class=?,rows=?,
+                   first_timestamp=?,last_timestamp=?,manifest_json=? WHERE dataset_id=?""",
+                (refreshed.get("canonical_rows_sha256"), artifact_class, int(refreshed.get("rows_total") or 0),
+                 refreshed.get("first_ts"), refreshed.get("last_ts"), _json(refreshed, "manifest"), dataset_id),
+            )
 
     def dataset(self, dataset_id: str) -> dict[str, Any]:
         did = _text(dataset_id, "dataset_id", 80)
@@ -3190,35 +3211,74 @@ class LearningFabric:
                 "runs": [],
                 **_authority(),
             }
-        requested = list(slots if slots is not None else self._config["auto_train_slots"])
-        runs = []
-        for raw_slot in requested:
-            slot = str(raw_slot).strip().lower()
+        requested = list(dict.fromkeys(str(x).strip().lower() for x in
+                                      (slots if slots is not None else self._config["auto_train_slots"])))
+        for slot in requested:
             if slot not in {"logit", "xgb", "regime"}:
                 raise ValueError(f"unsupported backfill slot {slot}")
-            existing = self._conn.execute(
-                "SELECT * FROM training_runs WHERE dataset_id=? AND slot=?", (dataset_id, slot)
-            ).fetchone()
-            if existing is not None:
-                report = json.loads(existing["report_json"])
-                runs.append({"run_id": existing["run_id"], "slot": slot, "idempotent": True, "report": report})
+        existing = {row["slot"]: self._training_run_record(row) for row in self._conn.execute(
+            "SELECT * FROM training_runs WHERE dataset_id=?", (dataset_id,)).fetchall() if row["slot"] in requested}
+        cached = [{"run_id": row["run_id"], "slot": slot, "status": row["status"],
+                   "idempotent": True, "report": row["report"]} for slot, row in existing.items()]
+        if any(row["status"] == "needs_requalification" for row in existing.values()):
+            return {"dataset_id": dataset_id, "status": "needs_requalification", "runs": cached,
+                    "reason": "prior OHLC parser receipts require review; protected evidence is not replayed automatically",
+                    **_authority()}
+        if len(existing) == len(requested):
+            return {"dataset_id": dataset_id, "status": "blocked" if any(row["status"] == "blocked" for row in existing.values()) else "complete",
+                    "runs": cached, **_authority()}
+        path = Path(dataset["path"])
+        try:
+            raw = path.read_bytes()
+            if hashlib.sha256(raw).hexdigest() != dataset["raw_sha256"]:
+                raise ValueError("OHLC source bytes no longer match the catalogued identity")
+            _, manifest = inspect_ohlc(path, raw_bytes=raw)
+        except (ValueError, OSError, UnicodeDecodeError) as ex:
+            return {"dataset_id": dataset_id, "status": "blocked", "runs": cached,
+                    "reason": str(ex), **_authority()}
+        self._refresh_parse_metadata(dataset_id, manifest)
+        runs = []
+        for slot in requested:
+            if slot in existing:
+                row = existing[slot]
+                runs.append({"run_id": row["run_id"], "slot": slot, "status": row["status"],
+                             "idempotent": True, "report": row["report"]})
                 continue
-            path = Path(dataset["path"])
-            if slot == "logit":
-                report = train_file(path, dataset["chart_type"], dataset["schema"], dataset["asset"])
+            if manifest["status"] == "blocked":
+                report = {"status": "blocked", "reason": manifest["reason"], **_authority()}
+            elif slot == "logit":
+                report = train_file(path, dataset["chart_type"], dataset["schema"], dataset["asset"], raw_bytes=raw)
             elif slot == "xgb":
-                report = train_xgb_file(path, dataset["chart_type"], dataset["schema"], dataset["asset"])
+                report = train_xgb_file(path, dataset["chart_type"], dataset["schema"], dataset["asset"], raw_bytes=raw)
             else:
                 from .trainers.regime_slot import train as train_regime
-                report = train_regime(path, dataset["asset"])
+                report = train_regime(path, dataset["asset"], raw_bytes=raw)
+            report["dataset_manifest"] = manifest
             run_id = "train-" + hashlib.sha256(f"{dataset_id}|{slot}".encode()).hexdigest()
             with self._lock, self._conn:
                 self._conn.execute(
                     "INSERT OR IGNORE INTO training_runs(run_id,dataset_id,slot,report_json,status,created_at) VALUES(?,?,?,?,?,?)",
                     (run_id, dataset_id, slot, _json(report, "training report"), str(report.get("status") or "unknown"), _utc_now()),
                 )
-            runs.append({"run_id": run_id, "slot": slot, "idempotent": False, "report": report})
-        return {"dataset_id": dataset_id, "status": "complete", "runs": runs, **_authority()}
+            runs.append({"run_id": run_id, "slot": slot, "status": report.get("status"), "idempotent": False, "report": report})
+        return {"dataset_id": dataset_id, "status": "blocked" if any(row.get("status") == "blocked" for row in runs) else "complete",
+                "runs": runs, **_authority()}
+
+    def _ohlc_requalification_count(self) -> int:
+        return int(self._conn.execute(
+            """SELECT COUNT(*) FROM training_runs WHERE slot IN ('logit','xgb','regime')
+               AND COALESCE(json_extract(report_json,'$.dataset_manifest.parser'),'')<>?""", (OHLC_PARSER,)
+        ).fetchone()[0])
+
+    def _training_run_record(self, row) -> dict[str, Any]:
+        report = json.loads(row["report_json"])
+        status = row["status"]
+        if ((row["slot"] == "trade_experience" and report.get("historical_admission_version") != _HISTORICAL_ADMISSION_VERSION)
+            or (row["slot"] in {"logit", "xgb", "regime"} and
+                (report.get("dataset_manifest") or {}).get("parser") != OHLC_PARSER)):
+            status = "needs_requalification"
+        return {"run_id": row["run_id"], "dataset_id": row["dataset_id"], "slot": row["slot"],
+                "status": status, "report": report, "created_at": row["created_at"], **_authority()}
 
     def datasets(self) -> list[dict[str, Any]]:
         rows = self._conn.execute("SELECT dataset_id FROM datasets ORDER BY discovered_at,dataset_id").fetchall()
@@ -3226,20 +3286,7 @@ class LearningFabric:
 
     def training_runs(self) -> list[dict[str, Any]]:
         rows = self._conn.execute("SELECT * FROM training_runs ORDER BY created_at,run_id").fetchall()
-        return [
-            {
-                "run_id": row["run_id"],
-                "dataset_id": row["dataset_id"],
-                "slot": row["slot"],
-                "status": ('needs_requalification'
-                           if row['slot'] == 'trade_experience' and json.loads(row['report_json']).get('historical_admission_version') != _HISTORICAL_ADMISSION_VERSION
-                           else row['status']),
-                "report": json.loads(row["report_json"]),
-                "created_at": row["created_at"],
-                **_authority(),
-            }
-            for row in rows
-        ]
+        return [self._training_run_record(row) for row in rows]
 
     def _harvest_sibyl(self) -> dict[str, Any]:
         path = self.root / "sibyl.sqlite3"
@@ -4517,10 +4564,14 @@ class LearningFabric:
         if limit <= 0 or not self._config["auto_train_slots"]:
             return []
         slots = self._config["auto_train_slots"]
-        placeholders = ",".join("?" for _ in slots)
         rows = self._conn.execute(
             f"""SELECT d.dataset_id FROM datasets d
                 WHERE d.artifact_class='ohlc'
+                AND NOT EXISTS (
+                    SELECT 1 FROM training_runs legacy WHERE legacy.dataset_id=d.dataset_id
+                    AND legacy.slot IN ('logit','xgb','regime')
+                    AND COALESCE(json_extract(legacy.report_json,'$.dataset_manifest.parser'),'')<>?
+                )
                 AND EXISTS (
                     SELECT 1 FROM (SELECT ? AS slot {''.join(' UNION ALL SELECT ?' for _ in slots[1:])}) wanted
                     WHERE NOT EXISTS (
@@ -4529,7 +4580,7 @@ class LearningFabric:
                     )
                 )
                 ORDER BY d.discovered_at,d.dataset_id LIMIT ?""",
-            [*slots, limit],
+            [OHLC_PARSER, *slots, limit],
         ).fetchall()
         return [r["dataset_id"] for r in rows]
 
@@ -4699,7 +4750,7 @@ class LearningFabric:
             "status": "LEARNING" if outcome_count or train_count or experience_count else "WARMING",
             "config": dict(self._config),
             "datasets": {"count": dataset_count},
-            "training": {"run_count": train_count},
+            "training": {"run_count": train_count, "needs_requalification_count": self._ohlc_requalification_count()},
             "predictions": {"count": prediction_count, "settled": outcome_count, "pending": max(0, prediction_count-outcome_count)},
             "health": self.health(),
             "experiences": self.experience_state(),

@@ -20,13 +20,16 @@ from __future__ import annotations
 
 import csv
 import io
+import math
 import os
 import re
 import statistics
 from datetime import datetime, timezone
+from decimal import Decimal
 from typing import Dict, Iterable, List, Optional, Tuple
 
 from ..pine.timeframe import Bar
+from ..evidence.timestamps import normalize_timestamp
 
 try:
     from zoneinfo import ZoneInfo
@@ -81,48 +84,14 @@ def _col(cols: Dict[str, str], names: Tuple[str, ...]) -> Optional[str]:
 
 
 def parse_timestamp(raw: str, tz) -> Optional[int]:
-    s = (raw or "").strip().strip('"')
-    if not s:
-        return None
-    if s.replace(".", "", 1).isdigit():
-        n = float(s)
-        if n > 1e12:  # milliseconds
-            n /= 1000.0
-        elif n > 1e10:  # microseconds leftover
-            n /= 1e6
-        ts = int(n)
-        return ts if 946684800 <= ts <= 4102444800 else None  # 2000..2100
-    s = s.replace("Z", "+00:00")
-    for fmt in (
-        "%Y-%m-%dT%H:%M:%S%z",
-        "%Y-%m-%dT%H:%M:%S.%f%z",
-        "%Y-%m-%d %H:%M:%S%z",
-        "%Y-%m-%dT%H:%M:%S",
-        "%Y-%m-%dT%H:%M",
-        "%Y-%m-%d %H:%M:%S",
-        "%Y-%m-%d %H:%M",
-        "%m/%d/%Y %H:%M:%S",
-        "%m/%d/%Y %H:%M",
-        "%d.%m.%Y %H:%M",
-    ):
-        try:
-            dt = datetime.strptime(s, fmt)
-            if dt.tzinfo is None:
-                dt = dt.replace(tzinfo=tz)
-            return int(dt.timestamp())
-        except ValueError:
-            continue
-    try:
-        dt = datetime.fromisoformat(s)
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=tz)
-        return int(dt.timestamp())
-    except ValueError:
-        return None
+    """Integer-second compatibility helper; CSV admission separately rejects subsecond clocks."""
+    record = normalize_timestamp(raw, naive_timezone=tz)
+    exact = Decimal(record.epoch_seconds_exact) if record else None
+    return int(exact) if exact is not None and exact >= 946684800 else None
 
 
 def parse_ohlcv_csv(text: str, *, tz=None) -> List[Bar]:
-    """Parse a TradingView / generic OHLCV CSV into Bars. Drops unparsable rows, not empty minutes."""
+    """Parse whole-second OHLCV bars; reject conflicting or impossible evidence."""
     tz = tz or _NY
     raw = text.lstrip("\ufeff")
     sample = raw[:4096]
@@ -142,6 +111,9 @@ def parse_ohlcv_csv(text: str, *, tz=None) -> List[Bar]:
         reader = csv.DictReader(io.StringIO(raw), dialect=_D2)
         if not reader.fieldnames:
             return []
+    for names in (_TIME_KEYS, _OPEN_KEYS, _HIGH_KEYS, _LOW_KEYS, _CLOSE_KEYS, _VOL_KEYS):
+        if sum(c.strip().lower() in names for c in reader.fieldnames) > 1:
+            raise ValueError("ambiguous OHLC columns: " + '/'.join(names))
     cols = {c.strip().lower(): c for c in reader.fieldnames}
     ct = _col(cols, _TIME_KEYS) or reader.fieldnames[0]
     co = _col(cols, _OPEN_KEYS)
@@ -153,20 +125,28 @@ def parse_ohlcv_csv(text: str, *, tz=None) -> List[Bar]:
         raise ValueError("CSV needs open/high/low/close columns (TradingView chart export)")
     out: Dict[int, Bar] = {}
     for row in reader:
-        ts = parse_timestamp(row.get(ct, ""), tz)
-        if ts is None:
+        record = normalize_timestamp(row.get(ct, ""), naive_timezone=tz)
+        if record is None or Decimal(record.epoch_seconds_exact) < 946684800:
             continue
+        if not record.whole_second:
+            raise ValueError("subsecond bar clocks are unsupported by the integer-second feed")
+        ts = int(record.epoch_seconds)
         try:
             o, h, l, c = float(row[co]), float(row[ch]), float(row[cl]), float(row[cc])
-        except (TypeError, ValueError, KeyError):
-            continue
-        if not all(map(lambda x: x == x and abs(x) < 1e15, (o, h, l, c))):
-            continue
+        except (TypeError, ValueError, KeyError) as ex:
+            raise ValueError("OHLC row contains missing or invalid prices") from ex
+        if not all(math.isfinite(x) and abs(x) < 1e15 for x in (o, h, l, c)) or h < l or max(o, c) > h or min(o, c) < l:
+            raise ValueError("OHLC row has nonfinite or impossible prices")
         try:
             v = float(row[cv] or 0.0) if cv else 0.0
-        except (TypeError, ValueError):
-            v = 0.0
-        out[ts] = Bar(ts, o, h, l, c, v)
+        except (TypeError, ValueError) as ex:
+            raise ValueError("OHLC row has invalid volume") from ex
+        if not math.isfinite(v) or v < 0:
+            raise ValueError("OHLC row has invalid volume")
+        bar = Bar(ts, o, h, l, c, v)
+        if ts in out and out[ts] != bar:
+            raise ValueError(f"conflicting OHLC rows at timestamp {ts}")
+        out[ts] = bar
     return [out[k] for k in sorted(out)]
 
 
@@ -251,16 +231,17 @@ class FileFeed:
 
     GRANULARITIES = (60, 120, 300, 900, 1800, 3600, 86400)
 
-    def __init__(self, bars: Optional[List[Bar]] = None, mintick: float = 0.25, path: Optional[str] = None):
+    def __init__(self, bars: Optional[List[Bar]] = None, mintick: float = 0.25, path: Optional[str] = None, *, tz=None):
         self._bars = list(bars or [])
         self._mintick = float(mintick)
         self._path = path
+        self._tz = tz or _NY
         self._mtime = os.path.getmtime(path) if path and os.path.isfile(path) else 0.0
         self._granularity = detect_granularity(self._bars) if len(self._bars) >= 2 else 60
 
     @classmethod
     def from_csv(cls, path: str, *, tz=None, mintick: float = 0.25) -> "FileFeed":
-        return cls(parse_ohlcv_csv(read_text_csv(path), tz=tz), mintick=mintick, path=path)
+        return cls(parse_ohlcv_csv(read_text_csv(path), tz=tz), mintick=mintick, path=path, tz=tz)
 
     def _maybe_reload(self) -> None:
         if not self._path or not os.path.isfile(self._path):
@@ -268,7 +249,7 @@ class FileFeed:
         mt = os.path.getmtime(self._path)
         if mt <= self._mtime:
             return
-        self._bars = parse_ohlcv_csv(read_text_csv(self._path))
+        self._bars = parse_ohlcv_csv(read_text_csv(self._path), tz=self._tz)
         self._mtime = mt
         self._granularity = detect_granularity(self._bars) if len(self._bars) >= 2 else 60
 
