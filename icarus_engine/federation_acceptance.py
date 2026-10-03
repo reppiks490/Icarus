@@ -62,6 +62,10 @@ def validate_receipt(receipt: Mapping[str, Any]) -> None:
         "peer lane source witnesses are not required",
     )
     _require(
+        receipt.get("strict_event_contract") is True,
+        "strict remote event contract is not verified",
+    )
+    _require(
         receipt.get("event_records") == "RESEARCH_OBSERVABILITY_ONLY",
         "remote event authority is not research-observability-only",
     )
