@@ -206,6 +206,8 @@ def _default_state(interval_seconds: int) -> dict[str, Any]:
         "peer_source_contract_witness_status": "not_started",
         "peer_source_contract_witness_count": 0,
         "peer_source_contract_witnesses": [],
+        "peer_roundtrip_ack_status": "not_started",
+        "peer_roundtrip_ack": {},
         "historical_context_status": "not_started",
         "historical_context_source_count": 0,
         "historical_context_ingested_total": 0,
@@ -238,6 +240,9 @@ def _default_state(interval_seconds: int) -> dict[str, Any]:
             "peer_lane_source_witness_fields": [],
             "peer_source_contract_blob_witnesses_required": False,
             "peer_source_contract_blob_witness_keys": [],
+            "canonical_acceptance_schema": None,
+            "canonical_acceptance_authority": "RESEARCH",
+            "canonical_acceptance_required_for_export": False,
             "historical_context_mode": "UNDECLARED",
             "historical_context_never_bypasses_foundry": True,
             "historical_context_never_bypasses_evaluator": True,
@@ -475,12 +480,10 @@ def _get_dotted(payload: Mapping[str, Any], path: str) -> Any:
     return current
 
 
-def _normalize_historical_document(
+def _validate_historical_source_semantics(
     source: Mapping[str, Any],
     payload: Mapping[str, Any],
-    *,
-    blob_sha: str,
-) -> dict[str, Any]:
+) -> None:
     if payload.get("execution_authorized") is not False:
         raise ValueError(
             f"historical context {source['id']} must preserve execution_authorized=false"
@@ -490,10 +493,24 @@ def _normalize_historical_document(
         raise ValueError(
             f"historical context {source['id']} RUN_CORE attempts execution authority"
         )
+    if payload.get("trading_execution_authorized") is True or (
+        isinstance(run_core, Mapping)
+        and run_core.get("trading_execution_authorized") is True
+    ):
+        raise ValueError(f"historical context {source['id']} attempts trading authority")
     if source.get("collection_only") is True and payload.get("COLLECTION_ONLY") is not True:
         raise ValueError(
             f"historical context {source['id']} must preserve collection-only semantics"
         )
+
+
+def _normalize_historical_document(
+    source: Mapping[str, Any],
+    payload: Mapping[str, Any],
+    *,
+    blob_sha: str,
+) -> dict[str, Any]:
+    _validate_historical_source_semantics(source, payload)
     sha = str(blob_sha or "").lower()
     if not _is_sha(sha):
         raise ValueError("historical context Git blob identity is invalid")
@@ -751,6 +768,44 @@ def _normalize_federation_contract(
             "Icarus-engine Brain federation source contract blobs must be revision-bound"
         )
 
+    canonical_acceptance = consumer.get("canonical_acceptance")
+    if not isinstance(canonical_acceptance, Mapping):
+        raise ValueError("Icarus-engine Brain federation canonical acceptance contract is missing")
+    if canonical_acceptance.get("repository") != "reppiks490/Icarus":
+        raise ValueError("Icarus-engine canonical acceptance repository mismatch")
+    if canonical_acceptance.get("ref") != "main":
+        raise ValueError("Icarus-engine canonical acceptance ref mismatch")
+    if canonical_acceptance.get("path") != (
+        "automation_intelligence/federation/icarus_engine_acceptance.json"
+    ):
+        raise ValueError("Icarus-engine canonical acceptance path mismatch")
+    if canonical_acceptance.get("schema_version") != "icarus-engine-federation-acceptance-v1":
+        raise ValueError("Icarus-engine canonical acceptance schema mismatch")
+    if canonical_acceptance.get("authority") != "RESEARCH":
+        raise ValueError("Icarus-engine canonical acceptance authority must remain RESEARCH")
+    if canonical_acceptance.get("required_for_export") is not False:
+        raise ValueError("Icarus-engine canonical acceptance cannot gate peer export")
+    if canonical_acceptance.get("execution_authorized") is not False:
+        raise ValueError("Icarus-engine canonical acceptance attempts execution authority")
+    if canonical_acceptance.get("production_decision_authorized") is not False:
+        raise ValueError("Icarus-engine canonical acceptance attempts production-decision authority")
+    acceptance_semantics = canonical_acceptance.get("semantics")
+    if not isinstance(acceptance_semantics, Mapping):
+        raise ValueError("Icarus-engine canonical acceptance semantics are missing")
+    for key in (
+        "acceptance_is_foreign_evidence_not_native_truth",
+        "prior_packet_acknowledgement_is_not_current_packet_qualification",
+    ):
+        if acceptance_semantics.get(key) is not True:
+            raise ValueError(f"Icarus-engine canonical acceptance truth rule missing: {key}")
+    for key in (
+        "automatic_model_promotion",
+        "production_decision_authorized",
+        "automatic_execution_authority",
+    ):
+        if acceptance_semantics.get(key) is not False:
+            raise ValueError(f"Icarus-engine canonical acceptance attempts authority escalation: {key}")
+
     historical_sources = _normalize_historical_context_contract(consumer)
 
     event_validation = consumer.get("event_validation")
@@ -819,6 +874,9 @@ def _normalize_federation_contract(
             "peer_lane_source_witness_fields": expected_lane_witness_fields,
             "peer_source_contract_blob_witnesses_required": True,
             "peer_source_contract_blob_witness_keys": expected_source_contract_blob_keys,
+            "canonical_acceptance_schema": canonical_acceptance.get("schema_version"),
+            "canonical_acceptance_authority": canonical_acceptance.get("authority"),
+            "canonical_acceptance_required_for_export": False,
             "historical_context_mode": (
                 "RESEARCH_CONTEXT_ONLY" if historical_sources else "UNDECLARED"
             ),
@@ -835,6 +893,89 @@ def _normalize_federation_contract(
         "execution_authorized": False,
         "production_decision_authorized": False,
     }
+
+
+def _normalize_roundtrip_ack(value: Any) -> dict[str, Any]:
+    if not isinstance(value, Mapping):
+        raise ValueError("Icarus-engine peer packet canonical acceptance is missing")
+    status = str(value.get("status") or "").strip().upper()
+    if status not in {"UNAVAILABLE", "VERIFIED_PRIOR_PACKET"}:
+        raise ValueError("Icarus-engine peer packet canonical acceptance status is invalid")
+    if value.get("schema_version") != "icarus-engine-federation-acceptance-v1":
+        raise ValueError("Icarus-engine peer packet canonical acceptance schema mismatch")
+    if value.get("accepted_by_repository") != "reppiks490/Icarus":
+        raise ValueError("Icarus-engine peer packet canonical acceptance repository mismatch")
+    if value.get("producer_repository") != REMOTE_REPOSITORY:
+        raise ValueError("Icarus-engine peer packet canonical acceptance producer mismatch")
+    if value.get("authority") != "RESEARCH":
+        raise ValueError("Icarus-engine peer packet canonical acceptance authority must remain RESEARCH")
+    if value.get("required_for_export") is not False:
+        raise ValueError("Icarus-engine peer packet canonical acceptance cannot gate export")
+    for key in (
+        "execution_authorized",
+        "production_decision_authorized",
+        "automatic_model_promotion",
+    ):
+        if value.get(key) is not False:
+            raise ValueError(f"Icarus-engine peer packet canonical acceptance attempts authority escalation: {key}")
+
+    normalized = {
+        "status": status,
+        "schema_version": "icarus-engine-federation-acceptance-v1",
+        "accepted_by_repository": "reppiks490/Icarus",
+        "producer_repository": REMOTE_REPOSITORY,
+        "authority": "RESEARCH",
+        "required_for_export": False,
+        "execution_authorized": False,
+        "production_decision_authorized": False,
+        "automatic_model_promotion": False,
+    }
+    if status == "UNAVAILABLE":
+        return normalized
+
+    for key, length in (
+        ("accepted_by_icarus_commit", 40),
+        ("accepted_peer_packet_id", 64),
+        ("accepted_peer_packet_blob_sha", 40),
+        ("accepted_peer_source_commit", 40),
+    ):
+        raw = value.get(key)
+        if length == 40:
+            valid = _is_sha(raw)
+        else:
+            valid = (
+                isinstance(raw, str)
+                and len(raw) == 64
+                and all(ch in "0123456789abcdef" for ch in raw.lower())
+            )
+        if not valid:
+            raise ValueError(
+                f"Icarus-engine peer packet canonical acceptance {key} is invalid"
+            )
+    lane_count = value.get("peer_lane_count")
+    lane_binding_count = value.get("peer_lane_contract_binding_verified_count")
+    lane_witness_count = value.get("peer_lane_witness_verified_count")
+    if type(lane_count) is not int or lane_count < 1:
+        raise ValueError("Icarus-engine peer packet canonical acceptance lane count is invalid")
+    if lane_binding_count != lane_count:
+        raise ValueError("Icarus-engine peer packet canonical acceptance lane binding is incomplete")
+    if type(lane_witness_count) is not int or lane_witness_count < 1:
+        raise ValueError("Icarus-engine peer packet canonical acceptance lane witnesses are incomplete")
+    if value.get("peer_source_contract_witness_count") != 3:
+        raise ValueError("Icarus-engine peer packet canonical acceptance source-contract witnesses are incomplete")
+
+    normalized.update({
+        "accepted_by_icarus_commit": str(value["accepted_by_icarus_commit"]).lower(),
+        "accepted_peer_packet_id": str(value["accepted_peer_packet_id"]).lower(),
+        "accepted_peer_packet_blob_sha": str(value["accepted_peer_packet_blob_sha"]).lower(),
+        "accepted_peer_source_commit": str(value["accepted_peer_source_commit"]).lower(),
+        "peer_source_commit_relation": value.get("peer_source_commit_relation"),
+        "peer_source_contract_witness_count": 3,
+        "peer_lane_count": lane_count,
+        "peer_lane_witness_verified_count": lane_witness_count,
+        "peer_lane_contract_binding_verified_count": lane_binding_count,
+    })
+    return normalized
 
 
 def _normalize_peer_packet(
@@ -940,6 +1081,7 @@ def _normalize_peer_packet(
     if claimed_id != computed_id:
         raise ValueError("Icarus-engine peer packet_id mismatch")
 
+    roundtrip_ack = _normalize_roundtrip_ack(packet.get("canonical_acceptance"))
     lanes_raw = packet.get("lanes")
     if not isinstance(lanes_raw, list):
         raise ValueError("Icarus-engine peer packet lanes must be an array")
@@ -1189,6 +1331,8 @@ def _normalize_peer_packet(
         "peer_source_contract_witness_status": "unverified",
         "peer_source_contract_witness_count": 0,
         "peer_source_contract_witnesses": source_contract_witnesses,
+        "peer_roundtrip_ack_status": roundtrip_ack["status"],
+        "peer_roundtrip_ack": roundtrip_ack,
         "historical_packet_witnesses": historical_witnesses,
         "historical_packet_witness_count": len(historical_witnesses),
         "historical_packet_projection_verified_count": 0,
@@ -1878,6 +2022,7 @@ class BrainRemoteSync:
                             raise ValueError(
                                 f"historical packet witness source attempts execution authority: {witness['id']}"
                             )
+                        _validate_historical_source_semantics(witness, source_payload)
                         source_run_id = source_payload.get("RUN_ID") or source_payload.get("run_id")
                         source_run_status = (
                             source_payload.get("RUN_STATUS") or source_payload.get("status")
@@ -1996,6 +2141,8 @@ class BrainRemoteSync:
                         "peer_source_contract_witness_status": "degraded",
                         "peer_source_contract_witness_count": 0,
                         "peer_source_contract_witnesses": [],
+                        "peer_roundtrip_ack_status": "degraded",
+                        "peer_roundtrip_ack": {},
                         "historical_packet_witness_status": "degraded",
                         "historical_packet_witness_count": 0,
                         "historical_packet_projection_verified_count": 0,

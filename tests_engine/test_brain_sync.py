@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import pytest
 from datetime import datetime, timedelta, timezone
 
 from icarus_engine.brain import brain_snapshot
@@ -103,6 +104,27 @@ def _consumer_contract(**overrides):
             "freshness_required": True,
             "max_age_seconds": 1800,
             "max_future_skew_seconds": 300,
+        },
+        "canonical_acceptance": {
+            "repository": "reppiks490/Icarus",
+            "ref": "main",
+            "path": "automation_intelligence/federation/icarus_engine_acceptance.json",
+            "schema_version": "icarus-engine-federation-acceptance-v1",
+            "authority": "RESEARCH",
+            "required_for_export": False,
+            "lag_semantics": (
+                "Acknowledgement may refer to the previously published peer packet; "
+                "it never upgrades the current packet's authority."
+            ),
+            "semantics": {
+                "acceptance_is_foreign_evidence_not_native_truth": True,
+                "prior_packet_acknowledgement_is_not_current_packet_qualification": True,
+                "automatic_model_promotion": False,
+                "production_decision_authorized": False,
+                "automatic_execution_authority": False,
+            },
+            "execution_authorized": False,
+            "production_decision_authorized": False,
         },
         "event_validation": {
             "required_fields_source": "automation_intelligence/mcp_interface/contract.json#required_fields",
@@ -647,6 +669,17 @@ def _peer_packet(**overrides):
             "source_of_truth": "LOCAL_REPOSITORY_SNAPSHOT",
             "trading_execution_authorized": False,
         },
+        "canonical_acceptance": {
+            "status": "UNAVAILABLE",
+            "schema_version": "icarus-engine-federation-acceptance-v1",
+            "accepted_by_repository": "reppiks490/Icarus",
+            "producer_repository": "reppiks490/Icarus-engine",
+            "authority": "RESEARCH",
+            "required_for_export": False,
+            "execution_authorized": False,
+            "production_decision_authorized": False,
+            "automatic_model_promotion": False,
+        },
         "truth_contract": {
             "foreign_repository_state_is_evidence_not_native_truth": True,
             "durability_receipt_is_not_substantive_worker_evidence": True,
@@ -666,6 +699,31 @@ def _peer_packet(**overrides):
         json.dumps(unsigned, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
     ).hexdigest()
     return packet
+
+
+def _verified_roundtrip_ack(**overrides):
+    payload = {
+        "status": "VERIFIED_PRIOR_PACKET",
+        "schema_version": "icarus-engine-federation-acceptance-v1",
+        "accepted_by_repository": "reppiks490/Icarus",
+        "producer_repository": "reppiks490/Icarus-engine",
+        "accepted_by_icarus_commit": "1" * 40,
+        "accepted_peer_packet_id": "2" * 64,
+        "accepted_peer_packet_blob_sha": "3" * 40,
+        "accepted_peer_source_commit": "4" * 40,
+        "peer_source_commit_relation": "AHEAD",
+        "peer_source_contract_witness_count": 3,
+        "peer_lane_count": 3,
+        "peer_lane_witness_verified_count": 2,
+        "peer_lane_contract_binding_verified_count": 3,
+        "authority": "RESEARCH",
+        "required_for_export": False,
+        "execution_authorized": False,
+        "production_decision_authorized": False,
+        "automatic_model_promotion": False,
+    }
+    payload.update(overrides)
+    return payload
 
 
 def _fixture(
@@ -904,6 +962,11 @@ def test_remote_sync_ingests_custom_agent_and_owned_subsystem_events(tmp_path):
     assert status["peer_lane_witness_unavailable_count"] == 0
     assert status["peer_source_contract_witness_status"] == "green"
     assert status["peer_source_contract_witness_count"] == 3
+    assert status["peer_roundtrip_ack_status"] == "UNAVAILABLE"
+    assert status["peer_roundtrip_ack"]["authority"] == "RESEARCH"
+    assert status["peer_roundtrip_ack"]["execution_authorized"] is False
+    assert status["truth_contract"]["canonical_acceptance_schema"] == "icarus-engine-federation-acceptance-v1"
+    assert status["truth_contract"]["canonical_acceptance_required_for_export"] is False
     assert status["peer_lane_contract_binding_verified_count"] == 3
     contract_bound = {row["name"]: row for row in status["peer_lanes"]}
     assert contract_bound["robustness_guardian"]["contract_binding_status"] == "CONTRACT_BOUND_LOCAL"
@@ -1731,6 +1794,32 @@ def test_remote_sync_rejects_packet_historical_evidence_projection_not_supported
     assert "historical packet witness evidence projection mismatch" in status["last_error"]
 
 
+@pytest.mark.parametrize("source_id,section,key,value", [
+    ("robustness_guardian", "RUN_CORE", "execution_authorized", True),
+    ("robustness_guardian", None, "trading_execution_authorized", True),
+    ("robustness_guardian", "RUN_CORE", "trading_execution_authorized", True),
+    ("flow_microstructure", None, "COLLECTION_ONLY", False),
+])
+def test_packet_source_projection_rejects_invalid_semantics(
+    tmp_path, source_id, section, key, value,
+):
+    docs = _historical_docs()
+    target = docs[source_id][section] if section else docs[source_id]
+    target[key] = value
+    packet = _peer_packet(historical_artifacts=_historical_packet_artifacts(docs))
+    fixture = _fixture(_remote_event(), peer=packet, packet_historical_docs=docs)
+    sync = BrainRemoteSync(tmp_path, interval_seconds=60,
+                           fetch_json=fixture["fetch_json"],
+                           fetch_bytes=fixture["fetch_bytes"],
+                           now_utc=fixture["now_utc"])
+    status = sync.sync_once()
+    assert status["status"] == "degraded"
+    assert status["historical_packet_projection_verified_count"] == 0
+    assert status["peer_packet_status"] == "degraded"
+    assert status["ingested_total"] == 1
+    assert status["execution_authorized"] is False
+
+
 def test_remote_sync_requires_historical_packet_projection_contract(tmp_path):
     historical = _historical_context_contract()
     historical["packet_projection_verification_required"] = False
@@ -1747,3 +1836,67 @@ def test_remote_sync_requires_historical_packet_projection_contract(tmp_path):
     assert status["status"] == "degraded"
     assert status["ingested_total"] == 0
     assert "must require packet projection verification" in status["last_error"]
+
+
+def test_remote_sync_validates_verified_prior_packet_acknowledgement(tmp_path):
+    packet = _peer_packet(canonical_acceptance=_verified_roundtrip_ack())
+    fixture = _fixture(_remote_event(), peer=packet)
+    sync = BrainRemoteSync(
+        tmp_path,
+        interval_seconds=60,
+        fetch_json=fixture["fetch_json"],
+        fetch_bytes=fixture["fetch_bytes"],
+        now_utc=fixture["now_utc"],
+    )
+    status = sync.sync_once()
+    assert status["status"] == "green"
+    assert status["peer_roundtrip_ack_status"] == "VERIFIED_PRIOR_PACKET"
+    ack = status["peer_roundtrip_ack"]
+    assert ack["accepted_by_repository"] == "reppiks490/Icarus"
+    assert ack["accepted_peer_packet_id"] == "2" * 64
+    assert ack["accepted_peer_source_commit"] == "4" * 40
+    assert ack["peer_source_contract_witness_count"] == 3
+    assert ack["peer_lane_contract_binding_verified_count"] == 3
+    assert ack["execution_authorized"] is False
+    assert status["execution_authorized"] is False
+    assert status["production_decision_authorized"] is False
+
+
+def test_remote_sync_rejects_roundtrip_ack_authority_escalation(tmp_path):
+    packet = _peer_packet(
+        canonical_acceptance=_verified_roundtrip_ack(execution_authorized=True)
+    )
+    fixture = _fixture(_remote_event(), peer=packet)
+    sync = BrainRemoteSync(
+        tmp_path,
+        interval_seconds=60,
+        fetch_json=fixture["fetch_json"],
+        fetch_bytes=fixture["fetch_bytes"],
+        now_utc=fixture["now_utc"],
+    )
+    status = sync.sync_once()
+    assert status["status"] == "degraded"
+    assert status["ingested_total"] == 1
+    assert status["peer_roundtrip_ack_status"] == "degraded"
+    assert "canonical acceptance attempts authority escalation" in status["last_error"]
+
+
+def test_remote_sync_requires_canonical_acceptance_contract_semantics(tmp_path):
+    consumer = _consumer_contract()
+    acceptance = dict(consumer["canonical_acceptance"])
+    semantics = dict(acceptance["semantics"])
+    semantics["automatic_execution_authority"] = True
+    acceptance["semantics"] = semantics
+    consumer["canonical_acceptance"] = acceptance
+    fixture = _fixture(_remote_event(), consumer=consumer)
+    sync = BrainRemoteSync(
+        tmp_path,
+        interval_seconds=60,
+        fetch_json=fixture["fetch_json"],
+        fetch_bytes=fixture["fetch_bytes"],
+        now_utc=fixture["now_utc"],
+    )
+    status = sync.sync_once()
+    assert status["status"] == "degraded"
+    assert status["ingested_total"] == 0
+    assert "canonical acceptance attempts authority escalation" in status["last_error"]

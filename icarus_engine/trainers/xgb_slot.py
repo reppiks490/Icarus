@@ -68,9 +68,10 @@ def evaluate(labeled, raw_hold):
             "significance": significance(raw_hold, logit_ps, base_rate, ys, "logit")}
 
 def revision() -> str:
+    from ..process_launch import background_kwargs
     try:
         out = subprocess.run(["git", "rev-parse", "HEAD"], cwd=Path(__file__).resolve().parent,
-                             capture_output=True, text=True, timeout=10)
+                             capture_output=True, text=True, timeout=10, **background_kwargs())
     except (OSError, subprocess.SubprocessError):
         return "unknown"
     rev = out.stdout.strip()

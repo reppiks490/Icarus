@@ -289,9 +289,8 @@ def test_start_plant_scripts_are_dummy_proof():
     cmds = (root / "COMMANDS.md").read_text(encoding="utf-8")
     assert "127.0.0.1:8791" in cmds and "paper-export" in cmds and "start --assets NQ" in cmds
     assert "--offline" in cmds
-    yahoo = (root / "start-yahoo.ps1").read_text(encoding="utf-8")
-    assert "icarus_plant start --assets NQ" in yahoo
-    assert "start --assets NQ --offline" not in yahoo
+    # Yahoo arguments and install behavior are exercised by the PowerShell
+    # launcher tests below, including the full ecosystem default.
     assert "Downloads" in setup
     assert "CME_MINI_NQ1!, 1.csv" in setup
     bg = (root / "start-engine-background.ps1").read_text(encoding="utf-8")
@@ -305,6 +304,51 @@ def test_start_plant_scripts_are_dummy_proof():
     src = (root / "icarus_plant" / "supervisor.py").read_text(encoding="utf-8")
     assert "os.kill(pid, 0)" not in src
     assert "process_identity" in src
+
+
+def test_yahoo_launcher_uses_existing_install_and_ecosystem_assets(tmp_path, monkeypatch):
+    """A NQ-only or unconditional-reinstall regression changes real argv."""
+    import shutil
+    import subprocess
+    from pathlib import Path
+    import pytest
+
+    pwsh = shutil.which("pwsh")
+    if pwsh is None:
+        pytest.skip("PowerShell launcher executes on Windows CI")
+    capture = tmp_path / "python-calls.jsonl"
+    stub = tmp_path / "python-stub.ps1"
+    stub.write_text(
+        "$record = ConvertTo-Json -Compress -InputObject @($args)\n"
+        "Add-Content -LiteralPath $env:ICARUS_TEST_CAPTURE -Value $record\n"
+        "$global:LASTEXITCODE = 0\n", encoding="utf-8")
+    wrapper = tmp_path / "launch.ps1"
+    wrapper.write_text(
+        "function Get-Command {\n"
+        " param($Name, $ErrorAction)\n"
+        " [pscustomobject]@{Source=$env:ICARUS_TEST_PYTHON; Name='py.exe'}\n"
+        "}\n"
+        "& $env:ICARUS_TEST_LAUNCHER\n", encoding="utf-8")
+    monkeypatch.setenv("ICARUS_TEST_CAPTURE", str(capture))
+    monkeypatch.setenv("ICARUS_TEST_PYTHON", str(stub))
+    monkeypatch.setenv("ICARUS_TEST_LAUNCHER", str(Path(__file__).parents[1] / "start-yahoo.ps1"))
+    monkeypatch.delenv("ICARUS_ASSETS", raising=False)
+    result = subprocess.run([pwsh, "-NoProfile", "-File", str(wrapper)], capture_output=True, text=True, timeout=30)
+    assert result.returncode == 0, result.stdout + result.stderr
+    calls = [json.loads(line) for line in capture.read_text(encoding="utf-8-sig").splitlines()]
+    assert calls[0] == ["-3", "-c", "import icarus_engine, icarus_plant"]
+    assert len(calls) == 2  # importing succeeded, so no pip reinstall
+    assert calls[1][:5] == ["-3", "-m", "icarus_plant", "start", "--assets"]
+    assert {"NQ", "BTC", "ES", "GC"}.issubset(calls[1][5].split(","))
+    assert "--offline" not in calls[1]
+
+    # A user-supplied scope is forwarded without silently restoring defaults.
+    capture.unlink()
+    monkeypatch.setenv("ICARUS_ASSETS", "NQ,GC")
+    result = subprocess.run([pwsh, "-NoProfile", "-File", str(wrapper)], capture_output=True, text=True, timeout=30)
+    assert result.returncode == 0, result.stdout + result.stderr
+    calls = [json.loads(line) for line in capture.read_text(encoding="utf-8-sig").splitlines()]
+    assert calls[-1] == ["-3", "-m", "icarus_plant", "start", "--assets", "NQ,GC"]
 
 
 def test_ingest_drop_quarantines_bad_and_keeps_going(tmp_path):

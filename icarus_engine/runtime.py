@@ -466,6 +466,7 @@ class AssetRunner:
         self.rewarming = False
         self._removed = False
         self.lock = threading.RLock()
+        self._public_views = None
         self.recent_fills: Deque[Dict[str, Any]] = collections.deque(maxlen=300)
         self.recent_events: Deque[Dict[str, Any]] = collections.deque(maxlen=300)
 
@@ -873,10 +874,12 @@ class AssetRunner:
         self.rewarming = False
 
     # ── re-warm with new inputs (no network) ──
-    def rewarm(self, inputs: Inputs, sources: Optional[List[str]] = None, *, reset_live_boundary: bool = False) -> None:
+    def rewarm(self, inputs: Inputs, sources: Optional[List[str]] = None, *, reset_live_boundary: bool = False, _publish_views: bool = True) -> None:
         with self.lock:
             self.ensure_configurable()
             self.ensure_cached_timeframes(inputs)
+            if _publish_views:
+                self.publish_read_views()
             self.rewarming = True
             try:
                 self.cfg.fixed_pts_scale = self.pts_scale
@@ -1105,9 +1108,32 @@ class AssetRunner:
         return {"open": self.cal.is_open(now), "calendar": self.cal.name, "describe": self.cal.describe(now),
                 "next_open": self.cal.next_open(now), "session": self.cal.session_id(now)}
 
-    def summary(self) -> Dict[str, Any]:
-        with self.lock:
-            return self._summary()
+    def publish_read_views(self) -> None:
+        """Publish immutable display-only views while holding the runner lock."""
+        captured = time.time()
+        self._public_views = ((self._summary(), captured), (self._chart(900), captured))
+
+    def _busy_read_view(self, index: int) -> Dict[str, Any]:
+        views = self._public_views
+        if views is None or views[index] is None:
+            raise RuntimeError(f"{self.symbol}: initial view is not ready; retry shortly")
+        row = copy.deepcopy(views[index][0])
+        row.update(view_stale=True, view_captured_at=views[index][1], rewarming=self.rewarming)
+        return row
+
+    def summary(self, *, nonblocking: bool = False) -> Dict[str, Any]:
+        if not nonblocking:
+            with self.lock:
+                return self._summary()
+        if not self.lock.acquire(timeout=0.05):
+            return self._busy_read_view(0)
+        try:
+            row = self._summary()
+            views = self._public_views or (None, None)
+            self._public_views = ((row, time.time()), views[1])
+        finally:
+            self.lock.release()
+        return copy.deepcopy(row)
 
     def _feed_health_view(self) -> Dict[str, Any]:
         """Return provider health from memory only; status endpoints must never do I/O."""
@@ -1202,9 +1228,27 @@ class AssetRunner:
             "htf_tfs": self.htf_tfs,
         })
 
-    def chart(self, n: int = 240) -> Dict[str, Any]:
-        with self.lock:
-            return self._chart(n)
+    def chart(self, n: int = 240, *, nonblocking: bool = False) -> Dict[str, Any]:
+        if not nonblocking:
+            with self.lock:
+                return self._chart(n)
+        if not self.lock.acquire(timeout=0.05):
+            row = self._busy_read_view(1)
+            row["bars"] = row["bars"][-n:]
+            row["overlays"] = row["overlays"][-n:]
+            row["fills"] = [f for f in row["fills"] if row["bars"] and f["ts"] >= row["bars"][0][0]]
+            return row
+        try:
+            row = self._chart(900)
+            views = self._public_views or (None, None)
+            self._public_views = (views[0], (row, time.time()))
+        finally:
+            self.lock.release()
+        row = copy.deepcopy(row)
+        row["bars"] = row["bars"][-n:]
+        row["overlays"] = row["overlays"][-n:]
+        row["fills"] = [f for f in row["fills"] if row["bars"] and f["ts"] >= row["bars"][0][0]]
+        return row
 
     def _chart(self, n: int = 240) -> Dict[str, Any]:
         bars = list(self.bars)[-n:]
@@ -1267,7 +1311,8 @@ class Portfolio:
         self.runners: Dict[str, AssetRunner] = {}
         self.order: List[str] = []
         self.started = time.time()
-        self.equity_epoch = self.started                 # paper equity chart covers only the active engine epoch
+        self.equity_epoch = self.started
+        self._public_equity_epoch = self.equity_epoch  # display snapshot epoch during replay
         self._continuous_refresh_day = int(self.started // 86400)
         self.paused = False
         self._threads: Dict[str, threading.Thread] = {}
@@ -1429,6 +1474,7 @@ class Portfolio:
             r.ensure_cached_timeframes(inputs)
             spec.chart_tf = r.ensure_cached_chart_timeframe(spec.chart_tf)
 
+            r.publish_read_views()
             runtime_before = r.configuration_snapshot()
             tmp = path + ".tmp"
             try:
@@ -1437,7 +1483,7 @@ class Portfolio:
                     setattr(r.spec, field, getattr(spec, field))
                 if preset is not _UNCHANGED:
                     r.cfg.preset = spec.preset
-                r.rewarm(inputs, sources, reset_live_boundary=True)
+                r.rewarm(inputs, sources, reset_live_boundary=True, _publish_views=False)
 
                 # Commit persistence after the successful replay. A failed replay therefore
                 # cannot leave the next process start on a configuration the live engine rejected.
@@ -1583,21 +1629,26 @@ class Portfolio:
     def runner_list(self) -> List[AssetRunner]:
         return [self.runners[s] for s in self.order if s in self.runners]
 
-    def status(self) -> Dict[str, Any]:
-        rs = [r.summary() for r in self.runner_list()]
+    def status(self, *, nonblocking: bool = False) -> Dict[str, Any]:
+        rs = [r.summary(nonblocking=True) if nonblocking else r.summary() for r in self.runner_list()]
         eq = sum(x["equity"] or 0.0 for x in rs)
-        cap = sum(r.spec.capital for r in self.runner_list())
+        cap = sum(x["capital"] for x in rs)
+        stale = nonblocking and any(x.get("view_stale") for x in rs)
+        epoch = getattr(self, "_public_equity_epoch", self.equity_epoch) if stale else self.equity_epoch
+        if nonblocking and not stale:
+            self._public_equity_epoch = epoch
         live_profit = sum(x["live_profit"] for x in rs)
         return _clean({
             "now": time.time(), "uptime_sec": time.time() - self.started, "paused": self.paused,
             "global_pause_intent": self.paused,
-            "paused_assets": sorted(r.symbol for r in self.runner_list() if r.paused),
-            "mixed_pause_state": any(r.paused != self.paused for r in self.runner_list()),
+            "paused_assets": sorted(x["symbol"] for x in rs if x["paused"]),
+            "mixed_pause_state": any(x["paused"] != self.paused for x in rs),
             "equity": eq, "capital": cap, "net": eq - cap, "live_profit": live_profit,
             "open_profit": sum(x["open_profit"] or 0.0 for x in rs), "positions": sum(1 for x in rs if x["position"]),
             "assets": rs, "log": list(self.journal.log_tail)[-80:],
-            "equity_epoch": self.equity_epoch,
-            "equity_series": self.journal.equity_series(max_points=600, since_ts=max(self.started, self.equity_epoch)),
-            "all_warm": all(r.warm for r in self.runners.values()) if self.runners else False,
+            "equity_epoch": epoch,
+            "view_stale": bool(stale),
+            "equity_series": self.journal.equity_series(max_points=600, since_ts=max(self.started, epoch)),
+            "all_warm": all(x["warm"] for x in rs) if rs else False,
             "preset": self.preset, "profile": self.profile, "pts_ref": {"symbol": self.pts_ref_symbol, "price": self.pts_ref_price},
         })

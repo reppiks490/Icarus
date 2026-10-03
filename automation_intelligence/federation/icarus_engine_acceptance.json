@@ -1,0 +1,32 @@
+{
+  "accepted_by_icarus_commit": "7590b8429f1b38d027f6c72e7d40bf34e7602f11",
+  "accepted_by_repository": "reppiks490/Icarus",
+  "authority": "RESEARCH",
+  "automatic_model_promotion": false,
+  "event_records": "RESEARCH_OBSERVABILITY_ONLY",
+  "execution_authorized": false,
+  "peer_durability_only_lane_count": 4,
+  "peer_lane_contract_binding_verified_count": 5,
+  "peer_lane_count": 5,
+  "peer_lane_witness_verified_count": 4,
+  "peer_packet_age_seconds_at_acceptance": 432.621,
+  "peer_packet_blob_sha": "b9e374e42b58ef75408228f86f979d96aeaeb432",
+  "peer_packet_fresh": true,
+  "peer_packet_id": "3011d35ad098820f11963c79ad13d8dd1d858d51327466c8a80484e599d4f8f3",
+  "peer_source_commit": "1de40ee49acc6694c02cdc369c301f787970b274",
+  "peer_source_commit_relation": "AHEAD",
+  "peer_source_contract_witness_count": 3,
+  "peer_substantive_lane_count": 0,
+  "producer_repository": "reppiks490/Icarus-engine",
+  "production_decision_authorized": false,
+  "schema_version": "icarus-engine-federation-acceptance-v1",
+  "source_receipt_schema": "icarus-live-bilateral-federation-receipt-v1",
+  "truth_contract": {
+    "acceptance_is_not_execution_authority": true,
+    "acceptance_is_not_production_decision_authority": true,
+    "durability_only_is_not_substantive_research_evidence": true,
+    "foreign_peer_state_is_evidence_not_native_truth": true,
+    "same_packet_is_idempotent": true
+  },
+  "validation_contract_version": 1
+}

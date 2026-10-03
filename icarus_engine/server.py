@@ -22,7 +22,8 @@
   GET  /api/commissioning         append-only Chronofold prediction ledger, calibration, ablation and promotion gate
   POST /admin/pause | /admin/resume        {"asset": "NQ"} or all          (Bearer token)
   POST /admin/flatten                      {"confirm": true, "asset"?: "NQ"}
-  POST /admin/inputs                       {"asset": "NQ"|"*", "values": {...}, "chart": {...}, "persist": true}  → re-warm
+  POST /admin/inputs                       {"asset": "NQ"|"*", "values": {...}, "chart": {...}, "persist": true}  → synchronous re-warm
+  POST /admin/inputs/async                 same payload → immediate job id; re-warm continues in background
   POST /admin/inputs/reset                 {"asset": "NQ"}  (deletes inputs.<SYM>.json, re-warm)
   POST /admin/preset                       {"asset": "NQ", "preset": "NQ-10m-original"|null}
   POST /admin/assets/add                   {"symbol": "GC", "tf": "20", "preset"?: ...}
@@ -53,6 +54,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Dict
 from urllib.parse import parse_qs, urlparse
+import urllib.error
+import urllib.request
 
 from . import brand
 from .assets import REGISTRY, apply_chart_config, chart_capabilities, parse_spec, pin_config, resolve, validate_chart_config
@@ -108,6 +111,10 @@ from .ascendancy.mechanisms import MechanismLab
 from .ascendancy.invention import InventionLab, to_foundry_candidate
 from .ascendancy.contribution import ContributionLab
 from .ascendancy.evaluator import EvaluatorCascade
+from .ascendancy.governor import EvolutionGovernor
+from .ascendancy.executor import GovernorExecutor
+from .ascendancy.autopilot import GovernorAutopilot
+from .ascendancy.work_orders import ResearchWorkOrderBoard
 
 
 def _no_json_constants(name: str):
@@ -232,6 +239,9 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     ascendancy_inventions = InventionLab(port.base_dir)
     ascendancy_contribution = ContributionLab(port.base_dir)
     ascendancy_evaluator = EvaluatorCascade(port.base_dir)
+    ascendancy_governor = EvolutionGovernor(port.base_dir)
+    ascendancy_executor = GovernorExecutor(port.base_dir)
+    ascendancy_work_orders = ResearchWorkOrderBoard(port.base_dir)
     mcp_control = MCPControlPlane(port.base_dir)
     chronofold = ChronofoldEngine(port, possibility=possibility)
     commissioning = CommissioningEngine(port.base_dir, port, chronofold)
@@ -292,6 +302,45 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
         return {
             "archive": archive,
             "frontier": build_frontier(archive),
+            "execution_authorized": False,
+            "production_decision_authorized": False,
+        }
+
+    def _ascendancy_governor_state() -> Dict[str, Any]:
+        archive = ascendancy_archive.snapshot()
+        remote = brain_remote_sync.status()
+        historical_sources = []
+        for row in remote.get("historical_context_sources", []):
+            if not isinstance(row, dict):
+                continue
+            historical_sources.append({
+                "id": row.get("id"),
+                "research_context_eligible": row.get("research_context_eligible") is True,
+                "candidate_evidence_eligible": row.get("candidate_evidence_eligible") is True,
+                "evidence_status": row.get("evidence_status"),
+                "blob_sha": row.get("remote_blob_sha"),
+            })
+        historical_sources.sort(key=lambda row: str(row.get("id") or ""))
+        federation = {
+            "status": remote.get("status"),
+            "peer_packet_status": remote.get("peer_packet_status"),
+            "peer_packet_id": remote.get("peer_packet_id"),
+            "historical_context_status": remote.get("historical_context_status"),
+            "historical_candidate_evidence_count": int(
+                remote.get("historical_candidate_evidence_count") or 0
+            ),
+            "historical_context_sources": historical_sources,
+            "execution_authorized": False,
+            "production_decision_authorized": False,
+        }
+        return {
+            "foundry": ascendancy_foundry.snapshot(),
+            "evaluator": ascendancy_evaluator.snapshot(),
+            "archive": archive,
+            "frontier": build_frontier(archive),
+            "unknowns": ascendancy_unknowns.snapshot(),
+            "inventions": ascendancy_inventions.snapshot(),
+            "federation": federation,
             "execution_authorized": False,
             "production_decision_authorized": False,
         }
@@ -445,6 +494,94 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             raise ValueError("unknown invention blueprint_id")
         payload = to_foundry_candidate(blueprint)
         return ascendancy_foundry.register(payload)
+
+    def _ascendancy_governor_plan(plan_id: str) -> Dict[str, Any]:
+        pid = str(plan_id or "").strip().lower()
+        if not pid:
+            raise ValueError("plan_id is required")
+        snapshot = ascendancy_governor.snapshot()
+        plan = next(
+            (
+                row for row in snapshot.get("plans", [])
+                if isinstance(row, dict) and str(row.get("plan_id") or "") == pid
+            ),
+            None,
+        )
+        if plan is None:
+            raise ValueError("unknown ASCENDANCY governor plan_id")
+        plan = dict(plan)
+        plan.pop("recorded_at", None)
+        return plan
+
+    def _ascendancy_reject_failed_candidate(action: Dict[str, Any]) -> Dict[str, Any]:
+        candidate_id = str(action.get("subject_id") or "").strip()
+        evaluator_state = ascendancy_evaluator.candidate(candidate_id)
+        if str(evaluator_state.get("state") or "") != "HALTED_FAILED":
+            raise ValueError(
+                "safe rejection requires an evaluator candidate already in HALTED_FAILED"
+            )
+        return ascendancy_foundry.reject(
+            candidate_id,
+            "Evaluator cascade already recorded HALTED_FAILED; governor mirrored terminal research state.",
+        )
+
+    def _ascendancy_execute_plan_object(plan: Dict[str, Any]) -> Dict[str, Any]:
+        handlers = {
+            "REGISTER_WITH_EVALUATOR": lambda action: _ascendancy_register_evaluator_candidate({
+                "candidate_id": action.get("subject_id"),
+            }),
+            "PROMOTE_BLUEPRINT_TO_FOUNDRY": lambda action: _ascendancy_invention_to_candidate({
+                "blueprint_id": action.get("subject_id"),
+            }),
+            "REJECT_FAILED_CANDIDATE": _ascendancy_reject_failed_candidate,
+        }
+        executed = ascendancy_executor.execute(plan, handlers)
+        dispatched = ascendancy_work_orders.dispatch(plan, executed)
+        out = dict(executed)
+        out["work_orders"] = dispatched
+        return out
+
+    def _ascendancy_execute_safe_plan(body: Dict[str, Any]) -> Dict[str, Any]:
+        return _ascendancy_execute_plan_object(
+            _ascendancy_governor_plan(body.get("plan_id"))
+        )
+
+    _ascendancy_autopilot_policy = {
+        "max_actions_per_cycle": 8,
+        "max_estimated_cost_units": 20.0,
+        "exploration_fraction": 0.35,
+        "max_actions_per_niche": 1,
+        "allow_protected_holdout_request": True,
+        "allow_federated_context_mining": True,
+    }
+    _ascendancy_autopilot_enabled = str(
+        os.environ.get("ICARUS_ASCENDANCY_AUTOPILOT", "1")
+    ).strip().lower() not in {"0", "false", "no", "off"}
+    try:
+        _ascendancy_autopilot_interval = max(
+            30,
+            min(
+                3600,
+                int(os.environ.get("ICARUS_ASCENDANCY_AUTOPILOT_INTERVAL", "300")),
+            ),
+        )
+    except (TypeError, ValueError):
+        _ascendancy_autopilot_interval = 300
+
+    def _ascendancy_autopilot_plan() -> Dict[str, Any]:
+        return ascendancy_governor.plan(
+            _ascendancy_governor_state(),
+            _ascendancy_autopilot_policy,
+        )
+
+    ascendancy_autopilot = GovernorAutopilot(
+        port.base_dir,
+        plan_callback=_ascendancy_autopilot_plan,
+        execute_callback=_ascendancy_execute_plan_object,
+        interval_seconds=_ascendancy_autopilot_interval,
+        max_internal_iterations=4,
+        enabled=_ascendancy_autopilot_enabled,
+    )
 
     def _control_runner(target: str):
         try:
@@ -980,9 +1117,113 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
         },
     )
 
+    config_jobs: Dict[str, Dict[str, Any]] = {}
+    config_job_requests: Dict[str, str] = {}
+    config_jobs_lock = threading.Lock()
+
+    def _config_scope(payload: Dict[str, Any]) -> str:
+        raw = str(payload.get("asset") or payload.get("symbol") or "*").strip().upper() or "*"
+        if raw == "*":
+            return raw
+        try:
+            return resolve(raw).symbol
+        except Exception:
+            return raw
+
+    def _config_scopes_overlap(left: str, right: str) -> bool:
+        return left == "*" or right == "*" or left == right
+
+    def _start_config_job(target_path: str, payload: Dict[str, Any]) -> tuple[Dict[str, Any], bool, bool]:
+        scope = _config_scope(payload)
+        request_payload = dict(payload)
+        request_payload.pop("symbol", None)
+        request_payload["asset"] = scope
+        request_identity = json.dumps([target_path, request_payload], sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+        now = time.time()
+        with config_jobs_lock:
+            # Retry only the same request. A different edit must remain visible
+            # to the caller instead of being acknowledged and silently discarded.
+            for existing in config_jobs.values():
+                if existing.get("status") in ("queued", "running") and _config_scopes_overlap(scope, str(existing.get("scope") or "*")):
+                    conflict = config_job_requests[existing["id"]] != request_identity
+                    return dict(existing), False, conflict
+            # Keep the in-memory journal bounded across long desktop sessions.
+            stale = [jid for jid, row in config_jobs.items()
+                     if row.get("status") in ("done", "error") and now - float(row.get("finished") or row.get("created") or now) > 3600]
+            for jid in stale:
+                config_jobs.pop(jid, None)
+                config_job_requests.pop(jid, None)
+            job_id = f"cfg-{time.time_ns():x}"
+            row = {
+                "id": job_id,
+                "status": "queued",
+                "scope": scope,
+                "target": target_path,
+                "created": now,
+                "started": None,
+                "finished": None,
+                "result": None,
+                "error": None,
+            }
+            config_jobs[job_id] = row
+            config_job_requests[job_id] = request_identity
+
+        def worker() -> None:
+            with config_jobs_lock:
+                current = config_jobs.get(job_id)
+                if current is None:
+                    return
+                current["status"] = "running"
+                current["started"] = time.time()
+            try:
+                req = urllib.request.Request(
+                    f"http://127.0.0.1:{srv.server_address[1]}{target_path}",
+                    data=json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8"),
+                    method="POST",
+                    headers={
+                        "Authorization": "Bearer " + token,
+                        "Content-Type": "application/json",
+                        "Connection": "close",
+                    },
+                )
+                with urllib.request.urlopen(req, timeout=3600) as response:
+                    raw = response.read()
+                    result = json.loads(raw.decode("utf-8")) if raw else {}
+                with config_jobs_lock:
+                    current = config_jobs.get(job_id)
+                    if current is not None:
+                        current["status"] = "done"
+                        current["result"] = result
+                        current["finished"] = time.time()
+            except urllib.error.HTTPError as ex:
+                try:
+                    raw = ex.read()
+                    detail = json.loads(raw.decode("utf-8")) if raw else {}
+                    message = detail.get("detail") or detail.get("error") or f"HTTP {ex.code}"
+                except Exception:
+                    message = f"HTTP {ex.code}"
+                with config_jobs_lock:
+                    current = config_jobs.get(job_id)
+                    if current is not None:
+                        current["status"] = "error"
+                        current["error"] = str(message)
+                        current["finished"] = time.time()
+            except Exception as ex:
+                with config_jobs_lock:
+                    current = config_jobs.get(job_id)
+                    if current is not None:
+                        current["status"] = "error"
+                        current["error"] = f"{type(ex).__name__}: {ex}"
+                        current["finished"] = time.time()
+
+        threading.Thread(target=worker, daemon=True, name=f"config-rewarm-{scope}").start()
+        with config_jobs_lock:
+            return dict(row), True, False
+
     class H(BaseHTTPRequestHandler):
         server_version = "icarus"
         sys_version = ""
+        protocol_version = "HTTP/1.1"
         timeout = 30                                              # idle connections must not hold a thread forever
 
         def log_message(self, *a: Any) -> None:  # quiet
@@ -1071,11 +1312,19 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             if p.path in ("/experience-ui.js", "/experience-ui.css"):
                 ctype = "text/javascript" if p.path.endswith(".js") else "text/css"
                 return self._send(200, (html_path.parent / p.path[1:]).read_bytes(), ctype)
+            if p.path.startswith("/api/config-jobs/"):
+                job_id = p.path.rsplit("/", 1)[-1]
+                with config_jobs_lock:
+                    row = config_jobs.get(job_id)
+                    snapshot = dict(row) if row is not None else None
+                if snapshot is None:
+                    return self._json(404, {"detail": "unknown configuration job"})
+                return self._json(200, snapshot)
             if p.path == "/healthz":
                 return self._json(200, {"ok": True, "assets": list(port.order), "warm": all(r.warm for r in port.runners.values()) if port.runners else False})
             if p.path == "/status/public":
                 try:
-                    return self._json(200, port.status())
+                    return self._json(200, port.status(nonblocking=True))
                 except Exception as ex:
                     sys.stderr.write(f"status/public failed: {type(ex).__name__}: {ex}\n")
                     return self._json(500, {"ok": False, "detail": f"{type(ex).__name__}: {ex}", "assets": []})
@@ -1153,6 +1402,46 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 except Exception as ex:
                     port.journal.log("WARN", f"ASCENDANCY evaluator snapshot: {type(ex).__name__}: {ex}")
                     return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/api/ascendancy/governor":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                try:
+                    return self._json(200, ascendancy_governor.snapshot())
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("WARN", f"ASCENDANCY governor snapshot: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/api/ascendancy/executor":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                try:
+                    return self._json(200, ascendancy_executor.snapshot())
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("WARN", f"ASCENDANCY executor snapshot: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/api/ascendancy/autopilot":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                try:
+                    return self._json(200, ascendancy_autopilot.status())
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("WARN", f"ASCENDANCY autopilot snapshot: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/api/ascendancy/work-orders":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                try:
+                    return self._json(200, ascendancy_work_orders.snapshot())
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("WARN", f"ASCENDANCY work-order snapshot: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
             if p.path == "/api/golive":
                 return self._json(200, golive_report(port))
             if p.path == "/api/agent":
@@ -1223,6 +1512,18 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     return self._json(200, pantheon.snapshot())
                 except (ValueError, TypeError) as ex:
                     return self._json(400, {"detail": str(ex)})
+            if p.path == "/api/ascendancy/intelligence":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                try:
+                    return self._json(200, learning.intelligence_snapshot(
+                        as_of=q.get("as_of", [None])[0],
+                        limit=int(q.get("limit", ["200"])[0]),
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except RuntimeError as ex:
+                    return self._json(500, {"detail": str(ex)})
             if p.path == "/api/learning":
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
@@ -1432,7 +1733,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 r = self._runner(p.path.rsplit("/", 1)[1])
                 if not r:
                     return self._json(404, {"error": "unknown asset"})
-                return self._json(200, r.chart(self._int(q, "n", 240, 20, 800)))
+                return self._json(200, r.chart(self._int(q, "n", 240, 20, 800), nonblocking=True))
             if p.path.startswith("/api/trades/"):
                 r = self._runner(p.path.rsplit("/", 1)[1])
                 if not r:
@@ -1570,6 +1871,35 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._json(400, {"detail": f"bad JSON body: {ex}"})
             if not isinstance(body, dict):
                 return self._json(400, {"detail": "JSON body must be an object"})
+            async_config_routes = {
+                "/admin/inputs/async": "/admin/inputs",
+                "/admin/inputs/reset/async": "/admin/inputs/reset",
+                "/admin/preset/async": "/admin/preset",
+                "/admin/rewarm/async": "/admin/rewarm",
+            }
+            async_target = async_config_routes.get(p.path)
+            if async_target is not None:
+                job, created, conflict = _start_config_job(async_target, body)
+                if conflict:
+                    return self._json(409, {
+                        "ok": False,
+                        "job": job["id"],
+                        "status": job["status"],
+                        "scope": job["scope"],
+                        "detail": "Another configuration request is already running for this asset; wait for it to finish, then apply your edits again.",
+                    })
+                note = (
+                    f"configuration re-warm queued for {job.get('scope')}"
+                    if created else
+                    f"configuration re-warm already running for {job.get('scope')}"
+                )
+                return self._json(202, {
+                    "ok": True,
+                    "job": job["id"],
+                    "status": job["status"],
+                    "scope": job["scope"],
+                    "note": note,
+                })
             if p.path == "/admin/learning/config":
                 try:
                     return self._json(200, research.configure_learning(body))
@@ -1789,6 +2119,53 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     return self._json(400, {"detail": str(ex)})
                 except Exception as ex:
                     port.journal.log("ERROR", f"ASCENDANCY evaluator receipt: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/admin/ascendancy/governor-plan":
+                try:
+                    return self._json(200, _ascendancy_research_mutation(
+                        lambda: ascendancy_governor.plan(
+                            _ascendancy_governor_state(),
+                            body,
+                        )
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("ERROR", f"ASCENDANCY governor plan: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/admin/ascendancy/governor-execute-safe":
+                try:
+                    return self._json(200, _ascendancy_research_mutation(
+                        lambda: _ascendancy_execute_safe_plan(body)
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("ERROR", f"ASCENDANCY safe executor: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/admin/ascendancy/autopilot-cycle":
+                try:
+                    return self._json(200, _ascendancy_research_mutation(
+                        ascendancy_autopilot.run_cycle
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("ERROR", f"ASCENDANCY autopilot cycle: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/admin/ascendancy/work-order-claim":
+                try:
+                    return self._json(200, _ascendancy_research_mutation(
+                        lambda: ascendancy_work_orders.claim(
+                            body.get("order_id"),
+                            worker_id=body.get("worker_id"),
+                            owner_subsystem=body.get("owner_subsystem"),
+                        )
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("ERROR", f"ASCENDANCY work-order claim: {type(ex).__name__}: {ex}")
                     return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
             if p.path == "/admin/ascendancy/invention-generate":
                 try:
@@ -2173,7 +2550,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     return self._json(200, dreamstate.retire(body.get("candidate_id"), body.get("reason")))
                 except (ValueError, TypeError) as ex:
                     return self._json(400, {"detail": str(ex)})
-            asset = str(body.get("asset") or body.get("symbol") or "").upper()
+            asset = str(body.get("asset") or body.get("symbol") or "").strip().upper()
             # Add is the one admin route whose subject is intentionally not already
             # running. Do not reject it through the generic runner lookup.
             adding_asset = p.path == "/admin/assets/add"
@@ -2286,6 +2663,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                         for r in sorted(targets, key=lambda r: r.symbol):
                             locks.enter_context(r.lock)
                             r.ensure_configurable()
+                            r.publish_read_views()
+                        port._public_equity_epoch = port.equity_epoch
                         # Preflight the entire batch before the first asset is persisted/replayed.
                         for r in targets:
                             sp = replace(r.cfg.base_spec or r.spec)
@@ -2412,12 +2791,14 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 brain_research_sync.start()
                 evolution_remote_sync.start()
                 evidence_lab_sync.start()
+                ascendancy_autopilot.start()
                 commissioning.start_background()
             try:
                 return super().serve_forever(poll_interval)
             finally:
                 if background:
                     autopilot.close()
+                    ascendancy_autopilot.close()
                     evidence_lab_sync.close()
                     evolution_remote_sync.close()
                     brain_research_sync.close()
@@ -2428,6 +2809,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
 
         def server_close(self):
             autopilot.close()
+            ascendancy_autopilot.close()
             evidence_lab_sync.close()
             evolution_remote_sync.close()
             brain_research_sync.close()
@@ -2460,6 +2842,10 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     srv.ascendancy_inventions = ascendancy_inventions
     srv.ascendancy_contribution = ascendancy_contribution
     srv.ascendancy_evaluator = ascendancy_evaluator
+    srv.ascendancy_governor = ascendancy_governor
+    srv.ascendancy_executor = ascendancy_executor
+    srv.ascendancy_autopilot = ascendancy_autopilot
+    srv.ascendancy_work_orders = ascendancy_work_orders
     srv.learning = learning
     srv.chronofold = chronofold
     srv.commissioning = commissioning

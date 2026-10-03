@@ -147,6 +147,9 @@ def test_dashboard_surfaces_adaptive_brain_fabric():
     assert "peer_lane_contract_binding_verified_count" in ui
     assert "contract_binding_status" in ui
     assert "Peer source contracts" in ui
+    assert "Federation roundtrip ack" in ui
+    assert "peer_roundtrip_ack_status" in ui
+    assert "canonical_acceptance_authority" in ui
     assert "peer_source_contract_witness_status" in ui
     assert "Source proof" in ui
     assert "source_witness_status" in ui
@@ -705,3 +708,61 @@ def test_rebased_ascendancy_dashboard_uses_canonical_federation_and_full_researc
     assert "MECHANISM LABORATORY" in ui
     assert "INVENTION ENGINE" in ui
     assert "UNKNOWN-UNKNOWN" in ui
+
+
+def test_ascendancy_dashboard_surfaces_autonomous_evolution_governor():
+    ui = (REPO / "icarus_engine/ascendancy-ui.js").read_text(encoding="utf-8")
+    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
+
+    assert "/api/ascendancy/governor" in ui
+    assert "AUTONOMOUS EVOLUTION GOVERNOR" in ui
+    assert "EXPLORATION" in ui
+    assert "EXPLOITATION" in ui
+    assert "ESTIMATED COST" in ui
+    assert "scheduler_heuristic_not_edge_score" in ui
+    assert "can_mint_evaluator_receipts=false" in ui
+    assert "can_mint_qualification=false" in ui
+    assert 'p.path == "/api/ascendancy/governor"' in server
+    assert 'p.path == "/admin/ascendancy/governor-plan"' in server
+
+
+def test_ascendancy_dashboard_surfaces_safe_internal_executor():
+    ui = (REPO / "icarus_engine/ascendancy-ui.js").read_text(encoding="utf-8")
+    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
+
+    assert "/api/ascendancy/executor" in ui
+    assert "SAFE INTERNAL EXECUTOR" in ui
+    assert "APPLIED INTERNAL" in ui
+    assert "AWAITING EXTERNAL" in ui
+    assert "NOT SCIENTIFIC EVIDENCE" in ui
+    assert "evidence-producing actions are never auto-applied" in ui.lower()
+    assert 'p.path == "/api/ascendancy/executor"' in server
+    assert 'p.path == "/admin/ascendancy/governor-execute-safe"' in server
+
+
+def test_ascendancy_dashboard_surfaces_bounded_autopilot():
+    ui = (REPO / "icarus_engine/ascendancy-ui.js").read_text(encoding="utf-8")
+    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
+
+    assert "/api/ascendancy/autopilot" in ui
+    assert "BOUNDED AUTONOMOUS LOOP" in ui
+    assert "STOP REASON" in ui
+    assert "NEW INTERNAL TRANSITIONS" in ui
+    assert "EXTERNAL EVIDENCE STOPS LOOP" in ui
+    assert 'p.path == "/api/ascendancy/autopilot"' in server
+    assert 'p.path == "/admin/ascendancy/autopilot-cycle"' in server
+    assert "ascendancy_autopilot.start()" in server
+    assert "ascendancy_autopilot.close()" in server
+
+
+def test_ascendancy_dashboard_surfaces_external_research_work_orders():
+    ui = (REPO / "icarus_engine/ascendancy-ui.js").read_text(encoding="utf-8")
+    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
+
+    assert "/api/ascendancy/work-orders" in ui
+    assert "EXTERNAL RESEARCH WORK ORDERS" in ui
+    assert "OWNER" in ui
+    assert "REQUIRED DOMAIN ARTIFACTS" in ui
+    assert "ORDER ≠ EVIDENCE" in ui
+    assert 'p.path == "/api/ascendancy/work-orders"' in server
+    assert 'p.path == "/admin/ascendancy/work-order-claim"' in server

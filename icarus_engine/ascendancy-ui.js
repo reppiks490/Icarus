@@ -650,13 +650,207 @@
     '</section>';
   }
 
-  function renderAscendancy(capabilities, genomes, foundry, unknowns, mechanisms, inventions, contributions, evaluator, peers, errors) {
+  function renderGovernor(governor) {
+    if (!governor) {
+      return '<section class="card" style="margin-top:12px"><h3>AUTONOMOUS EVOLUTION GOVERNOR</h3><div class="empty">UNAVAILABLE — governor state did not load.</div></section>';
+    }
+    const plan = governor.latest_plan || null;
+    const actions = plan && Array.isArray(plan.actions) ? plan.actions : [];
+    const rows = actions.map(row => {
+      return '<tr>' +
+        '<td><b>' + h(row.kind || 'UNAVAILABLE') + '</b><div class="small muted">' + h(short(row.action_id || '')) + '</div></td>' +
+        '<td><code>' + h(short(row.subject_id || 'UNAVAILABLE')) + '</code></td>' +
+        '<td>' + h(String(row.lane || 'UNAVAILABLE').toUpperCase()) + '</td>' +
+        '<td class="small">' + h(row.niche_key || 'UNAVAILABLE') + '</td>' +
+        '<td class="tnum">' + h(row.estimated_cost_units == null ? 'UNMEASURED' : Number(row.estimated_cost_units).toFixed(2)) + '</td>' +
+        '<td class="tnum">' + h(row.priority_score == null ? 'UNMEASURED' : Number(row.priority_score).toFixed(3)) + '</td>' +
+        '<td class="small">' + h(row.priority_basis || 'scheduler_heuristic_not_edge_score') + '</td>' +
+        '<td class="small">' + h(row.reason || 'UNAVAILABLE') + '</td>' +
+      '</tr>';
+    }).join('');
+    const truth = (plan && plan.truth_contract) || governor.truth_contract || {};
+    return '<section class="card" style="margin-top:12px">' +
+      '<h3>AUTONOMOUS EVOLUTION GOVERNOR</h3>' +
+      '<div class="small muted">Closed-loop research scheduler. It allocates bounded research attention across exploitation, EXPLORATION, unknowns, inventions, genome descendants and federated context; it does not grade its own evidence.</div>' +
+      '<div class="tiles" style="margin-top:10px">' +
+        '<div class="tile"><div class="k">CYCLES</div><div class="v tnum">' + h(count(governor.cycle_count)) + '</div></div>' +
+        '<div class="tile"><div class="k">ACTIONS</div><div class="v tnum">' + h(count(plan && plan.action_count)) + '</div></div>' +
+        '<div class="tile"><div class="k">EXPLORATION</div><div class="v tnum">' + h(count(plan && plan.selected_exploration_actions)) + '</div></div>' +
+        '<div class="tile"><div class="k">EXPLOITATION</div><div class="v tnum">' + h(count(plan && plan.selected_exploitation_actions)) + '</div></div>' +
+        '<div class="tile"><div class="k">ESTIMATED COST</div><div class="v tnum">' + h(plan && plan.estimated_cost_units != null ? Number(plan.estimated_cost_units).toFixed(2) : 'UNMEASURED') + '</div><div class="small muted">research cost units</div></div>' +
+        '<div class="tile"><div class="k">AUTHORITY</div><div class="v">SCHEDULER ONLY</div><div class="small muted">can_mint_evaluator_receipts=false · can_mint_qualification=false</div></div>' +
+      '</div>' +
+      '<div class="small muted" style="margin:10px 0">' +
+        'priority_basis=scheduler_heuristic_not_edge_score' +
+        ' · governor_never_fabricates_evaluation_outcomes=' + h(truth.governor_never_fabricates_evaluation_outcomes === true ? 'true' : 'UNAVAILABLE') +
+        ' · diversity_preserved_before_second_pass=' + h(truth.diversity_preserved_before_second_pass === true ? 'true' : 'UNAVAILABLE') +
+        ' · federated_context_is_not_candidate_evidence=' + h(truth.federated_context_is_not_candidate_evidence === true ? 'true' : 'UNAVAILABLE') +
+      '</div>' +
+      '<div class="scroll" style="max-height:52vh"><table><thead><tr>' +
+        '<th>Action</th><th>Subject</th><th>Lane</th><th>Niche</th><th>ESTIMATED COST</th><th>Priority</th><th>Basis</th><th>Reason</th>' +
+      '</tr></thead><tbody>' +
+        (rows || '<tr><td colspan="8" class="empty">UNMEASURED — no autonomous research plan recorded yet.</td></tr>') +
+      '</tbody></table></div>' +
+    '</section>';
+  }
+
+  function renderExecutor(executor) {
+    if (!executor) {
+      return '<section class="card" style="margin-top:12px"><h3>SAFE INTERNAL EXECUTOR</h3><div class="empty">UNAVAILABLE — executor state did not load.</div></section>';
+    }
+    const receipts = Array.isArray(executor.receipts) ? executor.receipts.slice(-100).reverse() : [];
+    const rows = receipts.map(row => {
+      return '<tr>' +
+        '<td><b>' + h(row.kind || 'UNAVAILABLE') + '</b></td>' +
+        '<td><code>' + h(short(row.subject_id || 'UNAVAILABLE')) + '</code></td>' +
+        '<td class="' + statusClass(row.status) + '"><b>' + h(row.status || 'UNAVAILABLE') + '</b></td>' +
+        '<td><code>' + h(short(row.plan_id || 'UNAVAILABLE')) + '</code></td>' +
+        '<td><code>' + h(short(row.action_id || 'UNAVAILABLE')) + '</code></td>' +
+        '<td class="small">' + h(row.recorded_at || 'UNAVAILABLE') + '</td>' +
+      '</tr>';
+    }).join('');
+    const truth = executor.truth_contract || {};
+    return '<section class="card" style="margin-top:12px">' +
+      '<h3>SAFE INTERNAL EXECUTOR</h3>' +
+      '<div class="small muted">Applies only administrative research-state transitions already justified elsewhere. Executor receipts are NOT SCIENTIFIC EVIDENCE and never substitute for evaluator, holdout, mechanism, or qualification evidence.</div>' +
+      '<div class="tiles" style="margin-top:10px">' +
+        '<div class="tile"><div class="k">RECEIPTS</div><div class="v tnum">' + h(count(executor.receipt_count)) + '</div></div>' +
+        '<div class="tile"><div class="k">APPLIED INTERNAL</div><div class="v tnum">' + h(count(executor.applied_internal_count)) + '</div></div>' +
+        '<div class="tile"><div class="k">AWAITING EXTERNAL</div><div class="v tnum">' + h(count(executor.awaiting_external_count)) + '</div></div>' +
+        '<div class="tile"><div class="k">BLOCKED</div><div class="v tnum">' + h(count(executor.blocked_count)) + '</div></div>' +
+        '<div class="tile"><div class="k">AUTHORITY</div><div class="v">BOOKKEEPING ONLY</div><div class="small muted">execution=false · production=false</div></div>' +
+      '</div>' +
+      '<div class="small muted" style="margin:10px 0">' +
+        'evidence-producing actions are never auto-applied' +
+        ' · executor_receipts_are_not_scientific_evidence=' + h(truth.executor_receipts_are_not_scientific_evidence === true ? 'true' : 'UNAVAILABLE') +
+        ' · executor_cannot_emit_evaluator_receipts=' + h(truth.executor_cannot_emit_evaluator_receipts === true ? 'true' : 'UNAVAILABLE') +
+        ' · executor_cannot_emit_qualification_receipts=' + h(truth.executor_cannot_emit_qualification_receipts === true ? 'true' : 'UNAVAILABLE') +
+      '</div>' +
+      '<div class="scroll" style="max-height:42vh"><table><thead><tr>' +
+        '<th>Kind</th><th>Subject</th><th>Status</th><th>Plan</th><th>Action</th><th>Recorded</th>' +
+      '</tr></thead><tbody>' +
+        (rows || '<tr><td colspan="6" class="empty">No executor receipts yet.</td></tr>') +
+      '</tbody></table></div>' +
+    '</section>';
+  }
+
+  function renderAscendancyAutopilot(autopilot) {
+    if (!autopilot) {
+      return '<section class="card" style="margin-top:12px"><h3>BOUNDED AUTONOMOUS LOOP</h3><div class="empty">UNAVAILABLE — autopilot state did not load.</div></section>';
+    }
+    const cycle = autopilot.latest_cycle || null;
+    const steps = cycle && Array.isArray(cycle.steps) ? cycle.steps : [];
+    const rows = steps.map(row => {
+      return '<tr>' +
+        '<td class="tnum">' + h(count(row.iteration)) + '</td>' +
+        '<td><code>' + h(short(row.plan_id || 'UNAVAILABLE')) + '</code></td>' +
+        '<td class="tnum">' + h(count(row.action_count)) + '</td>' +
+        '<td class="tnum">' + h(count(row.newly_applied_count)) + '</td>' +
+        '<td class="tnum">' + h(count(row.awaiting_external_count)) + '</td>' +
+        '<td class="tnum">' + h(count(row.blocked_count)) + '</td>' +
+      '</tr>';
+    }).join('');
+    const truth = autopilot.truth_contract || {};
+    return '<section class="card" style="margin-top:12px">' +
+      '<h3>BOUNDED AUTONOMOUS LOOP</h3>' +
+      '<div class="small muted">Continuously advances safe internal research bookkeeping, re-plans after NEW INTERNAL TRANSITIONS, and stops when independent evidence or authority is required.</div>' +
+      '<div class="tiles" style="margin-top:10px">' +
+        '<div class="tile"><div class="k">STATUS</div><div class="v ' + statusClass(autopilot.status) + '">' + h(autopilot.status || 'NOT_RUN') + '</div></div>' +
+        '<div class="tile"><div class="k">WORKER</div><div class="v">' + h(autopilot.worker_running ? 'RUNNING' : 'STOPPED') + '</div><div class="small muted">enabled=' + h(String(autopilot.enabled)) + ' · ' + h(count(autopilot.interval_seconds)) + 's cadence</div></div>' +
+        '<div class="tile"><div class="k">CYCLES</div><div class="v tnum">' + h(count(autopilot.cycle_count)) + '</div></div>' +
+        '<div class="tile"><div class="k">STOP REASON</div><div class="v">' + h(autopilot.stop_reason || 'UNMEASURED') + '</div></div>' +
+        '<div class="tile"><div class="k">NEW INTERNAL TRANSITIONS</div><div class="v tnum">' + h(count(cycle && cycle.new_internal_transition_count)) + '</div></div>' +
+        '<div class="tile"><div class="k">AWAITING EXTERNAL</div><div class="v tnum">' + h(count(cycle && cycle.awaiting_external_count)) + '</div></div>' +
+        '<div class="tile"><div class="k">AUTHORITY</div><div class="v">RESEARCH BOOKKEEPING</div><div class="small muted">trade=false · qualification=false</div></div>' +
+      '</div>' +
+      '<div class="small muted" style="margin:10px 0">' +
+        'EXTERNAL EVIDENCE STOPS LOOP' +
+        ' · autopilot_only_executes_safe_internal_actions=' + h(truth.autopilot_only_executes_safe_internal_actions === true ? 'true' : 'UNAVAILABLE') +
+        ' · protected_holdout_authority_remains_external=' + h(truth.protected_holdout_authority_remains_external === true ? 'true' : 'UNAVAILABLE') +
+        ' · qualification_authority_remains_external=' + h(truth.qualification_authority_remains_external === true ? 'true' : 'UNAVAILABLE') +
+      '</div>' +
+      (autopilot.last_error ? '<div class="empty">DEGRADED: ' + h(autopilot.last_error) + '</div>' : '') +
+      '<div class="scroll"><table><thead><tr>' +
+        '<th>Iteration</th><th>Plan</th><th>Actions</th><th>NEW INTERNAL TRANSITIONS</th><th>AWAITING EXTERNAL</th><th>Blocked</th>' +
+      '</tr></thead><tbody>' +
+        (rows || '<tr><td colspan="6" class="empty">No autonomous cycle recorded yet.</td></tr>') +
+      '</tbody></table></div>' +
+    '</section>';
+  }
+
+  function renderWorkOrders(workOrders) {
+    if (!workOrders) {
+      return '<section class="card" style="margin-top:12px"><h3>EXTERNAL RESEARCH WORK ORDERS</h3><div class="empty">UNAVAILABLE — work-order state did not load.</div></section>';
+    }
+    const orders = Array.isArray(workOrders.orders) ? workOrders.orders.slice().reverse() : [];
+    const rows = orders.map(row => {
+      const required = Array.isArray(row.required_artifacts) ? row.required_artifacts : [];
+      const claim = row.claim || null;
+      return '<tr>' +
+        '<td><code>' + h(short(row.order_id || 'UNAVAILABLE')) + '</code><div class="small muted">' + h(row.kind || 'UNAVAILABLE') + '</div></td>' +
+        '<td><b>' + h(String(row.owner_subsystem || 'UNAVAILABLE').toUpperCase()) + '</b></td>' +
+        '<td>' + h(row.work_type || 'UNAVAILABLE') + (row.evaluator_stage ? '<div class="small muted">' + h(row.evaluator_stage) + '</div>' : '') + '</td>' +
+        '<td><code>' + h(short(row.subject_id || 'UNAVAILABLE')) + '</code></td>' +
+        '<td class="' + statusClass(row.status) + '"><b>' + h(row.status || 'OPEN') + '</b>' +
+          (claim ? '<div class="small muted">' + h(claim.worker_id || 'claimed') + '</div>' : '') +
+        '</td>' +
+        '<td class="small">' + h(required.join(' · ') || 'DOMAIN RECEIPT') + '</td>' +
+        '<td class="small">ORDER ≠ EVIDENCE<br>completion_requires_domain_receipt=' + h(row.completion_requires_domain_receipt === true ? 'true' : 'false') + '</td>' +
+      '</tr>';
+    }).join('');
+    const truth = workOrders.truth_contract || {};
+    const owners = workOrders.owner_counts || {};
+    return '<section class="card" style="margin-top:12px">' +
+      '<h3>EXTERNAL RESEARCH WORK ORDERS</h3>' +
+      '<div class="small muted">Typed handoffs created automatically when the bounded loop reaches an evidence or authority boundary. Claims coordinate ownership; they do not prove completion.</div>' +
+      '<div class="tiles" style="margin-top:10px">' +
+        '<div class="tile"><div class="k">TOTAL</div><div class="v tnum">' + h(count(workOrders.order_count)) + '</div></div>' +
+        '<div class="tile"><div class="k">OPEN</div><div class="v tnum">' + h(count(workOrders.open_count)) + '</div></div>' +
+        '<div class="tile"><div class="k">CLAIMED</div><div class="v tnum">' + h(count(workOrders.claimed_count)) + '</div></div>' +
+        '<div class="tile"><div class="k">COMPLETED</div><div class="v tnum">' + h(count(workOrders.completed_count)) + '</div><div class="small muted">only authoritative domain receipts can establish completion</div></div>' +
+        '<div class="tile"><div class="k">OWNER LOAD</div><div class="small muted">' + h(Object.entries(owners).map(([k,v]) => k + ':' + v).join(' · ') || 'none') + '</div></div>' +
+        '<div class="tile"><div class="k">AUTHORITY</div><div class="v">DISPATCH ONLY</div><div class="small muted">ORDER ≠ EVIDENCE</div></div>' +
+      '</div>' +
+      '<div class="small muted" style="margin:10px 0">' +
+        'work_order_is_not_scientific_evidence=' + h(truth.work_order_is_not_scientific_evidence === true ? 'true' : 'UNAVAILABLE') +
+        ' · domain_receipt_required_before_completion=' + h(truth.domain_receipt_required_before_completion === true ? 'true' : 'UNAVAILABLE') +
+        ' · claim_is_coordination_not_completion=' + h(truth.claim_is_coordination_not_completion === true ? 'true' : 'UNAVAILABLE') +
+      '</div>' +
+      '<div class="scroll" style="max-height:50vh"><table><thead><tr>' +
+        '<th>Order</th><th>OWNER</th><th>Work type</th><th>Subject</th><th>Status</th><th>REQUIRED DOMAIN ARTIFACTS</th><th>Truth boundary</th>' +
+      '</tr></thead><tbody>' +
+        (rows || '<tr><td colspan="7" class="empty">No external research work orders yet.</td></tr>') +
+      '</tbody></table></div>' +
+    '</section>';
+  }
+
+  function renderIntelligence(spine) {
+    if (!spine) return '<section class="card" style="margin-top:12px"><h3>UNIFIED INTELLIGENCE SPINE</h3><div class="empty">UNAVAILABLE — canonical forecast feed did not load.</div></section>';
+    const feed = spine.feed || {};
+    const sources = Array.isArray(spine.source_contributions) ? spine.source_contributions : [];
+    const claims = Array.isArray(spine.claims) ? spine.claims : [];
+    const rows = claims.slice(0, 12).map(c => {
+      const d = c.details || {};
+      return '<tr><td>' + h(c.source) + '</td><td>' + h(d.asset) + ' · ' + h(d.label || 'direction/event') + '</td><td>' + h(c.stance) + ' / ' + h(c.confidence) + '</td><td>' + h(c.observed_at) + '<br>' + h(c.received_at) + '</td><td>' + h(d.source_commit) + '</td></tr>';
+    }).join('');
+    const excluded = (Array.isArray(feed.unprojected) ? feed.unprojected : []).map(x => h(x.source) + ': ' + h(x.reason)).join(' · ');
+    return '<section class="card" style="margin-top:12px"><h3>UNIFIED INTELLIGENCE SPINE · DURABLE FORECAST FEED</h3>' +
+      '<div class="small muted">Existing learning harvest feeds this view automatically. Original first-receipt time survives restart; outcomes never rewrite forecast claims.</div>' +
+      '<div class="small">Forecasts ' + h(feed.prediction_count || 0) + ' · claims ' + h(spine.claim_count || 0) + ' · sources ' + h(sources.length) + ' · unprojected ' + h(feed.unprojected_count || 0) + '</div>' +
+      '<div class="small muted">' + h(feed.scope || 'UNAVAILABLE') + ' · window_limited=' + h(feed.window_limited === true) + ' · as of ' + h(spine.as_of) + '</div>' +
+      '<div class="small muted">Source/revision scoped; comparability and calibrated confidence remain unproved. Structural novelty is not predictive edge. execution_authorized=false · production_decision_authorized=false.</div>' +
+      (excluded ? '<div class="small">Unprojected: ' + excluded + '</div>' : '') +
+      '<table><thead><tr><th>Source</th><th>Proposition</th><th>Stance / raw probability</th><th>Emitted / first received</th><th>Declared revision</th></tr></thead><tbody>' +
+      (rows || '<tr><td colspan="5" class="empty">UNMEASURED — no causally available forecast claims.</td></tr>') + '</tbody></table></section>';
+  }
+
+  function renderAscendancy(capabilities, genomes, foundry, unknowns, mechanisms, inventions, contributions, evaluator, peers, errors, spine, governor, executor, autopilot, workOrders) {
     const el = document.querySelector('#ascendancyBody');
     if (!el) return;
     const warning = errors.length
       ? '<div class="empty" style="margin-bottom:10px">DEGRADED: ' + h(errors.join(' · ')) + '</div>'
       : '';
-    el.innerHTML = warning + renderCapabilities(capabilities) + renderPeers(peers) + renderUnknowns(unknowns) + renderInventions(inventions) + renderFoundry(foundry) + renderEvaluator(evaluator) + renderContributions(contributions) + renderMechanisms(mechanisms) + renderGenomeLab(genomes);
+    el.innerHTML = warning + renderCapabilities(capabilities) + renderPeers(peers) + renderIntelligence(spine) + renderAscendancyAutopilot(autopilot) + renderGovernor(governor) + renderExecutor(executor) + renderWorkOrders(workOrders) + renderUnknowns(unknowns) + renderInventions(inventions) + renderFoundry(foundry) + renderEvaluator(evaluator) + renderContributions(contributions) + renderMechanisms(mechanisms) + renderGenomeLab(genomes);
   }
 
   async function fetchJson(url, token) {
@@ -685,7 +879,12 @@
         fetchJson('/api/ascendancy/inventions', token),
         fetchJson('/api/ascendancy/contributions', token),
         fetchJson('/api/ascendancy/evaluator', token),
-        fetchJson('/api/brain', token)
+        fetchJson('/api/brain', token),
+        fetchJson('/api/ascendancy/intelligence', token),
+        fetchJson('/api/ascendancy/governor', token),
+        fetchJson('/api/ascendancy/executor', token),
+        fetchJson('/api/ascendancy/autopilot', token),
+        fetchJson('/api/ascendancy/work-orders', token)
       ]);
       if (seq !== loadSeq) return;
       const capabilities = settled[0].status === 'fulfilled' ? settled[0].value : null;
@@ -697,10 +896,15 @@
       const contributions = settled[6].status === 'fulfilled' ? settled[6].value : null;
       const evaluator = settled[7].status === 'fulfilled' ? settled[7].value : null;
       const peers = settled[8].status === 'fulfilled' ? settled[8].value : null;
+      const spine = settled[9].status === 'fulfilled' ? settled[9].value : null;
+      const governor = settled[10].status === 'fulfilled' ? settled[10].value : null;
+      const executor = settled[11].status === 'fulfilled' ? settled[11].value : null;
+      const autopilot = settled[12].status === 'fulfilled' ? settled[12].value : null;
+      const workOrders = settled[13].status === 'fulfilled' ? settled[13].value : null;
       const errors = settled
         .filter(x => x.status === 'rejected')
         .map(x => x.reason && x.reason.message ? x.reason.message : String(x.reason || 'UNAVAILABLE'));
-      renderAscendancy(capabilities, genomes, foundry, unknowns, mechanisms, inventions, contributions, evaluator, peers, errors);
+      renderAscendancy(capabilities, genomes, foundry, unknowns, mechanisms, inventions, contributions, evaluator, peers, errors, spine, governor, executor, autopilot, workOrders);
     } catch (err) {
       if (seq !== loadSeq) return;
       el.innerHTML = '<div class="empty">ASCENDANCY state UNAVAILABLE: ' + h(err && err.message ? err.message : err) + '</div>';

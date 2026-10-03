@@ -1,0 +1,26 @@
+{
+  "schema": "icarus-mcp-event-v1",
+  "event_id": "peer-roundtrip-ack-consumer-20261003",
+  "at_utc": "2026-10-03T01:17:00Z",
+  "category": "INTEGRATION",
+  "status": "IMPLEMENTED",
+  "severity": "INFO",
+  "summary": "Validate and surface the Icarus-engine peer packet's canonical ICARUS prior-packet acknowledgement while preserving its research-only, non-gating, non-executing semantics.",
+  "surface": "ICARUS Adaptive Brain bilateral federation",
+  "source": "CHATGPT_MCP",
+  "paths": [
+    "icarus_engine/brain_sync.py",
+    "icarus_engine/brain-ui.js",
+    "tests_engine/test_brain_sync.py",
+    "tests_engine/test_dashboard_js.py",
+    ".github/workflows/live-engine-federation-gate.yml",
+    ".github/workflows/live-engine-historical-context-gate.yml"
+  ],
+  "evidence": [
+    "canonical acceptance schema and authority validation",
+    "verified prior-packet acknowledgement state",
+    "live bilateral federation gate roundtrip receipt fields",
+    "historical-context gate zero-authority assertions"
+  ],
+  "execution_authorized": false
+}
