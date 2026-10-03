@@ -25,7 +25,8 @@ fix. Seven focused tests pass locally; the real Windows `GetConsoleWindow`
 test is skipped on Linux and must execute in the hosted Windows contract job.
 Tests assert both the no-console setting and preserved provenance results /
 worker log redirection. Full local suite: 1,854 passed and 2 platform skips
-in 94.65 seconds. Hosted Windows qualification remains pending.
+in 94.65 seconds. Hosted Windows qualification passed: standard checks and actual no-console
+contract run 37105836394. Integrated as #305. See TAKEOVER_VERIFIED_20261003.md.
 
 This repository contains no Windows Task Scheduler installer or task action
 definition to edit. The user's installed scheduled task actions and desktop
