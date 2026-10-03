@@ -865,3 +865,50 @@ def test_ascendancy_governor_state_excludes_volatile_remote_sync_timestamps(asce
     assert first["cycle_id"] == second["cycle_id"]
     assert second["idempotent"] is True
     assert srv.ascendancy_autopilot.status()["cycle_count"] == 1
+
+
+def test_autopilot_external_boundary_creates_routed_work_order(ascendancy_genome_http):
+    _, srv, request = ascendancy_genome_http
+
+    code, registered = request("POST", "/admin/ascendancy/candidate", body=_candidate())
+    assert code == 200, registered
+    cid = registered["candidate"]["candidate_id"]
+    code, advanced = request("POST", "/admin/ascendancy/candidate-stage", body={
+        "candidate_id": cid,
+        "stage": "INCUBATING",
+        "reason": "mechanism review passed",
+    })
+    assert code == 200, advanced
+
+    code, cycle = request("POST", "/admin/ascendancy/autopilot-cycle", body={})
+    assert code == 200, cycle
+    assert cycle["stop_reason"] == "AWAITING_EXTERNAL_OR_QUIESCENT"
+
+    code, board = request("GET", "/api/ascendancy/work-orders")
+    assert code == 200
+    order = next(x for x in board["orders"] if x["subject_id"] == cid)
+    assert order["kind"] == "RUN_EVALUATOR_STAGE"
+    assert order["work_type"] == "EVALUATOR_EVIDENCE"
+    assert order["owner_subsystem"] == "daedalus"
+    assert order["evaluator_stage"] == "CONTRACT_VALIDATION"
+    assert order["status"] == "OPEN"
+    assert order["order_itself_is_evidence"] is False
+    assert board["completed_count"] == 0
+
+    code, bad = request("POST", "/admin/ascendancy/work-order-claim", body={
+        "order_id": order["order_id"],
+        "worker_id": "wrong-worker",
+        "owner_subsystem": "aion",
+    })
+    assert code == 400
+    assert "owner mismatch" in bad["detail"]
+
+    code, claimed = request("POST", "/admin/ascendancy/work-order-claim", body={
+        "order_id": order["order_id"],
+        "worker_id": "daedalus-worker-1",
+        "owner_subsystem": "daedalus",
+    })
+    assert code == 200, claimed
+    assert claimed["status"] == "CLAIMED"
+    assert claimed["claim_receipt"]["scientific_evidence"] is False
+    assert srv.ascendancy_work_orders.snapshot()["claimed_count"] == 1
