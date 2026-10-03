@@ -1,0 +1,62 @@
+{
+  "schema": "icarus-mcp-event-v1",
+  "category": "EVOLUTION",
+  "source": "MACRO_AUTOMATION",
+  "execution_authorized": false,
+  "observed_at": "2026-10-03T17:08:36Z",
+  "title": "Red Sea military escalation optionality around Bab el-Mandeb",
+  "net_new_delta": "Reuters reports Saudi Arabia is preparing a Yemeni-led offensive intended to break Houthi control around Bab el-Mandeb. This materially raises event risk to Red Sea shipping, but the timing, execution, success and resulting shipping-flow effects remain unconfirmed.",
+  "affected_instruments": [
+    "Brent",
+    "WTI",
+    "diesel/gasoil",
+    "GC/MGC",
+    "DXY/USD",
+    "NQ/MNQ"
+  ],
+  "assumptions_affected": [
+    "Red Sea shipping disruption is a static background condition",
+    "Energy risk can be represented only through Hormuz/crude channels"
+  ],
+  "evidence": [
+    {
+      "type": "SOURCE_CLAIM",
+      "publisher": "Reuters",
+      "date": "2026-10-02",
+      "url": "https://www.reuters.com/world/asia-pacific/saudis-plan-assault-houthis-break-red-sea-chokehold-2026-10-02/",
+      "finding": "Saudi Arabia is preparing a Yemeni-led offensive, backed by Saudi air support and U.S. intelligence, aimed at breaking Houthi control of the Bab el-Mandeb area; timing remains tentative."
+    }
+  ],
+  "fact": [
+    "A Reuters report exists describing preparations for an offensive around Bab el-Mandeb; the report does not establish that the operation has begun or succeeded."
+  ],
+  "model_inference": [
+    "Create RED_SEA_ESCALATION_OPTIONALITY as an event-risk state; do not promote to realized shipping normalization or realized supply disruption without traffic/attack/flow evidence."
+  ],
+  "unknown": [
+    "operation start date",
+    "operational success",
+    "Houthi retaliation",
+    "commercial vessel traffic response",
+    "freight/insurance repricing",
+    "physical oil/product flow impact"
+  ],
+  "conflicts": [
+    "An offensive could eventually reopen/normalize shipping, but its initiation could first increase attack and retaliation risk; direction of near-term market impact is therefore ambiguous."
+  ],
+  "next_decisive_check": "Require confirmation that operations have begun, then check UKMTO/JMIC incident reports, Bab el-Mandeb vessel traffic/rerouting, freight/insurance repricing and physical energy flows before promoting the state.",
+  "confidence": {
+    "reported_preparation": "HIGH",
+    "operation_execution": "LOW",
+    "shipping_normalization": "LOW",
+    "near_term_market_direction": "LOW"
+  },
+  "oracle": {
+    "status": "MATERIAL_DELTA",
+    "finding": "Red Sea risk now contains a two-sided transition state: prospective military action could ultimately improve passage security but can initially raise retaliation and shipping-disruption risk; model it separately from Hormuz and realized energy supply."
+  },
+  "supermesh_x": {
+    "status": "MATERIAL_DELTA",
+    "finding": "Route Reuters as preparation evidence only; require UKMTO/JMIC plus vessel-traffic and physical-flow confirmation for realized maritime or energy-state promotion, preserving source-role separation."
+  }
+}
