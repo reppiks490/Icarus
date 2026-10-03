@@ -804,3 +804,64 @@ def test_governor_safe_executor_applies_only_internal_bookkeeping(ascendancy_gen
 
     assert port.paused is paused_before
     assert list(port.runners) == runners_before
+
+
+def test_ascendancy_autopilot_cycle_advances_only_safe_internal_work(ascendancy_genome_http):
+    port, srv, request = ascendancy_genome_http
+    paused_before = port.paused
+    runners_before = list(port.runners)
+
+    code, status = request("GET", "/api/ascendancy/autopilot")
+    assert code == 200
+    assert status["worker_running"] is False
+    assert status["cycle_count"] == 0
+    assert status["execution_authorized"] is False
+
+    code, registered = request("POST", "/admin/ascendancy/candidate", body=_candidate())
+    assert code == 200, registered
+    cid = registered["candidate"]["candidate_id"]
+    code, advanced = request("POST", "/admin/ascendancy/candidate-stage", body={
+        "candidate_id": cid,
+        "stage": "INCUBATING",
+        "reason": "mechanism review passed",
+    })
+    assert code == 200, advanced
+
+    code, cycle = request("POST", "/admin/ascendancy/autopilot-cycle", body={})
+    assert code == 200, cycle
+    assert cycle["trading_state_unchanged"] is True
+    assert cycle["status"] == "GREEN"
+    assert cycle["new_internal_transition_count"] >= 1
+    assert cycle["stop_reason"] == "AWAITING_EXTERNAL_OR_QUIESCENT"
+    assert cycle["execution_authorized"] is False
+    assert cycle["production_decision_authorized"] is False
+
+    evaluator = srv.ascendancy_evaluator.snapshot()
+    assert evaluator["candidate_count"] == 1
+    assert evaluator["receipt_count"] == 0
+    executor = srv.ascendancy_executor.snapshot()
+    assert executor["applied_internal_count"] >= 1
+    assert executor["awaiting_external_count"] >= 1
+
+    code, status = request("GET", "/api/ascendancy/autopilot")
+    assert code == 200
+    assert status["cycle_count"] == 1
+    assert status["latest_cycle_id"] == cycle["cycle_id"]
+    assert status["truth_contract"]["external_evidence_stops_internal_progression"] is True
+
+    assert port.paused is paused_before
+    assert list(port.runners) == runners_before
+
+
+def test_ascendancy_governor_state_excludes_volatile_remote_sync_timestamps(ascendancy_genome_http):
+    _, srv, request = ascendancy_genome_http
+
+    # Running a cycle twice against unchanged substantive state is idempotent
+    # even though remote-sync status may carry operational timestamps.
+    code, first = request("POST", "/admin/ascendancy/autopilot-cycle", body={})
+    assert code == 200, first
+    code, second = request("POST", "/admin/ascendancy/autopilot-cycle", body={})
+    assert code == 200, second
+    assert first["cycle_id"] == second["cycle_id"]
+    assert second["idempotent"] is True
+    assert srv.ascendancy_autopilot.status()["cycle_count"] == 1
