@@ -650,13 +650,33 @@
     '</section>';
   }
 
-  function renderAscendancy(capabilities, genomes, foundry, unknowns, mechanisms, inventions, contributions, evaluator, peers, errors) {
+  function renderIntelligence(spine) {
+    if (!spine) return '<section class="card" style="margin-top:12px"><h3>UNIFIED INTELLIGENCE SPINE</h3><div class="empty">UNAVAILABLE — canonical forecast feed did not load.</div></section>';
+    const feed = spine.feed || {};
+    const sources = Array.isArray(spine.source_contributions) ? spine.source_contributions : [];
+    const claims = Array.isArray(spine.claims) ? spine.claims : [];
+    const rows = claims.slice(0, 12).map(c => {
+      const d = c.details || {};
+      return '<tr><td>' + h(c.source) + '</td><td>' + h(d.asset) + ' · ' + h(d.label || 'direction/event') + '</td><td>' + h(c.stance) + ' / ' + h(c.confidence) + '</td><td>' + h(c.observed_at) + '<br>' + h(c.received_at) + '</td><td>' + h(d.source_commit) + '</td></tr>';
+    }).join('');
+    const excluded = (Array.isArray(feed.unprojected) ? feed.unprojected : []).map(x => h(x.source) + ': ' + h(x.reason)).join(' · ');
+    return '<section class="card" style="margin-top:12px"><h3>UNIFIED INTELLIGENCE SPINE · DURABLE FORECAST FEED</h3>' +
+      '<div class="small muted">Existing learning harvest feeds this view automatically. Original first-receipt time survives restart; outcomes never rewrite forecast claims.</div>' +
+      '<div class="small">Forecasts ' + h(feed.prediction_count || 0) + ' · claims ' + h(spine.claim_count || 0) + ' · sources ' + h(sources.length) + ' · unprojected ' + h(feed.unprojected_count || 0) + '</div>' +
+      '<div class="small muted">' + h(feed.scope || 'UNAVAILABLE') + ' · window_limited=' + h(feed.window_limited === true) + ' · as of ' + h(spine.as_of) + '</div>' +
+      '<div class="small muted">Source/revision scoped; comparability and calibrated confidence remain unproved. Structural novelty is not predictive edge. execution_authorized=false · production_decision_authorized=false.</div>' +
+      (excluded ? '<div class="small">Unprojected: ' + excluded + '</div>' : '') +
+      '<table><thead><tr><th>Source</th><th>Proposition</th><th>Stance / raw probability</th><th>Emitted / first received</th><th>Declared revision</th></tr></thead><tbody>' +
+      (rows || '<tr><td colspan="5" class="empty">UNMEASURED — no causally available forecast claims.</td></tr>') + '</tbody></table></section>';
+  }
+
+  function renderAscendancy(capabilities, genomes, foundry, unknowns, mechanisms, inventions, contributions, evaluator, peers, errors, spine) {
     const el = document.querySelector('#ascendancyBody');
     if (!el) return;
     const warning = errors.length
       ? '<div class="empty" style="margin-bottom:10px">DEGRADED: ' + h(errors.join(' · ')) + '</div>'
       : '';
-    el.innerHTML = warning + renderCapabilities(capabilities) + renderPeers(peers) + renderUnknowns(unknowns) + renderInventions(inventions) + renderFoundry(foundry) + renderEvaluator(evaluator) + renderContributions(contributions) + renderMechanisms(mechanisms) + renderGenomeLab(genomes);
+    el.innerHTML = warning + renderCapabilities(capabilities) + renderPeers(peers) + renderIntelligence(spine) + renderUnknowns(unknowns) + renderInventions(inventions) + renderFoundry(foundry) + renderEvaluator(evaluator) + renderContributions(contributions) + renderMechanisms(mechanisms) + renderGenomeLab(genomes);
   }
 
   async function fetchJson(url, token) {
@@ -685,7 +705,8 @@
         fetchJson('/api/ascendancy/inventions', token),
         fetchJson('/api/ascendancy/contributions', token),
         fetchJson('/api/ascendancy/evaluator', token),
-        fetchJson('/api/brain', token)
+        fetchJson('/api/brain', token),
+        fetchJson('/api/ascendancy/intelligence', token)
       ]);
       if (seq !== loadSeq) return;
       const capabilities = settled[0].status === 'fulfilled' ? settled[0].value : null;
@@ -697,10 +718,11 @@
       const contributions = settled[6].status === 'fulfilled' ? settled[6].value : null;
       const evaluator = settled[7].status === 'fulfilled' ? settled[7].value : null;
       const peers = settled[8].status === 'fulfilled' ? settled[8].value : null;
+      const spine = settled[9].status === 'fulfilled' ? settled[9].value : null;
       const errors = settled
         .filter(x => x.status === 'rejected')
         .map(x => x.reason && x.reason.message ? x.reason.message : String(x.reason || 'UNAVAILABLE'));
-      renderAscendancy(capabilities, genomes, foundry, unknowns, mechanisms, inventions, contributions, evaluator, peers, errors);
+      renderAscendancy(capabilities, genomes, foundry, unknowns, mechanisms, inventions, contributions, evaluator, peers, errors, spine);
     } catch (err) {
       if (seq !== loadSeq) return;
       el.innerHTML = '<div class="empty">ASCENDANCY state UNAVAILABLE: ' + h(err && err.message ? err.message : err) + '</div>';
