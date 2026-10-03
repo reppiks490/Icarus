@@ -734,13 +734,57 @@
     '</section>';
   }
 
-  function renderAscendancy(capabilities, genomes, foundry, unknowns, mechanisms, inventions, contributions, evaluator, governor, executor, peers, errors) {
+  function renderAscendancyAutopilot(autopilot) {
+    if (!autopilot) {
+      return '<section class="card" style="margin-top:12px"><h3>BOUNDED AUTONOMOUS LOOP</h3><div class="empty">UNAVAILABLE — autopilot state did not load.</div></section>';
+    }
+    const cycle = autopilot.latest_cycle || null;
+    const steps = cycle && Array.isArray(cycle.steps) ? cycle.steps : [];
+    const rows = steps.map(row => {
+      return '<tr>' +
+        '<td class="tnum">' + h(count(row.iteration)) + '</td>' +
+        '<td><code>' + h(short(row.plan_id || 'UNAVAILABLE')) + '</code></td>' +
+        '<td class="tnum">' + h(count(row.action_count)) + '</td>' +
+        '<td class="tnum">' + h(count(row.newly_applied_count)) + '</td>' +
+        '<td class="tnum">' + h(count(row.awaiting_external_count)) + '</td>' +
+        '<td class="tnum">' + h(count(row.blocked_count)) + '</td>' +
+      '</tr>';
+    }).join('');
+    const truth = autopilot.truth_contract || {};
+    return '<section class="card" style="margin-top:12px">' +
+      '<h3>BOUNDED AUTONOMOUS LOOP</h3>' +
+      '<div class="small muted">Continuously advances safe internal research bookkeeping, re-plans after NEW INTERNAL TRANSITIONS, and stops when independent evidence or authority is required.</div>' +
+      '<div class="tiles" style="margin-top:10px">' +
+        '<div class="tile"><div class="k">STATUS</div><div class="v ' + statusClass(autopilot.status) + '">' + h(autopilot.status || 'NOT_RUN') + '</div></div>' +
+        '<div class="tile"><div class="k">WORKER</div><div class="v">' + h(autopilot.worker_running ? 'RUNNING' : 'STOPPED') + '</div><div class="small muted">enabled=' + h(String(autopilot.enabled)) + ' · ' + h(count(autopilot.interval_seconds)) + 's cadence</div></div>' +
+        '<div class="tile"><div class="k">CYCLES</div><div class="v tnum">' + h(count(autopilot.cycle_count)) + '</div></div>' +
+        '<div class="tile"><div class="k">STOP REASON</div><div class="v">' + h(autopilot.stop_reason || 'UNMEASURED') + '</div></div>' +
+        '<div class="tile"><div class="k">NEW INTERNAL TRANSITIONS</div><div class="v tnum">' + h(count(cycle && cycle.new_internal_transition_count)) + '</div></div>' +
+        '<div class="tile"><div class="k">AWAITING EXTERNAL</div><div class="v tnum">' + h(count(cycle && cycle.awaiting_external_count)) + '</div></div>' +
+        '<div class="tile"><div class="k">AUTHORITY</div><div class="v">RESEARCH BOOKKEEPING</div><div class="small muted">trade=false · qualification=false</div></div>' +
+      '</div>' +
+      '<div class="small muted" style="margin:10px 0">' +
+        'EXTERNAL EVIDENCE STOPS LOOP' +
+        ' · autopilot_only_executes_safe_internal_actions=' + h(truth.autopilot_only_executes_safe_internal_actions === true ? 'true' : 'UNAVAILABLE') +
+        ' · protected_holdout_authority_remains_external=' + h(truth.protected_holdout_authority_remains_external === true ? 'true' : 'UNAVAILABLE') +
+        ' · qualification_authority_remains_external=' + h(truth.qualification_authority_remains_external === true ? 'true' : 'UNAVAILABLE') +
+      '</div>' +
+      (autopilot.last_error ? '<div class="empty">DEGRADED: ' + h(autopilot.last_error) + '</div>' : '') +
+      '<div class="scroll"><table><thead><tr>' +
+        '<th>Iteration</th><th>Plan</th><th>Actions</th><th>NEW INTERNAL TRANSITIONS</th><th>AWAITING EXTERNAL</th><th>Blocked</th>' +
+      '</tr></thead><tbody>' +
+        (rows || '<tr><td colspan="6" class="empty">No autonomous cycle recorded yet.</td></tr>') +
+      '</tbody></table></div>' +
+    '</section>';
+  }
+
+  function renderAscendancy(capabilities, genomes, foundry, unknowns, mechanisms, inventions, contributions, evaluator, governor, executor, autopilot, peers, errors) {
     const el = document.querySelector('#ascendancyBody');
     if (!el) return;
     const warning = errors.length
       ? '<div class="empty" style="margin-bottom:10px">DEGRADED: ' + h(errors.join(' · ')) + '</div>'
       : '';
-    el.innerHTML = warning + renderCapabilities(capabilities) + renderPeers(peers) + renderGovernor(governor) + renderExecutor(executor) + renderUnknowns(unknowns) + renderInventions(inventions) + renderFoundry(foundry) + renderEvaluator(evaluator) + renderContributions(contributions) + renderMechanisms(mechanisms) + renderGenomeLab(genomes);
+    el.innerHTML = warning + renderCapabilities(capabilities) + renderPeers(peers) + renderAscendancyAutopilot(autopilot) + renderGovernor(governor) + renderExecutor(executor) + renderUnknowns(unknowns) + renderInventions(inventions) + renderFoundry(foundry) + renderEvaluator(evaluator) + renderContributions(contributions) + renderMechanisms(mechanisms) + renderGenomeLab(genomes);
   }
 
   async function fetchJson(url, token) {
@@ -771,6 +815,7 @@
         fetchJson('/api/ascendancy/evaluator', token),
         fetchJson('/api/ascendancy/governor', token),
         fetchJson('/api/ascendancy/executor', token),
+        fetchJson('/api/ascendancy/autopilot', token),
         fetchJson('/api/brain', token)
       ]);
       if (seq !== loadSeq) return;
@@ -784,11 +829,12 @@
       const evaluator = settled[7].status === 'fulfilled' ? settled[7].value : null;
       const governor = settled[8].status === 'fulfilled' ? settled[8].value : null;
       const executor = settled[9].status === 'fulfilled' ? settled[9].value : null;
-      const peers = settled[10].status === 'fulfilled' ? settled[10].value : null;
+      const autopilot = settled[10].status === 'fulfilled' ? settled[10].value : null;
+      const peers = settled[11].status === 'fulfilled' ? settled[11].value : null;
       const errors = settled
         .filter(x => x.status === 'rejected')
         .map(x => x.reason && x.reason.message ? x.reason.message : String(x.reason || 'UNAVAILABLE'));
-      renderAscendancy(capabilities, genomes, foundry, unknowns, mechanisms, inventions, contributions, evaluator, governor, executor, peers, errors);
+      renderAscendancy(capabilities, genomes, foundry, unknowns, mechanisms, inventions, contributions, evaluator, governor, executor, autopilot, peers, errors);
     } catch (err) {
       if (seq !== loadSeq) return;
       el.innerHTML = '<div class="empty">ASCENDANCY state UNAVAILABLE: ' + h(err && err.message ? err.message : err) + '</div>';
