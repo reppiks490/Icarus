@@ -1,0 +1,73 @@
+{
+  "schema": "icarus-mcp-event-v1",
+  "category": "EVOLUTION",
+  "source": "MACRO_AUTOMATION",
+  "event_time": "2026-10-03T12:11:44Z",
+  "execution_authorized": false,
+  "title": "Russia energy reintegration optionality enters Ukraine diplomacy",
+  "net_new_delta": "Reuters reported on October 3, citing the New York Times, that U.S.-Russia Ukraine negotiations include a proposed multibillion-dollar transaction involving Lukoil international oil fields, refineries and fuel-station assets. GitHub-native durable state contains no prior RUSSIA_ENERGY_REINTEGRATION_OPTIONALITY event. The proposal is material as a contingent sanctions/energy branch, but does not establish sanctions relief, transaction approval, additional supply, or changed physical flows.",
+  "classifications": {
+    "FACT": [
+      "Reuters published the report on 2026-10-03.",
+      "GitHub-native main contains no prior RUSSIA_ENERGY_REINTEGRATION_OPTIONALITY event in code search."
+    ],
+    "SOURCE_CLAIM": [
+      "The New York Times, as reported by Reuters, says the proposed transaction requires U.S. and Kremlin approval and involves Lukoil international assets.",
+      "Reuters reported that White House, U.S. Treasury and Lukoil comment was not available at publication."
+    ],
+    "MODEL_INFERENCE": [
+      "Add RUSSIA_ENERGY_REINTEGRATION_OPTIONALITY as a contingent diplomatic/energy hypothesis only.",
+      "Do not modify realized Russian supply, sanctions, or diesel-availability states without official authorization and physical-flow confirmation."
+    ],
+    "UNKNOWN": [
+      "Whether the transaction will be approved or completed.",
+      "Whether OFAC/sanctions treatment changes.",
+      "Whether ownership/control or Russian crude/refined-product flows change.",
+      "Whether the proposal materially affects global energy prices."
+    ]
+  },
+  "affected_instruments": [
+    "Brent",
+    "WTI",
+    "diesel/refined products",
+    "EUR/USD",
+    "DXY",
+    "European energy-sensitive indices"
+  ],
+  "affected_assumptions": [
+    "Russian-energy sanctions should no longer be treated as a completely static future-state assumption.",
+    "Ukraine diplomacy now contains a reported direct energy-commercial reintegration branch, but no realized supply effect is established."
+  ],
+  "conflicts": [
+    "Prospective commercial reintegration conflicts with Russia's current diesel-export restriction and existing sanctions; no official policy action resolves the conflict."
+  ],
+  "confidence": {
+    "reported_negotiating_branch": "HIGH",
+    "proposal_details": "MEDIUM",
+    "transaction_completion": "LOW",
+    "near_term_supply_effect": "LOW"
+  },
+  "next_decisive_check": "Require White House/Treasury/OFAC, Kremlin or Lukoil confirmation and concrete licensing/approval terms; only then test sanctions status, asset control, export flows, crude differentials and refined-product availability.",
+  "evidence": [
+    {
+      "provider": "Reuters",
+      "title": "US-Russia talks on Ukraine involve multi-billion dollar oil deal, NYT reports",
+      "published_date": "2026-10-03",
+      "url": "https://www.reuters.com/business/energy/us-russia-talks-ukraine-involve-multi-billion-dollar-oil-deal-nyt-reports-2026-10-03/"
+    },
+    {
+      "provider": "Reuters",
+      "title": "Russia extends diesel export ban until end of October",
+      "published_date": "2026-09-30",
+      "url": "https://www.reuters.com/business/energy/russia-extends-diesel-export-ban-until-end-october-2026-09-30/"
+    }
+  ],
+  "oracle": {
+    "status": "MATERIAL_FINDING",
+    "finding": "Add RUSSIA_ENERGY_REINTEGRATION_OPTIONALITY as a contingent research state; do not alter sanctions or realized-supply assumptions until official authorization and physical-flow evidence exist."
+  },
+  "supermesh_x": {
+    "status": "MATERIAL_FINDING",
+    "finding": "Treat Reuters/NYT as credible second-order evidence for the proposal, while official Treasury/OFAC, Kremlin and Lukoil evidence outrank it for state promotion; preserve this source hierarchy."
+  }
+}
