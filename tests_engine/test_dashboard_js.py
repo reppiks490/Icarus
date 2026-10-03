@@ -744,3 +744,16 @@ def test_ascendancy_dashboard_surfaces_bounded_autopilot():
     assert 'p.path == "/admin/ascendancy/autopilot-cycle"' in server
     assert "ascendancy_autopilot.start()" in server
     assert "ascendancy_autopilot.close()" in server
+
+
+def test_ascendancy_dashboard_surfaces_external_research_work_orders():
+    ui = (REPO / "icarus_engine/ascendancy-ui.js").read_text(encoding="utf-8")
+    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
+
+    assert "/api/ascendancy/work-orders" in ui
+    assert "EXTERNAL RESEARCH WORK ORDERS" in ui
+    assert "OWNER" in ui
+    assert "REQUIRED DOMAIN ARTIFACTS" in ui
+    assert "ORDER ≠ EVIDENCE" in ui
+    assert 'p.path == "/api/ascendancy/work-orders"' in server
+    assert 'p.path == "/admin/ascendancy/work-order-claim"' in server
