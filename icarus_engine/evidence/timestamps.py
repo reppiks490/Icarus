@@ -16,6 +16,7 @@ _NUMBER = re.compile(r"^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$")
 _ISO_SECONDS = re.compile(r"^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:[.,](?P<fraction>\d+))?"
                           r"(?P<offset>Z|[+-]\d{2}(?::?\d{2})?(?::?\d{2}(?:[.,]\d+)?)?)?$")
 _FINE_FRACTION = re.compile(r"[.,]\d{7,}")
+_FRACTIONAL_OFFSET = re.compile(r"[+-]\d{2}(?::?\d{2})?(?::?\d{2})?[.,]\d+$")
 _EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
 _UPPER = Decimal(4102444800)  # exclusive: 2100-01-01 UTC
 
@@ -79,7 +80,7 @@ def normalize_timestamp(raw, *, naive_timezone=None) -> TimestampEvidence | None
         # datetime truncates fractions beyond microseconds, and can discard
         # fractional UTC offsets entirely. Preserve supported clock fractions
         # explicitly; refuse fractional offsets and other fine ISO forms.
-        if exact_iso and re.search(r"[.,]", exact_iso["offset"] or ""):
+        if _FRACTIONAL_OFFSET.search(s):
             return None
         if _FINE_FRACTION.search(s) and exact_iso is None:
             return None

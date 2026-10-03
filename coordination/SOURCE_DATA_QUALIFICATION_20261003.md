@@ -54,7 +54,8 @@ The initial synthetic regression suite produced 34 assertion failures across
 14 tests before repair. Additional cache/snapshot/study/UI regressions also
 failed before their repairs. Review also reproduced fine ISO fraction truncation,
 wall-time overflow, float flooring and conflicting intake replacement. These
-now have regressions; unsupported fractional UTC offsets are refused. All 21 new tests and the 10 historical closure
+now have regressions; unsupported fractional UTC offsets are refused. Repeated
+blocked backfills retain their blocked state. All 22 new tests and the 10 historical closure
 regressions pass locally. Tests execute real parser, file reload, CLI, SQLite,
 study digests and the shipped JavaScript. Mutable-path fault injection changes
 actual bytes while preserving the real parser/trainer. Exact published-source

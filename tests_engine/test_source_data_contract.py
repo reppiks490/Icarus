@@ -94,8 +94,10 @@ class SourceDataContractTests(unittest.TestCase):
                 self.assertFalse(record.whole_second)
                 with self.assertRaisesRegex(ValueError, 'subsecond'):
                     parse_ohlcv_csv(','.join(HEADERS) + '\n' + stamp + ',10,12,9,11,0\n')
-        for stamp in ['2023-11-14T22:13:20+00:00:00.000000001', '2023-11-14T22:13:20+00:00:00.000001']:
-            self.assertIsNone(normalize(stamp))
+        for stamp in ['2023-11-14T22:13:20+00:00:00.000000001', '2023-11-14T22:13:20+00:00:00.000001',
+                      '20231114T221320+000000.000001', '2023-11-14T22:13+00:00:00.000001']:
+            with self.subTest(offset_stamp=stamp):
+                self.assertIsNone(normalize(stamp))
         with tempfile.TemporaryDirectory() as temp:
             path = write_csv(Path(temp)/'source.csv', rows=[
                 ['2023-11-14T22:13:20.000000001Z', 10, 12, 9, 11, 0],
@@ -334,6 +336,22 @@ vm.runInNewContext(fs.readFileSync(process.argv[1], 'utf8'), context);
                 self.assertEqual(result['status'], 'blocked')
                 self.assertIn('bytes', result['reason'])
                 self.assertEqual(fabric.training_runs(), [])
+            finally:
+                fabric._conn.close()
+
+    def test_repeated_blocked_backfill_does_not_report_completion(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            path = write_csv(root/'source.csv', ['time', 'close'], [[1700000000+i*60, 11] for i in range(12)])
+            fabric = LearningFabric(root)
+            try:
+                dataset = fabric.register_dataset(path, asset='NQ', chart_type='1m')['dataset']
+                first = fabric.backfill_dataset(dataset['dataset_id'], slots=['logit'])
+                again = fabric.backfill_dataset(dataset['dataset_id'], slots=['logit'])
+                self.assertEqual(first['status'], 'blocked')
+                self.assertEqual(again['status'], 'blocked')
+                self.assertTrue(again['runs'][0]['idempotent'])
+                self.assertEqual(first['runs'][0]['report'], again['runs'][0]['report'])
             finally:
                 fabric._conn.close()
 

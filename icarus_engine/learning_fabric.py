@@ -3225,7 +3225,8 @@ class LearningFabric:
                     "reason": "prior OHLC parser receipts require review; protected evidence is not replayed automatically",
                     **_authority()}
         if len(existing) == len(requested):
-            return {"dataset_id": dataset_id, "status": "complete", "runs": cached, **_authority()}
+            return {"dataset_id": dataset_id, "status": "blocked" if any(row["status"] == "blocked" for row in existing.values()) else "complete",
+                    "runs": cached, **_authority()}
         path = Path(dataset["path"])
         try:
             raw = path.read_bytes()
@@ -3260,7 +3261,7 @@ class LearningFabric:
                     (run_id, dataset_id, slot, _json(report, "training report"), str(report.get("status") or "unknown"), _utc_now()),
                 )
             runs.append({"run_id": run_id, "slot": slot, "status": report.get("status"), "idempotent": False, "report": report})
-        return {"dataset_id": dataset_id, "status": "blocked" if manifest["status"] == "blocked" else "complete",
+        return {"dataset_id": dataset_id, "status": "blocked" if any(row.get("status") == "blocked" for row in runs) else "complete",
                 "runs": runs, **_authority()}
 
     def _ohlc_requalification_count(self) -> int:
