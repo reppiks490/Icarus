@@ -14,6 +14,7 @@ def test_ascendancy_rebased_organs_are_registered_without_duplicate_peer_bridge(
         "ascendancy-contribution": "daedalus",
         "ascendancy-evaluator": "daedalus",
         "ascendancy-governor": "omega",
+        "ascendancy-work-orders": "omega",
     }
     for subsystem_id, owner in expected.items():
         assert rows[subsystem_id]["owner"] == owner
@@ -34,3 +35,11 @@ def test_ascendancy_governor_registry_describes_scheduler_not_authority():
     assert "diversity" in job
     assert "qualification" in job
     assert "never" in job or "cannot" in job
+
+
+def test_ascendancy_work_order_registry_preserves_domain_receipt_authority():
+    row = next(x for x in SUBSYSTEMS if x["id"] == "ascendancy-work-orders")
+    job = row["job"].lower()
+    assert "work order" in job
+    assert "not evidence" in job
+    assert "domain receipt" in job
