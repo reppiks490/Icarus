@@ -1,0 +1,69 @@
+{
+  "schema": "icarus-mcp-event-v1",
+  "category": "EVOLUTION",
+  "source": "MACRO_AUTOMATION",
+  "execution_authorized": false,
+  "created_at": "2026-10-03T23:08:38Z",
+  "title": "Hormuz LNG partial-recovery signal",
+  "net_new_delta": "September LNG exits through Hormuz rose to the highest monthly level since the US-Iran war began, but remained far below pre-war normal; this adds a graded LNG-corridor recovery state distinct from crude transit evidence.",
+  "facts": [
+    "Reuters reported S&P Global Energy counted 19 LNG cargoes through Hormuz in September: 13 Qatar and 6 UAE, versus 15 in June.",
+    "Reuters reported Kpler counted 21 September LNG exits, also versus 15 in June.",
+    "S&P said sustained late-September acceleration could bring October full-month transits to about 25% of pre-war levels."
+  ],
+  "source_claims": [
+    "S&P Global Energy and Kpler independently indicate September was the highest monthly LNG transit count since the war began.",
+    "Analysts caution that dark transits, escalation risk, and winter sustainability remain unresolved."
+  ],
+  "model_inference": "Treat Hormuz LNG operability as partially recovering but severely impaired; do not infer normalization or extrapolate LNG transit recovery to crude/product flows.",
+  "unknowns": [
+    "Whether October sustains the late-September acceleration",
+    "Actual LNG volume versus cargo count",
+    "War-risk insurance and escort sustainability",
+    "Whether escalation reverses the recovery"
+  ],
+  "conflicts": "Higher LNG transit counts coexist with projectile attacks on tankers and extensive AIS-dark transits, so physical operability and security risk remain simultaneously elevated.",
+  "affected_instruments": [
+    "LNG",
+    "European/Asian gas benchmarks",
+    "Brent",
+    "WTI",
+    "DXY",
+    "Treasuries",
+    "NQ",
+    "MNQ"
+  ],
+  "affected_assumptions": [
+    "Hormuz operability is binary",
+    "Crude transit evidence can proxy LNG corridor recovery"
+  ],
+  "confidence": {
+    "partial_lng_recovery": "HIGH",
+    "broad_normalization": "LOW",
+    "durable_winter_recovery": "LOW"
+  },
+  "next_decisive_check": "Compare October LNG cargo counts and volumes with pre-war baseline, vessel AIS/dark-transit evidence, war-risk insurance and any new security incidents.",
+  "evidence": [
+    {
+      "publisher": "Reuters",
+      "date": "2026-10-02",
+      "url": "https://www.reuters.com/business/energy/september-lng-shipments-through-hormuz-hit-highest-since-start-us-iran-war-2026-10-02/",
+      "underlying_sources": [
+        "S&P Global Energy",
+        "Kpler",
+        "LSEG ship-tracking"
+      ]
+    }
+  ],
+  "paths": [
+    "automation_intelligence/mcp_interface/events/20261003T230838Z_macro_hormuz_lng_partial_recovery.json"
+  ],
+  "oracle": {
+    "status": "MATERIAL_DELTA",
+    "finding": "Hormuz LNG transit evidence supports a partial-recovery state while remaining far below normal, requiring graded rather than binary corridor-operability assumptions."
+  },
+  "supermesh_x": {
+    "status": "MATERIAL_DELTA",
+    "finding": "Independent S&P and Kpler cargo counts converge directionally; route future confirmation through cargo counts plus volumes, AIS/dark-transit evidence and security/insurance data rather than extrapolating from crude movements."
+  }
+}
