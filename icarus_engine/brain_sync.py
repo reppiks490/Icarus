@@ -985,14 +985,6 @@ def _normalize_peer_packet(
         raise ValueError("Icarus-engine peer packet_id mismatch")
 
     roundtrip_ack = _normalize_roundtrip_ack(packet.get("canonical_acceptance"))
-    if (
-        roundtrip_ack["status"] == "VERIFIED_PRIOR_PACKET"
-        and roundtrip_ack["accepted_peer_packet_id"] == claimed_id
-    ):
-        raise ValueError(
-            "Icarus-engine canonical acceptance cannot qualify the current peer packet"
-        )
-
     lanes_raw = packet.get("lanes")
     if not isinstance(lanes_raw, list):
         raise ValueError("Icarus-engine peer packet lanes must be an array")
