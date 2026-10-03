@@ -15,6 +15,7 @@ chart-timezone offset that maximises matches is chosen automatically.
 from __future__ import annotations
 
 import csv
+import math
 import re
 from collections import defaultdict
 from datetime import datetime, timezone
@@ -84,10 +85,51 @@ def _trade_columns(keys: List[str]) -> Dict[str, str]:
     }
 
 
-def _read_tv_trade_rows(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def _validate_historical_trade_rows(rows: List[Dict[str, Any]], columns: Dict[str, str]) -> None:
+    """Validate row relationships without assuming export order is chronological."""
+    positions: Dict[str, Dict[str, Any]] = {}
+    for index, row in enumerate(rows, start=1):
+        no = _text_value(row.get(columns['no']))
+        typ = _text_value(row.get(columns['type'])).lower()
+        if None in row or not no or typ not in {'entry long', 'entry short', 'exit long', 'exit short'}:
+            raise ValueError(f'trade row {index} has missing identity or unsupported type')
+        qty = _num(row.get(columns['qty']))
+        if not math.isfinite(qty) or qty <= 0:
+            raise ValueError(f'trade row {index} quantity must be finite and positive')
+        role, direction = typ.split()
+        position = positions.setdefault(no, {'entry': None, 'exits': []})
+        is_open = role == 'exit' and (
+            _text_value(row.get(columns['dt'])).lower() == 'open'
+            or _text_value(row.get(columns['signal'])).lower() == 'open'
+        )
+        timestamp = None if is_open else _parse_dt(row.get(columns['dt']))
+        if not is_open and not math.isfinite(_num(row.get(columns['price']))):
+            raise ValueError(f'trade row {index} price must be finite')
+        if role == 'exit' and not is_open and not math.isfinite(_num(row.get(columns['pnl']))):
+            raise ValueError(f'trade row {index} realized PnL must be finite')
+        if role == 'entry':
+            if position['entry'] is not None:
+                raise ValueError(f'trade {no} has repeated entry rows')
+            position['entry'] = (direction, timestamp)
+        else:
+            position['exits'].append((direction, timestamp))
+    for no, position in positions.items():
+        if position['entry'] is None:
+            raise ValueError(f'trade {no} has an exit without an entry')
+        direction, entry_timestamp = position['entry']
+        for exit_direction, exit_timestamp in position['exits']:
+            if exit_direction != direction:
+                raise ValueError(f'trade {no} entry and exit directions disagree')
+            if exit_timestamp is not None and exit_timestamp < entry_timestamp:
+                raise ValueError(f'trade {no} exit precedes its entry')
+
+
+def _read_tv_trade_rows(rows: List[Dict[str, Any]], *, strict: bool = False) -> List[Dict[str, Any]]:
     if not rows:
         return []
     columns = _trade_columns(list(rows[0].keys()))
+    if strict:
+        _validate_historical_trade_rows(rows, columns)
     by_no: Dict[str, Dict[str, Any]] = {}
     for row in rows:
         no = _text_value(row.get(columns["no"]))
@@ -123,7 +165,7 @@ def _read_tv_trade_rows(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
     grouped: Dict[tuple, Dict[str, Any]] = {}
     for trade in by_no.values():
-        if not trade.get("entry_ts"):
+        if trade.get("entry_ts") is None or (not strict and not trade.get("entry_ts")):
             continue
         key = (trade["entry_ts"], trade["dir"], round(trade["entry_px"], 4))
         group = grouped.setdefault(key, {
@@ -142,18 +184,21 @@ def _read_tv_trade_rows(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     return out
 
 
-def read_tv_trades(path: str) -> List[Dict[str, Any]]:
+def read_tv_trades(path: str, *, strict: bool = False) -> List[Dict[str, Any]]:
     with open(path, "r", encoding="utf-8-sig", newline="") as fh:
-        return read_tv_trades_text(fh.read())
+        return read_tv_trades_text(fh.read(), strict=strict)
 
 
-def read_tv_trades_text(text: str) -> List[Dict[str, Any]]:
+def read_tv_trades_text(text: str, *, strict: bool = False) -> List[Dict[str, Any]]:
     import io as _io
-    rows = list(csv.DictReader(_io.StringIO(text.lstrip("﻿"))))
-    return _read_tv_trade_rows(rows)
+    reader = csv.DictReader(_io.StringIO(text.lstrip("﻿")))
+    headers = [str(value).strip().lower() for value in reader.fieldnames or []]
+    if strict and len(headers) != len(set(headers)):
+        raise ValueError('historical trade table has duplicate column names')
+    return _read_tv_trade_rows(list(reader), strict=strict)
 
 
-def read_tv_trades_xlsx(path: str) -> List[Dict[str, Any]]:
+def read_tv_trades_xlsx(path: str, *, strict: bool = False) -> List[Dict[str, Any]]:
     """Read a TradingView Strategy Tester trade table from an XLSX workbook.
 
     The sheet name and header row are discovered from required TradingView
@@ -174,6 +219,9 @@ def read_tv_trades_xlsx(path: str) -> List[Dict[str, Any]]:
                     _trade_columns(headers)
                 except KeyError:
                     continue
+                named_headers = [header.lower() for header in headers if header]
+                if strict and len(named_headers) != len(set(named_headers)):
+                    raise ValueError('historical trade table has duplicate column names')
                 rows: List[Dict[str, Any]] = []
                 for raw in matrix[index + 1:]:
                     if not any(value not in (None, "") for value in raw):
@@ -193,7 +241,7 @@ def read_tv_trades_xlsx(path: str) -> List[Dict[str, Any]]:
         raise ValueError("no TradingView trade table found in XLSX workbook")
     if len(candidates) != 1:
         raise ValueError("multiple TradingView trade tables found in XLSX workbook")
-    return _read_tv_trade_rows(candidates[0])
+    return _read_tv_trade_rows(candidates[0], strict=strict)
 
 
 def engine_trades(r: AssetRunner) -> List[Dict[str, Any]]:
