@@ -312,6 +312,8 @@ jobs:
               for row in state["peer_source_contract_witnesses"]
           )
           assert state["peer_lane_witness_verified_count"] == len(local_lanes)
+          assert state["peer_lane_contract_binding_verified_count"] == len(state["peer_lanes"])
+          assert all(lane["contract_binding_verified"] is True for lane in state["peer_lanes"])
           assert all(lane["source_witness_verified"] is True for lane in local_lanes)
           assert all(
               lane["source_witness_status"] == "VERIFIED_AT_PACKET_SOURCE"
@@ -348,6 +350,7 @@ jobs:
               "peer_durability_only_lane_count": state["peer_durability_only_lane_count"],
               "peer_lane_witness_verified_count": state["peer_lane_witness_verified_count"],
               "peer_lane_witness_unavailable_count": state["peer_lane_witness_unavailable_count"],
+              "peer_lane_contract_binding_verified_count": state["peer_lane_contract_binding_verified_count"],
               "peer_lane_source_witnesses_required": truth["peer_lane_source_witnesses_required"],
               "peer_source_contract_witness_status": state["peer_source_contract_witness_status"],
               "peer_source_contract_witness_count": state["peer_source_contract_witness_count"],
