@@ -1,0 +1,24 @@
+{
+  "schema": "icarus-mcp-event-v1",
+  "event_id": "canonical-engine-federation-acceptance-20261003",
+  "at_utc": "2026-10-03T01:07:00Z",
+  "category": "INTEGRATION",
+  "status": "IMPLEMENTED",
+  "severity": "INFO",
+  "summary": "Persist an idempotent canonical acceptance receipt for each verified Icarus-engine peer packet after the bilateral federation gate succeeds on canonical main.",
+  "surface": "ICARUS cross-repository federation",
+  "source": "CHATGPT_MCP",
+  "paths": [
+    "icarus_engine/federation_acceptance.py",
+    "tests_engine/test_federation_acceptance.py",
+    ".github/workflows/live-engine-federation-gate.yml",
+    "automation_intelligence/federation/icarus_engine_acceptance.json"
+  ],
+  "evidence": [
+    "green bilateral federation receipt",
+    "verified peer packet ID and Git blob",
+    "verified source-contract witnesses",
+    "verified lane source witnesses and contract bindings"
+  ],
+  "execution_authorized": false
+}
