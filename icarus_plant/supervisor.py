@@ -112,6 +112,7 @@ class Plant:
         self.services[svc.name] = svc
 
     def spawn(self, svc: Service) -> None:
+        from icarus_engine.process_launch import background_kwargs
         env = os.environ.copy()
         env.update(svc.env)
         env["ICARUS_HOME"] = self.root
@@ -128,7 +129,10 @@ class Plant:
             )
             # Grok (xAI) — 2026-09-20: start_new_session is POSIX-only; Windows needs a new process group.
             if os.name == "nt":
-                kw["creationflags"] = int(getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0))
+                kw["creationflags"] = (
+                    int(getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0))
+                    | background_kwargs().get("creationflags", 0)
+                )
             else:
                 kw["start_new_session"] = True
             svc.popen = subprocess.Popen(svc.argv, **kw)  # type: ignore[arg-type]

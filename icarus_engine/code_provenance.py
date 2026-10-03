@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 import subprocess
 from typing import Any
+from .process_launch import background_kwargs
 
 REPOSITORY = "reppiks490/Icarus"
 
@@ -43,6 +44,7 @@ def local_code_provenance(repo_root: str | os.PathLike[str] | None = None) -> di
             capture_output=True,
             text=True,
             timeout=3,
+            **background_kwargs(),
         ).stdout.strip()
         commit = _sha(commit)
         if commit is None:
@@ -53,6 +55,7 @@ def local_code_provenance(repo_root: str | os.PathLike[str] | None = None) -> di
             capture_output=True,
             text=True,
             timeout=3,
+            **background_kwargs(),
         ).stdout.strip()
         if dirty:
             return {
