@@ -668,6 +668,8 @@ def test_adaptive_brain_surfaces_historical_engine_context():
     assert "historical_candidate_evidence_count" in ui
     assert "historical_context_status" in ui
     assert "Historical packet provenance" in ui
+    assert "PROJECTION VERIFIED" in ui
+    assert "historical_packet_projection_verified_count" in ui
     assert "PACKET SOURCE VERIFIED" in ui
     assert "Packet-bound source proof" in ui
     assert "historical_packet_witness_status" in ui
