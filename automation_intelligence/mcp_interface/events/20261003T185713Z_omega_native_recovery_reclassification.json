@@ -1,0 +1,76 @@
+{
+  "schema": "icarus-mcp-event-v1",
+  "category": "INTEGRATION",
+  "source": "OMEGA_AUTOMATION",
+  "execution_authorized": false,
+  "observed_at": "2026-10-03T18:57:13Z",
+  "event_id": "omega-20261003T185713Z-native-recovery-reclassification",
+  "title": "Restored-five health reclassified from persistent failure to lane-specific recovery",
+  "net_new_delta": "ROBUSTNESS_NATIVE_COMPLETION_RECOVERED_FOR_CURRENT_1805Z_SLOT_WHILE_ALPHA_DURABILITY_ADVANCED_WITHOUT_NATIVE_PROOF_AND_ADVANCED_CSV_REMAINS_UNVERIFIABLE",
+  "accepted_findings": [
+    "INFRASTRUCTURE: robustness_guardian 20261003T180500Z has exact expected RUN_ID, RUN_PERSISTED, scheduler-finalization-v5.7 and CHATGPT_CANONICAL_RECEIPT_PRESENT; slot_status=WORKER_RECEIPT_VERIFIED.",
+    "INFRASTRUCTURE: alpha_synthesis 20261003T182500Z finalization_state advanced to RUN_PERSISTED/BASELINE_PERSISTED, but the subsequent heartbeat was marked recovered_by=restored-five-durability-watchdog; treat this as durability advancement, not verified native completion.",
+    "INFRASTRUCTURE: advanced_csv 20261003T181500Z remains FALLBACK_LIVENESS_ONLY with WORKER_RECEIPT_CHECK_UNAVAILABLE.",
+    "CONTROL: GitHub-native v3 persisted current Macro 18:12Z and Flow 18:24Z deterministic-liveness receipts with SUBSTANTIVE_AI_INFERENCE_NOT_EXECUTED."
+  ],
+  "rejected_findings": [
+    "Reject the previous blanket PERSISTENT_NATIVE_RECEIPT_FAILURE classification as current for robustness_guardian after exact-slot recovery.",
+    "Reject alpha_synthesis BASELINE_PERSISTED as native-worker proof because watchdog recovery is explicitly recorded and worker provenance is not established.",
+    "Reject the fresh 18:42Z local-GGUF shadow batch as current worker-health proof because inspected shadow inputs are October 1 slots.",
+    "Reject deterministic v3 liveness as substantive Macro/Flow/AION/DAEDALUS/OMEGA inference."
+  ],
+  "conflicts": [
+    "Robustness moved from repeated watchdog-only/missing evidence to exact-slot verified native completion, proving recovery can occur after a failure streak.",
+    "Alpha finalization state looks healthier than its prior watchdog-fallback payload, but its heartbeat provenance still records watchdog recovery; status and provenance must remain separate."
+  ],
+  "blockers": [
+    "Advanced CSV worker-receipt checking remains unavailable.",
+    "Alpha 18:25Z lacks unambiguous native-worker provenance despite RUN_PERSISTED/BASELINE_PERSISTED state.",
+    "Fresh shadow diagnostics still evaluate stale October 1 inputs and cannot promote current health.",
+    "Newest inspected v3 Macro/Flow receipts remain liveness-only; substantive specialist inference is not evidenced by them."
+  ],
+  "next_highest_value_integration_target": "Promote a provenance-aware recovery state machine in JANUS/INFRASTRUCTURE: exact-slot MATCHING native receipt may transition a lane from DEGRADED to RECOVERING, but require consecutive exact-slot successes before HEALTHY; keep WATCHDOG_RECOVERED, CHECK_UNAVAILABLE and stale-shadow evidence orthogonal. Preserve GitHub-native v3 as authoritative liveness/persistence.",
+  "paths_evidence": [
+    {
+      "repo": "reppiks490/Icarus-engine",
+      "commit": "1c45701a11a68f3f036509cc746146b67d3bd67e",
+      "path": "automation_intelligence/restored_five_native/receipts/{robustness_guardian,advanced_csv}/*"
+    },
+    {
+      "repo": "reppiks490/Icarus-engine",
+      "commit": "e1ceb6fcca0c3ef8b2af0fde49f23979adf71f55",
+      "path": "automation_intelligence/agent_fabric/alpha_synthesis/finalization_state.json"
+    },
+    {
+      "repo": "reppiks490/Icarus-engine",
+      "commit": "a88bad7d62cd814b7a60239710c2801fcfc7ef0c",
+      "path": "automation_intelligence/agent_fabric/alpha_synthesis/heartbeat.json"
+    },
+    {
+      "repo": "reppiks490/Icarus-engine",
+      "commit": "3e032e3f2071333f8aaac8a8b92fbc8d3ebf0450",
+      "path": "automation_intelligence/omega_stack_native_v3/lanes/{macro,flow}/*"
+    },
+    {
+      "repo": "reppiks490/Icarus-engine",
+      "commit": "b0ea5f1afdc67f60c78e689b15bc80921e7fb63e",
+      "path": "automation_intelligence/restored_five_native/shadow_outputs/*"
+    }
+  ],
+  "athena": {
+    "status": "ACTIONABLE",
+    "finding": "Operational confidence may increase for robustness_guardian only to RECOVERING after exact-slot proof; do not generalize one recovery to other lanes or to substantive analytical authority."
+  },
+  "janus": {
+    "status": "ACTIONABLE",
+    "finding": "Replace persistent-failure boolean with provenance-aware transitions DEGRADED -> RECOVERING -> HEALTHY, requiring exact-slot evidence and consecutive-success criteria."
+  },
+  "infrastructure": {
+    "status": "DEGRADED_WITH_LANE_RECOVERY",
+    "finding": "robustness_guardian 18:05Z is exact-slot verified; alpha 18:25Z durability advanced but remains watchdog-proven rather than native-proven; advanced_csv remains CHECK_UNAVAILABLE."
+  },
+  "helios_prime": {
+    "status": "ACTIONABLE",
+    "finding": "Integrate recovery transitions without allowing stale shadow observations, watchdog durability, or v3 deterministic liveness to inherit native/substantive authority."
+  }
+}
