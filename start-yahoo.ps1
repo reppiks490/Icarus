@@ -24,22 +24,31 @@ $UsePyLauncher = $false
 if ($pyCmd.Name -eq 'py.exe' -or $pyCmd.Name -eq 'py') { $UsePyLauncher = $true }
 
 Write-Host ('Python: ' + $PyExe)
-Write-Host 'Installing Icarus into this Python. First time is slow.'
-if ($UsePyLauncher) { & $PyExe -3 -m pip install -e . } else { & $PyExe -m pip install -e . }
+Write-Host 'Fast startup: use the existing editable Git install; only install if ICARUS is missing.'
+if ($UsePyLauncher) {
+    & $PyExe -3 -c "import icarus_engine, icarus_plant" 2>$null
+} else {
+    & $PyExe -c "import icarus_engine, icarus_plant" 2>$null
+}
 if ($LASTEXITCODE -ne 0) {
-    Write-Host 'pip install failed.'
-    Read-Host 'Press Enter to close'
-    exit 1
+    Write-Host 'ICARUS import missing. Performing one-time editable install.'
+    if ($UsePyLauncher) { & $PyExe -3 -m pip install -e . } else { & $PyExe -m pip install -e . }
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host 'pip install failed.'
+        Read-Host 'Press Enter to close'
+        exit 1
+    }
 }
 
-Write-Host 'Starting plant  --assets NQ   (Yahoo, no --offline)'
+$Assets = if ($env:ICARUS_ASSETS) { $env:ICARUS_ASSETS } else { 'NQ,BTC,MNQ,MES,ES,YM,MYM,RTY,M2K,GC,MGC,SI,SIL,PL,PA,MBT' }
+Write-Host ('Starting plant  --assets ' + $Assets + '   (Yahoo/Coinbase, no --offline)')
 Write-Host 'Dashboard on THIS PC:  http://127.0.0.1:8791/   token: icarus'
 Write-Host 'Leave this window open.  Ctrl+C to stop.'
 Write-Host ''
 
 if ($UsePyLauncher) {
-    & $PyExe -3 -m icarus_plant start --assets NQ
+    & $PyExe -3 -m icarus_plant start --assets $Assets
 } else {
-    & $PyExe -m icarus_plant start --assets NQ
+    & $PyExe -m icarus_plant start --assets $Assets
 }
 exit $LASTEXITCODE
