@@ -108,6 +108,7 @@ from .ascendancy.mechanisms import MechanismLab
 from .ascendancy.invention import InventionLab, to_foundry_candidate
 from .ascendancy.contribution import ContributionLab
 from .ascendancy.evaluator import EvaluatorCascade
+from .ascendancy.governor import EvolutionGovernor
 
 
 def _no_json_constants(name: str):
@@ -232,6 +233,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     ascendancy_inventions = InventionLab(port.base_dir)
     ascendancy_contribution = ContributionLab(port.base_dir)
     ascendancy_evaluator = EvaluatorCascade(port.base_dir)
+    ascendancy_governor = EvolutionGovernor(port.base_dir)
     mcp_control = MCPControlPlane(port.base_dir)
     chronofold = ChronofoldEngine(port, possibility=possibility)
     commissioning = CommissioningEngine(port.base_dir, port, chronofold)
@@ -292,6 +294,20 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
         return {
             "archive": archive,
             "frontier": build_frontier(archive),
+            "execution_authorized": False,
+            "production_decision_authorized": False,
+        }
+
+    def _ascendancy_governor_state() -> Dict[str, Any]:
+        archive = ascendancy_archive.snapshot()
+        return {
+            "foundry": ascendancy_foundry.snapshot(),
+            "evaluator": ascendancy_evaluator.snapshot(),
+            "archive": archive,
+            "frontier": build_frontier(archive),
+            "unknowns": ascendancy_unknowns.snapshot(),
+            "inventions": ascendancy_inventions.snapshot(),
+            "federation": brain_remote_sync.status(),
             "execution_authorized": False,
             "production_decision_authorized": False,
         }
@@ -1153,6 +1169,16 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 except Exception as ex:
                     port.journal.log("WARN", f"ASCENDANCY evaluator snapshot: {type(ex).__name__}: {ex}")
                     return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/api/ascendancy/governor":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                try:
+                    return self._json(200, ascendancy_governor.snapshot())
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("WARN", f"ASCENDANCY governor snapshot: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
             if p.path == "/api/golive":
                 return self._json(200, golive_report(port))
             if p.path == "/api/agent":
@@ -1789,6 +1815,19 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     return self._json(400, {"detail": str(ex)})
                 except Exception as ex:
                     port.journal.log("ERROR", f"ASCENDANCY evaluator receipt: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/admin/ascendancy/governor-plan":
+                try:
+                    return self._json(200, _ascendancy_research_mutation(
+                        lambda: ascendancy_governor.plan(
+                            _ascendancy_governor_state(),
+                            body,
+                        )
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("ERROR", f"ASCENDANCY governor plan: {type(ex).__name__}: {ex}")
                     return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
             if p.path == "/admin/ascendancy/invention-generate":
                 try:
@@ -2460,6 +2499,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     srv.ascendancy_inventions = ascendancy_inventions
     srv.ascendancy_contribution = ascendancy_contribution
     srv.ascendancy_evaluator = ascendancy_evaluator
+    srv.ascendancy_governor = ascendancy_governor
     srv.learning = learning
     srv.chronofold = chronofold
     srv.commissioning = commissioning
