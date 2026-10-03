@@ -274,8 +274,13 @@ jobs:
           expected_sources = consumer["historical_context"]["sources"]
           assert state["historical_context_source_count"] == len(expected_sources)
           assert state["historical_packet_witness_count"] == len(expected_sources)
+          assert (
+              state["historical_packet_projection_verified_count"]
+              == len(expected_sources)
+          )
           assert all(
               row["source_artifact_blob_verified"] is True
+              and row["projection_verified"] is True
               and row["candidate_evidence_eligible"] is False
               and row["execution_authorized"] is False
               for row in state["historical_packet_witnesses"]
@@ -303,6 +308,14 @@ jobs:
           assert state["truth_contract"]["historical_context_never_bypasses_evaluator"] is True
           assert state["truth_contract"]["historical_source_artifact_blob_required"] is True
           assert state["truth_contract"]["historical_artifact_id_sha256_required"] is True
+          assert (
+              state["truth_contract"]["historical_packet_projection_verification_required"]
+              is True
+          )
+          assert (
+              state["truth_contract"]["historical_packet_projection_is_source_derived"]
+              is True
+          )
           local_lanes = [
               lane for lane in state["peer_lanes"]
               if lane["worker_repository"] == "reppiks490/Icarus-engine"
@@ -345,6 +358,7 @@ jobs:
               "historical_candidate_evidence_count": state["historical_candidate_evidence_count"],
               "historical_packet_witness_status": state["historical_packet_witness_status"],
               "historical_packet_witness_count": state["historical_packet_witness_count"],
+              "historical_packet_projection_verified_count": state["historical_packet_projection_verified_count"],
               "historical_packet_same_as_live_count": state["historical_packet_same_as_live_count"],
               "historical_packet_live_advanced_count": state["historical_packet_live_advanced_count"],
               "historical_packet_witnesses": [
@@ -353,6 +367,7 @@ jobs:
                       "artifact_id": row["artifact_id"],
                       "source_artifact_blob_sha": row["source_artifact_blob_sha"],
                       "source_artifact_blob_verified": row["source_artifact_blob_verified"],
+                      "projection_verified": row["projection_verified"],
                       "current_main_blob_sha": row["current_main_blob_sha"],
                       "current_main_relation": row["current_main_relation"],
                   }
