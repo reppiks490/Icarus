@@ -5,7 +5,7 @@
   "category": "INTEGRATION",
   "status": "IMPLEMENTED",
   "severity": "INFO",
-  "summary": "Verify the peer packet control-plane, agent-fabric, and MCP source contracts from exact Git blobs at the proven packet source revision before trusting peer lane or historical state.",
+  "summary": "Verify peer source contracts at the packet revision, bind each peer lane to the verified control-plane/agent-fabric declarations, and reject projection or lane-attribution drift before accepting peer state.",
   "surface": "ICARUS Adaptive Brain cross-repository federation",
   "source": "CHATGPT_MCP",
   "paths": [
@@ -17,9 +17,11 @@
     ".github/workflows/live-engine-historical-context-gate.yml"
   ],
   "evidence": [
-    "source_contract_blobs packet witnesses",
-    "packet-source contract Git blob verification",
-    "fail-closed source-contract substitution tests"
+    "exact control-plane, agent-fabric, and MCP Git blob verification at packet source_commit",
+    "control-plane and MCP packet projection equality",
+    "lane set/declarative identity binding to control-plane source",
+    "heartbeat/finalization path binding to agent-fabric manifest or declared worker-root fallback",
+    "fail-closed tests for source-contract, scheduler, path, and projection substitution"
   ],
   "execution_authorized": false
 }
