@@ -111,6 +111,7 @@ from .ascendancy.evaluator import EvaluatorCascade
 from .ascendancy.governor import EvolutionGovernor
 from .ascendancy.executor import GovernorExecutor
 from .ascendancy.autopilot import GovernorAutopilot
+from .ascendancy.work_orders import ResearchWorkOrderBoard
 
 
 def _no_json_constants(name: str):
@@ -237,6 +238,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     ascendancy_evaluator = EvaluatorCascade(port.base_dir)
     ascendancy_governor = EvolutionGovernor(port.base_dir)
     ascendancy_executor = GovernorExecutor(port.base_dir)
+    ascendancy_work_orders = ResearchWorkOrderBoard(port.base_dir)
     mcp_control = MCPControlPlane(port.base_dir)
     chronofold = ChronofoldEngine(port, possibility=possibility)
     commissioning = CommissioningEngine(port.base_dir, port, chronofold)
@@ -530,7 +532,11 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             }),
             "REJECT_FAILED_CANDIDATE": _ascendancy_reject_failed_candidate,
         }
-        return ascendancy_executor.execute(plan, handlers)
+        executed = ascendancy_executor.execute(plan, handlers)
+        dispatched = ascendancy_work_orders.dispatch(plan, executed)
+        out = dict(executed)
+        out["work_orders"] = dispatched
+        return out
 
     def _ascendancy_execute_safe_plan(body: Dict[str, Any]) -> Dict[str, Any]:
         return _ascendancy_execute_plan_object(
@@ -1311,6 +1317,16 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 except Exception as ex:
                     port.journal.log("WARN", f"ASCENDANCY autopilot snapshot: {type(ex).__name__}: {ex}")
                     return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/api/ascendancy/work-orders":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                try:
+                    return self._json(200, ascendancy_work_orders.snapshot())
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("WARN", f"ASCENDANCY work-order snapshot: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
             if p.path == "/api/golive":
                 return self._json(200, golive_report(port))
             if p.path == "/api/agent":
@@ -1980,6 +1996,20 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     return self._json(400, {"detail": str(ex)})
                 except Exception as ex:
                     port.journal.log("ERROR", f"ASCENDANCY autopilot cycle: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/admin/ascendancy/work-order-claim":
+                try:
+                    return self._json(200, _ascendancy_research_mutation(
+                        lambda: ascendancy_work_orders.claim(
+                            body.get("order_id"),
+                            worker_id=body.get("worker_id"),
+                            owner_subsystem=body.get("owner_subsystem"),
+                        )
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("ERROR", f"ASCENDANCY work-order claim: {type(ex).__name__}: {ex}")
                     return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
             if p.path == "/admin/ascendancy/invention-generate":
                 try:
@@ -2657,6 +2687,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     srv.ascendancy_governor = ascendancy_governor
     srv.ascendancy_executor = ascendancy_executor
     srv.ascendancy_autopilot = ascendancy_autopilot
+    srv.ascendancy_work_orders = ascendancy_work_orders
     srv.learning = learning
     srv.chronofold = chronofold
     srv.commissioning = commissioning
