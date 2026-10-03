@@ -7,12 +7,16 @@ on:
       - feat/live-engine-federation-gate-20261002-v2
     paths:
       - "icarus_engine/brain_sync.py"
+      - "icarus_engine/federation_acceptance.py"
       - "tests_engine/test_brain_sync.py"
+      - "tests_engine/test_federation_acceptance.py"
       - ".github/workflows/live-engine-federation-gate.yml"
   pull_request:
     paths:
       - "icarus_engine/brain_sync.py"
+      - "icarus_engine/federation_acceptance.py"
       - "tests_engine/test_brain_sync.py"
+      - "tests_engine/test_federation_acceptance.py"
       - ".github/workflows/live-engine-federation-gate.yml"
   workflow_dispatch:
   schedule:
@@ -374,3 +378,82 @@ jobs:
           path: live-engine-federation-receipt.json
           if-no-files-found: error
           retention-days: 14
+
+
+  persist-acceptance:
+    name: Persist canonical Icarus-engine acceptance
+    needs: bilateral-federation
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout canonical Icarus main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Download verified federation receipt
+        uses: actions/download-artifact@v4
+        with:
+          name: live-engine-federation-receipt
+          path: .federation-receipt
+
+      - name: Build idempotent canonical acceptance
+        run: |
+          python -m icarus_engine.federation_acceptance \
+            --input .federation-receipt/live-engine-federation-receipt.json \
+            --output automation_intelligence/federation/icarus_engine_acceptance.json
+
+      - name: Stage only canonical acceptance
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add automation_intelligence/federation/icarus_engine_acceptance.json
+          if git diff --cached --quiet; then
+            echo "ACCEPTANCE_NO_CHANGE=1" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          staged="$(git diff --cached --name-only)"
+          if [ "$staged" != "automation_intelligence/federation/icarus_engine_acceptance.json" ]; then
+            echo "Refusing out-of-scope federation acceptance mutation:" >&2
+            printf '%s\n' "$staged" >&2
+            exit 1
+          fi
+          echo "ACCEPTANCE_NO_CHANGE=0" >> "$GITHUB_ENV"
+
+      - name: Commit canonical acceptance
+        if: env.ACCEPTANCE_NO_CHANGE != '1'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "federation: accept verified Icarus-engine peer packet [skip ci]"
+
+          pushed=0
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            if ! git rebase origin/main; then
+              git rebase --abort || true
+              echo "Acceptance rebase conflict; refusing unsafe automatic resolution." >&2
+              exit 1
+            fi
+            if git push origin HEAD:main; then
+              pushed=1
+              break
+            fi
+            if [ "$attempt" -lt 5 ]; then
+              sleep $((attempt * 2))
+            fi
+          done
+
+          if [ "$pushed" -ne 1 ]; then
+            echo "Failed to persist federation acceptance after 5 optimistic push attempts." >&2
+            exit 1
+          fi
