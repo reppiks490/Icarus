@@ -110,6 +110,7 @@ from .ascendancy.contribution import ContributionLab
 from .ascendancy.evaluator import EvaluatorCascade
 from .ascendancy.governor import EvolutionGovernor
 from .ascendancy.executor import GovernorExecutor
+from .ascendancy.autopilot import GovernorAutopilot
 
 
 def _no_json_constants(name: str):
@@ -302,6 +303,31 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
 
     def _ascendancy_governor_state() -> Dict[str, Any]:
         archive = ascendancy_archive.snapshot()
+        remote = brain_remote_sync.status()
+        historical_sources = []
+        for row in remote.get("historical_context_sources", []):
+            if not isinstance(row, dict):
+                continue
+            historical_sources.append({
+                "id": row.get("id"),
+                "research_context_eligible": row.get("research_context_eligible") is True,
+                "candidate_evidence_eligible": row.get("candidate_evidence_eligible") is True,
+                "evidence_status": row.get("evidence_status"),
+                "blob_sha": row.get("remote_blob_sha"),
+            })
+        historical_sources.sort(key=lambda row: str(row.get("id") or ""))
+        federation = {
+            "status": remote.get("status"),
+            "peer_packet_status": remote.get("peer_packet_status"),
+            "peer_packet_id": remote.get("peer_packet_id"),
+            "historical_context_status": remote.get("historical_context_status"),
+            "historical_candidate_evidence_count": int(
+                remote.get("historical_candidate_evidence_count") or 0
+            ),
+            "historical_context_sources": historical_sources,
+            "execution_authorized": False,
+            "production_decision_authorized": False,
+        }
         return {
             "foundry": ascendancy_foundry.snapshot(),
             "evaluator": ascendancy_evaluator.snapshot(),
@@ -309,7 +335,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             "frontier": build_frontier(archive),
             "unknowns": ascendancy_unknowns.snapshot(),
             "inventions": ascendancy_inventions.snapshot(),
-            "federation": brain_remote_sync.status(),
+            "federation": federation,
             "execution_authorized": False,
             "production_decision_authorized": False,
         }
@@ -494,8 +520,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             "Evaluator cascade already recorded HALTED_FAILED; governor mirrored terminal research state.",
         )
 
-    def _ascendancy_execute_safe_plan(body: Dict[str, Any]) -> Dict[str, Any]:
-        plan = _ascendancy_governor_plan(body.get("plan_id"))
+    def _ascendancy_execute_plan_object(plan: Dict[str, Any]) -> Dict[str, Any]:
         handlers = {
             "REGISTER_WITH_EVALUATOR": lambda action: _ascendancy_register_evaluator_candidate({
                 "candidate_id": action.get("subject_id"),
@@ -506,6 +531,48 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             "REJECT_FAILED_CANDIDATE": _ascendancy_reject_failed_candidate,
         }
         return ascendancy_executor.execute(plan, handlers)
+
+    def _ascendancy_execute_safe_plan(body: Dict[str, Any]) -> Dict[str, Any]:
+        return _ascendancy_execute_plan_object(
+            _ascendancy_governor_plan(body.get("plan_id"))
+        )
+
+    _ascendancy_autopilot_policy = {
+        "max_actions_per_cycle": 8,
+        "max_estimated_cost_units": 20.0,
+        "exploration_fraction": 0.35,
+        "max_actions_per_niche": 1,
+        "allow_protected_holdout_request": True,
+        "allow_federated_context_mining": True,
+    }
+    _ascendancy_autopilot_enabled = str(
+        os.environ.get("ICARUS_ASCENDANCY_AUTOPILOT", "1")
+    ).strip().lower() not in {"0", "false", "no", "off"}
+    try:
+        _ascendancy_autopilot_interval = max(
+            30,
+            min(
+                3600,
+                int(os.environ.get("ICARUS_ASCENDANCY_AUTOPILOT_INTERVAL", "300")),
+            ),
+        )
+    except (TypeError, ValueError):
+        _ascendancy_autopilot_interval = 300
+
+    def _ascendancy_autopilot_plan() -> Dict[str, Any]:
+        return ascendancy_governor.plan(
+            _ascendancy_governor_state(),
+            _ascendancy_autopilot_policy,
+        )
+
+    ascendancy_autopilot = GovernorAutopilot(
+        port.base_dir,
+        plan_callback=_ascendancy_autopilot_plan,
+        execute_callback=_ascendancy_execute_plan_object,
+        interval_seconds=_ascendancy_autopilot_interval,
+        max_internal_iterations=4,
+        enabled=_ascendancy_autopilot_enabled,
+    )
 
     def _control_runner(target: str):
         try:
@@ -1234,6 +1301,16 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 except Exception as ex:
                     port.journal.log("WARN", f"ASCENDANCY executor snapshot: {type(ex).__name__}: {ex}")
                     return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/api/ascendancy/autopilot":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                try:
+                    return self._json(200, ascendancy_autopilot.status())
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("WARN", f"ASCENDANCY autopilot snapshot: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
             if p.path == "/api/golive":
                 return self._json(200, golive_report(port))
             if p.path == "/api/agent":
@@ -1894,6 +1971,16 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 except Exception as ex:
                     port.journal.log("ERROR", f"ASCENDANCY safe executor: {type(ex).__name__}: {ex}")
                     return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/admin/ascendancy/autopilot-cycle":
+                try:
+                    return self._json(200, _ascendancy_research_mutation(
+                        ascendancy_autopilot.run_cycle
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("ERROR", f"ASCENDANCY autopilot cycle: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
             if p.path == "/admin/ascendancy/invention-generate":
                 try:
                     return self._json(200, _ascendancy_research_mutation(
@@ -2516,12 +2603,14 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 brain_research_sync.start()
                 evolution_remote_sync.start()
                 evidence_lab_sync.start()
+                ascendancy_autopilot.start()
                 commissioning.start_background()
             try:
                 return super().serve_forever(poll_interval)
             finally:
                 if background:
                     autopilot.close()
+                    ascendancy_autopilot.close()
                     evidence_lab_sync.close()
                     evolution_remote_sync.close()
                     brain_research_sync.close()
@@ -2532,6 +2621,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
 
         def server_close(self):
             autopilot.close()
+            ascendancy_autopilot.close()
             evidence_lab_sync.close()
             evolution_remote_sync.close()
             brain_research_sync.close()
@@ -2566,6 +2656,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     srv.ascendancy_evaluator = ascendancy_evaluator
     srv.ascendancy_governor = ascendancy_governor
     srv.ascendancy_executor = ascendancy_executor
+    srv.ascendancy_autopilot = ascendancy_autopilot
     srv.learning = learning
     srv.chronofold = chronofold
     srv.commissioning = commissioning
