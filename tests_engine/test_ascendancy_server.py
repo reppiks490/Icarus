@@ -662,3 +662,52 @@ def test_evaluator_cascade_api_is_foundry_bound_and_research_only(ascendancy_gen
     assert port.paused is paused_before
     assert list(port.runners) == runners_before
     assert srv.ascendancy_evaluator.snapshot()["receipt_count"] == 1
+
+
+def test_governor_api_plans_current_research_state_without_trading_authority(ascendancy_genome_http):
+    port, srv, request = ascendancy_genome_http
+    paused_before = port.paused
+    runners_before = list(port.runners)
+
+    code, body = request("GET", "/api/ascendancy/governor", auth=False)
+    assert code == 401
+    assert "admin token" in body["detail"]
+
+    code, registered = request("POST", "/admin/ascendancy/candidate", body=_candidate())
+    assert code == 200, registered
+    cid = registered["candidate"]["candidate_id"]
+
+    code, advanced = request("POST", "/admin/ascendancy/candidate-stage", body={
+        "candidate_id": cid,
+        "stage": "INCUBATING",
+        "reason": "mechanism review passed",
+    })
+    assert code == 200, advanced
+
+    code, planned = request("POST", "/admin/ascendancy/governor-plan", body={
+        "max_actions_per_cycle": 6,
+        "max_estimated_cost_units": 12.0,
+        "exploration_fraction": 0.34,
+        "max_actions_per_niche": 1,
+        "allow_protected_holdout_request": True,
+        "allow_federated_context_mining": True,
+    })
+    assert code == 200, planned
+    assert planned["trading_state_unchanged"] is True
+    assert planned["plan"]["execution_authorized"] is False
+    assert planned["plan"]["production_decision_authorized"] is False
+    assert planned["plan"]["can_mint_evaluator_receipts"] is False
+    assert planned["plan"]["can_mint_qualification"] is False
+    action = next(x for x in planned["plan"]["actions"] if x["subject_id"] == cid)
+    assert action["kind"] == "REGISTER_WITH_EVALUATOR"
+
+    code, snapshot = request("GET", "/api/ascendancy/governor")
+    assert code == 200
+    assert snapshot["cycle_count"] == 1
+    assert snapshot["latest_plan_id"] == planned["plan"]["plan_id"]
+    assert snapshot["execution_authorized"] is False
+    assert snapshot["production_decision_authorized"] is False
+
+    assert port.paused is paused_before
+    assert list(port.runners) == runners_before
+    assert srv.ascendancy_governor.snapshot()["cycle_count"] == 1
