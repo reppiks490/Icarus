@@ -1,0 +1,68 @@
+{
+  "schema": "icarus-mcp-event-v1",
+  "category": "INTEGRATION",
+  "source": "OMEGA_AUTOMATION",
+  "event_time": "2026-10-03T16:58:10Z",
+  "event_id": "20261003T165810Z_omega_native_failure_persistence_integration",
+  "execution_authorized": false,
+  "title": "Restored-five native receipt misses persist while v3 liveness remains current",
+  "net_new_delta": "RESTORED_FIVE_NATIVE_RECEIPT_FAILURE_HAS_BECOME_PERSISTENT_ACROSS_MULTIPLE_CONSECUTIVE_SLOTS_WHILE_GITHUB_NATIVE_V3_CONTINUES_CURRENT_LIVENESS_PERSISTENCE",
+  "accepted_findings": [
+    "GitHub-native v3 persisted current deterministic liveness for Macro 16:12Z, Flow 16:24Z, AION 16:36Z, DAEDALUS 15:48Z, and OMEGA 16:00Z; each explicitly reports SUBSTANTIVE_AI_INFERENCE_NOT_EXECUTED.",
+    "The restored-five watchdog recorded missing canonical receipts after grace for alpha_synthesis 16:25Z, apex_council 15:45Z, and robustness_guardian 16:05Z.",
+    "Apex and Robustness now show repeated consecutive missing-receipt incidents across prior hourly slots, while Alpha has recurring misses including 15:25Z and 16:25Z.",
+    "Canonical federation accepted a fresh Icarus-engine peer packet with peer_substantive_lane_count=0 and RESEARCH authority."
+  ],
+  "rejected_findings": [
+    "Current v3 persistence is not substantive Macro, Flow, AION, DAEDALUS, or OMEGA inference.",
+    "Watchdog durability receipts are not native worker completion.",
+    "Earlier isolated native successes do not establish current lane health when later exact slots repeatedly lack canonical receipts."
+  ],
+  "conflicts": [
+    "The authoritative v3 liveness/persistence plane is current and functioning while restored-five native worker receipt production is repeatedly absent.",
+    "Federation freshness is healthy but substantive peer-lane count remains zero."
+  ],
+  "blockers": [
+    "No canonical native receipt after grace for the newest inspected Alpha, Apex, and Robustness slots.",
+    "The common failure stage between scheduler invocation, worker start, completion, receipt persistence, and observation remains unidentified.",
+    "Current specialist v3 outputs remain deterministic liveness rather than substantive inference."
+  ],
+  "next_highest_value_integration_target": "Promote consecutive-miss streaks and exact-slot receipt state into the JANUS/INFRASTRUCTURE worker-health time series, then isolate the first failing stage shared by Alpha, Apex, and Robustness without altering GitHub-native v3.",
+  "paths": [
+    "automation_intelligence/agent_fabric/alpha_synthesis/watchdog_incidents.jsonl",
+    "automation_intelligence/agent_fabric/apex_council/watchdog_incidents.jsonl",
+    "automation_intelligence/agent_fabric/robustness_guardian/watchdog_incidents.jsonl",
+    "automation_intelligence/omega_stack_native_v3/lanes/",
+    "automation_intelligence/federation/icarus_engine_acceptance.json"
+  ],
+  "evidence": [
+    {
+      "repository": "reppiks490/Icarus-engine",
+      "commit": "38c3bf623c523fa8526fa2056a96464b74b18d12"
+    },
+    {
+      "repository": "reppiks490/Icarus-engine",
+      "commit": "acc6be72800def1ba6c614ee9afa997dc6f9d27f"
+    },
+    {
+      "repository": "reppiks490/Icarus",
+      "commit": "2fb2ab32cce28856416ceb4bd019c90f5752351a"
+    }
+  ],
+  "athena": {
+    "status": "ACTIONABLE",
+    "finding": "Repeated exact-slot receipt misses increase operational uncertainty; do not inherit confidence from earlier isolated worker successes."
+  },
+  "janus": {
+    "status": "ACTIONABLE",
+    "finding": "Worker truth should include consecutive exact-slot success/miss streaks so transient recovery cannot mask persistent degradation."
+  },
+  "infrastructure": {
+    "status": "DEGRADED_PERSISTENT_NATIVE_RECEIPT_FAILURE",
+    "finding": "v3 liveness is current, but Alpha, Apex, and Robustness have fresh missing canonical receipts after grace, with repeated misses visible across consecutive slots."
+  },
+  "helios_prime": {
+    "status": "ACTIONABLE",
+    "finding": "Prioritize one shared stage-level diagnosis for recurring native receipt loss while preserving v3 as the authoritative liveness/persistence plane."
+  }
+}
