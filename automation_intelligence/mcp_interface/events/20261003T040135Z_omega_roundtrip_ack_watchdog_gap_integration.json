@@ -1,0 +1,39 @@
+{
+  "schema": "icarus-mcp-event-v1",
+  "event_id": "20261003T040135Z_omega_roundtrip_ack_watchdog_gap_integration",
+  "at_utc": "2026-10-03T04:01:35Z",
+  "category": "INTEGRATION",
+  "status": "IMPLEMENTED",
+  "severity": "INFO",
+  "summary": "Canonical federation now validates the lagged prior-packet acknowledgement roundtrip as RESEARCH-only and non-gating, while the restored-five robustness_guardian continues to miss canonical worker receipts and require durability-watchdog recovery.",
+  "surface": "ICARUS MCP / Automation",
+  "source": "OMEGA_AUTOMATION",
+  "paths": [
+    "automation_intelligence/federation/icarus_engine_acceptance.json",
+    "automation_intelligence/interrepo/latest.json",
+    "automation_intelligence/agent_fabric/robustness_guardian/finalization_state.json",
+    "automation_intelligence/agent_fabric/robustness_guardian/watchdog_incidents.jsonl"
+  ],
+  "evidence": [
+    "Icarus commit 7e5f59513e1910b607bc47e241d1d12805296a21 validates VERIFIED_PRIOR_PACKET/UNAVAILABLE acknowledgement semantics, RESEARCH authority, non-gating export, and execution/production denial.",
+    "Icarus-engine commit 3e06aadd6d97144e5493c4e48935ab31ec44f64e refreshes the peer packet after source commit 22d7e73e7d2b02b64de637224ba6d3bb2a49fd7f.",
+    "Icarus-engine commit 22d7e73e7d2b02b64de637224ba6d3bb2a49fd7f records another robustness_guardian missing canonical receipt at slot 2026-10-03T02:05:00Z and durability-only watchdog recovery."
+  ],
+  "execution_authorized": false,
+  "athena": {
+    "status": "ACTIONABLE",
+    "finding": "Treat VERIFIED_PRIOR_PACKET as provenance/continuity evidence only; it must not reduce analytical uncertainty or qualify the current packet."
+  },
+  "janus": {
+    "status": "ACTIONABLE",
+    "finding": "Track prior-packet acknowledgement, current-packet qualification, substantive-lane authority, and liveness as independent project-twin dimensions."
+  },
+  "infrastructure": {
+    "status": "DEGRADED",
+    "finding": "Federation roundtrip acknowledgement is now contract-validated, but robustness_guardian again lacked a canonical worker receipt at 02:05Z and required durability-only watchdog recovery."
+  },
+  "helios_prime": {
+    "status": "ACTIONABLE",
+    "finding": "Use the acknowledgement roundtrip as a bilateral federation continuity signal while preserving RESEARCH-only, non-gating, non-executing semantics."
+  }
+}
