@@ -22,7 +22,8 @@
   GET  /api/commissioning         append-only Chronofold prediction ledger, calibration, ablation and promotion gate
   POST /admin/pause | /admin/resume        {"asset": "NQ"} or all          (Bearer token)
   POST /admin/flatten                      {"confirm": true, "asset"?: "NQ"}
-  POST /admin/inputs                       {"asset": "NQ"|"*", "values": {...}, "chart": {...}, "persist": true}  → re-warm
+  POST /admin/inputs                       {"asset": "NQ"|"*", "values": {...}, "chart": {...}, "persist": true}  → synchronous re-warm
+  POST /admin/inputs/async                 same payload → immediate job id; re-warm continues in background
   POST /admin/inputs/reset                 {"asset": "NQ"}  (deletes inputs.<SYM>.json, re-warm)
   POST /admin/preset                       {"asset": "NQ", "preset": "NQ-10m-original"|null}
   POST /admin/assets/add                   {"symbol": "GC", "tf": "20", "preset"?: ...}
@@ -53,6 +54,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Dict
 from urllib.parse import parse_qs, urlparse
+import urllib.error
+import urllib.request
 
 from . import brand
 from .assets import REGISTRY, apply_chart_config, chart_capabilities, parse_spec, pin_config, resolve, validate_chart_config
@@ -980,9 +983,104 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
         },
     )
 
+    config_jobs: Dict[str, Dict[str, Any]] = {}
+    config_jobs_lock = threading.Lock()
+
+    def _config_scope(payload: Dict[str, Any]) -> str:
+        raw = str(payload.get("asset") or payload.get("symbol") or "*").strip().upper() or "*"
+        if raw == "*":
+            return raw
+        try:
+            return resolve(raw).symbol
+        except Exception:
+            return raw
+
+    def _config_scopes_overlap(left: str, right: str) -> bool:
+        return left == "*" or right == "*" or left == right
+
+    def _start_config_job(target_path: str, payload: Dict[str, Any]) -> tuple[Dict[str, Any], bool]:
+        scope = _config_scope(payload)
+        now = time.time()
+        with config_jobs_lock:
+            # One configuration replay per affected asset at a time. Repeated clicks
+            # attach to the existing job instead of stacking expensive historical replays.
+            for existing in config_jobs.values():
+                if existing.get("status") in ("queued", "running") and _config_scopes_overlap(scope, str(existing.get("scope") or "*")):
+                    return dict(existing), False
+            # Keep the in-memory journal bounded across long desktop sessions.
+            stale = [jid for jid, row in config_jobs.items()
+                     if row.get("status") in ("done", "error") and now - float(row.get("finished") or row.get("created") or now) > 3600]
+            for jid in stale:
+                config_jobs.pop(jid, None)
+            job_id = f"cfg-{time.time_ns():x}"
+            row = {
+                "id": job_id,
+                "status": "queued",
+                "scope": scope,
+                "target": target_path,
+                "created": now,
+                "started": None,
+                "finished": None,
+                "result": None,
+                "error": None,
+            }
+            config_jobs[job_id] = row
+
+        def worker() -> None:
+            with config_jobs_lock:
+                current = config_jobs.get(job_id)
+                if current is None:
+                    return
+                current["status"] = "running"
+                current["started"] = time.time()
+            try:
+                req = urllib.request.Request(
+                    f"http://127.0.0.1:{http_port}{target_path}",
+                    data=json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8"),
+                    method="POST",
+                    headers={
+                        "Authorization": "Bearer " + token,
+                        "Content-Type": "application/json",
+                        "Connection": "close",
+                    },
+                )
+                with urllib.request.urlopen(req, timeout=3600) as response:
+                    raw = response.read()
+                    result = json.loads(raw.decode("utf-8")) if raw else {}
+                with config_jobs_lock:
+                    current = config_jobs.get(job_id)
+                    if current is not None:
+                        current["status"] = "done"
+                        current["result"] = result
+                        current["finished"] = time.time()
+            except urllib.error.HTTPError as ex:
+                try:
+                    raw = ex.read()
+                    detail = json.loads(raw.decode("utf-8")) if raw else {}
+                    message = detail.get("detail") or detail.get("error") or f"HTTP {ex.code}"
+                except Exception:
+                    message = f"HTTP {ex.code}"
+                with config_jobs_lock:
+                    current = config_jobs.get(job_id)
+                    if current is not None:
+                        current["status"] = "error"
+                        current["error"] = str(message)
+                        current["finished"] = time.time()
+            except Exception as ex:
+                with config_jobs_lock:
+                    current = config_jobs.get(job_id)
+                    if current is not None:
+                        current["status"] = "error"
+                        current["error"] = f"{type(ex).__name__}: {ex}"
+                        current["finished"] = time.time()
+
+        threading.Thread(target=worker, daemon=True, name=f"config-rewarm-{scope}").start()
+        return dict(row), True
+
     class H(BaseHTTPRequestHandler):
         server_version = "icarus"
         sys_version = ""
+        protocol_version = "HTTP/1.1"
         timeout = 30                                              # idle connections must not hold a thread forever
 
         def log_message(self, *a: Any) -> None:  # quiet
@@ -1071,6 +1169,14 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             if p.path in ("/experience-ui.js", "/experience-ui.css"):
                 ctype = "text/javascript" if p.path.endswith(".js") else "text/css"
                 return self._send(200, (html_path.parent / p.path[1:]).read_bytes(), ctype)
+            if p.path.startswith("/api/config-jobs/"):
+                job_id = p.path.rsplit("/", 1)[-1]
+                with config_jobs_lock:
+                    row = config_jobs.get(job_id)
+                    snapshot = dict(row) if row is not None else None
+                if snapshot is None:
+                    return self._json(404, {"detail": "unknown configuration job"})
+                return self._json(200, snapshot)
             if p.path == "/healthz":
                 return self._json(200, {"ok": True, "assets": list(port.order), "warm": all(r.warm for r in port.runners.values()) if port.runners else False})
             if p.path == "/status/public":
@@ -1570,6 +1676,27 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._json(400, {"detail": f"bad JSON body: {ex}"})
             if not isinstance(body, dict):
                 return self._json(400, {"detail": "JSON body must be an object"})
+            async_config_routes = {
+                "/admin/inputs/async": "/admin/inputs",
+                "/admin/inputs/reset/async": "/admin/inputs/reset",
+                "/admin/preset/async": "/admin/preset",
+                "/admin/rewarm/async": "/admin/rewarm",
+            }
+            async_target = async_config_routes.get(p.path)
+            if async_target is not None:
+                job, created = _start_config_job(async_target, body)
+                note = (
+                    f"configuration re-warm queued for {job.get('scope')}"
+                    if created else
+                    f"configuration re-warm already running for {job.get('scope')}"
+                )
+                return self._json(202, {
+                    "ok": True,
+                    "job": job["id"],
+                    "status": job["status"],
+                    "scope": job["scope"],
+                    "note": note,
+                })
             if p.path == "/admin/learning/config":
                 try:
                     return self._json(200, research.configure_learning(body))
