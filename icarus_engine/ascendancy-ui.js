@@ -778,13 +778,59 @@
     '</section>';
   }
 
-  function renderAscendancy(capabilities, genomes, foundry, unknowns, mechanisms, inventions, contributions, evaluator, governor, executor, autopilot, peers, errors) {
+  function renderWorkOrders(workOrders) {
+    if (!workOrders) {
+      return '<section class="card" style="margin-top:12px"><h3>EXTERNAL RESEARCH WORK ORDERS</h3><div class="empty">UNAVAILABLE — work-order state did not load.</div></section>';
+    }
+    const orders = Array.isArray(workOrders.orders) ? workOrders.orders.slice().reverse() : [];
+    const rows = orders.map(row => {
+      const required = Array.isArray(row.required_artifacts) ? row.required_artifacts : [];
+      const claim = row.claim || null;
+      return '<tr>' +
+        '<td><code>' + h(short(row.order_id || 'UNAVAILABLE')) + '</code><div class="small muted">' + h(row.kind || 'UNAVAILABLE') + '</div></td>' +
+        '<td><b>' + h(String(row.owner_subsystem || 'UNAVAILABLE').toUpperCase()) + '</b></td>' +
+        '<td>' + h(row.work_type || 'UNAVAILABLE') + (row.evaluator_stage ? '<div class="small muted">' + h(row.evaluator_stage) + '</div>' : '') + '</td>' +
+        '<td><code>' + h(short(row.subject_id || 'UNAVAILABLE')) + '</code></td>' +
+        '<td class="' + statusClass(row.status) + '"><b>' + h(row.status || 'OPEN') + '</b>' +
+          (claim ? '<div class="small muted">' + h(claim.worker_id || 'claimed') + '</div>' : '') +
+        '</td>' +
+        '<td class="small">' + h(required.join(' · ') || 'DOMAIN RECEIPT') + '</td>' +
+        '<td class="small">ORDER ≠ EVIDENCE<br>completion_requires_domain_receipt=' + h(row.completion_requires_domain_receipt === true ? 'true' : 'false') + '</td>' +
+      '</tr>';
+    }).join('');
+    const truth = workOrders.truth_contract || {};
+    const owners = workOrders.owner_counts || {};
+    return '<section class="card" style="margin-top:12px">' +
+      '<h3>EXTERNAL RESEARCH WORK ORDERS</h3>' +
+      '<div class="small muted">Typed handoffs created automatically when the bounded loop reaches an evidence or authority boundary. Claims coordinate ownership; they do not prove completion.</div>' +
+      '<div class="tiles" style="margin-top:10px">' +
+        '<div class="tile"><div class="k">TOTAL</div><div class="v tnum">' + h(count(workOrders.order_count)) + '</div></div>' +
+        '<div class="tile"><div class="k">OPEN</div><div class="v tnum">' + h(count(workOrders.open_count)) + '</div></div>' +
+        '<div class="tile"><div class="k">CLAIMED</div><div class="v tnum">' + h(count(workOrders.claimed_count)) + '</div></div>' +
+        '<div class="tile"><div class="k">COMPLETED</div><div class="v tnum">' + h(count(workOrders.completed_count)) + '</div><div class="small muted">only authoritative domain receipts can establish completion</div></div>' +
+        '<div class="tile"><div class="k">OWNER LOAD</div><div class="small muted">' + h(Object.entries(owners).map(([k,v]) => k + ':' + v).join(' · ') || 'none') + '</div></div>' +
+        '<div class="tile"><div class="k">AUTHORITY</div><div class="v">DISPATCH ONLY</div><div class="small muted">ORDER ≠ EVIDENCE</div></div>' +
+      '</div>' +
+      '<div class="small muted" style="margin:10px 0">' +
+        'work_order_is_not_scientific_evidence=' + h(truth.work_order_is_not_scientific_evidence === true ? 'true' : 'UNAVAILABLE') +
+        ' · domain_receipt_required_before_completion=' + h(truth.domain_receipt_required_before_completion === true ? 'true' : 'UNAVAILABLE') +
+        ' · claim_is_coordination_not_completion=' + h(truth.claim_is_coordination_not_completion === true ? 'true' : 'UNAVAILABLE') +
+      '</div>' +
+      '<div class="scroll" style="max-height:50vh"><table><thead><tr>' +
+        '<th>Order</th><th>OWNER</th><th>Work type</th><th>Subject</th><th>Status</th><th>REQUIRED DOMAIN ARTIFACTS</th><th>Truth boundary</th>' +
+      '</tr></thead><tbody>' +
+        (rows || '<tr><td colspan="7" class="empty">No external research work orders yet.</td></tr>') +
+      '</tbody></table></div>' +
+    '</section>';
+  }
+
+  function renderAscendancy(capabilities, genomes, foundry, unknowns, mechanisms, inventions, contributions, evaluator, governor, executor, autopilot, workOrders, peers, errors) {
     const el = document.querySelector('#ascendancyBody');
     if (!el) return;
     const warning = errors.length
       ? '<div class="empty" style="margin-bottom:10px">DEGRADED: ' + h(errors.join(' · ')) + '</div>'
       : '';
-    el.innerHTML = warning + renderCapabilities(capabilities) + renderPeers(peers) + renderAscendancyAutopilot(autopilot) + renderGovernor(governor) + renderExecutor(executor) + renderUnknowns(unknowns) + renderInventions(inventions) + renderFoundry(foundry) + renderEvaluator(evaluator) + renderContributions(contributions) + renderMechanisms(mechanisms) + renderGenomeLab(genomes);
+    el.innerHTML = warning + renderCapabilities(capabilities) + renderPeers(peers) + renderAscendancyAutopilot(autopilot) + renderGovernor(governor) + renderExecutor(executor) + renderWorkOrders(workOrders) + renderUnknowns(unknowns) + renderInventions(inventions) + renderFoundry(foundry) + renderEvaluator(evaluator) + renderContributions(contributions) + renderMechanisms(mechanisms) + renderGenomeLab(genomes);
   }
 
   async function fetchJson(url, token) {
@@ -816,6 +862,7 @@
         fetchJson('/api/ascendancy/governor', token),
         fetchJson('/api/ascendancy/executor', token),
         fetchJson('/api/ascendancy/autopilot', token),
+        fetchJson('/api/ascendancy/work-orders', token),
         fetchJson('/api/brain', token)
       ]);
       if (seq !== loadSeq) return;
@@ -830,11 +877,12 @@
       const governor = settled[8].status === 'fulfilled' ? settled[8].value : null;
       const executor = settled[9].status === 'fulfilled' ? settled[9].value : null;
       const autopilot = settled[10].status === 'fulfilled' ? settled[10].value : null;
-      const peers = settled[11].status === 'fulfilled' ? settled[11].value : null;
+      const workOrders = settled[11].status === 'fulfilled' ? settled[11].value : null;
+      const peers = settled[12].status === 'fulfilled' ? settled[12].value : null;
       const errors = settled
         .filter(x => x.status === 'rejected')
         .map(x => x.reason && x.reason.message ? x.reason.message : String(x.reason || 'UNAVAILABLE'));
-      renderAscendancy(capabilities, genomes, foundry, unknowns, mechanisms, inventions, contributions, evaluator, governor, executor, autopilot, peers, errors);
+      renderAscendancy(capabilities, genomes, foundry, unknowns, mechanisms, inventions, contributions, evaluator, governor, executor, autopilot, workOrders, peers, errors);
     } catch (err) {
       if (seq !== loadSeq) return;
       el.innerHTML = '<div class="empty">ASCENDANCY state UNAVAILABLE: ' + h(err && err.message ? err.message : err) + '</div>';
