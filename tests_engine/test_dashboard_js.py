@@ -699,3 +699,19 @@ def test_rebased_ascendancy_dashboard_uses_canonical_federation_and_full_researc
     assert "MECHANISM LABORATORY" in ui
     assert "INVENTION ENGINE" in ui
     assert "UNKNOWN-UNKNOWN" in ui
+
+
+def test_ascendancy_dashboard_surfaces_autonomous_evolution_governor():
+    ui = (REPO / "icarus_engine/ascendancy-ui.js").read_text(encoding="utf-8")
+    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
+
+    assert "/api/ascendancy/governor" in ui
+    assert "AUTONOMOUS EVOLUTION GOVERNOR" in ui
+    assert "EXPLORATION" in ui
+    assert "EXPLOITATION" in ui
+    assert "ESTIMATED COST" in ui
+    assert "scheduler_heuristic_not_edge_score" in ui
+    assert "can_mint_evaluator_receipts=false" in ui
+    assert "can_mint_qualification=false" in ui
+    assert 'p.path == "/api/ascendancy/governor"' in server
+    assert 'p.path == "/admin/ascendancy/governor-plan"' in server
