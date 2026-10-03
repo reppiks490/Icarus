@@ -111,6 +111,10 @@ from .ascendancy.mechanisms import MechanismLab
 from .ascendancy.invention import InventionLab, to_foundry_candidate
 from .ascendancy.contribution import ContributionLab
 from .ascendancy.evaluator import EvaluatorCascade
+from .ascendancy.governor import EvolutionGovernor
+from .ascendancy.executor import GovernorExecutor
+from .ascendancy.autopilot import GovernorAutopilot
+from .ascendancy.work_orders import ResearchWorkOrderBoard
 
 
 def _no_json_constants(name: str):
@@ -235,6 +239,9 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     ascendancy_inventions = InventionLab(port.base_dir)
     ascendancy_contribution = ContributionLab(port.base_dir)
     ascendancy_evaluator = EvaluatorCascade(port.base_dir)
+    ascendancy_governor = EvolutionGovernor(port.base_dir)
+    ascendancy_executor = GovernorExecutor(port.base_dir)
+    ascendancy_work_orders = ResearchWorkOrderBoard(port.base_dir)
     mcp_control = MCPControlPlane(port.base_dir)
     chronofold = ChronofoldEngine(port, possibility=possibility)
     commissioning = CommissioningEngine(port.base_dir, port, chronofold)
@@ -295,6 +302,45 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
         return {
             "archive": archive,
             "frontier": build_frontier(archive),
+            "execution_authorized": False,
+            "production_decision_authorized": False,
+        }
+
+    def _ascendancy_governor_state() -> Dict[str, Any]:
+        archive = ascendancy_archive.snapshot()
+        remote = brain_remote_sync.status()
+        historical_sources = []
+        for row in remote.get("historical_context_sources", []):
+            if not isinstance(row, dict):
+                continue
+            historical_sources.append({
+                "id": row.get("id"),
+                "research_context_eligible": row.get("research_context_eligible") is True,
+                "candidate_evidence_eligible": row.get("candidate_evidence_eligible") is True,
+                "evidence_status": row.get("evidence_status"),
+                "blob_sha": row.get("remote_blob_sha"),
+            })
+        historical_sources.sort(key=lambda row: str(row.get("id") or ""))
+        federation = {
+            "status": remote.get("status"),
+            "peer_packet_status": remote.get("peer_packet_status"),
+            "peer_packet_id": remote.get("peer_packet_id"),
+            "historical_context_status": remote.get("historical_context_status"),
+            "historical_candidate_evidence_count": int(
+                remote.get("historical_candidate_evidence_count") or 0
+            ),
+            "historical_context_sources": historical_sources,
+            "execution_authorized": False,
+            "production_decision_authorized": False,
+        }
+        return {
+            "foundry": ascendancy_foundry.snapshot(),
+            "evaluator": ascendancy_evaluator.snapshot(),
+            "archive": archive,
+            "frontier": build_frontier(archive),
+            "unknowns": ascendancy_unknowns.snapshot(),
+            "inventions": ascendancy_inventions.snapshot(),
+            "federation": federation,
             "execution_authorized": False,
             "production_decision_authorized": False,
         }
@@ -448,6 +494,94 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             raise ValueError("unknown invention blueprint_id")
         payload = to_foundry_candidate(blueprint)
         return ascendancy_foundry.register(payload)
+
+    def _ascendancy_governor_plan(plan_id: str) -> Dict[str, Any]:
+        pid = str(plan_id or "").strip().lower()
+        if not pid:
+            raise ValueError("plan_id is required")
+        snapshot = ascendancy_governor.snapshot()
+        plan = next(
+            (
+                row for row in snapshot.get("plans", [])
+                if isinstance(row, dict) and str(row.get("plan_id") or "") == pid
+            ),
+            None,
+        )
+        if plan is None:
+            raise ValueError("unknown ASCENDANCY governor plan_id")
+        plan = dict(plan)
+        plan.pop("recorded_at", None)
+        return plan
+
+    def _ascendancy_reject_failed_candidate(action: Dict[str, Any]) -> Dict[str, Any]:
+        candidate_id = str(action.get("subject_id") or "").strip()
+        evaluator_state = ascendancy_evaluator.candidate(candidate_id)
+        if str(evaluator_state.get("state") or "") != "HALTED_FAILED":
+            raise ValueError(
+                "safe rejection requires an evaluator candidate already in HALTED_FAILED"
+            )
+        return ascendancy_foundry.reject(
+            candidate_id,
+            "Evaluator cascade already recorded HALTED_FAILED; governor mirrored terminal research state.",
+        )
+
+    def _ascendancy_execute_plan_object(plan: Dict[str, Any]) -> Dict[str, Any]:
+        handlers = {
+            "REGISTER_WITH_EVALUATOR": lambda action: _ascendancy_register_evaluator_candidate({
+                "candidate_id": action.get("subject_id"),
+            }),
+            "PROMOTE_BLUEPRINT_TO_FOUNDRY": lambda action: _ascendancy_invention_to_candidate({
+                "blueprint_id": action.get("subject_id"),
+            }),
+            "REJECT_FAILED_CANDIDATE": _ascendancy_reject_failed_candidate,
+        }
+        executed = ascendancy_executor.execute(plan, handlers)
+        dispatched = ascendancy_work_orders.dispatch(plan, executed)
+        out = dict(executed)
+        out["work_orders"] = dispatched
+        return out
+
+    def _ascendancy_execute_safe_plan(body: Dict[str, Any]) -> Dict[str, Any]:
+        return _ascendancy_execute_plan_object(
+            _ascendancy_governor_plan(body.get("plan_id"))
+        )
+
+    _ascendancy_autopilot_policy = {
+        "max_actions_per_cycle": 8,
+        "max_estimated_cost_units": 20.0,
+        "exploration_fraction": 0.35,
+        "max_actions_per_niche": 1,
+        "allow_protected_holdout_request": True,
+        "allow_federated_context_mining": True,
+    }
+    _ascendancy_autopilot_enabled = str(
+        os.environ.get("ICARUS_ASCENDANCY_AUTOPILOT", "1")
+    ).strip().lower() not in {"0", "false", "no", "off"}
+    try:
+        _ascendancy_autopilot_interval = max(
+            30,
+            min(
+                3600,
+                int(os.environ.get("ICARUS_ASCENDANCY_AUTOPILOT_INTERVAL", "300")),
+            ),
+        )
+    except (TypeError, ValueError):
+        _ascendancy_autopilot_interval = 300
+
+    def _ascendancy_autopilot_plan() -> Dict[str, Any]:
+        return ascendancy_governor.plan(
+            _ascendancy_governor_state(),
+            _ascendancy_autopilot_policy,
+        )
+
+    ascendancy_autopilot = GovernorAutopilot(
+        port.base_dir,
+        plan_callback=_ascendancy_autopilot_plan,
+        execute_callback=_ascendancy_execute_plan_object,
+        interval_seconds=_ascendancy_autopilot_interval,
+        max_internal_iterations=4,
+        enabled=_ascendancy_autopilot_enabled,
+    )
 
     def _control_runner(target: str):
         try:
@@ -1268,6 +1402,46 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 except Exception as ex:
                     port.journal.log("WARN", f"ASCENDANCY evaluator snapshot: {type(ex).__name__}: {ex}")
                     return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/api/ascendancy/governor":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                try:
+                    return self._json(200, ascendancy_governor.snapshot())
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("WARN", f"ASCENDANCY governor snapshot: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/api/ascendancy/executor":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                try:
+                    return self._json(200, ascendancy_executor.snapshot())
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("WARN", f"ASCENDANCY executor snapshot: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/api/ascendancy/autopilot":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                try:
+                    return self._json(200, ascendancy_autopilot.status())
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("WARN", f"ASCENDANCY autopilot snapshot: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/api/ascendancy/work-orders":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                try:
+                    return self._json(200, ascendancy_work_orders.snapshot())
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("WARN", f"ASCENDANCY work-order snapshot: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
             if p.path == "/api/golive":
                 return self._json(200, golive_report(port))
             if p.path == "/api/agent":
@@ -1946,6 +2120,53 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 except Exception as ex:
                     port.journal.log("ERROR", f"ASCENDANCY evaluator receipt: {type(ex).__name__}: {ex}")
                     return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/admin/ascendancy/governor-plan":
+                try:
+                    return self._json(200, _ascendancy_research_mutation(
+                        lambda: ascendancy_governor.plan(
+                            _ascendancy_governor_state(),
+                            body,
+                        )
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("ERROR", f"ASCENDANCY governor plan: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/admin/ascendancy/governor-execute-safe":
+                try:
+                    return self._json(200, _ascendancy_research_mutation(
+                        lambda: _ascendancy_execute_safe_plan(body)
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("ERROR", f"ASCENDANCY safe executor: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/admin/ascendancy/autopilot-cycle":
+                try:
+                    return self._json(200, _ascendancy_research_mutation(
+                        ascendancy_autopilot.run_cycle
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("ERROR", f"ASCENDANCY autopilot cycle: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/admin/ascendancy/work-order-claim":
+                try:
+                    return self._json(200, _ascendancy_research_mutation(
+                        lambda: ascendancy_work_orders.claim(
+                            body.get("order_id"),
+                            worker_id=body.get("worker_id"),
+                            owner_subsystem=body.get("owner_subsystem"),
+                        )
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("ERROR", f"ASCENDANCY work-order claim: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
             if p.path == "/admin/ascendancy/invention-generate":
                 try:
                     return self._json(200, _ascendancy_research_mutation(
@@ -2570,12 +2791,14 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 brain_research_sync.start()
                 evolution_remote_sync.start()
                 evidence_lab_sync.start()
+                ascendancy_autopilot.start()
                 commissioning.start_background()
             try:
                 return super().serve_forever(poll_interval)
             finally:
                 if background:
                     autopilot.close()
+                    ascendancy_autopilot.close()
                     evidence_lab_sync.close()
                     evolution_remote_sync.close()
                     brain_research_sync.close()
@@ -2586,6 +2809,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
 
         def server_close(self):
             autopilot.close()
+            ascendancy_autopilot.close()
             evidence_lab_sync.close()
             evolution_remote_sync.close()
             brain_research_sync.close()
@@ -2618,6 +2842,10 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     srv.ascendancy_inventions = ascendancy_inventions
     srv.ascendancy_contribution = ascendancy_contribution
     srv.ascendancy_evaluator = ascendancy_evaluator
+    srv.ascendancy_governor = ascendancy_governor
+    srv.ascendancy_executor = ascendancy_executor
+    srv.ascendancy_autopilot = ascendancy_autopilot
+    srv.ascendancy_work_orders = ascendancy_work_orders
     srv.learning = learning
     srv.chronofold = chronofold
     srv.commissioning = commissioning

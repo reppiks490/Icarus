@@ -662,3 +662,253 @@ def test_evaluator_cascade_api_is_foundry_bound_and_research_only(ascendancy_gen
     assert port.paused is paused_before
     assert list(port.runners) == runners_before
     assert srv.ascendancy_evaluator.snapshot()["receipt_count"] == 1
+
+
+def test_governor_api_plans_current_research_state_without_trading_authority(ascendancy_genome_http):
+    port, srv, request = ascendancy_genome_http
+    paused_before = port.paused
+    runners_before = list(port.runners)
+
+    code, body = request("GET", "/api/ascendancy/governor", auth=False)
+    assert code == 401
+    assert "admin token" in body["detail"]
+
+    code, registered = request("POST", "/admin/ascendancy/candidate", body=_candidate())
+    assert code == 200, registered
+    cid = registered["candidate"]["candidate_id"]
+
+    code, advanced = request("POST", "/admin/ascendancy/candidate-stage", body={
+        "candidate_id": cid,
+        "stage": "INCUBATING",
+        "reason": "mechanism review passed",
+    })
+    assert code == 200, advanced
+
+    code, planned = request("POST", "/admin/ascendancy/governor-plan", body={
+        "max_actions_per_cycle": 6,
+        "max_estimated_cost_units": 12.0,
+        "exploration_fraction": 0.34,
+        "max_actions_per_niche": 1,
+        "allow_protected_holdout_request": True,
+        "allow_federated_context_mining": True,
+    })
+    assert code == 200, planned
+    assert planned["trading_state_unchanged"] is True
+    assert planned["plan"]["execution_authorized"] is False
+    assert planned["plan"]["production_decision_authorized"] is False
+    assert planned["plan"]["can_mint_evaluator_receipts"] is False
+    assert planned["plan"]["can_mint_qualification"] is False
+    action = next(x for x in planned["plan"]["actions"] if x["subject_id"] == cid)
+    assert action["kind"] == "REGISTER_WITH_EVALUATOR"
+
+    code, snapshot = request("GET", "/api/ascendancy/governor")
+    assert code == 200
+    assert snapshot["cycle_count"] == 1
+    assert snapshot["latest_plan_id"] == planned["plan"]["plan_id"]
+    assert snapshot["execution_authorized"] is False
+    assert snapshot["production_decision_authorized"] is False
+
+    assert port.paused is paused_before
+    assert list(port.runners) == runners_before
+    assert srv.ascendancy_governor.snapshot()["cycle_count"] == 1
+
+
+def test_governor_safe_executor_applies_only_internal_bookkeeping(ascendancy_genome_http):
+    port, srv, request = ascendancy_genome_http
+    paused_before = port.paused
+    runners_before = list(port.runners)
+
+    code, registered = request("POST", "/admin/ascendancy/candidate", body=_candidate())
+    assert code == 200, registered
+    cid = registered["candidate"]["candidate_id"]
+    code, advanced = request("POST", "/admin/ascendancy/candidate-stage", body={
+        "candidate_id": cid,
+        "stage": "INCUBATING",
+        "reason": "mechanism review passed",
+    })
+    assert code == 200, advanced
+
+    policy = {
+        "max_actions_per_cycle": 4,
+        "max_estimated_cost_units": 10.0,
+        "exploration_fraction": 0.25,
+        "max_actions_per_niche": 1,
+        "allow_protected_holdout_request": True,
+        "allow_federated_context_mining": True,
+    }
+    code, planned = request("POST", "/admin/ascendancy/governor-plan", body=policy)
+    assert code == 200, planned
+    plan_id = planned["plan"]["plan_id"]
+    assert any(
+        x["kind"] == "REGISTER_WITH_EVALUATOR" and x["subject_id"] == cid
+        for x in planned["plan"]["actions"]
+    )
+
+    code, body = request("GET", "/api/ascendancy/executor", auth=False)
+    assert code == 401
+    assert "admin token" in body["detail"]
+
+    code, executed = request(
+        "POST",
+        "/admin/ascendancy/governor-execute-safe",
+        body={"plan_id": plan_id},
+    )
+    assert code == 200, executed
+    assert executed["trading_state_unchanged"] is True
+    assert executed["applied_count"] >= 1
+    assert executed["execution_authorized"] is False
+    assert executed["production_decision_authorized"] is False
+    assert srv.ascendancy_evaluator.snapshot()["candidate_count"] == 1
+    assert srv.ascendancy_evaluator.snapshot()["receipt_count"] == 0
+
+    code, again = request(
+        "POST",
+        "/admin/ascendancy/governor-execute-safe",
+        body={"plan_id": plan_id},
+    )
+    assert code == 200, again
+    matching = [
+        x for x in again["receipts"]
+        if x["kind"] == "REGISTER_WITH_EVALUATOR"
+        and x["subject_id"] == cid
+    ]
+    assert matching and matching[0]["idempotent"] is True
+    assert srv.ascendancy_evaluator.snapshot()["candidate_count"] == 1
+
+    code, planned2 = request("POST", "/admin/ascendancy/governor-plan", body=policy)
+    assert code == 200, planned2
+    assert any(
+        x["kind"] == "RUN_EVALUATOR_STAGE"
+        and x["subject_id"] == cid
+        for x in planned2["plan"]["actions"]
+    )
+    code, executed2 = request(
+        "POST",
+        "/admin/ascendancy/governor-execute-safe",
+        body={"plan_id": planned2["plan"]["plan_id"]},
+    )
+    assert code == 200, executed2
+    external = next(
+        x for x in executed2["receipts"]
+        if x["kind"] == "RUN_EVALUATOR_STAGE"
+        and x["subject_id"] == cid
+    )
+    assert external["status"] == "AWAITING_EXTERNAL_EVIDENCE"
+    assert srv.ascendancy_evaluator.snapshot()["receipt_count"] == 0
+
+    code, executor = request("GET", "/api/ascendancy/executor")
+    assert code == 200
+    assert executor["applied_internal_count"] >= 1
+    assert executor["awaiting_external_count"] >= 1
+    assert executor["truth_contract"]["executor_receipts_are_not_scientific_evidence"] is True
+
+    assert port.paused is paused_before
+    assert list(port.runners) == runners_before
+
+
+def test_ascendancy_autopilot_cycle_advances_only_safe_internal_work(ascendancy_genome_http):
+    port, srv, request = ascendancy_genome_http
+    paused_before = port.paused
+    runners_before = list(port.runners)
+
+    code, status = request("GET", "/api/ascendancy/autopilot")
+    assert code == 200
+    assert status["worker_running"] is False
+    assert status["cycle_count"] == 0
+    assert status["execution_authorized"] is False
+
+    code, registered = request("POST", "/admin/ascendancy/candidate", body=_candidate())
+    assert code == 200, registered
+    cid = registered["candidate"]["candidate_id"]
+    code, advanced = request("POST", "/admin/ascendancy/candidate-stage", body={
+        "candidate_id": cid,
+        "stage": "INCUBATING",
+        "reason": "mechanism review passed",
+    })
+    assert code == 200, advanced
+
+    code, cycle = request("POST", "/admin/ascendancy/autopilot-cycle", body={})
+    assert code == 200, cycle
+    assert cycle["trading_state_unchanged"] is True
+    assert cycle["status"] == "GREEN"
+    assert cycle["new_internal_transition_count"] >= 1
+    assert cycle["stop_reason"] == "AWAITING_EXTERNAL_OR_QUIESCENT"
+    assert cycle["execution_authorized"] is False
+    assert cycle["production_decision_authorized"] is False
+
+    evaluator = srv.ascendancy_evaluator.snapshot()
+    assert evaluator["candidate_count"] == 1
+    assert evaluator["receipt_count"] == 0
+    executor = srv.ascendancy_executor.snapshot()
+    assert executor["applied_internal_count"] >= 1
+    assert executor["awaiting_external_count"] >= 1
+
+    code, status = request("GET", "/api/ascendancy/autopilot")
+    assert code == 200
+    assert status["cycle_count"] == 1
+    assert status["latest_cycle_id"] == cycle["cycle_id"]
+    assert status["truth_contract"]["external_evidence_stops_internal_progression"] is True
+
+    assert port.paused is paused_before
+    assert list(port.runners) == runners_before
+
+
+def test_ascendancy_governor_state_excludes_volatile_remote_sync_timestamps(ascendancy_genome_http):
+    _, srv, request = ascendancy_genome_http
+
+    # Running a cycle twice against unchanged substantive state is idempotent
+    # even though remote-sync status may carry operational timestamps.
+    code, first = request("POST", "/admin/ascendancy/autopilot-cycle", body={})
+    assert code == 200, first
+    code, second = request("POST", "/admin/ascendancy/autopilot-cycle", body={})
+    assert code == 200, second
+    assert first["cycle_id"] == second["cycle_id"]
+    assert second["idempotent"] is True
+    assert srv.ascendancy_autopilot.status()["cycle_count"] == 1
+
+
+def test_autopilot_external_boundary_creates_routed_work_order(ascendancy_genome_http):
+    _, srv, request = ascendancy_genome_http
+
+    code, registered = request("POST", "/admin/ascendancy/candidate", body=_candidate())
+    assert code == 200, registered
+    cid = registered["candidate"]["candidate_id"]
+    code, advanced = request("POST", "/admin/ascendancy/candidate-stage", body={
+        "candidate_id": cid,
+        "stage": "INCUBATING",
+        "reason": "mechanism review passed",
+    })
+    assert code == 200, advanced
+
+    code, cycle = request("POST", "/admin/ascendancy/autopilot-cycle", body={})
+    assert code == 200, cycle
+    assert cycle["stop_reason"] == "AWAITING_EXTERNAL_OR_QUIESCENT"
+
+    code, board = request("GET", "/api/ascendancy/work-orders")
+    assert code == 200
+    order = next(x for x in board["orders"] if x["subject_id"] == cid)
+    assert order["kind"] == "RUN_EVALUATOR_STAGE"
+    assert order["work_type"] == "EVALUATOR_EVIDENCE"
+    assert order["owner_subsystem"] == "daedalus"
+    assert order["evaluator_stage"] == "CONTRACT_VALIDATION"
+    assert order["status"] == "OPEN"
+    assert order["order_itself_is_evidence"] is False
+    assert board["completed_count"] == 0
+
+    code, bad = request("POST", "/admin/ascendancy/work-order-claim", body={
+        "order_id": order["order_id"],
+        "worker_id": "wrong-worker",
+        "owner_subsystem": "aion",
+    })
+    assert code == 400
+    assert "owner mismatch" in bad["detail"]
+
+    code, claimed = request("POST", "/admin/ascendancy/work-order-claim", body={
+        "order_id": order["order_id"],
+        "worker_id": "daedalus-worker-1",
+        "owner_subsystem": "daedalus",
+    })
+    assert code == 200, claimed
+    assert claimed["status"] == "CLAIMED"
+    assert claimed["claim_receipt"]["scientific_evidence"] is False
+    assert srv.ascendancy_work_orders.snapshot()["claimed_count"] == 1
