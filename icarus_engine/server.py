@@ -109,6 +109,7 @@ from .ascendancy.invention import InventionLab, to_foundry_candidate
 from .ascendancy.contribution import ContributionLab
 from .ascendancy.evaluator import EvaluatorCascade
 from .ascendancy.governor import EvolutionGovernor
+from .ascendancy.executor import GovernorExecutor
 
 
 def _no_json_constants(name: str):
@@ -234,6 +235,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     ascendancy_contribution = ContributionLab(port.base_dir)
     ascendancy_evaluator = EvaluatorCascade(port.base_dir)
     ascendancy_governor = EvolutionGovernor(port.base_dir)
+    ascendancy_executor = GovernorExecutor(port.base_dir)
     mcp_control = MCPControlPlane(port.base_dir)
     chronofold = ChronofoldEngine(port, possibility=possibility)
     commissioning = CommissioningEngine(port.base_dir, port, chronofold)
@@ -461,6 +463,49 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             raise ValueError("unknown invention blueprint_id")
         payload = to_foundry_candidate(blueprint)
         return ascendancy_foundry.register(payload)
+
+    def _ascendancy_governor_plan(plan_id: str) -> Dict[str, Any]:
+        pid = str(plan_id or "").strip().lower()
+        if not pid:
+            raise ValueError("plan_id is required")
+        snapshot = ascendancy_governor.snapshot()
+        plan = next(
+            (
+                row for row in snapshot.get("plans", [])
+                if isinstance(row, dict) and str(row.get("plan_id") or "") == pid
+            ),
+            None,
+        )
+        if plan is None:
+            raise ValueError("unknown ASCENDANCY governor plan_id")
+        plan = dict(plan)
+        plan.pop("recorded_at", None)
+        return plan
+
+    def _ascendancy_reject_failed_candidate(action: Dict[str, Any]) -> Dict[str, Any]:
+        candidate_id = str(action.get("subject_id") or "").strip()
+        evaluator_state = ascendancy_evaluator.candidate(candidate_id)
+        if str(evaluator_state.get("state") or "") != "HALTED_FAILED":
+            raise ValueError(
+                "safe rejection requires an evaluator candidate already in HALTED_FAILED"
+            )
+        return ascendancy_foundry.reject(
+            candidate_id,
+            "Evaluator cascade already recorded HALTED_FAILED; governor mirrored terminal research state.",
+        )
+
+    def _ascendancy_execute_safe_plan(body: Dict[str, Any]) -> Dict[str, Any]:
+        plan = _ascendancy_governor_plan(body.get("plan_id"))
+        handlers = {
+            "REGISTER_WITH_EVALUATOR": lambda action: _ascendancy_register_evaluator_candidate({
+                "candidate_id": action.get("subject_id"),
+            }),
+            "PROMOTE_BLUEPRINT_TO_FOUNDRY": lambda action: _ascendancy_invention_to_candidate({
+                "blueprint_id": action.get("subject_id"),
+            }),
+            "REJECT_FAILED_CANDIDATE": _ascendancy_reject_failed_candidate,
+        }
+        return ascendancy_executor.execute(plan, handlers)
 
     def _control_runner(target: str):
         try:
@@ -1179,6 +1224,16 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 except Exception as ex:
                     port.journal.log("WARN", f"ASCENDANCY governor snapshot: {type(ex).__name__}: {ex}")
                     return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/api/ascendancy/executor":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                try:
+                    return self._json(200, ascendancy_executor.snapshot())
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("WARN", f"ASCENDANCY executor snapshot: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
             if p.path == "/api/golive":
                 return self._json(200, golive_report(port))
             if p.path == "/api/agent":
@@ -1828,6 +1883,16 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     return self._json(400, {"detail": str(ex)})
                 except Exception as ex:
                     port.journal.log("ERROR", f"ASCENDANCY governor plan: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/admin/ascendancy/governor-execute-safe":
+                try:
+                    return self._json(200, _ascendancy_research_mutation(
+                        lambda: _ascendancy_execute_safe_plan(body)
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("ERROR", f"ASCENDANCY safe executor: {type(ex).__name__}: {ex}")
                     return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
             if p.path == "/admin/ascendancy/invention-generate":
                 try:
@@ -2500,6 +2565,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     srv.ascendancy_contribution = ascendancy_contribution
     srv.ascendancy_evaluator = ascendancy_evaluator
     srv.ascendancy_governor = ascendancy_governor
+    srv.ascendancy_executor = ascendancy_executor
     srv.learning = learning
     srv.chronofold = chronofold
     srv.commissioning = commissioning
