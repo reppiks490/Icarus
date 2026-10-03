@@ -1,0 +1,59 @@
+{
+  "schema": "icarus-mcp-event-v1",
+  "category": "AUDIT",
+  "source": "AION_AUTOMATION",
+  "execution_authorized": false,
+  "observed_at": "2026-10-03T17:36:53Z",
+  "title": "AION audit: Red Sea optionality is state-dependent, not directional alpha",
+  "net_new_delta": "Historical same-regime evidence shows Bab el-Mandeb threat realizations can produce measurable traffic rerouting and freight costs, but the new Saudi offensive-preparation report is a two-sided transition whose near-term directional market sign is unidentified. Treat preparation, execution, traffic response, and physical-flow response as separate states.",
+  "evidence": [
+    {
+      "type": "GIT_BLOB",
+      "commit": "88e51776831218e88d9c8d47daab73b573e1c3c1",
+      "blob": "6baa6fe39e4737c2ed6133df5d8bf9f9dbe37af2",
+      "path": "automation_intelligence/mcp_interface/events/20261003T170836Z_macro_red_sea_saudi_offensive_optionality.json"
+    },
+    {
+      "type": "EXTERNAL",
+      "publisher": "Reuters",
+      "date": "2026-07-22",
+      "finding": "Five tankers changed course after Houthi threats; Reuters estimated rerouting could add about 10,000 nautical miles, 34 sailing days, more than $5m freight excluding fuel/insurance, plus about $1m Suez transit per vessel."
+    },
+    {
+      "type": "EXTERNAL",
+      "publisher": "Reuters",
+      "date": "2026-07-27",
+      "finding": "Bab el-Mandeb commodity-vessel crossings fell to 11, the lowest in months, after Houthi attacks; physical crude cargo prices rose to two-month highs."
+    },
+    {
+      "type": "EXTERNAL",
+      "publisher": "Reuters",
+      "date": "2026-10-02",
+      "finding": "Saudi Arabia is preparing a Yemeni-led offensive around Bab el-Mandeb; timing and success remain uncertain."
+    }
+  ],
+  "claim_evidence_status": "PHYSICAL_SHIPPING_RESPONSE_CHANNEL_SUPPORTED; DIRECTIONAL_PRICE_EDGE_UNVALIDATED",
+  "falsification_result": "FALSIFIED_AS_MONOTONIC_DIRECTIONAL_SIGNAL",
+  "maturity_change": "Causal state decomposition advances; no model, parameter, anomaly-predictiveness, calibration, or performance maturity increase.",
+  "blockers": [
+    "No frozen event population/effective N",
+    "No episode-clustered uncertainty",
+    "No multiplicity accounting across instruments/horizons",
+    "No protected temporal OOS",
+    "No ablation separating threat, traffic, freight, physical-flow and concurrent Hormuz effects",
+    "No cost-valid trading rule"
+  ],
+  "next_decisive_experiment": "Preregister Red Sea episodes with preparation->execution->attack/retaliation->traffic/rerouting->freight/insurance->physical-flow states. Compare state-only, traffic, and flow models at frozen horizons; cluster by episode, correct the full test family, ablate concurrent Hormuz shocks, and reserve the final contiguous episode block untouched for OOS. Only then test trading costs.",
+  "aion": {
+    "status": "MATERIAL_FINDING",
+    "finding": "Durable causal memory should encode Red Sea preparation, execution, traffic response and physical-flow response separately; historical rerouting proves the transmission channel exists but not the sign of the new preparation event."
+  },
+  "ascension": {
+    "status": "MATERIAL_FINDING",
+    "finding": "The new event has exact Git provenance and external corroboration, but neither independence, multiplicity, OOS nor directional performance authority is established."
+  },
+  "prometheus": {
+    "status": "MATERIAL_FINDING",
+    "finding": "Prioritize a state-transition event study with traffic/flow ablations over headline-direction inference; preserve negative and ambiguous episodes."
+  }
+}
