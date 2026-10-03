@@ -1190,7 +1190,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._json(200, {"ok": True, "assets": list(port.order), "warm": all(r.warm for r in port.runners.values()) if port.runners else False})
             if p.path == "/status/public":
                 try:
-                    return self._json(200, port.status())
+                    return self._json(200, port.status(nonblocking=True))
                 except Exception as ex:
                     sys.stderr.write(f"status/public failed: {type(ex).__name__}: {ex}\n")
                     return self._json(500, {"ok": False, "detail": f"{type(ex).__name__}: {ex}", "assets": []})
@@ -1547,7 +1547,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 r = self._runner(p.path.rsplit("/", 1)[1])
                 if not r:
                     return self._json(404, {"error": "unknown asset"})
-                return self._json(200, r.chart(self._int(q, "n", 240, 20, 800)))
+                return self._json(200, r.chart(self._int(q, "n", 240, 20, 800), nonblocking=True))
             if p.path.startswith("/api/trades/"):
                 r = self._runner(p.path.rsplit("/", 1)[1])
                 if not r:
@@ -2430,6 +2430,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                         for r in sorted(targets, key=lambda r: r.symbol):
                             locks.enter_context(r.lock)
                             r.ensure_configurable()
+                            r.publish_read_views()
+                        port._public_equity_epoch = port.equity_epoch
                         # Preflight the entire batch before the first asset is persisted/replayed.
                         for r in targets:
                             sp = replace(r.cfg.base_spec or r.spec)

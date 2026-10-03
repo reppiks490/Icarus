@@ -3,11 +3,15 @@ on:
   pull_request:
     paths:
       - 'icarus_engine/server.py'
+      - 'icarus_engine/runtime.py'
+      - 'icarus_engine/dashboard.html'
       - 'tests_engine/test_config_jobs.py'
       - '.github/workflows/config-job-contract.yml'
   push:
     paths:
       - 'icarus_engine/server.py'
+      - 'icarus_engine/runtime.py'
+      - 'icarus_engine/dashboard.html'
       - 'tests_engine/test_config_jobs.py'
       - '.github/workflows/config-job-contract.yml'
 permissions:
