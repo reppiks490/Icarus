@@ -1371,6 +1371,7 @@ class BrainRemoteSync:
                     normalized_peer["peer_source_commit_relation"] = relation.upper()
 
                     verified_source_contracts = 0
+                    verified_source_contract_docs: dict[str, Mapping[str, Any]] = {}
                     for witness in normalized_peer.get(
                         "peer_source_contract_witnesses", []
                     ):
@@ -1416,9 +1417,21 @@ class BrainRemoteSync:
                                 != "restored-five-native-control-v1"
                                 or source_payload.get("control_plane_id")
                                 != "restored-five-native-liveness-v1"
+                                or source_payload.get("repository") != REMOTE_REPOSITORY
                             ):
                                 raise ValueError(
                                     "peer control-plane source contract identity mismatch"
+                                )
+                        elif witness["id"] == "agent_fabric":
+                            if (
+                                source_payload.get("schema_version")
+                                != "agent-fabric-scheduler-bindings-v1"
+                                or source_payload.get("repository") != REMOTE_REPOSITORY
+                                or source_payload.get("branch") not in (None, REMOTE_REF)
+                                or source_payload.get("execution_authorized") is not False
+                            ):
+                                raise ValueError(
+                                    "peer agent-fabric source contract identity mismatch"
                                 )
                         elif witness["id"] == "mcp_interface":
                             if (
@@ -1431,6 +1444,7 @@ class BrainRemoteSync:
                                 raise ValueError(
                                     "peer MCP source contract identity mismatch"
                                 )
+                        verified_source_contract_docs[witness["id"]] = source_payload
                         witness["verified"] = True
                         verified_source_contracts += 1
 
@@ -1443,6 +1457,152 @@ class BrainRemoteSync:
                     normalized_peer["peer_source_contract_witness_status"] = "green"
                     normalized_peer["peer_source_contract_witness_count"] = (
                         verified_source_contracts
+                    )
+
+                    control_source = verified_source_contract_docs.get("control_plane")
+                    fabric_source = verified_source_contract_docs.get("agent_fabric")
+                    mcp_source = verified_source_contract_docs.get("mcp_interface")
+                    if (
+                        not isinstance(control_source, Mapping)
+                        or not isinstance(fabric_source, Mapping)
+                        or not isinstance(mcp_source, Mapping)
+                    ):
+                        raise ValueError("peer source contract documents are incomplete")
+
+                    packet_control = normalized_peer.get("peer_control_plane")
+                    if not isinstance(packet_control, Mapping):
+                        raise ValueError("peer packet control-plane projection is missing")
+                    for key in (
+                        "schema_version",
+                        "control_plane_id",
+                        "timezone",
+                        "grace_minutes",
+                        "catchup_horizon_minutes",
+                    ):
+                        if packet_control.get(key) != control_source.get(key):
+                            raise ValueError(
+                                f"peer control-plane projection mismatch: {key}"
+                            )
+
+                    packet_mcp = normalized_peer.get("peer_mcp_interface")
+                    if not isinstance(packet_mcp, Mapping):
+                        raise ValueError("peer packet MCP projection is missing")
+                    for key in (
+                        "schema_version",
+                        "event_root",
+                        "ui_api",
+                        "ui_tab",
+                        "source_of_truth",
+                        "trading_execution_authorized",
+                    ):
+                        expected = (
+                            False
+                            if key == "trading_execution_authorized"
+                            else mcp_source.get(key)
+                        )
+                        if packet_mcp.get(key) != expected:
+                            raise ValueError(f"peer MCP projection mismatch: {key}")
+
+                    control_lanes_raw = control_source.get("lanes")
+                    if not isinstance(control_lanes_raw, list):
+                        raise ValueError("peer control-plane source lanes are missing")
+                    control_lanes: dict[str, Mapping[str, Any]] = {}
+                    for raw_lane in control_lanes_raw:
+                        if not isinstance(raw_lane, Mapping):
+                            raise ValueError("peer control-plane lane is not an object")
+                        lane_name = str(raw_lane.get("name") or "").strip()
+                        if not lane_name or lane_name in control_lanes:
+                            raise ValueError(
+                                "peer control-plane lane names must be unique"
+                            )
+                        control_lanes[lane_name] = raw_lane
+
+                    packet_lanes = normalized_peer.get("peer_lanes", [])
+                    packet_lane_names = {
+                        str(lane.get("name") or "")
+                        for lane in packet_lanes
+                        if isinstance(lane, Mapping)
+                    }
+                    if set(control_lanes) != packet_lane_names:
+                        raise ValueError(
+                            "peer lane set disagrees with control-plane source"
+                        )
+
+                    fabric_lanes = fabric_source.get("lanes")
+                    if not isinstance(fabric_lanes, Mapping):
+                        fabric_lanes = {}
+                    contract_bound_lanes = 0
+                    for lane in packet_lanes:
+                        name = str(lane.get("name") or "")
+                        declared = control_lanes[name]
+                        expected_worker_repository = str(
+                            declared.get("worker_repository") or REMOTE_REPOSITORY
+                        )
+                        expected_worker_root = (
+                            str(declared.get("worker_root") or "").strip() or None
+                        )
+                        declaration_checks = {
+                            "title": declared.get("title"),
+                            "minute": declared.get("minute"),
+                            "scheduler_id": declared.get("scheduler_id"),
+                            "run_prefix": declared.get("run_prefix"),
+                            "worker_repository": expected_worker_repository,
+                            "worker_root": expected_worker_root,
+                        }
+                        for key, expected in declaration_checks.items():
+                            if lane.get(key) != expected:
+                                raise ValueError(
+                                    f"peer lane control-plane binding mismatch: {name}:{key}"
+                                )
+
+                        if expected_worker_repository != REMOTE_REPOSITORY:
+                            if (
+                                lane.get("heartbeat_path") is not None
+                                or lane.get("finalization_path") is not None
+                            ):
+                                raise ValueError(
+                                    f"peer remote sibling lane invents local paths: {name}"
+                                )
+                            lane["contract_binding_verified"] = True
+                            lane["contract_binding_status"] = (
+                                "CONTRACT_BOUND_REMOTE_SIBLING"
+                            )
+                            contract_bound_lanes += 1
+                            continue
+
+                        fabric_lane = fabric_lanes.get(name)
+                        if not isinstance(fabric_lane, Mapping):
+                            fabric_lane = {}
+                        expected_heartbeat = str(
+                            fabric_lane.get("runtime_status_source")
+                            or (
+                                f"{expected_worker_root}/heartbeat.json"
+                                if expected_worker_root
+                                else ""
+                            )
+                        ).strip() or None
+                        expected_finalization = str(
+                            fabric_lane.get("finalization_state")
+                            or (
+                                f"{expected_worker_root}/finalization_state.json"
+                                if expected_worker_root
+                                else ""
+                            )
+                        ).strip() or None
+                        if lane.get("heartbeat_path") != expected_heartbeat:
+                            raise ValueError(
+                                f"peer lane agent-fabric binding mismatch: {name}:heartbeat_path"
+                            )
+                        if lane.get("finalization_path") != expected_finalization:
+                            raise ValueError(
+                                f"peer lane agent-fabric binding mismatch: {name}:finalization_path"
+                            )
+                        lane["contract_binding_verified"] = True
+                        lane["contract_binding_status"] = "CONTRACT_BOUND_LOCAL"
+                        contract_bound_lanes += 1
+
+                    normalized_peer["peer_lane_contract_binding_verified_count"] = (
+                        contract_bound_lanes
                     )
 
                     verified_lane_witnesses = 0
