@@ -1,0 +1,67 @@
+{
+  "schema": "icarus-mcp-event-v1",
+  "category": "INTEGRATION",
+  "source": "OMEGA_AUTOMATION",
+  "event_time": "2026-10-03T07:01:04Z",
+  "event_id": "20261003T070104Z_omega_hormuz_incident_shadow_truth_integration",
+  "execution_authorized": false,
+  "title": "OMEGA: physical Hormuz incident plus shadow-worker truth separation",
+  "net_new_delta": "HORMUZ_MARITIME_INCIDENT_RISK is now backed by a physical tanker-strike report while restored-five local shadow evidence exposes explicit worker-receipt mismatch/missing states; physical incident risk and analytical/runtime authority must remain separately promoted.",
+  "accepted_findings": [
+    "Macro: UKMTO-reported crude tanker projectile strike off Oman is material physical-maritime incident evidence; crew safe and no environmental impact reported.",
+    "Control plane: local GGUF shadow outputs truthfully mark fallback-only states, missing/mismatched worker receipts, and substantive work not proven.",
+    "Federation: canonical acceptance remains fresh RESEARCH-only with peer_substantive_lane_count=0."
+  ],
+  "rejected_findings": [
+    "Do not infer Strait closure, petroleum-flow loss, attribution, or realized energy supply disruption from the tanker incident alone.",
+    "Do not treat local shadow model completion as native worker completion or substantive research.",
+    "Do not treat canonical peer acceptance as analytical or execution authority."
+  ],
+  "conflicts": [
+    "Physical maritime incident risk increased, but measurable shipping/energy-flow impairment remains unverified.",
+    "Shadow inference completed while underlying worker receipts remain missing/mismatched; inference availability and worker execution health diverge."
+  ],
+  "blockers": [
+    "Need independent evidence of traffic reduction/rerouting, freight or insurance repricing, or oil/LNG flow impairment before realized-supply promotion.",
+    "Need stage-level worker observability to locate scheduler->start->completion->receipt failure boundary."
+  ],
+  "next_highest_value_integration_target": "Bind event-state promotion and runtime-evidence promotion independently: HORMUZ_MARITIME_INCIDENT_RISK -> SHIPPING_IMPAIRMENT -> REALIZED_SUPPLY_DISRUPTION, while worker health requires expected RUN_ID match plus native receipt/completion evidence; shadow output remains advisory only.",
+  "evidence": [
+    {
+      "repository": "reppiks490/Icarus",
+      "commit": "de13fcc7ff4cba7fa73ef3b9d95afe723ba83c39",
+      "path": "automation_intelligence/mcp_interface/events/20261003T061013Z_macro_hormuz_tanker_projectile_incident.json"
+    },
+    {
+      "repository": "reppiks490/Icarus-engine",
+      "commit": "e6732f58608015367a912d8d834eb662a0645e0f",
+      "path": "automation_intelligence/restored_five_native/shadow_outputs/"
+    },
+    {
+      "repository": "reppiks490/Icarus-engine",
+      "commit": "d422f1fd41d76d4ff47a3f2bc190cda7de24b39c",
+      "path": "automation_intelligence/interrepo/latest.json"
+    },
+    {
+      "repository": "reppiks490/Icarus",
+      "commit": "bbc9594100dc0cf343f267b1e7464a684a742485",
+      "path": "automation_intelligence/federation/icarus_engine_acceptance.json"
+    }
+  ],
+  "athena": {
+    "status": "ACTIONABLE",
+    "finding": "Raise uncertainty around physical Hormuz maritime incident risk, but block realized-supply promotion until shipping/flow transmission is verified; shadow outputs cannot reduce analytical uncertainty."
+  },
+  "janus": {
+    "status": "ACTIONABLE",
+    "finding": "Track physical incident, shipping impairment, realized supply disruption, native worker completion, shadow advisory completion, and federation acceptance as independent project-twin dimensions."
+  },
+  "infrastructure": {
+    "status": "DEGRADED",
+    "finding": "Local shadow inference is operational but exposes missing/mismatched native worker receipts; fallback liveness and model completion do not prove worker execution."
+  },
+  "helios_prime": {
+    "status": "ACTIONABLE",
+    "finding": "Integrate the new physical-maritime state and shadow-truth semantics across the fabric without allowing either federation transport or advisory inference to inflate substantive authority."
+  }
+}
