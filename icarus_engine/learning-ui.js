@@ -238,6 +238,8 @@
       table(['Producer','Asset','Regime','Horizon s','Target','Prediction label','Source revision','State','Train','Holdout','Holdout raw Brier','Holdout calibrated Brier','Brier improvement','Evidence cutoff'], shadowCalibrationRows(shadow_models), 'UNMEASURED — no holdout-validated shadow calibrators yet.') +
       '<h3 class="small" style="margin:16px 0 8px">REALIZED EXPERIENCE · P&L MEMORY</h3>' +
       table(['Source','Asset','Direction','State','Count','Win rate','Net P&L','Avg P&L','PROFIT FACTOR'], experienceRows(experience.summary), 'UNMEASURED — no fully closed realized trade experience yet.') +
+      (Number(experience.legacy_historical_import_runs || 0) > 0 ?
+        '<div class="small" role="status">Historical imports require requalification: ' + val(experience.legacy_historical_import_runs,0) + ' older receipts. Existing outcome records are preserved for review.</div>' : '') +
       '<h3 class="small" style="margin:16px 0 8px">STRATEGY CONFIGURATION EXPERIENCE · CLOSURE-TIME PROVENANCE · RUNTIME_CLOSURE_CONFIG</h3>' +
       '<div class="small muted" style="margin-bottom:8px">Only runtime_live_sim trades carrying an exact closure-time configuration receipt and source-bound RUNTIME_CLOSURE_CONFIG appear here. Historical evidence cannot enter this class. Unscoped realized experience: ' + val(unscoped_count,0) + '.</div>' +
       table(['Strategy fingerprint','Provenance class','Asset','Side','Session','Chart / TF','Fill / Security','Preset','State','Count','Win rate','Net P&L','Avg P&L','PAYOFF RATIO','MAX DRAWDOWN'], configurationExperienceRows(by_configuration), 'UNMEASURED — no closure-scoped strategy experience yet.') +

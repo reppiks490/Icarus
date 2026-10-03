@@ -34,6 +34,7 @@ _HISTORICAL_PROVENANCE_SOURCE_BY_QUALITY = {
     _DIRECT_STRATEGY_REPORT_QUALITY: "historical_strategy_report_xlsx",
 }
 _MANIFEST_LINKAGE_VERSION = 4
+_HISTORICAL_ADMISSION_VERSION = 2
 _RUNTIME_PROVENANCE_CLASS = "RUNTIME_CLOSURE_CONFIG"
 _HISTORICAL_PROVENANCE_CLASS = "HISTORICAL_ARTIFACT_CONFIG"
 _UNSCOPED_PROVENANCE_CLASS = "UNSCOPED"
@@ -132,6 +133,27 @@ def _authority() -> dict[str, bool]:
 def _is_sha256(value: Any) -> bool:
     raw = str(value or "").lower()
     return len(raw) == 64 and all(ch in "0123456789abcdef" for ch in raw)
+
+
+def _closed_trade_quantities(trade: Mapping[str, Any], pieces: Sequence[Mapping[str, Any]]) -> tuple[float, float]:
+    qty = _finite(float(trade.get('qty') or 0.0), 'entry quantity')
+    quantities = [_finite(float(piece.get('qty') or 0.0), 'exit quantity') for piece in pieces]
+    if qty <= 0 or not quantities or any(value <= 0 for value in quantities):
+        raise ValueError('trade quantities must be finite and positive')
+    exit_qty = math.fsum(quantities)
+    # Permit only representational summation error, not a relative missing lot.
+    tolerance = max(math.ulp(qty), math.ulp(exit_qty)) * max(2, len(quantities))
+    if not math.isfinite(exit_qty) or abs(qty - exit_qty) > tolerance:
+        raise ValueError('completed trade exit quantity must equal entry quantity')
+    return qty, exit_qty
+
+
+def _trade_import_status(report: Mapping[str, Any]) -> str:
+    if report.get('historical_admission_version') != _HISTORICAL_ADMISSION_VERSION:
+        return 'needs_requalification'
+    if report.get('status') in {'invalid_trade_table', 'unavailable_trade_sheet', 'blocked_equivalent_admission'}:
+        return 'skipped'
+    return 'partial' if report.get('status') == 'partial' else 'complete'
 
 
 def _experience_provenance_class(
@@ -1521,6 +1543,10 @@ class LearningFabric:
             "closure_scoped_count": scopes["closure"],
             "artifact_scoped_count": scopes["artifact"],
             "unscoped_count": scopes["unscoped"],
+            "legacy_historical_import_runs": sum(
+                row['slot'] == 'trade_experience' and row['status'] == 'needs_requalification'
+                for row in self.training_runs()
+            ),
             "provenance_class_counts": scopes["provenance_class_counts"],
             "rule": "Realized trade experience is descriptive outcome memory. RUNTIME_CLOSURE_CONFIG is source-bound to exact runtime closure evidence; HISTORICAL_ARTIFACT_CONFIG is source-bound to historical report linkage; UNSCOPED remains visible but cannot satisfy either proof class. No class authorizes production or execution.",
             **_authority(),
@@ -2348,18 +2374,30 @@ class LearningFabric:
         ).fetchone()
         return None if row is None else self.dataset(row["dataset_id"])
 
-    def _historical_trade_signature(self, dataset: Mapping[str, Any]) -> str | None:
-        """Hash normalized completed trade semantics across CSV/XLSX exports."""
+    def _read_historical_source(self, dataset: Mapping[str, Any]) -> list[dict[str, Any]]:
+        """Parse one immutable read whose bytes match the catalogued identity."""
+        import io
+        import zipfile
+        raw = Path(str(dataset['path'])).read_bytes()
+        if hashlib.sha256(raw).hexdigest() != dataset['raw_sha256']:
+            raise ValueError('historical source bytes changed after cataloguing')
+        from .parity import read_tv_trades_text, read_tv_trades_xlsx
+        if dataset['artifact_class'] == 'trade_list':
+            return read_tv_trades_text(raw.decode('utf-8-sig'), strict=True)
+        if dataset['artifact_class'] == 'strategy_report_xlsx':
+            try:
+                return read_tv_trades_xlsx(io.BytesIO(raw), strict=True)
+            except (zipfile.BadZipFile, SyntaxError) as ex:
+                raise ValueError('historical XLSX structure is invalid') from ex
+        raise ValueError('unsupported historical trade artifact')
+
+    def _historical_completed_trades(self, dataset: Mapping[str, Any]) -> list[dict[str, Any]] | None:
+        """Validate the complete admitted subset; explicit OPEN tails are excluded."""
         artifact_class = str(dataset.get("artifact_class") or "")
         try:
-            if artifact_class == "trade_list":
-                from .parity import read_tv_trades
-                trades = read_tv_trades(str(dataset["path"]))
-            elif artifact_class == "strategy_report_xlsx":
-                from .parity import read_tv_trades_xlsx
-                trades = read_tv_trades_xlsx(str(dataset["path"]))
-            else:
+            if artifact_class not in {'trade_list', 'strategy_report_xlsx'}:
                 return None
+            trades = self._read_historical_source(dataset)
         except (ValueError, OSError, KeyError, TypeError):
             return None
         if not trades:
@@ -2368,6 +2406,8 @@ class LearningFabric:
         normalized: list[dict[str, Any]] = []
         for trade in trades:
             pieces = list(trade.get("pieces") or [])
+            if any(piece.get('ts') is None and str(piece.get('sig') or '').upper() == 'OPEN' for piece in pieces):
+                continue  # A legitimate open tail is outside completed semantics.
             if (
                 trade.get("entry_ts") is None
                 or trade.get("entry_px") is None
@@ -2383,6 +2423,7 @@ class LearningFabric:
             ):
                 return None
             try:
+                _closed_trade_quantities(trade, pieces)
                 normalized_pieces = sorted(
                     [
                         {
@@ -2409,12 +2450,20 @@ class LearningFabric:
                 })
             except (TypeError, ValueError, OverflowError):
                 return None
+        if not normalized:
+            return None
         normalized.sort(
             key=lambda item: (
                 item["entry_ts"], item["trade_number"], item["direction"],
                 item["entry_price"], item["qty"], item["entry_signal"],
             )
         )
+        return normalized
+
+    def _historical_trade_signature(self, dataset: Mapping[str, Any]) -> str | None:
+        normalized = self._historical_completed_trades(dataset)
+        if not normalized:
+            return None
         payload = {
             "schema_version": "icarus-historical-trade-signature-v1",
             "asset": str(dataset.get("asset") or "").upper(),
@@ -2627,12 +2676,25 @@ class LearningFabric:
             else:
                 continue
             if candidate_sha == report_sha and candidate_signature == trade_signature:
+                completed = self._historical_completed_trades(candidate)
+                admitted_count = int(self._conn.execute(
+                    'SELECT COUNT(*) FROM experiences WHERE source_record_id LIKE ?',
+                    (str(candidate['dataset_id']) + ':%',),
+                ).fetchone()[0])
+                coverage_complete = (
+                    run_report.get('historical_admission_version') == _HISTORICAL_ADMISSION_VERSION
+                    and run_report.get('status') == 'imported'
+                    and not run_report.get('errors')
+                    and completed is not None
+                    and int(run_report.get('experience_count') or 0) == len(completed) == admitted_count
+                )
                 return {
                     "dataset_id": candidate["dataset_id"],
                     "artifact_class": candidate["artifact_class"],
                     "report_sha256": report_sha,
                     "trade_signature_sha256": trade_signature,
                     "equivalence_proof": "SEMANTIC_TRADE_SIGNATURE_V1",
+                    "admission_complete": coverage_complete,
                 }
         return None
 
@@ -2643,6 +2705,7 @@ class LearningFabric:
     ) -> tuple[str, dict[str, Any]]:
         slot = "trade_experience"
         payload = dict(report)
+        payload['historical_admission_version'] = _HISTORICAL_ADMISSION_VERSION
         run_id = "train-" + hashlib.sha256(f"{dataset_id}|{slot}".encode()).hexdigest()
         with self._lock, self._conn:
             self._conn.execute(
@@ -2664,6 +2727,19 @@ class LearningFabric:
         owner: Mapping[str, Any],
     ) -> dict[str, Any]:
         dataset_id = str(dataset["dataset_id"])
+        if owner.get('admission_complete') is not True:
+            report = {
+                'status': 'blocked_equivalent_admission', 'artifact_class': dataset['artifact_class'],
+                'experience_count': 0, 'new_experiences': 0,
+                'deduplicated_by_strategy_report': False,
+                'equivalent_dataset_id': owner.get('dataset_id'),
+                'errors': {'equivalent_source': 'Prior equivalent import requires complete current admission review.'},
+                **_authority(),
+            }
+            run_id, report = self._persist_trade_experience_report(dataset_id, report)
+            return {'dataset_id': dataset_id, 'status': 'skipped',
+                    'runs': [{'run_id': run_id, 'slot': 'trade_experience', 'idempotent': False, 'report': report}],
+                    **_authority()}
         report = {
             "status": "deduplicated_equivalent",
             "artifact_class": dataset["artifact_class"],
@@ -2872,7 +2948,7 @@ class LearningFabric:
             report = json.loads(existing["report_json"])
             return {
                 "dataset_id": dataset_id,
-                "status": "complete",
+                "status": _trade_import_status(report),
                 "runs": [{"run_id": existing["run_id"], "slot": slot, "idempotent": True, "report": report}],
                 **_authority(),
             }
@@ -2885,8 +2961,21 @@ class LearningFabric:
         if owner is not None:
             return self._deduplicated_trade_experience(dataset, owner)
 
-        from .parity import read_tv_trades
-        trades = read_tv_trades(str(dataset["path"]))
+        try:
+            trades = self._read_historical_source(dataset)
+        except (ValueError, OSError, KeyError) as ex:
+            report = {
+                'status': 'invalid_trade_table', 'artifact_class': 'trade_list',
+                'source': 'historical_trade_list', 'experience_count': 0,
+                'new_experiences': 0, 'deduplicated_by_strategy_report': False,
+                'time_quality': 'UNVERIFIED_TIMEZONE',
+                'errors': {'trade_table': f'{type(ex).__name__}: {ex}'[:500]},
+                **_authority(),
+            }
+            run_id, report = self._persist_trade_experience_report(dataset_id, report)
+            return {'dataset_id': dataset_id, 'status': 'skipped',
+                    'runs': [{'run_id': run_id, 'slot': slot, 'idempotent': False, 'report': report}],
+                    **_authority()}
         imported = 0
         complete = 0
         errors: dict[str, str] = {}
@@ -2896,10 +2985,7 @@ class LearningFabric:
                 continue
             record_key = f"{dataset_id}:{trade.get('no')}:{trade.get('entry_ts')}:{trade.get('dir')}:{trade.get('entry_px')}"
             try:
-                qty = float(trade.get("qty") or 0.0)
-                exit_qty = sum(float(piece.get("qty") or 0.0) for piece in pieces)
-                if qty <= 0 or exit_qty <= 0:
-                    raise ValueError("trade quantity must be positive")
+                qty, exit_qty = _closed_trade_quantities(trade, pieces)
                 exit_price = sum(float(piece["px"]) * float(piece.get("qty") or 0.0) for piece in pieces) / exit_qty
                 pnl = sum(float(piece.get("pnl") or 0.0) for piece in pieces)
                 entry_ts = int(trade["entry_ts"])
@@ -2966,7 +3052,7 @@ class LearningFabric:
         ).fetchone()
         if existing is not None:
             report = json.loads(existing["report_json"])
-            outer_status = "skipped" if report.get("status") == "unavailable_trade_sheet" else "complete"
+            outer_status = _trade_import_status(report)
             return {
                 "dataset_id": dataset_id,
                 "status": outer_status,
@@ -2983,9 +3069,8 @@ class LearningFabric:
         if owner is not None:
             return self._deduplicated_trade_experience(dataset, owner)
 
-        from .parity import read_tv_trades_xlsx
         try:
-            trades = read_tv_trades_xlsx(str(dataset["path"]))
+            trades = self._read_historical_source(dataset)
         except (ValueError, OSError, KeyError) as ex:
             report = {
                 "status": "unavailable_trade_sheet",
@@ -3037,10 +3122,7 @@ class LearningFabric:
                 continue
             record_key = f"{dataset_id}:{trade.get('no')}:{trade.get('entry_ts')}:{trade.get('dir')}:{trade.get('entry_px')}"
             try:
-                qty = float(trade.get("qty") or 0.0)
-                exit_qty = sum(float(piece.get("qty") or 0.0) for piece in pieces)
-                if qty <= 0 or exit_qty <= 0:
-                    raise ValueError("trade quantity must be positive")
+                qty, exit_qty = _closed_trade_quantities(trade, pieces)
                 exit_price = sum(float(piece["px"]) * float(piece.get("qty") or 0.0) for piece in pieces) / exit_qty
                 pnl = sum(float(piece.get("pnl") or 0.0) for piece in pieces)
                 entry_ts = int(trade["entry_ts"])
@@ -3149,7 +3231,9 @@ class LearningFabric:
                 "run_id": row["run_id"],
                 "dataset_id": row["dataset_id"],
                 "slot": row["slot"],
-                "status": row["status"],
+                "status": ('needs_requalification'
+                           if row['slot'] == 'trade_experience' and json.loads(row['report_json']).get('historical_admission_version') != _HISTORICAL_ADMISSION_VERSION
+                           else row['status']),
                 "report": json.loads(row["report_json"]),
                 "created_at": row["created_at"],
                 **_authority(),
