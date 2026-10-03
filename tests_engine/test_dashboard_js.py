@@ -729,3 +729,18 @@ def test_ascendancy_dashboard_surfaces_safe_internal_executor():
     assert "evidence-producing actions are never auto-applied" in ui.lower()
     assert 'p.path == "/api/ascendancy/executor"' in server
     assert 'p.path == "/admin/ascendancy/governor-execute-safe"' in server
+
+
+def test_ascendancy_dashboard_surfaces_bounded_autopilot():
+    ui = (REPO / "icarus_engine/ascendancy-ui.js").read_text(encoding="utf-8")
+    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
+
+    assert "/api/ascendancy/autopilot" in ui
+    assert "BOUNDED AUTONOMOUS LOOP" in ui
+    assert "STOP REASON" in ui
+    assert "NEW INTERNAL TRANSITIONS" in ui
+    assert "EXTERNAL EVIDENCE STOPS LOOP" in ui
+    assert 'p.path == "/api/ascendancy/autopilot"' in server
+    assert 'p.path == "/admin/ascendancy/autopilot-cycle"' in server
+    assert "ascendancy_autopilot.start()" in server
+    assert "ascendancy_autopilot.close()" in server
