@@ -1,0 +1,35 @@
+name: background-process-contract
+on:
+  pull_request:
+    paths:
+      - 'icarus_engine/process_launch.py'
+      - 'icarus_engine/code_provenance.py'
+      - 'icarus_engine/trainers/xgb_slot.py'
+      - 'icarus_engine/unzip_batches.py'
+      - 'icarus_plant/supervisor.py'
+      - 'tests_engine/test_windows_background.py'
+      - '.github/workflows/windows-background-contract.yml'
+  push:
+    paths:
+      - 'icarus_engine/process_launch.py'
+      - 'icarus_engine/code_provenance.py'
+      - 'icarus_engine/trainers/xgb_slot.py'
+      - 'icarus_engine/unzip_batches.py'
+      - 'icarus_plant/supervisor.py'
+      - 'tests_engine/test_windows_background.py'
+      - '.github/workflows/windows-background-contract.yml'
+permissions:
+  contents: read
+jobs:
+  background-processes:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -e '.[dev]'
+      - run: python -m pytest tests_engine/test_windows_background.py tests_engine/test_code_provenance.py -q
