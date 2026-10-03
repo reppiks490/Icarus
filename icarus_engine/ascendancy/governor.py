@@ -318,7 +318,7 @@ def _candidate_actions(state: Mapping[str, Any], policy: Mapping[str, Any]) -> l
                 lane="exploit",
                 niche_key=niche,
                 cost=cost,
-                priority=_priority(next_stage),
+                priority=25.0,
                 reason="Candidate reached protected holdout; governor may request an externally named holdout but cannot invent or expose one itself.",
                 details={
                     "stage": next_stage,
