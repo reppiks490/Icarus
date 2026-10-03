@@ -694,13 +694,53 @@
     '</section>';
   }
 
-  function renderAscendancy(capabilities, genomes, foundry, unknowns, mechanisms, inventions, contributions, evaluator, governor, peers, errors) {
+  function renderExecutor(executor) {
+    if (!executor) {
+      return '<section class="card" style="margin-top:12px"><h3>SAFE INTERNAL EXECUTOR</h3><div class="empty">UNAVAILABLE — executor state did not load.</div></section>';
+    }
+    const receipts = Array.isArray(executor.receipts) ? executor.receipts.slice(-100).reverse() : [];
+    const rows = receipts.map(row => {
+      return '<tr>' +
+        '<td><b>' + h(row.kind || 'UNAVAILABLE') + '</b></td>' +
+        '<td><code>' + h(short(row.subject_id || 'UNAVAILABLE')) + '</code></td>' +
+        '<td class="' + statusClass(row.status) + '"><b>' + h(row.status || 'UNAVAILABLE') + '</b></td>' +
+        '<td><code>' + h(short(row.plan_id || 'UNAVAILABLE')) + '</code></td>' +
+        '<td><code>' + h(short(row.action_id || 'UNAVAILABLE')) + '</code></td>' +
+        '<td class="small">' + h(row.recorded_at || 'UNAVAILABLE') + '</td>' +
+      '</tr>';
+    }).join('');
+    const truth = executor.truth_contract || {};
+    return '<section class="card" style="margin-top:12px">' +
+      '<h3>SAFE INTERNAL EXECUTOR</h3>' +
+      '<div class="small muted">Applies only administrative research-state transitions already justified elsewhere. Executor receipts are NOT SCIENTIFIC EVIDENCE and never substitute for evaluator, holdout, mechanism, or qualification evidence.</div>' +
+      '<div class="tiles" style="margin-top:10px">' +
+        '<div class="tile"><div class="k">RECEIPTS</div><div class="v tnum">' + h(count(executor.receipt_count)) + '</div></div>' +
+        '<div class="tile"><div class="k">APPLIED INTERNAL</div><div class="v tnum">' + h(count(executor.applied_internal_count)) + '</div></div>' +
+        '<div class="tile"><div class="k">AWAITING EXTERNAL</div><div class="v tnum">' + h(count(executor.awaiting_external_count)) + '</div></div>' +
+        '<div class="tile"><div class="k">BLOCKED</div><div class="v tnum">' + h(count(executor.blocked_count)) + '</div></div>' +
+        '<div class="tile"><div class="k">AUTHORITY</div><div class="v">BOOKKEEPING ONLY</div><div class="small muted">execution=false · production=false</div></div>' +
+      '</div>' +
+      '<div class="small muted" style="margin:10px 0">' +
+        'evidence-producing actions are never auto-applied' +
+        ' · executor_receipts_are_not_scientific_evidence=' + h(truth.executor_receipts_are_not_scientific_evidence === true ? 'true' : 'UNAVAILABLE') +
+        ' · executor_cannot_emit_evaluator_receipts=' + h(truth.executor_cannot_emit_evaluator_receipts === true ? 'true' : 'UNAVAILABLE') +
+        ' · executor_cannot_emit_qualification_receipts=' + h(truth.executor_cannot_emit_qualification_receipts === true ? 'true' : 'UNAVAILABLE') +
+      '</div>' +
+      '<div class="scroll" style="max-height:42vh"><table><thead><tr>' +
+        '<th>Kind</th><th>Subject</th><th>Status</th><th>Plan</th><th>Action</th><th>Recorded</th>' +
+      '</tr></thead><tbody>' +
+        (rows || '<tr><td colspan="6" class="empty">No executor receipts yet.</td></tr>') +
+      '</tbody></table></div>' +
+    '</section>';
+  }
+
+  function renderAscendancy(capabilities, genomes, foundry, unknowns, mechanisms, inventions, contributions, evaluator, governor, executor, peers, errors) {
     const el = document.querySelector('#ascendancyBody');
     if (!el) return;
     const warning = errors.length
       ? '<div class="empty" style="margin-bottom:10px">DEGRADED: ' + h(errors.join(' · ')) + '</div>'
       : '';
-    el.innerHTML = warning + renderCapabilities(capabilities) + renderPeers(peers) + renderGovernor(governor) + renderUnknowns(unknowns) + renderInventions(inventions) + renderFoundry(foundry) + renderEvaluator(evaluator) + renderContributions(contributions) + renderMechanisms(mechanisms) + renderGenomeLab(genomes);
+    el.innerHTML = warning + renderCapabilities(capabilities) + renderPeers(peers) + renderGovernor(governor) + renderExecutor(executor) + renderUnknowns(unknowns) + renderInventions(inventions) + renderFoundry(foundry) + renderEvaluator(evaluator) + renderContributions(contributions) + renderMechanisms(mechanisms) + renderGenomeLab(genomes);
   }
 
   async function fetchJson(url, token) {
@@ -730,6 +770,7 @@
         fetchJson('/api/ascendancy/contributions', token),
         fetchJson('/api/ascendancy/evaluator', token),
         fetchJson('/api/ascendancy/governor', token),
+        fetchJson('/api/ascendancy/executor', token),
         fetchJson('/api/brain', token)
       ]);
       if (seq !== loadSeq) return;
@@ -742,11 +783,12 @@
       const contributions = settled[6].status === 'fulfilled' ? settled[6].value : null;
       const evaluator = settled[7].status === 'fulfilled' ? settled[7].value : null;
       const governor = settled[8].status === 'fulfilled' ? settled[8].value : null;
-      const peers = settled[9].status === 'fulfilled' ? settled[9].value : null;
+      const executor = settled[9].status === 'fulfilled' ? settled[9].value : null;
+      const peers = settled[10].status === 'fulfilled' ? settled[10].value : null;
       const errors = settled
         .filter(x => x.status === 'rejected')
         .map(x => x.reason && x.reason.message ? x.reason.message : String(x.reason || 'UNAVAILABLE'));
-      renderAscendancy(capabilities, genomes, foundry, unknowns, mechanisms, inventions, contributions, evaluator, governor, peers, errors);
+      renderAscendancy(capabilities, genomes, foundry, unknowns, mechanisms, inventions, contributions, evaluator, governor, executor, peers, errors);
     } catch (err) {
       if (seq !== loadSeq) return;
       el.innerHTML = '<div class="empty">ASCENDANCY state UNAVAILABLE: ' + h(err && err.message ? err.message : err) + '</div>';
