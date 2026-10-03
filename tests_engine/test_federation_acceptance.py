@@ -92,6 +92,7 @@ def test_new_peer_packet_replaces_acceptance(tmp_path):
         ({"peer_packet_fresh": False}, "peer packet is stale"),
         ({"peer_source_contract_witness_status": "degraded"}, "source-contract witnesses"),
         ({"peer_lane_contract_binding_verified_count": 4}, "not every peer lane"),
+        ({"strict_event_contract": False}, "strict remote event contract"),
         ({"execution_authorized": True}, "execution authority"),
         ({"production_decision_authorized": True}, "production-decision authority"),
     ],
