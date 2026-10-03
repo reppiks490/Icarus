@@ -2317,7 +2317,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     return self._json(200, dreamstate.retire(body.get("candidate_id"), body.get("reason")))
                 except (ValueError, TypeError) as ex:
                     return self._json(400, {"detail": str(ex)})
-            asset = str(body.get("asset") or body.get("symbol") or "").upper()
+            asset = str(body.get("asset") or body.get("symbol") or "").strip().upper()
             # Add is the one admin route whose subject is intentionally not already
             # running. Do not reject it through the generic runner lookup.
             adding_asset = p.path == "/admin/assets/add"

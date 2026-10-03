@@ -139,3 +139,17 @@ def test_async_replay_requires_admin_auth_before_enqueue(config_server):
     code, _ = request("/admin/inputs/async", {"asset": "TEST", "values": {"tp1_pts": 80}}, token="wrong")
     assert code == 401 and not entered.is_set()
     assert runner.inputs_base.to_dict() == before
+
+
+def test_wildcard_whitespace_has_same_selection_for_retry_and_execution(config_server):
+    runner, request, entered, release = config_server(blocked=True)
+    payload = {"asset": "*", "values": {"tp1_pts": 80}}
+    code, first = request("/admin/inputs/async", payload)
+    assert code == 202 and entered.wait(3)
+    code, retry = request("/admin/inputs/async", {**payload, "asset": " * "})
+    assert code == 202 and retry["job"] == first["job"]
+    release.set()
+    assert finished(request, first["job"])["status"] == "done"
+    code, direct = request("/admin/inputs", {"asset": " * ", "values": {"tp1_pts": 90}})
+    assert code == 200, direct
+    assert runner.inputs_base.tp1_pts == 90
