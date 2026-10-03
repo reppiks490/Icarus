@@ -1,0 +1,71 @@
+{
+  "schema": "icarus-mcp-event-v1",
+  "category": "INTEGRATION",
+  "source": "OMEGA_AUTOMATION",
+  "execution_authorized": false,
+  "observed_at": "2026-10-03T18:04:24Z",
+  "event_id": "omega-20261003T180424Z-red-sea-state-transition-integration",
+  "title": "Red Sea state-transition evidence promoted; directional alpha rejected",
+  "net_new_delta": "RED_SEA_RISK_NOW_HAS_EVIDENCE_BACKED_STATE_DECOMPOSITION_WITH_HISTORICAL_PHYSICAL_TRANSMISSION_SUPPORT_BUT_NO_DIRECTIONAL_ALPHA_AUTHORITY",
+  "accepted_findings": [
+    "MACRO: Reuters-reported preparation for a Yemeni-led offensive around Bab el-Mandeb is a material RED_SEA_ESCALATION_OPTIONALITY state; operation start, success, traffic response, freight/insurance repricing and physical energy-flow effects remain unconfirmed.",
+    "AION: historical same-regime evidence supports a physical shipping-response channel via rerouting, longer voyages, higher freight costs and reduced Bab el-Mandeb crossings; the new preparation event is not a validated monotonic directional signal.",
+    "CONTROL: GitHub-native v3 remains current and authoritative for liveness/persistence; newest AION, DAEDALUS and OMEGA receipts are deterministic_liveness and explicitly state SUBSTANTIVE_AI_INFERENCE_NOT_EXECUTED.",
+    "INFRASTRUCTURE: restored-five watchdog advanced Flow and Apex heartbeats for 17:35Z/17:45Z, which proves durability recovery only, not native worker completion."
+  ],
+  "rejected_findings": [
+    "Reject treating offensive preparation as proof operations began or will succeed.",
+    "Reject inferring shipping normalization, realized supply disruption, or directional market alpha from the headline alone.",
+    "Reject deterministic v3 liveness or watchdog heartbeat recovery as substantive specialist inference/native completion."
+  ],
+  "conflicts": [
+    "A successful offensive could eventually improve passage security, while initiation may first increase retaliation and disruption risk; near-term sign is therefore ambiguous.",
+    "Substantive AION audit evidence exists in canonical MCP events while the newest v3 AION receipt itself is deterministic liveness; substantive authority must follow the Git-blob event, not be imputed to the liveness receipt."
+  ],
+  "blockers": [
+    "No confirmed operation start/success.",
+    "No current UKMTO/JMIC incident confirmation tied to the prospective operation.",
+    "No current vessel-traffic/rerouting, freight/insurance, or physical energy-flow confirmation.",
+    "No frozen event population/effective N, episode-clustered uncertainty, multiplicity correction, protected temporal OOS, or cost-valid trading rule.",
+    "Restored-five native worker completion remains unresolved where watchdog recovery substitutes for missing native proof."
+  ],
+  "next_highest_value_integration_target": "Create one provenance-gated Red Sea transition chain PREPARATION -> EXECUTION -> ATTACK_RETALIATION -> TRAFFIC_REROUTING -> FREIGHT_INSURANCE -> PHYSICAL_FLOW, with exact source/event timestamps and explicit authority at each state. Preserve Hormuz as a separate concurrent shock for ablation. Only Git-blob-verified substantive events may advance analytical state; v3/watchdog remains liveness/durability only.",
+  "paths_evidence": [
+    {
+      "repo": "reppiks490/Icarus",
+      "commit": "88e51776831218e88d9c8d47daab73b573e1c3c1",
+      "path": "automation_intelligence/mcp_interface/events/20261003T170836Z_macro_red_sea_saudi_offensive_optionality.json"
+    },
+    {
+      "repo": "reppiks490/Icarus",
+      "commit": "94b3bf6726fb56d5cf1c55df54db8719a935e88b",
+      "path": "automation_intelligence/mcp_interface/events/20261003T173653Z_aion_red_sea_state_transition_audit.json"
+    },
+    {
+      "repo": "reppiks490/Icarus-engine",
+      "commit": "8883173f0f77ee097178b64991131b70ca04510e",
+      "path": "automation_intelligence/omega_stack_native_v3/lanes/*"
+    },
+    {
+      "repo": "reppiks490/Icarus-engine",
+      "commit": "79102fa82ef6ebc2784024216d567d52a95e8ece",
+      "path": "automation_intelligence/{flow,agent_fabric/apex_council}/heartbeat.json"
+    }
+  ],
+  "athena": {
+    "status": "ACTIONABLE",
+    "finding": "Treat Red Sea preparation as a two-sided uncertainty state: physical transmission is historically supported, but current directional sign and realization probability are unverified."
+  },
+  "janus": {
+    "status": "ACTIONABLE",
+    "finding": "Project-twin state should encode PREPARATION, EXECUTION, ATTACK/RETALIATION, TRAFFIC/REROUTING, FREIGHT/INSURANCE and PHYSICAL_FLOW separately, with Hormuz maintained as a distinct concurrent shock."
+  },
+  "infrastructure": {
+    "status": "DEGRADED_WITH_DURABILITY_RECOVERY",
+    "finding": "GitHub-native v3 liveness is current and restored-five watchdog advances Flow/Apex durability, but watchdog recovery does not establish native worker completion."
+  },
+  "helios_prime": {
+    "status": "ACTIONABLE",
+    "finding": "Integrate Macro and AION through the state-transition chain and provenance gates; do not convert liveness receipts or historical transmission evidence into unearned directional authority."
+  }
+}
