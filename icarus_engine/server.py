@@ -984,6 +984,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     )
 
     config_jobs: Dict[str, Dict[str, Any]] = {}
+    config_job_requests: Dict[str, str] = {}
     config_jobs_lock = threading.Lock()
 
     def _config_scope(payload: Dict[str, Any]) -> str:
@@ -998,20 +999,26 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     def _config_scopes_overlap(left: str, right: str) -> bool:
         return left == "*" or right == "*" or left == right
 
-    def _start_config_job(target_path: str, payload: Dict[str, Any]) -> tuple[Dict[str, Any], bool]:
+    def _start_config_job(target_path: str, payload: Dict[str, Any]) -> tuple[Dict[str, Any], bool, bool]:
         scope = _config_scope(payload)
+        request_payload = dict(payload)
+        request_payload.pop("symbol", None)
+        request_payload["asset"] = scope
+        request_identity = json.dumps([target_path, request_payload], sort_keys=True, separators=(",", ":"), ensure_ascii=False)
         now = time.time()
         with config_jobs_lock:
-            # One configuration replay per affected asset at a time. Repeated clicks
-            # attach to the existing job instead of stacking expensive historical replays.
+            # Retry only the same request. A different edit must remain visible
+            # to the caller instead of being acknowledged and silently discarded.
             for existing in config_jobs.values():
                 if existing.get("status") in ("queued", "running") and _config_scopes_overlap(scope, str(existing.get("scope") or "*")):
-                    return dict(existing), False
+                    conflict = config_job_requests[existing["id"]] != request_identity
+                    return dict(existing), False, conflict
             # Keep the in-memory journal bounded across long desktop sessions.
             stale = [jid for jid, row in config_jobs.items()
                      if row.get("status") in ("done", "error") and now - float(row.get("finished") or row.get("created") or now) > 3600]
             for jid in stale:
                 config_jobs.pop(jid, None)
+                config_job_requests.pop(jid, None)
             job_id = f"cfg-{time.time_ns():x}"
             row = {
                 "id": job_id,
@@ -1025,6 +1032,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 "error": None,
             }
             config_jobs[job_id] = row
+            config_job_requests[job_id] = request_identity
 
         def worker() -> None:
             with config_jobs_lock:
@@ -1035,7 +1043,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 current["started"] = time.time()
             try:
                 req = urllib.request.Request(
-                    f"http://127.0.0.1:{http_port}{target_path}",
+                    f"http://127.0.0.1:{srv.server_address[1]}{target_path}",
                     data=json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8"),
                     method="POST",
                     headers={
@@ -1075,7 +1083,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                         current["finished"] = time.time()
 
         threading.Thread(target=worker, daemon=True, name=f"config-rewarm-{scope}").start()
-        return dict(row), True
+        with config_jobs_lock:
+            return dict(row), True, False
 
     class H(BaseHTTPRequestHandler):
         server_version = "icarus"
@@ -1684,7 +1693,15 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             }
             async_target = async_config_routes.get(p.path)
             if async_target is not None:
-                job, created = _start_config_job(async_target, body)
+                job, created, conflict = _start_config_job(async_target, body)
+                if conflict:
+                    return self._json(409, {
+                        "ok": False,
+                        "job": job["id"],
+                        "status": job["status"],
+                        "scope": job["scope"],
+                        "detail": "Another configuration request is already running for this asset; wait for it to finish, then apply your edits again.",
+                    })
                 note = (
                     f"configuration re-warm queued for {job.get('scope')}"
                     if created else
@@ -2300,7 +2317,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     return self._json(200, dreamstate.retire(body.get("candidate_id"), body.get("reason")))
                 except (ValueError, TypeError) as ex:
                     return self._json(400, {"detail": str(ex)})
-            asset = str(body.get("asset") or body.get("symbol") or "").upper()
+            asset = str(body.get("asset") or body.get("symbol") or "").strip().upper()
             # Add is the one admin route whose subject is intentionally not already
             # running. Do not reject it through the generic runner lookup.
             adding_asset = p.path == "/admin/assets/add"
