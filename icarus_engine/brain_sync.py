@@ -849,12 +849,19 @@ def _normalize_roundtrip_ack(value: Any) -> dict[str, Any]:
         ("accepted_peer_packet_blob_sha", 40),
         ("accepted_peer_source_commit", 40),
     ):
-        if not _is_sha(value.get(key)) if length == 40 else (
-            not isinstance(value.get(key), str)
-            or len(value.get(key)) != 64
-            or any(ch not in "0123456789abcdef" for ch in value.get(key).lower())
-        ):
-            raise ValueError(f"Icarus-engine peer packet canonical acceptance {key} is invalid")
+        raw = value.get(key)
+        if length == 40:
+            valid = _is_sha(raw)
+        else:
+            valid = (
+                isinstance(raw, str)
+                and len(raw) == 64
+                and all(ch in "0123456789abcdef" for ch in raw.lower())
+            )
+        if not valid:
+            raise ValueError(
+                f"Icarus-engine peer packet canonical acceptance {key} is invalid"
+            )
     lane_count = value.get("peer_lane_count")
     lane_binding_count = value.get("peer_lane_contract_binding_verified_count")
     lane_witness_count = value.get("peer_lane_witness_verified_count")
