@@ -1,0 +1,51 @@
+name: source-data-contract
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - "icarus_engine/evidence/**"
+      - "icarus_engine/trainers/**"
+      - "icarus_engine/feeds/bars.py"
+      - "icarus_engine/cli.py"
+      - "icarus_engine/learning_fabric.py"
+      - "icarus_engine/learning-ui.js"
+      - "tests_engine/test_source_data_contract.py"
+      - "tests_engine/test_data_integrity.py"
+      - "tests_engine/test_bars.py"
+      - "tests_engine/test_temporal_integrity.py"
+      - ".github/workflows/source-data-contract.yml"
+  pull_request:
+    paths:
+      - "icarus_engine/evidence/**"
+      - "icarus_engine/trainers/**"
+      - "icarus_engine/feeds/bars.py"
+      - "icarus_engine/cli.py"
+      - "icarus_engine/learning_fabric.py"
+      - "icarus_engine/learning-ui.js"
+      - "tests_engine/test_source_data_contract.py"
+      - "tests_engine/test_data_integrity.py"
+      - "tests_engine/test_bars.py"
+      - "tests_engine/test_temporal_integrity.py"
+      - ".github/workflows/source-data-contract.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: source-data-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  contract:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e ".[dev,ml,bridge,databento]"
+      - run: python -m pytest tests_engine/test_source_data_contract.py tests_engine/test_data_integrity.py tests_engine/test_bars.py tests_engine/test_temporal_integrity.py tests_engine/test_trainers.py tests_engine/test_learning_fabric.py tests_engine/test_dashboard_js.py -q
+        env:
+          TZ: UTC

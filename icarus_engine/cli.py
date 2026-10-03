@@ -231,7 +231,11 @@ def cmd_ingest_bars(args: argparse.Namespace) -> int:
         tz = ZoneInfo(args.tz)
     except Exception:
         raise SystemExit(f"unknown timezone {args.tz!r}")
-    bars = parse_ohlcv_csv(read_text_csv(args.file), tz=tz)
+    try:
+        bars = parse_ohlcv_csv(read_text_csv(args.file), tz=tz)
+    except (ValueError, OSError) as ex:
+        print(f"source import blocked: {ex}", file=sys.stderr)
+        return 2
     if not bars:
         print("no bars parsed (need open/high/low/close columns)", file=sys.stderr)
         return 1
@@ -240,7 +244,11 @@ def cmd_ingest_bars(args: argparse.Namespace) -> int:
     spec = resolve(args.symbol)
     dest = args.out or history_path(_base_dir(), spec.symbol, minutes)
     if os.path.isfile(dest) and not getattr(args, "replace", False):
-        old = parse_ohlcv_csv(read_text_csv(dest))
+        try:
+            old = parse_ohlcv_csv(read_text_csv(dest))
+        except (ValueError, OSError) as ex:
+            print(f"existing history blocked: {ex}", file=sys.stderr)
+            return 2
         before = len(old)
         bars = merge_bars(old, bars)
         n = write_canonical(dest, bars)

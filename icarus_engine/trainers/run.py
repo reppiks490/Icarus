@@ -18,7 +18,7 @@ def file_hash(path: Path) -> str:
             h.update(chunk)
     return h.hexdigest()
 
-def _load(path, **ids):
+def _load(path, *, raw_bytes=None, **ids):
     """(bars, manifest, refusal). Claude (Opus 5.5) 2026-09-27: a file the DATA gate blocks, or one that leaves no
     usable row, is reported with its manifest, never trained."""
     def refuse(reason, manifest=None):
@@ -26,7 +26,7 @@ def _load(path, **ids):
         return {**ids, "status": "blocked", "reason": reason, "path": str(path), **extra,
                 "execution_authorized": False}
     try:
-        bars, manifest = inspect_ohlc(path)
+        bars, manifest = inspect_ohlc(path, raw_bytes=raw_bytes)
     except (ValueError, OSError) as exc:
         return None, None, refuse(str(exc))
     if manifest["status"] == "blocked":
@@ -49,14 +49,14 @@ def _too_short(bars, fam, fam_name, asset, path, manifest):
     return {"status": "skipped", "reason": f"{len(bars)} rows < min_rows {fam.min_rows}", "family": fam_name,
             "asset": asset, "path": str(path), "execution_authorized": False, "dataset_manifest": manifest}
 
-def train_file(path, chart_type: str, schema: str = "ohlc", asset: str = ""):
+def train_file(path, chart_type: str, schema: str = "ohlc", asset: str = "", *, raw_bytes=None):
     if asset and ignored_symbol(asset):
         return {"status": "ignored", "reason": "MBT/SOL/ETHUSD are not traded",
                 "asset": asset, "execution_authorized": False}
     path = Path(path)
     fam_name = family_for(chart_type, schema)
     fam = FAMILIES[fam_name]
-    bars, manifest, refusal = _load(path, family=fam_name, asset=asset, slot="logit")
+    bars, manifest, refusal = _load(path, raw_bytes=raw_bytes, family=fam_name, asset=asset, slot="logit")
     if refusal:
         return refusal
     short = _too_short(bars, fam, fam_name, asset, path, manifest)
@@ -84,14 +84,14 @@ def train_file(path, chart_type: str, schema: str = "ohlc", asset: str = ""):
                         "Labels are next-bar on THIS index only."],
     }
 
-def train_xgb_file(path, chart_type: str, schema: str = "ohlc", asset: str = "", out=None, ledger=None):
+def train_xgb_file(path, chart_type: str, schema: str = "ohlc", asset: str = "", out=None, ledger=None, *, raw_bytes=None):
     refusal = _preflight(asset, 1)
     if refusal:
         return refusal
     path = Path(path)
     fam_name = family_for(chart_type, schema)
     fam = FAMILIES[fam_name]
-    bars, manifest, refusal = _load(path, family=fam_name, asset=asset, slot="xgb")
+    bars, manifest, refusal = _load(path, raw_bytes=raw_bytes, family=fam_name, asset=asset, slot="xgb")
     if refusal:
         return refusal
     short = _too_short(bars, fam, fam_name, asset, path, manifest)

@@ -13,7 +13,7 @@ from .metrics import incremental_status, logloss, sign_accuracy, significance
 
 SCHEMA = "icarus.trainer.xgb_slot1/1"
 # Everything that decides what a study computes from its rows. The ledger treats a change here as a new study.
-CODE_FILES = ("spec.py", "events/calendar.py", "trainers/dataset.py", "trainers/families.py",
+CODE_FILES = ("spec.py", "events/calendar.py", "evidence/timestamps.py", "trainers/dataset.py", "trainers/families.py",
               "trainers/integrity.py", "trainers/logit.py", "trainers/calibrate.py", "trainers/metrics.py",
               "trainers/xgb_slot.py")
 EXECUTION = {"nthread": 1}           # single-threaded hist: bit-reproducible model files

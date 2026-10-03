@@ -15,7 +15,7 @@ SCHEMA = "icarus.trainer.rank_slot2/1"
 RANK_KEYS = ("sign_agree", "tide_agree", "macro_agree", "overlap")
 WINDOW = 20                       # earlier pairs per candidate that feed the inputs
 FIT = {"method": "newton", "l2": 0.02}
-CODE_FILES = ("audit/lead.py", "events/calendar.py", "trainers/dataset.py", "trainers/logit.py",
+CODE_FILES = ("audit/lead.py", "events/calendar.py", "evidence/timestamps.py", "trainers/integrity.py", "trainers/dataset.py", "trainers/logit.py",
               "trainers/metrics.py", "trainers/rank_slot.py")
 
 def _rate(hits, n):
