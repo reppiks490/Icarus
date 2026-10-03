@@ -213,6 +213,7 @@ def _default_state(interval_seconds: int) -> dict[str, Any]:
         "historical_candidate_evidence_count": 0,
         "historical_packet_witness_status": "not_started",
         "historical_packet_witness_count": 0,
+        "historical_packet_projection_verified_count": 0,
         "historical_packet_witnesses": [],
         "historical_packet_same_as_live_count": 0,
         "historical_packet_live_advanced_count": 0,
@@ -244,6 +245,8 @@ def _default_state(interval_seconds: int) -> dict[str, Any]:
             "historical_context_never_grants_execution_authority": True,
             "historical_source_artifact_blob_required": False,
             "historical_artifact_id_sha256_required": False,
+            "historical_packet_projection_verification_required": False,
+            "historical_packet_projection_is_source_derived": False,
         },
         "execution_authorized": False,
         "production_decision_authorized": False,
@@ -372,6 +375,10 @@ def _normalize_historical_context_contract(
         raise ValueError("Icarus-engine historical context must require exact source artifact blobs")
     if raw.get("artifact_id_sha256_required") is not True:
         raise ValueError("Icarus-engine historical context must require SHA-256 artifact IDs")
+    if raw.get("packet_projection_verification_required") is not True:
+        raise ValueError(
+            "Icarus-engine historical context must require packet projection verification"
+        )
     for key in (
         "direct_candidate_evidence",
         "automatic_candidate_creation",
@@ -393,6 +400,7 @@ def _normalize_historical_context_contract(
         "historical_context_never_bypasses_evaluator",
         "historical_context_never_grants_shadow_qualification",
         "historical_context_never_grants_execution_authority",
+        "historical_packet_projection_is_source_derived",
     ):
         if truth.get(key) is not True:
             raise ValueError(
@@ -527,6 +535,74 @@ def _normalize_historical_document(
         "subject": source["subject"],
         "execution_authorized": False,
         "production_decision_authorized": False,
+    }
+
+
+def _historical_packet_projection(
+    payload: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Reconstruct the producer's bounded historical packet projection from source bytes."""
+    core = payload.get("RUN_CORE")
+    if not isinstance(core, Mapping):
+        core = {}
+
+    findings_raw = core.get("findings")
+    findings = findings_raw if isinstance(findings_raw, list) else []
+    built_raw = core.get("built_changes")
+    built_changes = built_raw if isinstance(built_raw, list) else []
+    next_step = core.get("NEXT") if isinstance(core.get("NEXT"), str) else None
+
+    observations = payload.get("observations")
+    if not isinstance(observations, Mapping):
+        observations = {}
+    data_gaps_raw = payload.get("DATA_GAPS")
+    data_gaps = data_gaps_raw if isinstance(data_gaps_raw, list) else []
+    provenance_raw = payload.get("source_provenance")
+    source_provenance = provenance_raw if isinstance(provenance_raw, list) else []
+    net_new_delta = payload.get("NET_NEW_DELTA")
+    if not isinstance(net_new_delta, Mapping):
+        net_new_delta = {}
+
+    run_status = payload.get("RUN_STATUS") or payload.get("status")
+    persisted = str(run_status or "").upper() == "RUN_PERSISTED"
+    if persisted and (findings or built_changes or next_step):
+        evidence_status = "HISTORICAL_RESEARCH_EVIDENCE"
+        context_eligible = True
+    elif persisted and (
+        payload.get("COLLECTION_ONLY") is True
+        or observations
+        or source_provenance
+        or net_new_delta
+    ):
+        evidence_status = "HISTORICAL_COLLECTION_EVIDENCE"
+        context_eligible = True
+    elif persisted:
+        evidence_status = "HISTORICAL_STATE_ONLY"
+        context_eligible = False
+    else:
+        evidence_status = "HISTORICAL_UNVERIFIED"
+        context_eligible = False
+
+    return {
+        "summary": {
+            "findings": [str(x) for x in findings],
+            "built_changes": [str(x) for x in built_changes],
+            "next": next_step,
+            "observation_keys": sorted(str(x) for x in observations.keys()),
+            "data_gaps": [str(x) for x in data_gaps],
+            "source_provenance_count": len(source_provenance),
+            "net_new_delta_keys": sorted(str(x) for x in net_new_delta.keys()),
+        },
+        "lineage": {
+            "base_main_sha": core.get("base_main_sha"),
+            "final_main_sha": core.get("final_main_sha"),
+            "run_core_sha256": payload.get("RUN_CORE_SHA256"),
+            "history_blob_sha": payload.get("history_blob_sha"),
+            "ledger_blob_sha": payload.get("ledger_blob_sha"),
+            "history_mode": payload.get("history_mode"),
+        },
+        "evidence_status": evidence_status,
+        "research_context_eligible": context_eligible,
     }
 
 
@@ -753,6 +829,8 @@ def _normalize_federation_contract(
             "historical_context_never_grants_execution_authority": True,
             "historical_source_artifact_blob_required": bool(historical_sources),
             "historical_artifact_id_sha256_required": bool(historical_sources),
+            "historical_packet_projection_verification_required": bool(historical_sources),
+            "historical_packet_projection_is_source_derived": bool(historical_sources),
         },
         "execution_authorized": False,
         "production_decision_authorized": False,
@@ -1057,12 +1135,25 @@ def _normalize_peer_packet(
         run_id = str(raw.get("run_id") or "").strip()
         if not run_id:
             raise ValueError(f"Icarus-engine peer historical artifact run_id is missing: {source_id}")
+        packet_summary = raw.get("summary")
+        if not isinstance(packet_summary, Mapping):
+            raise ValueError(
+                f"Icarus-engine peer historical artifact summary is invalid: {source_id}"
+            )
+        packet_lineage = raw.get("lineage")
+        if not isinstance(packet_lineage, Mapping):
+            raise ValueError(
+                f"Icarus-engine peer historical artifact lineage is invalid: {source_id}"
+            )
         historical_witnesses.append({
             "id": source_id,
             "path": expected["path"],
             "artifact_id": artifact_id,
             "source_artifact_blob_sha": source_blob,
             "source_artifact_blob_verified": False,
+            "projection_verified": False,
+            "packet_summary": dict(packet_summary),
+            "packet_lineage": dict(packet_lineage),
             "packet_source_commit": source_commit,
             "run_id": run_id,
             "run_status": "RUN_PERSISTED",
@@ -1100,6 +1191,7 @@ def _normalize_peer_packet(
         "peer_source_contract_witnesses": source_contract_witnesses,
         "historical_packet_witnesses": historical_witnesses,
         "historical_packet_witness_count": len(historical_witnesses),
+        "historical_packet_projection_verified_count": 0,
         "historical_packet_witness_status": (
             "unverified" if historical_witnesses else "not_declared"
         ),
@@ -1799,7 +1891,29 @@ class BrainRemoteSync:
                                 f"historical packet witness run status mismatch: {witness['id']}"
                             )
 
+                        source_projection = _historical_packet_projection(source_payload)
+                        if (
+                            source_projection["evidence_status"]
+                            != witness["evidence_status"]
+                        ):
+                            raise ValueError(
+                                f"historical packet witness evidence projection mismatch: {witness['id']}"
+                            )
+                        if source_projection["research_context_eligible"] is not True:
+                            raise ValueError(
+                                f"historical packet witness source is not eligible research context: {witness['id']}"
+                            )
+                        if source_projection["summary"] != witness["packet_summary"]:
+                            raise ValueError(
+                                f"historical packet witness summary projection mismatch: {witness['id']}"
+                            )
+                        if source_projection["lineage"] != witness["packet_lineage"]:
+                            raise ValueError(
+                                f"historical packet witness lineage projection mismatch: {witness['id']}"
+                            )
+
                         witness["source_artifact_blob_verified"] = True
+                        witness["projection_verified"] = True
                         live_row = live_rows.get(witness["id"])
                         live_blob = (
                             str(live_row.get("remote_blob_sha") or "").lower()
@@ -1822,6 +1936,13 @@ class BrainRemoteSync:
                             raise ValueError("historical packet witness verification is incomplete")
                         normalized_peer["historical_packet_witness_status"] = "green"
                     normalized_peer["historical_packet_witness_count"] = verified_witnesses
+                    normalized_peer["historical_packet_projection_verified_count"] = sum(
+                        1
+                        for witness in normalized_peer.get(
+                            "historical_packet_witnesses", []
+                        )
+                        if witness.get("projection_verified") is True
+                    )
                     normalized_peer["historical_packet_same_as_live_count"] = same_as_live
                     normalized_peer["historical_packet_live_advanced_count"] = live_advanced
 
@@ -1877,6 +1998,7 @@ class BrainRemoteSync:
                         "peer_source_contract_witnesses": [],
                         "historical_packet_witness_status": "degraded",
                         "historical_packet_witness_count": 0,
+                        "historical_packet_projection_verified_count": 0,
                         "historical_packet_witnesses": [],
                         "historical_packet_same_as_live_count": 0,
                         "historical_packet_live_advanced_count": 0,
