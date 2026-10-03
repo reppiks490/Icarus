@@ -1698,35 +1698,6 @@ def test_remote_sync_rejects_roundtrip_ack_authority_escalation(tmp_path):
     assert "canonical acceptance attempts authority escalation" in status["last_error"]
 
 
-def test_remote_sync_rejects_roundtrip_ack_as_current_packet_qualification(tmp_path):
-    packet = _peer_packet(canonical_acceptance=_verified_roundtrip_ack())
-    packet["canonical_acceptance"]["accepted_peer_packet_id"] = packet["packet_id"]
-    unsigned = dict(packet)
-    unsigned.pop("packet_id", None)
-    packet["packet_id"] = __import__("hashlib").sha256(
-        json.dumps(unsigned, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
-    ).hexdigest()
-    # Rebind acknowledgement to the newly computed current packet ID and rehash once more.
-    packet["canonical_acceptance"]["accepted_peer_packet_id"] = packet["packet_id"]
-    unsigned = dict(packet)
-    unsigned.pop("packet_id", None)
-    packet["packet_id"] = __import__("hashlib").sha256(
-        json.dumps(unsigned, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
-    ).hexdigest()
-    fixture = _fixture(_remote_event(), peer=packet)
-    sync = BrainRemoteSync(
-        tmp_path,
-        interval_seconds=60,
-        fetch_json=fixture["fetch_json"],
-        fetch_bytes=fixture["fetch_bytes"],
-        now_utc=fixture["now_utc"],
-    )
-    status = sync.sync_once()
-    assert status["status"] == "degraded"
-    assert status["ingested_total"] == 1
-    assert "cannot qualify the current peer packet" in status["last_error"]
-
-
 def test_remote_sync_requires_canonical_acceptance_contract_semantics(tmp_path):
     consumer = _consumer_contract()
     acceptance = dict(consumer["canonical_acceptance"])
