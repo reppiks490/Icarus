@@ -666,1949 +666,1124 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 "error": job.get("error"),
                 "asset": params.get("asset"),
             })
-        return {"count": len(rows), "jobs": rows}
+    …33654 tokens truncated…d); color:var(--good-text) } .chip.reg-WEAK, .chip.reg-EMERGING { border-color:var(--s3); color:var(--s3) } .chip.reg-CHOPPY, .chip.reg-MEAN { border-color:var(--serious); color:var(--serious) }
+.chip.mkt-open { border-color:var(--good); color:var(--good-text) } .chip.mkt-closed { border-color:var(--warn); color:var(--warn) } .chip.b { border-color:var(--good); color:var(--good-text) } .chip.r { border-color:var(--crit); color:var(--crit) } .chip.w { border-color:var(--warn); color:var(--warn) }
+.pulse { display:flex; align-items:center; gap:8px; margin:8px 0 4px; font-size:11px; color:var(--muted); letter-spacing:.08em; text-transform:uppercase }
+.segs { display:flex; gap:2px } .segs i { width:12px; height:8px; border-radius:2px; background:var(--grid) } .segs i.on { background:var(--s1) } .segs i.hot { background:var(--warn) } .segs i.ign { background:var(--crit) }
+.votes { display:grid; grid-template-columns:repeat(12, minmax(0,1fr)); gap:3px; margin-top:8px }
+.vote { text-align:center; font-size:9.5px; letter-spacing:.02em; padding:4px 0; border-radius:6px; background:var(--surface-2); color:var(--muted); border:1px solid transparent; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0 }
+.vote.l { background:rgba(12,163,12,.16); color:var(--good-text); border-color:rgba(12,163,12,.35) } .vote.s { background:rgba(208,59,59,.16); color:var(--crit); border-color:rgba(208,59,59,.35) } .vote.ls { background:var(--s1-soft); color:var(--s1); border-color:var(--s1) }
+.score { display:grid; grid-template-columns:44px 1fr 74px; gap:8px; align-items:center; font-size:11.5px; margin-top:6px }
+.bar { height:8px; background:var(--grid); border-radius:4px; position:relative; overflow:hidden } .bar b { position:absolute; left:0; top:0; bottom:0; border-radius:4px; background:var(--s1) } .bar.l b{background:var(--good)} .bar.s b{background:var(--crit)}
+.posline { margin-top:8px; font-size:12.5px; display:flex; gap:10px; flex-wrap:wrap; align-items:center }
+.exec { font:12px ui-monospace,Consolas,monospace; color:var(--ink-2); margin-top:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+table { width:100%; border-collapse:collapse; font-size:12.5px } th,td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--grid); white-space:nowrap; vertical-align:middle } th { color:var(--muted); font-weight:500; font-size:11px; letter-spacing:.06em; text-transform:uppercase }
+tbody tr:hover { background:var(--surface-2) } .scroll { overflow:auto; max-height:340px; max-width:100% }
+.side { font-weight:600 } .side.buy::before { content:"▲ "; color:var(--good) } .side.sell::before { content:"▼ "; color:var(--crit) }
+tr.new { animation:flash 1.4s ease-out } @keyframes flash { from { background:var(--s1-soft) } to { background:transparent } }
+.empty { color:var(--muted); padding:14px 6px; font-size:13px }
+.log { font:12px/1.5 ui-monospace,Consolas,"Cascadia Mono",monospace; max-height:420px; overflow:auto; white-space:pre-wrap; color:var(--ink-2) } .log .WARN{color:var(--warn)} .log .ERROR{color:var(--crit)}
+.tag { font-size:10px; padding:1px 6px; border-radius:999px; background:var(--surface-2); color:var(--muted); border:1px solid var(--ring) } .tag.live { color:var(--good-text); border-color:var(--good) }
+.modal { position:fixed; inset:0; background:rgba(0,0,0,.6); display:none; align-items:flex-start; justify-content:center; z-index:30; overflow:auto; padding:30px 12px } .modal.open { display:flex }
+.modal .box { background:var(--surface); border:1px solid var(--ring); border-radius:14px; padding:18px 20px; width:min(720px, 96vw) }
+.row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:10px }
+.hud { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px,1fr)); gap:8px; margin-top:10px } .hud .tile .v { font-size:15px }
+.ladder { display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; align-items:center }
+.callout { grid-column:span 12; border-radius:14px; padding:14px 16px; border:1px solid var(--warn); background:rgba(250,178,25,.08); display:flex; gap:14px } .callout b { display:block; margin-bottom:4px }
+.group { border:1px solid var(--ring); border-radius:12px; margin-bottom:8px; background:var(--surface) }
+.group > summary { cursor:pointer; padding:10px 14px; font-weight:600; font-size:13px; list-style:none; display:flex; align-items:center; gap:8px }
+.group > summary::-webkit-details-marker { display:none } .group > summary::before { content:"▸"; color:var(--muted) } .group[open] > summary::before { content:"▾" }
+.group .cnt { margin-left:auto; color:var(--muted); font-weight:400; font-size:12px }
+.irow { display:grid; grid-template-columns:minmax(220px,1.3fr) minmax(160px,1fr) 90px 1fr; gap:10px; align-items:center; padding:7px 14px; border-top:1px solid var(--grid); font-size:13px }
+.irow.dirty { background:var(--s1-soft) } .irow .lbl { display:flex; flex-direction:column } .irow .lbl small { color:var(--muted); font-size:11px }
+.irow .ov { font-size:11px } .irow .ov.set { color:var(--s1) }
+.toolbar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:12px }
+.cmd { display:grid; grid-template-columns:200px 1fr 190px 100px; gap:10px; align-items:center; padding:9px 12px; border-top:1px solid var(--grid); font-size:13px }
+@media (max-width:900px){ .cmd { grid-template-columns:1fr 1fr } .irow { grid-template-columns:1fr 1fr } .hud { grid-template-columns:repeat(auto-fit, minmax(120px,1fr)) } }
+.cmd b { font-size:13.5px } .cmd .desc { color:var(--ink-2) }
+kbd { font:11px ui-monospace,monospace; background:var(--surface-2); border:1px solid var(--ring); border-radius:5px; padding:1px 5px }
+.pal { position:fixed; inset:0; background:rgba(0,0,0,.55); display:none; justify-content:center; align-items:flex-start; padding-top:12vh; z-index:50 } .pal.open { display:flex }
+.pal .box { width:min(640px,94vw); background:var(--surface); border:1px solid var(--ring); border-radius:14px; overflow:hidden }
+.pal input { width:100%; border:none; border-bottom:1px solid var(--ring); border-radius:0; padding:14px 16px; font-size:16px; background:transparent }
+.pal .item { padding:10px 16px; display:flex; gap:10px; align-items:center; cursor:pointer } .pal .item.sel, .pal .item:hover { background:var(--s1-soft) } .pal .item .k { margin-left:auto; color:var(--muted); font-size:12px }
+pre.cli { background:var(--surface-2); border:1px solid var(--ring); border-radius:10px; padding:12px; font:12px/1.5 ui-monospace,Consolas,monospace; overflow:auto; white-space:pre }
+</style>
+<link rel="stylesheet" href="/experience-ui.css">
+</head>
+<body>
+<div class="top">
+  <div class="top-in">
+    <div class="brand"><span id="beat" class="dot"></span> @BRAND@</div>
+    <div class="path">
+      <span class="node" data-n="feed"><i></i>Feeds</span><span class="link"></span>
+      <span class="node" data-n="bars"><i></i>Bars</span><span class="link"></span>
+      <span class="node" data-n="strat"><i></i>Strategy</span><span class="link"></span>
+      <span class="node" data-n="paper"><i></i>Paper fills</span>
+    </div>
+    <div class="state">
+      <span class="small muted" id="meta">—</span><span class="small muted tnum" id="clock" title="your computer's clock (local zone) and the strategy's session clock (New York)"></span>
+      <span class="badge" id="phase">—</span>
+      <span class="badge" id="armed">—</span>
+      <span class="badge" id="repoHealth" title="Latest local ICARUS System Intelligence snapshot">SYS —</span>
+      <button class="icon-btn" id="btnPal" title="Command palette (Ctrl+K)">⌘ Commands</button>
+      <button class="icon-btn" id="btnControls">⚙︎ Token</button>
+      <button class="icon-btn" id="btnTheme" title="Toggle theme">◐</button>
+    </div>
+  </div>
+  <div class="tabs" id="tabs"></div>
+</div>
 
-    def _backtest_start_control(payload):
-        from .backtest import validate_backtest_params
-        runner = _control_runner(payload["target"])
-        if not runner.warm:
-            raise ValueError(f"{runner.symbol} is still warming up")
-        allowed = {
-            "preset", "fill_on", "chart_type", "timeframe", "security_source",
-            "session", "slippage_ticks", "commission", "capital", "leverage",
-            "window_start", "window_end", "inputs",
+<div class="wrap" id="view"></div>
+<div class="tip" id="tip"></div>
+
+<div class="modal" id="ctl"><div class="box" style="width:min(520px,92vw)">
+  <h3 style="margin:0 0 6px">Admin token</h3>
+  <div class="small muted">Commands call the engine's admin API with this token (terminal default <code>icarus</code>). Kept in this browser only.</div>
+  <div class="row"><input id="token" type="password" placeholder="admin token" style="width:260px"><button id="saveTok">Save</button><span id="ctlOut" class="small muted"></span></div>
+  <div class="row" style="justify-content:flex-end"><button id="closeCtl">Close</button></div>
+</div></div>
+
+<div class="pal" id="pal"><div class="box"><input id="palq" placeholder="Type a command… (pause NQ, flatten, inputs GC, add ES, export …)"><div id="palList"></div></div></div>
+
+<script src="/research-ui.js"></script>
+<script src="/sources-ui.js"></script>
+<script src="/market-data-ui.js"></script>
+<script src="/brain-ui.js"></script>
+<script src="/evolution-ui.js"></script>
+<script src="/parallax-ui.js"></script>
+<script src="/possibility-ui.js"></script>
+<script src="/pantheon-ui.js"></script>
+<script src="/sibyl-ui.js"></script>
+<script src="/apex-ui.js"></script>
+<script src="/ascendancy-ui.js"></script>
+<script src="/learning-ui.js"></script>
+<script src="/chronofold-ui.js"></script>
+<script src="/commissioning-ui.js"></script>
+<script src="/integrity-ui.js"></script>
+<script src="/engine-control-ui.js"></script>
+<script src="/autopilot-ui.js"></script>
+<script src="/experience-ui.js"></script>
+<script>
+const $ = (s, r=document) => r.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt$ = (n, d=2) => (n==null||isNaN(n)) ? '—' : (n<0?'-':'') + '$' + Math.abs(n).toLocaleString(undefined,{minimumFractionDigits:d, maximumFractionDigits:d});
+const sgn$ = (n, d=2) => (n==null||isNaN(n)) ? '—' : (n>=0?'+':'') + fmt$(n, d);
+const dp = v => v==null ? 2 : v>=1000 ? 2 : v>=100 ? 2 : v>=1 ? 3 : v>=0.01 ? 5 : 7;
+const px = (v, d) => (v==null||isNaN(v)) ? '—' : Number(v).toLocaleString(undefined,{minimumFractionDigits:d??dp(v), maximumFractionDigits:d??dp(v)});
+const tm = t => t ? new Date(t*1000).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '—';
+const tms = t => t ? new Date(t*1000).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'}) : '—';
+const dtm = t => t ? new Date(t*1000).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'}) : '—';
+const TZ = (() => { try { return new Intl.DateTimeFormat([], {timeZoneName:'short'}).formatToParts(new Date()).find(p=>p.type==='timeZoneName').value; } catch(e) { return 'local'; } })();
+const dtz = t => t ? dtm(t) + ' ' + TZ : '—';
+const age = s => s==null ? 'never' : s<60 ? `${Math.round(s)}s` : s<3600 ? `${Math.round(s/60)}m` : `${(s/3600).toFixed(1)}h`;
+const tip = $('#tip'); const showTip = (h,x,y) => { tip.innerHTML=h; tip.style.display='block'; tip.style.left=(x+14)+'px'; tip.style.top=(y+14)+'px'; }; const hideTip = () => tip.style.display='none';
+let last = null, charts = {}, seenFills = new Set(), first = true, tradesCache = {}, tradeErrors = {}, META = null, PRESETS = [], COMMANDS = [], REGISTRY = [], catalogRefreshBusy = false;
+const CATALOG_READY = {presets:false, commands:false, registry:false};
+const params = new URLSearchParams(location.search);
+const solo = !!params.get('asset');
+let view = solo ? 'asset:' + params.get('asset').toUpperCase() : (location.hash.slice(1) || 'overview');
+
+/* theme + token */
+const root = document.documentElement; const savedTheme = localStorage.getItem('icarus-theme') || 'dark';
+root.dataset.theme = window.IcarusExperience ? savedTheme : (savedTheme === 'light' ? 'light' : 'dark');
+$('#btnTheme').onclick = () => { root.dataset.theme = root.dataset.theme==='dark'?'light':'dark'; localStorage.setItem('icarus-theme', root.dataset.theme); if (last) { lastView=null; render(last); } };
+const tokKey = 'icarus-engine-token'; if (!localStorage.getItem(tokKey)) localStorage.setItem(tokKey, 'icarus'); $('#token').value = localStorage.getItem(tokKey);
+$('#btnControls').onclick = () => $('#ctl').classList.add('open'); $('#closeCtl').onclick = () => $('#ctl').classList.remove('open');
+$('#saveTok').onclick = () => { localStorage.setItem(tokKey, $('#token').value.trim()); $('#ctlOut').textContent='token saved'; };
+function toast(msg, bad) { let t = $('#toast'); if (!t) { t = document.createElement('div'); t.id='toast'; t.style.cssText='position:fixed;bottom:18px;left:50%;transform:translateX(-50%);padding:10px 16px;border-radius:10px;z-index:60;font-size:13px;box-shadow:0 6px 24px rgba(0,0,0,.3);max-width:90vw'; document.body.appendChild(t); }
+  t.style.background = bad ? 'var(--crit)' : 'var(--s1)'; t.style.color='#fff'; t.textContent = msg; t.style.display='block'; clearTimeout(t._h); t._h = setTimeout(()=>t.style.display='none', 3500); }
+async function admin(path, body, quiet) {
+  const tok = localStorage.getItem(tokKey) || $('#token').value.trim();
+  if (!tok) {
+    $('#ctl').classList.add('open');
+    if (!quiet) toast('admin token required', true);
+    return null;
+  }
+  try {
+    const r = await fetch(path, {
+      method:'POST',
+      headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},
+      body:JSON.stringify(body||{}),
+    });
+    const j = await r.json().catch(()=>({}));
+    const msg = r.ok ? (j.note||'ok') : ('error '+r.status+': '+(j.detail||j.error||'request failed'));
+    if (!quiet) toast(msg, !r.ok);
+    if (r.ok) setTimeout(refresh, 400);
+    return r.ok ? j : null;
+  } catch (e) {
+    if (!quiet) toast('request failed: '+(e?.message||String(e)), true);
+    return null;
+  }
+}
+async function copyText(text, successMessage='copied') {
+  const value = String(text ?? '');
+  try {
+    if (navigator.clipboard?.writeText && window.isSecureContext) {
+      await navigator.clipboard.writeText(value);
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = value;
+      ta.setAttribute('readonly', '');
+      ta.style.cssText = 'position:fixed;left:-10000px;top:-10000px';
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand('copy');
+      ta.remove();
+      if (!ok) throw new Error('browser clipboard permission denied');
+    }
+    toast(successMessage);
+    return true;
+  } catch (e) {
+    toast('copy failed: '+(e?.message||String(e)), true);
+    return false;
+  }
+}
+
+/* ── charts ── */
+function lineChart(el, series, {baseline=null, height=180}={}) {
+  if (!el) return; el.innerHTML = '';
+  if (!series || series.length < 2) { el.innerHTML = '<div class="empty">Collecting equity samples (one every 20 s once all assets are live)…</div>'; return; }
+  const W = el.clientWidth || 600, H = height, pl = 60, pr = 12, pt = 12, pb = 24;
+  const xs = series.map(p=>p.ts), ys = series.map(p=>p.equity);
+  let lo = Math.min(...ys, baseline ?? Infinity), hi = Math.max(...ys, baseline ?? -Infinity); if (hi-lo < 1) { hi += 1; lo -= 1; } const pad=(hi-lo)*.12; lo-=pad; hi+=pad;
+  const x = t => pl + (t-xs[0])/((xs[xs.length-1]-xs[0])||1)*(W-pl-pr), y = v => pt + (1-(v-lo)/(hi-lo))*(H-pt-pb);
+  const d = series.map((p,i)=>(i?'L':'M')+x(p.ts).toFixed(1)+' '+y(p.equity).toFixed(1)).join(' ');
+  const area = d + ` L${x(xs[xs.length-1]).toFixed(1)} ${H-pb} L${x(xs[0]).toFixed(1)} ${H-pb} Z`;
+  let g=''; for (let i=0;i<=4;i++){ const v=lo+(hi-lo)*i/4; g+=`<line x1="${pl}" x2="${W-pr}" y1="${y(v)}" y2="${y(v)}" stroke="var(--grid)"/><text x="${pl-8}" y="${y(v)+4}" text-anchor="end" font-size="11" fill="var(--muted)">${fmt$(v,0)}</text>`; }
+  const base = baseline!=null ? `<line x1="${pl}" x2="${W-pr}" y1="${y(baseline)}" y2="${y(baseline)}" stroke="var(--axis)" stroke-width="1.5" stroke-dasharray="4 4"/>` : '';
+  const l = series[series.length-1];
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" height="${H}">${g}${base}<path d="${area}" fill="var(--s1-soft)"/><path d="${d}" fill="none" stroke="var(--s1)" stroke-width="2" stroke-linejoin="round"/><circle cx="${x(l.ts)}" cy="${y(l.equity)}" r="4.5" fill="var(--s1)" stroke="var(--surface)" stroke-width="2"/>
+    ${W>380?`<text x="${pl}" y="${H-6}" font-size="11" fill="var(--muted)">${tm(xs[0])}</text>`:''}<text x="${W-pr}" y="${H-6}" font-size="11" fill="var(--muted)" text-anchor="end">${tm(xs[xs.length-1])}</text>
+    <g id="xh" style="display:none"><line y1="${pt}" y2="${H-pb}" stroke="var(--axis)"/><circle r="5" fill="var(--s1)" stroke="var(--surface)" stroke-width="2"/></g><rect id="hit" x="${pl}" y="${pt}" width="${W-pl-pr}" height="${H-pt-pb}" fill="transparent"/></svg>`;
+  const svg = el.firstElementChild, hit = svg.querySelector('#hit'), xh = svg.querySelector('#xh');
+  hit.addEventListener('mousemove', ev => { const r = svg.getBoundingClientRect(); const p2 = (ev.clientX-r.left)*(W/r.width); let b=0,bd=1e9; series.forEach((p,i)=>{const dd=Math.abs(x(p.ts)-p2); if(dd<bd){bd=dd;b=i;}}); const p=series[b];
+    xh.style.display=''; xh.querySelector('line').setAttribute('x1',x(p.ts)); xh.querySelector('line').setAttribute('x2',x(p.ts)); xh.querySelector('circle').setAttribute('cx',x(p.ts)); xh.querySelector('circle').setAttribute('cy',y(p.equity));
+    const dl = baseline!=null ? p.equity-baseline : null; showTip(`<b>${fmt$(p.equity,2)}</b> ${dl!=null?`<span class="${dl>=0?'pos':'neg'}">${sgn$(dl,2)}</span>`:''}<br><span class="muted">${new Date(p.ts*1000).toLocaleString()}</span>`, ev.clientX, ev.clientY); });
+  hit.addEventListener('mouseleave', () => { xh.style.display='none'; hideTip(); });
+}
+function candles(el, data, {height=170, compact=true}={}) {
+  if (!el) return;
+  if (!data || !data.bars || !data.bars.length) { el.innerHTML = '<div class="empty">no bars yet</div>'; return; }
+  const bars = data.bars.slice(), ov = data.overlays.slice(-bars.length); if (data.forming) bars.push(data.forming);
+  const W = el.clientWidth || 360, H = height, pl = 6, pr = compact ? 58 : 74, pt = 8, pb = compact ? 16 : 20;
+  const lows = bars.map(b=>b[3]), highs = bars.map(b=>b[2]);
+  const ovVals = []; ov.forEach(o => { ['st','tp1','tp2','sl'].forEach(k => { if (o[k]!=null) ovVals.push(o[k]); }); });
+  let lo = Math.min(...lows, ...ovVals), hi = Math.max(...highs, ...ovVals); const pad=(hi-lo)*.08||1; lo-=pad; hi+=pad;
+  const n = bars.length, slot = (W-pl-pr)/n, bw = Math.max(1.5, Math.min(9, slot*0.68));
+  const x = i => pl + i*slot + slot/2, y = v => pt + (1-(v-lo)/(hi-lo))*(H-pt-pb), yc = v => Math.max(pt, Math.min(H-pb, y(v)));
+  let s = '';
+  for (let i=0;i<=3;i++){ const v=lo+(hi-lo)*i/3; s+=`<line x1="${pl}" x2="${W-pr}" y1="${y(v)}" y2="${y(v)}" stroke="var(--grid)"/><text x="${W-pr+6}" y="${y(v)+4}" font-size="10.5" fill="var(--muted)">${px(v)}</text>`; }
+  const lastO = ov[ov.length-1] || {};
+  if (lastO.tide_hi!=null && lastO.tide_lo!=null) { const y1 = yc(lastO.tide_hi), y2 = yc(lastO.tide_lo); if (y2-y1 > 1) s += `<rect x="${pl}" y="${y1}" width="${W-pl-pr}" height="${y2-y1}" fill="rgba(250,178,25,.06)" stroke="rgba(250,178,25,.35)" stroke-dasharray="3 3"/><text x="${pl+4}" y="${y1+11}" font-size="9.5" fill="rgba(250,178,25,.8)">TIDE range</text>`; }
+  let seg = '', prevUp = null; ov.forEach((o,i) => { if (o.st==null) return; const X=x(i).toFixed(1), Y=y(o.st).toFixed(1); if (prevUp===null || prevUp!==o.up) { if (seg) s += `<path d="${seg}" fill="none" stroke="${prevUp?'var(--good)':'var(--crit)'}" stroke-width="2" stroke-linejoin="round"/>`; seg = `M${X} ${Y}`; prevUp = o.up; } else seg += ` L${X} ${Y}`; });
+  if (seg) s += `<path d="${seg}" fill="none" stroke="${prevUp?'var(--good)':'var(--crit)'}" stroke-width="2" stroke-linejoin="round"/>`;
+  let vw=''; ov.forEach((o,i)=>{ if (o.vwap!=null) vw += (vw?' L':'M')+x(i).toFixed(1)+' '+y(o.vwap).toFixed(1); }); if (vw) s += `<path d="${vw}" fill="none" stroke="var(--s7)" stroke-width="1" stroke-dasharray="2 3" opacity=".8"/>`;
+  bars.forEach((b,i) => { const up = b[4] >= b[1]; const col = up ? 'var(--up)' : 'var(--dn)'; const X = x(i); const top = y(Math.max(b[1],b[4])), bot = y(Math.min(b[1],b[4])); const forming = data.forming && i === n-1;
+    s += `<line x1="${X}" x2="${X}" y1="${y(b[2])}" y2="${y(b[3])}" stroke="${col}" stroke-width="1"/><rect x="${X-bw/2}" y="${top}" width="${bw}" height="${Math.max(1,bot-top)}" fill="${up?'var(--surface)':col}" stroke="${col}" stroke-width="1" ${forming?'stroke-dasharray="2 2"':''} data-i="${i}"/>`; });
+  if (lastO.pos) { [['sl',lastO.sl,'var(--crit)'],['tp1',lastO.tp1,'var(--good)'],['tp2',lastO.tp2,'var(--good)']].forEach(([k,v,c]) => { if (v==null) return; s += `<line x1="${pl}" x2="${W-pr}" y1="${y(v)}" y2="${y(v)}" stroke="${c}" stroke-width="1.2" stroke-dasharray="5 3"/><text x="${W-pr-4}" y="${y(v)-3}" text-anchor="end" font-size="10" fill="${c}">${k.toUpperCase()} ${px(v)}</text>`; }); }
+  const tsIndex = {}; data.bars.forEach((b,i)=>tsIndex[b[0]]=i);
+  (data.fills||[]).forEach(f => { const i = tsIndex[f.ts]; if (i==null) return; const buy = f.side==='buy'; const Y = buy ? y(f.price)+9 : y(f.price)-9; const X = x(i);
+    s += `<path d="${buy?`M${X} ${Y-6} l5 8 h-10 z`:`M${X} ${Y+6} l5 -8 h-10 z`}" fill="${f.kind==='entry'||f.kind==='reverse'?(buy?'var(--good)':'var(--crit)'):'var(--ink)'}" stroke="var(--surface)" stroke-width="1"><title>${esc(f.comment)} ${f.qty} @ ${px(f.price)}${f.profit!=null?' P&L '+f.profit.toFixed(2):''}</title></path>`; });
+  const lp = bars[n-1][4]; s += `<line x1="${pl}" x2="${W-pr}" y1="${y(lp)}" y2="${y(lp)}" stroke="var(--s1)" stroke-width="1" stroke-dasharray="1 3"/><rect x="${W-pr+2}" y="${y(lp)-8}" width="${pr-4}" height="16" rx="4" fill="var(--s1)"/><text x="${W-pr+(pr-4)/2+2}" y="${y(lp)+4}" text-anchor="middle" font-size="10.5" fill="#fff" font-weight="600">${px(lp)}</text>`;
+  const calcLabel = `${data.tf}m · ${data.chart_type==='heikin_ashi'?'HA':'OHLC'} · fills ${data.fill_on==='chart'?'chart':'real'} · MTF ${data.security_source==='standard'?'standard':'chart'}`;
+  s += `<text x="${pl}" y="${H-4}" font-size="10.5" fill="var(--muted)">${dtz(bars[0][0])}</text><text x="${W-pr}" y="${H-4}" font-size="10.5" fill="var(--muted)" text-anchor="end">${dtz(bars[n-1][0])} · ${calcLabel}</text>`;
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" height="${H}">${s}</svg>`;
+  el.querySelectorAll('rect[data-i]').forEach(r => { r.addEventListener('mousemove', ev => { const b = bars[+r.dataset.i]; const o = ov[+r.dataset.i]||{}; showTip(`<b>${dtz(b[0])}</b><br>O ${px(b[1])} H ${px(b[2])} L ${px(b[3])} C ${px(b[4])}${o.real_c!=null&&data.chart_type==='heikin_ashi'?`<br>real close ${px(o.real_c)}`:''}<br><span class="muted">RATE ${o.st!=null?px(o.st):'—'} ${o.up?'▲':'▼'} · pulse ${o.pulse!=null?(o.pulse*100).toFixed(0)+'%':'—'}</span>`, ev.clientX, ev.clientY); }); r.addEventListener('mouseleave', hideTip); });
+}
+
+/* ── asset card ── */
+function regClass(s) { return 'reg-' + String(s||'').split(' ')[0].replace('-',''); }
+function pulseSegs(v, state) { const n = Math.round((v||0)*10); const cls = state==='IGNITION'?'ign':state==='CRITICAL'?'hot':'on'; let h=''; for (let i=1;i<=10;i++) h += `<i class="${i<=n?cls:''}"></i>`; return h; }
+function marketChip(a) { const m = a.market||{}; if (m.calendar==='crypto') return `<span class="chip mkt-open">24/7</span>`; const d = esc(m.describe||'closed'); const open = d.startsWith('open'); const delay = a.feed_delay ? ` · feed ${age(a.feed_delay)} behind` : ''; const ident = a.continuous_symbol || a.provider_symbol || a.symbol || ''; return `<span class="chip ${open?'mkt-open':'mkt-closed'}" title="${a.session_mode==='rth'?'TradingView Regular-trading-hours chart: bars 09:30-16:15 ET only':'full Globex session'}${ident?' · continuous '+esc(ident):''}">${open?'CME '+d:d}${ident?' · '+esc(ident):''}${delay}</span>`; }
+function assetCard(a) {
+  const st = a.state || {}; const pos = a.position||0; const side = pos>0?'long':pos<0?'short':'';
+  const pulse = Math.max(st.pulse_l||0, st.pulse_s||0), pside = (st.pulse_l||0) >= (st.pulse_s||0) ? 'L' : 'S';
+  const votes = (st.votes||[]).map(v => `<div class="vote ${v.l&&v.s?'ls':v.l?'l':v.s?'s':''}" title="weight ${v.w}">${v.name}</div>`).join('');
+  const thr = st.eff_thresh||1; const bl = Math.min(1,(st.final_l||0)/thr), bs = Math.min(1,(st.final_s||0)/thr);
+  const ot = a.open_trades||[]; const upl = ot.reduce((s,t)=>s+(t.upl||0),0);
+  const posHtml = ot.length ? ot.map(t => `<span><b class="${t.dir>0?'pos':'neg'}">${t.dir>0?'LONG':'SHORT'} ${t.qty}</b> <span class="muted">${esc(t.id)} @ ${px(t.entry)}</span></span>`).join(' ') + ` <span class="${upl>=0?'pos':'neg'} tnum">${sgn$(upl)}</span>` + (st.runner_tag?` <span class="chip">${esc(st.runner_tag)}${st.rate_be_armed?' ✓':''}</span>`:'')
+    : `<span class="muted">flat</span>` + (st.armed_long?` <span class="chip b">ARMED LONG</span>`:'') + (st.armed_short?` <span class="chip r">ARMED SHORT</span>`:'');
+  const warm = a.warm ? (a.rewarming ? `<span class="chip w">re-warming</span>` : '') : `<span class="chip w">warming ${a.bar_index>=0?a.bar_index+1+' bars':''}</span>`;
+  return `<div class="asset ${side}" data-sym="${a.symbol}">
+    <div class="ah"><span class="sym" title="ICARUS key ${esc(a.symbol)}">${esc(a.continuous_symbol||a.symbol)}</span><span class="px tnum">${px(a.price)}</span>
+      <span class="dir ${st.rate_uptrend?'up':'dn'}" title="RATE SuperTrend direction">${st.rate_uptrend==null?'':st.rate_uptrend?'▲':'▼'}</span>
+      <span class="chip ${regClass(st.rate_regime_str)}">${esc(st.rate_regime_str||'—')} ${st.rate_regime!=null?(st.rate_regime*100).toFixed(0)+'%':''}</span>${marketChip(a)}${warm}${a.view_stale?'<span class="chip w" title="The engine is rebuilding; this is the last complete snapshot">snapshot · engine busy</span>':''}${a.paused?'<span class="chip r">paused</span>':''}
+      <span class="muted small" style="margin-left:auto" title="Calculation basis">${a.tf}m · ${a.chart_type==='heikin_ashi'?'HA':'OHLC'} · fill ${a.fill_on==='chart'?'chart':'real'} · MTF ${a.security_source==='standard'?'standard':'chart'} · ${a.errors?`<span class="neg">${a.errors} err</span>`:'bar '+age(a.bar_age)}</span></div>
+    <div id="ch-${a.symbol}" style="margin-top:6px"></div>
+    <div class="pulse"><span>Pulse</span><div class="segs">${pulseSegs(pulse, st.pulse_state)}</div><span>${esc(st.pulse_state||'—')} ${pside} ${(pulse*100).toFixed(0)}%</span><span style="margin-left:auto">${st.po3||''} · fam ${Math.max(st.families_l||0, st.families_s||0)}/5</span></div>
+    <div class="votes">${votes}</div>
+    <div class="score"><span>LONG</span><div class="bar l"><b style="width:${bl*100}%"></b></div><span class="tnum">${(st.final_l||0).toFixed(2)} / ${thr.toFixed(2)}</span></div>
+    <div class="score"><span>SHORT</span><div class="bar s"><b style="width:${bs*100}%"></b></div><span class="tnum">${(st.final_s||0).toFixed(2)} / ${thr.toFixed(2)}</span></div>
+    <div class="posline">${posHtml}<span style="margin-left:auto" class="small"><span class="muted">net</span> <b class="${(a.netprofit||0)>=0?'pos':'neg'} tnum">${sgn$(a.netprofit)}</b> <span class="muted">· ${a.trades_total} pieces · ${a.trades_total?Math.round(a.wins_total/a.trades_total*100):0}% win</span></span></div>
+    <div class="exec" title="${esc(st.exec)}">${esc(st.exec||'')}</div>
+  </div>`;
+}
+async function loadChart(sym, n, el, opts) {
+  try {
+    const r = await fetch(`/api/chart/${sym}?n=${n}`, {cache:'no-store'});
+    const d = await r.json().catch(()=>({}));
+    if (!r.ok) throw new Error(d.detail||d.error||('HTTP '+r.status));
+    charts[sym+n] = d;
+    if (el && el.isConnected) candles(el, d, opts);
+    window.IcarusExperience?.chart(d, n);
+  } catch(e) {
+    if (el && el.isConnected) el.innerHTML = '<div class="empty">chart unavailable: '+esc(e?.message||String(e))+'</div>';
+  }
+}
+
+/* ── views ── */
+function setView(v) { view = v; if (!solo) location.hash = v; lastView = null; if (last) render(last); if (v.startsWith('asset:')) { const s = v.slice(6); loadChart(s, 300, $('#dChart'), {height:360, compact:false}); refreshTrades(s).then(()=>{ if (last) render(last); }); } }
+window.setView = setView;
+function tabsHtml(A) {
+  if (solo) return `<span class="tab active"><b class="s">${esc(params.get('asset').toUpperCase())}</b> · solo view</span><a class="tab" href="/">← all assets</a>`;
+  const t = [`<span class="tab ${view==='overview'?'active':''}" data-v="overview">Overview</span>`];
+  A.forEach(a => { const pos = a.position||0; t.push(`<span class="tab ${view==='asset:'+a.symbol?'active':''}" data-v="asset:${a.symbol}"><span class="dot ${pos>0?'long':pos<0?'short':(a.market&&a.market.open===false?'closed':'')}"></span><b class="s">${esc(a.continuous_symbol||a.symbol)}</b> <span class="muted small tnum">${px(a.price)}</span></span>`); });
+  t.push(`<span class="tab" data-v="add" title="Add an asset">＋</span>`);
+  t.push(`<span class="tab util ${view==='system'?'active':''}" data-v="system">System</span><span class="tab util ${view==='golive'?'active':''}" data-v="golive">Go-live</span><span class="tab util ${view==='agent'?'active':''}" data-v="agent">Agent</span><span class="tab util ${view==='inputs'?'active':''}" data-v="inputs">Inputs</span><span class="tab util ${view==='backtest'?'active':''}" data-v="backtest">Backtest</span><span class="tab util ${view==='research'?'active':''}" data-v="research">Research</span><span class="tab util ${view==='sources'?'active':''}" data-v="sources">Financial &amp; data</span><span class="tab util ${view==='market-data'?'active':''}" data-v="market-data">Market Data</span><span class="tab util ${view==='brain'?'active':''}" data-v="brain">Adaptive Brain</span><span class="tab util ${view==='evolution'?'active':''}" data-v="evolution">MCP Evolution</span><span class="tab util ${view==='parallax'?'active':''}" data-v="parallax">PARALLAX / DREAMSTATE</span><span class="tab util ${view==='possibility'?'active':''}" data-v="possibility">ICARUS Ψ</span><span class="tab util ${view==='pantheon'?'active':''}" data-v="pantheon">PANTHEON / AETHER</span><span class="tab util ${view==='sibyl'?'active':''}" data-v="sibyl">SIBYL Ω</span><span class="tab util ${view==='apex'?'active':''}" data-v="apex">APEX Ω</span><span class="tab util ${view==='ascendancy'?'active':''}" data-v="ascendancy">ASCENDANCY</span><span class="tab util ${view==='learning'?'active':''}" data-v="learning">Learning Fabric</span><span class="tab util ${view==='chronofold'?'active':''}" data-v="chronofold">ICARUS Ξ</span><span class="tab util ${view==='commissioning'?'active':''}" data-v="commissioning">Commissioning</span><span class="tab util ${view==='integrity'?'active':''}" data-v="integrity">Data Integrity</span><span class="tab util ${view==='engine-control'?'active':''}" data-v="engine-control">Engine Control</span><span class="tab util ${view==='commands'?'active':''}" data-v="commands">Commands</span><span class="tab util ${view==='log'?'active':''}" data-v="log">Log</span><span class="tab util ${view==='autopilot'?'active':''}" data-v="autopilot">Tactical Autopilot</span>`);
+  return t.join('');
+}
+function systemLoopClass(status) {
+  const s = String(status || 'UNKNOWN').toUpperCase();
+  if (s.includes('RUN_PERSISTED') || s.includes('FINALIZATION_VERIFIED') || s === 'VERIFIED' || s === 'CLEAN') return 'b';
+  if (s.includes('FAIL') || s.includes('BLOCK') || s.includes('ERROR')) return 'r';
+  return 'w';
+}
+function systemLoopOk(status) { return systemLoopClass(status) === 'b'; }
+function repositoryAuditCard(a, compact=false) {
+  if (!a) return `<section class="card c12" id="repoAuditCard"><h2>System Intelligence</h2><div class="empty">loading local repository, loop, and MCP snapshot…</div></section>`;
+  const s = a.summary || {}, m = a.main || {}, issue = a.issue || {}, sync = a.loop_sync || {};
+  const loops = a.loops || [], events = a.events || [];
+  const stat = String(a.status || 'unknown').toLowerCase();
+  const cls = stat === 'green' ? 'b' : stat === 'red' ? 'r' : 'w';
+  const loopGood = loops.filter(x => systemLoopOk(x.status)).length;
+  const loopBad = Math.max(0, loops.length - loopGood);
+  const checks = (a.checks || []).map(x => `<div class="irow"><div><span class="chip ${String(x.status||'').toLowerCase()==='success'?'b':String(x.status||'').toLowerCase()==='failure'?'r':'w'}">${esc(x.name||'check')}</span></div><div class="small" style="grid-column:span 3">${esc(x.detail||x.status||'')}</div></div>`).join('');
+  const loopRows = loops.map(x => {
+    const sig = x.signals || {};
+    const sigHtml = Object.keys(sig).length ? `<details style="margin-top:6px"><summary class="muted">run output</summary><pre class="small" style="white-space:pre-wrap;max-width:620px;max-height:260px;overflow:auto">${esc(JSON.stringify(sig,null,2))}</pre></details>` : '';
+    return `<tr><td><b>${esc(x.title||x.id)}</b><div class="muted small">${esc(x.schedule||'')}</div></td><td><span class="chip ${systemLoopClass(x.status)}">${esc(x.status||'UNKNOWN')}</span></td><td class="tnum">${esc(x.run_id||'—')}</td><td class="tnum">${esc(String(x.finalization_commit_sha||'—').slice(0,12))}</td><td class="small">${esc(x.detail||'')}${sigHtml}</td></tr>`;
+  }).join('');
+  const eventRows = events.slice(0,40).map(x => {
+    const sev = String(x.severity||'info').toLowerCase();
+    const k = sev === 'success' ? 'b' : sev === 'error' ? 'r' : sev === 'warn' ? 'w' : '';
+    return `<tr><td class="tnum">${esc(x.recorded_at||'—')}</td><td><span class="chip ${k}">${esc(String(x.kind||'finding').toUpperCase())}</span></td><td><b>${esc(x.title||'')}</b><div class="muted small">${esc(x.detail||'')}</div></td><td class="tnum">${esc(String(x.ref||'—').slice(0,16))}</td></tr>`;
+  }).join('');
+  const issueLink = issue.url ? `<a href="${esc(issue.url)}" target="_blank" rel="noreferrer">GitHub audit #${esc(issue.number||'')}</a>` : '';
+  const syncState = String(sync.status || 'unknown').toLowerCase();
+  const syncClass = syncState === 'green' ? 'pos' : syncState === 'red' ? 'neg' : '';
+  const compactLoops = loops.length ? `<div class="small" style="margin-top:10px"><b>Automation loops:</b> <span class="${loopBad?'neg':'pos'}">${loopGood}/${loops.length} receipt-verified</span>${loopBad ? ` · ${loopBad} need attention` : ''} · <b>auto-sync</b> <span class="${syncClass}">${esc(syncState.toUpperCase())}</span></div>` : '';
+  const lastEvent = events[0] ? `<div class="small muted" style="margin-top:5px"><b>Latest MCP:</b> ${esc(events[0].title||'')} · ${esc(events[0].recorded_at||'')}</div>` : '';
+  return `<section class="card c12" id="repoAuditCard">
+    <h2>System Intelligence <span class="sub">${esc(a.repository||'')} · local diagnostic snapshot · ${esc(a.recorded_at||'time unknown')}</span></h2>
+    <div class="tiles" style="margin-top:0">
+      <div class="tile"><div class="k">Repository audit</div><div class="v"><span class="chip ${cls}">${esc(stat.toUpperCase())}</span></div></div>
+      <div class="tile"><div class="k">Loop receipts</div><div class="v ${loopBad?'neg':'pos'}">${loops.length ? loopGood+'/'+loops.length : '—'}</div></div>
+      <div class="tile"><div class="k">MCP activity</div><div class="v tnum">${events.length}</div></div>
+      <div class="tile"><div class="k">Loop auto-sync</div><div class="v ${syncClass}">${esc(syncState.toUpperCase())}</div><div class="small muted">${sync.last_success_at ? 'last '+esc(sync.last_success_at) : 'no successful sync yet'}</div></div>
+      <div class="tile"><div class="k">Main SHA</div><div class="v tnum" style="font-size:14px">${esc(String(m.sha||'—').slice(0,12))}</div></div>
+      <div class="tile"><div class="k">Linux</div><div class="v">${esc(String(m.linux||'unknown').toUpperCase())}</div></div>
+      <div class="tile"><div class="k">Windows</div><div class="v">${esc(String(m.windows||'unknown').toUpperCase())}</div></div>
+      <div class="tile"><div class="k">Current-head failures</div><div class="v tnum ${(s.current_head_failures||0)>0?'neg':'pos'}">${s.current_head_failures ?? '—'}</div></div>
+      <div class="tile"><div class="k">Unresolved</div><div class="v tnum">${s.unresolved ?? '—'}</div></div>
+    </div>
+    ${compact ? compactLoops + lastEvent : `
+      <div class="small muted" style="margin-top:10px">${esc(a.note||'')}${issueLink ? ' · '+issueLink : ''} · diagnostic only · execution_authorized=false</div>
+      <div class="small muted" style="margin-top:6px"><b>Automatic loop ingest:</b> ${esc(syncState.toUpperCase())} · every ${esc(sync.interval_seconds||'—')}s · last attempt ${esc(sync.last_attempt_at||'—')}${(sync.errors||[]).length ? ' · '+esc((sync.errors||[]).join(' | ')) : ''}</div>
+      ${checks ? `<h3 class="small" style="margin:14px 0 6px">Repository checks</h3><div>${checks}</div>` : ''}
+      <h3 class="small" style="margin:16px 0 6px">Automation loops <span class="muted">${loopGood}/${loops.length} receipt-verified</span></h3>
+      <div class="scroll" style="max-height:320px"><table><thead><tr><th>Loop</th><th>Status</th><th>Run ID</th><th>Finalization</th><th>Detail</th></tr></thead><tbody>${loopRows || '<tr><td colspan=5 class="empty">no loop receipts published yet</td></tr>'}</tbody></table></div>
+      <h3 class="small" style="margin:16px 0 6px">MCP activity <span class="muted">repairs · audits · evolutions · integrations · findings</span></h3>
+      <div class="scroll" style="max-height:420px"><table><thead><tr><th>Time</th><th>Kind</th><th>Event</th><th>Ref</th></tr></thead><tbody>${eventRows || '<tr><td colspan=4 class="empty">no MCP events published yet</td></tr>'}</tbody></table></div>
+    `}
+  </section>`;
+}
+function goliveCard(g) {
+  if (!g) return `<section class="card c12" id="goliveCard"><h2>Go-live integrity</h2><div class="empty">loading…</div></section>`;
+  const lvl = {block:'r', warn:'w', ok:'b', info:''};
+  const gates = (g.gates||[]).map(x => `<div class="irow"><div><span class="chip ${lvl[x.level]||''}">${esc(x.id)}</span></div><div class="small" style="grid-column:span 3">${esc(x.detail)}</div></div>`).join('');
+  return `<section class="card c12" id="goliveCard">
+    <h2>Go-live integrity <span class="sub">Grok · paper ≠ live · never arms a broker</span></h2>
+    <div class="hero" style="margin-bottom:8px"><div class="n tnum" style="font-size:28px">${esc(g.verdict||'')}</div><div class="pct">${esc(g.headline||'')}</div></div>
+    <div class="tiles">
+      <div class="tile"><div class="k">Tape</div><div class="v" style="font-size:15px">${esc(g.feed||'—')}</div></div>
+      <div class="tile" title="Not a deposit"><div class="k">Warm-up (not money)</div><div class="v tnum">${sgn$(g.warmup_pnl)}</div></div>
+      <div class="tile"><div class="k">Live paper book</div><div class="v tnum">${sgn$((g.live_pnl||0)+(g.open_pnl||0))}</div></div>
+      <div class="tile"><div class="k">Broker armed</div><div class="v">${g.broker_armed?'YES':'NO'}</div></div>
+    </div>
+    <div class="small muted" style="margin-top:8px">${esc(g.identity||'')}</div>
+    <div class="small" style="margin-top:6px"><b>A</b> ${esc((g.brains||{}).A||'')}<br><b>B</b> ${esc((g.brains||{}).B||'')}</div>
+    <div style="margin-top:10px">${gates}</div>
+    <ul class="small muted" style="margin:10px 0 0 18px">${(g.live_would_mean||[]).map(s=>`<li>${esc(s)}</li>`).join('')}</ul>
+    <div class="small muted" style="margin-top:8px">Export paper book: <code>${esc(g.export||'')}</code></div>
+  </section>`;
+}
+function agentCard(a) {
+  if (!a) return `<section class="card c12" id="agentCard"><h2>Field Agent</h2><div class="empty">loading…</div></section>`;
+  const recipes = (a.recipes||[]).map(r => `<button class="sm" type="button" data-agent-recipe="${esc(r.id)}" title="${esc(r.summary||'')}">${esc(r.title)} <span class="muted">${esc(r.risk||'')}</span></button>`).join(' ');
+  return `<section class="card c12" id="agentCard">
+    <h2>Field Agent <span class="sub">Grok · copy only · never arms a broker</span></h2>
+    <div class="hero" style="margin-bottom:8px"><div class="n" style="font-size:22px">PAPER_ONLY</div><div class="pct">${esc(a.note||'')}</div></div>
+    <div class="tiles">
+      <div class="tile"><div class="k">Broker armed</div><div class="v">${a.broker_armed?'YES':'NO'}</div></div>
+      <div class="tile"><div class="k">Executed</div><div class="v">${a.executed?'YES':'NO'}</div></div>
+    </div>
+    <h3 class="small" style="margin:14px 0 8px">Desk recipes <span class="muted">copied, not run</span></h3>
+    <div style="display:flex;flex-wrap:wrap;gap:8px">${recipes}</div>
+    <h3 class="small" style="margin:14px 0 8px">Paste-pack</h3>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+      <select id="agentSeat">${(a.seats||[]).map(s=>`<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('')}</select>
+      <input type="text" id="agentQ" placeholder="Question for Claude / ChatGPT / Grok" style="width:min(420px,100%)">
+      <button class="sm primary" type="button" id="agentPack">Copy pack</button>
+    </div>
+    <h3 class="small" style="margin:14px 0 8px">Desk sidecar</h3>
+    <pre class="small" id="agentSidecar" style="white-space:pre-wrap;background:var(--surface-2);padding:10px;border-radius:8px;max-height:180px;overflow:auto">${esc(a.sidecar||'')}</pre>
+    <button class="sm" type="button" id="agentSidecarCopy">Copy sidecar</button>
+  </section>`;
+}
+function overviewHtml(d, A) {
+  const sinceLive = (d.live_profit||0) + (d.open_profit||0), histNet = (d.net||0) - sinceLive;
+  return `
+  ${goliveCard(window.ICARUS_GOLIVE)}
+  ${repositoryAuditCard(window.ICARUS_AUDIT, true)}
+  ${d.all_warm ? '' : `<div class="callout"><div>⏳</div><div><b>Warming up</b>Each asset replays its history (deep native bars for the slow timeframes, then 5-minute and 1-minute sub-bars aggregated exactly like live data). Futures cards then wait for the CME open; crypto goes live immediately.</div></div>`}
+  <section class="card c3" id="heroCard"><h2>Portfolio · active engine epoch</h2>
+    <div class="hero"><div class="n tnum ${sinceLive>=0?'up':'dn'}">${sgn$(sinceLive)}</div><div class="pct tnum">${d.capital?`${(sinceLive/d.capital*100).toFixed(2)}% on ${fmt$(d.capital,0)} · closed live trades + open positions`:''}</div></div>
+    <div class="tiles"><div class="tile"><div class="k">Equity</div><div class="v tnum">${fmt$(d.equity,0)}</div></div><div class="tile"><div class="k">Open P&amp;L</div><div class="v tnum ${(d.open_profit||0)>=0?'pos':'neg'}">${sgn$(d.open_profit)}</div></div><div class="tile"><div class="k">Closed this epoch</div><div class="v tnum ${(d.live_profit||0)>=0?'pos':'neg'}">${sgn$(d.live_profit)}</div></div><div class="tile" title="P&amp;L of the historical trades replayed during warm-up (not live)"><div class="k">Warm-up replay</div><div class="v tnum ${histNet>=0?'pos':'neg'}">${sgn$(histNet)}</div></div><div class="tile"><div class="k">Positions</div><div class="v tnum">${d.positions}</div></div></div></section>
+  <section class="card c6"><h2>Equity · active engine epoch <span class="sub">${d.equity_series?.length?`${d.equity_series.length} samples · resets after every successful warm/re-warm · dashed = starting capital`:'collecting samples for the active configuration'}</span></h2><div id="eqChart"></div></section>
+  <section class="card c3" id="engineCard"><h2>Engine</h2><div class="tiles" style="margin-top:0"><div class="tile"><div class="k">Assets</div><div class="v tnum">${A.length}</div></div><div class="tile"><div class="k">Live trades</div><div class="v tnum">${A.reduce((s,a)=>s+(a.live_trades||0),0)}</div></div><div class="tile"><div class="k">Hist. pieces</div><div class="v tnum">${A.reduce((s,a)=>s+(a.trades_total||0),0)}</div></div><div class="tile"><div class="k">Uptime</div><div class="v tnum">${age(d.uptime_sec)}</div></div></div>
+    <div class="small muted" style="margin-top:8px">Preset <b>${esc(d.preset||'none')}</b> · NQ-point inputs scaled from NQ ${d.pts_ref&&d.pts_ref.price?px(d.pts_ref.price,0):'—'} · fills at real prices unless a card says otherwise · paper orders are local.</div></section>
+  ${typeof possibilityQuickOverviewHtml==='function'?possibilityQuickOverviewHtml(A):''}
+  <div class="assets" id="assets">${A.map(assetCard).join('')}</div>
+  <section class="card c7"><h2>Paper fills <span class="sub" id="fillsSub"></span></h2><div class="scroll"><table id="fills"><thead><tr><th>Time</th><th>Asset</th><th>Side</th><th>Qty</th><th>Price</th><th>Kind</th><th>Signal</th><th>P&amp;L</th><th>Pos</th></tr></thead><tbody></tbody></table></div></section>
+  <section class="card c5"><h2>Engine log</h2><div class="log" id="log" style="max-height:300px"></div></section>
+  <section class="card c12"><h2>Closed trades <span class="sub">history (warm-up replay) and live, newest first</span></h2><div class="scroll" style="max-height:380px"><table id="trades"><thead><tr><th>Asset</th><th></th><th>Entry</th><th>Signal</th><th>Qty</th><th>Entry px</th><th>Exit</th><th>Exit px</th><th>Exit signal</th><th>P&amp;L</th></tr></thead><tbody></tbody></table></div></section>`;
+}
+function assetHead(a) {
+  const st = a.state||{}; const tfs = (a.htf_tfs||[]).map(m => m>=10080?'W':m>=1440?'D':m>=60?(m/60)+'h':m+'m'); const dirs = st.htf_dirs||[];
+  const tiles = [['Regime', st.rate_regime!=null?`${esc(st.rate_regime_str)} ${(st.rate_regime*100).toFixed(0)}%`:'—'], ['Hurst / FDI', `${st.hurst?.toFixed(3)??'—'} / ${st.fdi?.toFixed(3)??'—'}`], ['ADX / ATR14', `${st.rate_adx?.toFixed(1)??'—'} / ${px(st.atr14)}`], ['RATE line', px(st.rate_st_line)],
+    ['Gate L / S', `${(st.final_l||0).toFixed(2)} / ${(st.final_s||0).toFixed(2)} vs ${(st.eff_thresh||0).toFixed(2)}`], ['Kalman vel', st.kf_vel?.toFixed(4)??'—'], ['PE', (st.pe_norm?.toFixed(3)??'—') + (st.trc?' TRC':'')], ['Cycle', (st.cycle_rising?'rising ':'falling ') + (st.phase_deg!=null?st.phase_deg.toFixed(0)+'°':'')],
+    ['Po3', st.po3], ['Structure', (st.struct_bias>0?'bull':st.struct_bias<0?'bear':'—') + ' · ' + (st.pd_zone||'')], ['Shock ×', st.shock_mult?.toFixed(2)], ['Veto L / S', `${st.diverge_veto_l?'VETO':'ok'} / ${st.diverge_veto_s?'VETO':'ok'}`],
+    ['TIDE range', st.tide_hi!=null?`${px(st.tide_lo)} – ${px(st.tide_hi)}`:'—'], ['TIDE state', st.tide_broke_above?`broke above, ${st.tide_inrange_closes} back`:st.tide_broke_below?`broke below, ${st.tide_inrange_closes} back`:'inside'],
+    ['Exit geometry', `tp1 ${px(st.tp1_dist)} · tp2 ${px(st.tp2_dist)} · sl ${px(st.sl_dist)}`], ['Position', st.rate_qty_open?`${st.rate_pos_long?'LONG':'SHORT'} ${st.rate_qty_open}/${st.rate_qty_plan} @ ${px(st.rate_avg_price)}`:'flat'],
+    ['TP1 / TP2 / SL', st.rate_qty_open?`${px(st.tp1_price)} / ${px(st.tp2_price)} / ${px(st.sl_price)}`:'—'], ['Runner', st.runner_tag?`${st.runner_tag}${st.rate_be_armed?' (BE armed)':''}`:'—'],
+    ['Adaptive weights', `${st.w_trade_count} trades · ${st.active_votes} active · avg ${st.avg_weight?.toFixed(2)}`], ['Daily P&L', sgn$(st.daily_pnl)], ['Session / entries', `${st.in_session?'in session':'outside'} · ${st.entry_allowed?'allowed':'blocked'}`], ['Bars since stop', st.bars_since_stop]];
+  const pending = (a.pending||[]).map(p => p.close ? `close ${p.close} (${p.comment})` : `${p.dir>0?'BUY':'SELL'} ${p.qty} ${p.id}${p.limit?' @ '+px(p.limit):' @ open'}`).join(', ');
+  const exits = (a.exits||[]).map(e => `${e.id}: ${e.qty??'all'} tp ${px(e.limit)} / sl ${px(e.stop)}`).join(' · ');
+  return `<div style="display:flex; align-items:baseline; gap:12px; flex-wrap:wrap">
+    <h3 style="margin:0;font-size:22px">${a.symbol} <span class="muted" style="font-size:14px;font-weight:400">${esc(a.name)} · ${esc(a.continuous_symbol||a.product)} · ${a.tf}m</span></h3><span class="tnum" style="font-size:22px;font-weight:600">${px(a.price)}</span>
+    ${marketChip(a)}<span class="chip ${regClass(st.rate_regime_str)}">${esc(st.rate_regime_str||'')}</span><span class="chip">${a.chart_type==='heikin_ashi'?'Heikin Ashi chart':'real bars'} · fills on ${a.fill_on==='chart'?'HA/chart bars':'real prices'} · HTF/LTF ${a.security_source==='standard'?'standard OHLC':'selected chart source'} · slip ${a.slippage_ticks}t</span><span class="chip">preset ${esc(a.preset||'none')}</span>${a.paused?'<span class="chip r">paused</span>':''}${a.rewarming?'<span class="chip w">re-warming</span>':''}${a.view_stale?'<span class="chip w">snapshot · engine busy</span>':''}
+    <span style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap"><button class="sm" data-cmd="pause" data-a="${a.symbol}">Pause</button><button class="sm" data-cmd="resume" data-a="${a.symbol}">Resume</button><button class="sm danger" data-cmd="flatten" data-a="${a.symbol}">Flatten</button><button class="sm" data-cmd="inputs" data-a="${a.symbol}">Inputs</button><button class="sm" data-cmd="rewarm" data-a="${a.symbol}">Re-warm</button><button class="sm" data-cmd="export" data-a="${a.symbol}">Export CSV</button>${solo?'':`<button class="sm" data-cmd="open-tab" data-a="${a.symbol}">Open in tab ↗</button>`}</span></div>
+    <div class="exec" style="margin-top:8px">${esc(st.exec||'')}${pending?` · pending: ${esc(pending)}`:''}${exits?` · resting: ${esc(exits)}`:''}</div>
+    <div id="dChart" style="margin-top:10px"></div>
+    <div class="ladder"><span class="muted small">HTF</span>${tfs.map((t,i)=>`<span class="chip ${dirs[i]===-1?'b':dirs[i]===1?'r':''}">${t} ${dirs[i]===-1?'▲':dirs[i]===1?'▼':'·'}</span>`).join('')}<span class="muted small" style="margin-left:8px">LTF</span>${(st.ltf||[]).map((l,i)=>`<span class="chip ${l[0]===-1?'b':l[0]===1?'r':''}">${i?'5m':'2m'} ${l[0]===-1?'▲':l[0]===1?'▼':'·'} ${l[1]!=null?l[1]+'b':''} r${l[2]!=null?(l[2]*100).toFixed(0):'—'}</span>`).join('')} <span class="chip">MTF ${st.htf_bull}▲ ${st.htf_bear}▼</span>
+      <span style="margin-left:auto" class="small"><span class="muted">net</span> <b class="${(a.netprofit||0)>=0?'pos':'neg'} tnum">${sgn$(a.netprofit)}</b> <span class="muted">· ${a.trades_total} pieces · ${a.trades_total?Math.round(a.wins_total/a.trades_total*100):0}% win · live ${sgn$(a.live_profit)} · open ${sgn$(a.open_profit)}</span></span></div>
+    <div class="votes" style="margin-top:10px">${(st.votes||[]).map(v => `<div class="vote ${v.l&&v.s?'ls':v.l?'l':v.s?'s':''}">${v.name}<br><span class="muted">${v.w}</span></div>`).join('')}</div>
+    <div class="hud">${tiles.map(([k,v])=>`<div class="tile"><div class="k">${k}</div><div class="v tnum">${esc(v??'—')}</div></div>`).join('')}</div>`;
+}
+function assetHtml(a) {
+  return `<section class="card c12" id="assetHead">${assetHead(a)}</section>
+  ${typeof possibilityQuickAssetHtml==='function'?possibilityQuickAssetHtml(a):''}
+  <section class="card c7"><h2>Closed trades · ${a.symbol}</h2><div class="scroll" style="max-height:420px"><table id="dTrades"><thead><tr><th></th><th>Entry</th><th>Signal</th><th>Qty</th><th>Entry px</th><th>Exit</th><th>Exit px</th><th>Exit signal</th><th>P&amp;L</th></tr></thead><tbody></tbody></table></div></section>
+  <section class="card c5"><h2>Fills · ${a.symbol}</h2><div class="scroll" style="max-height:420px"><table id="dFills"><thead><tr><th>Time</th><th>Side</th><th>Qty</th><th>Price</th><th>Signal</th><th>P&amp;L</th></tr></thead><tbody></tbody></table></div></section>`;
+}
+function inputsHtml(A) {
+  const opts = A.map(a => `<option value="${a.symbol}">${esc(a.continuous_symbol||a.symbol)}</option>`).join('');
+  return `<section class="card c12"><h2>Inputs <span class="sub">every strategy input, grouped like the TradingView dialog · changes re-warm the asset from cached history in seconds</span></h2>
+    <div class="toolbar"><label>Asset <select id="inAsset">${opts}<option value="*">All assets</option></select></label>
+      <label>Preset <select id="inPreset"><option value="">(none)</option>${PRESETS.map(p=>`<option value="${esc(p.name)}">${esc(p.name)} — ${p.count} inputs${p.meta&&p.meta.timeframe?' · '+p.meta.timeframe:''}${p.meta&&p.meta.chart_type==='heikin_ashi'?' · HA':''}</option>`).join('')}</select></label><button class="sm" id="inApplyPreset">Apply preset</button>
+      <input id="inSearch" type="text" placeholder="filter inputs…" style="width:200px"><span class="small muted" id="inSources"></span>
+      <span style="margin-left:auto;display:flex;gap:6px"><button class="sm" id="inRevert">Discard edits</button><button class="sm danger" id="inReset">Remove asset overrides</button><button class="primary" id="inApply">Apply &amp; re-warm</button></span></div>
+    <div id="inChartConfig" class="row" style="margin:10px 0 12px"></div>
+    <div id="inGroups"><div class="empty">loading…</div></div></section>`;
+}
+function commandsHtml(A) {
+  const assetScopeOptions = A.map(a => `<option value="${a.symbol}">${esc(a.continuous_symbol||a.symbol)}</option>`).join('');
+  const scopeOptions = c => (String(c.scope||'').includes('all') ? '<option value="*">all assets</option>' : '') + assetScopeOptions;
+  const assetOptions = REGISTRY.map(r => `<option value="${esc(r.symbol)}">${esc(r.name)} · ${esc(r.continuous_symbol||r.provider_symbol||r.symbol)}</option>`).join('');
+  const addTfOptions = ['1','2','3','5','10','15','20','30','45','60','120','180','240','D','W'].map(tf => `<option value="${tf}"></option>`).join('');
+  return `<section class="card c8"><h2>Commands <span class="sub">or press <kbd>Ctrl</kbd>+<kbd>K</kbd> anywhere</span></h2>
+    <div>${COMMANDS.map(c => `<div class="cmd"><b>${esc(c.label)}</b><span class="desc">${esc(c.desc)}</span><span>${c.scope!=='all'?`<select data-scope="${c.id}">${scopeOptions(c)}</select>`:''}</span><button class="sm ${c.danger?'danger':''}" data-run="${c.id}">Run</button></div>`).join('')}</div>
+    <h2 style="margin-top:18px">Add an asset</h2>
+    <div class="row"><input id="addSym" list="addAssetOptions" type="text" placeholder="symbol (MGC, NQ1!, ES1!, BTC…)" autocomplete="off" style="width:170px"><datalist id="addAssetOptions">${assetOptions}</datalist><input id="addTf" list="addTfOptions" type="text" placeholder="tf (20)" autocomplete="off" style="width:80px"><datalist id="addTfOptions">${addTfOptions}</datalist><select id="addPreset"><option value="">preset: engine default</option>${PRESETS.map(p=>`<option value="${esc(p.name)}">${esc(p.name)}</option>`).join('')}</select><button class="primary sm" id="addBtn">Add</button></div>
+    <div class="small muted" style="margin-top:6px">Registry: ${REGISTRY.map(r=>`<code>${esc(r.continuous_symbol||r.symbol)}</code>`).join(' ')} — futures are continuous-only; anything else is treated as a Coinbase spot pair.</div></section>
+  <section class="card c4"><h2>Terminal commands</h2><pre class="cli">py -3 -m icarus_engine.cli run --assets NQ,ES,YM,GC,SI,PL,PA,BTCF,BTC --tf 20
+py -3 -m icarus_engine.cli run --assets NQ@10 --preset NQ-10m-original
+py -3 -m icarus_engine.cli backtest --assets NQ --tf 20 --verbose 20
+py -3 -m icarus_engine.cli backtest --assets NQ --fill-on chart   # TradingView HA-bar fills
+py -3 -m icarus_engine.cli parity --asset NQ --tf 20 --tv-csv "List of Trades.csv"
+py -3 -m icarus_engine.cli import-tv "strategy export.xlsx" --name NQ-20m-mine
+py -3 -m icarus_engine.cli inputs --asset NQ --preset NQ-20m-ultracoded
+py -3 -m icarus_engine.cli assets</pre>
+    <div class="small muted">Files: <code>presets/*.json</code> (from TradingView exports), <code>inputs.json</code> (global overrides), <code>inputs.&lt;SYM&gt;.json</code> (per asset, written by this page), <code>history/&lt;SYM&gt;_&lt;tf&gt;m.csv</code> (a TradingView chart export used as exact warm-up bars).</div></section>`;
+}
+
+/* ── inputs editor ── */
+let inState = {asset:null, effective:{}, base:{}, overrides:{}, edits:{}, chart:{}, chartEdits:{}, capabilities:{}, sources:[]};
+let inputsLoadSeq = 0;
+async function loadInputsTab(sym) {
+  const seq = ++inputsLoadSeq;
+  try {
+    if (!META) {
+      const metaResponse = await fetch('/api/input-meta', {cache:'no-store'});
+      const meta = await metaResponse.json().catch(()=>null);
+      if (!metaResponse.ok) throw new Error((meta&&meta.detail)||('input metadata HTTP '+metaResponse.status));
+      if (!Array.isArray(meta)) throw new Error('input metadata response is invalid');
+      if (seq !== inputsLoadSeq) return;
+      META = meta;
+    }
+    const sel = $('#inAsset');
+    if (!sel || !last) return;
+    if (sym) sel.value = sym;
+    const a = sel.value === '*' ? (last.assets[0]||{}).symbol : sel.value;
+    if (!a) return;
+    const response = await fetch(`/api/inputs/${encodeURIComponent(a)}`, {cache:'no-store'});
+    const d = await response.json().catch(()=>({}));
+    if (!response.ok) throw new Error(d.detail||d.error||('inputs HTTP '+response.status));
+    if (seq !== inputsLoadSeq) return;
+    inState = {asset: sel.value, effective: d.effective, base: d.base, overrides: d.overrides||{}, edits: {},
+               chart: d.chart||{}, chartEdits: {}, capabilities: d.chart_capabilities||{}, sources: d.sources||[], preset: d.preset};
+    $('#inSources').textContent = (sel.value==='*'?'editing ALL assets · showing '+a+' · ':'') + 'sources: ' + inState.sources.join(' → ') + (d.pts_scale && Math.abs(d.pts_scale-1)>1e-6 ? ` · *_pts scaled ×${d.pts_scale.toFixed(3)} at runtime` : '');
+    if ($('#inPreset')) $('#inPreset').value = d.preset || '';
+    renderChartConfig();
+    renderInputs();
+  } catch (e) {
+    if (seq !== inputsLoadSeq) return;
+    const msg = 'inputs unavailable: '+(e?.message||String(e));
+    const target = $('#inGroups');
+    if (target) target.innerHTML = '<div class="empty">'+esc(msg)+'</div>';
+    toast(msg, true);
+  }
+}
+function renderChartConfig() {
+  const el = $('#inChartConfig'); if (!el) return;
+  const cap = inState.capabilities || {};
+  const cur = k => (k in inState.chartEdits) ? inState.chartEdits[k] : inState.chart[k];
+  const baseTfs = cap.timeframes || ['1','2','3','5','10','15','20','30','45','60','120','180','240','D','W'];
+  const primary = new Set(cap.primary_intraday_timeframes || ['1','2','5','10','20','30']);
+  const tf = String(cur('timeframe') || '20');
+  const tfs = baseTfs.includes(tf) ? baseTfs : [tf, ...baseTfs];
+  const available = new Set(cap.available_from_cache || tfs);
+  const tfOpts = tfs.map(v => {
+    const ok = available.has(String(v)) || String(v) === tf;
+    return `<option value="${esc(v)}" ${String(v)===tf?'selected':''} ${ok?'':'disabled'}>${esc(v)}${primary.has(String(v))?'m':''}${ok?'':' · need finer cache'}</option>`;
+  }).join('');
+  el.innerHTML = `<label><b>Chart timeframe</b> <select data-chart="timeframe">${tfOpts}</select></label>
+    <label><b>Strategy chart</b> <select data-chart="chart_type"><option value="heikin_ashi" ${cur('chart_type')==='heikin_ashi'?'selected':''}>Heikin Ashi (primary)</option><option value="real" ${cur('chart_type')==='real'?'selected':''}>Standard OHLC</option></select></label>
+    <label><b>Fill prices</b> <select data-chart="fill_on"><option value="real" ${cur('fill_on')==='real'?'selected':''}>Real OHLC (recommended)</option><option value="chart" ${cur('fill_on')==='chart'?'selected':''}>Chart/HA synthetic</option></select></label>
+    <label><b>HTF/LTF source</b> <select data-chart="security_source"><option value="chart" ${cur('security_source')==='chart'?'selected':''}>Selected chart</option><option value="standard" ${cur('security_source')==='standard'?'selected':''}>Standard OHLC</option></select></label>
+    <span class="small muted">Engine: 1m · 2m · 5m · 10m · 20m · 30m. Cache sources: ${(cap.cached_source_resolutions_minutes||[]).length ? cap.cached_source_resolutions_minutes.join('m, ')+'m' : 'none yet'} · unavailable choices are disabled until a finer genuine cache exists. Seconds: ${cap.seconds?'enabled':'not available'} · ticks: ${cap.ticks?'enabled':'not available'} — ${esc(cap.note||'sub-minute modes require a genuine feed')}</span>`;
+  el.querySelectorAll('[data-chart]').forEach(x => x.addEventListener('change', () => {
+    inState.chartEdits[x.dataset.chart] = x.value;
+  }));
+}
+function ctrl(e, val) {
+  const name = e.name;
+  if (e.kind === 'bool') return `<label><input type="checkbox" data-in="${name}" ${val?'checked':''}> <span class="small muted">${val?'on':'off'}</span></label>`;
+  if (e.options) return `<select data-in="${name}">${e.options.map(o=>`<option ${o===val?'selected':''}>${esc(o)}</option>`).join('')}</select>`;
+  if (e.kind === 'timeframe') { const tfs = ['1','2','3','5','10','15','20','30','45','60','120','180','240','D','W']; if (!tfs.includes(String(val))) tfs.unshift(String(val)); return `<select data-in="${name}">${tfs.map(o=>`<option ${o===String(val)?'selected':''}>${esc(o)}</option>`).join('')}</select>`; }
+  if (e.kind === 'session') return `<input type="text" data-in="${name}" value="${esc(val)}" placeholder="HHMM-HHMM" style="width:130px">`;
+  if (e.kind === 'int' || e.kind === 'float') return `<input type="number" data-in="${name}" value="${esc(val)}" ${e.minval!=null?`min="${e.minval}"`:''} ${e.maxval!=null?`max="${e.maxval}"`:''} step="${e.step!=null?e.step:(e.kind==='int'?1:'any')}">`;
+  return `<input type="text" data-in="${name}" value="${esc(val)}">`;
+}
+function renderInputs() {
+  if (!META || !$('#inGroups')) return;
+  const q = ($('#inSearch')?.value||'').toLowerCase(); const groups = {};
+  META.forEach(e => { if (q && !(e.label.toLowerCase().includes(q) || e.name.toLowerCase().includes(q) || e.group.toLowerCase().includes(q))) return; (groups[e.group] = groups[e.group] || []).push(e); });
+  const cur = n => (n in inState.edits) ? inState.edits[n] : inState.base[n];
+  $('#inGroups').innerHTML = Object.entries(groups).map(([g, items]) => {
+    const dirty = items.filter(e => e.name in inState.edits).length, over = items.filter(e => e.name in inState.overrides).length;
+    return `<details class="group" ${q||dirty?'open':''}><summary>${esc(g)}<span class="cnt">${items.length} inputs${over?` · ${over} overridden`:''}${dirty?` · <span style="color:var(--s1)">${dirty} edited</span>`:''}</span></summary>
+      ${items.map(e => { const v = cur(e.name); const isOver = e.name in inState.overrides, isDirty = e.name in inState.edits; const isDef = JSON.stringify(v) === JSON.stringify(e.default);
+        return `<div class="irow ${isDirty?'dirty':''}"><div class="lbl"><span>${esc(e.label)}</span><small>${esc(e.name)}${e.tooltip?' · '+esc(e.tooltip).slice(0,140)+(e.tooltip.length>140?'…':''):''}</small></div><div>${ctrl(e, v)}</div><div class="ov ${isOver?'set':''}">${isDirty?'edited':isOver?'override':isDef?'default':'preset'}</div><div class="small muted">default ${esc(String(e.default))}${e.minval!=null||e.maxval!=null?` · ${e.minval??''}–${e.maxval??''}`:''}</div></div>`; }).join('')}</details>`; }).join('') || '<div class="empty">no input matches</div>';
+  $('#inGroups').querySelectorAll('[data-in]').forEach(el => { el.addEventListener('change', () => { const e = META.find(m=>m.name===el.dataset.in); let v = el.type==='checkbox' ? el.checked : el.value; if (e.kind==='int') v = parseInt(v,10); if (e.kind==='float') v = parseFloat(v); inState.edits[e.name] = v; el.closest('.irow').classList.add('dirty'); el.closest('.irow').querySelector('.ov').textContent = 'edited'; }); });
+}
+async function withBusyButton(button, fn) {
+  if (!button || button.disabled) return null;
+  button.disabled = true;
+  try { return await fn(); }
+  finally { if (button.isConnected) button.disabled = false; }
+}
+const configJobWatchers = new Set();
+async function watchConfigJob(jobId, label='Configuration') {
+  if (!jobId || configJobWatchers.has(jobId)) return;
+  configJobWatchers.add(jobId);
+  const deadline = Date.now() + 30 * 60 * 1000;
+  let announced = '';
+  try {
+    while (Date.now() < deadline) {
+      const response = await fetch('/api/config-jobs/' + encodeURIComponent(jobId), {cache:'no-store'});
+      const job = await response.json().catch(()=>({}));
+      if (!response.ok) throw new Error(job.detail||job.error||('HTTP '+response.status));
+      if (job.status !== announced) {
+        announced = job.status;
+        if (job.status === 'running') toast(label + ' re-warming in background — UI stays live');
+      }
+      if (job.status === 'done') {
+        toast(label + ' re-warm complete');
+        await refresh();
+        if (view === 'inputs') await loadInputsTab();
+        return;
+      }
+      if (job.status === 'error') {
+        toast(label + ' re-warm failed: ' + (job.error||'unknown error'), true);
+        return;
+      }
+      await new Promise(resolve => setTimeout(resolve, 300));
+    }
+    toast(label + ' re-warm is still running; the dashboard remains usable');
+  } catch (e) {
+    toast(label + ' job status unavailable: ' + (e?.message||String(e)), true);
+  } finally {
+    configJobWatchers.delete(jobId);
+  }
+}
+document.addEventListener('input', ev => { if (ev.target.id === 'inSearch') renderInputs(); });
+document.addEventListener('change', ev => { if (ev.target.id === 'inAsset') loadInputsTab(); });
+document.addEventListener('click', async ev => {
+  const b = ev.target.closest('button, .tab, .asset, [data-run]'); if (!b) return;
+  if (b.tagName === 'A') return;
+  if (b.dataset.v) { if (b.dataset.v === 'add') { setView('commands'); setTimeout(()=>$('#addSym')?.focus(), 50); } else setView(b.dataset.v); return; }
+  if (b.classList.contains('asset')) { setView('asset:' + b.dataset.sym); return; }
+  if (b.dataset.cmd) { await withBusyButton(b, () => runCommand(b.dataset.cmd, b.dataset.a)); return; }
+  if (b.dataset.run) { const sel = document.querySelector(`select[data-scope="${b.dataset.run}"]`); await withBusyButton(b, () => runCommand(b.dataset.run, sel ? sel.value : '*')); return; }
+  if (b.id === 'inApply') { const vals = inState.edits, chart = inState.chartEdits; if (!Object.keys(vals).length && !Object.keys(chart).length) return toast('nothing edited'); await withBusyButton(b, async () => { const r = await admin('/admin/inputs/async', {asset: inState.asset, values: vals, chart, persist: true}); if (r) { inState.edits = {}; inState.chartEdits = {}; if (r.job) watchConfigJob(r.job, 'Inputs'); } }); }
+  if (b.id === 'inRevert') { inState.edits = {}; inState.chartEdits = {}; renderChartConfig(); renderInputs(); }
+  if (b.id === 'inReset') { if (confirm(`Remove all per-asset overrides for ${inState.asset}?`)) await withBusyButton(b, async () => { const r = await admin('/admin/inputs/reset/async', {asset: inState.asset}); if (r?.job) watchConfigJob(r.job, 'Input reset'); }); }
+  if (b.id === 'inApplyPreset') { await withBusyButton(b, async () => { const r = await admin('/admin/preset/async', {asset: inState.asset, preset: $('#inPreset').value || null}); if (r?.job) watchConfigJob(r.job, 'Preset'); }); }
+  if (b.id === 'addBtn') {
+    const s = $('#addSym').value.trim(); if (!s) return;
+    b.disabled = true;
+    try {
+      const added = await admin('/admin/assets/add', {symbol: s, tf: $('#addTf').value.trim() || undefined, preset: $('#addPreset').value || undefined});
+      if (added && $('#addSym')) $('#addSym').value = '';
+    } finally {
+      if (document.body.contains(b)) b.disabled = false;
+    }
+  }
+  if (b.dataset.agentRecipe) {
+    const r = (window.ICARUS_AGENT && window.ICARUS_AGENT.recipes || []).find(x => x.id === b.dataset.agentRecipe);
+    if (r) await copyText((r.lines||[]).join('\n'), 'copied recipe — not executed');
+    return;
+  }
+  if (b.id === 'agentPack') {
+    const seat = $('#agentSeat')?.value || 'grok';
+    const q = ($('#agentQ')?.value || '').trim() || '(no question)';
+    const pre = ((window.ICARUS_AGENT && window.ICARUS_AGENT.prefixes) || {})[seat] || '';
+    await copyText(pre + q, 'paste-pack copied');
+    return;
+  }
+  if (b.id === 'agentSidecarCopy') {
+    await copyText((window.ICARUS_AGENT && window.ICARUS_AGENT.sidecar) || '', 'sidecar copied');
+    return;
+  }
+});
+const commandInflight = new Set();
+async function adminCommand(id, asset, path, body) {
+  const key = id + ':' + (asset || '*');
+  if (commandInflight.has(key)) {
+    toast('command already running: ' + id + ' ' + (asset || 'all assets'), true);
+    return null;
+  }
+  commandInflight.add(key);
+  try { return await admin(path, body); }
+  finally { commandInflight.delete(key); }
+}
+async function runCommand(id, asset) {
+  const A = asset && asset !== '*' ? asset : null;
+  switch (id) {
+    case 'backtest': BT.asset = A || BT.asset; setView('backtest'); return;
+    case 'pause': return adminCommand(id, A, '/admin/pause', {asset: A, reason: 'dashboard'});
+    case 'resume': return adminCommand(id, A, '/admin/resume', {asset: A});
+    case 'flatten': if (confirm(`Close ALL paper positions on ${A||'every asset'} now?`)) return adminCommand(id, A, '/admin/flatten', {confirm: true, asset: A, reason: 'dashboard'}); return;
+    case 'rewarm': return adminCommand(id, A, '/admin/rewarm', {asset: A});
+    case 'inputs': setView('inputs'); setTimeout(()=>loadInputsTab(A), 120); return;
+    case 'preset': setView('inputs'); setTimeout(()=>{ loadInputsTab(A); $('#inPreset')?.focus(); }, 120); return;
+    case 'reset-inputs': if (A && confirm(`Remove all per-asset overrides for ${A}?`)) return adminCommand(id, A, '/admin/inputs/reset', {asset: A}); return;
+    case 'add-asset': setView('commands'); setTimeout(()=>$('#addSym')?.focus(), 50); return;
+    case 'remove-asset': if (A && confirm(`Remove ${A} from the engine?`)) return adminCommand(id, A, '/admin/assets/remove', {symbol: A}); return;
+    case 'export': if (A) window.open(`/api/export/${A}.csv`, '_blank'); return;
+    case 'open-tab': if (A) window.open(`/?asset=${A}`, '_blank'); return;
+    case 'theme': $('#btnTheme').click(); return;
+    case 'golive': setView('golive'); return;
+    case 'agent': setView('agent'); return;
+    default: toast('unsupported command: '+id, true); return;
+  }
+}
+/* palette */
+let palSel = 0;
+function palItems(q) {
+  const A = (last&&last.assets)||[]; const items = [];
+  COMMANDS.forEach(c => { if (c.scope === 'all') items.push({label:c.label, sub:'all assets', id:c.id, a:'*'}); else { if (c.scope.includes('all')) items.push({label:c.label, sub:'all assets', id:c.id, a:'*'}); A.forEach(a => items.push({label:`${c.label} ${a.symbol}`, sub:a.name, id:c.id, a:a.symbol})); } });
+  A.forEach(a => items.push({label:`Go to ${a.symbol}`, sub:'asset tab', id:'goto', a:a.symbol}));
+  items.push({label:'Overview', sub:'tab', id:'goto', a:'overview'}, {label:'Engine Control tab', sub:'tab', id:'goto', a:'engine-control'}, {label:'System health tab', sub:'tab', id:'goto', a:'system'}, {label:'Go-live tab', sub:'tab', id:'goto', a:'golive'}, {label:'Agent tab', sub:'tab', id:'goto', a:'agent'}, {label:'Inputs tab', sub:'tab', id:'goto', a:'inputs'}, {label:'Commands tab', sub:'tab', id:'goto', a:'commands'}, {label:'Log tab', sub:'tab', id:'goto', a:'log'});
+  const words = q.toLowerCase().split(/\s+/).filter(Boolean);
+  return items.filter(it => words.every(w => (it.label+' '+it.sub).toLowerCase().includes(w))).slice(0, 14);
+}
+function renderPal() { const items = palItems($('#palq').value); palSel = Math.min(palSel, Math.max(0, items.length-1)); $('#palList').innerHTML = items.map((it,i)=>`<div class="item ${i===palSel?'sel':''}" data-i="${i}"><b>${esc(it.label)}</b><span class="muted small">${esc(it.sub)}</span><span class="k">${i===palSel?'↵':''}</span></div>`).join('') || '<div class="item muted">no match</div>'; $('#palList')._items = items; }
+function openPal() { $('#pal').classList.add('open'); $('#palq').value=''; palSel=0; renderPal(); setTimeout(()=>$('#palq').focus(), 30); }
+function closePal() { $('#pal').classList.remove('open'); }
+async function palRun(it) { closePal(); if (!it) return; if (it.id === 'goto') { setView(['overview','engine-control','system','inputs','commands','log','golive','agent'].includes(it.a) ? it.a : 'asset:'+it.a); return; } await runCommand(it.id, it.a); }
+$('#btnPal').onclick = openPal; $('#palq').addEventListener('input', () => { palSel=0; renderPal(); });
+$('#palq').addEventListener('keydown', ev => { const items = $('#palList')._items||[]; if (ev.key==='ArrowDown') { palSel=Math.min(items.length-1, palSel+1); renderPal(); ev.preventDefault(); } else if (ev.key==='ArrowUp') { palSel=Math.max(0, palSel-1); renderPal(); ev.preventDefault(); } else if (ev.key==='Enter') { palRun(items[palSel]); } else if (ev.key==='Escape') closePal(); });
+$('#palList').addEventListener('click', ev => { const it = ev.target.closest('.item'); if (it && it.dataset.i!=null) palRun(($('#palList')._items||[])[+it.dataset.i]); });
+$('#pal').addEventListener('click', ev => { if (ev.target.id === 'pal') closePal(); });
+document.addEventListener('keydown', ev => { if ((ev.ctrlKey||ev.metaKey) && ev.key.toLowerCase()==='k') { ev.preventDefault(); openPal(); } if (ev.key==='Escape') { closePal(); $('#ctl').classList.remove('open'); } });
+
+/* ── render ── */
+let lastView = null;
+// ── Backtest tab: TradingView Strategy Tester mirror ──
+const etClock = () => new Date().toLocaleTimeString('en-US', {timeZone:'America/New_York', hour:'2-digit', minute:'2-digit', second:'2-digit'});
+const BT = {job: null, res: null, sub: 'overview', poll: null, compare: null};
+function backtestHtml(A) {
+  const assets = A.map(a => `<option value="${a.symbol}" ${BT.asset===a.symbol?'selected':''}>${esc(a.continuous_symbol||a.symbol)}</option>`).join('');
+  const presets = PRESETS.map(p => `<option value="${esc(p.name)}" ${(BT.preset||last?.preset)===p.name?'selected':''}>${esc(p.name)}</option>`).join('');
+  const active = A.find(a => a.symbol === (BT.asset || A[0]?.symbol)) || A[0] || {};
+  const tfs = ['1','2','5','10','20','30','3','15','45','60','120','180','240','D','W'];
+  const caps = active.chart_capabilities || {};
+  const available = new Set(caps.available_from_cache || []);
+  const hasDynamicCaps = Array.isArray(caps.available_from_cache);
+  const tfOptions = tfs.map(t => {
+    const ok = !hasDynamicCaps || available.has(t);
+    return `<option value="${t}" ${ok?'':'disabled'}>${t}${ok?'':' · cache unavailable'}</option>`;
+  }).join('');
+  const cacheNote = Array.isArray(caps.cached_source_resolutions_minutes)
+    ? ` · cache source ${caps.cached_source_resolutions_minutes.length ? caps.cached_source_resolutions_minutes.join('m, ')+'m' : 'none'}`
+    : '';
+  return `<section class="card c12"><h2>Strategy Tester <span class="sub">runs on the engine's cached bars (no network) · times in ${TZ}${cacheNote}</span></h2>
+    <div class="row">
+      <label>Asset <select id="btAsset">${assets}</select></label>
+      <label>Preset <select id="btPreset"><option value="">(engine default)</option>${presets}</select></label>
+      <label>Timeframe <select id="btTf"><option value="">engine (${active.tf||'?'}m)</option>${tfOptions}</select></label>
+      <label>Chart <select id="btChart"><option value="">engine / preset</option><option value="heikin_ashi">Heikin Ashi</option><option value="real">Standard OHLC</option></select></label>
+      <label>Fills <select id="btFill"><option value="">engine / preset</option><option value="real">real prices</option><option value="chart">Heikin Ashi/chart bars (TradingView mode)</option></select></label>
+      <label>HTF/LTF source <select id="btSecurity"><option value="">engine / preset</option><option value="chart">selected chart</option><option value="standard">standard OHLC</option></select></label>
+      <label>Session <select id="btSession"><option value="">preset / engine</option><option value="rth">RTH 09:30–16:15 ET</option><option value="eth">full Globex</option></select></label>
+      <label>Slippage <input id="btSlip" type="number" min="0" step="1" placeholder="ticks" style="width:80px"></label>
+      <label>Commission <input id="btComm" type="number" min="0" step="0.5" placeholder="$/contract" style="width:90px"></label>
+      <label>Capital <input id="btCap" type="number" min="1000" step="1000" placeholder="500000" style="width:110px"></label>
+      <label>From <input id="btFrom" type="date"></label><label>To <input id="btTo" type="date"></label>
+      <label>Overrides (JSON) <input id="btOver" type="text" placeholder='{"tp1_pts": 150}' style="width:220px"></label>
+      <button class="primary" id="btRun">Run backtest</button><span id="btStatus" class="small muted"></span>
+    </div>
+  </section>
+  <div id="btOut" class="c12" style="grid-column:span 12"></div>`;
+}
+async function runBacktest() {
+  const statusEl = $('#btStatus');
+  const runBtn = $('#btRun');
+  const setStatus = text => { const el = $('#btStatus'); if (el) el.textContent = text; };
+  const setBusy = (busy, label) => {
+    const btn = $('#btRun');
+    if (btn) {
+      btn.disabled = !!busy;
+      btn.textContent = label || (busy ? 'Running…' : 'Run backtest');
+    }
+  };
+  const body = {asset: $('#btAsset').value, preset: $('#btPreset').value || null,
+                timeframe: $('#btTf').value || null, chart_type: $('#btChart').value || null,
+                fill_on: $('#btFill').value || null, security_source: $('#btSecurity').value || null,
+                session: $('#btSession').value || null};
+  const num = (id, cast) => { const v = $(id).value; return v === '' ? null : cast(v); };
+  body.slippage_ticks = num('#btSlip', parseInt);
+  body.commission = num('#btComm', parseFloat);
+  body.capital = num('#btCap', parseFloat);
+  if ($('#btFrom').value) body.window_start = Math.floor(new Date($('#btFrom').value + 'T00:00:00').getTime()/1000);
+  if ($('#btTo').value) body.window_end = Math.floor(new Date($('#btTo').value + 'T23:59:59').getTime()/1000);
+  if ($('#btOver').value.trim()) {
+    try { body.inputs = JSON.parse($('#btOver').value); }
+    catch(e) { setStatus('overrides: invalid JSON'); toast('backtest overrides contain invalid JSON', true); return; }
+  }
+  BT.asset = body.asset;
+  BT.preset = body.preset;
+  clearInterval(BT.poll);
+  BT.poll = null;
+  setBusy(true, 'Starting…');
+  setStatus('starting…');
+  try {
+    const r = await fetch('/admin/backtest', {
+      method:'POST',
+      headers:{'Content-Type':'application/json', 'Authorization':'Bearer ' + (localStorage.getItem(tokKey)||'')},
+      body:JSON.stringify(body),
+    });
+    const d = await r.json().catch(()=>({}));
+    if (!r.ok) throw new Error(d.detail||d.error||('HTTP '+r.status));
+    if (!d.job) throw new Error('engine did not return a backtest job id');
+    BT.job = d.job;
+    BT.res = null;
+    BT.compare = null;
+    setBusy(true, 'Running…');
+    setStatus('running…');
+
+    const poll = async () => {
+      try {
+        const response = await fetch(`/api/backtest/${encodeURIComponent(BT.job)}`, {cache:'no-store'});
+        const j = await response.json().catch(()=>({}));
+        if (!response.ok) throw new Error(j.detail||j.error||('HTTP '+response.status));
+        const state = String(j.status||'').toLowerCase();
+        if (state === 'running' || state === 'queued') {
+          setStatus('running… '+(j.progress == null ? '' : j.progress+' bars'));
+          return;
         }
-        args = _control_args(payload, allowed=allowed)
-        params = validate_backtest_params(args)
-        params["asset"] = runner.symbol
-        if "preset" in params and not os.path.exists(preset_path(port.base_dir, params["preset"])):
-            raise ValueError(f"preset {params['preset']} not found")
-        job_id = start_job(port, params)
-        return {"job": job_id, "asset": runner.symbol, "started": True}
-
-    def _backtest_compare_control(payload):
-        job_id = payload["target"]
-        job = JOBS.get(job_id)
-        if not job or job.get("status") != "done":
-            raise ValueError("unknown or unfinished backtest job")
-        args = _control_args(payload, allowed={"csv", "tol"}, required=("csv",))
-        text = str(args["csv"])
-        if not text.strip():
-            raise ValueError("csv text required")
-        tol = args.get("tol", 1)
-        if isinstance(tol, bool) or not isinstance(tol, (int, float, str)):
-            raise ValueError("tol must be a positive integer")
-        try:
-            tol = int(tol)
-        except (ValueError, OverflowError):
-            raise ValueError("tol must be a positive integer") from None
-        if tol < 1:
-            raise ValueError("tol must be a positive integer")
-        tv = read_tv_trades_text(text)
-        eng = engine_trades_from_rows(job["result"]["trades"])
-        report = compare_lists(
-            eng,
-            tv,
-            int(job["result"]["config"]["tf"]) * 60,
-            tol,
-        )
-        return {"job": job_id, "report": report}
-
-    def _market_mbo_snapshot_control(payload):
-        runner = _control_runner(payload["target"])
-        args = _control_args(payload, allowed={"timeout"})
-        if not hasattr(runner.feed, "mbo_snapshot"):
-            raise ValueError(f"{type(runner.feed).__name__} does not expose MBO snapshots")
-        timeout = max(0.1, min(30.0, float(args.get("timeout", 5.0))))
-        rows = runner.feed.mbo_snapshot(runner.spec.ticker, timeout=timeout)
-        return {
-            "asset": runner.symbol,
-            "provider": type(runner.feed).__name__.lower(),
-            "schema": "mbo",
-            "snapshot": rows,
+        clearInterval(BT.poll);
+        BT.poll = null;
+        setBusy(false);
+        if (state === 'error' || state === 'failed') {
+          const msg = 'error: '+(j.error||j.detail||'backtest failed');
+          setStatus(msg);
+          toast(msg, true);
+          return;
         }
+        if (!j.result) throw new Error('backtest finished without a result payload');
+        BT.res = j.result;
+        const duration = Number(j.finished) - Number(j.started);
+        setStatus('done · '+j.result.bars+' bars'+(Number.isFinite(duration)?' · '+duration.toFixed(1)+' s':''));
+        if (view === 'backtest' && $('#btOut')) renderBacktest();
+      } catch (e) {
+        clearInterval(BT.poll);
+        BT.poll = null;
+        setBusy(false);
+        const msg = 'backtest status failed: '+(e?.message||String(e));
+        setStatus(msg);
+        toast(msg, true);
+      }
+    };
+    BT.poll = setInterval(()=>void poll(), 500);
+    void poll();
+  } catch (e) {
+    setBusy(false);
+    const msg = 'backtest start failed: '+(e?.message||String(e));
+    if (statusEl && statusEl.isConnected) statusEl.textContent = msg;
+    toast(msg, true);
+  }
+}
+const fmtCell = (v, kind, pct) => {
+  if (v == null) return '—';
+  if (kind === 'n') return Number.isInteger(v) ? String(v) : v.toFixed(0);
+  if (kind === 'x') return v.toFixed(3);
+  if (kind === 'd') return `${Math.round(v)} days`;
+  if (kind === '%') return v.toFixed(2) + ' %';
+  const s = fmt$(v, 2);
+  return pct != null ? `${s} <span class="muted small">${pct.toFixed(2)} %</span>` : s;
+};
+function tvTable(rows) {
+  return `<div class="scroll" style="max-height:none"><table><thead><tr><th></th><th>All</th><th>Long</th><th>Short</th></tr></thead><tbody>${rows.map(r => {
+    const c = g => fmtCell(r[g], r.kind, r.kind === '$%' ? r[g + '_pct'] : null);
+    return `<tr><td>${esc(r.label)}</td><td class="tnum">${c('all')}</td><td class="tnum">${c('long')}</td><td class="tnum">${c('short')}</td></tr>`; }).join('')}</tbody></table></div>`;
+}
+function equityChart(el, eq, bh, dd, capital) {
+  if (!el) return; el.innerHTML = '';
+  if (!eq || eq.length < 2) { el.innerHTML = '<div class="empty">no bars in the window</div>'; return; }
+  const W = el.clientWidth || 800, H = 300, pl = 64, pr = 12, pt = 12, pb = 24, hdd = 70;
+  const xs = eq.map(p => p[0]); const ys = eq.map(p => p[1]).concat(bh.map(p => p[1]), [capital]);
+  let lo = Math.min(...ys), hi = Math.max(...ys); if (hi - lo < 1) { hi += 1; lo -= 1; } const pad = (hi - lo) * .08; lo -= pad; hi += pad;
+  const x = t => pl + (t - xs[0]) / ((xs[xs.length - 1] - xs[0]) || 1) * (W - pl - pr), y = v => pt + (1 - (v - lo) / (hi - lo)) * (H - pt - pb - hdd);
+  const ddmin = Math.min(...dd.map(p => p[1]), -1); const ydd = v => (H - pb - hdd) + (v / ddmin) * hdd;
+  const path = s => s.map((p, i) => (i ? 'L' : 'M') + x(p[0]).toFixed(1) + ' ' + y(p[1]).toFixed(1)).join(' ');
+  const ddPath = dd.map((p, i) => (i ? 'L' : 'M') + x(p[0]).toFixed(1) + ' ' + ydd(p[1]).toFixed(1)).join(' ') + ` L${x(xs[xs.length - 1]).toFixed(1)} ${H - pb - hdd} L${x(xs[0]).toFixed(1)} ${H - pb - hdd} Z`;
+  let g = ''; for (let i = 0; i <= 4; i++) { const v = lo + (hi - lo) * i / 4; g += `<line x1="${pl}" x2="${W - pr}" y1="${y(v)}" y2="${y(v)}" stroke="var(--grid)"/><text x="${pl - 8}" y="${y(v) + 4}" text-anchor="end" font-size="11" fill="var(--muted)">${fmt$(v, 0)}</text>`; }
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" height="${H}">${g}
+    <line x1="${pl}" x2="${W - pr}" y1="${y(capital)}" y2="${y(capital)}" stroke="var(--axis)" stroke-dasharray="4 4"/>
+    ${bh.length ? `<path d="${path(bh)}" fill="none" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="3 3"/>` : ''}
+    <path d="${path(eq)}" fill="none" stroke="var(--s1)" stroke-width="2" stroke-linejoin="round"/>
+    <path d="${ddPath}" fill="var(--crit)" fill-opacity=".25" stroke="var(--crit)" stroke-width="1"/>
+    <text x="${pl}" y="${H - 6}" font-size="11" fill="var(--muted)">${dtz(xs[0])}</text><text x="${W - pr}" y="${H - 6}" font-size="11" fill="var(--muted)" text-anchor="end">${dtz(xs[xs.length - 1])}</text>
+    <text x="${pl + 4}" y="${H - pb - hdd + 12}" font-size="10.5" fill="var(--crit)">drawdown</text>
+    <text x="${W - pr}" y="${pt + 12}" font-size="10.5" fill="var(--muted)" text-anchor="end">— equity · ┄ buy &amp; hold · ┄ capital</text></svg>`;
+}
+function renderBacktest() {
+  const res = BT.res; if (!res) return;
+  const s = res.summary, cfg = res.config, g = k => s[k] ? s[k].all : null;
+  const tiles = [
+    ['Net profit', `${fmt$(g('net_profit'), 0)} <span class="small muted">${(g('net_profit_pct') ?? 0).toFixed(2)} %</span>`, g('net_profit') >= 0 ? 'pos' : 'neg'],
+    ['Total closed trades', g('total_trades')], ['Percent profitable', `${(g('percent_profitable') ?? 0).toFixed(2)} %`],
+    ['Profit factor', g('profit_factor') != null ? g('profit_factor').toFixed(3) : '—'],
+    ['Max drawdown', `${fmt$(g('max_drawdown'), 0)} <span class="small muted">${(g('max_drawdown_pct') ?? 0).toFixed(2)} %</span>`, 'neg'],
+    ['Avg trade', fmt$(g('expectancy') ?? 0, 2)], ['Avg bars in trade', (g('avg_bars_in_trades') ?? 0).toFixed(1)], ['Sharpe', g('sharpe') != null ? g('sharpe').toFixed(3) : '—'],
+  ];
+  const sub = k => `<span class="tab util ${BT.sub === k ? 'active' : ''}" data-bt="${k}">${{overview:'Overview', performance:'Performance summary', trades:'Trades analysis', risk:'Risk/performance ratios', list:'List of trades', compare:'Compare with TradingView'}[k]}</span>`;
+  const head = `<section class="card c12"><h2>${esc(res.asset)} · ${cfg.tf}m · ${cfg.chart_type === 'heikin_ashi' ? 'Heikin Ashi chart' : 'real bars'} · fills on ${cfg.fill_on === 'chart' ? 'HA bars (TradingView mode)' : 'real prices'} · HTF/LTF ${cfg.security_source === 'standard' ? 'standard OHLC' : 'selected chart source'} · slip ${cfg.slippage_ticks}t · &#36;${cfg.commission}/contract · ${cfg.session} <span class="sub">preset ${esc(cfg.preset || 'none')}${Object.keys(cfg.overrides || {}).length ? ' + ' + Object.keys(cfg.overrides).length + ' override(s)' : ''} · ${res.bars} bars · ${dtz(res.range.start)} → ${dtz(res.range.end)}${cfg.pts_scale && Math.abs(cfg.pts_scale - 1) > 1e-6 ? ` · NQ-pts ×${cfg.pts_scale.toFixed(3)}` : ''}</span></h2>
+    <div class="tiles">${tiles.map(t => `<div class="tile"><div class="k">${t[0]}</div><div class="v ${t[2] || ''}">${t[1]}</div></div>`).join('')}</div>
+    <div class="row" style="margin-top:12px">${['overview', 'performance', 'trades', 'risk', 'list', 'compare'].map(sub).join('')}
+      <a class="tab" style="margin-left:auto;border:1px solid var(--ring);border-radius:8px;padding:4px 9px" href="/api/backtest/${BT.job}/trades.csv" download>Export CSV (TradingView layout)</a></div>
+    <div id="btBody" style="margin-top:10px"></div></section>`;
+  $('#btOut').innerHTML = head;
+  $('#btOut').querySelectorAll('[data-bt]').forEach(el => el.addEventListener('click', () => { BT.sub = el.dataset.bt; renderBacktest(); }));
+  const body = $('#btBody');
+  if (BT.sub === 'overview') { body.innerHTML = `<div id="btEq"></div>`; equityChart($('#btEq'), res.equity, res.buy_hold, res.drawdown, cfg.capital); }
+  else if (BT.sub === 'performance') body.innerHTML = tvTable(res.rows.performance);
+  else if (BT.sub === 'trades') body.innerHTML = tvTable(res.rows.trades);
+  else if (BT.sub === 'risk') body.innerHTML = tvTable(res.rows.risk);
+  else if (BT.sub === 'list') {
+    const rows = res.trades.slice().reverse();
+    body.innerHTML = `<div class="scroll" style="max-height:70vh"><table><thead><tr><th>#</th><th>Type</th><th>Entry (${TZ})</th><th>Signal</th><th>Entry px</th><th>Exit (${TZ})</th><th>Signal</th><th>Exit px</th><th>Qty</th><th>Net P&amp;L</th><th>Return %</th><th>Comm.</th><th>Run-up</th><th>Drawdown</th><th>Cum. P&amp;L</th><th>Bars</th></tr></thead><tbody>${rows.map(t => `<tr class="${t.open ? 'new' : ''}"><td class="tnum">${t.no}</td><td class="side ${t.type === 'long' ? 'buy' : 'sell'}">${t.type}</td><td class="tnum">${dtz(t.entry_ts)}</td><td>${esc(t.entry_signal)}</td><td class="tnum">${px(t.entry_px)}</td><td class="tnum">${t.open ? 'Open' : dtz(t.exit_ts)}</td><td>${esc(t.exit_signal)}</td><td class="tnum">${t.exit_px != null ? px(t.exit_px) : '—'}</td><td class="tnum">${t.qty}</td><td class="tnum ${t.pnl >= 0 ? 'pos' : 'neg'}">${sgn$(t.pnl)}</td><td class="tnum">${t.return_pct != null ? t.return_pct.toFixed(2) : '—'}</td><td class="tnum">${fmt$(t.commission, 0)}</td><td class="tnum">${fmt$(t.runup, 0)} <span class="muted small">${t.runup_pct != null ? t.runup_pct.toFixed(2) + '%' : ''}</span></td><td class="tnum">${fmt$(t.drawdown, 0)} <span class="muted small">${t.drawdown_pct != null ? t.drawdown_pct.toFixed(2) + '%' : ''}</span></td><td class="tnum ${t.cum_pnl >= 0 ? 'pos' : 'neg'}">${sgn$(t.cum_pnl)}</td><td class="tnum">${t.bars}</td></tr>`).join('') || '<tr><td colspan=16 class="empty">no trades in the window</td></tr>'}</tbody></table></div>`;
+  } else if (BT.sub === 'compare') {
+    body.innerHTML = `<div class="small muted">Pick a TradingView <b>List of Trades</b> export (CSV) of the same symbol and timeframe. Entries are matched bar for bar (±1 bar, timezone offset detected); exits are compared by signal.</div>
+      <div class="row"><input type="file" id="btCsv" accept=".csv,text/csv"><button class="sm" id="btCmp">Compare</button><span id="btCmpStatus" class="small muted"></span></div><div id="btCmpOut"></div>`;
+    $('#btCmp').addEventListener('click', async () => {
+      const f = $('#btCsv').files[0];
+      const status = $('#btCmpStatus');
+      const button = $('#btCmp');
+      if (!f) { if (status) status.textContent = 'choose a CSV first'; return; }
+      if (button) button.disabled = true;
+      try {
+        const text = await f.text();
+        if (status) status.textContent = 'comparing…';
+        const r = await fetch('/admin/backtest/compare', {
+          method:'POST',
+          headers:{'Content-Type':'application/json', 'Authorization':'Bearer ' + (localStorage.getItem(tokKey)||'')},
+          body:JSON.stringify({job:BT.job,csv:text}),
+        });
+        const d = await r.json().catch(()=>({}));
+        if (!r.ok) throw new Error(d.detail||d.error||('HTTP '+r.status));
+        if (!d.report) throw new Error('comparison response did not contain a report');
+        BT.compare = d.report;
+        if (status) status.textContent = 'done';
+        const sm = d.report.summary || {};
+        const out = $('#btCmpOut');
+        if (out) out.innerHTML = `<div class="tiles">${Object.entries(sm).map(([k, v]) => `<div class="tile"><div class="k">${esc(k.replace(/_/g, ' '))}</div><div class="v" style="font-size:15px">${v == null ? '—' : (typeof v === 'number' ? v.toLocaleString() : esc(String(v)))}</div></div>`).join('')}</div>
+          <div class="log" style="max-height:50vh;margin-top:10px">${(d.report.lines || []).map(l => `<div class="${l.startsWith('MATCH') ? 'INFO' : 'WARN'}">${esc(l)}</div>`).join('')}</div>`;
+      } catch (e) {
+        const msg = 'compare failed: '+(e?.message||String(e));
+        if (status) status.textContent = msg;
+        toast(msg, true);
+      } finally {
+        if (button && button.isConnected) button.disabled = false;
+      }
+    });
+    if (BT.compare) { const sm = BT.compare.summary; $('#btCmpOut').innerHTML = `<div class="tiles">${Object.entries(sm).map(([k, v]) => `<div class="tile"><div class="k">${esc(k.replace(/_/g, ' '))}</div><div class="v" style="font-size:15px">${v == null ? '—' : (typeof v === 'number' ? v.toLocaleString() : esc(String(v)))}</div></div>`).join('')}</div><div class="log" style="max-height:50vh;margin-top:10px">${(BT.compare.lines || []).map(l => `<div class="${l.startsWith('MATCH') ? 'INFO' : 'WARN'}">${esc(l)}</div>`).join('')}</div>`; }
+  }
+}
 
-    def _research_start_control(payload):
-        args = _control_args(payload, allowed={"grid", "windows", "policy"}, required=("grid", "windows"))
-        return research.start({"asset": payload["target"], **args})
-
-    def _research_propose_control(payload):
-        args = _control_args(payload, allowed={"evidence_ids", "rationale"}, required=("evidence_ids", "rationale"))
-        return research.propose_study({"job": payload["target"], **args})
-
-    def _research_analysis_control(payload):
-        args = _control_args(payload, allowed={"evidence_ids", "rationale", "apply"}, required=("evidence_ids", "rationale"))
-        return research.analysis.start({"job": payload["target"], **args})
-
-    def _research_activate_control(payload):
-        args = _control_args(payload, allowed={"operation_id"}, required=("operation_id",))
-        return research.activate({"proposal_id": payload["target"], "operation_id": args["operation_id"]})
-
-    def _research_rollback_control(payload):
-        args = _control_args(payload, allowed={"operation_id"}, required=("operation_id",))
-        return research.rollback({"asset": payload["target"], "operation_id": args["operation_id"]})
-
-    def _research_collect_control(payload):
-        args = _control_args(payload, allowed={"options"})
-        return research.market_sources.collect(payload["target"], args.get("options"))
-
-    def _parallax_decision_control(payload):
-        args = _control_args(payload)
-        if not args.get("source_commit"):
-            provenance = local_code_provenance()
-            if not provenance.get("candidate_revision_eligible") or not provenance.get("commit"):
-                raise ValueError("exact clean ICARUS code provenance is required when source_commit is omitted")
-            args["source_commit"] = provenance["commit"]
-        return parallax.record_decision(args)
-
-    def _parallax_outcome_control(payload):
-        args = _control_args(payload)
-        result = parallax.record_outcome(args)
-        try:
-            result["dreamstate_refresh"] = dreamstate.refresh().get("refresh", {})
-        except Exception as ex:
-            port.journal.log("WARN", f"DREAMSTATE rescreen after PARALLAX outcome: {type(ex).__name__}: {ex}")
-            result["dreamstate_refresh"] = {
-                "status": "degraded",
-                "error": f"{type(ex).__name__}: {ex}",
-                "outcome_committed": True,
-            }
-        return result
-
-    def _dreamstate_evaluate_control(payload):
-        args = _control_args(payload, allowed={"validation", "evidence"}, required=("validation",))
-        return dreamstate.evaluate(payload["target"], args)
-
-    def _dreamstate_retire_control(payload):
-        args = _control_args(payload, allowed={"reason"}, required=("reason",))
-        return dreamstate.retire(payload["target"], args["reason"])
-
-    def _possibility_evidence_control(payload):
-        args = _control_args(
-            payload,
-            allowed={"values", "source", "observed_at", "ttl_seconds"},
-            required=("values", "source"),
-        )
-        if not isinstance(args["values"], dict):
-            raise ValueError("values must be an object")
-        return possibility.ingest_external(
-            payload["target"],
-            args["values"],
-            source=args["source"],
-            observed_at=args.get("observed_at"),
-            ttl_seconds=args.get("ttl_seconds", 300.0),
-        )
-
-    def _system_audit_control(payload):
-        args = _control_args(payload)
-        current = load_repository_audit(port.base_dir)
-        merged = dict(args)
-        # Root Control may update the repository/CI snapshot, but it must never
-        # erase the durable command/event/loop receipts that prove prior actions.
-        for key in ("events", "loops"):
-            incoming = merged.get(key, [])
-            if incoming is None:
-                incoming = []
-            if not isinstance(incoming, list):
-                raise ValueError(f"{key} must be an array")
-            existing = current.get(key, [])
-            combined = []
-            seen = set()
-            for row in [*incoming, *existing]:
-                if not isinstance(row, dict):
-                    raise ValueError(f"{key} entries must be objects")
-                ident = str(row.get("id") or "")
-                fingerprint = ident or json.dumps(row, sort_keys=True, separators=(",", ":"), allow_nan=False)
-                if fingerprint in seen:
-                    continue
-                seen.add(fingerprint)
-                combined.append(row)
-            merged[key] = combined[:200 if key == "events" else 32]
-        if "loop_sync" not in merged and isinstance(current.get("loop_sync"), dict):
-            merged["loop_sync"] = current["loop_sync"]
-        return save_repository_audit(port.base_dir, merged)
-
-    def _system_event_control(payload):
-        args = _control_args(payload)
-        return append_system_event(port.base_dir, args)
-
-    def _system_loop_control(payload):
-        args = _control_args(payload)
-        return upsert_loop_status(port.base_dir, args)
-
-    def _integrity_event_control(payload):
-        args = _control_args(payload)
-        provenance_keys = ("source_repo", "source_branch", "source_commit")
-        supplied = [key in args for key in provenance_keys]
-        if any(supplied) and not all(supplied):
-            raise ValueError("source_repo, source_branch and source_commit must be supplied together")
-        if not any(supplied):
-            provenance = local_code_provenance()
-            if not provenance.get("candidate_revision_eligible") or not provenance.get("commit"):
-                raise ValueError(
-                    "exact clean ICARUS code provenance is required when integrity provenance is omitted"
-                )
-            args["source_repo"] = provenance["repository"]
-            args["source_branch"] = "local-clean-checkout"
-            args["source_commit"] = provenance["commit"]
-        return record_integrity_event(port.base_dir, args)
-
-    def _brain_event_control(payload):
-        args = _control_args(payload)
-        return record_brain_event(port.base_dir, args)
-
-    def _commissioning_capture_control(payload):
-        return commissioning.capture(payload["target"], force=True)
-
-    def _commissioning_settle_asset_control(payload):
-        return commissioning.settle_ready(payload["target"])
-
-    control = EngineControlPlane(
-        port.base_dir,
-        snapshotters={
-            "portfolio": port.status,
-            "research": research.operator_status,
-            "repository_audit": lambda: load_repository_audit(port.base_dir),
-            "integrity": lambda: integrity_snapshot(port.base_dir),
-            "mcp_repository": lambda: mcp_control.status(200),
-            "brain_remote_sync": brain_remote_sync.status,
-            "brain_research_sync": brain_research_sync.status,
-            "evolution_sync": evolution_remote_sync.status,
-            "autopilot": autopilot.status,
-            "parallax": parallax.status,
-            "dreamstate": dreamstate.status,
-            "possibility": possibility.status,
-            "pantheon": pantheon.snapshot,
-            "sibyl": sibyl.snapshot,
-            "chronofold": chronofold.status,
-            "commissioning": commissioning.status,
-            "backtests": _backtests_snapshot,
-            "code_provenance": local_code_provenance,
-            "go_live": lambda: golive_report(port),
-        },
-        actions={
-            action.action_id: action
-            for action in (
-                ControlAction("engine.pause_all", "Pause all entries", "Engine", "Pause new entries on every running asset; exits remain active.", _pause_all),
-                ControlAction("engine.resume_all", "Resume all entries", "Engine", "Resume new entries on every running asset.", _resume_all),
-                ControlAction("engine.flatten_all", "Flatten all paper positions", "Engine", "Immediately close every open local paper position.", _flatten_all, danger=True, confirmation="FLATTEN ALL PAPER POSITIONS"),
-
-                ControlAction("asset.add", "Add asset", "Assets", "Add and warm a registered asset.", _asset_add, target="asset",
-                              args_example={"tf": "20", "chart_type": "Candles"}),
-                ControlAction("asset.pause", "Pause asset", "Assets", "Pause new entries for one running asset.", _asset_pause, target="asset"),
-                ControlAction("asset.resume", "Resume asset", "Assets", "Resume new entries for one running asset.", _asset_resume, target="asset"),
-                ControlAction("asset.rewarm", "Re-warm asset", "Assets", "Rebuild one asset from cached history.", _asset_rewarm, target="asset"),
-                ControlAction("asset.apply_config", "Apply asset configuration", "Assets", "Apply input/chart/preset configuration through ICARUS's atomic re-warm path.", _asset_apply_config, target="asset",
-                              args_example={"values": {}, "chart": {"chart_type": "Candles"}, "persist": True}),
-                ControlAction("asset.reset_config", "Reset asset overrides", "Assets", "Remove per-asset configuration overrides and atomically re-warm the asset.", _asset_reset_config, danger=True, confirmation="RESET ASSET CONFIG", target="asset"),
-                ControlAction("asset.flatten", "Flatten asset", "Assets", "Close the selected asset's open paper position.", _asset_flatten, danger=True, confirmation="FLATTEN PAPER POSITION", target="asset"),
-                ControlAction("asset.remove", "Remove asset", "Assets", "Stop and remove one running asset.", _asset_remove, danger=True, confirmation="REMOVE ASSET", target="asset"),
-
-                ControlAction("market.mbo_snapshot", "Capture MBO snapshot", "Market Data", "Request one bounded market-by-order snapshot from the selected running asset's provider.", _market_mbo_snapshot_control, target="asset",
-                              args_example={"timeout": 5.0}),
-                ControlAction("backtest.start", "Start backtest", "Backtest", "Start a Strategy Tester-compatible backtest against the selected asset's cached tape.", _backtest_start_control, target="asset",
-                              args_example={"timeframe": "20", "session": "rth"}),
-                ControlAction("backtest.compare", "Compare backtest to TradingView CSV", "Backtest", "Compare a completed ICARUS backtest job against pasted TradingView List-of-Trades CSV.", _backtest_compare_control, target="job",
-                              args_example={"csv": "Trade #,Type,Date/Time,Signal,Price,Contracts\n", "tol": 1}),
-
-                ControlAction("sync.loop_intelligence", "Sync loop intelligence", "Intelligence", "Refresh verified automation-loop receipts now.", lambda _: loop_intelligence_sync.sync_once()),
-                ControlAction("sync.brain_remote", "Sync Adaptive Brain remote evidence", "Intelligence", "Pull the latest verified Adaptive Brain repository evidence.", lambda _: brain_remote_sync.sync_once()),
-                ControlAction("sync.brain_research", "Sync research into Adaptive Brain", "Intelligence", "Refresh research-to-brain evidence now.", lambda _: brain_research_sync.sync_once()),
-                ControlAction("sync.evolution", "Sync MCP evolution evidence", "Intelligence", "Refresh repository-native MCP repair/audit/evolution evidence.", lambda _: evolution_remote_sync.sync_once()),
-                ControlAction("sync.evidence_lab", "Sync CSV Evidence Lab", "Intelligence", "Refresh verified Advanced CSV durability/evidence receipts from the active CSV Evidence Lab repository.", lambda _: evidence_lab_sync.sync_once()),
-                ControlAction("sync.all", "Sync all intelligence planes", "Intelligence", "Run all registered intelligence synchronizers once.", _sync_all),
-                ControlAction("sync.start_all", "Start all intelligence sync loops", "Intelligence", "Start all registered background intelligence synchronizers.", _start_all_syncs),
-                ControlAction("sync.stop_all", "Stop all intelligence sync loops", "Intelligence", "Stop all registered background intelligence synchronizers.", _stop_all_syncs, danger=True, confirmation="STOP ALL INTELLIGENCE SYNCS"),
-
-                ControlAction("autopilot.configure", "Configure Tactical Autopilot", "Autopilot", "Update bounded Autopilot configuration.", lambda p: autopilot.configure(p["args"]),
-                              args_example={"enabled": True, "assets": ["NQ"], "cadence_seconds": 15, "robustness_windows": 3}),
-                ControlAction("autopilot.start", "Start Tactical Autopilot", "Autopilot", "Enable and start the Tactical Autopilot background loop.", lambda _: autopilot.start()),
-                ControlAction("autopilot.stop", "Stop Tactical Autopilot", "Autopilot", "Disable the Tactical Autopilot background loop.", lambda _: autopilot.stop()),
-                ControlAction("autopilot.step", "Run one Tactical Autopilot cycle", "Autopilot", "Run exactly one Tactical Autopilot research cycle.", lambda _: autopilot.cycle_once()),
-                ControlAction("autopilot.reset", "Reset Tactical Autopilot", "Autopilot", "Clear Tactical Autopilot runtime state and leave it disabled.", lambda _: autopilot.reset(), danger=True, confirmation="RESET AUTOPILOT"),
-
-                ControlAction("research.start", "Start research study", "Research", "Launch one bounded study on the selected asset.", _research_start_control, target="asset",
-                              args_example={"grid": {}, "windows": {"train_start": 0, "train_end": 1, "validation_start": 2, "validation_end": 3, "holdout_start": 4, "holdout_end": 5}}),
-                ControlAction("research.cancel", "Cancel research job", "Research", "Request cancellation of the active research study by job id.", lambda p: research.cancel(p["target"]), target="job"),
-                ControlAction("research.propose", "Create research proposal", "Research", "Create a proposal from a qualified study and bound evidence.", _research_propose_control, target="job",
-                              args_example={"evidence_ids": ["current-evidence-id"], "rationale": "operator review"}),
-                ControlAction("research.export", "Export qualified proposal", "Research", "Export one qualified proposal artifact for further paper evaluation.", lambda p: research.export(p["target"]), target="proposal"),
-                ControlAction("research.analysis", "Start specialist analysis", "Research", "Start specialist analysis bound to one qualified study and evidence set.", _research_analysis_control, target="job",
-                              args_example={"evidence_ids": ["current-evidence-id"], "rationale": "operator review", "apply": False}),
-                ControlAction("research.analysis_cancel", "Cancel specialist analysis", "Research", "Cancel a running specialist analysis job.", lambda p: research.analysis.journal.cancel(p["target"]), target="job"),
-                ControlAction("research.activate", "Activate research candidate", "Research", "Apply a fully qualified research proposal to the paper engine through the activation boundary.", _research_activate_control, target="proposal",
-                              danger=True, confirmation="ACTIVATE RESEARCH CANDIDATE", args_example={"operation_id": "operator-operation-id"}),
-                ControlAction("research.rollback", "Roll back research activation", "Research", "Roll back the selected asset's current research activation.", _research_rollback_control, target="asset",
-                              danger=True, confirmation="ROLL BACK RESEARCH ACTIVATION", args_example={"operation_id": "operator-operation-id"}),
-                ControlAction("research.recover", "Recover asset research activation", "Research", "Recover the selected asset's research activation state.", lambda p: research.recover({"asset": p["target"]}), target="asset"),
-                ControlAction("research.collect", "Collect research source", "Research", "Run one registered research-source collection operation.", _research_collect_control, target="source",
-                              args_example={"options": {}}),
-                ControlAction("research.configure_adaptation", "Configure adaptation scheduler", "Research", "Update bounded automatic research-adaptation settings.", lambda p: research.configure_adaptation(p["args"]),
-                              args_example={"enabled": False}),
-                ControlAction("research.configure_source_watch", "Configure source watch", "Research", "Update bounded research source-watch settings.", lambda p: research.configure_source_watch(p["args"]),
-                              args_example={"enabled": False}),
-
-                ControlAction("parallax.record_decision", "Record PARALLAX decision", "PARALLAX", "Record a causally timestamped PARALLAX decision and counterfactual branches.", _parallax_decision_control,
-                              args_example={"asset": "NQ", "action": "abstain", "observed_at": "2026-10-01T00:00:00Z", "regime": "unknown", "context": {}, "subsystem_votes": {}}),
-                ControlAction("parallax.record_outcome", "Record PARALLAX outcome", "PARALLAX", "Record an observed branch outcome and trigger DREAMSTATE re-screening.", _parallax_outcome_control,
-                              args_example={"decision_id": "decision-id", "label": "actual", "utility": 0.0, "metrics": {}, "evidence": []}),
-                ControlAction("dreamstate.refresh", "Refresh DREAMSTATE", "DREAMSTATE", "Re-screen PARALLAX counterfactual evidence into DREAMSTATE candidates.", lambda p: dreamstate.refresh((p["args"] or {}).get("min_samples", 5)),
-                              args_example={"min_samples": 5}),
-                ControlAction("dreamstate.evaluate", "Evaluate DREAMSTATE candidate", "DREAMSTATE", "Apply explicit validation-gate evidence to one candidate.", _dreamstate_evaluate_control, target="candidate",
-                              args_example={"validation": {"causal_time": True}, "evidence": ["operator-reviewed evidence"]}),
-                ControlAction("dreamstate.retire", "Retire DREAMSTATE candidate", "DREAMSTATE", "Retire one candidate with a durable reason.", _dreamstate_retire_control, target="candidate",
-                              danger=True, confirmation="RETIRE DREAMSTATE CANDIDATE", args_example={"reason": "operator decision"}),
-
-                ControlAction("possibility.ingest_evidence", "Ingest ICARUS Psi evidence", "Possibility", "Inject provenance-labelled bounded external possibility-force evidence for research only.", _possibility_evidence_control, target="asset",
-                              args_example={"values": {"gamma_pressure": {"value": 0.0, "confidence": 1.0}}, "source": "operator", "ttl_seconds": 300.0}),
-
-                ControlAction("commissioning.capture", "Freeze Chronofold forecast", "Commissioning", "Append one immutable pre-outcome Chronofold forecast receipt for the selected asset.", _commissioning_capture_control, target="asset"),
-                ControlAction("commissioning.settle_asset", "Settle ready forecasts for asset", "Commissioning", "Append outcomes for selected-asset forecasts whose target Chronon has been reached.", _commissioning_settle_asset_control, target="asset"),
-                ControlAction("commissioning.settle_all", "Settle all ready forecasts", "Commissioning", "Append outcomes for every forecast whose target Chronon has been reached.", lambda _: commissioning.settle_ready()),
-                ControlAction("commissioning.tick", "Run scientific commissioning cycle", "Commissioning", "Capture eligible shadow forecasts and settle ready outcomes once.", lambda _: commissioning.tick()),
-                ControlAction("commissioning.start", "Start scientific commissioning loop", "Commissioning", "Start the append-only shadow commissioning sampler.", lambda _: (commissioning.start_background() or commissioning.status())),
-                ControlAction("commissioning.stop", "Stop scientific commissioning loop", "Commissioning", "Stop only the shadow commissioning sampler; trading authority is unaffected.", lambda _: (commissioning.close() or commissioning.status())),
-
-                ControlAction("system.record_audit", "Update repository audit snapshot", "Observability", "Update the System Intelligence repository/CI snapshot while preserving durable event and loop receipts.", _system_audit_control,
-                              danger=True, confirmation="UPDATE SYSTEM AUDIT SNAPSHOT", args_example={"status": "unknown", "source": "operator-root-control"}),
-                ControlAction("system.record_event", "Record System Intelligence event", "Observability", "Append one durable system repair/audit/integration event.", _system_event_control,
-                              args_example={"id": "event-id", "kind": "audit", "severity": "info", "title": "Operator event", "detail": "details", "recorded_at": "2026-10-01T00:00:00Z", "repository": "reppiks490/Icarus", "ref": "manual"}),
-                ControlAction("system.upsert_loop", "Upsert automation-loop status", "Observability", "Write one durable automation-loop status receipt into System Intelligence.", _system_loop_control,
-                              args_example={"id": "loop-id", "title": "Loop", "status": "active"}),
-                ControlAction("integrity.record_event", "Record Data Integrity event", "Observability", "Append one provenance-labelled integrity/MCP receipt.", _integrity_event_control,
-                              args_example={"kind": "audit", "area": "operator-control", "summary": "operator integrity event", "status": "observed", "severity": "info", "verification": "operator observation", "interface_effect": "visible in Data Integrity and Root Control", "evidence": []}),
-                ControlAction("brain.record_event", "Record Adaptive Brain event", "Observability", "Append one evidence-backed brain/subsystem/candidate event.", _brain_event_control,
-                              args_example={"kind": "learning", "subject": "operator-control", "summary": "operator brain event", "status": "observed", "evidence": []}),
-            )
-        },
-    )
-
-    config_jobs: Dict[str, Dict[str, Any]] = {}
-    config_job_requests: Dict[str, str] = {}
-    config_jobs_lock = threading.Lock()
-
-    def _config_scope(payload: Dict[str, Any]) -> str:
-        raw = str(payload.get("asset") or payload.get("symbol") or "*").strip().upper() or "*"
-        if raw == "*":
-            return raw
-        try:
-            return resolve(raw).symbol
-        except Exception:
-            return raw
-
-    def _config_scopes_overlap(left: str, right: str) -> bool:
-        return left == "*" or right == "*" or left == right
-
-    def _start_config_job(target_path: str, payload: Dict[str, Any]) -> tuple[Dict[str, Any], bool, bool]:
-        scope = _config_scope(payload)
-        request_payload = dict(payload)
-        request_payload.pop("symbol", None)
-        request_payload["asset"] = scope
-        request_identity = json.dumps([target_path, request_payload], sort_keys=True, separators=(",", ":"), ensure_ascii=False)
-        now = time.time()
-        with config_jobs_lock:
-            # Retry only the same request. A different edit must remain visible
-            # to the caller instead of being acknowledged and silently discarded.
-            for existing in config_jobs.values():
-                if existing.get("status") in ("queued", "running") and _config_scopes_overlap(scope, str(existing.get("scope") or "*")):
-                    conflict = config_job_requests[existing["id"]] != request_identity
-                    return dict(existing), False, conflict
-            # Keep the in-memory journal bounded across long desktop sessions.
-            stale = [jid for jid, row in config_jobs.items()
-                     if row.get("status") in ("done", "error") and now - float(row.get("finished") or row.get("created") or now) > 3600]
-            for jid in stale:
-                config_jobs.pop(jid, None)
-                config_job_requests.pop(jid, None)
-            job_id = f"cfg-{time.time_ns():x}"
-            row = {
-                "id": job_id,
-                "status": "queued",
-                "scope": scope,
-                "target": target_path,
-                "created": now,
-                "started": None,
-                "finished": None,
-                "result": None,
-                "error": None,
-            }
-            config_jobs[job_id] = row
-            config_job_requests[job_id] = request_identity
-
-        def worker() -> None:
-            with config_jobs_lock:
-                current = config_jobs.get(job_id)
-                if current is None:
-                    return
-                current["status"] = "running"
-                current["started"] = time.time()
-            try:
-                req = urllib.request.Request(
-                    f"http://127.0.0.1:{srv.server_address[1]}{target_path}",
-                    data=json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8"),
-                    method="POST",
-                    headers={
-                        "Authorization": "Bearer " + token,
-                        "Content-Type": "application/json",
-                        "Connection": "close",
-                    },
-                )
-                with urllib.request.urlopen(req, timeout=3600) as response:
-                    raw = response.read()
-                    result = json.loads(raw.decode("utf-8")) if raw else {}
-                with config_jobs_lock:
-                    current = config_jobs.get(job_id)
-                    if current is not None:
-                        current["status"] = "done"
-                        current["result"] = result
-                        current["finished"] = time.time()
-            except urllib.error.HTTPError as ex:
-                try:
-                    raw = ex.read()
-                    detail = json.loads(raw.decode("utf-8")) if raw else {}
-                    message = detail.get("detail") or detail.get("error") or f"HTTP {ex.code}"
-                except Exception:
-                    message = f"HTTP {ex.code}"
-                with config_jobs_lock:
-                    current = config_jobs.get(job_id)
-                    if current is not None:
-                        current["status"] = "error"
-                        current["error"] = str(message)
-                        current["finished"] = time.time()
-            except Exception as ex:
-                with config_jobs_lock:
-                    current = config_jobs.get(job_id)
-                    if current is not None:
-                        current["status"] = "error"
-                        current["error"] = f"{type(ex).__name__}: {ex}"
-                        current["finished"] = time.time()
-
-        threading.Thread(target=worker, daemon=True, name=f"config-rewarm-{scope}").start()
-        with config_jobs_lock:
-            return dict(row), True, False
-
-    class H(BaseHTTPRequestHandler):
-        server_version = "icarus"
-        sys_version = ""
-        protocol_version = "HTTP/1.1"
-        timeout = 30                                              # idle connections must not hold a thread forever
-
-        def log_message(self, *a: Any) -> None:  # quiet
-            pass
-
-        def _send(self, code: int, body: bytes, ctype: str = "application/json", extra: Dict[str, str] | None = None) -> None:
-            self.send_response(code)
-            self.send_header("Content-Type", ctype + ("; charset=utf-8" if ctype.startswith("text") else ""))
-            self.send_header("Content-Length", str(len(body)))
-            self.send_header("Cache-Control", "no-store")
-            self.send_header("X-Frame-Options", "DENY")
-            self.send_header("X-Content-Type-Options", "nosniff")
-            self.send_header("Referrer-Policy", "no-referrer")
-            self.send_header("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-src https://www.youtube-nocookie.com; frame-ancestors 'none'")
-            for k, v in (extra or {}).items():
-                self.send_header(k, v)
-            self.end_headers()
-            self.wfile.write(body)
-
-        def _json(self, code: int, obj: Any) -> None:
-            self._send(code, dumps_safe(obj))
-
-        def _host_ok(self) -> bool:
-            """Loopback only: a DNS-rebinding page carries its own hostname in Host."""
-            host = self.headers.get("Host", "").rsplit(":", 1)[0].strip("[]").lower()
-            return host in ("127.0.0.1", "localhost", "::1")
-
-        def _auth(self) -> bool:
-            scheme, _, tok = self.headers.get("Authorization", "").partition(" ")
-            return bool(token) and scheme.lower() == "bearer" and hmac.compare_digest(tok, token)
-
-        def _int(self, q: Dict[str, Any], key: str, default: int, lo: int, hi: int) -> int:
-            try:
-                return max(lo, min(hi, int(q.get(key, [default])[0])))
-            except (TypeError, ValueError):
-                return default
-
-        def _runner(self, sym: str):
-            try:
-                key = resolve(sym or "").symbol
-            except ValueError:
-                return None
-            return port.runners.get(key)
-
-        def do_GET(self) -> None:  # noqa: N802
-            if not self._host_ok():
-                return self._json(403, {"detail": "bad host"})
-            p = urlparse(self.path)
-            q = parse_qs(p.query)
-            if p.path == "/":
-                return self._send(200, brand.render(html_path.read_bytes()), "text/html")
-            if p.path == "/research-ui.js":
-                return self._send(200, (html_path.parent / "research-ui.js").read_bytes(), "text/javascript")
-            if p.path == "/sources-ui.js":
-                return self._send(200, (html_path.parent / "sources-ui.js").read_bytes(), "text/javascript")
-            if p.path == "/market-data-ui.js":
-                return self._send(200, (html_path.parent / "market-data-ui.js").read_bytes(), "text/javascript")
-            if p.path == "/integrity-ui.js":
-                return self._send(200, (html_path.parent / "integrity-ui.js").read_bytes(), "text/javascript")
-            if p.path == "/engine-control-ui.js":
-                return self._send(200, (html_path.parent / "engine-control-ui.js").read_bytes(), "text/javascript")
-            if p.path == "/autopilot-ui.js":
-                return self._send(200, (html_path.parent / "autopilot-ui.js").read_bytes(), "text/javascript")
-            if p.path == "/brain-ui.js":
-                return self._send(200, (html_path.parent / "brain-ui.js").read_bytes(), "text/javascript")
-            if p.path == "/evolution-ui.js":
-                return self._send(200, (html_path.parent / "evolution-ui.js").read_bytes(), "text/javascript")
-            if p.path == "/parallax-ui.js":
-                return self._send(200, (html_path.parent / "parallax-ui.js").read_bytes(), "text/javascript")
-            if p.path == "/possibility-ui.js":
-                return self._send(200, (html_path.parent / "possibility-ui.js").read_bytes(), "text/javascript")
-            if p.path == "/pantheon-ui.js":
-                return self._send(200, (html_path.parent / "pantheon-ui.js").read_bytes(), "text/javascript")
-            if p.path == "/sibyl-ui.js":
-                return self._send(200, (html_path.parent / "sibyl-ui.js").read_bytes(), "text/javascript")
-            if p.path == "/apex-ui.js":
-                return self._send(200, (html_path.parent / "apex-ui.js").read_bytes(), "text/javascript")
-            if p.path == "/ascendancy-ui.js":
-                return self._send(200, (html_path.parent / "ascendancy-ui.js").read_bytes(), "text/javascript")
-            if p.path == "/learning-ui.js":
-                return self._send(200, (html_path.parent / "learning-ui.js").read_bytes(), "text/javascript")
-            if p.path == "/chronofold-ui.js":
-                return self._send(200, (html_path.parent / "chronofold-ui.js").read_bytes(), "text/javascript")
-            if p.path == "/commissioning-ui.js":
-                return self._send(200, (html_path.parent / "commissioning-ui.js").read_bytes(), "text/javascript")
-            if p.path in ("/experience-ui.js", "/experience-ui.css"):
-                ctype = "text/javascript" if p.path.endswith(".js") else "text/css"
-                return self._send(200, (html_path.parent / p.path[1:]).read_bytes(), ctype)
-            if p.path.startswith("/api/config-jobs/"):
-                job_id = p.path.rsplit("/", 1)[-1]
-                with config_jobs_lock:
-                    row = config_jobs.get(job_id)
-                    snapshot = dict(row) if row is not None else None
-                if snapshot is None:
-                    return self._json(404, {"detail": "unknown configuration job"})
-                return self._json(200, snapshot)
-            if p.path == "/healthz":
-                return self._json(200, {"ok": True, "assets": list(port.order), "warm": all(r.warm for r in port.runners.values()) if port.runners else False})
-            if p.path == "/status/public":
-                try:
-                    return self._json(200, port.status())
-                except Exception as ex:
-                    sys.stderr.write(f"status/public failed: {type(ex).__name__}: {ex}\n")
-                    return self._json(500, {"ok": False, "detail": f"{type(ex).__name__}: {ex}", "assets": []})
-            if p.path == "/api/ascendancy/capabilities":
-                if not self._auth():
-                    return self._json(401, {"detail": "bad admin token"})
-                return self._json(200, capability_snapshot())
-            if p.path == "/api/ascendancy/genomes":
-                if not self._auth():
-                    return self._json(401, {"detail": "bad admin token"})
-                try:
-                    return self._json(200, _ascendancy_snapshot())
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-                except Exception as ex:
-                    port.journal.log("WARN", f"ASCENDANCY genome snapshot: {type(ex).__name__}: {ex}")
-                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
-            if p.path == "/api/ascendancy/candidates":
-                if not self._auth():
-                    return self._json(401, {"detail": "bad admin token"})
-                try:
-                    return self._json(200, ascendancy_foundry.snapshot())
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-                except Exception as ex:
-                    port.journal.log("WARN", f"ASCENDANCY foundry snapshot: {type(ex).__name__}: {ex}")
-                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
-            if p.path == "/api/ascendancy/unknowns":
-                if not self._auth():
-                    return self._json(401, {"detail": "bad admin token"})
-                try:
-                    return self._json(200, ascendancy_unknowns.snapshot())
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-                except Exception as ex:
-                    port.journal.log("WARN", f"ASCENDANCY unknown snapshot: {type(ex).__name__}: {ex}")
-                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
-            if p.path == "/api/ascendancy/mechanisms":
-                if not self._auth():
-                    return self._json(401, {"detail": "bad admin token"})
-                try:
-                    return self._json(200, ascendancy_mechanisms.snapshot())
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-                except Exception as ex:
-                    port.journal.log("WARN", f"ASCENDANCY mechanism snapshot: {type(ex).__name__}: {ex}")
-                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
-            if p.path == "/api/ascendancy/inventions":
-                if not self._auth():
-                    return self._json(401, {"detail": "bad admin token"})
-                try:
-                    return self._json(200, ascendancy_inventions.snapshot())
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-                except Exception as ex:
-                    port.journal.log("WARN", f"ASCENDANCY invention snapshot: {type(ex).__name__}: {ex}")
-                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
-            if p.path == "/api/ascendancy/contributions":
-                if not self._auth():
-                    return self._json(401, {"detail": "bad admin token"})
-                try:
-                    return self._json(200, ascendancy_contribution.snapshot())
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-                except Exception as ex:
-                    port.journal.log("WARN", f"ASCENDANCY contribution snapshot: {type(ex).__name__}: {ex}")
-                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
-            if p.path == "/api/ascendancy/evaluator":
-                if not self._auth():
-                    return self._json(401, {"detail": "bad admin token"})
-                try:
-                    return self._json(200, ascendancy_evaluator.snapshot())
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-                except Exception as ex:
-                    port.journal.log("WARN", f"ASCENDANCY evaluator snapshot: {type(ex).__name__}: {ex}")
-                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
-            if p.path == "/api/golive":
-                return self._json(200, golive_report(port))
-            if p.path == "/api/agent":
-                return self._json(200, agent_report())
-            if p.path == "/api/briefing":
-                return self._json(200, briefing_report())
-            if p.path == "/api/system/audit":
-                return self._json(200, load_repository_audit(port.base_dir))
-            if p.path == "/api/integrity":
-                if not self._auth():
-                    return self._json(401, {"detail": "bad admin token"})
-                return self._json(200, integrity_snapshot(port.base_dir))
-            if p.path == "/api/evolution":
-                if not self._auth():
-                    return self._json(401, {"detail": "bad admin token"})
-                return self._json(200, evolution_remote_sync.status())
-            if p.path == "/api/evidence-lab":
-                if not self._auth():
-                    return self._json(401, {"detail": "bad admin token"})
-                return self._json(200, evidence_lab_sync.status())
-            if p.path == "/api/engine-control":
-                if not self._auth():
-                    return self._json(401, {"detail": "bad admin token"})
-                return self._json(200, control.status())
-            if p.path == "/api/autopilot":
-                if not self._auth():
-                    return self._json(401, {"detail": "bad admin token"})
-                return self._json(200, autopilot.status())
-            if p.path == "/api/parallax":
-                if not self._auth():
-                    return self._json(401, {"detail": "bad admin token"})
-                try:
-                    return self._json(200, parallax.snapshot())
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-            if p.path == "/api/dreamstate":
-                if not self._auth():
-                    return self._json(401, {"detail": "bad admin token"})
-                try:
-                    return self._json(200, dreamstate.snapshot())
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-            if p.path == "/api/possibility/evidence":
-                if not self._auth():
-                    return self._json(401, {"detail": "bad admin token"})
-                try:
-                    include_expired = str(q.get("include_expired", ["false"])[0]).strip().lower() in {"1", "true", "yes", "on"}
-                    return self._json(200, possibility.evidence_snapshot(
-                        q.get("asset", [""])[0],
-                        limit=int(q.get("limit", ["100"])[0]),
-                        include_expired=include_expired,
-                        as_of=q.get("as_of", [None])[0],
-                    ))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-            if p.path == "/api/possibility":
-                if not self._auth():
-                    return self._json(401, {"detail": "bad admin token"})
-                try:
-                    return self._json(200, possibility.snapshot(q.get("asset", [""])[0]))
-                except Exception as ex:
-                    port.journal.log("WARN", f"possibility snapshot: {type(ex).__name__}: {ex}")
-                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
-            if p.path == "/api/pantheon":
-                if not self._auth():
-                    return self._json(401, {"detail": "bad admin token"})
-                try:
-                    return self._json(200, pantheon.snapshot())
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-            if p.path == "/api/learning":
-                if not self._auth():
-                    return self._json(401, {"detail": "bad admin token"})
-                return self._json(200, learning.snapshot())
-            if p.path == "/api/learning/health":
-                if not self._auth():
-                    return self._json(401, {"detail": "bad admin token"})
-                return self._json(200, learning.health())
-            if p.path == "/api/learning/experience":
-                if not self._auth():
-                    return self._json(401, {"detail": "bad admin token"})
-                return self._json(200, learning.experience_state())
-            if p.path == "/api/learning/scorecards":
-                if not self._auth():
-                    return self._json(401, {"detail": "bad admin token"})
-                return self._json(200, {"scorecards": learning.scorecards(), "execution_authorized": False, "production_decision_authorized": False})
-            if p.path == "/api/learning/datasets":
-                if not self._auth():
-                    return self._json(401, {"detail": "bad admin token"})
-                return self._json(200, {"datasets": learning.datasets(), "training_runs": learning.training_runs(), "execution_authorized": False, "production_decision_authorized": False})
-            apex_read_routes = {
-                "/api/apex": None,
-                "/api/apex/participants": "participants",
-                "/api/apex/crowdhunt": "crowdhunt",
-                "/api/apex/forces": "forces",
-                "/api/apex/cascades": "cascades",
-                "/api/apex/causality": "causality",
-                "/api/apex/worlds": "worlds",
-                "/api/apex/epistemics": "epistemics",
-                "/api/apex/self": "self",
-                "/api/apex/conscience": "conscience",
-            }
-            if p.path in apex_read_routes:
-                if not self._auth():
-                    return self._json(401, {"detail": "bad admin token"})
-                try:
-                    state = apex.snapshot(
-                        as_of=q.get("as_of", [None])[0],
-                        asset=q.get("asset", [None])[0],
-                    )
-                    key = apex_read_routes[p.path]
-                    return self._json(200, state if key is None else state[key])
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-                except Exception as ex:
-                    port.journal.log("WARN", f"APEX snapshot: {type(ex).__name__}: {ex}")
-                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
-            if p.path == "/api/sibyl":
-                if not self._auth():
-                    return self._json(401, {"detail": "bad admin token"})
-                try:
-                    try:
-                        market_state = port.status()
-                    except Exception:
-                        market_state = {}
-                    try:
-                        parallax_state = parallax.snapshot()
-                    except Exception:
-                        parallax_state = {}
-                    try:
-                        dreamstate_state = dreamstate.snapshot()
-                    except Exception:
-                        dreamstate_state = {}
-                    try:
-                        brain_state = brain_snapshot(
-                            port.base_dir,
-                            proof_status=performance_proof.snapshot(),
-                            latency_status=latency_telemetry.snapshot(),
-                        )
-                    except Exception:
-                        brain_state = {}
-                    return self._json(200, sibyl.snapshot(
-                        q.get("asset", [None])[0],
-                        market_status=market_state,
-                        parallax_state=parallax_state,
-                        dreamstate_state=dreamstate_state,
-                        brain_state=brain_state,
-                    ))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-            if p.path == "/api/chronofold":
-                if not self._auth():
-                    return self._json(401, {"detail": "bad admin token"})
-                try:
-                    return self._json(200, chronofold.snapshot(q.get("asset", [""])[0]))
-                except Exception as ex:
-                    port.journal.log("WARN", f"chronofold snapshot: {type(ex).__name__}: {ex}")
-                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
-            if p.path == "/api/commissioning":
-                if not self._auth():
-                    return self._json(401, {"detail": "bad admin token"})
-                try:
-                    return self._json(200, commissioning.status(q.get("asset", [""])[0]))
-                except Exception as ex:
-                    port.journal.log("WARN", f"commissioning snapshot: {type(ex).__name__}: {ex}")
-                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
-            if p.path == "/api/performance-proof":
-                if not self._auth():
-                    return self._json(401, {"detail": "bad admin token"})
-                return self._json(200, performance_proof.snapshot())
-            if p.path == "/api/performance-proof/pending":
-                if not self._auth():
-                    return self._json(401, {"detail": "bad admin token"})
-                try:
-                    return self._json(200, performance_proof.pending_settlements(
-                        as_of=q.get("as_of", [None])[0],
-                        limit=int(q.get("limit", ["100"])[0]),
-                    ))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-            if p.path == "/api/latency":
-                if not self._auth():
-                    return self._json(401, {"detail": "bad admin token"})
-                return self._json(200, latency_telemetry.snapshot())
-            if p.path == "/api/source-reliability":
-                if not self._auth():
-                    return self._json(401, {"detail": "bad admin token"})
-                return self._json(200, source_reliability.snapshot())
-            if p.path == "/api/qualification-receipts":
-                if not self._auth():
-                    return self._json(401, {"detail": "bad admin token"})
-                return self._json(200, qualification_receipts.snapshot())
-            if p.path == "/api/brain":
-                if not self._auth():
-                    return self._json(401, {"detail": "bad admin token"})
-                try:
-                    market = port.status()
-                except Exception:
-                    market = {}
-                try:
-                    research_state = research.status()
-                except Exception:
-                    research_state = {}
-                return self._json(200, brain_snapshot(
-                    port.base_dir,
-                    market_status=market,
-                    research_status=research_state,
-                    system_audit=load_repository_audit(port.base_dir),
-                    integrity=integrity_snapshot(port.base_dir),
-                    remote_sync=brain_remote_sync.status(),
-                    research_sync=brain_research_sync.status(),
-                    evidence_lab_sync=evidence_lab_sync.status(),
-                    proof_status=performance_proof.snapshot(),
-                    latency_status=latency_telemetry.snapshot(),
-                    source_reliability=source_reliability.snapshot(),
-                    qualification_receipts=qualification_receipts.snapshot(),
-                ))
-            if p.path == "/api/input-meta":
-                return self._json(200, meta)
-            if p.path.startswith("/api/research"):
-                if not self._auth():
-                    return self._json(401, {"detail": "bad admin token"})
-                try:
-                    if p.path == "/api/research":
-                        return self._json(200, research.status())
-                    if p.path == "/api/research/adaptation":
-                        return self._json(200, research.adaptation.status())
-                    if p.path == "/api/research/source-watch":
-                        return self._json(200, research.source_watch.status())
-                    if p.path == "/api/research/events":
-                        return self._json(200, research.events(q.get("asset", [""])[0]))
-                    if p.path == "/api/research/analysis":
-                        return self._json(200, research.analysis.status())
-                    if p.path.startswith("/api/research/analysis/"):
-                        return self._json(200, research.analysis.job(p.path.rsplit("/", 1)[1]))
-                    if p.path == "/api/research/activation":
-                        return self._json(200, research.activation.status())
-                    if p.path == "/api/research/sources":
-                        return self._json(200, research.market_sources.status())
-                    if p.path == "/api/research/records":
-                        return self._json(200, research.market_sources.records(kind=q.get("kind", ["asset"])[0],
-                            asset=q.get("asset", [None])[0], cik=q.get("cik", [None])[0],
-                            limit=int(q.get("limit", ["100"])[0])))
-                    if p.path.startswith("/api/research/jobs/"):
-                        return self._json(200, research.job(p.path.rsplit("/", 1)[1]))
-                    if p.path.startswith("/api/research/proposals/"):
-                        return self._json(200, research.ledger.get_proposal(p.path.rsplit("/", 1)[1]))
-                except (ValueError, TypeError, KeyError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-                return self._json(404, {"detail": "unknown research resource"})
-            if p.path == "/api/presets":
-                out = []
-                pdir = os.path.join(port.base_dir, "presets")
-                if os.path.isdir(pdir):
-                    for f in sorted(os.listdir(pdir)):
-                        if f.endswith(".json"):
-                            d = _read_json(os.path.join(pdir, f))
-                            out.append({"name": f[:-5], "meta": d.get("_meta", {}), "count": len([k for k in d if not k.startswith("_")])})
-                return self._json(200, out)
-            if p.path == "/api/assets":
-                return self._json(200, {"registry": [{
-                                            "symbol": s.symbol, "name": s.name, "feed": s.feed, "calendar": s.calendar,
-                                            "mintick": s.mintick, "multiplier": s.multiplier, "kind": s.kind,
-                                            "continuous_symbol": s.tv_symbol if s.kind == "futures" else None,
-                                            "provider_symbol": s.ticker,
-                                            "contract_policy": "continuous_only" if s.kind == "futures" else "not_applicable",
-                                        } for s in REGISTRY.values()],
-                                        "running": list(port.order), "chart_capabilities": chart_capabilities()})
-            if p.path == "/api/commands":
-                return self._json(200, COMMANDS)
-            if p.path.startswith("/api/export/"):
-                r = self._runner(p.path.rsplit("/", 1)[1].replace(".csv", ""))
-                if not r:
-                    return self._json(404, {"error": "unknown asset"})
-                return self._send(200, r.export_csv().encode("utf-8"), "text/csv", {"Content-Disposition": f'attachment; filename="{r.symbol}_trades.csv"'})
-            if p.path.startswith("/api/chart/"):
-                r = self._runner(p.path.rsplit("/", 1)[1])
-                if not r:
-                    return self._json(404, {"error": "unknown asset"})
-                return self._json(200, r.chart(self._int(q, "n", 240, 20, 800)))
-            if p.path.startswith("/api/trades/"):
-                r = self._runner(p.path.rsplit("/", 1)[1])
-                if not r:
-                    return self._json(404, {"error": "unknown asset"})
-                return self._json(200, r.trades(self._int(q, "limit", 100, 1, 2000)))
-            if p.path.startswith("/api/market-data/"):
-                rest = p.path[len("/api/market-data/"):]
-                parts = [x for x in rest.split("/") if x]
-                if len(parts) != 2:
-                    return self._json(404, {"error": "market-data route is /api/market-data/<asset>/<capabilities|ticks|depth>"})
-                r = self._runner(parts[0])
-                if not r:
-                    return self._json(404, {"error": "unknown asset"})
-                kind = parts[1]
-                feed = r.feed
-                if kind == "capabilities":
-                    caps = feed.capabilities() if hasattr(feed, "capabilities") else {}
-                    metadata = feed.meta(r.spec.ticker) if hasattr(feed, "meta") else {}
-                    return self._json(200, {"asset": r.symbol, "provider": type(feed).__name__.lower(),
-                                            "capabilities": caps, "metadata": metadata})
-                if kind == "ticks":
-                    if not hasattr(feed, "trades"):
-                        return self._json(409, {"error": f"{type(feed).__name__} does not expose trade ticks"})
-                    limit = self._int(q, "limit", 1000, 1, 10000)
-                    since = self._int(q, "since_ts", 0, 0, 4_294_967_295)
-                    try:
-                        rows = feed.trades(r.spec.ticker, since_ts=(since or None), limit=limit)
-                    except ValueError as ex:
-                        return self._json(400, {"error": str(ex)})
-                    except Exception as ex:
-                        port.journal.log("WARN", f"market-data ticks {r.symbol}: {type(ex).__name__}: {ex}")
-                        return self._json(502, {"error": f"{type(ex).__name__}: {ex}"})
-                    return self._json(200, {"asset": r.symbol, "provider": type(feed).__name__.lower(),
-                                            "ticks": [vars(x) if hasattr(x, "__dict__") else x for x in rows]})
-                if kind == "depth":
-                    if not hasattr(feed, "depth_events"):
-                        return self._json(409, {"error": f"{type(feed).__name__} does not expose order-book depth"})
-                    schema = str(q.get("schema", ["mbp-10"])[0]).strip().lower()
-                    if schema not in ("mbp-10", "mbo"):
-                        return self._json(400, {"error": "schema must be mbp-10 or mbo"})
-                    limit = self._int(q, "limit", 1000, 1, 10000)
-                    try:
-                        rows = feed.depth_events(r.spec.ticker, schema=schema, limit=limit)
-                    except ValueError as ex:
-                        return self._json(400, {"error": str(ex)})
-                    except Exception as ex:
-                        port.journal.log("WARN", f"market-data depth {r.symbol}: {type(ex).__name__}: {ex}")
-                        return self._json(502, {"error": f"{type(ex).__name__}: {ex}"})
-                    return self._json(200, {"asset": r.symbol, "provider": type(feed).__name__.lower(),
-                                            "schema": schema, "events": rows})
-                return self._json(404, {"error": "unknown market-data resource"})
-            if p.path.startswith("/api/backtest/"):
-                rest = p.path[len("/api/backtest/"):]
-                job_id, _, tail = rest.partition("/")
-                job = JOBS.get(job_id)
-                if not job:
-                    return self._json(404, {"error": "unknown backtest job"})
-                if tail == "trades.csv":
-                    if job["status"] != "done":
-                        return self._json(409, {"error": "not finished"})
-                    return self._send(200, job["result"]["csv"].encode("utf-8"), "text/csv",
-                                      {"Content-Disposition": f'attachment; filename="backtest_{job["result"]["asset"]}_{job_id}.csv"'})
-                out = {k: job[k] for k in ("id", "status", "progress", "started", "params", "error")}
-                out["finished"] = job.get("finished")
-                if job["status"] == "done" and q.get("full", ["1"])[0] != "0":
-                    out["result"] = {k: v for k, v in job["result"].items() if k != "csv"}
-                return self._json(200, out)
-            if p.path.startswith("/api/inputs/"):
-                r = self._runner(p.path.rsplit("/", 1)[1])
-                if not r:
-                    return self._json(404, {"error": "unknown asset"})
-                over = _read_json(os.path.join(port.base_dir, f"inputs.{r.symbol}.json"))
-                return self._json(200, {"asset": r.symbol, "effective": r.inputs.to_dict(), "base": r.inputs_base.to_dict(), "sources": r.cfg.sources,
-                                        "overrides": {k: v for k, v in over.items() if not k.startswith("_")}, "preset": r.cfg.preset, "pts_scale": r.pts_scale,
-                                        "instrument": {
-                                            "kind": r.spec.kind,
-                                            "continuous_symbol": r.spec.tv_symbol if r.spec.kind == "futures" else None,
-                                            "provider_symbol": r.spec.ticker,
-                                            "contract_policy": "continuous_only" if r.spec.kind == "futures" else "not_applicable",
-                                        },
-                                        "chart": {"timeframe": r.spec.chart_tf, "chart_type": r.spec.chart_type,
-                                                  "fill_on": r.spec.fill_on, "security_source": r.spec.security_source},
-                                        "chart_capabilities": r.chart_capability_view()})
-            self._json(404, {"error": "not found"})
-
-        def _drain_body(self) -> None:
-            # Claude (Opus 5.5) 2026-09-27. Answering before the body is read and then closing makes the OS reset
-            # the connection, and the client can lose the answer (WinError 10053, 3 in 500 requests). Every early
-            # POST rejection discards the body unparsed; never more than MAX_BODY_BYTES, bounded by the timeout.
-            try:
-                n = int(self.headers.get("Content-Length", "0") or 0)
-            except ValueError:
-                return
-            if 0 < n <= MAX_BODY_BYTES and not self.headers.get("Transfer-Encoding"):
-                self.rfile.read(n)
-
-        def do_POST(self) -> None:  # noqa: N802
-            if not self._host_ok():
-                self._drain_body()
-                return self._json(403, {"detail": "bad host"})
-            p = urlparse(self.path)
-            if p.path == "/research/events":
-                secret = os.environ.get("ICARUS_INGEST_SECRET", "")
-                if not secret:
-                    self._drain_body()
-                    return self._json(503, {"detail": "event receiver is not configured"})
-                if not self.headers.get("X-Icarus-Signature") or not self.headers.get("X-Icarus-Timestamp"):
-                    self._drain_body()
-                    return self._json(401, {"detail": "signed event required"})
-                try:
-                    n = int(self.headers.get("Content-Length", "0"))
-                    if not 0 < n <= MAX_BODY_BYTES or self.headers.get("Transfer-Encoding"):
-                        return self._json(413, {"detail": "invalid event body length"})
-                    event = research.ledger.ingest_signed_event(self.rfile.read(n), self.headers["X-Icarus-Timestamp"],
-                                                                self.headers["X-Icarus-Signature"], secret)
-                    return self._json(200, {"ok": True, "event_id": event["event_id"], "execution_authorized": False})
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-            if not p.path.startswith("/admin/"):
-                self._drain_body()
-                return self._json(404, {"error": "not found"})
-            if not self._auth():                                  # authenticate BEFORE parsing any body
-                self._drain_body()                                # discard it unread, or the 401 can be lost
-                return self._json(401, {"detail": "bad admin token"})
-            try:
-                n = int(self.headers.get("Content-Length", "0") or 0)
-            except ValueError:
-                return self._json(400, {"detail": "bad Content-Length"})
-            if n < 0 or n > (1 << 20):
-                return self._json(413, {"detail": "body too large"})
-            raw = self.rfile.read(n) if n else b""
-            try:
-                body = strict_json(raw) if p.path.startswith(("/admin/research/", "/admin/integrity/", "/admin/parallax/", "/admin/dreamstate/", "/admin/possibility/", "/admin/autopilot/", "/admin/engine-control", "/admin/pantheon/", "/admin/sibyl/", "/admin/apex/", "/admin/learning/", "/admin/qualification-receipts/", "/admin/ascendancy/")) else (json.loads(raw, parse_constant=_no_json_constants) if raw else {})
-            except ValueError as ex:
-                return self._json(400, {"detail": f"bad JSON body: {ex}"})
-            if not isinstance(body, dict):
-                return self._json(400, {"detail": "JSON body must be an object"})
-            async_config_routes = {
-                "/admin/inputs/async": "/admin/inputs",
-                "/admin/inputs/reset/async": "/admin/inputs/reset",
-                "/admin/preset/async": "/admin/preset",
-                "/admin/rewarm/async": "/admin/rewarm",
-            }
-            async_target = async_config_routes.get(p.path)
-            if async_target is not None:
-                job, created, conflict = _start_config_job(async_target, body)
-                if conflict:
-                    return self._json(409, {
-                        "ok": False,
-                        "job": job["id"],
-                        "status": job["status"],
-                        "scope": job["scope"],
-                        "detail": "Another configuration request is already running for this asset; wait for it to finish, then apply your edits again.",
-                    })
-                note = (
-                    f"configuration re-warm queued for {job.get('scope')}"
-                    if created else
-                    f"configuration re-warm already running for {job.get('scope')}"
-                )
-                return self._json(202, {
-                    "ok": True,
-                    "job": job["id"],
-                    "status": job["status"],
-                    "scope": job["scope"],
-                    "note": note,
-                })
-            if p.path == "/admin/learning/config":
-                try:
-                    return self._json(200, research.configure_learning(body))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-            if p.path == "/admin/learning/tick":
-                try:
-                    return self._json(200, learning.run_cycle())
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-            if p.path == "/admin/learning/prediction":
-                try:
-                    return self._json(200, learning.record_prediction(body))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-            if p.path == "/admin/learning/outcome":
-                try:
-                    return self._json(200, learning.record_outcome(body))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-            if p.path == "/admin/learning/scan":
-                try:
-                    return self._json(200, learning.scan_history())
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-            if p.path == "/admin/learning/backfill":
-                try:
-                    dataset_id = body.get("dataset_id")
-                    slots = body.get("slots")
-                    if slots is not None and not isinstance(slots, list):
-                        raise ValueError("slots must be a list")
-                    return self._json(200, learning.backfill_dataset(dataset_id, slots=slots))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-            if p.path == "/admin/apex/evidence":
-                try:
-                    return self._json(200, apex.ingest_evidence(body, enforce_local_receipt=True))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-            if p.path == "/admin/apex/outcome":
-                try:
-                    return self._json(200, apex.record_outcome(body))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-            if p.path == "/admin/apex/model-observation":
-                try:
-                    return self._json(200, apex.record_model_observation(body))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-            if p.path == "/admin/apex/experiment":
-                try:
-                    return self._json(200, apex.propose_experiment(body))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-            if p.path == "/admin/engine-control":
-                try:
-                    return self._json(200, control.run(body))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-                except Exception as ex:
-                    port.journal.log(
-                        "ERROR",
-                        f"Engine Control request failed: {type(ex).__name__}: {ex}",
-                    )
-                    return self._json(
-                        500,
-                        {"detail": f"{type(ex).__name__}: {ex}"},
-                    )
-            if p.path == "/admin/ascendancy/genome":
-                try:
-                    return self._json(200, _ascendancy_research_mutation(
-                        lambda: _ascendancy_register_genome(body)
-                    ))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-                except Exception as ex:
-                    port.journal.log("ERROR", f"ASCENDANCY genome register: {type(ex).__name__}: {ex}")
-                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
-            if p.path == "/admin/ascendancy/genome-evaluation":
-                try:
-                    return self._json(200, _ascendancy_research_mutation(
-                        lambda: ascendancy_archive.record_evaluation(body)
-                    ))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-                except Exception as ex:
-                    port.journal.log("ERROR", f"ASCENDANCY genome evaluation: {type(ex).__name__}: {ex}")
-                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
-            if p.path == "/admin/ascendancy/genome-retire":
-                try:
-                    return self._json(200, _ascendancy_research_mutation(
-                        lambda: ascendancy_archive.retire(
-                            body.get("genome_id"), body.get("reason")
-                        )
-                    ))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-                except Exception as ex:
-                    port.journal.log("ERROR", f"ASCENDANCY genome retire: {type(ex).__name__}: {ex}")
-                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
-            if p.path == "/admin/ascendancy/candidate":
-                try:
-                    return self._json(200, _ascendancy_research_mutation(
-                        lambda: ascendancy_foundry.register(body)
-                    ))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-                except Exception as ex:
-                    port.journal.log("ERROR", f"ASCENDANCY candidate register: {type(ex).__name__}: {ex}")
-                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
-            if p.path == "/admin/ascendancy/candidate-stage":
-                try:
-                    return self._json(200, _ascendancy_research_mutation(
-                        lambda: ascendancy_foundry.advance(
-                            body.get("candidate_id"), body.get("stage"), body.get("reason")
-                        )
-                    ))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-                except Exception as ex:
-                    port.journal.log("ERROR", f"ASCENDANCY candidate stage: {type(ex).__name__}: {ex}")
-                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
-            if p.path == "/admin/ascendancy/candidate-reject":
-                try:
-                    return self._json(200, _ascendancy_research_mutation(
-                        lambda: ascendancy_foundry.reject(
-                            body.get("candidate_id"), body.get("reason")
-                        )
-                    ))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-                except Exception as ex:
-                    port.journal.log("ERROR", f"ASCENDANCY candidate reject: {type(ex).__name__}: {ex}")
-                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
-            if p.path == "/admin/ascendancy/candidate-retire":
-                try:
-                    return self._json(200, _ascendancy_research_mutation(
-                        lambda: ascendancy_foundry.retire(
-                            body.get("candidate_id"), body.get("reason")
-                        )
-                    ))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-                except Exception as ex:
-                    port.journal.log("ERROR", f"ASCENDANCY candidate retire: {type(ex).__name__}: {ex}")
-                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
-            if p.path == "/admin/ascendancy/unknown-event":
-                try:
-                    return self._json(200, _ascendancy_research_mutation(
-                        lambda: ascendancy_unknowns.record_event(body)
-                    ))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-                except Exception as ex:
-                    port.journal.log("ERROR", f"ASCENDANCY unknown event: {type(ex).__name__}: {ex}")
-                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
-            if p.path == "/admin/ascendancy/unknown-explanation":
-                try:
-                    return self._json(200, _ascendancy_research_mutation(
-                        lambda: ascendancy_unknowns.record_explanation_test(body)
-                    ))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-                except Exception as ex:
-                    port.journal.log("ERROR", f"ASCENDANCY unknown explanation: {type(ex).__name__}: {ex}")
-                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
-            if p.path == "/admin/ascendancy/unknown-link-candidate":
-                try:
-                    return self._json(200, _ascendancy_research_mutation(
-                        lambda: ascendancy_unknowns.link_candidate(
-                            body.get("phenomenon_signature"),
-                            body.get("candidate_id"),
-                            body.get("rationale"),
-                        )
-                    ))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-                except Exception as ex:
-                    port.journal.log("ERROR", f"ASCENDANCY unknown candidate link: {type(ex).__name__}: {ex}")
-                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
-            if p.path == "/admin/ascendancy/mechanism-experiment":
-                try:
-                    return self._json(200, _ascendancy_research_mutation(
-                        lambda: _ascendancy_record_mechanism(body)
-                    ))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-                except Exception as ex:
-                    port.journal.log("ERROR", f"ASCENDANCY mechanism experiment: {type(ex).__name__}: {ex}")
-                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
-            if p.path == "/admin/ascendancy/contribution-observation":
-                try:
-                    return self._json(200, _ascendancy_research_mutation(
-                        lambda: _ascendancy_record_contribution(body)
-                    ))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-                except Exception as ex:
-                    port.journal.log("ERROR", f"ASCENDANCY contribution observation: {type(ex).__name__}: {ex}")
-                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
-            if p.path == "/admin/ascendancy/evaluator-register":
-                try:
-                    return self._json(200, _ascendancy_research_mutation(
-                        lambda: _ascendancy_register_evaluator_candidate(body)
-                    ))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-                except Exception as ex:
-                    port.journal.log("ERROR", f"ASCENDANCY evaluator register: {type(ex).__name__}: {ex}")
-                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
-            if p.path == "/admin/ascendancy/evaluator-receipt":
-                try:
-                    return self._json(200, _ascendancy_research_mutation(
-                        lambda: ascendancy_evaluator.record(body)
-                    ))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-                except Exception as ex:
-                    port.journal.log("ERROR", f"ASCENDANCY evaluator receipt: {type(ex).__name__}: {ex}")
-                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
-            if p.path == "/admin/ascendancy/invention-generate":
-                try:
-                    return self._json(200, _ascendancy_research_mutation(
-                        lambda: ascendancy_inventions.generate(body)
-                    ))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-                except Exception as ex:
-                    port.journal.log("ERROR", f"ASCENDANCY invention generate: {type(ex).__name__}: {ex}")
-                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
-            if p.path == "/admin/ascendancy/invention-to-candidate":
-                try:
-                    return self._json(200, _ascendancy_research_mutation(
-                        lambda: _ascendancy_invention_to_candidate(body)
-                    ))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-                except Exception as ex:
-                    port.journal.log("ERROR", f"ASCENDANCY invention handoff: {type(ex).__name__}: {ex}")
-                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
-            if p.path == "/admin/learning/config":
-                try:
-                    return self._json(200, research.configure_learning(body))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-            if p.path == "/admin/learning/tick":
-                try:
-                    return self._json(200, learning.run_cycle())
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-            if p.path == "/admin/learning/prediction":
-                try:
-                    return self._json(200, learning.record_prediction(body))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-            if p.path == "/admin/learning/outcome":
-                try:
-                    return self._json(200, learning.record_outcome(body))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-            if p.path == "/admin/learning/scan":
-                try:
-                    return self._json(200, learning.scan_history())
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-            if p.path == "/admin/learning/backfill":
-                try:
-                    dataset_id = body.get("dataset_id")
-                    slots = body.get("slots")
-                    if slots is not None and not isinstance(slots, list):
-                        raise ValueError("slots must be a list")
-                    return self._json(200, learning.backfill_dataset(dataset_id, slots=slots))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-            if p.path == "/admin/apex/evidence":
-                try:
-                    return self._json(200, apex.ingest_evidence(body, enforce_local_receipt=True))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-            if p.path == "/admin/apex/outcome":
-                try:
-                    return self._json(200, apex.record_outcome(body))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-            if p.path == "/admin/apex/model-observation":
-                try:
-                    return self._json(200, apex.record_model_observation(body))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-            if p.path == "/admin/apex/experiment":
-                try:
-                    return self._json(200, apex.propose_experiment(body))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-            if p.path == "/admin/engine-control":
-                try:
-                    return self._json(200, control.run(body))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-                except Exception as ex:
-                    port.journal.log(
-                        "ERROR",
-                        f"Engine Control request failed: {type(ex).__name__}: {ex}",
-                    )
-                    return self._json(
-                        500,
-                        {"detail": f"{type(ex).__name__}: {ex}"},
-                    )
-            if p.path == "/admin/system/audit":
-                try:
-                    audit = save_repository_audit(port.base_dir, body.get("audit", body))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-                return self._json(200, {"ok": True, "audit": audit, "note": "system intelligence snapshot recorded"})
-            if p.path == "/admin/system/event":
-                try:
-                    audit = append_system_event(port.base_dir, body.get("event", body))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-                return self._json(200, {"ok": True, "audit": audit, "note": "system intelligence event recorded"})
-            if p.path == "/admin/system/loop":
-                try:
-                    audit = upsert_loop_status(port.base_dir, body.get("loop", body))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-                return self._json(200, {"ok": True, "audit": audit, "note": "loop status recorded"})
-            if p.path == "/admin/integrity/event":
-                try:
-                    return self._json(200, record_integrity_event(port.base_dir, body))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-            if p.path == "/admin/brain/event":
-                try:
-                    return self._json(200, record_brain_event(port.base_dir, body))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-            if p.path == "/admin/qualification-receipts/record":
-                try:
-                    result = qualification_receipts.record(body)
-                    sync = _qualification_sync(
-                        str(body.get("candidate_id") or ""),
-                        str(body.get("candidate_source_repo") or ""),
-                        str(body.get("candidate_source_commit") or ""),
-                    )
-                    return self._json(200, {"ok": True, "receipt": result, **sync})
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-            if p.path == "/admin/qualification-receipts/sync":
-                try:
-                    allowed = {"candidate_id", "candidate_source_repo", "candidate_source_commit"}
-                    if set(body) != allowed:
-                        raise ValueError("qualification sync requires exactly candidate_id, candidate_source_repo, candidate_source_commit")
-                    result = _qualification_sync(
-                        str(body["candidate_id"]),
-                        str(body["candidate_source_repo"]),
-                        str(body["candidate_source_commit"]),
-                    )
-                    if result["candidate_found"] is not True:
-                        return self._json(404, {
-                            "detail": "candidate revision is not present in the Adaptive Brain journal",
-                            **result,
-                        })
-                    return self._json(200, {"ok": True, **result})
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-            if p.path == "/admin/source-reliability/observation":
-                try:
-                    return self._json(200, source_reliability.record_observation(body))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-            if p.path == "/admin/performance-proof/forecast":
-                try:
-                    return self._json(200, performance_proof.register_forecast(body))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-            if p.path == "/admin/performance-proof/outcome":
-                try:
-                    return self._json(200, performance_proof.record_outcome(body))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-            if p.path == "/admin/performance-proof/replay":
-                try:
-                    return self._json(200, performance_proof.record_replay(body))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-            if p.path == "/admin/autopilot/config":
-                try:
-                    return self._json(200, autopilot.configure(body))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-            if p.path == "/admin/autopilot/start":
-                return self._json(200, autopilot.start())
-            if p.path == "/admin/autopilot/stop":
-                return self._json(200, autopilot.stop())
-            if p.path == "/admin/autopilot/step":
-                try:
-                    return self._json(200, autopilot.cycle_once())
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-            if p.path == "/admin/autopilot/reset":
-                if body.get("confirm") is not True:
-                    return self._json(400, {"detail": "pass {\"confirm\": true}"})
-                return self._json(200, autopilot.reset())
-            if p.path == "/admin/possibility/evidence":
-                try:
-                    allowed = {"asset", "values", "source", "observed_at", "ttl_seconds"}
-                    if set(body) - allowed or not {"asset", "values", "source"} <= set(body):
-                        raise ValueError("possibility evidence requires asset, values, source and optional observed_at/ttl_seconds")
-                    if not isinstance(body.get("values"), dict):
-                        raise ValueError("values must be an object")
-                    return self._json(200, possibility.ingest_external(
-                        body["asset"], body["values"], source=body["source"],
-                        observed_at=body.get("observed_at"), ttl_seconds=body.get("ttl_seconds", 300.0),
-                    ))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-            if p.path == "/admin/parallax/decision/current":
-                try:
-                    payload, psi_vote = _current_parallax_payload(possibility, body)
-                    if not payload.get("source_commit"):
-                        provenance = local_code_provenance()
-                        if not provenance.get("candidate_revision_eligible") or not provenance.get("commit"):
-                            raise ValueError("exact clean ICARUS code provenance is required when source_commit is omitted")
-                        payload["source_commit"] = provenance["commit"]
-                    result = parallax.record_decision(payload)
-                    result["capture_mode"] = "atomic_current"
-                    result["captured_psi_vote"] = psi_vote
-                    return self._json(200, result)
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-            if p.path == "/admin/sibyl/evidence":
-                try:
-                    payload = dict(body)
-                    if not payload.get("source_commit"):
-                        provenance = local_code_provenance()
-                        if not provenance.get("candidate_revision_eligible") or not provenance.get("commit"):
-                            raise ValueError("exact clean ICARUS code provenance is required when source_commit is omitted")
-                        payload["source_commit"] = provenance["commit"]
-                    return self._json(200, sibyl.record_evidence(payload))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-            if p.path == "/admin/sibyl/forecast":
-                try:
-                    payload = dict(body)
-                    if not payload.get("source_commit"):
-                        provenance = local_code_provenance()
-                        if not provenance.get("candidate_revision_eligible") or not provenance.get("commit"):
-                            raise ValueError("exact clean ICARUS code provenance is required when source_commit is omitted")
-                        payload["source_commit"] = provenance["commit"]
-                    try:
-                        market_state = port.status()
-                    except Exception:
-                        market_state = {}
-                    return self._json(200, sibyl.record_forecast(payload, market_status=market_state))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-            if p.path == "/admin/sibyl/outcome":
-                try:
-                    return self._json(200, sibyl.record_outcome(body))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-            if p.path == "/admin/sibyl/scenario":
-                try:
-                    try:
-                        market_state = port.status()
-                    except Exception:
-                        market_state = {}
-                    return self._json(200, sibyl.scenario(body, market_status=market_state))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-            if p.path == "/admin/pantheon/veritas":
-                try:
-                    return self._json(200, pantheon.record_veritas_reconciliation(body))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-            if p.path == "/admin/pantheon/claim":
-                try:
-                    return self._json(200, pantheon.record_agent_claim(body))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-            if p.path == "/admin/pantheon/observe":
-                try:
-                    payload = dict(body)
-                    if not payload.get("source_commit"):
-                        provenance = local_code_provenance()
-                        if not provenance.get("candidate_revision_eligible") or not provenance.get("commit"):
-                            raise ValueError("exact clean ICARUS code provenance is required when source_commit is omitted")
-                        payload["source_commit"] = provenance["commit"]
-                    existing_outputs = payload.get("subsystem_outputs", {})
-                    if existing_outputs is None:
-                        existing_outputs = {}
-                    if not isinstance(existing_outputs, dict):
-                        raise ValueError("subsystem_outputs must be an object")
-                    signals = payload.get("signals", {})
-                    if not isinstance(signals, dict):
-                        raise ValueError("signals must be an object")
-                    signals = dict(signals)
-                    claimed_lineage = signals.pop("engine_evidence_lineage", None)
-                    apex_lineage = {
-                        "schema_version": "icarus-apex-engine-lineage-v1",
-                        "status": "UNAVAILABLE",
-                        "reason": "engine_evidence_ids not supplied",
-                        "engine_evidence_lineage": {},
-                        "engine_support": {},
-                        "claimed_lineage_present": claimed_lineage is not None,
-                        "lineage_owner": "APEX_EVIDENCE_ANCESTRY",
-                        "execution_authorized": False,
-                        "production_decision_authorized": False,
-                    }
-                    if "engine_evidence_ids" in signals:
-                        apex_lineage = apex.resolve_engine_evidence_lineage(
-                            signals["engine_evidence_ids"],
-                            as_of=payload.get("observed_at"),
-                        )
-                        apex_lineage["claimed_lineage_present"] = claimed_lineage is not None
-                        # Only APEX-verified roots may drive ECHO on the network path.
-                        # Caller-provided lineage labels are audit-only and never
-                        # become evidence-independence input.
-                        signals["engine_evidence_lineage"] = apex_lineage["engine_evidence_lineage"]
-                    payload["signals"] = signals
-                    psi_state = None
-                    try:
-                        psi_state = possibility.snapshot(payload.get("asset", ""))
-                    except Exception as ex:
-                        port.journal.log("WARN", f"PANTHEON Psi adapter: {type(ex).__name__}: {ex}")
-                    payload["subsystem_outputs"] = subsystem_context(
-                        parallax.snapshot(limit=12),
-                        dreamstate.snapshot(limit=20),
-                        psi_snapshot=psi_state,
-                        existing=existing_outputs,
-                    )
-                    # Reserved, server-owned provenance slot. Always overwrite caller data.
-                    payload["subsystem_outputs"]["apex_lineage"] = apex_lineage
-                    result = pantheon.record_observation(payload)
-                    result["apex_lineage_bridge"] = apex_lineage
-                    bridge = {"attempted": 0, "accepted": [], "errors": []}
-                    try:
-                        analysis = result.get("analysis") if isinstance(result, dict) else {}
-                        exports = analysis.get("exports") if isinstance(analysis, dict) else {}
-                        candidates = exports.get("sibyl_evidence") if isinstance(exports, dict) else []
-                        if not isinstance(candidates, list):
-                            raise ValueError("PANTHEON sibyl_evidence export must be a list")
-                        for candidate in candidates:
-                            bridge["attempted"] += 1
-                            try:
-                                saved = sibyl.record_pantheon_export(candidate)
-                                bridge["accepted"].append(saved["evidence_id"])
-                            except Exception as ex:
-                                detail = f"{type(ex).__name__}: {ex}"[:800]
-                                bridge["errors"].append(detail)
-                                port.journal.log("WARN", f"PANTHEON→SIBYL bridge: {detail}")
-                    except Exception as ex:
-                        detail = f"{type(ex).__name__}: {ex}"[:800]
-                        bridge["errors"].append(detail)
-                        port.journal.log("WARN", f"PANTHEON→SIBYL bridge: {detail}")
-                    result["sibyl_bridge"] = bridge
-                    return self._json(200, result)
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-            if p.path == "/admin/parallax/decision":
-                try:
-                    payload = dict(body)
-                    # Do not inject a fresh Psi snapshot into a decision after the
-                    # caller's observed_at. Any Psi vote must be captured causally
-                    # at that decision instant and supplied explicitly.
-                    if not payload.get("source_commit"):
-                        provenance = local_code_provenance()
-                        if not provenance.get("candidate_revision_eligible") or not provenance.get("commit"):
-                            raise ValueError("exact clean ICARUS code provenance is required when source_commit is omitted")
-                        payload["source_commit"] = provenance["commit"]
-                    return self._json(200, parallax.record_decision(payload))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-            if p.path == "/admin/parallax/outcome":
-                try:
-                    result = parallax.record_outcome(body)
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-                try:
-                    result["dreamstate_refresh"] = dreamstate.refresh().get("refresh", {})
-                except Exception as ex:
-                    port.journal.log("WARN", f"DREAMSTATE rescreen after PARALLAX outcome: {type(ex).__name__}: {ex}")
-                    result["dreamstate_refresh"] = {
-                        "status": "degraded",
-                        "error": f"{type(ex).__name__}: {ex}",
-                        "outcome_committed": True,
-                    }
-                return self._json(200, result)
-            if p.path == "/admin/dreamstate/refresh":
-                try:
-                    return self._json(200, dreamstate.refresh(body.get("min_samples", 5)))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-            if p.path == "/admin/dreamstate/evaluate":
-                try:
-                    return self._json(200, dreamstate.evaluate(body.get("candidate_id"), body))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-            if p.path == "/admin/dreamstate/retire":
-                try:
-                    return self._json(200, dreamstate.retire(body.get("candidate_id"), body.get("reason")))
-                except (ValueError, TypeError) as ex:
-                    return self._json(400, {"detail": str(ex)})
-            asset = str(body.get("asset") or body.get("symbol") or "").strip().upper()
-            # Add is the one admin route whose subject is intentionally not already
-            # running. Do not reject it through the generic runner lookup.
-            adding_asset = p.path == "/admin/assets/add"
-            targets = [] if adding_asset else (
-                [self._runner(asset)] if asset and asset != "*" else list(port.runner_list())
-            )
-            if not adding_asset and asset and asset != "*" and targets == [None]:
-                return self._json(404, {"detail": f"unknown asset {asset}"})
-            try:
-                if p.path == "/admin/research/studies":
-                    return self._json(200, research.start(body))
-                if p.path == "/admin/research/adaptation":
-                    return self._json(200, research.configure_adaptation(body))
-                if p.path == "/admin/research/source-watch":
-                    return self._json(200, research.configure_source_watch(body))
-                if p.path == "/admin/research/cancel":
-                    return self._json(200, research.cancel(body.get("job")))
-                if p.path == "/admin/research/proposals":
-                    return self._json(200, research.propose_study(body))
-                if p.path == "/admin/research/export":
-                    candidate = research.export(body.get("proposal_id"))
-                    return self._json(200, candidate)
-                if p.path == "/admin/research/analysis":
-                    return self._json(200, research.analysis.start(body))
-                if p.path == "/admin/research/analysis/cancel":
-                    if set(body) != {"id"}:
-                        raise ValueError("analysis cancellation requires id only")
-                    return self._json(200, research.analysis.journal.cancel(body["id"]))
-                if p.path == "/admin/research/activate":
-                    return self._json(200, research.activate(body))
-                if p.path == "/admin/research/rollback":
-                    return self._json(200, research.rollback(body))
-                if p.path == "/admin/research/recover":
-                    return self._json(200, research.recover(body))
-                if p.path == "/admin/research/collect":
-                    if not {"source"} <= set(body) or set(body) - {"source", "options"}:
-                        raise ValueError("collection requires source and optional options")
-                    return self._json(200, research.market_sources.collect(body["source"], body.get("options")))
-                if p.path == "/admin/pause":
-                    reason = _reason(body)
-                    if not asset or asset == "*":
-                        port.paused = True
-                        port.journal.log("WARN", f"PAUSE ALL requested: {reason}")
-                        results = _run_all_assets("pause_all", lambda r: r.set_paused(True))
-                        return self._json(200, {
-                            "ok": True, "note": "paused all - no new entries",
-                            "paused": sorted(results), "global_pause_intent": True,
-                        })
-                    for r in targets:
-                        r.set_paused(True)
-                    port.journal.log("WARN", f"PAUSED {asset}: {reason}")
-                    return self._json(200, {"ok": True, "note": f"paused {asset} - no new entries"})
-                if p.path == "/admin/resume":
-                    if not asset or asset == "*":
-                        port.paused = False
-                        port.journal.log("INFO", "RESUME ALL requested")
-                        results = _run_all_assets("resume_all", lambda r: r.set_paused(False))
-                        return self._json(200, {
-                            "ok": True, "note": "resumed all",
-                            "resumed": sorted(results), "global_pause_intent": False,
-                        })
-                    for r in targets:
-                        r.set_paused(False)
-                    port.journal.log("INFO", f"RESUMED {asset}")
-                    return self._json(200, {"ok": True, "note": f"resumed {asset}"})
-                if p.path == "/admin/flatten":
-                    if not body.get("confirm"):
-                        return self._json(400, {"detail": "pass {\"confirm\": true}"})
-                    reason = _reason(body, "dashboard")
-                    if not asset or asset == "*":
-                        closed = _run_all_assets("flatten_all", lambda r: r.flatten(reason))
-                    else:
-                        closed = {r.symbol: r.flatten(reason) for r in targets}
-                    return self._json(200, {"ok": True, "closed": closed, "note": f"flattened {sum(closed.values())} position(s)"})
-                if p.path == "/admin/market-data/mbo-snapshot":
-                    if len(targets) != 1 or targets[0] is None:
-                        raise ValueError("MBO snapshot requires exactly one running asset")
-                    r = targets[0]
-                    if not hasattr(r.feed, "mbo_snapshot"):
-                        return self._json(409, {"error": f"{type(r.feed).__name__} does not expose MBO snapshots"})
-                    timeout = max(0.1, min(30.0, float(body.get("timeout", 5.0))))
-                    try:
-                        rows = r.feed.mbo_snapshot(r.spec.ticker, timeout=timeout)
-                    except TimeoutError as ex:
-                        port.journal.log("WARN", f"market-data MBO snapshot {r.symbol}: {ex}")
-                        return self._json(504, {"error": str(ex)})
-                    except ValueError as ex:
-                        return self._json(400, {"error": str(ex)})
-                    except Exception as ex:
-                        port.journal.log("WARN", f"market-data MBO snapshot {r.symbol}: {type(ex).__name__}: {ex}")
-                        return self._json(502, {"error": f"{type(ex).__name__}: {ex}"})
-                    return self._json(200, {"asset": r.symbol, "provider": type(r.feed).__name__.lower(),
-                                            "schema": "mbo", "snapshot": rows})
-                if p.path in ("/admin/inputs", "/admin/inputs/reset", "/admin/preset", "/admin/rewarm"):
-                    from .runtime import resolve_inputs as _resolve
-                    vals = body.get("values", {}) if p.path == "/admin/inputs" else None
-                    if vals is not None and not isinstance(vals, dict):
-                        raise ValueError("values must be an object")
-                    chart = validate_chart_config(body.get("chart")) if p.path == "/admin/inputs" else {}
-                    kwargs = {}
-                    if p.path == "/admin/preset":
-                        name = body.get("preset") or None
-                        if name and not os.path.exists(preset_path(port.base_dir, str(name))):
-                            return self._json(404, {"detail": f"preset {name} not found"})
-                        kwargs["preset"] = name
-                    reset = p.path == "/admin/inputs/reset"
-                    with ExitStack() as locks:
-                        # Hold every target from preflight through replay: no fill
-                        # may race between acceptance and a later worker thread.
-                        for r in sorted(targets, key=lambda r: r.symbol):
-                            locks.enter_context(r.lock)
-                            r.ensure_configurable()
-                        # Preflight the entire batch before the first asset is persisted/replayed.
-                        for r in targets:
-                            sp = replace(r.cfg.base_spec or r.spec)
-                            sp.preset = r.spec.preset
-                            name = port.preset_for(r)
-                            if "preset" in kwargs:
-                                sp.preset = kwargs["preset"]
-                                name = kwargs["preset"] or port.preset
-                            inp, meta, _ = _resolve(sp, port.base_dir, port.profile, name, vals,
-                                                   skip_asset_overrides=reset)
-                            sp = apply_spec_meta(sp, meta)
-                            sp = apply_chart_config(sp, chart)
-                            r.ensure_cached_timeframes(inp)
-                            r.ensure_cached_chart_timeframe(sp.chart_tf)
-                        equity_epoch_before = port.equity_epoch
-                        snapshots = {}
-                        for r in targets:
-                            override_path = os.path.join(port.base_dir, f"inputs.{r.symbol}.json")
-                            snapshots[r.symbol] = {
-                                "runtime": r.configuration_snapshot(),
-                                "override_path": override_path,
-                                "override_bytes": (Path(override_path).read_bytes() if os.path.exists(override_path) else None),
-                            }
-                        applied = []
-                        try:
-                            for r in targets:
-                                port.rewarm_asset(r.symbol, vals, bool(body.get("persist", True)) if vals is not None else False,
-                                                  reset=reset, chart=chart, **kwargs)
-                                applied.append(r)
-                        except Exception as apply_ex:
-                            port.equity_epoch = equity_epoch_before
-                            rollback_errors = []
-                            for r in reversed(applied):
-                                snap = snapshots[r.symbol]
-                                try:
-                                    pth = snap["override_path"]
-                                    raw_before = snap["override_bytes"]
-                                    if raw_before is None:
-                                        if os.path.exists(pth):
-                                            os.remove(pth)
-                                    else:
-                                        tmp = pth + ".batch-rollback.tmp"
-                                        Path(tmp).write_bytes(raw_before)
-                                        os.replace(tmp, pth)
-                                    r.restore_configuration_snapshot(snap["runtime"])
-                                except Exception as rollback_ex:
-                                    rollback_errors.append(f"{r.symbol}: {type(rollback_ex).__name__}: {rollback_ex}")
-                            if rollback_errors:
-                                raise RuntimeError(
-                                    f"batch configuration failed ({type(apply_ex).__name__}: {apply_ex}); "
-                                    f"rollback incomplete: {'; '.join(rollback_errors)}"
-                                ) from apply_ex
-                            raise
-                        # One successful batch = one paper-engine epoch. All runners were rebuilt.
-                        cutover = time.time()
-                        for r in targets:
-                            r.live_from_ts = int(cutover)
-                            r.live_closed_start = len(r.em.closed)
-                        port.equity_epoch = cutover
-                    done = [r.symbol for r in targets]
-                    return self._json(200, {"ok": True, "note": f"configuration applied and re-warmed {done}", "assets": done,
-                                            "chart": chart or None})
-                if p.path == "/admin/assets/add":
-                    tok = str(body.get("symbol", "")).strip()
-                    if not tok:
-                        return self._json(400, {"detail": "symbol required"})
-                    running = port.runner_list()
-                    default_tf = str(body.get("tf") or (running[0].spec.chart_tf if running else "20"))
-                    spec = parse_spec(tok, default_tf)
-                    if body.get("tf") not in (None, "") and "@" not in tok:
-                        spec = pin_config(spec, "timeframe")
-                    spec = apply_chart_config(spec, {k: body[k] for k in ("chart_type", "fill_on", "security_source") if body.get(k) not in (None, "")}, pin=True)
-                    if body.get("preset"):
-                        name = str(body["preset"])
-                        if not os.path.exists(preset_path(port.base_dir, name)):
-                            return self._json(404, {"detail": f"preset {name} not found"})
-                        spec.preset = name
-                    r = port.add_asset(spec)
-                    return self._json(200, {"ok": True, "note": f"{r.symbol} added ({spec.name}, {spec.chart_tf}m); warming up", "asset": r.symbol})
-                if p.path == "/admin/assets/remove":
-                    ok = port.remove_asset(str(body.get("symbol", "")))
-                    return self._json(200 if ok else 404, {"ok": ok, "note": f"{body.get('symbol')} {'removed' if ok else 'not found'}"})
-                if p.path == "/admin/backtest":
-                    from .backtest import validate_backtest_params
-                    r = self._runner(asset)
-                    if not r:
-                        return self._json(404, {"detail": f"unknown asset {asset}"})
-                    if not r.warm:
-                        return self._json(409, {"detail": f"{r.symbol} is still warming up"})
-                    fields = ("preset", "fill_on", "chart_type", "timeframe", "security_source", "session",
-                              "slippage_ticks", "commission", "capital", "leverage", "window_start", "window_end", "inputs")
-                    params = validate_backtest_params({k: body[k] for k in fields if k in body})
-                    params["asset"] = r.symbol
-                    if "preset" in params and not os.path.exists(preset_path(port.base_dir, params["preset"])):
-                        return self._json(404, {"detail": f"preset {params['preset']} not found"})
-                    job_id = start_job(port, params)
-                    return self._json(200, {"ok": True, "job": job_id, "note": f"backtest {r.symbol} started"})
-                if p.path == "/admin/backtest/compare":
-                    job = JOBS.get(str(body.get("job", "")))
-                    if not job or job["status"] != "done":
-                        return self._json(404, {"detail": "unknown or unfinished backtest job"})
-                    text = str(body.get("csv", ""))
-                    if not text.strip():
-                        return self._json(400, {"detail": "csv text required"})
-                    tv = read_tv_trades_text(text)
-                    eng = engine_trades_from_rows(job["result"]["trades"])
-                    rep_ = compare_lists(eng, tv, int(job["result"]["config"]["tf"]) * 60, int(body.get("tol", 1) or 1))
-                    return self._json(200, {"ok": True, "report": rep_})
-            except (ValueError, TypeError) as ex:
-                return self._json(400, {"detail": str(ex)})
-            except Exception as ex:
-                port.journal.log("ERROR", f"admin {p.path}: {type(ex).__name__}: {ex}")
-                return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
-            self._json(404, {"error": "not found"})
-
-    class ResearchHTTPServer(ThreadingHTTPServer):
-        def serve_forever(self, poll_interval=.5):
-            background = bool(getattr(self, "background_workers_enabled", True))
-            if background:
-                research.start_background()
-                autopilot.start_background()
-                loop_intelligence_sync.start()
-                brain_remote_sync.start()
-                brain_research_sync.start()
-                evolution_remote_sync.start()
-                evidence_lab_sync.start()
-                commissioning.start_background()
-            try:
-                return super().serve_forever(poll_interval)
-            finally:
-                if background:
-                    autopilot.close()
-                    evidence_lab_sync.close()
-                    evolution_remote_sync.close()
-                    brain_research_sync.close()
-                    brain_remote_sync.close()
-                    loop_intelligence_sync.close()
-                    commissioning.close()
-                    research.close()
-
-        def server_close(self):
-            autopilot.close()
-            evidence_lab_sync.close()
-            evolution_remote_sync.close()
-            brain_research_sync.close()
-            brain_remote_sync.close()
-            loop_intelligence_sync.close()
-            commissioning.close()
-            research.close()
-            return super().server_close()
-
-    srv = ResearchHTTPServer(("127.0.0.1", http_port), H)
-    srv.research = research
-    srv.loop_intelligence_sync = loop_intelligence_sync
-    srv.brain_remote_sync = brain_remote_sync
-    srv.brain_research_sync = brain_research_sync
-    srv.evolution_remote_sync = evolution_remote_sync
-    srv.evidence_lab_sync = evidence_lab_sync
-    srv.possibility = possibility
-    srv.performance_proof = performance_proof
-    srv.latency_telemetry = latency_telemetry
-    srv.source_reliability = source_reliability
-    srv.qualification_receipts = qualification_receipts
-    srv.autopilot = autopilot
-    srv.pantheon = pantheon
-    srv.sibyl = sibyl
-    srv.apex = apex
-    srv.ascendancy_archive = ascendancy_archive
-    srv.ascendancy_foundry = ascendancy_foundry
-    srv.ascendancy_unknowns = ascendancy_unknowns
-    srv.ascendancy_mechanisms = ascendancy_mechanisms
-    srv.ascendancy_inventions = ascendancy_inventions
-    srv.ascendancy_contribution = ascendancy_contribution
-    srv.ascendancy_evaluator = ascendancy_evaluator
-    srv.learning = learning
-    srv.chronofold = chronofold
-    srv.commissioning = commissioning
-    srv.daemon_threads = True
-    srv.background_workers_enabled = bool(start)
-    if not start:
-        return srv
-    srv.serve_forever()
+function render(d) {
+  last = d; const A = d.assets||[];
+  const feedAge = Math.min(...A.map(a => a.poll_age ?? 1e9)); const anyErr = A.some(a => a.last_error && a.poll_age==null);
+  $('#beat').className = 'dot ' + (anyErr ? 'dead' : feedAge < 60 ? 'live' : feedAge < 300 ? 'stale' : 'dead');
+  const set = (n, cls) => { $(`.node[data-n="${n}"]`).className = 'node ' + cls; };
+  set('feed', anyErr ? 'bad' : feedAge < 60 ? 'on' : feedAge < 300 ? 'warn' : 'bad'); set('bars', A.some(a=>a.bar_index>=0) ? 'on' : 'warn'); set('strat', d.all_warm ? (d.paused?'warn':'on') : 'warn');
+  set('paper', A.some(a => a.trades_total > 0 || a.position) ? 'on' : '');
+  $('#phase').textContent = d.all_warm ? 'LIVE' : `WARMING ${A.filter(a=>a.warm).length}/${A.length}`; $('#phase').className = 'badge ' + (d.all_warm?'armed':'warm');
+  $('#armed').textContent = d.paused ? 'PAUSED · entries off' : 'ARMED'; $('#armed').className = 'badge ' + (d.paused?'paused':'armed');
+  $('#meta').textContent = `${A.length} assets · preset ${d.preset||'none'}`;
+  const rh = $('#repoHealth'), ra = window.ICARUS_AUDIT;
+  if (rh) {
+    const st = String(ra?.status || 'unknown').toLowerCase();
+    const ls = ra?.loops || [], loopBad = ls.filter(x => !systemLoopOk(x.status)).length;
+    const healthy = st === 'green' && (!ls.length || loopBad === 0);
+    rh.textContent = healthy ? 'SYS ✓' : (st === 'red' || loopBad) ? 'SYS !' : 'SYS ?';
+    rh.className = 'badge ' + (healthy ? 'armed' : (st === 'red' || loopBad) ? 'paused' : 'warm');
+    rh.title = ra ? `System Intelligence ${ra.recorded_at||''} · repo ${st} · loops ${ls.length-loopBad}/${ls.length} verified · main ${String(ra.main?.sha||'').slice(0,12)}` : 'System Intelligence unavailable';
+  }
+  $('#tabs').innerHTML = tabsHtml(A);
+  const viewAsset = view.startsWith('asset:') ? A.find(a => a.symbol === view.slice(6)) : null;
+  if (view.startsWith('asset:') && !viewAsset && !solo) view = 'overview';
+  const rebuild = lastView !== view;
+  if (view === 'overview') {
+    if (rebuild) $('#view').innerHTML = overviewHtml(d, A);
+    else { const g = $('#assets'); if (g) g.innerHTML = A.map(assetCard).join(''); const h = document.createElement('div'); h.innerHTML = overviewHtml(d, A); ['goliveCard','repoAuditCard','heroCard','engineCard'].forEach(id => { const nu = h.querySelector('#'+id), cur = $('#'+id); if (nu && cur) cur.replaceWith(nu); }); }
+    lineChart($('#eqChart'), d.equity_series, {baseline: d.capital});
+    A.forEach(a => { const el = $(`#ch-${a.symbol}`); if (el) { const c = charts[a.symbol+80]; if (c) candles(el, c, {height:170}); } });
+    const rows = []; A.forEach(a => (tradesCache[a.symbol]||[]).forEach(t => rows.push({...t, symbol:a.symbol}))); rows.sort((x,y)=>y.exit_ts-x.exit_ts);
+    const tradeWarnings = A.filter(a => tradeErrors[a.symbol]).map(a => `<tr><td colspan="10" class="empty neg"><b>${esc(a.symbol)}</b> trade history unavailable: ${esc(tradeErrors[a.symbol])}</td></tr>`).join('');
+    const tradeRows = rows.slice(0,80).map(t => `<tr><td><b>${t.symbol}</b></td><td><span class="tag ${t.live?'live':''}">${t.live?'LIVE':'hist'}</span></td><td class="tnum">${dtz(t.entry_ts)}</td><td>${esc(t.id)}</td><td class="tnum">${t.qty}</td><td class="tnum">${px(t.entry)}</td><td class="tnum">${dtz(t.exit_ts)}</td><td class="tnum">${px(t.exit)}</td><td>${esc(t.comment)}</td><td class="tnum ${t.profit>=0?'pos':'neg'}">${sgn$(t.profit)}</td></tr>`).join('');
+    $('#trades tbody').innerHTML = tradeWarnings + (tradeRows || (!tradeWarnings ? '<tr><td colspan=10 class="empty">no closed trades yet</td></tr>' : ''));
+    $('#log').innerHTML = (d.log||[]).slice().reverse().map(l => `<div class="${l.level}">${tms(l.ts)} ${l.level.padEnd(5)} ${esc(l.msg)}</div>`).join('');
+    refreshFills();
+    if (typeof wirePossibilityQuickOverview === 'function') wirePossibilityQuickOverview(A);
+  } else if (viewAsset) {
+    if (rebuild) { $('#view').innerHTML = assetHtml(viewAsset); }
+    else { const keep = $('#dChart') ? $('#dChart').innerHTML : ''; $('#assetHead').innerHTML = assetHead(viewAsset); $('#dChart').innerHTML = keep; }
+    const c = charts[viewAsset.symbol+300]; if (c) candles($('#dChart'), c, {height:360, compact:false}); else loadChart(viewAsset.symbol, 300, $('#dChart'), {height:360, compact:false});
+    const tr = (tradesCache[viewAsset.symbol]||[]).slice().reverse();
+    const detailTradeWarning = tradeErrors[viewAsset.symbol] ? `<tr><td colspan="9" class="empty neg">trade history unavailable: ${esc(tradeErrors[viewAsset.symbol])}</td></tr>` : '';
+    const detailTradeRows = tr.map(t => `<tr><td><span class="tag ${t.live?'live':''}">${t.live?'LIVE':'hist'}</span></td><td class="tnum">${dtz(t.entry_ts)}</td><td>${esc(t.id)}</td><td class="tnum">${t.qty}</td><td class="tnum">${px(t.entry)}</td><td class="tnum">${dtz(t.exit_ts)}</td><td class="tnum">${px(t.exit)}</td><td>${esc(t.comment)}</td><td class="tnum ${t.profit>=0?'pos':'neg'}">${sgn$(t.profit)}</td></tr>`).join('');
+    $('#dTrades tbody').innerHTML = detailTradeWarning + (detailTradeRows || (!detailTradeWarning ? '<tr><td colspan=9 class="empty">no closed trades yet</td></tr>' : ''));
+    const fl = ((c&&c.fills)||[]).slice().reverse();
+    $('#dFills tbody').innerHTML = fl.map(f => `<tr><td class="tnum">${dtz(f.ts)}</td><td class="side ${f.side}">${f.side}</td><td class="tnum">${f.qty}</td><td class="tnum">${px(f.price)}</td><td>${esc(f.comment)} <span class="tag ${f.live?'live':''}">${f.live?'LIVE':'hist'}</span></td><td class="tnum ${f.profit==null?'':f.profit>=0?'pos':'neg'}">${f.profit!=null?sgn$(f.profit):''}</td></tr>`).join('') || '<tr><td colspan=6 class="empty">no fills in the chart window</td></tr>';
+    if (typeof wirePossibilityQuickAsset === 'function' && rebuild) wirePossibilityQuickAsset(viewAsset.symbol);
+    else if (typeof loadPossibilityQuickAsset === 'function') loadPossibilityQuickAsset(viewAsset.symbol, false);
+  } else if (view === 'inputs') { if (rebuild) { $('#view').innerHTML = inputsHtml(A); loadInputsTab(); } }
+  else if (view === 'commands') { if (rebuild) $('#view').innerHTML = commandsHtml(A); }
+  else if (view === 'backtest') { if (rebuild) {
+    $('#view').innerHTML = backtestHtml(A);
+    $('#btRun').addEventListener('click', runBacktest);
+    $('#btAsset').addEventListener('change', e => {
+      BT.asset = e.target.value;
+      BT.job = null; BT.res = null; BT.compare = null;
+      clearInterval(BT.poll); BT.poll = null;
+      lastView = null;
+      render(last);
+    });
+    if (BT.res) renderBacktest();
+  } }
+  else if (view === 'research') { if(typeof researchHtml!=='function') $('#view').innerHTML='<section class="card c12">Research requires the updated engine server. The running engine has not been restarted.</section>'; else if (rebuild) { $('#view').innerHTML = researchHtml(A); wireResearch(); } else loadResearch(); }
+  else if (view === 'sources') { if(typeof sourcesHtml!=='function') $('#view').innerHTML='<section class="card c12">Financial data requires the updated engine server. The running engine has not been restarted.</section>'; else if (rebuild) { $('#view').innerHTML = sourcesHtml(A); wireSources(); } else loadSources(); }
+  else if (view === 'market-data') { if(typeof marketDataHtml!=='function') $('#view').innerHTML='<section class="card c12">Authentic Market Data requires the updated engine server. Restart the engine.</section>'; else if (rebuild) { $('#view').innerHTML = marketDataHtml(A); wireMarketData(); } else loadMarketData(); }
+  else if (view === 'brain') { if(typeof brainHtml!=='function') $('#view').innerHTML='<section class="card c12">Adaptive Brain requires the updated engine server. Restart the engine.</section>'; else if (rebuild) { $('#view').innerHTML = brainHtml(); wireBrain(); } else loadBrain(); }
+  else if (view === 'autopilot') { if(typeof autopilotHtml!=='function') $('#view').innerHTML='<section class="card c12">Tactical Autopilot requires the updated engine server. Restart the engine.</section>'; else if (rebuild) { $('#view').innerHTML = autopilotHtml(A); wireAutopilot(); } else loadAutopilot(); }
+  else if (view === 'evolution') { if(typeof evolutionHtml!=='function') $('#view').innerHTML='<section class="card c12">MCP Evolution requires the updated engine server. Restart the engine.</section>'; else if (rebuild) { $('#view').innerHTML = evolutionHtml(); wireEvolution(); } else loadEvolution(); }
+  else if (view === 'parallax') { if(typeof parallaxHtml!=='function') $('#view').innerHTML='<section class="card c12">PARALLAX / DREAMSTATE requires the updated engine server. Restart the engine.</section>'; else if (rebuild) { $('#view').innerHTML = parallaxHtml(); wireParallax(); } else loadParallax(); }
+  else if (view === 'possibility') { if(typeof possibilityHtml!=='function') $('#view').innerHTML='<section class="card c12">ICARUS Ψ requires the updated engine server. Restart the engine.</section>'; else if (rebuild) { $('#view').innerHTML = possibilityHtml(A); wirePossibility(); } else loadPossibility(); }
+  else if (view === 'pantheon') { if(typeof pantheonHtml!=='function') $('#view').innerHTML='<section class="card c12">PANTHEON / AETHER requires the updated engine server. Restart the engine.</section>'; else if (rebuild) { $('#view').innerHTML = pantheonHtml(); wirePantheon(); } else loadPantheon(); }
+  else if (view === 'sibyl') { if(typeof sibylHtml!=='function') $('#view').innerHTML='<section class="card c12">SIBYL Ω requires the updated engine server. Restart the engine.</section>'; else if (rebuild) { $('#view').innerHTML = sibylHtml(); wireSibyl(); } else loadSibyl(); }
+  else if (view === 'apex') { if(typeof apexHtml!=='function') $('#view').innerHTML='<section class="card c12">APEX Ω requires the updated engine server. Restart the engine.</section>'; else if (rebuild) { $('#view').innerHTML = apexHtml(); wireApex(); } else loadApex(); }
+  else if (view === 'ascendancy') { if(typeof ascendancyHtml!=='function') $('#view').innerHTML='<section class="card c12">ASCENDANCY requires the updated engine server. Restart the engine.</section>'; else if (rebuild) { $('#view').innerHTML = ascendancyHtml(); wireAscendancy(); } else loadAscendancy(); }
+  else if (view === 'learning') { if(typeof learningHtml!=='function') $('#view').innerHTML='<section class="card c12">Learning Fabric requires the updated engine server. Restart the engine.</section>'; else if (rebuild) { $('#view').innerHTML = learningHtml(); wireLearning(); } else loadLearning(); }
+  else if (view === 'chronofold') { if(typeof chronofoldHtml!=='function') $('#view').innerHTML='<section class="card c12">ICARUS Ξ Chronofold requires the updated engine server. Restart the engine.</section>'; else if (rebuild) { $('#view').innerHTML = chronofoldHtml(A); wireChronofold(); } else loadChronofold(); }
+  else if (view === 'commissioning') { if(typeof commissioningHtml!=='function') $('#view').innerHTML='<section class="card c12">Scientific Commissioning requires the updated engine server. Restart the engine.</section>'; else if (rebuild) { $('#view').innerHTML = commissioningHtml(A); wireCommissioning(); } else loadCommissioning(); }
+  else if (view === 'integrity') { if(typeof integrityHtml!=='function') $('#view').innerHTML='<section class="card c12">Data Integrity requires the updated engine server. Restart the engine.</section>'; else if (rebuild) { $('#view').innerHTML = integrityHtml(); wireIntegrity(); } else loadIntegrity(); }
+  else if (view === 'engine-control') { if(typeof engineControlHtml!=='function') $('#view').innerHTML='<section class="card c12">Engine Control requires the updated engine server. Restart the engine.</section>'; else if (rebuild) { $('#view').innerHTML = engineControlHtml(); wireEngineControl(); } else loadEngineControl(); }
+  else if (view === 'system') { if (rebuild) $('#view').innerHTML = repositoryAuditCard(window.ICARUS_AUDIT, false); }
+  else if (view === 'golive') { if (rebuild) $('#view').innerHTML = goliveCard(window.ICARUS_GOLIVE); else { const nu = document.createElement('div'); nu.innerHTML = goliveCard(window.ICARUS_GOLIVE); const cur = $('#goliveCard'); if (nu.firstElementChild && cur) cur.replaceWith(nu.firstElementChild); } }
+  else if (view === 'agent') { if (rebuild) $('#view').innerHTML = agentCard(window.ICARUS_AGENT); }
+  else if (view === 'log') { if (rebuild) $('#view').innerHTML = `<section class="card c12"><h2>Engine log</h2><div class="log" id="log2" style="max-height:80vh"></div></section>`; $('#log2').innerHTML = (d.log||[]).slice().reverse().map(l => `<div class="${l.level}">${tms(l.ts)} ${l.level.padEnd(5)} ${esc(l.msg)}</div>`).join(''); }
+  lastView = view; first = false;
+  window.IcarusExperience?.update(d, view);
+}
+async function refreshFills() {
+  if (!last || !$('#fills')) return; const A = last.assets||[]; const all = [];
+  for (const a of A) { const c = charts[a.symbol+80]; if (c && c.fills) c.fills.forEach(f => all.push({...f, symbol:a.symbol})); }
+  all.sort((x,y)=>y.ts-x.ts);
+  $('#fills tbody').innerHTML = all.slice(0,60).map(f => { const k = f.symbol+f.ts+f.id+f.side+f.price; const nw = !first && !seenFills.has(k); seenFills.add(k);
+    return `<tr class="${nw?'new':''}"><td class="tnum">${dtz(f.ts)}</td><td><b>${f.symbol}</b> <span class="tag ${f.live?'live':''}">${f.live?'LIVE':'hist'}</span></td><td class="side ${f.side}">${f.side}</td><td class="tnum">${f.qty}</td><td class="tnum">${px(f.price)}</td><td>${f.kind}</td><td>${esc(f.comment)}</td><td class="tnum ${f.profit==null?'':f.profit>=0?'pos':'neg'}">${f.profit!=null?sgn$(f.profit):''}</td><td class="tnum">${f.pos>0?'+':''}${f.pos}</td></tr>`; }).join('') || '<tr><td colspan=9 class="empty">no paper fills yet</td></tr>';
+  const fs = $('#fillsSub'); if (fs) fs.textContent = all.length ? `${all.length} in the chart windows` : '';
+}
+async function refresh() {
+  try {
+    const r = await fetch('/status/public', {cache:'no-store'});
+    const d = await r.json();
+    if (!d || !Array.isArray(d.assets)) {
+      $('#beat').className = 'dot dead';
+      $('#armed').textContent = (d && d.detail) ? String(d.detail).slice(0, 48) : 'ENGINE UNREACHABLE';
+      $('#armed').className = 'badge paused';
+      return;
+    }
+    render(d);
+  } catch (e) {
+    $('#beat').className = 'dot dead'; $('#armed').textContent = 'ENGINE UNREACHABLE'; $('#armed').className = 'badge paused';
+  }
+}
+async function refreshGolive() {
+  try {
+    const response = await fetch('/api/golive', {cache:'no-store'});
+    const data = await response.json().catch(()=>({}));
+    if (!response.ok) throw new Error(data.detail||data.error||('HTTP '+response.status));
+    window.ICARUS_GOLIVE = data;
+  } catch (e) {
+    window.ICARUS_GOLIVE = {
+      verdict:'UNAVAILABLE',
+      headline:'Go-live integrity unavailable: '+(e?.message||String(e)),
+      gates:[],
+      live_would_mean:[],
+      broker_armed:false,
+    };
+  }
+  const cur = $('#goliveCard');
+  if (cur) {
+    const n = document.createElement('div');
+    n.innerHTML = goliveCard(window.ICARUS_GOLIVE);
+    if (n.firstElementChild) cur.replaceWith(n.firstElementChild);
+  }
+}
+async function refreshAgent() {
+  try {
+    const response = await fetch('/api/agent', {cache:'no-store'});
+    const data = await response.json().catch(()=>({}));
+    if (!response.ok) throw new Error(data.detail||data.error||('HTTP '+response.status));
+    window.ICARUS_AGENT = data;
+  } catch (e) {
+    window.ICARUS_AGENT = {
+      note:'Field Agent unavailable: '+(e?.message||String(e)),
+      broker_armed:false,
+      executed:false,
+      recipes:[],
+      seats:[],
+      prefixes:{},
+      sidecar:'',
+    };
+  }
+  const cur = $('#agentCard');
+  if (cur && view === 'agent') {
+    const n = document.createElement('div');
+    n.innerHTML = agentCard(window.ICARUS_AGENT);
+    if (n.firstElementChild) cur.replaceWith(n.firstElementChild);
+  }
+}
+async function refreshAudit() {
+  try {
+    const r = await fetch('/api/system/audit', {cache:'no-store'});
+    if (!r.ok) throw new Error('audit '+r.status);
+    window.ICARUS_AUDIT = await r.json();
+  } catch (e) {
+    window.ICARUS_AUDIT = {status:'unknown', repository:'reppiks490/Icarus', note:'Local repository audit unavailable'};
+  }
+  if (last) render(last);
+}
+async function refreshCharts() { if (!last) return; if (view === 'overview') { for (const a of (last.assets||[])) await loadChart(a.symbol, 80, $(`#ch-${a.symbol}`), {height:170}); refreshFills(); } if (view.startsWith('asset:')) await loadChart(view.slice(6), 300, $('#dChart'), {height:360, compact:false}); }
+async function refreshTrades(only) {
+  if (!last) return;
+  for (const a of (last.assets||[])) {
+    if (only && a.symbol !== only) continue;
+    try {
+      const r = await fetch(`/api/trades/${encodeURIComponent(a.symbol)}?limit=80`, {cache:'no-store'});
+      const data = await r.json().catch(()=>null);
+      if (!r.ok) throw new Error((data&&data.detail)||(data&&data.error)||('HTTP '+r.status));
+      if (!Array.isArray(data)) throw new Error('invalid trade-history response');
+      tradesCache[a.symbol] = data;
+      delete tradeErrors[a.symbol];
+    } catch(e) {
+      tradeErrors[a.symbol] = e?.message||String(e);
+    }
+  }
+}
+async function refreshUiCatalogs() {
+  if (catalogRefreshBusy) return;
+  catalogRefreshBusy = true;
+  const get = async path => {
+    const response = await fetch(path, {cache:'no-store'});
+    const data = await response.json().catch(()=>null);
+    if (!response.ok) throw new Error((data&&data.detail)||(data&&data.error)||('HTTP '+response.status));
+    return data;
+  };
+  try {
+    const results = await Promise.allSettled([get('/api/presets'), get('/api/commands'), get('/api/assets')]);
+    let changed = false;
+    if (results[0].status === 'fulfilled' && Array.isArray(results[0].value)) {
+      const next = results[0].value;
+      changed = changed || JSON.stringify(next) !== JSON.stringify(PRESETS);
+      PRESETS = next;
+      CATALOG_READY.presets = true;
+    }
+    if (results[1].status === 'fulfilled' && Array.isArray(results[1].value)) {
+      const next = results[1].value;
+      changed = changed || JSON.stringify(next) !== JSON.stringify(COMMANDS);
+      COMMANDS = next;
+      CATALOG_READY.commands = true;
+    }
+    if (results[2].status === 'fulfilled' && Array.isArray(results[2].value?.registry)) {
+      const next = results[2].value.registry;
+      changed = changed || JSON.stringify(next) !== JSON.stringify(REGISTRY);
+      REGISTRY = next;
+      CATALOG_READY.registry = true;
+    }
+    if (changed && last && ['commands','inputs','backtest'].includes(view)) {
+      lastView = null;
+      render(last);
+    }
+    return results;
+  } finally {
+    catalogRefreshBusy = false;
+  }
+}
+(async () => {
+  await refreshUiCatalogs();
+  await refreshAudit(); await refresh(); await refreshGolive(); await refreshAgent(); await refreshCharts(); await refreshTrades(); if (last) render(last);
+})();
+setInterval(refresh, 3000); setInterval(refreshGolive, 8000); setInterval(refreshCharts, 8000); setInterval(refreshAudit, 20000); setInterval(()=>refreshTrades(), 20000);
+setInterval(()=>{ if (!CATALOG_READY.presets || !CATALOG_READY.commands || !CATALOG_READY.registry) refreshUiCatalogs(); }, 10000);
+window.addEventListener('resize', () => { if (last) { lastView = null; render(last); } });
+setInterval(() => { const el = $('#clock'); if (el) el.textContent = `${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'})} ${TZ} · ${etClock()} ET`; }, 1000);
+window.addEventListener('hashchange', () => { if (!solo) { const v = location.hash.slice(1) || 'overview'; if (v !== view) { view = v; lastView = null; if (last) render(last); } } });
+window.IcarusExperience?.init({onThemeChanged: () => { if (last) { lastView = null; render(last); } }});
+</script>
+</body>
+</html>
