@@ -312,6 +312,8 @@ class EvaluatorCascade:
                 );
                 CREATE INDEX IF NOT EXISTS idx_asc_eval_receipts_candidate
                     ON receipts(candidate_id, observed_at, receipt_id);
+                CREATE INDEX IF NOT EXISTS idx_asc_eval_candidates_pending
+                    ON candidates(state, stage_index, candidate_id);
 
                 CREATE TABLE IF NOT EXISTS holdout_exposures (
                     evaluation_contract_hash TEXT NOT NULL,
@@ -450,6 +452,39 @@ class EvaluatorCascade:
 
     def candidate(self, candidate_id: str) -> dict[str, Any]:
         return self._decode_candidate(self._candidate_row(candidate_id))
+
+    def candidate_definition(self, candidate_id: str) -> dict[str, Any]:
+        """Read the registered immutable definition with identity verification."""
+        row = self._candidate_row(candidate_id)
+        try:
+            stored = json.loads(row["candidate_json"])
+            definition = normalize_candidate(stored)
+            budget = json.loads(row["resource_budget_json"])
+        except (ValueError, TypeError, json.JSONDecodeError) as ex:
+            raise RuntimeError("evaluator candidate storage corruption") from ex
+        if (
+            stored.get("candidate_id") != row["candidate_id"]
+            or definition["candidate_id"] != row["candidate_id"]
+            or definition["source_repo"] != row["source_repo"]
+            or definition["source_commit"] != row["source_commit"]
+            or definition["evaluation_contract"]["contract_hash"] != row["evaluation_contract_hash"]
+            or definition["resource_budget"] != budget
+        ):
+            raise RuntimeError("evaluator candidate identity integrity failure")
+        return definition
+
+    def pending_contract_candidates(self, *, after_id: str = "", limit: int = 4) -> list[dict[str, Any]]:
+        """Bounded rotating window without loading receipt or holdout history."""
+        if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 16:
+            raise ValueError("limit must be between 1 and 16")
+        if after_id:
+            _sha(after_id, "after_id", 64)
+        with self._connect() as con:
+            sql = "SELECT * FROM candidates WHERE state='EVALUATING' AND stage_index=0 AND candidate_id>? ORDER BY candidate_id LIMIT ?"
+            rows = con.execute(sql, (after_id, limit)).fetchall()
+            if not rows and after_id:
+                rows = con.execute(sql, ("", limit)).fetchall()
+        return [self._decode_candidate(row) for row in rows]
 
     def record(self, body: Mapping[str, Any]) -> dict[str, Any]:
         receipt = _normalize_receipt(body)

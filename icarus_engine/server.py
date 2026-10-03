@@ -111,6 +111,7 @@ from .ascendancy.mechanisms import MechanismLab
 from .ascendancy.invention import InventionLab, to_foundry_candidate
 from .ascendancy.contribution import ContributionLab
 from .ascendancy.evaluator import EvaluatorCascade
+from .ascendancy.native_validation import NativeContractValidator
 from .ascendancy.governor import EvolutionGovernor
 from .ascendancy.executor import GovernorExecutor
 from .ascendancy.autopilot import GovernorAutopilot
@@ -239,9 +240,13 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     ascendancy_inventions = InventionLab(port.base_dir)
     ascendancy_contribution = ContributionLab(port.base_dir)
     ascendancy_evaluator = EvaluatorCascade(port.base_dir)
+    ascendancy_native_validation = NativeContractValidator(
+        port.base_dir, evaluator=ascendancy_evaluator,
+        enabled=os.environ.get("ICARUS_ASCENDANCY_NATIVE_VALIDATION", "1") == "1",
+    )
     ascendancy_governor = EvolutionGovernor(port.base_dir)
     ascendancy_executor = GovernorExecutor(port.base_dir)
-    ascendancy_work_orders = ResearchWorkOrderBoard(port.base_dir)
+    ascendancy_work_orders = ResearchWorkOrderBoard(port.base_dir, evaluator=ascendancy_evaluator)
     mcp_control = MCPControlPlane(port.base_dir)
     chronofold = ChronofoldEngine(port, possibility=possibility)
     commissioning = CommissioningEngine(port.base_dir, port, chronofold)
@@ -1402,6 +1407,14 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 except Exception as ex:
                     port.journal.log("WARN", f"ASCENDANCY evaluator snapshot: {type(ex).__name__}: {ex}")
                     return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/api/ascendancy/native-validation":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                try:
+                    return self._json(200, ascendancy_native_validation.snapshot())
+                except Exception as ex:
+                    port.journal.log("WARN", f"ASCENDANCY native validation snapshot: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
             if p.path == "/api/ascendancy/governor":
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
@@ -2120,6 +2133,18 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 except Exception as ex:
                     port.journal.log("ERROR", f"ASCENDANCY evaluator receipt: {type(ex).__name__}: {ex}")
                     return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/admin/ascendancy/native-validation":
+                try:
+                    if body != {}:
+                        raise ValueError("native validation accepts only an empty cycle request")
+                    return self._json(200, _ascendancy_research_mutation(
+                        ascendancy_native_validation.run_once
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    port.journal.log("ERROR", f"ASCENDANCY native validation: {type(ex).__name__}: {ex}")
+                    return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
             if p.path == "/admin/ascendancy/governor-plan":
                 try:
                     return self._json(200, _ascendancy_research_mutation(
@@ -2792,6 +2817,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 evolution_remote_sync.start()
                 evidence_lab_sync.start()
                 ascendancy_autopilot.start()
+                ascendancy_native_validation.start()
                 commissioning.start_background()
             try:
                 return super().serve_forever(poll_interval)
@@ -2799,6 +2825,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 if background:
                     autopilot.close()
                     ascendancy_autopilot.close()
+                    ascendancy_native_validation.close()
                     evidence_lab_sync.close()
                     evolution_remote_sync.close()
                     brain_research_sync.close()
@@ -2810,6 +2837,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
         def server_close(self):
             autopilot.close()
             ascendancy_autopilot.close()
+            ascendancy_native_validation.close()
             evidence_lab_sync.close()
             evolution_remote_sync.close()
             brain_research_sync.close()
@@ -2842,6 +2870,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     srv.ascendancy_inventions = ascendancy_inventions
     srv.ascendancy_contribution = ascendancy_contribution
     srv.ascendancy_evaluator = ascendancy_evaluator
+    srv.ascendancy_native_validation = ascendancy_native_validation
     srv.ascendancy_governor = ascendancy_governor
     srv.ascendancy_executor = ascendancy_executor
     srv.ascendancy_autopilot = ascendancy_autopilot

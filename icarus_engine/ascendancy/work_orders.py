@@ -20,6 +20,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
+from .evaluator import EvaluatorCascade, _normalize_receipt
+
 SCHEMA_VERSION = "icarus-ascendancy-work-order-board-v1"
 ORDER_SCHEMA_VERSION = "icarus-ascendancy-work-order-v1"
 CLAIM_SCHEMA_VERSION = "icarus-ascendancy-work-order-claim-v1"
@@ -161,8 +163,11 @@ def _build_order(plan_id: str, action: Mapping[str, Any], receipt: Mapping[str, 
 class ResearchWorkOrderBoard:
     """Durable queue of external research work required by governor plans."""
 
-    def __init__(self, base_dir: str | os.PathLike[str]):
+    def __init__(self, base_dir: str | os.PathLike[str], *, evaluator: EvaluatorCascade | None = None):
         self.base_dir = Path(base_dir)
+        if evaluator is not None and evaluator.base_dir.resolve() != self.base_dir.resolve():
+            raise ValueError("work orders and evaluator must share a base directory")
+        self.evaluator = evaluator
         self.path = self.base_dir / "research" / "ascendancy_work_orders.sqlite3"
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._init()
@@ -398,6 +403,28 @@ class ResearchWorkOrderBoard:
         }
 
     def snapshot(self) -> dict[str, Any]:
+        ledger = (self.evaluator or EvaluatorCascade(self.base_dir)).snapshot()
+        candidates = {row["candidate_id"]: row for row in ledger["candidates"]}
+        domain_results: dict[tuple[str, str], dict[str, Any]] = {}
+        for receipt in ledger["receipts"]:
+            try:
+                normalized = _normalize_receipt(receipt)
+            except (ValueError, TypeError) as ex:
+                raise RuntimeError("work-order evaluator receipt corruption") from ex
+            candidate = candidates.get(normalized["candidate_id"])
+            if (
+                candidate is None or normalized["receipt_id"] != receipt.get("receipt_id")
+                or any(normalized[key] != candidate[key] for key in (
+                    "source_repo", "source_commit", "evaluation_contract_hash"
+                ))
+            ):
+                raise RuntimeError("work-order evaluator receipt identity mismatch")
+            key = (normalized["candidate_id"], normalized["stage"])
+            previous = domain_results.get(key)
+            # An accepted conclusive result cannot be replaced by an earlier
+            # inconclusive attempt merely because its observation time differs.
+            if previous is None or normalized["outcome"] != "INCONCLUSIVE":
+                domain_results[key] = normalized
         with _LOCK, self._connect() as con:
             order_rows = con.execute(
                 "SELECT * FROM work_orders ORDER BY created_at,order_id"
@@ -423,6 +450,18 @@ class ResearchWorkOrderBoard:
             claim = claims.get(str(order["order_id"]))
             order["status"] = "CLAIMED" if claim else "OPEN"
             order["claim"] = claim
+            lookup_stage = "PROTECTED_HOLDOUT" if order["kind"] == "REQUEST_PROTECTED_HOLDOUT" else order.get("evaluator_stage")
+            result = domain_results.get((order["subject_id"], lookup_stage))
+            order["domain_result"] = None
+            if result is not None and order["kind"] in {"RUN_EVALUATOR_STAGE", "REQUEST_PROTECTED_HOLDOUT"}:
+                order["domain_result"] = {
+                    key: result[key] for key in (
+                        "receipt_id", "stage", "outcome", "observed_at",
+                        "source_repo", "source_commit", "evaluation_contract_hash",
+                    )
+                }
+                if result["outcome"] in {"PASS", "FAIL"}:
+                    order["status"] = "COMPLETED"
             orders.append(order)
 
         open_count = sum(1 for x in orders if x["status"] == "OPEN")
@@ -438,7 +477,7 @@ class ResearchWorkOrderBoard:
             "order_count": len(orders),
             "open_count": open_count,
             "claimed_count": claimed_count,
-            "completed_count": 0,
+            "completed_count": sum(x["status"] == "COMPLETED" for x in orders),
             "owner_counts": dict(sorted(owner_counts.items())),
             "orders": orders,
             "truth_contract": {
