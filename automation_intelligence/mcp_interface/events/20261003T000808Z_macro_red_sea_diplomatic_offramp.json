@@ -1,0 +1,76 @@
+{
+  "schema": "icarus-mcp-event-v1",
+  "category": "EVOLUTION",
+  "source": "MACRO_AUTOMATION",
+  "execution_authorized": false,
+  "event_time": "2026-10-03T00:08:08Z",
+  "title": "Red Sea kinetic escalation gains a diplomatic off-ramp; realized supply shock still unconfirmed",
+  "net_new_delta": "Relative to durable event 20261002T230912Z_macro_red_sea_confirmed_kinetic_escalation.json, Pakistan says Saudi Arabia, Turkey and Pakistan will hold an emergency Riyadh meeting next week to consider Iran's suggestion of political engagement with the Houthis. This introduces a concrete diplomatic off-ramp after confirmed Taiz strikes and reduces confidence in a one-way escalation path, while current oil/LNG evidence still does not confirm realized energy supply disruption.",
+  "fact": [
+    "Yemen's internationally recognized government reported 20 airstrikes on Houthi targets in Taiz on October 2, confirming kinetic escalation.",
+    "Brent settled October 2 at $102.25/bbl and WTI at $91.11 after emergency stock-release measures; oil pricing did not confirm a new physical supply shock.",
+    "September LNG shipments through Hormuz reached their highest monthly level since the current US-Iran war began, according to shipping analytics cited by Reuters."
+  ],
+  "source_claim": [
+    "Pakistan Foreign Minister Ishaq Dar said Saudi Arabia, Turkey and Pakistan will hold an emergency meeting in Riyadh next week to discuss Iran's suggestion to engage the Houthis politically.",
+    "Reuters reports the larger Saudi-backed Bab el-Mandeb offensive remains under preparation rather than confirmed as launched."
+  ],
+  "model_inference": "Keep RED_SEA_ESCALATION_RISK at CONFIRMED_KINETIC_ESCALATION, but add DIPLOMATIC_OFFRAMP_ACTIVE and reduce confidence in a monotonic escalation trajectory. REALIZED_ENERGY_SUPPLY_DISRUPTION remains unconfirmed.",
+  "unknown": [
+    "Whether the Riyadh meeting produces actionable de-escalation terms or alters military plans.",
+    "Whether the larger Saudi-backed offensive launches.",
+    "Whether Bab el-Mandeb maritime traffic, freight, insurance or physical petroleum flows deteriorate measurably."
+  ],
+  "conflicts": "Confirmed Taiz strikes and reported offensive planning point toward escalation, while a scheduled emergency political-engagement meeting, emergency petroleum releases, softer oil settlement and improved Hormuz LNG throughput point against assuming an inevitable supply shock.",
+  "affected": [
+    "Brent",
+    "WTI",
+    "refined products",
+    "Red Sea shipping proxies",
+    "GC/MGC",
+    "DXY",
+    "NQ/MNQ"
+  ],
+  "confidence": {
+    "diplomatic_offramp_evidence": "HIGH",
+    "deescalation_outcome": "LOW",
+    "realized_supply_disruption": "UNCONFIRMED",
+    "event_risk_state": "MEDIUM-HIGH"
+  },
+  "next_decisive_check": "Verify whether the Riyadh meeting yields concrete engagement/ceasefire terms or whether the planned Saudi-backed offensive instead launches; simultaneously require measurable Bab el-Mandeb shipping/freight/refined-product deterioration before promoting to REALIZED_SUPPLY_DISRUPTION.",
+  "prior_state_path": "automation_intelligence/mcp_interface/events/20261002T230912Z_macro_red_sea_confirmed_kinetic_escalation.json",
+  "evidence": [
+    {
+      "publisher": "Reuters",
+      "date": "2026-10-02",
+      "topic": "Emergency Riyadh talks on political engagement with Houthis",
+      "url": "https://www.reuters.com/world/middle-east/pakistan-says-mecca-pact-members-hold-emergency-talks-engaging-houthis-2026-10-02/"
+    },
+    {
+      "publisher": "Reuters",
+      "date": "2026-10-02",
+      "topic": "Yemen 20 Taiz strikes",
+      "url": "https://www.reuters.com/world/middle-east/yemen-carried-out-20-strikes-houthi-targets-taiz-province-spokesperson-says-2026-10-02/"
+    },
+    {
+      "publisher": "Reuters",
+      "date": "2026-10-02",
+      "topic": "Oil settlement and emergency stock releases",
+      "url": "https://www.reuters.com/business/energy/oil-rises-slightly-market-weighs-mixed-supply-signals-2026-10-02/"
+    },
+    {
+      "publisher": "Reuters",
+      "date": "2026-10-02",
+      "topic": "September LNG shipments through Hormuz",
+      "url": "https://www.reuters.com/business/energy/september-lng-shipments-through-hormuz-hit-highest-since-start-us-iran-war-2026-10-02/"
+    }
+  ],
+  "oracle": {
+    "status": "MATERIAL_UPDATE",
+    "finding": "Confirmed kinetic escalation now has a concrete diplomatic off-ramp; retain the kinetic-risk state but reduce confidence in a monotonic escalation path and keep realized supply disruption unconfirmed."
+  },
+  "supermesh_x": {
+    "status": "MATERIAL_UPDATE",
+    "finding": "Independent Reuters political, military, oil-settlement and LNG-flow evidence supports a two-sided event tree; routing should preserve diplomacy, kinetic activity and physical-flow evidence as separate channels."
+  }
+}
