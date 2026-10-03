@@ -375,6 +375,10 @@ class GovernorExecutor:
             receipts.append(self._persist(receipt))
 
         applied = sum(1 for x in receipts if x["status"] == "APPLIED_INTERNAL")
+        newly_applied = sum(
+            1 for x in receipts
+            if x["status"] == "APPLIED_INTERNAL" and x.get("idempotent") is False
+        )
         failed = sum(1 for x in receipts if x["status"].startswith("BLOCKED_"))
         external = len(receipts) - applied - failed
         return {
@@ -382,6 +386,7 @@ class GovernorExecutor:
             "plan_id": normalized["plan_id"],
             "receipt_count": len(receipts),
             "applied_count": applied,
+            "newly_applied_count": newly_applied,
             "external_count": external,
             "failed_count": failed,
             "receipts": receipts,
