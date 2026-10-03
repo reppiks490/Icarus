@@ -715,3 +715,17 @@ def test_ascendancy_dashboard_surfaces_autonomous_evolution_governor():
     assert "can_mint_qualification=false" in ui
     assert 'p.path == "/api/ascendancy/governor"' in server
     assert 'p.path == "/admin/ascendancy/governor-plan"' in server
+
+
+def test_ascendancy_dashboard_surfaces_safe_internal_executor():
+    ui = (REPO / "icarus_engine/ascendancy-ui.js").read_text(encoding="utf-8")
+    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
+
+    assert "/api/ascendancy/executor" in ui
+    assert "SAFE INTERNAL EXECUTOR" in ui
+    assert "APPLIED INTERNAL" in ui
+    assert "AWAITING EXTERNAL" in ui
+    assert "NOT SCIENTIFIC EVIDENCE" in ui
+    assert "evidence-producing actions are never auto-applied" in ui.lower()
+    assert 'p.path == "/api/ascendancy/executor"' in server
+    assert 'p.path == "/admin/ascendancy/governor-execute-safe"' in server
