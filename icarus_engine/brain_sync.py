@@ -202,6 +202,7 @@ def _default_state(interval_seconds: int) -> dict[str, Any]:
         "peer_durability_only_lane_count": 0,
         "peer_lane_witness_verified_count": 0,
         "peer_lane_witness_unavailable_count": 0,
+        "peer_lane_contract_binding_verified_count": 0,
         "peer_source_contract_witness_status": "not_started",
         "peer_source_contract_witness_count": 0,
         "peer_source_contract_witnesses": [],
@@ -962,7 +963,9 @@ def _normalize_peer_packet(
         lanes.append({
             "name": name,
             "title": raw.get("title"),
+            "minute": raw.get("minute"),
             "scheduler_id": raw.get("scheduler_id"),
+            "run_prefix": raw.get("run_prefix"),
             "run_id": raw.get("run_id"),
             "run_status": raw.get("run_status"),
             "worker_repository": worker_repository,
@@ -991,6 +994,8 @@ def _normalize_peer_packet(
                 else "UNVERIFIED"
             ),
             "source_witness_blob_count": 0,
+            "contract_binding_verified": False,
+            "contract_binding_status": "UNVERIFIED",
             "execution_authorized": False,
         })
 
@@ -1081,6 +1086,8 @@ def _normalize_peer_packet(
         "peer_packet_id": claimed_id,
         "peer_source_commit": source_commit,
         "peer_observed_at": parsed.astimezone(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "peer_control_plane": dict(control_plane),
+        "peer_mcp_interface": dict(mcp_interface),
         "peer_lanes": lanes,
         "peer_substantive_lane_count": sum(
             1 for lane in lanes if lane["substantive_research_evidence"]
@@ -1704,6 +1711,7 @@ class BrainRemoteSync:
                         "peer_durability_only_lane_count": 0,
                         "peer_lane_witness_verified_count": 0,
                         "peer_lane_witness_unavailable_count": 0,
+                        "peer_lane_contract_binding_verified_count": 0,
                         "peer_source_contract_witness_status": "degraded",
                         "peer_source_contract_witness_count": 0,
                         "peer_source_contract_witnesses": [],
