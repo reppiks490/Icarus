@@ -1314,7 +1314,9 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._send(200, (html_path.parent / "chronofold-ui.js").read_bytes(), "text/javascript")
             if p.path == "/commissioning-ui.js":
                 return self._send(200, (html_path.parent / "commissioning-ui.js").read_bytes(), "text/javascript")
-            if p.path in ("/experience-ui.js", "/experience-ui.css"):
+            if p.path in ("/worlds/divine.webp", "/worlds/void.webp", "/worlds/astral.webp"):
+                return self._send(200, (html_path.parent / p.path[1:]).read_bytes(), "image/webp")
+            if p.path in ("/experience-ui.js", "/experience-ui.css", "/world-motion.js"):
                 ctype = "text/javascript" if p.path.endswith(".js") else "text/css"
                 return self._send(200, (html_path.parent / p.path[1:]).read_bytes(), ctype)
             if p.path.startswith("/api/config-jobs/"):
