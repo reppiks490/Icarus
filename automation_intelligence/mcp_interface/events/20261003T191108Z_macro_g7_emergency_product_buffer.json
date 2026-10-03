@@ -1,0 +1,83 @@
+{
+  "schema": "icarus-mcp-event-v1",
+  "category": "EVOLUTION",
+  "source": "MACRO_AUTOMATION",
+  "execution_authorized": false,
+  "observed_at": "2026-10-03T19:11:08Z",
+  "title": "G7 coordinated emergency stock release targets refined-product stress",
+  "net_new_delta": "G7 leaders formally committed to a coordinated IEA release of 100 million barrels over four months, with a front-loaded substantial diesel release in the first 20 days, while pledging no energy-export restrictions among G7 members. This creates a policy-buffer state against the existing refined-product shock; it does not establish that diesel tightness is resolved.",
+  "affected_instruments": [
+    "diesel/gasoil",
+    "Brent",
+    "WTI",
+    "GC/MGC",
+    "DXY/USD",
+    "US Treasury yields",
+    "NQ/MNQ"
+  ],
+  "assumptions_affected": [
+    "Energy shock transmission should be modeled without an explicit emergency-policy supply buffer",
+    "Refined-product scarcity can be inferred solely from crude benchmarks",
+    "G7 export-restriction risk remains symmetric after the joint no-restrictions pledge"
+  ],
+  "evidence": [
+    {
+      "type": "FACT",
+      "publisher": "G7 Presidency / Elysee",
+      "date": "2026-10-02",
+      "url": "https://www.elysee.fr/en/emmanuel-macron/2026/10/02/g7-leaders-statement-on-global-energy-security-and-market-stability",
+      "finding": "G7 leaders committed to a coordinated IEA release of 100 million barrels beginning immediately over four months, including a front-loaded substantial diesel release within the first 20 days, and pledged to refrain from energy export restrictions among G7 members."
+    },
+    {
+      "type": "FACT",
+      "publisher": "International Energy Agency",
+      "date": "2026-10-02",
+      "url": "https://www.iea.org/news/executive-director-participates-in-g7-leaders-meeting-on-energy-security-and-markets",
+      "finding": "IEA reported severe diesel-market pressure, said about 325 million barrels of the March 400-million-barrel collective action had already been released, and noted that refined-product flows remain severely constrained despite significant recovery in Middle-East crude exports."
+    },
+    {
+      "type": "SOURCE_CLAIM",
+      "publisher": "Reuters",
+      "date": "2026-10-02",
+      "url": "https://www.reuters.com/business/energy/ieas-birol-says-oil-prices-starting-fall-after-reserve-release-decision-2026-10-02/",
+      "finding": "IEA Executive Director Fatih Birol said oil prices had begun falling after the reserve-release decision and that the IEA could release additional reserves if needed."
+    }
+  ],
+  "fact": [
+    "The 100-million-barrel G7/IEA action is an official policy commitment, not merely a proposal.",
+    "The action is explicitly refined-product-sensitive: substantial diesel volumes are to be front-loaded within 20 days.",
+    "IEA says refined-product flows remain severely constrained even as Middle-East crude exports have recovered significantly."
+  ],
+  "model_inference": [
+    "Create G7_EMERGENCY_PRODUCT_BUFFER as a time-valid policy-response state that partially offsets, but does not cancel, REFINED_PRODUCT_SUPPLY_STRESS.",
+    "Separate crude-flow recovery from diesel/refined-product scarcity and from policy-stock releases; these channels can move in opposite directions.",
+    "Do not infer normalization until actual release volumes, diesel cracks, inventories and physical product flows confirm transmission."
+  ],
+  "unknown": [
+    "country-by-country release volumes",
+    "diesel share of the 100 million barrels",
+    "actual delivery timing and market destinations",
+    "persistence of diesel/gasoil crack compression",
+    "inventory rebuilding after emergency-stock drawdowns",
+    "whether further IEA releases will be required"
+  ],
+  "conflicts": [
+    "The policy action is large and front-loaded, but IEA simultaneously reports refined-product flows remain severely constrained; policy relief and physical scarcity coexist.",
+    "Some of the broader emergency-response accounting references prior March commitments, so the net-new physical barrels and diesel composition require implementation data."
+  ],
+  "next_decisive_check": "Use the IEA's requested implementation/follow-up report due within 20 days, plus observed diesel/gasoil cracks, inventories, export flows and actual emergency-stock drawdowns, to determine whether G7_EMERGENCY_PRODUCT_BUFFER is materially relieving refined-product stress or merely slowing deterioration.",
+  "confidence": {
+    "policy_commitment": "HIGH",
+    "refined_product_stress": "HIGH",
+    "near_term_relief": "MEDIUM",
+    "durable_normalization": "LOW"
+  },
+  "oracle": {
+    "status": "MATERIAL_DELTA",
+    "finding": "A formal 100-million-barrel G7/IEA emergency release with front-loaded diesel creates a measurable policy buffer against refined-product stress; retain the underlying supply-stress state until physical inventories, cracks and flows confirm normalization."
+  },
+  "supermesh_x": {
+    "status": "MATERIAL_DELTA",
+    "finding": "Promote official G7/Elysee and IEA implementation evidence above headline price reactions; route actual stock drawdowns, diesel cracks, inventories and product flows as the decisive confirmation channels, preserving separation between policy commitment and realized supply relief."
+  }
+}
