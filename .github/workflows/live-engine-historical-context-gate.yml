@@ -310,6 +310,8 @@ jobs:
           assert state["peer_source_contract_witness_status"] == "green"
           assert state["peer_source_contract_witness_count"] == 3
           assert state["peer_lane_witness_verified_count"] == len(local_lanes)
+          assert state["peer_lane_contract_binding_verified_count"] == len(state["peer_lanes"])
+          assert all(lane["contract_binding_verified"] is True for lane in state["peer_lanes"])
           assert all(lane["source_witness_verified"] is True for lane in local_lanes)
           assert state["execution_authorized"] is False
           assert state["production_decision_authorized"] is False
@@ -334,6 +336,7 @@ jobs:
               "peer_packet_fresh": state["peer_packet_fresh"],
               "peer_lane_witness_verified_count": state["peer_lane_witness_verified_count"],
               "peer_lane_witness_unavailable_count": state["peer_lane_witness_unavailable_count"],
+              "peer_lane_contract_binding_verified_count": state["peer_lane_contract_binding_verified_count"],
               "peer_source_contract_witness_status": state["peer_source_contract_witness_status"],
               "peer_source_contract_witness_count": state["peer_source_contract_witness_count"],
               "historical_context_status": state["historical_context_status"],
