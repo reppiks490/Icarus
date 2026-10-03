@@ -13,6 +13,7 @@ def test_ascendancy_rebased_organs_are_registered_without_duplicate_peer_bridge(
         "ascendancy-invention": "aion",
         "ascendancy-contribution": "daedalus",
         "ascendancy-evaluator": "daedalus",
+        "ascendancy-governor": "omega",
     }
     for subsystem_id, owner in expected.items():
         assert rows[subsystem_id]["owner"] == owner
@@ -24,3 +25,12 @@ def test_ascendancy_rebased_organs_are_registered_without_duplicate_peer_bridge(
         assert surfaced[subsystem_id]["status"] == "REGISTERED"
     assert snapshot["authority"]["execution_authorized"] is False
     assert snapshot["authority"]["production_decision_authorized"] is False
+
+
+def test_ascendancy_governor_registry_describes_scheduler_not_authority():
+    row = next(x for x in SUBSYSTEMS if x["id"] == "ascendancy-governor")
+    job = row["job"].lower()
+    assert "scheduler" in job
+    assert "diversity" in job
+    assert "qualification" in job
+    assert "never" in job or "cannot" in job
