@@ -711,3 +711,96 @@ def test_governor_api_plans_current_research_state_without_trading_authority(asc
     assert port.paused is paused_before
     assert list(port.runners) == runners_before
     assert srv.ascendancy_governor.snapshot()["cycle_count"] == 1
+
+
+def test_governor_safe_executor_applies_only_internal_bookkeeping(ascendancy_genome_http):
+    port, srv, request = ascendancy_genome_http
+    paused_before = port.paused
+    runners_before = list(port.runners)
+
+    code, registered = request("POST", "/admin/ascendancy/candidate", body=_candidate())
+    assert code == 200, registered
+    cid = registered["candidate"]["candidate_id"]
+    code, advanced = request("POST", "/admin/ascendancy/candidate-stage", body={
+        "candidate_id": cid,
+        "stage": "INCUBATING",
+        "reason": "mechanism review passed",
+    })
+    assert code == 200, advanced
+
+    policy = {
+        "max_actions_per_cycle": 4,
+        "max_estimated_cost_units": 10.0,
+        "exploration_fraction": 0.25,
+        "max_actions_per_niche": 1,
+        "allow_protected_holdout_request": True,
+        "allow_federated_context_mining": True,
+    }
+    code, planned = request("POST", "/admin/ascendancy/governor-plan", body=policy)
+    assert code == 200, planned
+    plan_id = planned["plan"]["plan_id"]
+    assert any(
+        x["kind"] == "REGISTER_WITH_EVALUATOR" and x["subject_id"] == cid
+        for x in planned["plan"]["actions"]
+    )
+
+    code, body = request("GET", "/api/ascendancy/executor", auth=False)
+    assert code == 401
+    assert "admin token" in body["detail"]
+
+    code, executed = request(
+        "POST",
+        "/admin/ascendancy/governor-execute-safe",
+        body={"plan_id": plan_id},
+    )
+    assert code == 200, executed
+    assert executed["trading_state_unchanged"] is True
+    assert executed["applied_count"] >= 1
+    assert executed["execution_authorized"] is False
+    assert executed["production_decision_authorized"] is False
+    assert srv.ascendancy_evaluator.snapshot()["candidate_count"] == 1
+    assert srv.ascendancy_evaluator.snapshot()["receipt_count"] == 0
+
+    code, again = request(
+        "POST",
+        "/admin/ascendancy/governor-execute-safe",
+        body={"plan_id": plan_id},
+    )
+    assert code == 200, again
+    matching = [
+        x for x in again["receipts"]
+        if x["kind"] == "REGISTER_WITH_EVALUATOR"
+        and x["subject_id"] == cid
+    ]
+    assert matching and matching[0]["idempotent"] is True
+    assert srv.ascendancy_evaluator.snapshot()["candidate_count"] == 1
+
+    code, planned2 = request("POST", "/admin/ascendancy/governor-plan", body=policy)
+    assert code == 200, planned2
+    assert any(
+        x["kind"] == "RUN_EVALUATOR_STAGE"
+        and x["subject_id"] == cid
+        for x in planned2["plan"]["actions"]
+    )
+    code, executed2 = request(
+        "POST",
+        "/admin/ascendancy/governor-execute-safe",
+        body={"plan_id": planned2["plan"]["plan_id"]},
+    )
+    assert code == 200, executed2
+    external = next(
+        x for x in executed2["receipts"]
+        if x["kind"] == "RUN_EVALUATOR_STAGE"
+        and x["subject_id"] == cid
+    )
+    assert external["status"] == "AWAITING_EXTERNAL_EVIDENCE"
+    assert srv.ascendancy_evaluator.snapshot()["receipt_count"] == 0
+
+    code, executor = request("GET", "/api/ascendancy/executor")
+    assert code == 200
+    assert executor["applied_internal_count"] >= 1
+    assert executor["awaiting_external_count"] >= 1
+    assert executor["truth_contract"]["executor_receipts_are_not_scientific_evidence"] is True
+
+    assert port.paused is paused_before
+    assert list(port.runners) == runners_before
