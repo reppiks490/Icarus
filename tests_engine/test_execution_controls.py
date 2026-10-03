@@ -990,10 +990,11 @@ def test_engine_control_sync_all_attempts_every_synchronizer_on_partial_failure(
     monkeypatch.setattr(server_mod.BrainRemoteSync, "sync_once", ok("brain_remote"))
     monkeypatch.setattr(server_mod.BrainResearchSync, "sync_once", ok("brain_research"))
     monkeypatch.setattr(server_mod.EvolutionRemoteSync, "sync_once", ok("evolution"))
+    monkeypatch.setattr(server_mod.EvidenceLabRemoteSync, "sync_once", ok("evidence_lab"))
 
     status, body = post("/admin/engine-control", {"action": "sync.all"})
     assert status == 500
-    assert calls == ["loop_intelligence", "brain_remote", "brain_research", "evolution"]
+    assert calls == ["loop_intelligence", "brain_remote", "brain_research", "evolution", "evidence_lab"]
     assert "sync_all partial failure" in body["detail"]
 
 
