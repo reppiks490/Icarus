@@ -308,6 +308,9 @@ def _producer_contract():
         "schema_version": "icarus-mcp-interface-contract-v1",
         "event_root": "automation_intelligence/mcp_interface/events",
         "event_schema": "icarus-mcp-event-v1",
+        "ui_api": "/api/mcp/control",
+        "ui_tab": "MCP / Automation",
+        "source_of_truth": "LOCAL_REPOSITORY_SNAPSHOT",
         "required_categories": ["REPAIR", "AUDIT", "EVOLUTION", "INTEGRATION"],
         "required_fields": [
             "event_id",
@@ -417,10 +420,51 @@ def _source_contract_docs():
             "grace_minutes": 8,
             "catchup_horizon_minutes": 180,
             "execution_authorized": False,
+            "lanes": [
+                {
+                    "name": "robustness_guardian",
+                    "title": "Robustness Guardian Evolution",
+                    "minute": 5,
+                    "scheduler_id": "rg-1",
+                    "worker_root": "automation_intelligence/agent_fabric/robustness_guardian",
+                    "run_prefix": "robustness-guardian",
+                },
+                {
+                    "name": "advanced_csv",
+                    "title": "Advanced CSV Data Collector",
+                    "minute": 15,
+                    "scheduler_id": "csv-1",
+                    "worker_repository": "reppiks490/icarus-csv-evidence-lab",
+                    "worker_root": "automation_intelligence/advanced_csv",
+                    "run_prefix": "advanced-csv",
+                },
+                {
+                    "name": "flow_microstructure",
+                    "title": "Microstructure Sensor Grid",
+                    "minute": 35,
+                    "scheduler_id": "flow-1",
+                    "worker_root": "automation_intelligence/flow",
+                    "run_prefix": "flow",
+                },
+            ],
         },
         "agent_fabric": {
-            "schema_version": "agent-fabric-manifest-v1",
+            "schema_version": "agent-fabric-scheduler-bindings-v1",
+            "repository": "reppiks490/Icarus-engine",
+            "branch": "main",
             "execution_authorized": False,
+            "lanes": {
+                "robustness_guardian": {
+                    "runtime_status_source": (
+                        "automation_intelligence/agent_fabric/"
+                        "robustness_guardian/heartbeat.json"
+                    ),
+                    "finalization_state": (
+                        "automation_intelligence/agent_fabric/"
+                        "robustness_guardian/finalization_state.json"
+                    ),
+                }
+            },
         },
         "mcp_interface": _producer_contract(),
     }
@@ -796,6 +840,12 @@ def test_remote_sync_ingests_custom_agent_and_owned_subsystem_events(tmp_path):
     assert status["peer_lane_witness_unavailable_count"] == 0
     assert status["peer_source_contract_witness_status"] == "green"
     assert status["peer_source_contract_witness_count"] == 3
+    assert status["peer_lane_contract_binding_verified_count"] == 3
+    contract_bound = {row["name"]: row for row in status["peer_lanes"]}
+    assert contract_bound["robustness_guardian"]["contract_binding_status"] == "CONTRACT_BOUND_LOCAL"
+    assert contract_bound["flow_microstructure"]["contract_binding_status"] == "CONTRACT_BOUND_LOCAL"
+    assert contract_bound["advanced_csv"]["contract_binding_status"] == "CONTRACT_BOUND_REMOTE_SIBLING"
+    assert all(row["contract_binding_verified"] is True for row in contract_bound.values())
     assert all(
         row["verified"] is True
         for row in status["peer_source_contract_witnesses"]
@@ -1462,3 +1512,83 @@ def test_remote_sync_requires_source_contract_blob_witness_contract(tmp_path):
     assert status["status"] == "degraded"
     assert status["ingested_total"] == 0
     assert "source contract blob witnesses must be required" in status["last_error"]
+
+def test_remote_sync_rejects_peer_lane_control_plane_attribution_substitution(tmp_path):
+    packet = _peer_packet()
+    packet["lanes"][1]["scheduler_id"] = "forged-scheduler"
+    _rehash_peer_packet(packet)
+    fixture = _fixture(_remote_event(), peer=packet)
+    sync = BrainRemoteSync(
+        tmp_path,
+        interval_seconds=60,
+        fetch_json=fixture["fetch_json"],
+        fetch_bytes=fixture["fetch_bytes"],
+        now_utc=fixture["now_utc"],
+    )
+    status = sync.sync_once()
+    assert status["status"] == "degraded"
+    assert status["ingested_total"] == 1
+    assert "peer lane control-plane binding mismatch: flow_microstructure:scheduler_id" in status["last_error"]
+
+
+def test_remote_sync_rejects_peer_lane_agent_fabric_path_substitution(tmp_path):
+    packet = _peer_packet()
+    robustness = next(
+        row for row in packet["lanes"] if row["name"] == "robustness_guardian"
+    )
+    robustness["heartbeat_path"] = "automation_intelligence/flow/heartbeat.json"
+    robustness["heartbeat_blob_sha"] = _fixture_blob(
+        _lane_source_docs()["automation_intelligence/flow/heartbeat.json"]
+    )
+    _rehash_peer_packet(packet)
+    fixture = _fixture(_remote_event(), peer=packet)
+    sync = BrainRemoteSync(
+        tmp_path,
+        interval_seconds=60,
+        fetch_json=fixture["fetch_json"],
+        fetch_bytes=fixture["fetch_bytes"],
+        now_utc=fixture["now_utc"],
+    )
+    status = sync.sync_once()
+    assert status["status"] == "degraded"
+    assert status["ingested_total"] == 1
+    assert (
+        "peer lane agent-fabric binding mismatch: robustness_guardian:heartbeat_path"
+        in status["last_error"]
+    )
+
+
+def test_remote_sync_rejects_peer_control_plane_projection_drift(tmp_path):
+    packet = _peer_packet()
+    packet["control_plane"]["grace_minutes"] = 9
+    _rehash_peer_packet(packet)
+    fixture = _fixture(_remote_event(), peer=packet)
+    sync = BrainRemoteSync(
+        tmp_path,
+        interval_seconds=60,
+        fetch_json=fixture["fetch_json"],
+        fetch_bytes=fixture["fetch_bytes"],
+        now_utc=fixture["now_utc"],
+    )
+    status = sync.sync_once()
+    assert status["status"] == "degraded"
+    assert status["ingested_total"] == 1
+    assert "peer control-plane projection mismatch: grace_minutes" in status["last_error"]
+
+
+def test_remote_sync_rejects_peer_mcp_projection_drift(tmp_path):
+    packet = _peer_packet()
+    packet["mcp_interface"]["ui_tab"] = "forged-tab"
+    _rehash_peer_packet(packet)
+    fixture = _fixture(_remote_event(), peer=packet)
+    sync = BrainRemoteSync(
+        tmp_path,
+        interval_seconds=60,
+        fetch_json=fixture["fetch_json"],
+        fetch_bytes=fixture["fetch_bytes"],
+        now_utc=fixture["now_utc"],
+    )
+    status = sync.sync_once()
+    assert status["status"] == "degraded"
+    assert status["ingested_total"] == 1
+    assert "peer MCP projection mismatch: ui_tab" in status["last_error"]
