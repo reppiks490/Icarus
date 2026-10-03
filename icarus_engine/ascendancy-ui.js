@@ -778,6 +778,28 @@
     '</section>';
   }
 
+  function renderNativeValidation(native) {
+    if (!native) {
+      return '<section class="card" style="margin-top:12px"><h3>NATIVE CONTRACT VALIDATION</h3><div class="empty">UNAVAILABLE — native validation state did not load.</div></section>';
+    }
+    const runs = Array.isArray(native.runs) ? native.runs.slice().reverse() : [];
+    const rows = runs.map(run => {
+      const usage = run.resource_usage || {};
+      const pending = run.submission_state !== 'SUBMITTED';
+      return '<tr><td><code>' + h(run.run_id || 'UNAVAILABLE') + '</code><div class="small muted">' + h(short(run.candidate_id)) + '</div></td>' +
+        '<td class="' + (run.outcome === 'FAIL' ? 'neg' : 'muted') + '">' + h(run.outcome || 'UNMEASURED') + '</td>' +
+        '<td>' + h(run.submission_state || 'UNAVAILABLE') + '<div class="small muted">' + h(run.submission_state === 'PENDING' ? 'Receipt pending' : pending ? 'Needs review' : run.outcome === 'PASS' ? 'Awaiting scientific tests' : run.outcome === 'FAIL' ? 'Candidate halted' : 'Contract checks unresolved') + '</div>' +
+        (run.error ? '<div class="small neg">' + h(run.error) + '</div>' : '') + '</td>' +
+        '<td class="small">evaluations=' + h(count(usage.evaluations)) + ' · elapsed=' + h(count(usage.wall_seconds)) + 's · cost=' + h(count(usage.cost_units)) + '</td></tr>';
+    }).join('');
+    return '<section class="card" style="margin-top:12px"><h3>NATIVE CONTRACT VALIDATION</h3>' +
+      '<div class="small muted">Contract checks validate candidate structure and local revision presence. A PASS advances only to SMOKE_NULLS; observation availability, scientific performance and trading authority remain unverified.</div>' +
+      '<div class="small muted" style="margin:10px 0">Worker: ' + h(native.worker_running ? 'RUNNING' : 'STOPPED') + ' · enabled=' + h(String(native.enabled)) + ' · runs=' + h(count(native.run_count)) + '</div>' +
+      (native.last_error ? '<div class="empty">Needs review: ' + h(native.last_error) + '</div>' : '') +
+      '<div class="scroll"><table><thead><tr><th>Run / candidate</th><th>Contract result</th><th>Receipt submission</th><th>Measured resources</th></tr></thead><tbody>' +
+      (rows || '<tr><td colspan="4" class="empty">No native validation attempts recorded.</td></tr>') + '</tbody></table></div></section>';
+  }
+
   function renderWorkOrders(workOrders) {
     if (!workOrders) {
       return '<section class="card" style="margin-top:12px"><h3>EXTERNAL RESEARCH WORK ORDERS</h3><div class="empty">UNAVAILABLE — work-order state did not load.</div></section>';
@@ -786,6 +808,7 @@
     const rows = orders.map(row => {
       const required = Array.isArray(row.required_artifacts) ? row.required_artifacts : [];
       const claim = row.claim || null;
+      const result = row.domain_result || null;
       return '<tr>' +
         '<td><code>' + h(short(row.order_id || 'UNAVAILABLE')) + '</code><div class="small muted">' + h(row.kind || 'UNAVAILABLE') + '</div></td>' +
         '<td><b>' + h(String(row.owner_subsystem || 'UNAVAILABLE').toUpperCase()) + '</b></td>' +
@@ -793,6 +816,7 @@
         '<td><code>' + h(short(row.subject_id || 'UNAVAILABLE')) + '</code></td>' +
         '<td class="' + statusClass(row.status) + '"><b>' + h(row.status || 'OPEN') + '</b>' +
           (claim ? '<div class="small muted">' + h(claim.worker_id || 'claimed') + '</div>' : '') +
+          (result ? '<div class="small ' + (result.outcome === 'FAIL' ? 'neg' : 'muted') + '">' + h(result.stage) + ': ' + h(result.outcome) + '</div><code class="small">' + h(result.receipt_id) + '</code>' : '') +
         '</td>' +
         '<td class="small">' + h(required.join(' · ') || 'DOMAIN RECEIPT') + '</td>' +
         '<td class="small">ORDER ≠ EVIDENCE<br>completion_requires_domain_receipt=' + h(row.completion_requires_domain_receipt === true ? 'true' : 'false') + '</td>' +
@@ -844,13 +868,13 @@
       (rows || '<tr><td colspan="5" class="empty">UNMEASURED — no causally available forecast claims.</td></tr>') + '</tbody></table></section>';
   }
 
-  function renderAscendancy(capabilities, genomes, foundry, unknowns, mechanisms, inventions, contributions, evaluator, peers, errors, spine, governor, executor, autopilot, workOrders) {
+  function renderAscendancy(capabilities, genomes, foundry, unknowns, mechanisms, inventions, contributions, evaluator, peers, errors, spine, governor, executor, autopilot, workOrders, nativeValidation) {
     const el = document.querySelector('#ascendancyBody');
     if (!el) return;
     const warning = errors.length
       ? '<div class="empty" style="margin-bottom:10px">DEGRADED: ' + h(errors.join(' · ')) + '</div>'
       : '';
-    el.innerHTML = warning + renderCapabilities(capabilities) + renderPeers(peers) + renderIntelligence(spine) + renderAscendancyAutopilot(autopilot) + renderGovernor(governor) + renderExecutor(executor) + renderWorkOrders(workOrders) + renderUnknowns(unknowns) + renderInventions(inventions) + renderFoundry(foundry) + renderEvaluator(evaluator) + renderContributions(contributions) + renderMechanisms(mechanisms) + renderGenomeLab(genomes);
+    el.innerHTML = warning + renderCapabilities(capabilities) + renderPeers(peers) + renderIntelligence(spine) + renderAscendancyAutopilot(autopilot) + renderNativeValidation(nativeValidation) + renderGovernor(governor) + renderExecutor(executor) + renderWorkOrders(workOrders) + renderUnknowns(unknowns) + renderInventions(inventions) + renderFoundry(foundry) + renderEvaluator(evaluator) + renderContributions(contributions) + renderMechanisms(mechanisms) + renderGenomeLab(genomes);
   }
 
   async function fetchJson(url, token) {
@@ -884,7 +908,8 @@
         fetchJson('/api/ascendancy/governor', token),
         fetchJson('/api/ascendancy/executor', token),
         fetchJson('/api/ascendancy/autopilot', token),
-        fetchJson('/api/ascendancy/work-orders', token)
+        fetchJson('/api/ascendancy/work-orders', token),
+        fetchJson('/api/ascendancy/native-validation', token)
       ]);
       if (seq !== loadSeq) return;
       const capabilities = settled[0].status === 'fulfilled' ? settled[0].value : null;
@@ -901,10 +926,11 @@
       const executor = settled[11].status === 'fulfilled' ? settled[11].value : null;
       const autopilot = settled[12].status === 'fulfilled' ? settled[12].value : null;
       const workOrders = settled[13].status === 'fulfilled' ? settled[13].value : null;
+      const nativeValidation = settled[14].status === 'fulfilled' ? settled[14].value : null;
       const errors = settled
         .filter(x => x.status === 'rejected')
         .map(x => x.reason && x.reason.message ? x.reason.message : String(x.reason || 'UNAVAILABLE'));
-      renderAscendancy(capabilities, genomes, foundry, unknowns, mechanisms, inventions, contributions, evaluator, peers, errors, spine, governor, executor, autopilot, workOrders);
+      renderAscendancy(capabilities, genomes, foundry, unknowns, mechanisms, inventions, contributions, evaluator, peers, errors, spine, governor, executor, autopilot, workOrders, nativeValidation);
     } catch (err) {
       if (seq !== loadSeq) return;
       el.innerHTML = '<div class="empty">ASCENDANCY state UNAVAILABLE: ' + h(err && err.message ? err.message : err) + '</div>';

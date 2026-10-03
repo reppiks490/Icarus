@@ -5,6 +5,28 @@ import pytest
 from icarus_engine.ascendancy.work_orders import ResearchWorkOrderBoard
 
 
+@pytest.mark.parametrize("outcome,completed", [("PASS", 1), ("FAIL", 1), ("INCONCLUSIVE", 0)])
+def test_work_order_follows_accepted_evaluator_result(tmp_path, outcome, completed):
+    from icarus_engine.ascendancy.evaluator import EvaluatorCascade
+    from tests_engine.test_ascendancy_evaluator import _candidate, _receipt as evaluation
+
+    cascade = EvaluatorCascade(tmp_path)
+    candidate = _candidate()
+    cascade.register_candidate(candidate)
+    action = _action("RUN_EVALUATOR_STAGE", candidate["candidate_id"], "1" * 64,
+                     stage="CONTRACT_VALIDATION")
+    board = ResearchWorkOrderBoard(tmp_path)
+    board.dispatch(_plan([action]), _executor([_receipt(action, "AWAITING_EXTERNAL_EVIDENCE")]))
+    assert board.snapshot()["completed_count"] == 0
+    saved = cascade.record(evaluation(candidate, "CONTRACT_VALIDATION", outcome=outcome))
+    for view in (board.snapshot(), ResearchWorkOrderBoard(tmp_path).snapshot()):
+        assert view["completed_count"] == completed
+        order = view["orders"][0]
+        assert order["domain_result"]["receipt_id"] == saved["receipt"]["receipt_id"]
+        assert order["domain_result"]["outcome"] == outcome
+        assert order["scientific_evidence"] is False
+
+
 def _action(kind, subject, action_id, *, stage=None):
     details = {}
     if stage:
@@ -24,6 +46,29 @@ def _action(kind, subject, action_id, *, stage=None):
         "execution_authorized": False,
         "production_decision_authorized": False,
     }
+
+
+@pytest.mark.parametrize("outcome,completed", [("PASS", 1), ("FAIL", 1), ("INCONCLUSIVE", 0)])
+def test_protected_holdout_work_order_follows_accepted_result(tmp_path, outcome, completed):
+    from icarus_engine.ascendancy.evaluator import EvaluatorCascade, evaluation_stage_catalog
+    from tests_engine.test_ascendancy_evaluator import _candidate, _receipt as evaluation
+
+    cascade = EvaluatorCascade(tmp_path)
+    candidate = _candidate()
+    cascade.register_candidate(candidate)
+    for stage in evaluation_stage_catalog():
+        if stage["id"] == "PROTECTED_HOLDOUT":
+            break
+        cascade.record(evaluation(candidate, stage["id"]))
+    action = _action("REQUEST_PROTECTED_HOLDOUT", candidate["candidate_id"], "2" * 64)
+    board = ResearchWorkOrderBoard(tmp_path, evaluator=cascade)
+    board.dispatch(_plan([action]), _executor([_receipt(action, "AWAITING_EXTERNAL_AUTHORITY")]))
+    saved = cascade.record(evaluation(candidate, "PROTECTED_HOLDOUT", outcome=outcome,
+                                      holdout_id="native-handoff-test-holdout"))
+    view = board.snapshot()
+    assert view["completed_count"] == completed
+    assert view["orders"][0]["evaluator_stage"] is None
+    assert view["orders"][0]["domain_result"]["receipt_id"] == saved["receipt"]["receipt_id"]
 
 
 def _plan(actions):

@@ -9,6 +9,7 @@ import pytest
 
 from icarus_engine.runtime import Journal, Portfolio
 from icarus_engine.server import serve
+from tests_engine.test_native_validation import source_checkout
 
 
 def _genome(*, subsystem="chronofold"):
@@ -912,3 +913,48 @@ def test_autopilot_external_boundary_creates_routed_work_order(ascendancy_genome
     assert claimed["status"] == "CLAIMED"
     assert claimed["claim_receipt"]["scientific_evidence"] is False
     assert srv.ascendancy_work_orders.snapshot()["claimed_count"] == 1
+
+
+def test_native_validation_authenticated_cycle_and_handoff(ascendancy_genome_http, source_checkout):
+    from tests_engine.test_ascendancy_evaluator import _candidate as candidate_definition
+    from tests_engine.test_ascendancy_work_orders import _action, _plan, _executor, _receipt
+
+    _, srv, request = ascendancy_genome_http
+    for method, route in [("GET", "/api/ascendancy/native-validation"),
+                          ("POST", "/admin/ascendancy/native-validation")]:
+        code, _ = request(method, route, auth=False, body={} if method == "POST" else None)
+        assert code == 401
+    source, commit = source_checkout
+    candidate = candidate_definition(source_commit=commit)
+    srv.ascendancy_evaluator.register_candidate(candidate)
+    assert hasattr(srv, "ascendancy_native_validation")
+    srv.ascendancy_native_validation.checkout_root = source
+    action = _action("RUN_EVALUATOR_STAGE", candidate["candidate_id"], "3" * 64,
+                     stage="CONTRACT_VALIDATION")
+    srv.ascendancy_work_orders.dispatch(_plan([action]), _executor([_receipt(action, "AWAITING_EXTERNAL_EVIDENCE")]))
+    code, forged = request("POST", "/admin/ascendancy/native-validation", body={"outcome": "PASS"})
+    assert code == 400, forged
+    assert srv.ascendancy_evaluator.snapshot()["receipt_count"] == 0
+    code, result = request("POST", "/admin/ascendancy/native-validation", body={})
+    assert code == 200, result
+    assert result["submitted_count"] == 1
+    assert result["trading_state_unchanged"] is True
+    assert result["execution_authorized"] is False
+    code, report = request("GET", "/api/ascendancy/native-validation")
+    assert code == 200, report
+    assert report["runs"][0]["outcome"] == "PASS"
+    code, board = request("GET", "/api/ascendancy/work-orders")
+    assert code == 200 and board["completed_count"] == 1
+    assert board["orders"][0]["domain_result"]["stage"] == "CONTRACT_VALIDATION"
+    assert srv.ascendancy_evaluator.candidate(candidate["candidate_id"])["next_stage"] == "SMOKE_NULLS"
+
+
+def test_native_validation_integrity_error_is_visible(ascendancy_genome_http, monkeypatch):
+    _, srv, request = ascendancy_genome_http
+    assert hasattr(srv, "ascendancy_native_validation")
+    def corruption():
+        raise RuntimeError("native validation artifact integrity failure")
+    monkeypatch.setattr(srv.ascendancy_native_validation, "snapshot", corruption)
+    code, error = request("GET", "/api/ascendancy/native-validation")
+    assert code == 500
+    assert "integrity failure" in error["detail"]
