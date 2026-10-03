@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import pytest
 from datetime import datetime, timedelta, timezone
 
 from icarus_engine.brain import brain_snapshot
@@ -146,6 +147,7 @@ def _historical_context_contract():
         "mode": "RESEARCH_CONTEXT_ONLY",
         "source_artifact_blob_required": True,
         "artifact_id_sha256_required": True,
+        "packet_projection_verification_required": True,
         "direct_candidate_evidence": False,
         "automatic_candidate_creation": False,
         "automatic_model_promotion": False,
@@ -238,6 +240,7 @@ def _historical_context_contract():
             "historical_context_never_bypasses_evaluator": True,
             "historical_context_never_grants_shadow_qualification": True,
             "historical_context_never_grants_execution_authority": True,
+            "historical_packet_projection_is_source_derived": True,
         },
     }
 
@@ -350,6 +353,81 @@ def _producer_contract():
     }
 
 
+def _historical_packet_projection_fixture(document):
+    core = document.get("RUN_CORE")
+    if not isinstance(core, dict):
+        core = {}
+    findings = core.get("findings") if isinstance(core.get("findings"), list) else []
+    built_changes = (
+        core.get("built_changes") if isinstance(core.get("built_changes"), list) else []
+    )
+    next_step = core.get("NEXT") if isinstance(core.get("NEXT"), str) else None
+    observations = document.get("observations")
+    if not isinstance(observations, dict):
+        observations = {}
+    data_gaps = document.get("DATA_GAPS")
+    if not isinstance(data_gaps, list):
+        data_gaps = []
+    source_provenance = document.get("source_provenance")
+    if not isinstance(source_provenance, list):
+        source_provenance = []
+    net_new_delta = document.get("NET_NEW_DELTA")
+    if not isinstance(net_new_delta, dict):
+        net_new_delta = {}
+    persisted = str(document.get("RUN_STATUS") or document.get("status") or "").upper() == "RUN_PERSISTED"
+    if persisted and (findings or built_changes or next_step):
+        evidence_status = "HISTORICAL_RESEARCH_EVIDENCE"
+        context_eligible = True
+    elif persisted and (
+        document.get("COLLECTION_ONLY") is True
+        or observations
+        or source_provenance
+        or net_new_delta
+    ):
+        evidence_status = "HISTORICAL_COLLECTION_EVIDENCE"
+        context_eligible = True
+    elif persisted:
+        evidence_status = "HISTORICAL_STATE_ONLY"
+        context_eligible = False
+    else:
+        evidence_status = "HISTORICAL_UNVERIFIED"
+        context_eligible = False
+    return {
+        "summary": {
+            "findings": [str(x) for x in findings],
+            "built_changes": [str(x) for x in built_changes],
+            "next": next_step,
+            "observation_keys": sorted(str(x) for x in observations.keys()),
+            "data_gaps": [str(x) for x in data_gaps],
+            "source_provenance_count": len(source_provenance),
+            "net_new_delta_keys": sorted(str(x) for x in net_new_delta.keys()),
+        },
+        "lineage": {
+            "base_main_sha": core.get("base_main_sha"),
+            "final_main_sha": core.get("final_main_sha"),
+            "run_core_sha256": document.get("RUN_CORE_SHA256"),
+            "history_blob_sha": document.get("history_blob_sha"),
+            "ledger_blob_sha": document.get("ledger_blob_sha"),
+            "history_mode": document.get("history_mode"),
+        },
+        "evidence_status": evidence_status,
+        "research_context_eligible": context_eligible,
+    }
+
+
+def _rehash_historical_artifact(artifact):
+    unsigned = dict(artifact)
+    unsigned.pop("artifact_id", None)
+    artifact["artifact_id"] = __import__("hashlib").sha256(
+        json.dumps(
+            unsigned,
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        ).encode()
+    ).hexdigest()
+
+
 def _historical_packet_artifacts(documents=None):
     documents = documents or _historical_docs()
     contract = _historical_context_contract()
@@ -361,6 +439,7 @@ def _historical_packet_artifacts(documents=None):
         raw = (json.dumps(document, sort_keys=True) + "\n").encode()
         run_id = document.get("RUN_ID") or document.get("run_id")
         run_status = document.get("RUN_STATUS") or document.get("status")
+        projection = _historical_packet_projection_fixture(document)
         artifact = {
             "lane": source_id,
             "artifact_kind": "HISTORICAL_LATEST",
@@ -371,25 +450,11 @@ def _historical_packet_artifacts(documents=None):
             "evidence_status": source["evidence_status"],
             "research_context_eligible": True,
             "candidate_evidence_eligible": False,
-            "summary": {"fixture": source_id},
-            "lineage": {
-                "base_main_sha": None,
-                "final_main_sha": None,
-                "run_core_sha256": None,
-                "history_blob_sha": document.get("history_blob_sha") or "1" * 40,
-                "ledger_blob_sha": document.get("ledger_blob_sha"),
-                "history_mode": "fixture",
-            },
+            "summary": projection["summary"],
+            "lineage": projection["lineage"],
             "execution_authorized": False,
         }
-        artifact["artifact_id"] = __import__("hashlib").sha256(
-            json.dumps(
-                artifact,
-                sort_keys=True,
-                separators=(",", ":"),
-                allow_nan=False,
-            ).encode()
-        ).hexdigest()
+        _rehash_historical_artifact(artifact)
         artifacts.append(artifact)
     return artifacts
 
@@ -1286,8 +1351,18 @@ def test_remote_sync_ingests_declared_historical_context_without_candidate_autho
     assert status["truth_contract"]["historical_context_never_grants_shadow_qualification"] is True
     assert status["truth_contract"]["historical_source_artifact_blob_required"] is True
     assert status["truth_contract"]["historical_artifact_id_sha256_required"] is True
+    assert (
+        status["truth_contract"]["historical_packet_projection_verification_required"]
+        is True
+    )
+    assert status["truth_contract"]["historical_packet_projection_is_source_derived"] is True
     assert status["historical_packet_witness_status"] == "green"
     assert status["historical_packet_witness_count"] == 4
+    assert status["historical_packet_projection_verified_count"] == 4
+    assert all(
+        row["projection_verified"] is True
+        for row in status["historical_packet_witnesses"]
+    )
     assert status["historical_packet_same_as_live_count"] == 4
     assert status["historical_packet_live_advanced_count"] == 0
 
@@ -1409,11 +1484,7 @@ def test_remote_sync_rejects_packet_historical_source_blob_substitution(tmp_path
     packet = _peer_packet()
     artifact = packet["historical_artifacts"][0]
     artifact["source_artifact_blob_sha"] = "0" * 40
-    unsigned = dict(artifact)
-    unsigned.pop("artifact_id", None)
-    artifact["artifact_id"] = __import__("hashlib").sha256(
-        json.dumps(unsigned, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
-    ).hexdigest()
+    _rehash_historical_artifact(artifact)
     _rehash_peer_packet(packet)
     fixture = _fixture(_remote_event(), peer=packet)
     sync = BrainRemoteSync(
@@ -1654,6 +1725,118 @@ def test_remote_sync_rejects_peer_mcp_projection_drift(tmp_path):
     assert status["status"] == "degraded"
     assert status["ingested_total"] == 1
     assert "peer MCP projection mismatch: ui_tab" in status["last_error"]
+
+def test_remote_sync_rejects_packet_historical_summary_projection_substitution(tmp_path):
+    packet = _peer_packet()
+    artifact = packet["historical_artifacts"][0]
+    artifact["summary"]["findings"].append("forged packet-only finding")
+    _rehash_historical_artifact(artifact)
+    _rehash_peer_packet(packet)
+    fixture = _fixture(_remote_event(), peer=packet)
+    sync = BrainRemoteSync(
+        tmp_path,
+        interval_seconds=60,
+        fetch_json=fixture["fetch_json"],
+        fetch_bytes=fixture["fetch_bytes"],
+        now_utc=fixture["now_utc"],
+    )
+    status = sync.sync_once()
+    assert status["status"] == "degraded"
+    assert status["ingested_total"] == 1
+    assert status["historical_packet_projection_verified_count"] == 0
+    assert "historical packet witness summary projection mismatch" in status["last_error"]
+
+
+def test_remote_sync_rejects_packet_historical_lineage_projection_substitution(tmp_path):
+    packet = _peer_packet()
+    artifact = packet["historical_artifacts"][0]
+    artifact["lineage"]["history_blob_sha"] = "f" * 40
+    _rehash_historical_artifact(artifact)
+    _rehash_peer_packet(packet)
+    fixture = _fixture(_remote_event(), peer=packet)
+    sync = BrainRemoteSync(
+        tmp_path,
+        interval_seconds=60,
+        fetch_json=fixture["fetch_json"],
+        fetch_bytes=fixture["fetch_bytes"],
+        now_utc=fixture["now_utc"],
+    )
+    status = sync.sync_once()
+    assert status["status"] == "degraded"
+    assert status["ingested_total"] == 1
+    assert "historical packet witness lineage projection mismatch" in status["last_error"]
+
+
+def test_remote_sync_rejects_packet_historical_evidence_projection_not_supported_by_source(tmp_path):
+    packet_docs = _historical_docs()
+    guardian = packet_docs["robustness_guardian"]
+    guardian["RUN_CORE"]["findings"] = []
+    guardian["RUN_CORE"]["built_changes"] = []
+    guardian["RUN_CORE"]["NEXT"] = None
+    packet = _peer_packet(
+        historical_artifacts=_historical_packet_artifacts(packet_docs)
+    )
+    fixture = _fixture(
+        _remote_event(),
+        peer=packet,
+        packet_historical_docs=packet_docs,
+    )
+    sync = BrainRemoteSync(
+        tmp_path,
+        interval_seconds=60,
+        fetch_json=fixture["fetch_json"],
+        fetch_bytes=fixture["fetch_bytes"],
+        now_utc=fixture["now_utc"],
+    )
+    status = sync.sync_once()
+    assert status["status"] == "degraded"
+    assert status["ingested_total"] == 1
+    assert "historical packet witness evidence projection mismatch" in status["last_error"]
+
+
+@pytest.mark.parametrize("source_id,section,key,value", [
+    ("robustness_guardian", "RUN_CORE", "execution_authorized", True),
+    ("robustness_guardian", None, "trading_execution_authorized", True),
+    ("robustness_guardian", "RUN_CORE", "trading_execution_authorized", True),
+    ("flow_microstructure", None, "COLLECTION_ONLY", False),
+])
+def test_packet_source_projection_rejects_invalid_semantics(
+    tmp_path, source_id, section, key, value,
+):
+    docs = _historical_docs()
+    target = docs[source_id][section] if section else docs[source_id]
+    target[key] = value
+    packet = _peer_packet(historical_artifacts=_historical_packet_artifacts(docs))
+    fixture = _fixture(_remote_event(), peer=packet, packet_historical_docs=docs)
+    sync = BrainRemoteSync(tmp_path, interval_seconds=60,
+                           fetch_json=fixture["fetch_json"],
+                           fetch_bytes=fixture["fetch_bytes"],
+                           now_utc=fixture["now_utc"])
+    status = sync.sync_once()
+    assert status["status"] == "degraded"
+    assert status["historical_packet_projection_verified_count"] == 0
+    assert status["peer_packet_status"] == "degraded"
+    assert status["ingested_total"] == 1
+    assert status["execution_authorized"] is False
+
+
+def test_remote_sync_requires_historical_packet_projection_contract(tmp_path):
+    historical = _historical_context_contract()
+    historical["packet_projection_verification_required"] = False
+    consumer = _consumer_contract(historical_context=historical)
+    fixture = _fixture(_remote_event(), consumer=consumer)
+    sync = BrainRemoteSync(
+        tmp_path,
+        interval_seconds=60,
+        fetch_json=fixture["fetch_json"],
+        fetch_bytes=fixture["fetch_bytes"],
+        now_utc=fixture["now_utc"],
+    )
+    status = sync.sync_once()
+    assert status["status"] == "degraded"
+    assert status["ingested_total"] == 0
+    assert "must require packet projection verification" in status["last_error"]
+
 
 def test_remote_sync_validates_verified_prior_packet_acknowledgement(tmp_path):
     packet = _peer_packet(canonical_acceptance=_verified_roundtrip_ack())
