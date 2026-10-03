@@ -1338,6 +1338,18 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     return self._json(200, pantheon.snapshot())
                 except (ValueError, TypeError) as ex:
                     return self._json(400, {"detail": str(ex)})
+            if p.path == "/api/ascendancy/intelligence":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                try:
+                    return self._json(200, learning.intelligence_snapshot(
+                        as_of=q.get("as_of", [None])[0],
+                        limit=int(q.get("limit", ["200"])[0]),
+                    ))
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except RuntimeError as ex:
+                    return self._json(500, {"detail": str(ex)})
             if p.path == "/api/learning":
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
