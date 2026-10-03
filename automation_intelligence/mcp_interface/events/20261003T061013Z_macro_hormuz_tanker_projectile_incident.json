@@ -1,0 +1,66 @@
+{
+  "schema": "icarus-mcp-event-v1",
+  "category": "EVOLUTION",
+  "source": "MACRO_AUTOMATION",
+  "event_time": "2026-10-03T06:10:13Z",
+  "execution_authorized": false,
+  "title": "Hormuz maritime incident risk: crude tanker struck off Oman",
+  "net_new_delta": "UKMTO reported a crude-oil tanker struck by an unidentified projectile about 4 nautical miles east of Oman. Crew safe and no environmental impact reported. This is material physical-maritime event evidence but does not establish Strait closure or petroleum-flow loss.",
+  "classifications": {
+    "FACT": [
+      "UKMTO reported a crude-oil tanker was struck about 4 nautical miles east of Oman; crew were safe; no environmental impact was reported."
+    ],
+    "SOURCE_CLAIM": [
+      "UKMTO described the projectile as unidentified; attribution is not established."
+    ],
+    "MODEL_INFERENCE": [
+      "Promote HORMUZ_MARITIME_INCIDENT_RISK as an event-risk state while keeping REALIZED_ENERGY_SUPPLY_DISRUPTION unconfirmed."
+    ],
+    "UNKNOWN": [
+      "Projectile origin and responsibility",
+      "Persistence/additional attacks",
+      "Traffic reduction or rerouting",
+      "Freight and insurance repricing",
+      "Oil/LNG flow impairment",
+      "Market and inflation pass-through"
+    ]
+  },
+  "affected_instruments": [
+    "Brent",
+    "WTI",
+    "refined products",
+    "Hormuz shipping proxies",
+    "GC/MGC",
+    "DXY/USD",
+    "NQ/MNQ"
+  ],
+  "affected_assumptions": [
+    "Geopolitical headlines alone are insufficient to represent Gulf energy risk; physical maritime incidents should be a distinct intermediate state before realized flow disruption."
+  ],
+  "conflicts": [
+    "Physical maritime risk is confirmed, but available evidence does not establish casualties, environmental damage, Strait closure, or petroleum-flow loss."
+  ],
+  "confidence": {
+    "incident": "HIGH",
+    "attribution": "UNKNOWN",
+    "maritime_event_risk": "MEDIUM_HIGH",
+    "realized_supply_disruption": "UNCONFIRMED"
+  },
+  "next_decisive_check": "Require UKMTO/JMIC or shipping-data confirmation of additional attacks, traffic reduction, rerouting, freight/insurance repricing, or measurable oil/LNG-flow impairment; then require corresponding crude/refined-product confirmation before promoting to REALIZED_SUPPLY_DISRUPTION.",
+  "evidence": [
+    {
+      "provider": "Reuters",
+      "title": "Crude oil tanker struck by unknown projectile off Oman, UKMTO says",
+      "published_date": "2026-10-03",
+      "url": "https://www.reuters.com/business/energy/crude-oil-tanker-struck-by-unknown-projectile-off-oman-ukmto-says-2026-10-02/"
+    }
+  ],
+  "oracle": {
+    "status": "MATERIAL_FINDING",
+    "finding": "Add HORMUZ_MARITIME_INCIDENT_RISK as a distinct event-risk state; do not promote realized energy-supply disruption without measurable shipping or physical-flow impairment."
+  },
+  "supermesh_x": {
+    "status": "MATERIAL_FINDING",
+    "finding": "Reuters/UKMTO confirms the incident but not attribution or flow impairment; keep incident, attribution, shipping-flow, freight/insurance and market-price channels separately provenance-tagged."
+  }
+}

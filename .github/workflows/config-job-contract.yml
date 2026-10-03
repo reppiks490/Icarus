@@ -1,0 +1,31 @@
+name: configuration-job-contract
+on:
+  pull_request:
+    paths:
+      - 'icarus_engine/server.py'
+      - 'icarus_engine/runtime.py'
+      - 'icarus_engine/dashboard.html'
+      - 'tests_engine/test_config_jobs.py'
+      - '.github/workflows/config-job-contract.yml'
+  push:
+    paths:
+      - 'icarus_engine/server.py'
+      - 'icarus_engine/runtime.py'
+      - 'icarus_engine/dashboard.html'
+      - 'tests_engine/test_config_jobs.py'
+      - '.github/workflows/config-job-contract.yml'
+permissions:
+  contents: read
+jobs:
+  config-jobs:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -e '.[dev]'
+      - run: python -m pytest tests_engine/test_config_jobs.py -q

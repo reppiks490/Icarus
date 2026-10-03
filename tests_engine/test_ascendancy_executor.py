@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import threading
 
 import pytest
 
@@ -9,6 +10,45 @@ from icarus_engine.ascendancy.executor import (
     GovernorExecutor,
 )
 from icarus_engine.ascendancy.governor import build_governor_plan
+
+
+def test_concurrent_execution_records_one_domain_transition(tmp_path):
+    executor = GovernorExecutor(tmp_path)
+    plan = _plan([_action("REGISTER_WITH_EVALUATOR", "a" * 64)])
+    entered, second_entered, release = (threading.Event() for _ in range(3))
+    calls, results, errors = [], [], []
+
+    def handler(action):
+        index = len(calls)
+        calls.append(action["action_id"])
+        if index == 0:
+            entered.set()
+            assert release.wait(5)
+        else:
+            second_entered.set()
+        return {"candidate": {"candidate_id": action["subject_id"]},
+                "idempotent": bool(index), "execution_authorized": False,
+                "production_decision_authorized": False}
+
+    def run():
+        try:
+            results.append(executor.execute(plan, {"REGISTER_WITH_EVALUATOR": handler}))
+        except Exception as ex:
+            errors.append(ex)
+
+    first, second = threading.Thread(target=run), threading.Thread(target=run)
+    first.start()
+    assert entered.wait(5)
+    second.start()
+    second_entered.wait(0.2)
+    release.set()
+    first.join(5)
+    second.join(5)
+    assert not first.is_alive() and not second.is_alive()
+    assert errors == []
+    assert len(calls) == 1
+    assert sorted(row["newly_applied_count"] for row in results) == [0, 1]
+    assert executor.snapshot()["receipt_count"] == 1
 
 
 def _plan(actions):
@@ -155,8 +195,11 @@ def test_executor_is_wal_and_idempotent_per_plan_action(tmp_path):
 
 def test_executor_rejects_tampered_plan_and_action_identity(tmp_path):
     executor = GovernorExecutor(tmp_path)
-    plan = _plan([_action("REGISTER_WITH_EVALUATOR", "a" * 64)])
-    plan["actions"][0]["subject_id"] = "b" * 64
+    action = _action("REGISTER_WITH_EVALUATOR", "a" * 64)
+    action["subject_id"] = "b" * 64
+    # A valid outer envelope isolates the stale inner action identity. Mutating
+    # an already signed plan would correctly trigger its plan_id guard first.
+    plan = _plan([action])
     with pytest.raises(ValueError, match="action_id"):
         executor.execute(plan, {})
 

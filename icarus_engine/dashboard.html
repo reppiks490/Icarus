@@ -308,7 +308,7 @@ function assetCard(a) {
   return `<div class="asset ${side}" data-sym="${a.symbol}">
     <div class="ah"><span class="sym" title="ICARUS key ${esc(a.symbol)}">${esc(a.continuous_symbol||a.symbol)}</span><span class="px tnum">${px(a.price)}</span>
       <span class="dir ${st.rate_uptrend?'up':'dn'}" title="RATE SuperTrend direction">${st.rate_uptrend==null?'':st.rate_uptrend?'▲':'▼'}</span>
-      <span class="chip ${regClass(st.rate_regime_str)}">${esc(st.rate_regime_str||'—')} ${st.rate_regime!=null?(st.rate_regime*100).toFixed(0)+'%':''}</span>${marketChip(a)}${warm}${a.paused?'<span class="chip r">paused</span>':''}
+      <span class="chip ${regClass(st.rate_regime_str)}">${esc(st.rate_regime_str||'—')} ${st.rate_regime!=null?(st.rate_regime*100).toFixed(0)+'%':''}</span>${marketChip(a)}${warm}${a.view_stale?'<span class="chip w" title="The engine is rebuilding; this is the last complete snapshot">snapshot · engine busy</span>':''}${a.paused?'<span class="chip r">paused</span>':''}
       <span class="muted small" style="margin-left:auto" title="Calculation basis">${a.tf}m · ${a.chart_type==='heikin_ashi'?'HA':'OHLC'} · fill ${a.fill_on==='chart'?'chart':'real'} · MTF ${a.security_source==='standard'?'standard':'chart'} · ${a.errors?`<span class="neg">${a.errors} err</span>`:'bar '+age(a.bar_age)}</span></div>
     <div id="ch-${a.symbol}" style="margin-top:6px"></div>
     <div class="pulse"><span>Pulse</span><div class="segs">${pulseSegs(pulse, st.pulse_state)}</div><span>${esc(st.pulse_state||'—')} ${pside} ${(pulse*100).toFixed(0)}%</span><span style="margin-left:auto">${st.po3||''} · fam ${Math.max(st.families_l||0, st.families_s||0)}/5</span></div>
@@ -340,8 +340,7 @@ function tabsHtml(A) {
   const t = [`<span class="tab ${view==='overview'?'active':''}" data-v="overview">Overview</span>`];
   A.forEach(a => { const pos = a.position||0; t.push(`<span class="tab ${view==='asset:'+a.symbol?'active':''}" data-v="asset:${a.symbol}"><span class="dot ${pos>0?'long':pos<0?'short':(a.market&&a.market.open===false?'closed':'')}"></span><b class="s">${esc(a.continuous_symbol||a.symbol)}</b> <span class="muted small tnum">${px(a.price)}</span></span>`); });
   t.push(`<span class="tab" data-v="add" title="Add an asset">＋</span>`);
-  t.push(`<span class="tab util ${view==='system'?'active':''}" data-v="system">System</span><span class="tab util ${view==='golive'?'active':''}" data-v="golive">Go-live</span><span class="tab util ${view==='agent'?'active':''}" data-v="agent">Agent</span><span class="tab util ${view==='inputs'?'active':''}" data-v="inputs">Inputs</span><span class="tab util ${view==='backtest'?'active':''}" data-v="backtest">Backtest</span>${typeof researchHtml==='function'?`<span class="tab util ${view==='research'?'active':''}" data-v="research">Research</span>`:''}${typeof sourcesHtml==='function'?`<span class="tab util ${view==='sources'?'active':''}" data-v="sources">Financial &amp; data</span>`:''}${typeof marketDataHtml==='function'?`<span class="tab util ${view==='market-data'?'active':''}" data-v="market-data">Market Data</span>`:''}${typeof brainHtml==='function'?`<span class="tab util ${view==='brain'?'active':''}" data-v="brain">Adaptive Brain</span>`:''}${typeof evolutionHtml==='function'?`<span class="tab util ${view==='evolution'?'active':''}" data-v="evolution">MCP Evolution</span>`:''}${typeof parallaxHtml==='function'?`<span class="tab util ${view==='parallax'?'active':''}" data-v="parallax">PARALLAX / DREAMSTATE</span>`:''}${typeof possibilityHtml==='function'?`<span class="tab util ${view==='possibility'?'active':''}" data-v="possibility">ICARUS Ψ</span>`:''}${typeof pantheonHtml==='function'?`<span class="tab util ${view==='pantheon'?'active':''}" data-v="pantheon">PANTHEON / AETHER</span>`:''}${typeof sibylHtml==='function'?`<span class="tab util ${view==='sibyl'?'active':''}" data-v="sibyl">SIBYL Ω</span>`:''}${typeof apexHtml==='function'?`<span class="tab util ${view==='apex'?'active':''}" data-v="apex">APEX Ω</span>`:''}${typeof ascendancyHtml==='function'?`<span class="tab util ${view==='ascendancy'?'active':''}" data-v="ascendancy">ASCENDANCY</span>`:''}${typeof learningHtml==='function'?`<span class="tab util ${view==='learning'?'active':''}" data-v="learning">Learning Fabric</span>`:''}${typeof chronofoldHtml==='function'?`<span class="tab util ${view==='chronofold'?'active':''}" data-v="chronofold">ICARUS Ξ</span>`:''}${typeof commissioningHtml==='function'?`<span class="tab util ${view==='commissioning'?'active':''}" data-v="commissioning">Commissioning</span>`:''}${typeof integrityHtml==='function'?`<span class="tab util ${view==='integrity'?'active':''}" data-v="integrity">Data Integrity</span>`:''}${typeof engineControlHtml==='function'?`<span class="tab util ${view==='engine-control'?'active':''}" data-v="engine-control">Engine Control</span>`:''}<span class="tab util ${view==='commands'?'active':''}" data-v="commands">Commands</span><span class="tab util ${view==='log'?'active':''}" data-v="log">Log</span>`);
-  if (typeof autopilotHtml==='function') t.push(`<span class="tab util ${view==='autopilot'?'active':''}" data-v="autopilot">Tactical Autopilot</span>`);
+  t.push(`<span class="tab util ${view==='system'?'active':''}" data-v="system">System</span><span class="tab util ${view==='golive'?'active':''}" data-v="golive">Go-live</span><span class="tab util ${view==='agent'?'active':''}" data-v="agent">Agent</span><span class="tab util ${view==='inputs'?'active':''}" data-v="inputs">Inputs</span><span class="tab util ${view==='backtest'?'active':''}" data-v="backtest">Backtest</span><span class="tab util ${view==='research'?'active':''}" data-v="research">Research</span><span class="tab util ${view==='sources'?'active':''}" data-v="sources">Financial &amp; data</span><span class="tab util ${view==='market-data'?'active':''}" data-v="market-data">Market Data</span><span class="tab util ${view==='brain'?'active':''}" data-v="brain">Adaptive Brain</span><span class="tab util ${view==='evolution'?'active':''}" data-v="evolution">MCP Evolution</span><span class="tab util ${view==='parallax'?'active':''}" data-v="parallax">PARALLAX / DREAMSTATE</span><span class="tab util ${view==='possibility'?'active':''}" data-v="possibility">ICARUS Ψ</span><span class="tab util ${view==='pantheon'?'active':''}" data-v="pantheon">PANTHEON / AETHER</span><span class="tab util ${view==='sibyl'?'active':''}" data-v="sibyl">SIBYL Ω</span><span class="tab util ${view==='apex'?'active':''}" data-v="apex">APEX Ω</span><span class="tab util ${view==='ascendancy'?'active':''}" data-v="ascendancy">ASCENDANCY</span><span class="tab util ${view==='learning'?'active':''}" data-v="learning">Learning Fabric</span><span class="tab util ${view==='chronofold'?'active':''}" data-v="chronofold">ICARUS Ξ</span><span class="tab util ${view==='commissioning'?'active':''}" data-v="commissioning">Commissioning</span><span class="tab util ${view==='integrity'?'active':''}" data-v="integrity">Data Integrity</span><span class="tab util ${view==='engine-control'?'active':''}" data-v="engine-control">Engine Control</span><span class="tab util ${view==='commands'?'active':''}" data-v="commands">Commands</span><span class="tab util ${view==='log'?'active':''}" data-v="log">Log</span><span class="tab util ${view==='autopilot'?'active':''}" data-v="autopilot">Tactical Autopilot</span>`);
   return t.join('');
 }
 function systemLoopClass(status) {
@@ -473,7 +472,7 @@ function assetHead(a) {
   const exits = (a.exits||[]).map(e => `${e.id}: ${e.qty??'all'} tp ${px(e.limit)} / sl ${px(e.stop)}`).join(' · ');
   return `<div style="display:flex; align-items:baseline; gap:12px; flex-wrap:wrap">
     <h3 style="margin:0;font-size:22px">${a.symbol} <span class="muted" style="font-size:14px;font-weight:400">${esc(a.name)} · ${esc(a.continuous_symbol||a.product)} · ${a.tf}m</span></h3><span class="tnum" style="font-size:22px;font-weight:600">${px(a.price)}</span>
-    ${marketChip(a)}<span class="chip ${regClass(st.rate_regime_str)}">${esc(st.rate_regime_str||'')}</span><span class="chip">${a.chart_type==='heikin_ashi'?'Heikin Ashi chart':'real bars'} · fills on ${a.fill_on==='chart'?'HA/chart bars':'real prices'} · HTF/LTF ${a.security_source==='standard'?'standard OHLC':'selected chart source'} · slip ${a.slippage_ticks}t</span><span class="chip">preset ${esc(a.preset||'none')}</span>${a.paused?'<span class="chip r">paused</span>':''}${a.rewarming?'<span class="chip w">re-warming</span>':''}
+    ${marketChip(a)}<span class="chip ${regClass(st.rate_regime_str)}">${esc(st.rate_regime_str||'')}</span><span class="chip">${a.chart_type==='heikin_ashi'?'Heikin Ashi chart':'real bars'} · fills on ${a.fill_on==='chart'?'HA/chart bars':'real prices'} · HTF/LTF ${a.security_source==='standard'?'standard OHLC':'selected chart source'} · slip ${a.slippage_ticks}t</span><span class="chip">preset ${esc(a.preset||'none')}</span>${a.paused?'<span class="chip r">paused</span>':''}${a.rewarming?'<span class="chip w">re-warming</span>':''}${a.view_stale?'<span class="chip w">snapshot · engine busy</span>':''}
     <span style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap"><button class="sm" data-cmd="pause" data-a="${a.symbol}">Pause</button><button class="sm" data-cmd="resume" data-a="${a.symbol}">Resume</button><button class="sm danger" data-cmd="flatten" data-a="${a.symbol}">Flatten</button><button class="sm" data-cmd="inputs" data-a="${a.symbol}">Inputs</button><button class="sm" data-cmd="rewarm" data-a="${a.symbol}">Re-warm</button><button class="sm" data-cmd="export" data-a="${a.symbol}">Export CSV</button>${solo?'':`<button class="sm" data-cmd="open-tab" data-a="${a.symbol}">Open in tab ↗</button>`}</span></div>
     <div class="exec" style="margin-top:8px">${esc(st.exec||'')}${pending?` · pending: ${esc(pending)}`:''}${exits?` · resting: ${esc(exits)}`:''}</div>
     <div id="dChart" style="margin-top:10px"></div>
@@ -605,6 +604,40 @@ async function withBusyButton(button, fn) {
   try { return await fn(); }
   finally { if (button.isConnected) button.disabled = false; }
 }
+const configJobWatchers = new Set();
+async function watchConfigJob(jobId, label='Configuration') {
+  if (!jobId || configJobWatchers.has(jobId)) return;
+  configJobWatchers.add(jobId);
+  const deadline = Date.now() + 30 * 60 * 1000;
+  let announced = '';
+  try {
+    while (Date.now() < deadline) {
+      const response = await fetch('/api/config-jobs/' + encodeURIComponent(jobId), {cache:'no-store'});
+      const job = await response.json().catch(()=>({}));
+      if (!response.ok) throw new Error(job.detail||job.error||('HTTP '+response.status));
+      if (job.status !== announced) {
+        announced = job.status;
+        if (job.status === 'running') toast(label + ' re-warming in background — UI stays live');
+      }
+      if (job.status === 'done') {
+        toast(label + ' re-warm complete');
+        await refresh();
+        if (view === 'inputs') await loadInputsTab();
+        return;
+      }
+      if (job.status === 'error') {
+        toast(label + ' re-warm failed: ' + (job.error||'unknown error'), true);
+        return;
+      }
+      await new Promise(resolve => setTimeout(resolve, 300));
+    }
+    toast(label + ' re-warm is still running; the dashboard remains usable');
+  } catch (e) {
+    toast(label + ' job status unavailable: ' + (e?.message||String(e)), true);
+  } finally {
+    configJobWatchers.delete(jobId);
+  }
+}
 document.addEventListener('input', ev => { if (ev.target.id === 'inSearch') renderInputs(); });
 document.addEventListener('change', ev => { if (ev.target.id === 'inAsset') loadInputsTab(); });
 document.addEventListener('click', async ev => {
@@ -614,10 +647,10 @@ document.addEventListener('click', async ev => {
   if (b.classList.contains('asset')) { setView('asset:' + b.dataset.sym); return; }
   if (b.dataset.cmd) { await withBusyButton(b, () => runCommand(b.dataset.cmd, b.dataset.a)); return; }
   if (b.dataset.run) { const sel = document.querySelector(`select[data-scope="${b.dataset.run}"]`); await withBusyButton(b, () => runCommand(b.dataset.run, sel ? sel.value : '*')); return; }
-  if (b.id === 'inApply') { const vals = inState.edits, chart = inState.chartEdits; if (!Object.keys(vals).length && !Object.keys(chart).length) return toast('nothing edited'); await withBusyButton(b, async () => { const r = await admin('/admin/inputs', {asset: inState.asset, values: vals, chart, persist: true}); if (r) { inState.edits = {}; inState.chartEdits = {}; setTimeout(()=>loadInputsTab(), 1500); } }); }
+  if (b.id === 'inApply') { const vals = inState.edits, chart = inState.chartEdits; if (!Object.keys(vals).length && !Object.keys(chart).length) return toast('nothing edited'); await withBusyButton(b, async () => { const r = await admin('/admin/inputs/async', {asset: inState.asset, values: vals, chart, persist: true}); if (r) { inState.edits = {}; inState.chartEdits = {}; if (r.job) watchConfigJob(r.job, 'Inputs'); } }); }
   if (b.id === 'inRevert') { inState.edits = {}; inState.chartEdits = {}; renderChartConfig(); renderInputs(); }
-  if (b.id === 'inReset') { if (confirm(`Remove all per-asset overrides for ${inState.asset}?`)) await withBusyButton(b, async () => { const r = await admin('/admin/inputs/reset', {asset: inState.asset}); if (r) setTimeout(()=>loadInputsTab(), 1500); }); }
-  if (b.id === 'inApplyPreset') { await withBusyButton(b, async () => { const r = await admin('/admin/preset', {asset: inState.asset, preset: $('#inPreset').value || null}); if (r) setTimeout(()=>loadInputsTab(), 1500); }); }
+  if (b.id === 'inReset') { if (confirm(`Remove all per-asset overrides for ${inState.asset}?`)) await withBusyButton(b, async () => { const r = await admin('/admin/inputs/reset/async', {asset: inState.asset}); if (r?.job) watchConfigJob(r.job, 'Input reset'); }); }
+  if (b.id === 'inApplyPreset') { await withBusyButton(b, async () => { const r = await admin('/admin/preset/async', {asset: inState.asset, preset: $('#inPreset').value || null}); if (r?.job) watchConfigJob(r.job, 'Preset'); }); }
   if (b.id === 'addBtn') {
     const s = $('#addSym').value.trim(); if (!s) return;
     b.disabled = true;

@@ -1,0 +1,29 @@
+{
+  "category": "REPAIR",
+  "event_id": "20261003_takeover_config_windows_replay_repairs",
+  "evidence": [
+    "https://github.com/reppiks490/Icarus/pull/304",
+    "https://github.com/reppiks490/Icarus/pull/305",
+    "https://github.com/reppiks490/Icarus/pull/306",
+    "Full local combined suite: 1859 passed, 2 skipped in 94.85s",
+    "Direct browser localhost blocked; Tailscale URL 502 connection refused",
+    "https://github.com/reppiks490/Icarus/actions/runs/37107448158",
+    "https://github.com/reppiks490/Icarus/actions/runs/37107448150",
+    "https://github.com/reppiks490/Icarus/actions/runs/37105836394",
+    "Independent review: public aggregates/epoch, cache isolation, slicing and rollback verified"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false,
+  "recorded_at": "2026-10-03T07:51:28.133471Z",
+  "schema_version": "icarus-interface-event-v1",
+  "severity": "success",
+  "source_commit": "0834e4d83f2c065c000f4bef7efbc50718f7f10f",
+  "source_ref": "main",
+  "source_repository": "reppiks490/Icarus",
+  "status": "verified",
+  "subsystems": [
+    "ui"
+  ],
+  "summary": "Merged #304 configuration identity, bound-port and launcher repairs; #305 hidden Windows background children; #306 responsive replay status/charts with labeled snapshots and consistent capital/equity history. Combined local suite: 1859 passed, 2 platform skips. Hosted Linux full suite, Windows standard checks and Windows/Linux configuration contract passed on exact source 0834e4d83f2c065c000f4bef7efbc50718f7f10f. Source blobs match tested files; independent review found no remaining blockers in these deltas. User-machine update, restart, desktop recurrence and visual browser checks remain unverified. Other agents own separate active feature lanes. This receipt records software verification, not market performance or execution authority.",
+  "title": "Configuration, Windows background launches and replay UI repairs integrated and verified"
+}

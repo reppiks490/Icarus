@@ -121,6 +121,11 @@ class GovernorAutopilot:
                 );
                 CREATE INDEX IF NOT EXISTS idx_asc_autopilot_recorded
                     ON cycles(recorded_at, cycle_id);
+                CREATE TABLE IF NOT EXISTS latest_observation (
+                    singleton INTEGER PRIMARY KEY CHECK(singleton=1),
+                    cycle_id TEXT NOT NULL,
+                    observed_at TEXT NOT NULL
+                );
                 """
             )
 
@@ -136,30 +141,36 @@ class GovernorAutopilot:
             if existing is not None:
                 if str(existing["semantic_json"]) != raw:
                     raise RuntimeError("autopilot cycle identity integrity failure")
-                out = dict(semantic)
-                out["recorded_at"] = str(existing["recorded_at"])
-                return out, True
+            else:
+                con.execute(
+                    """INSERT INTO cycles(
+                        cycle_id,status,stop_reason,iteration_count,
+                        new_internal_transition_count,awaiting_external_count,
+                        blocked_count,semantic_json,recorded_at
+                    ) VALUES(?,?,?,?,?,?,?,?,?)""",
+                    (
+                        cycle_id,
+                        semantic["status"],
+                        semantic["stop_reason"],
+                        semantic["iteration_count"],
+                        semantic["new_internal_transition_count"],
+                        semantic["awaiting_external_count"],
+                        semantic["blocked_count"],
+                        raw,
+                        now,
+                    ),
+                )
+            # Current state follows the latest observation, while immutable
+            # cycle receipts retain their original timestamps and progress.
             con.execute(
-                """INSERT INTO cycles(
-                    cycle_id,status,stop_reason,iteration_count,
-                    new_internal_transition_count,awaiting_external_count,
-                    blocked_count,semantic_json,recorded_at
-                ) VALUES(?,?,?,?,?,?,?,?,?)""",
-                (
-                    cycle_id,
-                    semantic["status"],
-                    semantic["stop_reason"],
-                    semantic["iteration_count"],
-                    semantic["new_internal_transition_count"],
-                    semantic["awaiting_external_count"],
-                    semantic["blocked_count"],
-                    raw,
-                    now,
-                ),
+                """INSERT INTO latest_observation VALUES(1,?,?)
+                   ON CONFLICT(singleton) DO UPDATE SET
+                       cycle_id=excluded.cycle_id, observed_at=excluded.observed_at""",
+                (cycle_id, now),
             )
         out = dict(semantic)
-        out["recorded_at"] = now
-        return out, False
+        out["recorded_at"] = str(existing["recorded_at"]) if existing else now
+        return out, existing is not None
 
     def run_cycle(self) -> dict[str, Any]:
         with self._cycle_lock:
@@ -290,6 +301,9 @@ class GovernorAutopilot:
                 """SELECT semantic_json,recorded_at
                    FROM cycles ORDER BY recorded_at,cycle_id"""
             ).fetchall()
+            observation = con.execute(
+                "SELECT cycle_id,observed_at FROM latest_observation WHERE singleton=1"
+            ).fetchone()
 
         cycles: list[dict[str, Any]] = []
         for row in rows:
@@ -302,6 +316,11 @@ class GovernorAutopilot:
             item["recorded_at"] = str(row["recorded_at"])
             cycles.append(item)
         latest = cycles[-1] if cycles else None
+        if observation is not None:
+            latest = next((row for row in cycles
+                           if row.get("cycle_id") == observation["cycle_id"]), None)
+            if latest is None:
+                raise RuntimeError("autopilot observation storage corruption")
 
         return {
             "schema_version": SCHEMA_VERSION,
@@ -313,6 +332,7 @@ class GovernorAutopilot:
             "cycle_count": len(cycles),
             "latest_cycle_id": latest.get("cycle_id") if latest else None,
             "latest_cycle": latest,
+            "latest_observed_at": str(observation["observed_at"]) if observation else None,
             "status": latest.get("status") if latest else "NOT_RUN",
             "stop_reason": latest.get("stop_reason") if latest else None,
             "last_error": latest.get("last_error") if latest else None,

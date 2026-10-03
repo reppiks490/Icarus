@@ -7,12 +7,16 @@ on:
       - feat/live-engine-federation-gate-20261002-v2
     paths:
       - "icarus_engine/brain_sync.py"
+      - "icarus_engine/federation_acceptance.py"
       - "tests_engine/test_brain_sync.py"
+      - "tests_engine/test_federation_acceptance.py"
       - ".github/workflows/live-engine-federation-gate.yml"
   pull_request:
     paths:
       - "icarus_engine/brain_sync.py"
+      - "icarus_engine/federation_acceptance.py"
       - "tests_engine/test_brain_sync.py"
+      - "tests_engine/test_federation_acceptance.py"
       - ".github/workflows/live-engine-federation-gate.yml"
   workflow_dispatch:
   schedule:
@@ -127,6 +131,36 @@ jobs:
                   "url": url,
               }
 
+          source_contract_meta = {}
+          for contract_id, contract_path in peer_packet_doc.get("source_contracts", {}).items():
+              claimed_blob = peer_packet_doc.get("source_contract_blobs", {}).get(contract_id)
+              raw = subprocess.check_output(
+                  [
+                      "git",
+                      "-C",
+                      str(peer),
+                      "show",
+                      f"{peer_packet_doc['source_commit']}:{contract_path}",
+                  ]
+              )
+              assert _git_blob_sha(raw) == claimed_blob, (
+                  "source contract witness mismatch: " + str(contract_id)
+              )
+              url = "memory://source-contract/" + str(contract_id)
+              virtual[url] = raw
+              source_contract_meta[
+                  _remote_contents_api(
+                      contract_path,
+                      ref=peer_packet_doc["source_commit"],
+                  )
+              ] = {
+                  "type": "file",
+                  "name": Path(contract_path).name,
+                  "path": contract_path,
+                  "sha": claimed_blob,
+                  "url": url,
+              }
+
           lane_source_meta = {}
           for lane in peer_packet_doc.get("lanes", []):
               if lane.get("worker_repository") != "reppiks490/Icarus-engine":
@@ -215,6 +249,8 @@ jobs:
                   return packet_historical_meta[url]
               if url in lane_source_meta:
                   return lane_source_meta[url]
+              if url in source_contract_meta:
+                  return source_contract_meta[url]
               raise AssertionError("unexpected federation URL: " + url)
 
           def fetch_bytes(url):
@@ -273,7 +309,15 @@ jobs:
               lane for lane in state["peer_lanes"]
               if lane["worker_repository"] == "reppiks490/Icarus-engine"
           ]
+          assert state["peer_source_contract_witness_status"] == "green"
+          assert state["peer_source_contract_witness_count"] == 3
+          assert all(
+              row["verified"] is True
+              for row in state["peer_source_contract_witnesses"]
+          )
           assert state["peer_lane_witness_verified_count"] == len(local_lanes)
+          assert state["peer_lane_contract_binding_verified_count"] == len(state["peer_lanes"])
+          assert all(lane["contract_binding_verified"] is True for lane in state["peer_lanes"])
           assert all(lane["source_witness_verified"] is True for lane in local_lanes)
           assert all(
               lane["source_witness_status"] == "VERIFIED_AT_PACKET_SOURCE"
@@ -284,6 +328,21 @@ jobs:
               or lane["substantive_research_evidence"] is False
               for lane in state["peer_lanes"]
           )
+          assert state["peer_roundtrip_ack_status"] in {
+              "UNAVAILABLE",
+              "VERIFIED_PRIOR_PACKET",
+          }
+          roundtrip_ack = state["peer_roundtrip_ack"]
+          assert roundtrip_ack["authority"] == "RESEARCH"
+          assert roundtrip_ack["required_for_export"] is False
+          assert roundtrip_ack["execution_authorized"] is False
+          assert roundtrip_ack["production_decision_authorized"] is False
+          assert roundtrip_ack["automatic_model_promotion"] is False
+          assert truth["canonical_acceptance_schema"] == (
+              "icarus-engine-federation-acceptance-v1"
+          )
+          assert truth["canonical_acceptance_authority"] == "RESEARCH"
+          assert truth["canonical_acceptance_required_for_export"] is False
 
           report = {
               "schema_version": "icarus-live-bilateral-federation-receipt-v1",
@@ -310,7 +369,17 @@ jobs:
               "peer_durability_only_lane_count": state["peer_durability_only_lane_count"],
               "peer_lane_witness_verified_count": state["peer_lane_witness_verified_count"],
               "peer_lane_witness_unavailable_count": state["peer_lane_witness_unavailable_count"],
+              "peer_lane_contract_binding_verified_count": state["peer_lane_contract_binding_verified_count"],
               "peer_lane_source_witnesses_required": truth["peer_lane_source_witnesses_required"],
+              "peer_source_contract_witness_status": state["peer_source_contract_witness_status"],
+              "peer_source_contract_witness_count": state["peer_source_contract_witness_count"],
+              "peer_source_contract_blob_witnesses_required": truth["peer_source_contract_blob_witnesses_required"],
+              "peer_roundtrip_ack_status": state["peer_roundtrip_ack_status"],
+              "peer_roundtrip_accepted_packet_id": state["peer_roundtrip_ack"].get("accepted_peer_packet_id"),
+              "peer_roundtrip_accepted_source_commit": state["peer_roundtrip_ack"].get("accepted_peer_source_commit"),
+              "canonical_acceptance_schema": truth["canonical_acceptance_schema"],
+              "canonical_acceptance_authority": truth["canonical_acceptance_authority"],
+              "canonical_acceptance_required_for_export": truth["canonical_acceptance_required_for_export"],
               "strict_event_contract": truth["strict_event_contract"],
               "event_records": truth["event_records"],
               "execution_authorized": False,
@@ -330,3 +399,82 @@ jobs:
           path: live-engine-federation-receipt.json
           if-no-files-found: error
           retention-days: 14
+
+
+  persist-acceptance:
+    name: Persist canonical Icarus-engine acceptance
+    needs: bilateral-federation
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout canonical Icarus main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Download verified federation receipt
+        uses: actions/download-artifact@v4
+        with:
+          name: live-engine-federation-receipt
+          path: .federation-receipt
+
+      - name: Build idempotent canonical acceptance
+        run: |
+          python -m icarus_engine.federation_acceptance \
+            --input .federation-receipt/live-engine-federation-receipt.json \
+            --output automation_intelligence/federation/icarus_engine_acceptance.json
+
+      - name: Stage only canonical acceptance
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add automation_intelligence/federation/icarus_engine_acceptance.json
+          if git diff --cached --quiet; then
+            echo "ACCEPTANCE_NO_CHANGE=1" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          staged="$(git diff --cached --name-only)"
+          if [ "$staged" != "automation_intelligence/federation/icarus_engine_acceptance.json" ]; then
+            echo "Refusing out-of-scope federation acceptance mutation:" >&2
+            printf '%s\n' "$staged" >&2
+            exit 1
+          fi
+          echo "ACCEPTANCE_NO_CHANGE=0" >> "$GITHUB_ENV"
+
+      - name: Commit canonical acceptance
+        if: env.ACCEPTANCE_NO_CHANGE != '1'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "federation: accept verified Icarus-engine peer packet [skip ci]"
+
+          pushed=0
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            if ! git rebase origin/main; then
+              git rebase --abort || true
+              echo "Acceptance rebase conflict; refusing unsafe automatic resolution." >&2
+              exit 1
+            fi
+            if git push origin HEAD:main; then
+              pushed=1
+              break
+            fi
+            if [ "$attempt" -lt 5 ]; then
+              sleep $((attempt * 2))
+            fi
+          done
+
+          if [ "$pushed" -ne 1 ]; then
+            echo "Failed to persist federation acceptance after 5 optimistic push attempts." >&2
+            exit 1
+          fi

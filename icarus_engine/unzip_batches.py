@@ -3,11 +3,12 @@ from __future__ import annotations
 import argparse, json, os, shutil, subprocess, zipfile
 from pathlib import Path
 from icarus_engine.spec import BATCHES, CSV_REPO
+from icarus_engine.process_launch import background_kwargs
 from icarus_plant.drop import is_candidate_export
 from icarus_plant.layout import ensure, plant_root, repo_root
 
 def _run(cmd, cwd=None):
-    return subprocess.run(cmd, cwd=cwd, check=True)
+    return subprocess.run(cmd, cwd=cwd, check=True, **background_kwargs())
 
 def fetch_repo(dest: Path):
     dest = Path(dest)

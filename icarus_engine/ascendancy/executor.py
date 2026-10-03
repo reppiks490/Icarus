@@ -320,6 +320,17 @@ class GovernorExecutor:
         plan: Mapping[str, Any],
         handlers: Mapping[str, Callable[[Mapping[str, Any]], Any]] | None = None,
     ) -> dict[str, Any]:
+        # Serialize check, domain transition and receipt across in-process
+        # callers, including manual requests overlapping the autopilot worker.
+        # Domain handlers must still be idempotent across process restarts.
+        with _LOCK:
+            return self._execute(plan, handlers)
+
+    def _execute(
+        self,
+        plan: Mapping[str, Any],
+        handlers: Mapping[str, Callable[[Mapping[str, Any]], Any]] | None,
+    ) -> dict[str, Any]:
         normalized = _validate_plan(plan)
         handler_map = dict(handlers or {})
         receipts: list[dict[str, Any]] = []

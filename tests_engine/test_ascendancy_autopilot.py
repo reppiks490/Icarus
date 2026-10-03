@@ -2,6 +2,36 @@ from __future__ import annotations
 
 import time
 
+
+def test_recovered_replay_updates_current_status_without_new_progress(tmp_path):
+    failing = [False]
+
+    def planner():
+        if failing[0]:
+            raise RuntimeError("temporary planner outage")
+        return _plan("a" * 64)
+
+    def create():
+        return GovernorAutopilot(tmp_path, plan_callback=planner,
+                                 execute_callback=lambda p: _execution(p, new=0),
+                                 interval_seconds=30)
+
+    auto = create()
+    healthy = auto.run_cycle()
+    failing[0] = True
+    assert auto.run_cycle()["status"] == "DEGRADED"
+    failing[0] = False
+    recovered = auto.run_cycle()
+    assert recovered["idempotent"] is True
+    assert recovered["recorded_at"] == healthy["recorded_at"]
+    for instance in (auto, create()):
+        status = instance.status()
+        assert status["status"] == "GREEN"
+        assert status["last_error"] is None
+        assert status["latest_cycle_id"] == healthy["cycle_id"]
+        assert status["cycle_count"] == 2
+        assert status["latest_cycle"]["new_internal_transition_count"] == 0
+
 from icarus_engine.ascendancy.autopilot import GovernorAutopilot
 
 

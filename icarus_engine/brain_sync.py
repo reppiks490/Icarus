@@ -202,6 +202,12 @@ def _default_state(interval_seconds: int) -> dict[str, Any]:
         "peer_durability_only_lane_count": 0,
         "peer_lane_witness_verified_count": 0,
         "peer_lane_witness_unavailable_count": 0,
+        "peer_lane_contract_binding_verified_count": 0,
+        "peer_source_contract_witness_status": "not_started",
+        "peer_source_contract_witness_count": 0,
+        "peer_source_contract_witnesses": [],
+        "peer_roundtrip_ack_status": "not_started",
+        "peer_roundtrip_ack": {},
         "historical_context_status": "not_started",
         "historical_context_source_count": 0,
         "historical_context_ingested_total": 0,
@@ -231,6 +237,11 @@ def _default_state(interval_seconds: int) -> dict[str, Any]:
             "peer_packet_authority": "OBSERVE",
             "peer_lane_source_witnesses_required": False,
             "peer_lane_source_witness_fields": [],
+            "peer_source_contract_blob_witnesses_required": False,
+            "peer_source_contract_blob_witness_keys": [],
+            "canonical_acceptance_schema": None,
+            "canonical_acceptance_authority": "RESEARCH",
+            "canonical_acceptance_required_for_export": False,
             "historical_context_mode": "UNDECLARED",
             "historical_context_never_bypasses_foundry": True,
             "historical_context_never_bypasses_evaluator": True,
@@ -651,6 +662,61 @@ def _normalize_federation_contract(
         raise ValueError("Icarus-engine Brain federation peer lane witness field contract mismatch")
     if peer_semantics.get("lane_state_source_blobs_are_revision_bound") is not True:
         raise ValueError("Icarus-engine Brain federation lane source blobs must be revision-bound")
+    if peer_packet.get("source_contract_blob_witnesses_required") is not True:
+        raise ValueError(
+            "Icarus-engine Brain federation source contract blob witnesses must be required"
+        )
+    expected_source_contract_blob_keys = [
+        "control_plane",
+        "agent_fabric",
+        "mcp_interface",
+    ]
+    if peer_packet.get("source_contract_blob_witness_keys") != expected_source_contract_blob_keys:
+        raise ValueError(
+            "Icarus-engine Brain federation source contract blob witness keys mismatch"
+        )
+    if peer_semantics.get("source_contract_blobs_are_revision_bound") is not True:
+        raise ValueError(
+            "Icarus-engine Brain federation source contract blobs must be revision-bound"
+        )
+
+    canonical_acceptance = consumer.get("canonical_acceptance")
+    if not isinstance(canonical_acceptance, Mapping):
+        raise ValueError("Icarus-engine Brain federation canonical acceptance contract is missing")
+    if canonical_acceptance.get("repository") != "reppiks490/Icarus":
+        raise ValueError("Icarus-engine canonical acceptance repository mismatch")
+    if canonical_acceptance.get("ref") != "main":
+        raise ValueError("Icarus-engine canonical acceptance ref mismatch")
+    if canonical_acceptance.get("path") != (
+        "automation_intelligence/federation/icarus_engine_acceptance.json"
+    ):
+        raise ValueError("Icarus-engine canonical acceptance path mismatch")
+    if canonical_acceptance.get("schema_version") != "icarus-engine-federation-acceptance-v1":
+        raise ValueError("Icarus-engine canonical acceptance schema mismatch")
+    if canonical_acceptance.get("authority") != "RESEARCH":
+        raise ValueError("Icarus-engine canonical acceptance authority must remain RESEARCH")
+    if canonical_acceptance.get("required_for_export") is not False:
+        raise ValueError("Icarus-engine canonical acceptance cannot gate peer export")
+    if canonical_acceptance.get("execution_authorized") is not False:
+        raise ValueError("Icarus-engine canonical acceptance attempts execution authority")
+    if canonical_acceptance.get("production_decision_authorized") is not False:
+        raise ValueError("Icarus-engine canonical acceptance attempts production-decision authority")
+    acceptance_semantics = canonical_acceptance.get("semantics")
+    if not isinstance(acceptance_semantics, Mapping):
+        raise ValueError("Icarus-engine canonical acceptance semantics are missing")
+    for key in (
+        "acceptance_is_foreign_evidence_not_native_truth",
+        "prior_packet_acknowledgement_is_not_current_packet_qualification",
+    ):
+        if acceptance_semantics.get(key) is not True:
+            raise ValueError(f"Icarus-engine canonical acceptance truth rule missing: {key}")
+    for key in (
+        "automatic_model_promotion",
+        "production_decision_authorized",
+        "automatic_execution_authority",
+    ):
+        if acceptance_semantics.get(key) is not False:
+            raise ValueError(f"Icarus-engine canonical acceptance attempts authority escalation: {key}")
 
     historical_sources = _normalize_historical_context_contract(consumer)
 
@@ -718,6 +784,11 @@ def _normalize_federation_contract(
             "peer_packet_max_future_skew_seconds": 300,
             "peer_lane_source_witnesses_required": True,
             "peer_lane_source_witness_fields": expected_lane_witness_fields,
+            "peer_source_contract_blob_witnesses_required": True,
+            "peer_source_contract_blob_witness_keys": expected_source_contract_blob_keys,
+            "canonical_acceptance_schema": canonical_acceptance.get("schema_version"),
+            "canonical_acceptance_authority": canonical_acceptance.get("authority"),
+            "canonical_acceptance_required_for_export": False,
             "historical_context_mode": (
                 "RESEARCH_CONTEXT_ONLY" if historical_sources else "UNDECLARED"
             ),
@@ -732,6 +803,89 @@ def _normalize_federation_contract(
         "execution_authorized": False,
         "production_decision_authorized": False,
     }
+
+
+def _normalize_roundtrip_ack(value: Any) -> dict[str, Any]:
+    if not isinstance(value, Mapping):
+        raise ValueError("Icarus-engine peer packet canonical acceptance is missing")
+    status = str(value.get("status") or "").strip().upper()
+    if status not in {"UNAVAILABLE", "VERIFIED_PRIOR_PACKET"}:
+        raise ValueError("Icarus-engine peer packet canonical acceptance status is invalid")
+    if value.get("schema_version") != "icarus-engine-federation-acceptance-v1":
+        raise ValueError("Icarus-engine peer packet canonical acceptance schema mismatch")
+    if value.get("accepted_by_repository") != "reppiks490/Icarus":
+        raise ValueError("Icarus-engine peer packet canonical acceptance repository mismatch")
+    if value.get("producer_repository") != REMOTE_REPOSITORY:
+        raise ValueError("Icarus-engine peer packet canonical acceptance producer mismatch")
+    if value.get("authority") != "RESEARCH":
+        raise ValueError("Icarus-engine peer packet canonical acceptance authority must remain RESEARCH")
+    if value.get("required_for_export") is not False:
+        raise ValueError("Icarus-engine peer packet canonical acceptance cannot gate export")
+    for key in (
+        "execution_authorized",
+        "production_decision_authorized",
+        "automatic_model_promotion",
+    ):
+        if value.get(key) is not False:
+            raise ValueError(f"Icarus-engine peer packet canonical acceptance attempts authority escalation: {key}")
+
+    normalized = {
+        "status": status,
+        "schema_version": "icarus-engine-federation-acceptance-v1",
+        "accepted_by_repository": "reppiks490/Icarus",
+        "producer_repository": REMOTE_REPOSITORY,
+        "authority": "RESEARCH",
+        "required_for_export": False,
+        "execution_authorized": False,
+        "production_decision_authorized": False,
+        "automatic_model_promotion": False,
+    }
+    if status == "UNAVAILABLE":
+        return normalized
+
+    for key, length in (
+        ("accepted_by_icarus_commit", 40),
+        ("accepted_peer_packet_id", 64),
+        ("accepted_peer_packet_blob_sha", 40),
+        ("accepted_peer_source_commit", 40),
+    ):
+        raw = value.get(key)
+        if length == 40:
+            valid = _is_sha(raw)
+        else:
+            valid = (
+                isinstance(raw, str)
+                and len(raw) == 64
+                and all(ch in "0123456789abcdef" for ch in raw.lower())
+            )
+        if not valid:
+            raise ValueError(
+                f"Icarus-engine peer packet canonical acceptance {key} is invalid"
+            )
+    lane_count = value.get("peer_lane_count")
+    lane_binding_count = value.get("peer_lane_contract_binding_verified_count")
+    lane_witness_count = value.get("peer_lane_witness_verified_count")
+    if type(lane_count) is not int or lane_count < 1:
+        raise ValueError("Icarus-engine peer packet canonical acceptance lane count is invalid")
+    if lane_binding_count != lane_count:
+        raise ValueError("Icarus-engine peer packet canonical acceptance lane binding is incomplete")
+    if type(lane_witness_count) is not int or lane_witness_count < 1:
+        raise ValueError("Icarus-engine peer packet canonical acceptance lane witnesses are incomplete")
+    if value.get("peer_source_contract_witness_count") != 3:
+        raise ValueError("Icarus-engine peer packet canonical acceptance source-contract witnesses are incomplete")
+
+    normalized.update({
+        "accepted_by_icarus_commit": str(value["accepted_by_icarus_commit"]).lower(),
+        "accepted_peer_packet_id": str(value["accepted_peer_packet_id"]).lower(),
+        "accepted_peer_packet_blob_sha": str(value["accepted_peer_packet_blob_sha"]).lower(),
+        "accepted_peer_source_commit": str(value["accepted_peer_source_commit"]).lower(),
+        "peer_source_commit_relation": value.get("peer_source_commit_relation"),
+        "peer_source_contract_witness_count": 3,
+        "peer_lane_count": lane_count,
+        "peer_lane_witness_verified_count": lane_witness_count,
+        "peer_lane_contract_binding_verified_count": lane_binding_count,
+    })
+    return normalized
 
 
 def _normalize_peer_packet(
@@ -768,6 +922,24 @@ def _normalize_peer_packet(
     }
     if not isinstance(source_contracts, Mapping) or dict(source_contracts) != expected_contracts:
         raise ValueError("Icarus-engine peer packet source contracts mismatch")
+    source_contract_blobs = packet.get("source_contract_blobs")
+    if not isinstance(source_contract_blobs, Mapping):
+        raise ValueError("Icarus-engine peer packet source contract blob witnesses are missing")
+    if set(source_contract_blobs) != set(expected_contracts):
+        raise ValueError("Icarus-engine peer packet source contract blob witness keys mismatch")
+    source_contract_witnesses: list[dict[str, Any]] = []
+    for key, path in expected_contracts.items():
+        blob = str(source_contract_blobs.get(key) or "").lower()
+        if not _is_sha(blob):
+            raise ValueError(
+                f"Icarus-engine peer packet source contract blob witness is invalid: {key}"
+            )
+        source_contract_witnesses.append({
+            "id": key,
+            "path": path,
+            "git_blob_sha": blob,
+            "verified": False,
+        })
 
     control_plane = packet.get("control_plane")
     if not isinstance(control_plane, Mapping):
@@ -819,6 +991,7 @@ def _normalize_peer_packet(
     if claimed_id != computed_id:
         raise ValueError("Icarus-engine peer packet_id mismatch")
 
+    roundtrip_ack = _normalize_roundtrip_ack(packet.get("canonical_acceptance"))
     lanes_raw = packet.get("lanes")
     if not isinstance(lanes_raw, list):
         raise ValueError("Icarus-engine peer packet lanes must be an array")
@@ -920,7 +1093,9 @@ def _normalize_peer_packet(
         lanes.append({
             "name": name,
             "title": raw.get("title"),
+            "minute": raw.get("minute"),
             "scheduler_id": raw.get("scheduler_id"),
+            "run_prefix": raw.get("run_prefix"),
             "run_id": raw.get("run_id"),
             "run_status": raw.get("run_status"),
             "worker_repository": worker_repository,
@@ -949,6 +1124,8 @@ def _normalize_peer_packet(
                 else "UNVERIFIED"
             ),
             "source_witness_blob_count": 0,
+            "contract_binding_verified": False,
+            "contract_binding_status": "UNVERIFIED",
             "execution_authorized": False,
         })
 
@@ -1039,6 +1216,8 @@ def _normalize_peer_packet(
         "peer_packet_id": claimed_id,
         "peer_source_commit": source_commit,
         "peer_observed_at": parsed.astimezone(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "peer_control_plane": dict(control_plane),
+        "peer_mcp_interface": dict(mcp_interface),
         "peer_lanes": lanes,
         "peer_substantive_lane_count": sum(
             1 for lane in lanes if lane["substantive_research_evidence"]
@@ -1046,6 +1225,11 @@ def _normalize_peer_packet(
         "peer_durability_only_lane_count": sum(
             1 for lane in lanes if lane["evidence_status"] == "DURABILITY_ONLY"
         ),
+        "peer_source_contract_witness_status": "unverified",
+        "peer_source_contract_witness_count": 0,
+        "peer_source_contract_witnesses": source_contract_witnesses,
+        "peer_roundtrip_ack_status": roundtrip_ack["status"],
+        "peer_roundtrip_ack": roundtrip_ack,
         "historical_packet_witnesses": historical_witnesses,
         "historical_packet_witness_count": len(historical_witnesses),
         "historical_packet_witness_status": (
@@ -1318,6 +1502,241 @@ class BrainRemoteSync:
                     normalized_peer["peer_source_commit_verified"] = True
                     normalized_peer["peer_source_commit_relation"] = relation.upper()
 
+                    verified_source_contracts = 0
+                    verified_source_contract_docs: dict[str, Mapping[str, Any]] = {}
+                    for witness in normalized_peer.get(
+                        "peer_source_contract_witnesses", []
+                    ):
+                        source_meta = self._fetch_json(
+                            _remote_contents_api(witness["path"], ref=source_commit)
+                        )
+                        if (
+                            not isinstance(source_meta, Mapping)
+                            or source_meta.get("type") != "file"
+                        ):
+                            raise ValueError(
+                                "peer source contract metadata is not a file: "
+                                + witness["id"]
+                            )
+                        source_blob = str(source_meta.get("sha") or "").lower()
+                        source_url = str(source_meta.get("url") or "")
+                        if source_blob != witness["git_blob_sha"] or not source_url:
+                            raise ValueError(
+                                "peer source contract blob mismatch: " + witness["id"]
+                            )
+                        source_raw = self._fetch_bytes(source_url)
+                        if _git_blob_sha(source_raw) != source_blob:
+                            raise ValueError(
+                                "peer source contract Git blob SHA mismatch: "
+                                + witness["id"]
+                            )
+                        source_payload = json.loads(source_raw.decode("utf-8"))
+                        if not isinstance(source_payload, Mapping):
+                            raise ValueError(
+                                "peer source contract is not an object: " + witness["id"]
+                            )
+                        if (
+                            source_payload.get("execution_authorized") is True
+                            or source_payload.get("trading_execution_authorized") is True
+                        ):
+                            raise ValueError(
+                                "peer source contract attempts execution authority: "
+                                + witness["id"]
+                            )
+                        if witness["id"] == "control_plane":
+                            if (
+                                source_payload.get("schema_version")
+                                != "restored-five-native-control-v1"
+                                or source_payload.get("control_plane_id")
+                                != "restored-five-native-liveness-v1"
+                                or source_payload.get("repository") != REMOTE_REPOSITORY
+                            ):
+                                raise ValueError(
+                                    "peer control-plane source contract identity mismatch"
+                                )
+                        elif witness["id"] == "agent_fabric":
+                            if (
+                                source_payload.get("schema_version")
+                                != "agent-fabric-scheduler-bindings-v1"
+                                or source_payload.get("repository") != REMOTE_REPOSITORY
+                                or source_payload.get("branch") not in (None, REMOTE_REF)
+                                or source_payload.get("execution_authorized") is not False
+                            ):
+                                raise ValueError(
+                                    "peer agent-fabric source contract identity mismatch"
+                                )
+                        elif witness["id"] == "mcp_interface":
+                            if (
+                                source_payload.get("schema_version")
+                                != "icarus-mcp-interface-contract-v1"
+                                or source_payload.get("event_root") != REMOTE_ROOT
+                                or source_payload.get("trading_execution_authorized")
+                                is not False
+                            ):
+                                raise ValueError(
+                                    "peer MCP source contract identity mismatch"
+                                )
+                        verified_source_contract_docs[witness["id"]] = source_payload
+                        witness["verified"] = True
+                        verified_source_contracts += 1
+
+                    if verified_source_contracts != len(
+                        normalized_peer.get("peer_source_contract_witnesses", [])
+                    ):
+                        raise ValueError(
+                            "peer source contract witness verification is incomplete"
+                        )
+                    normalized_peer["peer_source_contract_witness_status"] = "green"
+                    normalized_peer["peer_source_contract_witness_count"] = (
+                        verified_source_contracts
+                    )
+
+                    control_source = verified_source_contract_docs.get("control_plane")
+                    fabric_source = verified_source_contract_docs.get("agent_fabric")
+                    mcp_source = verified_source_contract_docs.get("mcp_interface")
+                    if (
+                        not isinstance(control_source, Mapping)
+                        or not isinstance(fabric_source, Mapping)
+                        or not isinstance(mcp_source, Mapping)
+                    ):
+                        raise ValueError("peer source contract documents are incomplete")
+
+                    packet_control = normalized_peer.get("peer_control_plane")
+                    if not isinstance(packet_control, Mapping):
+                        raise ValueError("peer packet control-plane projection is missing")
+                    for key in (
+                        "schema_version",
+                        "control_plane_id",
+                        "timezone",
+                        "grace_minutes",
+                        "catchup_horizon_minutes",
+                    ):
+                        if packet_control.get(key) != control_source.get(key):
+                            raise ValueError(
+                                f"peer control-plane projection mismatch: {key}"
+                            )
+
+                    packet_mcp = normalized_peer.get("peer_mcp_interface")
+                    if not isinstance(packet_mcp, Mapping):
+                        raise ValueError("peer packet MCP projection is missing")
+                    for key in (
+                        "schema_version",
+                        "event_root",
+                        "ui_api",
+                        "ui_tab",
+                        "source_of_truth",
+                        "trading_execution_authorized",
+                    ):
+                        expected = (
+                            False
+                            if key == "trading_execution_authorized"
+                            else mcp_source.get(key)
+                        )
+                        if packet_mcp.get(key) != expected:
+                            raise ValueError(f"peer MCP projection mismatch: {key}")
+
+                    control_lanes_raw = control_source.get("lanes")
+                    if not isinstance(control_lanes_raw, list):
+                        raise ValueError("peer control-plane source lanes are missing")
+                    control_lanes: dict[str, Mapping[str, Any]] = {}
+                    for raw_lane in control_lanes_raw:
+                        if not isinstance(raw_lane, Mapping):
+                            raise ValueError("peer control-plane lane is not an object")
+                        lane_name = str(raw_lane.get("name") or "").strip()
+                        if not lane_name or lane_name in control_lanes:
+                            raise ValueError(
+                                "peer control-plane lane names must be unique"
+                            )
+                        control_lanes[lane_name] = raw_lane
+
+                    packet_lanes = normalized_peer.get("peer_lanes", [])
+                    packet_lane_names = {
+                        str(lane.get("name") or "")
+                        for lane in packet_lanes
+                        if isinstance(lane, Mapping)
+                    }
+                    if set(control_lanes) != packet_lane_names:
+                        raise ValueError(
+                            "peer lane set disagrees with control-plane source"
+                        )
+
+                    fabric_lanes = fabric_source.get("lanes")
+                    if not isinstance(fabric_lanes, Mapping):
+                        fabric_lanes = {}
+                    contract_bound_lanes = 0
+                    for lane in packet_lanes:
+                        name = str(lane.get("name") or "")
+                        declared = control_lanes[name]
+                        expected_worker_repository = str(
+                            declared.get("worker_repository") or REMOTE_REPOSITORY
+                        )
+                        expected_worker_root = (
+                            str(declared.get("worker_root") or "").strip() or None
+                        )
+                        declaration_checks = {
+                            "title": declared.get("title"),
+                            "minute": declared.get("minute"),
+                            "scheduler_id": declared.get("scheduler_id"),
+                            "run_prefix": declared.get("run_prefix"),
+                            "worker_repository": expected_worker_repository,
+                            "worker_root": expected_worker_root,
+                        }
+                        for key, expected in declaration_checks.items():
+                            if lane.get(key) != expected:
+                                raise ValueError(
+                                    f"peer lane control-plane binding mismatch: {name}:{key}"
+                                )
+
+                        if expected_worker_repository != REMOTE_REPOSITORY:
+                            if (
+                                lane.get("heartbeat_path") is not None
+                                or lane.get("finalization_path") is not None
+                            ):
+                                raise ValueError(
+                                    f"peer remote sibling lane invents local paths: {name}"
+                                )
+                            lane["contract_binding_verified"] = True
+                            lane["contract_binding_status"] = (
+                                "CONTRACT_BOUND_REMOTE_SIBLING"
+                            )
+                            contract_bound_lanes += 1
+                            continue
+
+                        fabric_lane = fabric_lanes.get(name)
+                        if not isinstance(fabric_lane, Mapping):
+                            fabric_lane = {}
+                        expected_heartbeat = str(
+                            fabric_lane.get("runtime_status_source")
+                            or (
+                                f"{expected_worker_root}/heartbeat.json"
+                                if expected_worker_root
+                                else ""
+                            )
+                        ).strip() or None
+                        expected_finalization = str(
+                            fabric_lane.get("finalization_state")
+                            or (
+                                f"{expected_worker_root}/finalization_state.json"
+                                if expected_worker_root
+                                else ""
+                            )
+                        ).strip() or None
+                        if lane.get("heartbeat_path") != expected_heartbeat:
+                            raise ValueError(
+                                f"peer lane agent-fabric binding mismatch: {name}:heartbeat_path"
+                            )
+                        if lane.get("finalization_path") != expected_finalization:
+                            raise ValueError(
+                                f"peer lane agent-fabric binding mismatch: {name}:finalization_path"
+                            )
+                        lane["contract_binding_verified"] = True
+                        lane["contract_binding_status"] = "CONTRACT_BOUND_LOCAL"
+                        contract_bound_lanes += 1
+
+                    normalized_peer["peer_lane_contract_binding_verified_count"] = (
+                        contract_bound_lanes
+                    )
+
                     verified_lane_witnesses = 0
                     unavailable_lane_witnesses = 0
                     for lane in normalized_peer.get("peer_lanes", []):
@@ -1584,6 +2003,12 @@ class BrainRemoteSync:
                         "peer_durability_only_lane_count": 0,
                         "peer_lane_witness_verified_count": 0,
                         "peer_lane_witness_unavailable_count": 0,
+                        "peer_lane_contract_binding_verified_count": 0,
+                        "peer_source_contract_witness_status": "degraded",
+                        "peer_source_contract_witness_count": 0,
+                        "peer_source_contract_witnesses": [],
+                        "peer_roundtrip_ack_status": "degraded",
+                        "peer_roundtrip_ack": {},
                         "historical_packet_witness_status": "degraded",
                         "historical_packet_witness_count": 0,
                         "historical_packet_witnesses": [],

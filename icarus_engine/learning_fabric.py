@@ -225,6 +225,11 @@ class LearningFabric:
         self._last_history_scan = 0.0
         self._conn = sqlite3.connect(self.path, timeout=30.0, check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
+        self._conn.create_function(
+            "icarus_received_by", 2,
+            lambda raw, cutoff: int(_parse_time(raw, "recorded_at") <= _parse_time(cutoff, "as_of")),
+            deterministic=True,
+        )
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.execute("PRAGMA foreign_keys=ON")
         self._conn.execute("PRAGMA busy_timeout=5000")
@@ -922,6 +927,48 @@ class LearningFabric:
             "settled_at": row["settled_at"],
             **_authority(),
         }
+
+    def intelligence_snapshot(self, *, as_of: str | None = None, limit: int = 200) -> dict[str, Any]:
+        """Feed the existing Spine from durable, causally available forecasts.
+
+        Reads never harvest, train or settle outcomes. Late imports retain their
+        first ledger receipt time; a restart cannot backdate their availability.
+        """
+        from .intelligence_feed import forecast_spine
+        if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 500:
+            raise ValueError("limit must be an integer in [1,500]")
+        boundary = _parse_time(as_of if as_of is not None else _utc_now(), "as_of")
+        cutoff = _iso(boundary)
+        with self._lock:
+            # julianday alone rounds submillisecond receipt times. The exact
+            # UTC comparison must run before LIMIT, not after a truncated query.
+            try:
+                rows = self._conn.execute(
+                    """SELECT prediction_id,semantic_json,recorded_at FROM predictions
+                       WHERE emitted_ts<=? AND julianday(recorded_at)<=julianday(?)
+                       AND icarus_received_by(recorded_at,?)=1
+                       ORDER BY emitted_ts DESC,recorded_at DESC,prediction_id DESC LIMIT ?""",
+                    (boundary.timestamp(), cutoff, cutoff, limit + 1),
+                ).fetchall()
+            except sqlite3.DatabaseError as ex:
+                raise RuntimeError("canonical forecast storage integrity failure") from ex
+        forecasts = []
+        for row in rows[:limit]:
+            try:
+                semantic = json.loads(row["semantic_json"])
+                self._normalize_prediction(semantic)  # validation only
+                # Canonical class probabilities may not sum to exactly 1 in
+                # binary floating point. Never normalize them a second time.
+                if "learn-" + _sha(semantic) != row["prediction_id"]:
+                    raise ValueError("prediction identity mismatch")
+                pred = {**semantic, "prediction_id": row["prediction_id"]}
+                if _parse_time(pred["emitted_at"], "emitted_at") > boundary:
+                    raise ValueError("forecast timestamp index mismatch")
+                _parse_time(row["recorded_at"], "recorded_at")
+            except (ValueError, TypeError, KeyError) as ex:
+                raise RuntimeError("canonical forecast storage integrity failure") from ex
+            forecasts.append({"prediction": pred, "recorded_at": row["recorded_at"]})
+        return forecast_spine(forecasts, as_of=cutoff, window_limited=len(rows) > limit)
 
     def _prediction_row(self, prediction_id: str) -> tuple[sqlite3.Row, dict[str, Any]]:
         pid = _text(prediction_id, "prediction_id", 96)

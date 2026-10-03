@@ -1,0 +1,58 @@
+{
+  "schema": "icarus-mcp-event-v1",
+  "event_id": "omega-20261003T005930Z-diplomatic-offramp-contract-binding",
+  "at_utc": "2026-10-03T00:59:30Z",
+  "category": "INTEGRATION",
+  "status": "MATERIAL_UPDATE",
+  "source": "OMEGA_AUTOMATION",
+  "execution_authorized": false,
+  "title": "Red Sea state becomes two-sided while peer lane authority gains exact source-contract binding",
+  "net_new_delta": "CONFIRMED_KINETIC_ESCALATION now coexists with DIPLOMATIC_OFFRAMP_ACTIVE, reducing confidence in a monotonic escalation path without confirming de-escalation or realized supply disruption. Separately, cross-repository peer ingestion now verifies exact packet-revision control-plane, agent-fabric, and MCP contract blobs and binds lane attribution to those contracts, closing a provenance gap between authentic lane blobs and authentic lane semantics.",
+  "accepted": [
+    "Macro: confirmed Taiz kinetic escalation remains valid while a scheduled Riyadh political-engagement meeting creates a concrete diplomatic off-ramp.",
+    "Physical supply disruption remains unconfirmed: emergency stock releases, softer oil settlement, and improved Hormuz LNG throughput argue against treating kinetic escalation as realized energy disruption.",
+    "Peer federation: exact source-contract blob witnesses and lane-to-contract binding materially strengthen provenance and semantic authority."
+  ],
+  "rejected": [
+    "Diplomatic engagement as proof of de-escalation.",
+    "Kinetic escalation as proof of Bab el-Mandeb closure or realized petroleum-flow disruption.",
+    "GitHub-native v3 deterministic liveness receipts as substantive specialist inference.",
+    "Authenticated lane blobs without verified source-contract semantics as sufficient cross-repository authority."
+  ],
+  "conflicts": [
+    "Confirmed kinetic escalation versus an active diplomatic off-ramp creates a two-sided Red Sea event tree.",
+    "Military escalation versus non-confirming physical-flow/price evidence keeps realized supply disruption unresolved."
+  ],
+  "blockers": [
+    "No verified Riyadh outcome, larger-offensive launch, Bab el-Mandeb traffic impairment, freight/insurance shock, or physical petroleum-flow deterioration.",
+    "Newest inspected Macro/Flow/AION/DAEDALUS/OMEGA v3 receipts are deterministic_liveness with SUBSTANTIVE_AI_INFERENCE_NOT_EXECUTED."
+  ],
+  "next_highest_value_integration_target": "Make event-branch state and semantic provenance independent promotion gates: track KINETIC_ESCALATION, DIPLOMATIC_OFFRAMP, and REALIZED_SUPPLY_DISRUPTION separately; for federated evidence require exact source revision, lane blobs, source-contract blobs, contract binding, freshness, authority ceiling, and substantive freshness before analytical promotion.",
+  "paths": [
+    "automation_intelligence/mcp_interface/events/20261003T000808Z_macro_red_sea_diplomatic_offramp.json",
+    "icarus_engine/brain_sync.py",
+    ".github/workflows/live-engine-federation-gate.yml",
+    "automation_intelligence/omega_stack_native_v3/lanes/"
+  ],
+  "evidence": [
+    "Icarus commit 295b198742f99bdd5af255f832886f2f4098dc95",
+    "Icarus commit b689739cdbf83f5ba39f0e255d7b10b2cfec1d55",
+    "Icarus-engine commit 0e3b4f38104cc1af2500c16f786712c28d5f2414"
+  ],
+  "athena": {
+    "status": "ACTIONABLE",
+    "finding": "Maintain a two-sided Red Sea event tree; kinetic escalation raises risk, but the diplomatic off-ramp and non-confirming physical-flow evidence prevent realized-disruption promotion."
+  },
+  "janus": {
+    "status": "ACTIONABLE",
+    "finding": "Reconcile event branches separately and require exact source-contract plus lane-blob binding before accepting federated lane semantics."
+  },
+  "infrastructure": {
+    "status": "IMPROVED_WITH_SPECIALIST_GAP",
+    "finding": "Peer federation now verifies packet-revision source contracts and lane attribution, while current v3 specialist receipts remain liveness-only."
+  },
+  "helios_prime": {
+    "status": "ACTIONABLE",
+    "finding": "Propagate contract-bound semantic provenance across federated research while keeping liveness, substantive evidence, and execution authority non-substitutable."
+  }
+}

@@ -1,0 +1,41 @@
+name: intelligence-feed-contract
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - "icarus_engine/intelligence_feed.py"
+      - "icarus_engine/unified_intelligence.py"
+      - "icarus_engine/learning_fabric.py"
+      - "icarus_engine/server.py"
+      - "icarus_engine/ascendancy-ui.js"
+      - "tests_engine/test_intelligence_feed.py"
+      - ".github/workflows/intelligence-feed-contract.yml"
+  pull_request:
+    paths:
+      - "icarus_engine/intelligence_feed.py"
+      - "icarus_engine/unified_intelligence.py"
+      - "icarus_engine/learning_fabric.py"
+      - "icarus_engine/server.py"
+      - "icarus_engine/ascendancy-ui.js"
+      - "tests_engine/test_intelligence_feed.py"
+      - ".github/workflows/intelligence-feed-contract.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: intelligence-feed-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  contract:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e ".[dev,bridge,databento]"
+      - run: python -m pytest tests_engine/test_intelligence_feed.py tests_engine/test_unified_intelligence.py tests_engine/test_learning_fabric.py tests_engine/test_dashboard_js.py -q
