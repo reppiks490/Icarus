@@ -500,3 +500,53 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
   .world-view-shift .world-depth-readout strong,.world-view-shift .world-corner-sigil,.world-depth-enter::after {animation:none!important}
   :root[data-world]:not([data-world=""]) .tile::after {display:none}
 }
+
+
+/* Four-act opening: spatial vault, aperture, horizon flare and drifting sigils. */
+.world-intro::after {content:"";position:absolute;inset:0;z-index:2;pointer-events:none;opacity:.13;mix-blend-mode:soft-light;background:
+  repeating-linear-gradient(0deg,transparent 0 3px,#fff 4px,transparent 5px),
+  radial-gradient(circle at 50% 42%,transparent 0 42%,#0008 82%,#000 100%);
+  animation:intro-film-breathe var(--intro-duration,20s) ease-in-out both}
+.intro-vault {position:absolute;inset:-12%;perspective:1100px;transform-style:preserve-3d;pointer-events:none;animation:intro-vault-arrival var(--intro-duration,20s) cubic-bezier(.16,.8,.2,1) both}
+.intro-vault i {position:absolute;left:50%;top:48%;width:min(94vw,1320px);height:min(66vh,680px);border:1px solid color-mix(in srgb,var(--intro-light),transparent 77%);border-radius:50% 50% 12% 12%;transform-origin:50% 70%;box-shadow:inset 0 0 40px color-mix(in srgb,var(--intro-halo),transparent 92%),0 0 24px color-mix(in srgb,var(--intro-halo),transparent 92%)}
+.intro-vault i:nth-child(1){transform:translate(-50%,-50%) translateZ(-180px) rotateX(66deg) scale(.7)}
+.intro-vault i:nth-child(2){transform:translate(-50%,-50%) translateZ(-80px) rotateX(62deg) scale(.82)}
+.intro-vault i:nth-child(3){transform:translate(-50%,-50%) translateZ(20px) rotateX(58deg) scale(.94)}
+.intro-vault i:nth-child(4){transform:translate(-50%,-50%) translateZ(120px) rotateX(54deg) scale(1.06)}
+.intro-vault i:nth-child(5){transform:translate(-50%,-50%) translateZ(220px) rotateX(50deg) scale(1.18)}
+.intro-horizon {position:absolute;left:-10%;right:-10%;top:56%;height:1px;background:linear-gradient(90deg,transparent,var(--intro-halo),#fff,var(--intro-halo),transparent);box-shadow:0 0 28px var(--intro-halo),0 0 90px color-mix(in srgb,var(--intro-halo),transparent 30%);transform:scaleX(0);animation:intro-horizon-open var(--intro-duration,20s) cubic-bezier(.15,.75,.2,1) both}
+.intro-aperture {position:absolute;left:50%;top:40%;width:min(48vw,430px);aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;border:1px solid color-mix(in srgb,var(--intro-light),transparent 55%);box-shadow:0 0 65px color-mix(in srgb,var(--intro-halo),transparent 72%),inset 0 0 45px #000;animation:intro-aperture-fold var(--intro-duration,20s) cubic-bezier(.2,.7,.2,1) both}
+.intro-aperture::before,.intro-aperture::after {content:"";position:absolute;inset:8%;border-radius:50%;border:1px dashed color-mix(in srgb,var(--intro-light),transparent 68%)}
+.intro-aperture::after {inset:19%;border-style:solid;opacity:.55}
+.intro-aperture i,.intro-aperture b {position:absolute;left:50%;top:-8%;bottom:-8%;width:1px;background:linear-gradient(transparent,var(--intro-light),transparent);transform-origin:50% 50%}
+.intro-aperture i {transform:rotate(45deg)}.intro-aperture b {transform:rotate(-45deg)}
+.intro-glyphs {position:absolute;inset:0;pointer-events:none;font:10px/1 ui-monospace,Consolas,monospace;color:var(--intro-light);letter-spacing:.2em}
+.intro-glyphs i {position:absolute;font-style:normal;opacity:0;text-shadow:0 0 12px var(--intro-halo);animation:intro-glyph-drift var(--intro-duration,20s) ease both}
+.intro-glyphs i:nth-child(1){left:12%;top:23%;animation-delay:-.4s}.intro-glyphs i:nth-child(2){left:22%;top:72%;animation-delay:-1.2s}
+.intro-glyphs i:nth-child(3){left:37%;top:16%;animation-delay:-2.1s}.intro-glyphs i:nth-child(4){left:63%;top:19%;animation-delay:-2.8s}
+.intro-glyphs i:nth-child(5){left:78%;top:67%;animation-delay:-3.5s}.intro-glyphs i:nth-child(6){left:88%;top:31%;animation-delay:-4.2s}
+.intro-glyphs i:nth-child(7){left:18%;top:48%;animation-delay:-5s}.intro-glyphs i:nth-child(8){left:83%;top:49%;animation-delay:-5.7s}
+
+.intro-chapters span:nth-child(4) {animation-name:depth-chapter-four}
+@keyframes depth-chapter-one {0%{opacity:0;transform:translateY(10px);filter:blur(2px)}7%,18%{opacity:.75;transform:none;filter:none}23%,100%{opacity:0;transform:translateY(-8px);filter:blur(1px)}}
+@keyframes depth-chapter-two {0%,21%{opacity:0;transform:translateY(10px)}28%,40%{opacity:.75;transform:none}45%,100%{opacity:0;transform:translateY(-8px)}}
+@keyframes depth-chapter-three {0%,43%{opacity:0;transform:translateY(10px)}50%,62%{opacity:.75;transform:none}67%,100%{opacity:0;transform:translateY(-8px)}}
+@keyframes depth-chapter-four {0%,65%{opacity:0;transform:translateY(10px);letter-spacing:.55em}73%,88%{opacity:.88;transform:none;letter-spacing:.35em}96%,100%{opacity:0;transform:translateY(-8px);letter-spacing:.45em}}
+@keyframes intro-vault-arrival {0%{opacity:0;transform:scale(1.28) translateY(9%);filter:blur(8px)}14%{opacity:.5;filter:blur(2px)}46%{opacity:.82;transform:scale(1) translateY(0);filter:none}72%,100%{opacity:.22;transform:scale(.88) translateY(-3%);filter:blur(.3px)}}
+@keyframes intro-horizon-open {0%,19%{opacity:0;transform:scaleX(0)}35%{opacity:1;transform:scaleX(.35)}56%{opacity:.9;transform:scaleX(1)}74%,100%{opacity:.18;transform:scaleX(.72)}}
+@keyframes intro-aperture-fold {0%{opacity:0;transform:translate(-50%,-50%) scale(2.3) rotate(-35deg);filter:blur(8px)}12%{opacity:.75}44%{opacity:.95;transform:translate(-50%,-50%) scale(1) rotate(0);filter:none}68%{opacity:.4;transform:translate(-50%,-50%) scale(.58) rotate(25deg)}82%,100%{opacity:0;transform:translate(-50%,-50%) scale(.18) rotate(45deg)}}
+@keyframes intro-glyph-drift {0%,10%{opacity:0;transform:translateY(20px) scale(.7)}24%{opacity:.18}52%{opacity:.6;transform:translateY(-6px) scale(1)}78%{opacity:.2}100%{opacity:0;transform:translateY(-38px) scale(1.08)}}
+@keyframes intro-film-breathe {0%{opacity:0}12%{opacity:.09}48%{opacity:.15}75%{opacity:.08}100%{opacity:0}}
+
+.world-intro[data-intro-world="void"] .intro-vault i {border-radius:8% 8% 46% 46%;transform-origin:50% 45%}
+.world-intro[data-intro-world="void"] .intro-horizon {filter:hue-rotate(-8deg);box-shadow:0 0 34px var(--intro-halo),0 0 110px color-mix(in srgb,var(--intro-halo),transparent 18%)}
+.world-intro[data-intro-world="astral"] .intro-vault i {border-style:dashed}
+.world-intro[data-intro-world="astral"] .intro-glyphs {color:#d7e8ff}
+
+@media (max-width:600px) {
+  .intro-vault {inset:-4% -35%}.intro-aperture{width:66vw;top:39%}.intro-horizon{top:52%}
+  .intro-glyphs i:nth-child(3),.intro-glyphs i:nth-child(4),.intro-glyphs i:nth-child(7),.intro-glyphs i:nth-child(8){display:none}
+}
+@media (prefers-reduced-motion:reduce) {
+  .intro-vault,.intro-horizon,.intro-aperture,.intro-glyphs i,.world-intro::after {animation:none!important}
+}
