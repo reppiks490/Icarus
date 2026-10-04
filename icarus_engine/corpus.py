@@ -74,7 +74,7 @@ def _csv_bytes(bars) -> bytes:
         rows.append(
             f"{_iso(bar.ts)},{bar.o:.12g},{bar.h:.12g},{bar.l:.12g},{bar.c:.12g},{bar.v:.12g}"
         )
-    return ("\\n".join(rows) + "\\n").encode("utf-8")
+    return ("\n".join(rows) + "\n").encode("utf-8")
 
 
 def build_databento_corpus(
@@ -161,5 +161,5 @@ def build_databento_corpus(
 
     manifest["ok_count"] = sum(1 for row in manifest["assets"].values() if row.get("status") == "OK")
     manifest["error_count"] = len(manifest["assets"]) - manifest["ok_count"]
-    _atomic_text(dest / "manifest.json", json.dumps(manifest, indent=2, sort_keys=True) + "\\n")
+    _atomic_text(dest / "manifest.json", json.dumps(manifest, indent=2, sort_keys=True) + "\n")
     return manifest
