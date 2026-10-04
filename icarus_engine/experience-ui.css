@@ -718,3 +718,14 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 @media (prefers-reduced-motion:reduce) {
   :root[data-world]:not([data-world=""]) body::after {animation:none!important;transform:none!important}
 }
+
+
+/* High-contrast users keep world identity without translucent readability tradeoffs. */
+@media (prefers-contrast:more) {
+  :root[data-world]:not([data-world=""]) body::before,:root[data-world]:not([data-world=""]) body::after {opacity:.04!important;filter:none!important}
+  :root[data-world]:not([data-world=""]) :is(.top,.card,.asset,.group,.tile,.modal .box,.pal .box) {
+    -webkit-backdrop-filter:none!important;backdrop-filter:none!important;background-color:var(--surface)!important;
+  }
+  :root[data-world]:not([data-world=""]) :is(.card,.asset,.group,.tile) {border-color:var(--ink-2)!important}
+  .world-depth-frame {opacity:.28!important;filter:none!important}
+}
