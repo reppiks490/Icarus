@@ -32,7 +32,7 @@ from .psi_evidence import PsiEvidenceLedger
 
 SCHEMA_VERSION = "icarus-possibility-v1"
 DEFAULT_SCENARIOS = 768
-DEFAULT_HISTORY = 720
+DEFAULT_HISTORY = 900
 
 _EXTERNAL_KEYS = (
     "gamma_pressure",
@@ -474,6 +474,106 @@ class PossibilityEngine:
             },
         }
 
+    def _forecast_bar_maturity(
+        self,
+        symbol: str,
+        generated_at: str,
+        chart_minutes: int,
+        horizon_steps: int,
+    ) -> dict[str, Any] | None:
+        """Resolve an event-time maturity across actual future chart bars.
+
+        A forecast emitted mid-bar must not count the partially observed bar as
+        future evidence. Session breaks, weekends, holidays, and RTH stub bars
+        are traversed through the runner's authoritative trading calendar.
+        """
+        runners = getattr(self.port, "runners", {})
+        runner = runners.get(symbol) if isinstance(runners, Mapping) else None
+        cal = getattr(runner, "cal", None) if runner is not None else None
+        if cal is None or any(
+            not callable(getattr(cal, name, None))
+            for name in ("intraday_open", "bucket_start", "bucket_end", "next_open")
+        ):
+            return None
+        try:
+            emitted = datetime.fromisoformat(str(generated_at).replace("Z", "+00:00")).astimezone(timezone.utc)
+        except (TypeError, ValueError):
+            return None
+        emitted_epoch = emitted.timestamp()
+        probe = int(math.floor(emitted_epoch))
+
+        def next_bar_open_after(close_ts: int) -> int | None:
+            close_ts = int(close_ts)
+            try:
+                if cal.intraday_open(close_ts):
+                    start = int(cal.bucket_start(close_ts, chart_minutes))
+                    if start == close_ts:
+                        return start
+                    # A non-boundary candidate must never silently admit a
+                    # partially formed chart bar.
+                    candidate_close = int(cal.bucket_end(start, chart_minutes))
+                    if candidate_close > close_ts and cal.intraday_open(candidate_close):
+                        aligned = int(cal.bucket_start(candidate_close, chart_minutes))
+                        if aligned == candidate_close:
+                            return aligned
+                    close_ts = max(close_ts, candidate_close)
+                nxt = cal.next_open(close_ts)
+                return None if nxt is None else int(nxt)
+            except Exception:
+                return None
+
+        try:
+            if cal.intraday_open(probe):
+                current_open = int(cal.bucket_start(probe, chart_minutes))
+                if abs(emitted_epoch - current_open) <= 1e-9:
+                    first_open = current_open
+                else:
+                    first_open = next_bar_open_after(
+                        int(cal.bucket_end(current_open, chart_minutes))
+                    )
+            else:
+                nxt = cal.next_open(probe)
+                first_open = None if nxt is None else int(nxt)
+        except Exception:
+            return None
+        if first_open is None or not cal.intraday_open(first_open):
+            return None
+
+        target_open = int(first_open)
+        for _ in range(max(0, int(horizon_steps) - 1)):
+            try:
+                close_ts = int(cal.bucket_end(target_open, chart_minutes))
+            except Exception:
+                return None
+            target_open = next_bar_open_after(close_ts)
+            if target_open is None or not cal.intraday_open(target_open):
+                return None
+        try:
+            target_close = int(cal.bucket_end(target_open, chart_minutes))
+        except Exception:
+            return None
+        if target_close <= target_open or target_close <= emitted_epoch:
+            return None
+
+        def iso_epoch(ts: int) -> str:
+            return datetime.fromtimestamp(int(ts), timezone.utc).isoformat().replace("+00:00", "Z")
+
+        return {
+            "maturity_semantics": (
+                "SIX_FULL_FUTURE_CHART_BARS"
+                if int(horizon_steps) == 6
+                else "FULL_FUTURE_CHART_BARS"
+            ),
+            "first_future_bar_open_at": iso_epoch(first_open),
+            "target_bar_open_at": iso_epoch(target_open),
+            "target_bar_close_at": iso_epoch(target_close),
+            "target_bar_open_ts": target_open,
+            "target_bar_close_ts": target_close,
+            "horizon_seconds": max(1, int(math.ceil(target_close - emitted_epoch))),
+            "calendar": str(getattr(cal, "name", "unknown")),
+            "session": str(getattr(cal, "session", "unknown")),
+        }
+
     def _forecast_calibration_contract(
         self,
         symbol: str,
@@ -559,13 +659,32 @@ class PossibilityEngine:
         total = sum(shares.values())
         normalized = {name: shares[name] / total for name in ("UP", "FLAT", "DOWN")}
         threshold_return = (step_sigma * 0.65) / price
+        maturity = self._forecast_bar_maturity(
+            symbol,
+            generated_at,
+            chart_minutes,
+            horizon_steps,
+        )
+        if maturity is None:
+            return {
+                **base,
+                "status": "UNAVAILABLE",
+                "reason": "authoritative runner calendar unavailable; exact future-bar maturity cannot be proven",
+                "chart_minutes": chart_minutes,
+                "horizon_steps": horizon_steps,
+                "horizon_seconds": None,
+                "classification_threshold_return": threshold_return,
+                "cluster_shares": normalized,
+                "dominant_cluster": str(futures.get("dominant_cluster") or "").upper() or None,
+                "maturity_semantics": None,
+            }
         return {
             **base,
             "status": "ELIGIBLE_UNCALIBRATED",
             "reason": "raw scenario shares are committed for empirical calibration; they are not calibrated probabilities",
             "chart_minutes": chart_minutes,
             "horizon_steps": horizon_steps,
-            "horizon_seconds": chart_minutes * 60 * horizon_steps,
+            **maturity,
             "classification_threshold_return": threshold_return,
             "cluster_shares": normalized,
             "dominant_cluster": str(futures.get("dominant_cluster") or "").upper() or None,
