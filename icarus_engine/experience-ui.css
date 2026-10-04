@@ -756,3 +756,33 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 @media (prefers-contrast:more) {
   :root[data-world]:not([data-world=""]) .scroll thead th {-webkit-backdrop-filter:none!important;backdrop-filter:none!important;background:var(--surface)!important}
 }
+
+
+/* Navigation gates and scroll chapter crossings: each deliberate move gets a spatial response, never a fake market cue. */
+.world-view-gate {position:absolute;left:50%;top:47%;display:grid;place-items:center;gap:9px;min-width:210px;transform:translate(-50%,-50%) scale(.72);opacity:0;filter:blur(9px);text-align:center;pointer-events:none}
+.world-view-gate::before,.world-view-gate::after {content:"";position:absolute;left:50%;top:50%;width:clamp(150px,18vw,280px);aspect-ratio:1;border:1px solid color-mix(in srgb,var(--world-glow),transparent 73%);transform:translate(-50%,-50%) rotate(45deg);box-shadow:0 0 34px color-mix(in srgb,var(--world-glow),transparent 90%),inset 0 0 28px color-mix(in srgb,var(--world-glow),transparent 94%)}
+.world-view-gate::after {width:clamp(105px,12vw,190px);border-style:dashed;opacity:.55;transform:translate(-50%,-50%) rotate(-28deg)}
+.world-view-gate i {position:relative;z-index:1;font:400 clamp(34px,4vw,64px)/1 Georgia,'Times New Roman',serif;color:color-mix(in srgb,var(--world-glow),#fff 18%);text-shadow:0 0 28px color-mix(in srgb,var(--world-glow),transparent 38%);font-style:normal}
+.world-view-gate span {position:relative;z-index:1;font:600 8px/1.2 ui-monospace,Consolas,monospace;letter-spacing:.36em;padding-left:.36em;color:color-mix(in srgb,var(--world-glow),#fff 28%);text-shadow:0 0 14px #000}
+.world-view-gate-active .world-view-gate {animation:world-view-gate 960ms cubic-bezier(.16,.8,.2,1) both}
+.world-view-gate-active .world-view-gate::before {animation:world-view-ring-one 960ms cubic-bezier(.16,.8,.2,1) both}
+.world-view-gate-active .world-view-gate::after {animation:world-view-ring-two 960ms cubic-bezier(.16,.8,.2,1) both}
+@keyframes world-view-gate {0%{opacity:0;filter:blur(9px);transform:translate(-50%,-50%) scale(1.38)}24%{opacity:.82;filter:blur(0)}55%{opacity:.7;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;filter:blur(3px);transform:translate(-50%,-50%) scale(.74)}}
+@keyframes world-view-ring-one {0%{opacity:0;transform:translate(-50%,-50%) rotate(-35deg) scale(1.55)}36%{opacity:.8}100%{opacity:0;transform:translate(-50%,-50%) rotate(92deg) scale(.72)}}
+@keyframes world-view-ring-two {0%{opacity:0;transform:translate(-50%,-50%) rotate(70deg) scale(.6)}38%{opacity:.65}100%{opacity:0;transform:translate(-50%,-50%) rotate(-105deg) scale(1.45)}}
+:root[data-world="void"] .world-view-gate::before {border-radius:2%;transform:translate(-50%,-50%) rotate(45deg);border-color:color-mix(in srgb,var(--crit),transparent 55%)}
+:root[data-world="void"] .world-view-gate::after {clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);border-style:solid}
+:root[data-world="astral"] .world-view-gate::before {border-radius:50%;transform:translate(-50%,-50%) rotate(18deg) scaleY(.58)}
+:root[data-world="astral"] .world-view-gate::after {border-radius:50%;transform:translate(-50%,-50%) rotate(-31deg) scaleY(.43)}
+
+.world-chapter-shift::before {content:"";position:absolute;inset:0;pointer-events:none;background:
+  linear-gradient(90deg,transparent 0 8%,color-mix(in srgb,var(--world-glow),transparent 88%) 22%,transparent 38% 62%,color-mix(in srgb,var(--world-glow),transparent 88%) 78%,transparent 92%),
+  radial-gradient(ellipse at 50% 50%,transparent 0 32%,color-mix(in srgb,var(--world-glow),transparent 94%) 52%,transparent 68%);
+  animation:world-chapter-cross 800ms ease-out both}
+.world-chapter-shift .world-depth-rail i {animation:world-depth-charge 800ms ease-out both}
+@keyframes world-chapter-cross {0%{opacity:0;transform:scaleX(.86)}34%{opacity:.8}100%{opacity:0;transform:scaleX(1.04)}}
+@keyframes world-depth-charge {0%{filter:brightness(1)}36%{filter:brightness(2.4) drop-shadow(0 0 8px var(--world-glow))}100%{filter:brightness(1)}}
+@media (prefers-reduced-motion:reduce) {
+  .world-view-gate-active .world-view-gate,.world-view-gate-active .world-view-gate::before,.world-view-gate-active .world-view-gate::after,
+  .world-chapter-shift::before,.world-chapter-shift .world-depth-rail i {animation:none!important}
+}
