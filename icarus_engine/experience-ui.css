@@ -692,3 +692,13 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 @media (prefers-reduced-motion:reduce) {
   :root[data-world]:not([data-world=""]) :is(.card,.asset,.group)::before {transition:none!important}
 }
+
+
+/* First-load chart scan: overlay-only, never mutates plotted SVG geometry or values. */
+.world-chart-surface {position:relative;overflow:hidden;border-radius:10px}
+.world-chart-surface::after {content:"";position:absolute;pointer-events:none;top:0;bottom:0;left:-28%;width:26%;opacity:0;transform:skewX(-13deg);
+  background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--world-glow),transparent 86%),#ffffff0f,color-mix(in srgb,var(--world-glow),transparent 90%),transparent);
+  mix-blend-mode:screen}
+.world-chart-surface.world-chart-scan-active::after {animation:world-chart-scan 820ms cubic-bezier(.18,.75,.2,1) both}
+@keyframes world-chart-scan {0%{left:-30%;opacity:0}18%{opacity:.75}74%{opacity:.42}100%{left:108%;opacity:0}}
+@media (prefers-reduced-motion:reduce) {.world-chart-surface.world-chart-scan-active::after {animation:none!important}}
