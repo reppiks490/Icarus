@@ -883,3 +883,21 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 @media (prefers-reduced-motion:reduce) {
   .world-intro[data-intro-world] .intro-backdrop {animation:none!important;opacity:.08;transform:none!important;filter:none!important}
 }
+
+
+/* World-specific navigation choreography: the same click moves differently in each universe. */
+:root[data-world="divine"]::view-transition-old(icarus-view) {animation-name:world-view-old-divine}
+:root[data-world="divine"]::view-transition-new(icarus-view) {animation-name:world-view-new-divine}
+:root[data-world="void"]::view-transition-old(icarus-view) {animation-name:world-view-old-void}
+:root[data-world="void"]::view-transition-new(icarus-view) {animation-name:world-view-new-void}
+:root[data-world="astral"]::view-transition-old(icarus-view) {animation-name:world-view-old-astral}
+:root[data-world="astral"]::view-transition-new(icarus-view) {animation-name:world-view-new-astral}
+@keyframes world-view-old-divine {to{opacity:0;filter:brightness(.72) blur(4px);transform:translateY(-6px) scale(.986)}}
+@keyframes world-view-new-divine {from{opacity:0;filter:brightness(.62) blur(7px);transform:translateY(14px) scale(.988)}to{opacity:1;filter:none;transform:none}}
+@keyframes world-view-old-void {to{opacity:0;filter:contrast(1.2) brightness(.52) blur(3px);transform:translateX(9px) scale(.993);clip-path:inset(0 0 0 94%)}}
+@keyframes world-view-new-void {from{opacity:0;filter:contrast(1.2) brightness(.58);transform:translateX(-12px) scale(.993);clip-path:inset(0 96% 0 0)}to{opacity:1;filter:none;transform:none;clip-path:inset(0)}}
+@keyframes world-view-old-astral {to{opacity:0;filter:saturate(.72) blur(5px);transform:translate3d(-10px,-3px,0) scale(.99)}}
+@keyframes world-view-new-astral {from{opacity:0;filter:saturate(.65) brightness(.7) blur(7px);transform:translate3d(14px,5px,0) scale(.991)}to{opacity:1;filter:none;transform:none}}
+@media (prefers-reduced-motion:reduce) {
+  :root[data-world]::view-transition-old(icarus-view),:root[data-world]::view-transition-new(icarus-view){animation:none!important}
+}
