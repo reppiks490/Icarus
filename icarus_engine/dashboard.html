@@ -337,7 +337,12 @@ async function loadChart(sym, n, el, opts) {
 }
 
 /* ── views ── */
-function setView(v) { view = v; if (!solo) location.hash = v; lastView = null; if (last) render(last); if (v.startsWith('asset:')) { const s = v.slice(6); loadChart(s, 300, $('#dChart'), {height:360, compact:false}); refreshTrades(s).then(()=>{ if (last) render(last); }); } }
+function setView(v) {
+  const apply = () => { view = v; if (!solo) location.hash = v; lastView = null; if (last) render(last); if (v.startsWith('asset:')) { const s = v.slice(6); loadChart(s, 300, $('#dChart'), {height:360, compact:false}); refreshTrades(s).then(()=>{ if (last) render(last); }); } };
+  const root = document.documentElement;
+  const cinematic = v !== view && typeof document.startViewTransition === 'function' && root.dataset.motion === 'live' && root.dataset.experience === 'cinematic' && !!root.dataset.world && root.dataset.introActive !== 'true';
+  if (cinematic) document.startViewTransition(apply); else apply();
+}
 window.setView = setView;
 function tabsHtml(A) {
   if (solo) return `<span class="tab active"><b class="s">${esc(params.get('asset').toUpperCase())}</b> · solo view</span><a class="tab" href="/">← all assets</a>`;
