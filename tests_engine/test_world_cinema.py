@@ -22,13 +22,13 @@ const forbidden=()=>{throw Error('Presentation attempted external access');};
 const window={};
 vm.runInNewContext(fs.readFileSync(process.argv[1],'utf8'),{
  window,document:{documentElement:root,hidden:false,querySelectorAll:()=>[]},
- fetch:forbidden,XMLHttpRequest:forbidden,AudioContext:forbidden,console
+ fetch:forbidden,XMLHttpRequest:forbidden,AudioContext:forbidden,cancelAnimationFrame:()=>{},console
 });
 for(const world of ['divine','void','astral']) {
  root.dataset.world=world;
  for(const [w,h] of [[1440,470],[390,590],[2560,760],[1,1],[0,0]])
  for(const t of [0,.1,7.9,8,9.5,10.7,11.4,13,17.99,18,10000])
- for(const intro of [true,false])window.IcarusWorldCinema.draw(ctx,w,h,t,.033,{intro});
+ for(const intro of [true,false])for(const detail of ['rich','light'])window.IcarusWorldCinema.draw(ctx,w,h,t,.033,{intro,detail,pointer:{x:.5,y:-.5}});
 }
 assert.ok(calls>10000,'Renderer produced no geometry');
 const el={isConnected:true,querySelector:()=>true,animate:forbidden};

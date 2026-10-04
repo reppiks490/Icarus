@@ -87,16 +87,19 @@
     root.dataset.experience = preference('experience', ['cinematic', 'balanced', 'focus'], 'cinematic');
     root.dataset.density = preference('density', ['comfortable', 'compact'], 'comfortable');
     root.dataset.accent = preference('accent', ['world', 'gold', 'ice', 'amethyst'], 'world');
+    root.dataset.visualDetail = preference('visual-detail', ['adaptive', 'rich', 'light'], 'adaptive');
     root.dataset.sceneSize = preference('scene-size', ['compact', 'grand', 'panorama'], 'grand');
     root.dataset.lighting = preference('lighting', ['original', 'obsidian'], 'obsidian');
     root.dataset.introLength = preference('intro-length', ['12', '20'], '20');
     if (!scenery) return;
     scenery.hidden = !world || root.dataset.experience === 'focus';
+    const previousWorld = scenery.dataset.activeWorld;
     const changedWorld = scenery.dataset.activeWorld !== root.dataset.world;
     scenery.dataset.activeWorld = root.dataset.world;
     if (world) {
       document.getElementById('worldName').textContent = world.name;
       document.getElementById('worldTitle').textContent = world.title;
+      document.getElementById('worldTitle').setAttribute('aria-label',world.title);
       document.getElementById('worldCaption').textContent = world.caption;
       document.getElementById('worldMark').textContent = world.mark;
       // Exact local assets only. No market data or authenticated URLs enter this layer.
@@ -107,6 +110,7 @@
       art.classList.remove('world-enter');
       void art.offsetWidth;
       art.classList.add('world-enter');
+      window.IcarusWorldCinema?.transitionWorld(scenery,previousWorld);
     }
     for (const button of scenery.querySelectorAll('[data-world-choice]')) button.setAttribute('aria-pressed', String(button.dataset.worldChoice === root.dataset.theme));
     window.IcarusWorldMotion?.refresh();
@@ -126,6 +130,7 @@
       <label>Theme<select id="experienceTheme"></select></label>
       <label>Atmosphere<select id="experienceMode"><option value="balanced">Balanced · still scenery</option><option value="cinematic">Cinematic · Eclipse Loom</option><option value="focus">Focus · essentials</option></select></label>
       <label>Accent<select id="experienceAccent"><option value="world">World signature</option><option value="gold">Sovereign gold</option><option value="ice">Glacier silver</option><option value="amethyst">Astral amethyst</option></select></label>
+      <label>Visual detail<select id="experienceVisualDetail"><option value="adaptive">Adaptive</option><option value="rich">Rich · full atmosphere</option><option value="light">Light · lean geometry</option></select></label>
       <label>Scene scale<select id="experienceSceneSize"><option value="compact">Compact</option><option value="grand">Grand</option><option value="panorama">Panorama</option></select></label>
       <label>Lighting<select id="experienceLighting"><option value="obsidian">Obsidian · dark divinity</option><option value="original">Original world palette</option></select></label>
       <label>Opening<select id="experienceIntroLength"><option value="20">Epic · 20 seconds</option><option value="12">Classic · 12 seconds</option></select></label>
@@ -143,6 +148,7 @@
       save('icarus-theme', root.dataset.theme);
       appearance();
       onThemeChanged?.();
+      window.IcarusWorldCinema?.enterView();
     });
     document.getElementById('btnTheme').addEventListener('click', () => { select.value = allowedTheme(root.dataset.theme); appearance(); });
     const motionSelect = document.getElementById('experienceMotion');
@@ -170,6 +176,7 @@
     for (const [id, key, values, fallback] of [
       ['experienceMode', 'experience', ['cinematic', 'balanced', 'focus'], 'cinematic'],
       ['experienceAccent', 'accent', ['world', 'gold', 'ice', 'amethyst'], 'world'],
+      ['experienceVisualDetail', 'visual-detail', ['adaptive', 'rich', 'light'], 'adaptive'],
       ['experienceSceneSize', 'scene-size', ['compact', 'grand', 'panorama'], 'grand'],
       ['experienceLighting', 'lighting', ['original', 'obsidian'], 'obsidian'],
       ['experienceIntroLength', 'intro-length', ['12', '20'], '20'],

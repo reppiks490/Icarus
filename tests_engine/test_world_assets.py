@@ -20,7 +20,7 @@ def test_world_assets_are_served_without_changing_portfolio(tmp_path):
             with urllib.request.urlopen(f'{base}/worlds/{name}.webp') as response:
                 assert response.headers.get_content_type() == 'image/webp'
                 assert response.read() == (Path(__file__).parents[1] / 'icarus_engine' / 'worlds' / f'{name}.webp').read_bytes()
-        for name in ('world-motion.js', 'world-cinema.js'):
+        for name in ('world-motion.js', 'world-cinema.js', 'world-aura.js'):
             with urllib.request.urlopen(f'{base}/{name}') as response:
                 assert response.headers.get_content_type() == 'text/javascript'
                 assert response.read() == (Path(__file__).parents[1] / 'icarus_engine' / name).read_bytes()

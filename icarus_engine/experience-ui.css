@@ -291,3 +291,22 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
   .world-scene::after {background:linear-gradient(180deg,#060c1be8,#060c1ba0 43%,#060c1b30)}
   :root[data-world="void"] .world-scene::after {background:linear-gradient(180deg,#09070bf5,#09070bbd 43%,transparent)}
 }
+
+/* Dimensional lighting and transitions remain entirely behind financial content. */
+.world-aura {position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;opacity:0;mix-blend-mode:screen}
+.world-veil {position:absolute;inset:0;z-index:0;background-size:cover;background-position:center;pointer-events:none;filter:brightness(.65)}
+.world-copy h1 {perspective:600px}
+.world-word {display:inline-block;transform-origin:50% 100%;white-space:nowrap}
+:root[data-world]:not([data-world=""]) :is(.card,.asset).world-lit {
+  background-image:radial-gradient(ellipse 430px 210px at var(--panel-x,50%) var(--panel-y,0%),color-mix(in srgb,var(--world-glow),transparent 92%),transparent 75%),linear-gradient(135deg,color-mix(in srgb,var(--world-glow),transparent 96%),transparent 48%);
+  border-color:color-mix(in srgb,var(--world-glow),var(--ring) 45%);
+}
+:root[data-world]:not([data-world=""]) :is(.card,.asset):focus-within {box-shadow:0 10px 35px var(--world-shadow),inset 0 1px 0 color-mix(in srgb,var(--world-glow),transparent 60%)}
+.intro-chapters {position:absolute;top:10%;left:0;right:0;text-align:center;color:var(--intro-light);font:10px system-ui;letter-spacing:.35em;pointer-events:none}
+.intro-chapters span {position:absolute;left:0;right:0;opacity:0;animation:depth-chapter-one var(--intro-duration,20s) ease both}
+.intro-chapters span:nth-child(2) {animation-name:depth-chapter-two}
+.intro-chapters span:nth-child(3) {animation-name:depth-chapter-three}
+@keyframes depth-chapter-one {0% {opacity:0;transform:translateY(8px)} 8%,24% {opacity:.7;transform:translateY(0)} 31%,100% {opacity:0;transform:translateY(-8px)}}
+@keyframes depth-chapter-two {0%,29% {opacity:0;transform:translateY(8px)} 36%,52% {opacity:.7;transform:translateY(0)} 60%,100% {opacity:0;transform:translateY(-8px)}}
+@keyframes depth-chapter-three {0%,59% {opacity:0;transform:translateY(8px)} 67%,85% {opacity:.7;transform:translateY(0)} 94%,100% {opacity:0;transform:translateY(-8px)}}
+@media (max-width:760px) {.intro-chapters {top:16%;font-size:8px;letter-spacing:.22em}}

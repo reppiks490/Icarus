@@ -3,7 +3,7 @@
   'use strict';
   const root = document.documentElement;
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
-  let scene, canvas, ctx, frame = 0, last = 0, elapsed = 0, width = 0, height = 0;
+  let scene, canvas, ctx, aura, qualityReduced=false, slowFrames=0, requestedDetail='', frame = 0, last = 0, elapsed = 0, width = 0, height = 0;
   let visible = true, particles = [], pointer = {x:0, y:0}, eased = {x:0, y:0};
   let introFrame = 0, introLast = 0, introElapsed = 0;
   let intro = null, introTimer = 0, introReturnFocus = null, inertSiblings = [];
@@ -11,14 +11,16 @@
   const rand = (a,b) => a + Math.random() * (b-a);
   const permitted = () => scene && !intro && !scene.hidden && visible && !document.hidden &&
     root.dataset.experience === 'cinematic' && root.dataset.motion !== 'off' && !reduced.matches && !!colors[root.dataset.world];
+  const detail=()=>root.dataset.visualDetail==='light'||((root.dataset.visualDetail||'adaptive')==='adaptive'&&(qualityReduced||width<640))?'light':'rich';
   function resize() {
     if (!scene || !ctx) return;
     const box = scene.getBoundingClientRect();
     width = box.width; height = box.height;
-    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    root.dataset.visualResolved=detail();
+    const dpr = Math.min(window.devicePixelRatio || 1, detail()==='light'?1:1.5);
     canvas.width = Math.round(width*dpr); canvas.height = Math.round(height*dpr);
     ctx.setTransform(dpr,0,0,dpr,0,0);
-    particles = Array.from({length: width < 600 ? 35 : 70}, () => ({
+    particles = Array.from({length: detail()==='light'?32:70}, () => ({
       x:Math.random(), y:Math.random(), z:rand(.2,1), phase:rand(0,Math.PI*2), speed:rand(.008,.035)
     }));
   }
@@ -27,11 +29,16 @@
     if (!permitted() || !ctx) { last=0; return; }
     frame = requestAnimationFrame(draw);
     if (last && now-last < 30) return; // bounded to approximately 30 fps
+    if(last&&(root.dataset.visualDetail||'adaptive')==='adaptive'&&!qualityReduced) {
+      slowFrames=now-last>70?slowFrames+1:Math.max(0,slowFrames-.25);
+      if(slowFrames>=8){qualityReduced=true;resize();aura?.pause();}
+    }
     const dt = last ? Math.min((now-last)/1000,.06) : 0; last=now; elapsed+=dt;
     eased.x += (pointer.x-eased.x)*.065; eased.y += (pointer.y-eased.y)*.065;
     scene.style.setProperty('--scene-x', eased.x.toFixed(3));
     scene.style.setProperty('--scene-y', eased.y.toFixed(3));
     ctx.clearRect(0,0,width,height);
+    aura?.draw(elapsed,root.dataset.world,width,height,eased,detail());
     const world = root.dataset.world, rgb = colors[world].join(',');
     // Three depth planes, flowing trajectories, soft bloom and star glints.
     for (const p of particles) {
@@ -53,7 +60,7 @@
         ctx.strokeStyle=`rgba(${rgb},.2)`; ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x-2,y+9*p.z); ctx.stroke();
       }
     }
-    window.IcarusWorldCinema?.draw(ctx,width,height,elapsed,dt);
+    window.IcarusWorldCinema?.draw(ctx,width,height,elapsed,dt,{pointer:eased,detail:detail()});
     // Slow moving broad light shafts remain behind the content, not on charts.
     if (world !== 'void') {
       ctx.save(); ctx.globalCompositeOperation='screen';
@@ -68,10 +75,12 @@
   }
   function refresh() {
     if (!scene) return;
+    if(requestedDetail!==root.dataset.visualDetail){requestedDetail=root.dataset.visualDetail;qualityReduced=false;slowFrames=0;resize();}
+    if(detail()==='light')aura?.pause();
     window.IcarusWorldCinema?.sync(!!intro || (permitted() && !!ctx));
     if (permitted()) { if (!frame) { resize(); last=0; frame=requestAnimationFrame(draw); } }
     else {
-      cancelAnimationFrame(frame); frame=0; last=0;
+      cancelAnimationFrame(frame); frame=0; last=0; aura?.pause();
       ctx?.clearRect(0,0,width,height);
       pointer={x:0,y:0}; eased={x:0,y:0};
       scene.style.setProperty('--scene-x','0'); scene.style.setProperty('--scene-y','0');
@@ -81,7 +90,7 @@
   function closeIntro() {
     if (!intro) return;
     clearTimeout(introTimer); cancelAnimationFrame(introFrame); introFrame=0; introLast=0; introElapsed=0;
-    intro.remove(); intro=null;
+    intro.remove(); intro=null;root.dataset.introActive='false';
     document.removeEventListener('keydown', introKey, true);
     for (const [el, wasInert] of inertSiblings) el.inert = wasInert;
     inertSiblings = [];
@@ -97,6 +106,7 @@
   }
   function playIntro() {
     if (intro || reduced.matches || root.dataset.motion === 'off') return;
+    root.dataset.introActive='true';
     introReturnFocus = document.activeElement;
     intro = document.createElement('div'); intro.className='world-intro';
     const duration = root.dataset.introLength === '12' ? 12000 : 20000;
@@ -112,6 +122,7 @@
           <div class="intro-wing right"><b></b><b></b><b></b><b></b><b></b></div>
           <div class="intro-crown"><svg viewBox="0 0 100 110" aria-hidden="true"><path d="M18 31L31 42L50 14L69 42L82 31L73 65H27Z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M30 73H70M36 81H64" fill="none" stroke="currentColor" stroke-width="2"/><path d="M50 32L58 48L50 62L42 48Z" fill="currentColor"/><circle cx="50" cy="5" r="2" fill="currentColor"/><path d="M50 88V105M44 97L50 105L56 97" fill="none" stroke="currentColor" stroke-width="2"/></svg></div>
         </div>
+        <div class="intro-chapters"><span>FORM / AWAKENING</span><span>LIGHT / CONVERGENCE</span><span>INFINITY / REVEALED</span></div>
         <div class="intro-title"><span>THE ONE ABOVE ALL</span><strong>ICARUS</strong><em>Enter your dominion.</em></div>
       </div><p class="intro-note">Cinematic introduction · decorative sequence</p>`;
     inertSiblings = Array.from(document.body.children).map(el => [el, el.inert]);
@@ -134,7 +145,7 @@
         introCanvas.width=Math.round(w*dpr);introCanvas.height=Math.round(h*dpr);introCtx.setTransform(dpr,0,0,dpr,0,0);
       }
       introCtx.clearRect(0,0,w,h);
-      window.IcarusWorldCinema?.draw(introCtx,w,h,introElapsed,dt,{intro:true});
+      window.IcarusWorldCinema?.draw(introCtx,w,h,introElapsed,dt,{intro:true,detail:detail(),pointer:{x:Math.sin(introElapsed*.18)*.35,y:Math.cos(introElapsed*.13)*.18}});
     };
     if(introCtx)introFrame=requestAnimationFrame(animateIntro);
     introTimer=setTimeout(closeIntro,duration);
@@ -144,6 +155,8 @@
     scene=element; canvas=document.createElement('canvas'); canvas.className='world-atmosphere'; canvas.setAttribute('aria-hidden','true');
     scene.prepend(canvas); ctx=canvas.getContext('2d');
     scene.dataset.renderer=ctx ? 'canvas' : 'static';
+    aura=ctx ? window.IcarusWorldAura?.create(scene) : null;
+    window.IcarusWorldCinema?.init(scene);
     scene.addEventListener('pointermove', event => {
       if (event.pointerType === 'touch' || !permitted()) return;
       const r=scene.getBoundingClientRect(); pointer={x:(event.clientX-r.left)/r.width-.5,y:(event.clientY-r.top)/r.height-.5};
