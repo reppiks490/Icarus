@@ -56,6 +56,7 @@ assert.ok(await card.evaluate(el=>el.style.getPropertyValue('--panel-tilt-y')));
 assert.equal(await page.locator('html').getAttribute('data-world-immersion'),'ready');
 assert.equal(await page.locator('.world-depth-frame').count(),1);
 assert.equal(await page.locator('html').getAttribute('data-world-view'),'overview');
+if(await page.locator('#view .tile').count()) assert.equal(await page.locator('#view .tile').first().getAttribute('data-world-depth-observed'),'1');
 assert.equal(await page.locator('.top').evaluate(el=>getComputedStyle(el).position),'sticky');
 const longEnough=await page.evaluate(()=>document.documentElement.scrollHeight>innerHeight*1.25);
 if(longEnough){
