@@ -20,8 +20,8 @@
   --good:#0ca30c; --good-text:#0ca30c; --warn:#fab219; --serious:#ec835a; --crit:#d03b3b; --up:#0ca30c; --dn:#d03b3b;
 }
 * { box-sizing:border-box }
-html,body { height:100% }
-body { margin:0; overflow-x:hidden; background:var(--page); color:var(--ink); font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; -webkit-font-smoothing:antialiased }
+html { min-height:100%; background:var(--page) }
+body { min-height:100%; margin:0; overflow-x:clip; background:var(--page); color:var(--ink); font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; -webkit-font-smoothing:antialiased; position:relative; isolation:isolate }
 button { font:inherit; color:inherit; background:var(--surface-2); border:1px solid var(--ring); border-radius:8px; padding:6px 12px; cursor:pointer }
 button:hover { border-color:var(--muted) } button.primary { background:var(--s1); border-color:var(--s1); color:#fff } button.danger { background:var(--crit); border-color:var(--crit); color:#fff } button.sm { padding:3px 9px; font-size:12px }
 input, select { font:inherit; color:var(--ink); background:var(--surface-2); border:1px solid var(--ring); border-radius:8px; padding:6px 9px }
@@ -29,7 +29,7 @@ input[type=number] { width:120px } input[type=text] { width:150px } select { max
 .tnum { font-variant-numeric:tabular-nums } .muted { color:var(--muted) } .small { font-size:12px } .pos { color:var(--good-text) } .neg { color:var(--crit) }
 a { color:var(--s1) }
 
-.top { position:sticky; top:0; z-index:5; background:var(--surface); border-bottom:1px solid var(--ring) }
+.top { position:sticky; top:0; z-index:60; background:var(--surface); border-bottom:1px solid var(--ring); transform:translateZ(0); isolation:isolate }
 .top-in { display:flex; align-items:center; gap:14px; padding:10px 22px; flex-wrap:wrap }
 .brand { display:flex; align-items:center; gap:10px; font-weight:600; letter-spacing:.14em; font-size:13px }
 .brand .dot { width:10px; height:10px; border-radius:50%; background:var(--good) } .brand .dot.live { animation:pulse 1.6s infinite } .brand .dot.stale { background:var(--warn) } .brand .dot.dead { background:var(--crit) }
@@ -165,6 +165,7 @@ pre.cli { background:var(--surface-2); border:1px solid var(--ring); border-radi
 <script src="/autopilot-ui.js"></script>
 <script src="/world-aura.js"></script>
 <script src="/world-cinema.js"></script>
+<script src="/world-immersion.js"></script>
 <script src="/world-motion.js"></script>
 <script src="/experience-ui.js"></script>
 <script>
