@@ -840,3 +840,16 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
   box-shadow:inset 0 1px 0 #ffffff08,0 7px 20px #0002!important;
 }
 :root[data-visual-resolved="light"] #view::before {filter:none!important}
+
+
+/* Nested instruments catch the same pointer light as the outer panel without tilting tiny data cells. */
+:root[data-world]:not([data-world=""]) #view :is(.tile,.px-box,.psi-box,.pan-field,.brain-agent,.brain-sub,.brain-lane,.evo-sub).world-lit {
+  border-color:color-mix(in srgb,var(--world-glow),var(--ring) 42%);
+  background-image:
+    radial-gradient(ellipse 300px 145px at var(--panel-x,50%) var(--panel-y,0%),color-mix(in srgb,var(--world-glow),transparent 90%),transparent 72%),
+    linear-gradient(145deg,color-mix(in srgb,var(--world-glow),transparent 96%),transparent 46%);
+  box-shadow:inset 0 1px 0 color-mix(in srgb,var(--world-glow),transparent 76%),0 10px 28px #0003,0 0 18px color-mix(in srgb,var(--world-glow),transparent 92%);
+}
+:root[data-visual-resolved="light"] #view :is(.tile,.px-box,.psi-box,.pan-field,.brain-agent,.brain-sub,.brain-lane,.evo-sub).world-lit {
+  background-image:none;box-shadow:inset 0 1px 0 #ffffff08,0 6px 18px #0002;
+}
