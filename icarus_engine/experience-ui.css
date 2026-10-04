@@ -702,3 +702,19 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 .world-chart-surface.world-chart-scan-active::after {animation:world-chart-scan 820ms cubic-bezier(.18,.75,.2,1) both}
 @keyframes world-chart-scan {0%{left:-30%;opacity:0}18%{opacity:.75}74%{opacity:.42}100%{left:108%;opacity:0}}
 @media (prefers-reduced-motion:reduce) {.world-chart-surface.world-chart-scan-active::after {animation:none!important}}
+
+
+/* The lower-page field never becomes static in full cinematic mode; movement is extremely slow and compositor-only. */
+:root[data-world]:not([data-world=""])[data-experience="cinematic"][data-motion="live"][data-visual-resolved="rich"] body::after {
+  animation:world-field-drift 34s ease-in-out infinite alternate;transform-origin:50% 42%;will-change:transform,opacity;
+}
+:root[data-world="void"][data-experience="cinematic"][data-motion="live"][data-visual-resolved="rich"] body::after {animation-duration:26s}
+:root[data-world="astral"][data-experience="cinematic"][data-motion="live"][data-visual-resolved="rich"] body::after {animation-duration:42s}
+@keyframes world-field-drift {
+  0%{transform:translate3d(-.35%,-.5%,0) scale(1.006);opacity:.43}
+  48%{transform:translate3d(.28%,.15%,0) scale(1.012);opacity:.54}
+  100%{transform:translate3d(.5%,.6%,0) scale(1.018);opacity:.47}
+}
+@media (prefers-reduced-motion:reduce) {
+  :root[data-world]:not([data-world=""]) body::after {animation:none!important;transform:none!important}
+}
