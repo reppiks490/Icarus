@@ -377,10 +377,11 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
   }
 }
 :root[data-world]:not([data-world=""]):not([data-experience="focus"]) :is(.card,.asset,.group) {
-  position:relative; transition:transform .28s cubic-bezier(.2,.7,.2,1),border-color .28s,box-shadow .28s,background-color .28s;
+  --panel-tilt-x:0deg;--panel-tilt-y:0deg;position:relative;transform-style:preserve-3d;
+  transition:transform .28s cubic-bezier(.2,.7,.2,1),border-color .28s,box-shadow .28s,background-color .28s;
 }
 :root[data-world]:not([data-world=""]):not([data-experience="focus"]) :is(.card,.asset,.group):hover {
-  transform:translateY(-2px);
+  transform:perspective(1200px) translateY(-2px) rotateX(var(--panel-tilt-x)) rotateY(var(--panel-tilt-y));
   box-shadow:0 22px 70px #0005,inset 0 1px 0 color-mix(in srgb,var(--world-glow),transparent 62%),0 0 0 1px color-mix(in srgb,var(--world-glow),transparent 88%);
 }
 :root[data-world]:not([data-world=""]) .tile {box-shadow:inset 0 1px 0 #ffffff0b}
