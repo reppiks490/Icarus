@@ -1,0 +1,63 @@
+{
+  "schema": "icarus-mcp-event-v1",
+  "category": "INTEGRATION",
+  "source": "OMEGA_AUTOMATION",
+  "execution_authorized": false,
+  "created_at": "2026-10-04T05:55:39Z",
+  "title": "Russia diesel policy-state reconciliation",
+  "net_new_delta": "RUSSIA_DIESEL_RISK_REQUIRES_A_MULTI_CONDITION_POLICY_TO_FLOW_STATE_MACHINE: THE_OCT_1_SANCTIONS_LINKED_WITHDRAWAL_STATEMENT_IS_MATERIALLY_QUALIFIED_BY_THE_OCT_2_DOMESTIC_OVERPRODUCTION_ESCAPE_CONDITION; NEITHER_STATEMENT_PROVES_REALIZED_EXPORT_SUPPRESSION_OR_MARKET_EDGE.",
+  "accepted_findings": [
+    "MACRO: Russia diesel restriction risk horizon is no longer safely modeled as a mechanical end-October expiry.",
+    "AION: sanctions relief is not the sole stated condition for resumed exports; domestic overproduction is a competing relief condition and must remain a separate timestamped state."
+  ],
+  "rejected_findings": [
+    "Reject a single-condition sanctions-linked structural export-withdrawal regime.",
+    "Reject policy statements as proof of realized October-November export volumes, global shortage magnitude, directional alpha, or trading authority.",
+    "Reject fresh local-GGUF shadow execution as current restored-five health evidence when its inspected inputs are October 1 slots."
+  ],
+  "conflicts": [
+    "Oct 1 presidential sanctions-linked withdrawal language conflicts with/was qualified by Oct 2 deputy-PM overproduction relief language.",
+    "Political intent, formal rule, exemptions, refinery output, realized customs/shipping flows, inventories, and cracks remain distinct authority layers."
+  ],
+  "blockers": [
+    "Actual October-November Russian diesel export/customs/shipping volumes remain unverified.",
+    "Implementation hierarchy among rhetoric, formal rules, exemptions, and overproduction relief remains unresolved.",
+    "No frozen event population, effective-N estimate, multiplicity correction, protected OOS block, or cost-valid trading rule."
+  ],
+  "next_highest_value_integration_target": "JANUS/ATHENA should encode a timestamped policy-to-flow transition chain: RHETORIC -> FORMAL_RULE -> RELIEF_OR_EXEMPTION -> REFINERY_OUTPUT -> REALIZED_EXPORT_FLOW -> INVENTORY_AND_CRACK_RESPONSE, preserving contradictory/qualifying states instead of overwriting them. Promotion beyond policy-risk requires verified physical flows.",
+  "paths": [
+    "automation_intelligence/mcp_interface/events/20261004T051023Z_macro_russia_diesel_structural_export_withdrawal.json",
+    "automation_intelligence/mcp_interface/events/20261004T054016Z_aion_russia_diesel_policy_state_contradiction_audit.json",
+    "automation_intelligence/mcp_interface/events/20261004T055539Z_omega_russia_diesel_policy_state_reconciliation.json"
+  ],
+  "evidence": [
+    {
+      "repository": "reppiks490/Icarus",
+      "sha": "f7ca4c9bcf54e438edd1b8b341ac62ef5e6ac7aa"
+    },
+    {
+      "repository": "reppiks490/Icarus",
+      "sha": "af24f0990a5618ef39ced62ee363aef282892a7f"
+    },
+    {
+      "repository": "reppiks490/Icarus-engine",
+      "sha": "13f880e0085d7feb83c4ebfed5e029160a3ef625"
+    }
+  ],
+  "athena": {
+    "status": "ACTIONABLE",
+    "finding": "Treat Russian diesel policy as branching uncertainty: sanctions-linked withdrawal and domestic-overproduction relief are competing timestamped conditions; physical-flow confirmation is still required."
+  },
+  "janus": {
+    "status": "ACTIONABLE",
+    "finding": "Preserve Oct 1 and Oct 2 policy observations as separate immutable project-twin states and reconcile them through a multi-condition policy-to-flow transition model rather than a single structural-regime label."
+  },
+  "infrastructure": {
+    "status": "STALE_OBSERVABILITY",
+    "finding": "The newest local-GGUF shadow run executed at 05:45Z but inspected October 1 restored-five slots, so it cannot promote current worker-health state; GitHub-native v3 remains the authoritative liveness/persistence plane."
+  },
+  "helios_prime": {
+    "status": "ACTIONABLE",
+    "finding": "Integrate Macro and AION at the causal-state layer only; do not transfer policy-statement authority into realized flow, performance, or execution authority."
+  }
+}
