@@ -624,7 +624,8 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
   background-size:28px 28px!important;
 }
 :root[data-world]:not([data-world=""]) #view .brain-core {border-color:color-mix(in srgb,var(--world-glow),transparent 56%)!important;box-shadow:0 0 46px color-mix(in srgb,var(--world-glow),transparent 94%) inset!important}
-:root[data-world]:not([data-world=""]) #view .brain-pulse {background:var(--world-glow)!important;box-shadow:0 0 0 0 color-mix(in srgb,var(--world-glow),transparent 38%)!important}
+:root[data-world]:not([data-world=""]) #view .brain-pulse {background:var(--world-glow)!important;animation:brainPulseWorld 1.8s infinite!important}
+@keyframes brainPulseWorld {0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--world-glow),transparent 35%)}70%{box-shadow:0 0 0 14px color-mix(in srgb,var(--world-glow),transparent 100%)}100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--world-glow),transparent 100%)}}
 :root[data-world]:not([data-world=""]) #view .brain-route {background:color-mix(in srgb,var(--page),transparent 20%)!important;border:1px solid color-mix(in srgb,var(--world-glow),var(--ring) 86%)}
 :root[data-world]:not([data-world=""]) #view .psi-meter {overflow:hidden}
 :root[data-world]:not([data-world=""]) #view .psi-meter::after {content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--world-glow),transparent 94%),transparent);mix-blend-mode:screen}
