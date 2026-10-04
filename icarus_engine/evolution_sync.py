@@ -111,6 +111,7 @@ def _default_state(interval_seconds: int) -> dict[str, Any]:
         "ingested_total": 0,
         "ignored_total": 0,
         "rejected_total": 0,
+        "legacy_rejection_attempt_total": 0,
         "current_rejected_count": 0,
         "processed_blob_shas": [],
         "rejected_blob_shas": [],
@@ -152,6 +153,15 @@ def _read_state(base_dir: str | os.PathLike[str], interval_seconds: int) -> dict
         else:
             state[counter] = value
 
+    legacy_attempts = raw.get("legacy_rejection_attempt_total", 0)
+    if (
+        isinstance(legacy_attempts, bool)
+        or not isinstance(legacy_attempts, int)
+        or legacy_attempts < 0
+    ):
+        legacy_attempts = 0
+    state["legacy_rejection_attempt_total"] = legacy_attempts
+
     raw_processed = raw.get("processed_blob_shas")
     if not isinstance(raw_processed, list):
         raw_processed = []
@@ -171,6 +181,10 @@ def _read_state(base_dir: str | os.PathLike[str], interval_seconds: int) -> dict
     raw_current_rejected = raw.get("rejected_blob_shas")
     if not isinstance(raw_current_rejected, list):
         raw_current_rejected = []
+    history_field_present = isinstance(
+        raw.get("rejected_history_blob_shas"),
+        list,
+    )
     raw_rejected_history = raw.get("rejected_history_blob_shas")
     if not isinstance(raw_rejected_history, list):
         raw_rejected_history = []
@@ -188,10 +202,22 @@ def _read_state(base_dir: str | os.PathLike[str], interval_seconds: int) -> dict
     # Migration safety: any blob currently known rejected is historical too.
     rejected_history.update(current_rejected)
     state["rejected_history_blob_shas"] = sorted(rejected_history)[-5000:]
-    state["rejected_total"] = max(
-        state["rejected_total"],
-        len(state["rejected_history_blob_shas"]),
-    )
+    if history_field_present:
+        state["rejected_total"] = max(
+            state["rejected_total"],
+            len(state["rejected_history_blob_shas"]),
+        )
+    else:
+        # Pre-dedupe rejected_total counted polling attempts, not immutable blob
+        # versions. Preserve it as an explicit legacy diagnostic instead of
+        # relabeling repeated attempts as unique rejected receipt versions.
+        state["legacy_rejection_attempt_total"] = max(
+            state["legacy_rejection_attempt_total"],
+            state["rejected_total"],
+        )
+        state["rejected_total"] = len(
+            state["rejected_history_blob_shas"]
+        )
 
     if raw.get("validator_revision") != VALIDATOR_REVISION:
         state["rejected_blob_shas"] = []
@@ -322,6 +348,19 @@ def _brain_status(status: str) -> str:
     # interface-only states (currently "staged") to a non-escalating brain
     # observation rather than causing ingestion failure.
     return status if status in _BRAIN_COMPATIBLE_STATUSES else "observed"
+
+
+def _event_time_key(value: Any, event_id: Any = "") -> tuple[datetime, str]:
+    """Order state by the represented instant, not filename/raw offset text."""
+
+    try:
+        dt = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        if dt.tzinfo is None or dt.utcoffset() is None:
+            raise ValueError("timezone required")
+        dt = dt.astimezone(timezone.utc)
+    except (TypeError, ValueError):
+        dt = datetime.min.replace(tzinfo=timezone.utc)
+    return dt, str(event_id or "")
 
 
 class EvolutionRemoteSync:
@@ -624,7 +663,20 @@ class EvolutionRemoteSync:
                     )
                     continue
 
-                subsystems.update(projected_subsystems)
+                for subsystem, candidate in projected_subsystems.items():
+                    prior = subsystems.get(subsystem)
+                    if (
+                        not isinstance(prior, Mapping)
+                        or _event_time_key(
+                            candidate.get("recorded_at"),
+                            candidate.get("event_id"),
+                        )
+                        >= _event_time_key(
+                            prior.get("recorded_at"),
+                            prior.get("event_id"),
+                        )
+                    ):
+                        subsystems[subsystem] = candidate
                 events_by_id[event["event_id"]] = event
                 event_id_bindings[event["event_id"]] = blob_sha
                 processed.add(blob_sha)
@@ -634,7 +686,10 @@ class EvolutionRemoteSync:
 
             ordered = sorted(
                 events_by_id.values(),
-                key=lambda x: (str(x.get("recorded_at") or ""), str(x.get("event_id") or "")),
+                key=lambda x: _event_time_key(
+                    x.get("recorded_at"),
+                    x.get("event_id"),
+                ),
                 reverse=True,
             )[:200]
             state["processed_blob_shas"] = sorted(processed)[-5000:]
