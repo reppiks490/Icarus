@@ -444,7 +444,7 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 
 
 /* Immersion Phase III: edge architecture, faceted glass and view-specific spatial identity. */
-.world-depth-frame {position:fixed;inset:0;z-index:4;pointer-events:none;color:var(--world-glow);opacity:.72;transition:opacity .45s ease;contain:layout style paint}
+.world-depth-frame {position:fixed;inset:0;z-index:4;pointer-events:none;color:var(--world-glow);opacity:.72;filter:drop-shadow(0 0 var(--world-scroll-glow,0px) color-mix(in srgb,var(--world-glow),transparent 45%));transition:opacity .45s ease,filter .18s ease;contain:layout style paint}
 .world-depth-rail {position:absolute;top:152px;bottom:38px;width:18px}
 .world-depth-rail.left {left:14px}.world-depth-rail.right {right:14px}
 .world-depth-rail::before {content:"";position:absolute;top:0;bottom:0;left:50%;width:1px;background:linear-gradient(180deg,transparent 0%,color-mix(in srgb,var(--world-glow),transparent 82%) 8%,color-mix(in srgb,var(--world-glow),transparent 68%) 48%,color-mix(in srgb,var(--world-glow),transparent 88%) 92%,transparent)}
@@ -456,6 +456,8 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 .world-depth-readout span {grid-column:1/-1;opacity:.42;font-size:7px;letter-spacing:.28em}
 .world-depth-readout strong {font-weight:600;color:color-mix(in srgb,var(--world-glow),#fff 20%)}
 .world-depth-readout em {font-style:normal;opacity:.55;font-size:7px}
+:root[data-scroll-direction="down"] .world-depth-readout::after {content:"↓";margin-left:2px;opacity:calc(.25 + var(--world-scroll-energy,0));font-size:8px}
+:root[data-scroll-direction="up"] .world-depth-readout::after {content:"↑";margin-left:2px;opacity:calc(.25 + var(--world-scroll-energy,0));font-size:8px}
 .world-corner-sigil {position:absolute;font:10px/1 Georgia,serif;opacity:.33;filter:drop-shadow(0 0 8px color-mix(in srgb,var(--world-glow),transparent 35%))}
 .world-corner-sigil.top-left {left:30px;top:126px}.world-corner-sigil.bottom-right {right:30px;bottom:23px}
 .world-view-shift .world-depth-readout strong {animation:world-depth-sigil .72s cubic-bezier(.16,.8,.2,1)}
