@@ -265,6 +265,7 @@ function lineChart(el, series, {baseline=null, height=180}={}) {
     xh.style.display=''; xh.querySelector('line').setAttribute('x1',x(p.ts)); xh.querySelector('line').setAttribute('x2',x(p.ts)); xh.querySelector('circle').setAttribute('cx',x(p.ts)); xh.querySelector('circle').setAttribute('cy',y(p.equity));
     const dl = baseline!=null ? p.equity-baseline : null; showTip(`<b>${fmt$(p.equity,2)}</b> ${dl!=null?`<span class="${dl>=0?'pos':'neg'}">${sgn$(dl,2)}</span>`:''}<br><span class="muted">${new Date(p.ts*1000).toLocaleString()}</span>`, ev.clientX, ev.clientY); });
   hit.addEventListener('mouseleave', () => { xh.style.display='none'; hideTip(); });
+  window.IcarusWorldCinema?.enterChart('portfolio-equity', el);
 }
 function candles(el, data, {height=170, compact=true}={}) {
   if (!el) return;
@@ -899,6 +900,7 @@ function equityChart(el, eq, bh, dd, capital) {
     <text x="${pl}" y="${H - 6}" font-size="11" fill="var(--muted)">${dtz(xs[0])}</text><text x="${W - pr}" y="${H - 6}" font-size="11" fill="var(--muted)" text-anchor="end">${dtz(xs[xs.length - 1])}</text>
     <text x="${pl + 4}" y="${H - pb - hdd + 12}" font-size="10.5" fill="var(--crit)">drawdown</text>
     <text x="${W - pr}" y="${pt + 12}" font-size="10.5" fill="var(--muted)" text-anchor="end">— equity · ┄ buy &amp; hold · ┄ capital</text></svg>`;
+  window.IcarusWorldCinema?.enterChart('backtest-equity', el);
 }
 function renderBacktest() {
   const res = BT.res; if (!res) return;
