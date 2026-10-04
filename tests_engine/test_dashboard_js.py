@@ -39,6 +39,7 @@ NODE = shutil.which("node")
         "icarus_engine/world-motion.js",
         "icarus_engine/world-cinema.js",
         "icarus_engine/world-aura.js",
+        "icarus_engine/world-immersion.js",
     ],
 )
 def test_dashboard_javascript_parses(rel, tmp_path):
