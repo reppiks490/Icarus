@@ -118,7 +118,7 @@
       viewMutation=new MutationObserver(records=>{
         if(records.some(record=>record.addedNodes.length||record.removedNodes.length))requestAnimationFrame(refresh);
       });
-      viewMutation.observe(view,{childList:true});
+      viewMutation.observe(view,{childList:true,subtree:true});
     }
   }
 
