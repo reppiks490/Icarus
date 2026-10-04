@@ -15,30 +15,47 @@
       return mix(mix(hash(i),hash(i+vec2(1.0,0.0)),f.x),mix(hash(i+vec2(0.0,1.0)),hash(i+vec2(1.0)),f.x),f.y);
     }
     float mist(vec2 p){float n=0.0;float a=.5;for(int i=0;i<3;i++){n+=noise(p)*a;p=p*2.03+11.7;a*=.5;}return n;}
+    float band(float d,float sharp){return exp(-abs(d)*sharp);}
     void main(){
       vec2 uv=gl_FragCoord.xy/uResolution;
       vec2 p=(uv-uCenter)*vec2(uResolution.x/uResolution.y,1.0);
       float r=max(length(p),.002),a=atan(p.y,p.x),t=uTime;
       float fog=mist(p*4.0+vec2(t*.025,-t*.017));
-      float rim=exp(-abs(r-.205-fog*.01)*90.0);
-      float glow=0.0;vec3 color;
+      float rim=band(r-.205-fog*.01,90.0);
+      float glow=0.0;vec3 color=vec3(1.0);
+
       if(uWorld<.5){
         float rays=pow(max(0.0,sin(a*23.0+t*.08+fog*3.0)),9.0);
-        glow=(rays*.20+rim*.46)*(.4+fog)*exp(-r*1.2);
-        color=mix(vec3(.94,.56,.17),vec3(1.0,.93,.68),rim);
+        float outer=band(r-.335+sin(a*6.0-t*.035)*.006,58.0);
+        float crown=pow(max(0.0,cos(a*6.0-t*.045)),22.0)*exp(-r*1.4);
+        float arch=band(abs(p.x)-(.31+.045*cos(p.y*7.0+t*.04)),43.0)*(1.0-smoothstep(.1,.72,abs(p.y)));
+        float horizon=band(p.y+.12+sin(p.x*5.0+t*.025)*.008,52.0)*(1.0-smoothstep(.18,.9,abs(p.x)));
+        glow=(rays*.15+rim*.42+outer*.20+crown*.11+arch*.07+horizon*.045)*(.42+fog)*exp(-r*.82);
+        vec3 gold=mix(vec3(.82,.47,.12),vec3(1.0,.93,.72),rim+outer*.45);
+        color=mix(gold,vec3(.55,.94,.88),clamp(horizon*.35+fog*.08,0.0,.24));
       }else if(uWorld<1.5){
         float twist=pow(max(0.0,sin(a*3.0-log(r)*5.0-t*.24+fog*3.0)),5.0);
-        float disk=exp(-abs(p.y+sin(p.x*8.0+t*.1)*.024)*22.0);
-        glow=(twist*.23+disk*.15+rim*.36)*(1.0-smoothstep(.2,.75,r));
-        color=mix(vec3(.51,.04,.26),vec3(1.0,.08,.23),fog+rim*.3);
+        float disk=band(p.y+sin(p.x*8.0+t*.1)*.024,22.0);
+        float lens=band(r-.31-sin(a*4.0+t*.08)*.008,70.0);
+        float fracture=pow(max(0.0,sin((p.x*1.7-p.y)*24.0+fog*6.0-t*.09)),18.0)*(1.0-smoothstep(.12,.72,r));
+        float eclipse=band(r-.145,120.0);
+        glow=(twist*.19+disk*.12+rim*.31+lens*.20+fracture*.08+eclipse*.16)*(1.0-smoothstep(.18,.82,r));
+        color=mix(vec3(.37,.015,.13),vec3(1.0,.08,.27),clamp(fog+rim*.34+lens*.25,0.0,1.0));
       }else{
         float wave=sin(p.x*13.0+sin(p.y*6.0+t*.13)*2.0+t*.12);
         float curtain=pow(max(0.0,wave),4.0)*(.3+fog);
-        glow=(curtain*.3+rim*.17)*(1.0-smoothstep(.15,.8,r));
-        color=mix(vec3(.36,.17,.9),vec3(.18,.89,1.0),fog*.9+wave*.2);
+        vec2 ep=vec2(p.x,p.y*1.55);
+        float orbit=band(length(ep)-.31-sin(a*3.0+t*.035)*.005,62.0);
+        float filament=band(sin(p.x*7.0+p.y*4.0+t*.07)*.10+p.y*.34,34.0)*(1.0-smoothstep(.2,.78,r));
+        vec2 cell=floor((p+vec2(t*.001,-t*.0006))*42.0);
+        float stars=pow(hash(cell),28.0)*(1.0-smoothstep(.15,.9,r));
+        glow=(curtain*.24+rim*.14+orbit*.19+filament*.07+stars*.12)*(1.0-smoothstep(.12,.86,r));
+        color=mix(vec3(.31,.13,.78),vec3(.20,.90,1.0),clamp(fog*.72+wave*.13+orbit*.26+stars*.18,0.0,1.0));
       }
+
       float mask=mix(smoothstep(.24,.64,uv.x),1.0-smoothstep(.38,.72,uv.y),uMobile);
-      gl_FragColor=vec4(color,clamp(glow*mask,0.0,.55));
+      float vignette=1.0-smoothstep(.62,1.05,length((uv-.5)*vec2(1.15,1.0)));
+      gl_FragColor=vec4(color,clamp(glow*mask*(.72+.28*vignette),0.0,.58));
     }`;
   function create(scene) {
     const canvas=document.createElement('canvas');canvas.className='world-aura';canvas.setAttribute('aria-hidden','true');scene.prepend(canvas);
