@@ -2,10 +2,19 @@
   'use strict';
   const root=document.documentElement;
   const reduced=window.matchMedia('(prefers-reduced-motion: reduce)');
-  let scrollFrame=0,pointerFrame=0,viewObserver=null,viewMutation=null,depthFrame=null,viewFlashTimer=0,scrollEnergyTimer=0,lastScrollY=0,lastScrollAt=0,currentView='overview',initialized=false;
+  let scrollFrame=0,pointerFrame=0,viewObserver=null,viewMutation=null,depthFrame=null,viewFlashTimer=0,viewGateTimer=0,chapterTimer=0,scrollEnergyTimer=0,lastScrollY=0,lastScrollAt=0,currentView='overview',currentPhase='crown',initialized=false;
 
   const motionAllowed=()=>root.dataset.motion==='live'&&root.dataset.experience==='cinematic'&&!!root.dataset.world&&!document.hidden&&!reduced.matches&&root.dataset.introActive!=='true';
   const phaseLabels={crown:'CROWN',descent:'DESCENT',depth:'DEPTH',abyss:'ABYSS'};
+  const viewMeta={
+    overview:['OVERVIEW','◇'],asset:['ASSET','◈'],system:['SYSTEM','⌬'],golive:['GO LIVE','▲'],agent:['AGENT','◎'],
+    inputs:['INPUTS','≡'],backtest:['BACKTEST','∿'],research:['RESEARCH','∆'],sources:['FINANCIAL / DATA','⌁'],
+    'market-data':['MARKET DATA','⋮'],brain:['ADAPTIVE BRAIN','◉'],evolution:['MCP EVOLUTION','↟'],
+    parallax:['PARALLAX / DREAMSTATE','⟁'],possibility:['ICARUS Ψ','Ψ'],pantheon:['PANTHEON / AETHER','✦'],
+    sibyl:['SIBYL Ω','Ω'],apex:['APEX Ω','⌬'],ascendancy:['ASCENDANCY','↑'],learning:['LEARNING FABRIC','∞'],
+    chronofold:['ICARUS Ξ','Ξ'],commissioning:['COMMISSIONING','◫'],integrity:['DATA INTEGRITY','◆'],
+    'engine-control':['ENGINE CONTROL','⌘'],commands:['COMMANDS','⌗'],log:['ENGINE LOG','▥'],autopilot:['TACTICAL AUTOPILOT','➤']
+  };
 
   function buildDepthFrame(){
     if(depthFrame||!document.body)return;
@@ -15,7 +24,8 @@
     depthFrame.innerHTML=`<div class="world-depth-rail left"><i></i><b></b><b></b><b></b><b></b></div>
       <div class="world-depth-rail right"><i></i><b></b><b></b><b></b><b></b></div>
       <div class="world-depth-readout"><span>WORLD DEPTH</span><strong data-world-depth-label>CROWN</strong><em data-world-view-label>OVERVIEW</em></div>
-      <div class="world-corner-sigil top-left">I</div><div class="world-corner-sigil bottom-right">∞</div>`;
+      <div class="world-corner-sigil top-left">I</div><div class="world-corner-sigil bottom-right">∞</div>
+      <div class="world-view-gate"><i data-world-view-glyph>◇</i><span data-world-gate-label>OVERVIEW</span></div>`;
     document.body.appendChild(depthFrame);
   }
   function updateDepthFrame(phase,depth){
@@ -24,6 +34,14 @@
     depthFrame.querySelector('[data-world-depth-label]').textContent=phaseLabels[phase]||String(phase||'').toUpperCase();
     for(const rail of depthFrame.querySelectorAll('.world-depth-rail')){
       [...rail.querySelectorAll('b')].forEach((node,index)=>node.classList.toggle('active',depth>=index/3-.015));
+    }
+    if(phase!==currentPhase){
+      if(motionAllowed()){
+        clearTimeout(chapterTimer);depthFrame.dataset.chapter=phase;
+        depthFrame.classList.remove('world-chapter-shift');void depthFrame.offsetWidth;depthFrame.classList.add('world-chapter-shift');
+        chapterTimer=setTimeout(()=>depthFrame?.classList.remove('world-chapter-shift'),820);
+      }
+      currentPhase=phase;
     }
   }
 
@@ -147,13 +165,18 @@
 
   function view(name='overview'){
     const raw=String(name||'overview'),next=(raw.startsWith('asset:')?'asset':raw).replace(/[^a-z0-9-]/gi,'-').toLowerCase();
+    const meta=viewMeta[next]||[next.replace(/-/g,' ').toUpperCase(),'◇'];
     root.dataset.worldView=next||'overview';
     if(depthFrame){
-      depthFrame.querySelector('[data-world-view-label]').textContent=(next||'overview').replace(/-/g,' ').toUpperCase();
+      depthFrame.querySelector('[data-world-view-label]').textContent=meta[0];
+      const glyph=depthFrame.querySelector('[data-world-view-glyph]'),label=depthFrame.querySelector('[data-world-gate-label]');
+      if(glyph)glyph.textContent=meta[1];if(label)label.textContent=meta[0];
       if(raw!==currentView&&motionAllowed()){
-        clearTimeout(viewFlashTimer);
-        depthFrame.classList.remove('world-view-shift');void depthFrame.offsetWidth;depthFrame.classList.add('world-view-shift');
+        clearTimeout(viewFlashTimer);clearTimeout(viewGateTimer);
+        depthFrame.classList.remove('world-view-shift','world-view-gate-active');void depthFrame.offsetWidth;
+        depthFrame.classList.add('world-view-shift','world-view-gate-active');
         viewFlashTimer=setTimeout(()=>depthFrame?.classList.remove('world-view-shift'),760);
+        viewGateTimer=setTimeout(()=>depthFrame?.classList.remove('world-view-gate-active'),980);
       }
     }
     currentView=raw;
