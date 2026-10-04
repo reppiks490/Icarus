@@ -406,6 +406,12 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
   animation:world-impact 620ms cubic-bezier(.15,.75,.2,1) both;
 }
 @keyframes world-impact {to {transform:translate(-50%,-50%) scale(13);opacity:0}}
+.world-impact[data-kind="gate"] {border-radius:22%;background:conic-gradient(from 45deg,transparent 0 18%,color-mix(in srgb,var(--world-glow),#fff 12%) 20% 24%,transparent 26% 48%,color-mix(in srgb,var(--world-glow),transparent 25%) 50% 54%,transparent 56%);animation-name:world-impact-gate}
+.world-impact[data-kind="facet"] {border-radius:0;clip-path:polygon(50% 0,100% 35%,82% 100%,18% 100%,0 35%);background:radial-gradient(circle,color-mix(in srgb,var(--world-glow),#fff 20%),transparent 42%),linear-gradient(135deg,transparent 45%,color-mix(in srgb,var(--world-glow),transparent 24%) 48% 52%,transparent 55%);animation-name:world-impact-facet}
+.world-impact[data-kind="signal"] {background:transparent;border:1px solid color-mix(in srgb,var(--world-glow),#fff 15%);box-shadow:0 0 12px var(--world-glow),inset 0 0 8px color-mix(in srgb,var(--world-glow),transparent 45%);animation-name:world-impact-signal}
+@keyframes world-impact-gate {to {transform:translate(-50%,-50%) scale(10) rotate(90deg);opacity:0}}
+@keyframes world-impact-facet {to {transform:translate(-50%,-50%) scale(9) rotate(30deg);opacity:0}}
+@keyframes world-impact-signal {to {transform:translate(-50%,-50%) scale(7);opacity:0;border-width:.1px}}
 
 /* Long-scroll reveal is intentionally subtle: values remain stationary and readable. */
 .world-depth-enter {animation:world-depth-enter 720ms cubic-bezier(.2,.7,.2,1) both}
