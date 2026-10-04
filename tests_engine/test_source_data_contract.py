@@ -19,7 +19,7 @@ from icarus_engine.cli import main as engine_main
 from icarus_engine.feeds.bars import FileFeed, parse_ohlcv_csv, parse_timestamp
 from icarus_engine.learning_fabric import LearningFabric
 from icarus_engine.trainers.dataset import load_ohlc
-from icarus_engine.trainers.integrity import canonical_ts, inspect_ohlc
+from icarus_engine.trainers.integrity import PARSER as OHLC_PARSER, canonical_ts, inspect_ohlc
 from icarus_engine.trainers.run import train_file, train_xgb_file
 
 
@@ -156,6 +156,68 @@ class SourceDataContractTests(unittest.TestCase):
         self.assertEqual(len(parse_ohlcv_csv(exact)), 1)
         self.assertEqual(parse_ohlcv_csv(exact)[0].v, 0)
 
+    def test_identical_feature_columns_are_qualified_without_changing_source(self):
+        headers = HEADERS + ['TIDE Long', 'TIDE Short', ' tide LONG ', 'TIDE Short']
+        rows = [[1700000000 + i * 60, 10, 12, 9, 11, 0, i, 1, i, 1] for i in range(3)]
+        with tempfile.TemporaryDirectory() as temp:
+            path = write_csv(Path(temp) / 'source.csv', headers, rows)
+            original = path.read_bytes()
+            bars, manifest = inspect_ohlc(path)
+            self.assertEqual(manifest['status'], 'clean')
+            self.assertEqual([b['tide_long'] for b in bars], [0.0, 1.0])
+            self.assertEqual([b['tide_short'] for b in bars], [1.0, 1.0])
+            self.assertEqual(manifest['rows_total'], 3)
+            self.assertEqual(manifest['trailing_dropped'], 1)
+            self.assertEqual(manifest['raw_sha256'], hashlib.sha256(original).hexdigest())
+            self.assertEqual(path.read_bytes(), original)
+            self.assertEqual(manifest['duplicate_feature_columns'], [
+                {'name': 'TIDE Long', 'column_indexes_zero_based': [6, 8],
+                 'comparison': 'EXACT_CSV_CELL_TEXT', 'rows_compared': 3,
+                 'conflicting_rows': 0, 'missing_rows': 0, 'status': 'IDENTICAL'},
+                {'name': 'TIDE Short', 'column_indexes_zero_based': [7, 9],
+                 'comparison': 'EXACT_CSV_CELL_TEXT', 'rows_compared': 3,
+                 'conflicting_rows': 0, 'missing_rows': 0, 'status': 'IDENTICAL'}])
+            single = write_csv(Path(temp) / 'single.csv', headers[:8], [r[:8] for r in rows])
+            self.assertEqual(manifest['canonical_rows_sha256'], inspect_ohlc(single)[1]['canonical_rows_sha256'])
+
+    def test_feature_duplicate_conflicts_on_discarded_rows_still_block(self):
+        for bad_time in [1700000120, 'not-a-timestamp']:
+            with self.subTest(bad_time=bad_time), tempfile.TemporaryDirectory() as temp:
+                rows = [[1700000000, 10, 12, 9, 11, 0, 1, 1, 1],
+                        [1700000060, 10, 12, 9, 11, 0, 1, 1, 1],
+                        [bad_time, 10, 12, 9, 11, 0, 1, 1, 2]]
+                path = write_csv(Path(temp) / 'source.csv', HEADERS + ['TIDE Long'] * 3, rows)
+                bars, manifest = inspect_ohlc(path)
+                self.assertEqual(bars, [])
+                self.assertEqual(manifest['status'], 'blocked')
+                self.assertIn('duplicate_feature_columns', manifest)
+                self.assertEqual(manifest['duplicate_feature_columns'][0]['conflicting_rows'], 1)
+                self.assertEqual(manifest['duplicate_feature_columns'][0]['rows_compared'], 3)
+
+    def test_feature_duplicates_require_exact_cells_and_complete_columns(self):
+        for values in [['1', '1.0'], ['1', ' 1'], [], ['1']]:
+            with self.subTest(values=values), tempfile.TemporaryDirectory() as temp:
+                rows = [[1700000000, 10, 12, 9, 11, 0, 1, 1],
+                        [1700000060, 10, 12, 9, 11, 0] + values]
+                path = write_csv(Path(temp) / 'source.csv', HEADERS + ['TIDE Long'] * 2, rows)
+                bars, manifest = inspect_ohlc(path)
+                self.assertEqual(bars, [])
+                self.assertEqual(manifest['status'], 'blocked')
+                self.assertIn('duplicate_feature_columns', manifest)
+                witness = manifest['duplicate_feature_columns'][0]
+                self.assertEqual(witness['missing_rows'], 1 if len(values) < 2 else 0)
+                self.assertEqual(witness['conflicting_rows'], 0 if len(values) < 2 else 1)
+
+    def test_identical_blank_feature_cells_are_distinct_from_missing_cells(self):
+        with tempfile.TemporaryDirectory() as temp:
+            rows = [[1700000000 + i * 60, 10, 12, 9, 11, 0, '', ''] for i in range(3)]
+            path = write_csv(Path(temp) / 'source.csv', HEADERS + ['TIDE Long'] * 2, rows)
+            bars, manifest = inspect_ohlc(path)
+            self.assertEqual(manifest['status'], 'clean')
+            self.assertEqual(len(bars), 2)
+            self.assertIsNone(bars[0]['tide_long'])
+            self.assertEqual(manifest['duplicate_feature_columns'][0]['missing_rows'], 0)
+
     def test_feed_refuses_impossible_or_nonfinite_ohlc_and_volume(self):
         for fields in ['10,9,8,11,0', '10,12,11,11,0', '10,12,9,nan,0', '10,12,9,11,inf', '10,12,9,11,-1']:
             with self.subTest(fields=fields), self.assertRaisesRegex(ValueError, 'OHLC|volume'):
@@ -228,14 +290,14 @@ class SourceDataContractTests(unittest.TestCase):
             fabric = LearningFabric(root)
             try:
                 dataset = fabric.register_dataset(path, asset='NQ', chart_type='1m')['dataset']
-                old_manifest = dict(dataset['manifest'], parser='icarus.trainer.integrity/1', status='clean', reason='')
+                old_manifest = dict(dataset['manifest'], parser='icarus.trainer.integrity/2', status='clean', reason='')
                 report_raw = json.dumps({'status':'fitted', 'dataset_manifest':old_manifest, 'execution_authorized':False})
                 with fabric._conn:
                     fabric._conn.execute('UPDATE datasets SET manifest_json=? WHERE dataset_id=?', (json.dumps(old_manifest), dataset['dataset_id']))
                     fabric._conn.execute('INSERT INTO training_runs VALUES(?,?,?,?,?,?)', ('legacy-run', dataset['dataset_id'], 'logit', report_raw, 'fitted', '2026-09-30T00:00:00Z'))
                 refreshed = fabric.register_dataset(path, asset='NQ', chart_type='1m')['dataset']
                 self.assertEqual(refreshed['manifest']['status'], 'blocked')
-                self.assertEqual(refreshed['manifest']['parser'], 'icarus.trainer.integrity/2')
+                self.assertEqual(refreshed['manifest']['parser'], OHLC_PARSER)
                 result = fabric.backfill_dataset(dataset['dataset_id'], slots=['logit'])
                 self.assertEqual(result['status'], 'needs_requalification')
                 self.assertEqual(fabric.training_runs()[0]['status'], 'needs_requalification')
