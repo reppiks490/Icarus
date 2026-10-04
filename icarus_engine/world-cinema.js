@@ -6,6 +6,8 @@
   const clamp = n => Math.max(0, Math.min(1, n));
   const ease = n => { n=clamp(n); return n*n*(3-2*n); };
   let audio, master, enabled=false, audible=false, previousTime=null, noise;
+  let sceneElement,litPanel=null,panelFrame=0,panelPointer=null;
+  const worldTransitions=new Set();
   const voices = new Set(), entrances = new Set(), enteredCharts = new Set();
   const palettes = {
     divine:['#f5ce7a','#fff5d6','#82ddff'],
@@ -24,16 +26,17 @@
     const depth=3.6/(3.6+zz);
     return [cx+u*size*depth,cy+v*size*depth,zz];
   }
-  function draw(ctx,w,h,t,dt,{intro=false}={}) {
+  function draw(ctx,w,h,t,dt,{intro=false,pointer={x:0,y:0},detail='rich'}={}) {
     if(!ctx || !w || !h) return;
     const world=root.dataset.world || 'divine';
     const [color,light,other]=palettes[world]||palettes.divine;
-    const mobile=w<700;
+    const mobile=w<700,lean=detail==='light';
+    const cameraX=Math.max(-.5,Math.min(.5,Number(pointer.x)||0)),cameraY=Math.max(-.5,Math.min(.5,Number(pointer.y)||0));
     const cx=intro?w*.5:mobile?w*.5:w*.76;
     const cy=intro?h*.44:mobile?h*.71:h*.47;
     const size=Math.min(w*(intro?.24:mobile?.33:.19),h*(mobile?.23:.34));
-    const phase=t%18;
-    const fold=ease((phase-8)/2.7)*(1-ease((phase-11.4)/3.2));
+    const cycle=world==='void'?16:world==='astral'?30:24,phase=t%cycle;
+    const fold=ease((phase-cycle*.44)/(cycle*.15))*(1-ease((phase-cycle*.635)/(cycle*.178)));
     const breath=1+Math.sin(t*.48)*.025;
     const bloom=size*(1.5+fold*.5);
     ctx.save();
@@ -56,20 +59,22 @@
     ctx.globalCompositeOperation='source-over';
     // A dark, opaque aperture gives the glass and light a common vanishing point.
     const core=ctx.createRadialGradient(cx-size*.1,cy-size*.12,0,cx,cy,size*.45);
-    core.addColorStop(0,'#181527');core.addColorStop(.75,'#070711');core.addColorStop(1,'#07071100');
+    core.addColorStop(0,world==='void'?'#100718':'#0a0c1822');core.addColorStop(.75,world==='void'?'#070711':'#07071116');core.addColorStop(1,'#07071100');
     ctx.fillStyle=core;ctx.beginPath();ctx.arc(cx,cy,size*.45,0,TAU);ctx.fill();
-    // Glass tesserae: 72 independently projected facets, depth-sorted every frame.
+    const viewProject=(x,y,z,rx,ry,rz)=>project(x,y,z,rx+cameraY*.3,ry+cameraX*.4,rz,cx,cy,size);
+    // Distinct structures share a camera and bounded geometry budget.
     const facets=[];
-    for(let band=0;band<3;band++) {
-      const count=24,radius=(.66+band*.24)*(1-fold*.38)*breath;
-      const rx=.45+band*.55+Math.sin(t*.1+band)*.2;
-      const ry=t*(band%2?-.085:.065)+band*1.2;
-      const rz=t*.045+band*.8;
+    for(let band=0;band<(world==='astral'?0:3);band++) {
+      const count=lean?16:24,radius=(.66+band*.24)*(1-fold*.38)*breath;
+      const rx=world==='void'?1.12+band*.09:.20+band*.7+Math.sin(t*.08+band)*.14;
+      const ry=world==='void'?.2+Math.sin(t*.06)*.2:t*(band%2?-.04:.035)+band*1.2;
+      const rz=t*(world==='void'?-.16:.035)+band*.8;
       for(let i=0;i<count;i++) {
         const a=i*TAU/count,span=.075+fold*.04;
         const lift=Math.sin(i*1.7+t*.4+band)*.04+fold*(i%2?.20:-.20);
-        const pts=[[radius,a-span,lift], [radius+.17+fold*.12,a,lift+.04], [radius,a+span,lift], [radius-.035,a,lift-.07]]
-          .map(([r,theta,z])=>project(Math.cos(theta)*r,Math.sin(theta)*r,z,rx,ry,rz,cx,cy,size));
+        const length=world==='divine'?.34+Math.sin(a*2+t*.1)*.08:.14;
+        const pts=[[radius,a-span,lift], [radius+length+fold*.12,a,lift+.04], [radius,a+span,lift], [radius-.035,a,lift-.07]]
+          .map(([r,theta,z])=>viewProject(Math.cos(theta)*r,Math.sin(theta)*r,z,rx,ry,rz));
         facets.push({pts,z:pts.reduce((n,p)=>n+p[2],0)/4,band,i});
       }
     }
@@ -83,22 +88,91 @@
       ctx.fillStyle=gradient;ctx.fill();ctx.strokeStyle=(f.band===1?other:light)+opacity;ctx.lineWidth=.65;ctx.stroke();
       if(f.i%4===0)line(ctx,[f.pts[0].slice(0,2),f.pts[1].slice(0,2)],light+'bb',1.3);
     }
+    if(world==='divine') {
+      // Vaulted luminous arches unfold around the glass core.
+      for(let arch=0;arch<(lean?3:5);arch++) {
+        const angle=arch*TAU/5+t*.025,radius=.85+fold*.18,points=[];
+        for(let i=0;i<=36;i++) {
+          const a=i*Math.PI/36;
+          points.push(viewProject(Math.cos(a)*radius,-Math.sin(a)*1.65+.65,0,.12,angle,0).slice(0,2));
+        }
+        line(ctx,points,light+(arch%2?'75':'bb'),arch===2?1.6:.8);
+        const foot=viewProject(-radius,.65,0,.12,angle,0),tip=viewProject(-radius,1.03,0,.12,angle,0);
+        line(ctx,[foot.slice(0,2),tip.slice(0,2)],color+'88',1);
+      }
+    } else if(world==='void') {
+      // Counter-wound accretion strands wrap an opaque event horizon.
+      for(let ring=0;ring<(lean?3:6);ring++) {
+        const points=[];
+        for(let i=0;i<=80;i++) {
+          const a=i*TAU/80+t*(ring%2?.14:-.1),r=.65+ring*.09+Math.sin(a*3+t*.2)*.035;
+          points.push(viewProject(Math.cos(a)*r,Math.sin(a)*r,Math.sin(a*2+t*.3)*.03,1.13,.14,ring*.12).slice(0,2));
+        }
+        line(ctx,points,(ring%2?other:color)+(ring%2?'70':'aa'),ring===2?2:.8);
+      }
+      const dark=ctx.createRadialGradient(cx,cy,0,cx,cy,size*.35);
+      dark.addColorStop(0,'#030207');dark.addColorStop(.87,'#040208');dark.addColorStop(1,'#04020800');
+      ctx.fillStyle=dark;ctx.beginPath();ctx.arc(cx,cy,size*.35,0,TAU);ctx.fill();
+      ctx.strokeStyle=light+'99';ctx.lineWidth=.9;ctx.beginPath();ctx.ellipse(cx,cy,size*.35,size*.32,-.18,0,TAU);ctx.stroke();
+    } else {
+      // Moving star atlas and helical meridian: decorative geometry only.
+      const stars=[],count=lean?24:40;
+      for(let i=0;i<count;i++) {
+        const y=1-(i/(count-1))*2,r=Math.sqrt(Math.max(0,1-y*y)),a=i*2.39996;
+        stars.push(viewProject(Math.cos(a)*r*1.12,y*1.12,Math.sin(a)*r*1.12,t*.07,t*.11,.2));
+      }
+      for(let i=0;i<count;i++)for(const step of [5,8]) {
+        const j=(i+step)%count,p=stars[i],q=stars[j];
+        if(Math.hypot(p[0]-q[0],p[1]-q[1])<size*.85)line(ctx,[p.slice(0,2),q.slice(0,2)],(step===5?color:other)+'66',.8);
+      }
+      stars.sort((a,b)=>b[2]-a[2]);
+      for(let i=0;i<stars.length;i++) {
+        const [x,y,z]=stars[i],r=1.2+(1-z)*.65;
+        ctx.fillStyle=i%3?light:other;ctx.shadowColor=color;ctx.shadowBlur=lean?0:10;
+        ctx.beginPath();ctx.arc(x,y,r,0,TAU);ctx.fill();ctx.shadowBlur=0;
+        if(i%7===0){line(ctx,[[x-5,y],[x+5,y]],light+'88',.7);line(ctx,[[x,y-5],[x,y+5]],light+'88',.7);}
+      }
+      const helix=[];
+      for(let i=0;i<=100;i++) {
+        const a=i*.12+t*.12,y=(i/100-.5)*2.4;
+        helix.push(viewProject(Math.cos(a)*.87,y,Math.sin(a)*.87,.22,t*.11,.2).slice(0,2));
+      }
+      line(ctx,helix,other+'aa',1.2);
+    }
     // Orbit inscriptions are geometric ticks, not borrowed symbols or fake numbers.
     for(let ring=0;ring<2;ring++) {
       const radius=1.25+ring*.14;
-      for(let i=0;i<80;i++) {
-        const a=i*TAU/80+t*(ring?-.022:.027),r=radius+(i%5===0?.045:.014);
-        const p=project(Math.cos(a)*radius,Math.sin(a)*radius,0,.35+ring*.4,.2,0,cx,cy,size);
-        const q=project(Math.cos(a)*r,Math.sin(a)*r,0,.35+ring*.4,.2,0,cx,cy,size);
+      for(let i=0;i<(lean?40:80);i++) {
+        const a=i*TAU/(lean?40:80)+t*(ring?-.022:.027),r=radius+(i%5===0?.045:.014);
+        const p=viewProject(Math.cos(a)*radius,Math.sin(a)*radius,0,.35+ring*.4,.2,0);
+        const q=viewProject(Math.cos(a)*r,Math.sin(a)*r,0,.35+ring*.4,.2,0);
         line(ctx,[p.slice(0,2),q.slice(0,2)],color+(i%5===0?'88':'35'),.7);
       }
     }
-    // A suspended geometric seed slowly opens into a four-dimensional-looking lattice.
-    const points=[];
-    for(let i=0;i<8;i++) points.push(project((i&1?.19:-.19)*(1-fold*.7),(i&2?.19:-.19)*(1+fold*1.8),(i&4?.19:-.19),t*.22,t*.17,t*.06,cx,cy,size));
-    ctx.shadowColor=color;ctx.shadowBlur=10;
-    for(let i=0;i<8;i++)for(const bit of [1,2,4])if(!(i&bit))line(ctx,[points[i].slice(0,2),points[i|bit].slice(0,2)],light+'cc',1);
-    ctx.shadowBlur=0;
+    // Each world has its own focal form rather than a shared opaque centerpiece.
+    if(world==='divine') {
+      const vertices=[[0,-.43-fold*.1,0],[.2,0,0],[0,0,.2],[-.2,0,0],[0,0,-.2],[0,.43+fold*.1,0]]
+        .map(([x,y,z])=>viewProject(x,y,z,.18,t*.24,.06));
+      const faces=[];
+      for(let i=1;i<=4;i++)for(const tip of [0,5]) {
+        const points=[vertices[tip],vertices[i],vertices[i%4+1]];
+        faces.push({points,z:points.reduce((sum,p)=>sum+p[2],0)/3});
+      }
+      faces.sort((a,b)=>b.z-a.z);
+      for(const {points} of faces) {
+        ctx.beginPath();ctx.moveTo(points[0][0],points[0][1]);for(const p of points.slice(1))ctx.lineTo(p[0],p[1]);ctx.closePath();
+        const g=ctx.createLinearGradient(points[0][0],points[0][1],points[1][0]+1,points[1][1]+1);
+        g.addColorStop(0,light+'ee');g.addColorStop(.5,color+'99');g.addColorStop(1,'#423b3188');
+        ctx.fillStyle=g;ctx.fill();ctx.strokeStyle=light;ctx.lineWidth=.8;ctx.stroke();
+      }
+    } else if(world==='astral') {
+      ctx.save();ctx.globalCompositeOperation='screen';ctx.shadowColor=color;ctx.shadowBlur=lean?0:18;
+      for(let i=0;i<4;i++) {
+        const a=t*.08+i*Math.PI/4,r=(i%2?.1:.2)*size;
+        line(ctx,[[cx-Math.cos(a)*r,cy-Math.sin(a)*r],[cx+Math.cos(a)*r,cy+Math.sin(a)*r]],light+'bb',i%2?.7:1.2);
+      }
+      ctx.fillStyle=light;ctx.beginPath();ctx.arc(cx,cy,2.8+Math.sin(t*.7)*.5,0,TAU);ctx.fill();ctx.restore();
+    }
     // Traveling sparks follow curved paths through the instrument rather than falling randomly.
     ctx.globalCompositeOperation='screen';
     for(let i=0;i<36;i++) {
@@ -114,11 +188,58 @@
     }
     ctx.restore();
     if(audible && previousTime!==null && t-previousTime<.2) {
-      const cycle=Math.floor(t/18)*18;
-      if(previousTime<cycle+8&&t>=cycle+8) sound('fold');
-      if(previousTime<cycle+11.4&&t>=cycle+11.4) sound('release');
+      const start=Math.floor(t/cycle)*cycle;
+      if(previousTime<start+cycle*.44&&t>=start+cycle*.44) sound('fold');
+      if(previousTime<start+cycle*.635&&t>=start+cycle*.635) sound('release');
     }
     previousTime=t;
+  }
+  const motionAllowed=()=>root.dataset.motion==='live'&&root.dataset.experience==='cinematic'&&!!root.dataset.world&&!document.hidden;
+  function clearPanel() {
+    cancelAnimationFrame(panelFrame);panelFrame=0;panelPointer=null;
+    if(litPanel){litPanel.classList.remove('world-lit');litPanel.style.removeProperty('--panel-x');litPanel.style.removeProperty('--panel-y');litPanel=null;}
+  }
+  function init(element) {
+    if(sceneElement)return;sceneElement=element;
+    const view=document.getElementById('view');
+    view?.addEventListener('pointermove',event=>{
+      if(event.pointerType==='touch'||!motionAllowed()||root.dataset.introActive==='true')return;
+      const panel=event.target.closest?.('.card,.asset');
+      if(!panel||!view.contains(panel)){clearPanel();return;}
+      if(litPanel!==panel){clearPanel();litPanel=panel;panel.classList.add('world-lit');}
+      panelPointer={x:event.clientX,y:event.clientY};
+      if(!panelFrame)panelFrame=requestAnimationFrame(()=>{
+        panelFrame=0;if(!litPanel?.isConnected||!panelPointer||!motionAllowed()){clearPanel();return;}
+        const r=litPanel.getBoundingClientRect();
+        litPanel.style.setProperty('--panel-x',Math.max(0,Math.min(100,(panelPointer.x-r.left)/Math.max(1,r.width)*100)).toFixed(1)+'%');
+        litPanel.style.setProperty('--panel-y',Math.max(0,Math.min(100,(panelPointer.y-r.top)/Math.max(1,r.height)*100)).toFixed(1)+'%');
+      });
+    },{passive:true});
+    view?.addEventListener('pointerleave',clearPanel,{passive:true});
+  }
+  function transitionWorld(element,from) {
+    for(const animation of worldTransitions)animation.cancel();worldTransitions.clear();
+    element.querySelectorAll('.world-veil').forEach(el=>el.remove());
+    if(!motionAllowed()||root.dataset.introActive==='true')return;
+    const animate=(target,keyframes,options,remove=false)=>{
+      if(!target.animate){if(remove)target.remove();return;}
+      const animation=target.animate(keyframes,options);worldTransitions.add(animation);
+      const cleanup=()=>{worldTransitions.delete(animation);if(remove)target.remove();};
+      animation.onfinish=cleanup;animation.oncancel=cleanup;
+    };
+    if(palettes[from]) {
+      const veil=document.createElement('div');veil.className='world-veil';veil.setAttribute('aria-hidden','true');
+      veil.style.backgroundImage=`url('/worlds/${from}.webp')`;element.appendChild(veil);
+      animate(veil,[{opacity:.7,clipPath:'circle(150% at 76% 50%)'},{opacity:0,clipPath:'circle(0% at 76% 50%)'}],{duration:1050,easing:'cubic-bezier(.2,.7,.2,1)'},true);
+    }
+    const heading=element.querySelector('h1'),title=heading.textContent;
+    heading.setAttribute('aria-label',title);heading.replaceChildren();
+    title.split(' ').forEach((word,i)=>{
+      const span=document.createElement('span');span.className='world-word';span.textContent=word;span.setAttribute('aria-hidden','true');heading.append(span,document.createTextNode(' '));
+      animate(span,[{opacity:.25,transform:'translateY(14px) rotateX(35deg)'},{opacity:1,transform:'translateY(0) rotateX(0deg)'}],{duration:820,delay:i*70,easing:'cubic-bezier(.2,.7,.2,1)'});
+    });
+    const caption=element.querySelector('#worldCaption');
+    if(caption)animate(caption,[{opacity:.3,transform:'translateY(6px)'},{opacity:1,transform:'translateY(0)'}],{duration:850,easing:'ease-out'});
   }
   function sound(kind) {
     if(!enabled||!audible||!audio||audio.state!=='running'||document.hidden) return;
@@ -145,12 +266,15 @@
     audible=!!active;previousTime=null;
     if(master&&audio) master.gain.setTargetAtTime(enabled && audible ? .35 : 0,audio.currentTime,.025);
     if(!active) for(const source of voices) {try {source.stop();}catch(_) { /* already ended */ }}
-    if(root.dataset.motion==='off'||root.dataset.experience!=='cinematic'||document.hidden) {
+    if(!motionAllowed()||root.dataset.introActive==='true') {
+      clearPanel();
+      for(const animation of worldTransitions)animation.cancel();worldTransitions.clear();
       for(const animation of entrances) animation.cancel();entrances.clear();
     }
   }
   async function toggleSound(button) {
     if(enabled) {enabled=false;sync(audible);button.textContent='Enable celestial sound';button.setAttribute('aria-pressed','false');return;}
+    button.disabled=true;
     try {
       const Audio=window.AudioContext||window.webkitAudioContext;
       if(!Audio) throw Error('Audio unavailable');
@@ -163,6 +287,7 @@
       if(audio.state!=='running') throw Error('Audio suspended');
       enabled=true;sync(audible);button.textContent='Mute celestial sound';button.setAttribute('aria-pressed','true');
     } catch(_) {button.textContent='Sound unavailable · retry';button.setAttribute('aria-pressed','false');}
+    finally {button.disabled=false;}
   }
   function enterView() {
     enteredCharts.clear();
@@ -189,5 +314,5 @@
     entrances.add(animation);
     animation.onfinish=()=>entrances.delete(animation);animation.oncancel=()=>entrances.delete(animation);
   }
-  window.IcarusWorldCinema=Object.freeze({draw,sync,toggleSound,enterView,enterChart});
+  window.IcarusWorldCinema=Object.freeze({draw,sync,toggleSound,enterView,enterChart,init,transitionWorld});
 })();
