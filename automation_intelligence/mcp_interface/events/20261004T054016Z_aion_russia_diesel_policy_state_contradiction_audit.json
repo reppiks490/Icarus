@@ -1,0 +1,61 @@
+{
+  "schema": "icarus-mcp-event-v1",
+  "category": "AUDIT",
+  "source": "AION_AUTOMATION",
+  "execution_authorized": false,
+  "created_at": "2026-10-04T05:40:16Z",
+  "title": "Russia diesel policy-state contradiction audit",
+  "net_new_delta": "PUTIN_SANCTIONS_LINKED_EXPORT_WITHDRAWAL_IS_NOT_A_STABLE_STRUCTURAL_REGIME_ESTIMATOR_BECAUSE_NOVAK_IDENTIFIED_A_DOMESTIC_OVERPRODUCTION_ESCAPE_CONDITION_ONE_DAY_LATER",
+  "claim_evidence_status": "POLICY_STATEMENTS_PROVENANCED; STRUCTURAL_EXPORT_WITHDRAWAL_DURATION_AND_MARKET_EDGE_UNVALIDATED",
+  "falsification_result": "FALSIFIED_AS_SINGLE_CONDITION_STRUCTURAL_REGIME: sanctions relief is not the only stated path to resumed exports; domestic overproduction is an explicit competing condition.",
+  "maturity_change": "Causal policy-state taxonomy improves; no model, parameter, anomaly, calibration, or performance maturity increase.",
+  "evidence": [
+    {
+      "type": "git_commit",
+      "repository": "reppiks490/Icarus",
+      "sha": "f7ca4c9bcf54e438edd1b8b341ac62ef5e6ac7aa",
+      "path": "automation_intelligence/mcp_interface/events/20261004T051023Z_macro_russia_diesel_structural_export_withdrawal.json"
+    },
+    {
+      "publisher": "Reuters",
+      "date": "2026-10-01",
+      "finding": "Putin said Russia would not supply diesel globally until sanctions are lifted."
+    },
+    {
+      "publisher": "Reuters",
+      "date": "2026-10-02",
+      "finding": "Deputy PM Novak said Russia could partially lift diesel export restrictions if domestic production exceeds demand."
+    }
+  ],
+  "quantitative_assurance": {
+    "provenance": "Exact ICARUS source commit plus dated Reuters observations.",
+    "temporal_integrity": "The Oct 2 Novak condition postdates and materially qualifies the Oct 1 Putin statement; states must remain timestamped rather than retroactively collapsed.",
+    "realistic_costs": "Not applicable to policy-state validation; mandatory before any derived trading-performance claim.",
+    "multiple_testing": "No performance test performed; instrument/horizon/specification multiplicity remains unresolved.",
+    "estimator_validity": "A single political statement is not a stable duration estimator when a competing policy escape condition is stated the next day.",
+    "data_sufficiency": "Insufficient for duration or price-effect estimation; realized export/customs/shipping observations are required.",
+    "redundancy_ablation": "Separate political statements, formal export rules, refinery production, customs/shipping flows, inventories, and diesel cracks.",
+    "oos": "No held-out/OOS performance evidence; none claimed."
+  },
+  "blockers": [
+    "Actual October-November Russian diesel export volumes are not yet established.",
+    "Implementation hierarchy between presidential rhetoric, government rules, exemptions, and overproduction relief is unresolved.",
+    "Russian energy disclosure restrictions impair observability.",
+    "No frozen event population, effective-N estimate, multiplicity correction, protected OOS block, or cost-valid trading rule."
+  ],
+  "next_decisive_experiment": "Pre-register a policy-to-flow state model with distinct timestamped states for rhetoric, formal rule, exemption/relief condition, refinery output, realized export flow, inventories, and diesel cracks. Reconstruct historical Russian diesel restriction episodes, cluster dependent announcements, freeze horizons before outcomes, compare statement-only versus formal-rule versus realized-flow models, preserve the final contiguous episode block for OOS, and apply costs only to any surviving trading rule.",
+  "aion": {
+    "status": "MATERIAL_FINDING",
+    "finding": "Preserve the Oct 1 sanctions condition and Oct 2 overproduction escape condition as separate immutable states; the later observation qualifies rather than rewrites the earlier one."
+  },
+  "ascension": {
+    "status": "MATERIAL_FINDING",
+    "finding": "The sanctions-linked structural-risk hypothesis cannot gain duration or predictive authority from the Oct 1 statement because a competing relief condition was stated one day later and realized flows remain unverified."
+  },
+  "prometheus": {
+    "status": "MATERIAL_FINDING",
+    "finding": "Prioritize policy-to-flow state-transition testing over headline-direction studies; preserve failure of a single-condition structural regime as negative evidence."
+  },
+  "daedalus_blocking_overridden": false,
+  "learning_claim": "Durable learning is claimed only if this exact event is successfully persisted and subsequently admitted by the Adaptive Brain's allowlist and Git-blob verification."
+}
