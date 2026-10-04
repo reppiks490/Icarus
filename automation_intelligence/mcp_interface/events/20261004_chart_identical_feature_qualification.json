@@ -1,0 +1,24 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "20261004_chart_identical_feature_qualification",
+  "category": "REPAIR",
+  "status": "verified",
+  "severity": "success",
+  "recorded_at": "2026-10-04T01:51:46.858Z",
+  "created_by": "Codex",
+  "source_repository": "reppiks490/Icarus",
+  "source_ref": "codex/identical-feature-columns-20261004",
+  "source_commit": "ceac2394fdd15aaae27a5270a40a71ec0f426e96",
+  "subsystems": [
+    "research-validation"
+  ],
+  "title": "Identical chart feature columns qualified without guessing",
+  "summary": "Trainer integrity/3 accepts duplicated TIDE Long/TIDE Short headers only after every parsed CSV row proves exact cell-text equality. Core price, time and volume aliases remain ambiguous; missing or conflicting feature cells remain blocked, including discarded rows. Both existing chart hashes pass structural inspection: 41,239 source rows each, 41,238 admitted after the trailing bar exclusion. Column indexes and comparison counts are preserved in the manifest. Original files are unchanged. No fitting or economic-performance qualification was performed; earlier parser training receipts still require explicit requalification.",
+  "evidence": [
+    "coordination/CHART_COLUMN_QUALIFICATION_20261004.json",
+    "tests_engine/test_source_data_contract.py",
+    "26 local source-contract tests passed; hosted verification is recorded on the pull request."
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}
