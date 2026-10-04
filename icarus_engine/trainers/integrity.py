@@ -6,7 +6,7 @@ import csv, hashlib, io, json, math, statistics
 from pathlib import Path
 from ..evidence.timestamps import PARSER_VERSION as TIMESTAMP_PARSER, normalize_timestamp
 
-PARSER = "icarus.trainer.integrity/2"
+PARSER = "icarus.trainer.integrity/3"
 
 def _num(v):
     if v is None or v == "":
@@ -22,11 +22,31 @@ def canonical_ts(raw):
     record = normalize_timestamp(raw)
     return record.epoch_seconds if record else None
 
-def _columns(fieldnames, ambiguous):
+def _columns(fieldnames, ambiguous, raw_rows, duplicate_features):
     def col(*names):
-        matches = [k for k in fieldnames or [] if k.strip().lower() in {n.lower() for n in names}]
+        indexes = [i for i, k in enumerate(fieldnames) if k.strip().lower() in {n.lower() for n in names}]
+        matches = [fieldnames[i] for i in indexes]
         if len(matches) > 1:
-            ambiguous.append('/'.join(names))
+            # Only optional TIDE features may be coalesced. Core price/time/volume
+            # aliases stay ambiguous. Compare every physical CSV row before any
+            # timestamp, OHLC, duplicate-bar or trailing-bar filtering takes place.
+            identical = False
+            if names in (("TIDE Long",), ("TIDE Short",)):
+                missing = conflicts = 0
+                for row in raw_rows:
+                    if indexes[-1] >= len(row):
+                        missing += 1
+                    elif any(row[i] != row[indexes[0]] for i in indexes[1:]):
+                        conflicts += 1
+                identical = not (missing or conflicts)
+                duplicate_features.append({
+                    "name": names[0], "column_indexes_zero_based": indexes,
+                    "comparison": "EXACT_CSV_CELL_TEXT", "rows_compared": len(raw_rows),
+                    "conflicting_rows": conflicts, "missing_rows": missing,
+                    "status": "IDENTICAL" if identical else "AMBIGUOUS",
+                })
+            if not identical:
+                ambiguous.append('/'.join(names))
         return matches[0] if matches else None
     return col
 
@@ -36,12 +56,14 @@ def inspect_ohlc(path, *, raw_bytes=None):
     raw = path.read_bytes() if raw_bytes is None else raw_bytes
     if not isinstance(raw, bytes):
         raise ValueError("OHLC snapshot must be bytes")
-    reader = csv.DictReader(io.StringIO(raw.decode("utf-8-sig"), newline=""))
-    rows = list(reader)
-    if not rows:
+    reader = csv.reader(io.StringIO(raw.decode("utf-8-sig"), newline=""))
+    fieldnames = next(reader, [])
+    raw_rows = [row for row in reader if row]
+    if not raw_rows:
         raise ValueError(f"empty csv {path}")
     ambiguous = []
-    col = _columns(reader.fieldnames, ambiguous)
+    duplicate_features = []
+    col = _columns(fieldnames, ambiguous, raw_rows, duplicate_features)
     t_k, o_k, h_k, l_k, c_k = col("time", "ts"), col("open"), col("high"), col("low"), col("close")
     v_k, tl_k, ts_k = col("volume", "Volume"), col("TIDE Long"), col("TIDE Short")
     if not t_k or not c_k:
@@ -52,7 +74,10 @@ def inspect_ohlc(path, *, raw_bytes=None):
     by_ts, exact_ts, prev = {}, {}, None
     conflicts, precision_conflicts = set(), set()
     units, bases = {}, {}
-    for row in rows:
+    for cells in raw_rows:
+        # Duplicate keys are safe only for the selected feature groups proven
+        # identical above. Every other selected duplicate still blocks admission.
+        row = dict(zip(fieldnames, cells))
         record = normalize_timestamp(row.get(t_k))
         if record is None:
             counts["unparseable_time"] += 1
@@ -125,7 +150,8 @@ def inspect_ohlc(path, *, raw_bytes=None):
         "timestamp_unit_counts": units, "timezone_basis_counts": bases,
         "timestamp_unit_policy": "MAGNITUDE_DETECTED_NOT_PROVIDER_ATTESTED",
         "path": str(path), "raw_sha256": hashlib.sha256(raw).hexdigest(),
-        "rows_total": len(rows), "rows_used": len(bars), **counts,
+        "rows_total": len(raw_rows), "rows_used": len(bars), **counts,
+        "duplicate_feature_columns": duplicate_features,
         "first_ts": bars[0]["ts"] if bars else None, "last_ts": bars[-1]["ts"] if bars else None,
         "median_step": statistics.median(steps) if steps else None,
         "canonical_rows_sha256": hashlib.sha256(json.dumps(

@@ -1,0 +1,102 @@
+{
+  "charts": [
+    {
+      "canonical_rows_sha256": "059755863009f5eb439c7126ca52f4dc1138d3fb7a0aea201dec898442f66b61",
+      "duplicate_feature_columns": [
+        {
+          "column_indexes_zero_based": [
+            11,
+            25
+          ],
+          "comparison": "EXACT_CSV_CELL_TEXT",
+          "conflicting_rows": 0,
+          "missing_rows": 0,
+          "name": "TIDE Long",
+          "rows_compared": 41239,
+          "status": "IDENTICAL"
+        },
+        {
+          "column_indexes_zero_based": [
+            12,
+            26
+          ],
+          "comparison": "EXACT_CSV_CELL_TEXT",
+          "conflicting_rows": 0,
+          "missing_rows": 0,
+          "name": "TIDE Short",
+          "rows_compared": 41239,
+          "status": "IDENTICAL"
+        }
+      ],
+      "parser": "icarus.trainer.integrity/3",
+      "raw_sha256": "a8141ffa372b4ffaba4d6bf8b8998a489f2daf00bfad5e248bf27132d99f0932",
+      "reason": "",
+      "rows_total": 41239,
+      "rows_used": 41238,
+      "status": "clean",
+      "timestamp_parser": "icarus.evidence.timestamps/1",
+      "timestamp_unit_counts": {
+        "seconds": 41239
+      },
+      "timestamp_unit_policy": "MAGNITUDE_DETECTED_NOT_PROVIDER_ATTESTED",
+      "timezone_basis_counts": {
+        "UTC_EPOCH": 41239
+      },
+      "trailing_dropped": 1
+    },
+    {
+      "canonical_rows_sha256": "76d154ad808bb464eee5e40aba244bee0efbd350212e860b51fbdb9b2d7aa71e",
+      "duplicate_feature_columns": [
+        {
+          "column_indexes_zero_based": [
+            11,
+            25
+          ],
+          "comparison": "EXACT_CSV_CELL_TEXT",
+          "conflicting_rows": 0,
+          "missing_rows": 0,
+          "name": "TIDE Long",
+          "rows_compared": 41239,
+          "status": "IDENTICAL"
+        },
+        {
+          "column_indexes_zero_based": [
+            12,
+            26
+          ],
+          "comparison": "EXACT_CSV_CELL_TEXT",
+          "conflicting_rows": 0,
+          "missing_rows": 0,
+          "name": "TIDE Short",
+          "rows_compared": 41239,
+          "status": "IDENTICAL"
+        }
+      ],
+      "parser": "icarus.trainer.integrity/3",
+      "raw_sha256": "4fe26a9b2ee9a5e81c24577f2abd51073e7e944f4f6aa43a77b61095af44e48c",
+      "reason": "",
+      "rows_total": 41239,
+      "rows_used": 41238,
+      "status": "clean",
+      "timestamp_parser": "icarus.evidence.timestamps/1",
+      "timestamp_unit_counts": {
+        "seconds": 41239
+      },
+      "timestamp_unit_policy": "MAGNITUDE_DETECTED_NOT_PROVIDER_ATTESTED",
+      "timezone_basis_counts": {
+        "UTC_EPOCH": 41239
+      },
+      "trailing_dropped": 1
+    }
+  ],
+  "execution_authorized": false,
+  "implementation_sha256": "5dae67d25da89b51c97d96e8b8f4832337fb4e382a7e35fe1865e5c7073e63da",
+  "limits": [
+    "Qualification establishes identical selected CSV cell text, not indicator provenance or provider-time attestation.",
+    "Existing receipts from earlier parser versions require explicit requalification.",
+    "No model fitting or economic-performance qualification was performed."
+  ],
+  "production_decision_authorized": false,
+  "schema_version": "icarus-chart-column-qualification-v1",
+  "training_executed": false
+}
