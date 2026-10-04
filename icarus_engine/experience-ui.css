@@ -557,3 +557,41 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 @media (prefers-reduced-motion:reduce) {
   .intro-vault,.intro-horizon,.intro-aperture,.intro-glyphs i,.world-intro::after {animation:none!important}
 }
+
+
+/* Each world has its own architectural grammar below the hero, not merely a palette swap. */
+:root[data-world="divine"]:not([data-experience="focus"]) body::after {
+  background:
+    radial-gradient(circle at var(--world-light-x) var(--world-light-y),#f1ce8b16,transparent 31%),
+    repeating-conic-gradient(from 270deg at 50% -12%,transparent 0deg 7deg,#d5ab5806 8deg,transparent 9deg 16deg),
+    repeating-linear-gradient(90deg,transparent 0 119px,#d5ab5808 120px),
+    linear-gradient(180deg,transparent,#080a1088 82%,#080a10);
+}
+:root[data-world="void"]:not([data-experience="focus"]) body::after {
+  background:
+    radial-gradient(circle at var(--world-light-x) var(--world-light-y),#ed1d5619,transparent 28%),
+    repeating-linear-gradient(117deg,transparent 0 143px,#ed1d5608 144px,transparent 146px 231px),
+    repeating-linear-gradient(90deg,transparent 0 89px,#ed1d5605 90px),
+    linear-gradient(180deg,transparent,#07050b99 78%,#07050b);
+}
+:root[data-world="astral"]:not([data-experience="focus"]) body::after {
+  background:
+    radial-gradient(circle at var(--world-light-x) var(--world-light-y),#8d64f91b,transparent 30%),
+    radial-gradient(circle,#bceaff18 0 1px,transparent 1.4px),
+    radial-gradient(circle,#c3a7ff12 0 1px,transparent 1.5px),
+    linear-gradient(180deg,transparent,#06081792 80%,#060817);
+  background-size:auto,83px 79px,131px 127px,auto;
+  background-position:0 0,17px 31px,73px 11px,0 0;
+}
+:root[data-world="void"] .world-depth-rail::before {background:repeating-linear-gradient(180deg,transparent 0 8px,color-mix(in srgb,var(--world-glow),transparent 65%) 9px,transparent 10px 17px)}
+:root[data-world="void"] .world-depth-rail b {border-radius:1px}
+:root[data-world="astral"] .world-depth-rail::before {background:repeating-linear-gradient(180deg,color-mix(in srgb,var(--world-glow),transparent 62%) 0 1px,transparent 1px 7px)}
+:root[data-world="astral"] .world-depth-rail b {border-radius:50%}
+:root[data-world="divine"] .world-corner-sigil {font-family:Georgia,'Times New Roman',serif}
+:root[data-world="void"] :is(.card,.asset,.group)::after {background:
+  linear-gradient(145deg,color-mix(in srgb,var(--world-glow),transparent 45%) 0 1px,transparent 1px 28px) top left/62px 62px no-repeat,
+  linear-gradient(325deg,color-mix(in srgb,var(--world-glow),transparent 68%) 0 1px,transparent 1px 22px) bottom right/52px 52px no-repeat}
+:root[data-world="astral"] :is(.card,.asset,.group)::after {background:
+  radial-gradient(circle at 12px 12px,color-mix(in srgb,var(--world-glow),transparent 35%) 0 1px,transparent 2px),
+  linear-gradient(135deg,color-mix(in srgb,var(--world-glow),transparent 72%) 0 1px,transparent 1px 28px) top left/56px 56px no-repeat,
+  linear-gradient(315deg,color-mix(in srgb,#bceaff,transparent 78%) 0 1px,transparent 1px 20px) bottom right/48px 48px no-repeat}
