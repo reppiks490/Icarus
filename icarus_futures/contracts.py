@@ -3,13 +3,15 @@
 dated contract call :func:`resolve`, which returns the front contract for a session date
 using an explicit, configurable roll rule:
 
-* equity index (H M U Z): expiry = 3rd Friday of the contract month; roll
-  ``EQUITY_ROLL_DAYS`` calendar days before expiry (default 8, i.e. the Thursday of the
-  prior week). CL research notes flag CME's published roll-date convention as needing
-  confirmation, so the offset is a parameter, not a constant buried in code.
+* equity index (H M U Z): CME's published convention — "Equity products roll date is the
+  Monday prior to the third Friday of the expiration month" (CME Group, Equity Index Roll
+  Dates; CL research notes 2026-10-04). Expiry is the 3rd Friday, moved to the prior
+  business day when that Friday is an exchange holiday (June 2026 expired Thursday 6/18
+  because 6/19 was Juneteenth; the roll stayed Monday 6/15). The common "3rd Friday minus
+  8 days (Thursday)" rule is NOT CME's convention.
 * metals: roll ``METALS_ROLL_BDAYS`` business days before first notice day
   (FND = last business day of the month before the contract month).
-Exchange holidays are not modelled; dates landing on one are reported, not guessed."""
+Only holidays listed in EXPIRY_HOLIDAYS are applied; extend it from CME's calendar."""
 from __future__ import annotations
 
 import re
@@ -17,7 +19,8 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 
 MONTH_CODES = "FGHJKMNQUVXZ"
-EQUITY_ROLL_DAYS = 8
+EQUITY_ROLL_WEEKDAY_BEFORE = 4   # Monday = 3rd Friday - 4 days
+EXPIRY_HOLIDAYS = {date(2026, 6, 19)}  # Juneteenth 2026 fell on a 3rd Friday (verified)
 METALS_ROLL_BDAYS = 2
 
 
@@ -94,8 +97,11 @@ def _minus_bdays(d: date, n: int) -> date:
 def contract_dates(spec: ContractSpec, y: int, m: int) -> tuple[date, date]:
     """(last relevant date, roll date) for the contract of month m, year y."""
     if spec.kind == "equity":
-        exp = _third_friday(y, m)
-        return exp, exp - timedelta(days=EQUITY_ROLL_DAYS)
+        third = _third_friday(y, m)
+        exp = third
+        while exp in EXPIRY_HOLIDAYS or exp.weekday() >= 5:
+            exp -= timedelta(days=1)
+        return exp, third - timedelta(days=EQUITY_ROLL_WEEKDAY_BEFORE)
     fnd = _last_bday_before(y, m)
     return fnd, _minus_bdays(fnd, METALS_ROLL_BDAYS)
 

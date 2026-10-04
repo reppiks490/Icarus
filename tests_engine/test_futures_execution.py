@@ -29,10 +29,13 @@ def _buy(qty=2, kind="MARKET", price=None, ts="2026-10-05T14:00:00Z", **kw):
 
 # ---------------- contracts ----------------
 def test_continuous_identity_resolves_and_rolls():
-    assert contracts.resolve("NQ1!", date(2026, 9, 9))["contract"] == "NQU26"
-    assert contracts.resolve("NQ1!", date(2026, 9, 10))["contract"] == "NQZ26"   # roll = 3rd Fri (18th) - 8 days
+    # CME: equity roll = Monday prior to the 3rd Friday (Sep 2026: Fri 18th -> roll Mon 14th)
+    assert contracts.resolve("NQ1!", date(2026, 9, 13))["contract"] == "NQU26"
+    assert contracts.resolve("NQ1!", date(2026, 9, 14))["contract"] == "NQZ26"
+    jun = contracts.resolve("ES1!", date(2026, 6, 12))
+    assert jun["contract"] == "ESM26" and jun["roll_date"] == "2026-06-15" and jun["last_date"] == "2026-06-18"
     assert contracts.resolve("CME_MINI:MNQ1!", date(2026, 12, 31))["contract"] == "MNQH27"
-    assert contracts.resolve("NQ2!", date(2026, 9, 9))["contract"] == "NQZ26"
+    assert contracts.resolve("NQ2!", date(2026, 9, 13))["contract"] == "NQZ26"
     g = contracts.resolve("GC1!", date(2026, 9, 1))
     assert g["contract"] == "GCV26" and g["roll_date"] < "2026-09-30"
     with pytest.raises(ValueError):
