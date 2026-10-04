@@ -97,7 +97,8 @@
     else reveal(element);
   }
   function refresh(){
-    document.querySelectorAll('#view > :is(.card,.asset,.hero,.group), #view > .assets > .asset').forEach(observePanel);
+    const candidates=[...document.querySelectorAll('#view > :is(.card,.asset,.hero,.group), #view > .assets > .asset, #view :is(.tile,.px-box,.psi-box,.pan-field,.brain-agent,.brain-sub,.brain-lane,.evo-sub)')];
+    candidates.slice(0,80).forEach(observePanel);
     writeScrollDepth();
   }
   function installObserver(){
