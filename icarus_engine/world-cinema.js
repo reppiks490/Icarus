@@ -204,7 +204,7 @@
     const view=document.getElementById('view');
     view?.addEventListener('pointermove',event=>{
       if(event.pointerType==='touch'||!motionAllowed()||root.dataset.introActive==='true')return;
-      const panel=event.target.closest?.('.card,.asset');
+      const panel=event.target.closest?.('.card,.asset,.group,.tile,.px-box,.psi-box,.pan-field,.brain-agent,.brain-sub,.brain-lane,.evo-sub');
       if(!panel||!view.contains(panel)){clearPanel();return;}
       if(litPanel!==panel){clearPanel();litPanel=panel;panel.classList.add('world-lit');}
       panelPointer={x:event.clientX,y:event.clientY};
