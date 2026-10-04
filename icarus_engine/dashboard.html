@@ -163,6 +163,7 @@ pre.cli { background:var(--surface-2); border:1px solid var(--ring); border-radi
 <script src="/integrity-ui.js"></script>
 <script src="/engine-control-ui.js"></script>
 <script src="/autopilot-ui.js"></script>
+<script src="/world-cinema.js"></script>
 <script src="/world-motion.js"></script>
 <script src="/experience-ui.js"></script>
 <script>
@@ -327,7 +328,7 @@ async function loadChart(sym, n, el, opts) {
     if (!r.ok) throw new Error(d.detail||d.error||('HTTP '+r.status));
     charts[sym+n] = d;
     if (el && el.isConnected) candles(el, d, opts);
-    window.IcarusExperience?.chart(d, n);
+    window.IcarusExperience?.chart(d, n, el);
   } catch(e) {
     if (el && el.isConnected) el.innerHTML = '<div class="empty">chart unavailable: '+esc(e?.message||String(e))+'</div>';
   }

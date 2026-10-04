@@ -5,6 +5,7 @@
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
   let scene, canvas, ctx, frame = 0, last = 0, elapsed = 0, width = 0, height = 0;
   let visible = true, particles = [], pointer = {x:0, y:0}, eased = {x:0, y:0};
+  let introFrame = 0, introLast = 0, introElapsed = 0;
   let intro = null, introTimer = 0, introReturnFocus = null, inertSiblings = [];
   const colors = {divine:[205,165,82], void:[255,80,108], astral:[137,192,255]};
   const rand = (a,b) => a + Math.random() * (b-a);
@@ -52,6 +53,7 @@
         ctx.strokeStyle=`rgba(${rgb},.2)`; ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x-2,y+9*p.z); ctx.stroke();
       }
     }
+    window.IcarusWorldCinema?.draw(ctx,width,height,elapsed,dt);
     // Slow moving broad light shafts remain behind the content, not on charts.
     if (world !== 'void') {
       ctx.save(); ctx.globalCompositeOperation='screen';
@@ -66,6 +68,7 @@
   }
   function refresh() {
     if (!scene) return;
+    window.IcarusWorldCinema?.sync(!!intro || (permitted() && !!ctx));
     if (permitted()) { if (!frame) { resize(); last=0; frame=requestAnimationFrame(draw); } }
     else {
       cancelAnimationFrame(frame); frame=0; last=0;
@@ -77,7 +80,8 @@
   }
   function closeIntro() {
     if (!intro) return;
-    clearTimeout(introTimer); intro.remove(); intro=null;
+    clearTimeout(introTimer); cancelAnimationFrame(introFrame); introFrame=0; introLast=0; introElapsed=0;
+    intro.remove(); intro=null;
     document.removeEventListener('keydown', introKey, true);
     for (const [el, wasInert] of inertSiblings) el.inert = wasInert;
     inertSiblings = [];
@@ -95,10 +99,12 @@
     if (intro || reduced.matches || root.dataset.motion === 'off') return;
     introReturnFocus = document.activeElement;
     intro = document.createElement('div'); intro.className='world-intro';
+    const duration = root.dataset.introLength === '12' ? 12000 : 20000;
+    intro.style.setProperty('--intro-duration',duration+'ms');
     intro.dataset.introWorld = colors[root.dataset.theme] ? root.dataset.theme : 'divine';
     intro.setAttribute('role','dialog'); intro.setAttribute('aria-modal','true'); intro.setAttribute('aria-label','ICARUS cinematic introduction');
     intro.innerHTML=`<button type="button" class="intro-skip">Skip intro <span>Esc</span></button>
-      <div class="intro-theater" aria-hidden="true"><div class="intro-backdrop"></div>
+      <div class="intro-theater" aria-hidden="true"><div class="intro-backdrop"></div><canvas class="intro-loom"></canvas>
         <div class="intro-rays"></div><div class="intro-dust"></div>
         <div class="intro-system"><div class="intro-eclipse"></div>
           <i class="intro-ring r1"></i><i class="intro-ring r2"></i><i class="intro-ring r3"></i><i class="intro-ring r4"></i>
@@ -115,12 +121,29 @@
     intro.querySelector('button').addEventListener('click',closeIntro);
     intro.querySelector('button').focus({preventScroll:true});
     document.addEventListener('keydown',introKey,true);
-    introTimer=setTimeout(closeIntro,12000);
+    const introCanvas=intro.querySelector('.intro-loom'), introCtx=introCanvas.getContext('2d');
+    const animateIntro=now=>{
+      introFrame=0;
+      if(!intro || document.hidden) return;
+      introFrame=requestAnimationFrame(animateIntro);
+      if(introLast && now-introLast<30)return;
+      const dt=introLast ? Math.min((now-introLast)/1000,.06) : 0;
+      introLast=now;introElapsed+=dt;
+      const w=intro.clientWidth,h=intro.clientHeight,dpr=Math.min(devicePixelRatio||1,1.25);
+      if(introCanvas.width!==Math.round(w*dpr)||introCanvas.height!==Math.round(h*dpr)) {
+        introCanvas.width=Math.round(w*dpr);introCanvas.height=Math.round(h*dpr);introCtx.setTransform(dpr,0,0,dpr,0,0);
+      }
+      introCtx.clearRect(0,0,w,h);
+      window.IcarusWorldCinema?.draw(introCtx,w,h,introElapsed,dt,{intro:true});
+    };
+    if(introCtx)introFrame=requestAnimationFrame(animateIntro);
+    introTimer=setTimeout(closeIntro,duration);
   }
   function init(element) {
     if (scene) return;
     scene=element; canvas=document.createElement('canvas'); canvas.className='world-atmosphere'; canvas.setAttribute('aria-hidden','true');
     scene.prepend(canvas); ctx=canvas.getContext('2d');
+    scene.dataset.renderer=ctx ? 'canvas' : 'static';
     scene.addEventListener('pointermove', event => {
       if (event.pointerType === 'touch' || !permitted()) return;
       const r=scene.getBoundingClientRect(); pointer={x:(event.clientX-r.left)/r.width-.5,y:(event.clientY-r.top)/r.height-.5};
