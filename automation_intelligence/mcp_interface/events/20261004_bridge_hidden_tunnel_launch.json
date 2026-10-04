@@ -1,0 +1,24 @@
+{
+  "schema_version": "icarus-interface-event-v1",
+  "event_id": "20261004_bridge_hidden_tunnel_launch",
+  "category": "REPAIR",
+  "status": "verified",
+  "severity": "success",
+  "recorded_at": "2026-10-04T01:55:18.125Z",
+  "created_by": "Codex",
+  "source_repository": "reppiks490/Icarus",
+  "source_ref": "codex/bridge-background-20261004",
+  "source_commit": "44882f38b1a0b7a23d720ec3f93913a707628682",
+  "subsystems": [
+    "ui"
+  ],
+  "title": "Bridge background tunnel children use hidden Windows launches",
+  "summary": "The existing ngrok and cloudflared subprocess launches now use the shared Windows CREATE_NO_WINDOW options. Their arguments, stdout handling and public-URL callbacks are unchanged. Local boundary tests reproduce both missing flags before the repair and verify Windows/POSIX behavior afterward. Hosted Windows tests additionally launch substitute Python children through the real tunnel launch boundary and check GetConsoleWindow=0 without opening a network tunnel. Hosted results belong to the pull request. User-PC deployment and recurrence remain unverified; this repair does not start or expose any tunnel.",
+  "evidence": [
+    "icarus_bridge/cli.py",
+    "tests_engine/test_bridge_background.py",
+    ".github/workflows/windows-background-contract.yml"
+  ],
+  "execution_authorized": false,
+  "production_decision_authorized": false
+}
