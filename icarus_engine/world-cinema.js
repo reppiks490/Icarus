@@ -197,7 +197,7 @@
   const motionAllowed=()=>root.dataset.motion==='live'&&root.dataset.experience==='cinematic'&&!!root.dataset.world&&!document.hidden;
   function clearPanel() {
     cancelAnimationFrame(panelFrame);panelFrame=0;panelPointer=null;
-    if(litPanel){litPanel.classList.remove('world-lit');litPanel.style.removeProperty('--panel-x');litPanel.style.removeProperty('--panel-y');litPanel=null;}
+    if(litPanel){litPanel.classList.remove('world-lit');litPanel.style.removeProperty('--panel-x');litPanel.style.removeProperty('--panel-y');litPanel.style.removeProperty('--panel-tilt-x');litPanel.style.removeProperty('--panel-tilt-y');litPanel=null;}
   }
   function init(element) {
     if(sceneElement)return;sceneElement=element;
@@ -211,8 +211,12 @@
       if(!panelFrame)panelFrame=requestAnimationFrame(()=>{
         panelFrame=0;if(!litPanel?.isConnected||!panelPointer||!motionAllowed()){clearPanel();return;}
         const r=litPanel.getBoundingClientRect();
-        litPanel.style.setProperty('--panel-x',Math.max(0,Math.min(100,(panelPointer.x-r.left)/Math.max(1,r.width)*100)).toFixed(1)+'%');
-        litPanel.style.setProperty('--panel-y',Math.max(0,Math.min(100,(panelPointer.y-r.top)/Math.max(1,r.height)*100)).toFixed(1)+'%');
+        const px=Math.max(0,Math.min(100,(panelPointer.x-r.left)/Math.max(1,r.width)*100));
+        const py=Math.max(0,Math.min(100,(panelPointer.y-r.top)/Math.max(1,r.height)*100));
+        litPanel.style.setProperty('--panel-x',px.toFixed(1)+'%');
+        litPanel.style.setProperty('--panel-y',py.toFixed(1)+'%');
+        litPanel.style.setProperty('--panel-tilt-x',((50-py)*.012).toFixed(3)+'deg');
+        litPanel.style.setProperty('--panel-tilt-y',((px-50)*.015).toFixed(3)+'deg');
       });
     },{passive:true});
     view?.addEventListener('pointerleave',clearPanel,{passive:true});
