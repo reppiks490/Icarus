@@ -72,3 +72,10 @@ The selected world now extends beyond the scenic header without changing market 
 Instrument surfaces use layered world-reactive glass with a high-detail backdrop-filter path and an ordinary opaque fallback. Tables, scrollbars, active tabs, cards, assets, groups, status nodes, and modal shells share the selected world's edge light while preserving existing semantic green/red/warning colors.
 
 The optional browser depth check now scrolls a long page to the bottom, verifies the header is still pinned, confirms the immersion runtime reaches the final scroll phase, and captures a lower-page screenshot in addition to world and mobile screenshots.
+
+
+### Immersion phase III
+
+The continuation adds a desktop depth spine with four scroll chapters, view identity, faceted instrument bevels, restrained pointer perspective, per-instrument click responses, and world-specific lower-dashboard architectural grammar. Divine uses ordered radial/architectural light, Void uses fractured/dashed geometry, and Astral uses orbital/star-field geometry; these differences are decorative and never inferred from market state.
+
+The opening is now a four-act local cinematic. A perspective vault, aperture, horizon flare, world-specific glyph field, and world-specific chapter copy are layered around the existing projected Eclipse Loom. The WebGL aura also gains separate analytic spatial fields per world while retaining the same low-power context, internal 15 fps cap, bounded render size, adaptive Light fallback, context-loss recovery, and no-network/no-market boundaries. Panel perspective stays below one degree and is removed immediately when pointer motion stops or motion is disabled.
