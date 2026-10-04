@@ -2,9 +2,30 @@
   'use strict';
   const root=document.documentElement;
   const reduced=window.matchMedia('(prefers-reduced-motion: reduce)');
-  let scrollFrame=0,pointerFrame=0,viewObserver=null,viewMutation=null,initialized=false;
+  let scrollFrame=0,pointerFrame=0,viewObserver=null,viewMutation=null,depthFrame=null,viewFlashTimer=0,currentView='overview',initialized=false;
 
   const motionAllowed=()=>root.dataset.motion==='live'&&root.dataset.experience==='cinematic'&&!!root.dataset.world&&!document.hidden&&!reduced.matches&&root.dataset.introActive!=='true';
+  const phaseLabels={crown:'CROWN',descent:'DESCENT',depth:'DEPTH',abyss:'ABYSS'};
+
+  function buildDepthFrame(){
+    if(depthFrame||!document.body)return;
+    depthFrame=document.createElement('div');
+    depthFrame.className='world-depth-frame';
+    depthFrame.setAttribute('aria-hidden','true');
+    depthFrame.innerHTML=`<div class="world-depth-rail left"><i></i><b></b><b></b><b></b><b></b></div>
+      <div class="world-depth-rail right"><i></i><b></b><b></b><b></b><b></b></div>
+      <div class="world-depth-readout"><span>WORLD DEPTH</span><strong data-world-depth-label>CROWN</strong><em data-world-view-label>OVERVIEW</em></div>
+      <div class="world-corner-sigil top-left">I</div><div class="world-corner-sigil bottom-right">∞</div>`;
+    document.body.appendChild(depthFrame);
+  }
+  function updateDepthFrame(phase,depth){
+    if(!depthFrame)return;
+    depthFrame.style.setProperty('--world-depth-progress',(depth*100).toFixed(2)+'%');
+    depthFrame.querySelector('[data-world-depth-label]').textContent=phaseLabels[phase]||String(phase||'').toUpperCase();
+    for(const rail of depthFrame.querySelectorAll('.world-depth-rail')){
+      [...rail.querySelectorAll('b')].forEach((node,index)=>node.classList.toggle('active',depth>=index/3-.015));
+    }
+  }
 
   function writeScrollDepth(){
     scrollFrame=0;
@@ -15,7 +36,9 @@
     root.style.setProperty('--world-scroll',depth.toFixed(4));
     root.style.setProperty('--world-scroll-shift',(-(window.innerWidth<760?18:34)*depth).toFixed(2)+'px');
     root.style.setProperty('--world-light-y',(12+depth*30).toFixed(2)+'%');
-    root.dataset.scrollPhase=depth<.08?'crown':depth<.45?'descent':depth<.78?'depth':'abyss';
+    const phase=depth<.08?'crown':depth<.45?'descent':depth<.78?'depth':'abyss';
+    root.dataset.scrollPhase=phase;
+    updateDepthFrame(phase,depth);
   }
   function queueScroll(){
     if(!scrollFrame)scrollFrame=requestAnimationFrame(writeScrollDepth);
@@ -106,6 +129,21 @@
     setTimeout(cleanup,800);
   }
 
+  function view(name='overview'){
+    const raw=String(name||'overview'),next=(raw.startsWith('asset:')?'asset':raw).replace(/[^a-z0-9-]/gi,'-').toLowerCase();
+    root.dataset.worldView=next||'overview';
+    if(depthFrame){
+      depthFrame.querySelector('[data-world-view-label]').textContent=(next||'overview').replace(/-/g,' ').toUpperCase();
+      if(raw!==currentView&&motionAllowed()){
+        clearTimeout(viewFlashTimer);
+        depthFrame.classList.remove('world-view-shift');void depthFrame.offsetWidth;depthFrame.classList.add('world-view-shift');
+        viewFlashTimer=setTimeout(()=>depthFrame?.classList.remove('world-view-shift'),760);
+      }
+    }
+    currentView=raw;
+    refresh();
+  }
+
   function sync(){
     if(!motionAllowed()){
       root.style.setProperty('--world-pointer-x','0');
@@ -121,6 +159,7 @@
     if(initialized)return;
     initialized=true;
     root.dataset.worldImmersion='ready';
+    buildDepthFrame();
     window.addEventListener('scroll',queueScroll,{passive:true});
     window.addEventListener('resize',queueScroll,{passive:true});
     window.addEventListener('pointermove',pointerMove,{passive:true});
@@ -129,10 +168,11 @@
     document.addEventListener('visibilitychange',sync);
     reduced.addEventListener?.('change',sync);
     installObserver();
+    view((location.hash||'#overview').slice(1)||'overview');
     sync();
   }
 
-  window.IcarusWorldImmersion=Object.freeze({init,refresh,sync});
+  window.IcarusWorldImmersion=Object.freeze({init,refresh,sync,view});
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});
   else init();
 })();
