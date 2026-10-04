@@ -595,3 +595,46 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
   radial-gradient(circle at 12px 12px,color-mix(in srgb,var(--world-glow),transparent 35%) 0 1px,transparent 2px),
   linear-gradient(135deg,color-mix(in srgb,var(--world-glow),transparent 72%) 0 1px,transparent 1px 28px) top left/56px 56px no-repeat,
   linear-gradient(315deg,color-mix(in srgb,#bceaff,transparent 78%) 0 1px,transparent 1px 20px) bottom right/48px 48px no-repeat}
+
+
+/* Subsystem skin: carry the world material language into the specialized lower-page consoles. */
+:root[data-world]:not([data-world=""]) #view :is(.brain-core,.brain-agent,.brain-sub,.brain-lane,.brain-gate span,.evo-sub,.px-box,.pan-field,.psi-box,.psi-meter) {
+  border-color:color-mix(in srgb,var(--world-glow),var(--ring) 78%);
+  background:linear-gradient(145deg,color-mix(in srgb,var(--world-glow),transparent 95%),color-mix(in srgb,var(--surface-2),transparent 8%));
+  box-shadow:inset 0 1px 0 #ffffff0c,0 8px 24px #0002;
+  transition:border-color .28s ease,box-shadow .28s ease,transform .28s ease;
+}
+:root[data-world]:not([data-world=""]) #view :is(.brain-agent,.brain-sub,.brain-lane,.evo-sub,.px-box,.pan-field,.psi-box):hover {
+  border-color:color-mix(in srgb,var(--world-glow),var(--ring) 48%);
+  box-shadow:inset 0 1px 0 #ffffff12,0 12px 34px #0003,0 0 18px color-mix(in srgb,var(--world-glow),transparent 92%);
+  transform:translateY(-1px);
+}
+:root[data-world]:not([data-world=""]) #view .brain-shell {
+  background:
+    radial-gradient(circle at 50% 7%,color-mix(in srgb,var(--world-glow),transparent 84%),transparent 34%),
+    radial-gradient(circle at 91% 41%,color-mix(in srgb,var(--s7),transparent 89%),transparent 32%),
+    linear-gradient(145deg,color-mix(in srgb,var(--surface),transparent 4%),color-mix(in srgb,var(--page),#111 12%))!important;
+}
+:root[data-world]:not([data-world=""]) #view .brain-shell::before {
+  background:
+    linear-gradient(color-mix(in srgb,var(--world-glow),transparent 96%) 1px,transparent 1px),
+    linear-gradient(90deg,color-mix(in srgb,var(--world-glow),transparent 96%) 1px,transparent 1px)!important;
+  background-size:28px 28px!important;
+}
+:root[data-world]:not([data-world=""]) #view .brain-core {border-color:color-mix(in srgb,var(--world-glow),transparent 56%)!important;box-shadow:0 0 46px color-mix(in srgb,var(--world-glow),transparent 94%) inset!important}
+:root[data-world]:not([data-world=""]) #view .brain-pulse {background:var(--world-glow)!important;box-shadow:0 0 0 0 color-mix(in srgb,var(--world-glow),transparent 38%)!important}
+:root[data-world]:not([data-world=""]) #view .brain-route {background:color-mix(in srgb,var(--page),transparent 20%)!important;border:1px solid color-mix(in srgb,var(--world-glow),var(--ring) 86%)}
+:root[data-world]:not([data-world=""]) #view .psi-meter {overflow:hidden}
+:root[data-world]:not([data-world=""]) #view .psi-meter::after {content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--world-glow),transparent 94%),transparent);mix-blend-mode:screen}
+:root[data-world]:not([data-world=""]) #view :is(.px-box,.pan-field,.psi-box) > b {text-shadow:0 0 18px color-mix(in srgb,var(--world-glow),transparent 88%)}
+:root[data-world]:not([data-world=""]) #view h3.small {display:flex;align-items:center;gap:8px;letter-spacing:.12em}
+:root[data-world]:not([data-world=""]) #view h3.small::before {content:"";width:14px;height:1px;background:linear-gradient(90deg,var(--world-glow),transparent);box-shadow:0 0 8px color-mix(in srgb,var(--world-glow),transparent 45%)}
+:root[data-world]:not([data-world=""]) :is(textarea,pre.log) {
+  color:var(--ink);background:color-mix(in srgb,var(--surface-2) 88%,transparent);border:1px solid color-mix(in srgb,var(--world-glow),var(--ring) 84%);border-radius:10px;
+  box-shadow:inset 0 1px 0 #ffffff08;
+}
+:root[data-world]:not([data-world=""]) textarea:focus-visible {outline:2px solid color-mix(in srgb,var(--world-glow),transparent 15%);outline-offset:2px}
+:root[data-world]:not([data-world=""]) .callout {background:linear-gradient(135deg,color-mix(in srgb,var(--warn),transparent 93%),color-mix(in srgb,var(--world-glow),transparent 97%))}
+@media (max-width:760px) {
+  :root[data-world]:not([data-world=""]) #view :is(.brain-agent,.brain-sub,.brain-lane,.evo-sub,.px-box,.pan-field,.psi-box):hover {transform:none}
+}
