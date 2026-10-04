@@ -209,3 +209,85 @@
 .world-enter { animation:world-arrival 700ms ease-out both }
 @keyframes world-arrival { from {opacity:.3} to {opacity:1} }
 body:has(.world-intro) .world-orbit i { animation-play-state:paused }
+
+/* Eclipse Loom: one visual language from scenic geometry to instrument panels. */
+:root[data-world="divine"][data-lighting="obsidian"] {
+  color-scheme:dark; --page:#080a10; --surface:#12141d; --surface-2:#1c1d29;
+  --ink:#f8efdf; --ink-2:#d7cbb7; --muted:#b0a895; --grid:#33323d; --axis:#6e6659;
+  --ring:#494139; --s1:#f1ce8b; --s1-soft:#3d3324; --s2:#efaa78; --s3:#7ad7cd; --s7:#c3a7ff; --world-glow:#d5ab58; --world-shadow:#0008;
+  --good:#80e4b5; --good-text:#80e4b5; --warn:#f4d28b; --serious:#ffb187; --crit:#ff94ac; --up:#80e4b5; --dn:#ff94ac;
+}
+:root[data-world="divine"][data-lighting="obsidian"][data-accent="ice"] { --s1:#bceaff; --s1-soft:#284253 }
+:root[data-world="divine"][data-lighting="obsidian"][data-accent="amethyst"] { --s1:#d9baff; --s1-soft:#423252 }
+:root[data-world="divine"][data-lighting="obsidian"] :is(button.primary,button.danger,.badge.paused) { color:var(--page) }
+:root[data-world="divine"][data-lighting="obsidian"] #toast { color:var(--page)!important }
+:root[data-world="divine"][data-lighting="obsidian"] .world-scene { color:#f8efd9 }
+:root[data-world="divine"][data-lighting="obsidian"] .world-scene::after { background:linear-gradient(90deg,#080a10fa 0%,#080a10d9 32%,#080a1055 62%,#080a1022),linear-gradient(0deg,#080a1088,transparent 50%) }
+:root[data-world="divine"][data-lighting="obsidian"] .world-eyebrow { color:#e7c788 }
+:root[data-world="divine"][data-lighting="obsidian"] .world-copy p { color:#d8cbb8 }
+:root[data-world="divine"][data-lighting="obsidian"] .world-switch button { color:#efdaa8;background:#14141edb;border-color:#b5985955 }
+:root[data-world="void"] { --page:#07050b; --surface:#120d17; --surface-2:#201522; --world-glow:#ed1d56 }
+:root[data-world="astral"] { --page:#060817; --surface:#0e1429; --surface-2:#18213b; --world-glow:#8d64f9 }
+:root[data-scene-size="grand"] .world-scene { min-height:470px }
+:root[data-scene-size="panorama"] .world-scene { min-height:min(72dvh,760px) }
+:root[data-scene-size="compact"] .world-scene { min-height:300px }
+:root[data-world]:not([data-world=""]) .world-copy { max-width:53%;padding-top:clamp(45px,5vw,90px);padding-bottom:65px }
+:root[data-scene-size="compact"] .world-copy {padding-top:38px;padding-bottom:38px}
+.world-coordinate { position:absolute; left:46px; bottom:24px; z-index:2; color:#d9c795; font-size:9px;letter-spacing:.25em;pointer-events:none }
+.world-coordinate span { opacity:.6;margin-left:20px;font-size:8px }
+:root[data-world="divine"][data-lighting="original"] .world-coordinate {color:#624817}
+:root[data-world="void"] .world-coordinate {color:#ff9fb7}
+:root[data-world="astral"] .world-coordinate {color:#a3dfff}
+.world-scene[data-renderer="canvas"] .world-orbit { display:none }
+:root[data-experience="balanced"] .world-coordinate {opacity:.5}
+:root[data-world]:not([data-world=""]) :is(.card,.asset,.tile,.group) {
+  background-image:linear-gradient(135deg,color-mix(in srgb,var(--world-glow),transparent 96%),transparent 48%);
+  transition:border-color .35s ease,box-shadow .35s ease,background-color .35s ease;
+}
+:root[data-world]:not([data-world=""]) :is(.card,.asset):hover {
+  border-color:color-mix(in srgb,var(--world-glow),var(--ring) 45%);
+  box-shadow:0 12px 40px var(--world-shadow),inset 0 1px 0 color-mix(in srgb,var(--world-glow),transparent 75%);
+}
+:root[data-world]:not([data-world=""])[data-experience="cinematic"][data-motion="live"] #view > :is(.card,.asset) {
+  animation:loom-panel-light 18s ease-in-out infinite;
+}
+:root[data-world]:not([data-world=""])[data-experience="cinematic"][data-motion="live"] #view > :is(.card,.asset):nth-child(3n) {animation-delay:-6s}
+:root[data-world]:not([data-world=""])[data-experience="cinematic"][data-motion="live"] #view > :is(.card,.asset):nth-child(3n+1) {animation-delay:-12s}
+@keyframes loom-panel-light {
+  0%,100% {border-color:var(--ring)}
+  50% {border-color:color-mix(in srgb,var(--world-glow),var(--ring) 65%)}
+}
+:root[data-world]:not([data-world=""]) :is(button,.experience-settings > summary) {transition:background-color .25s,border-color .25s,box-shadow .25s}
+:root[data-world]:not([data-world=""]) :is(button,.experience-settings > summary):hover {box-shadow:0 0 18px color-mix(in srgb,var(--world-glow),transparent 85%)}
+:root[data-world]:not([data-world=""]) .tab {transition:background-color .25s,color .25s,box-shadow .25s}
+:root[data-world]:not([data-world=""]) .card h2 {line-height:1.6}
+:root[data-world]:not([data-world=""]) .card h2::before {content:"";display:inline-block;width:5px;height:5px;transform:rotate(45deg);margin:0 10px 2px 0;border:1px solid var(--s1)}
+:root[data-scene-paused="true"] #view > :is(.card,.asset) {animation-play-state:paused!important}
+body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!important}
+.world-intro {animation-duration:var(--intro-duration,20s)}
+.world-intro :is(.intro-backdrop,.intro-rays,.intro-dust,.intro-system,.intro-eclipse,.intro-ring,.intro-crown,.intro-wing,.intro-title) {animation-duration:var(--intro-duration,20s)}
+.intro-loom {position:absolute;inset:0;width:100%;height:100%;pointer-events:none;animation:loom-opening var(--intro-duration,20s) ease both}
+.intro-system {animation-name:loom-crown-arrival}
+.intro-wing {opacity:.65}
+.intro-title strong {text-shadow:0 0 48px color-mix(in srgb,var(--intro-halo),transparent 55%)}
+@keyframes loom-opening {
+  0% {opacity:0;transform:scale(1.4);filter:blur(5px)}
+  12% {opacity:1;filter:blur(0)}
+  48% {opacity:1;transform:scale(1)}
+  70%,100% {opacity:0;transform:scale(.55);filter:blur(0)}
+}
+@keyframes loom-crown-arrival {
+  0%,40% {transform:translate(-50%,-50%) scale(.15) rotateZ(-20deg);opacity:0}
+  63% {opacity:1;transform:translate(-50%,-50%) scale(1.05) rotateZ(0)}
+  80%,100% {transform:translate(-50%,-50%) scale(.88);opacity:1}
+}
+@media (max-width:760px) {
+  :root[data-world]:not([data-world=""]) .world-copy {max-width:100%;padding:28px 24px 40px}
+  :root:is([data-scene-size="grand"],[data-scene-size="panorama"]) .world-scene {min-height:590px}
+  :root[data-scene-size="compact"] .world-scene {min-height:500px}
+  .world-coordinate {left:24px;bottom:22px;font-size:8px}
+  .world-coordinate span {display:none}
+  :root[data-world="divine"][data-lighting="obsidian"] .world-scene::after {background:linear-gradient(180deg,#080a10e8,#080a10a0 43%,#080a1030)}
+  .world-scene::after {background:linear-gradient(180deg,#060c1be8,#060c1ba0 43%,#060c1b30)}
+  :root[data-world="void"] .world-scene::after {background:linear-gradient(180deg,#09070bf5,#09070bbd 43%,transparent)}
+}

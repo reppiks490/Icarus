@@ -35,6 +35,7 @@ if(await page.locator('.world-intro').count()) throw Error('Intro ignored no-mot
 await page.locator('#experienceMotion').selectOption('system');
 await page.locator('#experienceReplay').click();
 await page.locator('.intro-skip').click();
+await page.locator('#experienceIntroLength').selectOption('12');
 await page.locator('#experienceReplay').click();
 await page.locator('.world-intro').waitFor({state:'detached',timeout:15000});
 if(await page.locator('#view').evaluate(el=>el.inert)) throw Error('Intro left dashboard inert');

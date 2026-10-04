@@ -24,7 +24,7 @@
     window.IcarusWorldMotion?.refresh();
     const note = document.getElementById('experienceMotionNote');
     if (note) note.textContent = reduced.matches ? 'Your system requests reduced motion; all cues are off.' :
-      root.dataset.motion === 'off' ? 'All motion is off.' : 'Brief market-state cues; decorative halo motion in Cinematic mode.';
+      root.dataset.motion === 'off' ? 'All motion is off.' : 'Cinematic scenery and coordinated panel entrances. Market cues remain tied to actual state changes.';
   }
 
   function cue(symbol, kind) {
@@ -38,6 +38,7 @@
   }
 
   function update(data, view) {
+    if (currentView !== view) window.IcarusWorldCinema?.enterView();
     currentView = view;
     if (uptime !== null && Number(data.uptime_sec) < uptime) { snapshots.clear(); fillSnapshots.clear(); }
     uptime = Number(data.uptime_sec);
@@ -55,7 +56,8 @@
     for (const symbol of snapshots.keys()) if (!active.has(symbol)) { snapshots.delete(symbol); fillSnapshots.delete(symbol); }
   }
 
-  function chart(data, windowSize) {
+  function chart(data, windowSize, element) {
+    window.IcarusWorldCinema?.enterChart(data.symbol, element);
     const rows = data.fills || [];
     const key = fill => JSON.stringify([fill.ts, fill.bar, fill.id, fill.side, fill.qty, fill.price, fill.kind, fill.comment, fill.profit, fill.pos]);
     const previous = fillSnapshots.get(data.symbol);
@@ -85,6 +87,9 @@
     root.dataset.experience = preference('experience', ['cinematic', 'balanced', 'focus'], 'cinematic');
     root.dataset.density = preference('density', ['comfortable', 'compact'], 'comfortable');
     root.dataset.accent = preference('accent', ['world', 'gold', 'ice', 'amethyst'], 'world');
+    root.dataset.sceneSize = preference('scene-size', ['compact', 'grand', 'panorama'], 'grand');
+    root.dataset.lighting = preference('lighting', ['original', 'obsidian'], 'obsidian');
+    root.dataset.introLength = preference('intro-length', ['12', '20'], '20');
     if (!scenery) return;
     scenery.hidden = !world || root.dataset.experience === 'focus';
     const changedWorld = scenery.dataset.activeWorld !== root.dataset.world;
@@ -119,10 +124,14 @@
     controls.className = 'experience-controls';
     controls.innerHTML = `<details class="experience-settings"><summary aria-label="Appearance and motion settings">Style</summary><div>
       <label>Theme<select id="experienceTheme"></select></label>
-      <label>Atmosphere<select id="experienceMode"><option value="balanced">Balanced · still scenery</option><option value="cinematic">Cinematic · dimensional halo</option><option value="focus">Focus · essentials</option></select></label>
+      <label>Atmosphere<select id="experienceMode"><option value="balanced">Balanced · still scenery</option><option value="cinematic">Cinematic · Eclipse Loom</option><option value="focus">Focus · essentials</option></select></label>
       <label>Accent<select id="experienceAccent"><option value="world">World signature</option><option value="gold">Sovereign gold</option><option value="ice">Glacier silver</option><option value="amethyst">Astral amethyst</option></select></label>
+      <label>Scene scale<select id="experienceSceneSize"><option value="compact">Compact</option><option value="grand">Grand</option><option value="panorama">Panorama</option></select></label>
+      <label>Lighting<select id="experienceLighting"><option value="obsidian">Obsidian · dark divinity</option><option value="original">Original world palette</option></select></label>
+      <label>Opening<select id="experienceIntroLength"><option value="20">Epic · 20 seconds</option><option value="12">Classic · 12 seconds</option></select></label>
       <label>Density<select id="experienceDensity"><option value="comfortable">Comfortable</option><option value="compact">Trading desk</option></select></label>
       <label>Motion<select id="experienceMotion"><option value="system">Follow system</option><option value="off">No motion</option></select></label>
+      <button type="button" id="experienceSound" class="sm" aria-pressed="false">Enable celestial sound</button>
       <button type="button" id="experienceReplay" class="sm">Replay cinematic intro</button><p id="experienceMotionNote"></p><p>Original anime worlds. Scenic titles and effects are decorative, independent of market activity.</p>
       </div></details><button class="icon-btn" id="experienceFocus" aria-pressed="false">Focus</button><button class="icon-btn" id="experienceMusicToggle" aria-expanded="false" aria-controls="experienceMusic">Music</button>`;
     document.getElementById('btnTheme').insertAdjacentElement('afterend', controls);
@@ -144,7 +153,8 @@
     scenery.className = 'world-scene'; scenery.hidden = true;
     scenery.setAttribute('aria-label', 'ICARUS visual world');
     scenery.innerHTML = `<div class="world-art" aria-hidden="true"></div>
-      <div class="world-orbit" aria-hidden="true"><i></i><i></i><i></i><b>✦</b></div>
+      <div class="world-orbit" aria-hidden="true"><i></i><i></i><i></i><b>◇</b></div>
+      <div class="world-coordinate" aria-hidden="true">ECLIPSE LOOM <span>FORM / LIGHT / INFINITY</span></div>
       <div class="world-copy"><div class="world-eyebrow">ICARUS <span> / </span><span id="worldName"></span></div>
       <h1 id="worldTitle"></h1><p id="worldCaption"></p>
       <div class="world-switch" role="group" aria-label="Choose visual world">
@@ -160,6 +170,9 @@
     for (const [id, key, values, fallback] of [
       ['experienceMode', 'experience', ['cinematic', 'balanced', 'focus'], 'cinematic'],
       ['experienceAccent', 'accent', ['world', 'gold', 'ice', 'amethyst'], 'world'],
+      ['experienceSceneSize', 'scene-size', ['compact', 'grand', 'panorama'], 'grand'],
+      ['experienceLighting', 'lighting', ['original', 'obsidian'], 'obsidian'],
+      ['experienceIntroLength', 'intro-length', ['12', '20'], '20'],
       ['experienceDensity', 'density', ['comfortable', 'compact'], 'comfortable'],
     ]) {
       const input = document.getElementById(id);
@@ -184,6 +197,7 @@
     window.IcarusWorldMotion?.init(scenery);
     appearance(); motion();
     document.getElementById('experienceReplay').addEventListener('click', () => window.IcarusWorldMotion?.playIntro());
+    document.getElementById('experienceSound').addEventListener('click', event => window.IcarusWorldCinema?.toggleSound(event.currentTarget));
     window.IcarusWorldMotion?.startup();
 
     const panel = document.createElement('section');
