@@ -310,3 +310,109 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 @keyframes depth-chapter-two {0%,29% {opacity:0;transform:translateY(8px)} 36%,52% {opacity:.7;transform:translateY(0)} 60%,100% {opacity:0;transform:translateY(-8px)}}
 @keyframes depth-chapter-three {0%,59% {opacity:0;transform:translateY(8px)} 67%,85% {opacity:.7;transform:translateY(0)} 94%,100% {opacity:0;transform:translateY(-8px)}}
 @media (max-width:760px) {.intro-chapters {top:16%;font-size:8px;letter-spacing:.22em}}
+
+
+/* Immersion Phase II: the selected world now permeates the full dashboard rather than ending at the hero. */
+:root {
+  --world-scroll:0;
+  --world-pointer-x:0;
+  --world-pointer-y:0;
+  --world-glass-edge:color-mix(in srgb,var(--world-glow),transparent 70%);
+}
+:root[data-world]:not([data-world=""]) body::before,
+:root[data-world]:not([data-world=""]) body::after {
+  content:""; position:fixed; pointer-events:none; inset:-7vh -5vw; transition:opacity .7s ease,filter .7s ease; will-change:transform,opacity;
+}
+:root[data-world]:not([data-world=""]) body::before {
+  z-index:-2; opacity:.16; background-position:center; background-size:cover;
+  transform:translate3d(calc(var(--world-pointer-x) * -14px),calc(var(--world-scroll) * -34px + var(--world-pointer-y) * -9px),0) scale(1.08);
+  filter:saturate(.92) contrast(1.08) brightness(.72);
+}
+:root[data-world="divine"] body::before { background-image:linear-gradient(180deg,#080a10d9 0%,#080a10a8 34%,#080a10e8 100%),url('/worlds/divine.webp') }
+:root[data-world="void"] body::before { background-image:linear-gradient(180deg,#07050bdd 0%,#07050ba5 38%,#07050bed 100%),url('/worlds/void.webp') }
+:root[data-world="astral"] body::before { background-image:linear-gradient(180deg,#060817dc 0%,#060817a0 38%,#060817ed 100%),url('/worlds/astral.webp') }
+:root[data-world]:not([data-world=""]) body::after {
+  z-index:-1; inset:0; opacity:.52;
+  background:
+    radial-gradient(circle at calc(50% + var(--world-pointer-x) * 18%) calc(12% + var(--world-scroll) * 30%),color-mix(in srgb,var(--world-glow),transparent 88%),transparent 34%),
+    linear-gradient(90deg,transparent 0 49.93%,color-mix(in srgb,var(--world-glow),transparent 94%) 50%,transparent 50.07%),
+    repeating-linear-gradient(90deg,transparent 0 79px,color-mix(in srgb,var(--world-glow),transparent 97%) 80px),
+    repeating-linear-gradient(0deg,transparent 0 79px,color-mix(in srgb,var(--world-glow),transparent 97%) 80px),
+    linear-gradient(180deg,transparent 0 76%,color-mix(in srgb,var(--page),#000 18%) 100%);
+  mask-image:linear-gradient(180deg,#000 0%,#000 84%,transparent 100%);
+}
+:root[data-experience="focus"] body::before,:root[data-experience="focus"] body::after {opacity:0!important}
+:root[data-visual-resolved="light"] body::before {opacity:.08;transform:none;filter:brightness(.7)}
+:root[data-visual-resolved="light"] body::after {opacity:.28}
+:root[data-scroll-phase="depth"] body::before {opacity:.19}
+:root[data-scroll-phase="abyss"] body::before {opacity:.22;filter:saturate(.98) contrast(1.12) brightness(.64)}
+
+/* A glass instrument shell with layered reflection, depth, and preserved legibility. */
+:root[data-world]:not([data-world=""]) .top {
+  background:color-mix(in srgb,var(--surface) 76%,transparent);
+  border-bottom-color:color-mix(in srgb,var(--world-glow),var(--ring) 78%);
+  box-shadow:0 14px 44px #0004,inset 0 -1px 0 color-mix(in srgb,var(--world-glow),transparent 88%);
+  -webkit-backdrop-filter:blur(20px) saturate(145%); backdrop-filter:blur(20px) saturate(145%);
+}
+:root[data-world]:not([data-world=""]) .top::after {
+  content:"";position:absolute;left:4%;right:4%;bottom:-1px;height:1px;pointer-events:none;
+  background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--world-glow),transparent 52%),transparent);
+  opacity:.55;
+}
+:root[data-world]:not([data-world=""]):not([data-experience="focus"]) :is(.card,.asset,.group,.tile,.modal .box,.pal .box) {
+  border-color:color-mix(in srgb,var(--world-glow),var(--ring) 84%);
+  background-image:
+    linear-gradient(145deg,color-mix(in srgb,var(--world-glow),transparent 95%),transparent 34%),
+    linear-gradient(180deg,color-mix(in srgb,var(--surface) 91%,transparent),color-mix(in srgb,var(--surface) 83%,transparent));
+  box-shadow:0 16px 52px #0003,inset 0 1px 0 #ffffff10,inset 0 -1px 0 color-mix(in srgb,var(--world-glow),transparent 94%);
+}
+@supports ((-webkit-backdrop-filter:blur(1px)) or (backdrop-filter:blur(1px))) {
+  :root[data-world]:not([data-world=""])[data-visual-resolved="rich"]:not([data-experience="focus"]) :is(.card,.asset,.group,.modal .box,.pal .box) {
+    -webkit-backdrop-filter:blur(14px) saturate(122%); backdrop-filter:blur(14px) saturate(122%);
+  }
+}
+:root[data-world]:not([data-world=""]):not([data-experience="focus"]) :is(.card,.asset,.group) {
+  position:relative; transition:transform .28s cubic-bezier(.2,.7,.2,1),border-color .28s,box-shadow .28s,background-color .28s;
+}
+:root[data-world]:not([data-world=""]):not([data-experience="focus"]) :is(.card,.asset,.group):hover {
+  transform:translateY(-2px);
+  box-shadow:0 22px 70px #0005,inset 0 1px 0 color-mix(in srgb,var(--world-glow),transparent 62%),0 0 0 1px color-mix(in srgb,var(--world-glow),transparent 88%);
+}
+:root[data-world]:not([data-world=""]) .tile {box-shadow:inset 0 1px 0 #ffffff0b}
+:root[data-world]:not([data-world=""]) .hero .n {text-shadow:0 0 36px color-mix(in srgb,var(--world-glow),transparent 88%)}
+:root[data-world]:not([data-world=""]) tbody tr {transition:background-color .18s,box-shadow .18s}
+:root[data-world]:not([data-world=""]) tbody tr:hover {background:linear-gradient(90deg,color-mix(in srgb,var(--world-glow),transparent 94%),var(--surface-2));box-shadow:inset 2px 0 0 color-mix(in srgb,var(--world-glow),transparent 45%)}
+:root[data-world]:not([data-world=""]) :is(.tab,button,.node,.badge) {position:relative;isolation:isolate}
+:root[data-world]:not([data-world=""]) .tab.active::after {
+  content:"";position:absolute;left:12px;right:12px;bottom:-1px;height:2px;border-radius:99px;
+  background:linear-gradient(90deg,transparent,var(--world-glow),transparent);box-shadow:0 0 12px color-mix(in srgb,var(--world-glow),transparent 40%);
+}
+:root[data-world]:not([data-world=""]) .scroll {scrollbar-color:color-mix(in srgb,var(--world-glow),var(--axis) 70%) transparent;scrollbar-width:thin}
+:root[data-world]:not([data-world=""]) .scroll::-webkit-scrollbar {height:9px;width:9px}
+:root[data-world]:not([data-world=""]) .scroll::-webkit-scrollbar-thumb {background:color-mix(in srgb,var(--world-glow),var(--axis) 72%);border-radius:99px;border:2px solid transparent;background-clip:padding-box}
+
+/* Every deliberate interaction receives a short local light response, never a fake market cue. */
+.world-impact-host {overflow:hidden}
+.world-impact {
+  position:absolute;z-index:0;width:14px;height:14px;border-radius:50%;pointer-events:none;left:var(--impact-x,50%);top:var(--impact-y,50%);
+  transform:translate(-50%,-50%) scale(.25);opacity:.7;
+  background:radial-gradient(circle,color-mix(in srgb,var(--world-glow),#fff 18%) 0%,color-mix(in srgb,var(--world-glow),transparent 52%) 34%,transparent 72%);
+  animation:world-impact 620ms cubic-bezier(.15,.75,.2,1) both;
+}
+@keyframes world-impact {to {transform:translate(-50%,-50%) scale(13);opacity:0}}
+
+/* Long-scroll reveal is intentionally subtle: values remain stationary and readable. */
+.world-depth-enter {animation:world-depth-enter 720ms cubic-bezier(.2,.7,.2,1) both}
+@keyframes world-depth-enter {from {opacity:.72;filter:brightness(.82) saturate(.8)} to {opacity:1;filter:none}}
+
+@media (max-width:760px) {
+  :root[data-world]:not([data-world=""]) body::before {inset:-3vh -18vw;opacity:.1;transform:translate3d(0,calc(var(--world-scroll) * -18px),0) scale(1.08)}
+  :root[data-world]:not([data-world=""]) body::after {opacity:.3;background-size:auto}
+  :root[data-world]:not([data-world=""]) .top {-webkit-backdrop-filter:blur(14px) saturate(128%);backdrop-filter:blur(14px) saturate(128%)}
+  :root[data-world]:not([data-world=""]):not([data-experience="focus"]) :is(.card,.asset,.group):hover {transform:none}
+}
+@media (prefers-reduced-motion:reduce) {
+  :root[data-world]:not([data-world=""]) body::before {transform:none!important}
+  .world-impact {display:none!important}
+  .world-depth-enter {animation:none!important}
+}
