@@ -19,6 +19,7 @@ import time
 from typing import Optional
 
 from icarus_engine import brand
+from icarus_engine.process_launch import background_kwargs
 from .config import Settings
 
 
@@ -53,7 +54,7 @@ def start_tunnel(kind: str, port: int, on_url) -> Optional[subprocess.Popen]:
             print("  [!] ngrok not found on PATH - install from https://ngrok.com/download or use --tunnel cloudflared")
             return None
         proc = subprocess.Popen([exe, "http", str(port), "--log=stdout", "--log-format=json"],
-                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, **background_kwargs())
         def waiter():
             url = _ngrok_public_url()
             if url:
@@ -68,7 +69,7 @@ def start_tunnel(kind: str, port: int, on_url) -> Optional[subprocess.Popen]:
             print("  [!] cloudflared not found - winget install Cloudflare.cloudflared, or use --tunnel ngrok")
             return None
         proc = subprocess.Popen([exe, "tunnel", "--url", f"http://localhost:{port}", "--no-autoupdate"],
-                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, **background_kwargs())
         def reader():
             assert proc.stdout is not None
             for line in proc.stdout:
