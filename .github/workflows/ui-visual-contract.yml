@@ -1,0 +1,95 @@
+name: ui-visual-contract
+
+on:
+  push:
+    paths:
+      - "icarus_engine/dashboard.html"
+      - "icarus_engine/experience-ui.css"
+      - "icarus_engine/experience-ui.js"
+      - "icarus_engine/world-*.js"
+      - "icarus_engine/worlds/**"
+      - "tests_engine/browser_*.cjs"
+      - "tests_engine/browser_preview_server.py"
+      - "tests_engine/test_world_*.py"
+      - ".github/workflows/ui-visual-contract.yml"
+  pull_request:
+    paths:
+      - "icarus_engine/dashboard.html"
+      - "icarus_engine/experience-ui.css"
+      - "icarus_engine/experience-ui.js"
+      - "icarus_engine/world-*.js"
+      - "icarus_engine/worlds/**"
+      - "tests_engine/browser_*.cjs"
+      - "tests_engine/browser_preview_server.py"
+      - "tests_engine/test_world_*.py"
+      - ".github/workflows/ui-visual-contract.yml"
+
+concurrency:
+  group: icarus-ui-visual-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install ICARUS test dependencies
+        run: pip install -e ".[dev,ml,bridge,databento]"
+
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+
+      - name: Start feed-free ICARUS preview
+        run: |
+          python tests_engine/browser_preview_server.py > /tmp/icarus-ui-preview.log 2>&1 &
+          echo $! > /tmp/icarus-ui-preview.pid
+          for attempt in $(seq 1 40); do
+            if curl --fail --silent http://127.0.0.1:8879/ >/dev/null; then
+              exit 0
+            fi
+            sleep 0.5
+          done
+          cat /tmp/icarus-ui-preview.log
+          exit 1
+
+      - name: Run world browser contracts
+        env:
+          ICARUS_PREVIEW_URL: http://127.0.0.1:8879
+          ICARUS_BROWSER_OUTPUT: /tmp/icarus-ui-previews
+          ICARUS_REQUIRE_WEBGL: "1"
+        run: |
+          node tests_engine/browser_depth.cjs
+          node tests_engine/browser_cinema.cjs
+          node tests_engine/browser_worlds.cjs
+
+      - name: Upload visual evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: icarus-ui-visual-evidence
+          path: /tmp/icarus-ui-previews
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Preview diagnostics
+        if: failure()
+        run: cat /tmp/icarus-ui-preview.log || true
+
+      - name: Stop preview
+        if: always()
+        run: |
+          if [ -f /tmp/icarus-ui-preview.pid ]; then
+            kill "$(cat /tmp/icarus-ui-preview.pid)" 2>/dev/null || true
+          fi
