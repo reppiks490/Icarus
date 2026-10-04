@@ -57,6 +57,13 @@ assert.equal(await page.locator('html').getAttribute('data-world-immersion'),'re
 assert.equal(await page.locator('.world-depth-frame').count(),1);
 assert.equal(await page.locator('html').getAttribute('data-world-view'),'overview');
 if(await page.locator('#view .tile').count()) assert.equal(await page.locator('#view .tile').first().getAttribute('data-world-depth-observed'),'1');
+// Rapid deliberate navigation must clean its transient gate/impact DOM rather than accumulate effects.
+await page.locator('[data-v="system"]').click();await page.waitForTimeout(80);
+assert.equal((await page.locator('[data-world-gate-label]').textContent()).trim(),'SYSTEM');
+await page.locator('[data-v="overview"]').click();await page.waitForTimeout(1100);
+assert.equal(await page.locator('.world-impact').count(),0);
+assert.equal(await page.locator('.world-depth-frame').evaluate(el=>el.classList.contains('world-view-gate-active')),false);
+assert.equal(await page.locator('html').getAttribute('data-world-view'),'overview');
 assert.equal(await page.locator('.top').evaluate(el=>getComputedStyle(el).position),'sticky');
 const longEnough=await page.evaluate(()=>document.documentElement.scrollHeight>innerHeight*1.25);
 if(longEnough){
