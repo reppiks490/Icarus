@@ -853,3 +853,33 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 :root[data-visual-resolved="light"] #view :is(.tile,.px-box,.psi-box,.pan-field,.brain-agent,.brain-sub,.brain-lane,.evo-sub).world-lit {
   background-image:none;box-shadow:inset 0 1px 0 #ffffff08,0 6px 18px #0002;
 }
+
+
+/* The three openings use different camera language rather than recoloring one shot. */
+.world-intro[data-intro-world="divine"] .intro-backdrop {animation-name:intro-camera-divine}
+.world-intro[data-intro-world="void"] .intro-backdrop {animation-name:intro-camera-void}
+.world-intro[data-intro-world="astral"] .intro-backdrop {animation-name:intro-camera-astral}
+@keyframes intro-camera-divine {
+  0%{opacity:0;transform:scale(1.28) translate3d(0,5%,0);filter:brightness(.55) blur(3px)}
+  18%{opacity:.09;filter:brightness(.72) blur(1px)}
+  54%{opacity:.23;transform:scale(1.11) translate3d(-1.5%,-1%,0);filter:brightness(.85)}
+  78%{opacity:.15;transform:scale(1.04) translate3d(1%,-3%,0)}
+  100%{opacity:.07;transform:scale(1) translate3d(0,-4%,0);filter:brightness(.72)}
+}
+@keyframes intro-camera-void {
+  0%{opacity:0;transform:scale(1.36) translate3d(5%,-2%,0) rotate(.8deg);filter:contrast(1.2) brightness(.45) blur(4px)}
+  20%{opacity:.11;filter:contrast(1.25) brightness(.58) blur(1px)}
+  47%{opacity:.25;transform:scale(1.17) translate3d(-3%,1%,0) rotate(-.4deg)}
+  72%{opacity:.18;transform:scale(1.08) translate3d(2%,2%,0) rotate(.25deg)}
+  100%{opacity:.06;transform:scale(1.02) translate3d(0,1%,0);filter:contrast(1.15) brightness(.52)}
+}
+@keyframes intro-camera-astral {
+  0%{opacity:0;transform:scale(1.24) translate3d(-5%,3%,0);filter:saturate(.8) brightness(.52) blur(3px)}
+  20%{opacity:.1;filter:saturate(1) brightness(.66) blur(1px)}
+  50%{opacity:.24;transform:scale(1.13) translate3d(2%,-1%,0)}
+  78%{opacity:.16;transform:scale(1.06) translate3d(5%,-2%,0)}
+  100%{opacity:.08;transform:scale(1.01) translate3d(3%,-3%,0);filter:saturate(.92) brightness(.62)}
+}
+@media (prefers-reduced-motion:reduce) {
+  .world-intro[data-intro-world] .intro-backdrop {animation:none!important;opacity:.08;transform:none!important;filter:none!important}
+}
