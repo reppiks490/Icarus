@@ -2,6 +2,7 @@
 (() => {
   'use strict';
   const themes = [['dark', 'Dark'], ['light', 'Light'], ['midnight', 'Midnight'], ['ocean', 'Ocean'],
+    ['divine', 'Divine Ascension'], ['void', 'Crimson Void'], ['astral', 'Astral Dreamscape'],
     ['forest', 'Forest'], ['ember', 'Ember'], ['sakura', 'Anime: Sakura'], ['neon', 'Anime: Neon']];
   const root = document.documentElement;
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -9,8 +10,9 @@
   const fillSnapshots = new Map();
   const cueTimers = new WeakMap();
   let initialized = false, currentView = '', uptime = null;
-  const read = (key, fallback) => { try { return localStorage.getItem(key) || fallback; } catch (_) { return fallback; } };
-  const save = (key, value) => { try { localStorage.setItem(key, value); } catch (_) { /* Session-only if browser storage is unavailable. */ } };
+  const sessionPreferences = new Map();
+  const read = (key, fallback) => { if (sessionPreferences.has(key)) return sessionPreferences.get(key); try { return localStorage.getItem(key) || fallback; } catch (_) { return fallback; } };
+  const save = (key, value) => { sessionPreferences.set(key, value); try { localStorage.setItem(key, value); } catch (_) { /* Retain preferences in memory for this session. */ } };
   const allowedTheme = value => themes.some(([id]) => id === value) ? value : 'dark';
 
   function motion() {
@@ -19,9 +21,10 @@
       clearTimeout(cueTimers.get(el));
       el.classList.remove('experience-cue', 'experience-fill-cue');
     });
+    window.IcarusWorldMotion?.refresh();
     const note = document.getElementById('experienceMotionNote');
     if (note) note.textContent = reduced.matches ? 'Your system requests reduced motion; all cues are off.' :
-      root.dataset.motion === 'off' ? 'All motion is off.' : 'Brief cues for changed closed-bar states and new live paper fills.';
+      root.dataset.motion === 'off' ? 'All motion is off.' : 'Brief market-state cues; decorative halo motion in Cinematic mode.';
   }
 
   function cue(symbol, kind) {
@@ -66,17 +69,62 @@
       keys: new Set(rows.map(key))});
   }
 
+  const worlds = {
+    divine: {name: 'Divine Ascension', title: 'The one above all.', caption: 'A throne above the clouds. A horizon without limits.', mark: 'I'},
+    void: {name: 'Crimson Void', title: 'Market Destroyer.', caption: 'From the silence. Beyond the noise.', mark: 'II'},
+    astral: {name: 'Astral Dreamscape', title: 'Beyond the horizon.', caption: 'An observatory at the edge of possibility.', mark: 'III'},
+  };
+  let scenery, sceneObserver;
+  const preference = (key, values, fallback) => {
+    const value = read('icarus-' + key, fallback);
+    return values.includes(value) ? value : fallback;
+  };
+  function appearance() {
+    const world = worlds[root.dataset.theme];
+    root.dataset.world = world ? root.dataset.theme : '';
+    root.dataset.experience = preference('experience', ['cinematic', 'balanced', 'focus'], 'cinematic');
+    root.dataset.density = preference('density', ['comfortable', 'compact'], 'comfortable');
+    root.dataset.accent = preference('accent', ['world', 'gold', 'ice', 'amethyst'], 'world');
+    if (!scenery) return;
+    scenery.hidden = !world || root.dataset.experience === 'focus';
+    const changedWorld = scenery.dataset.activeWorld !== root.dataset.world;
+    scenery.dataset.activeWorld = root.dataset.world;
+    if (world) {
+      document.getElementById('worldName').textContent = world.name;
+      document.getElementById('worldTitle').textContent = world.title;
+      document.getElementById('worldCaption').textContent = world.caption;
+      document.getElementById('worldMark').textContent = world.mark;
+      // Exact local assets only. No market data or authenticated URLs enter this layer.
+      scenery.style.setProperty('--world-art', `url("/worlds/${root.dataset.theme}.webp")`);
+    }
+    if (world && changedWorld) {
+      const art = scenery.querySelector('.world-art');
+      art.classList.remove('world-enter');
+      void art.offsetWidth;
+      art.classList.add('world-enter');
+    }
+    for (const button of scenery.querySelectorAll('[data-world-choice]')) button.setAttribute('aria-pressed', String(button.dataset.worldChoice === root.dataset.theme));
+    window.IcarusWorldMotion?.refresh();
+    const focus = document.getElementById('experienceFocus');
+    focus.setAttribute('aria-pressed', String(root.dataset.experience === 'focus'));
+    focus.textContent = root.dataset.experience === 'focus' ? 'Restore scenery' : 'Focus';
+    document.getElementById('experienceMode').value = root.dataset.experience;
+  }
+
   function init({onThemeChanged} = {}) {
     if (initialized) return;
     initialized = true;
-    root.dataset.theme = allowedTheme(read('icarus-theme', 'dark'));
+    root.dataset.theme = allowedTheme(read('icarus-theme', 'divine'));
     const controls = document.createElement('div');
     controls.className = 'experience-controls';
     controls.innerHTML = `<details class="experience-settings"><summary aria-label="Appearance and motion settings">Style</summary><div>
       <label>Theme<select id="experienceTheme"></select></label>
+      <label>Atmosphere<select id="experienceMode"><option value="balanced">Balanced · still scenery</option><option value="cinematic">Cinematic · dimensional halo</option><option value="focus">Focus · essentials</option></select></label>
+      <label>Accent<select id="experienceAccent"><option value="world">World signature</option><option value="gold">Sovereign gold</option><option value="ice">Glacier silver</option><option value="amethyst">Astral amethyst</option></select></label>
+      <label>Density<select id="experienceDensity"><option value="comfortable">Comfortable</option><option value="compact">Trading desk</option></select></label>
       <label>Motion<select id="experienceMotion"><option value="system">Follow system</option><option value="off">No motion</option></select></label>
-      <p id="experienceMotionNote"></p><p>Anime palettes are original colors; no character art.</p>
-      </div></details><button class="icon-btn" id="experienceMusicToggle" aria-expanded="false" aria-controls="experienceMusic">Music</button>`;
+      <button type="button" id="experienceReplay" class="sm">Replay cinematic intro</button><p id="experienceMotionNote"></p><p>Original anime worlds. Scenic titles and effects are decorative, independent of market activity.</p>
+      </div></details><button class="icon-btn" id="experienceFocus" aria-pressed="false">Focus</button><button class="icon-btn" id="experienceMusicToggle" aria-expanded="false" aria-controls="experienceMusic">Music</button>`;
     document.getElementById('btnTheme').insertAdjacentElement('afterend', controls);
     const select = document.getElementById('experienceTheme');
     for (const [id, label] of themes) { const option = document.createElement('option'); option.value = id; option.textContent = label; select.appendChild(option); }
@@ -84,14 +132,59 @@
     select.addEventListener('change', () => {
       root.dataset.theme = allowedTheme(select.value);
       save('icarus-theme', root.dataset.theme);
+      appearance();
       onThemeChanged?.();
     });
-    document.getElementById('btnTheme').addEventListener('click', () => { select.value = allowedTheme(root.dataset.theme); });
+    document.getElementById('btnTheme').addEventListener('click', () => { select.value = allowedTheme(root.dataset.theme); appearance(); });
     const motionSelect = document.getElementById('experienceMotion');
     motionSelect.value = read('icarus-motion', 'system') === 'off' ? 'off' : 'system';
     motionSelect.addEventListener('change', () => { save('icarus-motion', motionSelect.value); motion(); });
     reduced.addEventListener('change', motion);
-    motion();
+    scenery = document.createElement('section');
+    scenery.className = 'world-scene'; scenery.hidden = true;
+    scenery.setAttribute('aria-label', 'ICARUS visual world');
+    scenery.innerHTML = `<div class="world-art" aria-hidden="true"></div>
+      <div class="world-orbit" aria-hidden="true"><i></i><i></i><i></i><b>✦</b></div>
+      <div class="world-copy"><div class="world-eyebrow">ICARUS <span> / </span><span id="worldName"></span></div>
+      <h1 id="worldTitle"></h1><p id="worldCaption"></p>
+      <div class="world-switch" role="group" aria-label="Choose visual world">
+        <button type="button" data-world-choice="divine">01 <span>Divine</span></button>
+        <button type="button" data-world-choice="void">02 <span>Void</span></button>
+        <button type="button" data-world-choice="astral">03 <span>Astral</span></button>
+      </div></div><div class="world-edition" aria-hidden="true"><span id="worldMark"></span> / ICARUS WORLDS</div>`;
+    document.getElementById('view').insertAdjacentElement('beforebegin', scenery);
+    for (const button of scenery.querySelectorAll('[data-world-choice]')) button.addEventListener('click', () => {
+      select.value = button.dataset.worldChoice;
+      select.dispatchEvent(new Event('change'));
+    });
+    for (const [id, key, values, fallback] of [
+      ['experienceMode', 'experience', ['cinematic', 'balanced', 'focus'], 'cinematic'],
+      ['experienceAccent', 'accent', ['world', 'gold', 'ice', 'amethyst'], 'world'],
+      ['experienceDensity', 'density', ['comfortable', 'compact'], 'comfortable'],
+    ]) {
+      const input = document.getElementById(id);
+      input.value = preference(key, values, fallback);
+      input.addEventListener('change', () => {
+        save('icarus-' + key, input.value); appearance(); onThemeChanged?.();
+      });
+    }
+    document.getElementById('experienceFocus').addEventListener('click', () => {
+      const next = root.dataset.experience === 'focus' ? preference('previous-atmosphere', ['cinematic', 'balanced'], 'balanced') : 'focus';
+      if (next === 'focus') save('icarus-previous-atmosphere', root.dataset.experience);
+      save('icarus-experience', next); appearance();
+    });
+    const pauseScenery = () => { root.dataset.scenePaused = document.hidden ? 'true' : 'false'; };
+    document.addEventListener('visibilitychange', pauseScenery); pauseScenery();
+    if ('IntersectionObserver' in window) {
+      sceneObserver = new IntersectionObserver(entries => {
+        scenery.dataset.visible = entries[0].isIntersecting ? 'true' : 'false';
+      });
+      sceneObserver.observe(scenery);
+    }
+    window.IcarusWorldMotion?.init(scenery);
+    appearance(); motion();
+    document.getElementById('experienceReplay').addEventListener('click', () => window.IcarusWorldMotion?.playIntro());
+    window.IcarusWorldMotion?.startup();
 
     const panel = document.createElement('section');
     panel.id = 'experienceMusic'; panel.className = 'experience-music'; panel.hidden = true;
