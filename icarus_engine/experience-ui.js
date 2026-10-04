@@ -22,6 +22,7 @@
       el.classList.remove('experience-cue', 'experience-fill-cue');
     });
     window.IcarusWorldMotion?.refresh();
+    window.IcarusWorldImmersion?.sync();
     const note = document.getElementById('experienceMotionNote');
     if (note) note.textContent = reduced.matches ? 'Your system requests reduced motion; all cues are off.' :
       root.dataset.motion === 'off' ? 'All motion is off.' : 'Cinematic scenery and coordinated panel entrances. Market cues remain tied to actual state changes.';
@@ -114,6 +115,7 @@
     }
     for (const button of scenery.querySelectorAll('[data-world-choice]')) button.setAttribute('aria-pressed', String(button.dataset.worldChoice === root.dataset.theme));
     window.IcarusWorldMotion?.refresh();
+    window.IcarusWorldImmersion?.sync();
     const focus = document.getElementById('experienceFocus');
     focus.setAttribute('aria-pressed', String(root.dataset.experience === 'focus'));
     focus.textContent = root.dataset.experience === 'focus' ? 'Restore scenery' : 'Focus';
