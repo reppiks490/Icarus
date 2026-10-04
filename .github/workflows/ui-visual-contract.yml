@@ -1,17 +1,6 @@
 name: ui-visual-contract
 
 on:
-  push:
-    paths:
-      - "icarus_engine/dashboard.html"
-      - "icarus_engine/experience-ui.css"
-      - "icarus_engine/experience-ui.js"
-      - "icarus_engine/world-*.js"
-      - "icarus_engine/worlds/**"
-      - "tests_engine/browser_*.cjs"
-      - "tests_engine/browser_preview_server.py"
-      - "tests_engine/test_world_*.py"
-      - ".github/workflows/ui-visual-contract.yml"
   pull_request:
     paths:
       - "icarus_engine/dashboard.html"
@@ -23,6 +12,10 @@ on:
       - "tests_engine/browser_preview_server.py"
       - "tests_engine/test_world_*.py"
       - ".github/workflows/ui-visual-contract.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 concurrency:
   group: icarus-ui-visual-${{ github.workflow }}-${{ github.ref }}
@@ -46,7 +39,18 @@ jobs:
       - name: Install ICARUS test dependencies
         run: pip install -e ".[dev,ml,bridge,databento]"
 
+      - name: Run focused presentation invariants
+        run: |
+          python -m pytest \
+            tests_engine/test_dashboard_js.py \
+            tests_engine/test_world_assets.py \
+            tests_engine/test_world_cinema.py \
+            tests_engine/test_world_immersion.py -q
+
       - name: Install Playwright Chromium
+        env:
+          npm_config_audit: "false"
+          npm_config_fund: "false"
         run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
