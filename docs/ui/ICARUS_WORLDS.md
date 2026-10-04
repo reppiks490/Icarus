@@ -61,3 +61,14 @@ Base: `6d65a4ca977f490540a5daf9b5dabe55329d919c`. This pass adds distinct geomet
 The optional atmosphere has a bounded shader workload and uses the existing scene scheduler. `Light`, Focus, Balanced, hidden/offscreen state, No Motion and Reduced Motion retain their control over rendering. Shader failure or unavailable WebGL leaves the existing 2D scene usable. There are no paid services, external asset downloads, new market requests or order paths.
 
 Verification includes finite projected coordinates in both detail levels, actual Chromium shader compilation, context loss/restore, no-WebGL fallback, sustained slow-frame injection, rapid transitions, accessible title updates under No Motion, and mobile detail selection. Tests remain presentation evidence only. Production Safari/GPU performance remains device-specific and unverified.
+
+
+## Full-dashboard immersion phase II
+
+The selected world now extends beyond the scenic header without changing market semantics. A fixed, low-opacity local world layer and geometric light field sit behind the complete dashboard; scroll depth changes only presentation intensity. The main header remains sticky for long views by avoiding the former 100vh/overflow scroll-container combination.
+
+`world-immersion.js` owns bounded page-level interaction choreography: scroll phase, viewport pointer offsets, one-time panel illumination on viewport entry, and short local light impacts on direct UI interactions. It performs no fetches, writes, trading actions, chart interpolation, or market-state inference. Focus mode, No Motion, system reduced motion, hidden tabs, and Light visual detail suppress or reduce the effects.
+
+Instrument surfaces use layered world-reactive glass with a high-detail backdrop-filter path and an ordinary opaque fallback. Tables, scrollbars, active tabs, cards, assets, groups, status nodes, and modal shells share the selected world's edge light while preserving existing semantic green/red/warning colors.
+
+The optional browser depth check now scrolls a long page to the bottom, verifies the header is still pinned, confirms the immersion runtime reaches the final scroll phase, and captures a lower-page screenshot in addition to world and mobile screenshots.
