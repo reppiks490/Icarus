@@ -1,0 +1,69 @@
+{
+  "schema": "icarus-mcp-event-v1",
+  "category": "EVOLUTION",
+  "source": "MACRO_AUTOMATION",
+  "execution_authorized": false,
+  "event_time": "2026-10-04T06:08:16Z",
+  "title": "China October fuel-export suspension adds independent refined-product supply stress",
+  "net_new_delta": "Chinese refiners suspended October oil-product exports beyond Hong Kong and Macau while domestic diesel/gasoil inventories were reported roughly 20 million barrels below the pre-war threshold and gasoline roughly 9 million barrels below. This adds a distinct China supply-security withdrawal channel to the already stressed global refined-product regime.",
+  "fact": [
+    "Reuters reported on 2026-10-01, updated 2026-10-02, that Chinese refiners suspended October oil-product exports beyond Hong Kong and Macau.",
+    "PetroChina cancelled some planned October gasoline and jet-fuel cargoes; Zhejiang Petrochemical scheduled no product shipments during the holiday week.",
+    "Reuters reported October-November Asian diesel spreads reached a two-week high on expectations Chinese export supply would be absent."
+  ],
+  "source_claim": [
+    "Kpler estimated Chinese commercial gasoil/diesel inventories about 20 million barrels below the threshold Beijing uses for export normalization, with gasoline about 9 million barrels short.",
+    "Sources said permission after October 7 remained uncertain and depended on domestic inventories and refining output."
+  ],
+  "model_inference": "Add CHINA_REFINED_PRODUCT_EXPORT_WITHDRAWAL as a time-valid supply-security state. It compounds Middle-East and Russian refined-product stress but should not be treated as a permanent export ban or a quantified global shortage until physical October flows confirm it.",
+  "affected_instruments": [
+    "diesel/gasoil",
+    "Brent",
+    "WTI",
+    "inflation expectations",
+    "Treasury yields",
+    "DXY/USD",
+    "NQ/MNQ"
+  ],
+  "affected_assumptions": [
+    "China can be treated as a stable marginal refined-product export buffer",
+    "crude availability adequately proxies refined-product availability"
+  ],
+  "conflicts": [
+    "China has large refining capacity and exports could resume after the holiday if domestic stocks recover; South Korean refiners may partially cover the gap, though reported spot availability is limited."
+  ],
+  "unknown": [
+    "Whether Beijing permits exports after October 7",
+    "actual October export volumes",
+    "duration of domestic inventory shortfall",
+    "magnitude of substitution by other Asian refiners",
+    "incremental global diesel price/inflation transmission"
+  ],
+  "confidence": {
+    "event": "HIGH",
+    "duration": "MEDIUM",
+    "global_physical_impact": "MEDIUM"
+  },
+  "next_decisive_check": "After October 7, verify Chinese export permissions and actual diesel/gasoline/jet-fuel loadings, then compare domestic inventories, Asian diesel cracks/spreads, and substitution volumes from South Korea/India.",
+  "evidence": [
+    {
+      "publisher": "Reuters",
+      "date": "2026-10-01",
+      "updated": "2026-10-02",
+      "url": "https://www.reuters.com/business/energy/chinese-refiners-suspend-oct-fuel-exports-petrochina-cancels-cargoes-sources-say-2026-10-01/"
+    },
+    {
+      "publisher": "Reuters",
+      "date": "2026-10-01",
+      "url": "https://www.reuters.com/business/energy/oil-prices-barely-changed-investors-assess-us-iran-peace-talks-gulf-exports-2026-10-01/"
+    }
+  ],
+  "oracle": {
+    "status": "MATERIAL_FINDING",
+    "finding": "China's October product-export suspension creates a distinct refined-product supply-security withdrawal state that compounds existing Russian and Middle-East product scarcity without proving a permanent shortage."
+  },
+  "supermesh_x": {
+    "status": "MATERIAL_FINDING",
+    "finding": "Reuters source reporting plus Kpler/LSEG physical-flow context supports event discovery; promotion should require post-Oct-7 export permissions and observed cargo loadings rather than policy/source reports alone."
+  }
+}
