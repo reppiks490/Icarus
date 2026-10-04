@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os
 import signal
+import threading
 from pathlib import Path
 
 from icarus_engine.runtime import Journal, Portfolio
@@ -27,7 +28,8 @@ def main() -> None:
         if stopping:
             return
         stopping = True
-        server.shutdown()
+        # BaseServer.shutdown() must not run in the serve_forever() thread.
+        threading.Thread(target=server.shutdown, daemon=True).start()
 
     signal.signal(signal.SIGTERM, stop)
     signal.signal(signal.SIGINT, stop)
