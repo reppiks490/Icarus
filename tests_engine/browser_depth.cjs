@@ -52,6 +52,18 @@ await page.evaluate(()=>{for(const id of ['void','astral','void','divine'])docum
 await page.waitForTimeout(1200);assert.equal(await page.locator('.world-veil').count(),0);
 const card=page.locator('#view > .card').first();await card.hover();await page.waitForTimeout(150);
 assert.ok(await card.evaluate(el=>el.style.getPropertyValue('--panel-x')));
+assert.equal(await page.locator('html').getAttribute('data-world-immersion'),'ready');
+assert.equal(await page.locator('.top').evaluate(el=>getComputedStyle(el).position),'sticky');
+const longEnough=await page.evaluate(()=>document.documentElement.scrollHeight>innerHeight*1.25);
+if(longEnough){
+ await page.evaluate(()=>scrollTo(0,document.documentElement.scrollHeight));
+ await page.waitForTimeout(180);
+ const stickyTop=await page.locator('.top').evaluate(el=>el.getBoundingClientRect().top);
+ assert.ok(Math.abs(stickyTop)<2,'Sticky header must remain pinned on long scroll');
+ assert.equal(await page.locator('html').getAttribute('data-scroll-phase'),'abyss');
+ await page.screenshot({path:`${output}/depth-lower-page.png`});
+ await page.evaluate(()=>scrollTo(0,0));await page.waitForTimeout(80);
+}
 await page.locator('.experience-settings summary').click();await page.locator('#experienceMotion').selectOption('off');
 await page.waitForTimeout(50);assert.equal(await page.locator('.world-lit').count(),0);
 await page.locator('#experienceTheme').selectOption('void');
