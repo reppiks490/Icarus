@@ -656,3 +656,39 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 :root[data-world]:not([data-world=""]) .tab:hover {text-shadow:0 0 12px color-mix(in srgb,var(--world-glow),transparent 76%)}
 :root[data-world]:not([data-world=""]) .tab.active {text-shadow:0 0 18px color-mix(in srgb,var(--world-glow),transparent 70%)}
 @media (prefers-reduced-motion:reduce) {:root[data-world]:not([data-world=""]) .path .node.on + .link,:root[data-world]:not([data-world=""]) .path .node.warn + .link {animation:none!important}}
+
+
+/* Prismatic glass: a second optical layer follows pointer light without covering financial content. */
+:root[data-world]:not([data-world=""]):not([data-experience="focus"]) :is(.card,.asset,.group) {isolation:isolate}
+:root[data-world]:not([data-world=""]):not([data-experience="focus"]) :is(.card,.asset,.group)::before {
+  content:"";position:absolute;inset:1px;border-radius:inherit;pointer-events:none;z-index:0;opacity:.28;
+  background:
+    radial-gradient(ellipse 55% 34% at var(--panel-x,18%) var(--panel-y,4%),#ffffff15 0%,color-mix(in srgb,var(--world-glow),transparent 91%) 31%,transparent 67%),
+    linear-gradient(112deg,transparent 3%,#ffffff08 18%,transparent 31% 66%,color-mix(in srgb,var(--s7),transparent 96%) 81%,transparent 94%);
+  mix-blend-mode:screen;transition:opacity .3s ease,filter .3s ease;
+}
+:root[data-world]:not([data-world=""]):not([data-experience="focus"]) :is(.card,.asset,.group).world-lit::before,
+:root[data-world]:not([data-world=""]):not([data-experience="focus"]) :is(.card,.asset,.group):hover::before {
+  opacity:.7;filter:saturate(1.16) brightness(1.08);
+}
+:root[data-world]:not([data-world=""]):not([data-experience="focus"]) :is(.card,.asset,.group) > * {position:relative;z-index:1}
+:root[data-world]:not([data-world=""])[data-visual-resolved="rich"]:not([data-experience="focus"]) :is(.card,.asset,.group) {
+  box-shadow:
+    0 18px 58px #0004,
+    inset 0 1px 0 #ffffff16,
+    inset 0 -18px 34px #00000012,
+    inset 1px 0 0 color-mix(in srgb,var(--world-glow),transparent 94%),
+    0 0 0 1px color-mix(in srgb,var(--world-glow),transparent 94%);
+}
+:root[data-world="divine"][data-visual-resolved="rich"] :is(.card,.asset,.group)::before {background:
+  radial-gradient(ellipse 58% 36% at var(--panel-x,18%) var(--panel-y,4%),#fff8df1b 0%,#d5ab580c 35%,transparent 67%),
+  linear-gradient(112deg,transparent 5%,#fff6d510 19%,transparent 32% 68%,#7ad7cd08 82%,transparent 94%)}
+:root[data-world="void"][data-visual-resolved="rich"] :is(.card,.asset,.group)::before {background:
+  radial-gradient(ellipse 58% 36% at var(--panel-x,18%) var(--panel-y,4%),#ffdae210 0%,#ed1d5610 34%,transparent 66%),
+  linear-gradient(112deg,transparent 5%,#ff94ac0d 19%,transparent 31% 67%,#c3a7ff08 82%,transparent 94%)}
+:root[data-world="astral"][data-visual-resolved="rich"] :is(.card,.asset,.group)::before {background:
+  radial-gradient(ellipse 58% 36% at var(--panel-x,18%) var(--panel-y,4%),#e4f6ff18 0%,#8d64f912 35%,transparent 67%),
+  linear-gradient(112deg,transparent 5%,#bceaff0e 19%,transparent 32% 68%,#c3a7ff0c 82%,transparent 94%)}
+@media (prefers-reduced-motion:reduce) {
+  :root[data-world]:not([data-world=""]) :is(.card,.asset,.group)::before {transition:none!important}
+}
