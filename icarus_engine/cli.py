@@ -7,6 +7,7 @@
   icarus-engine ingest-bars  <TradingView chart export .csv> --symbol NQ [--tz America/New_York]   # Grok (xAI) 2026-09-20
   icarus-engine doctor       [--json]                                                             # Grok (xAI) 2026-09-20
   icarus-engine paper-export [--out paper-trades.csv] [--live-only]                               # Grok (xAI) 2026-09-20
+  icarus-engine databento-corpus --start YYYY-MM-DD [--end ...] [--minutes 5] [--assets ALL|NQ,ES,...]
   icarus-engine inputs       [--profile nq|crypto] [--preset NAME]                            -> the effective inputs as JSON
   icarus-engine assets                                                                        -> the asset registry
 
@@ -302,6 +303,35 @@ def cmd_paper_export(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_databento_corpus(args: argparse.Namespace) -> int:
+    """Export local continuous-futures corpus rows through the existing Databento adapter."""
+    from datetime import datetime, timezone
+    from .corpus import build_databento_corpus, registered_futures
+
+    assets = registered_futures() if str(args.assets).strip().upper() == "ALL" else [
+        x.strip() for x in str(args.assets).split(",") if x.strip()
+    ]
+    end = args.end or datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    out_dir = args.out or os.path.join(_base_dir(), "corpus", "databento")
+    report = build_databento_corpus(
+        out_dir,
+        start=args.start,
+        end=end,
+        minutes=args.minutes,
+        assets=assets,
+        roll_rule=args.roll_rule,
+    )
+    print(f"Databento corpus -> {out_dir}")
+    print(f"  {report['ok_count']} assets OK; {report['error_count']} blocked/error; dataset={report['dataset']} roll={report['roll_rule']}")
+    for token, row in report["assets"].items():
+        if row.get("status") == "OK":
+            print(f"  OK {token:<6} {row['rows']:>8} rows  {row['first']} -> {row['last']}  {row['file']}")
+        else:
+            print(f"  XX {token:<6} {row.get('error', 'unknown error')}", file=sys.stderr)
+    print("  manifest.json contains provenance/hashes only; DATABENTO_API_KEY is never persisted.")
+    return 0 if report["ok_count"] else 2
+
+
 def cmd_parity(args: argparse.Namespace) -> int:
     from .parity import compare
     journal = Journal(args.db or ":memory:")
@@ -393,6 +423,15 @@ def main(argv: Optional[list] = None) -> int:
     x.add_argument("--out", default=None, help="destination CSV (default paper-trades.csv under plant root)")
     x.add_argument("--live-only", action="store_true", help="omit warmup-replay rows (live=0)")
     x.set_defaults(fn=cmd_paper_export)
+
+    c = sub.add_parser("databento-corpus", help="export local continuous-futures OHLCV corpus via Databento")
+    c.add_argument("--start", required=True, help="UTC ISO/date start (inclusive), e.g. 2024-09-01")
+    c.add_argument("--end", default=None, help="UTC ISO/date end (exclusive); default now")
+    c.add_argument("--minutes", type=int, default=5, help="bar size in minutes (default 5)")
+    c.add_argument("--assets", default="ALL", help="ALL registered futures or comma list such as NQ,MNQ,ES,MES,GC,MGC")
+    c.add_argument("--roll-rule", default="v", choices=["v", "n", "c"], help="Databento continuous roll: volume/open-interest/calendar")
+    c.add_argument("--out", default=None, help="output directory (default $ICARUS_HOME/corpus/databento)")
+    c.set_defaults(fn=cmd_databento_corpus)
 
     args = p.parse_args(argv)
     if getattr(args, "preset", None) == "":
