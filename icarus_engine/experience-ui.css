@@ -421,3 +421,16 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
   .world-impact {display:none!important}
   .world-depth-enter {animation:none!important}
 }
+
+
+/* Native view transitions make navigation feel continuous while preserving the real DOM and chart data. */
+#view {view-transition-name:icarus-view}
+::view-transition-old(icarus-view) {animation:world-view-old 280ms cubic-bezier(.4,0,.8,.2) both}
+::view-transition-new(icarus-view) {animation:world-view-new 520ms cubic-bezier(.16,.8,.2,1) both}
+@keyframes world-view-old {to {opacity:0;filter:blur(5px) brightness(.7);transform:scale(.992)}}
+@keyframes world-view-new {from {opacity:0;filter:blur(8px) brightness(.72);transform:translateY(8px) scale(.994)} to {opacity:1;filter:none;transform:none}}
+:root[data-motion="off"]::view-transition-old(icarus-view),
+:root[data-motion="off"]::view-transition-new(icarus-view) {animation:none!important}
+@media (prefers-reduced-motion:reduce) {
+  ::view-transition-old(icarus-view),::view-transition-new(icarus-view) {animation:none!important}
+}
