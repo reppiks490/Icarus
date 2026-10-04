@@ -9,7 +9,7 @@
   let intro = null, introTimer = 0, introReturnFocus = null, inertSiblings = [];
   const colors = {divine:[205,165,82], void:[255,80,108], astral:[137,192,255]};
   const rand = (a,b) => a + Math.random() * (b-a);
-  const permitted = () => scene && !intro && !scene.hidden && visible && !document.hidden &&
+  const permitted = () => scene && !intro && !scene.hidden && !document.hidden &&
     root.dataset.experience === 'cinematic' && root.dataset.motion !== 'off' && !reduced.matches && !!colors[root.dataset.world];
   const detail=()=>root.dataset.visualDetail==='light'||((root.dataset.visualDetail||'adaptive')==='adaptive'&&(qualityReduced||width<640))?'light':'rich';
   function resize() {
@@ -17,6 +17,7 @@
     const box = scene.getBoundingClientRect();
     width = box.width; height = box.height;
     root.dataset.visualResolved=detail();
+    window.IcarusImmersion?.resize(detail());
     const dpr = Math.min(window.devicePixelRatio || 1, detail()==='light'?1:1.5);
     canvas.width = Math.round(width*dpr); canvas.height = Math.round(height*dpr);
     ctx.setTransform(dpr,0,0,dpr,0,0);
@@ -34,6 +35,8 @@
       if(slowFrames>=8){qualityReduced=true;resize();aura?.pause();}
     }
     const dt = last ? Math.min((now-last)/1000,.06) : 0; last=now; elapsed+=dt;
+    window.IcarusImmersion?.frame(elapsed,dt,detail());
+    if(!visible)return;
     eased.x += (pointer.x-eased.x)*.065; eased.y += (pointer.y-eased.y)*.065;
     scene.style.setProperty('--scene-x', eased.x.toFixed(3));
     scene.style.setProperty('--scene-y', eased.y.toFixed(3));
@@ -78,6 +81,8 @@
     if(requestedDetail!==root.dataset.visualDetail){requestedDetail=root.dataset.visualDetail;qualityReduced=false;slowFrames=0;resize();}
     if(detail()==='light')aura?.pause();
     window.IcarusWorldCinema?.sync(!!intro || (permitted() && !!ctx));
+    window.IcarusImmersion?.refresh(permitted());
+    if(!visible){aura?.pause();ctx?.clearRect(0,0,width,height);}
     if (permitted()) { if (!frame) { resize(); last=0; frame=requestAnimationFrame(draw); } }
     else {
       cancelAnimationFrame(frame); frame=0; last=0; aura?.pause();
@@ -113,18 +118,8 @@
     intro.style.setProperty('--intro-duration',duration+'ms');
     intro.dataset.introWorld = colors[root.dataset.theme] ? root.dataset.theme : 'divine';
     intro.setAttribute('role','dialog'); intro.setAttribute('aria-modal','true'); intro.setAttribute('aria-label','ICARUS cinematic introduction');
-    intro.innerHTML=`<button type="button" class="intro-skip">Skip intro <span>Esc</span></button>
-      <div class="intro-theater" aria-hidden="true"><div class="intro-backdrop"></div><canvas class="intro-loom"></canvas>
-        <div class="intro-rays"></div><div class="intro-dust"></div>
-        <div class="intro-system"><div class="intro-eclipse"></div>
-          <i class="intro-ring r1"></i><i class="intro-ring r2"></i><i class="intro-ring r3"></i><i class="intro-ring r4"></i>
-          <div class="intro-wing left"><b></b><b></b><b></b><b></b><b></b></div>
-          <div class="intro-wing right"><b></b><b></b><b></b><b></b><b></b></div>
-          <div class="intro-crown"><svg viewBox="0 0 100 110" aria-hidden="true"><path d="M18 31L31 42L50 14L69 42L82 31L73 65H27Z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M30 73H70M36 81H64" fill="none" stroke="currentColor" stroke-width="2"/><path d="M50 32L58 48L50 62L42 48Z" fill="currentColor"/><circle cx="50" cy="5" r="2" fill="currentColor"/><path d="M50 88V105M44 97L50 105L56 97" fill="none" stroke="currentColor" stroke-width="2"/></svg></div>
-        </div>
-        <div class="intro-chapters"><span>FORM / AWAKENING</span><span>LIGHT / CONVERGENCE</span><span>INFINITY / REVEALED</span></div>
-        <div class="intro-title"><span>THE ONE ABOVE ALL</span><strong>ICARUS</strong><em>Enter your dominion.</em></div>
-      </div><p class="intro-note">Cinematic introduction · decorative sequence</p>`;
+    intro.innerHTML=`<button type="button" class="intro-skip">Skip intro <span>Esc</span></button>`+
+      (window.IcarusImmersion?.introMarkup(intro.dataset.introWorld)||'<div class="intro-title"><strong>ICARUS</strong></div><canvas class="intro-loom"></canvas>');
     inertSiblings = Array.from(document.body.children).map(el => [el, el.inert]);
     for (const [el] of inertSiblings) el.inert = true;
     document.body.appendChild(intro);
@@ -145,13 +140,15 @@
         introCanvas.width=Math.round(w*dpr);introCanvas.height=Math.round(h*dpr);introCtx.setTransform(dpr,0,0,dpr,0,0);
       }
       introCtx.clearRect(0,0,w,h);
-      window.IcarusWorldCinema?.draw(introCtx,w,h,introElapsed,dt,{intro:true,detail:detail(),pointer:{x:Math.sin(introElapsed*.18)*.35,y:Math.cos(introElapsed*.13)*.18}});
+      if(window.IcarusImmersion)window.IcarusImmersion.drawIntro(introCtx,w,h,introElapsed,duration/1000,intro.dataset.introWorld);
+      else window.IcarusWorldCinema?.draw(introCtx,w,h,introElapsed,dt,{intro:true,detail:detail()});
     };
     if(introCtx)introFrame=requestAnimationFrame(animateIntro);
     introTimer=setTimeout(closeIntro,duration);
   }
   function init(element) {
     if (scene) return;
+    window.IcarusImmersion?.init();
     scene=element; canvas=document.createElement('canvas'); canvas.className='world-atmosphere'; canvas.setAttribute('aria-hidden','true');
     scene.prepend(canvas); ctx=canvas.getContext('2d');
     scene.dataset.renderer=ctx ? 'canvas' : 'static';

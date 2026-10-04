@@ -24,7 +24,7 @@
     window.IcarusWorldMotion?.refresh();
     const note = document.getElementById('experienceMotionNote');
     if (note) note.textContent = reduced.matches ? 'Your system requests reduced motion; all cues are off.' :
-      root.dataset.motion === 'off' ? 'All motion is off.' : 'Cinematic scenery and coordinated panel entrances. Market cues remain tied to actual state changes.';
+      root.dataset.motion === 'off' ? 'All motion is off.' : 'Continuous scenery, scroll reveals and refractive surfaces. Market cues remain tied to actual state changes.';
   }
 
   function cue(symbol, kind) {
@@ -128,7 +128,7 @@
     controls.className = 'experience-controls';
     controls.innerHTML = `<details class="experience-settings"><summary aria-label="Appearance and motion settings">Style</summary><div>
       <label>Theme<select id="experienceTheme"></select></label>
-      <label>Atmosphere<select id="experienceMode"><option value="balanced">Balanced · still scenery</option><option value="cinematic">Cinematic · Eclipse Loom</option><option value="focus">Focus · essentials</option></select></label>
+      <label>Atmosphere<select id="experienceMode"><option value="balanced">Balanced · still scenery</option><option value="cinematic">Cinematic · full immersion</option><option value="focus">Focus · essentials</option></select></label>
       <label>Accent<select id="experienceAccent"><option value="world">World signature</option><option value="gold">Sovereign gold</option><option value="ice">Glacier silver</option><option value="amethyst">Astral amethyst</option></select></label>
       <label>Visual detail<select id="experienceVisualDetail"><option value="adaptive">Adaptive</option><option value="rich">Rich · full atmosphere</option><option value="light">Light · lean geometry</option></select></label>
       <label>Scene scale<select id="experienceSceneSize"><option value="compact">Compact</option><option value="grand">Grand</option><option value="panorama">Panorama</option></select></label>
@@ -160,7 +160,7 @@
     scenery.setAttribute('aria-label', 'ICARUS visual world');
     scenery.innerHTML = `<div class="world-art" aria-hidden="true"></div>
       <div class="world-orbit" aria-hidden="true"><i></i><i></i><i></i><b>◇</b></div>
-      <div class="world-coordinate" aria-hidden="true">ECLIPSE LOOM <span>FORM / LIGHT / INFINITY</span></div>
+      <div class="world-coordinate" aria-hidden="true">SANCTUM <span>SCROLL / DISCOVER / TRANSCEND</span></div>
       <div class="world-copy"><div class="world-eyebrow">ICARUS <span> / </span><span id="worldName"></span></div>
       <h1 id="worldTitle"></h1><p id="worldCaption"></p>
       <div class="world-switch" role="group" aria-label="Choose visual world">

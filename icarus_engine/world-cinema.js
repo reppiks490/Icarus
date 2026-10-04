@@ -293,6 +293,7 @@
     enteredCharts.clear();
     for(const animation of entrances) animation.cancel();entrances.clear();
     if(root.dataset.motion!=='live'||root.dataset.experience!=='cinematic'||!root.dataset.world||document.hidden) return;
+    if(window.IcarusImmersion){window.IcarusImmersion.enterView();return;}
     const panels=[...document.querySelectorAll('#view > .card, #view > .asset, #view > .hero')].slice(0,18);
     const animate=(el,frames,options)=>{
       if(!el.animate)return;

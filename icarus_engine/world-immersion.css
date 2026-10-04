@@ -1,0 +1,167 @@
+/* SANCTUM — continuous scenery, optically layered glass and real controls. */
+:root[data-world]:not([data-world=""]) {
+  --glass-base:12,15,24;--glass-fog:20,24,35;--glass-edge:236,211,161;--glass-cool:130,176,213;
+  --glass-shadow:0 22px 64px #0005,0 3px 9px #0003,inset 0 1px 0 #ffffff24,inset 0 -1px 0 #0005;
+}
+:root[data-world="void"] {--glass-base:14,8,17;--glass-fog:27,14,30;--glass-edge:243,114,143;--glass-cool:150,112,199}
+:root[data-world="astral"] {--glass-base:9,14,29;--glass-fog:17,26,46;--glass-edge:147,217,245;--glass-cool:177,136,255}
+:root[data-world="divine"][data-lighting="original"] {--glass-base:249,245,233;--glass-fog:235,228,207;--glass-edge:137,102,49;--glass-cool:103,151,183;--glass-shadow:0 22px 64px #5e492326,0 3px 9px #5e492318,inset 0 1px 0 #fff,inset 0 -1px 0 #83693933}
+:root[data-world]:not([data-world=""]) body {isolation:isolate;background:var(--page)}
+.immersion-environment {position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none;background:#050711;--descent:0;--camera-x:0px;--camera-y:0px}
+.immersion-environment[hidden] {display:none}
+.immersion-landscape {position:absolute;inset:-70px;background-image:linear-gradient(180deg,#06081122,#06081155 50%,#06081122),var(--environment-art);background-size:cover;background-position:65% 48%;transform:translate3d(var(--camera-x),var(--camera-y),0) scale(calc(1.05 + var(--descent)*.08));opacity:.62;transition:background-image 1s}
+.immersion-vault {position:absolute;inset:0;background:radial-gradient(ellipse at 6% 24%,rgba(var(--glass-edge),.15),transparent 48%),radial-gradient(ellipse at 95% 75%,rgba(var(--glass-cool),.19),transparent 53%),linear-gradient(90deg,rgba(var(--glass-base),.50),transparent 40%,rgba(var(--glass-base),.2))}
+.immersion-vignette {position:absolute;inset:0;background:linear-gradient(180deg,#05071020,transparent 30%,#05071066),radial-gradient(ellipse at center,transparent 35%,#02040b80)}
+.immersion-canvas {position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.immersion-grain,.sanctum-filmgrain {position:absolute;inset:0;pointer-events:none;opacity:.045;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.91' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' opacity='.6' filter='url(%23n)'/%3E%3C/svg%3E")}
+:root[data-world="divine"][data-lighting="original"] .immersion-environment {background:#ece7da}
+:root[data-world="divine"][data-lighting="original"] .immersion-landscape {opacity:.4}
+:root[data-world="divine"][data-lighting="original"] .immersion-vignette {background:linear-gradient(90deg,#efe9dca0,#efe9dc22,#efe9dc88)}
+.immersion-rail {display:none;position:fixed;left:7px;top:48%;z-index:4;pointer-events:none;color:rgba(var(--glass-edge),.8);font:8px ui-monospace,monospace;letter-spacing:.2em;writing-mode:vertical-rl;gap:14px;align-items:center}
+:root[data-immersion]:not([data-immersion="off"]) .immersion-rail {display:flex}
+.immersion-rail i {display:block;height:78px;width:1px;background:linear-gradient(180deg,rgba(var(--glass-edge),.9) calc(var(--descent,0)*100%),rgba(var(--glass-edge),.12) 0)}
+.immersion-rail b {font-weight:400}
+
+/* Chrome floats in the same space as the panels. Status colors retain meaning. */
+:root[data-world]:not([data-world=""]) .top {background:rgba(var(--glass-base),.82);-webkit-backdrop-filter:blur(22px) saturate(145%);backdrop-filter:blur(22px) saturate(145%);border-bottom:1px solid rgba(var(--glass-edge),.23);box-shadow:0 10px 38px #0004,inset 0 1px 0 #ffffff16}
+:root[data-world]:not([data-world=""]) .top-in {padding-top:16px;padding-bottom:14px}
+:root[data-world]:not([data-world=""]) .brand {letter-spacing:.15em;font-size:10px;line-height:1.6}
+:root[data-world]:not([data-world=""]) .brand::before {content:"";width:23px;height:28px;flex-shrink:0;border:1px solid rgba(var(--glass-edge),.65);clip-path:polygon(50% 0,100% 25%,86% 85%,50% 100%,14% 85%,0 25%);background:linear-gradient(135deg,rgba(var(--glass-edge),.4),transparent 50%,rgba(var(--glass-cool),.4));box-shadow:inset 0 0 0 4px rgba(var(--glass-base),.8)}
+:root[data-world]:not([data-world=""]) .tabs {padding-bottom:12px;gap:5px}
+:root[data-world]:not([data-world=""]) .tab {border-radius:7px;border:1px solid transparent;font-size:11px;letter-spacing:.025em;padding:8px 10px}
+:root[data-world]:not([data-world=""]) .tab.active {background:linear-gradient(120deg,rgba(var(--glass-edge),.15),rgba(var(--glass-cool),.04));border-color:rgba(var(--glass-edge),.32);box-shadow:inset 0 1px 0 rgba(var(--glass-edge),.25),0 4px 16px #0002;color:var(--ink)}
+:root[data-world]:not([data-world=""]) :is(button,.experience-settings>summary) {border-radius:9px;box-shadow:inset 0 1px 0 #ffffff12,0 3px 8px #0002;transition:background .25s,border-color .25s,box-shadow .25s}
+:root[data-world]:not([data-world=""]) button:not(.primary):not(.danger) {background:linear-gradient(140deg,rgba(var(--glass-edge),.10),transparent 48%),rgba(var(--glass-base),.66)}
+:root[data-world]:not([data-world=""]) :is(button,.tab,summary):hover {border-color:rgba(var(--glass-edge),.6);box-shadow:inset 0 1px 0 rgba(var(--glass-edge),.24),0 0 25px rgba(var(--glass-edge),.08)}
+:root[data-world]:not([data-world=""]) :is(input,select,textarea) {background:rgba(var(--glass-base),.72);border-color:rgba(var(--glass-edge),.23);box-shadow:inset 0 2px 8px #0002;accent-color:var(--s1)}
+:root[data-world]:not([data-world=""]) select option {background:var(--surface);color:var(--ink)}
+:root[data-world]:not([data-world=""]) :is(input,select,textarea):focus {border-color:var(--s1);box-shadow:0 0 0 3px rgba(var(--glass-edge),.10),inset 0 1px 6px #0002}
+
+/* Clear bevel, inner frost, reflected light and a dark readable core. */
+:root[data-world]:not([data-world=""]) #view {gap:20px;padding:24px 32px 64px}
+:root[data-world]:not([data-world=""]) :is(.card,.asset) {
+  position:relative;border:1px solid rgba(var(--glass-edge),.26);border-radius:20px;
+  background:radial-gradient(ellipse 80% 150px at var(--panel-x,12%) 0%,rgba(var(--glass-edge),.10),transparent 100%),linear-gradient(135deg,#ffffff0b,transparent 34%,rgba(var(--glass-cool),.035) 80%),rgba(var(--glass-base),.76);
+  -webkit-backdrop-filter:blur(22px) saturate(140%);backdrop-filter:blur(22px) saturate(140%);
+  box-shadow:var(--glass-shadow);padding:22px 24px;animation:none!important;
+}
+:root[data-world]:not([data-world=""]) :is(.card,.asset)::before {
+  content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;border:1px solid transparent;
+  background:linear-gradient(118deg,#ffffff75,rgba(var(--glass-edge),.07) 22%,transparent 48%,rgba(var(--glass-cool),.35) 80%,#ffffff20) border-box;
+  -webkit-mask:linear-gradient(#fff 0 0) padding-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#fff 0 0) padding-box,linear-gradient(#fff 0 0);mask-composite:exclude;
+}
+:root[data-world]:not([data-world=""]) :is(.card,.asset)::after {content:"";position:absolute;width:65px;height:2px;top:-1px;left:26px;pointer-events:none;background:linear-gradient(90deg,transparent,rgba(var(--glass-edge),.75),transparent);box-shadow:0 0 12px rgba(var(--glass-edge),.18)}
+:root[data-world]:not([data-world=""]) [data-glass-cut="1"]::after {left:auto;right:26px;width:42px}
+:root[data-world]:not([data-world=""]) [data-glass-cut="2"]::after {top:auto;bottom:-1px;left:35%;width:100px;opacity:.65}
+:root[data-world]:not([data-world=""]) :is(.card,.asset).world-lit {background:radial-gradient(ellipse 450px 240px at var(--panel-x,50%) var(--panel-y,0%),rgba(var(--glass-edge),.14),transparent 75%),linear-gradient(125deg,#ffffff09,transparent 40%,rgba(var(--glass-cool),.05)),rgba(var(--glass-base),.76);border-color:rgba(var(--glass-edge),.44)}
+:root[data-world]:not([data-world=""]) :is(.card,.asset):hover {box-shadow:var(--glass-shadow),0 0 30px rgba(var(--glass-edge),.055)}
+:root[data-world]:not([data-world=""]) .asset.long {box-shadow:inset 3px 0 0 var(--good),var(--glass-shadow)}
+:root[data-world]:not([data-world=""]) .asset.short {box-shadow:inset 3px 0 0 var(--crit),var(--glass-shadow)}
+:root[data-world]:not([data-world=""]) .card h2 {font-size:10px;letter-spacing:.17em;line-height:1.8;margin-bottom:20px;color:var(--ink-2);gap:10px}
+:root[data-world]:not([data-world=""]) .card h2::before {width:3px;height:13px;border:0;transform:none;background:linear-gradient(180deg,rgba(var(--glass-edge),1),rgba(var(--glass-cool),.25));border-radius:3px;margin:0;box-shadow:0 0 12px rgba(var(--glass-edge),.18);flex-shrink:0}
+:root[data-world]:not([data-world=""]) .card h2 .sub {font-size:10px;letter-spacing:0;line-height:1.5}
+:root[data-world]:not([data-world=""]) .hero .n {font-size:clamp(38px,3.8vw,62px);letter-spacing:-.055em;font-weight:350;font-variant-numeric:tabular-nums}
+:root[data-world]:not([data-world=""]) .hero .pct {font-size:12px;line-height:1.8;margin:5px 0 8px}
+:root[data-world]:not([data-world=""]) :is(.tile,.group) {background:linear-gradient(145deg,#ffffff09,transparent 50%),rgba(var(--glass-fog),.56);border:1px solid rgba(var(--glass-edge),.16);border-radius:12px;box-shadow:inset 0 1px 0 #ffffff10,inset 0 -1px 0 #0002,0 4px 12px #0001}
+:root[data-world]:not([data-world=""]) .tile {padding:13px 14px}
+:root[data-world]:not([data-world=""]) .tile .k {font-size:9px;letter-spacing:.12em;line-height:1.65;color:var(--ink-2)}
+:root[data-world]:not([data-world=""]) .tile .v {font-size:20px;font-weight:500;letter-spacing:-.02em;margin-top:6px}
+:root[data-world]:not([data-world=""]) :is(.tile,.group):hover {border-color:rgba(var(--glass-edge),.35)}
+:root[data-world]:not([data-world=""]) .ah {padding-bottom:12px;margin-bottom:12px;border-bottom:1px solid rgba(var(--glass-edge),.13)}
+:root[data-world]:not([data-world=""]) .ah .sym {font-size:17px;font-weight:600;letter-spacing:.05em}
+:root[data-world]:not([data-world=""]) :is(.bar,.segs i) {box-shadow:inset 0 1px 3px #0004;background:rgba(var(--glass-edge),.10)}
+:root[data-world]:not([data-world=""]) .bar b {box-shadow:inset 0 1px 0 #ffffff3d}
+:root[data-world]:not([data-world=""]) .segs i.on {background:var(--s1)}
+:root[data-world]:not([data-world=""]) .segs i.hot {background:var(--warn)}
+:root[data-world]:not([data-world=""]) .segs i.ign {background:var(--crit)}
+:root[data-world]:not([data-world=""]) table {font-size:12px}
+:root[data-world]:not([data-world=""]) :is(th,td) {padding:10px 11px;border-bottom-color:rgba(var(--glass-edge),.11)}
+:root[data-world]:not([data-world=""]) th {font-size:9px;letter-spacing:.14em;color:var(--ink-2);background:rgba(var(--glass-base),.22)}
+:root[data-world]:not([data-world=""]) tbody tr:hover {background:linear-gradient(90deg,rgba(var(--glass-edge),.09),rgba(var(--glass-cool),.03))}
+:root[data-world]:not([data-world=""]) .log {padding:14px 16px;background:rgba(var(--glass-base),.36);border:1px solid rgba(var(--glass-edge),.10);border-radius:11px;font-size:11px;line-height:1.85}
+:root[data-world]:not([data-world=""]) .empty {padding:30px 16px;background:radial-gradient(ellipse at 50% 120%,rgba(var(--glass-edge),.055),transparent 70%);border-radius:10px;letter-spacing:.035em}
+:root[data-world]:not([data-world=""]) .callout {background:linear-gradient(100deg,color-mix(in srgb,var(--warn),transparent 90%),rgba(var(--glass-base),.85));box-shadow:0 7px 25px #0003;border-radius:16px}
+:root[data-world]:not([data-world=""]) :is(.modal,.pal) {background:#02040aa8;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+:root[data-world]:not([data-world=""]) :is(.modal .box,.pal .box,.experience-settings>div,.experience-music,.tip) {background:linear-gradient(130deg,rgba(var(--glass-edge),.08),transparent 45%),rgba(var(--glass-base),.96);border:1px solid rgba(var(--glass-edge),.4);box-shadow:var(--glass-shadow);border-radius:17px}
+:root[data-world]:not([data-world=""]) .group>summary {padding:15px 18px}
+:root[data-world]:not([data-world=""]) :is(.cmd,.irow) {padding-top:12px;padding-bottom:12px;border-color:rgba(var(--glass-edge),.12)}
+:root[data-world]:not([data-world=""]) ::-webkit-scrollbar {width:6px;height:6px}
+:root[data-world]:not([data-world=""]) ::-webkit-scrollbar-thumb {background:rgba(var(--glass-edge),.25);border:1px solid rgba(var(--glass-edge),.15);border-radius:9px}
+.immersion-echo {position:fixed;width:90px;height:90px;z-index:45;pointer-events:none;border:1px solid rgba(var(--glass-edge),.6);border-radius:34% 66% 50% 50%;background:radial-gradient(circle,rgba(var(--glass-edge),.07),transparent 60%);box-shadow:inset 0 0 18px rgba(var(--glass-cool),.12),0 0 18px rgba(var(--glass-edge),.08)}
+:root[data-motion="live"] .immersion-arrival::after {animation:sanctum-edge-arrival .9s ease-out}
+@keyframes sanctum-edge-arrival {0% {width:8px;opacity:0} 35% {width:130px;opacity:1} 100% {width:65px}}
+
+/* The portal shares its landscape with every lower section. */
+:root[data-world]:not([data-world=""]) .world-scene {margin:18px 32px 0;border-color:rgba(var(--glass-edge),.24);border-radius:22px;background:rgba(var(--glass-base),.16);box-shadow:0 26px 65px #0003,inset 0 1px 0 #ffffff25}
+.world-scene .world-art {opacity:.85}
+:root[data-world]:not([data-world=""]) .world-copy {padding-left:46px;padding-top:70px;max-width:58%}
+:root[data-world]:not([data-world=""]) .world-copy h1 {font-size:clamp(38px,4.1vw,68px);letter-spacing:-.055em;text-shadow:0 4px 32px #0003;max-width:520px}
+:root[data-world]:not([data-world=""]) .world-eyebrow {font-size:9px;letter-spacing:.3em}
+.world-copy p {font-size:12px;letter-spacing:.02em}
+.world-switch {margin-top:32px}
+.world-switch button {padding:11px 15px;border-radius:9px;-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px)}
+.world-coordinate {font-size:8px;letter-spacing:.3em}
+.world-edition {letter-spacing:.18em}
+
+/* Opening: camera flight through refractive vaults into the selected world. */
+.world-intro {animation-name:sanctum-exit;background:#03050c}
+.sanctum-film {position:absolute;inset:0;overflow:hidden;perspective:1200px}
+.sanctum-shot {position:absolute;inset:0;animation:sanctum-shot var(--intro-duration,20s) cubic-bezier(.18,.6,.2,1) both}
+.sanctum-world {position:absolute;inset:-8%;background-size:cover;background-position:65% center;transform:scale(1.2);animation:sanctum-world var(--intro-duration,20s) cubic-bezier(.2,.7,.3,1) both}
+.sanctum-haze {position:absolute;inset:0;background:radial-gradient(ellipse at 50% 42%,transparent 10%,#02040a80 75%),linear-gradient(0deg,#03050cdf,transparent 45%,#03050c50)}
+.world-intro .intro-loom {animation:sanctum-flight var(--intro-duration,20s) linear both;z-index:1}
+.sanctum-aperture {position:absolute;inset:-20%;z-index:2;border:1px solid #f1ddae26;border-radius:50%;box-shadow:0 0 0 50vw #02040b;animation:sanctum-aperture var(--intro-duration,20s) cubic-bezier(.19,1,.22,1) both;pointer-events:none}
+.sanctum-letterbox {position:absolute;inset:0;z-index:3;box-shadow:inset 0 5vh #03050c,inset 0 -5vh #03050c;animation:sanctum-letterbox var(--intro-duration,20s) ease both;pointer-events:none}
+.sanctum-frame {position:absolute;inset:8% 4%;z-index:4;border:1px solid #ffffff16;clip-path:polygon(0 0,32px 0,32px 1px,1px 1px,1px 32px,0 32px,0 0,100% 0,100% 32px,calc(100% - 1px) 32px,calc(100% - 1px) 1px,calc(100% - 32px) 1px,calc(100% - 32px) 0,100% 0,100% 100%,calc(100% - 32px) 100%,calc(100% - 32px) calc(100% - 1px),calc(100% - 1px) calc(100% - 1px),calc(100% - 1px) calc(100% - 32px),100% calc(100% - 32px),100% 100%,0 100%,0 calc(100% - 32px),1px calc(100% - 32px),1px calc(100% - 1px),32px calc(100% - 1px),32px 100%,0 100%)}
+.sanctum-coordinate {position:absolute;inset:auto 6% 10%;z-index:4;display:flex;justify-content:space-between;font:9px ui-monospace,monospace;letter-spacing:.22em;color:#dfd6c5;animation:sanctum-coordinate var(--intro-duration,20s) ease both}
+.sanctum-prologue {position:absolute;z-index:4;inset:39% 0 auto;text-align:center;animation:sanctum-prologue var(--intro-duration,20s) ease both}
+.sanctum-prologue span {font:9px system-ui;letter-spacing:.4em;color:var(--intro-light)}
+.sanctum-prologue b {display:block;font:italic 400 clamp(38px,5vw,72px)/1.2 Georgia,serif;letter-spacing:-.04em;margin-top:24px;color:#fff5e3}
+.sanctum-wordmark {position:absolute;z-index:4;top:40%;left:0;right:0;text-align:center;animation:sanctum-title var(--intro-duration,20s) ease both}
+.sanctum-wordmark small {font:9px system-ui;letter-spacing:.55em;color:var(--intro-light)}
+.sanctum-wordmark strong {display:flex;justify-content:center;margin:20px 0;font:300 clamp(64px,11vw,172px)/1 system-ui,sans-serif;letter-spacing:.16em;padding-left:.16em;color:#fff9ed;text-shadow:0 0 70px #edddaa35}
+.sanctum-wordmark strong span {display:inline-block;animation:sanctum-letter var(--intro-duration,20s) cubic-bezier(.16,1,.3,1) both;animation-delay:calc(var(--letter)*80ms)}
+.sanctum-wordmark em {font:italic 14px Georgia,serif;letter-spacing:.03em;color:#f1e8da}
+.sanctum-filmgrain {z-index:5;opacity:.065}
+.world-intro .intro-skip {z-index:10;top:24px;right:32px;background:#080b1580;border-color:#ffffff35;backdrop-filter:blur(16px);border-radius:999px;font-size:10px;letter-spacing:.08em}
+.world-intro .intro-note {display:none}
+@keyframes sanctum-exit {0%,92% {opacity:1} 100% {opacity:0}}
+@keyframes sanctum-shot {0%,17% {opacity:0;transform:scale(1.55)} 43% {opacity:.6} 62%,100% {opacity:1;transform:scale(1)}}
+@keyframes sanctum-world {0% {transform:scale(1.4) translateY(5%);filter:blur(6px)} 48% {filter:blur(0)} 100% {transform:scale(1) translateY(0);filter:blur(0)}}
+@keyframes sanctum-aperture {0%,12% {transform:scale(.01);opacity:1} 56%,100% {transform:scale(1.7);opacity:0}}
+@keyframes sanctum-flight {0% {opacity:0;transform:scale(.85)} 12%,62% {opacity:1;transform:scale(1)} 88%,100% {opacity:0;transform:scale(1.1)}}
+@keyframes sanctum-prologue {0% {opacity:0;transform:translateY(16px)} 12%,23% {opacity:1;transform:translateY(0)} 34%,100% {opacity:0;transform:translateY(-16px)}}
+@keyframes sanctum-title {0%,52% {opacity:0;transform:translateY(18px)} 69%,94% {opacity:1;transform:translateY(0)} 100% {opacity:0;transform:translateY(-8px)}}
+@keyframes sanctum-letter {0%,50% {transform:translateY(32px) rotateX(55deg);opacity:0;filter:blur(6px)} 73%,100% {transform:translateY(0) rotateX(0);opacity:1;filter:blur(0)}}
+@keyframes sanctum-letterbox {0%,78% {box-shadow:inset 0 5vh #03050c,inset 0 -5vh #03050c} 100% {box-shadow:inset 0 0 #03050c,inset 0 0 #03050c}}
+@keyframes sanctum-coordinate {0%,28% {opacity:0} 43%,90% {opacity:.75} 100% {opacity:0}}
+
+:root[data-visual-resolved="light"] :is(.card,.asset) {-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+:root[data-experience="focus"] :is(.card,.asset) {-webkit-backdrop-filter:none;backdrop-filter:none;background:var(--surface)}
+:root[data-density="compact"][data-world]:not([data-world=""]) #view {gap:12px}
+:root[data-density="compact"][data-world]:not([data-world=""]) :is(.card,.asset) {padding:14px 16px}
+:root[data-density="compact"][data-world]:not([data-world=""]) .tile {padding:8px 10px}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))) {
+  :root[data-world]:not([data-world=""]) :is(.card,.asset) {background:linear-gradient(135deg,rgba(var(--glass-edge),.07),transparent),var(--surface)}
+}
+@media (max-width:760px) {
+  .immersion-rail {visibility:hidden}
+  :root[data-world]:not([data-world=""]) #view {padding:16px 12px 40px;gap:15px}
+  :root[data-world]:not([data-world=""]) :is(.card,.asset) {padding:18px 16px;border-radius:16px}
+  :root[data-world]:not([data-world=""]) .world-scene {margin:12px 12px 0}
+  :root[data-world]:not([data-world=""]) .world-copy {max-width:100%;padding:32px 24px 45px}
+  :root[data-world]:not([data-world=""]) .world-copy h1 {font-size:42px}
+  :root[data-world]:not([data-world=""]) .top-in {padding:10px 12px}
+  :root[data-world]:not([data-world=""]) .brand {font-size:8px;letter-spacing:.10em}
+  :root[data-world]:not([data-world=""]) .tabs {padding:0 12px 10px;gap:3px}
+  :root[data-world]:not([data-world=""]) .tab {font-size:10px;padding:6px 7px}
+  :root[data-world]:not([data-world=""]) .card h2 {flex-wrap:wrap;letter-spacing:.10em;margin-bottom:16px}
+  :root[data-world]:not([data-world=""]) .card h2 .sub {margin-left:0}
+  :root[data-world]:not([data-world=""]) .tile .v {font-size:18px}
+  .sanctum-coordinate {font-size:7px;letter-spacing:.1em;bottom:12%}
+  .sanctum-coordinate span:last-child {display:none}
+  .sanctum-prologue span {font-size:7px;letter-spacing:.25em}
+  .sanctum-wordmark strong {font-size:16vw;letter-spacing:.07em}
+  .sanctum-wordmark small {font-size:7px;letter-spacing:.35em}
+  .world-intro .intro-skip {top:20px;right:18px}
+}
