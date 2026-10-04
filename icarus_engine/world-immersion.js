@@ -116,6 +116,7 @@
     target.classList.add('world-impact-host');
     const impact=document.createElement('span');
     impact.className='world-impact';
+    impact.dataset.kind=target.matches('.tab')?'gate':target.matches('.card,.asset,.tile,.group>summary')?'facet':target.matches('.node,.badge')?'signal':'pulse';
     impact.setAttribute('aria-hidden','true');
     impact.style.setProperty('--impact-x',Math.max(0,Math.min(100,(event.clientX-rect.left)/rect.width*100)).toFixed(1)+'%');
     impact.style.setProperty('--impact-y',Math.max(0,Math.min(100,(event.clientY-rect.top)/rect.height*100)).toFixed(1)+'%');
