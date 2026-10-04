@@ -54,7 +54,7 @@ def test_databento_corpus_writes_rows_manifest_and_never_secret(monkeypatch, tmp
     assert out["ok_count"] == 1 and out["error_count"] == 1
 
     csv_text = (tmp_path / "nq_5m.csv").read_text()
-    assert csv_text.startswith("ts,open,high,low,close,volume\\n")
+    assert csv_text.startswith("ts,open,high,low,close,volume\n")
     manifest = (tmp_path / "manifest.json").read_text()
     assert "SECRET-DO-NOT-WRITE" not in manifest
     assert "SECRET-DO-NOT-WRITE" not in csv_text
