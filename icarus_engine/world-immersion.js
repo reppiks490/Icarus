@@ -13,6 +13,8 @@
     const y=Math.max(0,window.scrollY||doc.scrollTop||0);
     const depth=Math.max(0,Math.min(1,y/max));
     root.style.setProperty('--world-scroll',depth.toFixed(4));
+    root.style.setProperty('--world-scroll-shift',(-(window.innerWidth<760?18:34)*depth).toFixed(2)+'px');
+    root.style.setProperty('--world-light-y',(12+depth*30).toFixed(2)+'%');
     root.dataset.scrollPhase=depth<.08?'crown':depth<.45?'descent':depth<.78?'depth':'abyss';
   }
   function queueScroll(){
@@ -21,8 +23,12 @@
 
   function writePointer(x,y){
     pointerFrame=0;
-    root.style.setProperty('--world-pointer-x',Math.max(-.5,Math.min(.5,x)).toFixed(4));
-    root.style.setProperty('--world-pointer-y',Math.max(-.5,Math.min(.5,y)).toFixed(4));
+    const px=Math.max(-.5,Math.min(.5,x)),py=Math.max(-.5,Math.min(.5,y));
+    root.style.setProperty('--world-pointer-x',px.toFixed(4));
+    root.style.setProperty('--world-pointer-y',py.toFixed(4));
+    root.style.setProperty('--world-pointer-shift-x',(-px*14).toFixed(2)+'px');
+    root.style.setProperty('--world-pointer-shift-y',(-py*9).toFixed(2)+'px');
+    root.style.setProperty('--world-light-x',(50+px*18).toFixed(2)+'%');
   }
   function pointerMove(event){
     if(event.pointerType==='touch'||!motionAllowed())return;
@@ -91,7 +97,11 @@
     impact.style.setProperty('--impact-x',Math.max(0,Math.min(100,(event.clientX-rect.left)/rect.width*100)).toFixed(1)+'%');
     impact.style.setProperty('--impact-y',Math.max(0,Math.min(100,(event.clientY-rect.top)/rect.height*100)).toFixed(1)+'%');
     target.appendChild(impact);
-    const cleanup=()=>impact.remove();
+    let cleaned=false;
+    const cleanup=()=>{
+      if(cleaned)return;cleaned=true;impact.remove();
+      if(!target.querySelector('.world-impact'))target.classList.remove('world-impact-host');
+    };
     impact.addEventListener('animationend',cleanup,{once:true});
     setTimeout(cleanup,800);
   }
@@ -100,6 +110,9 @@
     if(!motionAllowed()){
       root.style.setProperty('--world-pointer-x','0');
       root.style.setProperty('--world-pointer-y','0');
+      root.style.setProperty('--world-pointer-shift-x','0px');
+      root.style.setProperty('--world-pointer-shift-y','0px');
+      root.style.setProperty('--world-light-x','50%');
     }
     queueScroll();
   }
