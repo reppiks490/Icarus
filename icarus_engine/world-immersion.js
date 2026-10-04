@@ -2,7 +2,7 @@
   'use strict';
   const root=document.documentElement;
   const reduced=window.matchMedia('(prefers-reduced-motion: reduce)');
-  let scrollFrame=0,pointerFrame=0,viewObserver=null,viewMutation=null,depthFrame=null,viewFlashTimer=0,currentView='overview',initialized=false;
+  let scrollFrame=0,pointerFrame=0,viewObserver=null,viewMutation=null,depthFrame=null,viewFlashTimer=0,scrollEnergyTimer=0,lastScrollY=0,lastScrollAt=0,currentView='overview',initialized=false;
 
   const motionAllowed=()=>root.dataset.motion==='live'&&root.dataset.experience==='cinematic'&&!!root.dataset.world&&!document.hidden&&!reduced.matches&&root.dataset.introActive!=='true';
   const phaseLabels={crown:'CROWN',descent:'DESCENT',depth:'DEPTH',abyss:'ABYSS'};
@@ -32,6 +32,20 @@
     const doc=document.documentElement;
     const max=Math.max(1,doc.scrollHeight-window.innerHeight);
     const y=Math.max(0,window.scrollY||doc.scrollTop||0);
+    const now=performance.now();
+    if(lastScrollAt&&Math.abs(y-lastScrollY)>.5&&motionAllowed()){
+      const dt=Math.max(8,now-lastScrollAt),velocity=Math.abs(y-lastScrollY)/dt;
+      const energy=Math.max(0,Math.min(1,velocity/2.4));
+      root.dataset.scrollDirection=y>lastScrollY?'down':'up';
+      root.style.setProperty('--world-scroll-glow',(energy*18).toFixed(2)+'px');
+      root.style.setProperty('--world-scroll-energy',energy.toFixed(3));
+      clearTimeout(scrollEnergyTimer);
+      scrollEnergyTimer=setTimeout(()=>{
+        root.style.setProperty('--world-scroll-glow','0px');
+        root.style.setProperty('--world-scroll-energy','0');
+      },150);
+    }
+    lastScrollY=y;lastScrollAt=now;
     const depth=Math.max(0,Math.min(1,y/max));
     root.style.setProperty('--world-scroll',depth.toFixed(4));
     root.style.setProperty('--world-scroll-shift',(-(window.innerWidth<760?18:34)*depth).toFixed(2)+'px');
@@ -152,6 +166,8 @@
       root.style.setProperty('--world-pointer-shift-x','0px');
       root.style.setProperty('--world-pointer-shift-y','0px');
       root.style.setProperty('--world-light-x','50%');
+      root.style.setProperty('--world-scroll-glow','0px');
+      root.style.setProperty('--world-scroll-energy','0');
     }
     queueScroll();
   }
