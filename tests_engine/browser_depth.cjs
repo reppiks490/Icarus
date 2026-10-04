@@ -66,6 +66,7 @@ if(longEnough){
  assert.ok(Math.abs(stickyTop)<2,'Sticky header must remain pinned on long scroll');
  assert.equal(await page.locator('html').getAttribute('data-scroll-phase'),'abyss');
  assert.equal(await page.locator('[data-world-depth-label]').textContent(),'ABYSS');
+ assert.equal(await page.locator('.world-depth-frame').getAttribute('data-chapter'),'abyss');
  await page.screenshot({path:`${output}/depth-lower-page.png`});
  await page.evaluate(()=>scrollTo(0,0));await page.waitForTimeout(80);
 }
@@ -89,6 +90,8 @@ assert.equal(await fallback.locator('.world-aura').getAttribute('data-state'),'f
 assert.equal(await fallback.locator('.world-scene').getAttribute('data-renderer'),'canvas');
 await fallback.locator('[data-world-choice="astral"]').click();await fallback.locator('[data-v="system"]').click();
 assert.equal(await fallback.locator('html').getAttribute('data-world-view'),'system');
+assert.equal((await fallback.locator('[data-world-gate-label]').textContent()).trim(),'SYSTEM');
+assert.equal((await fallback.locator('[data-world-view-glyph]').textContent()).trim(),'⌬');
 await fallback.close();
 // Simulated sustained slow frames must trigger Adaptive's one-way quality reduction.
 const slow=await context.newPage();
