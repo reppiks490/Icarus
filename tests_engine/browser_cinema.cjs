@@ -78,9 +78,9 @@ const fixture=await page.evaluate(()=>{
  const el=document.createElement('div');el.innerHTML='<svg aria-label="Test fixture"><path d="M0 4 L10 1 L20 8"/></svg>';document.querySelector('#view').append(el);
  const before=el.innerHTML;window.IcarusWorldCinema.enterChart('TEST',el);const count=el.getAnimations().length;
  window.IcarusWorldCinema.enterChart('TEST',el);
- const result={same:before===el.innerHTML,first:count,second:el.getAnimations().length};el.remove();return result;
+ const result={same:before===el.innerHTML,first:count,second:el.getAnimations().length,surface:el.classList.contains('world-chart-surface'),scan:el.classList.contains('world-chart-scan-active')};el.remove();return result;
 });
-assert.deepEqual(fixture,{same:true,first:1,second:1});
+assert.deepEqual(fixture,{same:true,first:1,second:1,surface:true,scan:true});
 await page.setViewportSize({width:390,height:844});await page.waitForTimeout(200);
 assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
 await page.screenshot({path:`${output}/cinema-mobile.png`,fullPage:true});
