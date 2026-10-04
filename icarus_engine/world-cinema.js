@@ -313,8 +313,11 @@
   function enterChart(symbol, element) {
     if (!element?.isConnected || !element.querySelector('svg') || enteredCharts.has(symbol)) return;
     enteredCharts.add(symbol);
+    element.classList.add('world-chart-surface');
     if (root.dataset.motion !== 'live' || root.dataset.experience !== 'cinematic' || !root.dataset.world || document.hidden || !element.animate) return;
-    const animation=element.animate([{opacity:.72},{opacity:1}],{duration:650,easing:'ease-out'});
+    element.classList.remove('world-chart-scan-active');void element.offsetWidth;element.classList.add('world-chart-scan-active');
+    setTimeout(()=>element?.classList.remove('world-chart-scan-active'),900);
+    const animation=element.animate([{opacity:.72,filter:'brightness(.82)'},{opacity:1,filter:'none'}],{duration:650,easing:'ease-out'});
     entrances.add(animation);
     animation.onfinish=()=>entrances.delete(animation);animation.oncancel=()=>entrances.delete(animation);
   }
