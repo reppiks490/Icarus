@@ -1488,3 +1488,49 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 }
 :root[data-motion="off"] .tabs {scroll-behavior:auto!important}
 @media (prefers-reduced-motion:reduce) {.tabs.world-nav-settle {animation:none!important}.tabs{scroll-behavior:auto!important}}
+
+
+/* Toasts are now part of the world language while preserving success/error semantics. */
+:root[data-world]:not([data-world=""]) #toast {
+  position:fixed;isolation:isolate;overflow:hidden;
+  border:1px solid color-mix(in srgb,var(--world-glow),#fff 8%);
+  box-shadow:0 16px 42px #0008,inset 0 1px 0 #ffffff24,0 0 20px color-mix(in srgb,var(--world-glow),transparent 82%)!important;
+  -webkit-backdrop-filter:blur(14px) saturate(125%);backdrop-filter:blur(14px) saturate(125%);
+}
+:root[data-world]:not([data-world=""]) #toast::before {
+  content:"";position:absolute;inset:0;pointer-events:none;opacity:.48;
+  background:
+    linear-gradient(115deg,transparent 0 15%,#ffffff22 23%,transparent 34% 68%,color-mix(in srgb,var(--world-glow),transparent 86%) 82%,transparent 95%);
+  mix-blend-mode:screen;
+}
+:root[data-world]:not([data-world=""]) #toast::after {
+  content:"";position:absolute;left:10px;right:10px;bottom:4px;height:1px;pointer-events:none;
+  background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--world-glow),#fff 20%),transparent);
+  opacity:.7;
+}
+:root[data-world]:not([data-world=""]) #toast[data-kind="error"] {
+  border-color:color-mix(in srgb,var(--crit),#fff 18%);
+  box-shadow:0 16px 42px #0008,inset 0 1px 0 #ffffff20,0 0 22px color-mix(in srgb,var(--crit),transparent 72%)!important;
+}
+:root[data-world]:not([data-world=""]) #toast.world-toast-active {animation:world-toast-cycle 3.45s cubic-bezier(.16,.8,.2,1) both}
+@keyframes world-toast-cycle {
+  0%{opacity:0;translate:-50% 12px;scale:.96;filter:blur(4px) brightness(.78)}
+  7%{opacity:1;translate:-50% 0;scale:1;filter:none}
+  88%{opacity:1;translate:-50% 0;scale:1}
+  100%{opacity:0;translate:-50% -6px;scale:.985;filter:blur(1px)}
+}
+:root[data-world="void"] #toast.world-toast-active {animation-name:world-toast-void}
+:root[data-world="astral"] #toast.world-toast-active {animation-name:world-toast-astral}
+@keyframes world-toast-void {
+  0%{opacity:0;translate:calc(-50% - 16px) 0;scale:.98;clip-path:inset(0 100% 0 0);filter:brightness(.65)}
+  9%{opacity:1;translate:-50% 0;clip-path:inset(0);filter:none}
+  88%{opacity:1}
+  100%{opacity:0;translate:calc(-50% + 9px) 0;clip-path:inset(0 0 0 95%)}
+}
+@keyframes world-toast-astral {
+  0%{opacity:0;translate:-50% 9px;scale:.9;filter:blur(6px) saturate(.6)}
+  9%{opacity:1;translate:-50% 0;scale:1;filter:none}
+  88%{opacity:1}
+  100%{opacity:0;translate:-50% -8px;scale:1.02;filter:blur(2px)}
+}
+@media (prefers-reduced-motion:reduce) {:root[data-world] #toast.world-toast-active {animation:none!important}}
