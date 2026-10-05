@@ -80,6 +80,10 @@ assert.ok((await page.locator('.world-topology path').count())<=24);
 assert.ok((await page.locator('.world-topology circle').count())<=18);
 assert.ok((await page.locator('.world-topology path.active').count())>0);
 assert.equal(await page.locator('.world-topology').evaluate(el=>getComputedStyle(el).position),'absolute');
+assert.equal(await page.locator('.world-section-radar').count(),1);
+assert.ok((await page.locator('.world-section-radar [data-radar-node]').count())<=12);
+assert.ok((await page.locator('.world-section-radar [data-radar-node].active').count())>0);
+assert.match((await page.locator('[data-world-radar-count]').textContent()).trim(),/^\d{2}$/);
 await card.evaluate(el=>{
  const r=el.getBoundingClientRect();
  el.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerType:'mouse',clientX:r.left+r.width*.45,clientY:r.top+24}));
@@ -147,6 +151,7 @@ await page.locator('.experience-settings summary').click();
 await page.setViewportSize({width:390,height:844});await page.waitForTimeout(250);
 assert.equal(await page.locator('html').getAttribute('data-visual-resolved'),'light');
 assert.equal(await page.locator('.world-mobile-hud').isVisible(),true);
+assert.equal(await page.locator('.world-section-radar').isVisible(),false);
 assert.ok(Number(await page.locator('.world-depth-frame').evaluate(el=>getComputedStyle(el).opacity))>0);
 assert.equal((await page.locator('[data-world-mobile-view]').textContent()).trim(),'OVERVIEW');
 assert.match((await page.locator('[data-world-mobile-index]').textContent()).trim(),/^\d{2}\/\d{2}$/);
