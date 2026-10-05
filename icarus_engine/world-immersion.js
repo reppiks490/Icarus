@@ -125,8 +125,18 @@
     element.addEventListener('animationend',clear,{once:true});
     setTimeout(clear,900);
   }
+  function panelKind(element){
+    const label=(element.querySelector(':scope > h2,:scope > summary,:scope h2')?.textContent||'').toUpperCase();
+    if(/PORTFOLIO|EQUITY|PAPER FILLS|CLOSED TRADES|POSITION|P&L/.test(label))return 'capital';
+    if(/RESEARCH|ADAPTIVE BRAIN|PARALLAX|DREAMSTATE|PANTHEON|SIBYL|APEX|ASCENDANCY|LEARNING|EVOLUTION|ICARUS Ψ|ICARUS Ξ/.test(label))return 'research';
+    if(/MARKET DATA|FINANCIAL|DATA INTEGRITY|INPUTS|SOURCE|FEED/.test(label))return 'data';
+    if(/SYSTEM|ENGINE|GO-LIVE|GO LIVE|COMMISSION|COMMAND|LOG|AUTOPILOT|AGENT/.test(label))return 'control';
+    return 'instrument';
+  }
   function decorateSurface(element){
-    if(!element?.matches?.('.card,.asset,.group')||element.querySelector(':scope > .world-surface-sigil'))return;
+    if(!element?.matches?.('.card,.asset,.group'))return;
+    element.dataset.worldPanelKind=panelKind(element);
+    if(element.querySelector(':scope > .world-surface-sigil'))return;
     const sigil=document.createElement('span');sigil.className='world-surface-sigil';sigil.setAttribute('aria-hidden','true');
     sigil.innerHTML='<i></i><b></b>';element.appendChild(sigil);
   }
