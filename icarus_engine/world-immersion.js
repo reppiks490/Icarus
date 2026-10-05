@@ -198,8 +198,16 @@
   }
   function ensureSectionRadar(){
     if(sectionRadar?.isConnected)return;
-    sectionRadar=document.createElement('div');sectionRadar.className='world-section-radar';sectionRadar.setAttribute('aria-hidden','true');
+    sectionRadar=document.createElement('nav');sectionRadar.className='world-section-radar';sectionRadar.setAttribute('aria-label','Section map');
     sectionRadar.innerHTML='<header><i>SECTION MAP</i><b data-world-radar-count>00</b></header><div data-world-radar-nodes></div>';
+    sectionRadar.addEventListener('click',event=>{
+      const item=event.target.closest?.('[data-radar-node]');if(!item)return;
+      const panel=document.querySelector(`#view [data-world-topology-node="${item.dataset.radarNode}"]`);
+      if(!panel)return;
+      panel.scrollIntoView({behavior:motionAllowed()?'smooth':'auto',block:'center'});
+      panel.classList.remove('world-radar-arrival');void panel.offsetWidth;panel.classList.add('world-radar-arrival');
+      setTimeout(()=>panel?.classList.remove('world-radar-arrival'),900);
+    });
     document.body.appendChild(sectionRadar);
   }
   function radarLabel(panel){
@@ -211,8 +219,9 @@
     const host=sectionRadar.querySelector('[data-world-radar-nodes]'),count=sectionRadar.querySelector('[data-world-radar-count]');
     host.replaceChildren();if(count)count.textContent=String(points.length).padStart(2,'0');
     for(const p of points.slice(0,12)){
-      const item=document.createElement('span');item.dataset.radarNode=String(p.index);item.dataset.kind=p.el.dataset.worldPanelKind||'instrument';
-      const dot=document.createElement('i'),label=document.createElement('b');label.textContent=radarLabel(p.el);
+      const item=document.createElement('button');item.type='button';item.dataset.radarNode=String(p.index);item.dataset.kind=p.el.dataset.worldPanelKind||'instrument';
+      const labelText=radarLabel(p.el);item.setAttribute('aria-label','Jump to '+labelText);
+      const dot=document.createElement('i'),label=document.createElement('b');label.textContent=labelText;
       item.append(dot,label);host.appendChild(item);
     }
   }
