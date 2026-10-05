@@ -3746,3 +3746,36 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 :root[data-world="void"] .world-section-radar::after {width:2px;border-radius:0;box-shadow:0 0 9px color-mix(in srgb,var(--crit),transparent 38%)}
 :root[data-world="astral"] .world-section-radar::after {width:4px;border-radius:50%;box-shadow:0 0 5px #dff5ff,0 0 10px var(--active-view-accent)}
 @media (prefers-reduced-motion:reduce) {.world-section-radar::after {transition:none!important}}
+
+
+/* Phase XXX: mobile view and depth changes get world-specific cockpit responses instead of silent text swaps. */
+@media (max-width:1100px) {
+  .world-view-shift .world-mobile-hud {animation:world-mobile-view-divine 620ms cubic-bezier(.16,.8,.2,1) both}
+  :root[data-world="void"] .world-view-shift .world-mobile-hud {animation-name:world-mobile-view-void}
+  :root[data-world="astral"] .world-view-shift .world-mobile-hud {animation-name:world-mobile-view-astral}
+  .world-chapter-shift .world-mobile-hud {box-shadow:0 10px 34px #0006,inset 0 1px 0 #ffffff12,0 0 20px color-mix(in srgb,var(--active-view-accent,var(--world-glow)),transparent 76%)}
+}
+@keyframes world-mobile-view-divine {
+  0%{opacity:.28;translate:0 8px;scale:.96;filter:brightness(.72)}
+  42%{opacity:1;translate:0 -2px;scale:1.015;filter:brightness(1.22)}
+  100%{opacity:.86;translate:0 0;scale:1;filter:none}
+}
+@keyframes world-mobile-view-void {
+  0%{opacity:.18;translate:-12px 0;clip-path:inset(0 100% 0 0);filter:contrast(1.3)}
+  38%{opacity:1;translate:2px 0;clip-path:inset(0);filter:contrast(1.12)}
+  100%{opacity:.86;translate:0 0;filter:none}
+}
+@keyframes world-mobile-view-astral {
+  0%{opacity:.18;scale:.86;filter:blur(6px) saturate(.7)}
+  45%{opacity:1;scale:1.025;filter:blur(0) saturate(1.16)}
+  100%{opacity:.86;scale:1;filter:none}
+}
+@media (pointer:coarse) {
+  .world-impact {width:17px;height:17px}
+  .world-impact[data-kind="gate"] {animation-duration:760ms}
+  .world-impact[data-kind="facet"] {animation-duration:700ms}
+  .world-impact[data-kind="signal"] {animation-duration:680ms}
+}
+@media (prefers-reduced-motion:reduce) {
+  .world-view-shift .world-mobile-hud {animation:none!important}
+}
