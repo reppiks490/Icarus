@@ -1561,3 +1561,31 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 @keyframes world-busy-void {50%{transform:rotate(90deg) scale(.75)}100%{transform:rotate(180deg)}}
 :root[data-motion="off"] button.world-busy,:root[data-motion="off"] button.world-busy::before {animation:none!important}
 @media (prefers-reduced-motion:reduce) {button.world-busy,button.world-busy::before {animation:none!important}}
+
+
+/* Sparse subsystem states are intentional instrument readouts, not dead blank text. */
+:root[data-world]:not([data-world=""]) #view :is(.card,.group) > .empty {
+  position:relative;min-height:54px;display:flex;align-items:center;padding:12px 14px 12px 40px;
+  border:1px dashed color-mix(in srgb,var(--world-glow),var(--ring) 72%);border-radius:10px;
+  background:
+    linear-gradient(100deg,color-mix(in srgb,var(--world-glow),transparent 96%),transparent 36% 64%,color-mix(in srgb,var(--world-glow),transparent 97%)),
+    color-mix(in srgb,var(--surface-2) 72%,transparent);
+  color:var(--ink-2);overflow:hidden;
+}
+:root[data-world]:not([data-world=""]) #view :is(.card,.group) > .empty::before {
+  content:"◇";position:absolute;left:14px;top:50%;transform:translateY(-50%);
+  color:var(--world-glow);font:400 13px/1 Georgia,serif;text-shadow:0 0 10px color-mix(in srgb,var(--world-glow),transparent 42%);
+}
+:root[data-world="void"] #view :is(.card,.group) > .empty::before {content:"×";font-family:ui-monospace,monospace}
+:root[data-world="astral"] #view :is(.card,.group) > .empty::before {content:"○"}
+:root[data-world]:not([data-world=""]) #view :is(.card,.group) > .empty.neg {
+  border-color:color-mix(in srgb,var(--crit),var(--ring) 46%);
+  background:linear-gradient(100deg,color-mix(in srgb,var(--crit),transparent 94%),transparent 55%),color-mix(in srgb,var(--surface-2) 78%,transparent);
+}
+:root[data-world]:not([data-world=""]) #view :is(.card,.group) > .empty.neg::before {content:"!";color:var(--crit);text-shadow:0 0 10px color-mix(in srgb,var(--crit),transparent 42%)}
+:root[data-world]:not([data-world=""])[data-experience="cinematic"][data-motion="live"][data-visual-resolved="rich"] #view :is(.card,.group) > .empty:not(.neg) {
+  background-size:220% 100%,100% 100%;animation:world-empty-scan 8s ease-in-out infinite;
+}
+@keyframes world-empty-scan {0%,100%{background-position:120% 0,0 0}50%{background-position:-20% 0,0 0}}
+:root[data-visual-resolved="light"] #view :is(.card,.group) > .empty {animation:none!important;background:var(--surface-2)}
+@media (prefers-reduced-motion:reduce) {:root[data-world] #view :is(.card,.group) > .empty {animation:none!important}}
