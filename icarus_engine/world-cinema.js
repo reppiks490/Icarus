@@ -197,7 +197,7 @@
   const motionAllowed=()=>root.dataset.motion==='live'&&root.dataset.experience==='cinematic'&&!!root.dataset.world&&!document.hidden;
   function clearPanel() {
     cancelAnimationFrame(panelFrame);panelFrame=0;panelPointer=null;
-    if(litPanel){litPanel.classList.remove('world-lit');litPanel.style.removeProperty('--panel-x');litPanel.style.removeProperty('--panel-y');litPanel.style.removeProperty('--panel-tilt-x');litPanel.style.removeProperty('--panel-tilt-y');litPanel=null;}
+    if(litPanel){litPanel.classList.remove('world-lit');for(const prop of ['--panel-x','--panel-y','--panel-tilt-x','--panel-tilt-y','--panel-dx','--panel-dy','--panel-depth-x','--panel-depth-y'])litPanel.style.removeProperty(prop);litPanel=null;}
   }
   function init(element) {
     if(sceneElement)return;sceneElement=element;
@@ -213,10 +213,15 @@
         const r=litPanel.getBoundingClientRect();
         const px=Math.max(0,Math.min(100,(panelPointer.x-r.left)/Math.max(1,r.width)*100));
         const py=Math.max(0,Math.min(100,(panelPointer.y-r.top)/Math.max(1,r.height)*100));
+        const nx=(px-50)/50,ny=(py-50)/50;
         litPanel.style.setProperty('--panel-x',px.toFixed(1)+'%');
         litPanel.style.setProperty('--panel-y',py.toFixed(1)+'%');
-        litPanel.style.setProperty('--panel-tilt-x',((50-py)*.012).toFixed(3)+'deg');
-        litPanel.style.setProperty('--panel-tilt-y',((px-50)*.015).toFixed(3)+'deg');
+        litPanel.style.setProperty('--panel-tilt-x',((-ny)*.6).toFixed(3)+'deg');
+        litPanel.style.setProperty('--panel-tilt-y',(nx*.75).toFixed(3)+'deg');
+        litPanel.style.setProperty('--panel-dx',(nx*3.8).toFixed(2)+'px');
+        litPanel.style.setProperty('--panel-dy',(ny*2.9).toFixed(2)+'px');
+        litPanel.style.setProperty('--panel-depth-x',(nx*7.2).toFixed(2)+'px');
+        litPanel.style.setProperty('--panel-depth-y',(ny*5.4).toFixed(2)+'px');
       });
     },{passive:true});
     view?.addEventListener('pointerleave',clearPanel,{passive:true});
