@@ -63,6 +63,16 @@ assert.equal(await card.locator(':scope > .world-surface-sigil').evaluate(el=>ge
 assert.equal(await card.locator(':scope > .world-panel-index').count(),1);
 assert.match((await card.locator(':scope > .world-panel-index').textContent()).trim(),/^P\d{2} \/ \d{2} · [A-Z]+$/);
 assert.equal(await card.locator(':scope > .world-panel-index').evaluate(el=>getComputedStyle(el).position),'absolute');
+const familyFixture=await page.evaluate(async()=>{
+ const el=document.createElement('section');el.className='card c12';el.innerHTML='<h2>Research Evidence Fixture</h2><div class="empty">loading fixture…</div>';document.querySelector('#view').appendChild(el);
+ await new Promise(r=>setTimeout(r,140));
+ const kind=el.dataset.worldPanelKind;
+ const sigil=el.querySelector(':scope > .world-surface-sigil');
+ const animation=sigil?getComputedStyle(sigil).animationName:'';
+ el.remove();return {kind,animation};
+});
+assert.equal(familyFixture.kind,'research');
+assert.match(familyFixture.animation,/world-family-research-enter|world-surface-sigil-breathe/);
 assert.ok(await card.evaluate(el=>el.style.getPropertyValue('--panel-x')));
 assert.ok(await card.evaluate(el=>el.style.getPropertyValue('--panel-tilt-y')));
 await page.mouse.move(520,360);await page.waitForTimeout(80);
