@@ -136,9 +136,22 @@
   function decorateSurface(element){
     if(!element?.matches?.('.card,.asset,.group'))return;
     element.dataset.worldPanelKind=panelKind(element);
-    if(element.querySelector(':scope > .world-surface-sigil'))return;
-    const sigil=document.createElement('span');sigil.className='world-surface-sigil';sigil.setAttribute('aria-hidden','true');
-    sigil.innerHTML='<i></i><b></b>';element.appendChild(sigil);
+    if(!element.querySelector(':scope > .world-surface-sigil')){
+      const sigil=document.createElement('span');sigil.className='world-surface-sigil';sigil.setAttribute('aria-hidden','true');
+      sigil.innerHTML='<i></i><b></b>';element.appendChild(sigil);
+    }
+    if(!element.querySelector(':scope > .world-panel-index')){
+      const index=document.createElement('span');index.className='world-panel-index';index.setAttribute('aria-hidden','true');
+      element.appendChild(index);
+    }
+  }
+  function numberPanels(majors){
+    const total=Math.max(1,majors.length);
+    majors.forEach((panel,index)=>{
+      panel.dataset.worldPanelOrdinal=String(index+1);
+      const readout=panel.querySelector(':scope > .world-panel-index');
+      if(readout)readout.textContent='P'+String(index+1).padStart(2,'0')+' / '+String(total).padStart(2,'0')+' · '+String(panel.dataset.worldPanelKind||'instrument').toUpperCase();
+    });
   }
   function observePanel(element){
     if(!element)return;
@@ -286,7 +299,7 @@
     const majors=[...document.querySelectorAll('#view > :is(.card,.asset,.hero,.group), #view > .assets > .asset')];
     const view=document.getElementById('view');
     if(view)view.classList.toggle('world-sparse-view',majors.length<=2&&view.scrollHeight<window.innerHeight*1.35);
-    majors.forEach(decorateSurface);
+    majors.forEach(decorateSurface);numberPanels(majors);
     const nested=[...document.querySelectorAll('#view :is(.tile,.px-box,.psi-box,.pan-field,.brain-agent,.brain-sub,.brain-lane,.evo-sub)')];
     [...new Set([...majors,...nested])].slice(0,80).forEach(observePanel);
     writeScrollDepth();scheduleTopology();
