@@ -70,11 +70,14 @@ assert.equal(await page.locator('.world-view-ambient').count(),1);
 assert.equal(await page.locator('.world-view-ambient i').count(),12);
 assert.equal(await page.locator('.world-view-ambient').evaluate(el=>getComputedStyle(el).position),'absolute');
 assert.equal(await page.locator('html').getAttribute('data-world-view'),'overview');
+const overviewIndex=(await page.locator('[data-world-view-index]').textContent()).trim();
+assert.match(overviewIndex,/^\d{2} \/ \d{2}$/);
 if(await page.locator('#view .tile').count()) assert.equal(await page.locator('#view .tile').first().getAttribute('data-world-depth-observed'),'1');
 // Rapid deliberate navigation must clean its transient gate/impact DOM rather than accumulate effects.
 await page.locator('[data-v="system"]').click();
 await page.waitForFunction(()=>document.documentElement.dataset.worldView==='system');
 assert.equal((await page.locator('[data-world-gate-label]').textContent()).trim(),'SYSTEM');
+assert.notEqual((await page.locator('[data-world-view-index]').textContent()).trim(),overviewIndex);
 await page.locator('[data-v="overview"]').click();
 await page.waitForFunction(()=>document.documentElement.dataset.worldView==='overview');
 await page.waitForTimeout(1100);
@@ -112,6 +115,7 @@ assert.equal(await page.locator('html').getAttribute('data-visual-resolved'),'li
 assert.equal(await page.locator('.world-mobile-hud').isVisible(),true);
 assert.ok(Number(await page.locator('.world-depth-frame').evaluate(el=>getComputedStyle(el).opacity))>0);
 assert.equal((await page.locator('[data-world-mobile-view]').textContent()).trim(),'OVERVIEW');
+assert.match((await page.locator('[data-world-mobile-index]').textContent()).trim(),/^\d{2}\/\d{2}$/);
 assert.equal(await page.locator('.world-depth-rail').first().isVisible(),false);
 assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
 await page.screenshot({path:`${output}/depth-mobile.png`,fullPage:true});
