@@ -1650,3 +1650,78 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
   .world-depth-atmosphere .far,.world-depth-atmosphere b {display:none}
 }
 @media (prefers-reduced-motion:reduce) {.world-depth-atmosphere {display:none!important}}
+
+
+/* Phase VII: worlds now answer the same click with different physical language. */
+:root[data-world="divine"] .world-impact {
+  border:1px solid color-mix(in srgb,#f5ce7a,transparent 28%);
+  background:
+    radial-gradient(circle,#fff6d9aa 0 3%,transparent 4% 28%,color-mix(in srgb,#f5ce7a,transparent 66%) 29% 31%,transparent 32%),
+    conic-gradient(from 45deg,transparent 0 10%,#f5ce7a44 11% 12%,transparent 13% 23%,#f5ce7a33 24% 25%,transparent 26%);
+  box-shadow:0 0 16px #d5ab5840,inset 0 0 12px #fff2cc18;
+}
+:root[data-world="divine"] .world-impact::before,
+:root[data-world="divine"] .world-impact::after {
+  content:"";position:absolute;left:50%;top:50%;width:1px;height:220%;transform:translate(-50%,-50%);background:linear-gradient(transparent,#f5ce7a88,transparent)
+}
+:root[data-world="divine"] .world-impact::after {transform:translate(-50%,-50%) rotate(90deg)}
+
+:root[data-world="void"] .world-impact {
+  border-radius:1px!important;
+  clip-path:polygon(0 18%,33% 0,52% 21%,100% 7%,82% 55%,100% 86%,55% 73%,31% 100%,23% 62%,0 48%);
+  background:
+    linear-gradient(118deg,transparent 0 32%,#fff7 34%,color-mix(in srgb,var(--world-glow),transparent 20%) 37%,transparent 41% 58%,color-mix(in srgb,var(--world-glow),transparent 36%) 61%,transparent 66%),
+    radial-gradient(circle,color-mix(in srgb,var(--world-glow),#fff 10%),transparent 58%);
+  box-shadow:none;
+}
+:root[data-world="void"] .world-impact[data-kind="signal"] {clip-path:polygon(50% 0,62% 38%,100% 50%,62% 62%,50% 100%,38% 62%,0 50%,38% 38%)}
+
+:root[data-world="astral"] .world-impact {
+  background:
+    radial-gradient(circle,transparent 0 20%,color-mix(in srgb,#bceaff,transparent 18%) 21% 23%,transparent 24% 43%,color-mix(in srgb,#9570ff,transparent 38%) 44% 46%,transparent 47%),
+    radial-gradient(circle,#e6fbffcc 0 3%,transparent 4%);
+  border:1px solid color-mix(in srgb,#bceaff,transparent 52%);
+  box-shadow:0 0 14px #73e5ff36,0 0 30px #9570ff24,inset 0 0 14px #bceaff16;
+}
+:root[data-world="astral"] .world-impact::before {
+  content:"";position:absolute;inset:-35%;border:1px dashed color-mix(in srgb,#bceaff,transparent 50%);border-radius:50%;transform:rotate(28deg)
+}
+
+:root[data-world="divine"] .world-impact[data-kind="facet"] {animation-name:world-impact-divine-facet}
+:root[data-world="void"] .world-impact[data-kind="facet"] {animation-name:world-impact-void-facet}
+:root[data-world="astral"] .world-impact[data-kind="facet"] {animation-name:world-impact-astral-facet}
+@keyframes world-impact-divine-facet {to{transform:translate(-50%,-50%) scale(10) rotate(45deg);opacity:0;filter:brightness(1.45)}}
+@keyframes world-impact-void-facet {to{transform:translate(-50%,-50%) scale(12) rotate(-24deg);opacity:0;filter:contrast(1.35)}}
+@keyframes world-impact-astral-facet {to{transform:translate(-50%,-50%) scale(8) rotate(135deg);opacity:0;filter:blur(.4px)}}
+
+/* The dashboard itself has three silhouettes, not one rectangle painted three colors. */
+:root[data-world="divine"] #view :is(.card,.asset,.group) {border-radius:14px 14px 6px 6px}
+:root[data-world="divine"] #view :is(.tile,.px-box,.psi-box,.pan-field,.brain-agent,.brain-sub,.brain-lane,.evo-sub) {border-radius:9px 9px 4px 4px}
+:root[data-world="void"] #view :is(.card,.asset,.group) {border-radius:3px}
+:root[data-world="void"] #view :is(.tile,.px-box,.psi-box,.pan-field,.brain-agent,.brain-sub,.brain-lane,.evo-sub) {border-radius:1px}
+:root[data-world="astral"] #view :is(.card,.asset,.group) {border-radius:18px}
+:root[data-world="astral"] #view :is(.tile,.px-box,.psi-box,.pan-field,.brain-agent,.brain-sub,.brain-lane,.evo-sub) {border-radius:13px}
+
+/* Heading sigils inherit the physical alphabet of their world. */
+:root[data-world="divine"] .card h2::before {border-radius:1px;transform:rotate(45deg)}
+:root[data-world="void"] .card h2::before {width:9px;height:3px;border:0;background:linear-gradient(90deg,var(--world-glow),#fff8);transform:skewX(-28deg);box-shadow:0 0 8px color-mix(in srgb,var(--world-glow),transparent 45%)}
+:root[data-world="astral"] .card h2::before {border-radius:50%;transform:none;box-shadow:0 0 0 3px color-mix(in srgb,var(--world-glow),transparent 88%),0 0 9px color-mix(in srgb,var(--world-glow),transparent 48%)}
+
+/* Forms become instrument wells while labels and values remain completely native. */
+:root[data-world]:not([data-world=""]) #view :is(input,select,textarea):focus {
+  box-shadow:
+    inset 0 1px 0 #ffffff10,
+    inset 0 0 18px color-mix(in srgb,var(--world-glow),transparent 95%),
+    0 0 0 1px color-mix(in srgb,var(--world-glow),transparent 58%),
+    0 0 18px color-mix(in srgb,var(--world-glow),transparent 88%);
+}
+:root[data-world="void"] #view :is(input,select,textarea) {border-radius:2px}
+:root[data-world="astral"] #view :is(input,select,textarea) {border-radius:10px}
+
+@media (max-width:760px) {
+  :root[data-world="astral"] #view :is(.card,.asset,.group) {border-radius:14px}
+  :root[data-world="divine"] #view :is(.card,.asset,.group) {border-radius:11px 11px 5px 5px}
+}
+@media (prefers-reduced-motion:reduce) {
+  :root[data-world] .world-impact {display:none!important}
+}
