@@ -133,8 +133,10 @@
   }
   function refresh(){
     ensureAmbient();
-    const candidates=[...document.querySelectorAll('#view > :is(.card,.asset,.hero,.group), #view > .assets > .asset, #view :is(.tile,.px-box,.psi-box,.pan-field,.brain-agent,.brain-sub,.brain-lane,.evo-sub)')];
-    candidates.slice(0,80).forEach(observePanel);
+    const majors=[...document.querySelectorAll('#view > :is(.card,.asset,.hero,.group), #view > .assets > .asset')];
+    majors.forEach(decorateSurface);
+    const nested=[...document.querySelectorAll('#view :is(.tile,.px-box,.psi-box,.pan-field,.brain-agent,.brain-sub,.brain-lane,.evo-sub)')];
+    [...new Set([...majors,...nested])].slice(0,80).forEach(observePanel);
     writeScrollDepth();
   }
   function installObserver(){
