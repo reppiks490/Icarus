@@ -127,6 +127,7 @@
         <div class="intro-rays"></div><div class="intro-dust"></div>
         <div class="intro-system"><div class="intro-eclipse"></div>
           <i class="intro-ring r1"></i><i class="intro-ring r2"></i><i class="intro-ring r3"></i><i class="intro-ring r4"></i>
+          <div class="intro-world-emblem"><i></i><b></b><span></span></div>
           <div class="intro-wing left"><b></b><b></b><b></b><b></b><b></b></div>
           <div class="intro-wing right"><b></b><b></b><b></b><b></b><b></b></div>
           <div class="intro-crown"><svg viewBox="0 0 100 110" aria-hidden="true"><path d="M18 31L31 42L50 14L69 42L82 31L73 65H27Z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M30 73H70M36 81H64" fill="none" stroke="currentColor" stroke-width="2"/><path d="M50 32L58 48L50 62L42 48Z" fill="currentColor"/><circle cx="50" cy="5" r="2" fill="currentColor"/><path d="M50 88V105M44 97L50 105L56 97" fill="none" stroke="currentColor" stroke-width="2"/></svg></div>
