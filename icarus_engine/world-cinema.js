@@ -228,8 +228,15 @@
     const animate=(target,keyframes,options,remove=false)=>{
       if(!target.animate){if(remove)target.remove();return;}
       const animation=target.animate(keyframes,options);worldTransitions.add(animation);
-      const cleanup=()=>{worldTransitions.delete(animation);if(remove)target.remove();};
+      let cleaned=false;
+      const cleanup=()=>{
+        if(cleaned)return;cleaned=true;
+        worldTransitions.delete(animation);if(remove)target.remove();
+      };
       animation.onfinish=cleanup;animation.oncancel=cleanup;
+      // Some headless/hidden compositor paths delay Web Animations finish events.
+      // A bounded DOM cleanup prevents decorative veils from ever becoming stale.
+      if(remove)setTimeout(cleanup,(Number(options?.delay)||0)+(Number(options?.duration)||0)+90);
     };
     if(palettes[from]) {
       const veil=document.createElement('div');veil.className='world-veil';veil.setAttribute('aria-hidden','true');
