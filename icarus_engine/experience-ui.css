@@ -3438,3 +3438,29 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 }
 :root[data-motion="off"] #view .world-radar-arrival {animation:none!important}
 @media (prefers-reduced-motion:reduce) {#view .world-radar-arrival {animation:none!important}}
+
+
+/* Phase XIII: identifiers, hashes and numeric readouts feel like cockpit instrumentation. */
+:root[data-world]:not([data-world=""]) #view code {
+  display:inline-block;max-width:100%;padding:2px 5px;border:1px solid color-mix(in srgb,var(--view-accent,var(--world-glow)),var(--ring) 84%);
+  border-radius:5px;background:color-mix(in srgb,var(--surface-2) 74%,transparent);
+  color:color-mix(in srgb,var(--ink-2),var(--view-accent,var(--world-glow)) 16%);
+  box-shadow:inset 0 1px 0 #ffffff08;text-shadow:0 0 8px color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 92%);
+  overflow:hidden;text-overflow:ellipsis;vertical-align:middle;
+}
+:root[data-world="void"] #view code {border-radius:1px}
+:root[data-world="astral"] #view code {border-radius:999px;padding-inline:7px}
+:root[data-world]:not([data-world=""]) #view .tnum {
+  font-variant-numeric:tabular-nums;letter-spacing:.015em;
+  text-shadow:0 0 12px color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 94%);
+}
+:root[data-world]:not([data-world=""]) #view .tile .v.tnum,
+:root[data-world]:not([data-world=""]) #view td.tnum {
+  color:color-mix(in srgb,var(--ink),var(--view-accent,var(--world-glow)) 8%);
+}
+:root[data-world]:not([data-world=""]) #view .small.muted b {
+  color:color-mix(in srgb,var(--ink-2),var(--view-accent,var(--world-glow)) 10%);
+  font-weight:600;
+}
+:root[data-visual-resolved="light"] #view code {box-shadow:none;text-shadow:none}
+@media (forced-colors:active) {:root[data-world] #view code {color:CanvasText!important;background:Canvas!important;border-color:CanvasText!important}}
