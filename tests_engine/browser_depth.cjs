@@ -43,8 +43,11 @@ if(state==='ready'){
 await page.locator('.experience-settings summary').click();
 for(const theme of ['void','astral','divine']){
  await page.locator(`[data-world-choice="${theme}"]`).click();
+ await page.waitForFunction(t=>document.documentElement.dataset.world===t,theme);
  await page.waitForFunction(()=>document.querySelectorAll('.world-veil').length===0,null,{timeout:2500});
- assert.ok(await page.locator('#worldTitle .world-word').count()>0);
+ const title=page.locator('#worldTitle');
+ assert.ok((await title.getAttribute('aria-label')||await title.textContent()||'').trim().length>0);
+ if(await page.locator('html').getAttribute('data-motion')==='live') assert.ok(await title.locator('.world-word').count()>0);
  await page.screenshot({path:`${output}/depth-${theme}.png`});
 }
 // Rapid switching must not leave transparent overlays or stale accessible names.
