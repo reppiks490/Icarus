@@ -2241,3 +2241,33 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 :root[data-world="void"] .world-depth-readout small,:root[data-world="void"] .world-mobile-hud small {letter-spacing:.04em}
 :root[data-world="astral"] .world-depth-readout small,:root[data-world="astral"] .world-mobile-hud small {color:color-mix(in srgb,#bceaff,var(--active-view-accent) 32%)}
 @media (max-width:410px) {.world-mobile-hud small {display:none}}
+
+
+/* Phase XXII: overlays become world-specific chambers rather than generic floating rectangles. */
+:root[data-world]:not([data-world=""]) :is(.modal .box,.pal .box,.experience-music) {
+  position:relative;overflow:hidden;
+  border-color:color-mix(in srgb,var(--active-view-accent,var(--world-glow)),var(--ring) 62%);
+  box-shadow:0 28px 88px #0009,inset 0 1px 0 #ffffff14,inset 0 -1px 0 color-mix(in srgb,var(--world-glow),transparent 92%);
+}
+:root[data-world]:not([data-world=""]) :is(.modal .box,.pal .box,.experience-music)::before {
+  content:"";position:absolute;left:12px;right:12px;top:7px;height:1px;pointer-events:none;z-index:2;
+  background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--active-view-accent,var(--world-glow)),#fff 8%),transparent);
+  opacity:.58;
+}
+:root[data-world="divine"] :is(.modal .box,.pal .box,.experience-music) {border-radius:18px 18px 7px 7px}
+:root[data-world="void"] :is(.modal .box,.pal .box,.experience-music) {
+  border-radius:2px;clip-path:polygon(9px 0,100% 0,100% calc(100% - 9px),calc(100% - 9px) 100%,0 100%,0 9px);
+}
+:root[data-world="void"] :is(.modal .box,.pal .box,.experience-music)::before {
+  left:5%;right:38%;background:linear-gradient(90deg,var(--world-glow),transparent);
+}
+:root[data-world="astral"] :is(.modal .box,.pal .box,.experience-music) {border-radius:22px}
+:root[data-world="astral"] :is(.modal .box,.pal .box,.experience-music)::before {
+  left:18%;right:18%;background:radial-gradient(ellipse at 50% 50%,#dff8ff99 0 1px,var(--world-glow) 2px,transparent 70%);
+  height:2px;
+}
+:root[data-world]:not([data-world=""]) .modal.open,
+:root[data-world]:not([data-world=""]) .pal.open {
+  -webkit-backdrop-filter:blur(5px) saturate(108%);backdrop-filter:blur(5px) saturate(108%);
+}
+:root[data-visual-resolved="light"] :is(.modal.open,.pal.open) {-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
