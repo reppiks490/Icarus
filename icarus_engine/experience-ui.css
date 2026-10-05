@@ -2711,3 +2711,53 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 }
 @media (max-width:1100px) {.world-chapter-title {display:none!important}}
 @media (prefers-reduced-motion:reduce) {.world-chapter-title {display:none!important}}
+
+
+/* Sparse stages use the empty volume as composition instead of leaving it visually dead. */
+#view.world-sparse-view .world-view-ambient {opacity:.88}
+#view.world-sparse-view .world-view-ambient::before {
+  color:color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 96.2%);
+  text-shadow:0 0 90px color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 93%);
+  opacity:1;
+}
+#view.world-sparse-view .world-view-ambient::after {
+  content:"";position:absolute;left:50%;top:min(54vh,600px);width:min(62vw,720px);aspect-ratio:1;
+  transform:translate(-50%,-50%);pointer-events:none;opacity:.28;
+}
+:root[data-world="divine"] #view.world-sparse-view .world-view-ambient::after {
+  border:1px solid color-mix(in srgb,var(--view-accent),transparent 84%);
+  transform:translate(-50%,-50%) rotate(45deg);
+  box-shadow:
+    0 0 0 34px color-mix(in srgb,var(--view-accent),transparent 97%),
+    0 0 0 68px color-mix(in srgb,var(--view-accent),transparent 98%),
+    inset 0 0 78px color-mix(in srgb,var(--view-accent),transparent 96%);
+}
+:root[data-world="void"] #view.world-sparse-view .world-view-ambient::after {
+  width:min(70vw,820px);aspect-ratio:1.7/1;
+  background:
+    linear-gradient(154deg,transparent 0 31%,color-mix(in srgb,var(--view-accent),transparent 88%) 31.3% 31.7%,transparent 32% 67%,color-mix(in srgb,var(--view-accent),transparent 91%) 67.3% 67.7%,transparent 68%),
+    repeating-linear-gradient(90deg,transparent 0 86px,color-mix(in srgb,var(--view-accent),transparent 97%) 87px,transparent 88px 147px);
+  clip-path:polygon(0 13%,87% 0,100% 26%,93% 100%,11% 91%);
+  filter:drop-shadow(0 0 18px color-mix(in srgb,var(--view-accent),transparent 82%));
+}
+:root[data-world="astral"] #view.world-sparse-view .world-view-ambient::after {
+  width:min(68vw,760px);aspect-ratio:1;
+  border:1px solid color-mix(in srgb,var(--view-accent),transparent 82%);border-radius:50%;
+  transform:translate(-50%,-50%) scaleY(.38) rotate(-12deg);
+  box-shadow:
+    0 0 0 42px color-mix(in srgb,#bceaff,transparent 97%),
+    0 0 0 84px color-mix(in srgb,var(--view-accent),transparent 98%),
+    0 0 46px color-mix(in srgb,var(--view-accent),transparent 90%);
+}
+:root[data-world]:not([data-world=""])[data-motion="live"][data-experience="cinematic"][data-visual-resolved="rich"] #view.world-sparse-view .world-view-ambient::after {
+  animation:world-sparse-stage 18s ease-in-out infinite alternate;
+}
+:root[data-world="void"][data-motion="live"][data-experience="cinematic"][data-visual-resolved="rich"] #view.world-sparse-view .world-view-ambient::after {animation-duration:11s}
+:root[data-world="astral"][data-motion="live"][data-experience="cinematic"][data-visual-resolved="rich"] #view.world-sparse-view .world-view-ambient::after {animation-duration:28s}
+@keyframes world-sparse-stage {from{opacity:.18;filter:brightness(.88)}to{opacity:.4;filter:brightness(1.12)}}
+:root[data-visual-resolved="light"] #view.world-sparse-view .world-view-ambient::after {opacity:.08;animation:none!important}
+:root[data-experience="focus"] #view.world-sparse-view .world-view-ambient::after {display:none}
+@media (max-width:760px) {
+  #view.world-sparse-view .world-view-ambient::after {width:86vw;top:48vh;opacity:.12;animation:none!important}
+}
+@media (prefers-reduced-motion:reduce) {#view.world-sparse-view .world-view-ambient::after {animation:none!important;opacity:.12}}
