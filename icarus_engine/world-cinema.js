@@ -238,16 +238,27 @@
       // A bounded DOM cleanup prevents decorative veils from ever becoming stale.
       if(remove)setTimeout(cleanup,(Number(options?.delay)||0)+(Number(options?.duration)||0)+90);
     };
+    const to=root.dataset.world||'divine';
     if(palettes[from]) {
-      const veil=document.createElement('div');veil.className='world-veil';veil.setAttribute('aria-hidden','true');
+      const veil=document.createElement('div');veil.className='world-veil';veil.dataset.worldTransition=to;veil.setAttribute('aria-hidden','true');
       veil.style.backgroundImage=`url('/worlds/${from}.webp')`;element.appendChild(veil);
-      animate(veil,[{opacity:.7,clipPath:'circle(150% at 76% 50%)'},{opacity:0,clipPath:'circle(0% at 76% 50%)'}],{duration:1050,easing:'cubic-bezier(.2,.7,.2,1)'},true);
+      const veilFrames=to==='void'
+        ? [{opacity:.82,clipPath:'polygon(0 0,100% 0,100% 100%,0 100%)',transform:'translateX(0) skewX(0deg)',filter:'contrast(1.08)'},{opacity:.28,clipPath:'polygon(0 0,72% 0,46% 100%,0 100%)',transform:'translateX(-12px) skewX(-5deg)',filter:'contrast(1.3) brightness(.78)'},{opacity:0,clipPath:'polygon(0 0,4% 0,0 100%,0 100%)',transform:'translateX(-28px) skewX(-9deg)',filter:'contrast(1.45) brightness(.5)'}]
+        : to==='astral'
+          ? [{opacity:.78,clipPath:'ellipse(112% 88% at 50% 50%)',transform:'scale(1)',filter:'blur(0px) saturate(1)'},{opacity:.35,clipPath:'ellipse(58% 42% at 50% 48%)',transform:'scale(1.06) rotate(.4deg)',filter:'blur(1px) saturate(1.18)'},{opacity:0,clipPath:'ellipse(4% 2% at 50% 48%)',transform:'scale(1.12) rotate(1deg)',filter:'blur(5px) saturate(.65)'}]
+          : [{opacity:.74,clipPath:'circle(150% at 50% 42%)',transform:'scale(1.02)',filter:'brightness(.86)'},{opacity:.34,clipPath:'circle(58% at 50% 42%)',transform:'scale(.995)',filter:'brightness(1.18)'},{opacity:0,clipPath:'circle(0% at 50% 42%)',transform:'scale(.98)',filter:'brightness(1.35)'}];
+      animate(veil,veilFrames,{duration:to==='void'?920:to==='astral'?1180:1050,easing:'cubic-bezier(.2,.7,.2,1)'},true);
     }
     const heading=element.querySelector('h1'),title=heading.textContent;
     heading.setAttribute('aria-label',title);heading.replaceChildren();
     title.split(' ').forEach((word,i)=>{
       const span=document.createElement('span');span.className='world-word';span.textContent=word;span.setAttribute('aria-hidden','true');heading.append(span,document.createTextNode(' '));
-      animate(span,[{opacity:.25,transform:'translateY(14px) rotateX(35deg)'},{opacity:1,transform:'translateY(0) rotateX(0deg)'}],{duration:820,delay:i*70,easing:'cubic-bezier(.2,.7,.2,1)'});
+      const wordFrames=to==='void'
+        ? [{opacity:.12,transform:'translateX(-18px) skewX(-10deg)',filter:'blur(2px) contrast(1.25)'},{opacity:1,transform:'translateX(0) skewX(0)',filter:'none'}]
+        : to==='astral'
+          ? [{opacity:.12,transform:'translateY(9px) scale(.92) rotateX(22deg)',filter:'blur(5px) saturate(.7)'},{opacity:1,transform:'translateY(0) scale(1) rotateX(0)',filter:'none'}]
+          : [{opacity:.2,transform:'translateY(16px) scale(.96)',filter:'brightness(.72) blur(2px)'},{opacity:1,transform:'translateY(0) scale(1)',filter:'none'}];
+      animate(span,wordFrames,{duration:to==='void'?680:to==='astral'?900:820,delay:i*(to==='void'?45:70),easing:'cubic-bezier(.2,.7,.2,1)'});
     });
     const caption=element.querySelector('#worldCaption');
     if(caption)animate(caption,[{opacity:.3,transform:'translateY(6px)'},{opacity:1,transform:'translateY(0)'}],{duration:850,easing:'ease-out'});
