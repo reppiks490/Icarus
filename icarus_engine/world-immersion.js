@@ -2,7 +2,7 @@
   'use strict';
   const root=document.documentElement;
   const reduced=window.matchMedia('(prefers-reduced-motion: reduce)');
-  let scrollFrame=0,pointerFrame=0,viewObserver=null,viewMutation=null,depthFrame=null,focusOrbit=null,viewFlashTimer=0,viewGateTimer=0,chapterTimer=0,focusTimer=0,scrollEnergyTimer=0,lastScrollY=0,lastScrollAt=0,currentView='overview',currentPhase='crown',initialized=false;
+  let scrollFrame=0,pointerFrame=0,viewObserver=null,viewMutation=null,depthFrame=null,focusOrbit=null,ambient=null,viewFlashTimer=0,viewGateTimer=0,chapterTimer=0,focusTimer=0,scrollEnergyTimer=0,lastScrollY=0,lastScrollAt=0,currentView='overview',currentPhase='crown',initialized=false;
 
   const motionAllowed=()=>root.dataset.motion==='live'&&root.dataset.experience==='cinematic'&&!!root.dataset.world&&!document.hidden&&!reduced.matches&&root.dataset.introActive!=='true';
   const phaseLabels={crown:'CROWN',descent:'DESCENT',depth:'DEPTH',abyss:'ABYSS'};
@@ -117,7 +117,15 @@
     if(viewObserver)viewObserver.observe(element);
     else reveal(element);
   }
+  function ensureAmbient(){
+    const view=document.getElementById('view');
+    if(!view)return;
+    if(ambient?.isConnected&&ambient.parentElement===view)return;
+    ambient=document.createElement('div');ambient.className='world-view-ambient';ambient.setAttribute('aria-hidden','true');
+    ambient.innerHTML='<i></i>'.repeat(12);view.prepend(ambient);
+  }
   function refresh(){
+    ensureAmbient();
     const candidates=[...document.querySelectorAll('#view > :is(.card,.asset,.hero,.group), #view > .assets > .asset, #view :is(.tile,.px-box,.psi-box,.pan-field,.brain-agent,.brain-sub,.brain-lane,.evo-sub)')];
     candidates.slice(0,80).forEach(observePanel);
     writeScrollDepth();
