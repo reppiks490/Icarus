@@ -2870,3 +2870,82 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 @media (max-width:600px) {
   .world-intro .intro-skip {right:max(12px,calc(env(safe-area-inset-right) + 8px));top:max(12px,calc(env(safe-area-inset-top) + 8px));min-width:104px;padding:9px 12px;font-size:9px}
 }
+
+
+/* Instrument families: repeated cards no longer read as the same rectangle with different text. */
+:root[data-world]:not([data-world=""]) #view :is(.card,.asset,.group)[data-world-panel-kind] {
+  --panel-kind-accent:var(--view-accent,var(--world-glow));
+}
+:root[data-world]:not([data-world=""]) #view [data-world-panel-kind="capital"] {
+  --panel-kind-accent:color-mix(in srgb,var(--view-accent,var(--world-glow)),#f6c96a 34%);
+}
+:root[data-world]:not([data-world=""]) #view [data-world-panel-kind="research"] {
+  --panel-kind-accent:color-mix(in srgb,var(--view-accent,var(--world-glow)),#c59cff 32%);
+}
+:root[data-world]:not([data-world=""]) #view [data-world-panel-kind="data"] {
+  --panel-kind-accent:color-mix(in srgb,var(--view-accent,var(--world-glow)),#7de7ff 28%);
+}
+:root[data-world]:not([data-world=""]) #view [data-world-panel-kind="control"] {
+  --panel-kind-accent:color-mix(in srgb,var(--view-accent,var(--world-glow)),#7ff0c5 24%);
+}
+:root[data-world]:not([data-world=""]) #view :is(.card,.asset,.group)[data-world-panel-kind] {
+  border-color:color-mix(in srgb,var(--panel-kind-accent),var(--ring) 74%);
+}
+:root[data-world]:not([data-world=""]) #view :is(.card,.asset,.group)[data-world-panel-kind] > h2 {
+  position:relative;
+}
+:root[data-world]:not([data-world=""]) #view :is(.card,.asset,.group)[data-world-panel-kind] > h2::before {
+  border-color:color-mix(in srgb,var(--panel-kind-accent),transparent 34%);
+  box-shadow:0 0 8px color-mix(in srgb,var(--panel-kind-accent),transparent 62%);
+}
+:root[data-world]:not([data-world=""]) #view :is(.card,.asset,.group)[data-world-panel-kind] > h2::after {
+  background:linear-gradient(90deg,color-mix(in srgb,var(--panel-kind-accent),transparent 62%),transparent);
+}
+
+/* Capital surfaces: vault-like lower edge and restrained ledger sheen. */
+:root[data-world]:not([data-world=""]) #view [data-world-panel-kind="capital"] {
+  background-image:
+    linear-gradient(180deg,color-mix(in srgb,var(--panel-kind-accent),transparent 96%),transparent 24% 78%,color-mix(in srgb,var(--panel-kind-accent),transparent 98%)),
+    linear-gradient(180deg,color-mix(in srgb,var(--surface) 92%,transparent),color-mix(in srgb,var(--surface) 84%,transparent));
+  box-shadow:var(--phase-shadow,0 18px 58px #0003),inset 0 -2px 0 color-mix(in srgb,var(--panel-kind-accent),transparent 84%),inset 0 1px 0 #ffffff10;
+}
+:root[data-world="divine"] #view [data-world-panel-kind="capital"] {border-radius:13px 13px 5px 5px}
+:root[data-world="void"] #view [data-world-panel-kind="capital"] {clip-path:polygon(7px 0,100% 0,100% calc(100% - 9px),calc(100% - 9px) 100%,0 100%,0 7px)}
+:root[data-world="astral"] #view [data-world-panel-kind="capital"] {border-radius:16px}
+
+/* Research surfaces: inner field and stronger depth, still subordinate to actual data. */
+:root[data-world]:not([data-world=""]) #view [data-world-panel-kind="research"] {
+  background-image:
+    radial-gradient(ellipse at 82% 0%,color-mix(in srgb,var(--panel-kind-accent),transparent 92%),transparent 36%),
+    linear-gradient(145deg,color-mix(in srgb,var(--panel-kind-accent),transparent 96%),transparent 38%),
+    linear-gradient(180deg,color-mix(in srgb,var(--surface) 91%,transparent),color-mix(in srgb,var(--surface) 83%,transparent));
+  box-shadow:var(--phase-shadow,0 18px 58px #0003),inset 2px 0 0 color-mix(in srgb,var(--panel-kind-accent),transparent 82%),inset 0 1px 0 #ffffff10;
+}
+
+/* Data surfaces: thin scan rail and flatter optical profile for dense reading. */
+:root[data-world]:not([data-world=""]) #view [data-world-panel-kind="data"] {
+  background-image:
+    repeating-linear-gradient(90deg,transparent 0 96px,color-mix(in srgb,var(--panel-kind-accent),transparent 98.5%) 97px,transparent 98px 164px),
+    linear-gradient(180deg,color-mix(in srgb,var(--surface) 94%,transparent),color-mix(in srgb,var(--surface) 88%,transparent));
+  box-shadow:0 14px 42px #0003,inset 0 1px 0 #ffffff0d,inset 1px 0 0 color-mix(in srgb,var(--panel-kind-accent),transparent 78%);
+}
+
+/* Control surfaces: command chassis with a precise top rail. */
+:root[data-world]:not([data-world=""]) #view [data-world-panel-kind="control"] {
+  background-image:
+    linear-gradient(90deg,color-mix(in srgb,var(--panel-kind-accent),transparent 88%) 0 13%,transparent 13% 87%,color-mix(in srgb,var(--panel-kind-accent),transparent 94%) 87%),
+    linear-gradient(180deg,color-mix(in srgb,var(--surface) 93%,transparent),color-mix(in srgb,var(--surface) 85%,transparent));
+  box-shadow:0 17px 50px #0004,inset 0 2px 0 color-mix(in srgb,var(--panel-kind-accent),transparent 84%),inset 0 1px 0 #ffffff0d;
+}
+:root[data-world="void"] #view [data-world-panel-kind="control"] {border-radius:1px}
+:root[data-world="astral"] #view [data-world-panel-kind="control"] {border-radius:14px}
+
+:root[data-world]:not([data-world=""]) #view [data-world-panel-kind] > .world-surface-sigil {
+  color:var(--panel-kind-accent);
+}
+:root[data-visual-resolved="light"] #view [data-world-panel-kind] {
+  background-image:none!important;box-shadow:inset 0 1px 0 #ffffff08,0 7px 20px #0002!important;
+}
+@media (max-width:760px) {
+  #view [data-world-panel-kind] {clip-path:none!important}
+}
