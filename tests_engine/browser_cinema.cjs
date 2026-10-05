@@ -61,6 +61,8 @@ assert.equal(await page.locator('.world-intro').evaluate(el=>getComputedStyle(el
 assert.equal(await page.locator('.intro-vault').count(),1);
 assert.equal(await page.locator('.intro-vault i').count(),5);
 assert.equal(await page.locator('.intro-glyphs i').count(),8);
+assert.equal(await page.locator('.intro-world-emblem').count(),1);
+assert.equal(await page.locator('.intro-world-emblem > *').count(),3);
 assert.equal(await page.locator('.intro-chapters span').count(),4);
 assert.equal((await page.locator('.intro-title span').textContent()).trim(),'THE ONE ABOVE ALL');
 await page.keyboard.press('Tab');assert.equal(await page.locator('.intro-skip').evaluate(el=>el===document.activeElement),true);
