@@ -65,6 +65,9 @@ assert.match((await card.locator(':scope > .world-panel-index').textContent()).t
 assert.equal(await card.locator(':scope > .world-panel-index').evaluate(el=>getComputedStyle(el).position),'absolute');
 assert.ok(await card.evaluate(el=>el.style.getPropertyValue('--panel-x')));
 assert.ok(await card.evaluate(el=>el.style.getPropertyValue('--panel-tilt-y')));
+await page.mouse.move(520,360);await page.waitForTimeout(80);
+assert.equal(await page.locator('.world-pointer-lens').count(),1);
+assert.equal(await page.locator('.world-pointer-lens').evaluate(el=>el.classList.contains('active')),true);
 assert.equal(await page.locator('html').getAttribute('data-world-immersion'),'ready');
 assert.equal(await page.locator('.world-depth-frame').count(),1);
 assert.equal(await page.locator('.world-depth-atmosphere').count(),1);
@@ -155,6 +158,7 @@ await page.setViewportSize({width:390,height:844});await page.waitForTimeout(250
 assert.equal(await page.locator('html').getAttribute('data-visual-resolved'),'light');
 assert.equal(await page.locator('.world-mobile-hud').isVisible(),true);
 assert.equal(await page.locator('.world-section-radar').isVisible(),false);
+assert.equal(await page.locator('.world-pointer-lens').isVisible(),false);
 assert.ok(Number(await page.locator('.world-depth-frame').evaluate(el=>getComputedStyle(el).opacity))>0);
 assert.equal((await page.locator('[data-world-mobile-view]').textContent()).trim(),'OVERVIEW');
 assert.match((await page.locator('[data-world-mobile-index]').textContent()).trim(),/^\d{2}\/\d{2}$/);
