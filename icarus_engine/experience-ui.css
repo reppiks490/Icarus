@@ -3091,7 +3091,7 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 
 /* Phase VII: section radar turns long subsystem views into a navigable spatial instrument. */
 .world-section-radar {
-  position:fixed;right:14px;top:50%;z-index:5;pointer-events:none;transform:translateY(-50%);
+  position:fixed;right:14px;top:50%;z-index:5;pointer-events:auto;transform:translateY(-50%);
   width:168px;padding:9px 10px 10px;border:1px solid color-mix(in srgb,var(--active-view-accent,var(--world-glow)),var(--ring) 72%);
   border-radius:12px;background:
     linear-gradient(145deg,color-mix(in srgb,var(--active-view-accent,var(--world-glow)),transparent 96%),transparent 44%),
@@ -3112,8 +3112,14 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 }
 .world-section-radar [data-world-radar-nodes] {display:grid;gap:4px}
 .world-section-radar [data-radar-node] {
-  position:relative;display:grid;grid-template-columns:8px minmax(0,1fr);align-items:center;gap:6px;min-height:15px;
-  color:var(--muted);opacity:.46;transition:opacity .16s ease,transform .16s ease,color .16s ease;
+  position:relative;display:grid;grid-template-columns:8px minmax(0,1fr);align-items:center;gap:6px;min-height:18px;width:100%;
+  margin:0;padding:2px 3px;border:0;border-radius:4px;background:transparent;box-shadow:none!important;text-align:left;
+  color:var(--muted);opacity:.46;cursor:pointer;transition:opacity .16s ease,transform .16s ease,color .16s ease,background-color .16s ease;
+}
+.world-section-radar [data-radar-node]:hover,
+.world-section-radar [data-radar-node]:focus-visible {
+  opacity:.9;background:color-mix(in srgb,var(--active-view-accent,var(--world-glow)),transparent 95%);
+  outline:1px solid color-mix(in srgb,var(--active-view-accent,var(--world-glow)),transparent 78%);outline-offset:1px
 }
 .world-section-radar [data-radar-node] > i {
   width:4px;height:4px;justify-self:center;transform:rotate(45deg);
@@ -3407,3 +3413,28 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 :root[data-visual-resolved="light"] #view .world-depth-enter[data-world-panel-kind] > :is(.world-surface-sigil,.world-panel-index) {animation:none!important}
 @media (max-width:760px) {#view .world-depth-enter[data-world-panel-kind] > :is(.world-surface-sigil,.world-panel-index) {animation:none!important}}
 @media (prefers-reduced-motion:reduce) {#view .world-depth-enter[data-world-panel-kind] > :is(.world-surface-sigil,.world-panel-index) {animation:none!important}}
+
+
+/* Radar jumps land with one short confirmation pulse on the real target panel. */
+:root[data-world]:not([data-world=""])[data-motion="live"] #view .world-radar-arrival {
+  animation:world-radar-arrival 860ms cubic-bezier(.16,.8,.2,1) both!important;
+}
+@keyframes world-radar-arrival {
+  0%{outline:1px solid color-mix(in srgb,var(--panel-kind-accent,var(--view-accent,var(--world-glow))),transparent 28%);outline-offset:8px;filter:brightness(.88)}
+  38%{outline-offset:3px;filter:brightness(1.14);box-shadow:var(--phase-shadow,0 18px 58px #0003),0 0 28px color-mix(in srgb,var(--panel-kind-accent,var(--view-accent,var(--world-glow))),transparent 84%)}
+  100%{outline:1px solid transparent;outline-offset:0;filter:none}
+}
+:root[data-world="void"][data-motion="live"] #view .world-radar-arrival {animation-name:world-radar-arrival-void}
+@keyframes world-radar-arrival-void {
+  0%{filter:contrast(1.3) brightness(.7);clip-path:inset(0 100% 0 0)}
+  42%{filter:contrast(1.08) brightness(1.12);clip-path:inset(0)}
+  100%{filter:none;clip-path:inset(0)}
+}
+:root[data-world="astral"][data-motion="live"] #view .world-radar-arrival {animation-name:world-radar-arrival-astral}
+@keyframes world-radar-arrival-astral {
+  0%{filter:blur(4px) brightness(.72) saturate(.72);transform:scale(.985)}
+  46%{filter:blur(.2px) brightness(1.1) saturate(1.12)}
+  100%{filter:none;transform:none}
+}
+:root[data-motion="off"] #view .world-radar-arrival {animation:none!important}
+@media (prefers-reduced-motion:reduce) {#view .world-radar-arrival {animation:none!important}}
