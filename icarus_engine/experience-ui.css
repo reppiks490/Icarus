@@ -3642,3 +3642,11 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
   #view.world-inspection-mode > * {filter:none!important;opacity:1!important}
 }
 @media (forced-colors:active) {#view > .world-inspection-field {display:none!important}}
+
+
+/* Inspection lens inherits the panel family, so capital/data/research/control do not collapse into one accent. */
+.world-inspection-field[data-kind="capital"] {--panel-kind-accent:color-mix(in srgb,var(--active-view-accent,var(--world-glow)),#f6c96a 34%)}
+.world-inspection-field[data-kind="research"] {--panel-kind-accent:color-mix(in srgb,var(--active-view-accent,var(--world-glow)),#c59cff 32%)}
+.world-inspection-field[data-kind="data"] {--panel-kind-accent:color-mix(in srgb,var(--active-view-accent,var(--world-glow)),#7de7ff 28%)}
+.world-inspection-field[data-kind="control"] {--panel-kind-accent:color-mix(in srgb,var(--active-view-accent,var(--world-glow)),#7ff0c5 24%)}
+.world-inspection-field[data-kind="instrument"] {--panel-kind-accent:var(--active-view-accent,var(--world-glow))}
