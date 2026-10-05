@@ -1930,3 +1930,25 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 :root[data-experience="focus"] .world-scene::before {display:none}
 @media (max-width:760px) {.world-scene::before {inset:7px!important;opacity:.38!important;animation:none!important}}
 @media (prefers-reduced-motion:reduce) {.world-scene::before {animation:none!important}}
+
+
+/* Phase XII: the command deck follows the active subsystem's local spectral identity. */
+:root[data-world]:not([data-world=""]) {--active-view-accent:var(--world-glow)}
+:root:is([data-world-view="research"],[data-world-view="sources"],[data-world-view="market-data"]) {--active-view-accent:color-mix(in srgb,var(--world-glow),#72ddff 38%)}
+:root:is([data-world-view="brain"],[data-world-view="learning"],[data-world-view="evolution"]) {--active-view-accent:color-mix(in srgb,var(--world-glow),#c99bff 42%)}
+:root:is([data-world-view="parallax"],[data-world-view="possibility"],[data-world-view="sibyl"],[data-world-view="chronofold"]) {--active-view-accent:color-mix(in srgb,var(--world-glow),#ff8cda 34%)}
+:root:is([data-world-view="pantheon"],[data-world-view="apex"],[data-world-view="ascendancy"]) {--active-view-accent:color-mix(in srgb,var(--world-glow),#ffd878 34%)}
+:root:is([data-world-view="system"],[data-world-view="integrity"],[data-world-view="engine-control"],[data-world-view="commissioning"],[data-world-view="commands"],[data-world-view="log"],[data-world-view="autopilot"]) {--active-view-accent:color-mix(in srgb,var(--world-glow),#71efc1 32%)}
+
+:root[data-world]:not([data-world=""]) .tab.active {
+  border-color:color-mix(in srgb,var(--active-view-accent),var(--ring) 48%);
+  background:linear-gradient(145deg,color-mix(in srgb,var(--active-view-accent),transparent 88%),color-mix(in srgb,var(--page),transparent 3%));
+  box-shadow:inset 0 1px 0 #ffffff12,0 6px 20px #0003,0 0 18px color-mix(in srgb,var(--active-view-accent),transparent 91%);
+  text-shadow:0 0 18px color-mix(in srgb,var(--active-view-accent),transparent 64%);
+}
+:root[data-world]:not([data-world=""]) .tab.active::before {background:var(--active-view-accent);box-shadow:0 0 9px var(--active-view-accent)}
+:root[data-world]:not([data-world=""]) .world-view-gate i {color:color-mix(in srgb,var(--active-view-accent),#fff 18%);text-shadow:0 0 30px color-mix(in srgb,var(--active-view-accent),transparent 35%)}
+:root[data-world]:not([data-world=""]) .world-view-gate span {color:color-mix(in srgb,var(--active-view-accent),#fff 28%)}
+:root[data-world]:not([data-world=""]) .world-view-gate::before,
+:root[data-world]:not([data-world=""]) .world-view-gate::after {border-color:color-mix(in srgb,var(--active-view-accent),transparent 72%);box-shadow:0 0 36px color-mix(in srgb,var(--active-view-accent),transparent 89%),inset 0 0 28px color-mix(in srgb,var(--active-view-accent),transparent 94%)}
+:root[data-world]:not([data-world=""]) .world-mobile-hud i {color:var(--active-view-accent);text-shadow:0 0 10px color-mix(in srgb,var(--active-view-accent),transparent 38%)}
