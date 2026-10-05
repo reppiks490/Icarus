@@ -2392,7 +2392,7 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 @media (max-width:760px) {.world-scene [data-world-choice]{padding-left:25px}.world-scene [data-world-choice]:hover{transform:none}}
 
 
-/* Phase VI: structural constellation. Major instruments are connected by bounded decorative topology only. */
+/* Structural topology pass: major instruments are connected by bounded decorative topology only. */
 #view > .world-topology {
   position:absolute;inset:0;z-index:0!important;width:100%;height:100%;overflow:visible;pointer-events:none;opacity:.34;
   color:var(--view-accent,var(--world-glow));mix-blend-mode:screen;contain:strict;
@@ -2586,7 +2586,7 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 @media (max-width:430px) {.experience-render-status {grid-template-columns:1fr}.experience-render-status span{font-size:6.5px}}
 
 
-/* Phase VII: specialized subsystem instruments keep their own physics inside the shared world material system. */
+/* Specialized subsystem pass: Ψ, Brain, PARALLAX, PANTHEON and Evolution keep their own instrument physics. */
 :root[data-world]:not([data-world=""]) #view .psi-meter {
   height:26px;border-color:color-mix(in srgb,var(--view-accent,var(--world-glow)),var(--ring) 72%);
   background:
