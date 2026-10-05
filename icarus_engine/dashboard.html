@@ -612,9 +612,9 @@ function renderInputs() {
 }
 async function withBusyButton(button, fn) {
   if (!button || button.disabled) return null;
-  button.disabled = true;
+  button.disabled = true; button.classList.add('world-busy'); button.setAttribute('aria-busy','true');
   try { return await fn(); }
-  finally { if (button.isConnected) button.disabled = false; }
+  finally { if (button.isConnected) { button.disabled = false; button.classList.remove('world-busy'); button.removeAttribute('aria-busy'); } }
 }
 const configJobWatchers = new Set();
 async function watchConfigJob(jobId, label='Configuration') {
@@ -665,13 +665,10 @@ document.addEventListener('click', async ev => {
   if (b.id === 'inApplyPreset') { await withBusyButton(b, async () => { const r = await admin('/admin/preset/async', {asset: inState.asset, preset: $('#inPreset').value || null}); if (r?.job) watchConfigJob(r.job, 'Preset'); }); }
   if (b.id === 'addBtn') {
     const s = $('#addSym').value.trim(); if (!s) return;
-    b.disabled = true;
-    try {
+    await withBusyButton(b, async () => {
       const added = await admin('/admin/assets/add', {symbol: s, tf: $('#addTf').value.trim() || undefined, preset: $('#addPreset').value || undefined});
       if (added && $('#addSym')) $('#addSym').value = '';
-    } finally {
-      if (document.body.contains(b)) b.disabled = false;
-    }
+    });
   }
   if (b.dataset.agentRecipe) {
     const r = (window.ICARUS_AGENT && window.ICARUS_AGENT.recipes || []).find(x => x.id === b.dataset.agentRecipe);
