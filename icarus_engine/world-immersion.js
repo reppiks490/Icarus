@@ -284,7 +284,8 @@
   }
   function topologyHighlight(target){
     if(!topology)return;
-    const panel=target?.closest?.('[data-world-topology-node]'),id=panel?.dataset.worldTopologyNode;
+    const radarId=target?.closest?.('[data-radar-node]')?.dataset.radarNode;
+    const panel=target?.closest?.('[data-world-topology-node]'),id=radarId??panel?.dataset.worldTopologyNode;
     topology.querySelectorAll('.active').forEach(el=>el.classList.remove('active'));
     if(id==null||!motionAllowed()){updateSectionRadar(null);return;}
     topology.querySelectorAll(`path[data-from="${id}"],path[data-to="${id}"],circle[data-node="${id}"]`).forEach(el=>el.classList.add('active'));
@@ -405,7 +406,8 @@
     impact.style.setProperty('--impact-x',Math.max(0,Math.min(100,(event.clientX-rect.left)/rect.width*100)).toFixed(1)+'%');
     impact.style.setProperty('--impact-y',Math.max(0,Math.min(100,(event.clientY-rect.top)/rect.height*100)).toFixed(1)+'%');
     target.appendChild(impact);
-    const panel=target.closest?.('[data-world-topology-node]'),nodeId=panel?.dataset.worldTopologyNode;
+    const panel=target.closest?.('[data-world-topology-node]');
+    const nodeId=target.closest?.('[data-radar-node]')?.dataset.radarNode??panel?.dataset.worldTopologyNode;
     if(topology&&nodeId!=null){
       const linked=[...topology.querySelectorAll(`path[data-from="${nodeId}"],path[data-to="${nodeId}"],circle[data-node="${nodeId}"]`)];
       linked.forEach(el=>el.classList.add('impact'));
