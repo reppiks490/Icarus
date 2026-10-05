@@ -54,9 +54,10 @@
   }
 
   function update(data, view) {
-    if (currentView !== view) window.IcarusWorldCinema?.enterView();
+    const changedView=currentView !== view;
+    if (changedView) window.IcarusWorldCinema?.enterView();
     currentView = view;
-    syncSceneView(view);
+    if (changedView) syncSceneView(view);
     if (uptime !== null && Number(data.uptime_sec) < uptime) { snapshots.clear(); fillSnapshots.clear(); }
     uptime = Number(data.uptime_sec);
     const active = new Set();
