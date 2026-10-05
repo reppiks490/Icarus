@@ -122,3 +122,18 @@ A visual pass is not complete merely because CSS changed. It should leave:
 5. auditable GitHub evidence.
 
 The seven-day lane should keep iterating from the current repository head rather than restarting the aesthetic system.
+
+
+## Structural depth pass
+
+The world frame now includes a bounded structural constellation generated only from the current dashboard layout. It connects at most 18 major instrument surfaces with at most 24 decorative paths, uses no market values, performs no network I/O, and exists solely to make the dashboard read as one constructed system rather than isolated cards. The nearest visible instrument becomes a subtle scroll anchor, and pointer/focus interaction temporarily brightens its local links.
+
+The last four visited dashboard chambers also remain visible as an in-memory navigation trail. This history is session-only, never persisted, and does not change application state. It exists to make deliberate navigation feel continuous while preserving the current tab, command, and hash contracts.
+
+Guardrails for this layer:
+- hidden on narrow/mobile layouts;
+- hidden in Focus and Light rendering;
+- animation removed for reduced-motion users;
+- path/node budgets are hard-bounded;
+- no semantic or trading data is encoded in link geometry;
+- no layout element may be shifted by the decorative SVG.
