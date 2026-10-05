@@ -44,8 +44,10 @@ for(const size of ['compact','grand','panorama']){
 }
 await page.locator('#experienceSceneSize').selectOption('grand');
 for(const theme of ['void','astral','divine']){
- await page.locator('#experienceTheme').selectOption(theme);await page.waitForTimeout(150);
+ await page.locator('#experienceTheme').selectOption(theme);await page.waitForTimeout(80);
  assert.equal(await page.locator('html').getAttribute('data-theme'),theme);
+ assert.equal(await page.locator(`.world-veil[data-world-transition="${theme}"]`).count(),1);
+ await page.waitForTimeout(70);
 }
 await page.locator('#experienceLighting').selectOption('original');
 assert.equal(await page.locator('html').evaluate(el=>getComputedStyle(el).colorScheme),'light');
