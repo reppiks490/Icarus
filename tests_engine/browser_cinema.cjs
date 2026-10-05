@@ -90,6 +90,15 @@ assert.equal(await page.locator('#toast').getAttribute('data-kind'),'ok');
 assert.equal(await page.locator('#toast').getAttribute('role'),'status');
 assert.equal(await page.locator('#toast').evaluate(el=>el.classList.contains('world-toast-active')),true);
 await page.evaluate(()=>{const t=document.querySelector('#toast');t.classList.remove('world-toast-active');t.style.display='none';});
+const busy=await page.evaluate(async()=>{
+ const b=document.createElement('button');b.textContent='Visual async command';document.body.appendChild(b);
+ let release;const hold=new Promise(resolve=>release=resolve);const run=withBusyButton(b,()=>hold);
+ const during={busy:b.classList.contains('world-busy'),disabled:b.disabled,aria:b.getAttribute('aria-busy')};
+ release('ok');await run;
+ const after={busy:b.classList.contains('world-busy'),disabled:b.disabled,aria:b.getAttribute('aria-busy')};b.remove();
+ return {during,after};
+});
+assert.deepEqual(busy,{during:{busy:true,disabled:true,aria:'true'},after:{busy:false,disabled:false,aria:null}});
 await page.setViewportSize({width:390,height:844});await page.waitForTimeout(200);
 assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
 await page.screenshot({path:`${output}/cinema-mobile.png`,fullPage:true});
