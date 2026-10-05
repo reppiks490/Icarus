@@ -2,7 +2,7 @@
   'use strict';
   const root=document.documentElement;
   const reduced=window.matchMedia('(prefers-reduced-motion: reduce)');
-  let scrollFrame=0,pointerFrame=0,viewObserver=null,viewMutation=null,depthFrame=null,viewFlashTimer=0,viewGateTimer=0,chapterTimer=0,scrollEnergyTimer=0,lastScrollY=0,lastScrollAt=0,currentView='overview',currentPhase='crown',initialized=false;
+  let scrollFrame=0,pointerFrame=0,viewObserver=null,viewMutation=null,depthFrame=null,focusOrbit=null,viewFlashTimer=0,viewGateTimer=0,chapterTimer=0,focusTimer=0,scrollEnergyTimer=0,lastScrollY=0,lastScrollAt=0,currentView='overview',currentPhase='crown',initialized=false;
 
   const motionAllowed=()=>root.dataset.motion==='live'&&root.dataset.experience==='cinematic'&&!!root.dataset.world&&!document.hidden&&!reduced.matches&&root.dataset.introActive!=='true';
   const phaseLabels={crown:'CROWN',descent:'DESCENT',depth:'DEPTH',abyss:'ABYSS'};
@@ -25,13 +25,16 @@
       <div class="world-depth-rail right"><i></i><b></b><b></b><b></b><b></b></div>
       <div class="world-depth-readout"><span>WORLD DEPTH</span><strong data-world-depth-label>CROWN</strong><em data-world-view-label>OVERVIEW</em></div>
       <div class="world-corner-sigil top-left">I</div><div class="world-corner-sigil bottom-right">∞</div>
-      <div class="world-view-gate"><i data-world-view-glyph>◇</i><span data-world-gate-label>OVERVIEW</span></div>`;
+      <div class="world-view-gate"><i data-world-view-glyph>◇</i><span data-world-gate-label>OVERVIEW</span></div>
+      <div class="world-mobile-hud"><i data-world-mobile-glyph>◇</i><span data-world-mobile-view>OVERVIEW</span><b data-world-mobile-phase>CROWN</b></div>`;
     document.body.appendChild(depthFrame);
   }
   function updateDepthFrame(phase,depth){
     if(!depthFrame)return;
     depthFrame.style.setProperty('--world-depth-progress',(depth*100).toFixed(2)+'%');
-    depthFrame.querySelector('[data-world-depth-label]').textContent=phaseLabels[phase]||String(phase||'').toUpperCase();
+    const phaseText=phaseLabels[phase]||String(phase||'').toUpperCase();
+    depthFrame.querySelector('[data-world-depth-label]').textContent=phaseText;
+    const mobilePhase=depthFrame.querySelector('[data-world-mobile-phase]');if(mobilePhase)mobilePhase.textContent=phaseText;
     for(const rail of depthFrame.querySelectorAll('.world-depth-rail')){
       [...rail.querySelectorAll('b')].forEach((node,index)=>node.classList.toggle('active',depth>=index/3-.015));
     }
@@ -140,6 +143,32 @@
     }
   }
 
+  function ensureFocusOrbit(){
+    if(focusOrbit||!document.body)return;
+    focusOrbit=document.createElement('div');focusOrbit.className='world-focus-orbit';focusOrbit.setAttribute('aria-hidden','true');
+    focusOrbit.innerHTML='<i></i><b></b>';document.body.appendChild(focusOrbit);
+  }
+  function positionFocusOrbit(target){
+    if(!focusOrbit||!target?.isConnected||!motionAllowed()){focusOrbit?.classList.remove('active');return;}
+    const r=target.getBoundingClientRect();
+    if(!r.width||!r.height){focusOrbit.classList.remove('active');return;}
+    const pad=Math.min(9,Math.max(5,Math.min(r.width,r.height)*.12));
+    focusOrbit.style.setProperty('--focus-x',(r.left-pad).toFixed(1)+'px');
+    focusOrbit.style.setProperty('--focus-y',(r.top-pad).toFixed(1)+'px');
+    focusOrbit.style.setProperty('--focus-w',(r.width+pad*2).toFixed(1)+'px');
+    focusOrbit.style.setProperty('--focus-h',(r.height+pad*2).toFixed(1)+'px');
+    focusOrbit.classList.add('active');
+  }
+  function focusIn(event){
+    const target=event.target.closest?.('button,a,input,select,textarea,summary,[tabindex]');
+    if(!target||target.closest?.('.world-intro'))return;
+    ensureFocusOrbit();positionFocusOrbit(target);
+    clearTimeout(focusTimer);focusTimer=setTimeout(()=>positionFocusOrbit(target),40);
+  }
+  function focusOut(){
+    clearTimeout(focusTimer);focusTimer=setTimeout(()=>{if(!document.activeElement?.matches?.('button,a,input,select,textarea,summary,[tabindex]'))focusOrbit?.classList.remove('active');},30);
+  }
+
   function interactionImpact(event){
     if(!motionAllowed())return;
     const target=event.target.closest?.('button,.tab,.card,.asset,.tile,.group>summary,.node,.badge');
@@ -170,7 +199,9 @@
     if(depthFrame){
       depthFrame.querySelector('[data-world-view-label]').textContent=meta[0];
       const glyph=depthFrame.querySelector('[data-world-view-glyph]'),label=depthFrame.querySelector('[data-world-gate-label]');
+      const mobileGlyph=depthFrame.querySelector('[data-world-mobile-glyph]'),mobileView=depthFrame.querySelector('[data-world-mobile-view]');
       if(glyph)glyph.textContent=meta[1];if(label)label.textContent=meta[0];
+      if(mobileGlyph)mobileGlyph.textContent=meta[1];if(mobileView)mobileView.textContent=meta[0];
       if(raw!==currentView&&motionAllowed()){
         clearTimeout(viewFlashTimer);clearTimeout(viewGateTimer);
         depthFrame.classList.remove('world-view-shift','world-view-gate-active');void depthFrame.offsetWidth;
@@ -192,6 +223,9 @@
       root.style.setProperty('--world-light-x','50%');
       root.style.setProperty('--world-scroll-glow','0px');
       root.style.setProperty('--world-scroll-energy','0');
+      focusOrbit?.classList.remove('active');
+    } else if(document.activeElement?.matches?.('button,a,input,select,textarea,summary,[tabindex]')) {
+      positionFocusOrbit(document.activeElement);
     }
     queueScroll();
   }
@@ -200,12 +234,14 @@
     if(initialized)return;
     initialized=true;
     root.dataset.worldImmersion='ready';
-    buildDepthFrame();
-    window.addEventListener('scroll',queueScroll,{passive:true});
-    window.addEventListener('resize',queueScroll,{passive:true});
+    buildDepthFrame();ensureFocusOrbit();
+    window.addEventListener('scroll',()=>{queueScroll();if(focusOrbit?.classList.contains('active'))positionFocusOrbit(document.activeElement);},{passive:true});
+    window.addEventListener('resize',()=>{queueScroll();if(focusOrbit?.classList.contains('active'))positionFocusOrbit(document.activeElement);},{passive:true});
     window.addEventListener('pointermove',pointerMove,{passive:true});
     document.addEventListener('pointerleave',pointerLeave,{passive:true});
     document.addEventListener('pointerdown',interactionImpact,{passive:true,capture:true});
+    document.addEventListener('focusin',focusIn,true);
+    document.addEventListener('focusout',focusOut,true);
     document.addEventListener('visibilitychange',sync);
     reduced.addEventListener?.('change',sync);
     installObserver();
