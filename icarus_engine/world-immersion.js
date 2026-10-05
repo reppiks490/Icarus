@@ -222,8 +222,18 @@
     const id=best.dataset.worldTopologyNode;
     topology.querySelectorAll(`path[data-from="${id}"],path[data-to="${id}"],circle[data-node="${id}"]`).forEach(el=>el.classList.add('scroll-active'));
   }
+  function classifyReadouts(){
+    const states=[...document.querySelectorAll('#view .empty')].slice(0,96);
+    for(const el of states){
+      const text=(el.textContent||'').trim().toUpperCase();
+      el.classList.remove('world-loading-state','world-unavailable-state','world-error-state');
+      if(el.classList.contains('neg')||/\b(ERROR|FAILED|FAILURE|INVALID)\b/.test(text))el.classList.add('world-error-state');
+      else if(/\b(LOADING|WAITING|WARMING|INITIALIZING|CHECKING|COLLECTING|FETCHING|PREPARING)\b/.test(text))el.classList.add('world-loading-state');
+      else if(/\b(UNAVAILABLE|UNMEASURED|NO DATA|NO CURRENT|NO ACTIVE|NOT AVAILABLE)\b/.test(text))el.classList.add('world-unavailable-state');
+    }
+  }
   function refresh(){
-    ensureAmbient();ensureTopology();
+    ensureAmbient();ensureTopology();classifyReadouts();
     const majors=[...document.querySelectorAll('#view > :is(.card,.asset,.hero,.group), #view > .assets > .asset')];
     majors.forEach(decorateSurface);
     const nested=[...document.querySelectorAll('#view :is(.tile,.px-box,.psi-box,.pan-field,.brain-agent,.brain-sub,.brain-lane,.evo-sub)')];
