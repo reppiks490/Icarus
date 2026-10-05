@@ -109,6 +109,17 @@ const busy=await page.evaluate(async()=>{
  return {during,after};
 });
 assert.deepEqual(busy,{during:{busy:true,disabled:true,aria:'true'},after:{busy:false,disabled:false,aria:null}});
+const readouts=await page.evaluate(()=>{
+ const host=document.createElement('section');host.className='card';
+ host.innerHTML='<div id="stateLoading" class="empty">loading model state…</div><div id="stateUnavailable" class="empty">UNAVAILABLE — no evidence.</div><div id="stateError" class="empty neg">FAILED integrity check</div>';
+ document.querySelector('#view').append(host);window.IcarusWorldImmersion.refresh();
+ const result={
+  loading:document.querySelector('#stateLoading').classList.contains('world-loading-state'),
+  unavailable:document.querySelector('#stateUnavailable').classList.contains('world-unavailable-state'),
+  error:document.querySelector('#stateError').classList.contains('world-error-state')
+ };host.remove();return result;
+});
+assert.deepEqual(readouts,{loading:true,unavailable:true,error:true});
 await page.setViewportSize({width:390,height:844});await page.waitForTimeout(200);
 assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
 await page.screenshot({path:`${output}/cinema-mobile.png`,fullPage:true});
