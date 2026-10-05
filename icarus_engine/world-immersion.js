@@ -70,13 +70,18 @@
     if(lastScrollAt&&Math.abs(y-lastScrollY)>.5&&motionAllowed()){
       const dt=Math.max(8,now-lastScrollAt),velocity=Math.abs(y-lastScrollY)/dt;
       const energy=Math.max(0,Math.min(1,velocity/2.4));
-      root.dataset.scrollDirection=y>lastScrollY?'down':'up';
+      const direction=y>lastScrollY?1:-1;
+      root.dataset.scrollDirection=direction>0?'down':'up';
       root.style.setProperty('--world-scroll-glow',(energy*18).toFixed(2)+'px');
       root.style.setProperty('--world-scroll-energy',energy.toFixed(3));
+      root.style.setProperty('--world-scroll-lean',(direction*energy*4.5).toFixed(2)+'px');
+      root.style.setProperty('--world-scroll-shear',(direction*energy*.22).toFixed(3)+'deg');
       clearTimeout(scrollEnergyTimer);
       scrollEnergyTimer=setTimeout(()=>{
         root.style.setProperty('--world-scroll-glow','0px');
         root.style.setProperty('--world-scroll-energy','0');
+        root.style.setProperty('--world-scroll-lean','0px');
+        root.style.setProperty('--world-scroll-shear','0deg');
       },150);
     }
     lastScrollY=y;lastScrollAt=now;
@@ -461,6 +466,8 @@
       root.style.setProperty('--world-light-x','50%');
       root.style.setProperty('--world-scroll-glow','0px');
       root.style.setProperty('--world-scroll-energy','0');
+      root.style.setProperty('--world-scroll-lean','0px');
+      root.style.setProperty('--world-scroll-shear','0deg');
       focusOrbit?.classList.remove('active');topologyHighlight(null);sectionRadar?.classList.remove('active');
     } else if(document.activeElement?.matches?.('button,a,input,select,textarea,summary,[tabindex]')) {
       positionFocusOrbit(document.activeElement);topologyHighlight(document.activeElement);
