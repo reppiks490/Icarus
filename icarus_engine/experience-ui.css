@@ -1361,3 +1361,52 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 :root[data-experience="focus"] .world-surface-sigil {display:none}
 @media (max-width:760px) {.world-surface-sigil {width:32px;height:32px;right:6px;top:6px;opacity:.22}}
 @media (prefers-reduced-motion:reduce) {.world-surface-sigil {animation:none!important}}
+
+
+/* Disclosure / modal motion grammar: deliberate UI state changes each have a coherent world response. */
+:root[data-world]:not([data-world=""]) .group > summary {
+  position:relative;overflow:hidden;border-radius:inherit;transition:background-color .2s ease,color .2s ease,border-color .2s ease
+}
+:root[data-world]:not([data-world=""]) .group > summary::before {
+  display:inline-grid;place-items:center;width:15px;height:15px;flex:0 0 auto;border:1px solid color-mix(in srgb,var(--world-glow),transparent 72%);
+  border-radius:4px;color:var(--world-glow);background:color-mix(in srgb,var(--world-glow),transparent 96%);
+  transition:transform .26s cubic-bezier(.2,.7,.2,1),box-shadow .2s ease
+}
+:root[data-world]:not([data-world=""]) .group[open] > summary {
+  background:linear-gradient(90deg,color-mix(in srgb,var(--world-glow),transparent 95%),transparent 62%);
+}
+:root[data-world]:not([data-world=""]) .group[open] > summary::before {box-shadow:0 0 10px color-mix(in srgb,var(--world-glow),transparent 55%)}
+:root[data-world="divine"] .group[open] > summary::before {transform:rotate(90deg)}
+:root[data-world="void"] .group > summary::before {border-radius:1px}
+:root[data-world="void"] .group[open] > summary::before {transform:rotate(135deg)}
+:root[data-world="astral"] .group > summary::before {border-radius:50%}
+:root[data-world="astral"] .group[open] > summary::before {transform:rotate(90deg) scale(1.08)}
+
+:root[data-world]:not([data-world=""])[data-motion="live"] .group[open] > :not(summary) {animation:world-group-open 360ms cubic-bezier(.16,.8,.2,1) both}
+:root[data-world="void"][data-motion="live"] .group[open] > :not(summary) {animation-name:world-group-open-void}
+:root[data-world="astral"][data-motion="live"] .group[open] > :not(summary) {animation-name:world-group-open-astral}
+@keyframes world-group-open {from{opacity:0;transform:translateY(-6px);filter:brightness(.82)}to{opacity:1;transform:none;filter:none}}
+@keyframes world-group-open-void {from{opacity:0;transform:translateX(-8px);clip-path:inset(0 100% 0 0)}to{opacity:1;transform:none;clip-path:inset(0)}}
+@keyframes world-group-open-astral {from{opacity:0;transform:scale(.985);filter:blur(4px) brightness(.72)}to{opacity:1;transform:none;filter:none}}
+
+:root[data-world]:not([data-world=""]) :is(.modal,.pal) {background:
+  radial-gradient(ellipse at 50% 18%,color-mix(in srgb,var(--world-glow),transparent 88%),transparent 42%),
+  #0009}
+:root[data-world]:not([data-world=""])[data-motion="live"] .modal.open .box,
+:root[data-world]:not([data-world=""])[data-motion="live"] .pal.open .box {animation:world-dialog-open 380ms cubic-bezier(.16,.8,.2,1) both}
+:root[data-world="void"][data-motion="live"] :is(.modal.open .box,.pal.open .box) {animation-name:world-dialog-open-void}
+:root[data-world="astral"][data-motion="live"] :is(.modal.open .box,.pal.open .box) {animation-name:world-dialog-open-astral}
+@keyframes world-dialog-open {from{opacity:0;transform:translateY(14px) scale(.97);filter:blur(5px) brightness(.72)}to{opacity:1;transform:none;filter:none}}
+@keyframes world-dialog-open-void {from{opacity:0;transform:translateX(-16px) scale(.985);clip-path:polygon(0 0,16% 0,0 16%)}to{opacity:1;transform:none;clip-path:polygon(0 0,100% 0,100% 100%,0 100%)}}
+@keyframes world-dialog-open-astral {from{opacity:0;transform:scale(.9) rotateX(8deg);filter:blur(7px) saturate(.6)}to{opacity:1;transform:none;filter:none}}
+
+:root[data-world]:not([data-world=""]) .pal .item {border-left:2px solid transparent;transition:background-color .16s ease,border-color .16s ease,transform .16s ease}
+:root[data-world]:not([data-world=""]) .pal .item.sel,
+:root[data-world]:not([data-world=""]) .pal .item:hover {
+  border-left-color:var(--world-glow);transform:translateX(2px);
+  background:linear-gradient(90deg,color-mix(in srgb,var(--world-glow),transparent 90%),var(--s1-soft));
+}
+
+@media (prefers-reduced-motion:reduce) {
+  :root[data-world] .group[open] > :not(summary),:root[data-world] :is(.modal.open .box,.pal.open .box) {animation:none!important}
+}
