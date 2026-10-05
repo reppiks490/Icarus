@@ -2445,3 +2445,23 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
   .world-topology path,.world-topology circle {animation:none!important}
   #view > .world-topology {opacity:.18}
 }
+
+
+/* Scroll resonance: the instrument nearest the visual center quietly becomes the current spatial anchor. */
+.world-topology path.scroll-active {opacity:.58;stroke-width:.95;filter:drop-shadow(0 0 4px color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 48%))}
+.world-topology circle.scroll-active {opacity:.82;transform:scale(1.35)}
+:root[data-world]:not([data-world=""])[data-experience="cinematic"][data-motion="live"][data-visual-resolved="rich"] #view :is(.card,.asset,.group).world-scroll-focus {
+  border-color:color-mix(in srgb,var(--view-accent,var(--world-glow)),var(--ring) 55%);
+  box-shadow:
+    var(--phase-shadow,0 18px 58px #0003),
+    inset 0 1px 0 #ffffff13,
+    inset 2px 0 0 color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 72%),
+    0 0 24px color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 96%);
+}
+:root[data-world="divine"] #view .world-scroll-focus > .world-surface-sigil {opacity:.76;filter:brightness(1.12) drop-shadow(0 0 11px color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 38%))}
+:root[data-world="void"] #view .world-scroll-focus > .world-surface-sigil {opacity:.86;filter:contrast(1.12) drop-shadow(0 0 10px color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 28%))}
+:root[data-world="astral"] #view .world-scroll-focus > .world-surface-sigil {opacity:.82;filter:saturate(1.12) drop-shadow(0 0 13px color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 28%))}
+:root[data-visual-resolved="light"] #view .world-scroll-focus,
+:root[data-experience="focus"] #view .world-scroll-focus {box-shadow:none!important}
+@media (max-width:1100px) {#view .world-scroll-focus {box-shadow:none!important}}
+@media (prefers-reduced-motion:reduce) {#view .world-scroll-focus {box-shadow:none!important}}
