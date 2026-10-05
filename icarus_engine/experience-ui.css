@@ -2317,3 +2317,31 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 :root[data-motion="off"] .world-art {transform:none!important}
 @media (max-width:760px) {:root[data-world] .world-art {transform:translate3d(0,calc(var(--world-scroll,0) * -8px),0) scale(1.02)!important}}
 @media (prefers-reduced-motion:reduce) {:root[data-world] .world-art {transform:none!important}}
+
+
+/* Phase XXV: hero typography is materially different in each universe. */
+:root[data-world="divine"] .world-copy h1 {
+  color:#fff5d9;
+  text-shadow:0 1px 0 #fff8,0 0 24px #f5ce7a26,0 12px 34px #0007;
+}
+:root[data-world="divine"] .world-copy h1 .world-word {
+  background:linear-gradient(180deg,#fffdf3 12%,#f5dfab 58%,#c99c4d 115%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+:root[data-world="void"] .world-copy h1 {
+  font-family:Georgia,'Times New Roman',serif;
+  color:#fff7f9;text-shadow:2px 0 0 #ed1d5628,-1px 0 0 #fff1,0 0 24px #ed1d5622,0 12px 34px #0009;
+}
+:root[data-world="void"] .world-copy h1 .world-word {
+  background:linear-gradient(180deg,#fff 8%,#ffe1e8 52%,#ff9bb1 120%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+:root[data-world="astral"] .world-copy h1 {
+  color:#eef8ff;text-shadow:0 0 16px #bceaff35,0 0 34px #9570ff24,0 12px 34px #0008;
+}
+:root[data-world="astral"] .world-copy h1 .world-word {
+  background:linear-gradient(180deg,#ffffff 8%,#dff7ff 46%,#b8adff 108%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+:root[data-world]:not([data-world=""]) .world-copy h1 .world-word {filter:drop-shadow(0 1px 0 #0004)}
+:root[data-visual-resolved="light"] .world-copy h1 .world-word {-webkit-background-clip:border-box;background-clip:border-box;color:inherit;background:none;filter:none}
