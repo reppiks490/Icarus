@@ -2345,3 +2345,10 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 }
 :root[data-world]:not([data-world=""]) .world-copy h1 .world-word {filter:drop-shadow(0 1px 0 #0004)}
 :root[data-visual-resolved="light"] .world-copy h1 .world-word {-webkit-background-clip:border-box;background-clip:border-box;color:inherit;background:none;filter:none}
+
+
+@media (prefers-contrast:more) {
+  :root[data-world] .world-copy h1 .world-word {
+    background:none!important;-webkit-background-clip:border-box!important;background-clip:border-box!important;color:CanvasText!important;filter:none!important;text-shadow:none!important;
+  }
+}
