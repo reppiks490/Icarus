@@ -1080,3 +1080,66 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
   :root[data-world]:not([data-world=""]) .tab.active {padding-left:16px}
 }
 @media (prefers-reduced-motion:reduce) {.world-focus-orbit {transition:none!important}}
+
+
+/* Phase V: subsystem watermarks and scroll-dependent spatial depth. */
+#view {--view-watermark:"ICARUS";--view-glyph:"I"}
+#view::after {
+  content:var(--view-glyph) "  " var(--view-watermark);position:absolute;right:34px;top:18px;z-index:0;pointer-events:none;
+  max-width:72%;overflow:hidden;white-space:nowrap;text-overflow:clip;
+  font:500 clamp(34px,5.3vw,86px)/1 Georgia,"Times New Roman",serif;letter-spacing:.055em;text-transform:uppercase;
+  color:color-mix(in srgb,var(--world-glow),transparent 96.5%);text-shadow:0 0 42px color-mix(in srgb,var(--world-glow),transparent 96%);
+  transform:translate3d(var(--world-pointer-shift-x,0),calc(var(--world-scroll-shift,0px) * .08),0);
+  transition:color .5s ease,opacity .5s ease;opacity:.72;
+}
+:root[data-world-view="overview"] #view {--view-watermark:"OVERVIEW";--view-glyph:"◇"}
+:root[data-world-view="asset"] #view {--view-watermark:"ASSET CHAMBER";--view-glyph:"◈"}
+:root[data-world-view="system"] #view {--view-watermark:"SYSTEM";--view-glyph:"⌬"}
+:root[data-world-view="golive"] #view {--view-watermark:"GO LIVE";--view-glyph:"▲"}
+:root[data-world-view="agent"] #view {--view-watermark:"FIELD AGENT";--view-glyph:"◎"}
+:root[data-world-view="inputs"] #view {--view-watermark:"INPUTS";--view-glyph:"≡"}
+:root[data-world-view="backtest"] #view {--view-watermark:"BACKTEST";--view-glyph:"∿"}
+:root[data-world-view="research"] #view {--view-watermark:"RESEARCH";--view-glyph:"∆"}
+:root[data-world-view="sources"] #view {--view-watermark:"FINANCIAL / DATA";--view-glyph:"⌁"}
+:root[data-world-view="market-data"] #view {--view-watermark:"MARKET DATA";--view-glyph:"⋮"}
+:root[data-world-view="brain"] #view {--view-watermark:"ADAPTIVE BRAIN";--view-glyph:"◉"}
+:root[data-world-view="evolution"] #view {--view-watermark:"MCP EVOLUTION";--view-glyph:"↟"}
+:root[data-world-view="parallax"] #view {--view-watermark:"PARALLAX / DREAMSTATE";--view-glyph:"⟁"}
+:root[data-world-view="possibility"] #view {--view-watermark:"ICARUS Ψ";--view-glyph:"Ψ"}
+:root[data-world-view="pantheon"] #view {--view-watermark:"PANTHEON / AETHER";--view-glyph:"✦"}
+:root[data-world-view="sibyl"] #view {--view-watermark:"SIBYL Ω";--view-glyph:"Ω"}
+:root[data-world-view="apex"] #view {--view-watermark:"APEX Ω";--view-glyph:"⌬"}
+:root[data-world-view="ascendancy"] #view {--view-watermark:"ASCENDANCY";--view-glyph:"↑"}
+:root[data-world-view="learning"] #view {--view-watermark:"LEARNING FABRIC";--view-glyph:"∞"}
+:root[data-world-view="chronofold"] #view {--view-watermark:"ICARUS Ξ";--view-glyph:"Ξ"}
+:root[data-world-view="commissioning"] #view {--view-watermark:"COMMISSIONING";--view-glyph:"◫"}
+:root[data-world-view="integrity"] #view {--view-watermark:"DATA INTEGRITY";--view-glyph:"◆"}
+:root[data-world-view="engine-control"] #view {--view-watermark:"ENGINE CONTROL";--view-glyph:"⌘"}
+:root[data-world-view="commands"] #view {--view-watermark:"COMMANDS";--view-glyph:"⌗"}
+:root[data-world-view="log"] #view {--view-watermark:"ENGINE LOG";--view-glyph:"▥"}
+:root[data-world-view="autopilot"] #view {--view-watermark:"TACTICAL AUTOPILOT";--view-glyph:"➤"}
+
+/* Long scroll changes spatial depth without changing any displayed value. */
+:root[data-scroll-phase="crown"] {--phase-shadow:0 14px 46px #0002;--phase-glass:.94}
+:root[data-scroll-phase="descent"] {--phase-shadow:0 18px 58px #0003;--phase-glass:.91}
+:root[data-scroll-phase="depth"] {--phase-shadow:0 22px 66px #0004;--phase-glass:.88}
+:root[data-scroll-phase="abyss"] {--phase-shadow:0 26px 76px #0005;--phase-glass:.85}
+:root[data-world]:not([data-world=""])[data-visual-resolved="rich"]:not([data-experience="focus"]) #view > :is(.card,.asset,.group),
+:root[data-world]:not([data-world=""])[data-visual-resolved="rich"]:not([data-experience="focus"]) #view > .assets > .asset {
+  box-shadow:var(--phase-shadow,0 18px 58px #0003),inset 0 1px 0 #ffffff10,inset 0 -1px 0 color-mix(in srgb,var(--world-glow),transparent 94%);
+}
+:root[data-scroll-phase="depth"] #view::before {opacity:.5}
+:root[data-scroll-phase="abyss"] #view::before {opacity:.58;filter:saturate(1.08) brightness(.93)}
+:root[data-scroll-phase="abyss"] #view::after {color:color-mix(in srgb,var(--world-glow),transparent 95.4%);opacity:.82}
+
+/* Deterministic facet variety keeps repeated cards from reading like cloned rectangles. */
+:root[data-world]:not([data-world=""]) #view > :is(.card,.asset,.group):nth-child(4n+1)::after {background-position:top left,bottom right,top}
+:root[data-world]:not([data-world=""]) #view > :is(.card,.asset,.group):nth-child(4n+2)::after {background-position:top right,bottom left,top}
+:root[data-world]:not([data-world=""]) #view > :is(.card,.asset,.group):nth-child(4n+3)::after {transform:scaleX(-1)}
+:root[data-world]:not([data-world=""]) #view > :is(.card,.asset,.group):nth-child(4n)::after {transform:scaleY(-1)}
+:root[data-world]:not([data-world=""]) #view > :is(.card,.asset,.group):hover::after {transform:none}
+
+@media (max-width:760px) {
+  #view::after {right:10px;top:12px;max-width:88%;font-size:clamp(24px,10vw,46px);opacity:.42}
+}
+@media (prefers-reduced-motion:reduce) {#view::after {transform:none!important}}
