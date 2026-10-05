@@ -2390,3 +2390,58 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 :root[data-world="void"] .world-scene [data-world-choice] {border-radius:2px}
 :root[data-world="astral"] .world-scene [data-world-choice] {border-radius:10px}
 @media (max-width:760px) {.world-scene [data-world-choice]{padding-left:25px}.world-scene [data-world-choice]:hover{transform:none}}
+
+
+/* Phase VI: structural constellation. Major instruments are connected by bounded decorative topology only. */
+#view > .world-topology {
+  position:absolute;inset:0;z-index:0!important;width:100%;height:100%;overflow:visible;pointer-events:none;opacity:.34;
+  color:var(--view-accent,var(--world-glow));mix-blend-mode:screen;contain:strict;
+  transition:opacity .35s ease,filter .35s ease;
+}
+.world-topology path {
+  fill:none;stroke:currentColor;stroke-width:.7;vector-effect:non-scaling-stroke;opacity:.32;
+  stroke-linecap:round;stroke-dasharray:.08 .16;stroke-dashoffset:0;
+  filter:drop-shadow(0 0 2px color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 72%));
+  transition:opacity .18s ease,stroke-width .18s ease,filter .18s ease;
+}
+.world-topology circle {
+  fill:color-mix(in srgb,var(--view-accent,var(--world-glow)),#fff 12%);opacity:.38;
+  filter:drop-shadow(0 0 4px color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 48%));
+  transform-box:fill-box;transform-origin:center;
+  transition:opacity .18s ease,transform .18s ease;
+}
+.world-topology path.active {opacity:.92;stroke-width:1.25;filter:drop-shadow(0 0 5px color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 28%))}
+.world-topology circle.active {opacity:1;transform:scale(1.8)}
+
+/* Divine reads like ordered luminous architecture. */
+:root[data-world="divine"] .world-topology path {stroke-dasharray:.16 .09;opacity:.26}
+:root[data-world="divine"] .world-topology circle {r:2.4}
+
+/* Void reads as fractured transmissions. */
+:root[data-world="void"] .world-topology path {stroke-dasharray:.025 .08 .14 .1;stroke-linecap:square;opacity:.38}
+:root[data-world="void"] .world-topology circle {r:2.1}
+
+/* Astral reads as orbital constellation links. */
+:root[data-world="astral"] .world-topology path {stroke-dasharray:.018 .105;stroke-width:.8;opacity:.4}
+:root[data-world="astral"] .world-topology circle {r:2.7}
+
+:root[data-world]:not([data-world=""])[data-experience="cinematic"][data-motion="live"][data-visual-resolved="rich"] .world-topology path {
+  animation:world-topology-flow 11s linear infinite;
+}
+:root[data-world="void"][data-experience="cinematic"][data-motion="live"][data-visual-resolved="rich"] .world-topology path {animation-duration:7.5s}
+:root[data-world="astral"][data-experience="cinematic"][data-motion="live"][data-visual-resolved="rich"] .world-topology path {animation-duration:16s}
+:root[data-world]:not([data-world=""])[data-experience="cinematic"][data-motion="live"][data-visual-resolved="rich"] .world-topology circle {
+  animation:world-topology-node 6s ease-in-out infinite alternate;
+}
+@keyframes world-topology-flow {to{stroke-dashoffset:-1}}
+@keyframes world-topology-node {from{opacity:.22}to{opacity:.62;filter:drop-shadow(0 0 7px color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 28%))}}
+
+:root[data-scroll-phase="depth"] #view > .world-topology {opacity:.42}
+:root[data-scroll-phase="abyss"] #view > .world-topology {opacity:.5;filter:saturate(1.08)}
+:root[data-visual-resolved="light"] #view > .world-topology,
+:root[data-experience="focus"] #view > .world-topology {display:none!important}
+@media (max-width:1100px) {#view > .world-topology {display:none!important}}
+@media (prefers-reduced-motion:reduce) {
+  .world-topology path,.world-topology circle {animation:none!important}
+  #view > .world-topology {opacity:.18}
+}
