@@ -3018,3 +3018,44 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
     linear-gradient(116deg,transparent 4%,#bceaff16 20%,transparent 34% 67%,#c3a7ff17 82%,transparent 94%);
 }
 :root[data-visual-resolved="light"] #view :is(.card,.asset,.group)::before {box-shadow:none!important}
+
+
+/* Deliberate clicks propagate through only the local structural links. */
+.world-topology path.impact {opacity:1;stroke-width:1.5}
+.world-topology circle.impact {opacity:1;transform:scale(2)}
+:root[data-world="divine"] .world-topology-impact path.impact {
+  animation:world-link-impact-divine 680ms cubic-bezier(.16,.8,.2,1) both!important;
+}
+:root[data-world="void"] .world-topology-impact path.impact {
+  animation:world-link-impact-void 620ms steps(6,end) both!important;
+}
+:root[data-world="astral"] .world-topology-impact path.impact {
+  animation:world-link-impact-astral 720ms cubic-bezier(.16,.8,.2,1) both!important;
+}
+:root[data-world]:not([data-world=""]) .world-topology-impact circle.impact {
+  animation:world-node-impact 650ms cubic-bezier(.16,.8,.2,1) both!important;
+}
+@keyframes world-link-impact-divine {
+  0%{opacity:.18;stroke-dashoffset:.55;filter:brightness(.7)}
+  38%{opacity:1;stroke-dashoffset:.1;filter:brightness(2) drop-shadow(0 0 7px currentColor)}
+  100%{opacity:.36;stroke-dashoffset:-.45;filter:none}
+}
+@keyframes world-link-impact-void {
+  0%{opacity:.15;stroke-width:.6;filter:none}
+  20%{opacity:1;stroke-width:1.8;filter:contrast(1.4) drop-shadow(0 0 6px currentColor)}
+  38%{opacity:.3;stroke-width:.8}
+  58%{opacity:.9;stroke-width:1.4}
+  100%{opacity:.38;stroke-width:.7;filter:none}
+}
+@keyframes world-link-impact-astral {
+  0%{opacity:.12;stroke-dashoffset:.7;filter:blur(.5px)}
+  46%{opacity:1;stroke-dashoffset:0;filter:brightness(1.8) drop-shadow(0 0 8px currentColor)}
+  100%{opacity:.42;stroke-dashoffset:-.6;filter:none}
+}
+@keyframes world-node-impact {
+  0%{opacity:.2;transform:scale(.65)}
+  42%{opacity:1;transform:scale(2.8);filter:drop-shadow(0 0 8px currentColor)}
+  100%{opacity:.5;transform:scale(1)}
+}
+:root[data-motion="off"] .world-topology .impact {animation:none!important}
+@media (prefers-reduced-motion:reduce) {.world-topology .impact {animation:none!important}}
