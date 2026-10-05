@@ -73,9 +73,9 @@
   }
 
   const worlds = {
-    divine: {name: 'Divine Ascension', title: 'The one above all.', caption: 'A throne above the clouds. A horizon without limits.', mark: 'I'},
-    void: {name: 'Crimson Void', title: 'Market Destroyer.', caption: 'From the silence. Beyond the noise.', mark: 'II'},
-    astral: {name: 'Astral Dreamscape', title: 'Beyond the horizon.', caption: 'An observatory at the edge of possibility.', mark: 'III'},
+    divine: {name: 'Divine Ascension', title: 'The one above all.', caption: 'A throne above the clouds. A horizon without limits.', mark: 'I', phase: 'CROWN / LIGHT / INFINITY'},
+    void: {name: 'Crimson Void', title: 'Market Destroyer.', caption: 'From the silence. Beyond the noise.', mark: 'II', phase: 'RUPTURE / SILENCE / EMBER'},
+    astral: {name: 'Astral Dreamscape', title: 'Beyond the horizon.', caption: 'An observatory at the edge of possibility.', mark: 'III', phase: 'ORBIT / AETHER / HORIZON'},
   };
   let scenery, sceneObserver;
   const preference = (key, values, fallback) => {
@@ -103,6 +103,7 @@
       document.getElementById('worldTitle').setAttribute('aria-label',world.title);
       document.getElementById('worldCaption').textContent = world.caption;
       document.getElementById('worldMark').textContent = world.mark;
+      document.getElementById('worldCoordinatePhase').textContent = world.phase;
       // Exact local assets only. No market data or authenticated URLs enter this layer.
       scenery.style.setProperty('--world-art', `url("/worlds/${root.dataset.theme}.webp")`);
     }
@@ -162,7 +163,7 @@
     scenery.setAttribute('aria-label', 'ICARUS visual world');
     scenery.innerHTML = `<div class="world-art" aria-hidden="true"></div>
       <div class="world-orbit" aria-hidden="true"><i></i><i></i><i></i><b>◇</b></div>
-      <div class="world-coordinate" aria-hidden="true">ECLIPSE LOOM <span>FORM / LIGHT / INFINITY</span></div>
+      <div class="world-coordinate" aria-hidden="true">ECLIPSE LOOM <span id="worldCoordinatePhase">CROWN / LIGHT / INFINITY</span></div>
       <div class="world-copy"><div class="world-eyebrow">ICARUS <span> / </span><span id="worldName"></span></div>
       <h1 id="worldTitle"></h1><p id="worldCaption"></p>
       <div class="world-switch" role="group" aria-label="Choose visual world">
