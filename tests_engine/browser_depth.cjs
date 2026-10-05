@@ -60,6 +60,9 @@ await card.evaluate(el=>{
 await page.waitForTimeout(150);
 assert.equal(await card.locator(':scope > .world-surface-sigil').count(),1);
 assert.equal(await card.locator(':scope > .world-surface-sigil').evaluate(el=>getComputedStyle(el).position),'absolute');
+assert.equal(await card.locator(':scope > .world-panel-index').count(),1);
+assert.match((await card.locator(':scope > .world-panel-index').textContent()).trim(),/^P\d{2} \/ \d{2} · [A-Z]+$/);
+assert.equal(await card.locator(':scope > .world-panel-index').evaluate(el=>getComputedStyle(el).position),'absolute');
 assert.ok(await card.evaluate(el=>el.style.getPropertyValue('--panel-x')));
 assert.ok(await card.evaluate(el=>el.style.getPropertyValue('--panel-tilt-y')));
 assert.equal(await page.locator('html').getAttribute('data-world-immersion'),'ready');
