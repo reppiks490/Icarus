@@ -72,6 +72,8 @@ assert.equal((await page.locator('[data-world-chapter-lore]').textContent()).tri
 assert.equal(await page.locator('.world-view-ambient').count(),1);
 assert.equal(await page.locator('.world-view-ambient i').count(),12);
 assert.equal(await page.locator('.world-view-ambient').evaluate(el=>getComputedStyle(el).position),'absolute');
+assert.ok((await page.locator('#view [data-world-panel-kind="control"]').count())>0);
+assert.ok((await page.locator('#view [data-world-panel-kind="capital"]').count())>0);
 await page.waitForFunction(()=>document.querySelectorAll('.world-topology path').length>0);
 assert.equal(await page.locator('.world-topology').count(),1);
 assert.ok((await page.locator('.world-topology path').count())<=24);
