@@ -9,6 +9,7 @@
     uniform float uTime;
     uniform float uWorld;
     uniform float uMobile;
+    uniform float uView;
     float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
     float noise(vec2 p){
       vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);
@@ -19,37 +20,40 @@
     void main(){
       vec2 uv=gl_FragCoord.xy/uResolution;
       vec2 p=(uv-uCenter)*vec2(uResolution.x/uResolution.y,1.0);
-      float r=max(length(p),.002),a=atan(p.y,p.x),t=uTime;
-      float fog=mist(p*4.0+vec2(t*.025,-t*.017));
+      float r=max(length(p),.002),a=atan(p.y,p.x),t=uTime,v=uView;
+      float fog=mist(p*4.0+vec2(t*.025,-t*.017)+vec2(v*.17,-v*.11));
       float rim=band(r-.205-fog*.01,90.0);
       float glow=0.0;vec3 color=vec3(1.0);
 
       if(uWorld<.5){
-        float rays=pow(max(0.0,sin(a*23.0+t*.08+fog*3.0)),9.0);
-        float outer=band(r-.335+sin(a*6.0-t*.035)*.006,58.0);
+        float rays=pow(max(0.0,sin(a*(23.0+v*1.35)+t*.08+fog*3.0+v*.41)),9.0);
+        float outer=band(r-.335+sin(a*(6.0+v*.18)-t*.035+v*.27)*.006,58.0);
         float crown=pow(max(0.0,cos(a*6.0-t*.045)),22.0)*exp(-r*1.4);
         float arch=band(abs(p.x)-(.31+.045*cos(p.y*7.0+t*.04)),43.0)*(1.0-smoothstep(.1,.72,abs(p.y)));
-        float horizon=band(p.y+.12+sin(p.x*5.0+t*.025)*.008,52.0)*(1.0-smoothstep(.18,.9,abs(p.x)));
-        glow=(rays*.15+rim*.42+outer*.20+crown*.11+arch*.07+horizon*.045)*(.42+fog)*exp(-r*.82);
+        float horizon=band(p.y+.12+sin(p.x*(5.0+v*.12)+t*.025)*.008,52.0)*(1.0-smoothstep(.18,.9,abs(p.x)));
+        float viewRing=band(r-(.40+.012*sin(a*(2.0+mod(v,3.0))+v*.8)),74.0);
+        glow=(rays*.15+rim*.42+outer*.20+crown*.11+arch*.07+horizon*.045+viewRing*.045)*(.42+fog)*exp(-r*.82);
         vec3 gold=mix(vec3(.82,.47,.12),vec3(1.0,.93,.72),rim+outer*.45);
         color=mix(gold,vec3(.55,.94,.88),clamp(horizon*.35+fog*.08,0.0,.24));
       }else if(uWorld<1.5){
         float twist=pow(max(0.0,sin(a*3.0-log(r)*5.0-t*.24+fog*3.0)),5.0);
         float disk=band(p.y+sin(p.x*8.0+t*.1)*.024,22.0);
         float lens=band(r-.31-sin(a*4.0+t*.08)*.008,70.0);
-        float fracture=pow(max(0.0,sin((p.x*1.7-p.y)*24.0+fog*6.0-t*.09)),18.0)*(1.0-smoothstep(.12,.72,r));
+        float fracture=pow(max(0.0,sin((p.x*(1.7+v*.035)-p.y)*24.0+fog*6.0-t*.09+v*.7)),18.0)*(1.0-smoothstep(.12,.72,r));
         float eclipse=band(r-.145,120.0);
-        glow=(twist*.19+disk*.12+rim*.31+lens*.20+fracture*.08+eclipse*.16)*(1.0-smoothstep(.18,.82,r));
+        float viewCut=pow(max(0.0,sin((p.x+p.y*.7)*(10.0+v)+v*1.4)),24.0)*(1.0-smoothstep(.22,.78,r));
+        glow=(twist*.19+disk*.12+rim*.31+lens*.20+fracture*.08+eclipse*.16+viewCut*.045)*(1.0-smoothstep(.18,.82,r));
         color=mix(vec3(.37,.015,.13),vec3(1.0,.08,.27),clamp(fog+rim*.34+lens*.25,0.0,1.0));
       }else{
         float wave=sin(p.x*13.0+sin(p.y*6.0+t*.13)*2.0+t*.12);
         float curtain=pow(max(0.0,wave),4.0)*(.3+fog);
         vec2 ep=vec2(p.x,p.y*1.55);
-        float orbit=band(length(ep)-.31-sin(a*3.0+t*.035)*.005,62.0);
-        float filament=band(sin(p.x*7.0+p.y*4.0+t*.07)*.10+p.y*.34,34.0)*(1.0-smoothstep(.2,.78,r));
+        float orbit=band(length(ep)-.31-sin(a*(3.0+v*.09)+t*.035+v*.33)*.005,62.0);
+        float filament=band(sin(p.x*(7.0+v*.13)+p.y*4.0+t*.07+v*.5)*.10+p.y*.34,34.0)*(1.0-smoothstep(.2,.78,r));
         vec2 cell=floor((p+vec2(t*.001,-t*.0006))*42.0);
         float stars=pow(hash(cell),28.0)*(1.0-smoothstep(.15,.9,r));
-        glow=(curtain*.24+rim*.14+orbit*.19+filament*.07+stars*.12)*(1.0-smoothstep(.12,.86,r));
+        float viewOrbit=band(length(vec2(p.x,p.y*(1.2+mod(v,3.0)*.08)))-(.42+sin(v)*.012),82.0);
+        glow=(curtain*.24+rim*.14+orbit*.19+filament*.07+stars*.12+viewOrbit*.045)*(1.0-smoothstep(.12,.86,r));
         color=mix(vec3(.31,.13,.78),vec3(.20,.90,1.0),clamp(fog*.72+wave*.13+orbit*.26+stars*.18,0.0,1.0));
       }
 
@@ -81,7 +85,7 @@
         gl.useProgram(program);buffer=gl.createBuffer();if(!buffer)throw Error('Buffer unavailable');
         gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,-1,1,1,-1,1,1]),gl.STATIC_DRAW);
         const position=gl.getAttribLocation(program,'aPosition');gl.enableVertexAttribArray(position);gl.vertexAttribPointer(position,2,gl.FLOAT,false,0,0);
-        uniforms=Object.fromEntries(['uResolution','uCenter','uTime','uWorld','uMobile'].map(name=>[name,gl.getUniformLocation(program,name)]));
+        uniforms=Object.fromEntries(['uResolution','uCenter','uTime','uWorld','uMobile','uView'].map(name=>[name,gl.getUniformLocation(program,name)]));
         gl.clearColor(0,0,0,0);ready=true;last=-1;canvas.dataset.state='ready';
       }catch(_){release();canvas.dataset.state='fallback';canvas.style.opacity='0';}
     }
@@ -97,7 +101,13 @@
       if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;gl.viewport(0,0,w,h);}
       const mobile=width<700;gl.useProgram(program);gl.uniform2f(uniforms.uResolution,w,h);
       gl.uniform2f(uniforms.uCenter,(mobile?.5:.76)+pointer.x*.012,1-(mobile?.71:.47)-pointer.y*.012);
-      gl.uniform1f(uniforms.uTime,time%600);gl.uniform1f(uniforms.uWorld,world==='void'?1:world==='astral'?2:0);gl.uniform1f(uniforms.uMobile,mobile?1:0);
+      const view=root.dataset.worldView||'overview';
+      const viewCode=['research','sources','market-data'].includes(view)?1:
+        ['brain','learning','evolution'].includes(view)?2:
+        ['parallax','possibility','sibyl','chronofold'].includes(view)?3:
+        ['pantheon','apex','ascendancy'].includes(view)?4:
+        ['system','integrity','engine-control','commissioning','commands','log','autopilot'].includes(view)?5:0;
+      gl.uniform1f(uniforms.uTime,time%600);gl.uniform1f(uniforms.uWorld,world==='void'?1:world==='astral'?2:0);gl.uniform1f(uniforms.uMobile,mobile?1:0);gl.uniform1f(uniforms.uView,viewCode);
       gl.drawArrays(gl.TRIANGLES,0,6);canvas.style.opacity='1';
     }
     function dispose(){if(disposed)return;release();disposed=true;canvas.removeEventListener('webglcontextlost',onLost);canvas.removeEventListener('webglcontextrestored',onRestored);canvas.remove();}
