@@ -8,7 +8,7 @@
   let audio, master, enabled=false, audible=false, previousTime=null, noise;
   let sceneElement,litPanel=null,panelFrame=0,panelPointer=null;
   const worldTransitions=new Set();
-  const voices = new Set(), entrances = new Set(), enteredCharts = new Set();
+  const voices = new Set(), entrances = new Set(), enteredCharts = new Set(), chartSurfaces = new WeakSet();
   const palettes = {
     divine:['#f5ce7a','#fff5d6','#82ddff'],
     void:['#ff315d','#ffb4d0','#d66dff'],
@@ -279,6 +279,7 @@
     if(!active) for(const source of voices) {try {source.stop();}catch(_) { /* already ended */ }}
     if(!motionAllowed()||root.dataset.introActive==='true') {
       clearPanel();
+      document.querySelectorAll('.world-chart-surface.world-chart-hover').forEach(el=>{el.classList.remove('world-chart-hover');el.style.removeProperty('--chart-hover-x');el.style.removeProperty('--chart-hover-y');});
       for(const animation of worldTransitions)animation.cancel();worldTransitions.clear();
       for(const animation of entrances) animation.cancel();entrances.clear();
     }
@@ -317,10 +318,31 @@
       if(heading)animate(heading,[{opacity:.55,transform:'translateX(-5px)'},{opacity:1,transform:'translateX(0)'}],{duration:700,delay:Math.min(i*45,360),easing:'ease-out'});
     });
   }
-  function enterChart(symbol, element) {
-    if (!element?.isConnected || !element.querySelector('svg') || enteredCharts.has(symbol)) return;
-    enteredCharts.add(symbol);
+  function installChartSurface(element) {
+    if(chartSurfaces.has(element))return;
+    chartSurfaces.add(element);
     element.classList?.add('world-chart-surface');
+    const clear=()=>{
+      element.classList?.remove('world-chart-hover');
+      element.style?.removeProperty('--chart-hover-x');element.style?.removeProperty('--chart-hover-y');
+    };
+    element.addEventListener?.('pointermove',event=>{
+      if(event.pointerType==='touch'||!motionAllowed()||root.dataset.introActive==='true')return clear();
+      const r=element.getBoundingClientRect();
+      if(!r.width||!r.height)return clear();
+      const x=Math.max(0,Math.min(100,(event.clientX-r.left)/r.width*100));
+      const y=Math.max(0,Math.min(100,(event.clientY-r.top)/r.height*100));
+      element.style.setProperty('--chart-hover-x',x.toFixed(2)+'%');
+      element.style.setProperty('--chart-hover-y',y.toFixed(2)+'%');
+      element.classList?.add('world-chart-hover');
+    },{passive:true});
+    element.addEventListener?.('pointerleave',clear,{passive:true});
+  }
+  function enterChart(symbol, element) {
+    if (!element?.isConnected || !element.querySelector('svg')) return;
+    installChartSurface(element);
+    if (enteredCharts.has(symbol)) return;
+    enteredCharts.add(symbol);
     if (root.dataset.motion !== 'live' || root.dataset.experience !== 'cinematic' || !root.dataset.world || document.hidden || !element.animate) return;
     element.classList?.remove('world-chart-scan-active');void element.offsetWidth;element.classList?.add('world-chart-scan-active');
     setTimeout(()=>element?.classList?.remove('world-chart-scan-active'),900);
