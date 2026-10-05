@@ -2949,3 +2949,37 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 @media (max-width:760px) {
   #view [data-world-panel-kind] {clip-path:none!important}
 }
+
+
+/* Panel-family sigil cores sit inside the world-specific outer glyph. */
+:root[data-world]:not([data-world=""]) #view [data-world-panel-kind] > .world-surface-sigil {
+  --sigil-accent:var(--panel-kind-accent,var(--view-accent,var(--world-glow)));
+  filter:drop-shadow(0 0 9px color-mix(in srgb,var(--sigil-accent),transparent 52%));
+}
+:root[data-world]:not([data-world=""]) #view [data-world-panel-kind] > .world-surface-sigil b {
+  border-color:var(--sigil-accent);color:var(--sigil-accent);
+}
+:root[data-world]:not([data-world=""]) #view [data-world-panel-kind="capital"] > .world-surface-sigil b {
+  width:8px;height:8px;right:14px;top:13px;border:1px solid var(--sigil-accent);border-radius:1px;
+  background:color-mix(in srgb,var(--sigil-accent),transparent 84%);transform:rotate(45deg);
+  box-shadow:0 0 8px color-mix(in srgb,var(--sigil-accent),transparent 45%);
+}
+:root[data-world]:not([data-world=""]) #view [data-world-panel-kind="research"] > .world-surface-sigil b {
+  width:12px;height:12px;right:12px;top:11px;border:1px solid var(--sigil-accent);border-radius:50%;
+  background:transparent;transform:none;
+  box-shadow:0 0 0 4px color-mix(in srgb,var(--sigil-accent),transparent 92%),0 0 10px color-mix(in srgb,var(--sigil-accent),transparent 52%);
+}
+:root[data-world]:not([data-world=""]) #view [data-world-panel-kind="data"] > .world-surface-sigil b {
+  width:13px;height:9px;right:11px;top:12px;border:0;border-left:1px solid var(--sigil-accent);border-right:1px solid var(--sigil-accent);
+  border-radius:0;background:linear-gradient(180deg,var(--sigil-accent) 0 1px,transparent 1px 4px,color-mix(in srgb,var(--sigil-accent),transparent 42%) 4px 5px,transparent 5px);
+  transform:none;box-shadow:none;
+}
+:root[data-world]:not([data-world=""]) #view [data-world-panel-kind="control"] > .world-surface-sigil b {
+  width:14px;height:10px;right:10px;top:11px;border:0;border-radius:0;
+  background:
+    linear-gradient(90deg,var(--sigil-accent) 0 3px,transparent 3px 5px,color-mix(in srgb,var(--sigil-accent),transparent 24%) 5px 8px,transparent 8px 10px,var(--sigil-accent) 10px 14px);
+  transform:none;box-shadow:0 0 8px color-mix(in srgb,var(--sigil-accent),transparent 52%);
+}
+:root[data-world]:not([data-world=""]) #view [data-world-panel-kind="instrument"] > .world-surface-sigil b {
+  border-color:color-mix(in srgb,var(--sigil-accent),transparent 22%);
+}
