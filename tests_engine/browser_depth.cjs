@@ -64,6 +64,8 @@ await page.locator('[data-v="overview"]').click();await page.waitForTimeout(1100
 assert.equal(await page.locator('.world-impact').count(),0);
 assert.equal(await page.locator('.world-depth-frame').evaluate(el=>el.classList.contains('world-view-gate-active')),false);
 assert.equal(await page.locator('html').getAttribute('data-world-view'),'overview');
+await page.locator('[data-v="system"]').focus();await page.waitForTimeout(80);
+assert.equal(await page.locator('.world-focus-orbit').evaluate(el=>el.classList.contains('active')),true);
 assert.equal(await page.locator('.top').evaluate(el=>getComputedStyle(el).position),'sticky');
 const longEnough=await page.evaluate(()=>document.documentElement.scrollHeight>innerHeight*1.25);
 if(longEnough){
@@ -79,12 +81,16 @@ if(longEnough){
 }
 await page.locator('.experience-settings summary').click();await page.locator('#experienceMotion').selectOption('off');
 await page.waitForTimeout(50);assert.equal(await page.locator('.world-lit').count(),0);
+assert.equal(await page.locator('.world-focus-orbit').evaluate(el=>el.classList.contains('active')),false);
 await page.locator('#experienceTheme').selectOption('void');
 assert.equal(await page.locator('#worldTitle').getAttribute('aria-label'),'Market Destroyer.');
 assert.equal(await page.locator('.world-veil').count(),0);
 await page.locator('#experienceMotion').selectOption('system');await page.locator('#experienceVisualDetail').selectOption('adaptive');
 await page.setViewportSize({width:390,height:844});await page.waitForTimeout(250);
 assert.equal(await page.locator('html').getAttribute('data-visual-resolved'),'light');
+assert.equal(await page.locator('.world-mobile-hud').isVisible(),true);
+assert.equal((await page.locator('[data-world-mobile-view]').textContent()).trim(),'OVERVIEW');
+assert.equal(await page.locator('.world-depth-rail').first().isVisible(),false);
 assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
 await page.screenshot({path:`${output}/depth-mobile.png`,fullPage:true});
 await page.locator('#experienceReplay').click();await page.keyboard.press('Escape');assert.equal(await page.locator('#view').evaluate(e=>e.inert),false);
