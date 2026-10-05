@@ -84,15 +84,17 @@ assert.equal(await page.locator('.world-focus-orbit').evaluate(el=>el.classList.
 assert.equal(await page.locator('.top').evaluate(el=>getComputedStyle(el).position),'sticky');
 const longEnough=await page.evaluate(()=>document.documentElement.scrollHeight>innerHeight*1.25);
 if(longEnough){
- await page.evaluate(()=>scrollTo(0,document.documentElement.scrollHeight));
- await page.waitForTimeout(180);
+ await page.evaluate(()=>window.scrollTo({top:document.documentElement.scrollHeight,left:0,behavior:'instant'}));
+ await page.waitForFunction(()=>window.scrollY>=(document.documentElement.scrollHeight-window.innerHeight)*.75);
+ await page.waitForFunction(()=>document.documentElement.dataset.scrollPhase==='abyss');
  const stickyTop=await page.locator('.top').evaluate(el=>el.getBoundingClientRect().top);
  assert.ok(Math.abs(stickyTop)<2,'Sticky header must remain pinned on long scroll');
  assert.equal(await page.locator('html').getAttribute('data-scroll-phase'),'abyss');
  assert.equal(await page.locator('[data-world-depth-label]').textContent(),'ABYSS');
  assert.equal(await page.locator('.world-depth-frame').getAttribute('data-chapter'),'abyss');
  await page.screenshot({path:`${output}/depth-lower-page.png`});
- await page.evaluate(()=>scrollTo(0,0));await page.waitForTimeout(80);
+ await page.evaluate(()=>window.scrollTo({top:0,left:0,behavior:'instant'}));
+ await page.waitForFunction(()=>window.scrollY===0);
 }
 await page.locator('.experience-settings summary').click();await page.locator('#experienceMotion').selectOption('off');
 await page.waitForTimeout(50);assert.equal(await page.locator('.world-lit').count(),0);
