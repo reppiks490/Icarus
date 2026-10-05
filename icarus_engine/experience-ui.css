@@ -2043,3 +2043,33 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 }
 :root[data-visual-resolved="light"] .top {-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
 @media (prefers-reduced-motion:reduce) {.top {transition:none!important}}
+
+
+/* Phase XVI: every subsystem occupies a complete visual stage, even when its data payload is sparse. */
+#view {min-height:calc(100dvh - 172px);align-content:start}
+.world-view-ambient::before {
+  content:var(--view-glyph,"◇");position:absolute;left:50%;top:min(46vh,520px);transform:translate(-50%,-50%);
+  pointer-events:none;white-space:nowrap;
+  font:400 clamp(130px,25vw,390px)/1 Georgia,'Times New Roman',serif;
+  color:color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 98%);
+  text-shadow:0 0 76px color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 97%);
+  opacity:.72;
+}
+:root[data-world="divine"] .world-view-ambient::before {transform:translate(-50%,-50%) rotate(45deg) scale(.82);font-weight:400}
+:root[data-world="void"] .world-view-ambient::before {
+  font-family:ui-monospace,Consolas,monospace;font-weight:800;transform:translate(-50%,-50%) skewX(-11deg) scaleX(1.16);
+  color:color-mix(in srgb,var(--view-accent),transparent 98.3%);
+}
+:root[data-world="astral"] .world-view-ambient::before {
+  font-weight:400;transform:translate(-50%,-50%) scale(.9);
+  filter:drop-shadow(0 0 28px color-mix(in srgb,#bceaff,transparent 95%));
+}
+:root[data-scroll-phase="depth"] .world-view-ambient::before {opacity:.86}
+:root[data-scroll-phase="abyss"] .world-view-ambient::before {opacity:1}
+:root[data-visual-resolved="light"] .world-view-ambient::before {opacity:.28}
+:root[data-experience="focus"] .world-view-ambient::before {display:none}
+@media (max-width:760px) {
+  #view {min-height:calc(100dvh - 130px)}
+  .world-view-ambient::before {top:44vh;font-size:clamp(90px,42vw,190px);opacity:.36}
+}
+@media (prefers-reduced-motion:reduce) {.world-view-ambient::before {transform:translate(-50%,-50%)!important;filter:none!important}}
