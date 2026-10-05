@@ -80,12 +80,18 @@ await page.evaluate(()=>{window.__icarusTopologyPath=document.querySelector('.wo
 await page.waitForTimeout(320);
 assert.equal(await page.evaluate(()=>window.__icarusTopologyPath===document.querySelector('.world-topology path')),true,'decorative topology must not rebuild itself in a mutation loop');
 assert.equal(await page.locator('html').getAttribute('data-world-view'),'overview');
+assert.equal(await page.locator('#experienceRenderStatus').count(),1);
+assert.match((await page.locator('[data-render-world]').textContent()).trim(),/^WORLD DIVINE ASCENSION$/);
+assert.match((await page.locator('[data-render-view]').textContent()).trim(),/^VIEW OVERVIEW$/);
+assert.match((await page.locator('[data-render-tier]').textContent()).trim(),/^RENDER (RICH|LIGHT)$/);
+assert.equal((await page.locator('[data-render-motion]').textContent()).trim(),'MOTION LIVE');
 const overviewIndex=(await page.locator('[data-world-view-index]').textContent()).trim();
 assert.match(overviewIndex,/^\d{2} \/ \d{2}$/);
 if(await page.locator('#view .tile').count()) assert.equal(await page.locator('#view .tile').first().getAttribute('data-world-depth-observed'),'1');
 // Rapid deliberate navigation must clean its transient gate/impact DOM rather than accumulate effects.
 await page.locator('[data-v="system"]').click();
 await page.waitForFunction(()=>document.documentElement.dataset.worldView==='system');
+await page.waitForFunction(()=>document.querySelector('[data-render-view]')?.textContent==='VIEW SYSTEM');
 assert.equal((await page.locator('[data-world-gate-label]').textContent()).trim(),'SYSTEM');
 assert.notEqual((await page.locator('[data-world-view-index]').textContent()).trim(),overviewIndex);
 await page.locator('[data-v="overview"]').click();
