@@ -78,6 +78,8 @@ assert.equal(familyFixture.kind,'research');
 assert.match(familyFixture.animation,/world-family-research-enter|world-surface-sigil-breathe/);
 assert.ok(await card.evaluate(el=>el.style.getPropertyValue('--panel-x')));
 assert.ok(await card.evaluate(el=>el.style.getPropertyValue('--panel-tilt-y')));
+assert.ok(await card.evaluate(el=>el.style.getPropertyValue('--panel-dx')));
+assert.ok(await card.evaluate(el=>el.style.getPropertyValue('--panel-depth-x')));
 await page.mouse.move(520,360);await page.waitForTimeout(80);
 assert.equal(await page.locator('.world-pointer-lens').count(),1);
 assert.equal(await page.locator('.world-pointer-lens').evaluate(el=>el.classList.contains('active')),true);
