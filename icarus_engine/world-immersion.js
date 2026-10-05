@@ -167,6 +167,30 @@
     const nodes=document.createElementNS('http://www.w3.org/2000/svg','g');nodes.setAttribute('class','world-topology-nodes');
     topology.append(links,nodes);view.prepend(topology);
   }
+  function ensureSectionRadar(){
+    if(sectionRadar?.isConnected)return;
+    sectionRadar=document.createElement('div');sectionRadar.className='world-section-radar';sectionRadar.setAttribute('aria-hidden','true');
+    sectionRadar.innerHTML='<header><i>SECTION MAP</i><b data-world-radar-count>00</b></header><div data-world-radar-nodes></div>';
+    document.body.appendChild(sectionRadar);
+  }
+  function radarLabel(panel){
+    return (panel.querySelector(':scope > h2,:scope > summary,:scope h2')?.textContent||panel.dataset.worldPanelKind||'INSTRUMENT')
+      .replace(/\s+/g,' ').trim().toUpperCase().slice(0,28);
+  }
+  function rebuildSectionRadar(points){
+    ensureSectionRadar();if(!sectionRadar)return;
+    const host=sectionRadar.querySelector('[data-world-radar-nodes]'),count=sectionRadar.querySelector('[data-world-radar-count]');
+    host.replaceChildren();if(count)count.textContent=String(points.length).padStart(2,'0');
+    for(const p of points.slice(0,12)){
+      const item=document.createElement('span');item.dataset.radarNode=String(p.index);item.dataset.kind=p.el.dataset.worldPanelKind||'instrument';
+      const dot=document.createElement('i'),label=document.createElement('b');label.textContent=radarLabel(p.el);
+      item.append(dot,label);host.appendChild(item);
+    }
+  }
+  function updateSectionRadar(activeId){
+    if(!sectionRadar)return;
+    sectionRadar.querySelectorAll('[data-radar-node]').forEach(el=>el.classList.toggle('active',String(activeId??'')===el.dataset.radarNode));
+  }
   function topologyPath(a,b){
     const dx=b.x-a.x,dy=b.y-a.y,curve=Math.max(-42,Math.min(42,dx*.08));
     const c1x=a.x+dx*.38,c2x=a.x+dx*.62,c1y=a.y+dy*.34-curve,c2y=a.y+dy*.66+curve;
@@ -188,6 +212,7 @@
       const r=el.getBoundingClientRect();
       return {index,el,x:r.left-viewRect.left+view.scrollLeft+r.width/2,y:r.top-viewRect.top+view.scrollTop+r.height/2};
     }).sort((a,b)=>a.y-b.y||a.x-b.x);
+    rebuildSectionRadar(points);
     if(points.length<2)return;
     const edgeKeys=new Set(),edges=[];
     const addEdge=(a,b)=>{
@@ -223,8 +248,9 @@
     if(!topology)return;
     const panel=target?.closest?.('[data-world-topology-node]'),id=panel?.dataset.worldTopologyNode;
     topology.querySelectorAll('.active').forEach(el=>el.classList.remove('active'));
-    if(id==null||!motionAllowed())return;
+    if(id==null||!motionAllowed()){updateSectionRadar(null);return;}
     topology.querySelectorAll(`path[data-from="${id}"],path[data-to="${id}"],circle[data-node="${id}"]`).forEach(el=>el.classList.add('active'));
+    updateSectionRadar(id);
   }
   function updateScrollFocus(){
     const panels=[...document.querySelectorAll('#view [data-world-topology-node]')].slice(0,18);
@@ -243,6 +269,7 @@
     best.classList.add('world-scroll-focus');
     const id=best.dataset.worldTopologyNode;
     topology.querySelectorAll(`path[data-from="${id}"],path[data-to="${id}"],circle[data-node="${id}"]`).forEach(el=>el.classList.add('scroll-active'));
+    updateSectionRadar(id);
   }
   function classifyReadouts(){
     const states=[...document.querySelectorAll('#view .empty')].slice(0,96);
@@ -255,7 +282,7 @@
     }
   }
   function refresh(){
-    ensureAmbient();ensureTopology();classifyReadouts();
+    ensureAmbient();ensureTopology();ensureSectionRadar();classifyReadouts();
     const majors=[...document.querySelectorAll('#view > :is(.card,.asset,.hero,.group), #view > .assets > .asset')];
     const view=document.getElementById('view');
     if(view)view.classList.toggle('world-sparse-view',majors.length<=2&&view.scrollHeight<window.innerHeight*1.35);
@@ -421,7 +448,7 @@
       root.style.setProperty('--world-light-x','50%');
       root.style.setProperty('--world-scroll-glow','0px');
       root.style.setProperty('--world-scroll-energy','0');
-      focusOrbit?.classList.remove('active');topologyHighlight(null);
+      focusOrbit?.classList.remove('active');topologyHighlight(null);sectionRadar?.classList.remove('active');
     } else if(document.activeElement?.matches?.('button,a,input,select,textarea,summary,[tabindex]')) {
       positionFocusOrbit(document.activeElement);topologyHighlight(document.activeElement);
     }
