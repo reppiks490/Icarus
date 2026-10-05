@@ -3059,3 +3059,25 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 }
 :root[data-motion="off"] .world-topology .impact {animation:none!important}
 @media (prefers-reduced-motion:reduce) {.world-topology .impact {animation:none!important}}
+
+
+/* Forced-colors mode keeps the trading cockpit legible and removes purely optical layers. */
+@media (forced-colors:active) {
+  :root[data-world] body::before,:root[data-world] body::after,
+  .world-view-ambient,.world-topology,.world-depth-atmosphere,.world-surface-sigil,
+  .world-chapter-title,.world-nav-trail,.world-focus-orbit,.world-view-gate,
+  .world-chart-surface::before,.world-chart-surface::after {display:none!important}
+  :root[data-world] :is(.top,.card,.asset,.group,.tile,.modal .box,.pal .box,.experience-music,.experience-settings > div) {
+    color:CanvasText!important;background:Canvas!important;border:1px solid CanvasText!important;
+    box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;filter:none!important;
+  }
+  :root[data-world] :is(button,.tab,input,select,textarea,summary) {
+    color:ButtonText!important;background:ButtonFace!important;border-color:ButtonText!important;box-shadow:none!important;
+  }
+  :root[data-world] .tab.active {outline:2px solid Highlight!important;outline-offset:-2px}
+  :root[data-world] :is(.pos,.brain-good) {color:CanvasText!important}
+  :root[data-world] :is(.neg,.brain-bad) {color:CanvasText!important}
+  :root[data-world] .world-scene {border:1px solid CanvasText!important;background:Canvas!important;box-shadow:none!important}
+  :root[data-world] .world-art {opacity:.12!important;filter:none!important}
+  :root[data-world] .world-copy h1 .world-word {color:CanvasText!important;background:none!important;-webkit-background-clip:border-box!important;background-clip:border-box!important}
+}
