@@ -16,6 +16,13 @@ await page.screenshot({path:`${output}/intro.png`});
 await page.keyboard.press('Escape');
 await page.locator('.world-intro').waitFor({state:'detached'});
 await page.screenshot({path:`${output}/divine.png`,fullPage:true});
+await page.locator('[data-world-choice="void"]').hover();await page.waitForTimeout(180);
+if(await page.locator('html').getAttribute('data-theme')!=='divine') throw Error('World preview changed active theme');
+if(await page.locator('.world-preview').getAttribute('data-preview-world')!=='void') throw Error('World preview did not identify hovered universe');
+if(Number(await page.locator('.world-preview').evaluate(el=>getComputedStyle(el).opacity))<=0) throw Error('World preview did not become visible');
+await page.screenshot({path:`${output}/preview-void.png`});
+await page.mouse.move(1,1);await page.waitForTimeout(80);
+if(await page.locator('.world-preview').getAttribute('data-preview-world')) throw Error('World preview did not clear');
 const worldPhases={void:'RUPTURE / SILENCE / EMBER',astral:'ORBIT / AETHER / HORIZON',divine:'CROWN / LIGHT / INFINITY'};
 const worldRadii={};
 for(const world of ['void','astral','divine']){
