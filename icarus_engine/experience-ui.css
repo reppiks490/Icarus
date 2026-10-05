@@ -3558,3 +3558,89 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 @media (prefers-reduced-motion:reduce) {
   #view :is(.card,.asset,.group) > :is(h2,.world-surface-sigil,.world-panel-index) {translate:none!important;transform:none!important;transition:none!important}
 }
+
+
+/* Phase XXVIII: instrument inspection is a local spatial lens, not a global dimmer. */
+#view > .world-inspection-field {
+  position:absolute;z-index:0!important;left:var(--inspect-x,0);top:var(--inspect-y,0);width:var(--inspect-w,0);height:var(--inspect-h,0);
+  pointer-events:none;opacity:0;border:1px solid color-mix(in srgb,var(--panel-kind-accent,var(--view-accent,var(--world-glow))),transparent 74%);
+  border-radius:16px;box-shadow:
+    0 0 0 1px color-mix(in srgb,var(--active-view-accent,var(--world-glow)),transparent 95%),
+    0 0 34px color-mix(in srgb,var(--active-view-accent,var(--world-glow)),transparent 94%),
+    inset 0 0 34px color-mix(in srgb,var(--active-view-accent,var(--world-glow)),transparent 97%);
+  background:
+    radial-gradient(ellipse at 50% 48%,color-mix(in srgb,var(--active-view-accent,var(--world-glow)),transparent 94%),transparent 66%);
+  transition:left .18s cubic-bezier(.16,.8,.2,1),top .18s cubic-bezier(.16,.8,.2,1),width .18s cubic-bezier(.16,.8,.2,1),height .18s cubic-bezier(.16,.8,.2,1),opacity .16s ease,border-radius .22s ease;
+  contain:layout paint;will-change:left,top,width,height,opacity;
+}
+#view > .world-inspection-field.active {opacity:.78}
+.world-inspection-field i,.world-inspection-field b,.world-inspection-field span {position:absolute;display:block;pointer-events:none}
+.world-inspection-field i {
+  inset:8px;border:1px solid color-mix(in srgb,var(--active-view-accent,var(--world-glow)),transparent 90%);border-radius:inherit;
+}
+.world-inspection-field b {
+  left:50%;top:-7px;width:38px;height:1px;transform:translateX(-50%);
+  background:linear-gradient(90deg,transparent,var(--active-view-accent,var(--world-glow)),transparent);
+  box-shadow:0 0 9px color-mix(in srgb,var(--active-view-accent,var(--world-glow)),transparent 42%);
+}
+.world-inspection-field span {
+  left:50%;bottom:-5px;width:6px;height:6px;transform:translateX(-50%) rotate(45deg);
+  border:1px solid color-mix(in srgb,var(--active-view-accent,var(--world-glow)),transparent 35%);
+  background:var(--page);box-shadow:0 0 8px color-mix(in srgb,var(--active-view-accent,var(--world-glow)),transparent 45%);
+}
+
+:root[data-world="divine"] .world-inspection-field {
+  border-radius:18px 18px 7px 7px;
+  background:
+    radial-gradient(ellipse at 50% 18%,color-mix(in srgb,var(--active-view-accent),transparent 91%),transparent 42%),
+    linear-gradient(180deg,transparent 0 74%,color-mix(in srgb,var(--active-view-accent),transparent 97%));
+}
+:root[data-world="divine"] .world-inspection-field::before,
+:root[data-world="divine"] .world-inspection-field::after {
+  content:"";position:absolute;top:-12px;width:1px;height:24px;background:linear-gradient(var(--active-view-accent),transparent);opacity:.55
+}
+:root[data-world="divine"] .world-inspection-field::before {left:22%}
+:root[data-world="divine"] .world-inspection-field::after {right:22%}
+
+:root[data-world="void"] .world-inspection-field {
+  border-radius:2px;clip-path:polygon(8px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 8px);
+  background:
+    linear-gradient(116deg,transparent 0 22%,color-mix(in srgb,var(--active-view-accent),transparent 88%) 22.2% 22.6%,transparent 22.8% 68%,color-mix(in srgb,var(--crit),transparent 91%) 68.2% 68.6%,transparent 68.8%),
+    linear-gradient(180deg,color-mix(in srgb,var(--active-view-accent),transparent 97%),transparent);
+}
+:root[data-world="void"] .world-inspection-field i {border-radius:0;clip-path:polygon(0 0,100% 0,100% 100%,8% 100%,0 88%)}
+:root[data-world="void"] .world-inspection-field span {border-radius:0;transform:translateX(-50%) rotate(0);width:12px;height:1px;background:var(--active-view-accent)}
+
+:root[data-world="astral"] .world-inspection-field {
+  border-radius:22px;background:
+    radial-gradient(ellipse at 50% 50%,transparent 0 43%,color-mix(in srgb,var(--active-view-accent),transparent 94%) 43.4% 43.8%,transparent 44.2%),
+    radial-gradient(ellipse at 50% 50%,color-mix(in srgb,#bceaff,transparent 97%),transparent 70%);
+}
+:root[data-world="astral"] .world-inspection-field i {border-radius:50%;transform:rotate(-8deg) scaleY(.72)}
+:root[data-world="astral"] .world-inspection-field b {width:54px;transform:translateX(-50%) rotate(11deg)}
+:root[data-world="astral"] .world-inspection-field span {border-radius:50%;transform:translateX(-50%);background:#dff5ff;box-shadow:0 0 6px #dff5ff,0 0 11px var(--active-view-accent)}
+
+/* A focused instrument gains emphasis; neighbors merely recede a fraction. */
+@media (pointer:fine) and (min-width:1100px) {
+  :root[data-world]:not([data-world=""])[data-experience="cinematic"][data-visual-resolved="rich"] #view.world-inspection-mode > :is(.card,.asset,.group):not(.world-inspected),
+  :root[data-world]:not([data-world=""])[data-experience="cinematic"][data-visual-resolved="rich"] #view.world-inspection-mode > .assets > .asset:not(.world-inspected) {
+    filter:saturate(.92) brightness(.97);opacity:.95;
+  }
+  :root[data-world]:not([data-world=""])[data-experience="cinematic"][data-visual-resolved="rich"] #view .world-inspected {
+    border-color:color-mix(in srgb,var(--panel-kind-accent,var(--active-view-accent)),var(--ring) 38%);
+    box-shadow:
+      var(--phase-shadow,0 22px 66px #0004),
+      inset 0 1px 0 #ffffff18,
+      0 0 0 1px color-mix(in srgb,var(--panel-kind-accent,var(--active-view-accent)),transparent 88%),
+      0 0 32px color-mix(in srgb,var(--panel-kind-accent,var(--active-view-accent)),transparent 94%);
+  }
+}
+:root[data-visual-resolved="light"] #view > .world-inspection-field,
+:root[data-experience="focus"] #view > .world-inspection-field,
+:root[data-motion="off"] #view > .world-inspection-field {display:none!important}
+@media (max-width:1099px) {#view > .world-inspection-field {display:none!important}}
+@media (prefers-reduced-motion:reduce) {
+  #view > .world-inspection-field {display:none!important}
+  #view.world-inspection-mode > * {filter:none!important;opacity:1!important}
+}
+@media (forced-colors:active) {#view > .world-inspection-field {display:none!important}}
