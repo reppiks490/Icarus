@@ -44,6 +44,8 @@ await page.locator('#experienceIntroLength').selectOption('12');
 await page.locator('#experienceReplay').click();
 await page.locator('.world-intro').waitFor({state:'detached',timeout:15000});
 if(await page.locator('#view').evaluate(el=>el.inert)) throw Error('Intro left dashboard inert');
+if(await page.locator('.world-handoff').count()!==1) throw Error('Natural intro did not hand off into dashboard');
+await page.locator('.world-handoff').waitFor({state:'detached',timeout:2000});
 await page.locator('#experienceTheme').selectOption('dark');
 if(await page.locator('.world-scene').isVisible()) throw Error('Scene remained on legacy theme');
 await page.locator('#experienceTheme').selectOption('void');
