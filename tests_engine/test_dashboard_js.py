@@ -78,7 +78,8 @@ def test_asset_adder_uses_registry_and_timeframe_suggestions_and_single_flight_s
     assert 'datalist id="addTfOptions"' in src
     assert "['1','2','3','5','10','15','20','30','45','60','120','180','240','D','W']" in src
     assert "REGISTRY.map" in src
-    assert "b.disabled = true" in src
+    assert "button.disabled = true; button.classList.add('world-busy')" in src
+    assert "await withBusyButton(b, async () => {" in src
     assert "await admin('/admin/assets/add'" in src
     assert "j.detail||j.error||'request failed'" in src
 
