@@ -2,7 +2,7 @@
   'use strict';
   const root=document.documentElement;
   const reduced=window.matchMedia('(prefers-reduced-motion: reduce)');
-  let scrollFrame=0,pointerFrame=0,viewObserver=null,viewMutation=null,depthFrame=null,focusOrbit=null,ambient=null,viewFlashTimer=0,viewGateTimer=0,chapterTimer=0,focusTimer=0,scrollEnergyTimer=0,lastScrollY=0,lastScrollAt=0,currentView='overview',currentPhase='crown',initialized=false;
+  let scrollFrame=0,pointerFrame=0,viewObserver=null,viewMutation=null,depthFrame=null,focusOrbit=null,ambient=null,topology=null,topologyTimer=0,viewFlashTimer=0,viewGateTimer=0,chapterTimer=0,focusTimer=0,scrollEnergyTimer=0,lastScrollY=0,lastScrollAt=0,currentView='overview',currentPhase='crown',initialized=false;
 
   const motionAllowed=()=>root.dataset.motion==='live'&&root.dataset.experience==='cinematic'&&!!root.dataset.world&&!document.hidden&&!reduced.matches&&root.dataset.introActive!=='true';
   const phaseLabels={crown:'CROWN',descent:'DESCENT',depth:'DEPTH',abyss:'ABYSS'};
@@ -132,13 +132,82 @@
     ambient=document.createElement('div');ambient.className='world-view-ambient';ambient.setAttribute('aria-hidden','true');
     ambient.innerHTML='<i></i>'.repeat(12);view.prepend(ambient);
   }
+  function ensureTopology(){
+    const view=document.getElementById('view');
+    if(!view)return;
+    if(topology?.isConnected&&topology.parentElement===view)return;
+    topology=document.createElementNS('http://www.w3.org/2000/svg','svg');
+    topology.setAttribute('class','world-topology');
+    topology.setAttribute('aria-hidden','true');
+    topology.setAttribute('preserveAspectRatio','none');
+    const links=document.createElementNS('http://www.w3.org/2000/svg','g');links.setAttribute('class','world-topology-links');
+    const nodes=document.createElementNS('http://www.w3.org/2000/svg','g');nodes.setAttribute('class','world-topology-nodes');
+    topology.append(links,nodes);view.prepend(topology);
+  }
+  function topologyPath(a,b){
+    const dx=b.x-a.x,dy=b.y-a.y,curve=Math.max(-42,Math.min(42,dx*.08));
+    const c1x=a.x+dx*.38,c2x=a.x+dx*.62,c1y=a.y+dy*.34-curve,c2y=a.y+dy*.66+curve;
+    return `M ${a.x.toFixed(1)} ${a.y.toFixed(1)} C ${c1x.toFixed(1)} ${c1y.toFixed(1)}, ${c2x.toFixed(1)} ${c2y.toFixed(1)}, ${b.x.toFixed(1)} ${b.y.toFixed(1)}`;
+  }
+  function rebuildTopology(){
+    topologyTimer=0;ensureTopology();
+    const view=document.getElementById('view');if(!view||!topology)return;
+    const links=topology.querySelector('.world-topology-links'),nodeLayer=topology.querySelector('.world-topology-nodes');
+    links.replaceChildren();nodeLayer.replaceChildren();
+    const viewRect=view.getBoundingClientRect(),width=Math.max(1,view.scrollWidth),height=Math.max(1,view.scrollHeight);
+    topology.setAttribute('viewBox',`0 0 ${width} ${height}`);
+    const elements=[...view.querySelectorAll(':scope > :is(.card,.asset,.group), :scope > .assets > .asset')]
+      .filter(el=>{const r=el.getBoundingClientRect();return r.width>40&&r.height>28;})
+      .slice(0,18);
+    const points=elements.map((el,index)=>{
+      el.dataset.worldTopologyNode=String(index);
+      const r=el.getBoundingClientRect();
+      return {index,el,x:r.left-viewRect.left+view.scrollLeft+r.width/2,y:r.top-viewRect.top+view.scrollTop+r.height/2};
+    }).sort((a,b)=>a.y-b.y||a.x-b.x);
+    if(points.length<2)return;
+    const edgeKeys=new Set(),edges=[];
+    const addEdge=(a,b)=>{
+      if(!a||!b||a.index===b.index||edges.length>=24)return;
+      const lo=Math.min(a.index,b.index),hi=Math.max(a.index,b.index),key=lo+':'+hi;
+      if(edgeKeys.has(key))return;edgeKeys.add(key);edges.push([a,b]);
+    };
+    for(let i=0;i<points.length-1;i++)addEdge(points[i],points[i+1]);
+    for(let i=0;i<points.length;i++){
+      let nearest=null,best=Infinity;
+      for(let j=i+1;j<points.length;j++){
+        const dx=points[j].x-points[i].x,dy=points[j].y-points[i].y,score=Math.hypot(dx*.72,dy);
+        if(score<best){best=score;nearest=points[j];}
+      }
+      if(best<Math.max(320,width*.42))addEdge(points[i],nearest);
+    }
+    for(const [a,b] of edges){
+      const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+      path.setAttribute('d',topologyPath(a,b));path.setAttribute('pathLength','1');
+      path.dataset.from=String(a.index);path.dataset.to=String(b.index);links.appendChild(path);
+    }
+    for(const p of points){
+      const node=document.createElementNS('http://www.w3.org/2000/svg','circle');
+      node.setAttribute('cx',p.x.toFixed(1));node.setAttribute('cy',p.y.toFixed(1));node.setAttribute('r','2.2');
+      node.dataset.node=String(p.index);nodeLayer.appendChild(node);
+    }
+  }
+  function scheduleTopology(){
+    clearTimeout(topologyTimer);topologyTimer=setTimeout(()=>requestAnimationFrame(rebuildTopology),80);
+  }
+  function topologyHighlight(target){
+    if(!topology)return;
+    const panel=target?.closest?.('[data-world-topology-node]'),id=panel?.dataset.worldTopologyNode;
+    topology.querySelectorAll('.active').forEach(el=>el.classList.remove('active'));
+    if(id==null||!motionAllowed())return;
+    topology.querySelectorAll(`path[data-from="${id}"],path[data-to="${id}"],circle[data-node="${id}"]`).forEach(el=>el.classList.add('active'));
+  }
   function refresh(){
-    ensureAmbient();
+    ensureAmbient();ensureTopology();
     const majors=[...document.querySelectorAll('#view > :is(.card,.asset,.hero,.group), #view > .assets > .asset')];
     majors.forEach(decorateSurface);
     const nested=[...document.querySelectorAll('#view :is(.tile,.px-box,.psi-box,.pan-field,.brain-agent,.brain-sub,.brain-lane,.evo-sub)')];
     [...new Set([...majors,...nested])].slice(0,80).forEach(observePanel);
-    writeScrollDepth();
+    writeScrollDepth();scheduleTopology();
   }
   function installObserver(){
     if('IntersectionObserver' in window){
@@ -259,11 +328,11 @@
       root.style.setProperty('--world-light-x','50%');
       root.style.setProperty('--world-scroll-glow','0px');
       root.style.setProperty('--world-scroll-energy','0');
-      focusOrbit?.classList.remove('active');
+      focusOrbit?.classList.remove('active');topologyHighlight(null);
     } else if(document.activeElement?.matches?.('button,a,input,select,textarea,summary,[tabindex]')) {
-      positionFocusOrbit(document.activeElement);
+      positionFocusOrbit(document.activeElement);topologyHighlight(document.activeElement);
     }
-    queueScroll();
+    queueScroll();scheduleTopology();
   }
 
   function init(){
@@ -272,12 +341,14 @@
     root.dataset.worldImmersion='ready';
     buildDepthFrame();ensureFocusOrbit();
     window.addEventListener('scroll',()=>{queueScroll();if(focusOrbit?.classList.contains('active'))positionFocusOrbit(document.activeElement);},{passive:true});
-    window.addEventListener('resize',()=>{queueScroll();if(focusOrbit?.classList.contains('active'))positionFocusOrbit(document.activeElement);},{passive:true});
+    window.addEventListener('resize',()=>{queueScroll();scheduleTopology();if(focusOrbit?.classList.contains('active'))positionFocusOrbit(document.activeElement);},{passive:true});
     window.addEventListener('pointermove',pointerMove,{passive:true});
     document.addEventListener('pointerleave',pointerLeave,{passive:true});
     document.addEventListener('pointerdown',interactionImpact,{passive:true,capture:true});
-    document.addEventListener('focusin',focusIn,true);
-    document.addEventListener('focusout',focusOut,true);
+    document.addEventListener('pointerover',event=>topologyHighlight(event.target),{passive:true});
+    document.addEventListener('pointerout',event=>{if(!event.relatedTarget?.closest?.('[data-world-topology-node]'))topologyHighlight(null);},{passive:true});
+    document.addEventListener('focusin',event=>{focusIn(event);topologyHighlight(event.target);},true);
+    document.addEventListener('focusout',event=>{focusOut(event);setTimeout(()=>topologyHighlight(document.activeElement),0);},true);
     document.addEventListener('visibilitychange',sync);
     reduced.addEventListener?.('change',sync);
     installObserver();
