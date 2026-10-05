@@ -1418,3 +1418,10 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 /* Decorative-layer specificity guard: presentation nodes must never enter content flow. */
 #view > .world-view-ambient {position:absolute;inset:0;z-index:0!important}
 :root[data-world]:not([data-world=""]) :is(.card,.asset,.group) > :is(.world-impact,.world-surface-sigil) {position:absolute;z-index:0}
+
+
+/* Narrow-screen containment: cinematic overscan must never create horizontal page travel. */
+@media (max-width:760px) {
+  html,body {overflow-x:clip}
+  :root[data-world]:not([data-world=""]) body::before {inset:-3vh 0}
+}
