@@ -105,6 +105,8 @@ if(longEnough){
  assert.equal(await page.locator('html').getAttribute('data-scroll-phase'),'abyss');
  assert.equal(await page.locator('[data-world-depth-label]').textContent(),'ABYSS');
  assert.equal(await page.locator('.world-depth-frame').getAttribute('data-chapter'),'abyss');
+ await page.waitForFunction(()=>document.querySelectorAll('#view .world-scroll-focus').length>0);
+ assert.ok((await page.locator('.world-topology .scroll-active').count())>0);
  await page.screenshot({path:`${output}/depth-lower-page.png`});
  await page.evaluate(()=>window.scrollTo({top:0,left:0,behavior:'instant'}));
  await page.waitForFunction(()=>window.scrollY===0);
