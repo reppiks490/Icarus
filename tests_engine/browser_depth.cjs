@@ -112,6 +112,7 @@ await fallback.goto(process.env.ICARUS_PREVIEW_URL||'http://127.0.0.1:8879');
 assert.equal(await fallback.locator('.world-aura').getAttribute('data-state'),'fallback');
 assert.equal(await fallback.locator('.world-scene').getAttribute('data-renderer'),'canvas');
 await fallback.locator('[data-world-choice="astral"]').click();await fallback.locator('[data-v="system"]').click();
+await fallback.waitForFunction(()=>document.documentElement.dataset.worldView==='system');
 assert.equal(await fallback.locator('html').getAttribute('data-world-view'),'system');
 assert.equal((await fallback.locator('[data-world-gate-label]').textContent()).trim(),'SYSTEM');
 assert.equal((await fallback.locator('[data-world-view-glyph]').textContent()).trim(),'⌬');
