@@ -1952,3 +1952,46 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 :root[data-world]:not([data-world=""]) .world-view-gate::before,
 :root[data-world]:not([data-world=""]) .world-view-gate::after {border-color:color-mix(in srgb,var(--active-view-accent),transparent 72%);box-shadow:0 0 36px color-mix(in srgb,var(--active-view-accent),transparent 89%),inset 0 0 28px color-mix(in srgb,var(--active-view-accent),transparent 94%)}
 :root[data-world]:not([data-world=""]) .world-mobile-hud i {color:var(--active-view-accent);text-shadow:0 0 10px color-mix(in srgb,var(--active-view-accent),transparent 38%)}
+
+
+/* Phase XIII: entering the viewport is a world-specific reveal, not one generic fade. */
+:root[data-world="divine"][data-motion="live"] .world-depth-enter {animation:world-depth-enter-divine 760ms cubic-bezier(.16,.8,.2,1) both}
+:root[data-world="void"][data-motion="live"] .world-depth-enter {animation:world-depth-enter-void 620ms cubic-bezier(.2,.7,.2,1) both}
+:root[data-world="astral"][data-motion="live"] .world-depth-enter {animation:world-depth-enter-astral 860ms cubic-bezier(.16,.8,.2,1) both}
+@keyframes world-depth-enter-divine {
+  0%{opacity:.42;transform:translateY(11px) scale(.992);filter:brightness(.72) saturate(.72);box-shadow:0 0 0 transparent}
+  46%{opacity:1;filter:brightness(1.12) saturate(1.04)}
+  100%{opacity:1;transform:none;filter:none}
+}
+@keyframes world-depth-enter-void {
+  0%{opacity:.28;transform:translateX(-9px) skewX(-.6deg);clip-path:inset(0 100% 0 0);filter:contrast(1.28) brightness(.62)}
+  54%{opacity:1;clip-path:inset(0 0 0 0);filter:contrast(1.08)}
+  100%{opacity:1;transform:none;clip-path:inset(0);filter:none}
+}
+@keyframes world-depth-enter-astral {
+  0%{opacity:.24;transform:scale(.972);filter:blur(5px) brightness(.72) saturate(.74)}
+  48%{opacity:.96;filter:blur(.4px) brightness(1.08) saturate(1.08)}
+  100%{opacity:1;transform:none;filter:none}
+}
+:root[data-world]:not([data-world=""]) .world-depth-enter > h2 {
+  animation:world-depth-heading 720ms cubic-bezier(.16,.8,.2,1) both;
+}
+@keyframes world-depth-heading {
+  0%{opacity:.2;letter-spacing:.18em;translate:8px 0}
+  55%{opacity:1}
+  100%{opacity:1;letter-spacing:inherit;translate:0 0}
+}
+:root[data-world="void"] .world-depth-enter > h2 {animation-name:world-depth-heading-void}
+@keyframes world-depth-heading-void {
+  0%{opacity:.15;translate:-11px 0;filter:blur(2px)}
+  44%{opacity:1;filter:none}
+  100%{translate:0 0}
+}
+:root[data-world="astral"] .world-depth-enter > h2 {animation-name:world-depth-heading-astral}
+@keyframes world-depth-heading-astral {
+  0%{opacity:.12;scale:.96;filter:blur(3px)}
+  55%{opacity:1;filter:none}
+  100%{scale:1}
+}
+@media (max-width:760px) {:root[data-world] .world-depth-enter,:root[data-world] .world-depth-enter > h2 {animation:none!important}}
+@media (prefers-reduced-motion:reduce) {:root[data-world] .world-depth-enter,:root[data-world] .world-depth-enter > h2 {animation:none!important}}
