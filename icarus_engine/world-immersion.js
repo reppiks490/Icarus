@@ -2,7 +2,7 @@
   'use strict';
   const root=document.documentElement;
   const reduced=window.matchMedia('(prefers-reduced-motion: reduce)');
-  let scrollFrame=0,pointerFrame=0,viewObserver=null,viewMutation=null,depthFrame=null,focusOrbit=null,ambient=null,topology=null,topologyTimer=0,viewFlashTimer=0,viewGateTimer=0,chapterTimer=0,focusTimer=0,scrollEnergyTimer=0,lastScrollY=0,lastScrollAt=0,currentView='overview',currentPhase='crown',initialized=false;
+  let scrollFrame=0,pointerFrame=0,viewObserver=null,viewMutation=null,depthFrame=null,focusOrbit=null,ambient=null,topology=null,topologyTimer=0,viewFlashTimer=0,viewGateTimer=0,chapterTimer=0,focusTimer=0,scrollEnergyTimer=0,lastScrollY=0,lastScrollAt=0,currentView='overview',currentPhase='crown',viewHistory=[],initialized=false;
 
   const motionAllowed=()=>root.dataset.motion==='live'&&root.dataset.experience==='cinematic'&&!!root.dataset.world&&!document.hidden&&!reduced.matches&&root.dataset.introActive!=='true';
   const phaseLabels={crown:'CROWN',descent:'DESCENT',depth:'DEPTH',abyss:'ABYSS'};
@@ -27,6 +27,7 @@
       <div class="world-corner-sigil top-left">I</div><div class="world-corner-sigil bottom-right">∞</div>
       <div class="world-view-gate"><i data-world-view-glyph>◇</i><span data-world-gate-label>OVERVIEW</span></div>
       <div class="world-depth-atmosphere"><i class="near"></i><i class="mid"></i><i class="far"></i><b></b></div>
+      <div class="world-nav-trail" aria-hidden="true"></div>
       <div class="world-mobile-hud"><i data-world-mobile-glyph>◇</i><span data-world-mobile-view>OVERVIEW</span><b data-world-mobile-phase>CROWN</b><small data-world-mobile-index>01/01</small></div>`;
     document.body.appendChild(depthFrame);
   }
@@ -312,10 +313,29 @@
       setTimeout(()=>tabs?.classList.remove('world-nav-settle'),520);
     }));
   }
+  function renderViewHistory(next,meta,raw){
+    if(raw!==currentView){
+      viewHistory=viewHistory.filter(item=>item.key!==next);
+      viewHistory.push({key:next,label:meta[0],glyph:meta[1]});
+      viewHistory=viewHistory.slice(-4);
+    } else if(!viewHistory.length) viewHistory=[{key:next,label:meta[0],glyph:meta[1]}];
+    const trail=depthFrame?.querySelector('.world-nav-trail');
+    if(trail){
+      trail.replaceChildren(...viewHistory.map((item,index)=>{
+        const span=document.createElement('span');span.dataset.view=item.key;span.dataset.current=index===viewHistory.length-1?'true':'false';
+        span.innerHTML=`<i>${item.glyph}</i><b>${item.label}</b>`;return span;
+      }));
+    }
+    for(const tab of document.querySelectorAll('#tabs .tab[data-v]')){
+      const key=(tab.dataset.v||'').startsWith('asset:')?'asset':tab.dataset.v;
+      tab.classList.toggle('world-visited',viewHistory.some(item=>item.key===key));
+    }
+  }
   function view(name='overview'){
     const raw=String(name||'overview'),next=(raw.startsWith('asset:')?'asset':raw).replace(/[^a-z0-9-]/gi,'-').toLowerCase();
     const meta=viewMeta[next]||[next.replace(/-/g,' ').toUpperCase(),'◇'];
     root.dataset.worldView=next||'overview';
+    renderViewHistory(next,meta,raw);
     if(depthFrame){
       depthFrame.querySelector('[data-world-view-label]').textContent=meta[0];
       const glyph=depthFrame.querySelector('[data-world-view-glyph]'),label=depthFrame.querySelector('[data-world-gate-label]');
