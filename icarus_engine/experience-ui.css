@@ -3297,3 +3297,51 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
   :root[data-world] #view .toolbar {overflow-x:auto;flex-wrap:nowrap;overscroll-behavior-inline:contain}
   :root[data-world] #view .toolbar > * {flex:0 0 auto}
 }
+
+
+/* Phase XI: a single compositor pointer lens makes hover motion feel physical without replacing the native cursor. */
+.world-pointer-lens {
+  position:fixed;left:0;top:0;z-index:70;width:34px;height:34px;margin:-17px 0 0 -17px;pointer-events:none;opacity:0;
+  color:var(--active-view-accent,var(--world-glow));will-change:transform,opacity;transition:opacity .14s ease;
+  filter:drop-shadow(0 0 8px color-mix(in srgb,var(--active-view-accent,var(--world-glow)),transparent 58%));
+}
+.world-pointer-lens.active {opacity:.58}
+.world-pointer-lens::before,.world-pointer-lens::after,.world-pointer-lens i,.world-pointer-lens b {
+  content:"";position:absolute;display:block;pointer-events:none
+}
+.world-pointer-lens::before {inset:6px;border:1px solid currentColor}
+.world-pointer-lens::after {left:50%;top:50%;width:3px;height:3px;transform:translate(-50%,-50%);background:currentColor;box-shadow:0 0 7px currentColor}
+.world-pointer-lens i {left:50%;top:0;bottom:0;width:1px;background:linear-gradient(transparent,color-mix(in srgb,currentColor,transparent 54%) 32% 68%,transparent)}
+.world-pointer-lens b {top:50%;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,color-mix(in srgb,currentColor,transparent 62%) 32% 68%,transparent)}
+
+/* Divine: precise diamond reticle. */
+:root[data-world="divine"] .world-pointer-lens::before {transform:rotate(45deg);border-radius:1px}
+:root[data-world="divine"] .world-pointer-lens.active {animation:world-pointer-divine 3.8s ease-in-out infinite}
+@keyframes world-pointer-divine {50%{filter:drop-shadow(0 0 12px color-mix(in srgb,var(--active-view-accent),transparent 38%))}}
+
+/* Void: fractured targeting bracket. */
+:root[data-world="void"] .world-pointer-lens {width:40px;height:28px;margin:-14px 0 0 -20px}
+:root[data-world="void"] .world-pointer-lens::before {
+  inset:4px 7px;border:0;border-left:1px solid currentColor;border-right:1px solid currentColor;
+  clip-path:polygon(0 0,100% 16%,88% 100%,13% 84%)
+}
+:root[data-world="void"] .world-pointer-lens::after {width:7px;height:1px;box-shadow:0 0 8px currentColor}
+:root[data-world="void"] .world-pointer-lens.active {animation:world-pointer-void 1.9s steps(4,end) infinite}
+@keyframes world-pointer-void {50%{opacity:.78;scale:1.05}}
+
+/* Astral: orbital cursor field. */
+:root[data-world="astral"] .world-pointer-lens {width:42px;height:42px;margin:-21px 0 0 -21px}
+:root[data-world="astral"] .world-pointer-lens::before {inset:6px;border-radius:50%;transform:scaleY(.56) rotate(-18deg)}
+:root[data-world="astral"] .world-pointer-lens::after {width:4px;height:4px;border-radius:50%;background:#e5f8ff;box-shadow:0 0 5px #e5f8ff,0 0 12px currentColor}
+:root[data-world="astral"] .world-pointer-lens i {transform:rotate(52deg)}
+:root[data-world="astral"] .world-pointer-lens b {transform:rotate(-24deg)}
+:root[data-world="astral"] .world-pointer-lens.active {animation:world-pointer-astral 5.5s linear infinite}
+@keyframes world-pointer-astral {to{rotate:360deg}}
+
+:root[data-visual-resolved="light"] .world-pointer-lens,
+:root[data-experience="focus"] .world-pointer-lens,
+:root[data-motion="off"] .world-pointer-lens {display:none!important}
+@media (pointer:coarse) {.world-pointer-lens {display:none!important}}
+@media (max-width:1100px) {.world-pointer-lens {display:none!important}}
+@media (prefers-reduced-motion:reduce) {.world-pointer-lens {display:none!important}}
+@media (forced-colors:active) {.world-pointer-lens {display:none!important}}
