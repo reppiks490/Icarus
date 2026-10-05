@@ -199,6 +199,7 @@
     scenery.className = 'world-scene'; scenery.hidden = true;
     scenery.setAttribute('aria-label', 'ICARUS visual world');
     scenery.innerHTML = `<div class="world-art" aria-hidden="true"></div>
+      <div class="world-preview" aria-hidden="true"><i></i><b></b></div>
       <div class="world-orbit" aria-hidden="true"><i></i><i></i><i></i><b>◇</b></div>
       <div class="world-coordinate" aria-hidden="true">ECLIPSE LOOM <span id="worldCoordinatePhase">CROWN / LIGHT / INFINITY</span></div>
       <div class="world-scene-threshold" aria-hidden="true"><i></i><b></b><span></span></div>
@@ -211,10 +212,27 @@
         <button type="button" data-world-choice="astral">03 <span>Astral</span></button>
       </div></div><div class="world-edition" aria-hidden="true"><span id="worldMark"></span> / ICARUS WORLDS</div>`;
     document.getElementById('view').insertAdjacentElement('beforebegin', scenery);
-    for (const button of scenery.querySelectorAll('[data-world-choice]')) button.addEventListener('click', () => {
-      select.value = button.dataset.worldChoice;
-      select.dispatchEvent(new Event('change'));
-    });
+    const preview=scenery.querySelector('.world-preview');
+    const clearWorldPreview=()=>{
+      if(!preview)return;preview.classList.remove('active');preview.removeAttribute('data-preview-world');preview.style.removeProperty('--preview-art');
+      scenery.removeAttribute('data-preview-world');
+    };
+    const showWorldPreview=id=>{
+      if(!preview||!worlds[id]||id===root.dataset.world)return clearWorldPreview();
+      preview.dataset.previewWorld=id;preview.style.setProperty('--preview-art',`url('/worlds/${id}.webp')`);
+      scenery.dataset.previewWorld=id;preview.classList.add('active');
+    };
+    for (const button of scenery.querySelectorAll('[data-world-choice]')) {
+      button.addEventListener('pointerenter',()=>showWorldPreview(button.dataset.worldChoice),{passive:true});
+      button.addEventListener('pointerleave',clearWorldPreview,{passive:true});
+      button.addEventListener('focus',()=>showWorldPreview(button.dataset.worldChoice));
+      button.addEventListener('blur',clearWorldPreview);
+      button.addEventListener('click', () => {
+        clearWorldPreview();
+        select.value = button.dataset.worldChoice;
+        select.dispatchEvent(new Event('change'));
+      });
+    }
     for (const [id, key, values, fallback] of [
       ['experienceMode', 'experience', ['cinematic', 'balanced', 'focus'], 'cinematic'],
       ['experienceAccent', 'accent', ['world', 'gold', 'ice', 'amethyst'], 'world'],
