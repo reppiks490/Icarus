@@ -112,6 +112,7 @@ assert.equal((await page.locator('[data-world-mobile-view]').textContent()).trim
 assert.equal(await page.locator('.world-depth-rail').first().isVisible(),false);
 assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
 await page.screenshot({path:`${output}/depth-mobile.png`,fullPage:true});
+await page.locator('.experience-settings summary').click();
 await page.locator('#experienceReplay').click();await page.keyboard.press('Escape');assert.equal(await page.locator('#view').evaluate(e=>e.inert),false);
 await page.emulateMedia({reducedMotion:'reduce'});await page.locator('#experienceReplay').click();assert.equal(await page.locator('.world-intro').count(),0);
 // Missing WebGL is a supported rendering path, independently of available canvas2D.
