@@ -134,6 +134,11 @@ await page.waitForFunction(()=>document.querySelector('[data-render-view]')?.tex
 assert.equal((await page.locator('[data-world-gate-label]').textContent()).trim(),'SYSTEM');
 assert.equal((await page.locator('.world-view-insignia b').textContent()).trim(),'SYSTEM');
 assert.equal((await page.locator('.world-view-insignia i').textContent()).trim(),'⌬');
+await page.waitForTimeout(820);
+assert.equal(await page.locator('.world-view-insignia').evaluate(el=>el.classList.contains('world-view-insignia-shift')),false);
+await page.evaluate(()=>window.IcarusExperience.update({uptime_sec:999999,assets:[]},'system'));
+await page.waitForTimeout(60);
+assert.equal(await page.locator('.world-view-insignia').evaluate(el=>el.classList.contains('world-view-insignia-shift')),false,'same-view polling must not replay subsystem insignia animation');
 assert.notEqual((await page.locator('[data-world-view-index]').textContent()).trim(),overviewIndex);
 await page.locator('[data-v="overview"]').click();
 await page.waitForFunction(()=>document.documentElement.dataset.worldView==='overview');
