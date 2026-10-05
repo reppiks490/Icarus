@@ -41,3 +41,15 @@ def test_immersion_runtime_keeps_motion_and_visibility_gates():
         "root.dataset.introActive!=='true'",
     ):
         assert guard in source
+
+
+def test_adaptive_brain_visuals_follow_world_tokens():
+    source = (ROOT / "icarus_engine" / "brain-ui.js").read_text(encoding="utf-8")
+    for fixed in (
+        "rgba(86,225,255,.16)",
+        "rgba(145,92,255,.12)",
+        "rgba(95,232,255,.35)",
+        "background:#67e8f9",
+    ):
+        assert fixed not in source
+    assert "var(--view-accent" in source
