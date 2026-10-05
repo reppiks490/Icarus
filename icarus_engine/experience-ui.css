@@ -3779,3 +3779,130 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 @media (prefers-reduced-motion:reduce) {
   .world-view-shift .world-mobile-hud {animation:none!important}
 }
+
+
+/* Phase XXXI: the opening dissolves into the live cockpit instead of cutting to a separate application. */
+.world-handoff {
+  position:fixed;inset:0;z-index:99;pointer-events:none;overflow:hidden;isolation:isolate;
+  color:var(--world-glow);animation:world-handoff-divine 900ms cubic-bezier(.16,.8,.2,1) both;
+}
+.world-handoff::before,.world-handoff::after,.world-handoff > * {content:"";position:absolute;display:block;pointer-events:none}
+.world-handoff::before {
+  inset:0;background:
+    radial-gradient(ellipse at 50% 46%,color-mix(in srgb,var(--world-glow),transparent 79%),transparent 31%),
+    linear-gradient(180deg,#0000 0 58%,color-mix(in srgb,var(--page),transparent 22%) 100%);
+}
+.world-handoff::after {
+  left:-8%;right:-8%;top:50%;height:1px;
+  background:linear-gradient(90deg,transparent,var(--world-glow),#fff,var(--world-glow),transparent);
+  box-shadow:0 0 24px color-mix(in srgb,var(--world-glow),transparent 30%),0 0 74px color-mix(in srgb,var(--world-glow),transparent 72%);
+}
+.world-handoff > i {
+  left:50%;top:46%;width:min(44vw,520px);aspect-ratio:1;transform:translate(-50%,-50%) rotate(45deg);
+  border:1px solid color-mix(in srgb,var(--world-glow),transparent 42%);
+  box-shadow:0 0 0 34px color-mix(in srgb,var(--world-glow),transparent 95%),0 0 0 68px color-mix(in srgb,var(--world-glow),transparent 97%);
+}
+.world-handoff > b {
+  left:50%;top:46%;width:min(22vw,240px);aspect-ratio:1;transform:translate(-50%,-50%);
+  border:1px solid color-mix(in srgb,var(--world-glow),transparent 35%);border-radius:50%;
+}
+.world-handoff > span {
+  left:50%;top:46%;width:8px;height:8px;transform:translate(-50%,-50%) rotate(45deg);
+  background:color-mix(in srgb,var(--world-glow),#fff 22%);box-shadow:0 0 10px #fff,0 0 34px var(--world-glow);
+}
+.world-handoff > em {
+  left:50%;bottom:10%;width:min(68vw,860px);height:1px;transform:translateX(-50%);
+  background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--world-glow),transparent 46%),transparent);
+}
+
+/* Void exits by fracture rather than the Divine convergence. */
+.world-handoff[data-world="void"] {animation-name:world-handoff-void;color:#ed1d56}
+.world-handoff[data-world="void"] > i {
+  width:min(56vw,700px);aspect-ratio:1.65/1;border-radius:0;transform:translate(-50%,-50%) skewX(-12deg) rotate(-4deg);
+  clip-path:polygon(0 9%,81% 0,100% 28%,89% 100%,14% 91%);
+  box-shadow:inset 0 0 44px color-mix(in srgb,#ed1d56,transparent 84%);
+}
+.world-handoff[data-world="void"] > b {border-radius:2px;transform:translate(-50%,-50%) rotate(45deg)}
+.world-handoff[data-world="void"]::after {transform:skewY(-3deg);background:linear-gradient(90deg,transparent,#ed1d56,#fff4,#ed1d56,transparent)}
+
+/* Astral collapses along orbital lenses. */
+.world-handoff[data-world="astral"] {animation-name:world-handoff-astral;color:#8d64f9}
+.world-handoff[data-world="astral"] > i {
+  border-radius:50%;transform:translate(-50%,-50%) rotate(-15deg) scaleY(.42);
+  box-shadow:0 0 0 32px color-mix(in srgb,#bceaff,transparent 96%),0 0 0 72px color-mix(in srgb,#8d64f9,transparent 97%);
+}
+.world-handoff[data-world="astral"] > b {transform:translate(-50%,-50%) rotate(34deg) scaleY(.56)}
+.world-handoff[data-world="astral"] > span {border-radius:50%;transform:translate(-50%,-50%);background:#e6f8ff}
+
+@keyframes world-handoff-divine {
+  0%{opacity:.96;filter:brightness(1.28)}
+  30%{opacity:.78}
+  72%{opacity:.28;filter:brightness(1)}
+  100%{opacity:0;visibility:hidden}
+}
+@keyframes world-handoff-void {
+  0%{opacity:.94;filter:contrast(1.45) brightness(1.08);clip-path:inset(0)}
+  34%{opacity:.78;translate:-5px 0}
+  70%{opacity:.28;translate:14px 0;clip-path:inset(0 0 0 12%)}
+  100%{opacity:0;translate:32px 0;clip-path:inset(0 0 0 96%);visibility:hidden}
+}
+@keyframes world-handoff-astral {
+  0%{opacity:.94;filter:blur(0) saturate(1.22);scale:1.04}
+  38%{opacity:.68;scale:1}
+  75%{opacity:.25;filter:blur(2px);scale:.985}
+  100%{opacity:0;filter:blur(7px);scale:.96;visibility:hidden}
+}
+
+/* The hero has a real threshold where cinematic space hands into the instrument deck. */
+.world-scene-threshold {
+  position:absolute;z-index:2;pointer-events:none;left:18px;right:18px;bottom:0;height:76px;overflow:hidden;opacity:.58;
+  mask-image:linear-gradient(180deg,transparent 0,#000 34%,#000 100%);
+}
+.world-scene-threshold::before,.world-scene-threshold::after,.world-scene-threshold > * {content:"";position:absolute;display:block}
+.world-scene-threshold::before {
+  left:50%;bottom:-1px;width:78%;height:1px;transform:translateX(-50%);
+  background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--world-glow),transparent 34%),transparent);
+  box-shadow:0 0 12px color-mix(in srgb,var(--world-glow),transparent 60%);
+}
+.world-scene-threshold::after {
+  left:50%;bottom:-54px;width:min(74vw,980px);height:80px;transform:translateX(-50%) perspective(520px) rotateX(64deg);
+  border:1px solid color-mix(in srgb,var(--world-glow),transparent 77%);border-radius:50%;
+}
+.world-scene-threshold > i {left:16%;bottom:10px;width:68%;height:1px;background:linear-gradient(90deg,transparent,var(--world-glow),transparent);opacity:.34}
+.world-scene-threshold > b {left:50%;bottom:4px;width:7px;height:7px;transform:translateX(-50%) rotate(45deg);border:1px solid var(--world-glow)}
+.world-scene-threshold > span {left:50%;bottom:-8px;width:1px;height:46px;background:linear-gradient(var(--world-glow),transparent);opacity:.38}
+
+:root[data-world="divine"] .world-scene-threshold {
+  background:repeating-linear-gradient(90deg,transparent 0 87px,color-mix(in srgb,#f5ce7a,transparent 95%) 88px,transparent 89px 146px);
+}
+:root[data-world="void"] .world-scene-threshold {
+  opacity:.7;background:
+    linear-gradient(109deg,transparent 0 30%,#ed1d5610 30.2% 30.5%,transparent 30.8%),
+    repeating-linear-gradient(90deg,transparent 0 102px,#ed1d5609 103px,transparent 104px 171px);
+}
+:root[data-world="void"] .world-scene-threshold::after {border-radius:2px;transform:translateX(-50%) skewX(-10deg);width:min(72vw,900px);bottom:3px;height:24px;border-style:dashed}
+:root[data-world="void"] .world-scene-threshold > b {width:10px;height:1px;transform:translateX(-50%);background:#ed1d56}
+
+:root[data-world="astral"] .world-scene-threshold {
+  opacity:.62;background:
+    radial-gradient(circle at 12% 68%,#dff8ff66 0 1px,transparent 1.6px),
+    radial-gradient(circle at 78% 43%,#bceaff55 0 1px,transparent 1.6px);
+  background-size:107px 97px,149px 137px;
+}
+:root[data-world="astral"] .world-scene-threshold::after {border-color:color-mix(in srgb,#bceaff,transparent 70%);transform:translateX(-50%) perspective(520px) rotateX(69deg) rotateZ(-2deg)}
+:root[data-world="astral"] .world-scene-threshold > b {border-radius:50%;transform:translateX(-50%);background:#e8f9ff;box-shadow:0 0 6px #e8f9ff,0 0 12px #8d64f9}
+
+:root[data-world]:not([data-world=""])[data-experience="cinematic"][data-motion="live"][data-visual-resolved="rich"] .world-scene-threshold::after {
+  animation:world-scene-threshold-drift 12s ease-in-out infinite alternate;
+}
+:root[data-world="void"][data-experience="cinematic"][data-motion="live"][data-visual-resolved="rich"] .world-scene-threshold::after {animation-duration:7s}
+:root[data-world="astral"][data-experience="cinematic"][data-motion="live"][data-visual-resolved="rich"] .world-scene-threshold::after {animation-duration:18s}
+@keyframes world-scene-threshold-drift {from{opacity:.34;filter:brightness(.85)}to{opacity:.72;filter:brightness(1.14)}}
+:root[data-visual-resolved="light"] .world-scene-threshold {opacity:.24}
+:root[data-experience="focus"] .world-scene-threshold {display:none}
+@media (max-width:760px) {.world-scene-threshold {left:7px;right:7px;height:52px;opacity:.28}.world-scene-threshold::after{animation:none!important}}
+@media (prefers-reduced-motion:reduce) {
+  .world-handoff {display:none!important}
+  .world-scene-threshold::after {animation:none!important}
+}
+@media (forced-colors:active) {.world-handoff,.world-scene-threshold {display:none!important}}
