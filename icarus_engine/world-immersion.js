@@ -336,6 +336,13 @@
     impact.style.setProperty('--impact-x',Math.max(0,Math.min(100,(event.clientX-rect.left)/rect.width*100)).toFixed(1)+'%');
     impact.style.setProperty('--impact-y',Math.max(0,Math.min(100,(event.clientY-rect.top)/rect.height*100)).toFixed(1)+'%');
     target.appendChild(impact);
+    const panel=target.closest?.('[data-world-topology-node]'),nodeId=panel?.dataset.worldTopologyNode;
+    if(topology&&nodeId!=null){
+      const linked=[...topology.querySelectorAll(`path[data-from="${nodeId}"],path[data-to="${nodeId}"],circle[data-node="${nodeId}"]`)];
+      linked.forEach(el=>el.classList.add('impact'));
+      topology.classList.remove('world-topology-impact');void topology.getBoundingClientRect();topology.classList.add('world-topology-impact');
+      setTimeout(()=>{linked.forEach(el=>el.classList.remove('impact'));topology?.classList.remove('world-topology-impact');},720);
+    }
     let cleaned=false;
     const cleanup=()=>{
       if(cleaned)return;cleaned=true;impact.remove();
