@@ -153,6 +153,12 @@ assert.match((await page.locator('[data-world-mobile-index]').textContent()).tri
 assert.equal(await page.locator('.world-depth-rail').first().isVisible(),false);
 assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
 await page.screenshot({path:`${output}/depth-mobile.png`,fullPage:true});
+await page.setViewportSize({width:1280,height:900});
+await page.emulateMedia({forcedColors:'active'});
+await page.waitForTimeout(80);
+assert.equal(await page.locator('.world-view-ambient').evaluate(el=>getComputedStyle(el).display),'none');
+assert.equal(await page.locator('.world-topology').evaluate(el=>getComputedStyle(el).display),'none');
+await page.emulateMedia({forcedColors:'none'});
 await page.locator('.experience-settings summary').click();
 await page.locator('#experienceReplay').click();await page.keyboard.press('Escape');assert.equal(await page.locator('#view').evaluate(e=>e.inert),false);
 await page.emulateMedia({reducedMotion:'reduce'});await page.locator('#experienceReplay').click();assert.equal(await page.locator('.world-intro').count(),0);
