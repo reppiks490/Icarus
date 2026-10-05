@@ -2556,3 +2556,31 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 @media (prefers-reduced-motion:reduce) {
   #view .empty.world-loading-state,#view .empty.world-loading-state::before,#view .empty.world-error-state {animation:none!important}
 }
+
+
+/* Render diagnostics expose the active visual budget inside the appearance cockpit. */
+.experience-render-status {
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;margin:10px 0 8px;padding:9px;
+  border:1px solid color-mix(in srgb,var(--active-view-accent,var(--world-glow)),var(--ring) 74%);
+  border-radius:10px;background:
+    linear-gradient(135deg,color-mix(in srgb,var(--active-view-accent,var(--world-glow)),transparent 95%),transparent 54%),
+    color-mix(in srgb,var(--surface-2) 84%,transparent);
+  box-shadow:inset 0 1px 0 #ffffff0b;
+}
+.experience-render-status span {
+  position:relative;padding-left:10px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font:600 7px/1.35 ui-monospace,Consolas,monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2);
+}
+.experience-render-status span::before {
+  content:"";position:absolute;left:0;top:50%;width:4px;height:4px;transform:translateY(-50%) rotate(45deg);
+  background:color-mix(in srgb,var(--active-view-accent,var(--world-glow)),transparent 22%);
+  box-shadow:0 0 6px color-mix(in srgb,var(--active-view-accent,var(--world-glow)),transparent 38%);
+}
+.experience-render-status [data-render-tier],
+.experience-render-status [data-render-aura] {color:color-mix(in srgb,var(--active-view-accent,var(--world-glow)),#fff 18%)}
+:root[data-world="void"] .experience-render-status {border-radius:2px;clip-path:polygon(5px 0,100% 0,100% calc(100% - 5px),calc(100% - 5px) 100%,0 100%,0 5px)}
+:root[data-world="void"] .experience-render-status span::before {transform:translateY(-50%);width:5px;height:1px}
+:root[data-world="astral"] .experience-render-status {border-radius:14px}
+:root[data-world="astral"] .experience-render-status span::before {border-radius:50%;transform:translateY(-50%);background:#dff5ff}
+:root[data-visual-resolved="light"] .experience-render-status {background:var(--surface-2)}
+@media (max-width:430px) {.experience-render-status {grid-template-columns:1fr}.experience-render-status span{font-size:6.5px}}
