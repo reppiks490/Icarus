@@ -55,6 +55,8 @@ assert.ok(await card.evaluate(el=>el.style.getPropertyValue('--panel-x')));
 assert.ok(await card.evaluate(el=>el.style.getPropertyValue('--panel-tilt-y')));
 assert.equal(await page.locator('html').getAttribute('data-world-immersion'),'ready');
 assert.equal(await page.locator('.world-depth-frame').count(),1);
+assert.equal(await page.locator('.world-view-ambient').count(),1);
+assert.equal(await page.locator('.world-view-ambient i').count(),12);
 assert.equal(await page.locator('html').getAttribute('data-world-view'),'overview');
 if(await page.locator('#view .tile').count()) assert.equal(await page.locator('#view .tile').first().getAttribute('data-world-depth-observed'),'1');
 // Rapid deliberate navigation must clean its transient gate/impact DOM rather than accumulate effects.
