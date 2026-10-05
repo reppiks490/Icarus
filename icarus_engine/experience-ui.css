@@ -3464,3 +3464,60 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 }
 :root[data-visual-resolved="light"] #view code {box-shadow:none;text-shadow:none}
 @media (forced-colors:active) {:root[data-world] #view code {color:CanvasText!important;background:Canvas!important;border-color:CanvasText!important}}
+
+
+/* Phase XIV: the scenic world now announces the active subsystem instead of remaining a static hero. */
+.world-view-insignia {
+  position:absolute;z-index:3;right:28px;top:24px;display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto auto;
+  align-items:center;gap:2px 8px;min-width:150px;max-width:260px;padding:8px 11px 8px 9px;
+  border:1px solid color-mix(in srgb,var(--active-view-accent,var(--world-glow)),transparent 62%);
+  background:color-mix(in srgb,var(--surface) 48%,transparent);color:var(--ink-2);
+  box-shadow:0 12px 32px #0004,inset 0 1px 0 #ffffff10,0 0 18px color-mix(in srgb,var(--active-view-accent,var(--world-glow)),transparent 94%);
+  -webkit-backdrop-filter:blur(12px) saturate(125%);backdrop-filter:blur(12px) saturate(125%);
+  pointer-events:none;
+}
+.world-view-insignia > span {
+  grid-column:2;font:600 6px/1 ui-monospace,Consolas,monospace;letter-spacing:.22em;text-transform:uppercase;opacity:.48
+}
+.world-view-insignia > i {
+  grid-row:1/3;display:grid;place-items:center;width:28px;height:28px;
+  color:var(--active-view-accent,var(--world-glow));font:400 18px/1 Georgia,'Times New Roman',serif;font-style:normal;
+  text-shadow:0 0 12px color-mix(in srgb,var(--active-view-accent,var(--world-glow)),transparent 38%)
+}
+.world-view-insignia > b {
+  grid-column:2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font:600 8px/1.1 ui-monospace,Consolas,monospace;letter-spacing:.12em;text-transform:uppercase;color:color-mix(in srgb,var(--active-view-accent,var(--world-glow)),#fff 18%)
+}
+.world-view-insignia-shift {animation:world-scene-view-shift 720ms cubic-bezier(.16,.8,.2,1) both}
+@keyframes world-scene-view-shift {
+  0%{opacity:.16;transform:translateY(-8px) scale(.96);filter:blur(3px)}
+  42%{opacity:1;filter:none}
+  100%{opacity:.82;transform:none}
+}
+
+/* Divine: ordered heraldic plaque. */
+:root[data-world="divine"] .world-view-insignia {border-radius:12px 12px 4px 4px}
+:root[data-world="divine"] .world-view-insignia > i {border:1px solid color-mix(in srgb,var(--active-view-accent),transparent 44%);transform:rotate(45deg)}
+:root[data-world="divine"] .world-view-insignia > i::first-letter {transform:rotate(-45deg)}
+
+/* Void: fractured transmission plate. */
+:root[data-world="void"] .world-view-insignia {
+  border-radius:1px;clip-path:polygon(7px 0,100% 0,100% calc(100% - 7px),calc(100% - 7px) 100%,0 100%,0 7px);
+  background:linear-gradient(112deg,color-mix(in srgb,var(--active-view-accent),transparent 88%),transparent 32%),#09070bd6
+}
+:root[data-world="void"] .world-view-insignia > i {border-left:1px solid var(--active-view-accent);border-right:1px solid color-mix(in srgb,var(--active-view-accent),transparent 62%)}
+
+/* Astral: orbital observatory tag. */
+:root[data-world="astral"] .world-view-insignia {border-radius:999px;padding-right:15px}
+:root[data-world="astral"] .world-view-insignia > i {
+  border:1px solid color-mix(in srgb,var(--active-view-accent),transparent 48%);border-radius:50%;
+  box-shadow:0 0 0 4px color-mix(in srgb,var(--active-view-accent),transparent 94%),0 0 12px color-mix(in srgb,var(--active-view-accent),transparent 72%)
+}
+
+:root[data-visual-resolved="light"] .world-view-insignia {
+  -webkit-backdrop-filter:none!important;backdrop-filter:none!important;background:color-mix(in srgb,var(--surface) 94%,transparent);box-shadow:inset 0 1px 0 #ffffff08
+}
+:root[data-experience="focus"] .world-view-insignia {display:none}
+@media (max-width:900px) {.world-view-insignia {display:none!important}}
+@media (prefers-reduced-motion:reduce) {.world-view-insignia-shift {animation:none!important}}
+@media (forced-colors:active) {.world-view-insignia {display:none!important}}
