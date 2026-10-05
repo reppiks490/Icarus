@@ -1589,3 +1589,64 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 @keyframes world-empty-scan {0%,100%{background-position:120% 0,0 0}50%{background-position:-20% 0,0 0}}
 :root[data-visual-resolved="light"] #view :is(.card,.group) > .empty {animation:none!important;background:var(--surface-2)}
 @media (prefers-reduced-motion:reduce) {:root[data-world] #view :is(.card,.group) > .empty {animation:none!important}}
+
+
+/* Phase VI: scroll-reactive atmospheric depth planes. These are fixed decorative planes only. */
+.world-depth-atmosphere {position:fixed;inset:0;z-index:-1;pointer-events:none;overflow:hidden;opacity:.52;contain:layout paint}
+.world-depth-atmosphere > * {position:absolute;display:block;pointer-events:none;will-change:transform,opacity}
+.world-depth-atmosphere .near {
+  left:-8vw;right:-8vw;top:38%;height:1px;
+  background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--world-glow),transparent 86%) 12%,color-mix(in srgb,var(--world-glow),transparent 58%) 50%,color-mix(in srgb,var(--world-glow),transparent 86%) 88%,transparent);
+  box-shadow:0 0 calc(6px + var(--world-scroll-glow,0px)) color-mix(in srgb,var(--world-glow),transparent 72%);
+  transform:translate3d(calc(var(--world-pointer-x,0) * -12px),calc(var(--world-scroll,0) * -24px),0) scaleX(calc(.82 + var(--world-scroll,0) * .18));
+  opacity:calc(.12 + var(--world-scroll,0) * .42);
+}
+.world-depth-atmosphere .mid {
+  left:12%;right:12%;top:58%;height:18vh;min-height:110px;
+  border-top:1px solid color-mix(in srgb,var(--world-glow),transparent 91%);
+  border-radius:50% 50% 0 0;
+  transform:perspective(700px) rotateX(72deg) translate3d(calc(var(--world-pointer-x,0) * 8px),calc(var(--world-scroll,0) * -18px),0) scale(calc(.86 + var(--world-scroll,0) * .14));
+  opacity:calc(.08 + var(--world-scroll,0) * .28);
+  box-shadow:inset 0 12px 50px color-mix(in srgb,var(--world-glow),transparent 97%);
+}
+.world-depth-atmosphere .far {
+  inset:9% 16% auto;aspect-ratio:2.5/1;border:1px solid color-mix(in srgb,var(--world-glow),transparent 95%);
+  border-radius:50%;
+  transform:translate3d(calc(var(--world-pointer-x,0) * 5px),calc(var(--world-scroll,0) * -9px),0) scale(calc(.92 + var(--world-scroll,0) * .08));
+  opacity:calc(.04 + var(--world-scroll,0) * .13);
+}
+.world-depth-atmosphere b {
+  left:50%;bottom:-18vh;width:min(84vw,1180px);aspect-ratio:1;transform:translateX(-50%) rotate(45deg) scale(calc(.72 + var(--world-scroll,0) * .16));
+  border:1px solid color-mix(in srgb,var(--world-glow),transparent 97%);opacity:calc(.03 + var(--world-scroll,0) * .12);
+}
+
+:root[data-world="divine"] .world-depth-atmosphere .mid {
+  border-top-color:color-mix(in srgb,#f5ce7a,transparent 86%);
+  box-shadow:inset 0 28px 76px #f5ce7a09,0 -10px 70px #d5ab5807;
+}
+:root[data-world="divine"] .world-depth-atmosphere .far {
+  border-style:double;border-color:color-mix(in srgb,#f5ce7a,transparent 92%);
+}
+:root[data-world="void"] .world-depth-atmosphere .near {
+  background:linear-gradient(90deg,transparent 0 8%,color-mix(in srgb,var(--world-glow),transparent 68%) 9% 10%,transparent 11% 47%,#fff3 49%,color-mix(in srgb,var(--world-glow),transparent 45%) 50%,transparent 53% 87%,color-mix(in srgb,var(--world-glow),transparent 70%) 88% 89%,transparent 90%);
+  filter:drop-shadow(0 0 8px color-mix(in srgb,var(--world-glow),transparent 58%));
+}
+:root[data-world="void"] .world-depth-atmosphere .mid {border-radius:0;clip-path:polygon(4% 0,100% 0,89% 100%,0 74%);transform:skewX(-9deg) translate3d(calc(var(--world-pointer-x,0) * 8px),calc(var(--world-scroll,0) * -18px),0)}
+:root[data-world="void"] .world-depth-atmosphere .far {border-radius:2px;transform:translate3d(calc(var(--world-pointer-x,0) * -5px),calc(var(--world-scroll,0) * -10px),0) rotate(-8deg) skewX(-12deg)}
+:root[data-world="astral"] .world-depth-atmosphere .near {background:linear-gradient(90deg,transparent,color-mix(in srgb,#bceaff,transparent 84%) 17%,color-mix(in srgb,#9570ff,transparent 61%) 50%,color-mix(in srgb,#bceaff,transparent 84%) 83%,transparent)}
+:root[data-world="astral"] .world-depth-atmosphere .mid {border-radius:50%;border:1px solid color-mix(in srgb,#bceaff,transparent 92%);box-shadow:0 0 60px #9570ff08,inset 0 0 70px #73e5ff07}
+:root[data-world="astral"] .world-depth-atmosphere .far {border-style:dashed;border-color:color-mix(in srgb,#bceaff,transparent 88%);box-shadow:0 0 48px #9570ff0a}
+
+:root[data-scroll-phase="crown"] .world-depth-atmosphere {opacity:.18}
+:root[data-scroll-phase="descent"] .world-depth-atmosphere {opacity:.42}
+:root[data-scroll-phase="depth"] .world-depth-atmosphere {opacity:.64}
+:root[data-scroll-phase="abyss"] .world-depth-atmosphere {opacity:.78}
+:root[data-visual-resolved="light"] .world-depth-atmosphere {opacity:.12}
+:root[data-experience="focus"] .world-depth-atmosphere,
+:root[data-motion="off"] .world-depth-atmosphere {display:none}
+@media (max-width:760px) {
+  .world-depth-atmosphere {opacity:.22}
+  .world-depth-atmosphere .mid {left:4%;right:4%;top:64%}
+  .world-depth-atmosphere .far,.world-depth-atmosphere b {display:none}
+}
+@media (prefers-reduced-motion:reduce) {.world-depth-atmosphere {display:none!important}}
