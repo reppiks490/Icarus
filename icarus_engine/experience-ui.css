@@ -2499,3 +2499,60 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 :root[data-experience="focus"] .world-nav-trail {display:none}
 @media (max-width:1100px) {.world-nav-trail {display:none!important}}
 @media (prefers-reduced-motion:reduce) {.world-nav-trail span {transition:none!important}}
+
+
+/* State readouts distinguish waiting, unavailable and failure without inventing market activity. */
+:root[data-world]:not([data-world=""]) #view .empty.world-loading-state {
+  border-style:solid;
+  background:
+    linear-gradient(100deg,transparent 0 22%,color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 88%) 38%,transparent 54%),
+    color-mix(in srgb,var(--surface-2) 74%,transparent);
+  background-size:230% 100%,100% 100%;
+  color:color-mix(in srgb,var(--ink-2),var(--view-accent,var(--world-glow)) 14%);
+}
+:root[data-world]:not([data-world=""]) #view .empty.world-loading-state::before {
+  content:"";width:9px;height:9px;border:1px solid color-mix(in srgb,var(--view-accent,var(--world-glow)),#fff 12%);
+  border-top-color:transparent;border-radius:50%;
+}
+:root[data-world="void"] #view .empty.world-loading-state::before {border-radius:1px}
+:root[data-world="astral"] #view .empty.world-loading-state::before {box-shadow:0 0 7px #dff5ff,0 0 12px var(--view-accent,var(--world-glow))}
+:root[data-world]:not([data-world=""])[data-motion="live"][data-experience="cinematic"] #view .empty.world-loading-state {
+  animation:world-readout-loading 2.2s linear infinite;
+}
+:root[data-world]:not([data-world=""])[data-motion="live"][data-experience="cinematic"] #view .empty.world-loading-state::before {
+  animation:world-readout-spinner .8s linear infinite;
+}
+@keyframes world-readout-loading {to{background-position:-130% 0,0 0}}
+@keyframes world-readout-spinner {to{transform:translateY(-50%) rotate(360deg)}}
+
+:root[data-world]:not([data-world=""]) #view .empty.world-unavailable-state {
+  border-style:dashed;opacity:.82;
+  background:
+    repeating-linear-gradient(135deg,color-mix(in srgb,var(--muted),transparent 98%) 0 7px,transparent 7px 15px),
+    color-mix(in srgb,var(--surface-2) 76%,transparent);
+}
+:root[data-world]:not([data-world=""]) #view .empty.world-unavailable-state::before {
+  content:"—";color:color-mix(in srgb,var(--muted),var(--view-accent,var(--world-glow)) 24%);box-shadow:none;text-shadow:none;
+}
+:root[data-world="void"] #view .empty.world-unavailable-state::before {content:"×"}
+:root[data-world="astral"] #view .empty.world-unavailable-state::before {content:"○"}
+
+:root[data-world]:not([data-world=""]) #view .empty.world-error-state {
+  border-color:color-mix(in srgb,var(--crit),var(--ring) 38%);
+  background:
+    linear-gradient(100deg,color-mix(in srgb,var(--crit),transparent 90%),transparent 48%),
+    color-mix(in srgb,var(--surface-2) 72%,transparent);
+  color:color-mix(in srgb,var(--crit),#fff 18%);
+  box-shadow:inset 2px 0 0 color-mix(in srgb,var(--crit),transparent 18%),0 0 18px color-mix(in srgb,var(--crit),transparent 92%);
+}
+:root[data-world]:not([data-world=""]) #view .empty.world-error-state::before {content:"!";color:var(--crit)}
+:root[data-world]:not([data-world=""])[data-motion="live"][data-experience="cinematic"] #view .empty.world-error-state {
+  animation:world-readout-error 1.8s ease-in-out 2;
+}
+@keyframes world-readout-error {0%,100%{filter:none}45%{filter:brightness(1.12)}60%{filter:brightness(.94)}}
+
+:root[data-visual-resolved="light"] #view .empty.world-loading-state,
+:root[data-visual-resolved="light"] #view .empty.world-error-state {animation:none!important;background-size:auto!important}
+@media (prefers-reduced-motion:reduce) {
+  #view .empty.world-loading-state,#view .empty.world-loading-state::before,#view .empty.world-error-state {animation:none!important}
+}
