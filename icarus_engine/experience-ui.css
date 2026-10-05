@@ -3729,3 +3729,20 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
   #view :is(.brain-core,.px-box,.psi-meter,.pan-field,.evo-sub)::before,
   #view :is(.brain-core,.px-box,.psi-meter,.pan-field,.evo-sub)::after {animation:none!important}
 }
+
+
+/* Section radar doubles as a truthful page-depth instrument; progress comes only from actual scroll position. */
+.world-section-radar::before {
+  content:"";position:absolute;right:4px;top:10px;bottom:10px;width:1px;pointer-events:none;
+  background:linear-gradient(180deg,transparent,color-mix(in srgb,var(--active-view-accent,var(--world-glow)),transparent 84%) 8% 92%,transparent);
+  opacity:.55;
+}
+.world-section-radar::after {
+  content:"";position:absolute;right:3px;top:10px;width:3px;height:var(--radar-scroll,0%);max-height:calc(100% - 20px);pointer-events:none;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--active-view-accent,var(--world-glow)),#fff 16%),var(--active-view-accent,var(--world-glow)),transparent);
+  box-shadow:0 0 7px color-mix(in srgb,var(--active-view-accent,var(--world-glow)),transparent 38%);
+  border-radius:99px;transition:height .12s linear;
+}
+:root[data-world="void"] .world-section-radar::after {width:2px;border-radius:0;box-shadow:0 0 9px color-mix(in srgb,var(--crit),transparent 38%)}
+:root[data-world="astral"] .world-section-radar::after {width:4px;border-radius:50%;box-shadow:0 0 5px #dff5ff,0 0 10px var(--active-view-accent)}
+@media (prefers-reduced-motion:reduce) {.world-section-radar::after {transition:none!important}}
