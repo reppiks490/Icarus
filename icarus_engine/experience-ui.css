@@ -3524,3 +3524,37 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 @media (max-width:900px) {.world-view-insignia {display:none!important}}
 @media (prefers-reduced-motion:reduce) {.world-view-insignia-shift {animation:none!important}}
 @media (forced-colors:active) {.world-view-insignia {display:none!important}}
+
+
+/* Phase XXVII: glass now has internal optical depth, not only a tilted outer rectangle. */
+:root[data-world]:not([data-world=""])[data-visual-resolved="rich"]:not([data-experience="focus"]) #view :is(.card,.asset,.group).world-lit > h2 {
+  translate:var(--panel-dx,0px) var(--panel-dy,0px);
+  transform:translateZ(12px);
+  text-shadow:0 0 18px color-mix(in srgb,var(--panel-kind-accent,var(--view-accent,var(--world-glow))),transparent 88%);
+  transition:translate .12s ease-out,text-shadow .18s ease;
+}
+:root[data-world]:not([data-world=""])[data-visual-resolved="rich"]:not([data-experience="focus"]) #view :is(.card,.asset,.group).world-lit > .world-surface-sigil {
+  translate:var(--panel-depth-x,0px) var(--panel-depth-y,0px);
+  transition:translate .16s cubic-bezier(.16,.8,.2,1),opacity .2s ease,filter .2s ease;
+}
+:root[data-world]:not([data-world=""])[data-visual-resolved="rich"]:not([data-experience="focus"]) #view :is(.card,.asset,.group).world-lit > .world-panel-index {
+  translate:calc(0px - var(--panel-dx,0px)) calc(0px - var(--panel-dy,0px));
+  transition:translate .18s cubic-bezier(.16,.8,.2,1),opacity .18s ease,color .18s ease;
+}
+:root[data-world="divine"][data-visual-resolved="rich"] #view :is(.card,.asset,.group).world-lit > .world-surface-sigil {
+  filter:brightness(1.1) drop-shadow(0 0 12px color-mix(in srgb,var(--panel-kind-accent,var(--world-glow)),transparent 36%));
+}
+:root[data-world="void"][data-visual-resolved="rich"] #view :is(.card,.asset,.group).world-lit > h2 {
+  text-shadow:2px 0 0 color-mix(in srgb,var(--crit),transparent 92%),-2px 0 0 color-mix(in srgb,var(--s7),transparent 94%),0 0 17px color-mix(in srgb,var(--panel-kind-accent,var(--world-glow)),transparent 86%);
+}
+:root[data-world="astral"][data-visual-resolved="rich"] #view :is(.card,.asset,.group).world-lit > .world-surface-sigil {
+  filter:saturate(1.16) brightness(1.08) drop-shadow(0 0 14px color-mix(in srgb,var(--panel-kind-accent,var(--world-glow)),transparent 28%));
+}
+:root[data-motion="off"] #view :is(.card,.asset,.group) > :is(h2,.world-surface-sigil,.world-panel-index),
+:root[data-experience="focus"] #view :is(.card,.asset,.group) > :is(h2,.world-surface-sigil,.world-panel-index) {translate:none!important}
+@media (max-width:760px) {
+  #view :is(.card,.asset,.group) > :is(h2,.world-surface-sigil,.world-panel-index) {translate:none!important;transform:none!important}
+}
+@media (prefers-reduced-motion:reduce) {
+  #view :is(.card,.asset,.group) > :is(h2,.world-surface-sigil,.world-panel-index) {translate:none!important;transform:none!important;transition:none!important}
+}
