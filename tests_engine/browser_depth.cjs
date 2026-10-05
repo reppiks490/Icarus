@@ -67,6 +67,8 @@ assert.equal(await page.locator('.world-depth-frame').count(),1);
 assert.equal(await page.locator('.world-depth-atmosphere').count(),1);
 assert.equal(await page.locator('.world-depth-atmosphere > i').count(),3);
 assert.equal(await page.locator('.world-depth-atmosphere > b').count(),1);
+assert.equal((await page.locator('[data-world-chapter-title]').textContent()).trim(),'CROWN');
+assert.equal((await page.locator('[data-world-chapter-lore]').textContent()).trim(),'ASCENSION');
 assert.equal(await page.locator('.world-view-ambient').count(),1);
 assert.equal(await page.locator('.world-view-ambient i').count(),12);
 assert.equal(await page.locator('.world-view-ambient').evaluate(el=>getComputedStyle(el).position),'absolute');
@@ -116,6 +118,8 @@ if(longEnough){
  assert.ok(Math.abs(stickyTop)<2,'Sticky header must remain pinned on long scroll');
  assert.equal(await page.locator('html').getAttribute('data-scroll-phase'),'abyss');
  assert.equal(await page.locator('[data-world-depth-label]').textContent(),'ABYSS');
+ assert.equal((await page.locator('[data-world-chapter-title]').textContent()).trim(),'ABYSS');
+ assert.equal((await page.locator('[data-world-chapter-lore]').textContent()).trim(),'DOMINION');
  assert.equal(await page.locator('.world-depth-frame').getAttribute('data-chapter'),'abyss');
  await page.waitForFunction(()=>document.querySelectorAll('#view .world-scroll-focus').length>0);
  assert.ok((await page.locator('.world-topology .scroll-active').count())>0);
