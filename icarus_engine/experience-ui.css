@@ -3906,3 +3906,54 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
   .world-scene-threshold::after {animation:none!important}
 }
 @media (forced-colors:active) {.world-handoff,.world-scene-threshold {display:none!important}}
+
+
+/* Phase XXXII: world selectors reveal a noncommittal glimpse before the universe is changed. */
+.world-preview {
+  position:absolute;inset:-18px;z-index:-1;pointer-events:none;opacity:0;overflow:hidden;
+  background-image:
+    linear-gradient(90deg,color-mix(in srgb,var(--page),transparent 10%) 0%,color-mix(in srgb,var(--page),transparent 52%) 34%,transparent 72%),
+    var(--preview-art);
+  background-position:center;background-size:cover;
+  transform:translate3d(calc(var(--scene-x) * 7px),calc(var(--scene-y) * 5px),0) scale(1.075);
+  filter:saturate(.72) contrast(1.12) brightness(.68) blur(1px);
+  transition:opacity .28s ease,filter .34s ease,transform .44s cubic-bezier(.16,.8,.2,1);
+  mask-image:linear-gradient(90deg,transparent 0,#000 18%,#000 100%);
+}
+.world-preview::before,.world-preview::after,.world-preview > i,.world-preview > b {content:"";position:absolute;display:block;pointer-events:none}
+.world-preview::before {
+  inset:0;background:radial-gradient(ellipse at 74% 46%,color-mix(in srgb,var(--world-glow),transparent 88%),transparent 44%);mix-blend-mode:screen
+}
+.world-preview::after {
+  right:11%;top:18%;width:min(28vw,310px);aspect-ratio:1;border:1px solid color-mix(in srgb,var(--world-glow),transparent 82%);
+  transform:rotate(45deg);opacity:.55
+}
+.world-preview > i {right:19%;top:32%;width:56px;height:1px;background:linear-gradient(90deg,transparent,var(--world-glow),transparent);box-shadow:0 0 8px var(--world-glow)}
+.world-preview > b {right:calc(19% + 24px);top:calc(32% - 3px);width:6px;height:6px;transform:rotate(45deg);border:1px solid var(--world-glow)}
+.world-preview.active {opacity:.43;filter:saturate(.92) contrast(1.08) brightness(.78) blur(0);transform:translate3d(calc(var(--scene-x) * 4px),calc(var(--scene-y) * 3px),0) scale(1.035)}
+
+.world-preview[data-preview-world="void"] {
+  filter:saturate(.78) contrast(1.24) brightness(.62);
+  mask-image:linear-gradient(112deg,transparent 0 17%,#000 29% 88%,transparent 100%);
+}
+.world-preview[data-preview-world="void"]::after {border-radius:1px;clip-path:polygon(0 0,100% 13%,83% 100%,9% 87%);transform:rotate(-12deg);border-color:#ed1d5688}
+.world-preview[data-preview-world="void"] > i {background:linear-gradient(90deg,transparent,#ed1d56,#fff5,transparent);transform:skewX(-18deg)}
+.world-preview[data-preview-world="void"] > b {width:10px;height:1px;transform:skewX(-18deg);background:#ed1d56;border:0}
+
+.world-preview[data-preview-world="astral"] {
+  filter:saturate(.9) contrast(1.06) brightness(.72);
+  mask-image:radial-gradient(ellipse at 72% 48%,#000 0 48%,transparent 74%);
+}
+.world-preview[data-preview-world="astral"]::after {border-radius:50%;transform:rotate(-18deg) scaleY(.42);border-color:#bceaff88}
+.world-preview[data-preview-world="astral"] > b {border-radius:50%;transform:none;background:#e5f8ff;box-shadow:0 0 5px #e5f8ff,0 0 12px #8d64f9}
+
+.world-preview[data-preview-world="divine"]::after {border-color:#f5ce7a88}
+.world-preview[data-preview-world="divine"] > i {background:linear-gradient(90deg,transparent,#f5ce7a,transparent)}
+.world-preview[data-preview-world="divine"] > b {border-color:#f5ce7a}
+
+:root[data-visual-resolved="light"] .world-preview.active {opacity:.18;filter:brightness(.72)}
+:root[data-experience="focus"] .world-preview {display:none}
+@media (pointer:coarse) {.world-preview {display:none!important}}
+@media (max-width:760px) {.world-preview {display:none!important}}
+@media (prefers-reduced-motion:reduce) {.world-preview {transition:none!important;transform:none!important}}
+@media (forced-colors:active) {.world-preview {display:none!important}}
