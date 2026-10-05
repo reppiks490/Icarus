@@ -1,10 +1,12 @@
 """Presentation-only invariants for full-dashboard ICARUS immersion."""
 from pathlib import Path
+import re
 
 
 ROOT = Path(__file__).parents[1]
 IMMERSION = ROOT / "icarus_engine" / "world-immersion.js"
 DASHBOARD = ROOT / "icarus_engine" / "dashboard.html"
+CSS = ROOT / "icarus_engine" / "experience-ui.css"
 
 
 def test_immersion_runtime_has_no_market_or_control_io():
@@ -53,3 +55,32 @@ def test_adaptive_brain_visuals_follow_world_tokens():
     ):
         assert fixed not in source
     assert "var(--view-accent" in source
+
+
+
+def test_visual_keyframe_names_are_unique():
+    source = CSS.read_text(encoding="utf-8")
+    names = re.findall(r"@keyframes\s+([\w-]+)", source)
+    duplicates = sorted({name for name in names if names.count(name) > 1})
+    assert duplicates == [], f"duplicate animation names can silently override choreography: {duplicates}"
+
+
+def test_immersion_runtime_keeps_hard_visual_budgets():
+    source = IMMERSION.read_text(encoding="utf-8")
+    for budget in (
+        "slice(0,18)",
+        "edges.length>=24",
+        "slice(0,80)",
+        "'<i></i>'.repeat(12)",
+    ):
+        assert budget in source
+    assert "setInterval(" not in source
+
+
+def test_visual_layers_keep_accessibility_fallbacks():
+    source = CSS.read_text(encoding="utf-8")
+    assert "@media (prefers-reduced-motion:reduce)" in source
+    assert "@media (forced-colors:active)" in source
+    assert 'data-visual-resolved="light"' in source
+    assert ".world-inspection-field" in source
+    assert ".world-handoff" in source
