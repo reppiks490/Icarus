@@ -1143,3 +1143,50 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
   #view::after {right:10px;top:12px;max-width:88%;font-size:clamp(24px,10vw,46px);opacity:.42}
 }
 @media (prefers-reduced-motion:reduce) {#view::after {transform:none!important}}
+
+
+/* Sticky command deck carries a faint fragment of the selected world through every scroll. */
+:root[data-world]:not([data-world=""]) .top::before {
+  content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;opacity:.24;
+  mask-image:linear-gradient(180deg,#000 0%,#000 64%,transparent 100%);
+  background-size:auto;transition:opacity .4s ease,transform .4s ease;
+}
+:root[data-world="divine"] .top::before {
+  background:
+    radial-gradient(ellipse at 16% 0%,#d5ab5811,transparent 33%),
+    repeating-conic-gradient(from 270deg at 74% -120%,transparent 0deg 7deg,#d5ab5808 8deg,transparent 9deg 17deg);
+}
+:root[data-world="void"] .top::before {
+  background:
+    radial-gradient(ellipse at 74% 0%,#ed1d5615,transparent 32%),
+    repeating-linear-gradient(116deg,transparent 0 83px,#ed1d5609 84px,transparent 85px 139px);
+}
+:root[data-world="astral"] .top::before {
+  background:
+    radial-gradient(circle at 74% 20%,#8d64f914 0 1px,transparent 1.5px),
+    radial-gradient(circle at 24% 34%,#bceaff10 0 1px,transparent 1.6px),
+    repeating-linear-gradient(104deg,transparent 0 109px,#8e83ff07 110px,transparent 111px 173px);
+  background-size:79px 73px,127px 121px,auto;
+}
+:root[data-world]:not([data-world=""])[data-experience="cinematic"][data-motion="live"][data-visual-resolved="rich"] .top::before {
+  animation:world-command-deck-drift 28s ease-in-out infinite alternate;
+}
+@keyframes world-command-deck-drift {from{transform:translate3d(-.25%,0,0)}to{transform:translate3d(.35%,1.5%,0)}}
+
+/* The scenic world visually hands off into the dashboard instead of ending at a hard rectangle. */
+:root[data-world]:not([data-world=""]) .world-scene {
+  box-shadow:
+    0 18px 48px var(--world-shadow),
+    0 38px 90px color-mix(in srgb,var(--world-glow),transparent 95%),
+    inset 0 1px 0 color-mix(in srgb,var(--world-glow),transparent 78%),
+    inset 0 -1px 0 color-mix(in srgb,var(--world-glow),transparent 70%);
+}
+:root[data-world]:not([data-world=""]) .world-scene .world-edition {
+  text-shadow:0 0 12px #000,0 0 18px color-mix(in srgb,var(--world-glow),transparent 66%);
+}
+:root[data-world]:not([data-world=""]) .world-scene .world-coordinate {
+  text-shadow:0 0 10px #000,0 0 16px color-mix(in srgb,var(--world-glow),transparent 72%);
+}
+
+:root[data-visual-resolved="light"] .top::before,:root[data-experience="focus"] .top::before {opacity:.06;animation:none!important}
+@media (prefers-reduced-motion:reduce) {:root[data-world]:not([data-world=""]) .top::before {animation:none!important;transform:none!important}}
