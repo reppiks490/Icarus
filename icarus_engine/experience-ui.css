@@ -1841,14 +1841,9 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
   background-size:137px 131px,211px 199px,auto;
   background-position:21px 31px,103px 79px,0 0;
 }
-:root[data-world]:not([data-world=""])[data-experience="cinematic"][data-motion="live"][data-visual-resolved="rich"] .world-depth-frame {
-  animation:world-screen-weave 31s linear infinite;
-}
-@keyframes world-screen-weave {to{background-position:0 12px,148px 91px,234px 163px}}
-:root[data-world="void"][data-experience="cinematic"][data-motion="live"][data-visual-resolved="rich"] .world-depth-frame {animation-duration:19s}
-:root[data-world="astral"][data-experience="cinematic"][data-motion="live"][data-visual-resolved="rich"] .world-depth-frame {animation-duration:43s}
+/* Static weave avoids a full-viewport paint loop; motion remains on bounded compositor layers. */
 :root[data-motion="off"] .world-depth-frame,
-:root[data-experience="focus"] .world-depth-frame {animation:none!important;background-image:none!important}
+:root[data-experience="focus"] .world-depth-frame {background-image:none!important}
 @media (max-width:760px) {.world-depth-frame {background-image:none!important;animation:none!important}}
 @media (prefers-reduced-motion:reduce) {.world-depth-frame {animation:none!important;background-image:none!important}}
 
