@@ -94,6 +94,7 @@ await page.locator('#experienceMotion').selectOption('system');await page.locato
 await page.setViewportSize({width:390,height:844});await page.waitForTimeout(250);
 assert.equal(await page.locator('html').getAttribute('data-visual-resolved'),'light');
 assert.equal(await page.locator('.world-mobile-hud').isVisible(),true);
+assert.ok(Number(await page.locator('.world-depth-frame').evaluate(el=>getComputedStyle(el).opacity))>0);
 assert.equal((await page.locator('[data-world-mobile-view]').textContent()).trim(),'OVERVIEW');
 assert.equal(await page.locator('.world-depth-rail').first().isVisible(),false);
 assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
