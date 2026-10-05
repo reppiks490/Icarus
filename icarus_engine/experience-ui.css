@@ -2104,3 +2104,45 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 }
 :root[data-world="void"] #view .log {border-radius:2px;background-size:27px 100%,100% 100%}
 :root[data-world="astral"] #view .log {border-radius:12px}
+
+
+/* Phase XVIII: semantic chips and real warning panels inherit the world without losing status meaning. */
+:root[data-world]:not([data-world=""]) #view :is(.chip,.tag,.badge) {
+  position:relative;overflow:hidden;
+  background-image:linear-gradient(145deg,#ffffff07,transparent 48%,color-mix(in srgb,var(--world-glow),transparent 97%));
+  box-shadow:inset 0 1px 0 #ffffff0b;
+}
+:root[data-world="void"] #view :is(.chip,.tag) {border-radius:2px}
+:root[data-world="astral"] #view :is(.chip,.tag) {border-radius:999px}
+:root[data-world]:not([data-world=""]) #view :is(.chip.b,.chip.reg-STRONG,.chip.mkt-open,.tag.live) {
+  box-shadow:inset 0 1px 0 #ffffff0b,0 0 11px color-mix(in srgb,var(--good),transparent 90%);
+}
+:root[data-world]:not([data-world=""]) #view :is(.chip.r,.chip.neg) {
+  box-shadow:inset 0 1px 0 #ffffff0b,0 0 11px color-mix(in srgb,var(--crit),transparent 90%);
+}
+:root[data-world]:not([data-world=""]) #view :is(.chip.w,.chip.mkt-closed) {
+  box-shadow:inset 0 1px 0 #ffffff0b,0 0 11px color-mix(in srgb,var(--warn),transparent 91%);
+}
+
+:root[data-world]:not([data-world=""]) #view .callout {
+  position:relative;overflow:hidden;
+  border-color:color-mix(in srgb,var(--warn),var(--world-glow) 18%);
+  background:
+    linear-gradient(115deg,color-mix(in srgb,var(--warn),transparent 92%),transparent 38% 68%,color-mix(in srgb,var(--world-glow),transparent 96%)),
+    color-mix(in srgb,var(--surface) 91%,transparent);
+  box-shadow:inset 0 1px 0 #ffffff0d,0 12px 32px #0003,0 0 18px color-mix(in srgb,var(--warn),transparent 94%);
+}
+:root[data-world]:not([data-world=""]) #view .callout::before {
+  content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--warn);
+  box-shadow:0 0 12px color-mix(in srgb,var(--warn),transparent 38%);
+}
+:root[data-world]:not([data-world=""]) #view .callout::after {
+  content:"";position:absolute;right:9px;top:9px;width:8px;height:8px;border:1px solid color-mix(in srgb,var(--warn),#fff 12%);
+  transform:rotate(45deg);opacity:.72;box-shadow:0 0 8px color-mix(in srgb,var(--warn),transparent 48%);
+}
+:root[data-world="void"] #view .callout {border-radius:2px;clip-path:polygon(7px 0,100% 0,100% calc(100% - 7px),calc(100% - 7px) 100%,0 100%,0 7px)}
+:root[data-world="astral"] #view .callout {border-radius:18px}
+:root[data-world]:not([data-world=""])[data-motion="live"] #view .callout::after {animation:world-warning-beacon 2.8s ease-in-out infinite}
+@keyframes world-warning-beacon {0%,100%{opacity:.38;scale:.86}45%{opacity:1;scale:1.12;filter:brightness(1.35)}}
+:root[data-motion="off"] #view .callout::after {animation:none!important}
+@media (prefers-reduced-motion:reduce) {#view .callout::after {animation:none!important}}
