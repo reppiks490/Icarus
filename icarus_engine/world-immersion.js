@@ -169,6 +169,7 @@
     links.replaceChildren();nodeLayer.replaceChildren();
     const viewRect=view.getBoundingClientRect(),width=Math.max(1,view.scrollWidth),height=Math.max(1,view.scrollHeight);
     topology.setAttribute('viewBox',`0 0 ${width} ${height}`);
+    view.querySelectorAll('[data-world-topology-node]').forEach(el=>delete el.dataset.worldTopologyNode);
     const elements=[...view.querySelectorAll(':scope > :is(.card,.asset,.group), :scope > .assets > .asset')]
       .filter(el=>{const r=el.getBoundingClientRect();return r.width>40&&r.height>28;})
       .slice(0,18);
