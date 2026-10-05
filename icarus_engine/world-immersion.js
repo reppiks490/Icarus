@@ -247,6 +247,8 @@
   function refresh(){
     ensureAmbient();ensureTopology();classifyReadouts();
     const majors=[...document.querySelectorAll('#view > :is(.card,.asset,.hero,.group), #view > .assets > .asset')];
+    const view=document.getElementById('view');
+    if(view)view.classList.toggle('world-sparse-view',majors.length<=2&&view.scrollHeight<window.innerHeight*1.35);
     majors.forEach(decorateSurface);
     const nested=[...document.querySelectorAll('#view :is(.tile,.px-box,.psi-box,.pan-field,.brain-agent,.brain-sub,.brain-lane,.evo-sub)')];
     [...new Set([...majors,...nested])].slice(0,80).forEach(observePanel);
