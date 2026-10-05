@@ -201,6 +201,7 @@
     scenery.innerHTML = `<div class="world-art" aria-hidden="true"></div>
       <div class="world-orbit" aria-hidden="true"><i></i><i></i><i></i><b>◇</b></div>
       <div class="world-coordinate" aria-hidden="true">ECLIPSE LOOM <span id="worldCoordinatePhase">CROWN / LIGHT / INFINITY</span></div>
+      <div class="world-scene-threshold" aria-hidden="true"><i></i><b></b><span></span></div>
       <div class="world-view-insignia" aria-hidden="true" data-view="overview"><span>ACTIVE DOMAIN</span><i>◇</i><b>OVERVIEW</b></div>
       <div class="world-copy"><div class="world-eyebrow">ICARUS <span> / </span><span id="worldName"></span></div>
       <h1 id="worldTitle"></h1><p id="worldCaption"></p>
