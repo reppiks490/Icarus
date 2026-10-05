@@ -1411,3 +1411,8 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 @media (prefers-reduced-motion:reduce) {
   :root[data-world] .group[open] > :not(summary),:root[data-world] :is(.modal.open .box,.pal.open .box) {animation:none!important}
 }
+
+
+/* Decorative-layer specificity guard: presentation nodes must never enter content flow. */
+#view > .world-view-ambient {position:absolute;inset:0;z-index:0!important}
+:root[data-world]:not([data-world=""]) :is(.card,.asset,.group) > :is(.world-impact,.world-surface-sigil) {position:absolute;z-index:0}
