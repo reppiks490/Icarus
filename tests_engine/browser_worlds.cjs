@@ -45,6 +45,7 @@ await page.locator('#experienceTheme').selectOption('void');
 await page.locator('.experience-settings summary').click();
 for(const view of ['system','inputs','backtest','overview']) {
  await page.locator(`[data-v="${view}"]`).click();
+ await page.waitForFunction(v=>document.documentElement.dataset.worldView===v,view);
  if(!await page.locator(`[data-v="${view}"]`).evaluate(el=>el.classList.contains('active'))) throw Error('Navigation failed');
 }
 await page.setViewportSize({width:390,height:844});
