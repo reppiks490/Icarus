@@ -1315,3 +1315,49 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 :root[data-visual-resolved="light"] .world-view-ambient,:root[data-experience="focus"] .world-view-ambient,:root[data-motion="off"] .world-view-ambient {display:none}
 @media (max-width:760px) {.world-view-ambient {opacity:.32}.world-view-ambient i:nth-child(n+8){display:none}}
 @media (prefers-reduced-motion:reduce) {.world-view-ambient {display:none!important}}
+
+
+/* Major instrument surfaces carry a different physical sigil in each world. */
+.world-surface-sigil {position:absolute;right:10px;top:9px;width:44px;height:44px;z-index:0;pointer-events:none;opacity:.42;filter:drop-shadow(0 0 9px color-mix(in srgb,var(--world-glow),transparent 55%))}
+.world-surface-sigil i,.world-surface-sigil b {position:absolute;display:block;font-style:normal}
+
+/* Divine: crown-ray corner. */
+:root[data-world="divine"] .world-surface-sigil i {
+  right:2px;top:2px;width:25px;height:25px;border-top:1px solid color-mix(in srgb,var(--world-glow),transparent 35%);border-right:1px solid color-mix(in srgb,var(--world-glow),transparent 35%);
+}
+:root[data-world="divine"] .world-surface-sigil i::before,:root[data-world="divine"] .world-surface-sigil i::after {
+  content:"";position:absolute;right:5px;top:5px;width:1px;height:19px;background:linear-gradient(var(--world-glow),transparent);transform-origin:top
+}
+:root[data-world="divine"] .world-surface-sigil i::before {transform:rotate(30deg)}
+:root[data-world="divine"] .world-surface-sigil i::after {transform:rotate(60deg)}
+:root[data-world="divine"] .world-surface-sigil b {right:16px;top:14px;width:6px;height:6px;border:1px solid var(--world-glow);transform:rotate(45deg);background:color-mix(in srgb,var(--surface),transparent 28%)}
+
+/* Void: fractured blade corner. */
+:root[data-world="void"] .world-surface-sigil {opacity:.52}
+:root[data-world="void"] .world-surface-sigil i {
+  right:1px;top:4px;width:34px;height:2px;background:linear-gradient(90deg,transparent,var(--world-glow),#fff8);transform:rotate(-34deg);box-shadow:0 8px 0 color-mix(in srgb,var(--world-glow),transparent 58%),0 16px 0 color-mix(in srgb,var(--world-glow),transparent 76%)
+}
+:root[data-world="void"] .world-surface-sigil b {
+  right:7px;top:7px;width:17px;height:29px;border-right:1px solid var(--world-glow);border-bottom:1px solid color-mix(in srgb,var(--world-glow),transparent 28%);transform:skewY(-20deg)
+}
+
+/* Astral: orbital corner with satellite. */
+:root[data-world="astral"] .world-surface-sigil i {
+  right:1px;top:1px;width:32px;height:18px;border:1px solid color-mix(in srgb,var(--world-glow),transparent 30%);border-radius:50%;transform:rotate(-24deg)
+}
+:root[data-world="astral"] .world-surface-sigil b {
+  right:4px;top:3px;width:5px;height:5px;border-radius:50%;background:#dff5ff;box-shadow:0 0 6px #dff5ff,0 0 12px var(--world-glow)
+}
+:root[data-world="astral"] .world-surface-sigil::after {
+  content:"";position:absolute;right:11px;top:12px;width:22px;height:22px;border:1px dashed color-mix(in srgb,var(--world-glow),transparent 68%);border-radius:50%
+}
+:root[data-world]:not([data-world=""])[data-experience="cinematic"][data-motion="live"][data-visual-resolved="rich"] .world-surface-sigil {
+  animation:world-surface-sigil-breathe 8s ease-in-out infinite;
+}
+@keyframes world-surface-sigil-breathe {0%,100%{opacity:.32;transform:scale(.96)}50%{opacity:.62;transform:scale(1.03)}}
+:root[data-world="void"][data-experience="cinematic"][data-motion="live"][data-visual-resolved="rich"] .world-surface-sigil {animation-duration:5.5s}
+:root[data-world="astral"][data-experience="cinematic"][data-motion="live"][data-visual-resolved="rich"] .world-surface-sigil {animation-duration:11s}
+:root[data-visual-resolved="light"] .world-surface-sigil {opacity:.18;animation:none!important}
+:root[data-experience="focus"] .world-surface-sigil {display:none}
+@media (max-width:760px) {.world-surface-sigil {width:32px;height:32px;right:6px;top:6px;opacity:.22}}
+@media (prefers-reduced-motion:reduce) {.world-surface-sigil {animation:none!important}}
