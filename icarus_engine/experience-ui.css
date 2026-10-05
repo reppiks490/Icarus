@@ -2584,3 +2584,80 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 :root[data-world="astral"] .experience-render-status span::before {border-radius:50%;transform:translateY(-50%);background:#dff5ff}
 :root[data-visual-resolved="light"] .experience-render-status {background:var(--surface-2)}
 @media (max-width:430px) {.experience-render-status {grid-template-columns:1fr}.experience-render-status span{font-size:6.5px}}
+
+
+/* Phase VII: specialized subsystem instruments keep their own physics inside the shared world material system. */
+:root[data-world]:not([data-world=""]) #view .psi-meter {
+  height:26px;border-color:color-mix(in srgb,var(--view-accent,var(--world-glow)),var(--ring) 72%);
+  background:
+    linear-gradient(90deg,transparent 49.7%,color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 74%) 50%,transparent 50.3%),
+    linear-gradient(180deg,color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 97%),color-mix(in srgb,var(--surface),transparent 4%));
+  box-shadow:inset 0 1px 0 #ffffff09,inset 0 0 14px #0002;
+}
+:root[data-world]:not([data-world=""]) #view .psi-meter::before {
+  left:50%;width:1px;background:linear-gradient(transparent,color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 52%),transparent);
+  box-shadow:0 0 7px color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 58%);
+}
+:root[data-world]:not([data-world=""]) #view .psi-meter i {
+  opacity:.78;box-shadow:inset 0 1px 0 #ffffff20;transition:left .28s cubic-bezier(.2,.7,.2,1),width .28s cubic-bezier(.2,.7,.2,1),filter .2s ease;
+}
+:root[data-world]:not([data-world=""]) #view .psi-meter i.posbar {
+  background:linear-gradient(90deg,color-mix(in srgb,var(--good),transparent 34%),var(--good),color-mix(in srgb,var(--good),#fff 14%));
+  filter:drop-shadow(0 0 5px color-mix(in srgb,var(--good),transparent 55%));
+}
+:root[data-world]:not([data-world=""]) #view .psi-meter i.negbar {
+  background:linear-gradient(90deg,color-mix(in srgb,var(--crit),#fff 12%),var(--crit),color-mix(in srgb,var(--crit),transparent 38%));
+  filter:drop-shadow(0 0 5px color-mix(in srgb,var(--crit),transparent 55%));
+}
+:root[data-world="divine"] #view .psi-meter {border-radius:8px 8px 3px 3px}
+:root[data-world="void"] #view .psi-meter {border-radius:1px;background:
+  repeating-linear-gradient(90deg,transparent 0 17px,color-mix(in srgb,var(--view-accent),transparent 97%) 18px),
+  linear-gradient(180deg,color-mix(in srgb,var(--view-accent),transparent 96%),var(--surface))}
+:root[data-world="astral"] #view .psi-meter {border-radius:999px;background:
+  radial-gradient(circle at 50% 50%,color-mix(in srgb,var(--view-accent),transparent 92%),transparent 38%),
+  linear-gradient(180deg,color-mix(in srgb,var(--view-accent),transparent 97%),var(--surface))}
+
+:root[data-world]:not([data-world=""]) #view .brain-route {
+  position:relative;padding-left:13px!important;border-color:color-mix(in srgb,var(--view-accent,var(--world-glow)),var(--ring) 76%)!important;
+  background:
+    repeating-linear-gradient(0deg,transparent 0 18px,color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 98%) 19px),
+    color-mix(in srgb,var(--page),transparent 16%)!important;
+  box-shadow:inset 2px 0 0 color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 44%),inset 0 1px 0 #ffffff08;
+}
+:root[data-world]:not([data-world=""]) #view .brain-route::before {
+  content:"ROUTE";display:block;margin-bottom:4px;color:color-mix(in srgb,var(--view-accent,var(--world-glow)),#fff 12%);
+  font:600 7px/1 ui-monospace,Consolas,monospace;letter-spacing:.18em;opacity:.62;
+}
+:root[data-world]:not([data-world=""]) #view .brain-gate span {
+  position:relative;padding-left:17px;border-color:color-mix(in srgb,var(--view-accent,var(--world-glow)),var(--ring) 78%);
+  background:linear-gradient(90deg,color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 97%),transparent 70%);
+}
+:root[data-world]:not([data-world=""]) #view .brain-gate span::before {
+  content:"";position:absolute;left:7px;top:50%;width:4px;height:4px;transform:translateY(-50%) rotate(45deg);
+  border:1px solid color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 36%);
+}
+:root[data-world="astral"] #view .brain-gate span::before {border-radius:50%;transform:translateY(-50%)}
+:root[data-world="void"] #view .brain-gate span {border-radius:1px}
+
+:root[data-world]:not([data-world=""]) #view .px-box {
+  background:
+    linear-gradient(135deg,color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 96%),transparent 45%),
+    linear-gradient(180deg,color-mix(in srgb,var(--surface-2),transparent 4%),color-mix(in srgb,var(--page),transparent 8%));
+  box-shadow:inset 0 1px 0 #ffffff0b,inset 16px 0 28px -32px color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 40%);
+}
+:root[data-world]:not([data-world=""]) #view .pan-field {
+  background:
+    radial-gradient(circle at 16% 18%,color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 91%),transparent 36%),
+    linear-gradient(180deg,color-mix(in srgb,var(--surface-2),transparent 3%),color-mix(in srgb,var(--page),transparent 9%));
+}
+:root[data-world]:not([data-world=""]) #view .evo-sub {
+  background:
+    linear-gradient(125deg,color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 96%),transparent 42%),
+    color-mix(in srgb,var(--surface-2),transparent 4%);
+}
+:root[data-world]:not([data-world=""]) #view .evo-sub.b {box-shadow:inset 2px 0 0 color-mix(in srgb,var(--good),transparent 24%)}
+:root[data-world]:not([data-world=""]) #view .evo-sub.w {box-shadow:inset 2px 0 0 color-mix(in srgb,var(--warn),transparent 24%)}
+:root[data-world]:not([data-world=""]) #view .evo-sub.r {box-shadow:inset 2px 0 0 color-mix(in srgb,var(--crit),transparent 24%)}
+
+:root[data-visual-resolved="light"] #view :is(.psi-meter,.brain-route,.brain-gate span,.px-box,.pan-field,.evo-sub) {box-shadow:none!important}
+@media (prefers-reduced-motion:reduce) {#view .psi-meter i {transition:none!important}}
