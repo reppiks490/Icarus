@@ -1765,3 +1765,50 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 }
 @media (max-width:760px) {.world-depth-frame.world-chapter-shift::after {font-size:clamp(38px,16vw,76px);opacity:.44}}
 @media (prefers-reduced-motion:reduce) {.world-depth-frame.world-chapter-shift::after {display:none!important}}
+
+
+/* Phase VIII: the opening title card now belongs to the selected mythology. */
+.intro-seal {
+  display:block;margin:13px auto 0;width:max-content;max-width:min(82vw,520px);padding:6px 11px;
+  border-top:1px solid color-mix(in srgb,var(--intro-light),transparent 62%);
+  border-bottom:1px solid color-mix(in srgb,var(--intro-light),transparent 78%);
+  color:color-mix(in srgb,var(--intro-light),#fff 8%);
+  font:600 8px/1.2 ui-monospace,Consolas,monospace;letter-spacing:.3em;padding-left:calc(11px + .3em);
+  text-shadow:0 0 12px var(--intro-halo);opacity:.68;
+}
+.world-intro[data-intro-world="divine"] .intro-title strong {
+  font-family:Georgia,'Times New Roman',serif;font-weight:400;
+  text-shadow:0 0 18px #fff4d6aa,0 0 52px color-mix(in srgb,var(--intro-halo),transparent 48%);
+}
+.world-intro[data-intro-world="divine"] .intro-seal {border-radius:999px;border-left:1px solid transparent;border-right:1px solid transparent}
+
+.world-intro[data-intro-world="void"] .intro-title strong {
+  font-family:ui-monospace,Consolas,monospace;font-weight:800;letter-spacing:.19em;padding-left:.19em;
+  transform:skewX(-5deg);text-shadow:3px 0 0 #ff315d3d,-2px 0 0 #fff2,0 0 34px #ff315d55;
+}
+.world-intro[data-intro-world="void"] .intro-title em {
+  font-family:ui-monospace,Consolas,monospace;font-style:normal;font-size:12px;letter-spacing:.2em;color:#ffdbe3;
+}
+.world-intro[data-intro-world="void"] .intro-seal {
+  border-radius:1px;clip-path:polygon(7px 0,100% 0,calc(100% - 7px) 100%,0 100%);
+  background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--intro-halo),transparent 88%),transparent);
+}
+
+.world-intro[data-intro-world="astral"] .intro-title strong {
+  font-family:Georgia,'Times New Roman',serif;font-weight:400;letter-spacing:.36em;padding-left:.36em;
+  text-shadow:0 0 12px #dff8ffcc,0 0 54px #9570ff66;
+}
+.world-intro[data-intro-world="astral"] .intro-title em {
+  font-style:normal;letter-spacing:.14em;color:#e8edff;
+}
+.world-intro[data-intro-world="astral"] .intro-seal {
+  border-radius:999px;border:1px solid color-mix(in srgb,#bceaff,transparent 78%);
+  background:radial-gradient(ellipse at 50% 50%,#9570ff12,transparent 70%);
+}
+.world-intro[data-intro-world="astral"] .intro-seal::before,
+.world-intro[data-intro-world="astral"] .intro-seal::after {content:"✦";margin:0 9px;color:#bceaff;opacity:.75}
+
+@media (max-width:600px) {
+  .intro-seal {font-size:7px;letter-spacing:.18em;padding:5px 8px;padding-left:calc(8px + .18em);margin-top:9px}
+  .world-intro[data-intro-world="void"] .intro-title strong {font-size:clamp(35px,12vw,58px)}
+}
