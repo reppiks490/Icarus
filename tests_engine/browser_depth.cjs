@@ -68,7 +68,8 @@ assert.match((await card.locator(':scope > .world-panel-index').textContent()).t
 assert.equal(await card.locator(':scope > .world-panel-index').evaluate(el=>getComputedStyle(el).position),'absolute');
 const familyFixture=await page.evaluate(async()=>{
  const el=document.createElement('section');el.className='card c12';el.innerHTML='<h2>Research Evidence Fixture</h2><div class="empty">loading fixture…</div>';document.querySelector('#view').appendChild(el);
- await new Promise(r=>setTimeout(r,140));
+ window.IcarusWorldImmersion.refresh();
+ await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
  const kind=el.dataset.worldPanelKind;
  const sigil=el.querySelector(':scope > .world-surface-sigil');
  const animation=sigil?getComputedStyle(sigil).animationName:'';
