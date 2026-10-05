@@ -79,10 +79,10 @@ for(const view of ['system','inputs','backtest','overview'])await page.locator(`
 const fixture=await page.evaluate(()=>{
  const el=document.createElement('div');el.style.cssText='width:240px;height:90px';el.innerHTML='<svg aria-label="Test fixture"><path d="M0 4 L10 1 L20 8"/></svg>';document.querySelector('#view').append(el);
  const before=el.innerHTML;window.IcarusWorldCinema.enterChart('TEST',el);const count=el.getAnimations().length;
- window.IcarusWorldCinema.enterChart('TEST',el);
+ window.IcarusWorldCinema.enterChart('TEST',el);const second=el.getAnimations().length;
  const r=el.getBoundingClientRect();
  el.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,pointerType:'mouse',clientX:r.left+r.width*.4,clientY:r.top+r.height*.6}));
- const result={same:before===el.innerHTML,first:count,second:el.getAnimations().length,surface:el.classList.contains('world-chart-surface'),scan:el.classList.contains('world-chart-scan-active'),hover:el.classList.contains('world-chart-hover'),x:el.style.getPropertyValue('--chart-hover-x'),y:el.style.getPropertyValue('--chart-hover-y')};el.remove();return result;
+ const result={same:before===el.innerHTML,first:count,second,surface:el.classList.contains('world-chart-surface'),scan:el.classList.contains('world-chart-scan-active'),hover:el.classList.contains('world-chart-hover'),x:el.style.getPropertyValue('--chart-hover-x'),y:el.style.getPropertyValue('--chart-hover-y')};el.remove();return result;
 });
 assert.deepEqual(fixture,{same:true,first:1,second:1,surface:true,scan:true,hover:true,x:'40.00%',y:'60.00%'});
 await page.evaluate(()=>toast('Visual contract notification',false));
