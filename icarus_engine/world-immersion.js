@@ -111,8 +111,15 @@
     element.addEventListener('animationend',clear,{once:true});
     setTimeout(clear,900);
   }
+  function decorateSurface(element){
+    if(!element?.matches?.('.card,.asset,.group')||element.querySelector(':scope > .world-surface-sigil'))return;
+    const sigil=document.createElement('span');sigil.className='world-surface-sigil';sigil.setAttribute('aria-hidden','true');
+    sigil.innerHTML='<i></i><b></b>';element.appendChild(sigil);
+  }
   function observePanel(element){
-    if(!element||element.dataset.worldDepthObserved==='1')return;
+    if(!element)return;
+    decorateSurface(element);
+    if(element.dataset.worldDepthObserved==='1')return;
     element.dataset.worldDepthObserved='1';
     if(viewObserver)viewObserver.observe(element);
     else reveal(element);
