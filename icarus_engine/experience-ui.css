@@ -2192,3 +2192,38 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 :root[data-world="void"][data-visual-resolved="rich"] #view .card {box-shadow:0 20px 64px #0005,inset 0 1px 0 #ffafc014,inset 0 -26px 46px #00000018,0 0 0 1px #ed1d5614}
 :root[data-world="astral"][data-visual-resolved="rich"] #view .card {box-shadow:0 20px 64px #0004,inset 0 1px 0 #dff8ff1b,inset 0 -24px 48px #6b55ff08,0 0 0 1px #8d64f914}
 :root[data-visual-resolved="light"] #view :is(.card,.asset,.group,.tile) {-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+
+
+/* Phase XX: configuration edits and command rows get authentic interaction feedback. */
+:root[data-world]:not([data-world=""]) #view .irow {
+  position:relative;transition:background-color .18s ease,box-shadow .18s ease,border-color .18s ease;
+}
+:root[data-world]:not([data-world=""]) #view .irow:hover {
+  background:linear-gradient(90deg,color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 96%),transparent 72%);
+}
+:root[data-world]:not([data-world=""]) #view .irow.dirty {
+  background:
+    linear-gradient(90deg,color-mix(in srgb,var(--s1),transparent 88%),transparent 68%),
+    color-mix(in srgb,var(--surface-2) 82%,transparent);
+  box-shadow:inset 2px 0 0 var(--s1),inset 0 1px 0 color-mix(in srgb,var(--s1),transparent 86%);
+  animation:world-edit-ack 520ms cubic-bezier(.16,.8,.2,1) both;
+}
+@keyframes world-edit-ack {
+  0%{filter:brightness(1.32);box-shadow:inset 5px 0 0 var(--s1),0 0 24px color-mix(in srgb,var(--s1),transparent 72%)}
+  100%{filter:none}
+}
+:root[data-world="void"] #view .irow.dirty {background:linear-gradient(108deg,color-mix(in srgb,var(--s1),transparent 84%) 0 4%,transparent 4.5% 78%),color-mix(in srgb,var(--surface-2) 82%,transparent)}
+:root[data-world="astral"] #view .irow.dirty {background:radial-gradient(ellipse at 0 50%,color-mix(in srgb,var(--s1),transparent 82%),transparent 52%),color-mix(in srgb,var(--surface-2) 82%,transparent)}
+:root[data-world]:not([data-world=""]) #view .irow .ov.set {text-shadow:0 0 10px color-mix(in srgb,var(--s1),transparent 48%)}
+
+:root[data-world]:not([data-world=""]) #view .cmd {
+  position:relative;transition:background-color .18s ease,box-shadow .18s ease,transform .18s ease;
+}
+:root[data-world]:not([data-world=""]) #view .cmd:hover {
+  background:linear-gradient(90deg,color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 95%),transparent 62%);
+  box-shadow:inset 2px 0 0 color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 34%);
+}
+:root[data-world="void"] #view .cmd:hover {transform:translateX(2px)}
+:root[data-world="astral"] #view .cmd:hover {box-shadow:inset 2px 0 0 color-mix(in srgb,var(--view-accent),transparent 45%),0 0 18px color-mix(in srgb,var(--view-accent),transparent 95%)}
+@media (max-width:760px) {:root[data-world] #view .cmd:hover {transform:none}}
+@media (prefers-reduced-motion:reduce) {:root[data-world] #view .irow.dirty {animation:none!important}}
