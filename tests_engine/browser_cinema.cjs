@@ -85,6 +85,11 @@ const fixture=await page.evaluate(()=>{
  const result={same:before===el.innerHTML,first:count,second:el.getAnimations().length,surface:el.classList.contains('world-chart-surface'),scan:el.classList.contains('world-chart-scan-active'),hover:el.classList.contains('world-chart-hover'),x:el.style.getPropertyValue('--chart-hover-x'),y:el.style.getPropertyValue('--chart-hover-y')};el.remove();return result;
 });
 assert.deepEqual(fixture,{same:true,first:1,second:1,surface:true,scan:true,hover:true,x:'40.00%',y:'60.00%'});
+await page.evaluate(()=>toast('Visual contract notification',false));
+assert.equal(await page.locator('#toast').getAttribute('data-kind'),'ok');
+assert.equal(await page.locator('#toast').getAttribute('role'),'status');
+assert.equal(await page.locator('#toast').evaluate(el=>el.classList.contains('world-toast-active')),true);
+await page.evaluate(()=>{const t=document.querySelector('#toast');t.classList.remove('world-toast-active');t.style.display='none';});
 await page.setViewportSize({width:390,height:844});await page.waitForTimeout(200);
 assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
 await page.screenshot({path:`${output}/cinema-mobile.png`,fullPage:true});
