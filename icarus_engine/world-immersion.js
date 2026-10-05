@@ -6,6 +6,11 @@
 
   const motionAllowed=()=>root.dataset.motion==='live'&&root.dataset.experience==='cinematic'&&!!root.dataset.world&&!document.hidden&&!reduced.matches&&root.dataset.introActive!=='true';
   const phaseLabels={crown:'CROWN',descent:'DESCENT',depth:'DEPTH',abyss:'ABYSS'};
+  const phaseLore={
+    divine:{crown:'ASCENSION',descent:'THRESHOLD',depth:'SANCTUM',abyss:'DOMINION'},
+    void:{crown:'BREACH',descent:'FRACTURE',depth:'NULL FIELD',abyss:'EVENT HORIZON'},
+    astral:{crown:'ORBIT',descent:'DRIFT',depth:'AETHER',abyss:'HORIZON'}
+  };
   const viewMeta={
     overview:['OVERVIEW','◇'],asset:['ASSET','◈'],system:['SYSTEM','⌬'],golive:['GO LIVE','▲'],agent:['AGENT','◎'],
     inputs:['INPUTS','≡'],backtest:['BACKTEST','∿'],research:['RESEARCH','∆'],sources:['FINANCIAL / DATA','⌁'],
@@ -27,6 +32,7 @@
       <div class="world-corner-sigil top-left">I</div><div class="world-corner-sigil bottom-right">∞</div>
       <div class="world-view-gate"><i data-world-view-glyph>◇</i><span data-world-gate-label>OVERVIEW</span></div>
       <div class="world-depth-atmosphere"><i class="near"></i><i class="mid"></i><i class="far"></i><b></b></div>
+      <div class="world-chapter-title" aria-hidden="true"><i data-world-chapter-index>01</i><strong data-world-chapter-title>CROWN</strong><span data-world-chapter-lore>ASCENSION</span></div>
       <div class="world-nav-trail" aria-hidden="true"></div>
       <div class="world-mobile-hud"><i data-world-mobile-glyph>◇</i><span data-world-mobile-view>OVERVIEW</span><b data-world-mobile-phase>CROWN</b><small data-world-mobile-index>01/01</small></div>`;
     document.body.appendChild(depthFrame);
@@ -36,6 +42,11 @@
     depthFrame.style.setProperty('--world-depth-progress',(depth*100).toFixed(2)+'%');
     const phaseText=phaseLabels[phase]||String(phase||'').toUpperCase();
     depthFrame.querySelector('[data-world-depth-label]').textContent=phaseText;
+    const phases=['crown','descent','depth','abyss'],phaseIndex=Math.max(0,phases.indexOf(phase));
+    const chapterTitle=depthFrame.querySelector('[data-world-chapter-title]'),chapterLore=depthFrame.querySelector('[data-world-chapter-lore]'),chapterIndex=depthFrame.querySelector('[data-world-chapter-index]');
+    if(chapterTitle)chapterTitle.textContent=phaseText;
+    if(chapterLore)chapterLore.textContent=(phaseLore[root.dataset.world]||phaseLore.divine)[phase]||'';
+    if(chapterIndex)chapterIndex.textContent=String(phaseIndex+1).padStart(2,'0');
     const mobilePhase=depthFrame.querySelector('[data-world-mobile-phase]');if(mobilePhase)mobilePhase.textContent=phaseText;
     for(const rail of depthFrame.querySelectorAll('.world-depth-rail')){
       [...rail.querySelectorAll('b')].forEach((node,index)=>node.classList.toggle('active',depth>=index/3-.015));
