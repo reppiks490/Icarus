@@ -23,11 +23,11 @@
     depthFrame.setAttribute('aria-hidden','true');
     depthFrame.innerHTML=`<div class="world-depth-rail left"><i></i><b></b><b></b><b></b><b></b></div>
       <div class="world-depth-rail right"><i></i><b></b><b></b><b></b><b></b></div>
-      <div class="world-depth-readout"><span>WORLD DEPTH</span><strong data-world-depth-label>CROWN</strong><em data-world-view-label>OVERVIEW</em></div>
+      <div class="world-depth-readout"><span>WORLD DEPTH</span><strong data-world-depth-label>CROWN</strong><em data-world-view-label>OVERVIEW</em><small data-world-view-index>01 / 01</small></div>
       <div class="world-corner-sigil top-left">I</div><div class="world-corner-sigil bottom-right">∞</div>
       <div class="world-view-gate"><i data-world-view-glyph>◇</i><span data-world-gate-label>OVERVIEW</span></div>
       <div class="world-depth-atmosphere"><i class="near"></i><i class="mid"></i><i class="far"></i><b></b></div>
-      <div class="world-mobile-hud"><i data-world-mobile-glyph>◇</i><span data-world-mobile-view>OVERVIEW</span><b data-world-mobile-phase>CROWN</b></div>`;
+      <div class="world-mobile-hud"><i data-world-mobile-glyph>◇</i><span data-world-mobile-view>OVERVIEW</span><b data-world-mobile-phase>CROWN</b><small data-world-mobile-index>01/01</small></div>`;
     document.body.appendChild(depthFrame);
   }
   function updateDepthFrame(phase,depth){
@@ -233,6 +233,10 @@
       const mobileGlyph=depthFrame.querySelector('[data-world-mobile-glyph]'),mobileView=depthFrame.querySelector('[data-world-mobile-view]');
       if(glyph)glyph.textContent=meta[1];if(label)label.textContent=meta[0];
       if(mobileGlyph)mobileGlyph.textContent=meta[1];if(mobileView)mobileView.textContent=meta[0];
+      const tabs=[...document.querySelectorAll('#tabs .tab[data-v]')],tabIndex=tabs.findIndex(tab=>tab.dataset.v===raw||tab.dataset.v===next);
+      const indexText=(tabIndex>=0?String(tabIndex+1).padStart(2,'0'):'--')+' / '+String(Math.max(1,tabs.length)).padStart(2,'0');
+      const viewIndex=depthFrame.querySelector('[data-world-view-index]'),mobileIndex=depthFrame.querySelector('[data-world-mobile-index]');
+      if(viewIndex)viewIndex.textContent=indexText;if(mobileIndex)mobileIndex.textContent=indexText.replace(/\s/g,'');
       if(raw!==currentView&&motionAllowed()){
         clearTimeout(viewFlashTimer);clearTimeout(viewGateTimer);
         depthFrame.classList.remove('world-view-shift','world-view-gate-active');void depthFrame.offsetWidth;
