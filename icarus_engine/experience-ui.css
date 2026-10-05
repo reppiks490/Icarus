@@ -960,3 +960,123 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
   :root[data-world]:not([data-world=""]) .experience-settings > div {position:fixed;right:12px;left:12px;top:auto;bottom:12px;width:auto;max-height:min(76dvh,620px);overflow:auto}
 }
 @media (prefers-reduced-motion:reduce) {:root[data-world]:not([data-world=""]) .experience-settings[open] > div {animation:none!important}}
+
+
+/* Phase IV: cockpit hierarchy, focus orbit and mobile world continuity. */
+.world-focus-orbit {
+  position:fixed;z-index:75;pointer-events:none;left:var(--focus-x,0);top:var(--focus-y,0);width:var(--focus-w,0);height:var(--focus-h,0);
+  border:1px solid color-mix(in srgb,var(--world-glow),transparent 34%);border-radius:11px;opacity:0;
+  box-shadow:0 0 0 1px #0005,0 0 20px color-mix(in srgb,var(--world-glow),transparent 82%),inset 0 0 18px color-mix(in srgb,var(--world-glow),transparent 94%);
+  transition:left .12s ease,top .12s ease,width .12s ease,height .12s ease,opacity .16s ease,border-radius .16s ease;
+}
+.world-focus-orbit.active {opacity:.92}
+.world-focus-orbit::before,.world-focus-orbit::after {content:"";position:absolute;inset:-5px;border:1px solid color-mix(in srgb,var(--world-glow),transparent 76%);border-radius:inherit;opacity:.55}
+.world-focus-orbit::after {inset:3px;border-style:dashed;opacity:.28}
+.world-focus-orbit i,.world-focus-orbit b {position:absolute;width:8px;height:8px;border-color:var(--world-glow);opacity:.8}
+.world-focus-orbit i {left:-4px;top:-4px;border-left:1px solid;border-top:1px solid}
+.world-focus-orbit b {right:-4px;bottom:-4px;border-right:1px solid;border-bottom:1px solid}
+:root[data-world="void"] .world-focus-orbit {border-radius:2px;clip-path:polygon(5px 0,100% 0,100% calc(100% - 5px),calc(100% - 5px) 100%,0 100%,0 5px)}
+:root[data-world="astral"] .world-focus-orbit {border-radius:999px}
+:root[data-experience="focus"] .world-focus-orbit,:root[data-motion="off"] .world-focus-orbit {display:none}
+
+.world-mobile-hud {display:none}
+@media (max-width:1100px) {
+  .world-depth-frame {display:block;z-index:3}
+  .world-depth-frame > :not(.world-mobile-hud) {display:none!important}
+  .world-mobile-hud {
+    display:flex;position:fixed;left:50%;bottom:max(10px,env(safe-area-inset-bottom));transform:translateX(-50%);
+    max-width:calc(100vw - 24px);align-items:center;gap:8px;padding:7px 11px;border:1px solid color-mix(in srgb,var(--world-glow),transparent 67%);
+    border-radius:999px;background:color-mix(in srgb,var(--surface) 84%,transparent);color:var(--ink-2);
+    box-shadow:0 10px 34px #0006,inset 0 1px 0 #ffffff10,0 0 var(--world-scroll-glow,0px) color-mix(in srgb,var(--world-glow),transparent 50%);
+    -webkit-backdrop-filter:blur(14px) saturate(130%);backdrop-filter:blur(14px) saturate(130%);
+    font:600 8px/1 ui-monospace,Consolas,monospace;letter-spacing:.14em;text-transform:uppercase;white-space:nowrap;opacity:.86;
+  }
+  .world-mobile-hud i {font:400 13px/1 Georgia,serif;font-style:normal;color:var(--world-glow);text-shadow:0 0 10px color-mix(in srgb,var(--world-glow),transparent 38%)}
+  .world-mobile-hud span {overflow:hidden;text-overflow:ellipsis}
+  .world-mobile-hud b {font-weight:500;opacity:.5;padding-left:8px;border-left:1px solid color-mix(in srgb,var(--world-glow),transparent 75%)}
+}
+@media (max-width:520px) {.world-mobile-hud {bottom:max(7px,env(safe-area-inset-bottom));padding:6px 9px;max-width:calc(100vw - 16px)}}
+
+/* Top shell becomes a single command deck rather than two flat rows. */
+:root[data-world]:not([data-world=""]) .top {
+  border-bottom-color:color-mix(in srgb,var(--world-glow),var(--ring) 74%);
+  background:
+    linear-gradient(180deg,color-mix(in srgb,var(--world-glow),transparent 96%),transparent 70%),
+    color-mix(in srgb,var(--surface) 88%,transparent);
+}
+:root[data-world]:not([data-world=""]) .top-in {position:relative;min-height:51px}
+:root[data-world]:not([data-world=""]) .top-in::after {
+  content:"";position:absolute;left:22px;right:22px;bottom:0;height:1px;pointer-events:none;
+  background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--world-glow),transparent 88%) 8%,color-mix(in srgb,var(--world-glow),transparent 96%) 48%,color-mix(in srgb,var(--world-glow),transparent 88%) 92%,transparent);
+}
+:root[data-world]:not([data-world=""]) .brand {position:relative;padding-left:23px;text-shadow:0 0 16px color-mix(in srgb,var(--world-glow),transparent 88%)}
+:root[data-world]:not([data-world=""]) .brand::before {
+  content:"I";position:absolute;left:0;top:50%;display:grid;place-items:center;width:15px;height:15px;transform:translateY(-50%) rotate(45deg);
+  border:1px solid color-mix(in srgb,var(--world-glow),transparent 38%);font:700 7px/1 Georgia,serif;color:var(--world-glow);
+  box-shadow:0 0 11px color-mix(in srgb,var(--world-glow),transparent 55%),inset 0 0 8px color-mix(in srgb,var(--world-glow),transparent 90%);
+}
+:root[data-world]:not([data-world=""]) .brand::before {text-indent:-9999px}
+:root[data-world]:not([data-world=""]) .brand::after {
+  content:"";position:absolute;left:5px;top:50%;width:5px;height:5px;transform:translateY(-50%) rotate(45deg);background:var(--world-glow);box-shadow:0 0 9px var(--world-glow)
+}
+:root[data-world]:not([data-world=""]) .state > :is(button,.badge) {
+  background:linear-gradient(145deg,color-mix(in srgb,var(--world-glow),transparent 96%),var(--surface-2));
+  box-shadow:inset 0 1px 0 #ffffff0c;
+}
+:root[data-world]:not([data-world=""]) .tabs {
+  position:relative;gap:3px;padding-top:5px;padding-bottom:7px;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--world-glow),transparent 98%),transparent);
+}
+:root[data-world]:not([data-world=""]) .tabs::before {
+  content:"";position:absolute;left:22px;right:22px;bottom:5px;height:1px;background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--world-glow),transparent 91%) 7%,color-mix(in srgb,var(--world-glow),transparent 91%) 93%,transparent);pointer-events:none
+}
+:root[data-world]:not([data-world=""]) .tab {
+  position:relative;border-radius:7px;padding:6px 11px 7px;background:transparent;border-color:transparent;color:color-mix(in srgb,var(--ink-2),var(--muted) 18%);
+}
+:root[data-world]:not([data-world=""]) .tab:hover {
+  background:linear-gradient(145deg,color-mix(in srgb,var(--world-glow),transparent 95%),color-mix(in srgb,var(--surface-2),transparent 15%));
+  border-color:color-mix(in srgb,var(--world-glow),transparent 88%);
+}
+:root[data-world]:not([data-world=""]) .tab.active {
+  border-color:color-mix(in srgb,var(--world-glow),var(--ring) 52%);
+  background:linear-gradient(145deg,color-mix(in srgb,var(--world-glow),transparent 89%),color-mix(in srgb,var(--page),transparent 3%));
+  box-shadow:inset 0 1px 0 #ffffff12,0 6px 20px #0003,0 0 16px color-mix(in srgb,var(--world-glow),transparent 94%);
+}
+:root[data-world]:not([data-world=""]) .tab.active::before {
+  content:"";position:absolute;left:7px;top:50%;width:4px;height:4px;transform:translateY(-50%) rotate(45deg);background:var(--world-glow);box-shadow:0 0 8px var(--world-glow)
+}
+:root[data-world]:not([data-world=""]) .tab.active {padding-left:18px}
+
+/* Dense surfaces get a scanline-like hover response, not more blur. */
+:root[data-world]:not([data-world=""]) tbody td {transition:background-color .16s ease,color .16s ease}
+:root[data-world]:not([data-world=""]) tbody tr:hover td {
+  background-image:linear-gradient(90deg,color-mix(in srgb,var(--world-glow),transparent 98%),transparent 42%,color-mix(in srgb,var(--world-glow),transparent 96%) 68%,transparent);
+}
+:root[data-world]:not([data-world=""]) .card h2::before {
+  content:"";width:6px;height:6px;flex:0 0 auto;border:1px solid color-mix(in srgb,var(--world-glow),transparent 40%);transform:rotate(45deg);
+  box-shadow:0 0 8px color-mix(in srgb,var(--world-glow),transparent 65%);
+}
+:root[data-world]:not([data-world=""]) .tip {
+  border-color:color-mix(in srgb,var(--world-glow),var(--ring) 60%);
+  background:linear-gradient(145deg,color-mix(in srgb,var(--world-glow),transparent 94%),color-mix(in srgb,var(--surface) 88%,transparent));
+  box-shadow:0 12px 34px #0006,inset 0 1px 0 #ffffff10,0 0 18px color-mix(in srgb,var(--world-glow),transparent 93%);
+  -webkit-backdrop-filter:blur(14px) saturate(130%);backdrop-filter:blur(14px) saturate(130%);
+}
+
+/* World-specific deck silhouettes. */
+:root[data-world="divine"] .tab.active {border-radius:10px 10px 3px 3px}
+:root[data-world="void"] .tab.active {border-radius:2px;clip-path:polygon(6px 0,100% 0,100% calc(100% - 6px),calc(100% - 6px) 100%,0 100%,0 6px)}
+:root[data-world="astral"] .tab.active {border-radius:999px}
+:root[data-world="void"] .card h2::before {border-radius:1px}
+:root[data-world="astral"] .card h2::before {border-radius:50%;transform:none}
+
+@media (max-width:760px) {
+  :root[data-world]:not([data-world=""]) .top-in {padding:9px 12px;gap:9px}
+  :root[data-world]:not([data-world=""]) .top-in::after {left:12px;right:12px}
+  :root[data-world]:not([data-world=""]) .brand {font-size:11px;letter-spacing:.16em}
+  :root[data-world]:not([data-world=""]) .tabs {padding-left:10px;padding-right:10px}
+  :root[data-world]:not([data-world=""]) .tabs::before {left:10px;right:10px}
+  :root[data-world]:not([data-world=""]) .tab {font-size:12px;padding:6px 9px 7px}
+  :root[data-world]:not([data-world=""]) .tab.active {padding-left:16px}
+}
+@media (prefers-reduced-motion:reduce) {.world-focus-orbit {transition:none!important}}
