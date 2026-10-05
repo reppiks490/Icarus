@@ -100,6 +100,13 @@ assert.equal(await page.locator('.world-section-radar').count(),1);
 assert.ok((await page.locator('.world-section-radar [data-radar-node]').count())<=12);
 assert.ok((await page.locator('.world-section-radar [data-radar-node].active').count())>0);
 assert.match((await page.locator('[data-world-radar-count]').textContent()).trim(),/^\d{2}$/);
+assert.equal(await page.locator('.world-section-radar').getAttribute('aria-label'),'Section map');
+if((await page.locator('.world-section-radar [data-radar-node]').count())>1){
+ const radarItem=page.locator('.world-section-radar [data-radar-node]').nth(1);
+ const targetId=await radarItem.getAttribute('data-radar-node');
+ await radarItem.click();
+ await page.waitForFunction(id=>document.querySelector(`#view [data-world-topology-node="${id}"]`)?.classList.contains('world-radar-arrival'),targetId);
+}
 await card.evaluate(el=>{
  const r=el.getBoundingClientRect();
  el.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerType:'mouse',clientX:r.left+r.width*.45,clientY:r.top+24}));
