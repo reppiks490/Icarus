@@ -103,6 +103,22 @@
     introReturnFocus=null;
     refresh();
   }
+  function cinematicHandoff(world) {
+    if(reduced.matches||root.dataset.motion==='off'||!document.body)return;
+    document.querySelectorAll('.world-handoff').forEach(el=>el.remove());
+    const handoff=document.createElement('div');handoff.className='world-handoff';handoff.dataset.world=colors[world]?world:'divine';handoff.setAttribute('aria-hidden','true');
+    handoff.innerHTML='<i></i><b></b><span></span><em></em>';
+    document.body.appendChild(handoff);
+    const cleanup=()=>handoff.remove();
+    handoff.addEventListener('animationend',event=>{if(event.target===handoff)cleanup();},{once:true});
+    setTimeout(cleanup,980);
+  }
+  function finishIntro() {
+    if(!intro)return;
+    const world=intro.dataset.introWorld||root.dataset.world||'divine';
+    closeIntro();
+    cinematicHandoff(world);
+  }
   function introKey(event) {
     if (event.key === 'Escape') { event.preventDefault(); event.stopImmediatePropagation(); closeIntro(); }
     if (event.key === 'Tab' && intro) {
@@ -158,7 +174,7 @@
       window.IcarusWorldCinema?.draw(introCtx,w,h,introElapsed,dt,{intro:true,detail:detail(),pointer:{x:Math.sin(introElapsed*.18)*.35,y:Math.cos(introElapsed*.13)*.18}});
     };
     if(introCtx)introFrame=requestAnimationFrame(animateIntro);
-    introTimer=setTimeout(closeIntro,duration);
+    introTimer=setTimeout(finishIntro,duration);
   }
   function init(element) {
     if (scene) return;
