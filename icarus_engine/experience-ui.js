@@ -56,6 +56,7 @@
   function update(data, view) {
     if (currentView !== view) window.IcarusWorldCinema?.enterView();
     currentView = view;
+    syncSceneView(view);
     if (uptime !== null && Number(data.uptime_sec) < uptime) { snapshots.clear(); fillSnapshots.clear(); }
     uptime = Number(data.uptime_sec);
     const active = new Set();
@@ -93,7 +94,24 @@
     void: {name: 'Crimson Void', title: 'Market Destroyer.', caption: 'From the silence. Beyond the noise.', mark: 'II', phase: 'RUPTURE / SILENCE / EMBER'},
     astral: {name: 'Astral Dreamscape', title: 'Beyond the horizon.', caption: 'An observatory at the edge of possibility.', mark: 'III', phase: 'ORBIT / AETHER / HORIZON'},
   };
+  const viewInsignia = {
+    overview:['◇','OVERVIEW'],asset:['◈','ASSET CHAMBER'],system:['⌬','SYSTEM'],golive:['▲','GO LIVE'],agent:['◎','FIELD AGENT'],
+    inputs:['≡','INPUTS'],backtest:['∿','BACKTEST'],research:['∆','RESEARCH'],sources:['⌁','FINANCIAL / DATA'],'market-data':['⋮','MARKET DATA'],
+    brain:['◉','ADAPTIVE BRAIN'],evolution:['↟','MCP EVOLUTION'],parallax:['⟁','PARALLAX / DREAMSTATE'],possibility:['Ψ','ICARUS Ψ'],
+    pantheon:['✦','PANTHEON / AETHER'],sibyl:['Ω','SIBYL Ω'],apex:['⌬','APEX Ω'],ascendancy:['↑','ASCENDANCY'],
+    learning:['∞','LEARNING FABRIC'],chronofold:['Ξ','ICARUS Ξ'],commissioning:['◫','COMMISSIONING'],integrity:['◆','DATA INTEGRITY'],
+    'engine-control':['⌘','ENGINE CONTROL'],commands:['⌗','COMMANDS'],log:['▥','ENGINE LOG'],autopilot:['➤','TACTICAL AUTOPILOT']
+  };
   let scenery, sceneObserver;
+  function syncSceneView(view=currentView||'overview') {
+    if(!scenery)return;
+    const key=String(view||'overview').startsWith('asset:')?'asset':String(view||'overview').replace(/^#/,'');
+    const meta=viewInsignia[key]||['◇',key.replace(/-/g,' ').toUpperCase()];
+    const badge=scenery.querySelector('.world-view-insignia');if(!badge)return;
+    badge.querySelector('i').textContent=meta[0];badge.querySelector('b').textContent=meta[1];
+    badge.dataset.view=key;badge.classList.remove('world-view-insignia-shift');void badge.offsetWidth;badge.classList.add('world-view-insignia-shift');
+    setTimeout(()=>badge?.classList.remove('world-view-insignia-shift'),760);
+  }
   const preference = (key, values, fallback) => {
     const value = read('icarus-' + key, fallback);
     return values.includes(value) ? value : fallback;
@@ -182,6 +200,7 @@
     scenery.innerHTML = `<div class="world-art" aria-hidden="true"></div>
       <div class="world-orbit" aria-hidden="true"><i></i><i></i><i></i><b>◇</b></div>
       <div class="world-coordinate" aria-hidden="true">ECLIPSE LOOM <span id="worldCoordinatePhase">CROWN / LIGHT / INFINITY</span></div>
+      <div class="world-view-insignia" aria-hidden="true" data-view="overview"><span>ACTIVE DOMAIN</span><i>◇</i><b>OVERVIEW</b></div>
       <div class="world-copy"><div class="world-eyebrow">ICARUS <span> / </span><span id="worldName"></span></div>
       <h1 id="worldTitle"></h1><p id="worldCaption"></p>
       <div class="world-switch" role="group" aria-label="Choose visual world">
@@ -222,6 +241,7 @@
       });
       sceneObserver.observe(scenery);
     }
+    syncSceneView(currentView||'overview');
     window.IcarusWorldMotion?.init(scenery);
     const renderObserver=new MutationObserver(updateRenderStatus);
     renderObserver.observe(root,{attributes:true,attributeFilter:['data-world','data-world-view','data-visual-resolved','data-visual-detail','data-motion','data-experience']});
