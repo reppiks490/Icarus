@@ -3216,3 +3216,84 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 @media (prefers-reduced-motion:reduce) {
   :root[data-world] #view::after,:root[data-world] .world-view-ambient,:root[data-world] #view > .world-topology {transform:none!important;transition:none!important}
 }
+
+
+/* Phase X: dense control shelves, disclosure bays and data wells finish the cockpit language. */
+:root[data-world]:not([data-world=""]) #view .toolbar {
+  position:relative;isolation:isolate;padding:9px 10px;border:1px solid color-mix(in srgb,var(--view-accent,var(--world-glow)),var(--ring) 76%);
+  border-radius:10px;background:
+    linear-gradient(180deg,color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 96%),transparent 52%),
+    color-mix(in srgb,var(--surface-2) 82%,transparent);
+  box-shadow:inset 0 1px 0 #ffffff0c,inset 0 -1px 0 #0003,0 8px 22px #0002;
+}
+:root[data-world]:not([data-world=""]) #view .toolbar::before {
+  content:"";position:absolute;left:8px;right:8px;top:0;height:1px;pointer-events:none;
+  background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 62%),transparent)
+}
+:root[data-world="divine"] #view .toolbar {border-radius:10px 10px 4px 4px}
+:root[data-world="void"] #view .toolbar {border-radius:1px;clip-path:polygon(5px 0,100% 0,100% calc(100% - 5px),calc(100% - 5px) 100%,0 100%,0 5px)}
+:root[data-world="astral"] #view .toolbar {border-radius:16px}
+:root[data-world]:not([data-world=""]) #view .toolbar > button {min-height:30px}
+:root[data-world]:not([data-world=""]) #view .toolbar > label {
+  padding:4px 6px;border-left:1px solid color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 84%);
+}
+
+/* Plain details elements inherit world chambers without needing module-specific markup. */
+:root[data-world]:not([data-world=""]) #view details:not(.group) {
+  position:relative;margin-top:10px;border:1px solid color-mix(in srgb,var(--view-accent,var(--world-glow)),var(--ring) 80%);
+  border-radius:9px;background:color-mix(in srgb,var(--surface-2) 74%,transparent);overflow:hidden;
+  box-shadow:inset 0 1px 0 #ffffff08;
+}
+:root[data-world]:not([data-world=""]) #view details:not(.group) > summary {
+  position:relative;padding:9px 12px 9px 28px;cursor:pointer;list-style:none;
+  background:linear-gradient(90deg,color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 96%),transparent 62%);
+  color:var(--ink-2);font-weight:600;letter-spacing:.04em;
+}
+:root[data-world]:not([data-world=""]) #view details:not(.group) > summary::-webkit-details-marker {display:none}
+:root[data-world]:not([data-world=""]) #view details:not(.group) > summary::before {
+  content:"";position:absolute;left:12px;top:50%;width:6px;height:6px;transform:translateY(-50%) rotate(45deg);
+  border:1px solid color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 34%);
+  transition:transform .22s ease,background-color .22s ease,box-shadow .22s ease;
+}
+:root[data-world]:not([data-world=""]) #view details:not(.group)[open] > summary::before {
+  transform:translateY(-50%) rotate(135deg);background:var(--view-accent,var(--world-glow));
+  box-shadow:0 0 8px color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 36%);
+}
+:root[data-world="void"] #view details:not(.group) {border-radius:1px}
+:root[data-world="void"] #view details:not(.group) > summary::before {width:7px;height:1px;transform:translateY(-50%);border:0;background:var(--view-accent,var(--world-glow))}
+:root[data-world="astral"] #view details:not(.group) {border-radius:14px}
+:root[data-world="astral"] #view details:not(.group) > summary::before {border-radius:50%;transform:translateY(-50%)}
+
+/* Dense scrollers read as inset data wells, not browser overflow boxes. */
+:root[data-world]:not([data-world=""]) #view .scroll {
+  position:relative;border:1px solid color-mix(in srgb,var(--view-accent,var(--world-glow)),var(--ring) 86%);
+  border-radius:9px;background:
+    linear-gradient(180deg,color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 98%),transparent 18% 82%,#0000000a),
+    color-mix(in srgb,var(--surface-2) 54%,transparent);
+  box-shadow:inset 0 10px 24px -22px color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 38%),inset 0 -10px 24px -22px #0008;
+}
+:root[data-world="divine"] #view .scroll {border-radius:9px 9px 3px 3px}
+:root[data-world="void"] #view .scroll {border-radius:1px}
+:root[data-world="astral"] #view .scroll {border-radius:13px}
+:root[data-world]:not([data-world=""]) #view pre.log {
+  position:relative;background:
+    linear-gradient(90deg,color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 97%) 1px,transparent 1px),
+    linear-gradient(180deg,color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 98%),transparent 20%),
+    color-mix(in srgb,var(--surface-2) 74%,transparent);
+  background-size:34px 100%,100% 100%,100% 100%;
+  box-shadow:inset 2px 0 0 color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 72%),inset 0 1px 0 #ffffff08;
+}
+:root[data-world="void"] #view pre.log {border-radius:1px;background-size:22px 100%,100% 100%,100% 100%}
+:root[data-world="astral"] #view pre.log {border-radius:12px}
+
+/* Checkbox/radio controls keep native semantics while joining the selected world. */
+:root[data-world]:not([data-world=""]) #view :is(input[type="checkbox"],input[type="radio"]) {
+  accent-color:var(--view-accent,var(--world-glow));filter:drop-shadow(0 0 3px color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 62%))
+}
+:root[data-visual-resolved="light"] #view :is(.toolbar,details:not(.group),.scroll,pre.log) {
+  -webkit-backdrop-filter:none!important;backdrop-filter:none!important;box-shadow:inset 0 1px 0 #ffffff06!important
+}
+@media (max-width:760px) {
+  :root[data-world] #view .toolbar {overflow-x:auto;flex-wrap:nowrap;overscroll-behavior-inline:contain}
+  :root[data-world] #view .toolbar > * {flex:0 0 auto}
+}
