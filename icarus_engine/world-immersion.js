@@ -244,8 +244,16 @@
     refresh();
     const view=document.getElementById('view');
     if(view&&'MutationObserver' in window){
+      const decorativeNode=node=>node?.nodeType===1&&(
+        node.matches?.('.world-topology,.world-view-ambient,.world-surface-sigil,.world-impact')||
+        node.closest?.('.world-topology')
+      );
       viewMutation=new MutationObserver(records=>{
-        if(records.some(record=>record.addedNodes.length||record.removedNodes.length))requestAnimationFrame(refresh);
+        const meaningful=records.some(record=>{
+          if(record.target?.nodeType===1&&record.target.closest?.('.world-topology'))return false;
+          return [...record.addedNodes,...record.removedNodes].some(node=>!decorativeNode(node));
+        });
+        if(meaningful)requestAnimationFrame(refresh);
       });
       viewMutation.observe(view,{childList:true,subtree:true});
     }
