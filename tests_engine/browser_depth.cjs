@@ -51,6 +51,7 @@ for(const theme of ['void','astral','divine']){
 await page.evaluate(()=>{for(const id of ['void','astral','void','divine'])document.querySelector(`[data-world-choice="${id}"]`).click();});
 await page.waitForTimeout(1200);assert.equal(await page.locator('.world-veil').count(),0);
 const card=page.locator('#view > .card').first();await card.hover();await page.waitForTimeout(150);
+assert.equal(await card.locator(':scope > .world-surface-sigil').count(),1);
 assert.ok(await card.evaluate(el=>el.style.getPropertyValue('--panel-x')));
 assert.ok(await card.evaluate(el=>el.style.getPropertyValue('--panel-tilt-y')));
 assert.equal(await page.locator('html').getAttribute('data-world-immersion'),'ready');
