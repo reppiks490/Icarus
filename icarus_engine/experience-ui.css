@@ -1812,3 +1812,42 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
   .intro-seal {font-size:7px;letter-spacing:.18em;padding:5px 8px;padding-left:calc(8px + .18em);margin-top:9px}
   .world-intro[data-intro-world="void"] .intro-title strong {font-size:clamp(35px,12vw,58px)}
 }
+
+
+/* Phase IX: a nearly invisible screen weave binds the page into one cinematic surface. */
+:root[data-world]:not([data-world=""])[data-visual-resolved="rich"]:not([data-experience="focus"]) .world-depth-frame {
+  background-image:
+    repeating-linear-gradient(0deg,transparent 0 3px,#ffffff05 4px,transparent 5px),
+    radial-gradient(circle at 18% 22%,color-mix(in srgb,var(--world-glow),transparent 97.8%) 0 1px,transparent 1.5px),
+    radial-gradient(circle at 78% 61%,color-mix(in srgb,var(--world-glow),transparent 98.2%) 0 1px,transparent 1.5px);
+  background-size:auto,131px 127px,173px 169px;
+  background-position:0 0,17px 23px,61px 47px;
+}
+:root[data-world="divine"][data-visual-resolved="rich"] .world-depth-frame {
+  background-image:
+    repeating-linear-gradient(0deg,transparent 0 4px,#fff9e504 5px,transparent 6px),
+    repeating-conic-gradient(from 270deg at 50% -40%,transparent 0 13deg,#f5ce7a03 14deg,transparent 15deg 29deg);
+}
+:root[data-world="void"][data-visual-resolved="rich"] .world-depth-frame {
+  background-image:
+    repeating-linear-gradient(0deg,transparent 0 2px,#ff315d05 3px,transparent 4px),
+    repeating-linear-gradient(113deg,transparent 0 211px,#ff315d04 212px,transparent 213px 331px);
+}
+:root[data-world="astral"][data-visual-resolved="rich"] .world-depth-frame {
+  background-image:
+    radial-gradient(circle,#dff8ff09 0 1px,transparent 1.4px),
+    radial-gradient(circle,#9570ff09 0 1px,transparent 1.5px),
+    repeating-linear-gradient(0deg,transparent 0 5px,#bceaff03 6px,transparent 7px);
+  background-size:137px 131px,211px 199px,auto;
+  background-position:21px 31px,103px 79px,0 0;
+}
+:root[data-world]:not([data-world=""])[data-experience="cinematic"][data-motion="live"][data-visual-resolved="rich"] .world-depth-frame {
+  animation:world-screen-weave 31s linear infinite;
+}
+@keyframes world-screen-weave {to{background-position:0 12px,148px 91px,234px 163px}}
+:root[data-world="void"][data-experience="cinematic"][data-motion="live"][data-visual-resolved="rich"] .world-depth-frame {animation-duration:19s}
+:root[data-world="astral"][data-experience="cinematic"][data-motion="live"][data-visual-resolved="rich"] .world-depth-frame {animation-duration:43s}
+:root[data-motion="off"] .world-depth-frame,
+:root[data-experience="focus"] .world-depth-frame {animation:none!important;background-image:none!important}
+@media (max-width:760px) {.world-depth-frame {background-image:none!important;animation:none!important}}
+@media (prefers-reduced-motion:reduce) {.world-depth-frame {animation:none!important;background-image:none!important}}
