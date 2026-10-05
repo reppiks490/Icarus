@@ -1514,23 +1514,23 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 }
 :root[data-world]:not([data-world=""]) #toast.world-toast-active {animation:world-toast-cycle 3.45s cubic-bezier(.16,.8,.2,1) both}
 @keyframes world-toast-cycle {
-  0%{opacity:0;translate:-50% 12px;scale:.96;filter:blur(4px) brightness(.78)}
-  7%{opacity:1;translate:-50% 0;scale:1;filter:none}
-  88%{opacity:1;translate:-50% 0;scale:1}
-  100%{opacity:0;translate:-50% -6px;scale:.985;filter:blur(1px)}
+  0%{opacity:0;translate:0 12px;scale:.96;filter:blur(4px) brightness(.78)}
+  7%{opacity:1;translate:0 0;scale:1;filter:none}
+  88%{opacity:1;translate:0 0;scale:1}
+  100%{opacity:0;translate:0 -6px;scale:.985;filter:blur(1px)}
 }
 :root[data-world="void"] #toast.world-toast-active {animation-name:world-toast-void}
 :root[data-world="astral"] #toast.world-toast-active {animation-name:world-toast-astral}
 @keyframes world-toast-void {
-  0%{opacity:0;translate:calc(-50% - 16px) 0;scale:.98;clip-path:inset(0 100% 0 0);filter:brightness(.65)}
-  9%{opacity:1;translate:-50% 0;clip-path:inset(0);filter:none}
+  0%{opacity:0;translate:-16px 0;scale:.98;clip-path:inset(0 100% 0 0);filter:brightness(.65)}
+  9%{opacity:1;translate:0 0;clip-path:inset(0);filter:none}
   88%{opacity:1}
-  100%{opacity:0;translate:calc(-50% + 9px) 0;clip-path:inset(0 0 0 95%)}
+  100%{opacity:0;translate:9px 0;clip-path:inset(0 0 0 95%)}
 }
 @keyframes world-toast-astral {
-  0%{opacity:0;translate:-50% 9px;scale:.9;filter:blur(6px) saturate(.6)}
-  9%{opacity:1;translate:-50% 0;scale:1;filter:none}
+  0%{opacity:0;translate:0 9px;scale:.9;filter:blur(6px) saturate(.6)}
+  9%{opacity:1;translate:0 0;scale:1;filter:none}
   88%{opacity:1}
-  100%{opacity:0;translate:-50% -8px;scale:1.02;filter:blur(2px)}
+  100%{opacity:0;translate:0 -8px;scale:1.02;filter:blur(2px)}
 }
 @media (prefers-reduced-motion:reduce) {:root[data-world] #toast.world-toast-active {animation:none!important}}
