@@ -98,7 +98,12 @@
     if(!scrollFrame)scrollFrame=requestAnimationFrame(writeScrollDepth);
   }
 
-  function writePointer(x,y){
+  function ensurePointerLens(){
+    if(pointerLens||!document.body)return;
+    pointerLens=document.createElement('div');pointerLens.className='world-pointer-lens';pointerLens.setAttribute('aria-hidden','true');
+    pointerLens.innerHTML='<i></i><b></b>';document.body.appendChild(pointerLens);
+  }
+  function writePointer(x,y,cx=null,cy=null){
     pointerFrame=0;
     const px=Math.max(-.5,Math.min(.5,x)),py=Math.max(-.5,Math.min(.5,y));
     root.style.setProperty('--world-pointer-x',px.toFixed(4));
@@ -106,15 +111,21 @@
     root.style.setProperty('--world-pointer-shift-x',(-px*14).toFixed(2)+'px');
     root.style.setProperty('--world-pointer-shift-y',(-py*9).toFixed(2)+'px');
     root.style.setProperty('--world-light-x',(50+px*18).toFixed(2)+'%');
+    if(pointerLens&&cx!=null&&cy!=null){
+      pointerLens.style.transform=`translate3d(${cx.toFixed(1)}px,${cy.toFixed(1)}px,0)`;
+      pointerLens.classList.add('active');
+    }
   }
   function pointerMove(event){
-    if(event.pointerType==='touch'||!motionAllowed())return;
+    if(event.pointerType==='touch'||!motionAllowed()){pointerLens?.classList.remove('active');return;}
+    ensurePointerLens();
     const x=event.clientX/Math.max(1,window.innerWidth)-.5;
     const y=event.clientY/Math.max(1,window.innerHeight)-.5;
     if(pointerFrame)cancelAnimationFrame(pointerFrame);
-    pointerFrame=requestAnimationFrame(()=>writePointer(x,y));
+    pointerFrame=requestAnimationFrame(()=>writePointer(x,y,event.clientX,event.clientY));
   }
   function pointerLeave(){
+    pointerLens?.classList.remove('active');
     if(pointerFrame)cancelAnimationFrame(pointerFrame);
     pointerFrame=requestAnimationFrame(()=>writePointer(0,0));
   }
@@ -468,7 +479,7 @@
       root.style.setProperty('--world-scroll-energy','0');
       root.style.setProperty('--world-scroll-lean','0px');
       root.style.setProperty('--world-scroll-shear','0deg');
-      focusOrbit?.classList.remove('active');topologyHighlight(null);sectionRadar?.classList.remove('active');
+      focusOrbit?.classList.remove('active');pointerLens?.classList.remove('active');topologyHighlight(null);sectionRadar?.classList.remove('active');
     } else if(document.activeElement?.matches?.('button,a,input,select,textarea,summary,[tabindex]')) {
       positionFocusOrbit(document.activeElement);topologyHighlight(document.activeElement);
     }
@@ -479,7 +490,7 @@
     if(initialized)return;
     initialized=true;
     root.dataset.worldImmersion='ready';
-    buildDepthFrame();ensureFocusOrbit();
+    buildDepthFrame();ensureFocusOrbit();ensurePointerLens();
     window.addEventListener('scroll',()=>{queueScroll();if(focusOrbit?.classList.contains('active'))positionFocusOrbit(document.activeElement);},{passive:true});
     window.addEventListener('resize',()=>{queueScroll();scheduleTopology();if(focusOrbit?.classList.contains('active'))positionFocusOrbit(document.activeElement);},{passive:true});
     window.addEventListener('pointermove',pointerMove,{passive:true});
