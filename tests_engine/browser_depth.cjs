@@ -42,14 +42,14 @@ if(state==='ready'){
 }
 await page.locator('.experience-settings summary').click();
 for(const theme of ['void','astral','divine']){
- await page.locator(`[data-world-choice="${theme}"]`).click();await page.waitForTimeout(1200);
- assert.equal(await page.locator('.world-veil').count(),0);
+ await page.locator(`[data-world-choice="${theme}"]`).click();
+ await page.waitForFunction(()=>document.querySelectorAll('.world-veil').length===0,null,{timeout:2500});
  assert.ok(await page.locator('#worldTitle .world-word').count()>0);
  await page.screenshot({path:`${output}/depth-${theme}.png`});
 }
 // Rapid switching must not leave transparent overlays or stale accessible names.
 await page.evaluate(()=>{for(const id of ['void','astral','void','divine'])document.querySelector(`[data-world-choice="${id}"]`).click();});
-await page.waitForTimeout(1200);assert.equal(await page.locator('.world-veil').count(),0);
+await page.waitForFunction(()=>document.querySelectorAll('.world-veil').length===0,null,{timeout:2500});
 const card=page.locator('#view > .card').first();
 await card.evaluate(el=>{
  const r=el.getBoundingClientRect();
