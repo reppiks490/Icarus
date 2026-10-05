@@ -1190,3 +1190,80 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 
 :root[data-visual-resolved="light"] .top::before,:root[data-experience="focus"] .top::before {opacity:.06;animation:none!important}
 @media (prefers-reduced-motion:reduce) {:root[data-world]:not([data-world=""]) .top::before {animation:none!important;transform:none!important}}
+
+
+/* World emblems: three genuinely different central mythologies inside the opening. */
+.intro-world-emblem {position:absolute;inset:4%;pointer-events:none;opacity:0;animation:intro-emblem-arrive var(--intro-duration,20s) cubic-bezier(.16,.8,.2,1) both}
+.intro-world-emblem i,.intro-world-emblem b,.intro-world-emblem span {position:absolute;display:block;left:50%;top:50%;transform-origin:50% 50%;font-style:normal}
+
+/* Divine: ascending throne / solar crown architecture. */
+.world-intro[data-intro-world="divine"] .intro-world-emblem i {
+  width:32%;height:54%;transform:translate(-50%,-50%);border-left:1px solid var(--intro-light);border-right:1px solid var(--intro-light);
+  background:linear-gradient(180deg,transparent 0 12%,color-mix(in srgb,var(--intro-light),transparent 86%) 13% 14%,transparent 15% 45%,color-mix(in srgb,var(--intro-light),transparent 90%) 46% 47%,transparent 48%);
+  clip-path:polygon(50% 0,100% 24%,78% 35%,88% 100%,12% 100%,22% 35%,0 24%);
+  box-shadow:0 0 28px color-mix(in srgb,var(--intro-halo),transparent 66%);
+}
+.world-intro[data-intro-world="divine"] .intro-world-emblem b {
+  width:62%;height:1px;transform:translate(-50%,-50%);background:linear-gradient(90deg,transparent,var(--intro-light),transparent);box-shadow:0 -28px 0 color-mix(in srgb,var(--intro-light),transparent 45%),0 28px 0 color-mix(in srgb,var(--intro-light),transparent 58%);
+}
+.world-intro[data-intro-world="divine"] .intro-world-emblem span {
+  width:12px;height:12px;transform:translate(-50%,-50%) rotate(45deg);border:1px solid var(--intro-light);box-shadow:0 0 18px var(--intro-halo),inset 0 0 8px var(--intro-halo);
+}
+
+/* Void: broken eclipse / opposing blades. */
+.world-intro[data-intro-world="void"] .intro-crown {display:none}
+.world-intro[data-intro-world="void"] .intro-world-emblem i {
+  width:74%;height:74%;transform:translate(-50%,-50%) rotate(18deg);
+  border:1px solid color-mix(in srgb,var(--intro-light),transparent 12%);border-radius:50%;
+  clip-path:polygon(0 0,43% 0,35% 23%,48% 44%,37% 100%,0 100%);
+  box-shadow:0 0 32px color-mix(in srgb,var(--intro-halo),transparent 48%);
+}
+.world-intro[data-intro-world="void"] .intro-world-emblem b {
+  width:74%;height:74%;transform:translate(-50%,-50%) rotate(198deg);
+  border:1px solid color-mix(in srgb,var(--intro-light),transparent 28%);border-radius:50%;
+  clip-path:polygon(0 0,43% 0,35% 23%,48% 44%,37% 100%,0 100%);
+}
+.world-intro[data-intro-world="void"] .intro-world-emblem span {
+  width:58%;height:2px;transform:translate(-50%,-50%) rotate(-27deg);
+  background:linear-gradient(90deg,transparent,var(--intro-light),#fff,var(--intro-light),transparent);
+  box-shadow:0 0 16px var(--intro-halo),0 0 48px color-mix(in srgb,var(--intro-halo),transparent 34%);
+}
+
+/* Astral: orbital eye / horizon lens. */
+.world-intro[data-intro-world="astral"] .intro-crown {display:none}
+.world-intro[data-intro-world="astral"] .intro-world-emblem i {
+  width:74%;height:34%;transform:translate(-50%,-50%) rotate(-11deg);border:1px solid var(--intro-light);border-radius:50%;
+  box-shadow:0 0 28px color-mix(in srgb,var(--intro-halo),transparent 56%),inset 0 0 26px color-mix(in srgb,var(--intro-halo),transparent 82%);
+}
+.world-intro[data-intro-world="astral"] .intro-world-emblem b {
+  width:74%;height:34%;transform:translate(-50%,-50%) rotate(61deg);border:1px dashed color-mix(in srgb,var(--intro-light),transparent 24%);border-radius:50%;
+}
+.world-intro[data-intro-world="astral"] .intro-world-emblem span {
+  width:17px;height:17px;transform:translate(-50%,-50%);border-radius:50%;background:#fff;
+  box-shadow:0 0 8px #fff,0 0 26px var(--intro-halo),0 0 72px color-mix(in srgb,var(--intro-halo),transparent 22%);
+}
+
+@keyframes intro-emblem-arrive {
+  0%,24%{opacity:0;transform:scale(1.55) rotate(-18deg);filter:blur(8px)}
+  42%{opacity:.72;filter:blur(1px)}
+  61%{opacity:1;transform:scale(1) rotate(0);filter:none}
+  82%{opacity:.76}
+  100%{opacity:.16;transform:scale(.82) rotate(8deg);filter:blur(.5px)}
+}
+.world-intro[data-intro-world="void"] .intro-world-emblem {animation-name:intro-emblem-void}
+.world-intro[data-intro-world="astral"] .intro-world-emblem {animation-name:intro-emblem-astral}
+@keyframes intro-emblem-void {
+  0%,18%{opacity:0;transform:scale(1.9) rotate(42deg);filter:blur(10px)}
+  34%{opacity:.9;filter:blur(1px)}
+  58%{opacity:1;transform:scale(1) rotate(-4deg)}
+  72%{transform:scale(.94) rotate(3deg)}
+  100%{opacity:.12;transform:scale(.64) rotate(-22deg);filter:blur(2px)}
+}
+@keyframes intro-emblem-astral {
+  0%,20%{opacity:0;transform:scale(.45) rotate(-58deg);filter:blur(7px)}
+  40%{opacity:.78}
+  65%{opacity:1;transform:scale(1.04) rotate(8deg);filter:none}
+  83%{opacity:.62;transform:scale(.92) rotate(22deg)}
+  100%{opacity:.14;transform:scale(.72) rotate(44deg);filter:blur(1px)}
+}
+@media (prefers-reduced-motion:reduce) {.intro-world-emblem {animation:none!important}}
