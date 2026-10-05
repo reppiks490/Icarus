@@ -68,6 +68,8 @@ assert.equal((await page.locator('.intro-title span').textContent()).trim(),'THE
 assert.equal((await page.locator('.intro-title em').textContent()).trim(),'ENTER THE SANCTUM');
 assert.equal((await page.locator('.intro-seal').textContent()).trim(),'CROWN // LIGHT // INFINITY');
 assert.deepEqual(await page.locator('.intro-glyphs i').allTextContents(),['◇','Ⅰ','△','☼','∞','◈','⌁','Ⅲ']);
+const skipBounds=await page.locator('.intro-skip').boundingBox();
+assert.ok(skipBounds&&skipBounds.x>=0&&skipBounds.y>=0&&skipBounds.x+skipBounds.width<=1440&&skipBounds.y+skipBounds.height<=1000,'Intro escape control must stay inside the viewport');
 await page.keyboard.press('Tab');assert.equal(await page.locator('.intro-skip').evaluate(el=>el===document.activeElement),true);
 await page.keyboard.press('Escape');assert.equal(await page.locator('#view').evaluate(el=>el.inert),false);
 await page.locator('#experienceTheme').selectOption('void');
