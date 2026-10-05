@@ -26,6 +26,7 @@
       <div class="world-depth-readout"><span>WORLD DEPTH</span><strong data-world-depth-label>CROWN</strong><em data-world-view-label>OVERVIEW</em></div>
       <div class="world-corner-sigil top-left">I</div><div class="world-corner-sigil bottom-right">∞</div>
       <div class="world-view-gate"><i data-world-view-glyph>◇</i><span data-world-gate-label>OVERVIEW</span></div>
+      <div class="world-depth-atmosphere"><i class="near"></i><i class="mid"></i><i class="far"></i><b></b></div>
       <div class="world-mobile-hud"><i data-world-mobile-glyph>◇</i><span data-world-mobile-view>OVERVIEW</span><b data-world-mobile-phase>CROWN</b></div>`;
     document.body.appendChild(depthFrame);
   }
