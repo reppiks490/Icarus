@@ -10,6 +10,7 @@ on:
       - "icarus_engine/worlds/**"
       - "tests_engine/browser_*.cjs"
       - "tests_engine/browser_preview_server.py"
+      - "tests_engine/test_dashboard_js.py"
       - "tests_engine/test_world_*.py"
       - ".github/workflows/ui-visual-contract.yml"
   workflow_dispatch:
