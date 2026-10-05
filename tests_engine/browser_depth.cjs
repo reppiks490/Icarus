@@ -52,12 +52,14 @@ await page.evaluate(()=>{for(const id of ['void','astral','void','divine'])docum
 await page.waitForTimeout(1200);assert.equal(await page.locator('.world-veil').count(),0);
 const card=page.locator('#view > .card').first();await card.hover();await page.waitForTimeout(150);
 assert.equal(await card.locator(':scope > .world-surface-sigil').count(),1);
+assert.equal(await card.locator(':scope > .world-surface-sigil').evaluate(el=>getComputedStyle(el).position),'absolute');
 assert.ok(await card.evaluate(el=>el.style.getPropertyValue('--panel-x')));
 assert.ok(await card.evaluate(el=>el.style.getPropertyValue('--panel-tilt-y')));
 assert.equal(await page.locator('html').getAttribute('data-world-immersion'),'ready');
 assert.equal(await page.locator('.world-depth-frame').count(),1);
 assert.equal(await page.locator('.world-view-ambient').count(),1);
 assert.equal(await page.locator('.world-view-ambient i').count(),12);
+assert.equal(await page.locator('.world-view-ambient').evaluate(el=>getComputedStyle(el).position),'absolute');
 assert.equal(await page.locator('html').getAttribute('data-world-view'),'overview');
 if(await page.locator('#view .tile').count()) assert.equal(await page.locator('#view .tile').first().getAttribute('data-world-depth-observed'),'1');
 // Rapid deliberate navigation must clean its transient gate/impact DOM rather than accumulate effects.
