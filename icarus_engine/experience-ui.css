@@ -2271,3 +2271,21 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
   -webkit-backdrop-filter:blur(5px) saturate(108%);backdrop-filter:blur(5px) saturate(108%);
 }
 :root[data-visual-resolved="light"] :is(.modal.open,.pal.open) {-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+
+
+/* Phase XXIII: micro-surfaces carry the same visual grammar down to selection, carets and key hints. */
+:root[data-world]:not([data-world=""]) ::selection {background:color-mix(in srgb,var(--active-view-accent,var(--world-glow)),transparent 62%);color:var(--ink)}
+:root[data-world]:not([data-world=""]) :is(input,textarea) {caret-color:var(--active-view-accent,var(--world-glow))}
+:root[data-world]:not([data-world=""]) kbd {
+  border-color:color-mix(in srgb,var(--active-view-accent,var(--world-glow)),var(--ring) 70%);
+  background:linear-gradient(180deg,color-mix(in srgb,var(--world-glow),transparent 96%),var(--surface-2));
+  box-shadow:inset 0 1px 0 #ffffff12,0 2px 0 #0003;
+}
+:root[data-world="void"] kbd {border-radius:2px}
+:root[data-world="astral"] kbd {border-radius:7px}
+:root[data-world="divine"] .scroll::-webkit-scrollbar-thumb {border-radius:4px 4px 1px 1px}
+:root[data-world="void"] .scroll::-webkit-scrollbar-thumb {border-radius:1px;background-color:color-mix(in srgb,var(--world-glow),var(--axis) 58%)}
+:root[data-world="astral"] .scroll::-webkit-scrollbar-thumb {border-radius:999px;background-color:color-mix(in srgb,#bceaff,var(--axis) 74%)}
+:root[data-world="divine"] .tip {border-radius:10px 10px 4px 4px}
+:root[data-world="void"] .tip {border-radius:2px;clip-path:polygon(5px 0,100% 0,100% calc(100% - 5px),calc(100% - 5px) 100%,0 100%,0 5px)}
+:root[data-world="astral"] .tip {border-radius:14px}
