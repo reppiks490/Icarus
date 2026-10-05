@@ -295,7 +295,7 @@
     const panels=[...document.querySelectorAll('#view [data-world-topology-node]')].slice(0,18);
     for(const panel of panels)panel.classList.remove('world-scroll-focus');
     topology?.querySelectorAll('.scroll-active').forEach(el=>el.classList.remove('scroll-active'));
-    if(!topology||!motionAllowed()||window.innerWidth<1100||!panels.length)return;
+    if(!topology||!motionAllowed()||window.innerWidth<1100||!panels.length){updateSectionRadar(null);return;}
     const targetY=window.innerHeight*.48;
     let best=null,bestDistance=Infinity;
     for(const panel of panels){
@@ -304,7 +304,7 @@
       const distance=Math.abs((r.top+r.bottom)/2-targetY);
       if(distance<bestDistance){best=panel;bestDistance=distance;}
     }
-    if(!best)return;
+    if(!best){updateSectionRadar(null);return;}
     best.classList.add('world-scroll-focus');
     const id=best.dataset.worldTopologyNode;
     topology.querySelectorAll(`path[data-from="${id}"],path[data-to="${id}"],circle[data-node="${id}"]`).forEach(el=>el.classList.add('scroll-active'));
