@@ -106,6 +106,7 @@ if((await page.locator('.world-section-radar [data-radar-node]').count())>1){
  const targetId=await radarItem.getAttribute('data-radar-node');
  await radarItem.click();
  await page.waitForFunction(id=>document.querySelector(`#view [data-world-topology-node="${id}"]`)?.classList.contains('world-radar-arrival'),targetId);
+ assert.ok((await page.locator('.world-topology .impact').count())>0);
 }
 await card.evaluate(el=>{
  const r=el.getBoundingClientRect();
