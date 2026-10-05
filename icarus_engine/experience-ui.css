@@ -1995,3 +1995,23 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 }
 @media (max-width:760px) {:root[data-world] .world-depth-enter,:root[data-world] .world-depth-enter > h2 {animation:none!important}}
 @media (prefers-reduced-motion:reduce) {:root[data-world] .world-depth-enter,:root[data-world] .world-depth-enter > h2 {animation:none!important}}
+
+
+/* Phase XIV: mobile gets a real world-depth instrument instead of a passive status pill. */
+@media (max-width:1100px) {
+  .world-mobile-hud {overflow:hidden;isolation:isolate}
+  .world-mobile-hud::before {
+    content:"";position:absolute;inset:0;z-index:-2;pointer-events:none;
+    background:linear-gradient(110deg,color-mix(in srgb,var(--active-view-accent),transparent 96%),transparent 44%,color-mix(in srgb,var(--world-glow),transparent 97%));
+  }
+  .world-mobile-hud::after {
+    content:"";position:absolute;left:0;bottom:0;height:1px;width:var(--world-depth-progress,0%);z-index:-1;
+    background:linear-gradient(90deg,color-mix(in srgb,var(--active-view-accent),#fff 12%),var(--active-view-accent));
+    box-shadow:0 0 8px color-mix(in srgb,var(--active-view-accent),transparent 34%);
+    transition:width .14s linear;
+  }
+  :root[data-world="void"] .world-mobile-hud::after {height:2px;clip-path:polygon(0 0,100% 0,calc(100% - 5px) 100%,0 100%)}
+  :root[data-world="astral"] .world-mobile-hud::after {height:1px;box-shadow:0 0 6px #dff8ff,0 0 12px var(--active-view-accent)}
+}
+:root[data-motion="off"] .world-mobile-hud::after {transition:none!important}
+@media (prefers-reduced-motion:reduce) {.world-mobile-hud::after {transition:none!important}}
