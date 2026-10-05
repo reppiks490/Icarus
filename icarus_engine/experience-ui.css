@@ -2284,3 +2284,36 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 :root[data-world="divine"] .tip {border-radius:10px 10px 4px 4px}
 :root[data-world="void"] .tip {border-radius:2px;clip-path:polygon(5px 0,100% 0,100% calc(100% - 5px),calc(100% - 5px) 100%,0 100%,0 5px)}
 :root[data-world="astral"] .tip {border-radius:14px}
+
+
+/* Phase XXIV: the hero world has a shallow scroll camera instead of behaving like a flat poster. */
+:root[data-world]:not([data-world=""])[data-motion="live"]:not([data-experience="focus"]) .world-art {
+  transform:
+    translate3d(
+      calc((var(--scene-x,0) * -10px) + (var(--world-scroll,0) * -5px)),
+      calc((var(--scene-y,0) * -7px) + (var(--world-scroll,0) * -18px)),
+      0
+    )
+    scale(calc(1.025 + (var(--world-scroll,0) * .012)));
+}
+:root[data-world="void"][data-motion="live"]:not([data-experience="focus"]) .world-art {
+  transform:
+    translate3d(
+      calc((var(--scene-x,0) * -12px) + (var(--world-scroll,0) * 7px)),
+      calc((var(--scene-y,0) * -8px) + (var(--world-scroll,0) * -14px)),
+      0
+    )
+    scale(calc(1.03 + (var(--world-scroll,0) * .014)));
+}
+:root[data-world="astral"][data-motion="live"]:not([data-experience="focus"]) .world-art {
+  transform:
+    translate3d(
+      calc((var(--scene-x,0) * -8px) + (var(--world-scroll,0) * -4px)),
+      calc((var(--scene-y,0) * -6px) + (var(--world-scroll,0) * -22px)),
+      0
+    )
+    scale(calc(1.028 + (var(--world-scroll,0) * .01)));
+}
+:root[data-motion="off"] .world-art {transform:none!important}
+@media (max-width:760px) {:root[data-world] .world-art {transform:translate3d(0,calc(var(--world-scroll,0) * -8px),0) scale(1.02)!important}}
+@media (prefers-reduced-motion:reduce) {:root[data-world] .world-art {transform:none!important}}
