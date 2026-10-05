@@ -2983,3 +2983,38 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 :root[data-world]:not([data-world=""]) #view [data-world-panel-kind="instrument"] > .world-surface-sigil b {
   border-color:color-mix(in srgb,var(--sigil-accent),transparent 22%);
 }
+
+
+/* Optical thickness: Rich glass gets world-specific chromatic edge refraction rather than uniform transparency. */
+:root[data-world]:not([data-world=""])[data-visual-resolved="rich"]:not([data-experience="focus"]) #view :is(.card,.asset,.group)::before {
+  box-shadow:
+    inset 1px 0 0 var(--glass-edge-a,transparent),
+    inset -1px 0 0 var(--glass-edge-b,transparent),
+    inset 0 1px 0 #ffffff0b,
+    inset 0 -1px 0 #0000001a;
+}
+:root[data-world="divine"] {--glass-edge-a:#f6ce7a20;--glass-edge-b:#73ddd018}
+:root[data-world="void"] {--glass-edge-a:#ff315d28;--glass-edge-b:#a77cff20}
+:root[data-world="astral"] {--glass-edge-a:#bceaff26;--glass-edge-b:#a993ff24}
+
+:root[data-world]:not([data-world=""])[data-visual-resolved="rich"] #view :is(.card,.asset,.group).world-lit::before {
+  background:
+    radial-gradient(ellipse 52% 28% at var(--panel-x,50%) var(--panel-y,0%),#ffffff1c 0%,color-mix(in srgb,var(--panel-kind-accent,var(--view-accent,var(--world-glow))),transparent 89%) 32%,transparent 68%),
+    linear-gradient(112deg,transparent 3%,var(--glass-edge-a) 18%,transparent 31% 66%,var(--glass-edge-b) 81%,transparent 94%);
+  box-shadow:
+    inset 1px 0 0 color-mix(in srgb,var(--glass-edge-a),#fff 10%),
+    inset -1px 0 0 color-mix(in srgb,var(--glass-edge-b),#fff 8%),
+    inset 0 1px 0 #ffffff18,
+    inset 0 -1px 0 #00000024;
+}
+:root[data-world="void"][data-visual-resolved="rich"] #view :is(.card,.asset,.group).world-lit::before {
+  background:
+    radial-gradient(ellipse 50% 26% at var(--panel-x,50%) var(--panel-y,0%),#ffdce513 0%,color-mix(in srgb,var(--panel-kind-accent,var(--world-glow)),transparent 86%) 29%,transparent 61%),
+    linear-gradient(108deg,transparent 4%,#ff315d1d 17%,transparent 28% 66%,#a77cff16 80%,transparent 93%);
+}
+:root[data-world="astral"][data-visual-resolved="rich"] #view :is(.card,.asset,.group).world-lit::before {
+  background:
+    radial-gradient(ellipse 58% 32% at var(--panel-x,50%) var(--panel-y,0%),#e9fbff1d 0%,#8d64f913 34%,transparent 68%),
+    linear-gradient(116deg,transparent 4%,#bceaff16 20%,transparent 34% 67%,#c3a7ff17 82%,transparent 94%);
+}
+:root[data-visual-resolved="light"] #view :is(.card,.asset,.group)::before {box-shadow:none!important}
