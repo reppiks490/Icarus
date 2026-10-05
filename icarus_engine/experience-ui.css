@@ -2352,3 +2352,41 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
     background:none!important;-webkit-background-clip:border-box!important;background-clip:border-box!important;color:CanvasText!important;filter:none!important;text-shadow:none!important;
   }
 }
+
+
+/* Phase XXVI: world selectors preview the universe they invoke instead of reading like plain buttons. */
+.world-scene [data-world-choice] {
+  --choice-color:var(--world-glow);--choice-glyph:"◇";
+  position:relative;overflow:hidden;padding-left:28px;
+  border-color:color-mix(in srgb,var(--choice-color),transparent 68%);
+  background:
+    linear-gradient(145deg,color-mix(in srgb,var(--choice-color),transparent 94%),#070912aa);
+  box-shadow:inset 0 1px 0 #ffffff0d;
+  transition:border-color .2s ease,box-shadow .2s ease,background-color .2s ease,transform .2s ease;
+}
+.world-scene [data-world-choice="divine"] {--choice-color:#f5ce7a;--choice-glyph:"◇"}
+.world-scene [data-world-choice="void"] {--choice-color:#ff315d;--choice-glyph:"×"}
+.world-scene [data-world-choice="astral"] {--choice-color:#73e5ff;--choice-glyph:"○"}
+.world-scene [data-world-choice]::before {
+  content:var(--choice-glyph);position:absolute;left:9px;top:50%;transform:translateY(-50%);
+  color:var(--choice-color);font:600 10px/1 Georgia,serif;text-shadow:0 0 8px color-mix(in srgb,var(--choice-color),transparent 38%);
+}
+.world-scene [data-world-choice]::after {
+  content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--choice-color);opacity:.38;
+  box-shadow:0 0 8px color-mix(in srgb,var(--choice-color),transparent 45%);
+}
+.world-scene [data-world-choice]:hover {
+  border-color:color-mix(in srgb,var(--choice-color),transparent 36%);
+  box-shadow:inset 0 1px 0 #ffffff12,0 0 18px color-mix(in srgb,var(--choice-color),transparent 84%);
+  transform:translateY(-1px);
+}
+.world-scene [data-world-choice][aria-pressed="true"] {
+  border-color:color-mix(in srgb,var(--choice-color),#fff 8%);
+  background:
+    linear-gradient(145deg,color-mix(in srgb,var(--choice-color),transparent 84%),#070912c7);
+  box-shadow:inset 0 1px 0 #ffffff16,0 0 22px color-mix(in srgb,var(--choice-color),transparent 76%);
+}
+.world-scene [data-world-choice][aria-pressed="true"]::after {opacity:1}
+:root[data-world="void"] .world-scene [data-world-choice] {border-radius:2px}
+:root[data-world="astral"] .world-scene [data-world-choice] {border-radius:10px}
+@media (max-width:760px) {.world-scene [data-world-choice]{padding-left:25px}.world-scene [data-world-choice]:hover{transform:none}}
