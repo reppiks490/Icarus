@@ -103,6 +103,7 @@ await page.locator('#experienceTheme').selectOption('void');
 assert.equal(await page.locator('#worldTitle').getAttribute('aria-label'),'Market Destroyer.');
 assert.equal(await page.locator('.world-veil').count(),0);
 await page.locator('#experienceMotion').selectOption('system');await page.locator('#experienceVisualDetail').selectOption('adaptive');
+await page.locator('.experience-settings summary').click();
 await page.setViewportSize({width:390,height:844});await page.waitForTimeout(250);
 assert.equal(await page.locator('html').getAttribute('data-visual-resolved'),'light');
 assert.equal(await page.locator('.world-mobile-hud').isVisible(),true);
