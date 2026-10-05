@@ -1851,3 +1851,31 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 :root[data-experience="focus"] .world-depth-frame {animation:none!important;background-image:none!important}
 @media (max-width:760px) {.world-depth-frame {background-image:none!important;animation:none!important}}
 @media (prefers-reduced-motion:reduce) {.world-depth-frame {animation:none!important;background-image:none!important}}
+
+
+/* Phase X: subsystem identity sits inside the selected world instead of every page sharing one accent. */
+#view {--view-accent:var(--world-glow)}
+:root:is([data-world-view="research"],[data-world-view="sources"],[data-world-view="market-data"]) #view {
+  --view-accent:color-mix(in srgb,var(--world-glow),#72ddff 38%);
+}
+:root:is([data-world-view="brain"],[data-world-view="learning"],[data-world-view="evolution"]) #view {
+  --view-accent:color-mix(in srgb,var(--world-glow),#c99bff 42%);
+}
+:root:is([data-world-view="parallax"],[data-world-view="possibility"],[data-world-view="sibyl"],[data-world-view="chronofold"]) #view {
+  --view-accent:color-mix(in srgb,var(--world-glow),#ff8cda 34%);
+}
+:root:is([data-world-view="pantheon"],[data-world-view="apex"],[data-world-view="ascendancy"]) #view {
+  --view-accent:color-mix(in srgb,var(--world-glow),#ffd878 34%);
+}
+:root:is([data-world-view="system"],[data-world-view="integrity"],[data-world-view="engine-control"],[data-world-view="commissioning"],[data-world-view="commands"],[data-world-view="log"],[data-world-view="autopilot"]) #view {
+  --view-accent:color-mix(in srgb,var(--world-glow),#71efc1 32%);
+}
+:root[data-world]:not([data-world=""]) #view::after {
+  color:color-mix(in srgb,var(--view-accent),transparent 96%);
+  text-shadow:0 0 42px color-mix(in srgb,var(--view-accent),transparent 95%);
+}
+:root[data-world="divine"] #view .world-view-ambient i {border-color:color-mix(in srgb,var(--view-accent),transparent 30%);box-shadow:0 0 8px color-mix(in srgb,var(--view-accent),transparent 48%)}
+:root[data-world="void"] #view .world-view-ambient i {background:linear-gradient(180deg,var(--view-accent),transparent);box-shadow:0 0 8px color-mix(in srgb,var(--view-accent),transparent 45%)}
+:root[data-world="astral"] #view .world-view-ambient i {box-shadow:0 0 6px #dff5ff,0 0 14px color-mix(in srgb,var(--view-accent),transparent 28%)}
+:root[data-world]:not([data-world=""]) #view h3.small::before {background:linear-gradient(90deg,var(--view-accent),transparent);box-shadow:0 0 8px color-mix(in srgb,var(--view-accent),transparent 45%)}
+:root[data-world]:not([data-world=""]) #view .tile .k::before {background:color-mix(in srgb,var(--view-accent),transparent 25%);box-shadow:0 0 7px color-mix(in srgb,var(--view-accent),transparent 45%)}
