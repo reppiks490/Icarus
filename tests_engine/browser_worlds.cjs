@@ -17,13 +17,16 @@ await page.keyboard.press('Escape');
 await page.locator('.world-intro').waitFor({state:'detached'});
 await page.screenshot({path:`${output}/divine.png`,fullPage:true});
 const worldPhases={void:'RUPTURE / SILENCE / EMBER',astral:'ORBIT / AETHER / HORIZON',divine:'CROWN / LIGHT / INFINITY'};
+const worldRadii={};
 for(const world of ['void','astral','divine']){
  await page.locator(`[data-world-choice="${world}"]`).click();
  await page.waitForTimeout(400);
  if(await page.locator('html').getAttribute('data-theme')!==world) throw Error('Theme switch failed');
  if((await page.locator('#worldCoordinatePhase').textContent()).trim()!==worldPhases[world]) throw Error('World coordinate copy failed');
+ worldRadii[world]=await page.locator('#view > .card').first().evaluate(el=>getComputedStyle(el).borderRadius);
  await page.screenshot({path:`${output}/${world}.png`,fullPage:true});
 }
+if(new Set(Object.values(worldRadii)).size!==3) throw Error('World panel silhouettes are not distinct');
 await page.reload();
 if(await page.locator('.world-intro').count()) throw Error('Intro replayed after reload');
 if(await page.locator('html').getAttribute('data-theme')!=='divine') throw Error('Theme lost on reload');
