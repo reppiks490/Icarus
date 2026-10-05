@@ -87,6 +87,7 @@
     lastScrollY=y;lastScrollAt=now;
     const depth=Math.max(0,Math.min(1,y/max));
     root.style.setProperty('--world-scroll',depth.toFixed(4));
+    sectionRadar?.style.setProperty('--radar-scroll',(depth*100).toFixed(2)+'%');
     root.style.setProperty('--world-scroll-shift',(-(window.innerWidth<760?18:34)*depth).toFixed(2)+'px');
     root.style.setProperty('--world-light-y',(12+depth*30).toFixed(2)+'%');
     const phase=depth<.08?'crown':depth<.45?'descent':depth<.78?'depth':'abyss';
