@@ -47,3 +47,6 @@ paper-trades.csv
 *.bak
 secrets/
 **/schwab_token.json
+
+# Licensed Databento market-data corpus; raw rows stay local.
+corpus/databento/
