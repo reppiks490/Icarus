@@ -3155,3 +3155,32 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 :root[data-visual-resolved="light"] .world-section-radar {display:none!important}
 @media (max-width:1250px) {.world-section-radar {display:none!important}}
 @media (forced-colors:active) {.world-section-radar {display:none!important}}
+
+
+/* Phase VIII: panel coordinates make every major instrument feel catalogued inside the cockpit. */
+:root[data-world]:not([data-world=""]) #view :is(.card,.asset,.group) > .world-panel-index {
+  position:absolute;left:12px;bottom:8px;z-index:1;pointer-events:none;
+  max-width:calc(100% - 84px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font:600 6.5px/1 ui-monospace,Consolas,monospace;letter-spacing:.12em;text-transform:uppercase;
+  color:color-mix(in srgb,var(--panel-kind-accent,var(--view-accent,var(--world-glow))),var(--muted) 34%);
+  opacity:.38;text-shadow:0 0 8px color-mix(in srgb,var(--panel-kind-accent,var(--view-accent,var(--world-glow))),transparent 78%);
+  transition:opacity .18s ease,transform .18s ease,color .18s ease;
+}
+:root[data-world]:not([data-world=""]) #view :is(.card,.asset,.group):hover > .world-panel-index,
+:root[data-world]:not([data-world=""]) #view :is(.card,.asset,.group).world-scroll-focus > .world-panel-index {
+  opacity:.78;transform:translateX(2px);
+  color:color-mix(in srgb,var(--panel-kind-accent,var(--view-accent,var(--world-glow))),#fff 12%);
+}
+:root[data-world="divine"] #view .world-panel-index::before {content:"◇";margin-right:6px}
+:root[data-world="void"] #view .world-panel-index::before {content:"/";margin-right:6px}
+:root[data-world="astral"] #view .world-panel-index::before {content:"○";margin-right:6px}
+:root[data-world]:not([data-world=""]) #view :is(.card,.asset,.group) {
+  padding-bottom:max(14px,1.15rem);
+}
+:root[data-visual-resolved="light"] #view .world-panel-index {opacity:.2;text-shadow:none}
+:root[data-experience="focus"] #view .world-panel-index {display:none}
+@media (max-width:760px) {
+  #view .world-panel-index {display:none!important}
+  :root[data-world]:not([data-world=""]) #view :is(.card,.asset,.group) {padding-bottom:12px}
+}
+@media (forced-colors:active) {#view .world-panel-index {display:none!important}}
