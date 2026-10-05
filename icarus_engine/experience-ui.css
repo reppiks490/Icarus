@@ -2227,3 +2227,17 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 :root[data-world="astral"] #view .cmd:hover {box-shadow:inset 2px 0 0 color-mix(in srgb,var(--view-accent),transparent 45%),0 0 18px color-mix(in srgb,var(--view-accent),transparent 95%)}
 @media (max-width:760px) {:root[data-world] #view .cmd:hover {transform:none}}
 @media (prefers-reduced-motion:reduce) {:root[data-world] #view .irow.dirty {animation:none!important}}
+
+
+/* Phase XXI: subsystem coordinates make the large navigation fabric legible at a glance. */
+.world-depth-readout small {
+  grid-column:1/-1;margin-top:3px;font:600 6px/1 ui-monospace,Consolas,monospace;letter-spacing:.16em;
+  color:color-mix(in srgb,var(--active-view-accent,var(--world-glow)),#fff 12%);opacity:.38;
+}
+.world-mobile-hud small {
+  font:600 7px/1 ui-monospace,Consolas,monospace;letter-spacing:.08em;opacity:.32;
+  padding-left:7px;border-left:1px solid color-mix(in srgb,var(--active-view-accent,var(--world-glow)),transparent 78%);
+}
+:root[data-world="void"] .world-depth-readout small,:root[data-world="void"] .world-mobile-hud small {letter-spacing:.04em}
+:root[data-world="astral"] .world-depth-readout small,:root[data-world="astral"] .world-mobile-hud small {color:color-mix(in srgb,#bceaff,var(--active-view-accent) 32%)}
+@media (max-width:410px) {.world-mobile-hud small {display:none}}
