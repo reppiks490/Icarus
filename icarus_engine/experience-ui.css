@@ -1879,3 +1879,54 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 :root[data-world="astral"] #view .world-view-ambient i {box-shadow:0 0 6px #dff5ff,0 0 14px color-mix(in srgb,var(--view-accent),transparent 28%)}
 :root[data-world]:not([data-world=""]) #view h3.small::before {background:linear-gradient(90deg,var(--view-accent),transparent);box-shadow:0 0 8px color-mix(in srgb,var(--view-accent),transparent 45%)}
 :root[data-world]:not([data-world=""]) #view .tile .k::before {background:color-mix(in srgb,var(--view-accent),transparent 25%);box-shadow:0 0 7px color-mix(in srgb,var(--view-accent),transparent 45%)}
+
+
+/* Phase XI: the scenic hero is framed like an instrument window, not a decorative banner. */
+:root[data-world]:not([data-world=""]) .world-scene::before {
+  content:"";position:absolute;inset:10px;z-index:4;pointer-events:none;border-radius:15px;opacity:.72;
+  background:
+    linear-gradient(90deg,var(--world-glow),transparent) top left/84px 1px no-repeat,
+    linear-gradient(180deg,var(--world-glow),transparent) top left/1px 84px no-repeat,
+    linear-gradient(270deg,var(--world-glow),transparent) top right/84px 1px no-repeat,
+    linear-gradient(180deg,var(--world-glow),transparent) top right/1px 84px no-repeat,
+    linear-gradient(90deg,var(--world-glow),transparent) bottom left/84px 1px no-repeat,
+    linear-gradient(0deg,var(--world-glow),transparent) bottom left/1px 84px no-repeat,
+    linear-gradient(270deg,var(--world-glow),transparent) bottom right/84px 1px no-repeat,
+    linear-gradient(0deg,var(--world-glow),transparent) bottom right/1px 84px no-repeat;
+  filter:drop-shadow(0 0 8px color-mix(in srgb,var(--world-glow),transparent 58%));
+}
+:root[data-world="divine"] .world-scene::before {
+  inset:12px;border-radius:17px;
+  background:
+    linear-gradient(90deg,#f5ce7a,transparent) top left/110px 1px no-repeat,
+    linear-gradient(180deg,#f5ce7a,transparent) top left/1px 110px no-repeat,
+    linear-gradient(270deg,#f5ce7a,transparent) top right/110px 1px no-repeat,
+    linear-gradient(180deg,#f5ce7a,transparent) top right/1px 110px no-repeat,
+    radial-gradient(circle,#fff6d9aa 0 2px,transparent 3px) 50% 8px/18px 18px no-repeat;
+}
+:root[data-world="void"] .world-scene::before {
+  inset:8px;border-radius:2px;opacity:.82;
+  background:
+    linear-gradient(135deg,#ff315d 0 1px,transparent 1px) top left/120px 120px no-repeat,
+    linear-gradient(315deg,#ff315d99 0 1px,transparent 1px) bottom right/120px 120px no-repeat,
+    linear-gradient(90deg,transparent,#ff315d88,transparent) 50% 7px/42% 1px no-repeat,
+    linear-gradient(90deg,transparent,#ff315d55,transparent) 50% calc(100% - 7px)/32% 1px no-repeat;
+}
+:root[data-world="astral"] .world-scene::before {
+  inset:9px;border-radius:20px;opacity:.64;
+  background:
+    radial-gradient(ellipse at 50% 8%,transparent 0 34%,#bceaff55 34.3% 34.6%,transparent 35%) top/100% 60% no-repeat,
+    radial-gradient(ellipse at 50% 92%,transparent 0 34%,#9570ff44 34.3% 34.6%,transparent 35%) bottom/100% 60% no-repeat,
+    radial-gradient(circle,#dff8ffcc 0 1px,transparent 2px) 14px 14px/8px 8px no-repeat,
+    radial-gradient(circle,#dff8ffcc 0 1px,transparent 2px) calc(100% - 14px) calc(100% - 14px)/8px 8px no-repeat;
+}
+:root[data-world]:not([data-world=""])[data-experience="cinematic"][data-motion="live"][data-visual-resolved="rich"] .world-scene::before {
+  animation:world-scene-frame-breathe 9s ease-in-out infinite;
+}
+:root[data-world="void"][data-experience="cinematic"][data-motion="live"][data-visual-resolved="rich"] .world-scene::before {animation-duration:5.8s}
+:root[data-world="astral"][data-experience="cinematic"][data-motion="live"][data-visual-resolved="rich"] .world-scene::before {animation-duration:13s}
+@keyframes world-scene-frame-breathe {0%,100%{opacity:.48;filter:drop-shadow(0 0 5px color-mix(in srgb,var(--world-glow),transparent 68%))}50%{opacity:.82;filter:drop-shadow(0 0 13px color-mix(in srgb,var(--world-glow),transparent 52%))}}
+:root[data-visual-resolved="light"] .world-scene::before {opacity:.28;animation:none!important;filter:none}
+:root[data-experience="focus"] .world-scene::before {display:none}
+@media (max-width:760px) {.world-scene::before {inset:7px!important;opacity:.38!important;animation:none!important}}
+@media (prefers-reduced-motion:reduce) {.world-scene::before {animation:none!important}}
