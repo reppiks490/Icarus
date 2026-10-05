@@ -2761,3 +2761,86 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
   #view.world-sparse-view .world-view-ambient::after {width:86vw;top:48vh;opacity:.12;animation:none!important}
 }
 @media (prefers-reduced-motion:reduce) {#view.world-sparse-view .world-view-ambient::after {animation:none!important;opacity:.12}}
+
+
+/* Sparse chambers get a visible architectural floor instead of collapsing into black empty volume. */
+#view.world-sparse-view {
+  --sparse-horizon:52%;
+}
+#view.world-sparse-view::before {
+  opacity:.72;
+  background:
+    linear-gradient(180deg,transparent 0 38%,color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 97%) 58%,transparent 82%),
+    var(--view-field);
+}
+#view.world-sparse-view .world-view-ambient::before {
+  color:color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 91.5%);
+  text-shadow:
+    0 0 44px color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 90%),
+    0 0 110px color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 94%);
+}
+#view.world-sparse-view .world-view-ambient {
+  background:
+    linear-gradient(180deg,transparent 0 33%,color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 98%) 49%,transparent 70%);
+}
+#view.world-sparse-view .world-view-ambient::after {
+  opacity:.52;
+}
+
+/* Divine: ordered cathedral floor / throne axis. */
+:root[data-world="divine"] #view.world-sparse-view {
+  background:
+    linear-gradient(90deg,transparent 0 49.94%,color-mix(in srgb,var(--view-accent),transparent 83%) 50%,transparent 50.06%),
+    linear-gradient(180deg,transparent 0 45%,color-mix(in srgb,var(--view-accent),transparent 94%) 45.15%,transparent 45.3%),
+    repeating-linear-gradient(104deg,transparent 0 124px,color-mix(in srgb,var(--view-accent),transparent 97%) 125px,transparent 126px 210px),
+    repeating-linear-gradient(76deg,transparent 0 124px,color-mix(in srgb,var(--view-accent),transparent 97%) 125px,transparent 126px 210px);
+}
+:root[data-world="divine"] #view.world-sparse-view .world-view-ambient::after {
+  opacity:.58;
+  box-shadow:
+    0 0 0 30px color-mix(in srgb,var(--view-accent),transparent 95%),
+    0 0 0 62px color-mix(in srgb,var(--view-accent),transparent 96.5%),
+    0 0 0 104px color-mix(in srgb,var(--view-accent),transparent 98%),
+    inset 0 0 96px color-mix(in srgb,var(--view-accent),transparent 92%);
+}
+
+/* Void: fractured descent plane. */
+:root[data-world="void"] #view.world-sparse-view {
+  background:
+    linear-gradient(111deg,transparent 0 18%,color-mix(in srgb,var(--view-accent),transparent 92%) 18.15% 18.35%,transparent 18.5% 66%,color-mix(in srgb,var(--view-accent),transparent 95%) 66.15% 66.35%,transparent 66.5%),
+    linear-gradient(69deg,transparent 0 32%,color-mix(in srgb,var(--view-accent),transparent 96%) 32.2% 32.35%,transparent 32.5%),
+    repeating-linear-gradient(90deg,transparent 0 96px,color-mix(in srgb,var(--view-accent),transparent 98%) 97px,transparent 98px 164px);
+}
+:root[data-world="void"] #view.world-sparse-view .world-view-ambient::after {
+  opacity:.68;
+  filter:drop-shadow(0 0 26px color-mix(in srgb,var(--view-accent),transparent 72%));
+}
+
+/* Astral: orbital floor / observatory lens. */
+:root[data-world="astral"] #view.world-sparse-view {
+  background:
+    radial-gradient(ellipse at 50% 58%,transparent 0 17%,color-mix(in srgb,var(--view-accent),transparent 94%) 17.2% 17.35%,transparent 17.6% 27%,color-mix(in srgb,#bceaff,transparent 96%) 27.2% 27.35%,transparent 27.6%),
+    radial-gradient(circle at 16% 72%,#dff8ff19 0 1px,transparent 1.5px),
+    radial-gradient(circle at 84% 42%,color-mix(in srgb,var(--view-accent),transparent 72%) 0 1px,transparent 1.6px);
+  background-size:auto,113px 107px,151px 149px;
+}
+:root[data-world="astral"] #view.world-sparse-view .world-view-ambient::after {
+  opacity:.64;
+  box-shadow:
+    0 0 0 34px color-mix(in srgb,#bceaff,transparent 95%),
+    0 0 0 76px color-mix(in srgb,var(--view-accent),transparent 96.5%),
+    0 0 64px color-mix(in srgb,var(--view-accent),transparent 82%);
+}
+
+:root[data-visual-resolved="light"] #view.world-sparse-view::before {opacity:.24}
+:root[data-visual-resolved="light"] #view.world-sparse-view .world-view-ambient::before {color:color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 96%)}
+:root[data-experience="focus"] #view.world-sparse-view {background:none!important}
+@media (max-width:760px) {
+  #view.world-sparse-view {background:none!important}
+  #view.world-sparse-view::before {opacity:.2}
+  #view.world-sparse-view .world-view-ambient::before {color:color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 95.5%)}
+  #view.world-sparse-view .world-view-ambient::after {opacity:.16}
+}
+@media (prefers-reduced-motion:reduce) {
+  #view.world-sparse-view .world-view-ambient::after {animation:none!important}
+}
