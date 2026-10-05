@@ -15,6 +15,20 @@
   const save = (key, value) => { sessionPreferences.set(key, value); try { localStorage.setItem(key, value); } catch (_) { /* Retain preferences in memory for this session. */ } };
   const allowedTheme = value => themes.some(([id]) => id === value) ? value : 'dark';
 
+  function updateRenderStatus() {
+    const panel=document.getElementById('experienceRenderStatus');if(!panel)return;
+    const world=worlds[root.dataset.world]?.name||root.dataset.theme||'None';
+    const view=(root.dataset.worldView||currentView||'overview').replace(/-/g,' ');
+    const tier=(root.dataset.visualResolved||root.dataset.visualDetail||'adaptive').toUpperCase();
+    const motionState=(root.dataset.motion||'off').toUpperCase();
+    const aura=document.querySelector('.world-aura')?.dataset.state||'CPU';
+    panel.querySelector('[data-render-world]').textContent='WORLD '+String(world).toUpperCase();
+    panel.querySelector('[data-render-view]').textContent='VIEW '+String(view).toUpperCase();
+    panel.querySelector('[data-render-tier]').textContent='RENDER '+tier;
+    panel.querySelector('[data-render-motion]').textContent='MOTION '+motionState;
+    panel.querySelector('[data-render-aura]').textContent='AURA '+String(aura).toUpperCase();
+  }
+
   function motion() {
     root.dataset.motion = read('icarus-motion', 'system') === 'off' || reduced.matches ? 'off' : 'live';
     if (root.dataset.motion === 'off') document.querySelectorAll('.experience-cue, .experience-fill-cue').forEach(el => {
@@ -26,6 +40,7 @@
     const note = document.getElementById('experienceMotionNote');
     if (note) note.textContent = reduced.matches ? 'Your system requests reduced motion; all cues are off.' :
       root.dataset.motion === 'off' ? 'All motion is off.' : 'Cinematic scenery and coordinated panel entrances. Market cues remain tied to actual state changes.';
+    updateRenderStatus();
   }
 
   function cue(symbol, kind) {
@@ -55,6 +70,7 @@
       snapshots.set(asset.symbol, next);
     }
     for (const symbol of snapshots.keys()) if (!active.has(symbol)) { snapshots.delete(symbol); fillSnapshots.delete(symbol); }
+    updateRenderStatus();
   }
 
   function chart(data, windowSize, element) {
@@ -121,6 +137,7 @@
     focus.setAttribute('aria-pressed', String(root.dataset.experience === 'focus'));
     focus.textContent = root.dataset.experience === 'focus' ? 'Restore scenery' : 'Focus';
     document.getElementById('experienceMode').value = root.dataset.experience;
+    updateRenderStatus();
   }
 
   function init({onThemeChanged} = {}) {
@@ -139,6 +156,7 @@
       <label>Opening<select id="experienceIntroLength"><option value="20">Epic · 20 seconds</option><option value="12">Classic · 12 seconds</option></select></label>
       <label>Density<select id="experienceDensity"><option value="comfortable">Comfortable</option><option value="compact">Trading desk</option></select></label>
       <label>Motion<select id="experienceMotion"><option value="system">Follow system</option><option value="off">No motion</option></select></label>
+      <div class="experience-render-status" id="experienceRenderStatus" aria-live="polite"><span data-render-world>WORLD —</span><span data-render-view>VIEW —</span><span data-render-tier>RENDER —</span><span data-render-motion>MOTION —</span><span data-render-aura>AURA —</span></div>
       <button type="button" id="experienceSound" class="sm" aria-pressed="false">Enable celestial sound</button>
       <button type="button" id="experienceReplay" class="sm">Replay cinematic intro</button><p id="experienceMotionNote"></p><p>Original anime worlds. Scenic titles and effects are decorative, independent of market activity.</p>
       </div></details><button class="icon-btn" id="experienceFocus" aria-pressed="false">Focus</button><button class="icon-btn" id="experienceMusicToggle" aria-expanded="false" aria-controls="experienceMusic">Music</button>`;
@@ -205,7 +223,11 @@
       sceneObserver.observe(scenery);
     }
     window.IcarusWorldMotion?.init(scenery);
-    appearance(); motion();
+    const renderObserver=new MutationObserver(updateRenderStatus);
+    renderObserver.observe(root,{attributes:true,attributeFilter:['data-world','data-world-view','data-visual-resolved','data-visual-detail','data-motion','data-experience']});
+    const auraObserver=new MutationObserver(updateRenderStatus);
+    const auraNode=document.querySelector('.world-aura');if(auraNode)auraObserver.observe(auraNode,{attributes:true,attributeFilter:['data-state']});
+    appearance(); motion();updateRenderStatus();
     document.getElementById('experienceReplay').addEventListener('click', () => window.IcarusWorldMotion?.playIntro());
     document.getElementById('experienceSound').addEventListener('click', event => window.IcarusWorldCinema?.toggleSound(event.currentTarget));
     window.IcarusWorldMotion?.startup();
