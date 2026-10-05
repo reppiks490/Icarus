@@ -1267,3 +1267,51 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
   100%{opacity:.14;transform:scale(.72) rotate(44deg);filter:blur(1px)}
 }
 @media (prefers-reduced-motion:reduce) {.intro-world-emblem {animation:none!important}}
+
+
+/* Lower-page ambient field: twelve compositor-only motes keep long views alive without touching data DOM. */
+.world-view-ambient {position:absolute;inset:0;z-index:0!important;overflow:hidden;pointer-events:none;opacity:.58;contain:layout paint}
+.world-view-ambient i {position:absolute;display:block;left:var(--ax,50%);top:var(--ay,50%);width:4px;height:4px;opacity:0;will-change:transform,opacity}
+.world-view-ambient i:nth-child(1){--ax:4%;--ay:8%;--ad:-1s}.world-view-ambient i:nth-child(2){--ax:14%;--ay:42%;--ad:-7s}
+.world-view-ambient i:nth-child(3){--ax:24%;--ay:74%;--ad:-12s}.world-view-ambient i:nth-child(4){--ax:35%;--ay:19%;--ad:-17s}
+.world-view-ambient i:nth-child(5){--ax:46%;--ay:57%;--ad:-4s}.world-view-ambient i:nth-child(6){--ax:56%;--ay:88%;--ad:-14s}
+.world-view-ambient i:nth-child(7){--ax:64%;--ay:29%;--ad:-9s}.world-view-ambient i:nth-child(8){--ax:73%;--ay:66%;--ad:-19s}
+.world-view-ambient i:nth-child(9){--ax:82%;--ay:12%;--ad:-5s}.world-view-ambient i:nth-child(10){--ax:91%;--ay:48%;--ad:-15s}
+.world-view-ambient i:nth-child(11){--ax:96%;--ay:82%;--ad:-10s}.world-view-ambient i:nth-child(12){--ax:41%;--ay:36%;--ad:-21s}
+
+:root[data-world="divine"] .world-view-ambient i {
+  border:1px solid color-mix(in srgb,var(--world-glow),transparent 30%);transform:rotate(45deg);
+  box-shadow:0 0 8px color-mix(in srgb,var(--world-glow),transparent 48%);
+}
+:root[data-world="void"] .world-view-ambient i {
+  width:2px;height:11px;background:linear-gradient(180deg,var(--world-glow),transparent);box-shadow:0 0 8px color-mix(in srgb,var(--world-glow),transparent 45%);
+}
+:root[data-world="astral"] .world-view-ambient i {
+  border-radius:50%;background:color-mix(in srgb,#dff5ff,var(--world-glow) 35%);box-shadow:0 0 6px #dff5ff,0 0 14px color-mix(in srgb,var(--world-glow),transparent 28%);
+}
+:root[data-world]:not([data-world=""])[data-experience="cinematic"][data-motion="live"][data-visual-resolved="rich"] .world-view-ambient i {
+  animation:world-ambient-divine 26s linear infinite;animation-delay:var(--ad);
+}
+:root[data-world="void"][data-experience="cinematic"][data-motion="live"][data-visual-resolved="rich"] .world-view-ambient i {animation-name:world-ambient-void;animation-duration:18s}
+:root[data-world="astral"][data-experience="cinematic"][data-motion="live"][data-visual-resolved="rich"] .world-view-ambient i {animation-name:world-ambient-astral;animation-duration:34s}
+@keyframes world-ambient-divine {
+  0%{opacity:0;transform:translate3d(0,36px,0) rotate(45deg) scale(.65)}
+  18%{opacity:.34}55%{opacity:.62}
+  100%{opacity:0;transform:translate3d(12px,-120px,0) rotate(135deg) scale(1.15)}
+}
+@keyframes world-ambient-void {
+  0%{opacity:0;transform:translate3d(-8px,-60px,0) rotate(19deg) scaleY(.65)}
+  16%{opacity:.5}58%{opacity:.72}
+  100%{opacity:0;transform:translate3d(18px,150px,0) rotate(-11deg) scaleY(1.4)}
+}
+@keyframes world-ambient-astral {
+  0%{opacity:0;transform:translate3d(-28px,22px,0) scale(.55)}
+  20%{opacity:.38}48%{opacity:.74}
+  76%{opacity:.32}
+  100%{opacity:0;transform:translate3d(70px,-66px,0) scale(1.15)}
+}
+:root[data-scroll-phase="depth"] .world-view-ambient {opacity:.68}
+:root[data-scroll-phase="abyss"] .world-view-ambient {opacity:.78}
+:root[data-visual-resolved="light"] .world-view-ambient,:root[data-experience="focus"] .world-view-ambient,:root[data-motion="off"] .world-view-ambient {display:none}
+@media (max-width:760px) {.world-view-ambient {opacity:.32}.world-view-ambient i:nth-child(n+8){display:none}}
+@media (prefers-reduced-motion:reduce) {.world-view-ambient {display:none!important}}
