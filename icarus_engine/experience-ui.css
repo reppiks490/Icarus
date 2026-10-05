@@ -2073,3 +2073,34 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
   .world-view-ambient::before {top:44vh;font-size:clamp(90px,42vw,190px);opacity:.36}
 }
 @media (prefers-reduced-motion:reduce) {.world-view-ambient::before {transform:translate(-50%,-50%)!important;filter:none!important}}
+
+
+/* Phase XVII: dense tables and logs read like instrumentation, not raw HTML grids. */
+:root[data-world]:not([data-world=""]) #view .scroll thead th {
+  border-bottom-color:color-mix(in srgb,var(--view-accent,var(--world-glow)),var(--grid) 74%);
+  box-shadow:0 1px 0 color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 86%),0 8px 18px #0002;
+}
+:root[data-world]:not([data-world=""]) #view .scroll thead th:first-child {padding-left:12px}
+:root[data-world]:not([data-world=""]) #view .scroll tbody td {position:relative}
+:root[data-world]:not([data-world=""]) #view .scroll tbody tr:hover td:first-child {
+  box-shadow:inset 2px 0 0 color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 18%);
+}
+:root[data-world="divine"] #view .scroll tbody tr:hover td {
+  background-image:linear-gradient(90deg,color-mix(in srgb,var(--view-accent),transparent 97%),transparent 46%,color-mix(in srgb,#fff6d9,transparent 98%));
+}
+:root[data-world="void"] #view .scroll tbody tr:hover td {
+  background-image:linear-gradient(108deg,color-mix(in srgb,var(--view-accent),transparent 94%) 0 2%,transparent 2.5% 61%,color-mix(in srgb,var(--view-accent),transparent 97%) 61.5% 63%,transparent 64%);
+}
+:root[data-world="astral"] #view .scroll tbody tr:hover td {
+  background-image:radial-gradient(ellipse at 12% 50%,color-mix(in srgb,var(--view-accent),transparent 94%),transparent 46%);
+}
+:root[data-world]:not([data-world=""]) #view .log {
+  position:relative;border-color:color-mix(in srgb,var(--view-accent,var(--world-glow)),var(--ring) 78%);
+  background-image:
+    linear-gradient(90deg,color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 96%) 1px,transparent 1px),
+    linear-gradient(180deg,color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 98%),transparent 18%);
+  background-size:34px 100%,100% 100%;
+  box-shadow:inset 28px 0 34px -36px color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 55%),inset 0 1px 0 #ffffff08;
+}
+:root[data-world="void"] #view .log {border-radius:2px;background-size:27px 100%,100% 100%}
+:root[data-world="astral"] #view .log {border-radius:12px}
