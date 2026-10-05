@@ -2848,8 +2848,10 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 
 /* Intro escape control is a deliberate cockpit element and stays inside every safe area. */
 .world-intro .intro-skip {
-  z-index:20;right:max(24px,calc(env(safe-area-inset-right) + 12px));top:max(24px,calc(env(safe-area-inset-top) + 12px));
-  min-width:118px;display:inline-flex;align-items:center;justify-content:space-between;gap:12px;
+  position:fixed;z-index:20;left:auto;bottom:auto;box-sizing:border-box;
+  right:clamp(12px,max(24px,calc(env(safe-area-inset-right) + 12px)),40px);
+  top:clamp(12px,max(24px,calc(env(safe-area-inset-top) + 12px)),40px);
+  max-width:calc(100vw - 24px);min-width:118px;display:inline-flex;align-items:center;justify-content:space-between;gap:12px;
   border-color:color-mix(in srgb,var(--intro-light),transparent 48%);
   background:linear-gradient(145deg,color-mix(in srgb,var(--intro-halo),transparent 89%),#090a11e8);
   box-shadow:0 12px 30px #0008,inset 0 1px 0 #ffffff18,0 0 18px color-mix(in srgb,var(--intro-halo),transparent 87%);
@@ -2868,7 +2870,11 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 .world-intro[data-intro-world="void"] .intro-skip {border-radius:2px;clip-path:polygon(6px 0,100% 0,100% calc(100% - 6px),calc(100% - 6px) 100%,0 100%,0 6px)}
 .world-intro[data-intro-world="astral"] .intro-skip {border-radius:999px}
 @media (max-width:600px) {
-  .world-intro .intro-skip {right:max(12px,calc(env(safe-area-inset-right) + 8px));top:max(12px,calc(env(safe-area-inset-top) + 8px));min-width:104px;padding:9px 12px;font-size:9px}
+  .world-intro .intro-skip {
+    right:clamp(8px,max(12px,calc(env(safe-area-inset-right) + 8px)),24px);
+    top:clamp(8px,max(12px,calc(env(safe-area-inset-top) + 8px)),24px);
+    max-width:calc(100vw - 16px);min-width:104px;padding:9px 12px;font-size:9px
+  }
 }
 
 
