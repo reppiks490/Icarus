@@ -170,10 +170,13 @@
     const r=target.getBoundingClientRect();
     if(!r.width||!r.height){focusOrbit.classList.remove('active');return;}
     const pad=Math.min(9,Math.max(5,Math.min(r.width,r.height)*.12));
-    focusOrbit.style.setProperty('--focus-x',(r.left-pad).toFixed(1)+'px');
-    focusOrbit.style.setProperty('--focus-y',(r.top-pad).toFixed(1)+'px');
-    focusOrbit.style.setProperty('--focus-w',(r.width+pad*2).toFixed(1)+'px');
-    focusOrbit.style.setProperty('--focus-h',(r.height+pad*2).toFixed(1)+'px');
+    const w=Math.min(window.innerWidth-4,r.width+pad*2),h=Math.min(window.innerHeight-4,r.height+pad*2);
+    const x=Math.max(2,Math.min(window.innerWidth-w-2,r.left-pad));
+    const y=Math.max(2,Math.min(window.innerHeight-h-2,r.top-pad));
+    focusOrbit.style.setProperty('--focus-x',x.toFixed(1)+'px');
+    focusOrbit.style.setProperty('--focus-y',y.toFixed(1)+'px');
+    focusOrbit.style.setProperty('--focus-w',w.toFixed(1)+'px');
+    focusOrbit.style.setProperty('--focus-h',h.toFixed(1)+'px');
     focusOrbit.classList.add('active');
   }
   function focusIn(event){
