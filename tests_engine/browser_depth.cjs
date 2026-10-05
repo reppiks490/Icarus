@@ -80,6 +80,13 @@ assert.ok((await page.locator('.world-topology path').count())<=24);
 assert.ok((await page.locator('.world-topology circle').count())<=18);
 assert.ok((await page.locator('.world-topology path.active').count())>0);
 assert.equal(await page.locator('.world-topology').evaluate(el=>getComputedStyle(el).position),'absolute');
+await card.evaluate(el=>{
+ const r=el.getBoundingClientRect();
+ el.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerType:'mouse',clientX:r.left+r.width*.45,clientY:r.top+24}));
+});
+await page.waitForFunction(()=>document.querySelectorAll('.world-topology .impact').length>0);
+await page.waitForTimeout(820);
+assert.equal(await page.locator('.world-topology .impact').count(),0);
 await page.evaluate(()=>{window.__icarusTopologyPath=document.querySelector('.world-topology path');});
 await page.waitForTimeout(320);
 assert.equal(await page.evaluate(()=>window.__icarusTopologyPath===document.querySelector('.world-topology path')),true,'decorative topology must not rebuild itself in a mutation loop');
