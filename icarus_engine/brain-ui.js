@@ -16,25 +16,25 @@
     return `<section class="card c12 brain-shell" id="brainPanel">
       <style>
         .brain-shell{position:relative;overflow:hidden;min-height:520px;background:
-          radial-gradient(circle at 50% 8%,rgba(86,225,255,.16),transparent 34%),
-          radial-gradient(circle at 92% 42%,rgba(145,92,255,.12),transparent 32%),
-          linear-gradient(145deg,var(--surface),rgba(20,34,44,.92));}
+          radial-gradient(circle at 50% 8%,color-mix(in srgb,var(--view-accent,var(--s1)),transparent 84%),transparent 34%),
+          radial-gradient(circle at 92% 42%,color-mix(in srgb,var(--s7,var(--view-accent,var(--s1))),transparent 88%),transparent 32%),
+          linear-gradient(145deg,var(--surface),color-mix(in srgb,var(--surface),var(--page) 28%));}
         .brain-shell:before{content:"";position:absolute;inset:0;pointer-events:none;background:
-          linear-gradient(rgba(95,232,255,.035) 1px,transparent 1px),
-          linear-gradient(90deg,rgba(95,232,255,.035) 1px,transparent 1px);background-size:28px 28px;mask-image:linear-gradient(to bottom,black,transparent 92%)}
+          linear-gradient(color-mix(in srgb,var(--view-accent,var(--s1)),transparent 96.5%) 1px,transparent 1px),
+          linear-gradient(90deg,color-mix(in srgb,var(--view-accent,var(--s1)),transparent 96.5%) 1px,transparent 1px);background-size:28px 28px;mask-image:linear-gradient(to bottom,black,transparent 92%)}
         .brain-layer{position:relative;z-index:1}
         .brain-title{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
-        .brain-core{border:1px solid rgba(95,232,255,.35);box-shadow:0 0 40px rgba(95,232,255,.08) inset;border-radius:18px;padding:16px;background:rgba(8,18,25,.28)}
+        .brain-core{border:1px solid color-mix(in srgb,var(--view-accent,var(--s1)),transparent 65%);box-shadow:0 0 40px color-mix(in srgb,var(--view-accent,var(--s1)),transparent 92%) inset;border-radius:18px;padding:16px;background:color-mix(in srgb,var(--surface-2),transparent 28%)}
         .brain-orbit{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
-        .brain-agent,.brain-sub,.brain-lane{border:1px solid var(--ring);background:rgba(255,255,255,.025);border-radius:12px;padding:10px}
+        .brain-agent,.brain-sub,.brain-lane{border:1px solid var(--ring);background:color-mix(in srgb,var(--ink),transparent 97.5%);border-radius:12px;padding:10px}
         .brain-agent b,.brain-sub b{letter-spacing:.04em}
         .brain-good{color:var(--good-text);border-color:var(--good)!important}.brain-bad{color:var(--crit);border-color:var(--crit)!important}.brain-warn{color:var(--warn);border-color:var(--warn)!important}
         .brain-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px}
         .brain-gate{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:6px;margin-top:8px}
         .brain-gate span{font-size:11px;padding:5px 7px;border:1px solid var(--ring);border-radius:8px}
-        .brain-pulse{width:11px;height:11px;border-radius:50%;background:#67e8f9;box-shadow:0 0 0 0 rgba(103,232,249,.65);animation:brainPulse 1.8s infinite}
-        @keyframes brainPulse{70%{box-shadow:0 0 0 14px rgba(103,232,249,0)}100%{box-shadow:0 0 0 0 rgba(103,232,249,0)}}
-        .brain-route{font:11px/1.5 ui-monospace,Consolas,monospace;background:rgba(0,0,0,.16);border-radius:8px;padding:8px;margin-top:6px;white-space:pre-wrap}
+        .brain-pulse{width:11px;height:11px;border-radius:50%;background:var(--view-accent,var(--s1));box-shadow:0 0 0 0 color-mix(in srgb,var(--view-accent,var(--s1)),transparent 35%);animation:brainPulse 1.8s infinite}
+        @keyframes brainPulse{70%{box-shadow:0 0 0 14px color-mix(in srgb,var(--view-accent,var(--s1)),transparent 100%)}100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--view-accent,var(--s1)),transparent 100%)}}
+        .brain-route{font:11px/1.5 ui-monospace,Consolas,monospace;background:color-mix(in srgb,var(--page),transparent 16%);border-radius:8px;padding:8px;margin-top:6px;white-space:pre-wrap}
       </style>
       <div class="brain-layer"><h2>Adaptive Brain <span class="sub">multi-agent learning fabric · evidence-backed · router SHADOW_ONLY</span></h2><div class="empty">loading measured brain state…</div></div>
     </section>`;
@@ -107,11 +107,11 @@
 
     el.innerHTML = `<style>
         .brain-shell{position:relative;overflow:hidden;min-height:520px;background:
-          radial-gradient(circle at 50% 8%,rgba(86,225,255,.16),transparent 34%),
-          radial-gradient(circle at 92% 42%,rgba(145,92,255,.12),transparent 32%),
-          linear-gradient(145deg,var(--surface),rgba(20,34,44,.92));}
-        .brain-shell:before{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(rgba(95,232,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(95,232,255,.035) 1px,transparent 1px);background-size:28px 28px;mask-image:linear-gradient(to bottom,black,transparent 92%)}
-        .brain-layer{position:relative;z-index:1}.brain-title{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px}.brain-core{border:1px solid rgba(95,232,255,.35);box-shadow:0 0 40px rgba(95,232,255,.08) inset;border-radius:18px;padding:16px;background:rgba(8,18,25,.28)}.brain-orbit{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}.brain-agent,.brain-sub,.brain-lane{border:1px solid var(--ring);background:rgba(255,255,255,.025);border-radius:12px;padding:10px}.brain-good{color:var(--good-text);border-color:var(--good)!important}.brain-bad{color:var(--crit);border-color:var(--crit)!important}.brain-warn{color:var(--warn);border-color:var(--warn)!important}.brain-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px}.brain-gate{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:6px;margin-top:8px}.brain-gate span{font-size:11px;padding:5px 7px;border:1px solid var(--ring);border-radius:8px}.brain-pulse{width:11px;height:11px;border-radius:50%;background:#67e8f9;box-shadow:0 0 0 0 rgba(103,232,249,.65);animation:brainPulse 1.8s infinite}@keyframes brainPulse{70%{box-shadow:0 0 0 14px rgba(103,232,249,0)}100%{box-shadow:0 0 0 0 rgba(103,232,249,0)}}.brain-route{font:11px/1.5 ui-monospace,Consolas,monospace;background:rgba(0,0,0,.16);border-radius:8px;padding:8px;margin-top:6px;white-space:pre-wrap}
+          radial-gradient(circle at 50% 8%,color-mix(in srgb,var(--view-accent,var(--s1)),transparent 84%),transparent 34%),
+          radial-gradient(circle at 92% 42%,color-mix(in srgb,var(--s7,var(--view-accent,var(--s1))),transparent 88%),transparent 32%),
+          linear-gradient(145deg,var(--surface),color-mix(in srgb,var(--surface),var(--page) 28%));}
+        .brain-shell:before{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(color-mix(in srgb,var(--view-accent,var(--s1)),transparent 96.5%) 1px,transparent 1px),linear-gradient(90deg,color-mix(in srgb,var(--view-accent,var(--s1)),transparent 96.5%) 1px,transparent 1px);background-size:28px 28px;mask-image:linear-gradient(to bottom,black,transparent 92%)}
+        .brain-layer{position:relative;z-index:1}.brain-title{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px}.brain-core{border:1px solid color-mix(in srgb,var(--view-accent,var(--s1)),transparent 65%);box-shadow:0 0 40px color-mix(in srgb,var(--view-accent,var(--s1)),transparent 92%) inset;border-radius:18px;padding:16px;background:color-mix(in srgb,var(--surface-2),transparent 28%)}.brain-orbit{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}.brain-agent,.brain-sub,.brain-lane{border:1px solid var(--ring);background:color-mix(in srgb,var(--ink),transparent 97.5%);border-radius:12px;padding:10px}.brain-good{color:var(--good-text);border-color:var(--good)!important}.brain-bad{color:var(--crit);border-color:var(--crit)!important}.brain-warn{color:var(--warn);border-color:var(--warn)!important}.brain-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px}.brain-gate{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:6px;margin-top:8px}.brain-gate span{font-size:11px;padding:5px 7px;border:1px solid var(--ring);border-radius:8px}.brain-pulse{width:11px;height:11px;border-radius:50%;background:var(--view-accent,var(--s1));box-shadow:0 0 0 0 color-mix(in srgb,var(--view-accent,var(--s1)),transparent 35%);animation:brainPulse 1.8s infinite}@keyframes brainPulse{70%{box-shadow:0 0 0 14px color-mix(in srgb,var(--view-accent,var(--s1)),transparent 100%)}100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--view-accent,var(--s1)),transparent 100%)}}.brain-route{font:11px/1.5 ui-monospace,Consolas,monospace;background:color-mix(in srgb,var(--page),transparent 16%);border-radius:8px;padding:8px;margin-top:6px;white-space:pre-wrap}
       </style>
       <div class="brain-layer">
         <div class="brain-title"><span class="brain-pulse"></span><div><h2 style="margin:0">ICARUS Adaptive Brain <span class="sub">truthful continuous-learning control surface</span></h2><div class="small muted">generated ${h(b.generated_at)} · production decision authority: ${auth.production_decision_authorized?'YES':'NO'} · execution authority: ${auth.execution_authorized?'YES':'NO'}</div></div></div>
