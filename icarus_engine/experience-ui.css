@@ -3497,8 +3497,11 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 
 /* Divine: ordered heraldic plaque. */
 :root[data-world="divine"] .world-view-insignia {border-radius:12px 12px 4px 4px}
-:root[data-world="divine"] .world-view-insignia > i {border:1px solid color-mix(in srgb,var(--active-view-accent),transparent 44%);transform:rotate(45deg)}
-:root[data-world="divine"] .world-view-insignia > i::first-letter {transform:rotate(-45deg)}
+:root[data-world="divine"] .world-view-insignia > i {
+  border:1px solid color-mix(in srgb,var(--active-view-accent),transparent 44%);
+  clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);
+  background:color-mix(in srgb,var(--active-view-accent),transparent 95%);
+}
 
 /* Void: fractured transmission plate. */
 :root[data-world="void"] .world-view-insignia {
