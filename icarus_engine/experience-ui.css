@@ -3650,3 +3650,82 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 .world-inspection-field[data-kind="data"] {--panel-kind-accent:color-mix(in srgb,var(--active-view-accent,var(--world-glow)),#7de7ff 28%)}
 .world-inspection-field[data-kind="control"] {--panel-kind-accent:color-mix(in srgb,var(--active-view-accent,var(--world-glow)),#7ff0c5 24%)}
 .world-inspection-field[data-kind="instrument"] {--panel-kind-accent:var(--active-view-accent,var(--world-glow))}
+
+
+/* Phase XXIX: flagship subsystems gain their own internal ambient mechanics inside the selected world. */
+:root[data-world]:not([data-world=""]) #view :is(.brain-core,.px-box,.psi-box,.pan-field,.evo-sub) {
+  position:relative;overflow:hidden;isolation:isolate;
+}
+:root[data-world-view="brain"][data-visual-resolved="rich"] #view .brain-core::after {
+  content:"";position:absolute;z-index:0;pointer-events:none;left:50%;top:50%;width:min(54vw,520px);aspect-ratio:1;
+  transform:translate(-50%,-50%);border-radius:50%;
+  background:
+    conic-gradient(from 0deg,transparent 0 12%,color-mix(in srgb,var(--view-accent),transparent 88%) 12.2% 12.5%,transparent 12.8% 37%,color-mix(in srgb,var(--view-accent),transparent 93%) 37.2% 37.5%,transparent 37.8% 62%,color-mix(in srgb,var(--view-accent),transparent 91%) 62.2% 62.5%,transparent 62.8% 87%,color-mix(in srgb,var(--view-accent),transparent 94%) 87.2% 87.5%,transparent 87.8%),
+    radial-gradient(circle,transparent 0 37%,color-mix(in srgb,var(--view-accent),transparent 94%) 37.3% 37.7%,transparent 38.1% 49%,color-mix(in srgb,var(--view-accent),transparent 97%) 49.2% 49.5%,transparent 50%);
+  opacity:.46;filter:drop-shadow(0 0 12px color-mix(in srgb,var(--view-accent),transparent 84%));
+}
+:root[data-world-view="brain"][data-motion="live"][data-experience="cinematic"][data-visual-resolved="rich"] #view .brain-core::after {animation:world-brain-orbit 22s linear infinite}
+@keyframes world-brain-orbit {to{transform:translate(-50%,-50%) rotate(360deg)}}
+:root[data-world-view="brain"] #view .brain-core > * {position:relative;z-index:1}
+
+/* PARALLAX becomes a mirrored optical chamber. */
+:root[data-world-view="parallax"][data-visual-resolved="rich"] #view .px-box::after {
+  content:"";position:absolute;z-index:0;inset:0;pointer-events:none;opacity:.36;
+  background:
+    linear-gradient(90deg,transparent 0 49.8%,color-mix(in srgb,var(--view-accent),transparent 72%) 50%,transparent 50.2%),
+    linear-gradient(116deg,transparent 0 28%,color-mix(in srgb,var(--view-accent),transparent 94%) 28.2% 28.5%,transparent 28.8% 71%,color-mix(in srgb,var(--view-accent),transparent 96%) 71.2% 71.5%,transparent 71.8%);
+  transform:scaleX(var(--parallax-mirror,1));
+}
+:root[data-world-view="parallax"][data-motion="live"][data-experience="cinematic"][data-visual-resolved="rich"] #view .px-box:nth-child(even)::after {--parallax-mirror:-1;animation:world-parallax-split 9s ease-in-out infinite alternate}
+:root[data-world-view="parallax"][data-motion="live"][data-experience="cinematic"][data-visual-resolved="rich"] #view .px-box:nth-child(odd)::after {animation:world-parallax-split 11s ease-in-out infinite alternate-reverse}
+@keyframes world-parallax-split {from{opacity:.22;translate:-2% 0}to{opacity:.52;translate:2% 0}}
+:root[data-world-view="parallax"] #view .px-box > * {position:relative;z-index:1}
+
+/* ICARUS Ψ gets a quiet probability-wave sheen that never changes the meter geometry. */
+:root[data-world-view="possibility"][data-visual-resolved="rich"] #view .psi-meter::after {
+  content:"";position:absolute;z-index:1;pointer-events:none;inset:0;opacity:.28;
+  background:linear-gradient(108deg,transparent 0 24%,color-mix(in srgb,var(--view-accent),#fff 8%) 39%,transparent 54% 100%);
+  background-size:240% 100%;mix-blend-mode:screen;
+}
+:root[data-world-view="possibility"][data-motion="live"][data-experience="cinematic"][data-visual-resolved="rich"] #view .psi-meter::after {animation:world-psi-wave 5.8s ease-in-out infinite}
+@keyframes world-psi-wave {0%,100%{background-position:140% 0;opacity:.12}50%{background-position:-40% 0;opacity:.34}}
+:root[data-world-view="possibility"] #view .psi-meter > * {z-index:2}
+
+/* PANTHEON fields behave like a quiet star council: each field owns one nonsemantic orbit marker. */
+:root[data-world-view="pantheon"][data-visual-resolved="rich"] #view .pan-field::after {
+  content:"";position:absolute;z-index:0;pointer-events:none;right:9px;top:9px;width:18px;height:18px;border-radius:50%;
+  border:1px solid color-mix(in srgb,var(--view-accent),transparent 72%);
+  box-shadow:0 0 0 5px color-mix(in srgb,var(--view-accent),transparent 97%);
+  opacity:.48;
+}
+:root[data-world-view="pantheon"][data-visual-resolved="rich"] #view .pan-field::before {
+  content:"";position:absolute;z-index:1;pointer-events:none;right:16px;top:16px;width:3px;height:3px;border-radius:50%;
+  background:color-mix(in srgb,var(--view-accent),#fff 20%);box-shadow:0 0 7px var(--view-accent);
+  transform-origin:1px 1px;
+}
+:root[data-world-view="pantheon"][data-motion="live"][data-experience="cinematic"][data-visual-resolved="rich"] #view .pan-field::before {animation:world-pantheon-node 7s linear infinite}
+:root[data-world-view="pantheon"][data-motion="live"][data-experience="cinematic"][data-visual-resolved="rich"] #view .pan-field:nth-child(3n+2)::before {animation-duration:9s}
+:root[data-world-view="pantheon"][data-motion="live"][data-experience="cinematic"][data-visual-resolved="rich"] #view .pan-field:nth-child(3n)::before {animation-duration:11s}
+@keyframes world-pantheon-node {from{translate:0 -8px}25%{translate:8px 0}50%{translate:0 8px}75%{translate:-8px 0}to{translate:0 -8px}}
+:root[data-world-view="pantheon"] #view .pan-field > * {position:relative;z-index:2}
+
+/* Evolution receipts get a thin chassis rail rather than another glow. */
+:root[data-world-view="evolution"][data-visual-resolved="rich"] #view .evo-sub::after {
+  content:"";position:absolute;z-index:0;left:8px;right:8px;top:0;height:2px;pointer-events:none;
+  background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--view-accent),transparent 42%),transparent);
+  box-shadow:0 0 8px color-mix(in srgb,var(--view-accent),transparent 72%);opacity:.5;
+}
+:root[data-world-view="evolution"][data-motion="live"][data-experience="cinematic"][data-visual-resolved="rich"] #view .evo-sub::after {animation:world-evolution-rail 6.5s ease-in-out infinite}
+@keyframes world-evolution-rail {0%,100%{scale:.45 1;opacity:.25}50%{scale:1 1;opacity:.72}}
+:root[data-world-view="evolution"] #view .evo-sub > * {position:relative;z-index:1}
+
+:root[data-visual-resolved="light"] #view :is(.brain-core,.px-box,.psi-meter,.pan-field,.evo-sub)::after,
+:root[data-experience="focus"] #view :is(.brain-core,.px-box,.psi-meter,.pan-field,.evo-sub)::after {display:none!important}
+@media (max-width:760px) {
+  #view :is(.brain-core,.px-box,.psi-meter,.pan-field,.evo-sub)::before,
+  #view :is(.brain-core,.px-box,.psi-meter,.pan-field,.evo-sub)::after {animation:none!important;opacity:.16}
+}
+@media (prefers-reduced-motion:reduce) {
+  #view :is(.brain-core,.px-box,.psi-meter,.pan-field,.evo-sub)::before,
+  #view :is(.brain-core,.px-box,.psi-meter,.pan-field,.evo-sub)::after {animation:none!important}
+}
