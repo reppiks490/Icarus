@@ -75,6 +75,7 @@
     const phase=depth<.08?'crown':depth<.45?'descent':depth<.78?'depth':'abyss';
     root.dataset.scrollPhase=phase;
     updateDepthFrame(phase,depth);
+    updateScrollFocus();
   }
   function queueScroll(){
     if(!scrollFrame)scrollFrame=requestAnimationFrame(writeScrollDepth);
@@ -190,6 +191,7 @@
       node.setAttribute('cx',p.x.toFixed(1));node.setAttribute('cy',p.y.toFixed(1));node.setAttribute('r','2.2');
       node.dataset.node=String(p.index);nodeLayer.appendChild(node);
     }
+    updateScrollFocus();
   }
   function scheduleTopology(){
     clearTimeout(topologyTimer);topologyTimer=setTimeout(()=>requestAnimationFrame(rebuildTopology),80);
@@ -200,6 +202,24 @@
     topology.querySelectorAll('.active').forEach(el=>el.classList.remove('active'));
     if(id==null||!motionAllowed())return;
     topology.querySelectorAll(`path[data-from="${id}"],path[data-to="${id}"],circle[data-node="${id}"]`).forEach(el=>el.classList.add('active'));
+  }
+  function updateScrollFocus(){
+    const panels=[...document.querySelectorAll('#view [data-world-topology-node]')].slice(0,18);
+    for(const panel of panels)panel.classList.remove('world-scroll-focus');
+    topology?.querySelectorAll('.scroll-active').forEach(el=>el.classList.remove('scroll-active'));
+    if(!topology||!motionAllowed()||window.innerWidth<1100||!panels.length)return;
+    const targetY=window.innerHeight*.48;
+    let best=null,bestDistance=Infinity;
+    for(const panel of panels){
+      const r=panel.getBoundingClientRect();
+      if(r.bottom<0||r.top>window.innerHeight)continue;
+      const distance=Math.abs((r.top+r.bottom)/2-targetY);
+      if(distance<bestDistance){best=panel;bestDistance=distance;}
+    }
+    if(!best)return;
+    best.classList.add('world-scroll-focus');
+    const id=best.dataset.worldTopologyNode;
+    topology.querySelectorAll(`path[data-from="${id}"],path[data-to="${id}"],circle[data-node="${id}"]`).forEach(el=>el.classList.add('scroll-active'));
   }
   function refresh(){
     ensureAmbient();ensureTopology();
