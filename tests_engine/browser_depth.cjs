@@ -50,7 +50,13 @@ for(const theme of ['void','astral','divine']){
 // Rapid switching must not leave transparent overlays or stale accessible names.
 await page.evaluate(()=>{for(const id of ['void','astral','void','divine'])document.querySelector(`[data-world-choice="${id}"]`).click();});
 await page.waitForTimeout(1200);assert.equal(await page.locator('.world-veil').count(),0);
-const card=page.locator('#view > .card').first();await card.locator('h2').hover();await page.waitForTimeout(150);
+const card=page.locator('#view > .card').first();
+await card.evaluate(el=>{
+ const r=el.getBoundingClientRect();
+ const target=el.querySelector('h2')||el;
+ target.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,pointerType:'mouse',clientX:r.left+r.width*.38,clientY:r.top+Math.min(36,r.height*.28)}));
+});
+await page.waitForTimeout(150);
 assert.equal(await card.locator(':scope > .world-surface-sigil').count(),1);
 assert.equal(await card.locator(':scope > .world-surface-sigil').evaluate(el=>getComputedStyle(el).position),'absolute');
 assert.ok(await card.evaluate(el=>el.style.getPropertyValue('--panel-x')));
