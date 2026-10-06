@@ -2,7 +2,7 @@
   'use strict';
   const root=document.documentElement;
   const reduced=window.matchMedia('(prefers-reduced-motion: reduce)');
-  let scrollFrame=0,pointerFrame=0,viewObserver=null,viewMutation=null,viewResizeObserver=null,depthFrame=null,focusOrbit=null,pointerLens=null,ambient=null,topology=null,sectionRadar=null,inspectionField=null,inspectedPanel=null,inspectionTimer=0,topologyTimer=0,viewFlashTimer=0,viewGateTimer=0,chapterTimer=0,focusTimer=0,scrollEnergyTimer=0,lastScrollY=0,lastScrollAt=0,currentView='overview',currentPhase='crown',viewHistory=[],initialized=false;
+  let scrollFrame=0,pointerFrame=0,viewObserver=null,viewMutation=null,viewResizeObserver=null,depthFrame=null,focusOrbit=null,pointerLens=null,ambient=null,topology=null,sectionRadar=null,inspectionField=null,inspectedPanel=null,topologyHighlightTarget=null,inspectionTimer=0,topologyTimer=0,viewFlashTimer=0,viewGateTimer=0,chapterTimer=0,focusTimer=0,scrollEnergyTimer=0,lastScrollY=0,lastScrollAt=0,currentView='overview',currentPhase='crown',viewHistory=[],initialized=false;
 
   const motionAllowed=()=>root.dataset.motion==='live'&&root.dataset.experience==='cinematic'&&!!root.dataset.world&&!document.hidden&&!reduced.matches&&root.dataset.introActive!=='true';
   const phaseLabels={crown:'CROWN',descent:'DESCENT',depth:'DEPTH',abyss:'ABYSS'};
@@ -311,6 +311,10 @@
       node.dataset.node=String(p.index);nodeLayer.appendChild(node);
     }
     updateScrollFocus();
+    // Topology is decorative and can be rebuilt after async DOM/layout churn.
+    // Preserve the user's currently inspected instrument across that rebuild so
+    // pointer/focus resonance never disappears merely because geometry refreshed.
+    if(topologyHighlightTarget?.isConnected&&motionAllowed())topologyHighlight(topologyHighlightTarget);
   }
   function scheduleTopology(){
     clearTimeout(topologyTimer);topologyTimer=setTimeout(()=>requestAnimationFrame(rebuildTopology),80);
@@ -318,9 +322,12 @@
   function topologyHighlight(target){
     if(!topology)return;
     const radarId=target?.closest?.('[data-radar-node]')?.dataset.radarNode;
-    const panel=target?.closest?.('[data-world-topology-node]'),id=radarId??panel?.dataset.worldTopologyNode;
+    const panel=target?.closest?.('[data-world-topology-node]');
+    const radarPanel=radarId==null?null:document.querySelector(`#view [data-world-topology-node="${radarId}"]`);
+    const activePanel=panel||radarPanel,id=activePanel?.dataset.worldTopologyNode??radarId;
     topology.querySelectorAll('.active').forEach(el=>el.classList.remove('active'));
-    if(id==null||!motionAllowed()){updateSectionRadar(null);return;}
+    if(id==null||!motionAllowed()){topologyHighlightTarget=null;updateSectionRadar(null);return;}
+    topologyHighlightTarget=activePanel||null;
     topology.querySelectorAll(`path[data-from="${id}"],path[data-to="${id}"],circle[data-node="${id}"]`).forEach(el=>el.classList.add('active'));
     updateSectionRadar(id);
   }
