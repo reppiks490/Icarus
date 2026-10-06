@@ -93,6 +93,7 @@ from .qualification_receipts import (
     build_shadow_promotion_event,
     build_shadow_revocation_event,
 )
+from .overview_command_center import command_center_snapshot, research_fabric_snapshot
 from .autopilot import TacticalAutopilot
 from .engine_control import ControlAction, EngineControlPlane
 from .mcp_control import MCPControlPlane
@@ -1457,6 +1458,38 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 except Exception as ex:
                     port.journal.log("WARN", f"ASCENDANCY work-order snapshot: {type(ex).__name__}: {ex}")
                     return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+            if p.path == "/api/overview/command-center":
+                try:
+                    market = port.status(nonblocking=True)
+                except Exception:
+                    market = {}
+                try:
+                    brain_state = brain_snapshot(
+                        port.base_dir,
+                        market_status=market,
+                        proof_status=performance_proof.snapshot(),
+                        qualification_receipts=qualification_receipts.snapshot(),
+                    )
+                except Exception as ex:
+                    port.journal.log("WARN", f"overview brain snapshot: {type(ex).__name__}: {ex}")
+                    brain_state = {}
+                try:
+                    fabric_state = research_fabric_snapshot()
+                except Exception as ex:
+                    port.journal.log("WARN", f"overview research fabric: {type(ex).__name__}: {ex}")
+                    fabric_state = {
+                        "errors": {"research_fabric": f"{type(ex).__name__}: {ex}"},
+                        "providers": [],
+                        "databento_accounts": [],
+                        "execution_authorized": False,
+                        "production_decision_authorized": False,
+                    }
+                return self._json(200, command_center_snapshot(
+                    market,
+                    load_repository_audit(port.base_dir),
+                    brain_state,
+                    fabric_state,
+                ))
             if p.path == "/api/golive":
                 return self._json(200, golive_report(port))
             if p.path == "/api/agent":
