@@ -50,3 +50,7 @@ secrets/
 
 # Licensed Databento market-data corpus; raw rows stay local.
 corpus/databento/
+
+# External evidence raw/event corpus and provider caches; never commit vendor payloads.
+corpus/external/
+.external_data_cache/
