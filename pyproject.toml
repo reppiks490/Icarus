@@ -17,7 +17,7 @@ dependencies = ["tzdata", "openpyxl>=3.1,<4"]
 
 [project.optional-dependencies]
 bridge = ["fastapi", "uvicorn", "httpx", "mcp>=2,<3", "python-dotenv>=1,<2"]
-dev = ["pytest"]
+dev = ["pytest", "PyYAML>=6,<7", "jsonschema>=4.23,<5"]
 ml = ["xgboost>=2.0"]
 databento = ["databento>=0.87,<1"]
 
