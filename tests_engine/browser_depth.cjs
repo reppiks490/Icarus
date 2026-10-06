@@ -99,7 +99,10 @@ const valueMotion=await page.evaluate(async()=>{
 });
 assert.deepEqual(valueMotion,{rise:true,fall:true,active:true});
 // The synthetic readout fixture above intentionally mutates/reflows #view.
-// Re-drive a real pointer after that churn before asserting pointer-driven optics.
+// Reacquire a measurable live panel, then re-drive a real pointer before
+// asserting pointer-driven optics. Dashboard polling may replace panel nodes.
+await card.waitFor({state:'visible'});
+await page.waitForFunction(()=>[...document.querySelectorAll('#view > .card')].some(el=>{const r=el.getBoundingClientRect();return r.width>40&&r.height>28;}));
 const cardBoxAfterFixtures=await card.boundingBox();
 assert.ok(cardBoxAfterFixtures&&cardBoxAfterFixtures.width>40&&cardBoxAfterFixtures.height>28);
 await page.mouse.move(cardBoxAfterFixtures.x+cardBoxAfterFixtures.width*.38,cardBoxAfterFixtures.y+Math.min(36,cardBoxAfterFixtures.height*.28));
