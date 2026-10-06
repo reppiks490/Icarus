@@ -3,6 +3,7 @@
   const root=document.documentElement;
   const reduced=window.matchMedia('(prefers-reduced-motion: reduce)');
   let scrollFrame=0,pointerFrame=0,viewObserver=null,viewMutation=null,viewResizeObserver=null,depthFrame=null,focusOrbit=null,pointerLens=null,ambient=null,topology=null,sectionRadar=null,inspectionField=null,inspectedPanel=null,topologyHighlightTarget=null,inspectionTimer=0,topologyTimer=0,viewFlashTimer=0,viewGateTimer=0,chapterTimer=0,focusTimer=0,scrollEnergyTimer=0,lastScrollY=0,lastScrollAt=0,currentView='overview',currentPhase='crown',viewHistory=[],initialized=false;
+  const readoutCache=new Map(),readoutTimers=new WeakMap();
 
   const motionAllowed=()=>root.dataset.motion==='live'&&root.dataset.experience==='cinematic'&&!!root.dataset.world&&!document.hidden&&!reduced.matches&&root.dataset.introActive!=='true';
   const phaseLabels={crown:'CROWN',descent:'DESCENT',depth:'DEPTH',abyss:'ABYSS'};
