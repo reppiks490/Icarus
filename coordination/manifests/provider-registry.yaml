@@ -1,4 +1,4 @@
-schema_version: icarus-provider-registry-v1
+schema_version: icarus-provider-registry-v2
 pipeline_policy_version: icarus-control-v1
 
 authority_rule: >
@@ -6,87 +6,483 @@ authority_rule: >
   Provider outputs terminate at evidence, research, diagnostics, or presentation
   boundaries unless separately qualified and promoted through the pipeline.
 
+health_model:
+  semantics: Dynamic provider health is runtime evidence and is not stored in static provider declarations.
+  states:
+    - OK
+    - DEGRADED
+    - STALE
+    - UNCONFIGURED
+    - DISABLED
+    - PLAN_LIMITED
+    - ENTITLEMENT_REQUIRED
+    - CONFIGURATION_BLOCKED
+    - ERROR
+
 providers:
-  - name: Massive
+  - id: massive
+    name: Massive
     domain: market_data
     role: institutional_market_evidence
+    source_class: connected_plugin
+    capabilities: [market_data]
+    credential_names: []
+    configuration_names: []
+    cadence_class: on_demand
+    licensing_policy: provider_terms
+    raw_retention_policy: no_raw_git
     direct_execution_authority: false
 
-  - name: Twelve Data
+  - id: twelve_data
+    name: Twelve Data
     domain: market_data
     role: market_and_technical_evidence
+    source_class: connected_plugin
+    capabilities: [quotes, historical_prices, technical_market_context]
+    credential_names: []
+    configuration_names: []
+    cadence_class: on_demand
+    licensing_policy: provider_terms
+    raw_retention_policy: no_raw_git
     direct_execution_authority: false
 
-  - name: FMP
+  - id: fmp
+    name: FMP
     domain: financial_data
     role: fundamentals_macro_market_evidence
+    source_class: manifest_bridge
+    capabilities: [calendars, profiles, fundamentals]
+    credential_names: []
+    configuration_names: []
+    cadence_class: bridge_daily
+    licensing_policy: upstream_provider_terms
+    raw_retention_policy: upstream_cache_only
     direct_execution_authority: false
 
-  - name: Bigdata.com
+  - id: bigdata_com
+    name: Bigdata.com
     domain: financial_research
     role: cited_financial_research_and_market_context
+    source_class: connected_plugin
+    capabilities: [financial_research, cited_market_context]
+    credential_names: []
+    configuration_names: []
+    cadence_class: on_demand
+    licensing_policy: provider_terms
+    raw_retention_policy: no_raw_git
     direct_execution_authority: false
 
-  - name: Zacks Financial Data
+  - id: zacks
+    name: Zacks Financial Data
     domain: financial_research
     role: curated_financial_and_analyst_evidence
+    source_class: connected_plugin
+    capabilities: [fundamentals, estimates, rankings]
+    credential_names: []
+    configuration_names: []
+    cadence_class: on_demand
+    licensing_policy: provider_terms
+    raw_retention_policy: no_raw_git
     direct_execution_authority: false
 
-  - name: StackerScan
+  - id: stackerscan
+    name: StackerScan
     domain: precious_metals
     role: spot_premium_and_history_evidence
+    source_class: connected_plugin
+    capabilities: [spot_prices, historical_metals]
+    credential_names: []
+    configuration_names: []
+    cadence_class: on_demand
+    licensing_policy: provider_terms
+    raw_retention_policy: no_raw_git
     direct_execution_authority: false
 
-  - name: U.S. Gold Bureau Metal Spots
+  - id: us_gold_bureau
+    name: U.S. Gold Bureau Metal Spots
     domain: precious_metals
     role: spot_reference_evidence
+    source_class: connected_plugin
+    capabilities: [spot_prices]
+    credential_names: []
+    configuration_names: []
+    cadence_class: on_demand
+    licensing_policy: provider_terms
+    raw_retention_policy: no_raw_git
     direct_execution_authority: false
 
-  - name: Bybit
+  - id: databento
+    name: Databento
+    domain: futures_market_data
+    role: historical_microstructure_evidence
+    source_class: manifest_bridge
+    capabilities: [mbo, mbp_10, tbbo, trades, statistics]
+    credential_names: []
+    configuration_names: []
+    cadence_class: bridge_intraday
+    licensing_policy: upstream_provider_terms
+    raw_retention_policy: upstream_local_corpus_only
+    direct_execution_authority: false
+
+  - id: eodhd
+    name: EODHD
+    domain: equity_market_data
+    role: equity_tape_and_validation_evidence
+    source_class: manifest_bridge
+    capabilities: [tick_windows, eod_history]
+    credential_names: []
+    configuration_names: []
+    cadence_class: bridge_daily
+    licensing_policy: upstream_provider_terms
+    raw_retention_policy: upstream_cache_only
+    direct_execution_authority: false
+
+  - id: tiingo
+    name: Tiingo
+    domain: equity_market_data
+    role: equity_history_intraday_and_news_evidence
+    source_class: manifest_bridge
+    capabilities: [adjusted_eod, iex_intraday, news]
+    credential_names: []
+    configuration_names: []
+    cadence_class: bridge_daily
+    licensing_policy: upstream_provider_terms
+    raw_retention_policy: upstream_cache_only
+    direct_execution_authority: false
+
+  - id: unusual_whales
+    name: Unusual Whales
+    domain: options_and_flow
+    role: options_dark_pool_equity_and_futures_flow_evidence
+    source_class: credentialed_api
+    capabilities: [options_flow, dark_pool, equity_flow, futures_related_flow]
+    credential_names: [UNUSUAL_WHALES_API_KEY]
+    configuration_names: []
+    cadence_class: intraday
+    licensing_policy: provider_terms
+    raw_retention_policy: local_cache_only
+    direct_execution_authority: false
+
+  - id: intrinio
+    name: Intrinio
+    domain: financial_market_data
+    role: entitlement_aware_market_fundamental_and_options_evidence
+    source_class: credentialed_api
+    capabilities: [realtime_fair_value, equity_ticks, fundamentals, historical_equities, historical_options]
+    credential_names: [INTRINIO_API_KEY]
+    configuration_names: []
+    cadence_class: intraday
+    licensing_policy: provider_terms_and_entitlements
+    raw_retention_policy: local_cache_only
+    direct_execution_authority: false
+
+  - id: sec_edgar
+    name: SEC EDGAR
+    domain: regulatory_filings
+    role: point_in_time_public_filing_evidence
+    source_class: public_api_dormant
+    capabilities: [form_8_k, form_10_q, form_10_k, form_4, schedule_13d_13g, form_13f, xbrl_facts]
+    credential_names: []
+    configuration_names: [SEC_ENABLED, SEC_USER_AGENT]
+    cadence_class: event_driven
+    licensing_policy: public_fair_access
+    raw_retention_policy: public_cache_allowed_no_raw_git
+    direct_execution_authority: false
+
+  - id: ny_fed
+    name: Federal Reserve Bank of New York
+    domain: public_macro
+    role: rates_repo_and_liquidity_evidence
+    source_class: public_api
+    capabilities: [sofr, effr, obfr, repo, reverse_repo, dealer_statistics]
+    credential_names: []
+    configuration_names: []
+    cadence_class: daily
+    licensing_policy: public_source_terms
+    raw_retention_policy: public_cache_allowed_no_raw_git
+    direct_execution_authority: false
+
+  - id: us_treasury
+    name: U.S. Treasury Fiscal Data
+    domain: public_macro
+    role: auction_supply_rates_and_fiscal_evidence
+    source_class: public_api
+    capabilities: [auctions, issuance, debt, rates, fiscal_data]
+    credential_names: []
+    configuration_names: []
+    cadence_class: daily
+    licensing_policy: public_source_terms
+    raw_retention_policy: public_cache_allowed_no_raw_git
+    direct_execution_authority: false
+
+  - id: cftc_tff
+    name: CFTC Traders in Financial Futures
+    domain: positioning
+    role: weekly_futures_positioning_evidence
+    source_class: public_api
+    capabilities: [dealer_positions, asset_manager_positions, leveraged_money_positions, other_reportables, nonreportables]
+    credential_names: []
+    configuration_names: []
+    cadence_class: weekly
+    licensing_policy: public_source_terms
+    raw_retention_policy: public_cache_allowed_no_raw_git
+    direct_execution_authority: false
+
+  - id: eia
+    name: U.S. Energy Information Administration
+    domain: public_macro
+    role: energy_supply_demand_inventory_evidence
+    source_class: credentialed_public_api
+    capabilities: [petroleum, crude_imports, natural_gas, electricity, coal]
+    credential_names: [EIA_API_KEY]
+    configuration_names: []
+    cadence_class: release_driven
+    licensing_policy: public_source_terms
+    raw_retention_policy: public_cache_allowed_no_raw_git
+    direct_execution_authority: false
+
+  - id: fred_alfred
+    name: FRED and ALFRED
+    domain: public_macro
+    role: macro_series_and_vintage_evidence
+    source_class: credentialed_public_api
+    capabilities: [fred_series, alfred_vintages, revisions]
+    credential_names: [FRED_API_KEY]
+    configuration_names: []
+    cadence_class: release_driven
+    licensing_policy: public_source_terms
+    raw_retention_policy: public_cache_allowed_no_raw_git
+    direct_execution_authority: false
+
+  - id: quiver
+    name: Quiver Quantitative
+    domain: alternative_data
+    role: public_disclosure_and_alternative_dataset_evidence
+    source_class: export_first_optional_api
+    capabilities: [congress_trading, lobbying, government_contracts, insider_trading, institutional_holdings, patents, social_attention]
+    credential_names: [QUIVER_API_KEY]
+    configuration_names: []
+    cadence_class: daily
+    licensing_policy: provider_terms_and_export_rights
+    raw_retention_policy: local_import_only
+    direct_execution_authority: false
+
+  - id: tick_stream
+    name: Tick Stream
+    domain: market_data
+    role: delayed_tick_validation_evidence
+    source_class: credentialed_api
+    capabilities: [delayed_ticks]
+    credential_names: [TICK_STREAM_API_KEY]
+    configuration_names: []
+    cadence_class: intraday_delayed
+    licensing_policy: provider_terms
+    raw_retention_policy: local_cache_only
+    direct_execution_authority: false
+
+  - id: bybit
+    name: Bybit
     domain: crypto_market_data
-    role: crypto_price_orderbook_funding_evidence
+    role: crypto_venue_market_evidence
+    source_class: public_api
+    capabilities: [trades, quotes, order_book, funding, open_interest]
+    credential_names: []
+    configuration_names: []
+    cadence_class: intraday
+    licensing_policy: provider_terms
+    raw_retention_policy: local_cache_only
     direct_execution_authority: false
 
-  - name: Blockscout
+  - id: deribit
+    name: Deribit
+    domain: crypto_derivatives
+    role: options_futures_and_derivatives_market_evidence
+    source_class: public_api
+    capabilities: [trades, quotes, order_book, options, futures, funding, open_interest]
+    credential_names: []
+    configuration_names: []
+    cadence_class: intraday
+    licensing_policy: provider_terms
+    raw_retention_policy: local_cache_only
+    direct_execution_authority: false
+
+  - id: binance
+    name: Binance
+    domain: crypto_market_data
+    role: crypto_venue_market_evidence
+    source_class: public_api
+    capabilities: [trades, quotes, order_book, derivatives]
+    credential_names: []
+    configuration_names: []
+    cadence_class: intraday
+    licensing_policy: provider_terms
+    raw_retention_policy: local_cache_only
+    direct_execution_authority: false
+
+  - id: kraken
+    name: Kraken
+    domain: crypto_market_data
+    role: crypto_venue_market_evidence
+    source_class: public_api
+    capabilities: [trades, quotes, order_book]
+    credential_names: []
+    configuration_names: []
+    cadence_class: intraday
+    licensing_policy: provider_terms
+    raw_retention_policy: local_cache_only
+    direct_execution_authority: false
+
+  - id: coinbase
+    name: Coinbase
+    domain: crypto_market_data
+    role: crypto_venue_market_evidence
+    source_class: public_api
+    capabilities: [trades, quotes, order_book]
+    credential_names: []
+    configuration_names: []
+    cadence_class: intraday
+    licensing_policy: provider_terms
+    raw_retention_policy: local_cache_only
+    direct_execution_authority: false
+
+  - id: iqfeed
+    name: DTN IQFeed
+    domain: market_data
+    role: future_entitlement_gated_market_evidence
+    source_class: entitlement_stub
+    capabilities: [quotes, historical_market_data]
+    credential_names: []
+    configuration_names: [IQFEED_ENABLED]
+    cadence_class: disabled_until_entitled
+    licensing_policy: entitlement_required
+    raw_retention_policy: no_collection_until_entitled
+    direct_execution_authority: false
+
+  - id: rithmic
+    name: Rithmic
+    domain: futures_market_data
+    role: future_entitlement_gated_futures_evidence
+    source_class: entitlement_stub
+    capabilities: [futures_market_data, depth_when_entitled]
+    credential_names: []
+    configuration_names: [RITHMIC_ENABLED]
+    cadence_class: disabled_until_entitled
+    licensing_policy: entitlement_required
+    raw_retention_policy: no_collection_until_entitled
+    direct_execution_authority: false
+
+  - id: cqg
+    name: CQG
+    domain: futures_market_data
+    role: future_entitlement_gated_futures_evidence
+    source_class: entitlement_stub
+    capabilities: [futures_market_data, depth_when_entitled]
+    credential_names: []
+    configuration_names: [CQG_ENABLED]
+    cadence_class: disabled_until_entitled
+    licensing_policy: entitlement_required
+    raw_retention_policy: no_collection_until_entitled
+    direct_execution_authority: false
+
+  - id: blockscout
+    name: Blockscout
     domain: blockchain
     role: evm_onchain_evidence
+    source_class: connected_plugin
+    capabilities: [evm_blocks, transactions, balances, token_holdings]
+    credential_names: []
+    configuration_names: []
+    cadence_class: on_demand
+    licensing_policy: provider_terms
+    raw_retention_policy: no_raw_git
     direct_execution_authority: false
 
-  - name: Scite
+  - id: scite
+    name: Scite
     domain: scientific_literature
     role: literature_verification_and_citation_context
+    source_class: connected_plugin
+    capabilities: [paper_search, citation_context]
+    credential_names: []
+    configuration_names: []
+    cadence_class: on_demand
+    licensing_policy: provider_terms
+    raw_retention_policy: no_raw_git
     direct_execution_authority: false
 
-  - name: Agent Reach
+  - id: agent_reach
+    name: Agent Reach
     domain: external_research
     role: public_research_retrieval
+    source_class: connected_plugin
+    capabilities: [public_research]
+    credential_names: []
+    configuration_names: []
+    cadence_class: on_demand
+    licensing_policy: provider_terms
+    raw_retention_policy: no_raw_git
     direct_execution_authority: false
 
-  - name: DataBlue
+  - id: datablue
+    name: DataBlue
     domain: web_data
     role: public_web_retrieval_and_structured_extraction
+    source_class: connected_plugin
+    capabilities: [web_search, web_extraction]
+    credential_names: []
+    configuration_names: []
+    cadence_class: on_demand
+    licensing_policy: provider_terms
+    raw_retention_policy: no_raw_git
     direct_execution_authority: false
 
-  - name: Figma
+  - id: figma
+    name: Figma
     domain: design
     role: architecture_and_interface_design
+    source_class: presentation_tool
+    capabilities: [design, visualization]
+    credential_names: []
+    configuration_names: []
+    cadence_class: on_demand
+    licensing_policy: provider_terms
+    raw_retention_policy: no_raw_git
     direct_execution_authority: false
 
-  - name: Visualize
+  - id: visualize
+    name: Visualize
     domain: visualization
     role: architecture_and_diagnostic_visualization
+    source_class: presentation_tool
+    capabilities: [visualization]
+    credential_names: []
+    configuration_names: []
+    cadence_class: on_demand
+    licensing_policy: provider_terms
+    raw_retention_policy: no_raw_git
     direct_execution_authority: false
 
-  - name: Runway
+  - id: runway
+    name: Runway
     domain: media
     role: presentation_and_media_generation
+    source_class: presentation_tool
+    capabilities: [media_generation]
+    credential_names: []
+    configuration_names: []
+    cadence_class: on_demand
+    licensing_policy: provider_terms
+    raw_retention_policy: no_raw_git
     direct_execution_authority: false
 
 integration_requirements:
   - canonical_source_identity
-  - timestamp_and_freshness_metadata
+  - point_in_time_timestamps
+  - revision_and_vintage_lineage
   - raw_artifact_hash_when_possible
+  - canonical_hash
   - failure_mode_documentation
   - normalization_boundary
+  - capability_health_separation
   - no_direct_trade_command_path
   - reproducibility_metadata_when_used_for_research
