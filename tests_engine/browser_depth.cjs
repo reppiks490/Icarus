@@ -54,13 +54,10 @@ for(const theme of ['void','astral','divine']){
 await page.evaluate(()=>{for(const id of ['void','astral','void','divine'])document.querySelector(`[data-world-choice="${id}"]`).click();});
 await page.waitForFunction(()=>document.querySelectorAll('.world-veil').length===0,null,{timeout:2500});
 const card=page.locator('#view > .card').first();
-await card.evaluate(el=>{
- const r=el.getBoundingClientRect();
- const target=el.querySelector('h2')||el;
- target.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,pointerType:'mouse',clientX:r.left+r.width*.38,clientY:r.top+Math.min(36,r.height*.28)}));
- target.dispatchEvent(new PointerEvent('pointerover',{bubbles:true,pointerType:'mouse',clientX:r.left+r.width*.38,clientY:r.top+Math.min(36,r.height*.28)}));
-});
-await page.waitForTimeout(150);
+const cardBox=await card.boundingBox();assert.ok(cardBox&&cardBox.width>40&&cardBox.height>28);
+await page.mouse.move(cardBox.x+cardBox.width*.38,cardBox.y+Math.min(36,cardBox.height*.28));
+await page.waitForFunction(()=>document.querySelector('#view > .card')?.style.getPropertyValue('--panel-x')!=='');
+await page.waitForTimeout(80);
 assert.equal(await card.locator(':scope > .world-surface-sigil').count(),1);
 assert.equal(await card.locator(':scope > .world-surface-sigil').evaluate(el=>getComputedStyle(el).position),'absolute');
 assert.equal(await card.locator(':scope > .world-panel-index').count(),1);
