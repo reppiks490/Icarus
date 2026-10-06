@@ -328,10 +328,12 @@
       node.dataset.node=String(p.index);nodeLayer.appendChild(node);
     }
     updateScrollFocus();
-    // Topology is decorative and can be rebuilt after async DOM/layout churn.
-    // Preserve the user's currently inspected instrument across that rebuild so
-    // pointer/focus resonance never disappears merely because geometry refreshed.
+    // Topology is decorative and can be built/rebuilt after pointer interaction.
+    // Preserve an existing target, or reconcile against the physical cursor when
+    // the pointer arrived before graph node IDs existed.
     if(topologyHighlightTarget?.isConnected&&motionAllowed())topologyHighlight(topologyHighlightTarget);
+    else if(lastPointerClientX!=null&&lastPointerClientY!=null&&motionAllowed())
+      topologyHighlight(document.elementFromPoint(lastPointerClientX,lastPointerClientY));
   }
   function scheduleTopology(){
     clearTimeout(topologyTimer);topologyTimer=setTimeout(()=>requestAnimationFrame(rebuildTopology),80);
