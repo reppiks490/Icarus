@@ -53,7 +53,9 @@ for(const theme of ['void','astral','divine']){
 // Rapid switching must not leave transparent overlays or stale accessible names.
 await page.evaluate(()=>{for(const id of ['void','astral','void','divine'])document.querySelector(`[data-world-choice="${id}"]`).click();});
 await page.waitForFunction(()=>document.querySelectorAll('.world-veil').length===0,null,{timeout:2500});
-const card=page.locator('#view > .card').first();
+const card=page.locator('#view > .card:visible').first();
+await card.waitFor({state:'visible'});
+await page.waitForFunction(()=>[...document.querySelectorAll('#view > .card')].some(el=>{const r=el.getBoundingClientRect();return r.width>40&&r.height>28;}));
 const cardBox=await card.boundingBox();assert.ok(cardBox&&cardBox.width>40&&cardBox.height>28);
 await page.mouse.move(cardBox.x+cardBox.width*.38,cardBox.y+Math.min(36,cardBox.height*.28));
 await page.waitForFunction(()=>document.querySelector('#view > .card')?.style.getPropertyValue('--panel-x')!=='');
