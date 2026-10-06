@@ -102,6 +102,20 @@ assert.equal(await page.locator('.world-topology').count(),1);
 assert.ok((await page.locator('.world-topology path').count())<=24);
 assert.ok((await page.locator('.world-topology circle').count())<=18);
 assert.ok((await page.locator('.world-topology path.active').count())>0);
+// A layout/DOM refresh may rebuild decorative SVG geometry, but must not erase
+// the pointer/focus resonance attached to the instrument the user is inspecting.
+const topologyResonance=await page.evaluate(()=>{
+ const panel=document.querySelector('#view .world-inspected[data-world-topology-node]')||document.querySelector('#view [data-world-topology-node]');
+ if(!panel)return null;
+ window.__icarusTopologyResonancePanel=panel;
+ panel.dispatchEvent(new PointerEvent('pointerover',{bubbles:true,pointerType:'mouse'}));
+ window.IcarusWorldImmersion.refresh();
+ return panel.dataset.worldTopologyNode;
+});
+assert.notEqual(topologyResonance,null);
+await page.waitForTimeout(180);
+assert.equal(await page.evaluate(()=>window.__icarusTopologyResonancePanel?.isConnected),true);
+assert.ok((await page.locator('.world-topology path.active').count())>0,'Topology rebuild must preserve active instrument resonance');
 assert.equal(await page.locator('.world-topology').evaluate(el=>getComputedStyle(el).position),'absolute');
 assert.equal(await page.locator('.world-section-radar').count(),1);
 assert.ok((await page.locator('.world-section-radar [data-radar-node]').count())<=12);
