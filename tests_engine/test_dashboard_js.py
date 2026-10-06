@@ -100,6 +100,36 @@ def test_engine_dashboard_surfaces_repository_mcp_audit():
     assert "run output" in src
 
 
+def test_overview_command_center_surfaces_real_gauges_and_provider_fabric():
+    dashboard = (REPO / "icarus_engine/dashboard.html").read_text(encoding="utf-8")
+    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
+    backend = (REPO / "icarus_engine/overview_command_center.py").read_text(encoding="utf-8")
+    assert "ICARUS Command Center" in dashboard
+    assert "Edge Emergence" in backend
+    assert "Champion Readiness" in backend
+    assert "Regime Clarity" in backend
+    assert "Signal Consensus" in backend
+    assert "Microstructure Coverage" in backend
+    assert "Automation Health" in backend
+    assert "Paper Execution Readiness" in backend
+    assert "Opportunity Pressure" in backend
+    assert "Provider &amp; historical research fabric" in dashboard
+    assert "/api/overview/command-center" in dashboard
+    assert 'p.path == "/api/overview/command-center"' in server
+    assert "DATABENTO_API_KEY_SECONDARY" in backend
+    assert "DATABENTO_API_KEY_THIRD" in backend
+    assert "FRED_API_KEY" in backend
+    assert "FMP_API_KEY" in backend
+    assert "TIINGO_API_TOKEN" in backend
+    assert "EODHD_API_TOKEN" in backend
+    assert "ALPACA_API_KEY" in backend
+    assert "EXA_API_KEY" in backend
+    assert "secret_value_exposed" in backend
+    assert "execution_authorized" in backend
+    assert "production_decision_authorized" in backend
+    assert "setInterval(refreshCommandCenter, 20000)" in dashboard
+
+
 def test_dashboard_surfaces_export_data_integrity_and_mcp_receipts():
     dashboard = (REPO / "icarus_engine/dashboard.html").read_text(encoding="utf-8")
     ui = (REPO / "icarus_engine/integrity-ui.js").read_text(encoding="utf-8")
