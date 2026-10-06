@@ -1,0 +1,81 @@
+name: external-provider-incremental
+
+on:
+  schedule:
+    - cron: "23 * * * *"
+  workflow_dispatch:
+    inputs:
+      provider:
+        description: Provider to refresh
+        required: true
+        default: all
+        type: choice
+        options: [all, intrinio, unusual_whales]
+      max_calls:
+        description: Hard HTTP-call ceiling
+        required: true
+        default: "100"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: external-provider-incremental
+  cancel-in-progress: true
+
+env:
+  ENGINE_REF: f262d6fd49d4e1f9a8ea210bf7f7f71fec473dd5
+  CACHE_DIR: .external_data_cache
+
+jobs:
+  incremental:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: reppiks490/Icarus-engine
+          ref: ${{ env.ENGINE_REF }}
+          path: external-engine
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install data-plane dependencies
+        run: python -m pip install --upgrade pip pyarrow
+      - name: Restore external-provider cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.CACHE_DIR }}
+          key: external-provider-data-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            external-provider-data-
+      - name: Refresh accessible provider datasets
+        env:
+          INTRINIO_API_KEY: ${{ secrets.INTRINIO_API_KEY }}
+          UNUSUAL_WHALES_API_TOKEN: ${{ secrets.UNUSUAL_WHALES_API_TOKEN }}
+          PROVIDER: ${{ inputs.provider || 'all' }}
+          MAX_CALLS: ${{ inputs.max_calls || '100' }}
+        run: |
+          cd external-engine
+          PYTHONPATH=. python tools/collect_external_provider_data.py incremental \
+            --provider "$PROVIDER" \
+            --cache "../${CACHE_DIR}" \
+            --max-calls "$MAX_CALLS"
+      - name: Save external-provider cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ env.CACHE_DIR }}
+          key: external-provider-data-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Upload refresh manifests
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: external-provider-incremental-${{ github.run_id }}
+          path: |
+            ${{ env.CACHE_DIR }}/manifests/
+            ${{ env.CACHE_DIR }}/gold/
+          if-no-files-found: warn
+          retention-days: 7
