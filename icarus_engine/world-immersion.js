@@ -123,8 +123,18 @@
     ensurePointerLens();
     const x=event.clientX/Math.max(1,window.innerWidth)-.5;
     const y=event.clientY/Math.max(1,window.innerHeight)-.5;
+    const target=event.target;
     if(pointerFrame)cancelAnimationFrame(pointerFrame);
-    pointerFrame=requestAnimationFrame(()=>writePointer(x,y,event.clientX,event.clientY));
+    pointerFrame=requestAnimationFrame(()=>{
+      writePointer(x,y,event.clientX,event.clientY);
+      // DOM/layout churn can invalidate decorative inspection state without a new
+      // pointerover event. Reconcile it on real pointer motion, but only when the
+      // hovered instrument actually changed so this stays bounded.
+      const panel=target?.closest?.('[data-world-panel-kind]');
+      if(panel!==inspectedPanel)inspectFromTarget(target);
+      const topologyPanel=target?.closest?.('[data-world-topology-node]');
+      if(topologyPanel!==topologyHighlightTarget)topologyHighlight(target);
+    });
   }
   function pointerLeave(){
     pointerLens?.classList.remove('active');
