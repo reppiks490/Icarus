@@ -64,6 +64,13 @@ assert.equal(await card.locator(':scope > .world-panel-index').count(),1);
 assert.equal(await card.locator(':scope > .world-panel-frame').count(),1);
 assert.equal(await card.locator(':scope > .world-panel-frame > i').count(),4);
 assert.equal(await card.locator(':scope > .world-panel-frame').evaluate(el=>getComputedStyle(el).position),'absolute');
+if(await page.locator('#log').count()) assert.equal(await page.locator('#log').evaluate(el=>getComputedStyle(el).position),'relative');
+const fillArrival=await page.evaluate(()=>{
+ const tbody=document.querySelector('#fills tbody');if(!tbody)return null;
+ const row=document.createElement('tr');row.className='new';row.innerHTML='<td>fixture</td>';tbody.appendChild(row);
+ const animation=getComputedStyle(row).animationName;row.remove();return animation;
+});
+if(fillArrival!==null) assert.match(fillArrival,/world-authentic-fill-arrival/);
 assert.match((await card.locator(':scope > .world-panel-index').textContent()).trim(),/^P\d{2} \/ \d{2} · [A-Z]+$/);
 assert.equal(await card.locator(':scope > .world-panel-index').evaluate(el=>getComputedStyle(el).position),'absolute');
 const familyFixture=await page.evaluate(async()=>{
