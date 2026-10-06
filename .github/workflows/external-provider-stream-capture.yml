@@ -1,0 +1,96 @@
+name: external-provider-stream-capture
+
+on:
+  schedule:
+    - cron: "37 * * * 1-5"
+  workflow_dispatch:
+    inputs:
+      channels:
+        description: Comma-separated confirmed UW websocket channels
+        required: true
+        default: "market_tide,stock_screener,flow-alerts,contract_screener"
+        type: string
+      max_seconds:
+        description: Hard wall-clock bound for this capture
+        required: true
+        default: "3000"
+        type: string
+      max_messages:
+        description: Hard accepted-message bound for this capture
+        required: true
+        default: "500000"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: external-provider-stream-capture
+  cancel-in-progress: true
+
+env:
+  ENGINE_REF: 3158e898abc1ef1662e61bb241e79337bc681a72
+  CACHE_DIR: .external_data_cache
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: reppiks490/Icarus-engine
+          ref: ${{ env.ENGINE_REF }}
+          path: external-engine
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install stream data-plane dependencies
+        run: python -m pip install --upgrade pip pyarrow websocket-client
+      - name: Restore external-provider cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.CACHE_DIR }}
+          key: external-provider-data-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            external-provider-data-
+      - name: Capture bounded Unusual Whales websocket data
+        env:
+          UNUSUAL_WHALES_API_TOKEN: ${{ secrets.UNUSUAL_WHALES_API_TOKEN }}
+          CHANNELS: ${{ inputs.channels || 'market_tide,stock_screener,flow-alerts,contract_screener' }}
+          MAX_SECONDS: ${{ inputs.max_seconds || '3000' }}
+          MAX_MESSAGES: ${{ inputs.max_messages || '500000' }}
+        run: |
+          cd external-engine
+          PYTHONPATH=. python tools/collect_external_provider_data.py stream \
+            --provider unusual_whales \
+            --cache "../${CACHE_DIR}" \
+            --channels "$CHANNELS" \
+            --max-seconds "$MAX_SECONDS" \
+            --max-messages "$MAX_MESSAGES"
+      - name: Save external-provider cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ env.CACHE_DIR }}
+          key: external-provider-data-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Upload stream manifest
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: external-provider-stream-manifest-${{ github.run_id }}
+          path: ${{ env.CACHE_DIR }}/manifests/uw_stream_latest.json
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Upload bounded stream data
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: external-provider-stream-data-${{ github.run_id }}
+          path: |
+            ${{ env.CACHE_DIR }}/bronze/unusual_whales/websocket_raw/
+            ${{ env.CACHE_DIR }}/silver/unusual_whales/ws_*/
+          if-no-files-found: warn
+          compression-level: 0
+          retention-days: 7
