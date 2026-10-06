@@ -4063,3 +4063,64 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
   #view .world-value-change,#view .world-value-change::after {animation:none!important}
   :root[data-world] #view :is(.card,.asset,.group).world-data-activity {outline-color:transparent}
 }
+
+
+/* Phase XXXV: major instruments gain constructed corner hardware, not just translucent rectangles. */
+:root[data-world]:not([data-world=""]) #view :is(.card,.asset,.group) > .world-panel-frame {
+  position:absolute!important;inset:-1px;z-index:0!important;pointer-events:none;border-radius:inherit;overflow:hidden;
+  color:var(--panel-kind-accent,var(--view-accent,var(--world-glow)));opacity:.52;
+  filter:drop-shadow(0 0 5px color-mix(in srgb,currentColor,transparent 72%));
+  transition:opacity .22s ease,filter .22s ease;
+}
+.world-panel-frame > i {position:absolute;display:block;width:23px;height:23px;opacity:.78}
+.world-panel-frame > i:nth-child(1){left:0;top:0}
+.world-panel-frame > i:nth-child(2){right:0;top:0;transform:scaleX(-1)}
+.world-panel-frame > i:nth-child(3){left:0;bottom:0;transform:scaleY(-1)}
+.world-panel-frame > i:nth-child(4){right:0;bottom:0;transform:scale(-1)}
+
+/* Divine: measured architectural brackets and luminous crown cuts. */
+:root[data-world="divine"] .world-panel-frame > i {
+  border-left:1px solid color-mix(in srgb,currentColor,transparent 28%);
+  border-top:1px solid color-mix(in srgb,currentColor,transparent 28%);
+  clip-path:polygon(0 0,100% 0,100% 3px,8px 3px,8px 8px,3px 8px,3px 100%,0 100%);
+}
+:root[data-world="divine"] .world-panel-frame > i::after {
+  content:"";position:absolute;left:6px;top:6px;width:7px;height:7px;border-left:1px solid color-mix(in srgb,currentColor,transparent 44%);border-top:1px solid color-mix(in srgb,currentColor,transparent 44%)
+}
+
+/* Void: fracture blades bite into the perimeter. */
+:root[data-world="void"] .world-panel-frame > i {
+  width:31px;height:19px;
+  background:
+    linear-gradient(145deg,transparent 0 38%,color-mix(in srgb,currentColor,transparent 18%) 40% 43%,transparent 45%),
+    linear-gradient(145deg,transparent 0 61%,color-mix(in srgb,currentColor,transparent 62%) 63% 65%,transparent 67%);
+}
+:root[data-world="void"] .world-panel-frame > i:nth-child(2){transform:scaleX(-1)}
+:root[data-world="void"] .world-panel-frame > i:nth-child(3){transform:scaleY(-1)}
+:root[data-world="void"] .world-panel-frame > i:nth-child(4){transform:scale(-1)}
+
+/* Astral: orbital quarter-arcs and satellite nodes. */
+:root[data-world="astral"] .world-panel-frame > i {
+  width:27px;height:27px;border-left:1px solid color-mix(in srgb,currentColor,transparent 38%);
+  border-top:1px solid color-mix(in srgb,currentColor,transparent 38%);border-radius:100% 0 0 0;
+}
+:root[data-world="astral"] .world-panel-frame > i::after {
+  content:"";position:absolute;left:7px;top:7px;width:4px;height:4px;border-radius:50%;background:color-mix(in srgb,currentColor,#fff 18%);
+  box-shadow:0 0 6px currentColor;
+}
+
+:root[data-world]:not([data-world=""]) #view :is(.card,.asset,.group):is(.world-lit,.world-inspected,.world-scroll-focus) > .world-panel-frame {
+  opacity:.9;filter:brightness(1.14) drop-shadow(0 0 9px color-mix(in srgb,currentColor,transparent 52%));
+}
+:root[data-world]:not([data-world=""])[data-motion="live"][data-experience="cinematic"] #view .world-inspected > .world-panel-frame {
+  animation:world-panel-frame-answer 1.6s ease-in-out infinite alternate;
+}
+@keyframes world-panel-frame-answer {
+  from{opacity:.62;filter:brightness(.92) drop-shadow(0 0 4px color-mix(in srgb,currentColor,transparent 78%))}
+  to{opacity:1;filter:brightness(1.18) drop-shadow(0 0 11px color-mix(in srgb,currentColor,transparent 46%))}
+}
+:root[data-visual-resolved="light"] #view .world-panel-frame {opacity:.18;filter:none!important;animation:none!important}
+:root[data-experience="focus"] #view .world-panel-frame {opacity:.12;filter:none!important;animation:none!important}
+@media (max-width:760px) {#view .world-panel-frame{opacity:.18!important;animation:none!important}}
+@media (prefers-reduced-motion:reduce) {#view .world-panel-frame{animation:none!important}}
+@media (forced-colors:active) {#view .world-panel-frame{display:none!important}}
