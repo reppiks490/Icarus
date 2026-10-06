@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://icarus.local/schemas/external-evidence.schema.json",
+  "title": "ICARUS External Evidence Envelope",
+  "description": "Point-in-time, provenance-bearing, research-only canonical external evidence.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "evidence_id",
+    "source_id",
+    "provider_id",
+    "dataset",
+    "instrument",
+    "venue",
+    "source_event_time",
+    "source_publication_time",
+    "source_available_at",
+    "retrieved_at",
+    "ingested_at",
+    "revision_id",
+    "vintage_id",
+    "raw_artifact_sha256",
+    "canonical_sha256",
+    "ingest_batch_id",
+    "quality_flags",
+    "lineage_parents",
+    "execution_authorized",
+    "production_decision_authorized"
+  ],
+  "properties": {
+    "schema_version": {"const": "icarus.external-evidence/1"},
+    "evidence_id": {"type": "string", "minLength": 8, "maxLength": 160},
+    "source_id": {"type": "string", "minLength": 4, "maxLength": 160},
+    "provider_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_]{1,63}$"},
+    "dataset": {"type": "string", "minLength": 1, "maxLength": 200},
+    "instrument": {"type": ["string", "null"], "maxLength": 200},
+    "venue": {"type": ["string", "null"], "maxLength": 120},
+    "source_event_time": {"type": ["string", "null"], "format": "date-time"},
+    "source_publication_time": {"type": ["string", "null"], "format": "date-time"},
+    "source_available_at": {"type": ["string", "null"], "format": "date-time"},
+    "retrieved_at": {"type": "string", "format": "date-time"},
+    "ingested_at": {"type": "string", "format": "date-time"},
+    "revision_id": {"type": ["string", "null"], "maxLength": 200},
+    "vintage_id": {"type": ["string", "null"], "maxLength": 200},
+    "raw_artifact_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "canonical_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "ingest_batch_id": {"type": "string", "minLength": 8, "maxLength": 200},
+    "quality_flags": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1, "maxLength": 120},
+      "uniqueItems": true
+    },
+    "lineage_parents": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 4, "maxLength": 160},
+      "uniqueItems": true
+    },
+    "execution_authorized": {"const": false},
+    "production_decision_authorized": {"const": false},
+    "data": {"type": "object"}
+  },
+  "additionalProperties": false
+}
