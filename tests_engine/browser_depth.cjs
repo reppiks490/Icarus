@@ -61,6 +61,9 @@ await page.waitForTimeout(80);
 assert.equal(await card.locator(':scope > .world-surface-sigil').count(),1);
 assert.equal(await card.locator(':scope > .world-surface-sigil').evaluate(el=>getComputedStyle(el).position),'absolute');
 assert.equal(await card.locator(':scope > .world-panel-index').count(),1);
+assert.equal(await card.locator(':scope > .world-panel-frame').count(),1);
+assert.equal(await card.locator(':scope > .world-panel-frame > i').count(),4);
+assert.equal(await card.locator(':scope > .world-panel-frame').evaluate(el=>getComputedStyle(el).position),'absolute');
 assert.match((await card.locator(':scope > .world-panel-index').textContent()).trim(),/^P\d{2} \/ \d{2} · [A-Z]+$/);
 assert.equal(await card.locator(':scope > .world-panel-index').evaluate(el=>getComputedStyle(el).position),'absolute');
 const familyFixture=await page.evaluate(async()=>{
