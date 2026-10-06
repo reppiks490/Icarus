@@ -1,0 +1,105 @@
+name: external-provider-backfill
+
+on:
+  workflow_dispatch:
+    inputs:
+      provider:
+        description: Provider to backfill
+        required: true
+        default: all
+        type: choice
+        options: [all, intrinio, unusual_whales]
+      historical_floor:
+        description: Earliest requested historical date
+        required: true
+        default: "2024-01-01"
+        type: string
+      max_calls:
+        description: Hard HTTP-call ceiling for this run
+        required: true
+        default: "200"
+        type: string
+      include_uw_full_tape:
+        description: Download historical UW full option-tape files (large)
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: external-provider-backfill
+  cancel-in-progress: false
+
+env:
+  ENGINE_REF: f262d6fd49d4e1f9a8ea210bf7f7f71fec473dd5
+  CACHE_DIR: .external_data_cache
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: reppiks490/Icarus-engine
+          ref: ${{ env.ENGINE_REF }}
+          path: external-engine
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install data-plane dependencies
+        run: python -m pip install --upgrade pip pyarrow
+      - name: Restore external-provider cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.CACHE_DIR }}
+          key: external-provider-data-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            external-provider-data-
+      - name: Run entitlement-driven backfill
+        env:
+          INTRINIO_API_KEY: ${{ secrets.INTRINIO_API_KEY }}
+          UNUSUAL_WHALES_API_TOKEN: ${{ secrets.UNUSUAL_WHALES_API_TOKEN }}
+          PROVIDER: ${{ inputs.provider }}
+          FLOOR: ${{ inputs.historical_floor }}
+          MAX_CALLS: ${{ inputs.max_calls }}
+          FULL_TAPE: ${{ inputs.include_uw_full_tape }}
+        run: |
+          extra=""
+          if [ "$FULL_TAPE" = "true" ]; then extra="--include-uw-full-tape"; fi
+          cd external-engine
+          PYTHONPATH=. python tools/collect_external_provider_data.py backfill \
+            --provider "$PROVIDER" \
+            --cache "../${CACHE_DIR}" \
+            --historical-floor "$FLOOR" \
+            --max-calls "$MAX_CALLS" \
+            $extra
+      - name: Save external-provider cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ env.CACHE_DIR }}
+          key: external-provider-data-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Upload backfill manifests
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: external-provider-backfill-manifest-${{ github.run_id }}
+          path: ${{ env.CACHE_DIR }}/manifests/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Upload Bronze and Silver data
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: external-provider-data-${{ github.run_id }}
+          path: |
+            ${{ env.CACHE_DIR }}/bronze/
+            ${{ env.CACHE_DIR }}/silver/
+            ${{ env.CACHE_DIR }}/checkpoints/
+          if-no-files-found: warn
+          compression-level: 0
+          retention-days: 7
