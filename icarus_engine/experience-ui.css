@@ -4124,3 +4124,58 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 @media (max-width:760px) {#view .world-panel-frame{opacity:.18!important;animation:none!important}}
 @media (prefers-reduced-motion:reduce) {#view .world-panel-frame{animation:none!important}}
 @media (forced-colors:active) {#view .world-panel-frame{display:none!important}}
+
+
+/* Phase XXXVI: logs become event timelines and genuinely new fills get a one-shot arrival signal. */
+:root[data-world]:not([data-world=""]) #view .log {
+  position:relative;padding-left:18px;
+  background:
+    linear-gradient(90deg,color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 78%) 0 1px,transparent 1px) 8px 0 / 1px 100% no-repeat,
+    color-mix(in srgb,var(--surface-2) 82%,transparent);
+}
+:root[data-world]:not([data-world=""]) #view .log > div {
+  position:relative;padding:5px 8px 5px 12px;border-bottom:1px solid color-mix(in srgb,var(--view-accent,var(--world-glow)),var(--grid) 92%);
+  background:linear-gradient(90deg,color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 98%),transparent 34%);
+}
+:root[data-world]:not([data-world=""]) #view .log > div:last-child {border-bottom:0}
+:root[data-world]:not([data-world=""]) #view .log > div::before {
+  content:"";position:absolute;left:-14px;top:11px;width:6px;height:6px;
+  border:1px solid color-mix(in srgb,currentColor,var(--view-accent,var(--world-glow)) 28%);
+  background:var(--surface);box-shadow:0 0 7px color-mix(in srgb,currentColor,transparent 64%);
+}
+:root[data-world="divine"] #view .log > div::before {transform:rotate(45deg);border-radius:1px}
+:root[data-world="void"] #view .log > div::before {width:7px;height:2px;transform:rotate(-28deg);border-radius:0;background:currentColor}
+:root[data-world="astral"] #view .log > div::before {border-radius:50%;background:color-mix(in srgb,currentColor,#dff5ff 18%)}
+:root[data-world]:not([data-world=""]) #view .log > div:hover {
+  background:linear-gradient(90deg,color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 94%),transparent 62%);
+}
+
+/* #fills .new is backed by seen-fill identity, so this motion represents a real newly observed fill. */
+:root[data-world]:not([data-world=""])[data-motion="live"] #fills tbody tr.new {
+  animation:world-authentic-fill-arrival 920ms cubic-bezier(.16,.8,.2,1) both;
+}
+:root[data-world="void"][data-motion="live"] #fills tbody tr.new {animation-name:world-authentic-fill-arrival-void}
+:root[data-world="astral"][data-motion="live"] #fills tbody tr.new {animation-name:world-authentic-fill-arrival-astral}
+@keyframes world-authentic-fill-arrival {
+  0%{opacity:.2;transform:translateY(8px);filter:brightness(.72)}
+  32%{opacity:1;transform:translateY(-1px);filter:brightness(1.18);box-shadow:inset 3px 0 0 color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 14%)}
+  100%{opacity:1;transform:none;filter:none;box-shadow:inset 0 0 0 transparent}
+}
+@keyframes world-authentic-fill-arrival-void {
+  0%{opacity:.1;transform:translateX(-12px);clip-path:inset(0 100% 0 0);filter:contrast(1.25)}
+  38%{opacity:1;transform:none;clip-path:inset(0);filter:brightness(1.18)}
+  100%{opacity:1;filter:none}
+}
+@keyframes world-authentic-fill-arrival-astral {
+  0%{opacity:.16;transform:scale(.985);filter:blur(3px) saturate(.65)}
+  42%{opacity:1;transform:scale(1.003);filter:blur(0) brightness(1.16)}
+  100%{opacity:1;transform:none;filter:none}
+}
+:root[data-visual-resolved="light"] #view .log {background-color:var(--surface-2)}
+:root[data-motion="off"] #fills tbody tr.new {animation:none!important}
+@media (prefers-reduced-motion:reduce) {#fills tbody tr.new {animation:none!important}}
+@media (forced-colors:active) {
+  :root[data-world] #view .log {background:Canvas!important;padding-left:0}
+  :root[data-world] #view .log > div::before {display:none!important}
+  #fills tbody tr.new {animation:none!important}
+}
