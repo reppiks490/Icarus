@@ -162,6 +162,10 @@
       const index=document.createElement('span');index.className='world-panel-index';index.setAttribute('aria-hidden','true');
       element.appendChild(index);
     }
+    if(!element.querySelector(':scope > .world-panel-frame')){
+      const frame=document.createElement('span');frame.className='world-panel-frame';frame.setAttribute('aria-hidden','true');
+      frame.innerHTML='<i></i><i></i><i></i><i></i>';element.appendChild(frame);
+    }
   }
   function numberPanels(majors){
     const total=Math.max(1,majors.length);
