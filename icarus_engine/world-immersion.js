@@ -353,8 +353,68 @@
       else if(/\b(UNAVAILABLE|UNMEASURED|NO DATA|NO CURRENT|NO ACTIVE|NOT AVAILABLE)\b/.test(text))el.classList.add('world-unavailable-state');
     }
   }
+  function parseReadoutNumber(text){
+    const raw=String(text||'').trim().replace(/\u2212/g,'-');
+    if(!raw||raw==='—'||raw==='-')return null;
+    const compact=raw.replace(/[$,%\s]/g,'');
+    const m=compact.match(/^([+-]?\d+(?:\.\d+)?)([KMBT])?$/i);
+    if(!m)return null;
+    const scale={K:1e3,M:1e6,B:1e9,T:1e12}[String(m[2]||'').toUpperCase()]||1;
+    const value=Number(m[1])*scale;return Number.isFinite(value)?value:null;
+  }
+  function readoutKey(el,index){
+    const tile=el.closest('.tile');
+    if(tile){
+      const panel=tile.closest('.card,.asset,.group');
+      const panelName=(panel?.id||panel?.querySelector('h1,h2,h3,.sym')?.textContent||currentView).trim().replace(/\s+/g,' ').slice(0,72);
+      const label=(tile.querySelector('.k')?.textContent||'metric').trim().replace(/\s+/g,' ').slice(0,72);
+      return currentView+'|tile|'+panelName+'|'+label;
+    }
+    const asset=el.closest('.asset'),symbol=asset?.querySelector('.sym')?.textContent?.trim();
+    if(asset&&symbol)return currentView+'|asset|'+symbol+'|'+(el.className||'value');
+    const score=el.closest('.score');
+    if(score&&asset){
+      const label=score.querySelector('span')?.textContent?.trim()||String(index);
+      return currentView+'|score|'+(symbol||'asset')+'|'+label;
+    }
+    const hero=el.closest('.hero');
+    if(hero){
+      const panel=hero.closest('[id],.card'),name=panel?.id||panel?.querySelector('h2')?.textContent||currentView;
+      return currentView+'|hero|'+String(name).trim().slice(0,72)+'|'+index;
+    }
+    return null;
+  }
+  function clearReadoutMotion(el){
+    const timer=readoutTimers.get(el);if(timer)clearTimeout(timer);
+    el.classList.remove('world-value-change','world-value-increase','world-value-decrease','world-value-shift');
+    readoutTimers.delete(el);
+  }
+  function animateReadoutChanges(){
+    const values=[...document.querySelectorAll('#view .tile > .v,#view .asset .px.tnum,#view .hero > .n.tnum,#view .score > .tnum')].slice(0,180);
+    const seen=new Set();
+    values.forEach((el,index)=>{
+      const key=readoutKey(el,index);if(!key)return;
+      const text=(el.textContent||'').trim().replace(/\s+/g,' ');if(!text)return;
+      seen.add(key);
+      const num=parseReadoutNumber(text),previous=readoutCache.get(key);
+      readoutCache.set(key,{text,num,seen:Date.now()});
+      if(!previous||previous.text===text||!motionAllowed()||root.dataset.introActive==='true')return;
+      clearReadoutMotion(el);
+      const direction=previous.num!=null&&num!=null?(num>previous.num?'increase':num<previous.num?'decrease':'shift'):'shift';
+      el.classList.add('world-value-change','world-value-'+direction);
+      const panel=el.closest('.card,.asset,.group');
+      if(panel){
+        panel.classList.remove('world-data-activity');void panel.offsetWidth;panel.classList.add('world-data-activity');
+        setTimeout(()=>panel?.classList.remove('world-data-activity'),820);
+      }
+      const timer=setTimeout(()=>clearReadoutMotion(el),860);readoutTimers.set(el,timer);
+    });
+    if(readoutCache.size>320){
+      for(const [key] of readoutCache){if(!seen.has(key)){readoutCache.delete(key);if(readoutCache.size<=260)break;}}
+    }
+  }
   function refresh(){
-    ensureAmbient();ensureTopology();ensureInspectionField();ensureSectionRadar();classifyReadouts();
+    ensureAmbient();ensureTopology();ensureInspectionField();ensureSectionRadar();classifyReadouts();animateReadoutChanges();
     if(inspectedPanel&&!inspectedPanel.isConnected)clearInspection();
     const majors=[...document.querySelectorAll('#view > :is(.card,.asset,.hero,.group), #view > .assets > .asset')];
     const view=document.getElementById('view');
