@@ -9,6 +9,14 @@ function sourcesHtml(assets) {
   return `<section class="card c12"><h2>Financial &amp; data <span class="sub">Source-backed public observations</span></h2>
     <p class="small muted">Collect on demand or enable bounded background refresh below. CFTC positions, macro releases, company filings and spot BTC trades are research evidence; they do not place orders or supply a licensed futures tick feed.</p>
     <div id="sourcesStatus" role="status" class="small muted">Loading saved source status…</div></section>
+    <section class="card c12"><h2>Economic event clock <span class="sub">BLS · BEA · Census · FOMC · point-in-time schedule</span></h2>
+      <div id="eventClockStatus" role="status" class="small muted">Loading verified release schedule…</div>
+      <div class="tiles" style="grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));margin-top:10px">
+        <div class="tile" id="eventClockNext">Next high-impact event —</div>
+        <div class="tile" id="eventClockCoverage">Source coverage —</div>
+      </div>
+      <div id="eventClockList" class="scroll" style="max-height:360px;margin-top:10px">Loading upcoming events…</div>
+    </section>
     <section class="card c7"><h2>Public collection</h2><div id="sourcesCards" class="tiles" style="grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));overflow-wrap:anywhere"></div>
     <div class="toolbar"><label>Map SEC facts to asset <select id="sourceAsset"><option value="">No mapping</option>${options}</select></label>
     <label>SEC CIK <input id="sourceCik" inputmode="numeric" maxlength="10" placeholder="Numeric CIK"></label>
@@ -23,6 +31,53 @@ function sourcesHtml(assets) {
     <pre id="sourceWatchStatus" class="log" style="max-height:180px">Loading…</pre><details><summary>Collection schedule</summary><textarea id="sourceWatchConfig" rows="14" style="width:100%;background:var(--surface-2);color:var(--ink)"></textarea>
     <p><button id="sourceWatchSave" disabled>Save schedule</button> <button id="sourceWatchEnable" disabled>Enable refresh</button> <button id="sourceWatchDisable" disabled>Disable refresh</button></p></details></section>`;
 }
+function eventClockTime(row) {
+  if(row.scheduled_at_utc) {
+    const d=new Date(row.scheduled_at_utc);
+    if(!Number.isNaN(d.getTime())) return d.toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',timeZoneName:'short'});
+  }
+  return row.event_date ? new Date(row.event_date+'T12:00:00').toLocaleDateString([], {month:'short',day:'numeric',year:'numeric'})+' · date only' : 'time unavailable';
+}
+function eventClockFuture(row, now=Date.now()) {
+  if(row.scheduled_at_utc) {
+    const ts=Date.parse(row.scheduled_at_utc);
+    return Number.isFinite(ts) && ts>=now;
+  }
+  if(!row.event_date) return false;
+  const end=Date.parse(row.event_date+'T23:59:59');
+  return Number.isFinite(end) && end>=now;
+}
+function eventClockCountdown(row, now=Date.now()) {
+  if(!row.scheduled_at_utc) return 'date-only schedule';
+  const ms=Date.parse(row.scheduled_at_utc)-now;
+  if(!Number.isFinite(ms) || ms<0) return 'passed';
+  const mins=Math.round(ms/60000);
+  if(mins<60) return mins+'m';
+  if(mins<1440) return Math.floor(mins/60)+'h '+(mins%60)+'m';
+  return Math.floor(mins/1440)+'d '+Math.floor((mins%1440)/60)+'h';
+}
+function renderEventClock(data) {
+  const status=$('#eventClockStatus'), next=$('#eventClockNext'), coverage=$('#eventClockCoverage'), list=$('#eventClockList');
+  if(!status||!next||!coverage||!list) return;
+  const sources=data?.sources||{}, rows=Object.entries(sources);
+  const degraded=rows.filter(([,s])=>s.status!=='ok');
+  const usable=Array.isArray(data?.events) ? data.events.filter(r=>eventClockFuture(r)) : [];
+  const high=usable.filter(r=>r.impact==='high');
+  const health=data?.source_health||data?.status||'unavailable';
+  status.innerHTML=`Sync <b>${esc(data?.status||'unavailable')}</b> · source health <b>${esc(health)}</b> · remote generated ${esc(data?.remote_generated_at||'unknown')} · ${esc(data?.upcoming_count??0)} upcoming`+
+    (data?.last_error?`<div class="neg">${esc(data.last_error)}</div>`:'')+
+    (degraded.length?`<div class="small">${degraded.map(([name,s])=>`${esc(name)}: ${esc(s.status||'unknown')}${s.transport?` via ${esc(s.transport)}`:''}${s.snapshot_as_of?` · snapshot ${esc(s.snapshot_as_of)}`:''}`).join(' · ')}</div>`:'');
+  const first=high[0];
+  next.innerHTML=first?`<div class="k">Next high-impact</div><div class="v">${esc(first.title)}</div><div class="small">${esc(eventClockTime(first))} · ${esc(eventClockCountdown(first))}</div>`:
+    '<div class="k">Next high-impact</div><div class="v">None in verified horizon</div>';
+  coverage.innerHTML=`<div class="k">Coverage</div><div class="v">${rows.filter(([,s])=>s.status==='ok').length}/${rows.length} live-clean</div><div class="small">${rows.map(([name,s])=>`${esc(name)} ${esc(s.status||'?')} (${esc(s.rows??0)})`).join(' · ')}</div>`;
+  list.innerHTML=usable.slice(0,16).map(row=>`<div class="tile" style="margin-bottom:6px">
+    <div><b>${esc(row.title)}</b> <span class="st ${row.impact==='high'?'warn':''}">${esc(row.impact)}</span></div>
+    <div class="small">${esc(eventClockTime(row))} · ${esc(row.source)} · ${esc(row.category)}${row.reference_period?` · ref ${esc(row.reference_period)}`:''}</div>
+    <div class="small muted">${row.time_known?`countdown ${esc(eventClockCountdown(row))}`:'exact release time not asserted'} · ${esc(row.timing_basis||'timing basis unavailable')}</div>
+  </div>`).join('')||'<p class="empty">No future events in the verified schedule horizon.</p>';
+}
+
 function sourceLink(url,label) {
   try {const parsed=new URL(url);if(parsed.protocol==='https:')
     return `<a href="${esc(parsed.href)}" target="_blank" rel="noopener noreferrer">${esc(label||parsed.hostname)}</a>`;}
@@ -54,8 +109,13 @@ async function loadSources() {
   sourcesLoading=true;
   sourcesPendingLoad=false;
   try {
+    const eventClockPromise=researchGet('/api/economic-events').catch(e=>({
+      status:'unavailable',source_health:'unavailable',last_error:e?.message||String(e),sources:{},events:[]
+    }));
     const status=await researchGet('/api/research/sources');
+    const eventClock=await eventClockPromise;
     if(view!=='sources') return;
+    renderEventClock(eventClock);
     sourcesLatest=status.sources||{};
     $('#sourcesStatus').textContent=`SEC contact identity ${status.sec_identity_configured?'configured':'not configured'} · ${status.note||''}`;
     $('#sourcesCards').innerHTML=Object.entries(sourceNames).map(([source,name])=>{
