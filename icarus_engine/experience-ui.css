@@ -3993,3 +3993,73 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 @media (prefers-reduced-motion:reduce) {
   .world-section-radar,.world-section-radar header i,.world-section-radar [data-radar-node] > b {transition:none!important}
 }
+
+
+/* Phase XXXIV: authentic readout changes move; polling with unchanged values stays visually silent. */
+:root[data-world]:not([data-world=""]) #view .world-value-change {
+  position:relative;isolation:isolate;
+  text-shadow:0 0 13px color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 72%);
+  animation:world-value-shift 760ms cubic-bezier(.16,.8,.2,1) both;
+}
+:root[data-world]:not([data-world=""]) #view .world-value-change::after {
+  content:"";position:absolute;pointer-events:none;z-index:-1;left:-7px;right:-7px;top:50%;height:1px;
+  background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--view-accent,var(--world-glow)),#fff 12%),transparent);
+  opacity:0;transform-origin:center;
+  animation:world-value-line 760ms ease-out both;
+}
+:root[data-world]:not([data-world=""]) #view .world-value-increase {animation-name:world-value-rise}
+:root[data-world]:not([data-world=""]) #view .world-value-decrease {animation-name:world-value-fall}
+@keyframes world-value-rise {
+  0%{opacity:.62;transform:translateY(4px);filter:brightness(.84)}
+  34%{opacity:1;transform:translateY(-1px);filter:brightness(1.22)}
+  100%{opacity:1;transform:none;filter:none}
+}
+@keyframes world-value-fall {
+  0%{opacity:.62;transform:translateY(-4px);filter:brightness(.84)}
+  34%{opacity:1;transform:translateY(1px);filter:brightness(1.18)}
+  100%{opacity:1;transform:none;filter:none}
+}
+@keyframes world-value-shift {
+  0%{opacity:.6;filter:blur(1.5px) brightness(.82)}
+  38%{opacity:1;filter:blur(0) brightness(1.18)}
+  100%{opacity:1;filter:none}
+}
+@keyframes world-value-line {
+  0%{opacity:0;transform:scaleX(.1)}
+  28%{opacity:.62;transform:scaleX(1)}
+  100%{opacity:0;transform:scaleX(1.28)}
+}
+
+/* World physics alter the same factual change without assigning good/bad meaning to numeric direction. */
+:root[data-world="divine"] #view .world-value-increase::after {transform-origin:50% 100%}
+:root[data-world="divine"] #view .world-value-change {text-shadow:0 0 15px color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 62%)}
+:root[data-world="void"] #view .world-value-change {animation-timing-function:cubic-bezier(.22,.72,.12,1)}
+:root[data-world="void"] #view .world-value-change::after {
+  height:2px;clip-path:polygon(0 40%,31% 0,54% 70%,76% 18%,100% 55%,100% 100%,0 100%);
+}
+:root[data-world="astral"] #view .world-value-change::after {
+  left:50%;right:auto;top:50%;width:26px;height:26px;border:1px solid color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 42%);
+  border-radius:50%;background:transparent;transform:translate(-50%,-50%) scale(.3);
+  animation-name:world-value-orbit;
+}
+@keyframes world-value-orbit {
+  0%{opacity:0;transform:translate(-50%,-50%) scale(.3) rotate(-25deg)}
+  30%{opacity:.6}
+  100%{opacity:0;transform:translate(-50%,-50%) scale(1.4) rotate(65deg)}
+}
+
+/* A major instrument acknowledges a real readout change without changing semantic status colors. */
+:root[data-world]:not([data-world=""]) #view :is(.card,.asset,.group).world-data-activity {
+  outline:1px solid color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 62%);
+  outline-offset:2px;
+  box-shadow:var(--phase-shadow,0 18px 58px #0003),inset 0 1px 0 #ffffff12,0 0 24px color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 91%);
+}
+:root[data-visual-resolved="light"] #view .world-value-change::after {display:none!important}
+:root[data-visual-resolved="light"] #view .world-value-change {text-shadow:none}
+:root[data-experience="focus"] #view .world-value-change::after {display:none!important}
+:root[data-motion="off"] #view .world-value-change,
+:root[data-motion="off"] #view .world-value-change::after {animation:none!important}
+@media (prefers-reduced-motion:reduce) {
+  #view .world-value-change,#view .world-value-change::after {animation:none!important}
+  :root[data-world] #view :is(.card,.asset,.group).world-data-activity {outline-color:transparent}
+}
