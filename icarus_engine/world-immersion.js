@@ -133,7 +133,7 @@
       const panel=target?.closest?.('[data-world-panel-kind]');
       if(panel!==inspectedPanel)inspectFromTarget(target);
       const topologyPanel=target?.closest?.('[data-world-topology-node]');
-      if(topologyPanel!==topologyHighlightTarget)topologyHighlight(target);
+      if(topologyPanel!==topologyHighlightTarget||(topologyPanel&&!topology?.querySelector('.active')))topologyHighlight(target);
     });
   }
   function pointerLeave(){
