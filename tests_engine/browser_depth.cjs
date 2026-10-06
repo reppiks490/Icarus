@@ -137,6 +137,12 @@ assert.equal(await page.locator('.world-topology').count(),1);
 assert.ok((await page.locator('.world-topology path').count())<=24);
 assert.ok((await page.locator('.world-topology circle').count())<=18);
 assert.ok((await page.locator('.world-topology path.active').count())>0);
+// Removing/rebuilding decorative children can produce a pointerout with no relatedTarget
+// even while the physical cursor is still over the same card. That must not erase
+// the user's structural resonance.
+await card.evaluate(el=>el.dispatchEvent(new PointerEvent('pointerout',{bubbles:true,pointerType:'mouse',relatedTarget:null})));
+await page.waitForTimeout(40);
+assert.ok((await page.locator('.world-topology path.active').count())>0,'DOM-churn pointerout must reconcile to the physical pointer target');
 // A layout/DOM refresh may rebuild decorative SVG geometry, but must not erase
 // the pointer/focus resonance attached to the instrument the user is inspecting.
 const topologyResonance=await page.evaluate(()=>{
