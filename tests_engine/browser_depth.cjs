@@ -74,6 +74,18 @@ const familyFixture=await page.evaluate(async()=>{
 });
 assert.equal(familyFixture.kind,'research');
 assert.match(familyFixture.animation,/world-family-research-enter|world-surface-sigil-breathe/);
+const valueMotion=await page.evaluate(async()=>{
+ const el=document.createElement('section');el.className='card c3';el.id='worldValueFixture';
+ el.innerHTML='<h2>Value Motion Fixture</h2><div class="tile"><div class="k">Observed metric</div><div class="v tnum">10</div></div>';
+ document.querySelector('#view').appendChild(el);window.IcarusWorldImmersion.refresh();
+ await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+ const v=el.querySelector('.v');v.textContent='12';window.IcarusWorldImmersion.refresh();
+ const rise=v.classList.contains('world-value-increase'),active=el.classList.contains('world-data-activity');
+ v.textContent='8';window.IcarusWorldImmersion.refresh();
+ const fall=v.classList.contains('world-value-decrease');
+ el.remove();return {rise,fall,active};
+});
+assert.deepEqual(valueMotion,{rise:true,fall:true,active:true});
 assert.ok(await card.evaluate(el=>el.style.getPropertyValue('--panel-x')));
 assert.ok(await card.evaluate(el=>el.style.getPropertyValue('--panel-tilt-y')));
 assert.ok(await card.evaluate(el=>el.style.getPropertyValue('--panel-dx')));
