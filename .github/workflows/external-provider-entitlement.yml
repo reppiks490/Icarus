@@ -1,0 +1,80 @@
+name: external-provider-entitlement
+
+on:
+  workflow_dispatch:
+    inputs:
+      provider:
+        description: Provider to probe
+        required: true
+        default: all
+        type: choice
+        options: [all, intrinio, unusual_whales]
+  schedule:
+    - cron: "17 11 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: external-provider-entitlement
+  cancel-in-progress: true
+
+env:
+  ENGINE_REF: f262d6fd49d4e1f9a8ea210bf7f7f71fec473dd5
+  CACHE_DIR: .external_data_cache
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out canonical Icarus
+        uses: actions/checkout@v4
+
+      - name: Check out pinned Icarus-engine producer
+        uses: actions/checkout@v4
+        with:
+          repository: reppiks490/Icarus-engine
+          ref: ${{ env.ENGINE_REF }}
+          path: external-engine
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Restore external-provider cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.CACHE_DIR }}
+          key: external-provider-data-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            external-provider-data-
+
+      - name: Probe provider entitlements
+        env:
+          INTRINIO_API_KEY: ${{ secrets.INTRINIO_API_KEY }}
+          UNUSUAL_WHALES_API_TOKEN: ${{ secrets.UNUSUAL_WHALES_API_TOKEN }}
+          PROVIDER: ${{ inputs.provider || 'all' }}
+        run: |
+          cd external-engine
+          PYTHONPATH=. python tools/collect_external_provider_data.py probe \
+            --provider "$PROVIDER" \
+            --cache "../${CACHE_DIR}"
+
+      - name: Save external-provider cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ env.CACHE_DIR }}
+          key: external-provider-data-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Upload entitlement and Gold manifests
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: external-provider-entitlement-${{ github.run_id }}
+          path: |
+            ${{ env.CACHE_DIR }}/manifests/latest.json
+            ${{ env.CACHE_DIR }}/gold/latest.json
+          if-no-files-found: warn
+          retention-days: 14
