@@ -101,12 +101,19 @@ assert.deepEqual(valueMotion,{rise:true,fall:true,active:true});
 const cardBoxAfterFixtures=await card.boundingBox();
 assert.ok(cardBoxAfterFixtures&&cardBoxAfterFixtures.width>40&&cardBoxAfterFixtures.height>28);
 await page.mouse.move(cardBoxAfterFixtures.x+cardBoxAfterFixtures.width*.38,cardBoxAfterFixtures.y+Math.min(36,cardBoxAfterFixtures.height*.28));
-await page.waitForFunction(()=>document.querySelector('#view > .card')?.style.getPropertyValue('--panel-x')!=='');
-assert.ok(await card.evaluate(el=>el.style.getPropertyValue('--panel-x')));
-assert.ok(await card.evaluate(el=>el.style.getPropertyValue('--panel-tilt-y')));
-assert.ok(await card.evaluate(el=>el.style.getPropertyValue('--panel-dx')));
-assert.ok(await card.evaluate(el=>el.style.getPropertyValue('--panel-depth-x')));
-assert.equal(await card.evaluate(el=>el.classList.contains('world-inspected')),true);
+await page.waitForFunction(()=>{
+ const el=document.querySelector('#view > .card');if(!el)return false;
+ return ['--panel-x','--panel-tilt-y','--panel-dx','--panel-depth-x'].every(prop=>el.style.getPropertyValue(prop)!=='')&&el.classList.contains('world-inspected');
+});
+const panelOptics=await card.evaluate(el=>({
+ x:el.style.getPropertyValue('--panel-x'),
+ tiltY:el.style.getPropertyValue('--panel-tilt-y'),
+ dx:el.style.getPropertyValue('--panel-dx'),
+ depthX:el.style.getPropertyValue('--panel-depth-x'),
+ inspected:el.classList.contains('world-inspected')
+}));
+assert.ok(panelOptics.x&&panelOptics.tiltY&&panelOptics.dx&&panelOptics.depthX);
+assert.equal(panelOptics.inspected,true);
 assert.equal(await page.locator('.world-inspection-field').count(),1);
 assert.equal(await page.locator('.world-inspection-field').evaluate(el=>el.classList.contains('active')),true);
 assert.equal(await page.locator('.world-inspection-field').evaluate(el=>getComputedStyle(el).position),'absolute');
