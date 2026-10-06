@@ -2,7 +2,7 @@
   'use strict';
   const root=document.documentElement;
   const reduced=window.matchMedia('(prefers-reduced-motion: reduce)');
-  let scrollFrame=0,pointerFrame=0,viewObserver=null,viewMutation=null,viewResizeObserver=null,depthFrame=null,focusOrbit=null,pointerLens=null,ambient=null,topology=null,sectionRadar=null,inspectionField=null,inspectedPanel=null,topologyHighlightTarget=null,inspectionTimer=0,topologyTimer=0,viewFlashTimer=0,viewGateTimer=0,chapterTimer=0,focusTimer=0,scrollEnergyTimer=0,lastScrollY=0,lastScrollAt=0,currentView='overview',currentPhase='crown',viewHistory=[],initialized=false;
+  let scrollFrame=0,pointerFrame=0,viewObserver=null,viewMutation=null,viewResizeObserver=null,depthFrame=null,focusOrbit=null,pointerLens=null,ambient=null,topology=null,sectionRadar=null,inspectionField=null,inspectedPanel=null,topologyHighlightTarget=null,inspectionTimer=0,topologyTimer=0,viewFlashTimer=0,viewGateTimer=0,chapterTimer=0,focusTimer=0,scrollEnergyTimer=0,lastScrollY=0,lastScrollAt=0,lastPointerClientX=null,lastPointerClientY=null,currentView='overview',currentPhase='crown',viewHistory=[],initialized=false;
   const readoutCache=new Map(),readoutTimers=new WeakMap();
 
   const motionAllowed=()=>root.dataset.motion==='live'&&root.dataset.experience==='cinematic'&&!!root.dataset.world&&!document.hidden&&!reduced.matches&&root.dataset.introActive!=='true';
@@ -121,6 +121,7 @@
   function pointerMove(event){
     if(event.pointerType==='touch'||!motionAllowed()){pointerLens?.classList.remove('active');return;}
     ensurePointerLens();
+    lastPointerClientX=event.clientX;lastPointerClientY=event.clientY;
     const x=event.clientX/Math.max(1,window.innerWidth)-.5;
     const y=event.clientY/Math.max(1,window.innerHeight)-.5;
     const target=event.target;
@@ -137,6 +138,7 @@
     });
   }
   function pointerLeave(){
+    lastPointerClientX=null;lastPointerClientY=null;
     pointerLens?.classList.remove('active');
     if(pointerFrame)cancelAnimationFrame(pointerFrame);
     pointerFrame=requestAnimationFrame(()=>writePointer(0,0));
@@ -625,7 +627,14 @@
     document.addEventListener('pointerdown',interactionImpact,{passive:true,capture:true});
     document.addEventListener('pointerover',event=>{topologyHighlight(event.target);inspectFromTarget(event.target);},{passive:true});
     document.addEventListener('pointerout',event=>{
-      if(!event.relatedTarget?.closest?.('[data-world-topology-node]'))topologyHighlight(null);
+      if(!event.relatedTarget?.closest?.('[data-world-topology-node]')){
+        const x=lastPointerClientX,y=lastPointerClientY;
+        requestAnimationFrame(()=>{
+          if(x==null||y==null){topologyHighlight(null);return;}
+          const physical=document.elementFromPoint(x,y);
+          topologyHighlight(physical?.closest?.('[data-world-topology-node]')||null);
+        });
+      }
       const from=event.target.closest?.('[data-world-panel-kind]'),to=event.relatedTarget?.closest?.('[data-world-panel-kind]');
       if(from&&from!==to)inspectFromTarget(event.relatedTarget);
     },{passive:true});
