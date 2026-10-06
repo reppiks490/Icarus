@@ -89,6 +89,12 @@ const valueMotion=await page.evaluate(async()=>{
  el.remove();return {rise,fall,active};
 });
 assert.deepEqual(valueMotion,{rise:true,fall:true,active:true});
+// The synthetic readout fixture above intentionally mutates/reflows #view.
+// Re-drive a real pointer after that churn before asserting pointer-driven optics.
+const cardBoxAfterFixtures=await card.boundingBox();
+assert.ok(cardBoxAfterFixtures&&cardBoxAfterFixtures.width>40&&cardBoxAfterFixtures.height>28);
+await page.mouse.move(cardBoxAfterFixtures.x+cardBoxAfterFixtures.width*.38,cardBoxAfterFixtures.y+Math.min(36,cardBoxAfterFixtures.height*.28));
+await page.waitForFunction(()=>document.querySelector('#view > .card')?.style.getPropertyValue('--panel-x')!=='');
 assert.ok(await card.evaluate(el=>el.style.getPropertyValue('--panel-x')));
 assert.ok(await card.evaluate(el=>el.style.getPropertyValue('--panel-tilt-y')));
 assert.ok(await card.evaluate(el=>el.style.getPropertyValue('--panel-dx')));
