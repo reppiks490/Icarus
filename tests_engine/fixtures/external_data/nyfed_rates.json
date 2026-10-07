@@ -1,0 +1,9 @@
+{
+  "refRates": [
+    {"effectiveDate":"2026-10-05","type":"SOFR","percentRate":"4.83","volumeInBillions":"2150"},
+    {"effectiveDate":"2026-10-05","type":"EFFR","percentRate":"4.82","volumeInBillions":"74"}
+  ],
+  "repoOperations": [
+    {"operationDate":"2026-10-05","operationType":"RRP","amountBillions":"312.5","awardRatePercent":"4.80"}
+  ]
+}
