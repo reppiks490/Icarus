@@ -103,14 +103,23 @@
     learning:['∞','LEARNING FABRIC'],chronofold:['Ξ','ICARUS Ξ'],commissioning:['◫','COMMISSIONING'],integrity:['◆','DATA INTEGRITY'],
     'engine-control':['⌘','ENGINE CONTROL'],commands:['⌗','COMMANDS'],log:['▥','ENGINE LOG'],autopilot:['➤','TACTICAL AUTOPILOT']
   };
+  const viewDomains = {
+    overview:'CORE DECK',asset:'CORE DECK',system:'CORE DECK',golive:'CORE DECK',agent:'CORE DECK',inputs:'CORE DECK',backtest:'CORE DECK',
+    research:'ANALYSIS',sources:'ANALYSIS','market-data':'ANALYSIS',
+    brain:'INTELLIGENCE',evolution:'INTELLIGENCE',parallax:'INTELLIGENCE',possibility:'INTELLIGENCE',pantheon:'INTELLIGENCE',sibyl:'INTELLIGENCE',apex:'INTELLIGENCE',ascendancy:'INTELLIGENCE',learning:'INTELLIGENCE',chronofold:'INTELLIGENCE',
+    commissioning:'ASSURANCE',integrity:'ASSURANCE','engine-control':'ASSURANCE',
+    commands:'CONTROL',log:'CONTROL',autopilot:'CONTROL'
+  };
   let scenery, sceneObserver;
   function syncSceneView(view=currentView||'overview') {
     if(!scenery)return;
     const key=String(view||'overview').startsWith('asset:')?'asset':String(view||'overview').replace(/^#/,'');
-    const meta=viewInsignia[key]||['◇',key.replace(/-/g,' ').toUpperCase()];
+    const meta=viewInsignia[key]||['◇',key.replace(/-/g,' ').toUpperCase()],domain=viewDomains[key]||'DOMAIN';
     const badge=scenery.querySelector('.world-view-insignia');if(!badge)return;
+    badge.querySelector('span').textContent=domain+' / ACTIVE';
     badge.querySelector('i').textContent=meta[0];badge.querySelector('b').textContent=meta[1];
-    badge.dataset.view=key;badge.classList.remove('world-view-insignia-shift');void badge.offsetWidth;badge.classList.add('world-view-insignia-shift');
+    badge.dataset.view=key;badge.dataset.domain=domain.toLowerCase().replace(/[^a-z0-9]+/g,'-');
+    badge.classList.remove('world-view-insignia-shift');void badge.offsetWidth;badge.classList.add('world-view-insignia-shift');
     setTimeout(()=>badge?.classList.remove('world-view-insignia-shift'),760);
   }
   const preference = (key, values, fallback) => {
@@ -203,7 +212,7 @@
       <div class="world-orbit" aria-hidden="true"><i></i><i></i><i></i><b>◇</b></div>
       <div class="world-coordinate" aria-hidden="true">ECLIPSE LOOM <span id="worldCoordinatePhase">CROWN / LIGHT / INFINITY</span></div>
       <div class="world-scene-threshold" aria-hidden="true"><i></i><b></b><span></span></div>
-      <div class="world-view-insignia" aria-hidden="true" data-view="overview"><span>ACTIVE DOMAIN</span><i>◇</i><b>OVERVIEW</b></div>
+      <div class="world-view-insignia" aria-hidden="true" data-view="overview" data-domain="core-deck"><span>CORE DECK / ACTIVE</span><i>◇</i><b>OVERVIEW</b></div>
       <div class="world-copy"><div class="world-eyebrow">ICARUS <span> / </span><span id="worldName"></span></div>
       <h1 id="worldTitle"></h1><p id="worldCaption"></p>
       <div class="world-switch" role="group" aria-label="Choose visual world">
