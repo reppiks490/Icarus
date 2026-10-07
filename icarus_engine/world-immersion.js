@@ -3,7 +3,7 @@
   const root=document.documentElement;
   const reduced=window.matchMedia('(prefers-reduced-motion: reduce)');
   let scrollFrame=0,pointerFrame=0,viewObserver=null,viewMutation=null,viewResizeObserver=null,depthFrame=null,focusOrbit=null,pointerLens=null,ambient=null,topology=null,sectionRadar=null,inspectionField=null,inspectedPanel=null,topologyHighlightTarget=null,topologyHighlightKey=null,inspectionTimer=0,topologyTimer=0,viewFlashTimer=0,viewGateTimer=0,chapterTimer=0,focusTimer=0,scrollEnergyTimer=0,lastScrollY=0,lastScrollAt=0,lastPointerClientX=null,lastPointerClientY=null,currentView='overview',currentPhase='crown',viewHistory=[],initialized=false;
-  const readoutCache=new Map(),readoutTimers=new WeakMap();
+  const readoutCache=new Map(),readoutTimers=new WeakMap(),topologyActivityTimers=new WeakMap();
 
   const motionAllowed=()=>root.dataset.motion==='live'&&root.dataset.experience==='cinematic'&&!!root.dataset.world&&!document.hidden&&!reduced.matches&&root.dataset.introActive!=='true';
   const phaseLabels={crown:'CROWN',descent:'DESCENT',depth:'DEPTH',abyss:'ABYSS'};
@@ -384,6 +384,21 @@
     topology.querySelectorAll(`path[data-from="${id}"],path[data-to="${id}"],circle[data-node="${id}"]`).forEach(el=>el.classList.add('scroll-active'));
     updateSectionRadar(id);
   }
+  function pulseTopologyFromPanel(panel){
+    if(!topology||!panel?.isConnected||!motionAllowed())return;
+    const id=panel.dataset.worldTopologyNode;if(id==null)return;
+    const kind=panel.dataset.worldPanelKind||'instrument';
+    const linked=[...topology.querySelectorAll(`path[data-from="${id}"],path[data-to="${id}"],circle[data-node="${id}"]`)];
+    const radarNode=sectionRadar?.querySelector(`[data-radar-node="${id}"]`);
+    if(radarNode)linked.push(radarNode);
+    for(const el of linked){
+      const oldTimer=topologyActivityTimers.get(el);if(oldTimer)clearTimeout(oldTimer);
+      el.classList.remove('data-activity');el.dataset.activityKind=kind;
+      void el.getBoundingClientRect();el.classList.add('data-activity');
+      const timer=setTimeout(()=>{el.classList.remove('data-activity');delete el.dataset.activityKind;topologyActivityTimers.delete(el);},920);
+      topologyActivityTimers.set(el,timer);
+    }
+  }
   function classifyReadouts(){
     const states=[...document.querySelectorAll('#view .empty')].slice(0,96);
     for(const el of states){
@@ -446,6 +461,7 @@
       const panel=el.closest('.card,.asset,.group');
       if(panel){
         panel.classList.remove('world-data-activity');void panel.offsetWidth;panel.classList.add('world-data-activity');
+        pulseTopologyFromPanel(panel);
         setTimeout(()=>panel?.classList.remove('world-data-activity'),820);
       }
       const timer=setTimeout(()=>clearReadoutMotion(el),860);readoutTimers.set(el,timer);
