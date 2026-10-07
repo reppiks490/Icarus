@@ -59,7 +59,8 @@ def test_financial_data_ui_binds_verified_event_clock_endpoint():
     assert "Economic event clock" in script
     assert "/api/economic-events" in script
     assert "renderEventClock" in script
-    assert "official_snapshot" in script
+    assert "s.transport" in script
+    assert "snapshot_as_of" in script
     assert "exact release time not asserted" in script
     assert "date-only schedule" in script
 
