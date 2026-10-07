@@ -177,7 +177,11 @@ assert.ok((await page.locator('.world-section-radar [data-radar-node].active').c
 assert.match((await page.locator('[data-world-radar-count]').textContent()).trim(),/^\d{2}$/);
 assert.equal(await page.locator('.world-section-radar').getAttribute('aria-label'),'Section map');
 if(await page.locator('.world-section-radar').isVisible()){
- const radar=page.locator('.world-section-radar'),collapsed=(await radar.boundingBox()).width;
+ const radar=page.locator('.world-section-radar');
+ await page.evaluate(()=>document.activeElement?.blur?.());
+ await page.mouse.move(4,4);await page.waitForTimeout(340);
+ const collapsed=(await radar.boundingBox()).width;
+ assert.ok(collapsed<100,'Section map must return to its compact resting rail');
  await radar.hover();await page.waitForTimeout(340);
  const expanded=(await radar.boundingBox()).width;
  assert.ok(expanded>collapsed+80,'Section map must expand from its resting rail');
