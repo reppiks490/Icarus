@@ -4283,3 +4283,68 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 :root[data-motion="off"] .tabs::after,
 :root[data-experience="focus"] .tabs::after {transition:none!important;animation:none!important}
 @media (prefers-reduced-motion:reduce) {.tabs::after{transition:none!important;animation:none!important}}
+
+
+/* Phase XXXIX: major instruments gain internal chassis strata, so depth survives even without hover tilt. */
+:root[data-world]:not([data-world=""])[data-visual-resolved="rich"] #view .world-panel-frame::before,
+:root[data-world]:not([data-world=""])[data-visual-resolved="rich"] #view .world-panel-frame::after {
+  content:"";position:absolute;pointer-events:none;display:block;transition:opacity .22s ease,transform .28s cubic-bezier(.16,.8,.2,1),filter .22s ease;
+}
+:root[data-world]:not([data-world=""])[data-visual-resolved="rich"] #view .world-panel-frame::before {
+  inset:5px;border:1px solid color-mix(in srgb,currentColor,transparent 91%);border-radius:calc(1em - 6px);opacity:.32;
+  box-shadow:inset 0 0 18px color-mix(in srgb,currentColor,transparent 97%);
+}
+:root[data-world]:not([data-world=""])[data-visual-resolved="rich"] #view .world-panel-frame::after {
+  left:50%;top:4px;width:34%;height:1px;transform:translateX(-50%);
+  background:linear-gradient(90deg,transparent,color-mix(in srgb,currentColor,#fff 12%),transparent);opacity:.38;
+  box-shadow:0 0 7px color-mix(in srgb,currentColor,transparent 58%);
+}
+
+/* Divine uses nested architectural rails. */
+:root[data-world="divine"][data-visual-resolved="rich"] #view .world-panel-frame::before {
+  border-radius:10px 10px 3px 3px;
+  clip-path:polygon(0 0,100% 0,100% 100%,72% 100%,68% 96%,32% 96%,28% 100%,0 100%);
+}
+
+/* Void uses an asymmetric fractured inner shell. */
+:root[data-world="void"][data-visual-resolved="rich"] #view .world-panel-frame::before {
+  inset:6px 5px 5px 7px;border-radius:0;
+  clip-path:polygon(8px 0,100% 0,100% calc(100% - 10px),calc(100% - 11px) 100%,22% 100%,18% 96%,0 96%,0 9px);
+  border-color:color-mix(in srgb,currentColor,transparent 86%);
+}
+:root[data-world="void"][data-visual-resolved="rich"] #view .world-panel-frame::after {
+  width:42%;height:2px;transform:translateX(-50%) skewX(-22deg);
+}
+
+/* Astral uses an inner orbit instead of a second rectangle. */
+:root[data-world="astral"][data-visual-resolved="rich"] #view .world-panel-frame::before {
+  inset:7px 8px;border-radius:50% / 18%;
+  border-color:color-mix(in srgb,currentColor,transparent 89%);
+}
+:root[data-world="astral"][data-visual-resolved="rich"] #view .world-panel-frame::after {
+  width:28%;height:4px;border-radius:50%;
+  background:radial-gradient(ellipse at center,#e7f8ff 0 6%,currentColor 16% 38%,transparent 68%);
+  box-shadow:0 0 5px #dff5ff,0 0 12px color-mix(in srgb,currentColor,transparent 44%);
+}
+
+/* Inspection shifts the inner shell a fraction, revealing apparent material thickness. */
+:root[data-world]:not([data-world=""])[data-visual-resolved="rich"] #view :is(.world-inspected,.world-lit) > .world-panel-frame::before {
+  opacity:.58;transform:translate3d(var(--panel-depth-x,0px),var(--panel-depth-y,0px),0) scale(.996);
+  filter:brightness(1.08);
+}
+:root[data-world]:not([data-world=""])[data-visual-resolved="rich"] #view :is(.world-inspected,.world-lit) > .world-panel-frame::after {
+  opacity:.82;transform:translateX(-50%) translate3d(calc(var(--panel-dx,0px) * -.35),calc(var(--panel-dy,0px) * -.35),0);
+}
+:root[data-world="void"][data-visual-resolved="rich"] #view :is(.world-inspected,.world-lit) > .world-panel-frame::after {
+  transform:translateX(-50%) translate3d(calc(var(--panel-dx,0px) * -.45),calc(var(--panel-dy,0px) * -.25),0) skewX(-22deg);
+}
+:root[data-visual-resolved="light"] #view .world-panel-frame::before,
+:root[data-visual-resolved="light"] #view .world-panel-frame::after,
+:root[data-experience="focus"] #view .world-panel-frame::before,
+:root[data-experience="focus"] #view .world-panel-frame::after {display:none!important}
+@media (max-width:760px) {
+  #view .world-panel-frame::before,#view .world-panel-frame::after {display:none!important}
+}
+@media (prefers-reduced-motion:reduce) {
+  #view .world-panel-frame::before,#view .world-panel-frame::after {transition:none!important;transform:none!important}
+}
