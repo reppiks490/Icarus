@@ -4439,3 +4439,23 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 :root[data-experience="focus"] #view .tile::before {display:none!important}
 @media (max-width:760px) {#view .tile::before{opacity:.14}}
 @media (prefers-reduced-motion:reduce) {#view .tile::before{transition:none!important;transform:none!important}}
+
+
+/* Phase XLII: dense navigation gets domain seams so the command deck reads as architecture, not a word cloud. */
+@media (min-width:1101px) {
+  :root[data-world]:not([data-world=""]) .tabs .tab:is([data-v="research"],[data-v="brain"],[data-v="commissioning"],[data-v="commands"]) {
+    margin-left:10px;
+  }
+  :root[data-world]:not([data-world=""]) .tabs .tab:is([data-v="research"],[data-v="brain"],[data-v="commissioning"],[data-v="commands"])::after {
+    content:"";position:absolute;left:-7px;top:20%;bottom:20%;width:1px;pointer-events:none;
+    background:linear-gradient(180deg,transparent,color-mix(in srgb,var(--active-view-accent,var(--world-glow)),transparent 62%),transparent);
+    box-shadow:0 0 5px color-mix(in srgb,var(--active-view-accent,var(--world-glow)),transparent 72%);
+    opacity:.6;
+  }
+  :root[data-world="void"] .tabs .tab:is([data-v="research"],[data-v="brain"],[data-v="commissioning"],[data-v="commands"])::after {
+    width:2px;transform:skewY(-18deg);background:linear-gradient(180deg,transparent,#ed1d5688,transparent);
+  }
+  :root[data-world="astral"] .tabs .tab:is([data-v="research"],[data-v="brain"],[data-v="commissioning"],[data-v="commands"])::after {
+    width:4px;left:-8px;border-radius:50%;background:radial-gradient(ellipse,#dff5ff 0 10%,var(--active-view-accent,var(--world-glow)) 22% 42%,transparent 72%);
+  }
+}
