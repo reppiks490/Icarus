@@ -277,7 +277,9 @@
     const id=String(tab.dataset.v||'overview'),meta=viewMeta[id]||[id.replace(/-/g,' ').toUpperCase(),'◇'];
     navPreview.querySelector('[data-world-nav-preview-glyph]').textContent=meta[1];
     navPreview.querySelector('[data-world-nav-preview-label]').textContent=meta[0];
-    navPreview.querySelector('[data-world-nav-preview-group]').textContent=viewGroups[id]||'DOMAIN';
+    const group=viewGroups[id]||'DOMAIN';
+    navPreview.querySelector('[data-world-nav-preview-group]').textContent=group;
+    navPreview.dataset.group=group.toLowerCase().replace(/[^a-z0-9]+/g,'-');
     const r=tab.getBoundingClientRect(),w=190,x=Math.max(8,Math.min(window.innerWidth-w-8,r.left+r.width/2-w/2)),y=Math.min(window.innerHeight-72,r.bottom+9);
     navPreview.style.setProperty('--nav-preview-x',x.toFixed(1)+'px');
     navPreview.style.setProperty('--nav-preview-y',y.toFixed(1)+'px');
