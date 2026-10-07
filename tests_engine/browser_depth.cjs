@@ -227,6 +227,7 @@ if(await page.locator('#view .tile').count()) assert.equal(await page.locator('#
 await page.locator('[data-v="brain"]').hover();
 await page.waitForFunction(()=>document.querySelector('.world-nav-preview')?.classList.contains('active'));
 assert.equal((await page.locator('[data-world-nav-preview-group]').textContent()).trim(),'INTELLIGENCE');
+assert.equal(await page.locator('.world-nav-preview').getAttribute('data-group'),'intelligence');
 assert.equal((await page.locator('[data-world-nav-preview-label]').textContent()).trim(),'ADAPTIVE BRAIN');
 assert.equal((await page.locator('[data-world-nav-preview-glyph]').textContent()).trim(),'◉');
 await page.mouse.move(4,4);await page.waitForTimeout(80);
