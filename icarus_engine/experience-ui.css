@@ -4579,3 +4579,52 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 @media (max-width:899px),(pointer:coarse) {.world-nav-preview{display:none!important}}
 @media (prefers-reduced-motion:reduce) {.world-nav-preview,.world-nav-preview > i{transition:none!important;animation:none!important}}
 @media (forced-colors:active) {.world-nav-preview{display:none!important}}
+
+
+/* Phase XLV: specialized subsystems own distinct stage geometry inside the selected universe. */
+:root[data-world-view="research"] #view {--view-field:
+  linear-gradient(118deg,transparent 0 24%,color-mix(in srgb,var(--view-accent),transparent 96%) 24.2% 24.5%,transparent 24.8% 68%,color-mix(in srgb,var(--view-accent),transparent 97%) 68.2% 68.5%,transparent 68.8%),
+  repeating-linear-gradient(90deg,transparent 0 109px,color-mix(in srgb,var(--view-accent),transparent 98%) 110px),
+  radial-gradient(ellipse at 18% 5%,color-mix(in srgb,var(--view-accent),transparent 92%),transparent 34%)}
+:root[data-world-view="market-data"] #view {--view-field:
+  repeating-linear-gradient(90deg,transparent 0 31px,color-mix(in srgb,var(--view-accent),transparent 97.5%) 32px),
+  repeating-linear-gradient(0deg,transparent 0 23px,color-mix(in srgb,var(--view-accent),transparent 98%) 24px),
+  linear-gradient(108deg,transparent 0 46%,color-mix(in srgb,#7de7ff,transparent 96%) 46.2% 46.5%,transparent 46.8%)}
+:root[data-world-view="integrity"] #view {--view-field:
+  repeating-linear-gradient(135deg,transparent 0 51px,color-mix(in srgb,var(--view-accent),transparent 97%) 52px,transparent 53px 103px),
+  linear-gradient(90deg,transparent 0 14%,color-mix(in srgb,#7ff0c5,transparent 96%) 14.2% 14.5%,transparent 14.8% 86%,color-mix(in srgb,#7ff0c5,transparent 96%) 86.2% 86.5%,transparent 86.8%),
+  radial-gradient(ellipse at 50% 0%,color-mix(in srgb,var(--view-accent),transparent 95%),transparent 38%)}
+:root[data-world-view="engine-control"] #view {--view-field:
+  repeating-linear-gradient(90deg,transparent 0 47px,color-mix(in srgb,var(--view-accent),transparent 97%) 48px),
+  linear-gradient(180deg,transparent 0 12%,color-mix(in srgb,var(--view-accent),transparent 96%) 12.2% 12.5%,transparent 12.8% 87%,color-mix(in srgb,var(--view-accent),transparent 97%) 87.2% 87.5%,transparent 87.8%),
+  linear-gradient(135deg,transparent 49.7%,color-mix(in srgb,#7ff0c5,transparent 97%) 50%,transparent 50.3%)}
+:root[data-world-view="learning"] #view {--view-field:
+  repeating-radial-gradient(circle at 50% 5%,transparent 0 54px,color-mix(in srgb,var(--view-accent),transparent 97%) 55px,transparent 56px 92px),
+  repeating-conic-gradient(from 0deg at 50% 5%,transparent 0deg 22deg,color-mix(in srgb,var(--view-accent),transparent 98%) 22.5deg,transparent 23deg 45deg)}
+:root[data-world-view="chronofold"] #view {--view-field:
+  radial-gradient(ellipse at 50% 3%,transparent 0 18%,color-mix(in srgb,var(--view-accent),transparent 95%) 18.2% 18.5%,transparent 18.8% 32%,color-mix(in srgb,var(--view-accent),transparent 97%) 32.2% 32.5%,transparent 32.8%),
+  repeating-linear-gradient(118deg,transparent 0 81px,color-mix(in srgb,var(--view-accent),transparent 98%) 82px,transparent 83px 139px)}
+:root[data-world-view="sibyl"] #view {--view-field:
+  radial-gradient(ellipse at 50% 10%,transparent 0 15%,color-mix(in srgb,var(--view-accent),transparent 94%) 15.2% 15.6%,transparent 16% 30%,color-mix(in srgb,var(--view-accent),transparent 97%) 30.2% 30.6%,transparent 31%),
+  conic-gradient(from 45deg at 50% 10%,transparent 0 12%,color-mix(in srgb,var(--view-accent),transparent 97%) 12.2% 12.5%,transparent 12.8% 37%,color-mix(in srgb,var(--view-accent),transparent 98%) 37.2% 37.5%,transparent 37.8%)}
+:root[data-world-view="apex"] #view,
+:root[data-world-view="ascendancy"] #view {--view-field:
+  linear-gradient(90deg,transparent 0 23%,color-mix(in srgb,var(--view-accent),transparent 97%) 23.2% 23.5%,transparent 23.8% 76%,color-mix(in srgb,var(--view-accent),transparent 97%) 76.2% 76.5%,transparent 76.8%),
+  repeating-linear-gradient(120deg,transparent 0 83px,color-mix(in srgb,var(--view-accent),transparent 98%) 84px,transparent 85px 143px),
+  linear-gradient(180deg,color-mix(in srgb,var(--view-accent),transparent 95%),transparent 34%)}
+:root[data-world-view="autopilot"] #view {--view-field:
+  repeating-linear-gradient(112deg,transparent 0 72px,color-mix(in srgb,var(--view-accent),transparent 97.5%) 73px,transparent 74px 121px),
+  linear-gradient(90deg,transparent 0 49.8%,color-mix(in srgb,#7ff0c5,transparent 95%) 50%,transparent 50.2%),
+  radial-gradient(ellipse at 50% 0%,color-mix(in srgb,var(--view-accent),transparent 93%),transparent 42%)}
+:root[data-world-view="commissioning"] #view {--view-field:
+  repeating-linear-gradient(90deg,transparent 0 63px,color-mix(in srgb,var(--view-accent),transparent 98%) 64px),
+  repeating-linear-gradient(0deg,transparent 0 63px,color-mix(in srgb,var(--view-accent),transparent 98%) 64px),
+  linear-gradient(135deg,transparent 0 49.7%,color-mix(in srgb,#7ff0c5,transparent 96%) 50%,transparent 50.3%)}
+:root[data-world-view="commands"] #view {--view-field:
+  repeating-linear-gradient(90deg,transparent 0 39px,color-mix(in srgb,var(--view-accent),transparent 98%) 40px),
+  linear-gradient(180deg,color-mix(in srgb,var(--view-accent),transparent 96%),transparent 24%),
+  linear-gradient(110deg,transparent 0 64%,color-mix(in srgb,var(--view-accent),transparent 97%) 64.2% 64.5%,transparent 64.8%)}
+:root[data-world-view="log"] #view {--view-field:
+  repeating-linear-gradient(0deg,transparent 0 29px,color-mix(in srgb,var(--view-accent),transparent 97.5%) 30px),
+  linear-gradient(90deg,color-mix(in srgb,var(--view-accent),transparent 96%) 0 1px,transparent 1px),
+  radial-gradient(ellipse at 0 0,color-mix(in srgb,var(--view-accent),transparent 93%),transparent 38%)}
