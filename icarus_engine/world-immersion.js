@@ -2,7 +2,7 @@
   'use strict';
   const root=document.documentElement;
   const reduced=window.matchMedia('(prefers-reduced-motion: reduce)');
-  let scrollFrame=0,pointerFrame=0,viewObserver=null,viewMutation=null,viewResizeObserver=null,depthFrame=null,focusOrbit=null,pointerLens=null,ambient=null,topology=null,sectionRadar=null,inspectionField=null,inspectedPanel=null,topologyHighlightTarget=null,topologyHighlightKey=null,inspectionTimer=0,topologyTimer=0,viewFlashTimer=0,viewGateTimer=0,chapterTimer=0,focusTimer=0,scrollEnergyTimer=0,lastScrollY=0,lastScrollAt=0,lastPointerClientX=null,lastPointerClientY=null,currentView='overview',currentPhase='crown',viewHistory=[],initialized=false;
+  let scrollFrame=0,pointerFrame=0,viewObserver=null,viewMutation=null,viewResizeObserver=null,depthFrame=null,focusOrbit=null,pointerLens=null,ambient=null,topology=null,sectionRadar=null,radarTether=null,inspectionField=null,inspectedPanel=null,topologyHighlightTarget=null,topologyHighlightKey=null,inspectionTimer=0,topologyTimer=0,viewFlashTimer=0,viewGateTimer=0,chapterTimer=0,focusTimer=0,scrollEnergyTimer=0,lastScrollY=0,lastScrollAt=0,lastPointerClientX=null,lastPointerClientY=null,currentView='overview',currentPhase='crown',viewHistory=[],initialized=false;
   const readoutCache=new Map(),readoutTimers=new WeakMap(),topologyActivityTimers=new WeakMap();
 
   const motionAllowed=()=>root.dataset.motion==='live'&&root.dataset.experience==='cinematic'&&!!root.dataset.world&&!document.hidden&&!reduced.matches&&root.dataset.introActive!=='true';
@@ -254,8 +254,13 @@
     const nodes=document.createElementNS('http://www.w3.org/2000/svg','g');nodes.setAttribute('class','world-topology-nodes');
     topology.append(links,nodes);view.prepend(topology);
   }
+  function ensureRadarTether(){
+    if(radarTether?.isConnected)return;
+    radarTether=document.createElement('div');radarTether.className='world-radar-tether';radarTether.setAttribute('aria-hidden','true');
+    radarTether.innerHTML='<i></i><b></b>';document.body.appendChild(radarTether);
+  }
   function ensureSectionRadar(){
-    if(sectionRadar?.isConnected)return;
+    if(sectionRadar?.isConnected){ensureRadarTether();return;}
     sectionRadar=document.createElement('nav');sectionRadar.className='world-section-radar';sectionRadar.setAttribute('aria-label','Section map');
     sectionRadar.innerHTML='<header><i>SECTION MAP</i><b data-world-radar-count>00</b></header><div data-world-radar-nodes></div>';
     sectionRadar.addEventListener('click',event=>{
@@ -266,7 +271,25 @@
       panel.classList.remove('world-radar-arrival');void panel.offsetWidth;panel.classList.add('world-radar-arrival');
       setTimeout(()=>panel?.classList.remove('world-radar-arrival'),900);
     });
-    document.body.appendChild(sectionRadar);
+    document.body.appendChild(sectionRadar);ensureRadarTether();
+  }
+  function positionRadarTether(activeId){
+    ensureRadarTether();
+    if(!radarTether||!sectionRadar||activeId==null||!motionAllowed()||root.dataset.visualResolved!=='rich'||window.innerWidth<1250){
+      radarTether?.classList.remove('active');return;
+    }
+    const panel=document.querySelector(`#view [data-world-topology-node="${activeId}"]`);
+    if(!panel?.isConnected){radarTether.classList.remove('active');return;}
+    const p=panel.getBoundingClientRect(),r=sectionRadar.getBoundingClientRect();
+    if(p.bottom<0||p.top>window.innerHeight||r.width<1){radarTether.classList.remove('active');return;}
+    const left=Math.min(window.innerWidth-8,Math.max(0,p.right+5)),right=Math.max(left,r.left-5),width=right-left;
+    if(width<22){radarTether.classList.remove('active');return;}
+    const y=Math.max(12,Math.min(window.innerHeight-12,(p.top+p.bottom)/2));
+    radarTether.style.setProperty('--tether-x',left.toFixed(1)+'px');
+    radarTether.style.setProperty('--tether-y',y.toFixed(1)+'px');
+    radarTether.style.setProperty('--tether-w',width.toFixed(1)+'px');
+    radarTether.dataset.kind=panel.dataset.worldPanelKind||'instrument';
+    radarTether.classList.add('active');
   }
   function radarLabel(panel){
     return (panel.querySelector(':scope > h2,:scope > summary,:scope h2')?.textContent||panel.dataset.worldPanelKind||'INSTRUMENT')
@@ -286,6 +309,7 @@
   function updateSectionRadar(activeId){
     if(!sectionRadar)return;
     sectionRadar.querySelectorAll('[data-radar-node]').forEach(el=>el.classList.toggle('active',String(activeId??'')===el.dataset.radarNode));
+    positionRadarTether(activeId);
   }
   function topologyPath(a,b){
     const dx=b.x-a.x,dy=b.y-a.y,curve=Math.max(-42,Math.min(42,dx*.08));
@@ -646,7 +670,7 @@
       root.style.setProperty('--world-scroll-energy','0');
       root.style.setProperty('--world-scroll-lean','0px');
       root.style.setProperty('--world-scroll-shear','0deg');
-      focusOrbit?.classList.remove('active');pointerLens?.classList.remove('active');topologyHighlight(null);sectionRadar?.classList.remove('active');clearInspection();
+      focusOrbit?.classList.remove('active');pointerLens?.classList.remove('active');topologyHighlight(null);sectionRadar?.classList.remove('active');radarTether?.classList.remove('active');clearInspection();
     } else if(document.activeElement?.matches?.('button,a,input,select,textarea,summary,[tabindex]')) {
       positionFocusOrbit(document.activeElement);topologyHighlight(document.activeElement);
     }
@@ -659,7 +683,7 @@
     root.dataset.worldImmersion='ready';
     buildDepthFrame();ensureFocusOrbit();ensurePointerLens();
     window.addEventListener('scroll',()=>{queueScroll();if(focusOrbit?.classList.contains('active'))positionFocusOrbit(document.activeElement);},{passive:true});
-    window.addEventListener('resize',()=>{queueScroll();scheduleTopology();if(focusOrbit?.classList.contains('active'))positionFocusOrbit(document.activeElement);if(inspectedPanel)positionInspection(inspectedPanel);},{passive:true});
+    window.addEventListener('resize',()=>{queueScroll();scheduleTopology();if(focusOrbit?.classList.contains('active'))positionFocusOrbit(document.activeElement);if(inspectedPanel)positionInspection(inspectedPanel);const active=sectionRadar?.querySelector('[data-radar-node].active')?.dataset.radarNode;positionRadarTether(active);},{passive:true});
     window.addEventListener('pointermove',pointerMove,{passive:true});
     document.addEventListener('pointerleave',event=>{pointerLeave(event);clearInspection();},{passive:true});
     document.addEventListener('pointerdown',interactionImpact,{passive:true,capture:true});
