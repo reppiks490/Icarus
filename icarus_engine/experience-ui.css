@@ -4628,3 +4628,10 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
   repeating-linear-gradient(0deg,transparent 0 29px,color-mix(in srgb,var(--view-accent),transparent 97.5%) 30px),
   linear-gradient(90deg,color-mix(in srgb,var(--view-accent),transparent 96%) 0 1px,transparent 1px),
   radial-gradient(ellipse at 0 0,color-mix(in srgb,var(--view-accent),transparent 93%),transparent 38%)}
+
+
+/* Navigation preview domains have subtle spectral identity inside the selected world. */
+.world-nav-preview[data-group="analysis"] {--active-view-accent:color-mix(in srgb,var(--view-accent,var(--world-glow)),#c59cff 30%)}
+.world-nav-preview[data-group="intelligence"] {--active-view-accent:color-mix(in srgb,var(--view-accent,var(--world-glow)),#7de7ff 28%)}
+.world-nav-preview[data-group="assurance"] {--active-view-accent:color-mix(in srgb,var(--view-accent,var(--world-glow)),#7ff0c5 25%)}
+.world-nav-preview[data-group="control"] {--active-view-accent:color-mix(in srgb,var(--view-accent,var(--world-glow)),#f6c96a 26%)}
