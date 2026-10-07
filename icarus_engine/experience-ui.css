@@ -4399,3 +4399,43 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 :root[data-visual-resolved="light"] #view .hero::after {opacity:.22;box-shadow:none!important}
 @media (max-width:760px) {#view .hero::before{left:-3px}#view .hero::after{width:42%}}
 @media (prefers-reduced-motion:reduce) {#view .hero::after{animation:none!important}}
+
+
+/* Phase XLI: metric tiles carry calibration hardware instead of ending as plain glass boxes. */
+:root[data-world]:not([data-world=""]) #view .tile::before {
+  content:"";position:absolute;right:8px;bottom:7px;width:22px;height:6px;pointer-events:none;opacity:.26;
+  background:repeating-linear-gradient(90deg,color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 34%) 0 1px,transparent 1px 5px);
+  mask-image:linear-gradient(90deg,transparent,#000 22%,#000);
+  transition:opacity .18s ease,transform .2s cubic-bezier(.16,.8,.2,1),filter .18s ease;
+}
+:root[data-world]:not([data-world=""]) #view .tile:hover::before {
+  opacity:.66;transform:translateX(-2px);filter:drop-shadow(0 0 4px color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 42%));
+}
+:root[data-world="divine"] #view .tile::before {
+  height:7px;background:
+    linear-gradient(90deg,transparent 0 8%,#d5ab5888 9% 12%,transparent 13% 30%,#f0cc7c66 31% 35%,transparent 36% 56%,#d5ab584f 57% 61%,transparent 62%);
+}
+:root[data-world="void"] #view .tile::before {
+  height:8px;width:25px;clip-path:polygon(0 70%,21% 0,28% 45%,55% 16%,62% 62%,100% 0,100% 35%,66% 92%,56% 52%,31% 86%,22% 48%,0 100%);
+  background:#ed1d5688;mask-image:none;
+}
+:root[data-world="astral"] #view .tile::before {
+  width:20px;height:10px;border:1px solid color-mix(in srgb,#bceaff,transparent 58%);border-radius:50%;
+  background:radial-gradient(circle at 72% 20%,#e7f8ff 0 1px,transparent 1.5px);mask-image:none;
+  transform:rotate(-18deg);
+}
+:root[data-world="astral"] #view .tile:hover::before {transform:translateX(-2px) rotate(8deg)}
+
+/* Inline technical tokens read like cockpit annotations while retaining their literal content. */
+:root[data-world]:not([data-world=""]) #view code {
+  padding:1px 5px;border:1px solid color-mix(in srgb,var(--view-accent,var(--world-glow)),var(--ring) 78%);
+  border-radius:5px;background:color-mix(in srgb,var(--surface-2) 82%,transparent);
+  color:color-mix(in srgb,var(--ink),var(--view-accent,var(--world-glow)) 10%);
+  box-shadow:inset 0 1px 0 #ffffff08;text-shadow:0 0 9px color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 88%);
+}
+:root[data-world="void"] #view code {border-radius:1px}
+:root[data-world="astral"] #view code {border-radius:999px}
+:root[data-visual-resolved="light"] #view .tile::before {opacity:.12;filter:none!important}
+:root[data-experience="focus"] #view .tile::before {display:none!important}
+@media (max-width:760px) {#view .tile::before{opacity:.14}}
+@media (prefers-reduced-motion:reduce) {#view .tile::before{transition:none!important;transform:none!important}}
