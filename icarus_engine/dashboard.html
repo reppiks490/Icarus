@@ -1157,6 +1157,7 @@ async function refreshGolive() {
     const n = document.createElement('div');
     n.innerHTML = goliveCard(window.ICARUS_GOLIVE);
     if (n.firstElementChild) cur.replaceWith(n.firstElementChild);
+    window.IcarusWorldImmersion?.refresh();
   }
 }
 async function refreshAgent() {
@@ -1181,6 +1182,7 @@ async function refreshAgent() {
     const n = document.createElement('div');
     n.innerHTML = agentCard(window.ICARUS_AGENT);
     if (n.firstElementChild) cur.replaceWith(n.firstElementChild);
+    window.IcarusWorldImmersion?.refresh();
   }
 }
 async function refreshAudit() {
@@ -1213,6 +1215,7 @@ async function refreshCommandCenter() {
     const n = document.createElement('div');
     n.innerHTML = commandCenterHtml(window.ICARUS_COMMAND_CENTER);
     if (n.firstElementChild) cur.replaceWith(n.firstElementChild);
+    window.IcarusWorldImmersion?.refresh();
   }
 }
 async function refreshCharts() { if (!last) return; if (view === 'overview') { for (const a of (last.assets||[])) await loadChart(a.symbol, 80, $(`#ch-${a.symbol}`), {height:170}); refreshFills(); } if (view.startsWith('asset:')) await loadChart(view.slice(6), 300, $('#dChart'), {height:360, compact:false}); }
