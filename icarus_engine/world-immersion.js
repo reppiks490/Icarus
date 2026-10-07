@@ -2,7 +2,7 @@
   'use strict';
   const root=document.documentElement;
   const reduced=window.matchMedia('(prefers-reduced-motion: reduce)');
-  let scrollFrame=0,pointerFrame=0,viewObserver=null,viewMutation=null,viewResizeObserver=null,depthFrame=null,focusOrbit=null,pointerLens=null,ambient=null,topology=null,sectionRadar=null,radarTether=null,navPreview=null,inspectionField=null,inspectedPanel=null,topologyHighlightTarget=null,topologyHighlightKey=null,inspectionTimer=0,topologyTimer=0,navPreviewTimer=0,viewFlashTimer=0,viewGateTimer=0,chapterTimer=0,focusTimer=0,scrollEnergyTimer=0,lastScrollY=0,lastScrollAt=0,lastPointerClientX=null,lastPointerClientY=null,currentView='overview',currentPhase='crown',viewHistory=[],initialized=false;
+  let scrollFrame=0,pointerFrame=0,viewObserver=null,viewMutation=null,viewResizeObserver=null,depthFrame=null,focusOrbit=null,pointerLens=null,ambient=null,topology=null,sectionRadar=null,radarTether=null,navPreview=null,inspectionField=null,inspectedPanel=null,inspectionKey=null,topologyHighlightTarget=null,topologyHighlightKey=null,inspectionTimer=0,topologyTimer=0,navPreviewTimer=0,viewFlashTimer=0,viewGateTimer=0,chapterTimer=0,focusTimer=0,scrollEnergyTimer=0,lastScrollY=0,lastScrollAt=0,lastPointerClientX=null,lastPointerClientY=null,currentView='overview',currentPhase='crown',viewHistory=[],initialized=false;
   const readoutCache=new Map(),readoutTimers=new WeakMap(),topologyActivityTimers=new WeakMap();
 
   const motionAllowed=()=>root.dataset.motion==='live'&&root.dataset.experience==='cinematic'&&!!root.dataset.world&&!document.hidden&&!reduced.matches&&root.dataset.introActive!=='true';
@@ -225,7 +225,7 @@
   }
   function clearInspection(){
     clearTimeout(inspectionTimer);
-    inspectedPanel?.classList.remove('world-inspected');inspectedPanel=null;
+    inspectedPanel?.classList.remove('world-inspected');inspectedPanel=null;inspectionKey=null;
     inspectionField?.classList.remove('active');
     document.getElementById('view')?.classList.remove('world-inspection-mode');
   }
@@ -234,6 +234,7 @@
     const view=document.getElementById('view');
     if(!view||!inspectionField||!panel?.isConnected||!view.contains(panel)||!motionAllowed()||root.dataset.visualResolved!=='rich'||window.innerWidth<1100){clearInspection();return;}
     if(inspectedPanel!==panel){inspectedPanel?.classList.remove('world-inspected');inspectedPanel=panel;panel.classList.add('world-inspected');}
+    inspectionKey=panel.dataset.worldPanelKey||panelStableKey(panel);
     const vr=view.getBoundingClientRect(),r=panel.getBoundingClientRect(),pad=9;
     const x=r.left-vr.left+view.scrollLeft-pad,y=r.top-vr.top+view.scrollTop-pad;
     inspectionField.style.setProperty('--inspect-x',x.toFixed(1)+'px');
