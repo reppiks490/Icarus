@@ -57,6 +57,14 @@ await page.locator('#experienceTheme').selectOption('dark');
 if(await page.locator('.world-scene').isVisible()) throw Error('Scene remained on legacy theme');
 await page.locator('#experienceTheme').selectOption('void');
 await page.locator('.experience-settings summary').click();
+const stageFields={};
+for(const view of ['research','market-data','learning','chronofold','integrity','autopilot']){
+ await page.locator(`[data-v="${view}"]`).click();
+ await page.waitForFunction(v=>document.documentElement.dataset.worldView===v,view);
+ stageFields[view]=(await page.locator('#view').evaluate(el=>getComputedStyle(el).getPropertyValue('--view-field'))).trim();
+ if(!stageFields[view]) throw Error('Subsystem stage field missing: '+view);
+}
+if(new Set(Object.values(stageFields)).size!==Object.keys(stageFields).length) throw Error('Specialized subsystem stage fields are not distinct');
 for(const view of ['system','inputs','backtest','brain','parallax','possibility','pantheon','evolution','overview']) {
  await page.locator(`[data-v="${view}"]`).click();
  await page.waitForFunction(v=>document.documentElement.dataset.worldView===v,view);
