@@ -90,7 +90,12 @@ const valueMotion=await page.evaluate(async()=>{
  const el=document.createElement('section');el.className='card c3';el.id='worldValueFixture';
  el.innerHTML='<h2>Value Motion Fixture</h2><div class="tile"><div class="k">Observed metric</div><div class="v tnum">10</div></div>';
  document.querySelector('#view').appendChild(el);window.IcarusWorldImmersion.refresh();
- await new Promise(r=>setTimeout(r,140));
+ const deadline=performance.now()+2200;
+ while(performance.now()<deadline){
+  const id=el.dataset.worldTopologyNode;
+  if(id!=null&&document.querySelector(`.world-topology circle[data-node="${id}"]`)&&document.querySelector(`.world-section-radar [data-radar-node="${id}"]`))break;
+  await new Promise(r=>setTimeout(r,24));
+ }
  const nodeId=el.dataset.worldTopologyNode;
  const v=el.querySelector('.v');v.textContent='12';window.IcarusWorldImmersion.refresh();
  const rise=v.classList.contains('world-value-increase'),active=el.classList.contains('world-data-activity');
