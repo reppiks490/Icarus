@@ -141,6 +141,14 @@ await page.waitForFunction(()=>document.querySelectorAll('.world-topology path')
 assert.equal(await page.locator('.world-topology').count(),1);
 assert.ok((await page.locator('.world-topology path').count())<=24);
 assert.ok((await page.locator('.world-topology circle').count())<=18);
+// Topology IDs are assigned during the first bounded graph rebuild. Re-drive the
+// real panel pointer after the graph exists, then verify the active linkage.
+await card.evaluate(el=>{
+ const r=el.getBoundingClientRect(),target=el.querySelector('h2')||el;
+ target.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,pointerType:'mouse',clientX:r.left+r.width*.38,clientY:r.top+Math.min(36,r.height*.28)}));
+ target.dispatchEvent(new PointerEvent('pointerover',{bubbles:true,pointerType:'mouse',clientX:r.left+r.width*.38,clientY:r.top+Math.min(36,r.height*.28)}));
+});
+await page.waitForFunction(()=>document.querySelectorAll('.world-topology path.active').length>0);
 assert.ok((await page.locator('.world-topology path.active').count())>0);
 // Removing/rebuilding decorative children can produce a pointerout with no relatedTarget
 // even while the physical cursor is still over the same card. That must not erase
