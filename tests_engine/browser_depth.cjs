@@ -219,6 +219,9 @@ if(await page.locator('#view .tile').count()) assert.equal(await page.locator('#
 await page.locator('[data-v="system"]').click();
 await page.waitForFunction(()=>document.documentElement.dataset.worldView==='system');
 await page.waitForFunction(()=>document.querySelector('[data-render-view]')?.textContent==='VIEW SYSTEM');
+await page.waitForFunction(()=>parseFloat(document.querySelector('#tabs')?.style.getPropertyValue('--nav-w')||'0')>0);
+assert.ok(parseFloat(await page.locator('#tabs').evaluate(el=>el.style.getPropertyValue('--nav-w')))>0);
+assert.ok(parseFloat(await page.locator('#tabs').evaluate(el=>el.style.getPropertyValue('--nav-x')))>=0);
 assert.equal((await page.locator('[data-world-gate-label]').textContent()).trim(),'SYSTEM');
 assert.equal((await page.locator('.world-view-insignia b').textContent()).trim(),'SYSTEM');
 assert.equal((await page.locator('.world-view-insignia i').textContent()).trim(),'⌬');
