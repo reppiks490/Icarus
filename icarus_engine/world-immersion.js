@@ -450,7 +450,11 @@
     for(const el of linked){
       const oldTimer=topologyActivityTimers.get(el);if(oldTimer)clearTimeout(oldTimer);
       el.classList.remove('data-activity');el.dataset.activityKind=kind;
-      void el.getBoundingClientRect();el.classList.add('data-activity');
+    }
+    // One bounded layout flush restarts the packet animation for the complete local route.
+    void topology.getBoundingClientRect();
+    for(const el of linked){
+      el.classList.add('data-activity');
       const timer=setTimeout(()=>{el.classList.remove('data-activity');delete el.dataset.activityKind;topologyActivityTimers.delete(el);},920);
       topologyActivityTimers.set(el,timer);
     }
