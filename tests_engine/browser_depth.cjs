@@ -59,7 +59,7 @@ await page.waitForFunction(()=>[...document.querySelectorAll('#view > .card')].s
 const cardBox=await card.boundingBox();assert.ok(cardBox&&cardBox.width>40&&cardBox.height>28);
 await page.mouse.move(cardBox.x+cardBox.width*.38,cardBox.y+Math.min(36,cardBox.height*.28));
 await page.waitForFunction(()=>document.querySelector('#view > .card')?.style.getPropertyValue('--panel-x')!=='');
-await page.waitForTimeout(80);
+await page.waitForFunction(()=>document.querySelector('#view > .card > .world-surface-sigil'));
 assert.equal(await card.locator(':scope > .world-surface-sigil').count(),1);
 assert.equal(await card.locator(':scope > .world-surface-sigil').evaluate(el=>getComputedStyle(el).position),'absolute');
 assert.equal(await card.locator(':scope > .world-panel-index').count(),1);
