@@ -90,14 +90,17 @@ const valueMotion=await page.evaluate(async()=>{
  const el=document.createElement('section');el.className='card c3';el.id='worldValueFixture';
  el.innerHTML='<h2>Value Motion Fixture</h2><div class="tile"><div class="k">Observed metric</div><div class="v tnum">10</div></div>';
  document.querySelector('#view').appendChild(el);window.IcarusWorldImmersion.refresh();
- await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+ await new Promise(r=>setTimeout(r,140));
+ const nodeId=el.dataset.worldTopologyNode;
  const v=el.querySelector('.v');v.textContent='12';window.IcarusWorldImmersion.refresh();
  const rise=v.classList.contains('world-value-increase'),active=el.classList.contains('world-data-activity');
+ const graphActivity=nodeId!=null&&!!document.querySelector(`.world-topology :is(path,circle).data-activity[data-node="${nodeId}"],.world-topology path.data-activity[data-from="${nodeId}"],.world-topology path.data-activity[data-to="${nodeId}"]`);
+ const radarActivity=nodeId==null?false:!!document.querySelector(`.world-section-radar [data-radar-node="${nodeId}"].data-activity`);
  v.textContent='8';window.IcarusWorldImmersion.refresh();
  const fall=v.classList.contains('world-value-decrease');
- el.remove();return {rise,fall,active};
+ el.remove();return {rise,fall,active,graphActivity,radarActivity};
 });
-assert.deepEqual(valueMotion,{rise:true,fall:true,active:true});
+assert.deepEqual(valueMotion,{rise:true,fall:true,active:true,graphActivity:true,radarActivity:true});
 // The synthetic readout fixture above intentionally mutates/reflows #view.
 // Reacquire a measurable live panel, then re-drive a real pointer before
 // asserting pointer-driven optics. Dashboard polling may replace panel nodes.
