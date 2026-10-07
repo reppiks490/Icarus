@@ -332,8 +332,9 @@
     host.replaceChildren();if(count)count.textContent=String(points.length).padStart(2,'0');
     for(const p of points.slice(0,12)){
       const item=document.createElement('button');item.type='button';item.dataset.radarNode=String(p.index);item.dataset.kind=p.el.dataset.worldPanelKind||'instrument';
-      const labelText=radarLabel(p.el);item.setAttribute('aria-label','Jump to '+labelText);
-      const dot=document.createElement('i'),label=document.createElement('b');label.textContent=labelText;
+      const labelText=radarLabel(p.el),ordinal=String(p.el.dataset.worldPanelOrdinal||p.index+1).padStart(2,'0');
+      item.dataset.ordinal=ordinal;item.setAttribute('aria-label','Jump to '+labelText);
+      const dot=document.createElement('i'),label=document.createElement('b');label.textContent='P'+ordinal+' · '+labelText;
       item.append(dot,label);host.appendChild(item);
     }
   }
