@@ -239,6 +239,7 @@ await page.waitForFunction(()=>parseFloat(document.querySelector('#tabs')?.style
 assert.ok(parseFloat(await page.locator('#tabs').evaluate(el=>el.style.getPropertyValue('--nav-w')))>0);
 assert.ok(parseFloat(await page.locator('#tabs').evaluate(el=>el.style.getPropertyValue('--nav-x')))>=0);
 assert.equal((await page.locator('[data-world-gate-label]').textContent()).trim(),'SYSTEM');
+assert.equal((await page.locator('.world-view-insignia span').textContent()).trim(),'CORE DECK / ACTIVE');
 assert.equal((await page.locator('.world-view-insignia b').textContent()).trim(),'SYSTEM');
 assert.equal((await page.locator('.world-view-insignia i').textContent()).trim(),'⌬');
 await page.waitForTimeout(820);
