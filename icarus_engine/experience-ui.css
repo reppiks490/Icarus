@@ -4459,3 +4459,64 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
     width:4px;left:-8px;border-radius:50%;background:radial-gradient(ellipse,#dff5ff 0 10%,var(--active-view-accent,var(--world-glow)) 22% 42%,transparent 72%);
   }
 }
+
+
+/* Phase XLIII: section-map resonance is physically tethered to the active visible instrument. */
+.world-radar-tether {
+  position:fixed;z-index:4;left:var(--tether-x,0);top:var(--tether-y,0);width:var(--tether-w,0);height:1px;
+  pointer-events:none;opacity:0;transform:translateY(-50%);color:var(--active-view-accent,var(--world-glow));
+  background:linear-gradient(90deg,color-mix(in srgb,currentColor,transparent 74%),color-mix(in srgb,currentColor,transparent 94%) 86%,transparent);
+  filter:drop-shadow(0 0 4px color-mix(in srgb,currentColor,transparent 66%));
+  transition:left .18s cubic-bezier(.16,.8,.2,1),top .18s cubic-bezier(.16,.8,.2,1),width .18s cubic-bezier(.16,.8,.2,1),opacity .14s ease;
+}
+.world-radar-tether.active {opacity:.46}
+.world-radar-tether i,.world-radar-tether b {position:absolute;display:block;pointer-events:none}
+.world-radar-tether i {
+  left:0;top:50%;width:7px;height:7px;transform:translate(-50%,-50%) rotate(45deg);
+  border:1px solid color-mix(in srgb,currentColor,transparent 28%);background:color-mix(in srgb,var(--surface),transparent 20%);
+  box-shadow:0 0 7px color-mix(in srgb,currentColor,transparent 48%);
+}
+.world-radar-tether b {
+  right:0;top:50%;width:4px;height:4px;transform:translate(50%,-50%) rotate(45deg);
+  background:currentColor;box-shadow:0 0 7px currentColor;
+}
+
+/* Panel families tint the tether's material, not its meaning. */
+.world-radar-tether[data-kind="capital"] {color:color-mix(in srgb,var(--active-view-accent,var(--world-glow)),#f6c96a 34%)}
+.world-radar-tether[data-kind="research"] {color:color-mix(in srgb,var(--active-view-accent,var(--world-glow)),#c59cff 32%)}
+.world-radar-tether[data-kind="data"] {color:color-mix(in srgb,var(--active-view-accent,var(--world-glow)),#7de7ff 28%)}
+.world-radar-tether[data-kind="control"] {color:color-mix(in srgb,var(--active-view-accent,var(--world-glow)),#7ff0c5 24%)}
+
+/* Worlds keep distinct physics. */
+:root[data-world="divine"] .world-radar-tether {
+  background:repeating-linear-gradient(90deg,color-mix(in srgb,currentColor,transparent 54%) 0 1px,transparent 1px 7px);
+}
+:root[data-world="void"] .world-radar-tether {
+  height:2px;clip-path:polygon(0 35%,18% 0,34% 65%,57% 18%,74% 72%,100% 20%,100% 100%,0 100%);
+  background:linear-gradient(90deg,color-mix(in srgb,currentColor,transparent 38%),color-mix(in srgb,currentColor,transparent 82%),transparent);
+}
+:root[data-world="void"] .world-radar-tether i {border-radius:0;transform:translate(-50%,-50%) rotate(0);width:9px;height:1px;background:currentColor}
+:root[data-world="astral"] .world-radar-tether {
+  height:1px;background:linear-gradient(90deg,color-mix(in srgb,#dff5ff,transparent 38%),color-mix(in srgb,currentColor,transparent 70%) 58%,transparent);
+}
+:root[data-world="astral"] .world-radar-tether i {
+  width:10px;height:10px;border-radius:50%;transform:translate(-50%,-50%);background:transparent;
+  box-shadow:0 0 5px #dff5ff,0 0 11px currentColor;
+}
+:root[data-world="astral"] .world-radar-tether b {border-radius:50%;transform:translate(50%,-50%);background:#e9faff}
+
+:root[data-world]:not([data-world=""])[data-motion="live"][data-experience="cinematic"][data-visual-resolved="rich"] .world-radar-tether.active {
+  animation:world-radar-tether-breathe 2.8s ease-in-out infinite alternate;
+}
+@keyframes world-radar-tether-breathe {
+  from{opacity:.28;filter:drop-shadow(0 0 2px color-mix(in srgb,currentColor,transparent 78%))}
+  to{opacity:.58;filter:drop-shadow(0 0 7px color-mix(in srgb,currentColor,transparent 42%))}
+}
+:root[data-world="void"][data-motion="live"][data-experience="cinematic"][data-visual-resolved="rich"] .world-radar-tether.active {animation-duration:1.9s}
+:root[data-world="astral"][data-motion="live"][data-experience="cinematic"][data-visual-resolved="rich"] .world-radar-tether.active {animation-duration:4.1s}
+:root[data-visual-resolved="light"] .world-radar-tether,
+:root[data-experience="focus"] .world-radar-tether,
+:root[data-motion="off"] .world-radar-tether {display:none!important}
+@media (max-width:1249px),(pointer:coarse) {.world-radar-tether{display:none!important}}
+@media (prefers-reduced-motion:reduce) {.world-radar-tether{animation:none!important;transition:none!important}}
+@media (forced-colors:active) {.world-radar-tether{display:none!important}}
