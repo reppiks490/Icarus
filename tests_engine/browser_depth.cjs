@@ -184,7 +184,11 @@ assert.ok((await page.locator('.world-section-radar [data-radar-node]').count())
 assert.ok((await page.locator('.world-section-radar [data-radar-node].active').count())>0);
 assert.match((await page.locator('[data-world-radar-count]').textContent()).trim(),/^\d{2}$/);
 assert.equal(await page.locator('.world-section-radar').getAttribute('aria-label'),'Section map');
+assert.equal(await page.locator('.world-radar-tether').count(),1);
 if(await page.locator('.world-section-radar').isVisible()){
+ assert.equal(await page.locator('.world-radar-tether').evaluate(el=>el.classList.contains('active')),true);
+ assert.ok(parseFloat(await page.locator('.world-radar-tether').evaluate(el=>getComputedStyle(el).width))>20);
+
  const radar=page.locator('.world-section-radar');
  await page.evaluate(()=>document.activeElement?.blur?.());
  await page.mouse.move(4,4);await page.waitForTimeout(340);
