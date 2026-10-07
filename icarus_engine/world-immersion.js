@@ -2,7 +2,7 @@
   'use strict';
   const root=document.documentElement;
   const reduced=window.matchMedia('(prefers-reduced-motion: reduce)');
-  let scrollFrame=0,pointerFrame=0,viewObserver=null,viewMutation=null,viewResizeObserver=null,depthFrame=null,focusOrbit=null,pointerLens=null,ambient=null,topology=null,sectionRadar=null,radarTether=null,inspectionField=null,inspectedPanel=null,topologyHighlightTarget=null,topologyHighlightKey=null,inspectionTimer=0,topologyTimer=0,viewFlashTimer=0,viewGateTimer=0,chapterTimer=0,focusTimer=0,scrollEnergyTimer=0,lastScrollY=0,lastScrollAt=0,lastPointerClientX=null,lastPointerClientY=null,currentView='overview',currentPhase='crown',viewHistory=[],initialized=false;
+  let scrollFrame=0,pointerFrame=0,viewObserver=null,viewMutation=null,viewResizeObserver=null,depthFrame=null,focusOrbit=null,pointerLens=null,ambient=null,topology=null,sectionRadar=null,radarTether=null,navPreview=null,inspectionField=null,inspectedPanel=null,topologyHighlightTarget=null,topologyHighlightKey=null,inspectionTimer=0,topologyTimer=0,navPreviewTimer=0,viewFlashTimer=0,viewGateTimer=0,chapterTimer=0,focusTimer=0,scrollEnergyTimer=0,lastScrollY=0,lastScrollAt=0,lastPointerClientX=null,lastPointerClientY=null,currentView='overview',currentPhase='crown',viewHistory=[],initialized=false;
   const readoutCache=new Map(),readoutTimers=new WeakMap(),topologyActivityTimers=new WeakMap();
 
   const motionAllowed=()=>root.dataset.motion==='live'&&root.dataset.experience==='cinematic'&&!!root.dataset.world&&!document.hidden&&!reduced.matches&&root.dataset.introActive!=='true';
@@ -20,6 +20,13 @@
     sibyl:['SIBYL Ω','Ω'],apex:['APEX Ω','⌬'],ascendancy:['ASCENDANCY','↑'],learning:['LEARNING FABRIC','∞'],
     chronofold:['ICARUS Ξ','Ξ'],commissioning:['COMMISSIONING','◫'],integrity:['DATA INTEGRITY','◆'],
     'engine-control':['ENGINE CONTROL','⌘'],commands:['COMMANDS','⌗'],log:['ENGINE LOG','▥'],autopilot:['TACTICAL AUTOPILOT','➤']
+  };
+  const viewGroups={
+    overview:'CORE DECK',asset:'CORE DECK',system:'CORE DECK',golive:'CORE DECK',agent:'CORE DECK',inputs:'CORE DECK',backtest:'CORE DECK',
+    research:'ANALYSIS',sources:'ANALYSIS','market-data':'ANALYSIS',
+    brain:'INTELLIGENCE',evolution:'INTELLIGENCE',parallax:'INTELLIGENCE',possibility:'INTELLIGENCE',pantheon:'INTELLIGENCE',sibyl:'INTELLIGENCE',apex:'INTELLIGENCE',ascendancy:'INTELLIGENCE',learning:'INTELLIGENCE',chronofold:'INTELLIGENCE',
+    commissioning:'ASSURANCE',integrity:'ASSURANCE','engine-control':'ASSURANCE',
+    commands:'CONTROL',log:'CONTROL',autopilot:'CONTROL'
   };
 
   function buildDepthFrame(){
@@ -254,6 +261,30 @@
     const nodes=document.createElementNS('http://www.w3.org/2000/svg','g');nodes.setAttribute('class','world-topology-nodes');
     topology.append(links,nodes);view.prepend(topology);
   }
+  function ensureNavPreview(){
+    if(navPreview?.isConnected)return;
+    navPreview=document.createElement('div');navPreview.className='world-nav-preview';navPreview.setAttribute('aria-hidden','true');
+    navPreview.innerHTML='<i data-world-nav-preview-glyph>◇</i><div><span data-world-nav-preview-group>CORE DECK</span><b data-world-nav-preview-label>OVERVIEW</b></div><em></em>';
+    document.body.appendChild(navPreview);
+  }
+  function hideNavPreview(){
+    clearTimeout(navPreviewTimer);navPreviewTimer=setTimeout(()=>navPreview?.classList.remove('active'),45);
+  }
+  function previewNav(target){
+    const tab=target?.closest?.('.tab[data-v]');
+    if(!tab||!motionAllowed()||window.innerWidth<900){hideNavPreview();return;}
+    ensureNavPreview();clearTimeout(navPreviewTimer);
+    const id=String(tab.dataset.v||'overview'),meta=viewMeta[id]||[id.replace(/-/g,' ').toUpperCase(),'◇'];
+    navPreview.querySelector('[data-world-nav-preview-glyph]').textContent=meta[1];
+    navPreview.querySelector('[data-world-nav-preview-label]').textContent=meta[0];
+    navPreview.querySelector('[data-world-nav-preview-group]').textContent=viewGroups[id]||'DOMAIN';
+    const r=tab.getBoundingClientRect(),w=190,x=Math.max(8,Math.min(window.innerWidth-w-8,r.left+r.width/2-w/2)),y=Math.min(window.innerHeight-72,r.bottom+9);
+    navPreview.style.setProperty('--nav-preview-x',x.toFixed(1)+'px');
+    navPreview.style.setProperty('--nav-preview-y',y.toFixed(1)+'px');
+    navPreview.dataset.view=id;
+    navPreview.classList.remove('active');void navPreview.offsetWidth;navPreview.classList.add('active');
+  }
+
   function ensureRadarTether(){
     if(radarTether?.isConnected)return;
     radarTether=document.createElement('div');radarTether.className='world-radar-tether';radarTether.setAttribute('aria-hidden','true');
@@ -670,7 +701,7 @@
       root.style.setProperty('--world-scroll-energy','0');
       root.style.setProperty('--world-scroll-lean','0px');
       root.style.setProperty('--world-scroll-shear','0deg');
-      focusOrbit?.classList.remove('active');pointerLens?.classList.remove('active');topologyHighlight(null);sectionRadar?.classList.remove('active');radarTether?.classList.remove('active');clearInspection();
+      focusOrbit?.classList.remove('active');pointerLens?.classList.remove('active');navPreview?.classList.remove('active');topologyHighlight(null);sectionRadar?.classList.remove('active');radarTether?.classList.remove('active');clearInspection();
     } else if(document.activeElement?.matches?.('button,a,input,select,textarea,summary,[tabindex]')) {
       positionFocusOrbit(document.activeElement);topologyHighlight(document.activeElement);
     }
@@ -687,7 +718,7 @@
     window.addEventListener('pointermove',pointerMove,{passive:true});
     document.addEventListener('pointerleave',event=>{pointerLeave(event);clearInspection();},{passive:true});
     document.addEventListener('pointerdown',interactionImpact,{passive:true,capture:true});
-    document.addEventListener('pointerover',event=>{topologyHighlight(event.target);inspectFromTarget(event.target);},{passive:true});
+    document.addEventListener('pointerover',event=>{topologyHighlight(event.target);inspectFromTarget(event.target);previewNav(event.target);},{passive:true});
     document.addEventListener('pointerout',event=>{
       if(!event.relatedTarget?.closest?.('[data-world-topology-node]')){
         const x=lastPointerClientX,y=lastPointerClientY;
@@ -699,9 +730,10 @@
       }
       const from=event.target.closest?.('[data-world-panel-kind]'),to=event.relatedTarget?.closest?.('[data-world-panel-kind]');
       if(from&&from!==to)inspectFromTarget(event.relatedTarget);
+      if(event.target.closest?.('.tab[data-v]')&&!event.relatedTarget?.closest?.('.tab[data-v]'))hideNavPreview();
     },{passive:true});
-    document.addEventListener('focusin',event=>{focusIn(event);topologyHighlight(event.target);inspectFromTarget(event.target);},true);
-    document.addEventListener('focusout',event=>{focusOut(event);setTimeout(()=>{topologyHighlight(document.activeElement);inspectFromTarget(document.activeElement);},0);},true);
+    document.addEventListener('focusin',event=>{focusIn(event);topologyHighlight(event.target);inspectFromTarget(event.target);previewNav(event.target);},true);
+    document.addEventListener('focusout',event=>{focusOut(event);if(event.target.closest?.('.tab[data-v]'))hideNavPreview();setTimeout(()=>{topologyHighlight(document.activeElement);inspectFromTarget(document.activeElement);},0);},true);
     document.addEventListener('visibilitychange',sync);
     reduced.addEventListener?.('change',sync);
     installObserver();
