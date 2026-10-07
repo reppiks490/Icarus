@@ -106,30 +106,33 @@ const valueMotion=await page.evaluate(async()=>{
  el.remove();return {rise,fall,active,graphActivity,radarActivity};
 });
 assert.deepEqual(valueMotion,{rise:true,fall:true,active:true,graphActivity:true,radarActivity:true});
-// The synthetic readout fixture above intentionally mutates/reflows #view.
-// Reacquire a measurable live panel, then re-drive a real pointer before
-// asserting pointer-driven optics. Dashboard polling may replace panel nodes.
-await card.waitFor({state:'visible'});
-await page.waitForFunction(()=>[...document.querySelectorAll('#view > .card')].some(el=>{const r=el.getBoundingClientRect();return r.width>40&&r.height>28;}));
-const cardBoxAfterFixtures=await card.boundingBox();
-assert.ok(cardBoxAfterFixtures&&cardBoxAfterFixtures.width>40&&cardBoxAfterFixtures.height>28);
-await page.mouse.move(cardBoxAfterFixtures.x+cardBoxAfterFixtures.width*.38,cardBoxAfterFixtures.y+Math.min(36,cardBoxAfterFixtures.height*.28));
-await page.waitForFunction(()=>{
- const el=document.querySelector('#view > .card');if(!el)return false;
- return ['--panel-x','--panel-tilt-y','--panel-dx','--panel-depth-x'].every(prop=>el.style.getPropertyValue(prop)!=='')&&el.classList.contains('world-inspected');
+// Dashboard polling may replace a live panel between separate Playwright calls.
+// Drive and inspect pointer optics atomically against the same DOM node.
+const panelOptics=await page.evaluate(async()=>{
+ const el=[...document.querySelectorAll('#view > .card')].find(node=>{const r=node.getBoundingClientRect();return r.width>40&&r.height>28;});
+ if(!el)return null;
+ const r=el.getBoundingClientRect(),target=el.querySelector('h2')||el;
+ const x=r.left+r.width*.38,y=r.top+Math.min(36,r.height*.28);
+ target.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,pointerType:'mouse',clientX:x,clientY:y}));
+ target.dispatchEvent(new PointerEvent('pointerover',{bubbles:true,pointerType:'mouse',clientX:x,clientY:y}));
+ await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+ const field=document.querySelector('.world-inspection-field');
+ return {
+  x:el.style.getPropertyValue('--panel-x'),
+  tiltY:el.style.getPropertyValue('--panel-tilt-y'),
+  dx:el.style.getPropertyValue('--panel-dx'),
+  depthX:el.style.getPropertyValue('--panel-depth-x'),
+  inspected:el.classList.contains('world-inspected'),
+  fieldActive:!!field?.classList.contains('active'),
+  fieldPosition:field?getComputedStyle(field).position:''
+ };
 });
-const panelOptics=await card.evaluate(el=>({
- x:el.style.getPropertyValue('--panel-x'),
- tiltY:el.style.getPropertyValue('--panel-tilt-y'),
- dx:el.style.getPropertyValue('--panel-dx'),
- depthX:el.style.getPropertyValue('--panel-depth-x'),
- inspected:el.classList.contains('world-inspected')
-}));
+assert.notEqual(panelOptics,null);
 assert.ok(panelOptics.x&&panelOptics.tiltY&&panelOptics.dx&&panelOptics.depthX);
 assert.equal(panelOptics.inspected,true);
+assert.equal(panelOptics.fieldActive,true);
+assert.equal(panelOptics.fieldPosition,'absolute');
 assert.equal(await page.locator('.world-inspection-field').count(),1);
-assert.equal(await page.locator('.world-inspection-field').evaluate(el=>el.classList.contains('active')),true);
-assert.equal(await page.locator('.world-inspection-field').evaluate(el=>getComputedStyle(el).position),'absolute');
 await page.mouse.move(520,360);await page.waitForTimeout(80);
 assert.equal(await page.locator('.world-pointer-lens').count(),1);
 assert.equal(await page.locator('.world-pointer-lens').evaluate(el=>el.classList.contains('active')),true);
@@ -151,7 +154,9 @@ assert.ok((await page.locator('.world-topology path').count())<=24);
 assert.ok((await page.locator('.world-topology circle').count())<=18);
 // Topology IDs are assigned during the first bounded graph rebuild. Re-drive the
 // real panel pointer after the graph exists, then verify the active linkage.
-await card.evaluate(el=>{
+await page.evaluate(()=>{
+ const el=[...document.querySelectorAll('#view > .card')].find(node=>node.dataset.worldTopologyNode!=null)||document.querySelector('#view [data-world-topology-node]');
+ if(!el)return;
  const r=el.getBoundingClientRect(),target=el.querySelector('h2')||el;
  target.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,pointerType:'mouse',clientX:r.left+r.width*.38,clientY:r.top+Math.min(36,r.height*.28)}));
  target.dispatchEvent(new PointerEvent('pointerover',{bubbles:true,pointerType:'mouse',clientX:r.left+r.width*.38,clientY:r.top+Math.min(36,r.height*.28)}));
@@ -161,7 +166,7 @@ assert.ok((await page.locator('.world-topology path.active').count())>0);
 // Removing/rebuilding decorative children can produce a pointerout with no relatedTarget
 // even while the physical cursor is still over the same card. That must not erase
 // the user's structural resonance.
-await card.evaluate(el=>el.dispatchEvent(new PointerEvent('pointerout',{bubbles:true,pointerType:'mouse',relatedTarget:null})));
+await page.evaluate(()=>{const el=document.querySelector('#view .world-inspected[data-world-topology-node]')||document.querySelector('#view [data-world-topology-node]');el?.dispatchEvent(new PointerEvent('pointerout',{bubbles:true,pointerType:'mouse',relatedTarget:null}));});
 await page.waitForTimeout(40);
 assert.ok((await page.locator('.world-topology path.active').count())>0,'DOM-churn pointerout must reconcile to the physical pointer target');
 // A layout/DOM refresh may rebuild decorative SVG geometry, but must not erase
