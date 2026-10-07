@@ -313,7 +313,16 @@
     if(!panel?.isConnected){radarTether.classList.remove('active');return;}
     const p=panel.getBoundingClientRect(),r=sectionRadar.getBoundingClientRect();
     if(p.bottom<0||p.top>window.innerHeight||r.width<1){radarTether.classList.remove('active');return;}
-    const left=Math.min(window.innerWidth-8,Math.max(0,p.right+5)),right=Math.max(left,r.left-5),width=right-left;
+    const right=Math.min(window.innerWidth-8,r.left-5);
+    let left=Math.min(window.innerWidth-8,Math.max(0,p.right+5));
+    // Full-width instruments can extend beneath the fixed section rail. In that
+    // case, begin the tether inside the panel's right-side negative space rather
+    // than dropping the spatial relationship entirely.
+    if(left>right-22){
+      const inset=Math.min(180,Math.max(56,p.width*.18));
+      left=Math.max(p.left+12,right-inset);
+    }
+    const width=right-left;
     if(width<22){radarTether.classList.remove('active');return;}
     const y=Math.max(12,Math.min(window.innerHeight-12,(p.top+p.bottom)/2));
     radarTether.style.setProperty('--tether-x',left.toFixed(1)+'px');
