@@ -4348,3 +4348,54 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 @media (prefers-reduced-motion:reduce) {
   #view .world-panel-frame::before,#view .world-panel-frame::after {transition:none!important;transform:none!important}
 }
+
+
+/* Phase XL: headline readouts sit inside a verdict instrument, not loose typography. */
+:root[data-world]:not([data-world=""]) #view .hero {
+  position:relative;isolation:isolate;
+}
+:root[data-world]:not([data-world=""]) #view .hero::before,
+:root[data-world]:not([data-world=""]) #view .hero::after {
+  content:"";position:absolute;pointer-events:none;z-index:0;
+}
+:root[data-world]:not([data-world=""]) #view .hero::before {
+  left:-7px;top:4px;bottom:5px;width:1px;
+  background:linear-gradient(180deg,transparent,color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 36%) 18% 82%,transparent);
+  box-shadow:0 0 8px color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 64%);
+}
+:root[data-world]:not([data-world=""]) #view .hero::after {
+  left:0;bottom:0;width:min(260px,46%);height:1px;
+  background:linear-gradient(90deg,color-mix(in srgb,var(--view-accent,var(--world-glow)),transparent 38%),transparent);
+  opacity:.62;
+}
+:root[data-world]:not([data-world=""]) #view .hero > * {position:relative;z-index:1}
+:root[data-world="divine"] #view .hero::before {box-shadow:0 0 7px #d5ab5842}
+:root[data-world="divine"] #view .hero::after {background:linear-gradient(90deg,#f4d28c88,#d5ab5838 42%,transparent)}
+:root[data-world="void"] #view .hero::before {
+  width:2px;left:-8px;background:linear-gradient(180deg,transparent,#ed1d56aa 22% 46%,transparent 47% 57%,#ed1d5666 58% 79%,transparent);
+  transform:skewY(-12deg);
+}
+:root[data-world="void"] #view .hero::after {
+  height:2px;clip-path:polygon(0 25%,41% 0,64% 65%,82% 12%,100% 45%,100% 100%,0 100%);
+  background:linear-gradient(90deg,#ed1d56aa,#ed1d5633 62%,transparent);
+}
+:root[data-world="astral"] #view .hero::before {
+  left:-10px;width:5px;border:1px solid color-mix(in srgb,#bceaff,transparent 46%);border-radius:50%;
+  background:transparent;box-shadow:0 0 8px #bceaff66,0 0 15px #8d64f944;
+}
+:root[data-world="astral"] #view .hero::after {
+  width:min(300px,52%);height:2px;border-radius:50%;
+  background:radial-gradient(ellipse at 0 50%,#e7f8ffbb 0 2%,#8d64f977 18%,transparent 72%);
+}
+:root[data-world]:not([data-world=""])[data-motion="live"][data-experience="cinematic"] #view .hero.world-data-activity::after {
+  animation:world-hero-verdict-answer 820ms ease-out both;
+}
+@keyframes world-hero-verdict-answer {
+  0%{opacity:.2;scale:.18 1;filter:brightness(.7)}
+  38%{opacity:1;scale:1.05 1;filter:brightness(1.35)}
+  100%{opacity:.62;scale:1 1;filter:none}
+}
+:root[data-visual-resolved="light"] #view .hero::before,
+:root[data-visual-resolved="light"] #view .hero::after {opacity:.22;box-shadow:none!important}
+@media (max-width:760px) {#view .hero::before{left:-3px}#view .hero::after{width:42%}}
+@media (prefers-reduced-motion:reduce) {#view .hero::after{animation:none!important}}
