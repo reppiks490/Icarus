@@ -59,6 +59,20 @@ a { color:var(--s1) }
 .hero { display:flex; flex-direction:column; gap:6px } .hero .n { font-size:52px; line-height:1; font-weight:600; letter-spacing:-.02em } .hero .n.up{color:var(--good-text)} .hero .n.dn{color:var(--crit)} .hero .pct { font-size:15px; color:var(--ink-2) }
 .tiles { display:grid; grid-template-columns:repeat(auto-fit, minmax(105px,1fr)); gap:10px; margin-top:8px }
 .tile { background:var(--surface-2); border-radius:10px; padding:9px 11px; border:1px solid var(--ring) } .tile .k { font-size:10.5px; color:var(--muted); letter-spacing:.08em; text-transform:uppercase } .tile .v { font-size:19px; font-weight:600; margin-top:2px }
+.command-gauges { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px; margin-top:8px }
+.command-gauge { position:relative; min-height:230px; border:1px solid var(--ring); border-radius:14px; padding:13px; background:linear-gradient(145deg,var(--surface-2),var(--surface)); overflow:hidden }
+.command-gauge::before { content:""; position:absolute; inset:-40% 20% auto -20%; height:120px; filter:blur(36px); opacity:.16; background:hsl(var(--gh,200) 90% 58%); pointer-events:none }
+.gauge-ring { --g:0; --gh:200; width:116px; height:116px; margin:2px auto 10px; border-radius:50%; display:grid; place-items:center; position:relative; background:conic-gradient(from 220deg,hsl(var(--gh) 92% 60%) 0%,hsl(calc(var(--gh) + 45) 92% 60%) calc(var(--g)*1%),var(--grid) calc(var(--g)*1%) 100%); box-shadow:0 0 26px hsl(var(--gh) 90% 55% / .16) }
+.gauge-ring::after { content:""; position:absolute; width:82px; height:82px; border-radius:50%; background:var(--surface); border:1px solid var(--ring); box-shadow:inset 0 0 18px rgba(0,0,0,.18) }
+.gauge-core { position:relative; z-index:1; text-align:center }
+.gauge-num { font-size:28px; font-weight:800; line-height:1; font-variant-numeric:tabular-nums }
+.gauge-unit { font-size:8.5px; margin-top:5px; color:var(--muted); text-transform:uppercase; letter-spacing:.1em }
+.gauge-label { font-weight:750; text-align:center; letter-spacing:.02em }
+.gauge-detail { font-size:11px; color:var(--ink-2); text-align:center; margin-top:5px; line-height:1.35 }
+.provider-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:8px; margin-top:10px }
+.provider-card { background:var(--surface-2); border:1px solid var(--ring); border-radius:10px; padding:9px 11px; min-width:0 }
+.provider-card .provider-head { display:flex; align-items:center; justify-content:space-between; gap:8px }
+.provider-card .provider-role { color:var(--muted); font-size:11px; margin-top:5px; line-height:1.35 }
 svg { display:block; width:100%; overflow:visible }
 .tip { position:fixed; pointer-events:none; background:var(--surface); border:1px solid var(--ring); border-radius:8px; padding:6px 9px; font-size:12px; box-shadow:0 6px 24px rgba(0,0,0,.25); z-index:40; display:none; white-space:nowrap }
 
@@ -458,11 +472,55 @@ function agentCard(a) {
     <button class="sm" type="button" id="agentSidecarCopy">Copy sidecar</button>
   </section>`;
 }
+function commandCenterGaugeHtml(g, i) {
+  const n = Number(g&&g.score), measured = Number.isFinite(n), score = measured ? Math.max(0,Math.min(100,n)) : 0;
+  const hues = [185,292,44,128,210,25,264,158,8,326];
+  const hue = hues[i % hues.length];
+  return `<div class="command-gauge" style="--gh:${hue}" title="${esc(g&&g.basis||'')}">
+    <div class="gauge-ring" style="--g:${score};--gh:${hue}"><div class="gauge-core"><div class="gauge-num">${measured?Math.round(score):'—'}</div><div class="gauge-unit">${esc(g&&g.state||'INSUFFICIENT_EVIDENCE')}</div></div></div>
+    <div class="gauge-label">${esc(g&&g.label||'Gauge')}</div>
+    <div class="gauge-detail">${esc(g&&g.detail||'No evidence yet.')}</div>
+  </div>`;
+}
+function commandCenterHtml(c) {
+  if (!c) return `<section class="card c12" id="commandCenterCard"><h2>ICARUS Command Center <span class="sub">evidence-backed overview gauges</span></h2><div class="empty">Loading edge, champion, data-fabric and system gauges…</div></section>`;
+  const gauges = Array.isArray(c.gauges) ? c.gauges : [];
+  const providers = Array.isArray(c.providers) ? c.providers : [];
+  const fabric = c.research_fabric || {}, db = Array.isArray(fabric.databento_accounts) ? fabric.databento_accounts : [];
+  const f = fabric.fred || {}, ext = fabric.external_data || {}, extStatus = ext.provider_status || {};
+  const configured = providers.filter(p=>p.configured).length;
+  const providerCards = providers.map(p => {
+    const rs = String(p.research_status||'unavailable').toLowerCase();
+    const cls = ['ok','configured'].includes(rs) ? 'b' : ['partial','not_integrated'].includes(rs) ? 'w' : 'r';
+    return `<div class="provider-card"><div class="provider-head"><b>${esc(p.label)}</b><span class="chip ${cls}">${esc(String(p.research_status||'unavailable').toUpperCase())}</span></div><div class="small">${p.configured?'<span class="pos">credential loaded</span>':'<span class="muted">credential not loaded locally</span>'}</div><div class="provider-role">${esc(p.role||'')} · ${esc(p.plane||'')}</div></div>`;
+  }).join('');
+  const dbRows = db.map(x => `<tr><td><b>${esc(x.account)}</b></td><td><span class="chip ${x.status==='ok'?'b':x.status==='degraded'?'r':'w'}">${esc(String(x.status||'unknown').toUpperCase())}</span></td><td class="tnum">${esc(x.cached_slices??0)}</td><td class="tnum">${esc(x.held_days??0)}</td><td class="tnum">${x.lane_spent_usd==null?'—':fmt$(x.lane_spent_usd)} / ${x.lane_cap_usd==null?'—':fmt$(x.lane_cap_usd)}</td><td class="tnum">${x.sweep_spent_usd==null?'—':fmt$(x.sweep_spent_usd)} / ${x.sweep_cap_usd==null?'—':fmt$(x.sweep_cap_usd)}</td></tr>`).join('');
+  const fabricErrors = Object.keys(fabric.errors||{});
+  return `<section class="card c12" id="commandCenterCard">
+    <h2>ICARUS Command Center <span class="sub">diagnostic gauges · research/shadow only · ${esc(c.generated_at||'')}</span></h2>
+    <div class="command-gauges">${gauges.map(commandCenterGaugeHtml).join('') || '<div class="empty">No gauge evidence available.</div>'}</div>
+    <details style="margin-top:14px"><summary><b>Provider &amp; historical research fabric</b> <span class="muted small">· ${configured}/${providers.length} local credentials loaded · secret values never exposed</span></summary>
+      <div class="provider-grid">${providerCards || '<div class="empty">No provider state available.</div>'}</div>
+      <div class="tiles" style="margin-top:10px">
+        <div class="tile"><div class="k">FRED / ALFRED</div><div class="v tnum">${esc(f.series_ok??0)}/${esc(f.series_total??0)}</div><div class="small muted">series OK</div></div>
+        <div class="tile"><div class="k">FMP</div><div class="v">${esc(String(extStatus.fmp||'unavailable').toUpperCase())}</div></div>
+        <div class="tile"><div class="k">Tiingo</div><div class="v">${esc(String(extStatus.tiingo||'unavailable').toUpperCase())}</div></div>
+        <div class="tile"><div class="k">EODHD</div><div class="v">${esc(String(extStatus.eodhd||'unavailable').toUpperCase())}</div></div>
+        <div class="tile"><div class="k">Research universe</div><div class="v tnum">${Array.isArray(ext.universe)?ext.universe.length:0}</div></div>
+        <div class="tile"><div class="k">Manifest errors</div><div class="v tnum ${fabricErrors.length?'neg':'pos'}">${fabricErrors.length}</div></div>
+      </div>
+      <h3 class="small" style="margin:14px 0 6px">Databento historical lanes <span class="muted">historical MBO / MBP / OHLCV evidence; no live-license claim</span></h3>
+      <div class="scroll" style="max-height:260px"><table><thead><tr><th>Account</th><th>Status</th><th>Cached depth slices</th><th>Held sweep days</th><th>Depth lane spend</th><th>Sweep spend</th></tr></thead><tbody>${dbRows || '<tr><td colspan=6 class="empty">historical manifests unavailable</td></tr>'}</tbody></table></div>
+      <div class="small muted" style="margin-top:8px">Source: ${esc(fabric.source_repository||'—')}@${esc(fabric.source_ref||'—')} · fetched ${esc(fabric.fetched_at||'—')} · gauges are diagnostics, not trading authority.</div>
+    </details>
+  </section>`;
+}
 function overviewHtml(d, A) {
   const sinceLive = (d.live_profit||0) + (d.open_profit||0), histNet = (d.net||0) - sinceLive;
   return `
   ${goliveCard(window.ICARUS_GOLIVE)}
   ${repositoryAuditCard(window.ICARUS_AUDIT, true)}
+  ${commandCenterHtml(window.ICARUS_COMMAND_CENTER)}
   ${d.all_warm ? '' : `<div class="callout"><div>⏳</div><div><b>Warming up</b>Each asset replays its history (deep native bars for the slow timeframes, then 5-minute and 1-minute sub-bars aggregated exactly like live data). Futures cards then wait for the CME open; crypto goes live immediately.</div></div>`}
   <section class="card c3" id="heroCard"><h2>Portfolio · active engine epoch</h2>
     <div class="hero"><div class="n tnum ${sinceLive>=0?'up':'dn'}">${sgn$(sinceLive)}</div><div class="pct tnum">${d.capital?`${(sinceLive/d.capital*100).toFixed(2)}% on ${fmt$(d.capital,0)} · closed live trades + open positions`:''}</div></div>
@@ -995,7 +1053,7 @@ function render(d) {
   const rebuild = lastView !== view;
   if (view === 'overview') {
     if (rebuild) $('#view').innerHTML = overviewHtml(d, A);
-    else { const g = $('#assets'); if (g) g.innerHTML = A.map(assetCard).join(''); const h = document.createElement('div'); h.innerHTML = overviewHtml(d, A); ['goliveCard','repoAuditCard','heroCard','engineCard'].forEach(id => { const nu = h.querySelector('#'+id), cur = $('#'+id); if (nu && cur) cur.replaceWith(nu); }); }
+    else { const g = $('#assets'); if (g) g.innerHTML = A.map(assetCard).join(''); const h = document.createElement('div'); h.innerHTML = overviewHtml(d, A); ['goliveCard','repoAuditCard','commandCenterCard','heroCard','engineCard'].forEach(id => { const nu = h.querySelector('#'+id), cur = $('#'+id); if (nu && cur) cur.replaceWith(nu); }); }
     lineChart($('#eqChart'), d.equity_series, {baseline: d.capital});
     A.forEach(a => { const el = $(`#ch-${a.symbol}`); if (el) { const c = charts[a.symbol+80]; if (c) candles(el, c, {height:170}); } });
     const rows = []; A.forEach(a => (tradesCache[a.symbol]||[]).forEach(t => rows.push({...t, symbol:a.symbol}))); rows.sort((x,y)=>y.exit_ts-x.exit_ts);
@@ -1135,6 +1193,28 @@ async function refreshAudit() {
   }
   if (last) render(last);
 }
+async function refreshCommandCenter() {
+  try {
+    const r = await fetch('/api/overview/command-center', {cache:'no-store'});
+    const data = await r.json().catch(()=>({}));
+    if (!r.ok) throw new Error(data.detail||data.error||('HTTP '+r.status));
+    window.ICARUS_COMMAND_CENTER = data;
+  } catch (e) {
+    window.ICARUS_COMMAND_CENTER = {
+      generated_at:new Date().toISOString(),
+      gauges:[],
+      providers:[],
+      research_fabric:{errors:{command_center:e?.message||String(e)},databento_accounts:[],fred:{},external_data:{}},
+      authority:{research_only:true,execution_authorized:false,production_decision_authorized:false}
+    };
+  }
+  const cur = $('#commandCenterCard');
+  if (cur && view === 'overview') {
+    const n = document.createElement('div');
+    n.innerHTML = commandCenterHtml(window.ICARUS_COMMAND_CENTER);
+    if (n.firstElementChild) cur.replaceWith(n.firstElementChild);
+  }
+}
 async function refreshCharts() { if (!last) return; if (view === 'overview') { for (const a of (last.assets||[])) await loadChart(a.symbol, 80, $(`#ch-${a.symbol}`), {height:170}); refreshFills(); } if (view.startsWith('asset:')) await loadChart(view.slice(6), 300, $('#dChart'), {height:360, compact:false}); }
 async function refreshTrades(only) {
   if (!last) return;
@@ -1193,9 +1273,9 @@ async function refreshUiCatalogs() {
 }
 (async () => {
   await refreshUiCatalogs();
-  await refreshAudit(); await refresh(); await refreshGolive(); await refreshAgent(); await refreshCharts(); await refreshTrades(); if (last) render(last);
+  await refreshAudit(); await refreshCommandCenter(); await refresh(); await refreshGolive(); await refreshAgent(); await refreshCharts(); await refreshTrades(); if (last) render(last);
 })();
-setInterval(refresh, 3000); setInterval(refreshGolive, 8000); setInterval(refreshCharts, 8000); setInterval(refreshAudit, 20000); setInterval(()=>refreshTrades(), 20000);
+setInterval(refresh, 3000); setInterval(refreshGolive, 8000); setInterval(refreshCharts, 8000); setInterval(refreshAudit, 20000); setInterval(refreshCommandCenter, 20000); setInterval(()=>refreshTrades(), 20000);
 setInterval(()=>{ if (!CATALOG_READY.presets || !CATALOG_READY.commands || !CATALOG_READY.registry) refreshUiCatalogs(); }, 10000);
 window.addEventListener('resize', () => { if (last) { lastView = null; render(last); } });
 setInterval(() => { const el = $('#clock'); if (el) el.textContent = `${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'})} ${TZ} · ${etClock()} ET`; }, 1000);
