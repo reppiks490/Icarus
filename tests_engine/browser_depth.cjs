@@ -164,12 +164,12 @@ const topologyResonance=await page.evaluate(()=>{
  window.__icarusTopologyResonancePanel=panel;
  panel.dispatchEvent(new PointerEvent('pointerover',{bubbles:true,pointerType:'mouse'}));
  window.IcarusWorldImmersion.refresh();
- return panel.dataset.worldTopologyNode;
+ return {node:panel.dataset.worldTopologyNode,key:panel.dataset.worldPanelKey};
 });
 assert.notEqual(topologyResonance,null);
-await page.waitForTimeout(180);
-assert.equal(await page.evaluate(()=>window.__icarusTopologyResonancePanel?.isConnected),true);
-assert.ok((await page.locator('.world-topology path.active').count())>0,'Topology rebuild must preserve active instrument resonance');
+await page.waitForFunction(key=>[...document.querySelectorAll('#view [data-world-panel-key]')].some(el=>el.dataset.worldPanelKey===key),topologyResonance.key);
+await page.waitForFunction(()=>document.querySelectorAll('.world-topology path.active').length>0);
+assert.ok((await page.locator('.world-topology path.active').count())>0,'Topology rebuild must preserve active instrument resonance across panel replacement');
 assert.equal(await page.locator('.world-topology').evaluate(el=>getComputedStyle(el).position),'absolute');
 assert.equal(await page.locator('.world-section-radar').count(),1);
 assert.ok((await page.locator('.world-section-radar [data-radar-node]').count())<=12);
