@@ -3960,7 +3960,6 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 
 
 /* Phase XXXIII: the section map rests as a slim instrument rail and expands only when engaged. */
-@media (min-width:1251px) {
   .world-section-radar {
     width:46px;padding:9px 7px 10px;overflow:hidden;opacity:.42;
     transition:width .28s cubic-bezier(.16,.8,.2,1),opacity .22s ease,transform .22s ease,border-color .22s ease,box-shadow .22s ease;
@@ -3989,7 +3988,6 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
   .world-section-radar:hover [data-radar-node].active,
   .world-section-radar:focus-within [data-radar-node].active {transform:translateX(-3px)}
   :root[data-scroll-phase="abyss"] .world-section-radar:not(:hover):not(:focus-within) {opacity:.54}
-}
 @media (pointer:coarse) {.world-section-radar {display:none!important}}
 @media (prefers-reduced-motion:reduce) {
   .world-section-radar,.world-section-radar header i,.world-section-radar [data-radar-node] > b {transition:none!important}
