@@ -1,0 +1,10 @@
+{
+  "realtime_start":"2026-08-01",
+  "realtime_end":"2026-10-01",
+  "units":"lin",
+  "observations":[
+    {"realtime_start":"2026-08-01","realtime_end":"2026-08-31","date":"2026-07-01","value":"3.0"},
+    {"realtime_start":"2026-09-01","realtime_end":"9999-12-31","date":"2026-07-01","value":"3.2"},
+    {"realtime_start":"2026-09-01","realtime_end":"9999-12-31","date":"2026-08-01","value":"3.1"}
+  ]
+}
