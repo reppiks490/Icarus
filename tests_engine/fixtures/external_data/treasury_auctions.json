@@ -1,0 +1,18 @@
+{
+  "data": [
+    {
+      "record_date":"2026-10-01",
+      "announcement_date":"2026-10-01",
+      "auction_date":"2026-10-05",
+      "issue_date":"2026-10-08",
+      "maturity_date":"2028-10-08",
+      "cusip":"912797ZZ9",
+      "security_type":"Note",
+      "security_term":"2-Year",
+      "offering_amt":"69000000000",
+      "bid_to_cover_ratio":"2.54",
+      "high_investment_rate":"4.125"
+    }
+  ],
+  "meta":{"count":1,"total-count":1,"total-pages":1}
+}
