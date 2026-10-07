@@ -224,6 +224,13 @@ assert.equal((await page.locator('[data-render-motion]').textContent()).trim(),'
 const overviewIndex=(await page.locator('[data-world-view-index]').textContent()).trim();
 assert.match(overviewIndex,/^\d{2} \/ \d{2}$/);
 if(await page.locator('#view .tile').count()) assert.equal(await page.locator('#view .tile').first().getAttribute('data-world-depth-observed'),'1');
+await page.locator('[data-v="brain"]').hover();
+await page.waitForFunction(()=>document.querySelector('.world-nav-preview')?.classList.contains('active'));
+assert.equal((await page.locator('[data-world-nav-preview-group]').textContent()).trim(),'INTELLIGENCE');
+assert.equal((await page.locator('[data-world-nav-preview-label]').textContent()).trim(),'ADAPTIVE BRAIN');
+assert.equal((await page.locator('[data-world-nav-preview-glyph]').textContent()).trim(),'◉');
+await page.mouse.move(4,4);await page.waitForTimeout(80);
+assert.equal(await page.locator('.world-nav-preview').evaluate(el=>el.classList.contains('active')),false);
 // Rapid deliberate navigation must clean its transient gate/impact DOM rather than accumulate effects.
 await page.locator('[data-v="system"]').click();
 await page.waitForFunction(()=>document.documentElement.dataset.worldView==='system');
