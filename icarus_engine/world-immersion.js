@@ -2,7 +2,7 @@
   'use strict';
   const root=document.documentElement;
   const reduced=window.matchMedia('(prefers-reduced-motion: reduce)');
-  let scrollFrame=0,pointerFrame=0,viewObserver=null,viewMutation=null,viewResizeObserver=null,depthFrame=null,focusOrbit=null,pointerLens=null,ambient=null,topology=null,sectionRadar=null,inspectionField=null,inspectedPanel=null,topologyHighlightTarget=null,inspectionTimer=0,topologyTimer=0,viewFlashTimer=0,viewGateTimer=0,chapterTimer=0,focusTimer=0,scrollEnergyTimer=0,lastScrollY=0,lastScrollAt=0,lastPointerClientX=null,lastPointerClientY=null,currentView='overview',currentPhase='crown',viewHistory=[],initialized=false;
+  let scrollFrame=0,pointerFrame=0,viewObserver=null,viewMutation=null,viewResizeObserver=null,depthFrame=null,focusOrbit=null,pointerLens=null,ambient=null,topology=null,sectionRadar=null,inspectionField=null,inspectedPanel=null,topologyHighlightTarget=null,topologyHighlightKey=null,inspectionTimer=0,topologyTimer=0,viewFlashTimer=0,viewGateTimer=0,chapterTimer=0,focusTimer=0,scrollEnergyTimer=0,lastScrollY=0,lastScrollAt=0,lastPointerClientX=null,lastPointerClientY=null,currentView='overview',currentPhase='crown',viewHistory=[],initialized=false;
   const readoutCache=new Map(),readoutTimers=new WeakMap();
 
   const motionAllowed=()=>root.dataset.motion==='live'&&root.dataset.experience==='cinematic'&&!!root.dataset.world&&!document.hidden&&!reduced.matches&&root.dataset.introActive!=='true';
@@ -163,9 +163,17 @@
     if(/SYSTEM|ENGINE|GO-LIVE|GO LIVE|COMMISSION|COMMAND|LOG|AUTOPILOT|AGENT/.test(label))return 'control';
     return 'instrument';
   }
+  function panelStableKey(element){
+    if(!element)return null;
+    if(element.id)return 'id:'+element.id;
+    const label=(element.querySelector(':scope > h2,:scope > summary,:scope h2')?.textContent||'instrument')
+      .trim().toUpperCase().replace(/\s+/g,' ').slice(0,96);
+    return 'label:'+panelKind(element)+':'+label;
+  }
   function decorateSurface(element){
     if(!element?.matches?.('.card,.asset,.group'))return;
     element.dataset.worldPanelKind=panelKind(element);
+    element.dataset.worldPanelKey=panelStableKey(element);
     if(!element.querySelector(':scope > .world-surface-sigil')){
       const sigil=document.createElement('span');sigil.className='world-surface-sigil';sigil.setAttribute('aria-hidden','true');
       sigil.innerHTML='<i></i><b></b>';element.appendChild(sigil);
@@ -332,7 +340,13 @@
     // Preserve an existing target, or reconcile against the physical cursor when
     // the pointer arrived before graph node IDs existed.
     if(topologyHighlightTarget?.isConnected&&motionAllowed())topologyHighlight(topologyHighlightTarget);
-    else if(lastPointerClientX!=null&&lastPointerClientY!=null&&motionAllowed())
+    else if(topologyHighlightKey&&motionAllowed()){
+      const replacement=elements.find(el=>el.dataset.worldPanelKey===topologyHighlightKey);
+      if(replacement)topologyHighlight(replacement);
+      else if(lastPointerClientX!=null&&lastPointerClientY!=null)
+        topologyHighlight(document.elementFromPoint(lastPointerClientX,lastPointerClientY));
+      else topologyHighlight(null);
+    } else if(lastPointerClientX!=null&&lastPointerClientY!=null&&motionAllowed())
       topologyHighlight(document.elementFromPoint(lastPointerClientX,lastPointerClientY));
   }
   function scheduleTopology(){
@@ -345,8 +359,9 @@
     const radarPanel=radarId==null?null:document.querySelector(`#view [data-world-topology-node="${radarId}"]`);
     const activePanel=panel||radarPanel,id=activePanel?.dataset.worldTopologyNode??radarId;
     topology.querySelectorAll('.active').forEach(el=>el.classList.remove('active'));
-    if(id==null||!motionAllowed()){topologyHighlightTarget=null;updateSectionRadar(null);return;}
+    if(id==null||!motionAllowed()){topologyHighlightTarget=null;topologyHighlightKey=null;updateSectionRadar(null);return;}
     topologyHighlightTarget=activePanel||null;
+    topologyHighlightKey=activePanel?.dataset.worldPanelKey||topologyHighlightKey;
     topology.querySelectorAll(`path[data-from="${id}"],path[data-to="${id}"],circle[data-node="${id}"]`).forEach(el=>el.classList.add('active'));
     updateSectionRadar(id);
   }
