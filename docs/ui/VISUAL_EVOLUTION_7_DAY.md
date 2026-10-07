@@ -137,3 +137,21 @@ Guardrails for this layer:
 - path/node budgets are hard-bounded;
 - no semantic or trading data is encoded in link geometry;
 - no layout element may be shifted by the decorative SVG.
+
+
+## Continuation: truthful signal architecture
+
+The cockpit topology now does more than provide static structural context. A real readout change that passes the existing value-diff guard can emit a short-lived decorative packet through the panel's bounded topology links and section-map node. The effect carries panel-family material (capital, research, data, control, instrument) but never assigns profit/loss meaning to direction and never fires merely because polling occurred.
+
+The navigation deck also tracks the actual active-tab geometry and renders a moving world-specific aperture underneath the selected destination. This is derived only from DOM layout and view selection, so it cannot falsify application state.
+
+Major instrument frames gained an additional inner chassis stratum. Divine uses nested architectural rails, Void uses an asymmetric fractured inner shell, and Astral uses a shallow orbital layer. These remain presentation-only, disappear in Light/Focus/mobile paths as appropriate, and do not alter box geometry.
+
+Headline readouts now sit inside a restrained verdict instrument so sparse cards such as go-live integrity still read as deliberate cockpit composition rather than unstructured text.
+
+Additional guardrails:
+- structural data packets require an actual observed readout change;
+- topology/radar packet timers are bounded and self-cleaning;
+- active-tab aperture geometry comes from the rendered active tab;
+- Light/Focus/Reduced Motion disable or simplify the added optical layers;
+- none of these layers perform network I/O or modify trading values.
