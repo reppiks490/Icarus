@@ -4178,3 +4178,74 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
   :root[data-world] #view .log > div::before {display:none!important}
   #fills tbody tr.new {animation:none!important}
 }
+
+
+/* Phase XXXVII: authentic data changes travel through the structural graph instead of glowing in isolation. */
+.world-topology :is(path,circle).data-activity {
+  color:var(--active-view-accent,var(--world-glow));
+  opacity:1!important;
+}
+.world-topology path.data-activity {
+  stroke-width:1.6;
+  stroke-dasharray:.055 .945;
+  stroke-linecap:round;
+  filter:drop-shadow(0 0 5px color-mix(in srgb,var(--active-view-accent,var(--world-glow)),transparent 18%))
+         drop-shadow(0 0 12px color-mix(in srgb,var(--active-view-accent,var(--world-glow)),transparent 48%));
+  animation:world-topology-data-flight 860ms cubic-bezier(.12,.7,.2,1) both!important;
+}
+.world-topology circle.data-activity {
+  transform:scale(2.2);
+  filter:drop-shadow(0 0 7px color-mix(in srgb,var(--active-view-accent,var(--world-glow)),transparent 20%));
+  animation:world-topology-data-node 860ms ease-out both!important;
+}
+.world-section-radar [data-radar-node].data-activity {
+  opacity:1;color:color-mix(in srgb,var(--active-view-accent,var(--world-glow)),#fff 22%);
+  animation:world-radar-data-answer 860ms ease-out both;
+}
+.world-section-radar [data-radar-node].data-activity > i {
+  background:var(--active-view-accent,var(--world-glow));
+  border-color:var(--active-view-accent,var(--world-glow));
+  box-shadow:0 0 9px color-mix(in srgb,var(--active-view-accent,var(--world-glow)),transparent 18%);
+}
+@keyframes world-topology-data-flight {
+  0%{stroke-dashoffset:1;opacity:0}
+  16%{opacity:1}
+  72%{opacity:1}
+  100%{stroke-dashoffset:0;opacity:0}
+}
+@keyframes world-topology-data-node {
+  0%{opacity:.2;transform:scale(.8)}
+  34%{opacity:1;transform:scale(2.5)}
+  100%{opacity:.24;transform:scale(1)}
+}
+@keyframes world-radar-data-answer {
+  0%{background:color-mix(in srgb,var(--active-view-accent,var(--world-glow)),transparent 100%)}
+  30%{background:color-mix(in srgb,var(--active-view-accent,var(--world-glow)),transparent 88%);transform:translateX(-3px)}
+  100%{background:transparent;transform:none}
+}
+
+/* The same factual update inherits panel-family material, never directional profit/loss meaning. */
+.world-topology [data-activity-kind="capital"].data-activity,
+.world-section-radar [data-activity-kind="capital"].data-activity {--activity-accent:color-mix(in srgb,var(--active-view-accent,var(--world-glow)),#f6c96a 36%)}
+.world-topology [data-activity-kind="research"].data-activity,
+.world-section-radar [data-activity-kind="research"].data-activity {--activity-accent:color-mix(in srgb,var(--active-view-accent,var(--world-glow)),#c59cff 34%)}
+.world-topology [data-activity-kind="data"].data-activity,
+.world-section-radar [data-activity-kind="data"].data-activity {--activity-accent:color-mix(in srgb,var(--active-view-accent,var(--world-glow)),#7de7ff 31%)}
+.world-topology [data-activity-kind="control"].data-activity,
+.world-section-radar [data-activity-kind="control"].data-activity {--activity-accent:color-mix(in srgb,var(--active-view-accent,var(--world-glow)),#7ff0c5 29%)}
+.world-topology path.data-activity {stroke:var(--activity-accent,var(--active-view-accent,var(--world-glow)))}
+.world-topology circle.data-activity {fill:var(--activity-accent,var(--active-view-accent,var(--world-glow)))}
+.world-section-radar [data-radar-node].data-activity > i {background:var(--activity-accent,var(--active-view-accent,var(--world-glow)));border-color:var(--activity-accent,var(--active-view-accent,var(--world-glow)))}
+
+/* Worlds alter the packet physics, not the represented fact. */
+:root[data-world="divine"] .world-topology path.data-activity {stroke-dasharray:.09 .91;animation-timing-function:cubic-bezier(.12,.78,.18,1)}
+:root[data-world="void"] .world-topology path.data-activity {stroke-dasharray:.025 .10 .08 .795;stroke-linecap:square;animation-duration:680ms!important}
+:root[data-world="astral"] .world-topology path.data-activity {stroke-dasharray:.018 .982;stroke-width:2;animation-duration:1080ms!important}
+:root[data-world="astral"] .world-topology circle.data-activity {filter:drop-shadow(0 0 5px #dff5ff) drop-shadow(0 0 12px color-mix(in srgb,var(--active-view-accent,var(--world-glow)),transparent 24%))}
+
+:root[data-visual-resolved="light"] .world-topology .data-activity,
+:root[data-experience="focus"] .world-topology .data-activity,
+:root[data-motion="off"] .world-topology .data-activity {animation:none!important;filter:none!important}
+@media (prefers-reduced-motion:reduce) {
+  .world-topology .data-activity,.world-section-radar .data-activity {animation:none!important}
+}
