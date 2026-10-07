@@ -577,9 +577,14 @@
   function centerActiveTab(){
     requestAnimationFrame(()=>requestAnimationFrame(()=>{
       const tabs=document.getElementById('tabs'),active=tabs?.querySelector('.tab.active');
-      if(!tabs||!active||tabs.scrollWidth<=tabs.clientWidth+2)return;
-      const left=Math.max(0,active.offsetLeft-(tabs.clientWidth-active.offsetWidth)/2);
-      tabs.scrollTo({left,behavior:motionAllowed()?'smooth':'auto'});
+      if(!tabs||!active)return;
+      tabs.style.setProperty('--nav-x',active.offsetLeft.toFixed(1)+'px');
+      tabs.style.setProperty('--nav-w',active.offsetWidth.toFixed(1)+'px');
+      tabs.style.setProperty('--nav-center',(active.offsetLeft+active.offsetWidth/2).toFixed(1)+'px');
+      if(tabs.scrollWidth>tabs.clientWidth+2){
+        const left=Math.max(0,active.offsetLeft-(tabs.clientWidth-active.offsetWidth)/2);
+        tabs.scrollTo({left,behavior:motionAllowed()?'smooth':'auto'});
+      }
       tabs.classList.remove('world-nav-settle');void tabs.offsetWidth;tabs.classList.add('world-nav-settle');
       setTimeout(()=>tabs?.classList.remove('world-nav-settle'),520);
     }));
