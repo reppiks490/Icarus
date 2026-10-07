@@ -4249,3 +4249,37 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 @media (prefers-reduced-motion:reduce) {
   .world-topology .data-activity,.world-section-radar .data-activity {animation:none!important}
 }
+
+
+/* Phase XXXVIII: the navigation deck has a moving aperture that follows the actual active tab geometry. */
+:root[data-world]:not([data-world=""]) .tabs::after {
+  content:"";position:absolute;z-index:2;left:var(--nav-x,0);bottom:3px;width:var(--nav-w,0);height:2px;pointer-events:none;
+  opacity:.82;background:linear-gradient(90deg,transparent 0 5%,var(--active-view-accent,var(--world-glow)) 24% 76%,transparent 95%);
+  box-shadow:0 0 8px color-mix(in srgb,var(--active-view-accent,var(--world-glow)),transparent 38%);
+  transform-origin:center;transition:left .38s cubic-bezier(.16,.8,.2,1),width .38s cubic-bezier(.16,.8,.2,1),opacity .2s ease,filter .2s ease;
+}
+:root[data-world="divine"] .tabs::after {
+  height:2px;background:
+    linear-gradient(90deg,transparent 0 8%,color-mix(in srgb,var(--active-view-accent,var(--world-glow)),transparent 10%) 22% 78%,transparent 92%);
+  filter:drop-shadow(0 0 5px color-mix(in srgb,var(--active-view-accent,var(--world-glow)),transparent 28%));
+}
+:root[data-world="void"] .tabs::after {
+  height:3px;clip-path:polygon(0 45%,10% 0,42% 36%,58% 10%,90% 42%,100% 0,100% 100%,0 100%);
+  background:linear-gradient(90deg,transparent,var(--active-view-accent,var(--world-glow)) 18% 82%,transparent);
+}
+:root[data-world="astral"] .tabs::after {
+  height:3px;border-radius:999px;
+  background:radial-gradient(ellipse at 50% 50%,#e7f8ff 0 4%,var(--active-view-accent,var(--world-glow)) 8% 42%,transparent 72%);
+  box-shadow:0 0 6px #dff5ff,0 0 14px color-mix(in srgb,var(--active-view-accent,var(--world-glow)),transparent 26%);
+}
+:root[data-world]:not([data-world=""]) .tabs.world-nav-settle::after {
+  animation:world-nav-aperture-answer 500ms cubic-bezier(.16,.8,.2,1) both;
+}
+@keyframes world-nav-aperture-answer {
+  0%{opacity:.25;filter:brightness(.72) blur(2px);transform:scaleX(.68)}
+  46%{opacity:1;filter:brightness(1.35);transform:scaleX(1.05)}
+  100%{opacity:.82;filter:none;transform:scaleX(1)}
+}
+:root[data-motion="off"] .tabs::after,
+:root[data-experience="focus"] .tabs::after {transition:none!important;animation:none!important}
+@media (prefers-reduced-motion:reduce) {.tabs::after{transition:none!important;animation:none!important}}
