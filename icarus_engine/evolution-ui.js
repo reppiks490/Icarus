@@ -4,8 +4,8 @@
 
   function cls(value) {
     const s = String(value || '').toUpperCase();
-    if (s.includes('VERIFIED') || s.includes('SUCCESS') || s === 'GREEN' || s === 'QUALIFIED' || s === 'ACTIVE') return 'b';
     if (s.includes('ERROR') || s.includes('FAIL') || s.includes('BLOCK') || s.includes('REJECT')) return 'r';
+    if (['VERIFIED', 'SUCCESS', 'GREEN', 'QUALIFIED', 'ACTIVE'].includes(s)) return 'b';
     return 'w';
   }
 
