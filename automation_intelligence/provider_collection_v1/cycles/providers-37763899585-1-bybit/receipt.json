@@ -1,0 +1,12 @@
+{
+  "chatgpt_tokens_used": 0,
+  "credential_present": false,
+  "databento_excluded": true,
+  "execution_authorized": false,
+  "paid_model_calls": 0,
+  "preferred_repository": "reppiks490/Icarus-engine",
+  "provider": "bybit",
+  "run_id": "providers-37763899585-1-bybit",
+  "schema_version": "icarus-provider-owner-standby-v1",
+  "status": "STANDBY_PREFERRED_OWNER"
+}
