@@ -1387,6 +1387,42 @@ class BrainRemoteSync:
 
     def status(self) -> dict[str, Any]:
         state = _read_state(self.base_dir, self.interval_seconds)
+        was_fresh = state.get("peer_packet_fresh") is True
+        state["peer_packet_fresh"] = False
+        state["peer_packet_age_seconds"] = None
+        if (
+            state.get("peer_observed_at") is not None
+            or was_fresh
+            or state.get("peer_packet_status") == "green"
+        ):
+            try:
+                now = self._now_utc()
+                if not isinstance(now, datetime) or now.tzinfo is None or now.utcoffset() is None:
+                    raise ValueError("peer packet freshness clock must be timezone-aware")
+                observed_at = state.get("peer_observed_at")
+                if not isinstance(observed_at, str):
+                    raise ValueError("peer packet observed_at is missing or invalid")
+                observed = datetime.fromisoformat(observed_at.replace("Z", "+00:00"))
+                if observed.tzinfo is None or observed.utcoffset() is None:
+                    raise ValueError("peer packet observed_at must be timezone-aware")
+                age_seconds = (
+                    now.astimezone(timezone.utc) - observed.astimezone(timezone.utc)
+                ).total_seconds()
+                state["peer_packet_age_seconds"] = round(age_seconds, 3)
+                # The validated federation contract fixes these bounds. A status
+                # read must age persisted evidence even when the sync has stopped.
+                if age_seconds > 1800:
+                    raise ValueError(f"peer packet is stale: age {age_seconds:.3f}s exceeds 1800s")
+                if age_seconds < -300:
+                    raise ValueError("peer packet observed_at exceeds allowed future clock skew")
+                state["peer_packet_fresh"] = was_fresh and state.get("peer_packet_status") == "green"
+            except Exception as ex:
+                if state.get("peer_packet_status") == "green":
+                    state["peer_packet_status"] = "degraded"
+                if state.get("status") == "green":
+                    state["status"] = "degraded"
+                if not state.get("last_error"):
+                    state["last_error"] = f"peer packet: {type(ex).__name__}: {ex}"[:1000]
         state.pop("processed_blob_shas", None)
         state.pop("processed_historical_blob_shas", None)
         return state
