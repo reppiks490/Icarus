@@ -68,7 +68,7 @@ jobs:
           from datetime import datetime, timezone
           from pathlib import Path
 
-          from icarus_engine.brain import brain_snapshot
+          from icarus_engine.brain import _stored_event, brain_snapshot
           from icarus_engine.brain_sync import (
               BrainRemoteSync,
               REMOTE_REPOSITORY,
@@ -267,6 +267,14 @@ jobs:
               )
               state = sync.sync_once()
               snap = brain_snapshot(tmp, remote_sync=state)
+              # The UI snapshot exposes only recent events. Validate the complete
+              # durable journal before cleanup so later receipts cannot hide history.
+              historical_events = []
+              with (Path(tmp) / "audit" / "brain_events.jsonl").open(encoding="utf-8") as journal:
+                  for line in journal:
+                      row = _stored_event(json.loads(line))
+                      if (row.get("details") or {}).get("foreign_historical_context") is True:
+                          historical_events.append(row)
 
           assert state["status"] == "green", state.get("last_error")
           assert state["historical_context_status"] == "green"
@@ -338,11 +346,10 @@ jobs:
           assert state["production_decision_authorized"] is False
           assert snap["candidates"] == []
 
-          historical_events = [
-              row for row in snap["events"]
-              if (row.get("details") or {}).get("foreign_historical_context") is True
-          ]
-          assert len(historical_events) == len(expected_sources)
+          assert len(historical_events) == len(expected_sources), (
+              f"durable historical event count {len(historical_events)} "
+              f"!= expected source count {len(expected_sources)}"
+          )
           assert all(
               (row.get("details") or {}).get("candidate_evidence_eligible") is False
               for row in historical_events
