@@ -1,0 +1,376 @@
+{
+  "authority": {
+    "automatic_model_training": false,
+    "candidate_evidence_eligible": false,
+    "execution_authorized": false,
+    "production_decision_authorized": false
+  },
+  "catalog_sha256": "dea4d19e7b4950274d3443f68708aaec05aff3fad13e55618410c503b27f839b",
+  "coverage": {
+    "account_entitlement_complete": null,
+    "eligible_rows_denominator": null,
+    "endpoint_catalog_complete": null,
+    "history_complete": null,
+    "tool_inventory_complete": true
+  },
+  "exposed_tool_count": 100,
+  "families": {
+    "account_and_workspace": {
+      "acceptance_tests": [
+        "Preference payload never becomes market data",
+        "Mutating tool is excluded from read-only intake"
+      ],
+      "consumer": "User account UI only; excluded from empirical intake.",
+      "limits": "settings_update changes user preferences; explicit need required before invoking; connection does not provide API keys.",
+      "mode": "account_ui",
+      "point_in_time": "No market PIT meaning.",
+      "scope": "Account preferences and presentation workspace.",
+      "tools": [
+        "open_unusual_whales",
+        "settings_read",
+        "settings_update"
+      ]
+    },
+    "api_and_education": {
+      "acceptance_tests": [
+        "No market-row count from prose",
+        "No research evidence from example data"
+      ],
+      "consumer": "Engineering contract documentation; excluded from empirical market intake.",
+      "limits": "Examples and knowledge answers do not establish provider entitlement, history depth or profitable edge.",
+      "mode": "documentation",
+      "point_in_time": "Documentation retrieval clock only; not market observation time.",
+      "scope": "Official API schemas, support and methodology; useful for transport and entitlement understanding.",
+      "tools": [
+        "get_api_examples",
+        "get_build_recipe",
+        "get_public_api_docs",
+        "get_support_info",
+        "query_internal_knowledge"
+      ]
+    },
+    "crypto": {
+      "acceptance_tests": [
+        "Pair/venue ambiguity cannot create exchange-qualified replay",
+        "Whale print not treated as wallet identity"
+      ],
+      "consumer": "Cross-asset context learning events.",
+      "limits": "Venue/pair/quote-currency basis and aggregation must be preserved; whale label does not prove owner or motive.",
+      "mode": "research_data",
+      "point_in_time": "UTC/venue bar and actual availability clocks required.",
+      "scope": "Crypto pair bars/state and large-trade observations.",
+      "tools": [
+        "get_crypto_ohlc_candles",
+        "get_crypto_pair_state",
+        "get_recent_crypto_whale_trades"
+      ]
+    },
+    "dark_and_lit_stock_flow": {
+      "acceptance_tests": [
+        "TRF context never relabeled instantaneous exchange trade",
+        "Aggregation not counted as independent individual prints"
+      ],
+      "consumer": "Cross-venue descriptive flow learning events.",
+      "limits": "Reporting delays/corrections and aggregation semantics require verification; prints do not identify intent or accumulation.",
+      "mode": "research_data",
+      "point_in_time": "Keep trade time distinct from report/availability time; retrieval alone permits current context only.",
+      "scope": "Off-exchange/TRF and lit stock prints plus per-price concentration.",
+      "tools": [
+        "get_dark_pool_trades",
+        "get_dark_pool_volume_price_group",
+        "get_ticker_lit_flow"
+      ]
+    },
+    "earnings_and_analysts": {
+      "acceptance_tests": [
+        "Future calendar event not treated as realized result",
+        "Transcript text not redistributed in public receipts"
+      ],
+      "consumer": "Event context and textual research reference learning events.",
+      "limits": "Ratings are opinions; estimates, actuals and revised transcripts have different availability; narrative is not a numeric observation.",
+      "mode": "research_data",
+      "point_in_time": "Separate announced time, actual release time and revised/received time.",
+      "scope": "Analyst actions, earnings outcomes, transcripts and expected event context.",
+      "tools": [
+        "get_analyst_ratings",
+        "get_earnings_history",
+        "get_earnings_report",
+        "get_earnings_screener",
+        "get_upcoming_earnings"
+      ]
+    },
+    "financial_statements": {
+      "acceptance_tests": [
+        "Period end never substituted for available_at",
+        "Units/currency remain unknown unless explicit"
+      ],
+      "consumer": "Fundamental context learning events.",
+      "limits": "Restatements, units/currency, period basis and filing timestamps need verification; statement period end is not public availability.",
+      "mode": "research_data",
+      "point_in_time": "Require filing publication and version/revision timestamps for historical joins.",
+      "scope": "Filing-based balance sheet, income and cash-flow facts and screens.",
+      "tools": [
+        "get_balance_sheet_screener",
+        "get_balance_sheets",
+        "get_cash_flow_screener",
+        "get_cash_flows",
+        "get_fundamental_breakdown",
+        "get_income_statement_screener",
+        "get_income_statements"
+      ]
+    },
+    "greek_exposure_and_flow": {
+      "acceptance_tests": [
+        "Estimated exposure labeled provider-derived",
+        "Chart output not silently treated as numerical source rows"
+      ],
+      "consumer": "Descriptive options regime learning events; future exposure corroboration experiment inputs.",
+      "limits": "Model/position assumptions and units require source-specific verification; GEX does not establish dealer inventory or actual hedging.",
+      "mode": "research_data",
+      "point_in_time": "Snapshot/model generation and availability must be known before any causal replay.",
+      "scope": "Greek exposure and flow, gamma levels and strike/expiry views.",
+      "tools": [
+        "get_gex_heatmap",
+        "get_gex_levels",
+        "get_greek_exposure_by_expiry",
+        "get_greek_exposure_by_strike",
+        "get_greek_exposure_by_strike_expiry",
+        "get_greek_exposure_by_ticker",
+        "get_greek_flow",
+        "get_greek_flow_by_expiry",
+        "get_greek_flow_by_ticker"
+      ]
+    },
+    "identity_resolution": {
+      "acceptance_tests": [
+        "Resolved identity kept separate from observed price",
+        "Ambiguous identity does not create tradable instrument"
+      ],
+      "consumer": "Intake symbol/contract identity checks; descriptive research reference.",
+      "limits": "Ticker identity is not exchange-qualified history coverage; compact OCC resolution does not certify contract prices.",
+      "mode": "research_data",
+      "point_in_time": "Reference metadata uses retrieval clock until source publication and revision times are supplied.",
+      "scope": "Instrument/company and option identity resolution.",
+      "tools": [
+        "get_company_info",
+        "search_option_contracts",
+        "search_tickers"
+      ]
+    },
+    "insider_and_institutional": {
+      "acceptance_tests": [
+        "Disclosure lag blocks pre-filing reuse",
+        "Institution identity not treated as current position"
+      ],
+      "consumer": "Public-filing contextual learning events.",
+      "limits": "Disclosure lag, amendments and holdings-period semantics matter; filed holdings do not establish current holdings or insider intent.",
+      "mode": "research_data",
+      "point_in_time": "Use filing/acceptance availability; transaction or quarter date is insufficient.",
+      "scope": "SEC insider and 13F institution/ownership filings and aggregates.",
+      "tools": [
+        "get_insider_activity_by_ticker",
+        "get_insider_sector_flow",
+        "get_insider_ticker_flow",
+        "get_insider_transactions",
+        "get_institution_holdings",
+        "get_institutional_ownership_by_ticker",
+        "get_institutions"
+      ]
+    },
+    "macro_and_calendar": {
+      "acceptance_tests": [
+        "Curve observation date does not prove publication time",
+        "Revision unknown prevents historical as-of certification"
+      ],
+      "consumer": "Macro context learning events and event-time diagnostics.",
+      "limits": "Historical revisions and release schedules need explicit vintage; event calendar is expected future context.",
+      "mode": "research_data",
+      "point_in_time": "Observation date, publication time, vintage and retrieval remain separate.",
+      "scope": "Policy rates, Treasury curve and economic/event calendar.",
+      "tools": [
+        "get_central_bank_rates",
+        "get_market_events",
+        "get_yield_curve"
+      ]
+    },
+    "market_and_sector_regime": {
+      "acceptance_tests": [
+        "Aggregates do not multiply independent evidence",
+        "Rendered chart stays presentation-only absent source values"
+      ],
+      "consumer": "Research regime learning events; scenario context.",
+      "limits": "Weighted/aggregated views share source ancestry; rendered charts may lack machine-readable data; screen results are selection-biased.",
+      "mode": "research_data",
+      "point_in_time": "Daily/trading-day labels need market timezone and as-of availability before historical reuse.",
+      "scope": "Market, ETF and sector options/price regime snapshots and cross-sectional screens.",
+      "tools": [
+        "get_market_etf_tide",
+        "get_market_map_chart",
+        "get_market_sector_etfs",
+        "get_market_sector_tide",
+        "get_market_state",
+        "get_market_tide_chart",
+        "get_stock_screener",
+        "get_ticker_performances"
+      ]
+    },
+    "option_contracts_and_screeners": {
+      "acceptance_tests": [
+        "Contract/expiry dimensions preserved in sanitized request identity",
+        "Snapshot is not converted to OHLC training bars"
+      ],
+      "consumer": "Hash-bound option context learning events; future separately qualified contract replay.",
+      "limits": "Chain snapshot is not executed-price history; stance rankings do not prove a recommendation; entitlement and pagination remain unknown per request.",
+      "mode": "research_data",
+      "point_in_time": "Require source timestamp and availability timestamp before temporal joins; historical date by itself is insufficient.",
+      "scope": "Contract identity, chain snapshots, daily option histories and mechanically ranked screening.",
+      "tools": [
+        "get_atm_chains",
+        "get_chains_for_expiry",
+        "get_historic_chains",
+        "get_option_stance_ranking",
+        "get_options_chain",
+        "get_options_screener"
+      ]
+    },
+    "options_flow": {
+      "acceptance_tests": [
+        "Unknown clock prevents historical eligibility",
+        "Duplicate payload does not multiply independent evidence"
+      ],
+      "consumer": "Research flow observation learning events and source coverage diagnostics.",
+      "limits": "Side and multi-leg labels are provider classifications; prints do not establish beneficial owner or future direction; event tape can be partial.",
+      "mode": "research_data",
+      "point_in_time": "Retain trade/report/received times separately; OI publication date is not trade time.",
+      "scope": "Individual prints, unusual alerts, multi-leg reconstruction, expiry/strike flow and OI behavior.",
+      "tools": [
+        "get_flow_alert_rules",
+        "get_flow_alerts",
+        "get_flow_per_expiry",
+        "get_flow_per_strike",
+        "get_multi_trades",
+        "get_open_interest_changes",
+        "get_option_trades"
+      ]
+    },
+    "politics_and_public_activity": {
+      "acceptance_tests": [
+        "Trade occurrence not substituted for disclosure availability",
+        "Unverified allegation never promoted to fact"
+      ],
+      "consumer": "Political/event contextual research references.",
+      "limits": "Disclosure delays and reported ranges remain explicit; social activity or congressional trades do not imply causal effect.",
+      "mode": "research_data",
+      "point_in_time": "Separate occurrence, disclosure/publication and retrieval clocks.",
+      "scope": "Congressional disclosure summaries, election context and public schedule/social activity.",
+      "tools": [
+        "get_midterms_ratings",
+        "get_politics_flow",
+        "get_politics_overview",
+        "get_recent_congress_trades",
+        "get_trump_activity"
+      ]
+    },
+    "prediction_markets": {
+      "acceptance_tests": [
+        "Screen classification remains provider-derived",
+        "Prediction probability is not empirical frequency or execution authorization"
+      ],
+      "consumer": "Event probability/liquidity contextual learning events.",
+      "limits": "Market rules, resolution/fees/spread, leaderboard selection and identity assertions need explicit validation; insider labels are hypotheses.",
+      "mode": "research_data",
+      "point_in_time": "Quote/order-book retrieval and source clock, market resolution definition and cutoff must be separate.",
+      "scope": "Prediction-market detail, order-book liquidity and provider-classified trader/activity screens.",
+      "tools": [
+        "get_prediction_insiders",
+        "get_prediction_market",
+        "get_prediction_market_liquidity",
+        "get_prediction_smart_money",
+        "get_prediction_unusual_markets",
+        "get_prediction_user",
+        "get_prediction_whales"
+      ]
+    },
+    "prices_and_technicals": {
+      "acceptance_tests": [
+        "Close-only source rejected as OHLC",
+        "Future or missing source/availability time does not receive temporal eligibility"
+      ],
+      "consumer": "Descriptive learning events; qualified OHLC loader remains separate and unchanged.",
+      "limits": "Close-only rows cannot enter OHLC trainers; indicators are derived data; vendor adjustment/volume/venue/timeframe semantics remain explicit gaps.",
+      "mode": "research_data",
+      "point_in_time": "Bar close/availability clocks and timezone are necessary; never infer PIT from retrieval or date alone.",
+      "scope": "Price bars, closes, derived indicators and exchange trading-state context.",
+      "tools": [
+        "get_extended_technical_indicator",
+        "get_stock_chart",
+        "get_ticker_candles_by_range",
+        "get_ticker_close_prices",
+        "get_ticker_indicator_events",
+        "get_ticker_indicator_series",
+        "get_ticker_ohlc_latest_or_date",
+        "get_trading_states"
+      ]
+    },
+    "seasonality_and_relationships": {
+      "acceptance_tests": [
+        "Current historical estimate not admitted as old as-of fact",
+        "Unknown sample denominator stays unknown"
+      ],
+      "consumer": "Descriptive statistical research context.",
+      "limits": "Current historical estimates can include revised data and selection/look-ahead bias; correlation is not causation or out-of-sample edge.",
+      "mode": "research_data",
+      "point_in_time": "Sample window and estimator generation need versioning for causal replay.",
+      "scope": "Historical seasonal statistics, monthly returns and pairwise correlations.",
+      "tools": [
+        "get_average_return_per_month_by_ticker",
+        "get_correlations",
+        "get_market_seasonality",
+        "get_month_performers",
+        "get_price_change_per_month_per_year"
+      ]
+    },
+    "short_interest_and_borrow": {
+      "acceptance_tests": [
+        "Short-volume metric kept distinct from short interest",
+        "Missing denominator yields incomplete context"
+      ],
+      "consumer": "Positioning and liquidity descriptive learning events.",
+      "limits": "Short volume is not short interest; borrow quotes are source-specific and may be stale; denominator/venue coverage matters.",
+      "mode": "research_data",
+      "point_in_time": "Publication lag and quote timestamp necessary for historical reuse.",
+      "scope": "Borrow availability/rates, reported short interest and short-volume context.",
+      "tools": [
+        "get_short_data_by_ticker",
+        "get_short_screener",
+        "get_short_volume_ratio_by_exchange",
+        "get_short_volume_ratio_by_ticker"
+      ]
+    },
+    "volatility_and_expiry": {
+      "acceptance_tests": [
+        "Expiry preserved",
+        "Calculated level never treated as realized outcome"
+      ],
+      "consumer": "Volatility/expiry descriptive research context.",
+      "limits": "Max pain is a calculated statistic, not a price forecast; IV methodology and underlying reference must be retained.",
+      "mode": "research_data",
+      "point_in_time": "Need source snapshot and retrieval availability; expiry is a dimension, not observation time.",
+      "scope": "IV term structure and expiry-specific max-pain calculations.",
+      "tools": [
+        "get_implied_volatility_term_structure",
+        "get_max_pain"
+      ]
+    }
+  },
+  "family_count": 19,
+  "rights": {
+    "default": "Private observation metadata only until explicit rights are verified.",
+    "raw_redistribution": "NOT_AUTHORIZED",
+    "retention": "UNVERIFIED_PER_RESPONSE",
+    "training": "UNVERIFIED_PER_RESPONSE"
+  },
+  "runtime_boundary": "A ChatGPT connector is not repository API credentials, a paid budget or a unattended scheduler transport.",
+  "schema_version": "icarus-unusual-whales-capability-map-v1",
+  "scope": "Public-safe connector capability inventory; no raw responses, account settings, credentials or storage identities."
+}
