@@ -1,0 +1,24 @@
+{
+  "at_utc": "2026-10-09T13:12:12.799574+00:00",
+  "category": "AUDIT",
+  "event_id": "providers-37935146913-1-bybit-provider-standby",
+  "evidence": [
+    {
+      "classification": "FACT",
+      "credential_present": false,
+      "preferred_repository": "reppiks490/Icarus-engine"
+    }
+  ],
+  "execution_authorized": false,
+  "paths": [
+    "automation_intelligence/provider_collection_v1/cycles/providers-37935146913-1-bybit/receipt.json"
+  ],
+  "schema_version": "icarus-mcp-event-v1",
+  "severity": "LOW",
+  "source": "MACRO_AUTOMATION",
+  "status": "DEGRADED",
+  "summary": "Secondary provider collector defers to preferred repository; no duplicate API requests.",
+  "surface": [
+    "Provider ownership"
+  ]
+}
