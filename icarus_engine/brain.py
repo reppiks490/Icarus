@@ -322,6 +322,8 @@ def _stored_event(raw: Any) -> dict[str, Any]:
     out = dict(semantic)
     out["id"] = event_id
     out["recorded_at"] = _text(raw.get("recorded_at"), "recorded_at", 80, required=True)
+    if _parse_time(out["recorded_at"]) is None:
+        raise ValueError("stored brain event recorded_at must be a valid timezone-aware ISO-8601 timestamp")
     return out
 
 
@@ -446,8 +448,11 @@ def _market_regimes(market_status: Mapping[str, Any] | None) -> list[dict[str, A
 
 def _parse_time(value: Any) -> datetime | None:
     try:
-        return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
-    except (TypeError, ValueError):
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        if parsed.tzinfo is None or parsed.utcoffset() is None:
+            return None
+        return parsed.astimezone(timezone.utc)
+    except (TypeError, ValueError, OverflowError):
         return None
 
 
@@ -673,9 +678,9 @@ def brain_snapshot(
         if ts is None:
             continue
         age = now - ts
-        if age <= timedelta(hours=1):
+        if timedelta(0) <= age <= timedelta(hours=1):
             last_hour += 1
-        if age <= timedelta(hours=24):
+        if timedelta(0) <= age <= timedelta(hours=24):
             last_day += 1
 
     qualified = sum(1 for c in candidates if c.get("eligible_for_regime_swap"))
