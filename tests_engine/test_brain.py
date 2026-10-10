@@ -1,5 +1,11 @@
 from __future__ import annotations
 
+import json
+from datetime import datetime, timedelta, timezone
+
+import pytest
+
+from icarus_engine import brain
 from icarus_engine.brain import AGENTS, SUBSYSTEMS, brain_snapshot, candidate_gate, record_brain_event
 
 
@@ -245,3 +251,148 @@ def test_brain_registers_ascendancy_capability_orchestrator(tmp_path):
     assert surfaced["capability-orchestrator"]["status"] == "REGISTERED"
     assert out["authority"]["execution_authorized"] is False
     assert out["authority"]["production_decision_authorized"] is False
+
+
+BRAIN_CLOCK_NOW = datetime(2026, 10, 10, 12, 0, tzinfo=timezone.utc)
+
+
+@pytest.fixture
+def brain_clock(monkeypatch):
+    class Clock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return BRAIN_CLOCK_NOW.astimezone(tz) if tz is not None else BRAIN_CLOCK_NOW.replace(tzinfo=None)
+
+    monkeypatch.setattr(brain, "datetime", Clock)
+
+
+def _clock_body(subject="synthetic clock regression"):
+    return {
+        "kind": "learning",
+        "subject": subject,
+        "summary": "Synthetic journal clock integrity fixture",
+        "status": "observed",
+    }
+
+
+def _clock_event(recorded_at, *, subject="synthetic clock regression"):
+    semantic = brain._event_semantic(_clock_body(subject))
+    return {**semantic, "id": brain._event_id(semantic), "recorded_at": recorded_at}
+
+
+def _clock_journal(tmp_path, events):
+    path = tmp_path / "audit" / "brain_events.jsonl"
+    path.parent.mkdir()
+    path.write_text("".join(json.dumps(event) + "\n" for event in events), encoding="utf-8")
+    return path
+
+
+@pytest.mark.parametrize("recorded_at", [
+    "2026-10-10T11:00:00",
+    "2026-10-10",
+    "not a timestamp",
+    "2026-02-30T11:00:00Z",
+    "2026-10-10T11:00:00+25:00",
+    "0001-01-01T00:00:00+01:00",
+])
+def test_stored_event_rejects_invalid_or_naive_clock(recorded_at, brain_clock):
+    with pytest.raises(ValueError, match="recorded_at"):
+        brain._stored_event(_clock_event(recorded_at))
+
+
+@pytest.mark.parametrize("recorded_at", [
+    "2026-10-10T11:00:00",
+    "2026-10-10",
+    "not a timestamp",
+    "2026-02-30T11:00:00Z",
+    "0001-01-01T00:00:00+01:00",
+])
+def test_snapshot_accounts_for_invalid_clock_without_crashing_or_rewriting(tmp_path, recorded_at, brain_clock):
+    valid = _clock_event("2026-10-10T11:30:00Z", subject="valid evidence retained")
+    path = _clock_journal(tmp_path, [_clock_event(recorded_at), valid])
+    original = path.read_bytes()
+
+    snapshot = brain.brain_snapshot(tmp_path)
+
+    assert snapshot["learning"]["journal_errors"] == 1
+    assert snapshot["learning"]["brain_events_total"] == 1
+    assert snapshot["learning"]["brain_events_last_hour"] == 1
+    assert snapshot["learning"]["brain_events_last_24h"] == 1
+    assert [row["id"] for row in snapshot["events"]] == [valid["id"]]
+    assert path.read_bytes() == original
+    assert snapshot["authority"]["execution_authorized"] is False
+    assert snapshot["authority"]["production_decision_authorized"] is False
+
+
+@pytest.mark.parametrize("recorded_at", [
+    "2026-10-10T11:30:00Z",
+    "2026-10-10T14:30:00+03:00",
+    "2026-10-10T07:30:00-04:00",
+])
+def test_equivalent_aware_offsets_have_identical_counts_and_preserve_text(tmp_path, recorded_at, brain_clock):
+    event = _clock_event(recorded_at)
+    path = _clock_journal(tmp_path, [event])
+    original = path.read_bytes()
+
+    snapshot = brain.brain_snapshot(tmp_path)
+
+    assert snapshot["learning"]["journal_errors"] == 0
+    assert snapshot["learning"]["brain_events_last_hour"] == 1
+    assert snapshot["learning"]["brain_events_last_24h"] == 1
+    assert snapshot["events"][0]["recorded_at"] == recorded_at
+    assert snapshot["events"][0]["id"] == event["id"]
+    assert path.read_bytes() == original
+
+
+@pytest.mark.parametrize(("age_seconds", "hour_count", "day_count"), [
+    (-86400, 0, 0),
+    (-0.000001, 0, 0),
+    (0, 1, 1),
+    (3599.999999, 1, 1),
+    (3600, 1, 1),
+    (3600.000001, 0, 1),
+    (86399.999999, 0, 1),
+    (86400, 0, 1),
+    (86400.000001, 0, 0),
+    (365 * 86400, 0, 0),
+])
+def test_recent_activity_windows_exclude_future_events_and_include_exact_boundaries(
+    tmp_path, age_seconds, hour_count, day_count, brain_clock,
+):
+    event = _clock_event((BRAIN_CLOCK_NOW - timedelta(seconds=age_seconds)).isoformat())
+    path = _clock_journal(tmp_path, [event])
+    original = path.read_bytes()
+
+    snapshot = brain.brain_snapshot(tmp_path)
+
+    assert snapshot["learning"]["brain_events_total"] == 1
+    assert snapshot["learning"]["journal_errors"] == 0
+    assert snapshot["learning"]["brain_events_last_hour"] == hour_count
+    assert snapshot["learning"]["brain_events_last_24h"] == day_count
+    assert snapshot["events"][0]["id"] == event["id"]
+    assert path.read_bytes() == original
+
+
+def test_dedup_readback_preserves_valid_original_clock_identity_and_journal_bytes(tmp_path, brain_clock):
+    event = _clock_event("2026-10-08T17:45:30.123456-04:00")
+    path = _clock_journal(tmp_path, [event])
+    original = path.read_bytes()
+
+    result = brain.record_brain_event(tmp_path, _clock_body())
+
+    assert result["idempotent"] is True
+    assert result["event"]["id"] == event["id"]
+    assert result["event"]["recorded_at"] == event["recorded_at"]
+    assert result["execution_authorized"] is False
+    assert result["production_decision_authorized"] is False
+    assert path.read_bytes() == original
+
+
+def test_dedup_invalid_stored_clock_fails_without_appending_or_rewriting(tmp_path, brain_clock):
+    path = _clock_journal(tmp_path, [_clock_event("2026-10-10T11:00:00")])
+    original = path.read_bytes()
+
+    with pytest.raises(ValueError, match="recorded_at"):
+        brain.record_brain_event(tmp_path, _clock_body())
+
+    assert path.read_bytes() == original
