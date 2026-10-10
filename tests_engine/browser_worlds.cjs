@@ -16,12 +16,24 @@ await page.screenshot({path:`${output}/intro.png`});
 await page.keyboard.press('Escape');
 await page.locator('.world-intro').waitFor({state:'detached'});
 await page.screenshot({path:`${output}/divine.png`,fullPage:true});
+await page.locator('[data-world-choice="void"]').hover();await page.waitForTimeout(180);
+if(await page.locator('html').getAttribute('data-theme')!=='divine') throw Error('World preview changed active theme');
+if(await page.locator('.world-preview').getAttribute('data-preview-world')!=='void') throw Error('World preview did not identify hovered universe');
+if(Number(await page.locator('.world-preview').evaluate(el=>getComputedStyle(el).opacity))<=0) throw Error('World preview did not become visible');
+await page.screenshot({path:`${output}/preview-void.png`});
+await page.mouse.move(1,1);await page.waitForTimeout(80);
+if(await page.locator('.world-preview').getAttribute('data-preview-world')) throw Error('World preview did not clear');
+const worldPhases={void:'RUPTURE / SILENCE / EMBER',astral:'ORBIT / AETHER / HORIZON',divine:'CROWN / LIGHT / INFINITY'};
+const worldRadii={};
 for(const world of ['void','astral','divine']){
  await page.locator(`[data-world-choice="${world}"]`).click();
  await page.waitForTimeout(400);
  if(await page.locator('html').getAttribute('data-theme')!==world) throw Error('Theme switch failed');
+ if((await page.locator('#worldCoordinatePhase').textContent()).trim()!==worldPhases[world]) throw Error('World coordinate copy failed');
+ worldRadii[world]=await page.locator('#view > .card').first().evaluate(el=>getComputedStyle(el).borderRadius);
  await page.screenshot({path:`${output}/${world}.png`,fullPage:true});
 }
+if(new Set(Object.values(worldRadii)).size!==3) throw Error('World panel silhouettes are not distinct');
 await page.reload();
 if(await page.locator('.world-intro').count()) throw Error('Intro replayed after reload');
 if(await page.locator('html').getAttribute('data-theme')!=='divine') throw Error('Theme lost on reload');
@@ -39,13 +51,30 @@ await page.locator('#experienceIntroLength').selectOption('12');
 await page.locator('#experienceReplay').click();
 await page.locator('.world-intro').waitFor({state:'detached',timeout:15000});
 if(await page.locator('#view').evaluate(el=>el.inert)) throw Error('Intro left dashboard inert');
+if(await page.locator('.world-handoff').count()!==1) throw Error('Natural intro did not hand off into dashboard');
+await page.locator('.world-handoff').waitFor({state:'detached',timeout:2000});
 await page.locator('#experienceTheme').selectOption('dark');
 if(await page.locator('.world-scene').isVisible()) throw Error('Scene remained on legacy theme');
 await page.locator('#experienceTheme').selectOption('void');
 await page.locator('.experience-settings summary').click();
-for(const view of ['system','inputs','backtest','overview']) {
+const stageFields={};
+for(const view of ['research','market-data','learning','chronofold','integrity','autopilot']){
  await page.locator(`[data-v="${view}"]`).click();
+ await page.waitForFunction(v=>document.documentElement.dataset.worldView===v,view);
+ stageFields[view]=(await page.locator('#view').evaluate(el=>getComputedStyle(el).getPropertyValue('--view-field'))).trim();
+ if(!stageFields[view]) throw Error('Subsystem stage field missing: '+view);
+}
+if(new Set(Object.values(stageFields)).size!==Object.keys(stageFields).length) throw Error('Specialized subsystem stage fields are not distinct');
+for(const view of ['system','inputs','backtest','brain','parallax','possibility','pantheon','evolution','overview']) {
+ await page.locator(`[data-v="${view}"]`).click();
+ await page.waitForFunction(v=>document.documentElement.dataset.worldView===v,view);
  if(!await page.locator(`[data-v="${view}"]`).evaluate(el=>el.classList.contains('active'))) throw Error('Navigation failed');
+ if(['system','brain','parallax','possibility','pantheon','evolution'].includes(view)){
+  await page.waitForTimeout(700);
+  const watermark=await page.locator('#view').evaluate(el=>getComputedStyle(el,'::after').content);
+  if(!watermark||watermark==='none') throw Error('Subsystem watermark missing');
+  await page.screenshot({path:`${output}/dense-${view}.png`,fullPage:true});
+ }
 }
 await page.setViewportSize({width:390,height:844});
 await page.screenshot({path:`${output}/mobile.png`,fullPage:true});

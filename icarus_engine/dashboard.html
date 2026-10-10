@@ -20,8 +20,8 @@
   --good:#0ca30c; --good-text:#0ca30c; --warn:#fab219; --serious:#ec835a; --crit:#d03b3b; --up:#0ca30c; --dn:#d03b3b;
 }
 * { box-sizing:border-box }
-html,body { height:100% }
-body { margin:0; overflow-x:hidden; background:var(--page); color:var(--ink); font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; -webkit-font-smoothing:antialiased }
+html { min-height:100%; background:var(--page) }
+body { min-height:100%; margin:0; overflow-x:clip; background:var(--page); color:var(--ink); font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; -webkit-font-smoothing:antialiased; position:relative; isolation:isolate }
 button { font:inherit; color:inherit; background:var(--surface-2); border:1px solid var(--ring); border-radius:8px; padding:6px 12px; cursor:pointer }
 button:hover { border-color:var(--muted) } button.primary { background:var(--s1); border-color:var(--s1); color:#fff } button.danger { background:var(--crit); border-color:var(--crit); color:#fff } button.sm { padding:3px 9px; font-size:12px }
 input, select { font:inherit; color:var(--ink); background:var(--surface-2); border:1px solid var(--ring); border-radius:8px; padding:6px 9px }
@@ -29,7 +29,7 @@ input[type=number] { width:120px } input[type=text] { width:150px } select { max
 .tnum { font-variant-numeric:tabular-nums } .muted { color:var(--muted) } .small { font-size:12px } .pos { color:var(--good-text) } .neg { color:var(--crit) }
 a { color:var(--s1) }
 
-.top { position:sticky; top:0; z-index:5; background:var(--surface); border-bottom:1px solid var(--ring) }
+.top { position:sticky; top:0; z-index:60; background:var(--surface); border-bottom:1px solid var(--ring); transform:translateZ(0); isolation:isolate }
 .top-in { display:flex; align-items:center; gap:14px; padding:10px 22px; flex-wrap:wrap }
 .brand { display:flex; align-items:center; gap:10px; font-weight:600; letter-spacing:.14em; font-size:13px }
 .brand .dot { width:10px; height:10px; border-radius:50%; background:var(--good) } .brand .dot.live { animation:pulse 1.6s infinite } .brand .dot.stale { background:var(--warn) } .brand .dot.dead { background:var(--crit) }
@@ -179,6 +179,7 @@ pre.cli { background:var(--surface-2); border:1px solid var(--ring); border-radi
 <script src="/autopilot-ui.js"></script>
 <script src="/world-aura.js"></script>
 <script src="/world-cinema.js"></script>
+<script src="/world-immersion.js"></script>
 <script src="/world-motion.js"></script>
 <script src="/experience-ui.js"></script>
 <script>
@@ -209,7 +210,9 @@ const tokKey = 'icarus-engine-token'; if (!localStorage.getItem(tokKey)) localSt
 $('#btnControls').onclick = () => $('#ctl').classList.add('open'); $('#closeCtl').onclick = () => $('#ctl').classList.remove('open');
 $('#saveTok').onclick = () => { localStorage.setItem(tokKey, $('#token').value.trim()); $('#ctlOut').textContent='token saved'; };
 function toast(msg, bad) { let t = $('#toast'); if (!t) { t = document.createElement('div'); t.id='toast'; t.style.cssText='position:fixed;bottom:18px;left:50%;transform:translateX(-50%);padding:10px 16px;border-radius:10px;z-index:60;font-size:13px;box-shadow:0 6px 24px rgba(0,0,0,.3);max-width:90vw'; document.body.appendChild(t); }
-  t.style.background = bad ? 'var(--crit)' : 'var(--s1)'; t.style.color='#fff'; t.textContent = msg; t.style.display='block'; clearTimeout(t._h); t._h = setTimeout(()=>t.style.display='none', 3500); }
+  t.dataset.kind = bad ? 'error' : 'ok'; t.setAttribute('role', bad ? 'alert' : 'status'); t.style.background = bad ? 'var(--crit)' : 'var(--s1)'; t.style.color='#fff'; t.textContent = msg; t.style.display='block';
+  t.classList.remove('world-toast-active'); void t.offsetWidth; t.classList.add('world-toast-active');
+  clearTimeout(t._h); t._h = setTimeout(()=>{t.classList.remove('world-toast-active');t.style.display='none';}, 3500); }
 async function admin(path, body, quiet) {
   const tok = localStorage.getItem(tokKey) || $('#token').value.trim();
   if (!tok) {
@@ -278,6 +281,7 @@ function lineChart(el, series, {baseline=null, height=180}={}) {
     xh.style.display=''; xh.querySelector('line').setAttribute('x1',x(p.ts)); xh.querySelector('line').setAttribute('x2',x(p.ts)); xh.querySelector('circle').setAttribute('cx',x(p.ts)); xh.querySelector('circle').setAttribute('cy',y(p.equity));
     const dl = baseline!=null ? p.equity-baseline : null; showTip(`<b>${fmt$(p.equity,2)}</b> ${dl!=null?`<span class="${dl>=0?'pos':'neg'}">${sgn$(dl,2)}</span>`:''}<br><span class="muted">${new Date(p.ts*1000).toLocaleString()}</span>`, ev.clientX, ev.clientY); });
   hit.addEventListener('mouseleave', () => { xh.style.display='none'; hideTip(); });
+  window.IcarusWorldCinema?.enterChart('portfolio-equity', el);
 }
 function candles(el, data, {height=170, compact=true}={}) {
   if (!el) return;
@@ -350,7 +354,17 @@ async function loadChart(sym, n, el, opts) {
 }
 
 /* ── views ── */
-function setView(v) { view = v; if (!solo) location.hash = v; lastView = null; if (last) render(last); if (v.startsWith('asset:')) { const s = v.slice(6); loadChart(s, 300, $('#dChart'), {height:360, compact:false}); refreshTrades(s).then(()=>{ if (last) render(last); }); } }
+function setView(v) {
+  const apply = () => { view = v; window.IcarusWorldImmersion?.view(v); if (!solo) location.hash = v; lastView = null; if (last) render(last); if (v.startsWith('asset:')) { const s = v.slice(6); loadChart(s, 300, $('#dChart'), {height:360, compact:false}); refreshTrades(s).then(()=>{ if (last) render(last); }); } };
+  const root = document.documentElement;
+  const cinematic = v !== view && typeof document.startViewTransition === 'function' && root.dataset.motion === 'live' && root.dataset.experience === 'cinematic' && !!root.dataset.world && root.dataset.introActive !== 'true';
+  if (cinematic) {
+    const transition = document.startViewTransition(apply);
+    // Browser-level aborts (for example a viewport resize mid-transition) are visual fallbacks, not application errors.
+    transition.ready?.catch(()=>{});
+    transition.finished?.catch(()=>{});
+  } else apply();
+}
 window.setView = setView;
 function tabsHtml(A) {
   if (solo) return `<span class="tab active"><b class="s">${esc(params.get('asset').toUpperCase())}</b> · solo view</span><a class="tab" href="/">← all assets</a>`;
@@ -661,9 +675,9 @@ function renderInputs() {
 }
 async function withBusyButton(button, fn) {
   if (!button || button.disabled) return null;
-  button.disabled = true;
+  button.disabled = true; button.classList.add('world-busy'); button.setAttribute('aria-busy','true');
   try { return await fn(); }
-  finally { if (button.isConnected) button.disabled = false; }
+  finally { if (button.isConnected) { button.disabled = false; button.classList.remove('world-busy'); button.removeAttribute('aria-busy'); } }
 }
 const configJobWatchers = new Set();
 async function watchConfigJob(jobId, label='Configuration') {
@@ -714,13 +728,10 @@ document.addEventListener('click', async ev => {
   if (b.id === 'inApplyPreset') { await withBusyButton(b, async () => { const r = await admin('/admin/preset/async', {asset: inState.asset, preset: $('#inPreset').value || null}); if (r?.job) watchConfigJob(r.job, 'Preset'); }); }
   if (b.id === 'addBtn') {
     const s = $('#addSym').value.trim(); if (!s) return;
-    b.disabled = true;
-    try {
+    await withBusyButton(b, async () => {
       const added = await admin('/admin/assets/add', {symbol: s, tf: $('#addTf').value.trim() || undefined, preset: $('#addPreset').value || undefined});
       if (added && $('#addSym')) $('#addSym').value = '';
-    } finally {
-      if (document.body.contains(b)) b.disabled = false;
-    }
+    });
   }
   if (b.dataset.agentRecipe) {
     const r = (window.ICARUS_AGENT && window.ICARUS_AGENT.recipes || []).find(x => x.id === b.dataset.agentRecipe);
@@ -951,6 +962,7 @@ function equityChart(el, eq, bh, dd, capital) {
     <text x="${pl}" y="${H - 6}" font-size="11" fill="var(--muted)">${dtz(xs[0])}</text><text x="${W - pr}" y="${H - 6}" font-size="11" fill="var(--muted)" text-anchor="end">${dtz(xs[xs.length - 1])}</text>
     <text x="${pl + 4}" y="${H - pb - hdd + 12}" font-size="10.5" fill="var(--crit)">drawdown</text>
     <text x="${W - pr}" y="${pt + 12}" font-size="10.5" fill="var(--muted)" text-anchor="end">— equity · ┄ buy &amp; hold · ┄ capital</text></svg>`;
+  window.IcarusWorldCinema?.enterChart('backtest-equity', el);
 }
 function renderBacktest() {
   const res = BT.res; if (!res) return;
@@ -1100,6 +1112,7 @@ function render(d) {
   else if (view === 'log') { if (rebuild) $('#view').innerHTML = `<section class="card c12"><h2>Engine log</h2><div class="log" id="log2" style="max-height:80vh"></div></section>`; $('#log2').innerHTML = (d.log||[]).slice().reverse().map(l => `<div class="${l.level}">${tms(l.ts)} ${l.level.padEnd(5)} ${esc(l.msg)}</div>`).join(''); }
   lastView = view; first = false;
   window.IcarusExperience?.update(d, view);
+  window.IcarusWorldImmersion?.view(view);
 }
 async function refreshFills() {
   if (!last || !$('#fills')) return; const A = last.assets||[]; const all = [];
@@ -1144,6 +1157,7 @@ async function refreshGolive() {
     const n = document.createElement('div');
     n.innerHTML = goliveCard(window.ICARUS_GOLIVE);
     if (n.firstElementChild) cur.replaceWith(n.firstElementChild);
+    window.IcarusWorldImmersion?.refresh();
   }
 }
 async function refreshAgent() {
@@ -1168,6 +1182,7 @@ async function refreshAgent() {
     const n = document.createElement('div');
     n.innerHTML = agentCard(window.ICARUS_AGENT);
     if (n.firstElementChild) cur.replaceWith(n.firstElementChild);
+    window.IcarusWorldImmersion?.refresh();
   }
 }
 async function refreshAudit() {
@@ -1200,6 +1215,7 @@ async function refreshCommandCenter() {
     const n = document.createElement('div');
     n.innerHTML = commandCenterHtml(window.ICARUS_COMMAND_CENTER);
     if (n.firstElementChild) cur.replaceWith(n.firstElementChild);
+    window.IcarusWorldImmersion?.refresh();
   }
 }
 async function refreshCharts() { if (!last) return; if (view === 'overview') { for (const a of (last.assets||[])) await loadChart(a.symbol, 80, $(`#ch-${a.symbol}`), {height:170}); refreshFills(); } if (view.startsWith('asset:')) await loadChart(view.slice(6), 300, $('#dChart'), {height:360, compact:false}); }

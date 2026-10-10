@@ -44,8 +44,10 @@ for(const size of ['compact','grand','panorama']){
 }
 await page.locator('#experienceSceneSize').selectOption('grand');
 for(const theme of ['void','astral','divine']){
- await page.locator('#experienceTheme').selectOption(theme);await page.waitForTimeout(150);
+ await page.locator('#experienceTheme').selectOption(theme);await page.waitForTimeout(80);
  assert.equal(await page.locator('html').getAttribute('data-theme'),theme);
+ assert.equal(await page.locator(`.world-veil[data-world-transition="${theme}"]`).count(),1);
+ await page.waitForTimeout(70);
 }
 await page.locator('#experienceLighting').selectOption('original');
 assert.equal(await page.locator('html').evaluate(el=>getComputedStyle(el).colorScheme),'light');
@@ -58,8 +60,27 @@ await page.locator('.experience-settings summary').click();
 await page.locator('#experienceIntroLength').selectOption('20');
 await page.locator('#experienceReplay').click();
 assert.equal(await page.locator('.world-intro').evaluate(el=>getComputedStyle(el).animationDuration),'20s');
+assert.equal(await page.locator('.intro-vault').count(),1);
+assert.equal(await page.locator('.intro-vault i').count(),5);
+assert.equal(await page.locator('.intro-glyphs i').count(),8);
+assert.equal(await page.locator('.intro-world-emblem').count(),1);
+assert.equal(await page.locator('.intro-world-emblem > *').count(),3);
+assert.equal(await page.locator('.intro-chapters span').count(),4);
+assert.equal((await page.locator('.intro-title span').textContent()).trim(),'THE ONE ABOVE ALL');
+assert.equal((await page.locator('.intro-title em').textContent()).trim(),'ENTER THE SANCTUM');
+assert.equal((await page.locator('.intro-seal').textContent()).trim(),'CROWN // LIGHT // INFINITY');
+assert.deepEqual(await page.locator('.intro-glyphs i').allTextContents(),['◇','Ⅰ','△','☼','∞','◈','⌁','Ⅲ']);
+const skipBounds=await page.locator('.intro-skip').boundingBox();
+assert.ok(skipBounds&&skipBounds.x>=0&&skipBounds.y>=0&&skipBounds.x+skipBounds.width<=1440&&skipBounds.y+skipBounds.height<=1000,'Intro escape control must stay inside the viewport');
 await page.keyboard.press('Tab');assert.equal(await page.locator('.intro-skip').evaluate(el=>el===document.activeElement),true);
 await page.keyboard.press('Escape');assert.equal(await page.locator('#view').evaluate(el=>el.inert),false);
+await page.locator('#experienceTheme').selectOption('void');
+await page.locator('#experienceReplay').click();
+assert.equal((await page.locator('.intro-title em').textContent()).trim(),'ENTER THE BREACH');
+assert.equal((await page.locator('.intro-seal').textContent()).trim(),'RUPTURE // SILENCE // EMBER');
+assert.deepEqual(await page.locator('.intro-glyphs i').allTextContents(),['×','⟁','Ⅱ','⌁','◇','Ⅲ','×','▲']);
+await page.keyboard.press('Escape');
+await page.locator('#experienceTheme').selectOption('divine');
 await page.locator('#experienceReplay').click();
 await page.emulateMedia({reducedMotion:'reduce'});
 await page.locator('.world-intro').waitFor({state:'detached'});
@@ -70,12 +91,39 @@ await page.locator('.experience-settings summary').click();
 for(const view of ['system','inputs','backtest','overview'])await page.locator(`[data-v="${view}"]`).click();
 // A labeled synthetic SVG is used only to verify presentation preserves exact chart geometry.
 const fixture=await page.evaluate(()=>{
- const el=document.createElement('div');el.innerHTML='<svg aria-label="Test fixture"><path d="M0 4 L10 1 L20 8"/></svg>';document.querySelector('#view').append(el);
+ const el=document.createElement('div');el.style.cssText='width:240px;height:90px';el.innerHTML='<svg aria-label="Test fixture"><path d="M0 4 L10 1 L20 8"/></svg>';document.querySelector('#view').append(el);
  const before=el.innerHTML;window.IcarusWorldCinema.enterChart('TEST',el);const count=el.getAnimations().length;
- window.IcarusWorldCinema.enterChart('TEST',el);
- const result={same:before===el.innerHTML,first:count,second:el.getAnimations().length};el.remove();return result;
+ window.IcarusWorldCinema.enterChart('TEST',el);const second=el.getAnimations().length;
+ const r=el.getBoundingClientRect();
+ el.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,pointerType:'mouse',clientX:r.left+r.width*.4,clientY:r.top+r.height*.6}));
+ const result={same:before===el.innerHTML,first:count,second,surface:el.classList.contains('world-chart-surface'),scan:el.classList.contains('world-chart-scan-active'),hover:el.classList.contains('world-chart-hover'),x:el.style.getPropertyValue('--chart-hover-x'),y:el.style.getPropertyValue('--chart-hover-y')};el.remove();return result;
 });
-assert.deepEqual(fixture,{same:true,first:1,second:1});
+assert.deepEqual(fixture,{same:true,first:1,second:1,surface:true,scan:true,hover:true,x:'40.00%',y:'60.00%'});
+await page.evaluate(()=>toast('Visual contract notification',false));
+assert.equal(await page.locator('#toast').getAttribute('data-kind'),'ok');
+assert.equal(await page.locator('#toast').getAttribute('role'),'status');
+assert.equal(await page.locator('#toast').evaluate(el=>el.classList.contains('world-toast-active')),true);
+await page.evaluate(()=>{const t=document.querySelector('#toast');t.classList.remove('world-toast-active');t.style.display='none';});
+const busy=await page.evaluate(async()=>{
+ const b=document.createElement('button');b.textContent='Visual async command';document.body.appendChild(b);
+ let release;const hold=new Promise(resolve=>release=resolve);const run=withBusyButton(b,()=>hold);
+ const during={busy:b.classList.contains('world-busy'),disabled:b.disabled,aria:b.getAttribute('aria-busy')};
+ release('ok');await run;
+ const after={busy:b.classList.contains('world-busy'),disabled:b.disabled,aria:b.getAttribute('aria-busy')};b.remove();
+ return {during,after};
+});
+assert.deepEqual(busy,{during:{busy:true,disabled:true,aria:'true'},after:{busy:false,disabled:false,aria:null}});
+const readouts=await page.evaluate(()=>{
+ const host=document.createElement('section');host.className='card';
+ host.innerHTML='<div id="stateLoading" class="empty">loading model state…</div><div id="stateUnavailable" class="empty">UNAVAILABLE — no evidence.</div><div id="stateError" class="empty neg">FAILED integrity check</div>';
+ document.querySelector('#view').append(host);window.IcarusWorldImmersion.refresh();
+ const result={
+  loading:document.querySelector('#stateLoading').classList.contains('world-loading-state'),
+  unavailable:document.querySelector('#stateUnavailable').classList.contains('world-unavailable-state'),
+  error:document.querySelector('#stateError').classList.contains('world-error-state')
+ };host.remove();return result;
+});
+assert.deepEqual(readouts,{loading:true,unavailable:true,error:true});
 await page.setViewportSize({width:390,height:844});await page.waitForTimeout(200);
 assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
 await page.screenshot({path:`${output}/cinema-mobile.png`,fullPage:true});

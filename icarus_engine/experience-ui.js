@@ -15,6 +15,20 @@
   const save = (key, value) => { sessionPreferences.set(key, value); try { localStorage.setItem(key, value); } catch (_) { /* Retain preferences in memory for this session. */ } };
   const allowedTheme = value => themes.some(([id]) => id === value) ? value : 'dark';
 
+  function updateRenderStatus() {
+    const panel=document.getElementById('experienceRenderStatus');if(!panel)return;
+    const world=worlds[root.dataset.world]?.name||root.dataset.theme||'None';
+    const view=(root.dataset.worldView||currentView||'overview').replace(/-/g,' ');
+    const tier=(root.dataset.visualResolved||root.dataset.visualDetail||'adaptive').toUpperCase();
+    const motionState=(root.dataset.motion||'off').toUpperCase();
+    const aura=document.querySelector('.world-aura')?.dataset.state||'CPU';
+    panel.querySelector('[data-render-world]').textContent='WORLD '+String(world).toUpperCase();
+    panel.querySelector('[data-render-view]').textContent='VIEW '+String(view).toUpperCase();
+    panel.querySelector('[data-render-tier]').textContent='RENDER '+tier;
+    panel.querySelector('[data-render-motion]').textContent='MOTION '+motionState;
+    panel.querySelector('[data-render-aura]').textContent='AURA '+String(aura).toUpperCase();
+  }
+
   function motion() {
     root.dataset.motion = read('icarus-motion', 'system') === 'off' || reduced.matches ? 'off' : 'live';
     if (root.dataset.motion === 'off') document.querySelectorAll('.experience-cue, .experience-fill-cue').forEach(el => {
@@ -22,9 +36,11 @@
       el.classList.remove('experience-cue', 'experience-fill-cue');
     });
     window.IcarusWorldMotion?.refresh();
+    window.IcarusWorldImmersion?.sync();
     const note = document.getElementById('experienceMotionNote');
     if (note) note.textContent = reduced.matches ? 'Your system requests reduced motion; all cues are off.' :
       root.dataset.motion === 'off' ? 'All motion is off.' : 'Cinematic scenery and coordinated panel entrances. Market cues remain tied to actual state changes.';
+    updateRenderStatus();
   }
 
   function cue(symbol, kind) {
@@ -38,8 +54,10 @@
   }
 
   function update(data, view) {
-    if (currentView !== view) window.IcarusWorldCinema?.enterView();
+    const changedView=currentView !== view;
+    if (changedView) window.IcarusWorldCinema?.enterView();
     currentView = view;
+    if (changedView) syncSceneView(view);
     if (uptime !== null && Number(data.uptime_sec) < uptime) { snapshots.clear(); fillSnapshots.clear(); }
     uptime = Number(data.uptime_sec);
     const active = new Set();
@@ -54,6 +72,7 @@
       snapshots.set(asset.symbol, next);
     }
     for (const symbol of snapshots.keys()) if (!active.has(symbol)) { snapshots.delete(symbol); fillSnapshots.delete(symbol); }
+    updateRenderStatus();
   }
 
   function chart(data, windowSize, element) {
@@ -72,11 +91,37 @@
   }
 
   const worlds = {
-    divine: {name: 'Divine Ascension', title: 'The one above all.', caption: 'A throne above the clouds. A horizon without limits.', mark: 'I'},
-    void: {name: 'Crimson Void', title: 'Market Destroyer.', caption: 'From the silence. Beyond the noise.', mark: 'II'},
-    astral: {name: 'Astral Dreamscape', title: 'Beyond the horizon.', caption: 'An observatory at the edge of possibility.', mark: 'III'},
+    divine: {name: 'Divine Ascension', title: 'The one above all.', caption: 'A throne above the clouds. A horizon without limits.', mark: 'I', phase: 'CROWN / LIGHT / INFINITY'},
+    void: {name: 'Crimson Void', title: 'Market Destroyer.', caption: 'From the silence. Beyond the noise.', mark: 'II', phase: 'RUPTURE / SILENCE / EMBER'},
+    astral: {name: 'Astral Dreamscape', title: 'Beyond the horizon.', caption: 'An observatory at the edge of possibility.', mark: 'III', phase: 'ORBIT / AETHER / HORIZON'},
+  };
+  const viewInsignia = {
+    overview:['◇','OVERVIEW'],asset:['◈','ASSET CHAMBER'],system:['⌬','SYSTEM'],golive:['▲','GO LIVE'],agent:['◎','FIELD AGENT'],
+    inputs:['≡','INPUTS'],backtest:['∿','BACKTEST'],research:['∆','RESEARCH'],sources:['⌁','FINANCIAL / DATA'],'market-data':['⋮','MARKET DATA'],
+    brain:['◉','ADAPTIVE BRAIN'],evolution:['↟','MCP EVOLUTION'],parallax:['⟁','PARALLAX / DREAMSTATE'],possibility:['Ψ','ICARUS Ψ'],
+    pantheon:['✦','PANTHEON / AETHER'],sibyl:['Ω','SIBYL Ω'],apex:['⌬','APEX Ω'],ascendancy:['↑','ASCENDANCY'],
+    learning:['∞','LEARNING FABRIC'],chronofold:['Ξ','ICARUS Ξ'],commissioning:['◫','COMMISSIONING'],integrity:['◆','DATA INTEGRITY'],
+    'engine-control':['⌘','ENGINE CONTROL'],commands:['⌗','COMMANDS'],log:['▥','ENGINE LOG'],autopilot:['➤','TACTICAL AUTOPILOT']
+  };
+  const viewDomains = {
+    overview:'CORE DECK',asset:'CORE DECK',system:'CORE DECK',golive:'CORE DECK',agent:'CORE DECK',inputs:'CORE DECK',backtest:'CORE DECK',
+    research:'ANALYSIS',sources:'ANALYSIS','market-data':'ANALYSIS',
+    brain:'INTELLIGENCE',evolution:'INTELLIGENCE',parallax:'INTELLIGENCE',possibility:'INTELLIGENCE',pantheon:'INTELLIGENCE',sibyl:'INTELLIGENCE',apex:'INTELLIGENCE',ascendancy:'INTELLIGENCE',learning:'INTELLIGENCE',chronofold:'INTELLIGENCE',
+    commissioning:'ASSURANCE',integrity:'ASSURANCE','engine-control':'ASSURANCE',
+    commands:'CONTROL',log:'CONTROL',autopilot:'CONTROL'
   };
   let scenery, sceneObserver;
+  function syncSceneView(view=currentView||'overview') {
+    if(!scenery)return;
+    const key=String(view||'overview').startsWith('asset:')?'asset':String(view||'overview').replace(/^#/,'');
+    const meta=viewInsignia[key]||['◇',key.replace(/-/g,' ').toUpperCase()],domain=viewDomains[key]||'DOMAIN';
+    const badge=scenery.querySelector('.world-view-insignia');if(!badge)return;
+    badge.querySelector('span').textContent=domain+' / ACTIVE';
+    badge.querySelector('i').textContent=meta[0];badge.querySelector('b').textContent=meta[1];
+    badge.dataset.view=key;badge.dataset.domain=domain.toLowerCase().replace(/[^a-z0-9]+/g,'-');
+    badge.classList.remove('world-view-insignia-shift');void badge.offsetWidth;badge.classList.add('world-view-insignia-shift');
+    setTimeout(()=>badge?.classList.remove('world-view-insignia-shift'),760);
+  }
   const preference = (key, values, fallback) => {
     const value = read('icarus-' + key, fallback);
     return values.includes(value) ? value : fallback;
@@ -102,6 +147,7 @@
       document.getElementById('worldTitle').setAttribute('aria-label',world.title);
       document.getElementById('worldCaption').textContent = world.caption;
       document.getElementById('worldMark').textContent = world.mark;
+      document.getElementById('worldCoordinatePhase').textContent = world.phase;
       // Exact local assets only. No market data or authenticated URLs enter this layer.
       scenery.style.setProperty('--world-art', `url("/worlds/${root.dataset.theme}.webp")`);
     }
@@ -114,10 +160,12 @@
     }
     for (const button of scenery.querySelectorAll('[data-world-choice]')) button.setAttribute('aria-pressed', String(button.dataset.worldChoice === root.dataset.theme));
     window.IcarusWorldMotion?.refresh();
+    window.IcarusWorldImmersion?.sync();
     const focus = document.getElementById('experienceFocus');
     focus.setAttribute('aria-pressed', String(root.dataset.experience === 'focus'));
     focus.textContent = root.dataset.experience === 'focus' ? 'Restore scenery' : 'Focus';
     document.getElementById('experienceMode').value = root.dataset.experience;
+    updateRenderStatus();
   }
 
   function init({onThemeChanged} = {}) {
@@ -136,6 +184,7 @@
       <label>Opening<select id="experienceIntroLength"><option value="20">Epic · 20 seconds</option><option value="12">Classic · 12 seconds</option></select></label>
       <label>Density<select id="experienceDensity"><option value="comfortable">Comfortable</option><option value="compact">Trading desk</option></select></label>
       <label>Motion<select id="experienceMotion"><option value="system">Follow system</option><option value="off">No motion</option></select></label>
+      <div class="experience-render-status" id="experienceRenderStatus" aria-live="polite"><span data-render-world>WORLD —</span><span data-render-view>VIEW —</span><span data-render-tier>RENDER —</span><span data-render-motion>MOTION —</span><span data-render-aura>AURA —</span></div>
       <button type="button" id="experienceSound" class="sm" aria-pressed="false">Enable celestial sound</button>
       <button type="button" id="experienceReplay" class="sm">Replay cinematic intro</button><p id="experienceMotionNote"></p><p>Original anime worlds. Scenic titles and effects are decorative, independent of market activity.</p>
       </div></details><button class="icon-btn" id="experienceFocus" aria-pressed="false">Focus</button><button class="icon-btn" id="experienceMusicToggle" aria-expanded="false" aria-controls="experienceMusic">Music</button>`;
@@ -159,8 +208,11 @@
     scenery.className = 'world-scene'; scenery.hidden = true;
     scenery.setAttribute('aria-label', 'ICARUS visual world');
     scenery.innerHTML = `<div class="world-art" aria-hidden="true"></div>
+      <div class="world-preview" aria-hidden="true"><i></i><b></b></div>
       <div class="world-orbit" aria-hidden="true"><i></i><i></i><i></i><b>◇</b></div>
-      <div class="world-coordinate" aria-hidden="true">ECLIPSE LOOM <span>FORM / LIGHT / INFINITY</span></div>
+      <div class="world-coordinate" aria-hidden="true">ECLIPSE LOOM <span id="worldCoordinatePhase">CROWN / LIGHT / INFINITY</span></div>
+      <div class="world-scene-threshold" aria-hidden="true"><i></i><b></b><span></span></div>
+      <div class="world-view-insignia" aria-hidden="true" data-view="overview" data-domain="core-deck"><span>CORE DECK / ACTIVE</span><i>◇</i><b>OVERVIEW</b></div>
       <div class="world-copy"><div class="world-eyebrow">ICARUS <span> / </span><span id="worldName"></span></div>
       <h1 id="worldTitle"></h1><p id="worldCaption"></p>
       <div class="world-switch" role="group" aria-label="Choose visual world">
@@ -169,10 +221,27 @@
         <button type="button" data-world-choice="astral">03 <span>Astral</span></button>
       </div></div><div class="world-edition" aria-hidden="true"><span id="worldMark"></span> / ICARUS WORLDS</div>`;
     document.getElementById('view').insertAdjacentElement('beforebegin', scenery);
-    for (const button of scenery.querySelectorAll('[data-world-choice]')) button.addEventListener('click', () => {
-      select.value = button.dataset.worldChoice;
-      select.dispatchEvent(new Event('change'));
-    });
+    const preview=scenery.querySelector('.world-preview');
+    const clearWorldPreview=()=>{
+      if(!preview)return;preview.classList.remove('active');preview.removeAttribute('data-preview-world');preview.style.removeProperty('--preview-art');
+      scenery.removeAttribute('data-preview-world');
+    };
+    const showWorldPreview=id=>{
+      if(!preview||!worlds[id]||id===root.dataset.world)return clearWorldPreview();
+      preview.dataset.previewWorld=id;preview.style.setProperty('--preview-art',`url('/worlds/${id}.webp')`);
+      scenery.dataset.previewWorld=id;preview.classList.add('active');
+    };
+    for (const button of scenery.querySelectorAll('[data-world-choice]')) {
+      button.addEventListener('pointerenter',()=>showWorldPreview(button.dataset.worldChoice),{passive:true});
+      button.addEventListener('pointerleave',clearWorldPreview,{passive:true});
+      button.addEventListener('focus',()=>showWorldPreview(button.dataset.worldChoice));
+      button.addEventListener('blur',clearWorldPreview);
+      button.addEventListener('click', () => {
+        clearWorldPreview();
+        select.value = button.dataset.worldChoice;
+        select.dispatchEvent(new Event('change'));
+      });
+    }
     for (const [id, key, values, fallback] of [
       ['experienceMode', 'experience', ['cinematic', 'balanced', 'focus'], 'cinematic'],
       ['experienceAccent', 'accent', ['world', 'gold', 'ice', 'amethyst'], 'world'],
@@ -201,8 +270,13 @@
       });
       sceneObserver.observe(scenery);
     }
+    syncSceneView(currentView||'overview');
     window.IcarusWorldMotion?.init(scenery);
-    appearance(); motion();
+    const renderObserver=new MutationObserver(updateRenderStatus);
+    renderObserver.observe(root,{attributes:true,attributeFilter:['data-world','data-world-view','data-visual-resolved','data-visual-detail','data-motion','data-experience']});
+    const auraObserver=new MutationObserver(updateRenderStatus);
+    const auraNode=document.querySelector('.world-aura');if(auraNode)auraObserver.observe(auraNode,{attributes:true,attributeFilter:['data-state']});
+    appearance(); motion();updateRenderStatus();
     document.getElementById('experienceReplay').addEventListener('click', () => window.IcarusWorldMotion?.playIntro());
     document.getElementById('experienceSound').addEventListener('click', event => window.IcarusWorldCinema?.toggleSound(event.currentTarget));
     window.IcarusWorldMotion?.startup();
