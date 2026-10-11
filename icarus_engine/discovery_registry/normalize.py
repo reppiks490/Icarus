@@ -22,8 +22,9 @@ _TRACKING_KEYS = frozenset(
     }
 )
 _CREDENTIAL_TEXT = re.compile(
-    r"\bauthorization[`'\"]?\s*[:=]\s*[`'\"]?(?:bearer|basic)\s+[^\s`'\",;|]+|"
-    r"\b(?:api[_-]?(?:key|token)|auth[_-]?token|access[_-]?token|client[_-]?secret|password)"
+    r"\bauthorization[`'\"]?\s*[:=]\s*[`'\"]?[^\s`'\",;|]+|"
+    r"\b(?:api(?:[_-]|\s+)?(?:key|token)|auth(?:[_-]|\s+)?token|"
+    r"access(?:[_-]|\s+)?token|client(?:[_-]|\s+)?secret|password)"
     r"[`'\"]?\s*[:=]\s*[`'\"]?[^\s`'\",;|]+",
     re.IGNORECASE,
 )
@@ -74,7 +75,7 @@ def normalize_url(url: str) -> NormalizedURL:
     netloc = f"{display_host}:{port}" if include_port else display_host
 
     pairs = parse_qsl(parsed.query, keep_blank_values=True)
-    if any(key.casefold().replace("-", "_") in {
+    if any(re.sub(r"[-\s]+", "_", key.casefold()) in {
         "apikey", "api_key", "apitoken", "api_token", "authtoken", "auth_token",
         "accesstoken", "access_token", "password", "secret", "authorization", "clientsecret", "client_secret"
     } and value for key, value in pairs):

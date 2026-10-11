@@ -106,7 +106,7 @@ empty refresh. Its hashed parse audit may remain locally, but no successful
 latest receipt is written. Partial/failed cycles retain receipts and return
 nonzero CLI status.
 
-The CLI parser revision is `catalog-registry-v2`: balanced link targets,
+The CLI parser revision is `catalog-registry-v3`: balanced link targets/labels,
 optional Markdown titles, featured linked headings and malformed one-cell table
 rows are now handled without changing an old snapshot's parse identity.
 

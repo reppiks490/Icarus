@@ -201,7 +201,8 @@ def test_credential_content_never_enters_raw_cache_or_registry(tmp_path, payload
 
 
 @pytest.mark.parametrize("description", ['{"api_key": "SECRET_SENTINEL"}', '{"password": "SECRET_SENTINEL"}',
-    '"Authorization": "Bearer SECRET_SENTINEL"', 'api_token=SECRET_SENTINEL', 'auth_token=SECRET_SENTINEL'])
+    '"Authorization": "Bearer SECRET_SENTINEL"', 'api_token=SECRET_SENTINEL', 'auth_token=SECRET_SENTINEL',
+    'API key: SECRET_SENTINEL', 'Authorization: Token SECRET_SENTINEL'])
 def test_quoted_and_alias_credentials_fail_before_persistence(tmp_path, description):
     result = run(tmp_path, run_id="quoted-secret", catalog_ids=["api-mega-list"],
                  client=FakeClient(PAYLOAD.replace(b"SECRET_SENTINEL", description.encode())))

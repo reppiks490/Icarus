@@ -20,7 +20,7 @@ from icarus_engine.discovery_registry.normalize import contains_credential_metad
 
 
 MAX_CATALOG_BYTES = 20_000_000
-PARSER_REVISION = "catalog-registry-v2"
+PARSER_REVISION = "catalog-registry-v3"
 _REPO = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 _RUN_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$")
 _SOURCES = {

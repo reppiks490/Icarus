@@ -10,7 +10,6 @@ from .contracts import CatalogEntry, CatalogSnapshot
 from .normalize import normalize_name
 
 
-_LINK_START_RE = re.compile(r"\[((?:\\.|[^\\\]])+)\]\(")
 _BULLET_START_RE = re.compile(r"^\s*[-*]\s+(?:\*\*)?")
 _HEADING_START_RE = re.compile(r"^\s*#{1,6}\s+(?:\*\*)?")
 _SEPARATOR_RE = re.compile(r"^:?-{3,}:?$")
@@ -34,11 +33,12 @@ def _clean_heading(line: str) -> str:
 
 def _markdown_link(text: str) -> tuple[str, str, int, int] | None:
     """Read one bounded inline link without truncating balanced URL parentheses."""
-    match = _LINK_START_RE.search(text)
-    if match is None:
+    label = _markdown_label(text)
+    if label is None:
         return None
+    name, start, body_start = label
     depth, escaped, quote, angle = 1, False, None, False
-    for index in range(match.end(), len(text)):
+    for index in range(body_start, len(text)):
         char = text[index]
         if escaped:
             escaped = False
@@ -54,10 +54,10 @@ def _markdown_link(text: str) -> tuple[str, str, int, int] | None:
             if char == ">":
                 angle = False
             continue
-        if char == "<" and index == match.end():
+        if char == "<" and index == body_start:
             angle = True
             continue
-        if char in {"'", '"'} and index > match.end() and text[index - 1].isspace():
+        if char in {"'", '"'} and index > body_start and text[index - 1].isspace():
             quote = char
             continue
         if char == "(":
@@ -65,7 +65,7 @@ def _markdown_link(text: str) -> tuple[str, str, int, int] | None:
         elif char == ")":
             depth -= 1
             if depth == 0:
-                body = text[match.end():index].strip()
+                body = text[body_start:index].strip()
                 if body.startswith("<"):
                     closing = body.find(">")
                     if closing < 0:
@@ -81,7 +81,33 @@ def _markdown_link(text: str) -> tuple[str, str, int, int] | None:
                 if title and not re.fullmatch(r'''(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\([^)]*\))''', title):
                     return None
                 url = re.sub(r"\\([()])", r"\1", url)
-                return match.group(1), url, match.start(), index + 1
+                return name, url, start, index + 1
+    return None
+
+
+def _markdown_label(text: str) -> tuple[str, int, int] | None:
+    # Walk labels once, including nested/escaped brackets; no regex backtracking.
+    start = text.find("[")
+    while start >= 0:
+        depth, escaped = 1, False
+        for index in range(start + 1, len(text)):
+            char = text[index]
+            if escaped:
+                escaped = False
+                continue
+            if char == "\\":
+                escaped = True
+            elif char == "[":
+                depth += 1
+            elif char == "]":
+                depth -= 1
+                if depth == 0:
+                    if index + 1 < len(text) and text[index + 1] == "(":
+                        return text[start + 1:index], start, index + 2
+                    start = text.find("[", index + 1)
+                    break
+        else:
+            return None
     return None
 
 

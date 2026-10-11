@@ -101,3 +101,11 @@ def test_ai_featured_link_heading_is_an_observation_not_just_a_category():
     result = parse_ai_agent_tools(snapshot("ai-agent-tools"), text)
     assert len(result.entries) == 1
     assert result.entries[0].canonical_name == "Featured"
+
+
+def test_nested_markdown_label_preserves_valid_catalog_entry():
+    text = "| API Name | Description |\n|---|---|\n| [Vendor [API]](https://example.com/data) | Public feed |\n"
+    result = parse_api_mega_list(snapshot("api-mega-list"), text)
+    assert result.raw_count == 1 and result.parse_failures == ()
+    assert result.entries[0].canonical_name == "Vendor [API]"
+    assert result.entries[0].endpoint_or_tool_url == "https://example.com/data"
