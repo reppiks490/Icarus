@@ -73,6 +73,15 @@ def test_new_catalog_revision_preserves_observation_identity_and_all_links(tmp_p
     service.close()
 
 
+def test_last_seen_timestamp_compares_instants_not_iso_string_order(tmp_path):
+    service = DiscoveryRegistryService(tmp_path)
+    service.import_snapshot(snapshot(), TEXT, importer_name="api_mega")
+    later = snapshot(upstream_commit="b" * 40, retrieved_at="2026-10-11T21:00:00.500000Z")
+    service.import_snapshot(later, TEXT, importer_name="api_mega")
+    assert {c.last_seen_at for c in service.store.candidates()} == {later.retrieved_at}
+    service.close()
+
+
 def test_sponsored_placement_does_not_change_quality_or_policy(tmp_path):
     text = TEXT.replace("# Finance", "# Sponsored — Featured")
     service = DiscoveryRegistryService(tmp_path)
@@ -112,4 +121,23 @@ def test_pipeline_failure_rolls_back_whole_snapshot(tmp_path, monkeypatch):
     assert service.snapshot()["catalog_snapshots"] == 0
     assert service.snapshot()["candidates"] == 0
     assert service.snapshot()["catalog_entries"] == 0
+    service.close()
+
+
+def test_foundation_doc_states_authority_and_scope():
+    text = (Path(__file__).resolve().parents[1] / "docs/icarus/CAPABILITY_DATA_DISCOVERY_REGISTRY.md").read_text()
+    assert "execution_authorized=false" in text
+    assert "production_decision_authorized=false" in text
+    assert "DISCOVERED does not mean qualified" in text
+    assert "provider federation is read-only" in text.lower()
+    assert "does not expose HTTP, MCP, or dashboard surfaces yet" in text
+
+
+def test_credential_bearing_row_is_only_a_hashed_failure(tmp_path):
+    text = TEXT + "| [Credential](https://user:SECRET_SENTINEL@example.com/data) | Private endpoint |\n"
+    service = DiscoveryRegistryService(tmp_path)
+    result = service.import_snapshot(snapshot(text), text, importer_name="api_mega")
+    assert result.parse_failures == 2
+    assert "SECRET_SENTINEL" not in str([c.to_dict() for c in service.store.candidates()])
+    assert "SECRET_SENTINEL" not in str(service.store.catalog_snapshot(snapshot(text).snapshot_id).to_dict())
     service.close()

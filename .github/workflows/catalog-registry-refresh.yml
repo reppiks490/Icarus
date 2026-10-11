@@ -1,0 +1,84 @@
+name: catalog-registry-refresh
+
+on:
+  schedule:
+    - cron: '37 4 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: catalog-registry-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      RUN_ID: catalog-registry-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install test dependency only
+        run: python -m pip install 'pytest>=8,<10'
+      - name: Verify offline foundation before public catalog retrieval
+        run: python -m pytest tests/test_catalog_registry_ingest.py tests_engine/test_discovery_registry_*.py -q
+      - name: Restore registry and pinned local snapshot cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            .catalog_registry_cache
+            research/capability_registry.sqlite3
+          key: catalog-registry-v1-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: catalog-registry-v1-
+      - name: Import all approved catalogs as discovery metadata
+        run: python -m tools.catalog_registry_ingest --catalog all --run-id "$RUN_ID"
+      - name: Save closed registry and raw local replay cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            .catalog_registry_cache
+            research/capability_registry.sqlite3
+          key: catalog-registry-v1-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Preserve bounded cycle receipt only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: catalog-registry-${{ github.run_id }}-${{ github.run_attempt }}
+          path: automation_intelligence/catalog_registry_v1/cycles/${{ env.RUN_ID }}/receipt.json
+          retention-days: 14
+          if-no-files-found: warn
+      - name: Persist only allowlisted catalog summaries
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          RECEIPT="automation_intelligence/catalog_registry_v1/cycles/$RUN_ID/receipt.json"
+          if [ ! -f "$RECEIPT" ]; then exit 0; fi
+          git add -- "automation_intelligence/catalog_registry_v1/cycles/$RUN_ID/receipt.json"
+          for CATALOG in api-mega-list scraping-apis-for-devs ai-agent-tools; do
+            LATEST="automation_intelligence/catalog_registry_v1/latest/$CATALOG.json"
+            if [ -f "$LATEST" ]; then git add -- "$LATEST"; fi
+          done
+          invalid="$(git diff --cached --name-only | grep -Ev "^automation_intelligence/catalog_registry_v1/(cycles/$RUN_ID/receipt\.json$|latest/(api-mega-list|scraping-apis-for-devs|ai-agent-tools)\.json$)" || true)"
+          if [ -n "$invalid" ]; then echo 'Out-of-scope paths staged'; exit 1; fi
+          if git diff --cached --quiet; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m "research: refresh discovery catalogs $RUN_ID [skip ci]"
+          for attempt in 1 2 3 4 5 6 7 8; do
+            git fetch origin main
+            if ! git merge --no-edit origin/main; then git merge --abort; exit 1; fi
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1

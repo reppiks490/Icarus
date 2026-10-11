@@ -126,3 +126,12 @@ Installed architecture, API/MCP/UI surfaces, persistence, truth semantics, and v
 Prior ICARUS/AEGIS research, red-team findings, handoffs, Stage-5 verification material, related-build registry, and the implementation-assurance control-plane map are consolidated at [ASSURANCE_INDEX.md](ASSURANCE_INDEX.md).
 
 The archive is evidence/context, not execution authorization or proof of implementation. `execution_authorized=false` remains unchanged.
+
+## Capability & data discovery registry
+
+The research-only registry imports pinned public catalog metadata, preserves
+source ancestry, applies fail-closed triage and links existing provider evidence
+read-only. Catalog presence is not qualification; both authority flags stay false.
+
+Commands, contracts and verification:
+[Capability & Data Discovery Registry](docs/icarus/CAPABILITY_DATA_DISCOVERY_REGISTRY.md).

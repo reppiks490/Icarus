@@ -80,3 +80,24 @@ def test_entries_preserve_source_path_raw_hash_category_and_source_order():
     assert row.raw_row_sha256 is not None and len(row.raw_row_sha256) == 64
     assert row.category == "Editor's Choice / Sponsored"
     assert row.source_order > 0
+
+
+def test_one_cell_table_row_is_counted_as_a_failure_not_silently_dropped():
+    text = "| API Name | Description |\n|---|---|\n| [A](https://example.com) |\n"
+    result = parse_api_mega_list(snapshot("api-mega-list"), text)
+    assert result.raw_count == 1
+    assert len(result.parse_failures) == 1
+    assert result.entries == ()
+
+
+def test_markdown_url_parentheses_and_optional_title_preserve_target():
+    text = '| API Name | Description |\n|---|---|\n| [A](https://example.com/a_(b) "A title") | A |\n'
+    result = parse_api_mega_list(snapshot("api-mega-list"), text)
+    assert result.entries[0].endpoint_or_tool_url == "https://example.com/a_(b)"
+
+
+def test_ai_featured_link_heading_is_an_observation_not_just_a_category():
+    text = "# Sponsored\n### **[Featured](https://example.com/featured)** - Advertised tool\n"
+    result = parse_ai_agent_tools(snapshot("ai-agent-tools"), text)
+    assert len(result.entries) == 1
+    assert result.entries[0].canonical_name == "Featured"

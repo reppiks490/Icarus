@@ -14,6 +14,13 @@ from icarus_engine.discovery_registry.normalize import (
 )
 
 
+@pytest.mark.parametrize("url", ["https://user:secret@example.com/data", "https://token@example.com/data",
+    "https://example.com/data?api_key=SECRET_SENTINEL", "https://example.com/data?access_token=SECRET_SENTINEL"])
+def test_credential_bearing_urls_are_rejected_not_persisted(url):
+    with pytest.raises(ValueError, match="credential"):
+        normalize_url(url)
+
+
 def test_normalize_url_drops_only_known_tracking_parameters():
     got = normalize_url("https://apify.com/acme/tool?fpr=abc&symbol=NQ&utm_source=x#top")
     assert got.identity_url == "https://apify.com/acme/tool?symbol=NQ"

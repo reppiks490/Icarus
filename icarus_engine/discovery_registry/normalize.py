@@ -21,6 +21,25 @@ _TRACKING_KEYS = frozenset(
         "utm_content",
     }
 )
+_CREDENTIAL_TEXT = re.compile(
+    r"\bauthorization[`'\"]?\s*[:=]\s*[`'\"]?(?:bearer|basic)\s+[^\s`'\",;|]+|"
+    r"\b(?:api[_-]?(?:key|token)|auth[_-]?token|access[_-]?token|client[_-]?secret|password)"
+    r"[`'\"]?\s*[:=]\s*[`'\"]?[^\s`'\",;|]+",
+    re.IGNORECASE,
+)
+
+
+def contains_credential_metadata(text: str) -> bool:
+    """Detect explicit credential assignments; never extract or return their values."""
+    if _CREDENTIAL_TEXT.search(text):
+        return True
+    for url in re.findall(r"https?://[^\s<>\"')]+", text, flags=re.IGNORECASE):
+        try:
+            normalize_url(url)
+        except ValueError as exc:
+            if "credential" in str(exc):
+                return True
+    return False
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,6 +58,8 @@ def normalize_url(url: str) -> NormalizedURL:
     scheme = parsed.scheme.lower()
     if scheme not in {"http", "https"} or not parsed.hostname:
         raise ValueError("only absolute http(s) URLs are supported")
+    if parsed.username is not None or parsed.password is not None:
+        raise ValueError("credential-bearing URLs cannot enter registry metadata")
 
     host = parsed.hostname.lower().rstrip(".")
     try:
@@ -52,9 +73,15 @@ def normalize_url(url: str) -> NormalizedURL:
     display_host = f"[{host}]" if ":" in host and not host.startswith("[") else host
     netloc = f"{display_host}:{port}" if include_port else display_host
 
+    pairs = parse_qsl(parsed.query, keep_blank_values=True)
+    if any(key.casefold().replace("-", "_") in {
+        "apikey", "api_key", "apitoken", "api_token", "authtoken", "auth_token",
+        "accesstoken", "access_token", "password", "secret", "authorization", "clientsecret", "client_secret"
+    } and value for key, value in pairs):
+        raise ValueError("credential-bearing query parameters cannot enter registry metadata")
     retained = [
         (key, value)
-        for key, value in parse_qsl(parsed.query, keep_blank_values=True)
+        for key, value in pairs
         if key.casefold() not in _TRACKING_KEYS
     ]
     retained.sort(key=lambda item: (item[0], item[1]))
@@ -147,6 +174,7 @@ __all__ = [
     "candidate_identity",
     "canonical_provider_name",
     "classify_data_class",
+    "contains_credential_metadata",
     "normalize_name",
     "normalize_url",
 ]

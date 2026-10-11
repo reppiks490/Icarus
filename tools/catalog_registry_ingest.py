@@ -10,15 +10,17 @@ import os
 from pathlib import Path
 import re
 import tempfile
+import zlib
 from typing import Callable, Sequence
 from urllib.request import HTTPRedirectHandler, ProxyHandler, Request, build_opener
 
 from icarus_engine.discovery_registry.contracts import CatalogSnapshot, validate_commit_sha
 from icarus_engine.discovery_registry.service import DiscoveryRegistryService
+from icarus_engine.discovery_registry.normalize import contains_credential_metadata
 
 
 MAX_CATALOG_BYTES = 20_000_000
-PARSER_REVISION = "catalog-registry-v1"
+PARSER_REVISION = "catalog-registry-v2"
 _REPO = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 _RUN_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$")
 _SOURCES = {
@@ -27,7 +29,8 @@ _SOURCES = {
     "ai-agent-tools": ("cporter202/ai-agent-tools", "ai_agent_tools", True),
 }
 _ERROR_CODES = frozenset({"INVALID_TARGET", "INVALID_COMMIT", "INVALID_REF_RESPONSE",
-    "CATALOG_PAYLOAD_LIMIT", "NETWORK_FAILURE", "INVALID_UTF8", "INVALID_PAYLOAD", "IMPORT_FAILED"})
+    "CATALOG_PAYLOAD_LIMIT", "NETWORK_FAILURE", "INVALID_UTF8", "INVALID_PAYLOAD", "IMPORT_FAILED",
+    "CREDENTIAL_BEARING_METADATA", "UNRECOGNIZED_CATALOG_FORMAT", "CACHE_PERSISTENCE_FAILED"})
 RECEIPT_ROOT = Path("automation_intelligence/catalog_registry_v1")
 
 
@@ -93,12 +96,12 @@ def _json_bytes(value: object) -> bytes:
     return (json.dumps(value, allow_nan=False, sort_keys=True, indent=2) + "\n").encode("utf-8")
 
 
-def _atomic_json(path: Path, value: object) -> None:
+def _atomic_bytes(path: Path, data: bytes) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.NamedTemporaryFile(dir=path.parent, prefix=".registry-", delete=False) as handle:
         temporary = Path(handle.name)
         try:
-            handle.write(_json_bytes(value))
+            handle.write(data)
             handle.flush()
             os.fsync(handle.fileno())
         except BaseException:
@@ -108,6 +111,25 @@ def _atomic_json(path: Path, value: object) -> None:
         os.replace(temporary, path)
     finally:
         temporary.unlink(missing_ok=True)
+
+
+def _atomic_json(path: Path, value: object) -> None:
+    _atomic_bytes(path, _json_bytes(value))
+
+
+def _cache_snapshot(path: Path, data: bytes, digest: str) -> None:
+    if path.is_symlink():
+        raise CatalogFetchError("CACHE_PERSISTENCE_FAILED")
+    if path.exists():
+        try:
+            with gzip.open(path, "rb") as handle:
+                cached = handle.read(MAX_CATALOG_BYTES + 1)
+            if len(cached) == len(data) and hashlib.sha256(cached).hexdigest() == digest:
+                return
+        except (OSError, EOFError, zlib.error):
+            pass
+    # A fetched immutable snapshot safely repairs an interrupted/corrupt cache.
+    _atomic_bytes(path, gzip.compress(data, mtime=0))
 
 
 def _sources(root: Path) -> dict[str, dict]:
@@ -168,17 +190,18 @@ def run(root: Path, *, run_id: str, catalog_ids: Sequence[str] | None = None,
                     text = data.decode("utf-8")
                 except UnicodeDecodeError as exc:
                     raise CatalogFetchError("INVALID_UTF8") from exc
+                if contains_credential_metadata(text):
+                    raise CatalogFetchError("CREDENTIAL_BEARING_METADATA")
                 digest = hashlib.sha256(data).hexdigest()
                 snapshot = CatalogSnapshot(catalog_id=catalog_id, upstream_repo=source["upstream_repo"],
                     upstream_commit=commit, upstream_path=source["upstream_path"], content_sha256=digest,
                     retrieved_at=now, parser_revision=PARSER_REVISION)
                 summary = service.import_snapshot(snapshot, text, importer_name=source["importer"])
+                if summary.raw_count < 1 or summary.imported_entries < 1:
+                    raise CatalogFetchError("UNRECOGNIZED_CATALOG_FORMAT")
                 snapshot = service.store.catalog_snapshot(snapshot.snapshot_id)
                 cache = root / ".catalog_registry_cache/raw" / catalog_id / commit / (digest + ".md.gz")
-                cache.parent.mkdir(parents=True, exist_ok=True)
-                if not cache.exists():
-                    with cache.open("xb") as handle:
-                        handle.write(gzip.compress(data, mtime=0))
+                _cache_snapshot(cache, data, digest)
                 # Deliberately omit snapshot.parse_failures and every raw entry/description.
                 item = {key: getattr(snapshot, key) for key in (
                     "catalog_id", "snapshot_id", "upstream_repo", "upstream_commit", "upstream_path",
@@ -190,6 +213,18 @@ def run(root: Path, *, run_id: str, catalog_ids: Sequence[str] | None = None,
             except Exception as exc:
                 code = exc.code if isinstance(exc, CatalogFetchError) else "IMPORT_FAILED"
                 result["errors"].append({"catalog_id": catalog_id, "error_code": code})
+        provider_catalog = root / "config/provider_endpoint_catalog.json"
+        if provider_catalog.is_file():
+            try:
+                result["provider_federation"] = service.federate_existing_providers(
+                    provider_catalog, root / "automation_intelligence/provider_collection_v1/latest")
+            except Exception:
+                result["provider_federation"] = {"status": "FAILED", "error_code": "INVALID_PROVIDER_EVIDENCE",
+                    "execution_authorized": False, "production_decision_authorized": False}
+                result["errors"].append({"component": "provider_federation", "error_code": "INVALID_PROVIDER_EVIDENCE"})
+        else:
+            result["provider_federation"] = {"status": "NOT_AVAILABLE",
+                "execution_authorized": False, "production_decision_authorized": False}
         result["registry_summary"] = service.snapshot()
     finally:
         service.close()

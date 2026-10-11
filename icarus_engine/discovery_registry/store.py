@@ -319,6 +319,12 @@ class RegistryStore:
                 inserted += 1
         return inserted
 
+    def provider_link(self, link_id: str) -> ProviderLink | None:
+        row = self._conn.execute(
+            "SELECT payload_json FROM provider_links WHERE link_id=?", (link_id,)
+        ).fetchone()
+        return None if row is None else ProviderLink(**json.loads(row[0]))
+
     def candidate(self, candidate_id: str) -> Candidate | None:
         row = self._conn.execute(
             "SELECT payload_json FROM candidates WHERE candidate_id=?", (candidate_id,)

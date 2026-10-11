@@ -2,13 +2,15 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, replace
+from collections import Counter
+from datetime import datetime
 import hashlib
 from pathlib import Path
 
-from .contracts import Candidate, CatalogSnapshot, Disposition, PolicyState
+from .contracts import Candidate, CatalogSnapshot, Disposition, PolicyState, QualificationState
 from .dedupe import DuplicateResolver
 from .importers import importer_for
-from .normalize import candidate_identity, classify_data_class, normalize_url
+from .normalize import candidate_identity, classify_data_class, contains_credential_metadata, normalize_url
 from .policy import PolicyTriage
 from .store import RegistryStore
 
@@ -47,6 +49,10 @@ class DiscoveryRegistryService:
         entries, records, decisions = [], [], []
         triage = PolicyTriage(decided_at=snapshot.retrieved_at)
         for entry in parsed.entries:
+            if contains_credential_metadata(f"{entry.canonical_name} {entry.description}"):
+                failures.append({"reason": "CREDENTIAL_BEARING_METADATA", "source_order": str(entry.source_order),
+                                 "raw_row_sha256": entry.raw_row_sha256 or ""})
+                continue
             try:
                 normalized = normalize_url(entry.endpoint_or_tool_url)
             except ValueError:
@@ -95,7 +101,8 @@ class DiscoveryRegistryService:
                     record = replace(old,
                         upstream_catalog_refs=tuple(sorted(set(old.upstream_catalog_refs + record.upstream_catalog_refs))),
                         upstream_entry_hashes=tuple(sorted(set(old.upstream_entry_hashes + record.upstream_entry_hashes))),
-                        last_seen_at=max(old.last_seen_at or record.last_seen_at, record.last_seen_at),
+                        last_seen_at=max(old.last_seen_at or record.last_seen_at, record.last_seen_at,
+                                         key=lambda value: datetime.fromisoformat(value.replace("Z", "+00:00"))),
                     )
                 self.store.upsert_candidates([record])
                 self.store.link_candidate(record.candidate_id, entry.entry_id)
@@ -120,6 +127,27 @@ class DiscoveryRegistryService:
 
     def snapshot(self) -> dict[str, object]:
         return self.store.summary()
+
+    def federate_existing_providers(self, endpoint_catalog_path: Path, latest_dir: Path) -> dict[str, object]:
+        from .federation import ProviderFederator
+        federator = ProviderFederator(endpoint_catalog_path, latest_dir)
+        links = federator.links_for(self.store.candidates())
+        # Keep the first link time on a replay lacking a receipt timestamp.
+        links = tuple(self.store.provider_link(link.link_id) or link for link in links)
+        with self.store.transaction():
+            inserted = self.store.record_provider_links(links)
+            events = 0
+            for event in federator.evidence_events(links):
+                candidate = self.store.candidate(event.candidate_id)
+                if (candidate.qualification_state is QualificationState.DISCOVERED
+                    and candidate.disposition is Disposition.ACTIVE
+                    and not candidate.capability_only
+                    and candidate.policy_state not in {PolicyState.REJECTED, PolicyState.RESTRICTED}):
+                    self.store.record_transition(event)
+                    events += 1
+        return {"provider_links": len(links), "links_recorded": inserted, "events_recorded": events,
+                "status_counts": dict(sorted(Counter(link.status for link in links).items())),
+                "execution_authorized": False, "production_decision_authorized": False}
 
     def close(self) -> None:
         self.store.close()

@@ -422,6 +422,10 @@ class ProviderLink(_Serializable):
         object.__setattr__(self, "linked_at", utc_iso(self.linked_at))
         object.__setattr__(self, "metadata", _freeze_mapping(self.metadata))
 
+    @property
+    def status(self) -> str:
+        return str(self.metadata.get("status", "UNVERIFIED_PROVIDER_EVIDENCE"))
+
 
 _QUALIFICATION_ORDER = tuple(QualificationState)
 _QUALIFICATION_INDEX = {state: idx for idx, state in enumerate(_QUALIFICATION_ORDER)}

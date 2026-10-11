@@ -141,3 +141,89 @@ def test_existing_run_id_cannot_overwrite_immutable_cycle(tmp_path):
     run(tmp_path, run_id="r1", client=FakeClient())
     with pytest.raises(FileExistsError):
         run(tmp_path, run_id="r1", client=FakeClient())
+
+
+def test_autonomous_workflow_is_offline_tested_and_scope_guarded():
+    workflow = (Path(__file__).resolve().parents[1] / ".github/workflows/catalog-registry-refresh.yml").read_text()
+    assert "37 4 * * *" in workflow
+    assert "workflow_dispatch" in workflow
+    assert "contents: write" in workflow
+    assert "--catalog all" in workflow
+    assert "python -m pytest tests/test_catalog_registry_ingest.py tests_engine/test_discovery_registry_*.py -q" in workflow
+    assert workflow.index("python -m pytest") < workflow.index("python -m tools.catalog_registry_ingest")
+    assert "secrets." not in workflow
+    assert "chatgpt" not in workflow.lower()
+    assert "git rebase" not in workflow and "--force" not in workflow
+    assert "Out-of-scope paths staged" in workflow
+    adds = [line.strip() for line in workflow.splitlines() if "git add " in line]
+    assert adds
+    assert all(".catalog_registry_cache" not in line and "research/capability_registry.sqlite3" not in line for line in adds)
+    assert 'automation_intelligence/catalog_registry_v1/cycles/$RUN_ID' in workflow
+    assert 'automation_intelligence/catalog_registry_v1/latest' in workflow
+    assert "catalog-registry-v1-" in workflow
+    assert "actions/cache/restore@v4" in workflow and "actions/cache/save@v4" in workflow
+    assert "refs/heads/main" in workflow
+    # Only the bounded receipt is uploaded, not a cache/database/directory of raw data.
+    artifact = workflow.split("uses: actions/upload-artifact@v4", 1)[1].split("- name:", 1)[0]
+    assert "receipt.json" in artifact
+    assert ".catalog_registry_cache" not in artifact and "sqlite3" not in artifact
+
+
+def test_cli_federates_local_receipts_without_downloader_calls(tmp_path):
+    from datetime import datetime, timezone
+    config = tmp_path / "config"
+    config.mkdir()
+    (config / "provider_endpoint_catalog.json").write_text(json.dumps({"operations": [
+        {"id": "twelve:get:/quote", "provider": "twelve", "method": "GET", "path": "/quote"}]}))
+    latest = tmp_path / "automation_intelligence/provider_collection_v1/latest"
+    latest.mkdir(parents=True)
+    (latest / "twelve.json").write_text(json.dumps({"completed_at_utc": datetime.now(timezone.utc).isoformat(),
+        "providers": {"twelve": {"status": "COLLECTED_PARTIAL", "collected_pages": 1}}}))
+    payload = PAYLOAD.replace(b"https://example.com", b"https://twelvedata.com")
+    result = run(tmp_path, run_id="federated", catalog_ids=["api-mega-list"], client=FakeClient(payload))
+    assert result["provider_federation"]["events_recorded"] == 1
+    assert result["registry_summary"]["provider_links"] == 1
+    assert result["registry_summary"]["qualification_events"] == 1
+
+
+@pytest.mark.parametrize("payload", [
+    PAYLOAD.replace(b"https://example.com", b"https://user:SECRET_SENTINEL@example.com"),
+    PAYLOAD.replace(b"https://example.com", b"https://example.com?api_key=SECRET_SENTINEL"),
+    PAYLOAD.replace(b"SECRET_SENTINEL", b"Authorization: Bearer SECRET_SENTINEL"),
+])
+def test_credential_content_never_enters_raw_cache_or_registry(tmp_path, payload):
+    result = run(tmp_path, run_id="secret", catalog_ids=["api-mega-list"], client=FakeClient(payload))
+    assert result["status"] == "FAILED"
+    assert result["errors"][0]["error_code"] == "CREDENTIAL_BEARING_METADATA"
+    assert result["registry_summary"]["catalog_snapshots"] == 0
+    assert not (tmp_path / ".catalog_registry_cache/raw").exists()
+    assert "SECRET_SENTINEL" not in (tmp_path / result["receipt_path"]).read_text()
+
+
+@pytest.mark.parametrize("description", ['{"api_key": "SECRET_SENTINEL"}', '{"password": "SECRET_SENTINEL"}',
+    '"Authorization": "Bearer SECRET_SENTINEL"', 'api_token=SECRET_SENTINEL', 'auth_token=SECRET_SENTINEL'])
+def test_quoted_and_alias_credentials_fail_before_persistence(tmp_path, description):
+    result = run(tmp_path, run_id="quoted-secret", catalog_ids=["api-mega-list"],
+                 client=FakeClient(PAYLOAD.replace(b"SECRET_SENTINEL", description.encode())))
+    assert result["status"] == "FAILED"
+    assert not (tmp_path / ".catalog_registry_cache/raw").exists()
+
+
+def test_corrupted_existing_snapshot_cache_is_repaired_atomically(tmp_path):
+    import gzip
+    import hashlib
+    digest = hashlib.sha256(PAYLOAD).hexdigest()
+    cache = tmp_path / ".catalog_registry_cache/raw/api-mega-list" / ("a" * 40) / (digest + ".md.gz")
+    cache.parent.mkdir(parents=True)
+    cache.write_bytes(gzip.compress(b""))
+    result = run(tmp_path, run_id="repair-cache", catalog_ids=["api-mega-list"], client=FakeClient())
+    assert result["status"] == "SUCCESS"
+    assert gzip.decompress(cache.read_bytes()) == PAYLOAD
+    assert not list(cache.parent.glob(".registry-*"))
+
+
+def test_unrecognized_empty_catalog_format_does_not_claim_success(tmp_path):
+    result = run(tmp_path, run_id="format-drift", catalog_ids=["api-mega-list"],
+                 client=FakeClient(b"# Catalog\n- [A](https://example.com) - Valid bullet, wrong configured format\n"))
+    assert result["status"] == "FAILED"
+    assert result["errors"][0]["error_code"] == "UNRECOGNIZED_CATALOG_FORMAT"
