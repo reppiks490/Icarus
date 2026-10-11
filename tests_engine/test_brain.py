@@ -287,7 +287,7 @@ def _clock_event(recorded_at, *, subject="synthetic clock regression"):
 def _clock_journal(tmp_path, events):
     path = tmp_path / "audit" / "brain_events.jsonl"
     path.parent.mkdir()
-    path.write_text("".join(json.dumps(event) + "\n" for event in events), encoding="utf-8")
+    path.write_bytes("".join(json.dumps(event) + "\n" for event in events).encode("utf-8"))
     return path
 
 
