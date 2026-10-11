@@ -396,6 +396,11 @@ class DuplicateGroup(_Serializable):
         object.__setattr__(self, "member_ids", members)
         object.__setattr__(self, "catalog_refs", tuple(self.catalog_refs))
 
+    @property
+    def effective_independent_count(self) -> int:
+        """A structural family is one evidence lineage, not multiple sources."""
+        return 1
+
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ProviderLink(_Serializable):

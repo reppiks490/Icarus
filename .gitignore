@@ -18,6 +18,9 @@ build/
 dist/
 *.db
 *.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
+.catalog_registry_cache/
 *.log
 *.pid
 icarus_engine.db

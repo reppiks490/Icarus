@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from contextlib import contextmanager
 import hashlib
 import json
 from pathlib import Path
@@ -54,6 +55,7 @@ class RegistryStore:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._conn = sqlite3.connect(self.db_path)
         self._conn.row_factory = sqlite3.Row
+        self._savepoint_counter = 0
         self._conn.execute("PRAGMA foreign_keys=ON")
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._create_schema()
@@ -109,6 +111,10 @@ class RegistryStore:
                 operation_id TEXT NOT NULL,
                 payload_json TEXT NOT NULL
             );
+            CREATE TABLE IF NOT EXISTS snapshot_import_summaries (
+                snapshot_id TEXT PRIMARY KEY REFERENCES catalog_snapshots(snapshot_id),
+                payload_json TEXT NOT NULL
+            );
             """
         )
         self._conn.commit()
@@ -116,6 +122,40 @@ class RegistryStore:
     def pragma_journal_mode(self) -> str:
         row = self._conn.execute("PRAGMA journal_mode").fetchone()
         return str(row[0]).lower()
+
+    @contextmanager
+    def transaction(self):
+        """Composable atomic unit: nested writes must not commit an outer import."""
+        self._savepoint_counter += 1
+        name = f"registry_{self._savepoint_counter}"
+        self._conn.execute(f"SAVEPOINT {name}")
+        try:
+            yield
+        except BaseException:
+            self._conn.execute(f"ROLLBACK TO {name}")
+            self._conn.execute(f"RELEASE {name}")
+            raise
+        else:
+            self._conn.execute(f"RELEASE {name}")
+
+    def catalog_snapshot(self, snapshot_id: str) -> CatalogSnapshot | None:
+        row = self._conn.execute(
+            "SELECT payload_json FROM catalog_snapshots WHERE snapshot_id=?", (snapshot_id,)
+        ).fetchone()
+        return None if row is None else CatalogSnapshot(**json.loads(row[0]))
+
+    def import_summary(self, snapshot_id: str) -> dict[str, object] | None:
+        row = self._conn.execute(
+            "SELECT payload_json FROM snapshot_import_summaries WHERE snapshot_id=?", (snapshot_id,)
+        ).fetchone()
+        return None if row is None else json.loads(row[0])
+
+    def record_import_summary(self, snapshot_id: str, summary: dict[str, object]) -> None:
+        with self.transaction():
+            self._conn.execute(
+                "INSERT INTO snapshot_import_summaries(snapshot_id,payload_json) VALUES (?,?)",
+                (snapshot_id, _json(summary)),
+            )
 
     def record_snapshot(self, snapshot: CatalogSnapshot) -> None:
         assert snapshot.snapshot_id is not None
@@ -127,7 +167,7 @@ class RegistryStore:
             if row["payload_json"] != payload:
                 raise ValueError("snapshot identity already exists with different content")
             return
-        with self._conn:
+        with self.transaction():
             self._conn.execute(
                 "INSERT INTO catalog_snapshots(snapshot_id,payload_json) VALUES (?,?)",
                 (snapshot.snapshot_id, payload),
@@ -136,7 +176,7 @@ class RegistryStore:
     def record_entries(self, snapshot_id: str, entries: Iterable[CatalogEntry]) -> int:
         inserted = 0
         seen: set[str] = set()
-        with self._conn:
+        with self.transaction():
             for entry in entries:
                 if entry.entry_id in seen:
                     continue
@@ -161,7 +201,7 @@ class RegistryStore:
     def upsert_candidates(self, candidates: Iterable[Candidate]) -> int:
         changed = 0
         seen: set[str] = set()
-        with self._conn:
+        with self.transaction():
             for candidate in candidates:
                 if candidate.candidate_id in seen:
                     continue
@@ -188,7 +228,7 @@ class RegistryStore:
         return changed
 
     def link_candidate(self, candidate_id: str, entry_id: str) -> None:
-        with self._conn:
+        with self.transaction():
             self._conn.execute(
                 "INSERT OR IGNORE INTO candidate_catalog_links(candidate_id,entry_id) VALUES (?,?)",
                 (candidate_id, entry_id),
@@ -204,7 +244,7 @@ class RegistryStore:
             if row["payload_json"] != payload:
                 raise ValueError("policy decision identity conflict")
             return
-        with self._conn:
+        with self.transaction():
             self._conn.execute(
                 "INSERT INTO policy_reviews(decision_id,candidate_id,entry_id,payload_json) VALUES (?,?,?,?)",
                 (decision_id, decision.candidate_id, decision.entry_id, payload),
@@ -229,7 +269,7 @@ class RegistryStore:
             )
         updated = replace(current, qualification_state=event.new_state)
         updated_payload = _json(updated.to_dict())
-        with self._conn:
+        with self.transaction():
             self._conn.execute(
                 "INSERT INTO qualification_events(event_id,candidate_id,old_state,new_state,payload_json) VALUES (?,?,?,?,?)",
                 (event_id, event.candidate_id, event.old_state.value, event.new_state.value, event_payload),
@@ -241,7 +281,7 @@ class RegistryStore:
 
     def replace_duplicate_groups(self, groups: Iterable[DuplicateGroup]) -> None:
         supplied = tuple(groups)
-        with self._conn:
+        with self.transaction():
             self._conn.execute("DELETE FROM duplicate_members")
             self._conn.execute("DELETE FROM duplicate_groups")
             for group in supplied:
@@ -258,7 +298,7 @@ class RegistryStore:
     def record_provider_links(self, links: Iterable[ProviderLink]) -> int:
         inserted = 0
         seen: set[str] = set()
-        with self._conn:
+        with self.transaction():
             for link in links:
                 payload = _json(link.to_dict())
                 link_id = link.link_id or _digest(payload)

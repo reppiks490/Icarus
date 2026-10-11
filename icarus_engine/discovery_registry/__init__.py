@@ -19,6 +19,7 @@ from .contracts import (
     validate_commit_sha,
     validate_sha256,
 )
+from .service import DiscoveryRegistryService, ImportSummary
 
 __all__ = [
     "CatalogEntry",
@@ -27,7 +28,9 @@ __all__ = [
     "CostModel",
     "DataClass",
     "Disposition",
+    "DiscoveryRegistryService",
     "DuplicateGroup",
+    "ImportSummary",
     "PolicyDecision",
     "PolicyState",
     "ProviderLink",
