@@ -253,6 +253,156 @@ def test_brain_registers_ascendancy_capability_orchestrator(tmp_path):
     assert out["authority"]["production_decision_authorized"] is False
 
 
+@pytest.mark.parametrize(("older_clock", "newer_clock"), [
+    ("2026-10-10T12:30:00+03:00", "2026-10-10T10:00:00Z"),
+    ("2026-10-11T00:30:00+02:00", "2026-10-10T23:00:00Z"),
+    ("2026-10-10T10:00:00Z", "2026-10-10T10:00:00.000001Z"),
+    ("2026-10-10T10:00:00.100000Z", "2026-10-10T10:00:00.2Z"),
+])
+@pytest.mark.parametrize("reverse_append", [False, True])
+def test_brain_chronological_order_uses_utc_and_fractional_seconds(
+    tmp_path, older_clock, newer_clock, reverse_append, brain_clock,
+):
+    older = _clock_event(older_clock, subject="older UTC evidence")
+    newer = _clock_event(newer_clock, subject="newer UTC evidence")
+    appended = [older, newer][:: -1 if reverse_append else 1]
+    path = _clock_journal(tmp_path, appended)
+    original = path.read_bytes()
+
+    rows, errors = brain._read_events(tmp_path)
+    snapshot = brain.brain_snapshot(tmp_path)
+
+    assert errors == snapshot["learning"]["journal_errors"] == 0
+    assert [row["id"] for row in rows] == [older["id"], newer["id"]]
+    assert [row["recorded_at"] for row in rows] == [older_clock, newer_clock]
+    assert [row["id"] for row in snapshot["events"]] == [older["id"], newer["id"]]
+    assert path.read_bytes() == original
+    assert snapshot["authority"]["execution_authorized"] is False
+    assert snapshot["authority"]["production_decision_authorized"] is False
+
+
+def _chronology_candidate(stage, recorded_at):
+    semantic = brain._event_semantic(_candidate(
+        subject="synthetic chronology candidate",
+        candidate_id="synthetic-chronology-candidate",
+        summary="Synthetic candidate chronology regression only",
+        stage=stage,
+        status="rejected" if stage == "rejected" else "qualified",
+        source_repo="synthetic/chronology-fixture",
+    ))
+    return {**semantic, "id": brain._event_id(semantic), "recorded_at": recorded_at}
+
+
+@pytest.mark.parametrize("limit", [1, 2])
+@pytest.mark.parametrize("reverse_append", [False, True])
+def test_brain_chronological_order_keeps_newer_rejection_and_removes_shadow_route(
+    tmp_path, limit, reverse_append, brain_clock,
+):
+    qualified = _chronology_candidate("qualified_shadow", "2026-10-10T12:30:00+03:00")
+    rejected = _chronology_candidate("rejected", "2026-10-10T10:00:00Z")
+    path = _clock_journal(tmp_path, [qualified, rejected][:: -1 if reverse_append else 1])
+    original = path.read_bytes()
+
+    rows, errors = brain._read_events(tmp_path, limit=limit)
+    snapshot = brain.brain_snapshot(tmp_path, limit=limit, market_status={
+        "assets": [{"symbol": "SYNTHETIC", "state": {"rate_regime_str": "STRONG"}}],
+    })
+
+    assert errors == 0
+    assert [row["id"] for row in rows] == [qualified["id"], rejected["id"]][-limit:]
+    candidate = brain._latest_candidates(rows)[0]
+    assert candidate["id"] == snapshot["candidates"][0]["id"] == rejected["id"]
+    assert candidate["stage"] == "rejected"
+    assert candidate["eligible_for_regime_swap"] is False
+    assert snapshot["regime_routes"][0]["selected_candidate"] is None
+    assert snapshot["regime_routes"][0]["eligible_shadow_candidates"] == []
+    assert snapshot["regime_routes"][0]["selection_mode"] == "SHADOW_ONLY"
+    assert snapshot["authority"]["execution_authorized"] is False
+    assert snapshot["authority"]["production_decision_authorized"] is False
+    assert path.read_bytes() == original
+
+
+@pytest.mark.parametrize(("first_clock", "second_clock"), [
+    ("2026-10-10T14:00:00+04:00", "2026-10-10T05:00:00-05:00"),
+    ("2026-10-10T10:00:00Z", "2026-10-10T10:00:00+00:00"),
+    ("2026-10-10T10:00:00.000000Z", "2026-10-10T10:00:00+00:00"),
+])
+@pytest.mark.parametrize("reverse_append", [False, True])
+def test_brain_chronological_order_ties_equivalent_instants_by_semantic_id(
+    tmp_path, first_clock, second_clock, reverse_append,
+):
+    expected = sorted([
+        _clock_event(first_clock, subject="synthetic ID tie alpha"),
+        _clock_event(first_clock, subject="synthetic ID tie beta"),
+    ], key=lambda row: row["id"])
+    expected[0]["recorded_at"] = first_clock
+    expected[1]["recorded_at"] = second_clock
+    path = _clock_journal(tmp_path, expected[:: -1 if reverse_append else 1])
+    original = path.read_bytes()
+
+    rows, errors = brain._read_events(tmp_path)
+
+    assert errors == 0
+    assert [row["id"] for row in rows] == [row["id"] for row in expected]
+    assert [row["recorded_at"] for row in rows] == [first_clock, second_clock]
+    assert path.read_bytes() == original
+
+
+@pytest.mark.parametrize("reverse_append", [False, True])
+def test_brain_chronological_order_candidate_tie_uses_maximum_semantic_id(
+    tmp_path, reverse_append, brain_clock,
+):
+    expected = sorted([
+        _chronology_candidate("qualified_shadow", "2026-10-10T10:00:00Z"),
+        _chronology_candidate("rejected", "2026-10-10T10:00:00Z"),
+    ], key=lambda row: row["id"])
+    expected[0]["recorded_at"] = "2026-10-10T14:00:00+04:00"
+    expected[1]["recorded_at"] = "2026-10-10T05:00:00-05:00"
+    path = _clock_journal(tmp_path, expected[:: -1 if reverse_append else 1])
+    original = path.read_bytes()
+
+    snapshot = brain.brain_snapshot(tmp_path)
+
+    assert [row["id"] for row in snapshot["events"]] == [row["id"] for row in expected]
+    assert snapshot["candidates"][0]["id"] == expected[-1]["id"]
+    assert snapshot["candidates"][0]["stage"] == expected[-1]["stage"]
+    assert path.read_bytes() == original
+
+
+def test_brain_chronological_order_preserves_bounded_scan_and_invalid_clock_accounting(tmp_path):
+    outside_window = _clock_event("2026-10-10T23:00:00Z", subject="outside inspected tail")
+    older = _clock_event("2026-10-10T12:30:00+03:00", subject="older inspected evidence")
+    newer = _clock_event("2026-10-10T10:00:00Z", subject="newer inspected evidence")
+    invalid_clock = _clock_event("2026-10-10T11:00:00", subject="invalid naive clock")
+    path = _clock_journal(tmp_path, [outside_window, older, invalid_clock, newer, "invalid object"])
+    original = path.read_bytes()
+
+    rows, errors = brain._read_events(tmp_path, limit=2)
+
+    assert errors == 2
+    assert [row["id"] for row in rows] == [older["id"], newer["id"]]
+    assert all(row["id"] != outside_window["id"] for row in rows)
+    assert path.read_bytes() == original
+
+
+@pytest.mark.parametrize("reverse_append", [False, True])
+def test_brain_chronological_order_identical_instant_and_id_retains_append_order(
+    tmp_path, reverse_append,
+):
+    original_event = _clock_event("2026-10-10T14:00:00+04:00")
+    alternate_clock = {**original_event, "recorded_at": "2026-10-10T05:00:00-05:00"}
+    appended = [original_event, alternate_clock][:: -1 if reverse_append else 1]
+    path = _clock_journal(tmp_path, appended)
+    original = path.read_bytes()
+
+    rows, errors = brain._read_events(tmp_path)
+
+    assert errors == 0
+    assert [row["id"] for row in rows] == [original_event["id"]] * 2
+    assert [row["recorded_at"] for row in rows] == [row["recorded_at"] for row in appended]
+    assert path.read_bytes() == original
+
+
 BRAIN_CLOCK_NOW = datetime(2026, 10, 10, 12, 0, tzinfo=timezone.utc)
 
 

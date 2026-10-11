@@ -387,7 +387,7 @@ def _read_events(base_dir: str | os.PathLike[str], limit: int = 1000) -> tuple[l
             rows.append(_stored_event(json.loads(line)))
         except Exception:
             errors += 1
-    rows.sort(key=lambda x: (str(x.get("recorded_at", "")), str(x.get("id", ""))))
+    rows.sort(key=lambda x: (_parse_time(x["recorded_at"]), str(x["id"])))
     return rows[-limit:], errors
 
 
