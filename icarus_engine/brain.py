@@ -11,7 +11,11 @@ import hashlib
 import json
 import math
 import os
+import errno
+import stat
 import threading
+import time
+from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Mapping
@@ -22,6 +26,7 @@ from .evidence_graph import build_evidence_graph
 SCHEMA_VERSION = "icarus-adaptive-brain-v1"
 _EVENT_SCHEMA = "icarus-brain-event-v1"
 _EVENT_LOCK = threading.Lock()
+_PROCESS_LOCK_TIMEOUT_SECONDS = 30.0
 
 AGENTS = (
     {
@@ -327,6 +332,91 @@ def _stored_event(raw: Any) -> dict[str, Any]:
     return out
 
 
+def _check_journal_file(path: Path, descriptor: int) -> None:
+    opened = os.fstat(descriptor)
+    if not stat.S_ISREG(opened.st_mode):
+        raise ValueError("brain journal paths must be regular files")
+    if opened.st_nlink != 1:
+        raise ValueError("brain journal files must not have hard links")
+    try:
+        current = path.lstat()
+    except FileNotFoundError:
+        raise ValueError("brain journal path changed while open") from None
+    if stat.S_ISLNK(current.st_mode):
+        raise ValueError("brain journal paths must not be symlinks")
+    if (opened.st_dev, opened.st_ino) != (current.st_dev, current.st_ino):
+        raise ValueError("brain journal path changed while open")
+
+
+@contextmanager
+def _open_journal_file(path: Path, mode: str):
+    if path.is_symlink():
+        raise ValueError("brain journal paths must not be symlinks")
+    flags = os.O_RDWR | os.O_CREAT | os.O_APPEND | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        descriptor = os.open(path, flags, 0o600)
+    except OSError as error:
+        if error.errno == errno.ELOOP:
+            raise ValueError("brain journal paths must not be symlinks") from error
+        raise
+    try:
+        _check_journal_file(path, descriptor)
+        # Preserve physical line endings for the tail guard and append LF on
+        # both platforms, while accepting unchanged historical CRLF records.
+        options = {} if "b" in mode else {"encoding": "utf-8", "newline": ""}
+        with os.fdopen(descriptor, mode, **options) as stream:
+            descriptor = -1  # fdopen now owns the descriptor, including on error.
+            yield stream
+    finally:
+        if descriptor != -1:
+            os.close(descriptor)
+
+
+@contextmanager
+def _process_journal_lock(path: Path):
+    # Keep this sidecar permanently: unlinking it would let different processes
+    # lock different inodes for the same journal. Locks are for cooperative local
+    # writers; they do not establish crash-atomic appends or synchronized reads.
+    lock_path = path.with_name(path.name + ".lock")
+    with _open_journal_file(lock_path, "a+b") as lock:
+        descriptor = lock.fileno()
+        if os.name == "posix":
+            os.fchmod(descriptor, 0o600)
+        # Both primitives can lock an empty file (Windows byte ranges may
+        # extend beyond EOF), so no unlocked initialization write is needed.
+        if os.name == "nt":
+            import msvcrt
+        else:
+            import fcntl
+        deadline = time.monotonic() + _PROCESS_LOCK_TIMEOUT_SECONDS
+        while True:
+            try:
+                lock.seek(0)
+                if os.name == "nt":
+                    msvcrt.locking(descriptor, msvcrt.LK_NBLCK, 1)
+                else:
+                    fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except OSError as error:
+                contention = error.errno == errno.EACCES if os.name == "nt" else error.errno in {
+                    errno.EAGAIN, errno.EWOULDBLOCK,
+                }
+                if not contention:
+                    raise
+                if time.monotonic() >= deadline:
+                    raise TimeoutError("brain journal is busy") from error
+                time.sleep(min(0.025, max(0.0, deadline - time.monotonic())))
+        try:
+            _check_journal_file(lock_path, descriptor)
+            yield lock_path, descriptor
+        finally:
+            lock.seek(0)
+            if os.name == "nt":
+                msvcrt.locking(descriptor, msvcrt.LK_UNLCK, 1)
+            else:
+                fcntl.flock(descriptor, fcntl.LOCK_UN)
+
+
 def record_brain_event(base_dir: str | os.PathLike[str], body: Mapping[str, Any]) -> dict[str, Any]:
     """Append one idempotent learning/agent/subsystem/candidate event.
 
@@ -340,15 +430,20 @@ def record_brain_event(base_dir: str | os.PathLike[str], body: Mapping[str, Any]
 
     path = _journal_path(base_dir)
     path.parent.mkdir(parents=True, exist_ok=True)
-    with _EVENT_LOCK:
-        if path.is_file():
-            for line in path.read_text(encoding="utf-8").splitlines():
+    with _EVENT_LOCK, _process_journal_lock(path) as (lock_path, lock_descriptor):
+        # One descriptor supplies both the duplicate scan and the durable append.
+        with _open_journal_file(path, "a+") as fh:
+            fh.seek(0)
+            prior_text = fh.read()
+            for line in prior_text.splitlines():
                 try:
                     prior = json.loads(line)
                 except json.JSONDecodeError:
                     continue
                 if isinstance(prior, dict) and prior.get("id") == event["id"]:
                     stored = _stored_event(prior)
+                    _check_journal_file(path, fh.fileno())
+                    _check_journal_file(lock_path, lock_descriptor)
                     return {
                         "ok": True,
                         "idempotent": True,
@@ -357,10 +452,15 @@ def record_brain_event(base_dir: str | os.PathLike[str], body: Mapping[str, Any]
                         "production_decision_authorized": False,
                         "note": "brain event already recorded; research/shadow authority only",
                     }
-        with path.open("a", encoding="utf-8") as fh:
+            if prior_text and not prior_text.endswith("\n"):
+                raise ValueError("brain journal has an unterminated tail; append blocked")
+            _check_journal_file(path, fh.fileno())
+            _check_journal_file(lock_path, lock_descriptor)
             fh.write(json.dumps(event, sort_keys=True, separators=(",", ":"), allow_nan=False) + "\n")
             fh.flush()
             os.fsync(fh.fileno())
+            _check_journal_file(path, fh.fileno())
+            _check_journal_file(lock_path, lock_descriptor)
 
     return {
         "ok": True,
