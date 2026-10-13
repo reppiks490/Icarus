@@ -1,142 +1,157 @@
 # ICARUS Live Intelligence Gateway — Phase 3 Design
 
 Date: 2026-10-13
-Status: proposed written specification after conversational design approval
+Status: written specification after conversational design approval; implementation not started
 Depends on:
 - Phase 1 Intelligence Fabric (`icarus_engine/intelligence_fabric.py`)
 - Phase 2 Intelligence Delivery Plane (`icarus_engine/intelligence_delivery.py`)
 
 ## 1. Purpose
 
-Phase 3 makes the durable Intelligence Delivery Plane reachable by live clients without weakening its delivery, provenance, retry, lease, or authority semantics.
+Phase 3 makes the durable Intelligence Delivery Plane reachable by live clients without weakening its provenance, lease, retry, dead-letter, replay, or authority semantics.
 
-The gateway is a transport and authentication layer only. It must not become a second event store, a second delivery state machine, a chat system, an execution path, or a source of market intelligence.
+The gateway is a transport/authentication layer only. It is not a second event store, second delivery state machine, chat system, execution path, or intelligence source.
 
-The intended result is a low-latency network surface through which ICARUS agents, operator clients, browser clients, and future mobile clients can consume already-authorized-for-delivery intelligence in real time and acknowledge processing durably through Phase 2.
+Success means ICARUS agents, operator clients, browser clients, and future mobile clients can consume already-deliverable intelligence in real time and durably ACK/NACK it through Phase 2.
 
 ## 2. Non-negotiable invariants
 
 1. Phase 1 remains the canonical intelligence journal.
 2. Phase 2 remains the canonical delivery state machine.
-3. The gateway never mutates Phase 1 events.
-4. The gateway never invents delivery state.
-5. The gateway never advances a durable cursor independently of Phase 2 ACK state.
-6. `execution_authorized` is always `false`.
-7. `production_decision_authorized` is always `false`.
-8. An ACK means only “this intelligence delivery was processed by this consumer before lease expiry.” It is never trade approval.
-9. A NACK means only “this delivery was not successfully processed.” Retry/dead-letter behavior remains Phase 2’s responsibility.
-10. The gateway is loopback-only by default.
-11. No new long-lived credential is generated or persisted by Phase 3.
-12. No broker, order, position, strategy activation, scheduler, workflow, Brain, Atlas, provider, UI, or Field Agent behavior is modified by this phase.
-13. `icarus_engine/server.py` is not edited by Phase 3.
-14. `icarus_engine/agent.py` / the existing Field Agent contract is not edited by Phase 3.
-15. No Kafka, NATS, Redis, RabbitMQ, or other external broker is introduced.
+3. The gateway never mutates Phase 1 events or invents delivery state.
+4. The gateway never advances a durable cursor independently of Phase 2.
+5. `execution_authorized=false` always.
+6. `production_decision_authorized=false` always.
+7. ACK means only “this intelligence delivery was processed before lease expiry.” It is never trade approval.
+8. NACK means only “this delivery was not successfully processed.” Retry/dead-letter behavior stays in Phase 2.
+9. The gateway is loopback-only by default.
+10. Phase 3 generates/persists no new long-lived credential.
+11. No broker/order/position/strategy activation, scheduler, workflow, Brain, Atlas, provider, UI, or Field Agent behavior is modified.
+12. `icarus_engine/server.py` is not edited.
+13. `icarus_engine/agent.py` is not edited.
+14. No Kafka/NATS/Redis/RabbitMQ or other external broker is introduced.
 
-## 3. Existing contract reused unchanged
+## 3. Existing Phase 2 contract reused unchanged
 
-Phase 2 already provides the authoritative primitives the gateway must call:
+The gateway delegates to Phase 2’s existing public primitives:
 
-- consumer registration
-- group membership
+- registered consumers and group membership
 - immutable subscription revisions
 - `claim(subscription_id, revision, consumer_id, as_of=..., lease_seconds=..., limit=...)`
 - `ack(delivery_id, consumer_id, lease_token, as_of=...)`
 - `nack(delivery_id, consumer_id, lease_token, as_of=..., reason=...)`
-- lease-expiry recovery
-- dead-letter handling
+- `recover_expired(as_of=..., limit=...)`
 - replay subscriptions
 - metrics
 - append-only receipts
 
-Phase 3 must call those APIs rather than reproduce their SQL/state transitions.
+Phase 3 must not reproduce Phase 2 SQL/state transitions.
 
 ## 4. Selected architecture
 
-Create a standalone ASGI gateway module:
+Create a standalone ASGI gateway:
 
-- intended production module: `icarus_engine/intelligence_gateway.py`
-- intended primary tests: `tests_engine/test_intelligence_gateway.py`
-- intended security/protocol tests: `tests_engine/test_intelligence_gateway_security.py`
+- production module: `icarus_engine/intelligence_gateway.py`
+- primary tests: `tests_engine/test_intelligence_gateway.py`
+- security/protocol tests: `tests_engine/test_intelligence_gateway_security.py`
 
-The gateway exposes a FastAPI application but FastAPI/Uvicorn remain optional runtime dependencies under the repository’s existing `bridge` extra. Core package imports must not require FastAPI unless the gateway module is imported or launched.
+FastAPI/Uvicorn remain optional dependencies from the repository’s existing `bridge` extra. Importing the core package must not require FastAPI unless the gateway is imported/launched.
 
 The gateway owns only:
 
 - authentication
-- ephemeral connection/session state
+- ephemeral sessions/tickets
 - protocol framing
 - WebSocket transport
 - SSE transport
-- small authenticated HTTP control endpoints
-- bounded in-flight windows
+- authenticated ACK/NACK/metrics HTTP endpoints
+- backpressure
 - heartbeat/liveness
 - gateway-local observability
 
-It does not own:
-
-- event identity
-- subscriptions
-- delivery identity
-- lease identity
-- retries
-- dead-letter policy
-- replay semantics
-- persistent cursors
-- execution authority
+It does not own event identity, subscription state, delivery identity, leases, retries, dead letters, replay state, persistent cursors, or execution authority.
 
 ## 5. Process boundary
 
-The gateway is a separate process from the existing standard-library `ThreadingHTTPServer` dashboard/API server.
-
-Default launch model:
+The gateway is a separate process from the existing `ThreadingHTTPServer` dashboard/API server.
 
 ```text
-ICARUS runtime / IntelligenceFabric / IntelligenceDeliveryPlane
-                         |
-                         | shared durable SQLite path
-                         v
-               IntelligenceGateway ASGI process
-                         |
-                 WebSocket / SSE / HTTP
-                         |
-          agents / operator / future UI/mobile
+Phase 1 IntelligenceFabric
+          |
+          v
+shared file-backed SQLite journal/delivery DB
+          ^
+          |
+Phase 2 IntelligenceDeliveryPlane
+          ^
+          |
+Phase 3 IntelligenceGateway ASGI
+          |
+     WS / SSE / HTTP
+          |
+clients / agents / future UI-mobile
 ```
 
-The gateway opens the same file-backed SQLite database through its own `IntelligenceDeliveryPlane` instance. Phase 2’s WAL and busy-timeout behavior remains authoritative for contention.
+Production launch requires a file-backed database path. No in-memory production launch.
 
-The gateway must not use an in-memory database in production launch mode.
+## 6. SQLite concurrency boundary
 
-## 6. Bind and exposure policy
+`IntelligenceDeliveryPlane` owns a normal SQLite connection with SQLite thread affinity. Therefore Phase 3 must **not** create one Phase 2 instance on the ASGI event-loop thread and then call it from arbitrary threadpool workers.
+
+Selected design: a dedicated bounded `DeliveryExecutor` worker owns one `IntelligenceDeliveryPlane` instance and its SQLite connection. ASGI coroutines submit typed Phase 2 operations to that worker and await results.
+
+Requirements:
+
+- the worker creates and closes the Phase 2 connection on its own thread
+- Phase 2 calls never run on the ASGI event-loop thread
+- the submission queue is bounded
+- queue saturation fails/retries safely; it never grows without bound
+- operations preserve Phase 2 transactional semantics
+- multiple gateway **processes** may each own their own DeliveryExecutor/SQLite connection; WAL/busy-timeout and Phase 2 transactions remain authoritative across processes
+
+A future connection pool is out of scope.
+
+## 7. Bind, Host, Origin, and exposure policy
 
 Default host: `127.0.0.1`.
 
-Default port: implementation-configurable; the design does not require reuse of the existing engine server port.
+A non-loopback bind (`0.0.0.0`, LAN address, non-loopback IPv6, public/container interface) fails closed unless an explicit `allow_remote=True`-style launch option is supplied.
 
-A non-loopback bind (`0.0.0.0`, LAN address, IPv6 non-loopback, container-public interface) must fail closed unless an explicit `allow_remote=True` or equivalent launch flag is supplied.
+Remote enablement only changes bind permission. It does not imply TLS, public-Internet safety, reverse-proxy correctness, or multi-tenant RBAC.
 
-Remote enablement in Phase 3 only changes bind permission. It does not create TLS, reverse-proxy, public-Internet, or multi-tenant guarantees. Those remain deployment responsibilities and are outside this phase.
+### Host validation
 
-## 7. Authentication model
+Default accepted HTTP/WebSocket Host values are limited to loopback forms such as:
 
-### 7.1 Long-lived token
+- `127.0.0.1`
+- `localhost`
+- `[::1]`
 
-The process receives one operator-supplied bearer token at startup. Phase 3 does not generate, rotate, persist, or discover it.
+Unexpected Host values fail closed by default to reduce DNS-rebinding exposure. Remote deployments must explicitly configure allowed hosts.
 
-HTTP control endpoints require:
+### Origin validation
+
+Browser WebSocket requests include `Origin`. By default, any non-empty Origin is rejected unless explicitly present in a configured allowlist. Non-browser clients without Origin remain permitted after token authentication.
+
+This protects the loopback gateway from cross-site WebSocket hijacking. Phase 3 does not enable permissive CORS.
+
+## 8. Authentication
+
+### 8.1 Long-lived bearer
+
+The process receives one operator-supplied bearer token at startup. Phase 3 does not generate, rotate, persist, log, or discover it.
+
+Authenticated HTTP endpoints require:
 
 ```http
 Authorization: Bearer <token>
 ```
 
-Comparison must use constant-time comparison.
+Comparison uses constant-time comparison. Missing/invalid credentials return generic `401` without revealing object existence.
 
-Missing or invalid bearer credentials return `401` and must not reveal whether a subscription/consumer/delivery exists.
+### 8.2 WebSocket authentication
 
-### 7.2 WebSocket authentication
-
-A WebSocket connection is accepted at the transport level but must remain unauthenticated and receive no intelligence until the client sends an authentication frame within a short fixed timeout.
-
-Client first frame:
+A WebSocket may be accepted at the transport layer, but it receives no intelligence and performs no claim until the first valid authentication frame arrives within a fixed timeout.
 
 ```json
 {
@@ -151,64 +166,63 @@ Client first frame:
 }
 ```
 
-The token is never echoed back and must not appear in gateway logs, receipts, error bodies, metrics, or delivery frames.
+The token is never echoed and never appears in logs, receipts, metrics, or error frames.
 
-Authentication failure closes the socket with an application-defined policy-violation close code after a generic error frame.
+### 8.3 SSE authentication ticket
 
-### 7.3 SSE authentication
+Native browser `EventSource` cannot reliably provide an Authorization header. The gateway therefore uses a short-lived one-time stream ticket rather than putting the long-lived bearer token in the URL.
 
-Native browser `EventSource` cannot reliably set an Authorization header. Therefore the gateway uses a short-lived one-time stream ticket rather than putting the long-lived bearer token in the URL.
-
-Authenticated ticket creation:
+Authenticated creation:
 
 ```http
 POST /v1/intelligence/tickets
 Authorization: Bearer <token>
 ```
 
-Request body identifies `subscription_id`, `revision`, `consumer_id`, requested lease duration, and in-flight window.
+The request identifies subscription/revision/consumer plus requested lease duration and in-flight window.
 
-The response returns a cryptographically random opaque ticket with:
+Ticket properties:
 
-- maximum lifetime: 30 seconds before first use
+- cryptographically random opaque value
+- maximum 30-second lifetime before first use
 - one successful use only
 - process-local memory only
+- atomic consume
 - no durable persistence
 - no execution authority
 
-The client then opens:
+Stream:
 
-```text
-GET /v1/intelligence/stream?ticket=<opaque-ticket>
-```
+`GET /v1/intelligence/stream?ticket=<opaque-ticket>`
 
-The ticket must be consumed atomically. Reuse, expiry, or unknown tickets return a generic authentication failure.
+Before capacity checks the ticket store purges expired tickets. If still full, creation fails closed; it does not evict a valid unused ticket.
 
-A process restart invalidates unused tickets. Durable delivery position is unaffected because Phase 2 remains canonical.
+Process restart invalidates unused tickets only. Phase 2 durable state is unaffected.
 
-## 8. Protocol version
-
-Gateway protocol version:
+## 9. Protocol version
 
 `icarus-intelligence-gateway-v1`
 
-The server rejects unsupported protocol versions before leasing any event.
+Unsupported versions are rejected before any Phase 2 claim.
 
-Protocol versioning is independent from:
+This version is independent from `icarus-intelligence-fabric-v1` and Phase 2’s internal schema so transport evolution cannot alter immutable event IDs.
 
-- `icarus-intelligence-fabric-v1`
-- the Phase 2 internal delivery schema
+## 10. Consumer identity and authorization
 
-This allows transport evolution without changing immutable Phase 1 event IDs.
+Gateway connection does **not** auto-register consumers or grant group membership.
 
-## 9. Session model
+A consumer must already exist in Phase 2. Competing subscriptions additionally require active Phase 2 group membership.
 
-A successful authenticated WebSocket or consumed SSE ticket creates one ephemeral gateway session.
+Possession of the transport bearer therefore cannot manufacture new durable consumer identities.
 
-Session fields:
+Phase 4 will define agent identity/provisioning separately.
 
-- `session_id`: cryptographically random, process-local identifier
-- `transport`: `websocket` or `sse`
+## 11. Ephemeral session model
+
+A successful WebSocket authentication or consumed SSE ticket creates one session with:
+
+- `session_id` — cryptographically random process-local ID
+- `transport` — `websocket` or `sse`
 - `subscription_id`
 - `revision`
 - `consumer_id`
@@ -220,27 +234,25 @@ Session fields:
 - `inflight_delivery_ids`
 - `closed`
 
-Session state is not durable. Losing a session must never lose a durable event or ACK because all durable state lives in Phase 2.
+Session state is never durable.
 
-A reconnect creates a new session ID and resumes by asking Phase 2 for claimable work for the same immutable subscription revision and consumer.
+Multiple sessions for the same Phase 2 consumer are permitted. Phase 2 leases remain the authority preventing the same delivery from being leased twice simultaneously.
 
-## 10. Consumer identity
+On reconnect a new session is created; no gateway cursor is restored.
 
-The gateway does not auto-register arbitrary consumer IDs as a side effect of connecting.
+## 12. Session-scoped control rule
 
-A consumer must already exist in Phase 2. For a competing subscription, the consumer must already have active membership in the target group.
+A gateway session may ACK/NACK only a `delivery_id` currently present in **that session’s** `inflight_delivery_ids`.
 
-This avoids turning possession of a transport token into permission to manufacture new durable consumer identities.
+This is an additional transport-scope check before Phase 2 validation. It prevents one concurrent session for the same consumer from controlling another session’s lease.
 
-Future Phase 4 agent identity and provisioning rules remain separate.
+Phase 2 still performs the authoritative consumer/lease-token/expiry validation.
 
-## 11. WebSocket endpoint
-
-Endpoint:
+## 13. WebSocket endpoint
 
 `WS /v1/intelligence/ws`
 
-After successful authentication the server sends:
+Successful authentication returns:
 
 ```json
 {
@@ -259,11 +271,11 @@ After successful authentication the server sends:
 }
 ```
 
-The server then enters a bounded claim/send loop.
+Then the bounded claim/send loop begins.
 
-## 12. WebSocket server frames
+## 14. WebSocket server frames
 
-### 12.1 Delivery
+### Delivery
 
 ```json
 {
@@ -281,14 +293,14 @@ The server then enters a bounded claim/send loop.
 }
 ```
 
-The lease token is required because Phase 2 validates ACK/NACK against the active lease. It is scoped to the delivery and expires with the lease.
+The lease token is a short-lived delivery capability required by Phase 2 ACK/NACK. It is never logged.
 
-### 12.2 ACK result
+### ACK result
 
 ```json
 {
   "type": "ack_result",
-  "request_id": "client-generated-id",
+  "request_id": "...",
   "delivery_id": "...",
   "state": "ACKED",
   "server_time": "...Z",
@@ -297,11 +309,11 @@ The lease token is required because Phase 2 validates ACK/NACK against the activ
 }
 ```
 
-### 12.3 NACK result
+### NACK result
 
-Equivalent shape with `type=nack_result` and the Phase 2 resulting state (`PENDING` or `DEAD_LETTERED`).
+Same shape with `type=nack_result` and Phase 2’s resulting `PENDING` or `DEAD_LETTERED` state.
 
-### 12.4 Heartbeat
+### Heartbeat
 
 ```json
 {
@@ -316,9 +328,7 @@ Equivalent shape with `type=nack_result` and the Phase 2 resulting state (`PENDI
 }
 ```
 
-### 12.5 Flow state
-
-The server may emit:
+### Flow
 
 ```json
 {
@@ -332,12 +342,12 @@ The server may emit:
 }
 ```
 
-### 12.6 Error
+### Error
 
 ```json
 {
   "type": "error",
-  "request_id": "optional-client-request-id",
+  "request_id": "optional",
   "code": "LEASE_EXPIRED",
   "message": "delivery lease is no longer valid",
   "retryable": true,
@@ -346,11 +356,11 @@ The server may emit:
 }
 ```
 
-Errors must not include stack traces, SQL, file paths, bearer tokens, ticket values, or unrelated delivery/subscription existence information.
+No stack traces, SQL, file paths, bearer values, tickets, lease tokens, or unrelated object-existence details may appear in external errors.
 
-## 13. WebSocket client frames
+## 15. WebSocket client frames
 
-After authentication only these client frame types are accepted in Phase 3:
+After authentication v1 accepts only:
 
 ### ACK
 
@@ -378,25 +388,28 @@ After authentication only these client frame types are accepted in Phase 3:
 ### Ping
 
 ```json
-{
-  "type": "ping",
-  "request_id": "..."
-}
+{"type":"ping","request_id":"..."}
 ```
 
-Arbitrary event publication, subscription creation, group mutation, replay creation, dead-letter requeue, execution commands, and free-form agent messaging are rejected in Phase 3.
+Arbitrary publication, subscription creation, group mutation, replay creation, dead-letter requeue, execution commands, and free-form agent messaging are rejected.
 
-## 14. SSE endpoint
+## 16. Control-request idempotency semantics
 
-Endpoint:
+Phase 2 ACK/NACK is lease-state based, not request-ID idempotent. Phase 3 must not pretend otherwise.
+
+`request_id` is correlation only.
+
+If a durable ACK/NACK commits but the network response is lost, the client must reconnect/reconcile through Phase 2 state rather than blindly replay the old control frame. A repeated stale ACK/NACK may correctly return `DELIVERY_STATE_INVALID`, `LEASE_EXPIRED`, or equivalent.
+
+Adding durable operation IDs/idempotent control receipts would change the delivery contract and is deferred.
+
+## 17. SSE endpoint
 
 `GET /v1/intelligence/stream?ticket=<one-time-ticket>`
 
-Content type:
+Content type: `text/event-stream`.
 
-`text/event-stream`
-
-SSE event names:
+Event names:
 
 - `hello`
 - `delivery`
@@ -404,33 +417,33 @@ SSE event names:
 - `flow`
 - `error`
 
-SSE delivery payloads use the same JSON fields as WebSocket server frames.
+Payload fields mirror WebSocket server frames.
 
-SSE itself is server-to-client only. Durable completion uses authenticated HTTP control calls.
-
-## 15. SSE / HTTP ACK and NACK
+## 18. SSE HTTP ACK/NACK
 
 Endpoints:
 
 - `POST /v1/intelligence/ack`
 - `POST /v1/intelligence/nack`
 
-Both require the long-lived bearer token.
+Both require the long-lived bearer token **and** an active SSE `session_id`.
 
-ACK request:
+ACK:
 
 ```json
 {
+  "session_id": "...",
   "consumer_id": "...",
   "delivery_id": "...",
   "lease_token": "..."
 }
 ```
 
-NACK request:
+NACK:
 
 ```json
 {
+  "session_id": "...",
   "consumer_id": "...",
   "delivery_id": "...",
   "lease_token": "...",
@@ -438,146 +451,137 @@ NACK request:
 }
 ```
 
-The HTTP layer calls Phase 2 directly and returns the Phase 2 resulting state plus the two false authority flags.
+Before calling Phase 2 the gateway verifies:
 
-The gateway must not maintain a separate HTTP ACK ledger.
+- session exists and is open
+- session transport is SSE
+- session consumer matches `consumer_id`
+- `delivery_id` is in that session’s in-flight set
 
-## 16. Claim and send loop
+After successful Phase 2 ACK/NACK, the gateway removes the delivery from that session’s in-flight set immediately, releasing backpressure capacity.
+
+There is no separate HTTP ACK ledger.
+
+## 19. Claim/send loop and backpressure
 
 For each active session:
 
-1. Calculate `available = max_inflight - current_inflight`.
+1. `available = max_inflight - current_inflight`.
 2. If `available <= 0`, do not call Phase 2 `claim`.
 3. Otherwise call Phase 2 `claim` with `limit <= available`.
-4. Emit each returned delivery exactly once for that lease issuance on that session.
-5. Add its `delivery_id` to the session-local in-flight set.
-6. Remove it from the in-flight set only after:
-   - successful ACK,
-   - successful NACK,
-   - observed lease expiry/recovery,
-   - or session teardown.
-7. Session teardown does not ACK or NACK outstanding deliveries.
-8. Expired outstanding leases are recovered by Phase 2 and later redelivered according to its retry budget.
+4. Emit each returned delivery once for that lease issuance on that session.
+5. Add its `delivery_id` to the session in-flight set.
+6. Remove it only after successful ACK/NACK, observed expiry recovery, or session teardown.
+7. Teardown never ACKs/NACKs outstanding deliveries.
+8. Phase 2 expiry/retry/dead-letter logic decides later disposition.
 
-The gateway must not repeatedly call `claim` in a CPU-spin loop when no work exists. An idle poll delay is required.
+Hard protocol bounds:
 
-## 17. Lease-expiry recovery
+- `max_inflight`: 1..256
+- `lease_seconds`: 5..300
 
-The gateway may run a bounded periodic recovery loop that calls Phase 2 `recover_expired(as_of=..., limit=...)`.
+Out-of-range values are rejected before claim.
 
-Recovery must be safe with multiple gateway processes because Phase 2 owns transactional state transitions.
+There is no unbounded application delivery queue. The DeliveryExecutor request queue is also bounded.
 
-Gateway session state must reconcile recovered delivery IDs out of local in-flight sets when observed.
+An idle poll delay is required; no CPU-spin claim loop.
 
-The gateway never extends a lease. A client that requires more processing time must use a future protocol revision; lease renewal is explicitly deferred.
+## 20. Lease-expiry recovery
 
-## 18. Backpressure
+A bounded periodic gateway task submits `recover_expired(as_of=..., limit=...)` through the DeliveryExecutor.
 
-Defaults are implementation choices within these hard bounds:
+Recovered delivery IDs are reconciled out of all local in-flight sets that contain them.
 
-- `max_inflight` minimum: 1
-- `max_inflight` maximum: 256
-- `lease_seconds` minimum: 5
-- `lease_seconds` maximum: 300
+The gateway never extends leases. Lease renewal is deferred.
 
-The server clamps or rejects out-of-range client requests before any claim.
+Multiple gateway processes may run recovery because Phase 2 uses transactional state as authority.
 
-There is no unbounded application queue between Phase 2 and the network socket.
+## 21. Heartbeats/liveness
 
-A slow client therefore consumes only its finite Phase 2 leases and then stops receiving more work until capacity returns.
+Default heartbeat: 10 seconds.
 
-## 19. Heartbeats and liveness
+The server sends heartbeats when idle. WebSocket `ping` receives a heartbeat/pong-equivalent with server time.
 
-Default heartbeat cadence: 10 seconds.
+A bounded client-inactivity timeout may close a WebSocket. Closure changes no durable delivery state.
 
-The server sends heartbeats even when no deliveries are available.
+SSE emits heartbeat events/comments to keep idle streams visibly alive.
 
-WebSocket clients may send `ping`; the server responds with a heartbeat or pong-equivalent frame containing server time.
+## 22. Resume semantics
 
-A WebSocket client that sends no valid frame for a bounded liveness timeout may be disconnected. Disconnect does not mutate durable delivery state.
+There is no gateway cursor and no client-supplied “last seen sequence” authority.
 
-SSE liveness is represented by periodic heartbeat events/comment frames so intermediaries do not treat an idle stream as dead.
+Reconnect:
 
-## 20. Resume semantics
-
-There is no separate gateway cursor.
-
-Reconnect behavior:
-
-1. authenticate a new session
-2. use the same immutable `subscription_id`, `revision`, and `consumer_id`
-3. ask Phase 2 for claimable deliveries
-4. Phase 2 decides what is pending, already ACKed, still leased, retry-eligible, or dead-lettered
+1. establish a new authenticated session
+2. use the same immutable subscription/revision/consumer
+3. ask Phase 2 for claimable work
+4. Phase 2 decides pending/leased/ACKed/retry/dead-letter state
 
 This prevents split-brain cursor state.
 
-A client must never supply “last seen sequence” as authority to skip Phase 2 work.
+## 23. Time semantics
 
-## 21. Time semantics
+All gateway-generated times are UTC ISO-8601 with timezone, normalized to `Z`.
 
-All gateway-generated timestamps are UTC ISO-8601 with timezone and `Z` normalization.
+Every Phase 2 call receives gateway server UTC as `as_of`.
 
-For every call into Phase 2, the gateway supplies its current server UTC time as `as_of`.
+Client timestamps may be diagnostic only. They never decide lease validity, ACK/NACK validity, retry eligibility, or recovery.
 
-Client timestamps may be accepted for diagnostics only and must never replace server time for lease validity, ACK/NACK validation, retry timing, or recovery.
+## 24. Error mapping
 
-## 22. Error mapping
-
-Phase 2 validation failures are translated into stable protocol error codes.
-
-Minimum codes:
+Minimum stable external codes:
 
 - `AUTH_FAILED`
+- `HOST_REJECTED`
+- `ORIGIN_REJECTED`
 - `PROTOCOL_UNSUPPORTED`
 - `INVALID_FRAME`
 - `INVALID_REQUEST`
+- `SESSION_INVALID`
+- `DELIVERY_NOT_IN_SESSION`
 - `UNKNOWN_CONSUMER`
 - `SUBSCRIPTION_UNAVAILABLE`
 - `CONSUMER_NOT_AUTHORIZED_FOR_SUBSCRIPTION`
 - `LEASE_EXPIRED`
 - `LEASE_TOKEN_INVALID`
 - `DELIVERY_STATE_INVALID`
+- `GATEWAY_BUSY`
+- `DELIVERY_STORE_UNAVAILABLE`
 - `INTERNAL_ERROR`
 
-The external message is deliberately less specific than internal exceptions when specificity could leak object existence across consumers.
+Gateway prevalidation should generate stable codes where possible. Raw Phase 2 exception strings must not be exposed directly if doing so leaks internal details.
 
-## 23. Gateway-local observability
+## 25. Observability
 
-Read-only health endpoint:
+### Unauthenticated health
 
 `GET /healthz`
 
-It reports only process health, protocol version, uptime, and whether the delivery database can be opened/read.
+Returns only process health, protocol version, uptime, and coarse delivery-store reachability. No consumer/subscription/delivery data.
 
-Authenticated metrics endpoint:
+### Authenticated metrics
 
 `GET /v1/intelligence/metrics?subscription_id=...&revision=...`
 
-It delegates durable metrics to Phase 2 and may add gateway-local fields:
+Delegates durable metrics to Phase 2 and may add explicitly ephemeral gateway metrics:
 
-- active session count
-- WebSocket session count
-- SSE session count
-- session-local in-flight total
-- ticket count
-- authentication failure count
-- protocol error count
+- active sessions
+- WebSocket sessions
+- SSE sessions
+- local in-flight count
+- unused ticket count
+- authentication failures
+- Host/Origin rejections
+- protocol errors
+- DeliveryExecutor queue depth/saturation count
 
-Gateway-local counters reset on process restart and must be labelled as ephemeral.
+Ephemeral counters reset on restart.
 
-## 24. Logging and secrets
+## 26. Logging/redaction
 
-Logs may include:
+Logs may contain session ID, consumer ID, subscription/revision, delivery ID, event ID, lifecycle state, and protocol error code.
 
-- session ID
-- consumer ID
-- subscription ID/revision
-- delivery ID
-- event ID
-- connection lifecycle
-- protocol error code
-
-Logs must never include:
+Logs must never contain:
 
 - bearer token
 - one-time ticket
@@ -585,150 +589,148 @@ Logs must never include:
 - full event payload by default
 - raw NACK reason by default
 
-The implementation must provide a redaction helper covered by tests.
+A tested redaction helper is required.
 
-## 25. Resource limits
+## 27. Resource limits
 
-Hard request/frame limits are required.
+Required limits:
 
-Recommended specification limits:
+- authentication/control JSON: <=32 KiB
+- WebSocket text frame: <=64 KiB
+- NACK reason remains under Phase 2’s <=32 KiB finite-JSON contract
+- active unused tickets: <=1024
+- active sessions: finite/configurable, default 256
+- DeliveryExecutor queue: finite/configurable
 
-- authentication/control JSON body: <= 32 KiB
-- WebSocket text frame: <= 64 KiB
-- NACK reason: remains bounded by Phase 2’s 32 KiB finite-JSON contract
-- maximum active one-time tickets: 1024
-- maximum active sessions: configurable, finite, default 256
+Oversized input is rejected before durable operations.
 
-Oversized input fails before parsing into durable operations.
+## 28. Failure behavior
 
-## 26. Failure behavior
+### Store unavailable at startup
 
-### Delivery DB unavailable at startup
+Fail startup. Do not expose a gateway that cannot durably control delivery.
 
-Fail startup; do not expose a gateway that cannot durably ACK/NACK.
+### Store fails during operation
 
-### DB becomes unavailable during operation
-
-- stop claiming new deliveries
-- return retryable transport errors where possible
-- do not synthesize ACK/NACK success
-- preserve existing socket process state only long enough to report failure/close
+- stop claiming
+- return retryable sanitized errors where possible
+- never synthesize ACK/NACK success
+- close affected sessions if safe continuation cannot be guaranteed
 
 ### Client disconnect
 
-- close session state
-- do not ACK/NACK outstanding deliveries
-- allow Phase 2 lease expiry/recovery to determine retry
+- drop ephemeral session state
+- do not ACK/NACK outstanding delivery
+- Phase 2 lease expiry governs retry
 
 ### Gateway crash/restart
 
-- ephemeral sessions/tickets are lost
-- Phase 1 events remain intact
-- Phase 2 delivery/lease state remains intact
-- expired leases are recovered after restart
+- sessions/tickets disappear
+- Phase 1 and Phase 2 durable state survives
+- expired leases recover after restart
 
-### Malformed Phase 1 event
+### Phase 1 integrity failure
 
-Phase 2 already fails closed during `claim`; the gateway propagates a generic integrity/internal error and sends no forged replacement event.
+Phase 2 already fails closed during claim. Gateway sends no forged replacement event.
 
-## 27. Concurrency model
-
-The ASGI layer is asynchronous, but SQLite/Phase 2 calls are synchronous.
-
-The implementation must not block the event loop with long-running claim/recovery loops. Durable calls should execute through a bounded worker/thread mechanism or equivalent FastAPI/Starlette concurrency primitive.
-
-Per-session send ordering must preserve the order returned by Phase 2 for a claim batch.
-
-ACK/NACK for separate deliveries may execute concurrently, but Phase 2 transactional locking remains authoritative.
-
-## 28. SSE and WebSocket equivalence
+## 29. Transport equivalence
 
 Transport choice must not change durable semantics.
 
-Given the same subscription revision and consumer:
+Under equivalent initial durable state (tested independently, not by racing two transports for the same live lease), WebSocket and SSE must expose the same Phase 2 delivery/event identity and authority metadata.
 
-- both transports use Phase 2 claim
-- both expose the same delivery IDs/event IDs
-- both require the same active lease token for ACK/NACK
-- both are subject to the same retry/dead-letter budget
-- both resume from Phase 2 state after reconnect
+Both transports:
 
-Only framing and ACK transport differ.
+- use Phase 2 claim
+- require the active Phase 2 lease token for control
+- use the same retry/dead-letter budget
+- resume from Phase 2 state
 
-## 29. Testing contract
+Only framing/control transport differs.
 
-Implementation will be TDD-first.
+## 30. Test contract
 
-Required test categories:
+Implementation is TDD-first.
 
-### Authentication/security
+### Security/authentication
 
 - HTTP bearer success/failure
-- constant-time comparison helper behavior
-- WebSocket sends no intelligence before authentication
-- WebSocket auth timeout closes without claiming
-- long-lived token never appears in frames/log strings
-- one-time SSE tickets expire
-- tickets are one-use
-- ticket store is bounded
+- constant-time token comparison helper
+- Host rejection before sensitive routing
+- WebSocket Origin rejection by default
+- configured Origin allowlist success
+- no intelligence before WebSocket auth
+- auth timeout closes without claim
+- token/ticket/lease-token redaction
+- one-time ticket expiry/reuse rejection
+- bounded ticket store and purge-before-capacity behavior
 - remote bind rejected by default
 - unsupported protocol rejected before claim
 
+### Session/control scoping
+
+- consumer is not auto-registered
+- ACK/NACK only for that session’s in-flight delivery
+- one session cannot control another session’s lease even with the same consumer ID
+- SSE HTTP ACK/NACK requires active matching SSE session
+- successful SSE ACK/NACK immediately frees its in-flight slot
+
 ### Delivery semantics
 
-- delivery frame is derived from Phase 2 claim result
-- ACK calls Phase 2 ACK with exact consumer/delivery/lease token
-- NACK calls Phase 2 NACK with exact fields
-- failed ACK/NACK never returns success
+- delivery frame comes directly from Phase 2 claim result
+- ACK calls Phase 2 with exact consumer/delivery/token
+- NACK calls Phase 2 with exact consumer/delivery/token/reason
+- failed Phase 2 operation never returns protocol success
 - disconnect never auto-ACKs
-- reconnect resumes from Phase 2 state
-- broadcast ownership remains enforced
-- competing membership remains enforced
+- reconnect resumes from Phase 2 durable state
+- broadcast and competing authorization stay enforced by Phase 2
 
-### Backpressure
+### Backpressure/executor
 
-- no claim when in-flight window is full
+- no claim when in-flight is full
 - claim limit never exceeds free slots
-- slow consumer cannot cause unbounded queue growth
-- ACK/NACK frees one in-flight slot
+- no unbounded session delivery queue
+- DeliveryExecutor queue is bounded
+- Phase 2 connection is created/used/closed on its owning worker thread
+- ASGI event loop is not blocked by synchronous Phase 2 calls
 
 ### Lease/recovery
 
-- expired lease cannot ACK through gateway
-- recovery returns delivery to Phase 2 retry/dead-letter flow
-- session-local in-flight is reconciled after recovery
+- expired lease cannot ACK
+- recovery returns to Phase 2 retry/dead-letter flow
+- recovered deliveries leave session-local in-flight sets
 
 ### Transport equivalence
 
-- WebSocket and SSE produce equivalent delivery identity/event identity
-- authority flags remain false on all protocol responses
+- independently seeded WS and SSE cases expose matching delivery/event identity
+- all applicable protocol outputs preserve both false authority flags
 
 ### Failure/hardening
 
 - DB startup failure prevents launch
-- runtime DB error does not synthesize delivery success
-- malformed frames are bounded and rejected
-- oversized frames/bodies rejected
-- NaN/Infinity JSON rejected where applicable
-- no stack traces/secrets in external errors
+- runtime DB failure does not synthesize success
+- malformed/oversized frames rejected
+- NaN/Infinity rejected where applicable
+- external errors contain no stack/SQL/path/secret leakage
+- lost ACK response semantics are documented/tested as non-idempotent correlation behavior
 
 ### Regression
 
-- all Phase 1 Intelligence Fabric tests remain green
-- all Phase 2 Intelligence Delivery Plane tests remain green
-- full `tests_engine` Linux CI remains green
-- Windows regression matrix remains green
+- all Phase 1 Intelligence Fabric tests green
+- all Phase 2 Delivery Plane tests green
+- full Linux `tests_engine` green
+- Windows regression matrix green
 
-## 30. Planned file boundaries
+## 31. Planned file boundaries
 
-Expected Phase 3 implementation scope after plan approval:
+Expected implementation scope after plan approval:
 
 - `icarus_engine/intelligence_gateway.py`
 - `tests_engine/test_intelligence_gateway.py`
 - `tests_engine/test_intelligence_gateway_security.py`
-- optional narrowly-scoped gateway launcher/CLI test file if implementation requires one
+- optional narrowly scoped gateway launcher/CLI test if the plan proves one is needed
 
-The following remain explicitly excluded unless a later approved spec changes ownership:
+Explicitly excluded:
 
 - `icarus_engine/server.py`
 - `icarus_engine/dashboard.html`
@@ -737,54 +739,52 @@ The following remain explicitly excluded unless a later approved spec changes ow
 - `icarus_engine/brain.py`
 - `icarus_engine/brain_sync.py`
 - workflows/schedules
-- provider/collector modules
+- providers/collectors
 - broker/execution modules
 - Atlas `research_allocation/**`
 
-If a launcher requires changing `pyproject.toml`, that change must be called out explicitly in the implementation plan; it is not implicitly approved by this spec.
+Any `pyproject.toml` launcher/entry-point edit must be separately explicit in the implementation plan; it is not implicitly approved here.
 
-## 31. Deferred to Phase 4 or later
+## 32. Deferred to Phase 4+
 
 Not part of Phase 3:
 
-- agent identity provisioning
-- agent cryptographic identity/signatures
+- agent identity provisioning/signatures
 - human/agent rooms
-- presence
-- typing state
+- presence/typing
 - free-form chat
-- request/response conversations
-- delegation
-- agent capability advertisements
+- structured request/response conversations
+- delegation/capability advertisement
 - agent-to-agent tasks
 - inbound arbitrary intelligence publication
-- UI implementation
-- mobile push notifications
-- TLS termination
-- public Internet exposure
+- UI/mobile implementation or push
+- TLS termination/public Internet exposure
 - multi-tenant RBAC
 - lease renewal
-- Kafka/NATS transport adapters
+- Kafka/NATS adapters
+- durable ACK/NACK operation idempotency keys
 
-Phase 4 will define structured machine/human intelligence exchange as canonical Phase 1 events delivered through Phase 2 and carried over Phase 3. It must not bypass these layers.
+Phase 4 will define structured machine/human exchange as canonical Phase 1 events, routed by Phase 2 and carried over Phase 3. It must not bypass these layers.
 
-## 32. Acceptance criteria
+## 33. Acceptance criteria
 
-Phase 3 is complete only when all of the following are true:
+Phase 3 is complete only when:
 
-1. A pre-registered consumer can receive a real Phase 1 event through Phase 2 over WebSocket.
-2. The same class of delivery can be streamed over SSE.
-3. ACK/NACK transitions are performed by Phase 2, not duplicated by the gateway.
-4. Disconnect/restart does not lose durable delivery position.
-5. Backpressure prevents unbounded claim/send growth.
-6. Authentication gates all delivery and control operations.
-7. One-time SSE tickets do not expose the long-lived token in stream URLs.
-8. Non-loopback binding fails closed by default.
-9. Every external response preserves both false authority flags where authority metadata is applicable.
-10. No Phase 1 event identity changes.
-11. No Phase 2 delivery semantics change.
-12. No existing `server.py`, Field Agent, UI, Brain, scheduler, provider, workflow, broker, or execution behavior changes.
-13. Focused Phase 3 tests pass.
-14. Phase 1 and Phase 2 regression tests pass.
-15. Exact-head Linux and Windows repository CI pass.
-16. Independent review completes before merge.
+1. A pre-registered consumer receives a real Phase 1 event through Phase 2 over WebSocket.
+2. Equivalent delivery is streamable over SSE.
+3. ACK/NACK is performed by Phase 2 only.
+4. Session control cannot operate on another session’s in-flight lease.
+5. Disconnect/restart loses no durable position.
+6. Backpressure and executor queues are bounded.
+7. Authentication gates all sensitive delivery/control operations.
+8. SSE tickets keep the long-lived bearer out of stream URLs.
+9. Host/Origin protections are fail-closed by default.
+10. Non-loopback bind fails closed by default.
+11. Applicable outputs preserve both false authority flags.
+12. No Phase 1 event identity changes.
+13. No Phase 2 delivery semantics changes.
+14. Existing server, Field Agent, UI, Brain, scheduler, provider, workflow, broker, and execution behavior remain unchanged.
+15. Focused Phase 3 tests pass.
+16. Phase 1 and Phase 2 regressions pass.
+17. Exact-head Linux and Windows CI pass.
+18. Independent review completes before merge.
