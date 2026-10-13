@@ -5,7 +5,6 @@ import json
 from pathlib import Path
 
 import pytest
-from fastapi.testclient import TestClient
 
 from icarus_engine import intelligence_gateway as gateway
 
@@ -76,18 +75,69 @@ def _app(tmp_path: Path, *, config: gateway.GatewayConfig | None = None):
     return app, made
 
 
-def _ticket_body():
-    return {
-        "subscription_id": "sub-live",
-        "revision": 1,
-        "consumer_id": "consumer-a",
-        "lease_seconds": 30,
-        "max_inflight": 1,
+def _binding() -> gateway.SessionBinding:
+    return gateway.SessionBinding("sub-live", 1, "consumer-a", 30, 1)
+
+
+async def _raw_sse_request(app, ticket: str, *, stop_after_event: str | None):
+    """Drive ASGI directly so a deliberate long-lived SSE stream can disconnect finitely.
+
+    Starlette TestClient buffers the whole response body before returning, so it
+    cannot be used to assert an infinite text/event-stream without deadlocking.
+    """
+    sent: list[dict[str, object]] = []
+    disconnect = asyncio.Event()
+    request_sent = False
+    marker = f"event: {stop_after_event}\n".encode() if stop_after_event else None
+
+    async def receive():
+        nonlocal request_sent
+        if not request_sent:
+            request_sent = True
+            return {"type": "http.request", "body": b"", "more_body": False}
+        await disconnect.wait()
+        return {"type": "http.disconnect"}
+
+    async def send(message):
+        sent.append(dict(message))
+        if marker is not None and message.get("type") == "http.response.body" and marker in message.get("body", b""):
+            disconnect.set()
+
+    scope = {
+        "type": "http",
+        "asgi": {"version": "3.0", "spec_version": "2.3"},
+        "http_version": "1.1",
+        "method": "GET",
+        "scheme": "http",
+        "path": "/v1/intelligence/stream",
+        "raw_path": b"/v1/intelligence/stream",
+        "query_string": f"ticket={ticket}".encode(),
+        "headers": [(b"host", b"localhost")],
+        "client": ("testclient", 50000),
+        "server": ("localhost", 80),
+        "root_path": "",
+        "state": {},
     }
+    await asyncio.wait_for(app(scope, receive, send), timeout=2.0)
+    start = next(message for message in sent if message.get("type") == "http.response.start")
+    body = b"".join(message.get("body", b"") for message in sent if message.get("type") == "http.response.body")
+    return int(start["status"]), body
 
 
-def _auth_headers():
-    return {"host": "localhost", "authorization": "Bearer bearer-secret"}
+def _drive_sse(app, *, stop_after_event: str):
+    service = app.state.gateway_service
+
+    async def scenario():
+        await service.start()
+        try:
+            ticket = service.create_sse_ticket(_binding(), now_monotonic=1.0)
+            status, body = await _raw_sse_request(app, ticket, stop_after_event=stop_after_event)
+            reused_status, reused_body = await _raw_sse_request(app, ticket, stop_after_event=None)
+            return ticket, status, body, reused_status, reused_body
+        finally:
+            await service.close()
+
+    return asyncio.run(scenario())
 
 
 def test_encode_sse_emits_named_event_with_compact_finite_json():
@@ -109,41 +159,23 @@ def test_sse_stream_route_is_registered(tmp_path: Path):
 
 def test_sse_stream_consumes_ticket_once_and_emits_hello_then_delivery(tmp_path: Path):
     app, _made = _app(tmp_path)
-    with TestClient(app) as client:
-        issued = client.post("/v1/intelligence/tickets", headers=_auth_headers(), json=_ticket_body())
-        assert issued.status_code == 201
-        ticket = issued.json()["ticket"]
-        with client.stream("GET", f"/v1/intelligence/stream?ticket={ticket}", headers={"host": "localhost"}) as response:
-            assert response.status_code == 200
-            chunks = []
-            for chunk in response.iter_text():
-                chunks.append(chunk)
-                joined = "".join(chunks)
-                if "event: delivery" in joined:
-                    break
-        body = "".join(chunks)
-        assert "event: hello" in body
-        assert "event: delivery" in body
-        assert "delivery-sse-1" in body
-        assert "event-sse-1" in body
-        reused = client.get(f"/v1/intelligence/stream?ticket={ticket}", headers={"host": "localhost"})
-        assert reused.status_code in {401, 403}
+    _ticket, status, body, reused_status, reused_body = _drive_sse(app, stop_after_event="delivery")
+    assert status == 200
+    assert b"event: hello" in body
+    assert b"event: delivery" in body
+    assert b"delivery-sse-1" in body
+    assert b"event-sse-1" in body
+    assert reused_status in {401, 403}
+    assert b"AUTH_FAILED" in reused_body
 
 
 def test_sse_full_inflight_window_stops_additional_claims(tmp_path: Path):
     app, made = _app(tmp_path)
-    with TestClient(app) as client:
-        issued = client.post("/v1/intelligence/tickets", headers=_auth_headers(), json=_ticket_body())
-        ticket = issued.json()["ticket"]
-        with client.stream("GET", f"/v1/intelligence/stream?ticket={ticket}", headers={"host": "localhost"}) as response:
-            chunks = []
-            for chunk in response.iter_text():
-                chunks.append(chunk)
-                if "event: flow" in "".join(chunks):
-                    break
-        claim_calls = [item for item in made[0].calls if item[0] == "claim"]
-        assert len(claim_calls) == 1
-        assert "inflight_window_full" in "".join(chunks)
+    _ticket, status, body, _reused_status, _reused_body = _drive_sse(app, stop_after_event="flow")
+    assert status == 200
+    claim_calls = [item for item in made[0].calls if item[0] == "claim"]
+    assert len(claim_calls) == 1
+    assert b"inflight_window_full" in body
 
 
 def test_transport_payload_identity_is_shared_between_websocket_and_sse_helpers():
