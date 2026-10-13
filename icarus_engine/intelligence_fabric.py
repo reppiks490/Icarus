@@ -552,7 +552,10 @@ def event_from_intelligence_claim(
         "regime",
         "horizon_seconds",
         "lineage",
+        "falsifiers",
         "details",
+        "execution_authorized",
+        "production_decision_authorized",
     )
     for key in required:
         if key not in claim:
@@ -561,6 +564,10 @@ def event_from_intelligence_claim(
     schema_version = _text(claim["schema_version"], "schema_version", 80)
     if schema_version != UNIFIED_INTELLIGENCE_SCHEMA_VERSION:
         raise ValueError("unsupported schema_version")
+    if claim["execution_authorized"] is not False:
+        raise ValueError("execution_authorized must be false for Unified Intelligence claims")
+    if claim["production_decision_authorized"] is not False:
+        raise ValueError("production_decision_authorized must be false for Unified Intelligence claims")
     source = _text(claim["source"], "source", 160)
     source_kind = _text(claim["source_kind"], "source_kind", 40).lower()
     if source_kind not in UNIFIED_SOURCE_KINDS:
