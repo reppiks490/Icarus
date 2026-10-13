@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import time
 from pathlib import Path
 
 import pytest
@@ -130,7 +131,7 @@ def _drive_sse(app, *, stop_after_event: str):
     async def scenario():
         await service.start()
         try:
-            ticket = service.create_sse_ticket(_binding(), now_monotonic=1.0)
+            ticket = service.create_sse_ticket(_binding(), now_monotonic=time.monotonic())
             status, body = await _raw_sse_request(app, ticket, stop_after_event=stop_after_event)
             reused_status, reused_body = await _raw_sse_request(app, ticket, stop_after_event=None)
             return ticket, status, body, reused_status, reused_body
