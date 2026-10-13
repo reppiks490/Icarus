@@ -30,7 +30,7 @@
 1. **Duplicate or conflicting subscription revision:** creating the same `(subscription_id, revision)` with identical canonical spec is idempotent; different material fields under the same identity raise and never reinterpret existing deliveries. Covered in Task 1.
 2. **Boundary-time lease actions:** ACK/NACK at or after `lease_expires_at` must fail even when no recovery job has run yet. Covered in Task 3.
 3. **Corrupted/tampered Phase 1 journal row:** event SHA/authority mismatch must fail closed before delivery and must not create an ACKable delivery. Covered in Task 6.
-4. **Retry ceiling under mixed NACK + expiry:** attempt counting must reach dead-letter deterministically regardless of failure path and must preserve receipt history. Covered in Task 4.
+4. **Retry ceiling under mixed NACK + expiry:** attempt counting must reach dead-letter deterministically regardless of failure path, and an explicit manual requeue grants exactly one additional lease opportunity without erasing cumulative attempt history. Covered in Task 4.
 5. **Filtered subscription with no historical matches:** metrics must return an explicit empty/zero state rather than a misleading huge sequence lag. Covered in Task 5.
 
 ---
@@ -85,13 +85,16 @@ class IntelligenceDeliveryPlane:
     def receipts(self, *, delivery_id: str | None = None, subscription_id: str | None = None, limit: int = 100) -> list[dict[str, Any]]: ...
     def metrics(self, subscription_id: str, revision: int, *, as_of: str) -> dict[str, Any]: ...
     def create_replay_subscription(self, source_subscription_id: str, source_revision: int, replay_subscription_id: str, start_sequence: int, *, as_of: str) -> dict[str, Any]: ...
+    def close(self) -> None: ...
+    def __enter__(self) -> "IntelligenceDeliveryPlane": ...
+    def __exit__(self, exc_type, exc, tb) -> None: ...
 ```
 
 Every returned delivery/control record must include both authority flags set to `False`.
 
 ---
 
-### Task 1: Delivery schema, validation, consumers, groups, and immutable subscription revisions
+### Task 1: Delivery schema, validation, consumers, groups, immutable subscription revisions, and connection lifecycle
 
 **Files:**
 - Create: `icarus_engine/intelligence_delivery.py`
@@ -99,7 +102,7 @@ Every returned delivery/control record must include both authority flags set to 
 
 **Interfaces:**
 - Consumes: existing Phase 1 tables in the same SQLite database; no Phase 1 Python API change.
-- Produces: `SubscriptionSpec`, `IntelligenceDeliveryPlane.__init__`, `register_consumer`, `set_group_membership`, `create_subscription`, `set_subscription_enabled`.
+- Produces: `SubscriptionSpec`, `IntelligenceDeliveryPlane.__init__`, `close`, context-manager methods, `register_consumer`, `set_group_membership`, `create_subscription`, `set_subscription_enabled`.
 
 - [ ] **Step 1: Write failing validation/schema tests**
 
@@ -108,25 +111,26 @@ Add tests named:
 - `test_subscription_mode_target_and_retry_policy_validation`
 - `test_consumer_registration_and_group_membership_are_receipt_audited`
 - `test_subscription_enable_disable_is_receipt_audited_without_rewriting_material_spec`
+- `test_delivery_plane_closes_only_connections_it_owns`
 
-Assert: identical subscription recreation returns `idempotent=True`; conflicting material spec under same `(subscription_id, revision)` raises `ValueError`; broadcast requires exactly `consumer_id`; competing requires exactly `consumer_group`; `start_sequence >= 1`; `max_attempts >= 1`; retry delay is non-negative; malformed/non-timezone `as_of` fails; membership/enable transitions produce append-only receipts and all results carry false authority flags.
+Assert: identical subscription recreation returns `idempotent=True`; conflicting material spec under same `(subscription_id, revision)` raises `ValueError`; broadcast requires exactly `consumer_id`; competing requires exactly `consumer_group`; `start_sequence >= 1`; `max_attempts >= 1`; retry delay is non-negative; malformed/non-timezone `as_of` fails; membership/enable transitions produce append-only receipts and all results carry false authority flags. A plane created from a path closes its owned connection on `close()` / context exit; a caller-supplied `sqlite3.Connection` remains usable after plane close.
 
 - [ ] **Step 2: Run focused tests and confirm RED**
 
-Run: `python -m pytest tests_engine/test_intelligence_delivery.py -k "subscription or consumer or group" -q`
+Run: `python -m pytest tests_engine/test_intelligence_delivery.py -k "subscription or consumer or group or closes_only" -q`
 Expected: FAIL because `icarus_engine.intelligence_delivery` does not exist.
 
-- [ ] **Step 3: Implement module validation helpers and schema**
+- [ ] **Step 3: Implement module validation helpers, connection lifecycle, and schema**
 
-Implement `SubscriptionSpec` and `IntelligenceDeliveryPlane.__init__` with exact signatures above. Create only Phase 2 tables: `fabric_subscriptions`, `fabric_consumers`, `fabric_consumer_groups`, `fabric_deliveries`, `fabric_delivery_receipts`. Enable foreign keys, configure bounded busy timeout, and enable WAL only for file-backed databases where SQLite accepts it. Canonical subscription material is compact sorted finite JSON; store a SHA-256 material hash for identity comparison.
+Implement `SubscriptionSpec` and `IntelligenceDeliveryPlane.__init__` with exact signatures above. Track `_owns_connection`, implement `close`/context-manager behavior matching Phase 1 ownership semantics, create only Phase 2 tables: `fabric_subscriptions`, `fabric_consumers`, `fabric_consumer_groups`, `fabric_deliveries`, `fabric_delivery_receipts`. Enable foreign keys, configure bounded busy timeout, and enable WAL only for file-backed databases where SQLite accepts it. Canonical subscription material is compact sorted finite JSON; store a SHA-256 material hash for identity comparison.
 
 - [ ] **Step 4: Implement consumer/group/subscription control methods**
 
-Implement the four Task 1 public methods. Material subscription fields are immutable per revision. `enabled` is operational state and receipt-audited. Group membership changes are receipt-audited. Registration/group/subscription receipts use the same append-only receipt table with a control transition type and no fake Phase 1 event identity.
+Implement the four Task 1 public control methods. Material subscription fields are immutable per revision. `enabled` is operational state and receipt-audited. Group membership changes are receipt-audited. Registration/group/subscription receipts use the same append-only receipt table with a control transition type and no fake Phase 1 event identity.
 
 - [ ] **Step 5: Run Task 1 tests**
 
-Run: `python -m pytest tests_engine/test_intelligence_delivery.py -k "subscription or consumer or group" -q`
+Run: `python -m pytest tests_engine/test_intelligence_delivery.py -k "subscription or consumer or group or closes_only" -q`
 Expected: PASS.
 
 - [ ] **Step 6: Commit**
@@ -252,10 +256,10 @@ Add:
 - `test_nack_retries_after_fixed_delay_when_attempts_remain`
 - `test_expired_lease_recovers_and_can_be_redelivered`
 - `test_mixed_nack_and_expiry_reaches_max_attempts_then_dead_letters`
-- `test_dead_letter_requeue_is_explicit_and_preserves_attempt_history`
+- `test_dead_letter_requeue_grants_one_extra_lease_without_erasing_attempt_history`
 - `test_nack_reason_is_bounded_finite_json`
 
-Use `max_attempts=3` and explicit timestamps. Assert attempt count increments only when a lease is issued; NACK/expiry after attempt 3 transitions to `DEAD_LETTERED`; no claim occurs before retry eligibility; requeue emits `REQUEUED -> PENDING` receipts without erasing prior attempts; malformed/oversized reason metadata fails before mutation.
+Use `max_attempts=3` and explicit timestamps. Assert attempt count increments only when a lease is issued; NACK/expiry after attempt 3 transitions to `DEAD_LETTERED`; no claim occurs before retry eligibility; explicit requeue emits `REQUEUED -> PENDING`, preserves cumulative attempt/receipt history, grants exactly one additional claim opportunity (attempt 4), and a failure/expiry of that attempt dead-letters again unless another explicit requeue occurs; malformed/oversized reason metadata fails before mutation.
 
 - [ ] **Step 2: Run tests and confirm RED**
 
@@ -264,15 +268,15 @@ Expected: FAIL because retry/dead-letter methods are missing.
 
 - [ ] **Step 3: Implement `nack` and retry eligibility**
 
-Use the shared lease validator. Append `NACKED` receipt. If `attempt >= max_attempts`, transition in the same transaction to `DEAD_LETTERED`; otherwise set deterministic `retry_eligible_at = as_of + retry_delay_seconds`, transition back to `PENDING`, and append the corresponding receipt(s).
+Use the shared lease validator. Append `NACKED` receipt. If the current attempt has exhausted the automatic retry budget, transition in the same transaction to `DEAD_LETTERED`; otherwise set deterministic `retry_eligible_at = as_of + retry_delay_seconds`, transition back to `PENDING`, and append the corresponding receipt(s).
 
 - [ ] **Step 4: Implement `recover_expired`**
 
-Select bounded currently `LEASED` rows with `lease_expires_at <= as_of`. For each, append `LEASE_EXPIRED`; dead-letter when attempts are exhausted, otherwise set retry eligibility and return to `PENDING`. Recovery never increments attempts by itself.
+Select bounded currently `LEASED` rows with `lease_expires_at <= as_of`. For each, append `LEASE_EXPIRED`; dead-letter when the automatic retry budget is exhausted, otherwise set retry eligibility and return to `PENDING`. Recovery never increments attempts by itself.
 
 - [ ] **Step 5: Implement dead-letter listing and explicit requeue**
 
-`dead_letters` returns only terminal dead-letter rows. `requeue_dead_lettered` requires current state `DEAD_LETTERED`, appends `REQUEUED` then `PENDING`, clears active lease/retry blocking state, preserves cumulative attempt count/history, and requires future claims to increment from that existing attempt count.
+`dead_letters` returns only terminal dead-letter rows. `requeue_dead_lettered` requires current state `DEAD_LETTERED`, appends `REQUEUED` then `PENDING`, clears active lease/retry blocking state, preserves cumulative attempt count/history, and records an explicit one-shot manual override flag. The next claim consumes that override and increments the cumulative attempt. If that manually requeued attempt NACKs or expires, it returns to `DEAD_LETTERED` immediately; another attempt requires another explicit requeue.
 
 - [ ] **Step 6: Run Task 4 tests**
 
@@ -307,7 +311,7 @@ Add:
 - `test_filtered_subscription_with_no_matches_has_explicit_empty_zero_lag_state`
 - `test_receipts_are_append_only_and_filterable`
 
-Snapshot Phase 1 event IDs/sequences before replay and assert unchanged afterward. For empty filtered subscription assert `matching_event_count == 0`, `pending_count == 0`, and `sequence_lag == 0` with explicit empty marker (for example `has_matching_events=False`).
+Snapshot Phase 1 event IDs/sequences before replay and assert unchanged afterward. For empty filtered subscription assert `matching_event_count == 0`, `pending_count == 0`, and `sequence_lag == 0` with explicit empty marker `has_matching_events=False`.
 
 - [ ] **Step 2: Run tests and confirm RED**
 
@@ -359,7 +363,7 @@ Add:
 - `test_failed_transition_rolls_back_projection_and_receipt_together`
 - `test_every_public_result_keeps_execution_authority_false`
 
-For tamper test, modify a stored Phase 1 `envelope_json` or event authority field directly after publication and assert `claim` raises before creating a usable delivery. For race test, use a file-backed DB and two independent connections; both may attempt claim, but only one can return a valid lease for the same competing logical delivery.
+For tamper test, modify a stored Phase 1 `envelope_json` or event authority field directly after publication and assert `claim` raises before creating any lease or delivery receipt for that event. For race test, use a file-backed DB and two independent connections; both may attempt claim, but only one can return a valid lease for the same competing logical delivery.
 
 - [ ] **Step 2: Run tests and confirm RED**
 
@@ -368,7 +372,7 @@ Expected: at least the tamper/race/rollback tests FAIL until hardening is added.
 
 - [ ] **Step 3: Add exact Phase 1 envelope verification at delivery boundary**
 
-Before projecting a Phase 1 event downstream, parse `envelope_json`, require schema/authority fields expected by Phase 1, canonical-serialize with the Phase 1 JSON rules, recompute SHA-256, and require it to equal stored `event_id`. A failure raises and must not produce an ACKable delivery.
+Before creating or leasing a logical delivery for a Phase 1 event, parse `envelope_json`, require schema/authority fields expected by Phase 1, canonical-serialize with the Phase 1 JSON rules, recompute SHA-256, and require it to equal stored `event_id`. A failure raises before any delivery/lease receipt for that event is persisted.
 
 - [ ] **Step 4: Harden transaction helpers and busy behavior**
 
