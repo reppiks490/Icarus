@@ -12,6 +12,7 @@ import ipaddress
 import json
 import math
 import queue
+import secrets
 import threading
 from concurrent.futures import Future
 from dataclasses import dataclass, fields, is_dataclass
@@ -45,7 +46,7 @@ class GatewaySecurityError(GatewayError):
 
 
 class GatewayBusyError(GatewayError):
-    """The bounded delivery worker queue has no capacity."""
+    """A bounded gateway resource has no capacity."""
 
 
 def _positive_int(value: Any, name: str) -> int:
@@ -60,6 +61,17 @@ def _positive_finite(value: Any, name: str) -> float:
     value = float(value)
     if not math.isfinite(value) or value <= 0:
         raise ValueError(f"{name} must be a positive finite number")
+    return value
+
+
+def _identifier(value: Any, name: str, limit: int = 240) -> str:
+    if not isinstance(value, str):
+        raise ValueError(f"{name} must be a string")
+    value = value.strip()
+    if not value:
+        raise ValueError(f"{name} is required")
+    if len(value) > limit:
+        raise ValueError(f"{name} exceeds {limit} characters")
     return value
 
 
@@ -207,6 +219,195 @@ class GatewayConfig:
             raise ValueError("default_max_inflight must be in [1, 256]")
         if isinstance(self.default_lease_seconds, bool) or not isinstance(self.default_lease_seconds, int) or not 5 <= self.default_lease_seconds <= 300:
             raise ValueError("default_lease_seconds must be in [5, 300]")
+
+
+@dataclass(frozen=True)
+class SessionBinding:
+    subscription_id: str
+    revision: int
+    consumer_id: str
+    lease_seconds: int
+    max_inflight: int
+
+    def __post_init__(self) -> None:
+        _identifier(self.subscription_id, "subscription_id")
+        _identifier(self.consumer_id, "consumer_id")
+        if isinstance(self.revision, bool) or not isinstance(self.revision, int) or self.revision < 1:
+            raise ValueError("revision must be an integer >= 1")
+        if isinstance(self.lease_seconds, bool) or not isinstance(self.lease_seconds, int) or not 5 <= self.lease_seconds <= 300:
+            raise ValueError("lease_seconds must be in [5, 300]")
+        if isinstance(self.max_inflight, bool) or not isinstance(self.max_inflight, int) or not 1 <= self.max_inflight <= 256:
+            raise ValueError("max_inflight must be in [1, 256]")
+
+
+@dataclass
+class GatewaySession:
+    session_id: str
+    transport: str
+    binding: SessionBinding
+    connected_at: str
+    last_client_activity_at: str
+    last_server_activity_at: str
+    inflight_delivery_ids: set[str]
+    closed: bool = False
+
+
+class TicketStore:
+    """Process-local bounded one-use capability tickets for SSE bootstrap."""
+
+    def __init__(
+        self,
+        *,
+        max_tickets: int,
+        ttl_seconds: float,
+        token_factory: Callable[[], str] | None = None,
+    ) -> None:
+        self._max_tickets = _positive_int(max_tickets, "max_tickets")
+        self._ttl_seconds = _positive_finite(ttl_seconds, "ttl_seconds")
+        if self._ttl_seconds > 30.0:
+            raise ValueError("ttl_seconds must be <= 30")
+        self._token_factory = token_factory or (lambda: secrets.token_urlsafe(32))
+        self._tickets: dict[str, tuple[float, SessionBinding]] = {}
+        self._lock = threading.Lock()
+
+    def _purge_locked(self, now_monotonic: float) -> None:
+        expired = [token for token, (expires, _binding) in self._tickets.items() if expires <= now_monotonic]
+        for token in expired:
+            self._tickets.pop(token, None)
+
+    def issue(self, binding: SessionBinding, *, now_monotonic: float) -> str:
+        if not isinstance(binding, SessionBinding):
+            raise ValueError("binding must be SessionBinding")
+        now = float(now_monotonic)
+        if not math.isfinite(now):
+            raise ValueError("now_monotonic must be finite")
+        with self._lock:
+            self._purge_locked(now)
+            if len(self._tickets) >= self._max_tickets:
+                raise GatewayBusyError("ticket store is full")
+            token = _identifier(self._token_factory(), "ticket", 512)
+            if token in self._tickets:
+                raise GatewayBusyError("ticket collision")
+            self._tickets[token] = (now + self._ttl_seconds, binding)
+            return token
+
+    def consume(self, ticket: str, *, now_monotonic: float) -> SessionBinding:
+        ticket = _identifier(ticket, "ticket", 512)
+        now = float(now_monotonic)
+        if not math.isfinite(now):
+            raise ValueError("now_monotonic must be finite")
+        with self._lock:
+            self._purge_locked(now)
+            item = self._tickets.pop(ticket, None)
+            if item is None:
+                raise GatewaySecurityError("stream authentication failed")
+            return item[1]
+
+    def count(self, *, now_monotonic: float) -> int:
+        now = float(now_monotonic)
+        if not math.isfinite(now):
+            raise ValueError("now_monotonic must be finite")
+        with self._lock:
+            self._purge_locked(now)
+            return len(self._tickets)
+
+    def __repr__(self) -> str:
+        with self._lock:
+            return f"<TicketStore count={len(self._tickets)} capacity={self._max_tickets}>"
+
+
+class SessionRegistry:
+    """Thread-safe process-local gateway session registry."""
+
+    def __init__(
+        self,
+        *,
+        max_sessions: int,
+        session_id_factory: Callable[[], str] | None = None,
+    ) -> None:
+        self._max_sessions = _positive_int(max_sessions, "max_sessions")
+        self._session_id_factory = session_id_factory or (lambda: secrets.token_urlsafe(24))
+        self._sessions: dict[str, GatewaySession] = {}
+        self._lock = threading.RLock()
+
+    def create(self, transport: str, binding: SessionBinding, *, now: str) -> GatewaySession:
+        if transport not in {"websocket", "sse"}:
+            raise ValueError("transport must be websocket or sse")
+        if not isinstance(binding, SessionBinding):
+            raise ValueError("binding must be SessionBinding")
+        now = _identifier(now, "now", 80)
+        with self._lock:
+            if len(self._sessions) >= self._max_sessions:
+                raise GatewayBusyError("session registry is full")
+            session_id = _identifier(self._session_id_factory(), "session_id", 256)
+            if session_id in self._sessions:
+                raise GatewayBusyError("session id collision")
+            session = GatewaySession(
+                session_id=session_id,
+                transport=transport,
+                binding=binding,
+                connected_at=now,
+                last_client_activity_at=now,
+                last_server_activity_at=now,
+                inflight_delivery_ids=set(),
+            )
+            self._sessions[session_id] = session
+            return session
+
+    def get(self, session_id: str) -> GatewaySession | None:
+        session_id = _identifier(session_id, "session_id", 256)
+        with self._lock:
+            return self._sessions.get(session_id)
+
+    def close(self, session_id: str) -> tuple[str, ...]:
+        session_id = _identifier(session_id, "session_id", 256)
+        with self._lock:
+            session = self._sessions.pop(session_id, None)
+            if session is None:
+                return ()
+            session.closed = True
+            return tuple(sorted(session.inflight_delivery_ids))
+
+    def add_inflight(self, session_id: str, delivery_id: str) -> None:
+        session_id = _identifier(session_id, "session_id", 256)
+        delivery_id = _identifier(delivery_id, "delivery_id", 256)
+        with self._lock:
+            session = self._sessions.get(session_id)
+            if session is None or session.closed:
+                raise GatewayError("session is not active")
+            if delivery_id not in session.inflight_delivery_ids and len(session.inflight_delivery_ids) >= session.binding.max_inflight:
+                raise GatewayBusyError("session in-flight window is full")
+            session.inflight_delivery_ids.add(delivery_id)
+
+    def remove_inflight(self, session_id: str, delivery_id: str) -> bool:
+        session_id = _identifier(session_id, "session_id", 256)
+        delivery_id = _identifier(delivery_id, "delivery_id", 256)
+        with self._lock:
+            session = self._sessions.get(session_id)
+            if session is None or delivery_id not in session.inflight_delivery_ids:
+                return False
+            session.inflight_delivery_ids.remove(delivery_id)
+            return True
+
+    def remove_inflight_everywhere(self, delivery_id: str) -> int:
+        delivery_id = _identifier(delivery_id, "delivery_id", 256)
+        removed = 0
+        with self._lock:
+            for session in self._sessions.values():
+                if delivery_id in session.inflight_delivery_ids:
+                    session.inflight_delivery_ids.remove(delivery_id)
+                    removed += 1
+        return removed
+
+    def snapshot(self) -> dict[str, int]:
+        with self._lock:
+            sessions = tuple(self._sessions.values())
+            return {
+                "active_sessions": len(sessions),
+                "websocket_sessions": sum(1 for session in sessions if session.transport == "websocket"),
+                "sse_sessions": sum(1 for session in sessions if session.transport == "sse"),
+                "inflight_total": sum(len(session.inflight_delivery_ids) for session in sessions),
+            }
 
 
 @dataclass
