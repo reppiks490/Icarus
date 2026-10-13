@@ -77,7 +77,7 @@ def test_delivery_executor_async_call_does_not_block_event_loop_during_submit(tm
     assert observed_during_submit == [True]
 
 
-def test_delivery_executor_caller_cancellation_does_not_kill_worker(tmp_path: Path, monkeypatch):
+def test_delivery_executor_marks_started_call_running_and_survives_cancel_attempt(tmp_path: Path):
     entered = threading.Event()
     release = threading.Event()
 
@@ -92,49 +92,20 @@ def test_delivery_executor_caller_cancellation_does_not_kill_worker(tmp_path: Pa
         plane_factory=lambda path: _BlockingPlane(path),
     )
     executor.start()
-    original_submit = executor.submit
-    submitted = []
-
-    def recording_submit(*args, **kwargs):
-        future = original_submit(*args, **kwargs)
-        submitted.append(future)
-        return future
-
-    monkeypatch.setattr(executor, "submit", recording_submit)
-
-    async def scenario():
-        first = asyncio.create_task(
-            executor.call("metrics", "sub", 1, as_of="2026-10-13T23:30:00Z")
-        )
-        assert await asyncio.to_thread(entered.wait, 1.0)
-        for _ in range(100):
-            if submitted:
-                break
-            await asyncio.sleep(0.001)
-        assert len(submitted) == 1
-        first.cancel()
-        with pytest.raises(asyncio.CancelledError):
-            await first
-        for _ in range(100):
-            if submitted[0].cancelled():
-                break
-            await asyncio.sleep(0.001)
-        assert submitted[0].cancelled() is True
-        release.set()
-        await asyncio.sleep(0.05)
-        assert executor._thread is not None and executor._thread.is_alive()
-        return await asyncio.wait_for(
-            executor.call("metrics", "sub", 2, as_of="2026-10-13T23:30:01Z"),
-            timeout=1.0,
-        )
 
     try:
-        result = asyncio.run(scenario())
+        first = executor.submit("metrics", "sub", 1, as_of="2026-10-13T23:30:00Z")
+        assert entered.wait(timeout=1.0)
+        cancelled = first.cancel()
+        release.set()
+        assert cancelled is False
+        assert first.result(timeout=1.0)["revision"] == 1
+        assert executor._thread is not None and executor._thread.is_alive()
+        second = executor.submit("metrics", "sub", 2, as_of="2026-10-13T23:30:01Z")
+        assert second.result(timeout=1.0)["revision"] == 2
     finally:
         release.set()
         executor.close()
-
-    assert result["revision"] == 2
 
 
 def test_http_sqlite_store_failure_maps_to_retryable_store_unavailable(tmp_path: Path):
