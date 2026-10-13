@@ -5,6 +5,7 @@ import sqlite3
 import pytest
 
 from icarus_engine.intelligence_delivery import IntelligenceDeliveryPlane, SubscriptionSpec
+from icarus_engine.intelligence_fabric import IntelligenceEvent, IntelligenceFabric
 
 
 T0 = "2026-10-13T01:45:00Z"
@@ -29,6 +30,33 @@ def _broadcast_spec(**overrides):
     }
     values.update(overrides)
     return SubscriptionSpec(**values)
+
+
+def _risk_event(index: int, received_at: str) -> IntelligenceEvent:
+    return IntelligenceEvent(
+        event_type="risk",
+        source="fve",
+        source_kind="system",
+        channel="risk",
+        thread_key="risk:nq",
+        title=f"NQ risk event {index}",
+        body=f"risk body {index}",
+        observed_at=T0,
+        received_at=received_at,
+        severity=3,
+        urgency=0.8,
+        assets=("NQ",),
+        tags=("urgent",),
+        payload={"index": index},
+    )
+
+
+def _shared_fabric():
+    connection = sqlite3.connect(":memory:")
+    fabric = IntelligenceFabric(connection)
+    tokens = iter([f"lease-{index}" for index in range(1, 50)])
+    plane = IntelligenceDeliveryPlane(connection, token_factory=lambda: next(tokens))
+    return connection, fabric, plane
 
 
 def test_subscription_revision_is_canonical_idempotent_and_conflict_fails_closed() -> None:
@@ -106,3 +134,76 @@ def test_subscription_enable_disable_is_receipt_audited_without_rewriting_materi
         "SUBSCRIPTION_DISABLED",
         "SUBSCRIPTION_ENABLED",
     ]
+
+
+def test_broadcast_subscriptions_independently_claim_same_phase1_event() -> None:
+    _, fabric, plane = _shared_fabric()
+    published = fabric.publish(_risk_event(1, T0))
+    plane.register_consumer("risk-monitor", as_of=T0)
+    plane.register_consumer("audit-monitor", as_of=T0)
+    plane.create_subscription(_broadcast_spec(), as_of=T0)
+    plane.create_subscription(
+        _broadcast_spec(subscription_id="sub-audit", consumer_id="audit-monitor"), as_of=T0
+    )
+
+    risk = plane.claim("sub-risk", 1, "risk-monitor", as_of=T1)
+    audit = plane.claim("sub-audit", 1, "audit-monitor", as_of=T1)
+
+    assert len(risk) == len(audit) == 1
+    assert risk[0]["event_id"] == audit[0]["event_id"] == published["event_id"]
+    assert risk[0]["journal_sequence"] == audit[0]["journal_sequence"] == published["sequence"]
+    assert risk[0]["state"] == audit[0]["state"] == "LEASED"
+    assert risk[0]["attempt"] == audit[0]["attempt"] == 1
+    assert risk[0]["lease_token"]
+    assert audit[0]["lease_token"]
+    assert risk[0]["execution_authorized"] is False
+    assert risk[0]["production_decision_authorized"] is False
+
+
+def test_ack_is_terminal_only_for_its_subscription_target() -> None:
+    _, fabric, plane = _shared_fabric()
+    published = fabric.publish(_risk_event(1, T0))
+    plane.register_consumer("risk-monitor", as_of=T0)
+    plane.register_consumer("audit-monitor", as_of=T0)
+    plane.create_subscription(_broadcast_spec(), as_of=T0)
+    plane.create_subscription(
+        _broadcast_spec(subscription_id="sub-audit", consumer_id="audit-monitor"), as_of=T0
+    )
+
+    risk = plane.claim("sub-risk", 1, "risk-monitor", as_of=T1)[0]
+    acknowledged = plane.ack(
+        risk["delivery_id"], "risk-monitor", risk["lease_token"], as_of="2026-10-13T01:46:10Z"
+    )
+    audit = plane.claim("sub-audit", 1, "audit-monitor", as_of="2026-10-13T01:46:11Z")
+
+    assert acknowledged["state"] == "ACKED"
+    assert plane.claim("sub-risk", 1, "risk-monitor", as_of="2026-10-13T01:46:12Z") == []
+    assert len(audit) == 1
+    assert audit[0]["event_id"] == published["event_id"]
+
+
+def test_claim_order_is_phase1_sequence_and_start_sequence_is_inclusive() -> None:
+    _, fabric, plane = _shared_fabric()
+    first = fabric.publish(_risk_event(1, T0))
+    second = fabric.publish(_risk_event(2, T1))
+    plane.register_consumer("risk-monitor", as_of=T1)
+    plane.create_subscription(_broadcast_spec(start_sequence=2), as_of=T1)
+
+    claimed = plane.claim(
+        "sub-risk", 1, "risk-monitor", as_of="2026-10-13T01:47:00Z", limit=5
+    )
+
+    assert first["sequence"] == 1
+    assert second["sequence"] == 2
+    assert [row["journal_sequence"] for row in claimed] == [2]
+    assert [row["event_id"] for row in claimed] == [second["event_id"]]
+
+
+def test_disabled_subscription_cannot_claim() -> None:
+    _, fabric, plane = _shared_fabric()
+    fabric.publish(_risk_event(1, T0))
+    plane.register_consumer("risk-monitor", as_of=T0)
+    plane.create_subscription(_broadcast_spec(), as_of=T0)
+    plane.set_subscription_enabled("sub-risk", 1, False, as_of=T1)
+
+    assert plane.claim("sub-risk", 1, "risk-monitor", as_of="2026-10-13T01:47:00Z") == []
