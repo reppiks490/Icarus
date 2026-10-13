@@ -14,9 +14,10 @@ import math
 import queue
 import secrets
 import threading
+import time
 from concurrent.futures import Future
 from dataclasses import dataclass, fields, is_dataclass
-from typing import Any, Callable
+from typing import Any, Callable, Mapping
 
 from .intelligence_delivery import IntelligenceDeliveryPlane
 
@@ -47,6 +48,10 @@ class GatewaySecurityError(GatewayError):
 
 class GatewayBusyError(GatewayError):
     """A bounded gateway resource has no capacity."""
+
+
+class GatewaySessionError(GatewayError):
+    """Ephemeral gateway session is absent, closed, or lacks a delivery."""
 
 
 def _positive_int(value: Any, name: str) -> int:
@@ -129,9 +134,7 @@ def validate_host_header(host_header: str | None, allowed_hosts: frozenset[str])
 def validate_origin(origin: str | None, allowed_origins: frozenset[str]) -> None:
     if origin in (None, ""):
         return
-    if not isinstance(origin, str):
-        raise GatewaySecurityError("origin rejected")
-    if origin not in allowed_origins:
+    if not isinstance(origin, str) or origin not in allowed_origins:
         raise GatewaySecurityError("origin rejected")
 
 
@@ -374,7 +377,7 @@ class SessionRegistry:
         with self._lock:
             session = self._sessions.get(session_id)
             if session is None or session.closed:
-                raise GatewayError("session is not active")
+                raise GatewaySessionError("session is not active")
             if delivery_id not in session.inflight_delivery_ids and len(session.inflight_delivery_ids) >= session.binding.max_inflight:
                 raise GatewayBusyError("session in-flight window is full")
             session.inflight_delivery_ids.add(delivery_id)
@@ -388,6 +391,21 @@ class SessionRegistry:
                 return False
             session.inflight_delivery_ids.remove(delivery_id)
             return True
+
+    def contains_inflight(self, session_id: str, delivery_id: str) -> bool:
+        session_id = _identifier(session_id, "session_id", 256)
+        delivery_id = _identifier(delivery_id, "delivery_id", 256)
+        with self._lock:
+            session = self._sessions.get(session_id)
+            return bool(session is not None and not session.closed and delivery_id in session.inflight_delivery_ids)
+
+    def available_capacity(self, session_id: str) -> tuple[GatewaySession, int]:
+        session_id = _identifier(session_id, "session_id", 256)
+        with self._lock:
+            session = self._sessions.get(session_id)
+            if session is None or session.closed:
+                raise GatewaySessionError("session is not active")
+            return session, max(0, session.binding.max_inflight - len(session.inflight_delivery_ids))
 
     def remove_inflight_everywhere(self, delivery_id: str) -> int:
         delivery_id = _identifier(delivery_id, "delivery_id", 256)
@@ -540,3 +558,170 @@ class DeliveryExecutor:
             close = getattr(plane, "close", None)
             if callable(close):
                 close()
+
+
+class IntelligenceGatewayService:
+    """Transport-neutral orchestration over Phase 2 and ephemeral gateway state."""
+
+    def __init__(
+        self,
+        *,
+        executor: Any,
+        config: GatewayConfig | None = None,
+        session_registry: SessionRegistry | None = None,
+        ticket_store: TicketStore | None = None,
+    ) -> None:
+        self.config = config or GatewayConfig()
+        self.executor = executor
+        self.sessions = session_registry or SessionRegistry(max_sessions=self.config.max_sessions)
+        self.tickets = ticket_store or TicketStore(
+            max_tickets=self.config.max_unused_tickets,
+            ttl_seconds=self.config.ticket_ttl_seconds,
+        )
+        self._started = False
+        self._closed = False
+
+    async def start(self) -> None:
+        if self._closed:
+            raise RuntimeError("gateway service is closed")
+        if not self._started:
+            self.executor.start()
+            self._started = True
+
+    async def close(self) -> None:
+        if self._closed:
+            return
+        self._closed = True
+        self.executor.close()
+        self._started = False
+
+    def create_ws_session(self, binding: SessionBinding, *, now: str) -> GatewaySession:
+        return self.sessions.create("websocket", binding, now=now)
+
+    def create_sse_ticket(self, binding: SessionBinding, *, now_monotonic: float) -> str:
+        return self.tickets.issue(binding, now_monotonic=now_monotonic)
+
+    def consume_sse_ticket(self, ticket: str, *, now_monotonic: float, now: str) -> GatewaySession:
+        binding = self.tickets.consume(ticket, now_monotonic=now_monotonic)
+        return self.sessions.create("sse", binding, now=now)
+
+    def _require_session(self, session_id: str) -> GatewaySession:
+        session = self.sessions.get(session_id)
+        if session is None or session.closed:
+            raise GatewaySessionError("session is not active")
+        return session
+
+    async def claim_for_session(self, session_id: str, *, now: str) -> list[dict[str, object]]:
+        session, available = self.sessions.available_capacity(session_id)
+        if available <= 0:
+            return []
+        result = await self.executor.call(
+            "claim",
+            session.binding.subscription_id,
+            session.binding.revision,
+            session.binding.consumer_id,
+            as_of=now,
+            lease_seconds=session.binding.lease_seconds,
+            limit=available,
+        )
+        if not isinstance(result, list):
+            raise GatewayError("delivery plane returned an invalid claim batch")
+        if len(result) > available:
+            raise GatewayError("delivery plane exceeded gateway in-flight limit")
+        delivery_ids: list[str] = []
+        for item in result:
+            if not isinstance(item, Mapping):
+                raise GatewayError("delivery plane returned an invalid delivery")
+            delivery_ids.append(_identifier(item.get("delivery_id"), "delivery_id", 256))
+        for delivery_id in delivery_ids:
+            self.sessions.add_inflight(session_id, delivery_id)
+        return result
+
+    async def ack_for_session(
+        self,
+        session_id: str,
+        delivery_id: str,
+        lease_token: str,
+        *,
+        now: str,
+    ) -> dict[str, object]:
+        session = self._require_session(session_id)
+        delivery_id = _identifier(delivery_id, "delivery_id", 256)
+        lease_token = _identifier(lease_token, "lease_token", 512)
+        if not self.sessions.contains_inflight(session_id, delivery_id):
+            raise GatewaySessionError("delivery is not in this session")
+        result = await self.executor.call(
+            "ack",
+            delivery_id,
+            session.binding.consumer_id,
+            lease_token,
+            as_of=now,
+        )
+        if not isinstance(result, Mapping):
+            raise GatewayError("delivery plane returned an invalid ACK result")
+        self.sessions.remove_inflight(session_id, delivery_id)
+        return dict(result)
+
+    async def nack_for_session(
+        self,
+        session_id: str,
+        delivery_id: str,
+        lease_token: str,
+        *,
+        now: str,
+        reason: Mapping[str, object] | None = None,
+    ) -> dict[str, object]:
+        session = self._require_session(session_id)
+        delivery_id = _identifier(delivery_id, "delivery_id", 256)
+        lease_token = _identifier(lease_token, "lease_token", 512)
+        if not self.sessions.contains_inflight(session_id, delivery_id):
+            raise GatewaySessionError("delivery is not in this session")
+        if reason is not None and not isinstance(reason, Mapping):
+            raise ValueError("reason must be a mapping")
+        reason_dict = dict(reason or {})
+        result = await self.executor.call(
+            "nack",
+            delivery_id,
+            session.binding.consumer_id,
+            lease_token,
+            as_of=now,
+            reason=reason_dict,
+        )
+        if not isinstance(result, Mapping):
+            raise GatewayError("delivery plane returned an invalid NACK result")
+        self.sessions.remove_inflight(session_id, delivery_id)
+        return dict(result)
+
+    async def recover_expired(self, *, now: str) -> list[dict[str, object]]:
+        result = await self.executor.call("recover_expired", as_of=now, limit=self.config.recovery_limit)
+        if not isinstance(result, list):
+            raise GatewayError("delivery plane returned an invalid recovery batch")
+        for item in result:
+            if not isinstance(item, Mapping):
+                raise GatewayError("delivery plane returned an invalid recovered delivery")
+            delivery_id = _identifier(item.get("delivery_id"), "delivery_id", 256)
+            self.sessions.remove_inflight_everywhere(delivery_id)
+        return result
+
+    async def durable_metrics(self, subscription_id: str, revision: int, *, now: str) -> dict[str, object]:
+        result = await self.executor.call("metrics", subscription_id, revision, as_of=now)
+        if not isinstance(result, Mapping):
+            raise GatewayError("delivery plane returned invalid metrics")
+        return dict(result)
+
+    def ephemeral_metrics(self) -> dict[str, object]:
+        result: dict[str, object] = dict(self.sessions.snapshot())
+        result.update(
+            {
+                "unused_tickets": self.tickets.count(now_monotonic=time.monotonic()),
+                "executor_queue_depth": int(getattr(self.executor, "queue_depth", 0)),
+                "executor_saturation_count": int(getattr(self.executor, "saturation_count", 0)),
+                "ephemeral": True,
+                "execution_authorized": False,
+                "production_decision_authorized": False,
+            }
+        )
+        return result
+
+    def close_session(self, session_id: str) -> tuple[str, ...]:
+        return self.sessions.close(session_id)
