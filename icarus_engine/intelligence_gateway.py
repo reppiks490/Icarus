@@ -476,6 +476,8 @@ class DeliveryExecutor:
                     self._active += 1
                 call.dequeued.set()
                 try:
+                    if not call.future.set_running_or_notify_cancel():
+                        continue
                     if call.method not in _ALLOWED_DELIVERY_METHODS:
                         raise ValueError(f"unsupported delivery operation: {call.method}")
                     result = getattr(plane, call.method)(*call.args, **call.kwargs)
