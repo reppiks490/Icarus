@@ -14,6 +14,9 @@ from datetime import datetime, timezone
 from typing import Any, Iterable, Mapping
 
 SCHEMA_VERSION = "icarus-intelligence-fabric-v1"
+UNIFIED_INTELLIGENCE_SCHEMA_VERSION = "icarus-unified-intelligence-v1"
+UNIFIED_SOURCE_KINDS = {"native", "foreign_lens", "experiment", "human"}
+UNIFIED_EVIDENCE_CLASSES = {"observed", "derived", "reconstructed", "inferred", "unavailable"}
 
 EVENT_TYPES = {
     "claim",
@@ -537,6 +540,7 @@ def event_from_intelligence_claim(
     if not isinstance(claim, Mapping):
         raise ValueError("claim must be a mapping")
     required = (
+        "schema_version",
         "source",
         "source_kind",
         "semantic_key",
@@ -554,16 +558,23 @@ def event_from_intelligence_claim(
         if key not in claim:
             raise ValueError(f"missing claim field: {key}")
 
+    schema_version = _text(claim["schema_version"], "schema_version", 80)
+    if schema_version != UNIFIED_INTELLIGENCE_SCHEMA_VERSION:
+        raise ValueError("unsupported schema_version")
     source = _text(claim["source"], "source", 160)
     source_kind = _text(claim["source_kind"], "source_kind", 40).lower()
-    if source_kind not in SOURCE_KINDS:
-        raise ValueError("unsupported source_kind")
+    if source_kind not in UNIFIED_SOURCE_KINDS:
+        raise ValueError("unsupported source_kind for Unified Intelligence claim")
     semantic_key = _text(claim["semantic_key"], "semantic_key", 240)
     stance = _finite(claim["stance"], "stance")
     if not -1.0 <= stance <= 1.0:
         raise ValueError("stance must be in [-1, 1]")
     confidence = _unit(claim["confidence"], "confidence")
     evidence_class = _text(claim["evidence_class"], "evidence_class", 40).lower()
+    if evidence_class not in UNIFIED_EVIDENCE_CLASSES:
+        raise ValueError("unsupported evidence_class")
+    if evidence_class == "unavailable" and confidence != 0.0:
+        raise ValueError("unavailable evidence must have zero confidence")
     regime = _text(claim["regime"], "regime", 120)
     horizon_seconds = _nonnegative_int(claim["horizon_seconds"], "horizon_seconds")
     lineage = _items(claim.get("lineage", ()), "lineage", 240)
@@ -595,7 +606,7 @@ def event_from_intelligence_claim(
         "unified_intelligence_claim": full_claim,
     }
 
-    return IntelligenceEvent(
+    event = IntelligenceEvent(
         event_type="claim",
         source=source,
         source_kind=source_kind,
@@ -613,3 +624,5 @@ def event_from_intelligence_claim(
         tags=("unified-intelligence", evidence_class, ("regime:" + regime)[:80]),
         payload=payload,
     )
+    event.normalized()  # Fail closed at the bridge boundary, not at a later consumer.
+    return event
