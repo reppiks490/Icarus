@@ -109,6 +109,14 @@ def _json_value(value: Any, name: str, *, max_bytes: int = MAX_PAYLOAD_BYTES) ->
     return value
 
 
+def _canonical_json(value: Any) -> str:
+    return json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False)
+
+
+def _sha256_text(value: str) -> str:
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+
 def _items(values: Any, name: str, item_limit: int) -> tuple[str, ...]:
     if values is None:
         values = ()
@@ -210,10 +218,7 @@ class IntelligenceEvent:
         }
 
     def event_id(self) -> str:
-        raw = json.dumps(
-            self.normalized(), sort_keys=True, separators=(",", ":"), allow_nan=False
-        ).encode("utf-8")
-        return hashlib.sha256(raw).hexdigest()
+        return _sha256_text(_canonical_json(self.normalized()))
 
 
 def _event_from_mapping(row: Mapping[str, Any]) -> IntelligenceEvent:
@@ -338,9 +343,9 @@ class IntelligenceFabric:
     def publish(self, event: IntelligenceEvent | Mapping[str, Any]) -> dict[str, Any]:
         obj = event if isinstance(event, IntelligenceEvent) else _event_from_mapping(event)
         normalized = obj.normalized()
-        event_id = obj.event_id()
+        envelope_json = _canonical_json(normalized)
+        event_id = _sha256_text(envelope_json)
         score = attention_score(normalized)
-        envelope_json = json.dumps(normalized, sort_keys=True, separators=(",", ":"), allow_nan=False)
 
         with self._conn:
             cursor = self._conn.execute(
