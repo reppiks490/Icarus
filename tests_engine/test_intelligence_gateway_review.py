@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import asyncio
 import sqlite3
+import threading
 import time
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 from icarus_engine import intelligence_gateway as gateway
@@ -73,6 +75,47 @@ def test_delivery_executor_async_call_does_not_block_event_loop_during_submit(tm
 
     assert result["revision"] == 1
     assert observed_during_submit == [True]
+
+
+def test_delivery_executor_caller_cancellation_does_not_kill_worker(tmp_path: Path):
+    entered = threading.Event()
+    release = threading.Event()
+
+    class _BlockingPlane(_ReviewPlane):
+        def metrics(self, subscription_id: str, revision: int, *, as_of: str):
+            entered.set()
+            release.wait(timeout=2)
+            return super().metrics(subscription_id, revision, as_of=as_of)
+
+    executor = gateway.DeliveryExecutor(
+        str(tmp_path / "gateway.db"),
+        plane_factory=lambda path: _BlockingPlane(path),
+    )
+    executor.start()
+
+    async def scenario():
+        first = asyncio.create_task(
+            executor.call("metrics", "sub", 1, as_of="2026-10-13T23:30:00Z")
+        )
+        assert await asyncio.to_thread(entered.wait, 1.0)
+        first.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await first
+        release.set()
+        await asyncio.sleep(0.05)
+        assert executor._thread is not None and executor._thread.is_alive()
+        return await asyncio.wait_for(
+            executor.call("metrics", "sub", 2, as_of="2026-10-13T23:30:01Z"),
+            timeout=1.0,
+        )
+
+    try:
+        result = asyncio.run(scenario())
+    finally:
+        release.set()
+        executor.close()
+
+    assert result["revision"] == 2
 
 
 def test_http_sqlite_store_failure_maps_to_retryable_store_unavailable(tmp_path: Path):
