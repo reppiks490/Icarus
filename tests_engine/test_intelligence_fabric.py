@@ -220,8 +220,8 @@ def _claim(**overrides):
         "lineage": ["bar:123", "feature:abc"],
         "falsifiers": ["future outcome disagrees"],
         "details": {"asset": "NQ", "model": "chronofold-v1"},
-        "execution_authorized": True,
-        "production_decision_authorized": True,
+        "execution_authorized": False,
+        "production_decision_authorized": False,
     }
     claim.update(overrides)
     return claim
@@ -248,7 +248,7 @@ def test_unified_intelligence_bridge_preserves_claim_without_granting_authority(
     assert payload["stance"] == 0.7
     assert payload["regime"] == "RTH"
     assert payload["horizon_seconds"] == 300
-    assert payload["unified_intelligence_claim"]["execution_authorized"] is True
+    assert payload["unified_intelligence_claim"]["execution_authorized"] is False
     assert payload["bridge"] == "unified-intelligence-v1"
     low_conf = event_from_intelligence_claim(_claim(confidence=0.1))
     high_conf = event_from_intelligence_claim(_claim(confidence=0.99))
@@ -279,3 +279,7 @@ def test_unified_intelligence_bridge_enforces_normalized_claim_contract():
         event_from_intelligence_claim(_claim(evidence_class="unavailable", confidence=0.2))
     with pytest.raises(ValueError, match="precede"):
         event_from_intelligence_claim(_claim(received_at="2026-10-13T00:59:59Z"))
+    with pytest.raises(ValueError, match="execution_authorized"):
+        event_from_intelligence_claim(_claim(execution_authorized=True))
+    with pytest.raises(ValueError, match="production_decision_authorized"):
+        event_from_intelligence_claim(_claim(production_decision_authorized=True))
