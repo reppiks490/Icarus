@@ -16,8 +16,13 @@ import secrets
 import threading
 import time
 from concurrent.futures import Future
+from contextlib import asynccontextmanager
 from dataclasses import dataclass, fields, is_dataclass
+from datetime import datetime, timezone
 from typing import Any, Callable, Mapping
+
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 
 from .intelligence_delivery import IntelligenceDeliveryPlane
 
@@ -54,6 +59,10 @@ class GatewaySessionError(GatewayError):
     """Ephemeral gateway session is absent, closed, or lacks a delivery."""
 
 
+class GatewayRequestError(GatewayError):
+    """Bounded/strict external request validation error."""
+
+
 def _positive_int(value: Any, name: str) -> int:
     if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
         raise ValueError(f"{name} must be a positive integer")
@@ -78,6 +87,10 @@ def _identifier(value: Any, name: str, limit: int = 240) -> str:
     if len(value) > limit:
         raise ValueError(f"{name} exceeds {limit} characters")
     return value
+
+
+def _utc_now() -> str:
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
 def validate_bind_host(host: str, *, allow_remote: bool) -> str:
@@ -218,9 +231,17 @@ class GatewayConfig:
             "max_ws_text_bytes",
         ):
             _positive_int(getattr(self, name), name)
-        if isinstance(self.default_max_inflight, bool) or not isinstance(self.default_max_inflight, int) or not 1 <= self.default_max_inflight <= 256:
+        if (
+            isinstance(self.default_max_inflight, bool)
+            or not isinstance(self.default_max_inflight, int)
+            or not 1 <= self.default_max_inflight <= 256
+        ):
             raise ValueError("default_max_inflight must be in [1, 256]")
-        if isinstance(self.default_lease_seconds, bool) or not isinstance(self.default_lease_seconds, int) or not 5 <= self.default_lease_seconds <= 300:
+        if (
+            isinstance(self.default_lease_seconds, bool)
+            or not isinstance(self.default_lease_seconds, int)
+            or not 5 <= self.default_lease_seconds <= 300
+        ):
             raise ValueError("default_lease_seconds must be in [5, 300]")
 
 
@@ -237,9 +258,17 @@ class SessionBinding:
         _identifier(self.consumer_id, "consumer_id")
         if isinstance(self.revision, bool) or not isinstance(self.revision, int) or self.revision < 1:
             raise ValueError("revision must be an integer >= 1")
-        if isinstance(self.lease_seconds, bool) or not isinstance(self.lease_seconds, int) or not 5 <= self.lease_seconds <= 300:
+        if (
+            isinstance(self.lease_seconds, bool)
+            or not isinstance(self.lease_seconds, int)
+            or not 5 <= self.lease_seconds <= 300
+        ):
             raise ValueError("lease_seconds must be in [5, 300]")
-        if isinstance(self.max_inflight, bool) or not isinstance(self.max_inflight, int) or not 1 <= self.max_inflight <= 256:
+        if (
+            isinstance(self.max_inflight, bool)
+            or not isinstance(self.max_inflight, int)
+            or not 1 <= self.max_inflight <= 256
+        ):
             raise ValueError("max_inflight must be in [1, 256]")
 
 
@@ -378,7 +407,10 @@ class SessionRegistry:
             session = self._sessions.get(session_id)
             if session is None or session.closed:
                 raise GatewaySessionError("session is not active")
-            if delivery_id not in session.inflight_delivery_ids and len(session.inflight_delivery_ids) >= session.binding.max_inflight:
+            if (
+                delivery_id not in session.inflight_delivery_ids
+                and len(session.inflight_delivery_ids) >= session.binding.max_inflight
+            ):
                 raise GatewayBusyError("session in-flight window is full")
             session.inflight_delivery_ids.add(delivery_id)
 
@@ -451,7 +483,9 @@ class DeliveryExecutor:
             raise ValueError("db_path is required")
         self._db_path = db_path
         self._plane_factory = plane_factory
-        self._queue: queue.Queue[_DeliveryCall | None] = queue.Queue(maxsize=_positive_int(queue_capacity, "queue_capacity"))
+        self._queue: queue.Queue[_DeliveryCall | None] = queue.Queue(
+            maxsize=_positive_int(queue_capacity, "queue_capacity")
+        )
         self._thread: threading.Thread | None = None
         self._ready = threading.Event()
         self._startup_error: BaseException | None = None
@@ -481,7 +515,11 @@ class DeliveryExecutor:
             raise RuntimeError("delivery executor is closed")
         self._ready.clear()
         self._startup_error = None
-        self._thread = threading.Thread(target=self._run, name="icarus-intelligence-delivery", daemon=True)
+        self._thread = threading.Thread(
+            target=self._run,
+            name="icarus-intelligence-delivery",
+            daemon=True,
+        )
         self._thread.start()
         self._ready.wait()
         if self._startup_error is not None:
@@ -693,7 +731,11 @@ class IntelligenceGatewayService:
         return dict(result)
 
     async def recover_expired(self, *, now: str) -> list[dict[str, object]]:
-        result = await self.executor.call("recover_expired", as_of=now, limit=self.config.recovery_limit)
+        result = await self.executor.call(
+            "recover_expired",
+            as_of=now,
+            limit=self.config.recovery_limit,
+        )
         if not isinstance(result, list):
             raise GatewayError("delivery plane returned an invalid recovery batch")
         for item in result:
@@ -703,7 +745,13 @@ class IntelligenceGatewayService:
             self.sessions.remove_inflight_everywhere(delivery_id)
         return result
 
-    async def durable_metrics(self, subscription_id: str, revision: int, *, now: str) -> dict[str, object]:
+    async def durable_metrics(
+        self,
+        subscription_id: str,
+        revision: int,
+        *,
+        now: str,
+    ) -> dict[str, object]:
         result = await self.executor.call("metrics", subscription_id, revision, as_of=now)
         if not isinstance(result, Mapping):
             raise GatewayError("delivery plane returned invalid metrics")
@@ -725,3 +773,254 @@ class IntelligenceGatewayService:
 
     def close_session(self, session_id: str) -> tuple[str, ...]:
         return self.sessions.close(session_id)
+
+
+def _authority_payload(**values: object) -> dict[str, object]:
+    values["execution_authorized"] = False
+    values["production_decision_authorized"] = False
+    return values
+
+
+def _error_payload(code: str, message: str, *, retryable: bool = False) -> dict[str, object]:
+    return _authority_payload(code=code, message=message, retryable=retryable)
+
+
+def _bearer_from_request(request: Request) -> str | None:
+    header = request.headers.get("authorization")
+    if not header or not header.startswith("Bearer "):
+        return None
+    token = header[7:]
+    return token if token else None
+
+
+def _reject_json_constant(value: str) -> None:
+    raise ValueError(f"non-finite JSON constant: {value}")
+
+
+async def _strict_json_request(request: Request, *, max_bytes: int) -> dict[str, object]:
+    raw = await request.body()
+    if len(raw) > max_bytes:
+        raise GatewayRequestError("request body too large")
+    if not raw:
+        raise GatewayRequestError("JSON object required")
+    try:
+        decoded = raw.decode("utf-8")
+        parsed = json.loads(decoded, parse_constant=_reject_json_constant)
+    except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as exc:
+        raise GatewayRequestError("invalid JSON body") from exc
+    if not isinstance(parsed, dict):
+        raise GatewayRequestError("JSON object required")
+    return parsed
+
+
+def _binding_from_mapping(body: Mapping[str, object], config: GatewayConfig) -> SessionBinding:
+    return SessionBinding(
+        subscription_id=body.get("subscription_id"),
+        revision=body.get("revision"),
+        consumer_id=body.get("consumer_id"),
+        lease_seconds=body.get("lease_seconds", config.default_lease_seconds),
+        max_inflight=body.get("max_inflight", config.default_max_inflight),
+    )
+
+
+def _require_sse_session_control(
+    service: IntelligenceGatewayService,
+    body: Mapping[str, object],
+) -> tuple[GatewaySession, str, str]:
+    try:
+        session_id = _identifier(body.get("session_id"), "session_id", 256)
+        consumer_id = _identifier(body.get("consumer_id"), "consumer_id", 240)
+        delivery_id = _identifier(body.get("delivery_id"), "delivery_id", 256)
+    except ValueError as exc:
+        raise GatewaySessionError("session control invalid") from exc
+    try:
+        session = service.sessions.get(session_id)
+    except ValueError as exc:
+        raise GatewaySessionError("session control invalid") from exc
+    if (
+        session is None
+        or session.closed
+        or session.transport != "sse"
+        or session.binding.consumer_id != consumer_id
+        or not service.sessions.contains_inflight(session_id, delivery_id)
+    ):
+        raise GatewaySessionError("session control invalid")
+    return session, session_id, delivery_id
+
+
+def create_intelligence_gateway_app(
+    *,
+    db_path: str,
+    bearer_token: str,
+    config: GatewayConfig | None = None,
+    plane_factory: Callable[..., object] = IntelligenceDeliveryPlane,
+) -> FastAPI:
+    """Create the standalone Phase 3 ASGI app without changing Phase 1/2 semantics."""
+    if not isinstance(db_path, str) or not db_path.strip():
+        raise ValueError("file-backed db_path is required")
+    normalized_path = db_path.strip().lower()
+    if normalized_path == ":memory:" or "mode=memory" in normalized_path or normalized_path.startswith("file::memory:"):
+        raise ValueError("production gateway requires a file-backed database")
+    if not isinstance(bearer_token, str) or not bearer_token.strip():
+        raise ValueError("bearer_token is required")
+    bearer_token = bearer_token.strip()
+    config = config or GatewayConfig()
+
+    executor = DeliveryExecutor(
+        db_path,
+        plane_factory=plane_factory,
+        queue_capacity=config.executor_queue_capacity,
+    )
+    service = IntelligenceGatewayService(executor=executor, config=config)
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        await service.start()
+        try:
+            yield
+        finally:
+            await service.close()
+
+    app = FastAPI(lifespan=lifespan)
+    app.state.gateway_service = service
+    app.state.gateway_config = config
+    app.state.gateway_bearer = bearer_token
+
+    @app.middleware("http")
+    async def host_guard(request: Request, call_next):
+        try:
+            validate_host_header(request.headers.get("host"), config.allowed_hosts)
+        except GatewaySecurityError:
+            return JSONResponse(
+                status_code=400,
+                content=_error_payload("HOST_REJECTED", "request host rejected"),
+            )
+        return await call_next(request)
+
+    def authenticated(request: Request) -> bool:
+        return bearer_matches(_bearer_from_request(request), bearer_token)
+
+    def auth_failure() -> JSONResponse:
+        return JSONResponse(
+            status_code=401,
+            content=_error_payload("AUTH_FAILED", "authentication failed"),
+        )
+
+    def request_failure(*, too_large: bool = False) -> JSONResponse:
+        return JSONResponse(
+            status_code=413 if too_large else 400,
+            content=_error_payload("INVALID_REQUEST", "request is invalid"),
+        )
+
+    def operation_failure(exc: BaseException) -> JSONResponse:
+        if isinstance(exc, GatewayBusyError):
+            return JSONResponse(
+                status_code=503,
+                content=_error_payload("GATEWAY_BUSY", "gateway is busy", retryable=True),
+            )
+        if isinstance(exc, GatewaySessionError):
+            return JSONResponse(
+                status_code=409,
+                content=_error_payload("SESSION_INVALID", "session control is invalid"),
+            )
+        return JSONResponse(
+            status_code=409,
+            content=_error_payload("DELIVERY_STATE_INVALID", "delivery operation failed"),
+        )
+
+    @app.get("/healthz")
+    async def healthz():
+        return _authority_payload(
+            ok=bool(executor.started),
+            protocol=PROTOCOL_VERSION,
+            delivery_store_reachable=bool(executor.started),
+        )
+
+    @app.post("/v1/intelligence/tickets", status_code=201)
+    async def issue_ticket(request: Request):
+        if not authenticated(request):
+            return auth_failure()
+        try:
+            body = await _strict_json_request(request, max_bytes=config.max_json_body_bytes)
+            binding = _binding_from_mapping(body, config)
+            ticket = service.create_sse_ticket(binding, now_monotonic=time.monotonic())
+        except GatewayRequestError as exc:
+            return request_failure(too_large="too large" in str(exc))
+        except (ValueError, TypeError):
+            return request_failure()
+        except GatewayBusyError as exc:
+            return operation_failure(exc)
+        return _authority_payload(protocol=PROTOCOL_VERSION, ticket=ticket)
+
+    @app.get("/v1/intelligence/metrics")
+    async def metrics(request: Request):
+        if not authenticated(request):
+            return auth_failure()
+        try:
+            subscription_id = _identifier(request.query_params.get("subscription_id"), "subscription_id")
+            raw_revision = request.query_params.get("revision")
+            revision = int(raw_revision) if raw_revision is not None else 0
+            if revision < 1:
+                raise ValueError("revision must be >= 1")
+            durable = await service.durable_metrics(subscription_id, revision, now=_utc_now())
+        except (ValueError, TypeError):
+            return request_failure()
+        except BaseException as exc:
+            return operation_failure(exc)
+        return _authority_payload(durable=durable, gateway=service.ephemeral_metrics())
+
+    @app.post("/v1/intelligence/ack")
+    async def ack(request: Request):
+        if not authenticated(request):
+            return auth_failure()
+        try:
+            body = await _strict_json_request(request, max_bytes=config.max_json_body_bytes)
+        except GatewayRequestError as exc:
+            return request_failure(too_large="too large" in str(exc))
+        try:
+            _session, session_id, delivery_id = _require_sse_session_control(service, body)
+            lease_token = _identifier(body.get("lease_token"), "lease_token", 512)
+            result = await service.ack_for_session(
+                session_id,
+                delivery_id,
+                lease_token,
+                now=_utc_now(),
+            )
+        except (GatewaySessionError, GatewayBusyError) as exc:
+            return operation_failure(exc)
+        except (ValueError, TypeError) as exc:
+            return operation_failure(exc)
+        except BaseException as exc:
+            return operation_failure(exc)
+        return _authority_payload(**dict(result))
+
+    @app.post("/v1/intelligence/nack")
+    async def nack(request: Request):
+        if not authenticated(request):
+            return auth_failure()
+        try:
+            body = await _strict_json_request(request, max_bytes=config.max_json_body_bytes)
+        except GatewayRequestError as exc:
+            return request_failure(too_large="too large" in str(exc))
+        try:
+            _session, session_id, delivery_id = _require_sse_session_control(service, body)
+            lease_token = _identifier(body.get("lease_token"), "lease_token", 512)
+            reason = body.get("reason")
+            if reason is not None and not isinstance(reason, Mapping):
+                raise ValueError("reason must be an object")
+            result = await service.nack_for_session(
+                session_id,
+                delivery_id,
+                lease_token,
+                now=_utc_now(),
+                reason=reason,
+            )
+        except (GatewaySessionError, GatewayBusyError) as exc:
+            return operation_failure(exc)
+        except (ValueError, TypeError) as exc:
+            return operation_failure(exc)
+        except BaseException as exc:
+            return operation_failure(exc)
+        return _authority_payload(**dict(result))
+
+    return app
