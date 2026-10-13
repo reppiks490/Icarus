@@ -10,6 +10,7 @@ import math
 import os
 import queue
 import secrets
+import sqlite3
 import threading
 import time
 from concurrent.futures import Future
@@ -443,7 +444,8 @@ class DeliveryExecutor:
         return future
 
     async def call(self, method: str, /, *args: object, **kwargs: object) -> object:
-        return await asyncio.wrap_future(self.submit(method, *args, **kwargs))
+        submitted = await asyncio.to_thread(self.submit, method, *args, **kwargs)
+        return await asyncio.wrap_future(submitted)
 
     def close(self) -> None:
         if self._closed:
@@ -803,6 +805,8 @@ def create_intelligence_gateway_app(*, db_path: str, bearer_token: str, config: 
         return JSONResponse(status_code=413 if too_large else 400, content=_error_payload("INVALID_REQUEST", "request is invalid"))
 
     def operation_failure(exc: BaseException):
+        if isinstance(exc, sqlite3.Error):
+            return JSONResponse(status_code=503, content=_error_payload("DELIVERY_STORE_UNAVAILABLE", "delivery store is unavailable", retryable=True))
         if isinstance(exc, GatewayBusyError):
             return JSONResponse(status_code=503, content=_error_payload("GATEWAY_BUSY", "gateway is busy", retryable=True))
         if isinstance(exc, GatewaySessionError):
@@ -1094,7 +1098,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         allowed_origins=frozenset(args.allowed_origin),
     )
     app = create_intelligence_gateway_app(db_path=args.db, bearer_token=token, config=config)
-    _run_uvicorn(app, host=args.host, port=args.port, access_log=False)
+    _run_uvicorn(app, host=args.host, port=args.port, access_log=False, ws_max_size=config.max_ws_text_bytes)
     return 0
 
 
