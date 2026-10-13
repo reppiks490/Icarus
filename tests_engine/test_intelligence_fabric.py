@@ -266,3 +266,16 @@ def test_unified_intelligence_bridge_is_deterministic_and_fails_closed():
         event_from_intelligence_claim(broken)
     with pytest.raises(ValueError, match="stance"):
         event_from_intelligence_claim(_claim(stance=math.nan))
+
+
+def test_unified_intelligence_bridge_enforces_normalized_claim_contract():
+    with pytest.raises(ValueError, match="schema_version"):
+        event_from_intelligence_claim(_claim(schema_version="future-schema"))
+    with pytest.raises(ValueError, match="source_kind"):
+        event_from_intelligence_claim(_claim(source_kind="agent"))
+    with pytest.raises(ValueError, match="evidence_class"):
+        event_from_intelligence_claim(_claim(evidence_class="mystery"))
+    with pytest.raises(ValueError, match="zero confidence"):
+        event_from_intelligence_claim(_claim(evidence_class="unavailable", confidence=0.2))
+    with pytest.raises(ValueError, match="precede"):
+        event_from_intelligence_claim(_claim(received_at="2026-10-13T00:59:59Z"))
