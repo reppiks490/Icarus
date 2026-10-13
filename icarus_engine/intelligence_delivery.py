@@ -442,22 +442,25 @@ class IntelligenceDeliveryPlane:
         if material.get("min_severity") is not None:
             clauses.append("e.severity >= ?")
             params.append(material["min_severity"])
-        for key, table, column in (
-            ("assets", "fabric_assets", "asset"),
-            ("tags", "fabric_tags", "tag"),
-        ):
-            values = tuple(material.get(key) or ())
-            if values:
-                placeholders = ",".join("?" for _ in values)
-                clauses.append(
-                    f"EXISTS (SELECT 1 FROM {table} x WHERE x.event_id=e.event_id AND x.{column} IN ({placeholders}))"
-                )
-                params.extend(values)
         event_types = tuple(material.get("event_types") or ())
         if event_types:
             placeholders = ",".join("?" for _ in event_types)
             clauses.append(f"e.event_type IN ({placeholders})")
             params.extend(event_types)
+        assets = tuple(material.get("assets") or ())
+        if assets:
+            placeholders = ",".join("?" for _ in assets)
+            clauses.append(
+                f"EXISTS (SELECT 1 FROM fabric_assets a WHERE a.event_id=e.event_id AND a.asset IN ({placeholders}))"
+            )
+            params.extend(assets)
+        tags = tuple(material.get("tags") or ())
+        if tags:
+            placeholders = ",".join("?" for _ in tags)
+            clauses.append(
+                f"EXISTS (SELECT 1 FROM fabric_tags t WHERE t.event_id=e.event_id AND t.tag IN ({placeholders}))"
+            )
+            params.extend(tags)
         return self._conn.execute(
             "SELECT e.* FROM fabric_events e WHERE " + " AND ".join(clauses) + " ORDER BY e.sequence ASC",
             params,
@@ -525,14 +528,23 @@ class IntelligenceDeliveryPlane:
                 self._conn.commit()
                 return []
             material = json.loads(str(subscription["material_json"]))
-            if subscription["mode"] != "broadcast":
-                raise ValueError("competing subscriptions are not supported by this claim path yet")
-            if subscription["target_kind"] != "consumer" or subscription["target_id"] != consumer_id:
-                raise ValueError("consumer does not own broadcast subscription")
-            if self._conn.execute(
+            registered = self._conn.execute(
                 "SELECT 1 FROM fabric_consumers WHERE consumer_id = ?", (consumer_id,)
-            ).fetchone() is None:
+            ).fetchone()
+            if registered is None:
                 raise ValueError("consumer must be registered before claiming")
+            if subscription["mode"] == "broadcast":
+                if subscription["target_kind"] != "consumer" or subscription["target_id"] != consumer_id:
+                    raise ValueError("consumer does not own broadcast subscription")
+            elif subscription["mode"] == "competing":
+                membership = self._conn.execute(
+                    "SELECT enabled FROM fabric_consumer_groups WHERE consumer_id = ? AND consumer_group = ?",
+                    (consumer_id, subscription["target_id"]),
+                ).fetchone()
+                if membership is None or not bool(membership["enabled"]):
+                    raise ValueError("consumer lacks active group membership")
+            else:
+                raise ValueError("unsupported subscription mode")
 
             claimed: list[dict[str, Any]] = []
             for event in self._event_candidates(material, as_of=operation_time):
@@ -560,8 +572,9 @@ class IntelligenceDeliveryPlane:
                     self._append_receipt(
                         "PENDING", operation_time,
                         subscription_id=subscription_id, revision=revision,
-                        consumer_id=consumer_id, delivery_id=delivery_id,
-                        event_id=event["event_id"], attempt=0,
+                        consumer_id=consumer_id,
+                        consumer_group=subscription["target_id"] if subscription["mode"] == "competing" else None,
+                        delivery_id=delivery_id, event_id=event["event_id"], attempt=0,
                     )
                     delivery = self._conn.execute(
                         "SELECT * FROM fabric_deliveries WHERE delivery_id = ?", (delivery_id,)
@@ -582,8 +595,9 @@ class IntelligenceDeliveryPlane:
                 self._append_receipt(
                     "LEASED", operation_time,
                     subscription_id=subscription_id, revision=revision,
-                    consumer_id=consumer_id, delivery_id=delivery_id,
-                    event_id=event["event_id"], attempt=attempt,
+                    consumer_id=consumer_id,
+                    consumer_group=subscription["target_id"] if subscription["mode"] == "competing" else None,
+                    delivery_id=delivery_id, event_id=event["event_id"], attempt=attempt,
                 )
                 current = self._conn.execute(
                     "SELECT * FROM fabric_deliveries WHERE delivery_id = ?", (delivery_id,)
@@ -597,6 +611,24 @@ class IntelligenceDeliveryPlane:
             self._conn.rollback()
             raise
 
+    def _validate_lease(
+        self, delivery_id: str, consumer_id: str, lease_token: str, operation_time: str
+    ) -> sqlite3.Row:
+        row = self._conn.execute(
+            "SELECT * FROM fabric_deliveries WHERE delivery_id = ?", (delivery_id,)
+        ).fetchone()
+        if row is None:
+            raise ValueError("unknown delivery")
+        if row["status"] != "LEASED":
+            raise ValueError("delivery is not leased")
+        if row["lease_owner"] != consumer_id:
+            raise ValueError("consumer does not own lease")
+        if row["lease_token"] != lease_token:
+            raise ValueError("lease token mismatch")
+        if row["lease_expires_at"] is None or operation_time >= str(row["lease_expires_at"]):
+            raise ValueError("lease has expired")
+        return row
+
     def ack(
         self, delivery_id: str, consumer_id: str, lease_token: str, *, as_of: str
     ) -> dict[str, Any]:
@@ -606,19 +638,7 @@ class IntelligenceDeliveryPlane:
         operation_time = _time_text(as_of, "as_of")
         self._conn.execute("BEGIN IMMEDIATE")
         try:
-            row = self._conn.execute(
-                "SELECT * FROM fabric_deliveries WHERE delivery_id = ?", (delivery_id,)
-            ).fetchone()
-            if row is None:
-                raise ValueError("unknown delivery")
-            if row["status"] != "LEASED":
-                raise ValueError("delivery is not leased")
-            if row["lease_owner"] != consumer_id:
-                raise ValueError("consumer does not own lease")
-            if row["lease_token"] != lease_token:
-                raise ValueError("lease token mismatch")
-            if row["lease_expires_at"] is None or operation_time >= str(row["lease_expires_at"]):
-                raise ValueError("lease has expired")
+            row = self._validate_lease(delivery_id, consumer_id, lease_token, operation_time)
             self._conn.execute(
                 """UPDATE fabric_deliveries
                    SET status='ACKED', lease_owner=NULL, lease_token=NULL,
