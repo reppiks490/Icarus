@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 import threading
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -103,6 +104,46 @@ def test_autopilot_state_is_durable_and_leaderboard_is_sorted(tmp_path, monkeypa
     assert restored["history"]
     scores = [row["metrics"]["score"] for row in restored["leaderboard"]]
     assert scores == sorted(scores, reverse=True)
+
+
+def test_champion_trials_capture_market_context_without_scoring_it(tmp_path, monkeypatch):
+    now = datetime.now(timezone.utc)
+    possibility = lambda asset: {
+        "asset": asset,
+        "generated_at": now.isoformat().replace("+00:00", "Z"),
+        "latent_pressure_engine": {
+            "evidence_coverage": 0.75,
+            "components": {
+                "queue_pressure": {"value": 0.6, "confidence": 0.8, "available": True,
+                                    "source": "Databento MBP-10", "detail": "kept out of receipt"},
+            },
+        },
+        "edge_state": {"state": "NO_EDGE"},
+        "data_health": {"microstructure": {"depth": True, "ticks": True}, "history": {"source": "runner_bar"}},
+    }
+    public_events = lambda asset: {"records": [
+        {"source": "federal-reserve", "source_event_id": "known", "event_type": "news",
+         "instrument_id": asset, "observed_at": (now - timedelta(minutes=1)).isoformat(),
+         "text": "dated public event"},
+        {"source": "federal-reserve", "source_event_id": "future", "event_type": "news",
+         "instrument_id": asset, "observed_at": (now + timedelta(days=1)).isoformat(),
+         "text": "must not leak"},
+    ]}
+    port = FakePort(tmp_path)
+    monkeypatch.setattr("icarus_engine.autopilot.run_backtest", lambda _port, asset, **kwargs: fake_result(kwargs["inputs"]))
+    ap = TacticalAutopilot(port, possibility_snapshot=possibility, public_events=public_events)
+
+    status = ap.cycle_once()
+    champion = status["champions"]["NQ"]
+    assert status["context_feed"]["possibility_enabled"] is True
+    assert status["context_feed"]["public_events_enabled"] is True
+    context = champion["market_context"]
+    assert context["possibility"]["features"]["queue_pressure"] == {
+        "value": 0.6, "confidence": 0.8, "available": True, "source": "Databento MBP-10"
+    }
+    assert [row["source_event_id"] for row in context["public_events"]] == ["known"]
+    assert context["historical_score_inputs"] is False
+    assert "market_context" not in champion["metrics"]
 
 
 def test_autopilot_protects_economic_scale_inputs(tmp_path):

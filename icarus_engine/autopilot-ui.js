@@ -21,6 +21,7 @@ function autopilotHtml(A){
     '<label class="small">Robustness <select id="apWindows"><option value="1">1 window</option><option value="2">2 windows</option><option value="3">3 windows</option></select></label>'+
     '<label class="small">Asset <select id="apAsset"><option value="">all / round-robin</option>'+opts+'</select></label><span id="apStatus" class="small muted">loading…</span></div>'+
     '<div class="tiles" id="apSummary"></div></section>'+
+    '<section class="card c12"><h2>Champion market context <span class="sub">live Ψ, order flow, depth, and dated public events · context only, not historical replay inputs</span></h2><div id="apMarketContext" class="small muted">Waiting for the first context receipt.</div></section>'+
     '<section class="card c6"><h2>Current candidate <span class="sub" id="apCandidateStage">—</span></h2><div id="apCurrent" class="small"></div>'+
     '<div class="scroll" style="max-height:430px;margin-top:10px"><table><thead><tr><th>Input</th><th>Candidate</th><th>Champion</th></tr></thead><tbody id="apInputRows"></tbody></table></div></section>'+
     '<section class="card c6"><h2>Best observed champion <span class="sub">within tested search space</span></h2><div id="apChampion"></div><h2 style="margin-top:18px">Score decomposition</h2><div class="tiles" id="apMetrics"></div></section>'+
@@ -56,6 +57,13 @@ async function loadAutopilot(){
       '<div class="tile"><div class="k">Broker control</div><div class="v pos">DISABLED</div></div>'+
       '<div class="tile"><div class="k">Search fill</div><div class="v">REAL PRICE</div></div>'+
       '<div class="tile"><div class="k">Robustness</div><div class="v">'+esc(String(cfg.robustness_windows||1))+' WINDOWS</div></div>';
+    const marketContext=(cand&&cand.market_context)||((d.champions||{})[cand&&cand.asset]||{}).market_context||null;
+    if(marketContext){
+      const psi=marketContext.possibility||{},features=psi.features||{},health=(psi.data_health||{}).microstructure||{},events=marketContext.public_events||[];
+      const featureRows=Object.entries(features).map(([name,f])=>'<tr><td><code>'+esc(name)+'</code></td><td>'+esc(String(f.available?'available':'missing'))+'</td><td class="tnum">'+apFmt(f.value,4)+'</td><td class="tnum">'+apFmt(f.confidence,3)+'</td><td>'+esc(f.source||'—')+'</td></tr>').join('');
+      const eventRows=events.map(e=>'<li><b>'+esc(e.source||'source')+'</b> · '+esc(e.event_type||'event')+' · '+esc(e.observed_at||'time unavailable')+(e.text?' — '+esc(e.text):'')+'</li>').join('');
+      $('#apMarketContext').innerHTML='<div class="tiles"><div class="tile"><div class="k">Captured</div><div class="v">'+esc(marketContext.captured_at||'—')+'</div></div><div class="tile"><div class="k">Ψ coverage</div><div class="v">'+apFmt(psi.evidence_coverage,3)+'</div></div><div class="tile"><div class="k">Order book</div><div class="v">'+(health.depth?'<span class="pos">LIVE</span>':'<span class="muted">UNAVAILABLE</span>')+'</div></div><div class="tile"><div class="k">Trade tape</div><div class="v">'+(health.ticks?'<span class="pos">LIVE</span>':'<span class="muted">UNAVAILABLE</span>')+'</div></div><div class="tile"><div class="k">Public events</div><div class="v">'+events.length+'</div></div><div class="tile"><div class="k">Replay score inputs</div><div class="v">NO</div></div></div><div class="scroll" style="max-height:260px;margin-top:10px"><table><thead><tr><th>Feature</th><th>Coverage</th><th>Value</th><th>Confidence</th><th>Source</th></tr></thead><tbody>'+featureRows+'</tbody></table></div><ul>'+eventRows+'</ul>';
+    }else $('#apMarketContext').textContent='No market context receipt yet; it is attached automatically to the next candidate cycle.';
     $('#apCandidateStage').innerHTML=apBadge(active.stage||'idle')+(active.robustness_label?' · '+esc(active.robustness_label)+' '+esc(String(active.robustness_index||''))+'/'+esc(String(active.robustness_total||'')):'');
     $('#apCurrent').innerHTML=cand?'<div class="tiles">'+
       '<div class="tile"><div class="k">Asset</div><div class="v">'+esc(cand.asset)+'</div></div>'+

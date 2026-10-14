@@ -233,7 +233,11 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     port.latency_telemetry = latency_telemetry
     for runner in port.runner_list():
         runner.latency_telemetry = latency_telemetry
-    autopilot = TacticalAutopilot(port)
+    autopilot = TacticalAutopilot(
+        port,
+        possibility_snapshot=possibility.snapshot,
+        public_events=lambda asset: research.market_sources.records(asset=asset, limit=8),
+    )
     parallax = ParallaxStore(port.base_dir)
     dreamstate = DreamstateLab(port.base_dir, parallax=parallax)
     ascendancy_archive = GenomeArchive(port.base_dir)
