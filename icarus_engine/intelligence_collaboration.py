@@ -1154,3 +1154,69 @@ class IntelligenceCollaboration(_BaseIntelligenceCollaboration):
             if original is not None:
                 result["original_event_id"] = original
         return result
+
+
+_TransitionIntelligenceCollaboration = IntelligenceCollaboration
+
+
+class IntelligenceCollaboration(_TransitionIntelligenceCollaboration):
+    """Collaboration facade with validated parent/child delegation discovery."""
+
+    def _validate_parent_for_child(self, request: WorkRequest) -> WorkSnapshot | None:
+        material = request.normalized()
+        parent_work_id = material.get("parent_work_id")
+        parent_event_id = material.get("parent_event_id")
+        if parent_work_id is None:
+            return None
+
+        parent = self.snapshot(str(parent_work_id))
+        if parent.integrity_status != "ok" or parent.conflicts:
+            raise ValueError("parent work must be clean and conflict-free before delegation")
+        if parent.state not in {"ACCEPTED", "IN_PROGRESS", "PARTIAL"} or parent.assignee is None:
+            raise ValueError("parent work must be in an assignable nonterminal state")
+        if material.get("requester_principal") != parent.assignee:
+            raise ValueError("child requester must equal parent assignee")
+        if parent_event_id != parent.head_event_id:
+            raise ValueError("parent_event_id must equal parent current head")
+        return parent
+
+    def create_work(
+        self,
+        request: WorkRequest,
+        *,
+        observed_at: str,
+        received_at: str,
+        assets: Iterable[str] = (),
+        evidence_ids: Iterable[str] = (),
+    ) -> dict[str, object]:
+        self._validate_parent_for_child(request)
+        return super().create_work(
+            request,
+            observed_at=observed_at,
+            received_at=received_at,
+            assets=assets,
+            evidence_ids=evidence_ids,
+        )
+
+    def children(self, parent_work_id: str, *, limit: int = 100) -> list[dict[str, object]]:
+        parent_id = _work_id(parent_work_id, "parent_work_id")
+        if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 100:
+            raise ValueError("limit must be an integer in [1, 100]")
+        candidates = self._fabric.query(
+            channel=COLLABORATION_CHANNEL,
+            tags=(f"parent:{parent_id}",),
+            limit=limit,
+        )
+        children: list[dict[str, object]] = []
+        for record in candidates:
+            try:
+                payload, _sequence, _event_id = _validate_envelope(record)
+            except CollaborationIntegrityError:
+                continue
+            if payload.get("transition") != "requested":
+                continue
+            request = payload.get("request")
+            if not isinstance(request, Mapping) or request.get("parent_work_id") != parent_id:
+                continue
+            children.append(dict(record))
+        return children
