@@ -72,6 +72,10 @@ def create_handler(*, engine_port: int, gateway_port: int):
             if length < 0 or length > _MAX_REQUEST_BYTES:
                 self._respond(413, b"request too large")
                 return
+            scheme, _, bearer = self.headers.get("Authorization", "").partition(" ")
+            if scheme.lower() == "bearer" and bearer.strip() == "icarus":
+                self._respond(428, b"configure a strong, unique ICARUS token before enabling phone access")
+                return
 
             parsed = urlsplit(self.path)
             if not parsed.path.startswith("/") or parsed.path.startswith("//"):

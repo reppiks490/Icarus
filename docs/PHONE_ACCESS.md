@@ -28,7 +28,9 @@ Cloudflared prints an HTTPS `trycloudflare.com` URL. Open the hosted command
 center on the phone, expand **Connect this phone to the engine**, paste that
 URL, and choose **Connect**. The route is saved in a secure, same-site browser
 cookie and local storage; it is not placed in the page URL. The engine bearer
-token is still required in **⚙︎ Token** and is sent only over HTTPS.
+token is still required in **⚙︎ Token** and is sent only over HTTPS. The relay
+rejects the default token `icarus`; configure a strong, unique owner token
+before enabling the public tunnel.
 
 The router binds only to loopback and restores the loopback Host header for the
 engine's existing DNS-rebinding guard. `/command` and `/v1/*` route to the
