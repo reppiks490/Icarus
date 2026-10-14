@@ -9,8 +9,10 @@ from icarus_engine.intelligence_collaboration import (
     COLLABORATION_CHANNEL,
     COLLABORATION_PROTOCOL,
     IntelligenceCollaboration,
+    TransitionRequest,
     WorkRequest,
     build_request_event,
+    build_transition_event,
     derive_work_id,
     request_material_hash,
 )
@@ -315,3 +317,141 @@ def test_publication_success_does_not_imply_semantic_application():
     assert second["applied"] is False
     assert second["conflict_code"] == "conflicting_root"
     assert collaboration.snapshot(original.work_id()).head_event_id == first["event_id"]
+
+
+def test_transition_event_copies_current_head_into_expected_head_and_causation():
+    fabric = IntelligenceFabric()
+    collaboration = IntelligenceCollaboration(fabric)
+    request = _request(idempotency_key="transition-build-001")
+    collaboration.create_work(
+        request,
+        observed_at="2026-10-14T00:00:00Z",
+        received_at="2026-10-14T00:00:01Z",
+    )
+    snapshot = collaboration.snapshot(request.work_id())
+    transition = TransitionRequest(
+        work_id=request.work_id(),
+        transition="accepted",
+        actor_principal="macro-agent",
+        actor_kind="agent",
+        operation_id="accept-001",
+        expected_head_event_id=snapshot.head_event_id,
+    )
+
+    event = build_transition_event(
+        snapshot,
+        transition,
+        observed_at="2026-10-14T00:01:00Z",
+        received_at="2026-10-14T00:01:01Z",
+    ).normalized()
+
+    assert event["payload"]["expected_head_event_id"] == snapshot.head_event_id
+    assert snapshot.head_event_id in event["causation_ids"]
+    assert event["payload"]["operation_id"] == "accept-001"
+    assert event["event_type"] == "agent_note"
+    assert event["execution_authorized"] is False
+    assert event["production_decision_authorized"] is False
+
+
+def test_partial_and_completed_transition_event_types_follow_work_contract():
+    fabric = IntelligenceFabric()
+    collaboration = IntelligenceCollaboration(fabric)
+    request = _request(idempotency_key="transition-types-001")
+    collaboration.create_work(
+        request,
+        observed_at="2026-10-14T00:00:00Z",
+        received_at="2026-10-14T00:00:01Z",
+    )
+    snapshot = collaboration.snapshot(request.work_id())
+    partial = TransitionRequest(
+        work_id=request.work_id(),
+        transition="partial_result",
+        actor_principal="macro-agent",
+        actor_kind="agent",
+        operation_id="partial-001",
+        expected_head_event_id=snapshot.head_event_id,
+        data={"result": {"conclusion": "interim", "evidence": []}},
+    )
+    assert build_transition_event(
+        snapshot,
+        partial,
+        observed_at="2026-10-14T00:01:00Z",
+        received_at="2026-10-14T00:01:01Z",
+    ).normalized()["event_type"] == "research"
+
+
+def test_duplicate_operation_retry_returns_original_event_reference():
+    fabric = IntelligenceFabric()
+    collaboration = IntelligenceCollaboration(fabric)
+    request = _request(idempotency_key="transition-retry-001")
+    root = collaboration.create_work(
+        request,
+        observed_at="2026-10-14T00:00:00Z",
+        received_at="2026-10-14T00:00:01Z",
+    )
+    transition = TransitionRequest(
+        work_id=request.work_id(),
+        transition="accepted",
+        actor_principal="macro-agent",
+        actor_kind="agent",
+        operation_id="accept-once",
+        expected_head_event_id=root["event_id"],
+    )
+    first = collaboration.append_transition(
+        transition,
+        observed_at="2026-10-14T00:01:00Z",
+        received_at="2026-10-14T00:01:01Z",
+    )
+    retry = collaboration.append_transition(
+        transition,
+        observed_at="2026-10-14T00:01:00Z",
+        received_at="2026-10-14T00:01:01Z",
+    )
+
+    assert first["applied"] is True
+    assert retry["applied"] is False
+    assert retry["conflict_code"] == "duplicate_operation"
+    assert retry["original_event_id"] == first["event_id"]
+    assert retry["event_id"] == first["event_id"]
+    assert collaboration.snapshot(request.work_id()).head_event_id == first["event_id"]
+
+
+def test_stale_head_publication_remains_history_but_reports_not_applied():
+    fabric = IntelligenceFabric()
+    collaboration = IntelligenceCollaboration(fabric)
+    request = _request(idempotency_key="transition-stale-001")
+    root = collaboration.create_work(
+        request,
+        observed_at="2026-10-14T00:00:00Z",
+        received_at="2026-10-14T00:00:01Z",
+    )
+    accepted = collaboration.append_transition(
+        TransitionRequest(
+            work_id=request.work_id(),
+            transition="accepted",
+            actor_principal="macro-agent",
+            actor_kind="agent",
+            operation_id="accept-stale-case",
+            expected_head_event_id=root["event_id"],
+        ),
+        observed_at="2026-10-14T00:01:00Z",
+        received_at="2026-10-14T00:01:01Z",
+    )
+    stale = collaboration.append_transition(
+        TransitionRequest(
+            work_id=request.work_id(),
+            transition="started",
+            actor_principal="macro-agent",
+            actor_kind="agent",
+            operation_id="start-stale",
+            expected_head_event_id=root["event_id"],
+        ),
+        observed_at="2026-10-14T00:02:00Z",
+        received_at="2026-10-14T00:02:01Z",
+    )
+
+    assert stale["sequence"] > accepted["sequence"]
+    assert stale["applied"] is False
+    assert stale["conflict_code"] == "stale_head"
+    assert stale["event_id"] in {item["event_id"] for item in collaboration.history(request.work_id())}
+    assert collaboration.snapshot(request.work_id()).head_event_id == accepted["event_id"]
