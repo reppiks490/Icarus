@@ -1212,6 +1212,29 @@ def test_portfolio_prepares_shared_live_feed_before_spawning_futures(monkeypatch
     assert events[1:] == [("spawn", "NQ"), ("spawn", "ES")]
 
 
+def test_portfolio_starts_depth_context_with_databento_and_keeps_core_failures_isolated(monkeypatch, tmp_path):
+    events = []
+
+    class Feed:
+        def prepare_live(self, symbols, *, include_depth=None):
+            events.append((tuple(symbols), include_depth))
+            if include_depth:
+                raise RuntimeError("depth entitlement unavailable")
+
+    feed = Feed()
+    journal = Journal(":memory:")
+    port = Portfolio(journal, str(tmp_path))
+    port.feed_mode = "databento"
+    nq = AssetRunner(RunnerConfig(resolve("NQ"), Inputs(use_tide=False, use_eod_flat=False)), journal, {"yahoo": feed})
+    port.runners = {"NQ": nq}
+    port.order = ["NQ"]
+    monkeypatch.setattr(port, "_spawn", lambda runner: events.append(("spawn", runner.symbol)))
+    port._stop.set()
+    port.start()
+    assert events == [(('NQ=F',), None), (('NQ=F',), "mbp-10"), ("spawn", "NQ")]
+    assert any("MBP-10 depth unavailable" in row["msg"] for row in journal.log_tail)
+
+
 def test_dynamic_future_add_prepares_live_before_spawn(monkeypatch, tmp_path):
     events = []
 

@@ -110,12 +110,12 @@ class ResearchWorkspace:
         return self.adaptation.stop(cancel=True)
 
     def start_background(self):
-        # Adaptation/source-watch resume only saved opt-in. Continuous learning is
-        # an explicit installed research service and starts from its persisted/default config.
+        # Resume persisted research workers. Public SourceWatch defaults to bounded
+        # automatic collection; an explicit saved disable remains respected.
         self.learning.start_background()
         if (self.root / "adaptation.json").exists() and self.adaptation.status()["config"]["enabled"]:
             self.adaptation.start()
-        if (self.root / "source-watch.sqlite3").exists() and self.source_watch.status()["config"]["enabled"]:
+        if self.source_watch.status()["config"]["enabled"]:
             self.source_watch.start()
 
     def close(self):

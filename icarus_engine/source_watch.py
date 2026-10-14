@@ -1,4 +1,4 @@
-"""Opt-in periodic public collection, with durable cross-process claims.
+"""Periodic public collection, with durable cross-process claims.
 
 Public GET retries preserve immutable source revisions. This worker never calls
 models or changes runner configuration. A one-hour claim lease exceeds the
@@ -18,8 +18,15 @@ from .market_sources import SOURCES
 
 MIN_INTERVAL = {"coinbase": 2, "cftc": 3600, "bls": 3600, "federal-reserve": 300,
                 "bea": 300, "sec": 600, "yahoo-dxy": 900}
-DEFAULT = {"enabled": False, "jobs": [
-    {"source": s, "interval_seconds": 5 if s == "coinbase" else 3600, "options": {}}
+# Public, bounded and credential-free collectors run automatically. SEC is
+# excluded because its User-Agent must identify the operator; users can add it
+# through the existing configuration endpoint once SEC_USER_AGENT is set.
+_DEFAULT_INTERVALS = {
+    "coinbase": 60, "cftc": 3600, "bls": 3600,
+    "federal-reserve": 3600, "bea": 3600, "yahoo-dxy": 900,
+}
+DEFAULT = {"enabled": True, "jobs": [
+    {"source": s, "interval_seconds": _DEFAULT_INTERVALS[s], "options": {}}
     for s in SOURCES if s != "sec"]}
 
 
