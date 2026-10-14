@@ -95,6 +95,106 @@ def test_bad_study_does_not_start_or_write(portfolio):
     assert ws._active is None and not ws.root.exists()
 
 
+def test_champion_grid_is_an_exact_single_configuration(portfolio):
+    from icarus_engine.research_service import _champion_input_grid
+
+    runner = portfolio.runners["NQ"]
+    current = runner.inputs_base.to_dict()
+    champion = dict(current)
+    champion["conf_min_votes"] = current["conf_min_votes"] + 1
+    grid = _champion_input_grid(champion, current)
+    assert grid == {"conf_min_votes": [champion["conf_min_votes"]]}
+
+
+def test_champion_grid_rejects_unchanged_or_invalid_snapshot(portfolio):
+    from icarus_engine.research_service import _champion_input_grid
+
+    current = portfolio.runners["NQ"].inputs_base.to_dict()
+    with pytest.raises(ValueError, match="no changed inputs"):
+        _champion_input_grid(current, current)
+    with pytest.raises(ValueError, match="input snapshot"):
+        _champion_input_grid({**current, "not_a_pine_input": 1}, current)
+
+
+def test_champion_grid_rejects_context_changes(portfolio):
+    from icarus_engine.research_service import _champion_input_grid
+
+    current = portfolio.runners["NQ"].inputs_base.to_dict()
+    champion = {**current, "conf_min_votes": current["conf_min_votes"] + 1}
+    with pytest.raises(ValueError, match="context"):
+        _champion_input_grid(champion, current, chart_type="heikin_ashi", session=None,
+                             current_chart_type="real", current_session=None)
+
+
+def test_champion_study_handoff_keeps_normal_qualification_path(portfolio, monkeypatch):
+    ws = ResearchWorkspace(portfolio)
+    ws.adaptation.configure({"train_bars": 5, "validation_bars": 5, "holdout_bars": 5})
+    evidence = ws.ledger.ingest_event(event())
+    current = portfolio.runners["NQ"].inputs.to_dict()
+    candidate = dict(current)
+    candidate["conf_min_votes"] = current["conf_min_votes"] + 1
+    champion = {"id": "champion-1", "asset": "NQ", "inputs": candidate,
+                "chart_type": portfolio.runners["NQ"].spec.chart_type,
+                "session": None, "tested_at": time.time(),
+                "regime_context": {"label": "TRANSITION"}}
+    started = {}
+
+    def fake_start(request, *, promotion=None):
+        started.update(request)
+        ws._jobs["study-1"] = {"id": "study-1", **request, "status": "running", **promotion}
+        ws._active = "study-1"
+        return {"ok": True, "job": "study-1", "note": "started"}
+
+    monkeypatch.setattr(ws, "start", fake_start)
+    result = ws.start_champion_study({"asset": "NQ", "champion_id": "champion-1"}, champion)
+    assert result["job"] == "study-1"
+    assert started["grid"] == {"conf_min_votes": [candidate["conf_min_votes"]]}
+    job = ws._jobs["study-1"]
+    assert job["promotion_source"]["champion_id"] == "champion-1"
+    assert job["promotion_source"]["champion_regime"]["label"] == "TRANSITION"
+    assert job["evidence_ids"] == [evidence["event_id"]]
+    assert "does not activate" in result["next_step"]
+
+
+def test_champion_study_handoff_launches_normal_frozen_replay(portfolio, monkeypatch):
+    ws = ResearchWorkspace(portfolio)
+    ws.adaptation.configure({"train_bars": 5, "validation_bars": 5, "holdout_bars": 5})
+    ws.ledger.ingest_event(event())
+    current = portfolio.runners["NQ"].inputs.to_dict()
+    candidate = dict(current)
+    candidate["conf_min_votes"] += 1
+    champion = {"id": "champion-real-launch", "asset": "NQ", "inputs": candidate,
+                "chart_type": "real", "session": None,
+                "regime_context": {"label": "TRANSITION"}}
+    called = {}
+
+    def fake_search(asset, grid, windows, evaluate, **kwargs):
+        called.update(asset=asset, grid=grid, windows=windows, evaluate=evaluate)
+        return {"status": "no_candidate", "research_qualified": False, "trials": []}
+
+    monkeypatch.setattr(research_service, "run_search", fake_search)
+    response = ws.start_champion_study({"asset": "NQ", "champion_id": champion["id"]}, champion)
+    job = wait_job(ws, response["job"])
+    assert job["status"] == "no_candidate"
+    assert called["asset"] == "NQ"
+    assert called["grid"] == {"conf_min_votes": [candidate["conf_min_votes"]]}
+    assert job["promotion_source"]["champion_id"] == champion["id"]
+    assert job["evidence_ids"] and job["rationale"]
+
+
+def test_champion_study_handoff_rejects_stale_or_missing_evidence(portfolio):
+    ws = ResearchWorkspace(portfolio)
+    ws.adaptation.configure({"train_bars": 5, "validation_bars": 5, "holdout_bars": 5})
+    inputs = portfolio.runners["NQ"].inputs.to_dict()
+    inputs["conf_min_votes"] += 1
+    champion = {"id": "champion-1", "asset": "NQ", "inputs": inputs,
+                "chart_type": "real", "session": None}
+    with pytest.raises(ValueError, match="stale"):
+        ws.start_champion_study({"asset": "NQ", "champion_id": "older"}, champion)
+    with pytest.raises(ValueError, match="source evidence"):
+        ws.start_champion_study({"asset": "NQ", "champion_id": "champion-1"}, champion)
+
+
 def qualified(ws):
     # Deterministic workflow fixture, never represented as a market result.
     frozen, dataset, baseline, config = ws.fingerprints("NQ", 3600)
@@ -146,6 +246,18 @@ def test_proposal_binds_qualified_study_and_current_source(portfolio):
         ws.propose_study(request)
 
 
+def test_champion_provenance_survives_into_qualified_proposal(portfolio):
+    ws = ResearchWorkspace(portfolio)
+    job = qualified(ws)
+    job["promotion_source"] = {"kind": "tactical_autopilot_champion", "champion_id": "champion-7",
+                                "champion_regime": {"label": "TREND"}}
+    ws._save(job)
+    evidence = ws.ledger.ingest_event(event())
+    proposal = ws.propose_study({"job": job["id"], "evidence_ids": [evidence["event_id"]],
+                                 "rationale": "Fresh champion qualification"})
+    assert proposal["candidate"]["validation"]["promotion_source"] == job["promotion_source"]
+
+
 @pytest.mark.parametrize("clock_value", [1789596961.6983159, 1789596993.3191075])
 def test_claimed_model_validation_cannot_replace_study(portfolio, monkeypatch, clock_value):
     # A frozen sub-microsecond clock must not round the decision into the future.
@@ -194,6 +306,16 @@ def test_status_public_survives_nan_and_never_empty_replies(http, portfolio):
     assert data
     json.loads(data)
     assert status in (200, 500)
+
+
+def test_champion_study_admin_route_requires_auth_and_exact_payload(http):
+    raw = json.dumps({"asset": "NQ", "champion_id": "x"})
+    assert http("POST", "/admin/research/champion-study", raw,
+                {"Content-Type": "application/json"})[0] == 401
+    auth = {"Authorization": "Bearer test-token", "Content-Type": "application/json"}
+    status, data = http("POST", "/admin/research/champion-study", json.dumps({"asset": "NQ"}), auth)
+    assert status == 400
+    assert "champion_id" in json.loads(data)["detail"]
 
 
 def test_http_auth_static_json_validation_and_no_provider_calls(http, monkeypatch):

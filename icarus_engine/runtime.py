@@ -90,6 +90,7 @@ class Journal:
         self.run_id = int(time.time())                        # every process start is a run; rows carry it (audit D2)
         for table, col, typ in (
             ("trades", "piece", "INTEGER DEFAULT 0"),
+            ("trades", "bars", "INTEGER DEFAULT 0"),
             ("trades", "run_id", "INTEGER DEFAULT 0"),
             ("trades", "lot_id", "INTEGER DEFAULT 0"),
             ("trades", "entry_qty", "INTEGER DEFAULT 0"),
@@ -144,15 +145,67 @@ class Journal:
         with self._lock:
             self.con.execute(
                 "INSERT OR IGNORE INTO trades "
-                "(symbol,entry_id,direction,qty,entry_price,entry_ts,exit_price,exit_ts,exit_comment,profit,live,piece,run_id,lot_id,entry_qty,strategy_fingerprint,strategy_context_json) "
-                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                "(symbol,entry_id,direction,qty,entry_price,entry_ts,exit_price,exit_ts,exit_comment,profit,live,piece,run_id,lot_id,entry_qty,strategy_fingerprint,strategy_context_json,bars) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (
                     symbol, t.entry_id, t.direction, t.qty, t.entry_price, t.entry_ts,
                     t.exit_price, t.exit_ts, t.exit_comment, t.profit, int(live), int(piece),
-                    self.run_id, lot_id, entry_qty, fingerprint, context_json,
+                    self.run_id, lot_id, entry_qty, fingerprint, context_json, int(getattr(t, "bars", 0) or 0),
                 ),
             )
             self.con.commit()
+
+    def performance_review(self, symbol: str, *, limit: int = 30, min_lots: int = 12, since_ts: int = 0) -> Dict[str, Any]:
+        """Rolling settled-lot scorecard for this process's live paper trades.
+
+        Partial exits are combined by lot, so a scale-out is one outcome. Regime
+        attribution is explicitly marked as closure-time until entry snapshots exist.
+        """
+        with self._lock:
+            rows = self.con.execute(
+                "SELECT lot_id,entry_ts,entry_qty,qty,profit,exit_ts,bars,strategy_context_json "
+                "FROM trades WHERE symbol=? AND live=1 AND entry_ts>=? AND exit_ts>=? ORDER BY exit_ts,id",
+                (symbol, int(since_ts or 0), int(since_ts or 0)),
+            ).fetchall()
+        lots: Dict[Tuple[int, int], Dict[str, Any]] = {}
+        for lot_id, entry_ts, entry_qty, qty, profit, exit_ts, bars, raw_ctx in rows:
+            key = (int(lot_id or 0), int(entry_ts or 0))
+            lot = lots.setdefault(key, {"qty": 0, "entry_qty": int(entry_qty or 0), "profit": 0.0,
+                                       "bars": 0, "entry_ts": int(entry_ts or 0), "exit_ts": 0,
+                                       "regime": "unknown", "attribution": "legacy_or_unknown"})
+            lot["qty"] += int(qty or 0)
+            lot["entry_qty"] = max(lot["entry_qty"], int(entry_qty or 0))
+            lot["profit"] += float(profit or 0.0)
+            lot["bars"] = max(lot["bars"], int(bars or 0))
+            lot["exit_ts"] = max(lot["exit_ts"], int(exit_ts or 0))
+            try:
+                ctx = json.loads(raw_ctx or "{}")
+                lot["regime"] = str(ctx.get("regime") or "unknown")
+                lot["attribution"] = str(ctx.get("regime_attribution") or "legacy_or_unknown")
+            except (TypeError, json.JSONDecodeError):
+                pass
+        settled = [v for v in lots.values() if v["entry_qty"] > 0 and v["qty"] >= v["entry_qty"]]
+        settled.sort(key=lambda x: x["exit_ts"])
+        groups: Dict[str, List[Dict[str, Any]]] = {}
+        for lot in settled:
+            groups.setdefault(lot["regime"], []).append(lot)
+        scorecards = {}
+        for regime, group in groups.items():
+            sample = group[-limit:]
+            count = len(sample)
+            wins = sum(x["profit"] > 0 for x in sample)
+            win_rate = wins / count if count else None
+            status = "INSUFFICIENT_SAMPLE" if count < min_lots else ("PRESSURE" if win_rate < .75 else ("WATCH" if win_rate < .85 else "HEALTHY"))
+            gains = sum(x["profit"] for x in sample if x["profit"] > 0)
+            losses = -sum(x["profit"] for x in sample if x["profit"] < 0)
+            scorecards[regime] = {"status": status, "sample_lots": count, "wins": wins,
+                "win_rate": win_rate, "net_profit": sum(x["profit"] for x in sample),
+                "profit_factor": gains / losses if losses else (None if gains == 0 else "infinite"),
+                "average_hold_bars": sum(x["bars"] for x in sample) / count if count else None,
+                "average_hold_seconds": sum(max(0, x["exit_ts"] - x["entry_ts"]) for x in sample) / count if count else None,
+                "regime_attribution": sorted({x["attribution"] for x in sample})}
+        return {"window_lots": limit, "minimum_lots": min_lots, "since_ts": int(since_ts or 0), "scorecards": scorecards,
+                "execution_authorized": False, "basis": "live paper fills; fully closed lots only"}
 
     def add_fill(self, symbol: str, f: Fill, live: bool) -> None:
         with self._lock:
@@ -457,6 +510,9 @@ class AssetRunner:
         self._fills_seen = 0
         self._closed_seen = 0
         self.paused = False
+        self._performance_guard: Dict[str, Any] = {"status": "INSUFFICIENT_SAMPLE", "scorecards": {}}
+        self._performance_guard_since_ts = 0
+        self._lot_entry_regimes: Dict[int, str] = {}
         self.errors = 0
         self.last_error = ""
         self.feed_error = ""
@@ -550,6 +606,9 @@ class AssetRunner:
         if self.paused:
             self._cancel_pending_entries()
         self.em.process_bar(fill_bar, self.bar_index)
+        entry_regime = str((self.state or {}).get("rate_regime_str") or "unknown")
+        for opened in getattr(self.em, "open", ()):
+            self._lot_entry_regimes.setdefault(int(opened.seq), entry_regime)
         htf = [self.chains[m].htf_values(chart.ts) for m in self.htf_tfs]
         if time_close is not None:
             t_close = int(time_close)
@@ -585,13 +644,17 @@ class AssetRunner:
             if live:
                 self.journal.log("INFO", f"[{self.symbol}] FILL {f.side.upper()} {f.qty} @ {f.price:.6g} {f.kind} {f.comment}" + (f" P&L {f.profit:+.2f}" if f.profit is not None else "") + f" -> pos {f.position_after:+d}")
         self._fills_seen = len(self.em.fills)
+        closed_before_count = self._closed_seen
         for idx in range(self._closed_seen, len(self.em.closed)):
             t = self.em.closed[idx]
             if live or not self.rewarming:
                 key = (t.entry_id, t.entry_ts, t.exit_ts, t.exit_comment, t.qty, t.exit_price)
                 piece = sum(1 for u in self.em.closed[:idx] if (u.entry_id, u.entry_ts, u.exit_ts, u.exit_comment, u.qty, u.exit_price) == key)
-                self.journal.add_trade(self.symbol, t, live, piece, context=self._trade_learning_context())
+                self.journal.add_trade(self.symbol, t, live, piece,
+                                       context=self._trade_learning_context(self._lot_entry_regimes.get(int(t.lot_id or 0))))
         self._closed_seen = len(self.em.closed)
+        if live and len(self.em.closed) > closed_before_count:
+            self._refresh_performance_guard()
         for ev in self.strat.events:
             self.recent_events.append(dict(ev, live=live))
             if live:
@@ -700,6 +763,7 @@ class AssetRunner:
             self.last_sub_ts = now  # a later drop must not replay years of history as live fills
         if self.last_price is None:
             self.last_price = self.feed.ticker(self.spec.ticker)
+        self._refresh_performance_guard()
         self.journal.log("INFO", f"[{self.symbol}] warm-up done: {self.bar_index + 1} chart bars, {len(self.em.closed)} historical trades, net {self.em.netprofit:+.2f}; market {self.cal.describe(now)}")
 
     def _closed_only(self, bars: List[Bar], ticker: str) -> List[Bar]:
@@ -1010,10 +1074,31 @@ class AssetRunner:
         with self.lock:
             if not paused and getattr(self, "_activation_quarantine", None):
                 raise ValueError(f"{self.symbol}: activation recovery is required before resuming entries")
+            if not paused and getattr(self, "_performance_guard", {}).get("status") == "PRESSURE":
+                raise ValueError(f"{self.symbol}: rolling live paper win rate is below 75%; qualify and activate a reviewed replacement before resuming")
             self.paused = paused
             if self.strat is not None:
                 self.strat.paused = paused
             return self._cancel_pending_entries() if paused else 0
+
+    def _refresh_performance_guard(self) -> None:
+        """Review settled live paper lots and pause new entries under the 75% floor."""
+        report = self.journal.performance_review(self.symbol, since_ts=self._performance_guard_since_ts)
+        scorecards = report["scorecards"]
+        pressure = {regime: row for regime, row in scorecards.items() if row["status"] == "PRESSURE"}
+        prior = getattr(self, "_performance_guard", {})
+        status = "PRESSURE" if pressure else ("WATCH" if any(x["status"] == "WATCH" for x in scorecards.values())
+                                               else ("HEALTHY" if scorecards else "INSUFFICIENT_SAMPLE"))
+        self._performance_guard = {**report, "status": status, "pressure_regimes": sorted(pressure)}
+        if pressure and not self.paused:
+            self.paused = True
+            if self.strat is not None:
+                self.strat.paused = True
+            cancelled = self._cancel_pending_entries()
+            self.journal.log("ERROR", f"[{self.symbol}] performance pressure: rolling paper win rate below 75% "
+                             f"for regime(s) {', '.join(sorted(pressure))}; new entries paused, {cancelled} pending intent(s) cancelled")
+        elif status != prior.get("status"):
+            self.journal.log("INFO", f"[{self.symbol}] rolling paper performance review: {status}")
 
     def ensure_configurable(self, *, allow_overlay: bool = False) -> None:
         """Must be called while holding lock, before any configuration mutation."""
@@ -1145,7 +1230,7 @@ class AssetRunner:
             return dict(value) if isinstance(value, dict) else {}
         return {}
 
-    def _trade_learning_context(self) -> Dict[str, Any]:
+    def _trade_learning_context(self, entry_regime: Optional[str] = None) -> Dict[str, Any]:
         """Immutable configuration receipt captured when a trade piece closes."""
         inputs_payload = _clean(self.inputs_base.to_dict())
         inputs_json = json.dumps(inputs_payload, sort_keys=True, separators=(",", ":"), allow_nan=False)
@@ -1173,6 +1258,8 @@ class AssetRunner:
             **scope,
             "strategy_fingerprint": hashlib.sha256(raw.encode("utf-8")).hexdigest(),
             "provenance_quality": "CLOSURE_TIME_CONFIG",
+            "regime": str(entry_regime or (self.state or {}).get("rate_regime_str") or "unknown"),
+            "regime_attribution": "entry_fill_previous_closed_bar" if entry_regime else "closure_time_fallback",
         }
 
     def _summary(self) -> Dict[str, Any]:
@@ -1213,6 +1300,7 @@ class AssetRunner:
             "open_profit": self.em.open_profit(mark) if mark else 0.0, "position": self.em.position_size,
             "open_trades": open_trades, "exits": self.em.live_exits(), "pending": self.em.pending_view(),
             "trades_total": len(self.em.closed), "wins_total": wins,
+            "performance_guard": getattr(self, "_performance_guard", {"status": "INSUFFICIENT_SAMPLE", "scorecards": {}}),
             "live_trades": len(live_trades), "live_profit": sum(t.profit for t in live_trades),
             "state": {k: st.get(k) for k in ("ts", "c", "rate_uptrend", "rate_st_line", "rate_regime", "rate_regime_str", "hurst", "fdi",
                                              "rate_adx", "atr14", "armed_long", "armed_short", "bars_since_flip", "htf_dirs", "htf_bull", "htf_bear",

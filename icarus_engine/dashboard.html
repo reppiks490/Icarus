@@ -522,6 +522,7 @@ function overviewHtml(d, A) {
 }
 function assetHead(a) {
   const st = a.state||{}; const tfs = (a.htf_tfs||[]).map(m => m>=10080?'W':m>=1440?'D':m>=60?(m/60)+'h':m+'m'); const dirs = st.htf_dirs||[];
+  const guard=a.performance_guard||{}, guardRows=Object.entries(guard.scorecards||{}).map(([regime,x])=>`<div class="tile"><div class="k">${esc(regime)} · ${esc(x.status)}</div><div class="v">${x.sample_lots} lots · ${x.win_rate==null?'—':(x.win_rate*100).toFixed(1)+'%'} · hold ${x.average_hold_bars==null?'—':x.average_hold_bars.toFixed(1)+' bars'} / ${x.average_hold_seconds==null?'—':Math.round(x.average_hold_seconds)+'s'}</div></div>`).join('');
   const tiles = [['Regime', st.rate_regime!=null?`${esc(st.rate_regime_str)} ${(st.rate_regime*100).toFixed(0)}%`:'—'], ['Hurst / FDI', `${st.hurst?.toFixed(3)??'—'} / ${st.fdi?.toFixed(3)??'—'}`], ['ADX / ATR14', `${st.rate_adx?.toFixed(1)??'—'} / ${px(st.atr14)}`], ['RATE line', px(st.rate_st_line)],
     ['Gate L / S', `${(st.final_l||0).toFixed(2)} / ${(st.final_s||0).toFixed(2)} vs ${(st.eff_thresh||0).toFixed(2)}`], ['Kalman vel', st.kf_vel?.toFixed(4)??'—'], ['PE', (st.pe_norm?.toFixed(3)??'—') + (st.trc?' TRC':'')], ['Cycle', (st.cycle_rising?'rising ':'falling ') + (st.phase_deg!=null?st.phase_deg.toFixed(0)+'°':'')],
     ['Po3', st.po3], ['Structure', (st.struct_bias>0?'bull':st.struct_bias<0?'bear':'—') + ' · ' + (st.pd_zone||'')], ['Shock ×', st.shock_mult?.toFixed(2)], ['Veto L / S', `${st.diverge_veto_l?'VETO':'ok'} / ${st.diverge_veto_s?'VETO':'ok'}`],
@@ -540,7 +541,9 @@ function assetHead(a) {
     <div class="ladder"><span class="muted small">HTF</span>${tfs.map((t,i)=>`<span class="chip ${dirs[i]===-1?'b':dirs[i]===1?'r':''}">${t} ${dirs[i]===-1?'▲':dirs[i]===1?'▼':'·'}</span>`).join('')}<span class="muted small" style="margin-left:8px">LTF</span>${(st.ltf||[]).map((l,i)=>`<span class="chip ${l[0]===-1?'b':l[0]===1?'r':''}">${i?'5m':'2m'} ${l[0]===-1?'▲':l[0]===1?'▼':'·'} ${l[1]!=null?l[1]+'b':''} r${l[2]!=null?(l[2]*100).toFixed(0):'—'}</span>`).join('')} <span class="chip">MTF ${st.htf_bull}▲ ${st.htf_bear}▼</span>
       <span style="margin-left:auto" class="small"><span class="muted">net</span> <b class="${(a.netprofit||0)>=0?'pos':'neg'} tnum">${sgn$(a.netprofit)}</b> <span class="muted">· ${a.trades_total} pieces · ${a.trades_total?Math.round(a.wins_total/a.trades_total*100):0}% win · live ${sgn$(a.live_profit)} · open ${sgn$(a.open_profit)}</span></span></div>
     <div class="votes" style="margin-top:10px">${(st.votes||[]).map(v => `<div class="vote ${v.l&&v.s?'ls':v.l?'l':v.s?'s':''}">${v.name}<br><span class="muted">${v.w}</span></div>`).join('')}</div>
-    <div class="hud">${tiles.map(([k,v])=>`<div class="tile"><div class="k">${k}</div><div class="v tnum">${esc(v??'—')}</div></div>`).join('')}</div>`;
+    <div class="hud">${tiles.map(([k,v])=>`<div class="tile"><div class="k">${k}</div><div class="v tnum">${esc(v??'—')}</div></div>`).join('')}</div>
+    <div class="hud" style="margin-top:8px"><div class="tile"><div class="k">Rolling performance guard</div><div class="v">${esc(guard.status||'INSUFFICIENT_SAMPLE')} · last ${guard.window_lots||30} settled paper lots · watch &lt;85% · pause &lt;75%</div></div>${guardRows||'<div class="tile"><div class="k">Regime scorecards</div><div class="v">Collecting settled live paper lots; minimum 12 per regime.</div></div>'}</div>
+    <div class="small muted">Success = net positive after modeled costs. Scale-outs count once. Regime currently uses the regime at closure; qualification and activation still require the separate research gates.</div>`;
 }
 function assetHtml(a) {
   return `<section class="card c12" id="assetHead">${assetHead(a)}</section>

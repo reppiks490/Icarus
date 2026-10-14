@@ -2622,6 +2622,19 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             try:
                 if p.path == "/admin/research/studies":
                     return self._json(200, research.start(body))
+                if p.path == "/admin/research/champion-study":
+                    if type(body) is not dict or set(body) != {"asset", "champion_id"}:
+                        raise ValueError("champion study requires asset and champion_id only")
+                    asset_name = str(body["asset"]).upper()
+                    autopilot_state = autopilot.status()
+                    scoped = (autopilot_state.get("regime_champions") or {}).values()
+                    champion = next((item for item in scoped
+                                     if item.get("asset") == asset_name and item.get("id") == body["champion_id"]), None)
+                    if champion is None:
+                        fallback = (autopilot_state.get("champions") or {}).get(asset_name)
+                        champion = fallback if (fallback or {}).get("id") == body["champion_id"] else None
+                    return self._json(200, research.start_champion_study(
+                        {"asset": asset_name, "champion_id": body["champion_id"]}, champion))
                 if p.path == "/admin/research/adaptation":
                     return self._json(200, research.configure_adaptation(body))
                 if p.path == "/admin/research/source-watch":
