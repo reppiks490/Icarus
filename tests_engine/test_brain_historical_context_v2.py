@@ -12,6 +12,7 @@ from icarus_engine.brain_sync import (
     _normalize_historical_context_contract,
     _normalize_historical_document,
     _normalize_peer_packet,
+    _validate_historical_source_semantics,
 )
 from tests_engine.test_brain_sync import _consumer_contract, _peer_packet, _rehash_peer_packet
 
@@ -117,6 +118,22 @@ def test_modern_packet_shape_is_bound_to_all_six_sources():
     }
     assert not any(row["candidate_evidence_eligible"] for row in normalized["historical_packet_witnesses"])
     assert all(row["execution_authorized"] is False for row in normalized["historical_packet_witnesses"])
+    document_witnesses = {
+        row["id"]: row for row in normalized["historical_packet_witnesses"]
+        if row["kind"] == "RESEARCH_CONTEXT_DOCUMENT"
+    }
+    for source_id in ("provider_collection", "sec_edgar"):
+        witness = document_witnesses[source_id]
+        assert witness["schema_key"]
+        assert witness["raw_exclusion_field"]
+        assert witness["collection_clock_field"]
+        source_payload = json.loads((root / "sources" / witness["path"]).read_text())
+        _validate_historical_source_semantics(witness, source_payload)
+        projection = _normalize_historical_document(
+            witness, source_payload, blob_sha="a" * 40
+        )
+        assert projection["summary"] == witness["packet_summary"]
+        assert projection["clocks"] == witness["packet_clocks"]
 
 
 def test_modern_packet_rejects_unversioned_or_wrong_typed_version():

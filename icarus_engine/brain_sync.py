@@ -1288,7 +1288,16 @@ def _normalize_peer_packet(
                 "artifact_id": artifact_id, "source_artifact_blob_sha": source_blob,
                 "source_artifact_blob_verified": False, "projection_verified": False,
                 "packet_summary": dict(summary), "packet_clocks": dict(clocks),
-                "schema_value": raw["schema_value"], "packet_source_commit": source_commit,
+                "schema_key": expected["schema_key"],
+                "schema_value": raw["schema_value"],
+                "summary_fields": expected["summary_fields"],
+                "subject": expected["subject"],
+                "raw_exclusion_field": expected["raw_exclusion_field"],
+                "collection_clock_field": expected["collection_clock_field"],
+                "availability_clock": expected["availability_clock"],
+                "eligibility": expected["eligibility"],
+                "raw_payloads_eligible": expected["raw_payloads_eligible"],
+                "packet_source_commit": source_commit,
                 "run_id": None, "run_status": None, "evidence_status": expected["evidence_status"],
                 "collection_only": True, "candidate_evidence_eligible": False,
                 "execution_authorized": False, "production_decision_authorized": False,
@@ -2100,9 +2109,8 @@ class BrainRemoteSync:
                         if witness.get("kind") == "RESEARCH_CONTEXT_DOCUMENT":
                             if source_payload.get(witness.get("schema_key", _HISTORICAL_CONTEXT_EXPECTED[witness["id"]]["schema_key"])) != witness.get("schema_value"):
                                 raise ValueError(f"historical packet witness schema mismatch: {witness['id']}")
-                            expected_source = _HISTORICAL_CONTEXT_EXPECTED[witness["id"]]
                             projection = _normalize_historical_document(
-                                expected_source, source_payload, blob_sha=source_blob
+                                witness, source_payload, blob_sha=source_blob
                             )
                             if projection.get("summary") != witness.get("packet_summary"):
                                 raise ValueError(f"historical packet witness projection mismatch: {witness['id']}")
