@@ -1,0 +1,81 @@
+/* Original cinematic material layers. Existing controls own all motion gates. */
+.world-scene .reference-nebula {
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  z-index:0;
+  pointer-events:none;
+  mix-blend-mode:normal;
+  contain:strict;
+}
+
+.intro-theater .reference-intro {
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  z-index:0;
+  pointer-events:none;
+  mix-blend-mode:normal;
+}
+
+/* Keep title, skip control and chapters above the volumetric opening. */
+.world-intro:has(.reference-intro) .intro-title,
+.world-intro:has(.reference-intro) .intro-chapters {
+  z-index:2;
+  text-shadow:0 2px 24px #000,0 1px 5px #000;
+}
+
+@media (prefers-reduced-motion:reduce), (forced-colors:active) {
+  .reference-nebula {display:none}
+}
+
+:root[data-motion="off"] .reference-nebula,
+:root[data-experience="focus"] .world-scene .reference-nebula {
+  display:none;
+}
+
+/* Sculpted light is the primary scene; retain the older geometry as fine filigree. */
+.world-intro:has(.reference-intro[data-state="ready"]) .intro-theater {
+  background:#03050c;
+}
+.world-intro:has(.reference-intro[data-state="ready"]) :is(.intro-system,.intro-rays,.intro-dust) {
+  visibility:hidden;
+}
+.world-intro:has(.reference-intro[data-state="ready"]) .intro-loom {
+  animation:none;
+  opacity:.5;
+}
+.world-intro:has(.reference-intro[data-state="ready"]) .intro-note {
+  color:#d0d7e7;
+  text-shadow:0 1px 8px #000;
+}
+
+/* A shallow machined edge gives the existing scene a physical enclosure. */
+.world-scene:has(.reference-nebula) {
+  box-shadow:inset 0 1px 0 #ffffff18,0 18px 55px var(--world-shadow);
+}
+.world-scene:has(.reference-nebula) .world-switch button {
+  transition:background-color .28s cubic-bezier(.22,1,.36,1),
+    border-color .28s cubic-bezier(.22,1,.36,1),
+    box-shadow .28s cubic-bezier(.22,1,.36,1),
+    transform .28s cubic-bezier(.22,1,.36,1);
+}
+.world-scene:has(.reference-nebula) .world-switch button:focus-visible {
+  outline:2px solid currentColor;
+  outline-offset:4px;
+}
+@media (hover:hover) and (prefers-reduced-motion:no-preference) {
+  :root:not([data-motion="off"]) .world-scene:has(.reference-nebula) .world-switch button:hover {
+    transform:translateY(-2px);
+    box-shadow:inset 0 1px 0 #ffffff20,0 5px 18px var(--world-shadow);
+  }
+  :root:not([data-motion="off"]) .world-scene:has(.reference-nebula) .world-switch button:active {
+    transform:translateY(0) scale(.98);
+  }
+}
+@media (prefers-reduced-motion:reduce) {
+  .world-scene:has(.reference-nebula) .world-switch button {transition:none}
+}
+:root[data-motion="off"] .world-scene:has(.reference-nebula) .world-switch button {transition:none}
