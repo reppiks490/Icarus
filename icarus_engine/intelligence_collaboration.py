@@ -40,6 +40,21 @@ WORK_KINDS = {
     "delegation",
     "synthesis",
 }
+TRANSITIONS = {
+    "requested",
+    "accepted",
+    "started",
+    "partial_result",
+    "evidence_added",
+    "challenge",
+    "challenge_response",
+    "escalated",
+    "completed",
+    "failed",
+    "rejected",
+    "cancelled",
+    "expired",
+}
 TERMINAL_STATES = {"COMPLETED", "FAILED", "REJECTED", "CANCELLED", "EXPIRED"}
 
 
@@ -105,9 +120,7 @@ def _text(value: Any, name: str, limit: int) -> str:
 
 
 def _optional_text(value: Any, name: str, limit: int) -> str | None:
-    if value is None:
-        return None
-    return _text(value, name, limit)
+    return None if value is None else _text(value, name, limit)
 
 
 def _canonical_json(value: Any) -> str:
@@ -198,8 +211,7 @@ def derive_work_id(requester_principal: str, idempotency_key: str) -> str:
 
 
 def request_material_hash(material: Mapping[str, object]) -> str:
-    normalized = _finite_json_mapping(material, "request material")
-    return _sha256_json(normalized)
+    return _sha256_json(_finite_json_mapping(material, "request material"))
 
 
 @dataclass(frozen=True)
@@ -251,7 +263,6 @@ class WorkRequest:
         parent_event_id = _optional_text(self.parent_event_id, "parent_event_id", 240)
         if (parent_work_id is None) != (parent_event_id is None):
             raise ValueError("parent_work_id and parent_event_id must be supplied together")
-
         material: dict[str, object] = {
             "requester_principal": requester,
             "requester_kind": requester_kind,
@@ -276,14 +287,32 @@ class WorkRequest:
         return derive_work_id(self.requester_principal, self.idempotency_key)
 
 
+def _normalize_request_mapping(value: Any) -> dict[str, object]:
+    if not isinstance(value, Mapping):
+        raise ValueError("request must be a mapping")
+    return WorkRequest(
+        requester_principal=value.get("requester_principal"),
+        requester_kind=value.get("requester_kind"),
+        target_kind=value.get("target_kind"),
+        target_id=value.get("target_id"),
+        work_kind=value.get("work_kind"),
+        idempotency_key=value.get("idempotency_key"),
+        objective=value.get("objective"),
+        priority=value.get("priority", 0),
+        constraints=value.get("constraints", {}),
+        required_capabilities=tuple(value.get("required_capabilities", ()) or ()),
+        reviewer_principals=tuple(value.get("reviewer_principals", ()) or ()),
+        deadline=value.get("deadline"),
+        result_contract=value.get("result_contract"),
+        parent_work_id=value.get("parent_work_id"),
+        parent_event_id=value.get("parent_event_id"),
+    ).normalized()
+
+
 def _event_type_for_root(work_kind: str, actor_kind: str) -> str:
     if work_kind == "decision":
         return "decision_request"
-    return {
-        "agent": "agent_note",
-        "human": "human_note",
-        "system": "system",
-    }[actor_kind]
+    return {"agent": "agent_note", "human": "human_note", "system": "system"}[actor_kind]
 
 
 def _payload_size(payload: Mapping[str, Any]) -> int:
@@ -306,9 +335,7 @@ def build_request_event(
     actor = _lower_enum(actor_kind, "actor_kind", PRINCIPAL_KINDS)
     if actor != material["requester_kind"]:
         raise ValueError("actor_kind must match requester_kind for a root request")
-
     work_id = request.work_id()
-    digest = request_material_hash(material)
     payload: dict[str, Any] = {
         "protocol": COLLABORATION_PROTOCOL,
         "work_id": work_id,
@@ -317,42 +344,37 @@ def build_request_event(
         "actor_kind": actor,
         "operation_id": None,
         "expected_head_event_id": None,
-        "request_material_hash": digest,
+        "request_material_hash": request_material_hash(material),
         "request": material,
     }
-    size = _payload_size(payload)
-    if size > MAX_COLLABORATION_PAYLOAD_BYTES:
-        raise ValueError(
-            f"collaboration payload exceeds 30 KiB ({MAX_COLLABORATION_PAYLOAD_BYTES} bytes)"
+    if _payload_size(payload) > MAX_COLLABORATION_PAYLOAD_BYTES:
+        raise ValueError(f"collaboration payload exceeds 30 KiB ({MAX_COLLABORATION_PAYLOAD_BYTES} bytes)")
+    causes = set(
+        _bounded_items(
+            parent_causation_ids,
+            "parent_causation_ids",
+            item_limit=240,
+            count_limit=64,
         )
-
-    causes = set(_bounded_items(
-        parent_causation_ids,
-        "parent_causation_ids",
-        item_limit=240,
-        count_limit=64,
-    ))
+    )
     parent_event_id = material.get("parent_event_id")
     if isinstance(parent_event_id, str):
         causes.add(parent_event_id)
-
     tags = {
         "collaboration:v1",
         f"work-kind:{material['work_kind']}",
         f"requester:{material['requester_principal']}",
-        f"transition:requested",
+        "transition:requested",
     }
-    if material["target_kind"] == "principal":
-        tags.add(f"to:{material['target_id']}")
-    else:
-        tags.add(f"group:{material['target_id']}")
+    tags.add(
+        f"to:{material['target_id']}"
+        if material["target_kind"] == "principal"
+        else f"group:{material['target_id']}"
+    )
     parent_work_id = material.get("parent_work_id")
     if isinstance(parent_work_id, str):
         tags.add(f"parent:{parent_work_id}")
-
-    objective = str(material["objective"])
     work_kind = str(material["work_kind"])
-    priority = int(material["priority"])
     return IntelligenceEvent(
         event_type=_event_type_for_root(work_kind, actor),
         source=str(material["requester_principal"]),
@@ -360,10 +382,10 @@ def build_request_event(
         channel=COLLABORATION_CHANNEL,
         thread_key=f"work:{work_id}",
         title=f"Work request: {work_kind}",
-        body=objective,
+        body=str(material["objective"]),
         observed_at=observed_at,
         received_at=received_at,
-        severity=priority,
+        severity=int(material["priority"]),
         urgency=0.0,
         confidence=None,
         assets=tuple(assets),
@@ -388,7 +410,9 @@ def _event_identity(event: Mapping[str, Any]) -> tuple[int, str]:
     return int(sequence), str(event_id)
 
 
-def _validate_envelope(event: Mapping[str, Any], work_id: str | None = None) -> tuple[dict[str, Any], int, str]:
+def _validate_envelope(
+    event: Mapping[str, Any], work_id: str | None = None
+) -> tuple[dict[str, Any], int, str]:
     _integrity(isinstance(event, Mapping), "event must be a mapping")
     sequence, event_id = _event_identity(event)
     _integrity(event.get("execution_authorized") is False, "execution authority violation")
@@ -426,6 +450,33 @@ def _conflict(event: Mapping[str, Any], code: str, operation_id: str | None = No
     return WorkConflict(event_id=event_id, sequence=sequence, code=code, operation_id=operation_id)
 
 
+def _operation_digest(event: Mapping[str, Any], payload: Mapping[str, Any]) -> str:
+    def _sorted_collection(name: str) -> list[str]:
+        raw = event.get(name) or ()
+        if isinstance(raw, (str, bytes)):
+            raise CollaborationIntegrityError(f"{name} must be a collection")
+        try:
+            return sorted(str(item) for item in raw)
+        except TypeError as exc:
+            raise CollaborationIntegrityError(f"{name} must be a collection") from exc
+
+    material = {
+        "transition": payload.get("transition"),
+        "actor_principal": payload.get("actor_principal"),
+        "actor_kind": payload.get("actor_kind"),
+        "expected_head_event_id": payload.get("expected_head_event_id"),
+        "data": payload.get("data", {}),
+        "event_type": event.get("event_type"),
+        "assets": _sorted_collection("assets"),
+        "evidence_ids": _sorted_collection("evidence_ids"),
+        "causation_ids": _sorted_collection("causation_ids"),
+    }
+    try:
+        return _sha256_json(material)
+    except ValueError as exc:
+        raise CollaborationIntegrityError("operation material must be finite JSON") from exc
+
+
 def _actor_can_apply(
     transition: str,
     actor: str,
@@ -452,7 +503,7 @@ def _actor_can_apply(
         return True
     if actor in reviewers and transition in {"evidence_added", "challenge", "escalated"}:
         return True
-    if assignee is not None and actor == assignee and transition in {
+    return assignee is not None and actor == assignee and transition in {
         "started",
         "evidence_added",
         "partial_result",
@@ -460,9 +511,7 @@ def _actor_can_apply(
         "escalated",
         "completed",
         "failed",
-    }:
-        return True
-    return False
+    }
 
 
 def _transition_state(state: str, transition: str, *, target_kind: str) -> str | None:
@@ -496,37 +545,21 @@ def project_work(
 ) -> WorkSnapshot:
     if not events:
         raise ValueError("unknown work: empty history")
-
     ordered = sorted(events, key=lambda item: int(item.get("sequence", 0)))
     root_payload, root_sequence, root_event_id = _validate_envelope(ordered[0])
     _integrity(root_payload.get("transition") == "requested", "first collaboration event must be requested")
     work_id = str(root_payload["work_id"])
-    request = root_payload.get("request")
-    _integrity(isinstance(request, Mapping), "root request material missing")
-    request = dict(request)
     try:
-        expected_work_id = derive_work_id(str(request.get("requester_principal", "")), str(request.get("idempotency_key", "")))
-        normalized_request = WorkRequest(
-            requester_principal=request.get("requester_principal"),
-            requester_kind=request.get("requester_kind"),
-            target_kind=request.get("target_kind"),
-            target_id=request.get("target_id"),
-            work_kind=request.get("work_kind"),
-            idempotency_key=request.get("idempotency_key"),
-            objective=request.get("objective"),
-            priority=request.get("priority", 0),
-            constraints=request.get("constraints", {}),
-            required_capabilities=tuple(request.get("required_capabilities", ()) or ()),
-            reviewer_principals=tuple(request.get("reviewer_principals", ()) or ()),
-            deadline=request.get("deadline"),
-            result_contract=request.get("result_contract"),
-            parent_work_id=request.get("parent_work_id"),
-            parent_event_id=request.get("parent_event_id"),
-        ).normalized()
+        normalized_request = _normalize_request_mapping(root_payload.get("request"))
     except (TypeError, ValueError) as exc:
         raise CollaborationIntegrityError(f"invalid root request material: {exc}") from exc
+    expected_work_id = derive_work_id(
+        str(normalized_request["requester_principal"]),
+        str(normalized_request["idempotency_key"]),
+    )
     _integrity(expected_work_id == work_id, "derived work_id mismatch")
-    _integrity(root_payload.get("request_material_hash") == request_material_hash(normalized_request), "request material hash mismatch")
+    root_material_hash = request_material_hash(normalized_request)
+    _integrity(root_payload.get("request_material_hash") == root_material_hash, "request material hash mismatch")
 
     requester = str(normalized_request["requester_principal"])
     requester_kind = str(normalized_request["requester_kind"])
@@ -539,6 +572,7 @@ def project_work(
     updated_at = str(ordered[0].get("received_at"))
     applied_count = 1
     conflicts: list[WorkConflict] = []
+    operation_registry: dict[str, tuple[str, str]] = {}
     evidence = set(str(item) for item in (ordered[0].get("evidence_ids") or ()))
     open_challenges: set[str] = set()
     resolved_challenges: set[str] = set()
@@ -553,16 +587,46 @@ def project_work(
         _integrity(sequence > last_sequence, "events must have unique ascending sequence")
         last_sequence = sequence
         transition = payload.get("transition")
-        _integrity(isinstance(transition, str) and transition != "requested", "invalid non-root transition")
+        _integrity(isinstance(transition, str) and transition in TRANSITIONS, "invalid transition")
+
+        if transition == "requested":
+            try:
+                later_request = _normalize_request_mapping(payload.get("request"))
+            except (TypeError, ValueError) as exc:
+                raise CollaborationIntegrityError(f"invalid root request material: {exc}") from exc
+            later_hash = request_material_hash(later_request)
+            _integrity(payload.get("request_material_hash") == later_hash, "request material hash mismatch")
+            later_work_id = derive_work_id(
+                str(later_request["requester_principal"]),
+                str(later_request["idempotency_key"]),
+            )
+            _integrity(later_work_id == work_id, "derived work_id mismatch")
+            conflicts.append(
+                _conflict(event, "duplicate_root" if later_hash == root_material_hash else "conflicting_root")
+            )
+            continue
+
         actor = str(payload["actor_principal"])
         actor_kind = str(payload["actor_kind"])
-        operation_id_raw = payload.get("operation_id")
-        expected_head_raw = payload.get("expected_head_event_id")
         try:
-            operation_id = _text(operation_id_raw, "operation_id", MAX_OPERATION_ID)
-            expected_head = _text(expected_head_raw, "expected_head_event_id", 240)
+            operation_id = _text(payload.get("operation_id"), "operation_id", MAX_OPERATION_ID)
+            expected_head = _text(payload.get("expected_head_event_id"), "expected_head_event_id", 240)
         except ValueError as exc:
             raise CollaborationIntegrityError(str(exc)) from exc
+
+        digest = _operation_digest(event, payload)
+        prior = operation_registry.get(operation_id)
+        if prior is not None:
+            prior_digest, _prior_event_id = prior
+            conflicts.append(
+                _conflict(
+                    event,
+                    "duplicate_operation" if prior_digest == digest else "conflicting_operation",
+                    operation_id,
+                )
+            )
+            continue
+        operation_registry[operation_id] = (digest, event_id)
 
         if expected_head != head_event_id:
             conflicts.append(_conflict(event, "stale_head", operation_id))
@@ -585,18 +649,13 @@ def project_work(
             reviewers=reviewers,
             state=state,
         ):
-            if transition == "rejected" and target_kind == "group" and state == "OPEN":
-                code = "illegal_transition"
-            else:
-                code = "actor_not_permitted"
+            code = "illegal_transition" if transition == "rejected" and target_kind == "group" and state == "OPEN" else "actor_not_permitted"
             conflicts.append(_conflict(event, code, operation_id))
             continue
-
         next_state = _transition_state(state, transition, target_kind=target_kind)
         if next_state is None:
             conflicts.append(_conflict(event, "illegal_transition", operation_id))
             continue
-
         if transition == "expired":
             if deadline is None:
                 conflicts.append(_conflict(event, "deadline_violation", operation_id))
@@ -636,10 +695,9 @@ def project_work(
         updated_at = str(event.get("received_at"))
         applied_count += 1
 
-    deadline_passed = False
-    if as_of is not None and deadline is not None:
-        deadline_passed = _time_text(as_of, "as_of") >= str(deadline)
-
+    deadline_passed = bool(
+        as_of is not None and deadline is not None and _time_text(as_of, "as_of") >= str(deadline)
+    )
     return WorkSnapshot(
         protocol=COLLABORATION_PROTOCOL,
         work_id=work_id,
