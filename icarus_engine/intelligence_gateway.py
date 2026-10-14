@@ -133,7 +133,12 @@ def validate_origin(origin: str | None, allowed_origins: frozenset[str]) -> None
 
 
 def bearer_matches(presented: str | None, expected: str) -> bool:
-    return isinstance(presented, str) and isinstance(expected, str) and bool(expected) and hmac.compare_digest(presented, expected)
+    if not isinstance(presented, str) or not isinstance(expected, str) or not expected:
+        return False
+    try:
+        return hmac.compare_digest(presented.encode("utf-8"), expected.encode("utf-8"))
+    except UnicodeEncodeError:
+        return False
 
 
 def _redact_obj(v: Any) -> Any:
@@ -718,9 +723,11 @@ def _reject_json_constant(v: str):
 
 
 async def _strict_json_request(request: Request, *, max_bytes: int) -> dict[str, object]:
-    raw = await request.body()
-    if len(raw) > max_bytes:
-        raise GatewayRequestError("request body too large")
+    raw = bytearray()
+    async for chunk in request.stream():
+        if len(raw) + len(chunk) > max_bytes:
+            raise GatewayRequestError("request body too large")
+        raw.extend(chunk)
     try:
         parsed = json.loads(raw.decode("utf-8"), parse_constant=_reject_json_constant)
     except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as exc:
