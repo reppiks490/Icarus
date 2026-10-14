@@ -15,12 +15,12 @@ import threading
 import time
 from concurrent.futures import Future
 from contextlib import asynccontextmanager
-from dataclasses import dataclass, fields, is_dataclass
+from dataclasses import asdict, dataclass, fields, is_dataclass
 from datetime import datetime, timezone
 from typing import Any, Callable, Mapping, Sequence
 
 from fastapi import FastAPI, Request, WebSocket
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
 from starlette.websockets import WebSocketDisconnect
 
 from .intelligence_delivery import IntelligenceDeliveryPlane
@@ -182,6 +182,8 @@ class GatewayConfig:
     executor_queue_capacity: int = 128
     max_json_body_bytes: int = 32 * 1024
     max_ws_text_bytes: int = 64 * 1024
+    command_identity: Mapping[str, Any] | None = None
+    command_credentials: Mapping[str, Mapping[str, Any]] | None = None
 
     def __post_init__(self) -> None:
         validate_bind_host(self.host, allow_remote=self.allow_remote)
@@ -189,6 +191,10 @@ class GatewayConfig:
             raise ValueError("allowed_hosts must be a non-empty frozenset")
         if not isinstance(self.allowed_origins, frozenset):
             raise ValueError("allowed_origins must be a frozenset")
+        if self.command_identity is not None and not isinstance(self.command_identity, Mapping):
+            raise ValueError("command_identity must be a mapping")
+        if self.command_credentials is not None and not isinstance(self.command_credentials, Mapping):
+            raise ValueError("command_credentials must be a mapping")
         for n in ("auth_timeout_seconds", "heartbeat_seconds", "client_idle_timeout_seconds", "idle_poll_seconds", "recovery_seconds"):
             _positive_finite(getattr(self, n), n)
         if _positive_finite(self.ticket_ttl_seconds, "ticket_ttl_seconds") > 30:
@@ -782,19 +788,71 @@ def create_intelligence_gateway_app(*, db_path: str, bearer_token: str, config: 
     config = config or GatewayConfig()
     executor = DeliveryExecutor(db_path, plane_factory=plane_factory, queue_capacity=config.executor_queue_capacity)
     service = IntelligenceGatewayService(executor=executor, config=config)
+    command_bindings: list[tuple[str, dict[str, object]]] = []
+    command_fabric = None
+    command_collaboration = None
+    command_presence = None
+    command_rooms = None
+    def normalize_command_identity(token: str, identity: Mapping[str, Any]) -> None:
+        secret = _identifier(token, "command credential", 4096)
+        if set(identity) - {"principal_id", "principal_kind", "groups"} or not {"principal_id", "principal_kind"}.issubset(identity):
+            raise ValueError("command identity requires principal_id and principal_kind; groups is optional")
+        principal = _identifier(identity.get("principal_id"), "command principal_id", 64)
+        kind = identity.get("principal_kind")
+        if not isinstance(kind, str) or kind not in {"human", "agent", "system"}:
+            raise ValueError("command principal_kind is invalid")
+        raw_groups = identity.get("groups", ())
+        if isinstance(raw_groups, (str, bytes)) or not isinstance(raw_groups, (list, tuple, set, frozenset)):
+            raise ValueError("command_identity.groups must be a collection")
+        if len(raw_groups) > 32:
+            raise ValueError("command_identity.groups exceeds 32 items")
+        groups = frozenset(_identifier(group, "command group", 64) for group in raw_groups)
+        if any(existing == secret for existing, _ in command_bindings):
+            raise ValueError("command credentials must be unique")
+        command_bindings.append((secret, {"principal_id": principal, "principal_kind": kind, "groups": groups}))
+        if len(command_bindings) > 32:
+            raise ValueError("command credentials exceeds 32 credentials")
 
+    if config.command_identity is not None:
+        normalize_command_identity(bearer_token, config.command_identity)
+    if config.command_credentials is not None:
+        if len(config.command_credentials) > 32:
+            raise ValueError("command_credentials exceeds 32 credentials")
+        for credential, identity in config.command_credentials.items():
+            if not isinstance(identity, Mapping):
+                raise ValueError("each command credential identity must be a mapping")
+            normalize_command_identity(credential, identity)
     @asynccontextmanager
     async def lifespan(app: FastAPI):
-        await service.start()
+        nonlocal command_fabric, command_collaboration, command_presence, command_rooms
         try:
+            if command_bindings:
+                from .intelligence_collaboration import IntelligenceCollaboration
+                from .intelligence_coordination import CapabilityPresenceRegistry, IncidentRoomService
+                from .intelligence_fabric import IntelligenceFabric
+
+                command_fabric = IntelligenceFabric(db_path)
+                command_collaboration = IntelligenceCollaboration(command_fabric)
+                command_presence = CapabilityPresenceRegistry()
+                command_rooms = IncidentRoomService(command_fabric, command_collaboration)
+            await service.start()
             yield
         finally:
-            await service.close()
+            try:
+                await service.close()
+            finally:
+                if command_fabric is not None:
+                    command_fabric.close()
 
     app = FastAPI(lifespan=lifespan)
     app.state.gateway_service = service
     app.state.gateway_config = config
     app.state.gateway_bearer = bearer_token
+    app.state.command_identities = [
+        {"principal_id": binding["principal_id"], "principal_kind": binding["principal_kind"],
+         "groups": sorted(binding["groups"])}
+        for _token, binding in command_bindings
+    ]
 
     @app.middleware("http")
     async def host_guard(request: Request, call_next):
@@ -812,6 +870,441 @@ def create_intelligence_gateway_app(*, db_path: str, bearer_token: str, config: 
 
     def request_failure(*, too_large: bool = False):
         return JSONResponse(status_code=413 if too_large else 400, content=_error_payload("INVALID_REQUEST", "request is invalid"))
+
+    def command_actor(request: Request) -> dict[str, object] | None:
+        presented = _bearer_from_request(request)
+        matched = None
+        for credential, binding in command_bindings:
+            if bearer_matches(presented, credential):
+                matched = binding
+        return matched
+
+    def command_can_read(snapshot, actor: Mapping[str, object]) -> bool:
+        principal = actor.get("principal_id")
+        groups = actor.get("groups", frozenset())
+        return principal in {
+            snapshot.requester_principal,
+            snapshot.assignee,
+            snapshot.target_id if snapshot.target_kind == "principal" else None,
+            *snapshot.reviewer_principals,
+        } or (snapshot.target_kind == "group" and snapshot.target_id in groups)
+
+    def command_not_found():
+        return JSONResponse(status_code=404, content=_error_payload("WORK_NOT_FOUND", "work is unavailable"))
+
+    if command_bindings:
+        @app.get("/command", response_class=HTMLResponse)
+        async def command_console():
+            from pathlib import Path
+
+            html = (Path(__file__).parent / "intelligence-command.html").read_text(encoding="utf-8")
+            return HTMLResponse(html, headers={"Cache-Control": "no-store", "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"})
+
+        @app.get("/command/app.js")
+        async def command_script():
+            from pathlib import Path
+            return FileResponse(Path(__file__).parent / "intelligence-command.js", media_type="text/javascript",
+                                headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"})
+
+        @app.get("/command/app.css")
+        async def command_styles():
+            from pathlib import Path
+            return FileResponse(Path(__file__).parent / "intelligence-command.css", media_type="text/css",
+                                headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"})
+
+        @app.get("/v1/identity")
+        async def command_identity_view(request: Request):
+            actor = command_actor(request)
+            if actor is None:
+                return auth_failure()
+            return _authority_payload(principal_id=actor["principal_id"], principal_kind=actor["principal_kind"])
+
+        @app.post("/v1/work", status_code=201)
+        async def command_create_work(request: Request):
+            actor = command_actor(request)
+            if actor is None:
+                return auth_failure()
+            try:
+                from .intelligence_collaboration import WorkRequest
+
+                body = await _strict_json_request(request, max_bytes=config.max_json_body_bytes)
+                allowed = {
+                    "target_kind", "target_id", "work_kind", "idempotency_key", "objective", "priority",
+                    "constraints", "required_capabilities", "reviewer_principals", "deadline", "result_contract",
+                    "parent_work_id", "parent_event_id", "assets", "evidence_ids",
+                }
+                if set(body) - allowed:
+                    raise ValueError("unsupported request fields")
+                material = WorkRequest(
+                    requester_principal=actor["principal_id"],
+                    requester_kind=actor["principal_kind"],
+                    target_kind=body.get("target_kind"),
+                    target_id=body.get("target_id"),
+                    work_kind=body.get("work_kind"),
+                    idempotency_key=body.get("idempotency_key"),
+                    objective=body.get("objective"),
+                    priority=body.get("priority", 0),
+                    constraints=body.get("constraints", {}),
+                    required_capabilities=body.get("required_capabilities", ()),
+                    reviewer_principals=body.get("reviewer_principals", ()),
+                    deadline=body.get("deadline"),
+                    result_contract=body.get("result_contract"),
+                    parent_work_id=body.get("parent_work_id"),
+                    parent_event_id=body.get("parent_event_id"),
+                )
+                observed = _utc_now()
+                result = command_collaboration.create_work(
+                    material,
+                    observed_at=observed,
+                    received_at=_utc_now(),
+                    assets=body.get("assets", ()),
+                    evidence_ids=body.get("evidence_ids", ()),
+                )
+                work_id = material.work_id()
+                return _authority_payload(result=result, work=asdict(command_collaboration.snapshot(work_id)),
+                                          events=command_collaboration.history(work_id))
+            except GatewayRequestError as exc:
+                return request_failure(too_large="too large" in str(exc))
+            except (ValueError, TypeError):
+                return request_failure()
+
+        @app.get("/v1/work")
+        async def command_list_work(request: Request, limit: int = 30):
+            actor = command_actor(request)
+            if actor is None:
+                return auth_failure()
+            if isinstance(limit, bool) or not 1 <= limit <= 100:
+                return request_failure()
+            principal = str(actor["principal_id"])
+            tags = [f"requester:{principal}", f"to:{principal}", f"reviewer:{principal}"]
+            tags.extend(f"group:{group}" for group in actor["groups"])
+            try:
+                roots = command_fabric.query(channel="collaboration", tags=tags, limit=limit)
+                works = []
+                seen: set[str] = set()
+                for event in roots:
+                    payload = event.get("payload")
+                    if not isinstance(payload, Mapping) or payload.get("transition") != "requested":
+                        continue
+                    work_id = payload.get("work_id")
+                    if not isinstance(work_id, str) or work_id in seen:
+                        continue
+                    seen.add(work_id)
+                    snapshot = command_collaboration.snapshot(work_id)
+                    if command_can_read(snapshot, actor):
+                        works.append(asdict(snapshot))
+                return _authority_payload(works=works, limit=limit, has_more=len(roots) == limit)
+            except (ValueError, TypeError):
+                return request_failure()
+
+        @app.get("/v1/work/{work_id}")
+        async def command_get_work(work_id: str, request: Request):
+            actor = command_actor(request)
+            if actor is None:
+                return auth_failure()
+            try:
+                snapshot = command_collaboration.snapshot(work_id)
+            except (ValueError, TypeError):
+                return command_not_found()
+            if not command_can_read(snapshot, actor):
+                return command_not_found()
+            return _authority_payload(work=asdict(snapshot), events=command_collaboration.history(work_id))
+
+        @app.post("/v1/work/{work_id}/transitions")
+        async def command_transition(work_id: str, request: Request):
+            actor = command_actor(request)
+            if actor is None:
+                return auth_failure()
+            try:
+                from .intelligence_collaboration import TransitionRequest
+
+                body = await _strict_json_request(request, max_bytes=config.max_json_body_bytes)
+                allowed = {"transition", "operation_id", "expected_head_event_id", "data", "evidence_ids", "assets", "additional_causation_ids"}
+                if set(body) - allowed:
+                    raise ValueError("unsupported transition fields")
+                snapshot = command_collaboration.snapshot(work_id)
+                if not command_can_read(snapshot, actor):
+                    return command_not_found()
+                transition = TransitionRequest(
+                    work_id=work_id,
+                    transition=body.get("transition"),
+                    actor_principal=actor["principal_id"],
+                    actor_kind=actor["principal_kind"],
+                    operation_id=body.get("operation_id"),
+                    expected_head_event_id=body.get("expected_head_event_id"),
+                    data=body.get("data", {}),
+                    evidence_ids=body.get("evidence_ids", ()),
+                    assets=body.get("assets", ()),
+                    additional_causation_ids=body.get("additional_causation_ids", ()),
+                )
+                result = command_collaboration.append_transition(transition, observed_at=_utc_now(), received_at=_utc_now())
+                snapshot_after = command_collaboration.snapshot(work_id)
+                automatic_coordination = None
+                if (body.get("transition") == "accepted" and result.get("applied") is True
+                        and snapshot_after.assignee == actor["principal_id"]
+                        and isinstance(snapshot_after.constraints.get("decomposition_plan"), Mapping)):
+                    try:
+                        from .intelligence_orchestration import decompose_work
+
+                        automatic_coordination = decompose_work(
+                            command_collaboration,
+                            parent_work_id=work_id,
+                            actor_principal=actor["principal_id"],
+                            actor_kind=actor["principal_kind"],
+                            tasks=None,
+                            observed_at=_utc_now(),
+                        )
+                    except (ValueError, TypeError):
+                        # The acceptance event remains canonical. A rejected
+                        # plan can be corrected and submitted through the
+                        # explicit decomposition route.
+                        automatic_coordination = {"status": "decomposition_pending", "execution_authorized": False,
+                                                  "production_decision_authorized": False}
+                return _authority_payload(result=result, work=asdict(snapshot_after),
+                                          events=command_collaboration.history(work_id),
+                                          automatic_coordination=automatic_coordination)
+            except GatewayRequestError as exc:
+                return request_failure(too_large="too large" in str(exc))
+            except (ValueError, TypeError):
+                return request_failure()
+
+        @app.post("/v1/presence")
+        async def advertise_presence(request: Request):
+            actor = command_actor(request)
+            if actor is None:
+                return auth_failure()
+            try:
+                body = await _strict_json_request(request, max_bytes=config.max_json_body_bytes)
+                if set(body) - {"capabilities", "ttl_seconds", "status"}:
+                    raise ValueError("unsupported presence fields")
+                lease = command_presence.advertise(
+                    principal_id=actor["principal_id"],
+                    principal_kind=actor["principal_kind"],
+                    capabilities=body.get("capabilities", ()),
+                    ttl_seconds=body.get("ttl_seconds", 60),
+                    status=body.get("status", "available"),
+                )
+                return _authority_payload(principal_id=lease.principal_id, principal_kind=lease.principal_kind,
+                                          capabilities=list(lease.capabilities), status=lease.status,
+                                          ttl_seconds=max(0, int(lease.expires_monotonic - time.monotonic())))
+            except GatewayRequestError as exc:
+                return request_failure(too_large="too large" in str(exc))
+            except (ValueError, TypeError):
+                return request_failure()
+
+        @app.get("/v1/presence")
+        async def list_presence(request: Request, capability: str | None = None):
+            if command_actor(request) is None:
+                return auth_failure()
+            try:
+                leases = command_presence.match((capability,)) if capability else command_presence.list()
+            except (ValueError, TypeError):
+                return request_failure()
+            return _authority_payload(presence=[
+                {"principal_id": lease.principal_id, "principal_kind": lease.principal_kind,
+                 "capabilities": list(lease.capabilities), "status": lease.status,
+                 "ttl_seconds": max(0, int(lease.expires_monotonic - time.monotonic()))}
+                for lease in leases
+            ])
+
+        @app.post("/v1/presence/withdraw")
+        async def withdraw_presence(request: Request):
+            actor = command_actor(request)
+            if actor is None:
+                return auth_failure()
+            return _authority_payload(withdrawn=command_presence.withdraw(str(actor["principal_id"])))
+
+        @app.post("/v1/work/{work_id}/escalations")
+        async def create_escalation(work_id: str, request: Request):
+            actor = command_actor(request)
+            if actor is None:
+                return auth_failure()
+            try:
+                from .intelligence_coordination import route_escalation
+
+                body = await _strict_json_request(request, max_bytes=config.max_json_body_bytes)
+                if set(body) - {"operation_id", "target_principal", "objective", "open_incident"}:
+                    raise ValueError("unsupported escalation fields")
+                if not isinstance(body.get("open_incident", True), bool):
+                    raise ValueError("open_incident must be boolean")
+                result = route_escalation(
+                    command_collaboration, command_presence, work_id=work_id,
+                    actor_principal=actor["principal_id"], actor_kind=actor["principal_kind"],
+                    operation_id=body.get("operation_id"), target_principal=body.get("target_principal"),
+                    objective=body.get("objective"),
+                )
+                incident = None
+                if body.get("open_incident", True):
+                    try:
+                        incident = command_rooms.open(
+                            work_id=work_id,
+                            actor_principal=actor["principal_id"],
+                            actor_kind=actor["principal_kind"],
+                            members=[result["selected_principal"]],
+                        )
+                    except (ValueError, TypeError):
+                        incident = {"status": "incident_pending", "execution_authorized": False,
+                                    "production_decision_authorized": False}
+                return _authority_payload(result=result, incident=incident)
+            except GatewayRequestError as exc:
+                return request_failure(too_large="too large" in str(exc))
+            except (ValueError, TypeError):
+                return request_failure()
+
+        @app.post("/v1/work/{work_id}/incidents")
+        async def open_incident(work_id: str, request: Request):
+            actor = command_actor(request)
+            if actor is None:
+                return auth_failure()
+            try:
+                body = await _strict_json_request(request, max_bytes=config.max_json_body_bytes)
+                if set(body) - {"members"}:
+                    raise ValueError("unsupported incident fields")
+                members = body.get("members", ())
+                if not isinstance(members, list):
+                    raise ValueError("members must be an array")
+                result = command_rooms.open(work_id=work_id, actor_principal=actor["principal_id"],
+                                            actor_kind=actor["principal_kind"], members=members)
+                return _authority_payload(result=result)
+            except GatewayRequestError as exc:
+                return request_failure(too_large="too large" in str(exc))
+            except (ValueError, TypeError):
+                return command_not_found()
+
+        @app.get("/v1/work/{work_id}/incidents")
+        async def read_incident(work_id: str, request: Request):
+            actor = command_actor(request)
+            if actor is None:
+                return auth_failure()
+            try:
+                return _authority_payload(result=command_rooms.read(work_id=work_id, actor_principal=actor["principal_id"]))
+            except (ValueError, TypeError):
+                return command_not_found()
+
+        @app.post("/v1/work/{work_id}/incidents/messages")
+        async def post_incident_message(work_id: str, request: Request):
+            actor = command_actor(request)
+            if actor is None:
+                return auth_failure()
+            try:
+                body = await _strict_json_request(request, max_bytes=config.max_json_body_bytes)
+                if set(body) != {"body", "operation_id"}:
+                    raise ValueError("body and operation_id are required")
+                result = command_rooms.post(work_id=work_id, actor_principal=actor["principal_id"],
+                                            actor_kind=actor["principal_kind"], body=body.get("body"),
+                                            operation_id=body.get("operation_id"))
+                return _authority_payload(result=result)
+            except GatewayRequestError as exc:
+                return request_failure(too_large="too large" in str(exc))
+            except (ValueError, TypeError):
+                return command_not_found()
+
+        @app.post("/v1/work/{work_id}/incidents/close")
+        async def close_incident(work_id: str, request: Request):
+            actor = command_actor(request)
+            if actor is None:
+                return auth_failure()
+            try:
+                body = await _strict_json_request(request, max_bytes=config.max_json_body_bytes)
+                if body:
+                    raise ValueError("close request body must be empty")
+                result = command_rooms.close(work_id=work_id, actor_principal=actor["principal_id"],
+                                            actor_kind=actor["principal_kind"])
+                return _authority_payload(result=result)
+            except GatewayRequestError as exc:
+                return request_failure(too_large="too large" in str(exc))
+            except (ValueError, TypeError):
+                return command_not_found()
+
+        @app.post("/v1/work/{work_id}/decompositions")
+        async def decompose_command_work(work_id: str, request: Request):
+            actor = command_actor(request)
+            if actor is None:
+                return auth_failure()
+            try:
+                from .intelligence_orchestration import DecompositionTask, decompose_work
+
+                body = await _strict_json_request(request, max_bytes=config.max_json_body_bytes)
+                if set(body) - {"decomposition_id", "tasks"}:
+                    raise ValueError("unsupported decomposition fields")
+                raw_tasks = body.get("tasks")
+                if raw_tasks is not None and not isinstance(raw_tasks, list):
+                    raise ValueError("tasks must be an array")
+                tasks = None if raw_tasks is None else []
+                for item in raw_tasks or ():
+                    if not isinstance(item, Mapping) or set(item) - {"target_principal", "work_kind", "objective", "required_capabilities", "evidence_ids"}:
+                        raise ValueError("decomposition task is invalid")
+                    tasks.append(DecompositionTask(**item))
+                result = decompose_work(command_collaboration, parent_work_id=work_id,
+                                        actor_principal=actor["principal_id"], actor_kind=actor["principal_kind"],
+                                        decomposition_id=body.get("decomposition_id"), tasks=tasks, observed_at=_utc_now())
+                return _authority_payload(result=result)
+            except GatewayRequestError as exc:
+                return request_failure(too_large="too large" in str(exc))
+            except (ValueError, TypeError):
+                return request_failure()
+
+        @app.post("/v1/work/{work_id}/councils/{council_id}/votes")
+        async def council_vote(work_id: str, council_id: str, request: Request):
+            actor = command_actor(request)
+            if actor is None:
+                return auth_failure()
+            try:
+                from .intelligence_orchestration import cast_council_review
+
+                body = await _strict_json_request(request, max_bytes=config.max_json_body_bytes)
+                allowed = {"vote", "claim", "operation_id", "evidence_ids"}
+                if set(body) - allowed:
+                    raise ValueError("unsupported council fields")
+                result = cast_council_review(command_collaboration, work_id=work_id,
+                                             actor_principal=actor["principal_id"], actor_kind=actor["principal_kind"],
+                                             council_id=council_id, vote=body.get("vote"), claim=body.get("claim"),
+                                             operation_id=body.get("operation_id"), evidence_ids=body.get("evidence_ids", ()),
+                                             observed_at=_utc_now())
+                return _authority_payload(result=result)
+            except GatewayRequestError as exc:
+                return request_failure(too_large="too large" in str(exc))
+            except (ValueError, TypeError):
+                return command_not_found()
+
+        @app.get("/v1/work/{work_id}/councils/{council_id}")
+        async def council_view(work_id: str, council_id: str, request: Request):
+            actor = command_actor(request)
+            if actor is None:
+                return auth_failure()
+            try:
+                from .intelligence_orchestration import council_projection
+
+                snapshot = command_collaboration.snapshot(work_id)
+                if not command_can_read(snapshot, actor):
+                    return command_not_found()
+                value = council_projection(snapshot, command_collaboration.history(work_id), council_id=council_id)
+                return _authority_payload(council=value)
+            except (ValueError, TypeError):
+                return command_not_found()
+
+        @app.post("/v1/work/{work_id}/syntheses")
+        async def synthesize_command_work(work_id: str, request: Request):
+            actor = command_actor(request)
+            if actor is None:
+                return auth_failure()
+            try:
+                from .intelligence_orchestration import synthesize_work
+
+                body = await _strict_json_request(request, max_bytes=config.max_json_body_bytes)
+                if set(body) - {"operation_id", "child_work_ids", "summary", "complete"}:
+                    raise ValueError("unsupported synthesis fields")
+                if not isinstance(body.get("complete", False), bool):
+                    raise ValueError("complete must be boolean")
+                result = synthesize_work(command_collaboration, work_id=work_id,
+                                         actor_principal=actor["principal_id"], actor_kind=actor["principal_kind"],
+                                         operation_id=body.get("operation_id"), child_work_ids=body.get("child_work_ids"),
+                                         summary=body.get("summary"), observed_at=_utc_now(), complete=body.get("complete", False))
+                return _authority_payload(result=result)
+            except GatewayRequestError as exc:
+                return request_failure(too_large="too large" in str(exc))
+            except (ValueError, TypeError):
+                return request_failure()
 
     def operation_failure(exc: BaseException):
         if isinstance(exc, sqlite3.Error):
@@ -1100,11 +1593,31 @@ def main(argv: Sequence[str] | None = None) -> int:
     validate_bind_host(args.host, allow_remote=bool(args.allow_remote))
 
     default_hosts = frozenset({"127.0.0.1", "localhost", "[::1]"})
+    command_principal = os.environ.get("ICARUS_COMMAND_PRINCIPAL_ID", "").strip()
+    command_kind = os.environ.get("ICARUS_COMMAND_PRINCIPAL_KIND", "").strip()
+    command_groups = tuple(item.strip() for item in os.environ.get("ICARUS_COMMAND_GROUPS", "").split(",") if item.strip())
+    if bool(command_principal) != bool(command_kind):
+        parser.error("ICARUS_COMMAND_PRINCIPAL_ID and ICARUS_COMMAND_PRINCIPAL_KIND must be set together")
+    command_identity = None
+    if command_principal:
+        command_identity = {"principal_id": command_principal, "principal_kind": command_kind, "groups": command_groups}
+    command_credentials = None
+    raw_credentials = os.environ.get("ICARUS_COMMAND_CREDENTIALS_JSON", "").strip()
+    if raw_credentials:
+        try:
+            parsed_credentials = json.loads(raw_credentials)
+        except (json.JSONDecodeError, ValueError):
+            parser.error("ICARUS_COMMAND_CREDENTIALS_JSON must be a JSON object")
+        if not isinstance(parsed_credentials, dict):
+            parser.error("ICARUS_COMMAND_CREDENTIALS_JSON must be a JSON object")
+        command_credentials = parsed_credentials
     config = GatewayConfig(
         host=args.host,
         allow_remote=bool(args.allow_remote),
         allowed_hosts=frozenset(args.allowed_host) if args.allowed_host else default_hosts,
         allowed_origins=frozenset(args.allowed_origin),
+        command_identity=command_identity,
+        command_credentials=command_credentials,
     )
     app = create_intelligence_gateway_app(db_path=args.db, bearer_token=token, config=config)
     _run_uvicorn(app, host=args.host, port=args.port, access_log=False, ws_max_size=config.max_ws_text_bytes)
