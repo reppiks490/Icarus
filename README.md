@@ -41,6 +41,14 @@ icarus-plant stop
 
 Optional systemd unit: [deploy/icarus-plant.service](deploy/icarus-plant.service). Edit paths; do not expose port 8791.
 
+### Databento execution-cost estimate
+
+With Databento MBP-10 depth running, the authenticated read-only endpoint
+`POST /admin/execution-cost/estimate` estimates a market-order sweep against the
+latest displayed book and itemizes an operator-supplied fee schedule. It does
+not simulate queue fills or invent fees. See
+[execution-cost estimate details](docs/EXECUTION_COST_ESTIMATES.md).
+
 ## Requirements
 
 - Python 3.10+
