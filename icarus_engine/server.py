@@ -20,6 +20,7 @@
   GET  /api/possibility/evidence  durable Psi external-evidence ledger and causal as-of selection
   GET  /api/chronofold            ICARUS Xi causal spacetime, multiverse, geometry, GNC and uncertainty
   GET  /api/commissioning         append-only Chronofold prediction ledger, calibration, ablation and promotion gate
+  POST /admin/execution-cost/estimate  current Databento MBP-10 book sweep + supplied fee schedule; read-only estimate
   POST /admin/pause | /admin/resume        {"asset": "NQ"} or all          (Bearer token)
   POST /admin/flatten                      {"confirm": true, "asset"?: "NQ"}
   POST /admin/inputs                       {"asset": "NQ"|"*", "values": {...}, "chart": {...}, "persist": true}  → synchronous re-warm
@@ -37,6 +38,7 @@
   POST /admin/parallax/decision/current      atomically capture current Psi vote and PARALLAX decision
   POST /admin/rewarm                       {"asset": "NQ"}
   POST /admin/engine-control               typed registered operator command with audit receipt
+  POST /admin/execution-cost/estimate      counterfactual book sweep; never submits an order
 """
 from __future__ import annotations
 
@@ -1317,7 +1319,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._send(200, (html_path.parent / "commissioning-ui.js").read_bytes(), "text/javascript")
             if p.path in ("/worlds/divine.webp", "/worlds/void.webp", "/worlds/astral.webp"):
                 return self._send(200, (html_path.parent / p.path[1:]).read_bytes(), "image/webp")
-            if p.path in ("/experience-ui.js", "/experience-ui.css", "/world-motion.js", "/world-cinema.js", "/world-aura.js", "/reference-choreography.js", "/reference-choreography.css"):
+            if p.path in ("/experience-ui.js", "/experience-ui.css", "/world-motion.js", "/world-cinema.js", "/world-aura.js", "/reference-choreography.js", "/reference-choreography.css", "/world-immersion.js"):
                 ctype = "text/javascript" if p.path.endswith(".js") else "text/css"
                 return self._send(200, (html_path.parent / p.path[1:]).read_bytes(), ctype)
             if p.path.startswith("/api/config-jobs/"):
@@ -1914,7 +1916,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._json(413, {"detail": "body too large"})
             raw = self.rfile.read(n) if n else b""
             try:
-                body = strict_json(raw) if p.path.startswith(("/admin/research/", "/admin/integrity/", "/admin/parallax/", "/admin/dreamstate/", "/admin/possibility/", "/admin/autopilot/", "/admin/engine-control", "/admin/pantheon/", "/admin/sibyl/", "/admin/apex/", "/admin/learning/", "/admin/qualification-receipts/", "/admin/ascendancy/")) else (json.loads(raw, parse_constant=_no_json_constants) if raw else {})
+                body = strict_json(raw) if p.path.startswith(("/admin/research/", "/admin/integrity/", "/admin/parallax/", "/admin/dreamstate/", "/admin/possibility/", "/admin/autopilot/", "/admin/engine-control", "/admin/pantheon/", "/admin/sibyl/", "/admin/apex/", "/admin/learning/", "/admin/qualification-receipts/", "/admin/ascendancy/", "/admin/execution-cost/")) else (json.loads(raw, parse_constant=_no_json_constants) if raw else {})
             except ValueError as ex:
                 return self._json(400, {"detail": f"bad JSON body: {ex}"})
             if not isinstance(body, dict):
@@ -2620,6 +2622,51 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             if not adding_asset and asset and asset != "*" and targets == [None]:
                 return self._json(404, {"detail": f"unknown asset {asset}"})
             try:
+                if p.path == "/admin/execution-cost/estimate":
+                    from .execution_costs import (
+                        FeeSchedule,
+                        estimate_book_sweep,
+                        reconcile_fills,
+                        summarize_book_sweep_window,
+                    )
+                    if not asset or asset == "*":
+                        raise ValueError("one running asset is required")
+                    runner = self._runner(asset)
+                    if not runner:
+                        return self._json(404, {"detail": f"unknown asset {asset}"})
+                    required = {"asset", "side", "quantity", "fee_schedule"}
+                    extra = set(body) - required - {"fills"}
+                    missing = required - set(body)
+                    if missing or extra:
+                        raise ValueError(f"request requires {sorted(required)}; missing={sorted(missing)}; unknown={sorted(extra)}")
+                    if not hasattr(runner.feed, "depth_events"):
+                        return self._json(409, {"detail": f"{type(runner.feed).__name__} does not expose Databento MBP-10 depth"})
+                    if not isinstance(body["fee_schedule"], dict):
+                        raise ValueError("fee_schedule must be an object")
+                    if "fills" in body and not isinstance(body["fills"], list):
+                        raise ValueError("fills must be an array of timestamped fill records")
+                    schedule = FeeSchedule.from_mapping(body["fee_schedule"])
+                    try:
+                        events = runner.feed.depth_events(runner.spec.ticker, schema="mbp-10", limit=1000)
+                    except Exception as ex:
+                        # Provider exceptions can include request URLs or credentials.
+                        # Keep the operator response and journal free of raw exception text.
+                        port.journal.log("WARN", f"execution-cost depth unavailable for {runner.symbol}: {type(ex).__name__}")
+                        return self._json(502, {"detail": "Databento depth is temporarily unavailable"})
+                    result = estimate_book_sweep(events, side=body["side"], quantity=body["quantity"],
+                                                 tick_size=runner.spec.mintick,
+                                                 point_value=runner.spec.multiplier, fee_schedule=schedule)
+                    result["recent_snapshot_distribution"] = summarize_book_sweep_window(
+                        events, side=body["side"], quantity=body["quantity"],
+                        tick_size=runner.spec.mintick, point_value=runner.spec.multiplier,
+                        fee_schedule=schedule)
+                    if "fills" in body:
+                        result["fill_reconciliation"] = reconcile_fills(
+                            events, body["fills"], tick_size=runner.spec.mintick,
+                            point_value=runner.spec.multiplier, fee_schedule=schedule)
+                    result["asset"] = runner.symbol
+                    result["provider"] = type(runner.feed).__name__.lower()
+                    return self._json(200, result)
                 if p.path == "/admin/research/studies":
                     return self._json(200, research.start(body))
                 if p.path == "/admin/research/champion-study":

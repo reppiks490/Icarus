@@ -8,6 +8,11 @@
   let introFrame = 0, introLast = 0, introElapsed = 0;
   let intro = null, introTimer = 0, introReturnFocus = null, inertSiblings = [];
   const colors = {divine:[205,165,82], void:[255,80,108], astral:[137,192,255]};
+  const introLabels = {
+    divine:{kicker:'THE ONE ABOVE ALL',final:'ENTER THE SANCTUM',seal:'CROWN // LIGHT // INFINITY',glyph:['◇','Ⅰ','△','☼','∞','◈','⌁','Ⅲ'],chapter:['ORIGIN / APERTURE','FORM / CONVERGENCE','ASCENT / CROWN','DOMINION / REVEALED']},
+    void:{kicker:'MARKET DESTROYER',final:'ENTER THE BREACH',seal:'RUPTURE // SILENCE // EMBER',glyph:['×','⟁','Ⅱ','⌁','◇','Ⅲ','×','▲'],chapter:['SILENCE / APERTURE','EMBER / CONVERGENCE','VOID / CROWN','DOMINION / REVEALED']},
+    astral:{kicker:'BEYOND THE HORIZON',final:'ENTER THE OBSERVATORY',seal:'ORBIT // AETHER // HORIZON',glyph:['○','✦','∞','⌁','Ⅰ','◈','⋮','Ⅲ'],chapter:['STAR / APERTURE','ORBIT / CONVERGENCE','AETHER / CROWN','HORIZON / REVEALED']}
+  };
   const rand = (a,b) => a + Math.random() * (b-a);
   const permitted = () => scene && !intro && !scene.hidden && visible && !document.hidden &&
     root.dataset.experience === 'cinematic' && root.dataset.motion !== 'off' && !reduced.matches && !!colors[root.dataset.world];
@@ -98,6 +103,22 @@
     introReturnFocus=null;
     refresh();
   }
+  function cinematicHandoff(world) {
+    if(reduced.matches||root.dataset.motion==='off'||!document.body)return;
+    document.querySelectorAll('.world-handoff').forEach(el=>el.remove());
+    const handoff=document.createElement('div');handoff.className='world-handoff';handoff.dataset.world=colors[world]?world:'divine';handoff.setAttribute('aria-hidden','true');
+    handoff.innerHTML='<i></i><b></b><span></span><em></em>';
+    document.body.appendChild(handoff);
+    const cleanup=()=>handoff.remove();
+    handoff.addEventListener('animationend',event=>{if(event.target===handoff)cleanup();},{once:true});
+    setTimeout(cleanup,980);
+  }
+  function finishIntro() {
+    if(!intro)return;
+    const world=intro.dataset.introWorld||root.dataset.world||'divine';
+    closeIntro();
+    cinematicHandoff(world);
+  }
   function introKey(event) {
     if (event.key === 'Escape') { event.preventDefault(); event.stopImmediatePropagation(); closeIntro(); }
     if (event.key === 'Tab' && intro) {
@@ -112,18 +133,23 @@
     const duration = root.dataset.introLength === '12' ? 12000 : 20000;
     intro.style.setProperty('--intro-duration',duration+'ms');
     intro.dataset.introWorld = colors[root.dataset.theme] ? root.dataset.theme : 'divine';
+    const introCopy=introLabels[intro.dataset.introWorld]||introLabels.divine;
     intro.setAttribute('role','dialog'); intro.setAttribute('aria-modal','true'); intro.setAttribute('aria-label','ICARUS cinematic introduction');
     intro.innerHTML=`<button type="button" class="intro-skip">Skip intro <span>Esc</span></button>
       <div class="intro-theater" aria-hidden="true"><div class="intro-backdrop"></div><canvas class="intro-loom"></canvas>
+        <div class="intro-vault"><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="intro-horizon"></div><div class="intro-aperture"><i></i><b></b></div>
+        <div class="intro-glyphs">${introCopy.glyph.map(g=>'<i>'+g+'</i>').join('')}</div>
         <div class="intro-rays"></div><div class="intro-dust"></div>
         <div class="intro-system"><div class="intro-eclipse"></div>
           <i class="intro-ring r1"></i><i class="intro-ring r2"></i><i class="intro-ring r3"></i><i class="intro-ring r4"></i>
+          <div class="intro-world-emblem"><i></i><b></b><span></span></div>
           <div class="intro-wing left"><b></b><b></b><b></b><b></b><b></b></div>
           <div class="intro-wing right"><b></b><b></b><b></b><b></b><b></b></div>
           <div class="intro-crown"><svg viewBox="0 0 100 110" aria-hidden="true"><path d="M18 31L31 42L50 14L69 42L82 31L73 65H27Z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M30 73H70M36 81H64" fill="none" stroke="currentColor" stroke-width="2"/><path d="M50 32L58 48L50 62L42 48Z" fill="currentColor"/><circle cx="50" cy="5" r="2" fill="currentColor"/><path d="M50 88V105M44 97L50 105L56 97" fill="none" stroke="currentColor" stroke-width="2"/></svg></div>
         </div>
-        <div class="intro-chapters"><span>FORM / AWAKENING</span><span>LIGHT / CONVERGENCE</span><span>INFINITY / REVEALED</span></div>
-        <div class="intro-title"><span>THE ONE ABOVE ALL</span><strong>ICARUS</strong><em>Enter your dominion.</em></div>
+        <div class="intro-chapters"><span>${introCopy.chapter[0]}</span><span>${introCopy.chapter[1]}</span><span>${introCopy.chapter[2]}</span><span>${introCopy.chapter[3]}</span></div>
+        <div class="intro-title"><span>${introCopy.kicker}</span><strong>ICARUS</strong><em>${introCopy.final}</em><small class="intro-seal">${introCopy.seal}</small></div>
       </div><p class="intro-note">Cinematic introduction · decorative sequence</p>`;
     inertSiblings = Array.from(document.body.children).map(el => [el, el.inert]);
     for (const [el] of inertSiblings) el.inert = true;
@@ -148,7 +174,7 @@
       window.IcarusWorldCinema?.draw(introCtx,w,h,introElapsed,dt,{intro:true,detail:detail(),pointer:{x:Math.sin(introElapsed*.18)*.35,y:Math.cos(introElapsed*.13)*.18}});
     };
     if(introCtx)introFrame=requestAnimationFrame(animateIntro);
-    introTimer=setTimeout(closeIntro,duration);
+    introTimer=setTimeout(finishIntro,duration);
   }
   function init(element) {
     if (scene) return;
