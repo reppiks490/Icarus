@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from typing import Any, Iterable, Mapping, Sequence
 
 from icarus_engine.intelligence_fabric import IntelligenceEvent, IntelligenceFabric
+from icarus_engine.intelligence_time import instant
 
 COLLABORATION_PROTOCOL = "icarus-collaboration-v1"
 COLLABORATION_CHANNEL = "collaboration"
@@ -352,10 +353,10 @@ def build_request_event(
     material = request.normalized()
     observed = _time_text(observed_at, "observed_at")
     received = _time_text(received_at, "received_at")
-    if received < observed:
+    if instant(received) < instant(observed):
         raise ValueError("received_at cannot precede observed_at")
     deadline = material.get("deadline")
-    if isinstance(deadline, str) and deadline < max(observed, received):
+    if isinstance(deadline, str) and instant(deadline) < max(instant(observed), instant(received)):
         raise ValueError("deadline cannot precede root time")
     actor = _lower_enum(actor_kind, "actor_kind", PRINCIPAL_KINDS)
     if actor != material["requester_kind"]:
@@ -615,6 +616,10 @@ def project_work(
         normalized_request = _normalize_request_mapping(root_payload.get("request"))
     except (TypeError, ValueError) as exc:
         raise CollaborationIntegrityError(f"invalid root request material: {exc}") from exc
+    _integrity(root_payload.get("actor_principal") == normalized_request["requester_principal"],
+               "root actor/requester principal mismatch")
+    _integrity(root_payload.get("actor_kind") == normalized_request["requester_kind"],
+               "root actor/requester kind mismatch")
     expected_work_id = derive_work_id(
         str(normalized_request["requester_principal"]),
         str(normalized_request["idempotency_key"]),
@@ -624,7 +629,7 @@ def project_work(
     _integrity(root_payload.get("request_material_hash") == root_material_hash, "request material hash mismatch")
     root_received = _time_text(ordered[0].get("received_at"), "received_at")
     deadline = normalized_request.get("deadline")
-    _integrity(deadline is None or str(deadline) >= root_received, "deadline precedes root time")
+    _integrity(deadline is None or instant(str(deadline)) >= instant(root_received), "deadline precedes root time")
 
     requester = str(normalized_request["requester_principal"])
     requester_kind = str(normalized_request["requester_kind"])
@@ -660,6 +665,10 @@ def project_work(
                 later_request = _normalize_request_mapping(payload.get("request"))
             except (TypeError, ValueError) as exc:
                 raise CollaborationIntegrityError(f"invalid root request material: {exc}") from exc
+            _integrity(payload.get("actor_principal") == later_request["requester_principal"],
+                       "root actor/requester principal mismatch")
+            _integrity(payload.get("actor_kind") == later_request["requester_kind"],
+                       "root actor/requester kind mismatch")
             later_hash = request_material_hash(later_request)
             _integrity(payload.get("request_material_hash") == later_hash, "request material hash mismatch")
             later_work_id = derive_work_id(
@@ -731,7 +740,7 @@ def project_work(
                 conflicts.append(_conflict(event, "deadline_violation", operation_id))
                 continue
             event_time = _time_text(event.get("received_at"), "received_at")
-            if event_time < str(deadline):
+            if instant(event_time) < instant(str(deadline)):
                 conflicts.append(_conflict(event, "deadline_violation", operation_id))
                 continue
 
@@ -810,7 +819,7 @@ def project_work(
         applied_count += 1
 
     deadline_passed = bool(
-        as_of is not None and deadline is not None and _time_text(as_of, "as_of") >= str(deadline)
+        as_of is not None and deadline is not None and instant(_time_text(as_of, "as_of")) >= instant(str(deadline))
     )
     return WorkSnapshot(
         protocol=COLLABORATION_PROTOCOL,
@@ -1030,7 +1039,7 @@ def build_transition_event(
         raise ValueError("transition work_id must match snapshot work_id")
     observed = _time_text(observed_at, "observed_at")
     received = _time_text(received_at, "received_at")
-    if received < observed:
+    if instant(received) < instant(observed):
         raise ValueError("received_at cannot precede observed_at")
     payload: dict[str, object] = {
         "protocol": COLLABORATION_PROTOCOL,
@@ -1085,7 +1094,10 @@ def _original_operation_event_id(
     *,
     exclude_event_id: str | None = None,
 ) -> str | None:
+    rejected_ids = {conflict.event_id for conflict in project_work(history).conflicts}
     for record in history:
+        if record.get("event_id") in rejected_ids:
+            continue
         payload = record.get("payload")
         if not isinstance(payload, Mapping):
             continue
@@ -1131,7 +1143,8 @@ class IntelligenceCollaboration(_BaseIntelligenceCollaboration):
         snapshot_after = self.snapshot(work_id)
         event_id = str(published["event_id"])
 
-        if bool(published.get("idempotent")) and original_event_id is not None:
+        if (bool(published.get("idempotent")) and original_event_id is not None
+                and not any(conflict.event_id == event_id for conflict in snapshot_after.conflicts)):
             return {
                 "event_id": event_id,
                 "sequence": int(published["sequence"]),
@@ -1189,7 +1202,14 @@ class IntelligenceCollaboration(_TransitionIntelligenceCollaboration):
         assets: Iterable[str] = (),
         evidence_ids: Iterable[str] = (),
     ) -> dict[str, object]:
-        self._validate_parent_for_child(request)
+        existing = self.history(request.work_id())
+        if existing:
+            # Existing roots own their identity even after parent progress. Replay
+            # first to fail closed on corrupt history; publication handles an
+            # identical retry versus conflicting material without changing state.
+            project_work(existing)
+        else:
+            self._validate_parent_for_child(request)
         return super().create_work(
             request,
             observed_at=observed_at,

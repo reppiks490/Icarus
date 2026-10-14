@@ -13,6 +13,8 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Iterable, Mapping
 
+from icarus_engine.intelligence_time import register_time_collation
+
 SCHEMA_VERSION = "icarus-intelligence-fabric-v1"
 UNIFIED_INTELLIGENCE_SCHEMA_VERSION = "icarus-unified-intelligence-v1"
 UNIFIED_SOURCE_KINDS = {"native", "foreign_lens", "experiment", "human"}
@@ -285,6 +287,7 @@ class IntelligenceFabric:
             self._owns_connection = True
         else:
             raise ValueError("path_or_connection must be a SQLite path or connection")
+        register_time_collation(self._conn)
         self._conn.row_factory = sqlite3.Row
         self._conn.execute("PRAGMA foreign_keys = ON")
         self._create_schema()
@@ -452,10 +455,10 @@ class IntelligenceFabric:
             clauses.append("e.severity >= ?")
             params.append(_severity(min_severity))
         if after is not None:
-            clauses.append("e.received_at > ?")
+            clauses.append("e.received_at COLLATE ICARUS_TIME > ?")
             params.append(_time_text(after, "after"))
         if before is not None:
-            clauses.append("e.received_at <= ?")
+            clauses.append("e.received_at COLLATE ICARUS_TIME <= ?")
             params.append(_time_text(before, "before"))
 
         asset_items = _items(assets, "assets", 80) if assets is not None else ()
@@ -507,7 +510,7 @@ class IntelligenceFabric:
     ) -> list[dict[str, Any]]:
         limit = _limit(limit)
         boundary = _time_text(as_of, "as_of")
-        clauses = ["e.received_at <= ?", "(e.expires_at IS NULL OR e.expires_at > ?)"]
+        clauses = ["e.received_at COLLATE ICARUS_TIME <= ?", "(e.expires_at IS NULL OR e.expires_at COLLATE ICARUS_TIME > ?)"]
         params: list[Any] = [boundary, boundary]
         if channel is not None:
             clauses.append("e.channel = ?")

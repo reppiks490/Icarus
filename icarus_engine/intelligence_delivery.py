@@ -12,6 +12,8 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Mapping
 
+from icarus_engine.intelligence_time import instant, register_time_collation
+
 MAX_TEXT = 240
 MAX_FILTER_ITEMS = 64
 MAX_REASON_BYTES = 32768
@@ -166,6 +168,7 @@ class IntelligenceDeliveryPlane:
             self._owns_connection, file_backed = True, path_or_connection != ":memory:"
         else:
             raise ValueError("path_or_connection must be a SQLite path or connection")
+        register_time_collation(self._conn)
         self._conn.row_factory = sqlite3.Row
         self._conn.execute("PRAGMA foreign_keys = ON")
         self._conn.execute(f"PRAGMA busy_timeout = {busy_timeout_ms}")
@@ -291,7 +294,7 @@ class IntelligenceDeliveryPlane:
         return row
 
     def _candidates(self, material: Mapping[str, Any], as_of: str) -> list[sqlite3.Row]:
-        clauses, params = ["e.sequence>=?", "e.received_at<=?"], [material["start_sequence"], as_of]
+        clauses, params = ["e.sequence>=?", "e.received_at COLLATE ICARUS_TIME<=?"], [material["start_sequence"], as_of]
         for key, column in (("channel", "e.channel"), ("source", "e.source")):
             if material.get(key) is not None:
                 clauses.append(f"{column}=?"); params.append(material[key])
@@ -373,7 +376,7 @@ class IntelligenceDeliveryPlane:
                                          consumer_group=sub["target_id"] if sub["mode"] == "competing" else None,
                                          delivery_id=delivery_id, event_id=event_row["event_id"], attempt=0)
                     row = self._conn.execute("SELECT * FROM fabric_deliveries WHERE delivery_id=?", (delivery_id,)).fetchone()
-                if row["status"] != "PENDING" or (row["retry_eligible_at"] is not None and row["retry_eligible_at"] > now): continue
+                if row["status"] != "PENDING" or (row["retry_eligible_at"] is not None and instant(row["retry_eligible_at"]) > instant(now)): continue
                 token, attempt = _text(self._token_factory(), "lease_token", 256), int(row["attempt"]) + 1
                 expiry = self._plus_seconds(now, lease_seconds)
                 self._conn.execute("""UPDATE fabric_deliveries SET status='LEASED',attempt=?,lease_owner=?,lease_token=?,
@@ -393,7 +396,7 @@ class IntelligenceDeliveryPlane:
         if row["status"] != "LEASED": raise ValueError("delivery is not leased")
         if row["lease_owner"] != consumer_id: raise ValueError("consumer does not own lease")
         if row["lease_token"] != token: raise ValueError("lease token mismatch")
-        if row["lease_expires_at"] is None or now >= row["lease_expires_at"]: raise ValueError("lease has expired")
+        if row["lease_expires_at"] is None or instant(now) >= instant(row["lease_expires_at"]): raise ValueError("lease has expired")
         return row
 
     def ack(self, delivery_id: str, consumer_id: str, lease_token: str, *, as_of: str) -> dict[str, Any]:
@@ -449,7 +452,7 @@ class IntelligenceDeliveryPlane:
         self._conn.execute("BEGIN IMMEDIATE")
         try:
             rows = self._conn.execute("""SELECT * FROM fabric_deliveries WHERE status='LEASED' AND lease_expires_at IS NOT NULL
-                AND lease_expires_at<=? ORDER BY journal_sequence LIMIT ?""", (now,limit)).fetchall()
+                AND lease_expires_at COLLATE ICARUS_TIME<=? ORDER BY journal_sequence LIMIT ?""", (now,limit)).fetchall()
             result = [self._result(self._fail(row, now, "LEASE_EXPIRED", row["lease_owner"])) for row in rows]
             self._conn.commit(); return result
         except Exception:
@@ -495,8 +498,8 @@ class IntelligenceDeliveryPlane:
             row=self._conn.execute("SELECT * FROM fabric_deliveries WHERE delivery_id=?",(did,)).fetchone()
             if row is None or row["status"]=="PENDING": pending.append(int(event["sequence"])); pending_times.append(event["received_at"])
             elif row["status"]=="LEASED":
-                expired += int(row["lease_expires_at"] is not None and row["lease_expires_at"] <= now)
-                active += int(not (row["lease_expires_at"] is not None and row["lease_expires_at"] <= now)); progress.append(int(event["sequence"]))
+                expired += int(row["lease_expires_at"] is not None and instant(row["lease_expires_at"]) <= instant(now))
+                active += int(not (row["lease_expires_at"] is not None and instant(row["lease_expires_at"]) <= instant(now))); progress.append(int(event["sequence"]))
             elif row["status"]=="DEAD_LETTERED": dead+=1; progress.append(int(event["sequence"]))
             elif row["status"]=="ACKED": acked+=1; progress.append(int(event["sequence"]))
         counts={r["transition"]:int(r["n"]) for r in self._conn.execute("SELECT transition,COUNT(*) n FROM fabric_delivery_receipts WHERE subscription_id=? AND revision=? GROUP BY transition",(sub["subscription_id"],sub["revision"])).fetchall()}

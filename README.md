@@ -126,3 +126,7 @@ Installed architecture, API/MCP/UI surfaces, persistence, truth semantics, and v
 Prior ICARUS/AEGIS research, red-team findings, handoffs, Stage-5 verification material, related-build registry, and the implementation-assurance control-plane map are consolidated at [ASSURANCE_INDEX.md](ASSURANCE_INDEX.md).
 
 The archive is evidence/context, not execution authorization or proof of implementation. `execution_authorized=false` remains unchanged.
+
+## Semantic collaboration work fabric
+
+The [Phase 4A design](docs/superpowers/specs/2026-10-13-semantic-work-fabric-design.md) describes work requests, lifecycle replay, evidence, review and delegation over the intelligence journal. Its [review fixes](docs/superpowers/plans/2026-10-14-semantic-work-review-fixes.md) cover declared identity consistency, retry receipts and exact deadline/lease comparisons. The implementation is a stacked review branch; authenticated command ingress is deferred to Phase 4B and work events do not authorize execution or production decisions.
