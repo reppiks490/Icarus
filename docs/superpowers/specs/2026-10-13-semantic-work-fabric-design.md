@@ -3,6 +3,7 @@
 Date: 2026-10-13
 Owner: ChatGPT/Codex
 Status: design specification
+Protocol: `icarus-collaboration-v1`
 Parent stack:
 - Phase 1: `icarus-intelligence-fabric-v1`
 - Phase 2: durable Intelligence Delivery Plane
@@ -10,148 +11,93 @@ Parent stack:
 
 ## 1. Purpose
 
-Phase 4A turns the existing ICARUS intelligence stack from a transport/event system into a machine-native collaboration system.
+Phase 4A turns the existing ICARUS intelligence stack from an event/transport system into a machine-native collaboration system.
 
-The unit of collaboration is not a chat message. It is a durable semantic work contract whose complete lifecycle is represented by immutable Phase 1 intelligence events.
+The unit of collaboration is not a chat message. It is a durable semantic work contract whose entire lifecycle is represented by immutable Phase 1 intelligence events.
 
-A work contract can ask a human or agent to perform research, collect evidence, investigate an anomaly, review a model or risk claim, challenge a hypothesis, cross-verify a conclusion, make a bounded decision, perform a delegated subtask, or synthesize prior results.
+A work contract can request research, evidence collection, anomaly investigation, model review, risk review, hypothesis challenge, cross-verification, a bounded decision, delegated work, or synthesis.
 
-The system must preserve:
+The system must preserve the request, declared participants, causal chain, evidence references, partial/final outputs, disagreement, delegation ancestry, lifecycle state, concurrency conflicts, deadlines, idempotency, and authority invariants.
 
-- the request that initiated the work;
-- who declared the request and who it targeted;
-- the exact causal event chain;
-- evidence references;
-- partial and final outputs;
-- disagreements and challenges;
-- delegation ancestry;
-- lifecycle state;
-- concurrency conflicts;
-- deadlines and expiry;
-- execution-authority invariants.
-
-The result must remain replayable and auditable from the append-only Intelligence Fabric alone.
+The full semantic state must be reconstructible from the append-only Intelligence Fabric alone.
 
 ## 2. Success criteria
 
-Phase 4A is successful when ICARUS can represent and deterministically project a work thread such as:
+Phase 4A is successful when ICARUS can deterministically represent and replay a thread such as:
 
 1. an agent requests an NQ regime investigation;
-2. another agent accepts it;
-3. the assignee begins work;
-4. partial evidence arrives;
+2. another agent accepts;
+3. the assignee starts work;
+4. evidence and a partial result arrive;
 5. the requester challenges one inference;
-6. the assignee responds with additional evidence;
-7. the assignee delegates a child verification request;
-8. the child work completes;
-9. the parent synthesizes the child result;
-10. the parent completes with a traceable evidence bundle;
-11. every event remains immutable and authority-safe;
-12. replay produces the same semantic state.
+6. the assignee delegates historical verification to a child work item;
+7. the child work completes;
+8. the assignee responds to the challenge using child/evidence references;
+9. the parent completes with a traceable synthesis;
+10. replay produces the same state, head, conflicts, challenge set, evidence set, and result.
 
 No prose-only conversation is required for correctness.
 
-## 3. Architectural classification
+## 3. Architectural boundary
 
-Phase 4A is an architectural subsystem.
-
-It sits above Phase 1 and below future human/agent collaboration UI and authenticated agent identity.
+Phase 4A is an additive semantic subsystem above Phase 1.
 
 It must not become:
-
-- a second canonical message store;
+- a second canonical event/message database;
 - a second delivery broker;
 - a scheduler replacement;
-- a chat-room database;
+- a chat-room store;
 - an execution command plane;
-- an identity/authentication service.
+- an authentication service.
+
+The larger collaboration program remains decomposed as:
+- 4A: semantic work core;
+- 4B: authenticated command ingress and principal binding;
+- 4C: incident rooms, escalation routing, capability presence;
+- 4D: autonomous work decomposition/synthesis councils;
+- 4E: immersive human command UI.
 
 ## 4. Selected architecture
 
-Use a semantic protocol layered over existing Phase 1 events.
+Phase 4A is a strict semantic protocol layered over existing `IntelligenceEvent` records.
 
-Protocol identifier:
+Canonical persistence remains Phase 1 `fabric_events`.
 
-`icarus-collaboration-v1`
+The new module validates collaboration material, creates collaboration-shaped `IntelligenceEvent` objects, publishes through the public `IntelligenceFabric.publish()` API, reads through public `thread/query/replay` APIs, and deterministically projects semantic state.
 
-Canonical persistence remains the existing Phase 1 `fabric_events` journal.
+No Phase 4A canonical table is added.
 
-Phase 4A introduces a semantic writer/projector module that:
+A future disposable materialized projection may be allowed only if it is fully rebuildable from Phase 1 and never treated as truth.
 
-- validates collaboration request material;
-- creates collaboration-shaped `IntelligenceEvent` objects;
-- publishes them through the existing `IntelligenceFabric.publish()` API;
-- reconstructs work state from `IntelligenceFabric.thread()` / `query()`;
-- detects semantic forks and stale-head races;
-- rejects illegal lifecycle transitions;
-- exposes deterministic work snapshots and work history;
-- never grants execution or production-decision authority.
+## 5. Rejected architectures
 
-No new event database is introduced.
+### 5.1 Expanding Phase 1 with many new event types
 
-## 5. Rejected approaches
+Rejected for 4A. Existing types already cover human/agent notes, research, decisions, and system events. Collaboration semantics belong in the versioned collaboration payload.
 
-### 5.1 New Phase 1 event taxonomy
+### 5.2 Separate collaboration/chat database
 
-Rejected for Phase 4A.
+Rejected because it creates split-brain history.
 
-Adding many new Phase 1 event types such as `research_request`, `task_result`, `challenge`, and `delegation` would widen the frozen foundation and create unnecessary compatibility surface.
+### 5.3 New broker/orchestrator
 
-The existing event taxonomy already has `agent_note`, `human_note`, `research`, `decision_request`, `decision_response`, and `system`.
+Rejected because Phase 2 already owns durable delivery and Phase 3 owns live transport.
 
-### 5.2 Separate collaboration/chat store
-
-Rejected.
-
-A separate collaboration database would create split-brain truth between chat/work state and the canonical Intelligence Fabric.
-
-### 5.3 Broker-first orchestration
-
-Rejected.
-
-Phase 2 already owns durable routing/delivery. Phase 3 already owns live network transport. Phase 4A must not recreate either responsibility.
-
-## 6. Scope decomposition
-
-The larger collaboration objective is split into independent phases.
-
-### Phase 4A — Semantic Work Core
-
-This specification.
-
-### Phase 4B — Authenticated command ingress and principal binding
-
-Future work. Binds authenticated transport principals to collaboration actor identities.
-
-### Phase 4C — Incident rooms, escalation routing, capability presence
-
-Future work. Adds collaborative rooms/presence/capability discovery around the semantic work core.
-
-### Phase 4D — Autonomous synthesis/councils
-
-Future work. Coordinates multi-agent work graphs and synthesis policies.
-
-### Phase 4E — Immersive human command UI
-
-Future work. Visual operator environment over the same canonical events.
-
-## 7. Canonical semantic object
-
-The canonical semantic object is a work thread.
+## 6. Canonical work thread
 
 A work thread is identified by `work_id` and represented by Phase 1 events whose:
-
 - `channel == "collaboration"`;
 - `thread_key == "work:<work_id>"`;
 - `correlation_id == <work_id>`;
-- payload uses protocol `icarus-collaboration-v1`.
+- payload protocol is `icarus-collaboration-v1`.
 
-The journal events remain canonical. The projected work snapshot is derived state.
+The `work:` thread namespace is reserved by Phase 4A.
 
-## 8. Work kinds
+Once a valid root exists, any foreign/non-collaboration event in that exact `work:` thread is an integrity anomaly under strict projection rather than silently participating in state.
 
-Phase 4A supports these normalized `work_kind` values:
+## 7. Work kinds
 
+Supported normalized kinds:
 - `research`
 - `evidence`
 - `investigation`
@@ -163,165 +109,177 @@ Phase 4A supports these normalized `work_kind` values:
 - `delegation`
 - `synthesis`
 
-Unknown work kinds fail validation.
+Unknown kinds fail validation.
 
-Extending the enum requires a protocol-version decision, not an ad-hoc free string.
+## 8. Exact identifier limits
 
-## 9. Principal model
+To remain compatible with Phase 1 tag limits:
+- principal ID: 1..64 Unicode characters after trimming;
+- group/target ID: 1..64;
+- idempotency key: 1..128;
+- operation ID: 1..128;
+- challenge ID: 1..128;
+- capability identifier: 1..64;
+- reviewer count: <=32;
+- capability count: <=32;
+- objective: 1..2000 characters;
+- failure/challenge summary: <=2000 characters.
 
-Phase 4A uses declared principals only.
+Collections are normalized, deduplicated, and deterministically ordered where order has no semantic meaning.
 
-A principal is:
+## 9. Declared principal model
 
-- `principal_id`: bounded non-empty string;
-- `principal_kind`: one of `agent`, `human`, `system`.
+A principal has:
+- `principal_id`;
+- `principal_kind` in `agent | human | system`.
 
-Important security boundary:
+Phase 4A validates semantic consistency only. It does **not** authenticate the claimed principal.
 
-Phase 4A does not authenticate a principal string.
+Untrusted clients must not gain arbitrary Phase 4A publication rights until Phase 4B binds authenticated transport identity to principal identity.
 
-It only validates semantic consistency among declared principals.
+This is compatible with Phase 3 because Phase 3 does not currently expose arbitrary inbound event publication.
 
-Untrusted external clients must not gain arbitrary Phase 4A publication rights until Phase 4B binds authenticated transport identity to principal identity.
+## 10. Target model
 
-Phase 3 currently does not provide arbitrary inbound intelligence publication, so this boundary is compatible with the existing stack.
+A request target is:
+- `principal`, or
+- `group`.
 
-## 10. Work target
+Fields:
+- `target_kind`;
+- `target_id`.
 
-A request target is one of:
+Capability-based dynamic targeting is deferred to Phase 4C. `required_capabilities` may still be declared as request metadata.
 
-- `principal`
-- `group`
+## 11. Canonical work ID
 
-Required fields:
+Every root request requires a requester-scoped `idempotency_key`.
 
-- `target_kind`
-- `target_id`
+After trimming/validating requester and key, the work ID is exactly:
 
-Capability-based dynamic targeting is deferred to Phase 4C.
+```text
+sha256(utf8(canonical_json([
+  "icarus-collaboration-v1",
+  requester_principal,
+  idempotency_key
+])))
+```
 
-Required capabilities may still be declared in the request for later routing/discovery.
+`canonical_json` uses UTF-8 JSON with no insignificant whitespace and stable string encoding.
 
-## 11. Work identifier and idempotency
+The public `work_id` is the 64-character lowercase hexadecimal SHA-256 digest.
 
-Every root request requires an `idempotency_key` chosen by the requester.
+Therefore `work:<work_id>` and `parent:<work_id>` remain inside Phase 1 thread/tag limits.
 
-The semantic layer derives:
+## 12. Request-material digest
 
-`work_id = sha256([protocol, requester_principal, idempotency_key])`
+The root request contains a `request_material_hash` over canonical normalized request material.
 
-The implementation may expose the full digest or a stable prefixed representation such as `work_<hex>`.
+The hash includes semantic request fields such as requester, target, kind, objective, constraints, capabilities, reviewers, deadline, priority, result contract, and parent linkage.
 
-The same requester + idempotency key must always address the same work thread.
+It excludes Phase 1 journal sequence, event ID, attention score, received timestamp, and other storage-derived values.
 
-If the material request is identical, repeated creation is idempotent.
+Reusing the same requester + idempotency key with identical normalized material is idempotent.
 
-If the same requester + idempotency key is reused with different material, the semantic layer reports a request-material conflict.
+Reusing it with different normalized material is a request-material conflict.
 
-Concurrent duplicate roots may both reach the append-only journal in a cross-process race; deterministic projection selects the first valid root by Phase 1 journal sequence and classifies later root attempts as conflicts.
+## 13. Operation idempotency
 
-## 12. Request material
+Every non-root semantic transition requires an `operation_id` chosen by the actor.
+
+Within one work thread:
+- first valid occurrence of an operation ID owns that semantic operation;
+- a retry with identical normalized operation material is `duplicate_operation` and returns/references the first operation rather than changing state;
+- reuse with different material is `conflicting_operation` and is not applied.
+
+This permits safe client retry after a lost response without manufacturing a new semantic state transition.
+
+Cross-process simultaneous duplicates may both be durably appended; projection resolves them deterministically by Phase 1 sequence.
+
+## 14. Root request material
 
 A valid root request contains:
+- `protocol`;
+- `work_id`;
+- `transition = "requested"`;
+- `requester_principal`;
+- `requester_kind`;
+- `target_kind`;
+- `target_id`;
+- `work_kind`;
+- `idempotency_key`;
+- `request_material_hash`;
+- `objective`;
+- optional `constraints`;
+- optional `required_capabilities`;
+- optional `reviewer_principals`;
+- optional `deadline`;
+- `priority`;
+- optional `result_contract`;
+- optional `parent_work_id`;
+- optional `parent_event_id`.
 
-- `protocol`
-- `work_id`
-- `transition = "requested"`
-- `requester_principal`
-- `requester_kind`
-- `target_kind`
-- `target_id`
-- `work_kind`
-- `idempotency_key`
-- `objective`
-- optional `constraints`
-- optional `required_capabilities`
-- optional `reviewer_principals`
-- optional `deadline`
-- `priority`
-- optional `result_contract`
-- optional `parent_work_id`
-- optional `parent_event_id`
+Top-level Phase 1 fields remain canonical for assets, evidence IDs, causation IDs, severity, urgency, and timestamps.
 
-Top-level Phase 1 fields carry assets, evidence IDs, causation IDs, timestamps, severity, urgency, and other generic intelligence metadata.
+## 15. Structured constraints
 
-## 13. Objective and constraints
+Natural-language `objective` is human-readable context, not a parser-dependent state machine input.
 
-`objective` is a bounded human-readable description of the requested outcome.
-
-Correctness must not depend on natural-language parsing of `objective`.
-
-Machine-relevant constraints belong in a finite JSON `constraints` mapping.
-
-Examples:
-
+Machine-relevant constraints belong in finite JSON `constraints`, for example:
 - allowed data sources;
 - time horizon;
 - asset universe;
 - required statistical tests;
 - prohibited inference classes;
-- maximum cost budget metadata;
-- required evidence classes.
+- budget metadata;
+- evidence requirements.
 
-Phase 4A validates structural finiteness and size, not domain-specific semantics for every possible constraint.
+`constraints` is structurally validated but domain-specific semantics are owned by the worker/consumer.
 
-## 14. Result contract
+## 16. Result contract
 
-`result_contract` is optional finite JSON describing the expected machine-readable result.
-
-Phase 4A supports a minimal normalized contract shape:
-
-- `result_kind`: one of `json`, `event_refs`, `evidence_bundle`, `decision`, `text_plus_refs`;
-- optional `required_fields`: bounded unique strings;
-- optional `schema_id`: external schema identifier;
+Optional `result_contract` supports:
+- `result_kind`: `json | event_refs | evidence_bundle | decision | text_plus_refs`;
+- optional bounded unique `required_fields`;
+- optional `schema_id`;
 - optional `schema_version`.
 
-Phase 4A validates this structural contract.
+Phase 4A performs structural validation only. It does not add a general JSON Schema dependency.
 
-Full arbitrary JSON Schema execution is not required and no new schema-validation dependency is introduced.
+For JSON-like results, required fields must exist. Reference-oriented result kinds must contain the required reference collections.
 
-## 15. Required capabilities
+Passing structural validation never implies domain correctness.
 
-`required_capabilities` is a bounded unique string collection.
+## 17. Payload-size budget
 
-It is descriptive in Phase 4A.
+Phase 1 already caps payload JSON at 32 KiB.
 
-Phase 4C may later bind it to capability advertisements and automatic routing.
+Phase 4A must reject collaboration payload construction before Phase 1 publication if the normalized collaboration payload exceeds 30 KiB, leaving margin for deterministic wrapper fields while remaining below the Phase 1 hard limit.
 
-## 16. Reviewer principals
+Individual `constraints`, `result_contract`, result/failure/challenge metadata should be bounded so the complete normalized collaboration payload remains below this threshold.
 
-A request may declare zero or more reviewer principals.
+No result should embed large raw datasets; use event/evidence/file references.
 
-Reviewers may:
+## 18. Parent/child work
 
-- add evidence;
-- challenge an applied semantic head;
-- escalate a work thread.
+Delegation is ordinary child work, not a second mutable task tree.
 
-They may not accept, reject, start, complete, fail, or cancel work unless another role also grants that action.
-
-## 17. Parent/child work
-
-Delegation uses ordinary child work requests.
-
-A child request sets:
-
+A delegated child root includes:
 - `parent_work_id`;
-- `parent_event_id` equal to the parent work's applied semantic head at delegation time;
-- Phase 1 `causation_ids` containing that parent event ID.
+- `parent_event_id` equal to the parent's currently applied semantic head;
+- top-level `causation_ids` containing that parent event ID.
 
-The child requester must be the parent assignee for normal delegation.
+Creation is valid only when:
+- parent exists and projects cleanly;
+- parent state is `ACCEPTED`, `IN_PROGRESS`, or `PARTIAL`;
+- child requester is the parent's current assignee;
+- supplied parent event equals the parent's current semantic head.
 
-No separate mutable task tree is stored.
+Child cancellation is not automatically cascaded from parent cancellation in 4A.
 
-Child discovery is a projection/query operation.
-
-Cancellation of a parent does not automatically cancel children in Phase 4A. Cascading orchestration is deferred.
-
-## 18. Semantic transitions
+## 19. Semantic transitions
 
 Supported transitions:
-
 - `requested`
 - `accepted`
 - `started`
@@ -338,10 +296,9 @@ Supported transitions:
 
 No free-form transition names are accepted.
 
-## 19. Lifecycle state
+## 20. Lifecycle states
 
-Projected lifecycle states:
-
+States:
 - `OPEN`
 - `ACCEPTED`
 - `IN_PROGRESS`
@@ -353,281 +310,192 @@ Projected lifecycle states:
 - `EXPIRED`
 
 Terminal states:
-
 - `COMPLETED`
 - `FAILED`
 - `REJECTED`
 - `CANCELLED`
 - `EXPIRED`
 
-`challenge`, `challenge_response`, `evidence_added`, and `escalated` are semantic events that advance the work head without necessarily changing lifecycle state.
+Evidence, challenge, challenge-response, and escalation events advance semantic head without necessarily changing lifecycle state.
 
-## 20. State machine
+## 21. Lifecycle transition table
 
-### Root
+- root `requested` -> `OPEN`;
+- principal target: `OPEN + accepted` -> `ACCEPTED`;
+- principal target: `OPEN + rejected` -> `REJECTED`;
+- group target: `OPEN + accepted` -> `ACCEPTED` and accepting principal becomes assignee;
+- group-target `rejected` is **not supported** because one group member cannot reject work for the entire group; non-accepting members simply do not claim semantic ownership;
+- `ACCEPTED + started` -> `IN_PROGRESS`;
+- `PARTIAL + started` -> `IN_PROGRESS`;
+- `ACCEPTED | IN_PROGRESS | PARTIAL + partial_result` -> `PARTIAL`;
+- `ACCEPTED | IN_PROGRESS | PARTIAL + completed` -> `COMPLETED`;
+- `ACCEPTED | IN_PROGRESS | PARTIAL + failed` -> `FAILED`;
+- requester may `cancelled` any non-terminal state -> `CANCELLED`;
+- system may `expired` any non-terminal state after deadline -> `EXPIRED`.
 
-`requested -> OPEN`
+Terminal states cannot be resurrected.
 
-### Acceptance
+## 22. Semantic head
 
-`OPEN + accepted -> ACCEPTED`
-
-### Rejection
-
-`OPEN + rejected -> REJECTED`
-
-### Start
-
-`ACCEPTED + started -> IN_PROGRESS`
-
-A `started` transition from `PARTIAL` returns lifecycle state to `IN_PROGRESS`.
-
-### Partial result
-
-`ACCEPTED | IN_PROGRESS | PARTIAL + partial_result -> PARTIAL`
-
-### Completion
-
-`ACCEPTED | IN_PROGRESS | PARTIAL + completed -> COMPLETED`
-
-### Failure
-
-`ACCEPTED | IN_PROGRESS | PARTIAL + failed -> FAILED`
-
-### Cancellation
-
-Any non-terminal lifecycle state may become `CANCELLED` when the declared actor is semantically authorized to cancel.
-
-### Expiry
-
-Any non-terminal lifecycle state may become `EXPIRED` only after the request deadline and only through a valid `system` actor transition.
-
-Illegal lifecycle transitions are not applied.
-
-## 21. Semantic head and optimistic concurrency
-
-Every non-root transition requires:
-
-`expected_head_event_id`
+Every non-root transition requires `expected_head_event_id`.
 
 It must equal the currently applied semantic head before that transition.
 
-The transition must also include the expected head in top-level Phase 1 `causation_ids`.
+Top-level Phase 1 `causation_ids` must contain that same head event ID.
 
-This creates an explicit optimistic-concurrency contract without adding a second canonical state table.
+Additional causal IDs are permitted when transition-specific rules require them.
 
-## 22. Concurrent writers and semantic forks
+## 23. Optimistic concurrency and forks
 
-Phase 1 is append-only and does not currently expose an atomic compare-and-append API for thread heads.
+Phase 1 does not expose an atomic compare-and-append thread-head primitive.
 
-Therefore two processes can race after reading the same head.
+Therefore two processes can race after observing the same semantic head.
 
-Phase 4A handles this deterministically:
+Phase 4A resolves this without a second canonical table:
+1. both well-formed events may be appended;
+2. replay is ordered by immutable Phase 1 sequence;
+3. the first event whose precondition matches the current applied head is applied;
+4. later stale-head events are classified `stale_head`;
+5. stale/conflicted events remain immutable history but do not change lifecycle, assignee, challenges, evidence accumulation, result, or head;
+6. Phase 4A re-projects after publication and reports whether its newly appended event actually applied.
 
-1. both well-formed events may be durably appended;
-2. replay is ordered by immutable Phase 1 journal sequence;
-3. the first event whose `expected_head_event_id` matches the current applied head is applied;
-4. later events based on the stale head are classified `conflicted`;
-5. conflicted events remain in immutable history but do not alter lifecycle state, assignee, challenge state, result state, or semantic head;
-6. a caller using the Phase 4A API must re-project after publish and report whether its event became applied.
+Concurrency loss is auditable rather than destructive.
 
-This makes concurrency conflicts auditable rather than destructive.
+## 24. Root races
 
-## 23. Root-race behavior
+The first valid `requested` event for a derived work ID becomes semantic root.
 
-The first valid `requested` event for a derived `work_id` becomes the root.
+Later identical material is `duplicate_root`.
 
-A later root event with identical normalized request material is classified `duplicate_root`.
+Later different material is `conflicting_root`.
 
-A later root with different material is classified `conflicting_root`.
+Neither advances semantic head.
 
-Neither changes the applied semantic root.
-
-## 24. Actor rules
+## 25. Actor permissions
 
 ### Requester
-
-The requester may:
-
-- create the root request;
-- add evidence;
-- challenge;
-- escalate;
-- cancel non-terminal work.
+May create root, add evidence, challenge, escalate, and cancel non-terminal work.
 
 ### Principal target
-
-For `target_kind=principal`, only the declared target principal may accept or reject.
-
-On acceptance it becomes the assignee.
+Only the exact target principal may accept or reject while state is `OPEN`. Acceptance establishes assignee.
 
 ### Group target
+Any declared principal delivered/routed to the group may semantically attempt acceptance; the first applied acceptance establishes assignee. 4A cannot prove membership cryptographically. Group membership/routing remains Phase 2 data, and authenticated binding is Phase 4B.
 
-For `target_kind=group`, the first valid actor to accept becomes the semantic assignee.
-
-Phase 4A does not cryptographically prove group membership. Routing/group membership remains a Phase 2 concern; authenticated principal binding is Phase 4B.
-
-After acceptance, assignee-only actions require that exact assignee principal.
+A group-target actor cannot issue a group-wide semantic rejection in 4A.
 
 ### Assignee
-
-The assignee may:
-
-- start;
-- add evidence;
-- publish partial results;
-- answer challenges;
-- escalate;
-- complete;
-- fail;
-- create delegated child work.
+May start, add evidence, publish partial results, answer challenges, escalate, complete, fail, and create valid child work.
 
 ### Reviewer
-
-A declared reviewer may:
-
-- add evidence;
-- challenge;
-- escalate.
+Declared reviewers may add evidence, challenge, and escalate only.
 
 ### System
+System actors may issue `expired` only after deadline. System identity remains a declared identity until Phase 4B.
 
-A `system` actor may mark work expired only after the deadline.
+## 26. Challenge model
 
-## 25. Challenge model
+A challenge contains:
+- unique `challenge_id`;
+- bounded claim/question;
+- optional finite metadata;
+- optional top-level evidence references.
 
-A `challenge` transition contains:
-
-- `challenge_id`;
-- bounded `claim` or question;
-- optional evidence references through top-level `evidence_ids`;
-- optional finite JSON metadata.
-
-`challenge_id` must be unique within the work thread.
-
-A `challenge_response` contains:
-
-- `challenge_id`;
-- response material;
-- top-level causation including both current semantic head and the original challenge event ID;
+A challenge response contains:
+- existing open `challenge_id`;
+- bounded response/result material;
+- top-level causation containing both current semantic head and original challenge event ID;
 - optional evidence references.
 
-A challenge response closes that challenge in the projection.
+A valid response closes exactly that challenge.
 
-## 26. Completion with unresolved challenges
+Unknown/already-closed challenge responses are not applied.
 
-Completion is allowed with unresolved challenges only if the `completed` payload explicitly lists `unresolved_challenge_ids`.
+## 27. Completion with unresolved challenges
 
-The list must exactly match the projector's currently open challenges.
+Completion with open challenges is allowed only if `completed` explicitly lists `unresolved_challenge_ids`.
 
-If open challenges exist and the completion payload omits or misstates them, completion is not applied.
+That list must exactly equal the projector's current open-challenge set.
 
-This preserves disagreement rather than silently erasing it.
+Omission or mismatch prevents semantic application.
 
-## 27. Evidence semantics
+Thus disagreement can survive into a final result but can never be silently erased.
 
-Evidence identity remains top-level Phase 1 `evidence_ids`.
+## 28. Evidence semantics
 
-Phase 4A does not copy entire evidence objects into collaboration payloads by default.
+Canonical evidence identity remains top-level Phase 1 `evidence_ids`.
 
-`evidence_added`, `partial_result`, `challenge`, `challenge_response`, and `completed` may reference evidence IDs.
+Phase 4A does not duplicate large evidence bodies into semantic payloads.
 
-The projected work snapshot includes the cumulative evidence reference set and per-event evidence provenance.
+`evidence_added`, `partial_result`, `challenge`, `challenge_response`, and `completed` may add evidence refs.
 
-## 28. Causal semantics
-
-Every applied non-root transition must causally depend on the prior semantic head.
-
-Additional causation may reference:
-
-- evidence-producing events;
-- parent work heads;
-- child completion events;
-- challenge events;
-- synthesis inputs.
-
-Phase 4A must preserve these top-level Phase 1 causation IDs exactly.
+The projection exposes cumulative evidence plus per-event provenance.
 
 ## 29. Result semantics
 
-`partial_result` and `completed` may carry finite JSON `result` material.
+`partial_result` and `completed` may carry bounded finite JSON result material.
 
-A final completion may also reference child work results by event ID rather than embedding them.
+A result may reference child work completion events rather than embed child outputs.
 
-Phase 4A verifies the minimal `result_contract` when possible:
+Structural result-contract validation occurs before semantic application.
 
-- required fields exist for JSON-like results;
-- required reference collections are present for reference-based result kinds;
-- result kind is compatible with the declared request contract.
-
-Domain correctness is not inferred merely because structural validation passes.
-
-## 30. Decision work
+## 30. Decision work mapping
 
 For `work_kind=decision`:
+- root event type is `decision_request`;
+- applied final completion event type is `decision_response`.
 
-- the root Phase 1 event type is `decision_request`;
-- a successfully applied final completion uses Phase 1 event type `decision_response`.
+A decision response remains research/collaboration output. It does not authorize trading or production execution.
 
-The result remains non-authoritative for production execution.
+## 31. Non-decision Phase 1 event-type mapping
 
-`production_decision_authorized` remains `false`.
+- human lifecycle/control event -> `human_note`;
+- agent lifecycle/control event -> `agent_note`;
+- system lifecycle/control event -> `system`;
+- `partial_result` or `completed` for research/evidence/investigation/review/synthesis work -> `research`;
+- system-created non-decision root -> `system`;
+- human-created non-decision root -> `human_note`;
+- agent-created non-decision root -> `agent_note`.
 
-## 31. Non-decision result event mapping
-
-Recommended Phase 1 event-type mapping:
-
-- root request from human: `human_note`;
-- root request from agent: `agent_note`;
-- system control transition: `system`;
-- lifecycle/control transition from human: `human_note`;
-- lifecycle/control transition from agent: `agent_note`;
-- `partial_result` or `completed` for research/evidence/investigation/review/synthesis kinds: `research`;
-- decision root/final result: `decision_request` / `decision_response`.
-
-The semantic transition remains in the collaboration payload and is the authoritative collaboration discriminator.
+The collaboration payload transition is the authoritative semantic discriminator.
 
 ## 32. Event envelope mapping
 
 Every collaboration event uses:
-
 - `channel = "collaboration"`;
 - `thread_key = "work:<work_id>"`;
 - `correlation_id = <work_id>`;
-- `source = actor principal ID`;
-- `source_kind = actor principal kind`;
-- `title` generated deterministically from transition/work kind where practical;
-- `body` human-readable but never required for state projection;
-- `assets` inherited from request/result context;
-- `evidence_ids` canonical evidence references;
-- `causation_ids` canonical causal references;
-- `tags` bounded routing/discovery hints;
-- `payload` containing the strict collaboration protocol object.
+- `source = actor_principal`;
+- `source_kind = actor_kind`;
+- bounded human-readable title/body that projection does not parse;
+- top-level `assets`, `evidence_ids`, and `causation_ids`;
+- bounded routing/discovery tags;
+- strict collaboration payload.
 
-## 33. Collaboration payload
+## 33. Collaboration payload shape
 
-Every collaboration payload contains at minimum:
+Every payload contains at minimum:
 
 ```json
 {
   "protocol": "icarus-collaboration-v1",
-  "work_id": "...",
-  "transition": "...",
+  "work_id": "<64 hex>",
+  "transition": "<enum>",
   "actor_principal": "...",
   "actor_kind": "agent|human|system",
-  "expected_head_event_id": "... or null",
+  "operation_id": "... or null for root",
+  "expected_head_event_id": "... or null for root",
   "data": {}
 }
 ```
 
-Root `requested` payload additionally carries normalized request material and its digest.
+Root additionally carries normalized request material and its digest.
 
-Later transitions must not redefine stable root fields such as requester, target, work kind, or idempotency key.
+Later transitions may not redefine stable root identity fields.
 
-## 34. Tags
+## 34. Routing/discovery tags
 
-Recommended tags include one or more of:
-
+Safe tags may include:
 - `collaboration:v1`
 - `work-kind:<kind>`
 - `to:<principal>`
@@ -635,540 +503,445 @@ Recommended tags include one or more of:
 - `requester:<principal>`
 - `assignee:<principal>`
 - `parent:<work_id>`
-- `transition:<transition>`
+- `transition:<transition>`.
 
-Tags are routing/discovery hints only.
+The 64-character principal/target limits keep these tags within Phase 1's 80-character tag-item limit.
 
-Current Phase 2 tag filtering matches any tag in a configured tag set, not a conjunction of all supplied tags. Therefore semantic authorization and state correctness must never depend on multi-tag conjunction behavior.
+Tags are discovery/routing hints only.
+
+Current Phase 2 tag filtering is OR-within-the-configured tag collection. Semantic authorization and correctness must never rely on multiple-tag conjunction.
 
 ## 35. Phase 2 integration
 
-Phase 2 continues to own delivery.
+Phase 2 remains the durable delivery owner.
 
-Typical subscriptions may filter:
-
-- `channel="collaboration"`;
-- one or more collaboration tags;
-- event types;
-- source;
-- asset;
-- severity.
-
-Delivery ACK/NACK remains independent of semantic work acceptance/rejection.
+Subscriptions may route collaboration events by channel, one or more tags, event type, source, asset, or severity.
 
 Critical invariant:
 
-**Phase 2 ACK means the delivery was processed. It does not mean the work was accepted.**
+**Phase 2 ACK means a delivery was processed. It does not mean semantic work was accepted.**
 
-A semantic `accepted` event is required to accept work.
+Only an applied Phase 4A `accepted` event accepts work.
 
 ## 36. Phase 3 integration
 
-Phase 3 may stream collaboration events like any other Phase 1 event delivered by Phase 2.
+Phase 3 streams collaboration events exactly like other Phase 1 events delivered through Phase 2.
 
-Phase 4A does not add a new transport protocol to Phase 3.
+Phase 4A adds no WebSocket/SSE protocol and does not modify the gateway.
 
-Phase 3 currently does not accept arbitrary inbound event publication; Phase 4A therefore initially serves trusted internal writers and future authenticated ingress.
+## 37. Pure deterministic projector
 
-## 37. Semantic projector
+The projector consumes complete Phase 1 history for one work thread in ascending journal sequence.
 
-The core projector consumes a single work thread ordered by Phase 1 `sequence`.
+For each event it checks:
+1. Phase 1 schema and hard authority flags;
+2. reserved thread namespace;
+3. collaboration channel/protocol;
+4. work/thread/correlation consistency;
+5. structural transition shape;
+6. root/operation idempotency;
+7. actor permissions;
+8. expected-head precondition;
+9. required causation;
+10. lifecycle legality;
+11. challenge/result/deadline transition-specific rules.
 
-For each event it performs:
+Projection is pure with respect to ordered input events plus an optional `as_of` used only for derived deadline status.
 
-1. Phase 1 schema/authority sanity checks;
-2. collaboration channel/thread/correlation checks;
-3. protocol-version check;
-4. work-ID consistency check;
-5. transition-shape validation;
-6. actor-rule validation;
-7. expected-head validation;
-8. causation validation;
-9. lifecycle legality validation;
-10. transition-specific validation;
-11. deterministic application or conflict classification.
+## 38. Complete-thread retrieval
 
-Projection must be pure with respect to the supplied event history.
+Projection must never silently truncate a thread.
 
-Replaying the same ordered thread yields the same snapshot.
+Fast path:
+- call `IntelligenceFabric.thread(work_thread, limit=1000)`;
+- if fewer than 1000 events are returned, that is the complete thread under current API semantics.
 
-## 38. Work snapshot
+Fallback when exactly 1000 are returned:
+- page through global `IntelligenceFabric.replay(after_sequence=..., limit=1000)` until a page contains fewer than 1000 records;
+- retain only records whose thread key matches the work thread;
+- preserve global Phase 1 sequence ordering.
 
-A projected work snapshot contains at least:
+This avoids changing Phase 1 while still allowing work threads longer than the direct query cap.
 
-- `protocol`
-- `work_id`
-- `work_kind`
-- `requester_principal`
-- `requester_kind`
-- `target_kind`
-- `target_id`
-- optional `assignee_principal`
-- optional `parent_work_id`
-- lifecycle `state`
-- `head_event_id`
-- `root_event_id`
-- `created_at`
-- `updated_at`
-- optional `deadline`
-- `priority`
-- `objective`
-- normalized constraints
-- required capabilities
-- reviewer principals
-- result contract
-- latest partial result metadata
-- final result metadata when terminal-completed
-- cumulative evidence IDs
-- open challenge IDs
-- resolved challenge IDs
-- `escalated` boolean
-- applied event IDs or count
-- conflict records
-- authority flags hard false.
+Implementations may optimize later, but may not project from a knowingly truncated thread.
 
-No lease token, bearer token, or Phase 3 session secret is part of this snapshot.
+## 39. Work snapshot
 
-## 39. Conflict classification
+A snapshot contains at least:
+- protocol and work ID;
+- work kind;
+- requester identity/kind;
+- target kind/ID;
+- assignee if accepted;
+- parent linkage if any;
+- lifecycle state;
+- root/head event IDs;
+- created/updated times;
+- deadline and derived `deadline_passed` when `as_of` is supplied;
+- priority/objective/constraints;
+- required capabilities/reviewers;
+- result contract;
+- latest partial/final result metadata;
+- cumulative evidence IDs;
+- open/resolved challenge IDs;
+- escalation flag;
+- applied-event count;
+- semantic conflict records;
+- integrity status;
+- `execution_authorized=false`;
+- `production_decision_authorized=false`.
 
-Well-formed but unapplied semantic events receive deterministic diagnostic classifications such as:
+## 40. Semantic conflict classes
 
+Well-formed but unapplied events may be classified:
 - `duplicate_root`
 - `conflicting_root`
+- `duplicate_operation`
+- `conflicting_operation`
 - `stale_head`
 - `illegal_transition`
 - `actor_not_permitted`
 - `missing_required_cause`
 - `challenge_mismatch`
 - `result_contract_mismatch`
+- `deadline_violation`.
 
-Conflicts remain immutable history.
+Conflicts remain immutable history and do not advance semantic head.
 
-They do not advance semantic head.
+## 41. Malformed/integrity failures
 
-## 40. Malformed collaboration events
-
-A malformed event is different from a semantic conflict.
+Malformed collaboration claims are not normal conflicts.
 
 Examples:
-
-- wrong collaboration protocol type;
-- mismatched thread/work ID;
+- unsupported protocol value/type;
+- mismatched work/thread/correlation IDs;
 - authority flag violation;
-- non-finite JSON;
-- missing required structural fields.
+- invalid finite JSON;
+- required structural fields absent;
+- foreign event inside a reserved work thread.
 
-The strict projector must fail closed with a dedicated integrity error rather than silently treating malformed collaboration data as valid state.
+Strict projection fails closed with a dedicated integrity error rather than continuing with potentially false state.
 
-A diagnostic-history API may expose raw malformed event IDs for investigation, but ordinary state operations do not continue through an integrity failure.
+A diagnostic history API may expose offending event IDs separately.
 
-## 41. Direct Phase 1 publication outside Phase 4A
+## 42. Deadline and expiry semantics
 
-Phase 1 remains a general event journal and cannot prevent another caller from creating a syntactically valid event with `thread_key=work:<id>`.
+Optional deadline is timezone-aware ISO-8601 normalized to UTC and may not precede root receipt/observation boundary.
 
-Phase 4A therefore treats the work-thread namespace as semantically reserved.
+Crossing the deadline does not mutate the journal automatically.
 
-Any unexpected event inside a reserved work thread is either:
+At `as_of`, projection may expose `deadline_passed=true` while durable lifecycle remains unchanged.
 
-- ignored only when it is provably unrelated and outside collaboration channel/protocol; or
-- treated as an integrity anomaly when it claims collaboration semantics but violates the protocol.
-
-Implementation tests must pin this behavior precisely.
-
-## 42. Deadline semantics
-
-Root request `deadline` is optional UTC ISO-8601 with timezone.
-
-If present, it must not precede the root event's observed/received boundary.
-
-Crossing the deadline does not mutate history automatically.
-
-Projection may expose:
-
-- `deadline_passed` at a caller-supplied `as_of` time;
-- current durable lifecycle state.
-
-A durable `EXPIRED` lifecycle state requires an explicit valid `expired` event from a system actor after the deadline.
+Durable `EXPIRED` requires an explicit applied `expired` event from a system actor at/after deadline.
 
 ## 43. Time semantics
 
-Phase 1 `observed_at` and `received_at` remain canonical event times.
+Phase 1 `sequence` controls replay ordering.
 
-Phase 4A uses no client-supplied clock to decide prior-event ordering.
+Phase 1 `observed_at` and `received_at` remain canonical event timestamps.
 
-Journal `sequence` determines replay order.
+Client timestamps never override journal order or semantic-head causality.
 
-Deadline checks normalize to UTC.
+Deadline comparison is UTC-normalized.
 
-## 44. Priority and attention
+## 44. Priority vs attention
 
-Work `priority` is a bounded integer `0..5`.
+Work `priority` is an integer `0..5`.
 
-It is semantically distinct from Phase 1 attention score.
+It is separate from Phase 1 attention score.
 
-The event may map work priority into Phase 1 severity where appropriate, but work correctness must not depend on attention ranking.
+A writer may map priority into event severity where appropriate, but semantic correctness never depends on attention ranking.
 
 ## 45. Cancellation semantics
 
-Cancellation is a terminal semantic state.
+Only requester cancellation is a Phase 4A lifecycle cancellation.
 
-Phase 4A does not delete pending Phase 2 deliveries when a work item is cancelled.
+Cancellation does not rewrite existing Phase 2 delivery state and does not automatically cancel child work.
 
-Consumers receiving an older collaboration event must consult the latest semantic work state before performing new work if cancellation sensitivity matters.
-
-Future orchestration may create cancellation notifications/subscriptions, but durable Phase 2 delivery history is not rewritten.
+A consumer acting on older delivered events should project the latest work state before new expensive/cancellation-sensitive work where appropriate.
 
 ## 46. Failure semantics
 
-`failed` requires bounded finite failure metadata:
-
-- stable failure code;
+`failed` includes:
+- stable bounded failure code;
 - bounded summary;
 - retryability hint;
-- optional evidence IDs through top-level envelope;
-- optional diagnostic finite JSON.
+- optional finite diagnostic metadata;
+- optional top-level evidence references.
 
-Failure does not automatically create retry work.
-
-A new work request with its own idempotency key is required for a semantically new retry attempt unless future orchestration defines a higher-level retry policy.
+Failure does not auto-create retry work. A semantically new retry uses a new requester idempotency key unless later orchestration defines a higher-level retry policy.
 
 ## 47. Escalation semantics
 
-`escalated` in Phase 4A is an immutable semantic marker.
+`escalated` is an immutable semantic marker containing actor, bounded reason code/summary, and optional intended target metadata.
 
-It records:
+It does not create a room, page a user, or establish presence. Those effects belong to Phase 4C.
 
-- actor;
-- reason code;
-- bounded summary;
-- optional intended escalation target metadata.
+## 48. High-level API boundary
 
-It does not create an incident room or presence session.
+Expected module: `icarus_engine/intelligence_collaboration.py`.
 
-Those effects belong to Phase 4C.
+Expected public capabilities:
+- create a request;
+- append a transition with operation idempotency;
+- convenience helpers where they reduce invalid states;
+- project current semantic state;
+- return semantic/raw history diagnostics;
+- discover child work;
+- query work by supported Phase 1-indexable criteria.
 
-## 48. Work history API
-
-Expected high-level APIs include:
-
-- `create_request(...)`
-- `transition(...)`
-- convenience helpers for common transitions where they improve correctness;
-- `project(work_id, *, as_of=None)`
-- `history(work_id)`
-- `children(work_id)`
-- `find_work(...)`
-
-Exact signatures belong in the implementation plan.
+Exact Python signatures belong in the implementation plan.
 
 ## 49. Publication result
 
-After publishing a transition through Phase 4A, the API re-projects the work thread and reports:
-
-- Phase 1 `event_id` and sequence;
-- whether the semantic event was applied;
-- current work head;
+After publication, Phase 4A re-projects and returns:
+- Phase 1 event ID/sequence;
+- whether the semantic event applied;
+- semantic conflict code when not applied;
+- current semantic head;
 - current lifecycle state;
-- conflict classification when not applied;
+- original event reference for duplicate operation retries where applicable;
 - hard false authority flags.
 
-A successful Phase 1 append is not automatically reported as a successful semantic transition.
+A successful Phase 1 append is not automatically a successful semantic state change.
 
-## 50. Persistence
+## 50. Error categories
 
-Phase 4A adds no new canonical tables.
-
-The Phase 1 journal is sufficient to reconstruct semantic state.
-
-A future performance optimization may add disposable materialized projections, but any such cache must be rebuildable solely from Phase 1 and must never become canonical truth.
-
-No materialized-state table is part of Phase 4A.
-
-## 51. Limits
-
-Phase 4A remains within existing Phase 1 limits.
-
-Additional semantic limits should include:
-
-- bounded principal IDs;
-- bounded idempotency keys;
-- bounded objective text;
-- bounded reviewer/capability collections;
-- bounded transition result/failure/challenge metadata;
-- maximum projected events per work thread no greater than the Phase 1 query maximum supported by implementation.
-
-The implementation plan must choose exact limits consistent with Phase 1's existing 32 KiB payload and repeated-item constraints.
-
-## 52. Long work threads
-
-Phase 1 currently caps query limits.
-
-Phase 4A must not silently truncate a work thread and project false state.
-
-Implementation must either:
-
-- guarantee a strict maximum semantic event count per work thread within Phase 1's safe query limit; or
-- read the complete thread through an explicitly safe pagination/replay mechanism.
-
-The implementation plan must resolve this before product code.
-
-## 53. Authority invariants
-
-Every Phase 4A public result must preserve:
-
-- `execution_authorized = false`
-- `production_decision_authorized = false`
-
-No transition changes those values.
-
-A `decision_response` is a semantic collaboration result, not production execution approval.
-
-Phase 4A must never call broker/execution code.
-
-## 54. Security boundaries
-
-Phase 4A does not solve:
-
-- principal authentication;
-- cryptographic signatures;
-- tenant/RBAC policy;
-- remote publication authorization;
-- secret distribution;
-- transport authentication beyond what Phase 3 already provides.
-
-Those are not accidental omissions. They are explicit Phase 4B+ boundaries.
-
-## 55. Logging
-
-Collaboration logs may include:
-
-- work ID;
-- event ID;
-- transition;
-- lifecycle state;
-- declared principal ID;
-- conflict code.
-
-Logs should not dump full result/evidence payloads by default.
-
-Existing Phase 3 secret-redaction requirements remain unaffected.
-
-## 56. Error model
-
-Minimum stable Phase 4A error categories:
-
-- invalid request material;
-- request material conflict;
+Stable error families must distinguish:
+- invalid request/transition material;
+- request-material conflict;
 - unknown work;
+- reserved-thread integrity failure;
 - malformed collaboration event;
-- integrity failure;
 - illegal transition;
 - actor not permitted;
 - stale semantic head;
-- missing causal dependency;
+- missing causation;
 - challenge mismatch;
-- result contract mismatch;
+- result-contract mismatch;
 - deadline violation;
-- thread too large to project safely.
+- payload/identifier limit violation;
+- complete-history retrieval failure.
 
-Publication APIs should distinguish durable append success from semantic application success.
+## 51. Authority invariants
 
-## 57. Testing contract
+Every Phase 4A event and public result preserves:
+- `execution_authorized = false`;
+- `production_decision_authorized = false`.
+
+No semantic transition can change them.
+
+Phase 4A never calls broker/execution code.
+
+## 52. Security boundary
+
+Phase 4A explicitly does not provide:
+- principal authentication;
+- cryptographic signatures;
+- RBAC/tenant isolation;
+- remote publication authorization;
+- secret distribution.
+
+These belong to 4B+.
+
+Declared actor permission checks are semantic validation, not proof of real-world identity.
+
+## 53. Logging
+
+Logs may include work ID, event ID, transition, lifecycle state, declared principal, and conflict code.
+
+Logs should not emit complete result/evidence payloads by default.
+
+Phase 3 bearer/ticket/lease secret redaction remains unchanged.
+
+## 54. Observability
+
+A snapshot/diagnostic surface should expose at least:
+- applied event count;
+- conflict count/categories;
+- open challenge count;
+- state;
+- deadline-passed status;
+- integrity status.
+
+Global dashboards/metrics aggregation are deferred.
+
+## 55. Testing contract
 
 Implementation is TDD-first.
 
 ### Root/idempotency
+- exact canonical work-ID derivation;
+- identical request retry;
+- conflicting request-material reuse;
+- simultaneous root race resolution.
 
-- deterministic work ID;
-- duplicate identical request idempotency;
-- conflicting reuse of idempotency key;
-- concurrent duplicate roots select one deterministic root.
+### Operation idempotency
+- lost-response retry returns original semantic operation;
+- duplicate identical operation does not advance head twice;
+- conflicting operation-ID reuse does not apply.
 
 ### Lifecycle
-
-- every legal state transition;
-- every illegal state transition;
-- terminal states cannot be resurrected;
-- partial result lifecycle behavior;
-- started-after-partial behavior.
+- every legal transition;
+- illegal transitions;
+- terminal-state non-resurrection;
+- partial/start behavior;
+- principal rejection vs group non-rejection.
 
 ### Actors
-
 - requester permissions;
-- principal-target acceptance;
-- group-target first assignee;
+- principal-target acceptance/rejection;
+- group first-accept assignee;
 - assignee-only actions;
-- reviewer challenge/evidence limits;
-- system-only expiry.
+- reviewer limits;
+- system expiry.
 
-### Optimistic concurrency
-
-- stale head event is preserved but not applied;
-- first sequence winner advances head;
-- caller receives `applied=false` for losing race;
-- conflict does not corrupt subsequent valid transitions.
+### Concurrency
+- same-head race applies first sequence winner only;
+- stale event remains history but not state;
+- later valid transition can proceed from winning head.
 
 ### Causation
-
-- every applied non-root event includes semantic head cause;
-- challenge response includes original challenge cause;
-- delegated child links to parent work/event;
-- synthesis may reference child completion event.
+- every non-root applied event requires current-head cause;
+- challenge response requires challenge cause;
+- delegated child requires parent head cause;
+- child requester must be parent assignee.
 
 ### Challenges
-
 - unique challenge IDs;
-- response closes exact challenge;
-- unknown challenge response rejected;
+- exact challenge closure;
+- unknown/closed challenge response blocked;
 - completion with open challenges requires exact unresolved list.
 
 ### Evidence/results
+- evidence accumulation/provenance;
+- result-contract structural checks;
+- child result references preserved.
 
-- evidence accumulation;
-- result contract required fields;
-- result refs preserved;
-- no inference of correctness from structural validity.
+### Thread completeness
+- <1000 event fast path;
+- exactly-1000 path triggers replay fallback;
+- >1000 thread projects completely without silent truncation.
 
 ### Integrity
+- thread/correlation/work mismatch fails closed;
+- unsupported protocol claiming collaboration fails closed;
+- foreign event in reserved work thread fails closed;
+- malformed payload cannot change state;
+- authority flags hard false.
 
-- wrong work/thread/correlation mismatch fails closed;
-- wrong protocol fails closed when event claims collaboration semantics;
-- hard authority flags remain false;
-- malformed semantic payload never changes projected state;
-- direct conflicting journal events cannot bypass projector rules.
-
-### Deadline
-
-- deadline normalization;
-- pre-deadline expiry rejected;
+### Deadlines
+- normalization;
+- pre-deadline expiry blocked;
 - post-deadline system expiry accepted;
-- crossing deadline without event only affects `deadline_passed`, not durable state.
+- deadline crossing without event changes only derived `deadline_passed`.
 
 ### Phase integration
-
-- Phase 1 Fabric tests remain green;
-- Phase 2 Delivery tests remain green;
-- Phase 3 Gateway tests remain green;
-- collaboration events route through Phase 2 without special delivery state;
-- delivery ACK does not create semantic acceptance.
+- Phase 1 tests green;
+- Phase 2 tests green;
+- Phase 3 tests green;
+- collaboration events route normally through Phase 2;
+- Phase 2 ACK never creates semantic acceptance.
 
 ### Regression
-
 - full Linux `tests_engine` green;
-- Windows regression matrix green.
+- Windows repository regression matrix green.
 
-## 58. Planned implementation boundaries
+## 56. Planned file boundaries
 
 Expected new production file:
-
 - `icarus_engine/intelligence_collaboration.py`
 
-Expected focused tests may include:
-
+Expected focused tests:
 - `tests_engine/test_intelligence_collaboration.py`
 - `tests_engine/test_intelligence_collaboration_state.py`
 - `tests_engine/test_intelligence_collaboration_integrity.py`
 
-Expected documentation:
-
-- this design spec;
+Documentation:
+- this spec;
 - later implementation plan.
 
-## 59. Explicitly excluded files/systems
+## 57. Explicitly excluded production scope
 
-Phase 4A should not require edits to:
+Preferred implementation has zero changes to Phase 1–3 production modules.
 
-- `icarus_engine/intelligence_fabric.py` unless the implementation plan proves an unavoidable correctness gap;
+Do not edit unless the later implementation plan proves an unavoidable correctness requirement:
+- `icarus_engine/intelligence_fabric.py`;
 - `icarus_engine/intelligence_delivery.py`;
-- `icarus_engine/intelligence_gateway.py`;
+- `icarus_engine/intelligence_gateway.py`.
+
+Explicitly outside 4A:
 - `icarus_engine/server.py`;
 - UI/dashboard assets;
 - Field Agent;
 - Brain / brain_sync;
-- provider/collector modules;
-- scheduler workflows;
+- providers/collectors;
+- schedulers/workflows;
 - broker/execution modules;
 - Atlas `research_allocation/**`.
 
-The preferred implementation has zero changes to Phase 1–3 production files.
-
-## 60. Compatibility
+## 58. Compatibility
 
 Phase 4A is additive.
 
 Non-collaboration Phase 1 events remain unchanged.
 
-Phase 2 and Phase 3 treat collaboration events as ordinary immutable intelligence events.
+Phase 2/3 treat collaboration events as ordinary immutable intelligence events.
 
-No existing subscription must be migrated merely because Phase 4A exists.
+No existing subscription requires migration solely because 4A exists.
 
-## 61. Observability
+## 59. Example
 
-At minimum, semantic projections should expose diagnostic counts for:
-
-- applied events;
-- conflicted events;
-- open challenges;
-- child work count when requested;
-- lifecycle state;
-- deadline-passed state;
-- integrity status.
-
-Global metrics aggregation is not required in Phase 4A.
-
-## 62. Example work flow
-
-Example semantic sequence:
-
-1. `requested` — requester asks `macro-agent` to investigate NQ rate sensitivity.
-2. `accepted` — macro-agent accepts.
-3. `started` — macro-agent begins.
-4. `evidence_added` — adds rate-event evidence refs.
-5. `partial_result` — emits preliminary result.
-6. `challenge` — requester challenges causal direction.
-7. child `requested` — macro-agent delegates historical analogue verification.
+1. `requested`: requester asks `macro-agent` to investigate NQ rate sensitivity.
+2. `accepted`: macro-agent becomes assignee.
+3. `started`.
+4. `evidence_added`: rate-event references.
+5. `partial_result`.
+6. `challenge`: requester disputes causal direction.
+7. child `requested`: macro-agent delegates historical-analogue verification from current parent head.
 8. child completes.
-9. `challenge_response` — macro-agent answers with child result/evidence refs.
-10. `completed` — final synthesis references the evidence chain.
+9. `challenge_response`: parent assignee references child completion/evidence.
+10. `completed`: final synthesis lists any unresolved challenge IDs exactly.
 
-Every step is replayable from the journal.
+Every applied transition is causally chained and replayable.
 
-## 63. Beyond-IB property
+## 60. Beyond-IB property
 
-The objective is not merely faster human communication.
+The objective is not merely better messaging.
 
-The system should support machine-native workflows where multiple agents can receive explicit semantic work, produce evidence-backed outputs, disagree, delegate, and synthesize while preserving a causal record that can be replayed and audited.
+ICARUS should be able to say, in machine-readable form:
 
-A human can later observe and intervene in the same work graph without becoming the canonical storage model.
+> investigate this anomaly, use these constraints, prove or challenge these claims, involve these reviewers, delegate this subproblem, preserve disagreement, return this output shape, and show the complete evidence/causal chain.
 
-## 64. Deferred Phase 4B+
+Humans and agents later observe/intervene in that same work graph without becoming a separate canonical storage model.
+
+## 61. Deferred 4B+
 
 Deferred:
-
-- cryptographically authenticated actor identity;
-- inbound publication through Phase 3;
-- capability advertisements and dynamic matching;
-- presence/typing/online state;
-- human/agent rooms;
-- incident-room lifecycle;
+- authenticated actor binding/signatures;
+- arbitrary inbound publication through Phase 3;
+- capability advertisements/dynamic matching;
+- presence/typing;
+- rooms/incident lifecycle;
 - automatic escalation routing;
-- autonomous multi-agent council policies;
-- automatic work decomposition;
+- autonomous work decomposition/council policies;
 - automatic child cancellation;
-- UI/mobile command surfaces;
-- production execution authority.
+- UI/mobile surfaces;
+- any production execution authority.
 
-## 65. Design invariants summary
+## 62. Final invariants
 
-1. Phase 1 events remain canonical truth.
-2. No second collaboration database is canonical.
+1. Phase 1 remains canonical truth.
+2. There is no second canonical collaboration database.
 3. Work state is deterministic replayable projection.
-4. Every applied non-root transition names the expected semantic head.
-5. Stale-head races remain immutable history but do not alter projected state.
-6. Semantic ACK/acceptance is distinct from Phase 2 delivery ACK.
-7. Evidence and causation stay first-class.
-8. Delegation is ordinary child work with explicit ancestry.
-9. Principal strings are semantic declarations only until Phase 4B authentication.
-10. Both authority flags remain hard false.
-11. Phase 4A does not touch execution.
-12. Phase 4A should be implementable as an additive module plus focused tests.
+4. Root and transition retries have semantic idempotency.
+5. Every applied non-root transition names and causes from the current semantic head.
+6. Same-head races are preserved but only the deterministic winner changes state.
+7. Phase 2 ACK is never semantic acceptance.
+8. Evidence, disagreement, and causation are first-class.
+9. Delegation is ordinary child work with explicit ancestry.
+10. Group members cannot individually reject a whole group-target request.
+11. Principal strings are declared identities only until Phase 4B.
+12. Long work threads are never silently truncated.
+13. Both authority flags remain hard false.
+14. Phase 4A never touches execution.
