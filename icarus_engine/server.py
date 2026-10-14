@@ -2649,8 +2649,10 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     try:
                         events = runner.feed.depth_events(runner.spec.ticker, schema="mbp-10", limit=1000)
                     except Exception as ex:
-                        port.journal.log("WARN", f"execution-cost depth {runner.symbol}: {type(ex).__name__}: {ex}")
-                        return self._json(502, {"detail": f"Databento depth unavailable: {type(ex).__name__}: {ex}"})
+                        # Provider exceptions can include request URLs or credentials.
+                        # Keep the operator response and journal free of raw exception text.
+                        port.journal.log("WARN", f"execution-cost depth unavailable for {runner.symbol}: {type(ex).__name__}")
+                        return self._json(502, {"detail": "Databento depth is temporarily unavailable"})
                     result = estimate_book_sweep(events, side=body["side"], quantity=body["quantity"],
                                                  tick_size=runner.spec.mintick,
                                                  point_value=runner.spec.multiplier, fee_schedule=schedule)

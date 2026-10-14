@@ -93,8 +93,12 @@ class ExecutionCostTests(unittest.TestCase):
 
     def test_http_endpoint_authenticates_and_returns_read_only_estimate(self):
         class Feed:
+            failure = None
+
             def depth_events(self, symbol, *, schema, limit):
                 self.request = (symbol, schema, limit)
+                if self.failure is not None:
+                    raise self.failure
                 return [snapshot(1_800_000_000_000_000_000)]
 
         with TemporaryDirectory() as directory:
@@ -132,6 +136,12 @@ class ExecutionCostTests(unittest.TestCase):
                 status, invalid = request({"asset": "NQ"})
                 self.assertEqual(status, 400)
                 self.assertIn("missing", invalid["detail"])
+                secret = "credential=private-provider-token"
+                feed.failure = RuntimeError(secret)
+                status, unavailable = request(payload)
+                self.assertEqual(status, 502)
+                self.assertEqual(unavailable["detail"], "Databento depth is temporarily unavailable")
+                self.assertNotIn(secret, json.dumps(unavailable))
             finally:
                 server.shutdown()
                 server.server_close()
