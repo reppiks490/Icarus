@@ -9,6 +9,7 @@ from icarus_engine.intelligence_collaboration import (
     WorkRequest,
     build_request_event,
     project_work,
+    request_material_hash,
 )
 
 
@@ -104,10 +105,18 @@ def _transition(
     }
 
 
+def _later_root(root, *, sequence: int, event_id: str):
+    later = deepcopy(root)
+    later["sequence"] = sequence
+    later["event_id"] = event_id
+    later["observed_at"] = f"2026-10-14T05:{sequence:02d}:00Z"
+    later["received_at"] = f"2026-10-14T05:{sequence:02d}:01Z"
+    return later
+
+
 def test_project_root_produces_open_snapshot():
     root = _root()
     snapshot = project_work([root])
-
     assert snapshot.protocol == "icarus-collaboration-v1"
     assert snapshot.work_id == root["payload"]["work_id"]
     assert snapshot.state == "OPEN"
@@ -127,7 +136,6 @@ def test_principal_target_acceptance_establishes_assignee():
     root = _root()
     accepted = _transition(root, sequence=2, event_id="accept-1", transition="accepted", actor="worker-agent")
     snapshot = project_work([root, accepted])
-
     assert snapshot.state == "ACCEPTED"
     assert snapshot.assignee == "worker-agent"
     assert snapshot.head_event_id == "accept-1"
@@ -138,7 +146,6 @@ def test_principal_target_rejection_is_terminal():
     root = _root()
     rejected = _transition(root, sequence=2, event_id="reject-1", transition="rejected", actor="worker-agent")
     snapshot = project_work([root, rejected])
-
     assert snapshot.state == "REJECTED"
     assert snapshot.head_event_id == "reject-1"
 
@@ -147,7 +154,6 @@ def test_group_target_first_acceptance_establishes_assignee():
     root = _root(target_kind="group", target_id="researchers")
     accepted = _transition(root, sequence=2, event_id="accept-g", transition="accepted", actor="agent-b")
     snapshot = project_work([root, accepted])
-
     assert snapshot.state == "ACCEPTED"
     assert snapshot.assignee == "agent-b"
 
@@ -156,7 +162,6 @@ def test_group_member_rejection_is_not_supported():
     root = _root(target_kind="group", target_id="researchers")
     rejected = _transition(root, sequence=2, event_id="reject-g", transition="rejected", actor="agent-b")
     snapshot = project_work([root, rejected])
-
     assert snapshot.state == "OPEN"
     assert snapshot.head_event_id == "root-event"
     assert snapshot.applied_event_count == 1
@@ -167,28 +172,10 @@ def test_accepted_started_partial_started_completion_lifecycle():
     root = _root()
     accepted = _transition(root, sequence=2, event_id="accept", transition="accepted", actor="worker-agent")
     started = _transition(root, sequence=3, event_id="start-1", transition="started", actor="worker-agent", expected_head="accept")
-    partial = _transition(
-        root,
-        sequence=4,
-        event_id="partial",
-        transition="partial_result",
-        actor="worker-agent",
-        expected_head="start-1",
-        data={"result": {"progress": 0.5}},
-    )
+    partial = _transition(root, sequence=4, event_id="partial", transition="partial_result", actor="worker-agent", expected_head="start-1", data={"result": {"progress": 0.5}})
     restarted = _transition(root, sequence=5, event_id="start-2", transition="started", actor="worker-agent", expected_head="partial")
-    completed = _transition(
-        root,
-        sequence=6,
-        event_id="complete",
-        transition="completed",
-        actor="worker-agent",
-        expected_head="start-2",
-        data={"result": {"conclusion": "supported"}, "unresolved_challenge_ids": []},
-        event_type="research",
-    )
+    completed = _transition(root, sequence=6, event_id="complete", transition="completed", actor="worker-agent", expected_head="start-2", data={"result": {"conclusion": "supported"}, "unresolved_challenge_ids": []}, event_type="research")
     snapshot = project_work([root, accepted, started, partial, restarted, completed])
-
     assert snapshot.state == "COMPLETED"
     assert snapshot.head_event_id == "complete"
     assert snapshot.applied_event_count == 6
@@ -199,7 +186,6 @@ def test_terminal_state_cannot_be_resurrected():
     rejected = _transition(root, sequence=2, event_id="reject", transition="rejected", actor="worker-agent")
     late_accept = _transition(root, sequence=3, event_id="late", transition="accepted", actor="worker-agent", expected_head="reject")
     snapshot = project_work([root, rejected, late_accept])
-
     assert snapshot.state == "REJECTED"
     assert snapshot.head_event_id == "reject"
     assert snapshot.conflicts[-1].code == "illegal_transition"
@@ -208,19 +194,10 @@ def test_terminal_state_cannot_be_resurrected():
 def test_requester_may_evidence_challenge_escalate_cancel():
     root = _root()
     evidence = _transition(root, sequence=2, event_id="evidence", transition="evidence_added", actor="requester-agent", evidence=("ev-2",))
-    challenge = _transition(
-        root,
-        sequence=3,
-        event_id="challenge",
-        transition="challenge",
-        actor="requester-agent",
-        expected_head="evidence",
-        data={"challenge_id": "c1", "claim": "Show the causal link."},
-    )
+    challenge = _transition(root, sequence=3, event_id="challenge", transition="challenge", actor="requester-agent", expected_head="evidence", data={"challenge_id": "c1", "claim": "Show the causal link."})
     escalated = _transition(root, sequence=4, event_id="escalate", transition="escalated", actor="requester-agent", expected_head="challenge")
     cancelled = _transition(root, sequence=5, event_id="cancel", transition="cancelled", actor="requester-agent", expected_head="escalate")
     snapshot = project_work([root, evidence, challenge, escalated, cancelled])
-
     assert snapshot.state == "CANCELLED"
     assert snapshot.head_event_id == "cancel"
     assert "ev-2" in snapshot.evidence_ids
@@ -233,7 +210,6 @@ def test_assignee_only_started_partial_complete_fail():
     bad_start = _transition(root, sequence=3, event_id="bad-start", transition="started", actor="requester-agent", expected_head="accept")
     good_start = _transition(root, sequence=4, event_id="good-start", transition="started", actor="worker-agent", expected_head="accept")
     snapshot = project_work([root, accepted, bad_start, good_start])
-
     assert snapshot.state == "IN_PROGRESS"
     assert snapshot.head_event_id == "good-start"
     assert snapshot.conflicts[0].code == "actor_not_permitted"
@@ -244,7 +220,6 @@ def test_declared_reviewer_may_evidence_challenge_escalate_only():
     evidence = _transition(root, sequence=2, event_id="rev-ev", transition="evidence_added", actor="reviewer-agent", evidence=("review-evidence",))
     illegal_accept = _transition(root, sequence=3, event_id="rev-accept", transition="accepted", actor="reviewer-agent", expected_head="rev-ev")
     snapshot = project_work([root, evidence, illegal_accept])
-
     assert snapshot.state == "OPEN"
     assert snapshot.head_event_id == "rev-ev"
     assert "review-evidence" in snapshot.evidence_ids
@@ -253,27 +228,11 @@ def test_declared_reviewer_may_evidence_challenge_escalate_only():
 
 def test_nonroot_requires_expected_current_head_and_cause():
     root = _root()
-    missing_cause = _transition(
-        root,
-        sequence=2,
-        event_id="no-cause",
-        transition="accepted",
-        actor="worker-agent",
-        causes=(),
-    )
+    missing_cause = _transition(root, sequence=2, event_id="no-cause", transition="accepted", actor="worker-agent", causes=())
     snapshot = project_work([root, missing_cause])
     assert snapshot.state == "OPEN"
     assert snapshot.conflicts[-1].code == "missing_required_cause"
-
-    wrong_head = _transition(
-        root,
-        sequence=2,
-        event_id="wrong-head",
-        transition="accepted",
-        actor="worker-agent",
-        expected_head="not-current",
-        causes=("not-current",),
-    )
+    wrong_head = _transition(root, sequence=2, event_id="wrong-head", transition="accepted", actor="worker-agent", expected_head="not-current", causes=("not-current",))
     snapshot = project_work([root, wrong_head])
     assert snapshot.state == "OPEN"
     assert snapshot.conflicts[-1].code == "stale_head"
@@ -281,20 +240,12 @@ def test_nonroot_requires_expected_current_head_and_cause():
 
 def test_system_expiry_requires_deadline_and_system_actor():
     root = _root(deadline="2026-10-14T05:10:00Z")
-    premature = _transition(
-        root,
-        sequence=2,
-        event_id="premature",
-        transition="expired",
-        actor="clock-system",
-        actor_kind="system",
-    )
+    premature = _transition(root, sequence=2, event_id="premature", transition="expired", actor="clock-system", actor_kind="system")
     premature["observed_at"] = "2026-10-14T05:05:00Z"
     premature["received_at"] = "2026-10-14T05:05:01Z"
     snapshot = project_work([root, premature])
     assert snapshot.state == "OPEN"
     assert snapshot.conflicts[-1].code == "deadline_violation"
-
     late = deepcopy(premature)
     late["sequence"] = 3
     late["event_id"] = "expired"
@@ -309,7 +260,6 @@ def test_actor_permission_is_semantic_only_not_authentication_claim():
     root = _root(target_kind="group", target_id="researchers")
     accepted = _transition(root, sequence=2, event_id="accept", transition="accepted", actor="declared-agent")
     snapshot = project_work([root, accepted])
-
     assert snapshot.assignee == "declared-agent"
     assert snapshot.integrity_status == "ok"
     assert snapshot.execution_authorized is False
@@ -325,3 +275,89 @@ def test_malformed_root_authority_violation_fails_closed():
     root["execution_authorized"] = True
     with pytest.raises(CollaborationIntegrityError):
         project_work([root])
+
+
+def test_first_valid_root_wins_and_identical_later_root_is_duplicate():
+    root = _root()
+    duplicate = _later_root(root, sequence=2, event_id="root-duplicate")
+    snapshot = project_work([root, duplicate])
+    assert snapshot.root_event_id == "root-event"
+    assert snapshot.head_event_id == "root-event"
+    assert snapshot.conflicts[-1].code == "duplicate_root"
+
+
+def test_same_work_id_different_material_is_conflicting_root():
+    root = _root()
+    conflicting = _later_root(root, sequence=2, event_id="root-conflict")
+    conflicting["payload"]["request"] = dict(conflicting["payload"]["request"], objective="Different objective")
+    conflicting["payload"]["request_material_hash"] = request_material_hash(conflicting["payload"]["request"])
+    snapshot = project_work([root, conflicting])
+    assert snapshot.state == "OPEN"
+    assert snapshot.conflicts[-1].code == "conflicting_root"
+
+
+def test_duplicate_root_does_not_advance_head_or_applied_count():
+    root = _root()
+    duplicate = _later_root(root, sequence=2, event_id="root-duplicate")
+    snapshot = project_work([root, duplicate])
+    assert snapshot.applied_event_count == 1
+    assert snapshot.head_event_id == "root-event"
+
+
+def test_identical_operation_id_retry_returns_duplicate_without_head_advance():
+    root = _root()
+    accepted = _transition(root, sequence=2, event_id="accept", transition="accepted", actor="worker-agent")
+    accepted["payload"]["operation_id"] = "accept-once"
+    retry = deepcopy(accepted)
+    retry["sequence"] = 3
+    retry["event_id"] = "accept-retry"
+    retry["observed_at"] = "2026-10-14T05:03:00Z"
+    retry["received_at"] = "2026-10-14T05:03:01Z"
+    snapshot = project_work([root, accepted, retry])
+    assert snapshot.state == "ACCEPTED"
+    assert snapshot.head_event_id == "accept"
+    assert snapshot.applied_event_count == 2
+    assert snapshot.conflicts[-1].code == "duplicate_operation"
+
+
+def test_operation_id_reuse_with_different_material_is_conflict():
+    root = _root()
+    first = _transition(root, sequence=2, event_id="ev-a", transition="evidence_added", actor="requester-agent", evidence=("ev-a",), data={"note": "first"})
+    first["payload"]["operation_id"] = "same-op"
+    second = _transition(root, sequence=3, event_id="ev-b", transition="evidence_added", actor="requester-agent", evidence=("ev-b",), data={"note": "different"})
+    second["payload"]["operation_id"] = "same-op"
+    snapshot = project_work([root, first, second])
+    assert snapshot.head_event_id == "ev-a"
+    assert snapshot.conflicts[-1].code == "conflicting_operation"
+    assert "ev-b" not in snapshot.evidence_ids
+
+
+def test_same_head_race_applies_first_sequence_winner_and_marks_loser_stale():
+    root = _root(target_kind="group", target_id="researchers")
+    first = _transition(root, sequence=2, event_id="accept-a", transition="accepted", actor="agent-a")
+    second = _transition(root, sequence=3, event_id="accept-b", transition="accepted", actor="agent-b")
+    snapshot = project_work([root, first, second])
+    assert snapshot.assignee == "agent-a"
+    assert snapshot.head_event_id == "accept-a"
+    assert snapshot.conflicts[-1].code == "stale_head"
+
+
+def test_later_valid_transition_can_continue_from_winning_head():
+    root = _root(target_kind="group", target_id="researchers")
+    first = _transition(root, sequence=2, event_id="accept-a", transition="accepted", actor="agent-a")
+    loser = _transition(root, sequence=3, event_id="accept-b", transition="accepted", actor="agent-b")
+    started = _transition(root, sequence=4, event_id="started", transition="started", actor="agent-a", expected_head="accept-a")
+    snapshot = project_work([root, first, loser, started])
+    assert snapshot.state == "IN_PROGRESS"
+    assert snapshot.head_event_id == "started"
+    assert [item.code for item in snapshot.conflicts] == ["stale_head"]
+
+
+def test_group_same_head_double_accept_applies_first_only():
+    root = _root(target_kind="group", target_id="researchers")
+    first = _transition(root, sequence=2, event_id="accept-a", transition="accepted", actor="agent-a")
+    second = _transition(root, sequence=3, event_id="accept-b", transition="accepted", actor="agent-b")
+    snapshot = project_work([root, first, second])
+    assert snapshot.applied_event_count == 2
+    assert snapshot.assignee == "agent-a"
+    assert snapshot.conflicts[-1].event_id == "accept-b"
