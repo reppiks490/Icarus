@@ -59,8 +59,14 @@ gateway JSON limit. Capability TTL is limited to 10–300 seconds by the UI and
 
 ## Validation status
 
-Implementation and static integration review are complete on the local feature
-branch. Python compilation/import checks, JavaScript syntax validation, and
-`git diff --check` pass. Automated tests and CI have not been run in this task.
-Cross-principal deployment validation remains necessary before production
-exposure.
+The command console was refreshed for mobile and desktop, including visible
+connection state and retry-safe work creation. A lifecycle defect found during
+integration testing was fixed by creating and closing the SQLite-backed command
+fabric inside the application lifespan. Decomposition and escalation responses
+now return child work IDs so the UI can open the generated work.
+
+Local verification on the feature branch: full `pytest -q` suite, command-plane
+integration tests, Python compilation, JavaScript syntax check, and
+`git diff --check` pass. Cross-principal deployment validation remains
+necessary before production exposure. GitHub CI for the feature branch will run
+after publication; it has not yet run.

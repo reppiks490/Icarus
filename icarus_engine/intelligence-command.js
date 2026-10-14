@@ -6,6 +6,7 @@
   const notice = (message) => { $("notice").textContent = message; };
   const split = (value) => value.split(",").map((v) => v.trim()).filter(Boolean);
   const requestId = () => crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  let pendingCreateIdempotencyKey = requestId();
 
   async function api(path, options = {}) {
     if (!bearer) throw new Error("Connect first.");
@@ -34,12 +35,14 @@
     $("token").value = "";
     try {
       const value = await api("/v1/identity");
-      $("identity").textContent = `Connected as ${value.principal_id} (${value.principal_kind})`;
+      $("identity-text").textContent = `Connected as ${value.principal_id} (${value.principal_kind})`;
+      $("identity").classList.add("is-connected");
       $("disconnect").hidden = false;
       notice("Authenticated command access is ready.");
     } catch (error) {
       bearer = "";
-      $("identity").textContent = "Disconnected";
+      $("identity-text").textContent = "Disconnected";
+      $("identity").classList.remove("is-connected");
       notice(error.message);
     }
   });
@@ -47,9 +50,13 @@
   $("disconnect").addEventListener("click", () => {
     bearer = "";
     currentWorkId = "";
-    $("identity").textContent = "Disconnected";
+    $("identity-text").textContent = "Disconnected";
+    $("identity").classList.remove("is-connected");
     $("disconnect").hidden = true;
     $("work-view").textContent = "No work loaded.";
+    $("work-list").textContent = "";
+    $("presence-view").textContent = "";
+    $("council-view").textContent = "";
     $("incident-view").textContent = "";
     notice("Disconnected. The token was cleared from page memory.");
   });
@@ -61,11 +68,12 @@
       const constraints = JSON.parse(form.get("constraints") || "{}");
       const value = await api("/v1/work", { method: "POST", body: JSON.stringify({
         target_kind: "principal", target_id: form.get("target_id"), work_kind: form.get("work_kind"),
-        idempotency_key: requestId(), objective: form.get("objective"),
+        idempotency_key: pendingCreateIdempotencyKey, objective: form.get("objective"),
         constraints,
         required_capabilities: split(form.get("required_capabilities")),
       }) });
       currentWorkId = value.work.work_id;
+      pendingCreateIdempotencyKey = requestId();
       $("work-id").value = currentWorkId;
       $("work-view").textContent = JSON.stringify({ work: value.work, events: value.events }, null, 2);
       notice(`Created work ${currentWorkId}.`);

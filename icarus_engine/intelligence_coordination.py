@@ -186,6 +186,7 @@ def route_escalation(
         parent_event_id=updated.head_event_id,
     )
     child_result = collaboration.create_work(child, observed_at=_now(), received_at=_now())
+    child_result["work_id"] = child.work_id()
     return {
         "escalation": result,
         "child": child_result,

@@ -791,6 +791,8 @@ def create_intelligence_gateway_app(*, db_path: str, bearer_token: str, config: 
     command_bindings: list[tuple[str, dict[str, object]]] = []
     command_fabric = None
     command_collaboration = None
+    command_presence = None
+    command_rooms = None
     def normalize_command_identity(token: str, identity: Mapping[str, Any]) -> None:
         secret = _identifier(token, "command credential", 4096)
         if set(identity) - {"principal_id", "principal_kind", "groups"} or not {"principal_id", "principal_kind"}.issubset(identity):
@@ -820,22 +822,19 @@ def create_intelligence_gateway_app(*, db_path: str, bearer_token: str, config: 
             if not isinstance(identity, Mapping):
                 raise ValueError("each command credential identity must be a mapping")
             normalize_command_identity(credential, identity)
-    if command_bindings:
-        from .intelligence_collaboration import IntelligenceCollaboration
-        from .intelligence_coordination import CapabilityPresenceRegistry, IncidentRoomService
-        from .intelligence_fabric import IntelligenceFabric
-
-        command_fabric = IntelligenceFabric(db_path)
-        command_collaboration = IntelligenceCollaboration(command_fabric)
-        command_presence = CapabilityPresenceRegistry()
-        command_rooms = IncidentRoomService(command_fabric, command_collaboration)
-    else:
-        command_presence = None
-        command_rooms = None
-
     @asynccontextmanager
     async def lifespan(app: FastAPI):
+        nonlocal command_fabric, command_collaboration, command_presence, command_rooms
         try:
+            if command_bindings:
+                from .intelligence_collaboration import IntelligenceCollaboration
+                from .intelligence_coordination import CapabilityPresenceRegistry, IncidentRoomService
+                from .intelligence_fabric import IntelligenceFabric
+
+                command_fabric = IntelligenceFabric(db_path)
+                command_collaboration = IntelligenceCollaboration(command_fabric)
+                command_presence = CapabilityPresenceRegistry()
+                command_rooms = IncidentRoomService(command_fabric, command_collaboration)
             await service.start()
             yield
         finally:
@@ -893,7 +892,7 @@ def create_intelligence_gateway_app(*, db_path: str, bearer_token: str, config: 
     def command_not_found():
         return JSONResponse(status_code=404, content=_error_payload("WORK_NOT_FOUND", "work is unavailable"))
 
-    if command_collaboration is not None:
+    if command_bindings:
         @app.get("/command", response_class=HTMLResponse)
         async def command_console():
             from pathlib import Path

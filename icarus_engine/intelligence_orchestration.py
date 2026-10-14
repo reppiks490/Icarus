@@ -100,12 +100,14 @@ def decompose_work(
             parent_work_id=parent.work_id,
             parent_event_id=parent.head_event_id,
         )
-        children.append(collaboration.create_work(
+        child = collaboration.create_work(
             request,
             observed_at=observed_at,
             received_at=observed_at,
             evidence_ids=tuple(str(x) for x in material["evidence_ids"]),
-        ))
+        )
+        child["work_id"] = request.work_id()
+        children.append(child)
     return {"parent_work_id": parent.work_id, "parent_head_event_id": parent.head_event_id,
             "decomposition_id": plan_id, "children": children,
             "execution_authorized": False, "production_decision_authorized": False}
