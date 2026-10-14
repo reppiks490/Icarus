@@ -945,3 +945,7 @@ Deferred:
 12. Long work threads are never silently truncated.
 13. Both authority flags remain hard false.
 14. Phase 4A never touches execution.
+
+## Review hardening (2026-10-14)
+
+The [review-fix plan and evidence](../plans/2026-10-14-semantic-work-review-fixes.md) records the four reproduced defects and fixes. Root actor/requester consistency is checked on replay, existing child retries preserve identity after parent progress, operation receipts reference only applied occurrences, and temporal comparisons use exact instants rather than optional-precision ISO string ordering. Journal and delivery time predicates use connection-local chronological collation without rewriting immutable event IDs. New-child parent validation and false authority invariants remain in force.

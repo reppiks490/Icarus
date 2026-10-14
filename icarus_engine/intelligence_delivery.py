@@ -12,6 +12,8 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Mapping
 
+from icarus_engine.intelligence_time import instant, register_time_collation
+
 MAX_TEXT = 240
 MAX_FILTER_ITEMS = 64
 MAX_REASON_BYTES = 32768
@@ -166,6 +168,7 @@ class IntelligenceDeliveryPlane:
             self._owns_connection, file_backed = True, path_or_connection != ":memory:"
         else:
             raise ValueError("path_or_connection must be a SQLite path or connection")
+        register_time_collation(self._conn)
         self._conn.row_factory = sqlite3.Row
         self._conn.execute("PRAGMA foreign_keys = ON")
         self._conn.execute(f"PRAGMA busy_timeout = {busy_timeout_ms}")
@@ -210,7 +213,25 @@ class IntelligenceDeliveryPlane:
             """)
 
     def _append_receipt(self, transition: str, occurred_at: str, **fields: Any) -> None:
-        details = fields.pop("details", None)
+        details = dict(fields.pop("details", None) or {})
+        previous = fields.pop("lease_snapshot", None)
+        delivery_id = fields.get("delivery_id")
+        if delivery_id is not None:
+            current = self._conn.execute("SELECT * FROM fabric_deliveries WHERE delivery_id=?", (delivery_id,)).fetchone()
+            if current is None:
+                raise ValueError("receipt requires existing delivery")
+            lease = previous if previous is not None else current
+            prior = {"LEASED": "PENDING", "ACKED": "LEASED", "NACKED": "LEASED",
+                     "LEASE_EXPIRED": "LEASED", "DEAD_LETTERED": "LEASED",
+                     "REQUEUED": "DEAD_LETTERED", "PENDING": None if current["attempt"] == 0 else "PENDING"}.get(transition)
+            token = lease["lease_token"]
+            details["delivery_audit"] = {
+                "prior_state": fields.get("prior_state", prior), "new_state": fields.get("new_state", current["status"]),
+                "journal_sequence": current["journal_sequence"],
+                "lease_owner": lease["lease_owner"], "leased_at": lease["leased_at"],
+                "lease_expires_at": lease["lease_expires_at"],
+                "lease_token_sha256": hashlib.sha256(token.encode()).hexdigest() if token else None,
+            }
         self._conn.execute(
             """INSERT INTO fabric_delivery_receipts(
             transition,occurred_at,subscription_id,revision,consumer_id,consumer_group,delivery_id,event_id,attempt,details_json)
@@ -291,7 +312,7 @@ class IntelligenceDeliveryPlane:
         return row
 
     def _candidates(self, material: Mapping[str, Any], as_of: str) -> list[sqlite3.Row]:
-        clauses, params = ["e.sequence>=?", "e.received_at<=?"], [material["start_sequence"], as_of]
+        clauses, params = ["e.sequence>=?", "e.received_at COLLATE ICARUS_TIME<=?"], [material["start_sequence"], as_of]
         for key, column in (("channel", "e.channel"), ("source", "e.source")):
             if material.get(key) is not None:
                 clauses.append(f"{column}=?"); params.append(material[key])
@@ -307,8 +328,7 @@ class IntelligenceDeliveryPlane:
                 params.extend(vals)
         return self._conn.execute("SELECT e.* FROM fabric_events e WHERE " + " AND ".join(clauses) + " ORDER BY e.sequence", params).fetchall()
 
-    @staticmethod
-    def _verify_event(event: sqlite3.Row) -> dict[str, Any]:
+    def _verify_event(self, event: sqlite3.Row) -> dict[str, Any]:
         try:
             envelope = json.loads(str(event["envelope_json"]))
         except (TypeError, ValueError) as exc:
@@ -320,6 +340,15 @@ class IntelligenceDeliveryPlane:
         canonical = _finite_json(envelope, "Phase 1 event envelope", 1_000_000)
         if hashlib.sha256(canonical.encode()).hexdigest() != str(event["event_id"]):
             raise ValueError("Phase 1 event integrity failure: event_id hash mismatch")
+        for name in ("observed_at", "received_at", "event_type", "source", "channel",
+                     "thread_key", "severity", "expires_at"):
+            if event[name] != envelope.get(name):
+                raise ValueError(f"Phase 1 event integrity failure: {name} projection mismatch")
+        for table, column, field in (("fabric_assets", "asset", "assets"), ("fabric_tags", "tag", "tags")):
+            indexed = {row[0] for row in self._conn.execute(
+                f"SELECT {column} FROM {table} WHERE event_id=?", (event["event_id"],))}
+            if indexed != set(envelope.get(field, ())):
+                raise ValueError(f"Phase 1 event integrity failure: {field} projection mismatch")
         return envelope
 
     @staticmethod
@@ -373,7 +402,7 @@ class IntelligenceDeliveryPlane:
                                          consumer_group=sub["target_id"] if sub["mode"] == "competing" else None,
                                          delivery_id=delivery_id, event_id=event_row["event_id"], attempt=0)
                     row = self._conn.execute("SELECT * FROM fabric_deliveries WHERE delivery_id=?", (delivery_id,)).fetchone()
-                if row["status"] != "PENDING" or (row["retry_eligible_at"] is not None and row["retry_eligible_at"] > now): continue
+                if row["status"] != "PENDING" or (row["retry_eligible_at"] is not None and instant(row["retry_eligible_at"]) > instant(now)): continue
                 token, attempt = _text(self._token_factory(), "lease_token", 256), int(row["attempt"]) + 1
                 expiry = self._plus_seconds(now, lease_seconds)
                 self._conn.execute("""UPDATE fabric_deliveries SET status='LEASED',attempt=?,lease_owner=?,lease_token=?,
@@ -393,7 +422,7 @@ class IntelligenceDeliveryPlane:
         if row["status"] != "LEASED": raise ValueError("delivery is not leased")
         if row["lease_owner"] != consumer_id: raise ValueError("consumer does not own lease")
         if row["lease_token"] != token: raise ValueError("lease token mismatch")
-        if row["lease_expires_at"] is None or now >= row["lease_expires_at"]: raise ValueError("lease has expired")
+        if row["lease_expires_at"] is None or instant(now) >= instant(row["lease_expires_at"]): raise ValueError("lease has expired")
         return row
 
     def ack(self, delivery_id: str, consumer_id: str, lease_token: str, *, as_of: str) -> dict[str, Any]:
@@ -404,7 +433,7 @@ class IntelligenceDeliveryPlane:
             self._conn.execute("""UPDATE fabric_deliveries SET status='ACKED',lease_owner=NULL,lease_token=NULL,
                 leased_at=NULL,lease_expires_at=NULL,updated_at=? WHERE delivery_id=?""", (now, delivery_id))
             self._append_receipt("ACKED", now, subscription_id=row["subscription_id"], revision=row["revision"], consumer_id=consumer_id,
-                                 delivery_id=delivery_id, event_id=row["event_id"], attempt=row["attempt"])
+                                 delivery_id=delivery_id, event_id=row["event_id"], attempt=row["attempt"], lease_snapshot=row)
             current = self._conn.execute("SELECT * FROM fabric_deliveries WHERE delivery_id=?", (delivery_id,)).fetchone()
             self._conn.commit(); return self._result(current)
         except Exception:
@@ -414,20 +443,21 @@ class IntelligenceDeliveryPlane:
         sub = self._subscription(row["subscription_id"], int(row["revision"]))
         budget, delay = int(sub["max_attempts"]) + int(row["requeue_bonus"]), int(sub["retry_delay_seconds"])
         group = row["target_id"] if row["target_kind"] == "group" else None
+        next_state = "DEAD_LETTERED" if int(row["attempt"]) >= budget else "PENDING"
         self._append_receipt(transition, now, subscription_id=row["subscription_id"], revision=row["revision"], consumer_id=consumer_id,
-                             consumer_group=group, delivery_id=row["delivery_id"], event_id=row["event_id"], attempt=row["attempt"], details=details)
+                             consumer_group=group, delivery_id=row["delivery_id"], event_id=row["event_id"], attempt=row["attempt"], details=details, lease_snapshot=row, prior_state="LEASED", new_state=next_state)
         if int(row["attempt"]) >= budget:
             self._conn.execute("""UPDATE fabric_deliveries SET status='DEAD_LETTERED',lease_owner=NULL,lease_token=NULL,
                 leased_at=NULL,lease_expires_at=NULL,retry_eligible_at=NULL,updated_at=? WHERE delivery_id=?""", (now,row["delivery_id"]))
             self._append_receipt("DEAD_LETTERED", now, subscription_id=row["subscription_id"], revision=row["revision"], consumer_id=consumer_id,
-                                 consumer_group=group, delivery_id=row["delivery_id"], event_id=row["event_id"], attempt=row["attempt"])
+                                 consumer_group=group, delivery_id=row["delivery_id"], event_id=row["event_id"], attempt=row["attempt"], lease_snapshot=row, prior_state=next_state)
         else:
             retry_at = self._plus_seconds(now, delay)
             self._conn.execute("""UPDATE fabric_deliveries SET status='PENDING',lease_owner=NULL,lease_token=NULL,
                 leased_at=NULL,lease_expires_at=NULL,retry_eligible_at=?,updated_at=? WHERE delivery_id=?""", (retry_at,now,row["delivery_id"]))
             self._append_receipt("PENDING", now, subscription_id=row["subscription_id"], revision=row["revision"], consumer_id=consumer_id,
                                  consumer_group=group, delivery_id=row["delivery_id"], event_id=row["event_id"], attempt=row["attempt"],
-                                 details={"retry_eligible_at":retry_at})
+                                 details={"retry_eligible_at":retry_at}, lease_snapshot=row)
         return self._conn.execute("SELECT * FROM fabric_deliveries WHERE delivery_id=?", (row["delivery_id"],)).fetchone()
 
     def nack(self, delivery_id: str, consumer_id: str, lease_token: str, *, as_of: str,
@@ -449,7 +479,7 @@ class IntelligenceDeliveryPlane:
         self._conn.execute("BEGIN IMMEDIATE")
         try:
             rows = self._conn.execute("""SELECT * FROM fabric_deliveries WHERE status='LEASED' AND lease_expires_at IS NOT NULL
-                AND lease_expires_at<=? ORDER BY journal_sequence LIMIT ?""", (now,limit)).fetchall()
+                AND lease_expires_at COLLATE ICARUS_TIME<=? ORDER BY journal_sequence LIMIT ?""", (now,limit)).fetchall()
             result = [self._result(self._fail(row, now, "LEASE_EXPIRED", row["lease_owner"])) for row in rows]
             self._conn.commit(); return result
         except Exception:
@@ -475,7 +505,7 @@ class IntelligenceDeliveryPlane:
             if row["status"] != "DEAD_LETTERED": raise ValueError("delivery is not dead-lettered")
             bonus, group = int(row["requeue_bonus"])+1, row["target_id"] if row["target_kind"]=="group" else None
             self._append_receipt("REQUEUED",now,subscription_id=row["subscription_id"],revision=row["revision"],consumer_group=group,
-                                 delivery_id=delivery_id,event_id=row["event_id"],attempt=row["attempt"],details=reason)
+                                 delivery_id=delivery_id,event_id=row["event_id"],attempt=row["attempt"],details=reason, prior_state="DEAD_LETTERED", new_state="PENDING")
             self._conn.execute("""UPDATE fabric_deliveries SET status='PENDING',requeue_bonus=?,lease_owner=NULL,lease_token=NULL,
                 leased_at=NULL,lease_expires_at=NULL,retry_eligible_at=NULL,updated_at=? WHERE delivery_id=?""",(bonus,now,delivery_id))
             self._append_receipt("PENDING",now,subscription_id=row["subscription_id"],revision=row["revision"],consumer_group=group,
@@ -495,8 +525,8 @@ class IntelligenceDeliveryPlane:
             row=self._conn.execute("SELECT * FROM fabric_deliveries WHERE delivery_id=?",(did,)).fetchone()
             if row is None or row["status"]=="PENDING": pending.append(int(event["sequence"])); pending_times.append(event["received_at"])
             elif row["status"]=="LEASED":
-                expired += int(row["lease_expires_at"] is not None and row["lease_expires_at"] <= now)
-                active += int(not (row["lease_expires_at"] is not None and row["lease_expires_at"] <= now)); progress.append(int(event["sequence"]))
+                expired += int(row["lease_expires_at"] is not None and instant(row["lease_expires_at"]) <= instant(now))
+                active += int(not (row["lease_expires_at"] is not None and instant(row["lease_expires_at"]) <= instant(now))); progress.append(int(event["sequence"]))
             elif row["status"]=="DEAD_LETTERED": dead+=1; progress.append(int(event["sequence"]))
             elif row["status"]=="ACKED": acked+=1; progress.append(int(event["sequence"]))
         counts={r["transition"]:int(r["n"]) for r in self._conn.execute("SELECT transition,COUNT(*) n FROM fabric_delivery_receipts WHERE subscription_id=? AND revision=? GROUP BY transition",(sub["subscription_id"],sub["revision"])).fetchall()}

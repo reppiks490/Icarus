@@ -53,9 +53,9 @@ def test_nonempty_origin_rejected_unless_allowlisted():
 
 
 def test_bearer_matching_uses_constant_time_helper_contract(monkeypatch):
-    seen: list[tuple[str, str]] = []
+    seen: list[tuple[bytes, bytes]] = []
 
-    def fake_compare(left: str, right: str) -> bool:
+    def fake_compare(left: bytes, right: bytes) -> bool:
         seen.append((left, right))
         return left == right
 
@@ -63,7 +63,7 @@ def test_bearer_matching_uses_constant_time_helper_contract(monkeypatch):
     assert gateway.bearer_matches("secret", "secret") is True
     assert gateway.bearer_matches("wrong", "secret") is False
     assert gateway.bearer_matches(None, "secret") is False
-    assert seen == [("secret", "secret"), ("wrong", "secret")]
+    assert seen == [(b"secret", b"secret"), (b"wrong", b"secret")]
 
 
 def test_redaction_removes_bearer_ticket_and_lease_values():
