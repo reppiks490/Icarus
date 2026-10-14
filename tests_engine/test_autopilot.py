@@ -177,6 +177,7 @@ def test_autopilot_start_can_resume_single_worker_after_stop_signal(tmp_path):
 
 def test_new_champion_is_mirrored_to_system_intelligence(tmp_path, monkeypatch):
     port = FakePort(tmp_path)
+    port.runners["NQ"].state = {"rate_regime_str": "TREND", "rate_regime": float("nan"), "ts": float("inf")}
     seen = []
     monkeypatch.setattr(
         "icarus_engine.autopilot.run_backtest",
@@ -193,6 +194,36 @@ def test_new_champion_is_mirrored_to_system_intelligence(tmp_path, monkeypatch):
     assert event["kind"] == "integration"
     assert "Tactical Autopilot champion" in event["title"]
     assert "shadow-only" in event["detail"]
+    assert seen and TacticalAutopilot(port).status()["champions"]["NQ"]["regime_context"] == {
+        "label": "TREND", "score": None, "observed_market_ts": None}
+
+
+def test_autopilot_keeps_separate_champions_for_each_asset_regime(tmp_path, monkeypatch):
+    port = FakePort(tmp_path)
+    runner = port.runners["NQ"]
+    runner.state = {"rate_regime_str": "TREND"}
+    monkeypatch.setattr(
+        "icarus_engine.autopilot.run_backtest",
+        lambda _port, asset, **kwargs: fake_result(kwargs["inputs"]),
+    )
+    ap = TacticalAutopilot(port)
+    trend = ap.cycle_once()["regime_champions"]["NQ|TREND"]
+    runner.state["rate_regime_str"] = "RANGE"
+    range_result = ap.cycle_once()
+    range_champion = range_result["regime_champions"]["NQ|RANGE"]
+    assert trend["regime_context"]["label"] == "TREND"
+    assert range_champion["regime_context"]["label"] == "RANGE"
+    assert range_champion["id"] != trend["id"]
+    state = ap._read()
+    state["regime_champions"]["NQ|RANGE"]["inputs"]["be_delay_bars"] = trend["inputs"]["be_delay_bars"] + 2
+    ap._write(state)
+    runner.state["rate_regime_str"] = "TREND"
+    next_candidate = ap._build_candidate("NQ", ap._read())
+    if next_candidate["delta"]["kind"] == "input":
+        name = next_candidate["delta"]["name"]
+        assert next_candidate["delta"]["from"] == trend["inputs"][name]
+    else:
+        assert next_candidate["inputs"] == trend["inputs"]
 
 
 def test_robustness_score_penalizes_recent_window_collapse(tmp_path, monkeypatch):

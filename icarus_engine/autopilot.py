@@ -69,6 +69,7 @@ class TacticalAutopilot:
             "asset_cursor": 0,
             "active": None,
             "champions": {},
+            "regime_champions": {},
             "dimension_stats": {},
             "history": [],
             "last_error": None,
@@ -87,6 +88,7 @@ class TacticalAutopilot:
             return self._initial()
         state["config"] = {**DEFAULT_CONFIG, **(state.get("config") or {})}
         state.setdefault("champions", {})
+        state.setdefault("regime_champions", {})
         state.setdefault("dimension_stats", {})
         state.setdefault("history", [])
         state.setdefault("cursor", 0)
@@ -203,7 +205,13 @@ class TacticalAutopilot:
 
     def _build_candidate(self, asset, state):
         runner = self.port.runners[asset]
-        champion = state["champions"].get(asset)
+        regime = self._regime_context(runner)["label"]
+        regime_key = f"{asset}|{regime}"
+        champion = (state.get("regime_champions") or {}).get(regime_key)
+        if champion is None:
+            legacy = state["champions"].get(asset)
+            if (legacy or {}).get("regime_context", {}).get("label") == regime:
+                champion = legacy
         if champion:
             base_inputs = dict(champion["inputs"])
             chart_type = champion.get("chart_type") or runner.spec.chart_type
@@ -287,6 +295,21 @@ class TacticalAutopilot:
             "search_mode": search_mode,
             "dimension_key": f"{kind}:{name}",
         }
+
+    @staticmethod
+    def _regime_context(runner):
+        with runner.lock:
+            raw_state = getattr(runner, "state", None)
+            raw_state = raw_state if isinstance(raw_state, dict) else {}
+            regime_score = raw_state.get("rate_regime")
+            if (isinstance(regime_score, bool) or not isinstance(regime_score, (int, float))
+                    or not math.isfinite(float(regime_score))):
+                regime_score = None
+            observed_market_ts = raw_state.get("ts")
+            if type(observed_market_ts) not in (int, float) or not math.isfinite(float(observed_market_ts)):
+                observed_market_ts = None
+            return {"label": str(raw_state.get("rate_regime_str") or "UNCLASSIFIED"),
+                    "score": regime_score, "observed_market_ts": observed_market_ts}
 
     @staticmethod
     def _score(result, min_trades):
@@ -451,7 +474,9 @@ class TacticalAutopilot:
                     state["asset_cursor"] = (int(state.get("asset_cursor", 0)) + 1) % len(assets)
                     self._write(state)
                     return self.status()
+            regime_context = self._regime_context(runner)
             candidate = self._build_candidate(asset, state)
+            candidate["regime_context"] = regime_context
             candidate["id"] = self._candidate_id(candidate)
             state["active"] = {
                 "candidate": candidate,
@@ -472,6 +497,7 @@ class TacticalAutopilot:
                 "inputs": candidate["inputs"],
                 "chart_type": candidate.get("chart_type"),
                 "session": candidate.get("session"),
+                "regime_context": regime_context,
                 "fill_on": "real",
                 "delta": candidate["delta"],
                 "reason": candidate["reason"],
@@ -486,6 +512,13 @@ class TacticalAutopilot:
             }
             with self._lock:
                 state = self._read()
+                regime_key = f"{asset}|{regime_context['label']}"
+                regime_champion = (state.setdefault("regime_champions", {}).get(regime_key))
+                prior_regime_score = float((regime_champion.get("metrics") or {}).get("score", -math.inf)) if regime_champion else -math.inf
+                record["regime_champion"] = regime_champion is None or metrics["score"] > prior_regime_score
+                if record["regime_champion"]:
+                    state["regime_champions"][regime_key] = self._copy(record)
+
                 champion = state["champions"].get(asset)
                 prior_score = (
                     float((champion.get("metrics") or {}).get("score", -math.inf))
@@ -528,7 +561,7 @@ class TacticalAutopilot:
                 }
                 state["last_error"] = None
                 self._write(state)
-            if record["champion"]:
+            if record["champion"] or record["regime_champion"]:
                 self._mirror_champion(record)
             return self.status()
         except Exception as ex:

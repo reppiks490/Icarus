@@ -11,6 +11,7 @@ from dataclasses import asdict
 import hashlib
 import math
 from pathlib import Path
+import time
 
 from .activation import ActivationError, ActivationStore
 from .advisory import canonical_hash
@@ -24,7 +25,7 @@ _MISSING = object()
 _TRANSFER = ("cfg", "spec", "inputs_base", "inputs", "pts_scale", "mintick", "cal", "chart_minutes",
              "strat", "htf_tfs", "chains", "chart_agg", "ha", "_real_ohlc_warned", "bar_index",
              "bars", "overlays", "state", "_activation_version_id", "_activation_owner_cfg",
-             "_activation_quarantine")
+             "_activation_quarantine", "_performance_guard_since_ts", "_performance_guard")
 
 
 def _owner_manifest(port, runner):
@@ -116,7 +117,8 @@ class _Boundary:
         profile = {"schema_version": 1, "asset": r.symbol, "base_inputs": r.inputs_base.to_dict(),
                    "cfg": asdict(r.cfg), "sources": deepcopy(r.cfg.sources), "pts_scale": r.pts_scale,
                    "mintick": r.mintick, "owner_config": owner, "owner_config_hash": canonical_hash(owner),
-                   "active_version_id": getattr(r, "_activation_version_id", None)}
+                   "active_version_id": getattr(r, "_activation_version_id", None),
+                   "performance_guard_since_ts": int(getattr(r, "_performance_guard_since_ts", 0) or 0)}
         self.saved[canonical_hash(profile)] = {name: getattr(r, name, _MISSING) for name in _TRANSFER}
         return profile
 
@@ -126,6 +128,7 @@ class _Boundary:
         profile["base_inputs"].update(patch)
         profile["cfg"]["inputs"] = deepcopy(profile["base_inputs"])
         profile["active_version_id"] = version["version_id"]
+        profile["performance_guard_since_ts"] = int(time.time()) + 1
         profile["sources"] = list(profile["sources"] or []) + ["activation:" + version["version_id"]]
         profile["cfg"]["sources"] = profile["sources"]
         self._adopt(profile)
@@ -217,6 +220,9 @@ class _Boundary:
             r._activation_owner_cfg = owner_cfg
             r._activation_version_id = profile["active_version_id"]
             r._activation_quarantine = None
+            r._performance_guard_since_ts = int(profile.get("performance_guard_since_ts", 0) or 0)
+            r._performance_guard = {"status": "INSUFFICIENT_SAMPLE", "scorecards": {},
+                                    "since_ts": r._performance_guard_since_ts}
         finally:
             journal.con.close()
 

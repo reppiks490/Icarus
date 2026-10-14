@@ -6,6 +6,7 @@ HTTP event ingest cannot approve, and a study cannot mutate the live portfolio.
 from __future__ import annotations
 
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -18,6 +19,7 @@ from .advisory import AdvisoryLedger, strict_json, canonical_hash, _iso, _now
 from .backtest import freeze_replay_port, run_backtest
 from .research import Policy, Windows, digest, run_search
 from .code_provenance import local_code_provenance
+from .runtime import validate_values
 
 DEFAULT_SOURCES = {
     "cftc": ["publicreporting.cftc.gov", "www.cftc.gov"],
@@ -28,6 +30,29 @@ DEFAULT_SOURCES = {
     "coinbase": ["api.exchange.coinbase.com"],
     "yahoo-dxy": ["query1.finance.yahoo.com"],
 }
+
+
+def _champion_input_grid(champion_inputs, current_inputs, *, chart_type=None, session=None,
+                         current_chart_type=None, current_session=None):
+    """Represent an exact champion input snapshot as a one point study grid."""
+    if not isinstance(champion_inputs, dict) or not isinstance(current_inputs, dict):
+        raise ValueError("champion input snapshot must be an object")
+    if set(champion_inputs) != set(current_inputs):
+        raise ValueError("champion input snapshot does not match the current Pine input schema")
+    if (chart_type is not None and current_chart_type is not None
+            and chart_type != current_chart_type):
+        raise ValueError("champion chart context differs from current runtime context")
+    if (session is not None and current_session is not None
+            and session != current_session):
+        raise ValueError("champion session context differs from current runtime context")
+    validate_values(champion_inputs)
+    grid = {name: [value] for name, value in champion_inputs.items()
+            if value != current_inputs[name]}
+    if not grid:
+        raise ValueError("champion has no changed inputs to qualify")
+    from .research import _grid
+    _grid(grid)
+    return grid
 
 
 class ResearchWorkspace:
@@ -292,9 +317,12 @@ class ResearchWorkspace:
     @staticmethod
     def _validation(job):
         result = job["result"]
-        return {"study_id": job["id"], "study_hash": result["study_hash"],
-                "result_hash": digest(result), "research_qualified": True,
-                "policy": result["manifest"]["policy"], "holdout": result["holdout"]}
+        validation = {"study_id": job["id"], "study_hash": result["study_hash"],
+                      "result_hash": digest(result), "research_qualified": True,
+                      "policy": result["manifest"]["policy"], "holdout": result["holdout"]}
+        if job.get("promotion_source"):
+            validation["promotion_source"] = job["promotion_source"]
+        return validation
 
     def propose_study(self, body):
         if type(body) is not dict or set(body) != {"job", "evidence_ids", "rationale"}:
@@ -399,7 +427,7 @@ class ResearchWorkspace:
             raise ValueError("recovery requires asset only")
         return self.activation.recover(body["asset"], self._activation_boundary())
 
-    def start(self, body):
+    def start(self, body, *, promotion=None):
         if not {"asset", "grid", "windows"} <= set(body):
             raise ValueError("study requires asset, grid and windows")
         if set(body) - {"asset", "grid", "windows", "policy"}:
@@ -449,6 +477,10 @@ class ResearchWorkspace:
                    "source_revision_eligible": provenance["candidate_revision_eligible"],
                    "regime_context": regime_context,
                    "baseline": baseline, "result": None, "error": None}
+            if promotion is not None:
+                if type(promotion) is not dict or set(promotion) != {"promotion_source", "evidence_ids", "rationale"}:
+                    raise ValueError("invalid internal champion promotion metadata")
+                job.update(promotion)
             self._save(job)
             self._active, self._stop = job_id, threading.Event()
             self._jobs[job_id] = job
@@ -489,3 +521,72 @@ class ResearchWorkspace:
                         self._active = None
         threading.Thread(target=work, daemon=True, name=f"research-{job_id}").start()
         return {"ok": True, "job": job_id, "note": "Bounded research started on a frozen copy; inputs remain unchanged."}
+
+    def start_champion_study(self, body, champion):
+        """Re-test one exact shadow champion through the normal research gates."""
+        if type(body) is not dict or set(body) != {"asset", "champion_id"}:
+            raise ValueError("champion study requires asset and champion_id only")
+        asset = str(body["asset"]).upper()
+        if asset not in self.port.runners or not isinstance(champion, dict):
+            raise ValueError("unknown asset or champion")
+        if champion.get("asset") != asset or champion.get("id") != body["champion_id"]:
+            raise ValueError("champion is stale or does not match the requested asset")
+        runner = self.port.runners[asset]
+        with runner.lock:
+            if not runner.warm:
+                raise ValueError("asset is still warming")
+            current_inputs = runner.inputs.to_dict()
+            current_chart_type = runner.spec.chart_type
+            current_session = runner.spec.session
+            champ_chart = champion.get("chart_type") or current_chart_type
+            champ_session = champion.get("session") or current_session
+            grid = _champion_input_grid(champion.get("inputs"), current_inputs,
+                chart_type=champ_chart, session=champ_session,
+                current_chart_type=current_chart_type, current_session=current_session)
+            config = self.adaptation.status()["config"]
+            minutes = runner.chart_minutes
+            from .pine.timeframe import Aggregator
+            agg = Aggregator(minutes, runner.cal.bucket_start, runner.cal.bucket_end)
+            bars = []
+            for bar, sub_minutes in runner.subbars:
+                if runner.cal.intraday_open(bar.ts) and minutes % sub_minutes == 0:
+                    bars.extend(agg.push(bar, sub_minutes))
+            raw_state = runner.state if isinstance(runner.state, dict) else {}
+            regime_score = raw_state.get("rate_regime")
+            if (isinstance(regime_score, bool) or not isinstance(regime_score, (int, float))
+                    or not math.isfinite(float(regime_score))):
+                regime_score = None
+            observed_market_ts = raw_state.get("ts")
+            if type(observed_market_ts) not in (int, float) or not math.isfinite(float(observed_market_ts)):
+                observed_market_ts = None
+            live_regime = {"label": str(raw_state.get("rate_regime_str") or "UNCLASSIFIED"),
+                           "score": regime_score, "observed_market_ts": observed_market_ts}
+        train, validation, holdout = (config["train_bars"], config["validation_bars"], config["holdout_bars"])
+        total = train + validation + holdout + 2
+        if len(bars) < total:
+            raise ValueError(f"champion qualification needs {total} closed chart bars; have {len(bars)}")
+        bars = bars[-total:]
+        cal = runner.cal
+        windows = Windows(bars[0].ts, cal.bucket_end(bars[train - 1].ts, minutes),
+                          bars[train + 1].ts, cal.bucket_end(bars[train + validation].ts, minutes),
+                          bars[train + validation + 2].ts, cal.bucket_end(bars[-1].ts, minutes))
+        if windows.holdout_start <= self.adaptation._watermark(self.root / "holdouts.sqlite3", asset):
+            raise ValueError("champion qualification needs a fresh, unseen holdout interval")
+        evidence = self.ledger.events_as_of(asset, _iso(_now()))
+        if not evidence:
+            raise ValueError("champion qualification requires fresh source evidence for this asset")
+        request = {"asset": asset, "grid": grid, "windows": asdict(windows),
+                   "policy": config["policy"]}
+        promotion = {
+            "promotion_source": {
+                "kind": "tactical_autopilot_champion", "champion_id": champion["id"],
+                "champion_tested_at": champion.get("tested_at"),
+                "champion_regime": champion.get("regime_context", {"label": "UNKNOWN"}),
+                "study_regime": live_regime,
+            },
+            "evidence_ids": [event["event_id"] for event in evidence[:config["max_evidence"]]],
+            "rationale": f"Fresh bounded qualification of Tactical Autopilot champion {champion['id']}",
+        }
+        response = self.start(request, promotion=promotion)
+        return {**response, "champion_id": champion["id"],
+                "next_step": "await qualification, then specialist review and proposal; this does not activate inputs"}
