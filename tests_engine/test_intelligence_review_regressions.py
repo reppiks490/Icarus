@@ -182,3 +182,165 @@ def test_byte_identical_conflicting_operation_preserves_conflict():
         first = c.append_transition(conflict, observed_at=T, received_at=T)
         retry = c.append_transition(conflict, observed_at=T, received_at=T)
         assert first['conflict_code'] == retry['conflict_code'] == 'conflicting_operation'
+
+
+def test_inbox_orders_equal_scores_by_exact_receipt_time():
+    with IntelligenceFabric() as f:
+        f.publish(event(T))
+        later = f.publish(event(LATER))
+        assert f.inbox(as_of='2026-10-14T05:00:01Z', limit=1)[0]['event_id'] == later['event_id']
+
+
+@pytest.mark.parametrize('field', ['assets', 'tags', 'causation_ids', 'evidence_ids'])
+def test_mapping_rejects_string_collections(field):
+    with IntelligenceFabric() as f:
+        material = event().normalized()
+        material[field] = 'ES'
+        with pytest.raises(ValueError, match='collection'):
+            f.publish(material)
+        assert f.replay() == []
+
+
+@pytest.mark.parametrize('sql', [
+    "UPDATE fabric_events SET channel='wrong'",
+    "UPDATE fabric_events SET source='wrong'",
+    "UPDATE fabric_events SET severity=5",
+    "UPDATE fabric_events SET received_at='2026-10-14T04:00:00Z'",
+    "INSERT INTO fabric_assets SELECT event_id,'FAKE' FROM fabric_events",
+    "INSERT INTO fabric_tags SELECT event_id,'FAKE' FROM fabric_events",
+])
+def test_delivery_rejects_corrupt_routing_projection(sql):
+    conn = sqlite3.connect(':memory:')
+    try:
+        f, d = IntelligenceFabric(conn), IntelligenceDeliveryPlane(conn)
+        f.publish(event())
+        conn.execute(sql)
+        conn.commit()
+        d.register_consumer('worker', as_of=T)
+        d.create_subscription(SubscriptionSpec('sub', 1, 'broadcast', consumer_id='worker'), as_of=T)
+        with pytest.raises(ValueError, match='integrity'):
+            d.claim('sub', 1, 'worker', as_of=T)
+        assert conn.execute('SELECT COUNT(*) FROM fabric_deliveries').fetchone()[0] == 0
+    finally:
+        conn.close()
+
+
+@pytest.mark.parametrize('ending', ['ack', 'nack', 'recover_expired'])
+def test_receipts_preserve_lease_audit_after_projection_clears(ending):
+    import hashlib
+    conn = sqlite3.connect(':memory:')
+    try:
+        f, d = IntelligenceFabric(conn), IntelligenceDeliveryPlane(conn)
+        f.publish(event())
+        d.register_consumer('worker', as_of=T)
+        d.create_subscription(SubscriptionSpec('sub', 1, 'broadcast', consumer_id='worker'), as_of=T)
+        lease = d.claim('sub', 1, 'worker', as_of=T)[0]
+        if ending == 'recover_expired':
+            d.recover_expired(as_of=lease['lease_expires_at'])
+        else:
+            getattr(d, ending)(lease['delivery_id'], 'worker', lease['lease_token'], as_of=LATER)
+        receipts = d.receipts(delivery_id=lease['delivery_id'])
+        names = {'LEASED', {'ack': 'ACKED', 'nack': 'NACKED', 'recover_expired': 'LEASE_EXPIRED'}[ending]}
+        state = None
+        for receipt in receipts:
+            audit = receipt['details']['delivery_audit']
+            assert audit['prior_state'] == state
+            state = audit['new_state']
+            if receipt['transition'] in {'NACKED', 'LEASE_EXPIRED'}:
+                assert audit['new_state'] == 'PENDING'
+            if receipt['transition'] in names:
+                audit = receipt['details']['delivery_audit']
+                assert audit['lease_token_sha256'] == hashlib.sha256(lease['lease_token'].encode()).hexdigest()
+                assert audit['lease_expires_at'] == lease['lease_expires_at']
+                assert audit['leased_at'] == T
+                assert audit['journal_sequence'] == lease['journal_sequence']
+                assert 'prior_state' in audit and 'new_state' in audit
+                assert lease['lease_token'] not in str(receipt)
+    finally:
+        conn.close()
+
+
+def test_http_cap_stops_reading_before_entire_upload():
+    import asyncio
+    from starlette.requests import Request
+    from icarus_engine.intelligence_gateway import _strict_json_request, GatewayRequestError
+    chunks_read = []
+    async def receive():
+        chunks_read.append(1)
+        return {'type': 'http.request', 'body': b'x' * 100, 'more_body': len(chunks_read) < 3}
+    req = Request({'type': 'http', 'method': 'POST', 'path': '/', 'headers': []}, receive)
+    with pytest.raises(GatewayRequestError, match='too large'):
+        asyncio.run(_strict_json_request(req, max_bytes=32))
+    assert len(chunks_read) == 1
+
+
+def test_unicode_bearer_is_compared_safely():
+    from icarus_engine.intelligence_gateway import bearer_matches
+    assert bearer_matches('é', 'secret') is False
+    assert bearer_matches('é', 'é') is True
+
+
+def test_exact_conflicting_root_retry_stays_conflicting():
+    with IntelligenceFabric() as f:
+        c, r = IntelligenceCollaboration(f), request()
+        c.create_work(r, observed_at=T, received_at=T)
+        changed = replace(r, objective='Different request')
+        c.create_work(changed, observed_at=T, received_at=T)
+        assert c.create_work(changed, observed_at=T, received_at=T)['conflict_code'] == 'conflicting_root'
+
+
+def test_child_discovery_ignores_rejected_parent_claim():
+    with IntelligenceFabric() as f:
+        c, r = IntelligenceCollaboration(f), request()
+        c.create_work(r, observed_at=T, received_at=T)
+        fake = replace(r, parent_work_id='0' * 64, parent_event_id='missing')
+        c.create_work(fake, observed_at=T, received_at=T)
+        assert c.children('0' * 64) == []
+
+
+@pytest.mark.parametrize('kind,data', [('challenge', {'challenge_id': 'q'}),
+                                      ('challenge_response', {'challenge_id': 'q'})])
+def test_challenge_requires_substantive_material(kind, data):
+    with IntelligenceFabric() as f:
+        c, r = IntelligenceCollaboration(f), request()
+        root = c.create_work(r, observed_at=T, received_at=T)
+        accepted = c.append_transition(transition(r, root['event_id']), observed_at=T, received_at=T)
+        head = accepted['event_id']
+        if kind == 'challenge_response':
+            challenged = c.append_transition(TransitionRequest(r.work_id(), 'challenge', 'requester', 'agent',
+                'q', head, {'challenge_id': 'q', 'claim': 'Show the evidence'}), observed_at=T, received_at=T)
+            head = challenged['event_id']
+        actor = 'requester' if kind == 'challenge' else 'worker'
+        result = c.append_transition(TransitionRequest(r.work_id(), kind, actor, 'agent', 'empty', head, data),
+                                     observed_at=T, received_at=T)
+        assert result['applied'] is False
+        assert result['conflict_code'] == 'challenge_mismatch'
+
+
+def test_dead_letter_requeue_audit_states():
+    conn = sqlite3.connect(':memory:')
+    try:
+        f, d = IntelligenceFabric(conn), IntelligenceDeliveryPlane(conn)
+        f.publish(event())
+        d.register_consumer('worker', as_of=T)
+        d.create_subscription(SubscriptionSpec('sub', 1, 'broadcast', consumer_id='worker', max_attempts=1), as_of=T)
+        lease = d.claim('sub', 1, 'worker', as_of=T)[0]
+        d.nack(lease['delivery_id'], 'worker', lease['lease_token'], as_of=LATER)
+        d.requeue_dead_lettered(lease['delivery_id'], as_of=LATER)
+        state = None
+        for receipt in d.receipts(delivery_id=lease['delivery_id']):
+            audit = receipt['details']['delivery_audit']
+            assert audit['prior_state'] == state
+            state = audit['new_state']
+            if receipt['transition'] == 'NACKED':
+                assert state == 'DEAD_LETTERED'
+            if receipt['transition'] == 'REQUEUED':
+                assert state == 'PENDING'
+        assert state == 'PENDING'
+    finally:
+        conn.close()
+
+
+def test_invalid_unicode_bearer_is_rejected_without_exception():
+    from icarus_engine.intelligence_gateway import bearer_matches
+    assert bearer_matches('\ud800', 'secret') is False

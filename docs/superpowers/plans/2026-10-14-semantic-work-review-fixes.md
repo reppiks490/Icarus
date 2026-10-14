@@ -39,3 +39,20 @@ Final results are appended after verification. The review claims become stale if
 - Inline source/documentation consistency review: clear for this patch's four findings. No external reviewer approval is claimed. Akinator's packaged helper scripts are not installed in the workspace; no automated Akinator coverage/ledger gate is claimed.
 
 Remote Linux/Windows CI and independent prerequisite reviews remain separate merge gates; consult the follow-up PR's current checks rather than treating these local results as stack approval.
+
+## Full prerequisite-stack review and merge authorization
+
+The owner subsequently instructed: “Review them then and merge.” Codex reviewed the complete stack with separate read-only reviewers for Phase 1, Phase 2, Phase 3 and Phase 4A. These are Codex reviews, not a claim that the previously requested Claude review happened. The owner's instruction authorizes this review-and-merge workflow; prerequisite ordering is preserved.
+
+Additional confirmed findings and corrections:
+
+- Phase 1: inbox tie-breaks now use exact timestamp order; mapping ingestion rejects string-valued collections rather than splitting identifiers into characters.
+- Phase 2: candidate indexed routing fields and complete asset/tag membership must agree with the verified immutable envelope before delivery. Integrity failures roll back delivery creation. New receipts retain a lease-token SHA-256 digest (never the token), lease owner/window, journal sequence and explicit state transitions even after mutable cleanup. Existing receipts are historical evidence and are not backfilled or rewritten. Failure reason receipts record LEASED→PENDING/DEAD_LETTERED; subsequent state notices record that target→itself. Requeue records DEAD_LETTERED→PENDING. User reason metadata cannot overwrite generated audit fields.
+- Phase 3: HTTP JSON reads stop incrementally at the body limit, and bearer comparison uses UTF-8 bytes with invalid Unicode rejected safely. The constant-time helper remains in use; its existing mock contract now expects bytes. One transport chunk is already allocated by ASGI before this application can reject it; the application does not continue consuming or accumulating an over-limit body.
+- Phase 4A: byte-identical conflicting-root retries retain their conflict; child discovery accepts only canonical applied ancestry; challenges require a bounded claim and challenge responses require substantive text or a nonempty result mapping.
+
+Regression evidence: the 20 initial additional cases failed on the reviewed implementation. Receipt state-chain review then exposed three further desired-state failures, corrected with explicit logical transitions. A separate invalid-Unicode token regression also failed before its correction. The final focused intelligence suite passes **286 tests**, including **39 review regressions**. Independent reviewers confirmed closure of their findings; their scope was the relevant layer, not a claim of mathematical absence of defects.
+
+Merge strategy: merge the remediation into the Phase 4A branch, then merge #334, #335, #336 and #338 to main in that dependency order. Preserve merge ancestry so stacked diffs do not replay prerequisites. Validate the combined current-main tree before final integration and check final main CI. No broker service is launched and no execution authority is enabled by merging these backend libraries.
+
+Final full-stack local run after all code/test changes: **2451 passed, 3 skipped, 90 subtests passed**, exit 0 (Python 3.12). Phase 1 closure reviewer independently ran 59 scoped tests; Phase 2 reviewer confirmed routing and receipt fixes with 38 scoped tests; Phase 3 reviewer independently ran 132 scoped tests; Phase 4A closure reviewer independently ran 129 scoped tests. These overlap and must not be summed. Workflow and whitespace validation passed. Remote checks and merge receipts remain externally verifiable in the PR history.

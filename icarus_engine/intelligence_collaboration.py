@@ -752,6 +752,7 @@ def project_work(
         if transition == "challenge":
             try:
                 challenge_id = _text(data.get("challenge_id"), "challenge_id", MAX_CHALLENGE_ID)
+                _text(data.get("claim"), "challenge claim", MAX_OBJECTIVE)
             except ValueError:
                 conflicts.append(_conflict(event, "challenge_mismatch", operation_id))
                 continue
@@ -761,6 +762,11 @@ def project_work(
         elif transition == "challenge_response":
             try:
                 challenge_id = _text(data.get("challenge_id"), "challenge_id", MAX_CHALLENGE_ID)
+                response = data.get("response", data.get("result"))
+                if isinstance(response, str):
+                    _text(response, "challenge response", MAX_OBJECTIVE)
+                elif not isinstance(response, Mapping) or not response:
+                    raise ValueError("challenge response material required")
             except ValueError:
                 conflicts.append(_conflict(event, "challenge_mismatch", operation_id))
                 continue
@@ -905,7 +911,7 @@ def _publication_result(
 ) -> dict[str, object]:
     event_id = str(published["event_id"])
     conflict = next((item for item in snapshot.conflicts if item.event_id == event_id), None)
-    if idempotent_root:
+    if idempotent_root and conflict is None:
         applied = False
         conflict_code = "duplicate_root"
         original_event_id = snapshot.root_event_id
@@ -1237,6 +1243,10 @@ class IntelligenceCollaboration(_TransitionIntelligenceCollaboration):
                 continue
             request = payload.get("request")
             if not isinstance(request, Mapping) or request.get("parent_work_id") != parent_id:
+                continue
+            snapshot = self.snapshot(str(payload["work_id"]))
+            if (snapshot.root_event_id != record.get("event_id")
+                    or snapshot.parent_work_id != parent_id):
                 continue
             children.append(dict(record))
         return children

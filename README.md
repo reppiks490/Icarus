@@ -129,4 +129,4 @@ The archive is evidence/context, not execution authorization or proof of impleme
 
 ## Semantic collaboration work fabric
 
-The [Phase 4A design](docs/superpowers/specs/2026-10-13-semantic-work-fabric-design.md) describes work requests, lifecycle replay, evidence, review and delegation over the intelligence journal. Its [review fixes](docs/superpowers/plans/2026-10-14-semantic-work-review-fixes.md) cover declared identity consistency, retry receipts and exact deadline/lease comparisons. The implementation is a stacked review branch; authenticated command ingress is deferred to Phase 4B and work events do not authorize execution or production decisions.
+The [Phase 4A design](docs/superpowers/specs/2026-10-13-semantic-work-fabric-design.md) describes work requests, lifecycle replay, evidence, review and delegation over the intelligence journal. Its [review fixes](docs/superpowers/plans/2026-10-14-semantic-work-review-fixes.md) cover declared identity consistency, retry receipts and exact deadline/lease comparisons. Authenticated command ingress is deferred to Phase 4B; work events do not authorize execution or production decisions.

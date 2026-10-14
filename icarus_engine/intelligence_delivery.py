@@ -213,7 +213,25 @@ class IntelligenceDeliveryPlane:
             """)
 
     def _append_receipt(self, transition: str, occurred_at: str, **fields: Any) -> None:
-        details = fields.pop("details", None)
+        details = dict(fields.pop("details", None) or {})
+        previous = fields.pop("lease_snapshot", None)
+        delivery_id = fields.get("delivery_id")
+        if delivery_id is not None:
+            current = self._conn.execute("SELECT * FROM fabric_deliveries WHERE delivery_id=?", (delivery_id,)).fetchone()
+            if current is None:
+                raise ValueError("receipt requires existing delivery")
+            lease = previous if previous is not None else current
+            prior = {"LEASED": "PENDING", "ACKED": "LEASED", "NACKED": "LEASED",
+                     "LEASE_EXPIRED": "LEASED", "DEAD_LETTERED": "LEASED",
+                     "REQUEUED": "DEAD_LETTERED", "PENDING": None if current["attempt"] == 0 else "PENDING"}.get(transition)
+            token = lease["lease_token"]
+            details["delivery_audit"] = {
+                "prior_state": fields.get("prior_state", prior), "new_state": fields.get("new_state", current["status"]),
+                "journal_sequence": current["journal_sequence"],
+                "lease_owner": lease["lease_owner"], "leased_at": lease["leased_at"],
+                "lease_expires_at": lease["lease_expires_at"],
+                "lease_token_sha256": hashlib.sha256(token.encode()).hexdigest() if token else None,
+            }
         self._conn.execute(
             """INSERT INTO fabric_delivery_receipts(
             transition,occurred_at,subscription_id,revision,consumer_id,consumer_group,delivery_id,event_id,attempt,details_json)
@@ -310,8 +328,7 @@ class IntelligenceDeliveryPlane:
                 params.extend(vals)
         return self._conn.execute("SELECT e.* FROM fabric_events e WHERE " + " AND ".join(clauses) + " ORDER BY e.sequence", params).fetchall()
 
-    @staticmethod
-    def _verify_event(event: sqlite3.Row) -> dict[str, Any]:
+    def _verify_event(self, event: sqlite3.Row) -> dict[str, Any]:
         try:
             envelope = json.loads(str(event["envelope_json"]))
         except (TypeError, ValueError) as exc:
@@ -323,6 +340,15 @@ class IntelligenceDeliveryPlane:
         canonical = _finite_json(envelope, "Phase 1 event envelope", 1_000_000)
         if hashlib.sha256(canonical.encode()).hexdigest() != str(event["event_id"]):
             raise ValueError("Phase 1 event integrity failure: event_id hash mismatch")
+        for name in ("observed_at", "received_at", "event_type", "source", "channel",
+                     "thread_key", "severity", "expires_at"):
+            if event[name] != envelope.get(name):
+                raise ValueError(f"Phase 1 event integrity failure: {name} projection mismatch")
+        for table, column, field in (("fabric_assets", "asset", "assets"), ("fabric_tags", "tag", "tags")):
+            indexed = {row[0] for row in self._conn.execute(
+                f"SELECT {column} FROM {table} WHERE event_id=?", (event["event_id"],))}
+            if indexed != set(envelope.get(field, ())):
+                raise ValueError(f"Phase 1 event integrity failure: {field} projection mismatch")
         return envelope
 
     @staticmethod
@@ -407,7 +433,7 @@ class IntelligenceDeliveryPlane:
             self._conn.execute("""UPDATE fabric_deliveries SET status='ACKED',lease_owner=NULL,lease_token=NULL,
                 leased_at=NULL,lease_expires_at=NULL,updated_at=? WHERE delivery_id=?""", (now, delivery_id))
             self._append_receipt("ACKED", now, subscription_id=row["subscription_id"], revision=row["revision"], consumer_id=consumer_id,
-                                 delivery_id=delivery_id, event_id=row["event_id"], attempt=row["attempt"])
+                                 delivery_id=delivery_id, event_id=row["event_id"], attempt=row["attempt"], lease_snapshot=row)
             current = self._conn.execute("SELECT * FROM fabric_deliveries WHERE delivery_id=?", (delivery_id,)).fetchone()
             self._conn.commit(); return self._result(current)
         except Exception:
@@ -417,20 +443,21 @@ class IntelligenceDeliveryPlane:
         sub = self._subscription(row["subscription_id"], int(row["revision"]))
         budget, delay = int(sub["max_attempts"]) + int(row["requeue_bonus"]), int(sub["retry_delay_seconds"])
         group = row["target_id"] if row["target_kind"] == "group" else None
+        next_state = "DEAD_LETTERED" if int(row["attempt"]) >= budget else "PENDING"
         self._append_receipt(transition, now, subscription_id=row["subscription_id"], revision=row["revision"], consumer_id=consumer_id,
-                             consumer_group=group, delivery_id=row["delivery_id"], event_id=row["event_id"], attempt=row["attempt"], details=details)
+                             consumer_group=group, delivery_id=row["delivery_id"], event_id=row["event_id"], attempt=row["attempt"], details=details, lease_snapshot=row, prior_state="LEASED", new_state=next_state)
         if int(row["attempt"]) >= budget:
             self._conn.execute("""UPDATE fabric_deliveries SET status='DEAD_LETTERED',lease_owner=NULL,lease_token=NULL,
                 leased_at=NULL,lease_expires_at=NULL,retry_eligible_at=NULL,updated_at=? WHERE delivery_id=?""", (now,row["delivery_id"]))
             self._append_receipt("DEAD_LETTERED", now, subscription_id=row["subscription_id"], revision=row["revision"], consumer_id=consumer_id,
-                                 consumer_group=group, delivery_id=row["delivery_id"], event_id=row["event_id"], attempt=row["attempt"])
+                                 consumer_group=group, delivery_id=row["delivery_id"], event_id=row["event_id"], attempt=row["attempt"], lease_snapshot=row, prior_state=next_state)
         else:
             retry_at = self._plus_seconds(now, delay)
             self._conn.execute("""UPDATE fabric_deliveries SET status='PENDING',lease_owner=NULL,lease_token=NULL,
                 leased_at=NULL,lease_expires_at=NULL,retry_eligible_at=?,updated_at=? WHERE delivery_id=?""", (retry_at,now,row["delivery_id"]))
             self._append_receipt("PENDING", now, subscription_id=row["subscription_id"], revision=row["revision"], consumer_id=consumer_id,
                                  consumer_group=group, delivery_id=row["delivery_id"], event_id=row["event_id"], attempt=row["attempt"],
-                                 details={"retry_eligible_at":retry_at})
+                                 details={"retry_eligible_at":retry_at}, lease_snapshot=row)
         return self._conn.execute("SELECT * FROM fabric_deliveries WHERE delivery_id=?", (row["delivery_id"],)).fetchone()
 
     def nack(self, delivery_id: str, consumer_id: str, lease_token: str, *, as_of: str,
@@ -478,7 +505,7 @@ class IntelligenceDeliveryPlane:
             if row["status"] != "DEAD_LETTERED": raise ValueError("delivery is not dead-lettered")
             bonus, group = int(row["requeue_bonus"])+1, row["target_id"] if row["target_kind"]=="group" else None
             self._append_receipt("REQUEUED",now,subscription_id=row["subscription_id"],revision=row["revision"],consumer_group=group,
-                                 delivery_id=delivery_id,event_id=row["event_id"],attempt=row["attempt"],details=reason)
+                                 delivery_id=delivery_id,event_id=row["event_id"],attempt=row["attempt"],details=reason, prior_state="DEAD_LETTERED", new_state="PENDING")
             self._conn.execute("""UPDATE fabric_deliveries SET status='PENDING',requeue_bonus=?,lease_owner=NULL,lease_token=NULL,
                 leased_at=NULL,lease_expires_at=NULL,retry_eligible_at=NULL,updated_at=? WHERE delivery_id=?""",(bonus,now,delivery_id))
             self._append_receipt("PENDING",now,subscription_id=row["subscription_id"],revision=row["revision"],consumer_group=group,
