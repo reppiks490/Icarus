@@ -37,75 +37,56 @@ _REMOTE_PEER_PACKET_API = (
     f"https://api.github.com/repos/{REMOTE_REPOSITORY}/contents/{REMOTE_PEER_PACKET}?ref={REMOTE_REF}"
 )
 
+_HISTORICAL_CONTEXT_LEGACY_IDS = frozenset({
+    "robustness_guardian", "alpha_synthesis", "apex_council", "flow_microstructure",
+})
 _HISTORICAL_CONTEXT_EXPECTED = {
     "robustness_guardian": {
-        "path": "automation_intelligence/agent_fabric/robustness_guardian/latest.json",
-        "evidence_status": "HISTORICAL_RESEARCH_EVIDENCE",
-        "collection_only": False,
-        "subject": "aegis",
-        "summary_fields": [
-            "RUN_CORE.findings",
-            "RUN_CORE.built_changes",
-            "RUN_CORE.unresolved_risks",
-            "RUN_CORE.NEXT",
-            "RUN_CORE.test_state",
-            "RUN_CORE.base_main_sha",
-            "RUN_CORE.final_main_sha",
-            "RUN_CORE_SHA256",
-            "history_blob_sha",
-        ],
+        "kind": "RUN_LATEST", "path": "automation_intelligence/agent_fabric/robustness_guardian/latest.json",
+        "evidence_status": "HISTORICAL_RESEARCH_EVIDENCE", "collection_only": False, "subject": "aegis",
+        "summary_fields": ["RUN_CORE.findings", "RUN_CORE.built_changes", "RUN_CORE.unresolved_risks", "RUN_CORE.NEXT", "RUN_CORE.test_state", "RUN_CORE.base_main_sha", "RUN_CORE.final_main_sha", "RUN_CORE_SHA256", "history_blob_sha"],
     },
     "alpha_synthesis": {
-        "path": "automation_intelligence/agent_fabric/alpha_synthesis/latest.json",
-        "evidence_status": "HISTORICAL_RESEARCH_EVIDENCE",
-        "collection_only": False,
-        "subject": "aion",
-        "summary_fields": [
-            "RUN_CORE.evidence_dataset_identity",
-            "RUN_CORE.findings",
-            "RUN_CORE.built_changes",
-            "RUN_CORE.unresolved_risks",
-            "RUN_CORE.NEXT",
-            "RUN_CORE_SHA256",
-            "history_blob_sha",
-            "ledger_blob_sha",
-        ],
+        "kind": "RUN_LATEST", "path": "automation_intelligence/agent_fabric/alpha_synthesis/latest.json",
+        "evidence_status": "HISTORICAL_RESEARCH_EVIDENCE", "collection_only": False, "subject": "aion",
+        "summary_fields": ["RUN_CORE.evidence_dataset_identity", "RUN_CORE.findings", "RUN_CORE.built_changes", "RUN_CORE.unresolved_risks", "RUN_CORE.NEXT", "RUN_CORE_SHA256", "history_blob_sha", "ledger_blob_sha"],
     },
     "apex_council": {
-        "path": "automation_intelligence/agent_fabric/apex_council/latest.json",
-        "evidence_status": "HISTORICAL_RESEARCH_EVIDENCE",
-        "collection_only": False,
-        "subject": "apex-omega",
-        "summary_fields": [
-            "RUN_CORE.specialist_states_consumed",
-            "RUN_CORE.evidence_contract",
-            "RUN_CORE.decision_contract",
-            "RUN_CORE.disagreements_collisions",
-            "RUN_CORE.built_changes",
-            "RUN_CORE.NEXT",
-            "RUN_CORE.base_main_sha",
-            "RUN_CORE.final_main_sha",
-            "RUN_CORE_SHA256",
-            "history_blob_sha",
-            "ledger_blob_sha",
-        ],
+        "kind": "RUN_LATEST", "path": "automation_intelligence/agent_fabric/apex_council/latest.json",
+        "evidence_status": "HISTORICAL_RESEARCH_EVIDENCE", "collection_only": False, "subject": "apex-omega",
+        "summary_fields": ["RUN_CORE.specialist_states_consumed", "RUN_CORE.evidence_contract", "RUN_CORE.decision_contract", "RUN_CORE.disagreements_collisions", "RUN_CORE.built_changes", "RUN_CORE.NEXT", "RUN_CORE.base_main_sha", "RUN_CORE.final_main_sha", "RUN_CORE_SHA256", "history_blob_sha", "ledger_blob_sha"],
     },
     "flow_microstructure": {
-        "path": "automation_intelligence/flow/latest.json",
-        "evidence_status": "HISTORICAL_COLLECTION_EVIDENCE",
-        "collection_only": True,
-        "subject": "data",
-        "summary_fields": [
-            "NET_NEW_DELTA",
-            "observations",
-            "PROVIDER_CONFLICTS",
-            "DATA_GAPS",
-            "source_provenance",
-            "quality_notes",
-            "history_blob_sha",
-        ],
+        "kind": "RUN_LATEST", "path": "automation_intelligence/flow/latest.json",
+        "evidence_status": "HISTORICAL_COLLECTION_EVIDENCE", "collection_only": True, "subject": "data",
+        "summary_fields": ["NET_NEW_DELTA", "observations", "PROVIDER_CONFLICTS", "DATA_GAPS", "source_provenance", "quality_notes", "history_blob_sha"],
+    },
+    "provider_collection": {
+        "kind": "RESEARCH_CONTEXT_DOCUMENT", "path": "automation_intelligence/provider_collection_v1/research_context.json",
+        "evidence_status": "HISTORICAL_COLLECTION_EVIDENCE", "collection_only": True, "subject": "data",
+        "raw_payloads_eligible": False, "schema_key": "schema_version", "schema_value": "icarus-provider-research-context-v1",
+        "raw_exclusion_field": "raw_payloads_included", "collection_clock_field": "snapshot_at_utc", "availability_clock": None, "eligibility": None,
+        "summary_fields": ["summary", "providers", "snapshot_at_utc"],
+    },
+    "sec_edgar": {
+        "kind": "RESEARCH_CONTEXT_DOCUMENT", "path": "automation_intelligence/cl_lab/sec_edgar_research_context.json",
+        "evidence_status": "HISTORICAL_COLLECTION_EVIDENCE", "collection_only": True, "subject": "data",
+        "raw_payloads_eligible": False, "schema_key": "schema", "schema_value": "icarus.sec_edgar.research_context/1",
+        "raw_exclusion_field": "raw_documents_included", "collection_clock_field": "generated_at", "availability_clock": "accepted_at",
+        "eligibility": {"field": "status", "equals": "ok"},
+        "summary_fields": ["status", "filing_rows", "fact_rows", "tickers"],
     },
 }
+_HISTORICAL_CONTEXT_MODERN_IDS = frozenset(_HISTORICAL_CONTEXT_EXPECTED)
+_HISTORICAL_CONTEXT_TRUTH = {
+    "foreign_repository_state_is_context_not_native_truth": True,
+    "historical_context_never_bypasses_foundry": True,
+    "historical_context_never_bypasses_evaluator": True,
+    "historical_context_never_grants_shadow_qualification": True,
+    "historical_context_never_grants_execution_authority": True,
+    "historical_packet_projection_is_source_derived": True,
+}
+
 
 SOURCE_TO_AGENT = {
     "OMEGA_AUTOMATION": "omega",
@@ -374,99 +355,78 @@ def _normalize_historical_context_contract(
         return []
     if not isinstance(raw, Mapping):
         raise ValueError("Icarus-engine historical context contract must be an object")
-    if raw.get("mode") != "RESEARCH_CONTEXT_ONLY":
-        raise ValueError("Icarus-engine historical context mode must remain research-only")
-    if raw.get("source_artifact_blob_required") is not True:
-        raise ValueError("Icarus-engine historical context must require exact source artifact blobs")
-    if raw.get("artifact_id_sha256_required") is not True:
-        raise ValueError("Icarus-engine historical context must require SHA-256 artifact IDs")
-    if raw.get("packet_projection_verification_required") is not True:
-        raise ValueError(
-            "Icarus-engine historical context must require packet projection verification"
-        )
-    for key in (
-        "direct_candidate_evidence",
-        "automatic_candidate_creation",
-        "automatic_model_promotion",
-        "execution_authorized",
-        "production_decision_authorized",
-    ):
-        if raw.get(key) is not False:
-            raise ValueError(
-                f"Icarus-engine historical context attempts authority escalation: {key}"
-            )
-
-    truth = raw.get("truth_contract")
-    if not isinstance(truth, Mapping):
-        raise ValueError("Icarus-engine historical context truth contract is missing")
-    for key in (
-        "foreign_repository_state_is_context_not_native_truth",
-        "historical_context_never_bypasses_foundry",
-        "historical_context_never_bypasses_evaluator",
-        "historical_context_never_grants_shadow_qualification",
-        "historical_context_never_grants_execution_authority",
-        "historical_packet_projection_is_source_derived",
-    ):
-        if truth.get(key) is not True:
-            raise ValueError(
-                f"Icarus-engine historical context truth invariant failed: {key}"
-            )
-
+    if "contract_version" in raw:
+        if type(raw.get("contract_version")) is not int or raw.get("contract_version") != 2:
+            raise ValueError("UNSUPPORTED_CONTRACT_VERSION")
+        version = 2
+    else:
+        version = 1
     sources = raw.get("sources")
-    if not isinstance(sources, list):
-        raise ValueError("Icarus-engine historical context sources must be an array")
-    if len(sources) != len(_HISTORICAL_CONTEXT_EXPECTED):
-        raise ValueError("Icarus-engine historical context source set mismatch")
+    if not isinstance(sources, list) or not all(isinstance(x, Mapping) for x in sources):
+        raise ValueError("CONTRACT_SOURCE_SET_MISMATCH")
+    source_ids = [str(x.get("id") or "") for x in sources]
+    expected_ids = _HISTORICAL_CONTEXT_LEGACY_IDS if version == 1 else _HISTORICAL_CONTEXT_MODERN_IDS
+    if len(source_ids) != len(set(source_ids)):
+        raise ValueError("CONTRACT_SOURCE_SET_MISMATCH")
+    if set(source_ids) != set(expected_ids):
+        raise ValueError("UNDECLARED_MODERN_CONTRACT" if version == 1 else "CONTRACT_SOURCE_SET_MISMATCH")
+
+    # This contract head is intentionally exact. A weaker witness or truth invariant
+    # would widen what downstream systems can treat as evidence.
+    head = {
+        "mode": "RESEARCH_CONTEXT_ONLY",
+        "direct_candidate_evidence": False,
+        "automatic_candidate_creation": False,
+        "automatic_model_promotion": False,
+        "execution_authorized": False,
+        "production_decision_authorized": False,
+        "source_artifact_blob_required": True,
+        "artifact_id_sha256_required": True,
+        "packet_projection_verification_required": True,
+    }
+    for key, value in head.items():
+        if raw.get(key) != value:
+            messages = {
+                "source_artifact_blob_required": "historical context must require exact source artifact blobs",
+                "artifact_id_sha256_required": "historical context must require SHA-256 artifact IDs",
+                "packet_projection_verification_required": "historical context must require packet projection verification",
+            }
+            if key in messages:
+                raise ValueError(f"AUTHORITY_EXPANSION: {messages[key]}")
+            raise ValueError(f"AUTHORITY_EXPANSION: historical context attempts authority escalation: {key}")
+    truth = raw.get("truth_contract")
+    if not isinstance(truth, Mapping) or dict(truth) != _HISTORICAL_CONTEXT_TRUTH:
+        raise ValueError("AUTHORITY_EXPANSION: historical truth contract changed")
 
     normalized: list[dict[str, Any]] = []
-    seen: set[str] = set()
     for source in sources:
-        if not isinstance(source, Mapping):
-            raise ValueError("Icarus-engine historical context source must be an object")
-        source_id = str(source.get("id") or "").strip()
-        if source_id in seen or source_id not in _HISTORICAL_CONTEXT_EXPECTED:
-            raise ValueError("Icarus-engine historical context source identity mismatch")
-        seen.add(source_id)
+        source_id = str(source.get("id") or "")
         expected = _HISTORICAL_CONTEXT_EXPECTED[source_id]
-        if source.get("path") != expected["path"]:
-            raise ValueError(
-                f"Icarus-engine historical context path mismatch: {source_id}"
-            )
-        if source.get("evidence_status") != expected["evidence_status"]:
-            raise ValueError(
-                f"Icarus-engine historical context evidence status mismatch: {source_id}"
-            )
-        if source.get("research_context_eligible") is not True:
-            raise ValueError(
-                f"Icarus-engine historical context must remain research-context eligible: {source_id}"
-            )
-        if source.get("candidate_evidence_eligible") is not False:
-            raise ValueError(
-                f"Icarus-engine historical context cannot become candidate evidence: {source_id}"
-            )
-        if source.get("collection_only") is not expected["collection_only"]:
-            raise ValueError(
-                f"Icarus-engine historical context collection semantics mismatch: {source_id}"
-            )
-        if source.get("execution_authorized") is not False:
-            raise ValueError(
-                f"Icarus-engine historical context attempts execution authority: {source_id}"
-            )
-        fields = source.get("summary_fields")
-        if not isinstance(fields, list) or fields != expected["summary_fields"]:
-            raise ValueError(
-                f"Icarus-engine historical context field allowlist mismatch: {source_id}"
-            )
-        normalized.append({
+        contract_entry = {key: value for key, value in expected.items() if key != "subject"}
+        if version == 1:
+            contract_entry.pop("kind", None)
+        contract_entry.update({
             "id": source_id,
-            "path": expected["path"],
-            "evidence_status": expected["evidence_status"],
-            "collection_only": expected["collection_only"],
-            "subject": expected["subject"],
-            "summary_fields": list(expected["summary_fields"]),
             "research_context_eligible": True,
             "candidate_evidence_eligible": False,
             "execution_authorized": False,
+        })
+        # Widening authority flags have a distinct failure class.
+        if any(source.get(key) is True for key in (
+            "candidate_evidence_eligible", "execution_authorized", "raw_payloads_eligible"
+        )):
+            raise ValueError(f"AUTHORITY_EXPANSION: historical source {source_id}")
+        if dict(source) != contract_entry:
+            if source.get("summary_fields") != contract_entry.get("summary_fields"):
+                raise ValueError(f"CONTRACT_SOURCE_SET_MISMATCH: historical context field allowlist mismatch: {source_id}")
+            raise ValueError(f"CONTRACT_SOURCE_SET_MISMATCH: historical source {source_id}")
+        normalized.append({
+            **expected,
+            "id": source_id,
+            "research_context_eligible": True,
+            "candidate_evidence_eligible": False,
+            "execution_authorized": False,
+            "contract_version": version,
         })
     return sorted(normalized, key=lambda row: row["id"])
 
@@ -480,28 +440,49 @@ def _get_dotted(payload: Mapping[str, Any], path: str) -> Any:
     return current
 
 
+def _parse_context_clock(value: Any, label: str) -> datetime:
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"INVALID_SOURCE_CLOCK: {label}")
+    try:
+        parsed = datetime.fromisoformat(value.strip().replace("Z", "+00:00"))
+    except (TypeError, ValueError) as ex:
+        raise ValueError(f"INVALID_SOURCE_CLOCK: {label}") from ex
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        raise ValueError(f"INVALID_SOURCE_CLOCK: {label}")
+    return parsed.astimezone(timezone.utc)
+
+
 def _validate_historical_source_semantics(
     source: Mapping[str, Any],
     payload: Mapping[str, Any],
 ) -> None:
+    if source.get("kind") == "RESEARCH_CONTEXT_DOCUMENT":
+        if payload.get(source["schema_key"]) != source["schema_value"]:
+            raise ValueError(f"SCHEMA_MISMATCH: historical context {source['id']}")
+        if payload.get("authority") != "RESEARCH_CONTEXT_ONLY":
+            raise ValueError(f"AUTHORITY_EXPANSION: historical context {source['id']}")
+        for key in ("execution_authorized", "production_decision_authorized", "automatic_model_promotion", source["raw_exclusion_field"]):
+            if payload.get(key) is not False:
+                raise ValueError(f"AUTHORITY_EXPANSION: historical context {source['id']} {key}")
+        if any(key.startswith("RUN_") or key == "COLLECTION_ONLY" for key in payload):
+            raise ValueError(f"KIND_CONFUSION: historical context {source['id']}")
+        eligibility = source.get("eligibility")
+        if eligibility and payload.get(eligibility["field"]) != eligibility["equals"]:
+            raise ValueError(f"SOURCE_NOT_ELIGIBLE: historical context {source['id']}")
+        _parse_context_clock(payload.get(source["collection_clock_field"]), source["id"])
+        return
+
     if payload.get("execution_authorized") is not False:
-        raise ValueError(
-            f"historical context {source['id']} must preserve execution_authorized=false"
-        )
+        raise ValueError(f"historical context {source['id']} must preserve execution_authorized=false")
     run_core = payload.get("RUN_CORE")
     if isinstance(run_core, Mapping) and run_core.get("execution_authorized") not in (None, False):
-        raise ValueError(
-            f"historical context {source['id']} RUN_CORE attempts execution authority"
-        )
+        raise ValueError(f"historical context {source['id']} RUN_CORE attempts execution authority")
     if payload.get("trading_execution_authorized") is True or (
-        isinstance(run_core, Mapping)
-        and run_core.get("trading_execution_authorized") is True
+        isinstance(run_core, Mapping) and run_core.get("trading_execution_authorized") is True
     ):
         raise ValueError(f"historical context {source['id']} attempts trading authority")
     if source.get("collection_only") is True and payload.get("COLLECTION_ONLY") is not True:
-        raise ValueError(
-            f"historical context {source['id']} must preserve collection-only semantics"
-        )
+        raise ValueError(f"historical context {source['id']} must preserve collection-only semantics")
 
 
 def _normalize_historical_document(
@@ -515,42 +496,56 @@ def _normalize_historical_document(
     if not _is_sha(sha):
         raise ValueError("historical context Git blob identity is invalid")
 
+    if source.get("kind") == "RESEARCH_CONTEXT_DOCUMENT":
+        fields = {field: payload[field] for field in source["summary_fields"] if field in payload}
+        try:
+            encoded = json.dumps(fields, sort_keys=True, separators=(",", ":"), allow_nan=False).encode("utf-8")
+            collected = _parse_context_clock(payload.get(source["collection_clock_field"]), source["id"])
+        except (TypeError, ValueError) as ex:
+            raise ValueError(f"SCHEMA_MISMATCH: historical context {source['id']} projection") from ex
+        if len(encoded) > 65536:
+            raise ValueError(f"SUMMARY_TOO_LARGE: historical context {source['id']}")
+        availability = source.get("availability_clock")
+        summary = {
+            "fields_present": sorted(fields),
+            "fields_sha256": hashlib.sha256(encoded).hexdigest(),
+            "fields_bytes": len(encoded),
+        }
+        clocks = {
+            "collection_clock_field": source["collection_clock_field"],
+            "collected_at": collected.isoformat().replace("+00:00", "Z"),
+            "availability_clock": availability,
+        }
+        return {
+            "id": source["id"], "path": source["path"], "remote_blob_sha": sha,
+            "run_id": None, "run_status": None, "evidence_status": source["evidence_status"],
+            "collection_only": True, "research_context_eligible": True,
+            "candidate_evidence_eligible": False, "foreign_evidence_only": True,
+            "requires_foundry_and_evaluator": True, "summary": summary, "clocks": clocks,
+            "availability_clock": availability, "subject": source["subject"],
+            "execution_authorized": False, "production_decision_authorized": False,
+        }
+
     summary: dict[str, Any] = {}
     for field in source.get("summary_fields") or []:
         value = _get_dotted(payload, field)
         if value is not None:
             summary[str(field)] = value
     try:
-        encoded = json.dumps(
-            summary,
-            sort_keys=True,
-            separators=(",", ":"),
-            allow_nan=False,
-        )
+        encoded = json.dumps(summary, sort_keys=True, separators=(",", ":"), allow_nan=False)
     except (TypeError, ValueError) as ex:
-        raise ValueError(
-            f"historical context {source['id']} summary is not finite JSON"
-        ) from ex
+        raise ValueError(f"historical context {source['id']} summary is not finite JSON") from ex
     if len(encoded.encode("utf-8")) > 65536:
-        raise ValueError(
-            f"historical context {source['id']} summary exceeds bounded payload size"
-        )
+        raise ValueError(f"historical context {source['id']} summary exceeds bounded payload size")
 
     return {
-        "id": source["id"],
-        "path": source["path"],
-        "remote_blob_sha": sha,
+        "id": source["id"], "path": source["path"], "remote_blob_sha": sha,
         "run_id": payload.get("RUN_ID") or payload.get("run_id"),
         "run_status": payload.get("RUN_STATUS") or payload.get("status"),
-        "evidence_status": source["evidence_status"],
-        "collection_only": source["collection_only"],
-        "research_context_eligible": True,
-        "candidate_evidence_eligible": False,
-        "foreign_evidence_only": True,
-        "requires_foundry_and_evaluator": True,
-        "summary": summary,
-        "subject": source["subject"],
-        "execution_authorized": False,
+        "evidence_status": source["evidence_status"], "collection_only": source["collection_only"],
+        "research_context_eligible": True, "candidate_evidence_eligible": False,
+        "foreign_evidence_only": True, "requires_foundry_and_evaluator": True,
+        "summary": summary, "subject": source["subject"], "execution_authorized": False,
         "production_decision_authorized": False,
     }
 
@@ -982,6 +977,7 @@ def _normalize_peer_packet(
     packet: Mapping[str, Any],
     *,
     blob_sha: str,
+    consumer_contract: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     if packet.get("schema_version") != "icarus-peer-intelligence-packet-v1":
         raise ValueError("unsupported Icarus-engine peer packet schema")
@@ -1219,96 +1215,129 @@ def _normalize_peer_packet(
             "execution_authorized": False,
         })
 
+    contract = consumer_contract or {"historical_context": None}
+    historical_sources = _normalize_historical_context_contract(contract)
+    historical_version = int(historical_sources[0]["contract_version"]) if historical_sources else 1
+    if historical_version == 1 and "historical_context_version" in packet:
+        raise ValueError("PACKET_VERSION_MISMATCH")
+    if historical_version == 2 and (
+        type(packet.get("historical_context_version")) is not int
+        or packet.get("historical_context_version") != 2
+    ):
+        raise ValueError("PACKET_VERSION_MISMATCH")
+
     historical_artifacts_raw = packet.get("historical_artifacts")
     historical_witnesses: list[dict[str, Any]] = []
     if not isinstance(historical_artifacts_raw, list):
-        raise ValueError("Icarus-engine peer historical_artifacts must be an array")
-    expected_ids = set(_HISTORICAL_CONTEXT_EXPECTED)
+        raise ValueError("ARTIFACT_FIELD_MISMATCH: historical_artifacts must be an array")
+    if not historical_sources:
+        historical_sources = [
+            {**_HISTORICAL_CONTEXT_EXPECTED[source_id], "id": source_id,
+             "research_context_eligible": True, "candidate_evidence_eligible": False,
+             "execution_authorized": False, "contract_version": 1}
+            for source_id in sorted(_HISTORICAL_CONTEXT_LEGACY_IDS)
+        ]
+    expected_sources = {source["id"]: source for source in historical_sources}
     seen_ids: set[str] = set()
     seen_artifact_ids: set[str] = set()
+    document_fields = {
+        "lane", "artifact_kind", "path", "schema_value", "source_artifact_blob_sha",
+        "run_id", "run_status", "evidence_status", "research_context_eligible",
+        "candidate_evidence_eligible", "summary", "clocks", "execution_authorized", "artifact_id",
+    }
     for index, raw in enumerate(historical_artifacts_raw):
         if not isinstance(raw, Mapping):
-            raise ValueError(f"Icarus-engine peer historical artifact {index} is not an object")
+            raise ValueError(f"ARTIFACT_FIELD_MISMATCH: peer historical artifact {index} is not an object")
         source_id = str(raw.get("lane") or "").strip()
-        if source_id not in expected_ids or source_id in seen_ids:
-            raise ValueError("Icarus-engine peer historical artifact source identity mismatch")
+        if source_id not in expected_sources:
+            raise ValueError("UNKNOWN_SOURCE: peer historical artifact identity")
+        if source_id in seen_ids:
+            raise ValueError("DUPLICATE_SOURCE: peer historical artifact identity")
         seen_ids.add(source_id)
-        expected = _HISTORICAL_CONTEXT_EXPECTED[source_id]
-        if raw.get("artifact_kind") != "HISTORICAL_LATEST":
-            raise ValueError(f"Icarus-engine peer historical artifact kind mismatch: {source_id}")
-        if raw.get("path") != expected["path"]:
-            raise ValueError(f"Icarus-engine peer historical artifact path mismatch: {source_id}")
-        if raw.get("evidence_status") != expected["evidence_status"]:
-            raise ValueError(f"Icarus-engine peer historical artifact evidence mismatch: {source_id}")
-        if raw.get("research_context_eligible") is not True:
-            raise ValueError(f"Icarus-engine peer historical artifact is not research context: {source_id}")
-        if raw.get("candidate_evidence_eligible") is not False:
-            raise ValueError(f"Icarus-engine peer historical artifact attempts candidate evidence: {source_id}")
-        if raw.get("execution_authorized") is not False:
-            raise ValueError(f"Icarus-engine peer historical artifact attempts execution authority: {source_id}")
-        if raw.get("run_status") != "RUN_PERSISTED":
-            raise ValueError(f"Icarus-engine peer historical artifact is not persisted: {source_id}")
+        expected = expected_sources[source_id]
+        kind = expected["kind"]
+        if kind == "RESEARCH_CONTEXT_DOCUMENT":
+            if set(raw) != document_fields:
+                raise ValueError(f"ARTIFACT_FIELD_MISMATCH: {source_id}")
+            if (raw.get("artifact_kind") != kind or raw.get("path") != expected["path"]
+                or raw.get("evidence_status") != expected["evidence_status"]
+                or raw.get("research_context_eligible") is not True):
+                raise ValueError(f"ARTIFACT_FIELD_MISMATCH: {source_id}")
+            if raw.get("candidate_evidence_eligible") is not False or raw.get("execution_authorized") is not False:
+                raise ValueError(f"AUTHORITY_EXPANSION: {source_id}")
+            if raw.get("run_id") is not None or raw.get("run_status") is not None:
+                raise ValueError(f"KIND_CONFUSION: {source_id}")
+            if raw.get("schema_value") != expected["schema_value"]:
+                raise ValueError(f"SCHEMA_MISMATCH: {source_id}")
+            artifact_id = raw.get("artifact_id")
+            if not isinstance(artifact_id, str) or len(artifact_id) != 64 or any(c not in "0123456789abcdef" for c in artifact_id):
+                raise ValueError(f"ARTIFACT_ID_MISMATCH: {source_id}")
+            unsigned = dict(raw); unsigned.pop("artifact_id", None)
+            computed = hashlib.sha256(json.dumps(unsigned, sort_keys=True, separators=(",", ":"), allow_nan=False).encode("utf-8")).hexdigest()
+            if artifact_id != computed or artifact_id in seen_artifact_ids:
+                raise ValueError(f"ARTIFACT_ID_MISMATCH: {source_id}")
+            seen_artifact_ids.add(artifact_id)
+            source_blob = str(raw.get("source_artifact_blob_sha") or "").lower()
+            if not _is_sha(source_blob):
+                raise ValueError(f"BLOB_WITNESS_MISMATCH: {source_id}")
+            summary, clocks = raw.get("summary"), raw.get("clocks")
+            if not isinstance(summary, Mapping) or not isinstance(clocks, Mapping):
+                raise ValueError(f"ARTIFACT_FIELD_MISMATCH: {source_id}")
+            historical_witnesses.append({
+                "id": source_id, "kind": kind, "path": expected["path"],
+                "artifact_id": artifact_id, "source_artifact_blob_sha": source_blob,
+                "source_artifact_blob_verified": False, "projection_verified": False,
+                "packet_summary": dict(summary), "packet_clocks": dict(clocks),
+                "schema_value": raw["schema_value"], "packet_source_commit": source_commit,
+                "run_id": None, "run_status": None, "evidence_status": expected["evidence_status"],
+                "collection_only": True, "candidate_evidence_eligible": False,
+                "execution_authorized": False, "production_decision_authorized": False,
+                "current_main_blob_sha": None, "current_main_relation": "UNMEASURED",
+            })
+            continue
 
+        if raw.get("artifact_kind") != "HISTORICAL_LATEST":
+            raise ValueError(f"ARTIFACT_FIELD_MISMATCH: {source_id}")
+        if raw.get("path") != expected["path"]:
+            raise ValueError(f"ARTIFACT_FIELD_MISMATCH: {source_id}")
+        if raw.get("evidence_status") != expected["evidence_status"]:
+            raise ValueError(f"ARTIFACT_FIELD_MISMATCH: {source_id}")
+        if raw.get("research_context_eligible") is not True:
+            raise ValueError(f"SOURCE_NOT_ELIGIBLE: {source_id}")
+        if raw.get("candidate_evidence_eligible") is not False or raw.get("execution_authorized") is not False:
+            raise ValueError(f"AUTHORITY_EXPANSION: {source_id}")
+        if raw.get("run_status") != "RUN_PERSISTED":
+            raise ValueError(f"SOURCE_NOT_ELIGIBLE: {source_id}")
         source_blob = str(raw.get("source_artifact_blob_sha") or "").lower()
         if not _is_sha(source_blob):
-            raise ValueError(f"Icarus-engine peer historical artifact source blob is invalid: {source_id}")
-
+            raise ValueError(f"BLOB_WITNESS_MISMATCH: {source_id}")
         artifact_id = str(raw.get("artifact_id") or "").lower()
-        if (
-            len(artifact_id) != 64
-            or any(ch not in "0123456789abcdef" for ch in artifact_id)
-            or artifact_id in seen_artifact_ids
-        ):
-            raise ValueError(f"Icarus-engine peer historical artifact ID is invalid: {source_id}")
+        if len(artifact_id) != 64 or any(c not in "0123456789abcdef" for c in artifact_id) or artifact_id in seen_artifact_ids:
+            raise ValueError(f"ARTIFACT_ID_MISMATCH: {source_id}")
+        unsigned = dict(raw); unsigned.pop("artifact_id", None)
+        computed = hashlib.sha256(json.dumps(unsigned, sort_keys=True, separators=(",", ":"), allow_nan=False).encode("utf-8")).hexdigest()
+        if artifact_id != computed:
+            raise ValueError(f"historical artifact ID mismatch: {source_id}")
         seen_artifact_ids.add(artifact_id)
-        unsigned_artifact = dict(raw)
-        unsigned_artifact.pop("artifact_id", None)
-        computed_artifact_id = hashlib.sha256(
-            json.dumps(
-                unsigned_artifact,
-                sort_keys=True,
-                separators=(",", ":"),
-                allow_nan=False,
-            ).encode("utf-8")
-        ).hexdigest()
-        if artifact_id != computed_artifact_id:
-            raise ValueError(f"Icarus-engine peer historical artifact ID mismatch: {source_id}")
-
         run_id = str(raw.get("run_id") or "").strip()
         if not run_id:
-            raise ValueError(f"Icarus-engine peer historical artifact run_id is missing: {source_id}")
-        packet_summary = raw.get("summary")
-        if not isinstance(packet_summary, Mapping):
-            raise ValueError(
-                f"Icarus-engine peer historical artifact summary is invalid: {source_id}"
-            )
-        packet_lineage = raw.get("lineage")
-        if not isinstance(packet_lineage, Mapping):
-            raise ValueError(
-                f"Icarus-engine peer historical artifact lineage is invalid: {source_id}"
-            )
+            raise ValueError(f"ARTIFACT_FIELD_MISMATCH: historical run_id missing: {source_id}")
+        packet_summary, packet_lineage = raw.get("summary"), raw.get("lineage")
+        if not isinstance(packet_summary, Mapping) or not isinstance(packet_lineage, Mapping):
+            raise ValueError(f"ARTIFACT_FIELD_MISMATCH: historical projection invalid: {source_id}")
         historical_witnesses.append({
-            "id": source_id,
-            "path": expected["path"],
-            "artifact_id": artifact_id,
-            "source_artifact_blob_sha": source_blob,
-            "source_artifact_blob_verified": False,
-            "projection_verified": False,
-            "packet_summary": dict(packet_summary),
-            "packet_lineage": dict(packet_lineage),
-            "packet_source_commit": source_commit,
-            "run_id": run_id,
-            "run_status": "RUN_PERSISTED",
-            "evidence_status": expected["evidence_status"],
-            "collection_only": expected["collection_only"],
-            "candidate_evidence_eligible": False,
-            "execution_authorized": False,
-            "production_decision_authorized": False,
-            "current_main_blob_sha": None,
-            "current_main_relation": "UNMEASURED",
+            "id": source_id, "kind": kind, "path": expected["path"],
+            "artifact_id": artifact_id, "source_artifact_blob_sha": source_blob,
+            "source_artifact_blob_verified": False, "projection_verified": False,
+            "packet_summary": dict(packet_summary), "packet_lineage": dict(packet_lineage),
+            "packet_source_commit": source_commit, "run_id": run_id,
+            "run_status": "RUN_PERSISTED", "evidence_status": expected["evidence_status"],
+            "collection_only": expected["collection_only"], "candidate_evidence_eligible": False,
+            "execution_authorized": False, "production_decision_authorized": False,
+            "current_main_blob_sha": None, "current_main_relation": "UNMEASURED",
         })
-    if seen_ids != expected_ids:
-        raise ValueError("Icarus-engine peer historical artifact set mismatch")
+    if seen_ids != set(expected_sources):
+        raise ValueError("MISSING_SOURCE: peer historical artifact set mismatch")
 
     peer_blob = str(blob_sha or "").lower()
     if not _is_sha(peer_blob):
@@ -1499,6 +1528,13 @@ class BrainRemoteSync:
                     payload,
                     blob_sha=blob_sha,
                 )
+                if source.get("kind") == "RESEARCH_CONTEXT_DOCUMENT":
+                    now = self._now_utc()
+                    if not isinstance(now, datetime) or now.tzinfo is None or now.utcoffset() is None:
+                        raise ValueError("INVALID_SOURCE_CLOCK: live sync clock")
+                    collected = datetime.fromisoformat(row["clocks"]["collected_at"].replace("Z", "+00:00"))
+                    if (collected - now.astimezone(timezone.utc)).total_seconds() > 300:
+                        raise ValueError(f"FUTURE_SOURCE_CLOCK: {source['id']}")
                 rows.append(row)
 
                 if blob_sha not in processed:
@@ -1618,7 +1654,9 @@ class BrainRemoteSync:
                     peer_payload = json.loads(peer_raw.decode("utf-8"))
                     if not isinstance(peer_payload, Mapping):
                         raise ValueError("peer packet payload is not an object")
-                    normalized_peer = _normalize_peer_packet(peer_payload, blob_sha=peer_blob)
+                    normalized_peer = _normalize_peer_packet(
+                        peer_payload, blob_sha=peer_blob, consumer_contract=contract_docs["consumer"]
+                    )
                     source_commit = normalized_peer["peer_source_commit"]
                     compare = self._fetch_json(_remote_compare_api(source_commit))
                     if not isinstance(compare, Mapping):
@@ -2059,6 +2097,40 @@ class BrainRemoteSync:
                                 f"historical packet witness source attempts execution authority: {witness['id']}"
                             )
                         _validate_historical_source_semantics(witness, source_payload)
+                        if witness.get("kind") == "RESEARCH_CONTEXT_DOCUMENT":
+                            if source_payload.get(witness.get("schema_key", _HISTORICAL_CONTEXT_EXPECTED[witness["id"]]["schema_key"])) != witness.get("schema_value"):
+                                raise ValueError(f"historical packet witness schema mismatch: {witness['id']}")
+                            expected_source = _HISTORICAL_CONTEXT_EXPECTED[witness["id"]]
+                            projection = _normalize_historical_document(
+                                expected_source, source_payload, blob_sha=source_blob
+                            )
+                            if projection.get("summary") != witness.get("packet_summary"):
+                                raise ValueError(f"historical packet witness projection mismatch: {witness['id']}")
+                            if projection.get("clocks") != witness.get("packet_clocks"):
+                                raise ValueError(f"historical packet witness clock projection mismatch: {witness['id']}")
+                            observed_clock = datetime.fromisoformat(
+                                normalized_peer["peer_observed_at"].replace("Z", "+00:00")
+                            )
+                            collected_clock = datetime.fromisoformat(
+                                projection["clocks"]["collected_at"].replace("Z", "+00:00")
+                            )
+                            if (collected_clock - observed_clock).total_seconds() > 300:
+                                raise ValueError(f"FUTURE_SOURCE_CLOCK: {witness['id']}")
+                            witness["source_artifact_blob_verified"] = True
+                            witness["projection_verified"] = True
+                            live_row = live_rows.get(witness["id"])
+                            live_blob = str(live_row.get("remote_blob_sha") or "").lower() if isinstance(live_row, Mapping) else ""
+                            witness["current_main_blob_sha"] = live_blob or None
+                            if live_blob == source_blob:
+                                witness["current_main_relation"] = "SAME_AS_PACKET_SOURCE"
+                                same_as_live += 1
+                            elif _is_sha(live_blob):
+                                witness["current_main_relation"] = "LIVE_SOURCE_ADVANCED"
+                                live_advanced += 1
+                            else:
+                                witness["current_main_relation"] = "CURRENT_MAIN_CONTEXT_UNAVAILABLE"
+                            verified_witnesses += 1
+                            continue
                         source_run_id = source_payload.get("RUN_ID") or source_payload.get("run_id")
                         source_run_status = (
                             source_payload.get("RUN_STATUS") or source_payload.get("status")
