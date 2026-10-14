@@ -47,8 +47,10 @@ class TacticalAutopilot:
     jump from becoming the new champion merely because of one lucky replay.
     """
 
-    def __init__(self, port):
+    def __init__(self, port, *, possibility_snapshot=None, public_events=None):
         self.port = port
+        self.possibility_snapshot = possibility_snapshot
+        self.public_events = public_events
         self.root = Path(port.base_dir) / "research" / "autopilot"
         self.path = self.root / "state.json"
         self._lock = threading.RLock()
@@ -311,6 +313,79 @@ class TacticalAutopilot:
             return {"label": str(raw_state.get("rate_regime_str") or "UNCLASSIFIED"),
                     "score": regime_score, "observed_market_ts": observed_market_ts}
 
+    def _market_context(self, asset):
+        """Capture current, timestamped market evidence on each champion trial.
+
+        This receipt is deliberately audit/context data: current observations are
+        not replay inputs and never change historical candidate scores.
+        """
+        captured_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        receipt = {
+            "schema_version": "icarus-champion-market-context-v1",
+            "asset": asset,
+            "captured_at": captured_at,
+            "execution_authorized": False,
+            "historical_score_inputs": False,
+            "possibility": None,
+            "public_events": [],
+        }
+        if callable(self.possibility_snapshot):
+            try:
+                snapshot = self.possibility_snapshot(asset)
+                if isinstance(snapshot, dict) and str(snapshot.get("asset") or "").upper() == asset:
+                    latent = snapshot.get("latent_pressure_engine") or {}
+                    components = latent.get("components") or {}
+                    features = {}
+                    if isinstance(components, dict):
+                        for name, value in components.items():
+                            if isinstance(value, dict):
+                                features[str(name)] = {
+                                    key: value.get(key)
+                                    for key in ("value", "confidence", "available", "source")
+                                }
+                    health = snapshot.get("data_health") or {}
+                    receipt["possibility"] = {
+                        "generated_at": snapshot.get("generated_at"),
+                        "evidence_coverage": latent.get("evidence_coverage"),
+                        "edge_state": (snapshot.get("edge_state") or {}).get("state"),
+                        "features": features,
+                        "data_health": {
+                            "history": health.get("history"),
+                            "microstructure": health.get("microstructure"),
+                            "external_features": health.get("external_features"),
+                        },
+                    }
+            except Exception as ex:
+                receipt["possibility_error"] = type(ex).__name__
+        if callable(self.public_events):
+            try:
+                result = self.public_events(asset)
+                rows = result.get("records", []) if isinstance(result, dict) else []
+                for row in rows:
+                    if not isinstance(row, dict):
+                        continue
+                    observed = row.get("observed_at")
+                    if not isinstance(observed, str):
+                        continue
+                    try:
+                        observed_dt = datetime.fromisoformat(observed.replace("Z", "+00:00"))
+                        if observed_dt.tzinfo is None or observed_dt > datetime.fromisoformat(captured_at.replace("Z", "+00:00")):
+                            continue
+                    except ValueError:
+                        continue
+                    receipt["public_events"].append({
+                        key: row.get(key) for key in (
+                            "source", "source_event_id", "revision_id", "event_type",
+                            "instrument_id", "observed_at", "published_at",
+                            "timing_basis", "values", "units", "quality_flags",
+                        ) if key in row
+                    } | ({"text": str(row["text"])[:500]} if row.get("text") else {}))
+                    if len(receipt["public_events"]) == 8:
+                        break
+            except Exception as ex:
+                receipt["public_events_error"] = type(ex).__name__
+        return receipt
+
     @staticmethod
     def _score(result, min_trades):
         eq = result.get("equity") or []
@@ -489,6 +564,15 @@ class TacticalAutopilot:
             self._write(state)
 
         try:
+            market_context = self._market_context(asset)
+            candidate["market_context"] = market_context
+            with self._lock:
+                state = self._read()
+                active = state.get("active") or {}
+                active["candidate"] = candidate
+                active["stage"] = "backtest"
+                state["active"] = active
+                self._write(state)
             result, metrics = self._evaluate_candidate(candidate, cfg)
             record = {
                 "id": candidate["id"],
@@ -498,6 +582,7 @@ class TacticalAutopilot:
                 "chart_type": candidate.get("chart_type"),
                 "session": candidate.get("session"),
                 "regime_context": regime_context,
+                "market_context": market_context,
                 "fill_on": "real",
                 "delta": candidate["delta"],
                 "reason": candidate["reason"],
@@ -619,6 +704,13 @@ class TacticalAutopilot:
             **state,
             "history": history[-60:],
             "leaderboard": leaderboard,
+            "context_feed": {
+                "possibility_enabled": callable(self.possibility_snapshot),
+                "public_events_enabled": callable(self.public_events),
+                "captured_per_candidate": True,
+                "receipt_field": "market_context",
+                "historical_score_inputs": False,
+            },
             "running": bool(self._thread and self._thread.is_alive()),
             "cycle_busy": self._cycle_lock.locked(),
             "mode": "autonomous shadow research",

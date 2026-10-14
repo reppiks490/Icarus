@@ -322,6 +322,9 @@ def test_dashboard_surfaces_tactical_autopilot_and_root_engine_control():
     assert "/api/autopilot" in autopilot
     assert "robustness_windows" in autopilot
     assert "Tactical learning map" in autopilot
+    assert "Champion market context" in autopilot
+    assert "psi.features" in autopilot
+    assert "context only, not historical replay inputs" in autopilot
     assert "/api/engine-control" in control
     assert "Tactical Autopilot" in control
     assert 'p.path == "/api/autopilot"' in server
