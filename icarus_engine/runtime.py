@@ -1467,6 +1467,7 @@ class Portfolio:
                 prepare = getattr(r.feed, "prepare_live", None)
                 if r.spec.kind == "futures" and callable(prepare):
                     prepare([r.spec.ticker])
+                    self._prepare_depth_context(r.feed, [r.spec.ticker])
                 self._spawn(r)
             return r
         except Exception:
@@ -1610,9 +1611,22 @@ class Portfolio:
                 group[1].append(r.spec.ticker)
         for feed, tickers in groups.values():
             feed.prepare_live(tickers)
+            self._prepare_depth_context(feed, tickers)
         for s in list(self.order):
             self._spawn(self.runners[s])
         threading.Thread(target=self._sampler, daemon=True, name="equity-sampler").start()
+
+    def _prepare_depth_context(self, feed: Any, tickers: Sequence[str]) -> None:
+        """Subscribe isolated MBP-10 context without making it a core-feed dependency."""
+        if self.feed_mode != "databento":
+            return
+        try:
+            feed.prepare_live(tickers, include_depth="mbp-10")
+        except Exception as ex:
+            self.journal.log(
+                "WARN",
+                f"Databento MBP-10 depth unavailable; core feed remains active ({type(ex).__name__})",
+            )
 
     def _run(self, r: AssetRunner) -> None:
         try:

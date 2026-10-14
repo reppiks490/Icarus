@@ -7,16 +7,30 @@ import pytest
 from icarus_engine.source_watch import SourceWatch
 
 
-def test_opt_in_cadence_and_restart_use_saved_results(tmp_path):
+def test_automatic_defaults_and_restart_use_saved_results(tmp_path):
     calls = []
     source = SimpleNamespace(root=tmp_path, collect=lambda name, options: calls.append(name) or {"status": "collected"})
     watch = SourceWatch(source)
-    assert watch.tick() is None and calls == []
-    watch.configure({"enabled": True, "jobs": [{"source": "coinbase", "interval_seconds": 5, "options": {}}]})
+    config = watch.status()["config"]
+    assert config["enabled"] is True
+    assert {job["source"] for job in config["jobs"]} == {
+        "coinbase", "cftc", "bls", "federal-reserve", "bea", "yahoo-dxy"
+    }
+    assert {job["source"]: job["interval_seconds"] for job in config["jobs"]}["coinbase"] == 60
+    watch.configure({"enabled": True, "jobs": [{"source": "coinbase", "interval_seconds": 60, "options": {}}]})
     assert watch.tick()["status"] == "collected"
     assert SourceWatch(source).tick() is None
-    assert calls == ["coinbase"]
-    assert watch.status()["collections"][0]["result"]["status"] == "collected"
+    assert len(calls) == 1 and calls[0] in {job["source"] for job in config["jobs"]}
+    assert any(row["result"]["status"] == "collected" for row in watch.status()["collections"])
+
+
+def test_explicit_disable_is_respected(tmp_path):
+    calls = []
+    source = SimpleNamespace(root=tmp_path, collect=lambda name, options: calls.append(name))
+    watch = SourceWatch(source)
+    watch.configure({"enabled": False})
+    assert watch.tick() is None
+    assert calls == []
 
 
 def test_cross_process_claim_does_not_hold_db_during_network(tmp_path):
