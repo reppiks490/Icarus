@@ -956,3 +956,201 @@ class IntelligenceCollaboration:
             snapshot,
             idempotent_root=bool(published.get("idempotent")),
         )
+
+
+@dataclass(frozen=True)
+class TransitionRequest:
+    work_id: str
+    transition: str
+    actor_principal: str
+    actor_kind: str
+    operation_id: str
+    expected_head_event_id: str
+    data: Mapping[str, object] = field(default_factory=dict)
+    evidence_ids: tuple[str, ...] = ()
+    assets: tuple[str, ...] = ()
+    additional_causation_ids: tuple[str, ...] = ()
+
+    def normalized(self) -> dict[str, object]:
+        work_id = _work_id(self.work_id)
+        transition = _lower_enum(self.transition, "transition", TRANSITIONS - {"requested"})
+        actor = _text(self.actor_principal, "actor_principal", MAX_PRINCIPAL)
+        actor_kind = _lower_enum(self.actor_kind, "actor_kind", PRINCIPAL_KINDS)
+        operation_id = _text(self.operation_id, "operation_id", MAX_OPERATION_ID)
+        expected_head = _text(self.expected_head_event_id, "expected_head_event_id", 240)
+        data = _finite_json_mapping(self.data, "data")
+        evidence_ids = _bounded_items(
+            self.evidence_ids,
+            "evidence_ids",
+            item_limit=240,
+            count_limit=64,
+        )
+        assets = _bounded_items(self.assets, "assets", item_limit=80, count_limit=64)
+        additional_causes = _bounded_items(
+            self.additional_causation_ids,
+            "additional_causation_ids",
+            item_limit=240,
+            count_limit=64,
+        )
+        return {
+            "work_id": work_id,
+            "transition": transition,
+            "actor_principal": actor,
+            "actor_kind": actor_kind,
+            "operation_id": operation_id,
+            "expected_head_event_id": expected_head,
+            "data": data,
+            "evidence_ids": list(evidence_ids),
+            "assets": list(assets),
+            "additional_causation_ids": list(additional_causes),
+        }
+
+
+def _event_type_for_transition(work_kind: str, transition: str, actor_kind: str) -> str:
+    if transition == "completed" and work_kind == "decision":
+        return "decision_response"
+    if transition in {"partial_result", "completed"}:
+        return "research"
+    return {"agent": "agent_note", "human": "human_note", "system": "system"}[actor_kind]
+
+
+def build_transition_event(
+    snapshot: WorkSnapshot,
+    transition: TransitionRequest,
+    *,
+    observed_at: str,
+    received_at: str,
+) -> IntelligenceEvent:
+    if not isinstance(snapshot, WorkSnapshot):
+        raise ValueError("snapshot must be WorkSnapshot")
+    if not isinstance(transition, TransitionRequest):
+        raise ValueError("transition must be TransitionRequest")
+    material = transition.normalized()
+    if material["work_id"] != snapshot.work_id:
+        raise ValueError("transition work_id must match snapshot work_id")
+    observed = _time_text(observed_at, "observed_at")
+    received = _time_text(received_at, "received_at")
+    if received < observed:
+        raise ValueError("received_at cannot precede observed_at")
+    payload: dict[str, object] = {
+        "protocol": COLLABORATION_PROTOCOL,
+        "work_id": material["work_id"],
+        "transition": material["transition"],
+        "actor_principal": material["actor_principal"],
+        "actor_kind": material["actor_kind"],
+        "operation_id": material["operation_id"],
+        "expected_head_event_id": material["expected_head_event_id"],
+        "data": material["data"],
+    }
+    if _payload_size(payload) > MAX_COLLABORATION_PAYLOAD_BYTES:
+        raise ValueError(f"collaboration payload exceeds 30 KiB ({MAX_COLLABORATION_PAYLOAD_BYTES} bytes)")
+    causes = set(str(item) for item in material["additional_causation_ids"])
+    causes.add(str(material["expected_head_event_id"]))
+    tags = {
+        "collaboration:v1",
+        f"work-kind:{snapshot.work_kind}",
+        f"transition:{material['transition']}",
+        f"actor:{material['actor_principal']}",
+    }
+    event_type = _event_type_for_transition(
+        snapshot.work_kind,
+        str(material["transition"]),
+        str(material["actor_kind"]),
+    )
+    return IntelligenceEvent(
+        event_type=event_type,
+        source=str(material["actor_principal"]),
+        source_kind=str(material["actor_kind"]),
+        channel=COLLABORATION_CHANNEL,
+        thread_key=f"work:{snapshot.work_id}",
+        title=f"Work {material['transition']}: {snapshot.work_kind}",
+        body=str(material["transition"]),
+        observed_at=observed,
+        received_at=received,
+        severity=snapshot.priority,
+        urgency=0.0,
+        confidence=None,
+        assets=tuple(str(item) for item in material["assets"]),
+        correlation_id=snapshot.work_id,
+        causation_ids=tuple(sorted(causes)),
+        evidence_ids=tuple(str(item) for item in material["evidence_ids"]),
+        tags=tuple(sorted(tags)),
+        payload=payload,
+    )
+
+
+def _original_operation_event_id(
+    history: Sequence[Mapping[str, object]],
+    operation_id: str,
+    *,
+    exclude_event_id: str | None = None,
+) -> str | None:
+    for record in history:
+        payload = record.get("payload")
+        if not isinstance(payload, Mapping):
+            continue
+        if payload.get("operation_id") != operation_id:
+            continue
+        event_id = record.get("event_id")
+        if not isinstance(event_id, str):
+            continue
+        if exclude_event_id is not None and event_id == exclude_event_id:
+            continue
+        return event_id
+    return None
+
+
+_BaseIntelligenceCollaboration = IntelligenceCollaboration
+
+
+class IntelligenceCollaboration(_BaseIntelligenceCollaboration):
+    """Publication facade with semantic transition appends."""
+
+    def append_transition(
+        self,
+        transition: TransitionRequest,
+        *,
+        observed_at: str,
+        received_at: str,
+    ) -> dict[str, object]:
+        normalized = transition.normalized()
+        work_id = str(normalized["work_id"])
+        history_before = self.history(work_id)
+        snapshot_before = project_work(history_before)
+        original_event_id = _original_operation_event_id(
+            history_before,
+            str(normalized["operation_id"]),
+        )
+        event = build_transition_event(
+            snapshot_before,
+            transition,
+            observed_at=observed_at,
+            received_at=received_at,
+        )
+        published = self._fabric.publish(event)
+        snapshot_after = self.snapshot(work_id)
+        event_id = str(published["event_id"])
+
+        if bool(published.get("idempotent")) and original_event_id is not None:
+            return {
+                "event_id": event_id,
+                "sequence": int(published["sequence"]),
+                "applied": False,
+                "conflict_code": "duplicate_operation",
+                "original_event_id": original_event_id,
+                "head_event_id": snapshot_after.head_event_id,
+                "state": snapshot_after.state,
+                "execution_authorized": False,
+                "production_decision_authorized": False,
+            }
+
+        result = _publication_result(published, snapshot_after)
+        if result.get("conflict_code") == "duplicate_operation":
+            original = original_event_id or _original_operation_event_id(
+                self.history(work_id),
+                str(normalized["operation_id"]),
+                exclude_event_id=event_id,
+            )
+            if original is not None:
+                result["original_event_id"] = original
+        return result
