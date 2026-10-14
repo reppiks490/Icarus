@@ -40,6 +40,7 @@ WORK_KINDS = {
     "delegation",
     "synthesis",
 }
+RESULT_KINDS = {"json", "event_refs", "evidence_bundle", "decision", "text_plus_refs"}
 TRANSITIONS = {
     "requested",
     "accepted",
@@ -214,6 +215,27 @@ def request_material_hash(material: Mapping[str, object]) -> str:
     return _sha256_json(_finite_json_mapping(material, "request material"))
 
 
+def _normalize_result_contract(value: Mapping[str, object] | None) -> dict[str, object] | None:
+    if value is None:
+        return None
+    contract = _finite_json_mapping(value, "result_contract")
+    result_kind = _lower_enum(contract.get("result_kind"), "result_contract.result_kind", RESULT_KINDS)
+    required_fields = _bounded_items(
+        contract.get("required_fields", ()),
+        "result_contract.required_fields",
+        item_limit=64,
+        count_limit=32,
+    )
+    schema_id = _optional_text(contract.get("schema_id"), "result_contract.schema_id", 160)
+    schema_version = _optional_text(contract.get("schema_version"), "result_contract.schema_version", 80)
+    return {
+        "result_kind": result_kind,
+        "required_fields": list(required_fields),
+        "schema_id": schema_id,
+        "schema_version": schema_version,
+    }
+
+
 @dataclass(frozen=True)
 class WorkRequest:
     requester_principal: str
@@ -254,11 +276,7 @@ class WorkRequest:
             count_limit=MAX_REVIEWERS,
         )
         deadline = _time_text(self.deadline, "deadline") if self.deadline is not None else None
-        result_contract = (
-            _finite_json_mapping(self.result_contract, "result_contract")
-            if self.result_contract is not None
-            else None
-        )
+        result_contract = _normalize_result_contract(self.result_contract)
         parent_work_id = _work_id(self.parent_work_id, "parent_work_id") if self.parent_work_id is not None else None
         parent_event_id = _optional_text(self.parent_event_id, "parent_event_id", 240)
         if (parent_work_id is None) != (parent_event_id is None):
@@ -332,6 +350,13 @@ def build_request_event(
     if not isinstance(request, WorkRequest):
         raise ValueError("request must be WorkRequest")
     material = request.normalized()
+    observed = _time_text(observed_at, "observed_at")
+    received = _time_text(received_at, "received_at")
+    if received < observed:
+        raise ValueError("received_at cannot precede observed_at")
+    deadline = material.get("deadline")
+    if isinstance(deadline, str) and deadline < max(observed, received):
+        raise ValueError("deadline cannot precede root time")
     actor = _lower_enum(actor_kind, "actor_kind", PRINCIPAL_KINDS)
     if actor != material["requester_kind"]:
         raise ValueError("actor_kind must match requester_kind for a root request")
@@ -383,8 +408,8 @@ def build_request_event(
         thread_key=f"work:{work_id}",
         title=f"Work request: {work_kind}",
         body=str(material["objective"]),
-        observed_at=observed_at,
-        received_at=received_at,
+        observed_at=observed,
+        received_at=received,
         severity=int(material["priority"]),
         urgency=0.0,
         confidence=None,
@@ -538,6 +563,43 @@ def _transition_state(state: str, transition: str, *, target_kind: str) -> str |
     return None
 
 
+def _result_contract_matches(
+    contract: Mapping[str, Any] | None,
+    *,
+    work_kind: str,
+    transition: str,
+    event_type: Any,
+    result: Any,
+    event_evidence_ids: Sequence[str],
+) -> bool:
+    if transition not in {"partial_result", "completed"}:
+        return True
+    expected_type = "decision_response" if work_kind == "decision" and transition == "completed" else "research"
+    if event_type != expected_type:
+        return False
+    if contract is None:
+        return True
+    if not isinstance(result, Mapping):
+        return False
+    kind = contract.get("result_kind")
+    required = contract.get("required_fields") or ()
+    if isinstance(required, (str, bytes)):
+        return False
+    if any(field not in result for field in required):
+        return False
+    if kind == "event_refs":
+        refs = result.get("event_refs")
+        return isinstance(refs, (list, tuple)) and bool(refs)
+    if kind == "evidence_bundle":
+        return bool(event_evidence_ids)
+    if kind == "text_plus_refs":
+        text = result.get("text")
+        refs = result.get("event_refs")
+        has_refs = isinstance(refs, (list, tuple)) and bool(refs)
+        return isinstance(text, str) and bool(text.strip()) and (has_refs or bool(event_evidence_ids))
+    return kind in {"json", "decision"}
+
+
 def project_work(
     events: Sequence[Mapping[str, object]],
     *,
@@ -560,26 +622,30 @@ def project_work(
     _integrity(expected_work_id == work_id, "derived work_id mismatch")
     root_material_hash = request_material_hash(normalized_request)
     _integrity(root_payload.get("request_material_hash") == root_material_hash, "request material hash mismatch")
+    root_received = _time_text(ordered[0].get("received_at"), "received_at")
+    deadline = normalized_request.get("deadline")
+    _integrity(deadline is None or str(deadline) >= root_received, "deadline precedes root time")
 
     requester = str(normalized_request["requester_principal"])
     requester_kind = str(normalized_request["requester_kind"])
     target_kind = str(normalized_request["target_kind"])
     target_id = str(normalized_request["target_id"])
+    work_kind = str(normalized_request["work_kind"])
     reviewers = set(normalized_request["reviewer_principals"])
+    result_contract = normalized_request.get("result_contract")
     state = "OPEN"
     assignee: str | None = None
     head_event_id = root_event_id
-    updated_at = str(ordered[0].get("received_at"))
+    updated_at = root_received
     applied_count = 1
     conflicts: list[WorkConflict] = []
     operation_registry: dict[str, tuple[str, str]] = {}
     evidence = set(str(item) for item in (ordered[0].get("evidence_ids") or ()))
-    open_challenges: set[str] = set()
+    open_challenges: dict[str, str] = {}
     resolved_challenges: set[str] = set()
     latest_partial_result: Any | None = None
     final_result: Any | None = None
     escalated = False
-    deadline = normalized_request.get("deadline")
 
     last_sequence = root_sequence
     for event in ordered[1:]:
@@ -601,9 +667,7 @@ def project_work(
                 str(later_request["idempotency_key"]),
             )
             _integrity(later_work_id == work_id, "derived work_id mismatch")
-            conflicts.append(
-                _conflict(event, "duplicate_root" if later_hash == root_material_hash else "conflicting_root")
-            )
+            conflicts.append(_conflict(event, "duplicate_root" if later_hash == root_material_hash else "conflicting_root"))
             continue
 
         actor = str(payload["actor_principal"])
@@ -626,13 +690,15 @@ def project_work(
                 )
             )
             continue
-        operation_registry[operation_id] = (digest, event_id)
-
         if expected_head != head_event_id:
             conflicts.append(_conflict(event, "stale_head", operation_id))
             continue
-        causes = event.get("causation_ids") or ()
-        if isinstance(causes, (str, bytes)) or expected_head not in set(causes):
+        causes_raw = event.get("causation_ids") or ()
+        if isinstance(causes_raw, (str, bytes)):
+            conflicts.append(_conflict(event, "missing_required_cause", operation_id))
+            continue
+        causes = set(str(item) for item in causes_raw)
+        if expected_head not in causes:
             conflicts.append(_conflict(event, "missing_required_cause", operation_id))
             continue
         if state in TERMINAL_STATES:
@@ -656,6 +722,10 @@ def project_work(
         if next_state is None:
             conflicts.append(_conflict(event, "illegal_transition", operation_id))
             continue
+        data = payload.get("data")
+        if not isinstance(data, Mapping):
+            raise CollaborationIntegrityError("transition data must be a mapping")
+
         if transition == "expired":
             if deadline is None:
                 conflicts.append(_conflict(event, "deadline_violation", operation_id))
@@ -665,28 +735,72 @@ def project_work(
                 conflicts.append(_conflict(event, "deadline_violation", operation_id))
                 continue
 
+        event_evidence_raw = event.get("evidence_ids") or ()
+        if isinstance(event_evidence_raw, (str, bytes)):
+            raise CollaborationIntegrityError("evidence_ids must be a collection")
+        event_evidence = tuple(str(item) for item in event_evidence_raw)
+
+        if transition == "challenge":
+            try:
+                challenge_id = _text(data.get("challenge_id"), "challenge_id", MAX_CHALLENGE_ID)
+            except ValueError:
+                conflicts.append(_conflict(event, "challenge_mismatch", operation_id))
+                continue
+            if challenge_id in open_challenges or challenge_id in resolved_challenges:
+                conflicts.append(_conflict(event, "challenge_mismatch", operation_id))
+                continue
+        elif transition == "challenge_response":
+            try:
+                challenge_id = _text(data.get("challenge_id"), "challenge_id", MAX_CHALLENGE_ID)
+            except ValueError:
+                conflicts.append(_conflict(event, "challenge_mismatch", operation_id))
+                continue
+            challenge_event_id = open_challenges.get(challenge_id)
+            if challenge_event_id is None or challenge_event_id not in causes:
+                conflicts.append(_conflict(event, "challenge_mismatch", operation_id))
+                continue
+        elif transition == "completed":
+            unresolved_raw = data.get("unresolved_challenge_ids", ())
+            try:
+                unresolved = _bounded_items(
+                    unresolved_raw,
+                    "unresolved_challenge_ids",
+                    item_limit=MAX_CHALLENGE_ID,
+                    count_limit=64,
+                )
+            except ValueError:
+                conflicts.append(_conflict(event, "challenge_mismatch", operation_id))
+                continue
+            if set(unresolved) != set(open_challenges):
+                conflicts.append(_conflict(event, "challenge_mismatch", operation_id))
+                continue
+
+        if transition in {"partial_result", "completed"} and not _result_contract_matches(
+            result_contract if isinstance(result_contract, Mapping) else None,
+            work_kind=work_kind,
+            transition=transition,
+            event_type=event.get("event_type"),
+            result=data.get("result"),
+            event_evidence_ids=event_evidence,
+        ):
+            conflicts.append(_conflict(event, "result_contract_mismatch", operation_id))
+            continue
+
+        operation_registry[operation_id] = (digest, event_id)
         if transition == "accepted":
             assignee = actor
-        event_evidence = event.get("evidence_ids") or ()
-        if isinstance(event_evidence, (str, bytes)):
-            raise CollaborationIntegrityError("evidence_ids must be a collection")
-        evidence.update(str(item) for item in event_evidence)
-        data = payload.get("data")
-        if not isinstance(data, Mapping):
-            raise CollaborationIntegrityError("transition data must be a mapping")
+        evidence.update(event_evidence)
         if transition == "partial_result":
             latest_partial_result = data.get("result")
         elif transition == "completed":
             final_result = data.get("result")
         elif transition == "challenge":
-            challenge_id = data.get("challenge_id")
-            if isinstance(challenge_id, str) and challenge_id.strip():
-                open_challenges.add(challenge_id.strip())
+            challenge_id = _text(data.get("challenge_id"), "challenge_id", MAX_CHALLENGE_ID)
+            open_challenges[challenge_id] = event_id
         elif transition == "challenge_response":
-            challenge_id = data.get("challenge_id")
-            if isinstance(challenge_id, str) and challenge_id in open_challenges:
-                open_challenges.remove(challenge_id)
-                resolved_challenges.add(challenge_id)
+            challenge_id = _text(data.get("challenge_id"), "challenge_id", MAX_CHALLENGE_ID)
+            open_challenges.pop(challenge_id, None)
+            resolved_challenges.add(challenge_id)
         elif transition == "escalated":
             escalated = True
 
@@ -701,7 +815,7 @@ def project_work(
     return WorkSnapshot(
         protocol=COLLABORATION_PROTOCOL,
         work_id=work_id,
-        work_kind=str(normalized_request["work_kind"]),
+        work_kind=work_kind,
         requester_principal=requester,
         requester_kind=requester_kind,
         target_kind=target_kind,
@@ -712,7 +826,7 @@ def project_work(
         state=state,
         root_event_id=root_event_id,
         head_event_id=head_event_id,
-        created_at=str(ordered[0].get("received_at")),
+        created_at=root_received,
         updated_at=updated_at,
         deadline=str(deadline) if deadline is not None else None,
         deadline_passed=deadline_passed,
@@ -721,11 +835,7 @@ def project_work(
         constraints=dict(normalized_request["constraints"]),
         required_capabilities=tuple(normalized_request["required_capabilities"]),
         reviewer_principals=tuple(normalized_request["reviewer_principals"]),
-        result_contract=(
-            dict(normalized_request["result_contract"])
-            if isinstance(normalized_request.get("result_contract"), Mapping)
-            else None
-        ),
+        result_contract=(dict(result_contract) if isinstance(result_contract, Mapping) else None),
         latest_partial_result=latest_partial_result,
         final_result=final_result,
         evidence_ids=tuple(sorted(evidence)),
