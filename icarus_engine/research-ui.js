@@ -1,6 +1,6 @@
 /* Local research controls. External/model text is escaped; model calls require an action. */
 let researchLoading = false, researchPendingLoad = false, researchJob = null, researchWorkflow = null;
-let researchEvidence = new Set(), researchQualified = false, researchAdaptationLoaded = false;
+let researchEvidence = new Set(), researchQualified = false, researchAdaptationLoaded = false, researchPrefilledJob = null;
 const researchRoles = ['source-auditor','regime-analyst','risk-auditor','openai-review','anthropic-review'];
 function researchHtml(assets) {
   researchAdaptationLoaded = false;
@@ -75,13 +75,21 @@ async function loadResearch() {
     $('#researchStatus').textContent=`${data.mode||'Research'} · ${(data.assets||[]).length} assets · OpenAI ${ledger.providers?.openai?.configured?'configured':'not configured'} · Claude ${ledger.providers?.anthropic?.configured?'configured':'not configured'} · licensed futures ticks ${caps.licensed_tick_feed_connected?'connected':'not connected'}`;
     const asset=$('#rsAsset').value;
     const jobs=(data.jobs||[]).filter(j=>j.asset===asset);
+    const handoffJob=sessionStorage.getItem('icarus-champion-study-job');
+    if(handoffJob&&jobs.some(j=>j.id===handoffJob)) {researchJob=handoffJob;sessionStorage.removeItem('icarus-champion-study-job');}
     if(!researchJob&&jobs.length) researchJob=jobs[jobs.length-1].id;
     researchOptions('#rsStudy',jobs,researchJob,j=>`${j.id} · ${j.status}`);
     if(researchJob) {
       const job=await researchGet('/api/research/jobs/'+encodeURIComponent(researchJob));
       if(view!=='research'||$('#rsAsset').value!==asset) return;
+      if(job.asset!==asset&&handoffJob===researchJob){$('#rsAsset').value=job.asset;researchEvidence.clear();researchJob=null;researchQualified=false;return loadResearch();}
       const r=job.result;
       researchQualified=job.asset===asset&&job.status==='complete'&&r?.research_qualified===true;
+      if(job.promotion_source&&researchPrefilledJob!==job.id){
+        researchEvidence=new Set(job.evidence_ids||[]);
+        if(!$('#rsRationale').value.trim())$('#rsRationale').value=job.rationale||'';
+        researchPrefilledJob=job.id;
+      }
       $('#researchJob').textContent=JSON.stringify({study:job.id,asset:job.asset,status:job.status,error:job.error,
         completed_trials:r?.trials?.length||0,selected:r?.selected,holdout:r?.holdout,
         research_qualified:r?.research_qualified},null,2);
@@ -141,6 +149,8 @@ async function researchOperation(button,action,body) {
   } catch(e) {toast(e.message,true);} finally {if(button.isConnected) button.disabled=false;}
 }
 function wireResearch() {
+  const handoffJob=sessionStorage.getItem('icarus-champion-study-job');
+  if(handoffJob)researchJob=handoffJob;
   $('#rsAsset').onchange=()=>{researchJob=null;researchEvidence.clear();researchQualified=false;researchUpdateGate();loadResearch();};
   $('#rsStudy').onchange=()=>{researchJob=$('#rsStudy').value||null;researchQualified=false;researchUpdateGate();loadResearch();};
   $('#rsLoadStudy').onclick=()=>{researchJob=$('#rsStudyId').value.trim()||null;researchQualified=false;researchUpdateGate();loadResearch();};
