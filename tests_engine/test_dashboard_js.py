@@ -39,6 +39,7 @@ NODE = shutil.which("node")
         "icarus_engine/world-motion.js",
         "icarus_engine/world-cinema.js",
         "icarus_engine/world-aura.js",
+        "icarus_engine/world-immersion.js",
     ],
 )
 def test_dashboard_javascript_parses(rel, tmp_path):
@@ -77,7 +78,8 @@ def test_asset_adder_uses_registry_and_timeframe_suggestions_and_single_flight_s
     assert 'datalist id="addTfOptions"' in src
     assert "['1','2','3','5','10','15','20','30','45','60','120','180','240','D','W']" in src
     assert "REGISTRY.map" in src
-    assert "b.disabled = true" in src
+    assert "button.disabled = true; button.classList.add('world-busy')" in src
+    assert "await withBusyButton(b, async () => {" in src
     assert "await admin('/admin/assets/add'" in src
     assert "j.detail||j.error||'request failed'" in src
 
@@ -128,6 +130,7 @@ def test_overview_command_center_surfaces_real_gauges_and_provider_fabric():
     assert "execution_authorized" in backend
     assert "production_decision_authorized" in backend
     assert "setInterval(refreshCommandCenter, 20000)" in dashboard
+
 
 
 def test_dashboard_surfaces_export_data_integrity_and_mcp_receipts():
