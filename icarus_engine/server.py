@@ -13,6 +13,7 @@
   GET  /api/golive                paper≠live integrity (Grok). Never arms a broker.
   GET  /api/agent                 Field Agent recipes + paste-packs (Grok). Never executes. Never arms a broker.
   GET  /api/system/audit          latest local GitHub/MCP repository + CI audit snapshot
+  GET  /api/access                registered users, authenticated activity, security events
   GET  /api/integrity             export checklist, corpus, repairs, and MCP change receipts
   GET  /api/engine-control        authenticated registered engine/subsystem control snapshot
   GET  /api/brain                 adaptive multi-agent brain, subsystem fabric, regimes, learning and shadow candidates
@@ -39,10 +40,11 @@
   POST /admin/rewarm                       {"asset": "NQ"}
   POST /admin/engine-control               typed registered operator command with audit receipt
   POST /admin/execution-cost/estimate      counterfactual book sweep; never submits an order
+  POST /admin/access/add                   {"label":"..."} → one-time viewer bearer token
+  POST /admin/access/kick                  {"id":"..."} revoke a viewer token immediately
 """
 from __future__ import annotations
 
-import hmac
 import json
 import os
 import re
@@ -88,6 +90,7 @@ from .parallax import ParallaxStore
 from .dreamstate import DreamstateLab
 from .possibility import PossibilityEngine
 from .performance_proof import PerformanceProofStore
+from .access_control import AccessRegistry
 from .latency_telemetry import LatencyTelemetry
 from .source_reliability import SourceReliabilityStore
 from .qualification_receipts import (
@@ -216,6 +219,7 @@ COMMANDS = [
 
 def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: bool = True):
     html_path = Path(__file__).parent / "dashboard.html"
+    access_registry = AccessRegistry(port.base_dir or os.getcwd(), token)
     meta = load_meta()
     research = ResearchWorkspace(port)
     loop_intelligence_sync = LoopIntelligenceSync(port.base_dir)
@@ -1265,7 +1269,15 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
 
         def _auth(self) -> bool:
             scheme, _, tok = self.headers.get("Authorization", "").partition(" ")
-            return bool(token) and scheme.lower() == "bearer" and hmac.compare_digest(tok, token)
+            self.identity = access_registry.authenticate(tok) if scheme.lower() == "bearer" else None
+            if self.identity:
+                return True
+            if scheme.lower() == "bearer" and tok:
+                access_registry.failed_auth()
+            return False
+
+        def _owner(self) -> bool:
+            return bool(getattr(self, "identity", None) and self.identity.get("role") == "owner")
 
         def _int(self, q: Dict[str, Any], key: str, default: int, lo: int, hi: int) -> int:
             try:
@@ -1336,6 +1348,12 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._json(200, snapshot)
             if p.path == "/healthz":
                 return self._json(200, {"ok": True, "assets": list(port.order), "warm": all(r.warm for r in port.runners.values()) if port.runners else False})
+            if p.path == "/api/access":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                snapshot = access_registry.snapshot()
+                snapshot["me"] = self.identity
+                return self._json(200, snapshot)
             if p.path == "/status/public":
                 try:
                     return self._json(200, port.status(nonblocking=True))
@@ -1912,6 +1930,9 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             if not self._auth():                                  # authenticate BEFORE parsing any body
                 self._drain_body()                                # discard it unread, or the 401 can be lost
                 return self._json(401, {"detail": "bad admin token"})
+            if not self._owner():
+                self._drain_body()
+                return self._json(403, {"detail": "viewer access cannot change engine state"})
             try:
                 n = int(self.headers.get("Content-Length", "0") or 0)
             except ValueError:
@@ -1925,6 +1946,20 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._json(400, {"detail": f"bad JSON body: {ex}"})
             if not isinstance(body, dict):
                 return self._json(400, {"detail": "JSON body must be an object"})
+            if p.path == "/admin/access/add":
+                try:
+                    user = access_registry.add(body.get("label", ""))
+                    return self._json(201, {"ok": True, "user": user, "note": "Copy this access token now; it is shown only once."})
+                except (ValueError, TypeError) as ex:
+                    return self._json(400, {"detail": str(ex)})
+                except Exception as ex:
+                    return self._json(409, {"detail": f"could not add user: {type(ex).__name__}"})
+            if p.path == "/admin/access/kick":
+                try:
+                    kicked = access_registry.kick(str(body.get("id", "")))
+                    return self._json(200 if kicked else 404, {"ok": kicked, "detail": "access revoked" if kicked else "user not found"})
+                except ValueError as ex:
+                    return self._json(400, {"detail": str(ex)})
             async_config_routes = {
                 "/admin/inputs/async": "/admin/inputs",
                 "/admin/inputs/reset/async": "/admin/inputs/reset",
