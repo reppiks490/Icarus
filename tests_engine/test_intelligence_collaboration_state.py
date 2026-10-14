@@ -172,7 +172,7 @@ def test_accepted_started_partial_started_completion_lifecycle():
     root = _root()
     accepted = _transition(root, sequence=2, event_id="accept", transition="accepted", actor="worker-agent")
     started = _transition(root, sequence=3, event_id="start-1", transition="started", actor="worker-agent", expected_head="accept")
-    partial = _transition(root, sequence=4, event_id="partial", transition="partial_result", actor="worker-agent", expected_head="start-1", data={"result": {"progress": 0.5}})
+    partial = _transition(root, sequence=4, event_id="partial", transition="partial_result", actor="worker-agent", expected_head="start-1", data={"result": {"conclusion": "preliminary", "progress": 0.5}}, event_type="research")
     restarted = _transition(root, sequence=5, event_id="start-2", transition="started", actor="worker-agent", expected_head="partial")
     completed = _transition(root, sequence=6, event_id="complete", transition="completed", actor="worker-agent", expected_head="start-2", data={"result": {"conclusion": "supported"}, "unresolved_challenge_ids": []}, event_type="research")
     snapshot = project_work([root, accepted, started, partial, restarted, completed])
