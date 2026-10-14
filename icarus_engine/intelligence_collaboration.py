@@ -397,6 +397,7 @@ def build_request_event(
         if material["target_kind"] == "principal"
         else f"group:{material['target_id']}"
     )
+    tags.update(f"reviewer:{principal}" for principal in material["reviewer_principals"])
     parent_work_id = material.get("parent_work_id")
     if isinstance(parent_work_id, str):
         tags.add(f"parent:{parent_work_id}")
