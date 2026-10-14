@@ -12,7 +12,7 @@ from zoneinfo import ZoneInfo
 from icarus_engine.assets import parse_spec
 from icarus_engine.feeds.bars import HistoryHub, parse_ohlcv_csv
 from icarus_engine.runtime import Journal, Portfolio
-from icarus_plant.cli import main as plant_main
+from icarus_plant.cli import _auto_select_feed, main as plant_main
 from icarus_plant.downloads import ingest_downloads
 from icarus_plant.drop import infer_symbol, ingest_drop, ingest_file
 import icarus_plant.drop as drop_mod
@@ -104,6 +104,27 @@ def test_default_engine_service_offline_argv(tmp_path):
     db = default_engine_service(str(tmp_path), "/repo", feed="databento")
     assert db.env["ICARUS_FEED"] == "databento"
     assert db.argv[db.argv.index("--feed") + 1] == "databento"
+
+
+def test_plant_auto_selects_databento_only_for_credentialed_cme_universe(monkeypatch):
+    import icarus_plant.cli as plant_cli
+
+    monkeypatch.delenv("DATABENTO_API_KEY", raising=False)
+    assert _auto_select_feed("NQ,ES") == "yahoo"
+    monkeypatch.setenv("DATABENTO_API_KEY", "configured-locally")
+    monkeypatch.setattr(plant_cli.importlib.util, "find_spec", lambda name: object() if name == "databento" else None)
+    assert _auto_select_feed("NQ,ES") == "databento"
+    assert _auto_select_feed("NQ,BTC") == "yahoo"
+
+
+def test_plant_auto_feed_reports_missing_databento_sdk(monkeypatch):
+    import pytest
+    import icarus_plant.cli as plant_cli
+
+    monkeypatch.setenv("DATABENTO_API_KEY", "configured-locally")
+    monkeypatch.setattr(plant_cli.importlib.util, "find_spec", lambda _name: None)
+    with pytest.raises(SystemExit, match="Databento SDK is missing"):
+        _auto_select_feed("NQ")
 
 
 def test_supervisor_spawn_and_stop(tmp_path):
