@@ -129,6 +129,11 @@ def test_modern_packet_shape_is_bound_to_all_six_sources():
         assert witness["collection_clock_field"]
         source_payload = json.loads((root / "sources" / witness["path"]).read_text())
         _validate_historical_source_semantics(witness, source_payload)
+        projection = _normalize_historical_document(
+            witness, source_payload, blob_sha="a" * 40
+        )
+        assert projection["summary"] == witness["packet_summary"]
+        assert projection["clocks"] == witness["packet_clocks"]
 
 
 def test_modern_packet_rejects_unversioned_or_wrong_typed_version():

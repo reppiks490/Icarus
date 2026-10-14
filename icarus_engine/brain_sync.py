@@ -1290,6 +1290,8 @@ def _normalize_peer_packet(
                 "packet_summary": dict(summary), "packet_clocks": dict(clocks),
                 "schema_key": expected["schema_key"],
                 "schema_value": raw["schema_value"],
+                "summary_fields": expected["summary_fields"],
+                "subject": expected["subject"],
                 "raw_exclusion_field": expected["raw_exclusion_field"],
                 "collection_clock_field": expected["collection_clock_field"],
                 "availability_clock": expected["availability_clock"],
@@ -2107,9 +2109,8 @@ class BrainRemoteSync:
                         if witness.get("kind") == "RESEARCH_CONTEXT_DOCUMENT":
                             if source_payload.get(witness.get("schema_key", _HISTORICAL_CONTEXT_EXPECTED[witness["id"]]["schema_key"])) != witness.get("schema_value"):
                                 raise ValueError(f"historical packet witness schema mismatch: {witness['id']}")
-                            expected_source = _HISTORICAL_CONTEXT_EXPECTED[witness["id"]]
                             projection = _normalize_historical_document(
-                                expected_source, source_payload, blob_sha=source_blob
+                                witness, source_payload, blob_sha=source_blob
                             )
                             if projection.get("summary") != witness.get("packet_summary"):
                                 raise ValueError(f"historical packet witness projection mismatch: {witness['id']}")
