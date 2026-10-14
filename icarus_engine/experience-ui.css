@@ -386,7 +386,7 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 :root[data-world]:not([data-world=""]) .hero .n {text-shadow:0 0 36px color-mix(in srgb,var(--world-glow),transparent 88%)}
 :root[data-world]:not([data-world=""]) tbody tr {transition:background-color .18s,box-shadow .18s}
 :root[data-world]:not([data-world=""]) tbody tr:hover {background:linear-gradient(90deg,color-mix(in srgb,var(--world-glow),transparent 94%),var(--surface-2));box-shadow:inset 2px 0 0 color-mix(in srgb,var(--world-glow),transparent 45%)}
-:root[data-world]:not([data-world=""]) :is(.tab,button,.node,.badge) {position:relative;isolation:isolate}
+:root[data-world]:not([data-world=""]) :is(.tab,button:not(.intro-skip),.node,.badge) {position:relative;isolation:isolate}
 :root[data-world]:not([data-world=""]) .tab.active::after {
   content:"";position:absolute;left:12px;right:12px;bottom:-1px;height:2px;border-radius:99px;
   background:linear-gradient(90deg,transparent,var(--world-glow),transparent);box-shadow:0 0 12px color-mix(in srgb,var(--world-glow),transparent 40%);
@@ -4579,6 +4579,10 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 @media (max-width:899px),(pointer:coarse) {.world-nav-preview{display:none!important}}
 @media (prefers-reduced-motion:reduce) {.world-nav-preview,.world-nav-preview > i{transition:none!important;animation:none!important}}
 @media (forced-colors:active) {.world-nav-preview{display:none!important}}
+
+@media (forced-colors:active) {
+  .world-view-ambient,#view > .world-topology {display:none!important}
+}
 
 
 /* Phase XLV: specialized subsystems own distinct stage geometry inside the selected universe. */

@@ -175,7 +175,8 @@
     if(element.id)return 'id:'+element.id;
     const label=(element.querySelector(':scope > h2,:scope > summary,:scope h2')?.textContent||'instrument')
       .trim().toUpperCase().replace(/\s+/g,' ').slice(0,96);
-    return 'label:'+panelKind(element)+':'+label;
+    const ordinal=element.dataset.worldPanelOrdinal||String([...element.parentElement?.children||[]].indexOf(element)+1);
+    return 'label:'+panelKind(element)+':'+label+':p'+ordinal;
   }
   function decorateSurface(element){
     if(!element?.matches?.('.card,.asset,.group'))return;
@@ -198,6 +199,7 @@
     const total=Math.max(1,majors.length);
     majors.forEach((panel,index)=>{
       panel.dataset.worldPanelOrdinal=String(index+1);
+      panel.dataset.worldPanelKey=panelStableKey(panel);
       const readout=panel.querySelector(':scope > .world-panel-index');
       if(readout)readout.textContent='P'+String(index+1).padStart(2,'0')+' / '+String(total).padStart(2,'0')+' · '+String(panel.dataset.worldPanelKind||'instrument').toUpperCase();
     });
@@ -299,7 +301,9 @@
     sectionRadar.innerHTML='<header><i>SECTION MAP</i><b data-world-radar-count>00</b></header><div data-world-radar-nodes></div>';
     sectionRadar.addEventListener('click',event=>{
       const item=event.target.closest?.('[data-radar-node]');if(!item)return;
-      const panel=document.querySelector(`#view [data-world-topology-node="${item.dataset.radarNode}"]`);
+      const key=item.dataset.worldPanelKey;
+      const panel=key?[...document.querySelectorAll('#view [data-world-panel-key]')].find(el=>el.dataset.worldPanelKey===key):
+        document.querySelector(`#view [data-world-topology-node="${item.dataset.radarNode}"]`);
       if(!panel)return;
       panel.scrollIntoView({behavior:motionAllowed()?'smooth':'auto',block:'center'});
       panel.classList.remove('world-radar-arrival');void panel.offsetWidth;panel.classList.add('world-radar-arrival');
@@ -344,6 +348,7 @@
     host.replaceChildren();if(count)count.textContent=String(points.length).padStart(2,'0');
     for(const p of points.slice(0,12)){
       const item=document.createElement('button');item.type='button';item.dataset.radarNode=String(p.index);item.dataset.kind=p.el.dataset.worldPanelKind||'instrument';
+      item.dataset.worldPanelKey=p.el.dataset.worldPanelKey||'';
       const labelText=radarLabel(p.el),ordinal=String(p.el.dataset.worldPanelOrdinal||p.index+1).padStart(2,'0');
       item.dataset.ordinal=ordinal;item.setAttribute('aria-label','Jump to '+labelText);
       const dot=document.createElement('i'),label=document.createElement('b');label.textContent='P'+ordinal+' · '+labelText;

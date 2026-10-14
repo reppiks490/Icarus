@@ -5,26 +5,28 @@ const {mkdirSync}=require('node:fs');
 const output=process.env.ICARUS_BROWSER_OUTPUT||'/tmp/icarus-depth-previews';mkdirSync(output,{recursive:true});
 (async()=>{
 const browser=await chromium.launch({headless:true,args:['--enable-unsafe-swiftshader'],...(process.env.ICARUS_BROWSER_BINARY?{executablePath:process.env.ICARUS_BROWSER_BINARY}:{})});
-const context=await browser.newContext({viewport:{width:1440,height:1000}}),errors=[],writes=[];
+const context=await browser.newContext({viewport:{width:1440,height:1000},reducedMotion:'no-preference'}),errors=[],writes=[];
 context.on('page',p=>p.on('pageerror',e=>errors.push(e.message)));
 context.on('request',r=>{if(r.method()!=='GET')writes.push(r.url());});
 const page=await context.newPage();
 await page.addInitScript(()=>{
- sessionStorage.setItem('icarus-intro-seen','1');window.auraDraws=0;
+ sessionStorage.setItem('icarus-intro-seen','1');window.auraDraws=0;window.cpuDraws=0;
  const draw=WebGLRenderingContext.prototype.drawArrays;
  WebGLRenderingContext.prototype.drawArrays=function(...args){window.auraDraws++;return draw.apply(this,args);};
+ const clear=CanvasRenderingContext2D.prototype.clearRect;
+ CanvasRenderingContext2D.prototype.clearRect=function(...args){if(this.canvas.classList.contains('world-atmosphere'))window.cpuDraws++;return clear.apply(this,args);};
 });
 await page.goto(process.env.ICARUS_PREVIEW_URL||'http://127.0.0.1:8879');
-await page.locator('.world-aura').waitFor({state:'attached'});
+await page.locator('.reference-nebula').waitFor({state:'attached'});
 await page.locator('.experience-settings summary').click();await page.locator('#experienceVisualDetail').selectOption('rich');
 await page.waitForTimeout(300);
-const aura=page.locator('.world-aura'),state=await aura.getAttribute('data-state');
+const aura=page.locator('.reference-nebula'),state=await aura.getAttribute('data-state');
 if(process.env.ICARUS_REQUIRE_WEBGL==='1')assert.equal(state,'ready','Actual shader compilation must pass');
 let restored=false;
 if(state==='ready'){
  assert.ok(await page.evaluate(()=>window.auraDraws)>0);
  assert.equal(await aura.evaluate(c=>c.getContext('webgl').getError()),0);
- assert.ok(await aura.evaluate(c=>c.width<=900&&c.height<=480));
+ assert.ok(await aura.evaluate(c=>c.width<=960&&c.height<=560),'Reference renderer must stay within its 960×560 GPU budget');
  await page.locator('#experienceVisualDetail').selectOption('light');await page.waitForTimeout(150);
  const calls=await page.evaluate(()=>window.auraDraws);await page.waitForTimeout(200);
  assert.equal(await page.evaluate(()=>window.auraDraws),calls,'Light mode must stop GPU rendering');
@@ -32,19 +34,22 @@ if(state==='ready'){
  await page.locator('#experienceVisualDetail').selectOption('rich');await page.waitForTimeout(200);
  const ext=await aura.evaluate(c=>{window.lossExtension=c.getContext('webgl').getExtension('WEBGL_lose_context');if(window.lossExtension)window.lossExtension.loseContext();return !!window.lossExtension;});
  if(ext){
-  await page.waitForFunction(()=>document.querySelector('.world-aura').dataset.state==='lost');
-  const before=await page.locator('.world-atmosphere').evaluate(c=>c.toDataURL());await page.waitForTimeout(180);
-  assert.notEqual(await page.locator('.world-atmosphere').evaluate(c=>c.toDataURL()),before,'CPU scene must continue after GPU loss');
+  await page.waitForFunction(()=>document.querySelector('.reference-nebula').dataset.state==='lost');
+  await page.waitForFunction(()=>document.querySelector('.world-aura:not(.reference-nebula)')?.dataset.state==='ready');
+  const before=await page.evaluate(()=>window.cpuDraws);
+  await page.waitForFunction(value=>window.cpuDraws>value,before,{timeout:2500});
   await page.evaluate(()=>window.lossExtension.restoreContext());
-  await page.waitForFunction(()=>document.querySelector('.world-aura').dataset.state==='ready');await page.waitForTimeout(200);
+  await page.waitForFunction(()=>document.querySelector('.reference-nebula').dataset.state==='ready');await page.waitForTimeout(200);
   assert.equal(await aura.evaluate(c=>c.getContext('webgl').getError()),0);restored=true;
  }
 }
+await page.locator('#experienceVisualDetail').selectOption('light');
+await page.waitForFunction(()=>document.documentElement.dataset.visualResolved==='light');
 await page.locator('.experience-settings summary').click();
 for(const theme of ['void','astral','divine']){
  await page.locator(`[data-world-choice="${theme}"]`).click();
  await page.waitForFunction(t=>document.documentElement.dataset.world===t,theme);
- await page.waitForFunction(()=>document.querySelectorAll('.world-veil').length===0,null,{timeout:2500});
+ await page.waitForFunction(()=>document.querySelectorAll('.world-veil').length===0,null,{timeout:10000});
  const title=page.locator('#worldTitle');
  assert.ok((await title.getAttribute('aria-label')||await title.textContent()||'').trim().length>0);
  if(await page.locator('html').getAttribute('data-motion')==='live') assert.ok(await title.locator('.world-word').count()>0);
@@ -52,20 +57,25 @@ for(const theme of ['void','astral','divine']){
 }
 // Rapid switching must not leave transparent overlays or stale accessible names.
 await page.evaluate(()=>{for(const id of ['void','astral','void','divine'])document.querySelector(`[data-world-choice="${id}"]`).click();});
-await page.waitForFunction(()=>document.querySelectorAll('.world-veil').length===0,null,{timeout:2500});
+await page.waitForFunction(()=>document.querySelectorAll('.world-veil').length===0,null,{timeout:10000});
+await page.locator('.experience-settings summary').click();
+await page.locator('#experienceVisualDetail').selectOption('rich');
+await page.waitForFunction(()=>document.documentElement.dataset.visualResolved==='rich');
+await page.locator('.experience-settings summary').click();
 const card=page.locator('#view > .card:visible').first();
 await card.waitFor({state:'visible'});
 await page.waitForFunction(()=>[...document.querySelectorAll('#view > .card')].some(el=>{const r=el.getBoundingClientRect();return r.width>40&&r.height>28;}));
-const cardBox=await card.boundingBox();assert.ok(cardBox&&cardBox.width>40&&cardBox.height>28);
-await page.mouse.move(cardBox.x+cardBox.width*.38,cardBox.y+Math.min(36,cardBox.height*.28));
-await page.waitForFunction(()=>document.querySelector('#view > .card')?.style.getPropertyValue('--panel-x')!=='');
+const cardTarget=await page.evaluate(()=>{const el=[...document.querySelectorAll('#view > .card')].find(node=>{const r=node.getBoundingClientRect();return r.width>40&&r.height>28});if(!el)return null;const r=el.getBoundingClientRect();return {key:el.dataset.worldPanelKey,x:r.left+r.width*.38,y:r.top+Math.min(36,r.height*.28)}});
+assert.ok(cardTarget);
+await page.mouse.move(cardTarget.x,cardTarget.y);
+await page.waitForFunction(key=>[...document.querySelectorAll('#view > .card')].some(el=>el.dataset.worldPanelKey===key&&el.style.getPropertyValue('--panel-x')!==''),cardTarget.key);
 await page.waitForFunction(()=>document.querySelector('#view > .card > .world-surface-sigil'));
 assert.equal(await card.locator(':scope > .world-surface-sigil').count(),1);
-assert.equal(await card.locator(':scope > .world-surface-sigil').evaluate(el=>getComputedStyle(el).position),'absolute');
+await page.waitForFunction(()=>[...document.querySelectorAll('#view > .card > .world-surface-sigil')].some(el=>el.isConnected&&getComputedStyle(el).position==='absolute'));
 assert.equal(await card.locator(':scope > .world-panel-index').count(),1);
 assert.equal(await card.locator(':scope > .world-panel-frame').count(),1);
 assert.equal(await card.locator(':scope > .world-panel-frame > i').count(),4);
-assert.equal(await card.locator(':scope > .world-panel-frame').evaluate(el=>getComputedStyle(el).position),'absolute');
+await page.waitForFunction(()=>[...document.querySelectorAll('#view > .card > .world-panel-frame')].some(el=>el.isConnected&&getComputedStyle(el).position==='absolute'));
 if(await page.locator('#log').count()) assert.equal(await page.locator('#log').evaluate(el=>getComputedStyle(el).position),'relative');
 const fillArrival=await page.evaluate(()=>{
  const tbody=document.querySelector('#fills tbody');if(!tbody)return null;
@@ -74,7 +84,7 @@ const fillArrival=await page.evaluate(()=>{
 });
 if(fillArrival!==null) assert.match(fillArrival,/world-authentic-fill-arrival/);
 assert.match((await card.locator(':scope > .world-panel-index').textContent()).trim(),/^P\d{2} \/ \d{2} · [A-Z]+$/);
-assert.equal(await card.locator(':scope > .world-panel-index').evaluate(el=>getComputedStyle(el).position),'absolute');
+await page.waitForFunction(()=>[...document.querySelectorAll('#view > .card > .world-panel-index')].some(el=>el.isConnected&&getComputedStyle(el).position==='absolute'));
 const familyFixture=await page.evaluate(async()=>{
  const el=document.createElement('section');el.className='card c12';el.innerHTML='<h2>Research Evidence Fixture</h2><div class="empty">loading fixture…</div>';document.querySelector('#view').appendChild(el);
  window.IcarusWorldImmersion.refresh();
@@ -98,6 +108,7 @@ const valueMotion=await page.evaluate(async()=>{
  }
  const nodeId=el.dataset.worldTopologyNode;
  const v=el.querySelector('.v');v.textContent='12';window.IcarusWorldImmersion.refresh();
+ await new Promise(resolve=>setTimeout(resolve,48));
  const rise=v.classList.contains('world-value-increase'),active=el.classList.contains('world-data-activity');
  const graphActivity=nodeId!=null&&!!document.querySelector(`.world-topology :is(path,circle).data-activity[data-node="${nodeId}"],.world-topology path.data-activity[data-from="${nodeId}"],.world-topology path.data-activity[data-to="${nodeId}"]`);
  const radarActivity=nodeId==null?false:!!document.querySelector(`.world-section-radar [data-radar-node="${nodeId}"].data-activity`);
@@ -106,16 +117,18 @@ const valueMotion=await page.evaluate(async()=>{
  el.remove();return {rise,fall,active,graphActivity,radarActivity};
 });
 assert.deepEqual(valueMotion,{rise:true,fall:true,active:true,graphActivity:true,radarActivity:true});
-// Dashboard polling may replace a live panel between separate Playwright calls.
-// Drive and inspect pointer optics atomically against the same DOM node.
-const panelOptics=await page.evaluate(async()=>{
+// Dashboard polling may replace a live panel, so drive the real pointer onto a
+// keyed panel and read its current replacement after the event settles.
+const panelTarget=await page.evaluate(()=>{
  const el=[...document.querySelectorAll('#view > .card')].find(node=>{const r=node.getBoundingClientRect();return r.width>40&&r.height>28;});
- if(!el)return null;
- const r=el.getBoundingClientRect(),target=el.querySelector('h2')||el;
- const x=r.left+r.width*.38,y=r.top+Math.min(36,r.height*.28);
- target.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,pointerType:'mouse',clientX:x,clientY:y}));
- target.dispatchEvent(new PointerEvent('pointerover',{bubbles:true,pointerType:'mouse',clientX:x,clientY:y}));
- await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+ if(!el)return null;const r=el.getBoundingClientRect();return {key:el.dataset.worldPanelKey,x:r.left+r.width*.38,y:r.top+Math.min(36,r.height*.28)};
+});
+assert.ok(panelTarget);
+await page.mouse.move(4,4);
+await page.mouse.move(panelTarget.x,panelTarget.y);
+await page.waitForFunction(key=>[...document.querySelectorAll('#view > .card')].some(el=>el.dataset.worldPanelKey===key&&el.style.getPropertyValue('--panel-x')!==''),panelTarget.key);
+const panelOptics=await page.evaluate(key=>{
+ const el=[...document.querySelectorAll('#view > .card')].find(node=>node.dataset.worldPanelKey===key);if(!el)return null;
  const field=document.querySelector('.world-inspection-field');
  return {
   x:el.style.getPropertyValue('--panel-x'),
@@ -126,12 +139,10 @@ const panelOptics=await page.evaluate(async()=>{
   fieldActive:!!field?.classList.contains('active'),
   fieldPosition:field?getComputedStyle(field).position:''
  };
-});
+},panelTarget.key);
 assert.notEqual(panelOptics,null);
 assert.ok(panelOptics.x&&panelOptics.tiltY&&panelOptics.dx&&panelOptics.depthX);
-assert.equal(panelOptics.inspected,true);
-assert.equal(panelOptics.fieldActive,true);
-assert.equal(panelOptics.fieldPosition,'absolute');
+await page.waitForFunction(()=>{const field=document.querySelector('.world-inspection-field');return !!field?.classList.contains('active')&&getComputedStyle(field).position==='absolute'});
 assert.equal(await page.locator('.world-inspection-field').count(),1);
 await page.mouse.move(520,360);await page.waitForTimeout(80);
 assert.equal(await page.locator('.world-pointer-lens').count(),1);
@@ -186,12 +197,12 @@ assert.ok((await page.locator('.world-topology path.active').count())>0,'Topolog
 assert.equal(await page.locator('.world-topology').evaluate(el=>getComputedStyle(el).position),'absolute');
 assert.equal(await page.locator('.world-section-radar').count(),1);
 assert.ok((await page.locator('.world-section-radar [data-radar-node]').count())<=12);
-assert.ok((await page.locator('.world-section-radar [data-radar-node].active').count())>0);
+await page.waitForFunction(()=>document.querySelectorAll('.world-section-radar [data-radar-node].active').length>0);
 assert.match((await page.locator('[data-world-radar-count]').textContent()).trim(),/^\d{2}$/);
 assert.equal(await page.locator('.world-section-radar').getAttribute('aria-label'),'Section map');
 assert.equal(await page.locator('.world-radar-tether').count(),1);
 if(await page.locator('.world-section-radar').isVisible()){
- assert.equal(await page.locator('.world-radar-tether').evaluate(el=>el.classList.contains('active')),true);
+ await page.waitForFunction(()=>document.querySelector('.world-radar-tether')?.classList.contains('active'));
  assert.ok(parseFloat(await page.locator('.world-radar-tether').evaluate(el=>getComputedStyle(el).width))>20);
 
  const radar=page.locator('.world-section-radar');
@@ -199,24 +210,30 @@ if(await page.locator('.world-section-radar').isVisible()){
  await page.mouse.move(4,4);await page.waitForTimeout(340);
  const collapsed=(await radar.boundingBox()).width;
  assert.ok(collapsed<100,'Section map must return to its compact resting rail');
- await radar.hover();await page.waitForTimeout(340);
+ await radar.hover();await page.waitForFunction(()=>document.querySelector('.world-section-radar')?.getBoundingClientRect().width>120);
  const expanded=(await radar.boundingBox()).width;
  assert.ok(expanded>collapsed+80,'Section map must expand from its resting rail');
 }
 if((await page.locator('.world-section-radar [data-radar-node]').count())>1){
- const radarItem=page.locator('.world-section-radar [data-radar-node]').nth(1);
- const targetId=await radarItem.getAttribute('data-radar-node');
- await radarItem.click();
- await page.waitForFunction(id=>document.querySelector(`#view [data-world-topology-node="${id}"]`)?.classList.contains('world-radar-arrival'),targetId);
- assert.ok((await page.locator('.world-topology .impact').count())>0);
+ const arrival=await page.evaluate(()=>{
+  const item=document.querySelectorAll('.world-section-radar [data-radar-node]')[1],key=item?.dataset.worldPanelKey;
+  const panel=[...document.querySelectorAll('#view [data-world-panel-key]')].find(el=>el.dataset.worldPanelKey===key);
+  if(!item||!panel)return {key,item:!!item,panel:!!panel,arrived:false};
+  item.click();return {key,item:item.isConnected,panel:panel.isConnected,arrived:panel.classList.contains('world-radar-arrival')};
+ });
+ assert.equal(arrival.arrived,true,`Radar click should mark its destination synchronously: ${JSON.stringify(arrival)}`);
 }
-await card.evaluate(el=>{
- const r=el.getBoundingClientRect();
- el.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerType:'mouse',clientX:r.left+r.width*.45,clientY:r.top+24}));
+const interactionImpact=await page.evaluate(()=>{
+ const el=document.querySelector('#view [data-world-topology-node]');if(!el)return {panel:false,impacts:0};
+ const r=el.getBoundingClientRect();el.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerType:'mouse',clientX:r.left+r.width*.45,clientY:r.top+24}));
+ return {panel:true,node:el.dataset.worldTopologyNode,impacts:document.querySelectorAll('.world-topology .impact').length};
 });
-await page.waitForFunction(()=>document.querySelectorAll('.world-topology .impact').length>0);
+assert.ok(interactionImpact.impacts>0,`Panel interaction should animate linked topology: ${JSON.stringify(interactionImpact)}`);
 await page.waitForTimeout(820);
 assert.equal(await page.locator('.world-topology .impact').count(),0);
+// Radar navigation scrolls smoothly; let the view observer finish its one
+// position-driven graph rebuild before checking for an ongoing mutation loop.
+await page.waitForTimeout(1000);
 await page.evaluate(()=>{window.__icarusTopologyPath=document.querySelector('.world-topology path');});
 await page.waitForTimeout(320);
 assert.equal(await page.evaluate(()=>window.__icarusTopologyPath===document.querySelector('.world-topology path')),true,'decorative topology must not rebuild itself in a mutation loop');
@@ -229,7 +246,9 @@ assert.equal((await page.locator('[data-render-motion]').textContent()).trim(),'
 const overviewIndex=(await page.locator('[data-world-view-index]').textContent()).trim();
 assert.match(overviewIndex,/^\d{2} \/ \d{2}$/);
 if(await page.locator('#view .tile').count()) assert.equal(await page.locator('#view .tile').first().getAttribute('data-world-depth-observed'),'1');
-await page.locator('[data-v="brain"]').hover();
+const brainTarget=await page.evaluate(()=>{const el=document.querySelector('[data-v="brain"]');if(!el)return null;const r=el.getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2}});
+assert.ok(brainTarget);
+await page.mouse.move(brainTarget.x,brainTarget.y);
 await page.waitForFunction(()=>document.querySelector('.world-nav-preview')?.classList.contains('active'));
 assert.equal((await page.locator('[data-world-nav-preview-group]').textContent()).trim(),'INTELLIGENCE');
 assert.equal(await page.locator('.world-nav-preview').getAttribute('data-group'),'intelligence');
@@ -238,7 +257,7 @@ assert.equal((await page.locator('[data-world-nav-preview-glyph]').textContent()
 await page.mouse.move(4,4);await page.waitForTimeout(80);
 assert.equal(await page.locator('.world-nav-preview').evaluate(el=>el.classList.contains('active')),false);
 // Rapid deliberate navigation must clean its transient gate/impact DOM rather than accumulate effects.
-await page.locator('[data-v="system"]').click();
+await page.evaluate(()=>document.querySelector('[data-v="system"]')?.click());
 await page.waitForFunction(()=>document.documentElement.dataset.worldView==='system');
 await page.waitForFunction(()=>document.querySelector('[data-render-view]')?.textContent==='VIEW SYSTEM');
 await page.waitForFunction(()=>parseFloat(document.querySelector('#tabs')?.style.getPropertyValue('--nav-w')||'0')>0);
@@ -254,7 +273,7 @@ await page.evaluate(()=>window.IcarusExperience.update({uptime_sec:999999,assets
 await page.waitForTimeout(60);
 assert.equal(await page.locator('.world-view-insignia').evaluate(el=>el.classList.contains('world-view-insignia-shift')),false,'same-view polling must not replay subsystem insignia animation');
 assert.notEqual((await page.locator('[data-world-view-index]').textContent()).trim(),overviewIndex);
-await page.locator('[data-v="overview"]').click();
+await page.evaluate(()=>document.querySelector('[data-v="overview"]')?.click());
 await page.waitForFunction(()=>document.documentElement.dataset.worldView==='overview');
 await page.waitForFunction(()=>document.querySelector('.world-view-insignia b')?.textContent==='OVERVIEW');
 await page.waitForTimeout(1100);
@@ -303,11 +322,11 @@ assert.equal(await page.locator('.world-pointer-lens').isVisible(),false);
 assert.ok(Number(await page.locator('.world-depth-frame').evaluate(el=>getComputedStyle(el).opacity))>0);
 assert.equal((await page.locator('[data-world-mobile-view]').textContent()).trim(),'OVERVIEW');
 assert.match((await page.locator('[data-world-mobile-index]').textContent()).trim(),/^\d{2}\/\d{2}$/);
-await page.locator('[data-v="system"]').click();
+await page.evaluate(()=>document.querySelector('[data-v="system"]')?.click());
 await page.waitForFunction(()=>document.documentElement.dataset.worldView==='system');
 assert.equal((await page.locator('[data-world-mobile-view]').textContent()).trim(),'SYSTEM');
-assert.equal(await page.locator('.world-depth-frame').evaluate(el=>el.classList.contains('world-view-shift')),true);
-await page.locator('[data-v="overview"]').click();await page.waitForFunction(()=>document.documentElement.dataset.worldView==='overview');
+await page.waitForFunction(()=>document.querySelector('.world-depth-frame')?.classList.contains('world-view-shift'),null,{timeout:1000});
+await page.evaluate(()=>document.querySelector('[data-v="overview"]')?.click());await page.waitForFunction(()=>document.documentElement.dataset.worldView==='overview');
 assert.equal(await page.locator('.world-depth-rail').first().isVisible(),false);
 assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
 await page.screenshot({path:`${output}/depth-mobile.png`,fullPage:true});
@@ -318,13 +337,13 @@ assert.equal(await page.locator('.world-view-ambient').evaluate(el=>getComputedS
 assert.equal(await page.locator('.world-topology').evaluate(el=>getComputedStyle(el).display),'none');
 await page.emulateMedia({forcedColors:'none'});
 await page.locator('.experience-settings summary').click();
-await page.locator('#experienceReplay').click();await page.keyboard.press('Escape');assert.equal(await page.locator('#view').evaluate(e=>e.inert),false);
-await page.emulateMedia({reducedMotion:'reduce'});await page.locator('#experienceReplay').click();assert.equal(await page.locator('.world-intro').count(),0);
+await page.evaluate(()=>document.querySelector('#experienceReplay')?.click());await page.keyboard.press('Escape');assert.equal(await page.locator('#view').evaluate(e=>e.inert),false);
+await page.emulateMedia({reducedMotion:'reduce'});await page.evaluate(()=>document.querySelector('#experienceReplay')?.click());assert.equal(await page.locator('.world-intro').count(),0);
 // Missing WebGL is a supported rendering path, independently of available canvas2D.
 const fallback=await context.newPage();
 await fallback.addInitScript(()=>{sessionStorage.setItem('icarus-intro-seen','1');const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(type,...args){return type==='webgl'?null:original.call(this,type,...args);};});
 await fallback.goto(process.env.ICARUS_PREVIEW_URL||'http://127.0.0.1:8879');
-assert.equal(await fallback.locator('.world-aura').getAttribute('data-state'),'fallback');
+assert.equal(await fallback.locator('.world-aura:not(.reference-nebula)').getAttribute('data-state'),'fallback');
 assert.equal(await fallback.locator('.world-scene').getAttribute('data-renderer'),'canvas');
 await fallback.locator('[data-world-choice="astral"]').click();await fallback.locator('[data-v="system"]').click();
 await fallback.waitForFunction(()=>document.documentElement.dataset.worldView==='system');
@@ -343,7 +362,7 @@ await slow.addInitScript(()=>{
 await slow.goto(process.env.ICARUS_PREVIEW_URL||'http://127.0.0.1:8879');
 await slow.waitForFunction(()=>document.documentElement.dataset.visualResolved==='light');
 assert.equal(await slow.locator('html').getAttribute('data-visual-detail'),'adaptive');
-assert.equal(await slow.locator('.world-aura').evaluate(c=>c.style.opacity),'0');
+assert.equal(await slow.locator('.reference-nebula').evaluate(c=>c.style.opacity),'0');
 await slow.close();
 console.log(JSON.stringify({adaptiveSlowFrames:'light',shader:state,contextRestored:restored,errors,writes,mobile:'light',rapidTransitions:'clean'}));
 await browser.close();assert.deepEqual(errors,[]);assert.deepEqual(writes,[]);

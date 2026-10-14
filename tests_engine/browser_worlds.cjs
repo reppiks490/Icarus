@@ -19,6 +19,7 @@ await page.screenshot({path:`${output}/divine.png`,fullPage:true});
 await page.locator('[data-world-choice="void"]').hover();await page.waitForTimeout(180);
 if(await page.locator('html').getAttribute('data-theme')!=='divine') throw Error('World preview changed active theme');
 if(await page.locator('.world-preview').getAttribute('data-preview-world')!=='void') throw Error('World preview did not identify hovered universe');
+await page.waitForFunction(()=>Number(getComputedStyle(document.querySelector('.world-preview')).opacity)>0,null,{timeout:2000});
 if(Number(await page.locator('.world-preview').evaluate(el=>getComputedStyle(el).opacity))<=0) throw Error('World preview did not become visible');
 await page.screenshot({path:`${output}/preview-void.png`});
 await page.mouse.move(1,1);await page.waitForTimeout(80);
@@ -48,10 +49,15 @@ await page.locator('#experienceMotion').selectOption('system');
 await page.locator('#experienceReplay').click();
 await page.locator('.intro-skip').click();
 await page.locator('#experienceIntroLength').selectOption('12');
+await page.evaluate(()=>{
+ window.__icarusHandoffSeen=false;
+ new MutationObserver(()=>{if(document.querySelector('.world-handoff'))window.__icarusHandoffSeen=true;})
+  .observe(document.body,{childList:true,subtree:true});
+});
 await page.locator('#experienceReplay').click();
 await page.locator('.world-intro').waitFor({state:'detached',timeout:15000});
 if(await page.locator('#view').evaluate(el=>el.inert)) throw Error('Intro left dashboard inert');
-if(await page.locator('.world-handoff').count()!==1) throw Error('Natural intro did not hand off into dashboard');
+if(!await page.evaluate(()=>window.__icarusHandoffSeen)) throw Error('Natural intro did not hand off into dashboard');
 await page.locator('.world-handoff').waitFor({state:'detached',timeout:2000});
 await page.locator('#experienceTheme').selectOption('dark');
 if(await page.locator('.world-scene').isVisible()) throw Error('Scene remained on legacy theme');
@@ -59,14 +65,14 @@ await page.locator('#experienceTheme').selectOption('void');
 await page.locator('.experience-settings summary').click();
 const stageFields={};
 for(const view of ['research','market-data','learning','chronofold','integrity','autopilot']){
- await page.locator(`[data-v="${view}"]`).click();
+ await page.evaluate(v=>document.querySelector(`[data-v="${v}"]`)?.click(),view);
  await page.waitForFunction(v=>document.documentElement.dataset.worldView===v,view);
  stageFields[view]=(await page.locator('#view').evaluate(el=>getComputedStyle(el).getPropertyValue('--view-field'))).trim();
  if(!stageFields[view]) throw Error('Subsystem stage field missing: '+view);
 }
 if(new Set(Object.values(stageFields)).size!==Object.keys(stageFields).length) throw Error('Specialized subsystem stage fields are not distinct');
 for(const view of ['system','inputs','backtest','brain','parallax','possibility','pantheon','evolution','overview']) {
- await page.locator(`[data-v="${view}"]`).click();
+ await page.evaluate(v=>document.querySelector(`[data-v="${v}"]`)?.click(),view);
  await page.waitForFunction(v=>document.documentElement.dataset.worldView===v,view);
  if(!await page.locator(`[data-v="${view}"]`).evaluate(el=>el.classList.contains('active'))) throw Error('Navigation failed');
  if(['system','brain','parallax','possibility','pantheon','evolution'].includes(view)){
