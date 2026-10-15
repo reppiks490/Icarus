@@ -10,7 +10,9 @@ from icarus_futures.ibkr_paper import (
     IbkrTwsPaperGateway,
 )
 from icarus_futures.journal import Journal
+from icarus_futures.orders import Intent, S
 from icarus_futures.risk import RiskGovernor
+from icarus_futures.venue import SimVenue
 
 
 def mapping():
@@ -291,6 +293,30 @@ class IbkrPaperVenueTests(unittest.TestCase):
     assert rejected == {"status": "rejected", "code": "INVALID_ORDER"}
     assert "private broker diagnostic" not in repr(rejected)
     gateway.disconnect()
+
+
+  def test_engine_cancel_remains_compatible_with_legacy_one_argument_venue(self):
+    venue = SimVenue()
+    original_cancel = venue.cancel
+    cancelled = []
+
+    def legacy_cancel(broker_id):
+      cancelled.append(broker_id)
+      return original_cancel(broker_id)
+
+    venue.cancel = legacy_cancel
+    intent = Intent("test", "MNQZ26", "BUY", 1, "LIMIT", 19888.25)
+    submitted = venue.submit(intent.intent_id, intent.symbol, intent.side, intent.qty,
+                             intent.kind, intent.price)
+    venue.poll()  # consume the direct venue ack before attaching the engine
+    engine = ExecutionEngine(venue, RiskGovernor(), Journal(":memory:"), mode="SIM")
+    order, _created = engine.book.add(intent)
+    order.state = S.WORKING
+    order.broker_id = submitted["broker_id"]
+
+    assert engine.cancel(order.id) is True
+    assert cancelled == [submitted["broker_id"]]
+    assert order.state is S.CANCELLED
 
 
   def test_callback_readback_preserves_partial_fill_and_cumulative_quantity(self):
