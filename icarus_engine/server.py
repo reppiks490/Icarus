@@ -237,6 +237,10 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     port.latency_telemetry = latency_telemetry
     for runner in port.runner_list():
         runner.latency_telemetry = latency_telemetry
+    from .paper_workspaces import PaperWorkspaceManager
+    command_centers = PaperWorkspaceManager(port)
+    if start:
+        command_centers.start()
     autopilot = TacticalAutopilot(
         port,
         possibility_snapshot=possibility.snapshot,
@@ -1297,6 +1301,10 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._json(403, {"detail": "bad host"})
             p = urlparse(self.path)
             q = parse_qs(p.query)
+            if p.path == "/api/command-centers":
+                snapshot = command_centers.snapshot()
+                snapshot["input_meta"] = meta
+                return self._json(200, snapshot)
             if p.path == "/":
                 return self._send(200, brand.render(html_path.read_bytes()), "text/html")
             if p.path == "/research-ui.js":
@@ -1311,6 +1319,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._send(200, (html_path.parent / "engine-control-ui.js").read_bytes(), "text/javascript")
             if p.path == "/autopilot-ui.js":
                 return self._send(200, (html_path.parent / "autopilot-ui.js").read_bytes(), "text/javascript")
+            if p.path == "/command-centers-ui.js":
+                return self._send(200, (html_path.parent / "command-centers-ui.js").read_bytes(), "text/javascript")
             if p.path == "/brain-ui.js":
                 return self._send(200, (html_path.parent / "brain-ui.js").read_bytes(), "text/javascript")
             if p.path == "/evolution-ui.js":
@@ -1946,6 +1956,28 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._json(400, {"detail": f"bad JSON body: {ex}"})
             if not isinstance(body, dict):
                 return self._json(400, {"detail": "JSON body must be an object"})
+            if p.path.startswith("/admin/command-centers/"):
+                parts = [part for part in p.path.split("/") if part]
+                if len(parts) == 3 and parts[2] in {"cc1", "cc2", "cc3", "cc4"}:
+                    try:
+                        return self._json(200, command_centers.update(parts[2], body))
+                    except (ValueError, TypeError, KeyError) as ex:
+                        return self._json(400, {"detail": str(ex)})
+                    except Exception as ex:
+                        port.journal.log("ERROR", f"command center {parts[2]} update: {type(ex).__name__}: {ex}")
+                        return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
+                if len(parts) == 4 and parts[2] in {"cc1", "cc2", "cc3", "cc4"} and parts[3] == "pause":
+                    try:
+                        return self._json(200, command_centers.pause(parts[2], bool(body.get("paused"))))
+                    except (ValueError, TypeError, KeyError) as ex:
+                        return self._json(400, {"detail": str(ex)})
+                if len(parts) == 4 and parts[2] in {"cc1", "cc2", "cc3", "cc4"} and parts[3] == "flatten":
+                    if body.get("confirm") is not True:
+                        return self._json(400, {"detail": "confirm must be true to flatten this paper workspace"})
+                    try:
+                        return self._json(200, command_centers.flatten(parts[2]))
+                    except (ValueError, TypeError, KeyError) as ex:
+                        return self._json(400, {"detail": str(ex)})
             if p.path == "/admin/access/add":
                 try:
                     user = access_registry.add(body.get("label", ""))
@@ -2957,6 +2989,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return super().serve_forever(poll_interval)
             finally:
                 if background:
+                    command_centers.stop()
                     autopilot.close()
                     ascendancy_autopilot.close()
                     ascendancy_native_validation.close()
@@ -2970,6 +3003,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     apex.close()
 
         def server_close(self):
+            command_centers.stop()
             autopilot.close()
             ascendancy_autopilot.close()
             ascendancy_native_validation.close()
@@ -2984,6 +3018,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             return super().server_close()
 
     srv = ResearchHTTPServer(("127.0.0.1", http_port), H)
+    srv.command_centers = command_centers
     srv.research = research
     srv.loop_intelligence_sync = loop_intelligence_sync
     srv.brain_remote_sync = brain_remote_sync

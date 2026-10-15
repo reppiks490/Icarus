@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import json
 import math
+import sqlite3
 
 import pytest
 
@@ -42,6 +43,19 @@ def _ohlc(path: Path, rows: int = 500) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("\n".join(out) + "\n", encoding="utf-8")
     return path
+
+
+def test_close_releases_database_and_is_idempotent(tmp_path):
+    from icarus_engine.learning_fabric import LearningFabric
+
+    fabric = LearningFabric(tmp_path)
+    database = fabric.path
+    status = fabric.close()
+
+    assert fabric.close() == status
+    with pytest.raises(sqlite3.ProgrammingError, match="closed"):
+        fabric._conn.execute("SELECT 1")
+    database.unlink()
 
 
 def test_prediction_outcome_maturity_immutability_and_authority(tmp_path):

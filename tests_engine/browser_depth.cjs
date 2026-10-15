@@ -108,10 +108,18 @@ const valueMotion=await page.evaluate(async()=>{
  }
  const nodeId=el.dataset.worldTopologyNode;
  const v=el.querySelector('.v');v.textContent='12';window.IcarusWorldImmersion.refresh();
- await new Promise(resolve=>setTimeout(resolve,48));
+ // Topology/radar activity is delivered through bounded animation frames. Wait
+ // for that observable state instead of assuming 48 ms is enough on every CI
+ // runner; keep the deadline short enough to catch a genuinely missing signal.
+ const activityDeadline=performance.now()+1500;
+ let graphActivity=false,radarActivity=false;
+ while(performance.now()<activityDeadline){
+  graphActivity=nodeId!=null&&!!document.querySelector(`.world-topology :is(path,circle).data-activity[data-node="${nodeId}"],.world-topology path.data-activity[data-from="${nodeId}"],.world-topology path.data-activity[data-to="${nodeId}"]`);
+  radarActivity=nodeId!=null&&!!document.querySelector(`.world-section-radar [data-radar-node="${nodeId}"].data-activity`);
+  if(graphActivity&&radarActivity)break;
+  await new Promise(resolve=>setTimeout(resolve,24));
+ }
  const rise=v.classList.contains('world-value-increase'),active=el.classList.contains('world-data-activity');
- const graphActivity=nodeId!=null&&!!document.querySelector(`.world-topology :is(path,circle).data-activity[data-node="${nodeId}"],.world-topology path.data-activity[data-from="${nodeId}"],.world-topology path.data-activity[data-to="${nodeId}"]`);
- const radarActivity=nodeId==null?false:!!document.querySelector(`.world-section-radar [data-radar-node="${nodeId}"].data-activity`);
  v.textContent='8';window.IcarusWorldImmersion.refresh();
  const fall=v.classList.contains('world-value-decrease');
  el.remove();return {rise,fall,active,graphActivity,radarActivity};
@@ -126,11 +134,10 @@ const panelTarget=await page.evaluate(()=>{
 assert.ok(panelTarget);
 await page.mouse.move(4,4);
 await page.mouse.move(panelTarget.x,panelTarget.y);
-await page.waitForFunction(key=>[...document.querySelectorAll('#view > .card')].some(el=>el.dataset.worldPanelKey===key&&el.style.getPropertyValue('--panel-x')!==''),panelTarget.key);
-const panelOptics=await page.evaluate(key=>{
+const panelOpticsHandle=await page.waitForFunction(key=>{
  const el=[...document.querySelectorAll('#view > .card')].find(node=>node.dataset.worldPanelKey===key);if(!el)return null;
  const field=document.querySelector('.world-inspection-field');
- return {
+ const optics={
   x:el.style.getPropertyValue('--panel-x'),
   tiltY:el.style.getPropertyValue('--panel-tilt-y'),
   dx:el.style.getPropertyValue('--panel-dx'),
@@ -139,8 +146,12 @@ const panelOptics=await page.evaluate(key=>{
   fieldActive:!!field?.classList.contains('active'),
   fieldPosition:field?getComputedStyle(field).position:''
  };
+ // Read all optical variables from the same live element in one browser task:
+ // the dashboard replaces cards during polling, so separate wait/read calls
+ // can otherwise observe two generations of the same keyed panel.
+ return optics.x&&optics.tiltY&&optics.dx&&optics.depthX?optics:false;
 },panelTarget.key);
-assert.notEqual(panelOptics,null);
+const panelOptics=await panelOpticsHandle.jsonValue();
 assert.ok(panelOptics.x&&panelOptics.tiltY&&panelOptics.dx&&panelOptics.depthX);
 await page.waitForFunction(()=>{const field=document.querySelector('.world-inspection-field');return !!field?.classList.contains('active')&&getComputedStyle(field).position==='absolute'});
 assert.equal(await page.locator('.world-inspection-field').count(),1);
