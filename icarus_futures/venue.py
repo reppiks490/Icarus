@@ -1,8 +1,10 @@
 # CL (Claude, Anthropic) — 2026-10-04 — icarus_futures.venue: venue adapter protocol and a deterministic simulated venue
-"""A venue adapter is whatever talks to a real broker/exchange gateway. None ships here
-until the owner chooses a futures broker. SimVenue is a deterministic paper/sim venue
-with fault injection used for paper trading and for the chaos tests: lost acks,
-duplicate fills, rejects, partial fills, fills racing cancels, and disconnects."""
+"""A venue adapter is whatever talks to a real broker/exchange gateway.
+
+``IbkrPaperVenue`` maps exact dated CME futures to the optional local IBKR TWS/IB Gateway
+PAPER transport. It does not provide a LIVE route. ``SimVenue`` is a deterministic paper/sim venue with fault injection for lost
+acks, duplicate fills, rejects, partial fills, fills racing cancels, and disconnects.
+"""
 from __future__ import annotations
 
 import itertools
