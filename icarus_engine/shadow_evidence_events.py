@@ -48,6 +48,8 @@ def shadow_evidence_event(
         raise ValueError("shadow summary must be a mapping")
     if summary.get("schema") != "icarus.real_price_shadow/1":
         raise ValueError("unsupported shadow summary schema")
+    if summary.get("enabled") is not True:
+        raise ValueError("shadow evidence must come from an enabled twin")
     if summary.get("execution_authorized") is not False:
         raise ValueError("shadow evidence must explicitly deny execution authority")
     asset = summary.get("asset")
@@ -64,6 +66,9 @@ def shadow_evidence_event(
     except (TypeError, ValueError) as exc:
         raise ValueError("shadow evidence must contain finite JSON values") from exc
     evidence_digest = hashlib.sha256(evidence_json.encode("utf-8")).hexdigest()
+    # Snapshot nested mappings/lists so caller mutation cannot change the event
+    # after its digest was computed and before it is persisted.
+    evidence = json.loads(evidence_json)
     if not isinstance(run_id, str) or not run_id.strip() or len(run_id) > 240:
         raise ValueError("run_id is required and must not exceed 240 characters")
 

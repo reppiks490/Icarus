@@ -46,6 +46,15 @@ def test_explicit_shadow_event_is_compact_content_addressed_and_non_authoritativ
     assert row["evidence_ids"][0].startswith("sha256:")
 
 
+def test_event_evidence_is_snapshotted_before_the_content_digest_is_assigned():
+    source = evidence()
+    event = shadow_evidence_event(
+        source, run_id="run-01", observed_at="2026-10-15T16:00:00Z",
+        received_at="2026-10-15T16:01:00Z")
+    source["provenance"]["price_provider"] = "mutated-after-event-creation"
+    assert event.normalized()["payload"]["evidence"]["provenance"]["price_provider"] == "databento"
+
+
 def test_explicit_publish_is_idempotent_and_queryable_by_asset():
     with IntelligenceFabric(":memory:") as fabric:
         kwargs = {"run_id": "run-01", "observed_at": "2026-10-15T16:00:00Z",
@@ -63,6 +72,7 @@ def test_explicit_publish_is_idempotent_and_queryable_by_asset():
 
 @pytest.mark.parametrize("changes, message", [
     ({"schema": "other"}, "unsupported shadow summary schema"),
+    ({"enabled": False}, "enabled twin"),
     ({"execution_authorized": True}, "must explicitly deny execution authority"),
     ({"status": "DISABLED"}, "unsupported status"),
     ({"provenance": None}, "provenance mapping"),
