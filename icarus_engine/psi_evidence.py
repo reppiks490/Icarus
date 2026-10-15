@@ -7,13 +7,14 @@ receipt rejection) remains owned by PossibilityEngine before records enter here.
 from __future__ import annotations
 
 from collections import defaultdict
+from contextlib import contextmanager
 import hashlib
 import json
 from pathlib import Path
 import sqlite3
 import threading
 import time
-from typing import Any, Mapping, Sequence
+from typing import Any, Iterator, Mapping, Sequence
 
 SCHEMA_VERSION = "icarus-psi-evidence-v1"
 
@@ -44,14 +45,22 @@ class PsiEvidenceLedger:
     def durable(self) -> bool:
         return self.path is not None
 
-    def _connect(self) -> sqlite3.Connection:
+    @contextmanager
+    def _connect(self) -> Iterator[sqlite3.Connection]:
         if self.path is None:
             raise RuntimeError("durable Psi evidence store unavailable")
         con = sqlite3.connect(str(self.path), timeout=15)
-        con.row_factory = sqlite3.Row
-        con.execute("PRAGMA journal_mode=WAL")
-        con.execute("PRAGMA synchronous=NORMAL")
-        return con
+        try:
+            con.row_factory = sqlite3.Row
+            con.execute("PRAGMA journal_mode=WAL")
+            con.execute("PRAGMA synchronous=NORMAL")
+            yield con
+            con.commit()
+        except Exception:
+            con.rollback()
+            raise
+        finally:
+            con.close()
 
     def _init_store(self) -> None:
         with self._connect() as con:
