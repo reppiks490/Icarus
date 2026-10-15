@@ -121,6 +121,7 @@ async function run(scenario) {
     result = subprocess.run(
         [NODE, str(runner), str(dashboard), json.dumps(scenarios)],
         text=True,
+        encoding="utf-8",
         capture_output=True,
     )
     assert result.returncode == 0, result.stderr
