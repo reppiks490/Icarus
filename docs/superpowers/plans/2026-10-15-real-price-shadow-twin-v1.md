@@ -10,7 +10,7 @@
 - When explicitly enabled, route `PulseStrategy` emulator mutations through a facade that forwards the same calls to a second emulator. Every strategy-visible read continues to resolve to the primary.
 - Advance the shadow only with the corresponding standard OHLC bar and matching timestamp. Missing, malformed, or mismatched bars degrade the shadow and never substitute a synthetic bar.
 - Attach instrument, provider, timeframe, calendar/session, chart/fill basis, and feed-health provenance to each shadow evidence summary.
-- Provide an explicit idempotent publisher from compact shadow summaries into the append-only Intelligence Fabric. Status reads never publish; event payloads exclude raw bars and order details and retain both authority flags as false.
+- Provide an explicit idempotent portfolio publisher from compact shadow summaries into the append-only Intelligence Fabric. Status reads never publish; all asset envelopes validate before writes; event payloads exclude raw bars and order details and retain both authority flags as false.
 - Record deterministic intents, link entry fills to the exact shared intent sequence, and expose separately partitioned primary/shadow results with `execution_authorized: false`.
 - Report the win/loss/break-even outcome matrix, guarded P&L realization ratios, entry-time warm-up/live attribution, and bar-close-marked drawdown. Do not aggregate per-asset drawdown as portfolio drawdown without synchronized marks.
 - Runtime/admin cancellation and flatten paths must not leave the shadow reporting a valid comparison when they mutate only the primary.
