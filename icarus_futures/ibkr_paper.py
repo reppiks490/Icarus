@@ -686,6 +686,12 @@ class IbkrPaperVenue:
         return request
 
     def _normalize_found_order(self, record: dict, order_ref: str) -> dict:
+        account_id = record.get("account_id") or record.get("order", {}).get("account")
+        client_ref = record.get("client_id") or record.get("order", {}).get("orderRef")
+        if account_id != self.account_id:
+            raise PermissionError("IBKR order readback is outside the selected paper account")
+        if client_ref != order_ref:
+            raise ValueError("IBKR order readback does not match the requested orderRef")
         status = str(record.get("status", "")).lower()
         broker_id = str(record.get("broker_id", ""))
         if not broker_id:
@@ -779,6 +785,9 @@ class IbkrPaperVenue:
         raise ValueError("IBKR order readback omitted orderRef")
 
     def _normalized_open_order(self, record: dict) -> dict:
+        account_id = record.get("account_id") or record.get("order", {}).get("account")
+        if account_id != self.account_id:
+            raise PermissionError("IBKR open-order readback is outside the selected paper account")
         symbol = self._record_symbol(record)
         client_id = self._record_client(record)
         broker_id = str(record.get("broker_id", ""))
@@ -814,6 +823,8 @@ class IbkrPaperVenue:
             raise ConnectionError("IBKR PAPER session is disconnected")
         positions: dict[str, int] = {}
         for row in self.gateway.positions(self.account_id):
+            if row.get("account_id") != self.account_id:
+                raise PermissionError("IBKR position readback is outside the selected paper account")
             symbol = row.get("symbol") or self._record_symbol({"contract": row.get("contract", {})})
             if symbol not in self.contracts:
                 raise ValueError("IBKR position readback contains a contract without an explicit mapping")

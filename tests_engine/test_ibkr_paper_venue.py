@@ -339,6 +339,38 @@ class IbkrPaperVenueTests(unittest.TestCase):
                             mode="LIVE", governance_path=f"{temp}/missing.json")
 
 
+  def test_account_and_order_reference_are_rechecked_on_gateway_readback(self):
+    adapter, gateway = venue()
+    foreign = {"account_id": "DU99999", "broker_id": "77", "client_id": "ci-x",
+               "status": "Submitted", "filled": 0}
+    gateway.find_order_by_ref = lambda _account, _ref: foreign
+    with self.assertRaisesRegex(PermissionError, "selected paper account"):
+        adapter.submit("ci-x", "MNQZ26", "BUY", 1, "MARKET", None)
+
+    gateway.find_order_by_ref = lambda _account, _ref: {
+        "account_id": "DU12345", "broker_id": "77", "client_id": "ci-other",
+        "status": "Submitted", "filled": 0,
+    }
+    with self.assertRaisesRegex(ValueError, "orderRef"):
+        adapter.submit("ci-x", "MNQZ26", "BUY", 1, "MARKET", None)
+
+    gateway.open_orders = lambda _account: [{
+        "account_id": "DU99999", "broker_id": "77", "client_id": "ci-x",
+        "contract": mapping().ib_contract(),
+        "order": {"account": "DU99999", "orderRef": "ci-x", "action": "BUY",
+                  "totalQuantity": 1, "orderType": "MKT"},
+    }]
+    with self.assertRaisesRegex(PermissionError, "selected paper account"):
+        adapter.open_orders()
+
+    gateway.open_orders = FakeTwsGateway().open_orders
+    gateway.positions = lambda _account: [
+        {"account_id": "DU99999", "symbol": "MNQZ26", "position": 1}
+    ]
+    with self.assertRaisesRegex(PermissionError, "selected paper account"):
+        adapter.positions()
+
+
   def test_disconnect_and_provider_rejects_do_not_retry_or_leak_raw_error_text(self):
     adapter, gateway = venue()
     gateway.connected = False
