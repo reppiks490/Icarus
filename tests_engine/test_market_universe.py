@@ -2,6 +2,7 @@ from copy import deepcopy
 
 import pytest
 
+import icarus_engine.market_universe as market_universe
 from icarus_engine.market_universe import snapshot, validate_catalog
 from icarus_engine.bar_receipts import make_bar_batch_receipt
 from icarus_engine.pine.timeframe import Bar
@@ -122,6 +123,25 @@ def test_bar_batch_receipt_records_gaps_and_never_qualifies_without_session_revi
         )
 
 
+def test_bar_batch_receipt_gap_blocks_otherwise_qualified_history():
+    common = dict(
+        instrument_id="icarus:equity:TEST", provider="test",
+        expected_provider_symbol="TEST", observed_provider_symbol="TEST",
+        interval_seconds=60, requested_start_ts=60, requested_end_ts=300,
+        fetched_at_ns=1, received_at_ns=2, entitlement_status="VERIFIED",
+        session_validation_status="VERIFIED", provider_mapping_status="VERIFIED",
+    )
+    _, complete = make_bar_batch_receipt(
+        **common, bars=[Bar(60, 10, 12, 9, 11, 4), Bar(120, 11, 13, 10, 12, 5)],
+    )
+    _, gapped = make_bar_batch_receipt(
+        **common, bars=[Bar(60, 10, 12, 9, 11, 4), Bar(240, 11, 13, 10, 12, 5)],
+    )
+    assert complete.historical_bars_qualified is True
+    assert gapped.interval_gap_count == 2
+    assert gapped.historical_bars_qualified is False
+
+
 def test_catalog_contains_two_hundred_unique_disabled_equity_candidates():
     data = snapshot()
     rows = data["instruments"]
@@ -137,6 +157,7 @@ def test_catalog_contains_two_hundred_unique_disabled_equity_candidates():
     assert all(row["strategy_qualified"] is False for row in rows)
     assert data["counts"] == {
         "catalogued_count": 200,
+        "entitlement_verified_count": 0,
         "source_connected_count": 0,
         "historical_bars_qualified_count": 0,
         "live_bars_qualified_count": 0,
@@ -145,6 +166,14 @@ def test_catalog_contains_two_hundred_unique_disabled_equity_candidates():
     }
     assert data["execution_authorized"] is False
     assert data["production_decision_authorized"] is False
+
+
+def test_market_universe_counts_verified_entitlements(monkeypatch):
+    catalog = market_universe._load()
+    catalog["instruments"][0]["entitlement"] = "VERIFIED"
+    catalog["counts"]["entitlement_verified_count"] = 1
+    monkeypatch.setattr(market_universe, "_load", lambda: catalog)
+    assert snapshot()["counts"]["entitlement_verified_count"] == 1
 
 
 def test_catalog_validation_rejects_duplicate_ids_and_pulse_enablement():
