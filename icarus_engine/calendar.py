@@ -186,7 +186,10 @@ class USEquitiesCalendar:
         if minutes >= 10080:
             monday = day - timedelta(days=day.weekday())
             for offset in range(5):
-                session = self.session_bounds(monday + timedelta(days=offset))
+                candidate = monday + timedelta(days=offset)
+                if candidate.year not in self.SUPPORTED_YEARS:
+                    continue
+                session = self.session_bounds(candidate)
                 if session:
                     return session[0]
             raise ValueError("US equity week has no scheduled sessions")
@@ -201,7 +204,9 @@ class USEquitiesCalendar:
             raise ValueError("cannot close a US equity bar outside a trading session")
         if minutes >= 10080:
             monday = self._day(bucket) - timedelta(days=self._day(bucket).weekday())
-            sessions = [self.session_bounds(monday + timedelta(days=offset)) for offset in range(5)]
+            sessions = [self.session_bounds(monday + timedelta(days=offset))
+                        for offset in range(5)
+                        if (monday + timedelta(days=offset)).year in self.SUPPORTED_YEARS]
             closes = [session[1] for session in sessions if session]
             if not closes:
                 raise ValueError("US equity week has no scheduled sessions")

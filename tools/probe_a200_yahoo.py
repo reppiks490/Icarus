@@ -12,7 +12,9 @@ import json
 from pathlib import Path
 import time
 
-from icarus_engine.market_universe import catalog_evidence_digest, snapshot
+from icarus_engine.market_universe import (
+    catalog_evidence_digest, snapshot, source_probe_counts, source_probe_results_digest,
+)
 from icarus_engine.market_universe_adapter import MarketUniverseAdapter
 from icarus_engine.feeds.yahoo import Yahoo
 
@@ -74,13 +76,33 @@ def run(*, limit: int = 200, start_ts: int, end_ts: int,
     rows = catalog["instruments"][:limit]
     records_by_id = {}
     if resume and out.exists():
-        prior = json.loads(out.read_text(encoding="utf-8"))
+        try:
+            prior = json.loads(out.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            prior = {}
+        if not isinstance(prior, dict):
+            prior = {}
         same_window = prior.get("window") == {"start_ts": start_ts, "end_ts": end_ts}
-        if (prior.get("catalog_id") == catalog["catalog_id"]
-                and prior.get("catalog_snapshot_sha256") == catalog_evidence_digest(catalog)
-                and prior.get("probe_implementation") == "tools.probe_a200_yahoo.v2"
-                and same_window):
-            records_by_id = {r["instrument_id"]: r for r in prior.get("results", [])}
+        prior_results = prior.get("results")
+        reusable = (
+            prior.get("schema_version") == "icarus.market-universe.source-probe.v3"
+            and prior.get("catalog_id") == catalog["catalog_id"]
+            and prior.get("catalog_snapshot_sha256") == catalog_evidence_digest(catalog)
+            and prior.get("probe_implementation") == "tools.probe_a200_yahoo.v3"
+            and prior.get("calendar_schedule_version") == "nyse-rth-2026-2028.v1"
+            and isinstance(prior_results, list)
+            and all(isinstance(row, dict) for row in prior_results)
+            and prior.get("results_sha256") == source_probe_results_digest(prior_results)
+            and prior.get("counts") == source_probe_counts(prior_results)
+            and prior.get("raw_ohlcv_persisted") is False
+            and same_window
+        )
+        if reusable:
+            by_id = {row.get("instrument_id"): row for row in prior_results if isinstance(row, dict)}
+            expected_ids = {row["instrument_id"] for row in rows}
+            if (len(by_id) == len(prior_results) and set(by_id).issubset(expected_ids)
+                    and all(_mapping_matches(by_id[key], catalog, key) for key in by_id)):
+                records_by_id = by_id
 
     adapter = MarketUniverseAdapter(Yahoo(min_interval=0.0))
     for index, row in enumerate(rows, start=1):
@@ -103,8 +125,9 @@ def _assemble(catalog: dict, rows: list[dict], start_ts: int, end_ts: int,
               records_by_id: dict[str, dict]) -> dict:
     results = [records_by_id[row["instrument_id"]] for row in rows if row["instrument_id"] in records_by_id]
     return {
-        "schema_version": "icarus.market-universe.source-probe.v2",
-        "probe_implementation": "tools.probe_a200_yahoo.v2",
+        "schema_version": "icarus.market-universe.source-probe.v3",
+        "probe_implementation": "tools.probe_a200_yahoo.v3",
+        "calendar_schedule_version": "nyse-rth-2026-2028.v1",
         "catalog_id": catalog["catalog_id"],
         "catalog_snapshot_sha256": catalog_evidence_digest(catalog),
         "catalog_retrieved_at": catalog["retrieved_at"],
@@ -114,19 +137,22 @@ def _assemble(catalog: dict, rows: list[dict], start_ts: int, end_ts: int,
         "window": {"start_ts": start_ts, "end_ts": end_ts},
         "requested_count": len(rows),
         "completed_count": len(results),
-        "counts": {
-            "response_received_count": sum(r["probe_status"] == "RESPONSE_RECEIVED" for r in results),
-            "no_bars_count": sum(r["probe_status"] == "NO_BARS" for r in results),
-            "error_count": sum(r["probe_status"] == "ERROR" for r in results),
-            "provider_symbol_match_count": sum(r.get("provider_symbol_match_status") == "MATCHED" for r in results),
-            "canonical_identity_verified_count": sum(r.get("canonical_identity_status") == "VERIFIED" for r in results),
-            "entitlement_verified_count": sum(r.get("entitlement_status") == "VERIFIED" for r in results),
-            "historical_bars_qualified_count": sum(r.get("historical_bars_qualified") is True for r in results),
-        },
+        "results_sha256": source_probe_results_digest(results),
+        "counts": source_probe_counts(results),
         "authority": {"pulse_enabled": False, "strategy_qualified": False, "execution_authorized": False},
         "raw_ohlcv_persisted": False,
         "results": results,
     }
+
+
+def _mapping_matches(result: dict, catalog: dict, instrument_id: str) -> bool:
+    instrument = next((row for row in catalog["instruments"] if row["instrument_id"] == instrument_id), None)
+    mappings = [candidate for candidate in (instrument or {}).get("provider_symbol_candidates", [])
+                if candidate.get("provider") == "yahoo"]
+    return (len(mappings) == 1 and result.get("provider") == "yahoo"
+            and result.get("provider_symbol_candidate") == mappings[0].get("symbol")
+            and result.get("provider_mapping_status") == mappings[0].get("mapping_status")
+            and result.get("probe_status") in ("RESPONSE_RECEIVED", "NO_BARS", "ERROR"))
 
 
 def main() -> int:

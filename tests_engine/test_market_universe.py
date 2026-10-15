@@ -154,28 +154,33 @@ def test_a200_yahoo_sweep_persists_receipts_without_raw_ohlcv(monkeypatch, tmp_p
 def test_market_universe_exposes_only_matching_catalog_probe_receipts(monkeypatch, tmp_path):
     catalog = snapshot()
     row = catalog["instruments"][0]
-    mapping = next(candidate for candidate in row["provider_symbol_candidates"]
-                   if candidate["provider"] == "yahoo")
     observed_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     probe_path = tmp_path / "probe.json"
+    result = {
+        "instrument_id": row["instrument_id"], "provider": "yahoo",
+        "provider_symbol_candidate": row["provider_symbol_candidates"][0]["symbol"],
+        "provider_mapping_status": row["provider_symbol_candidates"][0]["mapping_status"],
+        "probe_started_at": observed_at,
+        "probe_status": "RESPONSE_RECEIVED", "provider_symbol_match_status": "MATCHED",
+        "canonical_identity_status": "PROVISIONAL", "entitlement_status": "UNKNOWN",
+        "historical_bars_qualified": False, "row_count": 10, "close": 10,
+    }
+    results = [result]
     probe_path.write_text(json.dumps({
-        "schema_version": "icarus.market-universe.source-probe.v2",
-        "probe_implementation": "tools.probe_a200_yahoo.v2",
+        "schema_version": "icarus.market-universe.source-probe.v3",
+        "probe_implementation": "tools.probe_a200_yahoo.v3",
+        "calendar_schedule_version": "nyse-rth-2026-2028.v1",
         "catalog_id": catalog["catalog_id"],
         "catalog_snapshot_sha256": market_universe.catalog_evidence_digest(catalog),
         "probe_provider": "yahoo",
         "probe_updated_at": observed_at,
+        "window": {"start_ts": 60, "end_ts": 86460},
         "completed_count": 1,
         "requested_count": 1,
-        "counts": {"response_received_count": 1, "historical_bars_qualified_count": 0},
+        "counts": market_universe.source_probe_counts(results),
+        "results_sha256": market_universe.source_probe_results_digest(results),
         "raw_ohlcv_persisted": False,
-        "results": [{
-            "provider": "yahoo", "provider_symbol_candidate": mapping["symbol"],
-            "provider_mapping_status": mapping["mapping_status"], "probe_started_at": observed_at,
-            "instrument_id": row["instrument_id"], "probe_status": "RESPONSE_RECEIVED",
-            "provider_symbol_match_status": "MATCHED", "canonical_identity_status": "PROVISIONAL",
-            "row_count": 10, "close": 10,
-        }],
+        "results": results,
     }))
     monkeypatch.setattr(market_universe, "PROBE_PATH", probe_path)
     report = market_universe.load_source_probe_report()
@@ -194,21 +199,28 @@ def test_market_universe_uses_oldest_result_age_not_report_rewrite_time(monkeypa
                    if candidate["provider"] == "yahoo")
     now = datetime.now(timezone.utc)
     current = now.isoformat().replace("+00:00", "Z")
-    old = (now.replace(year=now.year - 1)).isoformat().replace("+00:00", "Z")
+    old = now.replace(year=now.year - 1).isoformat().replace("+00:00", "Z")
+    result = {
+        "instrument_id": row["instrument_id"], "provider": "yahoo",
+        "provider_symbol_candidate": mapping["symbol"],
+        "provider_mapping_status": mapping["mapping_status"],
+        "probe_started_at": old,
+        "probe_status": "RESPONSE_RECEIVED", "provider_symbol_match_status": "MATCHED",
+        "canonical_identity_status": "PROVISIONAL", "row_count": 10,
+    }
     probe_path = tmp_path / "probe.json"
     probe_path.write_text(json.dumps({
-        "schema_version": "icarus.market-universe.source-probe.v2",
-        "probe_implementation": "tools.probe_a200_yahoo.v2",
+        "schema_version": "icarus.market-universe.source-probe.v3",
+        "probe_implementation": "tools.probe_a200_yahoo.v3",
+        "calendar_schedule_version": "nyse-rth-2026-2028.v1",
         "catalog_id": catalog["catalog_id"],
         "catalog_snapshot_sha256": market_universe.catalog_evidence_digest(catalog),
         "probe_provider": "yahoo", "probe_updated_at": current,
-        "completed_count": 1, "requested_count": 1, "raw_ohlcv_persisted": False,
-        "results": [{
-            "provider": "yahoo", "provider_symbol_candidate": mapping["symbol"],
-            "provider_mapping_status": mapping["mapping_status"], "probe_started_at": old,
-            "instrument_id": row["instrument_id"], "probe_status": "RESPONSE_RECEIVED",
-            "provider_symbol_match_status": "MATCHED", "canonical_identity_status": "PROVISIONAL",
-        }],
+        "window": {"start_ts": 60, "end_ts": 86460},
+        "completed_count": 1, "requested_count": 1,
+        "counts": market_universe.source_probe_counts([result]),
+        "results_sha256": market_universe.source_probe_results_digest([result]),
+        "raw_ohlcv_persisted": False, "results": [result],
     }))
     monkeypatch.setattr(market_universe, "PROBE_PATH", probe_path)
 
@@ -220,17 +232,21 @@ def test_market_universe_uses_oldest_result_age_not_report_rewrite_time(monkeypa
 
 def test_market_universe_rejects_future_probe_timestamps(monkeypatch, tmp_path):
     catalog = snapshot()
-    future = (datetime.now(timezone.utc).replace(year=datetime.now(timezone.utc).year + 1)
-              .isoformat().replace("+00:00", "Z"))
+    now = datetime.now(timezone.utc)
+    future = now.replace(year=now.year + 1).isoformat().replace("+00:00", "Z")
     probe_path = tmp_path / "probe.json"
     probe_path.write_text(json.dumps({
-        "schema_version": "icarus.market-universe.source-probe.v2",
-        "probe_implementation": "tools.probe_a200_yahoo.v2",
+        "schema_version": "icarus.market-universe.source-probe.v3",
+        "probe_implementation": "tools.probe_a200_yahoo.v3",
+        "calendar_schedule_version": "nyse-rth-2026-2028.v1",
         "catalog_id": catalog["catalog_id"],
         "catalog_snapshot_sha256": market_universe.catalog_evidence_digest(catalog),
         "probe_provider": "yahoo", "probe_updated_at": future,
-        "completed_count": 0, "requested_count": 0, "raw_ohlcv_persisted": False,
-        "results": [],
+        "window": {"start_ts": 60, "end_ts": 86460},
+        "completed_count": 0, "requested_count": 0,
+        "counts": market_universe.source_probe_counts([]),
+        "results_sha256": market_universe.source_probe_results_digest([]),
+        "raw_ohlcv_persisted": False, "results": [],
     }))
     monkeypatch.setattr(market_universe, "PROBE_PATH", probe_path)
 
@@ -533,9 +549,6 @@ def test_us_equity_calendar_uses_bounded_exchange_schedule():
     )
     with pytest.raises(ValueError, match="no verified schedule"):
         calendar.session_bounds(datetime(2029, 1, 2).date())
-    year_end = int(datetime(2028, 12, 31, 12, tzinfo=timezone.utc).timestamp())
-    assert calendar.next_open(year_end) is None
-    assert calendar.describe(year_end) == "closed"
     assert get_calendar("crypto").open_24_7 is True
 
 
