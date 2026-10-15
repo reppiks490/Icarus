@@ -60,6 +60,11 @@ def contract() -> dict[str, Any]:
             "model": _MODEL["kind"],
             "features": list(FEATURE_KEYS),
             "sequence_length": _MODEL["sequence_length"],
+            "significance": {
+                "method": "paired per-row log loss, one-sided, Newey-West",
+                "minimum_lag": _MODEL["sequence_length"] - 1,
+                "dependence_basis": "adjacent predictions share input-window feature rows",
+            },
             "architecture": {
                 "hidden_size": _MODEL["hidden_size"],
                 "layers": _MODEL["layers"],
@@ -448,7 +453,10 @@ def train(
                 "logit_acc": logit.accuracy(baseline_model, hold_rows),
             },
             "incremental_value_status": incremental_status(calibrated_ll, baseline_ll, null_ll),
-            "significance": significance(calibrated_hold, baseline_probs, base_rate, hold_signs, "logit"),
+            "significance": significance(
+                calibrated_hold, baseline_probs, base_rate, hold_signs, "logit",
+                minimum_lag=sequence_length - 1,
+            ),
             "holdout_claim": claim_record,
             "holdout_touched_before_final": False,
             "model_file": model_path.name,

@@ -18,12 +18,16 @@ def sign_accuracy(ps, ys):
 def incremental_status(model_ll, baseline_ll, null_ll):
     return "PASS" if model_ll < baseline_ll and model_ll < null_ll else "FAIL"
 
-def paired_test(d, lag=None):
+def paired_test(d, lag=None, minimum_lag=0):
     """One-sided test that mean(d) < 0 for per-row loss differences (model minus baseline). Rows next to each other
-    share features, so the variance of the mean uses Newey-West with the usual lag floor(4 (n/100)^(2/9))."""
+    share features, so the variance of the mean uses Newey-West with at least the usual lag floor(4 (n/100)^(2/9)).
+    ``minimum_lag`` supports additional known serial dependence, such as overlapping input windows."""
     n = len(d)
     mean = sum(d) / n
+    if isinstance(minimum_lag, bool) or not isinstance(minimum_lag, int) or minimum_lag < 0:
+        raise ValueError("minimum_lag must be a non-negative integer")
     lag = int(4 * (n / 100) ** (2 / 9)) if lag is None else lag
+    lag = max(lag, minimum_lag)
     dev = [x - mean for x in d]
     var = sum(v * v for v in dev) / n
     for k in range(1, min(lag, n - 1) + 1):
@@ -36,11 +40,14 @@ def paired_test(d, lag=None):
         z, p = None, (0.0 if mean < 0 else 1.0 if mean > 0 else 0.5)
     return {"n": n, "mean": mean, "se": se, "lag": lag, "z": z, "p": p}
 
-def significance(ps, base_ps, null_p, ys, baseline):
+def significance(ps, base_ps, null_p, ys, baseline, *, minimum_lag=0):
     """Paired tests of the model's per-row holdout loss against a baseline's and the constant null's."""
     model = [row_loss(p, y) for p, y in zip(ps, ys)]
-    vs_base = paired_test([m - row_loss(b, y) for m, b, y in zip(model, base_ps, ys)])
-    vs_null = paired_test([m - row_loss(null_p, y) for m, y in zip(model, ys)])
+    vs_base = paired_test([m - row_loss(b, y) for m, b, y in zip(model, base_ps, ys)],
+                          minimum_lag=minimum_lag)
+    vs_null = paired_test([m - row_loss(null_p, y) for m, y in zip(model, ys)],
+                          minimum_lag=minimum_lag)
     return {"method": "paired per-row log loss, one-sided, Newey-West", "alpha": ALPHA,
+            "minimum_lag": minimum_lag,
             f"vs_{baseline}": vs_base, "vs_null": vs_null,
             "significant": vs_base["p"] < ALPHA and vs_null["p"] < ALPHA}

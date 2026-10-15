@@ -108,6 +108,7 @@ def test_gru_challenger_contract_is_research_only_and_reuses_frozen_feature_keys
     assert contract["model"] == "gru"
     assert contract["features"] == list(FEATURE_KEYS)
     assert contract["sequence_length"] >= 4
+    assert contract["significance"]["minimum_lag"] == contract["sequence_length"] - 1
     assert contract["execution_authorized"] is False
     assert contract["production_decision_authorized"] is False
     assert contract["auto_promote"] is False
@@ -143,4 +144,8 @@ def test_gru_challenger_end_to_end_when_torch_is_available(monkeypatch, tmp_path
     assert report["execution_authorized"] is False
     assert report["production_decision_authorized"] is False
     assert report["auto_promote"] is False
+    significance = report["significance"]
+    assert significance["minimum_lag"] == report["sequence_length"] - 1
+    assert significance["vs_logit"]["lag"] >= significance["minimum_lag"]
+    assert significance["vs_null"]["lag"] >= significance["minimum_lag"]
     assert (tmp_path / report["model_file"]).is_file()
