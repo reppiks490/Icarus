@@ -202,10 +202,16 @@ def test_session_schedule_supports_rth_hourly_anchor_and_weekend_closure():
 
     eastern = ZoneInfo("America/New_York")
     expected = [
-        int(datetime(2026, 10, 14, hour, 30, tzinfo=eastern).timestamp())
+        int(datetime(2026, 3, 6, hour, 30, tzinfo=eastern).timestamp())
         for hour in range(9, 16)
     ]
-    expected.append(int(datetime(2026, 10, 19, 9, 30, tzinfo=eastern).timestamp()))
+    expected.extend(
+        int(datetime(2026, 3, 9, hour, 30, tzinfo=eastern).timestamp())
+        for hour in range(9, 16)
+    )
+    assert datetime(2026, 3, 6, 9, 30, tzinfo=eastern).utcoffset() != datetime(
+        2026, 3, 9, 9, 30, tzinfo=eastern,
+    ).utcoffset()
     common = dict(
         instrument_id="icarus:equity:TEST", provider="test",
         expected_provider_symbol="TEST", observed_provider_symbol="TEST",
@@ -226,6 +232,14 @@ def test_session_schedule_supports_rth_hourly_anchor_and_weekend_closure():
     assert complete.historical_bars_qualified is True
     assert missing.interval_gap_count == 1
     assert missing.historical_bars_qualified is False
+
+    too_close = [expected[0], expected[0] + 60]
+    with pytest.raises(ValueError, match="faster than the requested interval"):
+        make_bar_batch_receipt(
+            **{**common, "requested_end_ts": too_close[-1] + 3600},
+            bars=[Bar(ts, 10, 12, 9, 11, 4) for ts in too_close],
+            expected_timestamps=too_close,
+        )
 
 
 def test_catalog_contains_two_hundred_unique_disabled_equity_candidates():

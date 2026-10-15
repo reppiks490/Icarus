@@ -81,6 +81,12 @@ def make_bar_batch_receipt(
             raise ValueError("expected bar timestamps must be integers inside the requested window")
         if any(later <= earlier for earlier, later in zip(expected, expected[1:])):
             raise ValueError("expected bar timestamps must be strictly increasing without duplicates")
+        # A calendar-anchored daily or slower interval may be one UTC hour
+        # shorter across a DST transition. Intraday schedules must not contain
+        # overlapping bars or bars faster than the declared interval.
+        minimum_spacing = interval_seconds - 3600 if interval_seconds >= 86400 else interval_seconds
+        if any(later - earlier < minimum_spacing for earlier, later in zip(expected, expected[1:])):
+            raise ValueError("expected bar timestamps cannot overlap or occur faster than the requested interval")
     observed = str(observed_provider_symbol) if observed_provider_symbol else None
     if observed is not None and observed.upper() != expected_provider_symbol.upper():
         raise ValueError(
