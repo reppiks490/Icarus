@@ -10,8 +10,8 @@ import threading
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
-from .assets import REGISTRY, apply_chart_config, apply_spec_meta, validate_chart_config
-from .runtime import AssetRunner, Journal, Portfolio, RunnerConfig, resolve_inputs, validate_values
+from .assets import REGISTRY, apply_chart_config, validate_chart_config
+from .runtime import AssetRunner, Journal, Portfolio, RunnerConfig, apply_spec_meta, resolve_inputs, validate_values
 
 
 _MINI_MICRO_FUTURES = (
