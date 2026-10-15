@@ -128,21 +128,17 @@ def load_source_probe_report() -> dict[str, Any]:
     now = datetime.now(timezone.utc)
     try:
         updated = datetime.fromisoformat(str(report.get("probe_updated_at", "")).replace("Z", "+00:00"))
-        age_seconds = max(0, int((now - updated).total_seconds()))
+        age_seconds = int((now - updated).total_seconds())
     except (TypeError, ValueError):
         age_seconds = None
     completed, requested = report.get("completed_count", 0), report.get("requested_count", 0)
     if (type(completed) is not int or type(requested) is not int or completed < 0
             or requested < 0 or completed > requested):
         return {"status": "INVALID", "provider": "yahoo", "results": []}
-    if age_seconds is None:
+    if age_seconds is None or age_seconds < 0:
         status = "INVALID"
-    elif age_seconds > 86400:
-        status = "STALE"
-    elif requested == len(catalog.get("instruments", [])) and completed == requested:
-        status = "CURRENT"
     else:
-        status = "PARTIAL"
+        status = "CURRENT" if requested == len(catalog.get("instruments", [])) and completed == requested else "PARTIAL"
     allowed_fields = (
         "instrument_id", "probe_status", "provider_symbol_match_status",
         "canonical_identity_status", "row_count", "received_start_ts",
@@ -158,6 +154,16 @@ def load_source_probe_report() -> dict[str, Any]:
     if (len(results) != completed or len(set(result_ids)) != len(result_ids)
             or not set(result_ids).issubset(catalog_ids) or report.get("raw_ohlcv_persisted") is not False):
         return {"status": "INVALID", "provider": "yahoo", "results": []}
+    result_ages = []
+    for row in report.get("results", []):
+        try:
+            observed = datetime.fromisoformat(str(row.get("probe_started_at", "")).replace("Z", "+00:00"))
+            age = int((now - observed).total_seconds())
+        except (TypeError, ValueError):
+            return {"status": "INVALID", "provider": "yahoo", "results": []}
+        if age < 0:
+            return {"status": "INVALID", "provider": "yahoo", "results": []}
+        result_ages.append(age)
     for result in report.get("results", []):
         mappings = [candidate for candidate in catalog_rows[result["instrument_id"]].get("provider_symbol_candidates", [])
                     if candidate.get("provider") == "yahoo"]
@@ -165,11 +171,14 @@ def load_source_probe_report() -> dict[str, Any]:
                 or result.get("provider_symbol_candidate") != mappings[0].get("symbol")
                 or result.get("provider_mapping_status") != mappings[0].get("mapping_status")):
             return {"status": "INVALID", "provider": "yahoo", "results": []}
+    oldest_result_age = max(result_ages, default=0)
+    if max(age_seconds, oldest_result_age) > 86400:
+        status = "STALE"
     return {
         "status": status,
         "provider": report.get("probe_provider", "yahoo"),
         "probe_updated_at": report.get("probe_updated_at"),
-        "age_seconds": age_seconds,
+        "age_seconds": max(age_seconds, oldest_result_age),
         "requested_count": requested,
         "completed_count": completed,
         "counts": report.get("counts", {}),

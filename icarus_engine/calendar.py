@@ -218,7 +218,10 @@ class USEquitiesCalendar:
             return None
         day = self._day(ts)
         for offset in range(0, 10):
-            bounds = self.session_bounds(day + timedelta(days=offset))
+            candidate = day + timedelta(days=offset)
+            if candidate.year not in self.SUPPORTED_YEARS:
+                return None
+            bounds = self.session_bounds(candidate)
             if bounds is not None and bounds[0] > int(ts):
                 return bounds[0]
         return None
