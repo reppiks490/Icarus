@@ -446,6 +446,27 @@ def test_flatten_without_market_mark_does_not_leave_queued_primary_close_or_cens
     assert twin._administrative_censored_positions == 0
 
 
+def test_shadow_only_flatten_without_market_mark_censors_without_synthetic_close():
+    spec = parse_spec("NQ@1")
+    runner = AssetRunner(RunnerConfig(spec=spec, inputs=Inputs(), mintick=0.25,
+                                      shadow_real_fills=True), Journal(":memory:"), feeds={})
+    twin = runner.em
+    twin.process_bar(bar(60, 110, 112, 106, 110), 0,
+                     real_bar=bar(60, 110, 112, 104, 110))
+    twin.entry("L", 1, 1, limit=105)
+    twin.process_bar(bar(120, 110, 112, 106, 110), 1,
+                     real_bar=bar(120, 110, 112, 104, 110))
+    assert twin.primary.position_size == 0 and twin.shadow.position_size == 1
+    runner.last_price = None
+
+    assert runner.flatten("shadow-only") == 1
+
+    assert twin.primary.position_size == 0
+    assert twin.shadow.open == [] and twin.shadow.closed == []
+    assert twin._administrative_censored_positions == 1
+    assert twin._administrative_censor_events[-1]["bar_ts"] is None
+
+
 def test_runner_feature_is_default_off_and_runtime_passes_standard_bar():
     spec = parse_spec("NQ@1")
     spec.chart_type = "heikin_ashi"

@@ -200,7 +200,7 @@ class MirroredEmulator:
             except Exception as exc:
                 self._degrade(f"shadow administrative cancellation failed: {type(exc).__name__}: {exc}")
 
-    def process_administrative_flatten(self, primary_bar: Bar, bar_index: int,
+    def process_administrative_flatten(self, primary_bar: Optional[Bar], bar_index: int,
                                        entry_ids: set[str], *, reason: str) -> None:
         """Flatten primary state at its admin mark and censor shadow positions.
 
@@ -210,16 +210,17 @@ class MirroredEmulator:
         fill, outcome, realized-P&L, or bar-close drawdown statistics.
         """
         self._bar_index = int(bar_index)
-        self._bar_ts = int(primary_bar.ts)
+        self._bar_ts = int(primary_bar.ts) if primary_bar is not None else None
         # Preserve operational closes while keeping the synthetic admin mark
         # and the affected whole lots out of market-bar evidence.
         self._administratively_flattened_lot_ids["primary"].update(
             int(trade.seq) for trade in self.primary.open if trade.entry_id in entry_ids)
         self._administratively_flattened_lot_ids["shadow"].update(
             int(trade.seq) for trade in self.shadow.open if trade.entry_id in entry_ids)
-        primary_fills_before = len(self.primary.fills)
-        self.primary.process_bar(primary_bar, bar_index)
-        self._capture_entry_fills(self.primary, primary_fills_before, "primary")
+        if primary_bar is not None:
+            primary_fills_before = len(self.primary.fills)
+            self.primary.process_bar(primary_bar, bar_index)
+            self._capture_entry_fills(self.primary, primary_fills_before, "primary")
 
         censored = [trade for trade in self.shadow.open if trade.entry_id in entry_ids]
         self._administratively_flattened_lot_ids["shadow"].update(
@@ -238,7 +239,7 @@ class MirroredEmulator:
         self._administrative_censored_positions += len(censored)
         if censored or pending_entries:
             self._administrative_censor_events.append({
-                "bar_ts": int(primary_bar.ts),
+                "bar_ts": int(primary_bar.ts) if primary_bar is not None else None,
                 "bar_index": int(bar_index),
                 "reason": str(reason),
                 "censored_positions": len(censored),

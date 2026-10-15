@@ -1178,9 +1178,10 @@ class AssetRunner:
             if isinstance(self.em, MirroredEmulator):
                 open_positions.extend(self.em.shadow.open)
             entry_ids = {t.entry_id for t in open_positions}
-            has_open = bool(self.em.open) or (
-                isinstance(self.em, MirroredEmulator) and bool(self.em.shadow.open))
-            if has_open and (self.last_price is None or not math.isfinite(float(self.last_price))):
+            has_primary_open = bool(self.em.open)
+            has_shadow_open = isinstance(self.em, MirroredEmulator) and bool(self.em.shadow.open)
+            has_open = has_primary_open or has_shadow_open
+            if has_primary_open and (self.last_price is None or not math.isfinite(float(self.last_price))):
                 raise RuntimeError(
                     f"[{self.symbol}] cannot flatten open positions: no finite last market price is available")
             for entry_id in entry_ids:
@@ -1193,12 +1194,16 @@ class AssetRunner:
                 else:
                     self.em.close(entry_id, comment=comment)
             if has_open:
-                mark = float(self.last_price)
-                fake = Bar(int(time.time()), mark, mark, mark, mark, 0.0)
                 if isinstance(self.em, MirroredEmulator):
+                    fake = None
+                    if has_primary_open:
+                        mark = float(self.last_price)
+                        fake = Bar(int(time.time()), mark, mark, mark, mark, 0.0)
                     self.em.process_administrative_flatten(
                         fake, self.bar_index, entry_ids, reason=reason)
                 else:
+                    mark = float(self.last_price)
+                    fake = Bar(int(time.time()), mark, mark, mark, mark, 0.0)
                     self.em.process_bar(fake, self.bar_index)
             self.journal.log("WARN", f"[{self.symbol}] FLATTEN ({reason}): {len(entry_ids)} position(s), {cancelled} pending entry intent(s) cancelled")
             return len(entry_ids)
