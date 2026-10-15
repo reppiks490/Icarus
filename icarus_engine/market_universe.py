@@ -36,6 +36,23 @@ def catalog_evidence_digest(catalog: Mapping[str, Any]) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
+def source_probe_results_digest(results: list[Mapping[str, Any]]) -> str:
+    encoded = json.dumps(results, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def source_probe_counts(results: list[Mapping[str, Any]]) -> dict[str, int]:
+    return {
+        "response_received_count": sum(row.get("probe_status") == "RESPONSE_RECEIVED" for row in results),
+        "no_bars_count": sum(row.get("probe_status") == "NO_BARS" for row in results),
+        "error_count": sum(row.get("probe_status") == "ERROR" for row in results),
+        "provider_symbol_match_count": sum(row.get("provider_symbol_match_status") == "MATCHED" for row in results),
+        "canonical_identity_verified_count": sum(row.get("canonical_identity_status") == "VERIFIED" for row in results),
+        "entitlement_verified_count": sum(row.get("entitlement_status") == "VERIFIED" for row in results),
+        "historical_bars_qualified_count": sum(row.get("historical_bars_qualified") is True for row in results),
+    }
+
+
 def validate_catalog(catalog: Mapping[str, Any]) -> dict[str, Any]:
     if catalog.get("schema_version") != SCHEMA:
         raise ValueError("unsupported market universe catalog schema")
@@ -117,13 +134,18 @@ def load_source_probe_report() -> dict[str, Any]:
         report = json.loads(PROBE_PATH.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as ex:
         return {"status": "UNAVAILABLE", "provider": "yahoo", "error": type(ex).__name__, "results": []}
-    if report.get("schema_version") != "icarus.market-universe.source-probe.v2":
+    if report.get("schema_version") != "icarus.market-universe.source-probe.v3":
         return {"status": "INVALID", "provider": "yahoo", "results": []}
     catalog = _load()
-    if report.get("catalog_id") != catalog.get("catalog_id"):
+    if report.get("catalog_id") != catalog.get("catalog_id") or report.get("probe_provider") != "yahoo":
+        return {"status": "INVALID", "provider": "yahoo", "results": []}
+    window = report.get("window")
+    if (not isinstance(window, dict) or type(window.get("start_ts")) is not int
+            or type(window.get("end_ts")) is not int or window["start_ts"] >= window["end_ts"]):
         return {"status": "INVALID", "provider": "yahoo", "results": []}
     if (report.get("catalog_snapshot_sha256") != catalog_evidence_digest(catalog)
-            or report.get("probe_implementation") != "tools.probe_a200_yahoo.v2"):
+            or report.get("probe_implementation") != "tools.probe_a200_yahoo.v3"
+            or report.get("calendar_schedule_version") != "nyse-rth-2026-2028.v1"):
         return {"status": "INVALID", "provider": "yahoo", "results": []}
     now = datetime.now(timezone.utc)
     try:
@@ -157,6 +179,16 @@ def load_source_probe_report() -> dict[str, Any]:
     catalog_ids = set(catalog_rows)
     if (len(results) != completed or len(set(result_ids)) != len(result_ids)
             or not set(result_ids).issubset(catalog_ids) or report.get("raw_ohlcv_persisted") is not False):
+        return {"status": "INVALID", "provider": "yahoo", "results": []}
+    raw_results = report.get("results", [])
+    if (not isinstance(raw_results, list) or len(raw_results) != completed
+            or any(not isinstance(row, dict) for row in raw_results)):
+        return {"status": "INVALID", "provider": "yahoo", "results": []}
+    if (report.get("results_sha256") != source_probe_results_digest(raw_results)
+            or report.get("counts") != source_probe_counts(raw_results)):
+        return {"status": "INVALID", "provider": "yahoo", "results": []}
+    if any(row.get("probe_status") not in ("RESPONSE_RECEIVED", "NO_BARS", "ERROR")
+           for row in raw_results):
         return {"status": "INVALID", "provider": "yahoo", "results": []}
     for result in report.get("results", []):
         mappings = [candidate for candidate in catalog_rows[result["instrument_id"]].get("provider_symbol_candidates", [])

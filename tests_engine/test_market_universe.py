@@ -153,21 +153,32 @@ def test_a200_yahoo_sweep_persists_receipts_without_raw_ohlcv(monkeypatch, tmp_p
 
 def test_market_universe_exposes_only_matching_catalog_probe_receipts(monkeypatch, tmp_path):
     row = snapshot()["instruments"][0]
+    catalog = snapshot()
     probe_path = tmp_path / "probe.json"
+    result = {
+        "instrument_id": row["instrument_id"], "provider": "yahoo",
+        "provider_symbol_candidate": row["provider_symbol_candidates"][0]["symbol"],
+        "provider_mapping_status": row["provider_symbol_candidates"][0]["mapping_status"],
+        "probe_status": "RESPONSE_RECEIVED", "provider_symbol_match_status": "MATCHED",
+        "canonical_identity_status": "PROVISIONAL", "entitlement_status": "UNKNOWN",
+        "historical_bars_qualified": False, "row_count": 10, "close": 10,
+    }
+    results = [result]
     probe_path.write_text(json.dumps({
-        "schema_version": "icarus.market-universe.source-probe.v1",
-        "catalog_id": snapshot()["catalog_id"],
+        "schema_version": "icarus.market-universe.source-probe.v3",
+        "probe_implementation": "tools.probe_a200_yahoo.v3",
+        "calendar_schedule_version": "nyse-rth-2026-2028.v1",
+        "catalog_id": catalog["catalog_id"],
+        "catalog_snapshot_sha256": market_universe.catalog_evidence_digest(catalog),
         "probe_provider": "yahoo",
         "probe_updated_at": "2026-10-15T19:00:00Z",
+        "window": {"start_ts": 60, "end_ts": 86460},
         "completed_count": 1,
         "requested_count": 1,
-        "counts": {"response_received_count": 1, "historical_bars_qualified_count": 0},
+        "counts": market_universe.source_probe_counts(results),
+        "results_sha256": market_universe.source_probe_results_digest(results),
         "raw_ohlcv_persisted": False,
-        "results": [{
-            "instrument_id": row["instrument_id"], "probe_status": "RESPONSE_RECEIVED",
-            "provider_symbol_match_status": "MATCHED", "canonical_identity_status": "PROVISIONAL",
-            "row_count": 10, "close": 10,
-        }],
+        "results": results,
     }))
     monkeypatch.setattr(market_universe, "PROBE_PATH", probe_path)
     report = market_universe.load_source_probe_report()
