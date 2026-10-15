@@ -120,7 +120,7 @@ class ResearchWorkspace:
 
     def close(self):
         if self._learning is not None:
-            self._learning.stop()
+            self._learning.close()
         if self._adaptation is not None:
             self._adaptation.stop(cancel=True)
         self._stop.set()

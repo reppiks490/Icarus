@@ -244,6 +244,8 @@ class LearningFabric:
         self._lock = threading.RLock()
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
+        self._closed = False
+        self._closed_status: dict[str, Any] | None = None
         self._native: dict[str, Any] = {}
         self._last_history_scan = 0.0
         self._conn = sqlite3.connect(self.path, timeout=30.0, check_same_thread=False)
@@ -4875,9 +4877,11 @@ class LearningFabric:
                 break
 
     def start_background(self) -> dict[str, Any]:
-        if not self._config["enabled"]:
-            return self.status()
         with self._lock:
+            if self._closed:
+                raise RuntimeError("learning fabric is closed")
+            if not self._config["enabled"]:
+                return self.status()
             if self._thread and self._thread.is_alive():
                 return self.status()
             self._stop.clear()
@@ -4886,13 +4890,33 @@ class LearningFabric:
         return self.status()
 
     def stop(self) -> dict[str, Any]:
+        if self._closed:
+            return self._closed_status or {"status": "CLOSED"}
         self._stop.set()
         thread = self._thread
         if thread and thread.is_alive() and thread is not threading.current_thread():
             thread.join(timeout=max(1.0, min(5.0, self._config["cycle_seconds"] + 0.5)))
         return self.status()
 
-    close = stop
+    def close(self) -> dict[str, Any]:
+        """Stop the worker and release the durable SQLite handle when idle."""
+        if self._closed:
+            return self._closed_status or {"status": "CLOSED"}
+        status = self.stop()
+        thread = self._thread
+        # Do not close a connection underneath a worker that is still finishing a
+        # cycle. The caller can retry close after shutdown has quiesced.
+        if thread and thread.is_alive():
+            return status
+        with self._lock:
+            if self._closed:
+                return self._closed_status or status
+            if isinstance(status.get("background"), dict):
+                status["background"]["running"] = False
+            self._conn.close()
+            self._closed = True
+            self._closed_status = status
+        return status
 
     def snapshot(self) -> dict[str, Any]:
         dataset_count = int(self._conn.execute("SELECT COUNT(*) FROM datasets").fetchone()[0])
@@ -4942,6 +4966,8 @@ class LearningFabric:
         }
 
     def status(self) -> dict[str, Any]:
+        if self._closed:
+            return json.loads(json.dumps(self._closed_status or {"status": "CLOSED"}))
         snap = self.snapshot()
         snap["background"] = {
             "running": bool(self._thread and self._thread.is_alive()),
