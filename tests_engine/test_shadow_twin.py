@@ -336,6 +336,9 @@ def test_flatten_closes_shadow_only_position():
     after = twin.summary()
     assert after["real_price_shadow"]["closed_episodes"] == before["real_price_shadow"]["closed_episodes"] == 0
     assert after["real_price_shadow"]["net"] == before["real_price_shadow"]["net"] == 0
+    assert after["primary"]["closed_episodes"] == before["primary"]["closed_episodes"] == 0
+    assert after["primary"]["net"] == before["primary"]["net"] == 0
+    assert after["excluded_admin_flatten_lot_trade_pieces"] == {"primary": 0, "shadow": 0}
     assert after["pairable_closed_episodes"] == before["pairable_closed_episodes"] == 0
     assert after["bar_close_equity_observations"] == before_bar_observations
     assert after["administrative_censored_shadow_positions"] == 1
@@ -371,6 +374,9 @@ def test_flatten_closes_primary_but_censors_paired_shadow_position():
     assert after["outcome_agreement_denominator"] == before["outcome_agreement_denominator"] == 0
     assert after["real_price_shadow"]["closed_episodes"] == before["real_price_shadow"]["closed_episodes"] == 0
     assert after["real_price_shadow"]["net"] == before["real_price_shadow"]["net"] == 0
+    assert after["primary"]["closed_episodes"] == before["primary"]["closed_episodes"] == 0
+    assert after["primary"]["net"] == before["primary"]["net"] == 0
+    assert after["excluded_admin_flatten_lot_trade_pieces"] == {"primary": 1, "shadow": 0}
     assert after["bar_close_equity_observations"] == before["bar_close_equity_observations"]
     assert after["administrative_censored_shadow_positions"] == 1
 

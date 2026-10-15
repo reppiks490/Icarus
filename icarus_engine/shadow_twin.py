@@ -44,6 +44,9 @@ class MirroredEmulator:
         self._bar_close_equity_observations = 0
         self._administrative_censored_positions = 0
         self._administrative_censor_events: list[dict[str, Any]] = []
+        self._administratively_flattened_lot_ids: dict[str, set[int]] = {
+            "primary": set(), "shadow": set(),
+        }
 
     def __getattr__(self, name: str) -> Any:
         # Strategy and existing runtime diagnostics see canonical state only.
@@ -208,11 +211,19 @@ class MirroredEmulator:
         """
         self._bar_index = int(bar_index)
         self._bar_ts = int(primary_bar.ts)
+        # Preserve operational closes while keeping the synthetic admin mark
+        # and the affected whole lots out of market-bar evidence.
+        self._administratively_flattened_lot_ids["primary"].update(
+            int(trade.seq) for trade in self.primary.open if trade.entry_id in entry_ids)
+        self._administratively_flattened_lot_ids["shadow"].update(
+            int(trade.seq) for trade in self.shadow.open if trade.entry_id in entry_ids)
         primary_fills_before = len(self.primary.fills)
         self.primary.process_bar(primary_bar, bar_index)
         self._capture_entry_fills(self.primary, primary_fills_before, "primary")
 
         censored = [trade for trade in self.shadow.open if trade.entry_id in entry_ids]
+        self._administratively_flattened_lot_ids["shadow"].update(
+            int(trade.seq) for trade in censored)
         pending_entries = [row for row in self.shadow._pending_entries if row.id in entry_ids]
         for entry_id in entry_ids:
             self._pending_entry_intents["shadow"][:] = [
@@ -242,7 +253,7 @@ class MirroredEmulator:
             "shadow_market_outcome_recorded": False,
         })
 
-    def _episodes(self, engine: Emulator, lane: str) -> dict[Any, dict[str, Any]]:
+    def _episodes(self, engine: Emulator, lane: str) -> tuple[dict[Any, dict[str, Any]], int]:
         intent_by_entry: dict[tuple[str, int, int, str, int, float], int] = {}
         for intent_seq, pair in self._entry_fill_pairs.items():
             fill = pair.get(lane)
@@ -255,7 +266,11 @@ class MirroredEmulator:
         episodes: dict[Any, dict[str, Any]] = defaultdict(
             lambda: {"net": 0.0, "pieces": 0, "qty": 0, "closed": False,
                      "entry_ts": 0, "last_exit_ts": 0})
+        excluded_admin_flatten_pieces = 0
         for trade in engine.closed:
+            if int(trade.lot_id) in self._administratively_flattened_lot_ids[lane]:
+                excluded_admin_flatten_pieces += 1
+                continue
             side = "buy" if int(trade.direction) > 0 else "sell"
             identity = (str(trade.entry_id), int(trade.entry_ts), int(trade.entry_bar),
                         side, int(trade.entry_qty or trade.qty), float(trade.entry_price))
@@ -270,11 +285,11 @@ class MirroredEmulator:
             row["closed"] = True
             row["entry_ts"] = int(trade.entry_ts)
             row["last_exit_ts"] = max(row["last_exit_ts"], int(trade.exit_ts))
-        return dict(episodes)
+        return dict(episodes), excluded_admin_flatten_pieces
 
     def summary(self, *, live_from_ts: Optional[int] = None) -> dict[str, Any]:
-        primary_eps = self._episodes(self.primary, "primary")
-        shadow_eps = self._episodes(self.shadow, "shadow")
+        primary_eps, primary_admin_flatten_pieces = self._episodes(self.primary, "primary")
+        shadow_eps, shadow_admin_flatten_pieces = self._episodes(self.shadow, "shadow")
         common = sorted(primary_eps.keys() & shadow_eps.keys())
         directional = [k for k in common if primary_eps[k]["net"] != 0 and shadow_eps[k]["net"] != 0]
         agreement = sum((primary_eps[k]["net"] > 0) == (shadow_eps[k]["net"] > 0)
@@ -350,6 +365,10 @@ class MirroredEmulator:
             "primary_only_closed_episodes": len(primary_eps.keys() - shadow_eps.keys()),
             "shadow_only_closed_episodes": len(shadow_eps.keys() - primary_eps.keys()),
             "pairable_closed_episodes": len(common),
+            "excluded_admin_flatten_lot_trade_pieces": {
+                "primary": primary_admin_flatten_pieces,
+                "shadow": shadow_admin_flatten_pieces,
+            },
             "outcome_agreement_denominator": len(directional),
             "outcome_agreement_rate": (agreement / len(directional) if directional else None),
             "outcome_agreement_count": agreement,
