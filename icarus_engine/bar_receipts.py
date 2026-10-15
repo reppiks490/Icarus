@@ -18,6 +18,8 @@ class BarBatchReceipt:
     provider: str
     expected_provider_symbol: str
     observed_provider_symbol: str | None
+    provider_symbol_match_status: str
+    provider_mapping_status: str
     identity_status: str
     entitlement_status: str
     interval_seconds: int
@@ -46,7 +48,7 @@ def make_bar_batch_receipt(
     observed_provider_symbol: str | None, interval_seconds: int,
     requested_start_ts: int, requested_end_ts: int, bars: Iterable[Bar],
     fetched_at_ns: int, received_at_ns: int, entitlement_status: str = "UNKNOWN",
-    session_validation_status: str = "UNKNOWN",
+    session_validation_status: str = "UNKNOWN", provider_mapping_status: str = "VERIFIED",
 ) -> tuple[list[Bar], BarBatchReceipt]:
     """Validate exact response identity and OHLCV before returning bars to runtime.
 
@@ -57,6 +59,8 @@ def make_bar_batch_receipt(
         raise ValueError("bar receipt requires instrument, provider, and expected symbol")
     if type(interval_seconds) is not int or interval_seconds <= 0:
         raise ValueError("bar receipt interval must be a positive integer")
+    if provider_mapping_status not in ("VERIFIED", "UNVERIFIED", "UNKNOWN"):
+        raise ValueError("invalid provider mapping status")
     for name, value in (("requested_start_ts", requested_start_ts), ("requested_end_ts", requested_end_ts),
                         ("fetched_at_ns", fetched_at_ns), ("received_at_ns", received_at_ns)):
         if type(value) is not int:
@@ -101,7 +105,9 @@ def make_bar_batch_receipt(
         separators=(",", ":"), allow_nan=False,
     ).encode("utf-8")
     checksum = hashlib.sha256(encoded).hexdigest()
-    identity_status = "VERIFIED" if observed is not None else "UNKNOWN"
+    provider_symbol_match_status = "MATCHED" if observed is not None else "UNKNOWN"
+    identity_status = ("VERIFIED" if provider_symbol_match_status == "MATCHED" and provider_mapping_status == "VERIFIED"
+                       else "PROVISIONAL" if provider_symbol_match_status == "MATCHED" else "UNKNOWN")
     if session_validation_status not in ("UNKNOWN", "VERIFIED", "FAILED"):
         raise ValueError("invalid session validation status")
     qualified = (identity_status == "VERIFIED" and entitlement_status == "VERIFIED"
@@ -117,6 +123,8 @@ def make_bar_batch_receipt(
         provider=provider,
         expected_provider_symbol=expected_provider_symbol,
         observed_provider_symbol=observed,
+        provider_symbol_match_status=provider_symbol_match_status,
+        provider_mapping_status=provider_mapping_status,
         identity_status=identity_status,
         entitlement_status=entitlement_status,
         interval_seconds=interval_seconds,

@@ -57,5 +57,6 @@ class MarketUniverseAdapter:
             received_at_ns=received_at_ns,
             entitlement_status="UNKNOWN",
             session_validation_status="UNKNOWN",
+            provider_mapping_status=mapping["mapping_status"],
         )
         return checked, receipt

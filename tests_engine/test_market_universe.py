@@ -15,6 +15,11 @@ def test_catalog_security_type_filter_distinguishes_equity_forms():
     assert _instrument_class("Issuer American Depositary Shares (each representing two (2) Ordinary Shares)") == ("depositary_receipt", 2)
     assert _instrument_class("Bank Pfd 3 Ordinary Shares") is None
     assert _instrument_class("Acquisition Corp. Unit") is None
+    assert _instrument_class("UnitedHealth Group Incorporated Common Stock") == ("common_stock", None)
+    assert _instrument_class("United Parcel Service, Inc. Common Stock") == ("common_stock", None)
+    assert _instrument_class("United Airlines Holdings Common Stock") == ("common_stock", None)
+    assert _instrument_class("United Rentals Common Stock") == ("common_stock", None)
+    assert _instrument_class("BHP American Depositary Shares (Each representing two Ordinary Shares)") == ("depositary_receipt", 2)
 
 
 class _FakeYahooHistory:
@@ -40,7 +45,9 @@ def test_a200_yahoo_adapter_resolves_mapping_and_keeps_entitlement_unqualified()
     bars, receipt = adapter.fetch_history(row["instrument_id"], 60, 60, 120)
     assert fake.requested == [(provider_symbol, 60, 60, 120)]
     assert len(bars) == receipt.row_count == 1
-    assert receipt.identity_status == "VERIFIED"
+    assert receipt.provider_symbol_match_status == "MATCHED"
+    assert receipt.provider_mapping_status == "UNVERIFIED"
+    assert receipt.identity_status == "PROVISIONAL"
     assert receipt.entitlement_status == "UNKNOWN"
     assert receipt.session_validation_status == "UNKNOWN"
     assert receipt.historical_bars_qualified is False

@@ -1034,6 +1034,41 @@
       "catalog_rank_snapshot": 30,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
+      "display_symbol": "UNH",
+      "entitlement": "UNKNOWN",
+      "historical_bars": "UNVERIFIED",
+      "identity_basis": "provisional_exchange_listing_key",
+      "identity_status": "PROVISIONAL",
+      "instrument_id": "75c328bb-472e-5f10-b55c-5666baf28d73",
+      "instrument_type": "common_stock",
+      "live_bars": "UNVERIFIED",
+      "minimum_price_increment": null,
+      "name": "UnitedHealth Group Incorporated Common Stock (DE)",
+      "point_value": null,
+      "provider_symbol_candidates": [
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "UNH"
+        }
+      ],
+      "pulse_enabled": false,
+      "quote_currency": "USD",
+      "session_template": "US_EQUITIES_RTH",
+      "share_lot_size": null,
+      "source_connection": "UNVERIFIED",
+      "strategy_qualified": false,
+      "terms_retention": "UNKNOWN",
+      "timezone": "America/New_York",
+      "venue": "NYSE"
+    },
+    {
+      "asset_class": "equity",
+      "calendar": "US_EQUITIES",
+      "catalog_rank_snapshot": 31,
+      "corporate_action_policy": "UNKNOWN",
+      "depositary_ratio": null,
       "display_symbol": "AMAT",
       "entitlement": "UNKNOWN",
       "historical_bars": "UNVERIFIED",
@@ -1066,7 +1101,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 31,
+      "catalog_rank_snapshot": 32,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "CAT",
@@ -1101,7 +1136,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 32,
+      "catalog_rank_snapshot": 33,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "DELL",
@@ -1136,7 +1171,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 33,
+      "catalog_rank_snapshot": 34,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "HSBC",
@@ -1171,7 +1206,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 34,
+      "catalog_rank_snapshot": 35,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "PM",
@@ -1206,7 +1241,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 35,
+      "catalog_rank_snapshot": 36,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "GE",
@@ -1241,7 +1276,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 36,
+      "catalog_rank_snapshot": 37,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "PANW",
@@ -1276,7 +1311,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 37,
+      "catalog_rank_snapshot": 38,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "HD",
@@ -1311,7 +1346,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 38,
+      "catalog_rank_snapshot": 39,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "NFLX",
@@ -1346,7 +1381,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 39,
+      "catalog_rank_snapshot": 40,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": 2,
       "display_symbol": "SHEL",
@@ -1381,7 +1416,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 40,
+      "catalog_rank_snapshot": 41,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "MS",
@@ -1416,7 +1451,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 41,
+      "catalog_rank_snapshot": 42,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "NVS",
@@ -1451,7 +1486,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 42,
+      "catalog_rank_snapshot": 43,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "BABA",
@@ -1486,7 +1521,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 43,
+      "catalog_rank_snapshot": 44,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "RY",
@@ -1521,7 +1556,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 44,
+      "catalog_rank_snapshot": 45,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "MUFG",
@@ -1556,7 +1591,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 45,
+      "catalog_rank_snapshot": 46,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "TXN",
@@ -1591,7 +1626,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 46,
+      "catalog_rank_snapshot": 47,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "GS",
@@ -1626,7 +1661,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 47,
+      "catalog_rank_snapshot": 48,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "CRWD",
@@ -1661,7 +1696,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 48,
+      "catalog_rank_snapshot": 49,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "ARM",
@@ -1696,7 +1731,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 49,
+      "catalog_rank_snapshot": 50,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "RTX",
@@ -1731,7 +1766,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 50,
+      "catalog_rank_snapshot": 51,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "AZN",
@@ -1766,7 +1801,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 51,
+      "catalog_rank_snapshot": 52,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "GEV",
@@ -1801,7 +1836,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 52,
+      "catalog_rank_snapshot": 53,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "TMO",
@@ -1836,7 +1871,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 53,
+      "catalog_rank_snapshot": 54,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "ANET",
@@ -1871,7 +1906,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 54,
+      "catalog_rank_snapshot": 55,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "TM",
@@ -1906,7 +1941,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 55,
+      "catalog_rank_snapshot": 56,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "WFC",
@@ -1941,7 +1976,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 56,
+      "catalog_rank_snapshot": 57,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "KLAC",
@@ -1976,7 +2011,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 57,
+      "catalog_rank_snapshot": 58,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "AMGN",
@@ -2011,7 +2046,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 58,
+      "catalog_rank_snapshot": 59,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "LIN",
@@ -2046,7 +2081,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 59,
+      "catalog_rank_snapshot": 60,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "MRVL",
@@ -2081,7 +2116,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 60,
+      "catalog_rank_snapshot": 61,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "IBM",
@@ -2116,9 +2151,9 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 61,
+      "catalog_rank_snapshot": 62,
       "corporate_action_policy": "UNKNOWN",
-      "depositary_ratio": null,
+      "depositary_ratio": 2,
       "display_symbol": "BHP",
       "entitlement": "UNKNOWN",
       "historical_bars": "UNVERIFIED",
@@ -2151,7 +2186,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 62,
+      "catalog_rank_snapshot": 63,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "AXP",
@@ -2186,7 +2221,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 63,
+      "catalog_rank_snapshot": 64,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "C",
@@ -2221,7 +2256,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 64,
+      "catalog_rank_snapshot": 65,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "SNDK",
@@ -2256,7 +2291,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 65,
+      "catalog_rank_snapshot": 66,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "APH",
@@ -2291,7 +2326,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 66,
+      "catalog_rank_snapshot": 67,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "TTE",
@@ -2326,7 +2361,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 67,
+      "catalog_rank_snapshot": 68,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "ADI",
@@ -2361,7 +2396,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 68,
+      "catalog_rank_snapshot": 69,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "CRM",
@@ -2396,7 +2431,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 69,
+      "catalog_rank_snapshot": 70,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "TD",
@@ -2431,7 +2466,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 70,
+      "catalog_rank_snapshot": 71,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "GILD",
@@ -2466,7 +2501,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 71,
+      "catalog_rank_snapshot": 72,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "DIS",
@@ -2501,7 +2536,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 72,
+      "catalog_rank_snapshot": 73,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "VZ",
@@ -2536,7 +2571,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 73,
+      "catalog_rank_snapshot": 74,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "QCOM",
@@ -2571,7 +2606,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 74,
+      "catalog_rank_snapshot": 75,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "ABT",
@@ -2606,7 +2641,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 75,
+      "catalog_rank_snapshot": 76,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "PEP",
@@ -2641,7 +2676,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 76,
+      "catalog_rank_snapshot": 77,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "DE",
@@ -2676,7 +2711,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 77,
+      "catalog_rank_snapshot": 78,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "COP",
@@ -2711,7 +2746,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 78,
+      "catalog_rank_snapshot": 79,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "UNP",
@@ -2746,7 +2781,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 79,
+      "catalog_rank_snapshot": 80,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "TMUS",
@@ -2781,7 +2816,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 80,
+      "catalog_rank_snapshot": 81,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "NVO",
@@ -2816,7 +2851,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 81,
+      "catalog_rank_snapshot": 82,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "MCD",
@@ -2851,7 +2886,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 82,
+      "catalog_rank_snapshot": 83,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "SCCO",
@@ -2886,7 +2921,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 83,
+      "catalog_rank_snapshot": 84,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "SCHW",
@@ -2921,7 +2956,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 84,
+      "catalog_rank_snapshot": 85,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "WELL",
@@ -2956,7 +2991,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 85,
+      "catalog_rank_snapshot": 86,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "PFE",
@@ -2991,7 +3026,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 86,
+      "catalog_rank_snapshot": 87,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "BLK",
@@ -3026,7 +3061,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 87,
+      "catalog_rank_snapshot": 88,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "NEE",
@@ -3061,7 +3096,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 88,
+      "catalog_rank_snapshot": 89,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "STX",
@@ -3096,7 +3131,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 89,
+      "catalog_rank_snapshot": 90,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "ETN",
@@ -3131,7 +3166,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 90,
+      "catalog_rank_snapshot": 91,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "DHR",
@@ -3166,7 +3201,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 91,
+      "catalog_rank_snapshot": 92,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "SMFG",
@@ -3201,7 +3236,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 92,
+      "catalog_rank_snapshot": 93,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "TJX",
@@ -3236,7 +3271,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 93,
+      "catalog_rank_snapshot": 94,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "ISRG",
@@ -3271,7 +3306,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 94,
+      "catalog_rank_snapshot": 95,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "UBS",
@@ -3306,7 +3341,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 95,
+      "catalog_rank_snapshot": 96,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "BBVA",
@@ -3341,7 +3376,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 96,
+      "catalog_rank_snapshot": 97,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "BA",
@@ -3376,7 +3411,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 97,
+      "catalog_rank_snapshot": 98,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "NOW",
@@ -3411,7 +3446,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 98,
+      "catalog_rank_snapshot": 99,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "SONY",
@@ -3446,7 +3481,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 99,
+      "catalog_rank_snapshot": 100,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "ACN",
@@ -3481,7 +3516,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 100,
+      "catalog_rank_snapshot": 101,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "UBER",
@@ -3516,7 +3551,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 101,
+      "catalog_rank_snapshot": 102,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "UL",
@@ -3551,7 +3586,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 102,
+      "catalog_rank_snapshot": 103,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "MPC",
@@ -3586,7 +3621,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 103,
+      "catalog_rank_snapshot": 104,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "WDC",
@@ -3621,7 +3656,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 104,
+      "catalog_rank_snapshot": 105,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "CB",
@@ -3656,7 +3691,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 105,
+      "catalog_rank_snapshot": 106,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "FTNT",
@@ -3691,7 +3726,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 106,
+      "catalog_rank_snapshot": 107,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "VLO",
@@ -3726,7 +3761,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 107,
+      "catalog_rank_snapshot": 108,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "BP",
@@ -3761,7 +3796,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 108,
+      "catalog_rank_snapshot": 109,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "VRTX",
@@ -3796,7 +3831,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 109,
+      "catalog_rank_snapshot": 110,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "PGR",
@@ -3831,7 +3866,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 110,
+      "catalog_rank_snapshot": 111,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "PLD",
@@ -3866,7 +3901,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 111,
+      "catalog_rank_snapshot": 112,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "BTI",
@@ -3901,7 +3936,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 112,
+      "catalog_rank_snapshot": 113,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "GLW",
@@ -3936,7 +3971,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 113,
+      "catalog_rank_snapshot": 114,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "BMY",
@@ -3971,7 +4006,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 114,
+      "catalog_rank_snapshot": 115,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "BKNG",
@@ -4006,7 +4041,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 115,
+      "catalog_rank_snapshot": 116,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "PH",
@@ -4041,7 +4076,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 116,
+      "catalog_rank_snapshot": 117,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "MDT",
@@ -4076,7 +4111,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 117,
+      "catalog_rank_snapshot": 118,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "LMT",
@@ -4111,7 +4146,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 118,
+      "catalog_rank_snapshot": 119,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "SPGI",
@@ -4146,7 +4181,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 119,
+      "catalog_rank_snapshot": 120,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "COF",
@@ -4181,7 +4216,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 120,
+      "catalog_rank_snapshot": 121,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "PSX",
@@ -4216,7 +4251,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 121,
+      "catalog_rank_snapshot": 122,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "SNOW",
@@ -4251,7 +4286,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 122,
+      "catalog_rank_snapshot": 123,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "HDB",
@@ -4286,7 +4321,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 123,
+      "catalog_rank_snapshot": 124,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "PDD",
@@ -4321,7 +4356,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 124,
+      "catalog_rank_snapshot": 125,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "CVS",
@@ -4356,7 +4391,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 125,
+      "catalog_rank_snapshot": 126,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "NET",
@@ -4391,7 +4426,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 126,
+      "catalog_rank_snapshot": 127,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "RIO",
@@ -4426,7 +4461,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 127,
+      "catalog_rank_snapshot": 128,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "MCK",
@@ -4461,7 +4496,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 128,
+      "catalog_rank_snapshot": 129,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "BMO",
@@ -4496,7 +4531,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 129,
+      "catalog_rank_snapshot": 130,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "ADP",
@@ -4531,7 +4566,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 130,
+      "catalog_rank_snapshot": 131,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "SYK",
@@ -4566,7 +4601,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 131,
+      "catalog_rank_snapshot": 132,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "SPOT",
@@ -4601,7 +4636,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 132,
+      "catalog_rank_snapshot": 133,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "CNQ",
@@ -4636,7 +4671,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 133,
+      "catalog_rank_snapshot": 134,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "SBUX",
@@ -4671,7 +4706,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 134,
+      "catalog_rank_snapshot": 135,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "LOW",
@@ -4706,7 +4741,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 135,
+      "catalog_rank_snapshot": 136,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "ENB",
@@ -4741,7 +4776,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 136,
+      "catalog_rank_snapshot": 137,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "SO",
@@ -4776,7 +4811,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 137,
+      "catalog_rank_snapshot": 138,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "CME",
@@ -4811,7 +4846,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 138,
+      "catalog_rank_snapshot": 139,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "HCA",
@@ -4846,7 +4881,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 139,
+      "catalog_rank_snapshot": 140,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "IBN",
@@ -4881,7 +4916,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 140,
+      "catalog_rank_snapshot": 141,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "CM",
@@ -4916,7 +4951,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 141,
+      "catalog_rank_snapshot": 142,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "ABNB",
@@ -4951,7 +4986,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 142,
+      "catalog_rank_snapshot": 143,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "FCX",
@@ -4986,7 +5021,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 143,
+      "catalog_rank_snapshot": 144,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "CEG",
@@ -5021,7 +5056,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 144,
+      "catalog_rank_snapshot": 145,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "ASX",
@@ -5056,7 +5091,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 145,
+      "catalog_rank_snapshot": 146,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "EQIX",
@@ -5091,7 +5126,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 146,
+      "catalog_rank_snapshot": 147,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "PWR",
@@ -5126,7 +5161,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 147,
+      "catalog_rank_snapshot": 148,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "ING",
@@ -5161,7 +5196,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 148,
+      "catalog_rank_snapshot": 149,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "MAR",
@@ -5196,9 +5231,9 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 149,
+      "catalog_rank_snapshot": 150,
       "corporate_action_policy": "UNKNOWN",
-      "depositary_ratio": null,
+      "depositary_ratio": 2,
       "display_symbol": "GSK",
       "entitlement": "UNKNOWN",
       "historical_bars": "UNVERIFIED",
@@ -5231,7 +5266,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 150,
+      "catalog_rank_snapshot": 151,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "DDOG",
@@ -5266,7 +5301,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 151,
+      "catalog_rank_snapshot": 152,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "ADBE",
@@ -5301,7 +5336,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 152,
+      "catalog_rank_snapshot": 153,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "BNY",
@@ -5336,7 +5371,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 153,
+      "catalog_rank_snapshot": 154,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "DUK",
@@ -5371,7 +5406,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 154,
+      "catalog_rank_snapshot": 155,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "MELI",
@@ -5406,7 +5441,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 155,
+      "catalog_rank_snapshot": 156,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "ELV",
@@ -5441,7 +5476,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 156,
+      "catalog_rank_snapshot": 157,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "SNPS",
@@ -5476,7 +5511,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 157,
+      "catalog_rank_snapshot": 158,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "HOOD",
@@ -5511,7 +5546,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 158,
+      "catalog_rank_snapshot": 159,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "E",
@@ -5546,7 +5581,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 159,
+      "catalog_rank_snapshot": 160,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "CDNS",
@@ -5581,7 +5616,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 160,
+      "catalog_rank_snapshot": 161,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "GD",
@@ -5616,7 +5651,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 161,
+      "catalog_rank_snapshot": 162,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "MRNA",
@@ -5651,7 +5686,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 162,
+      "catalog_rank_snapshot": 163,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "EMR",
@@ -5686,7 +5721,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 163,
+      "catalog_rank_snapshot": 164,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "AEM",
@@ -5721,7 +5756,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 164,
+      "catalog_rank_snapshot": 165,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "CSX",
@@ -5756,7 +5791,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 165,
+      "catalog_rank_snapshot": 166,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "WMB",
@@ -5791,7 +5826,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 166,
+      "catalog_rank_snapshot": 167,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "SU",
@@ -5826,7 +5861,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 167,
+      "catalog_rank_snapshot": 168,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "APP",
@@ -5861,7 +5896,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 168,
+      "catalog_rank_snapshot": 169,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "USB",
@@ -5896,7 +5931,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 169,
+      "catalog_rank_snapshot": 170,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "ICE",
@@ -5931,7 +5966,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 170,
+      "catalog_rank_snapshot": 171,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "HWM",
@@ -5966,7 +6001,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 171,
+      "catalog_rank_snapshot": 172,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "WM",
@@ -6001,7 +6036,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 172,
+      "catalog_rank_snapshot": 173,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "PNC",
@@ -6036,7 +6071,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 173,
+      "catalog_rank_snapshot": 174,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "VRT",
@@ -6071,7 +6106,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 174,
+      "catalog_rank_snapshot": 175,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "MRSH",
@@ -6106,7 +6141,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 175,
+      "catalog_rank_snapshot": 176,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "MMM",
@@ -6141,7 +6176,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 176,
+      "catalog_rank_snapshot": 177,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "HPE",
@@ -6176,7 +6211,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 177,
+      "catalog_rank_snapshot": 178,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "AMT",
@@ -6211,7 +6246,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 178,
+      "catalog_rank_snapshot": 179,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "INTU",
@@ -6246,7 +6281,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 179,
+      "catalog_rank_snapshot": 180,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "CTAS",
@@ -6281,7 +6316,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 180,
+      "catalog_rank_snapshot": 181,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "NGG",
@@ -6316,7 +6351,42 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 181,
+      "catalog_rank_snapshot": 182,
+      "corporate_action_policy": "UNKNOWN",
+      "depositary_ratio": null,
+      "display_symbol": "UPS",
+      "entitlement": "UNKNOWN",
+      "historical_bars": "UNVERIFIED",
+      "identity_basis": "provisional_exchange_listing_key",
+      "identity_status": "PROVISIONAL",
+      "instrument_id": "3ab53e53-c116-54d3-a75a-6e5a667b94f1",
+      "instrument_type": "common_stock",
+      "live_bars": "UNVERIFIED",
+      "minimum_price_increment": null,
+      "name": "United Parcel Service, Inc. Common Stock",
+      "point_value": null,
+      "provider_symbol_candidates": [
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "UPS"
+        }
+      ],
+      "pulse_enabled": false,
+      "quote_currency": "USD",
+      "session_template": "US_EQUITIES_RTH",
+      "share_lot_size": null,
+      "source_connection": "UNVERIFIED",
+      "strategy_qualified": false,
+      "terms_retention": "UNKNOWN",
+      "timezone": "America/New_York",
+      "venue": "NYSE"
+    },
+    {
+      "asset_class": "equity",
+      "calendar": "US_EQUITIES",
+      "catalog_rank_snapshot": 183,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "LITE",
@@ -6351,7 +6421,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 182,
+      "catalog_rank_snapshot": 184,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "LYG",
@@ -6386,7 +6456,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 183,
+      "catalog_rank_snapshot": 185,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "EOG",
@@ -6421,7 +6491,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 184,
+      "catalog_rank_snapshot": 186,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "ECL",
@@ -6456,7 +6526,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 185,
+      "catalog_rank_snapshot": 187,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "MCO",
@@ -6491,7 +6561,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 186,
+      "catalog_rank_snapshot": 188,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "REGN",
@@ -6526,7 +6596,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 187,
+      "catalog_rank_snapshot": 189,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "MDLZ",
@@ -6561,7 +6631,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 188,
+      "catalog_rank_snapshot": 190,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "DASH",
@@ -6596,7 +6666,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 189,
+      "catalog_rank_snapshot": 191,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "BX",
@@ -6631,7 +6701,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 190,
+      "catalog_rank_snapshot": 192,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "NTES",
@@ -6666,7 +6736,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 191,
+      "catalog_rank_snapshot": 193,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "TRV",
@@ -6701,7 +6771,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 192,
+      "catalog_rank_snapshot": 194,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "SHW",
@@ -6736,7 +6806,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 193,
+      "catalog_rank_snapshot": 195,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "EPD",
@@ -6771,7 +6841,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 194,
+      "catalog_rank_snapshot": 196,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "KKR",
@@ -6806,7 +6876,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 195,
+      "catalog_rank_snapshot": 197,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "ITW",
@@ -6841,7 +6911,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 196,
+      "catalog_rank_snapshot": 198,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "CI",
@@ -6876,7 +6946,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 197,
+      "catalog_rank_snapshot": 199,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "BCS",
@@ -6911,7 +6981,7 @@
     {
       "asset_class": "equity",
       "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 198,
+      "catalog_rank_snapshot": 200,
       "corporate_action_policy": "UNKNOWN",
       "depositary_ratio": null,
       "display_symbol": "MSI",
@@ -6942,86 +7012,16 @@
       "terms_retention": "UNKNOWN",
       "timezone": "America/New_York",
       "venue": "NYSE"
-    },
-    {
-      "asset_class": "equity",
-      "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 199,
-      "corporate_action_policy": "UNKNOWN",
-      "depositary_ratio": null,
-      "display_symbol": "CMCSA",
-      "entitlement": "UNKNOWN",
-      "historical_bars": "UNVERIFIED",
-      "identity_basis": "provisional_exchange_listing_key",
-      "identity_status": "PROVISIONAL",
-      "instrument_id": "1851f72f-be80-520a-b3dc-4b140d8e84a1",
-      "instrument_type": "common_stock",
-      "live_bars": "UNVERIFIED",
-      "minimum_price_increment": null,
-      "name": "Comcast Corporation Class A Common Stock",
-      "point_value": null,
-      "provider_symbol_candidates": [
-        {
-          "mapping_status": "UNVERIFIED",
-          "provider": "yahoo",
-          "role": "candidate_only",
-          "symbol": "CMCSA"
-        }
-      ],
-      "pulse_enabled": false,
-      "quote_currency": "USD",
-      "session_template": "US_EQUITIES_RTH",
-      "share_lot_size": null,
-      "source_connection": "UNVERIFIED",
-      "strategy_qualified": false,
-      "terms_retention": "UNKNOWN",
-      "timezone": "America/New_York",
-      "venue": "NASDAQ"
-    },
-    {
-      "asset_class": "equity",
-      "calendar": "US_EQUITIES",
-      "catalog_rank_snapshot": 200,
-      "corporate_action_policy": "UNKNOWN",
-      "depositary_ratio": null,
-      "display_symbol": "KMI",
-      "entitlement": "UNKNOWN",
-      "historical_bars": "UNVERIFIED",
-      "identity_basis": "provisional_exchange_listing_key",
-      "identity_status": "PROVISIONAL",
-      "instrument_id": "7c6199f4-987f-542a-b0ab-4830137c44f8",
-      "instrument_type": "common_stock",
-      "live_bars": "UNVERIFIED",
-      "minimum_price_increment": null,
-      "name": "Kinder Morgan, Inc. Common Stock",
-      "point_value": null,
-      "provider_symbol_candidates": [
-        {
-          "mapping_status": "UNVERIFIED",
-          "provider": "yahoo",
-          "role": "candidate_only",
-          "symbol": "KMI"
-        }
-      ],
-      "pulse_enabled": false,
-      "quote_currency": "USD",
-      "session_template": "US_EQUITIES_RTH",
-      "share_lot_size": null,
-      "source_connection": "UNVERIFIED",
-      "strategy_qualified": false,
-      "terms_retention": "UNKNOWN",
-      "timezone": "America/New_York",
-      "venue": "NYSE"
     }
   ],
-  "retrieved_at": "2026-10-15T18:46:56Z",
+  "retrieved_at": "2026-10-15T18:52:30Z",
   "schema_version": "icarus.market-universe.catalog.v1",
   "selection": {
     "count": 200,
     "excluded_symbols": {
       "SPCX": "Nasdaq screener metadata conflicts with independently known issuer/listing status; verify before catalog inclusion"
     },
-    "excluded_unsupported_instrument_rows": 1909,
+    "excluded_unsupported_instrument_rows": 1841,
     "market_cap_values_persisted": false,
     "selection": "top listings by screener-reported market capitalization at retrieval time",
     "universe": "Nasdaq, NYSE, and NYSE American-listed common stock, ordinary share, and depositary receipt rows; unsupported classes excluded"
@@ -7030,7 +7030,7 @@
     "amex": {
       "endpoint": "https://api.nasdaq.com/api/screener/stocks?tableonly=true&limit=5000&sortColumn=marketCap&sortOrder=DESC&exchange=amex",
       "provider_as_of": "Last price as of Oct 14, 2026",
-      "retrieved_at": "2026-10-15T18:46:57Z",
+      "retrieved_at": "2026-10-15T18:52:32Z",
       "sha256": "f241e9e81c389d04a86cd8cc9a56e99b7a374c346ff4e468ed2f87890cb60c00",
       "source_row_count": 292,
       "source_total_records": 292
@@ -7038,7 +7038,7 @@
     "nasdaq": {
       "endpoint": "https://api.nasdaq.com/api/screener/stocks?tableonly=true&limit=5000&sortColumn=marketCap&sortOrder=DESC&exchange=nasdaq",
       "provider_as_of": "Last price as of Oct 14, 2026",
-      "retrieved_at": "2026-10-15T18:46:56Z",
+      "retrieved_at": "2026-10-15T18:52:31Z",
       "sha256": "dc94cc61d63e08a8c875649a41d65e2301e2116484b26c8d6cddb975fb93f91b",
       "source_row_count": 4045,
       "source_total_records": 4045
@@ -7046,7 +7046,7 @@
     "nyse": {
       "endpoint": "https://api.nasdaq.com/api/screener/stocks?tableonly=true&limit=5000&sortColumn=marketCap&sortOrder=DESC&exchange=nyse",
       "provider_as_of": "Last price as of Oct 14, 2026",
-      "retrieved_at": "2026-10-15T18:46:57Z",
+      "retrieved_at": "2026-10-15T18:52:31Z",
       "sha256": "30e0991c55bdc7bbb84b4e39b207cb2dbef94d1240e8793a38375c95964947b2",
       "source_row_count": 2681,
       "source_total_records": 2681

@@ -45,11 +45,23 @@ def _fetch(exchange: str) -> tuple[dict, str]:
 
 def _instrument_class(name: str) -> tuple[str, int | None] | None:
     lowered = name.lower()
-    if any(term in lowered for term in (" preferred", "pfd", "preference share", "warrant", "unit")):
+    if any(re.search(pattern, lowered) for pattern in (
+        r"\bpreferred\b", r"\bpfd\b", r"\bpreference shares?\b",
+        r"\bwarrants?\b", r"\bunits?\b",
+    )):
         return None
     if "american depositary shares" in lowered:
-        ratio_match = re.search(r"representing .*?(\d+)\)?\s+ordinary shares", lowered)
-        return "depositary_receipt", int(ratio_match.group(1)) if ratio_match else None
+        ratio_match = re.search(
+            r"representing\s+(one|two|three|four|five|six|seven|eight|nine|ten|\d+)"
+            r"(?:\s+\((\d+)\))?\s+ordinary shares",
+            lowered,
+        )
+        if not ratio_match:
+            return "depositary_receipt", None
+        words = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+                 "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10}
+        value = ratio_match.group(2) or ratio_match.group(1)
+        return "depositary_receipt", int(value) if value.isdigit() else words[value]
     if "ordinary shares" in lowered and "common stock" not in lowered:
         return "ordinary_share", None
     if "common stock" in lowered:
