@@ -798,7 +798,8 @@ class AssetRunner:
                 self._push_deep(ch, b, sub_min)
 
     def _fetch_historical_candles(self, feed: Any, symbol: str, interval_seconds: int,
-                                 start_ts: int, end_ts: int) -> List[Bar]:
+                                 start_ts: int, end_ts: int,
+                                 expected_timestamps: Optional[List[int]] = None) -> List[Bar]:
         """Fetch one history batch, reject malformed rows, and retain its audit receipt."""
         fetched_at_ns = time.time_ns()
         bars = feed.candles(symbol, interval_seconds, start_ts, end_ts)
@@ -825,6 +826,7 @@ class AssetRunner:
             interval_seconds=interval_seconds, requested_start_ts=start_ts,
             requested_end_ts=end_ts, bars=bars, fetched_at_ns=fetched_at_ns,
             received_at_ns=received_at_ns, entitlement_status="UNKNOWN",
+            expected_timestamps=expected_timestamps,
         )
         self.last_bar_batch_receipt = receipt.to_dict()
         self.bar_batch_receipts.append(self.last_bar_batch_receipt)

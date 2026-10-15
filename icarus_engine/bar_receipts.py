@@ -30,7 +30,7 @@ class BarBatchReceipt:
     row_count: int
     dropped_count: int
     duplicate_count: int
-    interval_gap_count: int
+    interval_gap_count: int | None
     expected_bar_count: int | None
     missing_bar_count: int | None
     coverage_status: str
@@ -87,8 +87,8 @@ def make_bar_batch_receipt(
             f"provider symbol mismatch: expected {expected_provider_symbol!r}, received {observed!r}"
         )
     previous = None
-    gap_count = 0
-    aligned = True
+    gap_count = None if expected is None else 0
+    aligned = None if expected is None else True
     for row in rows:
         if not isinstance(row, Bar):
             raise ValueError("bar batch contains a non-Bar row")
@@ -99,10 +99,6 @@ def make_bar_batch_receipt(
             raise ValueError(f"bar timestamp {ts} is outside requested [{start}, {end}) window")
         if previous is not None and ts <= previous:
             raise ValueError("bar batch timestamps must be strictly increasing without duplicates")
-        if expected is None and ts % interval_seconds:
-            aligned = False
-        if previous is not None and ts - previous > interval_seconds:
-            gap_count += max(0, (ts - previous) // interval_seconds - 1)
         previous = ts
         values = (row.o, row.h, row.l, row.c, row.v)
         if not all(math.isfinite(float(value)) for value in values):
@@ -115,6 +111,7 @@ def make_bar_batch_receipt(
         expected_count = None
         missing_count = None
         coverage_status = "UNKNOWN"
+        aligned = None
     else:
         expected_set = set(expected)
         unexpected = observed_timestamps - expected_set
@@ -137,7 +134,7 @@ def make_bar_batch_receipt(
     if session_validation_status not in ("UNKNOWN", "VERIFIED", "FAILED"):
         raise ValueError("invalid session validation status")
     qualified = (identity_status == "VERIFIED" and entitlement_status == "VERIFIED"
-                 and session_validation_status == "VERIFIED" and aligned and gap_count == 0
+                 and session_validation_status == "VERIFIED" and aligned is True and gap_count == 0
                  and coverage_status == "VERIFIED" and bool(rows))
     receipt_identity = json.dumps(
         [instrument_id, provider, expected_provider_symbol, interval_seconds, start, end, expected, checksum],
@@ -166,7 +163,8 @@ def make_bar_batch_receipt(
         expected_bar_count=expected_count,
         missing_bar_count=missing_count,
         coverage_status=coverage_status,
-        timestamp_alignment_status="VERIFIED" if aligned else "FAILED",
+        timestamp_alignment_status=("UNKNOWN" if aligned is None else
+                                    "VERIFIED" if aligned else "FAILED"),
         session_validation_status=session_validation_status,
         checksum_sha256=checksum,
         fetched_at_ns=fetched_at_ns,

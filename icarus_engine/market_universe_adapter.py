@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import time
+from typing import Iterable
 
 from .bar_receipts import BarBatchReceipt, make_bar_batch_receipt
 from .feeds.yahoo import Yahoo
@@ -24,7 +25,9 @@ class MarketUniverseAdapter:
         self.yahoo = yahoo or Yahoo()
 
     def fetch_history(self, instrument_id: str, interval_seconds: int,
-                      start_ts: int, end_ts: int) -> tuple[list[Bar], BarBatchReceipt]:
+                      start_ts: int, end_ts: int, *,
+                      expected_timestamps: Iterable[int] | None = None,
+                      session_validation_status: str = "UNKNOWN") -> tuple[list[Bar], BarBatchReceipt]:
         row = self._instruments.get(instrument_id)
         if row is None:
             raise ValueError(f"unknown A200 instrument ID: {instrument_id}")
@@ -56,7 +59,8 @@ class MarketUniverseAdapter:
             fetched_at_ns=fetched_at_ns,
             received_at_ns=received_at_ns,
             entitlement_status="UNKNOWN",
-            session_validation_status="UNKNOWN",
+            session_validation_status=session_validation_status,
             provider_mapping_status=mapping["mapping_status"],
+            expected_timestamps=expected_timestamps,
         )
         return checked, receipt

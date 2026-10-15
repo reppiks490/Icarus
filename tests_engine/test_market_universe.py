@@ -54,6 +54,31 @@ def test_a200_yahoo_adapter_resolves_mapping_and_keeps_entitlement_unqualified()
     assert receipt.historical_bars_qualified is False
 
 
+def test_a200_adapter_accepts_and_checks_session_anchored_schedule():
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    row = snapshot()["instruments"][0]
+    provider_symbol = row["provider_symbol_candidates"][0]["symbol"]
+    eastern = ZoneInfo("America/New_York")
+    start = int(datetime(2026, 10, 14, 9, 30, tzinfo=eastern).timestamp())
+    next_hour = int(datetime(2026, 10, 14, 10, 30, tzinfo=eastern).timestamp())
+    adapter = MarketUniverseAdapter(_FakeYahooHistory(provider_symbol))
+
+    bars, receipt = adapter.fetch_history(
+        row["instrument_id"], 3600, start, next_hour + 3600,
+        expected_timestamps=[start, next_hour], session_validation_status="VERIFIED",
+    )
+
+    assert bars[0].ts == start
+    assert receipt.timestamp_alignment_status == "VERIFIED"
+    assert receipt.expected_bar_count == 2
+    assert receipt.missing_bar_count == 1
+    assert receipt.interval_gap_count == 1
+    assert receipt.coverage_status == "FAILED"
+    assert receipt.historical_bars_qualified is False
+
+
 def test_a200_yahoo_adapter_rejects_unknown_id_and_provider_symbol_mismatch():
     adapter = MarketUniverseAdapter(_FakeYahooHistory("wrong"))
     with pytest.raises(ValueError, match="unknown A200 instrument ID"):
@@ -79,8 +104,8 @@ def test_bar_batch_receipt_hashes_rows_but_keeps_unknowns_unqualified():
     assert receipt.historical_bars_qualified is False
     assert receipt.execution_authorized is False
     assert receipt.session_validation_status == "UNKNOWN"
-    assert receipt.interval_gap_count == 0
-    assert receipt.timestamp_alignment_status == "VERIFIED"
+    assert receipt.interval_gap_count is None
+    assert receipt.timestamp_alignment_status == "UNKNOWN"
 
 
 def test_bar_batch_receipt_rejects_symbol_mismatch_and_bad_ohlcv():
@@ -112,6 +137,7 @@ def test_bar_batch_receipt_records_gaps_and_never_qualifies_without_session_revi
         entitlement_status="VERIFIED",
         session_validation_status="VERIFIED",
         provider_mapping_status="VERIFIED",
+        expected_timestamps=[60, 120, 180, 240],
     )
     assert receipt.identity_status == "VERIFIED"
     assert receipt.interval_gap_count == 2
