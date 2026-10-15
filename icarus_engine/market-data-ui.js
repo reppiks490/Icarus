@@ -220,10 +220,10 @@ async function loadMarketUniverse(){
   const data=result.data||{}, counts=data.counts||{}, rows=Array.isArray(data.instruments)?data.instruments:[];
   const keys=[['Catalogued','catalogued_count'],['Entitlement verified','entitlement_verified_count'],['Source connected','source_connected_count'],['History qualified','historical_bars_qualified_count'],['Live qualified','live_bars_qualified_count'],['Pulse enabled','pulse_enabled_count'],['Strategy qualified','strategy_qualified_count']];
   summary.innerHTML=keys.map(function(pair){return '<div class="tile"><div class="k">'+esc(pair[0])+'</div><div class="v">'+esc(counts[pair[1]]==null?'—':counts[pair[1]])+'</div></div>';}).join('')+
-    '<div class="small muted" style="grid-column:1/-1">Snapshot '+esc(data.retrieved_at||'unknown')+'. Candidate rows use provisional listing identities and unverified Yahoo mappings. Missing tick, share, corporate-action, terms, and entitlement facts keep all 200 candidates out of Pulse.</div>';
-  table.innerHTML=rows.length?'<table><thead><tr><th>Instrument ID</th><th>Symbol</th><th>Name</th><th>Venue</th><th>Source map</th><th>State</th></tr></thead><tbody>'+rows.map(function(row){
-    const candidate=(row.provider_symbol_candidates||[])[0]||{};
-    return '<tr><td><code>'+esc(row.instrument_id||'')+'</code></td><td><b>'+esc(row.display_symbol||'')+'</b></td><td>'+esc(row.name||'')+'</td><td>'+esc(row.venue||'')+'</td><td>'+esc((candidate.provider||'')+': '+(candidate.symbol||'')+' · '+(candidate.mapping_status||''))+'</td><td>'+esc(row.source_connection||'')+' · '+(row.pulse_enabled?'Pulse enabled':'disabled')+'</td></tr>';
+    '<div class="small muted" style="grid-column:1/-1">Snapshot '+esc(data.retrieved_at||'unknown')+'. Candidate rows use provisional listing identities and unverified Yahoo/FMP provider mappings. Missing tick, share, corporate-action, terms, and entitlement facts keep all 200 candidates out of Pulse.</div>';
+  table.innerHTML=rows.length?'<table><thead><tr><th>Instrument ID</th><th>Symbol</th><th>Name</th><th>Venue</th><th>Provider candidates</th><th>State</th></tr></thead><tbody>'+rows.map(function(row){
+    const mappings=(row.provider_symbol_candidates||[]).map(function(candidate){return esc((candidate.provider||'')+': '+(candidate.symbol||'')+' · '+(candidate.mapping_status||'UNKNOWN'));}).join('<br>');
+    return '<tr><td><code>'+esc(row.instrument_id||'')+'</code></td><td><b>'+esc(row.display_symbol||'')+'</b></td><td>'+esc(row.name||'')+'</td><td>'+esc(row.venue||'')+'</td><td>'+mappings+'</td><td>'+esc(row.source_connection||'')+' · '+(row.pulse_enabled?'Pulse enabled':'disabled')+'</td></tr>';
   }).join('')+'</tbody></table>':'<p class="empty">No catalog rows.</p>';
 }
 
