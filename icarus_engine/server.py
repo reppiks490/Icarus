@@ -2967,6 +2967,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     loop_intelligence_sync.close()
                     commissioning.close()
                     research.close()
+                    apex.close()
 
         def server_close(self):
             autopilot.close()
@@ -2979,6 +2980,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             loop_intelligence_sync.close()
             commissioning.close()
             research.close()
+            apex.close()
             return super().server_close()
 
     srv = ResearchHTTPServer(("127.0.0.1", http_port), H)
