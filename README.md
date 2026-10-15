@@ -135,6 +135,14 @@ Prior ICARUS/AEGIS research, red-team findings, handoffs, Stage-5 verification m
 
 The archive is evidence/context, not execution authorization or proof of implementation. `execution_authorized=false` remains unchanged.
 
+## Capability & data discovery registry
+
+The research-only registry imports pinned public catalog metadata, preserves
+source ancestry, applies fail-closed triage and links existing provider evidence
+read-only. Catalog presence is not qualification; both authority flags stay false.
+
+Commands, contracts and verification:
+[Capability & Data Discovery Registry](docs/icarus/CAPABILITY_DATA_DISCOVERY_REGISTRY.md).
 ## Semantic collaboration work fabric
 
 The [Phase 4A design](docs/superpowers/specs/2026-10-13-semantic-work-fabric-design.md) describes work requests, lifecycle replay, evidence, review and delegation over the intelligence journal. Its [review fixes](docs/superpowers/plans/2026-10-14-semantic-work-review-fixes.md) cover declared identity consistency, retry receipts and exact deadline/lease comparisons. The [Phase 4B–4E command-plane design](docs/superpowers/specs/2026-10-14-semantic-command-plane-design.md) and [implementation record](docs/superpowers/plans/2026-10-14-semantic-command-plane.md) describe authenticated work ingress, expiring capability presence, journal-backed incident rooms, bounded decomposition/council synthesis, and the browser command console. All command actors are server-bound; these surfaces do not authorize execution or production decisions.

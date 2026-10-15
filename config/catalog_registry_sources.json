@@ -1,0 +1,8 @@
+{
+  "schema_version": "icarus-catalog-registry-sources-v1",
+  "sources": [
+    {"catalog_id": "api-mega-list", "upstream_repo": "cporter202/API-mega-list", "upstream_path": "README.md", "importer": "api_mega", "capability_only": false, "enabled": true},
+    {"catalog_id": "scraping-apis-for-devs", "upstream_repo": "cporter202/scraping-apis-for-devs", "upstream_path": "README.md", "importer": "scraping_apis", "capability_only": false, "enabled": true},
+    {"catalog_id": "ai-agent-tools", "upstream_repo": "cporter202/ai-agent-tools", "upstream_path": "README.md", "importer": "ai_agent_tools", "capability_only": true, "enabled": true}
+  ]
+}

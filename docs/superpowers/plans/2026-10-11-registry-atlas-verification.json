@@ -1,0 +1,106 @@
+{
+  "schema_version": "atlas-registry-verification-v1",
+  "mode": "connector-supplied-pinned-input-not-production-http",
+  "reviewed_local_code_commit": "a4329431703e9bc14b92685ea3ed51ddf1c7aefc",
+  "production_http_status": "NOT_VERIFIED_SANDBOX_NETWORK_FAILURE",
+  "api_mega_status": "NOT_VERIFIED_CONNECTOR_TRANSPORT_FAILURE",
+  "git_blob_verified": {
+    "cporter202/ai-agent-tools": {
+      "blob_sha": "0a86557219f8e6f1e0ab50eecebd7a65f0b2254a",
+      "bytes": 24247,
+      "commit": "017b11024524bdb97a2c636c53b1069ce4ebb3e3",
+      "content_sha256": "fabab1774c9ad2ac002afdba7285571670fc850a44b1508391f2ba089f9c656a"
+    },
+    "cporter202/scraping-apis-for-devs": {
+      "blob_sha": "244edc0c2c44f25a0a6e14f925527ccd2c5e7f69",
+      "bytes": 1161204,
+      "commit": "8d3f03d15293077576cdb870925a5495a8414a7d",
+      "content_sha256": "0e4979866b80a5b4d58962a5647e65c9d5d0e11c053accc5b4cddea6a5b82edc"
+    }
+  },
+  "catalogs": {
+    "ai-agent-tools": {
+      "catalog_id": "ai-agent-tools",
+      "content_sha256": "fabab1774c9ad2ac002afdba7285571670fc850a44b1508391f2ba089f9c656a",
+      "execution_authorized": false,
+      "import_summary": {
+        "catalog_id": "ai-agent-tools",
+        "duplicate_groups": 8,
+        "execution_authorized": false,
+        "imported_entries": 153,
+        "parse_failures": 65,
+        "production_decision_authorized": false,
+        "raw_count": 218,
+        "rejected": 0,
+        "review_required": 153,
+        "snapshot_id": "9c1e06a1535436cb812be034cc0267e4b80acc0004fcc8fa94498b2d9545601a",
+        "unique_candidates": 149
+      },
+      "parser_revision": "catalog-registry-v3",
+      "production_decision_authorized": false,
+      "retrieved_at": "2026-10-11T21:39:03.049870Z",
+      "snapshot_id": "9c1e06a1535436cb812be034cc0267e4b80acc0004fcc8fa94498b2d9545601a",
+      "status": "SUCCESS",
+      "upstream_commit": "017b11024524bdb97a2c636c53b1069ce4ebb3e3",
+      "upstream_path": "README.md",
+      "upstream_repo": "cporter202/ai-agent-tools"
+    },
+    "scraping-apis-for-devs": {
+      "catalog_id": "scraping-apis-for-devs",
+      "content_sha256": "0e4979866b80a5b4d58962a5647e65c9d5d0e11c053accc5b4cddea6a5b82edc",
+      "execution_authorized": false,
+      "import_summary": {
+        "catalog_id": "scraping-apis-for-devs",
+        "duplicate_groups": 96,
+        "execution_authorized": false,
+        "imported_entries": 4131,
+        "parse_failures": 22,
+        "production_decision_authorized": false,
+        "raw_count": 4153,
+        "rejected": 0,
+        "review_required": 4131,
+        "snapshot_id": "eb3651f44a80544543d02d940093914e6d5ac806956b5648fc780b7d9f06923c",
+        "unique_candidates": 2591
+      },
+      "parser_revision": "catalog-registry-v3",
+      "production_decision_authorized": false,
+      "retrieved_at": "2026-10-11T21:39:03.049870Z",
+      "snapshot_id": "eb3651f44a80544543d02d940093914e6d5ac806956b5648fc780b7d9f06923c",
+      "status": "SUCCESS",
+      "upstream_commit": "8d3f03d15293077576cdb870925a5495a8414a7d",
+      "upstream_path": "README.md",
+      "upstream_repo": "cporter202/scraping-apis-for-devs"
+    }
+  },
+  "registry_summary": {
+    "candidate_catalog_links": 4284,
+    "candidates": 2740,
+    "catalog_entries": 4284,
+    "catalog_snapshots": 2,
+    "duplicate_groups": 104,
+    "duplicate_members": 318,
+    "execution_authorized": false,
+    "policy_reviews": 4284,
+    "production_decision_authorized": false,
+    "provider_links": 0,
+    "qualification_events": 0
+  },
+  "acquisition": "connector-pinned-input; not production HTTP verification",
+  "execution_authorized": false,
+  "production_decision_authorized": false,
+  "targeted_tests": 116,
+  "full_engine": {
+    "passed": 2229,
+    "skipped": 3,
+    "subtests_passed": 90
+  },
+  "independent_review": {
+    "status": "CLEAR",
+    "scope": "foundation code; not activation or source qualification"
+  },
+  "combined_core_and_engine": {
+    "passed": 2268,
+    "skipped": 3,
+    "subtests_passed": 90
+  }
+}
