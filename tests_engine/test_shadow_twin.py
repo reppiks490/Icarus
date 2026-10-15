@@ -241,12 +241,14 @@ def test_portfolio_shadow_view_aggregates_counts_and_ratios_without_faking_drawd
         assert publication["execution_authorized"] is False
         assert repeated["receipts"][0]["idempotent"] is True
         assert len(fabric.query(channel="real_price_shadow", assets=["TEST"])) == 1
-    result = portfolio.status()["real_price_shadow"]
-    assert result["outcome_matrix"]["win"]["loss"] == 1
-    assert result["net_realization_ratio"] == -1
-    assert result["paired_profit_capture"] == -1
-    assert result["drawdown_aggregation"].startswith("per_asset_only")
-    assert "max_drawdown" not in result
+        result = portfolio.status()["real_price_shadow"]
+        assert result["outcome_matrix"]["win"]["loss"] == 1
+        assert "drawdown_aggregation" in result
+        assert result["net_realization_ratio"] == -1
+        assert result["paired_profit_capture"] == -1
+        assert result["drawdown_aggregation"].startswith("per_asset_only")
+        assert "max_drawdown" not in result
+        assert len(fabric.query(channel="real_price_shadow", assets=["TEST"])) == 1
 
 
 def test_runner_feature_is_default_off_and_runtime_passes_standard_bar():
