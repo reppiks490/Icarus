@@ -310,6 +310,26 @@ def test_portfolio_pairable_closed_count_includes_break_even_episode():
     assert aggregate["outcome_agreement_rate"] is None
 
 
+def test_flatten_closes_shadow_only_position():
+    spec = parse_spec("NQ@1")
+    runner = AssetRunner(RunnerConfig(spec=spec, inputs=Inputs(), mintick=0.25,
+                                      shadow_real_fills=True), Journal(":memory:"), feeds={})
+    twin = runner.em
+    twin.process_bar(bar(60, 110, 112, 106, 110), 0,
+                     real_bar=bar(60, 110, 112, 104, 110))
+    twin.entry("L", 1, 1, limit=105)
+    twin.process_bar(bar(120, 110, 112, 106, 110), 1,
+                     real_bar=bar(120, 110, 112, 104, 110))
+    assert twin.primary.position_size == 0
+    assert twin.shadow.position_size == 1
+    runner.last_price = 110
+
+    assert runner.flatten("test") == 1
+    assert twin.shadow.open == []
+    assert twin.shadow.closed[-1].exit_comment == "FLAT_TEST"
+    assert twin.status == "READY"
+
+
 def test_runner_feature_is_default_off_and_runtime_passes_standard_bar():
     spec = parse_spec("NQ@1")
     spec.chart_type = "heikin_ashi"

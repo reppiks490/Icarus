@@ -1082,7 +1082,7 @@ class AssetRunner:
                     self.strat.tod_hour_queue.pop()
             self.strat.rate_pend_dir = 0
             self.strat.rate_pend_bar = -999
-        return len(pending)
+        return len(ids)
 
     def set_paused(self, paused: bool) -> int:
         with self.lock:
@@ -1174,15 +1174,22 @@ class AssetRunner:
     def flatten(self, reason: str = "manual") -> int:
         with self.lock:
             cancelled = self._cancel_pending_entries()
-            n = 0
-            for t in list(self.em.open):
-                self.em.close(t.entry_id, comment="FLAT_" + reason.upper()[:8])
-                n += 1
-            if self.last_price and self.em.open:
+            open_positions = list(self.em.open)
+            if isinstance(self.em, MirroredEmulator):
+                open_positions.extend(self.em.shadow.open)
+            entry_ids = {t.entry_id for t in open_positions}
+            for entry_id in entry_ids:
+                self.em.close(entry_id, comment="FLAT_" + reason.upper()[:8])
+            has_open = bool(self.em.open) or (
+                isinstance(self.em, MirroredEmulator) and bool(self.em.shadow.open))
+            if self.last_price and has_open:
                 fake = Bar(int(time.time()), self.last_price, self.last_price, self.last_price, self.last_price, 0.0)
-                self.em.process_bar(fake, self.bar_index)
-            self.journal.log("WARN", f"[{self.symbol}] FLATTEN ({reason}): {n} position(s), {cancelled} pending entry intent(s) cancelled")
-            return n
+                if isinstance(self.em, MirroredEmulator):
+                    self.em.process_bar(fake, self.bar_index, real_bar=fake)
+                else:
+                    self.em.process_bar(fake, self.bar_index)
+            self.journal.log("WARN", f"[{self.symbol}] FLATTEN ({reason}): {len(entry_ids)} position(s), {cancelled} pending entry intent(s) cancelled")
+            return len(entry_ids)
 
     def export_csv(self) -> str:
         with self.lock:
