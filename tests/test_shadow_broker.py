@@ -93,3 +93,14 @@ def test_canceling_held_oco_exit_keeps_sibling_canceled_when_parent_fills():
     assert take_profit_leg.status == stop_leg.status == "canceled"
     assert broker.position("ES") == 1
     assert broker.open_orders("ES") == []
+
+
+def test_cancel_orders_counts_both_active_oco_legs():
+    broker = ShadowBroker(prices={"ES": 100})
+    parent = broker.submit_bracket("ES", "buy", 1, 110, 90)
+    take_profit_leg, stop_leg = parent.legs
+
+    assert take_profit_leg.status == stop_leg.status == "accepted"
+    assert broker.cancel_orders("ES") == 2
+    assert take_profit_leg.status == stop_leg.status == "canceled"
+    assert broker.open_orders("ES") == []

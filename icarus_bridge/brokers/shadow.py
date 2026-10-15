@@ -138,11 +138,13 @@ class ShadowBroker:
         return [o for o in self._orders.values() if o.status in ("new", "accepted") and (symbol is None or o.symbol == symbol)]
 
     def cancel_orders(self, symbol: Optional[str] = None) -> int:
-        n = 0
-        for o in list(self._orders.values()):
-            if symbol is None or o.symbol == symbol:
-                n += self._cancel(o)
-        return n
+        orders = [o for o in self._orders.values()
+                  if o.status in ("new", "accepted", "held")
+                  and (symbol is None or o.symbol == symbol)]
+        open_ids = {o.id for o in orders if o.status in ("new", "accepted")}
+        for order in orders:
+            self._cancel(order)
+        return sum(self._orders[order_id].status == "canceled" for order_id in open_ids)
 
     def cancel_order(self, order_id: str) -> bool:
         o = self._orders.get(order_id)
