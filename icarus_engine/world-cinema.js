@@ -8,7 +8,7 @@
   let audio, master, enabled=false, audible=false, previousTime=null, noise;
   let sceneElement,litPanel=null,panelFrame=0,panelPointer=null;
   const worldTransitions=new Set();
-  const voices = new Set(), entrances = new Set(), enteredCharts = new Set();
+  const voices = new Set(), entrances = new Set(), enteredCharts = new Set(), chartSurfaces = new WeakSet();
   const palettes = {
     divine:['#f5ce7a','#fff5d6','#82ddff'],
     void:['#ff315d','#ffb4d0','#d66dff'],
@@ -197,22 +197,31 @@
   const motionAllowed=()=>root.dataset.motion==='live'&&root.dataset.experience==='cinematic'&&!!root.dataset.world&&!document.hidden;
   function clearPanel() {
     cancelAnimationFrame(panelFrame);panelFrame=0;panelPointer=null;
-    if(litPanel){litPanel.classList.remove('world-lit');litPanel.style.removeProperty('--panel-x');litPanel.style.removeProperty('--panel-y');litPanel=null;}
+    if(litPanel){litPanel.classList.remove('world-lit');for(const prop of ['--panel-x','--panel-y','--panel-tilt-x','--panel-tilt-y','--panel-dx','--panel-dy','--panel-depth-x','--panel-depth-y'])litPanel.style.removeProperty(prop);litPanel=null;}
   }
   function init(element) {
     if(sceneElement)return;sceneElement=element;
     const view=document.getElementById('view');
     view?.addEventListener('pointermove',event=>{
       if(event.pointerType==='touch'||!motionAllowed()||root.dataset.introActive==='true')return;
-      const panel=event.target.closest?.('.card,.asset');
+      const panel=event.target.closest?.('.card,.asset,.group,.tile,.px-box,.psi-box,.pan-field,.brain-agent,.brain-sub,.brain-lane,.evo-sub');
       if(!panel||!view.contains(panel)){clearPanel();return;}
       if(litPanel!==panel){clearPanel();litPanel=panel;panel.classList.add('world-lit');}
       panelPointer={x:event.clientX,y:event.clientY};
       if(!panelFrame)panelFrame=requestAnimationFrame(()=>{
         panelFrame=0;if(!litPanel?.isConnected||!panelPointer||!motionAllowed()){clearPanel();return;}
         const r=litPanel.getBoundingClientRect();
-        litPanel.style.setProperty('--panel-x',Math.max(0,Math.min(100,(panelPointer.x-r.left)/Math.max(1,r.width)*100)).toFixed(1)+'%');
-        litPanel.style.setProperty('--panel-y',Math.max(0,Math.min(100,(panelPointer.y-r.top)/Math.max(1,r.height)*100)).toFixed(1)+'%');
+        const px=Math.max(0,Math.min(100,(panelPointer.x-r.left)/Math.max(1,r.width)*100));
+        const py=Math.max(0,Math.min(100,(panelPointer.y-r.top)/Math.max(1,r.height)*100));
+        const nx=(px-50)/50,ny=(py-50)/50;
+        litPanel.style.setProperty('--panel-x',px.toFixed(1)+'%');
+        litPanel.style.setProperty('--panel-y',py.toFixed(1)+'%');
+        litPanel.style.setProperty('--panel-tilt-x',((-ny)*.6).toFixed(3)+'deg');
+        litPanel.style.setProperty('--panel-tilt-y',(nx*.75).toFixed(3)+'deg');
+        litPanel.style.setProperty('--panel-dx',(nx*3.8).toFixed(2)+'px');
+        litPanel.style.setProperty('--panel-dy',(ny*2.9).toFixed(2)+'px');
+        litPanel.style.setProperty('--panel-depth-x',(nx*7.2).toFixed(2)+'px');
+        litPanel.style.setProperty('--panel-depth-y',(ny*5.4).toFixed(2)+'px');
       });
     },{passive:true});
     view?.addEventListener('pointerleave',clearPanel,{passive:true});
@@ -224,19 +233,37 @@
     const animate=(target,keyframes,options,remove=false)=>{
       if(!target.animate){if(remove)target.remove();return;}
       const animation=target.animate(keyframes,options);worldTransitions.add(animation);
-      const cleanup=()=>{worldTransitions.delete(animation);if(remove)target.remove();};
+      let cleaned=false;
+      const cleanup=()=>{
+        if(cleaned)return;cleaned=true;
+        worldTransitions.delete(animation);if(remove)target.remove();
+      };
       animation.onfinish=cleanup;animation.oncancel=cleanup;
+      // Some headless/hidden compositor paths delay Web Animations finish events.
+      // A bounded DOM cleanup prevents decorative veils from ever becoming stale.
+      if(remove)setTimeout(cleanup,(Number(options?.delay)||0)+(Number(options?.duration)||0)+90);
     };
+    const to=root.dataset.world||'divine';
     if(palettes[from]) {
-      const veil=document.createElement('div');veil.className='world-veil';veil.setAttribute('aria-hidden','true');
+      const veil=document.createElement('div');veil.className='world-veil';veil.dataset.worldTransition=to;veil.setAttribute('aria-hidden','true');
       veil.style.backgroundImage=`url('/worlds/${from}.webp')`;element.appendChild(veil);
-      animate(veil,[{opacity:.7,clipPath:'circle(150% at 76% 50%)'},{opacity:0,clipPath:'circle(0% at 76% 50%)'}],{duration:1050,easing:'cubic-bezier(.2,.7,.2,1)'},true);
+      const veilFrames=to==='void'
+        ? [{opacity:.82,clipPath:'polygon(0 0,100% 0,100% 100%,0 100%)',transform:'translateX(0) skewX(0deg)',filter:'contrast(1.08)'},{opacity:.28,clipPath:'polygon(0 0,72% 0,46% 100%,0 100%)',transform:'translateX(-12px) skewX(-5deg)',filter:'contrast(1.3) brightness(.78)'},{opacity:0,clipPath:'polygon(0 0,4% 0,0 100%,0 100%)',transform:'translateX(-28px) skewX(-9deg)',filter:'contrast(1.45) brightness(.5)'}]
+        : to==='astral'
+          ? [{opacity:.78,clipPath:'ellipse(112% 88% at 50% 50%)',transform:'scale(1)',filter:'blur(0px) saturate(1)'},{opacity:.35,clipPath:'ellipse(58% 42% at 50% 48%)',transform:'scale(1.06) rotate(.4deg)',filter:'blur(1px) saturate(1.18)'},{opacity:0,clipPath:'ellipse(4% 2% at 50% 48%)',transform:'scale(1.12) rotate(1deg)',filter:'blur(5px) saturate(.65)'}]
+          : [{opacity:.74,clipPath:'circle(150% at 50% 42%)',transform:'scale(1.02)',filter:'brightness(.86)'},{opacity:.34,clipPath:'circle(58% at 50% 42%)',transform:'scale(.995)',filter:'brightness(1.18)'},{opacity:0,clipPath:'circle(0% at 50% 42%)',transform:'scale(.98)',filter:'brightness(1.35)'}];
+      animate(veil,veilFrames,{duration:to==='void'?920:to==='astral'?1180:1050,easing:'cubic-bezier(.2,.7,.2,1)'},true);
     }
     const heading=element.querySelector('h1'),title=heading.textContent;
     heading.setAttribute('aria-label',title);heading.replaceChildren();
     title.split(' ').forEach((word,i)=>{
       const span=document.createElement('span');span.className='world-word';span.textContent=word;span.setAttribute('aria-hidden','true');heading.append(span,document.createTextNode(' '));
-      animate(span,[{opacity:.25,transform:'translateY(14px) rotateX(35deg)'},{opacity:1,transform:'translateY(0) rotateX(0deg)'}],{duration:820,delay:i*70,easing:'cubic-bezier(.2,.7,.2,1)'});
+      const wordFrames=to==='void'
+        ? [{opacity:.12,transform:'translateX(-18px) skewX(-10deg)',filter:'blur(2px) contrast(1.25)'},{opacity:1,transform:'translateX(0) skewX(0)',filter:'none'}]
+        : to==='astral'
+          ? [{opacity:.12,transform:'translateY(9px) scale(.92) rotateX(22deg)',filter:'blur(5px) saturate(.7)'},{opacity:1,transform:'translateY(0) scale(1) rotateX(0)',filter:'none'}]
+          : [{opacity:.2,transform:'translateY(16px) scale(.96)',filter:'brightness(.72) blur(2px)'},{opacity:1,transform:'translateY(0) scale(1)',filter:'none'}];
+      animate(span,wordFrames,{duration:to==='void'?680:to==='astral'?900:820,delay:i*(to==='void'?45:70),easing:'cubic-bezier(.2,.7,.2,1)'});
     });
     const caption=element.querySelector('#worldCaption');
     if(caption)animate(caption,[{opacity:.3,transform:'translateY(6px)'},{opacity:1,transform:'translateY(0)'}],{duration:850,easing:'ease-out'});
@@ -268,6 +295,7 @@
     if(!active) for(const source of voices) {try {source.stop();}catch(_) { /* already ended */ }}
     if(!motionAllowed()||root.dataset.introActive==='true') {
       clearPanel();
+      document.querySelectorAll('.world-chart-surface.world-chart-hover').forEach(el=>{el.classList.remove('world-chart-hover');el.style.removeProperty('--chart-hover-x');el.style.removeProperty('--chart-hover-y');});
       for(const animation of worldTransitions)animation.cancel();worldTransitions.clear();
       for(const animation of entrances) animation.cancel();entrances.clear();
     }
@@ -306,11 +334,35 @@
       if(heading)animate(heading,[{opacity:.55,transform:'translateX(-5px)'},{opacity:1,transform:'translateX(0)'}],{duration:700,delay:Math.min(i*45,360),easing:'ease-out'});
     });
   }
+  function installChartSurface(element) {
+    if(chartSurfaces.has(element))return;
+    chartSurfaces.add(element);
+    element.classList?.add('world-chart-surface');
+    const clear=()=>{
+      element.classList?.remove('world-chart-hover');
+      element.style?.removeProperty('--chart-hover-x');element.style?.removeProperty('--chart-hover-y');
+    };
+    element.addEventListener?.('pointermove',event=>{
+      if(event.pointerType==='touch'||!motionAllowed()||root.dataset.introActive==='true')return clear();
+      const r=element.getBoundingClientRect();
+      if(!r.width||!r.height)return clear();
+      const x=Math.max(0,Math.min(100,(event.clientX-r.left)/r.width*100));
+      const y=Math.max(0,Math.min(100,(event.clientY-r.top)/r.height*100));
+      element.style.setProperty('--chart-hover-x',x.toFixed(2)+'%');
+      element.style.setProperty('--chart-hover-y',y.toFixed(2)+'%');
+      element.classList?.add('world-chart-hover');
+    },{passive:true});
+    element.addEventListener?.('pointerleave',clear,{passive:true});
+  }
   function enterChart(symbol, element) {
-    if (!element?.isConnected || !element.querySelector('svg') || enteredCharts.has(symbol)) return;
+    if (!element?.isConnected || !element.querySelector('svg')) return;
+    installChartSurface(element);
+    if (enteredCharts.has(symbol)) return;
     enteredCharts.add(symbol);
     if (root.dataset.motion !== 'live' || root.dataset.experience !== 'cinematic' || !root.dataset.world || document.hidden || !element.animate) return;
-    const animation=element.animate([{opacity:.72},{opacity:1}],{duration:650,easing:'ease-out'});
+    element.classList?.remove('world-chart-scan-active');void element.offsetWidth;element.classList?.add('world-chart-scan-active');
+    setTimeout(()=>element?.classList?.remove('world-chart-scan-active'),900);
+    const animation=element.animate([{opacity:.72,filter:'brightness(.82)'},{opacity:1,filter:'none'}],{duration:650,easing:'ease-out'});
     entrances.add(animation);
     animation.onfinish=()=>entrances.delete(animation);animation.oncancel=()=>entrances.delete(animation);
   }

@@ -62,6 +62,24 @@ def _load_root_env(root: str) -> None:
         return
 
 
+def _auto_select_feed(assets: str) -> str:
+    """Select a usable default feed without routing non-CME assets to Databento."""
+    asset_tokens = [item.strip() for item in str(assets or "").split(",") if item.strip()]
+    try:
+        from icarus_engine.assets import parse_spec
+        cme_only = bool(asset_tokens) and all(parse_spec(item).kind == "futures" for item in asset_tokens)
+    except (TypeError, ValueError):
+        cme_only = False
+    if cme_only and os.environ.get("DATABENTO_API_KEY", "").strip():
+        if importlib.util.find_spec("databento") is None:
+            raise SystemExit(
+                "DATABENTO_API_KEY is configured for CME assets, but the Databento SDK is missing. "
+                "Install it with: py -3 -m pip install -e \".[databento]\""
+            )
+        return "databento"
+    return "yahoo"
+
+
 def cmd_init(args: argparse.Namespace) -> int:
     root = plant_root(args.root)
     paths = ensure(root)
@@ -138,7 +156,11 @@ def cmd_start(args: argparse.Namespace) -> int:
         if i["level"] != "ok":
             print(f"  !! {i['name']} — {i['detail']}")
     selected_feed = "file" if args.offline else args.feed
-    if args.offline and args.feed not in ("yahoo", "file"):
+    if selected_feed is None:
+        # Prefer the real-time CME transport when credentials are present and
+        # every requested asset supports it; mixed universes use normal routing.
+        selected_feed = _auto_select_feed(args.assets)
+    if args.offline and args.feed not in (None, "yahoo", "file"):
         raise SystemExit("--offline cannot be combined with --feed databento")
     if selected_feed == "databento":
         if importlib.util.find_spec("databento") is None:
@@ -344,7 +366,7 @@ def main(argv: Optional[list] = None) -> int:
     s.add_argument("--assets", default="NQ")
     s.add_argument("--preset", default="NQ-20m-ultracoded")
     s.add_argument("--offline", action="store_true", help="FileFeed only — no network market feed. Alias for --feed file.")
-    s.add_argument("--feed", default="yahoo", choices=["yahoo", "file", "databento"], help="market-data feed for the engine; databento requires DATABENTO_API_KEY")
+    s.add_argument("--feed", default=None, choices=["yahoo", "file", "databento"], help="market-data feed; by default use Databento for CME-only assets when DATABENTO_API_KEY and the SDK are available, otherwise Yahoo/Coinbase. Databento requires an entitled key.")
     s.add_argument("--bridge", action="store_true", help="also supervise icarus-bridge (needs fastapi)")
     s.add_argument("--engine-port", type=int, default=8791)
     s.add_argument("--bridge-port", type=int, default=8787)

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 import threading
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -105,6 +106,46 @@ def test_autopilot_state_is_durable_and_leaderboard_is_sorted(tmp_path, monkeypa
     assert scores == sorted(scores, reverse=True)
 
 
+def test_champion_trials_capture_market_context_without_scoring_it(tmp_path, monkeypatch):
+    now = datetime.now(timezone.utc)
+    possibility = lambda asset: {
+        "asset": asset,
+        "generated_at": now.isoformat().replace("+00:00", "Z"),
+        "latent_pressure_engine": {
+            "evidence_coverage": 0.75,
+            "components": {
+                "queue_pressure": {"value": 0.6, "confidence": 0.8, "available": True,
+                                    "source": "Databento MBP-10", "detail": "kept out of receipt"},
+            },
+        },
+        "edge_state": {"state": "NO_EDGE"},
+        "data_health": {"microstructure": {"depth": True, "ticks": True}, "history": {"source": "runner_bar"}},
+    }
+    public_events = lambda asset: {"records": [
+        {"source": "federal-reserve", "source_event_id": "known", "event_type": "news",
+         "instrument_id": asset, "observed_at": (now - timedelta(minutes=1)).isoformat(),
+         "text": "dated public event"},
+        {"source": "federal-reserve", "source_event_id": "future", "event_type": "news",
+         "instrument_id": asset, "observed_at": (now + timedelta(days=1)).isoformat(),
+         "text": "must not leak"},
+    ]}
+    port = FakePort(tmp_path)
+    monkeypatch.setattr("icarus_engine.autopilot.run_backtest", lambda _port, asset, **kwargs: fake_result(kwargs["inputs"]))
+    ap = TacticalAutopilot(port, possibility_snapshot=possibility, public_events=public_events)
+
+    status = ap.cycle_once()
+    champion = status["champions"]["NQ"]
+    assert status["context_feed"]["possibility_enabled"] is True
+    assert status["context_feed"]["public_events_enabled"] is True
+    context = champion["market_context"]
+    assert context["possibility"]["features"]["queue_pressure"] == {
+        "value": 0.6, "confidence": 0.8, "available": True, "source": "Databento MBP-10"
+    }
+    assert [row["source_event_id"] for row in context["public_events"]] == ["known"]
+    assert context["historical_score_inputs"] is False
+    assert "market_context" not in champion["metrics"]
+
+
 def test_autopilot_protects_economic_scale_inputs(tmp_path):
     ap = TacticalAutopilot(FakePort(tmp_path))
     dims = dict(ap._eligible(Inputs().to_dict()))
@@ -177,6 +218,7 @@ def test_autopilot_start_can_resume_single_worker_after_stop_signal(tmp_path):
 
 def test_new_champion_is_mirrored_to_system_intelligence(tmp_path, monkeypatch):
     port = FakePort(tmp_path)
+    port.runners["NQ"].state = {"rate_regime_str": "TREND", "rate_regime": float("nan"), "ts": float("inf")}
     seen = []
     monkeypatch.setattr(
         "icarus_engine.autopilot.run_backtest",
@@ -193,6 +235,36 @@ def test_new_champion_is_mirrored_to_system_intelligence(tmp_path, monkeypatch):
     assert event["kind"] == "integration"
     assert "Tactical Autopilot champion" in event["title"]
     assert "shadow-only" in event["detail"]
+    assert seen and TacticalAutopilot(port).status()["champions"]["NQ"]["regime_context"] == {
+        "label": "TREND", "score": None, "observed_market_ts": None}
+
+
+def test_autopilot_keeps_separate_champions_for_each_asset_regime(tmp_path, monkeypatch):
+    port = FakePort(tmp_path)
+    runner = port.runners["NQ"]
+    runner.state = {"rate_regime_str": "TREND"}
+    monkeypatch.setattr(
+        "icarus_engine.autopilot.run_backtest",
+        lambda _port, asset, **kwargs: fake_result(kwargs["inputs"]),
+    )
+    ap = TacticalAutopilot(port)
+    trend = ap.cycle_once()["regime_champions"]["NQ|TREND"]
+    runner.state["rate_regime_str"] = "RANGE"
+    range_result = ap.cycle_once()
+    range_champion = range_result["regime_champions"]["NQ|RANGE"]
+    assert trend["regime_context"]["label"] == "TREND"
+    assert range_champion["regime_context"]["label"] == "RANGE"
+    assert range_champion["id"] != trend["id"]
+    state = ap._read()
+    state["regime_champions"]["NQ|RANGE"]["inputs"]["be_delay_bars"] = trend["inputs"]["be_delay_bars"] + 2
+    ap._write(state)
+    runner.state["rate_regime_str"] = "TREND"
+    next_candidate = ap._build_candidate("NQ", ap._read())
+    if next_candidate["delta"]["kind"] == "input":
+        name = next_candidate["delta"]["name"]
+        assert next_candidate["delta"]["from"] == trend["inputs"][name]
+    else:
+        assert next_candidate["inputs"] == trend["inputs"]
 
 
 def test_robustness_score_penalizes_recent_window_collapse(tmp_path, monkeypatch):

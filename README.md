@@ -41,6 +41,14 @@ icarus-plant stop
 
 Optional systemd unit: [deploy/icarus-plant.service](deploy/icarus-plant.service). Edit paths; do not expose port 8791.
 
+### Databento execution-cost estimate
+
+With Databento MBP-10 depth running, the authenticated read-only endpoint
+`POST /admin/execution-cost/estimate` estimates a market-order sweep against the
+latest displayed book and itemizes an operator-supplied fee schedule. It does
+not simulate queue fills or invent fees. See
+[execution-cost estimate details](docs/EXECUTION_COST_ESTIMATES.md).
+
 ## Requirements
 
 - Python 3.10+
@@ -135,3 +143,6 @@ read-only. Catalog presence is not qualification; both authority flags stay fals
 
 Commands, contracts and verification:
 [Capability & Data Discovery Registry](docs/icarus/CAPABILITY_DATA_DISCOVERY_REGISTRY.md).
+## Semantic collaboration work fabric
+
+The [Phase 4A design](docs/superpowers/specs/2026-10-13-semantic-work-fabric-design.md) describes work requests, lifecycle replay, evidence, review and delegation over the intelligence journal. Its [review fixes](docs/superpowers/plans/2026-10-14-semantic-work-review-fixes.md) cover declared identity consistency, retry receipts and exact deadline/lease comparisons. The [Phase 4B–4E command-plane design](docs/superpowers/specs/2026-10-14-semantic-command-plane-design.md) and [implementation record](docs/superpowers/plans/2026-10-14-semantic-command-plane.md) describe authenticated work ingress, expiring capability presence, journal-backed incident rooms, bounded decomposition/council synthesis, and the browser command console. All command actors are server-bound; these surfaces do not authorize execution or production decisions.

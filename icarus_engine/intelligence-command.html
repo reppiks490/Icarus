@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>ICARUS Command</title>
+  <link rel="stylesheet" href="/command/app.css">
+</head>
+<body>
+  <main>
+    <header class="hero">
+      <div class="brand-row">
+        <a class="brand" href="#top" aria-label="ICARUS command home"><span class="brand-mark">I</span><span>ICARUS <small>COMMAND</small></span></a>
+        <p id="identity" class="connection" role="status"><span class="connection-dot" aria-hidden="true"></span><span id="identity-text">Disconnected</span></p>
+      </div>
+      <div id="top" class="hero-copy">
+        <p class="eyebrow">COORDINATION · RESEARCH · REVIEW</p>
+        <h1>Command <span>center</span></h1>
+        <p>Coordinate research work, route capability matched support, and keep every decision tied to its evidence trail.</p>
+      </div>
+      <nav class="quick-nav" aria-label="Command sections">
+        <a href="#work">Work</a><a href="#presence">Network</a><a href="#review">Review</a><a href="#incident">Incidents</a>
+      </nav>
+    </header>
+
+    <section class="panel auth-panel" aria-labelledby="auth-title">
+      <div class="panel-heading"><div><p class="section-kicker">SECURE SESSION</p><h2 id="auth-title">Connect to gateway</h2></div><span class="panel-index">01</span></div>
+      <form id="auth-form" class="auth-form">
+        <label for="token">Gateway bearer token</label>
+        <div class="connect-row"><input id="token" type="password" autocomplete="off" placeholder="Paste your gateway token" required><button class="primary" type="submit">Connect <span aria-hidden="true">↗</span></button></div>
+      </form>
+      <div class="auth-foot"><p class="hint">Your token stays in this tab’s memory and clears when you disconnect or close the tab.</p><button id="disconnect" class="quiet-button" type="button" hidden>Disconnect</button></div>
+    </section>
+
+    <section id="work" class="panel" aria-labelledby="create-title">
+      <div class="panel-heading"><div><p class="section-kicker">01 · INTAKE</p><h2 id="create-title">Request work</h2></div><span class="panel-index">A</span></div>
+      <p class="section-intro">Create a traceable request for a person, agent, or research group.</p>
+      <form id="create-form">
+        <label>Target principal<input name="target_id" maxlength="64" required></label>
+        <label>Work kind
+          <select name="work_kind">
+            <option>research</option><option>evidence</option><option>investigation</option>
+            <option>model_review</option><option>risk_review</option><option>hypothesis_challenge</option>
+            <option>cross_verification</option><option>decision</option><option>delegation</option><option>synthesis</option>
+          </select>
+        </label>
+        <label>Objective<textarea name="objective" maxlength="2000" required></textarea></label>
+        <label>Constraints and optional decomposition plan as JSON<textarea name="constraints">{}</textarea></label>
+        <label>Required capabilities, comma separated<input name="required_capabilities"></label>
+        <button type="submit">Create request</button>
+      </form>
+    </section>
+
+    <section class="panel" aria-labelledby="work-title">
+      <div class="panel-heading"><div><p class="section-kicker">02 · ACTIVITY</p><h2 id="work-title">Work thread</h2></div><button id="work-list-refresh" class="secondary" type="button">Load my work</button></div>
+      <pre id="work-list" aria-live="polite"></pre>
+      <form id="load-form">
+        <label>Work ID<input id="work-id" maxlength="64" required></label>
+        <button type="submit">Load</button>
+      </form>
+      <pre id="work-view" aria-live="polite">No work loaded.</pre>
+      <form id="transition-form">
+        <label>Transition
+          <select name="transition">
+            <option>accepted</option><option>started</option><option>partial_result</option>
+            <option>evidence_added</option><option>challenge</option><option>challenge_response</option>
+            <option>escalated</option><option>completed</option><option>failed</option><option>cancelled</option>
+          </select>
+        </label>
+        <label>Operation ID<input name="operation_id" maxlength="128" required></label>
+        <label>Data as JSON<textarea name="data">{}</textarea></label>
+        <button type="submit">Append transition</button>
+      </form>
+    </section>
+
+    <section id="presence" class="panel" aria-labelledby="presence-title">
+      <div class="panel-heading"><div><p class="section-kicker">03 · NETWORK</p><h2 id="presence-title">Capability presence</h2></div><span class="panel-index">B</span></div>
+      <p class="section-intro">Advertise skills for a short lease and see which principals can take an escalation.</p>
+      <form id="presence-form">
+        <label>Capabilities, comma separated<input name="capabilities"></label>
+        <label>Lease seconds<input name="ttl_seconds" type="number" min="10" max="300" value="60"></label>
+        <button type="submit">Advertise</button>
+        <button id="presence-refresh" type="button">Find available principals</button>
+        <button id="presence-withdraw" type="button">Withdraw my presence</button>
+      </form>
+      <pre id="presence-view" aria-live="polite"></pre>
+      <form id="escalation-form">
+        <label>Route an escalation to an available principal<input name="target_principal" maxlength="64" required></label>
+        <label>Operation ID<input name="operation_id" maxlength="128" required></label>
+        <button type="submit">Route escalation</button>
+      </form>
+    </section>
+
+    <section id="review" class="panel" aria-labelledby="council-title">
+      <div class="panel-heading"><div><p class="section-kicker">04 · ASSURANCE</p><h2 id="council-title">Review council</h2></div><span class="panel-index">C</span></div>
+      <form id="council-form">
+        <label>Council ID<input name="council_id" maxlength="128" required></label>
+        <label>Vote<select name="vote"><option>support</option><option>challenge</option><option>abstain</option></select></label>
+        <label>Review claim<textarea name="claim" maxlength="2000" required></textarea></label>
+        <label>Operation ID<input name="operation_id" maxlength="128" required></label>
+        <button type="submit">Record review</button>
+        <button id="council-refresh" type="button">View council</button>
+      </form>
+      <pre id="council-view" aria-live="polite"></pre>
+    </section>
+
+    <section class="panel" aria-labelledby="decompose-title">
+      <div class="panel-heading"><div><p class="section-kicker">05 · DELEGATION</p><h2 id="decompose-title">Decompose work</h2></div><span class="panel-index">D</span></div>
+      <p class="hint">Provide a JSON array of explicit child requests. Each child stays linked to the current parent head.</p>
+      <form id="decompose-form">
+        <label>Decomposition ID<input name="decomposition_id" maxlength="128" required></label>
+        <label>Tasks as JSON<textarea name="tasks">[{"target_principal":"researcher","work_kind":"evidence","objective":"Collect independent evidence"}]</textarea></label>
+        <button type="submit">Create child work</button>
+      </form>
+    </section>
+
+    <section class="panel" aria-labelledby="synthesis-title">
+      <div class="panel-heading"><div><p class="section-kicker">06 · SYNTHESIS</p><h2 id="synthesis-title">Synthesize child results</h2></div><span class="panel-index">E</span></div>
+      <form id="synthesis-form">
+        <label>Child work IDs, comma separated<input name="child_work_ids" required></label>
+        <label>Summary<textarea name="summary" maxlength="2000" required></textarea></label>
+        <label>Operation ID<input name="operation_id" maxlength="128" required></label>
+        <label><input name="complete" type="checkbox"> Complete parent work</label>
+        <button type="submit">Record synthesis</button>
+      </form>
+    </section>
+
+    <section id="incident" class="panel" aria-labelledby="incident-title">
+      <div class="panel-heading"><div><p class="section-kicker">07 · INCIDENT RESPONSE</p><h2 id="incident-title">Incident room</h2></div><span class="panel-index">F</span></div>
+      <form id="incident-open-form">
+        <label>Initial members, comma separated<input name="members"></label>
+        <button type="submit">Open for loaded work</button>
+      </form>
+      <form id="incident-message-form">
+        <label>Incident update<textarea name="body" maxlength="4000" required></textarea></label>
+        <label>Operation ID<input name="operation_id" maxlength="128" required></label>
+        <button type="submit">Post update</button>
+        <button id="incident-refresh" type="button">Load room</button>
+        <button id="incident-close" type="button">Close room</button>
+      </form>
+      <pre id="incident-view" aria-live="polite"></pre>
+    </section>
+
+    <output id="notice" role="status" aria-live="polite"></output>
+    <footer><span class="footer-mark">ICARUS</span><span>Coordination and research only.<br>Execution and production decision authority are disabled.</span></footer>
+  </main>
+  <script src="/command/app.js" defer></script>
+</body>
+</html>
