@@ -133,15 +133,41 @@ def test_bar_batch_receipt_gap_blocks_otherwise_qualified_history():
         fetched_at_ns=1, received_at_ns=2, entitlement_status="VERIFIED",
         session_validation_status="VERIFIED", provider_mapping_status="VERIFIED",
     )
+    expected = [60, 120, 180, 240]
+    complete_bars = [Bar(ts, 10, 12, 9, 11, 4) for ts in expected]
     _, complete = make_bar_batch_receipt(
-        **common, bars=[Bar(60, 10, 12, 9, 11, 4), Bar(120, 11, 13, 10, 12, 5)],
-    )
-    _, gapped = make_bar_batch_receipt(
-        **common, bars=[Bar(60, 10, 12, 9, 11, 4), Bar(240, 11, 13, 10, 12, 5)],
+        **common, bars=complete_bars, expected_timestamps=expected,
     )
     assert complete.historical_bars_qualified is True
-    assert gapped.interval_gap_count == 2
-    assert gapped.historical_bars_qualified is False
+    assert complete.coverage_status == "VERIFIED"
+    for observed_indexes in ((0, 3), (0, 1), (2, 3)):
+        _, gapped = make_bar_batch_receipt(
+            **common, bars=[complete_bars[index] for index in observed_indexes],
+            expected_timestamps=expected,
+        )
+        assert gapped.interval_gap_count == 2
+        assert gapped.missing_bar_count == 2
+        assert gapped.coverage_status == "FAILED"
+        assert gapped.historical_bars_qualified is False
+
+
+def test_bar_batch_receipt_requires_expected_session_coverage_for_qualification():
+    bars = [Bar(60, 10, 12, 9, 11, 4), Bar(120, 11, 13, 10, 12, 5)]
+    common = dict(
+        instrument_id="icarus:equity:TEST", provider="test",
+        expected_provider_symbol="TEST", observed_provider_symbol="TEST",
+        interval_seconds=60, requested_start_ts=60, requested_end_ts=180,
+        fetched_at_ns=1, received_at_ns=2, entitlement_status="VERIFIED",
+        session_validation_status="VERIFIED", provider_mapping_status="VERIFIED",
+    )
+    _, unknown_coverage = make_bar_batch_receipt(**common, bars=bars)
+    _, verified_coverage = make_bar_batch_receipt(
+        **common, bars=bars, expected_timestamps=[60, 120],
+    )
+    assert unknown_coverage.coverage_status == "UNKNOWN"
+    assert unknown_coverage.historical_bars_qualified is False
+    assert verified_coverage.coverage_status == "VERIFIED"
+    assert verified_coverage.historical_bars_qualified is True
 
 
 def test_catalog_contains_two_hundred_unique_disabled_equity_candidates():

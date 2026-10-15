@@ -31,6 +31,9 @@ class BarBatchReceipt:
     dropped_count: int
     duplicate_count: int
     interval_gap_count: int
+    expected_bar_count: int | None
+    missing_bar_count: int | None
+    coverage_status: str
     timestamp_alignment_status: str
     session_validation_status: str
     checksum_sha256: str
@@ -49,6 +52,7 @@ def make_bar_batch_receipt(
     requested_start_ts: int, requested_end_ts: int, bars: Iterable[Bar],
     fetched_at_ns: int, received_at_ns: int, entitlement_status: str = "UNKNOWN",
     session_validation_status: str = "UNKNOWN", provider_mapping_status: str = "VERIFIED",
+    expected_timestamps: Iterable[int] | None = None,
 ) -> tuple[list[Bar], BarBatchReceipt]:
     """Validate exact response identity and OHLCV before returning bars to runtime.
 
@@ -71,6 +75,12 @@ def make_bar_batch_receipt(
     if fetched_at_ns < 0 or received_at_ns < fetched_at_ns:
         raise ValueError("bar receipt fetch/receive times are invalid or reversed")
     rows = list(bars)
+    expected = None if expected_timestamps is None else list(expected_timestamps)
+    if expected is not None:
+        if any(type(ts) is not int or not start <= ts < end or ts % interval_seconds for ts in expected):
+            raise ValueError("expected bar timestamps must be aligned integers inside the requested window")
+        if any(later <= earlier for earlier, later in zip(expected, expected[1:])):
+            raise ValueError("expected bar timestamps must be strictly increasing without duplicates")
     observed = str(observed_provider_symbol) if observed_provider_symbol else None
     if observed is not None and observed.upper() != expected_provider_symbol.upper():
         raise ValueError(
@@ -100,6 +110,21 @@ def make_bar_batch_receipt(
         if row.v < 0 or row.l > min(row.o, row.c) or row.h < max(row.o, row.c):
             raise ValueError(f"bar at {ts} has malformed OHLCV")
 
+    observed_timestamps = {row.ts for row in rows}
+    if expected is None:
+        expected_count = None
+        missing_count = None
+        coverage_status = "UNKNOWN"
+    else:
+        expected_set = set(expected)
+        unexpected = observed_timestamps - expected_set
+        if unexpected:
+            raise ValueError(f"bar timestamp {min(unexpected)} is outside expected session schedule")
+        missing_count = len(expected_set - observed_timestamps)
+        expected_count = len(expected)
+        gap_count = missing_count
+        coverage_status = "VERIFIED" if missing_count == 0 else "FAILED"
+
     encoded = json.dumps(
         [[int(row.ts), float(row.o), float(row.h), float(row.l), float(row.c), float(row.v)] for row in rows],
         separators=(",", ":"), allow_nan=False,
@@ -111,9 +136,10 @@ def make_bar_batch_receipt(
     if session_validation_status not in ("UNKNOWN", "VERIFIED", "FAILED"):
         raise ValueError("invalid session validation status")
     qualified = (identity_status == "VERIFIED" and entitlement_status == "VERIFIED"
-                 and session_validation_status == "VERIFIED" and aligned and gap_count == 0 and bool(rows))
+                 and session_validation_status == "VERIFIED" and aligned and gap_count == 0
+                 and coverage_status == "VERIFIED" and bool(rows))
     receipt_identity = json.dumps(
-        [instrument_id, provider, expected_provider_symbol, interval_seconds, start, end, checksum],
+        [instrument_id, provider, expected_provider_symbol, interval_seconds, start, end, expected, checksum],
         separators=(",", ":"),
     ).encode("utf-8")
     receipt = BarBatchReceipt(
@@ -136,6 +162,9 @@ def make_bar_batch_receipt(
         dropped_count=0,
         duplicate_count=0,
         interval_gap_count=gap_count,
+        expected_bar_count=expected_count,
+        missing_bar_count=missing_count,
+        coverage_status=coverage_status,
         timestamp_alignment_status="VERIFIED" if aligned else "FAILED",
         session_validation_status=session_validation_status,
         checksum_sha256=checksum,
