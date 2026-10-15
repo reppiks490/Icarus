@@ -1,13 +1,15 @@
 import copy
 import sqlite3
 import threading
+from http.server import ThreadingHTTPServer
 
 import pytest
 
 from icarus_engine import paper_workspaces
 from icarus_engine.assets import REGISTRY as ASSET_REGISTRY
 from icarus_engine.pine.timeframe import Bar
-from icarus_engine.runtime import Inputs, Journal
+from icarus_engine.runtime import Inputs, Journal, Portfolio
+from icarus_engine.server import serve
 
 
 class _Parent:
@@ -406,3 +408,31 @@ def test_real_workspace_runners_positions_journals_and_pnl_are_isolated(tmp_path
         manager.stop()
         for portfolio in manager.portfolios.values():
             portfolio.journal.con.close()
+
+
+def test_server_close_attempts_all_services_and_closes_socket_after_workspace_error(tmp_path, monkeypatch):
+    port = Portfolio(Journal(":memory:"), str(tmp_path))
+    server = serve(port, 0, start=False)
+    closed_services = []
+    base_server_close = ThreadingHTTPServer.server_close
+
+    def fail_workspace_stop(_manager):
+        raise RuntimeError("fixture workspace shutdown failure")
+
+    def record_autopilot_close(_autopilot):
+        closed_services.append("autopilot")
+
+    def record_base_server_close(instance):
+        closed_services.append("http-server")
+        return base_server_close(instance)
+
+    monkeypatch.setattr(type(server.command_centers), "stop", fail_workspace_stop)
+    monkeypatch.setattr(type(server.autopilot), "close", record_autopilot_close)
+    monkeypatch.setattr(ThreadingHTTPServer, "server_close", record_base_server_close)
+
+    with pytest.raises(RuntimeError, match="background service\\(s\\) failed to close"):
+        server.server_close()
+
+    assert closed_services == ["autopilot", "http-server"]
+    assert server.fileno() == -1
+    port.journal.close()

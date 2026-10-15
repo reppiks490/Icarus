@@ -2974,6 +2974,32 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             self._json(404, {"error": "not found"})
 
     class ResearchHTTPServer(ThreadingHTTPServer):
+        def _close_background_services(self):
+            closers = (
+                command_centers.stop,
+                autopilot.close,
+                ascendancy_autopilot.close,
+                ascendancy_native_validation.close,
+                evidence_lab_sync.close,
+                evolution_remote_sync.close,
+                brain_research_sync.close,
+                brain_remote_sync.close,
+                loop_intelligence_sync.close,
+                commissioning.close,
+                research.close,
+                apex.close,
+            )
+            errors = []
+            for close in closers:
+                try:
+                    close()
+                except Exception as exc:
+                    errors.append(exc)
+            if errors:
+                raise RuntimeError(
+                    f"{len(errors)} background service(s) failed to close"
+                ) from errors[0]
+
         def serve_forever(self, poll_interval=.5):
             background = bool(getattr(self, "background_workers_enabled", True))
             if background:
@@ -2991,33 +3017,13 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return super().serve_forever(poll_interval)
             finally:
                 if background:
-                    command_centers.stop()
-                    autopilot.close()
-                    ascendancy_autopilot.close()
-                    ascendancy_native_validation.close()
-                    evidence_lab_sync.close()
-                    evolution_remote_sync.close()
-                    brain_research_sync.close()
-                    brain_remote_sync.close()
-                    loop_intelligence_sync.close()
-                    commissioning.close()
-                    research.close()
-                    apex.close()
+                    self._close_background_services()
 
         def server_close(self):
-            command_centers.stop()
-            autopilot.close()
-            ascendancy_autopilot.close()
-            ascendancy_native_validation.close()
-            evidence_lab_sync.close()
-            evolution_remote_sync.close()
-            brain_research_sync.close()
-            brain_remote_sync.close()
-            loop_intelligence_sync.close()
-            commissioning.close()
-            research.close()
-            apex.close()
-            return super().server_close()
+            try:
+                self._close_background_services()
+            finally:
+                super().server_close()
 
     srv = ResearchHTTPServer(("127.0.0.1", http_port), H)
     srv.command_centers = command_centers
