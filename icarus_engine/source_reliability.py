@@ -11,9 +11,10 @@ import json
 import math
 import sqlite3
 import threading
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Iterator, Mapping
 
 _ALLOWED = {
     "source_id", "stream", "observed_at", "event_time", "retrieval_time",
@@ -108,11 +109,19 @@ class SourceReliabilityStore:
                 """
             )
 
-    def _connect(self) -> sqlite3.Connection:
+    @contextmanager
+    def _connect(self) -> Iterator[sqlite3.Connection]:
         con = sqlite3.connect(str(self.path), timeout=10)
         con.row_factory = sqlite3.Row
-        con.execute("PRAGMA journal_mode=WAL")
-        return con
+        try:
+            con.execute("PRAGMA journal_mode=WAL")
+            yield con
+            con.commit()
+        except Exception:
+            con.rollback()
+            raise
+        finally:
+            con.close()
 
     def record_observation(self, body: Mapping[str, Any]) -> dict[str, Any]:
         if not isinstance(body, Mapping) or set(body) != _ALLOWED:
