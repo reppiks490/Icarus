@@ -218,7 +218,7 @@ async function loadMarketUniverse(){
   const result=await marketDataFetch('/api/market-universe');
   if(!result.ok){summary.innerHTML='<p class="neg">Catalog unavailable: '+esc(result.error)+'</p>';table.innerHTML='';return;}
   const data=result.data||{}, counts=data.counts||{}, rows=Array.isArray(data.instruments)?data.instruments:[];
-  const keys=[['Catalogued','catalogued_count'],['Source connected','source_connected_count'],['History qualified','historical_bars_qualified_count'],['Live qualified','live_bars_qualified_count'],['Pulse enabled','pulse_enabled_count'],['Strategy qualified','strategy_qualified_count']];
+  const keys=[['Catalogued','catalogued_count'],['Entitlement verified','entitlement_verified_count'],['Source connected','source_connected_count'],['History qualified','historical_bars_qualified_count'],['Live qualified','live_bars_qualified_count'],['Pulse enabled','pulse_enabled_count'],['Strategy qualified','strategy_qualified_count']];
   summary.innerHTML=keys.map(function(pair){return '<div class="tile"><div class="k">'+esc(pair[0])+'</div><div class="v">'+esc(counts[pair[1]]==null?'—':counts[pair[1]])+'</div></div>';}).join('')+
     '<div class="small muted" style="grid-column:1/-1">Snapshot '+esc(data.retrieved_at||'unknown')+'. Candidate rows use provisional listing identities and unverified Yahoo mappings. Missing tick, share, corporate-action, terms, and entitlement facts keep all 200 candidates out of Pulse.</div>';
   table.innerHTML=rows.length?'<table><thead><tr><th>Instrument ID</th><th>Symbol</th><th>Name</th><th>Venue</th><th>Source map</th><th>State</th></tr></thead><tbody>'+rows.map(function(row){
