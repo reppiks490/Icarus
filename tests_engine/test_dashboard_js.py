@@ -72,6 +72,9 @@ def test_real_price_shadow_twin_dashboard_is_read_only_and_wired():
     assert "execution_authorized" in ui
     assert "bar closes" in ui
     assert "real_price_shadow_net" in ui
+    assert "entry_fill_parity" in ui
+    assert "pairable_closed_episodes" in ui
+    assert "fullBySymbol" in ui
 
 
 def test_strategy_tester_timeframes_are_cache_aware():

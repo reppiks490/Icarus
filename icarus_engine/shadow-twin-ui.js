@@ -52,12 +52,16 @@
       if (!matrix || typeof matrix !== 'object') return '—';
       return ['win', 'loss', 'break_even'].map(primary => `${primary}: ${['win', 'loss', 'break_even'].map(shadow => `${shadow} ${number(matrix?.[primary]?.[shadow])}`).join(' / ')}`).join('<br>');
     };
-    const assetTable = assets => {
+    const assetTable = (assets, runtimeAssets) => {
+      const fullBySymbol = new Map((Array.isArray(runtimeAssets) ? runtimeAssets : [])
+        .filter(row => row && row.real_price_shadow)
+        .map(row => [String(row.symbol || row.real_price_shadow.asset), row.real_price_shadow]));
       const rows = (Array.isArray(assets) ? assets : []).map(row => {
-        const p = row.provenance || {};
-        return `<tr><td>${esc(row.asset)}</td><td class="rt01-status">${esc(row.status)}</td><td>${esc(row.reason || '—')}</td><td>${esc(p.price_provider || '—')}</td><td>${esc(p.timeframe_minutes ? `${p.timeframe_minutes} min` : '—')}</td><td>${esc(p.calendar || '—')} / ${esc(p.session_mode || '—')}</td><td>${esc(p.primary_fill_basis || '—')} / ${esc(p.shadow_fill_basis || '—')}</td><td>${esc(p.feed_health?.status || p.feed_health?.state || '—')}</td><td>${number(row.administrative_censored_shadow_positions)}</td></tr>`;
+        const metrics = fullBySymbol.get(String(row.asset)) || {};
+        const p = row.provenance || metrics.provenance || {};
+        return `<tr><td>${esc(row.asset)}</td><td class="rt01-status">${esc(row.status)}</td><td>${esc(row.reason || '—')}</td><td>${esc(p.price_provider || '—')}</td><td>${esc(p.timeframe_minutes ? `${p.timeframe_minutes} min` : '—')}</td><td>${esc(p.calendar || '—')} / ${esc(p.session_mode || '—')}</td><td>${esc(p.primary_fill_basis || metrics.primary_fill_basis || '—')} / ${esc(p.shadow_fill_basis || metrics.fill_basis || '—')}</td><td>${esc(p.feed_health?.status || p.feed_health?.state || '—')}</td><td>${percent(metrics.entry_fill_parity)}</td><td>${number(metrics.pairable_closed_episodes)}</td><td>${metrics.outcome_agreement_rate == null ? '—' : `${percent(metrics.outcome_agreement_rate)} (${number(metrics.outcome_agreement_denominator)})`}</td><td>${money(metrics.primary?.net)} / ${money(metrics.real_price_shadow?.net)}</td><td>${percent(metrics.primary_win_preservation)}</td><td>${money(metrics.primary_bar_close_max_drawdown)} / ${money(metrics.real_price_shadow_bar_close_max_drawdown)}</td><td>${number(row.administrative_censored_shadow_positions)}</td></tr>`;
       }).join('');
-      return `<div class="rt01-table-wrap"><table><thead><tr><th>Asset</th><th>Status</th><th>Reason</th><th>Price source</th><th>Timeframe</th><th>Calendar / session</th><th>Fill basis primary / shadow</th><th>Feed health</th><th>Censored positions</th></tr></thead><tbody>${rows || '<tr><td colspan="9">No per-asset shadow results are available.</td></tr>'}</tbody></table></div>`;
+      return `<div class="rt01-table-wrap"><table><thead><tr><th>Asset</th><th>Status</th><th>Reason</th><th>Price source</th><th>Timeframe</th><th>Calendar / session</th><th>Fill basis primary / shadow</th><th>Feed health</th><th>Entry parity</th><th>Closed pairs</th><th>Outcome agreement</th><th>Primary / shadow net</th><th>Winner preservation</th><th>Bar-close DD primary / shadow</th><th>Censored positions</th></tr></thead><tbody>${rows || '<tr><td colspan="15">No per-asset shadow results are available.</td></tr>'}</tbody></table></div>`;
     };
     const render = data => {
       const content = document.getElementById('rt01-content');
@@ -81,7 +85,7 @@
         ${card('Net realization ratio', percent(portfolio.net_realization_ratio))}${card('Primary winner capture', percent(portfolio.paired_profit_capture))}
         ${card('Primary winner preservation', percent(portfolio.primary_win_preservation))}${card('Admin-censored positions', number(portfolio.administrative_censored_shadow_positions))}
       </div><h3>Matched closed outcome matrix</h3><div class="rt01-note">Rows are primary outcomes; columns are shadow outcomes. Each cell is a count: ${matrix}</div>
-      <h3>Per-asset evidence and provenance</h3>${assetTable(portfolio.assets)}
+      <h3>Per-asset evidence and provenance</h3>${assetTable(portfolio.assets, data.assets)}
       <p class="rt01-note">Portfolio drawdown: ${esc(portfolio.drawdown_aggregation || 'not reported')}. Values marked — have no valid denominator or no published measurement; they are not zeroes.</p>`;
     };
     let interval = null, loading = false;
