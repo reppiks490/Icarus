@@ -1,5 +1,6 @@
 """Real HTTP/SQLite/local-thread integration; all price history is synthetic."""
 from datetime import datetime, timezone
+from http.server import ThreadingHTTPServer
 import hashlib
 import hmac
 from http.client import HTTPConnection
@@ -15,6 +16,8 @@ from icarus_engine.runtime import AssetRunner, Journal, Portfolio, RunnerConfig
 from icarus_engine.strategy.inputs import Inputs
 from icarus_engine.research_service import ResearchWorkspace
 from icarus_engine.server import serve
+from icarus_engine.access_control import AccessRegistry
+from icarus_engine.phone_access_proxy import create_handler
 from icarus_engine import research_service
 from icarus_engine.research import Policy, Windows, run_search
 
@@ -308,6 +311,59 @@ def test_status_public_survives_nan_and_never_empty_replies(http, portfolio):
     assert data
     json.loads(data)
     assert status in (200, 500)
+
+
+def test_phone_proxy_preflight_does_not_duplicate_access_activity(portfolio):
+    engine = serve(portfolio, 0, "test-token", start=False)
+    engine_thread = threading.Thread(target=engine.serve_forever, daemon=True)
+    engine_thread.start()
+    proxy = ThreadingHTTPServer(("127.0.0.1", 0), create_handler(
+        engine_port=engine.server_port, gateway_port=engine.server_port,
+    ))
+    proxy_thread = threading.Thread(target=proxy.serve_forever, daemon=True)
+
+    def request(port, path, token):
+        conn = HTTPConnection("127.0.0.1", port, timeout=5)
+        try:
+            conn.request("GET", path, headers={"Authorization": f"Bearer {token}"})
+            response = conn.getresponse()
+            return response.status, response.read()
+        finally:
+            conn.close()
+
+    proxy_thread.start()
+    registry = AccessRegistry(portfolio.base_dir, "test-token")
+    try:
+        before = registry.snapshot()
+        owner_before = next(user for user in before["users"] if user["id"] == "owner")
+
+        status, _ = request(proxy.server_port, "/status/public", "test-token")
+        assert status == 200
+        after_valid = registry.snapshot()
+        owner_after_valid = next(user for user in after_valid["users"] if user["id"] == "owner")
+        assert owner_after_valid["request_count"] == owner_before["request_count"] + 1
+        assert after_valid["activity_summary"]["authenticated_requests_24h"] == before["activity_summary"]["authenticated_requests_24h"] + 1
+
+        status, _ = request(proxy.server_port, "/status/public", "invalid-token")
+        assert status == 401
+        after_proxy_invalid = registry.snapshot()
+        assert after_proxy_invalid["activity_summary"]["failed_auth_24h"] == after_valid["activity_summary"]["failed_auth_24h"]
+        owner_after_proxy_invalid = next(user for user in after_proxy_invalid["users"] if user["id"] == "owner")
+        assert owner_after_proxy_invalid["request_count"] == owner_after_valid["request_count"]
+
+        status, _ = request(engine.server_port, "/status/public", "invalid-token")
+        assert status == 401
+        after_direct_invalid = registry.snapshot()
+        assert after_direct_invalid["activity_summary"]["failed_auth_24h"] == after_proxy_invalid["activity_summary"]["failed_auth_24h"] + 1
+        owner_after_direct_invalid = next(user for user in after_direct_invalid["users"] if user["id"] == "owner")
+        assert owner_after_direct_invalid["request_count"] == owner_after_proxy_invalid["request_count"]
+    finally:
+        proxy.shutdown()
+        proxy.server_close()
+        proxy_thread.join(timeout=5)
+        engine.shutdown()
+        engine.server_close()
+        engine_thread.join(timeout=5)
 
 
 def test_champion_study_admin_route_requires_auth_and_exact_payload(http):

@@ -66,6 +66,16 @@ class AccessRegistry:
             db.execute("INSERT INTO events(at,user_id,kind,detail) VALUES(?,?,?,?)", (now,row["id"],"access","Authenticated dashboard/API request"))
             return {"id":row["id"], "label":row["label"], "role":row["role"]}
 
+    def is_active_token(self, token: str) -> bool:
+        """Check a token without changing activity or security-event records."""
+        if not token:
+            return False
+        with self._lock, self._db() as db:
+            return db.execute(
+                "SELECT 1 FROM users WHERE token_hash=? AND active=1",
+                (self._digest(token),),
+            ).fetchone() is not None
+
     def failed_auth(self, detail="Rejected bearer token"):
         with self._lock, self._db() as db:
             db.execute("INSERT INTO events(at,kind,detail) VALUES(?,?,?)", (time.time(),"failed_auth",detail))

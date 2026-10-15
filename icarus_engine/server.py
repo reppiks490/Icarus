@@ -1461,6 +1461,15 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._json(200, snapshot)
             if p.path == "/healthz":
                 return self._json(200, {"ok": True, "assets": list(port.order), "warm": all(r.warm for r in port.runners.values()) if port.runners else False})
+            if p.path == "/_internal/access/validate":
+                # The loopback phone relay needs an authorization decision before
+                # forwarding. Do not count this preflight as a dashboard access or
+                # record invalid credentials as failed attempts; the routed API
+                # request below remains responsible for normal activity accounting.
+                scheme, _, token_value = self.headers.get("Authorization", "").partition(" ")
+                if scheme.lower() != "bearer" or not access_registry.is_active_token(token_value):
+                    return self._json(401, {"detail": "bad admin token"})
+                return self._json(200, {"valid": True})
             if p.path == "/api/access":
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
