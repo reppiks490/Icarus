@@ -1,0 +1,26 @@
+{
+  "catalog_id": "api-mega-list",
+  "content_sha256": "82193db535c1f93e6245aa2867f05268b2de55a49146bc07b99e6bea99d00912",
+  "execution_authorized": false,
+  "import_summary": {
+    "catalog_id": "api-mega-list",
+    "duplicate_groups": 356,
+    "execution_authorized": false,
+    "imported_entries": 11021,
+    "parse_failures": 15,
+    "production_decision_authorized": false,
+    "raw_count": 11036,
+    "rejected": 7,
+    "review_required": 11014,
+    "snapshot_id": "b143b7a9c281b711814414266850ca51d0cc53a107a75c0dad875dc8b3e4e3b0",
+    "unique_candidates": 7884
+  },
+  "parser_revision": "catalog-registry-v3",
+  "production_decision_authorized": false,
+  "retrieved_at": "2026-10-15T09:22:37.399154Z",
+  "snapshot_id": "b143b7a9c281b711814414266850ca51d0cc53a107a75c0dad875dc8b3e4e3b0",
+  "status": "SUCCESS",
+  "upstream_commit": "1721c049b3f046d4a23ad8f16d95745eed44b9f1",
+  "upstream_path": "README.md",
+  "upstream_repo": "cporter202/API-mega-list"
+}

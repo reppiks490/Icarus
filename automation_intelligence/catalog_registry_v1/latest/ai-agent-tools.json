@@ -1,0 +1,26 @@
+{
+  "catalog_id": "ai-agent-tools",
+  "content_sha256": "fabab1774c9ad2ac002afdba7285571670fc850a44b1508391f2ba089f9c656a",
+  "execution_authorized": false,
+  "import_summary": {
+    "catalog_id": "ai-agent-tools",
+    "duplicate_groups": 8,
+    "execution_authorized": false,
+    "imported_entries": 153,
+    "parse_failures": 65,
+    "production_decision_authorized": false,
+    "raw_count": 218,
+    "rejected": 0,
+    "review_required": 153,
+    "snapshot_id": "9c1e06a1535436cb812be034cc0267e4b80acc0004fcc8fa94498b2d9545601a",
+    "unique_candidates": 149
+  },
+  "parser_revision": "catalog-registry-v3",
+  "production_decision_authorized": false,
+  "retrieved_at": "2026-10-15T09:22:37.399154Z",
+  "snapshot_id": "9c1e06a1535436cb812be034cc0267e4b80acc0004fcc8fa94498b2d9545601a",
+  "status": "SUCCESS",
+  "upstream_commit": "017b11024524bdb97a2c636c53b1069ce4ebb3e3",
+  "upstream_path": "README.md",
+  "upstream_repo": "cporter202/ai-agent-tools"
+}
