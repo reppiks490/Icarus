@@ -1,5 +1,8 @@
 import copy
+import sqlite3
 import threading
+
+import pytest
 
 from icarus_engine import paper_workspaces
 from icarus_engine.runtime import Inputs, Journal
@@ -55,7 +58,7 @@ class _WorkspacePortfolio:
         self.started = True
 
     def stop(self):
-        self.journal.con.close()
+        self.journal.close()
 
     def runner_list(self):
         return self.runners
@@ -138,4 +141,132 @@ def test_edit_pause_and_flatten_only_touch_the_selected_workspace(tmp_path, monk
         saved = manager._path("cc2")
         assert '"tp1_pts": 9.0' in saved.read_text(encoding="utf-8")
     finally:
+        manager.stop()
+
+
+def test_manager_stop_closes_real_workspace_journals_idempotently(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        paper_workspaces,
+        "_PROFILE_DEFAULTS",
+        tuple({**profile, "assets": []} for profile in paper_workspaces._PROFILE_DEFAULTS),
+    )
+    parent = _Parent(tmp_path)
+    parent.feeds = {}
+    manager = paper_workspaces.PaperWorkspaceManager(parent)
+    manager.start()
+    journals = [portfolio.journal for portfolio in manager.portfolios.values()]
+
+    manager.stop()
+    manager.stop()
+
+    assert all(not portfolio._sampler_thread.is_alive() for portfolio in manager.portfolios.values())
+    for journal in journals:
+        with pytest.raises(sqlite3.ProgrammingError, match="closed database"):
+            journal.con.execute("SELECT 1")
+
+
+def test_manager_start_failure_closes_every_created_workspace_journal(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        paper_workspaces,
+        "_PROFILE_DEFAULTS",
+        tuple({**profile, "assets": []} for profile in paper_workspaces._PROFILE_DEFAULTS),
+    )
+    parent = _Parent(tmp_path)
+    parent.feeds = {}
+    manager = paper_workspaces.PaperWorkspaceManager(parent)
+    real_start = paper_workspaces.WorkspacePortfolio.start
+
+    def fail_second_workspace(portfolio):
+        if portfolio.workspace["id"] == "cc2":
+            raise RuntimeError("forced workspace start failure")
+        real_start(portfolio)
+
+    monkeypatch.setattr(paper_workspaces.WorkspacePortfolio, "start", fail_second_workspace)
+    try:
+        with pytest.raises(RuntimeError, match="forced workspace start failure"):
+            manager.start()
+        for portfolio in manager.portfolios.values():
+            with pytest.raises(sqlite3.ProgrammingError, match="closed database"):
+                portfolio.journal.con.execute("SELECT 1")
+    finally:
+        manager.stop()
+
+
+def test_manager_start_closes_journal_when_workspace_constructor_fails(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        paper_workspaces,
+        "_PROFILE_DEFAULTS",
+        tuple({**profile, "assets": []} for profile in paper_workspaces._PROFILE_DEFAULTS),
+    )
+    parent = _Parent(tmp_path)
+    parent.feeds = {}
+    manager = paper_workspaces.PaperWorkspaceManager(parent)
+    created_journals = []
+    real_journal = paper_workspaces.Journal
+
+    def capture_journal(*args, **kwargs):
+        journal = real_journal(*args, **kwargs)
+        created_journals.append(journal)
+        return journal
+
+    def fail_constructor(*_args, **_kwargs):
+        raise RuntimeError("forced workspace constructor failure")
+
+    monkeypatch.setattr(paper_workspaces, "Journal", capture_journal)
+    monkeypatch.setattr(paper_workspaces.WorkspacePortfolio, "__init__", fail_constructor)
+    try:
+        with pytest.raises(RuntimeError, match="forced workspace constructor failure"):
+            manager.start()
+
+        assert len(created_journals) == 1
+        with pytest.raises(sqlite3.ProgrammingError, match="closed database"):
+            created_journals[0].con.execute("SELECT 1")
+    finally:
+        manager.stop()
+        for journal in created_journals:
+            journal.close()
+
+
+def test_manager_defers_journal_close_until_slow_worker_exits(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        paper_workspaces,
+        "_PROFILE_DEFAULTS",
+        tuple({**profile, "assets": []} for profile in paper_workspaces._PROFILE_DEFAULTS),
+    )
+    parent = _Parent(tmp_path)
+    parent.feeds = {}
+    manager = paper_workspaces.PaperWorkspaceManager(parent)
+    manager.start()
+    portfolio = manager.portfolios["cc1"]
+    journal = portfolio.journal
+    release_worker = threading.Event()
+    closer_waiting = threading.Event()
+    journal_closed = threading.Event()
+    real_close = journal.close
+
+    def record_close():
+        real_close()
+        journal_closed.set()
+
+    journal.close = record_close
+
+    class _SlowWorker:
+        def is_alive(self):
+            return not release_worker.is_set()
+
+        def join(self, timeout=None):
+            if timeout is None:
+                closer_waiting.set()
+                release_worker.wait()
+
+    portfolio._threads["slow"] = _SlowWorker()
+    try:
+        manager.stop()
+        assert closer_waiting.wait(timeout=1)
+        assert not journal_closed.is_set()
+        assert journal.con.execute("SELECT 1").fetchone() == (1,)
+        release_worker.set()
+        assert journal_closed.wait(timeout=1)
+    finally:
+        release_worker.set()
         manager.stop()

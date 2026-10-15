@@ -184,6 +184,7 @@ class PaperWorkspaceManager:
         self.root = Path(parent.base_dir or os.getcwd()) / "command_centers"
         self.root.mkdir(parents=True, exist_ok=True)
         self._lock = threading.RLock()
+        self._closing_journals: set[int] = set()
         self._feeds = {name: SharedFeed(feed) for name, feed in parent.feeds.items()}
         self.profiles: Dict[str, Dict[str, Any]] = {}
         self.portfolios: Dict[str, WorkspacePortfolio] = {}
@@ -223,31 +224,73 @@ class PaperWorkspaceManager:
         os.replace(tmp, path)
 
     def start(self):
-        started = []
         try:
             for profile_id, profile in self.profiles.items():
                 journal = Journal(str(self.root / f"{profile_id}.sqlite3"))
-                portfolio = WorkspacePortfolio(
-                    journal, str(self.parent.base_dir), poll_sec=self.parent.poll_sec,
-                    profile=self.parent.profile, preset=self.parent.preset,
-                    warmup_bars=self.parent.warmup_bars, pts_ref_symbol=self.parent.pts_ref_symbol,
-                    feeds=self._feeds, workspace=profile,
-                )
+                try:
+                    portfolio = WorkspacePortfolio(
+                        journal, str(self.parent.base_dir), poll_sec=self.parent.poll_sec,
+                        profile=self.parent.profile, preset=self.parent.preset,
+                        warmup_bars=self.parent.warmup_bars, pts_ref_symbol=self.parent.pts_ref_symbol,
+                        feeds=self._feeds, workspace=profile,
+                    )
+                except Exception as constructor_error:
+                    try:
+                        journal.close()
+                    except Exception as cleanup_error:
+                        raise constructor_error from cleanup_error
+                    raise
                 portfolio.pts_ref_price = self.parent.pts_ref_price
                 self.portfolios[profile_id] = portfolio
                 for symbol in profile["assets"]:
                     spec = copy.deepcopy(REGISTRY[symbol])
                     portfolio.add_asset(spec, start=False)
-                started.append(portfolio)
                 portfolio.start()
-        except Exception:
-            for portfolio in reversed(started):
-                portfolio.stop()
+        except Exception as start_error:
+            try:
+                self.stop()
+            except Exception as cleanup_error:
+                raise start_error from cleanup_error
             raise
 
     def stop(self):
         for portfolio in reversed(list(self.portfolios.values())):
-            portfolio.stop()
+            try:
+                portfolio.stop()
+            finally:
+                self._close_journal_when_workers_stop(portfolio)
+
+    def _close_journal_when_workers_stop(self, portfolio):
+        workers = list(getattr(portfolio, "_threads", {}).values())
+        sampler = getattr(portfolio, "_sampler_thread", None)
+        if sampler is not None:
+            workers.append(sampler)
+        pending = [worker for worker in workers if worker.is_alive()]
+        if not pending:
+            portfolio.journal.close()
+            return
+
+        journal_key = id(portfolio.journal)
+        with self._lock:
+            if journal_key in self._closing_journals:
+                return
+            self._closing_journals.add(journal_key)
+
+        def close_after_workers_exit():
+            try:
+                for worker in pending:
+                    worker.join()
+                portfolio.journal.close()
+            finally:
+                with self._lock:
+                    self._closing_journals.discard(journal_key)
+
+        closer = threading.Thread(
+            target=close_after_workers_exit,
+            daemon=True,
+            name=f"journal-close-{portfolio.workspace['id']}",
+        )
+        closer.start()
 
     def snapshot(self):
         rows = []

@@ -78,6 +78,7 @@ class Journal:
         self.path = path
         self._lock = threading.RLock()
         self.con = sqlite3.connect(path, check_same_thread=False)
+        self._closed = False
         self.con.execute("PRAGMA journal_mode=WAL")
         self.con.executescript("""
         CREATE TABLE IF NOT EXISTS trades (id INTEGER PRIMARY KEY, symbol TEXT, entry_id TEXT, direction INTEGER, qty INTEGER,
@@ -120,6 +121,14 @@ class Journal:
         self.con.execute("DELETE FROM log WHERE ts < ?", (time.time() - 14 * 86400,))
         self.con.commit()
         self.log_tail: Deque[Dict[str, Any]] = collections.deque(maxlen=400)
+
+    def close(self) -> None:
+        """Close the SQLite connection; safe to call more than once."""
+        with self._lock:
+            if self._closed:
+                return
+            self.con.close()
+            self._closed = True
 
     def log(self, level: str, msg: str) -> None:
         row = {"ts": time.time(), "level": level, "msg": msg}
@@ -1409,6 +1418,7 @@ class Portfolio:
         self._continuous_refresh_day = int(self.started // 86400)
         self.paused = False
         self._threads: Dict[str, threading.Thread] = {}
+        self._sampler_thread: Optional[threading.Thread] = None
         self._stop = threading.Event()
         self._lock = threading.RLock()
         # Optional measured latency sink. The HTTP server binds one instance and
@@ -1619,7 +1629,8 @@ class Portfolio:
             self._prepare_depth_context(feed, tickers)
         for s in list(self.order):
             self._spawn(self.runners[s])
-        threading.Thread(target=self._sampler, daemon=True, name="equity-sampler").start()
+        self._sampler_thread = threading.Thread(target=self._sampler, daemon=True, name="equity-sampler")
+        self._sampler_thread.start()
 
     def _prepare_depth_context(self, feed: Any, tickers: Sequence[str]) -> None:
         """Subscribe isolated MBP-10 context without making it a core-feed dependency."""
@@ -1702,11 +1713,13 @@ class Portfolio:
     def stop(self) -> None:
         self._stop.set()
 
-        # Do not tear down a live transport underneath a runner already inside poll().
-        # Give all runner threads one bounded shared shutdown window first.
+        # Do not tear down a live transport underneath a runner or sampler already
+        # inside a feed call. Give all worker threads one bounded shutdown window.
         deadline = time.monotonic() + 5.0
         current = threading.current_thread()
-        for thread in list(self._threads.values()):
+        threads = ([self._sampler_thread] if self._sampler_thread is not None else [])
+        threads.extend(self._threads.values())
+        for thread in threads:
             if thread is current or not thread.is_alive():
                 continue
             remaining = deadline - time.monotonic()
