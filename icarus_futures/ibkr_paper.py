@@ -860,32 +860,58 @@ class IbkrPaperVenue:
         raise ValueError("IBKR order readback omitted orderRef")
 
     def _normalized_open_order(self, record: dict) -> dict:
+        if not isinstance(record, dict):
+            raise ValueError("IBKR open-order readback is malformed")
+        order = record.get("order", {})
+        if not isinstance(order, dict):
+            raise ValueError("IBKR open-order readback has malformed order terms")
         account_id = record.get("account_id") or record.get("order", {}).get("account")
         if account_id != self.account_id:
             raise PermissionError("IBKR open-order readback is outside the selected paper account")
+        contract = record.get("contract")
+        if not isinstance(contract, dict):
+            raise ValueError("IBKR open-order readback is missing its contract")
         symbol = self._record_symbol(record)
+        expected_contract = self.contracts[symbol].ib_contract()
+        contract_fields = (
+            "conId", "symbol", "secType", "exchange", "currency",
+            "lastTradeDateOrContractMonth", "localSymbol", "multiplier",
+        )
+        if any(contract.get(field) != expected_contract.get(field) for field in contract_fields):
+            raise ValueError("IBKR open-order contract does not match the explicit dated mapping")
         client_id = self._record_client(record)
         broker_id = str(record.get("broker_id", ""))
         if not broker_id:
             raise ValueError("IBKR open order readback omitted broker order id")
-        order = record.get("order", {})
-        quantity = int(order.get("totalQuantity", record.get("quantity", 0)))
-        filled = int(record.get("filled", 0))
-        if quantity <= 0 or filled < 0 or filled > quantity:
+        raw_quantity = _decimal(order.get("totalQuantity", record.get("quantity", 0)), "order quantity")
+        if raw_quantity <= 0 or raw_quantity != raw_quantity.to_integral_value():
+            raise ValueError("IBKR open-order readback has invalid quantity")
+        quantity = int(raw_quantity)
+        raw_filled = _decimal(record.get("filled", 0), "filled quantity")
+        if raw_filled < 0 or raw_filled > quantity or raw_filled != raw_filled.to_integral_value():
             raise ValueError("IBKR open order readback has invalid quantity")
+        filled = int(raw_filled)
         action = str(order.get("action", record.get("side", ""))).upper()
         if action not in {"BUY", "SELL"}:
             raise ValueError("IBKR open order readback has invalid side")
         order_type = str(order.get("orderType", "")).upper()
         if order_type == "LMT":
-            price = order.get("lmtPrice")
+            price = float(_decimal(order.get("lmtPrice"), "limit price"))
+            kind = "LIMIT"
         elif order_type == "STP":
-            price = order.get("auxPrice")
+            price = float(_decimal(order.get("auxPrice"), "stop price"))
+            kind = "STOP"
+        elif order_type == "MKT":
+            price = None
+            kind = "MARKET"
         else:
             price = None
+            kind = None
         self._broker_to_client[broker_id] = client_id
         return {"broker_id": broker_id, "client_id": client_id, "symbol": symbol,
-                "side": action, "remaining": quantity - filled, "price": price}
+                "side": action, "quantity": quantity, "kind": kind,
+                "remaining": quantity - filled,
+                "price": float(price) if price is not None else None}
 
     def open_orders(self) -> list[dict]:
         if not self._connected():

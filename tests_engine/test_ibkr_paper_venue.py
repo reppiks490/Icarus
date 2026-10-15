@@ -270,6 +270,7 @@ class IbkrPaperVenueTests(unittest.TestCase):
     open_order = adapter.open_orders()[0]
     assert open_order["symbol"] == "MNQZ26" and open_order["client_id"] == "ci-session"
     assert open_order["price"] == 19888.25
+    assert open_order["quantity"] == 1 and open_order["kind"] == "LIMIT"
 
     api.positions_rows = [("DU12345", api.orders["900"][0], -1)]
     assert adapter.positions() == {"MNQZ26": -1}
@@ -384,7 +385,7 @@ class IbkrPaperVenueTests(unittest.TestCase):
     assert len(gateway.placed) == 1
     assert adapter.open_orders() == [{
         "broker_id": "901", "client_id": "ci-same", "symbol": "MNQZ26", "side": "BUY",
-        "remaining": 1, "price": None,
+        "quantity": 1, "kind": "MARKET", "remaining": 1, "price": None,
     }]
 
 
@@ -412,7 +413,73 @@ class IbkrPaperVenueTests(unittest.TestCase):
       assert result == {"status": S.AMBIGUOUS.value, "order_id": intent.intent_id}
       assert engine.book.orders[intent.intent_id].state is S.AMBIGUOUS
       assert engine.snapshot()["health"] == "BLOCKED"
+
+      reconciliation = engine.reconcile()
+      assert intent.intent_id not in reconciliation["resolved"]
+      assert reconciliation["mismatched_orders"][intent.intent_id] == ["side"]
+      assert engine.book.orders[intent.intent_id].state is S.AMBIGUOUS
+      assert engine.snapshot()["health"] == "BLOCKED"
     assert gateway.placed == []
+
+
+  def test_duplicate_open_order_refs_do_not_resolve_engine_ambiguity(self):
+    adapter, gateway = venue()
+    intent = Intent("test-duplicate-replay", "MNQZ26", "BUY", 1, "MARKET")
+    order_ref = adapter._order_ref(intent.intent_id)
+    matching_order = {
+        "account": "DU12345", "action": "BUY", "totalQuantity": 1,
+        "orderType": "MKT", "tif": "DAY", "orderRef": order_ref,
+        "outsideRth": False,
+    }
+    gateway.connected = False
+    with TemporaryDirectory() as temp:
+      engine = ExecutionEngine(adapter, RiskGovernor(), Journal(f"{temp}/journal.jsonl"), mode="PAPER")
+      engine.state.data_age_s["MNQZ26"] = 0
+      engine.state.marks["MNQZ26"] = 19888.25
+      submitted = engine.submit(intent)
+      assert submitted["status"] == S.AMBIGUOUS.value
+      gateway.connected = True
+      for broker_id in ("901", "902"):
+        gateway.orders[broker_id] = {
+            "account_id": "DU12345", "broker_id": broker_id, "client_id": order_ref,
+            "contract": mapping().ib_contract(), "order": dict(matching_order),
+            "status": "Submitted", "filled": 0,
+        }
+      reconciliation = engine.reconcile()
+      assert intent.intent_id not in reconciliation["resolved"]
+      assert "duplicate_client_reference" in reconciliation["mismatched_orders"][intent.intent_id]
+      assert engine.book.orders[intent.intent_id].state is S.AMBIGUOUS
+      assert engine.snapshot()["health"] == "BLOCKED"
+
+
+  def test_unmapped_ibkr_open_order_contract_cannot_clear_ambiguity(self):
+    adapter, gateway = venue()
+    intent = Intent("test-contract-replay", "MNQZ26", "BUY", 1, "MARKET")
+    order_ref = adapter._order_ref(intent.intent_id)
+    request = {
+        "account": "DU12345", "action": "BUY", "totalQuantity": 1,
+        "orderType": "MKT", "tif": "DAY", "orderRef": order_ref,
+        "outsideRth": False,
+    }
+    wrong_contract = dict(mapping().ib_contract(), conId=999999)
+    gateway.orders["901"] = {
+        "account_id": "DU12345", "broker_id": "901", "client_id": order_ref,
+        "contract": wrong_contract, "order": request,
+        "status": "Submitted", "filled": 0,
+    }
+    with TemporaryDirectory() as temp:
+      engine = ExecutionEngine(adapter, RiskGovernor(), Journal(f"{temp}/journal.jsonl"), mode="PAPER")
+      engine.state.data_age_s["MNQZ26"] = 0
+      engine.state.marks["MNQZ26"] = 19888.25
+      submitted = engine.submit(intent)
+      assert submitted["status"] == S.AMBIGUOUS.value
+
+      reconciliation = engine.reconcile()
+
+      assert reconciliation["resolved"] == {}
+      assert reconciliation["open_order_readback_error"] == "UNAVAILABLE_OR_INVALID"
+      assert engine.book.orders[intent.intent_id].state is S.AMBIGUOUS
+      assert engine.snapshot()["health"] == "BLOCKED"
 
 
   def test_reused_order_ref_with_different_terms_is_rejected_not_acknowledged(self):

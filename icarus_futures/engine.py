@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import inspect
+import math
 import os
 from dataclasses import asdict
 from datetime import datetime, timezone
@@ -160,14 +161,51 @@ class ExecutionEngine:
     def reconcile(self) -> dict:
         """Authoritative venue truth vs the engine book. Mismatches block new risk."""
         self.pump()
-        venue_open = {o["client_id"]: o for o in self.venue.open_orders()}
+        venue_open = {}
+        duplicate_refs = set()
+        invalid_snapshot = False
+        try:
+            open_order_rows = self.venue.open_orders()
+        except (OSError, TimeoutError, ValueError, TypeError):
+            self.needs_reconcile = True
+            rep = dict(resolved={}, not_at_venue=[], mismatched_orders={},
+                       incomplete_open_order_snapshot=True,
+                       open_order_readback_error="UNAVAILABLE_OR_INVALID",
+                       position_mismatch={}, ambiguous=[o.id for o in self.book.ambiguous()])
+            self.journal.append("reconciled", rep)
+            return rep
+        for row in open_order_rows:
+            if not isinstance(row, dict):
+                invalid_snapshot = True
+                continue
+            client_id = row.get("client_id")
+            if not isinstance(client_id, str) or not client_id:
+                invalid_snapshot = True
+                continue
+            if client_id in venue_open:
+                duplicate_refs.add(client_id)
+            else:
+                venue_open[client_id] = row
         venue_pos = self.venue.positions()
-        resolved, not_at_venue = {}, []
+        resolved, not_at_venue, mismatched = {}, [], {}
         for o in list(self.book.orders.values()):
             if o.state == S.AMBIGUOUS or (o.state in LIVE_STATES and not o.broker_id):
                 if o.id in venue_open:
-                    resolved[o.id] = venue_open[o.id]["broker_id"]
-                    self.book.on_ack(o.id, venue_open[o.id]["broker_id"])
+                    venue_order = venue_open[o.id]
+                    mismatch = self._reconcile_order_mismatch(o, venue_order)
+                    if o.id in duplicate_refs:
+                        mismatch.append("duplicate_client_reference")
+                    if mismatch:
+                        mismatched[o.id] = mismatch
+                        continue
+                    broker_id = venue_order.get("broker_id")
+                    if not broker_id:
+                        mismatched[o.id] = ["missing_broker_id"]
+                        continue
+                    resolved[o.id] = broker_id
+                    self.book.on_ack(o.id, broker_id)
+                elif invalid_snapshot:
+                    mismatched[o.id] = ["incomplete_open_order_snapshot"]
                 elif o.filled == 0 and venue_pos.get(o.intent.symbol, 0) == self.book.positions.get(o.intent.symbol, 0):
                     not_at_venue.append(o.id)
                     o.state = S.REJECTED
@@ -176,11 +214,42 @@ class ExecutionEngine:
         mismatch = {k: dict(engine=book_pos.get(k, 0), venue=venue_pos.get(k, 0))
                     for k in set(book_pos) | set(venue_pos) if book_pos.get(k, 0) != venue_pos.get(k, 0)}
         self.state.broker_mismatch = bool(mismatch)
-        self.needs_reconcile = bool(self.book.ambiguous())
-        rep = dict(resolved=resolved, not_at_venue=not_at_venue, position_mismatch=mismatch,
+        self.needs_reconcile = bool(self.book.ambiguous()) or bool(mismatched) or invalid_snapshot
+        rep = dict(resolved=resolved, not_at_venue=not_at_venue, mismatched_orders=mismatched,
+                   incomplete_open_order_snapshot=invalid_snapshot, position_mismatch=mismatch,
                    ambiguous=[o.id for o in self.book.ambiguous()])
         self.journal.append("reconciled", rep)
         return rep
+
+    @staticmethod
+    def _reconcile_order_mismatch(order, venue_order: dict) -> list[str]:
+        """Require complete normalized terms before matching an open order to an intent."""
+        intent = order.intent
+        required = ("symbol", "side", "quantity", "kind", "price", "remaining", "broker_id")
+        if any(key not in venue_order for key in required):
+            return ["incomplete_order_identity"]
+        mismatches = []
+        if venue_order["symbol"] != intent.symbol:
+            mismatches.append("symbol")
+        if str(venue_order["side"]).upper() != intent.side.upper():
+            mismatches.append("side")
+        if type(venue_order["quantity"]) is not int or venue_order["quantity"] != intent.qty:
+            mismatches.append("quantity")
+        if str(venue_order["kind"]).upper() != intent.kind.upper():
+            mismatches.append("kind")
+        if venue_order["remaining"] != order.remaining:
+            mismatches.append("remaining")
+        expected_price, actual_price = intent.price, venue_order["price"]
+        if expected_price is None or actual_price is None:
+            if expected_price is not actual_price:
+                mismatches.append("price")
+        else:
+            try:
+                if not math.isclose(float(expected_price), float(actual_price), rel_tol=0.0, abs_tol=1e-9):
+                    mismatches.append("price")
+            except (TypeError, ValueError, OverflowError):
+                mismatches.append("price")
+        return mismatches
 
     # ---------- controls ----------
     def pause(self, on: bool = True) -> None:
