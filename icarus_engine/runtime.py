@@ -1859,7 +1859,7 @@ class Portfolio:
         })
 
     def publish_shadow_evidence(self, fabric, *, run_id: str, received_at: str) -> Dict[str, Any]:
-        """Explicitly publish a consistent portfolio snapshot of shadow evidence.
+        """Explicitly publish current per-asset shadow snapshots as one batch.
 
         Unlike `status()`, this method is an intentional write. All eligible
         events are validated before the first append so malformed asset state
