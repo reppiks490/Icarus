@@ -98,7 +98,8 @@ class MirroredEmulator:
                 continue
             queue.remove(match)
             pair = self._entry_fill_pairs.setdefault(match["intent_seq"], {"intent_seq": match["intent_seq"]})
-            pair[lane] = {"ts": int(fill.ts), "bar": int(fill.bar), "side": fill.side,
+            pair[lane] = {"entry_id": str(fill.entry_id), "ts": int(fill.ts),
+                          "bar": int(fill.bar), "side": fill.side,
                           "qty": int(fill.qty), "price": float(fill.price)}
 
     def _degrade(self, reason: str, *, invalid: bool = False) -> None:
@@ -194,13 +195,27 @@ class MirroredEmulator:
             except Exception as exc:
                 self._degrade(f"shadow administrative cancellation failed: {type(exc).__name__}: {exc}")
 
-    @staticmethod
-    def _episodes(engine: Emulator) -> dict[tuple[str, int, str], dict[str, Any]]:
-        episodes: dict[tuple[str, int, str], dict[str, Any]] = defaultdict(
+    def _episodes(self, engine: Emulator, lane: str) -> dict[Any, dict[str, Any]]:
+        intent_by_entry: dict[tuple[str, int, int, str, int, float], int] = {}
+        for intent_seq, pair in self._entry_fill_pairs.items():
+            fill = pair.get(lane)
+            if fill is None:
+                continue
+            identity = (fill["entry_id"], fill["ts"], fill["bar"], fill["side"],
+                        fill["qty"], fill["price"])
+            intent_by_entry[identity] = int(intent_seq)
+
+        episodes: dict[Any, dict[str, Any]] = defaultdict(
             lambda: {"net": 0.0, "pieces": 0, "qty": 0, "closed": False,
                      "entry_ts": 0, "last_exit_ts": 0})
         for trade in engine.closed:
-            key = (trade.entry_id, int(trade.entry_ts), trade.entry_comment or "")
+            side = "buy" if int(trade.direction) > 0 else "sell"
+            identity = (str(trade.entry_id), int(trade.entry_ts), int(trade.entry_bar),
+                        side, int(trade.entry_qty or trade.qty), float(trade.entry_price))
+            intent_seq = intent_by_entry.get(identity)
+            # Unlinked records are intentionally lane-specific. Similar labels
+            # or timestamps alone are insufficient evidence to pair outcomes.
+            key = ("UNMATCHED", lane, *identity) if intent_seq is None else intent_seq
             row = episodes[key]
             row["net"] += float(trade.profit)
             row["pieces"] += 1
@@ -211,8 +226,8 @@ class MirroredEmulator:
         return dict(episodes)
 
     def summary(self, *, live_from_ts: Optional[int] = None) -> dict[str, Any]:
-        primary_eps = self._episodes(self.primary)
-        shadow_eps = self._episodes(self.shadow)
+        primary_eps = self._episodes(self.primary, "primary")
+        shadow_eps = self._episodes(self.shadow, "shadow")
         common = sorted(primary_eps.keys() & shadow_eps.keys())
         directional = [k for k in common if primary_eps[k]["net"] != 0 and shadow_eps[k]["net"] != 0]
         agreement = sum((primary_eps[k]["net"] > 0) == (shadow_eps[k]["net"] > 0)

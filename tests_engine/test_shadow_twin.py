@@ -1,6 +1,6 @@
 import json
 
-from icarus_engine.emulator import Emulator
+from icarus_engine.emulator import ClosedTrade, Emulator
 from icarus_engine.assets import parse_spec
 from icarus_engine.pine.timeframe import Bar
 from icarus_engine.runtime import AssetRunner, Journal, Portfolio, RunnerConfig
@@ -110,6 +110,25 @@ def test_unmatched_closed_episodes_are_counted_and_mutator_inventory_is_explicit
     assert result["primary_only_closed_episodes"] == 0
     assert result["shadow_only_closed_episodes"] == 0
     assert result["outcome_agreement_rate"] == 1
+
+
+def test_closed_episodes_do_not_pair_without_a_shared_intent_sequence():
+    primary = Emulator(initial_capital=10_000, commission=0, mintick=1, contract_size=1)
+    twin = MirroredEmulator(primary)
+    # Identical display labels and timestamps do not prove causal identity.
+    common = {"entry_id": "L", "direction": 1, "qty": 1,
+              "entry_price": 100.0, "entry_bar": 1, "entry_ts": 120,
+              "exit_bar": 2, "exit_ts": 180, "exit_comment": "close",
+              "entry_comment": "same label", "exit_kind": "close",
+              "runup": 0.0, "drawdown": 0.0, "bars": 1,
+              "lot_id": 1, "entry_qty": 1}
+    twin.primary.closed.append(ClosedTrade(exit_price=101.0, profit=1.0, **common))
+    twin.shadow.closed.append(ClosedTrade(exit_price=99.0, profit=-1.0, **common))
+
+    result = twin.summary()
+    assert result["pairable_closed_episodes"] == 0
+    assert result["primary_only_closed_episodes"] == 1
+    assert result["shadow_only_closed_episodes"] == 1
 
 
 def test_break_even_results_are_separate_from_directional_agreement():
