@@ -40,6 +40,10 @@ a { color:var(--s1) }
 .node.on { border-color:var(--good); color:var(--ink) } .node.on i { background:var(--good) } .node.warn { border-color:var(--warn) } .node.warn i { background:var(--warn) } .node.bad { border-color:var(--crit) } .node.bad i { background:var(--crit) }
 .link { width:14px; height:1px; background:var(--axis) }
 .state { margin-left:auto; display:flex; align-items:center; gap:10px; flex-wrap:wrap }
+.combined-pnl { display:flex; align-items:baseline; gap:7px; padding:4px 10px; border:1px solid var(--ring); border-radius:9px; background:var(--surface-2); white-space:nowrap }
+.combined-pnl .label { color:var(--muted); font-size:10px; font-weight:650; letter-spacing:.08em; text-transform:uppercase }
+.combined-pnl .value { font-size:15px; font-weight:750; font-variant-numeric:tabular-nums }
+.combined-pnl .value.pos { color:var(--good-text) } .combined-pnl .value.neg { color:var(--crit) }
 .badge { padding:5px 12px; border-radius:999px; font-weight:600; letter-spacing:.06em; font-size:12px; border:1px solid var(--ring) }
 .badge.armed { color:var(--good-text); border-color:var(--good) } .badge.paused { color:#fff; background:var(--crit); border-color:var(--crit) } .badge.warm { color:var(--warn); border-color:var(--warn) }
 .icon-btn { padding:5px 9px }
@@ -137,6 +141,7 @@ pre.cli { background:var(--surface-2); border:1px solid var(--ring); border-radi
       <span class="node" data-n="paper"><i></i>Paper fills</span>
     </div>
     <div class="state">
+      <span class="combined-pnl" title="Sum of net P&amp;L for the four simulated paper workspaces: paper equity minus allocated capital, including open P&amp;L"><span class="label">Combined paper P&amp;L</span><span class="value" id="combinedPaperPnl">—</span></span>
       <span class="small muted" id="meta">—</span><span class="small muted tnum" id="clock" title="your computer's clock (local zone) and the strategy's session clock (New York)"></span>
       <span class="badge" id="phase">—</span>
       <span class="badge" id="armed">—</span>
@@ -178,6 +183,7 @@ pre.cli { background:var(--surface-2); border:1px solid var(--ring); border-radi
 <script src="/integrity-ui.js"></script>
 <script src="/engine-control-ui.js"></script>
 <script src="/autopilot-ui.js"></script>
+<script src="/command-centers-ui.js"></script>
 <script src="/world-aura.js"></script>
 <script src="/world-cinema.js"></script>
 <script src="/reference-choreography.js"></script>
@@ -374,7 +380,7 @@ function tabsHtml(A) {
   const t = [`<span class="tab ${view==='overview'?'active':''}" data-v="overview">Overview</span>`];
   A.forEach(a => { const pos = a.position||0; t.push(`<span class="tab ${view==='asset:'+a.symbol?'active':''}" data-v="asset:${a.symbol}"><span class="dot ${pos>0?'long':pos<0?'short':(a.market&&a.market.open===false?'closed':'')}"></span><b class="s">${esc(a.continuous_symbol||a.symbol)}</b> <span class="muted small tnum">${px(a.price)}</span></span>`); });
   t.push(`<span class="tab" data-v="add" title="Add an asset">＋</span>`);
-  t.push(`<span class="tab util ${view==='system'?'active':''}" data-v="system">System</span><span class="tab util ${view==='access'?'active':''}" data-v="access">Access</span><span class="tab util ${view==='golive'?'active':''}" data-v="golive">Go-live</span><span class="tab util ${view==='agent'?'active':''}" data-v="agent">Agent</span><span class="tab util ${view==='inputs'?'active':''}" data-v="inputs">Inputs</span><span class="tab util ${view==='backtest'?'active':''}" data-v="backtest">Backtest</span><span class="tab util ${view==='research'?'active':''}" data-v="research">Research</span><span class="tab util ${view==='sources'?'active':''}" data-v="sources">Financial &amp; data</span><span class="tab util ${view==='market-data'?'active':''}" data-v="market-data">Market Data</span><span class="tab util ${view==='brain'?'active':''}" data-v="brain">Adaptive Brain</span><span class="tab util ${view==='evolution'?'active':''}" data-v="evolution">MCP Evolution</span><span class="tab util ${view==='parallax'?'active':''}" data-v="parallax">PARALLAX / DREAMSTATE</span><span class="tab util ${view==='possibility'?'active':''}" data-v="possibility">ICARUS Ψ</span><span class="tab util ${view==='pantheon'?'active':''}" data-v="pantheon">PANTHEON / AETHER</span><span class="tab util ${view==='sibyl'?'active':''}" data-v="sibyl">SIBYL Ω</span><span class="tab util ${view==='apex'?'active':''}" data-v="apex">APEX Ω</span><span class="tab util ${view==='ascendancy'?'active':''}" data-v="ascendancy">ASCENDANCY</span><span class="tab util ${view==='learning'?'active':''}" data-v="learning">Learning Fabric</span><span class="tab util ${view==='chronofold'?'active':''}" data-v="chronofold">ICARUS Ξ</span><span class="tab util ${view==='commissioning'?'active':''}" data-v="commissioning">Commissioning</span><span class="tab util ${view==='integrity'?'active':''}" data-v="integrity">Data Integrity</span><span class="tab util ${view==='engine-control'?'active':''}" data-v="engine-control">Engine Control</span><span class="tab util ${view==='commands'?'active':''}" data-v="commands">Commands</span><span class="tab util ${view==='log'?'active':''}" data-v="log">Log</span><span class="tab util ${view==='autopilot'?'active':''}" data-v="autopilot">Tactical Autopilot</span>`);
+  t.push(`<span class="tab util ${view==='system'?'active':''}" data-v="system">System</span><span class="tab util ${view==='access'?'active':''}" data-v="access">Access</span><span class="tab util ${view==='golive'?'active':''}" data-v="golive">Go-live</span><span class="tab util ${view==='agent'?'active':''}" data-v="agent">Agent</span><span class="tab util ${view==='command-centers'?'active':''}" data-v="command-centers">Command Center</span><span class="tab util ${view==='inputs'?'active':''}" data-v="inputs">Inputs</span><span class="tab util ${view==='backtest'?'active':''}" data-v="backtest">Backtest</span><span class="tab util ${view==='research'?'active':''}" data-v="research">Research</span><span class="tab util ${view==='sources'?'active':''}" data-v="sources">Financial &amp; data</span><span class="tab util ${view==='market-data'?'active':''}" data-v="market-data">Market Data</span><span class="tab util ${view==='brain'?'active':''}" data-v="brain">Adaptive Brain</span><span class="tab util ${view==='evolution'?'active':''}" data-v="evolution">MCP Evolution</span><span class="tab util ${view==='parallax'?'active':''}" data-v="parallax">PARALLAX / DREAMSTATE</span><span class="tab util ${view==='possibility'?'active':''}" data-v="possibility">ICARUS Ψ</span><span class="tab util ${view==='pantheon'?'active':''}" data-v="pantheon">PANTHEON / AETHER</span><span class="tab util ${view==='sibyl'?'active':''}" data-v="sibyl">SIBYL Ω</span><span class="tab util ${view==='apex'?'active':''}" data-v="apex">APEX Ω</span><span class="tab util ${view==='ascendancy'?'active':''}" data-v="ascendancy">ASCENDANCY</span><span class="tab util ${view==='learning'?'active':''}" data-v="learning">Learning Fabric</span><span class="tab util ${view==='chronofold'?'active':''}" data-v="chronofold">ICARUS Ξ</span><span class="tab util ${view==='commissioning'?'active':''}" data-v="commissioning">Commissioning</span><span class="tab util ${view==='integrity'?'active':''}" data-v="integrity">Data Integrity</span><span class="tab util ${view==='engine-control'?'active':''}" data-v="engine-control">Engine Control</span><span class="tab util ${view==='commands'?'active':''}" data-v="commands">Commands</span><span class="tab util ${view==='log'?'active':''}" data-v="log">Log</span><span class="tab util ${view==='autopilot'?'active':''}" data-v="autopilot">Tactical Autopilot</span>`);
   return t.join('');
 }
 function systemLoopClass(status) {
@@ -1107,7 +1113,8 @@ function render(d) {
     $('#dFills tbody').innerHTML = fl.map(f => `<tr><td class="tnum">${dtz(f.ts)}</td><td class="side ${f.side}">${f.side}</td><td class="tnum">${f.qty}</td><td class="tnum">${px(f.price)}</td><td>${esc(f.comment)} <span class="tag ${f.live?'live':''}">${f.live?'LIVE':'hist'}</span></td><td class="tnum ${f.profit==null?'':f.profit>=0?'pos':'neg'}">${f.profit!=null?sgn$(f.profit):''}</td></tr>`).join('') || '<tr><td colspan=6 class="empty">no fills in the chart window</td></tr>';
     if (typeof wirePossibilityQuickAsset === 'function' && rebuild) wirePossibilityQuickAsset(viewAsset.symbol);
     else if (typeof loadPossibilityQuickAsset === 'function') loadPossibilityQuickAsset(viewAsset.symbol, false);
-  } else if (view === 'inputs') { if (rebuild) { $('#view').innerHTML = inputsHtml(A); loadInputsTab(); } }
+  } else if (view === 'command-centers') { if (rebuild) { $('#view').innerHTML = paperWorkspacesHtml(); loadPaperWorkspaces(); } }
+  else if (view === 'inputs') { if (rebuild) { $('#view').innerHTML = inputsHtml(A); loadInputsTab(); } }
   else if (view === 'commands') { if (rebuild) $('#view').innerHTML = commandsHtml(A); }
   else if (view === 'backtest') { if (rebuild) {
     $('#view').innerHTML = backtestHtml(A);
@@ -1168,6 +1175,26 @@ async function refresh() {
     render(d);
   } catch (e) {
     $('#beat').className = 'dot dead'; $('#armed').textContent = 'ENGINE UNREACHABLE'; $('#armed').className = 'badge paused';
+  }
+}
+async function refreshCombinedPaperPnl() {
+  const el = $('#combinedPaperPnl');
+  if (!el) return;
+  try {
+    const r = await fetch('/api/command-centers', {cache:'no-store'});
+    if (!r.ok) throw new Error('HTTP '+r.status);
+    const data = await r.json();
+    const profiles = data.profiles;
+    if (data.mode !== 'concurrent_paper' || !Array.isArray(profiles) || profiles.length !== 4 ||
+        profiles.some(p => !Number.isFinite(Number(p.status?.net)))) throw new Error('four paper profiles unavailable');
+    const net = profiles.reduce((sum,p) => sum + Number(p.status.net), 0);
+    el.textContent = net.toLocaleString(undefined,{style:'currency',currency:'USD',minimumFractionDigits:2,maximumFractionDigits:2});
+    el.className = 'value ' + (net >= 0 ? 'pos' : 'neg');
+    el.title = `Combined net P&L across ${profiles.length} simulated paper workspaces: ${profiles.map(p=>`${p.name}: ${Number(p.status.net).toFixed(2)}`).join(' + ')}. Net means paper equity minus allocated capital and includes open P&L.`;
+  } catch (e) {
+    el.textContent = '—';
+    el.className = 'value';
+    el.title = 'Combined paper P&L unavailable: four workspace results could not be read.';
   }
 }
 async function refreshGolive() {
@@ -1309,9 +1336,11 @@ async function refreshUiCatalogs() {
 }
 (async () => {
   await refreshUiCatalogs();
+  await refreshCombinedPaperPnl();
   await refreshAudit(); await refreshCommandCenter(); await refresh(); await refreshGolive(); await refreshAgent(); await refreshCharts(); await refreshTrades(); if (last) render(last);
 })();
 setInterval(refresh, 3000); setInterval(refreshGolive, 8000); setInterval(refreshCharts, 8000); setInterval(refreshAudit, 20000); setInterval(refreshCommandCenter, 20000); setInterval(()=>refreshTrades(), 20000);
+setInterval(refreshCombinedPaperPnl, 10000);
 setInterval(()=>{ if (!CATALOG_READY.presets || !CATALOG_READY.commands || !CATALOG_READY.registry) refreshUiCatalogs(); }, 10000);
 window.addEventListener('resize', () => { if (last) { lastView = null; render(last); } });
 setInterval(() => { const el = $('#clock'); if (el) el.textContent = `${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'})} ${TZ} · ${etClock()} ET`; }, 1000);

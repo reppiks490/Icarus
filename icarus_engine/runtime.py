@@ -1371,7 +1371,8 @@ class AssetRunner:
 # ──────────────────────────────────────────────────────────────────────
 class Portfolio:
     def __init__(self, journal: Journal, base_dir: str, poll_sec: float = 5.0, profile: str = "nq",
-                 preset: Optional[str] = None, warmup_bars: int = 1200, pts_ref_symbol: str = "NQ"):
+                 preset: Optional[str] = None, warmup_bars: int = 1200, pts_ref_symbol: str = "NQ",
+                 feeds: Optional[Dict[str, Any]] = None):
         self.journal = journal
         self.base_dir = base_dir
         self.poll_sec = poll_sec
@@ -1382,8 +1383,12 @@ class Portfolio:
         self.pts_ref_price = 0.0
         # ICARUS_FEED selects the market-data transport without changing stable AssetSpec
         # identities. Futures remain continuous-only regardless of provider.
+        self._owns_feeds = feeds is None
         requested_feed = os.environ.get("ICARUS_FEED", "").strip().lower()
-        if file_feed_mode():
+        if feeds is not None:
+            self.feeds = feeds
+            self.feed_mode = "file" if file_feed_mode() else ("databento" if requested_feed == "databento" else "live")
+        elif file_feed_mode():
             hub = HistoryHub(base_dir)
             self.feeds: Dict[str, Any] = {"yahoo": hub, "coinbase": hub}
             self.feed_mode = "file"
@@ -1502,7 +1507,7 @@ class Portfolio:
         # Shared live feeds cannot unsubscribe at the gateway, but they can detach
         # this asset's local routing immediately without disrupting sibling assets.
         detach = getattr(r.feed, "stop_live", None)
-        if callable(detach):
+        if self._owns_feeds and callable(detach):
             try:
                 detach(r.spec.ticker)
             except Exception as ex:
@@ -1711,18 +1716,19 @@ class Portfolio:
 
         # Paid/live adapters own background network sessions. Close each distinct
         # feed once so supervised restarts do not leak or reopen Databento connections.
-        seen = set()
-        for feed in self.feeds.values():
-            if id(feed) in seen:
-                continue
-            seen.add(id(feed))
-            try:
-                if hasattr(feed, "close"):
-                    feed.close()
-                elif hasattr(feed, "stop_live"):
-                    feed.stop_live()
-            except Exception as ex:
-                self.journal.log("WARN", f"feed shutdown: {type(ex).__name__}: {ex}")
+        if self._owns_feeds:
+            seen = set()
+            for feed in self.feeds.values():
+                if id(feed) in seen:
+                    continue
+                seen.add(id(feed))
+                try:
+                    if hasattr(feed, "close"):
+                        feed.close()
+                    elif hasattr(feed, "stop_live"):
+                        feed.stop_live()
+                except Exception as ex:
+                    self.journal.log("WARN", f"feed shutdown: {type(ex).__name__}: {ex}")
 
     # ── views ──
     def equity(self) -> float:
