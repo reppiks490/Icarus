@@ -345,7 +345,7 @@ function assetCard(a) {
     <div class="votes">${votes}</div>
     <div class="score"><span>LONG</span><div class="bar l"><b style="width:${bl*100}%"></b></div><span class="tnum">${(st.final_l||0).toFixed(2)} / ${thr.toFixed(2)}</span></div>
     <div class="score"><span>SHORT</span><div class="bar s"><b style="width:${bs*100}%"></b></div><span class="tnum">${(st.final_s||0).toFixed(2)} / ${thr.toFixed(2)}</span></div>
-    <div class="posline">${posHtml}<span style="margin-left:auto" class="small"><span class="muted">net</span> <b class="${(a.netprofit||0)>=0?'pos':'neg'} tnum">${sgn$(a.netprofit)}</b> <span class="muted">· ${a.trades_total} pieces · ${a.trades_total?Math.round(a.wins_total/a.trades_total*100):0}% win</span></span></div>
+    <div class="posline">${posHtml}<span style="margin-left:auto" class="small"><span class="muted">net</span> <b class="${(a.netprofit||0)>=0?'pos':'neg'} tnum">${sgn$(a.netprofit)}</b> <span class="muted">· ${a.trades_total} closed pieces · ${a.trades_total?Math.round(a.wins_total/a.trades_total*100):0}% pieces won</span></span></div>
     <div class="exec" title="${esc(st.exec)}">${esc(st.exec||'')}</div>
   </div>`;
 }
@@ -578,16 +578,21 @@ function assetHead(a) {
     <div class="exec" style="margin-top:8px">${esc(st.exec||'')}${pending?` · pending: ${esc(pending)}`:''}${exits?` · resting: ${esc(exits)}`:''}</div>
     <div id="dChart" style="margin-top:10px"></div>
     <div class="ladder"><span class="muted small">HTF</span>${tfs.map((t,i)=>`<span class="chip ${dirs[i]===-1?'b':dirs[i]===1?'r':''}">${t} ${dirs[i]===-1?'▲':dirs[i]===1?'▼':'·'}</span>`).join('')}<span class="muted small" style="margin-left:8px">LTF</span>${(st.ltf||[]).map((l,i)=>`<span class="chip ${l[0]===-1?'b':l[0]===1?'r':''}">${i?'5m':'2m'} ${l[0]===-1?'▲':l[0]===1?'▼':'·'} ${l[1]!=null?l[1]+'b':''} r${l[2]!=null?(l[2]*100).toFixed(0):'—'}</span>`).join('')} <span class="chip">MTF ${st.htf_bull}▲ ${st.htf_bear}▼</span>
-      <span style="margin-left:auto" class="small"><span class="muted">net</span> <b class="${(a.netprofit||0)>=0?'pos':'neg'} tnum">${sgn$(a.netprofit)}</b> <span class="muted">· ${a.trades_total} pieces · ${a.trades_total?Math.round(a.wins_total/a.trades_total*100):0}% win · live ${sgn$(a.live_profit)} · open ${sgn$(a.open_profit)}</span></span></div>
+      <span style="margin-left:auto" class="small"><span class="muted">net</span> <b class="${(a.netprofit||0)>=0?'pos':'neg'} tnum">${sgn$(a.netprofit)}</b> <span class="muted">· ${a.trades_total} closed pieces · ${a.trades_total?Math.round(a.wins_total/a.trades_total*100):0}% pieces won · live ${sgn$(a.live_profit)} · open ${sgn$(a.open_profit)}</span></span></div>
     <div class="votes" style="margin-top:10px">${(st.votes||[]).map(v => `<div class="vote ${v.l&&v.s?'ls':v.l?'l':v.s?'s':''}">${v.name}<br><span class="muted">${v.w}</span></div>`).join('')}</div>
     <div class="hud">${tiles.map(([k,v])=>`<div class="tile"><div class="k">${k}</div><div class="v tnum">${esc(v??'—')}</div></div>`).join('')}</div>
     <div class="hud" style="margin-top:8px"><div class="tile"><div class="k">Rolling performance guard</div><div class="v">${esc(guard.status||'INSUFFICIENT_SAMPLE')} · last ${guard.window_lots||30} settled paper lots · watch &lt;85% · pause &lt;75%</div></div>${guardRows||'<div class="tile"><div class="k">Regime scorecards</div><div class="v">Collecting settled live paper lots; minimum 12 per regime.</div></div>'}</div>
     <div class="small muted">Success = net positive after modeled costs. Scale-outs count once. Regime currently uses the regime at closure; qualification and activation still require the separate research gates.</div>`;
 }
 function assetHtml(a) {
+  const totalPieces = Number(a.trades_total) || 0;
+  const visiblePieces = Math.min(totalPieces, 2000);
+  const tradeHistoryNote = totalPieces > 2000
+    ? `latest ${visiblePieces.toLocaleString()} of ${totalPieces.toLocaleString()} pieces · Export CSV downloads all loaded pieces`
+    : `${visiblePieces.toLocaleString()} pieces loaded · scale-out exits can create multiple pieces per entry`;
   return `<section class="card c12" id="assetHead">${assetHead(a)}</section>
   ${typeof possibilityQuickAssetHtml==='function'?possibilityQuickAssetHtml(a):''}
-  <section class="card c7"><h2>Closed trades · ${a.symbol}</h2><div class="scroll" style="max-height:420px"><table id="dTrades"><thead><tr><th></th><th>Entry</th><th>Signal</th><th>Qty</th><th>Entry px</th><th>Exit</th><th>Exit px</th><th>Exit signal</th><th>P&amp;L</th></tr></thead><tbody></tbody></table></div></section>
+  <section class="card c7"><h2>Closed trade pieces · ${a.symbol} <span class="sub">${tradeHistoryNote}</span></h2><div class="scroll" style="max-height:420px"><table id="dTrades"><thead><tr><th></th><th>Entry</th><th>Signal</th><th>Qty</th><th>Entry px</th><th>Exit</th><th>Exit px</th><th>Exit signal</th><th>P&amp;L</th></tr></thead><tbody></tbody></table></div></section>
   <section class="card c5"><h2>Fills · ${a.symbol}</h2><div class="scroll" style="max-height:420px"><table id="dFills"><thead><tr><th>Time</th><th>Side</th><th>Qty</th><th>Price</th><th>Signal</th><th>P&amp;L</th></tr></thead><tbody></tbody></table></div></section>`;
 }
 function inputsHtml(A) {
@@ -1285,7 +1290,8 @@ async function refreshTrades(only) {
   for (const a of (last.assets||[])) {
     if (only && a.symbol !== only) continue;
     try {
-      const r = await fetch(`/api/trades/${encodeURIComponent(a.symbol)}?limit=80`, {cache:'no-store'});
+      const limit = (only === a.symbol || view === `asset:${a.symbol}`) ? 2000 : 80;
+      const r = await fetch(`/api/trades/${encodeURIComponent(a.symbol)}?limit=${limit}`, {cache:'no-store'});
       const data = await r.json().catch(()=>null);
       if (!r.ok) throw new Error((data&&data.detail)||(data&&data.error)||('HTTP '+r.status));
       if (!Array.isArray(data)) throw new Error('invalid trade-history response');
