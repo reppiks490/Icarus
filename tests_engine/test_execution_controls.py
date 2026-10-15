@@ -459,7 +459,7 @@ def test_admin_flatten_without_mark_returns_conflict_and_keeps_position_open(adm
     assert r.em._pending_closes == []
 
 
-def test_command_center_flatten_without_mark_reports_remaining_open_asset(admin, monkeypatch):
+def test_command_center_flatten_without_mark_reports_remaining_open_asset(admin):
     _, _, _, post = admin
     manager = post.server.command_centers
     runner = type("Runner", (), {})()
@@ -474,16 +474,18 @@ def test_command_center_flatten_without_mark_reports_remaining_open_asset(admin,
     portfolio.paused = False
     portfolio.runner_list = lambda: [runner]
     portfolio.stop = lambda: None
-    monkeypatch.setitem(manager.portfolios, "cc1", portfolio)
+    manager.portfolios["cc1"] = portfolio
+    try:
+        status, body = post("/admin/command-centers/cc1/flatten", {"confirm": True})
 
-    status, body = post("/admin/command-centers/cc1/flatten", {"confirm": True})
-
-    assert status == 409
-    assert body["error"] == "flatten_unavailable"
-    assert body["profile_id"] == "cc1"
-    assert body["open_assets"] == ["NQ"]
-    assert body["positions_remain_open"] is True
-    assert body["paused"] is True
+        assert status == 409
+        assert body["error"] == "flatten_unavailable"
+        assert body["profile_id"] == "cc1"
+        assert body["open_assets"] == ["NQ"]
+        assert body["positions_remain_open"] is True
+        assert body["paused"] is True
+    finally:
+        manager.portfolios.pop("cc1", None)
 
 
 def test_chart_configuration_rebuilds_paper_engine_and_persists_meta(configured):
