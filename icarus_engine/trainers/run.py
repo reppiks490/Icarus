@@ -124,26 +124,12 @@ def train_deep_gru_file(path, chart_type: str, schema: str = "ohlc", asset: str 
     path = Path(path)
     fam_name = family_for(chart_type, schema)
     fam = FAMILIES[fam_name]
-    bars, manifest, refusal = _load(
-        path, raw_bytes=raw_bytes, family=fam_name, asset=asset,
-        lane="deep_learning_challenger", model="gru",
-    )
-    if refusal:
-        refusal["production_decision_authorized"] = False
-        refusal["auto_promote"] = False
-        return refusal
-    short = _too_short(bars, fam, fam_name, asset, path, manifest)
-    if short:
-        short.update({"lane": "deep_learning_challenger", "model": "gru",
-                      "production_decision_authorized": False, "auto_promote": False})
-        return short
     default_out = Path("run/trainers") / f"{asset.upper()}_{fam_name}_deep_gru.json"
-    return deep_challenger.train(
-        attach_labels(bars, fam_name), asset, fam_name,
+    return deep_challenger.train_source(
+        path, asset, fam_name,
         out_path=Path(out) if out else default_out,
-        ledger_path=ledger, dataset_sha256=manifest["raw_sha256"],
-        extra={"path": str(path), "index": fam.index, "label": fam.label, "n_bars": len(bars),
-               "dataset_manifest": manifest},
+        ledger_path=ledger, raw_bytes=raw_bytes, min_rows=fam.min_rows,
+        extra={"path": str(path), "index": fam.index, "label": fam.label},
     )
 
 def train_rank_file(path, chart_type: str, schema: str = "ohlc", asset: str = "", candidates=None, out=None,

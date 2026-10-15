@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import builtins
 import hashlib
-from collections import UserDict
 
 import pytest
 
 from icarus_engine.spec import FEATURE_KEYS, SLOTS
 from icarus_engine.trainers import deep_challenger
+from icarus_engine.trainers import run
 from icarus_engine.trainers.dataset import walk_slices
 from icarus_engine.trainers.sequence import causal_sequence_rows, fit_standardizer, standardize_sequence
 
@@ -19,6 +19,20 @@ def _row(i: int, *, y: int | None = None, scale: float = 1.0):
         "y": (1 if i % 2 == 0 else -1) if y is None else y,
         "x": {key: scale * float(i + j + 1) for j, key in enumerate(FEATURE_KEYS)},
     }
+
+
+def _write_source(path, count=240, *, changed_at=None):
+    lines = ["time,open,high,low,close,volume"]
+    close = 100.0
+    for i in range(count):
+        if i:
+            close += 1.0 if i % 2 else -0.75
+        if i == changed_at:
+            close += 4.0
+        ts = 1_700_000_000 + i * 60
+        lines.append(f"{ts},{close},{close + 1},{close - 1},{close},100")
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return path
 
 
 def test_causal_sequences_end_at_decision_row_and_never_read_future():
@@ -68,7 +82,7 @@ def test_deep_challenger_does_not_modify_frozen_trainer_slots():
 
 
 def test_gru_challenger_fails_closed_on_short_history_without_importing_torch(monkeypatch, tmp_path):
-    rows = [_row(i) for i in range(30)]
+    source = _write_source(tmp_path / "short.csv", 30)
     real_import = builtins.__import__
 
     def guarded_import(name, *args, **kwargs):
@@ -77,8 +91,8 @@ def test_gru_challenger_fails_closed_on_short_history_without_importing_torch(mo
         return real_import(name, *args, **kwargs)
 
     monkeypatch.setattr(builtins, "__import__", guarded_import)
-    report = deep_challenger.train(
-        rows, "NQ", "clock_minutes", tmp_path / "gru.json", ledger_path=tmp_path / "ledger.sqlite3"
+    report = deep_challenger.train_source(
+        source, "NQ", "clock_minutes", tmp_path / "gru.json", ledger_path=tmp_path / "ledger.sqlite3"
     )
 
     assert report["status"] == "skipped"
@@ -88,14 +102,14 @@ def test_gru_challenger_fails_closed_on_short_history_without_importing_torch(mo
 
 
 def test_gru_challenger_blocks_cleanly_when_optional_backend_is_missing(monkeypatch, tmp_path):
-    rows = [_row(i) for i in range(240)]
+    source = _write_source(tmp_path / "source.csv", 240)
 
     def missing_backend():
         return None, "PyTorch is not installed"
 
     monkeypatch.setattr(deep_challenger, "_load_torch", missing_backend)
-    report = deep_challenger.train(
-        rows, "NQ", "clock_minutes", tmp_path / "gru.json", ledger_path=tmp_path / "ledger.sqlite3"
+    report = deep_challenger.train_source(
+        source, "NQ", "clock_minutes", tmp_path / "gru.json", ledger_path=tmp_path / "ledger.sqlite3"
     )
 
     assert report["status"] == "blocked"
@@ -119,21 +133,35 @@ def test_gru_challenger_contract_is_research_only_and_reuses_frozen_feature_keys
 
 def test_gru_challenger_end_to_end_when_torch_is_available(monkeypatch, tmp_path):
     pytest.importorskip("torch")
-    raw_digest = hashlib.sha256(b"synthetic-contract").hexdigest()
-    hold_start = walk_slices(240)[2][0]
+    source = _write_source(tmp_path / "source.csv", 501)
+    hold_start = walk_slices(499)[2][0]
     claimed = {"value": False}
+    original_inspect = deep_challenger.inspect_ohlc
 
-    class GuardedRow(UserDict):
-        def __init__(self, index):
-            super().__init__(_row(index, y=(1 if (index // 4) % 2 == 0 else -1)))
+    class GuardedBar(dict):
+        def __init__(self, index, row):
+            super().__init__(row)
             self.index = index
 
         def __getitem__(self, key):
-            if key == "y" and self.index >= hold_start and not claimed["value"]:
-                raise AssertionError("holdout label accessed before the ledger claim")
+            if key in {"open", "high", "low", "close", "volume", "tide_long", "tide_short"}:
+                if self.index >= hold_start and not claimed["value"]:
+                    raise AssertionError("holdout feature/label source read before ledger claim")
             return super().__getitem__(key)
 
-    rows = [GuardedRow(i) for i in range(240)]
+        def get(self, key, default=None):
+            if key in {"open", "high", "low", "close", "volume", "tide_long", "tide_short"}:
+                if self.index >= hold_start and not claimed["value"]:
+                    raise AssertionError("holdout feature source read before ledger claim")
+            return super().get(key, default)
+
+    def guarded_inspect(path, *, raw_bytes=None):
+        bars, manifest = original_inspect(path, raw_bytes=raw_bytes)
+        if not claimed["value"] and len(bars) > hold_start:
+            raise AssertionError("full holdout price/features parsed before ledger claim")
+        return [GuardedBar(i, row) for i, row in enumerate(bars)], manifest
+
+    monkeypatch.setattr(deep_challenger, "inspect_ohlc", guarded_inspect)
     original_claim = deep_challenger.ledger.claim_holdout
 
     def guarded_claim(*args, **kwargs):
@@ -150,13 +178,9 @@ def test_gru_challenger_end_to_end_when_torch_is_available(monkeypatch, tmp_path
     monkeypatch.setitem(deep_challenger._MODEL, "dropout", 0.0)
     monkeypatch.setitem(deep_challenger._MODEL, "batch_size", 64)
 
-    report = deep_challenger.train(
-        rows,
-        "NQ",
-        "clock_minutes",
-        tmp_path / "gru.json",
-        ledger_path=tmp_path / "ledger.sqlite3",
-        dataset_sha256=raw_digest,
+    report = run.train_deep_gru_file(
+        source, "minutes", "ohlc", "NQ", out=tmp_path / "gru.json",
+        ledger=tmp_path / "ledger.sqlite3",
     )
 
     assert claimed["value"] is True
@@ -167,8 +191,9 @@ def test_gru_challenger_end_to_end_when_torch_is_available(monkeypatch, tmp_path
     assert report["serialization_replay"] is True
     assert report["holdout_claim"]["status"] == "NEW"
     assert report["holdout_claim"]["ledger_namespace"] == "deep_challenger_gru"
-    assert report["rows_sha256"] == raw_digest
-    assert report["rows_sha256_basis"] == "raw_source_bytes"
+    assert report["dataset_sha256"] == hashlib.sha256(source.read_bytes()).hexdigest()
+    assert report["rows_sha256_basis"] == "source_bytes_and_row_construction"
+    assert report["rows_sha256"] != report["dataset_sha256"]
     assert report["execution_authorized"] is False
     assert report["production_decision_authorized"] is False
     assert report["auto_promote"] is False
@@ -177,3 +202,14 @@ def test_gru_challenger_end_to_end_when_torch_is_available(monkeypatch, tmp_path
     assert significance["vs_logit"]["lag"] >= significance["minimum_lag"]
     assert significance["vs_null"]["lag"] >= significance["minimum_lag"]
     assert (tmp_path / report["model_file"]).is_file()
+
+    # Changing a holdout source row while keeping timestamps fixed must not be
+    # treated as an identical-study replay for the same claimed interval.
+    _write_source(source, 501, changed_at=450)
+    claimed["value"] = False
+    changed = run.train_deep_gru_file(
+        source, "minutes", "ohlc", "NQ", out=tmp_path / "changed.json",
+        ledger=tmp_path / "ledger.sqlite3",
+    )
+    assert changed["status"] == "blocked"
+    assert changed["holdout_claim"]["status"] == deep_challenger.ledger.REUSE
