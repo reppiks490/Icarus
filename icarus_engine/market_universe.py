@@ -134,6 +134,11 @@ def load_source_probe_report() -> dict[str, Any]:
         report = json.loads(PROBE_PATH.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as ex:
         return {"status": "UNAVAILABLE", "provider": "yahoo", "error": type(ex).__name__, "results": []}
+    if not isinstance(report, dict):
+        return {"status": "INVALID", "provider": "yahoo", "results": []}
+    raw_results = report.get("results")
+    if not isinstance(raw_results, list) or any(not isinstance(row, dict) for row in raw_results):
+        return {"status": "INVALID", "provider": "yahoo", "results": []}
     if report.get("schema_version") != "icarus.market-universe.source-probe.v3":
         return {"status": "INVALID", "provider": "yahoo", "results": []}
     catalog = _load()
@@ -172,7 +177,7 @@ def load_source_probe_report() -> dict[str, Any]:
     )
     results = [
         {key: row[key] for key in allowed_fields if key in row}
-        for row in report.get("results", []) if isinstance(row, dict)
+        for row in raw_results
     ]
     result_ids = [row.get("instrument_id") for row in results]
     catalog_rows = {row.get("instrument_id"): row for row in catalog.get("instruments", [])}
@@ -180,9 +185,7 @@ def load_source_probe_report() -> dict[str, Any]:
     if (len(results) != completed or len(set(result_ids)) != len(result_ids)
             or not set(result_ids).issubset(catalog_ids) or report.get("raw_ohlcv_persisted") is not False):
         return {"status": "INVALID", "provider": "yahoo", "results": []}
-    raw_results = report.get("results", [])
-    if (not isinstance(raw_results, list) or len(raw_results) != completed
-            or any(not isinstance(row, dict) for row in raw_results)):
+    if len(raw_results) != completed:
         return {"status": "INVALID", "provider": "yahoo", "results": []}
     if (report.get("results_sha256") != source_probe_results_digest(raw_results)
             or report.get("counts") != source_probe_counts(raw_results)):

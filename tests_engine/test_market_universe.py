@@ -251,6 +251,15 @@ def test_market_universe_rejects_future_probe_timestamps(monkeypatch, tmp_path):
     monkeypatch.setattr(market_universe, "PROBE_PATH", probe_path)
 
     assert market_universe.load_source_probe_report()["status"] == "INVALID"
+
+
+def test_market_universe_rejects_non_object_probe_ledger(monkeypatch, tmp_path):
+    probe_path = tmp_path / "probe.json"
+    probe_path.write_text("[]")
+    monkeypatch.setattr(market_universe, "PROBE_PATH", probe_path)
+    assert market_universe.load_source_probe_report()["status"] == "INVALID"
+
+
 def test_a200_hybrid_provider_probe_keeps_each_source_receipt_separate():
     class FakeFmpHistory:
         GRANULARITIES = (60, 300, 900, 1800, 3600, 14400, 86400)
