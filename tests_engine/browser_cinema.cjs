@@ -4,7 +4,7 @@ const assert=require('node:assert/strict');
 const {mkdirSync}=require('node:fs');
 const output=process.env.ICARUS_BROWSER_OUTPUT||'/tmp/icarus-cinema-previews';mkdirSync(output,{recursive:true});
 (async()=>{
-const browser=await chromium.launch({headless:true,...(process.env.ICARUS_BROWSER_BINARY?{executablePath:process.env.ICARUS_BROWSER_BINARY}:{})});
+const browser=await chromium.launch({headless:true,args:['--enable-unsafe-swiftshader'],...(process.env.ICARUS_BROWSER_BINARY?{executablePath:process.env.ICARUS_BROWSER_BINARY}:{})});
 const context=await browser.newContext({viewport:{width:1440,height:1000}});
 const page=await context.newPage(),errors=[],writes=[];
 context.on('page',p=>p.on('pageerror',e=>errors.push(e.message)));page.on('pageerror',e=>errors.push(e.message));
@@ -31,6 +31,13 @@ for(const mode of ['balanced','focus']){
  assert.equal(await canvas.evaluate(c=>c.toDataURL()),a,`${mode} must stop canvas rendering`);
 }
 await page.locator('#experienceMode').selectOption('cinematic');
+// The settings drawer is internally scrollable and its lower controls can sit
+// below the visible section. Scroll the drawer itself before interacting with
+// the sound opt-in, then verify the target is in the viewport.
+const settingsDrawer=page.locator('.experience-settings > div');
+await settingsDrawer.evaluate(el=>{el.scrollTop=el.scrollHeight;});
+const soundBounds=await page.locator('#experienceSound').boundingBox();
+assert.ok(soundBounds&&soundBounds.y>=0&&soundBounds.y+soundBounds.height<=1000,'Sound opt-in must be brought into the viewport by scrolling its settings drawer');
 await page.locator('#experienceSound').click();assert.equal(await page.locator('#experienceSound').getAttribute('aria-pressed'),'true');
 assert.equal(await page.evaluate(()=>window.audioCreated),1);
 await page.locator('#experienceMotion').selectOption('off');
