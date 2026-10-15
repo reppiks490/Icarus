@@ -364,7 +364,7 @@ async function loadChart(sym, n, el, opts) {
 
 /* ── views ── */
 function setView(v) {
-  const apply = () => { view = v; window.IcarusWorldImmersion?.view(v); if (!solo) location.hash = v; lastView = null; if (last) render(last); if (v.startsWith('asset:')) { const s = v.slice(6); loadChart(s, 300, $('#dChart'), {height:360, compact:false}); refreshTrades(s).then(()=>{ if (last) render(last); }); } };
+  const apply = () => { view = v; window.IcarusWorldImmersion?.view(v); if (!solo) location.hash = v; lastView = null; if (last) render(last); if (v.startsWith('asset:')) { const s = v.slice(6); loadChart(s, 800, $('#dChart'), {height:360, compact:false}); refreshTrades(s).then(()=>{ if (last) render(last); }); } };
   const root = document.documentElement;
   const cinematic = v !== view && typeof document.startViewTransition === 'function' && root.dataset.motion === 'live' && root.dataset.experience === 'cinematic' && !!root.dataset.world && root.dataset.introActive !== 'true';
   if (cinematic) {
@@ -576,7 +576,7 @@ function assetHead(a) {
     ${marketChip(a)}<span class="chip ${regClass(st.rate_regime_str)}">${esc(st.rate_regime_str||'')}</span><span class="chip">${a.chart_type==='heikin_ashi'?'Heikin Ashi chart':'real bars'} · fills on ${a.fill_on==='chart'?'HA/chart bars':'real prices'} · HTF/LTF ${a.security_source==='standard'?'standard OHLC':'selected chart source'} · slip ${a.slippage_ticks}t</span><span class="chip">preset ${esc(a.preset||'none')}</span>${a.paused?'<span class="chip r">paused</span>':''}${a.rewarming?'<span class="chip w">re-warming</span>':''}${a.view_stale?'<span class="chip w">snapshot · engine busy</span>':''}
     <span style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap"><button class="sm" data-cmd="pause" data-a="${a.symbol}">Pause</button><button class="sm" data-cmd="resume" data-a="${a.symbol}">Resume</button><button class="sm danger" data-cmd="flatten" data-a="${a.symbol}">Flatten</button><button class="sm" data-cmd="inputs" data-a="${a.symbol}">Inputs</button><button class="sm" data-cmd="rewarm" data-a="${a.symbol}">Re-warm</button><button class="sm" data-cmd="export" data-a="${a.symbol}">Export CSV</button>${solo?'':`<button class="sm" data-cmd="open-tab" data-a="${a.symbol}">Open in tab ↗</button>`}</span></div>
     <div class="exec" style="margin-top:8px">${esc(st.exec||'')}${pending?` · pending: ${esc(pending)}`:''}${exits?` · resting: ${esc(exits)}`:''}</div>
-    <div id="dChart" style="margin-top:10px"></div>
+    <div class="small muted" style="margin-top:10px">Latest up to 800 available chart candles; date range is shown below the chart.</div><div id="dChart" style="margin-top:4px"></div>
     <div class="ladder"><span class="muted small">HTF</span>${tfs.map((t,i)=>`<span class="chip ${dirs[i]===-1?'b':dirs[i]===1?'r':''}">${t} ${dirs[i]===-1?'▲':dirs[i]===1?'▼':'·'}</span>`).join('')}<span class="muted small" style="margin-left:8px">LTF</span>${(st.ltf||[]).map((l,i)=>`<span class="chip ${l[0]===-1?'b':l[0]===1?'r':''}">${i?'5m':'2m'} ${l[0]===-1?'▲':l[0]===1?'▼':'·'} ${l[1]!=null?l[1]+'b':''} r${l[2]!=null?(l[2]*100).toFixed(0):'—'}</span>`).join('')} <span class="chip">MTF ${st.htf_bull}▲ ${st.htf_bear}▼</span>
       <span style="margin-left:auto" class="small"><span class="muted">net</span> <b class="${(a.netprofit||0)>=0?'pos':'neg'} tnum">${sgn$(a.netprofit)}</b> <span class="muted">· ${a.trades_total} closed pieces · ${a.trades_total?Math.round(a.wins_total/a.trades_total*100):0}% pieces won · live ${sgn$(a.live_profit)} · open ${sgn$(a.open_profit)}</span></span></div>
     <div class="votes" style="margin-top:10px">${(st.votes||[]).map(v => `<div class="vote ${v.l&&v.s?'ls':v.l?'l':v.s?'s':''}">${v.name}<br><span class="muted">${v.w}</span></div>`).join('')}</div>
@@ -1109,7 +1109,7 @@ function render(d) {
   } else if (viewAsset) {
     if (rebuild) { $('#view').innerHTML = assetHtml(viewAsset); }
     else { const keep = $('#dChart') ? $('#dChart').innerHTML : ''; $('#assetHead').innerHTML = assetHead(viewAsset); $('#dChart').innerHTML = keep; }
-    const c = charts[viewAsset.symbol+300]; if (c) candles($('#dChart'), c, {height:360, compact:false}); else loadChart(viewAsset.symbol, 300, $('#dChart'), {height:360, compact:false});
+    const c = charts[viewAsset.symbol+800]; if (c) candles($('#dChart'), c, {height:360, compact:false}); else loadChart(viewAsset.symbol, 800, $('#dChart'), {height:360, compact:false});
     const tr = (tradesCache[viewAsset.symbol]||[]).slice().reverse();
     const detailTradeWarning = tradeErrors[viewAsset.symbol] ? `<tr><td colspan="9" class="empty neg">trade history unavailable: ${esc(tradeErrors[viewAsset.symbol])}</td></tr>` : '';
     const detailTradeRows = tr.map(t => `<tr><td><span class="tag ${t.live?'live':''}">${t.live?'LIVE':'hist'}</span></td><td class="tnum">${dtz(t.entry_ts)}</td><td>${esc(t.id)}</td><td class="tnum">${t.qty}</td><td class="tnum">${px(t.entry)}</td><td class="tnum">${dtz(t.exit_ts)}</td><td class="tnum">${px(t.exit)}</td><td>${esc(t.comment)}</td><td class="tnum ${t.profit>=0?'pos':'neg'}">${sgn$(t.profit)}</td></tr>`).join('');
@@ -1284,7 +1284,7 @@ async function refreshCommandCenter() {
     window.IcarusWorldImmersion?.refresh();
   }
 }
-async function refreshCharts() { if (!last) return; if (view === 'overview') { for (const a of (last.assets||[])) await loadChart(a.symbol, 80, $(`#ch-${a.symbol}`), {height:170}); refreshFills(); } if (view.startsWith('asset:')) await loadChart(view.slice(6), 300, $('#dChart'), {height:360, compact:false}); }
+async function refreshCharts() { if (!last) return; if (view === 'overview') { for (const a of (last.assets||[])) await loadChart(a.symbol, 80, $(`#ch-${a.symbol}`), {height:170}); refreshFills(); } if (view.startsWith('asset:')) await loadChart(view.slice(6), 800, $('#dChart'), {height:360, compact:false}); }
 async function refreshTrades(only) {
   if (!last) return;
   for (const a of (last.assets||[])) {
