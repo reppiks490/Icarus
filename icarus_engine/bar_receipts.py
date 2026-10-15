@@ -92,6 +92,12 @@ def make_bar_batch_receipt(
             raise ValueError("expected bar timestamps must be integer starts inside the requested window")
         if expected != sorted(set(expected)):
             raise ValueError("expected bar timestamps must be strictly increasing and unique")
+        # Calendar-based daily and slower schedules can be 23 hours apart at a
+        # DST boundary. Keep that documented one-hour exception while refusing
+        # schedules that claim overlapping or too-frequent bars.
+        minimum_spacing = interval_seconds - 3600 if interval_seconds >= 86400 else interval_seconds
+        if any(later - earlier < minimum_spacing for earlier, later in zip(expected, expected[1:])):
+            raise ValueError("expected bar timestamps cannot be closer than the declared interval")
     observed = str(observed_provider_symbol) if observed_provider_symbol else None
     if observed is not None and observed.upper() != expected_provider_symbol.upper():
         raise ValueError(
