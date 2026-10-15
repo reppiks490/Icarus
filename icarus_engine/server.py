@@ -68,7 +68,7 @@ from .parity import compare_lists, engine_trades_from_rows, read_tv_trades_text
 from .golive import report as golive_report
 from .agent import report as agent_report
 from .briefing import report as briefing_report
-from .runtime import Portfolio, _clean, _read_json, apply_spec_meta, preset_path
+from .runtime import FlattenUnavailableError, Portfolio, _clean, _read_json, apply_spec_meta, preset_path
 from .strategy.meta import load_meta
 from .advisory import MAX_BODY_BYTES, strict_json
 from .research_service import ResearchWorkspace
@@ -2966,6 +2966,12 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     eng = engine_trades_from_rows(job["result"]["trades"])
                     rep_ = compare_lists(eng, tv, int(job["result"]["config"]["tf"]) * 60, int(body.get("tol", 1) or 1))
                     return self._json(200, {"ok": True, "report": rep_})
+            except FlattenUnavailableError as ex:
+                return self._json(409, {
+                    "error": "flatten_unavailable",
+                    "detail": str(ex),
+                    "positions_remain_open": True,
+                })
             except (ValueError, TypeError) as ex:
                 return self._json(400, {"detail": str(ex)})
             except Exception as ex:

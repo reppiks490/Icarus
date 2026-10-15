@@ -25,12 +25,13 @@ import sqlite3
 import threading
 import time
 from dataclasses import dataclass, replace
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Deque, Dict, List, Optional, Tuple
 
 from .assets import AssetSpec, apply_chart_config, chart_capabilities, chart_timeframe_parts, normalize_chart_timeframe, resolve, validate_chart_config
 from .calendar import get_calendar
 from .emulator import Emulator, Fill
+from .shadow_twin import MirroredEmulator
 from .feeds import Coinbase, Kraken
 from .feeds.events import event_bar_to_bar, make_event_feed
 from .feeds.bars import HistoryHub, detect_granularity, file_feed_mode, find_history, parse_ohlcv_csv, read_text_csv  # Grok (xAI) — 2026-09-20
@@ -456,6 +457,11 @@ class RunnerConfig:
     scale_known_at: Optional[int] = None    # actual receipt/computation time, never inferred from a price's date
     base_dir: Optional[str] = None          # Grok (xAI) — plant root; warmup looks here, not cwd
     base_spec: Optional[AssetSpec] = None    # startup/API-pinned baseline before preset/global/asset metadata
+    shadow_real_fills: bool = False          # same-decision real-bar emulator; observation only
+
+
+class FlattenUnavailableError(RuntimeError):
+    """Administrative flatten could not safely close an open position."""
 
 
 class AssetRunner:
@@ -533,7 +539,9 @@ class AssetRunner:
         self.chart_minutes = self.chart_value if self.chart_mode == "minutes" else 0
         self.chart_seconds = self.chart_value * 60 if self.chart_mode == "minutes" else (self.chart_value if self.chart_mode == "seconds" else None)
         self.cal = get_calendar(sp.calendar, sp.anchor_et, session=sp.session, group=sp.group)   # a preset may switch the chart session
-        self.em = Emulator(sp.capital, sp.commission, self.mintick, sp.multiplier, pyramiding=2, slippage_ticks=sp.slippage_ticks)
+        primary_emulator = Emulator(sp.capital, sp.commission, self.mintick, sp.multiplier, pyramiding=2, slippage_ticks=sp.slippage_ticks)
+        self.em = (MirroredEmulator(primary_emulator, asset=self.symbol)
+                   if self.cfg.shadow_real_fills else primary_emulator)
         self.strat: Optional[PulseStrategy] = None
         ib = self.inputs_base
         self.htf_tfs = [tf_minutes(t) for t in (ib.htf_tf_1, ib.htf_tf_2, ib.htf_tf_3, ib.htf_tf_4, ib.htf_tf_5)]
@@ -605,7 +613,10 @@ class AssetRunner:
         self.strat.paused = self.paused
         if self.paused:
             self._cancel_pending_entries()
-        self.em.process_bar(fill_bar, self.bar_index)
+        if isinstance(self.em, MirroredEmulator):
+            self.em.process_bar(fill_bar, self.bar_index, real_bar=real)
+        else:
+            self.em.process_bar(fill_bar, self.bar_index)
         entry_regime = str((self.state or {}).get("rate_regime_str") or "unknown")
         for opened in getattr(self.em, "open", ()):
             self._lot_entry_regimes.setdefault(int(opened.seq), entry_regime)
@@ -1052,12 +1063,19 @@ class AssetRunner:
         """Caller holds lock. Keep exits/close orders protecting existing positions."""
         pending = list(self.em._pending_entries)
         ids = {p.id for p in pending}
-        self.em._pending_entries.clear()
-        for eid, order in list(self.em._exits.items()):
-            if order.from_entry in ids and not self.em.qty_open(order.from_entry):
-                self.em._exits.pop(eid)
-        self.em._pending_closes[:] = [c for c in self.em._pending_closes
-                                     if c.entry_id not in ids or self.em.qty_open(c.entry_id)]
+        if isinstance(self.em, MirroredEmulator):
+            # A limit may fill in the primary while it remains pending in the
+            # real-price lane. Admin pause/flatten still has to cancel that
+            # shadow-only remainder before processing another bar.
+            ids.update(p.id for p in self.em.shadow._pending_entries)
+            self.em.cancel_pending_entries(ids)
+        else:
+            self.em._pending_entries.clear()
+            for eid, order in list(self.em._exits.items()):
+                if order.from_entry in ids and not self.em.qty_open(order.from_entry):
+                    self.em._exits.pop(eid)
+            self.em._pending_closes[:] = [c for c in self.em._pending_closes
+                                         if c.entry_id not in ids or self.em.qty_open(c.entry_id)]
         if self.strat is not None:
             # RATE snapshots are appended when intent is submitted. Filled/closed
             # positions still own the earlier queue entries; only remove the tail.
@@ -1068,7 +1086,7 @@ class AssetRunner:
                     self.strat.tod_hour_queue.pop()
             self.strat.rate_pend_dir = 0
             self.strat.rate_pend_bar = -999
-        return len(pending)
+        return len(ids)
 
     def set_paused(self, paused: bool) -> int:
         with self.lock:
@@ -1160,15 +1178,39 @@ class AssetRunner:
     def flatten(self, reason: str = "manual") -> int:
         with self.lock:
             cancelled = self._cancel_pending_entries()
-            n = 0
-            for t in list(self.em.open):
-                self.em.close(t.entry_id, comment="FLAT_" + reason.upper()[:8])
-                n += 1
-            if self.last_price and self.em.open:
-                fake = Bar(int(time.time()), self.last_price, self.last_price, self.last_price, self.last_price, 0.0)
-                self.em.process_bar(fake, self.bar_index)
-            self.journal.log("WARN", f"[{self.symbol}] FLATTEN ({reason}): {n} position(s), {cancelled} pending entry intent(s) cancelled")
-            return n
+            open_positions = list(self.em.open)
+            if isinstance(self.em, MirroredEmulator):
+                open_positions.extend(self.em.shadow.open)
+            entry_ids = {t.entry_id for t in open_positions}
+            has_primary_open = bool(self.em.open)
+            has_shadow_open = isinstance(self.em, MirroredEmulator) and bool(self.em.shadow.open)
+            has_open = has_primary_open or has_shadow_open
+            if has_primary_open and (self.last_price is None or not math.isfinite(float(self.last_price))):
+                raise FlattenUnavailableError(
+                    f"[{self.symbol}] cannot flatten open positions: no finite last market price is available")
+            for entry_id in entry_ids:
+                comment = "FLAT_" + reason.upper()[:8]
+                if isinstance(self.em, MirroredEmulator):
+                    # The operator close is not a standard-price market event.
+                    # Close the authoritative primary and censor the mirrored
+                    # hypothetical position in the explicit admin path below.
+                    self.em.primary.close(entry_id, comment=comment)
+                else:
+                    self.em.close(entry_id, comment=comment)
+            if has_open:
+                if isinstance(self.em, MirroredEmulator):
+                    fake = None
+                    if has_primary_open:
+                        mark = float(self.last_price)
+                        fake = Bar(int(time.time()), mark, mark, mark, mark, 0.0)
+                    self.em.process_administrative_flatten(
+                        fake, self.bar_index, entry_ids, reason=reason)
+                else:
+                    mark = float(self.last_price)
+                    fake = Bar(int(time.time()), mark, mark, mark, mark, 0.0)
+                    self.em.process_bar(fake, self.bar_index)
+            self.journal.log("WARN", f"[{self.symbol}] FLATTEN ({reason}): {len(entry_ids)} position(s), {cancelled} pending entry intent(s) cancelled")
+            return len(entry_ids)
 
     def export_csv(self) -> str:
         with self.lock:
@@ -1299,6 +1341,30 @@ class AssetRunner:
             "equity": self.em.equity(mark), "capital": self.spec.capital, "netprofit": self.em.netprofit,
             "open_profit": self.em.open_profit(mark) if mark else 0.0, "position": self.em.position_size,
             "open_trades": open_trades, "exits": self.em.live_exits(), "pending": self.em.pending_view(),
+            "real_price_shadow": ({**self.em.summary(live_from_ts=self.live_from_ts),
+                                   "primary_fill_basis": self.spec.fill_on,
+                                   "provenance": {
+                                       "instrument_id": self.symbol,
+                                       "provider_symbol": self.spec.ticker,
+                                       "asset_kind": self.spec.kind,
+                                       "price_provider": (
+                                           "file_history_hub" if file_feed_mode() else
+                                           "databento" if type(self.feed).__name__ == "Databento" else
+                                           self.spec.feed),
+                                       "feed_mode": (
+                                           "file" if file_feed_mode() else
+                                           "databento" if type(self.feed).__name__ == "Databento" else
+                                           "provider"),
+                                       "timeframe_minutes": self.chart_minutes,
+                                       "calendar": self.cal.name,
+                                       "session_mode": _session_mode(self.cal),
+                                       "chart_type": self.spec.chart_type,
+                                       "primary_fill_basis": self.spec.fill_on,
+                                       "shadow_fill_basis": "standard_real_ohlc",
+                                       "security_source": self.spec.security_source,
+                                       "feed_health": self._feed_health_view(),
+                                   }}
+                                  if isinstance(self.em, MirroredEmulator) else None),
             "trades_total": len(self.em.closed), "wins_total": wins,
             "performance_guard": getattr(self, "_performance_guard", {"status": "INSUFFICIENT_SAMPLE", "scorecards": {}}),
             "live_trades": len(live_trades), "live_profit": sum(t.profit for t in live_trades),
@@ -1372,13 +1438,14 @@ class AssetRunner:
 class Portfolio:
     def __init__(self, journal: Journal, base_dir: str, poll_sec: float = 5.0, profile: str = "nq",
                  preset: Optional[str] = None, warmup_bars: int = 1200, pts_ref_symbol: str = "NQ",
-                 feeds: Optional[Dict[str, Any]] = None):
+                 feeds: Optional[Dict[str, Any]] = None, shadow_real_fills: bool = False):
         self.journal = journal
         self.base_dir = base_dir
         self.poll_sec = poll_sec
         self.profile = profile
         self.preset = preset
         self.warmup_bars = warmup_bars
+        self.shadow_real_fills = bool(shadow_real_fills)
         self.pts_ref_symbol = pts_ref_symbol
         self.pts_ref_price = 0.0
         # ICARUS_FEED selects the market-data transport without changing stable AssetSpec
@@ -1448,7 +1515,7 @@ class Portfolio:
         scale = self._ref_price() if (spec.symbol != self.pts_ref_symbol) else 0.0
         cfg = RunnerConfig(spec=spec, inputs=inputs, warmup_bars=self.warmup_bars, sources=sources, profile=self.profile,
                            preset=self.preset or spec.preset, pts_ref_price=scale, base_dir=self.base_dir,
-                           base_spec=base_spec)
+                           base_spec=base_spec, shadow_real_fills=self.shadow_real_fills)
         runner = AssetRunner(cfg, self.journal, self.feeds)
         runner.latency_telemetry = self.latency_telemetry
         return runner
@@ -1739,6 +1806,7 @@ class Portfolio:
 
     def status(self, *, nonblocking: bool = False) -> Dict[str, Any]:
         rs = [r.summary(nonblocking=True) if nonblocking else r.summary() for r in self.runner_list()]
+        shadow_rows = [x["real_price_shadow"] for x in rs if x.get("real_price_shadow")]
         eq = sum(x["equity"] or 0.0 for x in rs)
         cap = sum(x["capital"] for x in rs)
         stale = nonblocking and any(x.get("view_stale") for x in rs)
@@ -1746,6 +1814,76 @@ class Portfolio:
         if nonblocking and not stale:
             self._public_equity_epoch = epoch
         live_profit = sum(x["live_profit"] for x in rs)
+        shadow_status = ("INVALID" if any(x["status"] == "INVALID" for x in shadow_rows)
+                         else "DEGRADED" if any(x["status"] != "READY" for x in shadow_rows)
+                         else "READY") if shadow_rows else "DISABLED"
+        primary_entries = sum(x["primary_entry_fills"] for x in shadow_rows)
+        shadow_entries = sum(x["shadow_entry_fills"] for x in shadow_rows)
+        matched_entries = sum(x["matched_entry_intents"] for x in shadow_rows)
+        agreement_denominator = sum(x["outcome_agreement_denominator"] for x in shadow_rows)
+        agree_count = sum(x["outcome_agreement_count"] for x in shadow_rows)
+        primary_win_count = sum(x["primary_win_count"] for x in shadow_rows)
+        preserved_count = sum(x["primary_win_preserved_count"] for x in shadow_rows)
+        portfolio_primary_net = sum(x["primary"]["net"] for x in shadow_rows)
+        portfolio_shadow_net = sum(x["real_price_shadow"]["net"] for x in shadow_rows)
+        portfolio_primary_winner_net = sum(x["paired_primary_winner_net"] for x in shadow_rows)
+        portfolio_shadow_on_primary_winners = sum(
+            x["paired_shadow_net_on_primary_winners"] for x in shadow_rows)
+        portfolio_outcome_matrix = {
+            primary: {
+                shadow: sum(x["outcome_matrix"][primary][shadow] for x in shadow_rows)
+                for shadow in ("win", "loss", "break_even")
+            }
+            for primary in ("win", "loss", "break_even")
+        }
+        portfolio_epsilon = max(1e-8, abs(portfolio_primary_net) * 1e-12)
+        portfolio_realization_ratio = (
+            portfolio_shadow_net / portfolio_primary_net
+            if portfolio_primary_net > portfolio_epsilon else None)
+        portfolio_profit_capture = (
+            portfolio_shadow_on_primary_winners / portfolio_primary_winner_net
+            if portfolio_primary_winner_net > 1e-8 else None)
+        shadow_portfolio = ({
+            "schema": "icarus.real_price_shadow.portfolio/1",
+            "enabled": True,
+            "status": shadow_status,
+            "execution_authorized": False,
+            "asset_count": len(shadow_rows),
+            "primary_entry_fills": primary_entries,
+            "shadow_entry_fills": shadow_entries,
+            "entry_fill_parity": matched_entries / primary_entries if primary_entries else None,
+            "matched_entry_intents": matched_entries,
+            "primary_only_entry_fills": sum(x["primary_only_entry_fills"] for x in shadow_rows),
+            "shadow_only_entry_fills": sum(x["shadow_only_entry_fills"] for x in shadow_rows),
+            "administrative_censored_shadow_positions": sum(
+                x["administrative_censored_shadow_positions"] for x in shadow_rows),
+            "pairable_closed_episodes": sum(x["pairable_closed_episodes"] for x in shadow_rows),
+            "outcome_agreement_denominator": agreement_denominator,
+            "outcome_agreement_rate": agree_count / agreement_denominator if agreement_denominator else None,
+            "outcome_matrix": portfolio_outcome_matrix,
+            "primary_win_preservation": preserved_count / primary_win_count if primary_win_count else None,
+            "primary_net": round(portfolio_primary_net, 8),
+            "real_price_shadow_net": round(portfolio_shadow_net, 8),
+            "net_realization_ratio": portfolio_realization_ratio,
+            "net_realization_ratio_unavailable_reason": (
+                None if portfolio_realization_ratio is not None else
+                "portfolio primary net is non-positive or too close to zero"),
+            "paired_profit_capture": portfolio_profit_capture,
+            "paired_profit_capture_unavailable_reason": (
+                None if portfolio_profit_capture is not None else
+                "no positive pairable primary-winner P&L denominator"),
+            "paired_primary_winner_net": round(portfolio_primary_winner_net, 8),
+            "paired_shadow_net_on_primary_winners": round(portfolio_shadow_on_primary_winners, 8),
+            "primary_warmup_net": round(sum(x["primary"]["warmup_net"] for x in shadow_rows), 8),
+            "primary_live_net": round(sum(x["primary"]["live_net"] for x in shadow_rows), 8),
+            "real_price_shadow_warmup_net": round(sum(x["real_price_shadow"]["warmup_net"] for x in shadow_rows), 8),
+            "real_price_shadow_live_net": round(sum(x["real_price_shadow"]["live_net"] for x in shadow_rows), 8),
+            "drawdown_aggregation": "per_asset_only; cross_asset_close_timestamps_are_not_yet_aligned",
+            "assets": [{"asset": x["asset"], "status": x["status"], "reason": x["reason"],
+                        "administrative_censored_shadow_positions": x["administrative_censored_shadow_positions"],
+                        "provenance": x.get("provenance")}
+                       for x in shadow_rows],
+        } if shadow_rows else None)
         return _clean({
             "now": time.time(), "uptime_sec": time.time() - self.started, "paused": self.paused,
             "global_pause_intent": self.paused,
@@ -1754,9 +1892,65 @@ class Portfolio:
             "equity": eq, "capital": cap, "net": eq - cap, "live_profit": live_profit,
             "open_profit": sum(x["open_profit"] or 0.0 for x in rs), "positions": sum(1 for x in rs if x["position"]),
             "assets": rs, "log": list(self.journal.log_tail)[-80:],
+            "real_price_shadow": shadow_portfolio,
             "equity_epoch": epoch,
             "view_stale": bool(stale),
             "equity_series": self.journal.equity_series(max_points=600, since_ts=max(self.started, epoch)),
             "all_warm": all(x["warm"] for x in rs) if rs else False,
             "preset": self.preset, "profile": self.profile, "pts_ref": {"symbol": self.pts_ref_symbol, "price": self.pts_ref_price},
         })
+
+    def publish_shadow_evidence(self, fabric, *, run_id: str, received_at: str) -> Dict[str, Any]:
+        """Explicitly publish current per-asset shadow snapshots as one batch.
+
+        Unlike `status()`, this method is an intentional write. All eligible
+        events are validated before the first append so malformed asset state
+        cannot produce a knowingly partial batch. Retries are idempotent.
+        """
+        from .intelligence_fabric import IntelligenceFabric
+        from .shadow_evidence_events import shadow_evidence_event
+
+        if not isinstance(fabric, IntelligenceFabric):
+            raise ValueError("fabric must be an IntelligenceFabric")
+        staged = []
+        failures = []
+        skipped = []
+        for runner in self.runner_list():
+            row = runner.summary()
+            shadow = row.get("real_price_shadow")
+            if shadow is None:
+                skipped.append(row.get("symbol", "unknown"))
+                continue
+            stamp = row.get("last_bar_ts")
+            if isinstance(stamp, bool) or not isinstance(stamp, (int, float)) or stamp <= 0:
+                failures.append({"asset": row.get("symbol", "unknown"),
+                                 "reason": "missing valid last_bar_ts"})
+                continue
+            observed_at = datetime.fromtimestamp(float(stamp), timezone.utc).isoformat().replace("+00:00", "Z")
+            try:
+                event = shadow_evidence_event(
+                    shadow, run_id=run_id, observed_at=observed_at, received_at=received_at)
+                event.normalized()  # validate all envelopes before writing any asset event
+                staged.append((str(row.get("symbol", shadow.get("asset", "unknown"))), event))
+            except (ValueError, OverflowError, OSError) as exc:
+                failures.append({"asset": row.get("symbol", "unknown"),
+                                 "reason": f"{type(exc).__name__}: {exc}"})
+        if failures:
+            return {"schema": "icarus.real_price_shadow.publication/1", "status": "BLOCKED",
+                    "published_count": 0, "skipped_assets": skipped, "failures": failures,
+                    "execution_authorized": False, "production_decision_authorized": False}
+        receipts = []
+        for asset, event in staged:
+            try:
+                receipts.append({"asset": asset, **fabric.publish(event)})
+            except Exception as exc:
+                return {"schema": "icarus.real_price_shadow.publication/1",
+                        "status": "PARTIAL" if receipts else "FAILED",
+                        "published_count": len(receipts), "receipts": receipts,
+                        "failed_asset": asset, "failure": f"{type(exc).__name__}: {exc}",
+                        "execution_authorized": False, "production_decision_authorized": False}
+        return {"schema": "icarus.real_price_shadow.publication/1",
+                "status": "PUBLISHED" if receipts else "NO_ELIGIBLE_ASSETS",
+                "published_count": len(receipts), "receipts": receipts,
+                "skipped_assets": skipped,
+                "execution_authorized": False, "production_decision_authorized": False}
