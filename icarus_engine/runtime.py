@@ -31,6 +31,7 @@ from typing import Any, Deque, Dict, List, Optional, Tuple
 from .assets import AssetSpec, apply_chart_config, chart_capabilities, chart_timeframe_parts, normalize_chart_timeframe, resolve, validate_chart_config
 from .calendar import get_calendar
 from .emulator import Emulator, Fill
+from .shadow_twin import MirroredEmulator
 from .feeds import Coinbase, Kraken
 from .feeds.events import event_bar_to_bar, make_event_feed
 from .feeds.bars import HistoryHub, detect_granularity, file_feed_mode, find_history, parse_ohlcv_csv, read_text_csv  # Grok (xAI) — 2026-09-20
@@ -456,6 +457,7 @@ class RunnerConfig:
     scale_known_at: Optional[int] = None    # actual receipt/computation time, never inferred from a price's date
     base_dir: Optional[str] = None          # Grok (xAI) — plant root; warmup looks here, not cwd
     base_spec: Optional[AssetSpec] = None    # startup/API-pinned baseline before preset/global/asset metadata
+    shadow_real_fills: bool = False          # same-decision real-bar emulator; observation only
 
 
 class AssetRunner:
@@ -533,7 +535,9 @@ class AssetRunner:
         self.chart_minutes = self.chart_value if self.chart_mode == "minutes" else 0
         self.chart_seconds = self.chart_value * 60 if self.chart_mode == "minutes" else (self.chart_value if self.chart_mode == "seconds" else None)
         self.cal = get_calendar(sp.calendar, sp.anchor_et, session=sp.session, group=sp.group)   # a preset may switch the chart session
-        self.em = Emulator(sp.capital, sp.commission, self.mintick, sp.multiplier, pyramiding=2, slippage_ticks=sp.slippage_ticks)
+        primary_emulator = Emulator(sp.capital, sp.commission, self.mintick, sp.multiplier, pyramiding=2, slippage_ticks=sp.slippage_ticks)
+        self.em = (MirroredEmulator(primary_emulator, asset=self.symbol)
+                   if self.cfg.shadow_real_fills else primary_emulator)
         self.strat: Optional[PulseStrategy] = None
         ib = self.inputs_base
         self.htf_tfs = [tf_minutes(t) for t in (ib.htf_tf_1, ib.htf_tf_2, ib.htf_tf_3, ib.htf_tf_4, ib.htf_tf_5)]
@@ -605,7 +609,10 @@ class AssetRunner:
         self.strat.paused = self.paused
         if self.paused:
             self._cancel_pending_entries()
-        self.em.process_bar(fill_bar, self.bar_index)
+        if isinstance(self.em, MirroredEmulator):
+            self.em.process_bar(fill_bar, self.bar_index, real_bar=real)
+        else:
+            self.em.process_bar(fill_bar, self.bar_index)
         entry_regime = str((self.state or {}).get("rate_regime_str") or "unknown")
         for opened in getattr(self.em, "open", ()):
             self._lot_entry_regimes.setdefault(int(opened.seq), entry_regime)
@@ -1052,12 +1059,15 @@ class AssetRunner:
         """Caller holds lock. Keep exits/close orders protecting existing positions."""
         pending = list(self.em._pending_entries)
         ids = {p.id for p in pending}
-        self.em._pending_entries.clear()
-        for eid, order in list(self.em._exits.items()):
-            if order.from_entry in ids and not self.em.qty_open(order.from_entry):
-                self.em._exits.pop(eid)
-        self.em._pending_closes[:] = [c for c in self.em._pending_closes
-                                     if c.entry_id not in ids or self.em.qty_open(c.entry_id)]
+        if isinstance(self.em, MirroredEmulator):
+            self.em.cancel_pending_entries(ids)
+        else:
+            self.em._pending_entries.clear()
+            for eid, order in list(self.em._exits.items()):
+                if order.from_entry in ids and not self.em.qty_open(order.from_entry):
+                    self.em._exits.pop(eid)
+            self.em._pending_closes[:] = [c for c in self.em._pending_closes
+                                         if c.entry_id not in ids or self.em.qty_open(c.entry_id)]
         if self.strat is not None:
             # RATE snapshots are appended when intent is submitted. Filled/closed
             # positions still own the earlier queue entries; only remove the tail.
@@ -1299,6 +1309,9 @@ class AssetRunner:
             "equity": self.em.equity(mark), "capital": self.spec.capital, "netprofit": self.em.netprofit,
             "open_profit": self.em.open_profit(mark) if mark else 0.0, "position": self.em.position_size,
             "open_trades": open_trades, "exits": self.em.live_exits(), "pending": self.em.pending_view(),
+            "real_price_shadow": ({**self.em.summary(live_from_ts=self.live_from_ts),
+                                   "primary_fill_basis": self.spec.fill_on}
+                                  if isinstance(self.em, MirroredEmulator) else None),
             "trades_total": len(self.em.closed), "wins_total": wins,
             "performance_guard": getattr(self, "_performance_guard", {"status": "INSUFFICIENT_SAMPLE", "scorecards": {}}),
             "live_trades": len(live_trades), "live_profit": sum(t.profit for t in live_trades),
@@ -1372,13 +1385,14 @@ class AssetRunner:
 class Portfolio:
     def __init__(self, journal: Journal, base_dir: str, poll_sec: float = 5.0, profile: str = "nq",
                  preset: Optional[str] = None, warmup_bars: int = 1200, pts_ref_symbol: str = "NQ",
-                 feeds: Optional[Dict[str, Any]] = None):
+                 feeds: Optional[Dict[str, Any]] = None, shadow_real_fills: bool = False):
         self.journal = journal
         self.base_dir = base_dir
         self.poll_sec = poll_sec
         self.profile = profile
         self.preset = preset
         self.warmup_bars = warmup_bars
+        self.shadow_real_fills = bool(shadow_real_fills)
         self.pts_ref_symbol = pts_ref_symbol
         self.pts_ref_price = 0.0
         # ICARUS_FEED selects the market-data transport without changing stable AssetSpec
@@ -1448,7 +1462,7 @@ class Portfolio:
         scale = self._ref_price() if (spec.symbol != self.pts_ref_symbol) else 0.0
         cfg = RunnerConfig(spec=spec, inputs=inputs, warmup_bars=self.warmup_bars, sources=sources, profile=self.profile,
                            preset=self.preset or spec.preset, pts_ref_price=scale, base_dir=self.base_dir,
-                           base_spec=base_spec)
+                           base_spec=base_spec, shadow_real_fills=self.shadow_real_fills)
         runner = AssetRunner(cfg, self.journal, self.feeds)
         runner.latency_telemetry = self.latency_telemetry
         return runner
@@ -1739,6 +1753,7 @@ class Portfolio:
 
     def status(self, *, nonblocking: bool = False) -> Dict[str, Any]:
         rs = [r.summary(nonblocking=True) if nonblocking else r.summary() for r in self.runner_list()]
+        shadow_rows = [x["real_price_shadow"] for x in rs if x.get("real_price_shadow")]
         eq = sum(x["equity"] or 0.0 for x in rs)
         cap = sum(x["capital"] for x in rs)
         stale = nonblocking and any(x.get("view_stale") for x in rs)
@@ -1746,6 +1761,40 @@ class Portfolio:
         if nonblocking and not stale:
             self._public_equity_epoch = epoch
         live_profit = sum(x["live_profit"] for x in rs)
+        shadow_status = ("INVALID" if any(x["status"] == "INVALID" for x in shadow_rows)
+                         else "DEGRADED" if any(x["status"] != "READY" for x in shadow_rows)
+                         else "READY") if shadow_rows else "DISABLED"
+        primary_entries = sum(x["primary_entry_fills"] for x in shadow_rows)
+        shadow_entries = sum(x["shadow_entry_fills"] for x in shadow_rows)
+        matched_entries = sum(x["matched_entry_intents"] for x in shadow_rows)
+        pair_count = sum(x["outcome_agreement_denominator"] for x in shadow_rows)
+        agree_count = sum(x["outcome_agreement_count"] for x in shadow_rows)
+        primary_win_count = sum(x["primary_win_count"] for x in shadow_rows)
+        preserved_count = sum(x["primary_win_preserved_count"] for x in shadow_rows)
+        shadow_portfolio = ({
+            "schema": "icarus.real_price_shadow.portfolio/1",
+            "enabled": True,
+            "status": shadow_status,
+            "execution_authorized": False,
+            "asset_count": len(shadow_rows),
+            "primary_entry_fills": primary_entries,
+            "shadow_entry_fills": shadow_entries,
+            "entry_fill_parity": matched_entries / primary_entries if primary_entries else None,
+            "matched_entry_intents": matched_entries,
+            "primary_only_entry_fills": sum(x["primary_only_entry_fills"] for x in shadow_rows),
+            "shadow_only_entry_fills": sum(x["shadow_only_entry_fills"] for x in shadow_rows),
+            "pairable_closed_episodes": pair_count,
+            "outcome_agreement_rate": agree_count / pair_count if pair_count else None,
+            "primary_win_preservation": preserved_count / primary_win_count if primary_win_count else None,
+            "primary_net": round(sum(x["primary"]["net"] for x in shadow_rows), 8),
+            "real_price_shadow_net": round(sum(x["real_price_shadow"]["net"] for x in shadow_rows), 8),
+            "primary_warmup_net": round(sum(x["primary"]["warmup_net"] for x in shadow_rows), 8),
+            "primary_live_net": round(sum(x["primary"]["live_net"] for x in shadow_rows), 8),
+            "real_price_shadow_warmup_net": round(sum(x["real_price_shadow"]["warmup_net"] for x in shadow_rows), 8),
+            "real_price_shadow_live_net": round(sum(x["real_price_shadow"]["live_net"] for x in shadow_rows), 8),
+            "assets": [{"asset": x["asset"], "status": x["status"], "reason": x["reason"]}
+                       for x in shadow_rows],
+        } if shadow_rows else None)
         return _clean({
             "now": time.time(), "uptime_sec": time.time() - self.started, "paused": self.paused,
             "global_pause_intent": self.paused,
@@ -1754,6 +1803,7 @@ class Portfolio:
             "equity": eq, "capital": cap, "net": eq - cap, "live_profit": live_profit,
             "open_profit": sum(x["open_profit"] or 0.0 for x in rs), "positions": sum(1 for x in rs if x["position"]),
             "assets": rs, "log": list(self.journal.log_tail)[-80:],
+            "real_price_shadow": shadow_portfolio,
             "equity_epoch": epoch,
             "view_stale": bool(stale),
             "equity_series": self.journal.equity_series(max_points=600, since_ts=max(self.started, epoch)),
