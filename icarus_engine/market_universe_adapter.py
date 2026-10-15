@@ -33,8 +33,9 @@ class MarketUniverseAdapter:
         if len(candidates) != 1:
             raise ValueError(f"A200 instrument {instrument_id} has no unique Yahoo symbol candidate")
         mapping = candidates[0]
-        if mapping.get("mapping_status") != "UNVERIFIED":
-            raise ValueError("A200 adapter requires an explicitly declared Yahoo mapping state")
+        mapping_status = mapping.get("mapping_status")
+        if mapping_status not in ("UNVERIFIED", "VERIFIED"):
+            raise ValueError("A200 Yahoo mapping must be explicitly UNVERIFIED or VERIFIED")
         symbol = mapping["symbol"]
         if interval_seconds not in Yahoo.GRANULARITIES:
             raise ValueError(f"Yahoo does not support {interval_seconds}-second intervals")
@@ -57,6 +58,6 @@ class MarketUniverseAdapter:
             received_at_ns=received_at_ns,
             entitlement_status="UNKNOWN",
             session_validation_status="UNKNOWN",
-            provider_mapping_status=mapping["mapping_status"],
+            provider_mapping_status=mapping_status,
         )
         return checked, receipt

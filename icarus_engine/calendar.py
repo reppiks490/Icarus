@@ -323,9 +323,11 @@ class CMECryptoCalendar(CMECalendar):
 
 
 def get_calendar(name: str, anchor_et: Optional[str] = None, session: str = "eth", group: str = "equity"):
-    n = str(name).lower()
+    n = str(name or "").strip().lower()
     if n == "cme":
         return CMECalendar(anchor_et, session=session, group=group)
     if n == "cme_crypto":
         return CMECryptoCalendar(anchor_et)
-    return CryptoCalendar()
+    if n in ("", "crypto"):
+        return CryptoCalendar()
+    raise ValueError(f"unsupported market calendar {name!r}; refusing to assume 24/7 crypto hours")

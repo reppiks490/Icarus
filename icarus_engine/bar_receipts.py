@@ -5,7 +5,7 @@ from dataclasses import asdict, dataclass
 import hashlib
 import json
 import math
-from typing import Any, Iterable
+from typing import Any, Callable, Iterable
 
 from .pine.timeframe import Bar
 
@@ -31,8 +31,10 @@ class BarBatchReceipt:
     dropped_count: int
     duplicate_count: int
     interval_gap_count: int
+    gap_validation_status: str
     timestamp_alignment_status: str
     session_validation_status: str
+    bar_close_status: str
     checksum_sha256: str
     fetched_at_ns: int
     received_at_ns: int
@@ -49,6 +51,9 @@ def make_bar_batch_receipt(
     requested_start_ts: int, requested_end_ts: int, bars: Iterable[Bar],
     fetched_at_ns: int, received_at_ns: int, entitlement_status: str = "UNKNOWN",
     session_validation_status: str = "UNKNOWN", provider_mapping_status: str = "VERIFIED",
+    alignment_validator: Callable[[int], bool] | None = None,
+    gap_validator: Callable[[int, int, int], int] | None = None,
+    bar_close_status: str = "UNKNOWN",
 ) -> tuple[list[Bar], BarBatchReceipt]:
     """Validate exact response identity and OHLCV before returning bars to runtime.
 
@@ -61,6 +66,12 @@ def make_bar_batch_receipt(
         raise ValueError("bar receipt interval must be a positive integer")
     if provider_mapping_status not in ("VERIFIED", "UNVERIFIED", "UNKNOWN"):
         raise ValueError("invalid provider mapping status")
+    if entitlement_status not in ("UNKNOWN", "VERIFIED", "FAILED"):
+        raise ValueError("invalid entitlement status")
+    if session_validation_status not in ("UNKNOWN", "VERIFIED", "FAILED"):
+        raise ValueError("invalid session validation status")
+    if bar_close_status not in ("UNKNOWN", "VERIFIED", "FAILED"):
+        raise ValueError("invalid bar close status")
     for name, value in (("requested_start_ts", requested_start_ts), ("requested_end_ts", requested_end_ts),
                         ("fetched_at_ns", fetched_at_ns), ("received_at_ns", received_at_ns)):
         if type(value) is not int:
@@ -78,7 +89,8 @@ def make_bar_batch_receipt(
         )
     previous = None
     gap_count = 0
-    aligned = True
+    gaps_validated = gap_validator is not None
+    aligned = bool(rows) and alignment_validator is not None
     for row in rows:
         if not isinstance(row, Bar):
             raise ValueError("bar batch contains a non-Bar row")
@@ -89,10 +101,24 @@ def make_bar_batch_receipt(
             raise ValueError(f"bar timestamp {ts} is outside requested [{start}, {end}) window")
         if previous is not None and ts <= previous:
             raise ValueError("bar batch timestamps must be strictly increasing without duplicates")
-        if ts % interval_seconds:
-            aligned = False
+        if alignment_validator is not None:
+            try:
+                if alignment_validator(ts) is not True:
+                    aligned = False
+            except Exception as exc:
+                raise ValueError("bar timestamp alignment validation failed") from exc
         if previous is not None and ts - previous > interval_seconds:
-            gap_count += max(0, (ts - previous) // interval_seconds - 1)
+            estimated_gap_count = max(0, (ts - previous) // interval_seconds - 1)
+            if gap_validator is None:
+                gap_count += estimated_gap_count
+            else:
+                try:
+                    session_gap_count = gap_validator(previous, ts, interval_seconds)
+                except Exception as exc:
+                    raise ValueError("bar gap validation failed") from exc
+                if type(session_gap_count) is not int or session_gap_count < 0:
+                    raise ValueError("bar gap validator must return a nonnegative integer")
+                gap_count += session_gap_count
         previous = ts
         values = (row.o, row.h, row.l, row.c, row.v)
         if not all(math.isfinite(float(value)) for value in values):
@@ -108,10 +134,9 @@ def make_bar_batch_receipt(
     provider_symbol_match_status = "MATCHED" if observed is not None else "UNKNOWN"
     identity_status = ("VERIFIED" if provider_symbol_match_status == "MATCHED" and provider_mapping_status == "VERIFIED"
                        else "PROVISIONAL" if provider_symbol_match_status == "MATCHED" else "UNKNOWN")
-    if session_validation_status not in ("UNKNOWN", "VERIFIED", "FAILED"):
-        raise ValueError("invalid session validation status")
     qualified = (identity_status == "VERIFIED" and entitlement_status == "VERIFIED"
-                 and session_validation_status == "VERIFIED" and aligned and gap_count == 0 and bool(rows))
+                 and session_validation_status == "VERIFIED" and bar_close_status == "VERIFIED"
+                 and aligned and gaps_validated and gap_count == 0 and bool(rows))
     receipt_identity = json.dumps(
         [instrument_id, provider, expected_provider_symbol, interval_seconds, start, end, checksum],
         separators=(",", ":"),
@@ -136,8 +161,10 @@ def make_bar_batch_receipt(
         dropped_count=0,
         duplicate_count=0,
         interval_gap_count=gap_count,
-        timestamp_alignment_status="VERIFIED" if aligned else "FAILED",
+        gap_validation_status="UNKNOWN" if gap_validator is None else "VERIFIED",
+        timestamp_alignment_status=("UNKNOWN" if alignment_validator is None else "VERIFIED" if aligned else "FAILED"),
         session_validation_status=session_validation_status,
+        bar_close_status=bar_close_status,
         checksum_sha256=checksum,
         fetched_at_ns=fetched_at_ns,
         received_at_ns=received_at_ns,
