@@ -1967,8 +1967,10 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                         port.journal.log("ERROR", f"command center {parts[2]} update: {type(ex).__name__}: {ex}")
                         return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
                 if len(parts) == 4 and parts[2] in {"cc1", "cc2", "cc3", "cc4"} and parts[3] == "pause":
+                    if not isinstance(body.get("paused"), bool):
+                        return self._json(400, {"detail": "paused must be a boolean"})
                     try:
-                        return self._json(200, command_centers.pause(parts[2], bool(body.get("paused"))))
+                        return self._json(200, command_centers.pause(parts[2], body["paused"]))
                     except (ValueError, TypeError, KeyError) as ex:
                         return self._json(400, {"detail": str(ex)})
                 if len(parts) == 4 and parts[2] in {"cc1", "cc2", "cc3", "cc4"} and parts[3] == "flatten":
