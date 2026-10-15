@@ -28,6 +28,7 @@ def test_bracket_exits_fill_once_and_cancel_oco_sibling(
     winner = parent.legs[winning_leg]
     sibling = parent.legs[1 - winning_leg]
     assert winner.status == "filled"
+    assert winner.fill_price == (take_profit if winning_leg == 0 else exit_price)
     assert sibling.status == "canceled"
     assert broker.position("ES") == 0
     assert broker.open_orders("ES") == []
