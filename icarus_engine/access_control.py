@@ -6,6 +6,7 @@ import secrets
 import sqlite3
 import threading
 import time
+from contextlib import contextmanager
 from pathlib import Path
 
 
@@ -36,10 +37,18 @@ class AccessRegistry:
             else:
                 db.execute("INSERT INTO users(id,label,role,token_hash,created_at) VALUES('owner','Owner','owner',?,?)", (digest,time.time()))
 
+    @contextmanager
     def _db(self):
         db = sqlite3.connect(self.path, timeout=10)
         db.row_factory = sqlite3.Row
-        return db
+        try:
+            yield db
+            db.commit()
+        except BaseException:
+            db.rollback()
+            raise
+        finally:
+            db.close()
 
     @staticmethod
     def _digest(token: str) -> str:
