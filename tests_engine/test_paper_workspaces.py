@@ -2,6 +2,8 @@ import copy
 import threading
 
 from icarus_engine import paper_workspaces
+from icarus_engine.assets import REGISTRY as ASSET_REGISTRY
+from icarus_engine.pine.timeframe import Bar
 from icarus_engine.runtime import Inputs, Journal
 
 
@@ -79,6 +81,18 @@ def _manager(tmp_path, monkeypatch):
     return paper_workspaces.PaperWorkspaceManager(_Parent(tmp_path))
 
 
+def _real_manager(tmp_path, monkeypatch):
+    """Use real portfolios/runners but suppress their live polling threads."""
+    monkeypatch.setattr(
+        paper_workspaces,
+        "_PROFILE_DEFAULTS",
+        tuple({**profile, "assets": ["NQ"]} for profile in paper_workspaces._PROFILE_DEFAULTS),
+    )
+    monkeypatch.setattr(paper_workspaces, "REGISTRY", {"NQ": copy.deepcopy(ASSET_REGISTRY["NQ"])})
+    monkeypatch.setattr(paper_workspaces.WorkspacePortfolio, "start", lambda self: None)
+    return paper_workspaces.PaperWorkspaceManager(_Parent(tmp_path))
+
+
 def test_default_profiles_keep_the_requested_starting_assumptions():
     defaults = {profile["id"]: profile for profile in paper_workspaces._PROFILE_DEFAULTS}
     baseline = Inputs()
@@ -139,3 +153,101 @@ def test_edit_pause_and_flatten_only_touch_the_selected_workspace(tmp_path, monk
         assert '"tp1_pts": 9.0' in saved.read_text(encoding="utf-8")
     finally:
         manager.stop()
+
+
+def test_workspace_configuration_persists_only_to_its_own_profile(tmp_path, monkeypatch):
+    manager = _manager(tmp_path, monkeypatch)
+    manager.start()
+    try:
+        manager.update("cc2", {
+            "chart": {"timeframe": "10", "chart_type": "real"},
+            "inputs": {"tp1_pts": 9.0},
+        })
+        manager.update("cc4", {"inputs": {"tp1_pts": 11.0}})
+    finally:
+        manager.stop()
+
+    reloaded = _manager(tmp_path, monkeypatch)
+    assert reloaded.profiles["cc2"]["chart"]["timeframe"] == "10"
+    assert reloaded.profiles["cc2"]["chart"]["chart_type"] == "real"
+    assert reloaded.profiles["cc2"]["inputs"]["tp1_pts"] == 9.0
+    assert reloaded.profiles["cc4"]["inputs"]["tp1_pts"] == 11.0
+    assert reloaded.profiles["cc1"]["inputs"] == {}
+    assert reloaded.profiles["cc3"]["inputs"] == {}
+    assert reloaded.profiles["cc1"]["chart"]["timeframe"] == "20"
+    assert reloaded.profiles["cc4"]["chart"]["timeframe"] == "5"
+
+
+def test_shared_feed_candle_cache_fetches_only_uncovered_ranges():
+    class Feed:
+        def __init__(self):
+            self.calls = []
+
+        def candles(self, symbol, granularity, start_ts, end_ts):
+            self.calls.append((symbol, granularity, start_ts, end_ts))
+            return [
+                Bar(ts, 1.0, 2.0, 0.5, 1.5, 10.0)
+                for ts in range(start_ts, end_ts, granularity)
+            ]
+
+    raw = Feed()
+    shared = paper_workspaces.SharedFeed(raw)
+
+    assert [bar.ts for bar in shared.candles("NQ", 60, 0, 180)] == [0, 60, 120]
+    assert [bar.ts for bar in shared.candles("NQ", 60, 60, 240)] == [60, 120, 180]
+    assert raw.calls == [("NQ", 60, 0, 180), ("NQ", 60, 180, 240)]
+
+
+def test_real_workspace_runners_positions_journals_and_pnl_are_isolated(tmp_path, monkeypatch):
+    manager = _real_manager(tmp_path, monkeypatch)
+    manager.start()
+    try:
+        assert set(manager.portfolios) == {"cc1", "cc2", "cc3", "cc4"}
+        portfolios = [manager.portfolios[key] for key in ("cc1", "cc2", "cc3", "cc4")]
+        runners = [portfolio.runner_list()[0] for portfolio in portfolios]
+
+        # Each profile owns its runner, input object, emulator, and journal. The
+        # shared feed wrapper is only a market-data dependency.
+        assert len({id(runner) for runner in runners}) == 4
+        assert len({id(runner.inputs_base) for runner in runners}) == 4
+        assert len({id(runner.em) for runner in runners}) == 4
+        assert len({id(portfolio.journal) for portfolio in portfolios}) == 4
+        assert len({portfolio.journal.path for portfolio in portfolios}) == 4
+        assert all(runner.journal is portfolio.journal for runner, portfolio in zip(runners, portfolios))
+        assert runners[1].inputs_base.tp1_pts == Inputs().tp1_pts / 2
+        assert runners[0].inputs_base.tp1_pts == Inputs().tp1_pts
+
+        # Place positions through each actual emulator. No runner/feed polling
+        # is started, so this exercises paper accounting without network access.
+        for runner, direction, qty, entry, mark in (
+            (runners[0], 1, 2, 100.0, 110.0),
+            (runners[1], -1, 1, 200.0, 190.0),
+        ):
+            runner.em.entry("isolation", direction, qty)
+            runner.em.process_bar(Bar(1, entry, entry, entry, entry, 0), 0)
+            runner.last_price = mark
+
+        snapshot = manager.snapshot()
+        assert snapshot["mode"] == "concurrent_paper"
+        assert snapshot["execution_authorized"] is False
+        profiles = {profile["id"]: profile for profile in snapshot["profiles"]}
+        assert set(profiles) == {"cc1", "cc2", "cc3", "cc4"}
+        assert all(profile["paper_only"] and profile["execution_authorized"] is False for profile in profiles.values())
+
+        multiplier = runners[0].em.contract_size
+        expected_cc1 = (110.0 - 100.0) * 2 * multiplier - runners[0].em.commission * 2
+        expected_cc2 = (200.0 - 190.0) * multiplier - runners[1].em.commission
+        assert profiles["cc1"]["status"]["positions"] == 1
+        assert profiles["cc1"]["status"]["net"] == expected_cc1
+        assert profiles["cc2"]["status"]["positions"] == 1
+        assert profiles["cc2"]["status"]["net"] == expected_cc2
+        for profile_id in ("cc3", "cc4"):
+            assert profiles[profile_id]["status"]["positions"] == 0
+            assert profiles[profile_id]["status"]["net"] == 0.0
+
+        # This is the per-profile data the dashboard sums for Combined paper P&L.
+        assert sum(profile["status"]["net"] for profile in profiles.values()) == expected_cc1 + expected_cc2
+    finally:
+        manager.stop()
+        for portfolio in manager.portfolios.values():
+            portfolio.journal.con.close()
