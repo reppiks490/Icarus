@@ -56,3 +56,25 @@ def test_bracket_children_wait_until_parent_fills():
     assert stop_leg.status == "canceled"
     assert broker.position("ES") == 0
     assert broker.open_orders("ES") == []
+
+
+def test_canceling_bracket_parent_cancels_held_legs_and_retires_oco_links():
+    broker = ShadowBroker()
+    parent = broker.submit_bracket("ES", "buy", 1, 110, 90)
+    take_profit_leg, stop_leg = parent.legs
+
+    assert broker.cancel_order(parent.id)
+    assert parent.status == "canceled"
+    assert take_profit_leg.status == stop_leg.status == "canceled"
+    assert broker.open_orders() == []
+    assert broker._oco_siblings == {}
+
+
+def test_canceling_one_oco_exit_cancels_its_sibling():
+    broker = ShadowBroker(prices={"ES": 100})
+    parent = broker.submit_bracket("ES", "buy", 1, 110, 90)
+    take_profit_leg, stop_leg = parent.legs
+
+    assert broker.cancel_order(take_profit_leg.id)
+    assert take_profit_leg.status == stop_leg.status == "canceled"
+    assert broker._oco_siblings == {}

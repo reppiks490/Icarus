@@ -72,6 +72,20 @@ class ShadowBroker:
             if not self._oco_siblings[sibling_id]:
                 self._oco_siblings.pop(sibling_id, None)
 
+    def _cancel(self, order: BrokerOrder) -> bool:
+        """Cancel an order and retire any attached bracket/OCO orders."""
+        if order.status not in ("new", "accepted", "held"):
+            return False
+        order.status = "canceled"
+        if order.kind == "bracket":
+            for leg in order.legs:
+                if leg.status in ("new", "accepted", "held"):
+                    leg.status = "canceled"
+                self._cancel_oco_siblings(leg.id)
+        else:
+            self._cancel_oco_siblings(order.id)
+        return True
+
     def _fill(self, o: BrokerOrder, price: float) -> None:
         if o.status not in ("new", "accepted"):
             return
@@ -125,15 +139,14 @@ class ShadowBroker:
 
     def cancel_orders(self, symbol: Optional[str] = None) -> int:
         n = 0
-        for o in self.open_orders(symbol):
-            o.status = "canceled"; n += 1
+        for o in list(self._orders.values()):
+            if symbol is None or o.symbol == symbol:
+                n += self._cancel(o)
         return n
 
     def cancel_order(self, order_id: str) -> bool:
         o = self._orders.get(order_id)
-        if o and o.status in ("new", "accepted"):
-            o.status = "canceled"; return True
-        return False
+        return self._cancel(o) if o else False
 
     def _new(self, symbol: str, side: str, qty: float, kind: str, **kw: Any) -> BrokerOrder:
         o = BrokerOrder(id=f"sh-{next(self._ids)}", symbol=symbol, side=side, qty=float(qty), kind=kind, status="accepted", **kw)
