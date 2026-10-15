@@ -532,7 +532,15 @@ class IbkrPaperVenueTests(unittest.TestCase):
         ("minQty", 1),
         ("goodAfterTime", "20261016 09:30:00 US/Eastern"),
         ("goodTillDate", "20261016 16:00:00 US/Eastern"),
+        ("activeStartTime", "20261016 09:30:00 US/Eastern"),
+        ("activeStopTime", "20261016 16:00:00 US/Eastern"),
+        ("autoCancelDate", "20261016 15:59:00 US/Eastern"),
         ("conditions", [{"type": "PriceCondition", "price": 19000}]),
+        ("randomizeSize", True),
+        ("adjustedStopPrice", 19800.0),
+        ("algoId", "other-algo"),
+        ("orderComboLegs", [{"price": 1.0}]),
+        ("eTradeOnly", False),
     )
     for field, value in mismatches:
       with self.subTest(field=field):

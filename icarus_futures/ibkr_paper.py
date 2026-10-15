@@ -37,6 +37,9 @@ _ORDER_REPLAY_DEFAULTS = {
     "minQty": None,
     "goodAfterTime": "",
     "goodTillDate": "",
+    "activeStartTime": "",
+    "activeStopTime": "",
+    "autoCancelDate": "",
     "conditions": (),
     "conditionsCancelOrder": False,
     "conditionsIgnoreRth": False,
@@ -57,10 +60,10 @@ _ORDER_REPLAY_DEFAULTS = {
     "cashQty": None,
     "notHeld": False,
     "postToAts": 0,
-    "usePriceMgmtAlgo": False,
+    "usePriceMgmtAlgo": None,
     "routeMarketableToBbo": False,
-    "eTradeOnly": False,
-    "firmQuoteOnly": False,
+    "eTradeOnly": True,
+    "firmQuoteOnly": True,
     "optOutSmartRouting": False,
     "overridePercentageConstraints": False,
     "discretionaryUpToLimitPrice": False,
@@ -72,6 +75,83 @@ _ORDER_REPLAY_DEFAULTS = {
     "shortSaleSlot": 0,
     "designatedLocation": "",
     "exemptCode": -1,
+    "autoCancelParent": False,
+    "rule80A": "",
+    "origin": 0,
+    "percentOffset": None,
+    "auctionStrategy": 0,
+    "startingPrice": None,
+    "stockRefPrice": None,
+    "delta": None,
+    "stockRangeLower": None,
+    "stockRangeUpper": None,
+    "volatility": None,
+    "volatilityType": 0,
+    "continuousUpdate": False,
+    "referencePriceType": 0,
+    "deltaNeutralOrderType": "",
+    "deltaNeutralAuxPrice": None,
+    "deltaNeutralConId": 0,
+    "deltaNeutralSettlingFirm": "",
+    "deltaNeutralClearingAccount": "",
+    "deltaNeutralClearingIntent": "",
+    "deltaNeutralOpenClose": "",
+    "deltaNeutralShortSale": False,
+    "deltaNeutralShortSaleSlot": 0,
+    "deltaNeutralDesignatedLocation": "",
+    "basisPoints": None,
+    "basisPointsType": -1,
+    "scalePriceAdjustValue": None,
+    "scalePriceAdjustInterval": 0,
+    "scaleProfitOffset": None,
+    "scaleAutoReset": False,
+    "scaleInitPosition": None,
+    "scaleInitFillQty": None,
+    "scaleRandomPercent": False,
+    "faGroup": "",
+    "faMethod": "",
+    "faPercentage": "",
+    "faProfile": "",
+    "settlingFirm": "",
+    "clearingAccount": "",
+    "clearingIntent": "",
+    "orderMiscOptions": (),
+    "midOffsetAtWhole": None,
+    "midOffsetAtHalf": None,
+    "openClose": "",
+    "randomizePrice": False,
+    "randomizeSize": False,
+    "scaleTable": "",
+    "nbboPriceCap": None,
+    "whatIf": False,
+    "solicited": False,
+    "modelCode": "",
+    "orderComboLegs": (),
+    "referenceContractId": 0,
+    "peggedChangeAmount": 0.0,
+    "isPeggedChangeAmountDecrease": False,
+    "referenceChangeAmount": 0.0,
+    "referenceExchangeId": "",
+    "adjustedOrderType": "",
+    "triggerPrice": None,
+    "adjustedStopPrice": None,
+    "adjustedStopLimitPrice": None,
+    "adjustedTrailingAmount": None,
+    "adjustableTrailingUnit": 0,
+    "lmtPriceOffset": None,
+    "extOperator": "",
+    "refFuturesConId": 0,
+    "shareholder": "",
+    "imbalanceOnly": False,
+    "parentPermId": 0,
+    "algoId": "",
+    "dontUseAutoPriceForHedge": False,
+    "isOmsContainer": False,
+    "mifid2DecisionMaker": "",
+    "mifid2DecisionAlgo": "",
+    "mifid2ExecutionTrader": "",
+    "mifid2ExecutionAlgo": "",
+    "softDollarTier": (),
 }
 
 
@@ -80,14 +160,29 @@ def _normalize_replay_field(field: str, value: Any) -> Any:
     default = _ORDER_REPLAY_DEFAULTS[field]
     if value is None or value in (2147483647, 1.7976931348623157e308):
         return default
-    if field in {"conditions", "algoParams", "smartComboRoutingParams"}:
+    if field == "softDollarTier":
+        if value == ():
+            return ()
+        if isinstance(value, dict):
+            values = tuple(value.get(key, "") for key in ("name", "value", "displayName"))
+        else:
+            values = tuple(getattr(value, key, "") for key in ("name", "value", "displayName"))
+        return () if not any(values) else ("unsupported-nonempty", repr(values))
+    if field in {"conditions", "algoParams", "smartComboRoutingParams", "orderMiscOptions",
+                 "orderComboLegs"}:
         if not value:
             return ()
         # This adapter does not build these options. Any populated value is a
         # mismatch; repr preserves a useful, deterministic diagnostic value.
         return ("unsupported-nonempty", repr(value))
-    if field in {"discretionaryAmt", "scalePriceIncrement", "trailStopPrice", "trailingPercent",
-                 "competeAgainstBestOffset"}:
+    if field in {"discretionaryAmt", "displaySize", "scalePriceIncrement", "trailStopPrice", "trailingPercent",
+                 "competeAgainstBestOffset", "percentOffset", "startingPrice", "stockRefPrice",
+                 "delta", "stockRangeLower", "stockRangeUpper", "volatility",
+                 "deltaNeutralAuxPrice", "basisPoints", "scalePriceAdjustValue",
+                 "scaleProfitOffset", "midOffsetAtWhole", "midOffsetAtHalf", "nbboPriceCap",
+                 "triggerPrice", "adjustedStopPrice", "adjustedStopLimitPrice",
+                 "adjustedTrailingAmount", "lmtPriceOffset", "peggedChangeAmount",
+                 "referenceChangeAmount"}:
         try:
             if float(value) == 0.0:
                 return default
@@ -294,6 +389,10 @@ class IbkrTwsPaperGateway:
 
     @staticmethod
     def _order_record(order) -> dict:
+        # Broker-assigned orderId/clientId/permId and the changing filledQuantity
+        # are lifecycle state, not submitted order terms. Per-leg price is
+        # retained through orderComboLegs; all other Order execution controls in
+        # the supported IB API are captured by _ORDER_REPLAY_DEFAULTS below.
         record = {"account": getattr(order, "account", ""),
                   "action": getattr(order, "action", ""),
                   "totalQuantity": int(getattr(order, "totalQuantity", 0)),
