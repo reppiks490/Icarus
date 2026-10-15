@@ -1,8 +1,11 @@
 import json
+import hashlib
 from pathlib import Path
 from urllib.error import HTTPError
 import pytest
 from tools import provider_exhaustive_collection as p
+from icarus_engine.discovery_registry.contracts import Candidate, QualificationState
+from icarus_engine.discovery_registry.federation import ProviderFederator
 
 def operation(path='/stocks'):
     return dict(id='twelve:get:'+path,provider='twelve',path=path,method='GET',parameters=[])
@@ -25,6 +28,39 @@ def test_pagination_resumes_and_accounts_for_every_discovered_asset(tmp_path):
     assert seen[-1]['page']==2
     assert second['catalog']['assets']==3
     assert second['catalog']['pending_pages']==0
+
+def test_latest_receipt_records_only_operations_with_verified_pages(tmp_path):
+    ops=[operation('/stocks'),operation('/time_series')]
+    def fetch(provider,path,params,key):
+        if path=='/stocks':return {'status':'ok','data':[{'symbol':'AA'}]}
+        raise p.ProviderFailure('403')
+    result=p.cycle(tmp_path,ops,{'TWELVE_DATA_API_KEY':'fixture'},run_id='verified',request_budget=2,fetch=fetch)
+    entry=result['providers']['twelve']
+    assert entry['verified_operations']==['twelve:get:/stocks']
+    latest=json.loads((tmp_path/p.ROOT/'latest'/'twelve.json').read_text())
+    assert latest['providers']['twelve']['verified_operations']==['twelve:get:/stocks']
+    assert latest['providers']['twelve']['blocked']==[
+        {'operation':'twelve:get:/time_series','asset_specific':False,'failure_code':'403'}
+    ]
+
+def test_failed_only_operation_never_enters_verified_receipt(tmp_path):
+    def fail(*args):raise p.ProviderFailure('403')
+    result=p.cycle(tmp_path,[operation()],{'TWELVE_DATA_API_KEY':'fixture'},run_id='blocked',request_budget=1,fetch=fail)
+    assert result['providers']['twelve']['verified_operations']==[]
+
+def test_collector_receipt_qualifies_matching_registry_operation(tmp_path):
+    endpoint='https://api.twelvedata.com/stocks'
+    catalog=tmp_path/'provider-endpoints.json'
+    catalog.write_text(json.dumps({'operations':[operation('/stocks')]}))
+    result=p.cycle(tmp_path,[operation('/stocks')],{'TWELVE_DATA_API_KEY':'fixture'},run_id='connected',request_budget=1,
+                   fetch=lambda *args:{'status':'ok','data':[{'symbol':'AA'}]})
+    candidate=Candidate.minimum(candidate_id=hashlib.sha256(endpoint.encode()).hexdigest(),
+                                canonical_name='Twelve Data',endpoint_or_tool_url=endpoint)
+    federator=ProviderFederator(catalog,tmp_path/p.ROOT/'latest')
+    events=federator.evidence_events(federator.links_for([candidate]))
+    assert result['providers']['twelve']['verified_operations']==['twelve:get:/stocks']
+    assert len(events)==1
+    assert events[0].new_state is QualificationState.ACCESS_TESTED
 
 def test_pagination_cannot_exfiltrate_key_to_other_host():
     with pytest.raises(ValueError):
