@@ -2977,17 +2977,17 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
         def _close_background_services(self):
             closers = (
                 command_centers.stop,
-                autopilot.close,
-                ascendancy_autopilot.close,
-                ascendancy_native_validation.close,
-                evidence_lab_sync.close,
-                evolution_remote_sync.close,
-                brain_research_sync.close,
-                brain_remote_sync.close,
-                loop_intelligence_sync.close,
-                commissioning.close,
-                research.close,
-                apex.close,
+                lambda: autopilot.close(),
+                lambda: ascendancy_autopilot.close(),
+                lambda: ascendancy_native_validation.close(),
+                lambda: evidence_lab_sync.close(),
+                lambda: evolution_remote_sync.close(),
+                lambda: brain_research_sync.close(),
+                lambda: brain_remote_sync.close(),
+                lambda: loop_intelligence_sync.close(),
+                lambda: commissioning.close(),
+                lambda: research.close(),
+                lambda: apex.close(),
             )
             errors = []
             for close in closers:
