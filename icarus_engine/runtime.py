@@ -500,8 +500,8 @@ class AssetRunner:
         self.T_w: Optional[int] = None
         self._build_engine()
         self.bar_index = -1
-        self.bars: Deque[Bar] = collections.deque(maxlen=900)
-        self.overlays: Deque[Dict[str, Any]] = collections.deque(maxlen=900)
+        self.bars: Deque[Bar] = collections.deque(maxlen=2000)
+        self.overlays: Deque[Dict[str, Any]] = collections.deque(maxlen=2000)
         self.state: Dict[str, Any] = {}
         self.live_from_ts: Optional[int] = None
         self.live_closed_start: int = 0               # exact closed-trade boundary; avoids bar-start timestamp misclassification
@@ -728,6 +728,8 @@ class AssetRunner:
     # ── warm-up ──
     def warmup(self, now_ts: Optional[int] = None) -> None:
         now = int(now_ts or time.time())
+        base = self.cfg.base_dir or os.getcwd()
+        hist, minutes = find_history(base, self.symbol, self.chart_minutes)  # Grok (xAI) — 2026-09-20: prefer history/ over Yahoo; plant root over cwd
         span = self.cfg.warmup_bars * self.chart_minutes * 60
         if not self.cal.open_24_7:
             if getattr(self.cal, "session", "eth") == "rth":  # ~20 bars per trading day (09:30-16:15 ET), 5 days a week
@@ -735,17 +737,35 @@ class AssetRunner:
                 span = int(self.cfg.warmup_bars / per_day * 7 / 5 * 86400) + 3 * 86400
             else:                                             # 5 sessions of 23h per week → stretch the calendar window
                 span = int(span * 7 / 5 * 24 / 23) + 86400
+        provider_days = None
+        if not hist and type(self.feed).__name__ == "Yahoo" and 0 < self.chart_minutes < 1440:
+            # Use Yahoo's available intraday range when the configured bar count is
+            # shorter. The current replay path uses 1m candles (29d) for charts
+            # below 5m and 5m+1m candles (59d) for 5m-aligned charts. Never extend
+            # the requested window past the bars the provider can actually supply.
+            provider_days = 59 if self.chart_minutes >= 5 and self.chart_minutes % 5 == 0 else 29
+            span = max(span, provider_days * 86400)
         T_w = self.cal.bucket_start(now - span, 1440)
         self.T_w = T_w
-        base = self.cfg.base_dir or os.getcwd()
-        hist, minutes = find_history(base, self.symbol, self.chart_minutes)  # Grok (xAI) — 2026-09-20: prefer history/ over Yahoo; plant root over cwd
+        display_capacity = max(2000, self.cfg.warmup_bars)
+        if provider_days:
+            if getattr(self.cal, "session", "eth") == "rth":
+                per_day = max(1, 405 // self.chart_minutes)
+            else:
+                per_day = max(1, (23 * 60) // self.chart_minutes)
+            sessions = math.ceil(provider_days * 5 / 7)
+            display_capacity = max(display_capacity, per_day * sessions + 2)
+        display_capacity = min(50000, display_capacity)
+        self.bars = collections.deque(self.bars, maxlen=display_capacity)
+        self.overlays = collections.deque(self.overlays, maxlen=display_capacity)
         if hist:
             src = f"history/{os.path.basename(hist)} ({minutes}m)"
         elif file_feed_mode():
             src = f"HistoryHub ({base}/history) — no CSV yet, Yahoo is not contacted"
         else:
             src = self.spec.feed
-        self.journal.log("INFO", f"[{self.symbol}] warm-up from {time.strftime('%Y-%m-%d %H:%M', time.gmtime(T_w))}Z ({self.cfg.warmup_bars} x {self.chart_minutes}m bars, {src}) mintick={self.mintick} x{self.spec.multiplier} slip={self.spec.slippage_ticks}t chart={self.spec.chart_type} fills={self.spec.fill_on} session={_session_mode(self.cal)} security={self.spec.security_source}" + (f" continuous={self.spec.tv_symbol or self.spec.ticker}" if self.spec.kind == "futures" else ""))
+        horizon = f", Yahoo source horizon up to {provider_days}d" if provider_days else ""
+        self.journal.log("INFO", f"[{self.symbol}] warm-up requested from {time.strftime('%Y-%m-%d %H:%M', time.gmtime(T_w))}Z ({self.cfg.warmup_bars} x {self.chart_minutes}m bars requested{horizon}, {src}) mintick={self.mintick} x{self.spec.multiplier} slip={self.spec.slippage_ticks}t chart={self.spec.chart_type} fills={self.spec.fill_on} session={_session_mode(self.cal)} security={self.spec.security_source}" + (f" continuous={self.spec.tv_symbol or self.spec.ticker}" if self.spec.kind == "futures" else ""))
         if hist:
             self._warmup_from_csv(hist, now, source_minutes=minutes)
             self._file_waiting = False
@@ -850,6 +870,10 @@ class AssetRunner:
         if source_minutes is None:
             source_minutes = max(1, detect_granularity(rows) // 60)
         source_minutes = int(source_minutes)
+        display_capacity = min(50000, max(self.bars.maxlen, len(rows)))
+        if display_capacity > self.bars.maxlen:
+            self.bars = collections.deque(self.bars, maxlen=display_capacity)
+            self.overlays = collections.deque(self.overlays, maxlen=display_capacity)
         span = (
             time.strftime("%Y-%m-%d", time.gmtime(rows[0].ts)) + " → " +
             time.strftime("%Y-%m-%d", time.gmtime(rows[-1].ts))
@@ -1196,7 +1220,7 @@ class AssetRunner:
     def publish_read_views(self) -> None:
         """Publish immutable display-only views while holding the runner lock."""
         captured = time.time()
-        self._public_views = ((self._summary(), captured), (self._chart(900), captured))
+        self._public_views = ((self._summary(), captured), (self._chart(self.bars.maxlen), captured))
 
     def _busy_read_view(self, index: int) -> Dict[str, Any]:
         views = self._public_views
@@ -1316,27 +1340,31 @@ class AssetRunner:
             "htf_tfs": self.htf_tfs,
         })
 
-    def chart(self, n: int = 240, *, nonblocking: bool = False) -> Dict[str, Any]:
+    def chart(self, n: int = 240, *, offset: int = 0, nonblocking: bool = False) -> Dict[str, Any]:
+        n = max(1, min(int(n), 5000))
+        offset = max(0, min(int(offset), 50000))
+        def page(row: Dict[str, Any]) -> Dict[str, Any]:
+            total = len(row["bars"])
+            end = max(0, total - offset)
+            start = max(0, end - n)
+            row["bars"] = row["bars"][start:end]
+            row["overlays"] = row["overlays"][start:end]
+            row["fills"] = [f for f in row["fills"] if row["bars"] and row["bars"][0][0] <= f["ts"] <= row["bars"][-1][0]]
+            row["history"] = {"available": total, "offset": offset, "page_size": n, "has_older": start > 0, "has_newer": offset > 0}
+            return row
         if not nonblocking:
             with self.lock:
-                return self._chart(n)
+                return page(self._chart(self.bars.maxlen))
         if not self.lock.acquire(timeout=0.05):
             row = self._busy_read_view(1)
-            row["bars"] = row["bars"][-n:]
-            row["overlays"] = row["overlays"][-n:]
-            row["fills"] = [f for f in row["fills"] if row["bars"] and f["ts"] >= row["bars"][0][0]]
-            return row
+            return page(row)
         try:
-            row = self._chart(900)
+            row = self._chart(self.bars.maxlen)
             views = self._public_views or (None, None)
             self._public_views = (views[0], (row, time.time()))
         finally:
             self.lock.release()
-        row = copy.deepcopy(row)
-        row["bars"] = row["bars"][-n:]
-        row["overlays"] = row["overlays"][-n:]
-        row["fills"] = [f for f in row["fills"] if row["bars"] and f["ts"] >= row["bars"][0][0]]
-        return row
+        return page(copy.deepcopy(row))
 
     def _chart(self, n: int = 240) -> Dict[str, Any]:
         bars = list(self.bars)[-n:]
