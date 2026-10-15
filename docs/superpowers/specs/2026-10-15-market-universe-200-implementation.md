@@ -14,6 +14,8 @@ Each row has a provisional exchange-plus-symbol listing identity, a candidate Ya
 
 The engine exposes the catalog at `GET /api/market-universe` and in the Market Data dashboard. The API reports 200 catalogued and zero source-connected, historical-qualified, live-qualified, Pulse-enabled, or strategy-qualified entries. It has no feed or broker side effects and does not change the existing runtime asset registry.
 
+`MarketUniverseAdapter` now resolves the catalog-declared Yahoo candidate mapping by provisional instrument ID and can fetch a requested historical batch. It rejects unknown IDs, unsupported intervals, and provider-symbol mismatches, and returns a checksum receipt. The adapter does not activate Pulse or update catalog counts; Yahoo entitlement and market-session qualification remain unknown.
+
 Existing registered-asset historical warm-up now records a bounded per-run receipt history with provider, expected/observed symbol, interval, window, timestamps, row count, checksum, alignment, and observed gap count. Receipt identity or entitlement uncertainty remains visible; session qualification is unknown and therefore no batch is counted as A200-qualified. These receipts do not establish connectivity for the 200 catalog candidates.
 
 This is not a claim that 200 assets are fully connected. Connection requires confirmed provider mappings and account entitlements, receipt-validated bars, execution-critical metadata, and the acceptance gates in the A200 contract. Those steps remain pending the source and entitlement evidence.

@@ -804,6 +804,7 @@ class AssetRunner:
         bars = feed.candles(symbol, interval_seconds, start_ts, end_ts)
         received_at_ns = time.time_ns()
         observed_symbol = None
+        expected_provider_symbol = symbol
         # Yahoo embeds the requested symbol in the response metadata. Do not
         # infer identity for other adapters unless they expose an explicit field.
         if isinstance(feed, Yahoo):
@@ -811,7 +812,8 @@ class AssetRunner:
             observed_symbol = metadata.get("symbol") or metadata.get("provider_symbol")
         elif isinstance(feed, Databento):
             metadata = feed.meta(symbol)
-            observed_symbol = metadata.get("provider_symbol") or metadata.get("symbol")
+            expected_provider_symbol = feed.continuous_symbol(symbol, feed.roll_rule)
+            observed_symbol = metadata.get("continuous_symbol")
         else:
             metadata = getattr(feed, "_meta", {}).get(symbol, {})
             observed_symbol = metadata.get("provider_symbol") or metadata.get("symbol")
@@ -819,7 +821,7 @@ class AssetRunner:
         instrument_id = f"icarus:{self.spec.kind}:{self.spec.symbol.upper()}"
         checked, receipt = make_bar_batch_receipt(
             instrument_id=instrument_id, provider=provider,
-            expected_provider_symbol=symbol, observed_provider_symbol=observed_symbol,
+            expected_provider_symbol=expected_provider_symbol, observed_provider_symbol=observed_symbol,
             interval_seconds=interval_seconds, requested_start_ts=start_ts,
             requested_end_ts=end_ts, bars=bars, fetched_at_ns=fetched_at_ns,
             received_at_ns=received_at_ns, entitlement_status="UNKNOWN",

@@ -6,6 +6,7 @@ from icarus_engine.market_universe import snapshot, validate_catalog
 from icarus_engine.bar_receipts import make_bar_batch_receipt
 from icarus_engine.pine.timeframe import Bar
 from tools.build_equity_catalog import _instrument_class
+from icarus_engine.market_universe_adapter import MarketUniverseAdapter
 
 
 def test_catalog_security_type_filter_distinguishes_equity_forms():
@@ -14,6 +15,44 @@ def test_catalog_security_type_filter_distinguishes_equity_forms():
     assert _instrument_class("Issuer American Depositary Shares (each representing two (2) Ordinary Shares)") == ("depositary_receipt", 2)
     assert _instrument_class("Bank Pfd 3 Ordinary Shares") is None
     assert _instrument_class("Acquisition Corp. Unit") is None
+
+
+class _FakeYahooHistory:
+    GRANULARITIES = (60, 300, 900, 1800, 3600, 86400)
+
+    def __init__(self, observed_symbol):
+        self.observed_symbol = observed_symbol
+        self.requested = []
+
+    def candles(self, symbol, interval, start, end):
+        self.requested.append((symbol, interval, start, end))
+        return [Bar(start, 10, 12, 9, 11, 4)]
+
+    def meta(self, symbol):
+        return {"symbol": self.observed_symbol}
+
+
+def test_a200_yahoo_adapter_resolves_mapping_and_keeps_entitlement_unqualified():
+    row = snapshot()["instruments"][0]
+    provider_symbol = row["provider_symbol_candidates"][0]["symbol"]
+    fake = _FakeYahooHistory(provider_symbol)
+    adapter = MarketUniverseAdapter(fake)
+    bars, receipt = adapter.fetch_history(row["instrument_id"], 60, 60, 120)
+    assert fake.requested == [(provider_symbol, 60, 60, 120)]
+    assert len(bars) == receipt.row_count == 1
+    assert receipt.identity_status == "VERIFIED"
+    assert receipt.entitlement_status == "UNKNOWN"
+    assert receipt.session_validation_status == "UNKNOWN"
+    assert receipt.historical_bars_qualified is False
+
+
+def test_a200_yahoo_adapter_rejects_unknown_id_and_provider_symbol_mismatch():
+    adapter = MarketUniverseAdapter(_FakeYahooHistory("wrong"))
+    with pytest.raises(ValueError, match="unknown A200 instrument ID"):
+        adapter.fetch_history("missing", 60, 60, 120)
+    row = snapshot()["instruments"][0]
+    with pytest.raises(ValueError, match="symbol mismatch"):
+        adapter.fetch_history(row["instrument_id"], 60, 60, 120)
 
 
 def test_bar_batch_receipt_hashes_rows_but_keeps_unknowns_unqualified():
