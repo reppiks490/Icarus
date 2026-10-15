@@ -21,6 +21,7 @@ _EVIDENCE_FIELDS = (
     "entry_price_delta_dollars_shadow_minus_primary",
     "primary_only_closed_episodes", "shadow_only_closed_episodes",
     "pairable_closed_episodes", "excluded_admin_flatten_lot_trade_pieces",
+    "administrative_censored_shadow_positions",
     "outcome_matrix", "outcome_agreement_denominator",
     "outcome_agreement_rate", "outcome_agreement_count", "primary_break_even_episodes",
     "shadow_break_even_episodes", "primary_win_count", "primary_win_preserved_count",

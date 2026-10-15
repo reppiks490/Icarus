@@ -1178,6 +1178,11 @@ class AssetRunner:
             if isinstance(self.em, MirroredEmulator):
                 open_positions.extend(self.em.shadow.open)
             entry_ids = {t.entry_id for t in open_positions}
+            has_open = bool(self.em.open) or (
+                isinstance(self.em, MirroredEmulator) and bool(self.em.shadow.open))
+            if has_open and (self.last_price is None or not math.isfinite(float(self.last_price))):
+                raise RuntimeError(
+                    f"[{self.symbol}] cannot flatten open positions: no finite last market price is available")
             for entry_id in entry_ids:
                 comment = "FLAT_" + reason.upper()[:8]
                 if isinstance(self.em, MirroredEmulator):
@@ -1187,10 +1192,9 @@ class AssetRunner:
                     self.em.primary.close(entry_id, comment=comment)
                 else:
                     self.em.close(entry_id, comment=comment)
-            has_open = bool(self.em.open) or (
-                isinstance(self.em, MirroredEmulator) and bool(self.em.shadow.open))
-            if self.last_price and has_open:
-                fake = Bar(int(time.time()), self.last_price, self.last_price, self.last_price, self.last_price, 0.0)
+            if has_open:
+                mark = float(self.last_price)
+                fake = Bar(int(time.time()), mark, mark, mark, mark, 0.0)
                 if isinstance(self.em, MirroredEmulator):
                     self.em.process_administrative_flatten(
                         fake, self.bar_index, entry_ids, reason=reason)

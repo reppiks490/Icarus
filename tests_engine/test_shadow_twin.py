@@ -1,5 +1,7 @@
 import json
 
+import pytest
+
 from icarus_engine.emulator import ClosedTrade, Emulator
 from icarus_engine.assets import parse_spec
 from icarus_engine.pine.timeframe import Bar
@@ -379,6 +381,27 @@ def test_flatten_closes_primary_but_censors_paired_shadow_position():
     assert after["excluded_admin_flatten_lot_trade_pieces"] == {"primary": 1, "shadow": 0}
     assert after["bar_close_equity_observations"] == before["bar_close_equity_observations"]
     assert after["administrative_censored_shadow_positions"] == 1
+
+
+def test_flatten_without_market_mark_does_not_leave_queued_primary_close_or_censor_shadow():
+    spec = parse_spec("NQ@1")
+    runner = AssetRunner(RunnerConfig(spec=spec, inputs=Inputs(), mintick=0.25,
+                                      shadow_real_fills=True), Journal(":memory:"), feeds={})
+    twin = runner.em
+    twin.process_bar(bar(60, 110, 112, 104, 110), 0,
+                     real_bar=bar(60, 110, 112, 104, 110))
+    twin.entry("L", 1, 1, limit=105)
+    twin.process_bar(bar(120, 110, 112, 104, 110), 1,
+                     real_bar=bar(120, 110, 112, 104, 110))
+    assert twin.primary.position_size == twin.shadow.position_size == 1
+    runner.last_price = None
+
+    with pytest.raises(RuntimeError, match="no finite last market price"):
+        runner.flatten("no-mark")
+
+    assert twin.primary.position_size == twin.shadow.position_size == 1
+    assert twin.primary._pending_closes == []
+    assert twin._administrative_censored_positions == 0
 
 
 def test_runner_feature_is_default_off_and_runtime_passes_standard_bar():

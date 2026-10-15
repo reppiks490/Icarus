@@ -150,6 +150,30 @@ def test_flatten_open_trade_cannot_fill_pending_reversal():
     assert r.strat.w_slot_queue == [0] and r.strat.tod_hour_queue == [8]
 
 
+def test_flatten_without_a_market_mark_fails_before_queueing_a_close():
+    r = make_runner()
+    r.em.entry("Long", 1, 1)
+    r.em.process_bar(Bar(0, 100, 100, 100, 100, 1), 0)
+    r.last_price = None
+
+    with pytest.raises(RuntimeError, match="no finite last market price"):
+        r.flatten()
+
+    assert r.em.position_size == 1
+    assert r.em._pending_closes == []
+
+
+def test_flatten_accepts_zero_as_a_finite_market_mark():
+    r = make_runner()
+    r.em.entry("Long", 1, 1)
+    r.em.process_bar(Bar(0, 100, 100, 100, 100, 1), 0)
+    r.last_price = 0.0
+
+    assert r.flatten() == 1
+    assert r.em.position_size == 0
+    assert r.em.closed[-1].exit_price == 0.0
+
+
 @pytest.fixture
 def configured(tmp_path):
     (tmp_path / "presets").mkdir()
