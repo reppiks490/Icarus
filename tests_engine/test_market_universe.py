@@ -170,6 +170,38 @@ def test_bar_batch_receipt_requires_expected_session_coverage_for_qualification(
     assert verified_coverage.historical_bars_qualified is True
 
 
+def test_session_schedule_supports_rth_hourly_anchor_and_weekend_closure():
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    eastern = ZoneInfo("America/New_York")
+    expected = [
+        int(datetime(2026, 10, 14, hour, 30, tzinfo=eastern).timestamp())
+        for hour in range(9, 16)
+    ]
+    expected.append(int(datetime(2026, 10, 19, 9, 30, tzinfo=eastern).timestamp()))
+    common = dict(
+        instrument_id="icarus:equity:TEST", provider="test",
+        expected_provider_symbol="TEST", observed_provider_symbol="TEST",
+        interval_seconds=3600, requested_start_ts=expected[0],
+        requested_end_ts=expected[-1] + 3600, fetched_at_ns=1,
+        received_at_ns=2, entitlement_status="VERIFIED",
+        session_validation_status="VERIFIED", provider_mapping_status="VERIFIED",
+    )
+    bars = [Bar(ts, 10, 12, 9, 11, 4) for ts in expected]
+
+    _, complete = make_bar_batch_receipt(**common, bars=bars, expected_timestamps=expected)
+    _, missing = make_bar_batch_receipt(
+        **common, bars=bars[:2] + bars[3:], expected_timestamps=expected,
+    )
+
+    assert complete.timestamp_alignment_status == "VERIFIED"
+    assert complete.interval_gap_count == 0
+    assert complete.historical_bars_qualified is True
+    assert missing.interval_gap_count == 1
+    assert missing.historical_bars_qualified is False
+
+
 def test_catalog_contains_two_hundred_unique_disabled_equity_candidates():
     data = snapshot()
     rows = data["instruments"]

@@ -77,8 +77,8 @@ def make_bar_batch_receipt(
     rows = list(bars)
     expected = None if expected_timestamps is None else list(expected_timestamps)
     if expected is not None:
-        if any(type(ts) is not int or not start <= ts < end or ts % interval_seconds for ts in expected):
-            raise ValueError("expected bar timestamps must be aligned integers inside the requested window")
+        if any(type(ts) is not int or not start <= ts < end for ts in expected):
+            raise ValueError("expected bar timestamps must be integers inside the requested window")
         if any(later <= earlier for earlier, later in zip(expected, expected[1:])):
             raise ValueError("expected bar timestamps must be strictly increasing without duplicates")
     observed = str(observed_provider_symbol) if observed_provider_symbol else None
@@ -99,7 +99,7 @@ def make_bar_batch_receipt(
             raise ValueError(f"bar timestamp {ts} is outside requested [{start}, {end}) window")
         if previous is not None and ts <= previous:
             raise ValueError("bar batch timestamps must be strictly increasing without duplicates")
-        if ts % interval_seconds:
+        if expected is None and ts % interval_seconds:
             aligned = False
         if previous is not None and ts - previous > interval_seconds:
             gap_count += max(0, (ts - previous) // interval_seconds - 1)
@@ -120,6 +120,7 @@ def make_bar_batch_receipt(
         unexpected = observed_timestamps - expected_set
         if unexpected:
             raise ValueError(f"bar timestamp {min(unexpected)} is outside expected session schedule")
+        aligned = observed_timestamps.issubset(expected_set)
         missing_count = len(expected_set - observed_timestamps)
         expected_count = len(expected)
         gap_count = missing_count
