@@ -8,7 +8,7 @@ from .dataset import attach_labels, walk_slices
 from .families import FAMILIES, family_for
 from .integrity import inspect_ohlc
 from .logit import accuracy, fit
-from . import xgb_slot
+from . import xgb_slot, gru_slot
 from icarus_engine.spec import artifact
 
 def file_hash(path: Path) -> str:
@@ -100,6 +100,32 @@ def train_xgb_file(path, chart_type: str, schema: str = "ohlc", asset: str = "",
     return xgb_slot.train(
         attach_labels(bars, fam_name), asset, fam_name,
         out_path=Path(out) if out else Path(artifact(asset, fam_name, "xgb")),
+        ledger_path=ledger, dataset_sha256=manifest["raw_sha256"],
+        extra={"path": str(path), "index": fam.index, "label": fam.label, "n_bars": len(bars),
+               "dataset_manifest": manifest},
+    )
+
+def train_gru_file(path, chart_type: str, schema: str = "ohlc", asset: str = "", out=None, ledger=None, *, raw_bytes=None):
+    """Fit the optional research-only GRU challenger on one causally ordered dataset."""
+    refusal = _preflight(asset, 5)
+    if refusal:
+        if refusal.get("status") in {"blocked", "ignored"}:
+            refusal["production_decision_authorized"] = False
+        return refusal
+    path = Path(path)
+    fam_name = family_for(chart_type, schema)
+    fam = FAMILIES[fam_name]
+    bars, manifest, refusal = _load(path, raw_bytes=raw_bytes, family=fam_name, asset=asset, slot="gru")
+    if refusal:
+        refusal["production_decision_authorized"] = False
+        return refusal
+    short = _too_short(bars, fam, fam_name, asset, path, manifest)
+    if short:
+        short["production_decision_authorized"] = False
+        return short
+    return gru_slot.train(
+        attach_labels(bars, fam_name), asset, fam_name,
+        out_path=Path(out) if out else Path(artifact(asset, fam_name, "gru")),
         ledger_path=ledger, dataset_sha256=manifest["raw_sha256"],
         extra={"path": str(path), "index": fam.index, "label": fam.label, "n_bars": len(bars),
                "dataset_manifest": manifest},
