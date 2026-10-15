@@ -388,6 +388,57 @@ class IbkrPaperVenueTests(unittest.TestCase):
     }]
 
 
+  def test_reused_order_ref_with_different_terms_is_rejected_not_acknowledged(self):
+    adapter, gateway = venue()
+    assert adapter.submit("same-ref", "MNQZ26", "BUY", 1, "MARKET", None)["status"] == "ack"
+
+    with self.assertRaisesRegex(ValueError, "terms do not match"):
+      adapter.submit("same-ref", "MNQZ26", "SELL", 2, "LIMIT", 19888.25)
+
+    assert len(gateway.placed) == 1
+    assert gateway.placed[0][2]["action"] == "BUY"
+    assert gateway.placed[0][2]["totalQuantity"] == 1
+
+
+  def test_same_order_ref_with_different_contract_is_rejected(self):
+    adapter, gateway = venue()
+    assert adapter.submit("same-ref", "MNQZ26", "BUY", 1, "MARKET", None)["status"] == "ack"
+    original_find = gateway.find_order_by_ref
+
+    def wrong_contract(account_id, order_ref):
+      record = original_find(account_id, order_ref)
+      record["contract"] = dict(record["contract"], conId=999999)
+      return record
+
+    gateway.find_order_by_ref = wrong_contract
+    with self.assertRaisesRegex(ValueError, "contract does not match"):
+      adapter.submit("same-ref", "MNQZ26", "BUY", 1, "MARKET", None)
+
+
+  def test_duplicate_ibkr_order_refs_remain_ambiguous(self):
+    api = FakeIbapiClient()
+    gateway = IbkrTwsPaperGateway(api_client=api, contract_factory=FakeApiRecord,
+                                  order_factory=FakeApiRecord, timeout_s=0.05)
+    gateway.connect()
+    contract = gateway._make_contract(mapping().ib_contract())
+    request = {
+        "account": "DU12345", "action": "BUY", "totalQuantity": 1,
+        "orderType": "MKT", "tif": "DAY", "orderRef": "duplicate-ref",
+        "outsideRth": False,
+    }
+    first_order = gateway._make_order(request)
+    second_order = gateway._make_order(request)
+    api.orders["901"] = (contract, first_order, "Submitted")
+    api.orders["902"] = (contract, second_order, "Submitted")
+    adapter = IbkrPaperVenue(gateway, "DU12345", {"MNQZ26": mapping()})
+
+    result = adapter.submit("duplicate-ref", "MNQZ26", "BUY", 1, "MARKET", None)
+
+    assert result == {"status": "timeout"}
+    assert len(api.placed) == 0
+    gateway.disconnect()
+
+
   def test_cancel_replace_and_positions_are_scoped_to_selected_paper_account(self):
     adapter, gateway = venue()
     result = adapter.submit("ci-working", "MNQZ26", "SELL", 2, "LIMIT", 19888.25)
