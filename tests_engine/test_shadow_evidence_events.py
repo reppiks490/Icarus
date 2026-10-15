@@ -18,6 +18,7 @@ def evidence(**changes):
         "shadow_entry_fills": 3,
         "entry_fill_parity": 0.75,
         "outcome_matrix": {"win": {"win": 2}},
+        "excluded_admin_flatten_lot_trade_pieces": {"primary": 0, "shadow": 0},
         "primary": {"net": 120.0, "warmup_net": 0.0, "live_net": 120.0},
         "real_price_shadow": {"net": 50.0, "warmup_net": 0.0, "live_net": 50.0},
         "net_realization_ratio": 50.0 / 120.0,
@@ -41,6 +42,9 @@ def test_explicit_shadow_event_is_compact_content_addressed_and_non_authoritativ
     assert row["production_decision_authorized"] is False
     assert row["payload"]["execution_authorized"] is False
     assert row["payload"]["evidence"]["provenance"]["price_provider"] == "databento"
+    assert row["payload"]["evidence"]["excluded_admin_flatten_lot_trade_pieces"] == {
+        "primary": 0, "shadow": 0,
+    }
     assert "recent_intents" not in row["payload"]["evidence"]
     assert "recent_entry_fill_pairs" not in row["payload"]["evidence"]
     assert row["evidence_ids"][0].startswith("sha256:")

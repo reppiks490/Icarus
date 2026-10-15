@@ -35,6 +35,13 @@ class MirroredEmulator:
         self.intents: list[dict[str, Any]] = []
         self._pending_entry_intents: dict[str, list[dict[str, Any]]] = {"primary": [], "shadow": []}
         self._entry_fill_pairs: dict[int, dict[str, Any]] = {}
+        # Trades closed by an administrative flatten use an immediate synthetic
+        # mark in the runtime. Keep those trade sequences out of market-bar
+        # outcome and P&L evidence, while still allowing the operator to close
+        # both paper lanes.
+        self._administratively_flattened_lot_ids: dict[str, set[int]] = {
+            "primary": set(), "shadow": set(),
+        }
         self._bar_index = -1
         self._bar_ts: Optional[int] = None
         # This is close-marked observation only; it is not intrabar drawdown.
@@ -195,7 +202,21 @@ class MirroredEmulator:
             except Exception as exc:
                 self._degrade(f"shadow administrative cancellation failed: {type(exc).__name__}: {exc}")
 
-    def _episodes(self, engine: Emulator, lane: str) -> dict[Any, dict[str, Any]]:
+    def mark_administrative_flatten(self, entry_ids: set[str]) -> None:
+        """Exclude affected open trade episodes from real-bar market evidence.
+
+        Runtime flatten is an immediate administrative control and may use a
+        synthetic current-price mark. It remains operational in both lanes,
+        but its resulting trade records are not market-bar execution evidence.
+        """
+        if not entry_ids:
+            return
+        for lane, engine in (("primary", self.primary), ("shadow", self.shadow)):
+            self._administratively_flattened_lot_ids[lane].update(
+                int(trade.seq) for trade in engine.open if trade.entry_id in entry_ids
+            )
+
+    def _episodes(self, engine: Emulator, lane: str) -> tuple[dict[Any, dict[str, Any]], int]:
         intent_by_entry: dict[tuple[str, int, int, str, int, float], int] = {}
         for intent_seq, pair in self._entry_fill_pairs.items():
             fill = pair.get(lane)
@@ -208,7 +229,11 @@ class MirroredEmulator:
         episodes: dict[Any, dict[str, Any]] = defaultdict(
             lambda: {"net": 0.0, "pieces": 0, "qty": 0, "closed": False,
                      "entry_ts": 0, "last_exit_ts": 0})
+        excluded_admin_flatten_pieces = 0
         for trade in engine.closed:
+            if int(trade.lot_id) in self._administratively_flattened_lot_ids[lane]:
+                excluded_admin_flatten_pieces += 1
+                continue
             side = "buy" if int(trade.direction) > 0 else "sell"
             identity = (str(trade.entry_id), int(trade.entry_ts), int(trade.entry_bar),
                         side, int(trade.entry_qty or trade.qty), float(trade.entry_price))
@@ -223,11 +248,11 @@ class MirroredEmulator:
             row["closed"] = True
             row["entry_ts"] = int(trade.entry_ts)
             row["last_exit_ts"] = max(row["last_exit_ts"], int(trade.exit_ts))
-        return dict(episodes)
+        return dict(episodes), excluded_admin_flatten_pieces
 
     def summary(self, *, live_from_ts: Optional[int] = None) -> dict[str, Any]:
-        primary_eps = self._episodes(self.primary, "primary")
-        shadow_eps = self._episodes(self.shadow, "shadow")
+        primary_eps, primary_admin_flatten_pieces = self._episodes(self.primary, "primary")
+        shadow_eps, shadow_admin_flatten_pieces = self._episodes(self.shadow, "shadow")
         common = sorted(primary_eps.keys() & shadow_eps.keys())
         directional = [k for k in common if primary_eps[k]["net"] != 0 and shadow_eps[k]["net"] != 0]
         agreement = sum((primary_eps[k]["net"] > 0) == (shadow_eps[k]["net"] > 0)
@@ -303,6 +328,10 @@ class MirroredEmulator:
             "primary_only_closed_episodes": len(primary_eps.keys() - shadow_eps.keys()),
             "shadow_only_closed_episodes": len(shadow_eps.keys() - primary_eps.keys()),
             "pairable_closed_episodes": len(common),
+            "excluded_admin_flatten_lot_trade_pieces": {
+                "primary": primary_admin_flatten_pieces,
+                "shadow": shadow_admin_flatten_pieces,
+            },
             "outcome_agreement_denominator": len(directional),
             "outcome_agreement_rate": (agreement / len(directional) if directional else None),
             "outcome_agreement_count": agreement,

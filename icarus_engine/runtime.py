@@ -1178,6 +1178,11 @@ class AssetRunner:
             if isinstance(self.em, MirroredEmulator):
                 open_positions.extend(self.em.shadow.open)
             entry_ids = {t.entry_id for t in open_positions}
+            if isinstance(self.em, MirroredEmulator):
+                # The immediate flatten mark below is synthetic, so preserve
+                # the operational close but exclude these episodes from the
+                # shadow's standard-real-bar performance evidence.
+                self.em.mark_administrative_flatten(entry_ids)
             for entry_id in entry_ids:
                 self.em.close(entry_id, comment="FLAT_" + reason.upper()[:8])
             has_open = bool(self.em.open) or (
@@ -1829,6 +1834,10 @@ class Portfolio:
             "primary_only_entry_fills": sum(x["primary_only_entry_fills"] for x in shadow_rows),
             "shadow_only_entry_fills": sum(x["shadow_only_entry_fills"] for x in shadow_rows),
             "pairable_closed_episodes": sum(x["pairable_closed_episodes"] for x in shadow_rows),
+            "excluded_admin_flatten_lot_trade_pieces": {
+                lane: sum(x["excluded_admin_flatten_lot_trade_pieces"][lane] for x in shadow_rows)
+                for lane in ("primary", "shadow")
+            },
             "outcome_agreement_denominator": agreement_denominator,
             "outcome_agreement_rate": agree_count / agreement_denominator if agreement_denominator else None,
             "outcome_matrix": portfolio_outcome_matrix,

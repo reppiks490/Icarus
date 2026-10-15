@@ -322,12 +322,19 @@ def test_flatten_closes_shadow_only_position():
                      real_bar=bar(120, 110, 112, 104, 110))
     assert twin.primary.position_size == 0
     assert twin.shadow.position_size == 1
-    runner.last_price = 110
+    # The admin mark differs from the most recent standard real-bar close.
+    runner.last_price = 120
 
     assert runner.flatten("test") == 1
     assert twin.shadow.open == []
     assert twin.shadow.closed[-1].exit_comment == "FLAT_TEST"
     assert twin.status == "READY"
+    result = twin.summary()
+    assert twin.shadow.closed[-1].exit_price == 120
+    assert result["shadow_only_closed_episodes"] == 0
+    assert result["pairable_closed_episodes"] == 0
+    assert result["real_price_shadow"]["net"] == 0
+    assert result["excluded_admin_flatten_lot_trade_pieces"] == {"primary": 0, "shadow": 1}
 
 
 def test_runner_feature_is_default_off_and_runtime_passes_standard_bar():
