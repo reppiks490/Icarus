@@ -1,0 +1,94 @@
+from __future__ import annotations
+
+import builtins
+from types import SimpleNamespace
+
+from icarus_engine.spec import FEATURE_KEYS
+from icarus_engine.trainers import gru_slot
+from icarus_engine.trainers.sequence import causal_sequence_rows, fit_standardizer, standardize_sequence
+
+
+def _row(i: int, *, y: int | None = None, scale: float = 1.0):
+    return {
+        "ts": float(i),
+        "label_ts": float(i + 1),
+        "y": (1 if i % 2 == 0 else -1) if y is None else y,
+        "x": {key: scale * float(i + j + 1) for j, key in enumerate(FEATURE_KEYS)},
+    }
+
+
+def test_causal_sequences_end_at_decision_row_and_never_read_future():
+    rows = [_row(i) for i in range(12)]
+    seqs = causal_sequence_rows(rows, start=5, stop=9, sequence_length=4)
+
+    assert [seq["end_index"] for seq in seqs] == [5, 6, 7, 8]
+    assert [seq["ts"] for seq in seqs] == [5.0, 6.0, 7.0, 8.0]
+    assert [seq["label_ts"] for seq in seqs] == [6.0, 7.0, 8.0, 9.0]
+
+    for seq in seqs:
+        end = seq["end_index"]
+        first_feature = FEATURE_KEYS[0]
+        observed = [step[first_feature] for step in seq["steps"]]
+        assert observed == [rows[i]["x"][first_feature] for i in range(end - 3, end + 1)]
+        assert max(observed) == rows[end]["x"][first_feature]
+
+
+def test_standardizer_is_fit_only_on_training_rows_and_handles_constant_features():
+    train = [_row(i) for i in range(8)]
+    # Make one feature constant in training so the denominator must fail-safe to 1.0.
+    for row in train:
+        row["x"][FEATURE_KEYS[-1]] = 7.0
+
+    standardizer = fit_standardizer(train)
+    before = dict(standardizer["mean"]), dict(standardizer["scale"])
+
+    future = _row(1000, scale=1000.0)
+    normalized = standardize_sequence([future["x"]], standardizer)
+
+    assert before == (standardizer["mean"], standardizer["scale"])
+    assert standardizer["scale"][FEATURE_KEYS[-1]] == 1.0
+    assert len(normalized) == 1
+    assert set(normalized[0]) == set(FEATURE_KEYS)
+
+
+def test_gru_trainer_fails_closed_on_short_history_without_importing_torch(monkeypatch, tmp_path):
+    rows = [_row(i) for i in range(30)]
+    real_import = builtins.__import__
+
+    def guarded_import(name, *args, **kwargs):
+        if name == "torch" or name.startswith("torch."):
+            raise AssertionError("torch must not be imported before dataset preflight passes")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", guarded_import)
+    report = gru_slot.train(rows, "NQ", "clock_minutes", tmp_path / "gru.json", ledger_path=tmp_path / "ledger.sqlite3")
+
+    assert report["status"] == "skipped"
+    assert "rows" in report["reason"] or "walk-forward" in report["reason"]
+    assert report["execution_authorized"] is False
+    assert report["production_decision_authorized"] is False
+
+
+def test_gru_trainer_blocks_cleanly_when_optional_backend_is_missing(monkeypatch, tmp_path):
+    rows = [_row(i) for i in range(240)]
+
+    def missing_backend():
+        return None, "PyTorch is not installed"
+
+    monkeypatch.setattr(gru_slot, "_load_torch", missing_backend)
+    report = gru_slot.train(rows, "NQ", "clock_minutes", tmp_path / "gru.json", ledger_path=tmp_path / "ledger.sqlite3")
+
+    assert report["status"] == "blocked"
+    assert "PyTorch" in report["reason"]
+    assert report["execution_authorized"] is False
+    assert report["production_decision_authorized"] is False
+
+
+def test_gru_contract_is_research_only_and_reuses_frozen_feature_keys():
+    contract = gru_slot.contract()
+
+    assert contract["features"] == list(FEATURE_KEYS)
+    assert contract["sequence_length"] >= 4
+    assert contract["execution_authorized"] is False
+    assert contract["production_decision_authorized"] is False
+    assert contract["auto_promote"] is False
