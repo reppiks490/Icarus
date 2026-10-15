@@ -249,13 +249,26 @@ class PaperWorkspaceManager:
                 started.append(portfolio)
                 portfolio.start()
         except Exception:
-            for portfolio in reversed(started):
-                portfolio.stop()
+            self._stop_portfolios(reversed(started))
             raise
 
     def stop(self):
-        for portfolio in reversed(list(self.portfolios.values())):
-            portfolio.stop()
+        self._stop_portfolios(reversed(list(self.portfolios.values())))
+
+    @staticmethod
+    def _stop_portfolios(portfolios):
+        first_error = None
+        for portfolio in portfolios:
+            try:
+                portfolio.stop()
+            except Exception as ex:
+                first_error = first_error or ex
+            try:
+                portfolio.journal.con.close()
+            except Exception as ex:
+                first_error = first_error or ex
+        if first_error is not None:
+            raise first_error
 
     def snapshot(self):
         rows = []
