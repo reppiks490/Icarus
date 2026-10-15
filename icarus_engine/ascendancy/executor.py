@@ -10,6 +10,7 @@ receipts, scientific evidence, qualification receipts, or trading authority.
 """
 from __future__ import annotations
 
+from contextlib import contextmanager
 import hashlib
 import json
 import os
@@ -18,7 +19,7 @@ import sqlite3
 import threading
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable, Mapping, Sequence
+from typing import Any, Callable, Mapping, Sequence, Iterator
 
 SCHEMA_VERSION = "icarus-ascendancy-safe-executor-v1"
 RECEIPT_SCHEMA_VERSION = "icarus-ascendancy-safe-executor-receipt-v1"
@@ -223,11 +224,19 @@ class GovernorExecutor:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._init()
 
-    def _connect(self) -> sqlite3.Connection:
+    @contextmanager
+    def _connect(self) -> Iterator[sqlite3.Connection]:
         con = sqlite3.connect(str(self.path), timeout=15)
-        con.row_factory = sqlite3.Row
-        con.execute("PRAGMA journal_mode=WAL")
-        return con
+        try:
+            con.row_factory = sqlite3.Row
+            con.execute("PRAGMA journal_mode=WAL")
+            yield con
+            con.commit()
+        except Exception:
+            con.rollback()
+            raise
+        finally:
+            con.close()
 
     @property
     def journal_mode(self) -> str:

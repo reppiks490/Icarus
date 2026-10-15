@@ -11,6 +11,7 @@ phenomena keep cause=None.  The lab has no execution or production authority.
 """
 from __future__ import annotations
 
+from contextlib import contextmanager
 import hashlib
 import json
 import math
@@ -21,7 +22,7 @@ import statistics
 import threading
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Mapping, Sequence
+from typing import Any, Mapping, Sequence, Iterator
 
 SCHEMA_VERSION = "icarus-ascendancy-unknown-event-v1"
 LAB_SCHEMA_VERSION = "icarus-ascendancy-unknown-lab-v1"
@@ -224,11 +225,19 @@ class UnknownUnknownLab:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._init()
 
-    def _connect(self) -> sqlite3.Connection:
+    @contextmanager
+    def _connect(self) -> Iterator[sqlite3.Connection]:
         con = sqlite3.connect(str(self.path), timeout=15)
-        con.row_factory = sqlite3.Row
-        con.execute("PRAGMA journal_mode=WAL")
-        return con
+        try:
+            con.row_factory = sqlite3.Row
+            con.execute("PRAGMA journal_mode=WAL")
+            yield con
+            con.commit()
+        except Exception:
+            con.rollback()
+            raise
+        finally:
+            con.close()
 
     @property
     def journal_mode(self) -> str:

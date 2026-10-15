@@ -1,6 +1,7 @@
 """Bounded native CONTRACT_VALIDATION service backed by the existing evaluator."""
 from __future__ import annotations
 
+from contextlib import contextmanager
 import hashlib
 import json
 import math
@@ -10,6 +11,7 @@ import sqlite3
 import subprocess
 import sys
 import threading
+from typing import Iterator
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -72,11 +74,19 @@ class NativeContractValidator:
             con.execute("CREATE INDEX IF NOT EXISTS idx_native_runs_recovery ON runs(state,created_at,run_id)")
             con.execute("CREATE INDEX IF NOT EXISTS idx_native_runs_candidate ON runs(candidate_id,state)")
 
-    def _connect(self):
+    @contextmanager
+    def _connect(self) -> Iterator[sqlite3.Connection]:
         con = sqlite3.connect(str(self.path), timeout=15)
-        con.row_factory = sqlite3.Row
-        con.execute("PRAGMA journal_mode=WAL")
-        return con
+        try:
+            con.row_factory = sqlite3.Row
+            con.execute("PRAGMA journal_mode=WAL")
+            yield con
+            con.commit()
+        except Exception:
+            con.rollback()
+            raise
+        finally:
+            con.close()
 
     def _source_check(self, candidate, deadline):
         def git(*args):
