@@ -59,7 +59,15 @@ class SharedFeed:
                 holes.append((cursor, end))
             for left, right in holes:
                 rows = self._feed.candles(symbol, granularity, left, right)
-                segments.append((left, right, {int(row.ts):row for row in rows}))
+                # Providers promise a half-open range, but a shared cache must
+                # enforce it itself: one stray row would otherwise be served
+                # to every workspace and could mask a later correct fetch.
+                cached_rows = {}
+                for row in rows:
+                    ts = int(row.ts)
+                    if left <= ts < right:
+                        cached_rows[ts] = row
+                segments.append((left, right, cached_rows))
             merged = {}
             for left, right, rows in segments:
                 if left < end and right > start:
