@@ -1301,6 +1301,12 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._json(403, {"detail": "bad host"})
             p = urlparse(self.path)
             q = parse_qs(p.query)
+            if p.path == "/api/market-universe":
+                from .market_universe import snapshot as market_universe_snapshot
+                try:
+                    return self._json(200, market_universe_snapshot())
+                except (ValueError, OSError) as ex:
+                    return self._json(500, {"detail": f"market universe catalog unavailable: {ex}"})
             if p.path == "/api/command-centers":
                 snapshot = command_centers.snapshot()
                 snapshot["input_meta"] = meta

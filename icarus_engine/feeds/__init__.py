@@ -63,10 +63,13 @@ class Coinbase:
         return http_json(f"{self.BASE}/products/{product}")
 
     def mintick(self, product: str) -> float:
-        try:
-            return float(self.product(product).get("quote_increment") or 0.01)
-        except Exception:
-            return 0.01
+        increment = self.product(product).get("quote_increment")
+        if increment in (None, ""):
+            raise ValueError(f"Coinbase did not provide quote_increment for {product}")
+        value = float(increment)
+        if value <= 0:
+            raise ValueError(f"Coinbase provided an invalid quote_increment for {product}")
+        return value
 
     def ticker(self, product: str) -> Optional[float]:
         try:

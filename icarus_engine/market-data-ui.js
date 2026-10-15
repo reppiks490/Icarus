@@ -18,6 +18,7 @@ function marketDataHtml(assets){
     '<button id="mdRefresh">Refresh now</button><button id="mdSnapshot">Request MBO snapshot</button>'+
     '<span id="mdBusy" class="small muted"></span></div>'+
     '<div class="small muted">Same backend used by MCP tools <code>engine_market_data_capabilities</code>, <code>engine_recent_ticks</code>, <code>engine_order_book_events</code>, and <code>engine_mbo_snapshot</code>. Raw Databento side codes are shown as A/B; ICARUS does not invent a buy/sell interpretation.</div></section>'+
+    '<section class="card c12"><h2>200 equity candidates <span class="sub">catalog and readiness · no automatic activation</span></h2><div id="mdUniverseSummary" class="tiles"><p class="empty">Loading catalog…</p></div><div id="mdUniverseTable" class="scroll" style="max-height:420px;margin-top:10px"></div></section>'+
     '<section class="card c12"><h2>Feed health &amp; continuous mapping</h2><div id="mdHealth" class="tiles"></div><div id="mdErrors" class="small" style="margin-top:8px"></div></section>'+
     '<section class="card c12"><h2>Microstructure window <span class="sub">derived only from returned authentic trade events</span></h2><div id="mdMicro" class="tiles"></div></section>'+
     '<section class="card c12"><h2>Recent trade events</h2><div id="mdTicks" class="scroll" style="max-height:520px"></div></section>'+
@@ -210,6 +211,22 @@ function marketDataRenderSnapshot(){
   el.innerHTML='<div class="small muted">'+esc(payload.asset||marketDataState.asset)+' · '+esc(payload.schema||'mbo')+' · '+rows.length+' snapshot records</div>'+marketDataRowsTable(rows,'depth');
 }
 
+async function loadMarketUniverse(){
+  const summary=document.querySelector('#mdUniverseSummary');
+  const table=document.querySelector('#mdUniverseTable');
+  if(!summary||!table) return;
+  const result=await marketDataFetch('/api/market-universe');
+  if(!result.ok){summary.innerHTML='<p class="neg">Catalog unavailable: '+esc(result.error)+'</p>';table.innerHTML='';return;}
+  const data=result.data||{}, counts=data.counts||{}, rows=Array.isArray(data.instruments)?data.instruments:[];
+  const keys=[['Catalogued','catalogued_count'],['Source connected','source_connected_count'],['History qualified','historical_bars_qualified_count'],['Live qualified','live_bars_qualified_count'],['Pulse enabled','pulse_enabled_count'],['Strategy qualified','strategy_qualified_count']];
+  summary.innerHTML=keys.map(function(pair){return '<div class="tile"><div class="k">'+esc(pair[0])+'</div><div class="v">'+esc(counts[pair[1]]==null?'—':counts[pair[1]])+'</div></div>';}).join('')+
+    '<div class="small muted" style="grid-column:1/-1">Snapshot '+esc(data.retrieved_at||'unknown')+'. Candidate rows use provisional listing identities and unverified Yahoo mappings. Missing tick, share, corporate-action, terms, and entitlement facts keep all 200 candidates out of Pulse.</div>';
+  table.innerHTML=rows.length?'<table><thead><tr><th>Instrument ID</th><th>Symbol</th><th>Name</th><th>Venue</th><th>Source map</th><th>State</th></tr></thead><tbody>'+rows.map(function(row){
+    const candidate=(row.provider_symbol_candidates||[])[0]||{};
+    return '<tr><td><code>'+esc(row.instrument_id||'')+'</code></td><td><b>'+esc(row.display_symbol||'')+'</b></td><td>'+esc(row.name||'')+'</td><td>'+esc(row.venue||'')+'</td><td>'+esc((candidate.provider||'')+': '+(candidate.symbol||'')+' · '+(candidate.mapping_status||''))+'</td><td>'+esc(row.source_connection||'')+' · '+(row.pulse_enabled?'Pulse enabled':'disabled')+'</td></tr>';
+  }).join('')+'</tbody></table>':'<p class="empty">No catalog rows.</p>';
+}
+
 async function loadMarketData(){
   if(view!=='market-data') return;
   if(marketDataLoading){marketDataPendingLoad=true;return;}
@@ -271,8 +288,9 @@ function wireMarketData(){
     loadMarketData();
   };
   const refresh=document.querySelector('#mdRefresh');
-  if(refresh) refresh.onclick=loadMarketData;
+  if(refresh) refresh.onclick=function(){loadMarketData();loadMarketUniverse();};
   const snapshot=document.querySelector('#mdSnapshot');
   if(snapshot) snapshot.onclick=marketDataSnapshot;
+  loadMarketUniverse();
   loadMarketData();
 }
