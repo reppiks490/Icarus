@@ -25,7 +25,7 @@ import sqlite3
 import threading
 import time
 from dataclasses import dataclass, replace
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Deque, Dict, List, Optional, Tuple
 
 from .assets import AssetSpec, apply_chart_config, chart_capabilities, chart_timeframe_parts, normalize_chart_timeframe, resolve, validate_chart_config
@@ -1857,3 +1857,58 @@ class Portfolio:
             "all_warm": all(x["warm"] for x in rs) if rs else False,
             "preset": self.preset, "profile": self.profile, "pts_ref": {"symbol": self.pts_ref_symbol, "price": self.pts_ref_price},
         })
+
+    def publish_shadow_evidence(self, fabric, *, run_id: str, received_at: str) -> Dict[str, Any]:
+        """Explicitly publish a consistent portfolio snapshot of shadow evidence.
+
+        Unlike `status()`, this method is an intentional write. All eligible
+        events are validated before the first append so malformed asset state
+        cannot produce a knowingly partial batch. Retries are idempotent.
+        """
+        from .intelligence_fabric import IntelligenceFabric
+        from .shadow_evidence_events import shadow_evidence_event
+
+        if not isinstance(fabric, IntelligenceFabric):
+            raise ValueError("fabric must be an IntelligenceFabric")
+        staged = []
+        failures = []
+        skipped = []
+        for runner in self.runner_list():
+            row = runner.summary()
+            shadow = row.get("real_price_shadow")
+            if shadow is None:
+                skipped.append(row.get("symbol", "unknown"))
+                continue
+            stamp = row.get("last_bar_ts")
+            if isinstance(stamp, bool) or not isinstance(stamp, (int, float)) or stamp <= 0:
+                failures.append({"asset": row.get("symbol", "unknown"),
+                                 "reason": "missing valid last_bar_ts"})
+                continue
+            observed_at = datetime.fromtimestamp(float(stamp), timezone.utc).isoformat().replace("+00:00", "Z")
+            try:
+                event = shadow_evidence_event(
+                    shadow, run_id=run_id, observed_at=observed_at, received_at=received_at)
+                event.normalized()  # validate all envelopes before writing any asset event
+                staged.append((str(row.get("symbol", shadow.get("asset", "unknown"))), event))
+            except (ValueError, OverflowError, OSError) as exc:
+                failures.append({"asset": row.get("symbol", "unknown"),
+                                 "reason": f"{type(exc).__name__}: {exc}"})
+        if failures:
+            return {"schema": "icarus.real_price_shadow.publication/1", "status": "BLOCKED",
+                    "published_count": 0, "skipped_assets": skipped, "failures": failures,
+                    "execution_authorized": False, "production_decision_authorized": False}
+        receipts = []
+        for asset, event in staged:
+            try:
+                receipts.append({"asset": asset, **fabric.publish(event)})
+            except Exception as exc:
+                return {"schema": "icarus.real_price_shadow.publication/1",
+                        "status": "PARTIAL" if receipts else "FAILED",
+                        "published_count": len(receipts), "receipts": receipts,
+                        "failed_asset": asset, "failure": f"{type(exc).__name__}: {exc}",
+                        "execution_authorized": False, "production_decision_authorized": False}
+        return {"schema": "icarus.real_price_shadow.publication/1",
+                "status": "PUBLISHED" if receipts else "NO_ELIGIBLE_ASSETS",
+                "published_count": len(receipts), "receipts": receipts,
+                "skipped_assets": skipped,
+                "execution_authorized": False, "production_decision_authorized": False}

@@ -182,13 +182,46 @@ def test_portfolio_shadow_view_aggregates_counts_and_ratios_without_faking_drawd
 
     class SummaryOnlyRunner:
         def summary(self, *, nonblocking=False):
+            shadow = twin.summary()
+            shadow["provenance"] = {"price_provider": "fixture", "timeframe_minutes": 1}
             return {"symbol": "TEST", "equity": 10_000, "capital": 10_000,
                     "live_profit": 0, "open_profit": 0, "position": 0,
-                    "paused": False, "warm": True, "real_price_shadow": twin.summary()}
+                    "paused": False, "warm": True, "last_bar_ts": 180,
+                    "real_price_shadow": shadow}
 
     portfolio = Portfolio(Journal(":memory:"), ".", feeds={})
     portfolio.runners = {"TEST": SummaryOnlyRunner()}
     portfolio.order = ["TEST"]
+    from icarus_engine.intelligence_fabric import IntelligenceFabric
+    with IntelligenceFabric(":memory:") as fabric:
+        assert fabric.query(channel="real_price_shadow") == []
+        blocked_clock = portfolio.publish_shadow_evidence(
+            fabric, run_id="portfolio-01", received_at="1970-01-01T00:02:00Z")
+        assert blocked_clock["status"] == "BLOCKED"
+        assert fabric.query(channel="real_price_shadow") == []
+        class InvalidSummaryRunner:
+            def summary(self, *, nonblocking=False):
+                return {"symbol": "BAD", "last_bar_ts": 180,
+                        "real_price_shadow": {"schema": "wrong"}}
+
+        portfolio.runners["BAD"] = InvalidSummaryRunner()
+        portfolio.order.append("BAD")
+        blocked = portfolio.publish_shadow_evidence(
+            fabric, run_id="portfolio-01", received_at="1970-01-01T00:04:00Z")
+        assert blocked["status"] == "BLOCKED"
+        assert blocked["published_count"] == 0
+        assert fabric.query(channel="real_price_shadow") == []
+        del portfolio.runners["BAD"]
+        portfolio.order.remove("BAD")
+        publication = portfolio.publish_shadow_evidence(
+            fabric, run_id="portfolio-01", received_at="1970-01-01T00:04:00Z")
+        repeated = portfolio.publish_shadow_evidence(
+            fabric, run_id="portfolio-01", received_at="1970-01-01T00:04:00Z")
+        assert publication["status"] == "PUBLISHED"
+        assert publication["published_count"] == 1
+        assert publication["execution_authorized"] is False
+        assert repeated["receipts"][0]["idempotent"] is True
+        assert len(fabric.query(channel="real_price_shadow", assets=["TEST"])) == 1
     result = portfolio.status()["real_price_shadow"]
     assert result["outcome_matrix"]["win"]["loss"] == 1
     assert result["net_realization_ratio"] == -1
