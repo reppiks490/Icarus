@@ -4,6 +4,7 @@ from tempfile import TemporaryDirectory
 from icarus_engine.access_control import AccessRegistry
 from icarus_engine.ascendancy.autopilot import GovernorAutopilot
 from icarus_engine.ascendancy.foundry import CandidateFoundry
+from icarus_engine.psi_evidence import PsiEvidenceLedger
 from icarus_engine.source_reliability import SourceReliabilityStore
 
 
@@ -47,4 +48,11 @@ def test_candidate_foundry_closes_sqlite_handles_before_directory_removal():
     with TemporaryDirectory() as directory:
         store = CandidateFoundry(directory)
         assert store.journal_mode == "wal"
+        shutil.rmtree(directory)
+
+
+def test_psi_evidence_closes_sqlite_handles_before_directory_removal():
+    with TemporaryDirectory() as directory:
+        ledger = PsiEvidenceLedger(directory)
+        assert ledger.active("NQ", as_of_ts=1.0) == {}
         shutil.rmtree(directory)
