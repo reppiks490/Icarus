@@ -157,7 +157,7 @@ def test_bar_batch_receipt_records_gaps_and_never_qualifies_without_session_revi
         )
 
 
-def test_bar_batch_receipt_requires_session_aware_gap_validation_to_qualify():
+def test_bar_batch_receipt_requires_full_expected_session_schedule_to_qualify():
     common = dict(
         instrument_id="icarus:equity:TEST", provider="test",
         expected_provider_symbol="TEST", observed_provider_symbol="TEST",
@@ -177,7 +177,7 @@ def test_bar_batch_receipt_requires_session_aware_gap_validation_to_qualify():
 
     _, verified_gap_receipt = make_bar_batch_receipt(
         **common, bars=bars_with_gap,
-        gap_validator=lambda previous, current, interval: 2,
+        expected_bar_timestamps=[60, 120, 180, 240],
     )
     assert verified_gap_receipt.interval_gap_count == 2
     assert verified_gap_receipt.gap_validation_status == "VERIFIED"
@@ -186,23 +186,54 @@ def test_bar_batch_receipt_requires_session_aware_gap_validation_to_qualify():
     bars_without_gap = [Bar(60, 10, 12, 9, 11, 4), Bar(120, 11, 13, 10, 12, 5)]
     _, complete_receipt = make_bar_batch_receipt(
         **common, bars=bars_without_gap,
-        gap_validator=lambda previous, current, interval: 0,
+        expected_bar_timestamps=[60, 120],
     )
     assert complete_receipt.interval_gap_count == 0
     assert complete_receipt.gap_validation_status == "VERIFIED"
     assert complete_receipt.historical_bars_qualified
 
 
-def test_bar_gap_validator_rejects_invalid_gap_counts():
-    bars = [Bar(60, 10, 12, 9, 11, 4), Bar(240, 11, 13, 10, 12, 5)]
-    with pytest.raises(ValueError, match="nonnegative integer"):
-        make_bar_batch_receipt(
-            instrument_id="icarus:equity:TEST", provider="test",
-            expected_provider_symbol="TEST", observed_provider_symbol="TEST",
-            interval_seconds=60, requested_start_ts=60, requested_end_ts=300,
-            bars=bars, fetched_at_ns=1, received_at_ns=2,
-            gap_validator=lambda previous, current, interval: -1,
-        )
+def test_one_bar_cannot_qualify_a_sparse_long_window():
+    _, receipt = make_bar_batch_receipt(
+        instrument_id="icarus:equity:TEST", provider="test",
+        expected_provider_symbol="TEST", observed_provider_symbol="TEST",
+        interval_seconds=60, requested_start_ts=60, requested_end_ts=360,
+        bars=[Bar(60, 10, 12, 9, 11, 4)], fetched_at_ns=1, received_at_ns=2,
+        entitlement_status="VERIFIED", session_validation_status="VERIFIED",
+        provider_mapping_status="VERIFIED", alignment_validator=lambda ts: ts % 60 == 0,
+        expected_bar_timestamps=[60, 120, 180, 240, 300], bar_close_status="VERIFIED",
+    )
+    assert receipt.row_count == 1
+    assert receipt.expected_bar_count == 5
+    assert receipt.interval_gap_count == 4
+    assert receipt.gap_validation_status == "VERIFIED"
+    assert not receipt.historical_bars_qualified
+
+
+def test_receipt_identity_includes_qualification_evidence():
+    args = dict(
+        instrument_id="icarus:equity:TEST", provider="test",
+        expected_provider_symbol="TEST", observed_provider_symbol="TEST",
+        interval_seconds=60, requested_start_ts=60, requested_end_ts=120,
+        bars=[Bar(60, 10, 12, 9, 11, 4)], fetched_at_ns=1, received_at_ns=2,
+    )
+    _, unverified = make_bar_batch_receipt(**args)
+    _, entitlement_verified = make_bar_batch_receipt(**args, entitlement_status="VERIFIED")
+    assert unverified.checksum_sha256 == entitlement_verified.checksum_sha256
+    assert unverified.receipt_id != entitlement_verified.receipt_id
+
+
+def test_expected_schedule_rejects_unsorted_or_unexpected_bars():
+    args = dict(
+        instrument_id="icarus:equity:TEST", provider="test",
+        expected_provider_symbol="TEST", observed_provider_symbol="TEST",
+        interval_seconds=60, requested_start_ts=60, requested_end_ts=240,
+        bars=[Bar(120, 10, 12, 9, 11, 4)], fetched_at_ns=1, received_at_ns=2,
+    )
+    with pytest.raises(ValueError, match="strictly increasing and unique"):
+        make_bar_batch_receipt(**args, expected_bar_timestamps=[120, 60])
+    with pytest.raises(ValueError, match="expected market-session schedule"):
+        make_bar_batch_receipt(**args, expected_bar_timestamps=[60, 180])
 
 
 def test_catalog_contains_two_hundred_unique_disabled_equity_candidates():
