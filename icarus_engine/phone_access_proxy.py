@@ -36,6 +36,35 @@ def _gateway_path(path: str) -> bool:
     )
 
 
+def _requires_bearer(path: str) -> bool:
+    """Keep the dashboard shell public so it can collect a token; protect APIs."""
+    return path.startswith(("/api/", "/admin/", "/command", "/v1/")) or path in {
+        "/status/public", "/healthz", "/v1",
+    }
+
+
+def _engine_accepts_bearer(engine_port: int, bearer: str) -> bool | None:
+    """Validate the supplied token against the engine's access registry.
+
+    Returns None only when the local engine cannot be reached. The relay must
+    fail closed in that case rather than treating token presence as identity.
+    """
+    conn = http.client.HTTPConnection("127.0.0.1", engine_port, timeout=5)
+    try:
+        conn.request("GET", "/api/access", headers={
+            "Authorization": f"Bearer {bearer}",
+            "Host": f"127.0.0.1:{engine_port}",
+            "Connection": "close",
+        })
+        response = conn.getresponse()
+        response.read(1024 * 1024)
+        return response.status == 200
+    except (OSError, http.client.HTTPException):
+        return None
+    finally:
+        conn.close()
+
+
 def create_handler(*, engine_port: int, gateway_port: int):
     class PhoneAccessHandler(BaseHTTPRequestHandler):
         protocol_version = "HTTP/1.1"
@@ -114,11 +143,22 @@ def create_handler(*, engine_port: int, gateway_port: int):
                 self._respond(413, b"request too large")
                 return
             scheme, _, bearer = self.headers.get("Authorization", "").partition(" ")
+            parsed = urlsplit(self.path)
+            if _requires_bearer(parsed.path) and (scheme.lower() != "bearer" or not bearer.strip()):
+                self._respond(401, b"bearer token required")
+                return
             if scheme.lower() == "bearer" and bearer.strip() == "icarus":
                 self._respond(428, b"configure a strong, unique ICARUS token before enabling phone access")
                 return
+            if _requires_bearer(parsed.path):
+                authenticated = _engine_accepts_bearer(engine_port, bearer.strip())
+                if authenticated is None:
+                    self._respond(503, b"engine authentication service unavailable")
+                    return
+                if not authenticated:
+                    self._respond(401, b"invalid bearer token")
+                    return
 
-            parsed = urlsplit(self.path)
             if not parsed.path.startswith("/") or parsed.path.startswith("//"):
                 self._respond(400, b"invalid path")
                 return

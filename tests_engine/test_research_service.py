@@ -294,7 +294,9 @@ def test_status_public_survives_nan_and_never_empty_replies(http, portfolio):
     r = portfolio.runners["NQ"]
     r.state["hurst"] = float("nan")
     r.last_price = float("inf")
-    status, data = http("GET", "/status/public")
+    assert http("GET", "/status/public", headers={"Authorization": "Bearer wrong-token"})[0] == 401
+    auth = {"Authorization": "Bearer test-token"}
+    status, data = http("GET", "/status/public", headers=auth)
     assert data, "empty reply is what paints ENGINE UNREACHABLE"
     assert status == 200
     assert json.loads(data)["assets"][0]["symbol"] == "NQ"
@@ -302,7 +304,7 @@ def test_status_public_survives_nan_and_never_empty_replies(http, portfolio):
     def boom():
         raise RuntimeError("synthetic summary failure")
     portfolio.runners["NQ"].summary = boom
-    status, data = http("GET", "/status/public")
+    status, data = http("GET", "/status/public", headers=auth)
     assert data
     json.loads(data)
     assert status in (200, 500)

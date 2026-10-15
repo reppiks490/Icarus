@@ -9,6 +9,7 @@ import pytest
 from icarus_engine.phone_access_proxy import create_handler
 
 PHONE_ORIGIN = "https://icarus-command-center-mobile.cloudyrook1.chatgpt.site"
+_TOKEN = "unique-phone-test-token-that-is-not-the-default"
 
 
 class _StubHandler(BaseHTTPRequestHandler):
@@ -18,14 +19,19 @@ class _StubHandler(BaseHTTPRequestHandler):
     def _record(self):
         length = int(self.headers.get("Content-Length", "0"))
         body = self.rfile.read(length) if length else b""
-        self.records[self.server.label].append({
-            "method": self.command,
-            "path": self.path,
-            "headers": dict(self.headers.items()),
-            "body": body,
-        })
-        payload = f"{self.server.label}:{self.path}".encode()
-        self.send_response(200)
+        if self.path == "/api/access":
+            status = 200 if self.headers.get("Authorization") == f"Bearer {_TOKEN}" else 401
+            payload = b"{}"
+        else:
+            self.records[self.server.label].append({
+                "method": self.command,
+                "path": self.path,
+                "headers": dict(self.headers.items()),
+                "body": body,
+            })
+            status = 200
+            payload = f"{self.server.label}:{self.path}".encode()
+        self.send_response(status)
         self.send_header("Content-Type", "text/plain; charset=utf-8")
         self.send_header("Set-Cookie", "upstream=private")
         self.send_header("Content-Length", str(len(payload)))
@@ -106,7 +112,7 @@ def test_routes_dashboard_and_command_console_to_the_intended_loopback_service(
 ):
     status, headers, payload = _request(
         phone_proxy["port"], "GET", path,
-        headers={"Host": f"localhost:{phone_proxy['port']}"},
+        headers={"Host": f"localhost:{phone_proxy['port']}", "Authorization": f"Bearer {_TOKEN}"},
     )
 
     assert status == 200
@@ -117,6 +123,13 @@ def test_routes_dashboard_and_command_console_to_the_intended_loopback_service(
     assert "Set-Cookie" not in headers
 
 
+def test_dashboard_shell_bootstraps_without_a_token(phone_proxy):
+    status, _headers, payload = _request(phone_proxy["port"], "GET", "/")
+
+    assert status == 200
+    assert payload == b"engine:/"
+
+
 def test_forwards_command_body_and_safe_headers_but_strips_browser_and_proxy_identity(
     phone_proxy,
 ):
@@ -125,7 +138,7 @@ def test_forwards_command_body_and_safe_headers_but_strips_browser_and_proxy_ide
         phone_proxy["port"], "POST", "/command?source=phone", body=body,
         headers={
             "Host": f"127.0.0.1:{phone_proxy['port']}",
-            "Authorization": "Bearer unique-owner-token",
+            "Authorization": f"Bearer {_TOKEN}",
             "Content-Type": "application/json",
             "Cookie": "session=browser-secret",
             "Origin": PHONE_ORIGIN,
@@ -145,7 +158,7 @@ def test_forwards_command_body_and_safe_headers_but_strips_browser_and_proxy_ide
     assert "Access-Control-Allow-Credentials" not in response_headers
     record = phone_proxy["records"]["gateway"][-1]
     assert record["body"] == body
-    assert record["headers"]["Authorization"] == "Bearer unique-owner-token"
+    assert record["headers"]["Authorization"] == f"Bearer {_TOKEN}"
     assert record["headers"]["Content-Type"] == "application/json"
     assert record["headers"]["X-Test-Trace"] == "keep-this"
     assert record["headers"]["Host"] == f"127.0.0.1:{phone_proxy['ports']['gateway']}"
@@ -246,6 +259,39 @@ def test_rejects_default_token_before_routing(phone_proxy):
     assert sum(map(len, phone_proxy["records"].values())) == before
 
 
+@pytest.mark.parametrize("path", ["/status/public", "/api/state", "/command", "/v1/actions"])
+@pytest.mark.parametrize("authorization", [None, "Basic abc", "Bearer   "])
+def test_rejects_missing_or_empty_bearer_on_data_and_command_routes(
+    phone_proxy, path, authorization,
+):
+    before = sum(map(len, phone_proxy["records"].values()))
+    headers = {"Host": f"127.0.0.1:{phone_proxy['port']}"}
+    if authorization is not None:
+        headers["Authorization"] = authorization
+
+    status, _headers, payload = _request(phone_proxy["port"], "GET", path, headers=headers)
+
+    assert status == 401
+    assert payload == b"bearer token required"
+    assert sum(map(len, phone_proxy["records"].values())) == before
+
+
+def test_rejects_invalid_bearer_after_engine_registry_check(phone_proxy):
+    before = sum(map(len, phone_proxy["records"].values()))
+
+    status, _headers, payload = _request(
+        phone_proxy["port"], "GET", "/status/public",
+        headers={
+            "Host": f"127.0.0.1:{phone_proxy['port']}",
+            "Authorization": "Bearer attacker-chosen-token",
+        },
+    )
+
+    assert status == 401
+    assert payload == b"invalid bearer token"
+    assert sum(map(len, phone_proxy["records"].values())) == before
+
+
 @pytest.mark.parametrize(
     ("headers", "expected_status", "expected_body"),
     [
@@ -258,7 +304,11 @@ def test_rejects_invalid_large_or_websocket_requests_without_upstream_contact(
     phone_proxy, headers, expected_status, expected_body,
 ):
     before = sum(map(len, phone_proxy["records"].values()))
-    request_headers = {"Host": f"127.0.0.1:{phone_proxy['port']}", **headers}
+    request_headers = {
+        "Host": f"127.0.0.1:{phone_proxy['port']}",
+        "Authorization": f"Bearer {_TOKEN}",
+        **headers,
+    }
 
     status, _response_headers, payload = _request(
         phone_proxy["port"], "GET", "/v1/actions", headers=request_headers,
