@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import builtins
+import hashlib
+from collections import UserDict
 
 import pytest
 
 from icarus_engine.spec import FEATURE_KEYS, SLOTS
 from icarus_engine.trainers import deep_challenger
+from icarus_engine.trainers.dataset import walk_slices
 from icarus_engine.trainers.sequence import causal_sequence_rows, fit_standardizer, standardize_sequence
 
 
@@ -116,7 +119,29 @@ def test_gru_challenger_contract_is_research_only_and_reuses_frozen_feature_keys
 
 def test_gru_challenger_end_to_end_when_torch_is_available(monkeypatch, tmp_path):
     pytest.importorskip("torch")
-    rows = [_row(i, y=(1 if (i // 4) % 2 == 0 else -1)) for i in range(240)]
+    raw_digest = hashlib.sha256(b"synthetic-contract").hexdigest()
+    hold_start = walk_slices(240)[2][0]
+    claimed = {"value": False}
+
+    class GuardedRow(UserDict):
+        def __init__(self, index):
+            super().__init__(_row(index, y=(1 if (index // 4) % 2 == 0 else -1)))
+            self.index = index
+
+        def __getitem__(self, key):
+            if key == "y" and self.index >= hold_start and not claimed["value"]:
+                raise AssertionError("holdout label accessed before the ledger claim")
+            return super().__getitem__(key)
+
+    rows = [GuardedRow(i) for i in range(240)]
+    original_claim = deep_challenger.ledger.claim_holdout
+
+    def guarded_claim(*args, **kwargs):
+        result = original_claim(*args, **kwargs)
+        claimed["value"] = True
+        return result
+
+    monkeypatch.setattr(deep_challenger.ledger, "claim_holdout", guarded_claim)
 
     monkeypatch.setitem(deep_challenger._MODEL, "epochs", 2)
     monkeypatch.setitem(deep_challenger._MODEL, "patience", 1)
@@ -131,9 +156,10 @@ def test_gru_challenger_end_to_end_when_torch_is_available(monkeypatch, tmp_path
         "clock_minutes",
         tmp_path / "gru.json",
         ledger_path=tmp_path / "ledger.sqlite3",
-        dataset_sha256="synthetic-contract",
+        dataset_sha256=raw_digest,
     )
 
+    assert claimed["value"] is True
     assert report["status"] == "fitted"
     assert report["lane"] == "deep_learning_challenger"
     assert report["model"] == "gru"
@@ -141,6 +167,8 @@ def test_gru_challenger_end_to_end_when_torch_is_available(monkeypatch, tmp_path
     assert report["serialization_replay"] is True
     assert report["holdout_claim"]["status"] == "NEW"
     assert report["holdout_claim"]["ledger_namespace"] == "deep_challenger_gru"
+    assert report["rows_sha256"] == raw_digest
+    assert report["rows_sha256_basis"] == "raw_source_bytes"
     assert report["execution_authorized"] is False
     assert report["production_decision_authorized"] is False
     assert report["auto_promote"] is False

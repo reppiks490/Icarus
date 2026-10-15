@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 import platform
+import re
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
@@ -112,19 +113,6 @@ def study_sha256() -> str:
             }
         )
     )
-
-
-def rows_sha256(rows: Sequence[Mapping[str, Any]]) -> str:
-    payload = [
-        [
-            float(row["ts"]),
-            float(row["label_ts"]),
-            int(row["y"]),
-            [float(row["x"][key]) for key in FEATURE_KEYS],
-        ]
-        for row in rows
-    ]
-    return sha(canon(payload))
 
 
 def _split_bounds(rows: Sequence[Mapping[str, Any]], train, valid, hold) -> dict[str, float]:
@@ -324,18 +312,16 @@ def train(
         valid_seq = causal_sequence_rows(
             labeled, start=valid_slice[0], stop=valid_slice[1], sequence_length=sequence_length
         )
-        hold_seq = causal_sequence_rows(
-            labeled, start=hold_slice[0], stop=hold_slice[1], sequence_length=sequence_length
-        )
     except (KeyError, TypeError, ValueError) as exc:
         return _locked({**head, "status": "blocked", "reason": f"sequence preflight failed: {exc}"})
 
-    if len(train_seq) < 20 or len(valid_seq) < 10 or len(hold_seq) < 10:
+    hold_sequence_count = max(0, hold_slice[1] - max(hold_slice[0], sequence_length - 1))
+    if len(train_seq) < 20 or len(valid_seq) < 10 or hold_sequence_count < 10:
         return _locked(
             {
                 **head,
                 "status": "skipped",
-                "reason": f"sequence rows too small: train={len(train_seq)} valid={len(valid_seq)} holdout={len(hold_seq)}",
+                "reason": f"sequence rows too small: train={len(train_seq)} valid={len(valid_seq)} holdout={hold_sequence_count}",
             }
         )
 
@@ -343,10 +329,14 @@ def train(
     if torch is None:
         return _locked({**head, "status": "blocked", "reason": backend_error})
 
+    if not isinstance(dataset_sha256, str) or not re.fullmatch(r"[0-9a-f]{64}", dataset_sha256):
+        return _locked(
+            {**head, "status": "blocked", "reason": "an immutable lowercase SHA-256 source digest is required"}
+        )
+
     try:
         train_x, train_y = _tensorize(torch, train_seq, standardizer)
         valid_x, _ = _tensorize(torch, valid_seq, standardizer)
-        hold_x, _ = _tensorize(torch, hold_seq, standardizer)
         valid_signs = [seq["y"] for seq in valid_seq]
         model, best_epoch, best_valid_loss, history = _train_model(
             torch, train_x, train_y, valid_x, valid_signs
@@ -357,7 +347,9 @@ def train(
         return _locked({**head, "status": "blocked", "reason": f"GRU training failed: {exc}"})
 
     study = study_sha256()
-    rsha = rows_sha256(labeled)
+    # The immutable raw-source digest identifies the complete input without
+    # materializing protected holdout labels before the ledger claim.
+    rsha = dataset_sha256
     bounds = _split_bounds(labeled, train_slice, valid_slice, hold_slice)
     ledger_path = Path(ledger_path) if ledger_path else ledger.canonical()
     claim = ledger.claim_holdout(
@@ -368,13 +360,14 @@ def train(
         bounds["hold_end_ts"],
         rsha,
         study,
-        len(hold_seq),
+        hold_sequence_count,
         slot=LEDGER_NAMESPACE,
     )
     claim_record = {
         "status": claim,
         "hold_start_ts": bounds["hold_start_ts"],
         "hold_end_ts": bounds["hold_end_ts"],
+        "rows_sha256_basis": "raw_source_bytes",
         "ledger": str(ledger_path.resolve()),
         "ledger_namespace": LEDGER_NAMESPACE,
     }
@@ -390,8 +383,26 @@ def train(
             }
         )
 
-    # The terminal holdout is first touched here, after architecture selection,
-    # early stopping, standardization, and calibration are fully frozen.
+    # The terminal holdout is first materialized here, after its claim and after
+    # architecture selection, early stopping, standardization, and calibration
+    # are frozen. In particular, sequence construction and tensorization read
+    # holdout labels, so neither may happen in the pre-claim training phase.
+    try:
+        hold_seq = causal_sequence_rows(
+            labeled, start=hold_slice[0], stop=hold_slice[1], sequence_length=sequence_length
+        )
+        hold_x, _ = _tensorize(torch, hold_seq, standardizer)
+    except (KeyError, TypeError, ValueError, RuntimeError) as exc:
+        return _locked(
+            {
+                **head,
+                "status": "blocked",
+                "reason": f"holdout materialization failed after claim: {exc}",
+                "holdout_claim": claim_record,
+                "dataset_sha256": dataset_sha256,
+                "study_sha256": study,
+            }
+        )
     raw_hold = _predict(torch, model, hold_x)
     calibrated_hold = [isotonic_apply(calibration, p) for p in raw_hold]
     hold_rows = [labeled[seq["end_index"]] for seq in hold_seq]
@@ -464,6 +475,7 @@ def train(
             "serialization_replay": replay_ok,
             "dataset_sha256": dataset_sha256,
             "rows_sha256": rsha,
+            "rows_sha256_basis": "raw_source_bytes",
             "study_sha256": study,
             "code_sha256": code_sha256(),
             "torch_version": getattr(torch, "__version__", "unknown"),
