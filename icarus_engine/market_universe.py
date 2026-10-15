@@ -6,12 +6,15 @@ readiness, strategy qualification, or execution authority.
 from __future__ import annotations
 
 from importlib.resources import files
+from datetime import datetime, timezone
 import json
+from pathlib import Path
 import re
 from typing import Any, Mapping
 
 SCHEMA = "icarus.market-universe.catalog.v1"
 _HEX = re.compile(r"^[0-9a-f]{64}$")
+PROBE_PATH = Path(__file__).resolve().with_name("a200-yahoo-history-probe.json")
 
 
 def _load() -> dict[str, Any]:
@@ -87,4 +90,64 @@ def snapshot() -> dict[str, Any]:
         "execution_authorized": False,
         "production_decision_authorized": False,
         "note": "Cataloged equity candidates are not connected, bar-qualified, Pulse-enabled, or strategy-qualified without separate source receipts and evidence.",
+        "source_probe": load_source_probe_report(),
+    }
+
+
+def load_source_probe_report() -> dict[str, Any]:
+    """Read the non-price A200 probe ledger and label its freshness explicitly."""
+    if not PROBE_PATH.exists():
+        return {"status": "NOT_RUN", "provider": "yahoo", "results": []}
+    try:
+        report = json.loads(PROBE_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as ex:
+        return {"status": "UNAVAILABLE", "provider": "yahoo", "error": type(ex).__name__, "results": []}
+    if report.get("schema_version") != "icarus.market-universe.source-probe.v1":
+        return {"status": "INVALID", "provider": "yahoo", "results": []}
+    catalog = _load()
+    if report.get("catalog_id") != catalog.get("catalog_id"):
+        return {"status": "INVALID", "provider": "yahoo", "results": []}
+    now = datetime.now(timezone.utc)
+    try:
+        updated = datetime.fromisoformat(str(report.get("probe_updated_at", "")).replace("Z", "+00:00"))
+        age_seconds = max(0, int((now - updated).total_seconds()))
+    except (TypeError, ValueError):
+        age_seconds = None
+    completed, requested = report.get("completed_count", 0), report.get("requested_count", 0)
+    if (type(completed) is not int or type(requested) is not int or completed < 0
+            or requested < 0 or completed > requested):
+        return {"status": "INVALID", "provider": "yahoo", "results": []}
+    if age_seconds is None:
+        status = "INVALID"
+    elif age_seconds > 86400:
+        status = "STALE"
+    elif requested == len(catalog.get("instruments", [])) and completed == requested:
+        status = "CURRENT"
+    else:
+        status = "PARTIAL"
+    allowed_fields = (
+        "instrument_id", "probe_status", "provider_symbol_match_status",
+        "canonical_identity_status", "row_count", "received_start_ts",
+        "received_end_ts", "checksum_sha256", "receipt_id", "error_type", "error",
+    )
+    results = [
+        {key: row[key] for key in allowed_fields if key in row}
+        for row in report.get("results", []) if isinstance(row, dict)
+    ]
+    result_ids = [row.get("instrument_id") for row in results]
+    catalog_ids = {row.get("instrument_id") for row in catalog.get("instruments", [])}
+    if (len(results) != completed or len(set(result_ids)) != len(result_ids)
+            or not set(result_ids).issubset(catalog_ids) or report.get("raw_ohlcv_persisted") is not False):
+        return {"status": "INVALID", "provider": "yahoo", "results": []}
+    return {
+        "status": status,
+        "provider": report.get("probe_provider", "yahoo"),
+        "probe_updated_at": report.get("probe_updated_at"),
+        "age_seconds": age_seconds,
+        "requested_count": requested,
+        "completed_count": completed,
+        "counts": report.get("counts", {}),
+        "authority": {"pulse_enabled": False, "strategy_qualified": False, "execution_authorized": False},
+        "raw_ohlcv_persisted": False,
+        "results": results,
     }

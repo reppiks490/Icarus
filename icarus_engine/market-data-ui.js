@@ -218,12 +218,19 @@ async function loadMarketUniverse(){
   const result=await marketDataFetch('/api/market-universe');
   if(!result.ok){summary.innerHTML='<p class="neg">Catalog unavailable: '+esc(result.error)+'</p>';table.innerHTML='';return;}
   const data=result.data||{}, counts=data.counts||{}, rows=Array.isArray(data.instruments)?data.instruments:[];
+  const probe=data.source_probe||{}, probeCounts=probe.counts||{};
+  const probeRows=Array.isArray(probe.results)?probe.results:[], probeById={};
+  probeRows.forEach(function(row){probeById[row.instrument_id]=row;});
   const keys=[['Catalogued','catalogued_count'],['Source connected','source_connected_count'],['History qualified','historical_bars_qualified_count'],['Live qualified','live_bars_qualified_count'],['Pulse enabled','pulse_enabled_count'],['Strategy qualified','strategy_qualified_count']];
   summary.innerHTML=keys.map(function(pair){return '<div class="tile"><div class="k">'+esc(pair[0])+'</div><div class="v">'+esc(counts[pair[1]]==null?'—':counts[pair[1]])+'</div></div>';}).join('')+
-    '<div class="small muted" style="grid-column:1/-1">Snapshot '+esc(data.retrieved_at||'unknown')+'. Candidate rows use provisional listing identities and unverified Yahoo mappings. Missing tick, share, corporate-action, terms, and entitlement facts keep all 200 candidates out of Pulse.</div>';
-  table.innerHTML=rows.length?'<table><thead><tr><th>Instrument ID</th><th>Symbol</th><th>Name</th><th>Venue</th><th>Source map</th><th>State</th></tr></thead><tbody>'+rows.map(function(row){
+    '<div class="tile"><div class="k">Yahoo responses</div><div class="v">'+esc(probeCounts.response_received_count==null?'—':probeCounts.response_received_count)+' / '+esc(probe.requested_count==null?'—':probe.requested_count)+'</div></div>'+
+    '<div class="tile"><div class="k">Yahoo symbol matches</div><div class="v">'+esc(probeCounts.provider_symbol_match_count==null?'—':probeCounts.provider_symbol_match_count)+'</div></div>'+
+    '<div class="small muted" style="grid-column:1/-1">Snapshot '+esc(data.retrieved_at||'unknown')+'. Yahoo probe '+esc(probe.status||'NOT_RUN')+' · updated '+esc(probe.probe_updated_at||'—')+'. A ticker echo and returned bars show provider response only; identities remain provisional and entitlements/session qualification remain unknown. All candidates stay out of Pulse.</div>';
+  table.innerHTML=rows.length?'<table><thead><tr><th>Instrument ID</th><th>Symbol</th><th>Name</th><th>Venue</th><th>Source map</th><th>Yahoo history probe</th><th>State</th></tr></thead><tbody>'+rows.map(function(row){
     const candidate=(row.provider_symbol_candidates||[])[0]||{};
-    return '<tr><td><code>'+esc(row.instrument_id||'')+'</code></td><td><b>'+esc(row.display_symbol||'')+'</b></td><td>'+esc(row.name||'')+'</td><td>'+esc(row.venue||'')+'</td><td>'+esc((candidate.provider||'')+': '+(candidate.symbol||'')+' · '+(candidate.mapping_status||''))+'</td><td>'+esc(row.source_connection||'')+' · '+(row.pulse_enabled?'Pulse enabled':'disabled')+'</td></tr>';
+    const probeRow=probeById[row.instrument_id]||{};
+    const probeText=probeRow.probe_status?String(probeRow.probe_status)+' · '+String(probeRow.row_count||0)+' rows · symbol '+String(probeRow.provider_symbol_match_status||'UNKNOWN')+' · identity '+String(probeRow.canonical_identity_status||'UNKNOWN'):'not probed';
+    return '<tr><td><code>'+esc(row.instrument_id||'')+'</code></td><td><b>'+esc(row.display_symbol||'')+'</b></td><td>'+esc(row.name||'')+'</td><td>'+esc(row.venue||'')+'</td><td>'+esc((candidate.provider||'')+': '+(candidate.symbol||'')+' · '+(candidate.mapping_status||''))+'</td><td>'+esc(probeText)+'</td><td>'+esc(row.source_connection||'')+' · '+(row.pulse_enabled?'Pulse enabled':'disabled')+'</td></tr>';
   }).join('')+'</tbody></table>':'<p class="empty">No catalog rows.</p>';
 }
 

@@ -1,12 +1,16 @@
 from copy import deepcopy
+import json
 
 import pytest
 
 from icarus_engine.market_universe import snapshot, validate_catalog
+import icarus_engine.market_universe as market_universe
 from icarus_engine.bar_receipts import make_bar_batch_receipt
 from icarus_engine.pine.timeframe import Bar
 from tools.build_equity_catalog import _instrument_class
 from icarus_engine.market_universe_adapter import MarketUniverseAdapter
+import icarus_engine.market_universe_adapter as market_universe_adapter
+import tools.probe_a200_yahoo as yahoo_probe
 
 
 def test_catalog_security_type_filter_distinguishes_equity_forms():
@@ -60,6 +64,80 @@ def test_a200_yahoo_adapter_rejects_unknown_id_and_provider_symbol_mismatch():
     row = snapshot()["instruments"][0]
     with pytest.raises(ValueError, match="symbol mismatch"):
         adapter.fetch_history(row["instrument_id"], 60, 60, 120)
+
+
+def test_a200_yahoo_adapter_can_use_a_separately_verified_listing_crosswalk(monkeypatch):
+    catalog = snapshot()
+    row = catalog["instruments"][0]
+    row["provider_symbol_candidates"][0]["mapping_status"] = "VERIFIED"
+    monkeypatch.setattr(market_universe_adapter, "snapshot", lambda: catalog)
+    symbol = row["provider_symbol_candidates"][0]["symbol"]
+    fake = _FakeYahooHistory(symbol)
+    _, receipt = MarketUniverseAdapter(fake).fetch_history(row["instrument_id"], 60, 60, 120)
+    assert receipt.provider_mapping_status == "VERIFIED"
+    assert receipt.provider_symbol_match_status == "MATCHED"
+    assert receipt.identity_status == "VERIFIED"
+    assert receipt.historical_bars_qualified is False
+
+
+def test_a200_yahoo_sweep_persists_receipts_without_raw_ohlcv(monkeypatch, tmp_path):
+    rows = snapshot()["instruments"]
+
+    class FakeProbeAdapter:
+        def __init__(self, _yahoo):
+            self.by_id = {row["instrument_id"]: row for row in rows}
+
+        def fetch_history(self, instrument_id, interval_seconds, start_ts, end_ts):
+            row = self.by_id[instrument_id]
+            symbol = row["provider_symbol_candidates"][0]["symbol"]
+            bars = [Bar(start_ts, 10, 12, 9, 11, 4)]
+            return make_bar_batch_receipt(
+                instrument_id=instrument_id, provider="yahoo",
+                expected_provider_symbol=symbol, observed_provider_symbol=symbol,
+                interval_seconds=interval_seconds, requested_start_ts=start_ts,
+                requested_end_ts=end_ts, bars=bars, fetched_at_ns=1, received_at_ns=2,
+                provider_mapping_status="UNVERIFIED",
+            )
+
+    monkeypatch.setattr(yahoo_probe, "MarketUniverseAdapter", FakeProbeAdapter)
+    out = tmp_path / "probe.json"
+    report = yahoo_probe.run(limit=2, start_ts=60, end_ts=86460, out=out,
+                             pause_seconds=0, resume=False)
+    assert report["completed_count"] == 2
+    assert report["counts"]["provider_symbol_match_count"] == 2
+    assert report["counts"]["canonical_identity_verified_count"] == 0
+    assert report["counts"]["historical_bars_qualified_count"] == 0
+    saved = json.loads(out.read_text())
+    assert saved["raw_ohlcv_persisted"] is False
+    assert all("checksum_sha256" in row and "close" not in row for row in saved["results"])
+
+
+def test_market_universe_exposes_only_matching_catalog_probe_receipts(monkeypatch, tmp_path):
+    row = snapshot()["instruments"][0]
+    probe_path = tmp_path / "probe.json"
+    probe_path.write_text(json.dumps({
+        "schema_version": "icarus.market-universe.source-probe.v1",
+        "catalog_id": snapshot()["catalog_id"],
+        "probe_provider": "yahoo",
+        "probe_updated_at": "2026-10-15T19:00:00Z",
+        "completed_count": 1,
+        "requested_count": 1,
+        "counts": {"response_received_count": 1, "historical_bars_qualified_count": 0},
+        "raw_ohlcv_persisted": False,
+        "results": [{
+            "instrument_id": row["instrument_id"], "probe_status": "RESPONSE_RECEIVED",
+            "provider_symbol_match_status": "MATCHED", "canonical_identity_status": "PROVISIONAL",
+            "row_count": 10, "close": 10,
+        }],
+    }))
+    monkeypatch.setattr(market_universe, "PROBE_PATH", probe_path)
+    report = market_universe.load_source_probe_report()
+    assert report["status"] == "PARTIAL"
+    assert report["results"] == [{
+        "instrument_id": row["instrument_id"], "probe_status": "RESPONSE_RECEIVED",
+        "provider_symbol_match_status": "MATCHED", "canonical_identity_status": "PROVISIONAL",
+        "row_count": 10,
+    }]
 
 
 def test_bar_batch_receipt_hashes_rows_but_keeps_unknowns_unqualified():
