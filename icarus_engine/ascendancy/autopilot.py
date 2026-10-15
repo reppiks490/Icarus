@@ -16,9 +16,10 @@ import json
 import os
 import sqlite3
 import threading
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable, Mapping
+from typing import Any, Callable, Iterator, Mapping
 
 SCHEMA_VERSION = "icarus-ascendancy-autopilot-v1"
 CYCLE_SCHEMA_VERSION = "icarus-ascendancy-autopilot-cycle-v1"
@@ -93,11 +94,19 @@ class GovernorAutopilot:
         self._cycle_lock = threading.Lock()
         self._init()
 
-    def _connect(self) -> sqlite3.Connection:
+    @contextmanager
+    def _connect(self) -> Iterator[sqlite3.Connection]:
         con = sqlite3.connect(str(self.path), timeout=15)
         con.row_factory = sqlite3.Row
         con.execute("PRAGMA journal_mode=WAL")
-        return con
+        try:
+            yield con
+            con.commit()
+        except BaseException:
+            con.rollback()
+            raise
+        finally:
+            con.close()
 
     @property
     def journal_mode(self) -> str:
