@@ -68,6 +68,7 @@ def snapshot() -> dict[str, Any]:
     counts = {
         "catalogued_count": len(rows),
         "source_connected_count": sum(row["source_connection"] == "VERIFIED" for row in rows),
+        "entitlement_verified_count": sum(row["entitlement"] == "VERIFIED" for row in rows),
         "historical_bars_qualified_count": sum(row["historical_bars"] == "QUALIFIED" for row in rows),
         "live_bars_qualified_count": sum(row["live_bars"] == "QUALIFIED" for row in rows),
         "pulse_enabled_count": sum(row["pulse_enabled"] is True for row in rows),

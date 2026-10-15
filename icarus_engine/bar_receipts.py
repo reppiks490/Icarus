@@ -111,7 +111,7 @@ def make_bar_batch_receipt(
     if session_validation_status not in ("UNKNOWN", "VERIFIED", "FAILED"):
         raise ValueError("invalid session validation status")
     qualified = (identity_status == "VERIFIED" and entitlement_status == "VERIFIED"
-                 and session_validation_status == "VERIFIED" and aligned and bool(rows))
+                 and session_validation_status == "VERIFIED" and aligned and gap_count == 0 and bool(rows))
     receipt_identity = json.dumps(
         [instrument_id, provider, expected_provider_symbol, interval_seconds, start, end, checksum],
         separators=(",", ":"),
