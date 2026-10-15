@@ -171,6 +171,7 @@ def test_real_price_shadow_twin_dashboard_is_read_only_and_wired():
     assert "primary_closed_episode_excursions" in ui
     assert "real_price_shadow_closed_episode_excursions" in ui
     assert "Matched MFE / MAE delta" in ui
+    assert "moneyWithDenominator" in ui
     assert "entry-commission adjusted" in ui
     assert "fullBySymbol" in ui
 
