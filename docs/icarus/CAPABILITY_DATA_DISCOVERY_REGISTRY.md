@@ -70,17 +70,20 @@ finally:
 ```
 
 Matches use exact admitted domains then exact canonical provider names, never
-fuzzy or host-suffix matches. Name-only wrappers get links, not their own access
-proof. Links retain exact receipt path/SHA-256. Access evidence also requires an admitted HTTPS hostname and effective
-port 443; HTTP, alternate ports and non-admitted `www` variants keep ancestry
-links only. Operation-specific blockers retain allowlisted reason codes without
-collector messages, credentials or raw payloads. A provider-level positive
-receipt cannot erase an operation's denial or establish its entitlement.
-Bytes are revalidated before an event; malformed, wrong-provider, future, missing, more-than-six-hour-old,
+fuzzy or host-suffix matches. A link is retained only when the candidate URL path
+matches the catalog operation path. Name-only wrappers and provider-level receipts
+can preserve ancestry, but do not prove candidate access. Links retain exact receipt
+path/SHA-256. Access evidence also requires an admitted HTTPS hostname and effective
+port 443; HTTP, alternate ports and non-admitted `www` variants cannot qualify.
+Operation-specific blockers retain allowlisted reason codes without collector
+messages, credentials or raw payloads. A provider-level positive receipt cannot erase
+an operation's denial or establish its entitlement. Bytes are revalidated before an
+event; malformed, wrong-provider, future, missing, more-than-six-hour-old,
 credential/auth-blocked, quota-paused and denied-only evidence cannot advance.
-A recent positive page receipt may establish only `DISCOVERED -> ACCESS_TESTED`,
-scoped to provider-level access, not any particular operation's entitlement,
-schema, license or history. Rejected/restricted candidates do not advance.
+`DISCOVERED -> ACCESS_TESTED` additionally requires `substantive_work_performed: true`
+and an exact operation ID in the provider receipt's `verified_operations` list, with
+no blocker for that operation. Aggregate page counts without that operation-level
+success evidence remain links only. Rejected/restricted candidates do not advance.
 
 ## Storage and safe receipts
 
