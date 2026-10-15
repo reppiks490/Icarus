@@ -95,6 +95,7 @@ class IbkrTwsPaperGateway:
         self._accounts: list[str] = []
         self._records: dict[str, dict] = {}
         self._pending_refs: dict[str, str] = {}
+        self._pending_replacements: dict[str, dict] = {}
         self._errors: dict[str, str] = {}
         self._events: list[dict] = []
         self._positions: list[dict] = []
@@ -268,14 +269,27 @@ class IbkrTwsPaperGateway:
                 if old.get("fills"):
                     record["fills"] = list(old["fills"])
             self._records[broker_id] = record
+            pending_replace = self._pending_replacements.get(broker_id)
+            replacement_confirmed = bool(
+                pending_replace
+                and all(record["order"].get(field) == value
+                        for field, value in pending_replace["order"].items())
+            )
+            if replacement_confirmed:
+                self._pending_replacements.pop(broker_id, None)
             if self._collecting_open:
                 self._open_snapshot.add(broker_id)
             if order_record["orderRef"]:
                 self._pending_refs[broker_id] = order_record["orderRef"]
             self._cv.notify_all()
         if order_record["orderRef"]:
-            self._emit({"type": "ack", "account_id": account_id,
-                        "client_id": order_record["orderRef"], "broker_id": broker_id})
+            if replacement_confirmed:
+                self._emit({"type": "replace_ack", "account_id": account_id,
+                            "client_id": order_record["orderRef"], "broker_id": broker_id,
+                            "price": pending_replace["price"]})
+            else:
+                self._emit({"type": "ack", "account_id": account_id,
+                            "client_id": order_record["orderRef"], "broker_id": broker_id})
 
     def openOrderEnd(self):
         with self._lock:
@@ -484,6 +498,13 @@ class IbkrTwsPaperGateway:
             return {"status": "not_found"}
         if order.get("account") != account_id or order.get("orderRef") != record.get("client_id"):
             raise PermissionError("IBKR replace must preserve selected paper account and orderRef")
+        price_field = "lmtPrice" if order.get("orderType") == "LMT" else "auxPrice"
+        if price_field not in order:
+            raise ValueError("IBKR replace must include the updated order price")
+        with self._cv:
+            self._pending_replacements[str(broker_id)] = {
+                "order": dict(order), "price": float(_decimal(order[price_field], "replace price")),
+            }
         try:
             self._client.placeOrder(int(broker_id), self._make_contract(record["contract"]),
                                     self._make_order(order))
@@ -623,6 +644,12 @@ class IbkrPaperVenue:
             if key in normalized:
                 raise ValueError(f"duplicate futures mapping: {key}")
             normalized[key] = mapping
+        con_ids = [mapping.con_id for mapping in normalized.values()]
+        local_symbols = [mapping.local_symbol for mapping in normalized.values()]
+        if len(con_ids) != len(set(con_ids)):
+            raise ValueError("each dated futures mapping must use a unique IBKR conId")
+        if len(local_symbols) != len(set(local_symbols)):
+            raise ValueError("each dated futures mapping must use a unique IBKR localSymbol")
         self.gateway = gateway
         self.account_id = account_id
         self.contracts = normalized

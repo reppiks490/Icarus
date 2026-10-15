@@ -235,6 +235,22 @@ class IbkrPaperVenueTests(unittest.TestCase):
         ContractMapping("MNQZ26", 123456, "MNQZ6", "202612", "CME", "USD",
                         Decimal("2"), Decimal("0.10"))
 
+  def test_contract_mapping_indexes_reject_duplicate_ibkr_identity(self):
+    gateway = FakeTwsGateway()
+    same_con_id = ContractMapping("MNQH27", 123456, "MNQH7", "202703", "CME", "USD",
+                                  Decimal("2"), Decimal("0.25"))
+    same_local_symbol = ContractMapping("MNQH27", 123457, "MNQZ6", "202703", "CME", "USD",
+                                        Decimal("2"), Decimal("0.25"))
+
+    with self.assertRaisesRegex(ValueError, "unique IBKR conId"):
+      IbkrPaperVenue(gateway, "DU12345", {
+          "MNQZ26": mapping(), "MNQH27": same_con_id,
+      })
+    with self.assertRaisesRegex(ValueError, "unique IBKR localSymbol"):
+      IbkrPaperVenue(gateway, "DU12345", {
+          "MNQZ26": mapping(), "MNQH27": same_local_symbol,
+      })
+
   def test_optional_tws_session_uses_paper_loopback_callbacks_and_readback(self):
     api = FakeIbapiClient()
     gateway = IbkrTwsPaperGateway(api_client=api, contract_factory=FakeApiRecord,
@@ -258,6 +274,10 @@ class IbkrPaperVenueTests(unittest.TestCase):
     api.positions_rows = [("DU12345", api.orders["900"][0], -1)]
     assert adapter.positions() == {"MNQZ26": -1}
     assert adapter.replace("900", 19888.50, client_id="ci-session") == {"status": "ok"}
+    replacement_events = adapter.poll()
+    assert {event["type"] for event in replacement_events} >= {"replace_ack"}
+    assert next(event["price"] for event in replacement_events
+                if event["type"] == "replace_ack") == 19888.50
     assert api.placed[-1][0] == 900  # amend reuses the broker order id
     assert api.placed[-1][2].lmtPrice == 19888.50
     assert adapter.cancel("900", client_id="ci-session") == {"status": "ok"}
