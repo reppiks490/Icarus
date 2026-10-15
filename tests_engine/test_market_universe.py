@@ -8,6 +8,11 @@ from icarus_engine.pine.timeframe import Bar
 from tools.build_equity_catalog import _instrument_class
 from icarus_engine.market_universe_adapter import MarketUniverseAdapter
 from icarus_engine.calendar import get_calendar
+from icarus_engine.assets import parse_spec
+from icarus_engine.feeds.databento import Databento
+from icarus_engine.paper_workspaces import SharedFeed
+from icarus_engine.runtime import AssetRunner, Journal, RunnerConfig
+from icarus_engine.strategy.inputs import Inputs
 
 
 def test_catalog_security_type_filter_distinguishes_equity_forms():
@@ -54,6 +59,34 @@ def test_a200_yahoo_adapter_resolves_mapping_and_keeps_entitlement_unqualified()
     assert receipt.bar_close_status == "UNKNOWN"
     assert receipt.timestamp_alignment_status == "UNKNOWN"
     assert receipt.historical_bars_qualified is False
+
+
+def test_workspace_shared_databento_feed_preserves_provider_and_continuous_identity():
+    class FakeDatabento(Databento):
+        def __init__(self):
+            self.roll_rule = "v"
+            self._meta = {}
+
+        def candles(self, _symbol, _interval, start, _end):
+            return [Bar(start, 10, 12, 9, 11, 4)]
+
+        def meta(self, symbol):
+            return {"provider": "databento", "continuous_symbol": self.continuous_symbol(symbol, self.roll_rule)}
+
+    adapter = FakeDatabento()
+    shared = SharedFeed(adapter)
+    runner = AssetRunner(
+        RunnerConfig(spec=parse_spec("NQ"), inputs=Inputs()),
+        Journal(":memory:"), {"yahoo": shared},
+    )
+
+    runner._fetch_historical_candles(shared, "NQ=F", 60, 60, 120)
+    receipt = runner.last_bar_batch_receipt
+
+    assert receipt["provider"] == "databento"
+    assert receipt["expected_provider_symbol"] == "NQ.v.0"
+    assert receipt["observed_provider_symbol"] == "NQ.v.0"
+    assert receipt["identity_status"] == "VERIFIED"
 
 
 def test_a200_yahoo_adapter_rejects_unknown_id_and_provider_symbol_mismatch():
