@@ -800,9 +800,16 @@ class IbkrPaperVenue:
         except (ConnectionError, TimeoutError, OSError):
             return {"status": "timeout"}
         if found:
-            return self._normalize_found_order(
-                found, order_ref, mapping.ib_contract(), request
-            )
+            try:
+                return self._normalize_found_order(
+                    found, order_ref, mapping.ib_contract(), request
+                )
+            except (PermissionError, ValueError):
+                # Readback is broker-controlled. A malformed, foreign-account,
+                # or mismatched record cannot be treated as either a rejection
+                # or an acknowledgment; preserve the engine's sent order as
+                # ambiguous so reconciliation blocks further risk.
+                return {"status": "timeout"}
         if attempted_before:
             # Readback must be conclusive before retrying. A callback timeout or
             # incomplete completed-order snapshot leaves execution ambiguous.

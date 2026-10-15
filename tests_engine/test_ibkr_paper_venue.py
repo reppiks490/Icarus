@@ -388,12 +388,38 @@ class IbkrPaperVenueTests(unittest.TestCase):
     }]
 
 
+  def test_engine_keeps_mismatched_ibkr_readback_ambiguous(self):
+    adapter, gateway = venue()
+    intent = Intent("test-replay", "MNQZ26", "BUY", 1, "MARKET")
+    order_ref = adapter._order_ref(intent.intent_id)
+    request = {
+        "account": "DU12345", "action": "SELL", "totalQuantity": 1,
+        "orderType": "MKT", "tif": "DAY", "orderRef": order_ref,
+        "outsideRth": False,
+    }
+    gateway.orders["901"] = {
+        "account_id": "DU12345", "broker_id": "901", "client_id": order_ref,
+        "contract": mapping().ib_contract(), "order": request,
+        "status": "Submitted", "filled": 0,
+    }
+    with TemporaryDirectory() as temp:
+      engine = ExecutionEngine(adapter, RiskGovernor(), Journal(f"{temp}/journal.jsonl"), mode="PAPER")
+      engine.state.data_age_s["MNQZ26"] = 0
+      engine.state.marks["MNQZ26"] = 19888.25
+
+      result = engine.submit(intent)
+
+      assert result == {"status": S.AMBIGUOUS.value, "order_id": intent.intent_id}
+      assert engine.book.orders[intent.intent_id].state is S.AMBIGUOUS
+      assert engine.snapshot()["health"] == "BLOCKED"
+    assert gateway.placed == []
+
+
   def test_reused_order_ref_with_different_terms_is_rejected_not_acknowledged(self):
     adapter, gateway = venue()
     assert adapter.submit("same-ref", "MNQZ26", "BUY", 1, "MARKET", None)["status"] == "ack"
 
-    with self.assertRaisesRegex(ValueError, "terms do not match"):
-      adapter.submit("same-ref", "MNQZ26", "SELL", 2, "LIMIT", 19888.25)
+    assert adapter.submit("same-ref", "MNQZ26", "SELL", 2, "LIMIT", 19888.25) == {"status": "timeout"}
 
     assert len(gateway.placed) == 1
     assert gateway.placed[0][2]["action"] == "BUY"
@@ -411,8 +437,8 @@ class IbkrPaperVenueTests(unittest.TestCase):
       return record
 
     gateway.find_order_by_ref = wrong_contract
-    with self.assertRaisesRegex(ValueError, "contract does not match"):
-      adapter.submit("same-ref", "MNQZ26", "BUY", 1, "MARKET", None)
+    assert adapter.submit("same-ref", "MNQZ26", "BUY", 1, "MARKET", None) == {"status": "timeout"}
+    assert len(gateway.placed) == 1
 
 
   def test_duplicate_ibkr_order_refs_remain_ambiguous(self):
@@ -497,15 +523,13 @@ class IbkrPaperVenueTests(unittest.TestCase):
     foreign = {"account_id": "DU99999", "broker_id": "77", "client_id": "ci-x",
                "status": "Submitted", "filled": 0}
     gateway.find_order_by_ref = lambda _account, _ref: foreign
-    with self.assertRaisesRegex(PermissionError, "selected paper account"):
-        adapter.submit("ci-x", "MNQZ26", "BUY", 1, "MARKET", None)
+    assert adapter.submit("ci-x", "MNQZ26", "BUY", 1, "MARKET", None) == {"status": "timeout"}
 
     gateway.find_order_by_ref = lambda _account, _ref: {
         "account_id": "DU12345", "broker_id": "77", "client_id": "ci-other",
         "status": "Submitted", "filled": 0,
     }
-    with self.assertRaisesRegex(ValueError, "orderRef"):
-        adapter.submit("ci-x", "MNQZ26", "BUY", 1, "MARKET", None)
+    assert adapter.submit("ci-x", "MNQZ26", "BUY", 1, "MARKET", None) == {"status": "timeout"}
 
     gateway.open_orders = lambda _account: [{
         "account_id": "DU99999", "broker_id": "77", "client_id": "ci-x",
