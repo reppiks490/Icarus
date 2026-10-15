@@ -3,7 +3,7 @@ import json
 from icarus_engine.emulator import Emulator
 from icarus_engine.assets import parse_spec
 from icarus_engine.pine.timeframe import Bar
-from icarus_engine.runtime import AssetRunner, Journal, RunnerConfig
+from icarus_engine.runtime import AssetRunner, Journal, Portfolio, RunnerConfig
 from icarus_engine.shadow_twin import MirroredEmulator
 from icarus_engine.strategy.inputs import Inputs
 
@@ -129,6 +129,72 @@ def test_break_even_results_are_separate_from_directional_agreement():
     assert result["shadow_break_even_episodes"] == 1
     assert result["outcome_agreement_denominator"] == 0
     assert result["outcome_agreement_rate"] is None
+
+
+def test_shadow_reports_outcome_matrix_realization_live_boundary_and_close_drawdown():
+    primary = Emulator(initial_capital=10_000, commission=0, mintick=1, contract_size=1)
+    twin = MirroredEmulator(primary)
+    twin.process_bar(bar(60, 100, 101, 99, 100), 0,
+                     real_bar=bar(60, 100, 101, 99, 100))
+    twin.entry("L", 1, 1)
+    twin.process_bar(bar(120, 100, 102, 99, 101), 1,
+                     real_bar=bar(120, 100, 102, 99, 101))
+    twin.close("L", "paired exit")
+    twin.process_bar(bar(180, 101, 102, 100, 101), 2,
+                     real_bar=bar(180, 99, 100, 98, 99))
+
+    result = twin.summary(live_from_ts=180)
+    assert result["outcome_matrix"]["win"]["loss"] == 1
+    assert result["outcome_matrix"]["win"]["win"] == 0
+    assert result["net_realization_ratio"] == -1
+    assert result["paired_profit_capture"] == -1
+    # The episode belongs to its entry period even though it closes at go-live.
+    assert result["primary"]["warmup_net"] == 1
+    assert result["primary"]["live_net"] == 0
+    assert result["bar_close_equity_observations"] == 3
+    assert result["bar_close_drawdown_basis"] == "BAR_CLOSE_MARKED_EQUITY_NOT_INTRABAR"
+    assert result["real_price_shadow_bar_close_max_drawdown"] == 2
+
+
+def test_realization_ratios_withhold_nonpositive_primary_denominators():
+    primary = Emulator(initial_capital=10_000, commission=0, mintick=1, contract_size=1)
+    twin = MirroredEmulator(primary)
+    twin.process_bar(bar(60, 100, 101, 99, 100), 0,
+                     real_bar=bar(60, 100, 101, 99, 100))
+    result = twin.summary()
+    assert result["net_realization_ratio"] is None
+    assert result["net_realization_ratio_unavailable_reason"]
+    assert result["paired_profit_capture"] is None
+    assert result["paired_profit_capture_unavailable_reason"]
+
+
+def test_portfolio_shadow_view_aggregates_counts_and_ratios_without_faking_drawdown():
+    primary = Emulator(initial_capital=10_000, commission=0, mintick=1, contract_size=1)
+    twin = MirroredEmulator(primary, asset="TEST")
+    twin.process_bar(bar(60, 100, 101, 99, 100), 0,
+                     real_bar=bar(60, 100, 101, 99, 100))
+    twin.entry("L", 1, 1)
+    twin.process_bar(bar(120, 100, 102, 99, 101), 1,
+                     real_bar=bar(120, 100, 102, 99, 101))
+    twin.close("L")
+    twin.process_bar(bar(180, 101, 102, 100, 101), 2,
+                     real_bar=bar(180, 99, 100, 98, 99))
+
+    class SummaryOnlyRunner:
+        def summary(self, *, nonblocking=False):
+            return {"symbol": "TEST", "equity": 10_000, "capital": 10_000,
+                    "live_profit": 0, "open_profit": 0, "position": 0,
+                    "paused": False, "warm": True, "real_price_shadow": twin.summary()}
+
+    portfolio = Portfolio(Journal(":memory:"), ".", feeds={})
+    portfolio.runners = {"TEST": SummaryOnlyRunner()}
+    portfolio.order = ["TEST"]
+    result = portfolio.status()["real_price_shadow"]
+    assert result["outcome_matrix"]["win"]["loss"] == 1
+    assert result["net_realization_ratio"] == -1
+    assert result["paired_profit_capture"] == -1
+    assert result["drawdown_aggregation"].startswith("per_asset_only")
+    assert "max_drawdown" not in result
 
 
 def test_runner_feature_is_default_off_and_runtime_passes_standard_bar():

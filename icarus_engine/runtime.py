@@ -1771,6 +1771,25 @@ class Portfolio:
         agree_count = sum(x["outcome_agreement_count"] for x in shadow_rows)
         primary_win_count = sum(x["primary_win_count"] for x in shadow_rows)
         preserved_count = sum(x["primary_win_preserved_count"] for x in shadow_rows)
+        portfolio_primary_net = sum(x["primary"]["net"] for x in shadow_rows)
+        portfolio_shadow_net = sum(x["real_price_shadow"]["net"] for x in shadow_rows)
+        portfolio_primary_winner_net = sum(x["paired_primary_winner_net"] for x in shadow_rows)
+        portfolio_shadow_on_primary_winners = sum(
+            x["paired_shadow_net_on_primary_winners"] for x in shadow_rows)
+        portfolio_outcome_matrix = {
+            primary: {
+                shadow: sum(x["outcome_matrix"][primary][shadow] for x in shadow_rows)
+                for shadow in ("win", "loss", "break_even")
+            }
+            for primary in ("win", "loss", "break_even")
+        }
+        portfolio_epsilon = max(1e-8, abs(portfolio_primary_net) * 1e-12)
+        portfolio_realization_ratio = (
+            portfolio_shadow_net / portfolio_primary_net
+            if portfolio_primary_net > portfolio_epsilon else None)
+        portfolio_profit_capture = (
+            portfolio_shadow_on_primary_winners / portfolio_primary_winner_net
+            if portfolio_primary_winner_net > 1e-8 else None)
         shadow_portfolio = ({
             "schema": "icarus.real_price_shadow.portfolio/1",
             "enabled": True,
@@ -1785,13 +1804,25 @@ class Portfolio:
             "shadow_only_entry_fills": sum(x["shadow_only_entry_fills"] for x in shadow_rows),
             "pairable_closed_episodes": pair_count,
             "outcome_agreement_rate": agree_count / pair_count if pair_count else None,
+            "outcome_matrix": portfolio_outcome_matrix,
             "primary_win_preservation": preserved_count / primary_win_count if primary_win_count else None,
-            "primary_net": round(sum(x["primary"]["net"] for x in shadow_rows), 8),
-            "real_price_shadow_net": round(sum(x["real_price_shadow"]["net"] for x in shadow_rows), 8),
+            "primary_net": round(portfolio_primary_net, 8),
+            "real_price_shadow_net": round(portfolio_shadow_net, 8),
+            "net_realization_ratio": portfolio_realization_ratio,
+            "net_realization_ratio_unavailable_reason": (
+                None if portfolio_realization_ratio is not None else
+                "portfolio primary net is non-positive or too close to zero"),
+            "paired_profit_capture": portfolio_profit_capture,
+            "paired_profit_capture_unavailable_reason": (
+                None if portfolio_profit_capture is not None else
+                "no positive pairable primary-winner P&L denominator"),
+            "paired_primary_winner_net": round(portfolio_primary_winner_net, 8),
+            "paired_shadow_net_on_primary_winners": round(portfolio_shadow_on_primary_winners, 8),
             "primary_warmup_net": round(sum(x["primary"]["warmup_net"] for x in shadow_rows), 8),
             "primary_live_net": round(sum(x["primary"]["live_net"] for x in shadow_rows), 8),
             "real_price_shadow_warmup_net": round(sum(x["real_price_shadow"]["warmup_net"] for x in shadow_rows), 8),
             "real_price_shadow_live_net": round(sum(x["real_price_shadow"]["live_net"] for x in shadow_rows), 8),
+            "drawdown_aggregation": "per_asset_only; cross_asset_close_timestamps_are_not_yet_aligned",
             "assets": [{"asset": x["asset"], "status": x["status"], "reason": x["reason"]}
                        for x in shadow_rows],
         } if shadow_rows else None)

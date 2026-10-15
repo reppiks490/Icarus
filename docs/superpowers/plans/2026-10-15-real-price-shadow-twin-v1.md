@@ -10,6 +10,7 @@
 - When explicitly enabled, route `PulseStrategy` emulator mutations through a facade that forwards the same calls to a second emulator. Every strategy-visible read continues to resolve to the primary.
 - Advance the shadow only with the corresponding standard OHLC bar and matching timestamp. Missing, malformed, or mismatched bars degrade the shadow and never substitute a synthetic bar.
 - Record deterministic intents, link entry fills to the exact shared intent sequence, and expose separately partitioned primary/shadow results with `execution_authorized: false`.
+- Report the win/loss/break-even outcome matrix, guarded P&L realization ratios, entry-time warm-up/live attribution, and bar-close-marked drawdown. Do not aggregate per-asset drawdown as portfolio drawdown without synchronized marks.
 - Runtime/admin cancellation and flatten paths must not leave the shadow reporting a valid comparison when they mutate only the primary.
 - Keep UI work and dashboard aesthetic files outside this package.
 
@@ -32,4 +33,4 @@
 
 ## Known limits for v1
 
-This slice reports order intents, intent-linked entry fills and price deltas, paired closed-trade episodes, aggregate P&L/outcome comparison, and unmatched pieces. It does not claim comprehensive drawdown/MAE/MFE analysis, broker realization, or strategy qualification. Those are follow-up work before broad interpretation or live enablement.
+This slice reports order intents, intent-linked entry fills and price deltas, paired closed-trade episodes, aggregate P&L/outcome comparison, and unmatched pieces. Drawdown is sampled only at paired bar closes and can understate intrabar risk; MAE/MFE analysis, exit-fill attribution, synchronized cross-asset portfolio drawdown, broker realization, and strategy qualification remain follow-up work before broad interpretation or live enablement.

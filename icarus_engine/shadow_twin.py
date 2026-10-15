@@ -37,6 +37,11 @@ class MirroredEmulator:
         self._entry_fill_pairs: dict[int, dict[str, Any]] = {}
         self._bar_index = -1
         self._bar_ts: Optional[int] = None
+        # This is close-marked observation only; it is not intrabar drawdown.
+        self._equity_peaks = {"primary": float(primary.initial_capital),
+                              "shadow": float(primary.initial_capital)}
+        self._bar_close_max_drawdowns = {"primary": 0.0, "shadow": 0.0}
+        self._bar_close_equity_observations = 0
 
     def __getattr__(self, name: str) -> Any:
         # Strategy and existing runtime diagnostics see canonical state only.
@@ -128,8 +133,20 @@ class MirroredEmulator:
             shadow_fills_before = len(self.shadow.fills)
             self.shadow.process_bar(real_bar, bar_index)
             self._capture_entry_fills(self.shadow, shadow_fills_before, "shadow")
+            self._record_bar_close_equity(primary_bar.c, real_bar.c)
         except Exception as exc:
             self._degrade(f"shadow bar processing failed: {type(exc).__name__}: {exc}")
+
+    def _record_bar_close_equity(self, primary_mark: float, shadow_mark: float) -> None:
+        """Track the maximum drawdown observed at paired bar closes."""
+        for lane, engine, mark in (("primary", self.primary, primary_mark),
+                                   ("shadow", self.shadow, shadow_mark)):
+            equity = float(engine.equity(mark))
+            peak = max(self._equity_peaks[lane], equity)
+            self._equity_peaks[lane] = peak
+            self._bar_close_max_drawdowns[lane] = max(
+                self._bar_close_max_drawdowns[lane], peak - equity)
+        self._bar_close_equity_observations += 1
 
     def entry(self, id: str, direction: int, qty: int, limit: Optional[float] = None,
               comment: str = "", alert_message: str = "") -> None:
@@ -180,7 +197,8 @@ class MirroredEmulator:
     @staticmethod
     def _episodes(engine: Emulator) -> dict[tuple[str, int, str], dict[str, Any]]:
         episodes: dict[tuple[str, int, str], dict[str, Any]] = defaultdict(
-            lambda: {"net": 0.0, "pieces": 0, "qty": 0, "closed": False, "last_exit_ts": 0})
+            lambda: {"net": 0.0, "pieces": 0, "qty": 0, "closed": False,
+                     "entry_ts": 0, "last_exit_ts": 0})
         for trade in engine.closed:
             key = (trade.entry_id, int(trade.entry_ts), trade.entry_comment or "")
             row = episodes[key]
@@ -188,6 +206,7 @@ class MirroredEmulator:
             row["pieces"] += 1
             row["qty"] += int(trade.qty)
             row["closed"] = True
+            row["entry_ts"] = int(trade.entry_ts)
             row["last_exit_ts"] = max(row["last_exit_ts"], int(trade.exit_ts))
         return dict(episodes)
 
@@ -200,10 +219,19 @@ class MirroredEmulator:
                         for k in directional)
         primary_wins = [k for k in common if primary_eps[k]["net"] > 0]
         shadow_wins_preserved = sum(shadow_eps[k]["net"] > 0 for k in primary_wins)
+        outcome_matrix = {primary: {shadow: 0 for shadow in ("win", "loss", "break_even")}
+                          for primary in ("win", "loss", "break_even")}
+        for key in common:
+            p_net, s_net = primary_eps[key]["net"], shadow_eps[key]["net"]
+            p_outcome = "win" if p_net > 0 else "loss" if p_net < 0 else "break_even"
+            s_outcome = "win" if s_net > 0 else "loss" if s_net < 0 else "break_even"
+            outcome_matrix[p_outcome][s_outcome] += 1
 
         def totals(keys: dict[tuple[str, int, str], dict[str, Any]]) -> dict[str, float | int]:
-            warmup = [v for v in keys.values() if live_from_ts is None or v["last_exit_ts"] < live_from_ts]
-            live = [v for v in keys.values() if live_from_ts is not None and v["last_exit_ts"] >= live_from_ts]
+            # Attribute by entry decision time. A warm-up position closing
+            # after go-live remains part of warm-up evidence.
+            warmup = [v for v in keys.values() if live_from_ts is None or v["entry_ts"] < live_from_ts]
+            live = [v for v in keys.values() if live_from_ts is not None and v["entry_ts"] >= live_from_ts]
             return {"episodes": len(keys), "closed_episodes": len(keys),
                     "net": round(sum(v["net"] for v in keys.values()), 8),
                     "warmup_net": round(sum(v["net"] for v in warmup), 8),
@@ -221,6 +249,14 @@ class MirroredEmulator:
                         for pair in matched_entry_pairs]
         entry_delta_dollars = [delta * pair["primary"]["qty"] * self.primary.contract_size
                                for pair, delta in zip(matched_entry_pairs, entry_deltas)]
+        primary_net = float(sum(row["net"] for row in primary_eps.values()))
+        shadow_net = float(sum(row["net"] for row in shadow_eps.values()))
+        paired_primary_winner_net = float(sum(primary_eps[key]["net"] for key in primary_wins))
+        paired_shadow_net_on_primary_winners = float(sum(shadow_eps[key]["net"] for key in primary_wins))
+        epsilon = max(1e-8, abs(primary_net) * 1e-12)
+        net_realization_ratio = shadow_net / primary_net if primary_net > epsilon else None
+        paired_profit_capture = (paired_shadow_net_on_primary_winners / paired_primary_winner_net
+                                 if paired_primary_winner_net > 1e-8 else None)
 
         def delta_summary(values: list[float]) -> dict[str, Any]:
             ordered = sorted(values)
@@ -255,6 +291,7 @@ class MirroredEmulator:
             "outcome_agreement_denominator": len(directional),
             "outcome_agreement_rate": (agreement / len(directional) if directional else None),
             "outcome_agreement_count": agreement,
+            "outcome_matrix": outcome_matrix,
             "primary_break_even_episodes": sum(primary_eps[k]["net"] == 0 for k in common),
             "shadow_break_even_episodes": sum(shadow_eps[k]["net"] == 0 for k in common),
             "primary_win_count": len(primary_wins),
@@ -262,6 +299,20 @@ class MirroredEmulator:
             "primary_win_preservation": (shadow_wins_preserved / len(primary_wins) if primary_wins else None),
             "primary": totals(primary_eps),
             "real_price_shadow": totals(shadow_eps),
+            "net_realization_ratio": net_realization_ratio,
+            "net_realization_ratio_unavailable_reason": (
+                None if net_realization_ratio is not None else
+                "primary net is non-positive or too close to zero"),
+            "paired_profit_capture": paired_profit_capture,
+            "paired_profit_capture_unavailable_reason": (
+                None if paired_profit_capture is not None else
+                "no positive pairable primary-winner P&L denominator"),
+            "paired_primary_winner_net": round(paired_primary_winner_net, 8),
+            "paired_shadow_net_on_primary_winners": round(paired_shadow_net_on_primary_winners, 8),
+            "bar_close_drawdown_basis": "BAR_CLOSE_MARKED_EQUITY_NOT_INTRABAR",
+            "bar_close_equity_observations": self._bar_close_equity_observations,
+            "primary_bar_close_max_drawdown": round(self._bar_close_max_drawdowns["primary"], 8),
+            "real_price_shadow_bar_close_max_drawdown": round(self._bar_close_max_drawdowns["shadow"], 8),
             "open_primary": len(self.primary.open),
             "open_shadow": len(self.shadow.open),
             "recent_intents": self.intents[-20:],
