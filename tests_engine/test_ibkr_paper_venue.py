@@ -493,6 +493,50 @@ class IbkrPaperVenueTests(unittest.TestCase):
     assert gateway.placed[0][2]["totalQuantity"] == 1
 
 
+  def test_replay_rejects_matching_basic_order_with_different_ibkr_execution_terms(self):
+    mismatches = (
+        ("parentId", 901),
+        ("ocaGroup", "unrelated-bracket"),
+        ("ocaType", 1),
+        ("transmit", False),
+        ("allOrNone", True),
+        ("minQty", 1),
+        ("goodAfterTime", "20261016 09:30:00 US/Eastern"),
+        ("goodTillDate", "20261016 16:00:00 US/Eastern"),
+        ("conditions", [{"type": "PriceCondition", "price": 19000}]),
+    )
+    for field, value in mismatches:
+      with self.subTest(field=field):
+        adapter, gateway = venue()
+        assert adapter.submit("replay-ref", "MNQZ26", "BUY", 1, "MARKET", None)["status"] == "ack"
+        gateway.orders["901"]["order"][field] = value
+
+        assert adapter.submit("replay-ref", "MNQZ26", "BUY", 1, "MARKET", None) == {"status": "timeout"}
+        assert len(gateway.placed) == 1
+
+
+  def test_tws_callback_readback_retains_execution_terms_for_replay_check(self):
+    api = FakeIbapiClient()
+    gateway = IbkrTwsPaperGateway(api_client=api, contract_factory=FakeApiRecord,
+                                  order_factory=FakeApiRecord, timeout_s=0.05)
+    gateway.connect()
+    adapter = IbkrPaperVenue(gateway, "DU12345", {"MNQZ26": mapping()})
+    order_ref = "callback-replay"
+    contract = gateway._make_contract(mapping().ib_contract())
+    order = gateway._make_order(adapter._build_order(mapping(), order_ref, "BUY", 1, "MARKET", None))
+    order.parentId = 901
+    order.ocaGroup = "unrelated-bracket"
+    order.ocaType = 1
+    order.transmit = False
+    api.orders["901"] = (contract, order, "Submitted")
+
+    result = adapter.submit(order_ref, "MNQZ26", "BUY", 1, "MARKET", None)
+
+    assert result == {"status": "timeout"}
+    assert api.placed == []
+    gateway.disconnect()
+
+
   def test_same_order_ref_with_different_contract_is_rejected(self):
     adapter, gateway = venue()
     assert adapter.submit("same-ref", "MNQZ26", "BUY", 1, "MARKET", None)["status"] == "ack"
