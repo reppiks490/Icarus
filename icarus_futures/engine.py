@@ -9,6 +9,7 @@ exists, so LIVE construction fails closed)."""
 from __future__ import annotations
 
 import json
+import inspect
 import os
 from dataclasses import asdict
 from datetime import datetime, timezone
@@ -107,7 +108,21 @@ class ExecutionEngine:
         o = self.book.orders[order_id]
         if not o.broker_id or not self.book.on_cancel_requested(order_id):
             return False
-        self.venue.cancel(o.broker_id)
+        cancel = self.venue.cancel
+        try:
+            parameters = inspect.signature(cancel).parameters.values()
+            supports_client_id = any(
+                parameter.name == "client_id" or parameter.kind is inspect.Parameter.VAR_KEYWORD
+                for parameter in parameters
+            )
+        except (TypeError, ValueError):
+            supports_client_id = False
+        if supports_client_id:
+            cancel(o.broker_id, client_id=o.id)
+        else:
+            # Keep adapters written to the original one-argument protocol usable;
+            # the broker ID remains the scoped target for those implementations.
+            cancel(o.broker_id)
         self.pump()
         return True
 

@@ -1969,8 +1969,10 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                         port.journal.log("ERROR", f"command center {parts[2]} update: {type(ex).__name__}: {ex}")
                         return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
                 if len(parts) == 4 and parts[2] in {"cc1", "cc2", "cc3", "cc4"} and parts[3] == "pause":
+                    if not isinstance(body.get("paused"), bool):
+                        return self._json(400, {"detail": "paused must be a boolean"})
                     try:
-                        return self._json(200, command_centers.pause(parts[2], bool(body.get("paused"))))
+                        return self._json(200, command_centers.pause(parts[2], body["paused"]))
                     except (ValueError, TypeError, KeyError) as ex:
                         return self._json(400, {"detail": str(ex)})
                 if len(parts) == 4 and parts[2] in {"cc1", "cc2", "cc3", "cc4"} and parts[3] == "flatten":
@@ -2980,6 +2982,32 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             self._json(404, {"error": "not found"})
 
     class ResearchHTTPServer(ThreadingHTTPServer):
+        def _close_background_services(self):
+            closers = (
+                command_centers.stop,
+                lambda: autopilot.close(),
+                lambda: ascendancy_autopilot.close(),
+                lambda: ascendancy_native_validation.close(),
+                lambda: evidence_lab_sync.close(),
+                lambda: evolution_remote_sync.close(),
+                lambda: brain_research_sync.close(),
+                lambda: brain_remote_sync.close(),
+                lambda: loop_intelligence_sync.close(),
+                lambda: commissioning.close(),
+                lambda: research.close(),
+                lambda: apex.close(),
+            )
+            errors = []
+            for close in closers:
+                try:
+                    close()
+                except Exception as exc:
+                    errors.append(exc)
+            if errors:
+                raise RuntimeError(
+                    f"{len(errors)} background service(s) failed to close"
+                ) from errors[0]
+
         def serve_forever(self, poll_interval=.5):
             background = bool(getattr(self, "background_workers_enabled", True))
             if background:
@@ -2997,33 +3025,13 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return super().serve_forever(poll_interval)
             finally:
                 if background:
-                    command_centers.stop()
-                    autopilot.close()
-                    ascendancy_autopilot.close()
-                    ascendancy_native_validation.close()
-                    evidence_lab_sync.close()
-                    evolution_remote_sync.close()
-                    brain_research_sync.close()
-                    brain_remote_sync.close()
-                    loop_intelligence_sync.close()
-                    commissioning.close()
-                    research.close()
-                    apex.close()
+                    self._close_background_services()
 
         def server_close(self):
-            command_centers.stop()
-            autopilot.close()
-            ascendancy_autopilot.close()
-            ascendancy_native_validation.close()
-            evidence_lab_sync.close()
-            evolution_remote_sync.close()
-            brain_research_sync.close()
-            brain_remote_sync.close()
-            loop_intelligence_sync.close()
-            commissioning.close()
-            research.close()
-            apex.close()
-            return super().server_close()
+            try:
+                self._close_background_services()
+            finally:
+                super().server_close()
 
     srv = ResearchHTTPServer(("127.0.0.1", http_port), H)
     srv.command_centers = command_centers
