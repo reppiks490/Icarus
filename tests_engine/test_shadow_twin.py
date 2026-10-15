@@ -69,6 +69,36 @@ def test_relative_exit_uses_each_emulators_own_entry_basis():
     assert primary.closed[-1].profit == twin.shadow.closed[-1].profit
 
 
+def test_partial_exit_does_not_count_as_a_closed_shadow_episode():
+    primary = Emulator(initial_capital=10_000, commission=0, mintick=1, contract_size=1)
+    twin = MirroredEmulator(primary)
+    twin.process_bar(bar(60, 100, 101, 99, 100), 0,
+                     real_bar=bar(60, 100, 101, 99, 100))
+    twin.entry("L", 1, 2)
+    twin.process_bar(bar(120, 100, 101, 99, 100), 1,
+                     real_bar=bar(120, 100, 101, 99, 100))
+    twin.exit("half", "L", qty=1, profit=1)
+    twin.process_bar(bar(180, 100, 102, 99, 101), 2,
+                     real_bar=bar(180, 100, 102, 99, 101))
+
+    partial = twin.summary()
+    assert twin.primary.position_size == twin.shadow.position_size == 1
+    assert partial["pairable_closed_episodes"] == 0
+    assert partial["primary"]["closed_episodes"] == 0
+    assert partial["real_price_shadow"]["closed_episodes"] == 0
+    assert partial["primary"]["partial_realized_episodes"] == 1
+    assert partial["real_price_shadow"]["partial_realized_episodes"] == 1
+    assert partial["outcome_agreement_denominator"] == 0
+
+    twin.close("L", "finish")
+    twin.process_bar(bar(240, 101, 102, 100, 101), 3,
+                     real_bar=bar(240, 101, 102, 100, 101))
+    complete = twin.summary()
+    assert complete["pairable_closed_episodes"] == 1
+    assert complete["primary"]["closed_episodes"] == 1
+    assert complete["real_price_shadow"]["closed_episodes"] == 1
+
+
 def test_missing_or_mismatched_real_bar_degrades_without_changing_primary():
     primary = Emulator(initial_capital=10_000, commission=0, mintick=1, contract_size=1)
     twin = MirroredEmulator(primary)
@@ -87,6 +117,18 @@ def test_missing_or_mismatched_real_bar_degrades_without_changing_primary():
     invalid.process_bar(bar(120, 100, 101, 99, 100), 1, real_bar=bar(119, 100, 101, 99, 100))
     assert invalid.status == "INVALID"
     assert invalid_primary.last_bar.ts == 120
+
+
+def test_file_feed_mode_is_reported_as_shadow_price_provenance(monkeypatch):
+    monkeypatch.setenv("ICARUS_FEED", "file")
+    runner = AssetRunner(
+        RunnerConfig(spec=parse_spec("NQ@1"), inputs=Inputs(), shadow_real_fills=True),
+        Journal(":memory:"), feeds={"yahoo": object()},
+    )
+
+    provenance = runner.summary()["real_price_shadow"]["provenance"]
+    assert provenance["price_provider"] == "file_history_hub"
+    assert provenance["feed_mode"] == "file"
 
 
 def test_unmatched_closed_episodes_are_counted_and_mutator_inventory_is_explicit():

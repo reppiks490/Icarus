@@ -1338,8 +1338,14 @@ class AssetRunner:
                                        "instrument_id": self.symbol,
                                        "provider_symbol": self.spec.ticker,
                                        "asset_kind": self.spec.kind,
-                                       "price_provider": ("databento" if type(self.feed).__name__ == "Databento"
-                                                          else self.spec.feed),
+                                       "price_provider": (
+                                           "file_history_hub" if file_feed_mode() else
+                                           "databento" if type(self.feed).__name__ == "Databento" else
+                                           self.spec.feed),
+                                       "feed_mode": (
+                                           "file" if file_feed_mode() else
+                                           "databento" if type(self.feed).__name__ == "Databento" else
+                                           "provider"),
                                        "timeframe_minutes": self.chart_minutes,
                                        "calendar": self.cal.name,
                                        "session_mode": _session_mode(self.cal),

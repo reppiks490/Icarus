@@ -265,6 +265,7 @@ class MirroredEmulator:
 
         episodes: dict[Any, dict[str, Any]] = defaultdict(
             lambda: {"net": 0.0, "pieces": 0, "qty": 0, "closed": False,
+                     "entry_qty": 0, "closed_qty": 0,
                      "entry_ts": 0, "last_exit_ts": 0})
         excluded_admin_flatten_pieces = 0
         for trade in engine.closed:
@@ -282,7 +283,9 @@ class MirroredEmulator:
             row["net"] += float(trade.profit)
             row["pieces"] += 1
             row["qty"] += int(trade.qty)
-            row["closed"] = True
+            row["closed_qty"] += int(trade.qty)
+            row["entry_qty"] = max(row["entry_qty"], int(trade.entry_qty or trade.qty))
+            row["closed"] = row["closed_qty"] >= row["entry_qty"]
             row["entry_ts"] = int(trade.entry_ts)
             row["last_exit_ts"] = max(row["last_exit_ts"], int(trade.exit_ts))
         return dict(episodes), excluded_admin_flatten_pieces
@@ -290,16 +293,18 @@ class MirroredEmulator:
     def summary(self, *, live_from_ts: Optional[int] = None) -> dict[str, Any]:
         primary_eps, primary_admin_flatten_pieces = self._episodes(self.primary, "primary")
         shadow_eps, shadow_admin_flatten_pieces = self._episodes(self.shadow, "shadow")
-        common = sorted(primary_eps.keys() & shadow_eps.keys())
-        directional = [k for k in common if primary_eps[k]["net"] != 0 and shadow_eps[k]["net"] != 0]
-        agreement = sum((primary_eps[k]["net"] > 0) == (shadow_eps[k]["net"] > 0)
+        primary_closed = {key: row for key, row in primary_eps.items() if row["closed"]}
+        shadow_closed = {key: row for key, row in shadow_eps.items() if row["closed"]}
+        common = sorted(primary_closed.keys() & shadow_closed.keys())
+        directional = [k for k in common if primary_closed[k]["net"] != 0 and shadow_closed[k]["net"] != 0]
+        agreement = sum((primary_closed[k]["net"] > 0) == (shadow_closed[k]["net"] > 0)
                         for k in directional)
-        primary_wins = [k for k in common if primary_eps[k]["net"] > 0]
-        shadow_wins_preserved = sum(shadow_eps[k]["net"] > 0 for k in primary_wins)
+        primary_wins = [k for k in common if primary_closed[k]["net"] > 0]
+        shadow_wins_preserved = sum(shadow_closed[k]["net"] > 0 for k in primary_wins)
         outcome_matrix = {primary: {shadow: 0 for shadow in ("win", "loss", "break_even")}
                           for primary in ("win", "loss", "break_even")}
         for key in common:
-            p_net, s_net = primary_eps[key]["net"], shadow_eps[key]["net"]
+            p_net, s_net = primary_closed[key]["net"], shadow_closed[key]["net"]
             p_outcome = "win" if p_net > 0 else "loss" if p_net < 0 else "break_even"
             s_outcome = "win" if s_net > 0 else "loss" if s_net < 0 else "break_even"
             outcome_matrix[p_outcome][s_outcome] += 1
@@ -309,7 +314,9 @@ class MirroredEmulator:
             # after go-live remains part of warm-up evidence.
             warmup = [v for v in keys.values() if live_from_ts is None or v["entry_ts"] < live_from_ts]
             live = [v for v in keys.values() if live_from_ts is not None and v["entry_ts"] >= live_from_ts]
-            return {"episodes": len(keys), "closed_episodes": len(keys),
+            return {"episodes": len(keys),
+                    "closed_episodes": sum(v["closed"] for v in keys.values()),
+                    "partial_realized_episodes": sum(not v["closed"] for v in keys.values()),
                     "net": round(sum(v["net"] for v in keys.values()), 8),
                     "warmup_net": round(sum(v["net"] for v in warmup), 8),
                     "live_net": round(sum(v["net"] for v in live), 8)}
@@ -362,8 +369,8 @@ class MirroredEmulator:
                 [value / self.primary.mintick for value in entry_deltas] if self.primary.mintick else []),
             "entry_price_delta_dollars_shadow_minus_primary": delta_summary(entry_delta_dollars),
             "recent_entry_fill_pairs": matched_entry_pairs[-20:],
-            "primary_only_closed_episodes": len(primary_eps.keys() - shadow_eps.keys()),
-            "shadow_only_closed_episodes": len(shadow_eps.keys() - primary_eps.keys()),
+            "primary_only_closed_episodes": len(primary_closed.keys() - shadow_closed.keys()),
+            "shadow_only_closed_episodes": len(shadow_closed.keys() - primary_closed.keys()),
             "pairable_closed_episodes": len(common),
             "excluded_admin_flatten_lot_trade_pieces": {
                 "primary": primary_admin_flatten_pieces,
