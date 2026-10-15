@@ -251,6 +251,65 @@ def test_portfolio_shadow_view_aggregates_counts_and_ratios_without_faking_drawd
         assert len(fabric.query(channel="real_price_shadow", assets=["TEST"])) == 1
 
 
+def test_admin_pause_cancels_shadow_only_pending_limit_order():
+    spec = parse_spec("NQ@1")
+    runner = AssetRunner(
+        RunnerConfig(spec=spec, inputs=Inputs(), mintick=1, shadow_real_fills=True),
+        Journal(":memory:"), feeds={},
+    )
+    twin = runner.em
+    twin.process_bar(bar(60, 110, 112, 108, 110), 0,
+                     real_bar=bar(60, 110, 112, 108, 110))
+    twin.entry("L", 1, 1, limit=105)
+    twin.process_bar(bar(120, 110, 112, 104, 106), 1,
+                     real_bar=bar(120, 110, 112, 106, 108))
+    assert twin.primary.position_size == 1
+    assert twin.shadow.position_size == 0
+    assert [p.id for p in twin.shadow._pending_entries] == ["L"]
+
+    # This is the runtime's pause/flatten cancellation path. The primary has no
+    # pending ID left, but the research lane still has a working limit order.
+    runner._cancel_pending_entries()
+    twin.process_bar(bar(180, 110, 112, 109, 111), 2,
+                     real_bar=bar(180, 110, 112, 104, 106))
+
+    assert twin.primary.position_size == 1
+    assert twin.shadow.position_size == 0
+    assert twin.shadow._pending_entries == []
+
+
+def test_portfolio_pairable_closed_count_includes_break_even_episode():
+    primary = Emulator(initial_capital=10_000, commission=0, mintick=1, contract_size=1)
+    twin = MirroredEmulator(primary, asset="TEST")
+    twin.process_bar(bar(60, 100, 101, 99, 100), 0,
+                     real_bar=bar(60, 100, 101, 99, 100))
+    twin.entry("L", 1, 1)
+    twin.process_bar(bar(120, 100, 101, 99, 100), 1,
+                     real_bar=bar(120, 100, 101, 99, 100))
+    twin.close("L")
+    twin.process_bar(bar(180, 100, 100, 100, 100), 2,
+                     real_bar=bar(180, 100, 100, 100, 100))
+    per_asset = twin.summary()
+
+    class SummaryOnlyRunner:
+        def summary(self, *, nonblocking=False):
+            return {"symbol": "TEST", "equity": 10_000, "capital": 10_000,
+                    "live_profit": 0, "open_profit": 0, "position": 0,
+                    "paused": False, "warm": True, "last_bar_ts": 180,
+                    "real_price_shadow": per_asset}
+
+    portfolio = Portfolio(Journal(":memory:"), ".", feeds={})
+    portfolio.runners = {"TEST": SummaryOnlyRunner()}
+    portfolio.order = ["TEST"]
+    aggregate = portfolio.status()["real_price_shadow"]
+
+    assert per_asset["pairable_closed_episodes"] == 1
+    assert per_asset["outcome_agreement_denominator"] == 0
+    assert aggregate["pairable_closed_episodes"] == 1
+    assert aggregate["outcome_agreement_denominator"] == 0
+    assert aggregate["outcome_agreement_rate"] is None
+
+
 def test_runner_feature_is_default_off_and_runtime_passes_standard_bar():
     spec = parse_spec("NQ@1")
     spec.chart_type = "heikin_ashi"

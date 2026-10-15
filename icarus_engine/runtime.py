@@ -1060,6 +1060,10 @@ class AssetRunner:
         pending = list(self.em._pending_entries)
         ids = {p.id for p in pending}
         if isinstance(self.em, MirroredEmulator):
+            # A limit may fill in the primary while it remains pending in the
+            # real-price lane. Admin pause/flatten still has to cancel that
+            # shadow-only remainder before processing another bar.
+            ids.update(p.id for p in self.em.shadow._pending_entries)
             self.em.cancel_pending_entries(ids)
         else:
             self.em._pending_entries.clear()
@@ -1782,7 +1786,7 @@ class Portfolio:
         primary_entries = sum(x["primary_entry_fills"] for x in shadow_rows)
         shadow_entries = sum(x["shadow_entry_fills"] for x in shadow_rows)
         matched_entries = sum(x["matched_entry_intents"] for x in shadow_rows)
-        pair_count = sum(x["outcome_agreement_denominator"] for x in shadow_rows)
+        agreement_denominator = sum(x["outcome_agreement_denominator"] for x in shadow_rows)
         agree_count = sum(x["outcome_agreement_count"] for x in shadow_rows)
         primary_win_count = sum(x["primary_win_count"] for x in shadow_rows)
         preserved_count = sum(x["primary_win_preserved_count"] for x in shadow_rows)
@@ -1817,8 +1821,9 @@ class Portfolio:
             "matched_entry_intents": matched_entries,
             "primary_only_entry_fills": sum(x["primary_only_entry_fills"] for x in shadow_rows),
             "shadow_only_entry_fills": sum(x["shadow_only_entry_fills"] for x in shadow_rows),
-            "pairable_closed_episodes": pair_count,
-            "outcome_agreement_rate": agree_count / pair_count if pair_count else None,
+            "pairable_closed_episodes": sum(x["pairable_closed_episodes"] for x in shadow_rows),
+            "outcome_agreement_denominator": agreement_denominator,
+            "outcome_agreement_rate": agree_count / agreement_denominator if agreement_denominator else None,
             "outcome_matrix": portfolio_outcome_matrix,
             "primary_win_preservation": preserved_count / primary_win_count if primary_win_count else None,
             "primary_net": round(portfolio_primary_net, 8),
