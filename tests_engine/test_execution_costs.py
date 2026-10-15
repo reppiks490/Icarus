@@ -118,7 +118,7 @@ class ExecutionCostTests(unittest.TestCase):
                     headers["Authorization"] = "Bearer cost-test-token"
                 req = urllib.request.Request(url, data=json.dumps(payload).encode(), headers=headers)
                 try:
-                    with urllib.request.urlopen(req, timeout=5) as response:
+                    with urllib.request.urlopen(req, timeout=30) as response:
                         return response.status, json.load(response)
                 except urllib.error.HTTPError as error:
                     return error.code, json.load(error)

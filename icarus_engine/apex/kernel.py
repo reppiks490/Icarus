@@ -26,7 +26,12 @@ def _finite_json_copy(body:Mapping[str,Any])->dict[str,Any]:
     return out
 class ApexKernel:
     def __init__(self,base_dir,*,possibility=None,chronofold=None,pantheon=None,parallax=None,dreamstate=None,sibyl=None,learning=None):
-        self.base_dir=Path(base_dir);self.store=ApexStore(self.base_dir);self._siblings={"possibility":possibility,"chronofold":chronofold,"pantheon":pantheon,"parallax":parallax,"dreamstate":dreamstate,"sibyl":sibyl};self._learning=learning;self._research_events_path=self.base_dir/"research"/"apex-research-events.jsonl";self._research_events_path.parent.mkdir(parents=True,exist_ok=True)
+        self.base_dir=Path(base_dir);self.store=ApexStore(self.base_dir);self._siblings={"possibility":possibility,"chronofold":chronofold,"pantheon":pantheon,"parallax":parallax,"dreamstate":dreamstate,"sibyl":sibyl};self._learning=learning;self._research_events_path=self.base_dir/"research"/"apex-research-events.jsonl";self._research_events_path.parent.mkdir(parents=True,exist_ok=True);self._closed=False
+    def close(self)->None:
+        """Release the persistent APEX database connection; safe to call twice."""
+        if self._closed:return
+        self._closed=True
+        self.store.close()
     def ingest_evidence(
         self,
         body:Mapping[str,Any],

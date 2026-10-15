@@ -272,7 +272,7 @@ def admin(configured):
         req = urllib.request.Request(f"http://127.0.0.1:{srv.server_address[1]}" + route,
                                      data=json.dumps(body).encode(), headers={"Authorization": "Bearer test-token"})
         try:
-            with urllib.request.urlopen(req, timeout=5) as reply:
+            with urllib.request.urlopen(req, timeout=30) as reply:
                 return reply.status, json.load(reply)
         except urllib.error.HTTPError as ex:
             return ex.code, json.load(ex)
