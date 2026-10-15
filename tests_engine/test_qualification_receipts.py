@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+import shutil
 
 import pytest
 
@@ -78,3 +79,9 @@ def test_candidate_revision_scopes_do_not_mix(tmp_path):
     assert first["validation"]["provenance"] is False
     assert second["validation"]["causal_time"] is False
     assert second["validation"]["provenance"] is True
+
+
+def test_receipt_store_closes_sqlite_handles_before_directory_removal(tmp_path):
+    store = QualificationReceiptStore(tmp_path, GATES)
+    store.snapshot()
+    shutil.rmtree(tmp_path)
