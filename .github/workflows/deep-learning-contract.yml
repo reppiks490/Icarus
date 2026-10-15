@@ -3,7 +3,7 @@ name: deep-learning-contract
 on:
   push:
     paths:
-      - "icarus_engine/trainers/gru_slot.py"
+      - "icarus_engine/trainers/deep_challenger.py"
       - "icarus_engine/trainers/sequence.py"
       - "icarus_engine/trainers/run.py"
       - "icarus_engine/trainers/__main__.py"
@@ -13,7 +13,7 @@ on:
       - ".github/workflows/deep-learning-contract.yml"
   pull_request:
     paths:
-      - "icarus_engine/trainers/gru_slot.py"
+      - "icarus_engine/trainers/deep_challenger.py"
       - "icarus_engine/trainers/sequence.py"
       - "icarus_engine/trainers/run.py"
       - "icarus_engine/trainers/__main__.py"
