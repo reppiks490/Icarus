@@ -25,6 +25,77 @@ from .contracts import MONTH_CODES, SPECS
 _PAPER_ACCOUNT = re.compile(r"^DU[0-9]+$")
 _DATED_FUTURE = re.compile(r"^([A-Z]+)([FGHJKMNQUVXZ])(\d{2})$")
 _VALID_ORDER_KINDS = {"MARKET": "MKT", "LIMIT": "LMT", "STOP": "STP"}
+_ORDER_REPLAY_DEFAULTS = {
+    # Values which the adapter does not submit, but which can change how an
+    # otherwise identical order executes. Capture them from TWS readback and
+    # treat any non-default value as a different order identity.
+    "parentId": 0,
+    "ocaGroup": "",
+    "ocaType": 0,
+    "transmit": True,
+    "allOrNone": False,
+    "minQty": None,
+    "goodAfterTime": "",
+    "goodTillDate": "",
+    "conditions": (),
+    "conditionsCancelOrder": False,
+    "conditionsIgnoreRth": False,
+    "algoStrategy": "",
+    "algoParams": (),
+    "smartComboRoutingParams": (),
+    "discretionaryAmt": 0.0,
+    "hidden": False,
+    "displaySize": None,
+    "sweepToFill": False,
+    "blockOrder": False,
+    "triggerMethod": 0,
+    "trailStopPrice": None,
+    "trailingPercent": None,
+    "scaleInitLevelSize": None,
+    "scaleSubsLevelSize": None,
+    "scalePriceIncrement": None,
+    "cashQty": None,
+    "notHeld": False,
+    "postToAts": 0,
+    "usePriceMgmtAlgo": False,
+    "routeMarketableToBbo": False,
+    "eTradeOnly": False,
+    "firmQuoteOnly": False,
+    "optOutSmartRouting": False,
+    "overridePercentageConstraints": False,
+    "discretionaryUpToLimitPrice": False,
+    "competeAgainstBestOffset": 0.0,
+    "duration": 0,
+    "postOnly": False,
+    "hedgeType": "",
+    "hedgeParam": "",
+    "shortSaleSlot": 0,
+    "designatedLocation": "",
+    "exemptCode": -1,
+}
+
+
+def _normalize_replay_field(field: str, value: Any) -> Any:
+    """Normalize absent/sentinel callback values for order identity checks."""
+    default = _ORDER_REPLAY_DEFAULTS[field]
+    if value is None or value in (2147483647, 1.7976931348623157e308):
+        return default
+    if field in {"conditions", "algoParams", "smartComboRoutingParams"}:
+        if not value:
+            return ()
+        # This adapter does not build these options. Any populated value is a
+        # mismatch; repr preserves a useful, deterministic diagnostic value.
+        return ("unsupported-nonempty", repr(value))
+    if field in {"discretionaryAmt", "scalePriceIncrement", "trailStopPrice", "trailingPercent",
+                 "competeAgainstBestOffset"}:
+        try:
+            if float(value) == 0.0:
+                return default
+        except (TypeError, ValueError):
+            pass
+    return value
+
+
 _ERROR_CODES = {
     "103": "INVALID_ORDER",  # duplicate order id
     "110": "INVALID_ORDER",  # price does not conform to contract increment
@@ -234,6 +305,8 @@ class IbkrTwsPaperGateway:
             value = getattr(order, field, None)
             if value not in (None, 0, 0.0):
                 record[field] = float(value)
+        for field, default in _ORDER_REPLAY_DEFAULTS.items():
+            record[field] = _normalize_replay_field(field, getattr(order, field, default))
         return record
 
     def _emit(self, event: dict) -> None:
@@ -754,10 +827,15 @@ class IbkrPaperVenue:
             "account", "action", "totalQuantity", "orderType", "tif", "orderRef",
             "outsideRth", "lmtPrice", "auxPrice",
         )
-        normalized_found_order = {key: found_order[key] for key in order_fields
-                                  if key in found_order}
-        normalized_expected_order = {key: expected_order[key] for key in order_fields
-                                     if key in expected_order}
+        normalized_found_order = {key: found_order.get(key) for key in order_fields}
+        normalized_expected_order = {key: expected_order.get(key) for key in order_fields}
+        for field, default in _ORDER_REPLAY_DEFAULTS.items():
+            normalized_found_order[field] = _normalize_replay_field(
+                field, found_order.get(field, default)
+            )
+            normalized_expected_order[field] = _normalize_replay_field(
+                field, expected_order.get(field, default)
+            )
         if normalized_found_order != normalized_expected_order:
             raise ValueError("IBKR order readback terms do not match the requested order")
         status = str(record.get("status", "")).lower()
