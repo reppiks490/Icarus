@@ -155,6 +155,29 @@ def test_edit_pause_and_flatten_only_touch_the_selected_workspace(tmp_path, monk
         manager.stop()
 
 
+def test_workspace_configuration_persists_only_to_its_own_profile(tmp_path, monkeypatch):
+    manager = _manager(tmp_path, monkeypatch)
+    manager.start()
+    try:
+        manager.update("cc2", {
+            "chart": {"timeframe": "10", "chart_type": "real"},
+            "inputs": {"tp1_pts": 9.0},
+        })
+        manager.update("cc4", {"inputs": {"tp1_pts": 11.0}})
+    finally:
+        manager.stop()
+
+    reloaded = _manager(tmp_path, monkeypatch)
+    assert reloaded.profiles["cc2"]["chart"]["timeframe"] == "10"
+    assert reloaded.profiles["cc2"]["chart"]["chart_type"] == "real"
+    assert reloaded.profiles["cc2"]["inputs"]["tp1_pts"] == 9.0
+    assert reloaded.profiles["cc4"]["inputs"]["tp1_pts"] == 11.0
+    assert reloaded.profiles["cc1"]["inputs"] == {}
+    assert reloaded.profiles["cc3"]["inputs"] == {}
+    assert reloaded.profiles["cc1"]["chart"]["timeframe"] == "20"
+    assert reloaded.profiles["cc4"]["chart"]["timeframe"] == "5"
+
+
 def test_real_workspace_runners_positions_journals_and_pnl_are_isolated(tmp_path, monkeypatch):
     manager = _real_manager(tmp_path, monkeypatch)
     manager.start()
