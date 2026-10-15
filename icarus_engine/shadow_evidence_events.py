@@ -31,6 +31,10 @@ _EVIDENCE_FIELDS = (
     "paired_shadow_net_on_primary_winners", "bar_close_drawdown_basis",
     "bar_close_equity_observations", "primary_bar_close_max_drawdown",
     "real_price_shadow_bar_close_max_drawdown",
+    "closed_episode_excursion_basis", "primary_closed_episode_excursions",
+    "real_price_shadow_closed_episode_excursions",
+    "matched_closed_episode_favorable_excursion_delta_shadow_minus_primary",
+    "matched_closed_episode_adverse_excursion_delta_shadow_minus_primary",
 )
 
 
