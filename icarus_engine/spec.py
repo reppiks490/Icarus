@@ -21,7 +21,7 @@ XGB_CLASSIFIER = {
 }
 CALIBRATE = "isotonic"
 ARTIFACT = "run/trainers/{sym}_{family}_{slot}.json"
-SLOTS = {"logit": "slot0", "xgb": "slot1", "rank": "slot2", "regime": "slot3", "fail": "slot4"}
+SLOTS = {"logit": "slot0", "xgb": "slot1", "rank": "slot2", "regime": "slot3", "fail": "slot4", "gru": "slot5"}
 SWAP_YES = {"min_overlap": 200, "min_sign_agree": 0.55, "min_macro_agree": 0.55}
 CSV_REPO = "https://github.com/reppiks490/multi-level-csv.git"
 BATCHES = (
