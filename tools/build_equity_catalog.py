@@ -130,6 +130,11 @@ def build(limit: int = 200) -> dict:
                 "symbol": symbol.replace(".", "-"),
                 "mapping_status": "UNVERIFIED",
                 "role": "candidate_only",
+            }, {
+                "provider": "fmp",
+                "symbol": symbol,
+                "mapping_status": "UNVERIFIED",
+                "role": "candidate_only",
             }],
             "name": name,
             "asset_class": "equity",

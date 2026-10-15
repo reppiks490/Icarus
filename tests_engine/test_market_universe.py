@@ -1,4 +1,5 @@
 from copy import deepcopy
+from datetime import datetime, timezone
 
 import pytest
 
@@ -10,6 +11,7 @@ from icarus_engine.market_universe_adapter import MarketUniverseAdapter
 from icarus_engine.calendar import get_calendar
 from icarus_engine.assets import parse_spec
 from icarus_engine.feeds.databento import Databento
+from icarus_engine.feeds.fmp import FmpHistory
 from icarus_engine.paper_workspaces import SharedFeed
 from icarus_engine.runtime import AssetRunner, Journal, RunnerConfig
 from icarus_engine.strategy.inputs import Inputs
@@ -96,6 +98,64 @@ def test_a200_yahoo_adapter_rejects_unknown_id_and_provider_symbol_mismatch():
     row = snapshot()["instruments"][0]
     with pytest.raises(ValueError, match="symbol mismatch"):
         adapter.fetch_history(row["instrument_id"], 60, 60, 120)
+
+
+def test_a200_hybrid_provider_probe_keeps_each_source_receipt_separate():
+    class FakeFmpHistory:
+        GRANULARITIES = (60, 300, 900, 1800, 3600, 14400, 86400)
+
+        def candles(self, symbol, interval, start, end):
+            return [Bar(start, 10, 12, 9, 11, 4)]
+
+        def meta(self, symbol):
+            return {"symbol": symbol}
+
+    row = snapshot()["instruments"][0]
+    adapter = MarketUniverseAdapter(_FakeYahooHistory("NVDA"), fmp=FakeFmpHistory())
+    results = adapter.fetch_hybrid_history(row["instrument_id"], 60, 60, 120)
+    assert [result.provider for result in results] == ["yahoo", "fmp"]
+    assert all(result.error is None for result in results)
+    assert all(result.receipt.provider_symbol_match_status == "MATCHED" for result in results)
+    assert all(result.receipt.provider_mapping_status == "UNVERIFIED" for result in results)
+    assert all(result.receipt.historical_bars_qualified is False for result in results)
+    assert results[0].receipt.checksum_sha256 == results[1].receipt.checksum_sha256
+
+
+def test_fmp_history_connector_uses_external_key_and_parses_exchange_timestamps(monkeypatch):
+    monkeypatch.delenv("FMP_API_KEY", raising=False)
+    with pytest.raises(RuntimeError, match="FMP_API_KEY"):
+        FmpHistory()
+
+    feed = FmpHistory(api_key="test-secret")
+    requests = []
+
+    def fake_get(path, params):
+        requests.append((path, params))
+        if path == "profile":
+            return [{"symbol": params["symbol"], "exchangeShortName": "NASDAQ"}]
+        return [{"date": "2026-10-15 09:30:00", "open": 10, "high": 12,
+                 "low": 9, "close": 11, "volume": 4}]
+
+    monkeypatch.setattr(feed, "_get", fake_get)
+    start = int(datetime(2026, 10, 15, 13, 30, tzinfo=timezone.utc).timestamp())
+    bars = feed.candles("NVDA", 60, start, start + 3600)
+    assert bars == [Bar(start, 10, 12, 9, 11, 4)]
+    assert requests[0] == ("historical-chart/1min", {
+        "symbol": "NVDA", "from": "2026-10-15", "to": "2026-10-15",
+    })
+    assert feed.meta("NVDA")["exchangeShortName"] == "NASDAQ"
+    assert "test-secret" not in repr(requests)
+
+
+def test_fmp_daily_bars_use_exchange_open_anchor_without_qualifying_receipt(monkeypatch):
+    feed = FmpHistory(api_key="test-secret")
+    monkeypatch.setattr(feed, "_get", lambda path, params: [
+        {"date": "2026-10-15", "open": 10, "high": 12,
+         "low": 9, "close": 11, "volume": 4}
+    ])
+    start = int(datetime(2026, 10, 15, 13, 30, tzinfo=timezone.utc).timestamp())
+    bars = feed.candles("NVDA", 86400, start, start + 86400)
+    assert bars == [Bar(start, 10, 12, 9, 11, 4)]
 
 
 def test_bar_batch_receipt_hashes_rows_but_keeps_unknowns_unqualified():
@@ -282,6 +342,7 @@ def test_catalog_contains_two_hundred_unique_disabled_equity_candidates():
     assert all(row["entitlement"] == "UNKNOWN" for row in rows)
     assert all(row["pulse_enabled"] is False for row in rows)
     assert all(row["strategy_qualified"] is False for row in rows)
+    assert all({c["provider"] for c in row["provider_symbol_candidates"]} == {"yahoo", "fmp"} for row in rows)
     assert data["counts"] == {
         "catalogued_count": 200,
         "source_connected_count": 0,
