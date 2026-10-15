@@ -262,11 +262,18 @@ class PaperWorkspaceManager:
             raise
 
     def stop(self):
+        first_error = None
         for portfolio in reversed(list(self.portfolios.values())):
             try:
                 portfolio.stop()
-            finally:
+            except Exception as ex:
+                first_error = first_error or ex
+            try:
                 self._close_journal_when_workers_stop(portfolio)
+            except Exception as ex:
+                first_error = first_error or ex
+        if first_error is not None:
+            raise first_error
 
     def _close_journal_when_workers_stop(self, portfolio):
         workers = list(getattr(portfolio, "_threads", {}).values())

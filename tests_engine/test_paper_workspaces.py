@@ -179,6 +179,32 @@ def test_manager_stop_closes_real_workspace_journals_idempotently(tmp_path, monk
             journal.con.execute("SELECT 1")
 
 
+def test_manager_stop_continues_cleanup_after_workspace_stop_error(tmp_path, monkeypatch):
+    manager = _real_manager(tmp_path, monkeypatch)
+    manager.start()
+    portfolios = list(manager.portfolios.values())
+    journals = [portfolio.journal for portfolio in portfolios]
+    stopped = []
+    for portfolio in portfolios:
+        original_stop = portfolio.stop
+
+        def stop_with_one_failure(original_stop=original_stop, portfolio=portfolio):
+            stopped.append(portfolio.workspace["id"])
+            if portfolio.workspace["id"] == "cc4":
+                raise RuntimeError("forced workspace stop failure")
+            return original_stop()
+
+        portfolio.stop = stop_with_one_failure
+
+    with pytest.raises(RuntimeError, match="forced workspace stop failure"):
+        manager.stop()
+
+    assert set(stopped) == set(manager.portfolios)
+    for journal in journals:
+        with pytest.raises(sqlite3.ProgrammingError, match="closed database"):
+            journal.con.execute("SELECT 1")
+
+
 def test_manager_start_failure_closes_every_created_workspace_journal(tmp_path, monkeypatch):
     monkeypatch.setattr(
         paper_workspaces,
