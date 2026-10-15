@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import builtins
-from types import SimpleNamespace
+
+import pytest
 
 from icarus_engine.spec import FEATURE_KEYS
 from icarus_engine.trainers import gru_slot
@@ -92,3 +93,35 @@ def test_gru_contract_is_research_only_and_reuses_frozen_feature_keys():
     assert contract["execution_authorized"] is False
     assert contract["production_decision_authorized"] is False
     assert contract["auto_promote"] is False
+
+
+def test_gru_end_to_end_when_torch_is_available(monkeypatch, tmp_path):
+    pytest.importorskip("torch")
+    rows = [_row(i, y=(1 if (i // 4) % 2 == 0 else -1)) for i in range(240)]
+
+    # Keep CI fast while exercising the real backend, optimizer, serialization,
+    # holdout ledger, calibration, baseline comparison, and replay path.
+    monkeypatch.setitem(gru_slot._MODEL, "epochs", 2)
+    monkeypatch.setitem(gru_slot._MODEL, "patience", 1)
+    monkeypatch.setitem(gru_slot._MODEL, "hidden_size", 4)
+    monkeypatch.setitem(gru_slot._MODEL, "layers", 1)
+    monkeypatch.setitem(gru_slot._MODEL, "dropout", 0.0)
+    monkeypatch.setitem(gru_slot._MODEL, "batch_size", 64)
+
+    report = gru_slot.train(
+        rows,
+        "NQ",
+        "clock_minutes",
+        tmp_path / "gru.json",
+        ledger_path=tmp_path / "ledger.sqlite3",
+        dataset_sha256="synthetic-contract",
+    )
+
+    assert report["status"] == "fitted"
+    assert report["holdout_touched_before_final"] is False
+    assert report["serialization_replay"] is True
+    assert report["holdout_claim"]["status"] == "NEW"
+    assert report["execution_authorized"] is False
+    assert report["production_decision_authorized"] is False
+    assert report["auto_promote"] is False
+    assert (tmp_path / report["model_file"]).is_file()
