@@ -64,7 +64,7 @@ class ShadowBroker:
     def _cancel_oco_siblings(self, order_id: str) -> None:
         for sibling_id in self._oco_siblings.get(order_id, set()):
             sibling = self._orders.get(sibling_id)
-            if sibling and sibling.status in ("new", "accepted"):
+            if sibling and sibling.status in ("new", "accepted", "held"):
                 sibling.status = "canceled"
         self._oco_siblings.pop(order_id, None)
         for sibling_id in list(self._oco_siblings):
