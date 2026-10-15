@@ -16,6 +16,9 @@ from urllib.parse import urlsplit
 LOG = logging.getLogger("icarus.phone_access_proxy")
 _MAX_REQUEST_BYTES = 8 * 1024 * 1024
 _MAX_RESPONSE_BYTES = 32 * 1024 * 1024
+_PHONE_ORIGIN = "https://icarus-command-center-mobile.cloudyrook1.chatgpt.site"
+_CORS_METHODS = "GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS"
+_CORS_HEADERS = {"authorization", "content-type"}
 _HOP_HEADERS = {
     "connection", "keep-alive", "proxy-authenticate", "proxy-authorization",
     "te", "trailer", "transfer-encoding", "upgrade", "host", "content-length",
@@ -52,14 +55,52 @@ def create_handler(*, engine_port: int, gateway_port: int):
             self.send_header("Content-Type", content_type)
             self.send_header("Content-Length", str(len(payload)))
             self.send_header("Cache-Control", "no-store")
+            origin = self.headers.get("Origin")
+            if origin == _PHONE_ORIGIN:
+                self.send_header("Access-Control-Allow-Origin", _PHONE_ORIGIN)
+                self.send_header("Vary", "Origin")
             self.send_header("Connection", "close")
             self.end_headers()
             if self.command != "HEAD":
                 self.wfile.write(payload)
 
+        def _preflight(self) -> None:
+            if not self._host_is_loopback():
+                self._respond(400, b"host rejected")
+                return
+            if self.headers.get("Origin") != _PHONE_ORIGIN:
+                self._respond(403, b"origin rejected")
+                return
+            method = self.headers.get("Access-Control-Request-Method", "").upper()
+            if method not in set(_CORS_METHODS.split(", ")) - {"OPTIONS"}:
+                self._respond(405, b"preflight method rejected")
+                return
+            requested_headers = {
+                value.strip().lower()
+                for value in self.headers.get("Access-Control-Request-Headers", "").split(",")
+                if value.strip()
+            }
+            if not requested_headers.issubset(_CORS_HEADERS):
+                self._respond(400, b"preflight headers rejected")
+                return
+            self.send_response(204)
+            self.send_header("Access-Control-Allow-Origin", _PHONE_ORIGIN)
+            self.send_header("Access-Control-Allow-Methods", _CORS_METHODS)
+            self.send_header("Access-Control-Allow-Headers", "authorization, content-type")
+            self.send_header("Access-Control-Max-Age", "600")
+            self.send_header("Vary", "Origin")
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Content-Length", "0")
+            self.send_header("Connection", "close")
+            self.end_headers()
+
         def _proxy(self) -> None:
             if not self._host_is_loopback():
                 self._respond(400, b"host rejected")
+                return
+            origin = self.headers.get("Origin")
+            if origin and origin != _PHONE_ORIGIN:
+                self._respond(403, b"origin rejected")
                 return
             if self.headers.get("Upgrade", "").lower() == "websocket":
                 self._respond(501, b"websocket relay is not supported")
@@ -100,10 +141,14 @@ def create_handler(*, engine_port: int, gateway_port: int):
                 self.send_response(upstream.status)
                 for key, value in upstream.getheaders():
                     low = key.lower()
-                    if low not in _HOP_HEADERS | {"set-cookie", "server", "content-length"}:
+                    if (low not in _HOP_HEADERS | {"set-cookie", "server", "content-length"}
+                            and not low.startswith("access-control-")):
                         self.send_header(key, value)
                 self.send_header("Content-Length", str(len(payload)))
                 self.send_header("Cache-Control", "no-store")
+                if origin == _PHONE_ORIGIN:
+                    self.send_header("Access-Control-Allow-Origin", _PHONE_ORIGIN)
+                    self.send_header("Vary", "Origin")
                 self.send_header("Connection", "close")
                 self.end_headers()
                 if self.command != "HEAD":
@@ -116,6 +161,7 @@ def create_handler(*, engine_port: int, gateway_port: int):
 
         do_GET = _proxy
         do_HEAD = _proxy
+        do_OPTIONS = _preflight
         do_POST = _proxy
         do_PUT = _proxy
         do_PATCH = _proxy

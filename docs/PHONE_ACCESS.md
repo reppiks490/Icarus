@@ -35,6 +35,10 @@ before enabling the public tunnel.
 The router binds only to loopback and restores the loopback Host header for the
 engine's existing DNS-rebinding guard. `/command` and `/v1/*` route to the
 loopback gateway on port 8792; dashboard and market APIs route to port 8791.
+Cross-origin requests are accepted only from the hosted phone-site origin
+`https://icarus-command-center-mobile.cloudyrook1.chatgpt.site`; its bearer-token
+and JSON requests use a narrow HTTP preflight. The relay does not enable browser
+cookies or allow arbitrary origins.
 The gateway command console appears only if its server-side command identity
 is configured. The relay does not support the separate intelligence WebSocket
 transport; the dashboard and semantic command console use HTTP routes.

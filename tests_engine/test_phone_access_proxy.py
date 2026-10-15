@@ -8,6 +8,8 @@ import pytest
 
 from icarus_engine.phone_access_proxy import create_handler
 
+PHONE_ORIGIN = "https://icarus-command-center-mobile.cloudyrook1.chatgpt.site"
+
 
 class _StubHandler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
@@ -119,14 +121,14 @@ def test_forwards_command_body_and_safe_headers_but_strips_browser_and_proxy_ide
     phone_proxy,
 ):
     body = b'{"command":"status"}'
-    status, _headers, payload = _request(
+    status, response_headers, payload = _request(
         phone_proxy["port"], "POST", "/command?source=phone", body=body,
         headers={
             "Host": f"127.0.0.1:{phone_proxy['port']}",
             "Authorization": "Bearer unique-owner-token",
             "Content-Type": "application/json",
             "Cookie": "session=browser-secret",
-            "Origin": "https://untrusted.example",
+            "Origin": PHONE_ORIGIN,
             "Referer": "https://untrusted.example/page",
             "CF-Connecting-IP": "203.0.113.8",
             "CF-Ray": "private-ray-id",
@@ -139,6 +141,8 @@ def test_forwards_command_body_and_safe_headers_but_strips_browser_and_proxy_ide
 
     assert status == 200
     assert payload == b"gateway:/command?source=phone"
+    assert response_headers["Access-Control-Allow-Origin"] == PHONE_ORIGIN
+    assert "Access-Control-Allow-Credentials" not in response_headers
     record = phone_proxy["records"]["gateway"][-1]
     assert record["body"] == body
     assert record["headers"]["Authorization"] == "Bearer unique-owner-token"
@@ -150,6 +154,66 @@ def test_forwards_command_body_and_safe_headers_but_strips_browser_and_proxy_ide
         "X-Forwarded-For", "X-Forwarded-Host", "X-Real-IP",
     ):
         assert private_header not in record["headers"]
+
+
+def test_allows_preflight_from_the_hosted_phone_site_without_contacting_upstream(phone_proxy):
+    before = sum(map(len, phone_proxy["records"].values()))
+
+    status, headers, payload = _request(
+        phone_proxy["port"], "OPTIONS", "/command",
+        headers={
+            "Host": f"127.0.0.1:{phone_proxy['port']}",
+            "Origin": PHONE_ORIGIN,
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "authorization, content-type",
+        },
+    )
+
+    assert status == 204
+    assert payload == b""
+    assert headers["Access-Control-Allow-Origin"] == PHONE_ORIGIN
+    assert headers["Access-Control-Allow-Methods"] == "GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS"
+    assert headers["Access-Control-Allow-Headers"] == "authorization, content-type"
+    assert headers["Vary"] == "Origin"
+    assert sum(map(len, phone_proxy["records"].values())) == before
+
+
+def test_rejects_untrusted_cross_origin_requests(phone_proxy):
+    before = sum(map(len, phone_proxy["records"].values()))
+
+    status, _headers, payload = _request(
+        phone_proxy["port"], "GET", "/api/state",
+        headers={
+            "Host": f"127.0.0.1:{phone_proxy['port']}",
+            "Origin": "https://untrusted.example",
+        },
+    )
+
+    assert status == 403
+    assert payload == b"origin rejected"
+    assert sum(map(len, phone_proxy["records"].values())) == before
+
+
+@pytest.mark.parametrize(
+    ("method", "headers", "expected_status"),
+    [
+        ("TRACE", "authorization", 405),
+        ("POST", "authorization, x-forwarded-for", 400),
+    ],
+)
+def test_preflight_rejects_unsupported_methods_and_headers(phone_proxy, method, headers, expected_status):
+    status, _response_headers, payload = _request(
+        phone_proxy["port"], "OPTIONS", "/command",
+        headers={
+            "Host": f"127.0.0.1:{phone_proxy['port']}",
+            "Origin": PHONE_ORIGIN,
+            "Access-Control-Request-Method": method,
+            "Access-Control-Request-Headers": headers,
+        },
+    )
+
+    assert status == expected_status
+    assert payload
 
 
 @pytest.mark.parametrize("host", ["evil.example", "127.0.0.1.evil.example", "[::1].evil:8790"])
