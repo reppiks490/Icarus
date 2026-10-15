@@ -1,10 +1,15 @@
 import copy
+import sqlite3
 import threading
+from http.server import ThreadingHTTPServer
+
+import pytest
 
 from icarus_engine import paper_workspaces
 from icarus_engine.assets import REGISTRY as ASSET_REGISTRY
 from icarus_engine.pine.timeframe import Bar
-from icarus_engine.runtime import Inputs, Journal
+from icarus_engine.runtime import Inputs, Journal, Portfolio
+from icarus_engine.server import serve
 
 
 class _Parent:
@@ -57,7 +62,7 @@ class _WorkspacePortfolio:
         self.started = True
 
     def stop(self):
-        self.journal.con.close()
+        self.journal.close()
 
     def runner_list(self):
         return self.runners
@@ -155,6 +160,158 @@ def test_edit_pause_and_flatten_only_touch_the_selected_workspace(tmp_path, monk
         manager.stop()
 
 
+def test_manager_stop_closes_real_workspace_journals_idempotently(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        paper_workspaces,
+        "_PROFILE_DEFAULTS",
+        tuple({**profile, "assets": []} for profile in paper_workspaces._PROFILE_DEFAULTS),
+    )
+    parent = _Parent(tmp_path)
+    parent.feeds = {}
+    manager = paper_workspaces.PaperWorkspaceManager(parent)
+    manager.start()
+    journals = [portfolio.journal for portfolio in manager.portfolios.values()]
+
+    manager.stop()
+    manager.stop()
+
+    assert all(not portfolio._sampler_thread.is_alive() for portfolio in manager.portfolios.values())
+    for journal in journals:
+        with pytest.raises(sqlite3.ProgrammingError, match="closed database"):
+            journal.con.execute("SELECT 1")
+
+
+def test_manager_stop_continues_cleanup_after_workspace_stop_error(tmp_path, monkeypatch):
+    manager = _real_manager(tmp_path, monkeypatch)
+    manager.start()
+    portfolios = list(manager.portfolios.values())
+    journals = [portfolio.journal for portfolio in portfolios]
+    stopped = []
+    for portfolio in portfolios:
+        original_stop = portfolio.stop
+
+        def stop_with_one_failure(original_stop=original_stop, portfolio=portfolio):
+            stopped.append(portfolio.workspace["id"])
+            if portfolio.workspace["id"] == "cc4":
+                raise RuntimeError("forced workspace stop failure")
+            return original_stop()
+
+        portfolio.stop = stop_with_one_failure
+
+    with pytest.raises(RuntimeError, match="forced workspace stop failure"):
+        manager.stop()
+
+    assert set(stopped) == set(manager.portfolios)
+    for journal in journals:
+        with pytest.raises(sqlite3.ProgrammingError, match="closed database"):
+            journal.con.execute("SELECT 1")
+
+
+def test_manager_start_failure_closes_every_created_workspace_journal(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        paper_workspaces,
+        "_PROFILE_DEFAULTS",
+        tuple({**profile, "assets": []} for profile in paper_workspaces._PROFILE_DEFAULTS),
+    )
+    parent = _Parent(tmp_path)
+    parent.feeds = {}
+    manager = paper_workspaces.PaperWorkspaceManager(parent)
+    real_start = paper_workspaces.WorkspacePortfolio.start
+
+    def fail_second_workspace(portfolio):
+        if portfolio.workspace["id"] == "cc2":
+            raise RuntimeError("forced workspace start failure")
+        real_start(portfolio)
+
+    monkeypatch.setattr(paper_workspaces.WorkspacePortfolio, "start", fail_second_workspace)
+    try:
+        with pytest.raises(RuntimeError, match="forced workspace start failure"):
+            manager.start()
+        for portfolio in manager.portfolios.values():
+            with pytest.raises(sqlite3.ProgrammingError, match="closed database"):
+                portfolio.journal.con.execute("SELECT 1")
+    finally:
+        manager.stop()
+
+
+def test_manager_start_closes_journal_when_workspace_constructor_fails(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        paper_workspaces,
+        "_PROFILE_DEFAULTS",
+        tuple({**profile, "assets": []} for profile in paper_workspaces._PROFILE_DEFAULTS),
+    )
+    parent = _Parent(tmp_path)
+    parent.feeds = {}
+    manager = paper_workspaces.PaperWorkspaceManager(parent)
+    created_journals = []
+    real_journal = paper_workspaces.Journal
+
+    def capture_journal(*args, **kwargs):
+        journal = real_journal(*args, **kwargs)
+        created_journals.append(journal)
+        return journal
+
+    def fail_constructor(*_args, **_kwargs):
+        raise RuntimeError("forced workspace constructor failure")
+
+    monkeypatch.setattr(paper_workspaces, "Journal", capture_journal)
+    monkeypatch.setattr(paper_workspaces.WorkspacePortfolio, "__init__", fail_constructor)
+    try:
+        with pytest.raises(RuntimeError, match="forced workspace constructor failure"):
+            manager.start()
+
+        assert len(created_journals) == 1
+        with pytest.raises(sqlite3.ProgrammingError, match="closed database"):
+            created_journals[0].con.execute("SELECT 1")
+    finally:
+        manager.stop()
+        for journal in created_journals:
+            journal.close()
+
+
+def test_manager_defers_journal_close_until_slow_worker_exits(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        paper_workspaces,
+        "_PROFILE_DEFAULTS",
+        tuple({**profile, "assets": []} for profile in paper_workspaces._PROFILE_DEFAULTS),
+    )
+    parent = _Parent(tmp_path)
+    parent.feeds = {}
+    manager = paper_workspaces.PaperWorkspaceManager(parent)
+    manager.start()
+    portfolio = manager.portfolios["cc1"]
+    journal = portfolio.journal
+    release_worker = threading.Event()
+    closer_waiting = threading.Event()
+    journal_closed = threading.Event()
+    real_close = journal.close
+
+    def record_close():
+        real_close()
+        journal_closed.set()
+
+    journal.close = record_close
+
+    class _SlowWorker:
+        def is_alive(self):
+            return not release_worker.is_set()
+
+        def join(self, timeout=None):
+            if timeout is None:
+                closer_waiting.set()
+                release_worker.wait()
+
+    portfolio._threads["slow"] = _SlowWorker()
+    try:
+        manager.stop()
+        assert closer_waiting.wait(timeout=1)
+        assert not journal_closed.is_set()
+        assert journal.con.execute("SELECT 1").fetchone() == (1,)
+        release_worker.set()
+        assert journal_closed.wait(timeout=1)
+    finally:
+        release_worker.set()
+        manager.stop()
 def test_workspace_configuration_persists_only_to_its_own_profile(tmp_path, monkeypatch):
     manager = _manager(tmp_path, monkeypatch)
     manager.start()
@@ -251,3 +408,31 @@ def test_real_workspace_runners_positions_journals_and_pnl_are_isolated(tmp_path
         manager.stop()
         for portfolio in manager.portfolios.values():
             portfolio.journal.con.close()
+
+
+def test_server_close_attempts_all_services_and_closes_socket_after_workspace_error(tmp_path, monkeypatch):
+    port = Portfolio(Journal(":memory:"), str(tmp_path))
+    server = serve(port, 0, start=False)
+    closed_services = []
+    base_server_close = ThreadingHTTPServer.server_close
+
+    def fail_workspace_stop(_manager):
+        raise RuntimeError("fixture workspace shutdown failure")
+
+    def record_autopilot_close(_autopilot):
+        closed_services.append("autopilot")
+
+    def record_base_server_close(instance):
+        closed_services.append("http-server")
+        return base_server_close(instance)
+
+    monkeypatch.setattr(type(server.command_centers), "stop", fail_workspace_stop)
+    monkeypatch.setattr(type(server.autopilot), "close", record_autopilot_close)
+    monkeypatch.setattr(ThreadingHTTPServer, "server_close", record_base_server_close)
+
+    with pytest.raises(RuntimeError, match="background service\\(s\\) failed to close"):
+        server.server_close()
+
+    assert closed_services == ["autopilot", "http-server"]
+    assert server.fileno() == -1
+    port.journal.close()
