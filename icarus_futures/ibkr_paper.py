@@ -957,6 +957,9 @@ class IbkrPaperVenue:
         )
         if any(contract.get(field) != expected_contract.get(field) for field in contract_fields):
             raise ValueError("IBKR open-order contract does not match the explicit dated mapping")
+        for field, default in _ORDER_REPLAY_DEFAULTS.items():
+            if _normalize_replay_field(field, order.get(field, default)) != default:
+                raise ValueError("IBKR open-order readback has unsupported execution terms")
         client_id = self._record_client(record)
         broker_id = str(record.get("broker_id", ""))
         if not broker_id:

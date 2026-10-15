@@ -482,6 +482,35 @@ class IbkrPaperVenueTests(unittest.TestCase):
       assert engine.snapshot()["health"] == "BLOCKED"
 
 
+  def test_ibkr_execution_options_cannot_clear_ambiguity_during_reconcile(self):
+    adapter, gateway = venue()
+    intent = Intent("test-options-replay", "MNQZ26", "BUY", 1, "MARKET")
+    order_ref = adapter._order_ref(intent.intent_id)
+    request = {
+        "account": "DU12345", "action": "BUY", "totalQuantity": 1,
+        "orderType": "MKT", "tif": "DAY", "orderRef": order_ref,
+        "outsideRth": False, "ocaGroup": "unrelated-bracket", "ocaType": 1,
+    }
+    gateway.orders["901"] = {
+        "account_id": "DU12345", "broker_id": "901", "client_id": order_ref,
+        "contract": mapping().ib_contract(), "order": request,
+        "status": "Submitted", "filled": 0,
+    }
+    with TemporaryDirectory() as temp:
+      engine = ExecutionEngine(adapter, RiskGovernor(), Journal(f"{temp}/journal.jsonl"), mode="PAPER")
+      engine.state.data_age_s["MNQZ26"] = 0
+      engine.state.marks["MNQZ26"] = 19888.25
+      submitted = engine.submit(intent)
+      assert submitted["status"] == S.AMBIGUOUS.value
+
+      reconciliation = engine.reconcile()
+
+      assert reconciliation["resolved"] == {}
+      assert reconciliation["open_order_readback_error"] == "UNAVAILABLE_OR_INVALID"
+      assert engine.book.orders[intent.intent_id].state is S.AMBIGUOUS
+      assert engine.snapshot()["health"] == "BLOCKED"
+
+
   def test_reused_order_ref_with_different_terms_is_rejected_not_acknowledged(self):
     adapter, gateway = venue()
     assert adapter.submit("same-ref", "MNQZ26", "BUY", 1, "MARKET", None)["status"] == "ack"
