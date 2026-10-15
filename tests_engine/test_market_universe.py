@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 
 import pytest
 
+import icarus_engine.market_universe as market_universe
 from icarus_engine.market_universe import snapshot, validate_catalog
 import icarus_engine.market_universe as market_universe
 from icarus_engine.bar_receipts import make_bar_batch_receipt
@@ -430,6 +431,14 @@ def test_catalog_contains_two_hundred_unique_disabled_equity_candidates():
     }
     assert data["execution_authorized"] is False
     assert data["production_decision_authorized"] is False
+
+
+def test_market_universe_counts_verified_entitlements(monkeypatch):
+    catalog = market_universe._load()
+    catalog["instruments"][0]["entitlement"] = "VERIFIED"
+    catalog["counts"]["entitlement_verified_count"] = 1
+    monkeypatch.setattr(market_universe, "_load", lambda: catalog)
+    assert snapshot()["counts"]["entitlement_verified_count"] == 1
 
 
 def test_catalog_validation_rejects_duplicate_ids_and_pulse_enablement():
