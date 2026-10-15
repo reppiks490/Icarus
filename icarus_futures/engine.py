@@ -107,7 +107,7 @@ class ExecutionEngine:
         o = self.book.orders[order_id]
         if not o.broker_id or not self.book.on_cancel_requested(order_id):
             return False
-        self.venue.cancel(o.broker_id)
+        self.venue.cancel(o.broker_id, client_id=o.id)
         self.pump()
         return True
 

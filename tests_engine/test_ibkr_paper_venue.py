@@ -255,10 +255,10 @@ class IbkrPaperVenueTests(unittest.TestCase):
 
     api.positions_rows = [("DU12345", api.orders["900"][0], -1)]
     assert adapter.positions() == {"MNQZ26": -1}
-    assert adapter.replace("900", 19888.50) == {"status": "ok"}
+    assert adapter.replace("900", 19888.50, client_id="ci-session") == {"status": "ok"}
     assert api.placed[-1][0] == 900  # amend reuses the broker order id
     assert api.placed[-1][2].lmtPrice == 19888.50
-    assert adapter.cancel("900") == {"status": "ok"}
+    assert adapter.cancel("900", client_id="ci-session") == {"status": "ok"}
     assert adapter.open_orders() == []
     gateway.disconnect()
 
@@ -345,15 +345,34 @@ class IbkrPaperVenueTests(unittest.TestCase):
   def test_cancel_replace_and_positions_are_scoped_to_selected_paper_account(self):
     adapter, gateway = venue()
     result = adapter.submit("ci-working", "MNQZ26", "SELL", 2, "LIMIT", 19888.25)
-    assert adapter.replace(result["broker_id"], 19888.50) == {"status": "ok"}
+    assert adapter.replace(result["broker_id"], 19888.50, client_id="ci-working") == {"status": "ok"}
     assert gateway.modified[-1][0:2] == ("DU12345", "901")
     assert gateway.modified[-1][2]["lmtPrice"] == 19888.50
-    assert adapter.cancel(result["broker_id"]) == {"status": "ok"}
+    assert adapter.cancel(result["broker_id"], client_id="ci-working") == {"status": "ok"}
     assert gateway.cancelled == [("DU12345", "901")]
 
     gateway.positions_snapshot = [{"account_id": "DU12345", "symbol": "MNQZ26", "position": -2}]
     assert adapter.positions() == {"MNQZ26": -2}
     assert adapter.open_orders() == []
+
+
+  def test_cancel_and_replace_require_matching_client_order_id(self):
+    api = FakeIbapiClient()
+    gateway = IbkrTwsPaperGateway(api_client=api, contract_factory=FakeApiRecord,
+                                  order_factory=FakeApiRecord, timeout_s=0.05)
+    gateway.connect()
+    adapter = IbkrPaperVenue(gateway, "DU12345", {"MNQZ26": mapping()})
+    placed = adapter.submit("ci-owned", "MNQZ26", "BUY", 1, "LIMIT", 19888.25)
+    broker_id = placed["broker_id"]
+
+    with self.assertRaisesRegex(ValueError, "originating client"):
+        adapter.cancel(broker_id)
+    assert adapter.cancel(broker_id, client_id="ci-other") == {"status": "not_found"}
+    assert adapter.replace(broker_id, 19888.50, client_id="ci-other") == {"status": "not_found"}
+    assert api.orders[broker_id][1].lmtPrice == 19888.25
+
+    assert adapter.cancel(broker_id, client_id="ci-owned") == {"status": "ok"}
+    gateway.disconnect()
 
 
   def test_wrong_environment_account_or_unmapped_contract_fails_closed(self):

@@ -841,7 +841,10 @@ class IbkrPaperVenue:
             positions[symbol] = positions.get(symbol, 0) + quantity
         return {symbol: quantity for symbol, quantity in positions.items() if quantity}
 
-    def cancel(self, broker_id: str) -> dict:
+    def cancel(self, broker_id: str, client_id: str | None = None) -> dict:
+        if client_id is None:
+            raise ValueError("IBKR cancellation requires the originating client order ID")
+        client_id = self._order_ref(client_id)
         broker_id = str(broker_id)
         if not self._connected():
             return {"status": "timeout"}
@@ -853,13 +856,18 @@ class IbkrPaperVenue:
         if record is None:
             return {"status": "not_found"}
         self._normalized_open_order(record)  # reject unmapped/foreign readback
+        if self._record_client(record) != client_id:
+            return {"status": "not_found"}
         try:
             result = self.gateway.cancel_order(self.account_id, broker_id)
         except (ConnectionError, TimeoutError, OSError):
             return {"status": "timeout"}
         return {"status": str(result.get("status", "timeout")).lower()}
 
-    def replace(self, broker_id: str, new_price: float) -> dict:
+    def replace(self, broker_id: str, new_price: float, client_id: str | None = None) -> dict:
+        if client_id is None:
+            raise ValueError("IBKR replace requires the originating client order ID")
+        client_id = self._order_ref(client_id)
         broker_id = str(broker_id)
         if not self._connected():
             return {"status": "timeout"}
@@ -869,6 +877,8 @@ class IbkrPaperVenue:
             return {"status": "timeout"}
         record = next((r for r in open_orders if str(r.get("broker_id", "")) == broker_id), None)
         if record is None:
+            return {"status": "not_found"}
+        if self._record_client(record) != client_id:
             return {"status": "not_found"}
         symbol = self._record_symbol(record)
         mapping = self.contracts[symbol]

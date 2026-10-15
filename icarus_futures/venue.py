@@ -17,8 +17,8 @@ class VenueAdapter(Protocol):
     kind: str  # "SIM" | "PAPER" | "LIVE"
 
     def submit(self, order_id: str, symbol: str, side: str, qty: int, kind: str, price: Optional[float]) -> dict: ...
-    def cancel(self, broker_id: str) -> dict: ...
-    def replace(self, broker_id: str, new_price: float) -> dict: ...
+    def cancel(self, broker_id: str, client_id: Optional[str] = None) -> dict: ...
+    def replace(self, broker_id: str, new_price: float, client_id: Optional[str] = None) -> dict: ...
     def open_orders(self) -> list: ...
     def positions(self) -> dict: ...
     def poll(self) -> list: ...
@@ -79,17 +79,21 @@ class SimVenue:
         self._events.append(dict(type="ack", client_id=order_id, broker_id=bid))
         return dict(status="ack", broker_id=bid)
 
-    def cancel(self, broker_id):
+    def cancel(self, broker_id, client_id=None):
         self._check()
         o = self._orders.get(broker_id)
+        if o and client_id is not None and o.client_id != client_id:
+            return dict(status="not_found")
         if o and o.active:
             o.active = False
             self._events.append(dict(type="cancel_ack", client_id=o.client_id, broker_id=broker_id))
         return dict(status="ok")
 
-    def replace(self, broker_id, new_price):
+    def replace(self, broker_id, new_price, client_id=None):
         self._check()
         o = self._orders.get(broker_id)
+        if o and client_id is not None and o.client_id != client_id:
+            return dict(status="not_found")
         if o and o.active:
             o.price = new_price
             self._events.append(dict(type="replace_ack", client_id=o.client_id, price=new_price))
