@@ -42,6 +42,8 @@ class MirroredEmulator:
                               "shadow": float(primary.initial_capital)}
         self._bar_close_max_drawdowns = {"primary": 0.0, "shadow": 0.0}
         self._bar_close_equity_observations = 0
+        self._administrative_censored_positions = 0
+        self._administrative_censor_events: list[dict[str, Any]] = []
 
     def __getattr__(self, name: str) -> Any:
         # Strategy and existing runtime diagnostics see canonical state only.
@@ -195,6 +197,51 @@ class MirroredEmulator:
             except Exception as exc:
                 self._degrade(f"shadow administrative cancellation failed: {type(exc).__name__}: {exc}")
 
+    def process_administrative_flatten(self, primary_bar: Bar, bar_index: int,
+                                       entry_ids: set[str], *, reason: str) -> None:
+        """Flatten primary state at its admin mark and censor shadow positions.
+
+        The primary runtime must honor an operator-requested flatten, but its
+        wall-clock mark is not a paired market bar. Open shadow positions are
+        therefore discarded as censored observations, not closed into shadow
+        fill, outcome, realized-P&L, or bar-close drawdown statistics.
+        """
+        self._bar_index = int(bar_index)
+        self._bar_ts = int(primary_bar.ts)
+        primary_fills_before = len(self.primary.fills)
+        self.primary.process_bar(primary_bar, bar_index)
+        self._capture_entry_fills(self.primary, primary_fills_before, "primary")
+
+        censored = [trade for trade in self.shadow.open if trade.entry_id in entry_ids]
+        pending_entries = [row for row in self.shadow._pending_entries if row.id in entry_ids]
+        for entry_id in entry_ids:
+            self._pending_entry_intents["shadow"][:] = [
+                row for row in self._pending_entry_intents["shadow"] if row["id"] != entry_id]
+        self.shadow.open[:] = [trade for trade in self.shadow.open if trade.entry_id not in entry_ids]
+        self.shadow._pending_entries[:] = [row for row in self.shadow._pending_entries
+                                           if row.id not in entry_ids]
+        self.shadow._pending_closes[:] = [row for row in self.shadow._pending_closes
+                                          if row.entry_id not in entry_ids]
+        self.shadow._exits = {key: order for key, order in self.shadow._exits.items()
+                              if order.from_entry not in entry_ids}
+        self._administrative_censored_positions += len(censored)
+        if censored or pending_entries:
+            self._administrative_censor_events.append({
+                "bar_ts": int(primary_bar.ts),
+                "bar_index": int(bar_index),
+                "reason": str(reason),
+                "censored_positions": len(censored),
+                "cancelled_pending_entries": len(pending_entries),
+                "entry_ids": sorted(entry_ids),
+                "shadow_market_outcome_recorded": False,
+            })
+        self._intent("administrative_flatten", {
+            "reason": str(reason), "entry_ids": sorted(entry_ids),
+            "censored_positions": len(censored),
+            "cancelled_pending_entries": len(pending_entries),
+            "shadow_market_outcome_recorded": False,
+        })
+
     def _episodes(self, engine: Emulator, lane: str) -> dict[Any, dict[str, Any]]:
         intent_by_entry: dict[tuple[str, int, int, str, int, float], int] = {}
         for intent_seq, pair in self._entry_fill_pairs.items():
@@ -326,6 +373,8 @@ class MirroredEmulator:
             "paired_shadow_net_on_primary_winners": round(paired_shadow_net_on_primary_winners, 8),
             "bar_close_drawdown_basis": "BAR_CLOSE_MARKED_EQUITY_NOT_INTRABAR",
             "bar_close_equity_observations": self._bar_close_equity_observations,
+            "administrative_censored_shadow_positions": self._administrative_censored_positions,
+            "recent_administrative_censors": self._administrative_censor_events[-20:],
             "primary_bar_close_max_drawdown": round(self._bar_close_max_drawdowns["primary"], 8),
             "real_price_shadow_bar_close_max_drawdown": round(self._bar_close_max_drawdowns["shadow"], 8),
             "open_primary": len(self.primary.open),

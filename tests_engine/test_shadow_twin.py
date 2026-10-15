@@ -308,6 +308,7 @@ def test_portfolio_pairable_closed_count_includes_break_even_episode():
     assert aggregate["pairable_closed_episodes"] == 1
     assert aggregate["outcome_agreement_denominator"] == 0
     assert aggregate["outcome_agreement_rate"] is None
+    assert aggregate["administrative_censored_shadow_positions"] == 0
 
 
 def test_flatten_closes_shadow_only_position():
@@ -322,12 +323,56 @@ def test_flatten_closes_shadow_only_position():
                      real_bar=bar(120, 110, 112, 104, 110))
     assert twin.primary.position_size == 0
     assert twin.shadow.position_size == 1
-    runner.last_price = 110
+    runner.last_price = 125  # admin mark differs from the last observed real bar
+    before = twin.summary()
+    before_shadow_fills = len(twin.shadow.fills)
+    before_bar_observations = before["bar_close_equity_observations"]
 
     assert runner.flatten("test") == 1
     assert twin.shadow.open == []
-    assert twin.shadow.closed[-1].exit_comment == "FLAT_TEST"
+    assert twin.shadow.closed == []
+    assert len(twin.shadow.fills) == before_shadow_fills
     assert twin.status == "READY"
+    after = twin.summary()
+    assert after["real_price_shadow"]["closed_episodes"] == before["real_price_shadow"]["closed_episodes"] == 0
+    assert after["real_price_shadow"]["net"] == before["real_price_shadow"]["net"] == 0
+    assert after["pairable_closed_episodes"] == before["pairable_closed_episodes"] == 0
+    assert after["bar_close_equity_observations"] == before_bar_observations
+    assert after["administrative_censored_shadow_positions"] == 1
+    assert after["recent_administrative_censors"][-1]["shadow_market_outcome_recorded"] is False
+
+
+def test_flatten_closes_primary_but_censors_paired_shadow_position():
+    spec = parse_spec("NQ@1")
+    runner = AssetRunner(RunnerConfig(spec=spec, inputs=Inputs(), mintick=0.25,
+                                      shadow_real_fills=True), Journal(":memory:"), feeds={})
+    twin = runner.em
+    twin.process_bar(bar(60, 110, 112, 104, 110), 0,
+                     real_bar=bar(60, 110, 112, 104, 110))
+    twin.entry("L", 1, 1, limit=105)
+    twin.process_bar(bar(120, 110, 112, 104, 110), 1,
+                     real_bar=bar(120, 110, 112, 104, 110))
+    assert twin.primary.position_size == 1
+    assert twin.shadow.position_size == 1
+    runner.last_price = 125
+    before = twin.summary()
+    before_shadow_fills = len(twin.shadow.fills)
+
+    assert runner.flatten("paired") == 1
+
+    assert twin.primary.position_size == 0
+    assert twin.primary.closed[-1].exit_comment == "FLAT_PAIRED"
+    assert twin.primary.closed[-1].exit_price == 125
+    assert twin.shadow.open == []
+    assert twin.shadow.closed == []
+    assert len(twin.shadow.fills) == before_shadow_fills
+    after = twin.summary()
+    assert after["pairable_closed_episodes"] == before["pairable_closed_episodes"] == 0
+    assert after["outcome_agreement_denominator"] == before["outcome_agreement_denominator"] == 0
+    assert after["real_price_shadow"]["closed_episodes"] == before["real_price_shadow"]["closed_episodes"] == 0
+    assert after["real_price_shadow"]["net"] == before["real_price_shadow"]["net"] == 0
+    assert after["bar_close_equity_observations"] == before["bar_close_equity_observations"]
+    assert after["administrative_censored_shadow_positions"] == 1
 
 
 def test_runner_feature_is_default_off_and_runtime_passes_standard_bar():

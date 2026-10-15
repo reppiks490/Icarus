@@ -1179,13 +1179,21 @@ class AssetRunner:
                 open_positions.extend(self.em.shadow.open)
             entry_ids = {t.entry_id for t in open_positions}
             for entry_id in entry_ids:
-                self.em.close(entry_id, comment="FLAT_" + reason.upper()[:8])
+                comment = "FLAT_" + reason.upper()[:8]
+                if isinstance(self.em, MirroredEmulator):
+                    # The operator close is not a standard-price market event.
+                    # Close the authoritative primary and censor the mirrored
+                    # hypothetical position in the explicit admin path below.
+                    self.em.primary.close(entry_id, comment=comment)
+                else:
+                    self.em.close(entry_id, comment=comment)
             has_open = bool(self.em.open) or (
                 isinstance(self.em, MirroredEmulator) and bool(self.em.shadow.open))
             if self.last_price and has_open:
                 fake = Bar(int(time.time()), self.last_price, self.last_price, self.last_price, self.last_price, 0.0)
                 if isinstance(self.em, MirroredEmulator):
-                    self.em.process_bar(fake, self.bar_index, real_bar=fake)
+                    self.em.process_administrative_flatten(
+                        fake, self.bar_index, entry_ids, reason=reason)
                 else:
                     self.em.process_bar(fake, self.bar_index)
             self.journal.log("WARN", f"[{self.symbol}] FLATTEN ({reason}): {len(entry_ids)} position(s), {cancelled} pending entry intent(s) cancelled")
@@ -1828,6 +1836,8 @@ class Portfolio:
             "matched_entry_intents": matched_entries,
             "primary_only_entry_fills": sum(x["primary_only_entry_fills"] for x in shadow_rows),
             "shadow_only_entry_fills": sum(x["shadow_only_entry_fills"] for x in shadow_rows),
+            "administrative_censored_shadow_positions": sum(
+                x["administrative_censored_shadow_positions"] for x in shadow_rows),
             "pairable_closed_episodes": sum(x["pairable_closed_episodes"] for x in shadow_rows),
             "outcome_agreement_denominator": agreement_denominator,
             "outcome_agreement_rate": agree_count / agreement_denominator if agreement_denominator else None,
@@ -1851,6 +1861,7 @@ class Portfolio:
             "real_price_shadow_live_net": round(sum(x["real_price_shadow"]["live_net"] for x in shadow_rows), 8),
             "drawdown_aggregation": "per_asset_only; cross_asset_close_timestamps_are_not_yet_aligned",
             "assets": [{"asset": x["asset"], "status": x["status"], "reason": x["reason"],
+                        "administrative_censored_shadow_positions": x["administrative_censored_shadow_positions"],
                         "provenance": x.get("provenance")}
                        for x in shadow_rows],
         } if shadow_rows else None)
