@@ -468,6 +468,12 @@ class IbkrTwsPaperGateway:
                 return {"account_id": account_id, "broker_id": "", "client_id": order_ref,
                         "status": "Unknown"}
             return None
+        if len(matches) != 1:
+            # A reference identifies one submit for its lifetime. A stale or
+            # completed duplicate is still ambiguous even if only one record is
+            # in the current open/completed snapshots.
+            return {"account_id": account_id, "broker_id": "",
+                    "client_id": order_ref, "status": "Ambiguous"}
         current = [row for row in matches
                    if row.get("broker_id") in self._open_snapshot | self._completed_snapshot]
         if current:
@@ -718,17 +724,43 @@ class IbkrPaperVenue:
             request["lmtPrice" if kind == "LIMIT" else "auxPrice"] = float(normalized_price)
         return request
 
-    def _normalize_found_order(self, record: dict, order_ref: str) -> dict:
+    def _normalize_found_order(self, record: dict, order_ref: str,
+                               expected_contract: dict, expected_order: dict) -> dict:
         account_id = record.get("account_id") or record.get("order", {}).get("account")
         client_ref = record.get("client_id") or record.get("order", {}).get("orderRef")
         if account_id != self.account_id:
             raise PermissionError("IBKR order readback is outside the selected paper account")
         if client_ref != order_ref:
             raise ValueError("IBKR order readback does not match the requested orderRef")
-        status = str(record.get("status", "")).lower()
         broker_id = str(record.get("broker_id", ""))
         if not broker_id:
+            # Unknown or ambiguous readback is never an acknowledgment.
             return {"status": "timeout"}
+
+        contract = record.get("contract")
+        if not isinstance(contract, dict):
+            raise ValueError("IBKR order readback is missing its contract")
+        contract_fields = (
+            "conId", "symbol", "secType", "exchange", "currency",
+            "lastTradeDateOrContractMonth", "localSymbol", "multiplier",
+        )
+        if any(contract.get(field) != expected_contract.get(field)
+               for field in contract_fields):
+            raise ValueError("IBKR order readback contract does not match the requested contract")
+        found_order = record.get("order")
+        if not isinstance(found_order, dict):
+            raise ValueError("IBKR order readback is missing its order terms")
+        order_fields = (
+            "account", "action", "totalQuantity", "orderType", "tif", "orderRef",
+            "outsideRth", "lmtPrice", "auxPrice",
+        )
+        normalized_found_order = {key: found_order[key] for key in order_fields
+                                  if key in found_order}
+        normalized_expected_order = {key: expected_order[key] for key in order_fields
+                                     if key in expected_order}
+        if normalized_found_order != normalized_expected_order:
+            raise ValueError("IBKR order readback terms do not match the requested order")
+        status = str(record.get("status", "")).lower()
         self._broker_to_client[broker_id] = order_ref
         if status in {"rejected", "inactive"}:
             self._events.append({"type": "reject", "client_id": order_ref, "code": "UNKNOWN"})
@@ -768,7 +800,9 @@ class IbkrPaperVenue:
         except (ConnectionError, TimeoutError, OSError):
             return {"status": "timeout"}
         if found:
-            return self._normalize_found_order(found, order_ref)
+            return self._normalize_found_order(
+                found, order_ref, mapping.ib_contract(), request
+            )
         if attempted_before:
             # Readback must be conclusive before retrying. A callback timeout or
             # incomplete completed-order snapshot leaves execution ambiguous.
