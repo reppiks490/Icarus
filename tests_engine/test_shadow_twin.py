@@ -214,6 +214,10 @@ def test_runner_feature_is_default_off_and_runtime_passes_standard_bar():
     summary = on._summary()["real_price_shadow"]
     assert summary["fill_basis"] == "STANDARD_REAL_BAR_EMULATOR"
     assert summary["execution_authorized"] is False
+    assert summary["provenance"]["instrument_id"] == on.symbol
+    assert summary["provenance"]["provider_symbol"] == on.spec.ticker
+    assert summary["provenance"]["primary_fill_basis"] == "chart"
+    assert summary["provenance"]["shadow_fill_basis"] == "standard_real_ohlc"
 
 
 def test_runtime_replay_keeps_primary_strategy_state_and_emulator_identical():

@@ -1310,7 +1310,22 @@ class AssetRunner:
             "open_profit": self.em.open_profit(mark) if mark else 0.0, "position": self.em.position_size,
             "open_trades": open_trades, "exits": self.em.live_exits(), "pending": self.em.pending_view(),
             "real_price_shadow": ({**self.em.summary(live_from_ts=self.live_from_ts),
-                                   "primary_fill_basis": self.spec.fill_on}
+                                   "primary_fill_basis": self.spec.fill_on,
+                                   "provenance": {
+                                       "instrument_id": self.symbol,
+                                       "provider_symbol": self.spec.ticker,
+                                       "asset_kind": self.spec.kind,
+                                       "price_provider": ("databento" if type(self.feed).__name__ == "Databento"
+                                                          else self.spec.feed),
+                                       "timeframe_minutes": self.chart_minutes,
+                                       "calendar": self.cal.name,
+                                       "session_mode": _session_mode(self.cal),
+                                       "chart_type": self.spec.chart_type,
+                                       "primary_fill_basis": self.spec.fill_on,
+                                       "shadow_fill_basis": "standard_real_ohlc",
+                                       "security_source": self.spec.security_source,
+                                       "feed_health": self._feed_health_view(),
+                                   }}
                                   if isinstance(self.em, MirroredEmulator) else None),
             "trades_total": len(self.em.closed), "wins_total": wins,
             "performance_guard": getattr(self, "_performance_guard", {"status": "INSUFFICIENT_SAMPLE", "scorecards": {}}),
@@ -1823,7 +1838,8 @@ class Portfolio:
             "real_price_shadow_warmup_net": round(sum(x["real_price_shadow"]["warmup_net"] for x in shadow_rows), 8),
             "real_price_shadow_live_net": round(sum(x["real_price_shadow"]["live_net"] for x in shadow_rows), 8),
             "drawdown_aggregation": "per_asset_only; cross_asset_close_timestamps_are_not_yet_aligned",
-            "assets": [{"asset": x["asset"], "status": x["status"], "reason": x["reason"]}
+            "assets": [{"asset": x["asset"], "status": x["status"], "reason": x["reason"],
+                        "provenance": x.get("provenance")}
                        for x in shadow_rows],
         } if shadow_rows else None)
         return _clean({
