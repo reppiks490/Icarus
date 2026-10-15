@@ -454,14 +454,16 @@ class IbkrTwsPaperGateway:
             if order_record["orderRef"]:
                 self._pending_refs[broker_id] = order_record["orderRef"]
             self._cv.notify_all()
-        if order_record["orderRef"]:
-            if replacement_confirmed:
-                self._emit({"type": "replace_ack", "account_id": account_id,
-                            "client_id": order_record["orderRef"], "broker_id": broker_id,
-                            "price": pending_replace["price"]})
-            else:
-                self._emit({"type": "ack", "account_id": account_id,
-                            "client_id": order_record["orderRef"], "broker_id": broker_id})
+        if replacement_confirmed:
+            self._emit({"type": "replace_ack", "account_id": account_id,
+                        "client_id": order_record["orderRef"], "broker_id": broker_id,
+                        "price": pending_replace["price"]})
+        # openOrder is an untrusted readback, not an engine acknowledgment. The
+        # venue adapter validates its account, contract, orderRef, and every order
+        # term before it creates an engine-facing ack. Emitting one here lets
+        # ExecutionEngine.pump() mark a mismatched replay WORKING before reconcile()
+        # can reject the readback. A submit ack is emitted by IbkrPaperVenue only
+        # after the synchronous result or a complete validated readback succeeds.
 
     def openOrderEnd(self):
         with self._lock:
@@ -482,10 +484,11 @@ class IbkrTwsPaperGateway:
             account_id = (record or {}).get("account_id", "")
             self._cv.notify_all()
         normalized = str(status).lower()
-        if client_ref and normalized in {"pendingsubmit", "presubmitted", "submitted", "partiallyfilled", "filled"}:
-            self._emit({"type": "ack", "account_id": account_id,
-                        "client_id": client_ref, "broker_id": broker_id})
-        elif client_ref and normalized in {"cancelled", "apicancelled", "canceled"}:
+        # Status callbacks do not contain contract or full order terms, so they
+        # cannot independently acknowledge an order. The venue filters callback
+        # events until reconciliation has trusted this broker-id/orderRef pair.
+        # The state snapshot remains available to validated readback.
+        if client_ref and normalized in {"cancelled", "apicancelled", "canceled"}:
             self._emit({"type": "cancel_ack", "account_id": account_id,
                         "client_id": client_ref, "broker_id": broker_id})
         elif client_ref and normalized == "inactive":
@@ -1087,7 +1090,6 @@ class IbkrPaperVenue:
         else:
             price = None
             kind = None
-        self._broker_to_client[broker_id] = client_id
         return {"broker_id": broker_id, "client_id": client_id, "symbol": symbol,
                 "side": action, "quantity": quantity, "kind": kind,
                 "remaining": quantity - filled,
@@ -1098,6 +1100,10 @@ class IbkrPaperVenue:
             raise ConnectionError("IBKR PAPER session is disconnected")
         return [self._normalized_open_order(row)
                 for row in self.gateway.open_orders(self.account_id)]
+
+    def accept_reconciled_order(self, client_id: str, broker_id: str) -> None:
+        """Trust callbacks only after ExecutionEngine matched the full order identity."""
+        self._broker_to_client[str(broker_id)] = self._order_ref(client_id)
 
     def positions(self) -> dict[str, int]:
         if not self._connected():
@@ -1180,6 +1186,13 @@ class IbkrPaperVenue:
         for event in raw_events:
             kind = str(event.get("type", ""))
             broker_id = str(event.get("broker_id", "")) if event.get("broker_id") is not None else ""
+            # TWS callbacks do not carry a complete order identity. Until a
+            # synchronous exact readback or engine reconciliation establishes
+            # this broker-id/orderRef pair, none of their lifecycle events may
+            # change engine state (including fills, cancel and reject callbacks).
+            if isinstance(self.gateway, IbkrTwsPaperGateway) and (
+                    not broker_id or broker_id not in self._broker_to_client):
+                continue
             client_id = event.get("client_id") or self._broker_to_client.get(broker_id)
             if not client_id:
                 raise ValueError("IBKR event omitted the orderRef needed for reconciliation")

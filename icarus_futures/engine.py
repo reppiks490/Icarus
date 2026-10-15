@@ -202,6 +202,9 @@ class ExecutionEngine:
                     if not broker_id:
                         mismatched[o.id] = ["missing_broker_id"]
                         continue
+                    accept_reconciled = getattr(self.venue, "accept_reconciled_order", None)
+                    if callable(accept_reconciled):
+                        accept_reconciled(o.id, str(broker_id))
                     resolved[o.id] = broker_id
                     self.book.on_ack(o.id, broker_id)
                 elif invalid_snapshot:

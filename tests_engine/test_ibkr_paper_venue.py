@@ -574,6 +574,82 @@ class IbkrPaperVenueTests(unittest.TestCase):
     gateway.disconnect()
 
 
+  def test_unverified_tws_open_order_callbacks_cannot_ack_mismatched_replays(self):
+    """A callback ack must not beat exact-term checks during engine reconciliation."""
+    alternate = ContractMapping(
+        symbol="NQZ26", con_id=654321, local_symbol="NQZ6",
+        contract_month="202612", exchange="CME", currency="USD",
+        multiplier=Decimal("20"), tick_size=Decimal("0.25"),
+    )
+    cases = (
+        ("wrong-side", mapping(), "SELL"),
+        ("wrong-contract", alternate, "BUY"),
+    )
+    for label, actual_mapping, actual_side in cases:
+      with self.subTest(label=label), TemporaryDirectory() as temp:
+        api = FakeIbapiClient()
+        gateway = IbkrTwsPaperGateway(api_client=api, contract_factory=FakeApiRecord,
+                                      order_factory=FakeApiRecord, timeout_s=0.05)
+        gateway.connect()
+        contracts = {"MNQZ26": mapping(), "NQZ26": alternate}
+        adapter = IbkrPaperVenue(gateway, "DU12345", contracts)
+        intent = Intent(strategy="callback-guard", symbol="MNQZ26", side="BUY",
+                        qty=1, kind="MARKET")
+        order_ref = intent.intent_id
+        request = adapter._build_order(mapping(), order_ref, "BUY", 1, "MARKET", None)
+        request["action"] = actual_side
+        actual_contract = gateway._make_contract(actual_mapping.ib_contract())
+        actual_order = gateway._make_order(request)
+        api.orders["901"] = (actual_contract, actual_order, "Submitted")
+        engine = ExecutionEngine(adapter, RiskGovernor(), Journal(f"{temp}/journal.jsonl"),
+                                 mode="PAPER")
+
+        engine.book.add(intent)
+        engine.book.on_sent(order_ref)
+        engine.book.on_timeout(order_ref)
+        assert adapter.submit(order_ref, intent.symbol, intent.side, intent.qty,
+                              intent.kind, intent.price)["status"] == "timeout"
+        report = engine.reconcile()
+
+        assert engine.book.orders[order_ref].state == S.AMBIGUOUS
+        assert engine.needs_reconcile is True
+        assert order_ref not in report["resolved"]
+        assert report["mismatched_orders"][order_ref]
+        assert "901" not in adapter._broker_to_client
+        gateway.disconnect()
+
+
+  def test_exact_reconciliation_trusts_tws_callbacks_for_later_fills(self):
+    api = FakeIbapiClient()
+    gateway = IbkrTwsPaperGateway(api_client=api, contract_factory=FakeApiRecord,
+                                  order_factory=FakeApiRecord, timeout_s=0.05)
+    gateway.connect()
+    adapter = IbkrPaperVenue(gateway, "DU12345", {"MNQZ26": mapping()})
+    intent = Intent(strategy="callback-guard", symbol="MNQZ26", side="BUY",
+                    qty=2, kind="MARKET")
+    order_ref = intent.intent_id
+    contract = gateway._make_contract(mapping().ib_contract())
+    request = adapter._build_order(mapping(), order_ref, "BUY", 2, "MARKET", None)
+    order = gateway._make_order(request)
+    api.orders["901"] = (contract, order, "Submitted")
+    with TemporaryDirectory() as temp:
+      engine = ExecutionEngine(adapter, RiskGovernor(), Journal(f"{temp}/journal.jsonl"),
+                               mode="PAPER")
+      engine.book.add(intent)
+      engine.book.on_sent(order_ref)
+      engine.book.on_timeout(order_ref)
+
+      report = engine.reconcile()
+      assert report["resolved"] == {order_ref: "901"}
+      assert adapter._broker_to_client["901"] == order_ref
+
+      api.order_fill("901", 1, 19888.25, "exec-verified")
+      engine.pump()
+      assert engine.book.orders[order_ref].state == S.PARTIALLY_FILLED
+      assert engine.book.positions["MNQZ26"] == 1
+    gateway.disconnect()
+
+
   def test_same_order_ref_with_different_contract_is_rejected(self):
     adapter, gateway = venue()
     assert adapter.submit("same-ref", "MNQZ26", "BUY", 1, "MARKET", None)["status"] == "ack"
