@@ -43,11 +43,10 @@ FEDERATION_REVISION = "registry-federation-v3"
 
 
 def _normalized_path(path: str) -> str:
-    """Compare endpoint paths without treating a trailing slash as a new route."""
+    """Validate and retain the exact endpoint path, including a trailing slash."""
     if not isinstance(path, str) or not path.startswith("/"):
         raise ValueError("provider operation path must be absolute")
-    normalized = path.rstrip("/")
-    return normalized or "/"
+    return path
 
 
 def _operation_path_match(operation_path: str, candidate_path: str) -> str | None:
