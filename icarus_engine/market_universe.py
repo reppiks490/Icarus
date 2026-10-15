@@ -13,6 +13,7 @@ import re
 from typing import Any, Mapping
 
 SCHEMA = "icarus.market-universe.catalog.v1"
+EXPECTED_INSTRUMENT_COUNT = 200
 _HEX = re.compile(r"^[0-9a-f]{64}$")
 PROBE_PATH = Path(__file__).resolve().with_name("a200-yahoo-history-probe.json")
 
@@ -26,8 +27,8 @@ def validate_catalog(catalog: Mapping[str, Any]) -> dict[str, Any]:
     if catalog.get("schema_version") != SCHEMA:
         raise ValueError("unsupported market universe catalog schema")
     instruments = catalog.get("instruments")
-    if not isinstance(instruments, list) or not instruments:
-        raise ValueError("market universe catalog must contain instruments")
+    if not isinstance(instruments, list) or len(instruments) != EXPECTED_INSTRUMENT_COUNT:
+        raise ValueError(f"market universe catalog must contain exactly {EXPECTED_INSTRUMENT_COUNT} instruments")
     ids, listings = set(), set()
     for row in instruments:
         if not isinstance(row, Mapping):
@@ -71,6 +72,7 @@ def snapshot() -> dict[str, Any]:
     counts = {
         "catalogued_count": len(rows),
         "source_connected_count": sum(row["source_connection"] == "VERIFIED" for row in rows),
+        "entitlement_verified_count": sum(row["entitlement"] == "VERIFIED" for row in rows),
         "historical_bars_qualified_count": sum(row["historical_bars"] == "QUALIFIED" for row in rows),
         "live_bars_qualified_count": sum(row["live_bars"] == "QUALIFIED" for row in rows),
         "pulse_enabled_count": sum(row["pulse_enabled"] is True for row in rows),

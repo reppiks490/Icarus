@@ -130,6 +130,11 @@ def build(limit: int = 200) -> dict:
                 "symbol": symbol.replace(".", "-"),
                 "mapping_status": "UNVERIFIED",
                 "role": "candidate_only",
+            }, {
+                "provider": "fmp",
+                "symbol": symbol,
+                "mapping_status": "UNVERIFIED",
+                "role": "candidate_only",
             }],
             "name": name,
             "asset_class": "equity",
@@ -170,6 +175,7 @@ def build(limit: int = 200) -> dict:
         "counts": {
             "catalogued_count": len(rows),
             "source_connected_count": 0,
+            "entitlement_verified_count": 0,
             "historical_bars_qualified_count": 0,
             "live_bars_qualified_count": 0,
             "pulse_enabled_count": 0,

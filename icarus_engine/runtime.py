@@ -803,21 +803,30 @@ class AssetRunner:
         fetched_at_ns = time.time_ns()
         bars = feed.candles(symbol, interval_seconds, start_ts, end_ts)
         received_at_ns = time.time_ns()
+        adapter = feed
+        visited = set()
+        while id(adapter) not in visited:
+            visited.add(id(adapter))
+            wrapped = getattr(adapter, "_feed", None)
+            if wrapped is None:
+                break
+            adapter = wrapped
         observed_symbol = None
         expected_provider_symbol = symbol
         # Yahoo embeds the requested symbol in the response metadata. Do not
         # infer identity for other adapters unless they expose an explicit field.
-        if isinstance(feed, Yahoo):
-            metadata = feed.meta(symbol)
+        if isinstance(adapter, Yahoo):
+            metadata = adapter.meta(symbol)
             observed_symbol = metadata.get("symbol") or metadata.get("provider_symbol")
-        elif isinstance(feed, Databento):
-            metadata = feed.meta(symbol)
-            expected_provider_symbol = feed.continuous_symbol(symbol, feed.roll_rule)
+        elif isinstance(adapter, Databento):
+            metadata = adapter.meta(symbol)
+            expected_provider_symbol = adapter.continuous_symbol(symbol, adapter.roll_rule)
             observed_symbol = metadata.get("continuous_symbol")
         else:
-            metadata = getattr(feed, "_meta", {}).get(symbol, {})
+            metadata = getattr(adapter, "_meta", {}).get(symbol, {})
             observed_symbol = metadata.get("provider_symbol") or metadata.get("symbol")
-        provider = "databento" if isinstance(feed, Databento) else ("yahoo" if isinstance(feed, Yahoo) else self.spec.feed)
+        provider = "databento" if isinstance(adapter, Databento) else (
+            "yahoo" if isinstance(adapter, Yahoo) else self.spec.feed)
         instrument_id = f"icarus:{self.spec.kind}:{self.spec.symbol.upper()}"
         checked, receipt = make_bar_batch_receipt(
             instrument_id=instrument_id, provider=provider,

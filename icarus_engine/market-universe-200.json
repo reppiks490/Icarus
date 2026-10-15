@@ -6,6 +6,7 @@
   "catalog_id": "us-listed-common-equities-top-cap-snapshot",
   "counts": {
     "catalogued_count": 200,
+    "entitlement_verified_count": 0,
     "historical_bars_qualified_count": 0,
     "live_bars_qualified_count": 0,
     "pulse_enabled_count": 0,
@@ -34,6 +35,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "NVDA"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "NVDA"
         }
@@ -71,6 +78,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "AAPL"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "AAPL"
         }
       ],
       "pulse_enabled": false,
@@ -104,6 +117,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "GOOGL"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "GOOGL"
         }
@@ -141,6 +160,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "MSFT"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "MSFT"
         }
       ],
       "pulse_enabled": false,
@@ -174,6 +199,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "AMZN"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "AMZN"
         }
@@ -211,6 +242,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "META"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "META"
         }
       ],
       "pulse_enabled": false,
@@ -244,6 +281,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "AVGO"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "AVGO"
         }
@@ -281,6 +324,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "TSLA"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "TSLA"
         }
       ],
       "pulse_enabled": false,
@@ -314,6 +363,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "LLY"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "LLY"
         }
@@ -351,6 +406,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "SKHY"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "SKHY"
         }
       ],
       "pulse_enabled": false,
@@ -384,6 +445,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "MU"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "MU"
         }
@@ -421,6 +488,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "AMD"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "AMD"
         }
       ],
       "pulse_enabled": false,
@@ -454,6 +527,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "WMT"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "WMT"
         }
@@ -491,6 +570,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "JPM"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "JPM"
         }
       ],
       "pulse_enabled": false,
@@ -524,6 +609,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "XOM"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "XOM"
         }
@@ -561,6 +652,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "JNJ"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "JNJ"
         }
       ],
       "pulse_enabled": false,
@@ -594,6 +691,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "MA"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "MA"
         }
@@ -631,6 +734,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "INTC"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "INTC"
         }
       ],
       "pulse_enabled": false,
@@ -664,6 +773,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "ABBV"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "ABBV"
         }
@@ -701,6 +816,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "PLTR"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "PLTR"
         }
       ],
       "pulse_enabled": false,
@@ -734,6 +855,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "CSCO"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "CSCO"
         }
@@ -771,6 +898,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "CVX"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "CVX"
         }
       ],
       "pulse_enabled": false,
@@ -804,6 +937,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "COST"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "COST"
         }
@@ -841,6 +980,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "ORCL"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "ORCL"
         }
       ],
       "pulse_enabled": false,
@@ -874,6 +1019,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "KO"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "KO"
         }
@@ -911,6 +1062,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "PG"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "PG"
         }
       ],
       "pulse_enabled": false,
@@ -944,6 +1101,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "MRK"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "MRK"
         }
@@ -981,6 +1144,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "BAC"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "BAC"
         }
       ],
       "pulse_enabled": false,
@@ -1014,6 +1183,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "LRCX"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "LRCX"
         }
@@ -1051,6 +1226,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "UNH"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "UNH"
         }
       ],
       "pulse_enabled": false,
@@ -1084,6 +1265,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "AMAT"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "AMAT"
         }
@@ -1121,6 +1308,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "CAT"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "CAT"
         }
       ],
       "pulse_enabled": false,
@@ -1154,6 +1347,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "DELL"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "DELL"
         }
@@ -1191,6 +1390,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "HSBC"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "HSBC"
         }
       ],
       "pulse_enabled": false,
@@ -1224,6 +1429,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "PM"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "PM"
         }
@@ -1261,6 +1472,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "GE"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "GE"
         }
       ],
       "pulse_enabled": false,
@@ -1294,6 +1511,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "PANW"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "PANW"
         }
@@ -1331,6 +1554,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "HD"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "HD"
         }
       ],
       "pulse_enabled": false,
@@ -1364,6 +1593,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "NFLX"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "NFLX"
         }
@@ -1401,6 +1636,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "SHEL"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "SHEL"
         }
       ],
       "pulse_enabled": false,
@@ -1434,6 +1675,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "MS"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "MS"
         }
@@ -1471,6 +1718,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "NVS"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "NVS"
         }
       ],
       "pulse_enabled": false,
@@ -1504,6 +1757,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "BABA"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "BABA"
         }
@@ -1541,6 +1800,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "RY"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "RY"
         }
       ],
       "pulse_enabled": false,
@@ -1574,6 +1839,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "MUFG"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "MUFG"
         }
@@ -1611,6 +1882,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "TXN"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "TXN"
         }
       ],
       "pulse_enabled": false,
@@ -1644,6 +1921,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "GS"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "GS"
         }
@@ -1681,6 +1964,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "CRWD"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "CRWD"
         }
       ],
       "pulse_enabled": false,
@@ -1714,6 +2003,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "ARM"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "ARM"
         }
@@ -1751,6 +2046,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "RTX"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "RTX"
         }
       ],
       "pulse_enabled": false,
@@ -1784,6 +2085,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "AZN"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "AZN"
         }
@@ -1821,6 +2128,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "GEV"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "GEV"
         }
       ],
       "pulse_enabled": false,
@@ -1854,6 +2167,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "TMO"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "TMO"
         }
@@ -1891,6 +2210,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "ANET"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "ANET"
         }
       ],
       "pulse_enabled": false,
@@ -1924,6 +2249,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "TM"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "TM"
         }
@@ -1961,6 +2292,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "WFC"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "WFC"
         }
       ],
       "pulse_enabled": false,
@@ -1994,6 +2331,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "KLAC"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "KLAC"
         }
@@ -2031,6 +2374,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "AMGN"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "AMGN"
         }
       ],
       "pulse_enabled": false,
@@ -2064,6 +2413,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "LIN"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "LIN"
         }
@@ -2101,6 +2456,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "MRVL"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "MRVL"
         }
       ],
       "pulse_enabled": false,
@@ -2134,6 +2495,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "IBM"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "IBM"
         }
@@ -2171,6 +2538,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "BHP"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "BHP"
         }
       ],
       "pulse_enabled": false,
@@ -2204,6 +2577,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "AXP"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "AXP"
         }
@@ -2241,6 +2620,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "C"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "C"
         }
       ],
       "pulse_enabled": false,
@@ -2274,6 +2659,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "SNDK"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "SNDK"
         }
@@ -2311,6 +2702,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "APH"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "APH"
         }
       ],
       "pulse_enabled": false,
@@ -2344,6 +2741,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "TTE"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "TTE"
         }
@@ -2381,6 +2784,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "ADI"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "ADI"
         }
       ],
       "pulse_enabled": false,
@@ -2414,6 +2823,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "CRM"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "CRM"
         }
@@ -2451,6 +2866,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "TD"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "TD"
         }
       ],
       "pulse_enabled": false,
@@ -2484,6 +2905,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "GILD"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "GILD"
         }
@@ -2521,6 +2948,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "DIS"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "DIS"
         }
       ],
       "pulse_enabled": false,
@@ -2554,6 +2987,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "VZ"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "VZ"
         }
@@ -2591,6 +3030,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "QCOM"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "QCOM"
         }
       ],
       "pulse_enabled": false,
@@ -2624,6 +3069,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "ABT"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "ABT"
         }
@@ -2661,6 +3112,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "PEP"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "PEP"
         }
       ],
       "pulse_enabled": false,
@@ -2694,6 +3151,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "DE"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "DE"
         }
@@ -2731,6 +3194,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "COP"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "COP"
         }
       ],
       "pulse_enabled": false,
@@ -2764,6 +3233,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "UNP"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "UNP"
         }
@@ -2801,6 +3276,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "TMUS"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "TMUS"
         }
       ],
       "pulse_enabled": false,
@@ -2834,6 +3315,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "NVO"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "NVO"
         }
@@ -2871,6 +3358,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "MCD"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "MCD"
         }
       ],
       "pulse_enabled": false,
@@ -2904,6 +3397,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "SCCO"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "SCCO"
         }
@@ -2941,6 +3440,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "SCHW"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "SCHW"
         }
       ],
       "pulse_enabled": false,
@@ -2974,6 +3479,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "WELL"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "WELL"
         }
@@ -3011,6 +3522,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "PFE"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "PFE"
         }
       ],
       "pulse_enabled": false,
@@ -3044,6 +3561,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "BLK"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "BLK"
         }
@@ -3081,6 +3604,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "NEE"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "NEE"
         }
       ],
       "pulse_enabled": false,
@@ -3114,6 +3643,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "STX"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "STX"
         }
@@ -3151,6 +3686,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "ETN"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "ETN"
         }
       ],
       "pulse_enabled": false,
@@ -3184,6 +3725,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "DHR"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "DHR"
         }
@@ -3221,6 +3768,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "SMFG"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "SMFG"
         }
       ],
       "pulse_enabled": false,
@@ -3254,6 +3807,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "TJX"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "TJX"
         }
@@ -3291,6 +3850,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "ISRG"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "ISRG"
         }
       ],
       "pulse_enabled": false,
@@ -3324,6 +3889,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "UBS"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "UBS"
         }
@@ -3361,6 +3932,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "BBVA"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "BBVA"
         }
       ],
       "pulse_enabled": false,
@@ -3394,6 +3971,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "BA"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "BA"
         }
@@ -3431,6 +4014,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "NOW"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "NOW"
         }
       ],
       "pulse_enabled": false,
@@ -3464,6 +4053,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "SONY"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "SONY"
         }
@@ -3501,6 +4096,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "ACN"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "ACN"
         }
       ],
       "pulse_enabled": false,
@@ -3534,6 +4135,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "UBER"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "UBER"
         }
@@ -3571,6 +4178,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "UL"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "UL"
         }
       ],
       "pulse_enabled": false,
@@ -3604,6 +4217,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "MPC"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "MPC"
         }
@@ -3641,6 +4260,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "WDC"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "WDC"
         }
       ],
       "pulse_enabled": false,
@@ -3674,6 +4299,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "CB"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "CB"
         }
@@ -3711,6 +4342,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "FTNT"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "FTNT"
         }
       ],
       "pulse_enabled": false,
@@ -3744,6 +4381,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "VLO"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "VLO"
         }
@@ -3781,6 +4424,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "BP"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "BP"
         }
       ],
       "pulse_enabled": false,
@@ -3814,6 +4463,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "VRTX"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "VRTX"
         }
@@ -3851,6 +4506,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "PGR"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "PGR"
         }
       ],
       "pulse_enabled": false,
@@ -3884,6 +4545,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "PLD"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "PLD"
         }
@@ -3921,6 +4588,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "BTI"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "BTI"
         }
       ],
       "pulse_enabled": false,
@@ -3954,6 +4627,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "GLW"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "GLW"
         }
@@ -3991,6 +4670,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "BMY"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "BMY"
         }
       ],
       "pulse_enabled": false,
@@ -4024,6 +4709,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "BKNG"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "BKNG"
         }
@@ -4061,6 +4752,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "PH"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "PH"
         }
       ],
       "pulse_enabled": false,
@@ -4094,6 +4791,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "MDT"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "MDT"
         }
@@ -4131,6 +4834,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "LMT"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "LMT"
         }
       ],
       "pulse_enabled": false,
@@ -4164,6 +4873,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "SPGI"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "SPGI"
         }
@@ -4201,6 +4916,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "COF"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "COF"
         }
       ],
       "pulse_enabled": false,
@@ -4234,6 +4955,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "PSX"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "PSX"
         }
@@ -4271,6 +4998,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "SNOW"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "SNOW"
         }
       ],
       "pulse_enabled": false,
@@ -4304,6 +5037,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "HDB"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "HDB"
         }
@@ -4341,6 +5080,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "PDD"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "PDD"
         }
       ],
       "pulse_enabled": false,
@@ -4374,6 +5119,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "CVS"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "CVS"
         }
@@ -4411,6 +5162,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "NET"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "NET"
         }
       ],
       "pulse_enabled": false,
@@ -4444,6 +5201,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "RIO"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "RIO"
         }
@@ -4481,6 +5244,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "MCK"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "MCK"
         }
       ],
       "pulse_enabled": false,
@@ -4514,6 +5283,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "BMO"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "BMO"
         }
@@ -4551,6 +5326,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "ADP"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "ADP"
         }
       ],
       "pulse_enabled": false,
@@ -4584,6 +5365,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "SYK"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "SYK"
         }
@@ -4621,6 +5408,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "SPOT"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "SPOT"
         }
       ],
       "pulse_enabled": false,
@@ -4654,6 +5447,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "CNQ"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "CNQ"
         }
@@ -4691,6 +5490,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "SBUX"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "SBUX"
         }
       ],
       "pulse_enabled": false,
@@ -4724,6 +5529,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "LOW"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "LOW"
         }
@@ -4761,6 +5572,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "ENB"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "ENB"
         }
       ],
       "pulse_enabled": false,
@@ -4794,6 +5611,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "SO"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "SO"
         }
@@ -4831,6 +5654,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "CME"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "CME"
         }
       ],
       "pulse_enabled": false,
@@ -4864,6 +5693,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "HCA"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "HCA"
         }
@@ -4901,6 +5736,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "IBN"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "IBN"
         }
       ],
       "pulse_enabled": false,
@@ -4934,6 +5775,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "CM"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "CM"
         }
@@ -4971,6 +5818,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "ABNB"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "ABNB"
         }
       ],
       "pulse_enabled": false,
@@ -5004,6 +5857,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "FCX"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "FCX"
         }
@@ -5041,6 +5900,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "CEG"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "CEG"
         }
       ],
       "pulse_enabled": false,
@@ -5074,6 +5939,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "ASX"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "ASX"
         }
@@ -5111,6 +5982,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "EQIX"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "EQIX"
         }
       ],
       "pulse_enabled": false,
@@ -5144,6 +6021,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "PWR"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "PWR"
         }
@@ -5181,6 +6064,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "ING"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "ING"
         }
       ],
       "pulse_enabled": false,
@@ -5214,6 +6103,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "MAR"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "MAR"
         }
@@ -5251,6 +6146,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "GSK"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "GSK"
         }
       ],
       "pulse_enabled": false,
@@ -5284,6 +6185,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "DDOG"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "DDOG"
         }
@@ -5321,6 +6228,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "ADBE"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "ADBE"
         }
       ],
       "pulse_enabled": false,
@@ -5354,6 +6267,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "BNY"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "BNY"
         }
@@ -5391,6 +6310,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "DUK"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "DUK"
         }
       ],
       "pulse_enabled": false,
@@ -5424,6 +6349,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "MELI"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "MELI"
         }
@@ -5461,6 +6392,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "ELV"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "ELV"
         }
       ],
       "pulse_enabled": false,
@@ -5494,6 +6431,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "SNPS"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "SNPS"
         }
@@ -5531,6 +6474,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "HOOD"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "HOOD"
         }
       ],
       "pulse_enabled": false,
@@ -5564,6 +6513,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "E"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "E"
         }
@@ -5601,6 +6556,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "CDNS"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "CDNS"
         }
       ],
       "pulse_enabled": false,
@@ -5634,6 +6595,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "GD"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "GD"
         }
@@ -5671,6 +6638,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "MRNA"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "MRNA"
         }
       ],
       "pulse_enabled": false,
@@ -5704,6 +6677,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "EMR"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "EMR"
         }
@@ -5741,6 +6720,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "AEM"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "AEM"
         }
       ],
       "pulse_enabled": false,
@@ -5774,6 +6759,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "CSX"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "CSX"
         }
@@ -5811,6 +6802,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "WMB"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "WMB"
         }
       ],
       "pulse_enabled": false,
@@ -5844,6 +6841,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "SU"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "SU"
         }
@@ -5881,6 +6884,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "APP"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "APP"
         }
       ],
       "pulse_enabled": false,
@@ -5914,6 +6923,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "USB"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "USB"
         }
@@ -5951,6 +6966,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "ICE"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "ICE"
         }
       ],
       "pulse_enabled": false,
@@ -5984,6 +7005,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "HWM"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "HWM"
         }
@@ -6021,6 +7048,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "WM"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "WM"
         }
       ],
       "pulse_enabled": false,
@@ -6054,6 +7087,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "PNC"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "PNC"
         }
@@ -6091,6 +7130,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "VRT"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "VRT"
         }
       ],
       "pulse_enabled": false,
@@ -6124,6 +7169,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "MRSH"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "MRSH"
         }
@@ -6161,6 +7212,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "MMM"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "MMM"
         }
       ],
       "pulse_enabled": false,
@@ -6194,6 +7251,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "HPE"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "HPE"
         }
@@ -6231,6 +7294,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "AMT"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "AMT"
         }
       ],
       "pulse_enabled": false,
@@ -6264,6 +7333,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "INTU"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "INTU"
         }
@@ -6301,6 +7376,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "CTAS"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "CTAS"
         }
       ],
       "pulse_enabled": false,
@@ -6334,6 +7415,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "NGG"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "NGG"
         }
@@ -6371,6 +7458,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "UPS"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "UPS"
         }
       ],
       "pulse_enabled": false,
@@ -6404,6 +7497,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "LITE"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "LITE"
         }
@@ -6441,6 +7540,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "LYG"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "LYG"
         }
       ],
       "pulse_enabled": false,
@@ -6474,6 +7579,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "EOG"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "EOG"
         }
@@ -6511,6 +7622,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "ECL"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "ECL"
         }
       ],
       "pulse_enabled": false,
@@ -6544,6 +7661,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "MCO"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "MCO"
         }
@@ -6581,6 +7704,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "REGN"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "REGN"
         }
       ],
       "pulse_enabled": false,
@@ -6614,6 +7743,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "MDLZ"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "MDLZ"
         }
@@ -6651,6 +7786,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "DASH"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "DASH"
         }
       ],
       "pulse_enabled": false,
@@ -6684,6 +7825,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "BX"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "BX"
         }
@@ -6721,6 +7868,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "NTES"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "NTES"
         }
       ],
       "pulse_enabled": false,
@@ -6754,6 +7907,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "TRV"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "TRV"
         }
@@ -6791,6 +7950,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "SHW"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "SHW"
         }
       ],
       "pulse_enabled": false,
@@ -6824,6 +7989,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "EPD"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "EPD"
         }
@@ -6861,6 +8032,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "KKR"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "KKR"
         }
       ],
       "pulse_enabled": false,
@@ -6894,6 +8071,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "ITW"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "ITW"
         }
@@ -6931,6 +8114,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "CI"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "CI"
         }
       ],
       "pulse_enabled": false,
@@ -6966,6 +8155,12 @@
           "provider": "yahoo",
           "role": "candidate_only",
           "symbol": "BCS"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
+          "role": "candidate_only",
+          "symbol": "BCS"
         }
       ],
       "pulse_enabled": false,
@@ -6999,6 +8194,12 @@
         {
           "mapping_status": "UNVERIFIED",
           "provider": "yahoo",
+          "role": "candidate_only",
+          "symbol": "MSI"
+        },
+        {
+          "mapping_status": "UNVERIFIED",
+          "provider": "fmp",
           "role": "candidate_only",
           "symbol": "MSI"
         }
