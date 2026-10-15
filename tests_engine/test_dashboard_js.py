@@ -19,6 +19,7 @@ NODE = shutil.which("node")
         "icarus_engine/dashboard.html",
         "icarus_bridge/dashboard.html",
         "icarus_engine/research-ui.js",
+        "icarus_engine/shadow-twin-ui.js",
         "icarus_engine/sources-ui.js",
         "icarus_engine/market-data-ui.js",
         "icarus_engine/brain-ui.js",
@@ -59,6 +60,18 @@ def test_engine_dashboard_has_no_expiry_contract_ui():
     assert "a.next_contract" not in src
     assert "a.contract?" not in src
     assert "continuous_symbol || a.provider_symbol || a.symbol" in src
+
+
+def test_real_price_shadow_twin_dashboard_is_read_only_and_wired():
+    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
+    dashboard = (REPO / "icarus_engine/dashboard.html").read_text(encoding="utf-8")
+    ui = (REPO / "icarus_engine/shadow-twin-ui.js").read_text(encoding="utf-8")
+    assert 'p.path == "/shadow-twin-ui.js"' in server
+    assert '<script src="/shadow-twin-ui.js"></script>' in dashboard
+    assert "fetch('/status/public'" in ui
+    assert "execution_authorized" in ui
+    assert "bar closes" in ui
+    assert "real_price_shadow_net" in ui
 
 
 def test_strategy_tester_timeframes_are_cache_aware():
