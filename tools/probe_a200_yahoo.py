@@ -12,7 +12,7 @@ import json
 from pathlib import Path
 import time
 
-from icarus_engine.market_universe import snapshot
+from icarus_engine.market_universe import catalog_evidence_digest, snapshot
 from icarus_engine.market_universe_adapter import MarketUniverseAdapter
 from icarus_engine.feeds.yahoo import Yahoo
 
@@ -76,7 +76,10 @@ def run(*, limit: int = 200, start_ts: int, end_ts: int,
     if resume and out.exists():
         prior = json.loads(out.read_text(encoding="utf-8"))
         same_window = prior.get("window") == {"start_ts": start_ts, "end_ts": end_ts}
-        if prior.get("catalog_id") == catalog["catalog_id"] and same_window:
+        if (prior.get("catalog_id") == catalog["catalog_id"]
+                and prior.get("catalog_snapshot_sha256") == catalog_evidence_digest(catalog)
+                and prior.get("probe_implementation") == "tools.probe_a200_yahoo.v2"
+                and same_window):
             records_by_id = {r["instrument_id"]: r for r in prior.get("results", [])}
 
     adapter = MarketUniverseAdapter(Yahoo(min_interval=0.0))
@@ -100,8 +103,10 @@ def _assemble(catalog: dict, rows: list[dict], start_ts: int, end_ts: int,
               records_by_id: dict[str, dict]) -> dict:
     results = [records_by_id[row["instrument_id"]] for row in rows if row["instrument_id"] in records_by_id]
     return {
-        "schema_version": "icarus.market-universe.source-probe.v1",
+        "schema_version": "icarus.market-universe.source-probe.v2",
+        "probe_implementation": "tools.probe_a200_yahoo.v2",
         "catalog_id": catalog["catalog_id"],
+        "catalog_snapshot_sha256": catalog_evidence_digest(catalog),
         "catalog_retrieved_at": catalog["retrieved_at"],
         "probe_provider": "yahoo",
         "probe_started_at": results[0]["probe_started_at"] if results else None,

@@ -9,6 +9,7 @@ from .bar_receipts import BarBatchReceipt, make_bar_batch_receipt
 from .feeds.yahoo import Yahoo
 from .market_universe import snapshot
 from .pine.timeframe import Bar
+from .calendar import get_calendar
 
 
 @dataclass(frozen=True)
@@ -64,6 +65,19 @@ class MarketUniverseAdapter:
         metadata = source.meta(symbol)
         received_at_ns = time.time_ns()
         observed_symbol = metadata.get("symbol") or metadata.get("provider_symbol")
+        # Schedule evidence is available only for dates in the published,
+        # bounded exchange calendar. Older/out-of-range requests stay explicitly
+        # unqualified instead of extrapolating session rules.
+        expected = None
+        alignment = None
+        session_status = "UNKNOWN"
+        try:
+            calendar = get_calendar(row["calendar"])
+            expected = calendar.expected_bar_timestamps(start_ts, end_ts, interval_seconds)
+            alignment = lambda ts: calendar.is_aligned(ts, interval_seconds)
+            session_status = "VERIFIED"
+        except (KeyError, ValueError, TypeError):
+            pass
         checked, receipt = make_bar_batch_receipt(
             instrument_id=instrument_id,
             provider=provider,
@@ -76,8 +90,10 @@ class MarketUniverseAdapter:
             fetched_at_ns=fetched_at_ns,
             received_at_ns=received_at_ns,
             entitlement_status="UNKNOWN",
-            session_validation_status="UNKNOWN",
+            session_validation_status=session_status,
             provider_mapping_status=mapping_status,
+            alignment_validator=alignment,
+            expected_bar_timestamps=expected,
         )
         return checked, receipt
 

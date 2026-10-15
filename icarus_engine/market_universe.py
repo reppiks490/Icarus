@@ -8,6 +8,7 @@ from __future__ import annotations
 from importlib.resources import files
 from datetime import datetime, timezone
 import json
+import hashlib
 from pathlib import Path
 import re
 from typing import Any, Mapping
@@ -21,6 +22,18 @@ PROBE_PATH = Path(__file__).resolve().with_name("a200-yahoo-history-probe.json")
 def _load() -> dict[str, Any]:
     resource = files("icarus_engine").joinpath("market-universe-200.json")
     return json.loads(resource.read_text(encoding="utf-8"))
+
+
+def catalog_evidence_digest(catalog: Mapping[str, Any]) -> str:
+    """Digest the catalog fields that determine instrument and provider identity."""
+    payload = {
+        "schema_version": catalog.get("schema_version"),
+        "catalog_id": catalog.get("catalog_id"),
+        "sources": catalog.get("sources"),
+        "instruments": catalog.get("instruments"),
+    }
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
 
 
 def validate_catalog(catalog: Mapping[str, Any]) -> dict[str, Any]:
@@ -104,10 +117,13 @@ def load_source_probe_report() -> dict[str, Any]:
         report = json.loads(PROBE_PATH.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as ex:
         return {"status": "UNAVAILABLE", "provider": "yahoo", "error": type(ex).__name__, "results": []}
-    if report.get("schema_version") != "icarus.market-universe.source-probe.v1":
+    if report.get("schema_version") != "icarus.market-universe.source-probe.v2":
         return {"status": "INVALID", "provider": "yahoo", "results": []}
     catalog = _load()
     if report.get("catalog_id") != catalog.get("catalog_id"):
+        return {"status": "INVALID", "provider": "yahoo", "results": []}
+    if (report.get("catalog_snapshot_sha256") != catalog_evidence_digest(catalog)
+            or report.get("probe_implementation") != "tools.probe_a200_yahoo.v2"):
         return {"status": "INVALID", "provider": "yahoo", "results": []}
     now = datetime.now(timezone.utc)
     try:
@@ -137,10 +153,18 @@ def load_source_probe_report() -> dict[str, Any]:
         for row in report.get("results", []) if isinstance(row, dict)
     ]
     result_ids = [row.get("instrument_id") for row in results]
-    catalog_ids = {row.get("instrument_id") for row in catalog.get("instruments", [])}
+    catalog_rows = {row.get("instrument_id"): row for row in catalog.get("instruments", [])}
+    catalog_ids = set(catalog_rows)
     if (len(results) != completed or len(set(result_ids)) != len(result_ids)
             or not set(result_ids).issubset(catalog_ids) or report.get("raw_ohlcv_persisted") is not False):
         return {"status": "INVALID", "provider": "yahoo", "results": []}
+    for result in report.get("results", []):
+        mappings = [candidate for candidate in catalog_rows[result["instrument_id"]].get("provider_symbol_candidates", [])
+                    if candidate.get("provider") == "yahoo"]
+        if (len(mappings) != 1 or result.get("provider") != "yahoo"
+                or result.get("provider_symbol_candidate") != mappings[0].get("symbol")
+                or result.get("provider_mapping_status") != mappings[0].get("mapping_status")):
+            return {"status": "INVALID", "provider": "yahoo", "results": []}
     return {
         "status": status,
         "provider": report.get("probe_provider", "yahoo"),

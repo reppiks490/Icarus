@@ -465,9 +465,16 @@ def test_catalog_validation_rejects_duplicate_ids_and_pulse_enablement():
         validate_catalog(undersized)
 
 
-def test_unknown_equity_calendar_fails_closed_instead_of_becoming_247_crypto():
-    with pytest.raises(ValueError, match="refusing to assume 24/7 crypto hours"):
-        get_calendar("US_EQUITIES")
+def test_us_equity_calendar_uses_bounded_exchange_schedule():
+    calendar = get_calendar("US_EQUITIES")
+    assert calendar.open_24_7 is False
+    thanksgiving = datetime(2026, 11, 27, 14, 30, tzinfo=timezone.utc).timestamp()
+    assert calendar.is_open(int(thanksgiving))
+    assert calendar.bucket_end(calendar.bucket_start(int(thanksgiving), 1440), 1440) == int(
+        datetime(2026, 11, 27, 18, 0, tzinfo=timezone.utc).timestamp()
+    )
+    with pytest.raises(ValueError, match="no verified schedule"):
+        calendar.session_bounds(datetime(2029, 1, 2).date())
     assert get_calendar("crypto").open_24_7 is True
 
 
