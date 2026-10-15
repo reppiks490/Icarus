@@ -109,6 +109,15 @@ async function run(scenario) {
                 ],
             }
         },
+        {
+            "data": {
+                "mode": "concurrent_paper",
+                "profiles": [
+                    {"name": name, "status": {"net": 1e308}}
+                    for name in "ABCD"
+                ],
+            }
+        },
         {"data": {"mode": "concurrent_paper", "profiles": profiles[:3]}},
         {
             "data": {

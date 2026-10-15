@@ -1188,6 +1188,7 @@ async function refreshCombinedPaperPnl() {
     if (data.mode !== 'concurrent_paper' || !Array.isArray(profiles) || profiles.length !== 4 ||
         profiles.some(p => typeof p.status?.net !== 'number' || !Number.isFinite(p.status.net))) throw new Error('four paper profiles unavailable');
     const net = profiles.reduce((sum,p) => sum + p.status.net, 0);
+    if (!Number.isFinite(net)) throw new Error('combined paper P&L is not finite');
     el.textContent = net.toLocaleString(undefined,{style:'currency',currency:'USD',minimumFractionDigits:2,maximumFractionDigits:2});
     el.className = 'value ' + (net >= 0 ? 'pos' : 'neg');
     el.title = `Combined net P&L across ${profiles.length} simulated paper workspaces: ${profiles.map(p=>`${p.name}: ${Number(p.status.net).toFixed(2)}`).join(' + ')}. Net means paper equity minus allocated capital and includes open P&L.`;
