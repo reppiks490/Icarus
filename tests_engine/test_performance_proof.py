@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+import shutil
 
 import pytest
 
@@ -274,3 +275,9 @@ def test_settled_records_supports_stable_incremental_cursor(tmp_path):
     )
     assert second["returned"] == 2
     assert first["items"][0]["forecast_id"] not in {x["forecast_id"] for x in second["items"]}
+
+
+def test_performance_proof_closes_sqlite_handles_before_directory_removal(tmp_path):
+    store = PerformanceProofStore(tmp_path)
+    store.snapshot()
+    shutil.rmtree(tmp_path)
