@@ -19,6 +19,7 @@ These are hypothesis screens, not causal proof.
 """
 from __future__ import annotations
 
+from contextlib import contextmanager
 import hashlib
 import json
 import math
@@ -27,7 +28,7 @@ import sqlite3
 import threading
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Mapping, Iterator
 
 SCHEMA_VERSION = "icarus-parallax-v2"
 DECISION_SCHEMA = "icarus-parallax-decision-v1"
@@ -207,12 +208,20 @@ class ParallaxStore:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._init()
 
-    def _connect(self) -> sqlite3.Connection:
+    @contextmanager
+    def _connect(self) -> Iterator[sqlite3.Connection]:
         con = sqlite3.connect(str(self.path), timeout=15)
-        con.row_factory = sqlite3.Row
-        con.execute("PRAGMA journal_mode=WAL")
-        con.execute("PRAGMA foreign_keys=ON")
-        return con
+        try:
+            con.row_factory = sqlite3.Row
+            con.execute("PRAGMA journal_mode=WAL")
+            con.execute("PRAGMA foreign_keys=ON")
+            yield con
+            con.commit()
+        except Exception:
+            con.rollback()
+            raise
+        finally:
+            con.close()
 
     def _init(self) -> None:
         with _LOCK, self._connect() as con:

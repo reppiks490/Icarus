@@ -3,6 +3,7 @@ from tempfile import TemporaryDirectory
 
 from icarus_engine.access_control import AccessRegistry
 from icarus_engine.ascendancy.autopilot import GovernorAutopilot
+from icarus_engine.ascendancy.foundry import CandidateFoundry
 from icarus_engine.source_reliability import SourceReliabilityStore
 
 
@@ -39,4 +40,11 @@ def test_source_reliability_closes_sqlite_handles_before_directory_removal():
     with TemporaryDirectory() as directory:
         store = SourceReliabilityStore(directory)
         store.snapshot()
+        shutil.rmtree(directory)
+
+
+def test_candidate_foundry_closes_sqlite_handles_before_directory_removal():
+    with TemporaryDirectory() as directory:
+        store = CandidateFoundry(directory)
+        assert store.journal_mode == "wal"
         shutil.rmtree(directory)
