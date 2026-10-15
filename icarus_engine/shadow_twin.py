@@ -268,7 +268,8 @@ class MirroredEmulator:
             lambda: {"net": 0.0, "pieces": 0, "qty": 0, "closed": False,
                      "entry_qty": 0, "closed_qty": 0,
                      "entry_ts": 0, "last_exit_ts": 0,
-                     "runup": 0.0, "drawdown": 0.0})
+                     "runup": 0.0, "drawdown": 0.0,
+                     "favorable_excursion": 0.0, "adverse_excursion": 0.0})
         excluded_admin_flatten_pieces = 0
         for trade in engine.closed:
             if int(trade.lot_id) in self._administratively_flattened_lot_ids[lane]:
@@ -292,6 +293,10 @@ class MirroredEmulator:
             row["closed"] = row["closed_qty"] >= row["entry_qty"]
             row["entry_ts"] = int(trade.entry_ts)
             row["last_exit_ts"] = max(row["last_exit_ts"], int(trade.exit_ts))
+            # ClosedTrade excursions are observed through this exit fill and
+            # already include quantity weighting and the entry commission.
+            row["favorable_excursion"] += float(trade.runup)
+            row["adverse_excursion"] += float(trade.drawdown)
         return dict(episodes), excluded_admin_flatten_pieces
 
     def summary(self, *, live_from_ts: Optional[int] = None) -> dict[str, Any]:
@@ -300,6 +305,14 @@ class MirroredEmulator:
         primary_closed = {key: row for key, row in primary_eps.items() if row["closed"]}
         shadow_closed = {key: row for key, row in shadow_eps.items() if row["closed"]}
         common = sorted(primary_closed.keys() & shadow_closed.keys())
+        primary_favorable = sum(row["favorable_excursion"] for row in primary_closed.values())
+        primary_adverse = sum(row["adverse_excursion"] for row in primary_closed.values())
+        shadow_favorable = sum(row["favorable_excursion"] for row in shadow_closed.values())
+        shadow_adverse = sum(row["adverse_excursion"] for row in shadow_closed.values())
+        matched_favorable_delta = [shadow_closed[key]["favorable_excursion"] - primary_closed[key]["favorable_excursion"]
+                                   for key in common]
+        matched_adverse_delta = [shadow_closed[key]["adverse_excursion"] - primary_closed[key]["adverse_excursion"]
+                                 for key in common]
         directional = [k for k in common if primary_closed[k]["net"] != 0 and shadow_closed[k]["net"] != 0]
         agreement = sum((primary_closed[k]["net"] > 0) == (shadow_closed[k]["net"] > 0)
                         for k in directional)
@@ -406,6 +419,19 @@ class MirroredEmulator:
             "primary_win_preservation": (shadow_wins_preserved / len(primary_wins) if primary_wins else None),
             "primary": totals(primary_eps),
             "real_price_shadow": totals(shadow_eps),
+            "primary_closed_episode_excursions": {
+                "favorable_excursion": round(primary_favorable, 8),
+                "adverse_excursion": round(primary_adverse, 8),
+                "denominator": len(primary_closed),
+            },
+            "real_price_shadow_closed_episode_excursions": {
+                "favorable_excursion": round(shadow_favorable, 8),
+                "adverse_excursion": round(shadow_adverse, 8),
+                "denominator": len(shadow_closed),
+            },
+            "matched_closed_episode_favorable_excursion_delta_shadow_minus_primary": delta_summary(matched_favorable_delta),
+            "matched_closed_episode_adverse_excursion_delta_shadow_minus_primary": delta_summary(matched_adverse_delta),
+            "closed_episode_excursion_basis": "EMULATOR_HIGH_LOW_THROUGH_EXIT_FILL_QUANTITY_WEIGHTED_ENTRY_COMMISSION_ADJUSTED",
             "net_realization_ratio": net_realization_ratio,
             "net_realization_ratio_unavailable_reason": (
                 None if net_realization_ratio is not None else
