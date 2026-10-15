@@ -111,6 +111,7 @@ class FakeIbapiClient:
         self.placed = []
         self.completed_orders = []
         self.complete_readback = True
+        self.error_on_place = None
 
     def set_callback(self, callback):
         self.callback = callback
@@ -129,6 +130,12 @@ class FakeIbapiClient:
 
     def placeOrder(self, orderId, contract, order):
         self.placed.append((orderId, contract, order))
+        if self.error_on_place is not None:
+            code = self.error_on_place
+            self.error_on_place = None
+            self.callback.error(orderId, code, "private broker diagnostic")
+            if code == 201:
+                return
         self.orders[str(orderId)] = (contract, order, "Submitted")
         self.callback.openOrder(orderId, contract, order, SimpleNamespace(status="Submitted"))
         self.callback.orderStatus(orderId, "Submitted", 0, order.totalQuantity, 0.0,
@@ -253,6 +260,36 @@ class IbkrPaperVenueTests(unittest.TestCase):
     assert api.placed[-1][2].lmtPrice == 19888.50
     assert adapter.cancel("900") == {"status": "ok"}
     assert adapter.open_orders() == []
+    gateway.disconnect()
+
+
+  def test_ibkr_order_warning_does_not_override_submitted_order_status(self):
+    api = FakeIbapiClient()
+    gateway = IbkrTwsPaperGateway(api_client=api, contract_factory=FakeApiRecord,
+                                  order_factory=FakeApiRecord, timeout_s=0.05)
+    gateway.connect()
+    adapter = IbkrPaperVenue(gateway, "DU12345", {"MNQZ26": mapping()})
+    api.error_on_place = 2109  # nonfatal order attribute warning
+
+    submitted = adapter.submit("ci-warning", "MNQZ26", "BUY", 1, "LIMIT", 19888.25)
+
+    assert submitted == {"status": "ack", "broker_id": "900"}
+    assert all(event.get("type") != "reject" for event in adapter.poll())
+    gateway.disconnect()
+
+
+  def test_ibkr_known_rejection_callback_remains_definitive_and_sanitized(self):
+    api = FakeIbapiClient()
+    gateway = IbkrTwsPaperGateway(api_client=api, contract_factory=FakeApiRecord,
+                                  order_factory=FakeApiRecord, timeout_s=0.05)
+    gateway.connect()
+    adapter = IbkrPaperVenue(gateway, "DU12345", {"MNQZ26": mapping()})
+    api.error_on_place = 201
+
+    rejected = adapter.submit("ci-reject-callback", "MNQZ26", "BUY", 1, "LIMIT", 19888.25)
+
+    assert rejected == {"status": "rejected", "code": "INVALID_ORDER"}
+    assert "private broker diagnostic" not in repr(rejected)
     gateway.disconnect()
 
 

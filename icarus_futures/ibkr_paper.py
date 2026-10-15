@@ -327,18 +327,24 @@ class IbkrTwsPaperGateway:
 
     def error(self, reqId, errorCode, errorString, advancedOrderRejectJson=""):
         broker_id = str(reqId)
+        code = str(errorCode)
+        rejection = _ERROR_CODES.get(code)
         with self._cv:
             record = self._records.get(broker_id)
             client_ref = self._pending_refs.get(broker_id) or (record or {}).get("client_id")
             account_id = (record or {}).get("account_id", "")
-            code = str(errorCode)
-            self._errors[broker_id] = _ERROR_CODES.get(code, "UNKNOWN")
+            # IBKR sends informational and warning callbacks through this same
+            # method. Only known order-rejection codes can override status
+            # readback; unknown callbacks leave the submit ambiguous until the
+            # normal order-state callback arrives or the request times out.
+            if rejection is not None:
+                self._errors[broker_id] = rejection
             self._cv.notify_all()
         # Do not retain or emit errorString or advancedOrderRejectJson; they can contain
         # account details, provider diagnostics, or other sensitive payloads.
-        if client_ref:
+        if client_ref and rejection is not None:
             self._emit({"type": "reject", "account_id": account_id,
-                        "client_id": str(client_ref), "code": _ERROR_CODES.get(str(errorCode), "UNKNOWN")})
+                        "client_id": str(client_ref), "code": rejection})
 
     def position(self, account, contract, position, avgCost):
         record = {"account_id": str(account), "contract": self._contract_record(contract),
@@ -758,7 +764,8 @@ class IbkrPaperVenue:
         if status in {"timeout", "unknown", "ambiguous"}:
             return {"status": "timeout"}
         if status == "rejected":
-            code = _ERROR_CODES.get(str(result.get("code", "")), "UNKNOWN")
+            raw_code = str(result.get("code", ""))
+            code = raw_code if raw_code in _ERROR_CODES.values() else _ERROR_CODES.get(raw_code, "UNKNOWN")
             self._events.append({"type": "reject", "client_id": order_ref, "code": code})
             return {"status": "rejected", "code": code}
         return {"status": "timeout"}
