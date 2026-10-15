@@ -1530,7 +1530,8 @@ class Portfolio:
             raise
 
     def remove_asset(self, symbol: str) -> bool:
-        key = resolve(symbol).symbol
+        raw = str(symbol).strip().upper()
+        key = raw if raw in self.runners else resolve(symbol).symbol
         with self._lock:
             r = self.runners.get(key)
             if not r:
@@ -1565,7 +1566,8 @@ class Portfolio:
                      *, preset: Any = _UNCHANGED, reset: bool = False,
                      chart: Optional[Dict[str, Any]] = None) -> AssetRunner:
         """Atomically apply strategy/chart configuration, then persist only after replay succeeds."""
-        key = resolve(symbol).symbol
+        raw = str(symbol).strip().upper()
+        key = raw if raw in self.runners else resolve(symbol).symbol
         r = self.runners[key]
         with r.lock:
             r.ensure_configurable()

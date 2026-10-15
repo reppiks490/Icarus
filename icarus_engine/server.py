@@ -605,7 +605,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
 
     def _control_runner(target: str):
         try:
-            key = resolve(target or "").symbol
+            raw = str(target or "").strip().upper()
+            key = raw if raw in port.runners else resolve(target or "").symbol
         except ValueError as ex:
             raise ValueError(f"unknown asset {target}") from ex
         runner = port.runners.get(key)
@@ -1290,6 +1291,9 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return default
 
         def _runner(self, sym: str):
+            raw = str(sym or "").strip().upper()
+            if raw in port.runners:
+                return port.runners.get(raw)
             try:
                 key = resolve(sym or "").symbol
             except ValueError:
