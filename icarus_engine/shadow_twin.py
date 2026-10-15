@@ -267,7 +267,8 @@ class MirroredEmulator:
         episodes: dict[Any, dict[str, Any]] = defaultdict(
             lambda: {"net": 0.0, "pieces": 0, "qty": 0, "closed": False,
                      "entry_qty": 0, "closed_qty": 0,
-                     "entry_ts": 0, "last_exit_ts": 0})
+                     "entry_ts": 0, "last_exit_ts": 0,
+                     "favorable_excursion": 0.0, "adverse_excursion": 0.0})
         excluded_admin_flatten_pieces = 0
         for trade in engine.closed:
             if int(trade.lot_id) in self._administratively_flattened_lot_ids[lane]:
@@ -289,6 +290,11 @@ class MirroredEmulator:
             row["closed"] = row["closed_qty"] >= row["entry_qty"]
             row["entry_ts"] = int(trade.entry_ts)
             row["last_exit_ts"] = max(row["last_exit_ts"], int(trade.exit_ts))
+            # ClosedTrade excursions are already quantity-weighted USD values,
+            # with entry commission deducted by the emulator. Sum exit pieces
+            # so a partial episode contributes only when the whole lot closes.
+            row["favorable_excursion"] += float(trade.runup)
+            row["adverse_excursion"] += float(trade.drawdown)
         return dict(episodes), excluded_admin_flatten_pieces
 
     def summary(self, *, live_from_ts: Optional[int] = None) -> dict[str, Any]:
@@ -309,6 +315,17 @@ class MirroredEmulator:
             p_outcome = "win" if p_net > 0 else "loss" if p_net < 0 else "break_even"
             s_outcome = "win" if s_net > 0 else "loss" if s_net < 0 else "break_even"
             outcome_matrix[p_outcome][s_outcome] += 1
+
+        def closed_episode_excursions(episodes: dict[Any, dict[str, Any]]) -> dict[str, Any]:
+            closed = [row for row in episodes.values() if row["closed"]]
+            return {
+                "count": len(closed),
+                "favorable_excursion": round(sum(row["favorable_excursion"] for row in closed), 8),
+                "adverse_excursion": round(sum(row["adverse_excursion"] for row in closed), 8),
+            }
+
+        primary_excursions = closed_episode_excursions(primary_eps)
+        shadow_excursions = closed_episode_excursions(shadow_eps)
 
         def totals(keys: dict[tuple[str, int, str], dict[str, Any]]) -> dict[str, float | int]:
             # Attribute by entry decision time. A warm-up position closing
@@ -388,6 +405,14 @@ class MirroredEmulator:
             "primary_win_preservation": (shadow_wins_preserved / len(primary_wins) if primary_wins else None),
             "primary": totals(primary_eps),
             "real_price_shadow": totals(shadow_eps),
+            "primary_closed_episode_excursions": primary_excursions,
+            "real_price_shadow_closed_episode_excursions": shadow_excursions,
+            "matched_closed_episode_favorable_excursion_delta_shadow_minus_primary": delta_summary(
+                [shadow_closed[key]["favorable_excursion"] - primary_closed[key]["favorable_excursion"]
+                 for key in common]),
+            "matched_closed_episode_adverse_excursion_delta_shadow_minus_primary": delta_summary(
+                [shadow_closed[key]["adverse_excursion"] - primary_closed[key]["adverse_excursion"]
+                 for key in common]),
             "net_realization_ratio": net_realization_ratio,
             "net_realization_ratio_unavailable_reason": (
                 None if net_realization_ratio is not None else

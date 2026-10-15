@@ -14,6 +14,15 @@ def bar(ts, o, h, l, c):
     return Bar(ts, o, h, l, c, 10.0)
 
 
+def _closed_trade_piece(*, entry_id, lot_id, entry_qty, qty, runup, drawdown, entry_price=100.0):
+    return ClosedTrade(
+        entry_id=entry_id, direction=1, qty=qty, entry_price=entry_price,
+        entry_bar=0, entry_ts=60, exit_price=101.0, exit_bar=1, exit_ts=120,
+        exit_comment="fixture", profit=0.0, runup=runup, drawdown=drawdown,
+        lot_id=lot_id, entry_qty=entry_qty,
+    )
+
+
 def test_mirrors_orders_but_primary_reads_and_fills_remain_canonical():
     primary = Emulator(initial_capital=10_000, commission=0, mintick=1, contract_size=1)
     twin = MirroredEmulator(primary, asset="TEST")
@@ -89,6 +98,10 @@ def test_partial_exit_does_not_count_as_a_closed_shadow_episode():
     assert partial["primary"]["partial_realized_episodes"] == 1
     assert partial["real_price_shadow"]["partial_realized_episodes"] == 1
     assert partial["outcome_agreement_denominator"] == 0
+    assert partial["primary_closed_episode_excursions"]["count"] == 0
+    assert partial["primary_closed_episode_excursions"]["favorable_excursion"] == 0
+    assert partial["real_price_shadow_closed_episode_excursions"]["count"] == 0
+    assert partial["real_price_shadow_closed_episode_excursions"]["favorable_excursion"] == 0
 
     twin.close("L", "finish")
     twin.process_bar(bar(240, 101, 102, 100, 101), 3,
@@ -97,6 +110,94 @@ def test_partial_exit_does_not_count_as_a_closed_shadow_episode():
     assert complete["pairable_closed_episodes"] == 1
     assert complete["primary"]["closed_episodes"] == 1
     assert complete["real_price_shadow"]["closed_episodes"] == 1
+    assert complete["primary_closed_episode_excursions"]["count"] == 1
+    assert complete["real_price_shadow_closed_episode_excursions"]["count"] == 1
+
+
+def test_excursions_sum_exit_pieces_and_matched_deltas_use_only_paired_closed_episodes():
+    primary = Emulator(initial_capital=10_000, commission=0, mintick=1, contract_size=1)
+    twin = MirroredEmulator(primary)
+    twin._entry_fill_pairs[1] = {
+        "intent_seq": 1,
+        "primary": {"entry_id": "L", "ts": 60, "bar": 0, "side": "buy", "qty": 2, "price": 100.0},
+        "shadow": {"entry_id": "L", "ts": 60, "bar": 0, "side": "buy", "qty": 2, "price": 100.0},
+    }
+    for lane, pieces in {
+        "primary": ((5.0, -4.0), (3.0, -2.0)),
+        "shadow": ((2.0, -3.0), (7.0, -3.0)),
+    }.items():
+        engine = getattr(twin, lane)
+        for runup, drawdown in pieces:
+            engine.closed.append(_closed_trade_piece(
+                entry_id="L", lot_id=1, entry_qty=2, qty=1,
+                runup=runup, drawdown=drawdown,
+            ))
+    # A complete but unmatched primary episode contributes to the primary
+    # total, but must not create a paired delta observation.
+    twin.primary.closed.append(_closed_trade_piece(
+        entry_id="unmatched", lot_id=2, entry_qty=1, qty=1,
+        runup=3.0, drawdown=-2.0,
+    ))
+
+    result = twin.summary()
+
+    assert result["primary_closed_episode_excursions"] == {
+        "count": 2, "favorable_excursion": 11.0, "adverse_excursion": -8.0,
+    }
+    assert result["real_price_shadow_closed_episode_excursions"] == {
+        "count": 1, "favorable_excursion": 9.0, "adverse_excursion": -6.0,
+    }
+    assert result["matched_closed_episode_favorable_excursion_delta_shadow_minus_primary"] == {
+        "count": 1, "mean": 1.0, "median": 1.0, "min": 1.0, "max": 1.0,
+    }
+    assert result["matched_closed_episode_adverse_excursion_delta_shadow_minus_primary"] == {
+        "count": 1, "mean": 0.0, "median": 0.0, "min": 0.0, "max": 0.0,
+    }
+
+
+def test_excursions_exclude_partial_and_administratively_censored_lots():
+    primary = Emulator(initial_capital=10_000, commission=0, mintick=1, contract_size=1)
+    twin = MirroredEmulator(primary)
+    twin.primary.closed.append(_closed_trade_piece(
+        entry_id="partial", lot_id=1, entry_qty=2, qty=1,
+        runup=8.0, drawdown=-5.0,
+    ))
+    twin.shadow.closed.append(_closed_trade_piece(
+        entry_id="partial", lot_id=1, entry_qty=2, qty=1,
+        runup=6.0, drawdown=-4.0,
+    ))
+    twin.primary.closed.append(_closed_trade_piece(
+        entry_id="censored", lot_id=2, entry_qty=1, qty=1,
+        runup=9.0, drawdown=-7.0,
+    ))
+    twin.shadow.closed.append(_closed_trade_piece(
+        entry_id="censored", lot_id=2, entry_qty=1, qty=1,
+        runup=10.0, drawdown=-8.0,
+    ))
+
+    before_censor = twin.summary()
+    assert before_censor["primary_closed_episode_excursions"] == {
+        "count": 1, "favorable_excursion": 9.0, "adverse_excursion": -7.0,
+    }
+    assert before_censor["real_price_shadow_closed_episode_excursions"] == {
+        "count": 1, "favorable_excursion": 10.0, "adverse_excursion": -8.0,
+    }
+
+    twin._administratively_flattened_lot_ids["primary"].add(2)
+    twin._administratively_flattened_lot_ids["shadow"].add(2)
+
+    result = twin.summary()
+
+    assert result["primary_closed_episode_excursions"] == {
+        "count": 0, "favorable_excursion": 0, "adverse_excursion": 0,
+    }
+    assert result["real_price_shadow_closed_episode_excursions"] == {
+        "count": 0, "favorable_excursion": 0, "adverse_excursion": 0,
+    }
+    assert result["matched_closed_episode_favorable_excursion_delta_shadow_minus_primary"]["count"] == 0
+    assert result["matched_closed_episode_favorable_excursion_delta_shadow_minus_primary"]["mean"] is None
+    assert result["matched_closed_episode_adverse_excursion_delta_shadow_minus_primary"]["count"] == 0
+    assert result["matched_closed_episode_adverse_excursion_delta_shadow_minus_primary"]["mean"] is None
 
 
 def test_missing_or_mismatched_real_bar_degrades_without_changing_primary():
@@ -334,25 +435,56 @@ def test_portfolio_pairable_closed_count_includes_break_even_episode():
     twin.process_bar(bar(180, 100, 100, 100, 100), 2,
                      real_bar=bar(180, 100, 100, 100, 100))
     per_asset = twin.summary()
+    other_asset = dict(per_asset)
+    other_asset["asset"] = "OTHER"
+    other_asset["primary_closed_episode_excursions"] = {
+        "count": 2, "favorable_excursion": 4.5, "adverse_excursion": -3.5,
+    }
+    other_asset["real_price_shadow_closed_episode_excursions"] = {
+        "count": 2, "favorable_excursion": 5.0, "adverse_excursion": -4.0,
+    }
 
     class SummaryOnlyRunner:
+        def __init__(self, symbol, shadow):
+            self.symbol = symbol
+            self.shadow = shadow
+
         def summary(self, *, nonblocking=False):
-            return {"symbol": "TEST", "equity": 10_000, "capital": 10_000,
+            return {"symbol": self.symbol, "equity": 10_000, "capital": 10_000,
                     "live_profit": 0, "open_profit": 0, "position": 0,
                     "paused": False, "warm": True, "last_bar_ts": 180,
-                    "real_price_shadow": per_asset}
+                    "real_price_shadow": self.shadow}
 
     portfolio = Portfolio(Journal(":memory:"), ".", feeds={})
-    portfolio.runners = {"TEST": SummaryOnlyRunner()}
-    portfolio.order = ["TEST"]
+    portfolio.runners = {
+        "TEST": SummaryOnlyRunner("TEST", per_asset),
+        "OTHER": SummaryOnlyRunner("OTHER", other_asset),
+    }
+    portfolio.order = ["TEST", "OTHER"]
     aggregate = portfolio.status()["real_price_shadow"]
 
     assert per_asset["pairable_closed_episodes"] == 1
     assert per_asset["outcome_agreement_denominator"] == 0
-    assert aggregate["pairable_closed_episodes"] == 1
+    assert aggregate["pairable_closed_episodes"] == 2
     assert aggregate["outcome_agreement_denominator"] == 0
     assert aggregate["outcome_agreement_rate"] is None
     assert aggregate["administrative_censored_shadow_positions"] == 0
+    assert aggregate["primary_closed_episode_excursions"] == {
+        "count": per_asset["primary_closed_episode_excursions"]["count"] + 2,
+        "favorable_excursion": round(
+            per_asset["primary_closed_episode_excursions"]["favorable_excursion"] + 4.5, 8),
+        "adverse_excursion": round(
+            per_asset["primary_closed_episode_excursions"]["adverse_excursion"] - 3.5, 8),
+    }
+    assert aggregate["real_price_shadow_closed_episode_excursions"] == {
+        "count": per_asset["real_price_shadow_closed_episode_excursions"]["count"] + 2,
+        "favorable_excursion": round(
+            per_asset["real_price_shadow_closed_episode_excursions"]["favorable_excursion"] + 5.0, 8),
+        "adverse_excursion": round(
+            per_asset["real_price_shadow_closed_episode_excursions"]["adverse_excursion"] - 4.0, 8),
+    }
+    assert aggregate["closed_episode_excursion_aggregation"] == (
+        "sum_of_per_asset_complete_closed_episode_exit_piece_values")
 
 
 def test_flatten_closes_shadow_only_position():

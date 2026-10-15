@@ -1856,6 +1856,17 @@ class Portfolio:
         portfolio_profit_capture = (
             portfolio_shadow_on_primary_winners / portfolio_primary_winner_net
             if portfolio_primary_winner_net > 1e-8 else None)
+
+        def aggregate_closed_episode_excursions(field: str) -> dict[str, Any]:
+            rows = [x.get(field) or {} for x in shadow_rows]
+            return {
+                "count": sum(int(row.get("count") or 0) for row in rows),
+                "favorable_excursion": round(sum(float(row.get("favorable_excursion") or 0.0)
+                                                  for row in rows), 8),
+                "adverse_excursion": round(sum(float(row.get("adverse_excursion") or 0.0)
+                                                for row in rows), 8),
+            }
+
         shadow_portfolio = ({
             "schema": "icarus.real_price_shadow.portfolio/1",
             "enabled": True,
@@ -1891,6 +1902,12 @@ class Portfolio:
             "primary_live_net": round(sum(x["primary"]["live_net"] for x in shadow_rows), 8),
             "real_price_shadow_warmup_net": round(sum(x["real_price_shadow"]["warmup_net"] for x in shadow_rows), 8),
             "real_price_shadow_live_net": round(sum(x["real_price_shadow"]["live_net"] for x in shadow_rows), 8),
+            "primary_closed_episode_excursions": aggregate_closed_episode_excursions(
+                "primary_closed_episode_excursions"),
+            "real_price_shadow_closed_episode_excursions": aggregate_closed_episode_excursions(
+                "real_price_shadow_closed_episode_excursions"),
+            "closed_episode_excursion_aggregation": (
+                "sum_of_per_asset_complete_closed_episode_exit_piece_values"),
             "drawdown_aggregation": "per_asset_only; cross_asset_close_timestamps_are_not_yet_aligned",
             "assets": [{"asset": x["asset"], "status": x["status"], "reason": x["reason"],
                         "administrative_censored_shadow_positions": x["administrative_censored_shadow_positions"],
