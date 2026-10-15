@@ -1,7 +1,8 @@
 """In-memory shadow broker — fills market orders instantly at a price you feed it.
 
 Used for EXECUTION_MODE=shadow (dry-run: everything journaled, nothing sent to
-Alpaca) and for the unit tests. Stop orders rest until `tick(price)` crosses them.
+Alpaca) and for the unit tests. Stop/limit orders rest until `tick(price)` crosses them.
+Bracket exits use OCO semantics: the first exit fill cancels its sibling.
 """
 from __future__ import annotations
 
@@ -20,6 +21,7 @@ class ShadowBroker:
         self._pos: Dict[str, float] = {}
         self._basis: Dict[str, float] = {}     # signed cost basis (qty * avg price) per symbol
         self._orders: Dict[str, BrokerOrder] = {}
+        self._oco_siblings: Dict[str, set[str]] = {}
         self._ids = itertools.count(1)
         self.market_open = market_open
         self.fills: List[Dict[str, Any]] = []
@@ -31,17 +33,62 @@ class ShadowBroker:
         self.tick(symbol)
 
     def tick(self, symbol: str) -> None:
-        """Trigger resting stops against the current price."""
+        """Fill triggered market parents and stop/limit children at the current price."""
         p = self.prices.get(symbol)
         if p is None:
             return
-        for o in list(self._orders.values()):
-            if o.symbol != symbol or o.status not in ("new", "accepted") or o.kind != "stop" or o.stop_price is None:
+        orders = list(self._orders.values())
+        # Fill unpriced bracket parents before their held children. For an
+        # already-open OCO group, choose a stop before a limit if one tick
+        # crosses multiple conditions; this is conservative and deterministic.
+        orders.sort(key=lambda o: (
+            0 if o.kind == "bracket" and o.status in ("new", "accepted") else
+            1 if o.kind == "stop" else 2
+        ))
+        for o in orders:
+            if o.symbol != symbol or o.status not in ("new", "accepted"):
                 continue
-            if (o.side == "sell" and p <= o.stop_price) or (o.side == "buy" and p >= o.stop_price):
+            if o.kind == "bracket":
                 self._fill(o, p)
+                for leg in o.legs:
+                    if leg.status == "held":
+                        leg.status = "accepted"
+                continue
+            stop_hit = (o.kind == "stop" and o.stop_price is not None and
+                        ((o.side == "sell" and p <= o.stop_price) or (o.side == "buy" and p >= o.stop_price)))
+            limit_hit = (o.kind == "limit" and o.limit_price is not None and
+                         ((o.side == "buy" and p <= o.limit_price) or (o.side == "sell" and p >= o.limit_price)))
+            if stop_hit or limit_hit:
+                self._fill(o, p if stop_hit else o.limit_price)
+
+    def _cancel_oco_siblings(self, order_id: str) -> None:
+        for sibling_id in self._oco_siblings.get(order_id, set()):
+            sibling = self._orders.get(sibling_id)
+            if sibling and sibling.status in ("new", "accepted", "held"):
+                sibling.status = "canceled"
+        self._oco_siblings.pop(order_id, None)
+        for sibling_id in list(self._oco_siblings):
+            self._oco_siblings[sibling_id].discard(order_id)
+            if not self._oco_siblings[sibling_id]:
+                self._oco_siblings.pop(sibling_id, None)
+
+    def _cancel(self, order: BrokerOrder) -> bool:
+        """Cancel an order and retire any attached bracket/OCO orders."""
+        if order.status not in ("new", "accepted", "held"):
+            return False
+        order.status = "canceled"
+        if order.kind == "bracket":
+            for leg in order.legs:
+                if leg.status in ("new", "accepted", "held"):
+                    leg.status = "canceled"
+                self._cancel_oco_siblings(leg.id)
+        else:
+            self._cancel_oco_siblings(order.id)
+        return True
 
     def _fill(self, o: BrokerOrder, price: float) -> None:
+        if o.status not in ("new", "accepted"):
+            return
         o.status = "filled"
         o.filled_qty = o.qty
         o.fill_price = price
@@ -62,6 +109,7 @@ class ShadowBroker:
         if abs(self._pos[o.symbol]) < 1e-9:
             self._pos.pop(o.symbol, None)
             self._basis.pop(o.symbol, None)
+        self._cancel_oco_siblings(o.id)
 
     # ── Broker protocol ──
     def account(self) -> Dict[str, Any]:
@@ -90,16 +138,17 @@ class ShadowBroker:
         return [o for o in self._orders.values() if o.status in ("new", "accepted") and (symbol is None or o.symbol == symbol)]
 
     def cancel_orders(self, symbol: Optional[str] = None) -> int:
-        n = 0
-        for o in self.open_orders(symbol):
-            o.status = "canceled"; n += 1
-        return n
+        orders = [o for o in self._orders.values()
+                  if o.status in ("new", "accepted", "held")
+                  and (symbol is None or o.symbol == symbol)]
+        open_ids = {o.id for o in orders if o.status in ("new", "accepted")}
+        for order in orders:
+            self._cancel(order)
+        return sum(self._orders[order_id].status == "canceled" for order_id in open_ids)
 
     def cancel_order(self, order_id: str) -> bool:
         o = self._orders.get(order_id)
-        if o and o.status in ("new", "accepted"):
-            o.status = "canceled"; return True
-        return False
+        return self._cancel(o) if o else False
 
     def _new(self, symbol: str, side: str, qty: float, kind: str, **kw: Any) -> BrokerOrder:
         o = BrokerOrder(id=f"sh-{next(self._ids)}", symbol=symbol, side=side, qty=float(qty), kind=kind, status="accepted", **kw)
@@ -121,12 +170,17 @@ class ShadowBroker:
     def submit_bracket(self, symbol: str, side: str, qty: float, take_profit: float, stop_loss: float) -> BrokerOrder:
         o = self._new(symbol, side, qty, "bracket")
         p = self.prices.get(symbol)
-        if p is not None:
-            self._fill(o, p)
         exit_side = "sell" if side == "buy" else "buy"
         tp = self._new(symbol, exit_side, qty, "limit", limit_price=take_profit)
         sl = self._new(symbol, exit_side, qty, "stop", stop_price=stop_loss)
         o.legs = [tp, sl]
+        self._oco_siblings[tp.id] = {sl.id}
+        self._oco_siblings[sl.id] = {tp.id}
+        if p is not None:
+            self._fill(o, p)
+            self.tick(symbol)
+        else:
+            tp.status = sl.status = "held"
         return o
 
     def replace_stop(self, order_id: str, stop_price: float) -> BrokerOrder:
