@@ -442,6 +442,22 @@ def test_admin_pause_flatten_and_config_success_are_completed_on_return(admin):
     assert not r.em._pending_entries
 
 
+def test_admin_flatten_without_mark_returns_conflict_and_keeps_position_open(admin):
+    _, r, _, post = admin
+    r.em.entry("Long", 1, 1)
+    r.em.process_bar(Bar(0, 100, 100, 100, 100, 1), 0)
+    r.last_price = None
+
+    status, body = post("/admin/flatten", {"asset": "TEST", "confirm": True})
+
+    assert status == 409
+    assert body["error"] == "flatten_unavailable"
+    assert body["positions_remain_open"] is True
+    assert "no finite last market price" in body["detail"]
+    assert r.em.position_size == 1
+    assert r.em._pending_closes == []
+
+
 def test_chart_configuration_rebuilds_paper_engine_and_persists_meta(configured):
     port, r, path = configured
     r.live_from_ts = 1

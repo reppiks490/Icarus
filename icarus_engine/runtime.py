@@ -460,6 +460,10 @@ class RunnerConfig:
     shadow_real_fills: bool = False          # same-decision real-bar emulator; observation only
 
 
+class FlattenUnavailableError(RuntimeError):
+    """Administrative flatten could not safely close an open position."""
+
+
 class AssetRunner:
     def __init__(self, cfg: RunnerConfig, journal: Journal, feeds: Optional[Dict[str, Any]] = None):
         self.cfg = cfg
@@ -1182,7 +1186,7 @@ class AssetRunner:
             has_shadow_open = isinstance(self.em, MirroredEmulator) and bool(self.em.shadow.open)
             has_open = has_primary_open or has_shadow_open
             if has_primary_open and (self.last_price is None or not math.isfinite(float(self.last_price))):
-                raise RuntimeError(
+                raise FlattenUnavailableError(
                     f"[{self.symbol}] cannot flatten open positions: no finite last market price is available")
             for entry_id in entry_ids:
                 comment = "FLAT_" + reason.upper()[:8]
