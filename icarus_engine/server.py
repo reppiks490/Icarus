@@ -3049,7 +3049,10 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     srv.learning = learning
     srv.chronofold = chronofold
     srv.commissioning = commissioning
-    srv.daemon_threads = True
+    # In in-process/test servers, wait for active handlers before server_close
+    # returns. Handlers can still own SQLite handles under Windows, where a
+    # temporary data directory cannot be removed until those threads finish.
+    srv.daemon_threads = bool(start)
     srv.background_workers_enabled = bool(start)
     if not start:
         return srv
