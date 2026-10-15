@@ -4,8 +4,8 @@ import builtins
 
 import pytest
 
-from icarus_engine.spec import FEATURE_KEYS
-from icarus_engine.trainers import gru_slot
+from icarus_engine.spec import FEATURE_KEYS, SLOTS
+from icarus_engine.trainers import deep_challenger
 from icarus_engine.trainers.sequence import causal_sequence_rows, fit_standardizer, standardize_sequence
 
 
@@ -36,7 +36,6 @@ def test_causal_sequences_end_at_decision_row_and_never_read_future():
 
 def test_standardizer_is_fit_only_on_training_rows_and_handles_constant_features():
     train = [_row(i) for i in range(8)]
-    # Make one feature constant in training so the denominator must fail-safe to 1.0.
     for row in train:
         row["x"][FEATURE_KEYS[-1]] = 7.0
 
@@ -52,7 +51,20 @@ def test_standardizer_is_fit_only_on_training_rows_and_handles_constant_features
     assert set(normalized[0]) == set(FEATURE_KEYS)
 
 
-def test_gru_trainer_fails_closed_on_short_history_without_importing_torch(monkeypatch, tmp_path):
+def test_deep_challenger_does_not_modify_frozen_trainer_slots():
+    assert SLOTS == {
+        "logit": "slot0",
+        "xgb": "slot1",
+        "rank": "slot2",
+        "regime": "slot3",
+        "fail": "slot4",
+    }
+    contract = deep_challenger.contract()
+    assert contract["existing_trainer_slots_modified"] is False
+    assert "slot" not in contract
+
+
+def test_gru_challenger_fails_closed_on_short_history_without_importing_torch(monkeypatch, tmp_path):
     rows = [_row(i) for i in range(30)]
     real_import = builtins.__import__
 
@@ -62,7 +74,9 @@ def test_gru_trainer_fails_closed_on_short_history_without_importing_torch(monke
         return real_import(name, *args, **kwargs)
 
     monkeypatch.setattr(builtins, "__import__", guarded_import)
-    report = gru_slot.train(rows, "NQ", "clock_minutes", tmp_path / "gru.json", ledger_path=tmp_path / "ledger.sqlite3")
+    report = deep_challenger.train(
+        rows, "NQ", "clock_minutes", tmp_path / "gru.json", ledger_path=tmp_path / "ledger.sqlite3"
+    )
 
     assert report["status"] == "skipped"
     assert "rows" in report["reason"] or "walk-forward" in report["reason"]
@@ -70,14 +84,16 @@ def test_gru_trainer_fails_closed_on_short_history_without_importing_torch(monke
     assert report["production_decision_authorized"] is False
 
 
-def test_gru_trainer_blocks_cleanly_when_optional_backend_is_missing(monkeypatch, tmp_path):
+def test_gru_challenger_blocks_cleanly_when_optional_backend_is_missing(monkeypatch, tmp_path):
     rows = [_row(i) for i in range(240)]
 
     def missing_backend():
         return None, "PyTorch is not installed"
 
-    monkeypatch.setattr(gru_slot, "_load_torch", missing_backend)
-    report = gru_slot.train(rows, "NQ", "clock_minutes", tmp_path / "gru.json", ledger_path=tmp_path / "ledger.sqlite3")
+    monkeypatch.setattr(deep_challenger, "_load_torch", missing_backend)
+    report = deep_challenger.train(
+        rows, "NQ", "clock_minutes", tmp_path / "gru.json", ledger_path=tmp_path / "ledger.sqlite3"
+    )
 
     assert report["status"] == "blocked"
     assert "PyTorch" in report["reason"]
@@ -85,9 +101,11 @@ def test_gru_trainer_blocks_cleanly_when_optional_backend_is_missing(monkeypatch
     assert report["production_decision_authorized"] is False
 
 
-def test_gru_contract_is_research_only_and_reuses_frozen_feature_keys():
-    contract = gru_slot.contract()
+def test_gru_challenger_contract_is_research_only_and_reuses_frozen_feature_keys():
+    contract = deep_challenger.contract()
 
+    assert contract["lane"] == "deep_learning_challenger"
+    assert contract["model"] == "gru"
     assert contract["features"] == list(FEATURE_KEYS)
     assert contract["sequence_length"] >= 4
     assert contract["execution_authorized"] is False
@@ -95,20 +113,18 @@ def test_gru_contract_is_research_only_and_reuses_frozen_feature_keys():
     assert contract["auto_promote"] is False
 
 
-def test_gru_end_to_end_when_torch_is_available(monkeypatch, tmp_path):
+def test_gru_challenger_end_to_end_when_torch_is_available(monkeypatch, tmp_path):
     pytest.importorskip("torch")
     rows = [_row(i, y=(1 if (i // 4) % 2 == 0 else -1)) for i in range(240)]
 
-    # Keep CI fast while exercising the real backend, optimizer, serialization,
-    # holdout ledger, calibration, baseline comparison, and replay path.
-    monkeypatch.setitem(gru_slot._MODEL, "epochs", 2)
-    monkeypatch.setitem(gru_slot._MODEL, "patience", 1)
-    monkeypatch.setitem(gru_slot._MODEL, "hidden_size", 4)
-    monkeypatch.setitem(gru_slot._MODEL, "layers", 1)
-    monkeypatch.setitem(gru_slot._MODEL, "dropout", 0.0)
-    monkeypatch.setitem(gru_slot._MODEL, "batch_size", 64)
+    monkeypatch.setitem(deep_challenger._MODEL, "epochs", 2)
+    monkeypatch.setitem(deep_challenger._MODEL, "patience", 1)
+    monkeypatch.setitem(deep_challenger._MODEL, "hidden_size", 4)
+    monkeypatch.setitem(deep_challenger._MODEL, "layers", 1)
+    monkeypatch.setitem(deep_challenger._MODEL, "dropout", 0.0)
+    monkeypatch.setitem(deep_challenger._MODEL, "batch_size", 64)
 
-    report = gru_slot.train(
+    report = deep_challenger.train(
         rows,
         "NQ",
         "clock_minutes",
@@ -118,9 +134,12 @@ def test_gru_end_to_end_when_torch_is_available(monkeypatch, tmp_path):
     )
 
     assert report["status"] == "fitted"
+    assert report["lane"] == "deep_learning_challenger"
+    assert report["model"] == "gru"
     assert report["holdout_touched_before_final"] is False
     assert report["serialization_replay"] is True
     assert report["holdout_claim"]["status"] == "NEW"
+    assert report["holdout_claim"]["ledger_namespace"] == "deep_challenger_gru"
     assert report["execution_authorized"] is False
     assert report["production_decision_authorized"] is False
     assert report["auto_promote"] is False
