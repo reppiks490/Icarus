@@ -10,7 +10,7 @@ import pytest
 
 from icarus_engine.assets import AssetSpec, PRIMARY_INTRADAY_TIMEFRAMES
 from icarus_engine.pine.timeframe import Bar
-from icarus_engine.runtime import AssetRunner, Journal, Portfolio, RunnerConfig
+from icarus_engine.runtime import AssetRunner, FlattenUnavailableError, Journal, Portfolio, RunnerConfig
 from icarus_engine.server import serve
 from icarus_engine.strategy.inputs import Inputs
 
@@ -300,6 +300,7 @@ def admin(configured):
                 return reply.status, json.load(reply)
         except urllib.error.HTTPError as ex:
             return ex.code, json.load(ex)
+    post.server = srv
     yield port, r, path, post
     srv.shutdown()
     srv.server_close()
@@ -456,6 +457,33 @@ def test_admin_flatten_without_mark_returns_conflict_and_keeps_position_open(adm
     assert "no finite last market price" in body["detail"]
     assert r.em.position_size == 1
     assert r.em._pending_closes == []
+
+
+def test_command_center_flatten_without_mark_reports_remaining_open_asset(admin, monkeypatch):
+    _, _, _, post = admin
+    manager = post.server.command_centers
+    runner = type("Runner", (), {})()
+    runner.symbol = "NQ"
+    runner.em = type("Emulator", (), {"open": [object()], "shadow": None})()
+    runner.set_paused = lambda _paused: None
+    runner.flatten = lambda _reason: (_ for _ in ()).throw(
+        FlattenUnavailableError("[NQ] cannot flatten open positions: no finite last market price is available")
+    )
+    portfolio = type("Portfolio", (), {})()
+    portfolio._lock = threading.RLock()
+    portfolio.paused = False
+    portfolio.runner_list = lambda: [runner]
+    portfolio.stop = lambda: None
+    monkeypatch.setitem(manager.portfolios, "cc1", portfolio)
+
+    status, body = post("/admin/command-centers/cc1/flatten", {"confirm": True})
+
+    assert status == 409
+    assert body["error"] == "flatten_unavailable"
+    assert body["profile_id"] == "cc1"
+    assert body["open_assets"] == ["NQ"]
+    assert body["positions_remain_open"] is True
+    assert body["paused"] is True
 
 
 def test_chart_configuration_rebuilds_paper_engine_and_persists_meta(configured):
