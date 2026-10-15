@@ -110,6 +110,8 @@ def test_bar_batch_receipt_records_gaps_and_never_qualifies_without_session_revi
         interval_seconds=60, requested_start_ts=60, requested_end_ts=300,
         bars=bars, fetched_at_ns=1, received_at_ns=2,
         entitlement_status="VERIFIED",
+        session_validation_status="VERIFIED",
+        provider_mapping_status="VERIFIED",
     )
     assert receipt.identity_status == "VERIFIED"
     assert receipt.interval_gap_count == 2
@@ -159,6 +161,7 @@ def test_catalog_contains_two_hundred_unique_disabled_equity_candidates():
         "catalogued_count": 200,
         "entitlement_verified_count": 0,
         "source_connected_count": 0,
+        "entitlement_verified_count": 0,
         "historical_bars_qualified_count": 0,
         "live_bars_qualified_count": 0,
         "pulse_enabled_count": 0,
