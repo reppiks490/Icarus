@@ -1,12 +1,15 @@
 """Deterministic, evidence-aware capability index for ICARUS.
 
-The index is intentionally conservative.  Static configuration is not proof that a
+The index is intentionally conservative. Static configuration is not proof that a
 provider credential, entitlement, corpus, broker session, or live feed is healthy.
-Runtime evidence can be layered onto this compiler by callers, but the default
-projection exposes only source configuration and structural execution capability.
+It also separates three futures truths that must never be collapsed:
+
+* continuous runtime admission;
+* non-authorizing static dated-contract candidate availability; and
+* execution qualification / broker-paper authorization.
 
 This prevents agents from inferring "works" merely because they discovered a
-symbol, API class, dashboard row, or secret name in one repository.
+symbol, candidate contract code, API class, dashboard row, or secret name.
 """
 from __future__ import annotations
 
@@ -15,7 +18,7 @@ import hashlib
 import json
 from typing import Any, Mapping, Optional
 
-from icarus_futures.contracts import SPECS
+from icarus_futures.contracts import SPECS, STRUCTURAL_SPECS
 
 from .assets import REGISTRY
 from .futures_catalog import FUTURES_PRODUCTS
@@ -29,7 +32,6 @@ def _canonical_json(value: Mapping[str, Any]) -> str:
 
 
 def system_index_sha256(index: Mapping[str, Any]) -> str:
-    """Return the integrity hash for an index, excluding its own digest value."""
     payload = copy.deepcopy(dict(index))
     integrity = payload.get("integrity")
     if isinstance(integrity, dict):
@@ -37,11 +39,7 @@ def system_index_sha256(index: Mapping[str, Any]) -> str:
     return hashlib.sha256(_canonical_json(payload).encode("utf-8")).hexdigest()
 
 
-def _evidence_record(
-    root: str,
-    *,
-    provider_state: Optional[Mapping[str, Mapping[str, Any]]] = None,
-) -> dict[str, Any]:
+def _evidence_record(root: str, *, provider_state=None) -> dict[str, Any]:
     spec = REGISTRY[root]
     supplied = dict((provider_state or {}).get(root, {}))
     verified = supplied.get("verified_access") is True
@@ -64,11 +62,7 @@ def _evidence_record(
     }
 
 
-def _corpus_record(
-    root: str,
-    *,
-    corpus_state: Optional[Mapping[str, Mapping[str, Any]]] = None,
-) -> dict[str, Any]:
+def _corpus_record(root: str, *, corpus_state=None) -> dict[str, Any]:
     supplied = dict((corpus_state or {}).get(root, {}))
     verified = supplied.get("verified") is True
     return {
@@ -82,11 +76,7 @@ def _corpus_record(
     }
 
 
-def _brain_record(
-    root: str,
-    *,
-    brain_state: Optional[Mapping[str, Mapping[str, Any]]] = None,
-) -> dict[str, Any]:
+def _brain_record(root: str, *, brain_state=None) -> dict[str, Any]:
     supplied = dict((brain_state or {}).get(root, {}))
     return {
         "evidence_registered": supplied.get("evidence_registered") is True,
@@ -99,11 +89,7 @@ def _brain_record(
     }
 
 
-def _broker_record(
-    root: str,
-    *,
-    broker_state: Optional[Mapping[str, Mapping[str, Any]]] = None,
-) -> dict[str, Any]:
+def _broker_record(root: str, *, broker_state=None) -> dict[str, Any]:
     supplied = dict((broker_state or {}).get(root, {}))
     readback = supplied.get("broker_paper_readback_verified") is True
     exact_contract = supplied.get("exact_contract_verified") is True
@@ -131,20 +117,21 @@ def build_system_index(
 ) -> dict[str, Any]:
     """Compile the canonical futures capability graph from runtime authorities.
 
-    Evidence maps are explicit inputs.  Their absence never upgrades a capability.
+    Evidence maps are explicit inputs. Their absence never upgrades a capability.
     """
     assets: dict[str, Any] = {}
     for root in sorted(FUTURES_PRODUCTS):
         product = FUTURES_PRODUCTS[root]
         runtime = REGISTRY[root]
-        structural = root in SPECS and product.execution_qualified
+        static_candidate = root in STRUCTURAL_SPECS
+        execution_qualified = root in SPECS and product.execution_qualified
         broker = _broker_record(root, broker_state=broker_state)
         data = _evidence_record(root, provider_state=provider_state)
         corpus = _corpus_record(root, corpus_state=corpus_state)
         brain = _brain_record(root, brain_state=brain_state)
-        structural_blocker = None if structural else product.execution_blocker or "no qualified dated-contract resolver"
+        execution_blocker = None if execution_qualified else product.execution_blocker or "execution route is not qualified"
         broker_paper_tradeable = bool(
-            structural
+            execution_qualified
             and broker["paper_account_verified"]
             and broker["exact_contract_verified"]
             and broker["broker_paper_readback_verified"]
@@ -176,11 +163,15 @@ def build_system_index(
             "corpus": corpus,
             "brain": brain,
             "execution": {
-                "structural_qualified": structural,
-                "structural_blocker": structural_blocker,
+                "static_candidate_available": static_candidate,
+                "candidate_execution_root": product.execution_root,
+                "broker_qualification_required": True,
+                "structural_qualified": execution_qualified,
+                "execution_qualified": execution_qualified,
+                "structural_blocker": execution_blocker,
                 "resolver_model": product.roll_model,
                 "cycle": product.cycle,
-                "simulated_paper_authorized": structural,
+                "simulated_paper_authorized": execution_qualified,
                 "broker_paper_readback_verified": broker["broker_paper_readback_verified"],
                 "broker_paper_tradeable": broker_paper_tradeable,
                 "broker": broker,
@@ -191,7 +182,8 @@ def build_system_index(
             "dashboard": {
                 "visible": True,
                 "backend_state_eligible": True,
-                "simulated_paper_controls_eligible": structural,
+                "static_candidate_visible": static_candidate,
+                "simulated_paper_controls_eligible": execution_qualified,
                 "broker_paper_controls_eligible": broker_paper_tradeable,
                 "live_controls_eligible": False,
             },
@@ -210,8 +202,11 @@ def build_system_index(
         "counts": {
             "futures_roots": len(assets),
             "runtime_admitted": sum(1 for product in FUTURES_PRODUCTS.values() if product.runtime_qualified),
+            "static_candidates_available": sum(
+                1 for record in assets.values() if record["execution"]["static_candidate_available"]
+            ),
             "structural_execution_qualified": sum(
-                1 for record in assets.values() if record["execution"]["structural_qualified"]
+                1 for record in assets.values() if record["execution"]["execution_qualified"]
             ),
             "broker_paper_tradeable": sum(
                 1 for record in assets.values() if record["execution"]["broker_paper_tradeable"]
@@ -225,12 +220,10 @@ def build_system_index(
 
 
 def system_index_json(index: Optional[Mapping[str, Any]] = None) -> str:
-    """Stable machine-readable projection."""
     return json.dumps(index or build_system_index(), sort_keys=True, indent=2, ensure_ascii=False) + "\n"
 
 
 def system_index_markdown(index: Optional[Mapping[str, Any]] = None) -> str:
-    """Human-readable projection generated from the same capability graph."""
     data = dict(index or build_system_index())
     lines = [
         "# ICARUS Canonical System Index",
@@ -239,8 +232,8 @@ def system_index_markdown(index: Optional[Mapping[str, Any]] = None) -> str:
         "",
         "Live execution: DISABLED",
         "",
-        "| Root | Data | Structural execution | Broker paper | Live | Blocker |",
-        "|---|---|---:|---:|---:|---|",
+        "| Root | Data | Static candidate | Execution qualified | Broker paper | Live | Blocker |",
+        "|---|---|---:|---:|---:|---:|---|",
     ]
     for root in sorted(data["assets"]):
         record = data["assets"][root]
@@ -250,12 +243,9 @@ def system_index_markdown(index: Optional[Mapping[str, Any]] = None) -> str:
         blocker = str(blocker).replace("|", "\\|")
         lines.append(
             f"| {root} | {data_state['qualification']} | "
-            f"{'yes' if execution['structural_qualified'] else 'no'} | "
+            f"{'yes' if execution['static_candidate_available'] else 'no'} | "
+            f"{'yes' if execution['execution_qualified'] else 'no'} | "
             f"{'yes' if execution['broker_paper_tradeable'] else 'no'} | no | {blocker} |"
         )
-    lines.extend([
-        "",
-        f"Integrity SHA-256: `{data['integrity']['sha256']}`",
-        "",
-    ])
+    lines.extend(["", f"Integrity SHA-256: `{data['integrity']['sha256']}`", ""])
     return "\n".join(lines)
