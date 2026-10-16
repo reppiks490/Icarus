@@ -56,6 +56,7 @@ def test_runtime_and_execution_views_match_product_authority():
         assert runtime.micro_of == product.micro_of
 
         assert execution.root == root
+        assert execution.execution_root == product.execution_root
         assert execution.exchange == product.exchange
         assert execution.tick_size == pytest.approx(product.tick_size)
         assert execution.tick_value == pytest.approx(product.tick_value)
@@ -67,6 +68,7 @@ def test_every_product_has_self_consistent_tick_economics():
         assert product.tick_value == pytest.approx(product.tick_size * product.point_value)
         assert product.tick_size > 0
         assert product.point_value > 0
+        assert product.execution_root
 
 
 def test_micro_products_have_independent_smaller_economics_and_ratio():
@@ -89,7 +91,7 @@ def test_every_product_parses_and_resolves_from_continuous_identity():
 
         resolved = resolve_contract(f"{root}1!", session_date)
         assert resolved["continuous"] == f"{root}1!"
-        assert resolved["contract"].startswith(root)
+        assert resolved["contract"].startswith(spec.execution_root)
         assert resolved["contract"] != f"{root}1!"
         assert resolved["roll_date"] > session_date.isoformat()
         assert resolved["broker_qualification_required"] is True
@@ -104,7 +106,7 @@ def test_representative_families_resolve_deterministically_mid_cycle():
         "CL1!": "CLX26",
         "6E1!": "6EZ26",
         "ZN1!": "ZNZ26",
-        "BTCF1!": "BTCFV26",
+        "BTCF1!": "BTCV26",
     }
     for continuous, dated in expected.items():
         assert resolve_contract(continuous, session_date)["contract"] == dated
