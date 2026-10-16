@@ -58,75 +58,60 @@ def test_dashboard_javascript_parses(rel, tmp_path):
 
 @pytest.mark.skipif(NODE is None, reason="node is not installed on this developer machine")
 def test_combined_paper_pnl_renders_four_finite_values_and_fails_closed(tmp_path):
-    dashboard = REPO / "icarus_engine/dashboard.html"
+    dashboard = REPO / "icarus_engine/command-centers-ui.js"
     runner = tmp_path / "combined-paper-pnl.cjs"
     runner.write_text(
         r"""
 const fs = require('node:fs');
 const vm = require('node:vm');
 const html = fs.readFileSync(process.argv[2], 'utf8');
-const start = html.indexOf('async function refreshCombinedPaperPnl()');
-const end = html.indexOf('\nasync function refreshGolive()', start);
-if (start < 0 || end < 0) throw new Error('combined paper P&L function boundary not found');
+const start = html.indexOf('let paperWorkspaces = null;');
+const end = html.indexOf('\nfunction paperAggregateHtml(data)', start);
+if (start < 0 || end < 0) throw new Error('paper P&L helpers boundary not found');
 const implementation = html.slice(start, end);
 const scenarios = JSON.parse(process.argv[3]);
 
-async function run(scenario) {
+function run(scenario) {
   const element = {textContent: '', className: '', title: ''};
   const context = {
-    $: (selector) => selector === '#combinedPaperPnl' ? element : null,
-    fetch: async () => ({
-      ok: scenario.ok !== false,
-      json: async () => scenario.data,
-    }),
+    document: {querySelector: (selector) => selector === '#combinedPaperPnl' ? element : null},
   };
-  vm.runInNewContext(implementation + '\nthis.invoke = refreshCombinedPaperPnl;', context);
-  await context.invoke();
+  vm.runInNewContext(implementation + '\nthis.invoke = paperSetHeader;', context);
+  context.invoke(scenario.data);
   return element;
 }
 
-(async () => {
-  const results = [];
-  for (const scenario of scenarios) results.push(await run(scenario));
-  process.stdout.write(JSON.stringify(results));
-})().catch((error) => { process.stderr.write(String(error)); process.exit(1); });
+const results = scenarios.map(run);
+process.stdout.write(JSON.stringify(results));
 """,
         encoding="utf-8",
     )
-    profiles = [
-        {"name": "A", "status": {"net": 10.5}},
-        {"name": "B", "status": {"net": 2.25}},
-        {"name": "C", "status": {"net": -1.0}},
-        {"name": "D", "status": {"net": 3.75}},
-    ]
+    profiles = [{"name": name} for name in "ABCD"]
     scenarios = [
+        {"data": {"mode": "concurrent_paper", "profiles": profiles, "aggregate": {"realized_pnl": 10.5, "open_pnl": 5.0}}},
+        {
+            "data": {
+                "mode": "concurrent_paper",
+                "profiles": profiles,
+                "aggregate": {"realized_pnl": -10.0, "open_pnl": 0.0},
+            }
+        },
+        {
+            "data": {
+                "mode": "concurrent_paper",
+                "profiles": profiles,
+                "aggregate": {"realized_pnl": 1e308, "open_pnl": 1e308},
+            }
+        },
+        {"data": {"mode": "concurrent_paper", "profiles": profiles[:3], "aggregate": {"realized_pnl": 1.0, "open_pnl": 2.0}}},
+        {
+            "data": {
+                "mode": "concurrent_paper",
+                "profiles": profiles,
+                "aggregate": {"realized_pnl": 1.0, "open_pnl": None},
+            }
+        },
         {"data": {"mode": "concurrent_paper", "profiles": profiles}},
-        {
-            "data": {
-                "mode": "concurrent_paper",
-                "profiles": [
-                    {"name": name, "status": {"net": -value}}
-                    for name, value in zip("ABCD", (1.0, 2.0, 3.0, 4.0))
-                ],
-            }
-        },
-        {
-            "data": {
-                "mode": "concurrent_paper",
-                "profiles": [
-                    {"name": name, "status": {"net": 1e308}}
-                    for name in "ABCD"
-                ],
-            }
-        },
-        {"data": {"mode": "concurrent_paper", "profiles": profiles[:3]}},
-        {
-            "data": {
-                "mode": "concurrent_paper",
-                "profiles": profiles[:3] + [{"name": "D", "status": {"net": None}}],
-            }
-        },
-        {"ok": False, "data": {"mode": "concurrent_paper", "profiles": profiles}},
     ]
     result = subprocess.run(
         [NODE, str(runner), str(dashboard), json.dumps(scenarios)],
@@ -138,15 +123,12 @@ async function run(scenario) {
     rendered = json.loads(result.stdout)
     assert "15.50" in rendered[0]["textContent"]
     assert rendered[0]["className"] == "value pos"
-    assert "A: 10.50" in rendered[0]["title"]
-    assert "includes open P&L" in rendered[0]["title"]
+    assert "open marks" in rendered[0]["title"]
     assert "10.00" in rendered[1]["textContent"]
     assert rendered[1]["className"] == "value neg"
     for invalid in rendered[2:]:
         assert invalid["textContent"] == "—"
-        assert invalid["title"] == (
-            "Combined paper P&L unavailable: four workspace results could not be read."
-        )
+        assert invalid["title"] == "Four paper ledger results unavailable."
 
 
 @pytest.mark.skipif(NODE is None, reason="node is not installed on this developer machine")

@@ -8,7 +8,7 @@ const paperPendingActions = new Set();
 function paperValue(x) { return x == null || x === '' || !Number.isFinite(Number(x)) ? null : Number(x); }
 function paperSigned(x) { const n=paperValue(x); return n==null?'—':(n>0?'+':'')+paperMoney(n); }
 function paperTone(x) { const n=paperValue(x); return n==null?'':n<0?'neg':'pos'; }
-function paperCurrentPnl(realized,open) { const closed=paperValue(realized),mark=paperValue(open);return closed==null||mark==null?null:closed+mark; }
+function paperCurrentPnl(realized,open) { const closed=paperValue(realized),mark=paperValue(open);if(closed==null||mark==null)return null;const total=closed+mark;return Number.isFinite(total)?total:null; }
 function paperRealized(pnl,fallback) { return pnl?.realized_pnl??pnl?.paper_pnl??fallback; }
 function paperConfigSignature(profile) { return JSON.stringify([profile.effective_inputs||{},profile.chart||{}]); }
 function paperStateTone(x) {
