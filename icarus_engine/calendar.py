@@ -86,6 +86,159 @@ def _at(day: date, hhmm: str) -> int:
     return _from_ny(day.year, day.month, day.day, int(hhmm[:2]), int(hhmm[2:4]))
 
 
+class USEquitiesCalendar:
+    """NYSE/Nasdaq regular-session calendar for the published 2026–2028 schedule.
+
+    Holiday dates and early closes are transcribed from NYSE's published
+    schedule at https://www.nyse.com/markets/hours-calendars. The bounded
+    year range is deliberate: callers fail closed until the official schedule
+    is extended, rather than extrapolating holidays or special closures.
+    """
+    name = "us_equities"
+    open_24_7 = False
+    session = "rth"
+    SUPPORTED_YEARS = frozenset((2026, 2027, 2028))
+    CLOSED = frozenset({
+        "2026-01-01", "2026-01-19", "2026-02-16", "2026-04-03", "2026-05-25",
+        "2026-06-19", "2026-07-03", "2026-09-07", "2026-11-26", "2026-12-25",
+        "2027-01-01", "2027-01-18", "2027-02-15", "2027-03-26", "2027-05-31",
+        "2027-06-18", "2027-07-05", "2027-09-06", "2027-11-25", "2027-12-24",
+        "2028-01-17", "2028-02-21", "2028-04-14", "2028-05-29", "2028-06-19",
+        "2028-07-04", "2028-09-04", "2028-11-23", "2028-12-25",
+    })
+    EARLY_CLOSES = {
+        "2026-11-27": "1300", "2026-12-24": "1300",
+        "2027-11-26": "1300",
+        "2028-07-03": "1300", "2028-11-24": "1300",
+    }
+    OPEN = "0930"
+    CLOSE = "1600"
+
+    @staticmethod
+    def _day(ts: int) -> date:
+        return _ny(ts).date()
+
+    def _require_supported(self, day: date) -> None:
+        if day.year not in self.SUPPORTED_YEARS:
+            raise ValueError(
+                f"US equity calendar has no verified schedule for {day.year}; refusing to infer sessions"
+            )
+
+    def session_bounds(self, day: date) -> Optional[Tuple[int, int]]:
+        self._require_supported(day)
+        if day.weekday() >= 5 or day.isoformat() in self.CLOSED:
+            return None
+        close = self.EARLY_CLOSES.get(day.isoformat(), self.CLOSE)
+        return _at(day, self.OPEN), _at(day, close)
+
+    def is_open(self, ts: int) -> bool:
+        bounds = self.session_bounds(self._day(ts))
+        return bounds is not None and bounds[0] <= int(ts) < bounds[1]
+
+    def intraday_open(self, ts: int) -> bool:
+        return self.is_open(ts)
+
+    def session_id(self, ts: int) -> str:
+        day = self._day(ts)
+        self._require_supported(day)
+        return day.isoformat()
+
+    def is_aligned(self, ts: int, interval_seconds: int) -> bool:
+        if type(interval_seconds) is not int or interval_seconds <= 0:
+            return False
+        bounds = self.session_bounds(self._day(ts))
+        if bounds is None or not bounds[0] <= int(ts) < bounds[1]:
+            return False
+        if interval_seconds == 86400:
+            return int(ts) == bounds[0]
+        if interval_seconds > 86400:
+            return False
+        return (int(ts) - bounds[0]) % interval_seconds == 0
+
+    def expected_bar_timestamps(self, start_ts: int, end_ts: int, interval_seconds: int) -> list[int]:
+        """Build exact RTH bar starts for a requested, bounded UTC time window."""
+        if type(start_ts) is not int or type(end_ts) is not int or end_ts < start_ts:
+            raise ValueError("US equity schedule window must use ordered integer timestamps")
+        if type(interval_seconds) is not int or interval_seconds <= 0 or interval_seconds > 86400:
+            raise ValueError("US equity interval must be a positive integer")
+        start_day, end_day = self._day(start_ts), self._day(end_ts)
+        if start_day.year not in self.SUPPORTED_YEARS or end_day.year not in self.SUPPORTED_YEARS:
+            raise ValueError("US equity schedule window exceeds verified 2026–2028 coverage")
+        days = (end_day - start_day).days
+        if days > 366 * len(self.SUPPORTED_YEARS):
+            raise ValueError("US equity schedule window is too large")
+        result = []
+        for offset in range(days + 1):
+            bounds = self.session_bounds(start_day + timedelta(days=offset))
+            if bounds is None:
+                continue
+            candidates = (bounds[0],) if interval_seconds == 86400 else range(bounds[0], bounds[1], interval_seconds)
+            result.extend(ts for ts in candidates if start_ts <= ts < end_ts)
+        return result
+
+    def bucket_start(self, ts: int, minutes: int) -> int:
+        if minutes <= 0:
+            raise ValueError("timeframe minutes must be positive")
+        day = self._day(ts)
+        bounds = self.session_bounds(day)
+        if bounds is None or not bounds[0] <= int(ts) < bounds[1]:
+            raise ValueError("cannot form a US equity bar outside a trading session")
+        if minutes >= 10080:
+            monday = day - timedelta(days=day.weekday())
+            for offset in range(5):
+                candidate = monday + timedelta(days=offset)
+                if candidate.year not in self.SUPPORTED_YEARS:
+                    continue
+                session = self.session_bounds(candidate)
+                if session:
+                    return session[0]
+            raise ValueError("US equity week has no scheduled sessions")
+        if minutes >= 1440:
+            return bounds[0]
+        span = int(minutes) * 60
+        return bounds[0] + ((int(ts) - bounds[0]) // span) * span
+
+    def bucket_end(self, bucket: int, minutes: int) -> int:
+        bounds = self.session_bounds(self._day(bucket))
+        if bounds is None:
+            raise ValueError("cannot close a US equity bar outside a trading session")
+        if minutes >= 10080:
+            monday = self._day(bucket) - timedelta(days=self._day(bucket).weekday())
+            sessions = [self.session_bounds(monday + timedelta(days=offset))
+                        for offset in range(5)
+                        if (monday + timedelta(days=offset)).year in self.SUPPORTED_YEARS]
+            closes = [session[1] for session in sessions if session]
+            if not closes:
+                raise ValueError("US equity week has no scheduled sessions")
+            return closes[-1]
+        if minutes >= 1440:
+            return bounds[1]
+        return min(int(bucket) + int(minutes) * 60, bounds[1])
+
+    def time_close(self, bar_ts: int, minutes: int) -> int:
+        return self.bucket_end(self.bucket_start(bar_ts, minutes), minutes)
+
+    def next_open(self, ts: int) -> Optional[int]:
+        if self.is_open(ts):
+            return None
+        day = self._day(ts)
+        for offset in range(0, 10):
+            candidate = day + timedelta(days=offset)
+            if candidate.year not in self.SUPPORTED_YEARS:
+                return None
+            bounds = self.session_bounds(candidate)
+            if bounds is not None and bounds[0] > int(ts):
+                return bounds[0]
+        return None
+
+    def describe(self, ts: int) -> str:
+        if self.is_open(ts):
+            close = self.EARLY_CLOSES.get(self._day(ts).isoformat())
+            return "open" + (f" · early close {close[:2]}:{close[2:]} ET" if close else "")
+        following = self.next_open(ts)
+        return f"closed · opens {_ny(following).strftime('%a %H:%M ET')}" if following else "closed"
+
+
 class CryptoCalendar:
     name = "crypto"
     open_24_7 = True
@@ -323,9 +476,13 @@ class CMECryptoCalendar(CMECalendar):
 
 
 def get_calendar(name: str, anchor_et: Optional[str] = None, session: str = "eth", group: str = "equity"):
-    n = str(name).lower()
+    n = str(name or "").strip().lower()
+    if n in ("us_equities", "us_equity", "nyse", "nasdaq"):
+        return USEquitiesCalendar()
     if n == "cme":
         return CMECalendar(anchor_et, session=session, group=group)
     if n == "cme_crypto":
         return CMECryptoCalendar(anchor_et)
-    return CryptoCalendar()
+    if n in ("", "crypto"):
+        return CryptoCalendar()
+    raise ValueError(f"unsupported market calendar {name!r}; refusing to assume 24/7 crypto hours")
