@@ -926,6 +926,9 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
   box-shadow:0 22px 64px #0007,inset 0 1px 0 #ffffff14,inset 0 -1px 0 color-mix(in srgb,var(--world-glow),transparent 93%);
   -webkit-backdrop-filter:blur(22px) saturate(145%);backdrop-filter:blur(22px) saturate(145%);
   transform-origin:90% 0;
+  /* Keep the popover within the viewport at desktop heights too. Its content
+     can scroll independently when lower controls extend past the screen. */
+  max-height:min(70dvh,620px);overflow:auto;overscroll-behavior:contain;
 }
 :root[data-world]:not([data-world=""]) .experience-settings[open] > div {animation:world-settings-open 260ms cubic-bezier(.16,.8,.2,1) both}
 @keyframes world-settings-open {from{opacity:0;transform:translateY(-6px) scale(.97);filter:blur(3px)}to{opacity:1;transform:none;filter:none}}
