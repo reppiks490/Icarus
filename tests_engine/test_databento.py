@@ -1191,6 +1191,51 @@ def test_runner_summary_reflects_databento_transport_health():
         journal.con.close()
 
 
+def test_yahoo_warmup_does_not_consume_auxiliary_databento_history(tmp_path):
+    now = 1_800_000_000
+
+    class PrimaryYahoo:
+        _meta = {}
+
+        def __init__(self):
+            self.calls = []
+
+        def candles(self, symbol, interval_seconds, start_ts, end_ts):
+            self.calls.append((symbol, interval_seconds, start_ts, end_ts))
+            return []
+
+        def ticker(self, _symbol):
+            return 100.0
+
+    class AuxiliaryDatabento:
+        def __init__(self):
+            self.calls = []
+
+        def candles(self, symbol, interval_seconds, start_ts, end_ts):
+            self.calls.append((symbol, interval_seconds, start_ts, end_ts))
+            return []
+
+        def ticker(self, _symbol):
+            return 100.0
+
+    PrimaryYahoo.__name__ = "Yahoo"
+    AuxiliaryDatabento.__name__ = "Databento"
+    primary = PrimaryYahoo()
+    auxiliary = AuxiliaryDatabento()
+    journal = Journal(":memory:")
+    runner = AssetRunner(
+        RunnerConfig(resolve("NQ"), Inputs(use_tide=False, use_eod_flat=False), base_dir=str(tmp_path)),
+        journal,
+        {"yahoo": primary, "databento_history": auxiliary},
+    )
+    try:
+        runner.warmup(now_ts=now)
+        assert primary.calls
+        assert auxiliary.calls == []
+    finally:
+        journal.con.close()
+
+
 def test_portfolio_prepares_shared_live_feed_before_spawning_futures(monkeypatch, tmp_path):
     events = []
 

@@ -84,10 +84,11 @@ Paste `pine/ALERT_TEMPLATE.json` into the strategy alert. `NQ1!` → `QQQ` is th
 
 The Icarus Plant owns runtime credentials in `$ICARUS_HOME/.env` (created from
 `icarus_bridge/.env.example`; the repo-root `.env` is the standalone fallback).
-With an entitled `DATABENTO_API_KEY` and the optional SDK installed, CME warmup
-stitches up to `ICARUS_DATABENTO_HISTORY_DAYS` of older Databento 1-minute candles
-to Yahoo's recent 1-minute tail. The default is 365 days; set 1–3650 days in the
-Plant `.env` to change it. Yahoo remains the newest-history source in hybrid mode.
+Set `ICARUS_FEED=databento` to use an entitled Databento account as the primary
+CME feed; `ICARUS_DATABENTO_HISTORY_DAYS` bounds its history window (default 365,
+range 1–3650 days). The default Yahoo mode replays Yahoo history only. A configured
+Databento adapter is not joined to Yahoo history because continuous-contract roll
+bases have not been reconciled, so the two price series must remain separate.
 GitHub Actions credentials are managed separately by a repository administrator
 under Settings → Secrets and variables → Actions.
 
