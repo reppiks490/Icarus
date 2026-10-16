@@ -18,11 +18,6 @@ EXPECTED_ROOTS = {
     "ZN", "ZB", "BTCF", "MBT",
 }
 
-EXPECTED_RUNTIME_ROOTS = {
-    "NQ", "MNQ", "ES", "MES", "YM", "MYM", "RTY", "M2K",
-    "GC", "MGC", "SI", "SIL", "PL", "PA", "BTCF", "MBT",
-}
-
 MICRO_PAIRS = {
     "MNQ": ("NQ", 0.1),
     "MES": ("ES", 0.1),
@@ -45,6 +40,11 @@ def test_catalog_covers_exact_recovered_owner_futures_universe():
     assert set(FUTURES_PRODUCTS) == EXPECTED_ROOTS
 
 
+def test_catalog_is_immutable_authority():
+    with pytest.raises(TypeError):
+        FUTURES_PRODUCTS["FAKE"] = FUTURES_PRODUCTS["NQ"]
+
+
 def test_catalog_identities_are_continuous_unique_and_fail_closed_by_construction():
     provider = [p.provider_symbol for p in FUTURES_PRODUCTS.values()]
     tv = [p.tv_symbol for p in FUTURES_PRODUCTS.values()]
@@ -54,12 +54,18 @@ def test_catalog_identities_are_continuous_unique_and_fail_closed_by_constructio
         assert product.root == root
         assert product.provider_symbol.endswith("=F")
         assert product.tv_symbol.endswith("1!")
+        assert product.execution_root
         assert product.tick_size > 0
         assert product.point_value > 0
         assert product.exchange
         assert product.asset_class
         assert product.session in {"rth", "eth"}
         assert product.calendar in {"cme", "cme_crypto"}
+
+    # ICARUS keeps BTC spot and CME Bitcoin futures unambiguous internally while
+    # resolving dated CME contracts with the real exchange root.
+    assert FUTURES_PRODUCTS["BTCF"].execution_root == "BTC"
+    assert FUTURES_PRODUCTS["MBT"].execution_root == "MBT"
 
 
 def test_catalog_economics_are_self_consistent():
@@ -83,22 +89,26 @@ def test_micro_contracts_never_inherit_full_size_economics():
         assert child.point_value < full.point_value
 
 
-def test_execution_qualification_is_explicit_not_inferred_from_registration():
-    for product in FUTURES_PRODUCTS.values():
-        assert isinstance(product.execution_qualified, bool)
-        if product.execution_qualified:
-            assert product.execution_blocker is None
-            assert product.cycle
-            assert product.roll_model
-        else:
-            assert product.execution_blocker
-
-
-def test_runtime_admission_is_separate_from_dated_contract_execution_qualification():
+def test_all_32_products_are_runtime_admitted_but_provider_health_remains_separate():
     admitted = {root for root, product in FUTURES_PRODUCTS.items() if product.runtime_qualified}
-    assert admitted == EXPECTED_RUNTIME_ROOTS
+    assert admitted == EXPECTED_ROOTS
     for product in FUTURES_PRODUCTS.values():
         assert isinstance(product.runtime_qualified, bool)
+
+
+def test_static_dated_contract_qualification_is_explicit_for_every_root():
+    qualified = {root for root, product in FUTURES_PRODUCTS.items() if product.execution_qualified}
+    assert qualified == EXPECTED_ROOTS
+    for product in FUTURES_PRODUCTS.values():
+        assert product.execution_blocker is None
+        assert product.cycle
+        assert product.roll_model
+
+
+def test_current_fx_catalog_supports_monthly_contracts():
+    monthly = "FGHJKMNQUVXZ"
+    for root in ("6E", "M6E", "6J", "MJY", "6B", "M6B", "6A", "M6A"):
+        assert FUTURES_PRODUCTS[root].cycle == monthly
 
 
 def test_runtime_registry_is_derived_from_the_same_32_root_authority():
@@ -118,28 +128,24 @@ def test_runtime_registry_is_derived_from_the_same_32_root_authority():
         assert spec.micro_of == (product.full_root if product.full_root != product.root else None)
 
 
-def test_catalogued_but_unqualified_futures_are_discoverable_and_runtime_fail_closed():
+def test_all_catalogued_futures_resolve_as_continuous_runtime_assets():
     for root, product in FUTURES_PRODUCTS.items():
         assert REGISTRY[root].symbol == root
-        if product.runtime_qualified:
-            assert resolve_asset(f"{root}1!").symbol == root
-            assert resolve_asset(product.provider_symbol).symbol == root
-        else:
-            with pytest.raises(ValueError, match="unsupported continuous futures"):
-                resolve_asset(f"{root}1!")
-            with pytest.raises(ValueError, match="unsupported continuous futures"):
-                resolve_asset(product.provider_symbol)
+        assert resolve_asset(root).symbol == root
+        assert resolve_asset(f"{root}1!").symbol == root
+        assert resolve_asset(product.provider_symbol).symbol == root
+
     for dated in ("HGZ26", "MCLF27", "NGH27", "6EM26", "M6BZ27", "ZNH27", "ZBZ27"):
         with pytest.raises(ValueError, match="continuous-only"):
             resolve_asset(dated)
 
 
-def test_execution_specs_are_derived_only_from_explicitly_qualified_products():
-    qualified = {root for root, product in FUTURES_PRODUCTS.items() if product.execution_qualified}
-    assert set(SPECS) == qualified
+def test_execution_specs_are_derived_from_all_statically_qualified_products():
+    assert set(SPECS) == EXPECTED_ROOTS
     for root, spec in SPECS.items():
         product = FUTURES_PRODUCTS[root]
         assert spec.root == root
+        assert spec.execution_root == product.execution_root
         assert spec.exchange == product.exchange
         assert spec.tick_size == pytest.approx(product.tick_size)
         assert spec.tick_value == pytest.approx(product.tick_value)
@@ -150,17 +156,58 @@ def test_execution_specs_are_derived_only_from_explicitly_qualified_products():
         assert spec.roll_model == product.roll_model
 
 
-def test_execution_qualified_products_resolve_deterministically_and_unqualified_fail_closed():
-    for root, product in FUTURES_PRODUCTS.items():
+def test_all_products_have_deterministic_static_dated_candidates_without_authorizing_execution():
+    on = date(2026, 10, 16)
+    for root in sorted(EXPECTED_ROOTS):
         symbol = f"{root}1!"
-        if product.execution_qualified:
-            spec, nth = parse_continuous(symbol)
-            assert spec.root == root and nth == 1
-            first = resolve_contract(symbol, date(2026, 10, 16))
-            second = resolve_contract(symbol, date(2026, 10, 16))
-            assert first == second
-            assert first["contract"].startswith(root)
-            assert first["roll_date"] <= first["last_date"]
-        else:
-            with pytest.raises(ValueError, match="not a continuous futures identity"):
-                parse_continuous(symbol)
+        spec, nth = parse_continuous(symbol)
+        assert spec.root == root and nth == 1
+        first = resolve_contract(symbol, on)
+        second = resolve_contract(symbol, on)
+        assert first == second
+        assert first["contract"].startswith(spec.execution_root)
+        assert first["roll_date"] <= first["last_date"]
+        assert first["static_resolution"] is True
+        assert first["broker_qualification_required"] is True
+        assert first["execution_authorized"] is False
+
+
+def test_representative_product_families_resolve_expected_current_candidates():
+    on = date(2026, 10, 16)
+    expected = {
+        "NQ1!": "NQZ26",
+        "GC1!": "GCZ26",
+        "PL1!": "PLV26",
+        "HG1!": "HGV26",
+        "MHG1!": "MHGX26",
+        "CL1!": "CLZ26",
+        "MCL1!": "MCLZ26",
+        "NG1!": "NGX26",
+        "MNG1!": "MNGX26",
+        "6E1!": "6EX26",
+        "M6E1!": "M6EX26",
+        "ZN1!": "ZNZ26",
+        "ZB1!": "ZBZ26",
+        "BTCF1!": "BTCV26",
+        "MBT1!": "MBTV26",
+    }
+    for continuous, dated in expected.items():
+        assert resolve_contract(continuous, on)["contract"] == dated
+
+
+def test_wti_conservative_roll_boundary_advances_before_expiration():
+    assert resolve_contract("CL1!", date(2026, 10, 15))["contract"] == "CLX26"
+    after_cutoff = resolve_contract("CL1!", date(2026, 10, 16))
+    assert after_cutoff["contract"] == "CLZ26"
+    assert after_cutoff["roll_date"] > "2026-10-16"
+
+
+def test_runtime_and_execution_layers_fail_closed_for_bad_or_dated_identities():
+    for dated in ("CLZ26", "6EZ26", "BTCV26"):
+        with pytest.raises(ValueError, match="continuous-only"):
+            resolve_asset(dated)
+    for unknown in ("ZZ1!", "ZZ=F"):
+        with pytest.raises(ValueError):
+            resolve_asset(unknown)
+    with pytest.raises(ValueError, match="not a continuous futures identity"):
+        parse_continuous("CLZ26")
