@@ -2,14 +2,19 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 import os
 import time
+from zoneinfo import ZoneInfo
 
 from .bar_receipts import BarBatchReceipt, make_bar_batch_receipt
 from .feeds.yahoo import Yahoo
 from .market_universe import snapshot
 from .pine.timeframe import Bar
 from .calendar import get_calendar
+
+
+_NEW_YORK = ZoneInfo("America/New_York")
 
 
 @dataclass(frozen=True)
@@ -74,11 +79,27 @@ class MarketUniverseAdapter:
         expected = None
         alignment = None
         session_status = "UNKNOWN"
+        timestamp_normalization = "NONE"
         try:
             calendar = get_calendar(row["calendar"])
             expected = calendar.expected_bar_timestamps(start_ts, end_ts, interval_seconds)
             alignment = lambda ts: calendar.is_aligned(ts, interval_seconds)
             session_status = "VERIFIED"
+            if provider == "yahoo" and interval_seconds == 86400:
+                normalized = []
+                changed = False
+                for bar in bars:
+                    session = calendar.session_bounds(datetime.fromtimestamp(bar.ts, _NEW_YORK).date())
+                    # Yahoo timestamps daily candles one second after the session
+                    # close. Normalize to the exchange session open used by ICARUS
+                    # bar schedules; retain the convention in the receipt.
+                    if session and session[1] <= bar.ts <= session[1] + 60:
+                        bar = Bar(session[0], bar.o, bar.h, bar.l, bar.c, bar.v)
+                        changed = True
+                    normalized.append(bar)
+                bars = normalized
+                if changed:
+                    timestamp_normalization = "YAHOO_SESSION_CLOSE_TO_SESSION_OPEN"
         except (KeyError, ValueError, TypeError):
             pass
         checked, receipt = make_bar_batch_receipt(
@@ -97,6 +118,7 @@ class MarketUniverseAdapter:
             provider_mapping_status=mapping_status,
             alignment_validator=alignment,
             expected_bar_timestamps=expected,
+            timestamp_normalization=timestamp_normalization,
         )
         return checked, receipt
 

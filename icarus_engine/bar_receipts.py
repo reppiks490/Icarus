@@ -34,6 +34,7 @@ class BarBatchReceipt:
     interval_gap_count: int
     gap_validation_status: str
     timestamp_alignment_status: str
+    timestamp_normalization: str
     session_validation_status: str
     bar_close_status: str
     checksum_sha256: str
@@ -55,6 +56,7 @@ def make_bar_batch_receipt(
     alignment_validator: Callable[[int], bool] | None = None,
     expected_bar_timestamps: Iterable[int] | None = None,
     bar_close_status: str = "UNKNOWN",
+    timestamp_normalization: str = "NONE",
 ) -> tuple[list[Bar], BarBatchReceipt]:
     """Validate exact response identity and OHLCV before returning bars to runtime.
 
@@ -76,6 +78,8 @@ def make_bar_batch_receipt(
         raise ValueError("invalid session validation status")
     if bar_close_status not in ("UNKNOWN", "VERIFIED", "FAILED"):
         raise ValueError("invalid bar close status")
+    if timestamp_normalization not in ("NONE", "YAHOO_SESSION_CLOSE_TO_SESSION_OPEN"):
+        raise ValueError("invalid bar timestamp normalization")
     for name, value in (("requested_start_ts", requested_start_ts), ("requested_end_ts", requested_end_ts),
                         ("fetched_at_ns", fetched_at_ns), ("received_at_ns", received_at_ns)):
         if type(value) is not int:
@@ -162,6 +166,7 @@ def make_bar_batch_receipt(
         "interval_gap_count": gap_count,
         "gap_validation_status": "VERIFIED" if gaps_validated else "UNKNOWN",
         "timestamp_alignment_status": "UNKNOWN" if alignment_validator is None else "VERIFIED" if aligned else "FAILED",
+        "timestamp_normalization": timestamp_normalization,
         "session_validation_status": session_validation_status,
         "bar_close_status": bar_close_status,
         "checksum_sha256": checksum,
@@ -193,6 +198,7 @@ def make_bar_batch_receipt(
         interval_gap_count=gap_count,
         gap_validation_status="UNKNOWN" if expected is None else "VERIFIED",
         timestamp_alignment_status=("UNKNOWN" if alignment_validator is None else "VERIFIED" if aligned else "FAILED"),
+        timestamp_normalization=timestamp_normalization,
         session_validation_status=session_validation_status,
         bar_close_status=bar_close_status,
         checksum_sha256=checksum,
