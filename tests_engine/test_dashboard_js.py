@@ -527,6 +527,11 @@ def test_dashboard_surfaces_authentic_market_data_console():
     assert "ts_recv_ns" in ui
     assert "ts_event_ns" in ui
     assert "data-market-history" in ui
+    assert "data-market-history-provider" in ui
+    assert "provider_symbol_candidates" in ui
+    assert "provider:provider" in ui
+    assert "Choose provider" in ui
+    assert "provider:'yahoo'" not in ui
     assert "/api/market-history/" in ui
     assert "localStorage.getItem('icarus-engine-token')" in ui
     assert "'Authorization':'Bearer '+token" in ui
