@@ -1,22 +1,27 @@
 # CL (Claude, Anthropic) — 2026-10-04 — icarus_futures.contracts: CME contract economics, continuous identities, rolls
-"""User-facing symbols stay continuous (NQ1!, MNQ1!, ES1!, GC1!, ...). Adapters that need a
-dated contract call :func:`resolve`, which returns the front contract for a session date
-using an explicit, configurable roll rule:
+"""Qualified dated-contract resolution for ICARUS futures.
 
-* equity index (H M U Z): CME's published convention — "Equity products roll date is the
-  Monday prior to the third Friday of the expiration month" (CME Group, Equity Index Roll
-  Dates; CL research notes 2026-10-04). Expiry is the 3rd Friday, moved to the prior
-  business day when that Friday is an exchange holiday (June 2026 expired Thursday 6/18
-  because 6/19 was Juneteenth; the roll stayed Monday 6/15). The common "3rd Friday minus
-  8 days (Thursday)" rule is NOT CME's convention.
-* metals: roll ``METALS_ROLL_BDAYS`` business days before first notice day
-  (FND = last business day of the month before the contract month).
-Only holidays listed in EXPIRY_HOLIDAYS are applied; extend it from CME's calendar."""
+Continuous analytical identities live in :mod:`icarus_engine.futures_catalog`.
+Only products whose dated-contract rules are explicitly marked
+``execution_qualified`` enter :data:`SPECS`; registered-but-unqualified products
+therefore fail closed instead of inheriting another product family's roll rule.
+
+Current qualified families preserve the existing proven behavior:
+
+* equity index (H M U Z): roll Monday prior to third-Friday expiration;
+* GC/MGC/SI/SIL metals: roll ``METALS_ROLL_BDAYS`` business days before first
+  notice day (last business day of the month before contract month).
+
+Additional product families are promoted only after product-specific expiry/roll
+semantics and broker contract readback are tested.
+"""
 from __future__ import annotations
 
 import re
 from dataclasses import dataclass
 from datetime import date, timedelta
+
+from icarus_engine.futures_catalog import FUTURES_PRODUCTS, FuturesProduct
 
 MONTH_CODES = "FGHJKMNQUVXZ"
 EQUITY_ROLL_WEEKDAY_BEFORE = 4   # Monday = 3rd Friday - 4 days
@@ -34,11 +39,20 @@ class ContractSpec:
     full_root: str
     ratio_to_full: float
     cycle: str
-    kind: str  # "equity" | "metals"
+    roll_model: str
 
     @property
     def point_value(self) -> float:
         return self.tick_value / self.tick_size
+
+    @property
+    def kind(self) -> str:
+        """Backward-compatible family label for older callers."""
+        if self.roll_model == "equity_third_friday":
+            return "equity"
+        if self.roll_model == "metals_first_notice":
+            return "metals"
+        return self.roll_model
 
     def notional(self, qty: float, price: float) -> float:
         return abs(qty) * price * self.point_value
@@ -47,26 +61,37 @@ class ContractSpec:
         return qty * self.ratio_to_full
 
 
-SPECS = {s.root: s for s in (
-    ContractSpec("NQ", "CME", 0.25, 5.00, "equity_index", "NQ", 1.0, "HMUZ", "equity"),
-    ContractSpec("MNQ", "CME", 0.25, 0.50, "equity_index", "NQ", 0.1, "HMUZ", "equity"),
-    ContractSpec("ES", "CME", 0.25, 12.50, "equity_index", "ES", 1.0, "HMUZ", "equity"),
-    ContractSpec("MES", "CME", 0.25, 1.25, "equity_index", "ES", 0.1, "HMUZ", "equity"),
-    ContractSpec("YM", "CBOT", 1.0, 5.00, "equity_index", "YM", 1.0, "HMUZ", "equity"),
-    ContractSpec("MYM", "CBOT", 1.0, 0.50, "equity_index", "YM", 0.1, "HMUZ", "equity"),
-    ContractSpec("RTY", "CME", 0.10, 5.00, "equity_index", "RTY", 1.0, "HMUZ", "equity"),
-    ContractSpec("M2K", "CME", 0.10, 0.50, "equity_index", "RTY", 0.1, "HMUZ", "equity"),
-    ContractSpec("GC", "COMEX", 0.10, 10.00, "metals", "GC", 1.0, "GJMQVZ", "metals"),
-    ContractSpec("MGC", "COMEX", 0.10, 1.00, "metals", "GC", 0.1, "GJMQVZ", "metals"),
-    ContractSpec("SI", "COMEX", 0.005, 25.00, "metals", "SI", 1.0, "HKNUZ", "metals"),
-    ContractSpec("SIL", "COMEX", 0.005, 5.00, "metals", "SI", 0.2, "HKNUZ", "metals"),
-)}
+def _contract_spec(product: FuturesProduct) -> ContractSpec:
+    if not product.execution_qualified:
+        raise ValueError(f"{product.root}: cannot build execution spec for unqualified product")
+    return ContractSpec(
+        root=product.root,
+        exchange=product.exchange,
+        tick_size=product.tick_size,
+        tick_value=product.tick_value,
+        cluster=product.asset_class,
+        full_root=product.full_root,
+        ratio_to_full=product.ratio_to_full,
+        cycle=product.cycle,
+        roll_model=product.roll_model,
+    )
 
-_CONT = re.compile(r"^(?:[A-Z_]+:)?([A-Z0-9]+?)(\d)!$")
+
+SPECS = {
+    root: _contract_spec(product)
+    for root, product in FUTURES_PRODUCTS.items()
+    if product.execution_qualified
+}
+
+_CONT = re.compile(r"^(?:[A-Z0-9_]+:)?([A-Z0-9]+?)(\d)!$")
 
 
 def parse_continuous(symbol: str) -> tuple[ContractSpec, int]:
-    """'NQ1!' or 'CME_MINI:MNQ1!' -> (spec, 1). Raises for expiring codes such as NQZ2026."""
+    """Return ``(spec, rank)`` for an execution-qualified continuous identity.
+
+    Registration is intentionally insufficient.  A product remains unrouteable until
+    its product-specific resolver and broker-readback path have been qualified.
+    """
     m = _CONT.match(symbol.strip().upper())
     if not m or m.group(1) not in SPECS:
         raise ValueError(f"not a continuous futures identity: {symbol!r}")
@@ -95,15 +120,19 @@ def _minus_bdays(d: date, n: int) -> date:
 
 
 def contract_dates(spec: ContractSpec, y: int, m: int) -> tuple[date, date]:
-    """(last relevant date, roll date) for the contract of month m, year y."""
-    if spec.kind == "equity":
+    """Return ``(last relevant date, roll date)`` for a qualified contract month."""
+    if spec.roll_model == "equity_third_friday":
         third = _third_friday(y, m)
         exp = third
         while exp in EXPIRY_HOLIDAYS or exp.weekday() >= 5:
             exp -= timedelta(days=1)
         return exp, third - timedelta(days=EQUITY_ROLL_WEEKDAY_BEFORE)
-    fnd = _last_bday_before(y, m)
-    return fnd, _minus_bdays(fnd, METALS_ROLL_BDAYS)
+    if spec.roll_model == "metals_first_notice":
+        fnd = _last_bday_before(y, m)
+        return fnd, _minus_bdays(fnd, METALS_ROLL_BDAYS)
+    raise ValueError(
+        f"{spec.root}: execution resolver {spec.roll_model!r} is not implemented/qualified"
+    )
 
 
 def code(spec: ContractSpec, y: int, m: int) -> str:
@@ -111,8 +140,10 @@ def code(spec: ContractSpec, y: int, m: int) -> str:
 
 
 def resolve(symbol: str, on: date) -> dict:
-    """Front (or n-th) dated contract for a continuous identity on a session date."""
+    """Front (or n-th) dated contract for a qualified continuous identity."""
     spec, nth = parse_continuous(symbol)
+    if nth < 1:
+        raise ValueError("continuous futures rank must be >= 1")
     months = [MONTH_CODES.index(c) + 1 for c in spec.cycle]
     chain = []
     for y in (on.year - 1, on.year, on.year + 1, on.year + 2):
@@ -121,6 +152,15 @@ def resolve(symbol: str, on: date) -> dict:
             if roll > on:
                 chain.append((roll, y, m, last))
     chain.sort()
+    if len(chain) < nth:
+        raise ValueError(f"{spec.root}{nth}!: no qualified contract available for {on.isoformat()}")
     roll, y, m, last = chain[nth - 1]
-    return dict(continuous=f"{spec.root}{nth}!", contract=code(spec, y, m), roll_date=roll.isoformat(),
-                last_date=last.isoformat(), weekend_roll=roll.weekday() >= 5)
+    return dict(
+        continuous=f"{spec.root}{nth}!",
+        contract=code(spec, y, m),
+        exchange=spec.exchange,
+        roll_model=spec.roll_model,
+        roll_date=roll.isoformat(),
+        last_date=last.isoformat(),
+        weekend_roll=roll.weekday() >= 5,
+    )
