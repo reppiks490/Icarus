@@ -509,6 +509,49 @@ def test_flatten_attempts_every_runner_and_reports_partial_failures(tmp_path, mo
         manager.stop()
 
 
+def test_flatten_counts_primary_closures_when_runner_raises_after_mutation(tmp_path, monkeypatch):
+    manager = _manager(tmp_path, monkeypatch)
+    manager.start()
+    try:
+        portfolio = manager.portfolios["cc1"]
+        first, second = _Runner(), _Runner()
+        first.symbol, second.symbol = "NQ", "ES"
+        first.em = SimpleNamespace(open=[SimpleNamespace(entry_id="first")], shadow=None)
+        second.em = SimpleNamespace(open=[SimpleNamespace(entry_id="second")], shadow=None)
+        first.last_price = second.last_price = 100.0
+        first.flatten = lambda _reason: first.em.open.clear() or 1
+
+        def close_then_raise(_reason):
+            second.em.open.clear()
+            raise RuntimeError("receipt write failed")
+
+        second.flatten = close_then_raise
+        portfolio.runners = [first, second]
+        with pytest.raises(paper_workspaces.FlattenUnavailableError) as caught:
+            manager.flatten("cc1")
+        assert caught.value.flattened_positions == 2
+        assert caught.value.partial is True
+        assert caught.value.failed_assets == [{"asset": "ES", "detail": "RuntimeError: receipt write failed"}]
+    finally:
+        manager.stop()
+
+
+def test_flatten_reports_shadow_censor_separately_from_primary_closures(tmp_path, monkeypatch):
+    manager = _manager(tmp_path, monkeypatch)
+    manager.start()
+    try:
+        runner = manager.portfolios["cc1"].runners[0]
+        runner.em = SimpleNamespace(
+            open=[], shadow=SimpleNamespace(open=[SimpleNamespace(entry_id="shadow-only")]))
+        runner.last_price = 100.0
+        runner.flatten = lambda _reason: runner.em.shadow.open.clear() or 1
+        result = manager.flatten("cc1")
+        assert result["flattened_positions"] == 0
+        assert result["shadow_censored_positions"] == 1
+    finally:
+        manager.stop()
+
+
 def test_flatten_requires_mark_for_primary_or_shadow_open_positions(tmp_path, monkeypatch):
     manager = _manager(tmp_path, monkeypatch)
     manager.start()

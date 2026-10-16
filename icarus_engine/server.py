@@ -2105,6 +2105,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                             "detail": str(ex),
                             "profile_id": parts[2],
                             "flattened_positions": int(getattr(ex, "flattened_positions", 0) or 0),
+                            "shadow_censored_positions": int(getattr(ex, "shadow_censored_positions", 0) or 0),
                             "failed_assets": list(getattr(ex, "failed_assets", [])),
                             "partial": bool(getattr(ex, "partial", False)),
                             "open_assets": open_assets,

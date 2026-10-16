@@ -570,18 +570,47 @@ class PaperWorkspaceManager:
                     raise error
 
             count = 0
+            shadow_censored = 0
             failures = []
             for runner in runners:
+                emulator = getattr(runner, "em", None)
+                primary_before = list(getattr(emulator, "open", ()) or ())
+                shadow_before = list(getattr(getattr(emulator, "shadow", None), "open", ()) or ())
+                primary_ids_before = {getattr(trade, "entry_id", id(trade)) for trade in primary_before}
+                shadow_ids_before = {getattr(trade, "entry_id", id(trade)) for trade in shadow_before}
                 try:
-                    count += int(runner.flatten("workspace") or 0)
+                    reported = int(runner.flatten("workspace") or 0)
                 except Exception as ex:
+                    primary_after = list(getattr(emulator, "open", ()) or ())
+                    shadow_after = list(getattr(getattr(emulator, "shadow", None), "open", ()) or ())
+                    primary_ids_after = {getattr(trade, "entry_id", id(trade)) for trade in primary_after}
+                    shadow_ids_after = {getattr(trade, "entry_id", id(trade)) for trade in shadow_after}
+                    # A runner can close/censor state and then fail while
+                    # recording its execution receipt. Reconcile state changes
+                    # even when no return value was produced.
+                    count += len(primary_ids_before - primary_ids_after)
+                    shadow_censored += len(shadow_ids_before - shadow_ids_after)
                     failures.append({"asset": runner.symbol, "detail": f"{type(ex).__name__}: {ex}"})
+                else:
+                    if emulator is None:
+                        # Keep small injected/test runners compatible; production
+                        # AssetRunner instances always expose their emulator.
+                        count += reported
+                    else:
+                        primary_after = list(getattr(emulator, "open", ()) or ())
+                        shadow_after = list(getattr(getattr(emulator, "shadow", None), "open", ()) or ())
+                        primary_ids_after = {getattr(trade, "entry_id", id(trade)) for trade in primary_after}
+                        shadow_ids_after = {getattr(trade, "entry_id", id(trade)) for trade in shadow_after}
+                        count += len(primary_ids_before - primary_ids_after)
+                        shadow_censored += len(shadow_ids_before - shadow_ids_after)
             if failures:
                 error = FlattenUnavailableError(
                     f"Flatten completed with {count} position(s) closed and {len(failures)} runner failure(s)")
                 error.flattened_positions = count
+                error.shadow_censored_positions = shadow_censored
                 error.failed_assets = failures
                 error.partial = count > 0
                 raise error
         return {"ok": True, "id": profile_id, "flattened_positions": count,
+                "shadow_censored_positions": shadow_censored,
                 "paused": True, "paper_only": True}
