@@ -1365,6 +1365,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 snapshot["me"] = self.identity
                 return self._json(200, snapshot)
             if p.path == "/status/public":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
                 try:
                     return self._json(200, port.status(nonblocking=True))
                 except Exception as ex:
