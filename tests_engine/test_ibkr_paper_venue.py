@@ -609,6 +609,7 @@ class IbkrPaperVenueTests(unittest.TestCase):
         engine.book.on_timeout(order_ref)
         assert adapter.submit(order_ref, intent.symbol, intent.side, intent.qty,
                               intent.kind, intent.price)["status"] == "timeout"
+        gateway.error(901, 201, "untrusted mismatched-order rejection")
         report = engine.reconcile()
 
         assert engine.book.orders[order_ref].state == S.AMBIGUOUS
@@ -648,6 +649,29 @@ class IbkrPaperVenueTests(unittest.TestCase):
       assert engine.book.orders[order_ref].state == S.PARTIALLY_FILLED
       assert engine.book.positions["MNQZ26"] == 1
     gateway.disconnect()
+
+
+  def test_verified_tws_reject_callbacks_preserve_broker_identity(self):
+    for callback_kind in ("error", "inactive"):
+      with self.subTest(callback=callback_kind):
+        api = FakeIbapiClient()
+        gateway = IbkrTwsPaperGateway(api_client=api, contract_factory=FakeApiRecord,
+                                      order_factory=FakeApiRecord, timeout_s=0.05)
+        gateway.connect()
+        adapter = IbkrPaperVenue(gateway, "DU12345", {"MNQZ26": mapping()})
+        result = adapter.submit("reject-callback", "MNQZ26", "BUY", 1, "MARKET", None)
+        assert result == {"status": "ack", "broker_id": "900"}
+        assert adapter.poll() == [{"type": "ack", "client_id": "reject-callback",
+                                   "broker_id": "900"}]
+
+        if callback_kind == "error":
+          gateway.error(900, 201, "private broker diagnostic")
+        else:
+          gateway.orderStatus(900, "Inactive", 0, 1, 0.0, 0, 0, 0.0, 71, "", 0.0)
+
+        assert adapter.poll() == [{"type": "reject", "client_id": "reject-callback",
+                                   "code": "INVALID_ORDER" if callback_kind == "error" else "UNKNOWN"}]
+        gateway.disconnect()
 
 
   def test_same_order_ref_with_different_contract_is_rejected(self):

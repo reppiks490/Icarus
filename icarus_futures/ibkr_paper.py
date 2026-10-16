@@ -493,7 +493,8 @@ class IbkrTwsPaperGateway:
                         "client_id": client_ref, "broker_id": broker_id})
         elif client_ref and normalized == "inactive":
             self._emit({"type": "reject", "account_id": account_id,
-                        "client_id": client_ref, "code": "UNKNOWN"})
+                        "client_id": client_ref, "broker_id": broker_id,
+                        "code": "UNKNOWN"})
 
     def execDetails(self, reqId, contract, execution):
         broker_id = str(getattr(execution, "orderId", ""))
@@ -533,7 +534,8 @@ class IbkrTwsPaperGateway:
         # account details, provider diagnostics, or other sensitive payloads.
         if client_ref and rejection is not None:
             self._emit({"type": "reject", "account_id": account_id,
-                        "client_id": str(client_ref), "code": rejection})
+                        "client_id": str(client_ref), "broker_id": broker_id,
+                        "code": rejection})
 
     def position(self, account, contract, position, avgCost):
         record = {"account_id": str(account), "contract": self._contract_record(contract),
@@ -1214,7 +1216,9 @@ class IbkrPaperVenue:
                 events.append({"type": kind, "client_id": str(client_id),
                                "price": float(_decimal(event["price"], "replace price"))})
             elif kind == "reject":
-                code = _ERROR_CODES.get(str(event.get("code", "")), "UNKNOWN")
+                raw_code = str(event.get("code", ""))
+                code = (raw_code if raw_code in _ERROR_CODES.values()
+                        else _ERROR_CODES.get(raw_code, "UNKNOWN"))
                 events.append({"type": "reject", "client_id": str(client_id), "code": code})
             else:
                 raise ValueError(f"unsupported normalized IBKR event type: {kind!r}")
