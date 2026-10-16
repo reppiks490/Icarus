@@ -1642,6 +1642,9 @@ class Portfolio:
         # Optional measured latency sink. The HTTP server binds one instance and
         # make_runner propagates it to assets added after startup.
         self.latency_telemetry = None
+        # A200 historical Pulse remains isolated from the normal asset/emulator
+        # registry and is initialized only by an explicit qualified-batch call.
+        self._a200_pulse_research = None
 
     # ── assets ──
     def _ref_price(self, now: Optional[int] = None) -> float:
@@ -1714,6 +1717,43 @@ class Portfolio:
                 except Exception:
                     pass
             raise
+
+    def ingest_a200_research_history(self, instrument_id: str, bars, receipt, *,
+                                     chart_minutes: int = 5) -> Dict[str, Any]:
+        """Feed a qualified A200 historical batch into isolated Pulse research.
+
+        This entry point never registers an asset in the live Portfolio, starts a
+        feed thread, records trades to the Portfolio journal, or authorizes a
+        broker. Current unqualified catalog rows return explicit blockers.
+        """
+        from .a200_runtime_feed import A200PulseResearchRuntime
+
+        with self._lock:
+            if self._a200_pulse_research is None:
+                self._a200_pulse_research = A200PulseResearchRuntime(chart_minutes=chart_minutes)
+            elif self._a200_pulse_research.chart_minutes != chart_minutes:
+                raise ValueError("A200 Pulse research chart timeframe is fixed for this Portfolio instance")
+            runtime = self._a200_pulse_research
+        return runtime.ingest_history(instrument_id, bars, receipt)
+
+    def fetch_a200_research_history(self, instrument_id: str, interval_seconds: int,
+                                    start_ts: int, end_ts: int, *, provider: str = "yahoo",
+                                    chart_minutes: int = 5) -> Dict[str, Any]:
+        """Explicitly fetch one bounded A200 history page, then apply Pulse admission.
+
+        No provider call occurs at Portfolio startup. This method is an explicit
+        historical research operation and is blocked from Pulse unless the catalog
+        and returned receipt establish all required qualifications.
+        """
+        from .market_universe_adapter import MarketUniverseAdapter
+
+        adapter = MarketUniverseAdapter(providers=(provider,))
+        bars, receipt = adapter.fetch_history(
+            instrument_id, interval_seconds, start_ts, end_ts, provider=provider,
+        )
+        return self.ingest_a200_research_history(
+            instrument_id, bars, receipt, chart_minutes=chart_minutes,
+        )
 
     def remove_asset(self, symbol: str) -> bool:
         raw = str(symbol).strip().upper()
@@ -1946,6 +1986,12 @@ class Portfolio:
             if remaining <= 0:
                 break
             thread.join(remaining)
+
+        if self._a200_pulse_research is not None:
+            try:
+                self._a200_pulse_research.close()
+            except Exception as ex:
+                self.journal.log("WARN", f"A200 research shutdown: {type(ex).__name__}: {ex}")
 
         # Paid/live adapters own background network sessions. Close each distinct
         # feed once so supervised restarts do not leak or reopen Databento connections.
