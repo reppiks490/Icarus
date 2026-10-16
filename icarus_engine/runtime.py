@@ -37,6 +37,7 @@ from .feeds.events import event_bar_to_bar, make_event_feed
 from .feeds.bars import HistoryHub, detect_granularity, file_feed_mode, find_history, parse_ohlcv_csv, read_text_csv  # Grok (xAI) — 2026-09-20
 from .feeds.databento import Databento
 from .feeds.yahoo import Yahoo
+from .bar_receipts import make_bar_batch_receipt
 from .microstructure import TickAggregator, TradeAggregator, TradeEvent
 from .pine.series import NAN, na
 from .pine.timeframe import Aggregator, Bar, tf_minutes
@@ -491,7 +492,11 @@ class AssetRunner:
         self.chart_mode, self.chart_value = chart_timeframe_parts(self.spec.chart_tf)
         self.chart_minutes = self.chart_value if self.chart_mode == "minutes" else 0
         self.chart_seconds = self.chart_value * 60 if self.chart_mode == "minutes" else (self.chart_value if self.chart_mode == "seconds" else None)
-        self.mintick = cfg.mintick if cfg.mintick is not None else (self.spec.mintick if self.spec.feed == "yahoo" else self.feed.mintick(self.spec.ticker))
+        # Tick metadata is part of the registered asset contract. Never infer it
+        # from a provider response or silently substitute a generic increment.
+        self.mintick = cfg.mintick if cfg.mintick is not None else self.spec.mintick
+        self.last_bar_batch_receipt: Optional[Dict[str, Any]] = None
+        self.bar_batch_receipts: List[Dict[str, Any]] = []
         self.trade_events: List[TradeEvent] = []
         self.event_feed = feeds.get("events")
         if self.chart_mode != "minutes" and self.event_feed is None:
@@ -812,6 +817,50 @@ class AssetRunner:
             for b in bars:
                 self._push_deep(ch, b, sub_min)
 
+    def _fetch_historical_candles(self, feed: Any, symbol: str, interval_seconds: int,
+                                 start_ts: int, end_ts: int) -> List[Bar]:
+        """Fetch one history batch, reject malformed rows, and retain its audit receipt."""
+        fetched_at_ns = time.time_ns()
+        bars = feed.candles(symbol, interval_seconds, start_ts, end_ts)
+        received_at_ns = time.time_ns()
+        adapter = feed
+        visited = set()
+        while id(adapter) not in visited:
+            visited.add(id(adapter))
+            wrapped = getattr(adapter, "_feed", None)
+            if wrapped is None:
+                break
+            adapter = wrapped
+        observed_symbol = None
+        expected_provider_symbol = symbol
+        # Yahoo embeds the requested symbol in the response metadata. Do not
+        # infer identity for other adapters unless they expose an explicit field.
+        if isinstance(adapter, Yahoo):
+            metadata = adapter.meta(symbol)
+            observed_symbol = metadata.get("symbol") or metadata.get("provider_symbol")
+        elif isinstance(adapter, Databento):
+            metadata = adapter.meta(symbol)
+            expected_provider_symbol = adapter.continuous_symbol(symbol, adapter.roll_rule)
+            observed_symbol = metadata.get("continuous_symbol")
+        else:
+            metadata = getattr(adapter, "_meta", {}).get(symbol, {})
+            observed_symbol = metadata.get("provider_symbol") or metadata.get("symbol")
+        provider = "databento" if isinstance(adapter, Databento) else (
+            "yahoo" if isinstance(adapter, Yahoo) else self.spec.feed)
+        instrument_id = f"icarus:{self.spec.kind}:{self.spec.symbol.upper()}"
+        checked, receipt = make_bar_batch_receipt(
+            instrument_id=instrument_id, provider=provider,
+            expected_provider_symbol=expected_provider_symbol, observed_provider_symbol=observed_symbol,
+            interval_seconds=interval_seconds, requested_start_ts=start_ts,
+            requested_end_ts=end_ts, bars=bars, fetched_at_ns=fetched_at_ns,
+            received_at_ns=received_at_ns, entitlement_status="UNKNOWN",
+        )
+        self.last_bar_batch_receipt = receipt.to_dict()
+        self.bar_batch_receipts.append(self.last_bar_batch_receipt)
+        if len(self.bar_batch_receipts) > 100:
+            del self.bar_batch_receipts[:-100]
+        return checked
+
     def _warmup_coinbase(self, T_w: int, now: int) -> None:
         cb = self.feed
         deep = {10080: (86400, 800 * 86400), 1440: (86400, 400 * 86400), 240: (3600, 45 * 86400), 120: (3600, 45 * 86400), 60: (3600, 45 * 86400),
@@ -823,9 +872,9 @@ class AssetRunner:
             g, depth = deep[m]
             key = (g, depth)
             if key not in cache:
-                cache[key] = cb.candles(self.spec.ticker, g, T_w - depth, T_w)
+                cache[key] = self._fetch_historical_candles(cb, self.spec.ticker, g, T_w - depth, T_w)
             self._feed_deep([m], cache[key], g // 60)
-        ones = cb.candles(self.spec.ticker, 60, T_w, now - 60)
+        ones = self._fetch_historical_candles(cb, self.spec.ticker, 60, T_w, now - 60)
         self.journal.log("INFO", f"[{self.symbol}] {len(ones)} one-minute candles fetched; replaying")
         for b in ones:
             self.on_sub_bar(b, 1, live=False)
@@ -834,22 +883,22 @@ class AssetRunner:
         y: Yahoo = self.feed
         tk = self.spec.ticker                                 # provider-native continuous symbol (e.g. NQ=F)
         tki = self.spec.ticker                                # intraday also stays continuous; no month-coded expiry contract
-        daily = y.candles(tk, 86400, T_w - 900 * 86400, T_w)
+        daily = self._fetch_historical_candles(y, tk, 86400, T_w - 900 * 86400, T_w)
         daily = [Bar(self.cal.bucket_start(b.ts, 1440), b.o, b.h, b.l, b.c, b.v) for b in daily]   # stamp at the session open
         self._feed_deep([m for m in self.chains if m >= 1440], daily, 1440)
         rth = getattr(self.cal, "session", "eth") == "rth"
         if rth:                                               # RTH hourly buckets sit at :30 - build them from 15-minute bars (60 days)
             hourly = []
         else:
-            hourly = y.candles(tki, 3600, max(T_w - 400 * 86400, now - 729 * 86400), T_w)
+            hourly = self._fetch_historical_candles(y, tki, 3600, max(T_w - 400 * 86400, now - 729 * 86400), T_w)
             self._feed_deep([m for m in self.chains if 60 <= m < 1440], hourly, 60)
-        q15 = y.candles(tki, 900, max(T_w - 40 * 86400, now - 59 * 86400), T_w)
+        q15 = self._fetch_historical_candles(y, tki, 900, max(T_w - 40 * 86400, now - 59 * 86400), T_w)
         self._feed_deep([m for m in self.chains if 15 <= m < 1440 and m % 15 == 0 and (rth or m < 60)], q15, 15)
-        fives_deep = y.candles(tki, 300, max(T_w - 20 * 86400, now - 59 * 86400), T_w)
+        fives_deep = self._fetch_historical_candles(y, tki, 300, max(T_w - 20 * 86400, now - 59 * 86400), T_w)
         self._feed_deep([m for m in self.chains if 5 <= m < 15 and m % 5 == 0], fives_deep, 5)
         one_from = max(T_w, now - 29 * 86400)
-        fives = y.candles(tki, 300, T_w, one_from) if one_from > T_w else []
-        ones = self._closed_only(y.candles(tki, 60, one_from, now), tki)
+        fives = self._fetch_historical_candles(y, tki, 300, T_w, one_from) if one_from > T_w else []
+        ones = self._closed_only(self._fetch_historical_candles(y, tki, 60, one_from, now), tki)
         self.journal.log("INFO", f"[{self.symbol}] deep {len(daily)}d/{len(hourly)}h/{len(q15)}x15m/{len(fives_deep)}x5m; {len(fives)} five-minute + {len(ones)} one-minute sub-bars; replaying")
         for b in fives:
             self.on_sub_bar(b, 5, live=False)
@@ -884,7 +933,7 @@ class AssetRunner:
                 return  # Grok (xAI) — offline plant: the CSV is the whole tape; do not call Yahoo for a tail
             tail_from = rows[-1].ts + source_minutes * 60
             try:
-                ones = self.feed.candles(self.spec.ticker, 60, max(tail_from, now - 29 * 86400), now)
+                ones = self._fetch_historical_candles(self.feed, self.spec.ticker, 60, max(tail_from, now - 29 * 86400), now)
                 if self.spec.feed == "yahoo":
                     ones = self._closed_only(ones, self.spec.ticker)
                 for b in ones:
@@ -1329,6 +1378,8 @@ class AssetRunner:
             "feed_provider": ("databento" if type(self.feed).__name__ == "Databento" else self.spec.feed),
             "feed_capabilities": (self.feed.capabilities() if hasattr(self.feed, "capabilities") else {}),
             "feed_health": self._feed_health_view(),
+            "last_bar_batch_receipt": self.last_bar_batch_receipt,
+            "bar_batch_receipts": list(self.bar_batch_receipts),
             "session_mode": _session_mode(self.cal), "security_source": self.spec.security_source,
             "tf": self.chart_minutes, "mintick": self.mintick, "contract_size": self.em.contract_size, "multiplier": self.spec.multiplier,
             "chart_type": self.spec.chart_type, "fill_on": self.spec.fill_on, "slippage_ticks": self.spec.slippage_ticks,
@@ -1565,7 +1616,8 @@ class Portfolio:
             raise
 
     def remove_asset(self, symbol: str) -> bool:
-        key = resolve(symbol).symbol
+        raw = str(symbol).strip().upper()
+        key = raw if raw in self.runners else resolve(symbol).symbol
         with self._lock:
             r = self.runners.get(key)
             if not r:
@@ -1600,7 +1652,8 @@ class Portfolio:
                      *, preset: Any = _UNCHANGED, reset: bool = False,
                      chart: Optional[Dict[str, Any]] = None) -> AssetRunner:
         """Atomically apply strategy/chart configuration, then persist only after replay succeeds."""
-        key = resolve(symbol).symbol
+        raw = str(symbol).strip().upper()
+        key = raw if raw in self.runners else resolve(symbol).symbol
         r = self.runners[key]
         with r.lock:
             r.ensure_configurable()

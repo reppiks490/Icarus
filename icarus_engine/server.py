@@ -3,6 +3,7 @@
   GET  /                          dashboard (open /?asset=NQ for a single-asset tab)
   GET  /status/public             portfolio + every asset's strategy state
   GET  /api/chart/<SYM>?n=240     bars, overlays (RATE line, TP/SL, VWAP, Kalman), fills
+  GET  /api/market-history/<ID>  bounded catalog-source history page + full bar receipt
   GET  /api/trades/<SYM>          closed trades (this run: history + live)
   GET  /api/inputs/<SYM>          effective inputs, their sources, and per-input metadata
   GET  /api/input-meta            every input: label, group, kind, default, range, options, tooltip
@@ -605,7 +606,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
 
     def _control_runner(target: str):
         try:
-            key = resolve(target or "").symbol
+            raw = str(target or "").strip().upper()
+            key = raw if raw in port.runners else resolve(target or "").symbol
         except ValueError as ex:
             raise ValueError(f"unknown asset {target}") from ex
         runner = port.runners.get(key)
@@ -1290,6 +1292,9 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return default
 
         def _runner(self, sym: str):
+            raw = str(sym or "").strip().upper()
+            if raw in port.runners:
+                return port.runners.get(raw)
             try:
                 key = resolve(sym or "").symbol
             except ValueError:
@@ -1301,6 +1306,94 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._json(403, {"detail": "bad host"})
             p = urlparse(self.path)
             q = parse_qs(p.query)
+            if p.path == "/api/market-universe":
+                from .market_universe import snapshot as market_universe_snapshot
+                try:
+                    return self._json(200, market_universe_snapshot())
+                except (ValueError, OSError) as ex:
+                    return self._json(500, {"detail": f"market universe catalog unavailable: {ex}"})
+            if p.path.startswith("/api/market-history/"):
+                # Catalog history is deliberately separate from runtime charts:
+                # a returned bar batch carries its full source receipt and can
+                # never silently become Pulse input.
+                from .calendar import get_calendar
+                from .market_universe import catalog_evidence_digest, snapshot as market_universe_snapshot
+                from .market_universe_adapter import MarketUniverseAdapter
+
+                instrument_id = p.path[len("/api/market-history/"):].strip("/")
+                try:
+                    catalog = market_universe_snapshot()
+                    instrument = next((row for row in catalog["instruments"]
+                                       if row.get("instrument_id") == instrument_id), None)
+                    if instrument is None:
+                        return self._json(404, {"error": "unknown catalog instrument ID"})
+                    def required_int(name: str, low: int, high: int) -> int:
+                        values = q.get(name, [])
+                        if len(values) != 1:
+                            raise ValueError(f"{name} must be supplied exactly once")
+                        try:
+                            value = int(values[0])
+                        except (TypeError, ValueError):
+                            raise ValueError(f"{name} must be an integer") from None
+                        if not low <= value <= high:
+                            raise ValueError(f"{name} must be between {low} and {high}")
+                        return value
+
+                    start_ts = required_int("start_ts", 0, 4_294_967_295)
+                    end_ts = required_int("end_ts", 1, 4_294_967_295)
+                    interval = required_int("interval_seconds", 60, 86_400)
+                    if end_ts <= start_ts:
+                        return self._json(400, {"error": "end_ts must be after start_ts"})
+                    limit = self._int(q, "limit", 500, 1, 1000)
+                    provider_values = q.get("provider", ["yahoo"])
+                    if len(provider_values) != 1:
+                        return self._json(400, {"error": "provider must be supplied at most once"})
+                    provider = str(provider_values[0]).strip().lower()
+                    if provider not in {m.get("provider") for m in instrument.get("provider_symbol_candidates", [])}:
+                        return self._json(400, {"error": "provider is not declared for this catalog instrument"})
+                    calendar = get_calendar(instrument["calendar"])
+                    schedule = calendar.expected_bar_timestamps(start_ts, end_ts, interval)
+                    if not schedule:
+                        return self._json(422, {"error": "request window has no bars in the verified exchange schedule"})
+                    next_start_ts = None
+                    page_end_ts = end_ts
+                    if len(schedule) > limit:
+                        page_end_ts = schedule[limit]
+                        next_start_ts = page_end_ts
+                    bars, receipt = MarketUniverseAdapter().fetch_history(
+                        instrument_id, interval, start_ts, page_end_ts, provider=provider,
+                    )
+                    return self._json(200, {
+                        "instrument": {
+                            "instrument_id": instrument["instrument_id"],
+                            "display_symbol": instrument["display_symbol"],
+                            "venue": instrument["venue"],
+                            "catalog_id": catalog["catalog_id"],
+                            "catalog_snapshot_sha256": catalog_evidence_digest(catalog),
+                        },
+                        "provider": provider,
+                        "qualification": "QUALIFIED" if receipt.historical_bars_qualified else "UNQUALIFIED",
+                        "pulse_enabled": bool(instrument.get("pulse_enabled", False)),
+                        "execution_authorized": False,
+                        "receipt": receipt.to_dict(),
+                        "page": {
+                            "start_ts": start_ts,
+                            "end_ts": page_end_ts,
+                            "next_start_ts": next_start_ts,
+                            "limit": limit,
+                            "returned_count": len(bars),
+                        },
+                        "bars": [{"ts": row.ts, "o": row.o, "h": row.h, "l": row.l, "c": row.c, "v": row.v}
+                                 for row in bars],
+                    })
+                except ValueError as ex:
+                    return self._json(400, {"error": str(ex)})
+                except RuntimeError as ex:
+                    message = str(ex)
+                    status = 503 if "not configured" in message else 502
+                    return self._json(status, {"error": message})
+                except (KeyError, OSError) as ex:
+                    return self._json(503, {"error": f"catalog history unavailable: {ex}"})
             if p.path == "/api/command-centers":
                 snapshot = command_centers.snapshot()
                 snapshot["input_meta"] = meta
@@ -1367,6 +1460,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 snapshot["me"] = self.identity
                 return self._json(200, snapshot)
             if p.path == "/status/public":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
                 try:
                     return self._json(200, port.status(nonblocking=True))
                 except Exception as ex:
@@ -1980,6 +2075,22 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                         return self._json(400, {"detail": "confirm must be true to flatten this paper workspace"})
                     try:
                         return self._json(200, command_centers.flatten(parts[2]))
+                    except FlattenUnavailableError as ex:
+                        portfolio = command_centers.portfolios.get(parts[2])
+                        open_assets = []
+                        if portfolio is not None:
+                            for runner in portfolio.runner_list():
+                                shadow = getattr(runner.em, "shadow", None)
+                                if runner.em.open or (shadow is not None and shadow.open):
+                                    open_assets.append(runner.symbol)
+                        return self._json(409, {
+                            "error": "flatten_unavailable",
+                            "detail": str(ex),
+                            "profile_id": parts[2],
+                            "open_assets": open_assets,
+                            "positions_remain_open": bool(open_assets),
+                            "paused": bool(portfolio and portfolio.paused),
+                        })
                     except (ValueError, TypeError, KeyError) as ex:
                         return self._json(400, {"detail": str(ex)})
             if p.path == "/admin/access/add":

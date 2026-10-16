@@ -267,7 +267,8 @@ class MirroredEmulator:
         episodes: dict[Any, dict[str, Any]] = defaultdict(
             lambda: {"net": 0.0, "pieces": 0, "qty": 0, "closed": False,
                      "entry_qty": 0, "closed_qty": 0,
-                     "entry_ts": 0, "last_exit_ts": 0})
+                     "entry_ts": 0, "last_exit_ts": 0,
+                     "runup": 0.0, "drawdown": 0.0})
         excluded_admin_flatten_pieces = 0
         for trade in engine.closed:
             if int(trade.lot_id) in self._administratively_flattened_lot_ids[lane]:
@@ -285,6 +286,8 @@ class MirroredEmulator:
             row["pieces"] += 1
             row["qty"] += int(trade.qty)
             row["closed_qty"] += int(trade.qty)
+            row["runup"] += float(trade.runup)
+            row["drawdown"] += float(trade.drawdown)
             row["entry_qty"] = max(row["entry_qty"], int(trade.entry_qty or trade.qty))
             row["closed"] = row["closed_qty"] >= row["entry_qty"]
             row["entry_ts"] = int(trade.entry_ts)
@@ -349,6 +352,21 @@ class MirroredEmulator:
                     "median": (median(ordered) if ordered else None),
                     "min": (ordered[0] if ordered else None), "max": (ordered[-1] if ordered else None)}
 
+        def closed_excursions(rows: dict[Any, dict[str, Any]]) -> dict[str, Any]:
+            closed_rows = [row for row in rows.values() if row["closed"]]
+            return {
+                "episode_count": len(closed_rows),
+                "favorable_excursion": round(sum(row["runup"] for row in closed_rows), 8),
+                "adverse_excursion": round(sum(row["drawdown"] for row in closed_rows), 8),
+            }
+
+        primary_excursions = closed_excursions(primary_closed)
+        shadow_excursions = closed_excursions(shadow_closed)
+        matched_favorable_deltas = [shadow_closed[key]["runup"] - primary_closed[key]["runup"]
+                                    for key in common]
+        matched_adverse_deltas = [shadow_closed[key]["drawdown"] - primary_closed[key]["drawdown"]
+                                  for key in common]
+
         return {
             "schema": "icarus.real_price_shadow/1",
             "enabled": True,
@@ -398,6 +416,15 @@ class MirroredEmulator:
                 "no positive pairable primary-winner P&L denominator"),
             "paired_primary_winner_net": round(paired_primary_winner_net, 8),
             "paired_shadow_net_on_primary_winners": round(paired_shadow_net_on_primary_winners, 8),
+            "closed_episode_excursion_basis": (
+                "EMULATOR_OBSERVED_HIGH_LOW_THROUGH_EXIT_FILL_QTY_WEIGHTED_ENTRY_COMMISSION_ADJUSTED"
+            ),
+            "primary_closed_episode_excursions": primary_excursions,
+            "real_price_shadow_closed_episode_excursions": shadow_excursions,
+            "matched_closed_episode_favorable_excursion_delta_shadow_minus_primary":
+                delta_summary(matched_favorable_deltas),
+            "matched_closed_episode_adverse_excursion_delta_shadow_minus_primary":
+                delta_summary(matched_adverse_deltas),
             "bar_close_drawdown_basis": "BAR_CLOSE_MARKED_EQUITY_NOT_INTRABAR",
             "bar_close_equity_observations": self._bar_close_equity_observations,
             "administrative_censored_shadow_positions": self._administrative_censored_positions,

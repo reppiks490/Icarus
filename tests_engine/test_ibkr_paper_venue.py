@@ -270,6 +270,7 @@ class IbkrPaperVenueTests(unittest.TestCase):
     open_order = adapter.open_orders()[0]
     assert open_order["symbol"] == "MNQZ26" and open_order["client_id"] == "ci-session"
     assert open_order["price"] == 19888.25
+    assert open_order["quantity"] == 1 and open_order["kind"] == "LIMIT"
 
     api.positions_rows = [("DU12345", api.orders["900"][0], -1)]
     assert adapter.positions() == {"MNQZ26": -1}
@@ -384,8 +385,332 @@ class IbkrPaperVenueTests(unittest.TestCase):
     assert len(gateway.placed) == 1
     assert adapter.open_orders() == [{
         "broker_id": "901", "client_id": "ci-same", "symbol": "MNQZ26", "side": "BUY",
-        "remaining": 1, "price": None,
+        "quantity": 1, "kind": "MARKET", "remaining": 1, "price": None,
     }]
+
+
+  def test_engine_keeps_mismatched_ibkr_readback_ambiguous(self):
+    adapter, gateway = venue()
+    intent = Intent("test-replay", "MNQZ26", "BUY", 1, "MARKET")
+    order_ref = adapter._order_ref(intent.intent_id)
+    request = {
+        "account": "DU12345", "action": "SELL", "totalQuantity": 1,
+        "orderType": "MKT", "tif": "DAY", "orderRef": order_ref,
+        "outsideRth": False,
+    }
+    gateway.orders["901"] = {
+        "account_id": "DU12345", "broker_id": "901", "client_id": order_ref,
+        "contract": mapping().ib_contract(), "order": request,
+        "status": "Submitted", "filled": 0,
+    }
+    with TemporaryDirectory() as temp:
+      engine = ExecutionEngine(adapter, RiskGovernor(), Journal(f"{temp}/journal.jsonl"), mode="PAPER")
+      engine.state.data_age_s["MNQZ26"] = 0
+      engine.state.marks["MNQZ26"] = 19888.25
+
+      result = engine.submit(intent)
+
+      assert result == {"status": S.AMBIGUOUS.value, "order_id": intent.intent_id}
+      assert engine.book.orders[intent.intent_id].state is S.AMBIGUOUS
+      assert engine.snapshot()["health"] == "BLOCKED"
+
+      reconciliation = engine.reconcile()
+      assert intent.intent_id not in reconciliation["resolved"]
+      assert reconciliation["mismatched_orders"][intent.intent_id] == ["side"]
+      assert engine.book.orders[intent.intent_id].state is S.AMBIGUOUS
+      assert engine.snapshot()["health"] == "BLOCKED"
+    assert gateway.placed == []
+
+
+  def test_duplicate_open_order_refs_do_not_resolve_engine_ambiguity(self):
+    adapter, gateway = venue()
+    intent = Intent("test-duplicate-replay", "MNQZ26", "BUY", 1, "MARKET")
+    order_ref = adapter._order_ref(intent.intent_id)
+    matching_order = {
+        "account": "DU12345", "action": "BUY", "totalQuantity": 1,
+        "orderType": "MKT", "tif": "DAY", "orderRef": order_ref,
+        "outsideRth": False,
+    }
+    gateway.connected = False
+    with TemporaryDirectory() as temp:
+      engine = ExecutionEngine(adapter, RiskGovernor(), Journal(f"{temp}/journal.jsonl"), mode="PAPER")
+      engine.state.data_age_s["MNQZ26"] = 0
+      engine.state.marks["MNQZ26"] = 19888.25
+      submitted = engine.submit(intent)
+      assert submitted["status"] == S.AMBIGUOUS.value
+      gateway.connected = True
+      for broker_id in ("901", "902"):
+        gateway.orders[broker_id] = {
+            "account_id": "DU12345", "broker_id": broker_id, "client_id": order_ref,
+            "contract": mapping().ib_contract(), "order": dict(matching_order),
+            "status": "Submitted", "filled": 0,
+        }
+      reconciliation = engine.reconcile()
+      assert intent.intent_id not in reconciliation["resolved"]
+      assert "duplicate_client_reference" in reconciliation["mismatched_orders"][intent.intent_id]
+      assert engine.book.orders[intent.intent_id].state is S.AMBIGUOUS
+      assert engine.snapshot()["health"] == "BLOCKED"
+
+
+  def test_unmapped_ibkr_open_order_contract_cannot_clear_ambiguity(self):
+    adapter, gateway = venue()
+    intent = Intent("test-contract-replay", "MNQZ26", "BUY", 1, "MARKET")
+    order_ref = adapter._order_ref(intent.intent_id)
+    request = {
+        "account": "DU12345", "action": "BUY", "totalQuantity": 1,
+        "orderType": "MKT", "tif": "DAY", "orderRef": order_ref,
+        "outsideRth": False,
+    }
+    wrong_contract = dict(mapping().ib_contract(), conId=999999)
+    gateway.orders["901"] = {
+        "account_id": "DU12345", "broker_id": "901", "client_id": order_ref,
+        "contract": wrong_contract, "order": request,
+        "status": "Submitted", "filled": 0,
+    }
+    with TemporaryDirectory() as temp:
+      engine = ExecutionEngine(adapter, RiskGovernor(), Journal(f"{temp}/journal.jsonl"), mode="PAPER")
+      engine.state.data_age_s["MNQZ26"] = 0
+      engine.state.marks["MNQZ26"] = 19888.25
+      submitted = engine.submit(intent)
+      assert submitted["status"] == S.AMBIGUOUS.value
+
+      reconciliation = engine.reconcile()
+
+      assert reconciliation["resolved"] == {}
+      assert reconciliation["open_order_readback_error"] == "UNAVAILABLE_OR_INVALID"
+      assert engine.book.orders[intent.intent_id].state is S.AMBIGUOUS
+      assert engine.snapshot()["health"] == "BLOCKED"
+
+
+  def test_ibkr_execution_options_cannot_clear_ambiguity_during_reconcile(self):
+    adapter, gateway = venue()
+    intent = Intent("test-options-replay", "MNQZ26", "BUY", 1, "MARKET")
+    order_ref = adapter._order_ref(intent.intent_id)
+    request = {
+        "account": "DU12345", "action": "BUY", "totalQuantity": 1,
+        "orderType": "MKT", "tif": "DAY", "orderRef": order_ref,
+        "outsideRth": False, "ocaGroup": "unrelated-bracket", "ocaType": 1,
+    }
+    gateway.orders["901"] = {
+        "account_id": "DU12345", "broker_id": "901", "client_id": order_ref,
+        "contract": mapping().ib_contract(), "order": request,
+        "status": "Submitted", "filled": 0,
+    }
+    with TemporaryDirectory() as temp:
+      engine = ExecutionEngine(adapter, RiskGovernor(), Journal(f"{temp}/journal.jsonl"), mode="PAPER")
+      engine.state.data_age_s["MNQZ26"] = 0
+      engine.state.marks["MNQZ26"] = 19888.25
+      submitted = engine.submit(intent)
+      assert submitted["status"] == S.AMBIGUOUS.value
+
+      reconciliation = engine.reconcile()
+
+      assert reconciliation["resolved"] == {}
+      assert reconciliation["open_order_readback_error"] == "UNAVAILABLE_OR_INVALID"
+      assert engine.book.orders[intent.intent_id].state is S.AMBIGUOUS
+      assert engine.snapshot()["health"] == "BLOCKED"
+
+
+  def test_reused_order_ref_with_different_terms_is_rejected_not_acknowledged(self):
+    adapter, gateway = venue()
+    assert adapter.submit("same-ref", "MNQZ26", "BUY", 1, "MARKET", None)["status"] == "ack"
+
+    assert adapter.submit("same-ref", "MNQZ26", "SELL", 2, "LIMIT", 19888.25) == {"status": "timeout"}
+
+    assert len(gateway.placed) == 1
+    assert gateway.placed[0][2]["action"] == "BUY"
+    assert gateway.placed[0][2]["totalQuantity"] == 1
+
+
+  def test_replay_rejects_matching_basic_order_with_different_ibkr_execution_terms(self):
+    mismatches = (
+        ("parentId", 901),
+        ("ocaGroup", "unrelated-bracket"),
+        ("ocaType", 1),
+        ("transmit", False),
+        ("allOrNone", True),
+        ("minQty", 1),
+        ("goodAfterTime", "20261016 09:30:00 US/Eastern"),
+        ("goodTillDate", "20261016 16:00:00 US/Eastern"),
+        ("activeStartTime", "20261016 09:30:00 US/Eastern"),
+        ("activeStopTime", "20261016 16:00:00 US/Eastern"),
+        ("autoCancelDate", "20261016 15:59:00 US/Eastern"),
+        ("conditions", [{"type": "PriceCondition", "price": 19000}]),
+        ("randomizeSize", True),
+        ("adjustedStopPrice", 19800.0),
+        ("algoId", "other-algo"),
+        ("orderComboLegs", [{"price": 1.0}]),
+        ("eTradeOnly", False),
+    )
+    for field, value in mismatches:
+      with self.subTest(field=field):
+        adapter, gateway = venue()
+        assert adapter.submit("replay-ref", "MNQZ26", "BUY", 1, "MARKET", None)["status"] == "ack"
+        gateway.orders["901"]["order"][field] = value
+
+        assert adapter.submit("replay-ref", "MNQZ26", "BUY", 1, "MARKET", None) == {"status": "timeout"}
+        assert len(gateway.placed) == 1
+
+
+  def test_tws_callback_readback_retains_execution_terms_for_replay_check(self):
+    api = FakeIbapiClient()
+    gateway = IbkrTwsPaperGateway(api_client=api, contract_factory=FakeApiRecord,
+                                  order_factory=FakeApiRecord, timeout_s=0.05)
+    gateway.connect()
+    adapter = IbkrPaperVenue(gateway, "DU12345", {"MNQZ26": mapping()})
+    order_ref = "callback-replay"
+    contract = gateway._make_contract(mapping().ib_contract())
+    order = gateway._make_order(adapter._build_order(mapping(), order_ref, "BUY", 1, "MARKET", None))
+    order.parentId = 901
+    order.ocaGroup = "unrelated-bracket"
+    order.ocaType = 1
+    order.transmit = False
+    api.orders["901"] = (contract, order, "Submitted")
+
+    result = adapter.submit(order_ref, "MNQZ26", "BUY", 1, "MARKET", None)
+
+    assert result == {"status": "timeout"}
+    assert api.placed == []
+    gateway.disconnect()
+
+
+  def test_unverified_tws_open_order_callbacks_cannot_ack_mismatched_replays(self):
+    """A callback ack must not beat exact-term checks during engine reconciliation."""
+    alternate = ContractMapping(
+        symbol="NQZ26", con_id=654321, local_symbol="NQZ6",
+        contract_month="202612", exchange="CME", currency="USD",
+        multiplier=Decimal("20"), tick_size=Decimal("0.25"),
+    )
+    cases = (
+        ("wrong-side", mapping(), "SELL"),
+        ("wrong-contract", alternate, "BUY"),
+    )
+    for label, actual_mapping, actual_side in cases:
+      with self.subTest(label=label), TemporaryDirectory() as temp:
+        api = FakeIbapiClient()
+        gateway = IbkrTwsPaperGateway(api_client=api, contract_factory=FakeApiRecord,
+                                      order_factory=FakeApiRecord, timeout_s=0.05)
+        gateway.connect()
+        contracts = {"MNQZ26": mapping(), "NQZ26": alternate}
+        adapter = IbkrPaperVenue(gateway, "DU12345", contracts)
+        intent = Intent(strategy="callback-guard", symbol="MNQZ26", side="BUY",
+                        qty=1, kind="MARKET")
+        order_ref = intent.intent_id
+        request = adapter._build_order(mapping(), order_ref, "BUY", 1, "MARKET", None)
+        request["action"] = actual_side
+        actual_contract = gateway._make_contract(actual_mapping.ib_contract())
+        actual_order = gateway._make_order(request)
+        api.orders["901"] = (actual_contract, actual_order, "Submitted")
+        engine = ExecutionEngine(adapter, RiskGovernor(), Journal(f"{temp}/journal.jsonl"),
+                                 mode="PAPER")
+
+        engine.book.add(intent)
+        engine.book.on_sent(order_ref)
+        engine.book.on_timeout(order_ref)
+        assert adapter.submit(order_ref, intent.symbol, intent.side, intent.qty,
+                              intent.kind, intent.price)["status"] == "timeout"
+        gateway.error(901, 201, "untrusted mismatched-order rejection")
+        report = engine.reconcile()
+
+        assert engine.book.orders[order_ref].state == S.AMBIGUOUS
+        assert engine.needs_reconcile is True
+        assert order_ref not in report["resolved"]
+        assert report["mismatched_orders"][order_ref]
+        assert "901" not in adapter._broker_to_client
+        gateway.disconnect()
+
+
+  def test_exact_reconciliation_trusts_tws_callbacks_for_later_fills(self):
+    api = FakeIbapiClient()
+    gateway = IbkrTwsPaperGateway(api_client=api, contract_factory=FakeApiRecord,
+                                  order_factory=FakeApiRecord, timeout_s=0.05)
+    gateway.connect()
+    adapter = IbkrPaperVenue(gateway, "DU12345", {"MNQZ26": mapping()})
+    intent = Intent(strategy="callback-guard", symbol="MNQZ26", side="BUY",
+                    qty=2, kind="MARKET")
+    order_ref = intent.intent_id
+    contract = gateway._make_contract(mapping().ib_contract())
+    request = adapter._build_order(mapping(), order_ref, "BUY", 2, "MARKET", None)
+    order = gateway._make_order(request)
+    api.orders["901"] = (contract, order, "Submitted")
+    with TemporaryDirectory() as temp:
+      engine = ExecutionEngine(adapter, RiskGovernor(), Journal(f"{temp}/journal.jsonl"),
+                               mode="PAPER")
+      engine.book.add(intent)
+      engine.book.on_sent(order_ref)
+      engine.book.on_timeout(order_ref)
+
+      report = engine.reconcile()
+      assert report["resolved"] == {order_ref: "901"}
+      assert adapter._broker_to_client["901"] == order_ref
+
+      api.order_fill("901", 1, 19888.25, "exec-verified")
+      engine.pump()
+      assert engine.book.orders[order_ref].state == S.PARTIALLY_FILLED
+      assert engine.book.positions["MNQZ26"] == 1
+    gateway.disconnect()
+
+
+  def test_verified_tws_reject_callbacks_preserve_broker_identity(self):
+    for callback_kind in ("error", "inactive"):
+      with self.subTest(callback=callback_kind):
+        api = FakeIbapiClient()
+        gateway = IbkrTwsPaperGateway(api_client=api, contract_factory=FakeApiRecord,
+                                      order_factory=FakeApiRecord, timeout_s=0.05)
+        gateway.connect()
+        adapter = IbkrPaperVenue(gateway, "DU12345", {"MNQZ26": mapping()})
+        result = adapter.submit("reject-callback", "MNQZ26", "BUY", 1, "MARKET", None)
+        assert result == {"status": "ack", "broker_id": "900"}
+        assert adapter.poll() == [{"type": "ack", "client_id": "reject-callback",
+                                   "broker_id": "900"}]
+
+        if callback_kind == "error":
+          gateway.error(900, 201, "private broker diagnostic")
+        else:
+          gateway.orderStatus(900, "Inactive", 0, 1, 0.0, 0, 0, 0.0, 71, "", 0.0)
+
+        assert adapter.poll() == [{"type": "reject", "client_id": "reject-callback",
+                                   "code": "INVALID_ORDER" if callback_kind == "error" else "UNKNOWN"}]
+        gateway.disconnect()
+
+
+  def test_same_order_ref_with_different_contract_is_rejected(self):
+    adapter, gateway = venue()
+    assert adapter.submit("same-ref", "MNQZ26", "BUY", 1, "MARKET", None)["status"] == "ack"
+    original_find = gateway.find_order_by_ref
+
+    def wrong_contract(account_id, order_ref):
+      record = original_find(account_id, order_ref)
+      record["contract"] = dict(record["contract"], conId=999999)
+      return record
+
+    gateway.find_order_by_ref = wrong_contract
+    assert adapter.submit("same-ref", "MNQZ26", "BUY", 1, "MARKET", None) == {"status": "timeout"}
+    assert len(gateway.placed) == 1
+
+
+  def test_duplicate_ibkr_order_refs_remain_ambiguous(self):
+    api = FakeIbapiClient()
+    gateway = IbkrTwsPaperGateway(api_client=api, contract_factory=FakeApiRecord,
+                                  order_factory=FakeApiRecord, timeout_s=0.05)
+    gateway.connect()
+    contract = gateway._make_contract(mapping().ib_contract())
+    request = {
+        "account": "DU12345", "action": "BUY", "totalQuantity": 1,
+        "orderType": "MKT", "tif": "DAY", "orderRef": "duplicate-ref",
+        "outsideRth": False,
+    }
+    first_order = gateway._make_order(request)
+    second_order = gateway._make_order(request)
+    api.orders["901"] = (contract, first_order, "Submitted")
+    api.orders["902"] = (contract, second_order, "Submitted")
+    adapter = IbkrPaperVenue(gateway, "DU12345", {"MNQZ26": mapping()})
+
+    result = adapter.submit("duplicate-ref", "MNQZ26", "BUY", 1, "MARKET", None)
+
+    assert result == {"status": "timeout"}
+    assert len(api.placed) == 0
+    gateway.disconnect()
 
 
   def test_cancel_replace_and_positions_are_scoped_to_selected_paper_account(self):
@@ -446,15 +771,13 @@ class IbkrPaperVenueTests(unittest.TestCase):
     foreign = {"account_id": "DU99999", "broker_id": "77", "client_id": "ci-x",
                "status": "Submitted", "filled": 0}
     gateway.find_order_by_ref = lambda _account, _ref: foreign
-    with self.assertRaisesRegex(PermissionError, "selected paper account"):
-        adapter.submit("ci-x", "MNQZ26", "BUY", 1, "MARKET", None)
+    assert adapter.submit("ci-x", "MNQZ26", "BUY", 1, "MARKET", None) == {"status": "timeout"}
 
     gateway.find_order_by_ref = lambda _account, _ref: {
         "account_id": "DU12345", "broker_id": "77", "client_id": "ci-other",
         "status": "Submitted", "filled": 0,
     }
-    with self.assertRaisesRegex(ValueError, "orderRef"):
-        adapter.submit("ci-x", "MNQZ26", "BUY", 1, "MARKET", None)
+    assert adapter.submit("ci-x", "MNQZ26", "BUY", 1, "MARKET", None) == {"status": "timeout"}
 
     gateway.open_orders = lambda _account: [{
         "account_id": "DU99999", "broker_id": "77", "client_id": "ci-x",

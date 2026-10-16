@@ -492,8 +492,15 @@ def test_dashboard_surfaces_authentic_market_data_console():
     assert "live_error" in ui
     assert "ts_recv_ns" in ui
     assert "ts_event_ns" in ui
+    assert "data-market-history" in ui
+    assert "/api/market-history/" in ui
+    assert "payload.qualification" in ui
+    assert 'p.path.startswith("/api/market-history/")' in server
+    assert '"receipt": receipt.to_dict()' in server
     assert "Sequence jumps in window" in ui
     assert "does not invent a buy/sell interpretation" in ui
+    assert "Hybrid provider results" in ui
+    assert "hybrid_probe" in ui
 
 
 def test_dashboard_surfaces_apex_omega_world_intelligence():

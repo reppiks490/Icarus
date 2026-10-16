@@ -99,6 +99,62 @@ def test_partial_exit_does_not_count_as_a_closed_shadow_episode():
     assert complete["real_price_shadow"]["closed_episodes"] == 1
 
 
+def test_closed_episode_excursions_sum_partial_lots_and_compare_real_lane():
+    primary = Emulator(initial_capital=10_000, commission=1, mintick=1, contract_size=2)
+    twin = MirroredEmulator(primary, asset="TEST")
+    twin.process_bar(bar(60, 100, 101, 99, 100), 0,
+                     real_bar=bar(60, 100, 101, 99, 100))
+    twin.entry("L", 1, 2)
+    twin.process_bar(bar(120, 100, 110, 95, 105), 1,
+                     real_bar=bar(120, 100, 105, 98, 101))
+    twin.exit("half", "L", qty=1, limit=102)
+    twin.process_bar(bar(180, 100, 108, 96, 106), 2,
+                     real_bar=bar(180, 100, 104, 97, 102))
+    twin.close("L", "finish")
+    twin.process_bar(bar(240, 103, 104, 100, 103), 3,
+                     real_bar=bar(240, 103, 104, 100, 103))
+
+    result = twin.summary()
+
+    assert result["pairable_closed_episodes"] == 1
+    assert result["closed_episode_excursion_basis"] == (
+        "EMULATOR_OBSERVED_HIGH_LOW_THROUGH_EXIT_FILL_QTY_WEIGHTED_ENTRY_COMMISSION_ADJUSTED"
+    )
+    assert result["primary_closed_episode_excursions"] == {
+        "episode_count": 1, "favorable_excursion": 38.0, "adverse_excursion": -22.0,
+    }
+    assert result["real_price_shadow_closed_episode_excursions"] == {
+        "episode_count": 1, "favorable_excursion": 18.0, "adverse_excursion": -14.0,
+    }
+    assert result["matched_closed_episode_favorable_excursion_delta_shadow_minus_primary"] == {
+        "count": 1, "mean": -20.0, "median": -20.0, "min": -20.0, "max": -20.0,
+    }
+    assert result["matched_closed_episode_adverse_excursion_delta_shadow_minus_primary"] == {
+        "count": 1, "mean": 8.0, "median": 8.0, "min": 8.0, "max": 8.0,
+    }
+
+
+def test_short_episode_excursions_preserve_signs_and_commissions():
+    primary = Emulator(initial_capital=10_000, commission=1, mintick=1, contract_size=2)
+    twin = MirroredEmulator(primary, asset="TEST")
+    twin.process_bar(bar(60, 100, 101, 99, 100), 0,
+                     real_bar=bar(60, 100, 101, 99, 100))
+    twin.entry("S", -1, 1)
+    twin.process_bar(bar(120, 100, 105, 90, 95), 1,
+                     real_bar=bar(120, 100, 110, 95, 105))
+    twin.close("S", "finish")
+    twin.process_bar(bar(180, 95, 96, 90, 92), 2,
+                     real_bar=bar(180, 105, 110, 100, 108))
+
+    result = twin.summary()
+
+    assert result["pairable_closed_episodes"] == 1
+    assert result["primary_closed_episode_excursions"]["favorable_excursion"] == 19.0
+    assert result["primary_closed_episode_excursions"]["adverse_excursion"] == -11.0
+    assert result["real_price_shadow_closed_episode_excursions"]["favorable_excursion"] == 9.0
+    assert result["real_price_shadow_closed_episode_excursions"]["adverse_excursion"] == -21.0
+
+
 def test_missing_or_mismatched_real_bar_degrades_without_changing_primary():
     primary = Emulator(initial_capital=10_000, commission=0, mintick=1, contract_size=1)
     twin = MirroredEmulator(primary)
@@ -164,7 +220,7 @@ def test_closed_episodes_do_not_pair_without_a_shared_intent_sequence():
               "entry_price": 100.0, "entry_bar": 1, "entry_ts": 120,
               "exit_bar": 2, "exit_ts": 180, "exit_comment": "close",
               "entry_comment": "same label", "exit_kind": "close",
-              "runup": 0.0, "drawdown": 0.0, "bars": 1,
+              "runup": 5.0, "drawdown": -2.0, "bars": 1,
               "lot_id": 1, "entry_qty": 1}
     twin.primary.closed.append(ClosedTrade(exit_price=101.0, profit=1.0, **common))
     twin.shadow.closed.append(ClosedTrade(exit_price=99.0, profit=-1.0, **common))
@@ -173,6 +229,10 @@ def test_closed_episodes_do_not_pair_without_a_shared_intent_sequence():
     assert result["pairable_closed_episodes"] == 0
     assert result["primary_only_closed_episodes"] == 1
     assert result["shadow_only_closed_episodes"] == 1
+    assert result["primary_closed_episode_excursions"]["favorable_excursion"] == 5.0
+    assert result["real_price_shadow_closed_episode_excursions"]["adverse_excursion"] == -2.0
+    assert result["matched_closed_episode_favorable_excursion_delta_shadow_minus_primary"]["count"] == 0
+    assert result["matched_closed_episode_adverse_excursion_delta_shadow_minus_primary"]["count"] == 0
 
 
 def test_break_even_results_are_separate_from_directional_agreement():

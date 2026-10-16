@@ -285,11 +285,10 @@ def resolve(symbol: str) -> AssetSpec:
         )
     if not _SYMBOL_RE.fullmatch(s):
         raise ValueError(f"bad symbol {symbol!r}: letters, digits, '-', '.', '=' and '!' only")
-    # unknown → assume a Coinbase spot pair (keyless), 24/7
-    base = s.replace("-USD", "").replace("USD", "")
-    if not re.fullmatch(r"[A-Z0-9]{1,12}", base):
-        raise ValueError(f"bad symbol {symbol!r}")
-    return AssetSpec(base, f"{base} spot (Coinbase)", "coinbase", f"{base}-USD", "crypto", 0.01, 1.0, kind="crypto", tv_symbol=f"COINBASE:{base}USD", chart_type="heikin_ashi")
+    raise ValueError(
+        f"unregistered asset {symbol!r}; source identity, market metadata, and bar capabilities must be qualified "
+        "before the symbol can enter Pulse (catalog candidates alone are not runtime assets)"
+    )
 
 
 def parse_spec(token: str, default_tf: str = "20") -> AssetSpec:

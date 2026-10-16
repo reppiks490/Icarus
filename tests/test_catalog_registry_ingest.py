@@ -178,8 +178,10 @@ def test_cli_federates_local_receipts_without_downloader_calls(tmp_path):
     latest = tmp_path / "automation_intelligence/provider_collection_v1/latest"
     latest.mkdir(parents=True)
     (latest / "twelve.json").write_text(json.dumps({"completed_at_utc": datetime.now(timezone.utc).isoformat(),
-        "providers": {"twelve": {"status": "COLLECTED_PARTIAL", "collected_pages": 1}}}))
-    payload = PAYLOAD.replace(b"https://example.com", b"https://twelvedata.com")
+        "providers": {"twelve": {"status": "COLLECTED_PARTIAL", "collected_pages": 1,
+                                    "substantive_work_performed": True,
+                                    "verified_operations": ["twelve:get:/quote"]}}}))
+    payload = PAYLOAD.replace(b"https://example.com", b"https://twelvedata.com/quote")
     result = run(tmp_path, run_id="federated", catalog_ids=["api-mega-list"], client=FakeClient(payload))
     assert result["provider_federation"]["events_recorded"] == 1
     assert result["registry_summary"]["provider_links"] == 1
