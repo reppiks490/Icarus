@@ -3,6 +3,7 @@
   'use strict';
   const themes = [['dark', 'Dark'], ['light', 'Light'], ['midnight', 'Midnight'], ['ocean', 'Ocean'],
     ['divine', 'Divine Ascension'], ['void', 'Crimson Void'], ['astral', 'Astral Dreamscape'],
+    ['galaxy', 'Galaxy Cartography'], ['cyberpunk', 'Cyberpunk Circuit'], ['chibi', 'Chibi Wayfinder'],
     ['forest', 'Forest'], ['ember', 'Ember'], ['sakura', 'Anime: Sakura'], ['neon', 'Anime: Neon']];
   const root = document.documentElement;
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -94,6 +95,9 @@
     divine: {name: 'Divine Ascension', title: 'The one above all.', caption: 'A throne above the clouds. A horizon without limits.', mark: 'I', phase: 'CROWN / LIGHT / INFINITY'},
     void: {name: 'Crimson Void', title: 'Market Destroyer.', caption: 'From the silence. Beyond the noise.', mark: 'II', phase: 'RUPTURE / SILENCE / EMBER'},
     astral: {name: 'Astral Dreamscape', title: 'Beyond the horizon.', caption: 'An observatory at the edge of possibility.', mark: 'III', phase: 'ORBIT / AETHER / HORIZON'},
+    galaxy: {name: 'Galaxy Cartography', title: 'Maps of the night.', caption: 'Original star charts and a quiet galactic horizon.', mark: 'IV', phase: 'STAR / CHART / DISTANCE', coordinate:'STAR CHART', art:'radial-gradient(ellipse at 76% 43%,#5081b0 0%,#192b68 17%,#211044 40%,#080b20 75%)'},
+    cyberpunk: {name: 'Cyberpunk Circuit', title: 'Signals in the rain.', caption: 'A neon city drawn from light, glass and circuit lines.', mark: 'V', phase: 'NEON / CIRCUIT / SIGNAL', coordinate:'CIRCUIT CITY', art:'linear-gradient(145deg,#1b103a,#091027 53%,#260d2f)'},
+    chibi: {name: 'Chibi Wayfinder', title: 'Small steps, wide skies.', caption: 'Meet the little navigator of this original paper universe.', mark: 'VI', phase: 'WONDER / MAP / DAYBREAK', coordinate:'WAYFINDER', art:'radial-gradient(ellipse at 78% 25%,#ffe6a5,#ffbcd9 42%,#7776c5 100%)'},
   };
   const viewInsignia = {
     overview:['◇','OVERVIEW'],asset:['◈','ASSET CHAMBER'],system:['⌬','SYSTEM'],golive:['▲','GO LIVE'],agent:['◎','FIELD AGENT'],
@@ -147,9 +151,10 @@
       document.getElementById('worldTitle').setAttribute('aria-label',world.title);
       document.getElementById('worldCaption').textContent = world.caption;
       document.getElementById('worldMark').textContent = world.mark;
+      document.getElementById('worldCoordinateMode').textContent = world.coordinate || 'ECLIPSE LOOM';
       document.getElementById('worldCoordinatePhase').textContent = world.phase;
       // Exact local assets only. No market data or authenticated URLs enter this layer.
-      scenery.style.setProperty('--world-art', `url("/worlds/${root.dataset.theme}.webp")`);
+      scenery.style.setProperty('--world-art', world.art || `url("/worlds/${root.dataset.theme}.webp")`);
     }
     if (world && changedWorld) {
       const art = scenery.querySelector('.world-art');
@@ -176,7 +181,7 @@
     controls.className = 'experience-controls';
     controls.innerHTML = `<details class="experience-settings"><summary aria-label="Appearance and motion settings">Style</summary><div>
       <label>Theme<select id="experienceTheme"></select></label>
-      <label>Atmosphere<select id="experienceMode"><option value="balanced">Balanced · still scenery</option><option value="cinematic">Cinematic · Eclipse Loom</option><option value="focus">Focus · essentials</option></select></label>
+      <label>Atmosphere<select id="experienceMode"><option value="balanced">Balanced · still scenery</option><option value="cinematic">Cinematic · animated scenery</option><option value="focus">Focus · essentials</option></select></label>
       <label>Accent<select id="experienceAccent"><option value="world">World signature</option><option value="gold">Sovereign gold</option><option value="ice">Glacier silver</option><option value="amethyst">Astral amethyst</option></select></label>
       <label>Visual detail<select id="experienceVisualDetail"><option value="adaptive">Adaptive</option><option value="rich">Rich · full atmosphere</option><option value="light">Light · lean geometry</option></select></label>
       <label>Scene scale<select id="experienceSceneSize"><option value="compact">Compact</option><option value="grand">Grand</option><option value="panorama">Panorama</option></select></label>
@@ -186,7 +191,7 @@
       <label>Motion<select id="experienceMotion"><option value="system">Follow system</option><option value="off">No motion</option></select></label>
       <div class="experience-render-status" id="experienceRenderStatus" aria-live="polite"><span data-render-world>WORLD —</span><span data-render-view>VIEW —</span><span data-render-tier>RENDER —</span><span data-render-motion>MOTION —</span><span data-render-aura>AURA —</span></div>
       <button type="button" id="experienceSound" class="sm" aria-pressed="false">Enable celestial sound</button>
-      <button type="button" id="experienceReplay" class="sm">Replay cinematic intro</button><p id="experienceMotionNote"></p><p>Original anime worlds. Scenic titles and effects are decorative, independent of market activity.</p>
+      <button type="button" id="experienceReplay" class="sm">Replay cinematic intro</button><p id="experienceMotionNote"></p><p>Original visual worlds. Scenic titles and effects are decorative, independent of market activity.</p>
       </div></details><button class="icon-btn" id="experienceFocus" aria-pressed="false">Focus</button><button class="icon-btn" id="experienceMusicToggle" aria-expanded="false" aria-controls="experienceMusic">Music</button>`;
     document.getElementById('btnTheme').insertAdjacentElement('afterend', controls);
     const settings = controls.querySelector('.experience-settings');
@@ -241,9 +246,18 @@
     scenery.className = 'world-scene'; scenery.hidden = true;
     scenery.setAttribute('aria-label', 'ICARUS visual world');
     scenery.innerHTML = `<div class="world-art" aria-hidden="true"></div>
+      <div class="world-illustration" aria-hidden="true"><div class="galaxy-orbit"><i></i><i></i><i></i><b></b></div><div class="cyber-city"><i></i><i></i><i></i><i></i><i></i><span>ICARUS // PAPER</span></div>
+        <svg class="chibi-navigator" viewBox="0 0 320 370" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="chibiCoat" x2=".2" y2="1"><stop stop-color="#6b86cf"/><stop offset="1" stop-color="#473b92"/></linearGradient><linearGradient id="chibiHair" x2="1" y2="1"><stop stop-color="#393b80"/><stop offset="1" stop-color="#25255c"/></linearGradient></defs>
+          <ellipse cx="160" cy="343" rx="97" ry="14" fill="#493f8a" opacity=".25"/><path d="M100 273Q76 301 91 334Q112 345 138 334L144 304M214 273Q238 299 226 334Q202 345 177 334L174 303" fill="#4b3a88" stroke="#33266c" stroke-width="6"/>
+          <path d="M101 219Q96 205 114 197L157 187L207 197Q228 206 218 226L228 296Q175 324 89 295Z" fill="url(#chibiCoat)" stroke="#373572" stroke-width="6"/><path d="M116 207Q161 240 205 205L194 256Q161 268 124 255Z" fill="#f9d6dc"/><path d="M132 219L160 239L187 218" fill="none" stroke="#ffefa3" stroke-width="8" stroke-linecap="round"/>
+          <path d="M101 239Q67 248 72 277Q79 290 105 281L124 249M213 239Q252 245 247 271Q242 287 217 280L201 249" fill="#f5c9b6" stroke="#373572" stroke-width="6"/><path d="M85 116Q72 65 105 47Q133 23 182 35Q234 44 241 107Q253 169 218 205L111 207Q68 182 85 116Z" fill="url(#chibiHair)" stroke="#272655" stroke-width="6"/>
+          <ellipse cx="160" cy="142" rx="75" ry="81" fill="#f9d8c9" stroke="#4c3976" stroke-width="6"/><path d="M83 128Q96 53 168 49Q232 52 240 129Q208 119 187 84Q163 127 88 136" fill="url(#chibiHair)"/><path d="M112 139Q123 109 151 112M170 112Q202 106 213 137" fill="none" stroke="#31306e" stroke-width="10" stroke-linecap="round"/>
+          <ellipse cx="132" cy="154" rx="9" ry="13" fill="#25255e"/><ellipse cx="189" cy="154" rx="9" ry="13" fill="#25255e"/><circle cx="129" cy="149" r="3" fill="#fff"/><circle cx="186" cy="149" r="3" fill="#fff"/><ellipse cx="110" cy="176" rx="15" ry="7" fill="#ed9da9" opacity=".6"/><ellipse cx="210" cy="176" rx="15" ry="7" fill="#ed9da9" opacity=".6"/><path d="M152 178Q160 187 168 178" fill="none" stroke="#a35d71" stroke-width="3" stroke-linecap="round"/>
+          <path d="M91 104Q79 34 160 20Q240 31 229 99" fill="none" stroke="#f6e9ee" stroke-width="12" stroke-linecap="round"/><path d="M87 101Q77 143 88 161M232 101Q243 142 232 161" fill="none" stroke="#fff8f4" stroke-width="12"/><circle cx="224" cy="61" r="12" fill="#ffefa3"/><path d="M224 39V50M224 72V83M201 61H212M236 61H247" stroke="#ffefa3" stroke-width="4" stroke-linecap="round"/>
+          <path d="M157 268L165 265L174 268L171 280L160 283Z" fill="#ffe59e"/><path d="M65 100l3 8 8 3-8 3-3 8-3-8-8-3 8-3ZM259 175l3 7 7 3-7 3-3 7-3-7-7-3 7-3Z" fill="#fff8d1"/></svg></div>
       <div class="world-preview" aria-hidden="true"><i></i><b></b></div>
       <div class="world-orbit" aria-hidden="true"><i></i><i></i><i></i><b>◇</b></div>
-      <div class="world-coordinate" aria-hidden="true">ECLIPSE LOOM <span id="worldCoordinatePhase">CROWN / LIGHT / INFINITY</span></div>
+      <div class="world-coordinate" aria-hidden="true"><span id="worldCoordinateMode">ECLIPSE LOOM</span> <span id="worldCoordinatePhase">CROWN / LIGHT / INFINITY</span></div>
       <div class="world-scene-threshold" aria-hidden="true"><i></i><b></b><span></span></div>
       <div class="world-view-insignia" aria-hidden="true" data-view="overview" data-domain="core-deck"><span>CORE DECK / ACTIVE</span><i>◇</i><b>OVERVIEW</b></div>
       <div class="world-copy"><div class="world-eyebrow">ICARUS <span> / </span><span id="worldName"></span></div>
@@ -252,6 +266,9 @@
         <button type="button" data-world-choice="divine">01 <span>Divine</span></button>
         <button type="button" data-world-choice="void">02 <span>Void</span></button>
         <button type="button" data-world-choice="astral">03 <span>Astral</span></button>
+        <button type="button" data-world-choice="galaxy">04 <span>Galaxy</span></button>
+        <button type="button" data-world-choice="cyberpunk">05 <span>Cyberpunk</span></button>
+        <button type="button" data-world-choice="chibi">06 <span>Chibi</span></button>
       </div></div><div class="world-edition" aria-hidden="true"><span id="worldMark"></span> / ICARUS WORLDS</div>`;
     document.getElementById('view').insertAdjacentElement('beforebegin', scenery);
     const preview=scenery.querySelector('.world-preview');
@@ -261,7 +278,7 @@
     };
     const showWorldPreview=id=>{
       if(!preview||!worlds[id]||id===root.dataset.world)return clearWorldPreview();
-      preview.dataset.previewWorld=id;preview.style.setProperty('--preview-art',`url('/worlds/${id}.webp')`);
+      preview.dataset.previewWorld=id;preview.style.setProperty('--preview-art',worlds[id].art||`url('/worlds/${id}.webp')`);
       scenery.dataset.previewWorld=id;preview.classList.add('active');
     };
     for (const button of scenery.querySelectorAll('[data-world-choice]')) {

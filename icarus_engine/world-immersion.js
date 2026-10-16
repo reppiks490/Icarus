@@ -10,7 +10,10 @@
   const phaseLore={
     divine:{crown:'ASCENSION',descent:'THRESHOLD',depth:'SANCTUM',abyss:'DOMINION'},
     void:{crown:'BREACH',descent:'FRACTURE',depth:'NULL FIELD',abyss:'EVENT HORIZON'},
-    astral:{crown:'ORBIT',descent:'DRIFT',depth:'AETHER',abyss:'HORIZON'}
+    astral:{crown:'ORBIT',descent:'DRIFT',depth:'AETHER',abyss:'HORIZON'},
+    galaxy:{crown:'STAR MAP',descent:'NEBULA',depth:'CONSTELLATION',abyss:'DISTANCE'},
+    cyberpunk:{crown:'CITY',descent:'SIGNAL',depth:'CIRCUIT',abyss:'NIGHT'},
+    chibi:{crown:'WAYFINDER',descent:'MAP',depth:'FRIENDSHIP',abyss:'SKY'}
   };
   const viewMeta={
     overview:['OVERVIEW','◇'],asset:['ASSET','◈'],system:['SYSTEM','⌬'],golive:['GO LIVE','▲'],agent:['AGENT','◎'],

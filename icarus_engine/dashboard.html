@@ -128,7 +128,6 @@ kbd { font:11px ui-monospace,monospace; background:var(--surface-2); border:1px 
 pre.cli { background:var(--surface-2); border:1px solid var(--ring); border-radius:10px; padding:12px; font:12px/1.5 ui-monospace,Consolas,monospace; overflow:auto; white-space:pre }
 </style>
 <link rel="stylesheet" href="/experience-ui.css">
-<link rel="stylesheet" href="/reference-choreography.css">
 </head>
 <body>
 <div class="top">
@@ -141,7 +140,7 @@ pre.cli { background:var(--surface-2); border:1px solid var(--ring); border-radi
       <span class="node" data-n="paper"><i></i>Paper fills</span>
     </div>
     <div class="state">
-      <span class="combined-pnl" title="Sum of net P&amp;L for the four simulated paper workspaces: paper equity minus allocated capital, including open P&amp;L"><span class="label">Combined paper P&amp;L</span><span class="value" id="combinedPaperPnl">—</span></span>
+      <span class="combined-pnl" title="Closed live paper results plus current open marks across four simulated ledgers"><span class="label">4-ledger paper P&amp;L</span><span class="value" id="combinedPaperPnl">—</span></span>
       <span class="small muted" id="meta">—</span><span class="small muted tnum" id="clock" title="your computer's clock (local zone) and the strategy's session clock (New York)"></span>
       <span class="badge" id="phase">—</span>
       <span class="badge" id="armed">—</span>
@@ -186,7 +185,6 @@ pre.cli { background:var(--surface-2); border:1px solid var(--ring); border-radi
 <script src="/command-centers-ui.js"></script>
 <script src="/world-aura.js"></script>
 <script src="/world-cinema.js"></script>
-<script src="/reference-choreography.js"></script>
 <script src="/world-immersion.js"></script>
 <script src="/world-motion.js"></script>
 <script src="/experience-ui.js"></script>
@@ -1213,25 +1211,7 @@ async function refresh() {
   }
 }
 async function refreshCombinedPaperPnl() {
-  const el = $('#combinedPaperPnl');
-  if (!el) return;
-  try {
-    const r = await fetch('/api/command-centers', {cache:'no-store'});
-    if (!r.ok) throw new Error('HTTP '+r.status);
-    const data = await r.json();
-    const profiles = data.profiles;
-    if (data.mode !== 'concurrent_paper' || !Array.isArray(profiles) || profiles.length !== 4 ||
-        profiles.some(p => typeof p.status?.net !== 'number' || !Number.isFinite(p.status.net))) throw new Error('four paper profiles unavailable');
-    const net = profiles.reduce((sum,p) => sum + p.status.net, 0);
-    if (!Number.isFinite(net)) throw new Error('combined paper P&L is not finite');
-    el.textContent = net.toLocaleString(undefined,{style:'currency',currency:'USD',minimumFractionDigits:2,maximumFractionDigits:2});
-    el.className = 'value ' + (net >= 0 ? 'pos' : 'neg');
-    el.title = `Combined net P&L across ${profiles.length} simulated paper workspaces: ${profiles.map(p=>`${p.name}: ${Number(p.status.net).toFixed(2)}`).join(' + ')}. Net means paper equity minus allocated capital and includes open P&L.`;
-  } catch (e) {
-    el.textContent = '—';
-    el.className = 'value';
-    el.title = 'Combined paper P&L unavailable: four workspace results could not be read.';
-  }
+  await loadPaperWorkspaces();
 }
 async function refreshGolive() {
   try {
