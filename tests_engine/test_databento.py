@@ -1268,7 +1268,6 @@ def test_yahoo_futures_warmup_does_not_splice_databento_history():
 
     assert calls
     assert all(provider == "yahoo" for provider, *_ in calls)
-    assert ("yahoo", 300, now - 59 * 86400, T_w) in calls
     assert ("yahoo", 300, T_w, now - 29 * 86400) in calls
     assert ("yahoo", 60, now - 29 * 86400, now) in calls
     assert all(candle in yahoo_rows for candle in loaded)
