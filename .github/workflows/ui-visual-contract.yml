@@ -75,6 +75,7 @@ jobs:
           ICARUS_BROWSER_OUTPUT: /tmp/icarus-ui-previews
           ICARUS_REQUIRE_WEBGL: "1"
         run: |
+          node tests_engine/browser_shadow_twin.cjs
           node tests_engine/browser_depth.cjs
           node tests_engine/browser_cinema.cjs
           node tests_engine/browser_worlds.cjs
