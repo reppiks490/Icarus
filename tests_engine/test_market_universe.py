@@ -124,7 +124,8 @@ def test_a200_yahoo_sweep_persists_receipts_without_raw_ohlcv(monkeypatch, tmp_p
     rows = snapshot()["instruments"]
 
     class FakeProbeAdapter:
-        def __init__(self, _yahoo):
+        def __init__(self, _yahoo, *, providers):
+            assert providers == ("yahoo",)
             self.by_id = {row["instrument_id"]: row for row in rows}
 
         def fetch_history(self, instrument_id, interval_seconds, start_ts, end_ts):
@@ -880,6 +881,9 @@ def test_a200_history_api_returns_bars_with_full_unqualified_receipt(tmp_path, m
     )
 
     class FakeAdapter:
+        def __init__(self, *, providers):
+            assert providers == ("yahoo",)
+
         def fetch_history(self, instrument_id, interval, requested_start, requested_end, *, provider):
             assert (instrument_id, interval, requested_start, requested_end, provider) == (
                 row["instrument_id"], 86400, start, page_end, "yahoo",
@@ -1005,6 +1009,9 @@ def test_a200_history_api_sanitizes_provider_errors(tmp_path, monkeypatch):
     from icarus_engine.server import serve
 
     class LeakyAdapter:
+        def __init__(self, *, providers):
+            assert providers == ("yahoo",)
+
         def fetch_history(self, *_args, **_kwargs):
             raise ValueError("https://provider.invalid/history?apikey=secret-value")
 
