@@ -760,7 +760,8 @@ def test_a200_history_api_returns_bars_with_full_unqualified_receipt(tmp_path, m
             "limit": 1, "provider": "yahoo",
         })
         url = f"http://127.0.0.1:{server.server_address[1]}/api/market-history/{row['instrument_id']}?{query}"
-        with urllib.request.urlopen(url, timeout=5) as response:
+        request = urllib.request.Request(url, headers={"Authorization": "Bearer catalog-test"})
+        with urllib.request.urlopen(request, timeout=5) as response:
             assert response.status == 200
             payload = json.loads(response.read())
         assert payload["instrument"]["catalog_id"] == snapshot()["catalog_id"]
@@ -801,7 +802,9 @@ def test_a200_history_api_rejects_unregistered_symbols_and_bad_windows(tmp_path)
         for path, expected_status in (("/api/market-history/AAPL", 404),
                                       (f"/api/market-history/{instrument_id}?start_ts=1", 400)):
             try:
-                urllib.request.urlopen(base + path, timeout=5)
+                urllib.request.urlopen(urllib.request.Request(
+                    base + path, headers={"Authorization": "Bearer catalog-test"},
+                ), timeout=5)
             except urllib.error.HTTPError as response:
                 assert response.code == expected_status
                 body = json.loads(response.read())
@@ -812,3 +815,95 @@ def test_a200_history_api_rejects_unregistered_symbols_and_bad_windows(tmp_path)
         server.shutdown()
         server.server_close()
         thread.join(timeout=5)
+
+
+def test_a200_history_api_requires_authentication_before_provider_access(tmp_path, monkeypatch):
+    import json
+    import threading
+    import urllib.error
+    import urllib.parse
+    import urllib.request
+
+    import icarus_engine.market_universe_adapter as adapter_module
+    from icarus_engine.runtime import Journal, Portfolio
+    from icarus_engine.server import serve
+
+    class MustNotFetch:
+        def __init__(self):
+            raise AssertionError("provider adapter constructed without authentication")
+
+    monkeypatch.setattr(adapter_module, "MarketUniverseAdapter", MustNotFetch)
+    portfolio = Portfolio(Journal(":memory:"), str(tmp_path), feeds={})
+    server = serve(portfolio, 0, token="catalog-test", start=False)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        row = snapshot()["instruments"][0]
+        start = int(datetime(2026, 10, 1, 13, 30, tzinfo=timezone.utc).timestamp())
+        query = urllib.parse.urlencode({"start_ts": start, "end_ts": start + 86400,
+                                        "interval_seconds": 86400})
+        url = f"http://127.0.0.1:{server.server_address[1]}/api/market-history/{row['instrument_id']}?{query}"
+        try:
+            urllib.request.urlopen(url, timeout=5)
+        except urllib.error.HTTPError as response:
+            assert response.code == 401
+            assert json.loads(response.read())["error"] == "authentication required"
+        else:
+            raise AssertionError("unauthenticated history request unexpectedly succeeded")
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
+def test_a200_history_api_sanitizes_provider_errors(tmp_path, monkeypatch):
+    import json
+    import threading
+    import urllib.error
+    import urllib.parse
+    import urllib.request
+
+    import icarus_engine.market_universe_adapter as adapter_module
+    from icarus_engine.runtime import Journal, Portfolio
+    from icarus_engine.server import serve
+
+    class LeakyAdapter:
+        def fetch_history(self, *_args, **_kwargs):
+            raise ValueError("https://provider.invalid/history?apikey=secret-value")
+
+    monkeypatch.setattr(adapter_module, "MarketUniverseAdapter", LeakyAdapter)
+    portfolio = Portfolio(Journal(":memory:"), str(tmp_path), feeds={})
+    server = serve(portfolio, 0, token="catalog-test", start=False)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        row = snapshot()["instruments"][0]
+        start = int(datetime(2026, 10, 1, 13, 30, tzinfo=timezone.utc).timestamp())
+        query = urllib.parse.urlencode({"start_ts": start, "end_ts": start + 86400,
+                                        "interval_seconds": 86400})
+        url = f"http://127.0.0.1:{server.server_address[1]}/api/market-history/{row['instrument_id']}?{query}"
+        request = urllib.request.Request(url, headers={"Authorization": "Bearer catalog-test"})
+        try:
+            urllib.request.urlopen(request, timeout=5)
+        except urllib.error.HTTPError as response:
+            body = json.loads(response.read())
+            assert response.code == 502
+            assert body["error"] == "catalog history source unavailable"
+            assert "secret-value" not in str(body)
+        else:
+            raise AssertionError("provider failure unexpectedly succeeded")
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
+def test_a200_calendar_schedule_can_stop_after_requested_page():
+    from icarus_engine.calendar import get_calendar
+
+    calendar = get_calendar("US_EQUITIES")
+    start = int(datetime(2026, 10, 1, 13, 30, tzinfo=timezone.utc).timestamp())
+    end = int(datetime(2028, 10, 1, 20, 0, tzinfo=timezone.utc).timestamp())
+    bounded = calendar.expected_bar_timestamps(start, end, 60, max_bars=1001)
+    assert len(bounded) == 1001
+    assert bounded == calendar.expected_bar_timestamps(start, bounded[-1] + 1, 60)

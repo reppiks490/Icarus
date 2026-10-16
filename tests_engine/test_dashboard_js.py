@@ -380,6 +380,8 @@ def test_dashboard_surfaces_authentic_market_data_console():
     assert "ts_event_ns" in ui
     assert "data-market-history" in ui
     assert "/api/market-history/" in ui
+    assert "localStorage.getItem('icarus-engine-token')" in ui
+    assert "'Authorization':'Bearer '+token" in ui
     assert "payload.qualification" in ui
     assert 'p.path.startswith("/api/market-history/")' in server
     assert '"receipt": receipt.to_dict()' in server
