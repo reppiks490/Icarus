@@ -22,6 +22,7 @@ from icarus_engine.strategy.inputs import Inputs, crypto_profile
 from icarus_engine.strategy.meta import inputs_from_tv_properties, load_meta, tv_value
 from icarus_engine.strategy.pulse import PulseStrategy
 from icarus_engine.strategy.security import TFChain
+from icarus_futures.contracts import parse_continuous
 
 
 def B(ts, o, h, l, c, v=100.0):
@@ -200,9 +201,11 @@ def test_assets_registry_and_spec_tokens():
     for dated in ("NQZ26", "CME_MINI:NQZ2026", "MNQH27", "ESZ26", "GCZ26", "SIZ26", "BTCZ26", "MBTZ26", "CLZ26", "ZNZ26"):
         with pytest.raises(ValueError, match="continuous-only"):
             resolve(dated)
-    for unsupported in ("CL1!", "NYMEX:CL1!", "CL=F", "ZN1!", "ZN=F"):
-        with pytest.raises(ValueError, match="unsupported continuous futures"):
-            resolve(unsupported)
+    for continuous in ("CL1!", "NYMEX:CL1!", "CL=F", "ZN1!", "ZN=F"):
+        root = "CL" if continuous.startswith(("CL", "NYMEX:CL")) else "ZN"
+        assert resolve(continuous).symbol == root
+        with pytest.raises(ValueError, match="not a continuous futures identity"):
+            parse_continuous(continuous)
     for unregistered in ("AAPL", "NVDA", "SHIB"):
         with pytest.raises(ValueError, match="unregistered asset"):
             resolve(unregistered)
