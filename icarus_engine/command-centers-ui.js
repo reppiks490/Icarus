@@ -196,8 +196,8 @@ async function paperFlatten(event) {
   paperPendingActions.add(id);
   document.querySelectorAll('[data-paper-pause],[data-paper-flatten]').forEach(el=>el.disabled=true);
   try {
-    const result=await admin(`/admin/command-centers/${encodeURIComponent(id)}/flatten`,{confirm:true});
-    if(result)await loadPaperWorkspaces();
+    await admin(`/admin/command-centers/${encodeURIComponent(id)}/flatten`,{confirm:true});
+    await loadPaperWorkspaces();
   } finally {paperPendingActions.delete(id);renderPaperLiveSections();}
 }
 async function paperApply(event) {
