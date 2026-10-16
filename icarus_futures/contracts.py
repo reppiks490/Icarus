@@ -42,6 +42,7 @@ STATIC_ROLL_LEAD_BDAYS = 2
 @dataclass(frozen=True)
 class ContractSpec:
     root: str
+    execution_root: str
     exchange: str
     tick_size: float
     tick_value: float
@@ -72,6 +73,7 @@ def _contract_spec(root: str) -> ContractSpec:
     cluster = "metals" if product.asset_class == "metal" else product.asset_class
     return ContractSpec(
         root=product.root,
+        execution_root=product.execution_root,
         exchange=product.exchange,
         tick_size=product.tick_size,
         tick_value=product.tick_value,
@@ -201,7 +203,7 @@ def _last_friday(y: int, m: int) -> date:
 
 
 def code(spec: ContractSpec, y: int, m: int) -> str:
-    return f"{spec.root}{MONTH_CODES[m - 1]}{y % 100:02d}"
+    return f"{spec.execution_root}{MONTH_CODES[m - 1]}{y % 100:02d}"
 
 
 def resolve(symbol: str, on: date) -> dict:
@@ -220,6 +222,7 @@ def resolve(symbol: str, on: date) -> dict:
     roll, y, m, last = chain[nth - 1]
     return dict(
         continuous=f"{spec.root}{nth}!",
+        execution_root=spec.execution_root,
         contract=code(spec, y, m),
         roll_date=roll.isoformat(),
         last_date=last.isoformat(),
