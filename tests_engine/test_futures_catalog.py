@@ -18,6 +18,11 @@ EXPECTED_ROOTS = {
     "ZN", "ZB", "BTCF", "MBT",
 }
 
+EXPECTED_RUNTIME_ROOTS = {
+    "NQ", "MNQ", "ES", "MES", "YM", "MYM", "RTY", "M2K",
+    "GC", "MGC", "SI", "SIL", "PL", "PA", "BTCF", "MBT",
+}
+
 MICRO_PAIRS = {
     "MNQ": ("NQ", 0.1),
     "MES": ("ES", 0.1),
@@ -89,6 +94,13 @@ def test_execution_qualification_is_explicit_not_inferred_from_registration():
             assert product.execution_blocker
 
 
+def test_runtime_admission_is_separate_from_dated_contract_execution_qualification():
+    admitted = {root for root, product in FUTURES_PRODUCTS.items() if product.runtime_qualified}
+    assert admitted == EXPECTED_RUNTIME_ROOTS
+    for product in FUTURES_PRODUCTS.values():
+        assert isinstance(product.runtime_qualified, bool)
+
+
 def test_runtime_registry_is_derived_from_the_same_32_root_authority():
     runtime_futures = {root for root, spec in REGISTRY.items() if spec.kind == "futures"}
     assert runtime_futures == EXPECTED_ROOTS
@@ -109,7 +121,7 @@ def test_runtime_registry_is_derived_from_the_same_32_root_authority():
 def test_catalogued_but_unqualified_futures_are_discoverable_and_runtime_fail_closed():
     for root, product in FUTURES_PRODUCTS.items():
         assert REGISTRY[root].symbol == root
-        if product.execution_qualified:
+        if product.runtime_qualified:
             assert resolve_asset(f"{root}1!").symbol == root
             assert resolve_asset(product.provider_symbol).symbol == root
         else:
@@ -117,7 +129,6 @@ def test_catalogued_but_unqualified_futures_are_discoverable_and_runtime_fail_cl
                 resolve_asset(f"{root}1!")
             with pytest.raises(ValueError, match="unsupported continuous futures"):
                 resolve_asset(product.provider_symbol)
-
     for dated in ("HGZ26", "MCLF27", "NGH27", "6EM26", "M6BZ27", "ZNH27", "ZBZ27"):
         with pytest.raises(ValueError, match="continuous-only"):
             resolve_asset(dated)

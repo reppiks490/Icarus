@@ -31,6 +31,7 @@ class FuturesProduct:
     session: str = "eth"
     calendar: str = "cme"
     group: str = "equity"
+    runtime_qualified: bool = False
     execution_qualified: bool = False
     execution_blocker: Optional[str] = None
 
@@ -60,6 +61,7 @@ def _p(
     session: str = "eth",
     calendar: str = "cme",
     group: str = "equity",
+    runtime_qualified: bool = False,
     qualified: bool = False,
     blocker: Optional[str] = None,
 ) -> FuturesProduct:
@@ -83,6 +85,7 @@ def _p(
         session=session,
         calendar=calendar,
         group=group,
+        runtime_qualified=runtime_qualified,
         execution_qualified=qualified,
         execution_blocker=blocker,
     )
@@ -93,36 +96,36 @@ def _p(
 FUTURES_PRODUCTS: Dict[str, FuturesProduct] = {
     # Equity indexes — existing resolver coverage is qualified.
     "NQ": _p("NQ", "Nasdaq 100 E-mini", "NQ=F", "CME_MINI:NQ1!", "CME", "equity_index", 0.25, 20.0,
-             cycle="HMUZ", roll_model="equity_third_friday", session="rth", qualified=True),
+             cycle="HMUZ", roll_model="equity_third_friday", session="rth", runtime_qualified=True, qualified=True),
     "MNQ": _p("MNQ", "Micro E-mini Nasdaq 100", "MNQ=F", "CME_MINI:MNQ1!", "CME", "equity_index", 0.25, 2.0,
-              full_root="NQ", ratio_to_full=0.1, cycle="HMUZ", roll_model="equity_third_friday", session="rth", qualified=True),
+              full_root="NQ", ratio_to_full=0.1, cycle="HMUZ", roll_model="equity_third_friday", session="rth", runtime_qualified=True, qualified=True),
     "ES": _p("ES", "S&P 500 E-mini", "ES=F", "CME_MINI:ES1!", "CME", "equity_index", 0.25, 50.0,
-             cycle="HMUZ", roll_model="equity_third_friday", session="rth", qualified=True),
+             cycle="HMUZ", roll_model="equity_third_friday", session="rth", runtime_qualified=True, qualified=True),
     "MES": _p("MES", "Micro E-mini S&P 500", "MES=F", "CME_MINI:MES1!", "CME", "equity_index", 0.25, 5.0,
-              full_root="ES", ratio_to_full=0.1, cycle="HMUZ", roll_model="equity_third_friday", session="rth", qualified=True),
+              full_root="ES", ratio_to_full=0.1, cycle="HMUZ", roll_model="equity_third_friday", session="rth", runtime_qualified=True, qualified=True),
     "YM": _p("YM", "Dow E-mini", "YM=F", "CBOT_MINI:YM1!", "CBOT", "equity_index", 1.0, 5.0,
-             cycle="HMUZ", roll_model="equity_third_friday", session="rth", qualified=True),
+             cycle="HMUZ", roll_model="equity_third_friday", session="rth", runtime_qualified=True, qualified=True),
     "MYM": _p("MYM", "Micro E-mini Dow", "MYM=F", "CBOT_MINI:MYM1!", "CBOT", "equity_index", 1.0, 0.5,
-              full_root="YM", ratio_to_full=0.1, cycle="HMUZ", roll_model="equity_third_friday", session="rth", qualified=True),
+              full_root="YM", ratio_to_full=0.1, cycle="HMUZ", roll_model="equity_third_friday", session="rth", runtime_qualified=True, qualified=True),
     "RTY": _p("RTY", "E-mini Russell 2000", "RTY=F", "CME_MINI:RTY1!", "CME", "equity_index", 0.10, 50.0,
-              cycle="HMUZ", roll_model="equity_third_friday", session="rth", qualified=True),
+              cycle="HMUZ", roll_model="equity_third_friday", session="rth", runtime_qualified=True, qualified=True),
     "M2K": _p("M2K", "Micro E-mini Russell 2000", "M2K=F", "CME_MINI:M2K1!", "CME", "equity_index", 0.10, 5.0,
-              full_root="RTY", ratio_to_full=0.1, cycle="HMUZ", roll_model="equity_third_friday", session="rth", qualified=True),
+              full_root="RTY", ratio_to_full=0.1, cycle="HMUZ", roll_model="equity_third_friday", session="rth", runtime_qualified=True, qualified=True),
 
     # Precious/base metals. Existing GC/MGC/SI/SIL notice-aware resolver is qualified.
     "GC": _p("GC", "Gold", "GC=F", "COMEX:GC1!", "COMEX", "metal", 0.10, 100.0,
-             cycle="GJMQVZ", roll_model="metals_first_notice", group="metals", session="rth", qualified=True),
+             cycle="GJMQVZ", roll_model="metals_first_notice", group="metals", session="rth", runtime_qualified=True, qualified=True),
     "MGC": _p("MGC", "Micro Gold", "MGC=F", "COMEX_MINI:MGC1!", "COMEX", "metal", 0.10, 10.0,
-              full_root="GC", ratio_to_full=0.1, cycle="GJMQVZ", roll_model="metals_first_notice", group="metals", session="rth", qualified=True),
+              full_root="GC", ratio_to_full=0.1, cycle="GJMQVZ", roll_model="metals_first_notice", group="metals", session="rth", runtime_qualified=True, qualified=True),
     "SI": _p("SI", "Silver", "SI=F", "COMEX:SI1!", "COMEX", "metal", 0.005, 5000.0,
-             cycle="HKNUZ", roll_model="metals_first_notice", group="metals", session="rth", qualified=True),
+             cycle="HKNUZ", roll_model="metals_first_notice", group="metals", session="rth", runtime_qualified=True, qualified=True),
     "SIL": _p("SIL", "Micro Silver", "SIL=F", "COMEX_MINI:SIL1!", "COMEX", "metal", 0.005, 1000.0,
-              full_root="SI", ratio_to_full=0.2, cycle="HKNUZ", roll_model="metals_first_notice", group="metals", session="rth", qualified=True),
+              full_root="SI", ratio_to_full=0.2, cycle="HKNUZ", roll_model="metals_first_notice", group="metals", session="rth", runtime_qualified=True, qualified=True),
     "PL": _p("PL", "Platinum", "PL=F", "NYMEX:PL1!", "NYMEX", "metal", 0.10, 50.0,
-             cycle="FJNV", roll_model="third_last_business_day", group="metals",
+             cycle="FJNV", roll_model="third_last_business_day", group="metals", runtime_qualified=True,
              blocker="PL dated-contract roll policy awaits broker/readback qualification"),
     "PA": _p("PA", "Palladium", "PA=F", "NYMEX:PA1!", "NYMEX", "metal", 0.50, 100.0,
-             cycle="HMUZ", roll_model="third_last_business_day", group="metals",
+             cycle="HMUZ", roll_model="third_last_business_day", group="metals", runtime_qualified=True,
              blocker="PA dated-contract roll policy awaits broker/readback qualification"),
     "HG": _p("HG", "Copper", "HG=F", "COMEX:HG1!", "COMEX", "metal", 0.0005, 25000.0,
              cycle="FGHJKMNQUVXZ", roll_model="third_last_business_day", group="metals",
@@ -167,9 +170,9 @@ FUTURES_PRODUCTS: Dict[str, FuturesProduct] = {
 
     # CME crypto futures.
     "BTCF": _p("BTCF", "Bitcoin futures (CME)", "BTC=F", "CME:BTC1!", "CME", "crypto_futures", 5.0, 5.0,
-               cycle="FGHJKMNQUVXZ", roll_model="crypto_last_friday", calendar="cme_crypto", group="crypto", blocker="BTC dated-contract resolver not yet qualified"),
+               cycle="FGHJKMNQUVXZ", roll_model="crypto_last_friday", calendar="cme_crypto", group="crypto", runtime_qualified=True, blocker="BTC dated-contract resolver not yet qualified"),
     "MBT": _p("MBT", "Micro Bitcoin futures (CME)", "MBT=F", "CME:MBT1!", "CME", "crypto_futures", 5.0, 0.1,
-              full_root="BTCF", ratio_to_full=0.02, cycle="FGHJKMNQUVXZ", roll_model="crypto_last_friday", calendar="cme_crypto", group="crypto", blocker="MBT dated-contract resolver not yet qualified"),
+              full_root="BTCF", ratio_to_full=0.02, cycle="FGHJKMNQUVXZ", roll_model="crypto_last_friday", calendar="cme_crypto", group="crypto", runtime_qualified=True, blocker="MBT dated-contract resolver not yet qualified"),
 }
 
 

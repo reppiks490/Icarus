@@ -200,15 +200,9 @@ def test_assets_registry_and_spec_tokens():
     for dated in ("NQZ26", "CME_MINI:NQZ2026", "MNQH27", "ESZ26", "GCZ26", "SIZ26", "BTCZ26", "MBTZ26", "CLZ26", "ZNZ26"):
         with pytest.raises(ValueError, match="continuous-only"):
             resolve(dated)
-    for supported, root, ticker in (
-        ("CL1!", "CL", "CL=F"),
-        ("NYMEX:CL1!", "CL", "CL=F"),
-        ("CL=F", "CL", "CL=F"),
-        ("ZN1!", "ZN", "ZN=F"),
-        ("ZN=F", "ZN", "ZN=F"),
-    ):
-        spec = resolve(supported)
-        assert spec.symbol == root and spec.ticker == ticker
+    for unsupported in ("CL1!", "NYMEX:CL1!", "CL=F", "ZN1!", "ZN=F"):
+        with pytest.raises(ValueError, match="unsupported continuous futures"):
+            resolve(unsupported)
     for unregistered in ("AAPL", "NVDA", "SHIB"):
         with pytest.raises(ValueError, match="unregistered asset"):
             resolve(unregistered)

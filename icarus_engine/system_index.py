@@ -163,6 +163,7 @@ def build_system_index(
                 "calendar": runtime.calendar,
                 "session": runtime.session,
                 "continuous_research_identity": True,
+                "runtime_admitted": product.runtime_qualified,
             },
             "economics": {
                 "tick_size": product.tick_size,
@@ -208,6 +209,7 @@ def build_system_index(
         "assets": assets,
         "counts": {
             "futures_roots": len(assets),
+            "runtime_admitted": sum(1 for product in FUTURES_PRODUCTS.values() if product.runtime_qualified),
             "structural_execution_qualified": sum(
                 1 for record in assets.values() if record["execution"]["structural_qualified"]
             ),

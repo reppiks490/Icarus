@@ -284,10 +284,10 @@ def resolve(symbol: str) -> AssetSpec:
         spec = REGISTRY[s]
         if spec.kind == "futures":
             product = FUTURES_PRODUCTS.get(s)
-            if product is not None and not product.execution_qualified:
+            if product is not None and not product.runtime_qualified:
                 raise ValueError(
                     f"unsupported continuous futures symbol {symbol!r}; {s} is registered for discovery "
-                    "but its dated-contract resolver/runtime admission is not yet qualified"
+                    "but its runtime admission is not yet qualified"
                 )
         return replace(spec)
     if _CONTINUOUS_FUTURE_STYLE_RE.fullmatch(raw):
