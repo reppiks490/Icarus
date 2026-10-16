@@ -164,8 +164,8 @@ const end = source.indexOf(';', start) + 1;
 if (start < 0 || helperStart < 0 || end < 1) throw new Error('excursion rendering helper not found');
 const helper = source.slice(helperStart, end);
 const context = {
-  number: value => Number(value).toLocaleString(undefined, {maximumFractionDigits: 4}),
-  money: value => `${Number(value) < 0 ? '−' : ''}$${Math.abs(Number(value)).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`,
+  number: value => Number(value).toLocaleString('en-US', {maximumFractionDigits: 4}),
+  money: value => `${Number(value) < 0 ? '−' : ''}$${Math.abs(Number(value)).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`,
 };
 vm.runInNewContext(helper + String.fromCharCode(10) + 'this.render = moneyWithDenominator;', context);
 process.stdout.write(JSON.stringify([
@@ -178,7 +178,9 @@ process.stdout.write(JSON.stringify([
 """,
         encoding="utf-8",
     )
-    result = subprocess.run([NODE, str(runner), str(ui)], text=True, capture_output=True)
+    result = subprocess.run(
+        [NODE, str(runner), str(ui)], text=True, encoding="utf-8", capture_output=True
+    )
     assert result.returncode == 0, result.stderr
     assert json.loads(result.stdout) == ["$38.00 (n=2)", "$0.00 (n=1)", "—", "—", "—"]
 
