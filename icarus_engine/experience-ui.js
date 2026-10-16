@@ -198,13 +198,21 @@
         settingsPanel.style.removeProperty('left');
         settingsPanel.style.removeProperty('right');
         settingsPanel.style.removeProperty('top');
+        settingsPanel.style.removeProperty('max-height');
         return;
       }
       const anchor = settingsSummary.getBoundingClientRect();
       const width = settingsPanel.offsetWidth;
+      const below = window.innerHeight - anchor.bottom - 20;
+      const above = anchor.top - 20;
+      const placeAbove = below < 180 && above > below;
+      const available = Math.max(0, Math.min(window.innerHeight - 24, placeAbove ? above : below));
+      settingsPanel.style.maxHeight = `${available}px`;
       const height = settingsPanel.offsetHeight;
       const left = Math.max(12, Math.min(anchor.right - width, window.innerWidth - width - 12));
-      const top = Math.max(12, Math.min(anchor.bottom + 8, window.innerHeight - height - 12));
+      const top = placeAbove
+        ? Math.max(12, anchor.top - height - 8)
+        : Math.max(12, Math.min(anchor.bottom + 8, window.innerHeight - height - 12));
       settingsPanel.style.left = `${left}px`;
       settingsPanel.style.right = 'auto';
       settingsPanel.style.top = `${top}px`;
