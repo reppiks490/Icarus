@@ -552,6 +552,30 @@ def test_flatten_reports_shadow_censor_separately_from_primary_closures(tmp_path
         manager.stop()
 
 
+def test_flatten_separates_primary_close_and_shadow_censor_counts(tmp_path, monkeypatch):
+    manager = _manager(tmp_path, monkeypatch)
+    manager.start()
+    try:
+        runner = manager.portfolios["cc1"].runners[0]
+        runner.em = SimpleNamespace(
+            open=[SimpleNamespace(entry_id="primary")],
+            shadow=SimpleNamespace(open=[SimpleNamespace(entry_id="shadow")]),
+        )
+        runner.last_price = 100.0
+
+        def flatten(_reason):
+            runner.em.open.clear()
+            runner.em.shadow.open.clear()
+            return 2
+
+        runner.flatten = flatten
+        result = manager.flatten("cc1")
+        assert result["flattened_positions"] == 1
+        assert result["shadow_censored_positions"] == 1
+    finally:
+        manager.stop()
+
+
 def test_flatten_requires_mark_for_primary_or_shadow_open_positions(tmp_path, monkeypatch):
     manager = _manager(tmp_path, monkeypatch)
     manager.start()
