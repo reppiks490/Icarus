@@ -17,7 +17,7 @@
   },
   "parser_revision": "catalog-registry-v3",
   "production_decision_authorized": false,
-  "retrieved_at": "2026-10-15T09:22:37.399154Z",
+  "retrieved_at": "2026-10-16T09:15:08.897942Z",
   "snapshot_id": "be252a9d67d0517bf103c44b5b129485550849c2cd8e907773b164e46f732219",
   "status": "SUCCESS",
   "upstream_commit": "712371f83a7a5dbe1affde24a5327c63d05eb362",
