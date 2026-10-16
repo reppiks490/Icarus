@@ -13,6 +13,7 @@ from tools.build_equity_catalog import _instrument_class
 from icarus_engine.market_universe_adapter import MarketUniverseAdapter
 import icarus_engine.market_universe_adapter as market_universe_adapter
 import tools.probe_a200_yahoo as yahoo_probe
+import tools.probe_a200_hybrid as hybrid_probe
 from icarus_engine.calendar import get_calendar
 from icarus_engine.assets import parse_spec
 from icarus_engine.feeds.databento import Databento
@@ -279,6 +280,84 @@ def test_a200_hybrid_provider_probe_keeps_each_source_receipt_separate():
     assert all(result.receipt.provider_mapping_status == "UNVERIFIED" for result in results)
     assert all(result.receipt.historical_bars_qualified is False for result in results)
     assert results[0].receipt.checksum_sha256 == results[1].receipt.checksum_sha256
+
+
+def test_a200_hybrid_report_records_missing_provider_without_raw_bars(monkeypatch, tmp_path):
+    monkeypatch.delenv("FMP_API_KEY", raising=False)
+    row = snapshot()["instruments"][0]
+    yahoo_symbol = next(m["symbol"] for m in row["provider_symbol_candidates"] if m["provider"] == "yahoo")
+    adapter = MarketUniverseAdapter(_FakeYahooHistory(yahoo_symbol))
+    out = tmp_path / "hybrid.json"
+    report = hybrid_probe.run(limit=1, start_ts=60, end_ts=86460, out=out,
+                              pause_seconds=0, adapter=adapter)
+    saved = json.loads(out.read_text())
+    by_provider = {item["provider"]: item for item in saved["results"]}
+    assert report["completed_result_count"] == 2
+    assert by_provider["yahoo"]["probe_status"] == "RESPONSE_RECEIVED"
+    assert by_provider["fmp"]["probe_status"] == "NOT_CONFIGURED"
+    assert by_provider["fmp"]["error_code"] == "source_not_configured"
+    assert saved["raw_ohlcv_persisted"] is False
+    assert all("close" not in item for item in saved["results"])
+
+
+def test_hybrid_probe_ledger_validates_mappings_and_reports_provider_states(monkeypatch, tmp_path):
+    catalog = snapshot()
+    row = catalog["instruments"][0]
+    now_dt = datetime.now(timezone.utc)
+    now = now_dt.isoformat().replace("+00:00", "Z")
+    results = [
+        {"instrument_id": row["instrument_id"], "provider": mapping["provider"],
+         "provider_symbol_candidate": mapping["symbol"],
+         "provider_mapping_status": mapping["mapping_status"],
+         "probe_started_at": now,
+         "probe_status": "NOT_CONFIGURED" if mapping["provider"] == "fmp" else "NO_BARS"}
+        for mapping in row["provider_symbol_candidates"]
+    ]
+    counts = {}
+    for result in results:
+        key = f"{result['provider']}_{result['probe_status'].lower()}_count"
+        counts[key] = counts.get(key, 0) + 1
+    path = tmp_path / "hybrid.json"
+    path.write_text(json.dumps({
+        "schema_version": "icarus.market-universe.hybrid-probe.v1",
+        "probe_implementation": "tools.probe_a200_hybrid.v1",
+        "catalog_id": catalog["catalog_id"],
+        "catalog_snapshot_sha256": market_universe.catalog_evidence_digest(catalog),
+        "probe_updated_at": now, "requested_instrument_count": 1,
+        "completed_result_count": len(results), "counts": counts,
+        "results_sha256": market_universe.source_probe_results_digest(results),
+        "raw_ohlcv_persisted": False, "results": results,
+    }))
+    monkeypatch.setattr(market_universe, "HYBRID_PROBE_PATH", path)
+    report = market_universe.load_hybrid_probe_report()
+    assert report["status"] == "PARTIAL"
+    assert {result["provider"] for result in report["results"]} == {"yahoo", "fmp"}
+    assert report["authority"]["pulse_enabled"] is False
+
+    tampered = json.loads(path.read_text())
+    old = now_dt.replace(year=now_dt.year - 1).isoformat().replace("+00:00", "Z")
+    tampered["results"][0]["probe_status"] = "ERROR"
+    tampered["results"][0]["probe_started_at"] = old
+    tampered["counts"] = {}
+    for result in tampered["results"]:
+        key = f"{result['provider']}_{result['probe_status'].lower()}_count"
+        tampered["counts"][key] = tampered["counts"].get(key, 0) + 1
+    tampered["results_sha256"] = market_universe.source_probe_results_digest(tampered["results"])
+    path.write_text(json.dumps(tampered))
+    assert market_universe.load_hybrid_probe_report()["status"] == "STALE"
+
+
+def test_hybrid_adapter_sanitizes_provider_exception_text():
+    class LeakyFailure(_FakeYahooHistory):
+        def candles(self, symbol, interval, start, end):
+            raise RuntimeError("https://provider.invalid/?apikey=secret-value")
+
+    row = snapshot()["instruments"][0]
+    result = MarketUniverseAdapter(LeakyFailure("unused")).fetch_hybrid_history(
+        row["instrument_id"], 60, 60, 120,
+    )[0]
+    assert result.error == "provider_error:RuntimeError"
+    assert "secret-value" not in result.error
 
 
 def test_fmp_history_connector_uses_external_key_and_parses_exchange_timestamps(monkeypatch):

@@ -57,7 +57,7 @@ def _record(row: dict, adapter: MarketUniverseAdapter, start_ts: int, end_ts: in
         record.update({
             "probe_status": "ERROR",
             "error_type": type(exc).__name__,
-            "error": str(exc)[:240],
+            "error": f"provider_error:{type(exc).__name__}",
         })
     return record
 
