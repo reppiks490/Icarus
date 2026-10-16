@@ -103,13 +103,27 @@ def test_representative_families_resolve_deterministically_mid_cycle():
     expected = {
         "NQ1!": "NQZ26",
         "GC1!": "GCZ26",
-        "CL1!": "CLX26",
+        "CL1!": "CLZ26",
         "6E1!": "6EZ26",
         "ZN1!": "ZNZ26",
         "BTCF1!": "BTCV26",
     }
     for continuous, dated in expected.items():
         assert resolve_contract(continuous, session_date)["contract"] == dated
+
+
+def test_wti_roll_boundary_switches_as_of_conservative_roll_date():
+    assert resolve_contract("CL1!", date(2026, 10, 15))["contract"] == "CLX26"
+    switched = resolve_contract("CL1!", date(2026, 10, 16))
+    assert switched["contract"] == "CLZ26"
+    assert switched["roll_date"] > "2026-10-16"
+
+
+def test_bitcoin_canonical_root_maps_to_real_exchange_execution_root():
+    assert PRODUCTS["BTCF"].execution_root == "BTC"
+    resolved = resolve_contract("BTCF1!", date(2026, 10, 16))
+    assert resolved["execution_root"] == "BTC"
+    assert resolved["contract"] == "BTCV26"
 
 
 def test_runtime_still_fails_closed_for_dated_and_unknown_futures_styles():
