@@ -8,6 +8,8 @@ Historical:
   - ohlcv-1s / ohlcv-1m / ohlcv-1h / ohlcv-1d
   - arbitrary integer-second OHLCV is losslessly aggregated from the nearest native
     Databento OHLCV schema without inventing trades.
+  - Yahoo/Databento warmup can stitch older Databento 1-minute bars to Yahoo's
+    recent 1-minute tail, with a timestamp-exclusive source boundary.
 
 Live:
   - ohlcv-1s

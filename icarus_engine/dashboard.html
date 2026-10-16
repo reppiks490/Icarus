@@ -29,7 +29,7 @@ input[type=number] { width:120px } input[type=text] { width:150px } select { max
 .tnum { font-variant-numeric:tabular-nums } .muted { color:var(--muted) } .small { font-size:12px } .pos { color:var(--good-text) } .neg { color:var(--crit) }
 a { color:var(--s1) }
 
-.top { position:sticky; top:0; z-index:60; background:var(--surface); border-bottom:1px solid var(--ring); transform:translateZ(0); isolation:isolate }
+.top { position:sticky; top:0; z-index:60; background:var(--surface); border-bottom:1px solid var(--ring); isolation:isolate }
 .top-in { display:flex; align-items:center; gap:14px; padding:10px 22px; flex-wrap:wrap }
 .brand { display:flex; align-items:center; gap:10px; font-weight:600; letter-spacing:.14em; font-size:13px }
 .brand .dot { width:10px; height:10px; border-radius:50%; background:var(--good) } .brand .dot.live { animation:pulse 1.6s infinite } .brand .dot.stale { background:var(--warn) } .brand .dot.dead { background:var(--crit) }
@@ -205,7 +205,7 @@ const TZ = (() => { try { return new Intl.DateTimeFormat([], {timeZoneName:'shor
 const dtz = t => t ? dtm(t) + ' ' + TZ : '—';
 const age = s => s==null ? 'never' : s<60 ? `${Math.round(s)}s` : s<3600 ? `${Math.round(s/60)}m` : `${(s/3600).toFixed(1)}h`;
 const tip = $('#tip'); const showTip = (h,x,y) => { tip.innerHTML=h; tip.style.display='block'; tip.style.left=(x+14)+'px'; tip.style.top=(y+14)+'px'; }; const hideTip = () => tip.style.display='none';
-let last = null, charts = {}, seenFills = new Set(), first = true, tradesCache = {}, tradeErrors = {}, META = null, PRESETS = [], COMMANDS = [], REGISTRY = [], catalogRefreshBusy = false;
+let last = null, charts = {}, chartOffsets = {}, seenFills = new Set(), first = true, tradesCache = {}, tradeErrors = {}, META = null, PRESETS = [], COMMANDS = [], REGISTRY = [], catalogRefreshBusy = false, lastWideChartRefresh = 0;
 let accessTokenOnce = null;
 const CATALOG_READY = {presets:false, commands:false, registry:false};
 const params = new URLSearchParams(location.search);
@@ -306,8 +306,9 @@ function lineChart(el, series, {baseline=null, height=180}={}) {
 function candles(el, data, {height=170, compact=true}={}) {
   if (!el) return;
   if (!data || !data.bars || !data.bars.length) { el.innerHTML = '<div class="empty">no bars yet</div>'; return; }
+  const previousScrollLeft = el.querySelector('.chart-scroll')?.scrollLeft;
   const bars = data.bars.slice(), ov = data.overlays.slice(-bars.length); if (data.forming) bars.push(data.forming);
-  const W = el.clientWidth || 360, H = height, pl = 6, pr = compact ? 58 : 74, pt = 8, pb = compact ? 16 : 20;
+  const viewportW = el.clientWidth || 360, W = Math.max(viewportW, Math.min(12000, bars.length * 3)), H = height, pl = 6, pr = compact ? 58 : 74, pt = 8, pb = compact ? 16 : 20;
   const lows = bars.map(b=>b[3]), highs = bars.map(b=>b[2]);
   const ovVals = []; ov.forEach(o => { ['st','tp1','tp2','sl'].forEach(k => { if (o[k]!=null) ovVals.push(o[k]); }); });
   let lo = Math.min(...lows, ...ovVals), hi = Math.max(...highs, ...ovVals); const pad=(hi-lo)*.08||1; lo-=pad; hi+=pad;
@@ -329,7 +330,9 @@ function candles(el, data, {height=170, compact=true}={}) {
   const lp = bars[n-1][4]; s += `<line x1="${pl}" x2="${W-pr}" y1="${y(lp)}" y2="${y(lp)}" stroke="var(--s1)" stroke-width="1" stroke-dasharray="1 3"/><rect x="${W-pr+2}" y="${y(lp)-8}" width="${pr-4}" height="16" rx="4" fill="var(--s1)"/><text x="${W-pr+(pr-4)/2+2}" y="${y(lp)+4}" text-anchor="middle" font-size="10.5" fill="#fff" font-weight="600">${px(lp)}</text>`;
   const calcLabel = `${data.tf}m · ${data.chart_type==='heikin_ashi'?'HA':'OHLC'} · fills ${data.fill_on==='chart'?'chart':'real'} · MTF ${data.security_source==='standard'?'standard':'chart'}`;
   s += `<text x="${pl}" y="${H-4}" font-size="10.5" fill="var(--muted)">${dtz(bars[0][0])}</text><text x="${W-pr}" y="${H-4}" font-size="10.5" fill="var(--muted)" text-anchor="end">${dtz(bars[n-1][0])} · ${calcLabel}</text>`;
-  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" height="${H}">${s}</svg>`;
+  el.innerHTML = `<div class="chart-scroll" style="overflow-x:auto"><svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">${s}</svg></div>`;
+  const chartScroll = el.querySelector('.chart-scroll');
+  chartScroll.scrollLeft = previousScrollLeft == null ? chartScroll.scrollWidth : Math.min(previousScrollLeft, chartScroll.scrollWidth);
   el.querySelectorAll('rect[data-i]').forEach(r => { r.addEventListener('mousemove', ev => { const b = bars[+r.dataset.i]; const o = ov[+r.dataset.i]||{}; showTip(`<b>${dtz(b[0])}</b><br>O ${px(b[1])} H ${px(b[2])} L ${px(b[3])} C ${px(b[4])}${o.real_c!=null&&data.chart_type==='heikin_ashi'?`<br>real close ${px(o.real_c)}`:''}<br><span class="muted">RATE ${o.st!=null?px(o.st):'—'} ${o.up?'▲':'▼'} · pulse ${o.pulse!=null?(o.pulse*100).toFixed(0)+'%':'—'}</span>`, ev.clientX, ev.clientY); }); r.addEventListener('mouseleave', hideTip); });
 }
 
@@ -356,17 +359,25 @@ function assetCard(a) {
     <div class="votes">${votes}</div>
     <div class="score"><span>LONG</span><div class="bar l"><b style="width:${bl*100}%"></b></div><span class="tnum">${(st.final_l||0).toFixed(2)} / ${thr.toFixed(2)}</span></div>
     <div class="score"><span>SHORT</span><div class="bar s"><b style="width:${bs*100}%"></b></div><span class="tnum">${(st.final_s||0).toFixed(2)} / ${thr.toFixed(2)}</span></div>
-    <div class="posline">${posHtml}<span style="margin-left:auto" class="small"><span class="muted">net</span> <b class="${(a.netprofit||0)>=0?'pos':'neg'} tnum">${sgn$(a.netprofit)}</b> <span class="muted">· ${a.trades_total} pieces · ${a.trades_total?Math.round(a.wins_total/a.trades_total*100):0}% win</span></span></div>
+    <div class="posline">${posHtml}<span style="margin-left:auto" class="small"><span class="muted">net</span> <b class="${(a.netprofit||0)>=0?'pos':'neg'} tnum">${sgn$(a.netprofit)}</b> <span class="muted">· ${a.trades_total} closed pieces · ${a.trades_total?Math.round(a.wins_total/a.trades_total*100):0}% pieces won</span></span></div>
     <div class="exec" title="${esc(st.exec)}">${esc(st.exec||'')}</div>
   </div>`;
 }
-async function loadChart(sym, n, el, opts) {
+async function loadChart(sym, n, el, opts, offset=0) {
   try {
-    const r = await fetch(`/api/chart/${sym}?n=${n}`, {cache:'no-store'});
+    if (n >= 4000) lastWideChartRefresh = Date.now();
+    const r = await fetch(`/api/chart/${sym}?n=${n}&offset=${offset}`, {cache:'no-store'});
     const d = await r.json().catch(()=>({}));
     if (!r.ok) throw new Error(d.detail||d.error||('HTTP '+r.status));
-    charts[sym+n] = d;
+    charts[sym+n+':'+offset] = d;
+    if (offset === 0) charts[sym+n] = d;
     if (el && el.isConnected) candles(el, d, opts);
+    if (el && el.id === 'dChart') {
+      const hist=d.history||{}, pageStart=Math.max(0,(hist.available||0)-(hist.offset||0)-(hist.page_size||n)+1), pageEnd=(hist.available||0)-(hist.offset||0);
+      const label=$('#chartPageLabel'); if(label) label.textContent=`Bars ${hist.available?`${pageStart.toLocaleString()}–${pageEnd.toLocaleString()} of ${hist.available.toLocaleString()}`:'—'}`;
+      const older=$('[data-chart-page="older"]'), newer=$('[data-chart-page="newer"]');
+      if(older) older.disabled=!hist.has_older; if(newer) newer.disabled=!hist.has_newer;
+    }
     window.IcarusExperience?.chart(d, n, el);
   } catch(e) {
     if (el && el.isConnected) el.innerHTML = '<div class="empty">chart unavailable: '+esc(e?.message||String(e))+'</div>';
@@ -375,7 +386,7 @@ async function loadChart(sym, n, el, opts) {
 
 /* ── views ── */
 function setView(v) {
-  const apply = () => { view = v; window.IcarusWorldImmersion?.view(v); if (!solo) location.hash = v; lastView = null; if (last) render(last); if (v.startsWith('asset:')) { const s = v.slice(6); loadChart(s, 300, $('#dChart'), {height:360, compact:false}); refreshTrades(s).then(()=>{ if (last) render(last); }); } };
+  const apply = () => { view = v; window.IcarusWorldImmersion?.view(v); if (!solo) location.hash = v; lastView = null; if (last) render(last); if (v.startsWith('asset:')) { const s = v.slice(6), off=chartOffsets[s]||0; loadChart(s, 4000, $('#dChart'), {height:360, compact:false}, off); refreshTrades(s).then(()=>{ if (last) render(last); }); } };
   const root = document.documentElement;
   const cinematic = v !== view && typeof document.startViewTransition === 'function' && root.dataset.motion === 'live' && root.dataset.experience === 'cinematic' && !!root.dataset.world && root.dataset.introActive !== 'true';
   if (cinematic) {
@@ -587,18 +598,23 @@ function assetHead(a) {
     ${marketChip(a)}<span class="chip ${regClass(st.rate_regime_str)}">${esc(st.rate_regime_str||'')}</span><span class="chip">${a.chart_type==='heikin_ashi'?'Heikin Ashi chart':'real bars'} · fills on ${a.fill_on==='chart'?'HA/chart bars':'real prices'} · HTF/LTF ${a.security_source==='standard'?'standard OHLC':'selected chart source'} · slip ${a.slippage_ticks}t</span><span class="chip">preset ${esc(a.preset||'none')}</span>${a.paused?'<span class="chip r">paused</span>':''}${a.rewarming?'<span class="chip w">re-warming</span>':''}${a.view_stale?'<span class="chip w">snapshot · engine busy</span>':''}
     <span style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap"><button class="sm" data-cmd="pause" data-a="${a.symbol}">Pause</button><button class="sm" data-cmd="resume" data-a="${a.symbol}">Resume</button><button class="sm danger" data-cmd="flatten" data-a="${a.symbol}">Flatten</button><button class="sm" data-cmd="inputs" data-a="${a.symbol}">Inputs</button><button class="sm" data-cmd="rewarm" data-a="${a.symbol}">Re-warm</button><button class="sm" data-cmd="export" data-a="${a.symbol}">Export CSV</button>${solo?'':`<button class="sm" data-cmd="open-tab" data-a="${a.symbol}">Open in tab ↗</button>`}</span></div>
     <div class="exec" style="margin-top:8px">${esc(st.exec||'')}${pending?` · pending: ${esc(pending)}`:''}${exits?` · resting: ${esc(exits)}`:''}</div>
-    <div id="dChart" style="margin-top:10px"></div>
+    <div class="small muted" style="margin-top:10px">Browse the retained candle history in pages of up to 4,000 bars. Scroll horizontally for detail; each page shows its date range.</div><div id="chartPages" style="display:flex;gap:8px;align-items:center;margin:6px 0"><button class="sm" data-chart-page="older">← Older candles</button><span class="small muted" id="chartPageLabel"></span><button class="sm" data-chart-page="newer">Newer candles →</button></div><div id="dChart" style="margin-top:4px"></div>
     <div class="ladder"><span class="muted small">HTF</span>${tfs.map((t,i)=>`<span class="chip ${dirs[i]===-1?'b':dirs[i]===1?'r':''}">${t} ${dirs[i]===-1?'▲':dirs[i]===1?'▼':'·'}</span>`).join('')}<span class="muted small" style="margin-left:8px">LTF</span>${(st.ltf||[]).map((l,i)=>`<span class="chip ${l[0]===-1?'b':l[0]===1?'r':''}">${i?'5m':'2m'} ${l[0]===-1?'▲':l[0]===1?'▼':'·'} ${l[1]!=null?l[1]+'b':''} r${l[2]!=null?(l[2]*100).toFixed(0):'—'}</span>`).join('')} <span class="chip">MTF ${st.htf_bull}▲ ${st.htf_bear}▼</span>
-      <span style="margin-left:auto" class="small"><span class="muted">net</span> <b class="${(a.netprofit||0)>=0?'pos':'neg'} tnum">${sgn$(a.netprofit)}</b> <span class="muted">· ${a.trades_total} pieces · ${a.trades_total?Math.round(a.wins_total/a.trades_total*100):0}% win · live ${sgn$(a.live_profit)} · open ${sgn$(a.open_profit)}</span></span></div>
+      <span style="margin-left:auto" class="small"><span class="muted">net</span> <b class="${(a.netprofit||0)>=0?'pos':'neg'} tnum">${sgn$(a.netprofit)}</b> <span class="muted">· ${a.trades_total} closed pieces · ${a.trades_total?Math.round(a.wins_total/a.trades_total*100):0}% pieces won · live ${sgn$(a.live_profit)} · open ${sgn$(a.open_profit)}</span></span></div>
     <div class="votes" style="margin-top:10px">${(st.votes||[]).map(v => `<div class="vote ${v.l&&v.s?'ls':v.l?'l':v.s?'s':''}">${v.name}<br><span class="muted">${v.w}</span></div>`).join('')}</div>
     <div class="hud">${tiles.map(([k,v])=>`<div class="tile"><div class="k">${k}</div><div class="v tnum">${esc(v??'—')}</div></div>`).join('')}</div>
     <div class="hud" style="margin-top:8px"><div class="tile"><div class="k">Rolling performance guard</div><div class="v">${esc(guard.status||'INSUFFICIENT_SAMPLE')} · last ${guard.window_lots||30} settled paper lots · watch &lt;85% · pause &lt;75%</div></div>${guardRows||'<div class="tile"><div class="k">Regime scorecards</div><div class="v">Collecting settled live paper lots; minimum 12 per regime.</div></div>'}</div>
     <div class="small muted">Success = net positive after modeled costs. Scale-outs count once. Regime currently uses the regime at closure; qualification and activation still require the separate research gates.</div>`;
 }
 function assetHtml(a) {
+  const totalPieces = Number(a.trades_total) || 0;
+  const visiblePieces = Math.min(totalPieces, 2000);
+  const tradeHistoryNote = totalPieces > 2000
+    ? `latest ${visiblePieces.toLocaleString()} of ${totalPieces.toLocaleString()} pieces · Export CSV downloads all loaded pieces`
+    : `${visiblePieces.toLocaleString()} pieces loaded · scale-out exits can create multiple pieces per entry`;
   return `<section class="card c12" id="assetHead">${assetHead(a)}</section>
   ${typeof possibilityQuickAssetHtml==='function'?possibilityQuickAssetHtml(a):''}
-  <section class="card c7"><h2>Closed trades · ${a.symbol}</h2><div class="scroll" style="max-height:420px"><table id="dTrades"><thead><tr><th></th><th>Entry</th><th>Signal</th><th>Qty</th><th>Entry px</th><th>Exit</th><th>Exit px</th><th>Exit signal</th><th>P&amp;L</th></tr></thead><tbody></tbody></table></div></section>
+  <section class="card c7"><h2>Closed trade pieces · ${a.symbol} <span class="sub">${tradeHistoryNote}</span></h2><div class="scroll" style="max-height:420px"><table id="dTrades"><thead><tr><th></th><th>Entry</th><th>Signal</th><th>Qty</th><th>Entry px</th><th>Exit</th><th>Exit px</th><th>Exit signal</th><th>P&amp;L</th></tr></thead><tbody></tbody></table></div></section>
   <section class="card c5"><h2>Fills · ${a.symbol}</h2><div class="scroll" style="max-height:420px"><table id="dFills"><thead><tr><th>Time</th><th>Side</th><th>Qty</th><th>Price</th><th>Signal</th><th>P&amp;L</th></tr></thead><tbody></tbody></table></div></section>`;
 }
 function inputsHtml(A) {
@@ -757,6 +773,14 @@ document.addEventListener('change', ev => { if (ev.target.id === 'inAsset') load
 document.addEventListener('click', async ev => {
   const b = ev.target.closest('button, .tab, .asset, [data-run]'); if (!b) return;
   if (b.tagName === 'A') return;
+  if (b.dataset.chartPage) {
+    const sym=view.startsWith('asset:')?view.slice(6):null; if(!sym) return;
+    const current=chartOffsets[sym]||0, total=charts[sym+'4000:'+current]?.history?.available||0;
+    chartOffsets[sym]=b.dataset.chartPage==='older'?Math.min(Math.max(0,total-1),current+4000):Math.max(0,current-4000);
+    await loadChart(sym,4000,$('#dChart'),{height:360,compact:false},chartOffsets[sym]);
+    if(last) render(last);
+    return;
+  }
   if (b.dataset.v) { if (b.dataset.v === 'add') { setView('commands'); setTimeout(()=>$('#addSym')?.focus(), 50); } else setView(b.dataset.v); return; }
   if (b.id === 'accessAdd') {
     const label = $('#accessLabel')?.value.trim(); if (!label) return toast('enter a label for this person or device', true);
@@ -1115,7 +1139,7 @@ function render(d) {
   } else if (viewAsset) {
     if (rebuild) { $('#view').innerHTML = assetHtml(viewAsset); }
     else { const keep = $('#dChart') ? $('#dChart').innerHTML : ''; $('#assetHead').innerHTML = assetHead(viewAsset); $('#dChart').innerHTML = keep; }
-    const c = charts[viewAsset.symbol+300]; if (c) candles($('#dChart'), c, {height:360, compact:false}); else loadChart(viewAsset.symbol, 300, $('#dChart'), {height:360, compact:false});
+    const off=chartOffsets[viewAsset.symbol]||0, c = charts[viewAsset.symbol+'4000:'+off]; if (c) { candles($('#dChart'), c, {height:360, compact:false}); const h=c.history||{}, start=Math.max(0,(h.available||0)-(h.offset||0)-(h.page_size||4000)+1), end=(h.available||0)-(h.offset||0); $('#chartPageLabel').textContent=`Bars ${h.available?`${start.toLocaleString()}–${end.toLocaleString()} of ${h.available.toLocaleString()}`:'—'}`; $('[data-chart-page="older"]').disabled=!h.has_older; $('[data-chart-page="newer"]').disabled=!h.has_newer; } else loadChart(viewAsset.symbol, 4000, $('#dChart'), {height:360, compact:false}, off);
     const tr = (tradesCache[viewAsset.symbol]||[]).slice().reverse();
     const detailTradeWarning = tradeErrors[viewAsset.symbol] ? `<tr><td colspan="9" class="empty neg">trade history unavailable: ${esc(tradeErrors[viewAsset.symbol])}</td></tr>` : '';
     const detailTradeRows = tr.map(t => `<tr><td><span class="tag ${t.live?'live':''}">${t.live?'LIVE':'hist'}</span></td><td class="tnum">${dtz(t.entry_ts)}</td><td>${esc(t.id)}</td><td class="tnum">${t.qty}</td><td class="tnum">${px(t.entry)}</td><td class="tnum">${dtz(t.exit_ts)}</td><td class="tnum">${px(t.exit)}</td><td>${esc(t.comment)}</td><td class="tnum ${t.profit>=0?'pos':'neg'}">${sgn$(t.profit)}</td></tr>`).join('');
@@ -1290,13 +1314,18 @@ async function refreshCommandCenter() {
     window.IcarusWorldImmersion?.refresh();
   }
 }
-async function refreshCharts() { if (!last) return; if (view === 'overview') { for (const a of (last.assets||[])) await loadChart(a.symbol, 80, $(`#ch-${a.symbol}`), {height:170}); refreshFills(); } if (view.startsWith('asset:')) await loadChart(view.slice(6), 300, $('#dChart'), {height:360, compact:false}); }
+async function refreshCharts() {
+  if (!last) return;
+  if (view === 'overview') { for (const a of (last.assets||[])) await loadChart(a.symbol, 80, $(`#ch-${a.symbol}`), {height:170}); refreshFills(); }
+  if (view.startsWith('asset:') && Date.now()-lastWideChartRefresh >= 20000) { const s=view.slice(6); await loadChart(s, 4000, $('#dChart'), {height:360, compact:false}, chartOffsets[s]||0); }
+}
 async function refreshTrades(only) {
   if (!last) return;
   for (const a of (last.assets||[])) {
     if (only && a.symbol !== only) continue;
     try {
-      const r = await fetch(`/api/trades/${encodeURIComponent(a.symbol)}?limit=80`, {cache:'no-store'});
+      const limit = (only === a.symbol || view === `asset:${a.symbol}`) ? 2000 : 80;
+      const r = await fetch(`/api/trades/${encodeURIComponent(a.symbol)}?limit=${limit}`, {cache:'no-store'});
       const data = await r.json().catch(()=>null);
       if (!r.ok) throw new Error((data&&data.detail)||(data&&data.error)||('HTTP '+r.status));
       if (!Array.isArray(data)) throw new Error('invalid trade-history response');

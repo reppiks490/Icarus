@@ -224,33 +224,52 @@ async function loadMarketUniverse(){
   probeRows.forEach(function(row){probeById[row.instrument_id]=row;});
   const hybrid=data.hybrid_probe||{}, hybridRows=Array.isArray(hybrid.results)?hybrid.results:[], hybridById={};
   hybridRows.forEach(function(row){(hybridById[row.instrument_id]||(hybridById[row.instrument_id]=[])).push(row);});
-  const keys=[['Catalogued','catalogued_count'],['Entitlement verified','entitlement_verified_count'],['Source connected','source_connected_count'],['History qualified','historical_bars_qualified_count'],['Live qualified','live_bars_qualified_count'],['Pulse enabled','pulse_enabled_count'],['Strategy qualified','strategy_qualified_count']];
+  const listing=data.listing_crosswalk||{}, listingRows=Array.isArray(listing.results)?listing.results:[], listingById={};
+  listingRows.forEach(function(row){listingById[row.instrument_id]=row;});
+  const providerCandidatesById={};
+  const keys=[['Catalogued','catalogued_count'],['Public listings matched','exchange_listing_identity_verified_count'],['Entitlement verified','entitlement_verified_count'],['Source connected','source_connected_count'],['History qualified','historical_bars_qualified_count'],['Live qualified','live_bars_qualified_count'],['Pulse enabled','pulse_enabled_count'],['Strategy qualified','strategy_qualified_count']];
   summary.innerHTML=keys.map(function(pair){return '<div class="tile"><div class="k">'+esc(pair[0])+'</div><div class="v">'+esc(counts[pair[1]]==null?'—':counts[pair[1]])+'</div></div>';}).join('')+
     '<div class="tile"><div class="k">Yahoo responses</div><div class="v">'+esc(probeCounts.response_received_count==null?'—':probeCounts.response_received_count)+' / '+esc(probe.requested_count==null?'—':probe.requested_count)+'</div></div>'+
     '<div class="tile"><div class="k">Yahoo symbol matches</div><div class="v">'+esc(probeCounts.provider_symbol_match_count==null?'—':probeCounts.provider_symbol_match_count)+'</div></div>'+
+    '<div class="tile"><div class="k">Public listing identity</div><div class="v">'+esc(listing.matched_count==null?'—':listing.matched_count)+' / '+esc(listing.requested_count==null?'—':listing.requested_count)+' · '+esc(listing.status||'NOT_RUN')+'</div></div>'+
     '<div class="tile"><div class="k">Hybrid provider probe</div><div class="v">'+esc(hybrid.status||'NOT_RUN')+'</div></div>'+
-    '<div class="small muted" style="grid-column:1/-1">Snapshot '+esc(data.retrieved_at||'unknown')+'. Yahoo probe '+esc(probe.status||'NOT_RUN')+' · updated '+esc(probe.probe_updated_at||'—')+'. Hybrid report '+esc(hybrid.status||'NOT_RUN')+' · updated '+esc(hybrid.probe_updated_at||'—')+'. Provider evidence is independent; returned bars do not qualify identities, entitlements, or Pulse readiness.</div>';
-  table.innerHTML=rows.length?'<table><thead><tr><th>Instrument ID</th><th>Symbol</th><th>Name</th><th>Venue</th><th>Provider candidates</th><th>Yahoo history probe</th><th>Hybrid provider results</th><th>State</th><th>History</th></tr></thead><tbody>'+rows.map(function(row){
-    const mappings=(row.provider_symbol_candidates||[]).map(function(candidate){return esc((candidate.provider||'')+': '+(candidate.symbol||'')+' · '+(candidate.mapping_status||'UNKNOWN'));}).join('<br>');
+    '<div class="small muted" style="grid-column:1/-1">Snapshot '+esc(data.retrieved_at||'unknown')+'. Public listing identity is exchange metadata only; it does not verify provider mapping, data entitlement, historical/live feeds, Pulse readiness, strategy qualification, or execution authority. Yahoo probe '+esc(probe.status||'NOT_RUN')+' · updated '+esc(probe.probe_updated_at||'—')+'. Hybrid report '+esc(hybrid.status||'NOT_RUN')+' · updated '+esc(hybrid.probe_updated_at||'—')+'.</div>';
+  table.innerHTML=rows.length?'<table><thead><tr><th>Instrument ID</th><th>Symbol</th><th>Name</th><th>Venue</th><th>Public listing identity</th><th>Provider candidates</th><th>Yahoo history probe</th><th>Hybrid provider results</th><th>State</th><th>History preview</th></tr></thead><tbody>'+rows.map(function(row){
+    const candidates=(Array.isArray(row.provider_symbol_candidates)?row.provider_symbol_candidates:[]).filter(function(candidate){return candidate&&typeof candidate.provider==='string'&&candidate.provider;});
+    const providers=candidates.map(function(candidate){return String(candidate.provider).toLowerCase();});
+    providerCandidatesById[row.instrument_id]=providers;
+    const mappings=candidates.map(function(candidate){return esc((candidate.provider||'')+': '+(candidate.symbol||'')+' · '+(candidate.mapping_status||'UNKNOWN'));}).join('<br>');
+    const preferredProvider=providers.indexOf('yahoo')>=0?'yahoo':'';
+    const providerOptions=(providers.indexOf('yahoo')>=0?'':'<option value="" selected disabled>Choose provider</option>')+candidates.map(function(candidate){
+      const provider=String(candidate.provider).toLowerCase();
+      const label=String(candidate.provider)+' · '+String(candidate.mapping_status||'UNKNOWN');
+      return '<option value="'+esc(provider)+'" '+(provider===preferredProvider?'selected':'')+'>'+esc(label)+'</option>';
+    }).join('');
     const probeRow=probeById[row.instrument_id]||{};
+    const listingRow=listingById[row.instrument_id]||{};
+    const listingText=listingRow.status?String(listingRow.status)+' · '+String(listing.status||'UNKNOWN'):'not verified';
     const probeText=probeRow.probe_status?String(probeRow.probe_status)+' · '+String(probeRow.row_count||0)+' rows · symbol '+String(probeRow.provider_symbol_match_status||'UNKNOWN')+' · identity '+String(probeRow.canonical_identity_status||'UNKNOWN'):'not probed';
     const hybridText=(hybridById[row.instrument_id]||[]).map(function(item){return String(item.provider||'')+': '+String(item.probe_status||'UNKNOWN')+(item.error_code?' ('+String(item.error_code)+')':'');}).join(' · ')||'not probed';
-    return '<tr><td><code>'+esc(row.instrument_id||'')+'</code></td><td><b>'+esc(row.display_symbol||'')+'</b></td><td>'+esc(row.name||'')+'</td><td>'+esc(row.venue||'')+'</td><td>'+mappings+'</td><td>'+esc(probeText)+'</td><td>'+esc(hybridText)+'</td><td>'+esc(row.source_connection||'')+' · '+(row.pulse_enabled?'Pulse enabled':'disabled')+'</td><td><button type="button" class="secondary" data-market-history="'+esc(row.instrument_id||'')+'">Fetch daily sample</button><div class="small muted" data-market-history-result="'+esc(row.instrument_id||'')+'">No request yet.</div></td></tr>';
+    const historyChoice=candidates.length?'<label class="small muted">Provider <select data-market-history-provider="'+esc(row.instrument_id||'')+'">'+providerOptions+'</select></label> ':'<span class="small muted">No declared provider</span> ';
+    return '<tr><td><code>'+esc(row.instrument_id||'')+'</code></td><td><b>'+esc(row.display_symbol||'')+'</b></td><td>'+esc(row.name||'')+'</td><td>'+esc(row.venue||'')+'</td><td>'+esc(listingText)+'</td><td>'+mappings+'</td><td>'+esc(probeText)+'</td><td>'+esc(hybridText)+'</td><td>'+esc(row.source_connection||'')+' · '+(row.pulse_enabled?'Pulse enabled':'disabled')+'</td><td>'+historyChoice+'<button type="button" class="secondary" data-market-history="'+esc(row.instrument_id||'')+'" '+(candidates.length?'':'disabled')+'>Fetch daily sample</button><div class="small muted" data-market-history-result="'+esc(row.instrument_id||'')+'">No request yet.</div></td></tr>';
   }).join('')+'</tbody></table>':'<p class="empty">No catalog rows.</p>';
   table.querySelectorAll('[data-market-history]').forEach(function(button){
     button.onclick=async function(){
       const instrumentId=String(button.getAttribute('data-market-history')||'');
       const output=table.querySelector('[data-market-history-result="'+CSS.escape(instrumentId)+'"]');
       if(!instrumentId||!output) return;
-      button.disabled=true; output.textContent='Fetching a bounded daily page…';
+      const providerControl=table.querySelector('[data-market-history-provider="'+CSS.escape(instrumentId)+'"]');
+      const provider=String(providerControl&&providerControl.value||'').toLowerCase();
+      if(!providerCandidatesById[instrumentId]||providerCandidatesById[instrumentId].indexOf(provider)<0){output.textContent='History unavailable: select a provider declared for this instrument.';return;}
+      button.disabled=true; output.textContent='Fetching a bounded daily page from '+provider+'…';
       const end=Math.floor(Date.now()/1000), start=end-90*86400;
-      const query=new URLSearchParams({start_ts:String(start),end_ts:String(end),interval_seconds:'86400',limit:'20',provider:'yahoo'});
+      const query=new URLSearchParams({start_ts:String(start),end_ts:String(end),interval_seconds:'86400',limit:'20',provider:provider});
       const result=await marketDataFetch('/api/market-history/'+encodeURIComponent(instrumentId)+'?'+query.toString());
       button.disabled=false;
-      if(!result.ok){output.textContent='History unavailable: '+String(result.error||'request failed');return;}
+      if(!result.ok){output.textContent='History unavailable from '+provider+': '+String(result.error||'request failed');return;}
       const payload=result.data||{}, receipt=payload.receipt||{}, bars=Array.isArray(payload.bars)?payload.bars:[];
       const sample=bars.slice(-5).map(function(bar){return new Date(Number(bar.ts)*1000).toISOString().slice(0,10)+' close '+marketDataFmt(bar.c,4);}).join(' · ');
-      output.textContent=String(payload.provider||'unknown')+' · '+String(payload.qualification||'UNQUALIFIED')+' · '+String(receipt.row_count||0)+' rows · identity '+String(receipt.identity_status||'UNKNOWN')+' · entitlement '+String(receipt.entitlement_status||'UNKNOWN')+(sample?' · '+sample:' · no bars')+(payload.page&&payload.page.next_start_ts?' · more history available':'');
+      output.textContent=String(payload.provider||provider)+' · '+String(payload.qualification||'UNQUALIFIED')+' · '+String(receipt.row_count||0)+' rows · mapping '+String(receipt.provider_mapping_status||'UNKNOWN')+' · symbol '+String(receipt.provider_symbol_match_status||'UNKNOWN')+' · identity '+String(receipt.identity_status||'UNKNOWN')+' · entitlement '+String(receipt.entitlement_status||'UNKNOWN')+' · session '+String(receipt.session_validation_status||'UNKNOWN')+(sample?' · '+sample:' · no bars')+(payload.page&&payload.page.next_start_ts?' · more history available':'');
     };
   });
 }

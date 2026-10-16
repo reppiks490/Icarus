@@ -215,7 +215,7 @@ def test_repository_directory_is_not_a_private_runtime(tmp_path):
     assert not child.exists()
 
 
-@pytest.mark.parametrize("component", ["audit", "audit/brain_events.jsonl", ".unusual_whales_intake/observations.sqlite3"])
+@pytest.mark.parametrize("component", ["audit", "audit/brain_events.jsonl", "audit/brain_events.jsonl.lock", ".unusual_whales_intake/observations.sqlite3"])
 def test_all_persistence_planes_reject_symlink_escape(tmp_path, component):
     outside = tmp_path / "outside"
     outside.mkdir()
@@ -244,6 +244,7 @@ def test_runtime_and_both_journals_are_private_even_with_permissive_umask(tmp_pa
         os.umask(previous)
     if os.name == "posix":
         for path in [runtime, runtime / "audit", runtime / "audit" / "brain_events.jsonl",
+                     runtime / "audit" / "brain_events.jsonl.lock",
                      runtime / ".unusual_whales_intake", runtime / ".unusual_whales_intake" / "observations.sqlite3"]:
             assert path.stat().st_mode & 0o077 == 0
 
@@ -258,7 +259,7 @@ def test_existing_public_runtime_is_rejected_before_persistence(tmp_path):
     assert not (runtime / "audit").exists()
 
 
-@pytest.mark.parametrize("component", ["audit/brain_events.jsonl", ".unusual_whales_intake/observations.sqlite3"])
+@pytest.mark.parametrize("component", ["audit/brain_events.jsonl", "audit/brain_events.jsonl.lock", ".unusual_whales_intake/observations.sqlite3"])
 def test_hard_linked_persistence_files_are_rejected(tmp_path, component):
     runtime = tmp_path / "runtime"
     runtime.mkdir(mode=0o700)

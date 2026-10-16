@@ -13,6 +13,7 @@ import os
 from pathlib import Path
 import re
 import sqlite3
+import stat
 from typing import Any, Callable, Mapping
 
 from .brain import record_brain_event
@@ -239,8 +240,16 @@ def _private_file(path: Path) -> None:
     flags = os.O_CREAT | os.O_RDWR | getattr(os, "O_NOFOLLOW", 0)
     descriptor = os.open(path, flags, 0o600)
     try:
-        if os.fstat(descriptor).st_nlink != 1:
+        opened = os.fstat(descriptor)
+        if not stat.S_ISREG(opened.st_mode):
+            raise ValueError("private intake paths must be regular files")
+        if opened.st_nlink != 1:
             raise ValueError("private intake files must not have hard links")
+        current = path.lstat()
+        if stat.S_ISLNK(current.st_mode):
+            raise ValueError("private intake paths must not be symlinks")
+        if (opened.st_dev, opened.st_ino) != (current.st_dev, current.st_ino):
+            raise ValueError("private intake path changed while open")
         if os.name == "posix":
             os.fchmod(descriptor, 0o600)
     finally:
@@ -256,7 +265,8 @@ def _connect(base_dir: str | os.PathLike[str]) -> sqlite3.Connection:
     path = directory / "observations.sqlite3"
     audit = base / "audit"
     journal = audit / "brain_events.jsonl"
-    if any(candidate.is_symlink() for candidate in (directory, path, audit, journal)):
+    lock = audit / "brain_events.jsonl.lock"
+    if any(candidate.is_symlink() for candidate in (directory, path, audit, journal, lock)):
         raise ValueError("private intake paths must not be symlinks")
     base.mkdir(parents=True, exist_ok=True, mode=0o700)
     if os.name == "posix" and base.stat().st_mode & 0o077:
@@ -268,6 +278,8 @@ def _connect(base_dir: str | os.PathLike[str]) -> sqlite3.Connection:
         audit.chmod(0o700)
     # Both persistence planes are private before opening or appending. Core
     # Brain APIs remain unchanged and receive only compact receipt metadata.
+    # Validate the new process-lock plane before creating either receipt store.
+    _private_file(lock)
     _private_file(path)
     _private_file(journal)
     connection = sqlite3.connect(path, timeout=30)

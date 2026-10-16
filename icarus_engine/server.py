@@ -2,7 +2,7 @@
 
   GET  /                          dashboard (open /?asset=NQ for a single-asset tab)
   GET  /status/public             portfolio + every asset's strategy state
-  GET  /api/chart/<SYM>?n=240     bars, overlays (RATE line, TP/SL, VWAP, Kalman), fills
+  GET  /api/chart/<SYM>?n=240&offset=0     paged bars, overlays, fills, retained-history metadata
   GET  /api/market-history/<ID>  bounded catalog-source history page + full bar receipt
   GET  /api/trades/<SYM>          closed trades (this run: history + live)
   GET  /api/inputs/<SYM>          effective inputs, their sources, and per-input metadata
@@ -1929,7 +1929,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 r = self._runner(p.path.rsplit("/", 1)[1])
                 if not r:
                     return self._json(404, {"error": "unknown asset"})
-                return self._json(200, r.chart(self._int(q, "n", 240, 20, 800), nonblocking=True))
+                return self._json(200, r.chart(self._int(q, "n", 240, 20, 5000), offset=self._int(q, "offset", 0, 0, 50000), nonblocking=True))
             if p.path.startswith("/api/trades/"):
                 r = self._runner(p.path.rsplit("/", 1)[1])
                 if not r:
