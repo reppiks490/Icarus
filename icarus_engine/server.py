@@ -1990,6 +1990,22 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                         return self._json(400, {"detail": "confirm must be true to flatten this paper workspace"})
                     try:
                         return self._json(200, command_centers.flatten(parts[2]))
+                    except FlattenUnavailableError as ex:
+                        portfolio = command_centers.portfolios.get(parts[2])
+                        open_assets = []
+                        if portfolio is not None:
+                            for runner in portfolio.runner_list():
+                                shadow = getattr(runner.em, "shadow", None)
+                                if runner.em.open or (shadow is not None and shadow.open):
+                                    open_assets.append(runner.symbol)
+                        return self._json(409, {
+                            "error": "flatten_unavailable",
+                            "detail": str(ex),
+                            "profile_id": parts[2],
+                            "open_assets": open_assets,
+                            "positions_remain_open": bool(open_assets),
+                            "paused": bool(portfolio and portfolio.paused),
+                        })
                     except (ValueError, TypeError, KeyError) as ex:
                         return self._json(400, {"detail": str(ex)})
             if p.path == "/admin/access/add":
