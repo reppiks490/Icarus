@@ -1,0 +1,3830 @@
+{
+  "catalog_id": "us-listed-common-equities-top-cap-snapshot",
+  "catalog_snapshot_sha256": "8fa3b450e55399d3450819ec124d89b9caae3579d29e27933cb26574b97c916e",
+  "qualification_scope": "public_listing_identity_only",
+  "raw_market_data_persisted": false,
+  "requested_instrument_count": 200,
+  "results": [
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "NVIDIA Corporation Common Stock",
+        "symbol": "NVDA",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "83150bfa28bd09a8b9a93574e867bcad4ce58ab501e340b3fce9fcb086277289",
+      "instrument_id": "a402ceaf-1d89-53c7-a349-7443085aa287",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "NVIDIA Corporation Common Stock",
+        "symbol": "NVDA",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Apple Inc. Common Stock",
+        "symbol": "AAPL",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "442f8c0576c6b50ebd18aa2e7e595d297bd009ac3da70109e8257bd156e8e86a",
+      "instrument_id": "4835419b-6766-51d7-a5a4-9072544b39ed",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Apple Inc. Common Stock",
+        "symbol": "AAPL",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Alphabet Inc. Class A Common Stock",
+        "symbol": "GOOGL",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "0a855196d6d51c133e3eaf275368a4e6491d301fa6f9f0da67370fb69e9c2570",
+      "instrument_id": "7990ea09-e9a6-5e48-9859-192c62066484",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Alphabet Inc. Class A Common Stock",
+        "symbol": "GOOGL",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Microsoft Corporation Common Stock",
+        "symbol": "MSFT",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "42a33d69a1d119f33790fb830c1658325f37b242ca3d14cdd77fcc803a3a5e2e",
+      "instrument_id": "f8e32891-9e99-58ac-a742-36b727548dff",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Microsoft Corporation Common Stock",
+        "symbol": "MSFT",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Amazon.com, Inc. Common Stock",
+        "symbol": "AMZN",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "f1e176f3d4f24038682024fabe0f593fdf089587e76b258c5b6de42e2066b479",
+      "instrument_id": "00ef964f-b70e-58a1-950e-25ba997999ce",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Amazon.com, Inc. Common Stock",
+        "symbol": "AMZN",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Meta Platforms, Inc. Class A Common Stock",
+        "symbol": "META",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "d623d5123d27b8ddcaff4584579ff391cc89761e016e95b84a4645d54c37416b",
+      "instrument_id": "83d92e93-ae00-5391-8d31-c3ff575565cb",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Meta Platforms, Inc. Class A Common Stock",
+        "symbol": "META",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Broadcom Inc. Common Stock",
+        "symbol": "AVGO",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "f0c9fc72488b324f3107683c35ef4ec0eb5e68c89e5df35fe614e53679ad2838",
+      "instrument_id": "4a56819a-d898-5ca0-9d4b-20f804c043ba",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Broadcom Inc. Common Stock",
+        "symbol": "AVGO",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Tesla, Inc. Common Stock",
+        "symbol": "TSLA",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "388d96cce76ad029a0a8106c7edc4a469d1ea5749f932e8883ec1bcc3df692b0",
+      "instrument_id": "dcc54c6c-e2a6-597c-8c19-ebcfb1e94ec5",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Tesla, Inc. Common Stock",
+        "symbol": "TSLA",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Eli Lilly and Company Common Stock",
+        "symbol": "LLY",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "6a59c6d9f6479d7fc65a316aaa6c3a9aec0c4b2e11bf0a59341911671b2e25d3",
+      "instrument_id": "d1ee63f8-840a-5d46-af62-bfa72e4b6cf3",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Eli Lilly and Company Common Stock",
+        "symbol": "LLY",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "depositary_receipt",
+        "name": "SK hynix Inc. American Depositary Shares",
+        "symbol": "SKHY",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "0e136d9e9a73fb9c825e3262ba24b2d7270d7675160a3364929de455555b56c6",
+      "instrument_id": "d19335ff-bd9e-5f27-83bf-cb229f5e4d86",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "depositary_receipt",
+        "name": "SK hynix Inc. American Depositary Shares",
+        "symbol": "SKHY",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Micron Technology, Inc. Common Stock",
+        "symbol": "MU",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "e9de57bdb2f1f81cd9e186998ad213dece61e7af8016dab807920a94c89f47e0",
+      "instrument_id": "f98ef6a8-2091-545c-9379-cc6e31de0dc9",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Micron Technology, Inc. Common Stock",
+        "symbol": "MU",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Advanced Micro Devices, Inc. Common Stock",
+        "symbol": "AMD",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "b9e6c4f799870d99502a16c1b38ca20a2bdc70ad77bc5b7a5a910ddb8ef5b40a",
+      "instrument_id": "638b4e49-a0d6-5341-898b-64f7be886252",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Advanced Micro Devices, Inc. Common Stock",
+        "symbol": "AMD",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Walmart Inc. Common Stock",
+        "symbol": "WMT",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "eb90151d04d4cbc5f0ba7bf6ed080adc8f773d9e3645688f2f394c7af30eff78",
+      "instrument_id": "1f768eb0-c790-54b1-a392-a05e992db284",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Walmart Inc. Common Stock",
+        "symbol": "WMT",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "JP Morgan Chase & Co. Common Stock",
+        "symbol": "JPM",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "110049341561f0084219d3fa9b9e5aa17dfa613f761520846609812910afbf56",
+      "instrument_id": "f13fe499-ada1-596f-9f39-7e9e63ee0485",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "JP Morgan Chase & Co. Common Stock",
+        "symbol": "JPM",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "ExxonMobil Holdings Corporation Common Stock",
+        "symbol": "XOM",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "70e0273d24f91618ffb8596d8003d18f8c5d4c51d1c7235a4212610352eae324",
+      "instrument_id": "350ea074-6313-5f23-b4be-0722970b148e",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "ExxonMobil Holdings Corporation Common Stock",
+        "symbol": "XOM",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Johnson & Johnson Common Stock",
+        "symbol": "JNJ",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "4f61964af0ef90febb70d8c0385a637c436d2b4f2a036b3a329f2a3effc59ddf",
+      "instrument_id": "973f25d2-9468-5119-8bbe-5e64e0725172",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Johnson & Johnson Common Stock",
+        "symbol": "JNJ",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Mastercard Incorporated Common Stock",
+        "symbol": "MA",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "4586eb0424933039680517f0b93f42165a88ebbb53fb563520b545091c339af2",
+      "instrument_id": "816b17fc-6aa3-5c0f-a7f7-5074272422da",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Mastercard Incorporated Common Stock",
+        "symbol": "MA",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Intel Corporation Common Stock",
+        "symbol": "INTC",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "b10c247c08c54792012170bc9111e801b213315a1ab57227fd84ab94c63d0cbc",
+      "instrument_id": "f9ad2a69-fac3-5e21-b42d-2b1ba3ec09eb",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Intel Corporation Common Stock",
+        "symbol": "INTC",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "AbbVie Inc. Common Stock",
+        "symbol": "ABBV",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "d033ceb714ad8acc89d47cc2b346c55052fdd24ca27ca8b813bec69e29d100d8",
+      "instrument_id": "e3910bf3-2ecb-5912-b997-574e8ec4c3fa",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "AbbVie Inc. Common Stock",
+        "symbol": "ABBV",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Palantir Technologies Inc. Class A Common Stock",
+        "symbol": "PLTR",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "b8360e6ae9e31239cf6f9b8c6aed2cf752cf18e2125c38654b69afc9b9f8c1f3",
+      "instrument_id": "8117bab4-362e-588b-abb4-99a5155a416d",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Palantir Technologies Inc. Class A Common Stock",
+        "symbol": "PLTR",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Cisco Systems, Inc. Common Stock (DE)",
+        "symbol": "CSCO",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "9146282a7be147c28f80a35f129b53390bdc3815baa8a2f71565fc9940af4fec",
+      "instrument_id": "12479fe4-57d8-580d-9812-ef280da44897",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Cisco Systems, Inc. Common Stock (DE)",
+        "symbol": "CSCO",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Chevron Corporation Common Stock",
+        "symbol": "CVX",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "e95dd96b9edc7fff805ff68a13b6af577d0f029e82c96c0c4d8f0048d01a2196",
+      "instrument_id": "c45f7def-facf-5d20-937f-11e4ed60bce8",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Chevron Corporation Common Stock",
+        "symbol": "CVX",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Costco Wholesale Corporation Common Stock",
+        "symbol": "COST",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "8238aad4f61c100d53b0c9455892efc4a7109edd795f51c1c5dda8b14939c435",
+      "instrument_id": "fd852f91-4931-5dc8-b0dd-83b3c6f85487",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Costco Wholesale Corporation Common Stock",
+        "symbol": "COST",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Oracle Corporation Common Stock",
+        "symbol": "ORCL",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "b20f10b53baaf3df7e1bb75fa5aca91aed12213bc5f43746424c24de2e1bc9bb",
+      "instrument_id": "09081a3c-f36f-52b7-a6ed-4fe667d9cfbb",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Oracle Corporation Common Stock",
+        "symbol": "ORCL",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Coca-Cola Company (The) Common Stock",
+        "symbol": "KO",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "b9df7f1bec615793d042182c32cc507ca60b8c4bde5321666b7056f1782ab754",
+      "instrument_id": "ca45cb83-8ff8-5594-acf4-74ecab79d67c",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Coca-Cola Company (The) Common Stock",
+        "symbol": "KO",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Procter & Gamble Company (The) Common Stock",
+        "symbol": "PG",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "58e0dcbea36dd7f586e0136adee6673617337f7d36da6182f0a35a5c89da723f",
+      "instrument_id": "62f8e59c-9d6f-56e6-ae76-65647871f07c",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Procter & Gamble Company (The) Common Stock",
+        "symbol": "PG",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Merck & Company, Inc. Common Stock (new)",
+        "symbol": "MRK",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "e6e427df00a4b17bd02bf11fa5b75846b8648e742d87a11cd98f24cf0a34127b",
+      "instrument_id": "8d5488da-7b98-5e60-ab60-fa3d27d94433",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Merck & Company, Inc. Common Stock (new)",
+        "symbol": "MRK",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Bank of America Corporation Common Stock",
+        "symbol": "BAC",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "7150bbf9b04fa23cfc9128cd417266ffa382c4006a144ff499d91f067da27ea2",
+      "instrument_id": "53099213-fb6b-5db6-9fcf-7e87091098fb",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Bank of America Corporation Common Stock",
+        "symbol": "BAC",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Lam Research Corporation Common Stock",
+        "symbol": "LRCX",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "ace7ec6946d720ce8b34c864a578b6ca0f70ab13509187de200bdc938884eca7",
+      "instrument_id": "bd3d0031-98ac-5378-ae52-32cc149c870b",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Lam Research Corporation Common Stock",
+        "symbol": "LRCX",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "UnitedHealth Group Incorporated Common Stock (DE)",
+        "symbol": "UNH",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "59244383a99852b3db23946051ebc5a5265c7909a4944cb92ffe35a317a5cf8e",
+      "instrument_id": "75c328bb-472e-5f10-b55c-5666baf28d73",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "UnitedHealth Group Incorporated Common Stock (DE)",
+        "symbol": "UNH",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Applied Materials, Inc. Common Stock",
+        "symbol": "AMAT",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "0cc3ed9068ca0ebc4f29188dff47819c60aa7bc491aaac248c0f9add378fce48",
+      "instrument_id": "42be8ee1-479e-5eeb-9297-2f5ea13a81a9",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Applied Materials, Inc. Common Stock",
+        "symbol": "AMAT",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Caterpillar, Inc. Common Stock",
+        "symbol": "CAT",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "f780de952169be0d97b2d0aa6c35259a8b3d38b3f722bafcd2f31ddcb173008a",
+      "instrument_id": "54c51ea4-4d40-5587-a674-9ccb895a0991",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Caterpillar, Inc. Common Stock",
+        "symbol": "CAT",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Dell Technologies Inc. Class C Common Stock",
+        "symbol": "DELL",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "841b158c7fde8c1e6e3c25c4de9b2cf858467f845e99d574cba85bd19ab7aa07",
+      "instrument_id": "ef132ac4-de1f-54c8-88cb-1fb67d4bc038",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Dell Technologies Inc. Class C Common Stock",
+        "symbol": "DELL",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "HSBC Holdings, plc. Common Stock",
+        "symbol": "HSBC",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "ab468967634bdbeb1204437826b858fcc8028607de395a7ec969bbdb72c94c6e",
+      "instrument_id": "f47e8e0e-84b2-5a85-a08f-95c6fd2cc26c",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "HSBC Holdings, plc. Common Stock",
+        "symbol": "HSBC",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Philip Morris International Inc Common Stock",
+        "symbol": "PM",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "1ee871481f17b9d53c7d167b754f859975f0b355e25db529ce5b90b068e92942",
+      "instrument_id": "40ef9203-0e6b-53bc-ba12-938f7069b460",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Philip Morris International Inc Common Stock",
+        "symbol": "PM",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "GE Aerospace Common Stock",
+        "symbol": "GE",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "fc1ce7023959b753cd75394189a0099b2f3c8318e8ba9de3b1d02f077f48ae52",
+      "instrument_id": "695c6b8c-20c9-5f25-ae2e-6001342065bb",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "GE Aerospace Common Stock",
+        "symbol": "GE",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Palo Alto Networks, Inc. Common Stock",
+        "symbol": "PANW",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "fe67903e7cd1febc55edf9cf63fbefd1850e57ea676f431ad6536e7ba9d9e910",
+      "instrument_id": "6c631aa3-8d97-5789-814d-ec9b3a28499d",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Palo Alto Networks, Inc. Common Stock",
+        "symbol": "PANW",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Home Depot, Inc. (The) Common Stock",
+        "symbol": "HD",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "ddf93b577c390f164ef49012fd344c16d0d556aabddeb7925a9014fe53559dc8",
+      "instrument_id": "8ec3632f-2e8a-52e0-b6e7-0d797a5846d4",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Home Depot, Inc. (The) Common Stock",
+        "symbol": "HD",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Netflix, Inc. Common Stock",
+        "symbol": "NFLX",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "95cf4b217c007379a5048f2b1dc712bac71303a08685a0ee70f652cd85da0d01",
+      "instrument_id": "1763285c-79a6-5210-b255-5d2f8254daae",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Netflix, Inc. Common Stock",
+        "symbol": "NFLX",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": 2,
+        "instrument_type": "depositary_receipt",
+        "name": "Shell PLC American Depositary Shares (each representing two (2) Ordinary Shares)",
+        "symbol": "SHEL",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "b59ab33b2eb1ecec4dbb20e7ef6516b8122959ee48d28dfa232f4f0aeff36bef",
+      "instrument_id": "1a79d535-4d8d-5505-96d6-ea8656d8e0eb",
+      "observed": {
+        "depositary_ratio": 2,
+        "instrument_type": "depositary_receipt",
+        "name": "Shell PLC American Depositary Shares (each representing two (2) Ordinary Shares)",
+        "symbol": "SHEL",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Morgan Stanley Common Stock",
+        "symbol": "MS",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "c94932a0dede1f2997ccb42810852195b0a15775584f938b865b79e14cbcd2a2",
+      "instrument_id": "ebf13cdb-b8aa-5650-bd58-df7559d37730",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Morgan Stanley Common Stock",
+        "symbol": "MS",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Novartis AG Common Stock",
+        "symbol": "NVS",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "012f3d7033c081a3ab909bf60a705cbb16f902ffb71c07c49a1a5c13cd8be9bb",
+      "instrument_id": "61c10730-63a2-5ec8-b1d7-02d5e1077ebc",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Novartis AG Common Stock",
+        "symbol": "NVS",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "depositary_receipt",
+        "name": "Alibaba Group Holding Limited American Depositary Shares each representing eight Ordinary share",
+        "symbol": "BABA",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "9a87bb363762b256f6e5d82c62ae5a648a370b47722b1b196d1e6bf4f7ec3aab",
+      "instrument_id": "55a0ce33-a487-5a9d-9a08-1326d373ebc5",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "depositary_receipt",
+        "name": "Alibaba Group Holding Limited American Depositary Shares each representing eight Ordinary share",
+        "symbol": "BABA",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Royal Bank Of Canada Common Stock",
+        "symbol": "RY",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "40be82db0a1d17d8977a283623652b90ad8073c2cb1bea4d2236b9a93262a1e4",
+      "instrument_id": "ca3e4a8a-5e33-5455-bd3a-7e5d365d164f",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Royal Bank Of Canada Common Stock",
+        "symbol": "RY",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Mitsubishi UFJ Financial Group, Inc. Common Stock",
+        "symbol": "MUFG",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "328fef31e103579189a568d7ffeca843bce353a69fdd4f9da4ee3fca2f5e444e",
+      "instrument_id": "b4ed2a29-1120-5627-b736-a2d05e6327fc",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Mitsubishi UFJ Financial Group, Inc. Common Stock",
+        "symbol": "MUFG",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Texas Instruments Incorporated Common Stock",
+        "symbol": "TXN",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "5c35d7bcb5a89b3813b84016b5801f39ba81d81a404b02c9685554ce7fdb12bb",
+      "instrument_id": "665908a6-c643-55b6-950b-75317611c4f3",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Texas Instruments Incorporated Common Stock",
+        "symbol": "TXN",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Goldman Sachs Group, Inc. (The) Common Stock",
+        "symbol": "GS",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "028b688fc470ff7ea57ccd662640309e5c4048264a0353863a1f6c1f0b1c65e4",
+      "instrument_id": "52e8c7f1-f207-5697-848e-985aeabfa782",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Goldman Sachs Group, Inc. (The) Common Stock",
+        "symbol": "GS",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "CrowdStrike Holdings, Inc. Class A Common Stock",
+        "symbol": "CRWD",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "7786c968abe31d6c271cb1b0e9b425c1a29ca3fec6982f66fb06e52a4dee0084",
+      "instrument_id": "f820c82a-16c3-59b3-b56f-521f88df528f",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "CrowdStrike Holdings, Inc. Class A Common Stock",
+        "symbol": "CRWD",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "depositary_receipt",
+        "name": "Arm Holdings plc American Depositary Shares",
+        "symbol": "ARM",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "0d536ad3075d3ed3a3e76a41a4fa0347e0ff7414c98a5b5b80d45c826add02a6",
+      "instrument_id": "4e6f4642-0213-5244-8036-e8b5903d896a",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "depositary_receipt",
+        "name": "Arm Holdings plc American Depositary Shares",
+        "symbol": "ARM",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "RTX Corporation Common Stock",
+        "symbol": "RTX",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "a6939cb722ff2f0dd6ba406ab462fbec695ecfdde4b3f2d33572f564e2faaf33",
+      "instrument_id": "76f6f0ff-f6c6-572e-a5f5-1bb3b8a11b19",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "RTX Corporation Common Stock",
+        "symbol": "RTX",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "ordinary_share",
+        "name": "AstraZeneca PLC Ordinary Shares",
+        "symbol": "AZN",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "9dafe786ed55b5e02f20103b1d3bb6b83a65319ddca5952b7d4309a35762aa61",
+      "instrument_id": "3a0f6655-8775-5549-a5f7-9411b3070168",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "ordinary_share",
+        "name": "AstraZeneca PLC Ordinary Shares",
+        "symbol": "AZN",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "GE Vernova Inc. Common Stock",
+        "symbol": "GEV",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "29269d38a5271d73259846f333eeb8a592a9886655d5254c988508e27a93fb2d",
+      "instrument_id": "7ad8af75-2db0-51b1-b36f-1615259c80ae",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "GE Vernova Inc. Common Stock",
+        "symbol": "GEV",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Thermo Fisher Scientific Inc Common Stock",
+        "symbol": "TMO",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "90b1d8c17d92c7d3440519bdbbbcc085536100aab3e1d42bfede74d6c49732c4",
+      "instrument_id": "db9d2c86-5b3e-591b-9a21-3ae9705b6d24",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Thermo Fisher Scientific Inc Common Stock",
+        "symbol": "TMO",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Arista Networks, Inc. Common Stock",
+        "symbol": "ANET",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "6e0e0096900b2c22ecf7310a3b734979aafa83e34313da49ea3c63cee6d0f99c",
+      "instrument_id": "e1b149f7-52d0-5e56-b226-53536ad5ddf6",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Arista Networks, Inc. Common Stock",
+        "symbol": "ANET",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Toyota Motor Corporation Common Stock",
+        "symbol": "TM",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "9b330d878c77670f86926b08b64d3fbd70bf291a978991bcfd2994578bf1e720",
+      "instrument_id": "60d1f1a4-9ff7-5d87-b9f6-36a9fe6b15ee",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Toyota Motor Corporation Common Stock",
+        "symbol": "TM",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Wells Fargo & Company Common Stock",
+        "symbol": "WFC",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "dbed1e8cc1e7f77e632a2577507ee6282244230a42dd11e41185e67007d8ed57",
+      "instrument_id": "909b610a-99de-5df9-bc11-76c1cb4d7f38",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Wells Fargo & Company Common Stock",
+        "symbol": "WFC",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "KLA Corporation Common Stock",
+        "symbol": "KLAC",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "75a74a1042dc5585b60042ff1ecd4730683f448f8ab50d9d1f5f4d5d2b937f98",
+      "instrument_id": "c9deb18e-7025-5ea1-9ec4-50409ee0ca7b",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "KLA Corporation Common Stock",
+        "symbol": "KLAC",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Amgen Inc. Common Stock",
+        "symbol": "AMGN",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "aeaf17501b24576b6ff6bc739195e51f0fc9bf88ea4c5964717a93b034a4b032",
+      "instrument_id": "ffef5346-d103-5c62-ba74-85864fca3bd5",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Amgen Inc. Common Stock",
+        "symbol": "AMGN",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "ordinary_share",
+        "name": "Linde plc Ordinary Shares",
+        "symbol": "LIN",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "69e3c9bd1c328c4b49de77495a323cc41fd94d9d6c0d470652f67e36a34ee564",
+      "instrument_id": "46361833-0ccf-5f9e-820e-64312e6bb683",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "ordinary_share",
+        "name": "Linde plc Ordinary Shares",
+        "symbol": "LIN",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Marvell Technology, Inc. Common Stock",
+        "symbol": "MRVL",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "2ed9028c9d68da74b53e46b696ccc872e5ce7484f7e82e6e929460123e548874",
+      "instrument_id": "de99a25f-fcdf-5abd-ac64-7331ba4fd9b0",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Marvell Technology, Inc. Common Stock",
+        "symbol": "MRVL",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "International Business Machines Corporation Common Stock",
+        "symbol": "IBM",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "4a5af6c8916e783987b67e3f38f1f889a8347e33e5cb0e4da99b6feb976c6c6e",
+      "instrument_id": "c99f22ba-5f90-5cc8-aae1-92a17c5a58b4",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "International Business Machines Corporation Common Stock",
+        "symbol": "IBM",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": 2,
+        "instrument_type": "depositary_receipt",
+        "name": "BHP Group Limited American Depositary Shares (Each representing two Ordinary Shares)",
+        "symbol": "BHP",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "5718957fd68600891b51a91ef957f95e06cae07d0db6983d6a6a9cc7ede85068",
+      "instrument_id": "92993442-b132-5efc-a84f-9b812760d41d",
+      "observed": {
+        "depositary_ratio": 2,
+        "instrument_type": "depositary_receipt",
+        "name": "BHP Group Limited American Depositary Shares (Each representing two Ordinary Shares)",
+        "symbol": "BHP",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "American Express Company Common Stock",
+        "symbol": "AXP",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "674acaedcd673153abeff5ae900c6458020a47dd409a4a6d9e1c96073e3199d3",
+      "instrument_id": "a3296f5c-765a-5f42-9f98-d976b54cd519",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "American Express Company Common Stock",
+        "symbol": "AXP",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Citigroup, Inc. Common Stock",
+        "symbol": "C",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "a580446290bb527ebfef3490a277768ded521a4a7c551ebb9ba1566c05638a15",
+      "instrument_id": "a0cdd310-0804-5e8b-a28a-1af8686d6095",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Citigroup, Inc. Common Stock",
+        "symbol": "C",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Sandisk Corporation Common Stock",
+        "symbol": "SNDK",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "3ea5c7a28002331b7e9d0afe8833ced97e31dc8bcfc317ba44f594b4cdad1167",
+      "instrument_id": "e73de535-d428-5252-8f16-b50004b42e74",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Sandisk Corporation Common Stock",
+        "symbol": "SNDK",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Amphenol Corporation Common Stock",
+        "symbol": "APH",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "9c1020b97252031f40adcdaf7fdb643b7b9ddd59a0d81ae3e9485c3bfe8840ab",
+      "instrument_id": "1cc148ff-4e1e-5859-9e33-9d77dc40a90a",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Amphenol Corporation Common Stock",
+        "symbol": "APH",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "ordinary_share",
+        "name": "TotalEnergies SE Ordinary Shares",
+        "symbol": "TTE",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "3d3d7621b2d8fbabaf2fbe22e1af91fffc1a9ce2488d2266454b693c5de6f4dd",
+      "instrument_id": "951992be-5945-59bf-9069-376598320cb2",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "ordinary_share",
+        "name": "TotalEnergies SE Ordinary Shares",
+        "symbol": "TTE",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Analog Devices, Inc. Common Stock",
+        "symbol": "ADI",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "df05065e86798b5b29f11f342b88907b646989b8d9987dea030de2b845830107",
+      "instrument_id": "bd68371b-4120-53d2-a8a7-1a5cc82ebfe6",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Analog Devices, Inc. Common Stock",
+        "symbol": "ADI",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Salesforce, Inc. Common Stock",
+        "symbol": "CRM",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "b11a29342913ef1e0a2255835a2550073c2afe991c05241bdb5efc6c3cfa0e0e",
+      "instrument_id": "25ebc3f2-4e61-5758-b63c-97ba460de07c",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Salesforce, Inc. Common Stock",
+        "symbol": "CRM",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Toronto Dominion Bank (The) Common Stock",
+        "symbol": "TD",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "6e62bf23e833c0ffe9921ee3cfd4fd0c967e14fac38faad8b4dce2e4d9ff6a94",
+      "instrument_id": "8c4d0620-9d48-53dd-9850-a3cdb0058b21",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Toronto Dominion Bank (The) Common Stock",
+        "symbol": "TD",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Gilead Sciences, Inc. Common Stock",
+        "symbol": "GILD",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "ce935db84a162b8ec158393e4dfe8e1f57b4580ed5372f6c6addba0b1525c33e",
+      "instrument_id": "be2083f4-402e-57dc-ba7a-63802d2cba28",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Gilead Sciences, Inc. Common Stock",
+        "symbol": "GILD",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Walt Disney Company (The) Common Stock",
+        "symbol": "DIS",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "998b0e0190bc9cb12a942784c97c50d623206da599ceff0af5578e4deaeae3cd",
+      "instrument_id": "86fa37e2-bc56-50b3-928b-1364523c9167",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Walt Disney Company (The) Common Stock",
+        "symbol": "DIS",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Verizon Communications Inc. Common Stock",
+        "symbol": "VZ",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "5e172925970ce5f0f71e8a38c332e50f3193809f87d4e5581fbdf1f5e1cdcb7d",
+      "instrument_id": "4f222215-c9ae-5aef-ba4c-eda81ed10e86",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Verizon Communications Inc. Common Stock",
+        "symbol": "VZ",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "QUALCOMM Incorporated Common Stock",
+        "symbol": "QCOM",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "0aa9802ae44a678ac525a7e378277b87eee98240f9967fac707b2dc8d21b68ec",
+      "instrument_id": "8e20de3c-7fd2-5ac0-959e-3ee98cd4ae61",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "QUALCOMM Incorporated Common Stock",
+        "symbol": "QCOM",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Abbott Laboratories Common Stock",
+        "symbol": "ABT",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "b076da5c8a5ae9d0854b233e724232e1c42b137d136c61203806fbf6021796b6",
+      "instrument_id": "c15d6f21-6a06-5a99-9ed0-da3875491044",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Abbott Laboratories Common Stock",
+        "symbol": "ABT",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "PepsiCo, Inc. Common Stock",
+        "symbol": "PEP",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "099bf0002498184f047ab65e0364a58ad6b8e15d68866ad2f4cb941bf805333f",
+      "instrument_id": "16866fc9-ca0e-5dfd-936d-bd2192e0643c",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "PepsiCo, Inc. Common Stock",
+        "symbol": "PEP",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Deere & Company Common Stock",
+        "symbol": "DE",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "a3e4aea80bf7162dc1628711399875380f7e0c0718ac3eac006aad30cc53a4a3",
+      "instrument_id": "17dd68f9-f6b1-5ecb-ba3d-7c422e4c51f5",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Deere & Company Common Stock",
+        "symbol": "DE",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "ConocoPhillips Common Stock",
+        "symbol": "COP",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "5ee767897ad56b6e8705b013fe111f5e062bb88a34a86b80df27505e2784234c",
+      "instrument_id": "2a5b812d-6c9e-5c0f-94ab-75e6abca4617",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "ConocoPhillips Common Stock",
+        "symbol": "COP",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Union Pacific Corporation Common Stock",
+        "symbol": "UNP",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "78e0f83f20f3532d3f4308b359e6238f7f604935d75a3db7668df69a3c729f02",
+      "instrument_id": "7c48f2e2-a1e0-5b0c-8c81-159ac5ba6a92",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Union Pacific Corporation Common Stock",
+        "symbol": "UNP",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "T-Mobile US, Inc. Common Stock",
+        "symbol": "TMUS",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "659911345a67e648726a7cb009b206bea39acd1b3df1b02803dee31fcff2c7b2",
+      "instrument_id": "b20ed03f-e4cc-56fd-be4e-5abdb4f712fb",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "T-Mobile US, Inc. Common Stock",
+        "symbol": "TMUS",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Novo Nordisk A/S Common Stock",
+        "symbol": "NVO",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "40c1e6abbda5342709bd935d1abe6359567e7fd64b4bcf88b6c80047f67cc1af",
+      "instrument_id": "5d33bfd5-8aad-582c-9ffd-de40cd9e1449",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Novo Nordisk A/S Common Stock",
+        "symbol": "NVO",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "McDonald's Corporation Common Stock",
+        "symbol": "MCD",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "7586196def50aa0ff6104bc03213f72d132e535cdfe2e1ea6a9621bb7bf49e0f",
+      "instrument_id": "619c1fc6-ee9b-5dcb-a6da-c3fd3b0594aa",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "McDonald's Corporation Common Stock",
+        "symbol": "MCD",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Southern Copper Corporation Common Stock",
+        "symbol": "SCCO",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "4e8de45d6e7662acb74e72d986ba3ecd753a24d3e834e4c3e5ccd6819441a36a",
+      "instrument_id": "79e73b32-809d-5692-bbeb-08b41b706f38",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Southern Copper Corporation Common Stock",
+        "symbol": "SCCO",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Charles Schwab Corporation (The) Common Stock",
+        "symbol": "SCHW",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "6f4da4a6f976ae38a5d04470fa54adb0e08feefea64220e2d4edec2ba60a5c11",
+      "instrument_id": "ad049595-fdfc-58f7-bb7c-0438be1f80eb",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Charles Schwab Corporation (The) Common Stock",
+        "symbol": "SCHW",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Welltower Inc. Common Stock",
+        "symbol": "WELL",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "34842d70ab0a6a6b3a16ff6c588a127b469a730060aae38b3aed2905cd38b781",
+      "instrument_id": "54a1300b-6d42-5f16-bc8d-953e1419ca65",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Welltower Inc. Common Stock",
+        "symbol": "WELL",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Pfizer, Inc. Common Stock",
+        "symbol": "PFE",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "3f5b6ec2cd8c211bc2c87769f6306b9d0fbcda1f18009cafe6e09d3f474c5551",
+      "instrument_id": "9f048461-8d0f-55c5-9cb0-28766e877472",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Pfizer, Inc. Common Stock",
+        "symbol": "PFE",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "BlackRock, Inc. Common Stock",
+        "symbol": "BLK",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "c88e5487c2590b2edcec34df54b4b48bf7e144174e0cd6ef2f3edf7882d171df",
+      "instrument_id": "eda230a6-b226-51d7-a39d-c685b8011bf8",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "BlackRock, Inc. Common Stock",
+        "symbol": "BLK",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "NextEra Energy, Inc. Common Stock",
+        "symbol": "NEE",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "ef5d0d3fa0a9919240185a13aa5e23a0b41574583d842b36b9ab0d5a3c720b25",
+      "instrument_id": "542fa32d-fa9f-5626-b3c0-8e7333f554cb",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "NextEra Energy, Inc. Common Stock",
+        "symbol": "NEE",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "ordinary_share",
+        "name": "Seagate Technology Holdings PLC Ordinary Shares (Ireland)",
+        "symbol": "STX",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "b189ff931336bed7bfd09cb423fbd9c34fde89a4323c3be620b4732c69b6efad",
+      "instrument_id": "9fb32e59-b6e1-5139-909a-f307fcef3128",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "ordinary_share",
+        "name": "Seagate Technology Holdings PLC Ordinary Shares (Ireland)",
+        "symbol": "STX",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "ordinary_share",
+        "name": "Eaton Corporation, PLC Ordinary Shares",
+        "symbol": "ETN",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "00d3ef0018a92c6fc099c3216a0dc910b48a604aa2afae05923e0f3aadf8e6a3",
+      "instrument_id": "4cadf950-10c5-5ee1-aa66-78adf05a814d",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "ordinary_share",
+        "name": "Eaton Corporation, PLC Ordinary Shares",
+        "symbol": "ETN",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Danaher Corporation Common Stock",
+        "symbol": "DHR",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "8e2fe17b0b72bbb3722b7d19564f7d9f747cc30a9873df17f94eb016c4e3aac0",
+      "instrument_id": "f630039f-7271-5bc6-a2bb-076bef0abc3f",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Danaher Corporation Common Stock",
+        "symbol": "DHR",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "depositary_receipt",
+        "name": "Sumitomo Mitsui Financial Group Inc Unsponsored American Depositary Shares (Japan)",
+        "symbol": "SMFG",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "92c6158d050427db07d7eecd384dc8eef2af4569dc1d647b328aeac2ebacf046",
+      "instrument_id": "206243ad-2d83-5b87-96dc-5bfff477f491",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "depositary_receipt",
+        "name": "Sumitomo Mitsui Financial Group Inc Unsponsored American Depositary Shares (Japan)",
+        "symbol": "SMFG",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "TJX Companies, Inc. (The) Common Stock",
+        "symbol": "TJX",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "2f2c148908d319f6b19b39998b1bd9dd6df3f03ad97131aa7381ffb01e30e815",
+      "instrument_id": "e85c877d-a915-54f8-883a-0a166070b664",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "TJX Companies, Inc. (The) Common Stock",
+        "symbol": "TJX",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Intuitive Surgical, Inc. Common Stock",
+        "symbol": "ISRG",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "1f6e04913a7ad7d937a61aae986c9d27ccaca145e676c1f4f6a153445989f809",
+      "instrument_id": "c338952d-31a9-5409-bcc3-d809dd817f5c",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Intuitive Surgical, Inc. Common Stock",
+        "symbol": "ISRG",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "ordinary_share",
+        "name": "UBS Group AG Registered Ordinary Shares",
+        "symbol": "UBS",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "da67dba5896bcc8460ce3525555f9b295dac7dbe24853ca18417954ffbfacf3e",
+      "instrument_id": "b19e2028-a3eb-5891-9a95-68d07a643129",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "ordinary_share",
+        "name": "UBS Group AG Registered Ordinary Shares",
+        "symbol": "UBS",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Banco Bilbao Vizcaya Argentaria S.A. Common Stock",
+        "symbol": "BBVA",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "a00c6aaed991039cf8d49f214e2286cad1f1565eefc48d7bf3a067b262cad335",
+      "instrument_id": "060c2105-7452-528b-9020-0dff5253528b",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Banco Bilbao Vizcaya Argentaria S.A. Common Stock",
+        "symbol": "BBVA",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Boeing Company (The) Common Stock",
+        "symbol": "BA",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "f19ebba3ac590fcbc105d28fde89d8ceef09cd399d12cb7cd2fe7fc7aef60118",
+      "instrument_id": "049d530b-0489-54be-abff-124cc97682eb",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Boeing Company (The) Common Stock",
+        "symbol": "BA",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "ServiceNow, Inc. Common Stock",
+        "symbol": "NOW",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "f03d11923bd083cb628980f6cc0a1bde7b69daf70028566a7d66f53e20670640",
+      "instrument_id": "16eb2ffd-a193-5c7a-892d-4aa61628417b",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "ServiceNow, Inc. Common Stock",
+        "symbol": "NOW",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "depositary_receipt",
+        "name": "Sony Group Corporation American Depositary Shares",
+        "symbol": "SONY",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "243e22e5bd5a268ebaeda07730387cba643bf7e994ab0693f1015c26f2d54d52",
+      "instrument_id": "ccba76cc-36c3-52f6-9dbc-8fd3186edc3b",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "depositary_receipt",
+        "name": "Sony Group Corporation American Depositary Shares",
+        "symbol": "SONY",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "ordinary_share",
+        "name": "Accenture plc Class A Ordinary Shares (Ireland)",
+        "symbol": "ACN",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "230360de2ed4ddc0e10224b426561f27759b78e55cfeee27360cd8b9347c2d38",
+      "instrument_id": "a0238195-270d-5735-84de-e48dcad7febf",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "ordinary_share",
+        "name": "Accenture plc Class A Ordinary Shares (Ireland)",
+        "symbol": "ACN",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Uber Technologies, Inc. Common Stock",
+        "symbol": "UBER",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "30f88d9fb33d0542021f20eb724bee86efbf0061b412e071ed2875580f70e4c6",
+      "instrument_id": "b90957a4-baae-5679-82f0-cf00476036bd",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Uber Technologies, Inc. Common Stock",
+        "symbol": "UBER",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "depositary_receipt",
+        "name": "Unilever PLC American Depositary Shares (each representing One Ordinary Share)",
+        "symbol": "UL",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "7f6da7d64f51fe7d37fd792722a5800efe3cd0d51900eafde74e6b8a9940bc80",
+      "instrument_id": "3d66dfca-80aa-55fc-b1c0-d8fe4fb17ef7",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "depositary_receipt",
+        "name": "Unilever PLC American Depositary Shares (each representing One Ordinary Share)",
+        "symbol": "UL",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Marathon Petroleum Corporation Common Stock",
+        "symbol": "MPC",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "0e94dd839b507c4036f69226a5326c499dffaf9ef832f1e7a5db804fdfb049fb",
+      "instrument_id": "7b260f4a-f558-54f7-9fcb-44072c174542",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Marathon Petroleum Corporation Common Stock",
+        "symbol": "MPC",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Western Digital Corporation Common Stock",
+        "symbol": "WDC",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "af787e957350b6a3356dca65f9c008e7848f648ba3b4fc37e46adfc41a501aaa",
+      "instrument_id": "028c106f-6f4c-55d5-b495-f450cd7f2498",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Western Digital Corporation Common Stock",
+        "symbol": "WDC",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Chubb Limited  Common Stock",
+        "symbol": "CB",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "d20ab5597d753fd00f26c5a18722b4479128efe9a04389adfd6f9764f214ad94",
+      "instrument_id": "aee1cc5e-2c48-52fd-8ec1-54555cb9d446",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Chubb Limited  Common Stock",
+        "symbol": "CB",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Fortinet, Inc. Common Stock",
+        "symbol": "FTNT",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "2b0acdac4fe5b213f45ef940e0efb2cea026f1a4c501f7a65af4ca3cbf12c763",
+      "instrument_id": "d2c959ba-abac-524b-9bd6-e3cc262a3fc0",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Fortinet, Inc. Common Stock",
+        "symbol": "FTNT",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Valero Energy Corporation Common Stock",
+        "symbol": "VLO",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "9f744b5e306ca5f4868128c6006b8704dc7cf5feee4e699a0514383db98612ce",
+      "instrument_id": "aa96ece0-6700-50f2-9f14-c5e0e1f81ed5",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Valero Energy Corporation Common Stock",
+        "symbol": "VLO",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "BP p.l.c. Common Stock",
+        "symbol": "BP",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "b731f4dc2c8544c8f3ec7b3e75f5895b095658a25689dcabd93d509a102bbcca",
+      "instrument_id": "13c96df0-8491-5877-990e-c58954f7ef02",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "BP p.l.c. Common Stock",
+        "symbol": "BP",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Vertex Pharmaceuticals Incorporated Common Stock",
+        "symbol": "VRTX",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "99a8b47ecdbb4c3f5b594957a7d6abcd902d253e7c6b8da48285e2ac72f6c904",
+      "instrument_id": "e3a2e2ac-8420-53ad-8116-1f07b9f31419",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Vertex Pharmaceuticals Incorporated Common Stock",
+        "symbol": "VRTX",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Progressive Corporation (The) Common Stock",
+        "symbol": "PGR",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "f567e54ae8553a75313f84151479d1fd6b1715c19d8ea7a045fd8594102205bb",
+      "instrument_id": "9b1a53e8-83e0-5e83-8660-37d985941fa1",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Progressive Corporation (The) Common Stock",
+        "symbol": "PGR",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Prologis, Inc. Common Stock",
+        "symbol": "PLD",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "41b71d53056a7c6c67ada2ff312ddc0d0bb0800f9dbdd0bb4f83150055c830ed",
+      "instrument_id": "1029d5ff-c625-5bf2-8248-1ddf7b3dac15",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Prologis, Inc. Common Stock",
+        "symbol": "PLD",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "British American Tobacco  Industries, p.l.c. Common Stock ADR",
+        "symbol": "BTI",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "32927cf6ff4e820817611c8cd490d67ba35a6461c63ed8baf3062b7f5df63ac5",
+      "instrument_id": "330737a6-209b-5067-ac93-e362f058559f",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "British American Tobacco  Industries, p.l.c. Common Stock ADR",
+        "symbol": "BTI",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Corning Incorporated Common Stock",
+        "symbol": "GLW",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "5e371e5b79de47998c190bdb074f712cb3a61796673b258e0a247c12645fe7fb",
+      "instrument_id": "7d9d127e-6974-5198-be1b-06c786aabf72",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Corning Incorporated Common Stock",
+        "symbol": "GLW",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Bristol-Myers Squibb Company Common Stock",
+        "symbol": "BMY",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "54a003077a78e9e4741d0b6d5be848b670a7b93ae5f1dc08c50f604db5b67e91",
+      "instrument_id": "8c5cea77-036e-5ab7-afc6-6c77e165b43e",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Bristol-Myers Squibb Company Common Stock",
+        "symbol": "BMY",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Booking Holdings Inc. Common Stock",
+        "symbol": "BKNG",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "1d4a5d4f64118b8efb75bafaa1d6a4458cdb9031c3e7717ceb99ae819f7ed35f",
+      "instrument_id": "aa9c230f-d3ad-5e7f-887b-c620c6f861e5",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Booking Holdings Inc. Common Stock",
+        "symbol": "BKNG",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Parker-Hannifin Corporation Common Stock",
+        "symbol": "PH",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "374126c9dce66c691ceee130d9e710e910910fab0dcfaf88a41a5f0ea3cd40c2",
+      "instrument_id": "c0a28a0c-e852-5063-baf6-05c0bf749ca8",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Parker-Hannifin Corporation Common Stock",
+        "symbol": "PH",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "ordinary_share",
+        "name": "Medtronic plc. Ordinary Shares",
+        "symbol": "MDT",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "cad0d5a2b18fa65ba9f1185a0445fb4c0ae3f7c5fc8b066d68f363f7b94ea3b9",
+      "instrument_id": "22202ab5-9e65-53c6-aa14-4c04aca049ca",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "ordinary_share",
+        "name": "Medtronic plc. Ordinary Shares",
+        "symbol": "MDT",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Lockheed Martin Corporation Common Stock",
+        "symbol": "LMT",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "890462834cebe0854b9f545ad7f4ca6437917610178a2ca75f143bd522016343",
+      "instrument_id": "6e2d8ee6-7aec-5522-8a2e-e461380f2d40",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Lockheed Martin Corporation Common Stock",
+        "symbol": "LMT",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "S&P Global Inc. Common Stock",
+        "symbol": "SPGI",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "072ca8285deda9d45e850df51f9c1bb06b62160b981994afa3cdeacdac50629f",
+      "instrument_id": "05b04615-d374-5f5d-ac50-ae90c44b960d",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "S&P Global Inc. Common Stock",
+        "symbol": "SPGI",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Capital One Financial Corporation Common Stock",
+        "symbol": "COF",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "b8063f35aa5369b5ad162bd2597c9dc4d81c2be69a6a6dea872cb09d6bcc283e",
+      "instrument_id": "38403846-b1f3-5bf5-be8e-373679d2c56c",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Capital One Financial Corporation Common Stock",
+        "symbol": "COF",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Phillips 66 Common Stock",
+        "symbol": "PSX",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "44ed83757374bdcaff17db17cfb52d2dca669656b1281656bdaeecad43cc6778",
+      "instrument_id": "6de10b2d-0283-577d-838f-6c7c54fc8d88",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Phillips 66 Common Stock",
+        "symbol": "PSX",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Snowflake Inc. Common Stock",
+        "symbol": "SNOW",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "f030e956329e841af492fb4e3409b0caa05bd0d2b63e220257c4557586621858",
+      "instrument_id": "c04adb86-6d1f-573d-bc27-552ff7160e08",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Snowflake Inc. Common Stock",
+        "symbol": "SNOW",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "HDFC Bank Limited Common Stock",
+        "symbol": "HDB",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "f70d3a6344df65511fb2a1da6b49f3994550b98ea38ca03cddd1ce2dbef517e3",
+      "instrument_id": "47c1f176-110e-59e1-bd9f-74f3a119b2d1",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "HDFC Bank Limited Common Stock",
+        "symbol": "HDB",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "depositary_receipt",
+        "name": "PDD Holdings Inc. American Depositary Shares",
+        "symbol": "PDD",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "ae1ffa0d741f2860c35534187beb5ade8be432ea6eaa49a4e6b29c4cfe1881f6",
+      "instrument_id": "b6f3d0a1-a439-5fec-a0fc-141b77adba04",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "depositary_receipt",
+        "name": "PDD Holdings Inc. American Depositary Shares",
+        "symbol": "PDD",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "CVS Health Corporation Common Stock",
+        "symbol": "CVS",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "ca67200bf0cf83d67d58c75f527e361668b5f7cd07fd2b9d28e49099be57ba18",
+      "instrument_id": "b46ae543-a520-5db9-8727-24b70d202123",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "CVS Health Corporation Common Stock",
+        "symbol": "CVS",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Cloudflare, Inc. Class A Common Stock",
+        "symbol": "NET",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "0b0fa4aad4fda4e871392bf7bbe6d131683b54fd3b765d40ccdf0b302ab14294",
+      "instrument_id": "64069804-5a91-58fb-ba32-4b4c16fb2b9a",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Cloudflare, Inc. Class A Common Stock",
+        "symbol": "NET",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Rio Tinto Plc Common Stock",
+        "symbol": "RIO",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "67c65aad35c4027f7596ad469a40e3d63a315ed8cc8aabcea132e8a2c4d7fdf3",
+      "instrument_id": "98b3b807-5200-5340-ad50-0e744fec735d",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Rio Tinto Plc Common Stock",
+        "symbol": "RIO",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "McKesson Corporation Common Stock",
+        "symbol": "MCK",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "69d264333edf283c7cdc96d40e32215b9a4a79b6acff1f0d6b2912aeb3faca19",
+      "instrument_id": "c77c4931-a899-52a2-b615-00e3cb5eb2ca",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "McKesson Corporation Common Stock",
+        "symbol": "MCK",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Bank Of Montreal Common Stock",
+        "symbol": "BMO",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "edbd751424eddfdccf1038ee84a5532d3fd5fe83ed946ae76c56cbfa63dca5f3",
+      "instrument_id": "0f9b1309-8632-5008-9a7a-329c1a2b3fc5",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Bank Of Montreal Common Stock",
+        "symbol": "BMO",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Automatic Data Processing, Inc. Common Stock",
+        "symbol": "ADP",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "bc12fbc7096bfca170190928388047d30891bbdb5f4324e91a00ea649b3a66dd",
+      "instrument_id": "1b3a9fe2-f70b-5835-a23a-ec8c3be3b2a2",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Automatic Data Processing, Inc. Common Stock",
+        "symbol": "ADP",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Stryker Corporation Common Stock",
+        "symbol": "SYK",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "b353cd2fdef1d15ce0900b1a4ed30b30370f2a5c71858c5090d718e39fa2a862",
+      "instrument_id": "739374bb-2e49-5cce-a3dc-8db7204b1312",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Stryker Corporation Common Stock",
+        "symbol": "SYK",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "ordinary_share",
+        "name": "Spotify Technology S.A. Ordinary Shares",
+        "symbol": "SPOT",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "ebabab2950823cdca2bd15de5b1230683d037b0e24d19d98ec9dfe4c9837625f",
+      "instrument_id": "ed33d497-717e-5e4a-8b35-7ec71899c5a3",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "ordinary_share",
+        "name": "Spotify Technology S.A. Ordinary Shares",
+        "symbol": "SPOT",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Canadian Natural Resources Limited Common Stock",
+        "symbol": "CNQ",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "20480143b3f9655c1f87b41611e7b79b806fa8af84e20f62e6e67c5849641ac0",
+      "instrument_id": "8419b88d-19a2-50f0-a56a-9df085ef24ee",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Canadian Natural Resources Limited Common Stock",
+        "symbol": "CNQ",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Starbucks Corporation Common Stock",
+        "symbol": "SBUX",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "0f2640159baaf75cf16f9285365178a9ba98da29592bf5686f4f7adcc8bb1000",
+      "instrument_id": "c9dc5638-b68f-518e-9e01-773f92277eeb",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Starbucks Corporation Common Stock",
+        "symbol": "SBUX",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Lowe's Companies, Inc. Common Stock",
+        "symbol": "LOW",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "c8c1f2b567868fe4124551c4126d911892ba028334e5d9d750e98cb157db0051",
+      "instrument_id": "7cff26af-65a1-55d8-86a9-fabc6a4c7112",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Lowe's Companies, Inc. Common Stock",
+        "symbol": "LOW",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Enbridge Inc Common Stock",
+        "symbol": "ENB",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "583998364b866f4fcd3954b3d56400041c5b1cb39a0784aa18be002d323b7381",
+      "instrument_id": "21fc5728-02f9-54cf-9871-88fd15afa678",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Enbridge Inc Common Stock",
+        "symbol": "ENB",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Southern Company (The) Common Stock",
+        "symbol": "SO",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "9d4192922e273c05f05d82667552ff158a0f88600fd135bbedd4636f41d74a04",
+      "instrument_id": "6f9aa969-a3c6-54f3-ae2f-1c0fc0264fc0",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Southern Company (The) Common Stock",
+        "symbol": "SO",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "CME Group Inc. Class A Common Stock",
+        "symbol": "CME",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "f01fc3cdfa7ffaed375839156b6484cff194fc611a1852a7fe4f194f4c2154de",
+      "instrument_id": "ad78ceee-0da8-584b-82a0-725f4cd99caa",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "CME Group Inc. Class A Common Stock",
+        "symbol": "CME",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "HCA Healthcare, Inc. Common Stock",
+        "symbol": "HCA",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "1b52446b57763a9884e024058f1d35832efed2fb2c1858085d9a9516de1169c9",
+      "instrument_id": "c823ea25-2ae6-5329-a6b6-ed19e0738add",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "HCA Healthcare, Inc. Common Stock",
+        "symbol": "HCA",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "ICICI Bank Limited Common Stock",
+        "symbol": "IBN",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "d9af6eafe68564cea6335d8903fcf175f143e2f1467d009cac97984941d467c3",
+      "instrument_id": "d5dd9f5b-325a-568a-9821-33828e5f064d",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "ICICI Bank Limited Common Stock",
+        "symbol": "IBN",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Canadian Imperial Bank of Commerce Common Stock",
+        "symbol": "CM",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "154c61671090cb1c6df5d9d9e870738d5341e032e604cd710a98969bc698ecae",
+      "instrument_id": "1a47397f-1f4b-581c-9926-b2f7aabf1605",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Canadian Imperial Bank of Commerce Common Stock",
+        "symbol": "CM",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Airbnb, Inc. Class A Common Stock",
+        "symbol": "ABNB",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "24bc285488984fa6802baa86d426a8975b4dbb4d63fbc0ff451ca0735caf6c62",
+      "instrument_id": "4b36ac3c-4986-55a9-9505-ed8d59f75f92",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Airbnb, Inc. Class A Common Stock",
+        "symbol": "ABNB",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Freeport-McMoRan, Inc. Common Stock",
+        "symbol": "FCX",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "fe5d927d5bf051b2fe71bffdda07bc48ac88e7008ad74272e6b2e88cecb3f45d",
+      "instrument_id": "1a349ed6-1c29-5ff4-b3f8-0d8d690611fa",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Freeport-McMoRan, Inc. Common Stock",
+        "symbol": "FCX",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Constellation Energy Corporation Common Stock",
+        "symbol": "CEG",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "024805d298d98f4005119e5e3a900de0262b6c54a989982427fbb6cf8a9f8100",
+      "instrument_id": "1bfde379-0b4a-5fc2-b8dd-98923aa899a7",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Constellation Energy Corporation Common Stock",
+        "symbol": "CEG",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "depositary_receipt",
+        "name": "ASE Technology Holding Co., Ltd. American Depositary Shares (each representing Two Common Shares)",
+        "symbol": "ASX",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "2ac18f8d46771d826f7c470710ba2e81e357e89f4accfd3b41def2755a3e6168",
+      "instrument_id": "c6ba40b2-70ad-5e95-8c66-60fda56af407",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "depositary_receipt",
+        "name": "ASE Technology Holding Co., Ltd. American Depositary Shares (each representing Two Common Shares)",
+        "symbol": "ASX",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Equinix, Inc. Common Stock REIT",
+        "symbol": "EQIX",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "a280de9c9d04f951f55f70b0d5b866cecd46b88ce0e350a283630c226ff61fb4",
+      "instrument_id": "8d4fb9c6-cc70-5cc4-83d2-f39b20c12313",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Equinix, Inc. Common Stock REIT",
+        "symbol": "EQIX",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Quanta Services, Inc. Common Stock",
+        "symbol": "PWR",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "64256c87a4c1be23529a2d478bc5cc8e75a90e4e90eae495eac709b1a934d094",
+      "instrument_id": "3f9cdf46-2f55-56bf-8722-3476ac7900fe",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Quanta Services, Inc. Common Stock",
+        "symbol": "PWR",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "ING Group, N.V. Common Stock",
+        "symbol": "ING",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "403a14384bf44ea10cc8c08246639b7caa4ca7f7a5f40316421b21ef95bd5927",
+      "instrument_id": "a78c14ed-1b5d-5981-91d1-174303e7a39a",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "ING Group, N.V. Common Stock",
+        "symbol": "ING",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Marriott International Class A Common Stock",
+        "symbol": "MAR",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "31fbe1d07fad07c57b7c16699a4aaf11680a83a5ea1f6d1e19264efd965b4957",
+      "instrument_id": "c8ceb35e-61f6-5668-a92d-9df560425ae8",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Marriott International Class A Common Stock",
+        "symbol": "MAR",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": 2,
+        "instrument_type": "depositary_receipt",
+        "name": "GSK plc American Depositary Shares (Each representing two Ordinary Shares)",
+        "symbol": "GSK",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "5dfb8dd560a6c227e79a2bad7c8d88eca139b519b0baa4490e58e0e794dee82c",
+      "instrument_id": "96fbe67c-5160-5abe-afe1-03d3b6388a9a",
+      "observed": {
+        "depositary_ratio": 2,
+        "instrument_type": "depositary_receipt",
+        "name": "GSK plc American Depositary Shares (Each representing two Ordinary Shares)",
+        "symbol": "GSK",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Datadog, Inc. Class A Common Stock",
+        "symbol": "DDOG",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "1308d72e0fff55b24d7999feb516632ba922f969f8e20fe6a41cc88b8712dcef",
+      "instrument_id": "fd93904c-a49f-55a4-8dc8-f580cbfb0880",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Datadog, Inc. Class A Common Stock",
+        "symbol": "DDOG",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Adobe Inc. Common Stock",
+        "symbol": "ADBE",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "fa974101cad36b5343bf4ceb8a6881663852badc3e89c0e819d74c6af91673a7",
+      "instrument_id": "848182fe-6c5e-5527-bfcc-b3b9ad0647b6",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Adobe Inc. Common Stock",
+        "symbol": "ADBE",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "The Bank of New York Mellon Corporation Common Stock",
+        "symbol": "BNY",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "20b083031bffc2c979789aafd9ac91b78f392f3ff66ef3652e18e26e26f43f78",
+      "instrument_id": "b7fa4566-d424-5f87-b6b1-4a5e9be001a5",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "The Bank of New York Mellon Corporation Common Stock",
+        "symbol": "BNY",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Duke Energy Corporation (Holding Company) Common Stock",
+        "symbol": "DUK",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "9afcffd948656a4cbbc973319a743f7e304d1182781334fae28a80b69c6a061f",
+      "instrument_id": "95895166-b14e-5277-8fb9-58e58d8d9ef6",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Duke Energy Corporation (Holding Company) Common Stock",
+        "symbol": "DUK",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "MercadoLibre, Inc. Common Stock",
+        "symbol": "MELI",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "f3b6d12a87d83a55920817b2f6e1c590b8d898faa87ed565a5c3cd4c15eb97ae",
+      "instrument_id": "9f8c5eb2-a7b7-5d03-94e5-14aba424890f",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "MercadoLibre, Inc. Common Stock",
+        "symbol": "MELI",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Elevance Health, Inc. Common Stock",
+        "symbol": "ELV",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "f2c178b03506155ca9ba7920cd72671a2affe5bf8f4a24c569db5ea941c5ac59",
+      "instrument_id": "816341f0-b90e-5f7a-b5cd-e85bba0b2e99",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Elevance Health, Inc. Common Stock",
+        "symbol": "ELV",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Synopsys, Inc. Common Stock",
+        "symbol": "SNPS",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "33c05ae209b2bbf12f2a09356b42141bd561ce3edc8505d93126f800a74767be",
+      "instrument_id": "d5f4a122-f54a-55e6-9c95-1edc6653ff37",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Synopsys, Inc. Common Stock",
+        "symbol": "SNPS",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Robinhood Markets, Inc. Class A Common Stock",
+        "symbol": "HOOD",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "6f53c11e990264643e56ff90f04ed0fbede4f17b3713e8bd0707e7155f101d42",
+      "instrument_id": "9057930c-c0d9-5b81-9dfa-0dd3ea42553b",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Robinhood Markets, Inc. Class A Common Stock",
+        "symbol": "HOOD",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "ENI S.p.A. Common Stock",
+        "symbol": "E",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "bcce3fdc5fc0faee59b2d8e75437e721f5d745126a5a09bfe4459c37e5ec4320",
+      "instrument_id": "04851f08-a20a-5e7c-94da-7cf93b745a86",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "ENI S.p.A. Common Stock",
+        "symbol": "E",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Cadence Design Systems, Inc. Common Stock",
+        "symbol": "CDNS",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "1e9a73c8656c9587451f4bc57e9678a7266c19cdeb7fcc6fd546c6f57b9d72c3",
+      "instrument_id": "51d8ba7c-2942-5f15-b624-b7d9fa6138e2",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Cadence Design Systems, Inc. Common Stock",
+        "symbol": "CDNS",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "General Dynamics Corporation Common Stock",
+        "symbol": "GD",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "e6ac877bce33663a5322cc93c797e1e094cd97ee45d26d64daf82e3f6dfd6794",
+      "instrument_id": "a1418ef6-d886-5dfe-b20b-86ed867e30b2",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "General Dynamics Corporation Common Stock",
+        "symbol": "GD",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Moderna, Inc. Common Stock",
+        "symbol": "MRNA",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "78e67e767ee792a1fc9a0699c7e0b5d148f0811597b209e36a1784973225772c",
+      "instrument_id": "d0e19435-1a5b-5158-b93c-88a781dbc8e3",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Moderna, Inc. Common Stock",
+        "symbol": "MRNA",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Emerson Electric Company Common Stock",
+        "symbol": "EMR",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "7423b35e8a884803df0f4e82ad46d102613818f0241aa2a78619a28307ab62b3",
+      "instrument_id": "0dff23cf-4932-55db-9acf-d3e6604c98fa",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Emerson Electric Company Common Stock",
+        "symbol": "EMR",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Agnico Eagle Mines Limited Common Stock",
+        "symbol": "AEM",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "0c6d6b78ff1420e178bc60b6054884529b13f9bed5a2192dc264bfa73a98c22f",
+      "instrument_id": "c8cf45e3-c040-53f6-84f5-eb761ddfb488",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Agnico Eagle Mines Limited Common Stock",
+        "symbol": "AEM",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "CSX Corporation Common Stock",
+        "symbol": "CSX",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "ce7f485d3647789d400ca0462971ae81629d1af06fbc06cba79fc668b07698e6",
+      "instrument_id": "4be78834-fdfd-53df-8cdc-3c517064486c",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "CSX Corporation Common Stock",
+        "symbol": "CSX",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Williams Companies, Inc. (The) Common Stock",
+        "symbol": "WMB",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "f88409879dcce493467f7702ce190353345790913f28e9ec9773bc1d8f4a340d",
+      "instrument_id": "1bc97f15-4307-5b34-9e1c-dcb465f0e1a1",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Williams Companies, Inc. (The) Common Stock",
+        "symbol": "WMB",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Suncor Energy  Inc. Common Stock",
+        "symbol": "SU",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "e92651de8c6a6786af1c0e2888bbcbcc87f4a545501b041456d593b9d69d2043",
+      "instrument_id": "2295a0ad-430a-57ca-a59b-35285647c206",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Suncor Energy  Inc. Common Stock",
+        "symbol": "SU",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Applovin Corporation Class A Common Stock",
+        "symbol": "APP",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "a2137547ad0472450e5566ae4fc5b3795648e33e3c480c62fb39c4c7ce3d86e3",
+      "instrument_id": "4265967c-6801-5e3d-8ac7-8840c4c2bf86",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Applovin Corporation Class A Common Stock",
+        "symbol": "APP",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "U.S. Bancorp Common Stock",
+        "symbol": "USB",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "8d45a4c2aa27cd8435c03e5df07ed0b048b7d079073e9fb7ca75fb877fcd71e3",
+      "instrument_id": "4a842f87-25c3-57a3-991e-743dde65cb3e",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "U.S. Bancorp Common Stock",
+        "symbol": "USB",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Intercontinental Exchange Inc. Common Stock",
+        "symbol": "ICE",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "ff0d67636da697fc7529d4dbedc4dc7417f6cfadf0e1dc12cfa91be62c5f263d",
+      "instrument_id": "d0459050-0c37-55f3-8a00-5f5b19430a2c",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Intercontinental Exchange Inc. Common Stock",
+        "symbol": "ICE",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Howmet Aerospace Inc. Common Stock",
+        "symbol": "HWM",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "54d44f696a8fc0bdfdff66ecd7e218427051660c89e00008ef09cb77079abf10",
+      "instrument_id": "b8630109-7b2b-586a-a588-4b13f41f53ff",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Howmet Aerospace Inc. Common Stock",
+        "symbol": "HWM",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Waste Management, Inc. Common Stock",
+        "symbol": "WM",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "11d02cff383cdc607e3bc866eab0162a6c97599665105bf20cc5d432d2050aca",
+      "instrument_id": "c4d94260-d96c-5e06-8625-7ad7d64e442e",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Waste Management, Inc. Common Stock",
+        "symbol": "WM",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "PNC Financial Services Group, Inc. (The) Common Stock",
+        "symbol": "PNC",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "613a363d7760f245294e8cc3cc0a0408d9aa4c956578582e23be10ca54003949",
+      "instrument_id": "56e6deeb-3c9b-5e95-81aa-f94ff3f6b09d",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "PNC Financial Services Group, Inc. (The) Common Stock",
+        "symbol": "PNC",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Vertiv Holdings, LLC Class A Common Stock",
+        "symbol": "VRT",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "8f6743acbd7860534b70438a56b3e06061654ed6c0be0e251fef92b2f3505fbb",
+      "instrument_id": "cd20743c-3520-5a11-b02c-2a1f6ce3cd59",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Vertiv Holdings, LLC Class A Common Stock",
+        "symbol": "VRT",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Marsh Common Stock",
+        "symbol": "MRSH",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "b4c8250188dda7ef1714c28073446825b9cb00d5d9f1dd7933c40625e06f52ba",
+      "instrument_id": "8a999eba-084b-5d5b-998d-02c751860f87",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Marsh Common Stock",
+        "symbol": "MRSH",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "3M Company Common Stock",
+        "symbol": "MMM",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "77d0857f7f4f5dd1363a09b517ead0055fd48a71cccfa2e7eac0fbd94b43f3c6",
+      "instrument_id": "55ad6109-f16b-57d3-bf49-7666ff215e7d",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "3M Company Common Stock",
+        "symbol": "MMM",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Hewlett Packard Enterprise Company Common Stock",
+        "symbol": "HPE",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "f9e0d27496238d5928cc9069f2edd1e42afb932809476f45bd4aa0ca4596bda9",
+      "instrument_id": "f16e7730-1573-5c8e-a913-8de77490919e",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Hewlett Packard Enterprise Company Common Stock",
+        "symbol": "HPE",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "American Tower Corporation (REIT) Common Stock",
+        "symbol": "AMT",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "93d11b74233f04baeb5f688379f3254300d189cc067e28ed441afa2642634b8e",
+      "instrument_id": "56269a78-dc6f-5d25-ab9e-21d14de22e13",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "American Tower Corporation (REIT) Common Stock",
+        "symbol": "AMT",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Intuit Inc. Common Stock",
+        "symbol": "INTU",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "30fcb4147524abccb0fc6d3689abeda4ed3c3ea8cf1d8d9c1d0d1ed43f851474",
+      "instrument_id": "2fc4249d-ff7b-53bc-80b3-77e583e35e72",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Intuit Inc. Common Stock",
+        "symbol": "INTU",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Cintas Corporation Common Stock",
+        "symbol": "CTAS",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "0875719544149aa420619db9011b6a5606c575f2fcd32c8e114e3500a7e06734",
+      "instrument_id": "8790a5a1-9c83-5423-b406-e2916c958c24",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Cintas Corporation Common Stock",
+        "symbol": "CTAS",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "depositary_receipt",
+        "name": "National Grid Transco, PLC National Grid PLC (NEW) American Depositary Shares",
+        "symbol": "NGG",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "8598ac084fecefff6d0f86a0a38c0436d466004a35479247f0f040c9cda4f12e",
+      "instrument_id": "daa443e2-0ccb-549b-9212-7bee41137fdc",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "depositary_receipt",
+        "name": "National Grid Transco, PLC National Grid PLC (NEW) American Depositary Shares",
+        "symbol": "NGG",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "United Parcel Service, Inc. Common Stock",
+        "symbol": "UPS",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "1aeafebbf9abd82cc02d188e840b5dd382c548d744cb081e24a43d7d380da058",
+      "instrument_id": "3ab53e53-c116-54d3-a75a-6e5a667b94f1",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "United Parcel Service, Inc. Common Stock",
+        "symbol": "UPS",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Lumentum Holdings Inc. Common Stock",
+        "symbol": "LITE",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "d38059e2ce8b3daebac78d9b2bd9725adaa8cdadba4f59ba27fffee2edbcfeae",
+      "instrument_id": "2e42cc0a-84ca-590e-9888-5fe34094b77e",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Lumentum Holdings Inc. Common Stock",
+        "symbol": "LITE",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "depositary_receipt",
+        "name": "Lloyds Banking Group Plc American Depositary Shares",
+        "symbol": "LYG",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "3e4dc7ecb7d9b5b6ec7a9f015a230a6104c865c0dc167a13526c0643b6b6cdf2",
+      "instrument_id": "15636c7c-f507-5ecc-b078-dcc40f00a9b4",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "depositary_receipt",
+        "name": "Lloyds Banking Group Plc American Depositary Shares",
+        "symbol": "LYG",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "EOG Resources, Inc. Common Stock",
+        "symbol": "EOG",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "8b3e835e9b2bfb928a49e4ab6166f4ac1ed8d61494fdd8e67038dfe3d446dd6c",
+      "instrument_id": "de023edf-3e25-54ae-a531-da866f10f8d3",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "EOG Resources, Inc. Common Stock",
+        "symbol": "EOG",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Ecolab Inc. Common Stock",
+        "symbol": "ECL",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "8123c4ffc57fbef8cb0ae6b1ccb806f74f19397aff6eeeed6e54eab0b73e90e7",
+      "instrument_id": "d319d435-c358-5943-8704-a5277acb9d2a",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Ecolab Inc. Common Stock",
+        "symbol": "ECL",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Moody's Corporation Common Stock",
+        "symbol": "MCO",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "a73b42e713bcc532a212713b93677541c3c435ffa769249a3696f03bb3137b9d",
+      "instrument_id": "ce1a382a-bed6-5e00-96bf-f516f6a35629",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Moody's Corporation Common Stock",
+        "symbol": "MCO",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Regeneron Pharmaceuticals, Inc. Common Stock",
+        "symbol": "REGN",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "593eb26157e21260199b0048b5c5fa5bd2a97253d4f214a005abfa58cf3411e2",
+      "instrument_id": "8dcfd668-df5f-5e66-85c2-eee9777b1d80",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Regeneron Pharmaceuticals, Inc. Common Stock",
+        "symbol": "REGN",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Mondelez International, Inc. Class A Common Stock",
+        "symbol": "MDLZ",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "08c631500616c554b98a73c0d31c20d660be3346881f6c152768cd166ee6832a",
+      "instrument_id": "63f90e79-cc1e-528a-ba48-29775701ee08",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Mondelez International, Inc. Class A Common Stock",
+        "symbol": "MDLZ",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "DoorDash, Inc. Class A Common Stock",
+        "symbol": "DASH",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "6c08a5384b9ba764630eb4c1fd2a1fafadec94fa7cd5df4f97c990855218edca",
+      "instrument_id": "b0ea40c3-e62c-599b-b5c8-67e6e0d4dae7",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "DoorDash, Inc. Class A Common Stock",
+        "symbol": "DASH",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Blackstone Inc. Common Stock",
+        "symbol": "BX",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "943d4388ee5eca233e98d0f12a42636c3044628fc663c9afcaeaa7a5f56fa18a",
+      "instrument_id": "5ee98888-d028-5e1f-8c7a-1d634e92970e",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Blackstone Inc. Common Stock",
+        "symbol": "BX",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "depositary_receipt",
+        "name": "NetEase, Inc. American Depositary Shares",
+        "symbol": "NTES",
+        "venue": "NASDAQ"
+      },
+      "identity_sha256": "8ef849f77b64e5a41a21af93d5dc70850d7969a9f163aa8dfa18b8d6a138935e",
+      "instrument_id": "8c91c381-4016-5d5c-9ecb-9f023d2ea665",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "depositary_receipt",
+        "name": "NetEase, Inc. American Depositary Shares",
+        "symbol": "NTES",
+        "venue": "NASDAQ"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "The Travelers Companies, Inc. Common Stock",
+        "symbol": "TRV",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "528516c9ddf1ca725b82f5b748b9794cb556c736902e4e36511ae702462fc633",
+      "instrument_id": "9f62d243-44fa-5736-9a2d-0057d33ff67b",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "The Travelers Companies, Inc. Common Stock",
+        "symbol": "TRV",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Sherwin-Williams Company (The) Common Stock",
+        "symbol": "SHW",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "a0c05f543225440fce5ee8d23273613ba30b950dba4075eea736bee9aeeec0c3",
+      "instrument_id": "aa2eaaf4-b40b-564e-9bc9-30c89cbe1ede",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Sherwin-Williams Company (The) Common Stock",
+        "symbol": "SHW",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Enterprise Products Partners L.P. Common Stock",
+        "symbol": "EPD",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "2377e2d5991d41a2688a6fedf5d29801710d8de2f0379f788fa9ee0bfbd514cd",
+      "instrument_id": "a33fd539-d6f1-54ba-b9fe-33305080e89e",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Enterprise Products Partners L.P. Common Stock",
+        "symbol": "EPD",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "KKR & Co. Inc. Common Stock",
+        "symbol": "KKR",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "35bd5722f8b058660096af630edd8e29b895034ed1e6294b8e71de20e697bd63",
+      "instrument_id": "cd9b4be4-8430-520e-892e-b9054d4f6dd3",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "KKR & Co. Inc. Common Stock",
+        "symbol": "KKR",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Illinois Tool Works Inc. Common Stock",
+        "symbol": "ITW",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "3bb5c4b9d65d465967d65fef596ad81a5f1313dc2cc232b9c10b867093993a5e",
+      "instrument_id": "bafb7fd7-aaa5-522e-a79c-f76371d5d5f8",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Illinois Tool Works Inc. Common Stock",
+        "symbol": "ITW",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "The Cigna Group Common Stock",
+        "symbol": "CI",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "d46c43dc339914f12dfaf669a0a66bf5d57fa79a628cc7ab0220a832d79f2346",
+      "instrument_id": "2dbc3710-5e1a-5393-ba24-ad507b93b5e0",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "The Cigna Group Common Stock",
+        "symbol": "CI",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Barclays PLC Common Stock",
+        "symbol": "BCS",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "ad902b76b4eaa1608cc20aa279a7919b0551c5a0742d4f4186e3ef2396536e5e",
+      "instrument_id": "95eda322-af0e-5a7b-9b46-7e4657c1a130",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Barclays PLC Common Stock",
+        "symbol": "BCS",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    },
+    {
+      "expected": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Motorola Solutions, Inc. Common Stock",
+        "symbol": "MSI",
+        "venue": "NYSE"
+      },
+      "identity_sha256": "77e8b821dfa0619aee55dbb37363af073f71b08c87b477854c84f3d0258b4621",
+      "instrument_id": "3bb3c725-d657-583b-b502-e34294fd836c",
+      "observed": {
+        "depositary_ratio": null,
+        "instrument_type": "common_stock",
+        "name": "Motorola Solutions, Inc. Common Stock",
+        "symbol": "MSI",
+        "venue": "NYSE"
+      },
+      "status": "MATCHED"
+    }
+  ],
+  "results_sha256": "7097f2972b1d5d253a7e7014e49b7fd24ac94465680591353e76a3c34a3bd94f",
+  "retrieved_at": "2026-10-16T12:58:22Z",
+  "schema_version": "icarus.market-universe.listing-crosswalk.v1",
+  "source": "Nasdaq-operated public stock screener; identity metadata only",
+  "source_snapshots": {
+    "AMEX": {
+      "endpoint": "https://api.nasdaq.com/api/screener/stocks?tableonly=true&limit=5000&sortColumn=marketCap&sortOrder=DESC&exchange=amex",
+      "retrieved_at": "2026-10-16T12:58:22Z",
+      "sha256": "419fb31e593840add1551243d6ed80740880c14991ac0678279a6c45324a2eee"
+    },
+    "NASDAQ": {
+      "endpoint": "https://api.nasdaq.com/api/screener/stocks?tableonly=true&limit=5000&sortColumn=marketCap&sortOrder=DESC&exchange=nasdaq",
+      "retrieved_at": "2026-10-16T12:58:22Z",
+      "sha256": "135206d2b7f39cfad362a46b754bf376a89ae32d277399720c2fa4712be5f034"
+    },
+    "NYSE": {
+      "endpoint": "https://api.nasdaq.com/api/screener/stocks?tableonly=true&limit=5000&sortColumn=marketCap&sortOrder=DESC&exchange=nyse",
+      "retrieved_at": "2026-10-16T12:58:22Z",
+      "sha256": "ac0cba6b7165444aa40073aa190de8faeddad3d1eae027c00c6d4b009489040e"
+    }
+  }
+}

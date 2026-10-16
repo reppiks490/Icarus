@@ -18,6 +18,7 @@ EXPECTED_INSTRUMENT_COUNT = 200
 _HEX = re.compile(r"^[0-9a-f]{64}$")
 PROBE_PATH = Path(__file__).resolve().with_name("a200-yahoo-history-probe.json")
 HYBRID_PROBE_PATH = Path(__file__).resolve().with_name("a200-hybrid-history-probe.json")
+LISTING_CROSSWALK_PATH = Path(__file__).resolve().with_name("a200-listing-crosswalk.json")
 
 
 def _load() -> dict[str, Any]:
@@ -112,6 +113,7 @@ def snapshot() -> dict[str, Any]:
     declared = catalog.get("counts")
     if declared != counts:
         raise ValueError("market universe declared counts do not match catalog rows")
+    listing = load_listing_crosswalk_report()
     return {
         "schema_version": catalog["schema_version"],
         "catalog_id": catalog["catalog_id"],
@@ -125,6 +127,109 @@ def snapshot() -> dict[str, Any]:
         "note": "Cataloged equity candidates are not connected, bar-qualified, Pulse-enabled, or strategy-qualified without separate source receipts and evidence.",
         "source_probe": load_source_probe_report(),
         "hybrid_probe": load_hybrid_probe_report(),
+        "listing_crosswalk": listing,
+    }
+
+
+def load_listing_crosswalk_report() -> dict[str, Any]:
+    """Load public listing identity evidence independently of feed qualification."""
+    if not LISTING_CROSSWALK_PATH.exists():
+        return {"status": "NOT_RUN", "results": [], "matched_count": 0}
+    try:
+        report = json.loads(LISTING_CROSSWALK_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as ex:
+        return {"status": "UNAVAILABLE", "error": type(ex).__name__, "results": [], "matched_count": 0}
+    invalid = {"status": "INVALID", "results": [], "matched_count": 0}
+    if not isinstance(report, dict) or report.get("schema_version") != "icarus.market-universe.listing-crosswalk.v1":
+        return invalid
+    catalog = _load()
+    rows = report.get("results")
+    sources = report.get("source_snapshots")
+    if (report.get("catalog_id") != catalog.get("catalog_id")
+            or report.get("catalog_snapshot_sha256") != catalog_evidence_digest(catalog)
+            or report.get("qualification_scope") != "public_listing_identity_only"
+            or report.get("raw_market_data_persisted") is not False
+            or not isinstance(sources, Mapping) or set(sources) != {"NASDAQ", "NYSE", "AMEX"}
+            or not isinstance(rows, list) or len(rows) != EXPECTED_INSTRUMENT_COUNT
+            or report.get("requested_instrument_count") != EXPECTED_INSTRUMENT_COUNT):
+        return invalid
+    expected_endpoints = {name: f"https://api.nasdaq.com/api/screener/stocks?tableonly=true&limit=5000&sortColumn=marketCap&sortOrder=DESC&exchange={name.lower()}"
+                          for name in sources}
+    source_stale = False
+    for name, source in sources.items():
+        if (not isinstance(source, Mapping) or not _HEX.fullmatch(str(source.get("sha256", "")))
+                or source.get("endpoint") != expected_endpoints[name]):
+            return invalid
+        try:
+            source_time = datetime.fromisoformat(str(source.get("retrieved_at", "")).replace("Z", "+00:00"))
+        except (ValueError, TypeError):
+            return invalid
+        if source_time.tzinfo is None:
+            return invalid
+        source_age = (datetime.now(timezone.utc) - source_time.astimezone(timezone.utc)).total_seconds()
+        if source_age < -300:
+            return invalid
+        source_stale = source_stale or source_age > 24 * 60 * 60
+    if report.get("results_sha256") != source_probe_results_digest(rows):
+        return invalid
+    catalog_rows = {row["instrument_id"]: row for row in catalog["instruments"]}
+    seen = set()
+    matched = 0
+    for evidence in rows:
+        if not isinstance(evidence, dict) or set(evidence) != {
+                "instrument_id", "expected", "observed", "status", "identity_sha256"}:
+            return invalid
+        instrument_id = evidence.get("instrument_id")
+        if instrument_id not in catalog_rows or instrument_id in seen:
+            return invalid
+        seen.add(instrument_id)
+        row = catalog_rows[instrument_id]
+        expected = {
+            "venue": row["venue"].upper(), "symbol": row["display_symbol"].upper(),
+            "name": row["name"], "instrument_type": row["instrument_type"],
+            "depositary_ratio": row["depositary_ratio"],
+        }
+        if (evidence.get("expected") != expected or set(evidence["expected"]) != set(expected)):
+            return invalid
+        observed = evidence.get("observed")
+        status = evidence.get("status")
+        if observed is not None:
+            if (not isinstance(observed, dict) or set(observed) != set(expected)
+                    or not all(isinstance(value, str) for key, value in observed.items() if key != "depositary_ratio")
+                    or (observed.get("depositary_ratio") is not None and type(observed.get("depositary_ratio")) is not int)
+                    or not _HEX.fullmatch(str(evidence.get("identity_sha256", "")))):
+                return invalid
+            identity_bytes = json.dumps(observed, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+            if hashlib.sha256(identity_bytes).hexdigest() != evidence["identity_sha256"]:
+                return invalid
+        elif evidence.get("identity_sha256") is not None:
+            return invalid
+        if status == "MATCHED":
+            if observed != expected:
+                return invalid
+            matched += 1
+        elif status != "MISMATCH":
+            return invalid
+        elif observed == expected:
+            return invalid
+    if seen != set(catalog_rows):
+        return invalid
+    updated = report.get("retrieved_at")
+    try:
+        retrieved = datetime.fromisoformat(str(updated).replace("Z", "+00:00"))
+        if retrieved.tzinfo is None:
+            return invalid
+        age = (datetime.now(timezone.utc) - retrieved.astimezone(timezone.utc)).total_seconds()
+    except (ValueError, TypeError):
+        return invalid
+    if age < -300:
+        return invalid
+    return {
+        "status": "CURRENT" if age <= 24 * 60 * 60 and not source_stale else "STALE",
+        "retrieved_at": updated, "matched_count": matched,
+        "requested_count": EXPECTED_INSTRUMENT_COUNT, "results": rows,
+        "source_snapshots": dict(sources),
+        "scope": "public_listing_identity_only",
     }
 
 
