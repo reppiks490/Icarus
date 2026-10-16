@@ -300,6 +300,53 @@ def test_a200_hybrid_report_records_missing_provider_without_raw_bars(monkeypatc
     assert all("close" not in item for item in saved["results"])
 
 
+def test_a200_hybrid_provider_selection_never_calls_unselected_source(monkeypatch, tmp_path):
+    row = snapshot()["instruments"][0]
+    yahoo_symbol = next(m["symbol"] for m in row["provider_symbol_candidates"]
+                        if m["provider"] == "yahoo")
+
+    class CountingFmp:
+        GRANULARITIES = (86400,)
+
+        def __init__(self):
+            self.calls = []
+
+        def candles(self, *args):
+            self.calls.append(("candles", args))
+            raise AssertionError("unselected FMP source must not be called")
+
+        def meta(self, *args):
+            self.calls.append(("meta", args))
+            raise AssertionError("unselected FMP source must not be called")
+
+    fmp = CountingFmp()
+    out = tmp_path / "yahoo-only.json"
+    report = hybrid_probe.run(
+        limit=1, start_ts=60, end_ts=86460, out=out, pause_seconds=0,
+        adapter=MarketUniverseAdapter(_FakeYahooHistory(yahoo_symbol), fmp=fmp),
+        providers=("yahoo",),
+    )
+    by_provider = {item["provider"]: item for item in report["results"]}
+    assert report["requested_providers"] == ["yahoo"]
+    assert by_provider["yahoo"]["probe_status"] == "RESPONSE_RECEIVED"
+    assert by_provider["fmp"]["probe_status"] == "NOT_REQUESTED"
+    assert by_provider["fmp"]["error_code"] == "provider_not_selected"
+    assert fmp.calls == []
+    monkeypatch.setattr(market_universe, "HYBRID_PROBE_PATH", out)
+    loaded = market_universe.load_hybrid_probe_report()
+    assert loaded["status"] == "PARTIAL"
+    assert loaded["requested_providers"] == ["yahoo"]
+
+
+def test_a200_hybrid_provider_selection_rejects_empty_unknown_and_duplicate_scope(tmp_path):
+    for providers in ((), ("other",), ("yahoo", "yahoo")):
+        with pytest.raises(ValueError, match="non-empty unique subset"):
+            hybrid_probe.run(limit=1, start_ts=60, end_ts=86460,
+                             out=tmp_path / "invalid.json", pause_seconds=0,
+                             adapter=MarketUniverseAdapter(_FakeYahooHistory("NVDA")),
+                             providers=providers)
+
+
 def test_hybrid_probe_ledger_validates_mappings_and_reports_provider_states(monkeypatch, tmp_path):
     catalog = snapshot()
     row = catalog["instruments"][0]
@@ -406,6 +453,7 @@ def test_hybrid_cli_defaults_to_non_runtime_report_path(monkeypatch):
     assert hybrid_probe.main() == 0
     assert captured["out"] == hybrid_probe.DEFAULT_OUT
     assert captured["out"] != market_universe.HYBRID_PROBE_PATH
+    assert captured["providers"] is None
     assert captured["end_ts"] - captured["start_ts"] == 14 * 86400
     assert abs(captured["end_ts"] - int(datetime.now(timezone.utc).timestamp())) < 2
 
