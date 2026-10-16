@@ -159,11 +159,11 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const source = fs.readFileSync(process.argv[2], 'utf8');
 const start = source.indexOf('const moneyWithDenominator = ');
+const helperStart = source.lastIndexOf('const hasNumber = ', start);
 const end = source.indexOf(';', start) + 1;
-if (start < 0 || end < 1) throw new Error('excursion rendering helper not found');
-const helper = source.slice(start, end);
+if (start < 0 || helperStart < 0 || end < 1) throw new Error('excursion rendering helper not found');
+const helper = source.slice(helperStart, end);
 const context = {
-  hasNumber: value => value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value)),
   number: value => Number(value).toLocaleString(undefined, {maximumFractionDigits: 4}),
   money: value => `${Number(value) < 0 ? '−' : ''}$${Math.abs(Number(value)).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`,
 };
