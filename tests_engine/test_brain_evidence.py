@@ -93,6 +93,13 @@ def test_stale_or_degraded_required_source_fails_closed():
         assert result.blockers
 
 
+def test_required_source_without_freshness_bound_fails_closed():
+    source = _source(max_age_seconds=None)
+    result = validate_brain_evidence(_evidence(sources=(source,)), decision_time=_t(12, 1), now=_t(12, 1))
+    assert result.valid is False
+    assert any("freshness bound is missing" in item.lower() for item in result.blockers)
+
+
 def test_missing_provenance_hash_or_revision_is_rejected():
     bad_source = _source(source_sha256="", transformation_revision="")
     bad_evidence = _evidence(sources=(bad_source,), evidence_sha256="", feature_revision="")

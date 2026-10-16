@@ -11,6 +11,7 @@ for decision support and paper workflows; it cannot arm live trading.
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Optional, Tuple
@@ -47,8 +48,13 @@ class EvidenceSource:
     def __post_init__(self) -> None:
         _aware(self.event_time, "event_time")
         _aware(self.retrieved_at, "retrieved_at")
-        if self.max_age_seconds is not None and self.max_age_seconds < 0:
-            raise ValueError("max_age_seconds must be non-negative")
+        if self.max_age_seconds is not None and (
+            isinstance(self.max_age_seconds, bool)
+            or not isinstance(self.max_age_seconds, (int, float))
+            or not math.isfinite(float(self.max_age_seconds))
+            or self.max_age_seconds < 0
+        ):
+            raise ValueError("max_age_seconds must be finite and non-negative")
         if self.status not in _ALLOWED_SOURCE_STATUS:
             raise ValueError(f"unsupported evidence source status {self.status!r}")
 
@@ -131,7 +137,9 @@ def validate_brain_evidence(
             blockers.append(f"{label}: retrieved_at precedes event_time")
         if source.required and source.status != "verified":
             blockers.append(f"{label}: required source status is {source.status!r}, not verified")
-        if source.required and source.max_age_seconds is not None:
+        if source.required and source.max_age_seconds is None:
+            blockers.append(f"{label}: required source freshness bound is missing")
+        elif source.required:
             age = (decision - event_time).total_seconds()
             if age > source.max_age_seconds:
                 blockers.append(
