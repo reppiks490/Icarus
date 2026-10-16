@@ -19,7 +19,7 @@ class _StubHandler(BaseHTTPRequestHandler):
     def _record(self):
         length = int(self.headers.get("Content-Length", "0"))
         body = self.rfile.read(length) if length else b""
-        if self.path == "/api/access":
+        if self.path == "/_internal/access/validate":
             status = 200 if self.headers.get("Authorization") == f"Bearer {_TOKEN}" else 401
             payload = b"{}"
         else:
@@ -289,6 +289,22 @@ def test_rejects_invalid_bearer_after_engine_registry_check(phone_proxy):
 
     assert status == 401
     assert payload == b"invalid bearer token"
+    assert sum(map(len, phone_proxy["records"].values())) == before
+
+
+def test_hides_internal_validation_route_from_proxy_clients(phone_proxy):
+    before = sum(map(len, phone_proxy["records"].values()))
+
+    status, _headers, payload = _request(
+        phone_proxy["port"], "GET", "/_internal/access/validate",
+        headers={
+            "Host": f"127.0.0.1:{phone_proxy['port']}",
+            "Authorization": f"Bearer {_TOKEN}",
+        },
+    )
+
+    assert status == 404
+    assert payload == b"not found"
     assert sum(map(len, phone_proxy["records"].values())) == before
 
 

@@ -51,7 +51,7 @@ def _engine_accepts_bearer(engine_port: int, bearer: str) -> bool | None:
     """
     conn = http.client.HTTPConnection("127.0.0.1", engine_port, timeout=5)
     try:
-        conn.request("GET", "/api/access", headers={
+        conn.request("GET", "/_internal/access/validate", headers={
             "Authorization": f"Bearer {bearer}",
             "Host": f"127.0.0.1:{engine_port}",
             "Connection": "close",
@@ -144,6 +144,9 @@ def create_handler(*, engine_port: int, gateway_port: int):
                 return
             scheme, _, bearer = self.headers.get("Authorization", "").partition(" ")
             parsed = urlsplit(self.path)
+            if parsed.path == "/_internal/access/validate":
+                self._respond(404, b"not found")
+                return
             if _requires_bearer(parsed.path) and (scheme.lower() != "bearer" or not bearer.strip()):
                 self._respond(401, b"bearer token required")
                 return
