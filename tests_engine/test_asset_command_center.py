@@ -66,17 +66,18 @@ def test_simulated_paper_readiness_requires_risk_and_state_capability():
     assert any("broker" in blocker.lower() for blocker in state.blockers)
 
 
-def test_unqualified_root_stays_nontradeable_even_with_verified_data():
+def test_newly_expanded_root_is_structurally_qualified_but_broker_paper_still_fails_closed():
     index = build_system_index(provider_state=_verified_provider_state())
     state = build_asset_command_state(
         "CL",
         index=index,
         runtime={"risk_controls_ready": True, "state_journal_ready": True},
     )
-    assert state.structural_execution_qualified is False
-    assert state.simulated_paper_tradeable is False
+    assert state.structural_execution_qualified is True
+    assert state.simulated_paper_tradeable is True
     assert state.broker_paper_tradeable is False
-    assert any("resolver" in blocker.lower() or "contract" in blocker.lower() or "qualified" in blocker.lower() for blocker in state.blockers)
+    assert state.live_tradeable is False
+    assert any("broker" in blocker.lower() for blocker in state.blockers)
 
 
 def test_runtime_statistics_are_data_only_and_do_not_change_authorization():
