@@ -32,13 +32,13 @@ def _env_expression(text: str, name: str) -> str:
     return matches[0]
 
 
-def test_provider_workflow_resolves_every_supported_alias_from_secrets_or_variables() -> None:
+def test_provider_workflow_resolves_every_supported_alias_from_secrets_only() -> None:
     text = WORKFLOW.read_text()
     for canonical, aliases in ALIASES.items():
         expression = _env_expression(text, canonical)
         for alias in aliases:
             assert f'secrets.{alias}' in expression, (canonical, alias)
-            assert f'vars.{alias}' in expression, (canonical, alias)
+            assert f'vars.{alias}' not in expression, (canonical, alias)
 
 
 def test_legacy_duplicate_runtime_names_are_not_exported_by_actions() -> None:
@@ -50,6 +50,7 @@ def test_legacy_duplicate_runtime_names_are_not_exported_by_actions() -> None:
         'QUIVER_QUANT_API_KEY',
     ):
         assert f'          {legacy}:' not in env_block
+    assert 'vars.' not in env_block
 
 
 def test_collector_preserves_cross_repo_owner_failover_and_intrinio_owner() -> None:
@@ -67,7 +68,8 @@ def test_handoff_requires_engine_ledger_and_no_plaintext_credentials() -> None:
         'config/data_ingestion_manifest.json',
         'federated_data_collection.md',
         'all ai units',
-        'github actions',
+        'github actions secrets',
+        'variables are for non-sensitive',
         'do not copy plaintext',
         'intrinio',
         'preferred owner',
@@ -83,7 +85,9 @@ def test_agent_entrypoint_requires_shared_cross_repo_ledger() -> None:
         'config/data_ingestion_manifest.json',
         'config/federated_repo_evidence.json',
         'sentinel/data_health.json',
-        'github actions secrets/variables',
+        'github actions secrets',
+        'variables',
+        'non-sensitive configuration',
         'intrinio',
         'zero known icarus-owned gaps',
     ):
