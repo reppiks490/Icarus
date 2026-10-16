@@ -944,3 +944,36 @@ def test_ascendancy_dashboard_surfaces_external_research_work_orders():
     assert "ORDER ≠ EVIDENCE" in ui
     assert 'p.path == "/api/ascendancy/work-orders"' in server
     assert 'p.path == "/admin/ascendancy/work-order-claim"' in server
+
+
+@pytest.mark.skipif(NODE is None, reason="node is not installed on this developer machine")
+def test_command_center_flatten_refreshes_after_partial_failure(tmp_path):
+    dashboard = REPO / "icarus_engine/command-centers-ui.js"
+    runner = tmp_path / "paper-flatten-refresh.cjs"
+    runner.write_text(
+        r"""
+const fs = require('node:fs');
+const vm = require('node:vm');
+const src = fs.readFileSync(process.argv[2], 'utf8');
+const start = src.indexOf('async function paperFlatten(event) {');
+const end = src.indexOf('\nasync function paperApply(event)', start);
+if (start < 0 || end < 0) throw new Error('paper flatten handler boundary not found');
+let snapshots = 0;
+const context = {
+  confirm: () => true,
+  paperPendingActions: new Set(),
+  document: {querySelectorAll: () => []},
+  admin: async () => null,
+  loadPaperWorkspaces: async () => { snapshots += 1; },
+  renderPaperLiveSections: () => {},
+};
+vm.runInNewContext(src.slice(start, end) + '\nthis.invoke = paperFlatten;', context);
+context.invoke({currentTarget: {dataset: {paperFlatten: 'cc1'}}}).then(() => {
+  if (snapshots !== 1) throw new Error(`expected one failure refresh; got ${snapshots}`);
+  if (context.paperPendingActions.has('cc1')) throw new Error('pending action was not released');
+}).catch((error) => { console.error(error); process.exitCode = 1; });
+""",
+        encoding="utf-8",
+    )
+    result = subprocess.run([NODE, str(runner), str(dashboard)], text=True, capture_output=True)
+    assert result.returncode == 0, result.stderr

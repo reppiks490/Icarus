@@ -196,9 +196,13 @@ async function paperFlatten(event) {
   paperPendingActions.add(id);
   document.querySelectorAll('[data-paper-pause],[data-paper-flatten]').forEach(el=>el.disabled=true);
   try {
-    const result=await admin(`/admin/command-centers/${encodeURIComponent(id)}/flatten`,{confirm:true});
-    if(result)await loadPaperWorkspaces();
-  } finally {paperPendingActions.delete(id);renderPaperLiveSections();}
+    await admin(`/admin/command-centers/${encodeURIComponent(id)}/flatten`,{confirm:true});
+  } finally {
+    // A 409 may follow partial state changes; refresh even when admin() returns null.
+    await loadPaperWorkspaces();
+    paperPendingActions.delete(id);
+    renderPaperLiveSections();
+  }
 }
 async function paperApply(event) {
   const button=event.currentTarget,id=button.dataset.paperApply,draft=paperWorkspaceDrafts[id];
