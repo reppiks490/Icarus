@@ -243,7 +243,13 @@ def system_index_markdown(index: Optional[Mapping[str, Any]] = None) -> str:
         record = data["assets"][root]
         execution = record["execution"]
         data_state = record["data"]
-        blocker = execution["structural_blocker"] or data_state["blocker"] or execution["broker"]["blocker"] or "none"
+        blocker = (
+            execution["structural_blocker"]
+            or execution["execution_blocker"]
+            or data_state["blocker"]
+            or execution["broker"]["blocker"]
+            or "none"
+        )
         blocker = str(blocker).replace("|", "\\|")
         lines.append(
             f"| {root} | {data_state['qualification']} | "
