@@ -55,7 +55,8 @@ function marketDataChip(label,cls){
 
 async function marketDataFetch(path){
   try{
-    const r=await fetch(path,{cache:'no-store'});
+    const token=localStorage.getItem('icarus-engine-token')||'';
+    const r=await fetch(path,{cache:'no-store',headers:{'Authorization':'Bearer '+token}});
     const data=await r.json().catch(function(){return {};});
     if(!r.ok) return {ok:false,error:String(data.detail||data.error||('HTTP '+r.status)),status:r.status};
     return {ok:true,data:data};

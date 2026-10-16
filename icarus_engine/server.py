@@ -1313,6 +1313,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 except (ValueError, OSError) as ex:
                     return self._json(500, {"detail": f"market universe catalog unavailable: {ex}"})
             if p.path.startswith("/api/market-history/"):
+                if not self._auth():
+                    return self._json(401, {"error": "authentication required"})
                 # Catalog history is deliberately separate from runtime charts:
                 # a returned bar batch carries its full source receipt and can
                 # never silently become Pulse input.
@@ -1352,7 +1354,9 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     if provider not in {m.get("provider") for m in instrument.get("provider_symbol_candidates", [])}:
                         return self._json(400, {"error": "provider is not declared for this catalog instrument"})
                     calendar = get_calendar(instrument["calendar"])
-                    schedule = calendar.expected_bar_timestamps(start_ts, end_ts, interval)
+                    schedule = calendar.expected_bar_timestamps(
+                        start_ts, end_ts, interval, max_bars=limit + 1,
+                    )
                     if not schedule:
                         return self._json(422, {"error": "request window has no bars in the verified exchange schedule"})
                     next_start_ts = None
@@ -1360,9 +1364,17 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     if len(schedule) > limit:
                         page_end_ts = schedule[limit]
                         next_start_ts = page_end_ts
-                    bars, receipt = MarketUniverseAdapter().fetch_history(
-                        instrument_id, interval, start_ts, page_end_ts, provider=provider,
-                    )
+                    try:
+                        bars, receipt = MarketUniverseAdapter().fetch_history(
+                            instrument_id, interval, start_ts, page_end_ts, provider=provider,
+                        )
+                    except RuntimeError as ex:
+                        status = 503 if str(ex).endswith("history source is not configured") else 502
+                        return self._json(status, {"error": "catalog history source unavailable"})
+                    except Exception:
+                        # Provider exceptions may embed credential-bearing URLs or
+                        # request details. Keep the public response stable and safe.
+                        return self._json(502, {"error": "catalog history source unavailable"})
                     return self._json(200, {
                         "instrument": {
                             "instrument_id": instrument["instrument_id"],
@@ -1388,12 +1400,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     })
                 except ValueError as ex:
                     return self._json(400, {"error": str(ex)})
-                except RuntimeError as ex:
-                    message = str(ex)
-                    status = 503 if "not configured" in message else 502
-                    return self._json(status, {"error": message})
-                except (KeyError, OSError) as ex:
-                    return self._json(503, {"error": f"catalog history unavailable: {ex}"})
+                except (KeyError, OSError):
+                    return self._json(503, {"error": "catalog history unavailable"})
             if p.path == "/api/command-centers":
                 snapshot = command_centers.snapshot()
                 snapshot["input_meta"] = meta

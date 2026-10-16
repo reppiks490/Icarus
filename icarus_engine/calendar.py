@@ -155,12 +155,15 @@ class USEquitiesCalendar:
             return False
         return (int(ts) - bounds[0]) % interval_seconds == 0
 
-    def expected_bar_timestamps(self, start_ts: int, end_ts: int, interval_seconds: int) -> list[int]:
+    def expected_bar_timestamps(self, start_ts: int, end_ts: int, interval_seconds: int,
+                                *, max_bars: int | None = None) -> list[int]:
         """Build exact RTH bar starts for a requested, bounded UTC time window."""
         if type(start_ts) is not int or type(end_ts) is not int or end_ts < start_ts:
             raise ValueError("US equity schedule window must use ordered integer timestamps")
         if type(interval_seconds) is not int or interval_seconds <= 0 or interval_seconds > 86400:
             raise ValueError("US equity interval must be a positive integer")
+        if max_bars is not None and (type(max_bars) is not int or max_bars <= 0):
+            raise ValueError("US equity schedule max_bars must be a positive integer")
         start_day, end_day = self._day(start_ts), self._day(end_ts)
         if start_day.year not in self.SUPPORTED_YEARS or end_day.year not in self.SUPPORTED_YEARS:
             raise ValueError("US equity schedule window exceeds verified 2026–2028 coverage")
@@ -173,7 +176,11 @@ class USEquitiesCalendar:
             if bounds is None:
                 continue
             candidates = (bounds[0],) if interval_seconds == 86400 else range(bounds[0], bounds[1], interval_seconds)
-            result.extend(ts for ts in candidates if start_ts <= ts < end_ts)
+            for ts in candidates:
+                if start_ts <= ts < end_ts:
+                    result.append(ts)
+                    if max_bars is not None and len(result) >= max_bars:
+                        return result
         return result
 
     def bucket_start(self, ts: int, minutes: int) -> int:
