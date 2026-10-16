@@ -361,7 +361,7 @@ def train_source(
         if not isinstance(raw, bytes):
             raise ValueError("OHLC snapshot must be bytes")
         header, source_rows, timestamps = _timestamp_index(raw)
-    except (OSError, ValueError, TypeError) as exc:
+    except (OSError, ValueError, TypeError, csv.Error) as exc:
         return _locked({**head, "status": "blocked", "reason": f"trusted source load failed: {exc}"})
     source_sha256 = hashlib.sha256(raw).hexdigest()
     bar_count = len(timestamps) - 1  # the final source bar is withheld as potentially forming
@@ -406,7 +406,7 @@ def train_source(
                                          sequence_length=sequence_length)
         valid_seq = causal_sequence_rows(pre_hold_rows, start=valid_start, stop=valid_stop,
                                          sequence_length=sequence_length)
-    except (KeyError, TypeError, ValueError) as exc:
+    except (KeyError, TypeError, ValueError, csv.Error) as exc:
         return _locked({**head, "status": "blocked", "reason": f"sequence preflight failed: {exc}"})
 
     expected_hold_decisions = hold_slice[1] - hold_slice[0]
@@ -466,7 +466,7 @@ def train_source(
         if len(hold_seq) < 10:
             raise ValueError(f"holdout has only {len(hold_seq)} non-flat sequences after claim")
         hold_x, _ = _tensorize(torch, hold_seq, standardizer)
-    except (KeyError, TypeError, ValueError, RuntimeError) as exc:
+    except (KeyError, TypeError, ValueError, RuntimeError, csv.Error) as exc:
         return _locked({**head, "status": "blocked",
                         "reason": f"holdout materialization failed after claim: {exc}",
                         "holdout_claim": claim_record, "dataset_sha256": source_sha256,

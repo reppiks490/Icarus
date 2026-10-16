@@ -264,3 +264,23 @@ def test_first_holdout_integrity_failure_occurs_after_claim(monkeypatch, tmp_pat
     assert report["status"] == "blocked"
     assert report["holdout_claim"]["status"] == deep_challenger.ledger.NEW
     assert "full source differs" in report["reason"]
+
+
+def test_gru_challenger_blocks_csv_field_limit_without_claiming_holdout(tmp_path):
+    source = tmp_path / "oversized.csv"
+    source.write_text(
+        "time,open,high,low,close,volume\n"
+        + "1700000000," + ("9" * 131073) + ",10,8,9,1\n"
+        + "1700000060,9,10,8,9,1\n",
+        encoding="utf-8",
+    )
+
+    report = deep_challenger.train_source(
+        source, "NQ", "clock_minutes", tmp_path / "gru.json", ledger_path=tmp_path / "ledger.sqlite3"
+    )
+
+    assert report["status"] == "blocked"
+    assert "trusted source load failed" in report["reason"]
+    assert "field larger than field limit" in report["reason"]
+    assert "holdout_claim" not in report
+    assert report["execution_authorized"] is False
