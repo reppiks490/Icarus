@@ -65,6 +65,23 @@ def test_command_center_api_scopes_controls_and_closes_workspace_journals(
         _open_test_position(cc2, -1)
         base = f"http://127.0.0.1:{server.server_port}"
 
+        with urllib.request.urlopen(base + "/api/command-centers", timeout=5) as reply:
+            assert reply.status == 200
+            snapshot = json.load(reply)
+        assert snapshot["mode"] == "concurrent_paper"
+        assert snapshot["execution_authorized"] is False
+        profiles = {profile["id"]: profile for profile in snapshot["profiles"]}
+        assert set(profiles) == {"cc1", "cc2", "cc3", "cc4"}
+        assert all(
+            profile["paper_only"] is True and profile["execution_authorized"] is False
+            for profile in profiles.values()
+        )
+        assert profiles["cc1"]["status"]["positions"] == 1
+        assert profiles["cc1"]["status"]["net"] != 0
+        assert profiles["cc2"]["status"]["positions"] == 1
+        assert profiles["cc3"]["status"]["positions"] == 0
+        assert profiles["cc4"]["status"]["positions"] == 0
+
         def post(path, payload, token):
             request = urllib.request.Request(
                 base + path,
