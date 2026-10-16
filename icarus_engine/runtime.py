@@ -752,10 +752,13 @@ class AssetRunner:
             and type(self.feed).__name__ == "Databento"
         )
         databento_days = self._databento_history_days() if databento_primary else 0
+        history_floor = None
         if databento_primary:
             provider_days = databento_days
-            span = max(span, databento_days * 86400)
+            history_floor = now - databento_days * 86400
         T_w = self.cal.bucket_start(now - span, 1440)
+        if history_floor is not None:
+            T_w = max(T_w, history_floor)
         self.T_w = T_w
         display_capacity = max(2000, self.cfg.warmup_bars)
         if provider_days:
@@ -785,7 +788,9 @@ class AssetRunner:
             self._file_waiting = True
             self.journal.log("WARN", f"[{self.symbol}] ICARUS_FEED=file and no history/{self.symbol}_*m.csv — waiting for drop ingest; Yahoo is not contacted")
         elif self.spec.feed == "yahoo":
-            self._warmup_yahoo(T_w, now)  # selected primary feed only; provider series are never stitched
+            self._warmup_yahoo(T_w, now, history_floor=history_floor)  # selected primary feed only; provider series are never stitched
+            if databento_primary and not self.subbars:
+                raise RuntimeError(f"[{self.symbol}] Databento returned no replay bars inside the configured history window")
         else:
             self._warmup_coinbase(T_w, now)
         self.live_from_ts = now
@@ -854,24 +859,25 @@ class AssetRunner:
         for b in ones:
             self.on_sub_bar(b, 1, live=False)
 
-    def _warmup_yahoo(self, T_w: int, now: int) -> None:
+    def _warmup_yahoo(self, T_w: int, now: int, *, history_floor: Optional[int] = None) -> None:
         y: Yahoo = self.feed
         tk = self.spec.ticker                                 # provider-native continuous symbol (e.g. NQ=F)
         tki = self.spec.ticker                                # intraday also stays continuous; no month-coded expiry contract
-        daily = y.candles(tk, 86400, T_w - 900 * 86400, T_w)
+        bounded = lambda start: max(start, history_floor) if history_floor is not None else start
+        daily = y.candles(tk, 86400, bounded(T_w - 900 * 86400), T_w)
         daily = [Bar(self.cal.bucket_start(b.ts, 1440), b.o, b.h, b.l, b.c, b.v) for b in daily]   # stamp at the session open
         self._feed_deep([m for m in self.chains if m >= 1440], daily, 1440)
         rth = getattr(self.cal, "session", "eth") == "rth"
         if rth:                                               # RTH hourly buckets sit at :30 - build them from 15-minute bars (60 days)
             hourly = []
         else:
-            hourly = y.candles(tki, 3600, max(T_w - 400 * 86400, now - 729 * 86400), T_w)
+            hourly = y.candles(tki, 3600, bounded(max(T_w - 400 * 86400, now - 729 * 86400)), T_w)
             self._feed_deep([m for m in self.chains if 60 <= m < 1440], hourly, 60)
-        q15 = y.candles(tki, 900, max(T_w - 40 * 86400, now - 59 * 86400), T_w)
+        q15 = y.candles(tki, 900, bounded(max(T_w - 40 * 86400, now - 59 * 86400)), T_w)
         self._feed_deep([m for m in self.chains if 15 <= m < 1440 and m % 15 == 0 and (rth or m < 60)], q15, 15)
-        fives_deep = y.candles(tki, 300, max(T_w - 20 * 86400, now - 59 * 86400), T_w)
+        fives_deep = y.candles(tki, 300, bounded(max(T_w - 20 * 86400, now - 59 * 86400)), T_w)
         self._feed_deep([m for m in self.chains if 5 <= m < 15 and m % 5 == 0], fives_deep, 5)
-        one_from = max(T_w, now - 29 * 86400)
+        one_from = bounded(max(T_w, now - 29 * 86400))
         fives = y.candles(tki, 300, T_w, one_from) if one_from > T_w else []
         ones = self._closed_only(y.candles(tki, 60, one_from, now), tki)
         self.journal.log("INFO", f"[{self.symbol}] deep {len(daily)}d/{len(hourly)}h/{len(q15)}x15m/{len(fives_deep)}x5m; {len(fives)} five-minute + {len(ones)} one-minute sub-bars; replaying")
