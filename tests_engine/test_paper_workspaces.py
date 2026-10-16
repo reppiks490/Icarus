@@ -1,6 +1,7 @@
 import copy
 import sqlite3
 import threading
+from types import SimpleNamespace
 from http.server import ThreadingHTTPServer
 
 import pytest
@@ -68,7 +69,7 @@ class _WorkspacePortfolio:
         return self.runners
 
     def status(self, *, nonblocking=False):
-        return {"assets": [], "all_warm": self.started, "net": 0.0}
+        return getattr(self, "status_data", {"assets": [], "all_warm": self.started, "net": 0.0})
 
     def reconfigure(self, candidate):
         self.reconfigure_calls.append(copy.deepcopy(candidate))
@@ -436,3 +437,91 @@ def test_server_close_attempts_all_services_and_closes_socket_after_workspace_er
     assert closed_services == ["autopilot", "http-server"]
     assert server.fileno() == -1
     port.journal.close()
+
+
+def test_snapshot_tallies_distinct_paper_ledgers_without_replay_profit(tmp_path, monkeypatch):
+    manager = _manager(tmp_path, monkeypatch)
+    manager.start()
+    try:
+        for profile_id, profit, live in (("cc1", 125.0, 1), ("cc2", -30.0, 1), ("cc3", 900.0, 0)):
+            journal = manager.portfolios[profile_id].journal
+            journal.con.execute(
+                "INSERT INTO trades (symbol,entry_id,direction,qty,entry_price,entry_ts,exit_price,exit_ts,exit_comment,profit,live) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                ("NQ", profile_id, 1, 1, 100.0, 1000, 101.0, 1060, "test", profit, live),
+            )
+            journal.con.commit()
+        for idx, portfolio in enumerate(manager.portfolios.values()):
+            portfolio.status_data = {
+                "assets": [{"symbol": "NQ", "feed_provider": "yahoo", "warm": True,
+                            "poll_age": 4.0, "market": {"open": True}, "feed_delay": 600.0}],
+                "all_warm": True, "capital": 1000.0, "equity": 1000.0 + idx,
+                "net": float(idx), "open_profit": 2.0, "positions": 1,
+            }
+        snapshot = manager.snapshot()
+        assert snapshot["aggregate"]["paper_pnl"] == 95.0
+        assert snapshot["aggregate"]["open_pnl"] == 8.0
+        assert snapshot["aggregate"]["net"] == 6.0
+        assert snapshot["aggregate"]["open_positions"] == 4
+        assert snapshot["profiles"][2]["pnl"]["realized_pnl"] == 0.0
+        assert snapshot["connections"]["feeds"][0]["status"] == "delayed"
+        assert all(not adapter["execution_authorized"] for adapter in snapshot["connections"]["adapters"])
+    finally:
+        manager.stop()
+
+
+def test_shared_databento_wrapper_exposes_cached_session_health():
+    class Databento:
+        def meta(self, symbol):
+            assert symbol == "NQ"
+            return {"core_session_ok": False, "mapping_active": True}
+
+    feed = paper_workspaces.SharedFeed(Databento())
+    assert feed.provider_name == "databento"
+    assert feed.cached_meta("NQ") == {"core_session_ok": False, "mapping_active": True}
+
+
+def test_flatten_attempts_every_runner_and_reports_partial_failures(tmp_path, monkeypatch):
+    manager = _manager(tmp_path, monkeypatch)
+    manager.start()
+    try:
+        portfolio = manager.portfolios["cc1"]
+        first, second, third = _Runner(), _Runner(), _Runner()
+        first.symbol, second.symbol, third.symbol = "NQ", "ES", "YM"
+        first.flatten = lambda _reason: 2
+
+        def fail_flatten(_reason):
+            raise RuntimeError("paper journal unavailable")
+
+        second.flatten = fail_flatten
+        third.flatten = lambda _reason: 1
+        portfolio.runners = [first, second, third]
+
+        with pytest.raises(paper_workspaces.FlattenUnavailableError, match=r"3 position\(s\) closed") as caught:
+            manager.flatten("cc1")
+
+        assert [runner.flatten_calls for runner in (first, second, third)] == [[], [], []]
+        assert [runner.paused for runner in (first, second, third)] == [True, True, True]
+        assert caught.value.flattened_positions == 3
+        assert caught.value.partial is True
+        assert caught.value.failed_assets == [{"asset": "ES", "detail": "RuntimeError: paper journal unavailable"}]
+    finally:
+        manager.stop()
+
+
+def test_flatten_requires_mark_for_primary_or_shadow_open_positions(tmp_path, monkeypatch):
+    manager = _manager(tmp_path, monkeypatch)
+    manager.start()
+    try:
+        runner = manager.portfolios["cc1"].runners[0]
+        runner.symbol = "NQ"
+        runner.em = SimpleNamespace(open=[], shadow=SimpleNamespace(open=[object()]))
+        runner.last_price = None
+
+        with pytest.raises(paper_workspaces.FlattenUnavailableError, match="valid observed mark"):
+            manager.flatten("cc1")
+
+        assert runner.paused is True
+        assert runner.flatten_calls == []
+    finally:
+        manager.stop()
