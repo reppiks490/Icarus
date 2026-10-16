@@ -18,11 +18,12 @@ The static resolver covers the full 32-root catalog with product-family rules:
 * NG/MNG: three-business-day delivery rule and micro linked-expiry rule;
 * CME FX: second business day before the third Wednesday;
 * ZN/ZB: seventh business day before the final business day of delivery month;
-* CME Bitcoin/Micro Bitcoin: last Friday of contract month.
+* CME Bitcoin/Micro Bitcoin: last joint London/U.S. business Friday rule.
 
-This module intentionally labels its output as a static candidate because actual
-continuous-front mappings can be liquidity/volume driven and exchange holidays
-can alter exact dates. Broker/provider readback remains authoritative.
+The resolver labels output as a static candidate because actual continuous-front
+mappings can be volume/liquidity driven and broker security definitions remain
+authoritative. Exact broker contract-details readback is required before a broker
+paper order; live execution remains disabled.
 """
 from __future__ import annotations
 
@@ -35,9 +36,29 @@ from icarus_engine.futures_catalog import FUTURES_PRODUCTS, FuturesProduct
 MONTH_CODES = "FGHJKMNQUVXZ"
 EQUITY_ROLL_WEEKDAY_BEFORE = 4
 STATIC_ROLL_LEAD_BDAYS = 2
-# Explicit exchange-holiday overrides needed by deterministic historical tests.
-# Exact broker/provider contract calendars remain the runtime authority.
-EXPIRY_HOLIDAYS = {date(2026, 6, 19)}
+
+# Full-day CME closures required by static date arithmetic. Early-close sessions
+# remain business days. The current runtime calendar already carries the same
+# 2026-2027 full closures; 2028 dates are bounded additions for candidate-chain
+# construction. Broker/provider calendars remain authoritative beyond this static
+# schedule.
+CME_FULL_CLOSURES = frozenset({
+    date(2026, 1, 1), date(2026, 4, 3), date(2026, 12, 25),
+    date(2027, 1, 1), date(2027, 3, 26), date(2027, 12, 24),
+    date(2028, 4, 14), date(2028, 12, 25),
+})
+
+# England & Wales bank holidays relevant to CME Bitcoin's last-Friday rule.
+# The exchange requires the last Friday to be a business day in both London and
+# the United States, otherwise the previous joint business day is used.
+LONDON_BANK_HOLIDAYS = frozenset({
+    date(2026, 1, 1), date(2026, 4, 3), date(2026, 4, 6), date(2026, 5, 4),
+    date(2026, 5, 25), date(2026, 8, 31), date(2026, 12, 25), date(2026, 12, 28),
+    date(2027, 1, 1), date(2027, 3, 26), date(2027, 3, 29), date(2027, 5, 3),
+    date(2027, 5, 31), date(2027, 8, 30), date(2027, 12, 27), date(2027, 12, 28),
+    date(2028, 1, 3), date(2028, 4, 14), date(2028, 4, 17), date(2028, 5, 1),
+    date(2028, 5, 29), date(2028, 8, 28), date(2028, 12, 25), date(2028, 12, 26),
+})
 
 
 @dataclass(frozen=True)
@@ -97,8 +118,7 @@ SPECS = {
 }
 
 # Canonical roots are the primary API. Exchange roots are accepted only when
-# unambiguous (BTC -> BTCF) so CME:BTC1! can be resolved without conflating spot
-# Bitcoin with the internal futures root.
+# unambiguous (BTC -> BTCF), avoiding a collision with ICARUS spot BTC.
 _EXECUTION_ROOT_ALIASES = {
     product.execution_root: root
     for root, product in FUTURES_PRODUCTS.items()
@@ -123,11 +143,21 @@ def parse_continuous(symbol: str) -> tuple[ContractSpec, int]:
 
 
 def _is_bday(d: date) -> bool:
-    return d.weekday() < 5 and d not in EXPIRY_HOLIDAYS
+    return d.weekday() < 5 and d not in CME_FULL_CLOSURES
+
+
+def _is_london_bday(d: date) -> bool:
+    return d.weekday() < 5 and d not in LONDON_BANK_HOLIDAYS
 
 
 def _previous_bday(d: date) -> date:
     while not _is_bday(d):
+        d -= timedelta(days=1)
+    return d
+
+
+def _previous_joint_btc_bday(d: date) -> date:
+    while not (_is_bday(d) and _is_london_bday(d)):
         d -= timedelta(days=1)
     return d
 
@@ -182,22 +212,25 @@ def _prior_month(y: int, m: int) -> tuple[int, int]:
     return (y - 1, 12) if m == 1 else (y, m - 1)
 
 
-def _last_friday(y: int, m: int) -> date:
-    d = _last_bday_of_month(y, m)
+def _last_joint_business_friday(y: int, m: int) -> date:
+    if m == 12:
+        d = date(y + 1, 1, 1) - timedelta(days=1)
+    else:
+        d = date(y, m + 1, 1) - timedelta(days=1)
     while d.weekday() != 4:
         d -= timedelta(days=1)
-    return _previous_bday(d)
+    return _previous_joint_btc_bday(d)
 
 
 def _wti_last_trade(y: int, m: int) -> date:
-    """WTI termination: three business days before adjusted prior-month 25th."""
+    """WTI: third business day before the adjusted prior-month 25th anchor."""
     py, pm = _prior_month(y, m)
     anchor = _previous_bday(date(py, pm, 25))
     return _minus_bdays(anchor, 3)
 
 
 def _ng_last_trade(y: int, m: int) -> date:
-    """Henry Hub termination: three business days before delivery month."""
+    """Henry Hub: third business day prior to the delivery month."""
     return _minus_bdays(date(y, m, 1), 3)
 
 
@@ -249,7 +282,7 @@ def contract_dates(spec: ContractSpec, y: int, m: int) -> tuple[date, date]:
         return last, _minus_bdays(last, STATIC_ROLL_LEAD_BDAYS)
 
     if model == "crypto_last_friday":
-        last = _last_friday(y, m)
+        last = _last_joint_business_friday(y, m)
         return last, _minus_bdays(last, STATIC_ROLL_LEAD_BDAYS)
 
     raise ValueError(f"{spec.root}: static execution resolver {model!r} is not implemented")
