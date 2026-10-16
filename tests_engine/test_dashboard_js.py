@@ -380,6 +380,8 @@ def test_dashboard_surfaces_authentic_market_data_console():
     assert "ts_event_ns" in ui
     assert "Sequence jumps in window" in ui
     assert "does not invent a buy/sell interpretation" in ui
+    assert "Hybrid provider results" in ui
+    assert "hybrid_probe" in ui
 
 
 def test_dashboard_surfaces_apex_omega_world_intelligence():

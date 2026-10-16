@@ -40,6 +40,9 @@ class MarketUniverseAdapter:
             from .feeds.fmp import FmpHistory
             self._sources["fmp"] = FmpHistory()
 
+    def source_configured(self, provider: str) -> bool:
+        return provider in self._sources
+
     def fetch_history(self, instrument_id: str, interval_seconds: int,
                       start_ts: int, end_ts: int, *, provider: str = "yahoo") -> tuple[list[Bar], BarBatchReceipt]:
         row = self._instruments.get(instrument_id)
@@ -117,5 +120,8 @@ class MarketUniverseAdapter:
                 )
                 results.append(ProviderHistoryResult(provider, bars, receipt))
             except Exception as exc:
-                results.append(ProviderHistoryResult(provider, None, None, str(exc)))
+                # Provider exception messages may contain request URLs, query
+                # strings, or other credential-bearing details. Keep only a
+                # stable error category in this public probe result.
+                results.append(ProviderHistoryResult(provider, None, None, f"provider_error:{type(exc).__name__}"))
         return results

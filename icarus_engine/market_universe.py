@@ -17,6 +17,7 @@ SCHEMA = "icarus.market-universe.catalog.v1"
 EXPECTED_INSTRUMENT_COUNT = 200
 _HEX = re.compile(r"^[0-9a-f]{64}$")
 PROBE_PATH = Path(__file__).resolve().with_name("a200-yahoo-history-probe.json")
+HYBRID_PROBE_PATH = Path(__file__).resolve().with_name("a200-hybrid-history-probe.json")
 
 
 def _load() -> dict[str, Any]:
@@ -123,7 +124,89 @@ def snapshot() -> dict[str, Any]:
         "production_decision_authorized": False,
         "note": "Cataloged equity candidates are not connected, bar-qualified, Pulse-enabled, or strategy-qualified without separate source receipts and evidence.",
         "source_probe": load_source_probe_report(),
+        "hybrid_probe": load_hybrid_probe_report(),
     }
+
+
+def load_hybrid_probe_report() -> dict[str, Any]:
+    """Load and validate the provider-separated, non-price hybrid probe ledger."""
+    if not HYBRID_PROBE_PATH.exists():
+        return {"status": "NOT_RUN", "results": []}
+    try:
+        report = json.loads(HYBRID_PROBE_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as ex:
+        return {"status": "UNAVAILABLE", "error": type(ex).__name__, "results": []}
+    if not isinstance(report, dict) or report.get("schema_version") != "icarus.market-universe.hybrid-probe.v1":
+        return {"status": "INVALID", "results": []}
+    catalog = _load()
+    if (report.get("catalog_id") != catalog.get("catalog_id")
+            or report.get("catalog_snapshot_sha256") != catalog_evidence_digest(catalog)
+            or report.get("probe_implementation") != "tools.probe_a200_hybrid.v1"
+            or report.get("raw_ohlcv_persisted") is not False):
+        return {"status": "INVALID", "results": []}
+    results = report.get("results")
+    requested, completed = report.get("requested_instrument_count"), report.get("completed_result_count")
+    if (not isinstance(results, list) or any(not isinstance(row, dict) for row in results)
+            or type(requested) is not int or requested < 0 or requested > EXPECTED_INSTRUMENT_COUNT
+            or type(completed) is not int or completed != len(results)):
+        return {"status": "INVALID", "results": []}
+    if report.get("results_sha256") != source_probe_results_digest(results):
+        return {"status": "INVALID", "results": []}
+    actual_counts: dict[str, int] = {}
+    catalog_rows = {row["instrument_id"]: row for row in catalog["instruments"]}
+    expected_pairs = {
+        (row["instrument_id"], mapping["provider"])
+        for row in catalog["instruments"][:requested]
+        for mapping in row.get("provider_symbol_candidates", [])
+    }
+    seen = set()
+    max_age = 0
+    now = datetime.now(timezone.utc)
+    for result in results:
+        instrument_id, provider = result.get("instrument_id"), result.get("provider")
+        key = (instrument_id, provider)
+        instrument = catalog_rows.get(instrument_id)
+        mappings = [item for item in (instrument or {}).get("provider_symbol_candidates", [])
+                    if item.get("provider") == provider]
+        if (key in seen or not instrument or len(mappings) != 1
+                or result.get("provider_symbol_candidate") != mappings[0].get("symbol")
+                or result.get("provider_mapping_status") != mappings[0].get("mapping_status")
+                or result.get("probe_status") not in ("NOT_CONFIGURED", "RESPONSE_RECEIVED", "NO_BARS", "ERROR")):
+            return {"status": "INVALID", "results": []}
+        seen.add(key)
+        count_key = f"{provider.lower()}_{result['probe_status'].lower()}_count"
+        actual_counts[count_key] = actual_counts.get(count_key, 0) + 1
+        if result.get("probe_status") != "ERROR":
+            try:
+                observed = datetime.fromisoformat(str(result["probe_started_at"]).replace("Z", "+00:00"))
+                age = int((now - observed).total_seconds())
+            except (KeyError, TypeError, ValueError):
+                return {"status": "INVALID", "results": []}
+            if age < 0:
+                return {"status": "INVALID", "results": []}
+            max_age = max(max_age, age)
+    if report.get("counts") != actual_counts or seen != expected_pairs:
+        return {"status": "INVALID", "results": []}
+    try:
+        updated = datetime.fromisoformat(str(report.get("probe_updated_at", "")).replace("Z", "+00:00"))
+        report_age = int((now - updated).total_seconds())
+    except (TypeError, ValueError):
+        return {"status": "INVALID", "results": []}
+    if report_age < 0:
+        return {"status": "INVALID", "results": []}
+    age_seconds = max(report_age, max_age)
+    status = "STALE" if age_seconds > 86400 else ("CURRENT" if requested == EXPECTED_INSTRUMENT_COUNT else "PARTIAL")
+    safe_fields = ("instrument_id", "provider", "provider_symbol_candidate", "probe_status",
+                   "provider_symbol_match_status", "canonical_identity_status", "row_count",
+                   "entitlement_status", "session_validation_status", "historical_bars_qualified",
+                   "error_type", "error_code")
+    return {"status": status, "probe_updated_at": report.get("probe_updated_at"),
+            "age_seconds": age_seconds, "requested_instrument_count": requested,
+            "completed_result_count": completed, "counts": actual_counts,
+            "authority": {"pulse_enabled": False, "strategy_qualified": False,
+                          "execution_authorized": False},
+            "raw_ohlcv_persisted": False,
+            "results": [{key: row[key] for key in safe_fields if key in row} for row in results]}
 
 
 def load_source_probe_report() -> dict[str, Any]:
