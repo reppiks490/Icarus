@@ -11,6 +11,8 @@ import time
 from icarus_engine.market_universe import catalog_evidence_digest, snapshot, source_probe_results_digest
 from icarus_engine.market_universe_adapter import MarketUniverseAdapter
 
+DEFAULT_OUT = Path("reports/a200-hybrid-history-probe.json")
+
 
 def _utc_now() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
@@ -24,6 +26,8 @@ def _probe_one(adapter: MarketUniverseAdapter, instrument: dict, mapping: dict,
         "provider": provider,
         "provider_symbol_candidate": mapping["symbol"],
         "provider_mapping_status": mapping["mapping_status"],
+        "requested_start_ts": start_ts,
+        "requested_end_ts": end_ts,
         "probe_started_at": _utc_now(),
     }
     if not adapter.source_configured(provider):
@@ -58,7 +62,7 @@ def _probe_one(adapter: MarketUniverseAdapter, instrument: dict, mapping: dict,
 
 
 def run(*, limit: int = 1, start_ts: int, end_ts: int,
-        out: Path = Path("reports/a200-hybrid-history-probe.json"),
+        out: Path = DEFAULT_OUT,
         pause_seconds: float = 0.25, adapter: MarketUniverseAdapter | None = None) -> dict:
     if type(limit) is not int or not 1 <= limit <= 200:
         raise ValueError("limit must be between 1 and 200")
@@ -79,6 +83,8 @@ def run(*, limit: int = 1, start_ts: int, end_ts: int,
                 results.append({"instrument_id": instrument["instrument_id"],
                                 "provider": str(provider or "unknown"), "probe_status": "ERROR",
                                 "probe_started_at": _utc_now(),
+                                "requested_start_ts": start_ts,
+                                "requested_end_ts": end_ts,
                                 "error_code": "invalid_provider_mapping"})
                 continue
             seen.add(provider)
@@ -120,7 +126,8 @@ def main() -> int:
                         help="number of catalog instruments to probe (default: 1; max: 200)")
     parser.add_argument("--start", default="2026-10-01T00:00:00Z")
     parser.add_argument("--end", default="2026-10-15T00:00:00Z")
-    parser.add_argument("--out", type=Path, default=Path("icarus_engine/a200-hybrid-history-probe.json"))
+    parser.add_argument("--out", type=Path, default=DEFAULT_OUT,
+                        help="report path; use the packaged path explicitly to publish API state")
     parser.add_argument("--pause-seconds", type=float, default=0.25)
     args = parser.parse_args()
     start = int(datetime.fromisoformat(args.start.replace("Z", "+00:00")).timestamp())

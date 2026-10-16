@@ -146,11 +146,17 @@ def load_hybrid_probe_report() -> dict[str, Any]:
         return {"status": "INVALID", "results": []}
     results = report.get("results")
     requested, completed = report.get("requested_instrument_count"), report.get("completed_result_count")
+    window = report.get("window")
     if (not isinstance(results, list) or any(not isinstance(row, dict) for row in results)
             or type(requested) is not int or requested < 0 or requested > EXPECTED_INSTRUMENT_COUNT
-            or type(completed) is not int or completed != len(results)):
+            or type(completed) is not int or completed != len(results)
+            or not isinstance(window, dict) or type(window.get("start_ts")) is not int
+            or type(window.get("end_ts")) is not int or window["start_ts"] >= window["end_ts"]):
         return {"status": "INVALID", "results": []}
     if report.get("results_sha256") != source_probe_results_digest(results):
+        return {"status": "INVALID", "results": []}
+    if any(row.get("requested_start_ts") != window["start_ts"]
+           or row.get("requested_end_ts") != window["end_ts"] for row in results):
         return {"status": "INVALID", "results": []}
     actual_counts: dict[str, int] = {}
     catalog_rows = {row["instrument_id"]: row for row in catalog["instruments"]}
@@ -200,6 +206,7 @@ def load_hybrid_probe_report() -> dict[str, Any]:
                    "entitlement_status", "session_validation_status", "historical_bars_qualified",
                    "error_type", "error_code")
     return {"status": status, "probe_updated_at": report.get("probe_updated_at"),
+            "window": window,
             "age_seconds": age_seconds, "requested_instrument_count": requested,
             "completed_result_count": completed, "counts": actual_counts,
             "authority": {"pulse_enabled": False, "strategy_qualified": False,
