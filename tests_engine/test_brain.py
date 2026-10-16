@@ -618,6 +618,25 @@ def test_process_exit_after_real_fsync_retries_original_event(tmp_path):
         _stop_brain_processes((process,), output)
 
 
+def test_record_brain_event_rejects_symlinked_audit_directory(tmp_path):
+    runtime = tmp_path / "runtime"
+    outside = tmp_path / "outside"
+    runtime.mkdir()
+    outside.mkdir()
+    audit = runtime / "audit"
+    try:
+        audit.symlink_to(outside, target_is_directory=True)
+    except OSError as error:
+        if os.name == "nt" and getattr(error, "winerror", None) == 1314:
+            pytest.skip("Windows runner does not permit symlinks")
+        raise
+
+    with pytest.raises(ValueError, match="brain journal parent must be a real directory"):
+        brain.record_brain_event(runtime, _clock_body())
+
+    assert list(outside.iterdir()) == []
+
+
 @pytest.mark.parametrize("component", ["brain_events.jsonl", "brain_events.jsonl.lock"])
 @pytest.mark.parametrize("link_kind", ["symlink", "hardlink"])
 def test_process_lock_rejects_journal_and_lock_aliases_before_writes(tmp_path, component, link_kind):
