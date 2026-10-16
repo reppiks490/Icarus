@@ -88,7 +88,7 @@ def run(*, limit: int = 1, start_ts: int, end_ts: int,
         if isinstance(mapping.get("provider"), str) and mapping["provider"]
     ))
     if providers is None:
-        selected_providers = ("yahoo",) if "yahoo" in available_providers else available_providers[:1]
+        selected_providers = ("yahoo",)
     else:
         selected_providers = tuple(providers)
     if (not selected_providers

@@ -370,6 +370,18 @@ def test_a200_hybrid_provider_selection_rejects_empty_unknown_and_duplicate_scop
                              providers=providers)
 
 
+def test_default_hybrid_probe_fails_closed_if_yahoo_is_not_in_catalog(monkeypatch, tmp_path):
+    catalog = deepcopy(snapshot())
+    catalog["instruments"][0]["provider_symbol_candidates"] = [
+        mapping for mapping in catalog["instruments"][0]["provider_symbol_candidates"]
+        if mapping["provider"] == "fmp"
+    ]
+    monkeypatch.setattr(hybrid_probe, "snapshot", lambda: catalog)
+    with pytest.raises(ValueError, match="non-empty unique subset"):
+        hybrid_probe.run(limit=1, start_ts=60, end_ts=86460,
+                         out=tmp_path / "fmp-only-catalog.json", pause_seconds=0)
+
+
 def test_hybrid_probe_ledger_validates_mappings_and_reports_provider_states(monkeypatch, tmp_path):
     catalog = snapshot()
     row = catalog["instruments"][0]
