@@ -5,6 +5,7 @@ from pathlib import Path
 
 WORKFLOW = Path('.github/workflows/provider-exhaustive-collection.yml')
 HANDOFF = Path('GITHUB_NATIVE_DATA_FEDERATION.md')
+AGENTS = Path('AGENTS.md')
 COLLECTOR = Path('tools/provider_exhaustive_collection.py')
 
 
@@ -70,5 +71,20 @@ def test_handoff_requires_engine_ledger_and_no_plaintext_credentials() -> None:
         'do not copy plaintext',
         'intrinio',
         'preferred owner',
+    ):
+        assert phrase in text
+
+
+def test_agent_entrypoint_requires_shared_cross_repo_ledger() -> None:
+    text = AGENTS.read_text().lower()
+    for phrase in (
+        'every ai unit',
+        'reppiks490/icarus-engine',
+        'config/data_ingestion_manifest.json',
+        'config/federated_repo_evidence.json',
+        'sentinel/data_health.json',
+        'github actions secrets/variables',
+        'intrinio',
+        'zero known icarus-owned gaps',
     ):
         assert phrase in text
