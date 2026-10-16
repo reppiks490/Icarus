@@ -114,9 +114,6 @@ def snapshot() -> dict[str, Any]:
     if declared != counts:
         raise ValueError("market universe declared counts do not match catalog rows")
     listing = load_listing_crosswalk_report()
-    counts["exchange_listing_identity_verified_count"] = (
-        listing["matched_count"] if listing.get("status") == "CURRENT" else 0
-    )
     return {
         "schema_version": catalog["schema_version"],
         "catalog_id": catalog["catalog_id"],
@@ -162,13 +159,21 @@ def load_listing_crosswalk_report() -> dict[str, Any]:
         if (not isinstance(source, Mapping) or not _HEX.fullmatch(str(source.get("sha256", "")))
                 or source.get("endpoint") != expected_endpoints[name]):
             return invalid
+        try:
+            source_time = datetime.fromisoformat(str(source.get("retrieved_at", "")).replace("Z", "+00:00"))
+        except (ValueError, TypeError):
+            return invalid
+        if (source_time.tzinfo is None or
+                (datetime.now(timezone.utc) - source_time.astimezone(timezone.utc)).total_seconds() < -300):
+            return invalid
     if report.get("results_sha256") != source_probe_results_digest(rows):
         return invalid
     catalog_rows = {row["instrument_id"]: row for row in catalog["instruments"]}
     seen = set()
     matched = 0
     for evidence in rows:
-        if not isinstance(evidence, dict):
+        if not isinstance(evidence, dict) or set(evidence) != {
+                "instrument_id", "expected", "observed", "status", "identity_sha256"}:
             return invalid
         instrument_id = evidence.get("instrument_id")
         if instrument_id not in catalog_rows or instrument_id in seen:
@@ -180,12 +185,15 @@ def load_listing_crosswalk_report() -> dict[str, Any]:
             "name": row["name"], "instrument_type": row["instrument_type"],
             "depositary_ratio": row["depositary_ratio"],
         }
-        if evidence.get("expected") != expected:
+        if (evidence.get("expected") != expected or set(evidence["expected"]) != set(expected)):
             return invalid
         observed = evidence.get("observed")
         status = evidence.get("status")
         if observed is not None:
-            if not isinstance(observed, dict) or not _HEX.fullmatch(str(evidence.get("identity_sha256", ""))):
+            if (not isinstance(observed, dict) or set(observed) != set(expected)
+                    or not all(isinstance(value, str) for key, value in observed.items() if key != "depositary_ratio")
+                    or (observed.get("depositary_ratio") is not None and type(observed.get("depositary_ratio")) is not int)
+                    or not _HEX.fullmatch(str(evidence.get("identity_sha256", "")))):
                 return invalid
             identity_bytes = json.dumps(observed, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
             if hashlib.sha256(identity_bytes).hexdigest() != evidence["identity_sha256"]:
@@ -197,6 +205,8 @@ def load_listing_crosswalk_report() -> dict[str, Any]:
                 return invalid
             matched += 1
         elif status != "MISMATCH":
+            return invalid
+        elif observed == expected:
             return invalid
     if seen != set(catalog_rows):
         return invalid

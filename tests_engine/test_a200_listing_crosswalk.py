@@ -26,7 +26,11 @@ def _report():
         "catalog_id": catalog["catalog_id"], "catalog_snapshot_sha256": catalog_evidence_digest(catalog),
         "retrieved_at": "2026-10-16T12:00:00Z", "qualification_scope": "public_listing_identity_only",
         "raw_market_data_persisted": False, "source_snapshots": {
-            name: {"sha256": "a" * 64} for name in ("NASDAQ", "NYSE", "AMEX")
+            name: {
+                "sha256": "a" * 64,
+                "endpoint": f"https://api.nasdaq.com/api/screener/stocks?tableonly=true&limit=5000&sortColumn=marketCap&sortOrder=DESC&exchange={name.lower()}",
+                "retrieved_at": "2026-10-16T12:00:00Z",
+            } for name in ("NASDAQ", "NYSE", "AMEX")
         }, "requested_instrument_count": 200, "results": rows,
         "results_sha256": market_universe.source_probe_results_digest(rows),
     }
@@ -41,7 +45,7 @@ def test_crosswalk_reports_all_200_listing_identities_without_feed_qualification
     assert loaded["status"] == "CURRENT"
     assert loaded["matched_count"] == 200
     catalog = market_universe.snapshot()
-    assert catalog["counts"]["exchange_listing_identity_verified_count"] == 200
+    assert catalog["listing_crosswalk"]["matched_count"] == 200
     assert catalog["counts"]["source_connected_count"] == 0
     assert catalog["counts"]["entitlement_verified_count"] == 0
     assert catalog["counts"]["historical_bars_qualified_count"] == 0
