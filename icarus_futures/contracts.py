@@ -37,6 +37,11 @@ MONTH_CODES = "FGHJKMNQUVXZ"
 EQUITY_ROLL_WEEKDAY_BEFORE = 4
 STATIC_ROLL_LEAD_BDAYS = 2
 
+# Equity cash-index expiration can move off the nominal third Friday even when
+# the generic static business-day calendar is not used as an all-product closure.
+# This preserves the independently verified Juneteenth 2026 expiration adjustment.
+EQUITY_EXPIRY_HOLIDAYS = frozenset({date(2026, 6, 19)})
+
 # Full-day CME closures required by static date arithmetic. Early-close sessions
 # remain business days. The current runtime calendar already carries the same
 # 2026-2027 full closures; 2028 dates are bounded additions for candidate-chain
@@ -156,6 +161,12 @@ def _previous_bday(d: date) -> date:
     return d
 
 
+def _previous_equity_expiry_day(d: date) -> date:
+    while not _is_bday(d) or d in EQUITY_EXPIRY_HOLIDAYS:
+        d -= timedelta(days=1)
+    return d
+
+
 def _previous_joint_btc_bday(d: date) -> date:
     while not (_is_bday(d) and _is_london_bday(d)):
         d -= timedelta(days=1)
@@ -240,7 +251,7 @@ def contract_dates(spec: ContractSpec, y: int, m: int) -> tuple[date, date]:
 
     if model == "equity_third_friday":
         third = _third_friday(y, m)
-        last = _previous_bday(third)
+        last = _previous_equity_expiry_day(third)
         roll = _previous_bday(third - timedelta(days=EQUITY_ROLL_WEEKDAY_BEFORE))
         return last, roll
 
