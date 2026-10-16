@@ -95,3 +95,12 @@ def test_crosswalk_detects_listing_mismatch_without_promoting_it(monkeypatch, tm
     loaded = market_universe.load_listing_crosswalk_report()
     assert loaded["status"] == "CURRENT"
     assert loaded["matched_count"] == 199
+
+
+def test_crosswalk_is_stale_when_any_source_snapshot_is_older_than_24_hours(monkeypatch, tmp_path):
+    report = _report()
+    report["source_snapshots"]["NYSE"]["retrieved_at"] = "2026-10-14T12:00:00Z"
+    path = tmp_path / "crosswalk.json"
+    path.write_text(json.dumps(report))
+    monkeypatch.setattr(market_universe, "LISTING_CROSSWALK_PATH", path)
+    assert market_universe.load_listing_crosswalk_report()["status"] == "STALE"

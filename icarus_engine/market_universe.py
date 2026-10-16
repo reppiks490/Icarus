@@ -155,6 +155,7 @@ def load_listing_crosswalk_report() -> dict[str, Any]:
         return invalid
     expected_endpoints = {name: f"https://api.nasdaq.com/api/screener/stocks?tableonly=true&limit=5000&sortColumn=marketCap&sortOrder=DESC&exchange={name.lower()}"
                           for name in sources}
+    source_stale = False
     for name, source in sources.items():
         if (not isinstance(source, Mapping) or not _HEX.fullmatch(str(source.get("sha256", "")))
                 or source.get("endpoint") != expected_endpoints[name]):
@@ -163,9 +164,12 @@ def load_listing_crosswalk_report() -> dict[str, Any]:
             source_time = datetime.fromisoformat(str(source.get("retrieved_at", "")).replace("Z", "+00:00"))
         except (ValueError, TypeError):
             return invalid
-        if (source_time.tzinfo is None or
-                (datetime.now(timezone.utc) - source_time.astimezone(timezone.utc)).total_seconds() < -300):
+        if source_time.tzinfo is None:
             return invalid
+        source_age = (datetime.now(timezone.utc) - source_time.astimezone(timezone.utc)).total_seconds()
+        if source_age < -300:
+            return invalid
+        source_stale = source_stale or source_age > 24 * 60 * 60
     if report.get("results_sha256") != source_probe_results_digest(rows):
         return invalid
     catalog_rows = {row["instrument_id"]: row for row in catalog["instruments"]}
@@ -219,7 +223,7 @@ def load_listing_crosswalk_report() -> dict[str, Any]:
     if age < -300:
         return invalid
     return {
-        "status": "CURRENT" if age <= 24 * 60 * 60 else "STALE",
+        "status": "CURRENT" if age <= 24 * 60 * 60 and not source_stale else "STALE",
         "retrieved_at": updated, "matched_count": matched,
         "requested_count": EXPECTED_INSTRUMENT_COUNT, "results": rows,
         "source_snapshots": dict(sources),
