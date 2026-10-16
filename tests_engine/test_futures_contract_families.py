@@ -5,7 +5,21 @@ from datetime import date
 import pytest
 
 from icarus_engine.futures_catalog import FUTURES_PRODUCTS
-from icarus_futures.contracts import SPECS, contract_dates, parse_continuous, resolve
+from icarus_futures.contracts import (
+    SPECS,
+    STRUCTURAL_SPECS,
+    contract_dates,
+    parse_continuous,
+    parse_structural_continuous,
+    resolve,
+    resolve_candidate,
+)
+
+
+EXECUTION_QUALIFIED_ROOTS = {
+    "NQ", "MNQ", "ES", "MES", "YM", "MYM", "RTY", "M2K",
+    "GC", "MGC", "SI", "SIL",
+}
 
 
 @pytest.mark.parametrize(
@@ -33,47 +47,51 @@ from icarus_futures.contracts import SPECS, contract_dates, parse_continuous, re
         ("MBT", 2026, 10, date(2026, 10, 30)),
     ],
 )
-def test_product_specific_last_trade_dates(root, year, month, expected_last):
-    spec = SPECS[root]
+def test_product_specific_static_candidate_dates(root, year, month, expected_last):
+    spec = STRUCTURAL_SPECS[root]
     last, roll = contract_dates(spec, year, month)
     assert last == expected_last
     assert roll <= last
 
 
-def test_all_32_catalog_roots_have_structural_execution_specs():
-    assert set(SPECS) == set(FUTURES_PRODUCTS)
+def test_all_32_roots_have_structural_specs_but_only_qualified_subset_routes():
+    assert set(STRUCTURAL_SPECS) == set(FUTURES_PRODUCTS)
+    assert set(SPECS) == EXECUTION_QUALIFIED_ROOTS
     for root in FUTURES_PRODUCTS:
-        spec, rank = parse_continuous(f"{root}1!")
-        assert spec.root == root
-        assert rank == 1
+        spec, rank = parse_structural_continuous(f"{root}1!")
+        assert spec.root == root and rank == 1
+        assert spec.execution_qualified is (root in EXECUTION_QUALIFIED_ROOTS)
 
 
-def test_canonical_bitcoin_root_maps_to_real_cme_contract_code():
-    front = resolve("BTCF1!", date(2026, 10, 16))
-    micro = resolve("MBT1!", date(2026, 10, 16))
+def test_unqualified_structural_specs_fail_closed_at_execution_parser():
+    for root in set(FUTURES_PRODUCTS) - EXECUTION_QUALIFIED_ROOTS:
+        with pytest.raises(ValueError):
+            parse_continuous(f"{root}1!")
+        with pytest.raises(ValueError):
+            resolve(f"{root}1!", date(2026, 10, 16))
+
+
+def test_canonical_bitcoin_root_maps_to_real_cme_candidate_without_execution_authority():
+    front = resolve_candidate("BTCF1!", date(2026, 10, 16))
+    micro = resolve_candidate("MBT1!", date(2026, 10, 16))
     assert front["contract"] == "BTCV26"
     assert micro["contract"] == "MBTV26"
+    assert front["execution_qualified"] is False
+    assert micro["execution_qualified"] is False
+    assert front["execution_authorized"] is False
 
 
-def test_representative_front_contracts_are_deterministic_on_current_audit_date():
+def test_representative_structural_candidates_are_deterministic_on_current_audit_date():
     expected = {
-        "6E": "6EZ26",
-        "HG": "HGV26",
-        "MHG": "MHGX26",
-        "PL": "PLV26",
-        "PA": "PAZ26",
-        "NG": "NGX26",
-        "MNG": "MNGX26",
-        "CL": "CLZ26",
-        "MCL": "MCLZ26",
-        "ZN": "ZNZ26",
-        "ZB": "ZBZ26",
-        "BTCF": "BTCV26",
-        "MBT": "MBTV26",
+        "6E": "6EZ26", "HG": "HGV26", "MHG": "MHGX26",
+        "PL": "PLV26", "PA": "PAZ26", "NG": "NGX26", "MNG": "MNGX26",
+        "CL": "CLZ26", "MCL": "MCLZ26", "ZN": "ZNZ26", "ZB": "ZBZ26",
+        "BTCF": "BTCV26", "MBT": "MBTV26",
     }
     for root, code in expected.items():
-        first = resolve(f"{root}1!", date(2026, 10, 16))
-        second = resolve(f"{root}1!", date(2026, 10, 16))
+        first = resolve_candidate(f"{root}1!", date(2026, 10, 16))
+        second = resolve_candidate(f"{root}1!", date(2026, 10, 16))
         assert first == second
         assert first["contract"] == code
         assert first["roll_date"] <= first["last_date"]
+        assert first["execution_authorized"] is False
