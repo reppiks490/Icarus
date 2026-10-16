@@ -46,16 +46,19 @@ def test_system_index_separates_structural_candidate_execution_and_broker_author
         assert execution["static_candidate_available"] is True
         assert execution["candidate_execution_root"] == product.execution_root
         assert execution["broker_qualification_required"] is True
-        assert execution["structural_qualified"] is product.execution_qualified
+        assert execution["structural_qualified"] is True
         assert execution["execution_qualified"] is product.execution_qualified
+        assert execution["simulated_paper_authorized"] is False
+        assert record["dashboard"]["simulated_paper_controls_eligible"] is False
         assert execution["broker_paper_readback_verified"] is False
         assert execution["broker_paper_tradeable"] is False
         assert execution["live_authorized"] is False
         assert execution["live_tradeable"] is False
+        assert execution["structural_blocker"] is None
         if product.execution_qualified:
-            assert execution["structural_blocker"] is None
+            assert execution["execution_blocker"] is None
         else:
-            assert execution["structural_blocker"] == product.execution_blocker
+            assert execution["execution_blocker"] == product.execution_blocker
 
 
 def test_system_index_counts_all_32_candidates_but_only_safe_execution_subset():

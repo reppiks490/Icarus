@@ -130,6 +130,7 @@ def build_system_index(
         corpus = _corpus_record(root, corpus_state=corpus_state)
         brain = _brain_record(root, brain_state=brain_state)
         execution_blocker = None if execution_qualified else product.execution_blocker or "execution route is not qualified"
+        structural_blocker = None if static_candidate else "no static dated-contract candidate is available"
         broker_paper_tradeable = bool(
             execution_qualified
             and broker["paper_account_verified"]
@@ -166,12 +167,15 @@ def build_system_index(
                 "static_candidate_available": static_candidate,
                 "candidate_execution_root": product.execution_root,
                 "broker_qualification_required": True,
-                "structural_qualified": execution_qualified,
+                "structural_qualified": static_candidate,
                 "execution_qualified": execution_qualified,
-                "structural_blocker": execution_blocker,
+                "structural_blocker": structural_blocker,
+                "execution_blocker": execution_blocker,
                 "resolver_model": product.roll_model,
                 "cycle": product.cycle,
-                "simulated_paper_authorized": execution_qualified,
+                # Readiness belongs to the asset command center, which has
+                # provider, risk-control, and journal evidence unavailable here.
+                "simulated_paper_authorized": False,
                 "broker_paper_readback_verified": broker["broker_paper_readback_verified"],
                 "broker_paper_tradeable": broker_paper_tradeable,
                 "broker": broker,
@@ -183,7 +187,7 @@ def build_system_index(
                 "visible": True,
                 "backend_state_eligible": True,
                 "static_candidate_visible": static_candidate,
-                "simulated_paper_controls_eligible": execution_qualified,
+                "simulated_paper_controls_eligible": False,
                 "broker_paper_controls_eligible": broker_paper_tradeable,
                 "live_controls_eligible": False,
             },
@@ -239,7 +243,13 @@ def system_index_markdown(index: Optional[Mapping[str, Any]] = None) -> str:
         record = data["assets"][root]
         execution = record["execution"]
         data_state = record["data"]
-        blocker = execution["structural_blocker"] or data_state["blocker"] or execution["broker"]["blocker"] or "none"
+        blocker = (
+            execution["structural_blocker"]
+            or execution["execution_blocker"]
+            or data_state["blocker"]
+            or execution["broker"]["blocker"]
+            or "none"
+        )
         blocker = str(blocker).replace("|", "\\|")
         lines.append(
             f"| {root} | {data_state['qualification']} | "
