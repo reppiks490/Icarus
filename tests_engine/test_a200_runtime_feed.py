@@ -22,6 +22,7 @@ def _qualified_snapshot():
         "identity_status": "VERIFIED",
         "entitlement": "VERIFIED",
         "historical_bars": "QUALIFIED",
+        "corporate_action_policy": "SPLIT_ADJUSTED",
         "pulse_enabled": True,
         "strategy_qualified": True,
         "minimum_price_increment": 0.01,
@@ -68,6 +69,7 @@ def _qualified_batch(row):
         expected_bar_timestamps=expected,
         calendar_timezone=calendar.timezone_name,
         bar_close_status="VERIFIED",
+        corporate_action_policy=row["corporate_action_policy"],
     )
     return checked_bars, receipt
 
@@ -119,6 +121,26 @@ def test_qualified_historical_batch_runs_pulse_in_signal_only_research_mode(monk
     assert runner.em.fills == []
 
 
+def test_admission_and_session_creation_use_one_catalog_snapshot(monkeypatch):
+    qualified, row = _qualified_snapshot()
+    downgraded = deepcopy(qualified)
+    downgraded["instruments"][0]["pulse_enabled"] = False
+    snapshots = iter((qualified, downgraded))
+    calls = []
+
+    def next_snapshot():
+        calls.append(True)
+        return next(snapshots)
+
+    monkeypatch.setattr(a200_runtime_feed, "snapshot", next_snapshot)
+    bars, receipt = _qualified_batch(row)
+    result = A200PulseResearchRuntime().ingest_history(row["instrument_id"], bars, receipt)
+
+    assert len(calls) == 1
+    assert result["admission"]["admitted"] is True
+    assert result["processed_bars"] == len(bars)
+
+
 def test_qualified_catalog_does_not_admit_tampered_bars(monkeypatch):
     catalog, row = _qualified_snapshot()
     monkeypatch.setattr(a200_runtime_feed, "snapshot", lambda: catalog)
@@ -163,6 +185,37 @@ def test_portfolio_entrypoint_keeps_a200_research_outside_live_asset_registry(mo
     assert portfolio._a200_pulse_research is not None
 
 
+def test_fetch_entrypoint_does_not_contact_unqualified_provider(monkeypatch):
+    from icarus_engine.runtime import Journal, Portfolio
+    import icarus_engine.market_universe_adapter as adapter_module
+
+    def forbidden_adapter(*_args, **_kwargs):
+        raise AssertionError("provider adapter must not be constructed for an unqualified request")
+
+    monkeypatch.setattr(adapter_module, "MarketUniverseAdapter", forbidden_adapter)
+    portfolio = Portfolio(Journal(":memory:"), "/tmp/icarus-a200-fetch-test", feeds={})
+
+    result = portfolio.fetch_a200_research_history("a200:equity:NVDA", 300, 0, 300)
+
+    assert result["provider_call_made"] is False
+    assert result["processed_bars"] == 0
+    assert result["admission"]["reasons"] == ["PROVIDER_ADAPTER_NOT_QUALIFICATION_CAPABLE"]
+    assert portfolio._a200_pulse_research is None
+
+
+def test_unknown_corporate_action_policy_blocks_equity_history(monkeypatch):
+    catalog, row = _qualified_snapshot()
+    row["corporate_action_policy"] = "UNKNOWN"
+    monkeypatch.setattr(a200_runtime_feed, "snapshot", lambda: catalog)
+    bars, receipt = _qualified_batch({**row, "corporate_action_policy": "UNKNOWN"})
+
+    admission = qualify_a200_pulse_batch(row["instrument_id"], bars, receipt,
+                                         now_ns=receipt.received_at_ns)
+
+    assert admission.admitted is False
+    assert "CORPORATE_ACTION_POLICY_UNQUALIFIED" in admission.reasons
+
+
 def test_research_runtime_rejects_missing_bars_between_admitted_batches(monkeypatch):
     catalog, row = _qualified_snapshot()
     monkeypatch.setattr(a200_runtime_feed, "snapshot", lambda: catalog)
@@ -186,6 +239,7 @@ def test_research_runtime_rejects_missing_bars_between_admitted_batches(monkeypa
         alignment_validator=lambda ts: calendar.is_aligned(ts, 300),
         expected_bar_timestamps=calendar.expected_bar_timestamps(gap_start, gap_start + 300, 300),
         calendar_timezone=calendar.timezone_name, bar_close_status="VERIFIED",
+        corporate_action_policy=row["corporate_action_policy"],
     )
 
     result = runtime.ingest_history(row["instrument_id"], gap, gap_receipt)
@@ -218,6 +272,7 @@ def test_research_runtime_rejects_catalog_economics_change_mid_session(monkeypat
         alignment_validator=lambda ts: calendar.is_aligned(ts, 300),
         expected_bar_timestamps=calendar.expected_bar_timestamps(next_start, next_start + 300, 300),
         calendar_timezone=calendar.timezone_name, bar_close_status="VERIFIED",
+        corporate_action_policy=row["corporate_action_policy"],
     )
 
     result = runtime.ingest_history(row["instrument_id"], next_bars, next_receipt)

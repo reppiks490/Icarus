@@ -45,6 +45,7 @@ class BarBatchReceipt:
     historical_bars_qualified: bool
     execution_authorized: bool = False
     calendar_timezone: str | None = None
+    corporate_action_policy: str = "UNKNOWN"
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -61,6 +62,7 @@ def make_bar_batch_receipt(
     calendar_timezone: str | None = None,
     bar_close_status: str = "UNKNOWN",
     timestamp_normalization: str = "NONE",
+    corporate_action_policy: str = "UNKNOWN",
 ) -> tuple[list[Bar], BarBatchReceipt]:
     """Validate exact response identity and OHLCV before returning bars to runtime.
 
@@ -84,6 +86,8 @@ def make_bar_batch_receipt(
         raise ValueError("invalid session validation status")
     if bar_close_status not in ("UNKNOWN", "VERIFIED", "FAILED"):
         raise ValueError("invalid bar close status")
+    if corporate_action_policy not in ("UNKNOWN", "SPLIT_ADJUSTED", "RAW_WITH_ACTIONS"):
+        raise ValueError("invalid corporate action policy")
     if timestamp_normalization not in ("NONE", "YAHOO_SESSION_CLOSE_TO_SESSION_OPEN"):
         raise ValueError("invalid bar timestamp normalization")
     for name, value in (("requested_start_ts", requested_start_ts), ("requested_end_ts", requested_end_ts),
@@ -189,6 +193,7 @@ def make_bar_batch_receipt(
         "timestamp_normalization": timestamp_normalization,
         "session_validation_status": session_validation_status,
         "bar_close_status": bar_close_status,
+        "corporate_action_policy": corporate_action_policy,
         "checksum_sha256": checksum,
     }
     receipt_identity = json.dumps(
@@ -226,5 +231,6 @@ def make_bar_batch_receipt(
         received_at_ns=received_at_ns,
         historical_bars_qualified=qualified,
         calendar_timezone=calendar_timezone,
+        corporate_action_policy=corporate_action_policy,
     )
     return rows, receipt

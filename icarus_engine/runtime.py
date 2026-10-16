@@ -1739,21 +1739,30 @@ class Portfolio:
     def fetch_a200_research_history(self, instrument_id: str, interval_seconds: int,
                                     start_ts: int, end_ts: int, *, provider: str = "yahoo",
                                     chart_minutes: int = 5) -> Dict[str, Any]:
-        """Explicitly fetch one bounded A200 history page, then apply Pulse admission.
+        """Fail closed until a provider can attest entitlement and bar-close status.
 
-        No provider call occurs at Portfolio startup. This method is an explicit
-        historical research operation and is blocked from Pulse unless the catalog
-        and returned receipt establish all required qualifications.
+        MarketUniverseAdapter intentionally emits UNKNOWN for those fields. Calling
+        it here would make a network request whose result cannot enter Pulse, so
+        this API reports the missing capability without contacting a provider.
         """
-        from .market_universe_adapter import MarketUniverseAdapter
-
-        adapter = MarketUniverseAdapter(providers=(provider,))
-        bars, receipt = adapter.fetch_history(
-            instrument_id, interval_seconds, start_ts, end_ts, provider=provider,
-        )
-        return self.ingest_a200_research_history(
-            instrument_id, bars, receipt, chart_minutes=chart_minutes,
-        )
+        return {
+            "admission": {
+                "admitted": False,
+                "instrument_id": str(instrument_id),
+                "symbol": None,
+                "provider": str(provider),
+                "reasons": ["PROVIDER_ADAPTER_NOT_QUALIFICATION_CAPABLE"],
+                "receipt_id": None,
+                "execution_authorized": False,
+                "live_authorized": False,
+            },
+            "provider_call_made": False,
+            "processed_bars": 0,
+            "pulse": None,
+            "research_only": True,
+            "execution_authorized": False,
+            "live_authorized": False,
+        }
 
     def remove_asset(self, symbol: str) -> bool:
         raw = str(symbol).strip().upper()

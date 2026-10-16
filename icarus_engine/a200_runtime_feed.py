@@ -91,6 +91,7 @@ def _qualification_fingerprint(row: Mapping[str, Any], provider_mapping: Mapping
         "instrument_id", "display_symbol", "name", "venue", "asset_class", "calendar", "timezone",
         "identity_status", "source_connection", "entitlement", "historical_bars", "pulse_enabled",
         "strategy_qualified", "minimum_price_increment", "point_value", "share_lot_size",
+        "corporate_action_policy",
     )
     payload = {field: row.get(field) for field in fields}
     payload["provider_mapping"] = dict(provider_mapping)
@@ -121,6 +122,8 @@ def _receipt_matches_bars(
     if receipt.identity_status != "VERIFIED" or receipt.entitlement_status != "VERIFIED":
         return False
     if receipt.session_validation_status != "VERIFIED" or receipt.bar_close_status != "VERIFIED":
+        return False
+    if receipt.corporate_action_policy != row.get("corporate_action_policy"):
         return False
     if receipt.timestamp_alignment_status != "VERIFIED" or receipt.gap_validation_status != "VERIFIED":
         return False
@@ -155,6 +158,7 @@ def _receipt_matches_bars(
             calendar_timezone=calendar.timezone_name,
             bar_close_status=receipt.bar_close_status,
             timestamp_normalization=receipt.timestamp_normalization,
+            corporate_action_policy=receipt.corporate_action_policy,
         )
     except (ValueError, TypeError, OverflowError):
         return False
@@ -167,6 +171,7 @@ def qualify_a200_pulse_batch(
     receipt: BarBatchReceipt,
     *,
     now_ns: int | None = None,
+    catalog: Mapping[str, Any] | None = None,
 ) -> A200PulseAdmission:
     """Validate that one historical batch is eligible to enter Pulse research.
 
@@ -176,7 +181,7 @@ def qualify_a200_pulse_batch(
     gate by design.
     """
     reasons: list[str] = []
-    catalog = snapshot()
+    catalog = snapshot() if catalog is None else catalog
     row = _catalog_row(catalog, str(instrument_id))
     if row is None:
         return A200PulseAdmission(False, str(instrument_id), None, None, ("UNKNOWN_INSTRUMENT",))
@@ -195,6 +200,8 @@ def qualify_a200_pulse_batch(
         reasons.append("PULSE_DISABLED")
     if row.get("strategy_qualified") is not True:
         reasons.append("STRATEGY_NOT_QUALIFIED")
+    if row.get("asset_class") == "equity" and row.get("corporate_action_policy") != "SPLIT_ADJUSTED":
+        reasons.append("CORPORATE_ACTION_POLICY_UNQUALIFIED")
     if not _positive_number(row.get("minimum_price_increment")):
         reasons.append("PRICE_INCREMENT_UNQUALIFIED")
     if not _positive_number(row.get("point_value")):
@@ -274,29 +281,30 @@ class A200PulseResearchRuntime:
         bars: Sequence[Bar],
         receipt: BarBatchReceipt,
     ) -> dict[str, Any]:
-        admission = qualify_a200_pulse_batch(instrument_id, bars, receipt)
-        if not admission.admitted:
-            return {"admission": admission.to_dict(), "processed_bars": 0, "pulse": None,
-                    "research_only": True, "execution_authorized": False}
-        if receipt.interval_seconds < 60 or receipt.interval_seconds % 60:
-            rejected = A200PulseAdmission(
-                False, instrument_id, admission.symbol, admission.provider,
-                ("PULSE_REQUIRES_MINUTE_OR_COARSER_BARS",), receipt.receipt_id,
-            )
-            return {"admission": rejected.to_dict(), "processed_bars": 0, "pulse": None,
-                    "research_only": True, "execution_authorized": False}
-        sub_minutes = receipt.interval_seconds // 60
-        if self.chart_minutes % sub_minutes:
-            rejected = A200PulseAdmission(
-                False, instrument_id, admission.symbol, admission.provider,
-                ("BAR_INTERVAL_NOT_DIVISOR_OF_PULSE_CHART",), receipt.receipt_id,
-            )
-            return {"admission": rejected.to_dict(), "processed_bars": 0, "pulse": None,
-                    "research_only": True, "execution_authorized": False}
-
         with self._lock:
-            session = self._sessions.get(instrument_id)
+            # Use one catalog snapshot for both admission and session identity.
+            # This closes a downgrade race between validation and runner creation.
             catalog = snapshot()
+            admission = qualify_a200_pulse_batch(instrument_id, bars, receipt, catalog=catalog)
+            if not admission.admitted:
+                return {"admission": admission.to_dict(), "processed_bars": 0, "pulse": None,
+                        "research_only": True, "execution_authorized": False}
+            if receipt.interval_seconds < 60 or receipt.interval_seconds % 60:
+                rejected = A200PulseAdmission(
+                    False, instrument_id, admission.symbol, admission.provider,
+                    ("PULSE_REQUIRES_MINUTE_OR_COARSER_BARS",), receipt.receipt_id,
+                )
+                return {"admission": rejected.to_dict(), "processed_bars": 0, "pulse": None,
+                        "research_only": True, "execution_authorized": False}
+            sub_minutes = receipt.interval_seconds // 60
+            if self.chart_minutes % sub_minutes:
+                rejected = A200PulseAdmission(
+                    False, instrument_id, admission.symbol, admission.provider,
+                    ("BAR_INTERVAL_NOT_DIVISOR_OF_PULSE_CHART",), receipt.receipt_id,
+                )
+                return {"admission": rejected.to_dict(), "processed_bars": 0, "pulse": None,
+                        "research_only": True, "execution_authorized": False}
+            session = self._sessions.get(instrument_id)
             current_row = _catalog_row(catalog, instrument_id)
             current_mapping = next((item for item in current_row.get("provider_symbol_candidates", [])
                                     if item.get("provider") == receipt.provider), None) if current_row else None
