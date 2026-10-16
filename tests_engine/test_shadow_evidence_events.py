@@ -24,6 +24,11 @@ def evidence(**changes):
         "real_price_shadow": {"net": 50.0, "warmup_net": 0.0, "live_net": 50.0},
         "net_realization_ratio": 50.0 / 120.0,
         "paired_profit_capture": None,
+        "closed_episode_excursion_basis": "EMULATOR_OBSERVED_HIGH_LOW_THROUGH_EXIT_FILL_QTY_WEIGHTED_ENTRY_COMMISSION_ADJUSTED",
+        "primary_closed_episode_excursions": {"episode_count": 1, "favorable_excursion": 12.0, "adverse_excursion": -4.0},
+        "real_price_shadow_closed_episode_excursions": {"episode_count": 1, "favorable_excursion": 9.0, "adverse_excursion": -3.0},
+        "matched_closed_episode_favorable_excursion_delta_shadow_minus_primary": {"count": 1, "mean": -3.0},
+        "matched_closed_episode_adverse_excursion_delta_shadow_minus_primary": {"count": 1, "mean": 1.0},
         "recent_intents": [{"alert_message": "must not be published"}],
         "recent_entry_fill_pairs": [{"price": 12345.0}],
     }
@@ -47,9 +52,23 @@ def test_explicit_shadow_event_is_compact_content_addressed_and_non_authoritativ
         "primary": 0, "shadow": 0,
     }
     assert row["payload"]["evidence"]["administrative_censored_shadow_positions"] == 2
+    assert row["payload"]["evidence"]["primary_closed_episode_excursions"]["favorable_excursion"] == 12.0
+    assert row["payload"]["evidence"]["closed_episode_excursion_basis"].startswith("EMULATOR_OBSERVED_HIGH_LOW")
     assert "recent_intents" not in row["payload"]["evidence"]
     assert "recent_entry_fill_pairs" not in row["payload"]["evidence"]
     assert row["evidence_ids"][0].startswith("sha256:")
+
+
+def test_excursion_metrics_are_included_in_the_content_digest():
+    kwargs = {"run_id": "run-01", "observed_at": "2026-10-15T16:00:00Z",
+              "received_at": "2026-10-15T16:01:00Z"}
+    first = shadow_evidence_event(evidence(), **kwargs).normalized()
+    changed = shadow_evidence_event(
+        evidence(primary_closed_episode_excursions={
+            "episode_count": 1, "favorable_excursion": 120.0, "adverse_excursion": -4.0,
+        }), **kwargs).normalized()
+
+    assert first["evidence_ids"] != changed["evidence_ids"]
 
 
 def test_event_evidence_is_snapshotted_before_the_content_digest_is_assigned():
