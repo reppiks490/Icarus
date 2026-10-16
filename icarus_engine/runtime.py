@@ -229,6 +229,20 @@ class Journal:
             self.con.execute("INSERT INTO equity VALUES (?,?)", (time.time(), equity))
             self.con.commit()
 
+    def closed_paper_profit(self) -> Dict[str, Any]:
+        """Persisted closures processed after the live paper cutover, across runs.
+
+        A trade can have entered during warmup and closed after cutover. This is
+        deliberately a closure-time measure, not a broker account statement.
+        """
+        with self._lock:
+            profit, count, last_close = self.con.execute(
+                "SELECT COALESCE(SUM(profit), 0), COUNT(*), MAX(exit_ts) "
+                "FROM trades WHERE live=1"
+            ).fetchone()
+        return {"realized_pnl": float(profit), "closed_pieces": int(count),
+                "last_close_ts": int(last_close) if last_close is not None else None}
+
     def export_trades_csv(self, path: str, *, live_only: bool = False) -> int:
         with self._lock:
             return write_paper_csv(self.con, path, live_only=live_only)
@@ -661,6 +675,15 @@ class AssetRunner:
         self.overlays.append({"ts": chart.ts, "st": st["rate_st_line"], "up": st["rate_uptrend"], "tp1": st["tp1_price"], "tp2": st["tp2_price"],
                               "sl": st["sl_price"], "vwap": st["vwap"], "kf": st["kf_level"], "pos": st["rate_qty_open"] * (1 if st["rate_pos_long"] else -1),
                               "tide_hi": st["tide_hi"], "tide_lo": st["tide_lo"], "pulse": max(st["pulse_l"], st["pulse_s"]), "real_c": real.c})
+        self._record_new_execution(live=live)
+        for ev in self.strat.events:
+            self.recent_events.append(dict(ev, live=live))
+            if live:
+                self.journal.log("INFO", f"[{self.symbol}] {ev['text']}")
+        self.strat.events.clear()
+
+    def _record_new_execution(self, *, live: bool) -> None:
+        """Journal emulator fills from both market bars and manual paper flatten."""
         for f in self.em.fills[self._fills_seen:]:
             self.recent_fills.append({"ts": f.ts, "bar": f.bar, "id": f.entry_id, "side": f.side, "qty": f.qty, "price": f.price,
                                       "kind": f.kind, "comment": f.comment, "profit": f.profit, "pos": f.position_after, "live": live})
@@ -680,11 +703,6 @@ class AssetRunner:
         self._closed_seen = len(self.em.closed)
         if live and len(self.em.closed) > closed_before_count:
             self._refresh_performance_guard()
-        for ev in self.strat.events:
-            self.recent_events.append(dict(ev, live=live))
-            if live:
-                self.journal.log("INFO", f"[{self.symbol}] {ev['text']}")
-        self.strat.events.clear()
 
     def on_sub_bar(self, b: Bar, sub_minutes: int, live: bool, record: bool = True) -> None:
         """Feed one genuine minute-or-coarser sub-bar to HTF chains and minute charts."""
@@ -1267,6 +1285,8 @@ class AssetRunner:
                     mark = float(self.last_price)
                     fake = Bar(int(time.time()), mark, mark, mark, mark, 0.0)
                     self.em.process_bar(fake, self.bar_index)
+                self._record_new_execution(live=True)
+                self.publish_read_views()
             self.journal.log("WARN", f"[{self.symbol}] FLATTEN ({reason}): {len(entry_ids)} position(s), {cancelled} pending entry intent(s) cancelled")
             return len(entry_ids)
 
@@ -1322,6 +1342,9 @@ class AssetRunner:
 
     def _feed_health_view(self) -> Dict[str, Any]:
         """Return provider health from memory only; status endpoints must never do I/O."""
+        cached_meta = getattr(self.feed, "cached_meta", None)
+        if callable(cached_meta):
+            return cached_meta(self.spec.ticker)
         if type(self.feed).__name__ == "Databento" and hasattr(self.feed, "meta"):
             return self.feed.meta(self.spec.ticker)
         cached = getattr(self.feed, "_meta", None)
@@ -1375,7 +1398,8 @@ class AssetRunner:
             "continuous_contract": bool(self.spec.kind == "futures"), "contract_policy": "continuous_only" if self.spec.kind == "futures" else "not_applicable",
             "continuous_symbol": self.spec.tv_symbol or self.spec.ticker,
             "provider_symbol": self.spec.ticker,
-            "feed_provider": ("databento" if type(self.feed).__name__ == "Databento" else self.spec.feed),
+            "feed_provider": getattr(self.feed, "provider_name", None) or (
+                "databento" if type(self.feed).__name__ == "Databento" else self.spec.feed),
             "feed_capabilities": (self.feed.capabilities() if hasattr(self.feed, "capabilities") else {}),
             "feed_health": self._feed_health_view(),
             "last_bar_batch_receipt": self.last_bar_batch_receipt,
