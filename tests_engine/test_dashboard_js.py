@@ -157,17 +157,14 @@ def test_shadow_excursions_render_only_with_a_positive_denominator(tmp_path):
         r"""
 const fs = require('node:fs');
 const vm = require('node:vm');
-const source = fs.readFileSync(process.argv[2], 'utf8');
-const start = source.indexOf('const moneyWithDenominator = ');
-const helperStart = source.lastIndexOf('const hasNumber = ', start);
-const end = source.indexOf(';', start) + 1;
-if (start < 0 || helperStart < 0 || end < 1) throw new Error('excursion rendering helper not found');
-const helper = source.slice(helperStart, end);
+const source = fs.readFileSync(process.argv[2], 'utf8').replace(/\r\n/g, '\n');
+const helper = source.match(/\bconst\s+hasNumber\s*=[\s\S]*?;\n\s*const\s+moneyWithDenominator\s*=[\s\S]*?;\n/);
+if (!helper) throw new Error('excursion rendering helper not found');
 const context = {
   number: value => Number(value).toLocaleString('en-US', {maximumFractionDigits: 4}),
   money: value => `${Number(value) < 0 ? '−' : ''}$${Math.abs(Number(value)).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`,
 };
-vm.runInNewContext(helper + String.fromCharCode(10) + 'this.render = moneyWithDenominator;', context);
+vm.runInNewContext(helper[0] + String.fromCharCode(10) + 'this.render = moneyWithDenominator;', context);
 process.stdout.write(JSON.stringify([
   context.render(38, 2),
   context.render(0, 1),
