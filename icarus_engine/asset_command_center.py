@@ -111,7 +111,17 @@ def build_asset_command_state(
     structural = execution.get("structural_qualified") is True
     risk_controls_ready = runtime is not None and runtime.get("risk_controls_ready") is True
     state_journal_ready = runtime is not None and runtime.get("state_journal_ready") is True
-    paper_authorized = execution.get("simulated_paper_authorized") is True
+    # The index cannot establish simulated-paper readiness without runtime
+    # risk and journal evidence. The authoritative command state can derive
+    # eligibility once all required evidence is present.
+    paper_authorized = execution.get("simulated_paper_authorized") is True or bool(
+        structural
+        and system.get("owner_policy", {}).get("simulated_paper") == "allowed"
+        and data_verified
+        and data_fresh
+        and risk_controls_ready
+        and state_journal_ready
+    )
     simulated_paper = bool(
         structural and paper_authorized and data_verified and data_fresh
         and risk_controls_ready and state_journal_ready
