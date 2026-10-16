@@ -7,6 +7,15 @@ const output=process.env.ICARUS_BROWSER_OUTPUT||'/tmp/icarus-cinema-previews';mk
 const browser=await chromium.launch({headless:true,args:['--enable-unsafe-swiftshader'],...(process.env.ICARUS_BROWSER_BINARY?{executablePath:process.env.ICARUS_BROWSER_BINARY}:{})});
 const context=await browser.newContext({viewport:{width:1440,height:1000}});
 const page=await context.newPage(),errors=[],writes=[];
+async function stableCanvasFrame(canvas){
+ let previous=await canvas.evaluate(c=>c.toDataURL()),stable=0;
+ for(let attempt=0;attempt<20;attempt++){
+  await page.waitForTimeout(100);
+  const current=await canvas.evaluate(c=>c.toDataURL());
+  if(current===previous){stable++;if(stable>=2)return current;}else{stable=0;previous=current;}
+ }
+ return previous;
+}
 context.on('page',p=>p.on('pageerror',e=>errors.push(e.message)));page.on('pageerror',e=>errors.push(e.message));
 context.on('request',r=>{if(r.method()!=='GET')writes.push(r.url());});
 await page.addInitScript(()=>{
@@ -30,8 +39,8 @@ assert.ok(sceneAnimated,'The visible scene must actually animate');
 assert.equal(await page.evaluate(()=>window.audioCreated),0,'No audio context before opt-in');
 await page.locator('.experience-settings summary').click();
 for(const mode of ['balanced','focus']){
- await page.locator('#experienceMode').selectOption(mode);await page.waitForTimeout(100);
- const a=await canvas.evaluate(c=>c.toDataURL());await page.waitForTimeout(180);
+ await page.locator('#experienceMode').selectOption(mode);
+ const a=await stableCanvasFrame(canvas);await page.waitForTimeout(180);
  assert.equal(await canvas.evaluate(c=>c.toDataURL()),a,`${mode} must stop canvas rendering`);
 }
 await page.locator('#experienceMode').selectOption('cinematic');
