@@ -48,6 +48,14 @@ def test_receipt_cannot_be_reassigned_to_another_catalog_instrument():
         A200RuntimeBatch.from_history("different-instrument", batch.provider, batch.bars, batch.receipt)
 
 
+def test_same_length_substituted_bars_are_rejected_by_receipt_checksum():
+    batch = _batch()
+    tampered = (Bar(batch.bars[0].ts, batch.bars[0].o, batch.bars[0].h,
+                    batch.bars[0].l, batch.bars[0].c + 0.01, batch.bars[0].v),)
+    with pytest.raises(ValueError, match="do not match the validated receipt checksum"):
+        A200RuntimeBatch.from_history(batch.instrument_id, batch.provider, tampered, batch.receipt)
+
+
 def test_empty_or_incomplete_history_batch_is_rejected():
     batch = _batch()
     with pytest.raises(ValueError, match="non-empty"):

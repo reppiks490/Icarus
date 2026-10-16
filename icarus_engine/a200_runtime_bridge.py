@@ -7,6 +7,8 @@ the evidence gates needed before a separate runtime integration may consume it.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import hashlib
+import json
 from typing import Sequence
 
 from .bar_receipts import BarBatchReceipt
@@ -31,8 +33,13 @@ class A200RuntimeBatch:
             raise ValueError("A200 batch identity does not match its receipt")
         if not self.bars or self.receipt.row_count != len(self.bars):
             raise ValueError("A200 batch bars must be non-empty and match receipt row count")
-        if not self.receipt.checksum_sha256:
-            raise ValueError("A200 batch receipt must carry its validated bar checksum")
+        encoded = json.dumps(
+            [[int(row.ts), float(row.o), float(row.h), float(row.l), float(row.c), float(row.v)]
+             for row in self.bars],
+            separators=(",", ":"), allow_nan=False,
+        ).encode("utf-8")
+        if hashlib.sha256(encoded).hexdigest() != self.receipt.checksum_sha256:
+            raise ValueError("A200 batch bars do not match the validated receipt checksum")
 
     @classmethod
     def from_history(cls, instrument_id: str, provider: str, bars: Sequence[Bar],
