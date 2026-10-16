@@ -149,6 +149,38 @@ async function run(scenario) {
         )
 
 
+@pytest.mark.skipif(NODE is None, reason="node is not installed on this developer machine")
+def test_shadow_excursions_render_only_with_a_positive_denominator(tmp_path):
+    ui = REPO / "icarus_engine/shadow-twin-ui.js"
+    runner = tmp_path / "shadow-excursion-denominator.cjs"
+    runner.write_text(
+        r"""
+const fs = require('node:fs');
+const vm = require('node:vm');
+const source = fs.readFileSync(process.argv[2], 'utf8');
+const helper = source.match(/const moneyWithDenominator = [\s\S]*?;\n/);
+if (!helper) throw new Error('excursion rendering helper not found');
+const context = {
+  hasNumber: value => value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value)),
+  number: value => Number(value).toLocaleString(undefined, {maximumFractionDigits: 4}),
+  money: value => `${Number(value) < 0 ? '−' : ''}$${Math.abs(Number(value)).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`,
+};
+vm.runInNewContext(helper[0] + '\nthis.render = moneyWithDenominator;', context);
+process.stdout.write(JSON.stringify([
+  context.render(38, 2),
+  context.render(0, 1),
+  context.render(38, 0),
+  context.render(38, null),
+  context.render(null, 2),
+]));
+""",
+        encoding="utf-8",
+    )
+    result = subprocess.run([NODE, str(runner), str(ui)], text=True, capture_output=True)
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout) == ["$38.00 (n=2)", "$0.00 (n=1)", "—", "—", "—"]
+
+
 def test_engine_dashboard_has_no_expiry_contract_ui():
     src = (REPO / "icarus_engine/dashboard.html").read_text(encoding="utf-8")
     assert "a.next_contract" not in src
