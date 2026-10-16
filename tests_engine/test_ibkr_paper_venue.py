@@ -316,7 +316,7 @@ class IbkrPaperVenueTests(unittest.TestCase):
     gateway.disconnect()
 
 
-  def test_engine_cancel_remains_compatible_with_legacy_one_argument_venue(self):
+  def test_engine_cancel_remains_compatible_with_legacy_one_argument_venue(self, tmp_path):
     venue = SimVenue()
     original_cancel = venue.cancel
     cancelled = []
@@ -330,7 +330,7 @@ class IbkrPaperVenueTests(unittest.TestCase):
     submitted = venue.submit(intent.intent_id, intent.symbol, intent.side, intent.qty,
                              intent.kind, intent.price)
     venue.poll()  # consume the direct venue ack before attaching the engine
-    engine = ExecutionEngine(venue, RiskGovernor(), Journal(":memory:"), mode="SIM")
+    engine = ExecutionEngine(venue, RiskGovernor(), Journal(str(tmp_path / "journal.jsonl")), mode="SIM")
     order, _created = engine.book.add(intent)
     order.state = S.WORKING
     order.broker_id = submitted["broker_id"]
