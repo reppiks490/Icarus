@@ -3,6 +3,8 @@
 This module deliberately has no broker statement parser, network access, persistence,
 or order-routing behavior. Adapters must first translate their source records into
 these types while preserving the provider's statement-row identity and SHA-256 digest.
+The normalized matcher validates digest shape only; the eventual importer must
+compute and verify the digest against source-row bytes before creating a row.
 Amounts use signed ``Decimal`` values: positive debits increase costs, negative
 credits/rebates reduce them, and zero is preserved as reported.
 Inputs are bounded to 128 coefficient digits and a Decimal exponent between -128
