@@ -1883,6 +1883,7 @@ class Portfolio:
         shadow_status = ("INVALID" if any(x["status"] == "INVALID" for x in shadow_rows)
                          else "DEGRADED" if any(x["status"] != "READY" for x in shadow_rows)
                          else "READY") if shadow_rows else "DISABLED"
+        metrics_available = shadow_status == "READY"
         primary_entries = sum(x["primary_entry_fills"] for x in shadow_rows)
         shadow_entries = sum(x["shadow_entry_fills"] for x in shadow_rows)
         matched_entries = sum(x["matched_entry_intents"] for x in shadow_rows)
@@ -1913,6 +1914,10 @@ class Portfolio:
             "schema": "icarus.real_price_shadow.portfolio/1",
             "enabled": True,
             "status": shadow_status,
+            "metrics_available": metrics_available,
+            "metrics_unavailable_reason": (
+                None if metrics_available else
+                "portfolio comparisons require every evidenced asset to be READY"),
             "execution_authorized": False,
             "asset_count": len(shadow_rows),
             "primary_entry_fills": primary_entries,
@@ -1950,6 +1955,25 @@ class Portfolio:
                         "provenance": x.get("provenance")}
                        for x in shadow_rows],
         } if shadow_rows else None)
+        if shadow_portfolio is not None and not metrics_available:
+            # Never present a mixture of current primary results and a frozen or
+            # invalid shadow lane as a portfolio comparison. Keep status, asset
+            # count, reasons, and provenance available for diagnosis.
+            unavailable_metrics = (
+                "primary_entry_fills", "shadow_entry_fills", "entry_fill_parity",
+                "matched_entry_intents", "primary_only_entry_fills",
+                "shadow_only_entry_fills", "administrative_censored_shadow_positions",
+                "pairable_closed_episodes", "outcome_agreement_denominator",
+                "outcome_agreement_rate", "outcome_matrix", "primary_win_preservation",
+                "primary_net", "real_price_shadow_net", "net_realization_ratio",
+                "net_realization_ratio_unavailable_reason", "paired_profit_capture",
+                "paired_profit_capture_unavailable_reason", "paired_primary_winner_net",
+                "paired_shadow_net_on_primary_winners", "primary_warmup_net",
+                "primary_live_net", "real_price_shadow_warmup_net",
+                "real_price_shadow_live_net",
+            )
+            for field in unavailable_metrics:
+                shadow_portfolio[field] = None
         return _clean({
             "now": time.time(), "uptime_sec": time.time() - self.started, "paused": self.paused,
             "global_pause_intent": self.paused,

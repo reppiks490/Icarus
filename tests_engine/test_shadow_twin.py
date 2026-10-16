@@ -354,6 +354,27 @@ def test_portfolio_shadow_view_aggregates_counts_and_ratios_without_faking_drawd
         assert "max_drawdown" not in result
         assert len(fabric.query(channel="real_price_shadow", assets=["TEST"])) == 1
 
+        class DegradedSummaryRunner:
+            def summary(self, *, nonblocking=False):
+                shadow = twin.summary()
+                shadow["status"] = "DEGRADED"
+                shadow["reason"] = "missing real-price bar"
+                return {"symbol": "TEST", "equity": 10_000, "capital": 10_000,
+                        "live_profit": 0, "open_profit": 0, "position": 0,
+                        "paused": False, "warm": True, "last_bar_ts": 180,
+                        "real_price_shadow": shadow}
+
+        portfolio.runners["TEST"] = DegradedSummaryRunner()
+        degraded = portfolio.status()["real_price_shadow"]
+        assert degraded["status"] == "DEGRADED"
+        assert degraded["metrics_available"] is False
+        assert "every evidenced asset to be READY" in degraded["metrics_unavailable_reason"]
+        assert degraded["primary_net"] is None
+        assert degraded["real_price_shadow_net"] is None
+        assert degraded["outcome_matrix"] is None
+        assert degraded["pairable_closed_episodes"] is None
+        assert degraded["assets"][0]["reason"] == "missing real-price bar"
+
 
 def test_admin_pause_cancels_shadow_only_pending_limit_order():
     spec = parse_spec("NQ@1")
