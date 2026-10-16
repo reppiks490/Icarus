@@ -20,6 +20,7 @@ from icarus_engine.runtime import AssetRunner, Journal, Portfolio, RunnerConfig
 from icarus_engine.server import serve
 from icarus_engine.strategy.inputs import Inputs
 from icarus_plant.supervisor import default_engine_service
+from icarus_futures.contracts import parse_continuous
 
 
 NS = 1_000_000_000
@@ -212,19 +213,13 @@ def test_every_runtime_qualified_future_maps_to_databento_continuous_front():
         assert Databento.continuous_symbol(spec.tv_symbol, "c") == f"{root}.c.0"
 
 
-def test_discovery_only_future_fails_closed_before_provider_request():
-    assert not FUTURES_PRODUCTS["HG"].runtime_qualified
-    created = []
-    feed = Databento(
-        api_key="db-test",
-        sdk=FakeSDK,
-        historical=FakeHistorical({}),
-        live_factory=lambda: created.append(True) or FakeLive(),
-    )
-    with pytest.raises(ValueError, match="unsupported continuous futures"):
-        feed.prepare_live(["HG=F"], start_ts=1_000)
-    assert created == []
-    assert feed._shared_live is None
+def test_catalog_data_mapping_does_not_grant_execution_qualification():
+    product = FUTURES_PRODUCTS["HG"]
+    assert product.runtime_qualified is True
+    assert product.execution_qualified is False
+    assert Databento.continuous_symbol("HG=F") == "HG.v.0"
+    with pytest.raises(ValueError, match="not execution-qualified"):
+        parse_continuous("HG1!")
 
 
 def test_roll_rule_is_real_configuration_not_a_dead_setting(monkeypatch):
