@@ -69,6 +69,8 @@ def make_bar_batch_receipt(
     A qualifying receipt also needs the complete expected bar-start schedule,
     generated from the instrument's authoritative exchange calendar for the
     requested session window; a pairwise gap callback cannot prove edge coverage.
+    When that calendar has a DST-shortened interval, calendar_timezone must be
+    the same authoritative calendar's timezone, not an ad hoc caller selection.
     """
     if not instrument_id or not provider or not expected_provider_symbol:
         raise ValueError("bar receipt requires instrument, provider, and expected symbol")
