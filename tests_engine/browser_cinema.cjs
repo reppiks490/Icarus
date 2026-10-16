@@ -174,6 +174,12 @@ const compactBounds=await compactPanel.boundingBox();
 const compactTrigger=await compact.locator('.experience-settings summary').boundingBox();
 assert.ok(compactBounds&&compactTrigger&&(compactBounds.y+compactBounds.height<=compactTrigger.y||compactBounds.y>=compactTrigger.y+compactTrigger.height),'Wrapped settings must not cover their trigger: '+JSON.stringify({compactBounds,compactTrigger}));
 assert.ok(compactBounds.y+compactBounds.height<=600,'Wrapped settings must remain inside a short viewport: '+JSON.stringify({compactBounds,compactTrigger}));
+await compact.setViewportSize({width:390,height:844});
+await compact.waitForTimeout(80);
+const resizedPanel=await compactPanel.boundingBox();
+const resizedInline=await compactPanel.evaluate(el=>({left:el.style.left,right:el.style.right,top:el.style.top,maxHeight:el.style.maxHeight}));
+assert.deepEqual(resizedInline,{left:'',right:'',top:'',maxHeight:''},'Mobile settings must clear desktop inline placement');
+assert.ok(resizedPanel&&resizedPanel.x>=12&&resizedPanel.x+resizedPanel.width<=390&&resizedPanel.y>=0&&resizedPanel.y+resizedPanel.height<=844,'Resized settings must remain inside a mobile viewport: '+JSON.stringify({resizedPanel}));
 await compact.close();
 // Fault injection: unavailable canvas must preserve navigation and a static visual fallback.
 const fallback=await context.newPage();
