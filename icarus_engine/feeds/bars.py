@@ -64,7 +64,7 @@ def read_text_csv(path: str) -> str:
         return raw.decode("latin-1")
 
 
-_HIST_NAME = re.compile(r"^(.+)_(\d+)m\.csv$", re.I)
+_HIST_NAME = re.compile(r"^(?P<symbol>.+)_(?:(?P<minutes>\d+)m|(?P<hours>\d+)h)\.csv$", re.I)
 
 
 def file_feed_mode() -> bool:
@@ -211,11 +211,12 @@ def find_history(base_dir: str, symbol: str, chart_minutes: int) -> Tuple[Option
     found: List[Tuple[int, str]] = []
     for name in os.listdir(hist):
         m = _HIST_NAME.match(name)
-        if not m or m.group(1).upper() != symbol.upper():
+        if not m or m.group("symbol").upper() != symbol.upper():
             continue
         path = os.path.join(hist, name)
         if os.path.isfile(path):
-            found.append((int(m.group(2)), path))
+            minutes = int(m.group("minutes") or int(m.group("hours")) * 60)
+            found.append((minutes, path))
     if not found:
         return None, None
     found.sort()
