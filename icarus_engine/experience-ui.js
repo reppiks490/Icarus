@@ -193,7 +193,13 @@
     const settingsSummary = settings.querySelector('summary');
     const settingsPanel = settings.querySelector(':scope > div');
     const placeSettingsPanel = () => {
-      if (!settings.open || window.innerWidth <= 760) return;
+      if (!settings.open) return;
+      if (window.matchMedia('(max-width:760px)').matches) {
+        settingsPanel.style.removeProperty('left');
+        settingsPanel.style.removeProperty('right');
+        settingsPanel.style.removeProperty('top');
+        return;
+      }
       const anchor = settingsSummary.getBoundingClientRect();
       const width = settingsPanel.offsetWidth;
       const height = settingsPanel.offsetHeight;
