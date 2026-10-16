@@ -4,6 +4,7 @@ import math
 
 import pytest
 
+from icarus_engine.assets import REGISTRY, resolve as resolve_asset
 from icarus_engine.futures_catalog import FUTURES_PRODUCTS
 
 
@@ -84,3 +85,29 @@ def test_execution_qualification_is_explicit_not_inferred_from_registration():
             assert product.roll_model
         else:
             assert product.execution_blocker
+
+
+def test_runtime_registry_is_derived_from_the_same_32_root_authority():
+    runtime_futures = {root for root, spec in REGISTRY.items() if spec.kind == "futures"}
+    assert runtime_futures == EXPECTED_ROOTS
+    for root, product in FUTURES_PRODUCTS.items():
+        spec = REGISTRY[root]
+        assert spec.ticker == product.provider_symbol
+        assert spec.tv_symbol == product.tv_symbol
+        assert spec.mintick == pytest.approx(product.tick_size)
+        assert spec.multiplier == pytest.approx(product.point_value)
+        assert spec.calendar == product.calendar
+        assert spec.session == product.session
+        assert spec.group == product.group
+        assert spec.exchange == product.exchange
+        assert spec.asset_class == product.asset_class
+        assert spec.micro_of == (product.full_root if product.full_root != product.root else None)
+
+
+def test_new_continuous_futures_are_resolvable_but_dated_contracts_remain_forbidden():
+    for root in ("HG", "MHG", "CL", "MCL", "NG", "MNG", "6E", "M6E", "6J", "MJY", "6B", "M6B", "6A", "M6A", "ZN", "ZB"):
+        assert resolve_asset(f"{root}1!").symbol == root
+        assert resolve_asset(FUTURES_PRODUCTS[root].provider_symbol).symbol == root
+    for dated in ("HGZ26", "MCLF27", "NGH27", "6EM26", "M6BZ27", "ZNH27", "ZBZ27"):
+        with pytest.raises(ValueError, match="continuous-only"):
+            resolve_asset(dated)
