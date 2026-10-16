@@ -161,6 +161,19 @@ class ExecutionEngine:
     def reconcile(self) -> dict:
         """Authoritative venue truth vs the engine book. Mismatches block new risk."""
         self.pump()
+        readback_order = getattr(self.venue, "reconcile_order", None)
+        readback_resolved = {}
+        if callable(readback_order):
+            for order in list(self.book.orders.values()):
+                if order.state == S.AMBIGUOUS or (order.state in LIVE_STATES and not order.broker_id):
+                    result = readback_order(order.id, order.intent.symbol, order.intent.side,
+                                            order.intent.qty, order.intent.kind, order.intent.price)
+                    if result.get("status") == "ack" and result.get("broker_id") is not None:
+                        readback_resolved[order.id] = str(result["broker_id"])
+            # A readback can validate the broker identity and release callbacks
+            # that arrived before that identity was trusted. Apply those events
+            # before comparing positions or deciding whether ambiguity remains.
+            self.pump()
         venue_open = {}
         duplicate_refs = set()
         invalid_snapshot = False
@@ -187,7 +200,7 @@ class ExecutionEngine:
             else:
                 venue_open[client_id] = row
         venue_pos = self.venue.positions()
-        resolved, not_at_venue, mismatched = {}, [], {}
+        resolved, not_at_venue, mismatched = dict(readback_resolved), [], {}
         for o in list(self.book.orders.values()):
             if o.state == S.AMBIGUOUS or (o.state in LIVE_STATES and not o.broker_id):
                 if o.id in venue_open:

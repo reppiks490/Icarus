@@ -841,6 +841,8 @@ class IbkrPaperVenue:
         self._attempted_refs: set[str] = set()
         self._broker_to_client: dict[str, str] = {}
         self._events: list[dict] = []
+        self._untrusted_events: dict[str, list[dict]] = {}
+        self._replay_events: list[dict] = []
 
     def _connected(self) -> bool:
         try:
@@ -943,19 +945,38 @@ class IbkrPaperVenue:
         if normalized_found_order != normalized_expected_order:
             raise ValueError("IBKR order readback terms do not match the requested order")
         status = str(record.get("status", "")).lower()
-        self._broker_to_client[broker_id] = order_ref
         if status in {"rejected", "inactive"}:
+            self.accept_reconciled_order(order_ref, broker_id)
             self._events.append({"type": "reject", "client_id": order_ref, "code": "UNKNOWN"})
             return {"status": "rejected", "code": "UNKNOWN"}
         if status not in {"pendingsubmit", "presubmitted", "submitted", "partiallyfilled",
                           "filled", "cancelled", "canceled", "apicancelled", "expired"}:
             return {"status": "timeout"}
         fills = record.get("fills", [])
-        filled = int(record.get("filled", 0))
-        if (filled or status in {"partiallyfilled", "filled"}) and not fills:
+        if not isinstance(fills, list):
+            return {"status": "timeout"}
+        filled_value = _decimal(record.get("filled", 0), "filled quantity")
+        if (filled_value < 0 or filled_value > int(expected_order["totalQuantity"])
+                or filled_value != filled_value.to_integral_value()):
+            return {"status": "timeout"}
+        filled = int(filled_value)
+        fill_ids, rebuilt_quantity = set(), 0
+        for fill in fills:
+            if not isinstance(fill, dict):
+                return {"status": "timeout"}
+            fill_id = str(fill.get("fill_id", ""))
+            quantity = _decimal(fill.get("qty", 0), "fill quantity")
+            _decimal(fill.get("price"), "fill price")
+            if (not fill_id or fill_id in fill_ids or quantity <= 0
+                    or quantity != quantity.to_integral_value()):
+                return {"status": "timeout"}
+            fill_ids.add(fill_id)
+            rebuilt_quantity += int(quantity)
+        if rebuilt_quantity != filled or (filled or status in {"partiallyfilled", "filled"}) and not fills:
             # The ref proves the order exists, but a position-changing partial/full
             # execution must also be rebuilt before it can be called reconciled.
             return {"status": "timeout"}
+        self.accept_reconciled_order(order_ref, broker_id)
         self._events.append({"type": "ack", "client_id": order_ref, "broker_id": broker_id})
         for fill in fills:
             self._events.append({"type": "fill", "client_id": order_ref, "broker_id": broker_id,
@@ -968,6 +989,29 @@ class IbkrPaperVenue:
             self._events.append({"type": "expire", "client_id": order_ref,
                                  "broker_id": broker_id})
         return {"status": "ack", "broker_id": broker_id}
+
+    def reconcile_order(self, order_id: str, symbol: str, side: str, qty: int,
+                        kind: str, price: float | None) -> dict:
+        """Read back one ambiguous reference without ever placing a new order."""
+        if not isinstance(self.gateway, IbkrTwsPaperGateway):
+            return {"status": "timeout"}
+        order_ref = self._order_ref(order_id)
+        mapping = self._mapping(symbol)
+        request = self._build_order(mapping, order_ref, side, qty, kind, price)
+        if not self._connected():
+            return {"status": "timeout"}
+        try:
+            found = self.gateway.find_order_by_ref(self.account_id, order_ref)
+        except (ConnectionError, TimeoutError, OSError):
+            return {"status": "timeout"}
+        if not found:
+            return {"status": "not_found"}
+        try:
+            return self._normalize_found_order(
+                found, order_ref, mapping.ib_contract(), request
+            )
+        except (PermissionError, ValueError, TypeError, KeyError):
+            return {"status": "timeout"}
 
     def submit(self, order_id: str, symbol: str, side: str, qty: int, kind: str,
                price: float | None) -> dict:
@@ -1105,7 +1149,16 @@ class IbkrPaperVenue:
 
     def accept_reconciled_order(self, client_id: str, broker_id: str) -> None:
         """Trust callbacks only after ExecutionEngine matched the full order identity."""
-        self._broker_to_client[str(broker_id)] = self._order_ref(client_id)
+        order_ref = self._order_ref(client_id)
+        broker_ref = str(broker_id)
+        existing = self._broker_to_client.get(broker_ref)
+        if existing is not None and existing != order_ref:
+            raise ValueError("broker order id is already bound to another orderRef")
+        self._broker_to_client[broker_ref] = order_ref
+        for event in self._untrusted_events.pop(broker_ref, []):
+            event_ref = event.get("client_id")
+            if event_ref is None or str(event_ref) == order_ref:
+                self._replay_events.append(event)
 
     def positions(self) -> dict[str, int]:
         if not self._connected():
@@ -1184,7 +1237,10 @@ class IbkrPaperVenue:
         if not self._connected():
             raise ConnectionError("IBKR PAPER session is disconnected")
         raw_events = self.gateway.poll_events(self.account_id)
+        raw_events.extend(self._replay_events)
+        self._replay_events = []
         events = list(self._events)
+        self._events = []
         for event in raw_events:
             kind = str(event.get("type", ""))
             broker_id = str(event.get("broker_id", "")) if event.get("broker_id") is not None else ""
@@ -1194,8 +1250,15 @@ class IbkrPaperVenue:
             # change engine state (including fills, cancel and reject callbacks).
             if isinstance(self.gateway, IbkrTwsPaperGateway) and (
                     not broker_id or broker_id not in self._broker_to_client):
+                if broker_id:
+                    self._untrusted_events.setdefault(broker_id, []).append(dict(event))
                 continue
-            client_id = event.get("client_id") or self._broker_to_client.get(broker_id)
+            trusted_client = self._broker_to_client.get(broker_id)
+            event_client = event.get("client_id")
+            if (isinstance(self.gateway, IbkrTwsPaperGateway) and trusted_client is not None
+                    and event_client is not None and str(event_client) != trusted_client):
+                continue
+            client_id = trusted_client or event_client
             if not client_id:
                 raise ValueError("IBKR event omitted the orderRef needed for reconciliation")
             if kind == "ack":
@@ -1222,7 +1285,6 @@ class IbkrPaperVenue:
                 events.append({"type": "reject", "client_id": str(client_id), "code": code})
             else:
                 raise ValueError(f"unsupported normalized IBKR event type: {kind!r}")
-        self._events = []
         unique = []
         seen = set()
         for event in events:

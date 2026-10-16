@@ -620,7 +620,7 @@ class IbkrPaperVenueTests(unittest.TestCase):
         gateway.disconnect()
 
 
-  def test_exact_reconciliation_trusts_tws_callbacks_for_later_fills(self):
+  def test_reconciliation_recovers_tws_partial_fill_callback_arriving_before_identity(self):
     api = FakeIbapiClient()
     gateway = IbkrTwsPaperGateway(api_client=api, contract_factory=FakeApiRecord,
                                   order_factory=FakeApiRecord, timeout_s=0.05)
@@ -633,6 +633,7 @@ class IbkrPaperVenueTests(unittest.TestCase):
     request = adapter._build_order(mapping(), order_ref, "BUY", 2, "MARKET", None)
     order = gateway._make_order(request)
     api.orders["901"] = (contract, order, "Submitted")
+    assert gateway.open_orders("DU12345")
     with TemporaryDirectory() as temp:
       engine = ExecutionEngine(adapter, RiskGovernor(), Journal(f"{temp}/journal.jsonl"),
                                mode="PAPER")
@@ -640,14 +641,24 @@ class IbkrPaperVenueTests(unittest.TestCase):
       engine.book.on_sent(order_ref)
       engine.book.on_timeout(order_ref)
 
+      api.order_fill("901", 1, 19888.25, "exec-before-reconcile")
+      api.positions_rows.append(("DU12345", contract, 1))
+      # A normal poll before readback must quarantine, not lose, this callback.
+      assert adapter.poll() == []
+
       report = engine.reconcile()
       assert report["resolved"] == {order_ref: "901"}
       assert adapter._broker_to_client["901"] == order_ref
-
-      api.order_fill("901", 1, 19888.25, "exec-verified")
-      engine.pump()
       assert engine.book.orders[order_ref].state == S.PARTIALLY_FILLED
+      assert engine.book.orders[order_ref].filled == 1
       assert engine.book.positions["MNQZ26"] == 1
+      assert report["position_mismatch"] == {}
+      assert engine.needs_reconcile is False
+
+      api.order_fill("901", 1, 19889.25, "exec-after-reconcile")
+      engine.pump()
+      assert engine.book.orders[order_ref].state == S.FILLED
+      assert engine.book.positions["MNQZ26"] == 2
     gateway.disconnect()
 
 
