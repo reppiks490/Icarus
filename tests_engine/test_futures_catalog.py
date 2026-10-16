@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import math
+from datetime import date
 
 import pytest
 
 from icarus_engine.assets import REGISTRY, resolve as resolve_asset
 from icarus_engine.futures_catalog import FUTURES_PRODUCTS
+from icarus_futures.contracts import SPECS, parse_continuous, resolve as resolve_contract
 
 
 EXPECTED_ROOTS = {
@@ -111,3 +113,35 @@ def test_new_continuous_futures_are_resolvable_but_dated_contracts_remain_forbid
     for dated in ("HGZ26", "MCLF27", "NGH27", "6EM26", "M6BZ27", "ZNH27", "ZBZ27"):
         with pytest.raises(ValueError, match="continuous-only"):
             resolve_asset(dated)
+
+
+def test_execution_specs_are_derived_only_from_explicitly_qualified_products():
+    qualified = {root for root, product in FUTURES_PRODUCTS.items() if product.execution_qualified}
+    assert set(SPECS) == qualified
+    for root, spec in SPECS.items():
+        product = FUTURES_PRODUCTS[root]
+        assert spec.root == root
+        assert spec.exchange == product.exchange
+        assert spec.tick_size == pytest.approx(product.tick_size)
+        assert spec.tick_value == pytest.approx(product.tick_value)
+        assert spec.point_value == pytest.approx(product.point_value)
+        assert spec.full_root == product.full_root
+        assert spec.ratio_to_full == pytest.approx(product.ratio_to_full)
+        assert spec.cycle == product.cycle
+        assert spec.roll_model == product.roll_model
+
+
+def test_execution_qualified_products_resolve_deterministically_and_unqualified_fail_closed():
+    for root, product in FUTURES_PRODUCTS.items():
+        symbol = f"{root}1!"
+        if product.execution_qualified:
+            spec, nth = parse_continuous(symbol)
+            assert spec.root == root and nth == 1
+            first = resolve_contract(symbol, date(2026, 10, 16))
+            second = resolve_contract(symbol, date(2026, 10, 16))
+            assert first == second
+            assert first["contract"].startswith(root)
+            assert first["roll_date"] <= first["last_date"]
+        else:
+            with pytest.raises(ValueError, match="not a continuous futures identity"):
+                parse_continuous(symbol)
