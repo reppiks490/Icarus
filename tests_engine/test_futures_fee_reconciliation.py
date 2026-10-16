@@ -100,6 +100,17 @@ def test_output_is_deterministic_and_retains_statement_row_identity_hash():
     ]
 
 
+def test_decimal_totals_do_not_round_at_the_process_default_precision():
+    fill = FillIdentity("DU12345", "precision", "USD")
+    first = Decimal("0.12345678901234567890123456789012")
+    second = Decimal("0.00000000000000000000000000000009")
+
+    result = reconcile_fees([fill], [row("first", fill_id="precision", amount=first),
+                                    row("second", fill_id="precision", amount=second)])
+
+    assert result.totals[0].amount == Decimal("0.12345678901234567890123456789021")
+
+
 def test_invalid_currency_and_source_hash_are_rejected():
     with pytest.raises(ValueError, match="currency"):
         reconcile_fees([FillIdentity("DU12345", "exec-1", "usd")], [])

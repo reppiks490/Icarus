@@ -101,6 +101,22 @@ def _amount(value: Decimal | str | int) -> Decimal:
     return amount
 
 
+def _exact_sum(values: list[Decimal]) -> Decimal:
+    """Add finite Decimals without inheriting the process-global precision context."""
+    if not values:
+        return Decimal(0)
+    parts = [value.as_tuple() for value in values]
+    exponent = min(part.exponent for part in parts)
+    coefficient = 0
+    for part in parts:
+        digits = int("".join(str(digit) for digit in part.digits) or "0")
+        if part.sign:
+            digits = -digits
+        coefficient += digits * (10 ** (part.exponent - exponent))
+    digits = tuple(int(char) for char in str(abs(coefficient))) or (0,)
+    return Decimal((1 if coefficient < 0 else 0, digits, exponent))
+
+
 def _normalize_fill(fill: FillIdentity) -> FillIdentity:
     if not isinstance(fill, FillIdentity):
         raise ValueError("fills must be FillIdentity records")
@@ -161,7 +177,7 @@ def reconcile_fees(
     matched: list[MatchedFee] = []
     unmatched: list[FeeIssue] = []
     ambiguous: list[FeeIssue] = []
-    totals: dict[FillIdentity, Decimal] = defaultdict(Decimal)
+    totals: dict[FillIdentity, list[Decimal]] = defaultdict(list)
 
     for row, amount in deduplicated.values():
         candidates = [identity for identity in fills_by_id.get(row.fill_id, ())
@@ -185,14 +201,14 @@ def reconcile_fees(
         direction = "debit" if amount > 0 else "credit" if amount < 0 else "zero"
         matched.append(MatchedFee(identity, row.source_id, row.source_row_id,
                                   row.source_hash, row.component, amount, direction))
-        totals[identity] += amount
+        totals[identity].append(amount)
 
     matched.sort(key=lambda item: (item.identity, item.source_id, item.source_row_id,
                                    item.component, item.amount))
     unmatched.sort(key=lambda item: (item.row.source_id, item.row.source_row_id, item.reason))
     ambiguous.sort(key=lambda item: (item.row.source_id, item.row.source_row_id, item.reason))
-    ordered_totals = tuple(FeeTotal(identity, amount)
-                          for identity, amount in sorted(totals.items()))
+    ordered_totals = tuple(FeeTotal(identity, _exact_sum(amounts))
+                          for identity, amounts in sorted(totals.items()))
     return FeeReconciliation(
         matched=tuple(matched),
         totals=ordered_totals,
