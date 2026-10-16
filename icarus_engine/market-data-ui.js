@@ -226,12 +226,28 @@ async function loadMarketUniverse(){
     '<div class="tile"><div class="k">Yahoo responses</div><div class="v">'+esc(probeCounts.response_received_count==null?'—':probeCounts.response_received_count)+' / '+esc(probe.requested_count==null?'—':probe.requested_count)+'</div></div>'+
     '<div class="tile"><div class="k">Yahoo symbol matches</div><div class="v">'+esc(probeCounts.provider_symbol_match_count==null?'—':probeCounts.provider_symbol_match_count)+'</div></div>'+
     '<div class="small muted" style="grid-column:1/-1">Snapshot '+esc(data.retrieved_at||'unknown')+'. Yahoo probe '+esc(probe.status||'NOT_RUN')+' · updated '+esc(probe.probe_updated_at||'—')+'. A ticker echo and returned bars show provider response only; identities remain provisional and entitlements/session qualification remain unknown. Missing tick, share, corporate-action, terms, and entitlement facts keep all candidates out of Pulse.</div>';
-  table.innerHTML=rows.length?'<table><thead><tr><th>Instrument ID</th><th>Symbol</th><th>Name</th><th>Venue</th><th>Provider candidates</th><th>Yahoo history probe</th><th>State</th></tr></thead><tbody>'+rows.map(function(row){
+  table.innerHTML=rows.length?'<table><thead><tr><th>Instrument ID</th><th>Symbol</th><th>Name</th><th>Venue</th><th>Provider candidates</th><th>Yahoo history probe</th><th>State</th><th>History</th></tr></thead><tbody>'+rows.map(function(row){
     const mappings=(row.provider_symbol_candidates||[]).map(function(candidate){return esc((candidate.provider||'')+': '+(candidate.symbol||'')+' · '+(candidate.mapping_status||'UNKNOWN'));}).join('<br>');
     const probeRow=probeById[row.instrument_id]||{};
     const probeText=probeRow.probe_status?String(probeRow.probe_status)+' · '+String(probeRow.row_count||0)+' rows · symbol '+String(probeRow.provider_symbol_match_status||'UNKNOWN')+' · identity '+String(probeRow.canonical_identity_status||'UNKNOWN'):'not probed';
-    return '<tr><td><code>'+esc(row.instrument_id||'')+'</code></td><td><b>'+esc(row.display_symbol||'')+'</b></td><td>'+esc(row.name||'')+'</td><td>'+esc(row.venue||'')+'</td><td>'+mappings+'</td><td>'+esc(probeText)+'</td><td>'+esc(row.source_connection||'')+' · '+(row.pulse_enabled?'Pulse enabled':'disabled')+'</td></tr>';
+    return '<tr><td><code>'+esc(row.instrument_id||'')+'</code></td><td><b>'+esc(row.display_symbol||'')+'</b></td><td>'+esc(row.name||'')+'</td><td>'+esc(row.venue||'')+'</td><td>'+mappings+'</td><td>'+esc(probeText)+'</td><td>'+esc(row.source_connection||'')+' · '+(row.pulse_enabled?'Pulse enabled':'disabled')+'</td><td><button type="button" class="secondary" data-market-history="'+esc(row.instrument_id||'')+'">Fetch daily sample</button><div class="small muted" data-market-history-result="'+esc(row.instrument_id||'')+'">No request yet.</div></td></tr>';
   }).join('')+'</tbody></table>':'<p class="empty">No catalog rows.</p>';
+  table.querySelectorAll('[data-market-history]').forEach(function(button){
+    button.onclick=async function(){
+      const instrumentId=String(button.getAttribute('data-market-history')||'');
+      const output=table.querySelector('[data-market-history-result="'+CSS.escape(instrumentId)+'"]');
+      if(!instrumentId||!output) return;
+      button.disabled=true; output.textContent='Fetching a bounded daily page…';
+      const end=Math.floor(Date.now()/1000), start=end-90*86400;
+      const query=new URLSearchParams({start_ts:String(start),end_ts:String(end),interval_seconds:'86400',limit:'20',provider:'yahoo'});
+      const result=await marketDataFetch('/api/market-history/'+encodeURIComponent(instrumentId)+'?'+query.toString());
+      button.disabled=false;
+      if(!result.ok){output.textContent='History unavailable: '+String(result.error||'request failed');return;}
+      const payload=result.data||{}, receipt=payload.receipt||{}, bars=Array.isArray(payload.bars)?payload.bars:[];
+      const sample=bars.slice(-5).map(function(bar){return new Date(Number(bar.ts)*1000).toISOString().slice(0,10)+' close '+marketDataFmt(bar.c,4);}).join(' · ');
+      output.textContent=String(payload.provider||'unknown')+' · '+String(payload.qualification||'UNQUALIFIED')+' · '+String(receipt.row_count||0)+' rows · identity '+String(receipt.identity_status||'UNKNOWN')+' · entitlement '+String(receipt.entitlement_status||'UNKNOWN')+(sample?' · '+sample:' · no bars')+(payload.page&&payload.page.next_start_ts?' · more history available':'');
+    };
+  });
 }
 
 async function loadMarketData(){

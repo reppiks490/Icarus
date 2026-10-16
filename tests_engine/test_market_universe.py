@@ -581,6 +581,33 @@ def test_a200_adapter_accepts_verified_mapping_but_keeps_missing_gates_unqualifi
     assert receipt.historical_bars_qualified is False
 
 
+def test_yahoo_daily_close_timestamp_is_normalized_to_session_start_with_receipt_evidence():
+    row = next(row for row in snapshot()["instruments"] if row["display_symbol"] == "AAPL")
+    symbol = row["provider_symbol_candidates"][0]["symbol"]
+    calendar = get_calendar(row["calendar"])
+    start = int(datetime(2026, 10, 15, 13, 30, tzinfo=timezone.utc).timestamp())
+    close = calendar.session_bounds(datetime(2026, 10, 15).date())[1]
+
+    class YahooDailyCloseTimestamp:
+        GRANULARITIES = (60, 300, 900, 1800, 3600, 86400)
+
+        def candles(self, _symbol, _interval, _start, _end):
+            return [Bar(close + 1, 10, 12, 9, 11, 4)]
+
+        def meta(self, _symbol):
+            return {"symbol": symbol}
+
+    bars, receipt = MarketUniverseAdapter(YahooDailyCloseTimestamp()).fetch_history(
+        row["instrument_id"], 86400, start,
+        int(datetime(2026, 10, 16, 13, 30, tzinfo=timezone.utc).timestamp()),
+    )
+    assert [bar.ts for bar in bars] == [start]
+    assert receipt.received_start_ts == start
+    assert receipt.timestamp_alignment_status == "VERIFIED"
+    assert receipt.timestamp_normalization == "YAHOO_SESSION_CLOSE_TO_SESSION_OPEN"
+    assert receipt.historical_bars_qualified is False
+
+
 def test_market_universe_read_api_returns_catalog_without_auth_or_feed_calls(tmp_path):
     import json
     import threading
@@ -602,6 +629,106 @@ def test_market_universe_read_api_returns_catalog_without_auth_or_feed_calls(tmp
         assert body["counts"]["source_connected_count"] == 0
         assert body["execution_authorized"] is False
         assert len(body["instruments"]) == 200
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
+def test_a200_history_api_returns_bars_with_full_unqualified_receipt(tmp_path, monkeypatch):
+    import json
+    import threading
+    import urllib.parse
+    import urllib.request
+
+    import icarus_engine.market_universe_adapter as adapter_module
+    from icarus_engine.bar_receipts import make_bar_batch_receipt
+    from icarus_engine.market_universe import catalog_evidence_digest
+    from icarus_engine.runtime import Journal, Portfolio
+    from icarus_engine.server import serve
+
+    row = snapshot()["instruments"][0]
+    symbol = row["provider_symbol_candidates"][0]["symbol"]
+    start = int(datetime(2026, 10, 1, 13, 30, tzinfo=timezone.utc).timestamp())
+    page_end = int(datetime(2026, 10, 2, 13, 30, tzinfo=timezone.utc).timestamp())
+    end = int(datetime(2026, 10, 6, 13, 30, tzinfo=timezone.utc).timestamp())
+    bar = Bar(start, 10, 12, 9, 11, 4)
+    _, receipt = make_bar_batch_receipt(
+        instrument_id=row["instrument_id"], provider="yahoo",
+        expected_provider_symbol=symbol, observed_provider_symbol=symbol,
+        interval_seconds=86400, requested_start_ts=start, requested_end_ts=page_end,
+        bars=[bar], fetched_at_ns=1, received_at_ns=2,
+        provider_mapping_status="UNVERIFIED", entitlement_status="UNKNOWN",
+        session_validation_status="VERIFIED", alignment_validator=lambda _ts: True,
+        expected_bar_timestamps=[start],
+    )
+
+    class FakeAdapter:
+        def fetch_history(self, instrument_id, interval, requested_start, requested_end, *, provider):
+            assert (instrument_id, interval, requested_start, requested_end, provider) == (
+                row["instrument_id"], 86400, start, page_end, "yahoo",
+            )
+            return [bar], receipt
+
+    monkeypatch.setattr(adapter_module, "MarketUniverseAdapter", FakeAdapter)
+    portfolio = Portfolio(Journal(":memory:"), str(tmp_path), feeds={})
+    server = serve(portfolio, 0, token="catalog-test", start=False)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        query = urllib.parse.urlencode({
+            "start_ts": start, "end_ts": end, "interval_seconds": 86400,
+            "limit": 1, "provider": "yahoo",
+        })
+        url = f"http://127.0.0.1:{server.server_address[1]}/api/market-history/{row['instrument_id']}?{query}"
+        with urllib.request.urlopen(url, timeout=5) as response:
+            assert response.status == 200
+            payload = json.loads(response.read())
+        assert payload["instrument"]["catalog_id"] == snapshot()["catalog_id"]
+        assert payload["instrument"]["catalog_snapshot_sha256"] == catalog_evidence_digest(snapshot())
+        assert payload["provider"] == "yahoo"
+        assert payload["qualification"] == "UNQUALIFIED"
+        assert payload["pulse_enabled"] is False
+        assert payload["execution_authorized"] is False
+        assert payload["receipt"] == receipt.to_dict()
+        assert payload["bars"] == [{"ts": start, "o": 10, "h": 12, "l": 9, "c": 11, "v": 4}]
+        assert payload["page"] == {
+            "start_ts": start, "end_ts": page_end, "next_start_ts": page_end,
+            "limit": 1, "returned_count": 1,
+        }
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
+def test_a200_history_api_rejects_unregistered_symbols_and_bad_windows(tmp_path):
+    import json
+    import threading
+    import urllib.error
+    import urllib.parse
+    import urllib.request
+
+    instrument_id = snapshot()["instruments"][0]["instrument_id"]
+    from icarus_engine.runtime import Journal, Portfolio
+    from icarus_engine.server import serve
+
+    portfolio = Portfolio(Journal(":memory:"), str(tmp_path), feeds={})
+    server = serve(portfolio, 0, token="catalog-test", start=False)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        base = f"http://127.0.0.1:{server.server_address[1]}"
+        for path, expected_status in (("/api/market-history/AAPL", 404),
+                                      (f"/api/market-history/{instrument_id}?start_ts=1", 400)):
+            try:
+                urllib.request.urlopen(base + path, timeout=5)
+            except urllib.error.HTTPError as response:
+                assert response.code == expected_status
+                body = json.loads(response.read())
+                assert body.get("error")
+            else:
+                raise AssertionError(f"expected HTTP {expected_status} for {path}")
     finally:
         server.shutdown()
         server.server_close()
