@@ -28,11 +28,23 @@ def _events():
         _EVENTS = seed_events()
     return _EVENTS
 
-def attach_labels(bars, family: str, events=None):
+def attach_label_range(bars, family: str, start: int = 0, stop: int | None = None, *, events=None,
+                       include_source_index: bool = False):
+    """Build labels/features only for decision rows in ``[start, stop)``.
+
+    The range is over source bar indexes, before flat outcomes are omitted. This
+    lets research callers hold a terminal range back until its ledger claim has
+    succeeded. Features for an in-range row may use prior bars only; its label
+    uses the next bar's close.
+    """
     from icarus_engine.events.calendar import event_features_asof
     evs = _events() if events is None else events
+    stop = len(bars) - 1 if stop is None else stop
+    if start < 0 or stop < start or stop > max(0, len(bars) - 1):
+        raise ValueError("invalid label range")
     labeled = []
-    for i, b in enumerate(bars[:-1]):
+    for i in range(start, stop):
+        b = bars[i]
         y = _sign(bars[i + 1]["close"] - b["close"])
         if y == 0:
             continue
@@ -64,9 +76,17 @@ def attach_labels(bars, family: str, events=None):
             "any_macro": float(ev["any_macro"]),
         }
         # label_ts: the bar whose close the label reads (Claude (Opus 5.5) 2026-09-27).
-        labeled.append({"ts": b["ts"], "y": y, "family": family, "label_ts": bars[i + 1]["ts"],
-                        "x": {k: feats[k] for k in FEATURE_KEYS}})
+        item = {"ts": b["ts"], "y": y, "family": family, "label_ts": bars[i + 1]["ts"],
+                "x": {k: feats[k] for k in FEATURE_KEYS}}
+        if include_source_index:
+            item["_source_index"] = i
+        labeled.append(item)
     return labeled
+
+
+def attach_labels(bars, family: str, events=None):
+    """Build the standard full labeled dataset for non-holdout trainer lanes."""
+    return attach_label_range(bars, family, events=events)
 
 EMBARGO = 1   # rows dropped at the end of train and valid: their labels read the next slice's first close
 

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import csv
+import hashlib
+import io
 import math
 import platform
-import re
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
@@ -11,7 +13,9 @@ from icarus_engine.spec import FEATURE_KEYS, LABEL, WALK
 from . import ledger, logit
 from .artifact import canon, code_digest, lock, sha, write_json_atomic
 from .calibrate import isotonic_apply, isotonic_fit
-from .dataset import walk_slices
+from .dataset import attach_label_range, walk_slices
+from .integrity import PARSER as DATA_PARSER, inspect_ohlc
+from icarus_engine.evidence.timestamps import PARSER_VERSION as TIMESTAMP_PARSER, normalize_timestamp
 from .metrics import incremental_status, logloss, sign_accuracy, significance
 from .sequence import causal_sequence_rows, fit_standardizer, standardize_sequence
 
@@ -22,7 +26,10 @@ CODE_FILES = (
     "events/calendar.py",
     "evidence/timestamps.py",
     "trainers/dataset.py",
+    "trainers/integrity.py",
     "trainers/sequence.py",
+    "trainers/families.py",
+    "trainers/run.py",
     "trainers/logit.py",
     "trainers/calibrate.py",
     "trainers/metrics.py",
@@ -113,6 +120,61 @@ def study_sha256() -> str:
             }
         )
     )
+
+
+def _source_identity(source_sha256: str, family: str) -> tuple[str, str, str]:
+    """Bind a claim to exact source bytes and the deterministic row recipe."""
+    construction_sha256 = sha(canon({
+        "schema": "icarus.deep_challenger.row_construction/2",
+        "family": family,
+        "parser": DATA_PARSER,
+        "timestamp_parser": TIMESTAMP_PARSER,
+        "features": list(FEATURE_KEYS),
+        "label": LABEL,
+        "code_sha256": code_sha256(),
+        "walk": dict(WALK),
+        "sequence_length": _MODEL["sequence_length"],
+    }))
+    rows_sha256 = sha(canon({
+        "source_bytes_sha256": source_sha256,
+        "row_construction_sha256": construction_sha256,
+    }))
+    # A changed source over the same interval becomes a different study, so
+    # the canonical ledger rejects it as overlapping reuse.
+    study = sha(canon({"study_sha256": study_sha256(), "rows_sha256": rows_sha256}))
+    return rows_sha256, study, construction_sha256
+
+
+def _timestamp_index(raw: bytes) -> tuple[list[str], list[list[str]], list[float]]:
+    """Index source timestamps without parsing or converting any price/features."""
+    reader = csv.reader(io.StringIO(raw.decode("utf-8-sig"), newline=""))
+    header = next(reader, [])
+    time_columns = [i for i, name in enumerate(header) if name.strip().lower() in {"time", "ts"}]
+    if len(time_columns) != 1:
+        raise ValueError("source needs exactly one time/ts column")
+    rows = [row for row in reader if row]
+    timestamps: list[float] = []
+    for line, row in enumerate(rows, start=2):
+        if len(row) != len(header):
+            raise ValueError(f"source row {line} has the wrong number of columns")
+        record = normalize_timestamp(row[time_columns[0]])
+        if record is None:
+            raise ValueError(f"source row {line} has an invalid timestamp")
+        ts = float(record.epoch_seconds)
+        if timestamps and ts <= timestamps[-1]:
+            raise ValueError("deep challenger source timestamps must be strictly increasing")
+        timestamps.append(ts)
+    if len(timestamps) < 2:
+        raise ValueError("source has too few timestamped rows")
+    return header, rows, timestamps
+
+
+def _csv_prefix(header: Sequence[str], rows: Sequence[Sequence[str]], count: int) -> bytes:
+    stream = io.StringIO(newline="")
+    writer = csv.writer(stream, lineterminator="\n")
+    writer.writerow(header)
+    writer.writerows(rows[:count])
+    return stream.getvalue().encode("utf-8")
 
 
 def _split_bounds(rows: Sequence[Mapping[str, Any]], train, valid, hold) -> dict[str, float]:
@@ -277,63 +339,85 @@ def _write_model(out_path: Path, model, standardizer, calibration, study: str):
     return model_path, model_sha, payload
 
 
-def train(
-    labeled: Sequence[Mapping[str, Any]],
+def train_source(
+    source_path,
     symbol: str,
     family: str,
     out_path,
     ledger_path=None,
-    dataset_sha256=None,
+    raw_bytes: bytes | None = None,
     extra=None,
+    min_rows: int = 0,
 ):
+    """Trusted loader/trainer; callers cannot supply labeled rows or a digest."""
     symbol = str(symbol or "").upper()
+    source_path = Path(source_path)
     head = {
-        "lane": "deep_learning_challenger",
-        "model": "gru",
-        "schema": SCHEMA,
-        "symbol": symbol,
-        "family": family,
-        **(extra or {}),
+        "lane": "deep_learning_challenger", "model": "gru", "schema": SCHEMA,
+        "symbol": symbol, "family": family, **(extra or {}),
     }
-
-    # Dataset/split preflight happens before importing the optional deep-learning backend.
     try:
-        train_slice, valid_slice, hold_slice = walk_slices(len(labeled))
+        raw = source_path.read_bytes() if raw_bytes is None else raw_bytes
+        if not isinstance(raw, bytes):
+            raise ValueError("OHLC snapshot must be bytes")
+        header, source_rows, timestamps = _timestamp_index(raw)
+    except (OSError, ValueError, TypeError, csv.Error) as exc:
+        return _locked({**head, "status": "blocked", "reason": f"trusted source load failed: {exc}"})
+    source_sha256 = hashlib.sha256(raw).hexdigest()
+    bar_count = len(timestamps) - 1  # the final source bar is withheld as potentially forming
+    head["dataset_manifest"] = {"raw_sha256": source_sha256, "parser": DATA_PARSER,
+                                "timestamp_parser": TIMESTAMP_PARSER, "rows_used": bar_count,
+                                "status": "timestamp_indexed_pending_claim"}
+    if bar_count < min_rows:
+        return _locked({**head, "status": "skipped",
+                        "reason": f"{bar_count} rows < min_rows {min_rows}"})
+
+    # Partitions use deterministic source-bar positions, so deciding the
+    # boundaries uses timestamps only; holdout price and feature cells remain
+    # unparsed until after the ledger claim.
+    try:
+        train_slice, valid_slice, hold_slice = walk_slices(max(0, bar_count - 1))
     except ValueError as exc:
         return _locked({**head, "status": "skipped", "reason": str(exc)})
 
     sequence_length = _MODEL["sequence_length"]
     try:
-        train_rows = labeled[train_slice[0]:train_slice[1]]
+        # Keep the final pre-holdout bar; do not pass a first holdout row to
+        # the parser merely to have its normal forming-bar trim discard it.
+        pre_raw = _csv_prefix(header, source_rows, valid_slice[1] + 1)
+        pre_bars, pre_manifest = inspect_ohlc(source_path, raw_bytes=pre_raw, drop_trailing=False)
+        if pre_manifest.get("status") == "blocked" or len(pre_bars) != valid_slice[1] + 1:
+            raise ValueError("training/validation source prefix failed integrity checks")
+        # valid_slice[1] excludes the embargoed decision immediately before
+        # holdout; its next-close label would read the holdout boundary.
+        pre_hold_rows = attach_label_range(pre_bars, family, 0, valid_slice[1], include_source_index=True)
+
+        def position(bound: int) -> int:
+            for index, row in enumerate(pre_hold_rows):
+                if row["_source_index"] >= bound:
+                    return index
+            return len(pre_hold_rows)
+
+        train_start, train_stop = position(train_slice[0]), position(train_slice[1])
+        valid_start, valid_stop = position(valid_slice[0]), position(valid_slice[1])
+        train_rows = pre_hold_rows[train_start:train_stop]
         standardizer = fit_standardizer(train_rows)
-        train_seq = causal_sequence_rows(
-            labeled, start=train_slice[0], stop=train_slice[1], sequence_length=sequence_length
-        )
-        valid_seq = causal_sequence_rows(
-            labeled, start=valid_slice[0], stop=valid_slice[1], sequence_length=sequence_length
-        )
-    except (KeyError, TypeError, ValueError) as exc:
+        train_seq = causal_sequence_rows(pre_hold_rows, start=train_start, stop=train_stop,
+                                         sequence_length=sequence_length)
+        valid_seq = causal_sequence_rows(pre_hold_rows, start=valid_start, stop=valid_stop,
+                                         sequence_length=sequence_length)
+    except (KeyError, TypeError, ValueError, csv.Error) as exc:
         return _locked({**head, "status": "blocked", "reason": f"sequence preflight failed: {exc}"})
 
-    hold_sequence_count = max(0, hold_slice[1] - max(hold_slice[0], sequence_length - 1))
-    if len(train_seq) < 20 or len(valid_seq) < 10 or hold_sequence_count < 10:
-        return _locked(
-            {
-                **head,
-                "status": "skipped",
-                "reason": f"sequence rows too small: train={len(train_seq)} valid={len(valid_seq)} holdout={hold_sequence_count}",
-            }
-        )
+    expected_hold_decisions = hold_slice[1] - hold_slice[0]
+    if len(train_seq) < 20 or len(valid_seq) < 10 or expected_hold_decisions < 10:
+        return _locked({**head, "status": "skipped",
+                        "reason": f"sequence rows too small: train={len(train_seq)} valid={len(valid_seq)} "
+                                  f"holdout_decisions={expected_hold_decisions}"})
 
     torch, backend_error = _load_torch()
     if torch is None:
         return _locked({**head, "status": "blocked", "reason": backend_error})
-
-    if not isinstance(dataset_sha256, str) or not re.fullmatch(r"[0-9a-f]{64}", dataset_sha256):
-        return _locked(
-            {**head, "status": "blocked", "reason": "an immutable lowercase SHA-256 source digest is required"}
-        )
-
     try:
         train_x, train_y = _tensorize(torch, train_seq, standardizer)
         valid_x, _ = _tensorize(torch, valid_seq, standardizer)
@@ -346,68 +430,52 @@ def train(
     except (RuntimeError, ValueError) as exc:
         return _locked({**head, "status": "blocked", "reason": f"GRU training failed: {exc}"})
 
-    study = study_sha256()
-    # The immutable raw-source digest identifies the complete input without
-    # materializing protected holdout labels before the ledger claim.
-    rsha = dataset_sha256
-    bounds = _split_bounds(labeled, train_slice, valid_slice, hold_slice)
+    rsha, study, construction_sha256 = _source_identity(source_sha256, family)
+    time_rows = [{"ts": ts} for ts in timestamps[:-1]]
+    bounds = _split_bounds(time_rows, train_slice, valid_slice, hold_slice)
     ledger_path = Path(ledger_path) if ledger_path else ledger.canonical()
     claim = ledger.claim_holdout(
-        ledger_path,
-        symbol,
-        family,
-        bounds["hold_start_ts"],
-        bounds["hold_end_ts"],
-        rsha,
-        study,
-        hold_sequence_count,
-        slot=LEDGER_NAMESPACE,
+        ledger_path, symbol, family, bounds["hold_start_ts"], bounds["hold_end_ts"],
+        rsha, study, expected_hold_decisions, slot=LEDGER_NAMESPACE,
     )
     claim_record = {
-        "status": claim,
-        "hold_start_ts": bounds["hold_start_ts"],
-        "hold_end_ts": bounds["hold_end_ts"],
-        "rows_sha256_basis": "raw_source_bytes",
-        "ledger": str(ledger_path.resolve()),
-        "ledger_namespace": LEDGER_NAMESPACE,
+        "status": claim, "hold_start_ts": bounds["hold_start_ts"], "hold_end_ts": bounds["hold_end_ts"],
+        "rows_sha256_basis": "source_bytes_and_row_construction",
+        "row_construction_sha256": construction_sha256,
+        "ledger": str(ledger_path.resolve()), "ledger_namespace": LEDGER_NAMESPACE,
     }
     if claim not in ledger.SCORED:
-        return _locked(
-            {
-                **head,
-                "status": "blocked",
-                "reason": f"holdout claim {claim}",
-                "holdout_claim": claim_record,
-                "study_sha256": study,
-                "rows_sha256": rsha,
-            }
-        )
+        return _locked({**head, "status": "blocked", "reason": f"holdout claim {claim}",
+                        "holdout_claim": claim_record, "study_sha256": study, "rows_sha256": rsha})
 
-    # The terminal holdout is first materialized here, after its claim and after
-    # architecture selection, early stopping, standardization, and calibration
-    # are frozen. In particular, sequence construction and tensorization read
-    # holdout labels, so neither may happen in the pre-claim training phase.
+    # Terminal labels and model feature rows are first built after the claim.
     try:
-        hold_seq = causal_sequence_rows(
-            labeled, start=hold_slice[0], stop=hold_slice[1], sequence_length=sequence_length
-        )
+        bars, manifest = inspect_ohlc(source_path, raw_bytes=raw)
+        if (manifest.get("status") == "blocked" or len(bars) != bar_count
+                or [bar["ts"] for bar in bars] != timestamps[:-1]
+                or bars[:len(pre_bars)] != pre_bars):
+            raise ValueError("full source differs from the claimed deterministic timestamp/prefix construction")
+        head["dataset_manifest"] = manifest
+        scored_rows = attach_label_range(bars, family, 0, hold_slice[1], include_source_index=True)
+        hold_start_pos = next((i for i, row in enumerate(scored_rows)
+                               if row["_source_index"] >= hold_slice[0]), len(scored_rows))
+        hold_stop_pos = next((i for i, row in enumerate(scored_rows)
+                              if row["_source_index"] >= hold_slice[1]), len(scored_rows))
+        hold_seq = causal_sequence_rows(scored_rows, start=hold_start_pos, stop=hold_stop_pos,
+                                        sequence_length=sequence_length)
+        if len(hold_seq) < 10:
+            raise ValueError(f"holdout has only {len(hold_seq)} non-flat sequences after claim")
         hold_x, _ = _tensorize(torch, hold_seq, standardizer)
-    except (KeyError, TypeError, ValueError, RuntimeError) as exc:
-        return _locked(
-            {
-                **head,
-                "status": "blocked",
-                "reason": f"holdout materialization failed after claim: {exc}",
-                "holdout_claim": claim_record,
-                "dataset_sha256": dataset_sha256,
-                "study_sha256": study,
-            }
-        )
+    except (KeyError, TypeError, ValueError, RuntimeError, csv.Error) as exc:
+        return _locked({**head, "status": "blocked",
+                        "reason": f"holdout materialization failed after claim: {exc}",
+                        "holdout_claim": claim_record, "dataset_sha256": source_sha256,
+                        "study_sha256": study})
+
     raw_hold = _predict(torch, model, hold_x)
     calibrated_hold = [isotonic_apply(calibration, p) for p in raw_hold]
-    hold_rows = [labeled[seq["end_index"]] for seq in hold_seq]
+    hold_rows = [scored_rows[seq["end_index"]] for seq in hold_seq]
     hold_signs = [row["y"] for row in hold_rows]
-
     base_rate = sum(1 for row in train_rows if row["y"] > 0) / len(train_rows)
     baseline_model = logit.fit_newton(train_rows)
     baseline_probs = [logit.predict_sign(baseline_model, row)[1] for row in hold_rows]
@@ -418,76 +486,37 @@ def train(
 
     out_path = Path(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    calibration_record = {
-        "method": "isotonic",
-        "fitted_on": "validation_only",
-        "rows": len(valid_seq),
-        "x": calibration["x"],
-        "y": calibration["y"],
-    }
-    model_path, model_sha, payload = _write_model(
-        out_path, model, standardizer, calibration_record, study
-    )
-
+    calibration_record = {"method": "isotonic", "fitted_on": "validation_only", "rows": len(valid_seq),
+                          "x": calibration["x"], "y": calibration["y"]}
+    model_path, model_sha, payload = _write_model(out_path, model, standardizer, calibration_record, study)
     replay_model = _make_model(torch)
     _load_state(torch, replay_model, payload["state_dict"])
     replay_raw = _predict(torch, replay_model, hold_x)
     replay_ok = replay_raw == raw_hold
 
-    report = _locked(
-        {
-            **head,
-            "status": "fitted",
-            "features": list(FEATURE_KEYS),
-            "sequence_length": sequence_length,
-            "n_train": len(train_seq),
-            "n_valid": len(valid_seq),
-            "n_hold": len(hold_seq),
-            "best_epoch": best_epoch,
-            "best_valid_logloss": best_valid_loss,
-            "training_history": history,
-            "split": {"policy": dict(WALK), **bounds},
-            "standardizer": standardizer,
-            "calibration": calibration_record,
-            "holdout_raw": {
-                "logloss": raw_ll,
-                "accuracy": sign_accuracy(raw_hold, hold_signs),
-            },
-            "holdout_calibrated": {
-                "logloss": calibrated_ll,
-                "accuracy": sign_accuracy(calibrated_hold, hold_signs),
-            },
-            "baseline": {
-                "null_p": base_rate,
-                "null_logloss": null_ll,
-                "logit_logloss": baseline_ll,
-                "logit_acc": logit.accuracy(baseline_model, hold_rows),
-            },
-            "incremental_value_status": incremental_status(calibrated_ll, baseline_ll, null_ll),
-            "significance": significance(
-                calibrated_hold, baseline_probs, base_rate, hold_signs, "logit",
-                minimum_lag=sequence_length - 1,
-            ),
-            "holdout_claim": claim_record,
-            "holdout_touched_before_final": False,
-            "model_file": model_path.name,
-            "model_sha256": model_sha,
-            "serialization_replay": replay_ok,
-            "dataset_sha256": dataset_sha256,
-            "rows_sha256": rsha,
-            "rows_sha256_basis": "raw_source_bytes",
-            "study_sha256": study,
-            "code_sha256": code_sha256(),
-            "torch_version": getattr(torch, "__version__", "unknown"),
-            "python_version": platform.python_version(),
-            "device": "cpu",
-            "deterministic_algorithms": True,
-            "promotion_note": (
-                "External research challenger only. PASS means incremental terminal-holdout value versus the "
-                "logistic/null baselines for this study; it does not modify frozen trainer slots, authorize "
-                "production, or authorize execution."
-            ),
-        }
-    )
+    report = _locked({
+        **head, "status": "fitted", "features": list(FEATURE_KEYS), "sequence_length": sequence_length,
+        "n_train": len(train_seq), "n_valid": len(valid_seq), "n_hold": len(hold_seq),
+        "best_epoch": best_epoch, "best_valid_logloss": best_valid_loss, "training_history": history,
+        "split": {"policy": dict(WALK), **bounds}, "standardizer": standardizer,
+        "calibration": calibration_record,
+        "holdout_raw": {"logloss": raw_ll, "accuracy": sign_accuracy(raw_hold, hold_signs)},
+        "holdout_calibrated": {"logloss": calibrated_ll, "accuracy": sign_accuracy(calibrated_hold, hold_signs)},
+        "baseline": {"null_p": base_rate, "null_logloss": null_ll, "logit_logloss": baseline_ll,
+                     "logit_acc": logit.accuracy(baseline_model, hold_rows)},
+        "incremental_value_status": incremental_status(calibrated_ll, baseline_ll, null_ll),
+        "significance": significance(calibrated_hold, baseline_probs, base_rate, hold_signs, "logit",
+                                      minimum_lag=sequence_length - 1),
+        "holdout_claim": claim_record, "holdout_touched_before_final": False,
+        "model_file": model_path.name, "model_sha256": model_sha, "serialization_replay": replay_ok,
+        "dataset_sha256": manifest["raw_sha256"], "rows_sha256": rsha,
+        "rows_sha256_basis": "source_bytes_and_row_construction", "row_construction_sha256": construction_sha256,
+        "study_sha256": study, "code_sha256": code_sha256(),
+        "torch_version": getattr(torch, "__version__", "unknown"), "python_version": platform.python_version(),
+        "device": "cpu", "deterministic_algorithms": True,
+        "promotion_note": ("External research challenger only. PASS means incremental terminal-holdout value "
+                           "versus the logistic/null baselines for this study; it does not modify frozen trainer "
+                           "slots, authorize production, or authorize execution."),
+    })
     write_json_atomic(out_path, report)
     return report
