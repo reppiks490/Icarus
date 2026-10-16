@@ -121,10 +121,10 @@ def test_closed_episode_excursions_sum_partial_lots_and_compare_real_lane():
         "EMULATOR_OBSERVED_HIGH_LOW_THROUGH_EXIT_FILL_QTY_WEIGHTED_ENTRY_COMMISSION_ADJUSTED"
     )
     assert result["primary_closed_episode_excursions"] == {
-        "episode_count": 1, "favorable_excursion": 38.0, "adverse_excursion": -22.0,
+        "denominator": 1, "favorable_excursion": 38.0, "adverse_excursion": -22.0,
     }
     assert result["real_price_shadow_closed_episode_excursions"] == {
-        "episode_count": 1, "favorable_excursion": 18.0, "adverse_excursion": -14.0,
+        "denominator": 1, "favorable_excursion": 18.0, "adverse_excursion": -14.0,
     }
     assert result["matched_closed_episode_favorable_excursion_delta_shadow_minus_primary"] == {
         "count": 1, "mean": -20.0, "median": -20.0, "min": -20.0, "max": -20.0,
@@ -277,6 +277,38 @@ def test_shadow_reports_outcome_matrix_realization_live_boundary_and_close_drawd
     assert result["bar_close_equity_observations"] == 3
     assert result["bar_close_drawdown_basis"] == "BAR_CLOSE_MARKED_EQUITY_NOT_INTRABAR"
     assert result["real_price_shadow_bar_close_max_drawdown"] == 2
+
+
+def test_closed_episode_excursions_publish_complete_and_matched_dollar_totals():
+    primary = Emulator(initial_capital=10_000, commission=2, mintick=1, contract_size=1)
+    twin = MirroredEmulator(primary)
+    identity = {"entry_id": "L", "direction": 1, "qty": 1,
+                "entry_price": 100.0, "entry_bar": 1, "entry_ts": 120,
+                "exit_price": 101.0, "exit_bar": 2, "exit_ts": 180,
+                "exit_comment": "close", "profit": 1.0, "entry_comment": "",
+                "exit_kind": "close", "bars": 1, "lot_id": 1, "entry_qty": 1}
+    twin._entry_fill_pairs[7] = {
+        "intent_seq": 7,
+        "primary": {"entry_id": "L", "ts": 120, "bar": 1, "side": "buy",
+                    "qty": 1, "price": 100.0},
+        "shadow": {"entry_id": "L", "ts": 120, "bar": 1, "side": "buy",
+                   "qty": 1, "price": 100.0},
+    }
+    primary.closed.append(ClosedTrade(**identity, runup=5.0, drawdown=-2.0))
+    twin.shadow.closed.append(ClosedTrade(**identity, runup=8.0, drawdown=-4.0))
+    # A partial exit is not a complete episode and must not enter excursion totals.
+    primary.closed.append(ClosedTrade(**{**identity, "entry_id": "partial", "qty": 1,
+                                        "entry_qty": 2, "lot_id": 2},
+                                       runup=100.0, drawdown=-100.0))
+
+    result = twin.summary()
+
+    assert result["primary_closed_episode_excursions"] == {
+        "favorable_excursion": 5.0, "adverse_excursion": -2.0, "denominator": 1}
+    assert result["real_price_shadow_closed_episode_excursions"] == {
+        "favorable_excursion": 8.0, "adverse_excursion": -4.0, "denominator": 1}
+    assert result["matched_closed_episode_favorable_excursion_delta_shadow_minus_primary"]["mean"] == 3.0
+    assert result["matched_closed_episode_adverse_excursion_delta_shadow_minus_primary"]["mean"] == -2.0
 
 
 def test_realization_ratios_withhold_nonpositive_primary_denominators():
