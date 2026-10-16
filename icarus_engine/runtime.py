@@ -1970,6 +1970,42 @@ class Portfolio:
     def runner_list(self) -> List[AssetRunner]:
         return [self.runners[s] for s in self.order if s in self.runners]
 
+    @staticmethod
+    def _withhold_shadow_metrics(shadow: Dict[str, Any]) -> Dict[str, Any]:
+        """Redact comparison values from a non-ready public shadow snapshot."""
+        view = dict(shadow)
+        view["metrics_available"] = False
+        view["metrics_unavailable_reason"] = (
+            "per-asset comparisons require READY shadow evidence")
+        for field in (
+            "intents", "primary_entry_fills", "shadow_entry_fills", "entry_fill_parity",
+            "primary_only_entry_fills", "shadow_only_entry_fills",
+            "matched_entry_intents",
+            "entry_price_delta_points_shadow_minus_primary",
+            "entry_price_delta_ticks_shadow_minus_primary",
+            "entry_price_delta_dollars_shadow_minus_primary", "recent_entry_fill_pairs",
+            "primary_only_closed_episodes", "shadow_only_closed_episodes",
+            "pairable_closed_episodes", "excluded_admin_flatten_lot_trade_pieces",
+            "administrative_censored_shadow_positions", "recent_administrative_censors",
+            "outcome_agreement_denominator", "outcome_agreement_rate",
+            "outcome_agreement_count", "outcome_matrix", "primary_break_even_episodes",
+            "shadow_break_even_episodes", "primary_win_count",
+            "primary_win_preserved_count", "primary_win_preservation", "primary",
+            "real_price_shadow", "net_realization_ratio",
+            "net_realization_ratio_unavailable_reason", "paired_profit_capture",
+            "paired_profit_capture_unavailable_reason", "paired_primary_winner_net",
+            "paired_shadow_net_on_primary_winners", "primary_closed_episode_excursions",
+            "real_price_shadow_closed_episode_excursions",
+            "matched_closed_episode_favorable_excursion_delta_shadow_minus_primary",
+            "matched_closed_episode_adverse_excursion_delta_shadow_minus_primary",
+            "bar_close_equity_observations", "primary_bar_close_max_drawdown",
+            "real_price_shadow_bar_close_max_drawdown", "open_primary", "open_shadow",
+            "recent_intents",
+        ):
+            if field in view:
+                view[field] = None
+        return view
+
     def status(self, *, nonblocking: bool = False) -> Dict[str, Any]:
         rs = [r.summary(nonblocking=True) if nonblocking else r.summary() for r in self.runner_list()]
         shadow_rows = [x["real_price_shadow"] for x in rs if x.get("real_price_shadow")]
@@ -1983,6 +2019,7 @@ class Portfolio:
         shadow_status = ("INVALID" if any(x["status"] == "INVALID" for x in shadow_rows)
                          else "DEGRADED" if any(x["status"] != "READY" for x in shadow_rows)
                          else "READY") if shadow_rows else "DISABLED"
+        metrics_available = shadow_status == "READY"
         primary_entries = sum(x["primary_entry_fills"] for x in shadow_rows)
         shadow_entries = sum(x["shadow_entry_fills"] for x in shadow_rows)
         matched_entries = sum(x["matched_entry_intents"] for x in shadow_rows)
@@ -2013,6 +2050,10 @@ class Portfolio:
             "schema": "icarus.real_price_shadow.portfolio/1",
             "enabled": True,
             "status": shadow_status,
+            "metrics_available": metrics_available,
+            "metrics_unavailable_reason": (
+                None if metrics_available else
+                "portfolio comparisons require every evidenced asset to be READY"),
             "execution_authorized": False,
             "asset_count": len(shadow_rows),
             "primary_entry_fills": primary_entries,
@@ -2046,10 +2087,40 @@ class Portfolio:
             "real_price_shadow_live_net": round(sum(x["real_price_shadow"]["live_net"] for x in shadow_rows), 8),
             "drawdown_aggregation": "per_asset_only; cross_asset_close_timestamps_are_not_yet_aligned",
             "assets": [{"asset": x["asset"], "status": x["status"], "reason": x["reason"],
-                        "administrative_censored_shadow_positions": x["administrative_censored_shadow_positions"],
+                        "administrative_censored_shadow_positions": (
+                            x["administrative_censored_shadow_positions"]
+                            if x["status"] == "READY" else None),
                         "provenance": x.get("provenance")}
                        for x in shadow_rows],
         } if shadow_rows else None)
+        if shadow_portfolio is not None and not metrics_available:
+            # Never present a mixture of current primary results and a frozen or
+            # invalid shadow lane as a portfolio comparison. Keep status, asset
+            # count, reasons, and provenance available for diagnosis.
+            unavailable_metrics = (
+                "primary_entry_fills", "shadow_entry_fills", "entry_fill_parity",
+                "matched_entry_intents", "primary_only_entry_fills",
+                "shadow_only_entry_fills", "administrative_censored_shadow_positions",
+                "pairable_closed_episodes", "outcome_agreement_denominator",
+                "outcome_agreement_rate", "outcome_matrix", "primary_win_preservation",
+                "primary_net", "real_price_shadow_net", "net_realization_ratio",
+                "net_realization_ratio_unavailable_reason", "paired_profit_capture",
+                "paired_profit_capture_unavailable_reason", "paired_primary_winner_net",
+                "paired_shadow_net_on_primary_winners", "primary_warmup_net",
+                "primary_live_net", "real_price_shadow_warmup_net",
+                "real_price_shadow_live_net",
+            )
+            for field in unavailable_metrics:
+                shadow_portfolio[field] = None
+        for row in rs:
+            shadow = row.get("real_price_shadow")
+            if shadow is None:
+                continue
+            if shadow.get("status") == "READY":
+                shadow["metrics_available"] = True
+                shadow["metrics_unavailable_reason"] = None
+            else:
+                row["real_price_shadow"] = self._withhold_shadow_metrics(shadow)
         return _clean({
             "now": time.time(), "uptime_sec": time.time() - self.started, "paused": self.paused,
             "global_pause_intent": self.paused,

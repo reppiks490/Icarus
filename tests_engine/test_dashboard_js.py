@@ -168,6 +168,9 @@ def test_real_price_shadow_twin_dashboard_is_read_only_and_wired():
     assert "fullBySymbol" in ui
     assert "position:fixed" in ui
     assert "state.insertBefore" not in ui
+    assert "row.status === 'READY' ?" in ui
+    assert "portfolio.metrics_available === false" in ui
+    assert "metrics_unavailable_reason" in ui
 
 
 def test_strategy_tester_timeframes_are_cache_aware():
