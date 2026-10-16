@@ -41,6 +41,15 @@ def _qualified_snapshot():
     return catalog, row
 
 
+def _enable_test_adjustment_witness(monkeypatch):
+    def test_yahoo_witness(_row, witness):
+        return bool(witness and witness.get("provider") == "yahoo"
+                    and witness.get("adjustment_mode") == "SPLIT_ADJUSTED")
+
+    monkeypatch.setattr(a200_runtime_feed, "CORPORATE_ACTION_WITNESS_VERIFIERS",
+                        {"yahoo": test_yahoo_witness})
+
+
 def _qualified_batch(row):
     calendar = get_calendar(row["calendar"])
     start = int(datetime(2026, 10, 15, 9, 30, tzinfo=ZoneInfo(row["timezone"])).timestamp())
@@ -70,6 +79,7 @@ def _qualified_batch(row):
         calendar_timezone=calendar.timezone_name,
         bar_close_status="VERIFIED",
         corporate_action_policy=row["corporate_action_policy"],
+        corporate_action_witness={"provider": "yahoo", "adjustment_mode": "SPLIT_ADJUSTED"},
     )
     return checked_bars, receipt
 
@@ -101,6 +111,7 @@ def test_current_a200_catalog_rows_are_blocked_before_pulse_runner_creation():
 
 def test_qualified_historical_batch_runs_pulse_in_signal_only_research_mode(monkeypatch):
     catalog, row = _qualified_snapshot()
+    _enable_test_adjustment_witness(monkeypatch)
     monkeypatch.setattr(a200_runtime_feed, "snapshot", lambda: catalog)
     bars, receipt = _qualified_batch(row)
     runtime = A200PulseResearchRuntime(chart_minutes=5)
@@ -123,6 +134,7 @@ def test_qualified_historical_batch_runs_pulse_in_signal_only_research_mode(monk
 
 def test_admission_and_session_creation_use_one_catalog_snapshot(monkeypatch):
     qualified, row = _qualified_snapshot()
+    _enable_test_adjustment_witness(monkeypatch)
     downgraded = deepcopy(qualified)
     downgraded["instruments"][0]["pulse_enabled"] = False
     snapshots = iter((qualified, downgraded))
@@ -143,6 +155,7 @@ def test_admission_and_session_creation_use_one_catalog_snapshot(monkeypatch):
 
 def test_qualified_catalog_does_not_admit_tampered_bars(monkeypatch):
     catalog, row = _qualified_snapshot()
+    _enable_test_adjustment_witness(monkeypatch)
     monkeypatch.setattr(a200_runtime_feed, "snapshot", lambda: catalog)
     bars, receipt = _qualified_batch(row)
     tampered = [replace(bars[0], c=bars[0].c + 10), *bars[1:]]
@@ -156,6 +169,7 @@ def test_qualified_catalog_does_not_admit_tampered_bars(monkeypatch):
 
 def test_qualified_catalog_rejects_stale_history_receipts(monkeypatch):
     catalog, row = _qualified_snapshot()
+    _enable_test_adjustment_witness(monkeypatch)
     monkeypatch.setattr(a200_runtime_feed, "snapshot", lambda: catalog)
     bars, receipt = _qualified_batch(row)
 
@@ -170,6 +184,7 @@ def test_qualified_catalog_rejects_stale_history_receipts(monkeypatch):
 
 def test_portfolio_entrypoint_keeps_a200_research_outside_live_asset_registry(monkeypatch):
     catalog, row = _qualified_snapshot()
+    _enable_test_adjustment_witness(monkeypatch)
     monkeypatch.setattr(a200_runtime_feed, "snapshot", lambda: catalog)
     bars, receipt = _qualified_batch(row)
     from icarus_engine.runtime import Journal, Portfolio
@@ -216,8 +231,36 @@ def test_unknown_corporate_action_policy_blocks_equity_history(monkeypatch):
     assert "CORPORATE_ACTION_POLICY_UNQUALIFIED" in admission.reasons
 
 
+def test_caller_labeled_adjustment_without_source_verifier_is_rejected(monkeypatch):
+    catalog, row = _qualified_snapshot()
+    monkeypatch.setattr(a200_runtime_feed, "snapshot", lambda: catalog)
+    monkeypatch.setattr(a200_runtime_feed, "CORPORATE_ACTION_WITNESS_VERIFIERS", {})
+    bars, receipt = _qualified_batch(row)
+
+    admission = qualify_a200_pulse_batch(row["instrument_id"], bars, receipt,
+                                         now_ns=receipt.received_at_ns)
+
+    assert admission.admitted is False
+    assert "CORPORATE_ACTION_EVIDENCE_UNAVAILABLE" in admission.reasons
+
+
+def test_corporate_action_witness_mutation_invalidates_receipt(monkeypatch):
+    catalog, row = _qualified_snapshot()
+    _enable_test_adjustment_witness(monkeypatch)
+    monkeypatch.setattr(a200_runtime_feed, "snapshot", lambda: catalog)
+    bars, receipt = _qualified_batch(row)
+    receipt.corporate_action_witness["adjustment_mode"] = "RAW"
+
+    admission = qualify_a200_pulse_batch(row["instrument_id"], bars, receipt,
+                                         now_ns=receipt.received_at_ns)
+
+    assert admission.admitted is False
+    assert "BAR_RECEIPT_INVALID_OR_UNQUALIFIED" in admission.reasons
+
+
 def test_research_runtime_rejects_missing_bars_between_admitted_batches(monkeypatch):
     catalog, row = _qualified_snapshot()
+    _enable_test_adjustment_witness(monkeypatch)
     monkeypatch.setattr(a200_runtime_feed, "snapshot", lambda: catalog)
     first_bars, first_receipt = _qualified_batch(row)
     runtime = A200PulseResearchRuntime(chart_minutes=5)
@@ -240,6 +283,7 @@ def test_research_runtime_rejects_missing_bars_between_admitted_batches(monkeypa
         expected_bar_timestamps=calendar.expected_bar_timestamps(gap_start, gap_start + 300, 300),
         calendar_timezone=calendar.timezone_name, bar_close_status="VERIFIED",
         corporate_action_policy=row["corporate_action_policy"],
+        corporate_action_witness={"provider": "yahoo", "adjustment_mode": "SPLIT_ADJUSTED"},
     )
 
     result = runtime.ingest_history(row["instrument_id"], gap, gap_receipt)
@@ -251,6 +295,7 @@ def test_research_runtime_rejects_missing_bars_between_admitted_batches(monkeypa
 
 def test_research_runtime_rejects_catalog_economics_change_mid_session(monkeypatch):
     catalog, row = _qualified_snapshot()
+    _enable_test_adjustment_witness(monkeypatch)
     monkeypatch.setattr(a200_runtime_feed, "snapshot", lambda: catalog)
     bars, receipt = _qualified_batch(row)
     runtime = A200PulseResearchRuntime(chart_minutes=5)
@@ -273,6 +318,7 @@ def test_research_runtime_rejects_catalog_economics_change_mid_session(monkeypat
         expected_bar_timestamps=calendar.expected_bar_timestamps(next_start, next_start + 300, 300),
         calendar_timezone=calendar.timezone_name, bar_close_status="VERIFIED",
         corporate_action_policy=row["corporate_action_policy"],
+        corporate_action_witness={"provider": "yahoo", "adjustment_mode": "SPLIT_ADJUSTED"},
     )
 
     result = runtime.ingest_history(row["instrument_id"], next_bars, next_receipt)

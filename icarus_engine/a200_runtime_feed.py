@@ -13,7 +13,7 @@ import hashlib
 import json
 import threading
 import time
-from typing import Any, Mapping, Sequence
+from typing import Any, Callable, Mapping, Sequence
 
 from .bar_receipts import BarBatchReceipt, make_bar_batch_receipt
 from .calendar import get_calendar
@@ -23,6 +23,14 @@ from .pine.timeframe import Bar
 
 MAX_RECEIPT_AGE_NS = 15 * 60 * 1_000_000_000
 MAX_FUTURE_SKEW_NS = 5 * 60 * 1_000_000_000
+
+# No current source adapter exports an independently verifiable adjustment
+# witness. A provider can be added here only with a verifier for its raw
+# response metadata or a validated corporate-action ledger. Until then,
+# equity history stays fail-closed even if a caller labels bars as adjusted.
+CORPORATE_ACTION_WITNESS_VERIFIERS: dict[
+    str, Callable[[Mapping[str, Any], Mapping[str, Any] | None], bool]
+] = {}
 
 
 @dataclass(frozen=True)
@@ -159,6 +167,7 @@ def _receipt_matches_bars(
             bar_close_status=receipt.bar_close_status,
             timestamp_normalization=receipt.timestamp_normalization,
             corporate_action_policy=receipt.corporate_action_policy,
+            corporate_action_witness=receipt.corporate_action_witness,
         )
     except (ValueError, TypeError, OverflowError):
         return False
@@ -202,6 +211,14 @@ def qualify_a200_pulse_batch(
         reasons.append("STRATEGY_NOT_QUALIFIED")
     if row.get("asset_class") == "equity" and row.get("corporate_action_policy") != "SPLIT_ADJUSTED":
         reasons.append("CORPORATE_ACTION_POLICY_UNQUALIFIED")
+    elif row.get("asset_class") == "equity":
+        verifier = CORPORATE_ACTION_WITNESS_VERIFIERS.get(str(provider or ""))
+        try:
+            witness_verified = bool(verifier and verifier(row, receipt.corporate_action_witness))
+        except Exception:
+            witness_verified = False
+        if not witness_verified:
+            reasons.append("CORPORATE_ACTION_EVIDENCE_UNAVAILABLE")
     if not _positive_number(row.get("minimum_price_increment")):
         reasons.append("PRICE_INCREMENT_UNQUALIFIED")
     if not _positive_number(row.get("point_value")):
