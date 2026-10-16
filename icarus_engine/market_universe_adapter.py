@@ -87,10 +87,12 @@ class MarketUniverseAdapter:
         # unqualified instead of extrapolating session rules.
         expected = None
         alignment = None
+        calendar_timezone = None
         session_status = "UNKNOWN"
         timestamp_normalization = "NONE"
         try:
             calendar = get_calendar(row["calendar"])
+            calendar_timezone = getattr(calendar, "timezone_name", None)
             expected = calendar.expected_bar_timestamps(start_ts, end_ts, interval_seconds)
             alignment = lambda ts: calendar.is_aligned(ts, interval_seconds)
             session_status = "VERIFIED"
@@ -127,6 +129,7 @@ class MarketUniverseAdapter:
             provider_mapping_status=mapping_status,
             alignment_validator=alignment,
             expected_bar_timestamps=expected,
+            calendar_timezone=calendar_timezone,
             timestamp_normalization=timestamp_normalization,
         )
         return checked, receipt

@@ -69,6 +69,29 @@ def test_a200_yahoo_adapter_resolves_mapping_and_keeps_entitlement_unqualified()
     assert receipt.historical_bars_qualified is False
 
 
+def test_a200_adapter_receipt_preserves_authoritative_calendar_timezone():
+    row = snapshot()["instruments"][0]
+    provider_symbol = next(mapping["symbol"] for mapping in row["provider_symbol_candidates"]
+                           if mapping["provider"] == "yahoo")
+    calendar = get_calendar(row["calendar"])
+    start_ts = int(datetime(2026, 3, 6, tzinfo=timezone.utc).timestamp())
+    end_ts = int(datetime(2026, 3, 10, tzinfo=timezone.utc).timestamp())
+
+    class CalendarAwareYahoo(_FakeYahooHistory):
+        def candles(self, _symbol, _interval, start, end):
+            expected = calendar.expected_bar_timestamps(start, end, 86400)
+            return [Bar(ts, 10, 12, 9, 11, 4) for ts in expected]
+
+    _, receipt = MarketUniverseAdapter(CalendarAwareYahoo(provider_symbol)).fetch_history(
+        row["instrument_id"], 86400, start_ts, end_ts,
+    )
+
+    assert receipt.calendar_timezone == "America/New_York"
+    assert receipt.session_validation_status == "VERIFIED"
+    assert receipt.timestamp_alignment_status == "VERIFIED"
+    assert receipt.historical_bars_qualified is False
+
+
 def test_workspace_shared_databento_feed_preserves_provider_and_continuous_identity():
     class FakeDatabento(Databento):
         def __init__(self):
