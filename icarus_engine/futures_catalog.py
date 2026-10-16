@@ -1,18 +1,18 @@
 """Canonical futures product authority for ICARUS.
 
 This module is the single static authority for the 32 owner-directed futures
-roots.  Runtime assets, Databento identities, dated-contract candidates,
+roots. Runtime assets, Databento identities, dated-contract candidates,
 capability indexes, Brain evidence, and asset command centers derive from this
 catalog instead of copying contract economics into independent tables.
 
 Two qualification layers are intentionally distinct:
 
 * ``runtime_qualified`` means the continuous analytical identity and static
-  contract economics are admitted into ICARUS.  It does not assert that a
+  contract economics are admitted into ICARUS. It does not assert that a
   provider entitlement is currently healthy; provider evidence is evaluated by
   the system index at runtime.
 * ``execution_qualified`` means ICARUS has an independently verified static
-  dated-contract rule for producing a *candidate* contract.  It does not
+  dated-contract rule for producing a *candidate* contract. It does not
   authorize an order. Exact broker contract-details readback, reconciliation,
   risk authorization, and the owner execution policy remain separate gates.
 
@@ -110,8 +110,8 @@ def _p(
     )
 
 
-# Contract economics are static facts; provider/broker health is not.  All 32
-# products are admitted as continuous analytical assets.  Static dated-candidate
+# Contract economics are static facts; provider/broker health is not. All 32
+# products are admitted as continuous analytical assets. Static dated-candidate
 # rules are verified for every family, while the broker-paper gate still requires
 # exact contract-details readback and reconciliation before order submission.
 _CATALOG = {
@@ -164,27 +164,28 @@ _CATALOG = {
               full_root="NG", ratio_to_full=0.1, cycle=MONTHLY,
               roll_model="micro_ng_one_business_day_before_ng"),
 
-    # Major CME FX and micros.  CME expanded the micro FX suite to monthly
-    # expirations; current standard contracts are also listed monthly.
+    # CME FX continuous benchmarks use the liquid March quarterly cycle. Standard
+    # contracts may also list serial months, but the micro contracts are quarterly
+    # and broker/provider readback remains authoritative for exact routing.
     "6E": _p("6E", "Euro FX", "6E=F", "CME:6E1!", "CME", "fx", 0.00005, 125000.0,
-             cycle=MONTHLY, roll_model="fx_two_business_days_before_third_wednesday"),
+             cycle=QUARTERLY, roll_model="fx_two_business_days_before_third_wednesday"),
     "M6E": _p("M6E", "Micro EUR/USD", "M6E=F", "CME:M6E1!", "CME", "fx", 0.0001, 12500.0,
-              full_root="6E", ratio_to_full=0.1, cycle=MONTHLY,
+              full_root="6E", ratio_to_full=0.1, cycle=QUARTERLY,
               roll_model="fx_two_business_days_before_third_wednesday"),
     "6J": _p("6J", "Japanese Yen", "6J=F", "CME:6J1!", "CME", "fx", 0.0000005, 12500000.0,
-             cycle=MONTHLY, roll_model="fx_two_business_days_before_third_wednesday"),
+             cycle=QUARTERLY, roll_model="fx_two_business_days_before_third_wednesday"),
     "MJY": _p("MJY", "Micro JPY/USD", "MJY=F", "CME:MJY1!", "CME", "fx", 0.000001, 1250000.0,
-              full_root="6J", ratio_to_full=0.1, cycle=MONTHLY,
+              full_root="6J", ratio_to_full=0.1, cycle=QUARTERLY,
               roll_model="fx_two_business_days_before_third_wednesday"),
     "6B": _p("6B", "British Pound", "6B=F", "CME:6B1!", "CME", "fx", 0.0001, 62500.0,
-             cycle=MONTHLY, roll_model="fx_two_business_days_before_third_wednesday"),
+             cycle=QUARTERLY, roll_model="fx_two_business_days_before_third_wednesday"),
     "M6B": _p("M6B", "Micro GBP/USD", "M6B=F", "CME:M6B1!", "CME", "fx", 0.0001, 6250.0,
-              full_root="6B", ratio_to_full=0.1, cycle=MONTHLY,
+              full_root="6B", ratio_to_full=0.1, cycle=QUARTERLY,
               roll_model="fx_two_business_days_before_third_wednesday"),
     "6A": _p("6A", "Australian Dollar", "6A=F", "CME:6A1!", "CME", "fx", 0.00005, 100000.0,
-             cycle=MONTHLY, roll_model="fx_two_business_days_before_third_wednesday"),
+             cycle=QUARTERLY, roll_model="fx_two_business_days_before_third_wednesday"),
     "M6A": _p("M6A", "Micro AUD/USD", "M6A=F", "CME:M6A1!", "CME", "fx", 0.0001, 10000.0,
-              full_root="6A", ratio_to_full=0.1, cycle=MONTHLY,
+              full_root="6A", ratio_to_full=0.1, cycle=QUARTERLY,
               roll_model="fx_two_business_days_before_third_wednesday"),
 
     # U.S. Treasuries.
