@@ -78,6 +78,7 @@ def run(*, limit: int = 1, start_ts: int, end_ts: int,
             if not isinstance(provider, str) or not provider or provider in seen:
                 results.append({"instrument_id": instrument["instrument_id"],
                                 "provider": str(provider or "unknown"), "probe_status": "ERROR",
+                                "probe_started_at": _utc_now(),
                                 "error_code": "invalid_provider_mapping"})
                 continue
             seen.add(provider)

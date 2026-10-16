@@ -176,15 +176,14 @@ def load_hybrid_probe_report() -> dict[str, Any]:
         seen.add(key)
         count_key = f"{provider.lower()}_{result['probe_status'].lower()}_count"
         actual_counts[count_key] = actual_counts.get(count_key, 0) + 1
-        if result.get("probe_status") != "ERROR":
-            try:
-                observed = datetime.fromisoformat(str(result["probe_started_at"]).replace("Z", "+00:00"))
-                age = int((now - observed).total_seconds())
-            except (KeyError, TypeError, ValueError):
-                return {"status": "INVALID", "results": []}
-            if age < 0:
-                return {"status": "INVALID", "results": []}
-            max_age = max(max_age, age)
+        try:
+            observed = datetime.fromisoformat(str(result["probe_started_at"]).replace("Z", "+00:00"))
+            age = int((now - observed).total_seconds())
+        except (KeyError, TypeError, ValueError):
+            return {"status": "INVALID", "results": []}
+        if age < 0:
+            return {"status": "INVALID", "results": []}
+        max_age = max(max_age, age)
     if report.get("counts") != actual_counts or seen != expected_pairs:
         return {"status": "INVALID", "results": []}
     try:

@@ -303,7 +303,8 @@ def test_a200_hybrid_report_records_missing_provider_without_raw_bars(monkeypatc
 def test_hybrid_probe_ledger_validates_mappings_and_reports_provider_states(monkeypatch, tmp_path):
     catalog = snapshot()
     row = catalog["instruments"][0]
-    now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    now_dt = datetime.now(timezone.utc)
+    now = now_dt.isoformat().replace("+00:00", "Z")
     results = [
         {"instrument_id": row["instrument_id"], "provider": mapping["provider"],
          "provider_symbol_candidate": mapping["symbol"],
@@ -332,6 +333,18 @@ def test_hybrid_probe_ledger_validates_mappings_and_reports_provider_states(monk
     assert report["status"] == "PARTIAL"
     assert {result["provider"] for result in report["results"]} == {"yahoo", "fmp"}
     assert report["authority"]["pulse_enabled"] is False
+
+    tampered = json.loads(path.read_text())
+    old = now_dt.replace(year=now_dt.year - 1).isoformat().replace("+00:00", "Z")
+    tampered["results"][0]["probe_status"] = "ERROR"
+    tampered["results"][0]["probe_started_at"] = old
+    tampered["counts"] = {}
+    for result in tampered["results"]:
+        key = f"{result['provider']}_{result['probe_status'].lower()}_count"
+        tampered["counts"][key] = tampered["counts"].get(key, 0) + 1
+    tampered["results_sha256"] = market_universe.source_probe_results_digest(tampered["results"])
+    path.write_text(json.dumps(tampered))
+    assert market_universe.load_hybrid_probe_report()["status"] == "STALE"
 
 
 def test_hybrid_adapter_sanitizes_provider_exception_text():
