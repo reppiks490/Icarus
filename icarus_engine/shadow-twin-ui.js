@@ -13,11 +13,10 @@
   const percent = value => hasNumber(value) ? `${(Number(value) * 100).toFixed(1)}%` : '—';
 
   function start() {
-    const state = document.querySelector('.top-in .state');
-    if (!state || document.getElementById('rt01-open')) return;
+    if (!document.body || document.getElementById('rt01-open')) return;
     const style = document.createElement('style');
     style.textContent = `
-      #rt01-open{white-space:nowrap}
+      #rt01-open{position:fixed;right:16px;bottom:16px;z-index:900;white-space:nowrap;box-shadow:0 5px 24px #0008}
       #rt01-shade{position:fixed;inset:0;background:#070b10dd;z-index:1000;display:none;align-items:flex-start;justify-content:center;padding:7vh 16px 20px;overflow:auto}
       #rt01-shade.open{display:flex}
       #rt01-panel{width:min(1120px,96vw);max-height:86vh;overflow:auto;background:var(--surface,#111821);color:var(--text,#e8edf2);border:1px solid var(--ring,#46515e);border-radius:14px;padding:20px;box-shadow:0 20px 90px #000a}
@@ -39,7 +38,7 @@
     const button = document.createElement('button');
     button.id = 'rt01-open'; button.className = 'icon-btn'; button.type = 'button';
     button.textContent = 'Shadow Twin'; button.title = 'Read-only real-price shadow evidence';
-    state.insertBefore(button, state.firstChild);
+    document.body.append(button);
     const shade = document.createElement('div'); shade.id = 'rt01-shade';
     shade.innerHTML = `<section id="rt01-panel" role="dialog" aria-modal="true" aria-labelledby="rt01-title">
       <div class="rt01-head"><h2 id="rt01-title">Real-price shadow twin</h2><button id="rt01-close" class="icon-btn" type="button">Close</button></div>
