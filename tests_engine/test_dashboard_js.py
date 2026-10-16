@@ -207,6 +207,8 @@ def test_real_price_shadow_twin_dashboard_is_read_only_and_wired():
     assert "moneyWithDenominator" in ui
     assert "entry-commission adjusted" in ui
     assert "fullBySymbol" in ui
+    assert "position:fixed" in ui
+    assert "state.insertBefore" not in ui
 
 
 def test_strategy_tester_timeframes_are_cache_aware():
