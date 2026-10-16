@@ -183,6 +183,13 @@ await page.evaluate(()=>{
  target.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,pointerType:'mouse',clientX:r.left+r.width*.38,clientY:r.top+Math.min(36,r.height*.28)}));
  target.dispatchEvent(new PointerEvent('pointerover',{bubbles:true,pointerType:'mouse',clientX:r.left+r.width*.38,clientY:r.top+Math.min(36,r.height*.28)}));
 });
+await page.evaluate(()=>{
+ const el=document.querySelector('#view .world-inspected[data-world-topology-node]')||document.querySelector('#view [data-world-topology-node]');
+ if(!el)return;
+ const r=el.getBoundingClientRect(),target=el.querySelector('h2')||el;
+ target.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,pointerType:'mouse',clientX:r.left+r.width*.38,clientY:r.top+Math.min(36,r.height*.28)}));
+ target.dispatchEvent(new PointerEvent('pointerover',{bubbles:true,pointerType:'mouse',clientX:r.left+r.width*.38,clientY:r.top+Math.min(36,r.height*.28)}));
+});
 await page.waitForFunction(()=>document.querySelectorAll('.world-topology path.active').length>0);
 assert.ok((await page.locator('.world-topology path.active').count())>0);
 // Removing/rebuilding decorative children can produce a pointerout with no relatedTarget
