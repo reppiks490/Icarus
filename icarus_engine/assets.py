@@ -10,6 +10,8 @@ import re
 from dataclasses import dataclass, field, replace
 from typing import Dict, List, Optional
 
+from icarus_futures.products import PRODUCTS
+
 
 # The strategy/chart execution layer is intentionally minute-native even when the
 # active raw feed (Databento) exposes 1-second bars, ticks, and depth. These are the
@@ -182,9 +184,13 @@ class AssetSpec:
     commission: float = 2.0
     anchor_et: Optional[str] = None  # intraday bar anchor override (ET "HHMM"); derived from `session` when None
     session: str = "rth"             # rth | eth  - TradingView chart session for CME futures (see calendar.CMECalendar)
-    group: str = "equity"            # holiday schedule: equity | metals | crypto (CME Bitcoin futures follow equity)
+    group: str = "equity"            # holiday schedule family
     security_source: str = "chart"   # chart | standard - what request.security() sees on a Heikin Ashi chart (chart = HA, TradingView)
     roll: str = "none"               # compatibility field; futures are invariantly continuous
+    exchange: str = ""
+    asset_class: str = ""
+    micro_of: Optional[str] = None
+    feed_mode: str = ""
     config_pins: List[str] = field(default_factory=list, repr=False, compare=False)  # explicit startup/API values that beat preset metadata
 
     def __post_init__(self) -> None:
@@ -192,27 +198,32 @@ class AssetSpec:
         self.roll = "continuous" if self.kind == "futures" else "none"
 
 
-REGISTRY: Dict[str, AssetSpec] = {
-    "NQ": AssetSpec("NQ", "Nasdaq 100 E-mini", "yahoo", "NQ=F", "cme", 0.25, 20.0, tv_symbol="CME_MINI:NQ1!"),
-    "MNQ": AssetSpec("MNQ", "Nasdaq 100 Micro E-mini", "yahoo", "MNQ=F", "cme", 0.25, 2.0, tv_symbol="CME_MINI:MNQ1!"),
-    "MES": AssetSpec("MES", "Micro E-mini S&P 500", "yahoo", "MES=F", "cme", 0.25, 5.0, tv_symbol="CME_MINI:MES1!"),
-    "ES": AssetSpec("ES", "S&P 500 E-mini", "yahoo", "ES=F", "cme", 0.25, 50.0, tv_symbol="CME_MINI:ES1!"),
-    "YM": AssetSpec("YM", "Dow E-mini", "yahoo", "YM=F", "cme", 1.0, 5.0, tv_symbol="CBOT_MINI:YM1!"),
-    "MYM": AssetSpec("MYM", "Micro E-mini Dow", "yahoo", "MYM=F", "cme", 1.0, 0.5, tv_symbol="CBOT_MINI:MYM1!"),
-    "RTY": AssetSpec("RTY", "E-mini Russell 2000", "yahoo", "RTY=F", "cme", 0.10, 50.0, tv_symbol="CME_MINI:RTY1!"),
-    "M2K": AssetSpec("M2K", "Micro E-mini Russell 2000", "yahoo", "M2K=F", "cme", 0.10, 5.0, tv_symbol="CME_MINI:M2K1!"),
-    "GC": AssetSpec("GC", "Gold", "yahoo", "GC=F", "cme", 0.10, 100.0, tv_symbol="COMEX:GC1!", group="metals"),
-    "MGC": AssetSpec("MGC", "Micro Gold", "yahoo", "MGC=F", "cme", 0.10, 10.0, tv_symbol="COMEX_MINI:MGC1!", group="metals"),
-    "SI": AssetSpec("SI", "Silver", "yahoo", "SI=F", "cme", 0.005, 5000.0, tv_symbol="COMEX:SI1!", group="metals"),
-    "SIL": AssetSpec("SIL", "Micro Silver", "yahoo", "SIL=F", "cme", 0.005, 1000.0, tv_symbol="COMEX_MINI:SIL1!", group="metals"),
-    "PL": AssetSpec("PL", "Platinum", "yahoo", "PL=F", "cme", 0.10, 50.0, tv_symbol="NYMEX:PL1!", group="metals"),
-    "PA": AssetSpec("PA", "Palladium", "yahoo", "PA=F", "cme", 0.50, 100.0, tv_symbol="NYMEX:PA1!", group="metals"),
-    "BTCF": AssetSpec("BTCF", "Bitcoin futures (CME)", "yahoo", "BTC=F", "cme_crypto", 5.0, 5.0, tv_symbol="CME:BTC1!", group="crypto", session="eth"),
-    "MBT": AssetSpec("MBT", "Micro Bitcoin futures (CME)", "yahoo", "MBT=F", "cme_crypto", 5.0, 0.1, tv_symbol="CME:MBT1!", group="crypto", session="eth"),
-    "BTC": AssetSpec("BTC", "Bitcoin spot (Coinbase)", "coinbase", "BTC-USD", "crypto", 0.01, 1.0, kind="crypto", tv_symbol="COINBASE:BTCUSD"),
-    "ETH": AssetSpec("ETH", "Ether spot (Coinbase)", "coinbase", "ETH-USD", "crypto", 0.01, 1.0, kind="crypto", tv_symbol="COINBASE:ETHUSD"),
-    "SOL": AssetSpec("SOL", "Solana spot (Coinbase)", "coinbase", "SOL-USD", "crypto", 0.01, 1.0, kind="crypto", tv_symbol="COINBASE:SOLUSD"),
-}
+def _asset_from_product(root: str) -> AssetSpec:
+    product = PRODUCTS[root]
+    return AssetSpec(
+        symbol=product.root,
+        name=product.name,
+        feed="yahoo",
+        ticker=product.provider_symbol,
+        calendar=product.calendar,
+        mintick=product.tick_size,
+        multiplier=product.point_value,
+        tv_symbol=product.tv_symbol,
+        session=product.session,
+        group=product.group,
+        exchange=product.exchange,
+        asset_class=product.asset_class,
+        micro_of=product.micro_of,
+        feed_mode=product.feed_mode,
+    )
+
+
+REGISTRY: Dict[str, AssetSpec] = {root: _asset_from_product(root) for root in PRODUCTS}
+REGISTRY.update({
+    "BTC": AssetSpec("BTC", "Bitcoin spot (Coinbase)", "coinbase", "BTC-USD", "crypto", 0.01, 1.0, kind="crypto", tv_symbol="COINBASE:BTCUSD", asset_class="crypto_spot", feed_mode="public_live"),
+    "ETH": AssetSpec("ETH", "Ether spot (Coinbase)", "coinbase", "ETH-USD", "crypto", 0.01, 1.0, kind="crypto", tv_symbol="COINBASE:ETHUSD", asset_class="crypto_spot", feed_mode="public_live"),
+    "SOL": AssetSpec("SOL", "Solana spot (Coinbase)", "coinbase", "SOL-USD", "crypto", 0.01, 1.0, kind="crypto", tv_symbol="COINBASE:SOLUSD", asset_class="crypto_spot", feed_mode="public_live"),
+})
 
 # First-party trading assets use Heikin Ashi as the primary analytical chart.
 # Fills remain on real OHLC by default, so synthetic HA prices never become
@@ -227,26 +238,29 @@ for _spec in REGISTRY.values():
         if _spec.roll != "continuous":
             raise RuntimeError(f"{_spec.symbol}: futures contract policy must be continuous_only")
 
-ALIASES = {
-    "NQ1!": "NQ", "NQ1": "NQ", "NQ=F": "NQ",
-    "MNQ1!": "MNQ", "MNQ1": "MNQ", "MNQ=F": "MNQ",
-    "ES1!": "ES", "ES1": "ES", "ES=F": "ES",
-    "MES1!": "MES", "MES1": "MES", "MES=F": "MES",
-    "YM1!": "YM", "YM1": "YM", "YM=F": "YM",
-    "MYM1!": "MYM", "MYM1": "MYM", "MYM=F": "MYM",
-    "RTY1!": "RTY", "RTY1": "RTY", "RTY=F": "RTY",
-    "M2K1!": "M2K", "M2K1": "M2K", "M2K=F": "M2K",
-    "GC1!": "GC", "GC1": "GC", "GC=F": "GC", "GOLD": "GC",
-    "MGC1!": "MGC", "MGC1": "MGC", "MGC=F": "MGC",
-    "SI1!": "SI", "SI1": "SI", "SI=F": "SI", "SILVER": "SI",
-    "SIL1!": "SIL", "SIL1": "SIL", "SIL=F": "SIL",
-    "PL1!": "PL", "PL1": "PL", "PL=F": "PL", "PLATINUM": "PL",
-    "PA1!": "PA", "PA1": "PA", "PA=F": "PA", "PALLADIUM": "PA",
-    "BTC=F": "BTCF", "BTC1!": "BTCF", "BTC1": "BTCF",
-    "MBT=F": "MBT", "MBT1!": "MBT", "MBT1": "MBT",
-    "BTCUSD": "BTC", "BTC-USD": "BTC",
-    "NASDAQ": "NQ", "SP500": "ES", "DOW": "YM", "RUSSELL": "RTY",
-}
+
+ALIASES: Dict[str, str] = {}
+for _root, _product in PRODUCTS.items():
+    ALIASES[f"{_root}1!"] = _root
+    ALIASES[f"{_root}1"] = _root
+    ALIASES[_product.provider_symbol] = _root
+    _tv_identity = _product.tv_symbol.split(":")[-1]
+    ALIASES[_tv_identity] = _root
+    if _tv_identity.endswith("!"):
+        ALIASES[_tv_identity[:-1]] = _root
+
+ALIASES.update({
+    "GOLD": "GC",
+    "SILVER": "SI",
+    "PLATINUM": "PL",
+    "PALLADIUM": "PA",
+    "BTCUSD": "BTC",
+    "BTC-USD": "BTC",
+    "NASDAQ": "NQ",
+    "SP500": "ES",
+    "DOW": "YM",
+    "RUSSELL": "RTY",
+})
 
 
 _SYMBOL_RE = re.compile(r"[A-Z0-9][A-Z0-9=!.\-]{0,15}")
@@ -261,9 +275,9 @@ _EXPIRING_FUTURE_RE = re.compile(
 # Fail closed for any conventional futures month-code symbol, even when the root is
 # not in REGISTRY. Otherwise e.g. CLZ26 could fall through as a fake Coinbase asset.
 _ANY_DATED_FUTURE_RE = re.compile(
-    r"^[A-Z]{1,6}[FGHJKMNQUVXZ]\d{1,4}(?:\.(?:CME|CBT|CMX|NYM|NYMEX|COMEX))?$"
+    r"^[A-Z0-9]{1,8}[FGHJKMNQUVXZ]\d{1,4}(?:\.(?:CME|CBT|CMX|NYM|NYMEX|COMEX))?$"
 )
-_CONTINUOUS_FUTURE_STYLE_RE = re.compile(r"^[A-Z]{1,8}(?:1!?|=F)$")
+_CONTINUOUS_FUTURE_STYLE_RE = re.compile(r"^[A-Z0-9]{1,8}(?:1!?|=F)$")
 
 
 def resolve(symbol: str) -> AssetSpec:
