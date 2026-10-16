@@ -181,11 +181,17 @@ class Databento:
 
     @staticmethod
     def root(symbol: str) -> str:
-        # Route through the ICARUS registry so aliases such as BTCF, M2K1!,
-        # CME_MINI:NQ1!, and provider =F symbols all resolve to the same
-        # continuous futures root. Unknown/spot symbols fail closed.
-        from ..assets import resolve
-        spec = resolve(str(symbol))
+        # Map market-data identities from the canonical registry without
+        # granting strategy runtime or execution authority. Some products are
+        # catalogued for research/data before their runtime or dated-contract
+        # families are qualified. Dated and unknown symbols are absent from the
+        # continuous alias map and remain fail-closed.
+        from ..assets import ALIASES, REGISTRY
+        raw = str(symbol).strip().upper().split(":")[-1]
+        canonical = ALIASES.get(raw, raw)
+        spec = REGISTRY.get(canonical)
+        if spec is None:
+            raise ValueError(f"Databento GLBX adapter only accepts registered futures, got {symbol!r}")
         if spec.kind != "futures":
             raise ValueError(f"Databento GLBX adapter only accepts registered futures, got {symbol!r}")
         ticker = str(spec.ticker).upper()

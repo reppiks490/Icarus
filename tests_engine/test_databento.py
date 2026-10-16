@@ -204,6 +204,14 @@ def test_every_registered_future_maps_to_databento_continuous_front():
         assert Databento.continuous_symbol(spec.tv_symbol, "c") == f"{root}.c.0"
 
 
+def test_discovery_only_product_maps_to_data_without_runtime_admission():
+    # HG is in the canonical catalog but is not yet admitted to the strategy
+    # runtime. Data symbology lookup must not grant that separate authority.
+    with pytest.raises(ValueError, match="runtime admission"):
+        resolve("HG=F")
+    assert Databento.continuous_symbol("HG=F") == "HG.v.0"
+
+
 def test_roll_rule_is_real_configuration_not_a_dead_setting(monkeypatch):
     monkeypatch.setenv("DATABENTO_ROLL_RULE", "n")
     feed = make_feed()
