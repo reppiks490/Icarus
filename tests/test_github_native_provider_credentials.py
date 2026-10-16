@@ -77,7 +77,7 @@ def test_handoff_requires_engine_ledger_and_no_plaintext_credentials() -> None:
         assert phrase in text
 
 
-def test_agent_entrypoint_requires_shared_cross_repo_ledger() -> None:
+def test_agent_entrypoint_requires_shared_cross_repo_ledger_and_coordination_bus() -> None:
     text = AGENTS.read_text().lower()
     for phrase in (
         'every ai unit',
@@ -90,5 +90,15 @@ def test_agent_entrypoint_requires_shared_cross_repo_ledger() -> None:
         'non-sensitive configuration',
         'intrinio',
         'zero known icarus-owned gaps',
+        'reppiks490/icarus-owner-actions',
+        'coordination/start_here.md',
+        'coordination/active.md',
+        'coordination/collisions.json',
+        'plan',
+        'claim',
+        'waiting',
+        'no model-specific task ownership',
+        'live broker arming',
+        'disabled',
     ):
         assert phrase in text
