@@ -40,6 +40,7 @@ const fixture={
   try {
     const context=await browser.newContext({viewport:{width:1280,height:900}}),page=await context.newPage();
     const errors=[],writes=[];
+    await page.addInitScript(()=>sessionStorage.setItem('icarus-intro-seen','1'));
     page.on('pageerror',error=>errors.push(error.message));
     page.on('request',request=>{if(request.method()!=='GET')writes.push(request.url());});
     await page.route('**/status/public',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(fixture)}));
@@ -59,6 +60,13 @@ const fixture={
     await page.screenshot({path:`${output}/shadow-twin.png`});
     await page.locator('#rt01-close').click();
     assert.equal(await page.locator('#rt01-shade').evaluate(el=>el.classList.contains('open')),false);
+    await page.locator('.experience-settings summary').click();
+    await page.locator('#experienceReplay').click();
+    await page.locator('.world-intro').waitFor();
+    assert.equal(await launcher.evaluate(el=>getComputedStyle(el).display),'none','Shadow Twin launcher must not cover the full-screen intro');
+    await page.keyboard.press('Escape');
+    await page.locator('.world-intro').waitFor({state:'detached'});
+    assert.notEqual(await launcher.evaluate(el=>getComputedStyle(el).display),'none','Shadow Twin launcher must return after the intro closes');
     assert.deepEqual(errors,[]); assert.deepEqual(writes,[]);
     console.log(JSON.stringify({passed:true,errors,writes,entries:fixture.real_price_shadow.matched_entry_intents}));
   } finally { await browser.close(); }

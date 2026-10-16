@@ -17,6 +17,7 @@
     const style = document.createElement('style');
     style.textContent = `
       #rt01-open{position:fixed;right:16px;bottom:16px;z-index:900;white-space:nowrap;box-shadow:0 5px 24px #0008}
+      body:has(.world-intro) #rt01-open{display:none}
       #rt01-shade{position:fixed;inset:0;background:#070b10dd;z-index:1000;display:none;align-items:flex-start;justify-content:center;padding:7vh 16px 20px;overflow:auto}
       #rt01-shade.open{display:flex}
       #rt01-panel{width:min(1120px,96vw);max-height:86vh;overflow:auto;background:var(--surface,#111821);color:var(--text,#e8edf2);border:1px solid var(--ring,#46515e);border-radius:14px;padding:20px;box-shadow:0 20px 90px #000a}
