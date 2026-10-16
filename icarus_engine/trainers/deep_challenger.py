@@ -382,10 +382,10 @@ def train_source(
 
     sequence_length = _MODEL["sequence_length"]
     try:
-        # The prefix includes one extra row for the last validation label and
-        # one parser-dropped trailing row. No holdout price/features are read.
-        pre_raw = _csv_prefix(header, source_rows, valid_slice[1] + 2)
-        pre_bars, pre_manifest = inspect_ohlc(source_path, raw_bytes=pre_raw)
+        # Keep the final pre-holdout bar; do not pass a first holdout row to
+        # the parser merely to have its normal forming-bar trim discard it.
+        pre_raw = _csv_prefix(header, source_rows, valid_slice[1] + 1)
+        pre_bars, pre_manifest = inspect_ohlc(source_path, raw_bytes=pre_raw, drop_trailing=False)
         if pre_manifest.get("status") == "blocked" or len(pre_bars) != valid_slice[1] + 1:
             raise ValueError("training/validation source prefix failed integrity checks")
         # valid_slice[1] excludes the embargoed decision immediately before

@@ -155,8 +155,8 @@ def test_gru_challenger_end_to_end_when_torch_is_available(monkeypatch, tmp_path
                     raise AssertionError("holdout feature source read before ledger claim")
             return super().get(key, default)
 
-    def guarded_inspect(path, *, raw_bytes=None):
-        bars, manifest = original_inspect(path, raw_bytes=raw_bytes)
+    def guarded_inspect(path, *, raw_bytes=None, **kwargs):
+        bars, manifest = original_inspect(path, raw_bytes=raw_bytes, **kwargs)
         if not claimed["value"] and len(bars) > hold_start:
             raise AssertionError("full holdout price/features parsed before ledger claim")
         return [GuardedBar(i, row) for i, row in enumerate(bars)], manifest
@@ -213,3 +213,54 @@ def test_gru_challenger_end_to_end_when_torch_is_available(monkeypatch, tmp_path
     )
     assert changed["status"] == "blocked"
     assert changed["holdout_claim"]["status"] == deep_challenger.ledger.REUSE
+
+
+@pytest.mark.parametrize("bad_row", ["ohlc", "tide"])
+def test_first_holdout_integrity_failure_occurs_after_claim(monkeypatch, tmp_path, bad_row):
+    pytest.importorskip("torch")
+    source = _write_source(tmp_path / f"{bad_row}.csv", 501)
+    hold_start = walk_slices(499)[2][0]
+    lines = source.read_text(encoding="utf-8").splitlines()
+    if bad_row == "ohlc":
+        cells = lines[hold_start + 1].split(",")
+        cells[2] = str(float(cells[4]) - 2.0)  # high is below low and close
+        lines[hold_start + 1] = ",".join(cells)
+    else:
+        header = lines[0].split(",") + ["TIDE Long", "TIDE Long"]
+        rows = [header]
+        for index, line in enumerate(lines[1:]):
+            cells = line.split(",") + ["7", "8" if index == hold_start else "7"]
+            rows.append(cells)
+        lines = [",".join(row) for row in rows]
+    source.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    claimed = {"value": False}
+    original_inspect = deep_challenger.inspect_ohlc
+    source_bytes = source.read_bytes()
+
+    def guarded_inspect(path, *, raw_bytes=None, **kwargs):
+        if raw_bytes == source_bytes and not claimed["value"]:
+            raise AssertionError("full terminal source parsed before the ledger claim")
+        return original_inspect(path, raw_bytes=raw_bytes, **kwargs)
+
+    monkeypatch.setattr(deep_challenger, "inspect_ohlc", guarded_inspect)
+    original_claim = deep_challenger.ledger.claim_holdout
+
+    def record_claim(*args, **kwargs):
+        status = original_claim(*args, **kwargs)
+        claimed["value"] = True
+        return status
+
+    monkeypatch.setattr(deep_challenger.ledger, "claim_holdout", record_claim)
+    for key, value in {"epochs": 1, "patience": 1, "hidden_size": 4, "layers": 1,
+                       "dropout": 0.0, "batch_size": 64}.items():
+        monkeypatch.setitem(deep_challenger._MODEL, key, value)
+
+    report = run.train_deep_gru_file(
+        source, "minutes", "ohlc", "NQ", out=tmp_path / "blocked.json",
+        ledger=tmp_path / "ledger.sqlite3",
+    )
+    assert claimed["value"] is True
+    assert report["status"] == "blocked"
+    assert report["holdout_claim"]["status"] == deep_challenger.ledger.NEW
+    assert "full source differs" in report["reason"]

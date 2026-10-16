@@ -50,7 +50,7 @@ def _columns(fieldnames, ambiguous, raw_rows, duplicate_features):
         return matches[0] if matches else None
     return col
 
-def inspect_ohlc(path, *, raw_bytes=None):
+def inspect_ohlc(path, *, raw_bytes=None, drop_trailing=True):
     """(bars, manifest). Bars are sorted, unique by timestamp, in the trainer's dict format."""
     path = Path(path)
     raw = path.read_bytes() if raw_bytes is None else raw_bytes
@@ -124,8 +124,9 @@ def inspect_ohlc(path, *, raw_bytes=None):
     counts["timestamp_precision_conflict"] = len(precision_conflicts)
     bars = [by_ts[t] for t in sorted(by_ts)]
     # An export's last bar may still have been forming when it was saved; nothing in the file says which.
-    counts["trailing_dropped"] = 1 if bars else 0
-    bars = bars[:-1]
+    counts["trailing_dropped"] = 1 if bars and drop_trailing else 0
+    if drop_trailing and bars:
+        bars = bars[:-1]
     steps = [b["ts"] - a["ts"] for a, b in zip(bars, bars[1:])]
     blocked = []
     if ambiguous:
